@@ -49,8 +49,6 @@ export namespace parser {
 	    healing: number;
 	    mitigation: number;
 	    characters: string[];
-	    final_blows: number;
-	    solo_kills: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new MatchResult(source);
@@ -67,8 +65,6 @@ export namespace parser {
 	        this.healing = source["healing"];
 	        this.mitigation = source["mitigation"];
 	        this.characters = source["characters"];
-	        this.final_blows = source["final_blows"];
-	        this.solo_kills = source["solo_kills"];
 	    }
 	}
 

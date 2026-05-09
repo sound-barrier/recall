@@ -27,8 +27,6 @@ type MatchResult struct {
 	Healing      int      `json:"healing"`
 	Mitigation   int      `json:"mitigation"`
 	Characters   []string `json:"characters"`
-	FinalBlows   int      `json:"final_blows"`
-	SoloKills    int      `json:"solo_kills"`
 }
 
 var heroRoles = map[string]string{
@@ -106,8 +104,6 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 	res.Eliminations, res.Assists, res.Deaths = stats[0], stats[1], stats[2]
 	res.Damage, res.Healing, res.Mitigation = stats[3], stats[4], stats[5]
 	res.Characters = extractHeroes(panelText)
-	res.FinalBlows = extractIntBeforeLabel(panelText, "FINAL BLOW")
-	res.SoloKills = extractIntBeforeLabel(panelText, "SOLO KILLS")
 	if len(res.Characters) > 0 {
 		if r, ok := heroRoles[res.Characters[0]]; ok {
 			res.Role = r
@@ -363,19 +359,6 @@ func extractInts(text string) []int {
 		}
 	}
 	return out
-}
-
-func extractIntBeforeLabel(text, label string) int {
-	upper := strings.ToUpper(text)
-	idx := strings.Index(upper, label)
-	if idx < 0 {
-		return 0
-	}
-	nums := extractInts(text[:idx])
-	if len(nums) == 0 {
-		return 0
-	}
-	return nums[len(nums)-1]
 }
 
 func extractHeroes(text string) []string {
