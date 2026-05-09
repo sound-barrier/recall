@@ -55,8 +55,6 @@ onMounted(load)
         <div class="stat"><label>Damage</label><span>{{ rec.data.damage?.toLocaleString() }}</span></div>
         <div class="stat"><label>Healing</label><span>{{ rec.data.healing?.toLocaleString() }}</span></div>
         <div class="stat"><label>Mitigation</label><span>{{ rec.data.mitigation?.toLocaleString() }}</span></div>
-        <div class="stat"><label>Final Blows</label><span>{{ rec.data.final_blows }}</span></div>
-        <div class="stat"><label>Solo Kills</label><span>{{ rec.data.solo_kills }}</span></div>
       </div>
     </div>
   </div>
