@@ -2,32 +2,30 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"log"
 	"os"
 	"path/filepath"
 
 	"OWMetrics/backend/db"
+	"OWMetrics/backend/parser"
 )
 
-type Item struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-	Data string `json:"data"`
+type MatchRecord struct {
+	ID         int64               `json:"id"`
+	SourceFile string              `json:"source_file"`
+	Data       parser.MatchResult  `json:"data"`
 }
 
-// App struct
 type App struct {
-	ctx context.Context
+	ctx            context.Context
+	screenshotsDir string
 }
 
-// NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
@@ -42,32 +40,54 @@ func (a *App) startup(ctx context.Context) {
 	if err := db.Init(filepath.Join(appDir, "owmetrics.db")); err != nil {
 		log.Fatal("could not init db:", err)
 	}
+
+	// screenshots/ relative to the working directory (project root during dev)
+	a.screenshotsDir = "screenshots"
 }
 
-// Greet returns a greeting for the given name
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
+// ParseScreenshots runs the local OCR pipeline against every image in the
+// screenshots directory and upserts the result into the database.
+func (a *App) ParseScreenshots() error {
+	results, err := parser.ParseScreenshotsDir(a.screenshotsDir)
+	if err != nil {
+		return err
+	}
+	for filename, result := range results {
+		blob, err := json.Marshal(result)
+		if err != nil {
+			return err
+		}
+		_, err = db.DB.Exec(
+			`INSERT INTO match_results (source_file, data) VALUES (?, ?)
+			 ON CONFLICT(source_file) DO UPDATE SET data = excluded.data`,
+			filename, string(blob),
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (a *App) GetItems() ([]Item, error) {
-	rows, err := db.DB.Query(`SELECT id, name, data FROM items ORDER BY id`)
+// GetMatchResults returns all stored match results from the database.
+func (a *App) GetMatchResults() ([]MatchRecord, error) {
+	rows, err := db.DB.Query(`SELECT id, source_file, data FROM match_results ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var items []Item
+	var records []MatchRecord
 	for rows.Next() {
-		var it Item
-		if err := rows.Scan(&it.ID, &it.Name, &it.Data); err != nil {
+		var rec MatchRecord
+		var raw string
+		if err := rows.Scan(&rec.ID, &rec.SourceFile, &raw); err != nil {
 			return nil, err
 		}
-		items = append(items, it)
+		if err := json.Unmarshal([]byte(raw), &rec.Data); err != nil {
+			return nil, err
+		}
+		records = append(records, rec)
 	}
-	return items, rows.Err()
-}
-
-func (a *App) SaveItem(name string, data string) error {
-	_, err := db.DB.Exec(`INSERT INTO items (name, data) VALUES (?, ?)`, name, data)
-	return err
+	return records, rows.Err()
 }

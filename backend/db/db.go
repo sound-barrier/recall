@@ -14,10 +14,10 @@ func Init(path string) error {
 	if err != nil {
 		return err
 	}
-	_, err = DB.Exec(`CREATE TABLE IF NOT EXISTS items (
-        id   INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        data TEXT  -- store JSON blobs here if needed
-    )`)
+	_, err = DB.Exec(`CREATE TABLE IF NOT EXISTS match_results (
+		id          INTEGER PRIMARY KEY AUTOINCREMENT,
+		source_file TEXT NOT NULL UNIQUE,
+		data        TEXT NOT NULL
+	)`)
 	return err
 }
