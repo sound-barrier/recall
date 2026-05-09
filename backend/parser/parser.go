@@ -73,28 +73,38 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 		return nil, errors.New("could not locate the highlighted (lighter blue) row in the scoreboard")
 	}
 
-	tmp, err := os.MkdirTemp("", "owmetrics-*")
-	if err != nil {
-		return nil, err
+	work := os.Getenv("OWMETRICS_DEBUG_DIR")
+	if work == "" {
+		work, err = os.MkdirTemp("", "owmetrics-*")
+		if err != nil {
+			return nil, err
+		}
+		defer os.RemoveAll(work)
+	} else {
+		_ = os.MkdirAll(work, 0700)
 	}
-	defer os.RemoveAll(tmp)
 
-	headerText, err := ocrRegion(img, image.Rect(0, 0, W*5/8, H/12), tmp, "header")
+	headerText, err := ocrInverted(img, image.Rect(0, H/100, W*5/8, H*5/96), work, "header", "6", "")
 	if err != nil {
 		return nil, fmt.Errorf("header OCR: %w", err)
 	}
-	rowText, err := ocrRegion(img, image.Rect(W*23/64, yTop, W*5/8, yBot), tmp, "row")
+	stats, err := ocrRowCells(img, yTop, yBot, work)
 	if err != nil {
 		return nil, fmt.Errorf("row OCR: %w", err)
 	}
-	panelText, err := ocrRegion(img, image.Rect(W*5/8, H/8, W, H*5/6), tmp, "panel")
+	// Panel: use raw colour (Tesseract handles the cyan labels best without our
+	// custom thresholding). Forces uppercase letters + digits to keep the result
+	// tidy and improve OCR confidence.
+	panelText, err := ocrRaw(img, image.Rect(W*5/8, H/8, W, H*5/6), work, "panel", "6",
+		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ %")
 	if err != nil {
 		return nil, fmt.Errorf("panel OCR: %w", err)
 	}
 
 	res := &MatchResult{}
 	res.Map = extractMap(headerText)
-	res.Eliminations, res.Assists, res.Deaths, res.Damage, res.Healing, res.Mitigation = extractRowStats(rowText)
+	res.Eliminations, res.Assists, res.Deaths = stats[0], stats[1], stats[2]
+	res.Damage, res.Healing, res.Mitigation = stats[3], stats[4], stats[5]
 	res.Characters = extractHeroes(panelText)
 	res.FinalBlows = extractIntBeforeLabel(panelText, "FINAL BLOW")
 	res.SoloKills = extractIntBeforeLabel(panelText, "SOLO KILLS")
@@ -170,9 +180,6 @@ func findHighlightedRowY(img image.Image) (int, int) {
 	return bestStart, bestEnd
 }
 
-// isHighlightBlue matches the lighter blue of the highlighted row. The
-// non-highlighted rows have G < ~105 in the table area, so the green channel
-// is the cleanest discriminator.
 func isHighlightBlue(r, g, b uint8) bool {
 	return r < 160 &&
 		g > 105 && g < 210 &&
@@ -181,11 +188,26 @@ func isHighlightBlue(r, g, b uint8) bool {
 		int(g) > int(r)+30
 }
 
-func ocrRegion(img image.Image, rect image.Rectangle, tmpDir, name string) (string, error) {
+// ocrInverted writes the cropped region as inverted-luminance grayscale (white
+// in-game text becomes black, dark backgrounds become white) and 3x upscaled.
+// Best for the row stats and header where text is solid white.
+func ocrInverted(img image.Image, rect image.Rectangle, workDir, name, psm, whitelist string) (string, error) {
 	sub := crop(img, rect)
-	pre := preprocessForOCR(sub)
+	pre := preprocessInverted(sub)
+	return runTesseract(pre, workDir, name, psm, whitelist)
+}
 
-	inPath := filepath.Join(tmpDir, name+".png")
+// ocrRaw writes the cropped region untouched (just upscaled) for Tesseract's
+// own thresholding. Best for the right-side panel which mixes white digits and
+// cyan labels — our custom thresholding tends to drop one or the other.
+func ocrRaw(img image.Image, rect image.Rectangle, workDir, name, psm, whitelist string) (string, error) {
+	sub := crop(img, rect)
+	pre := upscale(sub, 2)
+	return runTesseract(pre, workDir, name, psm, whitelist)
+}
+
+func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string, error) {
+	inPath := filepath.Join(workDir, name+".png")
 	f, err := os.Create(inPath)
 	if err != nil {
 		return "", err
@@ -196,14 +218,74 @@ func ocrRegion(img image.Image, rect image.Rectangle, tmpDir, name string) (stri
 	}
 	f.Close()
 
+	args := []string{inPath, "-", "--psm", psm}
+	if whitelist != "" {
+		args = append(args, "-c", "tessedit_char_whitelist="+whitelist)
+	}
 	var stdout, stderr bytes.Buffer
-	cmd := exec.Command("tesseract", inPath, "-", "--psm", "6")
+	cmd := exec.Command("tesseract", args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("tesseract failed: %w (%s)", err, stderr.String())
 	}
-	return stdout.String(), nil
+	out := stdout.String()
+	if os.Getenv("OWMETRICS_DEBUG_DIR") != "" {
+		_ = os.WriteFile(filepath.Join(workDir, name+".txt"), []byte(out), 0600)
+	}
+	return out, nil
+}
+
+// ocrRowCells crops each of the 6 stat columns of the highlighted row and OCRs
+// each one with a digit whitelist. Per-cell OCR is more reliable than parsing
+// one wide line: a missed cell only loses one stat, not all six.
+func ocrRowCells(img image.Image, yTop, yBot int, workDir string) ([6]int, error) {
+	bounds := img.Bounds()
+	W := bounds.Dx()
+	cells := []struct {
+		name   string
+		cx, hw float64
+	}{
+		{"col_e", 0.378, 0.018},
+		{"col_a", 0.408, 0.014},
+		{"col_d", 0.438, 0.016},
+		{"col_dmg", 0.483, 0.040},
+		{"col_h", 0.527, 0.024},
+		{"col_mit", 0.575, 0.034},
+	}
+	pad := (yBot - yTop) / 6
+	yT, yB := yTop+pad, yBot-pad
+
+	var out [6]int
+	for i, c := range cells {
+		x0 := int((c.cx - c.hw) * float64(W))
+		x1 := int((c.cx + c.hw) * float64(W))
+		rect := image.Rect(x0, yT, x1, yB)
+		// Try PSM 7 (single line) first; fall back to PSM 10 (single character)
+		// for cells that come back empty — Tesseract sometimes refuses lone
+		// digits in line mode.
+		var nums []int
+		attempts := []struct{ psm, whitelist string }{
+			{"7", "0123456789,"},
+			{"10", "0123456789,"},
+			{"10", ""},
+			{"8", ""},
+		}
+		for _, a := range attempts {
+			text, err := ocrInverted(img, rect, workDir, c.name, a.psm, a.whitelist)
+			if err != nil {
+				return out, fmt.Errorf("%s: %w", c.name, err)
+			}
+			nums = extractInts(text)
+			if len(nums) > 0 {
+				break
+			}
+		}
+		if len(nums) > 0 {
+			out[i] = nums[0]
+		}
+	}
+	return out, nil
 }
 
 func crop(src image.Image, r image.Rectangle) image.Image {
@@ -217,31 +299,37 @@ func crop(src image.Image, r image.Rectangle) image.Image {
 	return out
 }
 
-// preprocessForOCR thresholds bright pixels to black-on-white and 2x upscales.
-// White game-text on coloured/dark backgrounds becomes high-contrast black text
-// on a clean white page, which Tesseract is optimised for.
-func preprocessForOCR(src image.Image) image.Image {
+func upscale(src image.Image, scale int) image.Image {
 	bounds := src.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
-	const scale = 2
+	out := image.NewRGBA(image.Rect(0, 0, w*scale, h*scale))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			c := src.At(x, y)
+			for dy := 0; dy < scale; dy++ {
+				for dx := 0; dx < scale; dx++ {
+					out.Set(x*scale+dx, y*scale+dy, c)
+				}
+			}
+		}
+	}
+	return out
+}
+
+// preprocessInverted converts a colour image to inverted-luminance grayscale at
+// 3x scale. Game text (white) becomes black and dark backgrounds become light —
+// the orientation Tesseract is trained on. Antialiasing is preserved as a
+// gradient, which Tesseract's internal binarisation handles cleanly.
+func preprocessInverted(src image.Image) image.Image {
+	bounds := src.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+	const scale = 3
 	out := image.NewGray(image.Rect(0, 0, w*scale, h*scale))
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
 			r, g, b, _ := src.At(x, y).RGBA()
-			r8, g8, b8 := r>>8, g>>8, b>>8
-			lum := (299*r8 + 587*g8 + 114*b8) / 1000
-			maxC := r8
-			if g8 > maxC {
-				maxC = g8
-			}
-			if b8 > maxC {
-				maxC = b8
-			}
-			var v uint8 = 255
-			// White text or bright saturated text -> black
-			if lum > 200 || maxC > 230 {
-				v = 0
-			}
+			lum := uint8((299*int(r>>8) + 587*int(g>>8) + 114*int(b>>8)) / 1000)
+			v := 255 - lum
 			for dy := 0; dy < scale; dy++ {
 				for dx := 0; dx < scale; dx++ {
 					out.SetGray(x*scale+dx, y*scale+dy, color.Gray{Y: v})
@@ -261,15 +349,6 @@ func extractMap(text string) string {
 		return strings.ToLower(strings.TrimSpace(m))
 	}
 	return strings.ToLower(strings.TrimSpace(text))
-}
-
-func extractRowStats(text string) (e, a, d, dmg, h, mit int) {
-	nums := extractInts(text)
-	if len(nums) >= 6 {
-		ns := nums[len(nums)-6:]
-		return ns[0], ns[1], ns[2], ns[3], ns[4], ns[5]
-	}
-	return
 }
 
 var intRe = regexp.MustCompile(`\d[\d,]*`)
