@@ -42,7 +42,7 @@ export namespace parser {
 	export class MatchResult {
 	    map: string;
 	    type: string;
-	    competitive: boolean;
+	    mode: string;
 	    role: string;
 	    hero: string;
 	    eliminations: number;
@@ -60,7 +60,7 @@ export namespace parser {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.map = source["map"];
 	        this.type = source["type"];
-	        this.competitive = source["competitive"];
+	        this.mode = source["mode"];
 	        this.role = source["role"];
 	        this.hero = source["hero"];
 	        this.eliminations = source["eliminations"];

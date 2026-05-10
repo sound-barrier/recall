@@ -45,7 +45,7 @@ onMounted(load)
       <div class="card-header">
         <span class="map">{{ rec.data.map }}</span>
         <span v-if="rec.data.type" class="type">{{ rec.data.type }}</span>
-        <span v-if="rec.data.competitive" class="comp">COMP</span>
+        <span v-if="rec.data.mode" class="mode" :class="rec.data.mode">{{ rec.data.mode }}</span>
         <span class="role" :class="rec.data.role">{{ rec.data.role }}</span>
         <span class="hero">{{ rec.data.hero }}</span>
         <span class="source">{{ rec.source_file }}</span>
@@ -92,7 +92,9 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 .map { font-size: 1rem; font-weight: 600; text-transform: capitalize; color: #7ec8e3; }
 .type { font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; background: #0f3460; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; }
-.comp { font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; background: #f0a50022; color: #f0a500; border: 1px solid #f0a50066; font-weight: 700; }
+.mode { font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; font-weight: 700; }
+.mode.competitive { background: #f0a50022; color: #f0a500; border: 1px solid #f0a50066; }
+.mode.quickplay   { background: #4d94ff22; color: #7ec8e3; border: 1px solid #4d94ff66; }
 .hero { font-size: 0.9rem; text-transform: capitalize; color: #f0a500; }
 .source { font-size: 0.75rem; color: #555; margin-left: auto; }
 

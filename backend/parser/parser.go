@@ -20,7 +20,7 @@ import (
 type MatchResult struct {
 	Map          string `json:"map"`
 	Type         string `json:"type"`
-	Competitive  bool   `json:"competitive"`
+	Mode         string `json:"mode"` // "competitive" or "quickplay"
 	Role         string `json:"role"`
 	Hero         string `json:"hero"`
 	Eliminations int    `json:"eliminations"`
@@ -129,7 +129,7 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 	panelText := panel6 + "\n" + panel11
 
 	res := &MatchResult{}
-	res.Map, res.Type, res.Competitive = extractHeader(headerText)
+	res.Map, res.Type, res.Mode = extractHeader(headerText)
 	res.Eliminations, res.Assists, res.Deaths = stats[0], stats[1], stats[2]
 	res.Damage, res.Healing, res.Mitigation = stats[3], stats[4], stats[5]
 	if heroes := extractHeroes(panelText); len(heroes) > 0 {
@@ -498,14 +498,15 @@ func preprocessInverted(src image.Image) image.Image {
 // Tesseract often mangles individual letters, so the patterns are deliberately
 // fuzzy: we look for the most distinctive substring of each keyword and accept
 // common OCR substitutions (I/L/1, O/0, etc.).
-func extractHeader(text string) (mapName, gameType string, competitive bool) {
+func extractHeader(text string) (mapName, gameType, mode string) {
 	upper := strings.ToUpper(text)
 
-	// Competitive: "MPETIT" is the most distinctive substring; falls back to
-	// any of the partial signatures Tesseract tends to leave intact.
+	// Mode: "MPETIT" is the most distinctive substring of "COMPETITIVE";
+	// anything else (no match) defaults to quickplay.
+	mode = "quickplay"
 	for _, sig := range []string{"MPETIT", "ETITIV", "OMPETI"} {
 		if strings.Contains(upper, sig) {
-			competitive = true
+			mode = "competitive"
 			break
 		}
 	}
