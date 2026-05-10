@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DB="$HOME/Library/Application Support/OWMetrics/owmetrics.db"
+# Resolve the project root from this script's location so it works no matter
+# where you invoke it from.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DB="$SCRIPT_DIR/../data/db/owmetrics.db"
 
 if [[ ! -f "$DB" ]]; then
   echo "No database found at $DB"
