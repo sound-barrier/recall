@@ -18,15 +18,28 @@ import (
 )
 
 type MatchResult struct {
-	Map          string   `json:"map"`
-	Role         string   `json:"role"`
-	Eliminations int      `json:"eliminations"`
-	Assists      int      `json:"assists"`
-	Deaths       int      `json:"deaths"`
-	Damage       int      `json:"damage"`
-	Healing      int      `json:"healing"`
-	Mitigation   int      `json:"mitigation"`
-	Characters   []string `json:"characters"`
+	Map          string `json:"map"`
+	Type         string `json:"type"`
+	Competitive  bool   `json:"competitive"`
+	Role         string `json:"role"`
+	Hero         string `json:"hero"`
+	Eliminations int    `json:"eliminations"`
+	Assists      int    `json:"assists"`
+	Deaths       int    `json:"deaths"`
+	Damage       int    `json:"damage"`
+	Healing      int    `json:"healing"`
+	Mitigation   int    `json:"mitigation"`
+}
+
+// knownMaps is the OW2 map list, used to fix Tesseract misreads on map names
+// by snapping the OCR result to the closest match.
+var knownMaps = []string{
+	"antarctic peninsula", "blizzard world", "busan", "circuit royal",
+	"colosseo", "dorado", "esperanca", "eichenwalde", "havana", "hollywood",
+	"horizon lunar colony", "ilios", "junkertown", "king's row", "lijiang tower",
+	"midtown", "nepal", "new junk city", "new queen street", "numbani",
+	"oasis", "paraiso", "rialto", "route 66", "runasapi", "samoa", "shambali monastery",
+	"suravasa", "throne of anubis", "watchpoint: gibraltar", "volskaya industries",
 }
 
 var heroRoles = map[string]string{
@@ -82,7 +95,16 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 		_ = os.MkdirAll(work, 0700)
 	}
 
-	headerText, err := ocrInverted(img, image.Rect(0, H/100, W*5/8, H*5/96), work, "header", "6", "")
+	// Header strip — banner is at top-left in 720p, top-right in 1080p. Use
+	// PSM 7 (single line) so a stray FPS/latency overlay above the banner
+	// doesn't confuse the OCR.
+	var headerRect image.Rectangle
+	if W >= 1600 {
+		headerRect = image.Rect(W*45/100, H/40, W*99/100, H/19)
+	} else {
+		headerRect = image.Rect(0, H/100, W*5/8, H*5/96)
+	}
+	headerText, err := ocrInverted(img, headerRect, work, "header", "7", "")
 	if err != nil {
 		return nil, fmt.Errorf("header OCR: %w", err)
 	}
@@ -90,22 +112,29 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("row OCR: %w", err)
 	}
-	// Panel: use raw colour (Tesseract handles the cyan labels best without our
-	// custom thresholding). Forces uppercase letters + digits to keep the result
-	// tidy and improve OCR confidence.
-	panelText, err := ocrRaw(img, image.Rect(W*5/8, H/8, W, H*5/6), work, "panel", "6",
+	// Panel: use raw colour and run OCR twice — PSM 6 reads the labels and
+	// numeric stats well, while PSM 11 (sparse text) catches cyan hero names
+	// like "REINHARDT" that PSM 6 sometimes drops. Concatenate both outputs.
+	panelRect := image.Rect(W*5/8, H/8, W, H*5/6)
+	panel6, err := ocrRaw(img, panelRect, work, "panel", "6",
 		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ %")
 	if err != nil {
 		return nil, fmt.Errorf("panel OCR: %w", err)
 	}
+	panel11, err := ocrRaw(img, panelRect, work, "panel11", "11",
+		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ %")
+	if err != nil {
+		return nil, fmt.Errorf("panel sparse OCR: %w", err)
+	}
+	panelText := panel6 + "\n" + panel11
 
 	res := &MatchResult{}
-	res.Map = extractMap(headerText)
+	res.Map, res.Type, res.Competitive = extractHeader(headerText)
 	res.Eliminations, res.Assists, res.Deaths = stats[0], stats[1], stats[2]
 	res.Damage, res.Healing, res.Mitigation = stats[3], stats[4], stats[5]
-	res.Characters = extractHeroes(panelText)
-	if len(res.Characters) > 0 {
-		if r, ok := heroRoles[res.Characters[0]]; ok {
+	if heroes := extractHeroes(panelText); len(heroes) > 0 {
+		res.Hero = heroes[0]
+		if r, ok := heroRoles[res.Hero]; ok {
 			res.Role = r
 		}
 	}
@@ -135,53 +164,58 @@ func ParseScreenshotsDir(dir string) (map[string]*MatchResult, error) {
 	return out, nil
 }
 
-// findHighlightedRowY locates the contiguous Y range whose horizontal slice
-// through the table matches the highlighted (lighter blue) row colour.
+// findHighlightedRowY locates the highlighted row's Y range by finding the
+// single-row-height Y window with the brightest blue background in the friendly
+// team table. The friendly team's rows all share a similar blue, but the user's
+// row is rendered in a brighter shade — so the row with the highest average
+// (G+B) is the highlighted one regardless of resolution or layout.
 func findHighlightedRowY(img image.Image) (int, int) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 
-	xMin, xMax := W*23/64, W*9/16
-	scores := make([]int, H)
+	// For each Y, average (G+B) over blue-background pixels in the table area.
+	xMin, xMax := W/8, W*9/16
+	rowAvg := make([]int, H)
 	for y := 0; y < H; y++ {
-		count := 0
+		var sum, count int
 		for x := xMin; x < xMax; x++ {
 			r, g, b, _ := img.At(x, y).RGBA()
-			if isHighlightBlue(uint8(r>>8), uint8(g>>8), uint8(b>>8)) {
+			r8, g8, b8 := int(r>>8), int(g>>8), int(b>>8)
+			// Blue table background: low R, mid G, mid-high B.
+			if r8 < 60 && g8 > 60 && b8 > 90 && b8 > r8+40 {
+				sum += g8 + b8
 				count++
 			}
 		}
-		scores[y] = count
-	}
-
-	threshold := (xMax - xMin) * 1 / 3
-	bestStart, bestEnd := -1, -1
-	runStart, runEnd := -1, -1
-	for y := 0; y < H; y++ {
-		if scores[y] >= threshold {
-			if runStart == -1 {
-				runStart = y
-			}
-			runEnd = y
-		} else if runStart != -1 {
-			if runEnd-runStart > bestEnd-bestStart {
-				bestStart, bestEnd = runStart, runEnd
-			}
-			runStart, runEnd = -1, -1
+		// Require enough blue pixels in the row for it to count as table content.
+		if count > (xMax-xMin)/4 {
+			rowAvg[y] = sum / count
 		}
 	}
-	if runStart != -1 && runEnd-runStart > bestEnd-bestStart {
-		bestStart, bestEnd = runStart, runEnd
-	}
-	return bestStart, bestEnd
-}
 
-func isHighlightBlue(r, g, b uint8) bool {
-	return r < 160 &&
-		g > 105 && g < 210 &&
-		b > 130 && b < 230 &&
-		int(b) > int(g)+3 &&
-		int(g) > int(r)+30
+	// Slide a single-row-height window and pick the position with highest
+	// average brightness. Row height is roughly H/24 — covers a single row but
+	// not multiple stacked rows. We only consider the top half of the image
+	// since the friendly team always sits above the centre VS divider.
+	rowHeight := H / 24
+	if rowHeight < 20 {
+		rowHeight = 20
+	}
+	bestSum, bestY := -1, -1
+	for y := 0; y+rowHeight < H/2; y++ {
+		sum := 0
+		for k := 0; k < rowHeight; k++ {
+			sum += rowAvg[y+k]
+		}
+		if sum > bestSum {
+			bestSum = sum
+			bestY = y
+		}
+	}
+	if bestY < 0 {
+		return -1, -1
+	}
+	return bestY, bestY + rowHeight
 }
 
 // ocrInverted writes the cropped region as inverted-luminance grayscale (white
@@ -232,34 +266,40 @@ func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string
 	return out, nil
 }
 
-// ocrRowCells crops each of the 6 stat columns of the highlighted row and OCRs
-// each one with a digit whitelist. Per-cell OCR is more reliable than parsing
-// one wide line: a missed cell only loses one stat, not all six.
+// ocrRowCells finds the 6 stat columns inside the highlighted row by detecting
+// white-text clusters horizontally, groups them into columns (digits separated
+// by commas in the same number cluster together), then OCRs each as digits.
+// This is fully dynamic — no hardcoded ratios — so it works at any resolution
+// and any scoreboard layout.
 func ocrRowCells(img image.Image, yTop, yBot int, workDir string) ([6]int, error) {
 	bounds := img.Bounds()
-	W := bounds.Dx()
-	cells := []struct {
-		name   string
-		cx, hw float64
-	}{
-		{"col_e", 0.378, 0.018},
-		{"col_a", 0.408, 0.014},
-		{"col_d", 0.438, 0.016},
-		{"col_dmg", 0.483, 0.040},
-		{"col_h", 0.527, 0.024},
-		{"col_mit", 0.575, 0.034},
-	}
-	pad := (yBot - yTop) / 6
+	H := bounds.Dy()
+
+	// Trim the row to its centre band so we don't catch portrait/icon noise at
+	// the top and bottom edges.
+	pad := (yBot - yTop) / 8
 	yT, yB := yTop+pad, yBot-pad
 
+	xLeft, xRight := findRowXExtent(img, yTop, yBot)
+	cols := findStatColumns(img, yT, yB, xLeft, xRight)
+	if len(cols) < 6 {
+		return [6]int{}, fmt.Errorf("expected 6 stat columns, found %d", len(cols))
+	}
+	// Take the rightmost 6 clusters as stats. Anything to the left (hero
+	// portrait, role icon, player level/name) is ignored.
+	cols = cols[len(cols)-6:]
+
+	// Expand each cell vertically to the full row so partial digit strokes
+	// don't get clipped, and add a generous horizontal margin so Tesseract has
+	// breathing room (it tends to drop thin leading digits like "1" without it).
+	cellNames := [6]string{"col_e", "col_a", "col_d", "col_dmg", "col_h", "col_mit"}
 	var out [6]int
-	for i, c := range cells {
-		x0 := int((c.cx - c.hw) * float64(W))
-		x1 := int((c.cx + c.hw) * float64(W))
-		rect := image.Rect(x0, yT, x1, yB)
-		// Try PSM 7 (single line) first; fall back to PSM 10 (single character)
-		// for cells that come back empty — Tesseract sometimes refuses lone
-		// digits in line mode.
+	margin := H / 80
+	if margin < 8 {
+		margin = 8
+	}
+	for i, col := range cols {
+		rect := image.Rect(col.Min.X-margin, yTop+1, col.Max.X+margin, yBot-1)
 		var nums []int
 		attempts := []struct{ psm, whitelist string }{
 			{"7", "0123456789,"},
@@ -268,9 +308,9 @@ func ocrRowCells(img image.Image, yTop, yBot int, workDir string) ([6]int, error
 			{"8", ""},
 		}
 		for _, a := range attempts {
-			text, err := ocrInverted(img, rect, workDir, c.name, a.psm, a.whitelist)
+			text, err := ocrInverted(img, rect, workDir, cellNames[i], a.psm, a.whitelist)
 			if err != nil {
-				return out, fmt.Errorf("%s: %w", c.name, err)
+				return out, fmt.Errorf("%s: %w", cellNames[i], err)
 			}
 			nums = extractInts(text)
 			if len(nums) > 0 {
@@ -282,6 +322,122 @@ func ocrRowCells(img image.Image, yTop, yBot int, workDir string) ([6]int, error
 		}
 	}
 	return out, nil
+}
+
+// findRowXExtent returns the X range over which the highlighted row's blue
+// background extends — i.e. the table's left and right edges in this row. We
+// use this to filter out audio/mic icons and other non-table content that
+// happens to contain bright pixels.
+func findRowXExtent(img image.Image, yT, yB int) (xLeft, xRight int) {
+	bounds := img.Bounds()
+	W := bounds.Dx()
+	yMid := (yT + yB) / 2
+
+	isBlue := func(x, y int) bool {
+		r, g, b, _ := img.At(x, y).RGBA()
+		r8, g8, b8 := int(r>>8), int(g>>8), int(b>>8)
+		return r8 < 80 && g8 > 60 && b8 > 90 && b8 > r8+30
+	}
+
+	xLeft, xRight = -1, -1
+	for x := 0; x < W; x++ {
+		if isBlue(x, yMid) || isBlue(x, yMid-3) || isBlue(x, yMid+3) {
+			xLeft = x
+			break
+		}
+	}
+	for x := W - 1; x >= 0; x-- {
+		if isBlue(x, yMid) || isBlue(x, yMid-3) || isBlue(x, yMid+3) {
+			xRight = x
+			break
+		}
+	}
+	return
+}
+
+// findStatColumns scans for white-text X clusters inside the highlighted row
+// and groups together clusters that belong to the same number (digits with
+// thin commas between them). xLeft/xRight bound the search to the table area
+// so audio/mic icons and other off-table content don't get included.
+func findStatColumns(img image.Image, yT, yB, xLeft, xRight int) []image.Rectangle {
+	bounds := img.Bounds()
+	W := bounds.Dx()
+	if xLeft < 0 {
+		xLeft = 0
+	}
+	if xRight < 0 || xRight >= W {
+		xRight = W - 1
+	}
+
+	counts := make([]int, W)
+	for x := xLeft; x <= xRight; x++ {
+		for y := yT; y < yB; y++ {
+			r, g, b, _ := img.At(x, y).RGBA()
+			lum := (299*int(r>>8) + 587*int(g>>8) + 114*int(b>>8)) / 1000
+			if lum > 130 {
+				counts[x]++
+			}
+		}
+	}
+
+	type cluster struct{ minX, maxX int }
+	var raw []cluster
+	inC := false
+	cs := 0
+	for x := xLeft; x <= xRight; x++ {
+		if counts[x] > 1 {
+			if !inC {
+				cs = x
+				inC = true
+			}
+		} else if inC {
+			raw = append(raw, cluster{cs, x - 1})
+			inC = false
+		}
+	}
+	if inC {
+		raw = append(raw, cluster{cs, xRight})
+	}
+
+	// Merge clusters separated by a small gap (digits inside one number) and
+	// drop clusters that are too wide to be a stat number (player name areas).
+	mergeGap := W / 200    // ~6 px on 1280, ~10 px on 1920
+	maxStatWidth := W / 20 // upper bound for "13,432" style numbers
+	var grouped []image.Rectangle
+	for _, c := range raw {
+		if c.maxX-c.minX < 2 {
+			continue
+		}
+		if len(grouped) > 0 {
+			last := &grouped[len(grouped)-1]
+			if c.minX-last.Max.X <= mergeGap {
+				last.Max.X = c.maxX
+				continue
+			}
+		}
+		grouped = append(grouped, image.Rect(c.minX, yT, c.maxX, yB))
+	}
+	// Drop clusters that are too wide to be a stat number (player name/portrait).
+	filtered := grouped[:0]
+	for _, c := range grouped {
+		if c.Dx() <= maxStatWidth {
+			filtered = append(filtered, c)
+		}
+	}
+
+	// Drop trailing clusters whose gap from the previous cluster is far larger
+	// than the typical inter-column spacing — those are audio/mic icons sitting
+	// past the rightmost stat column, not stats themselves.
+	maxColGap := W / 18
+	for len(filtered) >= 2 {
+		gap := filtered[len(filtered)-1].Min.X - filtered[len(filtered)-2].Max.X
+		if gap > maxColGap {
+			filtered = filtered[:len(filtered)-1]
+		} else {
+			break
+		}
+	}
+	return filtered
 }
 
 func crop(src image.Image, r image.Rectangle) image.Image {
@@ -336,15 +492,62 @@ func preprocessInverted(src image.Image) image.Image {
 	return out
 }
 
-func extractMap(text string) string {
+// extractHeader pulls (map, type, competitive) out of the OCR'd top banner.
+// Source format: "PAYLOAD - COMPETITIVE | WATCHPOINT: GIBRALTAR"
+//
+// Tesseract often mangles individual letters, so the patterns are deliberately
+// fuzzy: we look for the most distinctive substring of each keyword and accept
+// common OCR substitutions (I/L/1, O/0, etc.).
+func extractHeader(text string) (mapName, gameType string, competitive bool) {
+	upper := strings.ToUpper(text)
+
+	// Competitive: "MPETIT" is the most distinctive substring; falls back to
+	// any of the partial signatures Tesseract tends to leave intact.
+	for _, sig := range []string{"MPETIT", "ETITIV", "OMPETI"} {
+		if strings.Contains(upper, sig) {
+			competitive = true
+			break
+		}
+	}
+
+	// Map: try the segment after "|" first (when Tesseract renders the pipe).
+	// If that doesn't snap cleanly, slide every known map name across the full
+	// header text and pick the one with the smallest Levenshtein distance —
+	// this handles maps without ":" in their name and headers where Tesseract
+	// mangles the pipe into "]" or similar.
+	candidate := text
 	if i := strings.LastIndex(text, "|"); i >= 0 && i < len(text)-1 {
-		return strings.ToLower(strings.TrimSpace(text[i+1:]))
+		candidate = text[i+1:]
 	}
-	re := regexp.MustCompile(`(?i)([A-Z][A-Za-z' ]+:\s*[A-Z][A-Za-z' ]+)`)
-	if m := re.FindString(text); m != "" {
-		return strings.ToLower(strings.TrimSpace(m))
+	mapWordRe := regexp.MustCompile(`(?i)^[\sA-Za-z':]*`)
+	candidate = mapWordRe.FindString(candidate)
+	candidate = strings.ToLower(strings.TrimSpace(candidate))
+	mapName = snapToKnownMap(candidate)
+	if mapName == "" || mapName == candidate {
+		mapName = bestKnownMapInText(text)
 	}
-	return strings.ToLower(strings.TrimSpace(text))
+
+	// Type: fuzzy match on each known mode. Each pattern allows the common
+	// I/L/1 and O/0 substitutions Tesseract produces on the OW2 banner font.
+	typePatterns := []struct {
+		name string
+		re   *regexp.Regexp
+	}{
+		{"payload", regexp.MustCompile(`(?i)PAY[ILT1!|]?[O0]A?D?`)},
+		{"control", regexp.MustCompile(`(?i)C[O0]N?T?R[O0]L`)},
+		{"push", regexp.MustCompile(`(?i)\bPUSH\b`)},
+		{"escort", regexp.MustCompile(`(?i)ESC[O0][RP]T`)},
+		{"hybrid", regexp.MustCompile(`(?i)HY[BD]?R[I1]D`)},
+		{"flashpoint", regexp.MustCompile(`(?i)FL[A4]SH`)},
+		{"clash", regexp.MustCompile(`(?i)CL[A4]SH`)},
+	}
+	for _, p := range typePatterns {
+		if p.re.MatchString(upper) {
+			gameType = p.name
+			break
+		}
+	}
+	return
 }
 
 var intRe = regexp.MustCompile(`\d[\d,]*`)
@@ -359,6 +562,88 @@ func extractInts(text string) []int {
 		}
 	}
 	return out
+}
+
+// snapToKnownMap returns the known OW2 map whose lowercase name is closest to
+// the OCR'd string by Levenshtein distance, but only if the match is decent
+// (distance below ~40% of the candidate length). Otherwise it returns the input
+// unchanged so genuinely-unknown maps don't get rewritten to the wrong thing.
+func snapToKnownMap(ocr string) string {
+	best := ocr
+	bestDist := -1
+	for _, m := range knownMaps {
+		d := levenshtein(ocr, m)
+		threshold := len(m) * 4 / 10
+		if d <= threshold && (bestDist < 0 || d < bestDist) {
+			bestDist = d
+			best = m
+		}
+	}
+	return best
+}
+
+// bestKnownMapInText slides every known map name across the OCR text as a
+// fuzzy substring match and returns the closest match (or "" if none clear the
+// quality threshold). This handles map names embedded inside garbled headers
+// like "© HYBRID - COMPETITIVE] HOLLYWooD [/MF'7:/]5".
+func bestKnownMapInText(text string) string {
+	lower := strings.ToLower(text)
+	bestMap := ""
+	bestDist := -1
+	for _, m := range knownMaps {
+		if len(m) > len(lower) {
+			continue
+		}
+		threshold := len(m) * 3 / 10
+		if threshold < 1 {
+			threshold = 1
+		}
+		for i := 0; i+len(m) <= len(lower); i++ {
+			d := levenshtein(lower[i:i+len(m)], m)
+			if d <= threshold && (bestDist < 0 || d < bestDist) {
+				bestDist = d
+				bestMap = m
+			}
+		}
+	}
+	return bestMap
+}
+
+func levenshtein(a, b string) int {
+	la, lb := len(a), len(b)
+	if la == 0 {
+		return lb
+	}
+	if lb == 0 {
+		return la
+	}
+	prev := make([]int, lb+1)
+	curr := make([]int, lb+1)
+	for j := 0; j <= lb; j++ {
+		prev[j] = j
+	}
+	for i := 1; i <= la; i++ {
+		curr[0] = i
+		for j := 1; j <= lb; j++ {
+			cost := 1
+			if a[i-1] == b[j-1] {
+				cost = 0
+			}
+			del := prev[j] + 1
+			ins := curr[j-1] + 1
+			sub := prev[j-1] + cost
+			m := del
+			if ins < m {
+				m = ins
+			}
+			if sub < m {
+				m = sub
+			}
+			curr[j] = m
+		}
+		prev, curr = curr, prev
+	}
+	return prev[lb]
 }
 
 func extractHeroes(text string) []string {
