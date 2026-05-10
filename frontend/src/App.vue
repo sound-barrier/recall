@@ -1,10 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ParseScreenshots, GetMatchResults } from '../wailsjs/go/main/App'
 
 const records = ref([])
 const error = ref('')
 const loading = ref(false)
+
+const filterType = ref('')
+const filterRole = ref('')
+const filterMap  = ref('')
+const filterHero = ref('')
 
 async function load() {
   const res = await GetMatchResults()
@@ -24,6 +29,38 @@ async function parse() {
   }
 }
 
+function uniqueValues(field) {
+  const set = new Set()
+  for (const r of records.value) {
+    const v = r.data?.[field]
+    if (v) set.add(v)
+  }
+  return [...set].sort()
+}
+
+const types = computed(() => uniqueValues('type'))
+const roles = computed(() => uniqueValues('role'))
+const maps  = computed(() => uniqueValues('map'))
+const heroes = computed(() => uniqueValues('hero'))
+
+const filtered = computed(() =>
+  records.value.filter(r => {
+    const d = r.data || {}
+    if (filterType.value && d.type !== filterType.value) return false
+    if (filterRole.value && d.role !== filterRole.value) return false
+    if (filterMap.value  && d.map  !== filterMap.value)  return false
+    if (filterHero.value && d.hero !== filterHero.value) return false
+    return true
+  })
+)
+
+function clearFilters() {
+  filterType.value = ''
+  filterRole.value = ''
+  filterMap.value  = ''
+  filterHero.value = ''
+}
+
 onMounted(load)
 </script>
 
@@ -41,7 +78,32 @@ onMounted(load)
       No results yet. Click "Parse Screenshots" to analyse the screenshots/ directory.
     </div>
 
-    <div v-for="rec in records" :key="rec.id" class="card">
+    <div v-if="records.length > 0" class="filters">
+      <select v-model="filterType">
+        <option value="">All types</option>
+        <option v-for="t in types" :key="t" :value="t">{{ t }}</option>
+      </select>
+      <select v-model="filterRole">
+        <option value="">All roles</option>
+        <option v-for="r in roles" :key="r" :value="r">{{ r }}</option>
+      </select>
+      <select v-model="filterMap">
+        <option value="">All maps</option>
+        <option v-for="m in maps" :key="m" :value="m">{{ m }}</option>
+      </select>
+      <select v-model="filterHero">
+        <option value="">All heroes</option>
+        <option v-for="h in heroes" :key="h" :value="h">{{ h }}</option>
+      </select>
+      <button
+        v-if="filterType || filterRole || filterMap || filterHero"
+        class="clear" @click="clearFilters">
+        Clear
+      </button>
+      <span class="count">{{ filtered.length }} / {{ records.length }}</span>
+    </div>
+
+    <div v-for="rec in filtered" :key="rec.id" class="card">
       <div class="card-header">
         <span class="map">{{ rec.data.map }}</span>
         <span v-if="rec.data.type" class="type">{{ rec.data.type }}</span>
@@ -79,6 +141,22 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 .error { color: #ff6b6b; margin-top: 1rem; font-size: 0.9rem; }
 .empty { color: #888; margin-top: 2rem; }
+
+.filters {
+  display: flex; gap: 0.5rem; margin-top: 1.2rem; flex-wrap: wrap; align-items: center;
+}
+.filters select {
+  background: #16213e; color: #e0e0e0; border: 1px solid #0f3460;
+  border-radius: 4px; padding: 0.35rem 0.5rem; font-size: 0.9rem;
+  text-transform: capitalize; cursor: pointer;
+}
+.filters select:focus { outline: none; border-color: #7ec8e3; }
+.filters .clear {
+  background: transparent; color: #888; border: 1px solid #444;
+  padding: 0.3rem 0.7rem; font-size: 0.8rem;
+}
+.filters .clear:hover { color: #e0e0e0; border-color: #888; background: transparent; }
+.filters .count { font-size: 0.8rem; color: #666; margin-left: auto; }
 
 .card {
   background: #16213e; border: 1px solid #0f3460;
