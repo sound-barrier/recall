@@ -29,19 +29,17 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	dataDir, err := os.UserConfigDir()
-	if err != nil {
-		log.Fatal("could not find config dir:", err)
+	// data/db/ relative to the working directory (project root during dev,
+	// alongside the binary in production).
+	dbDir := filepath.Join("data", "db")
+	if err := os.MkdirAll(dbDir, 0700); err != nil {
+		log.Fatal("could not create db dir:", err)
 	}
-	appDir := filepath.Join(dataDir, "OWMetrics")
-	if err := os.MkdirAll(appDir, 0700); err != nil {
-		log.Fatal("could not create app dir:", err)
-	}
-	if err := db.Init(filepath.Join(appDir, "owmetrics.db")); err != nil {
+	if err := db.Init(filepath.Join(dbDir, "owmetrics.db")); err != nil {
 		log.Fatal("could not init db:", err)
 	}
 
-	// screenshots/ relative to the working directory (project root during dev)
+	// screenshots/ relative to the working directory.
 	a.screenshotsDir = "screenshots"
 }
 
