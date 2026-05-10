@@ -41,14 +41,16 @@ export namespace parser {
 	
 	export class MatchResult {
 	    map: string;
+	    type: string;
+	    competitive: boolean;
 	    role: string;
+	    hero: string;
 	    eliminations: number;
 	    assists: number;
 	    deaths: number;
 	    damage: number;
 	    healing: number;
 	    mitigation: number;
-	    characters: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new MatchResult(source);
@@ -57,14 +59,16 @@ export namespace parser {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.map = source["map"];
+	        this.type = source["type"];
+	        this.competitive = source["competitive"];
 	        this.role = source["role"];
+	        this.hero = source["hero"];
 	        this.eliminations = source["eliminations"];
 	        this.assists = source["assists"];
 	        this.deaths = source["deaths"];
 	        this.damage = source["damage"];
 	        this.healing = source["healing"];
 	        this.mitigation = source["mitigation"];
-	        this.characters = source["characters"];
 	    }
 	}
 
