@@ -39,11 +39,10 @@ const schema = `CREATE TABLE IF NOT EXISTS match_results (
 	finished_at   TEXT,
 	game_length   TEXT,
 
-	heroes_played  TEXT,
-	performance    TEXT,
-	personal_stats TEXT,
+	heroes_played TEXT,
+	performance   TEXT,
 
-	parsed_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 )`
 
 func Init(path string) error {
