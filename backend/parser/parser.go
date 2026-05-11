@@ -183,8 +183,56 @@ func parseScoreboard(img image.Image, work string) (*MatchResult, error) {
 		if r, ok := heroRoles[res.Hero]; ok {
 			res.Role = r
 		}
+		// The right-side panel on the in-game scoreboard carries the same
+		// hero-specific cards the post-match PERSONAL tab does (PLAYERS
+		// SAVED, WEAPON ACCURACY, etc.). Surface them on the HeroPlay entry
+		// so a standalone scoreboard screenshot isn't missing them, and so
+		// they cross-validate against the PERSONAL screen when both exist.
+		if heroStats := parsePanelStats(panelText); len(heroStats) > 0 {
+			res.HeroesPlayed = []HeroPlay{{Hero: res.Hero, Stats: heroStats}}
+		}
 	}
 	return res, nil
+}
+
+// parsePanelStats extracts hero-specific (value, label) pairs from the
+// scoreboard's right panel OCR. Values are integers (optionally % -suffixed);
+// labels are multi-word uppercase phrases that follow the value within a few
+// lines. Short noise lines (e.g. "PP", "A") between value and label are
+// skipped — the panel renders an orange tick mark on the left of each card
+// that Tesseract often reads as a 1-3 letter run.
+var (
+	panelValRe   = regexp.MustCompile(`^\s*(\d{1,4})\s*%?\s*$`)
+	panelLabelRe = regexp.MustCompile(`^[A-Z][A-Z\s]{4,}[A-Z]$`)
+)
+
+func parsePanelStats(text string) map[string]int {
+	lines := strings.Split(text, "\n")
+	stats := map[string]int{}
+	for i, line := range lines {
+		m := panelValRe.FindStringSubmatch(strings.TrimSpace(line))
+		if m == nil {
+			continue
+		}
+		val, _ := strconv.Atoi(m[1])
+		for j := i + 1; j < len(lines) && j < i+5; j++ {
+			l := strings.TrimSpace(lines[j])
+			if l == "" || len(l) <= 3 {
+				continue
+			}
+			if panelLabelRe.MatchString(l) {
+				stats[labelToKey(l)] = val
+				break
+			}
+			// Hitting another value before a label means the current value
+			// has no label in range — bail rather than pairing it with a
+			// later, unrelated label.
+			if panelValRe.MatchString(l) {
+				break
+			}
+		}
+	}
+	return stats
 }
 
 func ParseScreenshotsDir(dir string) (map[string]*MatchResult, error) {
@@ -1068,19 +1116,35 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 
 	for row := 0; row < 3; row++ {
 		for col := 0; col < 3; col++ {
-			cellRect := image.Rect(
+			name := fmt.Sprintf("personal_r%dc%d", row, col)
+
+			// Primary pass: full cell, dual-PSM. PSM 11 (sparse) gets large
+			// values cleanly; PSM 6 (uniform block) catches what 11 drops.
+			fullRect := image.Rect(
 				gridLeft+col*cellW, gridTop+row*cellH,
 				gridLeft+(col+1)*cellW, gridTop+(row+1)*cellH,
 			)
-			name := fmt.Sprintf("personal_r%dc%d", row, col)
-			// Dual-pass OCR: PSM 11 (sparse) usually picks up the large value
-			// next to a glyphy icon, but on some cells it merges the value
-			// into the icon noise; PSM 6 (uniform block) catches what 11
-			// drops. Concatenating both passes is more reliable than picking
-			// either single PSM.
-			text11, _ := ocrInverted(img, cellRect, work, name, "11", "")
-			text6, _ := ocrInverted(img, cellRect, work, name+"_b", "6", "")
+			text11, _ := ocrInverted(img, fullRect, work, name, "11", "")
+			text6, _ := ocrInverted(img, fullRect, work, name+"_b", "6", "")
 			cellText := text11 + "\n" + text6
+
+			// Stat cells: also OCR with the left 30% (tick + icon) cropped
+			// out. The icon often gets misread as a lowercase letter run
+			// glued to the first word of the label (Juno's orbital-ring
+			// icon → "orn" before "BITAL RAY ASSISTS"). Stripping it
+			// produces a clean label that the regex picks over the
+			// glued-prefix version on length. We keep the full-cell text
+			// in cellText too because the strip sometimes loses the value
+			// (a lone "1" digit next to the icon edge).
+			if !(row == 0 && col == 0) {
+				stripRect := image.Rect(
+					gridLeft+col*cellW+cellW*30/100, gridTop+row*cellH,
+					gridLeft+(col+1)*cellW, gridTop+(row+1)*cellH,
+				)
+				strip11, _ := ocrInverted(img, stripRect, work, name+"_s", "11", "")
+				cellText += "\n" + strip11
+			}
+
 			if row == 0 && col == 0 {
 				parsePersonalHeroCell(cellText, res)
 			} else if key, val, ok := parsePersonalStatCell(cellText); ok {
