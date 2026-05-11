@@ -42,9 +42,8 @@ raw=$(sqlite3 "$DB" "
     'date',         date,
     'finished_at',  finished_at,
     'game_length',  game_length,
-    'heroes_played',  CASE WHEN heroes_played  IS NULL THEN NULL ELSE json(heroes_played)  END,
-    'performance',    CASE WHEN performance    IS NULL THEN NULL ELSE json(performance)    END,
-    'personal_stats', CASE WHEN personal_stats IS NULL THEN NULL ELSE json(personal_stats) END
+    'heroes_played', CASE WHEN heroes_played IS NULL THEN NULL ELSE json(heroes_played) END,
+    'performance',   CASE WHEN performance   IS NULL THEN NULL ELSE json(performance)   END
   )
   FROM match_results WHERE $where ORDER BY id;
 ")

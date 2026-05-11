@@ -45,6 +45,7 @@ export namespace parser {
 	    hero: string;
 	    percent_played: number;
 	    play_time?: string;
+	    stats?: Record<string, number>;
 	
 	    static createFrom(source: any = {}) {
 	        return new HeroPlay(source);
@@ -55,6 +56,7 @@ export namespace parser {
 	        this.hero = source["hero"];
 	        this.percent_played = source["percent_played"];
 	        this.play_time = source["play_time"];
+	        this.stats = source["stats"];
 	    }
 	}
 	export class PerformanceStat {
@@ -124,7 +126,6 @@ export namespace parser {
 	    game_length?: string;
 	    heroes_played?: HeroPlay[];
 	    performance?: Performance;
-	    personal_stats?: Record<string, number>;
 	
 	    static createFrom(source: any = {}) {
 	        return new MatchResult(source);
@@ -150,7 +151,6 @@ export namespace parser {
 	        this.game_length = source["game_length"];
 	        this.heroes_played = this.convertValues(source["heroes_played"], HeroPlay);
 	        this.performance = this.convertValues(source["performance"], Performance);
-	        this.personal_stats = source["personal_stats"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

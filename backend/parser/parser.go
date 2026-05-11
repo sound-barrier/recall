@@ -38,18 +38,18 @@ type MatchResult struct {
 	GameLength   string       `json:"game_length,omitempty"`  // MM:SS
 	HeroesPlayed []HeroPlay   `json:"heroes_played,omitempty"`
 	Performance  *Performance `json:"performance,omitempty"`
-
-	// Hero-specific stats from the PERSONAL tab. Keys are snake_case derived
-	// from each card's label (e.g. "WEAPON ACCURACY" → "weapon_accuracy"),
-	// values are the integer/percent shown on the card. Map shape is
-	// deliberately open because every hero has a different set of cards.
-	PersonalStats map[string]int `json:"personal_stats,omitempty"`
 }
 
 type HeroPlay struct {
 	Hero          string `json:"hero"`
 	PercentPlayed int    `json:"percent_played"`
 	PlayTime      string `json:"play_time,omitempty"`
+	// Stats holds hero-specific stats from the PERSONAL tab. Keys are
+	// snake_case label-derived (e.g. "WEAPON ACCURACY" → "weapon_accuracy");
+	// the shape is open because every hero has its own card set. Nested per
+	// HeroPlay (rather than a flat top-level map) so multi-hero matches keep
+	// each hero's stats distinct.
+	Stats map[string]int `json:"stats,omitempty"`
 }
 
 type Performance struct {
@@ -90,7 +90,7 @@ var heroRoles = map[string]string{
 	"ana": "support", "baptiste": "support", "brigitte": "support",
 	"illari": "support", "juno": "support", "kiriko": "support",
 	"lifeweaver": "support", "lucio": "support", "mercy": "support",
-	"moira": "support", "zenyatta": "support",
+	"moira": "support", "wuyang": "support", "zenyatta": "support",
 }
 
 func ParseScreenshot(imagePath string) (*MatchResult, error) {
@@ -946,24 +946,27 @@ func parsePerformance(text string) *Performance {
 	return perf
 }
 
+// scoreDigit accepts digits plus the letters Tesseract commonly substitutes
+// for them on the OW2 banner font: O/Q for 0, l/I for 1. The match groups are
+// passed through digitize() before being used as a final score.
 var (
-	finalScoreRe = regexp.MustCompile(`(?i)FINAL\s*SCORE[^0-9]{0,8}(\d+)[^0-9]{1,8}(\d+)`)
+	finalScoreRe = regexp.MustCompile(`(?i)FINAL\s*SCORE[^\dOoQqIlL]*([\dOoQqIlL]+)[^\dOoQqIlL]*([\dOoQqIlL]+)`)
 	dateRe       = regexp.MustCompile(`(?i)DATE[^0-9]{0,8}(\d{1,2}/\d{1,2}/\d{2,4})(?:[^0-9]{1,8}(\d{1,2}:\d{2}))?`)
 	gameLenRe    = regexp.MustCompile(`(?i)GAME\s*LENGTH[^0-9]{0,8}(\d{1,2}:\d{2})`)
 )
 
 // parseRightCard extracts the map card's fields from one OCR pass: map name,
 // result (victory/defeat/draw), final score, date, finish time, game type, and
-// game length. Map and game type use the existing fuzzy matchers so they
-// tolerate the same OCR slips the in-game banner does.
+// game length. Result detection uses prefix-match (e.g. "DEFE", "VICTOR")
+// rather than full-word equality so OCR slips like "DEFERT" still classify.
 func parseRightCard(text string, res *MatchResult) {
 	upper := strings.ToUpper(text)
 	switch {
-	case strings.Contains(upper, "VICTORY"):
+	case strings.Contains(upper, "VICTOR"):
 		res.Result = "victory"
-	case strings.Contains(upper, "DEFEAT"):
+	case strings.Contains(upper, "DEFE"):
 		res.Result = "defeat"
-	case strings.Contains(upper, "DRAW"):
+	case strings.Contains(upper, "DRAW") || strings.Contains(upper, "DRAU"):
 		res.Result = "draw"
 	}
 	if m := bestKnownMapInText(text); m != "" {
@@ -973,7 +976,7 @@ func parseRightCard(text string, res *MatchResult) {
 		res.Type = t
 	}
 	if m := finalScoreRe.FindStringSubmatch(text); m != nil {
-		res.FinalScore = m[1] + "-" + m[2]
+		res.FinalScore = digitize(m[1]) + "-" + digitize(m[2])
 	}
 	if m := dateRe.FindStringSubmatch(text); m != nil {
 		res.Date = normalizeDate(m[1])
@@ -984,6 +987,15 @@ func parseRightCard(text string, res *MatchResult) {
 	if m := gameLenRe.FindStringSubmatch(text); m != nil {
 		res.GameLength = m[1]
 	}
+}
+
+// digitize converts the common letter→digit OCR substitutions back to digits.
+// Only used on captures that the surrounding regex has already established
+// should be numeric (e.g. final-score brackets), so we don't accidentally
+// mangle real letters elsewhere.
+func digitize(s string) string {
+	r := strings.NewReplacer("O", "0", "o", "0", "Q", "0", "q", "0", "I", "1", "l", "1", "L", "1")
+	return r.Replace(s)
 }
 
 // normalizeDate converts the client's MM/DD/YY display format to ISO YYYY-MM-DD
@@ -1004,12 +1016,15 @@ func normalizeDate(d string) string {
 }
 
 // isPersonalScreenshot detects the post-match PERSONAL tab. The left sidebar
-// of that screen has the player's hero list and an "ALL HEROES" entry —
-// neither appears on SUMMARY or TEAMS, so finding it is sufficient.
+// has a per-hero filter button list followed by an "ALL HEROES" entry —
+// neither appears on SUMMARY or TEAMS. The "ALL HEROES" button's vertical
+// position shifts down as more heroes get played in a match (single-hero
+// match: ~Y=20%; 3-hero match: ~Y=40%; many-hero match: even lower), so we
+// OCR the full vertical extent of the sidebar rather than just the top.
 func isPersonalScreenshot(img image.Image, work string) bool {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
-	rect := image.Rect(0, H*15/100, W*10/100, H*45/100)
+	rect := image.Rect(0, H*15/100, W*12/100, H*85/100)
 	text, err := ocrInverted(img, rect, work, "detect_personal", "11", "")
 	if err != nil {
 		return false
@@ -1027,7 +1042,7 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 
-	res := &MatchResult{PersonalStats: map[string]int{}}
+	res := &MatchResult{}
 
 	// Mode badge (same position as the SUMMARY screen).
 	badgeRect := image.Rect(W*65/100, H*9/100, W*97/100, H*13/100)
@@ -1068,10 +1083,17 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 			cellText := text11 + "\n" + text6
 			if row == 0 && col == 0 {
 				parsePersonalHeroCell(cellText, res)
-			} else {
-				if key, val, ok := parsePersonalStatCell(cellText); ok {
-					res.PersonalStats[key] = val
+			} else if key, val, ok := parsePersonalStatCell(cellText); ok {
+				if len(res.HeroesPlayed) == 0 {
+					// Stats with no hero card is a parse failure on the
+					// hero-info cell — skip rather than dropping the stat
+					// into a nameless bucket.
+					continue
 				}
+				if res.HeroesPlayed[0].Stats == nil {
+					res.HeroesPlayed[0].Stats = map[string]int{}
+				}
+				res.HeroesPlayed[0].Stats[key] = val
 			}
 		}
 	}
