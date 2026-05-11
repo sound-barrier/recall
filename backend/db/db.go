@@ -8,14 +8,17 @@ import (
 
 var DB *sql.DB
 
-// schema is intentionally CREATE TABLE IF NOT EXISTS — if you change columns
-// here you must wipe the DB (scripts/clear-db.sh deletes rows; for column
-// changes, rm data/db/owmetrics.db) or write a migration. The frontend reads
-// columns directly via app.go, so renaming a column will break the UI.
+// schema rebuilds match_results around a derived match_key (the canonical
+// "E:A:D" tuple) so a single logical match — fed by both the SUMMARY screen
+// and the TEAMS scoreboard — lands in one row. source_files is a JSON array
+// of every screenshot that contributed.
+//
+// This is CREATE TABLE IF NOT EXISTS; column changes require `rm
+// data/db/owmetrics.db` (or a real migration).
 const schema = `CREATE TABLE IF NOT EXISTS match_results (
 	id            INTEGER PRIMARY KEY AUTOINCREMENT,
-	source_file   TEXT NOT NULL UNIQUE,
-	source        TEXT,
+	match_key     TEXT NOT NULL UNIQUE,
+	source_files  TEXT NOT NULL,
 
 	map           TEXT,
 	type          TEXT,

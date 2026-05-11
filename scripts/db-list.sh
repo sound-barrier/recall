@@ -13,13 +13,15 @@ fi
 sqlite3 -header -column "$DB" "
   SELECT
     id,
-    source_file,
-    json_extract(data, '\$.map')  AS map,
-    json_extract(data, '\$.mode') AS mode,
-    json_extract(data, '\$.hero') AS hero,
-    json_extract(data, '\$.eliminations') || '/' ||
-    json_extract(data, '\$.assists')     || '/' ||
-    json_extract(data, '\$.deaths')       AS eliad
+    match_key,
+    COALESCE(map, '')                                  AS map,
+    COALESCE(mode, '')                                 AS mode,
+    COALESCE(hero, '')                                 AS hero,
+    eliminations || '/' || assists || '/' || deaths    AS ead,
+    damage || '/' || healing || '/' || mitigation      AS dhm,
+    COALESCE(result, '')                               AS result,
+    COALESCE(final_score, '')                          AS score,
+    COALESCE(date, '')                                 AS date
   FROM match_results
   ORDER BY id;
 "

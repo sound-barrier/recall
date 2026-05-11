@@ -2,7 +2,8 @@ export namespace main {
 	
 	export class MatchRecord {
 	    id: number;
-	    source_file: string;
+	    match_key: string;
+	    source_files: string[];
 	    data: parser.MatchResult;
 	
 	    static createFrom(source: any = {}) {
@@ -12,7 +13,8 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
-	        this.source_file = source["source_file"];
+	        this.match_key = source["match_key"];
+	        this.source_files = source["source_files"];
 	        this.data = this.convertValues(source["data"], parser.MatchResult);
 	    }
 	
@@ -104,7 +106,6 @@ export namespace parser {
 		}
 	}
 	export class MatchResult {
-	    source?: string;
 	    map: string;
 	    type: string;
 	    mode: string;
@@ -130,7 +131,6 @@ export namespace parser {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.source = source["source"];
 	        this.map = source["map"];
 	        this.type = source["type"];
 	        this.mode = source["mode"];

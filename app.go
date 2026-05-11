@@ -4,18 +4,21 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"OWMetrics/backend/db"
 	"OWMetrics/backend/parser"
 )
 
 type MatchRecord struct {
-	ID         int64              `json:"id"`
-	SourceFile string             `json:"source_file"`
-	Data       parser.MatchResult `json:"data"`
+	ID          int64              `json:"id"`
+	MatchKey    string             `json:"match_key"`
+	SourceFiles []string           `json:"source_files"`
+	Data        parser.MatchResult `json:"data"`
 }
 
 type App struct {
@@ -30,8 +33,6 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	// data/db/ relative to the working directory (project root during dev,
-	// alongside the binary in production).
 	dbDir := filepath.Join("data", "db")
 	if err := os.MkdirAll(dbDir, 0700); err != nil {
 		log.Fatal("could not create db dir:", err)
@@ -39,30 +40,32 @@ func (a *App) startup(ctx context.Context) {
 	if err := db.Init(filepath.Join(dbDir, "owmetrics.db")); err != nil {
 		log.Fatal("could not init db:", err)
 	}
-
-	// screenshots/ relative to the working directory.
 	a.screenshotsDir = "screenshots"
 }
 
-// ParseScreenshots runs the local OCR pipeline against every image in the
-// screenshots directory and upserts the result into the database.
+// ParseScreenshots OCRs every image in screenshots/, then merges results that
+// share the same (eliminations, assists, deaths) signature into one DB row.
+// The merge is what unifies the post-match SUMMARY screenshot (which has
+// map/result/scores/heroes_played/performance but no damage/healing/mit)
+// with the corresponding TEAMS scoreboard (which has the inverse) — both views
+// of the same match share their E/A/D, so we key on that.
 func (a *App) ParseScreenshots() error {
 	results, err := parser.ParseScreenshotsDir(a.screenshotsDir)
 	if err != nil {
 		return err
 	}
-	for filename, result := range results {
-		if err := upsertMatchResult(filename, result); err != nil {
+	for _, row := range mergeByEAD(results) {
+		if err := upsertMergedRow(row); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// GetMatchResults returns all stored match results from the database.
+// GetMatchResults returns all stored, merged match rows.
 func (a *App) GetMatchResults() ([]MatchRecord, error) {
 	rows, err := db.DB.Query(`SELECT
-		id, source_file, source,
+		id, match_key, source_files,
 		map, type, mode, role, hero,
 		eliminations, assists, deaths, damage, healing, mitigation,
 		result, final_score, date, finished_at, game_length,
@@ -84,36 +87,154 @@ func (a *App) GetMatchResults() ([]MatchRecord, error) {
 	return records, rows.Err()
 }
 
-// upsertMatchResult inserts (or updates on source_file conflict) one parsed
-// screenshot into the explicit-column schema. Nested fields (heroes_played
-// and performance) are stored as JSON sub-blobs since they're variable-length
-// per-screenshot data that the frontend just wants to display, not query.
-func upsertMatchResult(filename string, r *parser.MatchResult) error {
+// mergedRow is one DB row's worth of merged data: a stable key derived from
+// E/A/D, the list of source files that fed it, and the merged stats.
+type mergedRow struct {
+	Key     string
+	Sources []string
+	Data    parser.MatchResult
+}
+
+// mergeByEAD groups parser results by (E,A,D) and merges each group into one
+// row. A result with zero stats (a likely parse failure) is kept as its own
+// row so we don't collapse every bad parse into one entry.
+func mergeByEAD(parsed map[string]*parser.MatchResult) []mergedRow {
+	files := make([]string, 0, len(parsed))
+	for f := range parsed {
+		files = append(files, f)
+	}
+	sort.Strings(files)
+
+	type sig struct{ e, a, d, loner int }
+	groups := map[sig][]string{}
+	var order []sig
+	loner := 0
+	for _, f := range files {
+		r := parsed[f]
+		var s sig
+		if r.Eliminations == 0 && r.Assists == 0 && r.Deaths == 0 {
+			loner++
+			s = sig{loner: loner}
+		} else {
+			s = sig{e: r.Eliminations, a: r.Assists, d: r.Deaths}
+		}
+		if _, exists := groups[s]; !exists {
+			order = append(order, s)
+		}
+		groups[s] = append(groups[s], f)
+	}
+
+	out := make([]mergedRow, 0, len(order))
+	for _, s := range order {
+		members := groups[s]
+		var merged parser.MatchResult
+		for _, f := range members {
+			mergeMatchResult(&merged, parsed[f])
+		}
+		var key string
+		if s.loner == 0 {
+			key = fmt.Sprintf("%d:%d:%d", s.e, s.a, s.d)
+		} else {
+			// Loners are keyed by filename so re-parses replace the same row
+			// rather than accumulating a new row each time.
+			key = "unmatched:" + members[0]
+		}
+		out = append(out, mergedRow{Key: key, Sources: members, Data: merged})
+	}
+	return out
+}
+
+// mergeMatchResult fills empty fields on dst from src — i.e. each field takes
+// the first non-zero / non-empty value seen across the merge group. This
+// works because the two screenshot types populate disjoint subsets: the
+// SUMMARY has map/result/etc., the TEAMS scoreboard has damage/healing/mit.
+func mergeMatchResult(dst, src *parser.MatchResult) {
+	if dst.Map == "" {
+		dst.Map = src.Map
+	}
+	if dst.Type == "" {
+		dst.Type = src.Type
+	}
+	if dst.Mode == "" {
+		dst.Mode = src.Mode
+	}
+	if dst.Role == "" {
+		dst.Role = src.Role
+	}
+	if dst.Hero == "" {
+		dst.Hero = src.Hero
+	}
+	if dst.Eliminations == 0 {
+		dst.Eliminations = src.Eliminations
+	}
+	if dst.Assists == 0 {
+		dst.Assists = src.Assists
+	}
+	if dst.Deaths == 0 {
+		dst.Deaths = src.Deaths
+	}
+	if dst.Damage == 0 {
+		dst.Damage = src.Damage
+	}
+	if dst.Healing == 0 {
+		dst.Healing = src.Healing
+	}
+	if dst.Mitigation == 0 {
+		dst.Mitigation = src.Mitigation
+	}
+	if dst.Result == "" {
+		dst.Result = src.Result
+	}
+	if dst.FinalScore == "" {
+		dst.FinalScore = src.FinalScore
+	}
+	if dst.Date == "" {
+		dst.Date = src.Date
+	}
+	if dst.FinishedAt == "" {
+		dst.FinishedAt = src.FinishedAt
+	}
+	if dst.GameLength == "" {
+		dst.GameLength = src.GameLength
+	}
+	if len(dst.HeroesPlayed) == 0 {
+		dst.HeroesPlayed = src.HeroesPlayed
+	}
+	if dst.Performance == nil {
+		dst.Performance = src.Performance
+	}
+}
+
+func upsertMergedRow(row mergedRow) error {
+	sourcesJSON, err := json.Marshal(row.Sources)
+	if err != nil {
+		return err
+	}
 	var heroesJSON, perfJSON sql.NullString
-	if len(r.HeroesPlayed) > 0 {
-		b, err := json.Marshal(r.HeroesPlayed)
+	if len(row.Data.HeroesPlayed) > 0 {
+		b, err := json.Marshal(row.Data.HeroesPlayed)
 		if err != nil {
 			return err
 		}
 		heroesJSON = sql.NullString{String: string(b), Valid: true}
 	}
-	if r.Performance != nil {
-		b, err := json.Marshal(r.Performance)
+	if row.Data.Performance != nil {
+		b, err := json.Marshal(row.Data.Performance)
 		if err != nil {
 			return err
 		}
 		perfJSON = sql.NullString{String: string(b), Valid: true}
 	}
 
-	_, err := db.DB.Exec(`INSERT INTO match_results (
-		source_file, source,
+	_, err = db.DB.Exec(`INSERT INTO match_results (
+		match_key, source_files,
 		map, type, mode, role, hero,
 		eliminations, assists, deaths, damage, healing, mitigation,
 		result, final_score, date, finished_at, game_length,
 		heroes_played, performance
 	) VALUES (?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?, ?,?)
-	ON CONFLICT(source_file) DO UPDATE SET
-		source        = excluded.source,
+	ON CONFLICT(match_key) DO UPDATE SET
+		source_files  = excluded.source_files,
 		map           = excluded.map,
 		type          = excluded.type,
 		mode          = excluded.mode,
@@ -133,11 +254,15 @@ func upsertMatchResult(filename string, r *parser.MatchResult) error {
 		heroes_played = excluded.heroes_played,
 		performance   = excluded.performance,
 		parsed_at     = CURRENT_TIMESTAMP`,
-		filename, r.Source,
-		r.Map, r.Type, r.Mode, r.Role, r.Hero,
-		r.Eliminations, r.Assists, r.Deaths, r.Damage, r.Healing, r.Mitigation,
-		nullableString(r.Result), nullableString(r.FinalScore),
-		nullableString(r.Date), nullableString(r.FinishedAt), nullableString(r.GameLength),
+		row.Key, string(sourcesJSON),
+		nullableString(row.Data.Map), nullableString(row.Data.Type),
+		nullableString(row.Data.Mode), nullableString(row.Data.Role),
+		nullableString(row.Data.Hero),
+		row.Data.Eliminations, row.Data.Assists, row.Data.Deaths,
+		row.Data.Damage, row.Data.Healing, row.Data.Mitigation,
+		nullableString(row.Data.Result), nullableString(row.Data.FinalScore),
+		nullableString(row.Data.Date), nullableString(row.Data.FinishedAt),
+		nullableString(row.Data.GameLength),
 		heroesJSON, perfJSON,
 	)
 	return err
@@ -145,11 +270,12 @@ func upsertMatchResult(filename string, r *parser.MatchResult) error {
 
 func scanMatchRecord(rows *sql.Rows) (MatchRecord, error) {
 	var rec MatchRecord
-	var source, mapCol, typeCol, mode, role, hero sql.NullString
+	var sourcesJSON string
+	var mapCol, typeCol, mode, role, hero sql.NullString
 	var result, finalScore, date, finishedAt, gameLength sql.NullString
 	var heroesJSON, perfJSON sql.NullString
 	err := rows.Scan(
-		&rec.ID, &rec.SourceFile, &source,
+		&rec.ID, &rec.MatchKey, &sourcesJSON,
 		&mapCol, &typeCol, &mode, &role, &hero,
 		&rec.Data.Eliminations, &rec.Data.Assists, &rec.Data.Deaths,
 		&rec.Data.Damage, &rec.Data.Healing, &rec.Data.Mitigation,
@@ -159,7 +285,9 @@ func scanMatchRecord(rows *sql.Rows) (MatchRecord, error) {
 	if err != nil {
 		return rec, err
 	}
-	rec.Data.Source = source.String
+	if err := json.Unmarshal([]byte(sourcesJSON), &rec.SourceFiles); err != nil {
+		return rec, err
+	}
 	rec.Data.Map = mapCol.String
 	rec.Data.Type = typeCol.String
 	rec.Data.Mode = mode.String

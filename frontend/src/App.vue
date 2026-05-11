@@ -111,7 +111,7 @@ onMounted(load)
         <span v-if="rec.data.role" class="role" :class="rec.data.role">{{ rec.data.role }}</span>
         <span v-if="rec.data.hero" class="hero">{{ rec.data.hero }}</span>
         <span v-if="rec.data.result" class="result" :class="rec.data.result">{{ rec.data.result }}</span>
-        <span class="source">{{ rec.source_file }}</span>
+        <span class="source">{{ (rec.source_files || []).join(' + ') }}</span>
       </div>
       <div v-if="rec.data.final_score || rec.data.date || rec.data.game_length" class="meta">
         <div v-if="rec.data.final_score" class="meta-item"><label>Final Score</label><span>{{ rec.data.final_score }}</span></div>
