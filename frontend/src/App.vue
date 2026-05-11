@@ -133,6 +133,15 @@ onMounted(load)
           {{ hp.hero }} · {{ hp.percent_played }}%<span v-if="hp.play_time"> · {{ hp.play_time }}</span>
         </span>
       </div>
+      <div v-if="rec.data.personal_stats && Object.keys(rec.data.personal_stats).length" class="personal-stats">
+        <label>Personal Stats</label>
+        <div class="personal-grid">
+          <div v-for="(v, k) in rec.data.personal_stats" :key="k" class="personal-item">
+            <span class="personal-label">{{ k.replace(/_/g, ' ') }}</span>
+            <span class="personal-value">{{ v }}</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -215,6 +224,13 @@ button:disabled { opacity: 0.5; cursor: default; }
 .heroes-played { margin-top: 0.8rem; display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
 .heroes-played > label { font-size: 0.65rem; color: #888; text-transform: uppercase; }
 .hero-play { font-size: 0.85rem; color: #e0e0e0; background: #0f3460; padding: 0.2rem 0.6rem; border-radius: 10px; text-transform: capitalize; }
+
+.personal-stats { margin-top: 0.8rem; }
+.personal-stats > label { display: block; font-size: 0.65rem; color: #888; text-transform: uppercase; margin-bottom: 0.4rem; }
+.personal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.4rem; }
+.personal-item { background: #0f3460; border-radius: 4px; padding: 0.35rem 0.6rem; display: flex; justify-content: space-between; align-items: center; }
+.personal-label { font-size: 0.7rem; color: #aaa; text-transform: capitalize; }
+.personal-value { font-size: 0.9rem; font-weight: 700; color: #e0e0e0; }
 
 .stat {
   background: #0f3460; border-radius: 4px; padding: 0.5rem 0.7rem;

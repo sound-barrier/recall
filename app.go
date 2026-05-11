@@ -8,7 +8,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"time"
 
 	"OWMetrics/backend/db"
 	"OWMetrics/backend/parser"
@@ -43,18 +45,18 @@ func (a *App) startup(ctx context.Context) {
 	a.screenshotsDir = "screenshots"
 }
 
-// ParseScreenshots OCRs every image in screenshots/, then merges results that
-// share the same (eliminations, assists, deaths) signature into one DB row.
-// The merge is what unifies the post-match SUMMARY screenshot (which has
-// map/result/scores/heroes_played/performance but no damage/healing/mit)
-// with the corresponding TEAMS scoreboard (which has the inverse) — both views
-// of the same match share their E/A/D, so we key on that.
+// ParseScreenshots OCRs every image in screenshots/ and merges results from
+// screenshots taken close together (within mergeWindow) into one DB row.
+// SUMMARY, TEAMS, and PERSONAL screenshots populate disjoint subsets of
+// fields; the user typically takes them within a few seconds by cycling the
+// post-match tabs, so the filename timestamp is the most reliable correlation
+// signal — PERSONAL has no E/A/D, so a stats-based key wouldn't catch it.
 func (a *App) ParseScreenshots() error {
 	results, err := parser.ParseScreenshotsDir(a.screenshotsDir)
 	if err != nil {
 		return err
 	}
-	for _, row := range mergeByEAD(results) {
+	for _, row := range mergeByTimestamp(results) {
 		if err := upsertMergedRow(row); err != nil {
 			return err
 		}
@@ -69,7 +71,7 @@ func (a *App) GetMatchResults() ([]MatchRecord, error) {
 		map, type, mode, role, hero,
 		eliminations, assists, deaths, damage, healing, mitigation,
 		result, final_score, date, finished_at, game_length,
-		heroes_played, performance
+		heroes_played, performance, personal_stats
 		FROM match_results ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -95,51 +97,85 @@ type mergedRow struct {
 	Data    parser.MatchResult
 }
 
-// mergeByEAD groups parser results by (E,A,D) and merges each group into one
-// row. A result with zero stats (a likely parse failure) is kept as its own
-// row so we don't collapse every bad parse into one entry.
-func mergeByEAD(parsed map[string]*parser.MatchResult) []mergedRow {
-	files := make([]string, 0, len(parsed))
-	for f := range parsed {
-		files = append(files, f)
-	}
-	sort.Strings(files)
+// mergeWindow is how close two screenshot filenames must be in time to count
+// as belonging to the same match. 2 minutes is generous enough to absorb a
+// slow tab-cycler but tight enough that two separate matches never collide.
+const mergeWindow = 2 * time.Minute
 
-	type sig struct{ e, a, d, loner int }
-	groups := map[sig][]string{}
-	var order []sig
-	loner := 0
-	for _, f := range files {
-		r := parsed[f]
-		var s sig
-		if r.Eliminations == 0 && r.Assists == 0 && r.Deaths == 0 {
-			loner++
-			s = sig{loner: loner}
+var filenameTimestampRe = regexp.MustCompile(`(\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})`)
+
+// parseFilenameTimestamp extracts the YYYY.MM.DD - HH.MM.SS portion the OW2
+// client embeds in its screenshot filenames. Returns ok=false for filenames
+// that don't carry a timestamp (manually renamed files, screenshots from
+// other tools) so they get their own row instead of merging with whatever
+// timestamped file happens to be nearest.
+func parseFilenameTimestamp(f string) (time.Time, bool) {
+	m := filenameTimestampRe.FindStringSubmatch(f)
+	if m == nil {
+		return time.Time{}, false
+	}
+	s := fmt.Sprintf("%s-%s-%sT%s:%s:%sZ", m[1], m[2], m[3], m[4], m[5], m[6])
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return t, true
+}
+
+// mergeByTimestamp groups screenshots taken within mergeWindow of each other
+// (in filename-timestamp order) and merges each group into one row. Files
+// without a parseable timestamp are kept as their own rows so we don't
+// silently fold them into an unrelated match.
+func mergeByTimestamp(parsed map[string]*parser.MatchResult) []mergedRow {
+	type entry struct {
+		file string
+		ts   time.Time
+		res  *parser.MatchResult
+	}
+	var timed []entry
+	var loners []string
+	for f, r := range parsed {
+		if ts, ok := parseFilenameTimestamp(f); ok {
+			timed = append(timed, entry{f, ts, r})
 		} else {
-			s = sig{e: r.Eliminations, a: r.Assists, d: r.Deaths}
+			loners = append(loners, f)
 		}
-		if _, exists := groups[s]; !exists {
-			order = append(order, s)
+	}
+	sort.Slice(timed, func(i, j int) bool { return timed[i].ts.Before(timed[j].ts) })
+
+	var groups [][]entry
+	for _, e := range timed {
+		if n := len(groups); n > 0 {
+			last := groups[n-1]
+			if e.ts.Sub(last[len(last)-1].ts) <= mergeWindow {
+				groups[n-1] = append(last, e)
+				continue
+			}
 		}
-		groups[s] = append(groups[s], f)
+		groups = append(groups, []entry{e})
 	}
 
-	out := make([]mergedRow, 0, len(order))
-	for _, s := range order {
-		members := groups[s]
+	out := make([]mergedRow, 0, len(groups)+len(loners))
+	for _, g := range groups {
 		var merged parser.MatchResult
-		for _, f := range members {
-			mergeMatchResult(&merged, parsed[f])
+		sources := make([]string, 0, len(g))
+		for _, e := range g {
+			sources = append(sources, e.file)
+			mergeMatchResult(&merged, e.res)
 		}
-		var key string
-		if s.loner == 0 {
-			key = fmt.Sprintf("%d:%d:%d", s.e, s.a, s.d)
-		} else {
-			// Loners are keyed by filename so re-parses replace the same row
-			// rather than accumulating a new row each time.
-			key = "unmatched:" + members[0]
-		}
-		out = append(out, mergedRow{Key: key, Sources: members, Data: merged})
+		out = append(out, mergedRow{
+			Key:     "match:" + g[0].ts.UTC().Format("2006-01-02T15:04:05"),
+			Sources: sources,
+			Data:    merged,
+		})
+	}
+	sort.Strings(loners)
+	for _, f := range loners {
+		out = append(out, mergedRow{
+			Key:     "unmatched:" + f,
+			Sources: []string{f},
+			Data:    *parsed[f],
+		})
 	}
 	return out
 }
@@ -203,6 +239,14 @@ func mergeMatchResult(dst, src *parser.MatchResult) {
 	if dst.Performance == nil {
 		dst.Performance = src.Performance
 	}
+	for k, v := range src.PersonalStats {
+		if dst.PersonalStats == nil {
+			dst.PersonalStats = map[string]int{}
+		}
+		if _, exists := dst.PersonalStats[k]; !exists {
+			dst.PersonalStats[k] = v
+		}
+	}
 }
 
 func upsertMergedRow(row mergedRow) error {
@@ -210,20 +254,17 @@ func upsertMergedRow(row mergedRow) error {
 	if err != nil {
 		return err
 	}
-	var heroesJSON, perfJSON sql.NullString
-	if len(row.Data.HeroesPlayed) > 0 {
-		b, err := json.Marshal(row.Data.HeroesPlayed)
-		if err != nil {
-			return err
-		}
-		heroesJSON = sql.NullString{String: string(b), Valid: true}
+	heroesJSON, err := jsonNullable(row.Data.HeroesPlayed, len(row.Data.HeroesPlayed) > 0)
+	if err != nil {
+		return err
 	}
-	if row.Data.Performance != nil {
-		b, err := json.Marshal(row.Data.Performance)
-		if err != nil {
-			return err
-		}
-		perfJSON = sql.NullString{String: string(b), Valid: true}
+	perfJSON, err := jsonNullable(row.Data.Performance, row.Data.Performance != nil)
+	if err != nil {
+		return err
+	}
+	personalJSON, err := jsonNullable(row.Data.PersonalStats, len(row.Data.PersonalStats) > 0)
+	if err != nil {
+		return err
 	}
 
 	_, err = db.DB.Exec(`INSERT INTO match_results (
@@ -231,29 +272,30 @@ func upsertMergedRow(row mergedRow) error {
 		map, type, mode, role, hero,
 		eliminations, assists, deaths, damage, healing, mitigation,
 		result, final_score, date, finished_at, game_length,
-		heroes_played, performance
-	) VALUES (?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?, ?,?)
+		heroes_played, performance, personal_stats
+	) VALUES (?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?, ?,?,?)
 	ON CONFLICT(match_key) DO UPDATE SET
-		source_files  = excluded.source_files,
-		map           = excluded.map,
-		type          = excluded.type,
-		mode          = excluded.mode,
-		role          = excluded.role,
-		hero          = excluded.hero,
-		eliminations  = excluded.eliminations,
-		assists       = excluded.assists,
-		deaths        = excluded.deaths,
-		damage        = excluded.damage,
-		healing       = excluded.healing,
-		mitigation    = excluded.mitigation,
-		result        = excluded.result,
-		final_score   = excluded.final_score,
-		date          = excluded.date,
-		finished_at   = excluded.finished_at,
-		game_length   = excluded.game_length,
-		heroes_played = excluded.heroes_played,
-		performance   = excluded.performance,
-		parsed_at     = CURRENT_TIMESTAMP`,
+		source_files   = excluded.source_files,
+		map            = excluded.map,
+		type           = excluded.type,
+		mode           = excluded.mode,
+		role           = excluded.role,
+		hero           = excluded.hero,
+		eliminations   = excluded.eliminations,
+		assists        = excluded.assists,
+		deaths         = excluded.deaths,
+		damage         = excluded.damage,
+		healing        = excluded.healing,
+		mitigation     = excluded.mitigation,
+		result         = excluded.result,
+		final_score    = excluded.final_score,
+		date           = excluded.date,
+		finished_at    = excluded.finished_at,
+		game_length    = excluded.game_length,
+		heroes_played  = excluded.heroes_played,
+		performance    = excluded.performance,
+		personal_stats = excluded.personal_stats,
+		parsed_at      = CURRENT_TIMESTAMP`,
 		row.Key, string(sourcesJSON),
 		nullableString(row.Data.Map), nullableString(row.Data.Type),
 		nullableString(row.Data.Mode), nullableString(row.Data.Role),
@@ -263,9 +305,20 @@ func upsertMergedRow(row mergedRow) error {
 		nullableString(row.Data.Result), nullableString(row.Data.FinalScore),
 		nullableString(row.Data.Date), nullableString(row.Data.FinishedAt),
 		nullableString(row.Data.GameLength),
-		heroesJSON, perfJSON,
+		heroesJSON, perfJSON, personalJSON,
 	)
 	return err
+}
+
+func jsonNullable(v any, present bool) (sql.NullString, error) {
+	if !present {
+		return sql.NullString{}, nil
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return sql.NullString{}, err
+	}
+	return sql.NullString{String: string(b), Valid: true}, nil
 }
 
 func scanMatchRecord(rows *sql.Rows) (MatchRecord, error) {
@@ -273,14 +326,14 @@ func scanMatchRecord(rows *sql.Rows) (MatchRecord, error) {
 	var sourcesJSON string
 	var mapCol, typeCol, mode, role, hero sql.NullString
 	var result, finalScore, date, finishedAt, gameLength sql.NullString
-	var heroesJSON, perfJSON sql.NullString
+	var heroesJSON, perfJSON, personalJSON sql.NullString
 	err := rows.Scan(
 		&rec.ID, &rec.MatchKey, &sourcesJSON,
 		&mapCol, &typeCol, &mode, &role, &hero,
 		&rec.Data.Eliminations, &rec.Data.Assists, &rec.Data.Deaths,
 		&rec.Data.Damage, &rec.Data.Healing, &rec.Data.Mitigation,
 		&result, &finalScore, &date, &finishedAt, &gameLength,
-		&heroesJSON, &perfJSON,
+		&heroesJSON, &perfJSON, &personalJSON,
 	)
 	if err != nil {
 		return rec, err
@@ -303,6 +356,9 @@ func scanMatchRecord(rows *sql.Rows) (MatchRecord, error) {
 	}
 	if perfJSON.Valid && perfJSON.String != "" {
 		_ = json.Unmarshal([]byte(perfJSON.String), &rec.Data.Performance)
+	}
+	if personalJSON.Valid && personalJSON.String != "" {
+		_ = json.Unmarshal([]byte(personalJSON.String), &rec.Data.PersonalStats)
 	}
 	return rec, nil
 }
