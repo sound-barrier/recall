@@ -18,11 +18,6 @@ import (
 )
 
 type MatchResult struct {
-	// Source identifies which UI the screenshot was taken from. Different
-	// screenshots populate different subsets of fields, so consumers should
-	// branch on this rather than relying on field presence.
-	Source string `json:"source,omitempty"` // "scoreboard" or "summary"
-
 	Map          string `json:"map"`
 	Type         string `json:"type"`
 	Mode         string `json:"mode"` // "competitive" or "quickplay"
@@ -170,7 +165,7 @@ func parseScoreboard(img image.Image, work string) (*MatchResult, error) {
 	}
 	panelText := panel6 + "\n" + panel11
 
-	res := &MatchResult{Source: "scoreboard"}
+	res := &MatchResult{}
 	res.Map, res.Type, res.Mode = extractHeader(headerText)
 	res.Eliminations, res.Assists, res.Deaths = stats[0], stats[1], stats[2]
 	res.Damage, res.Healing, res.Mitigation = stats[3], stats[4], stats[5]
@@ -778,7 +773,7 @@ func parseSummary(img image.Image, work string) (*MatchResult, error) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 
-	res := &MatchResult{Source: "summary"}
+	res := &MatchResult{}
 
 	// PSM 11 (sparse text) is used for the three column OCRs because each
 	// card mixes large italic / styled glyphs with smaller labels, separated
