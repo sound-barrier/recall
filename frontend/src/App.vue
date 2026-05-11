@@ -127,18 +127,19 @@ onMounted(load)
         <div class="stat"><label>Healing</label><span>{{ rec.data.healing?.toLocaleString() }}</span></div>
         <div class="stat"><label>Mitigation</label><span>{{ rec.data.mitigation?.toLocaleString() }}</span></div>
       </div>
-      <div v-if="rec.data.heroes_played?.length" class="heroes-played">
+      <div v-if="rec.data.heroes_played?.length" class="heroes-played-list">
         <label>Heroes Played</label>
-        <span v-for="hp in rec.data.heroes_played" :key="hp.hero" class="hero-play">
-          {{ hp.hero }} · {{ hp.percent_played }}%<span v-if="hp.play_time"> · {{ hp.play_time }}</span>
-        </span>
-      </div>
-      <div v-if="rec.data.personal_stats && Object.keys(rec.data.personal_stats).length" class="personal-stats">
-        <label>Personal Stats</label>
-        <div class="personal-grid">
-          <div v-for="(v, k) in rec.data.personal_stats" :key="k" class="personal-item">
-            <span class="personal-label">{{ k.replace(/_/g, ' ') }}</span>
-            <span class="personal-value">{{ v }}</span>
+        <div v-for="hp in rec.data.heroes_played" :key="hp.hero" class="hero-block">
+          <div class="hero-header">
+            <span class="hero-name">{{ hp.hero }}</span>
+            <span class="hero-pct">{{ hp.percent_played }}%</span>
+            <span v-if="hp.play_time" class="hero-time">{{ hp.play_time }}</span>
+          </div>
+          <div v-if="hp.stats && Object.keys(hp.stats).length" class="personal-grid">
+            <div v-for="(v, k) in hp.stats" :key="k" class="personal-item">
+              <span class="personal-label">{{ k.replace(/_/g, ' ') }}</span>
+              <span class="personal-value">{{ v }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -221,12 +222,15 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; }
 
-.heroes-played { margin-top: 0.8rem; display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
-.heroes-played > label { font-size: 0.65rem; color: #888; text-transform: uppercase; }
-.hero-play { font-size: 0.85rem; color: #e0e0e0; background: #0f3460; padding: 0.2rem 0.6rem; border-radius: 10px; text-transform: capitalize; }
+.heroes-played-list { margin-top: 0.8rem; }
+.heroes-played-list > label { display: block; font-size: 0.65rem; color: #888; text-transform: uppercase; margin-bottom: 0.4rem; }
+.hero-block { margin-bottom: 0.8rem; }
+.hero-block:last-child { margin-bottom: 0; }
+.hero-header { display: flex; gap: 0.6rem; align-items: baseline; margin-bottom: 0.4rem; }
+.hero-name { font-size: 0.95rem; font-weight: 700; color: #f0a500; text-transform: capitalize; }
+.hero-pct  { font-size: 0.8rem; color: #aaa; }
+.hero-time { font-size: 0.8rem; color: #666; }
 
-.personal-stats { margin-top: 0.8rem; }
-.personal-stats > label { display: block; font-size: 0.65rem; color: #888; text-transform: uppercase; margin-bottom: 0.4rem; }
 .personal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.4rem; }
 .personal-item { background: #0f3460; border-radius: 4px; padding: 0.35rem 0.6rem; display: flex; justify-content: space-between; align-items: center; }
 .personal-label { font-size: 0.7rem; color: #aaa; text-transform: capitalize; }
