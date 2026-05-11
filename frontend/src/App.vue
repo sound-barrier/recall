@@ -108,9 +108,16 @@ onMounted(load)
         <span class="map">{{ rec.data.map }}</span>
         <span v-if="rec.data.type" class="type">{{ rec.data.type }}</span>
         <span v-if="rec.data.mode" class="mode" :class="rec.data.mode">{{ rec.data.mode }}</span>
-        <span class="role" :class="rec.data.role">{{ rec.data.role }}</span>
-        <span class="hero">{{ rec.data.hero }}</span>
+        <span v-if="rec.data.role" class="role" :class="rec.data.role">{{ rec.data.role }}</span>
+        <span v-if="rec.data.hero" class="hero">{{ rec.data.hero }}</span>
+        <span v-if="rec.data.result" class="result" :class="rec.data.result">{{ rec.data.result }}</span>
         <span class="source">{{ rec.source_file }}</span>
+      </div>
+      <div v-if="rec.data.final_score || rec.data.date || rec.data.game_length" class="meta">
+        <div v-if="rec.data.final_score" class="meta-item"><label>Final Score</label><span>{{ rec.data.final_score }}</span></div>
+        <div v-if="rec.data.date" class="meta-item"><label>Date</label><span>{{ rec.data.date }}<span v-if="rec.data.finished_at"> · {{ rec.data.finished_at }}</span></span></div>
+        <div v-if="rec.data.type" class="meta-item"><label>Game Mode</label><span>{{ rec.data.type }}</span></div>
+        <div v-if="rec.data.game_length" class="meta-item"><label>Game Length</label><span>{{ rec.data.game_length }}</span></div>
       </div>
       <div class="stats">
         <div class="stat"><label>Elims</label><span>{{ rec.data.eliminations }}</span></div>
@@ -119,6 +126,12 @@ onMounted(load)
         <div class="stat"><label>Damage</label><span>{{ rec.data.damage?.toLocaleString() }}</span></div>
         <div class="stat"><label>Healing</label><span>{{ rec.data.healing?.toLocaleString() }}</span></div>
         <div class="stat"><label>Mitigation</label><span>{{ rec.data.mitigation?.toLocaleString() }}</span></div>
+      </div>
+      <div v-if="rec.data.heroes_played?.length" class="heroes-played">
+        <label>Heroes Played</label>
+        <span v-for="hp in rec.data.heroes_played" :key="hp.hero" class="hero-play">
+          {{ hp.hero }} · {{ hp.percent_played }}%<span v-if="hp.play_time"> · {{ hp.play_time }}</span>
+        </span>
       </div>
     </div>
   </div>
@@ -184,7 +197,24 @@ button:disabled { opacity: 0.5; cursor: default; }
 .role.tank    { background: #4d94ff22; color: #7ec8e3; border: 1px solid #4d94ff66; }
 .role.support { background: #4dff8822; color: #6bffb8; border: 1px solid #4dff8866; }
 
+.result {
+  font-size: 0.75rem; padding: 2px 8px; border-radius: 10px;
+  text-transform: uppercase; font-weight: 700;
+}
+.result.victory { background: #4dff8822; color: #6bffb8; border: 1px solid #4dff8866; }
+.result.defeat  { background: #ff4d4d22; color: #ff6b6b; border: 1px solid #ff4d4d66; }
+.result.draw    { background: #88888822; color: #aaa;    border: 1px solid #88888866; }
+
+.meta { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.8rem; }
+.meta-item { display: flex; flex-direction: column; min-width: 6rem; }
+.meta-item label { font-size: 0.65rem; color: #888; text-transform: uppercase; margin-bottom: 2px; }
+.meta-item span  { font-size: 0.9rem; color: #e0e0e0; text-transform: capitalize; }
+
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; }
+
+.heroes-played { margin-top: 0.8rem; display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.heroes-played > label { font-size: 0.65rem; color: #888; text-transform: uppercase; }
+.hero-play { font-size: 0.85rem; color: #e0e0e0; background: #0f3460; padding: 0.2rem 0.6rem; border-radius: 10px; text-transform: capitalize; }
 
 .stat {
   background: #0f3460; border-radius: 4px; padding: 0.5rem 0.7rem;

@@ -18,6 +18,11 @@ import (
 )
 
 type MatchResult struct {
+	// Source identifies which UI the screenshot was taken from. Different
+	// screenshots populate different subsets of fields, so consumers should
+	// branch on this rather than relying on field presence.
+	Source string `json:"source,omitempty"` // "scoreboard" or "summary"
+
 	Map          string `json:"map"`
 	Type         string `json:"type"`
 	Mode         string `json:"mode"` // "competitive" or "quickplay"
@@ -29,12 +34,38 @@ type MatchResult struct {
 	Damage       int    `json:"damage"`
 	Healing      int    `json:"healing"`
 	Mitigation   int    `json:"mitigation"`
+
+	// Summary-screen-only fields. Empty on a scoreboard parse.
+	Result       string       `json:"result,omitempty"`       // "victory", "defeat", or "draw"
+	FinalScore   string       `json:"final_score,omitempty"`  // e.g. "3-1"
+	Date         string       `json:"date,omitempty"`         // ISO date, e.g. "2026-05-10"
+	FinishedAt   string       `json:"finished_at,omitempty"`  // HH:MM 24h, as shown by the client
+	GameLength   string       `json:"game_length,omitempty"`  // MM:SS
+	HeroesPlayed []HeroPlay   `json:"heroes_played,omitempty"`
+	Performance  *Performance `json:"performance,omitempty"`
+}
+
+type HeroPlay struct {
+	Hero          string `json:"hero"`
+	PercentPlayed int    `json:"percent_played"`
+	PlayTime      string `json:"play_time,omitempty"`
+}
+
+type Performance struct {
+	Eliminations PerformanceStat `json:"eliminations"`
+	Assists      PerformanceStat `json:"assists"`
+	Deaths       PerformanceStat `json:"deaths"`
+}
+
+type PerformanceStat struct {
+	Total       int     `json:"total"`
+	AvgPer10Min float64 `json:"avg_per_10min,omitempty"`
 }
 
 // knownMaps is the OW2 map list, used to fix Tesseract misreads on map names
 // by snapping the OCR result to the closest match.
 var knownMaps = []string{
-	"antarctic peninsula", "blizzard world", "busan", "circuit royal",
+	"aatlis", "antarctic peninsula", "blizzard world", "busan", "circuit royal",
 	"colosseo", "dorado", "esperanca", "eichenwalde", "havana", "hollywood",
 	"horizon lunar colony", "ilios", "junkertown", "king's row", "lijiang tower",
 	"midtown", "nepal", "new junk city", "new queen street", "numbani",
@@ -76,14 +107,6 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 		return nil, fmt.Errorf("decoding image: %w", err)
 	}
 
-	bounds := img.Bounds()
-	W, H := bounds.Dx(), bounds.Dy()
-
-	yTop, yBot := findHighlightedRowY(img)
-	if yTop < 0 {
-		return nil, errors.New("could not locate the highlighted (lighter blue) row in the scoreboard")
-	}
-
 	work := os.Getenv("OWMETRICS_DEBUG_DIR")
 	if work == "" {
 		work, err = os.MkdirTemp("", "owmetrics-*")
@@ -93,6 +116,25 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 		defer os.RemoveAll(work)
 	} else {
 		_ = os.MkdirAll(work, 0700)
+	}
+
+	if isSummaryScreenshot(img, work) {
+		return parseSummary(img, work)
+	}
+	return parseScoreboard(img, work)
+}
+
+// parseScoreboard handles the in-game and post-match TEAMS scoreboards: two
+// team tables stacked vertically with the user's row highlighted in a brighter
+// blue. Pulls per-row stats (E/A/D/DMG/H/MIT) plus, when present, the in-game
+// banner's map/type/mode and the side panel's hero name.
+func parseScoreboard(img image.Image, work string) (*MatchResult, error) {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
+
+	yTop, yBot := findHighlightedRowY(img)
+	if yTop < 0 {
+		return nil, errors.New("could not locate the highlighted (lighter blue) row in the scoreboard")
 	}
 
 	// Header strip — banner is at top-left in 720p, top-right in 1080p. Use
@@ -128,7 +170,7 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 	}
 	panelText := panel6 + "\n" + panel11
 
-	res := &MatchResult{}
+	res := &MatchResult{Source: "scoreboard"}
 	res.Map, res.Type, res.Mode = extractHeader(headerText)
 	res.Eliminations, res.Assists, res.Deaths = stats[0], stats[1], stats[2]
 	res.Damage, res.Healing, res.Mitigation = stats[3], stats[4], stats[5]
@@ -528,27 +570,35 @@ func extractHeader(text string) (mapName, gameType, mode string) {
 		mapName = bestKnownMapInText(text)
 	}
 
-	// Type: fuzzy match on each known mode. Each pattern allows the common
-	// I/L/1 and O/0 substitutions Tesseract produces on the OW2 banner font.
-	typePatterns := []struct {
-		name string
-		re   *regexp.Regexp
-	}{
-		{"payload", regexp.MustCompile(`(?i)PAY[ILT1!|]?[O0]A?D?`)},
-		{"control", regexp.MustCompile(`(?i)C[O0]N?T?R[O0]L`)},
-		{"push", regexp.MustCompile(`(?i)\bPUSH\b`)},
-		{"escort", regexp.MustCompile(`(?i)ESC[O0][RP]T`)},
-		{"hybrid", regexp.MustCompile(`(?i)HY[BD]?R[I1]D`)},
-		{"flashpoint", regexp.MustCompile(`(?i)FL[A4]SH`)},
-		{"clash", regexp.MustCompile(`(?i)CL[A4]SH`)},
-	}
+	// Type: shared between the in-game banner and the summary card.
+	gameType = extractGameType(upper)
+	return
+}
+
+// typePatterns matches OW2 game types in OCR'd text. Each pattern allows the
+// common I/L/1 and O/0 substitutions Tesseract produces on the OW2 fonts so a
+// single mangled letter doesn't break the match.
+var typePatterns = []struct {
+	name string
+	re   *regexp.Regexp
+}{
+	{"payload", regexp.MustCompile(`(?i)PAY[ILT1!|]?[O0]A?D?`)},
+	{"control", regexp.MustCompile(`(?i)C[O0]N?T?R[O0]L`)},
+	{"push", regexp.MustCompile(`(?i)\bPUSH\b`)},
+	{"escort", regexp.MustCompile(`(?i)ESC[O0][RP]T`)},
+	{"hybrid", regexp.MustCompile(`(?i)HY[BD]?R[I1]D`)},
+	{"flashpoint", regexp.MustCompile(`(?i)FL[A4]SH`)},
+	{"clash", regexp.MustCompile(`(?i)CL[A4]SH`)},
+}
+
+func extractGameType(text string) string {
+	upper := strings.ToUpper(text)
 	for _, p := range typePatterns {
 		if p.re.MatchString(upper) {
-			gameType = p.name
-			break
+			return p.name
 		}
 	}
-	return
+	return ""
 }
 
 var intRe = regexp.MustCompile(`\d[\d,]*`)
@@ -699,4 +749,252 @@ func heroNamesByLength() []string {
 	}
 	sort.Slice(names, func(i, j int) bool { return len(names[i]) > len(names[j]) })
 	return names
+}
+
+// isSummaryScreenshot detects the post-match SUMMARY tab by OCRing the upper-
+// middle band and looking for labels that appear only on that screen. The
+// scoreboard's TEAMS tab has the same top-of-page tab strip ("SUMMARY TEAMS
+// PERSONAL") so we can't key on tab labels alone — "HEROES PLAYED" / "TOTAL
+// PERFORMANCE" / "PERCENT PLAYED" are unique to the SUMMARY layout.
+func isSummaryScreenshot(img image.Image, work string) bool {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
+	rect := image.Rect(W/40, H/12, W*3/4, H*3/10)
+	text, err := ocrInverted(img, rect, work, "detect_summary", "6", "")
+	if err != nil {
+		return false
+	}
+	upper := strings.ToUpper(text)
+	return strings.Contains(upper, "HEROES PLAYED") ||
+		strings.Contains(upper, "TOTAL PERFORMANCE") ||
+		strings.Contains(upper, "PERCENT PLAYED")
+}
+
+// parseSummary handles the post-match SUMMARY tab: three columns (Heroes
+// Played cards on the left, Total Performance cards in the middle, a map card
+// on the right with result/score/date/mode/game-length). Each column is OCR'd
+// independently so a failure in one doesn't drop fields from the others.
+func parseSummary(img image.Image, work string) (*MatchResult, error) {
+	bounds := img.Bounds()
+	W, H := bounds.Dx(), bounds.Dy()
+
+	res := &MatchResult{Source: "summary"}
+
+	// PSM 11 (sparse text) is used for the three column OCRs because each
+	// card mixes large italic / styled glyphs with smaller labels, separated
+	// by icons. PSM 6 (uniform block) tends to merge an icon into the digit
+	// next to it ("17" → "Oe au") or drop italic hero names entirely.
+	heroesRect := image.Rect(W/40, H/8, W*30/100, H*92/100)
+	heroesText, err := ocrInverted(img, heroesRect, work, "summary_heroes", "11", "")
+	if err != nil {
+		return nil, fmt.Errorf("summary heroes OCR: %w", err)
+	}
+	res.HeroesPlayed = parseHeroesPlayed(heroesText)
+	if len(res.HeroesPlayed) > 0 {
+		res.Hero = res.HeroesPlayed[0].Hero
+		if r, ok := heroRoles[res.Hero]; ok {
+			res.Role = r
+		}
+	}
+
+	perfRect := image.Rect(W*30/100, H/8, W*62/100, H*92/100)
+	perfText, err := ocrInverted(img, perfRect, work, "summary_perf", "11", "")
+	if err != nil {
+		return nil, fmt.Errorf("summary performance OCR: %w", err)
+	}
+	if perf := parsePerformance(perfText); perf != nil {
+		res.Performance = perf
+		res.Eliminations = perf.Eliminations.Total
+		res.Assists = perf.Assists.Total
+		res.Deaths = perf.Deaths.Total
+	}
+
+	cardRect := image.Rect(W*62/100, H/12, W*99/100, H*95/100)
+	cardText, err := ocrInverted(img, cardRect, work, "summary_card", "11", "")
+	if err != nil {
+		return nil, fmt.Errorf("summary card OCR: %w", err)
+	}
+	parseRightCard(cardText, res)
+
+	// Top-right badge sits below the currency strip at ~9-13% of H — the
+	// strip occupies 0-8% and the badge banner runs underneath it. Raw OCR
+	// works directly on the white-on-magenta text without preprocessing.
+	badgeRect := image.Rect(W*65/100, H*9/100, W*97/100, H*13/100)
+	badgeText, _ := ocrRaw(img, badgeRect, work, "summary_badge", "7", "")
+	upperBadge := strings.ToUpper(badgeText)
+	if strings.Contains(upperBadge, "MPETIT") || strings.Contains(upperBadge, "OMPETI") {
+		res.Mode = "competitive"
+	} else if strings.Contains(upperBadge, "QUICK") {
+		res.Mode = "quickplay"
+	}
+
+	return res, nil
+}
+
+// parseHeroesPlayed slices the heroes column into per-hero blocks by anchoring
+// on each detected hero name and grabs the first percent and MM:SS that follow
+// it. Heroes with 0% (and no play time) are skipped — those are empty card
+// slots, not actual heroes played.
+func parseHeroesPlayed(text string) []HeroPlay {
+	heroes := extractHeroes(text)
+	if len(heroes) == 0 {
+		return nil
+	}
+	upper := strings.ToUpper(text)
+
+	type pos struct {
+		hero string
+		idx  int
+	}
+	var positions []pos
+	seen := map[string]bool{}
+	for _, h := range heroes {
+		if seen[h] {
+			continue
+		}
+		i := strings.Index(upper, strings.ToUpper(h))
+		if i >= 0 {
+			positions = append(positions, pos{hero: h, idx: i})
+			seen[h] = true
+		}
+	}
+	sort.Slice(positions, func(i, j int) bool { return positions[i].idx < positions[j].idx })
+
+	pctRe := regexp.MustCompile(`(\d{1,3})\s*%`)
+	timeRe := regexp.MustCompile(`(\d{1,2}:\d{2})`)
+
+	var out []HeroPlay
+	for i, p := range positions {
+		end := len(text)
+		if i+1 < len(positions) {
+			end = positions[i+1].idx
+		}
+		block := text[p.idx:end]
+
+		pct := 0
+		if m := pctRe.FindStringSubmatch(block); m != nil {
+			pct, _ = strconv.Atoi(m[1])
+		}
+		playTime := ""
+		if m := timeRe.FindStringSubmatch(block); m != nil {
+			playTime = m[1]
+		}
+		if pct == 0 && playTime == "" {
+			continue
+		}
+		out = append(out, HeroPlay{Hero: p.hero, PercentPlayed: pct, PlayTime: playTime})
+	}
+	return out
+}
+
+// parsePerformance pulls (total, avg-per-10-min) for each labelled card.
+// The total is the last "pure integer line" before the label — meaning a line
+// whose content is just a 1-3 digit number, with no other characters. This
+// filters out icon noise like "S 4" (Tesseract's misread of the skull-X icon
+// next to "17") which would otherwise win the "last integer before label"
+// race. The avg is anchored on "MIN" so we don't match "10" inside
+// "AVG PER 10 MIN".
+var (
+	perfPureIntLineRe = regexp.MustCompile(`(?m)^\s*(\d{1,3})\s*$`)
+	perfAvgRe         = regexp.MustCompile(`(?i)MIN[^0-9]{1,8}(\d+(?:\.\d+)?)`)
+)
+
+func parsePerformance(text string) *Performance {
+	upper := strings.ToUpper(text)
+	perf := &Performance{}
+	found := false
+	pairs := []struct {
+		keyword string
+		stat    *PerformanceStat
+	}{
+		{"ELIMINAT", &perf.Eliminations},
+		{"ASSIST", &perf.Assists},
+		{"DEATH", &perf.Deaths},
+	}
+	for _, p := range pairs {
+		idx := strings.Index(upper, p.keyword)
+		if idx < 0 {
+			continue
+		}
+		// Total: last pure-digit line before the label.
+		before := text[:idx]
+		ms := perfPureIntLineRe.FindAllStringSubmatch(before, -1)
+		if len(ms) > 0 {
+			n, _ := strconv.Atoi(ms[len(ms)-1][1])
+			p.stat.Total = n
+		}
+		// Avg: first decimal-or-int after "MIN" within ~120 chars of the label.
+		to := idx + 120
+		if to > len(text) {
+			to = len(text)
+		}
+		if m := perfAvgRe.FindStringSubmatch(text[idx:to]); m != nil {
+			v, _ := strconv.ParseFloat(m[1], 64)
+			p.stat.AvgPer10Min = v
+		}
+		if p.stat.Total != 0 || p.stat.AvgPer10Min != 0 {
+			found = true
+		}
+	}
+	if !found {
+		return nil
+	}
+	return perf
+}
+
+var (
+	finalScoreRe = regexp.MustCompile(`(?i)FINAL\s*SCORE[^0-9]{0,8}(\d+)[^0-9]{1,8}(\d+)`)
+	dateRe       = regexp.MustCompile(`(?i)DATE[^0-9]{0,8}(\d{1,2}/\d{1,2}/\d{2,4})(?:[^0-9]{1,8}(\d{1,2}:\d{2}))?`)
+	gameLenRe    = regexp.MustCompile(`(?i)GAME\s*LENGTH[^0-9]{0,8}(\d{1,2}:\d{2})`)
+)
+
+// parseRightCard extracts the map card's fields from one OCR pass: map name,
+// result (victory/defeat/draw), final score, date, finish time, game type, and
+// game length. Map and game type use the existing fuzzy matchers so they
+// tolerate the same OCR slips the in-game banner does.
+func parseRightCard(text string, res *MatchResult) {
+	upper := strings.ToUpper(text)
+	switch {
+	case strings.Contains(upper, "VICTORY"):
+		res.Result = "victory"
+	case strings.Contains(upper, "DEFEAT"):
+		res.Result = "defeat"
+	case strings.Contains(upper, "DRAW"):
+		res.Result = "draw"
+	}
+	if m := bestKnownMapInText(text); m != "" {
+		res.Map = m
+	}
+	if t := extractGameType(text); t != "" {
+		res.Type = t
+	}
+	if m := finalScoreRe.FindStringSubmatch(text); m != nil {
+		res.FinalScore = m[1] + "-" + m[2]
+	}
+	if m := dateRe.FindStringSubmatch(text); m != nil {
+		res.Date = normalizeDate(m[1])
+		if len(m) > 2 && m[2] != "" {
+			res.FinishedAt = m[2]
+		}
+	}
+	if m := gameLenRe.FindStringSubmatch(text); m != nil {
+		res.GameLength = m[1]
+	}
+}
+
+// normalizeDate converts the client's MM/DD/YY display format to ISO YYYY-MM-DD
+// so DB rows sort chronologically. Two-digit years are assumed to be 2000+;
+// OW2 didn't ship until 2022 so a "19/.../69" date is implausible.
+func normalizeDate(d string) string {
+	m := regexp.MustCompile(`(\d{1,2})/(\d{1,2})/(\d{2,4})`).FindStringSubmatch(d)
+	if m == nil {
+		return d
+	}
+	mm, _ := strconv.Atoi(m[1])
+	dd, _ := strconv.Atoi(m[2])
+	yy, _ := strconv.Atoi(m[3])
+	if yy < 100 {
+		yy += 2000
+	}
+	return fmt.Sprintf("%04d-%02d-%02d", yy, mm, dd)
 }
