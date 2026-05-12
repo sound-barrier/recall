@@ -80,7 +80,8 @@ func (a *App) GetMatchResults() ([]MatchRecord, error) {
 		map, type, mode, role, hero,
 		eliminations, assists, deaths, damage, healing, mitigation,
 		result, final_score, date, finished_at, game_length,
-		heroes_played, performance
+		heroes_played, performance,
+		rank, level, rank_progress, change_percent, modifiers, sr
 		FROM match_results ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -409,6 +410,42 @@ func mergeMatchResult(dst, src *parser.MatchResult) {
 	if dst.Performance == nil {
 		dst.Performance = src.Performance
 	}
+	// Rank-screen fields (filled only by parseRank).
+	if dst.Rank == "" {
+		dst.Rank = src.Rank
+	}
+	if dst.Level == 0 {
+		dst.Level = src.Level
+	}
+	if len(dst.Modifiers) == 0 {
+		dst.Modifiers = src.Modifiers
+	}
+	if dst.RankProgress == 0 {
+		dst.RankProgress = src.RankProgress
+	}
+	if dst.ChangePercent == 0 {
+		dst.ChangePercent = src.ChangePercent
+	}
+	// SR is per-hero; merge by hero name like HeroesPlayed.
+	for _, srcSR := range src.SR {
+		exists := false
+		for i := range dst.SR {
+			if dst.SR[i].Hero == srcSR.Hero {
+				exists = true
+				if dst.SR[i].SR == 0 {
+					dst.SR[i].SR = srcSR.SR
+				}
+				if dst.SR[i].Change == 0 {
+					dst.SR[i].Change = srcSR.Change
+				}
+				break
+			}
+		}
+		if !exists {
+			dst.SR = append(dst.SR, srcSR)
+		}
+	}
+
 	// Merge heroes_played by hero name — a multi-hero match has one PERSONAL
 	// screenshot per hero, each contributing the stats for its own hero. We
 	// can't take the whole list from "first source" (that'd discard later
@@ -456,35 +493,50 @@ func upsertMergedRow(row mergedRow) error {
 	if err != nil {
 		return err
 	}
+	modifiersJSON, err := jsonNullable(row.Data.Modifiers, len(row.Data.Modifiers) > 0)
+	if err != nil {
+		return err
+	}
+	srJSON, err := jsonNullable(row.Data.SR, len(row.Data.SR) > 0)
+	if err != nil {
+		return err
+	}
 
 	_, err = db.DB.Exec(`INSERT INTO match_results (
 		match_key, source_files,
 		map, type, mode, role, hero,
 		eliminations, assists, deaths, damage, healing, mitigation,
 		result, final_score, date, finished_at, game_length,
-		heroes_played, performance
-	) VALUES (?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?, ?,?)
+		heroes_played, performance,
+		rank, level, rank_progress, change_percent, modifiers, sr
+	) VALUES (?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?, ?,?, ?,?,?,?,?,?)
 	ON CONFLICT(match_key) DO UPDATE SET
-		source_files  = excluded.source_files,
-		map           = excluded.map,
-		type          = excluded.type,
-		mode          = excluded.mode,
-		role          = excluded.role,
-		hero          = excluded.hero,
-		eliminations  = excluded.eliminations,
-		assists       = excluded.assists,
-		deaths        = excluded.deaths,
-		damage        = excluded.damage,
-		healing       = excluded.healing,
-		mitigation    = excluded.mitigation,
-		result        = excluded.result,
-		final_score   = excluded.final_score,
-		date          = excluded.date,
-		finished_at   = excluded.finished_at,
-		game_length   = excluded.game_length,
-		heroes_played = excluded.heroes_played,
-		performance   = excluded.performance,
-		parsed_at     = CURRENT_TIMESTAMP`,
+		source_files   = excluded.source_files,
+		map            = excluded.map,
+		type           = excluded.type,
+		mode           = excluded.mode,
+		role           = excluded.role,
+		hero           = excluded.hero,
+		eliminations   = excluded.eliminations,
+		assists        = excluded.assists,
+		deaths         = excluded.deaths,
+		damage         = excluded.damage,
+		healing        = excluded.healing,
+		mitigation     = excluded.mitigation,
+		result         = excluded.result,
+		final_score    = excluded.final_score,
+		date           = excluded.date,
+		finished_at    = excluded.finished_at,
+		game_length    = excluded.game_length,
+		heroes_played  = excluded.heroes_played,
+		performance    = excluded.performance,
+		rank           = excluded.rank,
+		level          = excluded.level,
+		rank_progress  = excluded.rank_progress,
+		change_percent = excluded.change_percent,
+		modifiers      = excluded.modifiers,
+		sr             = excluded.sr,
+		parsed_at      = CURRENT_TIMESTAMP`,
 		row.Key, string(sourcesJSON),
 		nullableString(row.Data.Map), nullableString(row.Data.Type),
 		nullableString(row.Data.Mode), nullableString(row.Data.Role),
@@ -495,6 +547,9 @@ func upsertMergedRow(row mergedRow) error {
 		nullableString(row.Data.Date), nullableString(row.Data.FinishedAt),
 		nullableString(row.Data.GameLength),
 		heroesJSON, perfJSON,
+		nullableString(row.Data.Rank), row.Data.Level,
+		row.Data.RankProgress, row.Data.ChangePercent,
+		modifiersJSON, srJSON,
 	)
 	return err
 }
@@ -516,6 +571,8 @@ func scanMatchRecord(rows *sql.Rows) (MatchRecord, error) {
 	var mapCol, typeCol, mode, role, hero sql.NullString
 	var result, finalScore, date, finishedAt, gameLength sql.NullString
 	var heroesJSON, perfJSON sql.NullString
+	var rank sql.NullString
+	var modifiersJSON, srJSON sql.NullString
 	err := rows.Scan(
 		&rec.ID, &rec.MatchKey, &sourcesJSON,
 		&mapCol, &typeCol, &mode, &role, &hero,
@@ -523,10 +580,13 @@ func scanMatchRecord(rows *sql.Rows) (MatchRecord, error) {
 		&rec.Data.Damage, &rec.Data.Healing, &rec.Data.Mitigation,
 		&result, &finalScore, &date, &finishedAt, &gameLength,
 		&heroesJSON, &perfJSON,
+		&rank, &rec.Data.Level, &rec.Data.RankProgress, &rec.Data.ChangePercent,
+		&modifiersJSON, &srJSON,
 	)
 	if err != nil {
 		return rec, err
 	}
+	rec.Data.Rank = rank.String
 	if err := json.Unmarshal([]byte(sourcesJSON), &rec.SourceFiles); err != nil {
 		return rec, err
 	}
@@ -545,6 +605,12 @@ func scanMatchRecord(rows *sql.Rows) (MatchRecord, error) {
 	}
 	if perfJSON.Valid && perfJSON.String != "" {
 		_ = json.Unmarshal([]byte(perfJSON.String), &rec.Data.Performance)
+	}
+	if modifiersJSON.Valid && modifiersJSON.String != "" {
+		_ = json.Unmarshal([]byte(modifiersJSON.String), &rec.Data.Modifiers)
+	}
+	if srJSON.Valid && srJSON.String != "" {
+		_ = json.Unmarshal([]byte(srJSON.String), &rec.Data.SR)
 	}
 	return rec, nil
 }

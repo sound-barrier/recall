@@ -59,6 +59,22 @@ export namespace parser {
 	        this.stats = source["stats"];
 	    }
 	}
+	export class HeroSR {
+	    hero: string;
+	    sr: number;
+	    change: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new HeroSR(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hero = source["hero"];
+	        this.sr = source["sr"];
+	        this.change = source["change"];
+	    }
+	}
 	export class PerformanceStat {
 	    total: number;
 	    avg_per_10min?: number;
@@ -126,6 +142,12 @@ export namespace parser {
 	    game_length?: string;
 	    heroes_played?: HeroPlay[];
 	    performance?: Performance;
+	    rank?: string;
+	    level?: number;
+	    modifiers?: string[];
+	    rank_progress?: number;
+	    change_percent?: number;
+	    sr?: HeroSR[];
 	
 	    static createFrom(source: any = {}) {
 	        return new MatchResult(source);
@@ -151,6 +173,12 @@ export namespace parser {
 	        this.game_length = source["game_length"];
 	        this.heroes_played = this.convertValues(source["heroes_played"], HeroPlay);
 	        this.performance = this.convertValues(source["performance"], Performance);
+	        this.rank = source["rank"];
+	        this.level = source["level"];
+	        this.modifiers = source["modifiers"];
+	        this.rank_progress = source["rank_progress"];
+	        this.change_percent = source["change_percent"];
+	        this.sr = this.convertValues(source["sr"], HeroSR);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
