@@ -85,8 +85,23 @@ function uniqueValues(field) {
 const types   = computed(() => uniqueValues('type'))
 const roles   = computed(() => uniqueValues('role'))
 const maps    = computed(() => uniqueValues('map'))
-const heroes  = computed(() => uniqueValues('hero'))
 const results = computed(() => uniqueValues('result'))
+
+// Heroes need a custom collector — uniqueValues('hero') would only pick
+// up the primary/most-played hero on each row. For multi-hero matches
+// (e.g. Rialto with Wuyang/Juno/Kiriko) the secondaries live in
+// heroes_played[]. We union both sources so every hero the user has
+// actually played shows up in the dropdown.
+const heroes = computed(() => {
+  const set = new Set()
+  for (const r of records.value) {
+    if (r.data?.hero) set.add(r.data.hero)
+    for (const hp of (r.data?.heroes_played || [])) {
+      if (hp.hero) set.add(hp.hero)
+    }
+  }
+  return [...set].sort()
+})
 
 const filtered = computed(() =>
   records.value.filter(r => {
@@ -94,8 +109,16 @@ const filtered = computed(() =>
     if (filterType.value   && d.type   !== filterType.value)   return false
     if (filterRole.value   && d.role   !== filterRole.value)   return false
     if (filterMap.value    && d.map    !== filterMap.value)    return false
-    if (filterHero.value   && d.hero   !== filterHero.value)   return false
     if (filterResult.value && d.result !== filterResult.value) return false
+    // Hero filter matches the primary hero OR any hero in heroes_played,
+    // so picking a secondary hero like Juno (47%-second-fiddle on
+    // Rialto) still surfaces that match. Mirrors how the dropdown
+    // sources its options.
+    if (filterHero.value) {
+      const inPrimary   = d.hero === filterHero.value
+      const inSecondary = (d.heroes_played || []).some(hp => hp.hero === filterHero.value)
+      if (!inPrimary && !inSecondary) return false
+    }
     // Date/time range. When either bound is set, require an EXPLICIT
     // datetime on the row — date + finished_at, both from the SUMMARY
     // screen. The match_key fallback used by matchTime() (derived from
