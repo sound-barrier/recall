@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+
 	"OWMetrics/backend/db"
 	"OWMetrics/backend/metrics"
 	"OWMetrics/backend/parser"
@@ -25,9 +27,43 @@ type MatchRecord struct {
 	Data        parser.MatchResult `json:"data"`
 }
 
+// Settings is the on-disk JSON config the user persists across runs.
+// Currently just the screenshots directory; new user-tweakable knobs
+// can be added as new fields without migration (missing fields
+// unmarshal to their zero value).
+type Settings struct {
+	ScreenshotsDir string `json:"screenshots_dir"`
+}
+
+const settingsPath = "data/settings.json"
+
+func loadSettings() Settings {
+	s := Settings{ScreenshotsDir: "screenshots"} // default — relative to cwd, same as before
+	raw, err := os.ReadFile(settingsPath)
+	if err != nil {
+		return s // file doesn't exist yet; first run
+	}
+	_ = json.Unmarshal(raw, &s) // ignore malformed JSON; keep defaults
+	if s.ScreenshotsDir == "" {
+		s.ScreenshotsDir = "screenshots"
+	}
+	return s
+}
+
+func saveSettings(s Settings) error {
+	if err := os.MkdirAll(filepath.Dir(settingsPath), 0700); err != nil {
+		return err
+	}
+	b, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(settingsPath, b, 0644)
+}
+
 type App struct {
-	ctx            context.Context
-	screenshotsDir string
+	ctx      context.Context
+	settings Settings
 }
 
 func NewApp() *App {
@@ -36,6 +72,7 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.settings = loadSettings()
 
 	dbDir := filepath.Join("data", "db")
 	if err := os.MkdirAll(dbDir, 0700); err != nil {
@@ -44,12 +81,41 @@ func (a *App) startup(ctx context.Context) {
 	if err := db.Init(filepath.Join(dbDir, "owmetrics.db")); err != nil {
 		log.Fatal("could not init db:", err)
 	}
-	a.screenshotsDir = "screenshots"
 
 	// Expose match data as Prometheus metrics on :9091 by default
 	// (overridable via OWMETRICS_METRICS_ADDR). Bind failures are logged
 	// only — the desktop app keeps working without the metrics endpoint.
 	metrics.ListenAndServe(":9091", scrapeReader)
+}
+
+// GetScreenshotsDir returns the directory the parser will read from.
+// Exposed to the frontend so the UI can show "Reading from <path>".
+func (a *App) GetScreenshotsDir() string {
+	return a.settings.ScreenshotsDir
+}
+
+// PickScreenshotsDir opens a native directory chooser and persists the
+// selection. Returns the chosen path. If the user cancels the dialog
+// (Wails returns "" with no error), the existing setting is left alone
+// and that same value is returned so the frontend can refresh without
+// special-casing the cancel.
+func (a *App) PickScreenshotsDir() (string, error) {
+	dir, err := wruntime.OpenDirectoryDialog(a.ctx, wruntime.OpenDialogOptions{
+		Title:                "Select Overwatch screenshots folder",
+		DefaultDirectory:     a.settings.ScreenshotsDir,
+		CanCreateDirectories: false,
+	})
+	if err != nil {
+		return a.settings.ScreenshotsDir, err
+	}
+	if dir == "" {
+		return a.settings.ScreenshotsDir, nil
+	}
+	a.settings.ScreenshotsDir = dir
+	if err := saveSettings(a.settings); err != nil {
+		return a.settings.ScreenshotsDir, err
+	}
+	return a.settings.ScreenshotsDir, nil
 }
 
 // scrapeReader returns every match in the DB as a slice of metrics.ScrapeRow.
@@ -81,7 +147,7 @@ func (a *App) ParseScreenshots() error {
 	if err != nil {
 		return err
 	}
-	results, err := parser.ParseScreenshotsDir(a.screenshotsDir, parsed)
+	results, err := parser.ParseScreenshotsDir(a.settings.ScreenshotsDir, parsed)
 	if err != nil {
 		return err
 	}

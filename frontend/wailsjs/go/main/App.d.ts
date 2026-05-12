@@ -4,4 +4,8 @@ import {main} from '../models';
 
 export function GetMatchResults():Promise<Array<main.MatchRecord>>;
 
+export function GetScreenshotsDir():Promise<string>;
+
 export function ParseScreenshots():Promise<void>;
+
+export function PickScreenshotsDir():Promise<string>;
