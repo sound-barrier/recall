@@ -58,6 +58,16 @@ func Init(path string) error {
 	if err != nil {
 		return err
 	}
-	_, err = DB.Exec(schema)
-	return err
+	if _, err := DB.Exec(schema); err != nil {
+		return err
+	}
+	// Strip any non-competitive rows that predate the parse-time filter.
+	// The Wails app now refuses to insert non-competitive matches (see
+	// ParseScreenshots in app.go), but rows from earlier app versions can
+	// still be in the DB. Running this on every startup is idempotent
+	// (no rows match once the table is clean) and cheap.
+	if _, err := DB.Exec(`DELETE FROM match_results WHERE mode IS NOT NULL AND mode != '' AND mode != 'competitive'`); err != nil {
+		return err
+	}
+	return nil
 }

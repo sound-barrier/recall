@@ -1,0 +1,54 @@
+# Local Prometheus + Grafana stack that scrapes the Wails app's metrics
+# endpoint and renders match history.
+#
+# Usage:
+#   1. Run the OWMetrics Wails app (`wails dev` or the built binary). It
+#      listens on :9091/metrics by default.
+#   2. `docker compose up -d`
+#   3. Grafana at http://localhost:3000  (admin / admin)
+#      Prometheus at http://localhost:9090
+#
+# The Wails app runs on the macOS/Linux host; Prometheus reaches it via
+# host.docker.internal (works on Docker Desktop and Colima out of the box).
+
+services:
+  prometheus:
+    # Pinned 2.x LTS — out-of-order ingestion via tsdb config requires 2.39+.
+    image: prom/prometheus:v2.53.0
+    container_name: owmetrics-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Out-of-order ingestion is configured in prometheus.yml under
+      # storage.tsdb — it isn't a CLI flag (the older flag-based form
+      # was never released).
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    extra_hosts:
+      # host.docker.internal works on Docker Desktop and Colima; this line
+      # is the explicit fallback for Linux daemons where it isn't built in.
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: owmetrics-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus_data:
+  grafana_data:

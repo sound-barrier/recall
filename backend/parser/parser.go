@@ -108,6 +108,14 @@ var heroRoles = map[string]string{
 	"moira": "support", "wuyang": "support", "zenyatta": "support",
 }
 
+// HeroRole returns the role ("tank", "dps", "support") for the given hero
+// name, or "" for an unknown hero. Exported so other packages (e.g. metrics
+// label resolution) can resolve roles without reaching into the unexported
+// heroRoles map.
+func HeroRole(hero string) string {
+	return heroRoles[hero]
+}
+
 func ParseScreenshot(imagePath string) (*MatchResult, error) {
 	if _, err := exec.LookPath("tesseract"); err != nil {
 		return nil, errors.New("tesseract is required but not found on PATH (install with: brew install tesseract)")
