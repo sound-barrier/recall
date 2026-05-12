@@ -1,10 +1,15 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ParseScreenshots, GetMatchResults } from '../wailsjs/go/main/App'
+import { ParseScreenshots, GetMatchResults, GetScreenshotsDir, PickScreenshotsDir } from '../wailsjs/go/main/App'
 
 const records = ref([])
 const error = ref('')
 const loading = ref(false)
+
+// Directory the parser reads from. Persisted in data/settings.json on
+// the Go side; we mirror the value here so the UI can render it next
+// to the Parse button.
+const screenshotsDir = ref('')
 
 const filterType   = ref('')
 const filterRole   = ref('')
@@ -38,8 +43,9 @@ const filterRefs = {
 }
 
 async function load() {
-  const res = await GetMatchResults()
-  records.value = res ?? []
+  const [recs, dir] = await Promise.all([GetMatchResults(), GetScreenshotsDir()])
+  records.value = recs ?? []
+  screenshotsDir.value = dir || ''
 }
 
 async function parse() {
@@ -52,6 +58,18 @@ async function parse() {
     error.value = String(e)
   } finally {
     loading.value = false
+  }
+}
+
+// Open the native folder picker via Wails. The Go side persists the
+// choice so subsequent app launches pick up the same directory; we
+// just need to refresh our local mirror.
+async function pickDir() {
+  try {
+    const dir = await PickScreenshotsDir()
+    if (dir) screenshotsDir.value = dir
+  } catch (e) {
+    error.value = String(e)
   }
 }
 
@@ -266,9 +284,18 @@ onMounted(load)
       </div>
     </div>
 
-    <button @click="parse" :disabled="loading">
-      {{ loading ? 'Parsing…' : 'Parse Screenshots' }}
-    </button>
+    <div class="parse-row">
+      <button @click="parse" :disabled="loading">
+        {{ loading
+            ? (screenshotsDir ? `Parsing from ${screenshotsDir}…` : 'Parsing…')
+            : 'Parse Screenshots' }}
+      </button>
+      <span class="dir-current" :title="screenshotsDir">
+        <span class="dir-label">Reading from</span>
+        <span class="dir-path">{{ screenshotsDir || '—' }}</span>
+      </span>
+      <button class="dir-change" @click="pickDir" :disabled="loading">Change…</button>
+    </div>
 
     <p v-if="error" class="error">{{ error }}</p>
 
@@ -455,6 +482,25 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 .error { color: #ff6b6b; margin-top: 1rem; font-size: 0.9rem; }
 .empty { color: #888; margin-top: 2rem; }
+
+.parse-row {
+  display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
+}
+.dir-current {
+  display: flex; flex-direction: column; gap: 0.1rem;
+  font-size: 0.8rem; min-width: 0; flex: 1;
+}
+.dir-label { color: #666; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.dir-path {
+  color: #aaa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dir-change {
+  background: transparent; color: #aaa; border: 1px solid #444;
+  padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 4px; cursor: pointer;
+}
+.dir-change:hover:not(:disabled) { color: #e0e0e0; border-color: #888; background: transparent; }
+.dir-change:disabled { opacity: 0.4; cursor: default; }
 
 .filters {
   display: flex; gap: 0.5rem; margin-top: 1.2rem; flex-wrap: wrap; align-items: center;

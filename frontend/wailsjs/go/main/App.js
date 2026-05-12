@@ -6,6 +6,14 @@ export function GetMatchResults() {
   return window['go']['main']['App']['GetMatchResults']();
 }
 
+export function GetScreenshotsDir() {
+  return window['go']['main']['App']['GetScreenshotsDir']();
+}
+
 export function ParseScreenshots() {
   return window['go']['main']['App']['ParseScreenshots']();
+}
+
+export function PickScreenshotsDir() {
+  return window['go']['main']['App']['PickScreenshotsDir']();
 }
