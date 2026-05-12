@@ -253,7 +253,11 @@ func parsePanelStats(text string) map[string]int {
 	return stats
 }
 
-func ParseScreenshotsDir(dir string) (map[string]*MatchResult, error) {
+// ParseScreenshotsDir OCRs every supported image in dir except those in skip
+// (a set of filenames already parsed and stored). The skip set lets the app
+// avoid re-running Tesseract on files that already belong to a DB row — OCR
+// is by far the slowest part of the pipeline.
+func ParseScreenshotsDir(dir string, skip map[string]bool) (map[string]*MatchResult, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -265,6 +269,9 @@ func ParseScreenshotsDir(dir string) (map[string]*MatchResult, error) {
 		}
 		ext := strings.ToLower(filepath.Ext(e.Name()))
 		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+			continue
+		}
+		if skip[e.Name()] {
 			continue
 		}
 		r, err := ParseScreenshot(filepath.Join(dir, e.Name()))
