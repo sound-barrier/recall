@@ -53,28 +53,178 @@ func (a *App) startup(ctx context.Context) {
 // post-match tabs, so the filename timestamp is the most reliable correlation
 // signal — PERSONAL has no E/A/D, so a stats-based key wouldn't catch it.
 func (a *App) ParseScreenshots() error {
-	results, err := parser.ParseScreenshotsDir(a.screenshotsDir)
+	// Skip files already in some DB row's source_files. OCR is slow (~seconds
+	// per image), and we only need to re-process newly added screenshots.
+	parsed, err := loadParsedFilenames()
 	if err != nil {
 		return err
 	}
-	// Two-pass merge: first by filename timestamp (catches sequential
-	// SUMMARY/TEAMS/PERSONAL clicks of one match), then by (E, A, D)
-	// signature (catches a mid-match scoreboard screenshot paired with the
-	// post-match summary taken minutes or hours later). The two passes are
-	// complementary — timestamp grouping doesn't span across long gaps, and
-	// E/A/D-based merging doesn't catch PERSONAL screenshots (no stats).
-	rows := mergeByTimestamp(results)
-	rows = mergeByStatsSignature(rows)
-	for _, row := range rows {
-		if err := upsertMergedRow(row); err != nil {
-			return err
+	results, err := parser.ParseScreenshotsDir(a.screenshotsDir, parsed)
+	if err != nil {
+		return err
+	}
+	if len(results) == 0 {
+		return nil
+	}
+
+	// Two-pass merge across the NEW parses: first by filename timestamp
+	// (catches sequential SUMMARY/TEAMS/PERSONAL clicks of one match), then
+	// by (E, A, D) signature (catches a mid-match scoreboard screenshot
+	// paired with the post-match summary taken minutes or hours later).
+	newRows := mergeByTimestamp(results)
+	newRows = mergeByStatsSignature(newRows)
+
+	// Fold each new row into an existing DB row when one matches — by E/A/D
+	// or by filename timestamp window with no conflicting metadata. This
+	// keeps incremental re-parses idempotent: adding the rank screenshot to
+	// a Lucio match already in the DB updates that row instead of creating
+	// a new one.
+	existing, err := loadExistingMergedRows()
+	if err != nil {
+		return err
+	}
+	for _, nr := range newRows {
+		if idx := findMergeIntoExisting(nr, existing); idx >= 0 {
+			targetKey := existing[idx].Key
+			mergeMatchResult(&existing[idx].Data, &nr.Data)
+			existing[idx].Sources = unionSortedStrings(existing[idx].Sources, nr.Sources)
+			existing[idx].Key = targetKey
+			if err := upsertMergedRow(existing[idx]); err != nil {
+				return err
+			}
+		} else {
+			if err := upsertMergedRow(nr); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
+// loadParsedFilenames returns every source filename across every existing
+// DB row, so we can skip OCR for files already on disk.
+func loadParsedFilenames() (map[string]bool, error) {
+	rows, err := db.DB.Query(`SELECT source_files FROM match_results`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	parsed := map[string]bool{}
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			return nil, err
+		}
+		var files []string
+		if err := json.Unmarshal([]byte(raw), &files); err != nil {
+			return nil, err
+		}
+		for _, f := range files {
+			parsed[f] = true
+		}
+	}
+	return parsed, rows.Err()
+}
+
+// loadExistingMergedRows reads every row back into the mergedRow shape so
+// new parses can be folded into them.
+func loadExistingMergedRows() ([]mergedRow, error) {
+	records, err := readAllRecords()
+	if err != nil {
+		return nil, err
+	}
+	rows := make([]mergedRow, 0, len(records))
+	for _, rec := range records {
+		rows = append(rows, mergedRow{
+			Key:     rec.MatchKey,
+			Sources: rec.SourceFiles,
+			Data:    rec.Data,
+		})
+	}
+	return rows, nil
+}
+
+// findMergeIntoExisting returns the index of an existing row that nr should
+// fold into, or -1. A row qualifies via either:
+//   - statsRowsMergeable (E/A/D agreement plus no field conflicts), or
+//   - any source filename in nr is within mergeWindow of any source in the
+//     existing row AND no signature field conflicts (map / date / finish
+//     time / hero / E/A/D).
+func findMergeIntoExisting(nr mergedRow, existing []mergedRow) int {
+	for i, er := range existing {
+		if statsRowsMergeable(nr, er) {
+			return i
+		}
+		if timestampWindowOverlap(nr.Sources, er.Sources) && !rowsConflict(nr, er) {
+			return i
+		}
+	}
+	return -1
+}
+
+func timestampWindowOverlap(a, b []string) bool {
+	for _, fa := range a {
+		ta, ok := parseFilenameTimestamp(fa)
+		if !ok {
+			continue
+		}
+		for _, fb := range b {
+			tb, ok := parseFilenameTimestamp(fb)
+			if !ok {
+				continue
+			}
+			d := ta.Sub(tb)
+			if d < 0 {
+				d = -d
+			}
+			if d <= mergeWindow {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func rowsConflict(a, b mergedRow) bool {
+	if stringsConflict(a.Data.Map, b.Data.Map) ||
+		stringsConflict(a.Data.Date, b.Data.Date) ||
+		stringsConflict(a.Data.FinishedAt, b.Data.FinishedAt) ||
+		stringsConflict(a.Data.Hero, b.Data.Hero) {
+		return true
+	}
+	if intsConflict(a.Data.Eliminations, b.Data.Eliminations) ||
+		intsConflict(a.Data.Assists, b.Data.Assists) ||
+		intsConflict(a.Data.Deaths, b.Data.Deaths) {
+		return true
+	}
+	return false
+}
+
+func unionSortedStrings(a, b []string) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(a)+len(b))
+	for _, s := range a {
+		if _, ok := seen[s]; !ok {
+			seen[s] = struct{}{}
+			out = append(out, s)
+		}
+	}
+	for _, s := range b {
+		if _, ok := seen[s]; !ok {
+			seen[s] = struct{}{}
+			out = append(out, s)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 // GetMatchResults returns all stored, merged match rows.
 func (a *App) GetMatchResults() ([]MatchRecord, error) {
+	return readAllRecords()
+}
+
+func readAllRecords() ([]MatchRecord, error) {
 	rows, err := db.DB.Query(`SELECT
 		id, match_key, source_files,
 		map, type, mode, role, hero,
