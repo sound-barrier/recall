@@ -285,16 +285,20 @@ onMounted(load)
     </div>
 
     <div class="parse-row">
-      <button @click="parse" :disabled="loading">
-        {{ loading
-            ? (screenshotsDir ? `Parsing from ${screenshotsDir}…` : 'Parsing…')
-            : 'Parse Screenshots' }}
-      </button>
+      <!-- Directory + Change live as one visual unit on the left so the
+           eye reads them together (the button "belongs to" the path).
+           The Parse button is pushed to the far right via margin-left:
+           auto on .parse-btn. -->
       <span class="dir-current" :title="screenshotsDir">
         <span class="dir-label">Reading from</span>
         <span class="dir-path">{{ screenshotsDir || '—' }}</span>
       </span>
       <button class="dir-change" @click="pickDir" :disabled="loading">Change…</button>
+      <button class="parse-btn" @click="parse" :disabled="loading">
+        {{ loading
+            ? (screenshotsDir ? `Parsing from ${screenshotsDir}…` : 'Parsing…')
+            : 'Parse Screenshots' }}
+      </button>
     </div>
 
     <p v-if="error" class="error">{{ error }}</p>
@@ -488,12 +492,12 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 .dir-current {
   display: flex; flex-direction: column; gap: 0.1rem;
-  font-size: 0.8rem; min-width: 0; flex: 1;
+  font-size: 0.8rem;
 }
 .dir-label { color: #666; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .dir-path {
   color: #aaa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  word-break: break-all;
 }
 .dir-change {
   background: transparent; color: #aaa; border: 1px solid #444;
@@ -501,6 +505,9 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 .dir-change:hover:not(:disabled) { color: #e0e0e0; border-color: #888; background: transparent; }
 .dir-change:disabled { opacity: 0.4; cursor: default; }
+/* Push the Parse button to the far right, separate from the dir +
+   Change pair that sits on the left. */
+.parse-btn { margin-left: auto; }
 
 .filters {
   display: flex; gap: 0.5rem; margin-top: 1.2rem; flex-wrap: wrap; align-items: center;
