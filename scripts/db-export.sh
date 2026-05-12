@@ -28,9 +28,15 @@ sqlite3 "$DB" "
     'date',         date,
     'finished_at',  finished_at,
     'game_length',  game_length,
-    'heroes_played', CASE WHEN heroes_played IS NULL THEN NULL ELSE json(heroes_played) END,
-    'performance',   CASE WHEN performance   IS NULL THEN NULL ELSE json(performance)   END,
-    'parsed_at',     parsed_at
+    'heroes_played',  CASE WHEN heroes_played IS NULL THEN NULL ELSE json(heroes_played) END,
+    'performance',    CASE WHEN performance   IS NULL THEN NULL ELSE json(performance)   END,
+    'rank',           rank,
+    'level',          level,
+    'rank_progress',  rank_progress,
+    'change_percent', change_percent,
+    'modifiers',      CASE WHEN modifiers IS NULL THEN NULL ELSE json(modifiers) END,
+    'sr',             CASE WHEN sr        IS NULL THEN NULL ELSE json(sr)        END,
+    'parsed_at',      parsed_at
   )
   FROM match_results
   ORDER BY id;

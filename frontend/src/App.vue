@@ -127,6 +127,20 @@ onMounted(load)
         <div class="stat"><label>Healing</label><span>{{ rec.data.healing?.toLocaleString() }}</span></div>
         <div class="stat"><label>Mitigation</label><span>{{ rec.data.mitigation?.toLocaleString() }}</span></div>
       </div>
+      <div v-if="rec.data.rank" class="rank-block">
+        <label>Rank</label>
+        <div class="rank-line">
+          <span class="rank-tier" :class="rec.data.rank">{{ rec.data.rank }} {{ rec.data.level }}</span>
+          <span v-if="rec.data.rank_progress" class="rank-progress">{{ rec.data.rank_progress }}% progress</span>
+          <span v-if="rec.data.change_percent" class="rank-change">+{{ rec.data.change_percent }}%</span>
+          <span v-for="m in rec.data.modifiers" :key="m" class="rank-modifier">{{ m }}</span>
+        </div>
+        <div v-if="rec.data.sr?.length" class="sr-line">
+          <span v-for="s in rec.data.sr" :key="s.hero" class="sr-entry">
+            {{ s.hero }}: {{ s.sr }} <span class="sr-delta" :class="s.change >= 0 ? 'up' : 'down'">{{ s.change >= 0 ? '+' : '' }}{{ s.change }}</span>
+          </span>
+        </div>
+      </div>
       <div v-if="rec.data.heroes_played?.length" class="heroes-played-list">
         <label>Heroes Played</label>
         <div v-for="hp in rec.data.heroes_played" :key="hp.hero" class="hero-block">
@@ -221,6 +235,25 @@ button:disabled { opacity: 0.5; cursor: default; }
 .meta-item span  { font-size: 0.9rem; color: #e0e0e0; text-transform: capitalize; }
 
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; }
+
+.rank-block { margin-top: 0.8rem; }
+.rank-block > label { display: block; font-size: 0.65rem; color: #888; text-transform: uppercase; margin-bottom: 0.4rem; }
+.rank-line { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin-bottom: 0.4rem; }
+.rank-tier { font-size: 0.9rem; font-weight: 700; text-transform: capitalize; padding: 2px 8px; border-radius: 4px; background: #0f3460; color: #e0e0e0; }
+.rank-tier.bronze    { color: #cd7f32; }
+.rank-tier.silver    { color: #c0c0c0; }
+.rank-tier.gold      { color: #ffd700; }
+.rank-tier.platinum  { color: #66ddc8; }
+.rank-tier.diamond   { color: #b9f2ff; }
+.rank-tier.master    { color: #e0c4ff; }
+.rank-tier.grandmaster, .rank-tier.champion { color: #ff6b6b; }
+.rank-progress { font-size: 0.8rem; color: #aaa; }
+.rank-change   { font-size: 0.8rem; color: #6bffb8; font-weight: 700; }
+.rank-modifier { font-size: 0.7rem; padding: 2px 6px; background: #0f3460; color: #aaa; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+.sr-line { display: flex; flex-wrap: wrap; gap: 0.8rem; }
+.sr-entry { font-size: 0.85rem; color: #e0e0e0; text-transform: capitalize; }
+.sr-delta.up   { color: #6bffb8; font-weight: 700; }
+.sr-delta.down { color: #ff6b6b; font-weight: 700; }
 
 .heroes-played-list { margin-top: 0.8rem; }
 .heroes-played-list > label { display: block; font-size: 0.65rem; color: #888; text-transform: uppercase; margin-bottom: 0.4rem; }
