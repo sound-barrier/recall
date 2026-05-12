@@ -173,6 +173,33 @@ function resetDateRange() {
   filterTo.value   = ''
 }
 
+// Bounds for the date pickers. min = the earliest match the user has
+// (so picking earlier than that is meaningless — nothing exists to
+// match), max = right now (no future dates can have matches yet).
+// Only matches with explicit date + finished_at count toward the min,
+// because those are the only ones that ever pass the date filter
+// anyway (see the `filtered` computed).
+const earliestMatchDateTime = computed(() => {
+  let earliest = null
+  for (const r of records.value) {
+    const d = r.data
+    if (!d?.date || !d?.finished_at) continue
+    const t = `${d.date}T${d.finished_at}`
+    if (!earliest || t < earliest) earliest = t
+  }
+  return earliest || ''
+})
+
+// Local-time "now" formatted as YYYY-MM-DDTHH:MM for the input's max
+// attribute. Recomputed on every render — Vue treats this as a getter
+// without a reactive dep, but in practice the user reopens the dropdown
+// often enough that minute-level staleness isn't visible.
+const nowDateTime = computed(() => {
+  const d = new Date()
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+})
+
 // Card collapse/expand.
 function toggleExpand(id) {
   // Reassign the object so Vue sees a new reference. Mutating in place
@@ -355,10 +382,24 @@ onMounted(load)
 
     <div v-if="records.length > 0" class="filters date-range">
       <label class="range-label" title="Earliest match time to include">
-        From <input type="datetime-local" v-model="filterFrom" class="datetime" />
+        From
+        <input
+          type="datetime-local"
+          v-model="filterFrom"
+          :min="earliestMatchDateTime"
+          :max="nowDateTime"
+          class="datetime"
+        />
       </label>
       <label class="range-label" title="Latest match time to include">
-        To <input type="datetime-local" v-model="filterTo" class="datetime" />
+        To
+        <input
+          type="datetime-local"
+          v-model="filterTo"
+          :min="earliestMatchDateTime"
+          :max="nowDateTime"
+          class="datetime"
+        />
       </label>
       <button
         class="sort"
