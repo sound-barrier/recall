@@ -22,6 +22,11 @@ func main() {
 		Height: 768,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
+			// Custom handler serves /_screenshot/<filename> from the
+			// user's configured screenshots dir so the frontend can
+			// render <img> previews without round-tripping the bytes
+			// through the JS bridge.
+			Handler: app.ScreenshotHandler(),
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,

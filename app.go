@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -92,6 +94,54 @@ func (a *App) startup(ctx context.Context) {
 // Exposed to the frontend so the UI can show "Reading from <path>".
 func (a *App) GetScreenshotsDir() string {
 	return a.settings.ScreenshotsDir
+}
+
+// ScreenshotHandler serves files from the user's configured screenshots
+// directory under the `/_screenshot/<filename>` URL prefix. Wired into
+// the Wails AssetServer in main.go so the frontend can render <img
+// src="/_screenshot/foo.png"> directly — no base64 round-trip via the
+// JS↔Go bridge for what's potentially a multi-MB PNG.
+//
+// The directory comes from a.settings at REQUEST time, so changing the
+// configured path via PickScreenshotsDir() takes effect immediately for
+// subsequent image fetches without restarting the server.
+func (a *App) ScreenshotHandler() http.Handler {
+	const prefix = "/_screenshot/"
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, prefix) {
+			http.NotFound(w, r)
+			return
+		}
+		name, err := url.PathUnescape(r.URL.Path[len(prefix):])
+		if err != nil {
+			http.Error(w, "bad name", http.StatusBadRequest)
+			return
+		}
+		// Reject anything that isn't a plain basename — guards against
+		// path traversal even though the filenames in source_files are
+		// always basenames produced by the parser.
+		if name == "" ||
+			strings.ContainsAny(name, "/\\") ||
+			strings.Contains(name, "..") {
+			http.NotFound(w, r)
+			return
+		}
+		dir := a.settings.ScreenshotsDir
+		if dir == "" {
+			http.NotFound(w, r)
+			return
+		}
+		full := filepath.Join(dir, name)
+		// Safety belt: confirm the resolved path is actually inside
+		// the configured directory.
+		dirAbs, err1 := filepath.Abs(dir)
+		fullAbs, err2 := filepath.Abs(full)
+		if err1 != nil || err2 != nil || !strings.HasPrefix(fullAbs+string(filepath.Separator), dirAbs+string(filepath.Separator)) {
+			http.NotFound(w, r)
+			return
+		}
+		http.ServeFile(w, r, full)
+	})
 }
 
 // PickScreenshotsDir opens a native directory chooser and persists the
