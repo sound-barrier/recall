@@ -6,6 +6,10 @@ export function GetMatchResults() {
   return window['go']['main']['App']['GetMatchResults']();
 }
 
+export function GetPrometheusEnabled() {
+  return window['go']['main']['App']['GetPrometheusEnabled']();
+}
+
 export function GetScreenshotsDir() {
   return window['go']['main']['App']['GetScreenshotsDir']();
 }
@@ -20,4 +24,8 @@ export function PickScreenshotsDir() {
 
 export function ScreenshotHandler() {
   return window['go']['main']['App']['ScreenshotHandler']();
+}
+
+export function SetPrometheusEnabled(arg1) {
+  return window['go']['main']['App']['SetPrometheusEnabled'](arg1);
 }

@@ -30,11 +30,12 @@ type MatchRecord struct {
 }
 
 // Settings is the on-disk JSON config the user persists across runs.
-// Currently just the screenshots directory; new user-tweakable knobs
-// can be added as new fields without migration (missing fields
-// unmarshal to their zero value).
+// New user-tweakable knobs can be added as new fields without migration
+// (missing fields unmarshal to their zero value — which is exactly the
+// default for `prometheus_enabled: false`).
 type Settings struct {
-	ScreenshotsDir string `json:"screenshots_dir"`
+	ScreenshotsDir    string `json:"screenshots_dir"`
+	PrometheusEnabled bool   `json:"prometheus_enabled"`
 }
 
 const settingsPath = "data/settings.json"
@@ -66,6 +67,11 @@ func saveSettings(s Settings) error {
 type App struct {
 	ctx      context.Context
 	settings Settings
+	// metricsServer is non-nil only while the Prometheus endpoint is
+	// running. SetPrometheusEnabled toggles between nil and a fresh
+	// *metrics.Server (http.Server can't be reused after Shutdown, so
+	// each enable creates a new one).
+	metricsServer *metrics.Server
 }
 
 func NewApp() *App {
@@ -84,10 +90,56 @@ func (a *App) startup(ctx context.Context) {
 		log.Fatal("could not init db:", err)
 	}
 
-	// Expose match data as Prometheus metrics on :9091 by default
-	// (overridable via OWMETRICS_METRICS_ADDR). Bind failures are logged
-	// only — the desktop app keeps working without the metrics endpoint.
-	metrics.ListenAndServe(":9091", scrapeReader)
+	// Start the Prometheus metrics endpoint only if the user has
+	// explicitly enabled it via the checkbox (default off so the desktop
+	// app doesn't open a network port without consent).
+	if a.settings.PrometheusEnabled {
+		a.startMetrics()
+	}
+}
+
+// startMetrics spins up a fresh metrics.Server. Idempotent: returns
+// without re-binding if one is already running.
+func (a *App) startMetrics() {
+	if a.metricsServer != nil {
+		return
+	}
+	s := metrics.NewServer(":9091", scrapeReader)
+	s.Start()
+	a.metricsServer = s
+}
+
+// stopMetrics gracefully shuts down the current metrics.Server, if any.
+// Safe to call when no server is running.
+func (a *App) stopMetrics() {
+	if a.metricsServer == nil {
+		return
+	}
+	a.metricsServer.Stop()
+	a.metricsServer = nil
+}
+
+// GetPrometheusEnabled reports whether the Prometheus endpoint is
+// currently bound. Read by the frontend on mount to seed the checkbox.
+func (a *App) GetPrometheusEnabled() bool {
+	return a.settings.PrometheusEnabled
+}
+
+// SetPrometheusEnabled toggles the metrics endpoint and persists the
+// choice to settings.json so the preference survives app restarts.
+// Returns nil on success; bind failures show up in the app logs rather
+// than as an error here because they're non-fatal.
+func (a *App) SetPrometheusEnabled(enabled bool) error {
+	a.settings.PrometheusEnabled = enabled
+	if err := saveSettings(a.settings); err != nil {
+		return err
+	}
+	if enabled {
+		a.startMetrics()
+	} else {
+		a.stopMetrics()
+	}
+	return nil
 }
 
 // GetScreenshotsDir returns the directory the parser will read from.
