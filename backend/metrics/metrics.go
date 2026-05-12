@@ -8,6 +8,7 @@
 package metrics
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -214,11 +215,20 @@ func roleOf(hero string) string {
 	return parser.HeroRole(hero)
 }
 
-// ListenAndServe binds an HTTP handler on the given address that serves the
-// custom collector at /metrics (plus a tiny / page for sanity checking).
-// Bind failures are logged but non-fatal — the desktop app should keep
-// working even when the metrics port is in use.
-func ListenAndServe(addr string, read Reader) {
+// Server is the runtime container for the Prometheus metrics endpoint.
+// Use NewServer to construct one, Start to begin listening in a goroutine,
+// and Stop to gracefully shut it down. http.Server can't be reused after
+// Shutdown, so each enable→disable→enable cycle should build a fresh
+// Server via NewServer (App.startMetrics does this).
+type Server struct {
+	srv  *http.Server
+	addr string
+}
+
+// NewServer wires up a Prometheus registry around the custom collector and
+// constructs the HTTP server, but does not yet bind a listener. Call Start
+// to begin serving. OWMETRICS_METRICS_ADDR overrides the supplied addr.
+func NewServer(addr string, read Reader) *Server {
 	if envAddr := os.Getenv("OWMETRICS_METRICS_ADDR"); envAddr != "" {
 		addr = envAddr
 	}
@@ -230,11 +240,32 @@ func ListenAndServe(addr string, read Reader) {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("OWMetrics exporter — see /metrics\n"))
 	})
+	return &Server{
+		addr: addr,
+		srv:  &http.Server{Addr: addr, Handler: mux},
+	}
+}
 
+// Start begins listening on the configured address in a background
+// goroutine. Bind failures are logged but not returned to the caller —
+// the desktop app should keep working even when the port is taken.
+func (s *Server) Start() {
 	go func() {
-		log.Printf("metrics: listening on %s", addr)
-		if err := http.ListenAndServe(addr, mux); err != nil {
+		log.Printf("metrics: listening on %s", s.addr)
+		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Printf("metrics: server stopped: %v", err)
 		}
 	}()
+}
+
+// Stop gracefully shuts the server down with a 2-second timeout, then
+// closes any straggling connections. Safe to call multiple times.
+func (s *Server) Stop() {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := s.srv.Shutdown(ctx); err != nil {
+		log.Printf("metrics: shutdown error: %v", err)
+		return
+	}
+	log.Printf("metrics: stopped listening on %s", s.addr)
 }

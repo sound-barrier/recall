@@ -1,6 +1,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ParseScreenshots, GetMatchResults, GetScreenshotsDir, PickScreenshotsDir } from '../wailsjs/go/main/App'
+import {
+  ParseScreenshots,
+  GetMatchResults,
+  GetScreenshotsDir,
+  PickScreenshotsDir,
+  GetPrometheusEnabled,
+  SetPrometheusEnabled,
+} from '../wailsjs/go/main/App'
 
 const records = ref([])
 const error = ref('')
@@ -10,6 +17,11 @@ const loading = ref(false)
 // the Go side; we mirror the value here so the UI can render it next
 // to the Parse button.
 const screenshotsDir = ref('')
+
+// Prometheus endpoint enable/disable. The Go side actually binds
+// the port (or doesn't); this ref is just a UI mirror, written via
+// SetPrometheusEnabled so the change persists.
+const prometheusEnabled = ref(false)
 
 const filterType   = ref('')
 const filterRole   = ref('')
@@ -43,9 +55,28 @@ const filterRefs = {
 }
 
 async function load() {
-  const [recs, dir] = await Promise.all([GetMatchResults(), GetScreenshotsDir()])
+  const [recs, dir, promOn] = await Promise.all([
+    GetMatchResults(),
+    GetScreenshotsDir(),
+    GetPrometheusEnabled(),
+  ])
   records.value = recs ?? []
   screenshotsDir.value = dir || ''
+  prometheusEnabled.value = !!promOn
+}
+
+// Toggle the Prometheus endpoint. We call the Go method first so the
+// persisted setting drives both the actual server lifecycle and the UI
+// state; if the call fails, fall back to the previous local value.
+async function togglePrometheus(e) {
+  const next = e.target.checked
+  try {
+    await SetPrometheusEnabled(next)
+    prometheusEnabled.value = next
+  } catch (err) {
+    error.value = String(err)
+    e.target.checked = prometheusEnabled.value
+  }
 }
 
 async function parse() {
@@ -351,10 +382,16 @@ onMounted(load)
   <div class="container">
     <div class="page-header">
       <h1>OWMetrics</h1>
-      <div class="wld-summary" v-if="records.length > 0" title="Wins · Losses · Draws across the currently filtered matches">
-        <span class="wld-w">{{ wld.victory }}W</span>
-        <span class="wld-l">{{ wld.defeat }}L</span>
-        <span class="wld-d">{{ wld.draw }}D</span>
+      <div class="top-right">
+        <div class="wld-summary" v-if="records.length > 0" title="Wins · Losses · Draws across the currently filtered matches">
+          <span class="wld-w">{{ wld.victory }}W</span>
+          <span class="wld-l">{{ wld.defeat }}L</span>
+          <span class="wld-d">{{ wld.draw }}D</span>
+        </div>
+        <label class="prom-toggle" title="Lets the Grafana dashboard read your matches over localhost:9091. Off by default — no network port is opened until you enable this.">
+          <input type="checkbox" :checked="prometheusEnabled" @change="togglePrometheus" />
+          <span>Send match data to Grafana</span>
+        </label>
       </div>
     </div>
 
@@ -577,10 +614,13 @@ body { background: #1a1a2e; color: #e0e0e0; font-family: sans-serif; }
 .container { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
 
 .page-header {
-  display: flex; justify-content: space-between; align-items: baseline;
+  display: flex; justify-content: space-between; align-items: flex-start;
   margin-bottom: 1.5rem; gap: 1rem;
 }
 h1 { font-size: 1.8rem; color: #7ec8e3; }
+.top-right {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;
+}
 .wld-summary {
   display: flex; gap: 0.8rem; font-size: 1.2rem; font-weight: 800;
   font-feature-settings: "tnum"; /* tabular figures so digits don't dance */
@@ -620,6 +660,13 @@ button:disabled { opacity: 0.5; cursor: default; }
 /* Push the Parse button to the far right, separate from the dir +
    Change pair that sits on the left. */
 .parse-btn { margin-left: auto; }
+
+.prom-toggle {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.8rem; color: #888; cursor: pointer; user-select: none;
+}
+.prom-toggle:hover { color: #aaa; }
+.prom-toggle input { cursor: pointer; }
 
 .filters {
   display: flex; gap: 0.5rem; margin-top: 1.2rem; flex-wrap: wrap; align-items: center;

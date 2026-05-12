@@ -5,6 +5,8 @@ import {http} from '../models';
 
 export function GetMatchResults():Promise<Array<main.MatchRecord>>;
 
+export function GetPrometheusEnabled():Promise<boolean>;
+
 export function GetScreenshotsDir():Promise<string>;
 
 export function ParseScreenshots():Promise<void>;
@@ -12,3 +14,5 @@ export function ParseScreenshots():Promise<void>;
 export function PickScreenshotsDir():Promise<string>;
 
 export function ScreenshotHandler():Promise<http.Handler>;
+
+export function SetPrometheusEnabled(arg1:boolean):Promise<void>;
