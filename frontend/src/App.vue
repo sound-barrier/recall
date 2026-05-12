@@ -78,12 +78,16 @@ const filtered = computed(() =>
     if (filterMap.value    && d.map    !== filterMap.value)    return false
     if (filterHero.value   && d.hero   !== filterHero.value)   return false
     if (filterResult.value && d.result !== filterResult.value) return false
-    // Date/time range. When either bound is set, exclude rows that
-    // lack a parseable time — there's no way to confirm those fall
-    // inside the requested window.
+    // Date/time range. When either bound is set, require an EXPLICIT
+    // datetime on the row — date + finished_at, both from the SUMMARY
+    // screen. The match_key fallback used by matchTime() (derived from
+    // screenshot filename) is too approximate to count as the match's
+    // real time, so rows that only have that estimate are excluded
+    // from date-range queries to match the card UI's behavior of not
+    // displaying a datetime for those rows.
     if (filterFrom.value || filterTo.value) {
-      const t = matchTime(r)
-      if (!t) return false
+      if (!d.date || !d.finished_at) return false
+      const t = `${d.date}T${d.finished_at}`
       if (filterFrom.value && t < filterFrom.value) return false
       if (filterTo.value   && t > filterTo.value)   return false
     }
