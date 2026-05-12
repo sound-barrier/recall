@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+# Accept samples up to one year old so backfilled match data (timestamps
+# from the screenshot's date + finished_at) lands in the TSDB instead of
+# being rejected as out-of-order.
+storage:
+  tsdb:
+    out_of_order_time_window: 8760h
+
+scrape_configs:
+  - job_name: owmetrics
+    static_configs:
+      - targets:
+          # The Wails app runs on the host; host.docker.internal resolves to
+          # the host's loopback from inside the container.
+          - host.docker.internal:9091

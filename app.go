@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"OWMetrics/backend/db"
+	"OWMetrics/backend/metrics"
 	"OWMetrics/backend/parser"
 )
 
@@ -44,6 +45,27 @@ func (a *App) startup(ctx context.Context) {
 		log.Fatal("could not init db:", err)
 	}
 	a.screenshotsDir = "screenshots"
+
+	// Expose match data as Prometheus metrics on :9091 by default
+	// (overridable via OWMETRICS_METRICS_ADDR). Bind failures are logged
+	// only — the desktop app keeps working without the metrics endpoint.
+	metrics.ListenAndServe(":9091", scrapeReader)
+}
+
+// scrapeReader returns every match in the DB as a slice of metrics.ScrapeRow.
+// Called by the Prometheus collector on every scrape; the read is the same
+// SELECT that backs GetMatchResults, so cardinality and freshness are
+// identical between the Wails UI and the metrics endpoint.
+func scrapeReader() ([]metrics.ScrapeRow, error) {
+	recs, err := readAllRecords()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]metrics.ScrapeRow, len(recs))
+	for i, r := range recs {
+		out[i] = metrics.ScrapeRow{MatchKey: r.MatchKey, Data: r.Data}
+	}
+	return out, nil
 }
 
 // ParseScreenshots OCRs every image in screenshots/ and merges results from
@@ -85,6 +107,11 @@ func (a *App) ParseScreenshots() error {
 	}
 	for _, nr := range newRows {
 		if idx := findMergeIntoExisting(nr, existing); idx >= 0 {
+			// Merge into an existing row regardless of the new row's mode
+			// (the existing row already passed the competitive check when
+			// it was first inserted; the new screenshot is just adding
+			// detail). A TEAMS-only screenshot, for example, often can't
+			// determine the mode by itself.
 			targetKey := existing[idx].Key
 			mergeMatchResult(&existing[idx].Data, &nr.Data)
 			existing[idx].Sources = unionSortedStrings(existing[idx].Sources, nr.Sources)
@@ -92,7 +119,11 @@ func (a *App) ParseScreenshots() error {
 			if err := upsertMergedRow(existing[idx]); err != nil {
 				return err
 			}
-		} else {
+		} else if nr.Data.Mode == "competitive" {
+			// New match (no merge target): only persist competitive. This
+			// is the source-of-truth boundary — quickplay / unranked /
+			// mode-unknown matches never reach SQLite, so the Prometheus
+			// collector and Grafana dashboards stay clean by construction.
 			if err := upsertMergedRow(nr); err != nil {
 				return err
 			}

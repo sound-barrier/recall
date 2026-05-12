@@ -14,6 +14,12 @@ brew "node"
 # to read text from screenshots.
 brew "tesseract"
 
+# Container runtime + compose for the bundled Prometheus + Grafana stack.
+# Podman is what we test against; the compose file is plain v3 so Docker
+# (with Colima or Desktop) also works if you prefer.
+brew "podman"
+brew "podman-compose"
+
 # --- Not in brew, but required:
 #
 #   Wails CLI itself is a Go binary. Install once after `brew bundle`:
