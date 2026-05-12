@@ -17,3 +17,7 @@ export function ParseScreenshots() {
 export function PickScreenshotsDir() {
   return window['go']['main']['App']['PickScreenshotsDir']();
 }
+
+export function ScreenshotHandler() {
+  return window['go']['main']['App']['ScreenshotHandler']();
+}

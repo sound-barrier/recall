@@ -272,6 +272,21 @@ function isSourcesOpen(id) {
   return !!sourcesExpanded.value[id]
 }
 
+// Per-filename screenshot preview expansion. Keyed by filename so the
+// same screenshot stays open if you collapse and re-open the source
+// list. Image bytes come from the Go ScreenshotHandler at
+// /_screenshot/<filename> — no IPC round-trip.
+const previewOpen = ref({})
+function togglePreview(filename) {
+  previewOpen.value = { ...previewOpen.value, [filename]: !previewOpen.value[filename] }
+}
+function isPreviewOpen(filename) {
+  return !!previewOpen.value[filename]
+}
+function screenshotURL(filename) {
+  return `/_screenshot/${encodeURIComponent(filename)}`
+}
+
 // heroesForHeader returns the list of heroes to render in the card title,
 // sorted by percent_played descending. Multi-hero matches (with a SUMMARY
 // or PERSONAL screenshot) get the full list; a fallback for matches that
@@ -522,14 +537,32 @@ onMounted(load)
 
         <!-- Source screenshots: bottom of the card, its own collapse so
              users who don't care about provenance don't have to look
-             at filenames. -->
+             at filenames. Each filename is clickable to preview the
+             actual screenshot inline. -->
         <div v-if="rec.source_files?.length" class="sources-block">
           <div class="sources-toggle" @click="toggleSources(rec.id)">
             <span class="chevron" :class="{ open: isSourcesOpen(rec.id) }">▶</span>
             <span class="sources-label">Source screenshots ({{ rec.source_files.length }})</span>
           </div>
           <div v-if="isSourcesOpen(rec.id)" class="sources">
-            <div v-for="f in rec.source_files" :key="f">{{ f }}</div>
+            <div v-for="f in rec.source_files" :key="f" class="source-file">
+              <a
+                class="source-name"
+                @click.prevent="togglePreview(f)"
+                :href="screenshotURL(f)"
+                :title="isPreviewOpen(f) ? 'Hide preview' : 'Show preview'"
+              >
+                <span class="chevron" :class="{ open: isPreviewOpen(f) }">▶</span>
+                {{ f }}
+              </a>
+              <img
+                v-if="isPreviewOpen(f)"
+                :src="screenshotURL(f)"
+                :alt="f"
+                class="source-preview"
+                loading="lazy"
+              />
+            </div>
           </div>
         </div>
       </template>
@@ -669,10 +702,32 @@ button:disabled { opacity: 0.5; cursor: default; }
 .sources {
   margin-top: 0.4rem; padding: 0.5rem 0.6rem;
   background: #0a1224; border-radius: 4px;
-  font-size: 0.7rem; color: #777; word-break: break-all;
+  font-size: 0.7rem; word-break: break-all;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
-.sources > div + div { margin-top: 0.2rem; }
+.source-file + .source-file { margin-top: 0.4rem; }
+.source-name {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  color: #7ec8e3; cursor: pointer; text-decoration: none;
+  padding: 0.15rem 0.3rem; border-radius: 3px;
+}
+.source-name:hover { background: #0f3460; color: #a7d9ef; }
+.source-name .chevron { font-size: 0.55rem; }
+/* Preview image: constrained so it fills the card without overflowing
+   or pushing the layout. max-width caps horizontal size to the card's
+   inner width; max-height keeps very tall screenshots scrollable
+   within reason. object-fit defaults to fill-aspect for <img>, so the
+   image keeps its proportions. */
+.source-preview {
+  display: block;
+  margin: 0.4rem 0 0.2rem 0;
+  max-width: 100%;
+  max-height: 420px;
+  height: auto;
+  border-radius: 4px;
+  border: 1px solid #0f3460;
+  background: #000;
+}
 
 .role {
   font-size: 0.75rem; padding: 2px 8px; border-radius: 10px;
