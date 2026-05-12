@@ -23,6 +23,7 @@ const screenshotsDir = ref('')
 // SetPrometheusEnabled so the change persists.
 const prometheusEnabled = ref(false)
 
+const filterMode   = ref('')
 const filterType   = ref('')
 const filterRole   = ref('')
 const filterMap    = ref('')
@@ -47,6 +48,7 @@ const expanded = ref({})
 // toggleFilter() handler power every clickable badge instead of one
 // per field.
 const filterRefs = {
+  mode:   filterMode,
   type:   filterType,
   role:   filterRole,
   map:    filterMap,
@@ -113,6 +115,7 @@ function uniqueValues(field) {
   return [...set].sort()
 }
 
+const modes   = computed(() => uniqueValues('mode'))
 const types   = computed(() => uniqueValues('type'))
 const roles   = computed(() => uniqueValues('role'))
 const maps    = computed(() => uniqueValues('map'))
@@ -137,6 +140,7 @@ const heroes = computed(() => {
 const filtered = computed(() =>
   records.value.filter(r => {
     const d = r.data || {}
+    if (filterMode.value   && d.mode   !== filterMode.value)   return false
     if (filterType.value   && d.type   !== filterType.value)   return false
     if (filterRole.value   && d.role   !== filterRole.value)   return false
     if (filterMap.value    && d.map    !== filterMap.value)    return false
@@ -209,6 +213,7 @@ function isActive(field, value) {
 }
 
 function clearFilters() {
+  filterMode.value   = ''
   filterType.value   = ''
   filterRole.value   = ''
   filterMap.value    = ''
@@ -333,8 +338,8 @@ function heroesForHeader(rec) {
 }
 
 const anyFilter = computed(() =>
-  !!(filterType.value || filterRole.value || filterMap.value || filterHero.value ||
-     filterResult.value || filterFrom.value || filterTo.value)
+  !!(filterMode.value || filterType.value || filterRole.value || filterMap.value ||
+     filterHero.value || filterResult.value || filterFrom.value || filterTo.value)
 )
 
 // Format the match's date + end time for the card header. Parser stores
@@ -422,9 +427,13 @@ onMounted(load)
          date-range pickers (which need wider space + room to breathe)
          on their own row 2. -->
     <div v-if="records.length > 0" class="filters">
-      <!-- Dropdown order mirrors the badge order in each card header
-           (map → type → role → hero → result) so the eye doesn't have
-           to re-map between the filter row and the card row. -->
+      <!-- Dropdown order: Mode first (broadest filter — Competitive vs
+           Quickplay), then map → type → role → hero → result mirroring
+           the badge order in each card header. -->
+      <select v-model="filterMode">
+        <option value="">All modes</option>
+        <option v-for="m in modes" :key="m" :value="m">{{ m }}</option>
+      </select>
       <select v-model="filterMap">
         <option value="">All maps</option>
         <option v-for="m in maps" :key="m" :value="m">{{ m }}</option>

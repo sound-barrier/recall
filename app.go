@@ -275,11 +275,6 @@ func (a *App) ParseScreenshots() error {
 	}
 	for _, nr := range newRows {
 		if idx := findMergeIntoExisting(nr, existing); idx >= 0 {
-			// Merge into an existing row regardless of the new row's mode
-			// (the existing row already passed the competitive check when
-			// it was first inserted; the new screenshot is just adding
-			// detail). A TEAMS-only screenshot, for example, often can't
-			// determine the mode by itself.
 			targetKey := existing[idx].Key
 			mergeMatchResult(&existing[idx].Data, &nr.Data)
 			existing[idx].Sources = unionSortedStrings(existing[idx].Sources, nr.Sources)
@@ -287,11 +282,13 @@ func (a *App) ParseScreenshots() error {
 			if err := upsertMergedRow(existing[idx]); err != nil {
 				return err
 			}
-		} else if nr.Data.Mode == "competitive" {
-			// New match (no merge target): only persist competitive. This
-			// is the source-of-truth boundary — quickplay / unranked /
-			// mode-unknown matches never reach SQLite, so the Prometheus
-			// collector and Grafana dashboards stay clean by construction.
+		} else {
+			// All modes (competitive, quickplay, unranked, …) land in
+			// SQLite — the Wails UI shows everything and lets the user
+			// filter via the Mode dropdown. The Prometheus collector
+			// applies its own competitive-only filter at scrape time
+			// (see backend/metrics/metrics.go) so the Grafana side
+			// keeps its win-rate / KDA series clean.
 			if err := upsertMergedRow(nr); err != nil {
 				return err
 			}
