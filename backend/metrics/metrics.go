@@ -106,9 +106,13 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 	for _, row := range rows {
-		// The competitive filter now lives at the SQLite boundary (see
-		// app.go ParseScreenshots + db.Init's cleanup DELETE), so every
-		// row we see here is already competitive.
+		// Only emit competitive matches. Quickplay (and any other non-
+		// competitive mode) stays in SQLite so the Wails UI can show
+		// it, but the Prometheus side keeps to ranked data — mixing
+		// modes would skew win-rate / KDA / SR series in Grafana.
+		if row.Data.Mode != "competitive" {
+			continue
+		}
 		ts, ok := parseMatchTimestamp(row.Data.Date, row.Data.FinishedAt, row.MatchKey)
 		if !ok {
 			// Skip rows we can't place in time — emitting at time.Now() would
