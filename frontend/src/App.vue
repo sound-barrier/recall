@@ -164,6 +164,15 @@ function clearFilters() {
   filterTo.value     = ''
 }
 
+// Clear just the date-range filter (separate from clearFilters which
+// resets everything). Useful because the native datetime-local picker
+// on macOS doesn't have a built-in way to set the value back to empty
+// once you've selected something.
+function resetDateRange() {
+  filterFrom.value = ''
+  filterTo.value   = ''
+}
+
 // Card collapse/expand.
 function toggleExpand(id) {
   // Reassign the object so Vue sees a new reference. Mutating in place
@@ -351,6 +360,12 @@ onMounted(load)
       <label class="range-label" title="Latest match time to include">
         To <input type="datetime-local" v-model="filterTo" class="datetime" />
       </label>
+      <button
+        class="sort"
+        @click="resetDateRange"
+        :disabled="!filterFrom && !filterTo"
+        title="Clear both date pickers"
+      >Reset</button>
     </div>
 
     <div v-for="rec in filteredSorted" :key="rec.id" class="card" :class="{ expanded: isExpanded(rec.id) }">
