@@ -94,11 +94,21 @@ The pre-built image is pushed to GHCR on every tagged release.
 ### Other build commands
 
 ```sh
-make clean              # remove dist/
+make clean              # remove dist/, frontend/dist, frontend/node_modules
 DOCKER=podman make ...  # use Podman instead of Docker
 go build ./...          # compile-check Wails variant
 go build -tags serveronly ./...  # compile-check server variant
 ```
+
+## Maintenance
+
+```sh
+make update-deps   # update Go modules (go get -u + mod tidy) and npm packages
+make trivy         # vulnerability scan — fails on HIGH/CRITICAL findings
+```
+
+`trivy` requires a one-time install: `brew install trivy` or `brew bundle`.
+The scan covers Go module dependencies, npm packages, and `Dockerfile.build`.
 
 > **One-time setup after clone:** delete `frontend/wailsjs/go/main/` (stale — the package
 > moved from `main` to `app`) and run `wails dev` once to regenerate the bindings at

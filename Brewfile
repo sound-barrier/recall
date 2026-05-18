@@ -24,6 +24,9 @@ brew "podman-compose"
 brew "golangci-lint"
 brew "hadolint"
 
+# Security scanning (used by `make trivy`).
+brew "trivy"
+
 # --- Not in brew, but required:
 #
 #   Wails CLI itself is a Go binary. Install once after `brew bundle`:
