@@ -30,6 +30,13 @@ type MatchRecord struct {
 	ID          int64              `json:"id"`
 	MatchKey    string             `json:"match_key"`
 	SourceFiles []string           `json:"source_files"`
+	// SourceTypes maps a source filename to the OW2 screenshot type the
+	// parser classified it as ("summary" / "scoreboard" / "personal" /
+	// "rank"). Populated at parse time and persisted in the DB so the UI
+	// can label each file. May be nil/missing for rows parsed before
+	// type tracking landed — fall back to the per-row Data-Coverage
+	// inference when a file isn't in the map.
+	SourceTypes map[string]string  `json:"source_types,omitempty"`
 	Data        parser.MatchResult `json:"data"`
 }
 
@@ -641,6 +648,7 @@ func (a *App) ParseScreenshots() error {
 			targetKey := existing[idx].Key
 			mergeMatchResult(&existing[idx].Data, &nr.Data)
 			existing[idx].Sources = unionSortedStrings(existing[idx].Sources, nr.Sources)
+			existing[idx].Types = mergeTypeMaps(existing[idx].Types, nr.Types)
 			existing[idx].Key = targetKey
 			if err := upsertMergedRow(existing[idx]); err != nil {
 				return err
@@ -697,6 +705,7 @@ func loadExistingMergedRows() ([]mergedRow, error) {
 		rows = append(rows, mergedRow{
 			Key:     rec.MatchKey,
 			Sources: rec.SourceFiles,
+			Types:   rec.SourceTypes,
 			Data:    rec.Data,
 		})
 	}
@@ -790,7 +799,14 @@ type ParseProgressEvent struct {
 
 // screenshotType infers the screenshot category from the fields that were
 // populated by the parser: rank fields → "rank", summary fields → "summary",
-// per-hero stats → "personal", combat stats → "scoreboard", otherwise "unknown".
+// E/A/D combat stats → "scoreboard", per-hero stats → "personal", otherwise
+// "unknown".
+//
+// Order matters: a SCOREBOARD parse populates *both* the E/A/D combat row
+// and the right-side panel's hero stats (which go into HeroesPlayed[*].Stats),
+// while a PERSONAL parse only populates hero stats. So the E/A/D check must
+// come before the hero-stats check — otherwise every scoreboard with a
+// non-empty right panel falls through as "personal".
 func screenshotType(r *parser.MatchResult) string {
 	if r == nil {
 		return "unknown"
@@ -801,13 +817,13 @@ func screenshotType(r *parser.MatchResult) string {
 	if r.Result != "" || r.Date != "" || r.GameLength != "" {
 		return "summary"
 	}
+	if r.Eliminations > 0 || r.Assists > 0 || r.Deaths > 0 || r.Damage > 0 {
+		return "scoreboard"
+	}
 	for _, hp := range r.HeroesPlayed {
 		if len(hp.Stats) > 0 {
 			return "personal"
 		}
-	}
-	if r.Eliminations > 0 || r.Deaths > 0 || r.Damage > 0 {
-		return "scoreboard"
 	}
 	return "unknown"
 }
@@ -869,7 +885,7 @@ func (a *App) ClearDatabase() error {
 
 func readAllRecords() ([]MatchRecord, error) {
 	rows, err := db.DB.Query(`SELECT
-		id, match_key, source_files,
+		id, match_key, source_files, source_types,
 		map, type, mode, role, hero,
 		eliminations, assists, deaths, damage, healing, mitigation,
 		result, final_score, date, finished_at, game_length,
@@ -894,9 +910,12 @@ func readAllRecords() ([]MatchRecord, error) {
 
 // mergedRow is one DB row's worth of merged data: a stable key derived from
 // E/A/D, the list of source files that fed it, and the merged stats.
+// Types carries per-source-file screenshot type (parallel to Sources) so
+// each filename can be labelled in the UI.
 type mergedRow struct {
 	Key     string
 	Sources []string
+	Types   map[string]string
 	Data    parser.MatchResult
 }
 
@@ -972,13 +991,16 @@ func mergeByTimestamp(parsed map[string]*parser.MatchResult) []mergedRow {
 		for _, sub := range splitByMatchMetadata(g) {
 			var merged parser.MatchResult
 			sources := make([]string, 0, len(sub))
+			types := make(map[string]string, len(sub))
 			for _, e := range sub {
 				sources = append(sources, e.file)
+				types[e.file] = screenshotType(e.res)
 				mergeMatchResult(&merged, e.res)
 			}
 			out = append(out, mergedRow{
 				Key:     "match:" + sub[0].ts.UTC().Format("2006-01-02T15:04:05"),
 				Sources: sources,
+				Types:   types,
 				Data:    merged,
 			})
 		}
@@ -988,6 +1010,7 @@ func mergeByTimestamp(parsed map[string]*parser.MatchResult) []mergedRow {
 		out = append(out, mergedRow{
 			Key:     "unmatched:" + f,
 			Sources: []string{f},
+			Types:   map[string]string{f: screenshotType(parsed[f])},
 			Data:    *parsed[f],
 		})
 	}
@@ -1071,12 +1094,32 @@ func combineStatsRows(a, b mergedRow) mergedRow {
 		}
 	}
 	sort.Strings(a.Sources)
+	a.Types = mergeTypeMaps(a.Types, b.Types)
 	// Match key follows the earliest screenshot — ISO timestamps compare
 	// lexicographically as chronological, so the smaller string wins.
 	if strings.HasPrefix(a.Key, "match:") && strings.HasPrefix(b.Key, "match:") && b.Key < a.Key {
 		a.Key = b.Key
 	}
 	return a
+}
+
+// mergeTypeMaps returns a single map containing every (filename → type) pair
+// from a and b. Entries with a real type (non-empty) win over empty ones;
+// b only adds keys absent from a so existing classifications survive.
+func mergeTypeMaps(a, b map[string]string) map[string]string {
+	if len(a) == 0 && len(b) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(a)+len(b))
+	for k, v := range a {
+		out[k] = v
+	}
+	for k, v := range b {
+		if existing, ok := out[k]; !ok || existing == "" {
+			out[k] = v
+		}
+	}
+	return out
 }
 
 // splitByMatchMetadata partitions a timestamp-window group of screenshots
@@ -1278,6 +1321,10 @@ func upsertMergedRow(row mergedRow) error {
 	if err != nil {
 		return err
 	}
+	typesJSON, err := jsonNullable(row.Types, len(row.Types) > 0)
+	if err != nil {
+		return err
+	}
 	heroesJSON, err := jsonNullable(row.Data.HeroesPlayed, len(row.Data.HeroesPlayed) > 0)
 	if err != nil {
 		return err
@@ -1296,15 +1343,16 @@ func upsertMergedRow(row mergedRow) error {
 	}
 
 	_, err = db.DB.Exec(`INSERT INTO match_results (
-		match_key, source_files,
+		match_key, source_files, source_types,
 		map, type, mode, role, hero,
 		eliminations, assists, deaths, damage, healing, mitigation,
 		result, final_score, date, finished_at, game_length,
 		heroes_played, performance,
 		rank, level, rank_progress, change_percent, modifiers, sr
-	) VALUES (?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?, ?,?, ?,?,?,?,?,?)
+	) VALUES (?,?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?, ?,?, ?,?,?,?,?,?)
 	ON CONFLICT(match_key) DO UPDATE SET
 		source_files   = excluded.source_files,
+		source_types   = excluded.source_types,
 		map            = excluded.map,
 		type           = excluded.type,
 		mode           = excluded.mode,
@@ -1330,7 +1378,7 @@ func upsertMergedRow(row mergedRow) error {
 		modifiers      = excluded.modifiers,
 		sr             = excluded.sr,
 		parsed_at      = CURRENT_TIMESTAMP`,
-		row.Key, string(sourcesJSON),
+		row.Key, string(sourcesJSON), typesJSON,
 		nullableString(row.Data.Map), nullableString(row.Data.Type),
 		nullableString(row.Data.Mode), nullableString(row.Data.Role),
 		nullableString(row.Data.Hero),
@@ -1361,13 +1409,14 @@ func jsonNullable(v any, present bool) (sql.NullString, error) {
 func scanMatchRecord(rows *sql.Rows) (MatchRecord, error) {
 	var rec MatchRecord
 	var sourcesJSON string
+	var typesJSON sql.NullString
 	var mapCol, typeCol, mode, role, hero sql.NullString
 	var result, finalScore, date, finishedAt, gameLength sql.NullString
 	var heroesJSON, perfJSON sql.NullString
 	var rank sql.NullString
 	var modifiersJSON, srJSON sql.NullString
 	err := rows.Scan(
-		&rec.ID, &rec.MatchKey, &sourcesJSON,
+		&rec.ID, &rec.MatchKey, &sourcesJSON, &typesJSON,
 		&mapCol, &typeCol, &mode, &role, &hero,
 		&rec.Data.Eliminations, &rec.Data.Assists, &rec.Data.Deaths,
 		&rec.Data.Damage, &rec.Data.Healing, &rec.Data.Mitigation,
@@ -1382,6 +1431,9 @@ func scanMatchRecord(rows *sql.Rows) (MatchRecord, error) {
 	rec.Data.Rank = rank.String
 	if err := json.Unmarshal([]byte(sourcesJSON), &rec.SourceFiles); err != nil {
 		return rec, err
+	}
+	if typesJSON.Valid && typesJSON.String != "" {
+		_ = json.Unmarshal([]byte(typesJSON.String), &rec.SourceTypes)
 	}
 	rec.Data.Map = mapCol.String
 	rec.Data.Type = typeCol.String
