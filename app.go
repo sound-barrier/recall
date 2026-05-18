@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"recall/backend/db"
 	"recall/backend/metrics"
@@ -313,12 +312,7 @@ func (a *App) scheduleParseDebounced() {
 		}
 		// Tell the frontend to reload its records list. The Vue side
 		// subscribes via runtime.EventsOn("parse-complete").
-		if a.ctx != nil {
-			wruntime.EventsEmit(a.ctx, "parse-complete")
-		}
-		if a.sseHub != nil {
-			a.sseHub.broadcast("parse-complete")
-		}
+		a.emitParseComplete()
 	})
 }
 
@@ -482,66 +476,11 @@ func (a *App) SetTesseractPath(path string) (TesseractStatus, error) {
 	return a.tessStatus, nil
 }
 
-// PickTesseractBinary opens a native file chooser and applies the
-// selection via SetTesseractPath. Returns the resulting status; on
-// cancel the existing status is returned unchanged.
-func (a *App) PickTesseractBinary() (TesseractStatus, error) {
-	dflt := a.settings.TesseractPath
-	if dflt == "" {
-		dflt = defaultTesseractPath()
-	}
-	file, err := wruntime.OpenFileDialog(a.ctx, wruntime.OpenDialogOptions{
-		Title:            "Select Tesseract binary",
-		DefaultDirectory: filepath.Dir(dflt),
-		Filters: []wruntime.FileFilter{
-			{DisplayName: "Tesseract executable", Pattern: "tesseract*"},
-			{DisplayName: "All files", Pattern: "*"},
-		},
-	})
-	if err != nil {
-		return a.tessStatus, err
-	}
-	if file == "" {
-		return a.tessStatus, nil
-	}
-	return a.SetTesseractPath(file)
-}
-
 // ResetTesseractPath restores the platform default and re-validates.
 // Useful when the user has clobbered the path with something broken
 // and wants to start over.
 func (a *App) ResetTesseractPath() (TesseractStatus, error) {
 	return a.SetTesseractPath(defaultTesseractPath())
-}
-
-// PickScreenshotsDir opens a native directory chooser and persists the
-// selection. Returns the chosen path. If the user cancels the dialog
-// (Wails returns "" with no error), the existing setting is left alone
-// and that same value is returned so the frontend can refresh without
-// special-casing the cancel.
-func (a *App) PickScreenshotsDir() (string, error) {
-	dir, err := wruntime.OpenDirectoryDialog(a.ctx, wruntime.OpenDialogOptions{
-		Title:                "Select Overwatch screenshots folder",
-		DefaultDirectory:     a.settings.ScreenshotsDir,
-		CanCreateDirectories: false,
-	})
-	if err != nil {
-		return a.settings.ScreenshotsDir, err
-	}
-	if dir == "" {
-		return a.settings.ScreenshotsDir, nil
-	}
-	a.settings.ScreenshotsDir = dir
-	if err := saveSettings(a.settings); err != nil {
-		return a.settings.ScreenshotsDir, err
-	}
-	// If the watcher is currently running, repoint it at the new
-	// directory: stop the old observation, start a fresh one.
-	if a.settings.WatchEnabled {
-		a.stopWatching()
-		a.startWatching()
-	}
-	return a.settings.ScreenshotsDir, nil
 }
 
 // scrapeReader returns every match in the DB as a slice of metrics.ScrapeRow.

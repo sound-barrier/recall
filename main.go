@@ -1,7 +1,8 @@
+//go:build !serveronly
+
 package main
 
 import (
-	"embed"
 	"os"
 
 	"github.com/wailsapp/wails/v2"
@@ -9,14 +10,11 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
-//go:embed all:frontend/dist
-var assets embed.FS
-
 func main() {
 	app := NewApp()
 
-	// If -s or --server is passed, run as a headless HTTP server on
-	// 127.0.0.1:7000 instead of opening the native Wails window.
+	// Convenience: the Wails binary also supports --server / -s so users
+	// can run the HTTP dashboard without building a separate binary.
 	for _, arg := range os.Args[1:] {
 		if arg == "-s" || arg == "--server" {
 			runServer(app)

@@ -1,0 +1,25 @@
+//go:build serveronly
+
+package main
+
+import "fmt"
+
+// emitParseComplete is a no-op in server mode — the SSE hub handles
+// parse-complete notifications instead of the Wails event bus.
+func (a *App) emitParseComplete() {
+	if a.sseHub != nil {
+		a.sseHub.broadcast("parse-complete")
+	}
+}
+
+// PickTesseractBinary is not available in server mode (no native dialogs).
+// The HTTP API exposes POST /api/tesseract-path for the same purpose.
+func (a *App) PickTesseractBinary() (TesseractStatus, error) {
+	return a.tessStatus, fmt.Errorf("native dialogs unavailable in server mode; use POST /api/tesseract-path")
+}
+
+// PickScreenshotsDir is not available in server mode (no native dialogs).
+// The HTTP API exposes POST /api/screenshots-dir for the same purpose.
+func (a *App) PickScreenshotsDir() (string, error) {
+	return a.settings.ScreenshotsDir, fmt.Errorf("native dialogs unavailable in server mode; use POST /api/screenshots-dir")
+}

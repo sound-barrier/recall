@@ -21,28 +21,57 @@ endpoint on `:34115`. Go is rebuilt automatically on save.
 
 ## Building
 
+Recall ships two binary flavours:
+
+| Flavour | What it is | CGo? |
+|---|---|---|
+| **Wails app** | Native desktop window (WebKit/WebView2) | Yes — needs platform WebView libs |
+| **Server** | Headless HTTP server on `127.0.0.1:7000` | No — pure Go, cross-compilable anywhere |
+
+### Wails desktop app
+
 ```sh
-make build-linux        # Linux/amd64 binary  → dist/linux/Recall
-make build-windows      # Windows/amd64 binary → dist/windows/Recall.exe
-make build-mac          # macOS universal .app  → dist/mac/Recall.app  (macOS host required)
-make build-all-docker   # Linux + Windows only  (no Apple SDK needed)
-make build-all          # all three platforms   (macOS host required)
-make clean              # remove dist/
+make build-linux        # Linux/amd64   → dist/linux/Recall
+make build-windows      # Windows/amd64 → dist/windows/Recall.exe
+make build-mac          # macOS universal .app → dist/mac/Recall.app  (macOS host required)
+make build-all-docker   # Linux + Windows via Docker (no Apple SDK needed)
+make build-all          # all three (macOS host required)
 ```
 
-Linux and Windows builds run entirely inside Docker via `Dockerfile.build`
-(multi-stage: Node → frontend, Go + WebKitGTK → Linux binary,
-Go + mingw-w64 → Windows binary). Override the Docker binary with
-`DOCKER=podman make build-linux` if you use Podman.
+Linux and Windows builds run in Docker (`Dockerfile.build`). macOS `.app` bundles
+require Apple's SDK and must be built on a Mac — `make build-mac` exits on non-Darwin hosts.
 
-macOS `.app` bundles require Apple's SDK and can only be built on a Mac.
-`make build-mac` exits with an error on non-Darwin hosts.
+### Server-only binary
 
-To build without `make`, the underlying commands are:
+The server binary (`-tags serveronly`) has no Wails or WebView dependency — it is pure Go.
+All three OS targets can be produced from Docker on any host, including macOS.
+
 ```sh
-wails dev               # dev server
-wails build             # native release build (outputs to build/bin/)
-go build ./...          # compile-check the Go side only
+make build-server-linux    # Linux/amd64     → dist/server-linux/Recall-server
+make build-server-windows  # Windows/amd64   → dist/server-windows/Recall-server.exe
+make build-server-mac      # macOS arm64+amd64 → dist/server-mac/  (Docker, no Apple SDK!)
+make build-server-all      # all three server builds
+```
+
+### Running the server
+
+```sh
+./Recall-server                 # dedicated server binary — always starts HTTP mode
+./Recall --server               # Wails binary with runtime flag — same HTTP mode
+./Recall -s                     # short form
+```
+
+The server listens on `http://127.0.0.1:7000` (localhost-only). Open that URL in any
+browser to get the full Recall match dashboard. REST API available at `/api/*`.
+
+### Other build commands
+
+```sh
+make dev                # hot-reload Wails dev server (macOS only)
+make clean              # remove dist/
+DOCKER=podman make ...  # use Podman instead of Docker
+go build ./...          # compile-check Wails variant
+go build -tags serveronly ./...  # compile-check server variant
 ```
 
 ## Metrics & Grafana

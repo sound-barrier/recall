@@ -1,15 +1,23 @@
 # Recall — multi-stage cross-platform build
 #
-# Stages:
+# Wails desktop-app stages (require CGo + native WebView libraries):
 #   frontend-builder   — Node 26, runs `npm ci && vite build`
 #   go-base            — Go 1.26, downloads deps, installs Wails CLI
-#   linux-builder      — linux/amd64 binary via WebKitGTK
-#   windows-builder    — windows/amd64 binary via mingw-w64 cross-compiler
-#   linux-export       — scratch image holding just the Linux binary
-#   windows-export     — scratch image holding just the Windows binary
+#   linux-builder      — linux/amd64 Wails app via WebKitGTK
+#   windows-builder    — windows/amd64 Wails app via mingw-w64 + WebView2
+#   linux-export       — scratch image with the Linux Wails binary
+#   windows-export     — scratch image with the Windows Wails binary
 #
-# macOS requires a native build (Apple SDK is not redistributable).
-# See `make build-mac` in the Makefile.
+# Server-only stages (pure Go, CGO_ENABLED=0, no WebView deps):
+#   server-base        — Go 1.26, module deps downloaded (no Wails CLI needed)
+#   server-linux-builder  — linux/amd64 server binary  (-tags serveronly)
+#   server-windows-builder — windows/amd64 server binary (-tags serveronly)
+#   server-mac-builder — darwin arm64 + amd64 server binaries (-tags serveronly)
+#   server-linux-export / server-windows-export / server-mac-export — scratch exports
+#
+# macOS Wails .app requires a native build (Apple SDK not redistributable).
+# See `make build-mac` in the Makefile. macOS server binary CAN be built here
+# because it is pure Go (no Apple SDK needed).
 
 # ─── Stage 1: Frontend ──────────────────────────────────────
 FROM node:26-slim AS frontend-builder
@@ -95,3 +103,56 @@ COPY --from=linux-builder /app/build/bin/Recall /Recall
 FROM scratch AS windows-export
 COPY --from=windows-builder /app/build/bin/Recall.exe /Recall.exe
 COPY --from=windows-builder /app/build/bin/recall-installer.exe* /
+
+
+# ════════════════════════════════════════════════════════════
+# SERVER-ONLY BUILDS  (CGO_ENABLED=0, -tags serveronly)
+# Pure Go — no WebView/GTK/mingw needed; all three OS targets
+# can be cross-compiled from the same Linux build container.
+# ════════════════════════════════════════════════════════════
+
+# ─── Stage 7: Server base — Go deps only ────────────────────
+# Reuses go-base's module cache. No Wails CLI needed since
+# server builds use `go build` directly.
+FROM go-base AS server-base
+# go-base already ran `go mod download`; nothing extra to do.
+
+
+# ─── Stage 8: Linux/amd64 server binary ─────────────────────
+FROM server-base AS server-linux-builder
+COPY . .
+COPY --from=frontend-builder /frontend/dist ./frontend/dist
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -tags serveronly -trimpath -o build/bin/Recall-server .
+
+
+# ─── Stage 9: Windows/amd64 server binary ───────────────────
+FROM server-base AS server-windows-builder
+COPY . .
+COPY --from=frontend-builder /frontend/dist ./frontend/dist
+RUN CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
+    go build -tags serveronly -trimpath -o build/bin/Recall-server.exe .
+
+
+# ─── Stage 10: macOS server binaries (arm64 + amd64) ────────
+# Pure-Go cross-compilation works for macOS targets even on Linux
+# because no CGo (no Apple SDK required).
+FROM server-base AS server-mac-builder
+COPY . .
+COPY --from=frontend-builder /frontend/dist ./frontend/dist
+RUN CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 \
+        go build -tags serveronly -trimpath -o build/bin/Recall-server-arm64 . && \
+    CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
+        go build -tags serveronly -trimpath -o build/bin/Recall-server-amd64 .
+
+
+# ─── Stage 11: Server export stages (scratch) ───────────────
+FROM scratch AS server-linux-export
+COPY --from=server-linux-builder /app/build/bin/Recall-server /Recall-server
+
+FROM scratch AS server-windows-export
+COPY --from=server-windows-builder /app/build/bin/Recall-server.exe /Recall-server.exe
+
+FROM scratch AS server-mac-export
+COPY --from=server-mac-builder /app/build/bin/Recall-server-arm64 /Recall-server-arm64
+COPY --from=server-mac-builder /app/build/bin/Recall-server-amd64 /Recall-server-amd64
