@@ -156,3 +156,15 @@ COPY --from=server-windows-builder /app/build/bin/Recall-server.exe /Recall-serv
 FROM scratch AS server-mac-export
 COPY --from=server-mac-builder /app/build/bin/Recall-server-arm64 /Recall-server-arm64
 COPY --from=server-mac-builder /app/build/bin/Recall-server-amd64 /Recall-server-amd64
+
+
+# ─── Stage 12: Linux server container (runtime image with Tesseract) ─────────
+# Set RECALL_SERVER_ADDR=0.0.0.0:7000 when running in Docker so the port
+# is reachable from outside the container.
+FROM debian:bookworm-slim AS server-container
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        tesseract-ocr \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=server-linux-builder /app/build/bin/Recall-server /Recall-server
+EXPOSE 7000
+ENTRYPOINT ["/Recall-server"]

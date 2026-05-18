@@ -1,0 +1,9 @@
+linters:
+  enable-all: false
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - misspell
+    - gofmt

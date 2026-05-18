@@ -19,7 +19,7 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | Tag | Entry point | CGo | Description |
 |---|---|---|---|
 | *(default)* | `main.go` + `pkg/app/app_wails.go` | Yes | Full Wails desktop app |
-| `serveronly` | `main_server.go` + `pkg/app/app_server.go` | No | Headless HTTP server on `127.0.0.1:7000` |
+| `serveronly` | `main_server.go` + `pkg/app/app_server.go` | No | Headless HTTP server (addr from `RECALL_SERVER_ADDR`, default `127.0.0.1:7000`) |
 | *(none — both)* | `assets.go` | No | `//go:embed all:frontend/dist` — embedded FS shared by both variants |
 
 | Command | Purpose |
@@ -33,6 +33,8 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `make build-server-windows` | Windows/amd64 server binary → `dist/server-windows/Recall-server.exe` via Docker. |
 | `make build-server-mac` | macOS server binaries (arm64 + amd64) → `dist/server-mac/` via Docker (no Apple SDK needed — pure Go). |
 | `make build-server-all` | All three server builds via Docker. |
+| `make build-server-container` | Linux server container image with Tesseract → `recall-server:local` (local Docker). |
+| `make build-all` | All three Wails platforms (macOS host required). |
 | `go build ./...` | Compile-check Wails variant (default tag). |
 | `go build -tags serveronly ./...` | Compile-check server variant (no CGo, no Wails). |
 | `go get <pkg>` | Add a Go dep. (`wails dev` runs `go mod tidy` on startup.) |
@@ -49,7 +51,7 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `pkg/metrics` | Prometheus `Collector` + `Server` |
 | `pkg/parser` | OCR dispatcher, all screenshot parsers, Tesseract exec |
 
-`Dockerfile.build` has 11 named stages. Stages 1–6 are the Wails builds (need CGo + WebView libs). Stages 7–11 are the `serveronly` builds — pure Go, `CGO_ENABLED=0`, cross-compiled on Linux for all three OS targets. The server stages inherit from `go-base` (module deps already downloaded) and need no apt packages.
+`Dockerfile.build` has 12 named stages. Stages 1–6 are the Wails builds (need CGo + WebView libs). Stages 7–11 are the `serveronly` builds — pure Go, `CGO_ENABLED=0`, cross-compiled on Linux for all three OS targets. The server stages inherit from `go-base` (module deps already downloaded) and need no apt packages. Stage 12 (`server-container`) is a `debian:bookworm-slim` runtime image with Tesseract pre-installed, used for Docker deployments.
 
 **Environment variable overrides** (all optional, mainly for debugging):
 
@@ -58,6 +60,7 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `RECALL_DEBUG_DIR` | system temp | Directory for Tesseract work files; set to a fixed path to inspect them after a parse run. |
 | `OWMETRICS_DEBUG_DIR` | *(off)* | When non-empty, dumps raw Tesseract output `.txt` files into the work dir for each OCR call. |
 | `OWMETRICS_METRICS_ADDR` | `:9091` | Override Prometheus metrics bind address (e.g. `OWMETRICS_METRICS_ADDR=:9292 wails dev`). |
+| `RECALL_SERVER_ADDR` | `127.0.0.1:7000` | Override the HTTP server bind address. Set to `0.0.0.0:7000` when running inside Docker so the port is reachable from the host. |
 
 There are no Go unit tests in-tree. Ad-hoc verification has historically
 been done by writing a transient `x*_test.go` in the repo root that drives
@@ -234,7 +237,7 @@ enable→disable→enable cycle constructs a fresh `Server`.
 
 **HTTP server mode** (`pkg/cmd/server.go` — `RunServer(a *app.App, assets embed.FS)`): called when
 `-s`/`--server` is passed to the Wails binary, or always when compiled
-`serveronly`. Starts `net/http` on `127.0.0.1:7000`, serves the embedded
+`serveronly`. Starts `net/http` on the address from `RECALL_SERVER_ADDR` (default `127.0.0.1:7000`), serves the embedded
 frontend, exposes every App method as a JSON REST endpoint under `/api/`,
 and streams `parse-complete` via `GET /api/events` (SSE). `PickScreenshotsDir`
 and `PickTesseractBinary` (native dialogs) are replaced by `POST /api/screenshots-dir`
@@ -299,6 +302,10 @@ case).
 | `verify-stack.sh` | Layer-by-layer diagnostic: SQLite → /metrics → Podman container → Prometheus scrape state → TSDB sample count. Read-only. Run this first whenever Grafana shows no data. |
 | `db-list.sh` / `db-show.sh` / `db-delete.sh` / `db-export.sh` / `clear-db.sh` | SQLite CRUD helpers. `db-show` accepts id, match_key, or filename substring; `db-export` emits one rebuilt JSON object per row. |
 | `_lib.sh` | Shared `docker_config_aside()` helper used by stack-up and prometheus-clear to work around the gcloud cred-helper trap (see Troubleshooting in README). |
+
+## CI/CD (`.github/workflows/release.yml`)
+
+Triggered on `v*` tags. Four parallel jobs: `build-docker` (Linux/Windows Wails + all server binaries via Docker), `build-mac` (macOS Wails, requires Apple runner), `publish-container` (builds `server-container` stage and pushes to `ghcr.io/<owner>/recall-server` with semver tags), and `release` (creates GitHub Release with all binaries; waits on `build-docker` + `build-mac`). GHCR auth uses `secrets.GITHUB_TOKEN` — no PAT needed; workflow permissions must include `packages: write`.
 
 ## Conventions worth knowing
 

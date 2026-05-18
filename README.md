@@ -35,7 +35,7 @@ Recall ships two binary flavours:
 | Flavour | What it is | CGo? |
 |---|---|---|
 | **Wails app** | Native desktop window (WebKit/WebView2) | Yes — needs platform WebView libs |
-| **Server** | Headless HTTP server on `127.0.0.1:7000` | No — pure Go, cross-compilable anywhere |
+| **Server** | Headless HTTP server (default `127.0.0.1:7000`, override with `RECALL_SERVER_ADDR`) | No — pure Go, cross-compilable anywhere |
 
 ### Wails desktop app
 
@@ -56,10 +56,11 @@ The server binary (`-tags serveronly`) has no Wails or WebView dependency — it
 All three OS targets can be produced from Docker on any host, including macOS.
 
 ```sh
-make build-server-linux    # Linux/amd64     → dist/server-linux/Recall-server
-make build-server-windows  # Windows/amd64   → dist/server-windows/Recall-server.exe
-make build-server-mac      # macOS arm64+amd64 → dist/server-mac/  (Docker, no Apple SDK!)
-make build-server-all      # all three server builds
+make build-server-linux      # Linux/amd64     → dist/server-linux/Recall-server
+make build-server-windows    # Windows/amd64   → dist/server-windows/Recall-server.exe
+make build-server-mac        # macOS arm64+amd64 → dist/server-mac/  (Docker, no Apple SDK!)
+make build-server-all        # all three server builds
+make build-server-container  # Linux container image with Tesseract → recall-server:local
 ```
 
 ### Running the server
@@ -70,8 +71,25 @@ make build-server-all      # all three server builds
 ./Recall -s                     # short form
 ```
 
-The server listens on `http://127.0.0.1:7000` (localhost-only). Open that URL in any
-browser to get the full Recall match dashboard. REST API available at `/api/*`.
+The server listens on `http://127.0.0.1:7000` by default (localhost-only). Set
+`RECALL_SERVER_ADDR` to override (e.g. `RECALL_SERVER_ADDR=0.0.0.0:7000` to accept
+connections from other hosts). Open the address in any browser to get the full Recall
+match dashboard. REST API available at `/api/*`.
+
+### Running via Docker
+
+The `build-server-container` target produces a `debian:bookworm-slim` image with
+Tesseract pre-installed. The default bind address is localhost-only, so pass
+`RECALL_SERVER_ADDR` to make the port reachable from outside the container:
+
+```sh
+docker run \
+  -e RECALL_SERVER_ADDR=0.0.0.0:7000 \
+  -p 7000:7000 \
+  ghcr.io/sound-barrier/recall-server:latest
+```
+
+The pre-built image is pushed to GHCR on every tagged release.
 
 ### Other build commands
 
