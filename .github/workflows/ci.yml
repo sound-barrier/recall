@@ -26,16 +26,8 @@ jobs:
           go-version: '1.26'
           cache: true
 
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-
-      - name: Lint Go (default build tags)
-        run: golangci-lint run ./...
-
-      - name: Lint Go (serveronly build tag)
-        run: golangci-lint run --build-tags serveronly ./...
-
-      # Frontend — ESLint, Stylelint, HTMLHint
+      # Frontend — set up Node and build frontend/dist before Go linting so the
+      # //go:embed all:frontend/dist directive in assets.go passes type-checking.
       - uses: actions/setup-node@v4
         with:
           node-version: '26'
@@ -45,6 +37,19 @@ jobs:
       - name: Install frontend dependencies
         run: cd frontend && npm ci
 
+      - name: Build frontend (required for Go embed typecheck)
+        run: cd frontend && npm run build
+
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+
+      - name: Lint Go (default build tags)
+        run: golangci-lint run ./...
+
+      - name: Lint Go (serveronly build tag)
+        run: golangci-lint run --build-tags serveronly ./...
+
+      # Frontend linters — deps already installed above
       - name: Lint JavaScript/Vue (ESLint)
         run: cd frontend && npm run lint:js
 
