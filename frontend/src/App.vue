@@ -520,11 +520,19 @@ function isSourcesOpen(id) {
 // list. Image bytes come from the Go ScreenshotHandler at
 // /_screenshot/<filename> — no IPC round-trip.
 const previewOpen = ref({})
+const previewError = ref({})
 function togglePreview(filename) {
+  previewError.value = { ...previewError.value, [filename]: false }
   previewOpen.value = { ...previewOpen.value, [filename]: !previewOpen.value[filename] }
 }
 function isPreviewOpen(filename) {
   return !!previewOpen.value[filename]
+}
+function isPreviewError(filename) {
+  return !!previewError.value[filename]
+}
+function onPreviewError(filename) {
+  previewError.value = { ...previewError.value, [filename]: true }
 }
 function screenshotURL(filename) {
   return `/_screenshot/${encodeURIComponent(filename)}`
@@ -550,11 +558,19 @@ function isUnknownExpanded(id) {
 }
 
 const unknownPreviewOpen = ref({})
+const unknownPreviewError = ref({})
 function toggleUnknownPreview(filename) {
+  unknownPreviewError.value = { ...unknownPreviewError.value, [filename]: false }
   unknownPreviewOpen.value = { ...unknownPreviewOpen.value, [filename]: !unknownPreviewOpen.value[filename] }
 }
 function isUnknownPreviewOpen(filename) {
   return !!unknownPreviewOpen.value[filename]
+}
+function isUnknownPreviewError(filename) {
+  return !!unknownPreviewError.value[filename]
+}
+function onUnknownPreviewError(filename) {
+  unknownPreviewError.value = { ...unknownPreviewError.value, [filename]: true }
 }
 
 // Infer which screenshot types were parsed for a record based on which
@@ -1322,12 +1338,15 @@ onBeforeUnmount(() => {
                       <span class="source-name-text">{{ f }}</span>
                     </a>
                     <img
-                      v-if="isUnknownPreviewOpen(f)"
+                      v-if="isUnknownPreviewOpen(f) && !isUnknownPreviewError(f)"
                       :src="screenshotURL(f)"
                       :alt="f"
                       class="source-preview"
-                      loading="lazy"
+                      @error="onUnknownPreviewError(f)"
                     >
+                    <div v-if="isUnknownPreviewOpen(f) && isUnknownPreviewError(f)" class="source-preview-error">
+                      Could not load image — check screenshots folder in Settings.
+                    </div>
                   </div>
                 </div>
 
@@ -1720,12 +1739,15 @@ onBeforeUnmount(() => {
                           <span class="source-name-text">{{ f }}</span>
                         </a>
                         <img
-                          v-if="isPreviewOpen(f)"
+                          v-if="isPreviewOpen(f) && !previewError.value[f]"
                           :src="screenshotURL(f)"
                           :alt="f"
                           class="source-preview"
-                          loading="lazy"
+                          @error="onPreviewError(f)"
                         >
+                        <div v-if="isPreviewOpen(f) && previewError.value[f]" class="source-preview-error">
+                          Could not load image — check screenshots folder in Settings.
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -3432,6 +3454,16 @@ body {
   border-radius: 2px;
   background: #000;
   box-shadow: 0 8px 30px -8px rgb(0 0 0 / 50%);
+}
+
+.source-preview-error {
+  margin: 0.5rem 0 0.25rem 1.1rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  background: var(--surface-3);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
 }
 
 /* ─── Page Nav (Matches / Settings) ──────────────────────── */
