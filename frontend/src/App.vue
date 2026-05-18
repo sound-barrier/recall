@@ -574,35 +574,68 @@ function onUnknownPreviewError(filename) {
 }
 
 // Infer which screenshot types were parsed for a record based on which
-// field groups are populated. Drives the slot-chip row on each card.
+// field groups are populated. Drives the slot-chip row on each card and
+// the missing-data explainer in the expanded view.
+//
+// `required: true` means a complete match summary needs that screenshot
+// (SUMMARY / TEAMS / PERSONAL). `required: false` is RANK — useful but
+// not strictly needed.
+//
+// `missing` is a human-readable list of what data is *consequently*
+// unavailable when that screenshot wasn't captured, shown in the
+// coverage explainer.
 function detectScreenshotSlots(rec) {
   const d = rec.data || {}
+  const hp = Array.isArray(d.heroes_played) ? d.heroes_played : []
+  // Combat-stat columns are NOT NULL DEFAULT 0 in SQLite, so they're
+  // always numbers. A row that never saw a scoreboard has all six at 0;
+  // sum > 0 is the reliable signal.
+  const combatTotal = (d.eliminations || 0) + (d.assists || 0) + (d.deaths || 0) +
+                      (d.damage || 0) + (d.healing || 0) + (d.mitigation || 0)
   return [
     {
       key: 'summary',
       label: 'SUMMARY',
-      present: !!(d.result || d.date || d.finished_at || d.game_length || d.type || d.mode),
-      hint: 'End-of-match result screen — provides map, result, date, game type',
+      required: true,
+      present: !!(d.result || d.final_score || d.date || d.finished_at ||
+                  d.game_length || d.type || d.mode ||
+                  hp.some(h => h.percent_played || h.play_time)),
+      hint: 'Post-match SUMMARY tab — match result, final score, date, game length',
+      missing: 'match result, final score, date & time, game length',
     },
     {
       key: 'scoreboard',
       label: 'TEAMS',
-      present: !!(d.eliminations != null || d.deaths != null),
-      hint: 'Tab key scoreboard — provides E/A/D, damage, healing, mitigation',
+      required: true,
+      present: combatTotal > 0,
+      hint: 'TEAMS scoreboard (in-game or post-match) — E/A/D, damage, healing, mitigation',
+      missing: 'eliminations, assists, deaths, damage, healing, mitigation',
     },
     {
       key: 'personal',
       label: 'PERSONAL',
-      present: !!(Array.isArray(d.heroes_played) && d.heroes_played.some(hp => hp.stats && Object.keys(hp.stats).length > 0)),
-      hint: 'Personal stats tab — provides per-hero detailed statistics',
+      required: true,
+      present: hp.some(h => h.stats && Object.keys(h.stats).length > 0),
+      hint: 'Post-match PERSONAL tab — per-hero detailed stats (accuracy, ult charges, role-specific cards)',
+      missing: 'per-hero detailed stats (accuracy, ult charges, role-specific cards)',
     },
     {
       key: 'rank',
       label: 'RANK',
-      present: !!(d.rank),
-      hint: 'Competitive rank screen — provides SR, rank tier, rank change',
+      required: false,
+      present: !!(d.rank || d.level || (Array.isArray(d.sr) && d.sr.length > 0)),
+      hint: 'Competitive rank screen — SR, rank tier, rank change. Optional but recommended for ranked matches.',
+      missing: 'SR / rank tier / rank change',
     },
   ]
+}
+
+function missingRequiredSlots(rec) {
+  return detectScreenshotSlots(rec).filter(s => s.required && !s.present)
+}
+
+function missingOptionalSlots(rec) {
+  return detectScreenshotSlots(rec).filter(s => !s.required && !s.present)
 }
 
 // heroesForHeader returns the list of heroes to render in the card title,
@@ -1640,11 +1673,65 @@ onBeforeUnmount(() => {
                     title="Click to filter by this result"
                     @click.stop="toggleFilter('result', rec.data.result)"
                   >{{ rec.data.result }}</span>
+                  <span
+                    v-if="missingRequiredSlots(rec).length"
+                    class="incomplete-badge"
+                    :title="`Incomplete match — missing ${missingRequiredSlots(rec).map(s => s.label).join(', ')} screenshot${missingRequiredSlots(rec).length === 1 ? '' : 's'}. Expand for details.`"
+                  >
+                    <span class="incomplete-glyph" aria-hidden="true">!</span>
+                    <span class="incomplete-text">missing <strong>{{ missingRequiredSlots(rec).map(s => s.label).join(' · ') }}</strong></span>
+                  </span>
                 </div>
               </div>
 
               <template v-if="isExpanded(rec.id)">
                 <div class="match-expanded">
+                  <!-- Data Coverage: which of the four OW screenshot types
+                       were captured for this match, and what's missing.
+                       SUMMARY / TEAMS / PERSONAL are required for a complete
+                       summary; RANK is optional. -->
+                  <div class="coverage-block">
+                    <div class="coverage-header">
+                      <span class="block-eyebrow">Data Coverage</span>
+                      <span class="coverage-count">
+                        {{ detectScreenshotSlots(rec).filter(s => s.present).length }}
+                        of {{ detectScreenshotSlots(rec).length }}
+                      </span>
+                    </div>
+                    <div class="slot-row">
+                      <span
+                        v-for="slot in detectScreenshotSlots(rec)"
+                        :key="slot.key"
+                        class="slot-chip"
+                        :class="{
+                          present: slot.present,
+                          absent: !slot.present,
+                          optional: !slot.required,
+                          'absent-required': !slot.present && slot.required,
+                        }"
+                        :title="slot.hint"
+                      >
+                        <span class="slot-dot" aria-hidden="true" />
+                        {{ slot.label }}
+                        <span v-if="!slot.required" class="slot-optional-tag">opt</span>
+                      </span>
+                    </div>
+                    <div v-if="missingRequiredSlots(rec).length || missingOptionalSlots(rec).length" class="coverage-explain">
+                      <p v-for="slot in missingRequiredSlots(rec)" :key="slot.key" class="coverage-line required">
+                        <span class="coverage-line-tag">⚠ {{ slot.label }} missing</span>
+                        <span class="coverage-line-text">
+                          Capture the post-match <strong>{{ slot.label }}</strong> tab and re-parse to recover: {{ slot.missing }}.
+                        </span>
+                      </p>
+                      <p v-for="slot in missingOptionalSlots(rec)" :key="slot.key" class="coverage-line optional">
+                        <span class="coverage-line-tag">· {{ slot.label }} not captured</span>
+                        <span class="coverage-line-text">
+                          Optional — recommended for ranked matches. Provides: {{ slot.missing }}.
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+
                   <div v-if="rec.data.final_score" class="meta-row">
                     <span class="meta-eyebrow">Final Score</span>
                     <span class="meta-value">{{ rec.data.final_score }}</span>
@@ -3155,6 +3242,59 @@ body {
 .badge.result.defeat  { background: var(--loss-soft); color: var(--loss); border-color: var(--loss-line); }
 .badge.result.draw    { background: var(--draw-soft); color: var(--draw); border-color: var(--draw-line); }
 
+/* Incomplete-match warning pill — sits at the right end of the badge row
+   only when one or more required screenshot types weren't captured. The
+   pulsing dot draws the eye; tooltip + expanded view explain the why. */
+.incomplete-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.18rem 0.55rem 0.18rem 0.4rem;
+  margin-left: auto;
+  background: rgb(245 166 35 / 8%);
+  border: 1px dashed rgb(245 166 35 / 55%);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+  cursor: help;
+  animation: incomplete-pulse 2.6s ease-in-out infinite;
+}
+
+.incomplete-badge strong {
+  font-weight: 700;
+  color: var(--accent-bright);
+  letter-spacing: 0.12em;
+}
+
+.incomplete-glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1a0a00;
+  font-weight: 900;
+  font-size: 0.65rem;
+  line-height: 1;
+  font-family: var(--mono);
+}
+
+@keyframes incomplete-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(245 166 35 / 0%); }
+  50%      { box-shadow: 0 0 0 3px rgb(245 166 35 / 14%); }
+}
+
+[data-theme="light"] .incomplete-badge {
+  background: rgb(245 166 35 / 12%);
+  color: var(--accent-text);
+}
+
+[data-theme="light"] .incomplete-badge strong { color: var(--accent-text); }
+
 /* Clickable interactions */
 .clickable {
   cursor: pointer;
@@ -3208,6 +3348,107 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.22em;
   margin-bottom: 0.55rem;
+}
+
+/* Data Coverage block — diagnostic HUD strip at the top of every expanded
+   card. Lists the four OW screenshot type slots, marks each present /
+   absent / optional, and explains the consequence of each missing one. */
+.coverage-block {
+  padding: 0.7rem 0.85rem 0.85rem;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 1%), transparent),
+    var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--brand-grey);
+  border-radius: 2px;
+  position: relative;
+}
+
+.coverage-block::before {
+  /* Decorative corner tick — small OW-style registration mark. */
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -2px;
+  width: 0.6rem;
+  height: 2px;
+  background: var(--accent);
+}
+
+.coverage-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.55rem;
+}
+
+.coverage-header .block-eyebrow { margin-bottom: 0; }
+
+.coverage-count {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-mute);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-feature-settings: "tnum";
+}
+
+.coverage-block .slot-row {
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.coverage-explain {
+  margin-top: 0.7rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.coverage-line {
+  display: grid;
+  grid-template-columns: minmax(9.5rem, max-content) 1fr;
+  gap: 0.7rem;
+  align-items: baseline;
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.coverage-line-tag {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.coverage-line.required .coverage-line-tag { color: var(--accent-bright); }
+.coverage-line.optional .coverage-line-tag { color: var(--text-faint); }
+
+.coverage-line-text {
+  color: var(--text-dim);
+}
+
+.coverage-line.required .coverage-line-text strong {
+  color: var(--accent-bright);
+  font-weight: 700;
+}
+
+[data-theme="light"] .coverage-line.required .coverage-line-tag,
+[data-theme="light"] .coverage-line.required .coverage-line-text strong {
+  color: var(--accent-text);
+}
+
+@media (width <= 720px) {
+  .coverage-line {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
 }
 
 /* Stats grid: big mono numbers, tiny tracked labels */
@@ -4714,8 +4955,41 @@ body {
   color: var(--text-faint);
 }
 
+/* A required screenshot type that wasn't captured — louder than `absent` so
+   the user notices the diagnostic at a glance in the expanded panel. */
+.slot-chip.absent-required {
+  background: rgb(245 166 35 / 6%);
+  border-color: rgb(245 166 35 / 50%);
+  color: var(--accent-bright);
+}
+
+/* The RANK slot is optional; even when missing it shouldn't read as a
+   warning. Greyed out, no urgency. */
+.slot-chip.optional.absent {
+  background: transparent;
+  border-color: var(--border-soft);
+  color: var(--text-mute);
+}
+
+.slot-optional-tag {
+  margin-left: 0.25rem;
+  padding: 0 0.25rem;
+  border-radius: 1px;
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  background: rgb(255 255 255 / 5%);
+  color: var(--text-mute);
+  text-transform: uppercase;
+}
+
+.slot-chip.present .slot-optional-tag {
+  background: rgb(77 255 142 / 12%);
+  color: var(--win);
+}
+
 [data-theme="light"] .slot-chip.present { color: var(--win); }
 [data-theme="light"] .slot-chip.absent { color: var(--text-faint); }
+[data-theme="light"] .slot-chip.absent-required { color: var(--accent-text); }
 
 .slot-dot {
   width: 5px;
@@ -4820,8 +5094,11 @@ body {
 }
 
 @media (width <= 680px) {
-  .slot-chip { display: none; }
-  .slot-chip:nth-child(-n+2) { display: inline-flex; }
+  /* Unknown-card header is horizontally tight — hide all but the first
+     two slot chips there. The coverage-block in expanded match cards
+     gets its own stacked layout, so it isn't scoped here. */
+  .unknown-card-head .slot-chip { display: none; }
+  .unknown-card-head .slot-chip:nth-child(-n+2) { display: inline-flex; }
 }
 
 @media (width <= 580px) {
