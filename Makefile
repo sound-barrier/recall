@@ -192,6 +192,22 @@ trivy: ## Trivy vulnerability scan (fails on HIGH/CRITICAL)
 	trivy fs --scanners vuln --exit-code 1 --severity HIGH,CRITICAL .
 	@echo "[ recall ] ✓  No HIGH/CRITICAL vulnerabilities found"
 
+# Sync the app icon. Source of truth: assets/icon.png. Wails reads
+# build/appicon.png at 1024x1024 and auto-generates iconfile.icns (macOS)
+# + icon.ico (Windows) during `wails build`, so clearing the cached .ico
+# forces it to regenerate from the new appicon on the next build.
+icon: ## Resync build/appicon.png from assets/icon.png (run after updating the icon)
+	@if [ ! -f assets/icon.png ]; then \
+	    echo "[ recall ] ✗  assets/icon.png not found"; exit 1; \
+	fi
+	@if ! command -v sips >/dev/null 2>&1; then \
+	    echo "[ recall ] ✗  sips not found (macOS only); resize assets/icon.png to 1024x1024 manually and copy to build/appicon.png"; \
+	    exit 1; \
+	fi
+	@sips -z 1024 1024 assets/icon.png --out build/appicon.png >/dev/null
+	@rm -f build/windows/icon.ico
+	@echo "[ recall ] ✓  build/appicon.png updated · build/windows/icon.ico cleared (regenerates on next wails build)"
+
 dev: ## Start hot-reload Wails dev server (macOS only)
 	@if [ "$$(uname -s)" != "Darwin" ]; then \
 	    echo "[ recall ] ✗  dev server requires macOS (Wails desktop shell)"; \
