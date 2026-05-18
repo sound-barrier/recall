@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -21,9 +21,9 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"recall/backend/db"
-	"recall/backend/metrics"
-	"recall/backend/parser"
+	"recall/pkg/db"
+	"recall/pkg/metrics"
+	"recall/pkg/parser"
 )
 
 type MatchRecord struct {
@@ -190,7 +190,7 @@ type App struct {
 	ctx      context.Context
 	settings Settings
 	// tessStatus is the last result of checkTesseract(). Refreshed on
-	// startup, on SetTesseractPath, on PickTesseractBinary, and on
+	// Startup, on SetTesseractPath, on PickTesseractBinary, and on
 	// ResetTesseractPath. Read-only from the Wails GetTesseractStatus
 	// binding the frontend polls; mutated only on the same goroutine
 	// that responds to the bound calls (no lock needed).
@@ -212,17 +212,21 @@ type App struct {
 	// watcher can't overlap with a user-triggered click (or a second
 	// debounce that fires while the first parse is still running).
 	parseMu sync.Mutex
-	// sseHub is non-nil in --server mode. When set, parse-complete events
+	// SSEHub is non-nil in --server mode. When set, parse-complete events
 	// are broadcast over SSE instead of (or in addition to) the Wails
 	// runtime event bus.
-	sseHub *sseHub
+	SSEHub *SSEHub
 }
 
-func NewApp() *App {
+func New() *App {
 	return &App{}
 }
 
-func (a *App) startup(ctx context.Context) {
+// Startup initialises the app: loads settings, checks Tesseract, opens the
+// SQLite database, and starts the metrics/watcher if configured. Called by
+// the Wails runtime via OnStartup, or directly by pkg/cmd/server.go in
+// headless mode.
+func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	a.settings = loadSettings()
 
@@ -427,11 +431,19 @@ func (a *App) GetScreenshotsDir() string {
 	return a.settings.ScreenshotsDir
 }
 
+// SetScreenshotsDir updates the configured screenshots directory and
+// persists the change. Used by the REST API in server mode (replaces
+// the native directory dialog).
+func (a *App) SetScreenshotsDir(path string) error {
+	a.settings.ScreenshotsDir = path
+	return saveSettings(a.settings)
+}
+
 // ScreenshotHandler serves files from the user's configured screenshots
 // directory under the `/_screenshot/<filename>` URL prefix. Wired into
-// the Wails AssetServer in main.go so the frontend can render <img
-// src="/_screenshot/foo.png"> directly — no base64 round-trip via the
-// JS↔Go bridge for what's potentially a multi-MB PNG.
+// the Wails AssetServer in pkg/cmd/wails.go so the frontend can render
+// <img src="/_screenshot/foo.png"> directly — no base64 round-trip via
+// the JS↔Go bridge for what's potentially a multi-MB PNG.
 //
 // The directory comes from a.settings at REQUEST time, so changing the
 // configured path via PickScreenshotsDir() takes effect immediately for
@@ -476,7 +488,7 @@ func (a *App) ScreenshotHandler() http.Handler {
 }
 
 // GetTesseractStatus returns the cached result of the last detection
-// run (refreshed on startup + any path-changing call). Cheap — does not
+// run (refreshed on Startup + any path-changing call). Cheap — does not
 // re-shell out to tesseract.
 func (a *App) GetTesseractStatus() TesseractStatus {
 	return a.tessStatus
@@ -589,7 +601,7 @@ func (a *App) ParseScreenshots() error {
 			// SQLite — the Wails UI shows everything and lets the user
 			// filter via the Mode dropdown. The Prometheus collector
 			// applies its own competitive-only filter at scrape time
-			// (see backend/metrics/metrics.go) so the Grafana side
+			// (see pkg/metrics/metrics.go) so the Grafana side
 			// keeps its win-rate / KDA series clean.
 			if err := upsertMergedRow(nr); err != nil {
 				return err

@@ -18,7 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"recall/backend/parser"
+	"recall/pkg/parser"
 )
 
 // ScrapeRow is the minimal shape the collector needs from each DB row. App

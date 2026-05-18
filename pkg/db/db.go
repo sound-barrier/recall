@@ -13,8 +13,8 @@ var DB *sql.DB
 // and the TEAMS scoreboard — lands in one row. source_files is a JSON array
 // of every screenshot that contributed.
 //
-// This is CREATE TABLE IF NOT EXISTS; column changes require `rm
-// data/db/recall.db` (or a real migration).
+// This is CREATE TABLE IF NOT EXISTS; column changes require deleting
+// recall.db (or a real migration).
 const schema = `CREATE TABLE IF NOT EXISTS match_results (
 	id            INTEGER PRIMARY KEY AUTOINCREMENT,
 	match_key     TEXT NOT NULL UNIQUE,

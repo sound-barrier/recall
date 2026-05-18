@@ -11,12 +11,12 @@
 
 // Detect whether the Wails IPC bridge has been injected. The bridge is
 // only present when the page is loaded inside the native Wails webview.
-const IS_WAILS = typeof window !== 'undefined' && !!window['go']?.['main']?.['App']
+const IS_WAILS = typeof window !== 'undefined' && !!window['go']?.['app']?.['App']
 
 // ─── Internal helpers ──────────────────────────────────────────────────────
 
 function _wails(method, ...args) {
-  return window['go']['main']['App'][method](...args)
+  return window['go']['app']['App'][method](...args)
 }
 
 async function _get(path) {

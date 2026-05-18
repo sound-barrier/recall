@@ -1,14 +1,14 @@
 //go:build serveronly
 
-package main
+package app
 
 import "fmt"
 
 // emitParseComplete is a no-op in server mode — the SSE hub handles
 // parse-complete notifications instead of the Wails event bus.
 func (a *App) emitParseComplete() {
-	if a.sseHub != nil {
-		a.sseHub.broadcast("parse-complete")
+	if a.SSEHub != nil {
+		a.SSEHub.Broadcast("parse-complete")
 	}
 }
 
