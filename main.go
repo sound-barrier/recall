@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"os"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -12,8 +13,16 @@ import (
 var assets embed.FS
 
 func main() {
-	// Create an instance of the app structure
 	app := NewApp()
+
+	// If -s or --server is passed, run as a headless HTTP server on
+	// 127.0.0.1:7000 instead of opening the native Wails window.
+	for _, arg := range os.Args[1:] {
+		if arg == "-s" || arg == "--server" {
+			runServer(app)
+			return
+		}
+	}
 
 	// Create application with options
 	err := wails.Run(&options.App{

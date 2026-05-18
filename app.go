@@ -192,6 +192,10 @@ type App struct {
 	// watcher can't overlap with a user-triggered click (or a second
 	// debounce that fires while the first parse is still running).
 	parseMu sync.Mutex
+	// sseHub is non-nil in --server mode. When set, parse-complete events
+	// are broadcast over SSE instead of (or in addition to) the Wails
+	// runtime event bus.
+	sseHub *sseHub
 }
 
 func NewApp() *App {
@@ -311,6 +315,9 @@ func (a *App) scheduleParseDebounced() {
 		// subscribes via runtime.EventsOn("parse-complete").
 		if a.ctx != nil {
 			wruntime.EventsEmit(a.ctx, "parse-complete")
+		}
+		if a.sseHub != nil {
+			a.sseHub.broadcast("parse-complete")
 		}
 	})
 }
