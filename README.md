@@ -16,10 +16,10 @@ Pre-built binaries for every tagged release are on the [GitHub Releases](https:/
 
 | Platform | Wails desktop app | Server binary |
 |---|---|---|
-| Linux | `recall-linux-amd64.tar.gz` · `recall-linux-amd64.deb` | `recall-server-linux-amd64.tar.gz` · `recall-server-linux-amd64.deb` |
-| Windows | `recall-windows-amd64.exe` | `recall-server-windows-amd64.exe` |
-| macOS arm64 | `recall-macos-arm64.zip` | `recall-server-macos-arm64.tar.gz` |
-| macOS amd64 | `recall-macos-amd64.zip` | `recall-server-macos-amd64.tar.gz` |
+| Linux | `recall-{version}-linux-amd64.tar.gz` · `recall-{version}-linux-amd64.deb` | `recall-server-{version}-linux-amd64.tar.gz` · `recall-server-{version}-linux-amd64.deb` |
+| Windows | `recall-{version}-windows-amd64.exe` | `recall-server-{version}-windows-amd64.exe` |
+| macOS arm64 | `recall-{version}-darwin-arm64.dmg` | `recall-server-{version}-darwin-arm64.tar.gz` |
+| macOS amd64 | `recall-{version}-darwin-amd64.dmg` | `recall-server-{version}-darwin-amd64.tar.gz` |
 | Docker | — | `ghcr.io/sound-barrier/recall-server:latest` |
 
 Linux `.deb` packages install the binary to `/usr/local/bin/`:
@@ -28,6 +28,22 @@ Linux `.deb` packages install the binary to `/usr/local/bin/`:
 sudo dpkg -i recall-linux-amd64.deb        # installs /usr/local/bin/recall
 sudo dpkg -i recall-server-linux-amd64.deb  # installs /usr/local/bin/recall-server
 ```
+
+### Verifying downloads
+
+Every release binary and package ships with a companion `.sha256` file containing its SHA256 hash. Download both the artifact and its `.sha256` file, then verify:
+
+```sh
+# Linux / WSL
+sha256sum --check recall-0.0.1-linux-amd64.tar.gz.sha256
+
+# macOS
+shasum -a 256 --check recall-0.0.1-darwin-arm64.dmg.sha256
+```
+
+`sha256sum` prints `OK` when the file matches what was built in CI; any mismatch prints `FAILED` and exits non-zero.
+
+Every release also includes `recall-{version}-sbom.spdx.json` — an SPDX 2.x bill of materials listing every Go module and npm package the release was built from. Tools like [SPDX Workgroup Viewer](https://spdx.github.io/spdx-spec/) or `syft convert` can render it.
 
 ## Prerequisites
 

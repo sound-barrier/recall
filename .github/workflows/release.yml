@@ -41,9 +41,9 @@ jobs:
           PKG_VERSION="${VERSION#v}"
 
           # ── Linux Wails app — tarball ─────────────────────────
-          mkdir -p _tar/recall-linux-amd64
-          cp dist/linux/Recall _tar/recall-linux-amd64/recall
-          tar -czf recall-linux-amd64.tar.gz -C _tar recall-linux-amd64
+          mkdir -p "_tar/recall-${PKG_VERSION}-linux-amd64"
+          cp dist/linux/Recall "_tar/recall-${PKG_VERSION}-linux-amd64/recall"
+          tar -czf "recall-${PKG_VERSION}-linux-amd64.tar.gz" -C _tar "recall-${PKG_VERSION}-linux-amd64"
 
           # ── Linux Wails app — .deb (installs to /usr/local/bin/recall) ──
           mkdir -p _deb-recall/DEBIAN _deb-recall/usr/local/bin
@@ -51,12 +51,12 @@ jobs:
           chmod 755 _deb-recall/usr/local/bin/recall
           printf 'Package: recall\nVersion: %s\nArchitecture: amd64\nMaintainer: Jacob Delgado <jacob.delgado@gmail.com>\nDescription: Recall - Overwatch 2 match history tracker\n Watches Overwatch 2 screenshots, OCRs them with Tesseract, and tracks match history.\n' \
             "${PKG_VERSION}" > _deb-recall/DEBIAN/control
-          dpkg-deb --build _deb-recall recall-linux-amd64.deb
+          dpkg-deb --build _deb-recall "recall-${PKG_VERSION}-linux-amd64.deb"
 
           # ── Linux server binary — tarball ─────────────────────
-          mkdir -p _tar/recall-server-linux-amd64
-          cp dist/server-linux/Recall-server _tar/recall-server-linux-amd64/recall-server
-          tar -czf recall-server-linux-amd64.tar.gz -C _tar recall-server-linux-amd64
+          mkdir -p "_tar/recall-server-${PKG_VERSION}-linux-amd64"
+          cp dist/server-linux/Recall-server "_tar/recall-server-${PKG_VERSION}-linux-amd64/recall-server"
+          tar -czf "recall-server-${PKG_VERSION}-linux-amd64.tar.gz" -C _tar "recall-server-${PKG_VERSION}-linux-amd64"
 
           # ── Linux server binary — .deb (installs to /usr/local/bin/recall-server) ──
           mkdir -p _deb-server/DEBIAN _deb-server/usr/local/bin
@@ -64,32 +64,32 @@ jobs:
           chmod 755 _deb-server/usr/local/bin/recall-server
           printf 'Package: recall-server\nVersion: %s\nArchitecture: amd64\nMaintainer: Jacob Delgado <jacob.delgado@gmail.com>\nDescription: Recall server - Overwatch 2 match history HTTP server\n Headless HTTP server that serves match history data and optional Prometheus metrics.\n' \
             "${PKG_VERSION}" > _deb-server/DEBIAN/control
-          dpkg-deb --build _deb-server recall-server-linux-amd64.deb
+          dpkg-deb --build _deb-server "recall-server-${PKG_VERSION}-linux-amd64.deb"
 
           # ── Windows binaries ──────────────────────────────────
-          cp dist/windows/Recall.exe                recall-windows-amd64.exe
-          cp dist/server-windows/Recall-server.exe  recall-server-windows-amd64.exe
+          cp dist/windows/Recall.exe               "recall-${PKG_VERSION}-windows-amd64.exe"
+          cp dist/server-windows/Recall-server.exe "recall-server-${PKG_VERSION}-windows-amd64.exe"
 
           # ── macOS server binaries — tarballs ──────────────────
-          mkdir -p _tar/recall-server-macos-arm64 _tar/recall-server-macos-amd64
-          cp dist/server-mac/Recall-server-arm64 _tar/recall-server-macos-arm64/recall-server
-          cp dist/server-mac/Recall-server-amd64 _tar/recall-server-macos-amd64/recall-server
-          tar -czf recall-server-macos-arm64.tar.gz -C _tar recall-server-macos-arm64
-          tar -czf recall-server-macos-amd64.tar.gz -C _tar recall-server-macos-amd64
+          mkdir -p "_tar/recall-server-${PKG_VERSION}-darwin-arm64" "_tar/recall-server-${PKG_VERSION}-darwin-amd64"
+          cp dist/server-mac/Recall-server-arm64 "_tar/recall-server-${PKG_VERSION}-darwin-arm64/recall-server"
+          cp dist/server-mac/Recall-server-amd64 "_tar/recall-server-${PKG_VERSION}-darwin-amd64/recall-server"
+          tar -czf "recall-server-${PKG_VERSION}-darwin-arm64.tar.gz" -C _tar "recall-server-${PKG_VERSION}-darwin-arm64"
+          tar -czf "recall-server-${PKG_VERSION}-darwin-amd64.tar.gz" -C _tar "recall-server-${PKG_VERSION}-darwin-amd64"
 
       - name: Upload Docker-built artifacts
         uses: actions/upload-artifact@v7
         with:
           name: binaries
           path: |
-            recall-linux-amd64.tar.gz
-            recall-linux-amd64.deb
-            recall-server-linux-amd64.tar.gz
-            recall-server-linux-amd64.deb
-            recall-windows-amd64.exe
-            recall-server-windows-amd64.exe
-            recall-server-macos-arm64.tar.gz
-            recall-server-macos-amd64.tar.gz
+            recall-*-linux-amd64.tar.gz
+            recall-*-linux-amd64.deb
+            recall-server-*-linux-amd64.tar.gz
+            recall-server-*-linux-amd64.deb
+            recall-*-windows-amd64.exe
+            recall-server-*-windows-amd64.exe
+            recall-server-*-darwin-arm64.tar.gz
+            recall-server-*-darwin-amd64.tar.gz
 
   # ── Job 2: macOS Wails .app bundles (requires Apple SDK / Xcode CLT) ──
   build-mac:
@@ -111,27 +111,51 @@ jobs:
       - name: Build macOS Wails app
         run: make build-mac
 
-      # .app bundles are directories; zip them for distribution so the download
-      # preserves file modes and resource forks. Separate arm64 and amd64 zips
-      # let users download only the slice they need.
-      - name: Zip .app bundles
+      # Wrap each .app bundle in a compressed DMG so users get a standard
+      # drag-to-Applications installer. Separate arm64 and amd64 DMGs let
+      # users download only the slice they need.
+      - name: Create DMGs
         run: |
-          ditto -c -k --sequesterRsrc --keepParent \
-            dist/mac/Recall-arm64.app \
-            recall-macos-arm64.zip
-          ditto -c -k --sequesterRsrc --keepParent \
-            dist/mac/Recall-amd64.app \
-            recall-macos-amd64.zip
+          PKG_VERSION="${GITHUB_REF_NAME#v}"
+          hdiutil create -volname "Recall" \
+            -srcfolder dist/mac/Recall-arm64.app \
+            -ov -format UDZO \
+            "recall-${PKG_VERSION}-darwin-arm64.dmg"
+          hdiutil create -volname "Recall" \
+            -srcfolder dist/mac/Recall-amd64.app \
+            -ov -format UDZO \
+            "recall-${PKG_VERSION}-darwin-amd64.dmg"
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v7
         with:
           name: mac-build
           path: |
-            recall-macos-arm64.zip
-            recall-macos-amd64.zip
+            recall-*-darwin-arm64.dmg
+            recall-*-darwin-amd64.dmg
 
-  # ── Job 3: Build and push Linux server container image to GHCR ──
+  # ── Job 3: Generate SBOM (Software Bill of Materials) ───────────────────
+  # Syft scans Go module graph and npm dependency tree from the repo source
+  # and emits a single SPDX JSON file attached to the release.
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Compute artifact version
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate SBOM (SPDX JSON)
+        uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          artifact-name: sbom
+          output-file: recall-${{ steps.ver.outputs.version }}-sbom.spdx.json
+          upload-artifact: true
+          upload-release-assets: false
+
+  # ── Job 4: Build and push Linux server container image to GHCR ──
   # Uses GITHUB_TOKEN (auto-injected, repo-scoped, expires after run — no PAT needed).
   # Image: ghcr.io/<owner>/recall-server:<version>, <major>.<minor>, latest
   publish-container:
@@ -173,17 +197,42 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ── Job 4: Create GitHub Release with all binaries attached ──
+      # GHCR packages default to private for new packages. Explicitly set public
+      # so users can pull without authentication. Detects user vs org owner automatically.
+      - name: Set container image visibility to public
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OWNER_TYPE=$(gh api "/users/${{ github.repository_owner }}" --jq '.type')
+          if [ "$OWNER_TYPE" = "Organization" ]; then
+            API_PATH="/orgs/${{ github.repository_owner }}/packages/container/recall-server"
+          else
+            API_PATH="/user/packages/container/recall-server"
+          fi
+          gh api --method PATCH -H "Accept: application/vnd.github+json" \
+            "$API_PATH" -f visibility=public
+
+  # ── Job 5: Create GitHub Release with all binaries attached ──
   # github.ref_name is used only in an `actions/` `with:` expression, not
   # interpolated into any run: shell command — safe from injection.
   release:
-    needs: [build-docker, build-mac]
+    needs: [build-docker, build-mac, sbom]
     runs-on: ubuntu-latest
     steps:
       # Download all artifacts into the current directory (merge-multiple flattens them).
       - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
+
+      # Per-artifact .sha256 files for every release binary and package.
+      # Each file contains the SHA256 hash of exactly one artifact.
+      # Users verify with: sha256sum --check recall-<version>-linux-amd64.tar.gz.sha256
+      # On macOS:         shasum -a 256 --check recall-<version>-darwin-arm64.dmg.sha256
+      - name: Generate SHA256 checksums
+        run: |
+          for f in recall-*.tar.gz recall-*.deb recall-*.exe recall-*.dmg; do
+            [ -f "$f" ] && sha256sum "$f" > "${f}.sha256"
+          done
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
@@ -192,13 +241,12 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
           files: |
-            recall-linux-amd64.tar.gz
-            recall-linux-amd64.deb
-            recall-server-linux-amd64.tar.gz
-            recall-server-linux-amd64.deb
-            recall-windows-amd64.exe
-            recall-server-windows-amd64.exe
-            recall-macos-arm64.zip
-            recall-macos-amd64.zip
-            recall-server-macos-arm64.tar.gz
-            recall-server-macos-amd64.tar.gz
+            recall-*.tar.gz
+            recall-*.tar.gz.sha256
+            recall-*.deb
+            recall-*.deb.sha256
+            recall-*.exe
+            recall-*.exe.sha256
+            recall-*.dmg
+            recall-*.dmg.sha256
+            recall-*-sbom.spdx.json
