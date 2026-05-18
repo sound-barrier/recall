@@ -21,6 +21,8 @@ so a bundled Grafana dashboard can chart win rates, SR trends, and per-hero stat
   - [Option C: Native installation (no containers)](#option-c-native-installation-no-containers)
   - [Troubleshooting](#troubleshooting)
   - [Metric overview](#metric-overview)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Installation
 
@@ -276,3 +278,13 @@ timestamps because the stack runs with `--storage.tsdb.out-of-order-time-window=
 | `recall_match_rank_level` | … | Competitive rank sub-division (1–5). |
 | `recall_match_sr` / `recall_match_sr_change` | …, `hero`, `role` | Per-hero SR + delta from each match. |
 | `recall_hero_stat` | …, `hero`, `role`, `stat` | Open-ended per-hero stats (`weapon_accuracy`, `players_saved`, …). |
+
+## Contributing
+
+Bug reports, feature requests, and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, build instructions, and coding conventions.
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
+
+Third-party dependency attribution is in [NOTICE](NOTICE). A full software bill of materials (SPDX) is attached to each [GitHub Release](https://github.com/sound-barrier/recall/releases).
