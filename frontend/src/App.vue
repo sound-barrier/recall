@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import {
   ParseScreenshots,
   GetMatchResults,
@@ -7,7 +7,10 @@ import {
   PickScreenshotsDir,
   GetPrometheusEnabled,
   SetPrometheusEnabled,
+  GetWatchEnabled,
+  SetWatchEnabled,
 } from '../wailsjs/go/main/App'
+import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime'
 
 const records = ref([])
 const error = ref('')
@@ -22,6 +25,11 @@ const screenshotsDir = ref('')
 // the port (or doesn't); this ref is just a UI mirror, written via
 // SetPrometheusEnabled so the change persists.
 const prometheusEnabled = ref(false)
+
+// Directory watch toggle. When on, the Go side watches the
+// screenshots directory; new files trigger a debounced auto-parse
+// (1 minute after the last new file).
+const watchEnabled = ref(false)
 
 const filterMode   = ref('')
 const filterType   = ref('')
@@ -57,14 +65,30 @@ const filterRefs = {
 }
 
 async function load() {
-  const [recs, dir, promOn] = await Promise.all([
+  const [recs, dir, promOn, watchOn] = await Promise.all([
     GetMatchResults(),
     GetScreenshotsDir(),
     GetPrometheusEnabled(),
+    GetWatchEnabled(),
   ])
   records.value = recs ?? []
   screenshotsDir.value = dir || ''
   prometheusEnabled.value = !!promOn
+  watchEnabled.value = !!watchOn
+}
+
+// Toggle directory watching. Same pattern as Prometheus: Go owns the
+// actual side effect (fsnotify watcher start/stop), this just mirrors
+// state and rolls back on error.
+async function toggleWatch(e) {
+  const next = e.target.checked
+  try {
+    await SetWatchEnabled(next)
+    watchEnabled.value = next
+  } catch (err) {
+    error.value = String(err)
+    e.target.checked = watchEnabled.value
+  }
 }
 
 // Toggle the Prometheus endpoint. We call the Go method first so the
@@ -380,7 +404,17 @@ function fmtTime(rec) {
   return datePart || timePart
 }
 
-onMounted(load)
+// Subscribe to the watcher's parse-complete event so the records list
+// auto-refreshes when an auto-parse runs in the background. Without
+// this the user would have to click Parse manually to see new matches
+// land in the UI even though the data is already in SQLite.
+onMounted(() => {
+  load()
+  EventsOn('parse-complete', () => { load() })
+})
+onBeforeUnmount(() => {
+  EventsOff('parse-complete')
+})
 </script>
 
 <template>
@@ -410,6 +444,13 @@ onMounted(load)
         <span class="dir-path">{{ screenshotsDir || '—' }}</span>
       </span>
       <button class="dir-change" @click="pickDir" :disabled="loading">Change…</button>
+      <label
+        class="watch-toggle"
+        title="Auto-parse new screenshots as they appear. Waits 60 seconds after the last new file before parsing, so a typical 3–4-screenshot session collapses into one parse."
+      >
+        <input type="checkbox" :checked="watchEnabled" @change="toggleWatch" />
+        <span>Watch directory</span>
+      </label>
       <button class="parse-btn" @click="parse" :disabled="loading">
         {{ loading
             ? (screenshotsDir ? `Parsing from ${screenshotsDir}…` : 'Parsing…')
@@ -669,6 +710,15 @@ button:disabled { opacity: 0.5; cursor: default; }
 /* Push the Parse button to the far right, separate from the dir +
    Change pair that sits on the left. */
 .parse-btn { margin-left: auto; }
+
+.watch-toggle {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.85rem; color: #aaa; cursor: pointer; user-select: none;
+  padding: 0.4rem 0.6rem; border-radius: 4px;
+  border: 1px solid transparent;
+}
+.watch-toggle:hover { color: #e0e0e0; border-color: #444; }
+.watch-toggle input { cursor: pointer; }
 
 .prom-toggle {
   display: inline-flex; align-items: center; gap: 0.4rem;
