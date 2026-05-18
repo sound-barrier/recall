@@ -1,4 +1,4 @@
-# OWMetrics — Homebrew dependencies for `wails dev`.
+# Recall — Homebrew dependencies for `wails dev`.
 #
 # Install with:  brew bundle
 # Update with:   brew bundle --upgrade

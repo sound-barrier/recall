@@ -131,9 +131,9 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 		return nil, fmt.Errorf("decoding image: %w", err)
 	}
 
-	work := os.Getenv("OWMETRICS_DEBUG_DIR")
+	work := os.Getenv("RECALL_DEBUG_DIR")
 	if work == "" {
-		work, err = os.MkdirTemp("", "owmetrics-*")
+		work, err = os.MkdirTemp("", "recall-*")
 		if err != nil {
 			return nil, err
 		}

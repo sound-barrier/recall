@@ -41,7 +41,7 @@ podman-compose up -d
 
 # 4. Show the running services.
 echo
-podman ps --filter "label=io.podman.compose.project=owmetrics" \
+podman ps --filter "label=io.podman.compose.project=recall" \
   --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 cat <<MSG

@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DB="$SCRIPT_DIR/../data/db/owmetrics.db"
+DB="$SCRIPT_DIR/../data/db/recall.db"
 
 if [[ ! -f "$DB" ]]; then
   echo "No database at $DB"

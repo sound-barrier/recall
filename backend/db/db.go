@@ -14,7 +14,7 @@ var DB *sql.DB
 // of every screenshot that contributed.
 //
 // This is CREATE TABLE IF NOT EXISTS; column changes require `rm
-// data/db/owmetrics.db` (or a real migration).
+// data/db/recall.db` (or a real migration).
 const schema = `CREATE TABLE IF NOT EXISTS match_results (
 	id            INTEGER PRIMARY KEY AUTOINCREMENT,
 	match_key     TEXT NOT NULL UNIQUE,

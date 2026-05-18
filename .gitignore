@@ -1,8 +1,8 @@
 build/bin
 node_modules
 frontend/dist
-OWMetrics
-OWMetrics.exe
+Recall
+Recall.exe
 .claude/
 data/
 

@@ -4,7 +4,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DB="$SCRIPT_DIR/../data/db/owmetrics.db"
+DB="$SCRIPT_DIR/../data/db/recall.db"
 
 if [[ $# -lt 1 ]]; then
   echo "usage: $0 <id|match-key|source-file-substring>"

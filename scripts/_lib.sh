@@ -1,4 +1,4 @@
-# Shared helpers for the OWMetrics scripts in this directory.
+# Shared helpers for the Recall scripts in this directory.
 # Source from another script with:
 #   . "$(dirname "$0")/_lib.sh"
 #
@@ -18,7 +18,7 @@
 # else uses it.
 docker_config_aside() {
     local cfg="$HOME/.docker/config.json"
-    local bak="$HOME/.docker/config.json.owmetrics-bak"
+    local bak="$HOME/.docker/config.json.recall-bak"
     if [[ -f "$cfg" ]] \
         && grep -qE '"(credsStore|credHelpers)"' "$cfg" \
         && ! command -v docker-credential-gcloud >/dev/null 2>&1; then

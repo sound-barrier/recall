@@ -2,7 +2,7 @@
 # endpoint and renders match history.
 #
 # Usage:
-#   1. Run the OWMetrics Wails app (`wails dev` or the built binary). It
+#   1. Run the Recall Wails app (`wails dev` or the built binary). It
 #      listens on :9091/metrics by default.
 #   2. `docker compose up -d`
 #   3. Grafana at http://localhost:3000  (admin / admin)
@@ -15,7 +15,7 @@ services:
   prometheus:
     # Pinned 2.x LTS — out-of-order ingestion via tsdb config requires 2.39+.
     image: prom/prometheus:v2.53.0
-    container_name: owmetrics-prometheus
+    container_name: recall-prometheus
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -35,7 +35,7 @@ services:
 
   grafana:
     image: grafana/grafana:11.1.0
-    container_name: owmetrics-grafana
+    container_name: recall-grafana
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: admin

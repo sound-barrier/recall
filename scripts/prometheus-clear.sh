@@ -28,7 +28,7 @@ echo "→ stopping containers"
 podman-compose down 2>/dev/null || true
 
 # Resolve the actual volume name. podman-compose prefixes named volumes
-# with the project name (typical: `owmetrics_prometheus_data`); look it
+# with the project name (typical: `recall_prometheus_data`); look it
 # up dynamically in case the project was renamed.
 vol=$(podman volume ls --format '{{.Name}}' | grep -E 'prometheus_data$' | head -n1 || true)
 if [[ -n "$vol" ]]; then
