@@ -34,7 +34,7 @@ brew "trivy"
 # --- Not in brew, but required:
 #
 #   Wails CLI itself is a Go binary. Install once after `brew bundle`:
-#     go install github.com/wailsapp/wails/v2/cmd/wails@latest
+#     go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 #
 #   Confirm everything is set up:
 #     wails doctor
