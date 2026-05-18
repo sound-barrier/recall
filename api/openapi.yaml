@@ -1,0 +1,584 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/schemas/v3.1/schema.json
+#
+# Recall HTTP API — OpenAPI 3.1.0 description of the routes mounted in
+# pkg/cmd/server.go. Hand-written; keep in sync with that file. View with
+# `make swagger` (runs Swagger UI in a container against this spec).
+openapi: 3.1.0
+info:
+  title: Recall API
+  version: 0.0.1
+  description: |
+    HTTP REST + SSE surface for the Recall Overwatch 2 metrics app.
+
+    Available in two flavours:
+      * **Server binary** (`Recall-server`) — exposes this API by default
+      * **Wails desktop binary with `--server`** — same API, same routes
+
+    All `application/json` request and response bodies. Errors come back
+    as `text/plain` from `http.Error` with the appropriate 4xx/5xx
+    status. The base URL defaults to `http://127.0.0.1:7000`; override
+    via `RECALL_SERVER_ADDR`.
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+  contact:
+    name: Recall
+    url: https://github.com/sound-barrier/recall
+
+servers:
+  - url: http://127.0.0.1:7000
+    description: Local server (default bind address)
+  - url: http://{host}:{port}
+    description: Custom bind address (set via RECALL_SERVER_ADDR)
+    variables:
+      host:
+        default: 127.0.0.1
+      port:
+        default: "7000"
+
+tags:
+  - name: Matches
+    description: Parsed match records.
+  - name: Pipeline
+    description: Trigger and observe the OCR ingest pipeline.
+  - name: Settings
+    description: App configuration — screenshots folder, OCR engine, toggles.
+  - name: Data
+    description: Database administration.
+  - name: Events
+    description: Server-Sent Events stream.
+  - name: Assets
+    description: Static screenshot serving.
+
+paths:
+  /api/match-results:
+    get:
+      tags: [Matches]
+      summary: List all parsed match records
+      description: |
+        Returns every row from the SQLite `match_results` table, in
+        insertion order. Read-time derivations (`inferSoleHeroPercent`,
+        `inferResultFromRank`) are already applied to each record.
+      responses:
+        "200":
+          description: Array of match records.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MatchRecord"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/screenshots-dir:
+    get:
+      tags: [Settings]
+      summary: Get the configured screenshots folder
+      responses:
+        "200":
+          description: Current path.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [path]
+                properties:
+                  path:
+                    type: string
+                    example: screenshots
+    post:
+      tags: [Settings]
+      summary: Set the screenshots folder
+      description: |
+        Persists to `settings.json` and re-targets the file watcher if
+        it's armed. Path can be absolute or relative to the server's
+        working directory.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path]
+              properties:
+                path:
+                  type: string
+                  example: /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch
+      responses:
+        "200":
+          description: New path echoed back.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [path]
+                properties:
+                  path: { type: string }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/parse:
+    post:
+      tags: [Pipeline]
+      summary: Run a one-shot parse
+      description: |
+        Walks the configured screenshots folder, OCRs anything not
+        already in the DB, and writes the merged rows. Idempotent —
+        re-running won't duplicate matches already on record.
+        Synchronous: the response only returns after parsing finishes.
+        Progress is also broadcast via the SSE endpoint.
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/prometheus-enabled:
+    get:
+      tags: [Settings]
+      summary: Get the Prometheus metrics-endpoint toggle
+      responses:
+        "200":
+          description: Current state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnabledFlag"
+    post:
+      tags: [Settings]
+      summary: Toggle the Prometheus metrics endpoint
+      description: |
+        Enabling binds `:9091/metrics` (override via
+        `OWMETRICS_METRICS_ADDR`). Disabling shuts the listener down
+        with a 2s grace period.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnabledFlag"
+      responses:
+        "200":
+          description: New state echoed back.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnabledFlag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/watch-enabled:
+    get:
+      tags: [Settings]
+      summary: Get the file-watcher toggle
+      responses:
+        "200":
+          description: Current state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnabledFlag"
+    post:
+      tags: [Settings]
+      summary: Toggle the file watcher
+      description: |
+        When on, new `.png` / `.jpg` files in the configured folder are
+        auto-parsed after a 60s debounce. Requires a working Tesseract
+        binary — turning it on without one returns 500.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnabledFlag"
+      responses:
+        "200":
+          description: New state echoed back.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnabledFlag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/tesseract-status:
+    get:
+      tags: [Settings]
+      summary: Get the OCR engine status
+      description: |
+        Reports the configured Tesseract path, whether it resolves to a
+        working binary, the reported version, the platform default
+        path, and any error from the last detection attempt.
+      responses:
+        "200":
+          description: Current engine status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesseractStatus"
+
+  /api/tesseract-path:
+    post:
+      tags: [Settings]
+      summary: Set the Tesseract binary path
+      description: |
+        Re-runs detection on the new path. The status returned reflects
+        whether the binary at that path responds to `--version`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path]
+              properties:
+                path:
+                  type: string
+                  example: /opt/homebrew/bin/tesseract
+      responses:
+        "200":
+          description: Re-detected status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesseractStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/tesseract-reset:
+    post:
+      tags: [Settings]
+      summary: Reset the Tesseract path to the platform default
+      responses:
+        "200":
+          description: Re-detected status against the default path.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TesseractStatus"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/new-screenshot-count:
+    get:
+      tags: [Pipeline]
+      summary: Count of new screenshots awaiting parse
+      description: |
+        Returns the number of files in the configured folder that are
+        not yet present in any `match_results` row's `source_files`.
+      responses:
+        "200":
+          description: Count.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count:
+                    type: integer
+                    minimum: 0
+                    example: 3
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/clear-database:
+    post:
+      tags: [Data]
+      summary: Wipe all parsed match records
+      description: |
+        Deletes every row from `match_results`. Settings and the
+        screenshots folder are untouched; you can re-parse to rebuild.
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/events:
+    get:
+      tags: [Events]
+      summary: Server-Sent Events stream
+      description: |
+        Long-lived `text/event-stream` connection. Subscribers receive:
+          * `parse-progress` — fired per OCR'd file during a parse run,
+            carries `{done, total, filename, screenshot_type, data?}`
+          * `parse-complete` — fired after a parse run finishes
+          * Keepalive comment lines every 25 s so reverse proxies
+            don't close the connection
+
+        Clients should reconnect on disconnect; messages are not
+        replayed.
+      responses:
+        "200":
+          description: SSE stream.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: |
+                  event: parse-progress
+                  data: {"done":1,"total":5,"filename":"...png","screenshot_type":"scoreboard"}
+
+                  event: parse-complete
+                  data: {}
+
+  /_screenshot/{filename}:
+    get:
+      tags: [Assets]
+      summary: Serve a screenshot image from the configured folder
+      description: |
+        Streams a file from the configured screenshots directory. The
+        `{filename}` parameter must be a plain basename; path traversal
+        (`..`, `/`, `\`) is rejected. Used by the frontend to render
+        `<img>` previews without round-tripping bytes through the JSON
+        bridge.
+      parameters:
+        - in: path
+          name: filename
+          required: true
+          schema:
+            type: string
+          description: URL-encoded basename of a file in the screenshots folder.
+          example: Overwatch%202%20Screenshot%202026.05.10%20-%2021.49.34.41.png
+      responses:
+        "200":
+          description: Image bytes.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Malformed path or filename.
+        "404":
+          description: File not found, no folder configured, or path traversal rejected.
+
+components:
+  schemas:
+    MatchRecord:
+      type: object
+      description: One DB row — the merged result of one or more screenshots.
+      required: [id, match_key, source_files, data]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 24
+        match_key:
+          type: string
+          description: |
+            Stable identity. Either `match:<ISO-timestamp>` (from the
+            earliest screenshot's filename) or `unmatched:<filename>` for
+            files whose names didn't parse as timestamps.
+          example: "match:2026-05-10T22:21:11"
+        source_files:
+          type: array
+          description: Every screenshot filename that fed this match.
+          items:
+            type: string
+          example:
+            - Overwatch 2 Screenshot 2026.05.10 - 22.21.11.79.png
+            - Overwatch 2 Screenshot 2026.05.10 - 22.21.57.34.png
+        source_types:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ScreenshotType"
+          description: |
+            Per-source-file screenshot classification. Populated at
+            parse time. May be absent on rows parsed before this column
+            landed.
+          example:
+            "Overwatch 2 Screenshot 2026.05.10 - 22.21.11.79.png": scoreboard
+            "Overwatch 2 Screenshot 2026.05.10 - 22.21.57.34.png": rank
+        data:
+          $ref: "#/components/schemas/MatchResult"
+
+    ScreenshotType:
+      type: string
+      enum: [summary, scoreboard, personal, rank]
+      description: |
+        Classification of one screenshot:
+          * `summary` — post-match SUMMARY tab
+          * `scoreboard` — in-game or post-match TEAMS scoreboard
+          * `personal` — post-match PERSONAL tab
+          * `rank` — competitive RANK PROGRESS screen
+
+    MatchResult:
+      type: object
+      description: All parsed data for a match, merged across its source files.
+      properties:
+        map:        { type: string,  description: 'e.g. "rialto"' }
+        type:       { type: string,  description: 'e.g. "control"' }
+        mode:       { type: string,  enum: [competitive, quickplay, unranked, ""] }
+        role:       { type: string,  enum: [tank, dps, support, ""] }
+        hero:       { type: string,  description: "Primary (most-played) hero" }
+        eliminations: { type: integer, minimum: 0 }
+        assists:      { type: integer, minimum: 0 }
+        deaths:       { type: integer, minimum: 0 }
+        damage:       { type: integer, minimum: 0 }
+        healing:      { type: integer, minimum: 0 }
+        mitigation:   { type: integer, minimum: 0 }
+        result:
+          type: string
+          enum: [victory, defeat, draw, ""]
+        final_score:
+          type: string
+          example: "3-1"
+        date:
+          type: string
+          example: "2026-05-10"
+        finished_at:
+          type: string
+          description: HH:MM 24h as shown by the OW2 client.
+          example: "21:29"
+        game_length:
+          type: string
+          example: "11:25"
+        heroes_played:
+          type: array
+          items:
+            $ref: "#/components/schemas/HeroPlay"
+        performance:
+          $ref: "#/components/schemas/Performance"
+        rank:
+          type: string
+          example: platinum
+        level:
+          type: integer
+          minimum: 0
+          maximum: 5
+        modifiers:
+          type: array
+          items:
+            type: string
+          example: [expected, victory]
+        rank_progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        change_percent:
+          type: integer
+          description: Percentage the rank moved this match (signed).
+        sr:
+          type: array
+          items:
+            $ref: "#/components/schemas/HeroSR"
+
+    HeroPlay:
+      type: object
+      required: [hero, percent_played]
+      properties:
+        hero:
+          type: string
+          example: lucio
+        percent_played:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 100
+        play_time:
+          type: string
+          example: "11:25"
+        stats:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Hero-specific stats keyed by snake_case label.
+          example:
+            weapon_accuracy: 24
+            players_saved: 6
+
+    HeroSR:
+      type: object
+      required: [hero, sr, change]
+      properties:
+        hero:    { type: string,  example: lucio }
+        sr:      { type: integer, example: 2754 }
+        change:  { type: integer, description: "Signed delta this match", example: 30 }
+
+    Performance:
+      type: object
+      properties:
+        eliminations: { $ref: "#/components/schemas/PerformanceStat" }
+        assists:      { $ref: "#/components/schemas/PerformanceStat" }
+        deaths:       { $ref: "#/components/schemas/PerformanceStat" }
+
+    PerformanceStat:
+      type: object
+      required: [total]
+      properties:
+        total:
+          type: integer
+        avg_per_10min:
+          type: number
+          format: double
+
+    TesseractStatus:
+      type: object
+      required: [path, found, version, error, default]
+      properties:
+        path:
+          type: string
+          description: The currently-configured path.
+          example: /opt/homebrew/bin/tesseract
+        found:
+          type: boolean
+          description: True iff `path` resolves to a working binary.
+        version:
+          type: string
+          description: Tesseract `--version` output (e.g. "5.4.1"). Empty when not found.
+        error:
+          type: string
+          description: Description of the last detection failure, if any.
+        default:
+          type: string
+          description: Platform default path (Homebrew on macOS, /usr/bin on Linux, etc.).
+
+    EnabledFlag:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+
+    Ok:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+
+  responses:
+    Ok:
+      description: 'Success — `{ "ok": true }`.'
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Ok"
+    BadRequest:
+      description: Malformed request body or query parameters.
+      content:
+        text/plain:
+          schema:
+            type: string
+    InternalError:
+      description: Unhandled server-side error.
+      content:
+        text/plain:
+          schema:
+            type: string

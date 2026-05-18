@@ -215,6 +215,25 @@ dev: ## Start hot-reload Wails dev server (macOS only)
 	fi
 	wails dev
 
+# Spec at api/openapi.yaml (hand-written OpenAPI 3.1.0). Served by the
+# official Swagger UI container — mounted read-only so editing the file
+# auto-refreshes on browser reload. Stops on Ctrl-C and removes the
+# container. Honors the $(DOCKER) override (set DOCKER=podman for Podman).
+SWAGGER_PORT  ?= 8080
+SWAGGER_IMAGE ?= swaggerapi/swagger-ui:v5.17.14
+
+swagger: ## Serve api/openapi.yaml via Swagger UI on :$(SWAGGER_PORT) (Ctrl-C to stop)
+	@if [ ! -f api/openapi.yaml ]; then \
+	    echo "[ recall ] ✗  api/openapi.yaml not found"; exit 1; \
+	fi
+	@echo "[ recall ] Swagger UI on http://localhost:$(SWAGGER_PORT)/  (Ctrl-C to stop)"
+	@$(DOCKER) run --rm -it \
+	    --name recall-swagger \
+	    -p $(SWAGGER_PORT):8080 \
+	    -e SWAGGER_JSON=/spec/openapi.yaml \
+	    -v "$(CURDIR)/api/openapi.yaml:/spec/openapi.yaml:ro" \
+	    $(SWAGGER_IMAGE)
+
 clean: ## Remove dist/, build/bin/, frontend/dist, frontend/node_modules
 	rm -rf $(DIST_DIR) build/bin frontend/dist frontend/node_modules
 	@echo "[ recall ] dist/, build/bin/, frontend/dist, frontend/node_modules removed"
