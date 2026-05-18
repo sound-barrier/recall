@@ -1,22 +1,49 @@
-# README
+# Recall
 
-## About
+**Recall** is a desktop app for Overwatch 2 players who want to understand
+their performance trends over time. It watches a folder of OW2 post-match
+screenshots, OCRs them with Tesseract, merges per-match data into a local
+SQLite database, and optionally exposes the match history as Prometheus
+metrics so a bundled Grafana dashboard can chart win rates, SR trends, and
+per-hero stats.
 
-This is the official Wails Vue template.
+Stack: Go + Wails v2 desktop shell · Vue 3 + Vite frontend ·
+`modernc.org/sqlite` (pure-Go) · Tesseract CLI · Prometheus + Grafana.
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+## Development
 
-## Live Development
+```sh
+make dev        # hot-reload (macOS only — Wails uses the native WebKit shell)
+```
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+This starts a Vite dev server on `:5173` with HMR and a Wails IPC dev
+endpoint on `:34115`. Go is rebuilt automatically on save.
 
 ## Building
 
-To build a redistributable, production mode package, use `wails build`.
+```sh
+make build-linux        # Linux/amd64 binary  → dist/linux/Recall
+make build-windows      # Windows/amd64 binary → dist/windows/Recall.exe
+make build-mac          # macOS universal .app  → dist/mac/Recall.app  (macOS host required)
+make build-all-docker   # Linux + Windows only  (no Apple SDK needed)
+make build-all          # all three platforms   (macOS host required)
+make clean              # remove dist/
+```
+
+Linux and Windows builds run entirely inside Docker via `Dockerfile.build`
+(multi-stage: Node → frontend, Go + WebKitGTK → Linux binary,
+Go + mingw-w64 → Windows binary). Override the Docker binary with
+`DOCKER=podman make build-linux` if you use Podman.
+
+macOS `.app` bundles require Apple's SDK and can only be built on a Mac.
+`make build-mac` exits with an error on non-Darwin hosts.
+
+To build without `make`, the underlying commands are:
+```sh
+wails dev               # dev server
+wails build             # native release build (outputs to build/bin/)
+go build ./...          # compile-check the Go side only
+```
 
 ## Metrics & Grafana
 
