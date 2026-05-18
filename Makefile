@@ -132,6 +132,11 @@ build-server-container: ## Linux server container image with Tesseract → recal
 
 ##@ Quality
 
+cloc: ## Count lines of source code (excludes deps, build artifacts, generated files)
+	cloc . \
+	    --exclude-dir=node_modules,dist,build,wailsjs,data,recall,vendor \
+	    --not-match-f='(go\.sum|package-lock\.json)'
+
 lint: lint-go lint-js lint-css lint-html lint-docker ## Run all linters
 
 lint-go: ## Lint Go source (golangci-lint, both build tags)
