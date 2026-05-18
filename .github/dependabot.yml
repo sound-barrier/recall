@@ -5,25 +5,37 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    groups:
+      go-deps:
+        patterns: ["*"]
 
   # npm (Vue frontend)
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    groups:
+      npm-deps:
+        patterns: ["*"]
 
   # GitHub Actions workflow pins
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
 
   # Docker base images (Dockerfile.build is auto-detected as Dockerfile.*)
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    groups:
+      docker-images:
+        patterns: ["*"]
