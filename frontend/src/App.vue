@@ -12,6 +12,7 @@ import {
   GetTesseractStatus,
   PickTesseractBinary,
   ResetTesseractPath,
+  ClearDatabase,
   EventsOn,
   EventsOff,
 } from './api.js'
@@ -204,6 +205,35 @@ async function parse() {
   } finally {
     loading.value = false
   }
+}
+
+// Clear all parse records from the database. Two-step: first click
+// arms clearConfirm (shows the destructive confirm UI); second click
+// executes. cancelClear resets without deleting.
+const clearingDB  = ref(false)
+const clearConfirm = ref(false)
+
+async function clearDatabase() {
+  clearingDB.value = true
+  clearConfirm.value = false
+  try {
+    await ClearDatabase()
+    await load()
+    lastParsedAt.value = null
+    try { localStorage.removeItem('recall.lastParsedAt') } catch (_) {}
+  } catch (e) {
+    error.value = String(e)
+  } finally {
+    clearingDB.value = false
+  }
+}
+
+function armClear() {
+  clearConfirm.value = true
+}
+
+function cancelClear() {
+  clearConfirm.value = false
 }
 
 // Lightweight relative-time formatter for the "Last run" hint on
@@ -990,6 +1020,58 @@ onBeforeUnmount(() => {
                   <span class="big-switch-track"><span class="big-switch-knob" /></span>
                   <span class="big-switch-state">{{ prometheusEnabled ? 'Live' : 'Off' }}</span>
                 </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="sec-data" class="settings-section">
+          <div class="section-header">
+            <span class="section-num">05</span>
+            <span class="section-slash" aria-hidden="true">/</span>
+            <h3 class="section-title">
+              Data
+            </h3>
+          </div>
+          <div class="setting-rows">
+            <div class="setting-row" :class="{ 'danger-row': clearConfirm }">
+              <div class="setting-info">
+                <h4 class="setting-label">
+                  Clear Parse Database
+                </h4>
+                <p class="setting-desc">
+                  Permanently delete all {{ records.length + unknownRecords.length }} parsed match record{{ (records.length + unknownRecords.length) === 1 ? '' : 's' }} from the local database. Settings and screenshots are untouched — you can re-parse at any time to rebuild from scratch.
+                </p>
+                <p v-if="clearConfirm" class="setting-meta blocked">
+                  <span class="block-mark" aria-hidden="true">⚠</span>
+                  This cannot be undone.
+                </p>
+              </div>
+              <div class="setting-control">
+                <template v-if="!clearConfirm">
+                  <button
+                    class="btn danger-outline"
+                    :disabled="clearingDB || (records.length + unknownRecords.length) === 0"
+                    @click="armClear"
+                  >
+                    Clear Database…
+                  </button>
+                </template>
+                <template v-else>
+                  <div class="clear-confirm-group">
+                    <button
+                      class="btn danger"
+                      :disabled="clearingDB"
+                      @click="clearDatabase"
+                    >
+                      <span v-if="clearingDB">Deleting…</span>
+                      <span v-else>Delete {{ records.length + unknownRecords.length }} Record{{ (records.length + unknownRecords.length) === 1 ? '' : 's' }}</span>
+                    </button>
+                    <button class="btn ghost" :disabled="clearingDB" @click="cancelClear">
+                      Cancel
+                    </button>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -1977,6 +2059,57 @@ body {
   color: var(--loss);
   border-color: var(--loss-line);
 }
+
+.btn.danger-outline {
+  background: transparent;
+  color: var(--loss);
+  border-color: var(--loss-line);
+}
+
+.btn.danger-outline:hover:not(:disabled) {
+  background: var(--loss-soft);
+  border-color: var(--loss);
+  transform: translateY(-1px);
+}
+
+.btn.danger {
+  background: var(--loss);
+  color: #fff;
+  border-color: var(--loss);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 30%) inset, 0 4px 22px -8px var(--loss-line);
+}
+
+.btn.danger:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 30%) inset, 0 4px 30px -6px var(--loss-line);
+}
+
+.btn.danger:active:not(:disabled) { transform: translateY(0); }
+
+/* Confirm-state row gets a subtle red tint on the left edge */
+.setting-row.danger-row {
+  border-left: 3px solid var(--loss-line);
+  padding-left: calc(1.4rem - 3px);
+  background: var(--loss-soft);
+  border-radius: 2px;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+
+.clear-confirm-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+[data-theme="light"] .btn.danger { color: #fff; }
+[data-theme="light"] .btn.danger-outline { color: var(--loss); border-color: var(--loss-line); }
+[data-theme="light"] .btn.danger-outline:hover:not(:disabled) {
+  background: var(--loss-soft);
+  border-color: var(--loss);
+}
+[data-theme="light"] .setting-row.danger-row { background: var(--loss-soft); }
 
 /* ─── Switch toggle ──────────────────────────────────────── */
 

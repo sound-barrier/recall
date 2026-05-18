@@ -3,6 +3,8 @@
 import {app} from '../models';
 import {http} from '../models';
 
+export function ClearDatabase():Promise<void>;
+
 export function GetMatchResults():Promise<Array<app.MatchRecord>>;
 
 export function GetPrometheusEnabled():Promise<boolean>;
