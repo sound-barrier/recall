@@ -734,6 +734,13 @@ func (a *App) GetMatchResults() ([]MatchRecord, error) {
 	return readAllRecords()
 }
 
+// ClearDatabase deletes all rows from match_results, resetting the
+// parse history without touching settings or the SQLite schema.
+func (a *App) ClearDatabase() error {
+	_, err := db.DB.Exec(`DELETE FROM match_results`)
+	return err
+}
+
 func readAllRecords() ([]MatchRecord, error) {
 	rows, err := db.DB.Query(`SELECT
 		id, match_key, source_files,
