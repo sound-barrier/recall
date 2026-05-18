@@ -1811,9 +1811,23 @@ onBeforeUnmount(() => {
   --grid-line:    rgb(255 255 255 / 1.8%);
   --primary-text-on-accent: #1a0a00;
   --accent-text:  #F5A623;    /* same as --accent in dark mode (good contrast on dark bg) */
-  --display: 'Big Shoulders Display', 'Impact', 'Oswald', sans-serif;
+
+  /* In-game display font for hero/map names and the big card scores. Big
+     Noodle Too Oblique is intrinsically oblique — consumers pair this with
+     `font-style: italic` so the Barlow Condensed fallback also renders in
+     its italic cut. */
+  --display: 'Big Noodle Too Oblique', 'Barlow Condensed', 'Impact', 'Oswald', sans-serif;
   --body: 'Geist', -apple-system, blinkmacsystemfont, sans-serif;
   --mono: 'Geist Mono', ui-monospace, 'SF Mono', menlo, monospace;
+
+  /* Wordmark face — wide geometric sans inspired by the OW logo (Bank Sans
+     Caps Bold EF / Agency FB Extended Black / Zekton). Used only for the
+     RECALL masthead title. Russo One is the free visual fallback. */
+  --brand: 'OW Wordmark', 'Russo One', 'Industry Black', 'Impact', sans-serif;
+
+  /* Settings page typeface — OW2's Futura No. 2 Demi (with Jost as the free
+     Indestructible-Type clone fallback). Scoped to the Settings view only. */
+  --settings: 'Futura No. 2 Demi', 'Jost', 'Futura', 'Avenir Next', 'Avenir', sans-serif;
 }
 
 /* LIGHT MODE — keep brand-grey (#4A4A4A) and brand-orange (#F5A623)
@@ -1982,11 +1996,12 @@ body {
 }
 
 .brand {
-  font-family: var(--display);
-  font-weight: 900;
-  font-size: 2.85rem;
-  letter-spacing: -0.025em;
-  line-height: 0.85;
+  font-family: var(--brand);
+  font-style: normal;
+  font-weight: 800;
+  font-size: 2.55rem;
+  letter-spacing: 0.04em;
+  line-height: 0.9;
   color: #f5f3ee;
   text-transform: uppercase;
 }
@@ -2082,6 +2097,7 @@ body {
 
 .score-num {
   font-family: var(--display);
+  font-style: italic;
   font-weight: 800;
   font-size: 2.6rem;
   letter-spacing: -0.02em;
@@ -2355,6 +2371,7 @@ body {
 
 .empty-mark {
   font-family: var(--display);
+  font-style: italic;
   font-size: 5rem;
   color: var(--text-mute);
   margin-bottom: 1rem;
@@ -2362,6 +2379,7 @@ body {
 
 .empty-title {
   font-family: var(--display);
+  font-style: italic;
   font-size: 1.6rem;
   letter-spacing: -0.01em;
   text-transform: uppercase;
@@ -2499,6 +2517,7 @@ body {
 
 .mf-placeholder {
   font-family: var(--display);
+  font-style: italic;
   font-size: 1rem;
   letter-spacing: 0.06em;
   color: var(--text-faint);
@@ -3000,9 +3019,10 @@ body {
 
 .match-map {
   font-family: var(--display);
+  font-style: italic;
   font-weight: 800;
   font-size: 1.55rem;
-  letter-spacing: -0.015em;
+  letter-spacing: 0.005em;
   color: var(--text);
   text-transform: uppercase;
   padding: 0 0.15rem;
@@ -3110,7 +3130,15 @@ body {
   border-color: rgb(245 166 35 / 40%);
   font-weight: 600;
 }
-.hero-name-inline { font-weight: 600; letter-spacing: 0.04em; }
+
+.hero-name-inline {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
 
 .hero-pct-inline {
   font-family: var(--mono);
@@ -3328,11 +3356,12 @@ body {
 
 .hero-name {
   font-family: var(--display);
-  font-size: 1.1rem;
+  font-style: italic;
+  font-size: 1.15rem;
   font-weight: 800;
   color: var(--accent);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   padding: 0 0.15rem;
   cursor: pointer;
   transition: color 160ms ease, text-shadow 200ms ease;
@@ -3544,6 +3573,47 @@ body {
 
 .settings, .matches-view, .unknown-view {
   animation: view-fade-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Settings tab adopts the OW2 Futura No. 2 Demi typeface (via the --settings
+   fallback chain). We re-point --display and --body at --settings inside the
+   scope so the page's existing rules (settings-heading, section-title, btn,
+   labels, etc.) all pick it up. .unknown-view shares the .settings class but
+   keeps its match listings on the display font — hence the :not. */
+.settings:not(.unknown-view) {
+  --display: var(--settings);
+  --body: var(--settings);
+
+  font-family: var(--settings);
+}
+
+.settings:not(.unknown-view) input,
+.settings:not(.unknown-view) textarea,
+.settings:not(.unknown-view) select,
+.settings:not(.unknown-view) button {
+  font-family: var(--settings);
+}
+
+.settings:not(.unknown-view) .settings-heading {
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+}
+
+.settings:not(.unknown-view) .settings-heading em {
+  font-style: normal;
+  font-weight: 600;
+}
+
+.settings:not(.unknown-view) .section-title {
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+}
+
+.settings:not(.unknown-view) .section-num {
+  font-style: normal;
+  font-weight: 600;
 }
 
 .settings-intro {
