@@ -1,0 +1,62 @@
+# Normalize all text files to LF on commit.
+# Mac/Linux developers always check out LF; eol=lf keeps shell scripts and
+# Makefiles executable and avoids CRLF surprises if anyone uses Windows.
+* text=auto eol=lf
+
+# ── Go ───────────────────────────────────────────────────────────────────────
+*.go    text eol=lf
+go.mod  text eol=lf
+go.sum  text eol=lf linguist-generated=true
+
+# ── Web frontend ─────────────────────────────────────────────────────────────
+*.js    text eol=lf
+*.ts    text eol=lf
+*.vue   text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+*.json  text eol=lf
+
+# ── Config / infra ───────────────────────────────────────────────────────────
+*.yml       text eol=lf
+*.yaml      text eol=lf
+Makefile    text eol=lf
+Brewfile    text eol=lf
+Dockerfile* text eol=lf
+*.sh        text eol=lf
+
+# ── Wails / Windows build templates ─────────────────────────────────────────
+*.plist     text eol=lf
+*.xml       text eol=lf
+*.manifest  text eol=lf
+*.nsi       text eol=lf
+*.nsh       text eol=lf
+
+# ── Documentation ────────────────────────────────────────────────────────────
+*.md    text eol=lf
+*.txt   text eol=lf
+
+# ── Binary — never diff or mangle line endings ───────────────────────────────
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.icns  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+*.db    binary
+
+# ── GitHub Linguist ──────────────────────────────────────────────────────────
+# Wails regenerates these JS/TS bindings from Go on every `wails dev` run.
+frontend/wailsjs/**          linguist-generated=true
+# npm lock file and font assets are not authored code.
+package-lock.json            linguist-generated=true
+frontend/src/assets/fonts/*  linguist-vendored=true
+
+# ── git archive (source tarballs via `git archive`) ──────────────────────────
+.github/        export-ignore
+.gitignore      export-ignore
+.gitattributes  export-ignore
