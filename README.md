@@ -93,7 +93,7 @@ preserved. To restore the gcloud helpers later, either
 `cp ~/.docker/config.json.bak ~/.docker/config.json` or re-run
 `gcloud auth configure-docker`.
 
-The "OWMetrics" dashboard is auto-provisioned: eliminations per match, SR
+The "Recall" dashboard is auto-provisioned: eliminations per match, SR
 over time, win rate by hero, and damage-vs-healing scatter.
 
 Override the metrics endpoint address with `OWMETRICS_METRICS_ADDR` (e.g.
@@ -104,8 +104,8 @@ timestamps because the stack runs with `--storage.tsdb.out-of-order-time-window=
 
 | Metric | Labels | Notes |
 |---|---|---|
-| `owmetrics_match_eliminations` (and `_assists`, `_deaths`, `_damage`, `_healing`, `_mitigation`) | `match_key, map, type, mode, result` | Core scoreboard stats. |
-| `owmetrics_match_result` | …, `result` | Constant `1`; `count()` in Grafana gives match counts grouped by outcome. |
-| `owmetrics_match_rank_level` | … | Competitive rank sub-division (1–5). |
-| `owmetrics_match_sr` / `owmetrics_match_sr_change` | …, `hero`, `role` | Per-hero SR + delta from each match. |
-| `owmetrics_hero_stat` | …, `hero`, `role`, `stat` | Open-ended per-hero stats (`weapon_accuracy`, `players_saved`, …). |
+| `recall_match_eliminations` (and `_assists`, `_deaths`, `_damage`, `_healing`, `_mitigation`) | `match_key, map, type, mode, result` | Core scoreboard stats. |
+| `recall_match_result` | …, `result` | Constant `1`; `count()` in Grafana gives match counts grouped by outcome. |
+| `recall_match_rank_level` | … | Competitive rank sub-division (1–5). |
+| `recall_match_sr` / `recall_match_sr_change` | …, `hero`, `role` | Per-hero SR + delta from each match. |
+| `recall_hero_stat` | …, `hero`, `role`, `stat` | Open-ended per-hero stats (`weapon_accuracy`, `players_saved`, …). |

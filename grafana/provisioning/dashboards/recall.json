@@ -12,7 +12,7 @@
       "title": "Total Matches",
       "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "count(count_over_time(owmetrics_match_eliminations[365d]))", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "count(count_over_time(recall_match_eliminations[365d]))", "refId": "A"}],
       "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "colorMode": "value", "graphMode": "none", "textMode": "auto"},
       "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "blue"}, "mappings": [{"options": {"match": "null", "result": {"text": "0"}}, "type": "special"}]}}
     },
@@ -22,7 +22,7 @@
       "title": "Wins",
       "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(count_over_time(owmetrics_match_result{result=\"victory\"}[365d]))", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(count_over_time(recall_match_result{result=\"victory\"}[365d]))", "refId": "A"}],
       "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "colorMode": "value", "graphMode": "none", "textMode": "auto"},
       "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "green"}, "mappings": [{"options": {"match": "null", "result": {"text": "0"}}, "type": "special"}]}}
     },
@@ -32,7 +32,7 @@
       "title": "Losses",
       "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(count_over_time(owmetrics_match_result{result=\"defeat\"}[365d]))", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(count_over_time(recall_match_result{result=\"defeat\"}[365d]))", "refId": "A"}],
       "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "colorMode": "value", "graphMode": "none", "textMode": "auto"},
       "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "red"}, "mappings": [{"options": {"match": "null", "result": {"text": "0"}}, "type": "special"}]}}
     },
@@ -42,7 +42,7 @@
       "title": "Win Rate",
       "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(count_over_time(owmetrics_match_result{result=\"victory\"}[365d])) / sum(count_over_time(owmetrics_match_result[365d]))", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum(count_over_time(recall_match_result{result=\"victory\"}[365d])) / sum(count_over_time(recall_match_result[365d]))", "refId": "A"}],
       "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "colorMode": "value", "graphMode": "area", "textMode": "auto"},
       "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "unit": "percentunit", "min": 0, "max": 1, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.4}, {"color": "green", "value": 0.55}]}}}
     },
@@ -53,7 +53,7 @@
       "title": "SR over time",
       "gridPos": {"h": 8, "w": 24, "x": 0, "y": 4},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "owmetrics_match_sr", "legendFormat": "{{hero}}", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "recall_match_sr", "legendFormat": "{{hero}}", "refId": "A"}],
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 8, "pointSize": 6, "showPoints": "always", "spanNulls": true}}},
       "options": {"legend": {"calcs": ["last", "max", "min"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}}
     },
@@ -66,10 +66,10 @@
       "gridPos": {"h": 10, "w": 12, "x": 0, "y": 12},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (hero) (count_over_time(owmetrics_match_result{hero!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "Matches"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (hero) (count_over_time(owmetrics_match_result{hero!=\"\",result=\"victory\"}[365d]))) or (sum by (hero) (count_over_time(owmetrics_match_result{hero!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Wins"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (hero) (count_over_time(owmetrics_match_result{hero!=\"\",result=\"defeat\"}[365d]))) or (sum by (hero) (count_over_time(owmetrics_match_result{hero!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Losses"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "((sum by (hero) (count_over_time(owmetrics_match_result{hero!=\"\",result=\"victory\"}[365d]))) or (sum by (hero) (count_over_time(owmetrics_match_result{hero!=\"\"}[365d])) * 0)) / sum by (hero) (count_over_time(owmetrics_match_result{hero!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "WinRate"}
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (hero) (count_over_time(recall_match_result{hero!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "Matches"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (hero) (count_over_time(recall_match_result{hero!=\"\",result=\"victory\"}[365d]))) or (sum by (hero) (count_over_time(recall_match_result{hero!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Wins"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (hero) (count_over_time(recall_match_result{hero!=\"\",result=\"defeat\"}[365d]))) or (sum by (hero) (count_over_time(recall_match_result{hero!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Losses"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "((sum by (hero) (count_over_time(recall_match_result{hero!=\"\",result=\"victory\"}[365d]))) or (sum by (hero) (count_over_time(recall_match_result{hero!=\"\"}[365d])) * 0)) / sum by (hero) (count_over_time(recall_match_result{hero!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "WinRate"}
       ],
       "transformations": [
         {"id": "merge", "options": {}},
@@ -103,10 +103,10 @@
       "gridPos": {"h": 10, "w": 12, "x": 12, "y": 12},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (map) (count_over_time(owmetrics_match_result{map!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "Matches"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (map) (count_over_time(owmetrics_match_result{map!=\"\",result=\"victory\"}[365d]))) or (sum by (map) (count_over_time(owmetrics_match_result{map!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Wins"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (map) (count_over_time(owmetrics_match_result{map!=\"\",result=\"defeat\"}[365d]))) or (sum by (map) (count_over_time(owmetrics_match_result{map!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Losses"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "((sum by (map) (count_over_time(owmetrics_match_result{map!=\"\",result=\"victory\"}[365d]))) or (sum by (map) (count_over_time(owmetrics_match_result{map!=\"\"}[365d])) * 0)) / sum by (map) (count_over_time(owmetrics_match_result{map!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "WinRate"}
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (map) (count_over_time(recall_match_result{map!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "Matches"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (map) (count_over_time(recall_match_result{map!=\"\",result=\"victory\"}[365d]))) or (sum by (map) (count_over_time(recall_match_result{map!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Wins"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (map) (count_over_time(recall_match_result{map!=\"\",result=\"defeat\"}[365d]))) or (sum by (map) (count_over_time(recall_match_result{map!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Losses"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "((sum by (map) (count_over_time(recall_match_result{map!=\"\",result=\"victory\"}[365d]))) or (sum by (map) (count_over_time(recall_match_result{map!=\"\"}[365d])) * 0)) / sum by (map) (count_over_time(recall_match_result{map!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "WinRate"}
       ],
       "transformations": [
         {"id": "merge", "options": {}},
@@ -141,10 +141,10 @@
       "gridPos": {"h": 10, "w": 12, "x": 0, "y": 22},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (type) (count_over_time(owmetrics_match_result{type!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "Matches"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (type) (count_over_time(owmetrics_match_result{type!=\"\",result=\"victory\"}[365d]))) or (sum by (type) (count_over_time(owmetrics_match_result{type!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Wins"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (type) (count_over_time(owmetrics_match_result{type!=\"\",result=\"defeat\"}[365d]))) or (sum by (type) (count_over_time(owmetrics_match_result{type!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Losses"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "((sum by (type) (count_over_time(owmetrics_match_result{type!=\"\",result=\"victory\"}[365d]))) or (sum by (type) (count_over_time(owmetrics_match_result{type!=\"\"}[365d])) * 0)) / sum by (type) (count_over_time(owmetrics_match_result{type!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "WinRate"}
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (type) (count_over_time(recall_match_result{type!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "Matches"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (type) (count_over_time(recall_match_result{type!=\"\",result=\"victory\"}[365d]))) or (sum by (type) (count_over_time(recall_match_result{type!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Wins"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (type) (count_over_time(recall_match_result{type!=\"\",result=\"defeat\"}[365d]))) or (sum by (type) (count_over_time(recall_match_result{type!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Losses"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "((sum by (type) (count_over_time(recall_match_result{type!=\"\",result=\"victory\"}[365d]))) or (sum by (type) (count_over_time(recall_match_result{type!=\"\"}[365d])) * 0)) / sum by (type) (count_over_time(recall_match_result{type!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "WinRate"}
       ],
       "transformations": [
         {"id": "merge", "options": {}},
@@ -178,9 +178,9 @@
       "gridPos": {"h": 10, "w": 12, "x": 12, "y": 22},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (hero, map) (count_over_time(owmetrics_match_result{hero!=\"\",map!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "Matches"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (hero, map) (count_over_time(owmetrics_match_result{hero!=\"\",map!=\"\",result=\"victory\"}[365d]))) or (sum by (hero, map) (count_over_time(owmetrics_match_result{hero!=\"\",map!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Wins"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "((sum by (hero, map) (count_over_time(owmetrics_match_result{hero!=\"\",map!=\"\",result=\"victory\"}[365d]))) or (sum by (hero, map) (count_over_time(owmetrics_match_result{hero!=\"\",map!=\"\"}[365d])) * 0)) / sum by (hero, map) (count_over_time(owmetrics_match_result{hero!=\"\",map!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "WinRate"}
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (hero, map) (count_over_time(recall_match_result{hero!=\"\",map!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "Matches"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (hero, map) (count_over_time(recall_match_result{hero!=\"\",map!=\"\",result=\"victory\"}[365d]))) or (sum by (hero, map) (count_over_time(recall_match_result{hero!=\"\",map!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Wins"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "((sum by (hero, map) (count_over_time(recall_match_result{hero!=\"\",map!=\"\",result=\"victory\"}[365d]))) or (sum by (hero, map) (count_over_time(recall_match_result{hero!=\"\",map!=\"\"}[365d])) * 0)) / sum by (hero, map) (count_over_time(recall_match_result{hero!=\"\",map!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "WinRate"}
       ],
       "transformations": [
         {"id": "merge", "options": {}},
@@ -212,7 +212,7 @@
       "title": "Eliminations per match (by hero)",
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (hero) (owmetrics_match_eliminations)", "legendFormat": "{{hero}}", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (hero) (recall_match_eliminations)", "legendFormat": "{{hero}}", "refId": "A"}],
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 8, "pointSize": 6, "showPoints": "always", "spanNulls": true}}},
       "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}}
     },
@@ -222,7 +222,7 @@
       "title": "Deaths per match (by hero)",
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (hero) (owmetrics_match_deaths)", "legendFormat": "{{hero}}", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (hero) (recall_match_deaths)", "legendFormat": "{{hero}}", "refId": "A"}],
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 8, "pointSize": 6, "showPoints": "always", "spanNulls": true}}},
       "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}}
     },
@@ -233,7 +233,7 @@
       "title": "Damage per match (Victory vs Defeat)",
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 40},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (result) (owmetrics_match_damage{result!=\"\"})", "legendFormat": "{{result}}", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (result) (recall_match_damage{result!=\"\"})", "legendFormat": "{{result}}", "refId": "A"}],
       "fieldConfig": {
         "defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 10, "pointSize": 7, "showPoints": "always", "spanNulls": true}},
         "overrides": [
@@ -249,7 +249,7 @@
       "title": "Healing per match (Victory vs Defeat)",
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 40},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (result) (owmetrics_match_healing{result!=\"\"})", "legendFormat": "{{result}}", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (result) (recall_match_healing{result!=\"\"})", "legendFormat": "{{result}}", "refId": "A"}],
       "fieldConfig": {
         "defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 10, "pointSize": 7, "showPoints": "always", "spanNulls": true}},
         "overrides": [
@@ -266,7 +266,7 @@
       "title": "Mitigation per match (Victory vs Defeat)",
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 48},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (result) (owmetrics_match_mitigation{result!=\"\"})", "legendFormat": "{{result}}", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (result) (recall_match_mitigation{result!=\"\"})", "legendFormat": "{{result}}", "refId": "A"}],
       "fieldConfig": {
         "defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 10, "pointSize": 7, "showPoints": "always", "spanNulls": true}},
         "overrides": [
@@ -283,7 +283,7 @@
       "description": "(eliminations + assists) / max(deaths, 1)",
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 48},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (hero) (owmetrics_match_eliminations) + sum by (hero) (owmetrics_match_assists)) / clamp_min(sum by (hero) (owmetrics_match_deaths), 1)", "legendFormat": "{{hero}}", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (hero) (recall_match_eliminations) + sum by (hero) (recall_match_assists)) / clamp_min(sum by (hero) (recall_match_deaths), 1)", "legendFormat": "{{hero}}", "refId": "A"}],
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 8, "pointSize": 6, "showPoints": "always", "spanNulls": true}, "decimals": 2}},
       "options": {"legend": {"calcs": ["mean"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}}
     },
@@ -294,7 +294,7 @@
       "title": "Hero playtime % per match",
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 56},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "owmetrics_match_percent_played", "legendFormat": "{{hero}}", "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "recall_match_percent_played", "legendFormat": "{{hero}}", "refId": "A"}],
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 10, "pointSize": 6, "showPoints": "always", "spanNulls": true}, "unit": "percent", "min": 0, "max": 100}},
       "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}}
     },
@@ -305,7 +305,7 @@
       "description": "Map exposure — see which maps you've played most.",
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 56},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (map) (count_over_time(owmetrics_match_eliminations{map!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "A"}],
+      "targets": [{"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (map) (count_over_time(recall_match_eliminations{map!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "A"}],
       "transformations": [
         {"id": "organize", "options": {
           "excludeByName": {"Time": true, "__name__": true},
@@ -325,13 +325,13 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["overwatch", "owmetrics"],
+  "tags": ["overwatch", "recall"],
   "templating": {"list": []},
   "time": {"from": "now-30d", "to": "now"},
   "timepicker": {},
   "timezone": "",
-  "title": "OWMetrics",
-  "uid": "owmetrics-overview",
+  "title": "Recall",
+  "uid": "recall-overview",
   "version": 1,
   "weekStart": ""
 }

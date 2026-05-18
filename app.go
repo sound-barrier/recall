@@ -19,9 +19,9 @@ import (
 	"github.com/fsnotify/fsnotify"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"OWMetrics/backend/db"
-	"OWMetrics/backend/metrics"
-	"OWMetrics/backend/parser"
+	"recall/backend/db"
+	"recall/backend/metrics"
+	"recall/backend/parser"
 )
 
 type MatchRecord struct {
@@ -108,7 +108,7 @@ func (a *App) startup(ctx context.Context) {
 	if err := os.MkdirAll(dbDir, 0700); err != nil {
 		log.Fatal("could not create db dir:", err)
 	}
-	if err := db.Init(filepath.Join(dbDir, "owmetrics.db")); err != nil {
+	if err := db.Init(filepath.Join(dbDir, "recall.db")); err != nil {
 		log.Fatal("could not init db:", err)
 	}
 

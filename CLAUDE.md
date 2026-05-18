@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-OWMetrics is a Wails v2 desktop app that watches a folder of Overwatch 2
+Recall is a Wails v2 desktop app that watches a folder of Overwatch 2
 screenshots, OCRs them with Tesseract, merges per-match data into SQLite, and
 optionally exposes the match history as Prometheus metrics so a bundled
 Grafana dashboard can chart trends. Stack: Go backend + Vue 3 frontend
@@ -122,8 +122,8 @@ CGo binding.
 Single `match_results` table, explicit columns for every scalar field on
 `MatchResult`, JSON blobs for `heroes_played`, `performance`, `modifiers`,
 `sr` (variable-length nested data). Schema is `CREATE TABLE IF NOT
-EXISTS` — **column changes require `rm data/db/owmetrics.db` and re-parse,
-no migrations**. The DB lives at `data/db/owmetrics.db` relative to the
+EXISTS` — **column changes require `rm data/db/recall.db` and re-parse,
+no migrations**. The DB lives at `data/db/recall.db` relative to the
 process's cwd.
 
 Match identity is `match_key TEXT NOT NULL UNIQUE` derived from the
@@ -204,7 +204,7 @@ Single-file Vue 3 SFC, composition API. No router, no Vuex/Pinia — a few
 `docker-compose.yml` (works with `podman-compose` too — the default we
 test against) brings up Prometheus + Grafana with auto-provisioning.
 Prometheus scrapes `host.docker.internal:9091/metrics`. Grafana
-auto-loads the dashboard at `grafana/provisioning/dashboards/owmetrics.json`,
+auto-loads the dashboard at `grafana/provisioning/dashboards/recall.json`,
 which is purposely designed for sparse historical data (lines with
 `spanNulls: true`, range queries that work across stale samples, tables
 that surface "worst maps/heroes by win rate" for the educational use

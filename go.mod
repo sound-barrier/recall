@@ -1,4 +1,4 @@
-module OWMetrics
+module recall
 
 go 1.25.0
 

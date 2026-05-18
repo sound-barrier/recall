@@ -1,4 +1,4 @@
-// Package metrics exposes OWMetrics match data as Prometheus metrics.
+// Package metrics exposes Recall match data as Prometheus metrics.
 //
 // The collector emits one labeled sample per match per metric on every scrape,
 // each sample timestamped with the match's actual end time (date + finished_at).
@@ -18,7 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"OWMetrics/backend/parser"
+	"recall/backend/parser"
 )
 
 // ScrapeRow is the minimal shape the collector needs from each DB row. App
@@ -65,7 +65,7 @@ func New(read Reader) *Collector {
 	desc := func(name, help string, extra ...string) *prometheus.Desc {
 		labels := append([]string{}, matchLabels...)
 		labels = append(labels, extra...)
-		return prometheus.NewDesc("owmetrics_"+name, help, labels, nil)
+		return prometheus.NewDesc("recall_"+name, help, labels, nil)
 	}
 	return &Collector{
 		read:          read,
@@ -242,7 +242,7 @@ func NewServer(addr string, read Reader) *Server {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("OWMetrics exporter — see /metrics\n"))
+		_, _ = w.Write([]byte("Recall exporter — see /metrics\n"))
 	})
 	return &Server{
 		addr: addr,

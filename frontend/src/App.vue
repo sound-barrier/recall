@@ -426,8 +426,8 @@ onBeforeUnmount(() => {
       <header class="masthead">
         <div class="masthead-left">
           <div class="brandmark">
-            <span class="brand-tick">◢</span>
-            <h1 class="brand">OW<span class="brand-accent">METRICS</span></h1>
+            <span class="brand-tick">↺</span>
+            <h1 class="brand">RE<span class="brand-accent">CALL</span></h1>
           </div>
           <p class="tagline">Personal Telemetry · Match Almanac</p>
         </div>
