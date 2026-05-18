@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# CI only reads code — no releases or package pushes.
+permissions:
+  contents: read
+
+jobs:
+  # ── Job 1: All linters ──────────────────────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Go — golangci-lint-action handles Go install + binary caching.
+      # Run twice: once for the default (Wails) build tags, once for serveronly.
+      - name: Lint Go (default build tags)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      - name: Lint Go (serveronly build tag)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --build-tags serveronly
+
+      # Frontend — ESLint, Stylelint, HTMLHint
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Lint JavaScript/Vue (ESLint)
+        run: cd frontend && npm run lint:js
+
+      - name: Lint CSS (Stylelint)
+        run: cd frontend && npm run lint:css
+
+      - name: Lint HTML (HTMLHint)
+        run: cd frontend && npm run lint:html
+
+      # Dockerfile
+      - name: Lint Dockerfile (Hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile.build
+
+  # ── Job 2: Docker-based builds (Linux + Windows Wails, all server targets) ──
+  # Verification only — no artifact upload. Runs on Ubuntu because Docker is
+  # available and all these targets either use `--output type=local` or buildx.
+  build-docker:
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILDKIT: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      # BuildKit is required for `--output type=local` and `buildx build`.
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build Linux/amd64 Wails app
+        run: make build-linux
+
+      - name: Build Windows/amd64 Wails app
+        run: make build-windows
+
+      - name: Build all server binaries (Linux, Windows, macOS arm64+amd64)
+        run: make build-server-all
+
+      - name: Build Linux server container image (with Tesseract)
+        run: make build-server-container
+
+  # ── Job 3: macOS Wails build (requires Apple SDK / Xcode CLT) ────────────
+  # Verification only — no zip or artifact upload.
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+      - name: Build macOS universal Wails app
+        run: make build-mac

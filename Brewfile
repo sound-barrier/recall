@@ -20,6 +20,10 @@ brew "tesseract"
 brew "podman"
 brew "podman-compose"
 
+# Linting tools (used by `make lint`).
+brew "golangci-lint"
+brew "hadolint"
+
 # --- Not in brew, but required:
 #
 #   Wails CLI itself is a Go binary. Install once after `brew bundle`:

@@ -18,7 +18,16 @@
 #   make build-server-windows — Windows/amd64 server → dist/server-windows/Recall-server.exe
 #   make build-server-mac     — macOS server binaries → dist/server-mac/
 #                               arm64 + amd64 via Docker (no Apple SDK needed!)
-#   make build-server-all     — all three server builds via Docker
+#   make build-server-all          — all three server builds via Docker
+#   make build-server-container    — Linux server container image (Tesseract included) → recall-server:local
+#
+# ─── Lint ─────────────────────────────────────────────────────────────────
+#   make lint             — run all linters
+#   make lint-go          — golangci-lint (both build tags)
+#   make lint-js          — ESLint (JS + Vue)
+#   make lint-css         — Stylelint
+#   make lint-html        — HTMLHint
+#   make lint-docker      — Hadolint (Dockerfile.build)
 #
 # ─── Other ────────────────────────────────────────────────────────────────
 #   make dev                  — hot-reload Wails dev server (macOS only)
@@ -26,14 +35,19 @@
 
 .PHONY: build-linux build-windows build-mac build-all build-all-docker \
         build-server-linux build-server-windows build-server-mac build-server-all \
+        build-server-container \
+        lint lint-go lint-js lint-css lint-html lint-docker \
         dev clean
 
 DOCKER        ?= docker
 DOCKERFILE    := Dockerfile.build
 DIST_DIR      := dist
-DIST_LINUX    := $(DIST_DIR)/linux
-DIST_WINDOWS  := $(DIST_DIR)/windows
-DIST_MAC      := $(DIST_DIR)/mac
+DIST_LINUX          := $(DIST_DIR)/linux
+DIST_WINDOWS        := $(DIST_DIR)/windows
+DIST_MAC            := $(DIST_DIR)/mac
+DIST_SERVER_LINUX   := $(DIST_DIR)/server-linux
+DIST_SERVER_WINDOWS := $(DIST_DIR)/server-windows
+DIST_SERVER_MAC     := $(DIST_DIR)/server-mac
 
 # wails build flags for native macOS builds
 WAILS_FLAGS   := -trimpath
@@ -97,11 +111,11 @@ build-all: build-linux build-windows build-mac
 # ─── Linux server binary ────────────────────────────────────
 build-server-linux:
 	@echo "[ recall ] Building linux/amd64 server binary via Docker…"
-	@mkdir -p $(DIST_DIR)/server-linux
+	@mkdir -p $(DIST_SERVER_LINUX)
 	$(DOCKER) build \
 	    --file $(DOCKERFILE) \
 	    --target server-linux-export \
-	    --output type=local,dest=$(DIST_DIR)/server-linux \
+	    --output type=local,dest=$(DIST_SERVER_LINUX) \
 	    .
 	@echo "[ recall ] ✓  dist/server-linux/Recall-server"
 
@@ -109,11 +123,11 @@ build-server-linux:
 # ─── Windows server binary ──────────────────────────────────
 build-server-windows:
 	@echo "[ recall ] Building windows/amd64 server binary via Docker…"
-	@mkdir -p $(DIST_DIR)/server-windows
+	@mkdir -p $(DIST_SERVER_WINDOWS)
 	$(DOCKER) build \
 	    --file $(DOCKERFILE) \
 	    --target server-windows-export \
-	    --output type=local,dest=$(DIST_DIR)/server-windows \
+	    --output type=local,dest=$(DIST_SERVER_WINDOWS) \
 	    .
 	@echo "[ recall ] ✓  dist/server-windows/Recall-server.exe"
 
@@ -123,17 +137,65 @@ build-server-windows:
 # them on Linux — no Apple SDK required.
 build-server-mac:
 	@echo "[ recall ] Building macOS server binaries (arm64 + amd64) via Docker…"
-	@mkdir -p $(DIST_DIR)/server-mac
+	@mkdir -p $(DIST_SERVER_MAC)
 	$(DOCKER) build \
 	    --file $(DOCKERFILE) \
 	    --target server-mac-export \
-	    --output type=local,dest=$(DIST_DIR)/server-mac \
+	    --output type=local,dest=$(DIST_SERVER_MAC) \
 	    .
 	@echo "[ recall ] ✓  dist/server-mac/  (Recall-server-arm64, Recall-server-amd64)"
 
 
 # ─── All server builds ──────────────────────────────────────
 build-server-all: build-server-linux build-server-windows build-server-mac
+
+
+# ─── Linux server container image (includes Tesseract runtime) ──────────────
+build-server-container:
+	@echo "[ recall ] Building linux/amd64 server container image…"
+	$(DOCKER) buildx build \
+	    --platform linux/amd64 \
+	    --file $(DOCKERFILE) \
+	    --target server-container \
+	    --tag recall-server:local \
+	    --load \
+	    .
+	@echo "[ recall ] ✓  recall-server:local"
+
+
+# ════════════════════════════════════════════════════════════════
+# LINT
+# Requires: golangci-lint + hadolint on PATH (brew bundle)
+#           npm install run in frontend/ (for ESLint, Stylelint, HTMLHint)
+# ════════════════════════════════════════════════════════════════
+
+lint: lint-go lint-js lint-css lint-html lint-docker
+
+lint-go:
+	@echo "[ recall ] Linting Go (golangci-lint)…"
+	golangci-lint run ./...
+	golangci-lint run --build-tags serveronly ./...
+	@echo "[ recall ] ✓  Go lint clean"
+
+lint-js:
+	@echo "[ recall ] Linting JavaScript/Vue (eslint)…"
+	cd frontend && npm run lint:js
+	@echo "[ recall ] ✓  JS/Vue lint clean"
+
+lint-css:
+	@echo "[ recall ] Linting CSS (stylelint)…"
+	cd frontend && npm run lint:css
+	@echo "[ recall ] ✓  CSS lint clean"
+
+lint-html:
+	@echo "[ recall ] Linting HTML (htmlhint)…"
+	cd frontend && npm run lint:html
+	@echo "[ recall ] ✓  HTML lint clean"
+
+lint-docker:
+	@echo "[ recall ] Linting Dockerfile (hadolint)…"
+	hadolint $(DOCKERFILE)
+	@echo "[ recall ] ✓  Dockerfile lint clean"
 
 
 # ════════════════════════════════════════════════════════════════

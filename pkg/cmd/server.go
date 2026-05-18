@@ -194,8 +194,13 @@ func RunServer(a *app.App, assets embed.FS) {
 	}
 	mux.Handle("/", http.FileServer(http.FS(sub)))
 
+	addr := os.Getenv("RECALL_SERVER_ADDR")
+	if addr == "" {
+		addr = "127.0.0.1:7000"
+	}
+
 	srv := &http.Server{
-		Addr:    "127.0.0.1:7000",
+		Addr:    addr,
 		Handler: mux,
 	}
 
@@ -210,7 +215,7 @@ func RunServer(a *app.App, assets embed.FS) {
 		_ = srv.Shutdown(ctx)
 	}()
 
-	log.Printf("Recall server listening on http://127.0.0.1:7000")
+	log.Printf("Recall server listening on http://%s", addr)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("server: %v", err)
 	}
