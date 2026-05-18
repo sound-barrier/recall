@@ -10,6 +10,15 @@ per-hero stats.
 Stack: Go + Wails v2 desktop shell · Vue 3 + Vite frontend ·
 `modernc.org/sqlite` (pure-Go) · Tesseract CLI · Prometheus + Grafana.
 
+## Prerequisites
+
+- **Tesseract OCR** — required for screenshot parsing. Install via Homebrew (`brew install tesseract`) on macOS, `apt install tesseract-ocr` on Linux, or the [Windows installer](https://github.com/UB-Mannheim/tesseract/wiki). On first launch Recall auto-detects the standard install path; use **Settings → Engine** to point it elsewhere if needed.
+
+Settings and the match database are stored in the platform user-config directory:
+- macOS: `~/Library/Application Support/Recall/`
+- Linux: `~/.config/recall/`
+- Windows: `%AppData%\Recall\`
+
 ## Development
 
 ```sh
@@ -67,12 +76,15 @@ browser to get the full Recall match dashboard. REST API available at `/api/*`.
 ### Other build commands
 
 ```sh
-make dev                # hot-reload Wails dev server (macOS only)
 make clean              # remove dist/
 DOCKER=podman make ...  # use Podman instead of Docker
 go build ./...          # compile-check Wails variant
 go build -tags serveronly ./...  # compile-check server variant
 ```
+
+> **One-time setup after clone:** delete `frontend/wailsjs/go/main/` (stale — the package
+> moved from `main` to `app`) and run `wails dev` once to regenerate the bindings at
+> `frontend/wailsjs/go/app/App.js`. Also re-run after adding new exported methods to `App`.
 
 ## Metrics & Grafana
 
@@ -160,7 +172,7 @@ timestamps because the stack runs with `--storage.tsdb.out-of-order-time-window=
 
 | Metric | Labels | Notes |
 |---|---|---|
-| `recall_match_eliminations` (and `_assists`, `_deaths`, `_damage`, `_healing`, `_mitigation`) | `match_key, map, type, mode, result` | Core scoreboard stats. |
+| `recall_match_eliminations` (and `_assists`, `_deaths`, `_damage`, `_healing`, `_mitigation`) | `match_key, map, type, mode, result, hero, role` | Core scoreboard stats. |
 | `recall_match_result` | …, `result` | Constant `1`; `count()` in Grafana gives match counts grouped by outcome. |
 | `recall_match_rank_level` | … | Competitive rank sub-division (1–5). |
 | `recall_match_sr` / `recall_match_sr_change` | …, `hero`, `role` | Per-hero SR + delta from each match. |
