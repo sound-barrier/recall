@@ -28,6 +28,9 @@ brew "jq"
 brew "golangci-lint"
 brew "hadolint"
 
+# Line-count tool (used by `make cloc`).
+brew "cloc"
+
 # Security scanning (used by `make trivy`).
 brew "trivy"
 
