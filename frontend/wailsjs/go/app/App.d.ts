@@ -7,6 +7,8 @@ export function ClearDatabase():Promise<void>;
 
 export function GetMatchResults():Promise<Array<app.MatchRecord>>;
 
+export function GetNewScreenshotCount():Promise<number>;
+
 export function GetPrometheusEnabled():Promise<boolean>;
 
 export function GetScreenshotsDir():Promise<string>;

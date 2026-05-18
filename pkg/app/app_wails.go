@@ -3,10 +3,23 @@
 package app
 
 import (
+	"encoding/json"
 	"path/filepath"
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// emitParseProgress sends per-file progress data to the Wails event bus
+// and (when running in --server mode with the Wails binary) to the SSE hub.
+func (a *App) emitParseProgress(p ParseProgressEvent) {
+	data, _ := json.Marshal(p)
+	if a.ctx != nil {
+		wruntime.EventsEmit(a.ctx, "parse-progress", p)
+	}
+	if a.SSEHub != nil {
+		a.SSEHub.BroadcastData("parse-progress", string(data))
+	}
+}
 
 // emitParseComplete notifies the Wails frontend that a parse run finished.
 // Called from scheduleParseDebounced; gated by the !serveronly build tag so

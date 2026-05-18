@@ -2,7 +2,19 @@
 
 package app
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
+
+// emitParseProgress broadcasts per-file progress to SSE subscribers.
+func (a *App) emitParseProgress(p ParseProgressEvent) {
+	if a.SSEHub == nil {
+		return
+	}
+	data, _ := json.Marshal(p)
+	a.SSEHub.BroadcastData("parse-progress", string(data))
+}
 
 // emitParseComplete is a no-op in server mode — the SSE hub handles
 // parse-complete notifications instead of the Wails event bus.
