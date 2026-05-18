@@ -162,7 +162,10 @@ COPY --from=server-mac-builder /app/build/bin/Recall-server-amd64 /Recall-server
 # Set RECALL_SERVER_ADDR=0.0.0.0:7000 when running in Docker so the port
 # is reachable from outside the container.
 FROM debian:bookworm-slim AS server-container
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# hadolint ignore=DL3005
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
         tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=server-linux-builder /app/build/bin/Recall-server /Recall-server
