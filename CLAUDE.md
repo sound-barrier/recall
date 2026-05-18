@@ -40,6 +40,8 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `go get <pkg>` | Add a Go dep. (`wails dev` runs `go mod tidy` on startup.) |
 | `bash -n scripts/X.sh` | Syntax-check a shell script. |
 | `brew bundle` | Install Tesseract, Go toolchain, Podman, etc. from `Brewfile`. **Wails CLI must be installed separately**: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`. |
+| `cd frontend && npm ci` | Install frontend dependencies (required after clone or `make clean`). |
+| `make lint` | Run all linters: golangci-lint (Go, both build tags), ESLint, Stylelint, HTMLHint, Hadolint. |
 | `make clean` | Remove `dist/`, `frontend/dist`, and `frontend/node_modules`. |
 | `make update-deps` | Update Go modules (`go get -u ./...` + `go mod tidy`) and npm packages. |
 | `make trivy` | Trivy vulnerability scan (Go modules + npm + Dockerfile); fails on HIGH/CRITICAL. |
@@ -308,7 +310,7 @@ case).
 
 ## CI/CD (`.github/workflows/release.yml`)
 
-Triggered on `v*` tags. Four parallel jobs: `build-docker` (Linux/Windows Wails + all server binaries via Docker), `build-mac` (macOS Wails, requires Apple runner), `publish-container` (builds `server-container` stage and pushes to `ghcr.io/<owner>/recall-server` with semver tags), and `release` (creates GitHub Release with all binaries; waits on `build-docker` + `build-mac`). GHCR auth uses `secrets.GITHUB_TOKEN` — no PAT needed; workflow permissions must include `packages: write`.
+Triggered on `v*` tags. Parallel jobs: `build-linux`, `build-windows`, `build-server` (all server binaries + container image via Docker), `build-mac` (macOS Wails, requires Apple runner), `publish-container` (builds `server-container` stage and pushes to `ghcr.io/<owner>/recall-server` with semver tags), and `release` (creates GitHub Release with all binaries; waits on the build jobs). GHCR auth uses `secrets.GITHUB_TOKEN` — no PAT needed; workflow permissions must include `packages: write`.
 
 ## Conventions worth knowing
 
@@ -337,5 +339,3 @@ Triggered on `v*` tags. Four parallel jobs: `build-docker` (Linux/Windows Wails 
   on-disk screenshots handler. Don't reuse it for other dynamic assets.
 - **`set -u` not `-e`** in shell scripts that should keep going after an
   individual failure (`verify-stack.sh` is the canonical example).
-- **`frontend/src/components/HelloWorld.vue`** is a leftover from the Wails
-  project template. It is not imported or used anywhere and can be deleted.
