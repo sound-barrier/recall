@@ -141,10 +141,15 @@ jobs:
         uses: anchore/sbom-action@v0
         with:
           format: spdx-json
-          artifact-name: sbom
           output-file: recall-${{ steps.ver.outputs.version }}-sbom.spdx.json
-          upload-artifact: true
+          upload-artifact: false
           upload-release-assets: false
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: recall-${{ steps.ver.outputs.version }}-sbom.spdx.json
 
   # ── Job 4: Build and push Linux server container image to GHCR ──
   # Uses GITHUB_TOKEN (auto-injected, repo-scoped, expires after run — no PAT needed).
