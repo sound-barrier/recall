@@ -41,6 +41,7 @@ xcode-select --install          # Xcode Command Line Tools (required for Wails C
 brew bundle                     # Go, Node, Tesseract, Podman, golangci-lint, yamllint, direnv, etc.
 go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 go install mvdan.cc/gofumpt@latest
+go install github.com/incu6us/goimports-reviser/v3@latest
 direnv allow                    # activate the repo's .envrc (edit it to set any env overrides)
 ```
 
@@ -94,6 +95,7 @@ sudo apt install -y tesseract-ocr jq sqlite3 docker.io  # or podman
 # Go-based tools
 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 go install mvdan.cc/gofumpt@latest
+go install github.com/incu6us/goimports-reviser/v3@latest
 
 # hadolint (Dockerfile linter)
 curl -L https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 \
@@ -160,6 +162,7 @@ Open the WSL2 terminal and follow the **Linux** instructions above.
 - `jq` — `winget install jqlang.jq`
 - `golangci-lint` — `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`
 - `gofumpt` — `go install mvdan.cc/gofumpt@latest`
+- `goimports-reviser` — `go install github.com/incu6us/goimports-reviser/v3@latest`
 - `hadolint` — `winget install Hadolint.Hadolint` or [download from GitHub releases](https://github.com/hadolint/hadolint/releases) (`hadolint-Windows-x86_64.exe`)
 - `yamllint` — `pip install yamllint` (requires Python 3)
 - `trivy` — `winget install AquaSecurity.Trivy` or [download from GitHub releases](https://github.com/aquasecurity/trivy/releases)
@@ -232,7 +235,7 @@ go build -tags serveronly ./...  # compile-check server variant
 ## Maintenance
 
 ```sh
-make fmt           # format all Go source files (gofumpt — strict superset of gofmt)
+make fmt           # format all Go source files (goimports-reviser for import groups, then gofumpt)
 make lint          # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint
 make lint-yaml     # yamllint only
 make update-deps   # update Go modules (go get -u + mod tidy) and npm packages
