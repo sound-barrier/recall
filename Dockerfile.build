@@ -69,7 +69,7 @@ COPY . .
 # pre-built dist/ is used as-is.
 COPY --from=frontend-builder /frontend/dist ./frontend/dist
 
-RUN wails build -s -platform linux/amd64 -trimpath
+RUN wails build -s -platform linux/amd64 -trimpath -tags webkit2_4_1
 
 
 # ─── Stage 4: Windows/amd64 binary (cross-compiled from Linux) ──
