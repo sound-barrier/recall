@@ -12,7 +12,7 @@
 #   server-base        — Go 1.26, module deps downloaded (no Wails CLI needed)
 #   server-linux-builder  — linux/amd64 server binary  (-tags serveronly)
 #   server-windows-builder — windows/amd64 server binary (-tags serveronly)
-#   server-mac-builder — darwin arm64 + amd64 server binaries (-tags serveronly)
+#   server-mac-builder — darwin arm64 server binary (-tags serveronly)
 #   server-linux-export / server-windows-export / server-mac-export — scratch exports
 #
 # macOS Wails .app requires a native build (Apple SDK not redistributable).
@@ -145,16 +145,14 @@ RUN CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
     go build -tags serveronly -trimpath -o build/bin/Recall-server.exe .
 
 
-# ─── Stage 10: macOS server binaries (arm64 + amd64) ────────
+# ─── Stage 10: macOS server binary (arm64) ───────────────────
 # Pure-Go cross-compilation works for macOS targets even on Linux
 # because no CGo (no Apple SDK required).
 FROM server-base AS server-mac-builder
 COPY . .
 COPY --from=frontend-builder /frontend/dist ./frontend/dist
 RUN CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 \
-        go build -tags serveronly -trimpath -o build/bin/Recall-server-arm64 . && \
-    CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
-        go build -tags serveronly -trimpath -o build/bin/Recall-server-amd64 .
+        go build -tags serveronly -trimpath -o build/bin/Recall-server-arm64 .
 
 
 # ─── Stage 11: Server export stages (scratch) ───────────────
@@ -166,7 +164,6 @@ COPY --from=server-windows-builder /app/build/bin/Recall-server.exe /Recall-serv
 
 FROM scratch AS server-mac-export
 COPY --from=server-mac-builder /app/build/bin/Recall-server-arm64 /Recall-server-arm64
-COPY --from=server-mac-builder /app/build/bin/Recall-server-amd64 /Recall-server-amd64
 
 
 # ─── Stage 12: Linux server container (runtime image with Tesseract) ─────────

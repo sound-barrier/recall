@@ -63,17 +63,16 @@ build-windows: ## Windows/amd64 Wails app via Docker → dist/windows/Recall.exe
 # Apple SDK is not redistributable — must run on macOS with Xcode CLT.
 # The npm/vite step is NOT skipped so Wails regenerates JS bindings.
 # wails build always writes to build/bin/; we copy to dist/mac/ after.
-build-mac: ## macOS arm64+amd64 Wails apps → dist/mac/ (macOS host + Xcode CLT required)
+build-mac: ## macOS arm64 Wails app → dist/mac/ (macOS host + Xcode CLT required)
 	@if [ "$$(uname -s)" != "Darwin" ]; then \
 	    echo "[ recall ] ✗  build-mac requires macOS (Apple SDK not redistributable)"; \
 	    exit 1; \
 	fi
-	@echo "[ recall ] Building macOS Wails app (arm64 + amd64)…"
-	wails build $(WAILS_FLAGS) -platform darwin/arm64,darwin/amd64
+	@echo "[ recall ] Building macOS Wails app (arm64)…"
+	wails build $(WAILS_FLAGS) -platform darwin/arm64
 	@mkdir -p $(DIST_MAC)
 	@cp -R build/bin/Recall-arm64.app $(DIST_MAC)/
-	@cp -R build/bin/Recall-amd64.app $(DIST_MAC)/
-	@echo "[ recall ] ✓  dist/mac/Recall-arm64.app  dist/mac/Recall-amd64.app"
+	@echo "[ recall ] ✓  dist/mac/Recall-arm64.app"
 
 
 build-all-docker: build-linux build-windows ## Linux + Windows Wails apps via Docker
@@ -104,17 +103,17 @@ build-server-windows: ## Windows/amd64 server binary via Docker → dist/server-
 	@echo "[ recall ] ✓  dist/server-windows/Recall-server.exe"
 
 
-# Unlike the Wails .app, server binaries are pure-Go so Docker can
-# cross-compile them on Linux — no Apple SDK required.
-build-server-mac: ## macOS arm64+amd64 server binaries via Docker → dist/server-mac/
-	@echo "[ recall ] Building macOS server binaries (arm64 + amd64) via Docker…"
+# Unlike the Wails .app, server binary is pure-Go so Docker can
+# cross-compile it on Linux — no Apple SDK required.
+build-server-mac: ## macOS arm64 server binary via Docker → dist/server-mac/
+	@echo "[ recall ] Building macOS server binary (arm64) via Docker…"
 	@mkdir -p $(DIST_SERVER_MAC)
 	$(DOCKER) build \
 	    --file $(DOCKERFILE) \
 	    --target server-mac-export \
 	    --output type=local,dest=$(DIST_SERVER_MAC) \
 	    .
-	@echo "[ recall ] ✓  dist/server-mac/  (Recall-server-arm64, Recall-server-amd64)"
+	@echo "[ recall ] ✓  dist/server-mac/Recall-server-arm64"
 
 
 build-server-all: build-server-linux build-server-windows build-server-mac ## All three server binaries via Docker

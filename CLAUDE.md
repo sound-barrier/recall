@@ -27,11 +27,11 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `make dev` | Hot-reload dev server (macOS only). Vite on `:5173`, Wails IPC dev on `:34115`. Auto-rebuilds Go on save. |
 | `make build-linux` | Linux/amd64 Wails app → `dist/linux/Recall` via Docker. |
 | `make build-windows` | Windows/amd64 Wails app → `dist/windows/Recall.exe` via Docker + mingw-w64. |
-| `make build-mac` | macOS Wails apps → `dist/mac/Recall-arm64.app` + `dist/mac/Recall-amd64.app`. Must run on macOS. |
+| `make build-mac` | macOS Wails app → `dist/mac/Recall-arm64.app`. Must run on macOS. |
 | `make build-all-docker` | Linux + Windows Wails apps — no macOS SDK needed; good for CI. |
 | `make build-server-linux` | Linux/amd64 server binary → `dist/server-linux/Recall-server` via Docker. |
 | `make build-server-windows` | Windows/amd64 server binary → `dist/server-windows/Recall-server.exe` via Docker. |
-| `make build-server-mac` | macOS server binaries (arm64 + amd64) → `dist/server-mac/` via Docker (no Apple SDK needed — pure Go). |
+| `make build-server-mac` | macOS arm64 server binary → `dist/server-mac/Recall-server-arm64` via Docker (no Apple SDK needed — pure Go). |
 | `make build-server-all` | All three server builds via Docker. |
 | `make build-server-container` | Linux server container image with Tesseract → `recall-server:local` (local Docker). |
 | `make build-all` | All three Wails platforms (macOS host required). |
