@@ -273,6 +273,7 @@ const heroes = computed(() => {
 const filtered = computed(() =>
   records.value.filter(r => {
     const d = r.data || {}
+    if (!d.map) return false
     if (filterMode.value.length   && !filterMode.value.includes(d.mode))     return false
     if (filterType.value.length   && !filterType.value.includes(d.type))     return false
     if (filterRole.value.length   && !filterRole.value.includes(d.role))     return false
@@ -474,6 +475,65 @@ function screenshotURL(filename) {
   return `/_screenshot/${encodeURIComponent(filename)}`
 }
 
+// Records that couldn't be resolved to a named match — either the
+// screenshot filename had no parseable OW timestamp ("unmatched:…")
+// or OCR failed to determine a map name. These surface in the
+// Unknown Maps view for triage.
+const unknownRecords = computed(() =>
+  records.value.filter(r => !r.data?.map)
+)
+
+// Per-card expand state for the Unknown Maps view. Separate from
+// the main `expanded` store so collapsing all matches doesn't also
+// reset the unknown cards the user is reviewing.
+const unknownExpanded = ref({})
+function toggleUnknownExpand(id) {
+  unknownExpanded.value = { ...unknownExpanded.value, [id]: !unknownExpanded.value[id] }
+}
+function isUnknownExpanded(id) {
+  return !!unknownExpanded.value[id]
+}
+
+const unknownPreviewOpen = ref({})
+function toggleUnknownPreview(filename) {
+  unknownPreviewOpen.value = { ...unknownPreviewOpen.value, [filename]: !unknownPreviewOpen.value[filename] }
+}
+function isUnknownPreviewOpen(filename) {
+  return !!unknownPreviewOpen.value[filename]
+}
+
+// Infer which screenshot types were parsed for a record based on which
+// field groups are populated. Drives the slot-chip row on each card.
+function detectScreenshotSlots(rec) {
+  const d = rec.data || {}
+  return [
+    {
+      key: 'summary',
+      label: 'SUMMARY',
+      present: !!(d.result || d.date || d.finished_at || d.game_length || d.type || d.mode),
+      hint: 'End-of-match result screen — provides map, result, date, game type',
+    },
+    {
+      key: 'scoreboard',
+      label: 'TEAMS',
+      present: !!(d.eliminations != null || d.deaths != null),
+      hint: 'Tab key scoreboard — provides E/A/D, damage, healing, mitigation',
+    },
+    {
+      key: 'personal',
+      label: 'PERSONAL',
+      present: !!(Array.isArray(d.heroes_played) && d.heroes_played.some(hp => hp.stats && Object.keys(hp.stats).length > 0)),
+      hint: 'Personal stats tab — provides per-hero detailed statistics',
+    },
+    {
+      key: 'rank',
+      label: 'RANK',
+      present: !!(d.rank),
+      hint: 'Competitive rank screen — provides SR, rank tier, rank change',
+    },
+  ]
+}
+
 // heroesForHeader returns the list of heroes to render in the card title,
 // sorted by percent_played descending. Multi-hero matches (with a SUMMARY
 // or PERSONAL screenshot) get the full list; a fallback for matches that
@@ -672,6 +732,19 @@ onBeforeUnmount(() => {
             >
               <span class="nav-tab-num">02</span>
               <span class="nav-tab-label">Settings</span>
+            </button>
+            <button
+              class="nav-tab"
+              :class="{ active: view === 'unknown' }"
+              :aria-selected="view === 'unknown'"
+              role="tab"
+              @click="view = 'unknown'"
+            >
+              <span class="nav-tab-num">03</span>
+              <span class="nav-tab-label">
+                Unknown
+                <span v-if="unknownRecords.length > 0" class="nav-tab-badge">{{ unknownRecords.length }}</span>
+              </span>
             </button>
           </nav>
         </div>
@@ -920,6 +993,157 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- ─── UNKNOWN MAPS VIEW ────────────────────────────────── -->
+      <section v-if="view === 'unknown'" key="unknown" class="settings unknown-view">
+        <header class="settings-intro">
+          <p class="settings-eyebrow">
+            Diagnostic Review
+          </p>
+          <h2 v-if="unknownRecords.length === 0" class="settings-heading">
+            All screenshots resolved.
+          </h2>
+          <h2 v-else class="settings-heading unknown-heading">
+            <em>{{ unknownRecords.length }} record{{ unknownRecords.length === 1 ? '' : 's' }}</em>
+            couldn't be matched to a map.
+          </h2>
+          <p v-if="unknownRecords.length > 0" class="unknown-desc">
+            The slot indicators below show which screenshot types have been parsed for each record. Add the missing ones and
+            <strong class="empty-link" @click="view = 'settings'">run Parse</strong>
+            again to resolve them.
+          </p>
+        </header>
+
+        <div v-if="unknownRecords.length === 0" class="empty">
+          <div class="empty-mark">
+            ◉
+          </div>
+          <p class="empty-title">
+            No unresolved records.
+          </p>
+          <p class="empty-sub">
+            Every parsed match has a map name — you're clean.
+          </p>
+        </div>
+
+        <div v-else class="unknown-list">
+          <article
+            v-for="(rec, idx) in unknownRecords"
+            :key="rec.id"
+            class="unknown-card"
+            :class="{ expanded: isUnknownExpanded(rec.id) }"
+          >
+            <!-- Card header: index + match key + slot chips + chevron -->
+            <div class="unknown-card-head" @click="toggleUnknownExpand(rec.id)">
+              <div class="unknown-head-lhs">
+                <span class="unknown-idx">{{ String(idx + 1).padStart(2, '0') }}</span>
+                <div class="unknown-key-block">
+                  <span class="unknown-key mono">{{ rec.match_key }}</span>
+                  <span class="unknown-src-count">{{ rec.source_files?.length || 0 }} screenshot{{ (rec.source_files?.length || 0) === 1 ? '' : 's' }}</span>
+                </div>
+              </div>
+              <div class="unknown-head-rhs">
+                <div class="slot-row" @click.stop>
+                  <span
+                    v-for="slot in detectScreenshotSlots(rec)"
+                    :key="slot.key"
+                    class="slot-chip"
+                    :class="{ present: slot.present, absent: !slot.present }"
+                    :title="slot.hint"
+                  >
+                    <span class="slot-dot" aria-hidden="true" />
+                    {{ slot.label }}
+                  </span>
+                </div>
+                <span class="chev" :class="{ open: isUnknownExpanded(rec.id) }" aria-hidden="true">›</span>
+              </div>
+            </div>
+
+            <!-- Field diagnostic strip — always visible -->
+            <div class="unknown-fields">
+              <div
+                v-for="fd in [
+                  { label: 'Map',    value: rec.data?.map },
+                  { label: 'Mode',   value: rec.data?.mode },
+                  { label: 'Type',   value: rec.data?.type },
+                  { label: 'Result', value: rec.data?.result },
+                  { label: 'Date',   value: rec.data?.date },
+                  { label: 'Time',   value: rec.data?.finished_at },
+                  { label: 'Length', value: rec.data?.game_length },
+                  { label: 'E/A/D',  value: rec.data?.eliminations != null ? `${rec.data.eliminations} / ${rec.data.assists} / ${rec.data.deaths}` : null },
+                ]"
+                :key="fd.label"
+                class="field-cell"
+                :class="{ filled: !!fd.value, vacant: !fd.value }"
+              >
+                <span class="field-label">{{ fd.label }}</span>
+                <span class="field-value">{{ fd.value || '—' }}</span>
+              </div>
+            </div>
+
+            <!-- Expanded: source files + previews + any stats that parsed -->
+            <template v-if="isUnknownExpanded(rec.id)">
+              <div class="unknown-expanded">
+                <div v-if="rec.source_files?.length" class="unknown-sources">
+                  <div class="block-eyebrow">
+                    Source Files
+                  </div>
+                  <div v-for="f in rec.source_files" :key="f" class="source-file">
+                    <a
+                      class="source-name"
+                      :href="screenshotURL(f)"
+                      :title="isUnknownPreviewOpen(f) ? 'Hide preview' : 'Show preview'"
+                      @click.prevent="toggleUnknownPreview(f)"
+                    >
+                      <span class="chev small" :class="{ open: isUnknownPreviewOpen(f) }">›</span>
+                      <span class="source-name-text">{{ f }}</span>
+                    </a>
+                    <img
+                      v-if="isUnknownPreviewOpen(f)"
+                      :src="screenshotURL(f)"
+                      :alt="f"
+                      class="source-preview"
+                      loading="lazy"
+                    >
+                  </div>
+                </div>
+
+                <div v-if="rec.data?.eliminations != null || rec.data?.damage != null" class="unknown-stats">
+                  <div class="block-eyebrow">
+                    Parsed Stats
+                  </div>
+                  <div class="stats">
+                    <div class="stat">
+                      <span class="stat-value">{{ rec.data.eliminations ?? '—' }}</span>
+                      <span class="stat-label">Elims</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-value">{{ rec.data.assists ?? '—' }}</span>
+                      <span class="stat-label">Assists</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-value">{{ rec.data.deaths ?? '—' }}</span>
+                      <span class="stat-label">Deaths</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-value">{{ rec.data.damage != null ? rec.data.damage.toLocaleString() : '—' }}</span>
+                      <span class="stat-label">Damage</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-value">{{ rec.data.healing != null ? rec.data.healing.toLocaleString() : '—' }}</span>
+                      <span class="stat-label">Healing</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-value">{{ rec.data.mitigation != null ? rec.data.mitigation.toLocaleString() : '—' }}</span>
+                      <span class="stat-label">Mitigation</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </article>
         </div>
       </section>
 
@@ -3013,7 +3237,7 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.settings, .matches-view {
+.settings, .matches-view, .unknown-view {
   animation: view-fade-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -3731,4 +3955,270 @@ body {
 [data-theme="light"] .mf-search { background: var(--surface-3); }
 [data-theme="light"] .mf-panel-foot { background: var(--surface-3); }
 [data-theme="light"] .eyebrow-count { color: var(--accent-text); }
+
+/* ─── Unknown Maps View ──────────────────────────────────── */
+
+/* The heading em uses the draw/amber color — "attention, not alarm" */
+.unknown-heading em {
+  color: var(--draw);
+  background: var(--draw-soft);
+  font-style: normal;
+  padding: 0 0.25rem;
+  margin: 0 -0.05rem;
+  border-radius: 1px;
+}
+[data-theme="light"] .unknown-heading em { color: var(--draw); }
+
+.unknown-desc {
+  margin-top: 0.65rem;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  max-width: 64ch;
+}
+
+.unknown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 1.6rem;
+}
+
+/* Each unknown record is a card with an amber left bar */
+.unknown-card {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.unknown-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--draw-line);
+}
+
+.unknown-card.expanded {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+/* Card header row */
+.unknown-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1rem 0.8rem 1.4rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 140ms ease;
+}
+
+.unknown-card-head:hover { background: var(--surface-2); }
+.unknown-card.expanded .unknown-card-head { background: transparent; }
+
+.unknown-head-lhs {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.unknown-idx {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.unknown-key-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.unknown-key {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.01em;
+}
+
+.unknown-src-count {
+  font-size: 0.69rem;
+  color: var(--text-faint);
+}
+
+.unknown-head-rhs {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* Screenshot type slot chips: SUMMARY · TEAMS · PERSONAL · RANK */
+.slot-row {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: nowrap;
+}
+
+.slot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 2px;
+  font-size: 0.62rem;
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  cursor: default;
+  transition: opacity 150ms ease;
+}
+
+.slot-chip.present {
+  background: var(--win-soft);
+  border-color: var(--win-line);
+  color: var(--win);
+}
+
+.slot-chip.absent {
+  background: transparent;
+  border-color: var(--border);
+  border-style: dashed;
+  color: var(--text-faint);
+}
+
+[data-theme="light"] .slot-chip.present { color: var(--win); }
+[data-theme="light"] .slot-chip.absent { color: var(--text-faint); }
+
+.slot-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* Field diagnostic strip — 8-column grid showing each parsed field */
+.unknown-fields {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  border-top: 1px solid var(--border-soft);
+  padding: 0 1rem 0 1.4rem;
+}
+
+.field-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.5rem 0.5rem 0.5rem 0;
+  border-right: 1px solid var(--border-soft);
+}
+
+.field-cell:last-child { border-right: none; }
+
+.field-label {
+  font-size: 0.6rem;
+  font-family: var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  line-height: 1;
+}
+
+.field-value {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.field-cell.filled .field-label { color: var(--text-dim); }
+.field-cell.filled .field-value { color: var(--text); }
+
+.field-cell.vacant .field-value {
+  font-style: italic;
+  font-size: 0.72rem;
+}
+
+/* Expanded section: sources + stats */
+.unknown-expanded {
+  border-top: 1px solid var(--border-soft);
+  padding: 1rem 1.4rem;
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.unknown-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.unknown-sources .block-eyebrow {
+  margin-bottom: 0.45rem;
+}
+
+.unknown-stats .block-eyebrow {
+  margin-bottom: 0.6rem;
+}
+
+/* ─── Nav tab notification badge ─────────────────────────── */
+.nav-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  background: var(--draw);
+  color: #1a1100;
+  font-size: 0.58rem;
+  font-weight: 700;
+  font-family: var(--mono);
+  border-radius: 8px;
+  line-height: 1;
+  vertical-align: middle;
+  margin-left: 0.2rem;
+  letter-spacing: 0;
+}
+
+/* ─── Unknown view responsive ────────────────────────────── */
+@media (width <= 880px) {
+  .unknown-fields { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (width <= 680px) {
+  .slot-chip { display: none; }
+  .slot-chip:nth-child(-n+2) { display: inline-flex; }
+}
+
+@media (width <= 580px) {
+  .unknown-fields {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 0 1rem 0 1rem;
+  }
+  .unknown-card-head { padding: 0.7rem 1rem 0.7rem 1rem; }
+  .unknown-expanded { padding: 0.85rem 1rem; }
+}
 </style>
