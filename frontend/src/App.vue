@@ -159,11 +159,12 @@ async function resetTesseractPath() {
   }
 }
 
-// Jump to the Settings view and scroll the Engine section into view.
-// Wired from the System Alert banner's "Fix in Settings →" CTA and
-// from the empty-state shortcut.
+// Jump to the Ingest view and scroll the Engine section into view.
+// Wired from the System Alert banner's "Fix in Ingest →" CTA and
+// from the empty-state shortcut. (Engine config lives in Ingest, not
+// Settings — Settings is reserved for screenshot folder + theme.)
 async function gotoEngineSettings() {
-  view.value = 'settings'
+  view.value = 'ingest'
   await nextTick()
   const el = document.getElementById('sec-engine')
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -178,7 +179,7 @@ async function toggleWatch(e) {
   const next = e.target.checked
   if (next && !tesseractReady.value) {
     e.target.checked = false
-    error.value = 'Configure Tesseract in Settings → Engine before enabling Watch.'
+    error.value = 'Configure Tesseract in Ingest → Engine before enabling Watch.'
     return
   }
   try {
@@ -206,7 +207,7 @@ async function togglePrometheus(e) {
 
 async function parse() {
   if (!tesseractReady.value) {
-    error.value = 'Tesseract is not configured. Fix it in Settings → Engine.'
+    error.value = 'Tesseract is not configured. Fix it in Ingest → Engine.'
     return
   }
   error.value = ''
@@ -799,13 +800,13 @@ onBeforeUnmount(() => {
             <span class="system-alert-path" :title="tesseractStatus.path">{{ tesseractStatus.path || '— no path —' }}</span>
           </h3>
           <p class="system-alert-desc">
-            {{ tesseractStatus.error || 'Recall cannot OCR screenshots without Tesseract. Install it, or point Recall at the existing binary in Settings → Engine.' }}
+            {{ tesseractStatus.error || 'Recall cannot OCR screenshots without Tesseract. Install it, or point Recall at the existing binary in Ingest → Engine.' }}
           </p>
         </div>
         <div class="system-alert-actions">
           <button class="btn alert-cta" @click="gotoEngineSettings">
             <span class="alert-cta-arrow" aria-hidden="true">→</span>
-            Fix in Settings
+            Fix in Ingest
           </button>
         </div>
       </div>
@@ -822,17 +823,10 @@ onBeforeUnmount(() => {
           <p class="tagline">
             Personal Telemetry · Match Almanac
           </p>
+          <!-- Workflow order: configure → ingest → view → triage. Matches
+               stays the default landing tab even though it sits at position
+               03 — the numbering communicates the intended user flow. -->
           <nav class="page-nav" role="tablist" aria-label="Primary">
-            <button
-              class="nav-tab"
-              :class="{ active: view === 'matches' }"
-              :aria-selected="view === 'matches'"
-              role="tab"
-              @click="view = 'matches'"
-            >
-              <span class="nav-tab-num">01</span>
-              <span class="nav-tab-label">Matches</span>
-            </button>
             <button
               class="nav-tab"
               :class="{ active: view === 'settings' }"
@@ -840,8 +834,28 @@ onBeforeUnmount(() => {
               role="tab"
               @click="view = 'settings'"
             >
-              <span class="nav-tab-num">02</span>
+              <span class="nav-tab-num">01</span>
               <span class="nav-tab-label">Settings</span>
+            </button>
+            <button
+              class="nav-tab"
+              :class="{ active: view === 'ingest' }"
+              :aria-selected="view === 'ingest'"
+              role="tab"
+              @click="view = 'ingest'"
+            >
+              <span class="nav-tab-num">02</span>
+              <span class="nav-tab-label">Ingest</span>
+            </button>
+            <button
+              class="nav-tab"
+              :class="{ active: view === 'matches' }"
+              :aria-selected="view === 'matches'"
+              role="tab"
+              @click="view = 'matches'"
+            >
+              <span class="nav-tab-num">03</span>
+              <span class="nav-tab-label">Matches</span>
             </button>
             <button
               class="nav-tab"
@@ -850,7 +864,7 @@ onBeforeUnmount(() => {
               role="tab"
               @click="view = 'unknown'"
             >
-              <span class="nav-tab-num">03</span>
+              <span class="nav-tab-num">04</span>
               <span class="nav-tab-label">
                 Unknown
                 <span v-if="unknownRecords.length > 0" class="nav-tab-badge">{{ unknownRecords.length }}</span>
@@ -859,36 +873,6 @@ onBeforeUnmount(() => {
           </nav>
         </div>
         <div class="masthead-right">
-          <button
-            class="theme-toggle"
-            :title="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-            :aria-label="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-            @click="toggleTheme"
-          >
-            <span class="theme-seg" :class="{ active: themeMode === 'light' }">
-              <svg viewBox="0 0 24 24" class="theme-icon" aria-hidden="true">
-                <circle cx="12" cy="12" r="4" fill="currentColor" />
-                <g stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                  <line x1="12" y1="2" x2="12" y2="5" />
-                  <line x1="12" y1="19" x2="12" y2="22" />
-                  <line x1="2" y1="12" x2="5" y2="12" />
-                  <line x1="19" y1="12" x2="22" y2="12" />
-                  <line x1="4.6" y1="4.6" x2="6.7" y2="6.7" />
-                  <line x1="17.3" y1="17.3" x2="19.4" y2="19.4" />
-                  <line x1="4.6" y1="19.4" x2="6.7" y2="17.3" />
-                  <line x1="17.3" y1="6.7" x2="19.4" y2="4.6" />
-                </g>
-              </svg>
-              <span class="theme-label">Day</span>
-            </span>
-            <span class="theme-divider" aria-hidden="true" />
-            <span class="theme-seg" :class="{ active: themeMode === 'dark' }">
-              <svg viewBox="0 0 24 24" class="theme-icon" aria-hidden="true">
-                <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8z" fill="currentColor" />
-              </svg>
-              <span class="theme-label">Night</span>
-            </span>
-          </button>
           <div
             v-if="records.length > 0 && view === 'matches'"
             class="scoreboard"
@@ -914,17 +898,119 @@ onBeforeUnmount(() => {
         <span class="error-tick">✕</span>{{ error }}
       </p>
 
-      <!-- ─── SETTINGS VIEW ────────────────────────────────────── -->
+      <!-- ─── SETTINGS VIEW (folder + theme — minimal config) ──── -->
       <section v-if="view === 'settings'" key="settings" class="settings">
         <header class="settings-intro">
           <p class="settings-eyebrow">
             System Configuration
           </p>
+          <h2 v-if="!screenshotsDir" class="settings-heading">
+            Choose a <em>screenshots folder</em> to begin.
+          </h2>
+          <h2 v-else class="settings-heading">
+            Where Recall reads from, and how it looks.
+          </h2>
+          <p class="settings-sub">
+            OCR engine, parsing, exports, and data management live in
+            <strong class="empty-link" @click="view = 'ingest'">Ingest →</strong>.
+          </p>
+        </header>
+
+        <div id="sec-directories" class="settings-section">
+          <div class="section-header">
+            <span class="section-num">01</span>
+            <span class="section-slash" aria-hidden="true">/</span>
+            <h3 class="section-title">
+              Directories
+            </h3>
+          </div>
+          <div class="setting-rows">
+            <div class="setting-row">
+              <div class="setting-info">
+                <h4 class="setting-label">
+                  Screenshots Folder
+                </h4>
+                <p class="setting-desc">
+                  Where Recall watches for new Overwatch screenshots. Click <strong>Change Folder</strong> to point it at a different directory.
+                </p>
+              </div>
+              <div class="setting-control">
+                <span class="setting-value mono" :title="screenshotsDir">{{ screenshotsDir || '— Not selected —' }}</span>
+                <button class="btn ghost" :disabled="loading" @click="pickDir">
+                  Change Folder…
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="sec-appearance" class="settings-section">
+          <div class="section-header">
+            <span class="section-num">02</span>
+            <span class="section-slash" aria-hidden="true">/</span>
+            <h3 class="section-title">
+              Appearance
+            </h3>
+          </div>
+          <div class="setting-rows">
+            <div class="setting-row">
+              <div class="setting-info">
+                <h4 class="setting-label">
+                  Theme
+                </h4>
+                <p class="setting-desc">
+                  Switch between Day and Night palettes. Preference is remembered across launches.
+                </p>
+              </div>
+              <div class="setting-control">
+                <button
+                  class="theme-toggle"
+                  :title="themeMode === 'dark' ? 'Switch to Day' : 'Switch to Night'"
+                  :aria-label="themeMode === 'dark' ? 'Switch to Day' : 'Switch to Night'"
+                  @click="toggleTheme"
+                >
+                  <span class="theme-seg" :class="{ active: themeMode === 'light' }">
+                    <svg viewBox="0 0 24 24" class="theme-icon" aria-hidden="true">
+                      <circle cx="12" cy="12" r="4" fill="currentColor" />
+                      <g stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                        <line x1="12" y1="2" x2="12" y2="5" />
+                        <line x1="12" y1="19" x2="12" y2="22" />
+                        <line x1="2" y1="12" x2="5" y2="12" />
+                        <line x1="19" y1="12" x2="22" y2="12" />
+                        <line x1="4.6" y1="4.6" x2="6.7" y2="6.7" />
+                        <line x1="17.3" y1="17.3" x2="19.4" y2="19.4" />
+                        <line x1="4.6" y1="19.4" x2="6.7" y2="17.3" />
+                        <line x1="17.3" y1="6.7" x2="19.4" y2="4.6" />
+                      </g>
+                    </svg>
+                    <span class="theme-label">Day</span>
+                  </span>
+                  <span class="theme-divider" aria-hidden="true" />
+                  <span class="theme-seg" :class="{ active: themeMode === 'dark' }">
+                    <svg viewBox="0 0 24 24" class="theme-icon" aria-hidden="true">
+                      <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8z" fill="currentColor" />
+                    </svg>
+                    <span class="theme-label">Night</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── INGEST VIEW (engine → parse → export → data) ─────── -->
+      <section v-if="view === 'ingest'" key="ingest" class="settings ingest-view">
+        <header class="settings-intro">
+          <p class="settings-eyebrow">
+            Capture Pipeline
+          </p>
           <h2 v-if="!tesseractReady" class="settings-heading missing">
             Recall can't OCR until <em>Tesseract is located</em>.
           </h2>
           <h2 v-else-if="!screenshotsDir" class="settings-heading">
-            Choose a <em>screenshots folder</em> to get started.
+            Set a <em>screenshots folder</em> in
+            <strong class="empty-link" @click="view = 'settings'">Settings →</strong> first.
           </h2>
           <h2 v-else-if="watchEnabled" class="settings-heading">
             Watching <em>{{ screenshotsDir }}/</em> for new captures.
@@ -933,7 +1019,7 @@ onBeforeUnmount(() => {
             <em>{{ records.length }} {{ records.length === 1 ? 'match' : 'matches' }}</em> indexed from <em>{{ screenshotsDir }}/</em>
           </h2>
           <h2 v-else class="settings-heading">
-            Ready to ingest from <em>{{ screenshotsDir }}/</em> — click <em>Parse</em> to begin.
+            Ready to ingest from <em>{{ screenshotsDir }}/</em> — click <em>Run Parse</em> below.
           </h2>
         </header>
 
@@ -988,40 +1074,12 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div id="sec-directories" class="settings-section">
+        <div id="sec-ingest" class="settings-section">
           <div class="section-header">
             <span class="section-num">02</span>
             <span class="section-slash" aria-hidden="true">/</span>
             <h3 class="section-title">
-              Directories
-            </h3>
-          </div>
-          <div class="setting-rows">
-            <div class="setting-row">
-              <div class="setting-info">
-                <h4 class="setting-label">
-                  Screenshots Folder
-                </h4>
-                <p class="setting-desc">
-                  Where Recall watches for new Overwatch screenshots. Click <strong>Change Folder</strong> to point it at a different directory.
-                </p>
-              </div>
-              <div class="setting-control">
-                <span class="setting-value mono" :title="screenshotsDir">{{ screenshotsDir || '— Not selected —' }}</span>
-                <button class="btn ghost" :disabled="loading" @click="pickDir">
-                  Change Folder…
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div id="sec-ingest" class="settings-section">
-          <div class="section-header">
-            <span class="section-num">03</span>
-            <span class="section-slash" aria-hidden="true">/</span>
-            <h3 class="section-title">
-              Ingest
+              Parse
             </h3>
           </div>
           <div class="setting-rows">
@@ -1195,7 +1253,7 @@ onBeforeUnmount(() => {
 
         <div id="sec-export" class="settings-section">
           <div class="section-header">
-            <span class="section-num">04</span>
+            <span class="section-num">03</span>
             <span class="section-slash" aria-hidden="true">/</span>
             <h3 class="section-title">
               Export
@@ -1224,7 +1282,7 @@ onBeforeUnmount(() => {
 
         <div id="sec-data" class="settings-section">
           <div class="section-header">
-            <span class="section-num">05</span>
+            <span class="section-num">04</span>
             <span class="section-slash" aria-hidden="true">/</span>
             <h3 class="section-title">
               Data
@@ -1290,7 +1348,7 @@ onBeforeUnmount(() => {
           </h2>
           <p v-if="unknownRecords.length > 0" class="unknown-desc">
             The slot indicators below show which screenshot types have been parsed for each record. Add the missing ones and
-            <strong class="empty-link" @click="view = 'settings'">run Parse</strong>
+            <strong class="empty-link" @click="view = 'ingest'">run Parse</strong>
             again to resolve them.
           </p>
         </header>
@@ -1439,7 +1497,7 @@ onBeforeUnmount(() => {
             No matches on record.
           </p>
           <p class="empty-sub">
-            Head to <strong class="empty-link" @click="view = 'settings'">Settings → Run Parse</strong> to scan your screenshots folder, or flip on <strong class="empty-link" @click="view = 'settings'">Watch Folder</strong> there to auto-ingest as you play.
+            Head to <strong class="empty-link" @click="view = 'ingest'">Ingest → Run Parse</strong> to scan your screenshots folder, or flip on <strong class="empty-link" @click="view = 'ingest'">Watch Folder</strong> there to auto-ingest as you play.
           </p>
         </div>
 
@@ -3746,7 +3804,7 @@ body {
   border-radius: 2px;
 }
 
-/* ─── Page Nav (Matches / Settings) ──────────────────────── */
+/* ─── Page Nav (Settings / Ingest / Matches / Unknown) ──── */
 
 .page-nav {
   margin-top: 1.1rem;
@@ -3828,42 +3886,55 @@ body {
 /* Settings tab adopts the OW2 Futura No. 2 Demi typeface (via the --settings
    fallback chain). We re-point --display and --body at --settings inside the
    scope so the page's existing rules (settings-heading, section-title, btn,
-   labels, etc.) all pick it up. .unknown-view shares the .settings class but
-   keeps its match listings on the display font — hence the :not. */
-.settings:not(.unknown-view) {
+   labels, etc.) all pick it up. .unknown-view and .ingest-view share the
+   .settings class for layout/animation but keep their content on the
+   in-game display font — hence the compound :not selector. */
+.settings:not(.unknown-view, .ingest-view) {
   --display: var(--settings);
   --body: var(--settings);
 
   font-family: var(--settings);
 }
 
-.settings:not(.unknown-view) input,
-.settings:not(.unknown-view) textarea,
-.settings:not(.unknown-view) select,
-.settings:not(.unknown-view) button {
+.settings:not(.unknown-view, .ingest-view) input,
+.settings:not(.unknown-view, .ingest-view) textarea,
+.settings:not(.unknown-view, .ingest-view) select,
+.settings:not(.unknown-view, .ingest-view) button {
   font-family: var(--settings);
 }
 
-.settings:not(.unknown-view) .settings-heading {
+.settings:not(.unknown-view, .ingest-view) .settings-heading {
   font-style: normal;
   font-weight: 600;
   letter-spacing: 0.005em;
 }
 
-.settings:not(.unknown-view) .settings-heading em {
+.settings:not(.unknown-view, .ingest-view) .settings-heading em {
   font-style: normal;
   font-weight: 600;
 }
 
-.settings:not(.unknown-view) .section-title {
+.settings:not(.unknown-view, .ingest-view) .section-title {
   font-style: normal;
   font-weight: 600;
   letter-spacing: 0.015em;
 }
 
-.settings:not(.unknown-view) .section-num {
+.settings:not(.unknown-view, .ingest-view) .section-num {
   font-style: normal;
   font-weight: 600;
+}
+
+.settings-sub {
+  margin-top: 0.85rem;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  max-width: 60ch;
+}
+
+.settings-sub .empty-link {
+  cursor: pointer;
 }
 
 .settings-intro {
@@ -4320,7 +4391,7 @@ body {
      overlay regardless of theme (think "warning sticker"). */
 }
 
-/* ─── Engine status panel (Settings → 01 / Engine) ──────── */
+/* ─── Engine status panel (Ingest → 01 / Engine) ───────── */
 
 .engine-row { transition: background 220ms ease; }
 .engine-row.alert { background: var(--loss-soft); }
