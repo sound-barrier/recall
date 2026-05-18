@@ -42,7 +42,7 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `brew bundle` | Install Tesseract, Go toolchain, Podman, etc. from `Brewfile`. **Wails CLI must be installed separately**: `go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0`. |
 | `direnv allow` | Activate the repo's `.envrc` after cloning (or after editing it). All env var overrides are documented and commented out inside `.envrc`. |
 | `cd frontend && npm ci` | Install frontend dependencies (required after clone or `make clean`). |
-| `make fmt` | Format all Go source files (`go fmt ./...`). |
+| `make fmt` | Format all Go source files with `gofumpt` (strict superset of gofmt; install: `go install mvdan.cc/gofumpt@latest`). |
 | `make lint` | Run all linters: golangci-lint (Go, both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint. |
 | `make clean` | Remove `dist/`, `build/bin/`, `frontend/dist`, and `frontend/node_modules`. |
 | `make update-deps` | Update Go modules (`go get -u ./...` + `go mod tidy`) and npm packages. |

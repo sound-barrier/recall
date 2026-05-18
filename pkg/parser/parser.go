@@ -171,7 +171,7 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 		}
 		defer os.RemoveAll(work)
 	} else {
-		_ = os.MkdirAll(work, 0700)
+		_ = os.MkdirAll(work, 0o700)
 	}
 
 	if isRankScreenshot(img, work) {
@@ -433,7 +433,7 @@ func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string
 	}
 	out := stdout.String()
 	if os.Getenv("OWMETRICS_DEBUG_DIR") != "" {
-		_ = os.WriteFile(filepath.Join(workDir, name+".txt"), []byte(out), 0600)
+		_ = os.WriteFile(filepath.Join(workDir, name+".txt"), []byte(out), 0o600)
 	}
 	return out, nil
 }

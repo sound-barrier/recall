@@ -176,14 +176,14 @@ func loadSettings() Settings {
 }
 
 func saveSettings(s Settings) error {
-	if err := os.MkdirAll(filepath.Dir(settingsPath()), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(settingsPath()), 0o700); err != nil {
 		return err
 	}
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(settingsPath(), b, 0644)
+	return os.WriteFile(settingsPath(), b, 0o644)
 }
 
 type App struct {
@@ -243,7 +243,7 @@ func (a *App) Startup(ctx context.Context) {
 	parser.SetTesseractPath(a.settings.TesseractPath)
 
 	dbDir := filepath.Join(appDataDir(), "db")
-	if err := os.MkdirAll(dbDir, 0700); err != nil {
+	if err := os.MkdirAll(dbDir, 0o700); err != nil {
 		log.Fatal("could not create db dir:", err)
 	}
 	if err := db.Init(filepath.Join(dbDir, "recall.db")); err != nil {

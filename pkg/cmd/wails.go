@@ -32,7 +32,6 @@ func RunWails(a *app.App, assets embed.FS) {
 			a,
 		},
 	})
-
 	if err != nil {
 		println("Error:", err.Error())
 	}
