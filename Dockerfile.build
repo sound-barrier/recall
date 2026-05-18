@@ -69,6 +69,15 @@ COPY . .
 # pre-built dist/ is used as-is.
 COPY --from=frontend-builder /frontend/dist ./frontend/dist
 
+# Wails v2.12.0 pkg/assetserver/webview has CGo directives that reference
+# webkit2gtk-4.0 without being gated by the webkit2_4_1 build tag. Debian
+# bookworm only ships 4.1, so create pkg-config shims that redirect the 4.0
+# names to the installed 4.1 libraries.
+RUN printf 'Name: webkit2gtk-4.0\nDescription: compat shim\nVersion: 4.1\nRequires: webkit2gtk-4.1\nCflags:\nLibs:\n' \
+        > /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc && \
+    printf 'Name: javascriptcoregtk-4.0\nDescription: compat shim\nVersion: 4.1\nRequires: javascriptcoregtk-4.1\nCflags:\nLibs:\n' \
+        > /usr/lib/x86_64-linux-gnu/pkgconfig/javascriptcoregtk-4.0.pc
+
 RUN wails build -s -platform linux/amd64 -trimpath -tags webkit2_4_1
 
 
