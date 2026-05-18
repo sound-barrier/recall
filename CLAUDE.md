@@ -48,6 +48,7 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `make update-deps` | Update Go modules (`go get -u ./...` + `go mod tidy`) and npm packages. |
 | `make trivy` | Trivy vulnerability scan (Go modules + npm + Dockerfile); fails on HIGH/CRITICAL. |
 | `make cloc` | Count lines of source code (excludes deps, build artifacts, and generated files). |
+| `make icon` | Resync `build/appicon.png` from `assets/icon.png` (1024×1024 via `sips`, macOS-only) and clear `build/windows/icon.ico` so Wails regenerates platform icons (`.icns` for macOS, `.ico` for Windows) on next `wails build`. |
 
 **Package layout (`pkg/`)**:
 
@@ -169,9 +170,21 @@ CGo binding.
 
 Single `match_results` table, explicit columns for every scalar field on
 `MatchResult`, JSON blobs for `heroes_played`, `performance`, `modifiers`,
-`sr` (variable-length nested data). Schema is `CREATE TABLE IF NOT
-EXISTS` — **column changes require deleting `recall.db` and re-parsing,
-no migrations**.
+`sr`, `source_types` (variable-length nested data). Schema is
+`CREATE TABLE IF NOT EXISTS` plus an idempotent `migrations` slice in
+`pkg/db/db.go` for in-place `ALTER TABLE ADD COLUMN` — "duplicate column"
+errors are swallowed so existing DBs upgrade on next launch. Append a new
+statement to that slice when adding a column; only DROP/RENAME or NOT
+NULL changes still require wiping `recall.db`.
+
+Per-source-file screenshot type is stored in the JSON `source_types`
+column — `map[filename]type` where type ∈ {`summary`, `scoreboard`,
+`personal`, `rank`}. Populated by `screenshotType(*MatchResult)` at
+parse time, threaded through `mergedRow.Types`, surfaced as
+`MatchRecord.SourceTypes` to the frontend. Rows parsed before this
+column landed have `source_types=NULL`; the frontend renders a "?"
+chip and `detectScreenshotSlots()` falls back to field-presence
+inference for those rows.
 
 The DB lives at `<appDataDir>/db/recall.db` where `appDataDir()` in `pkg/app/app.go`
 resolves to the platform user-config directory:
@@ -304,6 +317,14 @@ Single-file Vue 3 SFC, composition API. No router, no Vuex/Pinia — a few
 - **Event subscription**: `EventsOn('parse-complete', load)` on mount,
   `EventsOff` on unmount — auto-refreshes the records list after the
   watcher fires an auto-parse.
+- **Custom fonts are loaded via `local()` first.** `frontend/src/style.css`
+  registers three OW2 typefaces (`Big Noodle Too Oblique` for hero/map
+  names, `Futura No. 2 Demi` for the Settings tab, `OW Wordmark` for the
+  RECALL masthead) with a fallback chain: licensed `local()` lookup →
+  bundled `./assets/fonts/*.woff2` (drop-in slot for the licensed files)
+  → Google Fonts free lookalikes loaded via `index.html` (Barlow
+  Condensed italic, Jost, Russo One). Keep all three layers when
+  reworking the font stack.
 
 ## Bundled observability stack
 
@@ -373,6 +394,25 @@ Triggered on `v*` tags. Parallel jobs: `build-docker` (Linux + Windows Wails app
   SR change would block a SUMMARY's authoritative `result` from
   overriding the stored value). New inference helpers belong on this
   read-time path.
+- **Wails AssetServer custom routes need Middleware, not Handler, in
+  dev mode.** `assetserver.Options.Handler` only fires when the dev
+  proxy returns 404/405, but Vite's SPA fallback returns the bundled
+  `index.html` with `200 OK` for unknown routes — so any path-prefixed
+  handler (e.g. `/_screenshot/`) never runs and the browser receives
+  HTML labelled as the asset's content-type. The Wails desktop wiring
+  in `pkg/cmd/wails.go` registers `ScreenshotHandler` as a Middleware
+  that short-circuits before the proxy. Production builds work either
+  way; only `wails dev` needs the middleware pattern.
+- **`screenshotType(r)` must check E/A/D before hero stats.**
+  Scoreboard parses populate both `r.Eliminations/Assists/Deaths` and
+  `r.HeroesPlayed[*].Stats` (the right-side panel cards). A
+  hero-stats-first check would mis-classify every scoreboard with a
+  populated panel as `personal`. Order: rank → summary → scoreboard
+  (E/A/D) → personal (hero stats) → unknown.
+- **`wails dev` takes ~12-14 s** before its AssetServer (`:34115`)
+  responds. When probing routes via `curl` from a script, sleep at
+  least 14 s after starting the dev server. Vite (`:5173`) is up
+  faster but doesn't see custom handlers.
 - **Vue 3 ref auto-unwrapping in templates** — in `<script setup>`, refs
   are auto-unwrapped at the template top level: `myRef` in a template
   expression already equals `myRef.value`. Writing `myRef.value[key]` in a
