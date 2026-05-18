@@ -1,0 +1,60 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly on Monday at 06:00 UTC — offset from Dependabot (Sunday) to spread load.
+    - cron: '0 6 * * 1'
+
+# contents: read   — check out code
+# actions: read    — required for private repos (no-op on public, included for portability)
+# security-events: write — upload SARIF results to GitHub Security tab
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: go
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      # Go: build the serveronly variant (pure Go, CGO_ENABLED=0) so the runner
+      # doesn't need WebKitGTK or other CGo deps required by the Wails variant.
+      # All business logic (parser, DB, metrics, server, app) is covered; the
+      # thin Wails-specific files (app_wails.go, cmd/wails.go) are excluded by
+      # the build tag but contain no novel logic worth analyzing separately.
+      - if: matrix.language == 'go'
+        name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - if: matrix.language == 'go'
+        name: Build (serveronly — no CGo required)
+        env:
+          CGO_ENABLED: "0"
+        run: go build -tags serveronly ./...
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}
