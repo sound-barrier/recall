@@ -86,6 +86,9 @@ const filterRole   = ref([])
 const filterMap    = ref([])
 const filterHero   = ref([])
 const filterResult = ref([])
+// Filter by which OW2 screenshot type(s) the match was parsed from.
+// Backed by rec.source_types (per-file map populated at parse time).
+const filterSshot  = ref([])
 
 // Which filter popover is currently open (one at a time). Set to the
 // field name ("mode", "map", ...) when a trigger is clicked; cleared
@@ -95,7 +98,7 @@ const openFilter = ref('')
 // Per-popover search query, keyed by field. Used for the Map and Hero
 // rosters which can be long; smaller fields ignore it but the input
 // is hidden anyway when option count < 8.
-const filterSearch = ref({ mode: '', type: '', role: '', map: '', hero: '', result: '' })
+const filterSearch = ref({ mode: '', type: '', role: '', map: '', hero: '', result: '', sshot: '' })
 
 // Date/time range filter. Both bound to <input type="datetime-local">,
 // which emits "YYYY-MM-DDTHH:MM" — the same shape as matchTime(rec),
@@ -121,6 +124,7 @@ const filterRefs = {
   map:    filterMap,
   hero:   filterHero,
   result: filterResult,
+  sshot:  filterSshot,
 }
 
 async function load() {
@@ -334,6 +338,29 @@ const roles   = computed(() => uniqueValues('role'))
 const maps    = computed(() => uniqueValues('map'))
 const results = computed(() => uniqueValues('result'))
 
+// Screenshot-type filter options. The four canonical OW2 post-match
+// types our parser classifies into. Order is workflow order: SUMMARY
+// (post-match summary tab) → TEAMS (post-match scoreboard / in-game
+// scoreboard) → PERSONAL (per-hero stats tab) → RANK (competitive
+// rank screen). Returned as-is rather than collected from records so
+// the filter is meaningful even before parsing any matches.
+const SCREENSHOT_TYPES = ['summary', 'scoreboard', 'personal', 'rank']
+const sshotTypes = computed(() => SCREENSHOT_TYPES)
+
+// Pretty label for a screenshot-type value. "scoreboard" is rendered
+// as "TEAMS" everywhere else in the app so its filter chip matches.
+function sshotTypeLabel(t) {
+  if (t === 'scoreboard') return 'TEAMS'
+  return (t || 'unknown').toUpperCase()
+}
+
+// Lookup the parser-assigned type for a specific source file on a
+// record. Returns '' (empty string) for files parsed before per-file
+// type tracking landed — the UI renders a "?" chip in that case.
+function sourceType(rec, filename) {
+  return rec?.source_types?.[filename] || ''
+}
+
 // Heroes need a custom collector — uniqueValues('hero') would only pick
 // up the primary/most-played hero on each row. For multi-hero matches
 // (e.g. Rialto with Wuyang/Juno/Kiriko) the secondaries live in
@@ -359,6 +386,20 @@ const filtered = computed(() =>
     if (filterRole.value.length   && !filterRole.value.includes(d.role))     return false
     if (filterMap.value.length    && !filterMap.value.includes(d.map))       return false
     if (filterResult.value.length && !filterResult.value.includes(d.result)) return false
+    // Screenshot-type filter: union ("any of the picked types is present"
+    // among this match's parsed source files). Falls back to the
+    // detected-slot inference when source_types is missing so existing
+    // rows parsed before type tracking landed remain filterable.
+    if (filterSshot.value.length) {
+      const picks = filterSshot.value
+      const stored = r.source_types ? Object.values(r.source_types) : []
+      let inferred = []
+      if (stored.length === 0) {
+        inferred = detectScreenshotSlots(r).filter(s => s.present).map(s => s.key)
+      }
+      const present = stored.length ? stored : inferred
+      if (!picks.some(p => present.includes(p))) return false
+    }
     // Hero filter matches the primary hero OR any hero in heroes_played,
     // so picking a secondary hero like Juno (47%-second-fiddle on
     // Rialto) still surfaces that match. With multi-select, ANY of the
@@ -450,6 +491,7 @@ function clearFilters() {
   filterMap.value    = []
   filterHero.value   = []
   filterResult.value = []
+  filterSshot.value  = []
   filterFrom.value   = ''
   filterTo.value     = ''
   openFilter.value   = ''
@@ -607,33 +649,41 @@ function onUnknownPreviewError(filename) {
   unknownPreviewError.value = { ...unknownPreviewError.value, [filename]: true }
 }
 
-// Infer which screenshot types were parsed for a record based on which
-// field groups are populated. Drives the slot-chip row on each card and
-// the missing-data explainer in the expanded view.
+// Infer which screenshot types were parsed for a record. Drives the
+// slot-chip row at the top of the Source Screenshots section and the
+// missing-data explainer beneath the file list.
 //
-// `required: true` means a complete match summary needs that screenshot
+// `required: true` means a complete match needs that screenshot
 // (SUMMARY / TEAMS / PERSONAL). `required: false` is RANK — useful but
 // not strictly needed.
 //
-// `missing` is a human-readable list of what data is *consequently*
-// unavailable when that screenshot wasn't captured, shown in the
-// coverage explainer.
+// When the row carries a stored source_types map (populated at parse
+// time from each individual file's classifier), that map is the source
+// of truth — a chip is PRESENT iff at least one source file is tagged
+// with that type. For pre-migration rows (no source_types) we fall
+// back to field-presence inference, which is fuzzier — read-time
+// inferences like inferResultFromRank can falsely light up SUMMARY,
+// and a scoreboard-only row will light up PERSONAL because the
+// scoreboard's right-panel stats are stored in HeroesPlayed[*].Stats.
 function detectScreenshotSlots(rec) {
   const d = rec.data || {}
   const hp = Array.isArray(d.heroes_played) ? d.heroes_played : []
-  // Combat-stat columns are NOT NULL DEFAULT 0 in SQLite, so they're
-  // always numbers. A row that never saw a scoreboard has all six at 0;
-  // sum > 0 is the reliable signal.
+  const storedTypes = rec.source_types
+    ? new Set(Object.values(rec.source_types).filter(Boolean))
+    : null
   const combatTotal = (d.eliminations || 0) + (d.assists || 0) + (d.deaths || 0) +
                       (d.damage || 0) + (d.healing || 0) + (d.mitigation || 0)
+  const presence = (key, fallback) =>
+    storedTypes ? storedTypes.has(key) : fallback
   return [
     {
       key: 'summary',
       label: 'SUMMARY',
       required: true,
-      present: !!(d.result || d.final_score || d.date || d.finished_at ||
-                  d.game_length || d.type || d.mode ||
-                  hp.some(h => h.percent_played || h.play_time)),
+      present: presence('summary',
+        !!(d.final_score || d.date || d.finished_at || d.game_length ||
+           d.type || d.mode ||
+           hp.some(h => h.percent_played || h.play_time))),
       hint: 'Post-match SUMMARY tab — match result, final score, date, game length',
       missing: 'match result, final score, date & time, game length',
     },
@@ -641,7 +691,7 @@ function detectScreenshotSlots(rec) {
       key: 'scoreboard',
       label: 'TEAMS',
       required: true,
-      present: combatTotal > 0,
+      present: presence('scoreboard', combatTotal > 0),
       hint: 'TEAMS scoreboard (in-game or post-match) — E/A/D, damage, healing, mitigation',
       missing: 'eliminations, assists, deaths, damage, healing, mitigation',
     },
@@ -649,7 +699,8 @@ function detectScreenshotSlots(rec) {
       key: 'personal',
       label: 'PERSONAL',
       required: true,
-      present: hp.some(h => h.stats && Object.keys(h.stats).length > 0),
+      present: presence('personal',
+        hp.some(h => h.stats && Object.keys(h.stats).length > 0) && combatTotal === 0),
       hint: 'Post-match PERSONAL tab — per-hero detailed stats (accuracy, ult charges, role-specific cards)',
       missing: 'per-hero detailed stats (accuracy, ult charges, role-specific cards)',
     },
@@ -657,7 +708,8 @@ function detectScreenshotSlots(rec) {
       key: 'rank',
       label: 'RANK',
       required: false,
-      present: !!(d.rank || d.level || (Array.isArray(d.sr) && d.sr.length > 0)),
+      present: presence('rank',
+        !!(d.rank || d.level || (Array.isArray(d.sr) && d.sr.length > 0))),
       hint: 'Competitive rank screen — SR, rank tier, rank change. Optional but recommended for ranked matches.',
       missing: 'SR / rank tier / rank change',
     },
@@ -689,6 +741,7 @@ function heroesForHeader(rec) {
 const anyFilter = computed(() =>
   !!(filterMode.value.length || filterType.value.length || filterRole.value.length ||
      filterMap.value.length  || filterHero.value.length || filterResult.value.length ||
+     filterSshot.value.length ||
      filterFrom.value || filterTo.value)
 )
 
@@ -712,6 +765,7 @@ const activeFilterCount = computed(() => {
   if (filterMap.value.length)    n++
   if (filterHero.value.length)   n++
   if (filterResult.value.length) n++
+  if (filterSshot.value.length)  n++
   if (filterFrom.value)          n++
   if (filterTo.value)            n++
   return n
@@ -1603,6 +1657,7 @@ onBeforeUnmount(() => {
                 { field: 'role', label: 'Role', options: roles, short: 'ROLES' },
                 { field: 'hero', label: 'Hero', options: heroes, short: 'HEROES' },
                 { field: 'result', label: 'Result', options: results, short: 'RESULTS' },
+                { field: 'sshot', label: 'Source', options: sshotTypes, short: 'SOURCES', formatOption: sshotTypeLabel },
               ]"
               :key="cfg.field"
               class="filter-field multi-filter"
@@ -1633,13 +1688,13 @@ onBeforeUnmount(() => {
                       :title="`Remove ${val} from filter`"
                       @click.stop="toggleFilter(cfg.field, val)"
                     >
-                      <span class="mf-chip-text">{{ val }}</span>
+                      <span class="mf-chip-text">{{ cfg.formatOption ? cfg.formatOption(val) : val }}</span>
                       <span class="mf-chip-x" aria-hidden="true">×</span>
                     </span>
                   </template>
                   <template v-else>
                     <span class="mf-chip mf-chip-stack">
-                      <span class="mf-chip-text">{{ filterRefs[cfg.field].value[0] }}</span>
+                      <span class="mf-chip-text">{{ cfg.formatOption ? cfg.formatOption(filterRefs[cfg.field].value[0]) : filterRefs[cfg.field].value[0] }}</span>
                       <span class="mf-chip-x" aria-hidden="true" />
                     </span>
                     <span class="mf-more">+{{ filterRefs[cfg.field].value.length - 1 }}</span>
@@ -1669,7 +1724,7 @@ onBeforeUnmount(() => {
                 <div class="mf-list" role="listbox" aria-multiselectable="true">
                   <template v-for="opt in cfg.options" :key="opt">
                     <label
-                      v-if="!filterSearch[cfg.field] || opt.toLowerCase().includes(filterSearch[cfg.field].toLowerCase())"
+                      v-if="!filterSearch[cfg.field] || (cfg.formatOption ? cfg.formatOption(opt) : opt).toLowerCase().includes(filterSearch[cfg.field].toLowerCase())"
                       class="mf-row"
                       :class="{ checked: filterRefs[cfg.field].value.includes(opt) }"
                     >
@@ -1680,7 +1735,7 @@ onBeforeUnmount(() => {
                         @change="toggleFilter(cfg.field, opt)"
                       >
                       <span class="mf-row-mark" aria-hidden="true" />
-                      <span class="mf-row-label">{{ opt }}</span>
+                      <span class="mf-row-label">{{ cfg.formatOption ? cfg.formatOption(opt) : opt }}</span>
                     </label>
                   </template>
                   <div
@@ -1870,57 +1925,12 @@ onBeforeUnmount(() => {
 
               <template v-if="isExpanded(rec.id)">
                 <div class="match-expanded">
-                  <!-- Data Coverage: which of the four OW screenshot types
-                       were captured for this match, and what's missing.
-                       SUMMARY / TEAMS / PERSONAL are required for a complete
-                       summary; RANK is optional. Hidden when nothing is
-                       missing — a "Coverage: 4 of 4" panel with all-green
-                       chips is noise for normal matches and dilutes the
-                       warning signal for incomplete ones. -->
-                  <div
-                    v-if="missingRequiredSlots(rec).length || missingOptionalSlots(rec).length"
-                    class="coverage-block"
-                  >
-                    <div class="coverage-header">
-                      <span class="block-eyebrow">Data Coverage</span>
-                      <span class="coverage-count">
-                        {{ detectScreenshotSlots(rec).filter(s => s.present).length }}
-                        of {{ detectScreenshotSlots(rec).length }}
-                      </span>
-                    </div>
-                    <div class="slot-row">
-                      <span
-                        v-for="slot in detectScreenshotSlots(rec)"
-                        :key="slot.key"
-                        class="slot-chip"
-                        :class="{
-                          present: slot.present,
-                          absent: !slot.present,
-                          optional: !slot.required,
-                          'absent-required': !slot.present && slot.required,
-                        }"
-                        :title="slot.hint"
-                      >
-                        <span class="slot-dot" aria-hidden="true" />
-                        {{ slot.label }}
-                        <span v-if="!slot.required" class="slot-optional-tag">opt</span>
-                      </span>
-                    </div>
-                    <div v-if="missingRequiredSlots(rec).length || missingOptionalSlots(rec).length" class="coverage-explain">
-                      <p v-for="slot in missingRequiredSlots(rec)" :key="slot.key" class="coverage-line required">
-                        <span class="coverage-line-tag">⚠ {{ slot.label }} missing</span>
-                        <span class="coverage-line-text">
-                          Capture the post-match <strong>{{ slot.label }}</strong> tab and re-parse to recover: {{ slot.missing }}.
-                        </span>
-                      </p>
-                      <p v-for="slot in missingOptionalSlots(rec)" :key="slot.key" class="coverage-line optional">
-                        <span class="coverage-line-tag">· {{ slot.label }} not captured</span>
-                        <span class="coverage-line-text">
-                          Optional — recommended for ranked matches. Provides: {{ slot.missing }}.
-                        </span>
-                      </p>
-                    </div>
-                  </div>
+                  <!-- Data Coverage (which OW screenshot types were
+                       captured for this match, with the missing-data
+                       explainer when applicable) lives at the bottom of
+                       the expanded card, fused into the Source Screenshots
+                       section so the per-match coverage row and the
+                       per-file type chips appear together. -->
 
                   <div v-if="rec.data.final_score" class="meta-row">
                     <span class="meta-eyebrow">Final Score</span>
@@ -2003,18 +2013,56 @@ onBeforeUnmount(() => {
                       <span class="chev small" :class="{ open: isSourcesOpen(rec.id) }">›</span>
                       <span class="sources-label">Source Screenshots</span>
                       <span class="sources-count">{{ rec.source_files.length }}</span>
+                      <span class="sources-coverage" :title="`${detectScreenshotSlots(rec).filter(s => s.present).length} of ${detectScreenshotSlots(rec).length} screenshot types captured`">
+                        <span
+                          v-for="slot in detectScreenshotSlots(rec)"
+                          :key="slot.key"
+                          class="slot-chip"
+                          :class="{
+                            present: slot.present,
+                            absent: !slot.present,
+                            optional: !slot.required,
+                            'absent-required': !slot.present && slot.required,
+                            clickable: slot.present,
+                            active: slot.present && isActive('sshot', slot.key),
+                          }"
+                          :title="slot.present ? `Click to filter to matches that have a ${slot.label} screenshot. ${slot.hint}` : slot.hint"
+                          @click.stop="slot.present && toggleFilter('sshot', slot.key)"
+                        >
+                          <span class="slot-dot" aria-hidden="true" />
+                          {{ slot.label }}
+                          <span v-if="!slot.required" class="slot-optional-tag">opt</span>
+                        </span>
+                      </span>
                     </div>
                     <div v-if="isSourcesOpen(rec.id)" class="sources">
                       <div v-for="f in rec.source_files" :key="f" class="source-file">
-                        <a
-                          class="source-name"
-                          :href="screenshotURL(f)"
-                          :title="isPreviewOpen(f) ? 'Hide preview' : 'Show preview'"
-                          @click.prevent="togglePreview(f)"
-                        >
-                          <span class="chev small" :class="{ open: isPreviewOpen(f) }">›</span>
-                          <span class="source-name-text">{{ f }}</span>
-                        </a>
+                        <div class="source-row">
+                          <a
+                            class="source-name"
+                            :href="screenshotURL(f)"
+                            :title="isPreviewOpen(f) ? 'Hide preview' : 'Show preview'"
+                            @click.prevent="togglePreview(f)"
+                          >
+                            <span class="chev small" :class="{ open: isPreviewOpen(f) }">›</span>
+                            <span class="source-name-text">{{ f }}</span>
+                          </a>
+                          <span
+                            v-if="sourceType(rec, f)"
+                            class="source-type-chip clickable"
+                            :class="[
+                              `source-type-${sourceType(rec, f)}`,
+                              { active: isActive('sshot', sourceType(rec, f)) },
+                            ]"
+                            :title="`Click to filter to matches that have a ${sshotTypeLabel(sourceType(rec, f))} screenshot`"
+                            @click.stop="toggleFilter('sshot', sourceType(rec, f))"
+                          >{{ sshotTypeLabel(sourceType(rec, f)) }}</span>
+                          <span
+                            v-else
+                            class="source-type-chip unknown"
+                            title="Type not yet recorded — parsed before per-file type tracking landed. Clear the database and re-parse to populate."
+                          >?</span>
+                        </div>
                         <img
                           v-if="isPreviewOpen(f) && !isPreviewError(f)"
                           :src="screenshotURL(f)"
@@ -2026,6 +2074,21 @@ onBeforeUnmount(() => {
                           Could not load image — check screenshots folder in Settings.
                         </div>
                       </div>
+                    </div>
+
+                    <div v-if="isSourcesOpen(rec.id) && (missingRequiredSlots(rec).length || missingOptionalSlots(rec).length)" class="sources-explain">
+                      <p v-for="slot in missingRequiredSlots(rec)" :key="slot.key" class="coverage-line required">
+                        <span class="coverage-line-tag">⚠ {{ slot.label }} missing</span>
+                        <span class="coverage-line-text">
+                          Capture the post-match <strong>{{ slot.label }}</strong> tab and re-parse to recover: {{ slot.missing }}.
+                        </span>
+                      </p>
+                      <p v-for="slot in missingOptionalSlots(rec)" :key="slot.key" class="coverage-line optional">
+                        <span class="coverage-line-tag">· {{ slot.label }} not captured</span>
+                        <span class="coverage-line-text">
+                          Optional — recommended for ranked matches. Provides: {{ slot.missing }}.
+                        </span>
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -3970,6 +4033,7 @@ body {
 .sources-toggle {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.45rem;
   cursor: pointer;
   user-select: none;
@@ -3993,6 +4057,31 @@ body {
   margin-left: 0.2rem;
 }
 
+/* Coverage chips on the Sources toggle row — same .slot-chip styling
+   as the legacy coverage-block, but pushed to the right of the
+   "Source Screenshots · 5" label. Clicking a present chip toggles
+   the screenshot-type filter; absent chips are inert visuals. */
+.sources-coverage {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+.sources-coverage .slot-chip.clickable {
+  cursor: pointer;
+}
+
+.sources-coverage .slot-chip.clickable:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+.sources-coverage .slot-chip.active {
+  box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
+}
+
 .sources {
   margin-top: 0.55rem;
   padding: 0.65rem 0.75rem;
@@ -4003,6 +4092,15 @@ body {
   font-size: 0.72rem;
 }
 .source-file + .source-file { margin-top: 0.45rem; }
+
+/* Each source file is one row: the clickable filename on the left,
+   the screenshot-type chip on the right. */
+.source-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
 
 .source-name {
   display: inline-flex;
@@ -4015,9 +4113,91 @@ body {
   border-radius: 2px;
   transition: color 160ms ease, background 160ms ease;
   word-break: break-all;
+  flex: 1;
+  min-width: 0;
 }
 .source-name:hover { background: var(--surface-2); color: var(--accent-bright); }
 .source-name-text { font-size: 0.72rem; }
+
+/* Per-file type chip — small uppercase mono pill, colour-coded by
+   screenshot type. Clickable to add the type to the source filter. */
+.source-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+  cursor: default;
+  user-select: none;
+  transition: filter 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.source-type-chip.clickable {
+  cursor: pointer;
+}
+
+.source-type-chip.clickable:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+.source-type-chip.active {
+  box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
+}
+
+/* Type-specific palettes — each screenshot category gets a recognisable
+   colour so a glance down the source list shows the capture pattern. */
+.source-type-summary {
+  background: var(--accent-soft);
+  border-color: rgb(245 166 35 / 50%);
+  color: var(--accent-bright);
+}
+
+.source-type-scoreboard {
+  background: rgb(106 184 255 / 12%);
+  border-color: rgb(106 184 255 / 50%);
+  color: var(--tank);
+}
+
+.source-type-personal {
+  background: rgb(125 255 172 / 12%);
+  border-color: rgb(125 255 172 / 50%);
+  color: var(--support);
+}
+
+.source-type-rank {
+  background: rgb(255 201 77 / 14%);
+  border-color: rgb(255 201 77 / 50%);
+  color: var(--draw);
+}
+
+.source-type-chip.unknown {
+  background: transparent;
+  border-color: var(--border);
+  border-style: dashed;
+  color: var(--text-mute);
+  cursor: help;
+}
+
+[data-theme="light"] .source-type-summary { color: var(--accent-text); }
+
+/* Missing-data explainer below the file list — same pattern as the
+   old coverage-block's explain section, just folded into this block. */
+.sources-explain {
+  margin-top: 0.7rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
 
 .source-preview {
   display: block;
