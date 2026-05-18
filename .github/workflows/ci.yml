@@ -21,7 +21,7 @@ jobs:
       # compiled with Go >= 1.25 (matching go.mod). Using a pre-built binary
       # (golangci-lint-action) would fail because pre-builts are compiled with
       # an older Go and golangci-lint rejects projects targeting a newer version.
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.26'
           cache: true
@@ -106,7 +106,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
