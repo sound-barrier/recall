@@ -44,8 +44,18 @@ Pre-built binaries for every tagged release are on the [GitHub Releases](https:/
 | Linux | `recall-{version}-linux-amd64.tar.gz` · `recall-{version}-linux-amd64.deb` | `recall-server-{version}-linux-amd64.tar.gz` · `recall-server-{version}-linux-amd64.deb` |
 | Windows | `recall-{version}-windows-amd64.exe` | `recall-server-{version}-windows-amd64.exe` |
 | macOS arm64 | `recall-{version}-darwin-arm64.dmg` | `recall-server-{version}-darwin-arm64.tar.gz` |
-| macOS amd64 | `recall-{version}-darwin-amd64.dmg` | `recall-server-{version}-darwin-amd64.tar.gz` |
 | Docker | — | `ghcr.io/sound-barrier/recall-server:latest` |
+
+### macOS first launch
+
+The `.dmg` is not notarized (notarization requires an Apple Developer certificate). macOS will block the app on first open with a warning about unverified software. To bypass it, **right-click the app → Open**, then click **Open** in the dialog that appears. You only need to do this once; subsequent launches work normally.
+
+Alternatively, from Terminal:
+```sh
+xattr -d com.apple.quarantine /Applications/Recall-arm64.app
+```
+
+Or go to **System Settings → Privacy & Security** and click **Open Anyway** after the first blocked launch.
 
 Linux `.deb` packages install the binary to `/usr/local/bin/`:
 
@@ -237,7 +247,7 @@ Recall ships two binary flavours:
 ```sh
 make build-linux        # Linux/amd64   → dist/linux/Recall
 make build-windows      # Windows/amd64 → dist/windows/Recall.exe
-make build-mac          # macOS arm64+amd64 .app → dist/mac/  (macOS host required)
+make build-mac          # macOS arm64 .app → dist/mac/  (macOS host required)
 make build-all-docker   # Linux + Windows via Docker (no Apple SDK needed)
 make build-all          # all three (macOS host required)
 ```
@@ -253,7 +263,7 @@ All three OS targets can be produced from Docker on any host, including macOS.
 ```sh
 make build-server-linux      # Linux/amd64     → dist/server-linux/Recall-server
 make build-server-windows    # Windows/amd64   → dist/server-windows/Recall-server.exe
-make build-server-mac        # macOS arm64+amd64 → dist/server-mac/  (Docker, no Apple SDK!)
+make build-server-mac        # macOS arm64 → dist/server-mac/  (Docker, no Apple SDK!)
 make build-server-all        # all three server builds
 make build-server-container  # Linux container image with Tesseract → recall-server:local
 ```

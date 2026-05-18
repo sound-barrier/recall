@@ -5,11 +5,7 @@ on:
     tags:
       - 'v*'
 
-# contents: write  — create GitHub Releases and upload assets
-# packages: write  — push container images to GHCR
-permissions:
-  contents: write
-  packages: write
+permissions: {}  # deny all by default; each job declares only what it needs
 
 jobs:
   # ── Job 1: Docker-based builds (Linux + Windows Wails, all server binaries) ──
@@ -17,6 +13,8 @@ jobs:
   # Docker internally or can be cross-compiled without the Apple SDK.
   build-docker:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       DOCKER_BUILDKIT: "1"
     steps:
@@ -91,6 +89,8 @@ jobs:
   # ── Job 2: macOS Wails .app bundles (requires Apple SDK / Xcode CLT) ──
   build-mac:
     runs-on: macos-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
 
@@ -128,6 +128,8 @@ jobs:
   # and emits a single SPDX JSON file attached to the release.
   sbom:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
 
@@ -149,6 +151,9 @@ jobs:
   # Image: ghcr.io/<owner>/recall-server:<version>, <major>.<minor>, latest
   publish-container:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     env:
       DOCKER_BUILDKIT: "1"
     steps:
@@ -189,12 +194,13 @@ jobs:
       # GHCR packages default to private for new packages. Explicitly set public
       # so users can pull without authentication. Detects user vs org owner automatically.
       - name: Set container image visibility to public
+        continue-on-error: true  # GITHUB_TOKEN lacks write:packages OAuth scope for visibility changes; set public manually in Package settings once
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          OWNER_TYPE=$(gh api "/repos/${{ github.repository }}" --jq '.owner.type')
+          OWNER_TYPE=$(gh api "/repos/$GITHUB_REPOSITORY" --jq '.owner.type')
           if [ "$OWNER_TYPE" = "Organization" ]; then
-            API_PATH="/orgs/${{ github.repository_owner }}/packages/container/recall-server"
+            API_PATH="/orgs/$GITHUB_REPOSITORY_OWNER/packages/container/recall-server"
           else
             API_PATH="/user/packages/container/recall-server"
           fi
@@ -214,6 +220,8 @@ jobs:
   release:
     needs: [build-docker, build-mac, sbom]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       # Download all artifacts into the current directory (merge-multiple flattens them).
       - uses: actions/download-artifact@v8
