@@ -10,6 +10,31 @@ per-hero stats.
 Stack: Go + Wails v2 desktop shell · Vue 3 + Vite frontend ·
 `modernc.org/sqlite` (pure-Go) · Tesseract CLI · Prometheus + Grafana.
 
+## Table of Contents
+
+- [Installation](#installation)
+  - [Verifying downloads](#verifying-downloads)
+- [Prerequisites](#prerequisites)
+- [Development](#development)
+  - [macOS](#macos)
+  - [Linux](#linux)
+  - [Windows](#windows)
+    - [Option A: WSL2 (recommended)](#option-a-wsl2-recommended)
+    - [Option B: Native Windows](#option-b-native-windows)
+- [Building](#building)
+  - [Wails desktop app](#wails-desktop-app)
+  - [Server-only binary](#server-only-binary)
+  - [Running the server](#running-the-server)
+  - [Running via Docker](#running-via-docker)
+  - [Other build commands](#other-build-commands)
+- [Maintenance](#maintenance)
+- [Metrics & Grafana](#metrics--grafana)
+  - [Option A: Bundled Podman/Docker Compose (recommended)](#option-a-bundled-podmandocker-compose-recommended)
+  - [Option B: Your own Docker/Podman containers](#option-b-your-own-dockerpodman-containers)
+  - [Option C: Native installation (no containers)](#option-c-native-installation-no-containers)
+  - [Troubleshooting](#troubleshooting)
+  - [Metric overview](#metric-overview)
+
 ## Installation
 
 Pre-built binaries for every tagged release are on the [GitHub Releases](https://github.com/sound-barrier/recall/releases) page.
