@@ -527,9 +527,27 @@ func scrapeReader() ([]metrics.ScrapeRow, error) {
 	}
 	out := make([]metrics.ScrapeRow, len(recs))
 	for i, r := range recs {
+		inferSoleHeroPercent(&r.Data)
 		out[i] = metrics.ScrapeRow{MatchKey: r.MatchKey, Data: r.Data}
 	}
 	return out, nil
+}
+
+// inferSoleHeroPercent fills percent_played for matches where only one hero
+// is on record. Scoreboard-only rows (no SUMMARY screenshot captured) have a
+// single HeroesPlayed entry with PercentPlayed=0 because that field only
+// comes from the SUMMARY tab — if there's just one hero, they were played
+// for the whole match. Applied at read time, not at parse/merge time, so a
+// later SUMMARY screenshot can still write the real percentage into the
+// stored 0 via mergeMatchResult's first-non-zero-wins rule.
+func inferSoleHeroPercent(d *parser.MatchResult) {
+	if len(d.HeroesPlayed) != 1 {
+		return
+	}
+	hp := &d.HeroesPlayed[0]
+	if hp.PercentPlayed == 0 && hp.PlayTime == "" {
+		hp.PercentPlayed = 100
+	}
 }
 
 // ParseScreenshots OCRs every image in screenshots/ and merges results from
@@ -808,7 +826,14 @@ func (a *App) GetNewScreenshotCount() (int, error) {
 
 // GetMatchResults returns all stored, merged match rows.
 func (a *App) GetMatchResults() ([]MatchRecord, error) {
-	return readAllRecords()
+	recs, err := readAllRecords()
+	if err != nil {
+		return nil, err
+	}
+	for i := range recs {
+		inferSoleHeroPercent(&recs[i].Data)
+	}
+	return recs, nil
 }
 
 // ClearDatabase deletes all rows from match_results, resetting the
