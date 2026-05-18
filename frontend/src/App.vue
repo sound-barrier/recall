@@ -418,493 +418,1382 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="container">
-    <div class="page-header">
-      <h1>OWMetrics</h1>
-      <div class="top-right">
-        <div class="wld-summary" v-if="records.length > 0" title="Wins · Losses · Draws across the currently filtered matches">
-          <span class="wld-w">{{ wld.victory }}W</span>
-          <span class="wld-l">{{ wld.defeat }}L</span>
-          <span class="wld-d">{{ wld.draw }}D</span>
-        </div>
-        <label class="prom-toggle" title="Lets the Grafana dashboard read your matches over localhost:9091. Off by default — no network port is opened until you enable this.">
-          <input type="checkbox" :checked="prometheusEnabled" @change="togglePrometheus" />
-          <span>Send match data to Grafana</span>
-        </label>
-      </div>
-    </div>
+  <div class="app">
+    <div class="atmos" aria-hidden="true"></div>
+    <div class="grid-lines" aria-hidden="true"></div>
 
-    <div class="parse-row">
-      <!-- Directory + Change live as one visual unit on the left so the
-           eye reads them together (the button "belongs to" the path).
-           The Parse button is pushed to the far right via margin-left:
-           auto on .parse-btn. -->
-      <span class="dir-current" :title="screenshotsDir">
-        <span class="dir-label">Reading from</span>
-        <span class="dir-path">{{ screenshotsDir || '—' }}</span>
-      </span>
-      <button class="dir-change" @click="pickDir" :disabled="loading">Change…</button>
-      <label
-        class="watch-toggle"
-        title="Auto-parse new screenshots as they appear. Waits 60 seconds after the last new file before parsing, so a typical 3–4-screenshot session collapses into one parse."
-      >
-        <input type="checkbox" :checked="watchEnabled" @change="toggleWatch" />
-        <span>Watch directory</span>
-      </label>
-      <button class="parse-btn" @click="parse" :disabled="loading">
-        {{ loading
-            ? (screenshotsDir ? `Parsing from ${screenshotsDir}…` : 'Parsing…')
-            : 'Parse Screenshots' }}
-      </button>
-    </div>
-
-    <p v-if="error" class="error">{{ error }}</p>
-
-    <div v-if="records.length === 0 && !loading" class="empty">
-      No results yet. Click "Parse Screenshots" to analyse the screenshots/ directory.
-    </div>
-
-    <!-- Filters split into two lines: dropdowns + actions on row 1,
-         date-range pickers (which need wider space + room to breathe)
-         on their own row 2. -->
-    <div v-if="records.length > 0" class="filters">
-      <!-- Dropdown order: Mode first (broadest filter — Competitive vs
-           Quickplay), then map → type → role → hero → result mirroring
-           the badge order in each card header. -->
-      <select v-model="filterMode">
-        <option value="">All modes</option>
-        <option v-for="m in modes" :key="m" :value="m">{{ m }}</option>
-      </select>
-      <select v-model="filterMap">
-        <option value="">All maps</option>
-        <option v-for="m in maps" :key="m" :value="m">{{ m }}</option>
-      </select>
-      <select v-model="filterType">
-        <option value="">All types</option>
-        <option v-for="t in types" :key="t" :value="t">{{ t }}</option>
-      </select>
-      <select v-model="filterRole">
-        <option value="">All roles</option>
-        <option v-for="r in roles" :key="r" :value="r">{{ r }}</option>
-      </select>
-      <select v-model="filterHero">
-        <option value="">All heroes</option>
-        <option v-for="h in heroes" :key="h" :value="h">{{ h }}</option>
-      </select>
-      <select v-model="filterResult">
-        <option value="">All results</option>
-        <option v-for="r in results" :key="r" :value="r">{{ r }}</option>
-      </select>
-      <button class="sort" @click="toggleSort" :title="sortDir === 'desc' ? 'Newest first — click for oldest first' : 'Oldest first — click for newest first'">
-        {{ sortDir === 'desc' ? '↓ Newest' : '↑ Oldest' }}
-      </button>
-      <button class="sort" @click="toggleAll" :title="allExpanded ? 'Collapse every visible card' : 'Expand every visible card'">
-        {{ allExpanded ? 'Collapse all' : 'Expand all' }}
-      </button>
-      <button v-if="anyFilter" class="clear" @click="clearFilters">Clear</button>
-      <span class="count">{{ filteredSorted.length }} / {{ records.length }}</span>
-    </div>
-
-    <div v-if="records.length > 0" class="filters date-range">
-      <label class="range-label" title="Earliest match time to include">
-        From
-        <input
-          type="datetime-local"
-          v-model="filterFrom"
-          :min="earliestMatchDateTime"
-          :max="nowDateTime"
-          class="datetime"
-        />
-      </label>
-      <label class="range-label" title="Latest match time to include">
-        To
-        <input
-          type="datetime-local"
-          v-model="filterTo"
-          :min="earliestMatchDateTime"
-          :max="nowDateTime"
-          class="datetime"
-        />
-      </label>
-      <button
-        class="sort"
-        @click="resetDateRange"
-        :disabled="!filterFrom && !filterTo"
-        title="Clear both date pickers"
-      >Reset</button>
-    </div>
-
-    <div v-for="rec in filteredSorted" :key="rec.id" class="card" :class="{ expanded: isExpanded(rec.id) }">
-      <!-- Clicking anywhere on the header that ISN'T a badge toggles
-           expand. Each badge uses @click.stop so its filter action
-           doesn't bubble up and trigger the expand toggle. -->
-      <div class="card-header" @click="toggleExpand(rec.id)">
-        <span class="chevron" :class="{ open: isExpanded(rec.id) }">▶</span>
-        <span
-          class="map clickable" :class="{ active: isActive('map', rec.data.map) }"
-          @click.stop="toggleFilter('map', rec.data.map)"
-          title="Click to filter by this map"
-        >{{ rec.data.map }}</span>
-        <span
-          v-if="rec.data.type" class="type clickable" :class="{ active: isActive('type', rec.data.type) }"
-          @click.stop="toggleFilter('type', rec.data.type)"
-          title="Click to filter by this game type"
-        >{{ rec.data.type }}</span>
-        <span
-          v-if="rec.data.role" class="role clickable" :class="[rec.data.role, { active: isActive('role', rec.data.role) }]"
-          @click.stop="toggleFilter('role', rec.data.role)"
-          title="Click to filter by this role"
-        >{{ rec.data.role }}</span>
-        <template v-for="(hp, i) in heroesForHeader(rec)" :key="hp.hero">
-          <span
-            class="hero clickable" :class="{ active: isActive('hero', hp.hero) }"
-            @click.stop="toggleFilter('hero', hp.hero)"
-            :title="hp.percent_played != null ? `${hp.hero} — ${hp.percent_played}% played` : 'Click to filter by this hero'"
-          >{{ hp.hero }}</span>
-          <span v-if="i < heroesForHeader(rec).length - 1" class="hero-sep">|</span>
-        </template>
-        <span
-          v-if="rec.data.result" class="result clickable" :class="[rec.data.result, { active: isActive('result', rec.data.result) }]"
-          @click.stop="toggleFilter('result', rec.data.result)"
-          title="Click to filter by this result"
-        >{{ rec.data.result }}</span>
-        <span class="when" v-if="fmtTime(rec)">{{ fmtTime(rec) }}</span>
-        <span v-if="rec.data.game_length" class="length">⏱ {{ rec.data.game_length }}</span>
-      </div>
-
-      <template v-if="isExpanded(rec.id)">
-        <div v-if="rec.data.final_score" class="meta">
-          <div class="meta-item"><label>Final Score</label><span>{{ rec.data.final_score }}</span></div>
-        </div>
-
-        <div class="stats">
-          <div class="stat"><label>Elims</label><span>{{ rec.data.eliminations }}</span></div>
-          <div class="stat"><label>Assists</label><span>{{ rec.data.assists }}</span></div>
-          <div class="stat"><label>Deaths</label><span>{{ rec.data.deaths }}</span></div>
-          <div class="stat"><label>Damage</label><span>{{ rec.data.damage?.toLocaleString() }}</span></div>
-          <div class="stat"><label>Healing</label><span>{{ rec.data.healing?.toLocaleString() }}</span></div>
-          <div class="stat"><label>Mitigation</label><span>{{ rec.data.mitigation?.toLocaleString() }}</span></div>
-        </div>
-
-        <div v-if="rec.data.rank" class="rank-block">
-          <label>Rank</label>
-          <div class="rank-line">
-            <span class="rank-tier" :class="rec.data.rank">{{ rec.data.rank }} {{ rec.data.level }}</span>
-            <span v-if="rec.data.rank_progress" class="rank-progress">{{ rec.data.rank_progress }}% progress</span>
-            <span v-if="rec.data.change_percent" class="rank-change">+{{ rec.data.change_percent }}%</span>
-            <span v-for="m in rec.data.modifiers" :key="m" class="rank-modifier">{{ m }}</span>
+    <div class="container">
+      <header class="masthead">
+        <div class="masthead-left">
+          <div class="brandmark">
+            <span class="brand-tick">◢</span>
+            <h1 class="brand">OW<span class="brand-accent">METRICS</span></h1>
           </div>
-          <div v-if="rec.data.sr?.length" class="sr-line">
-            <span v-for="s in rec.data.sr" :key="s.hero" class="sr-entry">
-              {{ s.hero }}: {{ s.sr }} <span class="sr-delta" :class="s.change >= 0 ? 'up' : 'down'">{{ s.change >= 0 ? '+' : '' }}{{ s.change }}</span>
-            </span>
+          <p class="tagline">Personal Telemetry · Match Almanac</p>
+        </div>
+        <div class="masthead-right" v-if="records.length > 0" title="Wins · Losses · Draws across the currently filtered matches">
+          <div class="scoreboard">
+            <div class="score-cell">
+              <span class="score-num win">{{ wld.victory }}</span>
+              <span class="score-label">Won</span>
+            </div>
+            <div class="score-cell">
+              <span class="score-num loss">{{ wld.defeat }}</span>
+              <span class="score-label">Lost</span>
+            </div>
+            <div class="score-cell">
+              <span class="score-num draw">{{ wld.draw }}</span>
+              <span class="score-label">Drew</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="control-deck">
+        <div class="deck-path" :title="screenshotsDir">
+          <span class="deck-eyebrow">Reading from</span>
+          <span class="deck-path-value">{{ screenshotsDir || 'No directory selected' }}</span>
+        </div>
+        <div class="deck-actions">
+          <button class="btn ghost" @click="pickDir" :disabled="loading">Change Folder</button>
+          <label
+            class="switch"
+            title="Auto-parse new screenshots as they appear. Waits 60 seconds after the last new file before parsing, so a typical 3–4-screenshot session collapses into one parse."
+          >
+            <input type="checkbox" :checked="watchEnabled" @change="toggleWatch" />
+            <span class="switch-track"><span class="switch-knob"></span></span>
+            <span class="switch-label">Watch Folder</span>
+          </label>
+          <label
+            class="switch"
+            title="Lets the Grafana dashboard read your matches over localhost:9091. Off by default — no network port is opened until you enable this."
+          >
+            <input type="checkbox" :checked="prometheusEnabled" @change="togglePrometheus" />
+            <span class="switch-track"><span class="switch-knob"></span></span>
+            <span class="switch-label">Stream to Grafana</span>
+          </label>
+          <button class="btn primary" @click="parse" :disabled="loading">
+            <span class="btn-dot"></span>
+            <span v-if="loading">Parsing…</span>
+            <span v-else>Parse Screenshots</span>
+          </button>
+        </div>
+      </section>
+
+      <p v-if="error" class="error"><span class="error-tick">✕</span>{{ error }}</p>
+
+      <div v-if="records.length === 0 && !loading" class="empty">
+        <div class="empty-mark">◌</div>
+        <p class="empty-title">No matches on record.</p>
+        <p class="empty-sub">Hit <strong>Parse Screenshots</strong> to scan your folder, or flip on <strong>Watch Folder</strong> to auto-ingest as you play.</p>
+      </div>
+
+      <section v-if="records.length > 0" class="filter-rail">
+        <div class="filter-grid">
+          <div class="filter-field">
+            <span class="filter-eyebrow">Mode</span>
+            <select v-model="filterMode" class="dd">
+              <option value="">All</option>
+              <option v-for="m in modes" :key="m" :value="m">{{ m }}</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-eyebrow">Map</span>
+            <select v-model="filterMap" class="dd">
+              <option value="">All</option>
+              <option v-for="m in maps" :key="m" :value="m">{{ m }}</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-eyebrow">Type</span>
+            <select v-model="filterType" class="dd">
+              <option value="">All</option>
+              <option v-for="t in types" :key="t" :value="t">{{ t }}</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-eyebrow">Role</span>
+            <select v-model="filterRole" class="dd">
+              <option value="">All</option>
+              <option v-for="r in roles" :key="r" :value="r">{{ r }}</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-eyebrow">Hero</span>
+            <select v-model="filterHero" class="dd">
+              <option value="">All</option>
+              <option v-for="h in heroes" :key="h" :value="h">{{ h }}</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-eyebrow">Result</span>
+            <select v-model="filterResult" class="dd">
+              <option value="">All</option>
+              <option v-for="r in results" :key="r" :value="r">{{ r }}</option>
+            </select>
           </div>
         </div>
 
-        <!-- Heroes Played: label in a left column, hero blocks stacked
-             in the right column. -->
-        <div v-if="rec.data.heroes_played?.length" class="heroes-played-list">
-          <label>Heroes Played</label>
-          <div class="heroes-played-items">
-            <div v-for="hp in rec.data.heroes_played" :key="hp.hero" class="hero-block">
-              <div class="hero-header">
-                <span class="hero-name clickable" :class="{ active: isActive('hero', hp.hero) }" @click="toggleFilter('hero', hp.hero)">{{ hp.hero }}</span>
-                <span class="hero-pct">{{ hp.percent_played }}%</span>
-                <span v-if="hp.play_time" class="hero-time">{{ hp.play_time }}</span>
-              </div>
-              <div v-if="hp.stats && Object.keys(hp.stats).length" class="personal-grid">
-                <div v-for="(v, k) in hp.stats" :key="k" class="personal-item">
-                  <span class="personal-label">{{ k.replace(/_/g, ' ') }}</span>
-                  <span class="personal-value">{{ v }}</span>
+        <div class="filter-bar">
+          <div class="range-group">
+            <label class="range-label">
+              <span>From</span>
+              <input
+                type="datetime-local"
+                v-model="filterFrom"
+                :min="earliestMatchDateTime"
+                :max="nowDateTime"
+                class="dd-date"
+              />
+            </label>
+            <span class="range-dash">→</span>
+            <label class="range-label">
+              <span>To</span>
+              <input
+                type="datetime-local"
+                v-model="filterTo"
+                :min="earliestMatchDateTime"
+                :max="nowDateTime"
+                class="dd-date"
+              />
+            </label>
+            <button
+              class="btn ghost tiny"
+              @click="resetDateRange"
+              :disabled="!filterFrom && !filterTo"
+              title="Clear both date pickers"
+            >Reset</button>
+          </div>
+
+          <div class="filter-tools">
+            <button class="btn ghost tiny" @click="toggleSort" :title="sortDir === 'desc' ? 'Newest first — click for oldest first' : 'Oldest first — click for newest first'">
+              {{ sortDir === 'desc' ? '↓ Newest' : '↑ Oldest' }}
+            </button>
+            <button class="btn ghost tiny" @click="toggleAll" :title="allExpanded ? 'Collapse every visible card' : 'Expand every visible card'">
+              {{ allExpanded ? 'Collapse All' : 'Expand All' }}
+            </button>
+            <button v-if="anyFilter" class="btn ghost tiny danger" @click="clearFilters">Clear Filters</button>
+            <span class="count"><strong>{{ filteredSorted.length }}</strong><span class="count-of">of {{ records.length }}</span></span>
+          </div>
+        </div>
+      </section>
+
+      <div v-if="records.length > 0" class="match-list">
+        <article
+          v-for="(rec, idx) in filteredSorted"
+          :key="rec.id"
+          class="match"
+          :class="[
+            { expanded: isExpanded(rec.id) },
+            `result-${rec.data.result || 'unknown'}`,
+          ]"
+          :style="{ animationDelay: Math.min(idx, 12) * 28 + 'ms' }"
+        >
+          <span class="match-bar" aria-hidden="true"></span>
+          <div class="match-body">
+            <div class="match-header" @click="toggleExpand(rec.id)">
+              <div class="match-title-row">
+                <div class="match-title-lhs">
+                  <span class="match-index">{{ String(idx + 1).padStart(2, '0') }}</span>
+                  <span
+                    class="match-map clickable"
+                    :class="{ active: isActive('map', rec.data.map) }"
+                    @click.stop="toggleFilter('map', rec.data.map)"
+                    title="Click to filter by this map"
+                  >{{ rec.data.map || 'Unknown Map' }}</span>
+                </div>
+                <div class="match-title-rhs">
+                  <span class="when" v-if="fmtTime(rec)">{{ fmtTime(rec) }}</span>
+                  <span v-if="rec.data.game_length" class="length"><span class="length-mark">▮</span>{{ rec.data.game_length }}</span>
+                  <span class="chev" :class="{ open: isExpanded(rec.id) }" aria-hidden="true">›</span>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- Source screenshots: bottom of the card, its own collapse so
-             users who don't care about provenance don't have to look
-             at filenames. Each filename is clickable to preview the
-             actual screenshot inline. -->
-        <div v-if="rec.source_files?.length" class="sources-block">
-          <div class="sources-toggle" @click="toggleSources(rec.id)">
-            <span class="chevron" :class="{ open: isSourcesOpen(rec.id) }">▶</span>
-            <span class="sources-label">Source screenshots ({{ rec.source_files.length }})</span>
-          </div>
-          <div v-if="isSourcesOpen(rec.id)" class="sources">
-            <div v-for="f in rec.source_files" :key="f" class="source-file">
-              <a
-                class="source-name"
-                @click.prevent="togglePreview(f)"
-                :href="screenshotURL(f)"
-                :title="isPreviewOpen(f) ? 'Hide preview' : 'Show preview'"
-              >
-                <span class="chevron" :class="{ open: isPreviewOpen(f) }">▶</span>
-                {{ f }}
-              </a>
-              <img
-                v-if="isPreviewOpen(f)"
-                :src="screenshotURL(f)"
-                :alt="f"
-                class="source-preview"
-                loading="lazy"
-              />
+              <div class="match-tag-row">
+                <span
+                  v-if="rec.data.mode"
+                  class="badge mode clickable"
+                  :class="{ active: isActive('mode', rec.data.mode) }"
+                  @click.stop="toggleFilter('mode', rec.data.mode)"
+                  title="Click to filter by this mode"
+                >{{ rec.data.mode }}</span>
+                <span
+                  v-if="rec.data.type"
+                  class="badge type clickable"
+                  :class="{ active: isActive('type', rec.data.type) }"
+                  @click.stop="toggleFilter('type', rec.data.type)"
+                  title="Click to filter by this game type"
+                >{{ rec.data.type }}</span>
+                <span
+                  v-if="rec.data.role"
+                  class="badge role clickable"
+                  :class="[rec.data.role, { active: isActive('role', rec.data.role) }]"
+                  @click.stop="toggleFilter('role', rec.data.role)"
+                  title="Click to filter by this role"
+                >{{ rec.data.role }}</span>
+                <template v-for="hp in heroesForHeader(rec)" :key="hp.hero">
+                  <span
+                    class="badge hero clickable"
+                    :class="{ active: isActive('hero', hp.hero) }"
+                    @click.stop="toggleFilter('hero', hp.hero)"
+                    :title="hp.percent_played != null ? `${hp.hero} — ${hp.percent_played}% played` : 'Click to filter by this hero'"
+                  >
+                    <span class="hero-name-inline">{{ hp.hero }}</span>
+                    <span v-if="hp.percent_played != null" class="hero-pct-inline">{{ hp.percent_played }}%</span>
+                  </span>
+                </template>
+                <span
+                  v-if="rec.data.result"
+                  class="badge result clickable"
+                  :class="[rec.data.result, { active: isActive('result', rec.data.result) }]"
+                  @click.stop="toggleFilter('result', rec.data.result)"
+                  title="Click to filter by this result"
+                >{{ rec.data.result }}</span>
+              </div>
             </div>
+
+            <template v-if="isExpanded(rec.id)">
+              <div class="match-expanded">
+                <div v-if="rec.data.final_score" class="meta-row">
+                  <span class="meta-eyebrow">Final Score</span>
+                  <span class="meta-value">{{ rec.data.final_score }}</span>
+                </div>
+
+                <div class="stats">
+                  <div class="stat">
+                    <span class="stat-value">{{ rec.data.eliminations ?? '—' }}</span>
+                    <span class="stat-label">Elims</span>
+                  </div>
+                  <div class="stat">
+                    <span class="stat-value">{{ rec.data.assists ?? '—' }}</span>
+                    <span class="stat-label">Assists</span>
+                  </div>
+                  <div class="stat">
+                    <span class="stat-value">{{ rec.data.deaths ?? '—' }}</span>
+                    <span class="stat-label">Deaths</span>
+                  </div>
+                  <div class="stat">
+                    <span class="stat-value">{{ rec.data.damage != null ? rec.data.damage.toLocaleString() : '—' }}</span>
+                    <span class="stat-label">Damage</span>
+                  </div>
+                  <div class="stat">
+                    <span class="stat-value">{{ rec.data.healing != null ? rec.data.healing.toLocaleString() : '—' }}</span>
+                    <span class="stat-label">Healing</span>
+                  </div>
+                  <div class="stat">
+                    <span class="stat-value">{{ rec.data.mitigation != null ? rec.data.mitigation.toLocaleString() : '—' }}</span>
+                    <span class="stat-label">Mitigation</span>
+                  </div>
+                </div>
+
+                <div v-if="rec.data.rank" class="rank-block">
+                  <div class="block-eyebrow">Rank</div>
+                  <div class="rank-line">
+                    <span class="rank-tier" :class="rec.data.rank">{{ rec.data.rank }} {{ rec.data.level }}</span>
+                    <span v-if="rec.data.rank_progress" class="rank-progress">{{ rec.data.rank_progress }}% progress</span>
+                    <span v-if="rec.data.change_percent" class="rank-change">+{{ rec.data.change_percent }}%</span>
+                    <span v-for="m in rec.data.modifiers" :key="m" class="rank-modifier">{{ m }}</span>
+                  </div>
+                  <div v-if="rec.data.sr?.length" class="sr-line">
+                    <span v-for="s in rec.data.sr" :key="s.hero" class="sr-entry">
+                      <span class="sr-hero">{{ s.hero }}</span>
+                      <span class="sr-value">{{ s.sr }}</span>
+                      <span class="sr-delta" :class="s.change >= 0 ? 'up' : 'down'">{{ s.change >= 0 ? '+' : '' }}{{ s.change }}</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div v-if="rec.data.heroes_played?.length" class="heroes-played">
+                  <div class="block-eyebrow">Heroes Played</div>
+                  <div class="heroes-played-items">
+                    <div v-for="hp in rec.data.heroes_played" :key="hp.hero" class="hero-block">
+                      <div class="hero-header">
+                        <span
+                          class="hero-name clickable"
+                          :class="{ active: isActive('hero', hp.hero) }"
+                          @click="toggleFilter('hero', hp.hero)"
+                        >{{ hp.hero }}</span>
+                        <span class="hero-pct">{{ hp.percent_played }}%</span>
+                        <span v-if="hp.play_time" class="hero-time">{{ hp.play_time }}</span>
+                      </div>
+                      <div v-if="hp.stats && Object.keys(hp.stats).length" class="personal-grid">
+                        <div v-for="(v, k) in hp.stats" :key="k" class="personal-item">
+                          <span class="personal-label">{{ k.replace(/_/g, ' ') }}</span>
+                          <span class="personal-value">{{ v }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="rec.source_files?.length" class="sources-block">
+                  <div class="sources-toggle" @click="toggleSources(rec.id)">
+                    <span class="chev small" :class="{ open: isSourcesOpen(rec.id) }">›</span>
+                    <span class="sources-label">Source Screenshots</span>
+                    <span class="sources-count">{{ rec.source_files.length }}</span>
+                  </div>
+                  <div v-if="isSourcesOpen(rec.id)" class="sources">
+                    <div v-for="f in rec.source_files" :key="f" class="source-file">
+                      <a
+                        class="source-name"
+                        @click.prevent="togglePreview(f)"
+                        :href="screenshotURL(f)"
+                        :title="isPreviewOpen(f) ? 'Hide preview' : 'Show preview'"
+                      >
+                        <span class="chev small" :class="{ open: isPreviewOpen(f) }">›</span>
+                        <span class="source-name-text">{{ f }}</span>
+                      </a>
+                      <img
+                        v-if="isPreviewOpen(f)"
+                        :src="screenshotURL(f)"
+                        :alt="f"
+                        class="source-preview"
+                        loading="lazy"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
-        </div>
-      </template>
+        </article>
+      </div>
     </div>
   </div>
 </template>
 
 <style>
+:root {
+  --bg: #0a0b0d;
+  --surface: #13151a;
+  --surface-2: #181b22;
+  --surface-3: #1d2029;
+
+  --border: #232731;
+  --border-soft: #1a1d24;
+  --border-strong: #2e323d;
+  --hairline: rgba(255, 255, 255, 0.06);
+
+  --text: #ecedf0;
+  --text-dim: #9ca0ac;
+  --text-faint: #6b6f7a;
+  --text-mute: #44474f;
+
+  --accent: #f99e1a;
+  --accent-bright: #ffb340;
+  --accent-soft: rgba(249, 158, 26, 0.16);
+  --accent-glow: rgba(249, 158, 26, 0.32);
+
+  --win: #4dff8e;
+  --win-soft: rgba(77, 255, 142, 0.12);
+  --win-line: rgba(77, 255, 142, 0.55);
+  --loss: #ff5a73;
+  --loss-soft: rgba(255, 90, 115, 0.12);
+  --loss-line: rgba(255, 90, 115, 0.55);
+  --draw: #ffc94d;
+  --draw-soft: rgba(255, 201, 77, 0.12);
+  --draw-line: rgba(255, 201, 77, 0.55);
+  --unknown-line: rgba(120, 124, 134, 0.4);
+
+  --tank: #6ab8ff;
+  --tank-soft: rgba(106, 184, 255, 0.14);
+  --dps: #ff7a5a;
+  --dps-soft: rgba(255, 122, 90, 0.14);
+  --support: #7dffac;
+  --support-soft: rgba(125, 255, 172, 0.14);
+
+  --display: 'Big Shoulders Display', 'Impact', 'Oswald', sans-serif;
+  --body: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #1a1a2e; color: #e0e0e0; font-family: sans-serif; }
 
-.container { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-feature-settings: "ss01", "cv11";
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
 
-.page-header {
-  display: flex; justify-content: space-between; align-items: flex-start;
-  margin-bottom: 1.5rem; gap: 1rem;
+.app {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
-h1 { font-size: 1.8rem; color: #7ec8e3; }
-.top-right {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;
-}
-.wld-summary {
-  display: flex; gap: 0.8rem; font-size: 1.2rem; font-weight: 800;
-  font-feature-settings: "tnum"; /* tabular figures so digits don't dance */
-}
-.wld-w { color: #6bffb8; }
-.wld-l { color: #ff6b6b; }
-.wld-d { color: #f0a500; }
 
-button {
-  background: #0077b6; color: #fff; border: none;
-  padding: 0.5rem 1.4rem; border-radius: 4px; cursor: pointer; font-size: 0.95rem;
+/* Soft atmospheric warmth in the top corners. Anchors the eye and
+   keeps the off-black from feeling flat. */
+.atmos {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(60% 50% at 8% -10%, rgba(249, 158, 26, 0.10), transparent 60%),
+    radial-gradient(45% 40% at 100% 0%, rgba(106, 184, 255, 0.06), transparent 60%),
+    radial-gradient(80% 60% at 50% 110%, rgba(255, 90, 115, 0.05), transparent 65%);
 }
-button:hover:not(:disabled) { background: #005f92; }
-button:disabled { opacity: 0.5; cursor: default; }
 
-.error { color: #ff6b6b; margin-top: 1rem; font-size: 0.9rem; }
-.empty { color: #888; margin-top: 2rem; }
-
-.parse-row {
-  display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
+/* Hairline grid pattern, very faint. Tactical/blueprint texture. */
+.grid-lines {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.9), transparent 75%);
 }
-.dir-current {
-  display: flex; flex-direction: column; gap: 0.1rem;
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 2.4rem 1.6rem 4rem;
+}
+
+/* ─── Masthead ───────────────────────────────────────────── */
+
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 2rem;
+  padding-bottom: 1.4rem;
+  margin-bottom: 1.6rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.brandmark {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.brand-tick {
+  color: var(--accent);
+  font-size: 0.85rem;
+  transform: translateY(-2px);
+  text-shadow: 0 0 12px var(--accent-glow);
+}
+.brand {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: 3.2rem;
+  letter-spacing: -0.025em;
+  line-height: 0.85;
+  color: var(--text);
+  text-transform: uppercase;
+}
+.brand-accent {
+  color: var(--accent);
+  text-shadow: 0 0 24px var(--accent-glow);
+}
+.tagline {
+  margin-top: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.masthead-right { display: flex; }
+.scoreboard {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 1.6rem;
+  padding: 0.4rem 0;
+}
+.score-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 0.9;
+}
+.score-num {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 2.6rem;
+  letter-spacing: -0.02em;
+  font-feature-settings: "tnum";
+}
+.score-num.win  { color: var(--win); }
+.score-num.loss { color: var(--loss); }
+.score-num.draw { color: var(--draw); }
+.score-label {
+  margin-top: 0.3rem;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+
+/* ─── Control Deck (parse row) ───────────────────────────── */
+
+.control-deck {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  padding: 0.9rem 1.1rem;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  position: relative;
+}
+.control-deck::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  opacity: 0.85;
+}
+
+.deck-path {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.deck-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+.deck-path-value {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+.deck-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+/* ─── Buttons ────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  padding: 0.55rem 0.95rem;
+  cursor: pointer;
+  user-select: none;
+  text-transform: uppercase;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease, transform 140ms ease, box-shadow 200ms ease;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn.primary {
+  background: var(--accent);
+  color: #1a0a00;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4) inset, 0 4px 28px -8px var(--accent-glow);
+}
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4) inset, 0 4px 36px -6px var(--accent-glow);
+  transform: translateY(-1px);
+}
+.btn.primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+.btn-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #1a0a00;
+  box-shadow: 0 0 0 2px rgba(26, 10, 0, 0.25);
+}
+
+.btn.ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border-color: var(--border-strong);
+}
+.btn.ghost:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text-faint);
+  background: rgba(255, 255, 255, 0.025);
+}
+.btn.ghost.tiny {
+  padding: 0.38rem 0.65rem;
+  font-size: 0.7rem;
+}
+.btn.ghost.danger:hover:not(:disabled) {
+  color: var(--loss);
+  border-color: var(--loss-line);
+}
+
+/* ─── Switch toggle ──────────────────────────────────────── */
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.45rem 0.7rem 0.45rem 0.55rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  background: transparent;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.switch:hover { border-color: var(--text-faint); }
+.switch input { position: absolute; opacity: 0; pointer-events: none; }
+.switch-track {
+  position: relative;
+  width: 26px; height: 14px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  transition: background 200ms ease, border-color 200ms ease;
+  flex-shrink: 0;
+}
+.switch-knob {
+  position: absolute;
+  top: 1px; left: 1px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transition: transform 200ms cubic-bezier(0.4, 0.0, 0.2, 1), background 200ms ease;
+}
+.switch input:checked ~ .switch-track {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.switch input:checked ~ .switch-track .switch-knob {
+  transform: translateX(12px);
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+.switch input:checked ~ .switch-label { color: var(--text); }
+.switch-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ─── Empty / Error states ──────────────────────────────── */
+
+.error {
+  display: flex; align-items: center; gap: 0.55rem;
+  margin-top: 1rem;
+  padding: 0.7rem 1rem;
+  background: var(--loss-soft);
+  border-left: 2px solid var(--loss);
+  color: var(--loss);
+  font-family: var(--mono);
   font-size: 0.8rem;
 }
-.dir-label { color: #666; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; }
-.dir-path {
-  color: #aaa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  word-break: break-all;
+.error-tick {
+  font-weight: 700;
+  opacity: 0.85;
 }
-.dir-change {
-  background: transparent; color: #aaa; border: 1px solid #444;
-  padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 4px; cursor: pointer;
-}
-.dir-change:hover:not(:disabled) { color: #e0e0e0; border-color: #888; background: transparent; }
-.dir-change:disabled { opacity: 0.4; cursor: default; }
-/* Push the Parse button to the far right, separate from the dir +
-   Change pair that sits on the left. */
-.parse-btn { margin-left: auto; }
 
-.watch-toggle {
-  display: inline-flex; align-items: center; gap: 0.4rem;
-  font-size: 0.85rem; color: #aaa; cursor: pointer; user-select: none;
-  padding: 0.4rem 0.6rem; border-radius: 4px;
-  border: 1px solid transparent;
+.empty {
+  margin-top: 4rem;
+  text-align: center;
+  padding: 3rem 1rem;
 }
-.watch-toggle:hover { color: #e0e0e0; border-color: #444; }
-.watch-toggle input { cursor: pointer; }
+.empty-mark {
+  font-family: var(--display);
+  font-size: 5rem;
+  color: var(--text-mute);
+  margin-bottom: 1rem;
+}
+.empty-title {
+  font-family: var(--display);
+  font-size: 1.6rem;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+.empty-sub {
+  color: var(--text-faint);
+  font-size: 0.88rem;
+}
+.empty-sub strong { color: var(--accent); font-weight: 600; }
 
-.prom-toggle {
-  display: inline-flex; align-items: center; gap: 0.4rem;
-  font-size: 0.8rem; color: #888; cursor: pointer; user-select: none;
-}
-.prom-toggle:hover { color: #aaa; }
-.prom-toggle input { cursor: pointer; }
+/* ─── Filter Rail ────────────────────────────────────────── */
 
-.filters {
-  display: flex; gap: 0.5rem; margin-top: 1.2rem; flex-wrap: wrap; align-items: center;
+.filter-rail {
+  margin-top: 1.4rem;
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
 }
-.filters.date-range {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid #0f3460;
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.7rem;
 }
-.filters select {
-  background: #16213e; color: #e0e0e0; border: 1px solid #0f3460;
-  border-radius: 4px; padding: 0.35rem 0.5rem; font-size: 0.9rem;
-  text-transform: capitalize; cursor: pointer;
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
 }
-.filters select:focus { outline: none; border-color: #7ec8e3; }
-.filters .sort,
-.filters .clear {
-  background: transparent; color: #aaa; border: 1px solid #444;
-  padding: 0.3rem 0.7rem; font-size: 0.8rem; border-radius: 4px; cursor: pointer;
+.filter-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-faint);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
 }
-.filters .sort:hover,
-.filters .clear:hover { color: #e0e0e0; border-color: #888; background: transparent; }
-.filters .count { font-size: 0.8rem; color: #666; margin-left: auto; }
-.range-label {
-  display: inline-flex; align-items: center; gap: 0.3rem;
-  font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em;
-}
-.filters input.datetime {
-  background: #16213e; color: #e0e0e0; border: 1px solid #0f3460;
-  border-radius: 4px; padding: 0.3rem 0.5rem; font-size: 0.85rem;
-  color-scheme: dark;
-}
-.filters input.datetime:focus { outline: none; border-color: #7ec8e3; }
 
-.card {
-  background: #16213e; border: 1px solid #0f3460;
-  border-radius: 6px; padding: 1rem; margin-top: 0.6rem;
-  transition: border-color 120ms ease;
+.dd {
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--body);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-transform: capitalize;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-faint) 50%),
+    linear-gradient(135deg, var(--text-faint) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) calc(50% - 2px),
+    calc(100% - 9px) calc(50% - 2px);
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 1.7rem;
+  transition: border-color 140ms ease, background-color 140ms ease;
 }
-.card.expanded { border-color: #1f3a6e; margin-top: 1.2rem; margin-bottom: 1.2rem; }
+.dd:hover { border-color: var(--border-strong); }
+.dd:focus {
+  outline: none;
+  border-color: var(--accent);
+  background-color: var(--surface-3);
+}
 
-.card-header {
-  display: flex; align-items: center; gap: 0.6rem;
+.filter-bar {
+  display: flex;
   flex-wrap: wrap;
-  cursor: pointer;
-  margin: -0.2rem 0;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed var(--border);
 }
-.card.expanded > .card-header { margin-bottom: 0.6rem; }
-
-.chevron {
-  font-size: 0.65rem; color: #888; transition: transform 120ms ease;
-  display: inline-block;
+.range-group {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
 }
-.chevron.open { transform: rotate(90deg); color: #7ec8e3; }
+.range-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+.range-dash {
+  color: var(--text-mute);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+.dd-date {
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--mono);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.82rem;
+  color-scheme: dark;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.dd-date:focus {
+  outline: none;
+  border-color: var(--accent);
+}
 
-/* Clickable badges share the same hover/active treatment regardless of color. */
-.clickable {
+.filter-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+.count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin-left: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-feature-settings: "tnum";
+}
+.count strong {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.count-of { color: var(--text-faint); font-size: 0.72rem; }
+
+/* ─── Match list ─────────────────────────────────────────── */
+
+.match-list {
+  margin-top: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+@keyframes match-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.match {
+  position: relative;
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  animation: match-enter 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+.match:hover { border-color: var(--border-strong); }
+.match.expanded {
+  border-color: var(--border-strong);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+}
+
+.match-bar {
+  width: 3px;
+  background: var(--unknown-line);
+  flex-shrink: 0;
+  transition: background 200ms ease, width 200ms ease, box-shadow 200ms ease;
+}
+.match.result-victory .match-bar {
+  background: var(--win-line);
+  box-shadow: 0 0 12px -2px var(--win-line);
+}
+.match.result-defeat .match-bar {
+  background: var(--loss-line);
+  box-shadow: 0 0 12px -2px var(--loss-line);
+}
+.match.result-draw .match-bar {
+  background: var(--draw-line);
+  box-shadow: 0 0 12px -2px var(--draw-line);
+}
+.match.expanded .match-bar { width: 5px; }
+
+.match-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.95rem 1.15rem;
+}
+
+.match-header {
   cursor: pointer;
-  transition: filter 120ms ease, transform 120ms ease, box-shadow 120ms ease;
   user-select: none;
 }
-.clickable:hover { filter: brightness(1.25); transform: translateY(-1px); }
-.clickable.active {
-  box-shadow: 0 0 0 2px #7ec8e3aa;
+
+.match-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.55rem;
+}
+.match-title-lhs {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.match-index {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-mute);
+  letter-spacing: 0.06em;
+  font-feature-settings: "tnum";
+}
+.match-map {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.55rem;
+  letter-spacing: -0.015em;
+  color: var(--text);
+  text-transform: uppercase;
+  padding: 0 0.15rem;
+  position: relative;
+  transition: color 160ms ease, text-shadow 200ms ease;
+}
+.match-map:hover {
+  color: var(--accent-bright);
+  text-shadow: 0 0 24px var(--accent-glow);
+}
+.match-map.active {
+  color: var(--accent);
+  text-shadow: 0 0 18px var(--accent-glow);
 }
 
-.map { font-size: 1rem; font-weight: 600; text-transform: capitalize; color: #7ec8e3; padding: 2px 6px; border-radius: 4px; }
-.type { font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; background: #0f3460; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; }
-.hero { font-size: 0.9rem; text-transform: capitalize; color: #f0a500; padding: 2px 6px; border-radius: 4px; }
-.hero-sep { color: #555; font-size: 0.85rem; user-select: none; margin: 0 -0.2rem; }
-.when { font-size: 0.85rem; color: #aaa; margin-left: auto; }
-.length { font-size: 0.85rem; color: #888; }
-.sources-block { margin-top: 0.8rem; padding-top: 0.6rem; border-top: 1px solid #0f3460; }
+.match-title-rhs {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-shrink: 0;
+}
+.when {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-feature-settings: "tnum";
+  letter-spacing: 0;
+}
+.length {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--text-faint);
+  font-feature-settings: "tnum";
+}
+.length-mark {
+  color: var(--accent);
+  font-size: 0.55rem;
+  opacity: 0.7;
+}
+.chev {
+  color: var(--text-faint);
+  font-size: 1.2rem;
+  line-height: 1;
+  transition: transform 200ms cubic-bezier(0.4, 0.0, 0.2, 1), color 200ms ease;
+  display: inline-block;
+  font-weight: 300;
+}
+.chev.open { transform: rotate(90deg); color: var(--accent); }
+.chev.small { font-size: 0.9rem; }
+
+/* ─── Tag row (badges) ───────────────────────────────────── */
+
+.match-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  background: var(--surface-3);
+  color: var(--text-dim);
+  line-height: 1.4;
+  font-feature-settings: "tnum";
+}
+
+.badge.mode {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-strong);
+}
+.badge.type {
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-faint);
+  letter-spacing: 0.12em;
+}
+
+.badge.role { font-weight: 700; }
+.badge.role.dps     { background: var(--dps-soft);     color: var(--dps);     border-color: rgba(255, 122, 90, 0.4); }
+.badge.role.tank    { background: var(--tank-soft);    color: var(--tank);    border-color: rgba(106, 184, 255, 0.4); }
+.badge.role.support { background: var(--support-soft); color: var(--support); border-color: rgba(125, 255, 172, 0.4); }
+
+.badge.hero {
+  background: var(--accent-soft);
+  color: var(--accent-bright);
+  border-color: rgba(249, 158, 26, 0.35);
+  font-weight: 600;
+}
+.hero-name-inline { font-weight: 600; letter-spacing: 0.04em; }
+.hero-pct-inline {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: rgba(249, 158, 26, 0.7);
+  font-weight: 500;
+  font-feature-settings: "tnum";
+  letter-spacing: 0;
+}
+
+.badge.result { font-weight: 800; padding: 0.18rem 0.6rem; }
+.badge.result.victory { background: var(--win-soft);  color: var(--win);  border-color: var(--win-line); }
+.badge.result.defeat  { background: var(--loss-soft); color: var(--loss); border-color: var(--loss-line); }
+.badge.result.draw    { background: var(--draw-soft); color: var(--draw); border-color: var(--draw-line); }
+
+/* Clickable interactions */
+.clickable {
+  cursor: pointer;
+  transition: transform 160ms ease, filter 160ms ease, box-shadow 200ms ease, border-color 160ms ease;
+  user-select: none;
+}
+.badge.clickable:hover { filter: brightness(1.2); transform: translateY(-1px); }
+.badge.clickable.active {
+  box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
+}
+
+/* ─── Expanded card content ──────────────────────────────── */
+
+.match-expanded {
+  margin-top: 0.95rem;
+  padding-top: 0.95rem;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+}
+.meta-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+.meta-value {
+  font-family: var(--display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.block-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  margin-bottom: 0.55rem;
+}
+
+/* Stats grid: big mono numbers, tiny tracked labels */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.7rem 0.85rem 0.65rem;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.stat:last-child { border-right: none; }
+.stat::before {
+  content: '';
+  position: absolute; left: 0; top: 0;
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-soft), transparent);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.stat:hover::before { opacity: 1; }
+.stat-value {
+  font-family: var(--display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  line-height: 1;
+  font-feature-settings: "tnum";
+}
+.stat-label {
+  margin-top: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+/* Rank block */
+.rank-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.rank-tier {
+  font-family: var(--display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.rank-tier.bronze    { color: #d18a4a; border-color: rgba(209, 138, 74, 0.45); }
+.rank-tier.silver    { color: #d6d6d6; border-color: rgba(214, 214, 214, 0.4); }
+.rank-tier.gold      { color: #ffd770; border-color: rgba(255, 215, 112, 0.45); }
+.rank-tier.platinum  { color: #7befd9; border-color: rgba(123, 239, 217, 0.45); }
+.rank-tier.diamond   { color: #c2e6ff; border-color: rgba(194, 230, 255, 0.45); }
+.rank-tier.master    { color: #d6b4ff; border-color: rgba(214, 180, 255, 0.45); }
+.rank-tier.grandmaster, .rank-tier.champion { color: var(--loss); border-color: var(--loss-line); }
+.rank-progress {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-feature-settings: "tnum";
+}
+.rank-change {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--win);
+  font-weight: 600;
+  font-feature-settings: "tnum";
+}
+.rank-modifier {
+  font-size: 0.62rem;
+  padding: 0.18rem 0.5rem;
+  background: var(--surface-3);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+.sr-line { display: flex; flex-wrap: wrap; gap: 0.7rem; }
+.sr-entry {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.25rem 0.55rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-size: 0.78rem;
+}
+.sr-hero { color: var(--text-dim); text-transform: capitalize; font-size: 0.75rem; }
+.sr-value { font-family: var(--mono); color: var(--text); font-weight: 600; font-feature-settings: "tnum"; }
+.sr-delta { font-family: var(--mono); font-size: 0.7rem; font-weight: 600; font-feature-settings: "tnum"; }
+.sr-delta.up   { color: var(--win); }
+.sr-delta.down { color: var(--loss); }
+
+/* Heroes Played list */
+.heroes-played-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.hero-block {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent-soft);
+  border-radius: 2px;
+  padding: 0.75rem 0.9rem;
+}
+.hero-header {
+  display: flex;
+  gap: 0.7rem;
+  align-items: baseline;
+  margin-bottom: 0.55rem;
+}
+.hero-name {
+  font-family: var(--display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 0 0.15rem;
+  cursor: pointer;
+  transition: color 160ms ease, text-shadow 200ms ease;
+}
+.hero-name:hover { color: var(--accent-bright); text-shadow: 0 0 16px var(--accent-glow); }
+.hero-name.active { text-shadow: 0 0 14px var(--accent-glow); }
+.hero-pct {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-feature-settings: "tnum";
+}
+.hero-time {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
+.personal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+.personal-item {
+  background: var(--surface);
+  padding: 0.45rem 0.7rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.personal-label {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.personal-value {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  font-feature-settings: "tnum";
+}
+
+/* Source screenshots */
+.sources-block {
+  margin-top: 0.2rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.85rem;
+}
 .sources-toggle {
-  display: flex; align-items: center; gap: 0.4rem; cursor: pointer;
-  font-size: 0.75rem; color: #888; user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  transition: color 160ms ease;
 }
-.sources-toggle:hover { color: #aaa; }
-.sources-label { letter-spacing: 0.03em; }
+.sources-toggle:hover { color: var(--text-dim); }
+.sources-count {
+  font-family: var(--mono);
+  background: var(--surface-3);
+  color: var(--text-dim);
+  padding: 0.05rem 0.4rem;
+  border-radius: 2px;
+  font-size: 0.6rem;
+  letter-spacing: 0;
+  margin-left: 0.2rem;
+}
 .sources {
-  margin-top: 0.4rem; padding: 0.5rem 0.6rem;
-  background: #0a1224; border-radius: 4px;
-  font-size: 0.7rem; word-break: break-all;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  margin-top: 0.55rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
 }
-.source-file + .source-file { margin-top: 0.4rem; }
+.source-file + .source-file { margin-top: 0.45rem; }
 .source-name {
-  display: inline-flex; align-items: center; gap: 0.3rem;
-  color: #7ec8e3; cursor: pointer; text-decoration: none;
-  padding: 0.15rem 0.3rem; border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  text-decoration: none;
+  padding: 0.25rem 0.4rem;
+  border-radius: 2px;
+  transition: color 160ms ease, background 160ms ease;
+  word-break: break-all;
 }
-.source-name:hover { background: #0f3460; color: #a7d9ef; }
-.source-name .chevron { font-size: 0.55rem; }
-/* Preview image: constrained so it fills the card without overflowing
-   or pushing the layout. max-width caps horizontal size to the card's
-   inner width; max-height keeps very tall screenshots scrollable
-   within reason. object-fit defaults to fill-aspect for <img>, so the
-   image keeps its proportions. */
+.source-name:hover { background: var(--surface-2); color: var(--accent-bright); }
+.source-name-text { font-size: 0.72rem; }
 .source-preview {
   display: block;
-  margin: 0.4rem 0 0.2rem 0;
-  max-width: 100%;
-  max-height: 420px;
+  margin: 0.5rem 0 0.25rem 1.1rem;
+  max-width: calc(100% - 1.1rem);
+  max-height: 460px;
   height: auto;
-  border-radius: 4px;
-  border: 1px solid #0f3460;
+  border: 1px solid var(--border);
+  border-radius: 2px;
   background: #000;
+  box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.5);
 }
 
-.role {
-  font-size: 0.75rem; padding: 2px 8px; border-radius: 10px;
-  text-transform: uppercase; font-weight: 700;
+/* ─── Responsive ─────────────────────────────────────────── */
+
+@media (max-width: 880px) {
+  .brand { font-size: 2.4rem; }
+  .score-num { font-size: 2rem; }
+  .scoreboard { gap: 1rem; }
+  .filter-grid { grid-template-columns: repeat(3, 1fr); }
+  .stats { grid-template-columns: repeat(3, 1fr); }
+  .stat:nth-child(3) { border-right: none; }
+  .stat:nth-child(n+4) { border-top: 1px solid var(--border); }
 }
-.role.dps     { background: #ff4d4d22; color: #ff6b6b; border: 1px solid #ff4d4d66; }
-.role.tank    { background: #4d94ff22; color: #7ec8e3; border: 1px solid #4d94ff66; }
-.role.support { background: #4dff8822; color: #6bffb8; border: 1px solid #4dff8866; }
-
-.result {
-  font-size: 0.75rem; padding: 2px 8px; border-radius: 10px;
-  text-transform: uppercase; font-weight: 700;
+@media (max-width: 580px) {
+  .container { padding: 1.4rem 1rem 3rem; }
+  .masthead { flex-direction: column; align-items: flex-start; }
+  .brand { font-size: 2.1rem; }
+  .filter-grid { grid-template-columns: repeat(2, 1fr); }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat { border-right: 1px solid var(--border) !important; }
+  .stat:nth-child(2n) { border-right: none !important; }
+  .match-title-rhs { flex-wrap: wrap; }
+  .match-map { font-size: 1.3rem; }
 }
-.result.victory { background: #4dff8822; color: #6bffb8; border: 1px solid #4dff8866; }
-.result.defeat  { background: #ff4d4d22; color: #ff6b6b; border: 1px solid #ff4d4d66; }
-.result.draw    { background: #88888822; color: #aaa;    border: 1px solid #88888866; }
-
-.meta { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.8rem; }
-.meta-item { display: flex; flex-direction: column; min-width: 6rem; }
-.meta-item label { font-size: 0.65rem; color: #888; text-transform: uppercase; margin-bottom: 2px; }
-.meta-item span  { font-size: 0.9rem; color: #e0e0e0; text-transform: capitalize; }
-
-.stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.6rem; }
-
-.rank-block { margin-top: 0.8rem; }
-.rank-block > label { display: block; font-size: 0.65rem; color: #888; text-transform: uppercase; margin-bottom: 0.4rem; }
-.rank-line { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin-bottom: 0.4rem; }
-.rank-tier { font-size: 0.9rem; font-weight: 700; text-transform: capitalize; padding: 2px 8px; border-radius: 4px; background: #0f3460; color: #e0e0e0; }
-.rank-tier.bronze    { color: #cd7f32; }
-.rank-tier.silver    { color: #c0c0c0; }
-.rank-tier.gold      { color: #ffd700; }
-.rank-tier.platinum  { color: #66ddc8; }
-.rank-tier.diamond   { color: #b9f2ff; }
-.rank-tier.master    { color: #e0c4ff; }
-.rank-tier.grandmaster, .rank-tier.champion { color: #ff6b6b; }
-.rank-progress { font-size: 0.8rem; color: #aaa; }
-.rank-change   { font-size: 0.8rem; color: #6bffb8; font-weight: 700; }
-.rank-modifier { font-size: 0.7rem; padding: 2px 6px; background: #0f3460; color: #aaa; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
-.sr-line { display: flex; flex-wrap: wrap; gap: 0.8rem; }
-.sr-entry { font-size: 0.85rem; color: #e0e0e0; text-transform: capitalize; }
-.sr-delta.up   { color: #6bffb8; font-weight: 700; }
-.sr-delta.down { color: #ff6b6b; font-weight: 700; }
-
-.heroes-played-list {
-  margin-top: 0.8rem;
-  display: grid;
-  grid-template-columns: 130px 1fr;
-  gap: 1rem;
-  align-items: start;
-}
-.heroes-played-list > label {
-  font-size: 0.65rem; color: #888; text-transform: uppercase;
-  letter-spacing: 0.05em; padding-top: 0.4rem;
-}
-.heroes-played-items { display: flex; flex-direction: column; gap: 0.8rem; }
-.hero-block { margin-bottom: 0.8rem; }
-.hero-block:last-child { margin-bottom: 0; }
-.hero-header { display: flex; gap: 0.6rem; align-items: baseline; margin-bottom: 0.4rem; }
-.hero-name { font-size: 0.95rem; font-weight: 700; color: #f0a500; text-transform: capitalize; padding: 2px 6px; border-radius: 4px; }
-.hero-pct  { font-size: 0.8rem; color: #aaa; }
-.hero-time { font-size: 0.8rem; color: #666; }
-
-.personal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.4rem; }
-.personal-item { background: #0f3460; border-radius: 4px; padding: 0.35rem 0.6rem; display: flex; justify-content: space-between; align-items: center; }
-.personal-label { font-size: 0.7rem; color: #aaa; text-transform: capitalize; }
-.personal-value { font-size: 0.9rem; font-weight: 700; color: #e0e0e0; }
-
-.stat {
-  background: #0f3460; border-radius: 4px; padding: 0.5rem 0.7rem;
-  display: flex; flex-direction: column; align-items: center;
-}
-.stat label { font-size: 0.65rem; color: #888; text-transform: uppercase; margin-bottom: 2px; }
-.stat span  { font-size: 1.05rem; font-weight: 700; }
 </style>
