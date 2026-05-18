@@ -36,6 +36,17 @@ const newScreenshotCount = ref(null)
 // parse, Grafana export). Switched via the masthead nav tabs.
 const view = ref('matches')
 
+// goToView switches the active tab AND moves focus into the newly visible
+// panel so keyboard users land in the new content rather than staying on
+// the nav button. Each <section> has tabindex="-1" so it can receive
+// programmatic focus without entering the natural tab order.
+async function goToView(next) {
+  view.value = next
+  await nextTick()
+  const panel = document.getElementById(`panel-${next}`)
+  if (panel) panel.focus({ preventScroll: true })
+}
+
 // Wall-clock time of the last successful manual parse, used to render
 // "Last run · X ago" feedback under the Parse button on the settings
 // page. Persisted to localStorage so the timestamp survives reloads.
@@ -285,7 +296,20 @@ function formatRelativeTime(ms) {
 // Open the native folder picker via Wails. The Go side persists the
 // choice so subsequent app launches pick up the same directory; we
 // just need to refresh our local mirror.
+//
+// Guard: if Watch is currently armed, confirm before re-targeting the
+// watcher to a new folder. The watcher otherwise silently switches and
+// (if the new folder is empty or invalid) keeps running against nothing
+// with no feedback to the user.
 async function pickDir() {
+  if (watchEnabled.value) {
+    const ok = window.confirm(
+      'Watch Folder is currently armed.\n\n' +
+      'Switching the screenshots folder will re-target the watcher to the new directory. ' +
+      'Continue?',
+    )
+    if (!ok) return
+  }
   try {
     const dir = await PickScreenshotsDir()
     if (dir) screenshotsDir.value = dir
@@ -468,11 +492,20 @@ const nowDateTime = computed(() => {
 })
 
 // Card collapse/expand.
-function toggleExpand(id) {
+async function toggleExpand(id) {
+  const wasExpanded = !!expanded.value[id]
   // Reassign the object so Vue sees a new reference. Mutating in place
   // works for plain objects with Vue 3 deep reactivity, but being
   // explicit avoids surprises if `expanded` later becomes a shallowRef.
-  expanded.value = { ...expanded.value, [id]: !expanded.value[id] }
+  expanded.value = { ...expanded.value, [id]: !wasExpanded }
+  // On expand, keep the card header in view — long expansions otherwise
+  // push the header off-screen and the user loses their place. nearest
+  // block alignment avoids scrolling if the header is already visible.
+  if (!wasExpanded) {
+    await nextTick()
+    const el = document.getElementById(`match-${id}`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }
 }
 function isExpanded(id) {
   return !!expanded.value[id]
@@ -659,6 +692,31 @@ const anyFilter = computed(() =>
      filterFrom.value || filterTo.value)
 )
 
+// Count of rows that lack a parseable date+finished_at — these are silently
+// excluded by any active date-range filter (the date filter only matches
+// rows with explicit timestamps). Surfaced as a hint near the date inputs
+// so users understand why their visible-count dropped.
+const undatedMatchCount = computed(() =>
+  records.value.filter(r => !(r.data?.date && r.data?.finished_at)).length,
+)
+
+// activeFilterCount counts how many filter fields are non-empty (date
+// from/to count as one each). Drives the small dot on the Matches nav
+// tab so users notice they have filters applied after navigating away
+// and back.
+const activeFilterCount = computed(() => {
+  let n = 0
+  if (filterMode.value.length)   n++
+  if (filterType.value.length)   n++
+  if (filterRole.value.length)   n++
+  if (filterMap.value.length)    n++
+  if (filterHero.value.length)   n++
+  if (filterResult.value.length) n++
+  if (filterFrom.value)          n++
+  if (filterTo.value)            n++
+  return n
+})
+
 // Format the match's date + end time for the card header. Parser stores
 // date as YYYY-MM-DD and finished_at as 24-hour HH:MM; the Wails UI
 // prefers a friendlier `May 9, 2026 @ 9:08pm` rendering. Grafana keeps
@@ -806,7 +864,7 @@ onBeforeUnmount(() => {
         <div class="system-alert-actions">
           <button class="btn alert-cta" @click="gotoEngineSettings">
             <span class="alert-cta-arrow" aria-hidden="true">→</span>
-            Fix in Ingest
+            Fix in Ingest → Engine
           </button>
         </div>
       </div>
@@ -828,41 +886,61 @@ onBeforeUnmount(() => {
                03 — the numbering communicates the intended user flow. -->
           <nav class="page-nav" role="tablist" aria-label="Primary">
             <button
+              id="tab-settings"
               class="nav-tab"
               :class="{ active: view === 'settings' }"
               :aria-selected="view === 'settings'"
+              :tabindex="view === 'settings' ? 0 : -1"
               role="tab"
-              @click="view = 'settings'"
+              aria-controls="panel-settings"
+              @click="goToView('settings')"
             >
               <span class="nav-tab-num">01</span>
               <span class="nav-tab-label">Settings</span>
             </button>
             <button
+              id="tab-ingest"
               class="nav-tab"
               :class="{ active: view === 'ingest' }"
               :aria-selected="view === 'ingest'"
+              :tabindex="view === 'ingest' ? 0 : -1"
               role="tab"
-              @click="view = 'ingest'"
+              aria-controls="panel-ingest"
+              @click="goToView('ingest')"
             >
               <span class="nav-tab-num">02</span>
               <span class="nav-tab-label">Ingest</span>
             </button>
             <button
+              id="tab-matches"
               class="nav-tab"
               :class="{ active: view === 'matches' }"
               :aria-selected="view === 'matches'"
+              :tabindex="view === 'matches' ? 0 : -1"
               role="tab"
-              @click="view = 'matches'"
+              aria-controls="panel-matches"
+              @click="goToView('matches')"
             >
               <span class="nav-tab-num">03</span>
-              <span class="nav-tab-label">Matches</span>
+              <span class="nav-tab-label">
+                Matches
+                <span
+                  v-if="activeFilterCount > 0 && view !== 'matches'"
+                  class="nav-tab-filter-dot"
+                  :title="`${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'} active`"
+                  aria-label="filters active"
+                />
+              </span>
             </button>
             <button
+              id="tab-unknown"
               class="nav-tab"
               :class="{ active: view === 'unknown' }"
               :aria-selected="view === 'unknown'"
+              :tabindex="view === 'unknown' ? 0 : -1"
               role="tab"
-              @click="view = 'unknown'"
+              aria-controls="panel-unknown"
+              @click="goToView('unknown')"
             >
               <span class="nav-tab-num">04</span>
               <span class="nav-tab-label">
@@ -899,7 +977,7 @@ onBeforeUnmount(() => {
       </p>
 
       <!-- ─── SETTINGS VIEW (folder + theme — minimal config) ──── -->
-      <section v-if="view === 'settings'" key="settings" class="settings">
+      <section v-if="view === 'settings'" id="panel-settings" key="settings" role="tabpanel" aria-labelledby="tab-settings" tabindex="-1" class="settings">
         <header class="settings-intro">
           <p class="settings-eyebrow">
             System Configuration
@@ -1000,10 +1078,10 @@ onBeforeUnmount(() => {
       </section>
 
       <!-- ─── INGEST VIEW (engine → parse → export → data) ─────── -->
-      <section v-if="view === 'ingest'" key="ingest" class="settings ingest-view">
+      <section v-if="view === 'ingest'" id="panel-ingest" key="ingest" role="tabpanel" aria-labelledby="tab-ingest" tabindex="-1" class="settings ingest-view">
         <header class="settings-intro">
           <p class="settings-eyebrow">
-            Capture Pipeline
+            Parse Pipeline
           </p>
           <h2 v-if="!tesseractReady" class="settings-heading missing">
             Recall can't OCR until <em>Tesseract is located</em>.
@@ -1013,13 +1091,13 @@ onBeforeUnmount(() => {
             <strong class="empty-link" @click="view = 'settings'">Settings →</strong> first.
           </h2>
           <h2 v-else-if="watchEnabled" class="settings-heading">
-            Watching <em>{{ screenshotsDir }}/</em> for new captures.
+            Watching <em>{{ screenshotsDir }}/</em> for new screenshots.
           </h2>
           <h2 v-else-if="records.length" class="settings-heading">
-            <em>{{ records.length }} {{ records.length === 1 ? 'match' : 'matches' }}</em> indexed from <em>{{ screenshotsDir }}/</em>
+            <em>{{ records.length }} {{ records.length === 1 ? 'match' : 'matches' }}</em> parsed from <em>{{ screenshotsDir }}/</em>
           </h2>
           <h2 v-else class="settings-heading">
-            Ready to ingest from <em>{{ screenshotsDir }}/</em> — click <em>Run Parse</em> below.
+            Ready to parse from <em>{{ screenshotsDir }}/</em> — click <em>Run Parse</em> below.
           </h2>
         </header>
 
@@ -1152,7 +1230,7 @@ onBeforeUnmount(() => {
               <div class="pp-summary" @click="parseProgressOpen = !parseProgressOpen">
                 <div class="pp-scan-label">
                   <span class="pp-scan-dot" aria-hidden="true" />
-                  <span class="pp-scan-text">Scanning</span>
+                  <span class="pp-scan-text">Parsing</span>
                 </div>
                 <div class="pp-bar-track">
                   <div
@@ -1334,7 +1412,7 @@ onBeforeUnmount(() => {
       </section>
 
       <!-- ─── UNKNOWN MAPS VIEW ────────────────────────────────── -->
-      <section v-if="view === 'unknown'" key="unknown" class="settings unknown-view">
+      <section v-if="view === 'unknown'" id="panel-unknown" key="unknown" role="tabpanel" aria-labelledby="tab-unknown" tabindex="-1" class="settings unknown-view">
         <header class="settings-intro">
           <p class="settings-eyebrow">
             Diagnostic Review
@@ -1488,7 +1566,7 @@ onBeforeUnmount(() => {
       </section>
 
       <!-- ─── MATCHES VIEW (default) ───────────────────────────── -->
-      <div v-if="view === 'matches'" key="matches" class="matches-view">
+      <div v-if="view === 'matches'" id="panel-matches" key="matches" role="tabpanel" aria-labelledby="tab-matches" tabindex="-1" class="matches-view">
         <div v-if="records.length === 0 && !loading" class="empty">
           <div class="empty-mark">
             ◌
@@ -1497,8 +1575,22 @@ onBeforeUnmount(() => {
             No matches on record.
           </p>
           <p class="empty-sub">
-            Head to <strong class="empty-link" @click="view = 'ingest'">Ingest → Run Parse</strong> to scan your screenshots folder, or flip on <strong class="empty-link" @click="view = 'ingest'">Watch Folder</strong> there to auto-ingest as you play.
+            First-time setup runs left-to-right across the nav tabs:
           </p>
+          <ol class="empty-steps">
+            <li>
+              <strong class="empty-step-num">01</strong>
+              <span>Set your screenshots folder under <strong class="empty-link" @click="goToView('settings')">Settings</strong>.</span>
+            </li>
+            <li>
+              <strong class="empty-step-num">02</strong>
+              <span>Locate Tesseract and click <strong class="empty-link" @click="goToView('ingest')">Ingest → Run Parse</strong>, or flip on <strong class="empty-link" @click="goToView('ingest')">Watch Folder</strong> to auto-ingest as you play.</span>
+            </li>
+            <li>
+              <strong class="empty-step-num">03</strong>
+              <span>Your matches appear here.</span>
+            </li>
+          </ol>
         </div>
 
         <section v-if="records.length > 0" class="filter-rail">
@@ -1561,6 +1653,9 @@ onBeforeUnmount(() => {
                   <span class="mf-panel-title">{{ cfg.short }} ROSTER</span>
                   <span class="mf-panel-meta">{{ filterRefs[cfg.field].value.length }} / {{ cfg.options.length }}</span>
                 </div>
+                <p class="mf-panel-hint">
+                  Picking multiple matches <em>any</em> of them.
+                </p>
                 <div v-if="cfg.options.length >= 8" class="mf-search">
                   <span class="mf-search-icon" aria-hidden="true">⌕</span>
                   <input
@@ -1589,7 +1684,13 @@ onBeforeUnmount(() => {
                     </label>
                   </template>
                   <div
-                    v-if="filterSearch[cfg.field] && cfg.options.filter(o => o.toLowerCase().includes(filterSearch[cfg.field].toLowerCase())).length === 0"
+                    v-if="cfg.options.length === 0"
+                    class="mf-empty"
+                  >
+                    No {{ cfg.label.toLowerCase() }} values yet — parse some matches to populate this filter.
+                  </div>
+                  <div
+                    v-else-if="filterSearch[cfg.field] && cfg.options.filter(o => o.toLowerCase().includes(filterSearch[cfg.field].toLowerCase())).length === 0"
                     class="mf-empty"
                   >
                     No {{ cfg.label.toLowerCase() }} matches "{{ filterSearch[cfg.field] }}"
@@ -1652,6 +1753,13 @@ onBeforeUnmount(() => {
               >
                 Reset
               </button>
+              <span
+                v-if="(filterFrom || filterTo) && undatedMatchCount > 0"
+                class="range-hint"
+                :title="`${undatedMatchCount} match${undatedMatchCount === 1 ? ' is' : 'es are'} missing date/time (no SUMMARY screenshot) and won't appear while a date filter is active.`"
+              >
+                ⓘ {{ undatedMatchCount }} undated hidden
+              </span>
             </div>
 
             <div class="filter-tools">
@@ -1672,6 +1780,7 @@ onBeforeUnmount(() => {
         <div v-if="records.length > 0" class="match-list">
           <article
             v-for="(rec, idx) in filteredSorted"
+            :id="`match-${rec.id}`"
             :key="rec.id"
             class="match"
             :class="[
@@ -1682,7 +1791,15 @@ onBeforeUnmount(() => {
           >
             <span class="match-bar" aria-hidden="true" />
             <div class="match-body">
-              <div class="match-header" @click="toggleExpand(rec.id)">
+              <div
+                class="match-header"
+                role="button"
+                tabindex="0"
+                :aria-expanded="isExpanded(rec.id)"
+                :aria-label="`${rec.data.map || 'Unknown map'} — ${isExpanded(rec.id) ? 'collapse' : 'expand'} match details`"
+                @click="toggleExpand(rec.id)"
+                @keydown.enter.space.prevent="toggleExpand(rec.id)"
+              >
                 <div class="match-title-row">
                   <div class="match-title-lhs">
                     <span class="match-index">{{ String(idx + 1).padStart(2, '0') }}</span>
@@ -1756,8 +1873,14 @@ onBeforeUnmount(() => {
                   <!-- Data Coverage: which of the four OW screenshot types
                        were captured for this match, and what's missing.
                        SUMMARY / TEAMS / PERSONAL are required for a complete
-                       summary; RANK is optional. -->
-                  <div class="coverage-block">
+                       summary; RANK is optional. Hidden when nothing is
+                       missing — a "Coverage: 4 of 4" panel with all-green
+                       chips is noise for normal matches and dilutes the
+                       warning signal for incomplete ones. -->
+                  <div
+                    v-if="missingRequiredSlots(rec).length || missingOptionalSlots(rec).length"
+                    class="coverage-block"
+                  >
                     <div class="coverage-header">
                       <span class="block-eyebrow">Data Coverage</span>
                       <span class="coverage-count">
@@ -2125,6 +2248,14 @@ body {
   box-shadow: 0 0 14px var(--accent-glow);
 }
 
+/* The left-rail accent glow reads as a hard halo on the cream background.
+   Drop the box-shadow in light mode and use the deeper accent-text colour
+   for the rail itself so it still pops against the grey tile. */
+[data-theme="light"] .brandmark-tile::before {
+  background: var(--accent-text);
+  box-shadow: none;
+}
+
 /* Subtle hatch / striped corner — feels like military stencil tape. */
 .brand-corner {
   position: absolute;
@@ -2140,6 +2271,18 @@ body {
   opacity: 0.55;
 }
 
+/* White hatch is invisible against light-mode backgrounds — swap to a
+   dark stencil so the registration mark still reads. */
+[data-theme="light"] .brand-corner {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgb(0 0 0 / 25%) 0 2px,
+      transparent 2px 4px
+    );
+  opacity: 0.7;
+}
+
 .brand-tick {
   color: var(--accent-bright);
   font-size: 1.05rem;
@@ -2147,6 +2290,11 @@ body {
   transform: translateY(-1px);
   text-shadow: 0 0 14px var(--accent-glow);
   font-feature-settings: "tnum";
+}
+
+[data-theme="light"] .brand-tick {
+  color: var(--accent-text);
+  text-shadow: none;
 }
 
 .brand {
@@ -2547,6 +2695,43 @@ body {
 }
 .empty-sub strong { color: var(--accent); font-weight: 600; }
 
+/* Numbered setup steps shown in the Matches empty state — mirrors the
+   nav-tab numbering (01/02/03) so the user reads "01 Settings → 02
+   Ingest → 03 here" with no ambiguity. */
+.empty-steps {
+  list-style: none;
+  margin: 1.1rem auto 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-width: 44ch;
+  text-align: left;
+}
+
+.empty-steps li {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  gap: 0.65rem;
+  align-items: baseline;
+  color: var(--text-dim);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.empty-step-num {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+  text-align: right;
+}
+
+.empty-steps strong.empty-link {
+  color: var(--accent);
+}
+
 /* ─── Filter Rail ────────────────────────────────────────── */
 
 .filter-rail {
@@ -2818,6 +3003,26 @@ body {
   letter-spacing: 0.18em;
 }
 
+/* One-line hint under the panel head — explains the multi-select union
+   semantics so users aren't guessing whether picks AND together. */
+.mf-panel-hint {
+  margin: 0;
+  padding: 0.4rem 0.7rem;
+  background: var(--surface-2);
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.mf-panel-hint em {
+  font-style: normal;
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .mf-search {
   display: flex;
   align-items: center;
@@ -3040,6 +3245,26 @@ body {
   font-size: 0.85rem;
 }
 
+/* Hint shown beside the Reset button when an active date filter is
+   excluding rows that lack a parseable date+finished_at. */
+.range-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.4rem;
+  padding: 0.18rem 0.5rem;
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  border-radius: 2px;
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: help;
+  font-feature-settings: "tnum";
+}
+
 .dd-date {
   background: var(--surface-2);
   color: var(--text);
@@ -3146,6 +3371,14 @@ body {
 .match-header {
   cursor: pointer;
   user-select: none;
+  border-radius: 2px;
+}
+
+.match-header:focus { outline: none; }
+
+.match-header:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
 }
 
 .match-title-row {
@@ -3440,6 +3673,10 @@ body {
   width: 0.6rem;
   height: 2px;
   background: var(--accent);
+}
+
+[data-theme="light"] .coverage-block::before {
+  background: var(--accent-text);
 }
 
 .coverage-header {
@@ -3998,6 +4235,11 @@ body {
   width: 28px; height: 3px;
   background: var(--accent);
   box-shadow: 0 0 12px var(--accent-glow);
+}
+
+[data-theme="light"] .section-header::after {
+  background: var(--accent-text);
+  box-shadow: none;
 }
 
 .section-num {
@@ -5166,6 +5408,25 @@ body {
   vertical-align: middle;
   margin-left: 0.2rem;
   letter-spacing: 0;
+}
+
+/* Small accent dot beside the Matches tab label when filters are
+   active on another view — reminds the user that the list they'll
+   see when they return is filtered. */
+.nav-tab-filter-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 0.45rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+  vertical-align: middle;
+}
+
+[data-theme="light"] .nav-tab-filter-dot {
+  background: var(--accent-text);
+  box-shadow: none;
 }
 
 /* ─── Unknown view responsive ────────────────────────────── */
