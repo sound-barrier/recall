@@ -4,7 +4,7 @@
 # Update with:   brew bundle --upgrade
 # Check status:  brew bundle check
 
-# Go toolchain. Project requires Go 1.25+ (see go.mod).
+# Go toolchain. Project requires Go 1.26+ (see go.mod).
 brew "go"
 
 # Node.js (provides npm). Wails uses Vite + npm for the frontend.
