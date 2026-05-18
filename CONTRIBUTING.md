@@ -1,0 +1,221 @@
+# Contributing
+
+This guide covers setting up a local development environment, building the
+project for all target platforms, and maintaining code quality. For an
+overview of the architecture and internal conventions, see
+[`CLAUDE.md`](CLAUDE.md).
+
+## Table of Contents
+
+- [Development setup](#development-setup)
+  - [macOS](#macos)
+  - [Linux](#linux)
+  - [Windows](#windows)
+    - [Option A: WSL2 (recommended)](#option-a-wsl2-recommended)
+    - [Option B: Native Windows](#option-b-native-windows)
+- [Building](#building)
+  - [Wails desktop app](#wails-desktop-app)
+  - [Server-only binary](#server-only-binary)
+  - [Other build commands](#other-build-commands)
+- [Maintenance](#maintenance)
+
+## Development setup
+
+```sh
+make help       # list all available targets
+```
+
+Two workflows exist depending on your platform:
+
+| Workflow | Platforms | Entry point |
+|---|---|---|
+| `make dev` — Wails hot-reload | **macOS only** | Native WebKit window; Vite HMR on `:5173`, Wails IPC on `:34115`, Go rebuilt on save |
+| Server mode — headless HTTP | macOS, Linux, Windows | `go run -tags serveronly . --server`; open `http://127.0.0.1:7000` in any browser |
+
+### macOS
+
+**One-time prerequisites:**
+
+```sh
+xcode-select --install          # Xcode Command Line Tools (required for Wails CGo builds)
+brew bundle                     # Go, Node, Tesseract, Podman, golangci-lint, jq, etc.
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+```
+
+**First clone setup:**
+
+```sh
+cd frontend && npm ci && cd ..
+rm -rf frontend/wailsjs/go/main/   # delete stale bindings (package moved main → app)
+make dev                            # generates fresh bindings on first run
+```
+
+Re-run `wails dev` (or delete `frontend/wailsjs/go/app/App.js` and re-run) any time you add a new exported method to `App`.
+
+**Day-to-day:**
+
+```sh
+make dev        # hot-reload Wails desktop app
+make lint       # all linters before pushing
+make fmt        # format Go source
+wails doctor    # verify toolchain at any time
+```
+
+### Linux
+
+`make dev` exits on non-Darwin hosts. Linux developers use **server mode** — the embedded Vue frontend is served over HTTP and works in any browser.
+
+**One-time prerequisites** (Ubuntu/Debian — adapt for other distros):
+
+```sh
+# Go 1.26+ (distro packages are often older; official tarball is safest)
+wget https://go.dev/dl/go1.26.3.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.26.3.linux-amd64.tar.gz
+echo 'export PATH=$PATH:/usr/local/go/bin:$(go env GOPATH)/bin' >> ~/.profile
+source ~/.profile
+
+# Node 26+
+curl -fsSL https://deb.nodesource.com/setup_26.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# System tools
+sudo apt install -y tesseract-ocr jq sqlite3 docker.io  # or podman
+
+# Go-based linters
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+
+# hadolint (Dockerfile linter)
+curl -L https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 \
+  | sudo tee /usr/local/bin/hadolint > /dev/null && sudo chmod +x /usr/local/bin/hadolint
+
+# trivy (vulnerability scanner)
+curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+  | sudo sh -s -- -b /usr/local/bin
+```
+
+**First clone setup:**
+
+```sh
+cd frontend && npm ci && cd ..
+go build -tags serveronly ./...   # verify compile
+```
+
+**Day-to-day:**
+
+```sh
+# Run the server — open http://127.0.0.1:7000 in a browser
+go run -tags serveronly . --server
+
+# Linting
+make lint
+
+# Docker-based cross-platform builds (Docker or Podman)
+make build-server-linux          # Linux server binary → dist/server-linux/
+make build-server-all            # all three server OS targets via Docker
+DOCKER=podman make build-linux   # swap in Podman
+```
+
+### Windows
+
+`make dev` is macOS-only. The recommended path is **WSL2**, which gives you a complete Linux environment. Native Windows is also documented below.
+
+#### Option A: WSL2 (recommended)
+
+```powershell
+# In PowerShell — one-time
+wsl --install   # installs Ubuntu by default; reboot if prompted
+```
+
+Open the WSL2 terminal and follow the **Linux** instructions above.
+
+#### Option B: Native Windows
+
+**One-time prerequisites:**
+
+- [Go 1.26+](https://go.dev/dl/) — use the `.msi` installer; confirm `go version` in a new shell
+- [Node 26+](https://nodejs.org/) or [nvm-windows](https://github.com/coreybutler/nvm-windows)
+- [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) — note the install path; paste it into **Settings → Engine** on first launch
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — needed for `make build-*` targets
+- [Git for Windows](https://git-scm.com/download/win) — provides Git Bash; run all `make` commands from Git Bash
+- `jq` — `winget install jqlang.jq`
+- `golangci-lint` — `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`
+- `hadolint` — `winget install Hadolint.Hadolint` or [download from GitHub releases](https://github.com/hadolint/hadolint/releases) (`hadolint-Windows-x86_64.exe`)
+- `trivy` — `winget install AquaSecurity.Trivy` or [download from GitHub releases](https://github.com/aquasecurity/trivy/releases)
+
+**First clone setup** (Git Bash):
+
+```sh
+cd frontend && npm ci && cd ..
+go build -tags serveronly ./...   # verify compile
+```
+
+**Day-to-day** (Git Bash):
+
+```sh
+# Run the server — open http://127.0.0.1:7000 in a browser
+go run -tags serveronly . --server
+
+# Lint (Docker Desktop must be running for lint-docker)
+make lint
+
+# Docker-based builds
+make build-server-windows
+make build-server-all
+```
+
+## Building
+
+Recall ships two binary flavours:
+
+| Flavour | What it is | CGo? |
+|---|---|---|
+| **Wails app** | Native desktop window (WebKit/WebView2) | Yes — needs platform WebView libs |
+| **Server** | Headless HTTP server (default `127.0.0.1:7000`, override with `RECALL_SERVER_ADDR`) | No — pure Go, cross-compilable anywhere |
+
+### Wails desktop app
+
+```sh
+make build-linux        # Linux/amd64   → dist/linux/Recall
+make build-windows      # Windows/amd64 → dist/windows/Recall.exe
+make build-mac          # macOS arm64 .app → dist/mac/  (macOS host required)
+make build-all-docker   # Linux + Windows via Docker (no Apple SDK needed)
+make build-all          # all three (macOS host required)
+```
+
+Linux and Windows builds run in Docker (`Dockerfile.build`). macOS `.app` bundles
+require Apple's SDK and must be built on a Mac — `make build-mac` exits on non-Darwin hosts.
+
+### Server-only binary
+
+The server binary (`-tags serveronly`) has no Wails or WebView dependency — it is pure Go.
+All three OS targets can be produced from Docker on any host, including macOS.
+
+```sh
+make build-server-linux      # Linux/amd64     → dist/server-linux/Recall-server
+make build-server-windows    # Windows/amd64   → dist/server-windows/Recall-server.exe
+make build-server-mac        # macOS arm64     → dist/server-mac/  (Docker, no Apple SDK!)
+make build-server-all        # all three server builds
+make build-server-container  # Linux container image with Tesseract → recall-server:local
+```
+
+### Other build commands
+
+```sh
+make clean              # remove dist/, build/bin/, frontend/dist, frontend/node_modules
+DOCKER=podman make ...  # use Podman instead of Docker
+go build ./...          # compile-check Wails variant
+go build -tags serveronly ./...  # compile-check server variant
+```
+
+## Maintenance
+
+```sh
+make fmt           # format all Go source files (go fmt ./...)
+make lint          # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, Hadolint
+make update-deps   # update Go modules (go get -u + mod tidy) and npm packages
+make trivy         # vulnerability scan — fails on HIGH/CRITICAL findings
+make cloc          # count lines of source code (excludes deps, build artifacts, generated files)
+```
+
+`trivy` requires a one-time install: `brew install trivy` or `brew bundle`.
+The scan covers Go module dependencies, npm packages, and `Dockerfile.build`.
