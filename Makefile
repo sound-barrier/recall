@@ -170,9 +170,9 @@ lint-yaml: ## Lint YAML files (yamllint)
 	yamllint .
 	@echo "[ recall ] ✓  YAML lint clean"
 
-fmt: ## Format Go source files
+fmt: ## Format Go source files (gofumpt — strict superset of gofmt)
 	@echo "[ recall ] Formatting Go source files…"
-	go fmt ./...
+	gofumpt -l -w .
 	@echo "[ recall ] ✓  Go source formatted"
 
 
