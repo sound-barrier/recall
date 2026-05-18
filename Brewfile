@@ -20,6 +20,10 @@ brew "tesseract"
 brew "podman"
 brew "podman-compose"
 
+# JSON processing. verify-stack.sh requires jq to parse Prometheus API
+# responses; db-show.sh uses it for pretty-printing when available.
+brew "jq"
+
 # Linting tools (used by `make lint`).
 brew "golangci-lint"
 brew "hadolint"
