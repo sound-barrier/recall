@@ -139,13 +139,34 @@ func checkTesseract(path string) TesseractStatus {
 // generous enough to absorb a slow tab-cycler.
 const watchDebounce = 60 * time.Second
 
-const settingsPath = "data/settings.json"
+// appDataDir returns the platform-appropriate directory for Recall's
+// settings and database. It follows OS conventions so the files land in
+// the right place for a distributed app regardless of cwd:
+//
+//	macOS:   ~/Library/Application Support/Recall/
+//	Linux:   $XDG_CONFIG_HOME/recall/  (fallback ~/.config/recall/)
+//	Windows: %AppData%\Recall\
+func appDataDir() string {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		// Should not happen on any supported OS; fall back to ~/.recall.
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, ".recall")
+	}
+	name := "recall"
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		name = "Recall"
+	}
+	return filepath.Join(base, name)
+}
+
+func settingsPath() string { return filepath.Join(appDataDir(), "settings.json") }
 
 func loadSettings() Settings {
-	s := Settings{ScreenshotsDir: "screenshots"} // default — relative to cwd, same as before
-	raw, err := os.ReadFile(settingsPath)
+	s := Settings{ScreenshotsDir: "screenshots"} // relative default works for `wails dev`
+	raw, err := os.ReadFile(settingsPath())
 	if err != nil {
-		return s // file doesn't exist yet; first run
+		return s // file doesn't exist yet (first run); use defaults
 	}
 	_ = json.Unmarshal(raw, &s) // ignore malformed JSON; keep defaults
 	if s.ScreenshotsDir == "" {
@@ -155,14 +176,14 @@ func loadSettings() Settings {
 }
 
 func saveSettings(s Settings) error {
-	if err := os.MkdirAll(filepath.Dir(settingsPath), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(settingsPath()), 0700); err != nil {
 		return err
 	}
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(settingsPath, b, 0644)
+	return os.WriteFile(settingsPath(), b, 0644)
 }
 
 type App struct {
@@ -217,7 +238,7 @@ func (a *App) startup(ctx context.Context) {
 	a.tessStatus = checkTesseract(a.settings.TesseractPath)
 	parser.SetTesseractPath(a.settings.TesseractPath)
 
-	dbDir := filepath.Join("data", "db")
+	dbDir := filepath.Join(appDataDir(), "db")
 	if err := os.MkdirAll(dbDir, 0700); err != nil {
 		log.Fatal("could not create db dir:", err)
 	}

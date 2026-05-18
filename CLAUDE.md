@@ -141,9 +141,17 @@ CGo binding.
 Single `match_results` table, explicit columns for every scalar field on
 `MatchResult`, JSON blobs for `heroes_played`, `performance`, `modifiers`,
 `sr` (variable-length nested data). Schema is `CREATE TABLE IF NOT
-EXISTS` — **column changes require `rm data/db/recall.db` and re-parse,
-no migrations**. The DB lives at `data/db/recall.db` relative to the
-process's cwd.
+EXISTS` — **column changes require deleting `recall.db` and re-parsing,
+no migrations**.
+
+The DB lives at `<appDataDir>/db/recall.db` where `appDataDir()` (in `app.go`)
+resolves to the platform user-config directory:
+
+| OS | Path |
+|---|---|
+| macOS | `~/Library/Application Support/Recall/db/recall.db` |
+| Linux | `~/.config/recall/db/recall.db` (or `$XDG_CONFIG_HOME/recall/db/`) |
+| Windows | `%AppData%\Recall\db\recall.db` |
 
 Match identity is `match_key TEXT NOT NULL UNIQUE` derived from the
 earliest screenshot's filename timestamp (`match:2026-05-10T21:29:28`).
@@ -175,8 +183,10 @@ enable→disable→enable cycle constructs a fresh `Server`.
 ## App shell (`app.go`, `app_wails.go`, `app_server.go`)
 
 `App` owns:
-- `settings` (`data/settings.json`): screenshots dir, tesseract path, prometheus enabled,
-  watch enabled. Each toggle is persisted to disk on change.
+- `settings` (`<appDataDir>/settings.json`): screenshots dir, tesseract path, prometheus
+  enabled, watch enabled. Each toggle is persisted to disk on change. `appDataDir()`
+  resolves to `~/Library/Application Support/Recall/` on macOS, `~/.config/recall/`
+  on Linux, `%AppData%\Recall\` on Windows.
 - `metricsServer` (nil unless the Prometheus toggle is on).
 - File watcher state (`watcher`, `watchedDir`, `watchTimer`, `watchMu`)
   with a `watchDebounce = 60 * time.Second` debounce: any new
