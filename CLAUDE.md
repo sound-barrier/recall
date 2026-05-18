@@ -262,6 +262,14 @@ both the Wails `AssetServer.Handler` and the server-mode HTTP mux.
 Single-file Vue 3 SFC, composition API. No router, no Vuex/Pinia — a few
 `ref`s + `computed`s. State concerns:
 
+- **Nav** — four tabs in workflow order: **Settings (01)** (screenshots
+  folder + theme), **Ingest (02)** (engine / parse / export / data),
+  **Matches (03)** (default landing tab), **Unknown (04)** (triage). The
+  view ref defaults to `'matches'`; the numbering communicates the user
+  flow, not tab order of importance. Settings and Ingest both wear
+  `class="settings"` for shared layout but Ingest gets the modifier
+  `ingest-view` so the Futura font scope (`.settings:not(.unknown-view,
+  .ingest-view)`) stays on the actual Settings tab.
 - **Filters**: multi-select popovers (mode/map/type/role/hero/result) +
   date range inputs + sort dir. Each filter field is a `ref([])` — empty
   array = no filter, multiple entries = union (OR logic). `filterRefs`
@@ -355,6 +363,16 @@ Triggered on `v*` tags. Parallel jobs: `build-docker` (Linux + Windows Wails app
   (zero intrinsic dimensions at mount time), so the Intersection Observer
   never fetches them. Any image that appears on an explicit user action
   must omit `loading="lazy"` (or use `loading="eager"`).
+- **Read-time inference, not merge-time.** Some derived fields are filled
+  by helpers in `pkg/app/app.go` (`inferSoleHeroPercent`,
+  `inferResultFromRank`) that run on the way *out* of the DB via
+  `GetMatchResults` and `scrapeReader` — never inside `mergeMatchResult`
+  or `loadExistingMergedRows`. Reason: storing the inferred value would
+  break the merge's first-non-empty-wins rule when a later screenshot
+  arrives with the real value (e.g. an inferred `result="victory"` from
+  SR change would block a SUMMARY's authoritative `result` from
+  overriding the stored value). New inference helpers belong on this
+  read-time path.
 - **Vue 3 ref auto-unwrapping in templates** — in `<script setup>`, refs
   are auto-unwrapped at the template top level: `myRef` in a template
   expression already equals `myRef.value`. Writing `myRef.value[key]` in a

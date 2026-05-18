@@ -8,11 +8,18 @@ so a bundled Grafana dashboard can chart win rates, SR trends, and per-hero stat
 
 ## Table of Contents
 
+**Getting started**
+
+- [Quick start](#quick-start)
 - [Installation](#installation)
   - [macOS first launch](#macos-first-launch)
   - [Linux installation](#linux-installation)
   - [Verifying downloads](#verifying-downloads)
 - [Prerequisites](#prerequisites)
+- [Capturing matches](#capturing-matches)
+
+**Advanced**
+
 - [Running as a server](#running-as-a-server)
 - [Running via Docker](#running-via-docker)
 - [Metrics & Grafana](#metrics--grafana)
@@ -21,8 +28,26 @@ so a bundled Grafana dashboard can chart win rates, SR trends, and per-hero stat
   - [Option C: Native installation (no containers)](#option-c-native-installation-no-containers)
   - [Troubleshooting](#troubleshooting)
   - [Metric overview](#metric-overview)
+
+**Project**
+
 - [Contributing](#contributing)
 - [License](#license)
+
+## Quick start
+
+The desktop app is the simplest way to use Recall. Five steps from zero to your first match record:
+
+1. **Install Recall** — grab the `.dmg` (macOS), `.deb` / `.tar.gz` (Linux), or `.exe` (Windows) from [GitHub Releases](https://github.com/sound-barrier/recall/releases). See [Installation](#installation) for per-platform notes.
+2. **Install Tesseract OCR** — Recall shells out to it to read your screenshots.
+   - macOS: `brew install tesseract`
+   - Linux: `sudo apt install tesseract-ocr`
+   - Windows: [UB-Mannheim installer](https://github.com/UB-Mannheim/tesseract/wiki)
+3. **Launch Recall and pick a screenshots folder** under **Settings → Directories**. On Windows, Overwatch's default is `Documents\Overwatch\ScreenShots\Overwatch\`.
+4. **Capture screenshots in Overwatch** with **F12** after each match — see [Capturing matches](#capturing-matches) for which post-match tabs to screenshot.
+5. **Click *Ingest → Run Parse*** to scan the folder, or flip on *Ingest → Parse → Watch Folder* to auto-parse as new screenshots land. Parsed matches appear under the **Matches** tab.
+
+That's all most users need. The [Advanced](#advanced) sections below cover running Recall headless and streaming matches into a local Grafana dashboard — neither is required for everyday use.
 
 ## Installation
 
@@ -73,16 +98,41 @@ Every release also includes `recall-{version}-sbom.spdx.json` — a bill of mate
 
 ## Prerequisites
 
-- **Tesseract OCR** — required for screenshot parsing. Install via Homebrew (`brew install tesseract`) on macOS, `apt install tesseract-ocr` on Linux, or the [Windows installer](https://github.com/UB-Mannheim/tesseract/wiki). On first launch Recall auto-detects the standard install path; use **Settings → Engine** to point it elsewhere if needed.
+- **Tesseract OCR** — required for screenshot parsing. Install via Homebrew (`brew install tesseract`) on macOS, `apt install tesseract-ocr` on Linux, or the [Windows installer](https://github.com/UB-Mannheim/tesseract/wiki). On first launch Recall auto-detects the standard install path; use **Ingest → Engine** to point it elsewhere if needed.
 
 Settings and the match database are stored in the platform user-config directory:
 - macOS: `~/Library/Application Support/Recall/`
 - Linux: `~/.config/recall/`
 - Windows: `%AppData%\Recall\`
 
+## Capturing matches
+
+Recall reads four kinds of post-match screenshots from Overwatch 2. Three are required for a complete match record; the fourth is optional but recommended for competitive play.
+
+| Screenshot | Required? | What it provides |
+|---|---|---|
+| **SUMMARY** | ✅ Required | Match result (victory/defeat/draw), final score, map, mode, date, game length, and the list of heroes played with playtime percentages. |
+| **TEAMS** (scoreboard) | ✅ Required | Eliminations, assists, deaths, damage, healing, mitigation. The in-game scoreboard (Tab key, mid-match) works as a fallback for the post-match tab. |
+| **PERSONAL** | ✅ Required (one per hero played) | Per-hero detailed stats: weapon accuracy, ult charges, role-specific cards. If you played multiple heroes in a single match, take one PERSONAL screenshot for each. |
+| **RANK** | ⭕ Optional (competitive only) | SR value, rank tier, rank change. Only appears after competitive matches. If it's missing but the SR change is captured, Recall infers the win/loss from the SR delta. |
+
+The in-game screenshot key is **F12** by default (rebindable under *Options → Controls → General → Screenshot*). After a match ends, cycle through the post-match tabs and press F12 on each. Recall stitches the screenshots into a single match record using the filename timestamps Overwatch embeds — taking them within a couple of minutes of each other is enough.
+
+Overwatch saves screenshots to `Documents\Overwatch\ScreenShots\Overwatch\` on Windows by default. Point Recall at that folder under **Settings → Directories**; the watcher (enabled under **Ingest → Parse → Watch Folder**) auto-parses any new `.png` / `.jpg` that lands in it.
+
+**What if a screenshot type is missing?** Each match card has a *Data Coverage* strip in its expanded view that flags which of the four screenshot types were captured. Required-but-missing types are highlighted with a warning chip; the optional RANK is shown greyed out when absent. Screenshots Recall couldn't match to a known map collect in the **Unknown** tab for triage.
+
+---
+
+# Advanced
+
+The sections below cover headless deployment, Docker containers, and the optional Prometheus/Grafana integration. If you're using the desktop app and just want to see your matches, you can stop reading here — these aren't required for normal use.
+
 ## Running as a server
 
-In addition to the desktop app, Recall can run as a headless HTTP server — useful on Linux, Windows, or any machine without a display. Open `http://127.0.0.1:7000` in any browser to access the full match dashboard.
+> 🔧 **Advanced.** Skip this unless you specifically want to run Recall on a machine without a display (a home server, a remote box, a Raspberry Pi) and access the UI from a browser on another device.
+
+In addition to the desktop app, Recall can run as a headless HTTP server. Open `http://127.0.0.1:7000` in any browser on the same machine to access the full match dashboard.
 
 ```sh
 ./Recall-server                 # dedicated server binary — always starts in HTTP mode
@@ -92,9 +142,11 @@ In addition to the desktop app, Recall can run as a headless HTTP server — use
 
 The server listens on `http://127.0.0.1:7000` by default (localhost-only). Set
 `RECALL_SERVER_ADDR` to override (e.g. `RECALL_SERVER_ADDR=0.0.0.0:7000` to accept
-connections from other hosts).
+connections from other hosts on your network).
 
 ## Running via Docker
+
+> 🐳 **Most advanced.** You only need this if you want to run Recall inside a container (e.g. alongside other containerized services on a NAS or home lab). For everyday use, the desktop app or the bare server binary above is simpler — you don't need to install Docker just to use Recall.
 
 A pre-built Docker image with Tesseract included is pushed to GHCR on every tagged release:
 
@@ -105,16 +157,18 @@ docker run \
   ghcr.io/sound-barrier/recall-server:latest
 ```
 
-Open `http://localhost:7000` in your browser once the container is running.
+Open `http://localhost:7000` in your browser once the container is running. You'll also need to mount your screenshots folder and a volume for the database — see [`Dockerfile.build`](Dockerfile.build) and the compose examples below for the full setup.
 
 ## Metrics & Grafana
+
+> 📊 **Advanced — optional.** Recall already shows your full match history in the **Matches** tab without any of this. Set up Prometheus + Grafana only if you want time-series dashboards (win-rate trends, SR over time, damage-vs-healing scatter) on top of the in-app views.
 
 The app exposes its parsed match history as Prometheus metrics on
 `http://localhost:9091/metrics` whenever it's running. Each sample carries
 the match's actual end time (`date + finished_at`) as its timestamp, so
 Grafana plots match stats at the moment they happened — not at scrape time.
 
-Three options are available for running Prometheus and Grafana.
+Three options are available for running Prometheus and Grafana, in increasing order of complexity.
 
 ### Option A: Bundled Podman/Docker Compose (recommended)
 
