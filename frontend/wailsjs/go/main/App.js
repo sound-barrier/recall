@@ -14,6 +14,10 @@ export function GetScreenshotsDir() {
   return window['go']['main']['App']['GetScreenshotsDir']();
 }
 
+export function GetWatchEnabled() {
+  return window['go']['main']['App']['GetWatchEnabled']();
+}
+
 export function ParseScreenshots() {
   return window['go']['main']['App']['ParseScreenshots']();
 }
@@ -28,4 +32,8 @@ export function ScreenshotHandler() {
 
 export function SetPrometheusEnabled(arg1) {
   return window['go']['main']['App']['SetPrometheusEnabled'](arg1);
+}
+
+export function SetWatchEnabled(arg1) {
+  return window['go']['main']['App']['SetWatchEnabled'](arg1);
 }

@@ -9,6 +9,8 @@ export function GetPrometheusEnabled():Promise<boolean>;
 
 export function GetScreenshotsDir():Promise<string>;
 
+export function GetWatchEnabled():Promise<boolean>;
+
 export function ParseScreenshots():Promise<void>;
 
 export function PickScreenshotsDir():Promise<string>;
@@ -16,3 +18,5 @@ export function PickScreenshotsDir():Promise<string>;
 export function ScreenshotHandler():Promise<http.Handler>;
 
 export function SetPrometheusEnabled(arg1:boolean):Promise<void>;
+
+export function SetWatchEnabled(arg1:boolean):Promise<void>;
