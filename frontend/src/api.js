@@ -107,6 +107,11 @@ export function ResetTesseractPath() {
   return _post('/api/tesseract-reset')
 }
 
+export function ClearDatabase() {
+  if (IS_WAILS) return _wails('ClearDatabase')
+  return _post('/api/clear-database').then(() => undefined)
+}
+
 // ─── Events ────────────────────────────────────────────────────────────────
 // In Wails mode: thin pass-through to window.runtime.
 // In server mode: EventSource on /api/events, keyed by event name so

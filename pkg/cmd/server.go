@@ -149,6 +149,18 @@ func RunServer(a *app.App, assets embed.FS) {
 		writeJSON(w, st, err)
 	})
 
+	mux.HandleFunc("/api/clear-database", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if err := a.ClearDatabase(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, map[string]bool{"ok": true}, nil)
+	})
+
 	// ── Server-Sent Events ──────────────────────────────────────────
 	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
