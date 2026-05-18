@@ -203,7 +203,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          OWNER_TYPE=$(gh api "/users/${{ github.repository_owner }}" --jq '.type')
+          OWNER_TYPE=$(gh api "/repos/${{ github.repository }}" --jq '.owner.type')
           if [ "$OWNER_TYPE" = "Organization" ]; then
             API_PATH="/orgs/${{ github.repository_owner }}/packages/container/recall-server"
           else
