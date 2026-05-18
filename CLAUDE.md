@@ -16,12 +16,17 @@ they're good/bad at by hero/map/type.
 
 | Command | Purpose |
 |---|---|
-| `wails dev` | Hot-reload dev server. Vite on `:5173`, Wails IPC dev on `:34115`. Auto-rebuilds Go on save. |
-| `wails build` | Production `.app` in `build/bin/`. |
+| `make dev` | Hot-reload dev server (macOS only). Vite on `:5173`, Wails IPC dev on `:34115`. Auto-rebuilds Go on save. |
+| `make build-linux` | Linux/amd64 binary → `dist/linux/Recall` via Docker. |
+| `make build-windows` | Windows/amd64 binary → `dist/windows/Recall.exe` via Docker + mingw-w64. |
+| `make build-mac` | macOS universal `.app` → `dist/mac/Recall.app`. Must run on macOS. |
+| `make build-all-docker` | Linux + Windows only — no macOS SDK needed; good for CI. |
 | `go build ./...` | Compile-check the Go side without launching the GUI. Use this for quick CI-style sanity. |
 | `go get <pkg>` | Add a Go dep. (`wails dev` runs `go mod tidy` on startup.) |
 | `bash -n scripts/X.sh` | Syntax-check a shell script. |
 | `brew bundle` | Install Tesseract, Go toolchain, Podman, etc. from `Brewfile`. **Wails CLI must be installed separately**: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`. |
+
+`Dockerfile.build` is the multi-stage build file used by the `make build-linux/windows` targets. It has six named stages: `frontend-builder` (Node), `go-base` (Go + Wails CLI), `linux-builder`, `windows-builder`, `linux-export` (scratch), `windows-export` (scratch). The `-s` flag passed to `wails build` inside Docker skips the npm step because the frontend is pre-built in the `frontend-builder` stage and copied in.
 
 There are no Go unit tests in-tree. Ad-hoc verification has historically
 been done by writing a transient `x*_test.go` in the repo root that drives
@@ -170,7 +175,9 @@ enable→disable→enable cycle constructs a fresh `Server`.
 **Wails-bound methods (called from Vue via `wailsjs/go/main/App`)**:
 `ParseScreenshots`, `GetMatchResults`, `GetScreenshotsDir`,
 `PickScreenshotsDir`, `GetPrometheusEnabled`, `SetPrometheusEnabled`,
-`GetWatchEnabled`, `SetWatchEnabled`.
+`GetWatchEnabled`, `SetWatchEnabled`,
+`GetTesseractStatus`, `SetTesseractPath`, `PickTesseractBinary`,
+`ResetTesseractPath`.
 
 **Wails-bound HTTP handler**: `ScreenshotHandler()` serves
 `/_screenshot/<filename>` from the configured screenshots dir, wired
@@ -182,17 +189,28 @@ Vue card detail.
 Single-file Vue 3 SFC, composition API. No router, no Vuex/Pinia — a few
 `ref`s + `computed`s. State concerns:
 
-- **Filters**: dropdowns (mode/map/type/role/hero/result) + date range
-  inputs + sort dir. `filterRefs` maps field name → ref so badge clicks
-  share one `toggleFilter` handler.
-- **Hero filter** matches both primary (`data.hero`) AND any secondary
-  in `data.heroes_played[]` so picking Juno surfaces a Rialto match
-  where she was the 46% second-fiddle. Same applies to the `heroes`
-  computed that populates the dropdown.
+- **Filters**: multi-select popovers (mode/map/type/role/hero/result) +
+  date range inputs + sort dir. Each filter field is a `ref([])` — empty
+  array = no filter, multiple entries = union (OR logic). `filterRefs`
+  maps field name → ref so `toggleFilter(field, value)` and card badge
+  clicks share one handler that toggles array membership. `openFilter`
+  tracks which popover is currently open (one at a time); outside-click
+  and ESC close it via document-level listeners registered in `onMounted`.
+- **Hero filter** matches primary (`data.hero`) OR any secondary in
+  `data.heroes_played[]` against the full set of selected heroes — so
+  picking Juno + Kiriko surfaces matches where either was played, even as
+  a second-fiddle. Same union logic powers the `heroes` computed.
 - **Date filter** only matches rows with explicit `date + finished_at`
   (no `match_key` fallback), so undated rows are correctly excluded
   from date-windowed views — matching the card UI's behavior of not
   showing a timestamp for them.
+- **Settings page**: engine (Tesseract path + status), screenshots
+  directory, watch-folder toggle, manual parse button, Grafana/Prometheus
+  toggle. Matches view retains all filters and the match list.
+- **Tesseract gate**: `tesseractReady` computed drives a System Alert
+  banner and disables Parse/Watch controls when the OCR engine isn't
+  found. `GetTesseractStatus` / `SetTesseractPath` / `PickTesseractBinary`
+  / `ResetTesseractPath` are the four Wails-bound methods for engine config.
 - **Per-card expand state** + per-source-file image preview state (each
   in a plain object, reassigned on toggle for Vue reactivity).
 - **Event subscription**: `EventsOn('parse-complete', load)` on mount,
