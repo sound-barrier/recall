@@ -1302,14 +1302,14 @@ onBeforeUnmount(() => {
             <div class="unknown-fields">
               <div
                 v-for="fd in [
-                  { label: 'Map',    value: rec.data?.map },
-                  { label: 'Mode',   value: rec.data?.mode },
-                  { label: 'Type',   value: rec.data?.type },
+                  { label: 'Map', value: rec.data?.map },
+                  { label: 'Mode', value: rec.data?.mode },
+                  { label: 'Type', value: rec.data?.type },
                   { label: 'Result', value: rec.data?.result },
-                  { label: 'Date',   value: rec.data?.date },
-                  { label: 'Time',   value: rec.data?.finished_at },
+                  { label: 'Date', value: rec.data?.date },
+                  { label: 'Time', value: rec.data?.finished_at },
                   { label: 'Length', value: rec.data?.game_length },
-                  { label: 'E/A/D',  value: rec.data?.eliminations != null ? `${rec.data.eliminations} / ${rec.data.assists} / ${rec.data.deaths}` : null },
+                  { label: 'E/A/D', value: rec.data?.eliminations != null ? `${rec.data.eliminations} / ${rec.data.assists} / ${rec.data.deaths}` : null },
                 ]"
                 :key="fd.label"
                 class="field-cell"
@@ -1739,13 +1739,13 @@ onBeforeUnmount(() => {
                           <span class="source-name-text">{{ f }}</span>
                         </a>
                         <img
-                          v-if="isPreviewOpen(f) && !previewError.value[f]"
+                          v-if="isPreviewOpen(f) && !isPreviewError(f)"
                           :src="screenshotURL(f)"
                           :alt="f"
                           class="source-preview"
                           @error="onPreviewError(f)"
                         >
-                        <div v-if="isPreviewOpen(f) && previewError.value[f]" class="source-preview-error">
+                        <div v-if="isPreviewOpen(f) && isPreviewError(f)" class="source-preview-error">
                           Could not load image — check screenshots folder in Settings.
                         </div>
                       </div>
