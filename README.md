@@ -172,8 +172,10 @@ Open the WSL2 terminal and follow the **Linux** instructions above.
 - [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) — note the install path; paste it into **Settings → Engine** on first launch
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) — needed for `make build-*` targets
 - [Git for Windows](https://git-scm.com/download/win) — provides Git Bash; run all `make` commands from Git Bash
-- `jq`: `winget install jqlang.jq`
-- golangci-lint: `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`
+- `jq` — `winget install jqlang.jq`
+- `golangci-lint` — `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`
+- `hadolint` — `winget install Hadolint.Hadolint` or [download from GitHub releases](https://github.com/hadolint/hadolint/releases) (`hadolint-Windows-x86_64.exe`)
+- `trivy` — `winget install AquaSecurity.Trivy` or [download from GitHub releases](https://github.com/aquasecurity/trivy/releases)
 
 **First clone setup** (Git Bash):
 
@@ -188,12 +190,13 @@ go build -tags serveronly ./...   # verify compile
 # Run the server — open http://127.0.0.1:7000 in a browser
 go run -tags serveronly . --server
 
-# Docker-based builds (Docker Desktop must be running)
+# Lint (Docker Desktop must be running for lint-docker)
+make lint
+
+# Docker-based builds
 make build-server-windows
 make build-server-all
 ```
-
-> `make lint-docker` (hadolint) and `make trivy` require additional setup on native Windows. Running them via WSL2 is easier.
 
 ## Building
 
