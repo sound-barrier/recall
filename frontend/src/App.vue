@@ -53,12 +53,27 @@ const prometheusEnabled = ref(false)
 // (1 minute after the last new file).
 const watchEnabled = ref(false)
 
-const filterMode   = ref('')
-const filterType   = ref('')
-const filterRole   = ref('')
-const filterMap    = ref('')
-const filterHero   = ref('')
-const filterResult = ref('')
+// Filter state — every field is now an array. Empty array means "no
+// filter for this field"; multiple entries mean "match any of these"
+// (set-union, not intersection). Migrated from single-string refs so
+// the user can stack picks like "Aatlis + Rialto + Numbani" or
+// "Tank OR Support" in one query.
+const filterMode   = ref([])
+const filterType   = ref([])
+const filterRole   = ref([])
+const filterMap    = ref([])
+const filterHero   = ref([])
+const filterResult = ref([])
+
+// Which filter popover is currently open (one at a time). Set to the
+// field name ("mode", "map", ...) when a trigger is clicked; cleared
+// on outside-click, ESC, or selection of "Done".
+const openFilter = ref('')
+
+// Per-popover search query, keyed by field. Used for the Map and Hero
+// rosters which can be long; smaller fields ignore it but the input
+// is hidden anyway when option count < 8.
+const filterSearch = ref({ mode: '', type: '', role: '', map: '', hero: '', result: '' })
 
 // Date/time range filter. Both bound to <input type="datetime-local">,
 // which emits "YYYY-MM-DDTHH:MM" — the same shape as matchTime(rec),
@@ -258,18 +273,19 @@ const heroes = computed(() => {
 const filtered = computed(() =>
   records.value.filter(r => {
     const d = r.data || {}
-    if (filterMode.value   && d.mode   !== filterMode.value)   return false
-    if (filterType.value   && d.type   !== filterType.value)   return false
-    if (filterRole.value   && d.role   !== filterRole.value)   return false
-    if (filterMap.value    && d.map    !== filterMap.value)    return false
-    if (filterResult.value && d.result !== filterResult.value) return false
+    if (filterMode.value.length   && !filterMode.value.includes(d.mode))     return false
+    if (filterType.value.length   && !filterType.value.includes(d.type))     return false
+    if (filterRole.value.length   && !filterRole.value.includes(d.role))     return false
+    if (filterMap.value.length    && !filterMap.value.includes(d.map))       return false
+    if (filterResult.value.length && !filterResult.value.includes(d.result)) return false
     // Hero filter matches the primary hero OR any hero in heroes_played,
     // so picking a secondary hero like Juno (47%-second-fiddle on
-    // Rialto) still surfaces that match. Mirrors how the dropdown
-    // sources its options.
-    if (filterHero.value) {
-      const inPrimary   = d.hero === filterHero.value
-      const inSecondary = (d.heroes_played || []).some(hp => hp.hero === filterHero.value)
+    // Rialto) still surfaces that match. With multi-select, ANY of the
+    // chosen heroes need to match — union, not intersection.
+    if (filterHero.value.length) {
+      const picks = filterHero.value
+      const inPrimary   = picks.includes(d.hero)
+      const inSecondary = (d.heroes_played || []).some(hp => picks.includes(hp.hero))
       if (!inPrimary && !inSecondary) return false
     }
     // Date/time range. When either bound is set, require an EXPLICIT
@@ -315,30 +331,47 @@ function toggleSort() {
   sortDir.value = sortDir.value === 'desc' ? 'asc' : 'desc'
 }
 
-// toggleFilter sets a field's filter to `value`, or clears it if the
-// filter already equals `value` — so clicking the same badge twice
-// turns the filter off.
+// toggleFilter toggles `value` in or out of the field's array filter.
+// Called from match-card badges and from the popover checkbox rows;
+// the same operation in both places means clicking a Rialto chip
+// twice removes Rialto.
 function toggleFilter(field, value) {
   if (!value) return
   const r = filterRefs[field]
   if (!r) return
-  r.value = r.value === value ? '' : value
+  const arr = r.value
+  const i = arr.indexOf(value)
+  if (i >= 0) r.value = arr.filter((_, j) => j !== i)
+  else        r.value = [...arr, value]
 }
 
 function isActive(field, value) {
   const r = filterRefs[field]
-  return r && r.value === value
+  return !!(r && r.value.includes(value))
+}
+
+// Bulk popover actions.
+function selectAllFilter(field, options) {
+  const r = filterRefs[field]
+  if (!r) return
+  r.value = [...options]
+}
+function clearFilterField(field) {
+  const r = filterRefs[field]
+  if (!r) return
+  r.value = []
 }
 
 function clearFilters() {
-  filterMode.value   = ''
-  filterType.value   = ''
-  filterRole.value   = ''
-  filterMap.value    = ''
-  filterHero.value   = ''
-  filterResult.value = ''
+  filterMode.value   = []
+  filterType.value   = []
+  filterRole.value   = []
+  filterMap.value    = []
+  filterHero.value   = []
+  filterResult.value = []
   filterFrom.value   = ''
   filterTo.value     = ''
+  openFilter.value   = ''
 }
 
 // Clear just the date-range filter (separate from clearFilters which
@@ -456,8 +489,9 @@ function heroesForHeader(rec) {
 }
 
 const anyFilter = computed(() =>
-  !!(filterMode.value || filterType.value || filterRole.value || filterMap.value ||
-     filterHero.value || filterResult.value || filterFrom.value || filterTo.value)
+  !!(filterMode.value.length || filterType.value.length || filterRole.value.length ||
+     filterMap.value.length  || filterHero.value.length || filterResult.value.length ||
+     filterFrom.value || filterTo.value)
 )
 
 // Format the match's date + end time for the card header. Parser stores
@@ -516,6 +550,31 @@ function toggleTheme() {
   try { localStorage.setItem('recall.theme', themeMode.value) } catch (_) {}
 }
 
+// Multi-select popover lifecycle. The trigger button toggles the field
+// open; an outside-click or ESC closes it. Only one popover is ever
+// open at a time (the second `toggleFilterPanel` call closes the
+// previous one before opening the new one).
+function toggleFilterPanel(field) {
+  openFilter.value = openFilter.value === field ? '' : field
+  if (openFilter.value && filterSearch.value[field] !== '') {
+    filterSearch.value = { ...filterSearch.value, [field]: '' }
+  }
+}
+function closeFilterPanel() { openFilter.value = '' }
+
+function onDocMousedown(e) {
+  if (!openFilter.value) return
+  const t = e.target
+  // Ignore clicks inside any open .multi-filter root; close on anything else.
+  if (t && t.closest && t.closest('.multi-filter')) return
+  openFilter.value = ''
+}
+function onDocKeydown(e) {
+  if (e.key === 'Escape' && openFilter.value) {
+    openFilter.value = ''
+  }
+}
+
 onMounted(() => {
   let stored = null
   try { stored = localStorage.getItem('recall.theme') } catch (_) {}
@@ -532,9 +591,14 @@ onMounted(() => {
 
   load()
   EventsOn('parse-complete', () => { load(); lastParsedAt.value = Date.now(); try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {} })
+
+  document.addEventListener('mousedown', onDocMousedown)
+  document.addEventListener('keydown', onDocKeydown)
 })
 onBeforeUnmount(() => {
   EventsOff('parse-complete')
+  document.removeEventListener('mousedown', onDocMousedown)
+  document.removeEventListener('keydown', onDocKeydown)
 })
 </script>
 
@@ -822,47 +886,115 @@ onBeforeUnmount(() => {
 
       <section v-if="records.length > 0" class="filter-rail">
         <div class="filter-grid">
-          <div class="filter-field">
-            <span class="filter-eyebrow">Mode</span>
-            <select v-model="filterMode" class="dd">
-              <option value="">All</option>
-              <option v-for="m in modes" :key="m" :value="m">{{ m }}</option>
-            </select>
-          </div>
-          <div class="filter-field">
-            <span class="filter-eyebrow">Map</span>
-            <select v-model="filterMap" class="dd">
-              <option value="">All</option>
-              <option v-for="m in maps" :key="m" :value="m">{{ m }}</option>
-            </select>
-          </div>
-          <div class="filter-field">
-            <span class="filter-eyebrow">Type</span>
-            <select v-model="filterType" class="dd">
-              <option value="">All</option>
-              <option v-for="t in types" :key="t" :value="t">{{ t }}</option>
-            </select>
-          </div>
-          <div class="filter-field">
-            <span class="filter-eyebrow">Role</span>
-            <select v-model="filterRole" class="dd">
-              <option value="">All</option>
-              <option v-for="r in roles" :key="r" :value="r">{{ r }}</option>
-            </select>
-          </div>
-          <div class="filter-field">
-            <span class="filter-eyebrow">Hero</span>
-            <select v-model="filterHero" class="dd">
-              <option value="">All</option>
-              <option v-for="h in heroes" :key="h" :value="h">{{ h }}</option>
-            </select>
-          </div>
-          <div class="filter-field">
-            <span class="filter-eyebrow">Result</span>
-            <select v-model="filterResult" class="dd">
-              <option value="">All</option>
-              <option v-for="r in results" :key="r" :value="r">{{ r }}</option>
-            </select>
+          <div
+            v-for="cfg in [
+              { field: 'mode',   label: 'Mode',   options: modes,   short: 'MODES'   },
+              { field: 'map',    label: 'Map',    options: maps,    short: 'MAPS'    },
+              { field: 'type',   label: 'Type',   options: types,   short: 'TYPES'   },
+              { field: 'role',   label: 'Role',   options: roles,   short: 'ROLES'   },
+              { field: 'hero',   label: 'Hero',   options: heroes,  short: 'HEROES'  },
+              { field: 'result', label: 'Result', options: results, short: 'RESULTS' },
+            ]"
+            :key="cfg.field"
+            class="filter-field multi-filter"
+            :class="{ open: openFilter === cfg.field, populated: filterRefs[cfg.field].value.length > 0 }"
+          >
+            <span class="filter-eyebrow">
+              {{ cfg.label }}
+              <span v-if="filterRefs[cfg.field].value.length" class="eyebrow-count">× {{ String(filterRefs[cfg.field].value.length).padStart(2, '0') }}</span>
+            </span>
+
+            <button
+              type="button"
+              class="mf-trigger"
+              :aria-expanded="openFilter === cfg.field"
+              :aria-label="`${cfg.label} filter, ${filterRefs[cfg.field].value.length} of ${cfg.options.length} selected`"
+              @click="toggleFilterPanel(cfg.field)"
+            >
+              <span class="mf-trigger-inner">
+                <template v-if="filterRefs[cfg.field].value.length === 0">
+                  <span class="mf-placeholder">All</span>
+                  <span class="mf-placeholder-meta">{{ cfg.options.length }} {{ cfg.short.toLowerCase() }}</span>
+                </template>
+                <template v-else-if="filterRefs[cfg.field].value.length <= 2">
+                  <span
+                    v-for="val in filterRefs[cfg.field].value"
+                    :key="val"
+                    class="mf-chip"
+                    @click.stop="toggleFilter(cfg.field, val)"
+                    :title="`Remove ${val} from filter`"
+                  >
+                    <span class="mf-chip-text">{{ val }}</span>
+                    <span class="mf-chip-x" aria-hidden="true">×</span>
+                  </span>
+                </template>
+                <template v-else>
+                  <span class="mf-chip mf-chip-stack">
+                    <span class="mf-chip-text">{{ filterRefs[cfg.field].value[0] }}</span>
+                    <span class="mf-chip-x" aria-hidden="true"></span>
+                  </span>
+                  <span class="mf-more">+{{ filterRefs[cfg.field].value.length - 1 }}</span>
+                </template>
+              </span>
+              <span class="mf-caret" aria-hidden="true"></span>
+            </button>
+
+            <div v-if="openFilter === cfg.field" class="mf-panel" @click.stop>
+              <div class="mf-panel-head">
+                <span class="mf-panel-title">{{ cfg.short }} ROSTER</span>
+                <span class="mf-panel-meta">{{ filterRefs[cfg.field].value.length }} / {{ cfg.options.length }}</span>
+              </div>
+              <div v-if="cfg.options.length >= 8" class="mf-search">
+                <span class="mf-search-icon" aria-hidden="true">⌕</span>
+                <input
+                  v-model="filterSearch[cfg.field]"
+                  type="text"
+                  class="mf-search-input"
+                  :placeholder="`Search ${cfg.label.toLowerCase()}…`"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="mf-list" role="listbox" aria-multiselectable="true">
+                <template v-for="opt in cfg.options" :key="opt">
+                  <label
+                    v-if="!filterSearch[cfg.field] || opt.toLowerCase().includes(filterSearch[cfg.field].toLowerCase())"
+                    class="mf-row"
+                    :class="{ checked: filterRefs[cfg.field].value.includes(opt) }"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="filterRefs[cfg.field].value.includes(opt)"
+                      @change="toggleFilter(cfg.field, opt)"
+                      class="mf-row-box"
+                    />
+                    <span class="mf-row-mark" aria-hidden="true"></span>
+                    <span class="mf-row-label">{{ opt }}</span>
+                  </label>
+                </template>
+                <div
+                  v-if="filterSearch[cfg.field] && cfg.options.filter(o => o.toLowerCase().includes(filterSearch[cfg.field].toLowerCase())).length === 0"
+                  class="mf-empty"
+                >
+                  No {{ cfg.label.toLowerCase() }} matches "{{ filterSearch[cfg.field] }}"
+                </div>
+              </div>
+              <div class="mf-panel-foot">
+                <button
+                  type="button"
+                  class="mf-foot-btn"
+                  @click="selectAllFilter(cfg.field, cfg.options)"
+                  :disabled="filterRefs[cfg.field].value.length === cfg.options.length"
+                >All</button>
+                <button
+                  type="button"
+                  class="mf-foot-btn"
+                  @click="clearFilterField(cfg.field)"
+                  :disabled="filterRefs[cfg.field].value.length === 0"
+                >None</button>
+                <span class="mf-foot-spacer"></span>
+                <button type="button" class="mf-foot-btn primary" @click="closeFilterPanel">Done</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1655,43 +1787,401 @@ body {
   flex-direction: column;
   gap: 0.3rem;
   min-width: 0;
+  position: relative;
 }
 .filter-eyebrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.4rem;
   font-family: var(--mono);
   font-size: 0.6rem;
   color: var(--text-faint);
   letter-spacing: 0.22em;
   text-transform: uppercase;
+  transition: color 160ms ease;
 }
+.eyebrow-count {
+  color: var(--accent-text);
+  font-feature-settings: "tnum";
+  letter-spacing: 0.14em;
+  font-weight: 600;
+}
+.multi-filter.populated .filter-eyebrow { color: var(--text-dim); }
 
-.dd {
-  background: var(--surface-2);
-  color: var(--text);
+/* ─── Tactical multi-select ────────────────────────────────
+   Trigger is a low spec-plate. Two riveted corner ticks on
+   each side; chip-strip in the middle. Click → animated
+   popover with a hazard-strip head, scroll roster, and a
+   foot bar of bulk actions.
+   ───────────────────────────────────────────────────────── */
+.mf-trigger {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 38px;
+  padding: 0.35rem 0.5rem 0.35rem 0.6rem;
   font-family: var(--body);
+  color: var(--text);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 2px;
-  padding: 0.45rem 0.6rem;
-  font-size: 0.85rem;
   cursor: pointer;
-  text-transform: capitalize;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image:
-    linear-gradient(45deg, transparent 50%, var(--text-faint) 50%),
-    linear-gradient(135deg, var(--text-faint) 50%, transparent 50%);
-  background-position:
-    calc(100% - 14px) calc(50% - 2px),
-    calc(100% - 9px) calc(50% - 2px);
-  background-size: 5px 5px;
-  background-repeat: no-repeat;
-  padding-right: 1.7rem;
-  transition: border-color 140ms ease, background-color 140ms ease;
+  text-align: left;
+  transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
 }
-.dd:hover { border-color: var(--border-strong); }
-.dd:focus {
-  outline: none;
+.mf-trigger::before,
+.mf-trigger::after {
+  /* Corner ticks — tiny L-marks at the top-left + bottom-right of
+     the trigger, like an industrial spec plate. Fade in on hover. */
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+.mf-trigger::before {
+  top: -1px; left: -1px;
+  border-right: none; border-bottom: none;
+}
+.mf-trigger::after {
+  bottom: -1px; right: -1px;
+  border-left: none; border-top: none;
+}
+.mf-trigger:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-3);
+}
+.mf-trigger:hover::before,
+.mf-trigger:hover::after { opacity: 0.5; }
+.multi-filter.open .mf-trigger {
   border-color: var(--accent);
-  background-color: var(--surface-3);
+  background: var(--surface-3);
+  box-shadow: 0 0 0 1px var(--accent-soft) inset;
+}
+.multi-filter.open .mf-trigger::before,
+.multi-filter.open .mf-trigger::after { opacity: 1; }
+.multi-filter.populated .mf-trigger { border-color: var(--accent-soft); }
+
+.mf-trigger-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+}
+.mf-placeholder {
+  font-family: var(--display);
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+.mf-placeholder-meta {
+  margin-left: auto;
+  padding-left: 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-mute);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.mf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.4rem 0.18rem 0.5rem;
+  background: var(--accent);
+  color: var(--primary-text-on-accent);
+  border-radius: 1px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: capitalize;
+  max-width: 100%;
+  cursor: pointer;
+  animation: chip-in 220ms cubic-bezier(0.2, 0.7, 0.3, 1.4);
+  transition: background 140ms ease, transform 120ms ease;
+}
+.mf-chip:hover {
+  background: var(--accent-bright);
+  transform: translateY(-1px);
+}
+.mf-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mf-chip-x {
+  font-family: var(--body);
+  font-size: 0.85rem;
+  line-height: 1;
+  font-weight: 700;
+  opacity: 0.55;
+  margin-right: -0.05rem;
+}
+.mf-chip:hover .mf-chip-x { opacity: 1; }
+.mf-chip-stack { padding-right: 0.5rem; }
+.mf-more {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.35rem;
+  background: var(--brand-grey);
+  color: #f1f1f1;
+  border-radius: 1px;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.mf-caret {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--text-dim);
+  border-bottom: 1px solid var(--text-dim);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 220ms ease, border-color 160ms ease;
+  align-self: center;
+}
+.multi-filter.open .mf-caret {
+  transform: translateY(2px) rotate(-135deg);
+  border-color: var(--accent);
+}
+
+@keyframes chip-in {
+  0%   { transform: scale(0.7) translateY(2px); opacity: 0; }
+  60%  { transform: scale(1.05) translateY(0); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Popover panel below the trigger */
+.mf-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  box-shadow:
+    0 24px 60px -18px rgba(0, 0, 0, 0.7),
+    0 0 0 1px var(--accent-soft);
+  display: flex;
+  flex-direction: column;
+  max-height: 360px;
+  overflow: hidden;
+  animation: panel-in 180ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  transform-origin: top center;
+}
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(-6px) scaleY(0.92); }
+  to   { opacity: 1; transform: translateY(0)    scaleY(1); }
+}
+
+.mf-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.7rem;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      var(--brand-grey) 0 12px,
+      #3a3a3a 12px 24px
+    );
+  border-bottom: 1px solid var(--accent);
+  color: #f1f1f1;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.mf-panel-title { font-weight: 700; }
+.mf-panel-meta {
+  color: var(--accent);
+  font-feature-settings: "tnum";
+  letter-spacing: 0.18em;
+}
+
+.mf-search {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px dashed var(--border);
+  background: var(--surface-2);
+}
+.mf-search-icon {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--text-faint);
+}
+.mf-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 0.84rem;
+  padding: 0.2rem 0;
+}
+.mf-search-input::placeholder {
+  color: var(--text-mute);
+  font-style: italic;
+}
+
+.mf-list {
+  overflow-y: auto;
+  padding: 0.3rem 0;
+  flex: 1 1 auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.mf-list::-webkit-scrollbar { width: 6px; }
+.mf-list::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+
+.mf-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+  font-family: var(--body);
+  font-size: 0.86rem;
+  color: var(--text-dim);
+  text-transform: capitalize;
+  user-select: none;
+  position: relative;
+  transition: background 100ms ease, color 100ms ease;
+}
+.mf-row:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.mf-row.checked {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+.mf-row.checked::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-left: 2px solid var(--accent);
+  pointer-events: none;
+}
+.mf-row-box {
+  /* The real checkbox lives behind .mf-row-mark for accessibility. */
+  position: absolute;
+  opacity: 0;
+  width: 1px; height: 1px;
+  pointer-events: none;
+}
+.mf-row-mark {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.mf-row.checked .mf-row-mark {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.mf-row.checked .mf-row-mark::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  width: 4px;
+  height: 8px;
+  border-right: 2px solid var(--primary-text-on-accent);
+  border-bottom: 2px solid var(--primary-text-on-accent);
+  transform: rotate(45deg);
+  animation: mark-in 160ms cubic-bezier(0.2, 0.7, 0.3, 1.4);
+}
+@keyframes mark-in {
+  from { opacity: 0; transform: rotate(45deg) scale(0.4); }
+  to   { opacity: 1; transform: rotate(45deg) scale(1); }
+}
+.mf-row-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mf-row-box:focus-visible + .mf-row-mark {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.mf-empty {
+  padding: 0.8rem 0.7rem;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-mute);
+  letter-spacing: 0.08em;
+  font-style: italic;
+}
+
+.mf-panel-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.mf-foot-spacer { flex: 1; }
+.mf-foot-btn {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.6rem;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 1px;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+.mf-foot-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+.mf-foot-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.mf-foot-btn.primary {
+  background: var(--accent);
+  color: var(--primary-text-on-accent);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.mf-foot-btn.primary:hover {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
 }
 
 .filter-bar {
@@ -2987,4 +3477,22 @@ body {
   background: var(--accent);
   filter: brightness(0.95);
 }
+
+/* Multi-filter light-mode polish. The hazard strip in the panel head
+   stays dark in both themes (industrial sticker feel). Trigger surface
+   needs slightly more contrast against the cream page background. */
+[data-theme="light"] .mf-trigger { background: var(--surface); }
+[data-theme="light"] .mf-trigger:hover,
+[data-theme="light"] .multi-filter.open .mf-trigger { background: var(--surface-2); }
+[data-theme="light"] .mf-placeholder { color: var(--text-faint); }
+[data-theme="light"] .mf-row.checked { background: var(--accent-soft); color: var(--text); }
+[data-theme="light"] .mf-row-mark { background: #fff; }
+[data-theme="light"] .mf-panel {
+  box-shadow:
+    0 24px 60px -18px rgba(74, 74, 74, 0.45),
+    0 0 0 1px var(--accent-soft);
+}
+[data-theme="light"] .mf-search { background: var(--surface-3); }
+[data-theme="light"] .mf-panel-foot { background: var(--surface-3); }
+[data-theme="light"] .eyebrow-count { color: var(--accent-text); }
 </style>
