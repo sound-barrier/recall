@@ -1,0 +1,7 @@
+failure-threshold: warning
+
+ignore:
+  # apt-get version pinning is impractical for build-time toolchain installs.
+  - DL3008
+  # apt-get cache cleanup is handled per-layer in the Dockerfile already.
+  - DL3009
