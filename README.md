@@ -10,6 +10,25 @@ per-hero stats.
 Stack: Go + Wails v2 desktop shell · Vue 3 + Vite frontend ·
 `modernc.org/sqlite` (pure-Go) · Tesseract CLI · Prometheus + Grafana.
 
+## Installation
+
+Pre-built binaries for every tagged release are on the [GitHub Releases](https://github.com/sound-barrier/recall/releases) page.
+
+| Platform | Wails desktop app | Server binary |
+|---|---|---|
+| Linux | `recall-linux-amd64.tar.gz` · `recall-linux-amd64.deb` | `recall-server-linux-amd64.tar.gz` · `recall-server-linux-amd64.deb` |
+| Windows | `recall-windows-amd64.exe` | `recall-server-windows-amd64.exe` |
+| macOS arm64 | `recall-macos-arm64.zip` | `recall-server-macos-arm64.tar.gz` |
+| macOS amd64 | `recall-macos-amd64.zip` | `recall-server-macos-amd64.tar.gz` |
+| Docker | — | `ghcr.io/sound-barrier/recall-server:latest` |
+
+Linux `.deb` packages install the binary to `/usr/local/bin/`:
+
+```sh
+sudo dpkg -i recall-linux-amd64.deb        # installs /usr/local/bin/recall
+sudo dpkg -i recall-server-linux-amd64.deb  # installs /usr/local/bin/recall-server
+```
+
 ## Prerequisites
 
 - **Tesseract OCR** — required for screenshot parsing. Install via Homebrew (`brew install tesseract`) on macOS, `apt install tesseract-ocr` on Linux, or the [Windows installer](https://github.com/UB-Mannheim/tesseract/wiki). On first launch Recall auto-detects the standard install path; use **Settings → Engine** to point it elsewhere if needed.
@@ -22,6 +41,7 @@ Settings and the match database are stored in the platform user-config directory
 ## Development
 
 ```sh
+make help       # list all available targets
 make dev        # hot-reload (macOS only — Wails uses the native WebKit shell)
 ```
 
@@ -94,7 +114,7 @@ The pre-built image is pushed to GHCR on every tagged release.
 ### Other build commands
 
 ```sh
-make clean              # remove dist/, frontend/dist, frontend/node_modules
+make clean              # remove dist/, build/bin/, frontend/dist, frontend/node_modules
 DOCKER=podman make ...  # use Podman instead of Docker
 go build ./...          # compile-check Wails variant
 go build -tags serveronly ./...  # compile-check server variant
@@ -103,6 +123,7 @@ go build -tags serveronly ./...  # compile-check server variant
 ## Maintenance
 
 ```sh
+make fmt           # format all Go source files (go fmt ./...)
 make update-deps   # update Go modules (go get -u + mod tidy) and npm packages
 make trivy         # vulnerability scan — fails on HIGH/CRITICAL findings
 ```

@@ -41,8 +41,9 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `bash -n scripts/X.sh` | Syntax-check a shell script. |
 | `brew bundle` | Install Tesseract, Go toolchain, Podman, etc. from `Brewfile`. **Wails CLI must be installed separately**: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`. |
 | `cd frontend && npm ci` | Install frontend dependencies (required after clone or `make clean`). |
+| `make fmt` | Format all Go source files (`go fmt ./...`). |
 | `make lint` | Run all linters: golangci-lint (Go, both build tags), ESLint, Stylelint, HTMLHint, Hadolint. |
-| `make clean` | Remove `dist/`, `frontend/dist`, and `frontend/node_modules`. |
+| `make clean` | Remove `dist/`, `build/bin/`, `frontend/dist`, and `frontend/node_modules`. |
 | `make update-deps` | Update Go modules (`go get -u ./...` + `go mod tidy`) and npm packages. |
 | `make trivy` | Trivy vulnerability scan (Go modules + npm + Dockerfile); fails on HIGH/CRITICAL. |
 
