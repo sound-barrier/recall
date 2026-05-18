@@ -4,6 +4,7 @@ package app
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -42,9 +43,13 @@ func (a *App) PickTesseractBinary() (TesseractStatus, error) {
 	if dflt == "" {
 		dflt = defaultTesseractPath()
 	}
+	dir := filepath.Dir(dflt)
+	if _, err := os.Stat(dir); err != nil {
+		dir = ""
+	}
 	file, err := wruntime.OpenFileDialog(a.ctx, wruntime.OpenDialogOptions{
 		Title:            "Select Tesseract binary",
-		DefaultDirectory: filepath.Dir(dflt),
+		DefaultDirectory: dir,
 		Filters: []wruntime.FileFilter{
 			{DisplayName: "Tesseract executable", Pattern: "tesseract*"},
 			{DisplayName: "All files", Pattern: "*"},
@@ -63,9 +68,13 @@ func (a *App) PickTesseractBinary() (TesseractStatus, error) {
 // selection. Returns the chosen path. If the user cancels the dialog
 // (Wails returns "" with no error), the existing setting is left alone.
 func (a *App) PickScreenshotsDir() (string, error) {
+	dflt := a.settings.ScreenshotsDir
+	if _, err := os.Stat(dflt); err != nil {
+		dflt = ""
+	}
 	dir, err := wruntime.OpenDirectoryDialog(a.ctx, wruntime.OpenDialogOptions{
 		Title:                "Select Overwatch screenshots folder",
-		DefaultDirectory:     a.settings.ScreenshotsDir,
+		DefaultDirectory:     dflt,
 		CanCreateDirectories: false,
 	})
 	if err != nil {
