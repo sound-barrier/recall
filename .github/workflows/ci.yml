@@ -119,3 +119,43 @@ jobs:
 
       - name: Build macOS universal Wails app
         run: make build-mac
+
+  # ── Job 6: Vulnerability scan ────────────────────────────────────────────
+  # Mirrors `make trivy` but runs in CI and uploads results to the GitHub
+  # Security tab (Alerts → Code scanning) as well as failing the build.
+  trivy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          format: sarif
+          output: trivy.sarif
+
+      - name: Upload Trivy results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif
+
+  # ── Job 7: Dependency review (PRs only) ──────────────────────────────────
+  # Blocks PRs that introduce dependencies with known CVEs at HIGH or above.
+  # Skipped on direct pushes to main (no diff to review).
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
