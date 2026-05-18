@@ -1,0 +1,51 @@
+# Runtime data
+data/
+screenshots/
+
+# Build outputs — Docker produces these fresh
+dist/
+build/bin/
+frontend/dist/
+
+# Frontend dependencies — installed inside Docker (frontend-builder stage)
+frontend/node_modules/
+
+# Locally compiled binaries at repo root
+Recall
+Recall.exe
+Recall-server
+Recall-server.exe
+
+# Version control
+.git/
+
+# IDE / editor / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Claude Code session files
+.claude/
+
+# CI/CD and repo meta
+.github/
+.gitignore
+.gitattributes
+Brewfile
+
+# Dev tooling (Docker stages run commands directly, not via make)
+Makefile
+
+# Documentation
+README.md
+CONTRIBUTING.md
+CLAUDE.md
+LICENSE
+
+# Observability stack config (not part of the app build)
+docker-compose.yml
+prometheus.yml
+grafana/
+
+# Dev helper scripts
+scripts/
