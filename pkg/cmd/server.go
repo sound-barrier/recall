@@ -149,6 +149,15 @@ func RunServer(a *app.App, assets embed.FS) {
 		writeJSON(w, st, err)
 	})
 
+	mux.HandleFunc("/api/new-screenshot-count", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		count, err := a.GetNewScreenshotCount()
+		writeJSON(w, map[string]int{"count": count}, err)
+	})
+
 	mux.HandleFunc("/api/clear-database", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -185,8 +194,8 @@ func RunServer(a *app.App, assets embed.FS) {
 			select {
 			case <-r.Context().Done():
 				return
-			case event := <-ch:
-				_, _ = fmt.Fprintf(w, "event: %s\ndata: {}\n\n", event)
+			case msg := <-ch:
+				_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", msg.Event, msg.Data)
 				flusher.Flush()
 			case <-ticker.C:
 				_, _ = fmt.Fprintf(w, ": keepalive\n\n")

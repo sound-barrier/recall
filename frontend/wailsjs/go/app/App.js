@@ -10,6 +10,10 @@ export function GetMatchResults() {
   return window['go']['app']['App']['GetMatchResults']();
 }
 
+export function GetNewScreenshotCount() {
+  return window['go']['app']['App']['GetNewScreenshotCount']();
+}
+
 export function GetPrometheusEnabled() {
   return window['go']['app']['App']['GetPrometheusEnabled']();
 }

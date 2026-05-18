@@ -112,6 +112,11 @@ export function ClearDatabase() {
   return _post('/api/clear-database').then(() => undefined)
 }
 
+export function GetNewScreenshotCount() {
+  if (IS_WAILS) return _wails('GetNewScreenshotCount')
+  return _get('/api/new-screenshot-count').then(d => d.count)
+}
+
 // ─── Events ────────────────────────────────────────────────────────────────
 // In Wails mode: thin pass-through to window.runtime.
 // In server mode: EventSource on /api/events, keyed by event name so
@@ -130,7 +135,9 @@ export function EventsOn(eventName, callback) {
     _sources[eventName].close()
   }
   const es = new EventSource('/api/events')
-  es.addEventListener(eventName, () => callback())
+  es.addEventListener(eventName, (e) => {
+    try { callback(e.data ? JSON.parse(e.data) : null) } catch (_) { callback(null) }
+  })
   _sources[eventName] = es
 }
 

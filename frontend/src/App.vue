@@ -13,6 +13,7 @@ import {
   PickTesseractBinary,
   ResetTesseractPath,
   ClearDatabase,
+  GetNewScreenshotCount,
   EventsOn,
   EventsOff,
 } from './api.js'
@@ -20,6 +21,15 @@ import {
 const records = ref([])
 const error = ref('')
 const loading = ref(false)
+
+// Parse progress: the most-recently-completed file during an active parse.
+// null when no parse is running.
+const parseProgress = ref(null)
+// Rolling log of completed files during the current parse (up to 50).
+const parseLog = ref([])
+// Count of image files in the screenshots dir not yet in the database.
+// null = not yet fetched; 0 = all parsed; >0 = new files waiting.
+const newScreenshotCount = ref(null)
 
 // Which top-level view is shown: 'matches' (default — filter rail +
 // match cards) or 'settings' (config sections — directory, watch,
@@ -103,18 +113,24 @@ const filterRefs = {
 }
 
 async function load() {
-  const [recs, dir, promOn, watchOn, tess] = await Promise.all([
+  const [recs, dir, promOn, watchOn, tess, newCount] = await Promise.all([
     GetMatchResults(),
     GetScreenshotsDir(),
     GetPrometheusEnabled(),
     GetWatchEnabled(),
     GetTesseractStatus(),
+    GetNewScreenshotCount().catch(() => null),
   ])
   records.value = recs ?? []
   screenshotsDir.value = dir || ''
   prometheusEnabled.value = !!promOn
   watchEnabled.value = !!watchOn
   tesseractStatus.value = tess || { path: '', found: false, error: 'No status returned.' }
+  newScreenshotCount.value = newCount
+}
+
+async function refreshNewCount() {
+  try { newScreenshotCount.value = await GetNewScreenshotCount() } catch (_) {}
 }
 
 // Pick a Tesseract binary via the native file dialog. The Go side
@@ -195,6 +211,8 @@ async function parse() {
   }
   error.value = ''
   loading.value = true
+  parseProgress.value = null
+  parseLog.value = []
   try {
     await ParseScreenshots()
     await load()
@@ -204,6 +222,7 @@ async function parse() {
     error.value = String(e)
   } finally {
     loading.value = false
+    parseProgress.value = null
   }
 }
 
@@ -264,6 +283,7 @@ async function pickDir() {
   try {
     const dir = await PickScreenshotsDir()
     if (dir) screenshotsDir.value = dir
+    await refreshNewCount()
   } catch (e) {
     error.value = String(e)
   }
@@ -681,12 +701,18 @@ onMounted(() => {
 
   load()
   EventsOn('parse-complete', () => { load(); lastParsedAt.value = Date.now(); try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {} })
+  EventsOn('parse-progress', (data) => {
+    if (!data) return
+    parseProgress.value = data
+    parseLog.value = [...parseLog.value, data].slice(-50)
+  })
 
   document.addEventListener('mousedown', onDocMousedown)
   document.addEventListener('keydown', onDocKeydown)
 })
 onBeforeUnmount(() => {
   EventsOff('parse-complete')
+  EventsOff('parse-progress')
   document.removeEventListener('mousedown', onDocMousedown)
   document.removeEventListener('keydown', onDocKeydown)
 })
@@ -975,22 +1001,126 @@ onBeforeUnmount(() => {
                   <span class="block-mark" aria-hidden="true">⛔</span>
                   Blocked — needs Tesseract.
                 </p>
-                <p v-else-if="lastParsedAt" class="setting-meta">
+                <p v-else-if="newScreenshotCount === 0 && !loading" class="setting-meta blocked">
+                  <span class="block-mark" aria-hidden="true">◎</span>
+                  All screenshots already parsed — nothing new in the folder.
+                </p>
+                <p v-else-if="lastParsedAt && !loading" class="setting-meta">
                   <span class="meta-dot" />
-                  Last run · {{ formatRelativeTime(lastParsedAt) }} · {{ records.length }} match{{ records.length === 1 ? '' : 'es' }} on record
+                  Last run · {{ formatRelativeTime(lastParsedAt) }} · {{ records.length + unknownRecords.length }} record{{ (records.length + unknownRecords.length) === 1 ? '' : 's' }} on record
                 </p>
               </div>
               <div class="setting-control">
                 <button
                   class="btn primary big"
-                  :disabled="loading || !tesseractReady"
-                  :title="!tesseractReady ? 'Locate Tesseract in section 01 / Engine first.' : ''"
+                  :disabled="loading || !tesseractReady || newScreenshotCount === 0"
+                  :title="!tesseractReady ? 'Locate Tesseract in section 01 / Engine first.' : newScreenshotCount === 0 ? 'All screenshots in the folder have already been parsed.' : ''"
                   @click="parse"
                 >
                   <span class="btn-dot" />
                   <span v-if="loading">Parsing…</span>
+                  <span v-else-if="newScreenshotCount > 0">Run Parse · {{ newScreenshotCount }}</span>
                   <span v-else>Run Parse</span>
                 </button>
+              </div>
+            </div>
+
+            <!-- Parse progress panel — visible while loading -->
+            <div v-if="loading" class="parse-progress-panel">
+              <div class="pp-header">
+                <div class="pp-scan-label">
+                  <span class="pp-scan-dot" aria-hidden="true" />
+                  <span class="pp-scan-text">Scanning</span>
+                </div>
+                <div class="pp-fraction mono">
+                  <span class="pp-done">{{ parseProgress?.done ?? 0 }}</span>
+                  <span class="pp-sep">&nbsp;/&nbsp;</span>
+                  <span class="pp-total">{{ parseProgress?.total ?? '…' }}</span>
+                  <span class="pp-unit">screenshots</span>
+                </div>
+                <div class="pp-bar-track">
+                  <div
+                    class="pp-bar-fill"
+                    :style="parseProgress && parseProgress.total
+                      ? { width: `${(parseProgress.done / parseProgress.total) * 100}%` }
+                      : { width: '0%' }"
+                  />
+                </div>
+              </div>
+
+              <!-- Current file being processed -->
+              <div v-if="parseProgress" class="pp-current">
+                <span class="pp-arrow" aria-hidden="true">▶</span>
+                <span class="pp-cur-filename mono">{{ parseProgress.filename }}</span>
+                <span
+                  class="pp-type-badge"
+                  :class="parseProgress.screenshot_type"
+                >{{ parseProgress.screenshot_type?.toUpperCase() }}</span>
+                <div class="pp-cur-fields">
+                  <template v-if="parseProgress.screenshot_type === 'summary'">
+                    <span v-if="parseProgress.data?.map" class="pp-field">
+                      <span class="pp-fl">map</span><span class="pp-fv">{{ parseProgress.data.map }}</span>
+                    </span>
+                    <span v-if="parseProgress.data?.result" class="pp-field" :class="parseProgress.data.result">
+                      <span class="pp-fl">result</span><span class="pp-fv">{{ parseProgress.data.result }}</span>
+                    </span>
+                    <span v-if="parseProgress.data?.date" class="pp-field">
+                      <span class="pp-fl">date</span><span class="pp-fv">{{ parseProgress.data.date }}</span>
+                    </span>
+                    <span v-if="parseProgress.data?.game_length" class="pp-field">
+                      <span class="pp-fl">length</span><span class="pp-fv">{{ parseProgress.data.game_length }}</span>
+                    </span>
+                  </template>
+                  <template v-else-if="parseProgress.screenshot_type === 'scoreboard'">
+                    <span class="pp-field">
+                      <span class="pp-fl">elims</span><span class="pp-fv">{{ parseProgress.data?.eliminations ?? '—' }}</span>
+                    </span>
+                    <span class="pp-field">
+                      <span class="pp-fl">assists</span><span class="pp-fv">{{ parseProgress.data?.assists ?? '—' }}</span>
+                    </span>
+                    <span class="pp-field">
+                      <span class="pp-fl">deaths</span><span class="pp-fv">{{ parseProgress.data?.deaths ?? '—' }}</span>
+                    </span>
+                    <span v-if="parseProgress.data?.damage" class="pp-field">
+                      <span class="pp-fl">dmg</span><span class="pp-fv">{{ parseProgress.data.damage.toLocaleString() }}</span>
+                    </span>
+                    <span v-if="parseProgress.data?.mitigation" class="pp-field">
+                      <span class="pp-fl">mit</span><span class="pp-fv">{{ parseProgress.data.mitigation.toLocaleString() }}</span>
+                    </span>
+                  </template>
+                  <template v-else-if="parseProgress.screenshot_type === 'personal'">
+                    <span v-if="parseProgress.data?.hero" class="pp-field">
+                      <span class="pp-fl">hero</span><span class="pp-fv">{{ parseProgress.data.hero }}</span>
+                    </span>
+                    <span v-if="parseProgress.data?.heroes_played?.length" class="pp-field">
+                      <span class="pp-fl">played</span>
+                      <span class="pp-fv">{{ parseProgress.data.heroes_played.map(h => h.hero).join(' · ') }}</span>
+                    </span>
+                  </template>
+                  <template v-else-if="parseProgress.screenshot_type === 'rank'">
+                    <span v-if="parseProgress.data?.rank" class="pp-field">
+                      <span class="pp-fl">rank</span>
+                      <span class="pp-fv">{{ parseProgress.data.rank }} {{ parseProgress.data.level }}</span>
+                    </span>
+                    <span v-if="parseProgress.data?.sr?.length" class="pp-field">
+                      <span class="pp-fl">SR</span>
+                      <span class="pp-fv">{{ parseProgress.data.sr.map(s => `${s.hero} ${s.sr}`).join(' · ') }}</span>
+                    </span>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Rolling log of completed files -->
+              <div v-if="parseLog.length > 1" class="pp-log">
+                <div
+                  v-for="entry in [...parseLog].slice(0, -1).reverse()"
+                  :key="entry.done + entry.filename"
+                  class="pp-log-entry"
+                >
+                  <span class="pp-log-check" aria-hidden="true">✓</span>
+                  <span class="pp-log-filename mono">{{ entry.filename }}</span>
+                  <span class="pp-log-type" :class="entry.screenshot_type">{{ entry.screenshot_type }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -4088,6 +4218,222 @@ body {
 [data-theme="light"] .mf-search { background: var(--surface-3); }
 [data-theme="light"] .mf-panel-foot { background: var(--surface-3); }
 [data-theme="light"] .eyebrow-count { color: var(--accent-text); }
+
+/* ─── Parse progress panel ───────────────────────────────── */
+
+.parse-progress-panel {
+  grid-column: 1 / -1;
+  margin-top: 0.85rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 3px;
+  background: var(--surface-2);
+  overflow: hidden;
+  animation: view-fade-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Header: scanning label + fraction + bar */
+.pp-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.pp-scan-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pp-scan-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+.pp-scan-text {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.pp-bar-track {
+  height: 3px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.pp-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--accent-glow);
+  transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pp-fraction {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  font-feature-settings: "tnum";
+}
+
+.pp-done { color: var(--accent-text); font-weight: 600; }
+.pp-sep  { color: var(--text-faint); }
+.pp-unit { color: var(--text-faint); margin-left: 0.3rem; }
+
+/* Current file row */
+.pp-current {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.pp-arrow {
+  font-size: 0.6rem;
+  color: var(--accent);
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+
+.pp-cur-filename {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text);
+  letter-spacing: 0.01em;
+  flex-shrink: 0;
+  max-width: 36ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pp-type-badge {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+}
+
+.pp-type-badge.summary  { background: var(--accent-soft); border-color: var(--accent-glow); color: var(--accent-text); }
+.pp-type-badge.scoreboard { background: var(--tank-soft); border-color: var(--tank); color: var(--tank); }
+.pp-type-badge.personal { background: var(--support-soft); border-color: var(--support); color: var(--support); }
+.pp-type-badge.rank     { background: var(--draw-soft); border-color: var(--draw-line); color: var(--draw); }
+.pp-type-badge.unknown  { background: transparent; border-color: var(--border); color: var(--text-faint); border-style: dashed; }
+
+[data-theme="light"] .pp-type-badge.scoreboard { color: var(--tank); }
+[data-theme="light"] .pp-type-badge.personal   { color: var(--support); }
+[data-theme="light"] .pp-type-badge.rank        { color: var(--draw); }
+
+.pp-cur-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  width: 100%;
+  padding-left: 1rem;
+}
+
+/* Extracted field chips: "label value" */
+.pp-field {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  font-family: var(--mono);
+}
+
+.pp-fl {
+  color: var(--text-faint);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pp-fv {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.pp-field.victory .pp-fv { color: var(--win); }
+.pp-field.defeat  .pp-fv { color: var(--loss); }
+.pp-field.draw    .pp-fv { color: var(--draw); }
+
+/* Completed files log */
+.pp-log {
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 0.3rem 0;
+}
+
+.pp-log-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.22rem 1rem;
+  transition: background 120ms ease;
+}
+
+.pp-log-entry:hover { background: var(--surface-3); }
+
+.pp-log-check {
+  font-size: 0.62rem;
+  color: var(--win);
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.pp-log-filename {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pp-log-type {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.pp-log-type.summary   { color: var(--accent-text); }
+.pp-log-type.scoreboard { color: var(--tank); }
+.pp-log-type.personal  { color: var(--support); }
+.pp-log-type.rank      { color: var(--draw); }
+
+[data-theme="light"] .pp-log-type.scoreboard { color: var(--tank); }
+[data-theme="light"] .pp-log-type.personal   { color: var(--support); }
+[data-theme="light"] .pp-log-type.rank        { color: var(--draw); }
+
+/* The parse progress panel needs to span both grid columns of setting-row */
+.setting-row .parse-progress-panel {
+  grid-column: 1 / -1;
+}
 
 /* ─── Unknown Maps View ──────────────────────────────────── */
 

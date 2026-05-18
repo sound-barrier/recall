@@ -293,16 +293,23 @@ func parsePanelStats(text string) map[string]int {
 	return stats
 }
 
+// ProgressFunc is called after each screenshot finishes OCR. done is
+// the number of files processed so far (1-based, including this one);
+// total is the total count of files to process this run.
+type ProgressFunc func(done, total int, filename string, result *MatchResult)
+
 // ParseScreenshotsDir OCRs every supported image in dir except those in skip
 // (a set of filenames already parsed and stored). The skip set lets the app
 // avoid re-running Tesseract on files that already belong to a DB row — OCR
-// is by far the slowest part of the pipeline.
-func ParseScreenshotsDir(dir string, skip map[string]bool) (map[string]*MatchResult, error) {
+// is by far the slowest part of the pipeline. progress is called (if non-nil)
+// after each file completes.
+func ParseScreenshotsDir(dir string, skip map[string]bool, progress ProgressFunc) (map[string]*MatchResult, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
-	out := map[string]*MatchResult{}
+	// Collect files first so we know the total before the loop starts.
+	var toProcess []string
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
@@ -311,14 +318,20 @@ func ParseScreenshotsDir(dir string, skip map[string]bool) (map[string]*MatchRes
 		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
 			continue
 		}
-		if skip[e.Name()] {
-			continue
+		if !skip[e.Name()] {
+			toProcess = append(toProcess, e.Name())
 		}
-		r, err := ParseScreenshot(filepath.Join(dir, e.Name()))
+	}
+	out := map[string]*MatchResult{}
+	for i, name := range toProcess {
+		r, err := ParseScreenshot(filepath.Join(dir, name))
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", e.Name(), err)
+			return nil, fmt.Errorf("%s: %w", name, err)
 		}
-		out[e.Name()] = r
+		out[name] = r
+		if progress != nil {
+			progress(i+1, len(toProcess), name, r)
+		}
 	}
 	return out, nil
 }
