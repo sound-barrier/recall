@@ -2266,6 +2266,7 @@ body {
 
 [data-theme="light"] .btn.danger { color: #fff; }
 [data-theme="light"] .btn.danger-outline { color: var(--loss); border-color: var(--loss-line); }
+
 [data-theme="light"] .btn.danger-outline:hover:not(:disabled) {
   background: var(--loss-soft);
   border-color: var(--loss);
@@ -4650,7 +4651,7 @@ body {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: currentColor;
+  background: currentcolor;
   flex-shrink: 0;
 }
 
@@ -4756,9 +4757,9 @@ body {
 @media (width <= 580px) {
   .unknown-fields {
     grid-template-columns: repeat(2, 1fr);
-    padding: 0 1rem 0 1rem;
+    padding: 0 1rem;
   }
-  .unknown-card-head { padding: 0.7rem 1rem 0.7rem 1rem; }
+  .unknown-card-head { padding: 0.7rem 1rem; }
   .unknown-expanded { padding: 0.85rem 1rem; }
 }
 </style>
