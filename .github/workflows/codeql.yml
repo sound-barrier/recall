@@ -33,26 +33,18 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: github/codeql-action/init@v3
-        with:
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
-
-      # Go: build the serveronly variant (pure Go, CGO_ENABLED=0) so the runner
-      # doesn't need WebKitGTK or other CGo deps required by the Wails variant.
-      # All business logic (parser, DB, metrics, server, app) is covered; the
-      # thin Wails-specific files (app_wails.go, cmd/wails.go) are excluded by
-      # the build tag but contain no novel logic worth analyzing separately.
-      #
-      # assets.go has //go:embed all:frontend/dist — the dist/ directory must
-      # exist before go build runs or the embed directive fails. Build the
-      # frontend first (same approach as the CI lint job).
+      # Go toolchain and frontend dist must be set up BEFORE codeql-action/init.
+      # CodeQL's init wraps whichever `go` binary is on PATH at that moment; if
+      # setup-go runs after init it overrides the tracer wrapper and no Go source
+      # gets recorded, causing the "didn't build any of it" fatal error.
       - if: matrix.language == 'go'
         name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
+      # assets.go has //go:embed all:frontend/dist — dist/ must exist before
+      # `go build` or the embed directive fails at compile time.
       - if: matrix.language == 'go'
         name: Set up Node (required to build frontend/dist for go:embed)
         uses: actions/setup-node@v6
@@ -65,6 +57,13 @@ jobs:
         name: Build frontend (satisfies //go:embed all:frontend/dist in assets.go)
         run: cd frontend && npm ci && npm run build
 
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      # Build the serveronly variant (pure Go, CGO_ENABLED=0) — covers all
+      # business logic without needing WebKitGTK/CGo deps on the runner.
       - if: matrix.language == 'go'
         name: Build Go (serveronly — no CGo required)
         env:
