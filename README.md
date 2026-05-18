@@ -42,7 +42,7 @@ Recall ships two binary flavours:
 ```sh
 make build-linux        # Linux/amd64   → dist/linux/Recall
 make build-windows      # Windows/amd64 → dist/windows/Recall.exe
-make build-mac          # macOS universal .app → dist/mac/Recall.app  (macOS host required)
+make build-mac          # macOS arm64+amd64 .app → dist/mac/  (macOS host required)
 make build-all-docker   # Linux + Windows via Docker (no Apple SDK needed)
 make build-all          # all three (macOS host required)
 ```
