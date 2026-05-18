@@ -31,7 +31,7 @@ jobs:
       - name: Build Windows/amd64 Wails app
         run: make build-windows
 
-      - name: Build all server binaries (Linux, Windows, macOS arm64+amd64)
+      - name: Build all server binaries (Linux, Windows, macOS arm64)
         run: make build-server-all
 
       - name: Package artifacts
@@ -70,12 +70,10 @@ jobs:
           cp dist/windows/Recall.exe               "recall-${PKG_VERSION}-windows-amd64.exe"
           cp dist/server-windows/Recall-server.exe "recall-server-${PKG_VERSION}-windows-amd64.exe"
 
-          # ── macOS server binaries — tarballs ──────────────────
-          mkdir -p "_tar/recall-server-${PKG_VERSION}-darwin-arm64" "_tar/recall-server-${PKG_VERSION}-darwin-amd64"
+          # ── macOS server binary — tarball ─────────────────────
+          mkdir -p "_tar/recall-server-${PKG_VERSION}-darwin-arm64"
           cp dist/server-mac/Recall-server-arm64 "_tar/recall-server-${PKG_VERSION}-darwin-arm64/recall-server"
-          cp dist/server-mac/Recall-server-amd64 "_tar/recall-server-${PKG_VERSION}-darwin-amd64/recall-server"
           tar -czf "recall-server-${PKG_VERSION}-darwin-arm64.tar.gz" -C _tar "recall-server-${PKG_VERSION}-darwin-arm64"
-          tar -czf "recall-server-${PKG_VERSION}-darwin-amd64.tar.gz" -C _tar "recall-server-${PKG_VERSION}-darwin-amd64"
 
       - name: Upload Docker-built artifacts
         uses: actions/upload-artifact@v7
@@ -89,7 +87,6 @@ jobs:
             recall-*-windows-amd64.exe
             recall-server-*-windows-amd64.exe
             recall-server-*-darwin-arm64.tar.gz
-            recall-server-*-darwin-amd64.tar.gz
 
   # ── Job 2: macOS Wails .app bundles (requires Apple SDK / Xcode CLT) ──
   build-mac:
@@ -111,20 +108,13 @@ jobs:
       - name: Build macOS Wails app
         run: make build-mac
 
-      # Wrap each .app bundle in a compressed DMG so users get a standard
-      # drag-to-Applications installer. Separate arm64 and amd64 DMGs let
-      # users download only the slice they need.
-      - name: Create DMGs
+      - name: Create DMG
         run: |
           PKG_VERSION="${GITHUB_REF_NAME#v}"
           hdiutil create -volname "Recall" \
             -srcfolder dist/mac/Recall-arm64.app \
             -ov -format UDZO \
             "recall-${PKG_VERSION}-darwin-arm64.dmg"
-          hdiutil create -volname "Recall" \
-            -srcfolder dist/mac/Recall-amd64.app \
-            -ov -format UDZO \
-            "recall-${PKG_VERSION}-darwin-amd64.dmg"
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v7
@@ -132,7 +122,6 @@ jobs:
           name: mac-build
           path: |
             recall-*-darwin-arm64.dmg
-            recall-*-darwin-amd64.dmg
 
   # ── Job 3: Generate SBOM (Software Bill of Materials) ───────────────────
   # Syft scans Go module graph and npm dependency tree from the repo source
@@ -209,8 +198,15 @@ jobs:
           else
             API_PATH="/user/packages/container/recall-server"
           fi
-          gh api --method PATCH -H "Accept: application/vnd.github+json" \
-            "$API_PATH" -f visibility=public
+          # Retry up to 5 times — package registry may not be indexed immediately after push.
+          for i in 1 2 3 4 5; do
+            if gh api --method PATCH -H "Accept: application/vnd.github+json" \
+              "$API_PATH" -f visibility=public; then
+              break
+            fi
+            echo "Attempt $i failed, retrying in 15s..."
+            sleep 15
+          done
 
   # ── Job 5: Create GitHub Release with all binaries attached ──
   # github.ref_name is used only in an `actions/` `with:` expression, not
