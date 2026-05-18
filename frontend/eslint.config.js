@@ -11,6 +11,7 @@ export default [
     },
     rules: {
       'vue/multi-word-component-names': 'off',
+      'eol-last': 'error',
       'no-unused-vars': ['error', {
         varsIgnorePattern: '^_',
         argsIgnorePattern: '^_',
