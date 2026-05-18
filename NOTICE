@@ -1,0 +1,20 @@
+Recall
+Copyright 2024-2026 Jacob Delgado
+
+This product is licensed under the Apache License, Version 2.0.
+See the LICENSE file for the full license text.
+
+---
+
+This product includes software developed by third parties.
+Full dependency license information is available in:
+  - go.sum (Go module dependencies)
+  - frontend/package-lock.json (npm dependencies)
+  - recall-{version}-sbom.spdx.json (SPDX SBOM, generated at each release)
+
+Key runtime dependencies and their licenses:
+  - Wails v2 (github.com/wailsapp/wails/v2) — MIT
+  - Prometheus Go client (github.com/prometheus/client_golang) — Apache-2.0
+  - modernc SQLite (modernc.org/sqlite) — BSD/zlib
+  - fsnotify (github.com/fsnotify/fsnotify) — BSD-3-Clause
+  - Vue 3 (vue) — MIT
