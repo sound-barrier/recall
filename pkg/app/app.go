@@ -528,6 +528,7 @@ func scrapeReader() ([]metrics.ScrapeRow, error) {
 	out := make([]metrics.ScrapeRow, len(recs))
 	for i, r := range recs {
 		inferSoleHeroPercent(&r.Data)
+		inferResultFromRank(&r.Data)
 		out[i] = metrics.ScrapeRow{MatchKey: r.MatchKey, Data: r.Data}
 	}
 	return out, nil
@@ -547,6 +548,28 @@ func inferSoleHeroPercent(d *parser.MatchResult) {
 	hp := &d.HeroesPlayed[0]
 	if hp.PercentPlayed == 0 && hp.PlayTime == "" {
 		hp.PercentPlayed = 100
+	}
+}
+
+// inferResultFromRank fills Result for rows that have rank-screen data but
+// where the COMPETITIVE VICTORY/DEFEAT/DRAW banner OCR missed. The italic
+// stylized banner is the parser's primary signal but it's the most brittle
+// piece of the rank screen — when it fails, the signed SR delta on the same
+// screenshot is the next-best signal. Applied at read time so existing rows
+// where the banner failed get the inferred badge without a re-parse.
+func inferResultFromRank(d *parser.MatchResult) {
+	if d.Result != "" || len(d.SR) == 0 {
+		return
+	}
+	for _, s := range d.SR {
+		if s.Change > 0 {
+			d.Result = "victory"
+			return
+		}
+		if s.Change < 0 {
+			d.Result = "defeat"
+			return
+		}
 	}
 }
 
@@ -832,6 +855,7 @@ func (a *App) GetMatchResults() ([]MatchRecord, error) {
 	}
 	for i := range recs {
 		inferSoleHeroPercent(&recs[i].Data)
+		inferResultFromRank(&recs[i].Data)
 	}
 	return recs, nil
 }
