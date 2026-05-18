@@ -923,8 +923,17 @@ onBeforeUnmount(() => {
           <h2 v-if="!tesseractReady" class="settings-heading missing">
             Recall can't OCR until <em>Tesseract is located</em>.
           </h2>
+          <h2 v-else-if="!screenshotsDir" class="settings-heading">
+            Choose a <em>screenshots folder</em> to get started.
+          </h2>
+          <h2 v-else-if="watchEnabled" class="settings-heading">
+            Watching <em>{{ screenshotsDir }}/</em> for new captures.
+          </h2>
+          <h2 v-else-if="records.length" class="settings-heading">
+            <em>{{ records.length }} {{ records.length === 1 ? 'match' : 'matches' }}</em> indexed from <em>{{ screenshotsDir }}/</em>
+          </h2>
           <h2 v-else class="settings-heading">
-            Recall is reading <em>{{ screenshotsDir || 'no folder yet' }}</em>
+            Ready to ingest from <em>{{ screenshotsDir }}/</em> — click <em>Parse</em> to begin.
           </h2>
         </header>
 
