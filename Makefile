@@ -94,8 +94,9 @@ build-mac:
 	@echo "[ recall ] Building macOS universal Wails app (arm64 + amd64)…"
 	wails build $(WAILS_FLAGS) -platform darwin/arm64,darwin/amd64
 	@mkdir -p $(DIST_MAC)
-	@cp -R build/bin/Recall.app $(DIST_MAC)/
-	@echo "[ recall ] ✓  dist/mac/Recall.app"
+	@cp -R build/bin/Recall-arm64.app $(DIST_MAC)/
+	@cp -R build/bin/Recall-amd64.app $(DIST_MAC)/
+	@echo "[ recall ] ✓  dist/mac/Recall-arm64.app  dist/mac/Recall-amd64.app"
 
 
 # ─── All Wails builds ───────────────────────────────────────
