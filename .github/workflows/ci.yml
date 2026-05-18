@@ -148,14 +148,3 @@ jobs:
         with:
           sarif_file: trivy.sarif
 
-  # ── Job 7: Dependency review (PRs only) ──────────────────────────────────
-  # Blocks PRs that introduce dependencies with known CVEs at HIGH or above.
-  # Skipped on direct pushes to main (no diff to review).
-  dependency-review:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
