@@ -38,8 +38,17 @@ Two workflows exist depending on your platform:
 
 ```sh
 xcode-select --install          # Xcode Command Line Tools (required for Wails CGo builds)
-brew bundle                     # Go, Node, Tesseract, Podman, golangci-lint, jq, etc.
+brew bundle                     # Go, Node, Tesseract, Podman, golangci-lint, yamllint, direnv, etc.
 go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+direnv allow                    # activate the repo's .envrc (edit it to set any env overrides)
+```
+
+Add the direnv hook to your shell if you haven't already (`~/.zshrc` for zsh, `~/.bash_profile` for bash):
+
+```sh
+echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc && source ~/.zshrc
+# or for bash:
+echo 'eval "$(direnv hook bash)"' >> ~/.bash_profile && source ~/.bash_profile
 ```
 
 **First clone setup:**
@@ -88,10 +97,19 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 curl -L https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 \
   | sudo tee /usr/local/bin/hadolint > /dev/null && sudo chmod +x /usr/local/bin/hadolint
 
+# yamllint (YAML linter)
+pip3 install yamllint  # or: sudo apt install yamllint
+
+# direnv (per-project env vars)
+sudo apt install direnv  # or: curl -sfL https://direnv.net/install.sh | bash
+echo 'eval "$(direnv hook bash)"' >> ~/.bashrc && source ~/.bashrc
+
 # trivy (vulnerability scanner)
 curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
   | sudo sh -s -- -b /usr/local/bin
 ```
+
+After cloning, run `direnv allow` to activate the repo's `.envrc`.
 
 **First clone setup:**
 
@@ -140,6 +158,7 @@ Open the WSL2 terminal and follow the **Linux** instructions above.
 - `jq` — `winget install jqlang.jq`
 - `golangci-lint` — `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`
 - `hadolint` — `winget install Hadolint.Hadolint` or [download from GitHub releases](https://github.com/hadolint/hadolint/releases) (`hadolint-Windows-x86_64.exe`)
+- `yamllint` — `pip install yamllint` (requires Python 3)
 - `trivy` — `winget install AquaSecurity.Trivy` or [download from GitHub releases](https://github.com/aquasecurity/trivy/releases)
 
 **First clone setup** (Git Bash):
@@ -211,7 +230,8 @@ go build -tags serveronly ./...  # compile-check server variant
 
 ```sh
 make fmt           # format all Go source files (go fmt ./...)
-make lint          # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, Hadolint
+make lint          # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint
+make lint-yaml     # yamllint only
 make update-deps   # update Go modules (go get -u + mod tidy) and npm packages
 make trivy         # vulnerability scan — fails on HIGH/CRITICAL findings
 make cloc          # count lines of source code (excludes deps, build artifacts, generated files)
@@ -219,3 +239,5 @@ make cloc          # count lines of source code (excludes deps, build artifacts,
 
 `trivy` requires a one-time install: `brew install trivy` or `brew bundle`.
 The scan covers Go module dependencies, npm packages, and `Dockerfile.build`.
+
+The repo includes an `.envrc` for [direnv](https://direnv.net/) with all available environment variable overrides documented and commented out. Run `direnv allow` once after cloning, then edit `.envrc` to activate any overrides you need.
