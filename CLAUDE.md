@@ -27,7 +27,7 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `make dev` | Hot-reload dev server (macOS only). Vite on `:5173`, Wails IPC dev on `:34115`. Auto-rebuilds Go on save. |
 | `make build-linux` | Linux/amd64 Wails app → `dist/linux/Recall` via Docker. |
 | `make build-windows` | Windows/amd64 Wails app → `dist/windows/Recall.exe` via Docker + mingw-w64. |
-| `make build-mac` | macOS universal Wails `.app` → `dist/mac/Recall.app`. Must run on macOS. |
+| `make build-mac` | macOS Wails apps → `dist/mac/Recall-arm64.app` + `dist/mac/Recall-amd64.app`. Must run on macOS. |
 | `make build-all-docker` | Linux + Windows Wails apps — no macOS SDK needed; good for CI. |
 | `make build-server-linux` | Linux/amd64 server binary → `dist/server-linux/Recall-server` via Docker. |
 | `make build-server-windows` | Windows/amd64 server binary → `dist/server-windows/Recall-server.exe` via Docker. |
@@ -236,7 +236,7 @@ enable→disable→enable cycle constructs a fresh `Server`.
 `PickScreenshotsDir`, `GetPrometheusEnabled`, `SetPrometheusEnabled`,
 `GetWatchEnabled`, `SetWatchEnabled`,
 `GetTesseractStatus`, `SetTesseractPath`, `PickTesseractBinary`,
-`ResetTesseractPath`.
+`ResetTesseractPath`, `ClearDatabase`, `GetNewScreenshotCount`.
 
 **App constructor**: `app.New()` in `pkg/app` (was `NewApp()` in root).
 
@@ -280,8 +280,15 @@ Single-file Vue 3 SFC, composition API. No router, no Vuex/Pinia — a few
   banner and disables Parse/Watch controls when the OCR engine isn't
   found. `GetTesseractStatus` / `SetTesseractPath` / `PickTesseractBinary`
   / `ResetTesseractPath` are the four Wails-bound methods for engine config.
+- **Unknown Maps view**: records where `data.map` is absent surface in a
+  separate Unknown Maps page via the `unknownRecords` computed. It has its
+  own `unknownExpanded`/`unknownPreviewOpen`/`unknownPreviewError` state
+  parallel to the Matches view state, so collapsing all matches doesn't
+  disturb the triage view.
 - **Per-card expand state** + per-source-file image preview state (each
   in a plain object, reassigned on toggle for Vue reactivity).
+  `screenshotURL(filename)` returns `/_screenshot/<encoded>` which the
+  Wails AssetServer (or server-mode mux) serves via `ScreenshotHandler()`.
 - **Event subscription**: `EventsOn('parse-complete', load)` on mount,
   `EventsOff` on unmount — auto-refreshes the records list after the
   watcher fires an auto-parse.
@@ -310,7 +317,7 @@ case).
 
 ## CI/CD (`.github/workflows/release.yml`)
 
-Triggered on `v*` tags. Parallel jobs: `build-linux`, `build-windows`, `build-server` (all server binaries + container image via Docker), `build-mac` (macOS Wails, requires Apple runner), `publish-container` (builds `server-container` stage and pushes to `ghcr.io/<owner>/recall-server` with semver tags), and `release` (creates GitHub Release with all binaries; waits on the build jobs). GHCR auth uses `secrets.GITHUB_TOKEN` — no PAT needed; workflow permissions must include `packages: write`.
+Triggered on `v*` tags. Parallel jobs: `build-docker` (Linux + Windows Wails apps + all server binaries via Docker; packages Linux binaries as `.tar.gz` and `.deb` installing to `/usr/local/bin/`), `build-mac` (macOS Wails arm64 + amd64 `.app` bundles, requires Apple runner), `publish-container` (builds `server-container` stage and pushes to `ghcr.io/<owner>/recall-server` with semver tags — GHCR only, not attached to the release), and `release` (creates GitHub Release with all binaries; waits on `build-docker` + `build-mac`). GHCR auth uses `secrets.GITHUB_TOKEN` — no PAT needed; workflow permissions must include `packages: write`.
 
 ## Conventions worth knowing
 
@@ -339,3 +346,14 @@ Triggered on `v*` tags. Parallel jobs: `build-linux`, `build-windows`, `build-se
   on-disk screenshots handler. Don't reuse it for other dynamic assets.
 - **`set -u` not `-e`** in shell scripts that should keep going after an
   individual failure (`verify-stack.sh` is the canonical example).
+- **`loading="lazy"` breaks `v-if`-inserted images** — browsers assign
+  zero viewport presence to `<img>` elements added to the DOM by `v-if`
+  (zero intrinsic dimensions at mount time), so the Intersection Observer
+  never fetches them. Any image that appears on an explicit user action
+  must omit `loading="lazy"` (or use `loading="eager"`).
+- **Vue 3 ref auto-unwrapping in templates** — in `<script setup>`, refs
+  are auto-unwrapped at the template top level: `myRef` in a template
+  expression already equals `myRef.value`. Writing `myRef.value[key]` in a
+  template therefore double-unwraps and returns `undefined` silently.
+  Always access `.value` inside a wrapper function in JS, then call the
+  function from the template.
