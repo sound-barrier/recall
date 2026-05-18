@@ -1,0 +1,52 @@
+root = true
+
+# ── Global defaults ──────────────────────────────────────────────────────────
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# ── Go ────────────────────────────────────────────────────────────────────────
+# gofmt enforces tabs — mirror here so editors don't fight the formatter.
+[*.go]
+indent_style = tab
+tab_width = 4
+
+# ── Web frontend ──────────────────────────────────────────────────────────────
+# Vue/JS/CSS already default to 2-space via global section; listed explicitly
+# so GoLand formatter bindings are unambiguous.
+[*.{vue,js,css,html}]
+indent_style = space
+indent_size = 2
+
+# ── Data / config formats ─────────────────────────────────────────────────────
+[*.{json,json5,yaml,yml,toml}]
+indent_style = space
+indent_size = 2
+
+# ── Make ──────────────────────────────────────────────────────────────────────
+# make requires hard tabs for recipe lines — no exceptions.
+[Makefile]
+indent_style = tab
+tab_width = 4
+
+# ── Shell scripts ─────────────────────────────────────────────────────────────
+# LF is explicit here: CRLF line endings silently break bash shebangs and
+# cause "bad interpreter" errors if a Windows editor saves the file.
+[*.sh]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+
+# ── Dockerfile ────────────────────────────────────────────────────────────────
+[Dockerfile*]
+indent_style = space
+indent_size = 4
+
+# ── Markdown ──────────────────────────────────────────────────────────────────
+# Trailing spaces are significant in Markdown (two spaces → <br>).
+[*.md]
+trim_trailing_whitespace = false
