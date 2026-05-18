@@ -288,32 +288,112 @@ The app exposes its parsed match history as Prometheus metrics on
 the match's actual end time (`date + finished_at`) as its timestamp, so
 Grafana plots match stats at the moment they happened — not at scrape time.
 
-To bring up the bundled Prometheus + Grafana stack:
+Three options are available for running Prometheus and Grafana.
+
+### Option A: Bundled Podman/Docker Compose (recommended)
+
+The repo ships `docker-compose.yml` and helper scripts that start a
+pre-configured Prometheus + Grafana stack with the Recall dashboard
+auto-provisioned.
+
+**One-time (macOS):**
 
 ```sh
-brew install podman podman-compose  # one-time
-./scripts/stack-up.sh               # starts the podman VM if needed, then compose up
+brew install podman podman-compose   # skip if using Docker Desktop / Colima
 ```
 
-To tear it down:
-
 ```sh
-./scripts/stack-down.sh             # stop containers (volumes preserved)
-./scripts/stack-down.sh --machine   # also stop the podman VM
-```
-
-To wipe Prometheus history without touching anything else:
-
-```sh
-./scripts/prometheus-clear.sh       # confirms, then removes the TSDB volume
+./scripts/stack-up.sh                # starts podman VM if needed, then compose up
+./scripts/stack-down.sh              # stop (volumes preserved)
+./scripts/stack-down.sh --machine    # also stop the podman VM
+./scripts/prometheus-clear.sh        # wipe Prometheus TSDB only
 ```
 
 - Prometheus: <http://localhost:9090>
 - Grafana: <http://localhost:3000>  (login `admin` / `admin`)
 
-The compose file is plain compose v3 — it also works with `docker compose`
-if you'd rather run Docker Desktop / Colima. Podman is the default we test
-against.
+The compose file is plain v3 — `docker compose` (Docker Desktop / Colima) also
+works. Podman is what we test against.
+
+### Option B: Your own Docker/Podman containers
+
+Use the repo's config files with any container runtime. On Linux add
+`--add-host host.docker.internal:host-gateway` so the container can reach
+the host's Prometheus metrics port; on macOS and Windows with Docker Desktop
+or Podman Desktop `host.docker.internal` resolves automatically.
+
+```sh
+# Prometheus — mounts the repo's prometheus.yml (includes the out-of-order window)
+docker run -d \
+  --name recall-prometheus \
+  -p 9090:9090 \
+  -v "$(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
+  prom/prometheus:v2.53.0
+
+# Grafana — mounts the repo's provisioning directory (datasource + dashboard)
+docker run -d \
+  --name recall-grafana \
+  -p 3000:3000 \
+  --link recall-prometheus:prometheus \
+  -v "$(pwd)/grafana/provisioning:/etc/grafana/provisioning:ro" \
+  grafana/grafana:11.1.0
+```
+
+On Linux, add `--add-host host.docker.internal:host-gateway` to the
+Prometheus `docker run` command. Grafana defaults: `admin` / `admin`.
+
+### Option C: Native installation (no containers)
+
+Install Prometheus and Grafana as local services. Before copying the
+config files, make two edits:
+
+1. In `prometheus.yml`: change the scrape target from
+   `host.docker.internal:9091` to `localhost:9091`.
+2. In `grafana/provisioning/datasources/prometheus.yml`: change the
+   datasource URL from `http://prometheus:9090` to `http://localhost:9090`.
+
+**macOS (Homebrew):**
+
+```sh
+brew install prometheus grafana
+
+cp prometheus.yml /opt/homebrew/etc/prometheus.yml
+mkdir -p /opt/homebrew/etc/grafana/provisioning
+cp -r grafana/provisioning/. /opt/homebrew/etc/grafana/provisioning/
+
+brew services start prometheus
+brew services start grafana
+```
+
+**Linux:**
+
+```sh
+# Prometheus — download from https://prometheus.io/download/ and extract
+sudo cp prometheus.yml /etc/prometheus/prometheus.yml
+sudo systemctl restart prometheus
+
+# Grafana — add the Grafana apt repo per https://grafana.com/docs/grafana/latest/setup-grafana/installation/debian/
+sudo apt install -y grafana
+sudo cp -r grafana/provisioning/. /etc/grafana/provisioning/
+sudo systemctl restart grafana-server
+```
+
+**Windows:**
+
+```powershell
+winget install Grafana.Grafana
+# Prometheus: download from https://prometheus.io/download/; extract anywhere
+
+# Copy prometheus.yml to the Prometheus working directory
+# Copy grafana/provisioning/ to Grafana's conf/provisioning/ directory
+# Start both services
+```
+
+> **Grafana datasource UID**: every panel in `recall.json` hardcodes
+> `"datasource": {"uid": "prometheus"}`. The provisioning file pins this
+> UID automatically. If you add the datasource manually in the Grafana UI
+> instead of using provisioning, set the **UID** field to exactly
+> `prometheus` — otherwise all panels show "datasource not found".
 
 ### Troubleshooting
 
