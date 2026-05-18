@@ -13,8 +13,9 @@ import {
   SetTesseractPath,
   PickTesseractBinary,
   ResetTesseractPath,
-} from '../wailsjs/go/main/App'
-import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime'
+  EventsOn,
+  EventsOff,
+} from './api.js'
 
 const records = ref([])
 const error = ref('')
