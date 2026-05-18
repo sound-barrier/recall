@@ -1,9 +1,23 @@
+version: "2"
+
 linters:
-  enable-all: false
+  default: none
   enable:
     - errcheck
     - govet
     - staticcheck
     - unused
     - misspell
+  settings:
+    errcheck:
+      exclude-functions:
+        - "(*database/sql.Rows).Close"
+        - "(*os.File).Close"
+        - "os.RemoveAll"
+  exclusions:
+    paths:
+      - frontend/node_modules
+
+formatters:
+  enable:
     - gofmt

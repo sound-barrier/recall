@@ -62,11 +62,11 @@ type MatchResult struct {
 	Mitigation   int    `json:"mitigation"`
 
 	// Summary-screen-only fields. Empty on a scoreboard parse.
-	Result       string       `json:"result,omitempty"`       // "victory", "defeat", or "draw"
-	FinalScore   string       `json:"final_score,omitempty"`  // e.g. "3-1"
-	Date         string       `json:"date,omitempty"`         // ISO date, e.g. "2026-05-10"
-	FinishedAt   string       `json:"finished_at,omitempty"`  // HH:MM 24h, as shown by the client
-	GameLength   string       `json:"game_length,omitempty"`  // MM:SS
+	Result       string       `json:"result,omitempty"`      // "victory", "defeat", or "draw"
+	FinalScore   string       `json:"final_score,omitempty"` // e.g. "3-1"
+	Date         string       `json:"date,omitempty"`        // ISO date, e.g. "2026-05-10"
+	FinishedAt   string       `json:"finished_at,omitempty"` // HH:MM 24h, as shown by the client
+	GameLength   string       `json:"game_length,omitempty"` // MM:SS
 	HeroesPlayed []HeroPlay   `json:"heroes_played,omitempty"`
 	Performance  *Performance `json:"performance,omitempty"`
 
@@ -402,10 +402,10 @@ func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string
 		return "", err
 	}
 	if err := png.Encode(f, pre); err != nil {
-		f.Close()
+		_ = f.Close()
 		return "", err
 	}
-	f.Close()
+	_ = f.Close()
 
 	args := []string{inPath, "-", "--psm", psm}
 	if whitelist != "" {
@@ -1201,7 +1201,7 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 			// glued-prefix version on length. We keep the full-cell text
 			// in cellText too because the strip sometimes loses the value
 			// (a lone "1" digit next to the icon edge).
-			if !(row == 0 && col == 0) {
+			if row != 0 || col != 0 {
 				stripRect := image.Rect(
 					gridLeft+col*cellW+cellW*30/100, gridTop+row*cellH,
 					gridLeft+(col+1)*cellW, gridTop+(row+1)*cellH,

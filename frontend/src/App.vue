@@ -10,7 +10,6 @@ import {
   GetWatchEnabled,
   SetWatchEnabled,
   GetTesseractStatus,
-  SetTesseractPath,
   PickTesseractBinary,
   ResetTesseractPath,
   EventsOn,
@@ -605,29 +604,33 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="app">
-    <div class="atmos" aria-hidden="true"></div>
-    <div class="grid-lines" aria-hidden="true"></div>
+    <div class="atmos" aria-hidden="true" />
+    <div class="grid-lines" aria-hidden="true" />
 
     <div class="container">
       <!-- System Alert: blocks both Matches and Settings flow when the
            OCR engine isn't usable. Renders ABOVE the masthead so it's
            the first thing a user sees on a broken install. -->
       <div v-if="!tesseractReady" class="system-alert" role="alert">
-        <div class="system-alert-stripes" aria-hidden="true"></div>
+        <div class="system-alert-stripes" aria-hidden="true" />
         <div class="system-alert-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="26" height="26">
-            <path d="M12 2.6 L22.4 20.5 L1.6 20.5 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-            <line x1="12" y1="10" x2="12" y2="15.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="12" cy="17.8" r="1.2" fill="currentColor"/>
+            <path d="M12 2.6 L22.4 20.5 L1.6 20.5 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+            <line x1="12" y1="10" x2="12" y2="15.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <circle cx="12" cy="17.8" r="1.2" fill="currentColor" />
           </svg>
         </div>
         <div class="system-alert-body">
-          <div class="system-alert-eyebrow">System Halt · OCR Engine Offline</div>
+          <div class="system-alert-eyebrow">
+            System Halt · OCR Engine Offline
+          </div>
           <h3 class="system-alert-title">
             Tesseract not detected
             <span class="system-alert-path" :title="tesseractStatus.path">{{ tesseractStatus.path || '— no path —' }}</span>
           </h3>
-          <p class="system-alert-desc">{{ tesseractStatus.error || 'Recall cannot OCR screenshots without Tesseract. Install it, or point Recall at the existing binary in Settings → Engine.' }}</p>
+          <p class="system-alert-desc">
+            {{ tesseractStatus.error || 'Recall cannot OCR screenshots without Tesseract. Install it, or point Recall at the existing binary in Settings → Engine.' }}
+          </p>
         </div>
         <div class="system-alert-actions">
           <button class="btn alert-cta" @click="gotoEngineSettings">
@@ -641,10 +644,14 @@ onBeforeUnmount(() => {
         <div class="masthead-left">
           <div class="brandmark-tile">
             <span class="brand-tick">↺</span>
-            <h1 class="brand">RE<span class="brand-accent">CALL</span></h1>
-            <span class="brand-corner" aria-hidden="true"></span>
+            <h1 class="brand">
+              RE<span class="brand-accent">CALL</span>
+            </h1>
+            <span class="brand-corner" aria-hidden="true" />
           </div>
-          <p class="tagline">Personal Telemetry · Match Almanac</p>
+          <p class="tagline">
+            Personal Telemetry · Match Almanac
+          </p>
           <nav class="page-nav" role="tablist" aria-label="Primary">
             <button
               class="nav-tab"
@@ -671,30 +678,30 @@ onBeforeUnmount(() => {
         <div class="masthead-right">
           <button
             class="theme-toggle"
-            @click="toggleTheme"
             :title="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
             :aria-label="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+            @click="toggleTheme"
           >
             <span class="theme-seg" :class="{ active: themeMode === 'light' }">
               <svg viewBox="0 0 24 24" class="theme-icon" aria-hidden="true">
-                <circle cx="12" cy="12" r="4" fill="currentColor"/>
+                <circle cx="12" cy="12" r="4" fill="currentColor" />
                 <g stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                  <line x1="12" y1="2" x2="12" y2="5"/>
-                  <line x1="12" y1="19" x2="12" y2="22"/>
-                  <line x1="2" y1="12" x2="5" y2="12"/>
-                  <line x1="19" y1="12" x2="22" y2="12"/>
-                  <line x1="4.6" y1="4.6" x2="6.7" y2="6.7"/>
-                  <line x1="17.3" y1="17.3" x2="19.4" y2="19.4"/>
-                  <line x1="4.6" y1="19.4" x2="6.7" y2="17.3"/>
-                  <line x1="17.3" y1="6.7" x2="19.4" y2="4.6"/>
+                  <line x1="12" y1="2" x2="12" y2="5" />
+                  <line x1="12" y1="19" x2="12" y2="22" />
+                  <line x1="2" y1="12" x2="5" y2="12" />
+                  <line x1="19" y1="12" x2="22" y2="12" />
+                  <line x1="4.6" y1="4.6" x2="6.7" y2="6.7" />
+                  <line x1="17.3" y1="17.3" x2="19.4" y2="19.4" />
+                  <line x1="4.6" y1="19.4" x2="6.7" y2="17.3" />
+                  <line x1="17.3" y1="6.7" x2="19.4" y2="4.6" />
                 </g>
               </svg>
               <span class="theme-label">Day</span>
             </span>
-            <span class="theme-divider" aria-hidden="true"></span>
+            <span class="theme-divider" aria-hidden="true" />
             <span class="theme-seg" :class="{ active: themeMode === 'dark' }">
               <svg viewBox="0 0 24 24" class="theme-icon" aria-hidden="true">
-                <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8z" fill="currentColor"/>
+                <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8z" fill="currentColor" />
               </svg>
               <span class="theme-label">Night</span>
             </span>
@@ -720,50 +727,66 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
-      <p v-if="error" class="error"><span class="error-tick">✕</span>{{ error }}</p>
+      <p v-if="error" class="error">
+        <span class="error-tick">✕</span>{{ error }}
+      </p>
 
       <!-- ─── SETTINGS VIEW ────────────────────────────────────── -->
-      <section v-if="view === 'settings'" class="settings" key="settings">
+      <section v-if="view === 'settings'" key="settings" class="settings">
         <header class="settings-intro">
-          <p class="settings-eyebrow">System Configuration</p>
-          <h2 v-if="!tesseractReady" class="settings-heading missing">Recall can't OCR until <em>Tesseract is located</em>.</h2>
-          <h2 v-else class="settings-heading">Recall is reading <em>{{ screenshotsDir || 'no folder yet' }}</em></h2>
+          <p class="settings-eyebrow">
+            System Configuration
+          </p>
+          <h2 v-if="!tesseractReady" class="settings-heading missing">
+            Recall can't OCR until <em>Tesseract is located</em>.
+          </h2>
+          <h2 v-else class="settings-heading">
+            Recall is reading <em>{{ screenshotsDir || 'no folder yet' }}</em>
+          </h2>
         </header>
 
-        <div class="settings-section" id="sec-engine">
+        <div id="sec-engine" class="settings-section">
           <div class="section-header">
             <span class="section-num">01</span>
             <span class="section-slash" aria-hidden="true">/</span>
-            <h3 class="section-title">Engine</h3>
+            <h3 class="section-title">
+              Engine
+            </h3>
           </div>
           <div class="setting-rows">
             <div class="setting-row engine-row" :class="{ alert: !tesseractReady }">
               <div class="setting-info">
-                <h4 class="setting-label">Tesseract Binary</h4>
+                <h4 class="setting-label">
+                  Tesseract Binary
+                </h4>
                 <p class="setting-desc">
                   Recall shells out to Tesseract to read text from your Overwatch screenshots. On macOS the Homebrew install lives under <code>/opt/homebrew/bin</code> (Apple Silicon) or <code>/usr/local/bin</code> (Intel); apt installs to <code>/usr/bin</code>; Windows installers put it in <code>Program Files\Tesseract-OCR</code>.
                 </p>
                 <div class="engine-status" :class="{ ok: tesseractReady, fail: !tesseractReady }">
-                  <span class="engine-dot" aria-hidden="true"></span>
+                  <span class="engine-dot" aria-hidden="true" />
                   <span class="engine-state">{{ tesseractReady ? 'Detected' : 'Not Found' }}</span>
                   <span v-if="tesseractReady && tesseractStatus.version" class="engine-version">v{{ tesseractStatus.version }}</span>
                   <span class="engine-path mono" :title="tesseractStatus.path || ''">{{ tesseractStatus.path || '—' }}</span>
                 </div>
-                <p v-if="!tesseractReady && tesseractStatus.error" class="engine-error">{{ tesseractStatus.error }}</p>
+                <p v-if="!tesseractReady && tesseractStatus.error" class="engine-error">
+                  {{ tesseractStatus.error }}
+                </p>
                 <p
                   v-if="tesseractStatus.default && tesseractStatus.default !== tesseractStatus.path"
                   class="engine-meta"
                 >
                   Default for this platform · <code>{{ tesseractStatus.default }}</code>
-                  · <button class="link-btn" @click="resetTesseractPath">Use default</button>
+                  · <button class="link-btn" @click="resetTesseractPath">
+                    Use default
+                  </button>
                 </p>
               </div>
               <div class="setting-control engine-control">
                 <button
                   class="btn"
                   :class="tesseractReady ? 'ghost' : 'primary'"
-                  @click="pickTesseractBinary"
                   :disabled="tesseractPickerBusy"
+                  @click="pickTesseractBinary"
                 >
                   <span v-if="tesseractPickerBusy">Locating…</span>
                   <span v-else>{{ tesseractReady ? 'Change Binary…' : 'Locate Tesseract…' }}</span>
@@ -773,37 +796,51 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div class="settings-section" id="sec-directories">
+        <div id="sec-directories" class="settings-section">
           <div class="section-header">
             <span class="section-num">02</span>
             <span class="section-slash" aria-hidden="true">/</span>
-            <h3 class="section-title">Directories</h3>
+            <h3 class="section-title">
+              Directories
+            </h3>
           </div>
           <div class="setting-rows">
             <div class="setting-row">
               <div class="setting-info">
-                <h4 class="setting-label">Screenshots Folder</h4>
-                <p class="setting-desc">Where Recall watches for new Overwatch screenshots. Click <strong>Change Folder</strong> to point it at a different directory.</p>
+                <h4 class="setting-label">
+                  Screenshots Folder
+                </h4>
+                <p class="setting-desc">
+                  Where Recall watches for new Overwatch screenshots. Click <strong>Change Folder</strong> to point it at a different directory.
+                </p>
               </div>
               <div class="setting-control">
                 <span class="setting-value mono" :title="screenshotsDir">{{ screenshotsDir || '— Not selected —' }}</span>
-                <button class="btn ghost" @click="pickDir" :disabled="loading">Change Folder…</button>
+                <button class="btn ghost" :disabled="loading" @click="pickDir">
+                  Change Folder…
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="settings-section" id="sec-ingest">
+        <div id="sec-ingest" class="settings-section">
           <div class="section-header">
             <span class="section-num">03</span>
             <span class="section-slash" aria-hidden="true">/</span>
-            <h3 class="section-title">Ingest</h3>
+            <h3 class="section-title">
+              Ingest
+            </h3>
           </div>
           <div class="setting-rows">
             <div class="setting-row">
               <div class="setting-info">
-                <h4 class="setting-label">Watch Folder</h4>
-                <p class="setting-desc">Auto-parse new screenshots as they appear. Recall waits 60 seconds after the last new file, so a 3–4-screenshot post-match session collapses into a single parse.</p>
+                <h4 class="setting-label">
+                  Watch Folder
+                </h4>
+                <p class="setting-desc">
+                  Auto-parse new screenshots as they appear. Recall waits 60 seconds after the last new file, so a 3–4-screenshot post-match session collapses into a single parse.
+                </p>
                 <p v-if="!tesseractReady" class="setting-meta blocked">
                   <span class="block-mark" aria-hidden="true">⛔</span>
                   Blocked — needs Tesseract.
@@ -814,10 +851,10 @@ onBeforeUnmount(() => {
                   <input
                     type="checkbox"
                     :checked="watchEnabled"
-                    @change="toggleWatch"
                     :disabled="!tesseractReady"
-                  />
-                  <span class="big-switch-track"><span class="big-switch-knob"></span></span>
+                    @change="toggleWatch"
+                  >
+                  <span class="big-switch-track"><span class="big-switch-knob" /></span>
                   <span class="big-switch-state">{{ watchEnabled ? 'Armed' : 'Off' }}</span>
                 </label>
               </div>
@@ -825,25 +862,29 @@ onBeforeUnmount(() => {
 
             <div class="setting-row">
               <div class="setting-info">
-                <h4 class="setting-label">Manual Parse</h4>
-                <p class="setting-desc">Scan the folder now, outside the watcher cycle. Idempotent — re-running won't duplicate matches you've already parsed.</p>
-                <p class="setting-meta" v-if="!tesseractReady" :class="{ blocked: true }">
+                <h4 class="setting-label">
+                  Manual Parse
+                </h4>
+                <p class="setting-desc">
+                  Scan the folder now, outside the watcher cycle. Idempotent — re-running won't duplicate matches you've already parsed.
+                </p>
+                <p v-if="!tesseractReady" class="setting-meta" :class="{ blocked: true }">
                   <span class="block-mark" aria-hidden="true">⛔</span>
                   Blocked — needs Tesseract.
                 </p>
-                <p class="setting-meta" v-else-if="lastParsedAt">
-                  <span class="meta-dot"></span>
+                <p v-else-if="lastParsedAt" class="setting-meta">
+                  <span class="meta-dot" />
                   Last run · {{ formatRelativeTime(lastParsedAt) }} · {{ records.length }} match{{ records.length === 1 ? '' : 'es' }} on record
                 </p>
               </div>
               <div class="setting-control">
                 <button
                   class="btn primary big"
-                  @click="parse"
                   :disabled="loading || !tesseractReady"
                   :title="!tesseractReady ? 'Locate Tesseract in section 01 / Engine first.' : ''"
+                  @click="parse"
                 >
-                  <span class="btn-dot"></span>
+                  <span class="btn-dot" />
                   <span v-if="loading">Parsing…</span>
                   <span v-else>Run Parse</span>
                 </button>
@@ -852,22 +893,28 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div class="settings-section" id="sec-export">
+        <div id="sec-export" class="settings-section">
           <div class="section-header">
             <span class="section-num">04</span>
             <span class="section-slash" aria-hidden="true">/</span>
-            <h3 class="section-title">Export</h3>
+            <h3 class="section-title">
+              Export
+            </h3>
           </div>
           <div class="setting-rows">
             <div class="setting-row">
               <div class="setting-info">
-                <h4 class="setting-label">Stream to Grafana</h4>
-                <p class="setting-desc">Expose match history on <code>localhost:9091/metrics</code> so the bundled Prometheus container can scrape it. Off by default — no port is opened until you enable this.</p>
+                <h4 class="setting-label">
+                  Stream to Grafana
+                </h4>
+                <p class="setting-desc">
+                  Expose match history on <code>localhost:9091/metrics</code> so the bundled Prometheus container can scrape it. Off by default — no port is opened until you enable this.
+                </p>
               </div>
               <div class="setting-control">
                 <label class="big-switch" :class="{ on: prometheusEnabled }">
-                  <input type="checkbox" :checked="prometheusEnabled" @change="togglePrometheus" />
-                  <span class="big-switch-track"><span class="big-switch-knob"></span></span>
+                  <input type="checkbox" :checked="prometheusEnabled" @change="togglePrometheus">
+                  <span class="big-switch-track"><span class="big-switch-knob" /></span>
                   <span class="big-switch-state">{{ prometheusEnabled ? 'Live' : 'Off' }}</span>
                 </label>
               </div>
@@ -877,352 +924,371 @@ onBeforeUnmount(() => {
       </section>
 
       <!-- ─── MATCHES VIEW (default) ───────────────────────────── -->
-      <div v-if="view === 'matches'" class="matches-view" key="matches">
+      <div v-if="view === 'matches'" key="matches" class="matches-view">
+        <div v-if="records.length === 0 && !loading" class="empty">
+          <div class="empty-mark">
+            ◌
+          </div>
+          <p class="empty-title">
+            No matches on record.
+          </p>
+          <p class="empty-sub">
+            Head to <strong class="empty-link" @click="view = 'settings'">Settings → Run Parse</strong> to scan your screenshots folder, or flip on <strong class="empty-link" @click="view = 'settings'">Watch Folder</strong> there to auto-ingest as you play.
+          </p>
+        </div>
 
-      <div v-if="records.length === 0 && !loading" class="empty">
-        <div class="empty-mark">◌</div>
-        <p class="empty-title">No matches on record.</p>
-        <p class="empty-sub">Head to <strong @click="view = 'settings'" class="empty-link">Settings → Run Parse</strong> to scan your screenshots folder, or flip on <strong @click="view = 'settings'" class="empty-link">Watch Folder</strong> there to auto-ingest as you play.</p>
-      </div>
-
-      <section v-if="records.length > 0" class="filter-rail">
-        <div class="filter-grid">
-          <div
-            v-for="cfg in [
-              { field: 'mode',   label: 'Mode',   options: modes,   short: 'MODES'   },
-              { field: 'map',    label: 'Map',    options: maps,    short: 'MAPS'    },
-              { field: 'type',   label: 'Type',   options: types,   short: 'TYPES'   },
-              { field: 'role',   label: 'Role',   options: roles,   short: 'ROLES'   },
-              { field: 'hero',   label: 'Hero',   options: heroes,  short: 'HEROES'  },
-              { field: 'result', label: 'Result', options: results, short: 'RESULTS' },
-            ]"
-            :key="cfg.field"
-            class="filter-field multi-filter"
-            :class="{ open: openFilter === cfg.field, populated: filterRefs[cfg.field].value.length > 0 }"
-          >
-            <span class="filter-eyebrow">
-              {{ cfg.label }}
-              <span v-if="filterRefs[cfg.field].value.length" class="eyebrow-count">× {{ String(filterRefs[cfg.field].value.length).padStart(2, '0') }}</span>
-            </span>
-
-            <button
-              type="button"
-              class="mf-trigger"
-              :aria-expanded="openFilter === cfg.field"
-              :aria-label="`${cfg.label} filter, ${filterRefs[cfg.field].value.length} of ${cfg.options.length} selected`"
-              @click="toggleFilterPanel(cfg.field)"
+        <section v-if="records.length > 0" class="filter-rail">
+          <div class="filter-grid">
+            <div
+              v-for="cfg in [
+                { field: 'mode', label: 'Mode', options: modes, short: 'MODES' },
+                { field: 'map', label: 'Map', options: maps, short: 'MAPS' },
+                { field: 'type', label: 'Type', options: types, short: 'TYPES' },
+                { field: 'role', label: 'Role', options: roles, short: 'ROLES' },
+                { field: 'hero', label: 'Hero', options: heroes, short: 'HEROES' },
+                { field: 'result', label: 'Result', options: results, short: 'RESULTS' },
+              ]"
+              :key="cfg.field"
+              class="filter-field multi-filter"
+              :class="{ open: openFilter === cfg.field, populated: filterRefs[cfg.field].value.length > 0 }"
             >
-              <span class="mf-trigger-inner">
-                <template v-if="filterRefs[cfg.field].value.length === 0">
-                  <span class="mf-placeholder">All</span>
-                  <span class="mf-placeholder-meta">{{ cfg.options.length }} {{ cfg.short.toLowerCase() }}</span>
-                </template>
-                <template v-else-if="filterRefs[cfg.field].value.length <= 2">
-                  <span
-                    v-for="val in filterRefs[cfg.field].value"
-                    :key="val"
-                    class="mf-chip"
-                    @click.stop="toggleFilter(cfg.field, val)"
-                    :title="`Remove ${val} from filter`"
-                  >
-                    <span class="mf-chip-text">{{ val }}</span>
-                    <span class="mf-chip-x" aria-hidden="true">×</span>
-                  </span>
-                </template>
-                <template v-else>
-                  <span class="mf-chip mf-chip-stack">
-                    <span class="mf-chip-text">{{ filterRefs[cfg.field].value[0] }}</span>
-                    <span class="mf-chip-x" aria-hidden="true"></span>
-                  </span>
-                  <span class="mf-more">+{{ filterRefs[cfg.field].value.length - 1 }}</span>
-                </template>
+              <span class="filter-eyebrow">
+                {{ cfg.label }}
+                <span v-if="filterRefs[cfg.field].value.length" class="eyebrow-count">× {{ String(filterRefs[cfg.field].value.length).padStart(2, '0') }}</span>
               </span>
-              <span class="mf-caret" aria-hidden="true"></span>
-            </button>
 
-            <div v-if="openFilter === cfg.field" class="mf-panel" @click.stop>
-              <div class="mf-panel-head">
-                <span class="mf-panel-title">{{ cfg.short }} ROSTER</span>
-                <span class="mf-panel-meta">{{ filterRefs[cfg.field].value.length }} / {{ cfg.options.length }}</span>
-              </div>
-              <div v-if="cfg.options.length >= 8" class="mf-search">
-                <span class="mf-search-icon" aria-hidden="true">⌕</span>
-                <input
-                  v-model="filterSearch[cfg.field]"
-                  type="text"
-                  class="mf-search-input"
-                  :placeholder="`Search ${cfg.label.toLowerCase()}…`"
-                  autocomplete="off"
-                />
-              </div>
-              <div class="mf-list" role="listbox" aria-multiselectable="true">
-                <template v-for="opt in cfg.options" :key="opt">
-                  <label
-                    v-if="!filterSearch[cfg.field] || opt.toLowerCase().includes(filterSearch[cfg.field].toLowerCase())"
-                    class="mf-row"
-                    :class="{ checked: filterRefs[cfg.field].value.includes(opt) }"
-                  >
-                    <input
-                      type="checkbox"
-                      :checked="filterRefs[cfg.field].value.includes(opt)"
-                      @change="toggleFilter(cfg.field, opt)"
-                      class="mf-row-box"
-                    />
-                    <span class="mf-row-mark" aria-hidden="true"></span>
-                    <span class="mf-row-label">{{ opt }}</span>
-                  </label>
-                </template>
-                <div
-                  v-if="filterSearch[cfg.field] && cfg.options.filter(o => o.toLowerCase().includes(filterSearch[cfg.field].toLowerCase())).length === 0"
-                  class="mf-empty"
-                >
-                  No {{ cfg.label.toLowerCase() }} matches "{{ filterSearch[cfg.field] }}"
-                </div>
-              </div>
-              <div class="mf-panel-foot">
-                <button
-                  type="button"
-                  class="mf-foot-btn"
-                  @click="selectAllFilter(cfg.field, cfg.options)"
-                  :disabled="filterRefs[cfg.field].value.length === cfg.options.length"
-                >All</button>
-                <button
-                  type="button"
-                  class="mf-foot-btn"
-                  @click="clearFilterField(cfg.field)"
-                  :disabled="filterRefs[cfg.field].value.length === 0"
-                >None</button>
-                <span class="mf-foot-spacer"></span>
-                <button type="button" class="mf-foot-btn primary" @click="closeFilterPanel">Done</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="filter-bar">
-          <div class="range-group">
-            <label class="range-label">
-              <span>From</span>
-              <input
-                type="datetime-local"
-                v-model="filterFrom"
-                :min="earliestMatchDateTime"
-                :max="nowDateTime"
-                class="dd-date"
-              />
-            </label>
-            <span class="range-dash">→</span>
-            <label class="range-label">
-              <span>To</span>
-              <input
-                type="datetime-local"
-                v-model="filterTo"
-                :min="earliestMatchDateTime"
-                :max="nowDateTime"
-                class="dd-date"
-              />
-            </label>
-            <button
-              class="btn ghost tiny"
-              @click="resetDateRange"
-              :disabled="!filterFrom && !filterTo"
-              title="Clear both date pickers"
-            >Reset</button>
-          </div>
-
-          <div class="filter-tools">
-            <button class="btn ghost tiny" @click="toggleSort" :title="sortDir === 'desc' ? 'Newest first — click for oldest first' : 'Oldest first — click for newest first'">
-              {{ sortDir === 'desc' ? '↓ Newest' : '↑ Oldest' }}
-            </button>
-            <button class="btn ghost tiny" @click="toggleAll" :title="allExpanded ? 'Collapse every visible card' : 'Expand every visible card'">
-              {{ allExpanded ? 'Collapse All' : 'Expand All' }}
-            </button>
-            <button v-if="anyFilter" class="btn ghost tiny danger" @click="clearFilters">Clear Filters</button>
-            <span class="count"><strong>{{ filteredSorted.length }}</strong><span class="count-of">of {{ records.length }}</span></span>
-          </div>
-        </div>
-      </section>
-
-      <div v-if="records.length > 0" class="match-list">
-        <article
-          v-for="(rec, idx) in filteredSorted"
-          :key="rec.id"
-          class="match"
-          :class="[
-            { expanded: isExpanded(rec.id) },
-            `result-${rec.data.result || 'unknown'}`,
-          ]"
-          :style="{ animationDelay: Math.min(idx, 12) * 28 + 'ms' }"
-        >
-          <span class="match-bar" aria-hidden="true"></span>
-          <div class="match-body">
-            <div class="match-header" @click="toggleExpand(rec.id)">
-              <div class="match-title-row">
-                <div class="match-title-lhs">
-                  <span class="match-index">{{ String(idx + 1).padStart(2, '0') }}</span>
-                  <span
-                    class="match-map clickable"
-                    :class="{ active: isActive('map', rec.data.map) }"
-                    @click.stop="toggleFilter('map', rec.data.map)"
-                    title="Click to filter by this map"
-                  >{{ rec.data.map || 'Unknown Map' }}</span>
-                </div>
-                <div class="match-title-rhs">
-                  <span class="when" v-if="fmtTime(rec)">{{ fmtTime(rec) }}</span>
-                  <span v-if="rec.data.game_length" class="length"><span class="length-mark">▮</span>{{ rec.data.game_length }}</span>
-                  <span class="chev" :class="{ open: isExpanded(rec.id) }" aria-hidden="true">›</span>
-                </div>
-              </div>
-
-              <div class="match-tag-row">
-                <span
-                  v-if="rec.data.mode"
-                  class="badge mode clickable"
-                  :class="{ active: isActive('mode', rec.data.mode) }"
-                  @click.stop="toggleFilter('mode', rec.data.mode)"
-                  title="Click to filter by this mode"
-                >{{ rec.data.mode }}</span>
-                <span
-                  v-if="rec.data.type"
-                  class="badge type clickable"
-                  :class="{ active: isActive('type', rec.data.type) }"
-                  @click.stop="toggleFilter('type', rec.data.type)"
-                  title="Click to filter by this game type"
-                >{{ rec.data.type }}</span>
-                <span
-                  v-if="rec.data.role"
-                  class="badge role clickable"
-                  :class="[rec.data.role, { active: isActive('role', rec.data.role) }]"
-                  @click.stop="toggleFilter('role', rec.data.role)"
-                  title="Click to filter by this role"
-                >{{ rec.data.role }}</span>
-                <template v-for="hp in heroesForHeader(rec)" :key="hp.hero">
-                  <span
-                    class="badge hero clickable"
-                    :class="{ active: isActive('hero', hp.hero) }"
-                    @click.stop="toggleFilter('hero', hp.hero)"
-                    :title="hp.percent_played != null ? `${hp.hero} — ${hp.percent_played}% played` : 'Click to filter by this hero'"
-                  >
-                    <span class="hero-name-inline">{{ hp.hero }}</span>
-                    <span v-if="hp.percent_played != null" class="hero-pct-inline">{{ hp.percent_played }}%</span>
-                  </span>
-                </template>
-                <span
-                  v-if="rec.data.result"
-                  class="badge result clickable"
-                  :class="[rec.data.result, { active: isActive('result', rec.data.result) }]"
-                  @click.stop="toggleFilter('result', rec.data.result)"
-                  title="Click to filter by this result"
-                >{{ rec.data.result }}</span>
-              </div>
-            </div>
-
-            <template v-if="isExpanded(rec.id)">
-              <div class="match-expanded">
-                <div v-if="rec.data.final_score" class="meta-row">
-                  <span class="meta-eyebrow">Final Score</span>
-                  <span class="meta-value">{{ rec.data.final_score }}</span>
-                </div>
-
-                <div class="stats">
-                  <div class="stat">
-                    <span class="stat-value">{{ rec.data.eliminations ?? '—' }}</span>
-                    <span class="stat-label">Elims</span>
-                  </div>
-                  <div class="stat">
-                    <span class="stat-value">{{ rec.data.assists ?? '—' }}</span>
-                    <span class="stat-label">Assists</span>
-                  </div>
-                  <div class="stat">
-                    <span class="stat-value">{{ rec.data.deaths ?? '—' }}</span>
-                    <span class="stat-label">Deaths</span>
-                  </div>
-                  <div class="stat">
-                    <span class="stat-value">{{ rec.data.damage != null ? rec.data.damage.toLocaleString() : '—' }}</span>
-                    <span class="stat-label">Damage</span>
-                  </div>
-                  <div class="stat">
-                    <span class="stat-value">{{ rec.data.healing != null ? rec.data.healing.toLocaleString() : '—' }}</span>
-                    <span class="stat-label">Healing</span>
-                  </div>
-                  <div class="stat">
-                    <span class="stat-value">{{ rec.data.mitigation != null ? rec.data.mitigation.toLocaleString() : '—' }}</span>
-                    <span class="stat-label">Mitigation</span>
-                  </div>
-                </div>
-
-                <div v-if="rec.data.rank" class="rank-block">
-                  <div class="block-eyebrow">Rank</div>
-                  <div class="rank-line">
-                    <span class="rank-tier" :class="rec.data.rank">{{ rec.data.rank }} {{ rec.data.level }}</span>
-                    <span v-if="rec.data.rank_progress" class="rank-progress">{{ rec.data.rank_progress }}% progress</span>
-                    <span v-if="rec.data.change_percent" class="rank-change">+{{ rec.data.change_percent }}%</span>
-                    <span v-for="m in rec.data.modifiers" :key="m" class="rank-modifier">{{ m }}</span>
-                  </div>
-                  <div v-if="rec.data.sr?.length" class="sr-line">
-                    <span v-for="s in rec.data.sr" :key="s.hero" class="sr-entry">
-                      <span class="sr-hero">{{ s.hero }}</span>
-                      <span class="sr-value">{{ s.sr }}</span>
-                      <span class="sr-delta" :class="s.change >= 0 ? 'up' : 'down'">{{ s.change >= 0 ? '+' : '' }}{{ s.change }}</span>
+              <button
+                type="button"
+                class="mf-trigger"
+                :aria-expanded="openFilter === cfg.field"
+                :aria-label="`${cfg.label} filter, ${filterRefs[cfg.field].value.length} of ${cfg.options.length} selected`"
+                @click="toggleFilterPanel(cfg.field)"
+              >
+                <span class="mf-trigger-inner">
+                  <template v-if="filterRefs[cfg.field].value.length === 0">
+                    <span class="mf-placeholder">All</span>
+                    <span class="mf-placeholder-meta">{{ cfg.options.length }} {{ cfg.short.toLowerCase() }}</span>
+                  </template>
+                  <template v-else-if="filterRefs[cfg.field].value.length <= 2">
+                    <span
+                      v-for="val in filterRefs[cfg.field].value"
+                      :key="val"
+                      class="mf-chip"
+                      :title="`Remove ${val} from filter`"
+                      @click.stop="toggleFilter(cfg.field, val)"
+                    >
+                      <span class="mf-chip-text">{{ val }}</span>
+                      <span class="mf-chip-x" aria-hidden="true">×</span>
                     </span>
+                  </template>
+                  <template v-else>
+                    <span class="mf-chip mf-chip-stack">
+                      <span class="mf-chip-text">{{ filterRefs[cfg.field].value[0] }}</span>
+                      <span class="mf-chip-x" aria-hidden="true" />
+                    </span>
+                    <span class="mf-more">+{{ filterRefs[cfg.field].value.length - 1 }}</span>
+                  </template>
+                </span>
+                <span class="mf-caret" aria-hidden="true" />
+              </button>
+
+              <div v-if="openFilter === cfg.field" class="mf-panel" @click.stop>
+                <div class="mf-panel-head">
+                  <span class="mf-panel-title">{{ cfg.short }} ROSTER</span>
+                  <span class="mf-panel-meta">{{ filterRefs[cfg.field].value.length }} / {{ cfg.options.length }}</span>
+                </div>
+                <div v-if="cfg.options.length >= 8" class="mf-search">
+                  <span class="mf-search-icon" aria-hidden="true">⌕</span>
+                  <input
+                    v-model="filterSearch[cfg.field]"
+                    type="text"
+                    class="mf-search-input"
+                    :placeholder="`Search ${cfg.label.toLowerCase()}…`"
+                    autocomplete="off"
+                  >
+                </div>
+                <div class="mf-list" role="listbox" aria-multiselectable="true">
+                  <template v-for="opt in cfg.options" :key="opt">
+                    <label
+                      v-if="!filterSearch[cfg.field] || opt.toLowerCase().includes(filterSearch[cfg.field].toLowerCase())"
+                      class="mf-row"
+                      :class="{ checked: filterRefs[cfg.field].value.includes(opt) }"
+                    >
+                      <input
+                        type="checkbox"
+                        :checked="filterRefs[cfg.field].value.includes(opt)"
+                        class="mf-row-box"
+                        @change="toggleFilter(cfg.field, opt)"
+                      >
+                      <span class="mf-row-mark" aria-hidden="true" />
+                      <span class="mf-row-label">{{ opt }}</span>
+                    </label>
+                  </template>
+                  <div
+                    v-if="filterSearch[cfg.field] && cfg.options.filter(o => o.toLowerCase().includes(filterSearch[cfg.field].toLowerCase())).length === 0"
+                    class="mf-empty"
+                  >
+                    No {{ cfg.label.toLowerCase() }} matches "{{ filterSearch[cfg.field] }}"
+                  </div>
+                </div>
+                <div class="mf-panel-foot">
+                  <button
+                    type="button"
+                    class="mf-foot-btn"
+                    :disabled="filterRefs[cfg.field].value.length === cfg.options.length"
+                    @click="selectAllFilter(cfg.field, cfg.options)"
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    class="mf-foot-btn"
+                    :disabled="filterRefs[cfg.field].value.length === 0"
+                    @click="clearFilterField(cfg.field)"
+                  >
+                    None
+                  </button>
+                  <span class="mf-foot-spacer" />
+                  <button type="button" class="mf-foot-btn primary" @click="closeFilterPanel">
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-bar">
+            <div class="range-group">
+              <label class="range-label">
+                <span>From</span>
+                <input
+                  v-model="filterFrom"
+                  type="datetime-local"
+                  :min="earliestMatchDateTime"
+                  :max="nowDateTime"
+                  class="dd-date"
+                >
+              </label>
+              <span class="range-dash">→</span>
+              <label class="range-label">
+                <span>To</span>
+                <input
+                  v-model="filterTo"
+                  type="datetime-local"
+                  :min="earliestMatchDateTime"
+                  :max="nowDateTime"
+                  class="dd-date"
+                >
+              </label>
+              <button
+                class="btn ghost tiny"
+                :disabled="!filterFrom && !filterTo"
+                title="Clear both date pickers"
+                @click="resetDateRange"
+              >
+                Reset
+              </button>
+            </div>
+
+            <div class="filter-tools">
+              <button class="btn ghost tiny" :title="sortDir === 'desc' ? 'Newest first — click for oldest first' : 'Oldest first — click for newest first'" @click="toggleSort">
+                {{ sortDir === 'desc' ? '↓ Newest' : '↑ Oldest' }}
+              </button>
+              <button class="btn ghost tiny" :title="allExpanded ? 'Collapse every visible card' : 'Expand every visible card'" @click="toggleAll">
+                {{ allExpanded ? 'Collapse All' : 'Expand All' }}
+              </button>
+              <button v-if="anyFilter" class="btn ghost tiny danger" @click="clearFilters">
+                Clear Filters
+              </button>
+              <span class="count"><strong>{{ filteredSorted.length }}</strong><span class="count-of">of {{ records.length }}</span></span>
+            </div>
+          </div>
+        </section>
+
+        <div v-if="records.length > 0" class="match-list">
+          <article
+            v-for="(rec, idx) in filteredSorted"
+            :key="rec.id"
+            class="match"
+            :class="[
+              { expanded: isExpanded(rec.id) },
+              `result-${rec.data.result || 'unknown'}`,
+            ]"
+            :style="{ animationDelay: Math.min(idx, 12) * 28 + 'ms' }"
+          >
+            <span class="match-bar" aria-hidden="true" />
+            <div class="match-body">
+              <div class="match-header" @click="toggleExpand(rec.id)">
+                <div class="match-title-row">
+                  <div class="match-title-lhs">
+                    <span class="match-index">{{ String(idx + 1).padStart(2, '0') }}</span>
+                    <span
+                      class="match-map clickable"
+                      :class="{ active: isActive('map', rec.data.map) }"
+                      title="Click to filter by this map"
+                      @click.stop="toggleFilter('map', rec.data.map)"
+                    >{{ rec.data.map || 'Unknown Map' }}</span>
+                  </div>
+                  <div class="match-title-rhs">
+                    <span v-if="fmtTime(rec)" class="when">{{ fmtTime(rec) }}</span>
+                    <span v-if="rec.data.game_length" class="length"><span class="length-mark">▮</span>{{ rec.data.game_length }}</span>
+                    <span class="chev" :class="{ open: isExpanded(rec.id) }" aria-hidden="true">›</span>
                   </div>
                 </div>
 
-                <div v-if="rec.data.heroes_played?.length" class="heroes-played">
-                  <div class="block-eyebrow">Heroes Played</div>
-                  <div class="heroes-played-items">
-                    <div v-for="hp in rec.data.heroes_played" :key="hp.hero" class="hero-block">
-                      <div class="hero-header">
-                        <span
-                          class="hero-name clickable"
-                          :class="{ active: isActive('hero', hp.hero) }"
-                          @click="toggleFilter('hero', hp.hero)"
-                        >{{ hp.hero }}</span>
-                        <span class="hero-pct">{{ hp.percent_played }}%</span>
-                        <span v-if="hp.play_time" class="hero-time">{{ hp.play_time }}</span>
-                      </div>
-                      <div v-if="hp.stats && Object.keys(hp.stats).length" class="personal-grid">
-                        <div v-for="(v, k) in hp.stats" :key="k" class="personal-item">
-                          <span class="personal-label">{{ k.replace(/_/g, ' ') }}</span>
-                          <span class="personal-value">{{ v }}</span>
+                <div class="match-tag-row">
+                  <span
+                    v-if="rec.data.mode"
+                    class="badge mode clickable"
+                    :class="{ active: isActive('mode', rec.data.mode) }"
+                    title="Click to filter by this mode"
+                    @click.stop="toggleFilter('mode', rec.data.mode)"
+                  >{{ rec.data.mode }}</span>
+                  <span
+                    v-if="rec.data.type"
+                    class="badge type clickable"
+                    :class="{ active: isActive('type', rec.data.type) }"
+                    title="Click to filter by this game type"
+                    @click.stop="toggleFilter('type', rec.data.type)"
+                  >{{ rec.data.type }}</span>
+                  <span
+                    v-if="rec.data.role"
+                    class="badge role clickable"
+                    :class="[rec.data.role, { active: isActive('role', rec.data.role) }]"
+                    title="Click to filter by this role"
+                    @click.stop="toggleFilter('role', rec.data.role)"
+                  >{{ rec.data.role }}</span>
+                  <template v-for="hp in heroesForHeader(rec)" :key="hp.hero">
+                    <span
+                      class="badge hero clickable"
+                      :class="{ active: isActive('hero', hp.hero) }"
+                      :title="hp.percent_played != null ? `${hp.hero} — ${hp.percent_played}% played` : 'Click to filter by this hero'"
+                      @click.stop="toggleFilter('hero', hp.hero)"
+                    >
+                      <span class="hero-name-inline">{{ hp.hero }}</span>
+                      <span v-if="hp.percent_played != null" class="hero-pct-inline">{{ hp.percent_played }}%</span>
+                    </span>
+                  </template>
+                  <span
+                    v-if="rec.data.result"
+                    class="badge result clickable"
+                    :class="[rec.data.result, { active: isActive('result', rec.data.result) }]"
+                    title="Click to filter by this result"
+                    @click.stop="toggleFilter('result', rec.data.result)"
+                  >{{ rec.data.result }}</span>
+                </div>
+              </div>
+
+              <template v-if="isExpanded(rec.id)">
+                <div class="match-expanded">
+                  <div v-if="rec.data.final_score" class="meta-row">
+                    <span class="meta-eyebrow">Final Score</span>
+                    <span class="meta-value">{{ rec.data.final_score }}</span>
+                  </div>
+
+                  <div class="stats">
+                    <div class="stat">
+                      <span class="stat-value">{{ rec.data.eliminations ?? '—' }}</span>
+                      <span class="stat-label">Elims</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-value">{{ rec.data.assists ?? '—' }}</span>
+                      <span class="stat-label">Assists</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-value">{{ rec.data.deaths ?? '—' }}</span>
+                      <span class="stat-label">Deaths</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-value">{{ rec.data.damage != null ? rec.data.damage.toLocaleString() : '—' }}</span>
+                      <span class="stat-label">Damage</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-value">{{ rec.data.healing != null ? rec.data.healing.toLocaleString() : '—' }}</span>
+                      <span class="stat-label">Healing</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-value">{{ rec.data.mitigation != null ? rec.data.mitigation.toLocaleString() : '—' }}</span>
+                      <span class="stat-label">Mitigation</span>
+                    </div>
+                  </div>
+
+                  <div v-if="rec.data.rank" class="rank-block">
+                    <div class="block-eyebrow">
+                      Rank
+                    </div>
+                    <div class="rank-line">
+                      <span class="rank-tier" :class="rec.data.rank">{{ rec.data.rank }} {{ rec.data.level }}</span>
+                      <span v-if="rec.data.rank_progress" class="rank-progress">{{ rec.data.rank_progress }}% progress</span>
+                      <span v-if="rec.data.change_percent" class="rank-change">+{{ rec.data.change_percent }}%</span>
+                      <span v-for="m in rec.data.modifiers" :key="m" class="rank-modifier">{{ m }}</span>
+                    </div>
+                    <div v-if="rec.data.sr?.length" class="sr-line">
+                      <span v-for="s in rec.data.sr" :key="s.hero" class="sr-entry">
+                        <span class="sr-hero">{{ s.hero }}</span>
+                        <span class="sr-value">{{ s.sr }}</span>
+                        <span class="sr-delta" :class="s.change >= 0 ? 'up' : 'down'">{{ s.change >= 0 ? '+' : '' }}{{ s.change }}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div v-if="rec.data.heroes_played?.length" class="heroes-played">
+                    <div class="block-eyebrow">
+                      Heroes Played
+                    </div>
+                    <div class="heroes-played-items">
+                      <div v-for="hp in rec.data.heroes_played" :key="hp.hero" class="hero-block">
+                        <div class="hero-header">
+                          <span
+                            class="hero-name clickable"
+                            :class="{ active: isActive('hero', hp.hero) }"
+                            @click="toggleFilter('hero', hp.hero)"
+                          >{{ hp.hero }}</span>
+                          <span class="hero-pct">{{ hp.percent_played }}%</span>
+                          <span v-if="hp.play_time" class="hero-time">{{ hp.play_time }}</span>
+                        </div>
+                        <div v-if="hp.stats && Object.keys(hp.stats).length" class="personal-grid">
+                          <div v-for="(v, k) in hp.stats" :key="k" class="personal-item">
+                            <span class="personal-label">{{ k.replace(/_/g, ' ') }}</span>
+                            <span class="personal-value">{{ v }}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div v-if="rec.source_files?.length" class="sources-block">
-                  <div class="sources-toggle" @click="toggleSources(rec.id)">
-                    <span class="chev small" :class="{ open: isSourcesOpen(rec.id) }">›</span>
-                    <span class="sources-label">Source Screenshots</span>
-                    <span class="sources-count">{{ rec.source_files.length }}</span>
-                  </div>
-                  <div v-if="isSourcesOpen(rec.id)" class="sources">
-                    <div v-for="f in rec.source_files" :key="f" class="source-file">
-                      <a
-                        class="source-name"
-                        @click.prevent="togglePreview(f)"
-                        :href="screenshotURL(f)"
-                        :title="isPreviewOpen(f) ? 'Hide preview' : 'Show preview'"
-                      >
-                        <span class="chev small" :class="{ open: isPreviewOpen(f) }">›</span>
-                        <span class="source-name-text">{{ f }}</span>
-                      </a>
-                      <img
-                        v-if="isPreviewOpen(f)"
-                        :src="screenshotURL(f)"
-                        :alt="f"
-                        class="source-preview"
-                        loading="lazy"
-                      />
+                  <div v-if="rec.source_files?.length" class="sources-block">
+                    <div class="sources-toggle" @click="toggleSources(rec.id)">
+                      <span class="chev small" :class="{ open: isSourcesOpen(rec.id) }">›</span>
+                      <span class="sources-label">Source Screenshots</span>
+                      <span class="sources-count">{{ rec.source_files.length }}</span>
+                    </div>
+                    <div v-if="isSourcesOpen(rec.id)" class="sources">
+                      <div v-for="f in rec.source_files" :key="f" class="source-file">
+                        <a
+                          class="source-name"
+                          :href="screenshotURL(f)"
+                          :title="isPreviewOpen(f) ? 'Hide preview' : 'Show preview'"
+                          @click.prevent="togglePreview(f)"
+                        >
+                          <span class="chev small" :class="{ open: isPreviewOpen(f) }">›</span>
+                          <span class="source-name-text">{{ f }}</span>
+                        </a>
+                        <img
+                          v-if="isPreviewOpen(f)"
+                          :src="screenshotURL(f)"
+                          :alt="f"
+                          class="source-preview"
+                          loading="lazy"
+                        >
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </template>
-          </div>
-        </article>
-      </div>
+              </template>
+            </div>
+          </article>
+        </div>
       </div><!-- /.matches-view -->
     </div>
   </div>
@@ -1235,12 +1301,10 @@ onBeforeUnmount(() => {
   --surface: #13151a;
   --surface-2: #181b22;
   --surface-3: #1d2029;
-
   --border: #2c2f38;
   --border-soft: #1a1d24;
   --border-strong: #3a3e49;
-  --hairline: rgba(255, 255, 255, 0.07);
-
+  --hairline: rgb(255 255 255 / 7%);
   --text: #ecedf0;
   --text-dim: #9ca0ac;
   --text-faint: #6b6f7a;
@@ -1249,43 +1313,40 @@ onBeforeUnmount(() => {
   /* Overwatch signature greys. Used as a structural brand element —
      the masthead branding tile, strong borders, divider blocks. */
   --brand-grey: #4A4A4A;
-  --brand-grey-soft: rgba(74, 74, 74, 0.55);
+  --brand-grey-soft: rgb(74 74 74 / 55%);
 
   /* Overwatch signature orange. Single hero accent across the UI. */
   --accent: #F5A623;
   --accent-bright: #ffbf4d;
-  --accent-soft: rgba(245, 166, 35, 0.16);
-  --accent-glow: rgba(245, 166, 35, 0.38);
-
+  --accent-soft: rgb(245 166 35 / 16%);
+  --accent-glow: rgb(245 166 35 / 38%);
   --win: #4dff8e;
-  --win-soft: rgba(77, 255, 142, 0.12);
-  --win-line: rgba(77, 255, 142, 0.55);
+  --win-soft: rgb(77 255 142 / 12%);
+  --win-line: rgb(77 255 142 / 55%);
   --loss: #ff5a73;
-  --loss-soft: rgba(255, 90, 115, 0.12);
-  --loss-line: rgba(255, 90, 115, 0.55);
+  --loss-soft: rgb(255 90 115 / 12%);
+  --loss-line: rgb(255 90 115 / 55%);
   --draw: #ffc94d;
-  --draw-soft: rgba(255, 201, 77, 0.12);
-  --draw-line: rgba(255, 201, 77, 0.55);
-  --unknown-line: rgba(120, 124, 134, 0.4);
-
+  --draw-soft: rgb(255 201 77 / 12%);
+  --draw-line: rgb(255 201 77 / 55%);
+  --unknown-line: rgb(120 124 134 / 40%);
   --tank: #6ab8ff;
-  --tank-soft: rgba(106, 184, 255, 0.14);
+  --tank-soft: rgb(106 184 255 / 14%);
   --dps: #ff7a5a;
-  --dps-soft: rgba(255, 122, 90, 0.14);
+  --dps-soft: rgb(255 122 90 / 14%);
   --support: #7dffac;
-  --support-soft: rgba(125, 255, 172, 0.14);
+  --support-soft: rgb(125 255 172 / 14%);
 
   /* Theme atmosphere tunables — overridden in light mode. */
-  --atmos-orange: rgba(245, 166, 35, 0.10);
-  --atmos-blue:   rgba(106, 184, 255, 0.06);
-  --atmos-coral:  rgba(255, 90, 115, 0.05);
-  --grid-line:    rgba(255, 255, 255, 0.018);
+  --atmos-orange: rgb(245 166 35 / 10%);
+  --atmos-blue:   rgb(106 184 255 / 6%);
+  --atmos-coral:  rgb(255 90 115 / 5%);
+  --grid-line:    rgb(255 255 255 / 1.8%);
   --primary-text-on-accent: #1a0a00;
   --accent-text:  #F5A623;    /* same as --accent in dark mode (good contrast on dark bg) */
-
   --display: 'Big Shoulders Display', 'Impact', 'Oswald', sans-serif;
-  --body: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
-  --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --body: 'Geist', -apple-system, blinkmacsystemfont, sans-serif;
+  --mono: 'Geist Mono', ui-monospace, 'SF Mono', menlo, monospace;
 }
 
 /* LIGHT MODE — keep brand-grey (#4A4A4A) and brand-orange (#F5A623)
@@ -1296,19 +1357,16 @@ onBeforeUnmount(() => {
   --surface: #fbf9f3;
   --surface-2: #f5f2ea;
   --surface-3: #ebe6da;
-
   --border: #d4ccba;
   --border-soft: #e0d9c6;
   --border-strong: #4A4A4A;
-  --hairline: rgba(74, 74, 74, 0.16);
-
+  --hairline: rgb(74 74 74 / 16%);
   --text: #2b2a26;
   --text-dim: #4A4A4A;
   --text-faint: #6f6a5e;
   --text-mute: #a39e90;
-
   --brand-grey: #4A4A4A;
-  --brand-grey-soft: rgba(74, 74, 74, 0.85);
+  --brand-grey-soft: rgb(74 74 74 / 85%);
 
   /* Keep #F5A623 dominant in light mode too — it's the OW signature.
      Type-on-light contrast is handled with a darker `--accent-text`
@@ -1316,31 +1374,28 @@ onBeforeUnmount(() => {
   --accent: #F5A623;
   --accent-bright: #d68a14;   /* darker on light bg hover, more readable */
   --accent-text: #9a6512;     /* AA-contrast text variant for orange-on-cream */
-  --accent-soft: rgba(245, 166, 35, 0.22);
-  --accent-glow: rgba(245, 166, 35, 0.42);
-
+  --accent-soft: rgb(245 166 35 / 22%);
+  --accent-glow: rgb(245 166 35 / 42%);
   --win: #137a3a;
-  --win-soft: rgba(19, 122, 58, 0.14);
-  --win-line: rgba(19, 122, 58, 0.6);
+  --win-soft: rgb(19 122 58 / 14%);
+  --win-line: rgb(19 122 58 / 60%);
   --loss: #b03346;
-  --loss-soft: rgba(176, 51, 70, 0.12);
-  --loss-line: rgba(176, 51, 70, 0.55);
+  --loss-soft: rgb(176 51 70 / 12%);
+  --loss-line: rgb(176 51 70 / 55%);
   --draw: #a07020;
-  --draw-soft: rgba(160, 112, 32, 0.14);
-  --draw-line: rgba(160, 112, 32, 0.55);
-  --unknown-line: rgba(74, 74, 74, 0.35);
-
+  --draw-soft: rgb(160 112 32 / 14%);
+  --draw-line: rgb(160 112 32 / 55%);
+  --unknown-line: rgb(74 74 74 / 35%);
   --tank: #2c6eb8;
-  --tank-soft: rgba(44, 110, 184, 0.14);
+  --tank-soft: rgb(44 110 184 / 14%);
   --dps: #c54a2c;
-  --dps-soft: rgba(197, 74, 44, 0.13);
+  --dps-soft: rgb(197 74 44 / 13%);
   --support: #2d8a4d;
-  --support-soft: rgba(45, 138, 77, 0.13);
-
-  --atmos-orange: rgba(245, 166, 35, 0.14);
-  --atmos-blue:   rgba(44, 110, 184, 0.05);
-  --atmos-coral:  rgba(176, 51, 70, 0.04);
-  --grid-line:    rgba(74, 74, 74, 0.04);
+  --support-soft: rgb(45 138 77 / 13%);
+  --atmos-orange: rgb(245 166 35 / 14%);
+  --atmos-blue:   rgb(44 110 184 / 5%);
+  --atmos-coral:  rgb(176 51 70 / 4%);
+  --grid-line:    rgb(74 74 74 / 4%);
   --primary-text-on-accent: #1a0a00;
 }
 
@@ -1384,7 +1439,7 @@ body {
     linear-gradient(var(--grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.9), transparent 75%);
+  mask-image: radial-gradient(ellipse at center, rgb(0 0 0 / 90%), transparent 75%);
 }
 
 .container {
@@ -1421,10 +1476,11 @@ body {
   background: var(--brand-grey);
   border-radius: 2px;
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.25) inset,
-    0 14px 36px -14px rgba(0, 0, 0, 0.55);
+    0 0 0 1px rgb(0 0 0 / 25%) inset,
+    0 14px 36px -14px rgb(0 0 0 / 55%);
   isolation: isolate;
 }
+
 .brandmark-tile::before {
   content: '';
   position: absolute;
@@ -1433,6 +1489,7 @@ body {
   background: var(--accent-bright);
   box-shadow: 0 0 14px var(--accent-glow);
 }
+
 /* Subtle hatch / striped corner — feels like military stencil tape. */
 .brand-corner {
   position: absolute;
@@ -1441,12 +1498,13 @@ body {
   background:
     repeating-linear-gradient(
       45deg,
-      rgba(255, 255, 255, 0.18) 0 2px,
+      rgb(255 255 255 / 18%) 0 2px,
       transparent 2px 4px
     );
   border-radius: 1px;
   opacity: 0.55;
 }
+
 .brand-tick {
   color: var(--accent-bright);
   font-size: 1.05rem;
@@ -1455,6 +1513,7 @@ body {
   text-shadow: 0 0 14px var(--accent-glow);
   font-feature-settings: "tnum";
 }
+
 .brand {
   font-family: var(--display);
   font-weight: 900;
@@ -1464,10 +1523,12 @@ body {
   color: #f5f3ee;
   text-transform: uppercase;
 }
+
 .brand-accent {
   color: var(--accent-bright);
   text-shadow: 0 0 24px var(--accent-glow);
 }
+
 .tagline {
   margin-top: 0.7rem;
   font-family: var(--mono);
@@ -1504,11 +1565,13 @@ body {
   transition: border-color 160ms ease, background 160ms ease;
 }
 .theme-toggle:hover { border-color: var(--border-strong); }
+
 .theme-toggle:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
+
 .theme-seg {
   display: inline-flex;
   align-items: center;
@@ -1517,16 +1580,19 @@ body {
   border-radius: 1px;
   transition: color 200ms ease, background 200ms ease;
 }
+
 .theme-seg.active {
   color: var(--accent);
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
+
 .theme-icon {
   width: 13px; height: 13px;
   display: block;
 }
 .theme-label { font-weight: 600; }
+
 .theme-divider {
   width: 1px;
   background: var(--border);
@@ -1539,12 +1605,14 @@ body {
   gap: 1.4rem;
   padding: 0.1rem 0;
 }
+
 .score-cell {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   line-height: 0.9;
 }
+
 .score-num {
   font-family: var(--display);
   font-weight: 800;
@@ -1555,6 +1623,7 @@ body {
 .score-num.win  { color: var(--win); }
 .score-num.loss { color: var(--loss); }
 .score-num.draw { color: var(--draw); }
+
 .score-label {
   margin-top: 0.3rem;
   font-family: var(--mono);
@@ -1578,6 +1647,7 @@ body {
   border-radius: 2px;
   position: relative;
 }
+
 .control-deck::before {
   content: '';
   position: absolute; left: 0; top: 0; bottom: 0;
@@ -1593,6 +1663,7 @@ body {
   min-width: 0;
   flex: 1 1 auto;
 }
+
 .deck-eyebrow {
   font-family: var(--mono);
   font-size: 0.62rem;
@@ -1600,6 +1671,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.22em;
 }
+
 .deck-path-value {
   font-family: var(--mono);
   font-size: 0.85rem;
@@ -1639,22 +1711,25 @@ body {
   background: var(--accent);
   color: #1a0a00;
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.4) inset, 0 4px 28px -8px var(--accent-glow);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%) inset, 0 4px 28px -8px var(--accent-glow);
 }
+
 .btn.primary:hover:not(:disabled) {
   background: var(--accent-bright);
   border-color: var(--accent-bright);
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.4) inset, 0 4px 36px -6px var(--accent-glow);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%) inset, 0 4px 36px -6px var(--accent-glow);
   transform: translateY(-1px);
 }
+
 .btn.primary:active:not(:disabled) {
   transform: translateY(0);
 }
+
 .btn-dot {
   width: 6px; height: 6px;
   border-radius: 50%;
   background: #1a0a00;
-  box-shadow: 0 0 0 2px rgba(26, 10, 0, 0.25);
+  box-shadow: 0 0 0 2px rgb(26 10 0 / 25%);
 }
 
 .btn.ghost {
@@ -1662,15 +1737,18 @@ body {
   color: var(--text-dim);
   border-color: var(--border-strong);
 }
+
 .btn.ghost:hover:not(:disabled) {
   color: var(--text);
   border-color: var(--text-faint);
-  background: rgba(255, 255, 255, 0.025);
+  background: rgb(255 255 255 / 2.5%);
 }
+
 .btn.ghost.tiny {
   padding: 0.38rem 0.65rem;
   font-size: 0.7rem;
 }
+
 .btn.ghost.danger:hover:not(:disabled) {
   color: var(--loss);
   border-color: var(--loss-line);
@@ -1692,6 +1770,7 @@ body {
 }
 .switch:hover { border-color: var(--text-faint); }
 .switch input { position: absolute; opacity: 0; pointer-events: none; }
+
 .switch-track {
   position: relative;
   width: 26px; height: 14px;
@@ -1701,6 +1780,7 @@ body {
   transition: background 200ms ease, border-color 200ms ease;
   flex-shrink: 0;
 }
+
 .switch-knob {
   position: absolute;
   top: 1px; left: 1px;
@@ -1709,16 +1789,19 @@ body {
   background: var(--text-faint);
   transition: transform 200ms cubic-bezier(0.4, 0.0, 0.2, 1), background 200ms ease;
 }
+
 .switch input:checked ~ .switch-track {
   background: var(--accent-soft);
   border-color: var(--accent);
 }
+
 .switch input:checked ~ .switch-track .switch-knob {
   transform: translateX(12px);
   background: var(--accent);
   box-shadow: 0 0 10px var(--accent-glow);
 }
 .switch input:checked ~ .switch-label { color: var(--text); }
+
 .switch-label {
   font-size: 0.72rem;
   font-weight: 600;
@@ -1739,6 +1822,7 @@ body {
   font-family: var(--mono);
   font-size: 0.8rem;
 }
+
 .error-tick {
   font-weight: 700;
   opacity: 0.85;
@@ -1749,12 +1833,14 @@ body {
   text-align: center;
   padding: 3rem 1rem;
 }
+
 .empty-mark {
   font-family: var(--display);
   font-size: 5rem;
   color: var(--text-mute);
   margin-bottom: 1rem;
 }
+
 .empty-title {
   font-family: var(--display);
   font-size: 1.6rem;
@@ -1763,6 +1849,7 @@ body {
   color: var(--text);
   margin-bottom: 0.5rem;
 }
+
 .empty-sub {
   color: var(--text-faint);
   font-size: 0.88rem;
@@ -1778,11 +1865,13 @@ body {
   border: 1px solid var(--border);
   border-radius: 2px;
 }
+
 .filter-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 0.7rem;
 }
+
 .filter-field {
   display: flex;
   flex-direction: column;
@@ -1790,6 +1879,7 @@ body {
   min-width: 0;
   position: relative;
 }
+
 .filter-eyebrow {
   display: flex;
   justify-content: space-between;
@@ -1802,6 +1892,7 @@ body {
   text-transform: uppercase;
   transition: color 160ms ease;
 }
+
 .eyebrow-count {
   color: var(--accent-text);
   font-feature-settings: "tnum";
@@ -1834,6 +1925,7 @@ body {
   text-align: left;
   transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
 }
+
 .mf-trigger::before,
 .mf-trigger::after {
   /* Corner ticks — tiny L-marks at the top-left + bottom-right of
@@ -1847,25 +1939,31 @@ body {
   pointer-events: none;
   transition: opacity 160ms ease;
 }
+
 .mf-trigger::before {
   top: -1px; left: -1px;
   border-right: none; border-bottom: none;
 }
+
 .mf-trigger::after {
   bottom: -1px; right: -1px;
   border-left: none; border-top: none;
 }
+
 .mf-trigger:hover {
   border-color: var(--border-strong);
   background: var(--surface-3);
 }
+
 .mf-trigger:hover::before,
 .mf-trigger:hover::after { opacity: 0.5; }
+
 .multi-filter.open .mf-trigger {
   border-color: var(--accent);
   background: var(--surface-3);
   box-shadow: 0 0 0 1px var(--accent-soft) inset;
 }
+
 .multi-filter.open .mf-trigger::before,
 .multi-filter.open .mf-trigger::after { opacity: 1; }
 .multi-filter.populated .mf-trigger { border-color: var(--accent-soft); }
@@ -1879,6 +1977,7 @@ body {
   min-width: 0;
   flex: 1;
 }
+
 .mf-placeholder {
   font-family: var(--display);
   font-size: 1rem;
@@ -1886,6 +1985,7 @@ body {
   color: var(--text-faint);
   text-transform: uppercase;
 }
+
 .mf-placeholder-meta {
   margin-left: auto;
   padding-left: 0.6rem;
@@ -1896,6 +1996,7 @@ body {
   text-transform: uppercase;
   white-space: nowrap;
 }
+
 .mf-chip {
   display: inline-flex;
   align-items: center;
@@ -1914,15 +2015,18 @@ body {
   animation: chip-in 220ms cubic-bezier(0.2, 0.7, 0.3, 1.4);
   transition: background 140ms ease, transform 120ms ease;
 }
+
 .mf-chip:hover {
   background: var(--accent-bright);
   transform: translateY(-1px);
 }
+
 .mf-chip-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .mf-chip-x {
   font-family: var(--body);
   font-size: 0.85rem;
@@ -1933,6 +2037,7 @@ body {
 }
 .mf-chip:hover .mf-chip-x { opacity: 1; }
 .mf-chip-stack { padding-right: 0.5rem; }
+
 .mf-more {
   display: inline-flex;
   align-items: center;
@@ -1945,6 +2050,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.08em;
 }
+
 .mf-caret {
   width: 8px;
   height: 8px;
@@ -1955,6 +2061,7 @@ body {
   transition: transform 220ms ease, border-color 160ms ease;
   align-self: center;
 }
+
 .multi-filter.open .mf-caret {
   transform: translateY(2px) rotate(-135deg);
   border-color: var(--accent);
@@ -1978,7 +2085,7 @@ body {
   border: 1px solid var(--accent);
   border-radius: 2px;
   box-shadow:
-    0 24px 60px -18px rgba(0, 0, 0, 0.7),
+    0 24px 60px -18px rgb(0 0 0 / 70%),
     0 0 0 1px var(--accent-soft);
   display: flex;
   flex-direction: column;
@@ -1987,6 +2094,7 @@ body {
   animation: panel-in 180ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
   transform-origin: top center;
 }
+
 @keyframes panel-in {
   from { opacity: 0; transform: translateY(-6px) scaleY(0.92); }
   to   { opacity: 1; transform: translateY(0)    scaleY(1); }
@@ -2011,6 +2119,7 @@ body {
   text-transform: uppercase;
 }
 .mf-panel-title { font-weight: 700; }
+
 .mf-panel-meta {
   color: var(--accent);
   font-feature-settings: "tnum";
@@ -2025,11 +2134,13 @@ body {
   border-bottom: 1px dashed var(--border);
   background: var(--surface-2);
 }
+
 .mf-search-icon {
   font-family: var(--mono);
   font-size: 0.9rem;
   color: var(--text-faint);
 }
+
 .mf-search-input {
   flex: 1;
   background: transparent;
@@ -2040,6 +2151,7 @@ body {
   font-size: 0.84rem;
   padding: 0.2rem 0;
 }
+
 .mf-search-input::placeholder {
   color: var(--text-mute);
   font-style: italic;
@@ -2053,6 +2165,7 @@ body {
   scrollbar-color: var(--border-strong) transparent;
 }
 .mf-list::-webkit-scrollbar { width: 6px; }
+
 .mf-list::-webkit-scrollbar-thumb {
   background: var(--border-strong);
   border-radius: 3px;
@@ -2072,14 +2185,17 @@ body {
   position: relative;
   transition: background 100ms ease, color 100ms ease;
 }
+
 .mf-row:hover {
   background: var(--surface-2);
   color: var(--text);
 }
+
 .mf-row.checked {
   color: var(--text);
   background: var(--accent-soft);
 }
+
 .mf-row.checked::before {
   content: '';
   position: absolute;
@@ -2087,6 +2203,7 @@ body {
   border-left: 2px solid var(--accent);
   pointer-events: none;
 }
+
 .mf-row-box {
   /* The real checkbox lives behind .mf-row-mark for accessibility. */
   position: absolute;
@@ -2094,6 +2211,7 @@ body {
   width: 1px; height: 1px;
   pointer-events: none;
 }
+
 .mf-row-mark {
   position: relative;
   width: 14px;
@@ -2103,10 +2221,12 @@ body {
   background: var(--surface);
   transition: background 120ms ease, border-color 120ms ease;
 }
+
 .mf-row.checked .mf-row-mark {
   background: var(--accent);
   border-color: var(--accent);
 }
+
 .mf-row.checked .mf-row-mark::after {
   content: '';
   position: absolute;
@@ -2119,16 +2239,19 @@ body {
   transform: rotate(45deg);
   animation: mark-in 160ms cubic-bezier(0.2, 0.7, 0.3, 1.4);
 }
+
 @keyframes mark-in {
   from { opacity: 0; transform: rotate(45deg) scale(0.4); }
   to   { opacity: 1; transform: rotate(45deg) scale(1); }
 }
+
 .mf-row-label {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .mf-row-box:focus-visible + .mf-row-mark {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -2153,6 +2276,7 @@ body {
   background: var(--surface-2);
 }
 .mf-foot-spacer { flex: 1; }
+
 .mf-foot-btn {
   font-family: var(--mono);
   font-size: 0.62rem;
@@ -2166,20 +2290,24 @@ body {
   cursor: pointer;
   transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
 }
+
 .mf-foot-btn:hover:not(:disabled) {
   color: var(--text);
   border-color: var(--text-dim);
 }
+
 .mf-foot-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
+
 .mf-foot-btn.primary {
   background: var(--accent);
   color: var(--primary-text-on-accent);
   border-color: var(--accent);
   font-weight: 700;
 }
+
 .mf-foot-btn.primary:hover {
   background: var(--accent-bright);
   border-color: var(--accent-bright);
@@ -2195,12 +2323,14 @@ body {
   padding-top: 0.9rem;
   border-top: 1px dashed var(--border);
 }
+
 .range-group {
   display: flex;
   align-items: center;
   gap: 0.55rem;
   flex-wrap: wrap;
 }
+
 .range-label {
   display: inline-flex;
   align-items: center;
@@ -2211,11 +2341,13 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.18em;
 }
+
 .range-dash {
   color: var(--text-mute);
   font-family: var(--mono);
   font-size: 0.85rem;
 }
+
 .dd-date {
   background: var(--surface-2);
   color: var(--text);
@@ -2228,6 +2360,7 @@ body {
   letter-spacing: 0;
   text-transform: none;
 }
+
 .dd-date:focus {
   outline: none;
   border-color: var(--accent);
@@ -2239,6 +2372,7 @@ body {
   gap: 0.45rem;
   flex-wrap: wrap;
 }
+
 .count {
   display: inline-flex;
   align-items: baseline;
@@ -2249,6 +2383,7 @@ body {
   color: var(--text-dim);
   font-feature-settings: "tnum";
 }
+
 .count strong {
   color: var(--accent);
   font-weight: 600;
@@ -2281,6 +2416,7 @@ body {
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 .match:hover { border-color: var(--border-strong); }
+
 .match.expanded {
   border-color: var(--border-strong);
   background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
@@ -2292,14 +2428,17 @@ body {
   flex-shrink: 0;
   transition: background 200ms ease, width 200ms ease, box-shadow 200ms ease;
 }
+
 .match.result-victory .match-bar {
   background: var(--win-line);
   box-shadow: 0 0 12px -2px var(--win-line);
 }
+
 .match.result-defeat .match-bar {
   background: var(--loss-line);
   box-shadow: 0 0 12px -2px var(--loss-line);
 }
+
 .match.result-draw .match-bar {
   background: var(--draw-line);
   box-shadow: 0 0 12px -2px var(--draw-line);
@@ -2324,12 +2463,14 @@ body {
   gap: 1rem;
   margin-bottom: 0.55rem;
 }
+
 .match-title-lhs {
   display: flex;
   align-items: baseline;
   gap: 0.75rem;
   min-width: 0;
 }
+
 .match-index {
   font-family: var(--mono);
   font-size: 0.72rem;
@@ -2337,6 +2478,7 @@ body {
   letter-spacing: 0.06em;
   font-feature-settings: "tnum";
 }
+
 .match-map {
   font-family: var(--display);
   font-weight: 800;
@@ -2348,10 +2490,12 @@ body {
   position: relative;
   transition: color 160ms ease, text-shadow 200ms ease;
 }
+
 .match-map:hover {
   color: var(--accent-bright);
   text-shadow: 0 0 24px var(--accent-glow);
 }
+
 .match-map.active {
   color: var(--accent);
   text-shadow: 0 0 18px var(--accent-glow);
@@ -2363,6 +2507,7 @@ body {
   gap: 0.85rem;
   flex-shrink: 0;
 }
+
 .when {
   font-family: var(--mono);
   font-size: 0.78rem;
@@ -2370,6 +2515,7 @@ body {
   font-feature-settings: "tnum";
   letter-spacing: 0;
 }
+
 .length {
   display: inline-flex;
   align-items: center;
@@ -2379,11 +2525,13 @@ body {
   color: var(--text-faint);
   font-feature-settings: "tnum";
 }
+
 .length-mark {
   color: var(--accent);
   font-size: 0.55rem;
   opacity: 0.7;
 }
+
 .chev {
   color: var(--text-faint);
   font-size: 1.2rem;
@@ -2422,27 +2570,29 @@ body {
 }
 
 .badge.mode {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgb(255 255 255 / 4%);
   border-color: var(--border-strong);
 }
+
 .badge.type {
-  background: rgba(255, 255, 255, 0.025);
+  background: rgb(255 255 255 / 2.5%);
   color: var(--text-faint);
   letter-spacing: 0.12em;
 }
 
 .badge.role { font-weight: 700; }
-.badge.role.dps     { background: var(--dps-soft);     color: var(--dps);     border-color: rgba(255, 122, 90, 0.4); }
-.badge.role.tank    { background: var(--tank-soft);    color: var(--tank);    border-color: rgba(106, 184, 255, 0.4); }
-.badge.role.support { background: var(--support-soft); color: var(--support); border-color: rgba(125, 255, 172, 0.4); }
+.badge.role.dps     { background: var(--dps-soft);     color: var(--dps);     border-color: rgb(255 122 90 / 40%); }
+.badge.role.tank    { background: var(--tank-soft);    color: var(--tank);    border-color: rgb(106 184 255 / 40%); }
+.badge.role.support { background: var(--support-soft); color: var(--support); border-color: rgb(125 255 172 / 40%); }
 
 .badge.hero {
   background: var(--accent-soft);
   color: var(--accent-text);
-  border-color: rgba(245, 166, 35, 0.4);
+  border-color: rgb(245 166 35 / 40%);
   font-weight: 600;
 }
 .hero-name-inline { font-weight: 600; letter-spacing: 0.04em; }
+
 .hero-pct-inline {
   font-family: var(--mono);
   font-size: 0.62rem;
@@ -2465,6 +2615,7 @@ body {
   user-select: none;
 }
 .badge.clickable:hover { filter: brightness(1.2); transform: translateY(-1px); }
+
 .badge.clickable.active {
   box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
 }
@@ -2485,6 +2636,7 @@ body {
   align-items: baseline;
   gap: 0.7rem;
 }
+
 .meta-eyebrow {
   font-family: var(--mono);
   font-size: 0.6rem;
@@ -2492,6 +2644,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.22em;
 }
+
 .meta-value {
   font-family: var(--display);
   font-size: 1.1rem;
@@ -2520,6 +2673,7 @@ body {
   overflow: hidden;
   background: var(--surface-2);
 }
+
 .stat {
   display: flex;
   flex-direction: column;
@@ -2529,6 +2683,7 @@ body {
   position: relative;
 }
 .stat:last-child { border-right: none; }
+
 .stat::before {
   content: '';
   position: absolute; left: 0; top: 0;
@@ -2538,6 +2693,7 @@ body {
   transition: opacity 200ms ease;
 }
 .stat:hover::before { opacity: 1; }
+
 .stat-value {
   font-family: var(--display);
   font-size: 1.6rem;
@@ -2547,6 +2703,7 @@ body {
   line-height: 1;
   font-feature-settings: "tnum";
 }
+
 .stat-label {
   margin-top: 0.35rem;
   font-family: var(--mono);
@@ -2564,6 +2721,7 @@ body {
   align-items: center;
   margin-bottom: 0.5rem;
 }
+
 .rank-tier {
   font-family: var(--display);
   font-size: 0.95rem;
@@ -2576,19 +2734,21 @@ body {
   border: 1px solid var(--border);
   color: var(--text);
 }
-.rank-tier.bronze    { color: #d18a4a; border-color: rgba(209, 138, 74, 0.45); }
-.rank-tier.silver    { color: #d6d6d6; border-color: rgba(214, 214, 214, 0.4); }
-.rank-tier.gold      { color: #ffd770; border-color: rgba(255, 215, 112, 0.45); }
-.rank-tier.platinum  { color: #7befd9; border-color: rgba(123, 239, 217, 0.45); }
-.rank-tier.diamond   { color: #c2e6ff; border-color: rgba(194, 230, 255, 0.45); }
-.rank-tier.master    { color: #d6b4ff; border-color: rgba(214, 180, 255, 0.45); }
+.rank-tier.bronze    { color: #d18a4a; border-color: rgb(209 138 74 / 45%); }
+.rank-tier.silver    { color: #d6d6d6; border-color: rgb(214 214 214 / 40%); }
+.rank-tier.gold      { color: #ffd770; border-color: rgb(255 215 112 / 45%); }
+.rank-tier.platinum  { color: #7befd9; border-color: rgb(123 239 217 / 45%); }
+.rank-tier.diamond   { color: #c2e6ff; border-color: rgb(194 230 255 / 45%); }
+.rank-tier.master    { color: #d6b4ff; border-color: rgb(214 180 255 / 45%); }
 .rank-tier.grandmaster, .rank-tier.champion { color: var(--loss); border-color: var(--loss-line); }
+
 .rank-progress {
   font-family: var(--mono);
   font-size: 0.75rem;
   color: var(--text-dim);
   font-feature-settings: "tnum";
 }
+
 .rank-change {
   font-family: var(--mono);
   font-size: 0.78rem;
@@ -2596,6 +2756,7 @@ body {
   font-weight: 600;
   font-feature-settings: "tnum";
 }
+
 .rank-modifier {
   font-size: 0.62rem;
   padding: 0.18rem 0.5rem;
@@ -2607,6 +2768,7 @@ body {
   letter-spacing: 0.14em;
 }
 .sr-line { display: flex; flex-wrap: wrap; gap: 0.7rem; }
+
 .sr-entry {
   display: inline-flex;
   align-items: baseline;
@@ -2629,6 +2791,7 @@ body {
   flex-direction: column;
   gap: 0.85rem;
 }
+
 .hero-block {
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -2636,12 +2799,14 @@ body {
   border-radius: 2px;
   padding: 0.75rem 0.9rem;
 }
+
 .hero-header {
   display: flex;
   gap: 0.7rem;
   align-items: baseline;
   margin-bottom: 0.55rem;
 }
+
 .hero-name {
   font-family: var(--display);
   font-size: 1.1rem;
@@ -2655,12 +2820,14 @@ body {
 }
 .hero-name:hover { color: var(--accent-bright); text-shadow: 0 0 16px var(--accent-glow); }
 .hero-name.active { text-shadow: 0 0 14px var(--accent-glow); }
+
 .hero-pct {
   font-family: var(--mono);
   font-size: 0.78rem;
   color: var(--text-dim);
   font-feature-settings: "tnum";
 }
+
 .hero-time {
   font-family: var(--mono);
   font-size: 0.72rem;
@@ -2674,6 +2841,7 @@ body {
   background: var(--border);
   border: 1px solid var(--border);
 }
+
 .personal-item {
   background: var(--surface);
   padding: 0.45rem 0.7rem;
@@ -2682,6 +2850,7 @@ body {
   align-items: center;
   gap: 0.5rem;
 }
+
 .personal-label {
   font-family: var(--mono);
   font-size: 0.62rem;
@@ -2689,6 +2858,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
+
 .personal-value {
   font-family: var(--mono);
   font-size: 0.85rem;
@@ -2703,6 +2873,7 @@ body {
   border-top: 1px dashed var(--border);
   padding-top: 0.85rem;
 }
+
 .sources-toggle {
   display: flex;
   align-items: center;
@@ -2717,6 +2888,7 @@ body {
   transition: color 160ms ease;
 }
 .sources-toggle:hover { color: var(--text-dim); }
+
 .sources-count {
   font-family: var(--mono);
   background: var(--surface-3);
@@ -2727,16 +2899,18 @@ body {
   letter-spacing: 0;
   margin-left: 0.2rem;
 }
+
 .sources {
   margin-top: 0.55rem;
   padding: 0.65rem 0.75rem;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgb(0 0 0 / 30%);
   border: 1px solid var(--border-soft);
   border-radius: 2px;
   font-family: var(--mono);
   font-size: 0.72rem;
 }
 .source-file + .source-file { margin-top: 0.45rem; }
+
 .source-name {
   display: inline-flex;
   align-items: center;
@@ -2751,6 +2925,7 @@ body {
 }
 .source-name:hover { background: var(--surface-2); color: var(--accent-bright); }
 .source-name-text { font-size: 0.72rem; }
+
 .source-preview {
   display: block;
   margin: 0.5rem 0 0.25rem 1.1rem;
@@ -2760,7 +2935,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 2px;
   background: #000;
-  box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 30px -8px rgb(0 0 0 / 50%);
 }
 
 /* ─── Page Nav (Matches / Settings) ──────────────────────── */
@@ -2772,6 +2947,7 @@ body {
   gap: 1.8rem;
   position: relative;
 }
+
 .page-nav::before {
   /* Faint baseline that the active tab's underline sits on. */
   content: '';
@@ -2780,6 +2956,7 @@ body {
   height: 1px;
   background: var(--hairline);
 }
+
 .nav-tab {
   position: relative;
   background: transparent;
@@ -2797,6 +2974,7 @@ body {
   gap: 0.55rem;
   transition: color 200ms ease;
 }
+
 .nav-tab-num {
   font-family: var(--mono);
   font-size: 0.65rem;
@@ -2811,6 +2989,7 @@ body {
 .nav-tab:hover .nav-tab-num { color: var(--text-faint); }
 .nav-tab.active { color: var(--text); }
 .nav-tab.active .nav-tab-num { color: var(--accent); }
+
 .nav-tab.active::after {
   content: '';
   position: absolute;
@@ -2821,6 +3000,7 @@ body {
   border-radius: 1px;
   animation: nav-underline 280ms cubic-bezier(0.16, 1, 0.3, 1);
 }
+
 @keyframes nav-underline {
   from { transform: scaleX(0); transform-origin: left; opacity: 0; }
   to   { transform: scaleX(1); opacity: 1; }
@@ -2843,6 +3023,7 @@ body {
   padding-bottom: 1.4rem;
   border-bottom: 1px dashed var(--border);
 }
+
 .settings-eyebrow {
   font-family: var(--mono);
   font-size: 0.65rem;
@@ -2851,6 +3032,7 @@ body {
   letter-spacing: 0.24em;
   margin-bottom: 0.45rem;
 }
+
 .settings-heading {
   font-family: var(--display);
   font-weight: 700;
@@ -2861,6 +3043,7 @@ body {
   text-transform: uppercase;
   max-width: 60ch;
 }
+
 .settings-heading em {
   font-style: normal;
   color: var(--accent-text);
@@ -2885,6 +3068,7 @@ body {
   border-bottom: 1px solid var(--brand-grey);
   position: relative;
 }
+
 .section-header::after {
   /* Small orange tick at the right end of the section divider — a
      decorative tactical mark, like a registration cue on a film strip. */
@@ -2895,6 +3079,7 @@ body {
   background: var(--accent);
   box-shadow: 0 0 12px var(--accent-glow);
 }
+
 .section-num {
   font-family: var(--display);
   font-weight: 900;
@@ -2905,6 +3090,7 @@ body {
   font-feature-settings: "tnum";
   transform: translateY(2px);
 }
+
 .section-slash {
   font-family: var(--display);
   font-weight: 800;
@@ -2915,6 +3101,7 @@ body {
   transform: translateY(2px) skewX(-8deg);
   text-shadow: 0 0 14px var(--accent-glow);
 }
+
 .section-title {
   font-family: var(--display);
   font-weight: 800;
@@ -2930,6 +3117,7 @@ body {
   display: flex;
   flex-direction: column;
 }
+
 .setting-row {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -2942,6 +3130,7 @@ body {
 }
 .setting-row:last-child { border-bottom: none; }
 .setting-row:hover { background: var(--surface); }
+
 .setting-row::before {
   /* Subtle left tick that brightens on hover — feels like a config
      row in an old terminal config screen. */
@@ -2954,12 +3143,14 @@ body {
   border-radius: 50%;
   transition: background 200ms ease, box-shadow 200ms ease;
 }
+
 .setting-row:hover::before {
   background: var(--accent);
   box-shadow: 0 0 10px var(--accent-glow);
 }
 
 .setting-info { min-width: 0; }
+
 .setting-label {
   font-family: var(--display);
   font-weight: 700;
@@ -2970,16 +3161,19 @@ body {
   margin-bottom: 0.3rem;
   line-height: 1;
 }
+
 .setting-desc {
   font-size: 0.83rem;
   color: var(--text-dim);
   line-height: 1.5;
   max-width: 56ch;
 }
+
 .setting-desc strong {
   color: var(--text);
   font-weight: 600;
 }
+
 .setting-desc code {
   font-family: var(--mono);
   font-size: 0.78rem;
@@ -3000,6 +3194,7 @@ body {
   letter-spacing: 0.04em;
   font-feature-settings: "tnum";
 }
+
 .meta-dot {
   width: 6px; height: 6px;
   border-radius: 50%;
@@ -3007,6 +3202,7 @@ body {
   box-shadow: 0 0 8px var(--win-line);
   animation: pulse-dot 2.4s ease-in-out infinite;
 }
+
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.55; transform: scale(0.85); }
@@ -3019,6 +3215,7 @@ body {
   gap: 0.55rem;
   min-width: 0;
 }
+
 .setting-value {
   font-family: var(--mono);
   font-size: 0.78rem;
@@ -3043,12 +3240,14 @@ body {
   user-select: none;
   position: relative;
 }
+
 .big-switch input {
   position: absolute;
   opacity: 0;
   pointer-events: none;
   width: 0; height: 0;
 }
+
 .big-switch-track {
   position: relative;
   width: 56px; height: 30px;
@@ -3057,6 +3256,7 @@ body {
   border: 1px solid var(--border-strong);
   transition: background 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
 }
+
 .big-switch-knob {
   position: absolute;
   top: 2px; left: 2px;
@@ -3068,16 +3268,19 @@ body {
     background 240ms ease,
     box-shadow 240ms ease;
 }
+
 .big-switch.on .big-switch-track {
   background: var(--accent-soft);
   border-color: var(--accent);
   box-shadow: 0 0 18px -2px var(--accent-glow);
 }
+
 .big-switch.on .big-switch-track .big-switch-knob {
   transform: translateX(26px);
   background: var(--accent);
   box-shadow: 0 0 14px var(--accent-glow);
 }
+
 .big-switch-state {
   font-family: var(--mono);
   font-size: 0.7rem;
@@ -3088,9 +3291,11 @@ body {
   min-width: 3.6rem;
   transition: color 220ms ease;
 }
+
 .big-switch.on .big-switch-state {
   color: var(--accent);
 }
+
 .big-switch:focus-within .big-switch-track {
   outline: none;
   box-shadow: 0 0 0 2px var(--accent-soft), 0 0 18px -2px var(--accent-glow);
@@ -3103,6 +3308,7 @@ body {
   font-size: 0.85rem;
   letter-spacing: 0.06em;
 }
+
 .btn.primary.big .btn-dot {
   width: 7px; height: 7px;
 }
@@ -3114,9 +3320,10 @@ body {
    clear something is broken. */
 
 @keyframes alert-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 1px var(--loss) inset, 0 14px 36px -14px rgba(0, 0, 0, 0.55), 0 0 0 0 var(--loss-soft); }
-  50%      { opacity: 1; box-shadow: 0 0 0 1px var(--loss) inset, 0 14px 36px -14px rgba(0, 0, 0, 0.55), 0 0 0 6px transparent; }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 1px var(--loss) inset, 0 14px 36px -14px rgb(0 0 0 / 55%), 0 0 0 0 var(--loss-soft); }
+  50%      { opacity: 1; box-shadow: 0 0 0 1px var(--loss) inset, 0 14px 36px -14px rgb(0 0 0 / 55%), 0 0 0 6px transparent; }
 }
+
 @keyframes alert-icon-pulse {
   0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 var(--loss)); }
   50%      { transform: scale(1.08); filter: drop-shadow(0 0 8px var(--loss)); }
@@ -3133,11 +3340,12 @@ body {
   background: linear-gradient(180deg, var(--brand-grey) 0%, #3a3a3a 100%);
   border-radius: 2px;
   border: 1px solid var(--loss);
-  box-shadow: 0 14px 36px -14px rgba(0, 0, 0, 0.55), 0 0 0 0 var(--loss-soft);
+  box-shadow: 0 14px 36px -14px rgb(0 0 0 / 55%), 0 0 0 0 var(--loss-soft);
   overflow: hidden;
   isolation: isolate;
   animation: alert-pulse 2.6s ease-in-out infinite;
 }
+
 .system-alert::before {
   /* Solid loss bar down the left edge — the "alarm strip". */
   content: '';
@@ -3147,6 +3355,7 @@ body {
   background: var(--loss);
   box-shadow: 0 0 14px var(--loss-line);
 }
+
 .system-alert-stripes {
   /* Hazard-tape diagonal stripes layered just inside the alarm strip.
      Sits behind everything else, masked to fade into the body so the
@@ -3157,7 +3366,7 @@ body {
   background:
     repeating-linear-gradient(
       -45deg,
-      rgba(255, 90, 115, 0.22) 0 10px,
+      rgb(255 90 115 / 22%) 0 10px,
       transparent 10px 22px
     );
   mask-image: linear-gradient(90deg, black 0%, black 38%, transparent 100%);
@@ -3178,6 +3387,7 @@ body {
 .system-alert-body {
   min-width: 0;
 }
+
 .system-alert-eyebrow {
   font-family: var(--mono);
   font-size: 0.66rem;
@@ -3187,6 +3397,7 @@ body {
   color: var(--loss);
   margin-bottom: 0.3rem;
 }
+
 .system-alert-title {
   font-family: var(--display);
   font-weight: 800;
@@ -3201,6 +3412,7 @@ body {
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
 .system-alert-path {
   font-family: var(--mono);
   font-size: 0.78rem;
@@ -3208,20 +3420,22 @@ body {
   letter-spacing: 0;
   text-transform: none;
   color: #f5f3ee;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgb(0 0 0 / 40%);
   padding: 0.15rem 0.45rem;
   border-radius: 2px;
   word-break: break-all;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgb(255 255 255 / 8%);
 }
+
 .system-alert-desc {
   font-size: 0.83rem;
-  color: rgba(245, 243, 238, 0.78);
+  color: rgb(245 243 238 / 78%);
   line-height: 1.5;
   max-width: 64ch;
 }
 
 .system-alert-actions { display: flex; flex-shrink: 0; }
+
 .btn.alert-cta {
   display: inline-flex;
   align-items: center;
@@ -3237,10 +3451,11 @@ body {
   text-transform: uppercase;
   border-radius: 2px;
   cursor: pointer;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset, 0 6px 22px -8px var(--loss-line);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 25%) inset, 0 6px 22px -8px var(--loss-line);
   transition: transform 140ms ease, filter 140ms ease;
 }
 .btn.alert-cta:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
 .alert-cta-arrow {
   font-family: var(--display);
   font-weight: 900;
@@ -3251,6 +3466,7 @@ body {
 
 [data-theme="light"] .system-alert {
   background: linear-gradient(180deg, var(--brand-grey) 0%, #3a3a3a 100%);
+
   /* Stays dark in light mode — system alerts feel right as a dark
      overlay regardless of theme (think "warning sticker"). */
 }
@@ -3275,22 +3491,26 @@ body {
 }
 .engine-status.ok    { border-color: var(--win-line); background: var(--win-soft); }
 .engine-status.fail  { border-color: var(--loss-line); background: var(--loss-soft); }
+
 .engine-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
   background: var(--text-faint);
   flex-shrink: 0;
 }
+
 .engine-status.ok .engine-dot {
   background: var(--win);
   box-shadow: 0 0 10px var(--win-line);
   animation: pulse-dot 2.4s ease-in-out infinite;
 }
+
 .engine-status.fail .engine-dot {
   background: var(--loss);
   box-shadow: 0 0 10px var(--loss-line);
   animation: pulse-dot 1.4s ease-in-out infinite;
 }
+
 .engine-state {
   font-family: var(--mono);
   font-size: 0.7rem;
@@ -3300,6 +3520,7 @@ body {
 }
 .engine-status.ok .engine-state   { color: var(--win); }
 .engine-status.fail .engine-state { color: var(--loss); }
+
 .engine-version {
   font-family: var(--mono);
   font-size: 0.72rem;
@@ -3309,6 +3530,7 @@ body {
   border-radius: 2px;
   font-feature-settings: "tnum";
 }
+
 .engine-path {
   font-family: var(--mono);
   font-size: 0.75rem;
@@ -3318,6 +3540,7 @@ body {
   flex: 1 1 auto;
   min-width: 0;
 }
+
 .engine-error {
   margin-top: 0.55rem;
   font-family: var(--body);
@@ -3326,6 +3549,7 @@ body {
   line-height: 1.5;
   max-width: 60ch;
 }
+
 .engine-meta {
   margin-top: 0.55rem;
   font-family: var(--mono);
@@ -3333,6 +3557,7 @@ body {
   color: var(--text-faint);
   letter-spacing: 0.04em;
 }
+
 .engine-meta code {
   font-family: var(--mono);
   font-size: 0.7rem;
@@ -3362,6 +3587,7 @@ body {
   text-decoration-color: var(--accent-soft);
   transition: text-decoration-color 200ms ease, color 200ms ease;
 }
+
 .link-btn:hover {
   text-decoration-color: var(--accent);
 }
@@ -3381,6 +3607,7 @@ body {
 .setting-meta.blocked {
   color: var(--loss);
 }
+
 .block-mark {
   font-size: 0.85rem;
   margin-right: 0.15rem;
@@ -3408,7 +3635,7 @@ body {
 
 /* ─── Responsive ─────────────────────────────────────────── */
 
-@media (max-width: 880px) {
+@media (width <= 880px) {
   .brand { font-size: 2.4rem; }
   .score-num { font-size: 2rem; }
   .scoreboard { gap: 1rem; }
@@ -3417,7 +3644,8 @@ body {
   .stat:nth-child(3) { border-right: none; }
   .stat:nth-child(n+4) { border-top: 1px solid var(--border); }
 }
-@media (max-width: 580px) {
+
+@media (width <= 580px) {
   .container { padding: 1.4rem 1rem 3rem; }
   .masthead { flex-direction: column; align-items: flex-start; }
   .masthead-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; gap: 0.6rem; }
@@ -3443,11 +3671,11 @@ body {
 [data-theme="light"] .match-map:hover,
 [data-theme="light"] .match-map.active { color: var(--accent-text); text-shadow: none; }
 [data-theme="light"] .hero-name { color: var(--accent-text); }
+
 [data-theme="light"] .hero-name:hover,
 [data-theme="light"] .hero-name.active { color: var(--accent-text); text-shadow: none; }
 [data-theme="light"] .empty-sub strong { color: var(--accent-text); }
 [data-theme="light"] .count strong { color: var(--accent-text); }
-[data-theme="light"] .source-name:hover { color: var(--accent-text); }
 [data-theme="light"] .chev.open { color: var(--accent-text); }
 [data-theme="light"] .length-mark { color: var(--accent-text); }
 [data-theme="light"] .control-deck { background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%); }
@@ -3455,25 +3683,30 @@ body {
 [data-theme="light"] .match.expanded { background: var(--surface-2); }
 [data-theme="light"] .stats { background: var(--surface); }
 [data-theme="light"] .stat { background: var(--surface); }
+
 /* The sources block is dim/console-y in dark mode; in light mode soften
    the inner dark background to a clean tonal step that still reads
    "monospace dossier" without the harsh black-on-light contrast. */
 [data-theme="light"] .sources { background: var(--surface-2); border-color: var(--border); }
 [data-theme="light"] .source-name { color: var(--text-dim); }
-[data-theme="light"] .source-name:hover { background: var(--surface-3); }
+[data-theme="light"] .source-name:hover { color: var(--accent-text); background: var(--surface-3); }
 [data-theme="light"] .source-preview { background: var(--surface-3); }
+
 /* Brand wordmark on the grey tile stays white-on-grey in both modes —
    the tile is dark in both themes, so no override needed. The corner
    tape stays subtle. */
 [data-theme="light"] .brand { color: #f5f3ee; }
+
 /* Theme toggle reads on light surface too. The .active state already
    uses --accent-soft + --accent which both adapt to the theme. */
 [data-theme="light"] .theme-toggle { background: var(--surface); }
+
 [data-theme="light"] .btn.primary {
   /* In light mode the dark text on bright orange still works (OW chip).
      Make it pop a touch more with a deeper shadow. */
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2) inset, 0 6px 22px -10px var(--accent-glow);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 20%) inset, 0 6px 22px -10px var(--accent-glow);
 }
+
 [data-theme="light"] .btn.primary:hover:not(:disabled) {
   background: var(--accent);
   filter: brightness(0.95);
@@ -3483,14 +3716,16 @@ body {
    stays dark in both themes (industrial sticker feel). Trigger surface
    needs slightly more contrast against the cream page background. */
 [data-theme="light"] .mf-trigger { background: var(--surface); }
+
 [data-theme="light"] .mf-trigger:hover,
 [data-theme="light"] .multi-filter.open .mf-trigger { background: var(--surface-2); }
 [data-theme="light"] .mf-placeholder { color: var(--text-faint); }
 [data-theme="light"] .mf-row.checked { background: var(--accent-soft); color: var(--text); }
 [data-theme="light"] .mf-row-mark { background: #fff; }
+
 [data-theme="light"] .mf-panel {
   box-shadow:
-    0 24px 60px -18px rgba(74, 74, 74, 0.45),
+    0 24px 60px -18px rgb(74 74 74 / 45%),
     0 0 0 1px var(--accent-soft);
 }
 [data-theme="light"] .mf-search { background: var(--surface-3); }

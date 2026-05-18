@@ -174,10 +174,10 @@ func RunServer(a *app.App, assets embed.FS) {
 			case <-r.Context().Done():
 				return
 			case event := <-ch:
-				fmt.Fprintf(w, "event: %s\ndata: {}\n\n", event)
+				_, _ = fmt.Fprintf(w, "event: %s\ndata: {}\n\n", event)
 				flusher.Flush()
 			case <-ticker.C:
-				fmt.Fprintf(w, ": keepalive\n\n")
+				_, _ = fmt.Fprintf(w, ": keepalive\n\n")
 				flusher.Flush()
 			}
 		}
