@@ -18,8 +18,8 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 
 | Tag | Entry point | CGo | Description |
 |---|---|---|---|
-| *(default)* | `main.go` + `app_wails.go` | Yes | Full Wails desktop app |
-| `serveronly` | `main_server.go` + `app_server.go` | No | Headless HTTP server on `127.0.0.1:7000` |
+| *(default)* | `main.go` + `pkg/app/app_wails.go` | Yes | Full Wails desktop app |
+| `serveronly` | `main_server.go` + `pkg/app/app_server.go` | No | Headless HTTP server on `127.0.0.1:7000` |
 | *(none — both)* | `assets.go` | No | `//go:embed all:frontend/dist` — embedded FS shared by both variants |
 
 | Command | Purpose |
@@ -39,6 +39,16 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `bash -n scripts/X.sh` | Syntax-check a shell script. |
 | `brew bundle` | Install Tesseract, Go toolchain, Podman, etc. from `Brewfile`. **Wails CLI must be installed separately**: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`. |
 
+**Package layout (`pkg/`)**:
+
+| Package | Contents |
+|---|---|
+| `pkg/app` | `App` struct, settings, match merging, `SSEHub`, Wails dialog methods |
+| `pkg/cmd` | `RunWails` (Wails init) and `RunServer` (HTTP server + REST API) |
+| `pkg/db` | SQLite `Init()` + `DB` variable |
+| `pkg/metrics` | Prometheus `Collector` + `Server` |
+| `pkg/parser` | OCR dispatcher, all screenshot parsers, Tesseract exec |
+
 `Dockerfile.build` has 11 named stages. Stages 1–6 are the Wails builds (need CGo + WebView libs). Stages 7–11 are the `serveronly` builds — pure Go, `CGO_ENABLED=0`, cross-compiled on Linux for all three OS targets. The server stages inherit from `go-base` (module deps already downloaded) and need no apt packages.
 
 **Environment variable overrides** (all optional, mainly for debugging):
@@ -51,7 +61,7 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 
 There are no Go unit tests in-tree. Ad-hoc verification has historically
 been done by writing a transient `x*_test.go` in the repo root that drives
-`app.startup` + `app.ParseScreenshots` + `app.GetMatchResults`, running it
+`app.Startup` + `app.ParseScreenshots` + `app.GetMatchResults` (import `recall/pkg/app`), running it
 with `go test -run ... -v`, and deleting the file. The
 `/tmp/owm_test/` directory has been used for throwaway harness scripts.
 
@@ -63,7 +73,7 @@ screenshots/*.png
       ▼  (Tesseract via parser.ParseScreenshot, dispatched per screenshot type)
 parser.MatchResult
       │
-      ▼  (app.go: mergeByTimestamp → splitByMatchMetadata → mergeByStatsSignature → findMergeIntoExisting)
+      ▼  (pkg/app/app.go: mergeByTimestamp → splitByMatchMetadata → mergeByStatsSignature → findMergeIntoExisting)
 SQLite match_results       ← source of truth
       │
       ├──→ Wails GetMatchResults() ──→ Vue UI (App.vue)
@@ -74,14 +84,14 @@ SQLite match_results       ← source of truth
 **SQLite is the source of truth.** The Prometheus collector reads it on
 every scrape; nothing else writes to the TSDB. Filters (e.g.
 competitive-only) live at the metrics boundary in
-`backend/metrics/metrics.go::Collect`, **not** in the parser or DB — so
+`pkg/metrics/metrics.go::Collect`, **not** in the parser or DB — so
 quickplay matches are visible in the Wails UI but never reach Grafana.
 
 ## How match merging works (the hard part)
 
 A single match produces 3-5 screenshots (SUMMARY, TEAMS, PERSONAL ×N
 heroes, optional rank screen). Each populates a disjoint subset of fields
-on `parser.MatchResult`. `app.go` merges them into one DB row via three
+on `parser.MatchResult`. `pkg/app/app.go` merges them into one DB row via three
 sequential passes:
 
 1. **`mergeByTimestamp`** — groups screenshots whose filename timestamps
@@ -106,7 +116,7 @@ adding one new screenshot to an existing match's group folds it in.
 hero-keyed merge for `heroes_played` (so each hero's stats stay distinct
 across multi-hero matches).
 
-## Per-screenshot-type parsers (`backend/parser/parser.go`)
+## Per-screenshot-type parsers (`pkg/parser/parser.go`)
 
 `ParseScreenshot` dispatches by detector probes:
 
@@ -143,7 +153,7 @@ CGo binding.
   fails to read PNGs at `/tmp/...` paths but works at `/private/tmp/...`.
   Affects debug runs only — production uses `os.MkdirTemp`.
 
-## Database layer (`backend/db/db.go`)
+## Database layer (`pkg/db/db.go`)
 
 Single `match_results` table, explicit columns for every scalar field on
 `MatchResult`, JSON blobs for `heroes_played`, `performance`, `modifiers`,
@@ -151,7 +161,7 @@ Single `match_results` table, explicit columns for every scalar field on
 EXISTS` — **column changes require deleting `recall.db` and re-parsing,
 no migrations**.
 
-The DB lives at `<appDataDir>/db/recall.db` where `appDataDir()` (in `app.go`)
+The DB lives at `<appDataDir>/db/recall.db` where `appDataDir()` in `pkg/app/app.go`
 resolves to the platform user-config directory:
 
 | OS | Path |
@@ -168,7 +178,7 @@ The `parsed_at` column is the row's insert/update time, not the match's
 time — match time comes from `date` + `finished_at` (SUMMARY) or the
 match_key timestamp prefix (fallback).
 
-## Metrics layer (`backend/metrics/metrics.go`)
+## Metrics layer (`pkg/metrics/metrics.go`)
 
 Custom `prometheus.Collector` whose `Collect()` reads SQLite via a
 `Reader` closure on every scrape. Every match emits N samples
@@ -187,7 +197,7 @@ bind**. `Start()` listens in a goroutine; `Stop()` does a 2 s graceful
 shutdown. `http.Server` can't be reused after `Shutdown`, so each
 enable→disable→enable cycle constructs a fresh `Server`.
 
-## App shell (`app.go`, `app_wails.go`, `app_server.go`)
+## App shell (`pkg/app/`)
 
 `App` owns:
 - `settings` (`<appDataDir>/settings.json`): screenshots dir, tesseract path, prometheus
@@ -201,25 +211,28 @@ enable→disable→enable cycle constructs a fresh `Server`.
   `ParseScreenshots` and calls `a.emitParseComplete()`.
 - `parseMu` serializes `ParseScreenshots` (manual click + watcher fire
   can't overlap and race on the parsed-files set).
-- `sseHub *sseHub` — non-nil in server mode; the SSE hub that broadcasts
+- `SSEHub *SSEHub` — non-nil in server mode; the SSE hub that broadcasts
   `parse-complete` events to connected browser tabs.
 
 **Build-tag split** — methods that touch the Wails runtime live in separate files:
 
 | File | Tag | Contains |
 |---|---|---|
-| `app.go` | *(none)* | All portable App methods; calls `a.emitParseComplete()` (abstract) |
-| `app_wails.go` | `!serveronly` | `emitParseComplete` (wruntime.EventsEmit + sseHub), `PickTesseractBinary`, `PickScreenshotsDir` |
-| `app_server.go` | `serveronly` | `emitParseComplete` (sseHub only), stub errors for the two dialog methods |
+| `pkg/app/app.go` | *(none)* | All portable App methods; calls `a.emitParseComplete()` (abstract) |
+| `pkg/app/app_wails.go` | `!serveronly` | `emitParseComplete` (wruntime.EventsEmit + SSEHub), `PickTesseractBinary`, `PickScreenshotsDir` |
+| `pkg/app/app_server.go` | `serveronly` | `emitParseComplete` (SSEHub only), stub errors for the two dialog methods |
+| `pkg/app/sse.go` | *(none)* | Exported `SSEHub` type with `Subscribe/Unsubscribe/Broadcast` |
 
-**Wails-bound methods (called from Vue via `wailsjs/go/main/App`)**:
+**Wails-bound methods (called from Vue via `wailsjs/go/app/App`)**:
 `ParseScreenshots`, `GetMatchResults`, `GetScreenshotsDir`,
 `PickScreenshotsDir`, `GetPrometheusEnabled`, `SetPrometheusEnabled`,
 `GetWatchEnabled`, `SetWatchEnabled`,
 `GetTesseractStatus`, `SetTesseractPath`, `PickTesseractBinary`,
 `ResetTesseractPath`.
 
-**HTTP server mode** (`server.go` — `runServer(app *App)`): called when
+**App constructor**: `app.New()` in `pkg/app` (was `NewApp()` in root).
+
+**HTTP server mode** (`pkg/cmd/server.go` — `RunServer(a *app.App, assets embed.FS)`): called when
 `-s`/`--server` is passed to the Wails binary, or always when compiled
 `serveronly`. Starts `net/http` on `127.0.0.1:7000`, serves the embedded
 frontend, exposes every App method as a JSON REST endpoint under `/api/`,
@@ -303,12 +316,12 @@ case).
   unexported `heroRoles` map.
 - **Frontend imports from `'./api.js'`** (not directly from wailsjs).
   `api.js` is a transport-agnostic shim: in Wails mode it delegates to
-  `window['go']['main']['App']`; in browser/server mode it uses
+  `window['go']['app']['App']` (package is now `app`, not `main`); in browser/server mode it uses
   `fetch('/api/...')` and `EventSource('/api/events')`. Adding a new exported
-  method on `App` is a **three-step** process: (1) add the method to `app.go`,
-  (2) run `wails dev` to regenerate `wailsjs/go/main/App.js`, (3) add the
-  corresponding wrapper to `frontend/src/api.js` — both the Wails delegation
-  path (`window['go']…`) and the `fetch` path. Skipping step 3 silently breaks
+  method on `App` is a **three-step** process: (1) add the method to `pkg/app/app.go`,
+  (2) run `wails dev` to regenerate `wailsjs/go/app/App.js` (delete old `wailsjs/go/main/` if present — the package moved from `main`→`app` and the stale bindings will not be auto-replaced),
+  (3) add the corresponding wrapper to `frontend/src/api.js` — both the Wails delegation
+  path (`window['go']['app']…`) and the `fetch` path. Skipping step 3 silently breaks
   server mode while Wails mode continues to work.
 - **The `_screenshot/<filename>` URL prefix** is reserved for the
   on-disk screenshots handler. Don't reuse it for other dynamic assets.

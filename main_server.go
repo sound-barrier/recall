@@ -2,6 +2,11 @@
 
 package main
 
+import (
+	"recall/pkg/app"
+	"recall/pkg/cmd"
+)
+
 func main() {
-	runServer(NewApp())
+	cmd.RunServer(app.New(), assets)
 }

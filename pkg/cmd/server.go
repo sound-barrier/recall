@@ -1,7 +1,8 @@
-package main
+package cmd
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -9,59 +10,20 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
+
+	"recall/pkg/app"
 )
 
-// sseHub manages a set of Server-Sent Events subscribers. Each connected
-// browser tab gets its own buffered channel; broadcast delivers to all of
-// them without blocking.
-type sseHub struct {
-	mu      sync.Mutex
-	clients map[chan string]struct{}
-}
-
-func newSSEHub() *sseHub {
-	return &sseHub{clients: make(map[chan string]struct{})}
-}
-
-func (h *sseHub) subscribe() chan string {
-	ch := make(chan string, 8)
-	h.mu.Lock()
-	h.clients[ch] = struct{}{}
-	h.mu.Unlock()
-	return ch
-}
-
-func (h *sseHub) unsubscribe(ch chan string) {
-	h.mu.Lock()
-	delete(h.clients, ch)
-	h.mu.Unlock()
-	close(ch)
-}
-
-func (h *sseHub) broadcast(event string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	for ch := range h.clients {
-		select {
-		case ch <- event:
-		default: // drop if the client isn't reading fast enough
-		}
-	}
-}
-
-// runServer initialises the App without the Wails GUI and serves the
+// RunServer initialises the App without the Wails GUI and serves the
 // embedded frontend + a JSON REST API on 127.0.0.1:7000.
-func runServer(app *App) {
-	app.sseHub = newSSEHub()
+func RunServer(a *app.App, assets embed.FS) {
+	a.SSEHub = app.NewSSEHub()
 
-	// startup() loads settings, initialises SQLite, optionally starts
-	// the metrics server and file watcher. The context.Background()
-	// placeholder means a.ctx is set but wruntime.EventsEmit is guarded
-	// by the `a.ctx != nil` check that already exists in app.go.
-	app.startup(context.Background())
+	// Startup loads settings, initialises SQLite, optionally starts
+	// the metrics server and file watcher.
+	a.Startup(context.Background())
 
 	mux := http.NewServeMux()
 
@@ -71,14 +33,14 @@ func runServer(app *App) {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		rows, err := app.GetMatchResults()
+		rows, err := a.GetMatchResults()
 		writeJSON(w, rows, err)
 	})
 
 	mux.HandleFunc("/api/screenshots-dir", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			writeJSON(w, map[string]string{"path": app.GetScreenshotsDir()}, nil)
+			writeJSON(w, map[string]string{"path": a.GetScreenshotsDir()}, nil)
 		case http.MethodPost:
 			var body struct {
 				Path string `json:"path"`
@@ -87,8 +49,7 @@ func runServer(app *App) {
 				http.Error(w, "body must be {\"path\":\"...\"}", http.StatusBadRequest)
 				return
 			}
-			app.settings.ScreenshotsDir = body.Path
-			if err := saveSettings(app.settings); err != nil {
+			if err := a.SetScreenshotsDir(body.Path); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -103,7 +64,7 @@ func runServer(app *App) {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		err := app.ParseScreenshots()
+		err := a.ParseScreenshots()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -114,7 +75,7 @@ func runServer(app *App) {
 	mux.HandleFunc("/api/prometheus-enabled", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			writeJSON(w, map[string]bool{"enabled": app.GetPrometheusEnabled()}, nil)
+			writeJSON(w, map[string]bool{"enabled": a.GetPrometheusEnabled()}, nil)
 		case http.MethodPost:
 			var body struct {
 				Enabled bool `json:"enabled"`
@@ -123,7 +84,7 @@ func runServer(app *App) {
 				http.Error(w, "body must be {\"enabled\":bool}", http.StatusBadRequest)
 				return
 			}
-			if err := app.SetPrometheusEnabled(body.Enabled); err != nil {
+			if err := a.SetPrometheusEnabled(body.Enabled); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -136,7 +97,7 @@ func runServer(app *App) {
 	mux.HandleFunc("/api/watch-enabled", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			writeJSON(w, map[string]bool{"enabled": app.GetWatchEnabled()}, nil)
+			writeJSON(w, map[string]bool{"enabled": a.GetWatchEnabled()}, nil)
 		case http.MethodPost:
 			var body struct {
 				Enabled bool `json:"enabled"`
@@ -145,7 +106,7 @@ func runServer(app *App) {
 				http.Error(w, "body must be {\"enabled\":bool}", http.StatusBadRequest)
 				return
 			}
-			if err := app.SetWatchEnabled(body.Enabled); err != nil {
+			if err := a.SetWatchEnabled(body.Enabled); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -160,7 +121,7 @@ func runServer(app *App) {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		writeJSON(w, app.GetTesseractStatus(), nil)
+		writeJSON(w, a.GetTesseractStatus(), nil)
 	})
 
 	mux.HandleFunc("/api/tesseract-path", func(w http.ResponseWriter, r *http.Request) {
@@ -175,7 +136,7 @@ func runServer(app *App) {
 			http.Error(w, "body must be {\"path\":\"...\"}", http.StatusBadRequest)
 			return
 		}
-		st, err := app.SetTesseractPath(body.Path)
+		st, err := a.SetTesseractPath(body.Path)
 		writeJSON(w, st, err)
 	})
 
@@ -184,7 +145,7 @@ func runServer(app *App) {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		st, err := app.ResetTesseractPath()
+		st, err := a.ResetTesseractPath()
 		writeJSON(w, st, err)
 	})
 
@@ -201,8 +162,8 @@ func runServer(app *App) {
 			return
 		}
 
-		ch := app.sseHub.subscribe()
-		defer app.sseHub.unsubscribe(ch)
+		ch := a.SSEHub.Subscribe()
+		defer a.SSEHub.Unsubscribe(ch)
 
 		// Send a keepalive comment every 25 s so proxies don't close the connection.
 		ticker := time.NewTicker(25 * time.Second)
@@ -223,14 +184,10 @@ func runServer(app *App) {
 	})
 
 	// ── Screenshot image serving ────────────────────────────────────
-	// Reuse the existing handler which validates paths and streams from
-	// the configured screenshots directory.
-	mux.Handle("/_screenshot/", app.ScreenshotHandler())
+	mux.Handle("/_screenshot/", a.ScreenshotHandler())
 
 	// ── Static frontend assets ──────────────────────────────────────
-	// Serve the embedded frontend/dist just like Wails does. Sub into
-	// the "frontend/dist" sub-tree so paths like "/assets/index.js"
-	// resolve correctly.
+	// Sub into frontend/dist so paths like "/assets/index.js" resolve correctly.
 	sub, err := fs.Sub(assets, "frontend/dist")
 	if err != nil {
 		log.Fatalf("server: could not sub into embedded assets: %v", err)

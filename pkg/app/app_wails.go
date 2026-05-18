@@ -1,6 +1,6 @@
 //go:build !serveronly
 
-package main
+package app
 
 import (
 	"path/filepath"
@@ -16,8 +16,8 @@ func (a *App) emitParseComplete() {
 		wruntime.EventsEmit(a.ctx, "parse-complete")
 	}
 	// Also broadcast via SSE when the Wails binary is run with --server.
-	if a.sseHub != nil {
-		a.sseHub.broadcast("parse-complete")
+	if a.SSEHub != nil {
+		a.SSEHub.Broadcast("parse-complete")
 	}
 }
 
