@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import {
   ParseScreenshots,
   GetMatchResults,
@@ -9,6 +9,10 @@ import {
   SetPrometheusEnabled,
   GetWatchEnabled,
   SetWatchEnabled,
+  GetTesseractStatus,
+  SetTesseractPath,
+  PickTesseractBinary,
+  ResetTesseractPath,
 } from '../wailsjs/go/main/App'
 import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime'
 
@@ -25,6 +29,14 @@ const view = ref('matches')
 // "Last run · X ago" feedback under the Parse button on the settings
 // page. Persisted to localStorage so the timestamp survives reloads.
 const lastParsedAt = ref(null)
+
+// Tesseract status — mirrors the Go side's TesseractStatus struct.
+// When .found is false, a System Alert banner blocks the main views
+// and Parse/Watch controls disable themselves. Refreshed on mount and
+// after every path-changing call.
+const tesseractStatus = ref({ path: '', found: false, version: '', error: '', default: '' })
+const tesseractReady = computed(() => !!tesseractStatus.value?.found)
+const tesseractPickerBusy = ref(false)
 
 // Directory the parser reads from. Persisted in data/settings.json on
 // the Go side; we mirror the value here so the UI can render it next
@@ -75,23 +87,68 @@ const filterRefs = {
 }
 
 async function load() {
-  const [recs, dir, promOn, watchOn] = await Promise.all([
+  const [recs, dir, promOn, watchOn, tess] = await Promise.all([
     GetMatchResults(),
     GetScreenshotsDir(),
     GetPrometheusEnabled(),
     GetWatchEnabled(),
+    GetTesseractStatus(),
   ])
   records.value = recs ?? []
   screenshotsDir.value = dir || ''
   prometheusEnabled.value = !!promOn
   watchEnabled.value = !!watchOn
+  tesseractStatus.value = tess || { path: '', found: false, error: 'No status returned.' }
+}
+
+// Pick a Tesseract binary via the native file dialog. The Go side
+// handles persistence + re-validation; we only need to mirror the new
+// status into the UI.
+async function pickTesseractBinary() {
+  if (tesseractPickerBusy.value) return
+  tesseractPickerBusy.value = true
+  try {
+    const next = await PickTesseractBinary()
+    if (next) tesseractStatus.value = next
+  } catch (e) {
+    error.value = String(e)
+  } finally {
+    tesseractPickerBusy.value = false
+  }
+}
+
+// Reset to the platform default location (resolved server-side).
+async function resetTesseractPath() {
+  try {
+    const next = await ResetTesseractPath()
+    if (next) tesseractStatus.value = next
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+// Jump to the Settings view and scroll the Engine section into view.
+// Wired from the System Alert banner's "Fix in Settings →" CTA and
+// from the empty-state shortcut.
+async function gotoEngineSettings() {
+  view.value = 'settings'
+  await nextTick()
+  const el = document.getElementById('sec-engine')
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 // Toggle directory watching. Same pattern as Prometheus: Go owns the
 // actual side effect (fsnotify watcher start/stop), this just mirrors
-// state and rolls back on error.
+// state and rolls back on error. Enabling is gated on Tesseract being
+// available — turning Watch on with a broken OCR setup would just
+// queue silent failures.
 async function toggleWatch(e) {
   const next = e.target.checked
+  if (next && !tesseractReady.value) {
+    e.target.checked = false
+    error.value = 'Configure Tesseract in Settings → Engine before enabling Watch.'
+    return
+  }
   try {
     await SetWatchEnabled(next)
     watchEnabled.value = next
@@ -116,6 +173,10 @@ async function togglePrometheus(e) {
 }
 
 async function parse() {
+  if (!tesseractReady.value) {
+    error.value = 'Tesseract is not configured. Fix it in Settings → Engine.'
+    return
+  }
   error.value = ''
   loading.value = true
   try {
@@ -483,6 +544,34 @@ onBeforeUnmount(() => {
     <div class="grid-lines" aria-hidden="true"></div>
 
     <div class="container">
+      <!-- System Alert: blocks both Matches and Settings flow when the
+           OCR engine isn't usable. Renders ABOVE the masthead so it's
+           the first thing a user sees on a broken install. -->
+      <div v-if="!tesseractReady" class="system-alert" role="alert">
+        <div class="system-alert-stripes" aria-hidden="true"></div>
+        <div class="system-alert-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26">
+            <path d="M12 2.6 L22.4 20.5 L1.6 20.5 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <line x1="12" y1="10" x2="12" y2="15.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="12" cy="17.8" r="1.2" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="system-alert-body">
+          <div class="system-alert-eyebrow">System Halt · OCR Engine Offline</div>
+          <h3 class="system-alert-title">
+            Tesseract not detected
+            <span class="system-alert-path" :title="tesseractStatus.path">{{ tesseractStatus.path || '— no path —' }}</span>
+          </h3>
+          <p class="system-alert-desc">{{ tesseractStatus.error || 'Recall cannot OCR screenshots without Tesseract. Install it, or point Recall at the existing binary in Settings → Engine.' }}</p>
+        </div>
+        <div class="system-alert-actions">
+          <button class="btn alert-cta" @click="gotoEngineSettings">
+            <span class="alert-cta-arrow" aria-hidden="true">→</span>
+            Fix in Settings
+          </button>
+        </div>
+      </div>
+
       <header class="masthead">
         <div class="masthead-left">
           <div class="brandmark-tile">
@@ -572,12 +661,56 @@ onBeforeUnmount(() => {
       <section v-if="view === 'settings'" class="settings" key="settings">
         <header class="settings-intro">
           <p class="settings-eyebrow">System Configuration</p>
-          <h2 class="settings-heading">Recall is reading <em>{{ screenshotsDir || 'no folder yet' }}</em></h2>
+          <h2 v-if="!tesseractReady" class="settings-heading missing">Recall can't OCR until <em>Tesseract is located</em>.</h2>
+          <h2 v-else class="settings-heading">Recall is reading <em>{{ screenshotsDir || 'no folder yet' }}</em></h2>
         </header>
+
+        <div class="settings-section" id="sec-engine">
+          <div class="section-header">
+            <span class="section-num">01</span>
+            <span class="section-slash" aria-hidden="true">/</span>
+            <h3 class="section-title">Engine</h3>
+          </div>
+          <div class="setting-rows">
+            <div class="setting-row engine-row" :class="{ alert: !tesseractReady }">
+              <div class="setting-info">
+                <h4 class="setting-label">Tesseract Binary</h4>
+                <p class="setting-desc">
+                  Recall shells out to Tesseract to read text from your Overwatch screenshots. On macOS the Homebrew install lives under <code>/opt/homebrew/bin</code> (Apple Silicon) or <code>/usr/local/bin</code> (Intel); apt installs to <code>/usr/bin</code>; Windows installers put it in <code>Program Files\Tesseract-OCR</code>.
+                </p>
+                <div class="engine-status" :class="{ ok: tesseractReady, fail: !tesseractReady }">
+                  <span class="engine-dot" aria-hidden="true"></span>
+                  <span class="engine-state">{{ tesseractReady ? 'Detected' : 'Not Found' }}</span>
+                  <span v-if="tesseractReady && tesseractStatus.version" class="engine-version">v{{ tesseractStatus.version }}</span>
+                  <span class="engine-path mono" :title="tesseractStatus.path || ''">{{ tesseractStatus.path || '—' }}</span>
+                </div>
+                <p v-if="!tesseractReady && tesseractStatus.error" class="engine-error">{{ tesseractStatus.error }}</p>
+                <p
+                  v-if="tesseractStatus.default && tesseractStatus.default !== tesseractStatus.path"
+                  class="engine-meta"
+                >
+                  Default for this platform · <code>{{ tesseractStatus.default }}</code>
+                  · <button class="link-btn" @click="resetTesseractPath">Use default</button>
+                </p>
+              </div>
+              <div class="setting-control engine-control">
+                <button
+                  class="btn"
+                  :class="tesseractReady ? 'ghost' : 'primary'"
+                  @click="pickTesseractBinary"
+                  :disabled="tesseractPickerBusy"
+                >
+                  <span v-if="tesseractPickerBusy">Locating…</span>
+                  <span v-else>{{ tesseractReady ? 'Change Binary…' : 'Locate Tesseract…' }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div class="settings-section" id="sec-directories">
           <div class="section-header">
-            <span class="section-num">01</span>
+            <span class="section-num">02</span>
             <span class="section-slash" aria-hidden="true">/</span>
             <h3 class="section-title">Directories</h3>
           </div>
@@ -597,7 +730,7 @@ onBeforeUnmount(() => {
 
         <div class="settings-section" id="sec-ingest">
           <div class="section-header">
-            <span class="section-num">02</span>
+            <span class="section-num">03</span>
             <span class="section-slash" aria-hidden="true">/</span>
             <h3 class="section-title">Ingest</h3>
           </div>
@@ -606,10 +739,19 @@ onBeforeUnmount(() => {
               <div class="setting-info">
                 <h4 class="setting-label">Watch Folder</h4>
                 <p class="setting-desc">Auto-parse new screenshots as they appear. Recall waits 60 seconds after the last new file, so a 3–4-screenshot post-match session collapses into a single parse.</p>
+                <p v-if="!tesseractReady" class="setting-meta blocked">
+                  <span class="block-mark" aria-hidden="true">⛔</span>
+                  Blocked — needs Tesseract.
+                </p>
               </div>
               <div class="setting-control">
-                <label class="big-switch" :class="{ on: watchEnabled }">
-                  <input type="checkbox" :checked="watchEnabled" @change="toggleWatch" />
+                <label class="big-switch" :class="{ on: watchEnabled, disabled: !tesseractReady }">
+                  <input
+                    type="checkbox"
+                    :checked="watchEnabled"
+                    @change="toggleWatch"
+                    :disabled="!tesseractReady"
+                  />
                   <span class="big-switch-track"><span class="big-switch-knob"></span></span>
                   <span class="big-switch-state">{{ watchEnabled ? 'Armed' : 'Off' }}</span>
                 </label>
@@ -620,13 +762,22 @@ onBeforeUnmount(() => {
               <div class="setting-info">
                 <h4 class="setting-label">Manual Parse</h4>
                 <p class="setting-desc">Scan the folder now, outside the watcher cycle. Idempotent — re-running won't duplicate matches you've already parsed.</p>
-                <p class="setting-meta" v-if="lastParsedAt">
+                <p class="setting-meta" v-if="!tesseractReady" :class="{ blocked: true }">
+                  <span class="block-mark" aria-hidden="true">⛔</span>
+                  Blocked — needs Tesseract.
+                </p>
+                <p class="setting-meta" v-else-if="lastParsedAt">
                   <span class="meta-dot"></span>
                   Last run · {{ formatRelativeTime(lastParsedAt) }} · {{ records.length }} match{{ records.length === 1 ? '' : 'es' }} on record
                 </p>
               </div>
               <div class="setting-control">
-                <button class="btn primary big" @click="parse" :disabled="loading">
+                <button
+                  class="btn primary big"
+                  @click="parse"
+                  :disabled="loading || !tesseractReady"
+                  :title="!tesseractReady ? 'Locate Tesseract in section 01 / Engine first.' : ''"
+                >
                   <span class="btn-dot"></span>
                   <span v-if="loading">Parsing…</span>
                   <span v-else>Run Parse</span>
@@ -638,7 +789,7 @@ onBeforeUnmount(() => {
 
         <div class="settings-section" id="sec-export">
           <div class="section-header">
-            <span class="section-num">03</span>
+            <span class="section-num">04</span>
             <span class="section-slash" aria-hidden="true">/</span>
             <h3 class="section-title">Export</h3>
           </div>
@@ -2464,6 +2615,292 @@ body {
 .btn.primary.big .btn-dot {
   width: 7px; height: 7px;
 }
+
+/* ─── System Alert banner ────────────────────────────────────
+   Shown when Tesseract isn't usable. Hazard-tape stripes on the left
+   read as caution without going full red — the brand-grey body keeps
+   it from screaming, while the loss-color edge + dot + CTA make it
+   clear something is broken. */
+
+@keyframes alert-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 1px var(--loss) inset, 0 14px 36px -14px rgba(0, 0, 0, 0.55), 0 0 0 0 var(--loss-soft); }
+  50%      { opacity: 1; box-shadow: 0 0 0 1px var(--loss) inset, 0 14px 36px -14px rgba(0, 0, 0, 0.55), 0 0 0 6px transparent; }
+}
+@keyframes alert-icon-pulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 var(--loss)); }
+  50%      { transform: scale(1.08); filter: drop-shadow(0 0 8px var(--loss)); }
+}
+
+.system-alert {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 1rem 1.2rem 1rem 1.4rem;
+  margin-bottom: 1.6rem;
+  background: linear-gradient(180deg, var(--brand-grey) 0%, #3a3a3a 100%);
+  border-radius: 2px;
+  border: 1px solid var(--loss);
+  box-shadow: 0 14px 36px -14px rgba(0, 0, 0, 0.55), 0 0 0 0 var(--loss-soft);
+  overflow: hidden;
+  isolation: isolate;
+  animation: alert-pulse 2.6s ease-in-out infinite;
+}
+.system-alert::before {
+  /* Solid loss bar down the left edge — the "alarm strip". */
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 6px;
+  background: var(--loss);
+  box-shadow: 0 0 14px var(--loss-line);
+}
+.system-alert-stripes {
+  /* Hazard-tape diagonal stripes layered just inside the alarm strip.
+     Sits behind everything else, masked to fade into the body so the
+     pattern reads as a tag/seal rather than wallpaper. */
+  position: absolute;
+  left: 6px; top: 0; bottom: 0;
+  width: 110px;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 90, 115, 0.22) 0 10px,
+      transparent 10px 22px
+    );
+  mask-image: linear-gradient(90deg, black 0%, black 38%, transparent 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.system-alert-icon {
+  color: var(--loss);
+  animation: alert-icon-pulse 2.4s ease-in-out infinite;
+  width: 26px; height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.2rem;
+}
+
+.system-alert-body {
+  min-width: 0;
+}
+.system-alert-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--loss);
+  margin-bottom: 0.3rem;
+}
+.system-alert-title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.3rem;
+  letter-spacing: -0.005em;
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: #f5f3ee;
+  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.system-alert-path {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #f5f3ee;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.15rem 0.45rem;
+  border-radius: 2px;
+  word-break: break-all;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.system-alert-desc {
+  font-size: 0.83rem;
+  color: rgba(245, 243, 238, 0.78);
+  line-height: 1.5;
+  max-width: 64ch;
+}
+
+.system-alert-actions { display: flex; flex-shrink: 0; }
+.btn.alert-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--loss);
+  color: #1a0608;
+  border: 1px solid var(--loss);
+  padding: 0.65rem 1rem;
+  font-family: var(--body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25) inset, 0 6px 22px -8px var(--loss-line);
+  transition: transform 140ms ease, filter 140ms ease;
+}
+.btn.alert-cta:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.alert-cta-arrow {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: 1.1rem;
+  transition: transform 200ms ease;
+}
+.btn.alert-cta:hover .alert-cta-arrow { transform: translateX(3px); }
+
+[data-theme="light"] .system-alert {
+  background: linear-gradient(180deg, var(--brand-grey) 0%, #3a3a3a 100%);
+  /* Stays dark in light mode — system alerts feel right as a dark
+     overlay regardless of theme (think "warning sticker"). */
+}
+
+/* ─── Engine status panel (Settings → 01 / Engine) ──────── */
+
+.engine-row { transition: background 220ms ease; }
+.engine-row.alert { background: var(--loss-soft); }
+.engine-row.alert::before { background: var(--loss); box-shadow: 0 0 10px var(--loss-line); }
+
+.engine-status {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.7rem;
+  padding: 0.45rem 0.7rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  max-width: 100%;
+}
+.engine-status.ok    { border-color: var(--win-line); background: var(--win-soft); }
+.engine-status.fail  { border-color: var(--loss-line); background: var(--loss-soft); }
+.engine-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex-shrink: 0;
+}
+.engine-status.ok .engine-dot {
+  background: var(--win);
+  box-shadow: 0 0 10px var(--win-line);
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+.engine-status.fail .engine-dot {
+  background: var(--loss);
+  box-shadow: 0 0 10px var(--loss-line);
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+.engine-state {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.engine-status.ok .engine-state   { color: var(--win); }
+.engine-status.fail .engine-state { color: var(--loss); }
+.engine-version {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  padding: 0.1rem 0.4rem;
+  background: var(--surface-3);
+  border-radius: 2px;
+  font-feature-settings: "tnum";
+}
+.engine-path {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  word-break: break-all;
+  letter-spacing: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.engine-error {
+  margin-top: 0.55rem;
+  font-family: var(--body);
+  font-size: 0.82rem;
+  color: var(--loss);
+  line-height: 1.5;
+  max-width: 60ch;
+}
+.engine-meta {
+  margin-top: 0.55rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+.engine-meta code {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  padding: 0.05rem 0.35rem;
+  border-radius: 2px;
+  color: var(--text-dim);
+}
+
+.engine-control {
+  align-items: flex-end;
+}
+
+/* Inline button styled as a text-link — used in the "Use default" cue. */
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--accent-soft);
+  transition: text-decoration-color 200ms ease, color 200ms ease;
+}
+.link-btn:hover {
+  text-decoration-color: var(--accent);
+}
+[data-theme="light"] .link-btn { color: var(--accent-text); }
+[data-theme="light"] .link-btn:hover { text-decoration-color: var(--accent-text); }
+
+/* Disabled state for big-switch (used by Watch when Tesseract is missing). */
+.big-switch.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.big-switch.disabled .big-switch-track { background: var(--surface-2); border-color: var(--border); }
+.big-switch.disabled .big-switch-knob { background: var(--text-mute); box-shadow: none; }
+
+/* "Blocked — needs Tesseract" meta line under Watch / Manual Parse
+   when those controls are gated. */
+.setting-meta.blocked {
+  color: var(--loss);
+}
+.block-mark {
+  font-size: 0.85rem;
+  margin-right: 0.15rem;
+  filter: saturate(0.85);
+}
+
+.settings-heading.missing em {
+  color: var(--loss);
+  background: var(--loss-soft);
+}
+[data-theme="light"] .settings-heading.missing em { color: var(--loss); }
 
 /* ─── Empty-state inline links ───────────────────────────── */
 

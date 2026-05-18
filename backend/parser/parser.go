@@ -15,7 +15,38 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
+
+// tesseractPath is the path or command name used to invoke Tesseract.
+// Defaults to a bare "tesseract" (PATH lookup) so unit tests and
+// command-line use keep working without any configuration. The Wails
+// app overrides this at startup via SetTesseractPath, sourcing the
+// value from data/settings.json.
+var (
+	tessPathMu sync.RWMutex
+	tessPath   = "tesseract"
+)
+
+// SetTesseractPath swaps the binary path the package will use for
+// subsequent OCR calls. Safe to call concurrently with parses; a
+// torn read across a path change yields either the old or new value,
+// both of which are valid choices for that particular invocation.
+func SetTesseractPath(p string) {
+	p = strings.TrimSpace(p)
+	if p == "" {
+		return
+	}
+	tessPathMu.Lock()
+	tessPath = p
+	tessPathMu.Unlock()
+}
+
+func getTesseractPath() string {
+	tessPathMu.RLock()
+	defer tessPathMu.RUnlock()
+	return tessPath
+}
 
 type MatchResult struct {
 	Map          string `json:"map"`
@@ -117,8 +148,9 @@ func HeroRole(hero string) string {
 }
 
 func ParseScreenshot(imagePath string) (*MatchResult, error) {
-	if _, err := exec.LookPath("tesseract"); err != nil {
-		return nil, errors.New("tesseract is required but not found on PATH (install with: brew install tesseract)")
+	tp := getTesseractPath()
+	if _, err := exec.LookPath(tp); err != nil {
+		return nil, fmt.Errorf("tesseract not available at %q — configure the binary in Settings → Engine (%w)", tp, err)
 	}
 	f, err := os.Open(imagePath)
 	if err != nil {
@@ -380,7 +412,7 @@ func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string
 		args = append(args, "-c", "tessedit_char_whitelist="+whitelist)
 	}
 	var stdout, stderr bytes.Buffer
-	cmd := exec.Command("tesseract", args...)
+	cmd := exec.Command(getTesseractPath(), args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

@@ -9,14 +9,22 @@ export function GetPrometheusEnabled():Promise<boolean>;
 
 export function GetScreenshotsDir():Promise<string>;
 
+export function GetTesseractStatus():Promise<main.TesseractStatus>;
+
 export function GetWatchEnabled():Promise<boolean>;
 
 export function ParseScreenshots():Promise<void>;
 
 export function PickScreenshotsDir():Promise<string>;
 
+export function PickTesseractBinary():Promise<main.TesseractStatus>;
+
+export function ResetTesseractPath():Promise<main.TesseractStatus>;
+
 export function ScreenshotHandler():Promise<http.Handler>;
 
 export function SetPrometheusEnabled(arg1:boolean):Promise<void>;
+
+export function SetTesseractPath(arg1:string):Promise<main.TesseractStatus>;
 
 export function SetWatchEnabled(arg1:boolean):Promise<void>;
