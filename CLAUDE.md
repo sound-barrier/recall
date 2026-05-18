@@ -14,19 +14,33 @@ they're good/bad at by hero/map/type.
 
 ## Build, run, dev
 
+Two binary flavours exist, selected by the `serveronly` Go build tag:
+
+| Tag | Entry point | CGo | Description |
+|---|---|---|---|
+| *(default)* | `main.go` + `app_wails.go` | Yes | Full Wails desktop app |
+| `serveronly` | `main_server.go` + `app_server.go` | No | Headless HTTP server on `127.0.0.1:7000` |
+
+`assets.go` (no tag) owns `//go:embed all:frontend/dist` — shared by both variants.
+
 | Command | Purpose |
 |---|---|
 | `make dev` | Hot-reload dev server (macOS only). Vite on `:5173`, Wails IPC dev on `:34115`. Auto-rebuilds Go on save. |
-| `make build-linux` | Linux/amd64 binary → `dist/linux/Recall` via Docker. |
-| `make build-windows` | Windows/amd64 binary → `dist/windows/Recall.exe` via Docker + mingw-w64. |
-| `make build-mac` | macOS universal `.app` → `dist/mac/Recall.app`. Must run on macOS. |
-| `make build-all-docker` | Linux + Windows only — no macOS SDK needed; good for CI. |
-| `go build ./...` | Compile-check the Go side without launching the GUI. Use this for quick CI-style sanity. |
+| `make build-linux` | Linux/amd64 Wails app → `dist/linux/Recall` via Docker. |
+| `make build-windows` | Windows/amd64 Wails app → `dist/windows/Recall.exe` via Docker + mingw-w64. |
+| `make build-mac` | macOS universal Wails `.app` → `dist/mac/Recall.app`. Must run on macOS. |
+| `make build-all-docker` | Linux + Windows Wails apps — no macOS SDK needed; good for CI. |
+| `make build-server-linux` | Linux/amd64 server binary → `dist/server-linux/Recall-server` via Docker. |
+| `make build-server-windows` | Windows/amd64 server binary → `dist/server-windows/Recall-server.exe` via Docker. |
+| `make build-server-mac` | macOS server binaries (arm64 + amd64) → `dist/server-mac/` via Docker (no Apple SDK needed — pure Go). |
+| `make build-server-all` | All three server builds via Docker. |
+| `go build ./...` | Compile-check Wails variant (default tag). |
+| `go build -tags serveronly ./...` | Compile-check server variant (no CGo, no Wails). |
 | `go get <pkg>` | Add a Go dep. (`wails dev` runs `go mod tidy` on startup.) |
 | `bash -n scripts/X.sh` | Syntax-check a shell script. |
 | `brew bundle` | Install Tesseract, Go toolchain, Podman, etc. from `Brewfile`. **Wails CLI must be installed separately**: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`. |
 
-`Dockerfile.build` is the multi-stage build file used by the `make build-linux/windows` targets. It has six named stages: `frontend-builder` (Node), `go-base` (Go + Wails CLI), `linux-builder`, `windows-builder`, `linux-export` (scratch), `windows-export` (scratch). The `-s` flag passed to `wails build` inside Docker skips the npm step because the frontend is pre-built in the `frontend-builder` stage and copied in.
+`Dockerfile.build` has 11 named stages. Stages 1–6 are the Wails builds (need CGo + WebView libs). Stages 7–11 are the `serveronly` builds — pure Go, `CGO_ENABLED=0`, cross-compiled on Linux for all three OS targets. The server stages inherit from `go-base` (module deps already downloaded) and need no apt packages.
 
 There are no Go unit tests in-tree. Ad-hoc verification has historically
 been done by writing a transient `x*_test.go` in the repo root that drives
@@ -158,19 +172,28 @@ bind**. `Start()` listens in a goroutine; `Stop()` does a 2 s graceful
 shutdown. `http.Server` can't be reused after `Shutdown`, so each
 enable→disable→enable cycle constructs a fresh `Server`.
 
-## Wails app shell (`app.go`)
+## App shell (`app.go`, `app_wails.go`, `app_server.go`)
 
 `App` owns:
-- `settings` (`data/settings.json`): screenshots dir, prometheus enabled,
+- `settings` (`data/settings.json`): screenshots dir, tesseract path, prometheus enabled,
   watch enabled. Each toggle is persisted to disk on change.
 - `metricsServer` (nil unless the Prometheus toggle is on).
 - File watcher state (`watcher`, `watchedDir`, `watchTimer`, `watchMu`)
   with a `watchDebounce = 60 * time.Second` debounce: any new
   `.png`/`.jpg` in the configured dir resets a timer; expiry runs
-  `ParseScreenshots` and fires the `parse-complete` Wails event so the
-  Vue side reloads.
+  `ParseScreenshots` and calls `a.emitParseComplete()`.
 - `parseMu` serializes `ParseScreenshots` (manual click + watcher fire
   can't overlap and race on the parsed-files set).
+- `sseHub *sseHub` — non-nil in server mode; the SSE hub that broadcasts
+  `parse-complete` events to connected browser tabs.
+
+**Build-tag split** — methods that touch the Wails runtime live in separate files:
+
+| File | Tag | Contains |
+|---|---|---|
+| `app.go` | *(none)* | All portable App methods; calls `a.emitParseComplete()` (abstract) |
+| `app_wails.go` | `!serveronly` | `emitParseComplete` (wruntime.EventsEmit + sseHub), `PickTesseractBinary`, `PickScreenshotsDir` |
+| `app_server.go` | `serveronly` | `emitParseComplete` (sseHub only), stub errors for the two dialog methods |
 
 **Wails-bound methods (called from Vue via `wailsjs/go/main/App`)**:
 `ParseScreenshots`, `GetMatchResults`, `GetScreenshotsDir`,
@@ -179,10 +202,18 @@ enable→disable→enable cycle constructs a fresh `Server`.
 `GetTesseractStatus`, `SetTesseractPath`, `PickTesseractBinary`,
 `ResetTesseractPath`.
 
+**HTTP server mode** (`server.go` — `runServer(app *App)`): called when
+`-s`/`--server` is passed to the Wails binary, or always when compiled
+`serveronly`. Starts `net/http` on `127.0.0.1:7000`, serves the embedded
+frontend, exposes every App method as a JSON REST endpoint under `/api/`,
+and streams `parse-complete` via `GET /api/events` (SSE). `PickScreenshotsDir`
+and `PickTesseractBinary` (native dialogs) are replaced by `POST /api/screenshots-dir`
+and `POST /api/tesseract-path` respectively; `api.js` in the frontend uses
+`window.prompt()` as a fallback when not in Wails.
+
 **Wails-bound HTTP handler**: `ScreenshotHandler()` serves
-`/_screenshot/<filename>` from the configured screenshots dir, wired
-into `main.go`'s `AssetServer.Handler`. Used by `<img>` previews in the
-Vue card detail.
+`/_screenshot/<filename>` from the configured screenshots dir — used by
+both the Wails `AssetServer.Handler` and the server-mode HTTP mux.
 
 ## Frontend (`frontend/src/App.vue`)
 
@@ -253,9 +284,13 @@ case).
 - **`parser.HeroRole(hero string)`** is the exported way to get a hero's
   role label from outside the parser package. Don't reach into the
   unexported `heroRoles` map.
-- **Frontend imports from `'../wailsjs/go/main/App'`** are auto-generated
-  by `wails dev` on rebuild — adding a new exported method on `App`
-  needs the dev server to regenerate them before the Vue side can use it.
+- **Frontend imports from `'./api.js'`** (not directly from wailsjs).
+  `api.js` is a transport-agnostic shim: in Wails mode it delegates to
+  `window['go']['main']['App']`; in browser/server mode it uses
+  `fetch('/api/...')` and `EventSource('/api/events')`. The underlying
+  `wailsjs/go/main/App.js` bindings are still auto-generated by `wails dev`
+  on rebuild — adding a new exported method on `App` still needs the dev
+  server to regenerate them, but the call sites in App.vue don't need to change.
 - **The `_screenshot/<filename>` URL prefix** is reserved for the
   on-disk screenshots handler. Don't reuse it for other dynamic assets.
 - **`set -u` not `-e`** in shell scripts that should keep going after an
