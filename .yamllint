@@ -1,0 +1,21 @@
+extends: default
+
+rules:
+  # GitHub Actions run: blocks and long label strings routinely exceed 80 chars.
+  line-length:
+    max: 120
+    level: warning
+
+  # --- prefix is optional for config files in this repo.
+  document-start: disable
+
+  # GitHub Actions uses true/false and bare `on:` as the trigger key (YAML 1.1
+  # interprets `on` as a truthy boolean, so we must allow it explicitly).
+  truthy:
+    allowed-values: ['true', 'false', 'on']
+    level: warning
+
+ignore: |
+  frontend/node_modules/
+  dist/
+  build/bin/

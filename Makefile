@@ -137,7 +137,7 @@ cloc: ## Count lines of source code (excludes deps, build artifacts, generated f
 	    --exclude-dir=node_modules,dist,build,wailsjs,data,recall,vendor \
 	    --not-match-f='(go\.sum|package-lock\.json)'
 
-lint: lint-go lint-js lint-css lint-html lint-docker ## Run all linters
+lint: lint-go lint-js lint-css lint-html lint-docker lint-yaml ## Run all linters
 
 lint-go: ## Lint Go source (golangci-lint, both build tags)
 	@echo "[ recall ] Linting Go (golangci-lint)…"
@@ -164,6 +164,11 @@ lint-docker: ## Lint Dockerfile.build (hadolint)
 	@echo "[ recall ] Linting Dockerfile (hadolint)…"
 	hadolint $(DOCKERFILE)
 	@echo "[ recall ] ✓  Dockerfile lint clean"
+
+lint-yaml: ## Lint YAML files (yamllint)
+	@echo "[ recall ] Linting YAML…"
+	yamllint .
+	@echo "[ recall ] ✓  YAML lint clean"
 
 fmt: ## Format Go source files
 	@echo "[ recall ] Formatting Go source files…"

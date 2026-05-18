@@ -27,6 +27,10 @@ brew "jq"
 # Linting tools (used by `make lint`).
 brew "golangci-lint"
 brew "hadolint"
+brew "yamllint"
+
+# Per-project environment variable loader (used with .envrc).
+brew "direnv"
 
 # Line-count tool (used by `make cloc`).
 brew "cloc"
