@@ -16,6 +16,16 @@ const records = ref([])
 const error = ref('')
 const loading = ref(false)
 
+// Which top-level view is shown: 'matches' (default — filter rail +
+// match cards) or 'settings' (config sections — directory, watch,
+// parse, Grafana export). Switched via the masthead nav tabs.
+const view = ref('matches')
+
+// Wall-clock time of the last successful manual parse, used to render
+// "Last run · X ago" feedback under the Parse button on the settings
+// page. Persisted to localStorage so the timestamp survives reloads.
+const lastParsedAt = ref(null)
+
 // Directory the parser reads from. Persisted in data/settings.json on
 // the Go side; we mirror the value here so the UI can render it next
 // to the Parse button.
@@ -111,11 +121,34 @@ async function parse() {
   try {
     await ParseScreenshots()
     await load()
+    lastParsedAt.value = Date.now()
+    try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {}
   } catch (e) {
     error.value = String(e)
   } finally {
     loading.value = false
   }
+}
+
+// Lightweight relative-time formatter for the "Last run" hint on
+// Settings. Not reactive to wall-clock ticks — re-renders happen
+// naturally on view/state changes, and stale "2 minutes ago" labels
+// on an idle Settings screen aren't worth a setInterval.
+function formatRelativeTime(ms) {
+  if (!ms) return ''
+  const diff = Date.now() - ms
+  if (diff < 0) return 'just now'
+  if (diff < 60_000) return 'just now'
+  if (diff < 3_600_000) {
+    const m = Math.floor(diff / 60_000)
+    return m === 1 ? '1 minute ago' : `${m} minutes ago`
+  }
+  if (diff < 86_400_000) {
+    const h = Math.floor(diff / 3_600_000)
+    return h === 1 ? '1 hour ago' : `${h} hours ago`
+  }
+  const d = Math.floor(diff / 86_400_000)
+  return d === 1 ? 'yesterday' : `${d} days ago`
 }
 
 // Open the native folder picker via Wails. The Go side persists the
@@ -427,8 +460,17 @@ onMounted(() => {
   try { stored = localStorage.getItem('recall.theme') } catch (_) {}
   if (stored === 'light' || stored === 'dark') themeMode.value = stored
   applyTheme(themeMode.value)
+
+  // Restore last-parse timestamp so the Settings page shows the right
+  // "Last run · …" hint immediately on launch, not just after a fresh
+  // parse in the current session.
+  try {
+    const v = localStorage.getItem('recall.lastParsedAt')
+    if (v) lastParsedAt.value = Number(v) || null
+  } catch (_) {}
+
   load()
-  EventsOn('parse-complete', () => { load() })
+  EventsOn('parse-complete', () => { load(); lastParsedAt.value = Date.now(); try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {} })
 })
 onBeforeUnmount(() => {
   EventsOff('parse-complete')
@@ -449,6 +491,28 @@ onBeforeUnmount(() => {
             <span class="brand-corner" aria-hidden="true"></span>
           </div>
           <p class="tagline">Personal Telemetry · Match Almanac</p>
+          <nav class="page-nav" role="tablist" aria-label="Primary">
+            <button
+              class="nav-tab"
+              :class="{ active: view === 'matches' }"
+              :aria-selected="view === 'matches'"
+              role="tab"
+              @click="view = 'matches'"
+            >
+              <span class="nav-tab-num">01</span>
+              <span class="nav-tab-label">Matches</span>
+            </button>
+            <button
+              class="nav-tab"
+              :class="{ active: view === 'settings' }"
+              :aria-selected="view === 'settings'"
+              role="tab"
+              @click="view = 'settings'"
+            >
+              <span class="nav-tab-num">02</span>
+              <span class="nav-tab-label">Settings</span>
+            </button>
+          </nav>
         </div>
         <div class="masthead-right">
           <button
@@ -482,7 +546,7 @@ onBeforeUnmount(() => {
             </span>
           </button>
           <div
-            v-if="records.length > 0"
+            v-if="records.length > 0 && view === 'matches'"
             class="scoreboard"
             title="Wins · Losses · Draws across the currently filtered matches"
           >
@@ -502,43 +566,107 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
-      <section class="control-deck">
-        <div class="deck-path" :title="screenshotsDir">
-          <span class="deck-eyebrow">Reading from</span>
-          <span class="deck-path-value">{{ screenshotsDir || 'No directory selected' }}</span>
+      <p v-if="error" class="error"><span class="error-tick">✕</span>{{ error }}</p>
+
+      <!-- ─── SETTINGS VIEW ────────────────────────────────────── -->
+      <section v-if="view === 'settings'" class="settings" key="settings">
+        <header class="settings-intro">
+          <p class="settings-eyebrow">System Configuration</p>
+          <h2 class="settings-heading">Recall is reading <em>{{ screenshotsDir || 'no folder yet' }}</em></h2>
+        </header>
+
+        <div class="settings-section" id="sec-directories">
+          <div class="section-header">
+            <span class="section-num">01</span>
+            <span class="section-slash" aria-hidden="true">/</span>
+            <h3 class="section-title">Directories</h3>
+          </div>
+          <div class="setting-rows">
+            <div class="setting-row">
+              <div class="setting-info">
+                <h4 class="setting-label">Screenshots Folder</h4>
+                <p class="setting-desc">Where Recall watches for new Overwatch screenshots. Click <strong>Change Folder</strong> to point it at a different directory.</p>
+              </div>
+              <div class="setting-control">
+                <span class="setting-value mono" :title="screenshotsDir">{{ screenshotsDir || '— Not selected —' }}</span>
+                <button class="btn ghost" @click="pickDir" :disabled="loading">Change Folder…</button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="deck-actions">
-          <button class="btn ghost" @click="pickDir" :disabled="loading">Change Folder</button>
-          <label
-            class="switch"
-            title="Auto-parse new screenshots as they appear. Waits 60 seconds after the last new file before parsing, so a typical 3–4-screenshot session collapses into one parse."
-          >
-            <input type="checkbox" :checked="watchEnabled" @change="toggleWatch" />
-            <span class="switch-track"><span class="switch-knob"></span></span>
-            <span class="switch-label">Watch Folder</span>
-          </label>
-          <label
-            class="switch"
-            title="Lets the Grafana dashboard read your matches over localhost:9091. Off by default — no network port is opened until you enable this."
-          >
-            <input type="checkbox" :checked="prometheusEnabled" @change="togglePrometheus" />
-            <span class="switch-track"><span class="switch-knob"></span></span>
-            <span class="switch-label">Stream to Grafana</span>
-          </label>
-          <button class="btn primary" @click="parse" :disabled="loading">
-            <span class="btn-dot"></span>
-            <span v-if="loading">Parsing…</span>
-            <span v-else>Parse Screenshots</span>
-          </button>
+
+        <div class="settings-section" id="sec-ingest">
+          <div class="section-header">
+            <span class="section-num">02</span>
+            <span class="section-slash" aria-hidden="true">/</span>
+            <h3 class="section-title">Ingest</h3>
+          </div>
+          <div class="setting-rows">
+            <div class="setting-row">
+              <div class="setting-info">
+                <h4 class="setting-label">Watch Folder</h4>
+                <p class="setting-desc">Auto-parse new screenshots as they appear. Recall waits 60 seconds after the last new file, so a 3–4-screenshot post-match session collapses into a single parse.</p>
+              </div>
+              <div class="setting-control">
+                <label class="big-switch" :class="{ on: watchEnabled }">
+                  <input type="checkbox" :checked="watchEnabled" @change="toggleWatch" />
+                  <span class="big-switch-track"><span class="big-switch-knob"></span></span>
+                  <span class="big-switch-state">{{ watchEnabled ? 'Armed' : 'Off' }}</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <h4 class="setting-label">Manual Parse</h4>
+                <p class="setting-desc">Scan the folder now, outside the watcher cycle. Idempotent — re-running won't duplicate matches you've already parsed.</p>
+                <p class="setting-meta" v-if="lastParsedAt">
+                  <span class="meta-dot"></span>
+                  Last run · {{ formatRelativeTime(lastParsedAt) }} · {{ records.length }} match{{ records.length === 1 ? '' : 'es' }} on record
+                </p>
+              </div>
+              <div class="setting-control">
+                <button class="btn primary big" @click="parse" :disabled="loading">
+                  <span class="btn-dot"></span>
+                  <span v-if="loading">Parsing…</span>
+                  <span v-else>Run Parse</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section" id="sec-export">
+          <div class="section-header">
+            <span class="section-num">03</span>
+            <span class="section-slash" aria-hidden="true">/</span>
+            <h3 class="section-title">Export</h3>
+          </div>
+          <div class="setting-rows">
+            <div class="setting-row">
+              <div class="setting-info">
+                <h4 class="setting-label">Stream to Grafana</h4>
+                <p class="setting-desc">Expose match history on <code>localhost:9091/metrics</code> so the bundled Prometheus container can scrape it. Off by default — no port is opened until you enable this.</p>
+              </div>
+              <div class="setting-control">
+                <label class="big-switch" :class="{ on: prometheusEnabled }">
+                  <input type="checkbox" :checked="prometheusEnabled" @change="togglePrometheus" />
+                  <span class="big-switch-track"><span class="big-switch-knob"></span></span>
+                  <span class="big-switch-state">{{ prometheusEnabled ? 'Live' : 'Off' }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <p v-if="error" class="error"><span class="error-tick">✕</span>{{ error }}</p>
+      <!-- ─── MATCHES VIEW (default) ───────────────────────────── -->
+      <div v-if="view === 'matches'" class="matches-view" key="matches">
 
       <div v-if="records.length === 0 && !loading" class="empty">
         <div class="empty-mark">◌</div>
         <p class="empty-title">No matches on record.</p>
-        <p class="empty-sub">Hit <strong>Parse Screenshots</strong> to scan your folder, or flip on <strong>Watch Folder</strong> to auto-ingest as you play.</p>
+        <p class="empty-sub">Head to <strong @click="view = 'settings'" class="empty-link">Settings → Run Parse</strong> to scan your screenshots folder, or flip on <strong @click="view = 'settings'" class="empty-link">Watch Folder</strong> there to auto-ingest as you play.</p>
       </div>
 
       <section v-if="records.length > 0" class="filter-rail">
@@ -811,6 +939,7 @@ onBeforeUnmount(() => {
           </div>
         </article>
       </div>
+      </div><!-- /.matches-view -->
     </div>
   </div>
 </template>
@@ -1992,6 +2121,363 @@ body {
   box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.5);
 }
 
+/* ─── Page Nav (Matches / Settings) ──────────────────────── */
+
+.page-nav {
+  margin-top: 1.1rem;
+  display: inline-flex;
+  align-items: stretch;
+  gap: 1.8rem;
+  position: relative;
+}
+.page-nav::before {
+  /* Faint baseline that the active tab's underline sits on. */
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: var(--hairline);
+}
+.nav-tab {
+  position: relative;
+  background: transparent;
+  border: none;
+  padding: 0.15rem 0 0.7rem;
+  cursor: pointer;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  transition: color 200ms ease;
+}
+.nav-tab-num {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: var(--text-mute);
+  transition: color 200ms ease;
+  font-feature-settings: "tnum";
+}
+.nav-tab-label { line-height: 1; }
+.nav-tab:hover { color: var(--text-dim); }
+.nav-tab:hover .nav-tab-num { color: var(--text-faint); }
+.nav-tab.active { color: var(--text); }
+.nav-tab.active .nav-tab-num { color: var(--accent); }
+.nav-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 14px var(--accent-glow);
+  border-radius: 1px;
+  animation: nav-underline 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes nav-underline {
+  from { transform: scaleX(0); transform-origin: left; opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+
+/* ─── Settings View ──────────────────────────────────────── */
+
+@keyframes view-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.settings, .matches-view {
+  animation: view-fade-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.settings-intro {
+  margin-top: 1.4rem;
+  margin-bottom: 2.4rem;
+  padding-bottom: 1.4rem;
+  border-bottom: 1px dashed var(--border);
+}
+.settings-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  margin-bottom: 0.45rem;
+}
+.settings-heading {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 2rem;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  color: var(--text);
+  text-transform: uppercase;
+  max-width: 60ch;
+}
+.settings-heading em {
+  font-style: normal;
+  color: var(--accent-text);
+  word-break: break-all;
+  background: var(--accent-soft);
+  padding: 0 0.25rem;
+  margin: 0 -0.05rem;
+  border-radius: 1px;
+}
+
+.settings-section {
+  margin-top: 2.6rem;
+}
+.settings-section:first-of-type { margin-top: 0; }
+
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  padding-bottom: 0.85rem;
+  margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--brand-grey);
+  position: relative;
+}
+.section-header::after {
+  /* Small orange tick at the right end of the section divider — a
+     decorative tactical mark, like a registration cue on a film strip. */
+  content: '';
+  position: absolute;
+  right: 0; bottom: -1px;
+  width: 28px; height: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+.section-num {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: 3rem;
+  color: var(--brand-grey);
+  letter-spacing: -0.03em;
+  line-height: 0.85;
+  font-feature-settings: "tnum";
+  transform: translateY(2px);
+}
+.section-slash {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 2.4rem;
+  color: var(--accent);
+  line-height: 0.85;
+  margin: 0 -0.15rem;
+  transform: translateY(2px) skewX(-8deg);
+  text-shadow: 0 0 14px var(--accent-glow);
+}
+.section-title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.85rem;
+  letter-spacing: -0.005em;
+  line-height: 0.85;
+  color: var(--text);
+  text-transform: uppercase;
+  transform: translateY(2px);
+}
+
+.setting-rows {
+  display: flex;
+  flex-direction: column;
+}
+.setting-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2.6rem;
+  padding: 1.35rem 0.6rem 1.35rem 0.2rem;
+  border-bottom: 1px solid var(--hairline);
+  position: relative;
+  transition: background 200ms ease;
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-row:hover { background: var(--surface); }
+.setting-row::before {
+  /* Subtle left tick that brightens on hover — feels like a config
+     row in an old terminal config screen. */
+  content: '';
+  position: absolute;
+  left: -10px; top: 50%;
+  transform: translateY(-50%);
+  width: 4px; height: 4px;
+  background: var(--border);
+  border-radius: 50%;
+  transition: background 200ms ease, box-shadow 200ms ease;
+}
+.setting-row:hover::before {
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.setting-info { min-width: 0; }
+.setting-label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+  line-height: 1;
+}
+.setting-desc {
+  font-size: 0.83rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  max-width: 56ch;
+}
+.setting-desc strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.setting-desc code {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  background: var(--surface-3);
+  padding: 0.05rem 0.35rem;
+  border-radius: 2px;
+  color: var(--accent-text);
+}
+
+.setting-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  font-feature-settings: "tnum";
+}
+.meta-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--win);
+  box-shadow: 0 0 8px var(--win-line);
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.85); }
+}
+
+.setting-control {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+  min-width: 0;
+}
+.setting-value {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  letter-spacing: 0;
+  text-align: right;
+  word-break: break-all;
+  max-width: 420px;
+  padding: 0.35rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+}
+
+/* ─── Big switch (settings-page toggle) ──────────────────── */
+
+.big-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+.big-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0; height: 0;
+}
+.big-switch-track {
+  position: relative;
+  width: 56px; height: 30px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  transition: background 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+}
+.big-switch-knob {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transition:
+    transform 260ms cubic-bezier(0.4, 0.0, 0.2, 1),
+    background 240ms ease,
+    box-shadow 240ms ease;
+}
+.big-switch.on .big-switch-track {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: 0 0 18px -2px var(--accent-glow);
+}
+.big-switch.on .big-switch-track .big-switch-knob {
+  transform: translateX(26px);
+  background: var(--accent);
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+.big-switch-state {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--text-faint);
+  min-width: 3.6rem;
+  transition: color 220ms ease;
+}
+.big-switch.on .big-switch-state {
+  color: var(--accent);
+}
+.big-switch:focus-within .big-switch-track {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-soft), 0 0 18px -2px var(--accent-glow);
+}
+
+/* ─── Primary button — big variant for the Settings parse CTA ─ */
+
+.btn.primary.big {
+  padding: 0.85rem 1.4rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+}
+.btn.primary.big .btn-dot {
+  width: 7px; height: 7px;
+}
+
+/* ─── Empty-state inline links ───────────────────────────── */
+
+.empty-link {
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+.empty-link:hover { border-bottom-color: var(--accent); }
+[data-theme="light"] .empty-link { color: var(--accent-text); }
+[data-theme="light"] .empty-link:hover { border-bottom-color: var(--accent-text); }
+
 /* ─── Responsive ─────────────────────────────────────────── */
 
 @media (max-width: 880px) {
@@ -2014,6 +2500,12 @@ body {
   .stat:nth-child(2n) { border-right: none !important; }
   .match-title-rhs { flex-wrap: wrap; }
   .match-map { font-size: 1.3rem; }
+  .setting-row { grid-template-columns: 1fr; gap: 0.85rem; }
+  .setting-control { align-items: flex-start; }
+  .setting-value { text-align: left; }
+  .section-num { font-size: 2.4rem; }
+  .section-title { font-size: 1.5rem; }
+  .settings-heading { font-size: 1.5rem; }
 }
 
 /* ─── Light-mode pinpoint overrides ──────────────────────────
