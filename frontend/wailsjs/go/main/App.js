@@ -14,6 +14,10 @@ export function GetScreenshotsDir() {
   return window['go']['main']['App']['GetScreenshotsDir']();
 }
 
+export function GetTesseractStatus() {
+  return window['go']['main']['App']['GetTesseractStatus']();
+}
+
 export function GetWatchEnabled() {
   return window['go']['main']['App']['GetWatchEnabled']();
 }
@@ -26,12 +30,24 @@ export function PickScreenshotsDir() {
   return window['go']['main']['App']['PickScreenshotsDir']();
 }
 
+export function PickTesseractBinary() {
+  return window['go']['main']['App']['PickTesseractBinary']();
+}
+
+export function ResetTesseractPath() {
+  return window['go']['main']['App']['ResetTesseractPath']();
+}
+
 export function ScreenshotHandler() {
   return window['go']['main']['App']['ScreenshotHandler']();
 }
 
 export function SetPrometheusEnabled(arg1) {
   return window['go']['main']['App']['SetPrometheusEnabled'](arg1);
+}
+
+export function SetTesseractPath(arg1) {
+  return window['go']['main']['App']['SetTesseractPath'](arg1);
 }
 
 export function SetWatchEnabled(arg1) {

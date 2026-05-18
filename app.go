@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -9,8 +10,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -37,8 +40,97 @@ type MatchRecord struct {
 // default for the boolean toggles).
 type Settings struct {
 	ScreenshotsDir    string `json:"screenshots_dir"`
+	TesseractPath     string `json:"tesseract_path"`
 	PrometheusEnabled bool   `json:"prometheus_enabled"`
 	WatchEnabled      bool   `json:"watch_enabled"`
+}
+
+// TesseractStatus describes whether the configured tesseract binary
+// resolves to a working executable. The frontend renders the System
+// Alert banner and the Engine setting state from this struct.
+type TesseractStatus struct {
+	Path    string `json:"path"`
+	Found   bool   `json:"found"`
+	Version string `json:"version"`
+	Error   string `json:"error"`
+	Default string `json:"default"`
+}
+
+// defaultTesseractPath returns the most likely on-disk install location
+// for the current platform, falling through to whatever's on PATH and
+// finally a bare "tesseract" hint. macOS prefers the Homebrew prefix
+// (Apple Silicon first, then Intel). Linux prefers /usr/bin (the apt
+// install location); Windows checks both Program Files variants.
+func defaultTesseractPath() string {
+	var candidates []string
+	switch runtime.GOOS {
+	case "darwin":
+		candidates = []string{
+			"/opt/homebrew/bin/tesseract",
+			"/usr/local/bin/tesseract",
+		}
+	case "linux":
+		candidates = []string{
+			"/usr/bin/tesseract",
+			"/usr/local/bin/tesseract",
+		}
+	case "windows":
+		candidates = []string{
+			`C:\Program Files\Tesseract-OCR\tesseract.exe`,
+			`C:\Program Files (x86)\Tesseract-OCR\tesseract.exe`,
+		}
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			return c
+		}
+	}
+	if p, err := exec.LookPath("tesseract"); err == nil {
+		return p
+	}
+	if len(candidates) > 0 {
+		return candidates[0]
+	}
+	return "tesseract"
+}
+
+// checkTesseract runs `<path> --version` and parses the output. On
+// success returns the version string (e.g. "5.4.1"); on failure
+// populates the Error field with a human-readable explanation suitable
+// for surfacing directly in the UI banner.
+func checkTesseract(path string) TesseractStatus {
+	s := TesseractStatus{Path: path, Default: defaultTesseractPath()}
+	if path == "" {
+		s.Error = "Tesseract path is empty — pick the binary in Settings → Engine."
+		return s
+	}
+	cmd := exec.Command(path, "--version")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		// Distinguish "file doesn't exist" from "ran but failed".
+		if _, statErr := os.Stat(path); statErr != nil {
+			s.Error = fmt.Sprintf("Nothing exists at %s. Install Tesseract or change the path in Settings → Engine.", path)
+		} else {
+			s.Error = fmt.Sprintf("Could not run %s: %v", path, err)
+		}
+		return s
+	}
+	// `tesseract --version` writes its banner to stderr on most builds,
+	// stdout on others. Concatenate both so we don't depend on the
+	// channel.
+	output := stdout.String() + stderr.String()
+	first := strings.TrimSpace(strings.SplitN(output, "\n", 2)[0])
+	if !strings.HasPrefix(strings.ToLower(first), "tesseract") {
+		s.Error = "Binary at that path doesn't identify as Tesseract: " + first
+		return s
+	}
+	s.Found = true
+	v := strings.TrimSpace(strings.TrimPrefix(first, "tesseract"))
+	v = strings.TrimSpace(strings.TrimPrefix(v, "v"))
+	s.Version = v
+	return s
 }
 
 // watchDebounce is how long we wait after seeing a new screenshot
@@ -77,6 +169,12 @@ func saveSettings(s Settings) error {
 type App struct {
 	ctx      context.Context
 	settings Settings
+	// tessStatus is the last result of checkTesseract(). Refreshed on
+	// startup, on SetTesseractPath, on PickTesseractBinary, and on
+	// ResetTesseractPath. Read-only from the Wails GetTesseractStatus
+	// binding the frontend polls; mutated only on the same goroutine
+	// that responds to the bound calls (no lock needed).
+	tessStatus TesseractStatus
 	// metricsServer is non-nil only while the Prometheus endpoint is
 	// running. SetPrometheusEnabled toggles between nil and a fresh
 	// *metrics.Server (http.Server can't be reused after Shutdown, so
@@ -103,6 +201,18 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.settings = loadSettings()
+
+	// Resolve tesseract first — if the user hasn't configured a path,
+	// pick the platform default and persist it so the value is visible
+	// in the Settings → Engine row on first launch. The status check
+	// runs regardless; the frontend will render a System Alert banner
+	// if the path doesn't resolve to a working binary.
+	if a.settings.TesseractPath == "" {
+		a.settings.TesseractPath = defaultTesseractPath()
+		_ = saveSettings(a.settings)
+	}
+	a.tessStatus = checkTesseract(a.settings.TesseractPath)
+	parser.SetTesseractPath(a.settings.TesseractPath)
 
 	dbDir := filepath.Join("data", "db")
 	if err := os.MkdirAll(dbDir, 0700); err != nil {
@@ -343,6 +453,60 @@ func (a *App) ScreenshotHandler() http.Handler {
 	})
 }
 
+// GetTesseractStatus returns the cached result of the last detection
+// run (refreshed on startup + any path-changing call). Cheap — does not
+// re-shell out to tesseract.
+func (a *App) GetTesseractStatus() TesseractStatus {
+	return a.tessStatus
+}
+
+// SetTesseractPath persists a user-typed or user-picked path, re-runs
+// detection, and rewires the parser to use the new binary. The
+// returned status reflects the new state so the frontend can refresh
+// the Engine row + System Alert without a follow-up call.
+func (a *App) SetTesseractPath(path string) (TesseractStatus, error) {
+	path = strings.TrimSpace(path)
+	a.settings.TesseractPath = path
+	if err := saveSettings(a.settings); err != nil {
+		return a.tessStatus, err
+	}
+	a.tessStatus = checkTesseract(path)
+	parser.SetTesseractPath(path)
+	return a.tessStatus, nil
+}
+
+// PickTesseractBinary opens a native file chooser and applies the
+// selection via SetTesseractPath. Returns the resulting status; on
+// cancel the existing status is returned unchanged.
+func (a *App) PickTesseractBinary() (TesseractStatus, error) {
+	dflt := a.settings.TesseractPath
+	if dflt == "" {
+		dflt = defaultTesseractPath()
+	}
+	file, err := wruntime.OpenFileDialog(a.ctx, wruntime.OpenDialogOptions{
+		Title:            "Select Tesseract binary",
+		DefaultDirectory: filepath.Dir(dflt),
+		Filters: []wruntime.FileFilter{
+			{DisplayName: "Tesseract executable", Pattern: "tesseract*"},
+			{DisplayName: "All files", Pattern: "*"},
+		},
+	})
+	if err != nil {
+		return a.tessStatus, err
+	}
+	if file == "" {
+		return a.tessStatus, nil
+	}
+	return a.SetTesseractPath(file)
+}
+
+// ResetTesseractPath restores the platform default and re-validates.
+// Useful when the user has clobbered the path with something broken
+// and wants to start over.
+func (a *App) ResetTesseractPath() (TesseractStatus, error) {
+	return a.SetTesseractPath(defaultTesseractPath())
+}
+
 // PickScreenshotsDir opens a native directory chooser and persists the
 // selection. Returns the chosen path. If the user cancels the dialog
 // (Wails returns "" with no error), the existing setting is left alone
@@ -396,6 +560,18 @@ func scrapeReader() ([]metrics.ScrapeRow, error) {
 // post-match tabs, so the filename timestamp is the most reliable correlation
 // signal — PERSONAL has no E/A/D, so a stats-based key wouldn't catch it.
 func (a *App) ParseScreenshots() error {
+	// Bail out early if Tesseract isn't usable. The frontend already
+	// shows a blocking System Alert when this is the case and disables
+	// the Parse button — this guard catches the rare case where the
+	// binary disappeared (uninstall, move) after launch.
+	if !a.tessStatus.Found {
+		// Refresh once in case the user fixed the install in another
+		// window without clicking through the UI to re-check.
+		a.tessStatus = checkTesseract(a.settings.TesseractPath)
+		if !a.tessStatus.Found {
+			return fmt.Errorf("tesseract is not available: %s", a.tessStatus.Error)
+		}
+	}
 	// Serialize parses: the watcher might fire one while the user has
 	// just clicked Parse, and overlapping Tesseract calls + DB upserts
 	// would race on the parsed-files set.

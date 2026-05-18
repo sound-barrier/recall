@@ -36,6 +36,26 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class TesseractStatus {
+	    path: string;
+	    found: boolean;
+	    version: string;
+	    error: string;
+	    default: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TesseractStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.found = source["found"];
+	        this.version = source["version"];
+	        this.error = source["error"];
+	        this.default = source["default"];
+	    }
+	}
 
 }
 
