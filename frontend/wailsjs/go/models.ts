@@ -4,6 +4,7 @@ export namespace app {
 	    id: number;
 	    match_key: string;
 	    source_files: string[];
+	    source_types?: Record<string, string>;
 	    data: parser.MatchResult;
 	
 	    static createFrom(source: any = {}) {
@@ -15,6 +16,7 @@ export namespace app {
 	        this.id = source["id"];
 	        this.match_key = source["match_key"];
 	        this.source_files = source["source_files"];
+	        this.source_types = source["source_types"];
 	        this.data = this.convertValues(source["data"], parser.MatchResult);
 	    }
 	
