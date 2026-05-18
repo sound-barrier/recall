@@ -71,7 +71,7 @@ build-mac: ## macOS arm64 Wails app → dist/mac/ (macOS host + Xcode CLT requir
 	@echo "[ recall ] Building macOS Wails app (arm64)…"
 	wails build $(WAILS_FLAGS) -platform darwin/arm64
 	@mkdir -p $(DIST_MAC)
-	@cp -R build/bin/Recall-arm64.app $(DIST_MAC)/
+	@cp -R build/bin/Recall.app $(DIST_MAC)/Recall-arm64.app
 	@echo "[ recall ] ✓  dist/mac/Recall-arm64.app"
 
 
