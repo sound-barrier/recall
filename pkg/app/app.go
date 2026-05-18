@@ -563,7 +563,15 @@ func (a *App) ParseScreenshots() error {
 	if err != nil {
 		return err
 	}
-	results, err := parser.ParseScreenshotsDir(a.settings.ScreenshotsDir, parsed)
+	results, err := parser.ParseScreenshotsDir(a.settings.ScreenshotsDir, parsed, func(done, total int, filename string, result *parser.MatchResult) {
+		a.emitParseProgress(ParseProgressEvent{
+			Done:     done,
+			Total:    total,
+			Filename: filename,
+			Type:     screenshotType(result),
+			Data:     result,
+		})
+	})
 	if err != nil {
 		return err
 	}
@@ -727,6 +735,75 @@ func unionSortedStrings(a, b []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// ParseProgressEvent is emitted on the "parse-progress" channel/event
+// after each screenshot finishes OCR.
+type ParseProgressEvent struct {
+	Done     int                 `json:"done"`
+	Total    int                 `json:"total"`
+	Filename string              `json:"filename"`
+	Type     string              `json:"screenshot_type"`
+	Data     *parser.MatchResult `json:"data,omitempty"`
+}
+
+// screenshotType infers the screenshot category from the fields that were
+// populated by the parser: rank fields → "rank", summary fields → "summary",
+// per-hero stats → "personal", combat stats → "scoreboard", otherwise "unknown".
+func screenshotType(r *parser.MatchResult) string {
+	if r == nil {
+		return "unknown"
+	}
+	if r.Rank != "" {
+		return "rank"
+	}
+	if r.Result != "" || r.Date != "" || r.GameLength != "" {
+		return "summary"
+	}
+	for _, hp := range r.HeroesPlayed {
+		if len(hp.Stats) > 0 {
+			return "personal"
+		}
+	}
+	if r.Eliminations > 0 || r.Deaths > 0 || r.Damage > 0 {
+		return "scoreboard"
+	}
+	return "unknown"
+}
+
+// GetNewScreenshotCount returns the number of image files in the configured
+// screenshots directory that haven't been parsed yet (i.e. don't appear in
+// any existing DB row's source_files). Returns 0 when the directory is
+// unset, empty, or missing.
+func (a *App) GetNewScreenshotCount() (int, error) {
+	if a.settings.ScreenshotsDir == "" {
+		return 0, nil
+	}
+	parsed, err := loadParsedFilenames()
+	if err != nil {
+		return 0, err
+	}
+	entries, err := os.ReadDir(a.settings.ScreenshotsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	count := 0
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(e.Name()))
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+			continue
+		}
+		if !parsed[e.Name()] {
+			count++
+		}
+	}
+	return count, nil
 }
 
 // GetMatchResults returns all stored, merged match rows.
