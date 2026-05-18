@@ -40,6 +40,9 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `go get <pkg>` | Add a Go dep. (`wails dev` runs `go mod tidy` on startup.) |
 | `bash -n scripts/X.sh` | Syntax-check a shell script. |
 | `brew bundle` | Install Tesseract, Go toolchain, Podman, etc. from `Brewfile`. **Wails CLI must be installed separately**: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`. |
+| `make clean` | Remove `dist/`, `frontend/dist`, and `frontend/node_modules`. |
+| `make update-deps` | Update Go modules (`go get -u ./...` + `go mod tidy`) and npm packages. |
+| `make trivy` | Trivy vulnerability scan (Go modules + npm + Dockerfile); fails on HIGH/CRITICAL. |
 
 **Package layout (`pkg/`)**:
 

@@ -37,6 +37,7 @@
         build-server-linux build-server-windows build-server-mac build-server-all \
         build-server-container \
         lint lint-go lint-js lint-css lint-html lint-docker \
+        update-deps trivy \
         dev clean
 
 DOCKER        ?= docker
@@ -199,6 +200,30 @@ lint-docker:
 
 
 # ════════════════════════════════════════════════════════════════
+# DEPENDENCY UPDATES
+# ════════════════════════════════════════════════════════════════
+
+update-deps:
+	@echo "[ recall ] Updating Go module dependencies…"
+	go get -u ./...
+	go mod tidy
+	@echo "[ recall ] Updating frontend npm dependencies…"
+	cd frontend && npm update
+	@echo "[ recall ] ✓  Dependencies updated"
+
+
+# ════════════════════════════════════════════════════════════════
+# SECURITY SCANNING
+# Requires: trivy on PATH (brew install trivy)
+# ════════════════════════════════════════════════════════════════
+
+trivy:
+	@echo "[ recall ] Running Trivy vulnerability scan…"
+	trivy fs --scanners vuln --exit-code 1 --severity HIGH,CRITICAL .
+	@echo "[ recall ] ✓  No HIGH/CRITICAL vulnerabilities found"
+
+
+# ════════════════════════════════════════════════════════════════
 # DEV + UTILS
 # ════════════════════════════════════════════════════════════════
 
@@ -211,5 +236,5 @@ dev:
 
 
 clean:
-	rm -rf $(DIST_DIR)
-	@echo "[ recall ] dist/ removed"
+	rm -rf $(DIST_DIR) frontend/dist frontend/node_modules
+	@echo "[ recall ] dist/, frontend/dist, frontend/node_modules removed"
