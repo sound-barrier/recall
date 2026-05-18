@@ -408,7 +408,25 @@ function fmtTime(rec) {
 // auto-refreshes when an auto-parse runs in the background. Without
 // this the user would have to click Parse manually to see new matches
 // land in the UI even though the data is already in SQLite.
+
+// Theme: 'dark' (default) or 'light'. Persisted to localStorage so the
+// choice survives across launches. Applied by setting data-theme on the
+// document root, which scopes the light-mode CSS variable overrides.
+const themeMode = ref('dark')
+function applyTheme(mode) {
+  document.documentElement.setAttribute('data-theme', mode)
+}
+function toggleTheme() {
+  themeMode.value = themeMode.value === 'dark' ? 'light' : 'dark'
+  applyTheme(themeMode.value)
+  try { localStorage.setItem('recall.theme', themeMode.value) } catch (_) {}
+}
+
 onMounted(() => {
+  let stored = null
+  try { stored = localStorage.getItem('recall.theme') } catch (_) {}
+  if (stored === 'light' || stored === 'dark') themeMode.value = stored
+  applyTheme(themeMode.value)
   load()
   EventsOn('parse-complete', () => { load() })
 })
@@ -425,14 +443,49 @@ onBeforeUnmount(() => {
     <div class="container">
       <header class="masthead">
         <div class="masthead-left">
-          <div class="brandmark">
+          <div class="brandmark-tile">
             <span class="brand-tick">↺</span>
             <h1 class="brand">RE<span class="brand-accent">CALL</span></h1>
+            <span class="brand-corner" aria-hidden="true"></span>
           </div>
           <p class="tagline">Personal Telemetry · Match Almanac</p>
         </div>
-        <div class="masthead-right" v-if="records.length > 0" title="Wins · Losses · Draws across the currently filtered matches">
-          <div class="scoreboard">
+        <div class="masthead-right">
+          <button
+            class="theme-toggle"
+            @click="toggleTheme"
+            :title="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+            :aria-label="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+          >
+            <span class="theme-seg" :class="{ active: themeMode === 'light' }">
+              <svg viewBox="0 0 24 24" class="theme-icon" aria-hidden="true">
+                <circle cx="12" cy="12" r="4" fill="currentColor"/>
+                <g stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                  <line x1="12" y1="2" x2="12" y2="5"/>
+                  <line x1="12" y1="19" x2="12" y2="22"/>
+                  <line x1="2" y1="12" x2="5" y2="12"/>
+                  <line x1="19" y1="12" x2="22" y2="12"/>
+                  <line x1="4.6" y1="4.6" x2="6.7" y2="6.7"/>
+                  <line x1="17.3" y1="17.3" x2="19.4" y2="19.4"/>
+                  <line x1="4.6" y1="19.4" x2="6.7" y2="17.3"/>
+                  <line x1="17.3" y1="6.7" x2="19.4" y2="4.6"/>
+                </g>
+              </svg>
+              <span class="theme-label">Day</span>
+            </span>
+            <span class="theme-divider" aria-hidden="true"></span>
+            <span class="theme-seg" :class="{ active: themeMode === 'dark' }">
+              <svg viewBox="0 0 24 24" class="theme-icon" aria-hidden="true">
+                <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8z" fill="currentColor"/>
+              </svg>
+              <span class="theme-label">Night</span>
+            </span>
+          </button>
+          <div
+            v-if="records.length > 0"
+            class="scoreboard"
+            title="Wins · Losses · Draws across the currently filtered matches"
+          >
             <div class="score-cell">
               <span class="score-num win">{{ wld.victory }}</span>
               <span class="score-label">Won</span>
@@ -764,25 +817,32 @@ onBeforeUnmount(() => {
 
 <style>
 :root {
+  /* DARK MODE (default) — variables here are overridden by [data-theme="light"] below. */
   --bg: #0a0b0d;
   --surface: #13151a;
   --surface-2: #181b22;
   --surface-3: #1d2029;
 
-  --border: #232731;
+  --border: #2c2f38;
   --border-soft: #1a1d24;
-  --border-strong: #2e323d;
-  --hairline: rgba(255, 255, 255, 0.06);
+  --border-strong: #3a3e49;
+  --hairline: rgba(255, 255, 255, 0.07);
 
   --text: #ecedf0;
   --text-dim: #9ca0ac;
   --text-faint: #6b6f7a;
   --text-mute: #44474f;
 
-  --accent: #f99e1a;
-  --accent-bright: #ffb340;
-  --accent-soft: rgba(249, 158, 26, 0.16);
-  --accent-glow: rgba(249, 158, 26, 0.32);
+  /* Overwatch signature greys. Used as a structural brand element —
+     the masthead branding tile, strong borders, divider blocks. */
+  --brand-grey: #4A4A4A;
+  --brand-grey-soft: rgba(74, 74, 74, 0.55);
+
+  /* Overwatch signature orange. Single hero accent across the UI. */
+  --accent: #F5A623;
+  --accent-bright: #ffbf4d;
+  --accent-soft: rgba(245, 166, 35, 0.16);
+  --accent-glow: rgba(245, 166, 35, 0.38);
 
   --win: #4dff8e;
   --win-soft: rgba(77, 255, 142, 0.12);
@@ -802,9 +862,73 @@ onBeforeUnmount(() => {
   --support: #7dffac;
   --support-soft: rgba(125, 255, 172, 0.14);
 
+  /* Theme atmosphere tunables — overridden in light mode. */
+  --atmos-orange: rgba(245, 166, 35, 0.10);
+  --atmos-blue:   rgba(106, 184, 255, 0.06);
+  --atmos-coral:  rgba(255, 90, 115, 0.05);
+  --grid-line:    rgba(255, 255, 255, 0.018);
+  --primary-text-on-accent: #1a0a00;
+  --accent-text:  #F5A623;    /* same as --accent in dark mode (good contrast on dark bg) */
+
   --display: 'Big Shoulders Display', 'Impact', 'Oswald', sans-serif;
   --body: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
   --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+/* LIGHT MODE — keep brand-grey (#4A4A4A) and brand-orange (#F5A623)
+   prominent. The brand-grey now becomes the dominant structural color:
+   primary text, strong borders, the wordmark tile bg, hairlines. */
+[data-theme="light"] {
+  --bg: #f3f0e8;
+  --surface: #fbf9f3;
+  --surface-2: #f5f2ea;
+  --surface-3: #ebe6da;
+
+  --border: #d4ccba;
+  --border-soft: #e0d9c6;
+  --border-strong: #4A4A4A;
+  --hairline: rgba(74, 74, 74, 0.16);
+
+  --text: #2b2a26;
+  --text-dim: #4A4A4A;
+  --text-faint: #6f6a5e;
+  --text-mute: #a39e90;
+
+  --brand-grey: #4A4A4A;
+  --brand-grey-soft: rgba(74, 74, 74, 0.85);
+
+  /* Keep #F5A623 dominant in light mode too — it's the OW signature.
+     Type-on-light contrast is handled with a darker `--accent-text`
+     used in selector-level overrides below. */
+  --accent: #F5A623;
+  --accent-bright: #d68a14;   /* darker on light bg hover, more readable */
+  --accent-text: #9a6512;     /* AA-contrast text variant for orange-on-cream */
+  --accent-soft: rgba(245, 166, 35, 0.22);
+  --accent-glow: rgba(245, 166, 35, 0.42);
+
+  --win: #137a3a;
+  --win-soft: rgba(19, 122, 58, 0.14);
+  --win-line: rgba(19, 122, 58, 0.6);
+  --loss: #b03346;
+  --loss-soft: rgba(176, 51, 70, 0.12);
+  --loss-line: rgba(176, 51, 70, 0.55);
+  --draw: #a07020;
+  --draw-soft: rgba(160, 112, 32, 0.14);
+  --draw-line: rgba(160, 112, 32, 0.55);
+  --unknown-line: rgba(74, 74, 74, 0.35);
+
+  --tank: #2c6eb8;
+  --tank-soft: rgba(44, 110, 184, 0.14);
+  --dps: #c54a2c;
+  --dps-soft: rgba(197, 74, 44, 0.13);
+  --support: #2d8a4d;
+  --support-soft: rgba(45, 138, 77, 0.13);
+
+  --atmos-orange: rgba(245, 166, 35, 0.14);
+  --atmos-blue:   rgba(44, 110, 184, 0.05);
+  --atmos-coral:  rgba(176, 51, 70, 0.04);
+  --grid-line:    rgba(74, 74, 74, 0.04);
+  --primary-text-on-accent: #1a0a00;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -832,9 +956,10 @@ body {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(60% 50% at 8% -10%, rgba(249, 158, 26, 0.10), transparent 60%),
-    radial-gradient(45% 40% at 100% 0%, rgba(106, 184, 255, 0.06), transparent 60%),
-    radial-gradient(80% 60% at 50% 110%, rgba(255, 90, 115, 0.05), transparent 65%);
+    radial-gradient(60% 50% at 8% -10%, var(--atmos-orange), transparent 60%),
+    radial-gradient(45% 40% at 100% 0%, var(--atmos-blue), transparent 60%),
+    radial-gradient(80% 60% at 50% 110%, var(--atmos-coral), transparent 65%);
+  transition: opacity 320ms ease;
 }
 
 /* Hairline grid pattern, very faint. Tactical/blueprint texture. */
@@ -843,8 +968,8 @@ body {
   pointer-events: none;
   z-index: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.9), transparent 75%);
 }
@@ -869,32 +994,69 @@ body {
   border-bottom: 1px solid var(--hairline);
 }
 
-.brandmark {
-  display: flex;
+/* The brandmark sits inside a solid Overwatch-grey tile — a small
+   "spec plate" that anchors the wordmark and surfaces the brand grey
+   #4A4A4A as a deliberate structural element in BOTH themes. The OW
+   orange wordmark pops on it; the tile becomes the page's brand stamp
+   even when the rest of the page goes light. */
+.brandmark-tile {
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.65rem;
+  padding: 0.55rem 1.15rem 0.55rem 1rem;
+  background: var(--brand-grey);
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.25) inset,
+    0 14px 36px -14px rgba(0, 0, 0, 0.55);
+  isolation: isolate;
+}
+.brandmark-tile::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent-bright);
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+/* Subtle hatch / striped corner — feels like military stencil tape. */
+.brand-corner {
+  position: absolute;
+  right: 6px; top: 6px;
+  width: 14px; height: 14px;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.18) 0 2px,
+      transparent 2px 4px
+    );
+  border-radius: 1px;
+  opacity: 0.55;
 }
 .brand-tick {
-  color: var(--accent);
-  font-size: 0.85rem;
-  transform: translateY(-2px);
-  text-shadow: 0 0 12px var(--accent-glow);
+  color: var(--accent-bright);
+  font-size: 1.05rem;
+  line-height: 1;
+  transform: translateY(-1px);
+  text-shadow: 0 0 14px var(--accent-glow);
+  font-feature-settings: "tnum";
 }
 .brand {
   font-family: var(--display);
   font-weight: 900;
-  font-size: 3.2rem;
+  font-size: 2.85rem;
   letter-spacing: -0.025em;
   line-height: 0.85;
-  color: var(--text);
+  color: #f5f3ee;
   text-transform: uppercase;
 }
 .brand-accent {
-  color: var(--accent);
+  color: var(--accent-bright);
   text-shadow: 0 0 24px var(--accent-glow);
 }
 .tagline {
-  margin-top: 0.5rem;
+  margin-top: 0.7rem;
   font-family: var(--mono);
   font-size: 0.7rem;
   color: var(--text-faint);
@@ -902,12 +1064,67 @@ body {
   text-transform: uppercase;
 }
 
-.masthead-right { display: flex; }
+.masthead-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1.15rem;
+}
+
+/* Day / Night theme toggle. Two-segment switch with a sliding indicator
+   on the active half. Lives in the upper right of the masthead. */
+.theme-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  padding: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  user-select: none;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.theme-toggle:hover { border-color: var(--border-strong); }
+.theme-toggle:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.theme-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.34rem 0.65rem;
+  border-radius: 1px;
+  transition: color 200ms ease, background 200ms ease;
+}
+.theme-seg.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.theme-icon {
+  width: 13px; height: 13px;
+  display: block;
+}
+.theme-label { font-weight: 600; }
+.theme-divider {
+  width: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
 .scoreboard {
   display: grid;
   grid-template-columns: repeat(3, auto);
-  gap: 1.6rem;
-  padding: 0.4rem 0;
+  gap: 1.4rem;
+  padding: 0.1rem 0;
 }
 .score-cell {
   display: flex;
@@ -1450,15 +1667,16 @@ body {
 
 .badge.hero {
   background: var(--accent-soft);
-  color: var(--accent-bright);
-  border-color: rgba(249, 158, 26, 0.35);
+  color: var(--accent-text);
+  border-color: rgba(245, 166, 35, 0.4);
   font-weight: 600;
 }
 .hero-name-inline { font-weight: 600; letter-spacing: 0.04em; }
 .hero-pct-inline {
   font-family: var(--mono);
   font-size: 0.62rem;
-  color: rgba(249, 158, 26, 0.7);
+  color: var(--accent-text);
+  opacity: 0.75;
   font-weight: 500;
   font-feature-settings: "tnum";
   letter-spacing: 0;
@@ -1788,6 +2006,7 @@ body {
 @media (max-width: 580px) {
   .container { padding: 1.4rem 1rem 3rem; }
   .masthead { flex-direction: column; align-items: flex-start; }
+  .masthead-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; gap: 0.6rem; }
   .brand { font-size: 2.1rem; }
   .filter-grid { grid-template-columns: repeat(2, 1fr); }
   .stats { grid-template-columns: repeat(2, 1fr); }
@@ -1795,5 +2014,48 @@ body {
   .stat:nth-child(2n) { border-right: none !important; }
   .match-title-rhs { flex-wrap: wrap; }
   .match-map { font-size: 1.3rem; }
+}
+
+/* ─── Light-mode pinpoint overrides ──────────────────────────
+   Spots where the OW orange appears as readable type on a light
+   surface need the darker `--accent-text` variant to clear AA contrast.
+   Everything else in light mode flows through the variable swap. */
+[data-theme="light"] .match-map:hover,
+[data-theme="light"] .match-map.active { color: var(--accent-text); text-shadow: none; }
+[data-theme="light"] .hero-name { color: var(--accent-text); }
+[data-theme="light"] .hero-name:hover,
+[data-theme="light"] .hero-name.active { color: var(--accent-text); text-shadow: none; }
+[data-theme="light"] .empty-sub strong { color: var(--accent-text); }
+[data-theme="light"] .count strong { color: var(--accent-text); }
+[data-theme="light"] .source-name:hover { color: var(--accent-text); }
+[data-theme="light"] .chev.open { color: var(--accent-text); }
+[data-theme="light"] .length-mark { color: var(--accent-text); }
+[data-theme="light"] .control-deck { background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%); }
+[data-theme="light"] .control-deck::before { opacity: 1; }
+[data-theme="light"] .match.expanded { background: var(--surface-2); }
+[data-theme="light"] .stats { background: var(--surface); }
+[data-theme="light"] .stat { background: var(--surface); }
+/* The sources block is dim/console-y in dark mode; in light mode soften
+   the inner dark background to a clean tonal step that still reads
+   "monospace dossier" without the harsh black-on-light contrast. */
+[data-theme="light"] .sources { background: var(--surface-2); border-color: var(--border); }
+[data-theme="light"] .source-name { color: var(--text-dim); }
+[data-theme="light"] .source-name:hover { background: var(--surface-3); }
+[data-theme="light"] .source-preview { background: var(--surface-3); }
+/* Brand wordmark on the grey tile stays white-on-grey in both modes —
+   the tile is dark in both themes, so no override needed. The corner
+   tape stays subtle. */
+[data-theme="light"] .brand { color: #f5f3ee; }
+/* Theme toggle reads on light surface too. The .active state already
+   uses --accent-soft + --accent which both adapt to the theme. */
+[data-theme="light"] .theme-toggle { background: var(--surface); }
+[data-theme="light"] .btn.primary {
+  /* In light mode the dark text on bright orange still works (OW chip).
+     Make it pop a touch more with a deeper shadow. */
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2) inset, 0 6px 22px -10px var(--accent-glow);
+}
+[data-theme="light"] .btn.primary:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(0.95);
 }
 </style>

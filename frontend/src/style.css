@@ -1,8 +1,18 @@
+html {
+  background: #0a0b0d;
+  color: #ecedf0;
+  color-scheme: dark;
+  transition: background 220ms ease, color 220ms ease;
+}
+html[data-theme="light"] {
+  background: #f3f0e8;
+  color: #2b2a26;
+  color-scheme: light;
+}
+
 html, body, #app {
   margin: 0;
   padding: 0;
-  background: #0a0b0d;
-  color: #e8e9ec;
   min-height: 100vh;
   font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
