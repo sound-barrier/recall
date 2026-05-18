@@ -213,6 +213,7 @@ async function parse() {
   loading.value = true
   parseProgress.value = null
   parseLog.value = []
+  parseProgressOpen.value = false
   try {
     await ParseScreenshots()
     await load()
@@ -225,6 +226,10 @@ async function parse() {
     parseProgress.value = null
   }
 }
+
+// Whether the parse-progress detail panel (current file + log) is expanded.
+// Collapsed by default — user sees only the count row until they open it.
+const parseProgressOpen = ref(false)
 
 // Clear all parse records from the database. Two-step: first click
 // arms clearConfirm (shows the destructive confirm UI); second click
@@ -1026,17 +1031,12 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Parse progress panel — visible while loading -->
-            <div v-if="loading" class="parse-progress-panel">
-              <div class="pp-header">
+            <div v-if="loading" class="parse-progress-panel" :class="{ 'pp-open': parseProgressOpen }">
+              <!-- Summary row: always visible. Click to expand/collapse details. -->
+              <div class="pp-summary" @click="parseProgressOpen = !parseProgressOpen">
                 <div class="pp-scan-label">
                   <span class="pp-scan-dot" aria-hidden="true" />
                   <span class="pp-scan-text">Scanning</span>
-                </div>
-                <div class="pp-fraction mono">
-                  <span class="pp-done">{{ parseProgress?.done ?? 0 }}</span>
-                  <span class="pp-sep">&nbsp;/&nbsp;</span>
-                  <span class="pp-total">{{ parseProgress?.total ?? '…' }}</span>
-                  <span class="pp-unit">screenshots</span>
                 </div>
                 <div class="pp-bar-track">
                   <div
@@ -1046,82 +1046,91 @@ onBeforeUnmount(() => {
                       : { width: '0%' }"
                   />
                 </div>
+                <div class="pp-fraction mono">
+                  <span class="pp-done">{{ parseProgress?.done ?? 0 }}</span>
+                  <span class="pp-sep">&nbsp;/&nbsp;</span>
+                  <span class="pp-total">{{ parseProgress?.total ?? '…' }}</span>
+                </div>
+                <span class="chev pp-chev" :class="{ open: parseProgressOpen }" aria-hidden="true">›</span>
               </div>
 
-              <!-- Current file being processed -->
-              <div v-if="parseProgress" class="pp-current">
-                <span class="pp-arrow" aria-hidden="true">▶</span>
-                <span class="pp-cur-filename mono">{{ parseProgress.filename }}</span>
-                <span
-                  class="pp-type-badge"
-                  :class="parseProgress.screenshot_type"
-                >{{ parseProgress.screenshot_type?.toUpperCase() }}</span>
-                <div class="pp-cur-fields">
-                  <template v-if="parseProgress.screenshot_type === 'summary'">
-                    <span v-if="parseProgress.data?.map" class="pp-field">
-                      <span class="pp-fl">map</span><span class="pp-fv">{{ parseProgress.data.map }}</span>
-                    </span>
-                    <span v-if="parseProgress.data?.result" class="pp-field" :class="parseProgress.data.result">
-                      <span class="pp-fl">result</span><span class="pp-fv">{{ parseProgress.data.result }}</span>
-                    </span>
-                    <span v-if="parseProgress.data?.date" class="pp-field">
-                      <span class="pp-fl">date</span><span class="pp-fv">{{ parseProgress.data.date }}</span>
-                    </span>
-                    <span v-if="parseProgress.data?.game_length" class="pp-field">
-                      <span class="pp-fl">length</span><span class="pp-fv">{{ parseProgress.data.game_length }}</span>
-                    </span>
-                  </template>
-                  <template v-else-if="parseProgress.screenshot_type === 'scoreboard'">
-                    <span class="pp-field">
-                      <span class="pp-fl">elims</span><span class="pp-fv">{{ parseProgress.data?.eliminations ?? '—' }}</span>
-                    </span>
-                    <span class="pp-field">
-                      <span class="pp-fl">assists</span><span class="pp-fv">{{ parseProgress.data?.assists ?? '—' }}</span>
-                    </span>
-                    <span class="pp-field">
-                      <span class="pp-fl">deaths</span><span class="pp-fv">{{ parseProgress.data?.deaths ?? '—' }}</span>
-                    </span>
-                    <span v-if="parseProgress.data?.damage" class="pp-field">
-                      <span class="pp-fl">dmg</span><span class="pp-fv">{{ parseProgress.data.damage.toLocaleString() }}</span>
-                    </span>
-                    <span v-if="parseProgress.data?.mitigation" class="pp-field">
-                      <span class="pp-fl">mit</span><span class="pp-fv">{{ parseProgress.data.mitigation.toLocaleString() }}</span>
-                    </span>
-                  </template>
-                  <template v-else-if="parseProgress.screenshot_type === 'personal'">
-                    <span v-if="parseProgress.data?.hero" class="pp-field">
-                      <span class="pp-fl">hero</span><span class="pp-fv">{{ parseProgress.data.hero }}</span>
-                    </span>
-                    <span v-if="parseProgress.data?.heroes_played?.length" class="pp-field">
-                      <span class="pp-fl">played</span>
-                      <span class="pp-fv">{{ parseProgress.data.heroes_played.map(h => h.hero).join(' · ') }}</span>
-                    </span>
-                  </template>
-                  <template v-else-if="parseProgress.screenshot_type === 'rank'">
-                    <span v-if="parseProgress.data?.rank" class="pp-field">
-                      <span class="pp-fl">rank</span>
-                      <span class="pp-fv">{{ parseProgress.data.rank }} {{ parseProgress.data.level }}</span>
-                    </span>
-                    <span v-if="parseProgress.data?.sr?.length" class="pp-field">
-                      <span class="pp-fl">SR</span>
-                      <span class="pp-fv">{{ parseProgress.data.sr.map(s => `${s.hero} ${s.sr}`).join(' · ') }}</span>
-                    </span>
-                  </template>
+              <!-- Expanded details: current file + rolling log -->
+              <template v-if="parseProgressOpen">
+                <!-- Current file being processed -->
+                <div v-if="parseProgress" class="pp-current">
+                  <span class="pp-arrow" aria-hidden="true">▶</span>
+                  <span class="pp-cur-filename mono">{{ parseProgress.filename }}</span>
+                  <span
+                    class="pp-type-badge"
+                    :class="parseProgress.screenshot_type"
+                  >{{ parseProgress.screenshot_type?.toUpperCase() }}</span>
+                  <div class="pp-cur-fields">
+                    <template v-if="parseProgress.screenshot_type === 'summary'">
+                      <span v-if="parseProgress.data?.map" class="pp-field">
+                        <span class="pp-fl">map</span><span class="pp-fv">{{ parseProgress.data.map }}</span>
+                      </span>
+                      <span v-if="parseProgress.data?.result" class="pp-field" :class="parseProgress.data.result">
+                        <span class="pp-fl">result</span><span class="pp-fv">{{ parseProgress.data.result }}</span>
+                      </span>
+                      <span v-if="parseProgress.data?.date" class="pp-field">
+                        <span class="pp-fl">date</span><span class="pp-fv">{{ parseProgress.data.date }}</span>
+                      </span>
+                      <span v-if="parseProgress.data?.game_length" class="pp-field">
+                        <span class="pp-fl">length</span><span class="pp-fv">{{ parseProgress.data.game_length }}</span>
+                      </span>
+                    </template>
+                    <template v-else-if="parseProgress.screenshot_type === 'scoreboard'">
+                      <span class="pp-field">
+                        <span class="pp-fl">elims</span><span class="pp-fv">{{ parseProgress.data?.eliminations ?? '—' }}</span>
+                      </span>
+                      <span class="pp-field">
+                        <span class="pp-fl">assists</span><span class="pp-fv">{{ parseProgress.data?.assists ?? '—' }}</span>
+                      </span>
+                      <span class="pp-field">
+                        <span class="pp-fl">deaths</span><span class="pp-fv">{{ parseProgress.data?.deaths ?? '—' }}</span>
+                      </span>
+                      <span v-if="parseProgress.data?.damage" class="pp-field">
+                        <span class="pp-fl">dmg</span><span class="pp-fv">{{ parseProgress.data.damage.toLocaleString() }}</span>
+                      </span>
+                      <span v-if="parseProgress.data?.mitigation" class="pp-field">
+                        <span class="pp-fl">mit</span><span class="pp-fv">{{ parseProgress.data.mitigation.toLocaleString() }}</span>
+                      </span>
+                    </template>
+                    <template v-else-if="parseProgress.screenshot_type === 'personal'">
+                      <span v-if="parseProgress.data?.hero" class="pp-field">
+                        <span class="pp-fl">hero</span><span class="pp-fv">{{ parseProgress.data.hero }}</span>
+                      </span>
+                      <span v-if="parseProgress.data?.heroes_played?.length" class="pp-field">
+                        <span class="pp-fl">played</span>
+                        <span class="pp-fv">{{ parseProgress.data.heroes_played.map(h => h.hero).join(' · ') }}</span>
+                      </span>
+                    </template>
+                    <template v-else-if="parseProgress.screenshot_type === 'rank'">
+                      <span v-if="parseProgress.data?.rank" class="pp-field">
+                        <span class="pp-fl">rank</span>
+                        <span class="pp-fv">{{ parseProgress.data.rank }} {{ parseProgress.data.level }}</span>
+                      </span>
+                      <span v-if="parseProgress.data?.sr?.length" class="pp-field">
+                        <span class="pp-fl">SR</span>
+                        <span class="pp-fv">{{ parseProgress.data.sr.map(s => `${s.hero} ${s.sr}`).join(' · ') }}</span>
+                      </span>
+                    </template>
+                  </div>
                 </div>
-              </div>
 
-              <!-- Rolling log of completed files -->
-              <div v-if="parseLog.length > 1" class="pp-log">
-                <div
-                  v-for="entry in [...parseLog].slice(0, -1).reverse()"
-                  :key="entry.done + entry.filename"
-                  class="pp-log-entry"
-                >
-                  <span class="pp-log-check" aria-hidden="true">✓</span>
-                  <span class="pp-log-filename mono">{{ entry.filename }}</span>
-                  <span class="pp-log-type" :class="entry.screenshot_type">{{ entry.screenshot_type }}</span>
+                <!-- Rolling log of completed files -->
+                <div v-if="parseLog.length > 1" class="pp-log">
+                  <div
+                    v-for="entry in [...parseLog].slice(0, -1).reverse()"
+                    :key="entry.done + entry.filename"
+                    class="pp-log-entry"
+                  >
+                    <span class="pp-log-check" aria-hidden="true">✓</span>
+                    <span class="pp-log-filename mono">{{ entry.filename }}</span>
+                    <span class="pp-log-type" :class="entry.screenshot_type">{{ entry.screenshot_type }}</span>
+                  </div>
                 </div>
-              </div>
+              </template>
             </div>
           </div>
         </div>
@@ -4232,14 +4241,34 @@ body {
   animation: view-fade-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Header: scanning label + fraction + bar */
-.pp-header {
+/* Summary row: scanning label + bar + fraction + chevron. Clickable. */
+.pp-summary {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: 0.75rem;
   padding: 0.65rem 1rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 120ms ease;
+}
+
+.pp-summary:hover { background: var(--surface-3); }
+
+.parse-progress-panel.pp-open .pp-summary {
   border-bottom: 1px solid var(--border-soft);
+}
+
+.pp-chev {
+  font-size: 1rem;
+  color: var(--text-faint);
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1), color 120ms ease;
+  flex-shrink: 0;
+}
+
+.pp-chev.open {
+  transform: rotate(90deg);
+  color: var(--accent-text);
 }
 
 .pp-scan-label {
@@ -4270,7 +4299,7 @@ body {
   background: var(--surface-3);
   border-radius: 2px;
   overflow: hidden;
-  flex: 1;
+  min-width: 0;
 }
 
 .pp-bar-fill {
