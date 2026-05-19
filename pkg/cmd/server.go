@@ -147,7 +147,18 @@ func RunServer(a *app.App, assets embed.FS) {
 			return
 		}
 		st, err := a.SetTesseractPath(body.Path)
-		writeJSON(w, st, err)
+		if err != nil {
+			// A shape-validation failure is a 4xx (bad client input),
+			// not a 5xx — mirrors how the screenshots-dir handler maps
+			// ErrInvalidScreenshotsDir.
+			if errors.Is(err, app.ErrInvalidTesseractPath) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, st, nil)
 	})
 
 	mux.HandleFunc("/api/tesseract-reset", func(w http.ResponseWriter, r *http.Request) {
