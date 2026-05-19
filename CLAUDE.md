@@ -392,7 +392,7 @@ Three workflows:
 | File | Trigger | What it does |
 |---|---|---|
 | `ci.yml` | Push or PR to `main` | **Lint** (golangci-lint × both build tags, ESLint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral) → **frontend build** → **bundle-size budget** (200 KB JS / 100 KB CSS) → **Go + Vitest unit tests** → **TypeScript `tsc --noEmit`** → **"api.gen.d.ts in sync with `openapi.yaml`" check**. Plus parallel build jobs for Linux/Windows Wails + all server binaries + container image + macOS Wails. Security jobs: **Trivy** (multi-language vuln scan; SARIF uploaded to GitHub Security tab) and **govulncheck** (Go call-graph-aware CVE scan, both build tags). Drift job: **schemathesis** fuzzes a freshly-built server against `api/openapi.yaml`. |
-| `release-please.yml` | Push to `main` | Reads Conventional Commits since the last tag, opens/updates a Release PR that bumps `.release-please-manifest.json` + regenerates `CHANGELOG.md`. Merging the PR creates a `vX.Y.Z` tag which fires `release.yml`. |
+| `release-please.yml` | Push to `main` | Reads Conventional Commits since the last tag, opens/updates a Release PR that bumps `.release-please-manifest.json` + regenerates `CHANGELOG.md`. Merging the PR creates a `vX.Y.Z` tag which fires `release.yml`. Override the computed version with a `Release-As: X.Y.Z[-suffix]` footer in any commit on `main` — useful for one-off prereleases (the hyphenated suffix is what makes GitHub flag the Release as prerelease). Details in CONTRIBUTING.md → "Cutting a prerelease". |
 | `release.yml` | `v*` tags | Builds and publishes release artifacts — see detail below. |
 
 ### `release.yml` detail
