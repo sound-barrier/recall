@@ -28,8 +28,8 @@
 
     // Node provides npm + npx. npx pulls Spectral on demand for the
     // openapi lint target; npm installs the rest of the frontend
-    // toolchain (vite, vitest, eslint, stylelint, htmlhint,
-    // openapi-typescript, typescript).
+    // toolchain (vite, vitest, eslint + typescript-eslint, stylelint,
+    // htmlhint, openapi-typescript, typescript, vue-tsc).
     "ghcr.io/devcontainers/features/node:1": {
       "version": "26"
     },
