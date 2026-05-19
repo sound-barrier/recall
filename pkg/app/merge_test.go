@@ -43,9 +43,9 @@ func TestMergeMatchResult_FirstNonEmptyWins(t *testing.T) {
 		Result:       "victory",
 	}
 	src := &parser.MatchResult{
-		Map:          "aatlis",  // should NOT overwrite
-		Eliminations: 99,        // should NOT overwrite
-		Result:       "defeat",  // should NOT overwrite
+		Map:          "aatlis",     // should NOT overwrite
+		Eliminations: 99,           // should NOT overwrite
+		Result:       "defeat",     // should NOT overwrite
 		Date:         "2026-05-10", // should fill (dst empty)
 	}
 	mergeMatchResult(dst, src)

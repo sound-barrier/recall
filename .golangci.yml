@@ -21,3 +21,12 @@ linters:
 formatters:
   enable:
     - gofumpt
+  settings:
+    gofumpt:
+      # Tell gofumpt our module path so it understands which imports are
+      # "local" (recall/...). Without this it treats them as third-party
+      # and complains about goimports-reviser's three-group layout
+      # (stdlib / external / local) when there's no external group —
+      # e.g. pkg/cmd/server.go and pkg/metrics/metrics.go which have
+      # only stdlib + recall/... imports.
+      module-path: recall

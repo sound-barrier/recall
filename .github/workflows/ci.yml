@@ -254,7 +254,11 @@ jobs:
         run: sudo apt-get update -y && sudo apt-get install -y --no-install-recommends tesseract-ocr
 
       - name: Install schemathesis
-        run: pipx install 'schemathesis>=3.36'
+        # Pinned to v3.x — v4 renamed --base-url → --url and changed
+        # several flag/output shapes (e.g. --hypothesis-max-examples →
+        # --max-examples). Bump deliberately when ready to update the
+        # CLI invocation below.
+        run: pipx install 'schemathesis>=3.36,<4'
 
       - name: Start server in background
         env:

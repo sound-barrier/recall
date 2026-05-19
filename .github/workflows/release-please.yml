@@ -13,6 +13,17 @@ name: release-please
 #   4. release-please-action creates the v<version> tag.
 #   5. release.yml fires on the tag and uploads binaries to the GitHub
 #      Release.
+#
+# REPO SETUP — one-time:
+#   GitHub blocks Actions from opening PRs by default. To allow
+#   release-please to open the Release PR, go to:
+#     Settings → Actions → General → Workflow permissions →
+#     check "Allow GitHub Actions to create and approve pull requests"
+#   Without this, the action runs to completion but fails with:
+#     "GitHub Actions is not permitted to create or approve pull
+#     requests."
+#   Alternative: provide a `personal-access-token` input below pointing
+#   at a PAT with `repo` + `workflow` scopes.
 
 on:
   push:
