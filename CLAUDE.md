@@ -55,7 +55,7 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `make icon` | Resync `build/appicon.png` from `assets/icon.png` (1024×1024 via `sips`, macOS-only) and clear `build/windows/icon.ico` so Wails regenerates platform icons (`.icns` for macOS, `.ico` for Windows) on next `wails build`. |
 | `make swagger` | Serve `api/openapi.yaml` via Swagger UI v5 in a container (`$(DOCKER) run`, default port `:8080`; override with `SWAGGER_PORT`). |
 | `make lint-openapi` | Lint `api/openapi.yaml` via Spectral (`spectral:oas` + `.spectral.yaml`) with `--fail-severity=warn`. Also run as part of `make lint`. |
-| `make test` | Run all tests: Go unit tests (`pkg/app/merge_test.go`, `pkg/parser/parser_test.go`) + Vitest (`frontend/src/match-helpers.test.js`). Parser golden-file integration tests skip unless `RECALL_FIXTURE_DIR` is set. |
+| `make test` | Run all tests: Go unit tests (`pkg/app/merge_test.go`, `pkg/app/validate_test.go`, `pkg/parser/parser_test.go`) + Vitest (`frontend/src/match-helpers.test.js`). Parser golden-file integration tests skip unless `RECALL_FIXTURE_DIR` is set. |
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml` (uses `openapi-typescript`). Run after every spec edit; CI fails if the committed `.d.ts` is out of sync. |
 | `make typecheck` | `tsc --noEmit` against `frontend/src/api.ts` + the generated types. Catches frontend-vs-spec drift at build time. |
 
@@ -537,3 +537,10 @@ Triggered on `v*` tags (push) and on `workflow_dispatch` (manual fallback for wh
   that constrains path strings must allow `() ` or it'll reject the
   Windows default out of the box (one of the test cycles spent
   tracking this down — don't repeat).
+- **`gh workflow run --ref TAG` reads the workflow definition from
+  that ref.** A `workflow_dispatch:` trigger added later on `main`
+  is invisible to tags cut before the trigger landed — those refs
+  can't be fired manually, only re-pushed (destructive). Current
+  cutoff: `workflow_dispatch:` exists in `release.yml` from
+  `v0.0.12-beta.0` onward. [RELEASES.md](RELEASES.md) →
+  "When `release.yml` doesn't auto-fire" has the full procedure.
