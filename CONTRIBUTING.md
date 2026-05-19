@@ -18,6 +18,7 @@ overview of the architecture and internal conventions, see
   - [Server-only binary](#server-only-binary)
   - [Other build commands](#other-build-commands)
 - [Maintenance](#maintenance)
+- [API specification](#api-specification)
 
 ## Development setup
 
@@ -235,15 +236,35 @@ go build -tags serveronly ./...  # compile-check server variant
 ## Maintenance
 
 ```sh
-make fmt           # format all Go source files (goimports-reviser for import groups, then gofumpt)
-make lint          # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint
-make lint-yaml     # yamllint only
-make update-deps   # update Go modules (go get -u + mod tidy) and npm packages
-make trivy         # vulnerability scan — fails on HIGH/CRITICAL findings
-make cloc          # count lines of source code (excludes deps, build artifacts, generated files)
+make fmt            # format all Go source files (goimports-reviser for import groups, then gofumpt)
+make lint           # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral
+make lint-yaml      # yamllint only
+make lint-openapi   # Spectral only (api/openapi.yaml)
+make update-deps    # update Go modules (go get -u + mod tidy) and npm packages
+make trivy          # vulnerability scan — fails on HIGH/CRITICAL findings
+make cloc           # count lines of source code (excludes deps, build artifacts, generated files)
+make icon           # resync build/appicon.png from assets/icon.png (macOS only; run after updating the icon)
 ```
 
 `trivy` requires a one-time install: `brew install trivy` or `brew bundle`.
 The scan covers Go module dependencies, npm packages, and `Dockerfile.build`.
 
 The repo includes an `.envrc` for [direnv](https://direnv.net/) with all available environment variable overrides documented and commented out. Run `direnv allow` once after cloning, then edit `.envrc` to activate any overrides you need.
+
+## API specification
+
+The HTTP REST + SSE surface exposed by the server binary (and the Wails app's `--server` mode) is hand-documented in [`api/openapi.yaml`](api/openapi.yaml) — OpenAPI 3.1.0.
+
+Treat the spec as the published contract:
+
+- When you **add or remove a route** in `pkg/cmd/server.go`, mirror the change in the spec.
+- When you **change a response shape** in `pkg/app/app.go` or `pkg/parser/parser.go`, update the relevant `components.schemas.*` entry.
+
+```sh
+make swagger        # serve the spec via Swagger UI in a container (default :8080)
+make lint-openapi   # lint the spec with Spectral (spectral:oas + .spectral.yaml)
+```
+
+`make lint-openapi` runs Spectral with `--fail-severity=warn`. The `spectral:oas` ruleset emits most useful issues (missing descriptions, inconsistent naming, undocumented responses) as warnings rather than errors, so promoting warnings to CI-blocking is deliberate. Override individual rule severities in `.spectral.yaml` if a rule turns out to be too strict.
+
+`make swagger` honours the `DOCKER` env var (`DOCKER=podman make swagger` works). Override the port with `SWAGGER_PORT=9090 make swagger`.

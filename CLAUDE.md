@@ -43,12 +43,14 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `direnv allow` | Activate the repo's `.envrc` after cloning (or after editing it). All env var overrides are documented and commented out inside `.envrc`. |
 | `cd frontend && npm ci` | Install frontend dependencies (required after clone or `make clean`). |
 | `make fmt` | Format all Go source files: `goimports-reviser` (organizes import groups: stdlib / external / project) then `gofumpt`. Install both with `go install mvdan.cc/gofumpt@latest` and `go install github.com/incu6us/goimports-reviser/v3@latest`. |
-| `make lint` | Run all linters: golangci-lint (Go, both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint. |
+| `make lint` | Run all linters: golangci-lint (Go, both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral. |
 | `make clean` | Remove `dist/`, `build/bin/`, `frontend/dist`, and `frontend/node_modules`. |
 | `make update-deps` | Update Go modules (`go get -u ./...` + `go mod tidy`) and npm packages. |
 | `make trivy` | Trivy vulnerability scan (Go modules + npm + Dockerfile); fails on HIGH/CRITICAL. |
 | `make cloc` | Count lines of source code (excludes deps, build artifacts, and generated files). |
 | `make icon` | Resync `build/appicon.png` from `assets/icon.png` (1024×1024 via `sips`, macOS-only) and clear `build/windows/icon.ico` so Wails regenerates platform icons (`.icns` for macOS, `.ico` for Windows) on next `wails build`. |
+| `make swagger` | Serve `api/openapi.yaml` via Swagger UI v5 in a container (`$(DOCKER) run`, default port `:8080`; override with `SWAGGER_PORT`). |
+| `make lint-openapi` | Lint `api/openapi.yaml` via Spectral (`spectral:oas` + `.spectral.yaml`) with `--fail-severity=warn`. Also run as part of `make lint`. |
 
 **Package layout (`pkg/`)**:
 
@@ -265,6 +267,16 @@ and streams `parse-complete` via `GET /api/events` (SSE). `PickScreenshotsDir`
 and `PickTesseractBinary` (native dialogs) are replaced by `POST /api/screenshots-dir`
 and `POST /api/tesseract-path` respectively; `api.js` in the frontend uses
 `window.prompt()` as a fallback when not in Wails.
+
+The full HTTP surface is documented in **`api/openapi.yaml`** (OpenAPI
+3.1.0, hand-written). Treat that file as the source of truth: when
+adding/removing a route in `pkg/cmd/server.go` or changing a response
+shape in `pkg/app/app.go` / `pkg/parser/parser.go`, edit the spec to
+match. `make lint-openapi` runs Spectral against it (strict on warnings
+— the `spectral:oas` ruleset emits most useful issues as warnings, not
+errors, so the `--fail-severity=warn` flag in the Makefile is
+deliberate). `make swagger` renders the spec in Swagger UI for
+browsing.
 
 **Wails-bound HTTP handler**: `ScreenshotHandler()` serves
 `/_screenshot/<filename>` from the configured screenshots dir — used by

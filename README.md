@@ -144,6 +144,8 @@ The server listens on `http://127.0.0.1:7000` by default (localhost-only). Set
 `RECALL_SERVER_ADDR` to override (e.g. `RECALL_SERVER_ADDR=0.0.0.0:7000` to accept
 connections from other hosts on your network).
 
+The HTTP REST + SSE surface is documented in [`api/openapi.yaml`](api/openapi.yaml) (OpenAPI 3.1.0). Browse it with `make swagger` to spin up Swagger UI at <http://localhost:8080>, or point any OpenAPI-compatible client at the YAML directly.
+
 ## Running via Docker
 
 > 🐳 **Most advanced.** You only need this if you want to run Recall inside a container (e.g. alongside other containerized services on a NAS or home lab). For everyday use, the desktop app or the bare server binary above is simpler — you don't need to install Docker just to use Recall.
