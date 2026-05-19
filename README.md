@@ -365,7 +365,7 @@ timestamps because the stack runs with `--storage.tsdb.out-of-order-time-window=
 
 ## Contributing
 
-Bug reports, feature requests, and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, build instructions, coding conventions, [pre-commit hook requirements](CONTRIBUTING.md#pre-commit-hooks-lefthook), and the [release / tagging process](CONTRIBUTING.md#tagging-and-releasing) (automated via [release-please](https://github.com/googleapis/release-please) — commits on `main` follow [Conventional Commits](https://www.conventionalcommits.org/)).
+Bug reports, feature requests, and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, build instructions, coding conventions, and [pre-commit hook requirements](CONTRIBUTING.md#pre-commit-hooks-lefthook). The release/tagging process — automated via [release-please](https://github.com/googleapis/release-please), with `make release-beta` / `make release-fire` shortcuts for the manual bits — is documented in [RELEASES.md](RELEASES.md). Commits on `main` follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## License
 
