@@ -1,0 +1,18 @@
+# Spectral ruleset for api/openapi.yaml. Extends the built-in
+# spectral:oas (OpenAPI Specification) rules. Run via `make lint-openapi`
+# (or directly: `npx @stoplight/spectral-cli lint api/openapi.yaml`).
+#
+# Tune by overriding individual rule severities below. Each rule has a
+# stable name — full list at https://docs.stoplight.io/docs/spectral/.
+extends:
+  - spectral:oas
+
+rules:
+  # OperationIDs aren't necessary for our hand-written spec; the routes
+  # are identified by path + method already. Codegen consumers don't run
+  # against this spec.
+  operation-operationId: off
+  operation-operationId-unique: off
+
+  # The info.contact/license/description blocks ARE filled, so leave the
+  # corresponding rules at default. Same for path/parameter naming.
