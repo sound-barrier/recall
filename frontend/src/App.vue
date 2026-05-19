@@ -1,5 +1,7 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import type { Ref } from 'vue'
+import type { MatchRecord } from './api'
 import {
   ParseScreenshots,
   GetMatchResults,
@@ -27,20 +29,28 @@ import {
   heroesForHeader,
   matchTime,
   fmtTime,
-} from './match-helpers.js'
+} from './match-helpers'
 
-const records = ref([])
+interface ParseProgressEvent {
+  done: number
+  total: number
+  filename: string
+  screenshot_type?: string
+  data?: MatchRecord['data']
+}
+
+const records = ref<MatchRecord[]>([])
 const error = ref('')
 const loading = ref(false)
 
 // Parse progress: the most-recently-completed file during an active parse.
 // null when no parse is running.
-const parseProgress = ref(null)
+const parseProgress = ref<ParseProgressEvent | null>(null)
 // Rolling log of completed files during the current parse (up to 50).
-const parseLog = ref([])
+const parseLog = ref<ParseProgressEvent[]>([])
 // Count of image files in the screenshots dir not yet in the database.
 // null = not yet fetched; 0 = all parsed; >0 = new files waiting.
-const newScreenshotCount = ref(null)
+const newScreenshotCount = ref<number | null>(null)
 
 // Which top-level view is shown: 'matches' (default — filter rail +
 // match cards) or 'settings' (config sections — directory, watch,
@@ -51,7 +61,7 @@ const view = ref('matches')
 // panel so keyboard users land in the new content rather than staying on
 // the nav button. Each <section> has tabindex="-1" so it can receive
 // programmatic focus without entering the natural tab order.
-async function goToView(next) {
+async function goToView(next: string) {
   view.value = next
   await nextTick()
   const panel = document.getElementById(`panel-${next}`)
@@ -61,7 +71,7 @@ async function goToView(next) {
 // Wall-clock time of the last successful manual parse, used to render
 // "Last run · X ago" feedback under the Parse button on the settings
 // page. Persisted to localStorage so the timestamp survives reloads.
-const lastParsedAt = ref(null)
+const lastParsedAt = ref<number | null>(null)
 
 // Tesseract status — mirrors the Go side's TesseractStatus struct.
 // When .found is false, a System Alert banner blocks the main views
@@ -91,15 +101,15 @@ const watchEnabled = ref(false)
 // (set-union, not intersection). Migrated from single-string refs so
 // the user can stack picks like "Aatlis + Rialto + Numbani" or
 // "Tank OR Support" in one query.
-const filterMode   = ref([])
-const filterType   = ref([])
-const filterRole   = ref([])
-const filterMap    = ref([])
-const filterHero   = ref([])
-const filterResult = ref([])
+const filterMode   = ref<string[]>([])
+const filterType   = ref<string[]>([])
+const filterRole   = ref<string[]>([])
+const filterMap    = ref<string[]>([])
+const filterHero   = ref<string[]>([])
+const filterResult = ref<string[]>([])
 // Filter by which OW screenshot type(s) the match was parsed from.
 // Backed by rec.source_types (per-file map populated at parse time).
-const filterSshot  = ref([])
+const filterSshot  = ref<string[]>([])
 
 // Which filter popover is currently open (one at a time). Set to the
 // field name ("mode", "map", ...) when a trigger is clicked; cleared
@@ -109,7 +119,7 @@ const openFilter = ref('')
 // Per-popover search query, keyed by field. Used for the Map and Hero
 // rosters which can be long; smaller fields ignore it but the input
 // is hidden anyway when option count < 8.
-const filterSearch = ref({ mode: '', type: '', role: '', map: '', hero: '', result: '', sshot: '' })
+const filterSearch = ref<Record<string, string>>({ mode: '', type: '', role: '', map: '', hero: '', result: '', sshot: '' })
 
 // Date/time range filter. Both bound to <input type="datetime-local">,
 // which emits "YYYY-MM-DDTHH:MM" — the same shape as matchTime(rec),
@@ -123,12 +133,12 @@ const sortDir = ref('desc')
 // Per-card expand/collapse state. Object keyed by record id; truthy =
 // expanded. Plain object (not a Set) so Vue's reactivity sees each
 // toggle naturally without needing to reassign the whole container.
-const expanded = ref({})
+const expanded = ref<Record<number, boolean>>({})
 
 // Map filter-field names to the ref they're stored in. Lets a single
 // toggleFilter() handler power every clickable badge instead of one
 // per field.
-const filterRefs = {
+const filterRefs: Record<string, Ref<string[]>> = {
   mode:   filterMode,
   type:   filterType,
   role:   filterRole,
@@ -137,6 +147,8 @@ const filterRefs = {
   result: filterResult,
   sshot:  filterSshot,
 }
+function filterList(field: string): string[] { return filterRefs[field]?.value ?? [] }
+function filterSearchStr(field: string): string { return filterSearch.value[field] ?? '' }
 
 async function load() {
   const [recs, dir, promOn, watchOn, tess, newCount] = await Promise.all([
@@ -201,10 +213,11 @@ async function gotoEngineSettings() {
 // state and rolls back on error. Enabling is gated on Tesseract being
 // available — turning Watch on with a broken OCR setup would just
 // queue silent failures.
-async function toggleWatch(e) {
-  const next = e.target.checked
+async function toggleWatch(e: Event) {
+  const el = e.target as HTMLInputElement
+  const next = el.checked
   if (next && !tesseractReady.value) {
-    e.target.checked = false
+    el.checked = false
     error.value = 'Configure Tesseract in Ingest → Engine before enabling Watch.'
     return
   }
@@ -213,21 +226,22 @@ async function toggleWatch(e) {
     watchEnabled.value = next
   } catch (err) {
     error.value = String(err)
-    e.target.checked = watchEnabled.value
+    el.checked = watchEnabled.value
   }
 }
 
 // Toggle the Prometheus endpoint. We call the Go method first so the
 // persisted setting drives both the actual server lifecycle and the UI
 // state; if the call fails, fall back to the previous local value.
-async function togglePrometheus(e) {
-  const next = e.target.checked
+async function togglePrometheus(e: Event) {
+  const el = e.target as HTMLInputElement
+  const next = el.checked
   try {
     await SetPrometheusEnabled(next)
     prometheusEnabled.value = next
   } catch (err) {
     error.value = String(err)
-    e.target.checked = prometheusEnabled.value
+    el.checked = prometheusEnabled.value
   }
 }
 
@@ -291,7 +305,7 @@ function cancelClear() {
 // Settings. Not reactive to wall-clock ticks — re-renders happen
 // naturally on view/state changes, and stale "2 minutes ago" labels
 // on an idle Settings screen aren't worth a setInterval.
-function formatRelativeTime(ms) {
+function formatRelativeTime(ms: number | null | undefined): string {
   if (!ms) return ''
   const diff = Date.now() - ms
   if (diff < 0) return 'just now'
@@ -334,8 +348,9 @@ async function pickDir() {
   }
 }
 
-function uniqueValues(field) {
-  const set = new Set()
+type StringMatchField = 'mode' | 'type' | 'role' | 'map' | 'result' | 'hero'
+function uniqueValues(field: StringMatchField): string[] {
+  const set = new Set<string>()
   for (const r of records.value) {
     const v = r.data?.[field]
     if (v) set.add(v)
@@ -360,7 +375,7 @@ const sshotTypes = computed(() => SCREENSHOT_TYPES)
 // heroes_played[]. We union both sources so every hero the user has
 // actually played shows up in the dropdown.
 const heroes = computed(() => {
-  const set = new Set()
+  const set = new Set<string>()
   for (const r of records.value) {
     if (r.data?.hero) set.add(r.data.hero)
     for (const hp of (r.data?.heroes_played || [])) {
@@ -374,11 +389,11 @@ const filtered = computed(() =>
   records.value.filter(r => {
     const d = r.data || {}
     if (!d.map) return false
-    if (filterMode.value.length   && !filterMode.value.includes(d.mode))     return false
-    if (filterType.value.length   && !filterType.value.includes(d.type))     return false
-    if (filterRole.value.length   && !filterRole.value.includes(d.role))     return false
-    if (filterMap.value.length    && !filterMap.value.includes(d.map))       return false
-    if (filterResult.value.length && !filterResult.value.includes(d.result)) return false
+    if (filterMode.value.length   && !filterMode.value.includes(d.mode   ?? '')) return false
+    if (filterType.value.length   && !filterType.value.includes(d.type   ?? '')) return false
+    if (filterRole.value.length   && !filterRole.value.includes(d.role   ?? '')) return false
+    if (filterMap.value.length    && !filterMap.value.includes(d.map     ?? '')) return false
+    if (filterResult.value.length && !filterResult.value.includes(d.result ?? '')) return false
     // Screenshot-type filter: union ("any of the picked types is present"
     // among this match's parsed source files). Falls back to the
     // detected-slot inference when source_types is missing so existing
@@ -386,7 +401,7 @@ const filtered = computed(() =>
     if (filterSshot.value.length) {
       const picks = filterSshot.value
       const stored = r.source_types ? Object.values(r.source_types) : []
-      let inferred = []
+      let inferred: string[] = []
       if (stored.length === 0) {
         inferred = detectScreenshotSlots(r).filter(s => s.present).map(s => s.key)
       }
@@ -399,7 +414,7 @@ const filtered = computed(() =>
     // chosen heroes need to match — union, not intersection.
     if (filterHero.value.length) {
       const picks = filterHero.value
-      const inPrimary   = picks.includes(d.hero)
+      const inPrimary   = picks.includes(d.hero ?? '')
       const inSecondary = (d.heroes_played || []).some(hp => picks.includes(hp.hero))
       if (!inPrimary && !inSecondary) return false
     }
@@ -440,7 +455,7 @@ function toggleSort() {
 // Called from match-card badges and from the popover checkbox rows;
 // the same operation in both places means clicking a Rialto chip
 // twice removes Rialto.
-function toggleFilter(field, value) {
+function toggleFilter(field: string, value: string) {
   if (!value) return
   const r = filterRefs[field]
   if (!r) return
@@ -450,18 +465,18 @@ function toggleFilter(field, value) {
   else        r.value = [...arr, value]
 }
 
-function isActive(field, value) {
+function isActive(field: string, value: string): boolean {
   const r = filterRefs[field]
   return !!(r && r.value.includes(value))
 }
 
 // Bulk popover actions.
-function selectAllFilter(field, options) {
+function selectAllFilter(field: string, options: string[]) {
   const r = filterRefs[field]
   if (!r) return
   r.value = [...options]
 }
-function clearFilterField(field) {
+function clearFilterField(field: string) {
   const r = filterRefs[field]
   if (!r) return
   r.value = []
@@ -512,12 +527,12 @@ const earliestMatchDateTime = computed(() => {
 // often enough that minute-level staleness isn't visible.
 const nowDateTime = computed(() => {
   const d = new Date()
-  const pad = n => String(n).padStart(2, '0')
+  const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 })
 
 // Card collapse/expand.
-async function toggleExpand(id) {
+async function toggleExpand(id: number) {
   const wasExpanded = !!expanded.value[id]
   // Reassign the object so Vue sees a new reference. Mutating in place
   // works for plain objects with Vue 3 deep reactivity, but being
@@ -532,7 +547,7 @@ async function toggleExpand(id) {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }
 }
-function isExpanded(id) {
+function isExpanded(id: number) {
   return !!expanded.value[id]
 }
 // Bulk toggle: if any visible card is expanded, collapse all; otherwise
@@ -554,10 +569,10 @@ const allExpanded = computed(() =>
 // the matching filters. Using `filteredSorted` (not raw `records`) keeps
 // this synced with the visible cards below.
 const wld = computed(() => {
-  const c = { victory: 0, defeat: 0, draw: 0 }
+  const c: Record<string, number> = { victory: 0, defeat: 0, draw: 0 }
   for (const r of filteredSorted.value) {
     const k = r.data?.result
-    if (k && k in c) c[k]++
+    if (k && k in c) c[k] = (c[k] ?? 0) + 1
   }
   return c
 })
@@ -566,11 +581,11 @@ const wld = computed(() => {
 // main card expand state — most users don't care which screenshots fed
 // a row, so we keep this folded by default even when the card itself
 // is open.
-const sourcesExpanded = ref({})
-function toggleSources(id) {
+const sourcesExpanded = ref<Record<number, boolean>>({})
+function toggleSources(id: number) {
   sourcesExpanded.value = { ...sourcesExpanded.value, [id]: !sourcesExpanded.value[id] }
 }
-function isSourcesOpen(id) {
+function isSourcesOpen(id: number) {
   return !!sourcesExpanded.value[id]
 }
 
@@ -578,22 +593,22 @@ function isSourcesOpen(id) {
 // same screenshot stays open if you collapse and re-open the source
 // list. Image bytes come from the Go ScreenshotHandler at
 // /_screenshot/<filename> — no IPC round-trip.
-const previewOpen = ref({})
-const previewError = ref({})
-function togglePreview(filename) {
+const previewOpen = ref<Record<string, boolean>>({})
+const previewError = ref<Record<string, boolean>>({})
+function togglePreview(filename: string) {
   previewError.value = { ...previewError.value, [filename]: false }
   previewOpen.value = { ...previewOpen.value, [filename]: !previewOpen.value[filename] }
 }
-function isPreviewOpen(filename) {
+function isPreviewOpen(filename: string) {
   return !!previewOpen.value[filename]
 }
-function isPreviewError(filename) {
+function isPreviewError(filename: string) {
   return !!previewError.value[filename]
 }
-function onPreviewError(filename) {
+function onPreviewError(filename: string) {
   previewError.value = { ...previewError.value, [filename]: true }
 }
-function screenshotURL(filename) {
+function screenshotURL(filename: string): string {
   return `/_screenshot/${encodeURIComponent(filename)}`
 }
 
@@ -608,27 +623,27 @@ const unknownRecords = computed(() =>
 // Per-card expand state for the Unknown Maps view. Separate from
 // the main `expanded` store so collapsing all matches doesn't also
 // reset the unknown cards the user is reviewing.
-const unknownExpanded = ref({})
-function toggleUnknownExpand(id) {
+const unknownExpanded = ref<Record<number, boolean>>({})
+function toggleUnknownExpand(id: number) {
   unknownExpanded.value = { ...unknownExpanded.value, [id]: !unknownExpanded.value[id] }
 }
-function isUnknownExpanded(id) {
+function isUnknownExpanded(id: number) {
   return !!unknownExpanded.value[id]
 }
 
-const unknownPreviewOpen = ref({})
-const unknownPreviewError = ref({})
-function toggleUnknownPreview(filename) {
+const unknownPreviewOpen = ref<Record<string, boolean>>({})
+const unknownPreviewError = ref<Record<string, boolean>>({})
+function toggleUnknownPreview(filename: string) {
   unknownPreviewError.value = { ...unknownPreviewError.value, [filename]: false }
   unknownPreviewOpen.value = { ...unknownPreviewOpen.value, [filename]: !unknownPreviewOpen.value[filename] }
 }
-function isUnknownPreviewOpen(filename) {
+function isUnknownPreviewOpen(filename: string) {
   return !!unknownPreviewOpen.value[filename]
 }
-function isUnknownPreviewError(filename) {
+function isUnknownPreviewError(filename: string) {
   return !!unknownPreviewError.value[filename]
 }
-function onUnknownPreviewError(filename) {
+function onUnknownPreviewError(filename: string) {
   unknownPreviewError.value = { ...unknownPreviewError.value, [filename]: true }
 }
 
@@ -681,7 +696,7 @@ const activeFilterCount = computed(() => {
 // choice survives across launches. Applied by setting data-theme on the
 // document root, which scopes the light-mode CSS variable overrides.
 const themeMode = ref('dark')
-function applyTheme(mode) {
+function applyTheme(mode: string) {
   document.documentElement.setAttribute('data-theme', mode)
 }
 function toggleTheme() {
@@ -694,7 +709,7 @@ function toggleTheme() {
 // open; an outside-click or ESC closes it. Only one popover is ever
 // open at a time (the second `toggleFilterPanel` call closes the
 // previous one before opening the new one).
-function toggleFilterPanel(field) {
+function toggleFilterPanel(field: string) {
   openFilter.value = openFilter.value === field ? '' : field
   if (openFilter.value && filterSearch.value[field] !== '') {
     filterSearch.value = { ...filterSearch.value, [field]: '' }
@@ -702,14 +717,13 @@ function toggleFilterPanel(field) {
 }
 function closeFilterPanel() { openFilter.value = '' }
 
-function onDocMousedown(e) {
+function onDocMousedown(e: MouseEvent) {
   if (!openFilter.value) return
-  const t = e.target
-  // Ignore clicks inside any open .multi-filter root; close on anything else.
-  if (t && t.closest && t.closest('.multi-filter')) return
+  const t = e.target as HTMLElement | null
+  if (t?.closest('.multi-filter')) return
   openFilter.value = ''
 }
-function onDocKeydown(e) {
+function onDocKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && openFilter.value) {
     openFilter.value = ''
   }
@@ -731,7 +745,7 @@ onMounted(() => {
 
   load()
   EventsOn('parse-complete', () => { load(); lastParsedAt.value = Date.now(); try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {} })
-  EventsOn('parse-progress', (data) => {
+  EventsOn('parse-progress', (data: ParseProgressEvent) => {
     if (!data) return
     parseProgress.value = data
     parseLog.value = [...parseLog.value, data].slice(-50)
@@ -1135,7 +1149,7 @@ onBeforeUnmount(() => {
                 >
                   <span class="btn-dot" />
                   <span v-if="loading">Parsing…</span>
-                  <span v-else-if="newScreenshotCount > 0">Run Parse · {{ newScreenshotCount }}</span>
+                  <span v-else-if="(newScreenshotCount ?? 0) > 0">Run Parse · {{ newScreenshotCount }}</span>
                   <span v-else>Run Parse</span>
                 </button>
               </div>
@@ -1524,28 +1538,28 @@ onBeforeUnmount(() => {
               ]"
               :key="cfg.field"
               class="filter-field multi-filter"
-              :class="{ open: openFilter === cfg.field, populated: filterRefs[cfg.field].value.length > 0 }"
+              :class="{ open: openFilter === cfg.field, populated: filterList(cfg.field).length > 0 }"
             >
               <span class="filter-eyebrow">
                 {{ cfg.label }}
-                <span v-if="filterRefs[cfg.field].value.length" class="eyebrow-count">× {{ String(filterRefs[cfg.field].value.length).padStart(2, '0') }}</span>
+                <span v-if="filterList(cfg.field).length" class="eyebrow-count">× {{ String(filterList(cfg.field).length).padStart(2, '0') }}</span>
               </span>
 
               <button
                 type="button"
                 class="mf-trigger"
                 :aria-expanded="openFilter === cfg.field"
-                :aria-label="`${cfg.label} filter, ${filterRefs[cfg.field].value.length} of ${cfg.options.length} selected`"
+                :aria-label="`${cfg.label} filter, ${filterList(cfg.field).length} of ${cfg.options.length} selected`"
                 @click="toggleFilterPanel(cfg.field)"
               >
                 <span class="mf-trigger-inner">
-                  <template v-if="filterRefs[cfg.field].value.length === 0">
+                  <template v-if="filterList(cfg.field).length === 0">
                     <span class="mf-placeholder">All</span>
                     <span class="mf-placeholder-meta">{{ cfg.options.length }} {{ cfg.short.toLowerCase() }}</span>
                   </template>
-                  <template v-else-if="filterRefs[cfg.field].value.length <= 2">
+                  <template v-else-if="filterList(cfg.field).length <= 2">
                     <span
-                      v-for="val in filterRefs[cfg.field].value"
+                      v-for="val in filterList(cfg.field)"
                       :key="val"
                       class="mf-chip"
                       :title="`Remove ${val} from filter`"
@@ -1557,10 +1571,10 @@ onBeforeUnmount(() => {
                   </template>
                   <template v-else>
                     <span class="mf-chip mf-chip-stack">
-                      <span class="mf-chip-text">{{ cfg.formatOption ? cfg.formatOption(filterRefs[cfg.field].value[0]) : filterRefs[cfg.field].value[0] }}</span>
+                      <span class="mf-chip-text">{{ cfg.formatOption ? cfg.formatOption(filterList(cfg.field)[0]) : filterList(cfg.field)[0] }}</span>
                       <span class="mf-chip-x" aria-hidden="true" />
                     </span>
-                    <span class="mf-more">+{{ filterRefs[cfg.field].value.length - 1 }}</span>
+                    <span class="mf-more">+{{ filterList(cfg.field).length - 1 }}</span>
                   </template>
                 </span>
                 <span class="mf-caret" aria-hidden="true" />
@@ -1569,7 +1583,7 @@ onBeforeUnmount(() => {
               <div v-if="openFilter === cfg.field" class="mf-panel" @click.stop>
                 <div class="mf-panel-head">
                   <span class="mf-panel-title">{{ cfg.short }} ROSTER</span>
-                  <span class="mf-panel-meta">{{ filterRefs[cfg.field].value.length }} / {{ cfg.options.length }}</span>
+                  <span class="mf-panel-meta">{{ filterList(cfg.field).length }} / {{ cfg.options.length }}</span>
                 </div>
                 <p class="mf-panel-hint">
                   Picking multiple matches <em>any</em> of them.
@@ -1587,13 +1601,13 @@ onBeforeUnmount(() => {
                 <div class="mf-list" role="listbox" aria-multiselectable="true">
                   <template v-for="opt in cfg.options" :key="opt">
                     <label
-                      v-if="!filterSearch[cfg.field] || (cfg.formatOption ? cfg.formatOption(opt) : opt).toLowerCase().includes(filterSearch[cfg.field].toLowerCase())"
+                      v-if="!filterSearchStr(cfg.field) || (cfg.formatOption ? cfg.formatOption(opt) : opt).toLowerCase().includes(filterSearchStr(cfg.field).toLowerCase())"
                       class="mf-row"
-                      :class="{ checked: filterRefs[cfg.field].value.includes(opt) }"
+                      :class="{ checked: filterList(cfg.field).includes(opt) }"
                     >
                       <input
                         type="checkbox"
-                        :checked="filterRefs[cfg.field].value.includes(opt)"
+                        :checked="filterList(cfg.field).includes(opt)"
                         class="mf-row-box"
                         @change="toggleFilter(cfg.field, opt)"
                       >
@@ -1608,17 +1622,17 @@ onBeforeUnmount(() => {
                     No {{ cfg.label.toLowerCase() }} values yet — parse some matches to populate this filter.
                   </div>
                   <div
-                    v-else-if="filterSearch[cfg.field] && cfg.options.filter(o => o.toLowerCase().includes(filterSearch[cfg.field].toLowerCase())).length === 0"
+                    v-else-if="filterSearchStr(cfg.field) && cfg.options.filter(o => o.toLowerCase().includes(filterSearchStr(cfg.field).toLowerCase())).length === 0"
                     class="mf-empty"
                   >
-                    No {{ cfg.label.toLowerCase() }} matches "{{ filterSearch[cfg.field] }}"
+                    No {{ cfg.label.toLowerCase() }} matches "{{ filterSearchStr(cfg.field) }}"
                   </div>
                 </div>
                 <div class="mf-panel-foot">
                   <button
                     type="button"
                     class="mf-foot-btn"
-                    :disabled="filterRefs[cfg.field].value.length === cfg.options.length"
+                    :disabled="filterList(cfg.field).length === cfg.options.length"
                     @click="selectAllFilter(cfg.field, cfg.options)"
                   >
                     All
@@ -1626,7 +1640,7 @@ onBeforeUnmount(() => {
                   <button
                     type="button"
                     class="mf-foot-btn"
-                    :disabled="filterRefs[cfg.field].value.length === 0"
+                    :disabled="filterList(cfg.field).length === 0"
                     @click="clearFilterField(cfg.field)"
                   >
                     None
@@ -1723,9 +1737,9 @@ onBeforeUnmount(() => {
                     <span class="match-index">{{ String(idx + 1).padStart(2, '0') }}</span>
                     <span
                       class="match-map clickable"
-                      :class="{ active: isActive('map', rec.data.map) }"
+                      :class="{ active: isActive('map', rec.data.map ?? '') }"
                       title="Click to filter by this map"
-                      @click.stop="toggleFilter('map', rec.data.map)"
+                      @click.stop="toggleFilter('map', rec.data.map ?? '')"
                     >{{ rec.data.map || 'Unknown Map' }}</span>
                   </div>
                   <div class="match-title-rhs">

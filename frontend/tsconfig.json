@@ -1,6 +1,6 @@
 {
-  "// Minimal TypeScript config": "Vite handles transpilation via esbuild — this config is purely for tsc --noEmit type-checking (run via `npm run typecheck`).",
-  "// Scope": "Only .ts files in src/ are type-checked. .vue and .js files stay untouched.",
+  "// Minimal TypeScript config": "Vite handles transpilation via esbuild — this config is purely for vue-tsc --noEmit type-checking (run via `npm run typecheck`).",
+  "// Scope": "Both .ts and .vue files in src/ are type-checked. .js files stay untouched.",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
@@ -17,6 +17,6 @@
     "resolveJsonModule": true,
     "types": ["vite/client"]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"],
   "exclude": ["node_modules", "dist"]
 }
