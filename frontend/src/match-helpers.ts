@@ -3,15 +3,26 @@
 // in App.vue; everything here takes plain inputs and returns plain
 // outputs.
 
+import type { MatchRecord, HeroPlay, ScreenshotType } from './api'
+
+export interface ScreenshotSlot {
+  key: ScreenshotType
+  label: string
+  required: boolean
+  present: boolean
+  hint: string
+  missing: string
+}
+
 // The four canonical OW post-match screenshot types our parser
 // classifies into. Order is workflow order: SUMMARY (post-match
 // summary tab) → TEAMS (post-match scoreboard / in-game scoreboard) →
 // PERSONAL (per-hero stats tab) → RANK (competitive rank screen).
-export const SCREENSHOT_TYPES = ['summary', 'scoreboard', 'personal', 'rank']
+export const SCREENSHOT_TYPES: ScreenshotType[] = ['summary', 'scoreboard', 'personal', 'rank']
 
 // Pretty label for a screenshot-type value. "scoreboard" is rendered
 // as "TEAMS" everywhere else in the app so its filter chip matches.
-export function sshotTypeLabel(t) {
+export function sshotTypeLabel(t: string | null | undefined): string {
   if (t === 'scoreboard') return 'TEAMS'
   return (t || 'unknown').toUpperCase()
 }
@@ -19,8 +30,11 @@ export function sshotTypeLabel(t) {
 // Look up the parser-assigned type for a specific source file on a
 // record. Returns '' (empty string) for files parsed before per-file
 // type tracking landed — the UI renders a "?" chip in that case.
-export function sourceType(rec, filename) {
-  return rec?.source_types?.[filename] || ''
+export function sourceType(
+  rec: Pick<MatchRecord, 'source_types'> | null | undefined,
+  filename: string,
+): ScreenshotType | '' {
+  return rec?.source_types?.[filename] ?? ''
 }
 
 // Infer which screenshot types were parsed for a record. Drives the
@@ -40,15 +54,15 @@ export function sourceType(rec, filename) {
 // SUMMARY, and a scoreboard-only row will light up PERSONAL because
 // the scoreboard's right-panel stats are stored in
 // HeroesPlayed[*].Stats.
-export function detectScreenshotSlots(rec) {
-  const d = rec.data || {}
+export function detectScreenshotSlots(rec: Pick<MatchRecord, 'data' | 'source_types'>): ScreenshotSlot[] {
+  const d = rec.data ?? {}
   const hp = Array.isArray(d.heroes_played) ? d.heroes_played : []
   const storedTypes = rec.source_types
     ? new Set(Object.values(rec.source_types).filter(Boolean))
     : null
-  const combatTotal = (d.eliminations || 0) + (d.assists || 0) + (d.deaths || 0) +
-                      (d.damage || 0) + (d.healing || 0) + (d.mitigation || 0)
-  const presence = (key, fallback) =>
+  const combatTotal = (d.eliminations ?? 0) + (d.assists ?? 0) + (d.deaths ?? 0) +
+                      (d.damage ?? 0) + (d.healing ?? 0) + (d.mitigation ?? 0)
+  const presence = (key: ScreenshotType, fallback: boolean): boolean =>
     storedTypes ? storedTypes.has(key) : fallback
   return [
     {
@@ -91,11 +105,11 @@ export function detectScreenshotSlots(rec) {
   ]
 }
 
-export function missingRequiredSlots(rec) {
+export function missingRequiredSlots(rec: Pick<MatchRecord, 'data' | 'source_types'>): ScreenshotSlot[] {
   return detectScreenshotSlots(rec).filter(s => s.required && !s.present)
 }
 
-export function missingOptionalSlots(rec) {
+export function missingOptionalSlots(rec: Pick<MatchRecord, 'data' | 'source_types'>): ScreenshotSlot[] {
   return detectScreenshotSlots(rec).filter(s => !s.required && !s.present)
 }
 
@@ -105,12 +119,12 @@ export function missingOptionalSlots(rec) {
 // SUMMARY or PERSONAL screenshot) get the full list; a fallback for
 // matches that only have the scoreboard parsed returns the single
 // primary hero so the title isn't empty.
-export function heroesForHeader(rec) {
+export function heroesForHeader(rec: Pick<MatchRecord, 'data'>): HeroPlay[] {
   const list = rec.data?.heroes_played
   if (Array.isArray(list) && list.length > 0) {
-    return [...list].sort((a, b) => (b.percent_played || 0) - (a.percent_played || 0))
+    return [...list].sort((a, b) => (b.percent_played ?? 0) - (a.percent_played ?? 0))
   }
-  if (rec.data?.hero) return [{ hero: rec.data.hero }]
+  if (rec.data?.hero) return [{ hero: rec.data.hero, percent_played: 0 }]
   return []
 }
 
@@ -118,18 +132,18 @@ export function heroesForHeader(rec) {
 // date + finished_at (most accurate); falls back to the match_key
 // prefix (set from the earliest screenshot's filename) when SUMMARY
 // isn't present.
-export function matchTime(rec) {
-  const d = rec.data || {}
+export function matchTime(rec: Pick<MatchRecord, 'match_key' | 'data'>): string {
+  const d = rec.data ?? {}
   if (d.date && d.finished_at) return `${d.date}T${d.finished_at}`
-  const m = (rec.match_key || '').match(/^match:(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/)
-  return m ? m[1] : ''
+  const m = (rec.match_key ?? '').match(/^match:(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/)
+  return m ? m[1]! : ''
 }
 
 // Format the match's date + end time for the card header. Parser
 // stores date as YYYY-MM-DD and finished_at as 24-hour HH:MM; the
 // Wails UI prefers a friendlier `May 9, 2026 @ 9:08pm` rendering.
-export function fmtTime(rec) {
-  const d = rec.data || {}
+export function fmtTime(rec: Pick<MatchRecord, 'data'>): string {
+  const d = rec.data ?? {}
   if (!d.date && !d.finished_at) return ''
 
   // Date portion: "May 9, 2026". Full month names; day not zero-padded.
@@ -137,17 +151,18 @@ export function fmtTime(rec) {
                   'July', 'August', 'September', 'October', 'November', 'December']
   let datePart = ''
   if (d.date) {
-    const [y, mo, day] = d.date.split('-').map(Number)
-    if (!Number.isNaN(y) && !Number.isNaN(mo) && !Number.isNaN(day)) {
-      datePart = `${months[mo - 1]} ${day}, ${y}`
+    const [yStr = '', moStr = '', dayStr = ''] = d.date.split('-')
+    const y = Number(yStr), mo = Number(moStr), day = Number(dayStr)
+    if (!Number.isNaN(y) && !Number.isNaN(mo) && !Number.isNaN(day) && mo >= 1 && mo <= 12) {
+      datePart = `${months[mo - 1]!} ${day}, ${y}`
     }
   }
 
   // Time portion: "9:08pm". Falls back to raw HH:MM if parsing fails.
   let timePart = ''
   if (d.finished_at) {
-    const [hRaw, mRaw] = d.finished_at.split(':')
-    const h = Number(hRaw), m = Number(mRaw)
+    const [hStr = '', mStr = ''] = d.finished_at.split(':')
+    const h = Number(hStr), m = Number(mStr)
     if (Number.isNaN(h) || Number.isNaN(m)) {
       timePart = d.finished_at
     } else {

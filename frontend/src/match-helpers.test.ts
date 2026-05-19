@@ -9,7 +9,7 @@ import {
   heroesForHeader,
   matchTime,
   fmtTime,
-} from './match-helpers.js'
+} from './match-helpers'
 
 // ─── sshotTypeLabel ──────────────────────────────────────────────────
 
@@ -35,13 +35,13 @@ describe('sshotTypeLabel', () => {
 
 describe('sourceType', () => {
   it('returns the type from source_types map', () => {
-    const rec = { source_types: { 'a.png': 'summary', 'b.png': 'rank' } }
+    const rec = { source_types: { 'a.png': 'summary' as const, 'b.png': 'rank' as const } }
     expect(sourceType(rec, 'a.png')).toBe('summary')
     expect(sourceType(rec, 'b.png')).toBe('rank')
   })
 
   it('returns "" when the file is not in the map', () => {
-    expect(sourceType({ source_types: { 'a.png': 'summary' } }, 'b.png')).toBe('')
+    expect(sourceType({ source_types: { 'a.png': 'summary' as const } }, 'b.png')).toBe('')
   })
 
   it('returns "" for pre-migration records (no source_types field)', () => {
@@ -71,7 +71,7 @@ describe('detectScreenshotSlots', () => {
   describe('with stored source_types (authoritative)', () => {
     it('marks only the present types — scoreboard + rank', () => {
       const rec = {
-        source_types: { 'a.png': 'scoreboard', 'b.png': 'rank' },
+        source_types: { 'a.png': 'scoreboard' as const, 'b.png': 'rank' as const },
         data: { eliminations: 17 },
       }
       const present = detectScreenshotSlots(rec).filter(s => s.present).map(s => s.key)
@@ -82,21 +82,21 @@ describe('detectScreenshotSlots', () => {
       // d.result is populated (e.g. inferred from SR change) but source_types
       // does NOT include "summary" — SUMMARY chip must stay absent.
       const rec = {
-        source_types: { 'a.png': 'rank' },
-        data: { result: 'victory', rank: 'platinum' },
+        source_types: { 'a.png': 'rank' as const },
+        data: { result: 'victory' as const, rank: 'platinum' },
       }
       const slots = detectScreenshotSlots(rec)
-      expect(slots.find(s => s.key === 'summary').present).toBe(false)
-      expect(slots.find(s => s.key === 'rank').present).toBe(true)
+      expect(slots.find(s => s.key === 'summary')!.present).toBe(false)
+      expect(slots.find(s => s.key === 'rank')!.present).toBe(true)
     })
 
     it('all 4 present when all 4 types stored', () => {
       const rec = {
         source_types: {
-          'a.png': 'summary',
-          'b.png': 'scoreboard',
-          'c.png': 'personal',
-          'd.png': 'rank',
+          'a.png': 'summary' as const,
+          'b.png': 'scoreboard' as const,
+          'c.png': 'personal' as const,
+          'd.png': 'rank' as const,
         },
         data: {},
       }
@@ -107,12 +107,12 @@ describe('detectScreenshotSlots', () => {
   describe('without stored source_types (fallback inference)', () => {
     it('combat stats > 0 → TEAMS present', () => {
       const rec = { data: { eliminations: 17, deaths: 11 } }
-      expect(detectScreenshotSlots(rec).find(s => s.key === 'scoreboard').present).toBe(true)
+      expect(detectScreenshotSlots(rec).find(s => s.key === 'scoreboard')!.present).toBe(true)
     })
 
     it('SUMMARY-only fields → SUMMARY present', () => {
       const rec = { data: { final_score: '3-1', game_length: '11:25' } }
-      expect(detectScreenshotSlots(rec).find(s => s.key === 'summary').present).toBe(true)
+      expect(detectScreenshotSlots(rec).find(s => s.key === 'summary')!.present).toBe(true)
     })
 
     it('hero stats with combat > 0 does NOT light up PERSONAL (scoreboard wins)', () => {
@@ -121,33 +121,33 @@ describe('detectScreenshotSlots', () => {
       const rec = {
         data: {
           eliminations: 17,
-          heroes_played: [{ hero: 'lucio', stats: { weapon_accuracy: 24 } }],
+          heroes_played: [{ hero: 'lucio', percent_played: 100, stats: { weapon_accuracy: 24 } }],
         },
       }
       const slots = detectScreenshotSlots(rec)
-      expect(slots.find(s => s.key === 'scoreboard').present).toBe(true)
-      expect(slots.find(s => s.key === 'personal').present).toBe(false)
+      expect(slots.find(s => s.key === 'scoreboard')!.present).toBe(true)
+      expect(slots.find(s => s.key === 'personal')!.present).toBe(false)
     })
 
     it('hero stats with no combat → PERSONAL present', () => {
       const rec = {
         data: {
-          heroes_played: [{ hero: 'lucio', stats: { weapon_accuracy: 24 } }],
+          heroes_played: [{ hero: 'lucio', percent_played: 100, stats: { weapon_accuracy: 24 } }],
         },
       }
-      expect(detectScreenshotSlots(rec).find(s => s.key === 'personal').present).toBe(true)
+      expect(detectScreenshotSlots(rec).find(s => s.key === 'personal')!.present).toBe(true)
     })
 
     it('rank/level/sr → RANK present', () => {
       const rec = { data: { rank: 'platinum', level: 5 } }
-      expect(detectScreenshotSlots(rec).find(s => s.key === 'rank').present).toBe(true)
+      expect(detectScreenshotSlots(rec).find(s => s.key === 'rank')!.present).toBe(true)
     })
 
     it('result alone does NOT light up SUMMARY (inferResultFromRank false-positive guard)', () => {
       // result can be inferred from SR change at read time; SUMMARY chip
       // must not light up just because result is set.
-      const rec = { data: { result: 'victory' } }
-      expect(detectScreenshotSlots(rec).find(s => s.key === 'summary').present).toBe(false)
+      const rec = { data: { result: 'victory' as const } }
+      expect(detectScreenshotSlots(rec).find(s => s.key === 'summary')!.present).toBe(false)
     })
   })
 })
@@ -157,7 +157,7 @@ describe('detectScreenshotSlots', () => {
 describe('missingRequiredSlots / missingOptionalSlots', () => {
   it('Suravasa-style: PERSONAL + RANK only → SUMMARY+TEAMS missing required, none optional', () => {
     const rec = {
-      source_types: { 'a.png': 'personal', 'b.png': 'rank' },
+      source_types: { 'a.png': 'personal' as const, 'b.png': 'rank' as const },
       data: {},
     }
     const reqMissing = missingRequiredSlots(rec).map(s => s.key)
@@ -169,10 +169,10 @@ describe('missingRequiredSlots / missingOptionalSlots', () => {
   it('complete match → no missing slots in either category', () => {
     const rec = {
       source_types: {
-        'a.png': 'summary',
-        'b.png': 'scoreboard',
-        'c.png': 'personal',
-        'd.png': 'rank',
+        'a.png': 'summary' as const,
+        'b.png': 'scoreboard' as const,
+        'c.png': 'personal' as const,
+        'd.png': 'rank' as const,
       },
       data: {},
     }
@@ -183,9 +183,9 @@ describe('missingRequiredSlots / missingOptionalSlots', () => {
   it('SUMMARY+TEAMS+PERSONAL but no RANK → only RANK in optional bucket', () => {
     const rec = {
       source_types: {
-        'a.png': 'summary',
-        'b.png': 'scoreboard',
-        'c.png': 'personal',
+        'a.png': 'summary' as const,
+        'b.png': 'scoreboard' as const,
+        'c.png': 'personal' as const,
       },
       data: {},
     }
@@ -212,7 +212,7 @@ describe('heroesForHeader', () => {
 
   it('falls back to the primary hero when heroes_played is empty', () => {
     const rec = { data: { hero: 'lucio' } }
-    expect(heroesForHeader(rec)).toEqual([{ hero: 'lucio' }])
+    expect(heroesForHeader(rec)).toEqual([{ hero: 'lucio', percent_played: 0 }])
   })
 
   it('returns [] when neither hero nor heroes_played is set', () => {
@@ -251,7 +251,7 @@ describe('matchTime', () => {
   })
 
   it('returns "" when neither date nor match_key is parseable', () => {
-    expect(matchTime({ data: {} })).toBe('')
+    expect(matchTime({ match_key: '', data: {} })).toBe('')
   })
 })
 
