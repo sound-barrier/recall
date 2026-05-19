@@ -65,6 +65,14 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `pkg/metrics` | Prometheus `Collector` + `Server` |
 | `pkg/parser` | OCR dispatcher, all screenshot parsers, Tesseract exec |
 
+`.devcontainer/devcontainer.json` + `postCreate.sh` mirror the Brewfile
+on a Debian + Docker-in-Docker base so the project can be developed
+inside VS Code Dev Containers or GitHub Codespaces with zero host
+install. The Wails GUI can't render inside the container (no display
+surface); contributors there use `go run -tags serveronly . --server`
+and access port 7000 via the forwarded host port. `make icon` is
+macOS-only (uses `sips`) and skips in the container.
+
 `Dockerfile.build` has 12 named stages. Stages 1–6 are the Wails builds (need CGo + WebView libs). Stages 7–11 are the `serveronly` builds — pure Go, `CGO_ENABLED=0`, cross-compiled on Linux for all three OS targets. The server stages inherit from `go-base` (module deps already downloaded) and need no apt packages. Stage 12 (`server-container`) is a `debian:bookworm-slim` runtime image with Tesseract pre-installed, used for Docker deployments.
 
 **Environment variable overrides** (all optional, mainly for debugging):
