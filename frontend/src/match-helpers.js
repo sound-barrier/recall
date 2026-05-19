@@ -3,7 +3,7 @@
 // in App.vue; everything here takes plain inputs and returns plain
 // outputs.
 
-// The four canonical OW2 post-match screenshot types our parser
+// The four canonical OW post-match screenshot types our parser
 // classifies into. Order is workflow order: SUMMARY (post-match
 // summary tab) → TEAMS (post-match scoreboard / in-game scoreboard) →
 // PERSONAL (per-hero stats tab) → RANK (competitive rank screen).

@@ -1,14 +1,14 @@
 # Recall
 
-**Recall** is a desktop app for Overwatch 2 players who want to understand
-their performance trends over time. It watches a folder of OW2 post-match
+**Recall** is a desktop app for Overwatch players who want to understand
+their performance trends over time. It watches a folder of OW post-match
 screenshots, reads them with Tesseract OCR, and stores per-match data in a
 local database. Optionally it exposes the match history as Prometheus metrics
 so a bundled Grafana dashboard can chart win rates, SR trends, and per-hero stats.
 
 ```mermaid
 flowchart LR
-  A[OW2 screenshots<br/>SUMMARY · TEAMS<br/>PERSONAL · RANK] -->|fsnotify watcher<br/>or manual Parse| B(Tesseract OCR<br/>+ per-screenshot<br/>parsers)
+  A[OW screenshots<br/>SUMMARY · TEAMS<br/>PERSONAL · RANK] -->|fsnotify watcher<br/>or manual Parse| B(Tesseract OCR<br/>+ per-screenshot<br/>parsers)
   B --> C[Merge passes<br/>by timestamp<br/>+ E/A/D signature]
   C --> D[(SQLite<br/>match_results)]
   D --> E[Vue UI<br/>Wails desktop<br/>or browser]
@@ -119,7 +119,7 @@ Settings and the match database are stored in the platform user-config directory
 
 ## Capturing matches
 
-Recall reads four kinds of post-match screenshots from Overwatch 2. Three are required for a complete match record; the fourth is optional but recommended for competitive play.
+Recall reads four kinds of post-match screenshots from Overwatch. Three are required for a complete match record; the fourth is optional but recommended for competitive play.
 
 | Screenshot | Required? | What it provides |
 |---|---|---|

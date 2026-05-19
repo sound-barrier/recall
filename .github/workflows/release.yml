@@ -47,7 +47,7 @@ jobs:
           mkdir -p _deb-recall/DEBIAN _deb-recall/usr/local/bin
           cp dist/linux/Recall _deb-recall/usr/local/bin/recall
           chmod 755 _deb-recall/usr/local/bin/recall
-          printf 'Package: recall\nVersion: %s\nArchitecture: amd64\nMaintainer: Jacob Delgado <jacob.delgado@gmail.com>\nDescription: Recall - Overwatch 2 match history tracker\n Watches Overwatch 2 screenshots, OCRs them with Tesseract, and tracks match history.\n' \
+          printf 'Package: recall\nVersion: %s\nArchitecture: amd64\nMaintainer: Jacob Delgado <jacob.delgado@gmail.com>\nDescription: Recall - Overwatch match history tracker\n Watches Overwatch screenshots, OCRs them with Tesseract, and tracks match history.\n' \
             "${PKG_VERSION}" > _deb-recall/DEBIAN/control
           dpkg-deb --build _deb-recall "recall-${PKG_VERSION}-linux-amd64.deb"
 
@@ -60,7 +60,7 @@ jobs:
           mkdir -p _deb-server/DEBIAN _deb-server/usr/local/bin
           cp dist/server-linux/Recall-server _deb-server/usr/local/bin/recall-server
           chmod 755 _deb-server/usr/local/bin/recall-server
-          printf 'Package: recall-server\nVersion: %s\nArchitecture: amd64\nMaintainer: Jacob Delgado <jacob.delgado@gmail.com>\nDescription: Recall server - Overwatch 2 match history HTTP server\n Headless HTTP server that serves match history data and optional Prometheus metrics.\n' \
+          printf 'Package: recall-server\nVersion: %s\nArchitecture: amd64\nMaintainer: Jacob Delgado <jacob.delgado@gmail.com>\nDescription: Recall server - Overwatch match history HTTP server\n Headless HTTP server that serves match history data and optional Prometheus metrics.\n' \
             "${PKG_VERSION}" > _deb-server/DEBIAN/control
           dpkg-deb --build _deb-server "recall-server-${PKG_VERSION}-linux-amd64.deb"
 
