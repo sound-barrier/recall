@@ -4,6 +4,17 @@ on:
   push:
     tags:
       - 'v*'
+  # Manual fallback for when the tag was created by release-please
+  # using the default GITHUB_TOKEN — GitHub deliberately does not fire
+  # workflows on refs authored by GITHUB_TOKEN (loop guard), so the
+  # `push: tags` trigger above never runs for those tags. Pick the
+  # tag from the "Use workflow from" dropdown when firing this
+  # manually (or `gh workflow run release.yml --ref vX.Y.Z`) — every
+  # job in this file already keys off `github.ref_name`, which is the
+  # tag name for both triggers. No inputs declared, so nothing
+  # untrusted enters the workflow context. See CONTRIBUTING.md →
+  # "When release.yml doesn't auto-fire" for the long-term fix.
+  workflow_dispatch:
 
 permissions: {}  # deny all by default; each job declares only what it needs
 
