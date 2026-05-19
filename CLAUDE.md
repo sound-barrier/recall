@@ -523,7 +523,7 @@ Triggered on `v*` tags (push) and on `workflow_dispatch` (manual fallback for wh
   are auto-unwrapped at the template top level: `myRef` in a template
   expression already equals `myRef.value`. Writing `myRef.value[key]` in a
   template therefore double-unwraps and returns `undefined` silently.
-  Always access `.value` inside a wrapper function in JS, then call the
+  Always access `.value` inside a wrapper function in TypeScript, then call the
   function from the template.
 - **User-controlled paths from HTTP go through a boundary validator
   before reaching `exec.Command` / `os.Stat`.** `validateScreenshotsDir`
