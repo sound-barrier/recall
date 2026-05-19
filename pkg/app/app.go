@@ -27,9 +27,9 @@ import (
 )
 
 type MatchRecord struct {
-	ID          int64              `json:"id"`
-	MatchKey    string             `json:"match_key"`
-	SourceFiles []string           `json:"source_files"`
+	ID          int64    `json:"id"`
+	MatchKey    string   `json:"match_key"`
+	SourceFiles []string `json:"source_files"`
 	// SourceTypes maps a source filename to the OW2 screenshot type the
 	// parser classified it as ("summary" / "scoreboard" / "personal" /
 	// "rank"). Populated at parse time and persisted in the DB so the UI
@@ -1342,7 +1342,8 @@ func upsertMergedRow(row mergedRow) error {
 		return err
 	}
 
-	_, err = db.DB.Exec(`INSERT INTO match_results (
+	_, err = db.DB.Exec(
+		`INSERT INTO match_results (
 		match_key, source_files, source_types,
 		map, type, mode, role, hero,
 		eliminations, assists, deaths, damage, healing, mitigation,
