@@ -137,7 +137,7 @@ cloc: ## Count lines of source code (excludes deps, build artifacts, generated f
 	    --exclude-dir=node_modules,dist,build,wailsjs,data,recall,vendor \
 	    --not-match-f='(go\.sum|package-lock\.json)'
 
-lint: lint-go lint-js lint-css lint-html lint-docker lint-yaml ## Run all linters
+lint: lint-go lint-js lint-css lint-html lint-docker lint-yaml lint-openapi ## Run all linters
 
 lint-go: ## Lint Go source (golangci-lint, both build tags)
 	@echo "[ recall ] Linting Go (golangci-lint)…"
@@ -169,6 +169,16 @@ lint-yaml: ## Lint YAML files (yamllint)
 	@echo "[ recall ] Linting YAML…"
 	yamllint .
 	@echo "[ recall ] ✓  YAML lint clean"
+
+# Spectral runs the spectral:oas ruleset against api/openapi.yaml; see
+# .spectral.yaml at the project root for rule overrides. npx pulls a
+# pinned version on demand so no global install is required.
+SPECTRAL ?= npx --yes @stoplight/spectral-cli@6.14.2
+
+lint-openapi: ## Lint api/openapi.yaml (Spectral, spectral:oas ruleset)
+	@echo "[ recall ] Linting OpenAPI (spectral)…"
+	$(SPECTRAL) lint api/openapi.yaml --fail-severity=warn
+	@echo "[ recall ] ✓  OpenAPI lint clean"
 
 fmt: ## Format Go source files (goimports-reviser + gofumpt)
 	@echo "[ recall ] Formatting Go source files…"
