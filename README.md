@@ -6,6 +6,18 @@ screenshots, reads them with Tesseract OCR, and stores per-match data in a
 local database. Optionally it exposes the match history as Prometheus metrics
 so a bundled Grafana dashboard can chart win rates, SR trends, and per-hero stats.
 
+```mermaid
+flowchart LR
+  A[OW2 screenshots<br/>SUMMARY · TEAMS<br/>PERSONAL · RANK] -->|fsnotify watcher<br/>or manual Parse| B(Tesseract OCR<br/>+ per-screenshot<br/>parsers)
+  B --> C[Merge passes<br/>by timestamp<br/>+ E/A/D signature]
+  C --> D[(SQLite<br/>match_results)]
+  D --> E[Vue UI<br/>Wails desktop<br/>or browser]
+  D -.->|optional| F[Prometheus<br/>collector<br/>:9091/metrics]
+  F -.-> G[Grafana<br/>dashboard]
+  classDef opt stroke-dasharray: 4 3
+  class F,G opt
+```
+
 ## Table of Contents
 
 **Getting started**
@@ -337,7 +349,7 @@ timestamps because the stack runs with `--storage.tsdb.out-of-order-time-window=
 
 ## Contributing
 
-Bug reports, feature requests, and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, build instructions, and coding conventions.
+Bug reports, feature requests, and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, build instructions, coding conventions, [pre-commit hook requirements](CONTRIBUTING.md#pre-commit-hooks-lefthook), and the [release / tagging process](CONTRIBUTING.md#tagging-and-releasing) (automated via [release-please](https://github.com/googleapis/release-please) — commits on `main` follow [Conventional Commits](https://www.conventionalcommits.org/)).
 
 ## License
 

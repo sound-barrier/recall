@@ -1,0 +1,75 @@
+# Lefthook pre-commit hooks.
+# Install:  brew install lefthook && lefthook install
+# Skip a hook for one commit: LEFTHOOK_EXCLUDE=name-of-hook git commit ...
+# Skip all hooks for one commit: LEFTHOOK=0 git commit ...
+#
+# Hooks here run on a per-commit basis against ONLY the files in the
+# staged diff (the {staged_files} placeholder). Full project lint lives
+# in `make lint` and CI; lefthook is for fast pre-push feedback.
+
+pre-commit:
+  parallel: true
+  commands:
+    # ── Go ────────────────────────────────────────────────────────────
+    gofumpt:
+      glob: "*.go"
+      run: gofumpt -l -w {staged_files}
+      stage_fixed: true
+
+    goimports-reviser:
+      glob: "*.go"
+      run: goimports-reviser -use-cache -project-name recall {staged_files}
+      stage_fixed: true
+
+    golangci-lint:
+      glob: "*.go"
+      run: golangci-lint run --new-from-rev=HEAD~ --fix
+      stage_fixed: true
+
+    # ── Frontend ──────────────────────────────────────────────────────
+    eslint:
+      glob: "frontend/src/**/*.{js,vue}"
+      run: cd frontend && npx eslint --fix {staged_files}
+      stage_fixed: true
+
+    stylelint:
+      glob: "frontend/src/**/*.{css,vue}"
+      run: cd frontend && npx stylelint --fix {staged_files}
+      stage_fixed: true
+
+    # ── OpenAPI ───────────────────────────────────────────────────────
+    spectral:
+      glob: "api/openapi.yaml"
+      run: npx --yes @stoplight/spectral-cli@6.14.2 lint --fail-severity=warn {staged_files}
+
+    # ── YAML / Dockerfile / Shell ─────────────────────────────────────
+    yamllint:
+      glob: "*.{yml,yaml}"
+      run: yamllint {staged_files}
+      exclude: "api/openapi.yaml"  # Spectral handles this
+
+    hadolint:
+      glob: "Dockerfile*"
+      run: hadolint {staged_files}
+
+# Commit-message format check (optional but pairs with release-please).
+# Enable conventional commits via `commit-msg` hook — see release-please
+# workflow for how commit messages drive automated versioning.
+commit-msg:
+  commands:
+    conventional:
+      # Match: feat:, fix:, chore:, docs:, refactor:, test:, perf:,
+      # build:, ci:, revert:, style:. Optional scope in parens.
+      # Optional `!` for breaking changes. Reject anything else.
+      run: |
+        first_line=$(head -n1 "{1}")
+        if echo "$first_line" | grep -qE '^(feat|fix|chore|docs|refactor|test|perf|build|ci|revert|style)(\([a-z0-9_-]+\))?!?: .+'; then
+          exit 0
+        fi
+        echo "Commit subject must follow Conventional Commits format:"
+        echo "  <type>(<scope>)?(!)?: <description>"
+        echo "  e.g. feat(parser): add Suravasa map alias"
+        echo "       fix: rename brand-grey CSS var to brand-gray"
+        echo "Allowed types: feat, fix, chore, docs, refactor, test, perf, build, ci, revert, style"
+        echo "Bypass: LEFTHOOK_EXCLUDE=conventional git commit ..."
+        exit 1

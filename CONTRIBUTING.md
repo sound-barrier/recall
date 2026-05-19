@@ -18,6 +18,8 @@ overview of the architecture and internal conventions, see
   - [Server-only binary](#server-only-binary)
   - [Other build commands](#other-build-commands)
 - [Maintenance](#maintenance)
+  - [Pre-commit hooks (lefthook)](#pre-commit-hooks-lefthook)
+  - [Tagging and releasing](#tagging-and-releasing)
 - [API specification](#api-specification)
 
 ## Development setup
@@ -191,9 +193,9 @@ make build-server-all
 
 ## Building
 
-Recall ships two binary flavours:
+Recall ships two binary flavors:
 
-| Flavour | What it is | CGo? |
+| Flavor | What it is | CGo? |
 |---|---|---|
 | **Wails app** | Native desktop window (WebKit/WebView2) | Yes — needs platform WebView libs |
 | **Server** | Headless HTTP server (default `127.0.0.1:7000`, override with `RECALL_SERVER_ADDR`) | No — pure Go, cross-compilable anywhere |
@@ -251,6 +253,123 @@ The scan covers Go module dependencies, npm packages, and `Dockerfile.build`.
 
 The repo includes an `.envrc` for [direnv](https://direnv.net/) with all available environment variable overrides documented and commented out. Run `direnv allow` once after cloning, then edit `.envrc` to activate any overrides you need.
 
+### Pre-commit hooks (lefthook)
+
+[Lefthook](https://github.com/evilmartians/lefthook) is configured in `lefthook.yml` to run formatters and linters on the **staged files only** before each commit. Hooks run in parallel and auto-fix where possible.
+
+**One-time install:**
+
+```sh
+brew bundle             # installs lefthook itself
+lefthook install        # wires the hooks into .git/hooks/{pre-commit,commit-msg}
+```
+
+Lefthook then runs automatically on every `git commit`. CI re-runs the full lint pass against the whole tree regardless, so the hooks are a fast feedback loop, not a hard gate.
+
+**What each hook requires to be on PATH** (already covered by `make fmt` / `make lint` tooling — full install instructions are under the per-platform sections above):
+
+| Hook | Glob | Tool(s) it invokes |
+|---|---|---|
+| `gofumpt`           | `*.go`                          | `gofumpt`            (Go formatter — `go install mvdan.cc/gofumpt@latest`) |
+| `goimports-reviser` | `*.go`                          | `goimports-reviser`  (`go install github.com/incu6us/goimports-reviser/v3@latest`) |
+| `golangci-lint`     | `*.go`                          | `golangci-lint`      (`brew install golangci-lint` or `go install`) |
+| `eslint`            | `frontend/src/**/*.{js,vue}`    | `eslint`             (auto-installed by `cd frontend && npm ci`) |
+| `stylelint`         | `frontend/src/**/*.{css,vue}`   | `stylelint`          (auto-installed by `cd frontend && npm ci`) |
+| `spectral`          | `api/openapi.yaml`              | `npx @stoplight/spectral-cli` (auto-pulled on demand by `npx`) |
+| `yamllint`          | `*.{yml,yaml}` (excl. openapi)  | `yamllint`           (`brew install yamllint` or `pip install yamllint`) |
+| `hadolint`          | `Dockerfile*`                   | `hadolint`           (`brew install hadolint`) |
+| `conventional`      | every commit                    | shell only (uses `grep -E`) |
+
+If a tool isn't installed, the corresponding hook fails — install it (or skip the hook for one commit, see below).
+
+**`commit-msg` hook — Conventional Commits format check** (this one runs against every commit, not just files):
+
+Subject must match `<type>(<scope>)?(!)?: <description>`. Allowed types:
+
+```
+feat fix chore docs refactor test perf build ci revert style
+```
+
+Example valid messages:
+
+```
+feat(parser): add Suravasa map alias
+fix: rename brand-grey CSS var to brand-gray
+feat!: bump min Go to 1.27
+chore(deps): bump trivy-action to v0.36.0
+```
+
+The format isn't cosmetic — `release-please` (next section) reads it to compute version bumps and regenerate `CHANGELOG.md`.
+
+**Bypasses** (use sparingly):
+
+```sh
+LEFTHOOK=0 git commit -m "wip"                          # skip all hooks
+LEFTHOOK_EXCLUDE=conventional git commit -m "fixup"     # skip just commit-msg
+LEFTHOOK_EXCLUDE='conventional,golangci-lint' git ...   # skip multiple
+```
+
+Hooks bypassed locally will still fail in CI on push — bypass is for in-flight WIP commits, not a way around the rules.
+
+### Tagging and releasing
+
+Releases are automated by [release-please](https://github.com/googleapis/release-please). **You should never need to run `git tag` by hand.** The full flow:
+
+```
+conventional commits on main
+    ↓
+release-please.yml opens "chore(main): release vX.Y.Z" PR
+    ↓
+maintainer reviews + merges the PR
+    ↓
+release-please creates the vX.Y.Z tag
+    ↓
+release.yml builds binaries + DMG + container image
+    ↓
+GitHub Release published
+```
+
+Config lives in `release-please-config.json` and `.release-please-manifest.json`.
+
+#### Version-bump rules
+
+release-please reads commit types since the last tag and bumps accordingly:
+
+| Commit prefix | Pre-1.0 effect | Post-1.0 effect |
+|---|---|---|
+| `feat!:` or `BREAKING CHANGE:` footer | minor bump | **major** bump |
+| `feat:` | minor bump | minor bump |
+| `fix:`, `perf:` | patch bump | patch bump |
+| `refactor:`, `docs:`, `test:`, `build:`, `ci:`, `revert:` | patch bump | patch bump |
+| `chore:`, `style:` | no bump, hidden from changelog | same |
+
+Until the project crosses `1.0.0`, breaking changes are minor bumps (per the `bump-minor-pre-major` flag in `release-please-config.json`). After 1.0.0, the strict SemVer rules apply.
+
+#### Cutting a release
+
+1. **Merge the Release PR**. release-please opens it titled `chore(main): release vX.Y.Z` whenever there are tag-bumping commits on `main`. The PR diff shows the version bump in `.release-please-manifest.json` and the additions to `CHANGELOG.md`.
+2. **Review the changelog content** before merging — anything `chore:` or `style:` is hidden, anything else is grouped by type. If the changelog is missing a notable change, fix the underlying commit subject (amend + force-push, OR add an empty `git commit --allow-empty -m "fix: …"` if the original PR is already squashed in).
+3. **Merge the PR** (squash). release-please then creates the `vX.Y.Z` git tag on the merge commit.
+4. The tag fires `release.yml`. Wait for all jobs (`build-docker`, `build-mac`, `sbom`, `publish-container`, `release`) to go green — typically 8-15 minutes.
+5. **Verify the GitHub Release**: `.dmg`, `.tar.gz`, `.deb`, `.exe`, SBOM, and per-artifact `.sha256` files should all be attached. The container image at `ghcr.io/<owner>/recall-server:vX.Y.Z` (plus `:latest`) should be present in Packages.
+
+#### Skipping or pausing release-please
+
+- **Empty Release PR**: if no `feat:` / `fix:` / etc. commits have landed since the last tag, no PR opens. Add at least one tag-bumping commit (or `chore:` if you genuinely just want a re-tag — that won't trigger a version bump but you can manually edit the manifest).
+- **Pausing**: close the Release PR without merging. It will re-open on the next push to `main` with the latest changes folded in.
+
+#### Emergency manual tag (last resort)
+
+Only do this if `release-please.yml` is broken or you need a hotfix tag before release-please catches up. The `release.yml` workflow fires on any `v*` tag.
+
+```sh
+git checkout main && git pull
+git tag -a v0.1.1 -m "hotfix: …"
+git push origin v0.1.1
+```
+
+After the manual tag, the next push to `main` will trigger release-please to reconcile `.release-please-manifest.json` against the new tag — you may see an unusual Release PR. Inspect it carefully before merging.
+
 ## API specification
 
 The HTTP REST + SSE surface exposed by the server binary (and the Wails app's `--server` mode) is hand-documented in [`api/openapi.yaml`](api/openapi.yaml) — OpenAPI 3.1.0.
@@ -267,4 +386,13 @@ make lint-openapi   # lint the spec with Spectral (spectral:oas + .spectral.yaml
 
 `make lint-openapi` runs Spectral with `--fail-severity=warn`. The `spectral:oas` ruleset emits most useful issues (missing descriptions, inconsistent naming, undocumented responses) as warnings rather than errors, so promoting warnings to CI-blocking is deliberate. Override individual rule severities in `.spectral.yaml` if a rule turns out to be too strict.
 
-`make swagger` honours the `DOCKER` env var (`DOCKER=podman make swagger` works). Override the port with `SWAGGER_PORT=9090 make swagger`.
+`make swagger` honors the `DOCKER` env var (`DOCKER=podman make swagger` works). Override the port with `SWAGGER_PORT=9090 make swagger`.
+
+The spec also feeds the frontend's typed API client (`frontend/src/api.ts`). After editing `api/openapi.yaml`:
+
+```sh
+make gen-types     # regenerate frontend/src/api.gen.d.ts
+make typecheck     # confirm api.ts still type-checks against the new shape
+```
+
+CI runs both and additionally fails if `api.gen.d.ts` is out of sync with the spec — so commit the regenerated `.d.ts` alongside any spec change.

@@ -229,7 +229,7 @@ func New() *App {
 	return &App{}
 }
 
-// Startup initialises the app: loads settings, checks Tesseract, opens the
+// Startup initializes the app: loads settings, checks Tesseract, opens the
 // SQLite database, and starts the metrics/watcher if configured. Called by
 // the Wails runtime via OnStartup, or directly by pkg/cmd/server.go in
 // headless mode.
@@ -911,7 +911,7 @@ func readAllRecords() ([]MatchRecord, error) {
 // mergedRow is one DB row's worth of merged data: a stable key derived from
 // E/A/D, the list of source files that fed it, and the merged stats.
 // Types carries per-source-file screenshot type (parallel to Sources) so
-// each filename can be labelled in the UI.
+// each filename can be labeled in the UI.
 type mergedRow struct {
 	Key     string
 	Sources []string
