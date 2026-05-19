@@ -25,7 +25,16 @@ WORKDIR /frontend
 
 # Install deps in an isolated layer so they're cached across source-only changes.
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci --prefer-offline
+# --maxsockets=1 serializes npm's concurrent fetches and serializes the
+# postinstall scripts that follow. Without it, esbuild's postinstall
+# (which exec's the binary it just wrote to disk) loses a race against
+# the same binary still being open for write in another worker, and
+# npm ci fails with `ETXTBSY` ("text file busy"). The retry catches the
+# race when it still slips through despite serialization — both
+# attempts hit npm's HTTP cache, so the retry adds ~1s, not a full
+# network install.
+RUN npm ci --prefer-offline --no-audit --no-fund --maxsockets=1 \
+ || (sleep 2 && npm ci --prefer-offline --no-audit --no-fund --maxsockets=1)
 
 # Copy full frontend source (wailsjs bindings already checked in).
 COPY frontend/ ./
