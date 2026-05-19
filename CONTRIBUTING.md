@@ -442,7 +442,7 @@ flowchart TD
 1. **Merge the Release PR**. release-please opens it titled `chore(main): release vX.Y.Z` whenever there are tag-bumping commits on `main`. The PR diff shows the version bump in `.release-please-manifest.json` and the additions to `CHANGELOG.md`.
 2. **Review the changelog content** before merging — anything `chore:` or `style:` is hidden, anything else is grouped by type. If the changelog is missing a notable change, fix the underlying commit subject (amend + force-push, OR add an empty `git commit --allow-empty -m "fix: …"` if the original PR is already squashed in).
 3. **Merge the PR** (squash). release-please then creates the `vX.Y.Z` git tag on the merge commit.
-4. The tag fires `release.yml`. Wait for all jobs (`build-docker`, `build-mac`, `sbom`, `publish-container`, `release`) to go green — typically 8-15 minutes.
+4. The tag fires `release.yml`. Wait for all jobs (`build-docker`, `build-mac`, `sbom`, `publish-container`, `release`) to go green — typically 8-15 minutes. **If no `Release` workflow run shows up at all** after the tag lands, see [When `release.yml` doesn't auto-fire](#when-releaseyml-doesnt-auto-fire) — the tag exists but the workflow needs a manual nudge.
 5. **Verify the GitHub Release**: `.dmg`, `.tar.gz`, `.deb`, `.exe`, SBOM, and per-artifact `.sha256` files should all be attached. The container image at `ghcr.io/<owner>/recall-server:X.Y.Z` should be present in Packages, with the rolling `:X.Y` and `:latest` tags pointing at it. (Rolling tags only move on stable releases — see the table above.)
 
 #### Cutting a prerelease (beta / rc / alpha)
@@ -473,6 +473,22 @@ The next beta in the same line: another empty commit with `Release-As: 0.0.9-bet
 
 - **Empty Release PR**: if no `feat:` / `fix:` / etc. commits have landed since the last tag, no PR opens. Add at least one tag-bumping commit (or `chore:` if you genuinely just want a re-tag — that won't trigger a version bump but you can manually edit the manifest).
 - **Pausing**: close the Release PR without merging. It will re-open on the next push to `main` with the latest changes folded in.
+
+#### When `release.yml` doesn't auto-fire
+
+You merged a Release PR, the `vX.Y.Z` tag exists on origin (`git ls-remote --tags origin | grep vX.Y.Z`), but no `Release` workflow run appears under Actions. **This is expected when `release-please.yml` is using the default `GITHUB_TOKEN`** — GitHub deliberately suppresses workflow chaining for refs authored by `github-actions[bot]` (anti-loop guard), so the tag push doesn't fire `release.yml`'s `push: tags` trigger.
+
+**Immediate unblock** — fire `release.yml` manually for the existing tag:
+
+```sh
+gh workflow run release.yml --ref vX.Y.Z-beta.0
+# or from the Actions UI: Release → Run workflow → pick the tag in
+# the "Use workflow from" dropdown.
+```
+
+Every job in `release.yml` already keys off `github.ref_name`, which is the tag name for both `push: tags` and `workflow_dispatch`, so no other knobs to flip.
+
+**Long-term fix** — create a fine-grained PAT with `contents: write` + `pull-requests: write` on this repo (or a GitHub App), save it as the repo secret `RELEASE_PLEASE_TOKEN`. `release-please.yml` already reads it (`token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}`) and will then attribute the tag push to the PAT owner, so future tags fire `release.yml` automatically. No code change once the secret is in place.
 
 #### Emergency manual tag (last resort)
 
