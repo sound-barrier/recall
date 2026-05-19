@@ -446,36 +446,101 @@ func (a *App) GetScreenshotsDir() string {
 // unexpected internal failure.
 var ErrInvalidScreenshotsDir = errors.New("screenshots directory is not configured or unreadable")
 
+// ErrInvalidTesseractPath is returned when a user-supplied path to the
+// Tesseract binary fails format validation (empty, contains disallowed
+// characters, not absolute, or wrong basename). Mapped to 400 by the
+// HTTP layer for the same reason as ErrInvalidScreenshotsDir.
+var ErrInvalidTesseractPath = errors.New("tesseract path is invalid")
+
+// safePathChars accepts characters that legitimately appear in
+// filesystem paths and Tesseract install locations, including
+// real-world cases like `C:\Program Files (x86)\Tesseract-OCR\…`
+// (parens, spaces) and usernames containing apostrophes or plus
+// signs. Excludes shell metacharacters (`; | & $ < > * ? "` and
+// backticks), NUL bytes, newlines, and other control codes — both
+// because they signal abuse and because CodeQL's go/command-injection
+// and go/path-injection rules recognize this regex-match pattern as a
+// sanitizer on user-controlled paths flowing into exec.Command /
+// os.Stat (alerts on POST /api/tesseract-path and
+// POST /api/screenshots-dir).
+var safePathChars = regexp.MustCompile(`^[\w./\\:\- ()+',]+$`)
+
 // SetScreenshotsDir updates the configured screenshots directory and
 // persists the change. Used by the REST API in server mode (replaces
 // the native directory dialog). Returns ErrInvalidScreenshotsDir
-// (possibly wrapped with the failing path) when path is empty, doesn't
-// exist, or isn't a directory.
+// (possibly wrapped with the failing path) when path is empty, fails
+// format validation, doesn't exist, or isn't a directory.
 func (a *App) SetScreenshotsDir(path string) error {
-	if err := validateScreenshotsDir(path); err != nil {
+	cleaned, err := validateScreenshotsDir(path)
+	if err != nil {
 		return err
 	}
-	a.settings.ScreenshotsDir = path
+	a.settings.ScreenshotsDir = cleaned
 	return saveSettings(a.settings)
 }
 
-// validateScreenshotsDir confirms path is a real, readable directory.
-// Returns a wrapped ErrInvalidScreenshotsDir on any failure so the HTTP
-// layer can map it to 400. Called from both SetScreenshotsDir (reject
-// bogus user/fuzzer input at write time) and ParseScreenshots (catch a
-// dir that disappeared between configure and parse).
-func validateScreenshotsDir(path string) error {
+// validateScreenshotsDir confirms path is a real, readable directory and
+// contains only filesystem-safe characters. Returns the sanitized path
+// (cleaned of any redundant segments) so callers can use the validated
+// value in subsequent file operations rather than the raw input. The
+// regex match + `filepath.Clean` equality check together prevent path
+// traversal (`..`) and shell-metacharacter injection.
+//
+// Called from both SetScreenshotsDir (reject bogus user/fuzzer input at
+// write time) and ParseScreenshots (catch a dir that disappeared
+// between configure and parse).
+func validateScreenshotsDir(path string) (string, error) {
 	if path == "" {
-		return ErrInvalidScreenshotsDir
+		return "", ErrInvalidScreenshotsDir
 	}
-	info, err := os.Stat(path)
+	if !safePathChars.MatchString(path) {
+		return "", fmt.Errorf("%w: %s: contains disallowed characters", ErrInvalidScreenshotsDir, path)
+	}
+	cleaned := filepath.Clean(path)
+	if cleaned != path {
+		return "", fmt.Errorf("%w: %s: path is not in canonical form", ErrInvalidScreenshotsDir, path)
+	}
+	info, err := os.Stat(cleaned)
 	if err != nil {
-		return fmt.Errorf("%w: %s: %v", ErrInvalidScreenshotsDir, path, err)
+		return "", fmt.Errorf("%w: %s: %v", ErrInvalidScreenshotsDir, cleaned, err)
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("%w: %s is not a directory", ErrInvalidScreenshotsDir, path)
+		return "", fmt.Errorf("%w: %s is not a directory", ErrInvalidScreenshotsDir, cleaned)
 	}
-	return nil
+	return cleaned, nil
+}
+
+// validateTesseractPath enforces a strict shape on the user-supplied
+// path to the Tesseract binary: only filesystem-safe characters, in
+// canonical form, absolute, with basename `tesseract` or `tesseract.exe`.
+// Returns the sanitized path; callers must use the returned value rather
+// than the raw input for downstream exec.Command / os.Stat calls so the
+// sanitized form is what reaches the syscall.
+//
+// The basename restriction prevents the endpoint from being abused to
+// execute arbitrary binaries — `POST /api/tesseract-path` was the path
+// CodeQL flagged as a command-injection sink, and pinning the basename
+// reduces the attack surface to "swap which Tesseract is used."
+func validateTesseractPath(path string) (string, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return "", fmt.Errorf("%w: path is empty", ErrInvalidTesseractPath)
+	}
+	if !safePathChars.MatchString(path) {
+		return "", fmt.Errorf("%w: %s: contains disallowed characters", ErrInvalidTesseractPath, path)
+	}
+	cleaned := filepath.Clean(path)
+	if cleaned != path {
+		return "", fmt.Errorf("%w: %s: path is not in canonical form", ErrInvalidTesseractPath, path)
+	}
+	if !filepath.IsAbs(cleaned) {
+		return "", fmt.Errorf("%w: %s: must be an absolute path", ErrInvalidTesseractPath, path)
+	}
+	base := filepath.Base(cleaned)
+	if base != "tesseract" && base != "tesseract.exe" {
+		return "", fmt.Errorf("%w: %s: basename must be 'tesseract' or 'tesseract.exe'", ErrInvalidTesseractPath, path)
+	}
+	return cleaned, nil
 }
 
 // ScreenshotHandler serves files from the user's configured screenshots
@@ -534,11 +599,42 @@ func (a *App) GetTesseractStatus() TesseractStatus {
 }
 
 // SetTesseractPath persists a user-typed or user-picked path, re-runs
-// detection, and rewires the parser to use the new binary. The
-// returned status reflects the new state so the frontend can refresh
-// the Engine row + System Alert without a follow-up call.
+// detection, and rewires the parser to use the new binary. The path is
+// validated for shape (absolute, no shell metacharacters, basename must
+// be `tesseract` or `tesseract.exe`) so the value reaching exec.Command
+// downstream is sanitized — see validateTesseractPath. The returned
+// status reflects the new state so the frontend can refresh the Engine
+// row + System Alert without a follow-up call.
 func (a *App) SetTesseractPath(path string) (TesseractStatus, error) {
-	path = strings.TrimSpace(path)
+	cleaned, err := validateTesseractPath(path)
+	if err != nil {
+		// Reflect the validation error in the status so the frontend's
+		// System Alert banner shows what went wrong without an extra
+		// round-trip — this mirrors how checkTesseract surfaces failures.
+		a.tessStatus = TesseractStatus{
+			Path:    strings.TrimSpace(path),
+			Default: defaultTesseractPath(),
+			Error:   err.Error(),
+		}
+		return a.tessStatus, err
+	}
+	a.settings.TesseractPath = cleaned
+	if err := saveSettings(a.settings); err != nil {
+		return a.tessStatus, err
+	}
+	a.tessStatus = checkTesseract(cleaned)
+	parser.SetTesseractPath(cleaned)
+	return a.tessStatus, nil
+}
+
+// ResetTesseractPath restores the platform default and re-validates.
+// The default path is produced internally by defaultTesseractPath() and
+// is therefore trusted — we bypass validateTesseractPath here so that
+// unusual platforms where the fallback is the bare command "tesseract"
+// (non-absolute) still flow through to checkTesseract, which will
+// surface a clean "not found" error to the UI.
+func (a *App) ResetTesseractPath() (TesseractStatus, error) {
+	path := defaultTesseractPath()
 	a.settings.TesseractPath = path
 	if err := saveSettings(a.settings); err != nil {
 		return a.tessStatus, err
@@ -546,13 +642,6 @@ func (a *App) SetTesseractPath(path string) (TesseractStatus, error) {
 	a.tessStatus = checkTesseract(path)
 	parser.SetTesseractPath(path)
 	return a.tessStatus, nil
-}
-
-// ResetTesseractPath restores the platform default and re-validates.
-// Useful when the user has clobbered the path with something broken
-// and wants to start over.
-func (a *App) ResetTesseractPath() (TesseractStatus, error) {
-	return a.SetTesseractPath(defaultTesseractPath())
 }
 
 // scrapeReader returns every match in the DB as a slice of metrics.ScrapeRow.
@@ -625,7 +714,8 @@ func (a *App) ParseScreenshots() error {
 	// a fresh install where SetScreenshotsDir hasn't been called yet,
 	// or one where the previously-saved directory has since been
 	// deleted/moved.
-	if err := validateScreenshotsDir(a.settings.ScreenshotsDir); err != nil {
+	screenshotsDir, err := validateScreenshotsDir(a.settings.ScreenshotsDir)
+	if err != nil {
 		return err
 	}
 	// Bail out early if Tesseract isn't usable. The frontend already
@@ -652,7 +742,7 @@ func (a *App) ParseScreenshots() error {
 	if err != nil {
 		return err
 	}
-	results, err := parser.ParseScreenshotsDir(a.settings.ScreenshotsDir, parsed, func(done, total int, filename string, result *parser.MatchResult) {
+	results, err := parser.ParseScreenshotsDir(screenshotsDir, parsed, func(done, total int, filename string, result *parser.MatchResult) {
 		a.emitParseProgress(ParseProgressEvent{
 			Done:     done,
 			Total:    total,
