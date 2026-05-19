@@ -88,8 +88,8 @@ Or go to **System Settings → Privacy & Security** and click **Open Anyway** af
 `.deb` packages install the binary to `/usr/local/bin/`:
 
 ```sh
-sudo dpkg -i recall-linux-amd64.deb        # installs /usr/local/bin/recall
-sudo dpkg -i recall-server-linux-amd64.deb  # installs /usr/local/bin/recall-server
+sudo dpkg -i recall-{version}-linux-amd64.deb         # installs /usr/local/bin/recall
+sudo dpkg -i recall-server-{version}-linux-amd64.deb  # installs /usr/local/bin/recall-server
 ```
 
 ### Verifying downloads
@@ -98,10 +98,10 @@ Every release binary and package ships with a companion `.sha256` file containin
 
 ```sh
 # Linux / WSL
-sha256sum --check recall-0.0.1-linux-amd64.tar.gz.sha256
+sha256sum --check recall-{version}-linux-amd64.tar.gz.sha256
 
 # macOS
-shasum -a 256 --check recall-0.0.1-darwin-arm64.dmg.sha256
+shasum -a 256 --check recall-{version}-darwin-arm64.dmg.sha256
 ```
 
 `sha256sum` prints `OK` when the file matches what was built in CI; any mismatch prints `FAILED` and exits non-zero.
@@ -162,7 +162,7 @@ The HTTP REST + SSE surface is documented in [`api/openapi.yaml`](api/openapi.ya
 
 > 🐳 **Most advanced.** You only need this if you want to run Recall inside a container (e.g. alongside other containerized services on a NAS or home lab). For everyday use, the desktop app or the bare server binary above is simpler — you don't need to install Docker just to use Recall.
 
-A pre-built Docker image with Tesseract included is pushed to GHCR on every tagged release:
+A pre-built Docker image with Tesseract included is pushed to GHCR on every tagged release. The `:latest` tag tracks the most recent **stable** release; prereleases (tags with a hyphenated suffix like `v0.1.0-beta.0`) publish only their exact `:<version>` and never move `:latest`, so `docker pull recall-server:latest` always lands on a non-prerelease build.
 
 ```sh
 docker run \
@@ -171,7 +171,18 @@ docker run \
   ghcr.io/sound-barrier/recall-server:latest
 ```
 
-Open `http://localhost:7000` in your browser once the container is running. You'll also need to mount your screenshots folder and a volume for the database — see [`Dockerfile.build`](Dockerfile.build) and the compose examples below for the full setup.
+Open `http://localhost:7000` in your browser once the container is running. The example above is the bare minimum and doesn't persist anything — for real use, bind-mount your screenshots folder (read-only is fine) and a volume for the SQLite database + settings:
+
+```sh
+docker run \
+  -e RECALL_SERVER_ADDR=0.0.0.0:7000 \
+  -p 7000:7000 \
+  -v ~/Documents/Overwatch/ScreenShots/Overwatch:/screenshots:ro \
+  -v recall-data:/root/.config/recall \
+  ghcr.io/sound-barrier/recall-server:latest
+```
+
+Then open the UI, go to **Settings → Directories → Change Folder…**, and point it at `/screenshots`. The `recall-data` named volume keeps your parsed matches and settings across container restarts.
 
 ## Metrics & Grafana
 
