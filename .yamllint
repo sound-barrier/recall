@@ -19,3 +19,8 @@ ignore: |
   frontend/node_modules/
   dist/
   build/bin/
+  # OpenAPI spec uses aligned flow-style mappings (a common OpenAPI idiom
+  # that yamllint's default flow-mapping rules flag). The spec is linted
+  # by Spectral via `make lint-openapi`, which understands OpenAPI shape
+  # semantics rather than generic YAML style.
+  api/openapi.yaml
