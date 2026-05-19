@@ -14,7 +14,7 @@ they're good/bad at by hero/map/type.
 
 ## Build, run, dev
 
-Two binary flavours exist, selected by the `serveronly` Go build tag:
+Two binary flavors exist, selected by the `serveronly` Go build tag:
 
 | Tag | Entry point | CGo | Description |
 |---|---|---|---|
@@ -51,6 +51,9 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `make icon` | Resync `build/appicon.png` from `assets/icon.png` (1024×1024 via `sips`, macOS-only) and clear `build/windows/icon.ico` so Wails regenerates platform icons (`.icns` for macOS, `.ico` for Windows) on next `wails build`. |
 | `make swagger` | Serve `api/openapi.yaml` via Swagger UI v5 in a container (`$(DOCKER) run`, default port `:8080`; override with `SWAGGER_PORT`). |
 | `make lint-openapi` | Lint `api/openapi.yaml` via Spectral (`spectral:oas` + `.spectral.yaml`) with `--fail-severity=warn`. Also run as part of `make lint`. |
+| `make test` | Run all tests: Go unit tests (`pkg/app/merge_test.go`, `pkg/parser/parser_test.go`) + Vitest (`frontend/src/match-helpers.test.js`). Parser golden-file integration tests skip unless `RECALL_FIXTURE_DIR` is set. |
+| `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml` (uses `openapi-typescript`). Run after every spec edit; CI fails if the committed `.d.ts` is out of sync. |
+| `make typecheck` | `tsc --noEmit` against `frontend/src/api.ts` + the generated types. Catches frontend-vs-spec drift at build time. |
 
 **Package layout (`pkg/`)**:
 
@@ -73,12 +76,18 @@ Two binary flavours exist, selected by the `serveronly` Go build tag:
 | `OWMETRICS_METRICS_ADDR` | `:9091` | Override Prometheus metrics bind address (e.g. `OWMETRICS_METRICS_ADDR=:9292 wails dev`). |
 | `RECALL_SERVER_ADDR` | `127.0.0.1:7000` | Override the HTTP server bind address. Set to `0.0.0.0:7000` when running inside Docker so the port is reachable from the host. |
 | `DOCKER` | `docker` | Container runtime binary for `make build-*` targets. Set to `podman` when using Podman. |
+| `RECALL_PPROF` | *(off)* | When set to anything truthy (`1`, `true`, any non-empty non-`0/false` value), mounts `net/http/pprof` handlers under `/debug/pprof/` in server mode. Off by default — never expose pprof publicly. |
+| `RECALL_FIXTURE_DIR` | *(off)* | Directory of `.png` fixture screenshots for `TestParseScreenshot_GoldenFiles`. Each `foo.png` needs a sidecar `foo.png.golden.json`. Set `RECALL_FIXTURE_UPDATE=1` alongside to regenerate goldens. |
 
-There are no Go unit tests in-tree. Ad-hoc verification has historically
-been done by writing a transient `x*_test.go` in the repo root that drives
-`app.Startup` + `app.ParseScreenshots` + `app.GetMatchResults` (import `recall/pkg/app`), running it
-with `go test -run ... -v`, and deleting the file. The
-`/tmp/owm_test/` directory has been used for throwaway harness scripts.
+Go unit tests cover the merge / inference / classification helpers in
+`pkg/app/merge_test.go` and the parser's text-processing helpers in
+`pkg/parser/parser_test.go`. Full-image parser tests live in
+`pkg/parser/integration_test.go` and skip unless `RECALL_FIXTURE_DIR`
+points at a directory of `.png` + `foo.png.golden.json` pairs. For
+quick local exploration outside the test runner, a throwaway
+`x*_test.go` in `pkg/app/` that imports `recall/pkg/app` directly and
+calls `app.Startup` + `app.ParseScreenshots` still works — delete the
+file when done so it doesn't accumulate.
 
 ## Data flow (the big-picture architecture)
 
@@ -265,7 +274,7 @@ enable→disable→enable cycle constructs a fresh `Server`.
 frontend, exposes every App method as a JSON REST endpoint under `/api/`,
 and streams `parse-complete` via `GET /api/events` (SSE). `PickScreenshotsDir`
 and `PickTesseractBinary` (native dialogs) are replaced by `POST /api/screenshots-dir`
-and `POST /api/tesseract-path` respectively; `api.js` in the frontend uses
+and `POST /api/tesseract-path` respectively; `api.ts` in the frontend uses
 `window.prompt()` as a fallback when not in Wails.
 
 The full HTTP surface is documented in **`api/openapi.yaml`** (OpenAPI
@@ -283,6 +292,14 @@ browsing.
 both the Wails `AssetServer.Handler` and the server-mode HTTP mux.
 
 ## Frontend (`frontend/src/App.vue`)
+
+Pure helpers (date formatting, screenshot-type detection, hero sorting,
+etc.) live in `frontend/src/match-helpers.js` so they can be unit-tested
+in isolation via Vitest. `App.vue` imports them at the top of
+`<script setup>`. When adding a new pure helper that takes plain inputs
+and returns plain outputs, add it to `match-helpers.js` and write a
+Vitest case in `match-helpers.test.js` — don't define it inside the
+SFC's `<script setup>`.
 
 Single-file Vue 3 SFC, composition API. No router, no Vuex/Pinia — a few
 `ref`s + `computed`s. State concerns:
@@ -360,7 +377,17 @@ case).
 | `db-list.sh` / `db-show.sh` / `db-delete.sh` / `db-export.sh` / `clear-db.sh` | SQLite CRUD helpers. `db-show` accepts id, match_key, or filename substring; `db-export` emits one rebuilt JSON object per row. |
 | `_lib.sh` | Shared `docker_config_aside()` helper used by stack-up and prometheus-clear to work around the gcloud cred-helper trap (see Troubleshooting in README). |
 
-## CI/CD (`.github/workflows/release.yml`)
+## CI/CD (`.github/workflows/`)
+
+Three workflows:
+
+| File | Trigger | What it does |
+|---|---|---|
+| `ci.yml` | Push or PR to `main` | **Lint** (golangci-lint × both build tags, ESLint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral) → **frontend build** → **bundle-size budget** (200 KB JS / 100 KB CSS) → **Go + Vitest unit tests** → **TypeScript `tsc --noEmit`** → **"api.gen.d.ts in sync with `openapi.yaml`" check**. Plus parallel build jobs for Linux/Windows Wails + all server binaries + container image + macOS Wails. Security jobs: **Trivy** (multi-language vuln scan; SARIF uploaded to GitHub Security tab) and **govulncheck** (Go call-graph-aware CVE scan, both build tags). Drift job: **schemathesis** fuzzes a freshly-built server against `api/openapi.yaml`. |
+| `release-please.yml` | Push to `main` | Reads Conventional Commits since the last tag, opens/updates a Release PR that bumps `.release-please-manifest.json` + regenerates `CHANGELOG.md`. Merging the PR creates a `vX.Y.Z` tag which fires `release.yml`. |
+| `release.yml` | `v*` tags | Builds and publishes release artifacts — see detail below. |
+
+### `release.yml` detail
 
 Triggered on `v*` tags. Parallel jobs: `build-docker` (Linux + Windows Wails apps + all server binaries via Docker; packages Linux binaries as `.tar.gz` and `.deb` installing to `/usr/local/bin/`), `build-mac` (macOS Wails arm64 `.app` bundle wrapped in a `.dmg` via `hdiutil`, requires Apple runner), `sbom` (generates `recall-{version}-sbom.spdx.json` via `anchore/sbom-action` — SPDX JSON covering Go modules + npm packages), `publish-container` (builds `server-container` stage and pushes to `ghcr.io/<owner>/recall-server` with semver tags — GHCR only, not attached to the release; attempts to set visibility to public via API with `continue-on-error` — `GITHUB_TOKEN` lacks the `write:packages` OAuth scope for visibility changes, so the package must be set public once manually via GitHub Package settings), and `release` (waits on `build-docker` + `build-mac` + `sbom`; generates a per-artifact `<filename>.sha256` file for every binary and package — not for the SBOM; uploads all to GitHub Releases). All release artifacts embed the tag version in their filename: `recall-{version}-linux-amd64.tar.gz`, `recall-{version}-darwin-arm64.dmg`, etc. (`v` prefix stripped from the tag). GHCR auth uses `secrets.GITHUB_TOKEN` — no PAT needed; workflow permissions must include `packages: write`.
 
@@ -378,15 +405,21 @@ Triggered on `v*` tags. Parallel jobs: `build-docker` (Linux + Windows Wails app
 - **`parser.HeroRole(hero string)`** is the exported way to get a hero's
   role label from outside the parser package. Don't reach into the
   unexported `heroRoles` map.
-- **Frontend imports from `'./api.js'`** (not directly from wailsjs).
-  `api.js` is a transport-agnostic shim: in Wails mode it delegates to
-  `window['go']['app']['App']` (package is now `app`, not `main`); in browser/server mode it uses
-  `fetch('/api/...')` and `EventSource('/api/events')`. Adding a new exported
-  method on `App` is a **three-step** process: (1) add the method to `pkg/app/app.go`,
-  (2) run `wails dev` to regenerate `wailsjs/go/app/App.js` (delete old `wailsjs/go/main/` if present — the package moved from `main`→`app` and the stale bindings will not be auto-replaced),
-  (3) add the corresponding wrapper to `frontend/src/api.js` — both the Wails delegation
-  path (`window['go']['app']…`) and the `fetch` path. Skipping step 3 silently breaks
-  server mode while Wails mode continues to work.
+- **Frontend imports from `'./api'`** (resolves to `frontend/src/api.ts`,
+  not directly from wailsjs). `api.ts` is a transport-agnostic shim
+  typed against the OpenAPI spec via `api.gen.d.ts` (regenerated by
+  `make gen-types`): in Wails mode it delegates to
+  `window['go']['app']['App']`; in browser/server mode it uses
+  `fetch('/api/...')` and `EventSource('/api/events')`. Adding a new
+  exported method on `App` is a **four-step** process: (1) add the
+  method to `pkg/app/app.go`, (2) run `wails dev` to regenerate
+  `wailsjs/go/app/App.js` (delete `wailsjs/go/main/` if it still
+  exists — the package moved from `main`→`app`), (3) add the route +
+  schema to `api/openapi.yaml` and run `make gen-types` to refresh
+  `api.gen.d.ts`, (4) add the typed wrapper to `frontend/src/api.ts`
+  — both the Wails delegation path (`window.go.app.App…`) and the
+  `fetch` path. Skipping step 4 silently breaks server mode while
+  Wails mode continues to work.
 - **The `_screenshot/<filename>` URL prefix** is reserved for the
   on-disk screenshots handler. Don't reuse it for other dynamic assets.
 - **`set -u` not `-e`** in shell scripts that should keep going after an
@@ -411,7 +444,7 @@ Triggered on `v*` tags. Parallel jobs: `build-docker` (Linux + Windows Wails app
   proxy returns 404/405, but Vite's SPA fallback returns the bundled
   `index.html` with `200 OK` for unknown routes — so any path-prefixed
   handler (e.g. `/_screenshot/`) never runs and the browser receives
-  HTML labelled as the asset's content-type. The Wails desktop wiring
+  HTML labeled as the asset's content-type. The Wails desktop wiring
   in `pkg/cmd/wails.go` registers `ScreenshotHandler` as a Middleware
   that short-circuits before the proxy. Production builds work either
   way; only `wails dev` needs the middleware pattern.
@@ -425,6 +458,20 @@ Triggered on `v*` tags. Parallel jobs: `build-docker` (Linux + Windows Wails app
   responds. When probing routes via `curl` from a script, sleep at
   least 14 s after starting the dev server. Vite (`:5173`) is up
   faster but doesn't see custom handlers.
+- **Conventional Commits are enforced.** `lefthook install` wires a
+  `commit-msg` hook that rejects subjects not matching
+  `<type>(<scope>)?(!)?: <description>` (allowed types: `feat`, `fix`,
+  `chore`, `docs`, `refactor`, `test`, `perf`, `build`, `ci`,
+  `revert`, `style`). `release-please` reads these to compute version
+  bumps + regenerate `CHANGELOG.md`. Bypass for one commit with
+  `LEFTHOOK_EXCLUDE=conventional git commit …` (e.g. for a fixup
+  commit) but expect the release PR to skip un-conventionally-
+  labelled commits from the changelog.
+- **Bundle-size budget is enforced in CI.** `frontend/dist/assets/*.js`
+  must stay under 200 KB; `*.css` under 100 KB (set in `ci.yml` step
+  "Enforce bundle-size budget"). Bump the budgets explicitly when a
+  real feature needs the room — don't accidentally regress past the
+  current ~118 KB JS / ~63 KB CSS.
 - **Vue 3 ref auto-unwrapping in templates** — in `<script setup>`, refs
   are auto-unwrapped at the template top level: `myRef` in a template
   expression already equals `myRef.value`. Writing `myRef.value[key]` in a

@@ -180,6 +180,19 @@ lint-openapi: ## Lint api/openapi.yaml (Spectral, spectral:oas ruleset)
 	$(SPECTRAL) lint api/openapi.yaml --fail-severity=warn
 	@echo "[ recall ] ✓  OpenAPI lint clean"
 
+# Regenerate frontend/src/api.gen.d.ts from the OpenAPI spec. Run after
+# every change to api/openapi.yaml. The .d.ts is checked in so IDEs
+# (and tsc) can resolve types without a build step.
+gen-types: ## Regenerate frontend/src/api.gen.d.ts from api/openapi.yaml
+	@echo "[ recall ] Regenerating frontend TypeScript types from OpenAPI…"
+	cd frontend && npm run gen:types
+	@echo "[ recall ] ✓  frontend/src/api.gen.d.ts updated"
+
+typecheck: ## TypeScript type-check (frontend api.ts + api.gen.d.ts)
+	@echo "[ recall ] Type-checking frontend (tsc --noEmit)…"
+	cd frontend && npm run typecheck
+	@echo "[ recall ] ✓  TypeScript clean"
+
 fmt: ## Format Go source files (goimports-reviser + gofumpt)
 	@echo "[ recall ] Formatting Go source files…"
 	goimports-reviser -rm-unused -use-cache -project-name recall -output write ./...
@@ -201,6 +214,20 @@ trivy: ## Trivy vulnerability scan (fails on HIGH/CRITICAL)
 	@echo "[ recall ] Running Trivy vulnerability scan…"
 	trivy fs --scanners vuln --exit-code 1 --severity HIGH,CRITICAL .
 	@echo "[ recall ] ✓  No HIGH/CRITICAL vulnerabilities found"
+
+##@ Test
+
+test: test-go test-frontend ## Run all tests
+
+test-go: ## Run Go unit tests (skips parser golden-file tests in -short mode)
+	@echo "[ recall ] Running Go unit tests…"
+	go test ./...
+	@echo "[ recall ] ✓  Go tests passed"
+
+test-frontend: ## Run frontend unit tests (Vitest)
+	@echo "[ recall ] Running frontend unit tests (Vitest)…"
+	cd frontend && npm run test
+	@echo "[ recall ] ✓  Frontend tests passed"
 
 # Sync the app icon. Source of truth: assets/icon.png. Wails reads
 # build/appicon.png at 1024x1024 and auto-generates iconfile.icns (macOS)

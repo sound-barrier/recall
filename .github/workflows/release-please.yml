@@ -1,0 +1,37 @@
+name: release-please
+
+# release-please reads conventional-commit messages on main, opens a PR
+# that bumps the version + regenerates CHANGELOG.md, and — when that PR
+# merges — creates a `vX.Y.Z` tag. The existing release.yml workflow
+# triggers on that tag and produces the actual artifacts.
+#
+# So the flow is:
+#   1. Conventional commits land on main (enforced by lefthook commit-msg).
+#   2. release-please-action opens/updates a release PR with version bump
+#      + changelog.
+#   3. Maintainer merges the release PR.
+#   4. release-please-action creates the v<version> tag.
+#   5. release.yml fires on the tag and uploads binaries to the GitHub
+#      Release.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          # Config + manifest live in release-please-config.json and
+          # .release-please-manifest.json at the project root. The
+          # `release-type: simple` setting in config means release-please
+          # just maintains CHANGELOG.md + version files we declare — it
+          # doesn't try to parse Go module versions or similar.
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

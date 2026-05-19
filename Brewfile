@@ -48,6 +48,11 @@ brew "yamllint"
 # Per-project environment variable loader (used with .envrc).
 brew "direnv"
 
+# Pre-commit hooks runner — installs git hooks defined in lefthook.yml.
+# After `brew bundle`, run `lefthook install` once to wire the hooks
+# into .git/hooks/. Skip per-commit with LEFTHOOK=0 git commit … .
+brew "lefthook"
+
 # Line-count tool (used by `make cloc`).
 brew "cloc"
 
