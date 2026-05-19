@@ -897,7 +897,10 @@ func readAllRecords() ([]MatchRecord, error) {
 	}
 	defer rows.Close()
 
-	var records []MatchRecord
+	// Initialize to a non-nil empty slice so an empty result set marshals
+	// as `[]` rather than `null` — `null` violates the OpenAPI schema
+	// `type: array` declaration for GET /api/match-results.
+	records := make([]MatchRecord, 0)
 	for rows.Next() {
 		rec, err := scanMatchRecord(rows)
 		if err != nil {
