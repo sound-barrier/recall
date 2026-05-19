@@ -30,10 +30,11 @@ name: release-please
 #      workflows (GitHub anti-loop guard), so without a PAT the
 #      vX.Y.Z tag release-please creates will NOT auto-trigger
 #      release.yml -- you will have to fire that workflow manually
-#      (gh workflow run release.yml --ref vX.Y.Z). With a PAT the
+#      (`make release-fire TAG=vX.Y.Z`, or
+#      `gh workflow run release.yml --ref vX.Y.Z`). With a PAT the
 #      tag push is attributed to the PAT owner and release.yml runs
-#      automatically. See CONTRIBUTING.md "When release.yml does
-#      not auto-fire".
+#      automatically. See RELEASES.md "When release.yml does not
+#      auto-fire" for the full procedure.
 
 on:
   push:

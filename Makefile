@@ -215,6 +215,74 @@ trivy: ## Trivy vulnerability scan (fails on HIGH/CRITICAL)
 	trivy fs --scanners vuln --exit-code 1 --severity HIGH,CRITICAL .
 	@echo "[ recall ] ✓  No HIGH/CRITICAL vulnerabilities found"
 
+##@ Release
+
+# Cut a prerelease via an empty signed commit with a Release-As: footer
+# that release-please picks up. See RELEASES.md → "Cutting a prerelease".
+#
+# Usage:
+#   make release-beta VERSION=0.0.13-beta.0
+#
+# Refuses non-hyphenated versions by default to prevent an accidental
+# stable cut (release-please normally derives stable versions itself).
+# Pass ALLOW_STABLE=1 to override when you genuinely want to force one
+# (e.g. jumping straight to 1.0.0).
+release-beta: ## Cut a prerelease (usage: make release-beta VERSION=0.0.13-beta.0)
+	@if [ -z "$(VERSION)" ]; then \
+	    echo "[ recall ] ✗  VERSION is required (e.g. make release-beta VERSION=0.0.13-beta.0)"; \
+	    exit 2; \
+	fi
+	@case "$(VERSION)" in v*) \
+	    echo "[ recall ] ✗  drop the leading v — VERSION must be the bare semver (got $(VERSION))"; \
+	    exit 2;; esac
+	@if [ -z "$(ALLOW_STABLE)" ]; then \
+	    case "$(VERSION)" in *-*) ;; *) \
+	        echo "[ recall ] ✗  $(VERSION) has no hyphen — that's a stable version."; \
+	        echo "             Stable cuts happen automatically when release-please sees"; \
+	        echo "             feat:/fix: commits; you should not force them through this"; \
+	        echo "             target. If you really want to (e.g. forcing v1.0.0), rerun"; \
+	        echo "             with ALLOW_STABLE=1."; \
+	        exit 2;; esac; \
+	fi
+	@if [ -n "$$(git status --porcelain)" ]; then \
+	    echo "[ recall ] ✗  working tree is dirty; commit or stash first"; \
+	    exit 2; \
+	fi
+	git commit -s --allow-empty \
+	    -m "chore: cut v$(VERSION)" \
+	    -m "Release-As: $(VERSION)"
+	@echo
+	@echo "[ recall ] ✓  empty commit created. Next steps:"
+	@echo "    1.  git push origin main"
+	@echo "    2.  merge the release-please PR titled 'chore(main): release v$(VERSION)'"
+	@echo "    3.  if RELEASE_PLEASE_TOKEN is configured, release.yml fires automatically."
+	@echo "        Otherwise:  make release-fire TAG=v$(VERSION)"
+
+# Manually fire release.yml on an existing tag — used when the tag was
+# created by release-please via GITHUB_TOKEN (which doesn't trigger
+# downstream workflows). See RELEASES.md → "When release.yml doesn't
+# auto-fire".
+#
+# Usage:
+#   make release-fire TAG=v0.0.13-beta.0
+release-fire: ## Manually fire release.yml on an existing tag (usage: make release-fire TAG=v0.0.13-beta.0)
+	@if [ -z "$(TAG)" ]; then \
+	    echo "[ recall ] ✗  TAG is required (e.g. make release-fire TAG=v0.0.13-beta.0)"; \
+	    exit 2; \
+	fi
+	@command -v gh >/dev/null 2>&1 || { \
+	    echo "[ recall ] ✗  gh CLI not installed (brew install gh, then gh auth login)"; \
+	    exit 2; \
+	}
+	@if ! git ls-remote --exit-code --tags origin "$(TAG)" >/dev/null 2>&1; then \
+	    echo "[ recall ] ✗  tag $(TAG) not found on origin"; \
+	    exit 2; \
+	fi
+	gh workflow run release.yml --ref "$(TAG)"
+	@echo
+	@echo "[ recall ] ✓  release.yml dispatched for $(TAG)."
+	@echo "    Watch progress:  gh run list --workflow release.yml --limit 1"
+
 ##@ Test
 
 test: test-go test-frontend ## Run all tests
