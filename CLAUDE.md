@@ -55,9 +55,9 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `make icon` | Resync `build/appicon.png` from `assets/icon.png` (1024×1024 via `sips`, macOS-only) and clear `build/windows/icon.ico` so Wails regenerates platform icons (`.icns` for macOS, `.ico` for Windows) on next `wails build`. |
 | `make swagger` | Serve `api/openapi.yaml` via Swagger UI v5 in a container (`$(DOCKER) run`, default port `:8080`; override with `SWAGGER_PORT`). |
 | `make lint-openapi` | Lint `api/openapi.yaml` via Spectral (`spectral:oas` + `.spectral.yaml`) with `--fail-severity=warn`. Also run as part of `make lint`. |
-| `make test` | Run all tests: Go unit tests (`pkg/app/merge_test.go`, `pkg/app/validate_test.go`, `pkg/parser/parser_test.go`) + Vitest (`frontend/src/match-helpers.test.js`). Parser golden-file integration tests skip unless `RECALL_FIXTURE_DIR` is set. |
+| `make test` | Run all tests: Go unit tests (`pkg/app/merge_test.go`, `pkg/app/validate_test.go`, `pkg/parser/parser_test.go`) + Vitest (`frontend/src/match-helpers.test.ts`). Parser golden-file integration tests skip unless `RECALL_FIXTURE_DIR` is set. |
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml` (uses `openapi-typescript`). Run after every spec edit; CI fails if the committed `.d.ts` is out of sync. |
-| `make typecheck` | `tsc --noEmit` against `frontend/src/api.ts` + the generated types. Catches frontend-vs-spec drift at build time. |
+| `make typecheck` | `vue-tsc --noEmit` — covers `.ts` files and `<script lang="ts">` blocks in `.vue` files. `allowJs: false` in tsconfig means no JS can be introduced silently. |
 
 **Package layout (`pkg/`)**:
 
@@ -307,12 +307,17 @@ both the Wails `AssetServer.Handler` and the server-mode HTTP mux.
 ## Frontend (`frontend/src/App.vue`)
 
 Pure helpers (date formatting, screenshot-type detection, hero sorting,
-etc.) live in `frontend/src/match-helpers.js` so they can be unit-tested
+etc.) live in `frontend/src/match-helpers.ts` so they can be unit-tested
 in isolation via Vitest. `App.vue` imports them at the top of
-`<script setup>`. When adding a new pure helper that takes plain inputs
-and returns plain outputs, add it to `match-helpers.js` and write a
-Vitest case in `match-helpers.test.js` — don't define it inside the
-SFC's `<script setup>`.
+`<script setup lang="ts">`. When adding a new pure helper that takes plain
+inputs and returns plain outputs, add it to `match-helpers.ts` and write a
+Vitest case in `match-helpers.test.ts` — don't define it inside the SFC's
+`<script setup>`. The entire frontend is TypeScript (`allowJs: false`);
+ESLint uses `typescript-eslint` (`tseslint.config()` in `eslint.config.js`)
+with `parserOptions.parser: tseslint.parser` wired in for `.vue` files.
+Template access to `Record<string, Ref<string[]>>` filter state goes through
+`filterList(field)` / `filterSearchStr(field)` helpers to satisfy
+`noUncheckedIndexedAccess` without littering the template with `!` or `??`.
 
 Single-file Vue 3 SFC, composition API. No router, no Vuex/Pinia — a few
 `ref`s + `computed`s. State concerns:
@@ -396,8 +401,8 @@ Three workflows:
 
 | File | Trigger | What it does |
 |---|---|---|
-| `ci.yml` | Push or PR to `main` | **Lint** (golangci-lint × both build tags, ESLint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral) → **frontend build** → **bundle-size budget** (200 KB JS / 100 KB CSS) → **Go + Vitest unit tests** → **TypeScript `tsc --noEmit`** → **"api.gen.d.ts in sync with `openapi.yaml`" check**. Plus parallel build jobs for Linux/Windows Wails + all server binaries + container image + macOS Wails. Security jobs: **Trivy** (multi-language vuln scan; SARIF uploaded to GitHub Security tab) and **govulncheck** (Go call-graph-aware CVE scan, both build tags). Drift job: **schemathesis** fuzzes a freshly-built server against `api/openapi.yaml`. |
-| `release-please.yml` | Push to `main` | Reads Conventional Commits since the last tag, opens/updates a Release PR that bumps `.release-please-manifest.json` + regenerates `CHANGELOG.md`. Merging the PR creates a `vX.Y.Z` tag which fires `release.yml`. Override the computed version with a `Release-As: X.Y.Z[-suffix]` footer in any commit on `main` — useful for one-off prereleases (the hyphenated suffix is what makes GitHub flag the Release as prerelease). Shortcut: `make release-beta VERSION=…`. Full procedure in [RELEASES.md](RELEASES.md). |
+| `ci.yml` | Push or PR to `main` | **Lint** (golangci-lint × both build tags, ESLint + typescript-eslint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral) → **frontend build** → **bundle-size budget** (200 KB JS / 100 KB CSS) → **Go + Vitest unit tests** → **TypeScript `vue-tsc --noEmit`** → **"api.gen.d.ts in sync with `openapi.yaml`" check**. Plus parallel build jobs for Linux/Windows Wails + all server binaries + container image + macOS Wails. Security jobs: **Trivy** (multi-language vuln scan; SARIF uploaded to GitHub Security tab) and **govulncheck** (Go call-graph-aware CVE scan, both build tags). Drift job: **schemathesis** fuzzes a freshly-built server against `api/openapi.yaml`. |
+| `release-please.yml` | Push to `main` | Reads Conventional Commits since the last tag, opens/updates a Release PR that bumps `.release-please-manifest.json` + regenerates `CHANGELOG.md`. Merging the PR creates a `vX.Y.Z` tag which fires `release.yml`. Override the computed version with a `Release-As: X.Y.Z[-suffix]` footer in any commit on `main` — useful for one-off prereleases (the hyphenated suffix is what makes GitHub flag the Release as prerelease). Shortcut: `make release-beta VERSION=…`. Full procedure in [RELEASES.md](RELEASES.md). **Note:** release-please PRs show no CI jobs — GitHub does not trigger `pull_request` workflows for `GITHUB_TOKEN`-authored events; the underlying commits were already tested on push to `main`. |
 | `release.yml` | `v*` tags | Builds and publishes release artifacts — see detail below. |
 
 ### `release.yml` detail
