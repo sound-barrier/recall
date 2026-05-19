@@ -8,12 +8,43 @@ linters:
     - staticcheck
     - unused
     - misspell
+    # Bug-catchers
+    - ineffassign
+    - nilerr
+    - bodyclose
+    - rowserrcheck
+    - sqlclosecheck
+    - durationcheck
+    # Code quality
+    - unconvert
+    - nakedret
+    - revive
+    - exhaustive
+    - dupword
   settings:
     errcheck:
       exclude-functions:
         - "(*database/sql.Rows).Close"
         - "(*os.File).Close"
         - "os.RemoveAll"
+    exhaustive:
+      default-signifies-exhaustive: true
+    revive:
+      rules:
+        # Project style: no mandatory doc comments — conflicts with "no comments
+        # by default" convention in CLAUDE.md.
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+        # Blank imports for side-effect registration (sqlite driver, image/jpeg
+        # decoder) are idiomatic; comments would add noise with no value.
+        - name: blank-imports
+          disabled: true
+        # http.Handler signatures must include *http.Request even when unused;
+        # renaming to _ would harm readability across all handlers.
+        - name: unused-parameter
+          disabled: true
   exclusions:
     paths:
       - frontend/node_modules

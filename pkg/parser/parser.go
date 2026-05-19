@@ -702,7 +702,7 @@ func extractHeader(text string) (mapName, gameType, mode string) {
 
 	// Type: shared between the in-game banner and the summary card.
 	gameType = extractGameType(upper)
-	return
+	return mapName, gameType, mode
 }
 
 // typePatterns matches OW game types in OCR'd text. Each pattern allows the
