@@ -30,7 +30,7 @@ type MatchRecord struct {
 	ID          int64    `json:"id"`
 	MatchKey    string   `json:"match_key"`
 	SourceFiles []string `json:"source_files"`
-	// SourceTypes maps a source filename to the OW2 screenshot type the
+	// SourceTypes maps a source filename to the OW screenshot type the
 	// parser classified it as ("summary" / "scoreboard" / "personal" /
 	// "rank"). Populated at parse time and persisted in the DB so the UI
 	// can label each file. May be nil/missing for rows parsed before
@@ -926,7 +926,7 @@ const mergeWindow = 2 * time.Minute
 
 var filenameTimestampRe = regexp.MustCompile(`(\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})`)
 
-// parseFilenameTimestamp extracts the YYYY.MM.DD - HH.MM.SS portion the OW2
+// parseFilenameTimestamp extracts the YYYY.MM.DD - HH.MM.SS portion the OW
 // client embeds in its screenshot filenames. Returns ok=false for filenames
 // that don't carry a timestamp (manually renamed files, screenshots from
 // other tools) so they get their own row instead of merging with whatever

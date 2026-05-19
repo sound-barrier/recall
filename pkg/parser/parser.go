@@ -109,7 +109,7 @@ type PerformanceStat struct {
 	AvgPer10Min float64 `json:"avg_per_10min,omitempty"`
 }
 
-// knownMaps is the OW2 map list, used to fix Tesseract misreads on map names
+// knownMaps is the OW map list, used to fix Tesseract misreads on map names
 // by snapping the OCR result to the closest match.
 var knownMaps = []string{
 	"aatlis", "antarctic peninsula", "blizzard world", "busan", "circuit royal",
@@ -705,8 +705,8 @@ func extractHeader(text string) (mapName, gameType, mode string) {
 	return
 }
 
-// typePatterns matches OW2 game types in OCR'd text. Each pattern allows the
-// common I/L/1 and O/0 substitutions Tesseract produces on the OW2 fonts so a
+// typePatterns matches OW game types in OCR'd text. Each pattern allows the
+// common I/L/1 and O/0 substitutions Tesseract produces on the OW fonts so a
 // single mangled letter doesn't break the match.
 var typePatterns = []struct {
 	name string
@@ -745,7 +745,7 @@ func extractInts(text string) []int {
 	return out
 }
 
-// snapToKnownMap returns the known OW2 map whose lowercase name is closest to
+// snapToKnownMap returns the known OW map whose lowercase name is closest to
 // the OCR'd string by Levenshtein distance, but only if the match is decent
 // (distance below ~40% of the candidate length). Otherwise it returns the input
 // unchanged so genuinely-unknown maps don't get rewritten to the wrong thing.
@@ -1073,7 +1073,7 @@ func parsePerformance(text string) *Performance {
 }
 
 // scoreDigit accepts digits plus the letters Tesseract commonly substitutes
-// for them on the OW2 banner font: O/Q for 0, l/I for 1. The match groups are
+// for them on the OW banner font: O/Q for 0, l/I for 1. The match groups are
 // passed through digitize() before being used as a final score.
 var (
 	finalScoreRe = regexp.MustCompile(`(?i)FINAL\s*SCORE[^\dOoQqIlL]*([\dOoQqIlL]+)[^\dOoQqIlL]*([\dOoQqIlL]+)`)
@@ -1126,7 +1126,7 @@ func digitize(s string) string {
 
 // normalizeDate converts the client's MM/DD/YY display format to ISO YYYY-MM-DD
 // so DB rows sort chronologically. Two-digit years are assumed to be 2000+;
-// OW2 didn't ship until 2022 so a "19/.../69" date is implausible.
+// OW didn't ship until 2022 so a "19/.../69" date is implausible.
 func normalizeDate(d string) string {
 	m := regexp.MustCompile(`(\d{1,2})/(\d{1,2})/(\d{2,4})`).FindStringSubmatch(d)
 	if m == nil {
@@ -1359,13 +1359,13 @@ func labelToKey(label string) string {
 	return strings.Trim(key, "_")
 }
 
-// knownRanks is the OW2 competitive tier list, used to snap OCR'd tier text.
+// knownRanks is the OW competitive tier list, used to snap OCR'd tier text.
 var knownRanks = []string{
 	"bronze", "silver", "gold", "platinum", "diamond",
 	"master", "grandmaster", "champion",
 }
 
-// knownModifiers is the OW2 competitive match-outcome modifier list. These
+// knownModifiers is the OW competitive match-outcome modifier list. These
 // label the small pills under the rank progress bar.
 var knownModifiers = []string{
 	"expected", "unexpected", "underdog", "overcharge",
@@ -1463,7 +1463,7 @@ func extractRank(text string) (string, int) {
 	// digits from icon noise (e.g. Tesseract reads italic decoration as
 	// extra digits before the level). Take the LAST digit in the trailing
 	// number-run after the rank — italic fonts often misread to insert a
-	// leading digit (so "PLATINUM 5" OCRs as "PLATINUM 35"), and OW2 levels
+	// leading digit (so "PLATINUM 5" OCRs as "PLATINUM 35"), and OW levels
 	// are always 1-5 single digits.
 	if rank != "" {
 		re := regexp.MustCompile(`(?i)` + rank + `\s*(\d+)`)

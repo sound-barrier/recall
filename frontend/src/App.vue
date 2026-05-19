@@ -97,7 +97,7 @@ const filterRole   = ref([])
 const filterMap    = ref([])
 const filterHero   = ref([])
 const filterResult = ref([])
-// Filter by which OW2 screenshot type(s) the match was parsed from.
+// Filter by which OW screenshot type(s) the match was parsed from.
 // Backed by rec.source_types (per-file map populated at parse time).
 const filterSshot  = ref([])
 
@@ -2028,7 +2028,7 @@ onBeforeUnmount(() => {
      RECALL masthead title. Russo One is the free visual fallback. */
   --brand: 'OW Wordmark', 'Russo One', 'Industry Black', 'Impact', sans-serif;
 
-  /* Settings page typeface — OW2's Futura No. 2 Demi (with Jost as the free
+  /* Settings page typeface — OW's Futura No. 2 Demi (with Jost as the free
      Indestructible-Type clone fallback). Scoped to the Settings view only. */
   --settings: 'Futura No. 2 Demi', 'Jost', 'Futura', 'Avenir Next', 'Avenir', sans-serif;
 }
@@ -4163,7 +4163,7 @@ body {
   animation: view-fade-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Settings tab adopts the OW2 Futura No. 2 Demi typeface (via the --settings
+/* Settings tab adopts the OW Futura No. 2 Demi typeface (via the --settings
    fallback chain). We re-point --display and --body at --settings inside the
    scope so the page's existing rules (settings-heading, section-title, btn,
    labels, etc.) all pick it up. .unknown-view and .ingest-view share the
