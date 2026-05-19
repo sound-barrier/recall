@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Go modules
+  # Go modules — updates go.mod deps and the `go X.Y` toolchain directive.
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
@@ -9,8 +9,13 @@ updates:
     groups:
       go-deps:
         patterns: ["*"]
+    # Major version bumps require deliberate review — keep them out of the
+    # grouped weekly PR so they surface individually with clear context.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
-  # npm (Vue frontend)
+  # npm (Vue frontend) — Vue, Vite, typescript-eslint, vue-tsc, vitest, etc.
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
@@ -19,8 +24,11 @@ updates:
     groups:
       npm-deps:
         patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
-  # GitHub Actions workflow pins
+  # GitHub Actions workflow pins (setup-go, setup-node, checkout, etc.)
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -30,7 +38,7 @@ updates:
       actions:
         patterns: ["*"]
 
-  # Docker base images (Dockerfile.build is auto-detected as Dockerfile.*)
+  # Docker base images in Dockerfile.build
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
