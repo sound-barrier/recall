@@ -1,0 +1,163 @@
+{
+  // Recall devcontainer — mirrors the Brewfile tooling on a Debian base
+  // so contributors can develop the project from any host that supports
+  // the Dev Containers spec (VS Code, GitHub Codespaces, JetBrains
+  // Gateway). The Wails desktop UI itself can't render inside the
+  // container (no GUI surface), but server mode + every lint/test/build
+  // step works the same as a host install.
+  //
+  // First-time use:
+  //   - VS Code: "Reopen in Container" from the Command Palette.
+  //   - Codespaces: just open the repo in a Codespace.
+  // Tooling installs happen in postCreate.sh; expect ~3-5 min on first
+  // build, instant on rebuild thereafter.
+
+  "name": "Recall",
+
+  // Debian bookworm base. Go and Node land via features (pinned
+  // versions); everything else (Tesseract, golangci-lint, lefthook,
+  // trivy, …) installs in postCreate.sh.
+  "image": "mcr.microsoft.com/devcontainers/base:bookworm",
+
+  "features": {
+    // Go toolchain. Project requires 1.26+ per go.mod; pin to a
+    // current minor release so cached image layers are stable.
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "1.26"
+    },
+
+    // Node provides npm + npx. npx pulls Spectral on demand for the
+    // openapi lint target; npm installs the rest of the frontend
+    // toolchain (vite, vitest, eslint, stylelint, htmlhint,
+    // openapi-typescript, typescript).
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "26"
+    },
+
+    // Docker-in-Docker so `make build-*` targets and `make swagger`
+    // (which runs swaggerapi/swagger-ui in a container) work without
+    // sharing the host daemon socket. The DOCKER env-var override the
+    // Makefile expects defaults to `docker` — set DOCKER=podman in
+    // .envrc only if you swap the daemon out.
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true
+    },
+
+    // Common utilities (zsh, sudo, locales, …) for the `vscode` user.
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "configureZshAsDefaultShell": false,
+      "installOhMyZsh": false,
+      "username": "vscode"
+    }
+  },
+
+  // Run the install script once after the image is built. See the
+  // sibling postCreate.sh for the apt/go-install/npm-install chain.
+  "postCreateCommand": ".devcontainer/postCreate.sh",
+
+  // Match the make help target's expectation that lint-yaml etc. find
+  // their tools on PATH. The Go feature wires $GOPATH/bin into PATH
+  // automatically; npm globals end up under ~/.npm-global/bin which we
+  // also push onto PATH in postCreate.sh.
+  "containerEnv": {
+    "GOTOOLCHAIN": "local"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Go core toolchain (gopls, dlv, etc.).
+        "golang.go",
+
+        // Vue 3 LSP + TypeScript support for App.vue and api.ts.
+        "vue.volar",
+
+        // OpenAPI editing and schema validation against api/openapi.yaml.
+        "redhat.vscode-yaml",
+        "stoplight.spectral",
+        "42crunch.vscode-openapi",
+
+        // Frontend linters (match the CI checks).
+        "dbaeumer.vscode-eslint",
+        "stylelint.vscode-stylelint",
+        "mkaufman.HTMLHint",
+
+        // Dockerfile linter (Hadolint).
+        "exiasr.hadolint",
+
+        // Containers (docker-in-docker feature exposes a daemon).
+        "ms-azuretools.vscode-docker",
+
+        // direnv integration (so .envrc activates per-folder env).
+        "mkhl.direnv",
+
+        // Mermaid preview for the architecture diagram in README.md.
+        "bierner.markdown-mermaid"
+      ],
+
+      "settings": {
+        // Use gofumpt as the formatter (matches `make fmt`). Gopls
+        // ships gofumpt support built-in — turn it on instead of
+        // shelling out to a separate binary.
+        "go.useLanguageServer": true,
+        "gopls": {
+          "formatting.gofumpt": true
+        },
+        "go.lintTool": "golangci-lint",
+        "go.lintFlags": ["--fast"],
+        "go.testFlags": ["-v"],
+
+        // Format-on-save for all the files that have a configured
+        // formatter. CSS/JS/Vue use eslint/stylelint via the linter
+        // extensions; YAML keeps its own indentation rules.
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit",
+          "source.fixAll.stylelint": "explicit"
+        },
+
+        // Volar handles .vue and .ts files in this repo (api.ts +
+        // api.gen.d.ts under frontend/src).
+        "[vue]": {
+          "editor.defaultFormatter": "Vue.volar"
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "Vue.volar"
+        },
+
+        // OpenAPI schema validation — point yaml-language-server at
+        // the OpenAPI 3.1 schema for api/openapi.yaml so we get
+        // autocomplete + inline errors.
+        "yaml.schemas": {
+          "https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/schemas/v3.1/schema.json": [
+            "api/openapi.yaml"
+          ]
+        },
+
+        // direnv extension auto-allows the repo's .envrc on open so
+        // env-var overrides take effect without an extra step.
+        "direnv.restart.automatic": true
+      }
+    }
+  },
+
+  // Service ports the project listens on during development. VS Code
+  // forwards these to the host automatically; Codespaces gives each a
+  // public URL the maintainer can flip private/public.
+  "forwardPorts": [5173, 7000, 8080, 9090, 9091, 34115, 3000],
+  "portsAttributes": {
+    "5173":  {"label": "Vite dev server"},
+    "7000":  {"label": "Recall server"},
+    "8080":  {"label": "Swagger UI (make swagger)"},
+    "9090":  {"label": "Prometheus (stack)"},
+    "9091":  {"label": "Recall Prometheus metrics"},
+    "34115": {"label": "Wails IPC dev"},
+    "3000":  {"label": "Grafana (stack)"}
+  },
+
+  // The `vscode` user is created by the common-utils feature; using a
+  // non-root user keeps file permissions sane between container and
+  // host bind-mount.
+  "remoteUser": "vscode"
+}

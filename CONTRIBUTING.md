@@ -8,6 +8,7 @@ overview of the architecture and internal conventions, see
 ## Table of Contents
 
 - [Development setup](#development-setup)
+  - [Dev Container (any host, zero install)](#dev-container-any-host-zero-install)
   - [macOS](#macos)
   - [Linux](#linux)
   - [Windows](#windows)
@@ -34,6 +35,27 @@ Two workflows exist depending on your platform:
 |---|---|---|
 | `make dev` — Wails hot-reload | **macOS only** | Native WebKit window; Vite HMR on `:5173`, Wails IPC on `:34115`, Go rebuilt on save |
 | Server mode — headless HTTP | macOS, Linux, Windows | `go run -tags serveronly . --server`; open `http://127.0.0.1:7000` in any browser |
+
+If you don't want to install the toolchain locally, the next section sets you up in a container instead.
+
+### Dev Container (any host, zero install)
+
+The repo ships a [Dev Container](https://containers.dev/) at `.devcontainer/devcontainer.json` that mirrors the Brewfile tooling on a Debian base. Open the project in VS Code (Command Palette → **Dev Containers: Reopen in Container**) or [GitHub Codespaces](https://github.com/features/codespaces) and the `.devcontainer/postCreate.sh` script installs everything for you:
+
+- Go 1.26 + Node 26 (via Dev Container Features)
+- Docker (Docker-in-Docker, for `make build-*` and `make swagger`)
+- `tesseract`, `sqlite3`, `jq`, `yamllint`, `cloc`, `direnv`
+- `gofumpt`, `goimports-reviser`, `govulncheck`, `golangci-lint`, `wails`
+- `hadolint`, `lefthook`, `trivy`
+- `cd frontend && npm ci` for the Vue/Vite toolchain
+- `lefthook install` to wire the pre-commit hooks
+
+The forwarded ports (5173, 7000, 8080, 9090, 9091, 34115, 3000) cover Vite, the Recall server, Swagger UI, Prometheus, the metrics endpoint, Wails IPC, and Grafana — all surface in the VS Code "Ports" tab.
+
+**Caveats:**
+
+- **The Wails desktop UI does not render inside the container** (no GUI surface). Use **server mode** there: `go run -tags serveronly . --server`, then open the forwarded port `7000` in your host browser. For the native window, fall through to the macOS / Linux / Windows host instructions below.
+- `make icon` is macOS-only (uses `sips`). The Linux container will skip it.
 
 ### macOS
 
