@@ -137,7 +137,7 @@ cloc: ## Count lines of source code (excludes deps, build artifacts, generated f
 	    --exclude-dir=node_modules,dist,build,wailsjs,data,recall,vendor \
 	    --not-match-f='(go\.sum|package-lock\.json)'
 
-lint: lint-go lint-js lint-css lint-html lint-docker lint-yaml lint-openapi ## Run all linters
+lint: lint-go lint-js lint-css lint-html lint-shell lint-docker lint-yaml lint-openapi ## Run all linters
 
 lint-go: ## Lint Go source (golangci-lint, both build tags)
 	@echo "[ recall ] Linting Go (golangci-lint)…"
@@ -164,6 +164,22 @@ lint-docker: ## Lint Dockerfile.build (hadolint)
 	@echo "[ recall ] Linting Dockerfile (hadolint)…"
 	hadolint $(DOCKERFILE)
 	@echo "[ recall ] ✓  Dockerfile lint clean"
+
+# All shell scripts under scripts/ are bash. shellcheck honors the
+# .shellcheckrc at the project root (source-path=SCRIPTDIR), which is
+# what lets `# shellcheck source=_lib.sh` directives resolve correctly
+# when invoking from the repo root. shfmt enforces the same
+# 2-space / indent-switch / binary-op-at-line-start style we
+# normalized to in commit ___ — `make fmt-shell` rewrites in place,
+# `make lint-shell` runs shfmt in diff mode + shellcheck.
+SHELL_SCRIPTS := $(wildcard scripts/*.sh)
+
+lint-shell: ## Lint shell scripts (shellcheck + shfmt diff)
+	@echo "[ recall ] Linting shell scripts (shellcheck)…"
+	shellcheck $(SHELL_SCRIPTS)
+	@echo "[ recall ] Checking shell formatting (shfmt -d)…"
+	shfmt -d -i 2 -ci -bn $(SHELL_SCRIPTS)
+	@echo "[ recall ] ✓  Shell lint clean"
 
 lint-yaml: ## Lint YAML files (yamllint)
 	@echo "[ recall ] Linting YAML…"
@@ -193,11 +209,18 @@ typecheck: ## TypeScript type-check (frontend api.ts + api.gen.d.ts)
 	cd frontend && npm run typecheck
 	@echo "[ recall ] ✓  TypeScript clean"
 
-fmt: ## Format Go source files (goimports-reviser + gofumpt)
+fmt: fmt-go fmt-shell ## Format all source files (Go + shell scripts)
+
+fmt-go: ## Format Go source files (goimports-reviser + gofumpt)
 	@echo "[ recall ] Formatting Go source files…"
 	goimports-reviser -rm-unused -use-cache -project-name recall -output write ./...
 	gofumpt -l -w .
 	@echo "[ recall ] ✓  Go source formatted"
+
+fmt-shell: ## Format shell scripts in scripts/ (shfmt -w)
+	@echo "[ recall ] Formatting shell scripts (shfmt)…"
+	shfmt -w -i 2 -ci -bn $(SHELL_SCRIPTS)
+	@echo "[ recall ] ✓  Shell scripts formatted"
 
 
 ##@ Maintenance
