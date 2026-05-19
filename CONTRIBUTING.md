@@ -331,6 +331,10 @@ GitHub Release published
 
 Config lives in `release-please-config.json` and `.release-please-manifest.json`.
 
+> **One-time repo setup**: GitHub blocks Actions from opening PRs by default. Enable
+> **Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests"**
+> or release-please will fail with *"GitHub Actions is not permitted to create or approve pull requests."* once it tries to open the Release PR.
+
 #### Version-bump rules
 
 release-please reads commit types since the last tag and bumps accordingly:

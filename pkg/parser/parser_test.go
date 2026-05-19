@@ -46,11 +46,11 @@ func TestDigitize(t *testing.T) {
 		{"I", "1"},
 		{"l", "1"},
 		{"L", "1"},
-		{"123", "123"},                  // already digits
-		{"abc", "abc"},                  // no replacements
-		{"plOyer", "p10yer"},            // lowercase l→1, then O→0
-		{"OQI Ll", "001 11"},            // multiple kinds
-		{"PLATINUM 5", "P1AT1NUM 5"},    // both L→1 and I→1 fire
+		{"123", "123"},               // already digits
+		{"abc", "abc"},               // no replacements
+		{"plOyer", "p10yer"},         // lowercase l→1, then O→0
+		{"OQI Ll", "001 11"},         // multiple kinds
+		{"PLATINUM 5", "P1AT1NUM 5"}, // both L→1 and I→1 fire
 	}
 	for _, tc := range tests {
 		if got := digitize(tc.in); got != tc.want {
@@ -69,7 +69,7 @@ func TestNormalizeDate(t *testing.T) {
 		{"05/10/26", "2026-05-10"},
 		{"12/31/26", "2026-12-31"},
 		{"1/1/26", "2026-01-01"},
-		{"5/10/2026", "2026-05-10"}, // 4-digit year handled
+		{"5/10/2026", "2026-05-10"},  // 4-digit year handled
 		{"not a date", "not a date"}, // no match → returned unchanged
 		{"", ""},
 	}
@@ -483,11 +483,11 @@ func TestParsePersonalStatCell(t *testing.T) {
 
 func TestExtractHeader(t *testing.T) {
 	tests := []struct {
-		name           string
-		text           string
-		wantMap        string
-		wantType       string
-		wantMode       string
+		name     string
+		text     string
+		wantMap  string
+		wantType string
+		wantMode string
 	}{
 		{
 			name:    "rialto control",
