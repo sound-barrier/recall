@@ -28,7 +28,7 @@ pre-commit:
 
     # ── Frontend ──────────────────────────────────────────────────────
     eslint:
-      glob: "frontend/src/**/*.{js,vue}"
+      glob: "frontend/src/**/*.{ts,vue}"
       run: cd frontend && npx eslint --fix {staged_files}
       stage_fixed: true
 
