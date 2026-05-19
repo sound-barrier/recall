@@ -110,7 +110,7 @@ jobs:
         run: go test -short ./...
 
       # Frontend unit tests (Vitest) — pure-helper coverage for the
-      # extracted match-helpers.js module.
+      # extracted match-helpers.ts module.
       - name: Run frontend unit tests
         run: cd frontend && npm run test
 
