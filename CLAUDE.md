@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this project is
 
-Recall is a Wails v2 desktop app that watches a folder of Overwatch 2
+Recall is a Wails v2 desktop app that watches a folder of Overwatch
 screenshots, OCRs them with Tesseract, merges per-match data into SQLite, and
 optionally exposes the match history as Prometheus metrics so a bundled
 Grafana dashboard can chart trends. Stack: Go backend + Vue 3 frontend
 (Vite) + `modernc.org/sqlite` (pure-Go, no CGo) + Tesseract CLI shelled out
-to. The user is a competitive OW2 player who wants the tool to surface what
+to. The user is a competitive OW player who wants the tool to surface what
 they're good/bad at by hero/map/type.
 
 ## Build, run, dev
@@ -347,7 +347,7 @@ Single-file Vue 3 SFC, composition API. No router, no Vuex/Pinia — a few
   `EventsOff` on unmount — auto-refreshes the records list after the
   watcher fires an auto-parse.
 - **Custom fonts are loaded via `local()` first.** `frontend/src/style.css`
-  registers three OW2 typefaces (`Big Noodle Too Oblique` for hero/map
+  registers three OW typefaces (`Big Noodle Too Oblique` for hero/map
   names, `Futura No. 2 Demi` for the Settings tab, `OW Wordmark` for the
   RECALL masthead) with a fallback chain: licensed `local()` lookup →
   bundled `./assets/fonts/*.woff2` (drop-in slot for the licensed files)

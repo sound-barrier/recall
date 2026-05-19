@@ -31,7 +31,7 @@ func TestHeroRole(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// digitize — fix letter↔digit OCR confusion in italic OW2 font.
+// digitize — fix letter↔digit OCR confusion in italic OW font.
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestDigitize(t *testing.T) {
@@ -81,7 +81,7 @@ func TestNormalizeDate(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// extractRank — finds the OW2 tier name + level. Per the parser comments
+// extractRank — finds the OW tier name + level. Per the parser comments
 // in parser.go:1462, the level extraction must pick the LAST digit in the
 // trailing number-run because italic fonts misread "PLATINUM 5" as
 // "PLATINUM 35".
@@ -243,7 +243,7 @@ func TestExtractHeroes(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────
 // extractSR — pulls (hero, SR, change) from the rank screen's panel OCR.
 // Each hero detected gets the same first-4-digit SR + first signed integer
-// after it. (Realistic OW2 has one hero per rank screen but the function
+// after it. (Realistic OW has one hero per rank screen but the function
 // generalizes.)
 // ──────────────────────────────────────────────────────────────────────────
 

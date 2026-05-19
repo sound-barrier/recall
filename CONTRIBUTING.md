@@ -321,7 +321,7 @@ Example combining the layers:
 ```
 fix(parser): handle italic-font OCR letter→digit confusion on PERSONAL
 
-The OW2 italic stat font renders "0" close enough to "O" that Tesseract
+The OW italic stat font renders "0" close enough to "O" that Tesseract
 returns "5O" instead of "50" for the WEAPON ACCURACY card on Lucio.
 parsePersonalStatCell already coerces O/Q/I/l/L → digits but ran the
 substitution after the value-extraction regex, so the misread digit

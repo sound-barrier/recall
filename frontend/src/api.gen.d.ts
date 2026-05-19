@@ -645,8 +645,8 @@ export interface components {
             /**
              * @description Every screenshot filename that fed this match.
              * @example [
-             *       "Overwatch 2 Screenshot 2026.05.10 - 22.21.11.79.png",
-             *       "Overwatch 2 Screenshot 2026.05.10 - 22.21.57.34.png"
+             *       "Overwatch Screenshot 2026.05.10 - 22.21.11.79.png",
+             *       "Overwatch Screenshot 2026.05.10 - 22.21.57.34.png"
              *     ]
              */
             source_files: string[];
@@ -655,8 +655,8 @@ export interface components {
              *     parse time. May be absent on rows parsed before this column
              *     landed.
              * @example {
-             *       "Overwatch 2 Screenshot 2026.05.10 - 22.21.11.79.png": "scoreboard",
-             *       "Overwatch 2 Screenshot 2026.05.10 - 22.21.57.34.png": "rank"
+             *       "Overwatch Screenshot 2026.05.10 - 22.21.11.79.png": "scoreboard",
+             *       "Overwatch Screenshot 2026.05.10 - 22.21.57.34.png": "rank"
              *     }
              */
             source_types?: {
@@ -698,7 +698,7 @@ export interface components {
             /** @example 2026-05-10 */
             date?: string;
             /**
-             * @description HH:MM 24h as shown by the OW2 client.
+             * @description HH:MM 24h as shown by the OW client.
              * @example 21:29
              */
             finished_at?: string;
