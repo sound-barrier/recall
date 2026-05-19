@@ -31,7 +31,10 @@ fi
 echo "Will delete:"
 printf '  %s\n' "$matches"
 read -r -p "Confirm? [y/N] " ans
-[[ "$ans" == "y" || "$ans" == "Y" ]] || { echo "aborted"; exit 0; }
+[[ "$ans" == "y" || "$ans" == "Y" ]] || {
+  echo "aborted"
+  exit 0
+}
 
 sqlite3 "$DB" "DELETE FROM match_results WHERE $where;"
 echo "deleted."

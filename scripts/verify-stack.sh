@@ -18,7 +18,10 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR/.."
+cd "$SCRIPT_DIR/.." || {
+  echo "[verify-stack] could not cd into repo root from $SCRIPT_DIR" >&2
+  exit 1
+}
 
 DB="data/db/recall.db"
 
@@ -33,8 +36,14 @@ PROM_URL="http://127.0.0.1:9090"
 
 PASS=0
 FAIL=0
-pass() { echo "  ✓ $*"; PASS=$((PASS + 1)); }
-fail() { echo "  ✗ $*"; FAIL=$((FAIL + 1)); }
+pass() {
+  echo "  ✓ $*"
+  PASS=$((PASS + 1))
+}
+fail() {
+  echo "  ✗ $*"
+  FAIL=$((FAIL + 1))
+}
 note() { echo "    $*"; }
 
 # ── Layer 1: SQLite ────────────────────────────────────────────────────────
@@ -42,18 +51,12 @@ echo "[1] SQLite (source of truth)"
 if [[ -f "$DB" ]]; then
   pass "db file present at $DB"
   rows=$(sqlite3 "$DB" "SELECT COUNT(*) FROM match_results" 2>/dev/null || echo "?")
-  if [[ "$rows" =~ ^[0-9]+$ ]] && (( rows > 0 )); then
+  if [[ "$rows" =~ ^[0-9]+$ ]] && ((rows > 0)); then
     pass "$rows row(s) in match_results"
     range=$(sqlite3 "$DB" \
       "SELECT MIN(date || ' ' || finished_at) || ' → ' || MAX(date || ' ' || finished_at)
        FROM match_results WHERE date != '' AND finished_at != ''" 2>/dev/null)
     [[ -n "$range" && "$range" != " → " ]] && note "match timestamps: $range"
-    # Cache the max timestamp as Unix seconds so layer 5 can query Prometheus
-    # at the historical sample time (otherwise an instant query at "now"
-    # misses historical samples that are outside the 5-min lookback window).
-    MAX_TS=$(sqlite3 "$DB" \
-      "SELECT strftime('%s', MAX(date || ' ' || finished_at), 'utc')
-       FROM match_results WHERE date != '' AND finished_at != ''" 2>/dev/null)
   else
     fail "match_results is empty (run the Wails app and click Parse Screenshots)"
   fi
@@ -67,7 +70,7 @@ echo "[2] Wails /metrics endpoint ($METRICS_URL)"
 if metrics_body=$(curl -fsS --max-time 3 "$METRICS_URL" 2>/dev/null); then
   pass "endpoint reachable"
   ow_lines=$(printf '%s\n' "$metrics_body" | grep -c '^recall_' || true)
-  if (( ow_lines > 0 )); then
+  if ((ow_lines > 0)); then
     pass "$ow_lines recall_* sample line(s) in the response"
   else
     fail "endpoint up but no recall_* samples — collector isn't producing data"
@@ -89,7 +92,7 @@ fi
 if state=$(podman inspect -f '{{.State.Status}} {{.RestartCount}}' recall-prometheus 2>/dev/null); then
   status="${state% *}"
   restarts="${state#* }"
-  if [[ "$status" == "running" ]] && (( restarts < 3 )); then
+  if [[ "$status" == "running" ]] && ((restarts < 3)); then
     pass "recall-prometheus container running (restart count: $restarts)"
   elif [[ "$status" == "running" ]]; then
     fail "container is running but has restarted $restarts times — likely crash-looping"
@@ -109,9 +112,11 @@ if up_resp=$(curl -fsS --max-time 3 "$PROM_URL/api/v1/query?query=up%7Bjob%3D%22
   state=$(printf '%s' "$up_resp" | jq -r '.data.result[0].value[1] // empty' 2>/dev/null)
   case "$state" in
     1) pass "recall target is UP (Prometheus can reach Wails app)" ;;
-    0) fail "recall target is DOWN — Prometheus can't reach $METRICS_URL"
-       note "from inside the VM, host.docker.internal:$METRICS_PORT must be reachable"
-       note "see: curl $PROM_URL/api/v1/targets" ;;
+    0)
+      fail "recall target is DOWN — Prometheus can't reach $METRICS_URL"
+      note "from inside the VM, host.docker.internal:$METRICS_PORT must be reachable"
+      note "see: curl $PROM_URL/api/v1/targets"
+      ;;
     *) fail "no 'up' sample for recall yet — Prometheus may not have scraped (wait ~30s)" ;;
   esac
 else
@@ -132,9 +137,9 @@ echo "[5] Prometheus TSDB samples"
 query='count(count_over_time(recall_match_eliminations%5B365d%5D))'
 if count_resp=$(curl -fsS --max-time 3 "$PROM_URL/api/v1/query?query=$query" 2>/dev/null); then
   count=$(printf '%s' "$count_resp" | jq -r '.data.result[0].value[1] // "0"' 2>/dev/null)
-  if [[ "$count" =~ ^[0-9]+$ ]] && (( count > 0 )); then
+  if [[ "$count" =~ ^[0-9]+$ ]] && ((count > 0)); then
     pass "$count distinct match series in TSDB (over the last 365d)"
-    if [[ "${rows:-}" =~ ^[0-9]+$ ]] && (( count == rows )); then
+    if [[ "${rows:-}" =~ ^[0-9]+$ ]] && ((count == rows)); then
       pass "TSDB series count matches SQLite row count"
     elif [[ "${rows:-}" =~ ^[0-9]+$ ]]; then
       fail "TSDB has $count, SQLite has $rows — some matches missing from Prometheus"
@@ -146,7 +151,7 @@ if count_resp=$(curl -fsS --max-time 3 "$PROM_URL/api/v1/query?query=$query" 2>/
     # Diagnose the most likely cause: out-of-order / out-of-bounds rejection.
     ooo_resp=$(curl -fsS --max-time 3 "$PROM_URL/api/v1/query?query=sum(prometheus_target_scrapes_sample_out_of_order_total)" 2>/dev/null || true)
     ooo=$(printf '%s' "$ooo_resp" | jq -r '.data.result[0].value[1] // "0"' 2>/dev/null)
-    if [[ "$ooo" =~ ^[0-9]+$ ]] && (( ooo > 0 )); then
+    if [[ "$ooo" =~ ^[0-9]+$ ]] && ((ooo > 0)); then
       note "Prometheus has rejected $ooo out-of-order samples — check storage.tsdb.out_of_order_time_window in prometheus.yml"
       note "live config: curl '$PROM_URL/api/v1/status/config' | jq -r '.data.yaml' | grep -A2 storage"
     fi
@@ -157,4 +162,4 @@ fi
 # ── Summary ────────────────────────────────────────────────────────────────
 echo
 echo "Summary: $PASS passed, $FAIL failed"
-exit $(( FAIL > 0 ? 1 : 0 ))
+exit $((FAIL > 0 ? 1 : 0))

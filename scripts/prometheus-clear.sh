@@ -12,7 +12,10 @@ cd "$SCRIPT_DIR/.."
 . "$SCRIPT_DIR/_lib.sh"
 
 read -r -p "This will erase ALL Prometheus history. Confirm? [y/N] " ans
-[[ "$ans" == "y" || "$ans" == "Y" ]] || { echo "aborted"; exit 0; }
+[[ "$ans" == "y" || "$ans" == "Y" ]] || {
+  echo "aborted"
+  exit 0
+}
 
 # Apply the cred-helper workaround before podman-compose tries to bring
 # prometheus back up — `up -d prometheus` triggers an image lookup that

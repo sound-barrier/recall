@@ -82,6 +82,17 @@ jobs:
       - name: Lint HTML (HTMLHint)
         run: cd frontend && npm run lint:html
 
+      # Shell scripts in scripts/ -- shellcheck for correctness, shfmt
+      # for style. Mirrors `make lint-shell` locally. shellcheck is
+      # pre-installed on ubuntu-latest; shfmt is not, so we install it
+      # via go install (cheap since setup-go cached the toolchain).
+      # No untrusted input passed through env or run blocks below.
+      - name: Install shfmt
+        run: go install mvdan.cc/sh/v3/cmd/shfmt@latest
+
+      - name: Lint shell scripts (shellcheck + shfmt)
+        run: make lint-shell
+
       # Dockerfile
       - name: Lint Dockerfile (Hadolint)
         uses: hadolint/hadolint-action@v3.3.0

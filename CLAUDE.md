@@ -46,8 +46,8 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `brew bundle` | Install Tesseract, Go toolchain, Podman, etc. from `Brewfile`. **Wails CLI must be installed separately**: `go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0`. |
 | `direnv allow` | Activate the repo's `.envrc` after cloning (or after editing it). All env var overrides are documented and commented out inside `.envrc`. |
 | `cd frontend && npm ci` | Install frontend dependencies (required after clone or `make clean`). |
-| `make fmt` | Format all Go source files: `goimports-reviser` (organizes import groups: stdlib / external / project) then `gofumpt`. Install both with `go install mvdan.cc/gofumpt@latest` and `go install github.com/incu6us/goimports-reviser/v3@latest`. |
-| `make lint` | Run all linters: golangci-lint (Go, both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral. |
+| `make fmt` | Format all source: Go (`goimports-reviser` then `gofumpt`) and shell scripts in `scripts/` (`shfmt -w -i 2 -ci -bn`). Sub-targets: `fmt-go`, `fmt-shell`. Install Go formatters with `go install mvdan.cc/gofumpt@latest` and `go install github.com/incu6us/goimports-reviser/v3@latest`; shfmt is in the Brewfile. |
+| `make lint` | Run all linters: golangci-lint (Go, both build tags), ESLint, Stylelint, HTMLHint, shellcheck + shfmt diff (bash scripts in `scripts/`, driven by the project-root `.shellcheckrc`), Hadolint, yamllint, Spectral. |
 | `make clean` | Remove `dist/`, `build/bin/`, `frontend/dist`, and `frontend/node_modules`. |
 | `make update-deps` | Update Go modules (`go get -u ./...` + `go mod tidy`) and npm packages. |
 | `make trivy` | Trivy vulnerability scan (Go modules + npm + Dockerfile); fails on HIGH/CRITICAL. |

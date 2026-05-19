@@ -67,4 +67,4 @@ while IFS=$'\t' read -r id key data; do
     printf '%s\n' "$data"
   fi
   echo
-done <<< "$raw"
+done <<<"$raw"
