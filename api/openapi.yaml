@@ -75,6 +75,10 @@ paths:
     get:
       tags: [Settings]
       summary: Get the configured screenshots folder
+      description: |
+        Returns the path Recall is currently reading from. Can be
+        absolute (e.g. `/Users/.../Overwatch/ScreenShots/Overwatch`) or
+        relative to the server's working directory.
       responses:
         "200":
           description: Current path.
@@ -140,6 +144,9 @@ paths:
     get:
       tags: [Settings]
       summary: Get the Prometheus metrics-endpoint toggle
+      description: |
+        `true` iff the `:9091/metrics` listener is currently bound and
+        the Prometheus collector is registered.
       responses:
         "200":
           description: Current state.
@@ -176,6 +183,9 @@ paths:
     get:
       tags: [Settings]
       summary: Get the file-watcher toggle
+      description: |
+        `true` iff the fsnotify watcher is armed against the configured
+        screenshots folder.
       responses:
         "200":
           description: Current state.
@@ -258,6 +268,10 @@ paths:
     post:
       tags: [Settings]
       summary: Reset the Tesseract path to the platform default
+      description: |
+        Replaces the configured path with the platform default (Homebrew
+        on macOS, `/usr/bin/tesseract` on Linux, the Windows installer
+        path on Windows) and re-runs detection.
       responses:
         "200":
           description: Re-detected status against the default path.
