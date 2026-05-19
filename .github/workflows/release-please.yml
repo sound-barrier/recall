@@ -15,15 +15,25 @@ name: release-please
 #      Release.
 #
 # REPO SETUP — one-time:
-#   GitHub blocks Actions from opening PRs by default. To allow
-#   release-please to open the Release PR, go to:
-#     Settings → Actions → General → Workflow permissions →
-#     check "Allow GitHub Actions to create and approve pull requests"
-#   Without this, the action runs to completion but fails with:
-#     "GitHub Actions is not permitted to create or approve pull
-#     requests."
-#   Alternative: provide a `personal-access-token` input below pointing
-#   at a PAT with `repo` + `workflow` scopes.
+#   1. Settings -> Actions -> General -> Workflow permissions ->
+#      check "Allow GitHub Actions to create and approve pull requests".
+#      Without this, the action runs to completion but fails with:
+#      "GitHub Actions is not permitted to create or approve pull
+#      requests."
+#
+#   2. (Strongly recommended.) Create a fine-grained PAT with
+#      contents:write + pull-requests:write on this repo and save it
+#      as the repo secret RELEASE_PLEASE_TOKEN. The action below uses
+#      it when present and falls back to GITHUB_TOKEN otherwise.
+#
+#      Why: tags pushed by GITHUB_TOKEN do NOT fire downstream
+#      workflows (GitHub anti-loop guard), so without a PAT the
+#      vX.Y.Z tag release-please creates will NOT auto-trigger
+#      release.yml -- you will have to fire that workflow manually
+#      (gh workflow run release.yml --ref vX.Y.Z). With a PAT the
+#      tag push is attributed to the PAT owner and release.yml runs
+#      automatically. See CONTRIBUTING.md "When release.yml does
+#      not auto-fire".
 
 on:
   push:
@@ -39,10 +49,17 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v4
         with:
+          # Use a PAT when one is configured so the tag release-please
+          # creates is attributed to a real account and fires
+          # release.yml automatically. Falls back to GITHUB_TOKEN so
+          # the action still runs (and the Release PR still opens) on
+          # forks or repos without the secret -- the cost is that
+          # release.yml has to be triggered manually for those tags.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           # Config + manifest live in release-please-config.json and
           # .release-please-manifest.json at the project root. The
-          # `release-type: simple` setting in config means release-please
-          # just maintains CHANGELOG.md + version files we declare — it
-          # doesn't try to parse Go module versions or similar.
+          # release-type: simple setting in config means release-please
+          # just maintains CHANGELOG.md + version files we declare --
+          # it does not try to parse Go module versions or similar.
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
