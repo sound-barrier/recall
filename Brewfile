@@ -28,12 +28,14 @@ brew "podman-compose"
 # responses; db-show.sh uses it for pretty-printing when available.
 brew "jq"
 
-# Linting tools (used by `make lint`).
+# Linting + formatting tools (used by `make lint` and `make fmt`).
 #
-# `make lint` runs seven linters total. Brew covers four of them:
+# Brew covers six of the linters/formatters:
 #   - golangci-lint (Go)
 #   - hadolint      (Dockerfile)
 #   - yamllint      (YAML)
+#   - shellcheck    (bash scripts in scripts/ — driven by .shellcheckrc)
+#   - shfmt         (bash formatter; same scope as shellcheck)
 #   - (Spectral for OpenAPI runs via npx — see `node` above)
 #
 # The remaining three live under frontend/ and ship via npm:
@@ -44,6 +46,8 @@ brew "jq"
 brew "golangci-lint"
 brew "hadolint"
 brew "yamllint"
+brew "shellcheck"
+brew "shfmt"
 
 # Per-project environment variable loader (used with .envrc).
 brew "direnv"
