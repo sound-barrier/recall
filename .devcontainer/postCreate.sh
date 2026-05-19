@@ -38,13 +38,16 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
 sudo rm -rf /var/lib/apt/lists/*
 
 # ─── Go tooling (CONTRIBUTING.md "go install" lines) ──────────────────
-log "Go tools: gofumpt, goimports-reviser, govulncheck, wails, golangci-lint"
+log "Go tools: gofumpt, goimports-reviser, shfmt, govulncheck, wails, golangci-lint"
 # golangci-lint via go install matches what ci.yml does (so the version
 # Go-compiled-this-Go-toolchain matches; pre-built binaries are usually
 # built against older Go).
 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 go install mvdan.cc/gofumpt@latest
 go install github.com/incu6us/goimports-reviser/v3@latest
+# shfmt: required by `make fmt-shell` and `make lint-shell` (shellcheck + shfmt diff).
+# Installed via go install here to match what ci.yml does.
+go install mvdan.cc/sh/v3/cmd/shfmt@latest
 go install golang.org/x/vuln/cmd/govulncheck@latest
 go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
 
@@ -94,6 +97,7 @@ log "done — tool versions:"
     printf '  tesseract      %s\n' "$(tesseract --version 2>&1 | head -1)"
     printf '  golangci-lint  %s\n' "$(golangci-lint --version 2>&1 | head -1)"
     printf '  gofumpt        %s\n' "$(gofumpt --version)"
+    printf '  shfmt          %s\n' "$(shfmt --version)"
     printf '  wails          %s\n' "$(wails -v 2>&1 | head -1)"
     printf '  hadolint       %s\n' "$(hadolint --version)"
     printf '  yamllint       %s\n' "$(yamllint --version)"
@@ -115,7 +119,7 @@ Next steps:
     then open http://127.0.0.1:7000 (port-forwarded automatically).
 
   • Lint/test before committing:
-        make lint    # all 7 linters
+        make lint    # golangci-lint, ESLint+typescript-eslint, Stylelint, HTMLHint, shellcheck+shfmt, Hadolint, yamllint, Spectral
         make test    # Go + Vitest
 
   • API spec change?  Regenerate types:
