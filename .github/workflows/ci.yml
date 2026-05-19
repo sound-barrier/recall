@@ -280,12 +280,17 @@ jobs:
         #   not_a_server_error, status_code_conformance, content_type_conformance,
         #   response_schema_conformance, response_headers_conformance.
         # `--hypothesis-max-examples=20` keeps wall time reasonable.
+        # `--experimental=openapi-3.1` is required because schemathesis 3.x
+        # only fully supports OpenAPI 3.0 by default and refuses 3.1 specs
+        # without this opt-in. The flag becomes a no-op (and the install
+        # pin <4 can be relaxed) once we move to schemathesis 4.x.
         run: |
           schemathesis run \
             --base-url http://127.0.0.1:7000 \
             --checks all \
             --hypothesis-max-examples 20 \
             --exclude-method DELETE \
+            --experimental=openapi-3.1 \
             api/openapi.yaml
 
       - name: Stop server
