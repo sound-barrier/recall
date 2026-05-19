@@ -154,7 +154,12 @@ In addition to the desktop app, Recall can run as a headless HTTP server. Open `
 
 The server listens on `http://127.0.0.1:7000` by default (localhost-only). Set
 `RECALL_SERVER_ADDR` to override (e.g. `RECALL_SERVER_ADDR=0.0.0.0:7000` to accept
-connections from other hosts on your network).
+connections from other hosts on your network). Recall has no authentication —
+when binding to a non-loopback address, put it behind a reverse proxy with auth
+(or restrict access at the network layer). Endpoints that accept filesystem
+paths (`/api/screenshots-dir`, `/api/tesseract-path`) validate input before it
+reaches `os.Stat` / `exec.Command`; see the validation rules in each
+endpoint's description in the spec below.
 
 The HTTP REST + SSE surface is documented in [`api/openapi.yaml`](api/openapi.yaml) (OpenAPI 3.1.0). Browse it with `make swagger` to spin up Swagger UI at <http://localhost:8080>, or point any OpenAPI-compatible client at the YAML directly.
 

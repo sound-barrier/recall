@@ -98,6 +98,16 @@ paths:
         Persists to `settings.json` and re-targets the file watcher if
         it's armed. Path can be absolute or relative to the server's
         working directory.
+
+        Validation (400 on failure):
+        - Only filesystem-safe characters (alphanumerics, `_ . / \ : - <space>
+          ( ) + ' ,`). Shell metacharacters, NUL bytes, and control codes
+          are rejected.
+        - Must be in canonical form — `filepath.Clean(path) == path`
+          (no redundant slashes or `..` traversal segments).
+        - Must point at an existing directory.
+
+        The echoed-back `path` is the cleaned form actually stored.
       requestBody:
         required: true
         content:
@@ -241,6 +251,21 @@ paths:
       description: |
         Re-runs detection on the new path. The status returned reflects
         whether the binary at that path responds to `--version`.
+
+        Validation (400 on failure — the path is rejected before
+        `exec.Command` is invoked, so a malformed path never reaches a
+        syscall):
+        - Only filesystem-safe characters (alphanumerics, `_ . / \ : - <space>
+          ( ) + ' ,`). Shell metacharacters, NUL bytes, and control codes
+          are rejected.
+        - Must be in canonical form — `filepath.Clean(path) == path`.
+        - Must be an absolute path.
+        - Basename must be exactly `tesseract` or `tesseract.exe` — this
+          pins the endpoint to "swap which Tesseract is used" and
+          forbids using it to launch arbitrary binaries.
+
+        `POST /api/tesseract-reset` bypasses this validation because the
+        platform default (`defaultTesseractPath()`) is trusted.
       requestBody:
         required: true
         content:

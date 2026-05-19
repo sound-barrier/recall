@@ -12,6 +12,10 @@ Grafana dashboard can chart trends. Stack: Go backend + Vue 3 frontend
 to. The user is a competitive OW player who wants the tool to surface what
 they're good/bad at by hero/map/type.
 
+The GitHub repo is `sound-barrier/recall` — used for
+`gh api repos/sound-barrier/recall/...` calls (code-scanning alerts,
+PRs, releases, etc.).
+
 ## Build, run, dev
 
 Two binary flavors exist, selected by the `serveronly` Go build tag:
@@ -88,8 +92,9 @@ macOS-only (uses `sips`) and skips in the container.
 | `RECALL_FIXTURE_DIR` | *(off)* | Directory of `.png` fixture screenshots for `TestParseScreenshot_GoldenFiles`. Each `foo.png` needs a sidecar `foo.png.golden.json`. Set `RECALL_FIXTURE_UPDATE=1` alongside to regenerate goldens. |
 
 Go unit tests cover the merge / inference / classification helpers in
-`pkg/app/merge_test.go` and the parser's text-processing helpers in
-`pkg/parser/parser_test.go`. Full-image parser tests live in
+`pkg/app/merge_test.go`, the boundary path validators in
+`pkg/app/validate_test.go`, and the parser's text-processing helpers
+in `pkg/parser/parser_test.go`. Full-image parser tests live in
 `pkg/parser/integration_test.go` and skip unless `RECALL_FIXTURE_DIR`
 points at a directory of `.png` + `foo.png.golden.json` pairs. For
 quick local exploration outside the test runner, a throwaway
@@ -515,3 +520,20 @@ Triggered on `v*` tags. Parallel jobs: `build-docker` (Linux + Windows Wails app
   template therefore double-unwraps and returns `undefined` silently.
   Always access `.value` inside a wrapper function in JS, then call the
   function from the template.
+- **User-controlled paths from HTTP go through a boundary validator
+  before reaching `exec.Command` / `os.Stat`.** `validateScreenshotsDir`
+  and `validateTesseractPath` in `pkg/app/app.go` are the canonical
+  examples: shared `safePathChars` regex + `filepath.Clean` equality +
+  return the cleaned value so the *sanitized* form is what downstream
+  syscalls see (not the raw input). This is the pattern CodeQL's
+  `go/command-injection` and `go/path-injection` rules recognize as a
+  sanitizer. New HTTP endpoints that accept a filesystem path must
+  follow the same shape — re-use `safePathChars` so the regex stays
+  permissive enough for Windows `Program Files (x86)\…` paths and
+  usernames with apostrophes/parens.
+- **Windows Tesseract installer paths contain spaces and parens** —
+  `defaultTesseractPath()` returns `C:\Program Files\Tesseract-OCR\…`
+  or `C:\Program Files (x86)\Tesseract-OCR\…` on Windows. Any regex
+  that constrains path strings must allow `() ` or it'll reject the
+  Windows default out of the box (one of the test cycles spent
+  tracking this down — don't repeat).
