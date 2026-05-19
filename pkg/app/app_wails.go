@@ -83,8 +83,11 @@ func (a *App) PickScreenshotsDir() (string, error) {
 	if dir == "" {
 		return a.settings.ScreenshotsDir, nil
 	}
-	a.settings.ScreenshotsDir = dir
-	if err := saveSettings(a.settings); err != nil {
+	// Route through SetScreenshotsDir so the path passes the same
+	// validation as the /api/screenshots-dir HTTP endpoint — the
+	// native dialog is trusted but funneling everything through one
+	// validator keeps behavior consistent between Wails and server mode.
+	if err := a.SetScreenshotsDir(dir); err != nil {
 		return a.settings.ScreenshotsDir, err
 	}
 	if a.settings.WatchEnabled {
