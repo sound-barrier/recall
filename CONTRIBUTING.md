@@ -21,6 +21,7 @@ overview of the architecture and internal conventions, see
 - [Maintenance](#maintenance)
   - [Pre-commit hooks (lefthook)](#pre-commit-hooks-lefthook)
   - [Tagging and releasing](#tagging-and-releasing)
+- [Releases](RELEASES.md) — separate doc; covers cutting stable releases and prereleases, `make release-beta` / `make release-fire` shortcuts, and recovery procedures.
 - [API specification](#api-specification)
 
 ## Development setup
@@ -370,137 +371,24 @@ Hooks bypassed locally will still fail in CI on push — bypass is for in-flight
 
 ### Tagging and releasing
 
-Releases are automated by [release-please](https://github.com/googleapis/release-please). **You should never need to run `git tag` by hand.** The full flow:
+Moved to its own doc — see [RELEASES.md](RELEASES.md). It covers:
 
-```
-conventional commits on main
-    ↓
-release-please.yml opens "chore(main): release vX.Y.Z" PR
-    ↓
-maintainer reviews + merges the PR
-    ↓
-release-please creates the vX.Y.Z tag
-    ↓
-release.yml builds binaries + DMG + container image
-    ↓
-GitHub Release published
-```
+- the release-please → `v*` tag → `release.yml` flow (with a `mermaid` diagram and a stable-vs-prerelease comparison table),
+- the `make release-beta VERSION=…` shortcut for cutting prereleases,
+- `make release-fire TAG=…` for the rare case where `release.yml` doesn't auto-fire,
+- one-time repo setup (`RELEASE_PLEASE_TOKEN` PAT, workflow permissions),
+- recovery procedures (emergency manual tag, skipping/pausing release-please).
 
-Config lives in `release-please-config.json` and `.release-please-manifest.json`.
-
-> **One-time repo setup**: GitHub blocks Actions from opening PRs by default. Enable
-> **Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests"**
-> or release-please will fail with *"GitHub Actions is not permitted to create or approve pull requests."* once it tries to open the Release PR.
-
-#### Version-bump rules
-
-release-please reads commit types since the last tag and bumps accordingly:
-
-| Commit prefix | Pre-1.0 effect | Post-1.0 effect |
-|---|---|---|
-| `feat!:` or `BREAKING CHANGE:` footer | minor bump | **major** bump |
-| `feat:` | minor bump | minor bump |
-| `fix:`, `perf:` | patch bump | patch bump |
-| `refactor:`, `docs:`, `test:`, `build:`, `ci:`, `revert:` | patch bump | patch bump |
-| `chore:`, `style:` | no bump, hidden from changelog | same |
-
-Until the project crosses `1.0.0`, breaking changes are minor bumps (per the `bump-minor-pre-major` flag in `release-please-config.json`). After 1.0.0, the strict SemVer rules apply.
-
-#### Stable vs. prerelease at a glance
-
-Both stable releases and prereleases go through the same release-please → `v*` tag → `release.yml` pipeline. The only inputs that differ are (a) where the version number comes from and (b) whether the resulting tag carries a hyphenated suffix. `release.yml` keys off that suffix to decide what to publish and how to flag the GitHub Release. The detailed "Cutting a release" and "Cutting a prerelease" subsections below walk through each path step by step; this table and diagram are the side-by-side reference.
-
-| Stage | Stable `v0.1.0` | Prerelease `v0.1.0-beta.0` |
-|---|---|---|
-| Version source | computed from `feat:` / `fix:` commits since the last tag | `Release-As:` commit-message footer overrides |
-| Release PR title | `chore(main): release v0.1.0` | `chore(main): release v0.1.0-beta.0` |
-| `.release-please-manifest.json` value | `0.1.0` | `0.1.0-beta.0` |
-| Git tag created on PR merge | `v0.1.0` | `v0.1.0-beta.0` (hyphenated suffix) |
-| Workflow that fires on the tag | `release.yml` | **same** `release.yml` |
-| Release artifact filenames | `recall-0.1.0-*.{tar.gz,deb,dmg,exe,zip}` + SBOM | `recall-0.1.0-beta.0-*.{tar.gz,deb,dmg,exe,zip}` + SBOM |
-| Container tags (`ghcr.io/<owner>/recall-server`) | `:0.1.0`, `:0.1`, **and** `:latest` | `:0.1.0-beta.0` only (rolling `:latest` and `:0.1` don't move) |
-| GitHub Release marker | normal release | **auto-flagged as prerelease** (the hyphen in `github.ref_name` is what flips `prerelease: true`) |
-
-```mermaid
-flowchart TD
-    A["Conventional commits on main<br/>(feat:, fix:, docs:, …)"] --> B{"Did a commit carry<br/>a Release-As: trailer?"}
-    B -- "no" --> C["release-please computes<br/>next version from commit types"]
-    B -- "yes (e.g. Release-As: 0.1.0-beta.0)" --> D["release-please uses<br/>the trailer value verbatim"]
-    C --> E["Release PR<br/>chore(main): release v0.1.0"]
-    D --> F["Release PR<br/>chore(main): release v0.1.0-beta.0"]
-    E -- "merge" --> G["Tag: v0.1.0"]
-    F -- "merge" --> H["Tag: v0.1.0-beta.0"]
-    G --> I["release.yml fires on v* tag<br/>(builds binaries, container, SBOM)"]
-    H --> I
-    I --> J{"Does the tag<br/>contain a hyphen?"}
-    J -- "no" --> K["GitHub Release: stable<br/>container: :0.1.0 + :0.1 + :latest"]
-    J -- "yes" --> L["GitHub Release: prerelease<br/>container: :0.1.0-beta.0 only"]
-```
-
-#### Cutting a release
-
-1. **Merge the Release PR**. release-please opens it titled `chore(main): release vX.Y.Z` whenever there are tag-bumping commits on `main`. The PR diff shows the version bump in `.release-please-manifest.json` and the additions to `CHANGELOG.md`.
-2. **Review the changelog content** before merging — anything `chore:` or `style:` is hidden, anything else is grouped by type. If the changelog is missing a notable change, fix the underlying commit subject (amend + force-push, OR add an empty `git commit --allow-empty -m "fix: …"` if the original PR is already squashed in).
-3. **Merge the PR** (squash). release-please then creates the `vX.Y.Z` git tag on the merge commit.
-4. The tag fires `release.yml`. Wait for all jobs (`build-docker`, `build-mac`, `sbom`, `publish-container`, `release`) to go green — typically 8-15 minutes. **If no `Release` workflow run shows up at all** after the tag lands, see [When `release.yml` doesn't auto-fire](#when-releaseyml-doesnt-auto-fire) — the tag exists but the workflow needs a manual nudge.
-5. **Verify the GitHub Release**: `.dmg`, `.tar.gz`, `.deb`, `.exe`, SBOM, and per-artifact `.sha256` files should all be attached. The container image at `ghcr.io/<owner>/recall-server:X.Y.Z` should be present in Packages, with the rolling `:X.Y` and `:latest` tags pointing at it. (Rolling tags only move on stable releases — see the table above.)
-
-#### Cutting a prerelease (beta / rc / alpha)
-
-release-please respects a [`Release-As:` commit footer](https://github.com/googleapis/release-please/blob/main/docs/customizing.md#release-as) that overrides the version it would otherwise compute. Use it to ship a prerelease without touching workflow config or maintaining a parallel branch:
+The 30-second version for prereleases:
 
 ```sh
-git checkout main && git pull
-git commit -s --allow-empty -m "chore: cut v0.0.9-beta.0
-
-Release-As: 0.0.9-beta.0
-"
+make release-beta VERSION=0.0.13-beta.0
 git push origin main
+# … merge the Release PR release-please opens …
+# If RELEASE_PLEASE_TOKEN is configured, release.yml fires on its own.
+# Otherwise:
+make release-fire TAG=v0.0.13-beta.0
 ```
-
-What happens next:
-
-1. release-please re-evaluates on the push, reads the `Release-As:` footer, and opens (or updates) a **Release PR** titled `chore(main): release v0.0.9-beta.0`.
-2. The PR diff bumps `.release-please-manifest.json` to `0.0.9-beta.0` and adds a `## [0.0.9-beta.0]` heading to `CHANGELOG.md` listing every commit since the last release tag.
-3. Merge the PR. release-please creates the `v0.0.9-beta.0` git tag.
-4. `release.yml` fires on the `v*` tag. GitHub marks the resulting Release as a **prerelease** automatically because the tag has a hyphenated suffix — no separate workflow or flag needed. The published container is tagged `:0.0.9-beta.0` only; the rolling `:latest` and `:0.0` tags don't move, so production pulls of `:latest` continue to land on the most recent stable build.
-
-The next beta in the same line: another empty commit with `Release-As: 0.0.9-beta.1`. The next *official* release: don't add any `Release-As:` footer — release-please bumps normally from the most recent tag (e.g. `v0.0.9` from `fix:` commits, `v0.1.0` from `feat:`). The absence of a hyphenated suffix in the tag is what makes a release "official" — the same `release.yml` builds the artifacts either way.
-
-**Force a specific stable version** (e.g. jumping from `v0.1.5` straight to `v1.0.0`): same pattern, `Release-As: 1.0.0`.
-
-#### Skipping or pausing release-please
-
-- **Empty Release PR**: if no `feat:` / `fix:` / etc. commits have landed since the last tag, no PR opens. Add at least one tag-bumping commit (or `chore:` if you genuinely just want a re-tag — that won't trigger a version bump but you can manually edit the manifest).
-- **Pausing**: close the Release PR without merging. It will re-open on the next push to `main` with the latest changes folded in.
-
-#### When `release.yml` doesn't auto-fire
-
-You merged a Release PR, the `vX.Y.Z` tag exists on origin (`git ls-remote --tags origin | grep vX.Y.Z`), but no `Release` workflow run appears under Actions. **This is expected when `release-please.yml` is using the default `GITHUB_TOKEN`** — GitHub deliberately suppresses workflow chaining for refs authored by `github-actions[bot]` (anti-loop guard), so the tag push doesn't fire `release.yml`'s `push: tags` trigger.
-
-**Immediate unblock** — fire `release.yml` manually for the existing tag:
-
-```sh
-gh workflow run release.yml --ref vX.Y.Z-beta.0
-# or from the Actions UI: Release → Run workflow → pick the tag in
-# the "Use workflow from" dropdown.
-```
-
-Every job in `release.yml` already keys off `github.ref_name`, which is the tag name for both `push: tags` and `workflow_dispatch`, so no other knobs to flip.
-
-**Long-term fix** — create a fine-grained PAT with `contents: write` + `pull-requests: write` on this repo (or a GitHub App), save it as the repo secret `RELEASE_PLEASE_TOKEN`. `release-please.yml` already reads it (`token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}`) and will then attribute the tag push to the PAT owner, so future tags fire `release.yml` automatically. No code change once the secret is in place.
-
-#### Emergency manual tag (last resort)
-
-Only do this if `release-please.yml` is broken or you need a hotfix tag before release-please catches up. The `release.yml` workflow fires on any `v*` tag.
-
-```sh
-git checkout main && git pull
-git tag -a v0.1.1 -m "hotfix: …"
-git push origin v0.1.1
-```
-
-After the manual tag, the next push to `main` will trigger release-please to reconcile `.release-please-manifest.json` against the new tag — you may see an unusual Release PR. Inspect it carefully before merging.
 
 ## API specification
 
