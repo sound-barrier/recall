@@ -397,7 +397,7 @@ Three workflows:
 
 ### `release.yml` detail
 
-Triggered on `v*` tags. Parallel jobs: `build-docker` (Linux + Windows Wails apps + all server binaries via Docker; packages Linux binaries as `.tar.gz` and `.deb` installing to `/usr/local/bin/`), `build-mac` (macOS Wails arm64 `.app` bundle wrapped in a `.dmg` via `hdiutil`, requires Apple runner), `sbom` (generates `recall-{version}-sbom.spdx.json` via `anchore/sbom-action` — SPDX JSON covering Go modules + npm packages), `publish-container` (builds `server-container` stage and pushes to `ghcr.io/<owner>/recall-server` with semver tags — GHCR only, not attached to the release; attempts to set visibility to public via API with `continue-on-error` — `GITHUB_TOKEN` lacks the `write:packages` OAuth scope for visibility changes, so the package must be set public once manually via GitHub Package settings), and `release` (waits on `build-docker` + `build-mac` + `sbom`; generates a per-artifact `<filename>.sha256` file for every binary and package — not for the SBOM; uploads all to GitHub Releases). All release artifacts embed the tag version in their filename: `recall-{version}-linux-amd64.tar.gz`, `recall-{version}-darwin-arm64.dmg`, etc. (`v` prefix stripped from the tag). GHCR auth uses `secrets.GITHUB_TOKEN` — no PAT needed; workflow permissions must include `packages: write`.
+Triggered on `v*` tags. Parallel jobs: `build-docker` (Linux + Windows Wails apps + all server binaries via Docker; packages Linux binaries as `.tar.gz` and `.deb` installing to `/usr/local/bin/`), `build-mac` (macOS Wails arm64 `.app` bundle wrapped in a `.dmg` via `hdiutil`, requires Apple runner), `sbom` (generates `recall-{version}-sbom.spdx.json` via `anchore/sbom-action` — SPDX JSON covering Go modules + npm packages), `publish-container` (builds `server-container` stage and pushes to `ghcr.io/<owner>/recall-server`: every tag publishes the exact `:{{version}}`; rolling `:{{major}}.{{minor}}` and `:latest` only push on stable releases — prerelease tags (those with a hyphen, e.g. `v0.1.0-beta.0`) are guarded by `enable=${{ !contains(github.ref_name, '-') }}` so `docker pull recall-server:latest` always lands on a non-prerelease build. See CONTRIBUTING.md → "Stable vs. prerelease at a glance" for the full matrix. GHCR only, not attached to the release; attempts to set visibility to public via API with `continue-on-error` — `GITHUB_TOKEN` lacks the `write:packages` OAuth scope for visibility changes, so the package must be set public once manually via GitHub Package settings), and `release` (waits on `build-docker` + `build-mac` + `sbom`; generates a per-artifact `<filename>.sha256` file for every binary and package — not for the SBOM; uploads all to GitHub Releases). All release artifacts embed the tag version in their filename: `recall-{version}-linux-amd64.tar.gz`, `recall-{version}-darwin-arm64.dmg`, etc. (`v` prefix stripped from the tag). GHCR auth uses `secrets.GITHUB_TOKEN` — no PAT needed; workflow permissions must include `packages: write`.
 
 ## Conventions worth knowing
 
@@ -430,6 +430,28 @@ Triggered on `v*` tags. Parallel jobs: `build-docker` (Linux + Windows Wails app
   Wails mode continues to work.
 - **The `_screenshot/<filename>` URL prefix** is reserved for the
   on-disk screenshots handler. Don't reuse it for other dynamic assets.
+- **HTTP array responses initialize to `make([]T, 0)`, never `var x []T`.**
+  A nil slice JSON-marshals to `null`, which violates any OpenAPI
+  `type: array` declaration and fails schemathesis's
+  `response_schema_conformance` check in CI. `readAllRecords` in
+  `pkg/app/app.go` is the canonical example. Same rule for any new
+  `/api/*` endpoint that returns a list.
+- **Bad client or config input is 4xx, not 5xx.** App-layer code returns
+  a typed sentinel error (e.g. `app.ErrInvalidScreenshotsDir`,
+  `fmt.Errorf("%w: ...", sentinel, ...)`); HTTP handlers use
+  `errors.Is` to map the sentinel to 400 and let other errors fall
+  through to 500. 5xx is reserved for unexpected internal failures —
+  anything reproducibly triggered by fuzzed or user-config input is a
+  4xx. Pattern established by the `/api/screenshots-dir` and `/api/parse`
+  handlers.
+- **Smoke-test the server with isolated HOME.** Running `recall-server`
+  from the repo root hits real user data: the default `ScreenshotsDir =
+  "screenshots"` resolves to `./screenshots` (which exists locally), and
+  settings + SQLite live under `$HOME/Library/Application Support/Recall/`
+  on macOS. To test fresh-install behavior without touching real data:
+  `HOME=/tmp/recall-smoke RECALL_SERVER_ADDR=127.0.0.1:7099 ./recall-server`
+  from a directory with no `./screenshots`. Clean up with `rm -rf
+  /tmp/recall-smoke/Library`.
 - **`set -u` not `-e`** in shell scripts that should keep going after an
   individual failure (`verify-stack.sh` is the canonical example).
 - **`loading="lazy"` breaks `v-if`-inserted images** — browsers assign
