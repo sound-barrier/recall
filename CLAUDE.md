@@ -458,15 +458,22 @@ Triggered on `v*` tags. Parallel jobs: `build-docker` (Linux + Windows Wails app
   responds. When probing routes via `curl` from a script, sleep at
   least 14 s after starting the dev server. Vite (`:5173`) is up
   faster but doesn't see custom handlers.
-- **Conventional Commits are enforced.** `lefthook install` wires a
-  `commit-msg` hook that rejects subjects not matching
-  `<type>(<scope>)?(!)?: <description>` (allowed types: `feat`, `fix`,
-  `chore`, `docs`, `refactor`, `test`, `perf`, `build`, `ci`,
-  `revert`, `style`). `release-please` reads these to compute version
-  bumps + regenerate `CHANGELOG.md`. Bypass for one commit with
-  `LEFTHOOK_EXCLUDE=conventional git commit …` (e.g. for a fixup
-  commit) but expect the release PR to skip un-conventionally-
-  labelled commits from the changelog.
+- **Commits follow Conventional Commits *plus* the [Linux kernel
+  commit guidelines](https://www.kernel.org/doc/html/latest/process/submitting-patches.html#describe-your-changes).**
+  Conventional Commits governs the subject prefix
+  (`<type>(<scope>)?(!)?: <description>`, allowed types: `feat`,
+  `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `build`,
+  `ci`, `revert`, `style`) and is enforced by lefthook's
+  `commit-msg` hook. Kernel style governs everything below: subject
+  ≤ 72 chars in imperative mood with no trailing period, blank line,
+  body wrapped at 72 chars explaining *why* not *what*, kernel-style
+  trailers (`Fixes: <sha> ("subject")`, `Reported-by:`,
+  `Reviewed-by:`, `Signed-off-by:`, `Co-Authored-By:`) at the bottom.
+  One logical change per commit. `release-please` reads the
+  Conventional prefix to compute version bumps + regenerate
+  `CHANGELOG.md`. Bypass once with `LEFTHOOK_EXCLUDE=conventional
+  git commit …`. See CONTRIBUTING.md → "Pre-commit hooks (lefthook)"
+  for the full example.
 - **Bundle-size budget is enforced in CI.** `frontend/dist/assets/*.js`
   must stay under 200 KB; `*.css` under 100 KB (set in `ci.yml` step
   "Enforce bundle-size budget"). Bump the budgets explicitly when a
