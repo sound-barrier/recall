@@ -216,7 +216,7 @@ func parseScoreboard(img image.Image, work string) (*MatchResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("row OCR: %w", err)
 	}
-	// Panel: use raw colour and run OCR twice — PSM 6 reads the labels and
+	// Panel: use raw color and run OCR twice — PSM 6 reads the labels and
 	// numeric stats well, while PSM 11 (sparse text) catches cyan hero names
 	// like "REINHARDT" that PSM 6 sometimes drops. Concatenate both outputs.
 	panelRect := image.Rect(W*5/8, H/8, W, H*5/6)
@@ -368,7 +368,7 @@ func findHighlightedRowY(img image.Image) (int, int) {
 	// Slide a single-row-height window and pick the position with highest
 	// average brightness. Row height is roughly H/24 — covers a single row but
 	// not multiple stacked rows. We only consider the top half of the image
-	// since the friendly team always sits above the centre VS divider.
+	// since the friendly team always sits above the center VS divider.
 	rowHeight := H / 24
 	if rowHeight < 20 {
 		rowHeight = 20
@@ -447,7 +447,7 @@ func ocrRowCells(img image.Image, yTop, yBot int, workDir string) ([6]int, error
 	bounds := img.Bounds()
 	H := bounds.Dy()
 
-	// Trim the row to its centre band so we don't catch portrait/icon noise at
+	// Trim the row to its center band so we don't catch portrait/icon noise at
 	// the top and bottom edges.
 	pad := (yBot - yTop) / 8
 	yT, yB := yTop+pad, yBot-pad
@@ -640,7 +640,7 @@ func upscale(src image.Image, scale int) image.Image {
 	return out
 }
 
-// preprocessInverted converts a colour image to inverted-luminance grayscale at
+// preprocessInverted converts a color image to inverted-luminance grayscale at
 // 3x scale. Game text (white) becomes black and dark backgrounds become light —
 // the orientation Tesseract is trained on. Antialiasing is preserved as a
 // gradient, which Tesseract's internal binarisation handles cleanly.
@@ -1017,7 +1017,7 @@ func parseHeroesPlayed(text string) []HeroPlay {
 	return out
 }
 
-// parsePerformance pulls (total, avg-per-10-min) for each labelled card.
+// parsePerformance pulls (total, avg-per-10-min) for each labeled card.
 // The total is the last "pure integer line" before the label — meaning a line
 // whose content is just a 1-3 digit number, with no other characters. This
 // filters out icon noise like "S 4" (Tesseract's misread of the skull-X icon

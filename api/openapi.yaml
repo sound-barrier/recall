@@ -10,7 +10,7 @@ info:
   description: |
     HTTP REST + SSE surface for the Recall Overwatch 2 metrics app.
 
-    Available in two flavours:
+    Available in two flavors:
       * **Server binary** (`Recall-server`) — exposes this API by default
       * **Wails desktop binary with `--server`** — same API, same routes
 

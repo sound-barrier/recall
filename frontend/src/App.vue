@@ -16,7 +16,18 @@ import {
   GetNewScreenshotCount,
   EventsOn,
   EventsOff,
-} from './api.js'
+} from './api'
+import {
+  SCREENSHOT_TYPES,
+  sshotTypeLabel,
+  sourceType,
+  detectScreenshotSlots,
+  missingRequiredSlots,
+  missingOptionalSlots,
+  heroesForHeader,
+  matchTime,
+  fmtTime,
+} from './match-helpers.js'
 
 const records = ref([])
 const error = ref('')
@@ -338,28 +349,10 @@ const roles   = computed(() => uniqueValues('role'))
 const maps    = computed(() => uniqueValues('map'))
 const results = computed(() => uniqueValues('result'))
 
-// Screenshot-type filter options. The four canonical OW2 post-match
-// types our parser classifies into. Order is workflow order: SUMMARY
-// (post-match summary tab) → TEAMS (post-match scoreboard / in-game
-// scoreboard) → PERSONAL (per-hero stats tab) → RANK (competitive
-// rank screen). Returned as-is rather than collected from records so
-// the filter is meaningful even before parsing any matches.
-const SCREENSHOT_TYPES = ['summary', 'scoreboard', 'personal', 'rank']
+// Screenshot-type filter options exposed as a Vue computed so the
+// filter rail's options binding reacts the same way as the dynamic
+// option lists (modes, maps, etc.).
 const sshotTypes = computed(() => SCREENSHOT_TYPES)
-
-// Pretty label for a screenshot-type value. "scoreboard" is rendered
-// as "TEAMS" everywhere else in the app so its filter chip matches.
-function sshotTypeLabel(t) {
-  if (t === 'scoreboard') return 'TEAMS'
-  return (t || 'unknown').toUpperCase()
-}
-
-// Lookup the parser-assigned type for a specific source file on a
-// record. Returns '' (empty string) for files parsed before per-file
-// type tracking landed — the UI renders a "?" chip in that case.
-function sourceType(rec, filename) {
-  return rec?.source_types?.[filename] || ''
-}
 
 // Heroes need a custom collector — uniqueValues('hero') would only pick
 // up the primary/most-played hero on each row. For multi-hero matches
@@ -426,16 +419,6 @@ const filtered = computed(() =>
     return true
   })
 )
-
-// matchTime returns a sortable string for a record. Prefers SUMMARY's
-// date + finished_at (most accurate); falls back to the match_key prefix
-// (set from the earliest screenshot's filename) when SUMMARY isn't present.
-function matchTime(rec) {
-  const d = rec.data || {}
-  if (d.date && d.finished_at) return `${d.date}T${d.finished_at}`
-  const m = (rec.match_key || '').match(/^match:(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/)
-  return m ? m[1] : ''
-}
 
 const filteredSorted = computed(() => {
   const list = [...filtered.value]
@@ -649,94 +632,10 @@ function onUnknownPreviewError(filename) {
   unknownPreviewError.value = { ...unknownPreviewError.value, [filename]: true }
 }
 
-// Infer which screenshot types were parsed for a record. Drives the
-// slot-chip row at the top of the Source Screenshots section and the
-// missing-data explainer beneath the file list.
-//
-// `required: true` means a complete match needs that screenshot
-// (SUMMARY / TEAMS / PERSONAL). `required: false` is RANK — useful but
-// not strictly needed.
-//
-// When the row carries a stored source_types map (populated at parse
-// time from each individual file's classifier), that map is the source
-// of truth — a chip is PRESENT iff at least one source file is tagged
-// with that type. For pre-migration rows (no source_types) we fall
-// back to field-presence inference, which is fuzzier — read-time
-// inferences like inferResultFromRank can falsely light up SUMMARY,
-// and a scoreboard-only row will light up PERSONAL because the
-// scoreboard's right-panel stats are stored in HeroesPlayed[*].Stats.
-function detectScreenshotSlots(rec) {
-  const d = rec.data || {}
-  const hp = Array.isArray(d.heroes_played) ? d.heroes_played : []
-  const storedTypes = rec.source_types
-    ? new Set(Object.values(rec.source_types).filter(Boolean))
-    : null
-  const combatTotal = (d.eliminations || 0) + (d.assists || 0) + (d.deaths || 0) +
-                      (d.damage || 0) + (d.healing || 0) + (d.mitigation || 0)
-  const presence = (key, fallback) =>
-    storedTypes ? storedTypes.has(key) : fallback
-  return [
-    {
-      key: 'summary',
-      label: 'SUMMARY',
-      required: true,
-      present: presence('summary',
-        !!(d.final_score || d.date || d.finished_at || d.game_length ||
-           d.type || d.mode ||
-           hp.some(h => h.percent_played || h.play_time))),
-      hint: 'Post-match SUMMARY tab — match result, final score, date, game length',
-      missing: 'match result, final score, date & time, game length',
-    },
-    {
-      key: 'scoreboard',
-      label: 'TEAMS',
-      required: true,
-      present: presence('scoreboard', combatTotal > 0),
-      hint: 'TEAMS scoreboard (in-game or post-match) — E/A/D, damage, healing, mitigation',
-      missing: 'eliminations, assists, deaths, damage, healing, mitigation',
-    },
-    {
-      key: 'personal',
-      label: 'PERSONAL',
-      required: true,
-      present: presence('personal',
-        hp.some(h => h.stats && Object.keys(h.stats).length > 0) && combatTotal === 0),
-      hint: 'Post-match PERSONAL tab — per-hero detailed stats (accuracy, ult charges, role-specific cards)',
-      missing: 'per-hero detailed stats (accuracy, ult charges, role-specific cards)',
-    },
-    {
-      key: 'rank',
-      label: 'RANK',
-      required: false,
-      present: presence('rank',
-        !!(d.rank || d.level || (Array.isArray(d.sr) && d.sr.length > 0))),
-      hint: 'Competitive rank screen — SR, rank tier, rank change. Optional but recommended for ranked matches.',
-      missing: 'SR / rank tier / rank change',
-    },
-  ]
-}
-
-function missingRequiredSlots(rec) {
-  return detectScreenshotSlots(rec).filter(s => s.required && !s.present)
-}
-
-function missingOptionalSlots(rec) {
-  return detectScreenshotSlots(rec).filter(s => !s.required && !s.present)
-}
-
-// heroesForHeader returns the list of heroes to render in the card title,
-// sorted by percent_played descending. Multi-hero matches (with a SUMMARY
-// or PERSONAL screenshot) get the full list; a fallback for matches that
-// only have the scoreboard parsed returns the single primary hero so the
-// title isn't empty.
-function heroesForHeader(rec) {
-  const list = rec.data?.heroes_played
-  if (Array.isArray(list) && list.length > 0) {
-    return [...list].sort((a, b) => (b.percent_played || 0) - (a.percent_played || 0))
-  }
-  if (rec.data?.hero) return [{ hero: rec.data.hero }]
-  return []
-}
+// Pure helpers (detectScreenshotSlots, missingRequiredSlots,
+// missingOptionalSlots, heroesForHeader) live in ./match-helpers.js
+// so they can be unit-tested in isolation. Imported at the top of
+// this file.
 
 const anyFilter = computed(() =>
   !!(filterMode.value.length || filterType.value.length || filterRole.value.length ||
@@ -771,43 +670,7 @@ const activeFilterCount = computed(() => {
   return n
 })
 
-// Format the match's date + end time for the card header. Parser stores
-// date as YYYY-MM-DD and finished_at as 24-hour HH:MM; the Wails UI
-// prefers a friendlier `May 9, 2026 @ 9:08pm` rendering. Grafana keeps
-// its own time formatting (driven by panel settings) and is unaffected.
-function fmtTime(rec) {
-  const d = rec.data || {}
-  if (!d.date && !d.finished_at) return ''
-
-  // Date portion: "May 9, 2026". Full month names; day is not zero-padded.
-  const months = ['January','February','March','April','May','June',
-                  'July','August','September','October','November','December']
-  let datePart = ''
-  if (d.date) {
-    const [y, mo, day] = d.date.split('-').map(Number)
-    if (!Number.isNaN(y) && !Number.isNaN(mo) && !Number.isNaN(day)) {
-      datePart = `${months[mo - 1]} ${day}, ${y}`
-    }
-  }
-
-  // Time portion: "9:08pm". Falls back to the raw HH:MM if parsing fails.
-  let timePart = ''
-  if (d.finished_at) {
-    const [hRaw, mRaw] = d.finished_at.split(':')
-    const h = Number(hRaw), m = Number(mRaw)
-    if (Number.isNaN(h) || Number.isNaN(m)) {
-      timePart = d.finished_at
-    } else {
-      const suffix = h >= 12 ? 'pm' : 'am'
-      let hr12 = h % 12
-      if (hr12 === 0) hr12 = 12
-      timePart = `${hr12}:${String(m).padStart(2, '0')}${suffix}`
-    }
-  }
-
-  if (datePart && timePart) return `${datePart} @ ${timePart}`
-  return datePart || timePart
-}
+// fmtTime is imported from ./match-helpers.js (extracted for testing).
 
 // Subscribe to the watcher's parse-complete event so the records list
 // auto-refreshes when an auto-parse runs in the background. Without
@@ -2117,10 +1980,10 @@ onBeforeUnmount(() => {
   --text-faint: #6b6f7a;
   --text-mute: #44474f;
 
-  /* Overwatch signature greys. Used as a structural brand element —
+  /* Overwatch signature grays. Used as a structural brand element —
      the masthead branding tile, strong borders, divider blocks. */
-  --brand-grey: #4A4A4A;
-  --brand-grey-soft: rgb(74 74 74 / 55%);
+  --brand-gray: #4A4A4A;
+  --brand-gray-soft: rgb(74 74 74 / 55%);
 
   /* Overwatch signature orange. Single hero accent across the UI. */
   --accent: #F5A623;
@@ -2170,8 +2033,8 @@ onBeforeUnmount(() => {
   --settings: 'Futura No. 2 Demi', 'Jost', 'Futura', 'Avenir Next', 'Avenir', sans-serif;
 }
 
-/* LIGHT MODE — keep brand-grey (#4A4A4A) and brand-orange (#F5A623)
-   prominent. The brand-grey now becomes the dominant structural color:
+/* LIGHT MODE — keep brand-gray (#4A4A4A) and brand-orange (#F5A623)
+   prominent. The brand-gray now becomes the dominant structural color:
    primary text, strong borders, the wordmark tile bg, hairlines. */
 [data-theme="light"] {
   --bg: #f3f0e8;
@@ -2186,8 +2049,8 @@ onBeforeUnmount(() => {
   --text-dim: #4A4A4A;
   --text-faint: #6f6a5e;
   --text-mute: #a39e90;
-  --brand-grey: #4A4A4A;
-  --brand-grey-soft: rgb(74 74 74 / 85%);
+  --brand-gray: #4A4A4A;
+  --brand-gray-soft: rgb(74 74 74 / 85%);
 
   /* Keep #F5A623 dominant in light mode too — it's the OW signature.
      Type-on-light contrast is handled with a darker `--accent-text`
@@ -2283,8 +2146,8 @@ body {
   border-bottom: 1px solid var(--hairline);
 }
 
-/* The brandmark sits inside a solid Overwatch-grey tile — a small
-   "spec plate" that anchors the wordmark and surfaces the brand grey
+/* The brandmark sits inside a solid Overwatch-gray tile — a small
+   "spec plate" that anchors the wordmark and surfaces the brand gray
    #4A4A4A as a deliberate structural element in BOTH themes. The OW
    orange wordmark pops on it; the tile becomes the page's brand stamp
    even when the rest of the page goes light. */
@@ -2294,7 +2157,7 @@ body {
   align-items: center;
   gap: 0.65rem;
   padding: 0.55rem 1.15rem 0.55rem 1rem;
-  background: var(--brand-grey);
+  background: var(--brand-gray);
   border-radius: 2px;
   box-shadow:
     0 0 0 1px rgb(0 0 0 / 25%) inset,
@@ -2312,8 +2175,8 @@ body {
 }
 
 /* The left-rail accent glow reads as a hard halo on the cream background.
-   Drop the box-shadow in light mode and use the deeper accent-text colour
-   for the rail itself so it still pops against the grey tile. */
+   Drop the box-shadow in light mode and use the deeper accent-text color
+   for the rail itself so it still pops against the gray tile. */
 [data-theme="light"] .brandmark-tile::before {
   background: var(--accent-text);
   box-shadow: none;
@@ -2982,7 +2845,7 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 0.18rem 0.35rem;
-  background: var(--brand-grey);
+  background: var(--brand-gray);
   color: #f1f1f1;
   border-radius: 1px;
   font-family: var(--mono);
@@ -3048,7 +2911,7 @@ body {
   background:
     repeating-linear-gradient(
       135deg,
-      var(--brand-grey) 0 12px,
+      var(--brand-gray) 0 12px,
       #3a3a3a 12px 24px
     );
   border-bottom: 1px solid var(--accent);
@@ -3722,7 +3585,7 @@ body {
     linear-gradient(180deg, rgb(255 255 255 / 1%), transparent),
     var(--surface-2);
   border: 1px solid var(--border);
-  border-left: 2px solid var(--brand-grey);
+  border-left: 2px solid var(--brand-gray);
   border-radius: 2px;
   position: relative;
 }
@@ -4119,7 +3982,7 @@ body {
 .source-name:hover { background: var(--surface-2); color: var(--accent-bright); }
 .source-name-text { font-size: 0.72rem; }
 
-/* Per-file type chip — small uppercase mono pill, colour-coded by
+/* Per-file type chip — small uppercase mono pill, color-coded by
    screenshot type. Clickable to add the type to the source filter. */
 .source-type-chip {
   display: inline-flex;
@@ -4152,8 +4015,8 @@ body {
   box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
 }
 
-/* Type-specific palettes — each screenshot category gets a recognisable
-   colour so a glance down the source list shows the capture pattern. */
+/* Type-specific palettes — each screenshot category gets a recognizable
+   color so a glance down the source list shows the capture pattern. */
 .source-type-summary {
   background: var(--accent-soft);
   border-color: rgb(245 166 35 / 50%);
@@ -4402,7 +4265,7 @@ body {
   gap: 0.7rem;
   padding-bottom: 0.85rem;
   margin-bottom: 0.4rem;
-  border-bottom: 1px solid var(--brand-grey);
+  border-bottom: 1px solid var(--brand-gray);
   position: relative;
 }
 
@@ -4426,7 +4289,7 @@ body {
   font-family: var(--display);
   font-weight: 900;
   font-size: 3rem;
-  color: var(--brand-grey);
+  color: var(--brand-gray);
   letter-spacing: -0.03em;
   line-height: 0.85;
   font-feature-settings: "tnum";
@@ -4657,7 +4520,7 @@ body {
 
 /* ─── System Alert banner ────────────────────────────────────
    Shown when Tesseract isn't usable. Hazard-tape stripes on the left
-   read as caution without going full red — the brand-grey body keeps
+   read as caution without going full red — the brand-gray body keeps
    it from screaming, while the loss-color edge + dot + CTA make it
    clear something is broken. */
 
@@ -4679,7 +4542,7 @@ body {
   gap: 1.2rem;
   padding: 1rem 1.2rem 1rem 1.4rem;
   margin-bottom: 1.6rem;
-  background: linear-gradient(180deg, var(--brand-grey) 0%, #3a3a3a 100%);
+  background: linear-gradient(180deg, var(--brand-gray) 0%, #3a3a3a 100%);
   border-radius: 2px;
   border: 1px solid var(--loss);
   box-shadow: 0 14px 36px -14px rgb(0 0 0 / 55%), 0 0 0 0 var(--loss-soft);
@@ -4807,7 +4670,7 @@ body {
 .btn.alert-cta:hover .alert-cta-arrow { transform: translateX(3px); }
 
 [data-theme="light"] .system-alert {
-  background: linear-gradient(180deg, var(--brand-grey) 0%, #3a3a3a 100%);
+  background: linear-gradient(180deg, var(--brand-gray) 0%, #3a3a3a 100%);
 
   /* Stays dark in light mode — system alerts feel right as a dark
      overlay regardless of theme (think "warning sticker"). */
@@ -5034,7 +4897,7 @@ body {
 [data-theme="light"] .source-name:hover { color: var(--accent-text); background: var(--surface-3); }
 [data-theme="light"] .source-preview { background: var(--surface-3); }
 
-/* Brand wordmark on the grey tile stays white-on-grey in both modes —
+/* Brand wordmark on the gray tile stays white-on-gray in both modes —
    the tile is dark in both themes, so no override needed. The corner
    tape stays subtle. */
 [data-theme="light"] .brand { color: #f5f3ee; }

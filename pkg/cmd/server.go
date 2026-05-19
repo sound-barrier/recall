@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,12 +17,12 @@ import (
 	"recall/pkg/app"
 )
 
-// RunServer initialises the App without the Wails GUI and serves the
+// RunServer initializes the App without the Wails GUI and serves the
 // embedded frontend + a JSON REST API on 127.0.0.1:7000.
 func RunServer(a *app.App, assets embed.FS) {
 	a.SSEHub = app.NewSSEHub()
 
-	// Startup loads settings, initialises SQLite, optionally starts
+	// Startup loads settings, initializes SQLite, optionally starts
 	// the metrics server and file watcher.
 	a.Startup(context.Background())
 
@@ -206,6 +207,21 @@ func RunServer(a *app.App, assets embed.FS) {
 
 	// ── Screenshot image serving ────────────────────────────────────
 	mux.Handle("/_screenshot/", a.ScreenshotHandler())
+
+	// ── pprof (opt-in via RECALL_PPROF) ──────────────────────────────
+	// Off by default — only mounted when RECALL_PPROF is set to something
+	// truthy. Wires the standard net/http/pprof handlers under
+	// /debug/pprof/. Use with `go tool pprof http://127.0.0.1:7000/debug/pprof/heap`
+	// (or profile, goroutine, allocs, …). Bind locally only — never expose
+	// pprof on a public address.
+	if v := os.Getenv("RECALL_PPROF"); v != "" && v != "0" && v != "false" {
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		log.Printf("server: pprof endpoints enabled at /debug/pprof/")
+	}
 
 	// ── Static frontend assets ──────────────────────────────────────
 	// Sub into frontend/dist so paths like "/assets/index.js" resolve correctly.
