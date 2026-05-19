@@ -82,8 +82,7 @@ echo 'eval "$(direnv hook bash)"' >> ~/.bash_profile && source ~/.bash_profile
 
 ```sh
 cd frontend && npm ci && cd ..
-rm -rf frontend/wailsjs/go/main/   # delete stale bindings (package moved main → app)
-make dev                            # generates fresh bindings on first run
+make dev                            # generates fresh Wails bindings on first run
 ```
 
 Re-run `wails dev` (or delete `frontend/wailsjs/go/app/App.js` and re-run) any time you add a new exported method to `App`.
@@ -264,6 +263,9 @@ make fmt            # format all Go source files (goimports-reviser for import g
 make lint           # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral
 make lint-yaml      # yamllint only
 make lint-openapi   # Spectral only (api/openapi.yaml)
+make test           # Go unit tests + Vitest frontend tests (parser golden-file tests skip unless RECALL_FIXTURE_DIR is set)
+make typecheck      # TypeScript tsc --noEmit against frontend/src/api.ts + the generated types
+make gen-types      # regenerate frontend/src/api.gen.d.ts from api/openapi.yaml (run after every spec edit)
 make update-deps    # update Go modules (go get -u + mod tidy) and npm packages
 make trivy          # vulnerability scan — fails on HIGH/CRITICAL findings
 make cloc           # count lines of source code (excludes deps, build artifacts, generated files)
@@ -354,7 +356,7 @@ Reported-by: Jacob Delgado <jacob.delgado@gmail.com>
 Signed-off-by: Jacob Delgado <jacob.delgado@gmail.com>
 ```
 
-Atomicity matters: each commit should describe **one** logical change. The big "feat:" omnibus commit in this repo's recent history (`04b5e50`) is a one-time onboarding bulk import and shouldn't set the cadence for normal contributions.
+Atomicity matters: each commit should describe **one** logical change. If the subject needs an "and" to be accurate, split the commit. A bug fix doesn't need surrounding refactors; a feature doesn't need stylistic cleanups bundled in.
 
 **Bypasses** (use sparingly):
 
