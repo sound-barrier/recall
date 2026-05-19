@@ -412,6 +412,30 @@ Until the project crosses `1.0.0`, breaking changes are minor bumps (per the `bu
 4. The tag fires `release.yml`. Wait for all jobs (`build-docker`, `build-mac`, `sbom`, `publish-container`, `release`) to go green — typically 8-15 minutes.
 5. **Verify the GitHub Release**: `.dmg`, `.tar.gz`, `.deb`, `.exe`, SBOM, and per-artifact `.sha256` files should all be attached. The container image at `ghcr.io/<owner>/recall-server:vX.Y.Z` (plus `:latest`) should be present in Packages.
 
+#### Cutting a prerelease (beta / rc / alpha)
+
+release-please respects a [`Release-As:` commit footer](https://github.com/googleapis/release-please/blob/main/docs/customizing.md#release-as) that overrides the version it would otherwise compute. Use it to ship a prerelease without touching workflow config or maintaining a parallel branch:
+
+```sh
+git checkout main && git pull
+git commit -s --allow-empty -m "chore: cut v0.0.9-beta.0
+
+Release-As: 0.0.9-beta.0
+"
+git push origin main
+```
+
+What happens next:
+
+1. release-please re-evaluates on the push, reads the `Release-As:` footer, and opens (or updates) a **Release PR** titled `chore(main): release v0.0.9-beta.0`.
+2. The PR diff bumps `.release-please-manifest.json` to `0.0.9-beta.0` and adds a `## [0.0.9-beta.0]` heading to `CHANGELOG.md` listing every commit since the last release tag.
+3. Merge the PR. release-please creates the `v0.0.9-beta.0` git tag.
+4. `release.yml` fires on the `v*` tag. GitHub marks the resulting Release as a **prerelease** automatically because the tag has a hyphenated suffix — no separate workflow or flag needed.
+
+The next beta in the same line: another empty commit with `Release-As: 0.0.9-beta.1`. The next *official* release: don't add any `Release-As:` footer — release-please bumps normally from the most recent tag (e.g. `v0.0.9` from `fix:` commits, `v0.1.0` from `feat:`). The absence of a hyphenated suffix in the tag is what makes a release "official" — the same `release.yml` builds the artifacts either way.
+
+**Force a specific stable version** (e.g. jumping from `v0.1.5` straight to `v1.0.0`): same pattern, `Release-As: 1.0.0`.
+
 #### Skipping or pausing release-please
 
 - **Empty Release PR**: if no `feat:` / `fix:` / etc. commits have landed since the last tag, no PR opens. Add at least one tag-bumping commit (or `chore:` if you genuinely just want a re-tag — that won't trigger a version bump but you can manually edit the manifest).
