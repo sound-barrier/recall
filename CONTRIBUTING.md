@@ -265,7 +265,7 @@ make lint           # all linters: golangci-lint (both build tags), ESLint, Styl
 make lint-yaml      # yamllint only
 make lint-openapi   # Spectral only (api/openapi.yaml)
 make test           # Go unit tests + Vitest frontend tests (parser golden-file tests skip unless RECALL_FIXTURE_DIR is set)
-make typecheck      # TypeScript tsc --noEmit against frontend/src/api.ts + the generated types
+make typecheck      # vue-tsc --noEmit — covers .ts files and <script lang="ts"> Vue SFCs; allowJs: false enforces no JS
 make gen-types      # regenerate frontend/src/api.gen.d.ts from api/openapi.yaml (run after every spec edit)
 make update-deps    # update Go modules (go get -u + mod tidy) and npm packages
 make trivy          # vulnerability scan — fails on HIGH/CRITICAL findings
@@ -298,7 +298,7 @@ Lefthook then runs automatically on every `git commit`. CI re-runs the full lint
 | `gofumpt`           | `*.go`                          | `gofumpt`            (Go formatter — `go install mvdan.cc/gofumpt@latest`) |
 | `goimports-reviser` | `*.go`                          | `goimports-reviser`  (`go install github.com/incu6us/goimports-reviser/v3@latest`) |
 | `golangci-lint`     | `*.go`                          | `golangci-lint`      (`brew install golangci-lint` or `go install`) |
-| `eslint`            | `frontend/src/**/*.{js,vue}`    | `eslint`             (auto-installed by `cd frontend && npm ci`) |
+| `eslint`            | `frontend/src/**/*.{ts,vue}`    | `eslint` + `typescript-eslint` (auto-installed by `cd frontend && npm ci`) |
 | `stylelint`         | `frontend/src/**/*.{css,vue}`   | `stylelint`          (auto-installed by `cd frontend && npm ci`) |
 | `spectral`          | `api/openapi.yaml`              | `npx @stoplight/spectral-cli` (auto-pulled on demand by `npx`) |
 | `yamllint`          | `*.{yml,yaml}` (excl. openapi)  | `yamllint`           (`brew install yamllint` or `pip install yamllint`) |
