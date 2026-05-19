@@ -301,6 +301,39 @@ chore(deps): bump trivy-action to v0.36.0
 
 The format isn't cosmetic — `release-please` (next section) reads it to compute version bumps and regenerate `CHANGELOG.md`.
 
+**Body style — follow the [Linux kernel commit guidelines](https://www.kernel.org/doc/html/latest/process/submitting-patches.html#describe-your-changes).** The Conventional Commits prefix lives on top of those rules; they govern everything after the subject. Quick checklist:
+
+- **Subject** ≤ 72 chars (≤ 50 preferred), imperative mood ("add" / "fix" / "rename", not "added" / "adds"), no trailing period.
+- **Blank line** between subject and body.
+- **Wrap body at 72 chars.** No exceptions for prose; URLs and code snippets may exceed but should sit on their own lines.
+- **Explain *why*, not *what*.** The diff already shows what; the body's job is the motivation, the alternatives considered, and the user-visible consequence.
+- **Imperative mood in the body too**, where it reads naturally.
+- **Reference issues, regressions, and prior commits with kernel-style trailers** (one per line, at the bottom of the body, no trailing blank line before the sign-off):
+  - `Fixes: <12-char-sha> ("<subject of the buggy commit>")` when fixing a regression
+  - `Reported-by: Name <email>` when crediting a bug reporter
+  - `Reviewed-by:`, `Tested-by:`, `Suggested-by:`, `Acked-by:` as appropriate
+  - `Co-Authored-By: Name <email>` for shared work
+  - `Closes #N` / `Refs #N` for GitHub issue references
+- **`Signed-off-by:` (DCO)** is encouraged via `git commit -s`. Confirms you have the right to submit the change under the project license.
+
+Example combining the layers:
+
+```
+fix(parser): handle italic-font OCR letter→digit confusion on PERSONAL
+
+The OW2 italic stat font renders "0" close enough to "O" that Tesseract
+returns "5O" instead of "50" for the WEAPON ACCURACY card on Lucio.
+parsePersonalStatCell already coerces O/Q/I/l/L → digits but ran the
+substitution after the value-extraction regex, so the misread digit
+was lost. Move the digitize() call upstream of the regex.
+
+Fixes: a511b6b1d1df ("fix hero percentage when only 1 hero is played")
+Reported-by: Jacob Delgado <jacob.delgado@gmail.com>
+Signed-off-by: Jacob Delgado <jacob.delgado@gmail.com>
+```
+
+Atomicity matters: each commit should describe **one** logical change. The big "feat:" omnibus commit in this repo's recent history (`04b5e50`) is a one-time onboarding bulk import and shouldn't set the cadence for normal contributions.
+
 **Bypasses** (use sparingly):
 
 ```sh
