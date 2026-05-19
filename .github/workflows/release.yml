@@ -153,7 +153,9 @@ jobs:
 
   # ── Job 4: Build and push Linux server container image to GHCR ──
   # Uses GITHUB_TOKEN (auto-injected, repo-scoped, expires after run — no PAT needed).
-  # Image: ghcr.io/<owner>/recall-server:<version>, <major>.<minor>, latest
+  # Image: ghcr.io/<owner>/recall-server:<version> (always), plus :<major>.<minor>
+  # and :latest on stable releases only (prerelease tags skip both — see the
+  # `enable=` guards in the metadata step below).
   publish-container:
     runs-on: ubuntu-latest
     permissions:
@@ -178,10 +180,15 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/recall-server
+          # Stable releases get the exact :{{version}} plus rolling :{{major}}.{{minor}}
+          # and :latest tags. Prerelease tags (those containing a hyphen, e.g.
+          # v0.1.0-beta.0) MUST get ONLY :{{version}} — the rolling tags are
+          # supposed to track the most-recent stable, so a `docker pull
+          # recall-server:latest` always lands on a non-prerelease build.
           tags: |
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest
+            type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref_name, '-') }}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
       - name: Build and push server container
         uses: docker/build-push-action@v7
