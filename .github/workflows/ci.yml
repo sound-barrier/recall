@@ -284,12 +284,18 @@ jobs:
         # only fully supports OpenAPI 3.0 by default and refuses 3.1 specs
         # without this opt-in. The flag becomes a no-op (and the install
         # pin <4 can be relaxed) once we move to schemathesis 4.x.
+        # `--exclude-path /api/events` skips the SSE endpoint: it's a
+        # long-lived text/event-stream that never closes from the server
+        # side, so request-response fuzzing always trips the 10s response
+        # timeout. The endpoint stays in the spec for documentation but
+        # isn't a candidate for compliance fuzzing.
         run: |
           schemathesis run \
             --base-url http://127.0.0.1:7000 \
             --checks all \
             --hypothesis-max-examples 20 \
             --exclude-method DELETE \
+            --exclude-path /api/events \
             --experimental=openapi-3.1 \
             api/openapi.yaml
 
