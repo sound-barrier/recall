@@ -4,9 +4,11 @@ frontend/dist
 frontend/node_modules
 Recall
 Recall.exe
+recall
 # Server-mode binaries (go build -tags serveronly)
 Recall-server
 Recall-server.exe
+recall-server
 .claude/
 data/
 # Go test artifacts
