@@ -39,7 +39,6 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
 
 function _wails<T>(method: string, ...args: unknown[]): Promise<T> {
   // Bridge is present (IS_WAILS gated callers); cast is intentional.
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return window.go!.app!.App![method]!(...args) as Promise<T>
 }
 
