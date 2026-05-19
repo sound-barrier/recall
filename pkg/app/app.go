@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -438,12 +439,43 @@ func (a *App) GetScreenshotsDir() string {
 	return a.settings.ScreenshotsDir
 }
 
+// ErrInvalidScreenshotsDir is returned when the configured screenshots
+// directory is empty, doesn't exist, or isn't a directory. Callers (the
+// HTTP server in particular) map it to a 4xx response rather than 5xx
+// because it reflects a client- or configuration-level problem, not an
+// unexpected internal failure.
+var ErrInvalidScreenshotsDir = errors.New("screenshots directory is not configured or unreadable")
+
 // SetScreenshotsDir updates the configured screenshots directory and
 // persists the change. Used by the REST API in server mode (replaces
-// the native directory dialog).
+// the native directory dialog). Returns ErrInvalidScreenshotsDir
+// (possibly wrapped with the failing path) when path is empty, doesn't
+// exist, or isn't a directory.
 func (a *App) SetScreenshotsDir(path string) error {
+	if err := validateScreenshotsDir(path); err != nil {
+		return err
+	}
 	a.settings.ScreenshotsDir = path
 	return saveSettings(a.settings)
+}
+
+// validateScreenshotsDir confirms path is a real, readable directory.
+// Returns a wrapped ErrInvalidScreenshotsDir on any failure so the HTTP
+// layer can map it to 400. Called from both SetScreenshotsDir (reject
+// bogus user/fuzzer input at write time) and ParseScreenshots (catch a
+// dir that disappeared between configure and parse).
+func validateScreenshotsDir(path string) error {
+	if path == "" {
+		return ErrInvalidScreenshotsDir
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("%w: %s: %v", ErrInvalidScreenshotsDir, path, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%w: %s is not a directory", ErrInvalidScreenshotsDir, path)
+	}
+	return nil
 }
 
 // ScreenshotHandler serves files from the user's configured screenshots
@@ -587,6 +619,15 @@ func inferResultFromRank(d *parser.MatchResult) {
 // post-match tabs, so the filename timestamp is the most reliable correlation
 // signal — PERSONAL has no E/A/D, so a stats-based key wouldn't catch it.
 func (a *App) ParseScreenshots() error {
+	// Bail out early if the screenshots directory isn't usable. The
+	// frontend disables the Parse button until one is configured, but
+	// the HTTP /api/parse endpoint can be hit by any client — including
+	// a fresh install where SetScreenshotsDir hasn't been called yet,
+	// or one where the previously-saved directory has since been
+	// deleted/moved.
+	if err := validateScreenshotsDir(a.settings.ScreenshotsDir); err != nil {
+		return err
+	}
 	// Bail out early if Tesseract isn't usable. The frontend already
 	// shows a blocking System Alert when this is the case and disables
 	// the Parse button — this guard catches the rare case where the

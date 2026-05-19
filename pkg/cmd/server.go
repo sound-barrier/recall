@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -51,6 +52,10 @@ func RunServer(a *app.App, assets embed.FS) {
 				return
 			}
 			if err := a.SetScreenshotsDir(body.Path); err != nil {
+				if errors.Is(err, app.ErrInvalidScreenshotsDir) {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -67,6 +72,10 @@ func RunServer(a *app.App, assets embed.FS) {
 		}
 		err := a.ParseScreenshots()
 		if err != nil {
+			if errors.Is(err, app.ErrInvalidScreenshotsDir) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
