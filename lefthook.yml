@@ -57,6 +57,26 @@ pre-commit:
       glob: "Dockerfile*"
       run: hadolint {staged_files}
 
+# Pre-push dead-code analysis. Both tools do whole-project scanning so they
+# can't be scoped to staged files like the pre-commit hooks above. Running
+# them only on push keeps WIP commits fast while still catching dead code
+# before it reaches origin. Skip with: LEFTHOOK_EXCLUDE=deadcode,knip git push
+pre-push:
+  parallel: true
+  commands:
+    deadcode:
+      glob: "*.go"
+      run: |
+        pkgs=$(go list -tags serveronly ./... | grep -v node_modules)
+        out=$(deadcode -tags serveronly $pkgs)
+        [ -z "$out" ] || echo "$out"
+        unexpected=$(printf '%s' "$out" | grep -v 'App\.Pick' || true)
+        [ -z "$unexpected" ]
+
+    knip:
+      glob: "frontend/src/**/*.{ts,vue}"
+      run: cd frontend && npm run dead:ts
+
 # Commit-message format check (optional but pairs with release-please).
 # Enable conventional commits via `commit-msg` hook — see release-please
 # workflow for how commit messages drive automated versioning.
