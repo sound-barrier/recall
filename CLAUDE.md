@@ -56,7 +56,7 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `make icon` | Resync `build/appicon.png` from `assets/icon.png` (1024×1024 via `sips`, macOS-only) and clear `build/windows/icon.ico` so Wails regenerates platform icons (`.icns` for macOS, `.ico` for Windows) on next `wails build`. |
 | `make swagger` | Serve `api/openapi.yaml` via Swagger UI v5 in a container (`$(DOCKER) run`, default port `:8080`; override with `SWAGGER_PORT`). |
 | `make lint-openapi` | Lint `api/openapi.yaml` via Spectral (`spectral:oas` + `.spectral.yaml`) with `--fail-severity=warn`. Also run as part of `make lint`. |
-| `make test` | Run all tests: Go unit tests (`pkg/app/merge_test.go`, `pkg/app/validate_test.go`, `pkg/parser/parser_test.go`) + Vitest (`frontend/src/match-helpers.test.ts`). Parser golden-file integration tests skip unless `RECALL_FIXTURE_DIR` is set. |
+| `make test` | Run all tests: Go unit tests (`pkg/app/merge_test.go`, `pkg/app/validate_test.go`, `pkg/parser/parser_test.go`) + Vitest (`frontend/src/**/*.test.ts`). Parser golden-file integration tests skip unless `RECALL_FIXTURE_DIR` is set. |
 | `make cover-frontend` | Generate JS/TS coverage report via Vitest + V8 (`@vitest/coverage-v8`); writes text summary, lcov, and HTML to `frontend/coverage/` (gitignored). No thresholds enforced. |
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml` (uses `openapi-typescript`). Run after every spec edit; CI fails if the committed `.d.ts` is out of sync. |
 | `make typecheck` | `vue-tsc --noEmit` — covers `.ts` files and `<script lang="ts">` blocks in `.vue` files. `allowJs: false` in tsconfig means no JS can be introduced silently. |
@@ -310,11 +310,16 @@ both the Wails `AssetServer.Handler` and the server-mode HTTP mux.
 
 Pure helpers (date formatting, screenshot-type detection, hero sorting,
 etc.) live in `frontend/src/match-helpers.ts` so they can be unit-tested
-in isolation via Vitest. `App.vue` imports them at the top of
-`<script setup lang="ts">`. When adding a new pure helper that takes plain
-inputs and returns plain outputs, add it to `match-helpers.ts` and write a
-Vitest case in `match-helpers.test.ts` — don't define it inside the SFC's
-`<script setup>`. The entire frontend is TypeScript (`allowJs: false`);
+in isolation via Vitest. Stateful logic is extracted into composables under
+`frontend/src/composables/`: `useTheme` (dark/light/system toggle),
+`useFilterPanel` (popover open/close, ESC/outside-click), `useMatchFilters`
+(all 7 filter refs, date range, sort, filtered/sorted computeds — the most
+complex and highest-test-ROI module). Shared UI is in
+`frontend/src/components/`: `MatchCard`, `FilterRail`, `ParseProgressPanel`.
+When adding a new pure helper that takes plain inputs and returns plain
+outputs, add it to `match-helpers.ts` with a Vitest case; stateful logic
+goes in a new composable under `composables/`. Don't define either inside
+the SFC's `<script setup>`. The entire frontend is TypeScript (`allowJs: false`);
 ESLint uses `typescript-eslint` (`tseslint.config()` in `eslint.config.js`)
 with `parserOptions.parser: tseslint.parser` wired in for `.vue` files.
 Template access to `Record<string, Ref<string[]>>` filter state goes through
@@ -355,10 +360,10 @@ Single-file Vue 3 SFC, composition API. No router, no Vuex/Pinia — a few
   found. `GetTesseractStatus` / `SetTesseractPath` / `PickTesseractBinary`
   / `ResetTesseractPath` are the four Wails-bound methods for engine config.
 - **Unknown Maps view**: records where `data.map` is absent surface in a
-  separate Unknown Maps page via the `unknownRecords` computed. It has its
-  own `unknownExpanded`/`unknownPreviewOpen`/`unknownPreviewError` state
-  parallel to the Matches view state, so collapsing all matches doesn't
-  disturb the triage view.
+  separate Unknown Maps page via the `unknownRecords` computed. Expand and
+  preview state is shared with the Matches view (`expanded`, `previewOpen`,
+  `previewError` maps keyed by `match_key`) — unknown match keys never
+  collide with matched ones, so the same maps work for both.
 - **Per-card expand state** + per-source-file image preview state (each
   in a plain object, reassigned on toggle for Vue reactivity).
   `screenshotURL(filename)` returns `/_screenshot/<encoded>` which the
@@ -404,7 +409,7 @@ Five workflows:
 
 | File | Trigger | What it does |
 |---|---|---|
-| `ci.yml` | Push or PR to `main` | **Lint** (golangci-lint × both build tags, ESLint + typescript-eslint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral) → **frontend build** → **bundle-size budget** (200 KB JS / 100 KB CSS) → **Go + Vitest unit tests** → **TypeScript `vue-tsc --noEmit`** → **"api.gen.d.ts in sync with `openapi.yaml`" check**. Plus parallel build jobs for Linux/Windows Wails + all server binaries + container image + macOS Wails. Security jobs: **Trivy** (multi-language vuln scan; SARIF uploaded to GitHub Security tab) and **govulncheck** (Go call-graph-aware CVE scan, both build tags). Dead-code job: **deadcode** (whole-program Go analysis, `serveronly` tag only — Wails methods are reflection-called so only the HTTP-handler variant gives a reliable call graph) + **knip** (unused TypeScript exports and stale devDependencies). Drift job: **schemathesis** fuzzes a freshly-built server against `api/openapi.yaml`. |
+| `ci.yml` | Push or PR to `main` | **Lint** (golangci-lint × both build tags, ESLint + typescript-eslint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral) → **frontend build** → **bundle-size budget** (200 KB JS / 100 KB CSS) → **Go + Vitest unit tests** → **TypeScript `vue-tsc --noEmit`** → **"api.gen.d.ts in sync with `openapi.yaml`" check**. Plus parallel build jobs for Linux/Windows Wails + all server binaries + container image + macOS Wails. Security jobs: **Trivy** (multi-language vuln scan; SARIF uploaded to GitHub Security tab) and **govulncheck** (Go call-graph-aware CVE scan, both build tags). Dead-code job: **deadcode** (whole-program Go analysis, `serveronly` tag only — Wails methods are reflection-called so only the HTTP-handler variant gives a reliable call graph) + **knip** (unused TypeScript exports and stale devDependencies). Coverage job: **coverage-frontend** (Vitest + V8, HTML + lcov uploaded as a 30-day workflow artifact — no thresholds enforced). Drift job: **schemathesis** fuzzes a freshly-built server against `api/openapi.yaml`. |
 | `codeql.yml` | Push to `main` | GitHub CodeQL static analysis for Go + JavaScript/TypeScript. Findings appear in the Security tab; surfaced by the CodeQL badge on the README. |
 | `dependency-review.yml` | PR to `main` | Blocks PRs introducing dependencies with vulnerabilities or disallowed licenses (uses `actions/dependency-review-action`). |
 | `release-please.yml` | Push to `main` | Reads Conventional Commits since the last tag, opens/updates a Release PR that bumps `.release-please-manifest.json` + regenerates `CHANGELOG.md`. Merging the PR creates a `vX.Y.Z` tag which fires `release.yml`. Override the computed version with a `Release-As: X.Y.Z[-suffix]` footer in any commit on `main` — useful for one-off prereleases (the hyphenated suffix is what makes GitHub flag the Release as prerelease). Shortcut: `make release-beta VERSION=…`. Full procedure in [RELEASES.md](RELEASES.md). **Note:** release-please PRs show no CI jobs — GitHub does not trigger `pull_request` workflows for `GITHUB_TOKEN`-authored events; the underlying commits were already tested on push to `main`. |
