@@ -23,7 +23,6 @@ import {
   EventsOff,
 } from './api'
 import {
-  sshotTypeLabel,
   detectScreenshotSlots,
   formatRelativeTime,
   screenshotURL,
@@ -34,6 +33,7 @@ import { useFilterPanel } from './composables/useFilterPanel'
 import { useMatchFilters } from './composables/useMatchFilters'
 import ParseProgressPanel, { type ParseProgressEvent } from './components/ParseProgressPanel.vue'
 import MatchCard from './components/MatchCard.vue'
+import FilterRail from './components/FilterRail.vue'
 
 const records = ref<MatchRecord[]>([])
 const error = ref('')
@@ -117,7 +117,11 @@ const {
 // toggle naturally without needing to reassign the whole container.
 const expanded = ref<Record<number, boolean>>({})
 
-function filterSearchStr(field: string): string { return filterSearch.value[field] ?? '' }
+function setFilterFrom(v: string) { filterFrom.value = v }
+function setFilterTo(v: string) { filterTo.value = v }
+function setFilterSearch(field: string, value: string) {
+  filterSearch.value = { ...filterSearch.value, [field]: value }
+}
 
 async function load() {
   const [recs, dir, promOn, watchOn, tess, newCount] = await Promise.all([
@@ -1170,190 +1174,41 @@ onBeforeUnmount(() => {
           </ol>
         </div>
 
-        <section v-if="records.length > 0" class="filter-rail">
-          <div class="filter-grid">
-            <div
-              v-for="cfg in [
-                { field: 'mode', label: 'Mode', options: modes, short: 'MODES' },
-                { field: 'map', label: 'Map', options: maps, short: 'MAPS' },
-                { field: 'type', label: 'Type', options: types, short: 'TYPES' },
-                { field: 'role', label: 'Role', options: roles, short: 'ROLES' },
-                { field: 'hero', label: 'Hero', options: heroes, short: 'HEROES' },
-                { field: 'result', label: 'Result', options: results, short: 'RESULTS' },
-                { field: 'sshot', label: 'Source', options: sshotTypes, short: 'SOURCES', formatOption: sshotTypeLabel },
-              ]"
-              :key="cfg.field"
-              class="filter-field multi-filter"
-              :class="{ open: openFilter === cfg.field, populated: filterList(cfg.field).length > 0 }"
-            >
-              <span class="filter-eyebrow">
-                {{ cfg.label }}
-                <span v-if="filterList(cfg.field).length" class="eyebrow-count">× {{ String(filterList(cfg.field).length).padStart(2, '0') }}</span>
-              </span>
-
-              <button
-                type="button"
-                class="mf-trigger"
-                :aria-expanded="openFilter === cfg.field"
-                :aria-label="`${cfg.label} filter, ${filterList(cfg.field).length} of ${cfg.options.length} selected`"
-                @click="toggleFilterPanel(cfg.field)"
-              >
-                <span class="mf-trigger-inner">
-                  <template v-if="filterList(cfg.field).length === 0">
-                    <span class="mf-placeholder">All</span>
-                    <span class="mf-placeholder-meta">{{ cfg.options.length }} {{ cfg.short.toLowerCase() }}</span>
-                  </template>
-                  <template v-else-if="filterList(cfg.field).length <= 2">
-                    <span
-                      v-for="val in filterList(cfg.field)"
-                      :key="val"
-                      class="mf-chip"
-                      :title="`Remove ${val} from filter`"
-                      @click.stop="toggleFilter(cfg.field, val)"
-                    >
-                      <span class="mf-chip-text">{{ cfg.formatOption ? cfg.formatOption(val) : val }}</span>
-                      <span class="mf-chip-x" aria-hidden="true">×</span>
-                    </span>
-                  </template>
-                  <template v-else>
-                    <span class="mf-chip mf-chip-stack">
-                      <span class="mf-chip-text">{{ cfg.formatOption ? cfg.formatOption(filterList(cfg.field)[0]) : filterList(cfg.field)[0] }}</span>
-                      <span class="mf-chip-x" aria-hidden="true" />
-                    </span>
-                    <span class="mf-more">+{{ filterList(cfg.field).length - 1 }}</span>
-                  </template>
-                </span>
-                <span class="mf-caret" aria-hidden="true" />
-              </button>
-
-              <div v-if="openFilter === cfg.field" class="mf-panel" @click.stop>
-                <div class="mf-panel-head">
-                  <span class="mf-panel-title">{{ cfg.short }} ROSTER</span>
-                  <span class="mf-panel-meta">{{ filterList(cfg.field).length }} / {{ cfg.options.length }}</span>
-                </div>
-                <p class="mf-panel-hint">
-                  Picking multiple matches <em>any</em> of them.
-                </p>
-                <div v-if="cfg.options.length >= 8" class="mf-search">
-                  <span class="mf-search-icon" aria-hidden="true">⌕</span>
-                  <input
-                    v-model="filterSearch[cfg.field]"
-                    type="text"
-                    class="mf-search-input"
-                    :placeholder="`Search ${cfg.label.toLowerCase()}…`"
-                    autocomplete="off"
-                  >
-                </div>
-                <div class="mf-list" role="listbox" aria-multiselectable="true">
-                  <template v-for="opt in cfg.options" :key="opt">
-                    <label
-                      v-if="!filterSearchStr(cfg.field) || (cfg.formatOption ? cfg.formatOption(opt) : opt).toLowerCase().includes(filterSearchStr(cfg.field).toLowerCase())"
-                      class="mf-row"
-                      :class="{ checked: filterList(cfg.field).includes(opt) }"
-                    >
-                      <input
-                        type="checkbox"
-                        :checked="filterList(cfg.field).includes(opt)"
-                        class="mf-row-box"
-                        @change="toggleFilter(cfg.field, opt)"
-                      >
-                      <span class="mf-row-mark" aria-hidden="true" />
-                      <span class="mf-row-label">{{ cfg.formatOption ? cfg.formatOption(opt) : opt }}</span>
-                    </label>
-                  </template>
-                  <div
-                    v-if="cfg.options.length === 0"
-                    class="mf-empty"
-                  >
-                    No {{ cfg.label.toLowerCase() }} values yet — parse some matches to populate this filter.
-                  </div>
-                  <div
-                    v-else-if="filterSearchStr(cfg.field) && cfg.options.filter(o => o.toLowerCase().includes(filterSearchStr(cfg.field).toLowerCase())).length === 0"
-                    class="mf-empty"
-                  >
-                    No {{ cfg.label.toLowerCase() }} matches "{{ filterSearchStr(cfg.field) }}"
-                  </div>
-                </div>
-                <div class="mf-panel-foot">
-                  <button
-                    type="button"
-                    class="mf-foot-btn"
-                    :disabled="filterList(cfg.field).length === cfg.options.length"
-                    @click="selectAllFilter(cfg.field, cfg.options)"
-                  >
-                    All
-                  </button>
-                  <button
-                    type="button"
-                    class="mf-foot-btn"
-                    :disabled="filterList(cfg.field).length === 0"
-                    @click="clearFilterField(cfg.field)"
-                  >
-                    None
-                  </button>
-                  <span class="mf-foot-spacer" />
-                  <button type="button" class="mf-foot-btn primary" @click="closeFilterPanel">
-                    Done
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="filter-bar">
-            <div class="range-group">
-              <label class="range-label">
-                <span>From</span>
-                <input
-                  v-model="filterFrom"
-                  type="datetime-local"
-                  :min="earliestMatchDateTime"
-                  :max="nowDateTime"
-                  class="dd-date"
-                >
-              </label>
-              <span class="range-dash">→</span>
-              <label class="range-label">
-                <span>To</span>
-                <input
-                  v-model="filterTo"
-                  type="datetime-local"
-                  :min="earliestMatchDateTime"
-                  :max="nowDateTime"
-                  class="dd-date"
-                >
-              </label>
-              <button
-                class="btn ghost tiny"
-                :disabled="!filterFrom && !filterTo"
-                title="Clear both date pickers"
-                @click="resetDateRange"
-              >
-                Reset
-              </button>
-              <span
-                v-if="(filterFrom || filterTo) && undatedMatchCount > 0"
-                class="range-hint"
-                :title="`${undatedMatchCount} match${undatedMatchCount === 1 ? ' is' : 'es are'} missing date/time (no SUMMARY screenshot) and won't appear while a date filter is active.`"
-              >
-                ⓘ {{ undatedMatchCount }} undated hidden
-              </span>
-            </div>
-
-            <div class="filter-tools">
-              <button class="btn ghost tiny" :title="sortDir === 'desc' ? 'Newest first — click for oldest first' : 'Oldest first — click for newest first'" @click="toggleSort">
-                {{ sortDir === 'desc' ? '↓ Newest' : '↑ Oldest' }}
-              </button>
-              <button class="btn ghost tiny" :title="allExpanded ? 'Collapse every visible card' : 'Expand every visible card'" @click="toggleAll">
-                {{ allExpanded ? 'Collapse All' : 'Expand All' }}
-              </button>
-              <button v-if="anyFilter" class="btn ghost tiny danger" @click="clearFilters">
-                Clear Filters
-              </button>
-              <span class="count"><strong>{{ filteredSorted.length }}</strong><span class="count-of">of {{ records.length }}</span></span>
-            </div>
-          </div>
-        </section>
+        <FilterRail
+          v-if="records.length > 0"
+          :modes="modes"
+          :maps="maps"
+          :types="types"
+          :roles="roles"
+          :heroes="heroes"
+          :results="results"
+          :sshot-types="sshotTypes"
+          :filter-list="filterList"
+          :filter-search="filterSearch"
+          :open-filter="openFilter"
+          :filter-from="filterFrom"
+          :filter-to="filterTo"
+          :sort-dir="sortDir"
+          :undated-match-count="undatedMatchCount"
+          :any-filter="anyFilter"
+          :earliest-match-date-time="earliestMatchDateTime"
+          :now-date-time="nowDateTime"
+          :all-expanded="allExpanded"
+          :record-count="records.length"
+          :filtered-count="filteredSorted.length"
+          @update:filter-from="setFilterFrom"
+          @update:filter-to="setFilterTo"
+          @update:search="setFilterSearch"
+          @toggle-filter-panel="toggleFilterPanel"
+          @close-filter-panel="closeFilterPanel"
+          @toggle-filter="toggleFilter"
+          @select-all-filter="selectAllFilter"
+          @clear-filter-field="clearFilterField"
+          @clear-filters="clearFilters"
+          @reset-date-range="resetDateRange"
+          @toggle-sort="toggleSort"
+          @toggle-all="toggleAll"
+        />
 
         <div v-if="records.length > 0" class="match-list">
           <MatchCard
