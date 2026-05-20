@@ -271,6 +271,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write    # needed by Sigstore to mint a short-lived cert
+      attestations: write  # needed to write SLSA provenance for sha256 files
     steps:
       # Download all artifacts into the current directory (merge-multiple flattens them).
       - uses: actions/download-artifact@v8
@@ -286,6 +288,19 @@ jobs:
           for f in recall-*.tar.gz recall-*.deb recall-*.exe recall-*.dmg; do
             [ -f "$f" ] && sha256sum "$f" > "${f}.sha256"
           done
+
+      # Attest the sha256 files so users can prove the checksums themselves
+      # came from CI, not a tampered release page. Chain:
+      #   gh attestation verify <file>.sha256 → sha256sum --check <file>.sha256
+      # This closes the loop: even the fallback verification path is signed.
+      - name: Attest SHA256 checksums
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            recall-*.tar.gz.sha256
+            recall-*.deb.sha256
+            recall-*.exe.sha256
+            recall-*.dmg.sha256
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
