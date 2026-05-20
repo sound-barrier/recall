@@ -415,6 +415,10 @@ Triggered on `v*` tags (push) and on `workflow_dispatch` (manual fallback for wh
 
 - **TypeScript 6.x is blocked by `openapi-typescript`.** `openapi-typescript@7.x` declares `peer typescript: "^5.x"` and will cause `npm install` to fail with an `ERESOLVE` conflict if `typescript` is bumped to `^6.x`. Hold TypeScript at `^5.x` until `openapi-typescript` ships TS 6 support.
 
+- **`stylelint-config-standard` rejects BEM `--` modifiers** — `selector-class-pattern` only allows kebab-case, so `.foo--modifier` is invalid in `App.vue`. Use `.foo-modifier` instead for CSS class variants. Also require an empty line before every rule block (`rule-empty-line-before`), including `:hover` pseudo-selectors that follow a closing `}`. These are **errors**, not warnings — they fail `make lint` (`make: *** [lint-css] Error 2`).
+
+- **Adding a field to an existing Go struct** (not a new method) is a 3-step follow-up: (1) update the struct + OpenAPI schema, (2) `make gen-types` to refresh `api.gen.d.ts`, (3) manually edit `wailsjs/go/models.ts` to add the field — Wails only auto-regenerates that file during `wails dev` (macOS only). Missing step 3 breaks Wails mode silently.
+
 - **Match key is identity** — never key on filename; the match key
   derives from the earliest screenshot's filename timestamp and survives
   re-parses.
