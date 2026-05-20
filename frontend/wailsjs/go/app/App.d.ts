@@ -15,6 +15,8 @@ export function GetScreenshotsDir():Promise<string>;
 
 export function GetTesseractStatus():Promise<app.TesseractStatus>;
 
+export function GetVersion():Promise<string>;
+
 export function GetWatchEnabled():Promise<boolean>;
 
 export function ParseScreenshots():Promise<void>;

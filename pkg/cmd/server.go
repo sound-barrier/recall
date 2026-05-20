@@ -170,6 +170,14 @@ func RunServer(a *app.App, assets embed.FS) {
 		writeJSON(w, st, err)
 	})
 
+	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		writeJSON(w, map[string]string{"version": a.GetVersion()}, nil)
+	})
+
 	mux.HandleFunc("/api/new-screenshot-count", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

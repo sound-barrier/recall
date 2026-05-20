@@ -19,6 +19,10 @@
 # See `make build-mac` in the Makefile. macOS server binary CAN be built here
 # because it is pure Go (no Apple SDK needed).
 
+# Build version injected via -ldflags. Defaults to "dev" for local/CI builds
+# not invoked through `make build-*` (which reads .release-please-manifest.json).
+ARG VERSION=dev
+
 # ─── Stage 1: Frontend ──────────────────────────────────────
 FROM node:26-slim AS frontend-builder
 WORKDIR /frontend
@@ -87,7 +91,9 @@ RUN printf 'Name: webkit2gtk-4.0\nDescription: compat shim\nVersion: 4.1\nRequir
     printf 'Name: javascriptcoregtk-4.0\nDescription: compat shim\nVersion: 4.1\nRequires: javascriptcoregtk-4.1\nCflags:\nLibs:\n' \
         > /usr/lib/x86_64-linux-gnu/pkgconfig/javascriptcoregtk-4.0.pc
 
-RUN wails build -s -platform linux/amd64 -trimpath -tags webkit2_4_1
+ARG VERSION=dev
+RUN wails build -s -platform linux/amd64 -trimpath -tags webkit2_4_1 \
+        -ldflags "-X recall/pkg/app.Version=${VERSION}"
 
 
 # ─── Stage 4: Windows/amd64 binary (cross-compiled from Linux) ──
@@ -111,7 +117,9 @@ ENV CGO_ENABLED=1 \
     CC=x86_64-w64-mingw32-gcc \
     CXX=x86_64-w64-mingw32-g++
 
-RUN wails build -s -platform windows/amd64 -trimpath -nsis
+ARG VERSION=dev
+RUN wails build -s -platform windows/amd64 -trimpath -nsis \
+        -ldflags "-X recall/pkg/app.Version=${VERSION}"
 
 
 # ─── Stage 5: Linux export (just the binary) ────────────────
@@ -142,16 +150,22 @@ FROM go-base AS server-base
 FROM server-base AS server-linux-builder
 COPY . .
 COPY --from=frontend-builder /frontend/dist ./frontend/dist
+ARG VERSION=dev
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -tags serveronly -trimpath -o build/bin/Recall-server .
+    go build -tags serveronly -trimpath \
+        -ldflags "-X recall/pkg/app.Version=${VERSION}" \
+        -o build/bin/Recall-server .
 
 
 # ─── Stage 9: Windows/amd64 server binary ───────────────────
 FROM server-base AS server-windows-builder
 COPY . .
 COPY --from=frontend-builder /frontend/dist ./frontend/dist
+ARG VERSION=dev
 RUN CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
-    go build -tags serveronly -trimpath -o build/bin/Recall-server.exe .
+    go build -tags serveronly -trimpath \
+        -ldflags "-X recall/pkg/app.Version=${VERSION}" \
+        -o build/bin/Recall-server.exe .
 
 
 # ─── Stage 10: macOS server binary (arm64) ───────────────────
@@ -160,8 +174,11 @@ RUN CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
 FROM server-base AS server-mac-builder
 COPY . .
 COPY --from=frontend-builder /frontend/dist ./frontend/dist
+ARG VERSION=dev
 RUN CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 \
-        go build -tags serveronly -trimpath -o build/bin/Recall-server-arm64 .
+        go build -tags serveronly -trimpath \
+            -ldflags "-X recall/pkg/app.Version=${VERSION}" \
+            -o build/bin/Recall-server-arm64 .
 
 
 # ─── Stage 11: Server export stages (scratch) ───────────────
