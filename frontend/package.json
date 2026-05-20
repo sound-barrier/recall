@@ -11,6 +11,7 @@
     "lint:css": "stylelint 'src/**/*.{css,vue}'",
     "lint:html": "htmlhint index.html",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "vue-tsc --noEmit",
     "gen:types": "openapi-typescript ../api/openapi.yaml -o src/api.gen.d.ts",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@vitejs/plugin-vue": "^6.0.7",
+    "@vitest/coverage-v8": "^4.1.7",
     "eslint": "^10.4.0",
     "eslint-plugin-vue": "^10.9.1",
     "globals": "^17.6.0",
