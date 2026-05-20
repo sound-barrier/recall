@@ -170,6 +170,14 @@ func RunServer(a *app.App, assets embed.FS) {
 		writeJSON(w, st, err)
 	})
 
+	mux.HandleFunc("/api/check-update", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		writeJSON(w, a.CheckForUpdate(), nil)
+	})
+
 	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

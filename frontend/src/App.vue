@@ -4,6 +4,9 @@ import type { Ref } from 'vue'
 import type { MatchRecord } from './api'
 import {
   GetVersion,
+  CheckForUpdate,
+  OpenURL,
+  type UpdateInfo,
   ParseScreenshots,
   GetMatchResults,
   GetScreenshotsDir,
@@ -74,6 +77,7 @@ async function goToView(next: string) {
 // page. Persisted to localStorage so the timestamp survives reloads.
 const lastParsedAt = ref<number | null>(null)
 const appVersion = ref('')
+const updateInfo = ref<UpdateInfo | null>(null)
 
 // Tesseract status — mirrors the Go side's TesseractStatus struct.
 // When .found is false, a System Alert banner blocks the main views
@@ -746,6 +750,7 @@ onMounted(() => {
   } catch (_) {}
 
   GetVersion().then(v => { appVersion.value = v }).catch(() => {})
+  CheckForUpdate().then(u => { if (u.checked) updateInfo.value = u }).catch(() => {})
   load()
   EventsOn('parse-complete', () => { load(); lastParsedAt.value = Date.now(); try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {} })
   EventsOn('parse-progress', (data: ParseProgressEvent) => {
@@ -904,6 +909,23 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <span v-if="appVersion" class="app-version">v{{ appVersion }}</span>
+          <button
+            v-if="updateInfo?.dev_build"
+            class="update-latest-link"
+            :title="`Latest release: v${updateInfo.latest}`"
+            @click="OpenURL(updateInfo.url)"
+          >latest: v{{ updateInfo.latest }}</button>
+          <button
+            v-else-if="updateInfo?.available"
+            class="update-badge"
+            :title="`v${updateInfo.latest} is available — click to download`"
+            @click="OpenURL(updateInfo.url)"
+          >↑ v{{ updateInfo.latest }} available</button>
+          <span
+            v-else-if="updateInfo?.checked"
+            class="update-current"
+            title="You are on the most recent release"
+          >✓ most recent</span>
         </div>
       </header>
 
@@ -4749,6 +4771,40 @@ body {
   font-size: 0.62rem;
   letter-spacing: 0.06em;
   color: var(--text-faint);
+  font-feature-settings: "tnum";
+  user-select: none;
+}
+
+.update-latest-link,
+.update-badge {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  font-feature-settings: "tnum";
+  border-bottom: 1px solid transparent;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.update-latest-link {
+  color: var(--text-faint);
+}
+.update-latest-link:hover { color: var(--text-dim); border-bottom-color: var(--text-dim); }
+
+.update-badge {
+  color: var(--accent);
+}
+.update-badge:hover { border-bottom-color: var(--accent); }
+
+.update-current {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  color: var(--win);
   font-feature-settings: "tnum";
   user-select: none;
 }
