@@ -324,8 +324,14 @@ export interface paths {
         /**
          * Get the OCR engine status
          * @description Reports the configured Tesseract path, whether it resolves to a
-         *     working binary, the reported version, the platform default
-         *     path, and any error from the last detection attempt.
+         *     working binary, the reported version, whether that version is
+         *     officially supported (5.x only), the platform default path, and
+         *     any error from the last detection attempt.
+         *
+         *     When `found` is true but `supported` is false (e.g. a 3.x or
+         *     4.x binary), the UI shows a caution banner and prompts for
+         *     confirmation before running a parse — results may be incorrect
+         *     with unsupported versions.
          */
         get: {
             parameters: {
