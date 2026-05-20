@@ -23,10 +23,14 @@ export type ScreenshotType  = components['schemas']['ScreenshotType']
 // only present when the page is loaded inside the native Wails webview.
 declare global {
   interface Window {
+    // Wails IPC bridge — dynamically generated, inherently untyped at this boundary.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    go?: { app?: { App?: Record<string, (...args: any[]) => Promise<any>> } }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    runtime?: { EventsOn: (n: string, cb: (data: any) => void) => void; EventsOff: (n: string) => void; BrowserOpenURL: (url: string) => void }
+    go?: { app?: { App?: Record<string, (...args: any[]) => Promise<unknown>> } }
+    runtime?: {
+      EventsOn: (n: string, cb: (data: unknown) => void) => void
+      EventsOff: (n: string) => void
+      BrowserOpenURL: (url: string) => void
+    }
   }
 }
 
@@ -43,6 +47,21 @@ export function OpenURL(url: string): void {
   }
 }
 
+// ─── Error type ───────────────────────────────────────────────────────────
+
+// ApiError is thrown by all server-mode fetch calls when the server responds
+// with a non-2xx status. The status code lets callers distinguish
+// user/config errors (4xx) from unexpected server faults (5xx).
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly body: string,
+  ) {
+    super(`HTTP ${status}: ${body}`)
+    this.name = 'ApiError'
+  }
+}
+
 // ─── Internal helpers ──────────────────────────────────────────────────────
 
 function _wails<T>(method: string, ...args: unknown[]): Promise<T> {
@@ -50,20 +69,25 @@ function _wails<T>(method: string, ...args: unknown[]): Promise<T> {
   return window.go!.app!.App![method]!(...args) as Promise<T>
 }
 
-async function _get<T>(path: string): Promise<T> {
-  const r = await fetch(path)
-  if (!r.ok) throw new Error(await r.text())
+async function _fetch<T>(input: string, init?: RequestInit): Promise<T> {
+  const r = await fetch(input, init)
+  if (!r.ok) {
+    const body = await r.text().catch(() => '')
+    throw new ApiError(r.status, body)
+  }
   return r.json() as Promise<T>
 }
 
-async function _post<T>(path: string, body?: unknown): Promise<T> {
-  const r = await fetch(path, {
+function _get<T>(path: string): Promise<T> {
+  return _fetch<T>(path)
+}
+
+function _post<T>(path: string, body?: unknown): Promise<T> {
+  return _fetch<T>(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
-  if (!r.ok) throw new Error(await r.text())
-  return r.json() as Promise<T>
 }
 
 // ─── App methods ───────────────────────────────────────────────────────────
@@ -162,10 +186,9 @@ export function GetNewScreenshotCount(): Promise<number> {
 
 const _sources: Record<string, EventSource> = {}
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function EventsOn(eventName: string, callback: (data: any) => void): void {
+export function EventsOn<T = unknown>(eventName: string, callback: (data: T) => void): void {
   if (IS_WAILS) {
-    window.runtime!.EventsOn(eventName, callback)
+    window.runtime!.EventsOn(eventName, callback as (data: unknown) => void)
     return
   }
   // Close any previous source for this event before opening a new one
@@ -175,7 +198,10 @@ export function EventsOn(eventName: string, callback: (data: any) => void): void
   }
   const es = new EventSource('/api/events')
   es.addEventListener(eventName, (e) => {
-    try { callback((e as MessageEvent).data ? JSON.parse((e as MessageEvent).data) : null) } catch (_) { callback(null) }
+    try {
+      const raw = (e as MessageEvent).data
+      callback((raw ? JSON.parse(raw) : null) as T)
+    } catch (_) { callback(null as unknown as T) }
   })
   _sources[eventName] = es
 }
