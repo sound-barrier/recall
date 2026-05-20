@@ -19,7 +19,7 @@ overview of the architecture and internal conventions, see
   - [Server-only binary](#server-only-binary)
   - [Other build commands](#other-build-commands)
 - [Maintenance](#maintenance)
-  - [Pre-commit hooks (lefthook)](#pre-commit-hooks-lefthook)
+  - [Git hooks (lefthook)](#git-hooks-lefthook)
   - [Tagging and releasing](#tagging-and-releasing)
 - [Releases](RELEASES.md) — separate doc; covers cutting stable releases and prereleases, `make release-beta` / `make release-fire` shortcuts, and recovery procedures.
 - [API specification](#api-specification)
@@ -282,20 +282,18 @@ The scan covers Go module dependencies, npm packages, and `Dockerfile.build`.
 
 The repo includes an `.envrc` for [direnv](https://direnv.net/) with all available environment variable overrides documented and commented out. Run `direnv allow` once after cloning, then edit `.envrc` to activate any overrides you need.
 
-### Pre-commit hooks (lefthook)
+### Git hooks (lefthook)
 
-[Lefthook](https://github.com/evilmartians/lefthook) is configured in `lefthook.yml` to run formatters and linters on the **staged files only** before each commit. Hooks run in parallel and auto-fix where possible.
+[Lefthook](https://github.com/evilmartians/lefthook) is configured in `lefthook.yml` with three hook stages. Hooks run in parallel and auto-fix where possible.
 
 **One-time install:**
 
 ```sh
 brew bundle             # installs lefthook itself
-lefthook install        # wires the hooks into .git/hooks/{pre-commit,commit-msg}
+lefthook install        # wires the hooks into .git/hooks/{pre-commit,pre-push,commit-msg}
 ```
 
-Lefthook then runs automatically on every `git commit`. CI re-runs the full lint pass against the whole tree regardless, so the hooks are a fast feedback loop, not a hard gate.
-
-**What each hook requires to be on PATH** (already covered by `make fmt` / `make lint` tooling — full install instructions are under the per-platform sections above):
+**`pre-commit`** — runs on every `git commit` against **staged files only**. Fast feedback loop; CI re-runs the full lint pass against the whole tree regardless.
 
 | Hook | Glob | Tool(s) it invokes |
 |---|---|---|
@@ -308,11 +306,17 @@ Lefthook then runs automatically on every `git commit`. CI re-runs the full lint
 | `gen-types`         | `api/openapi.yaml`              | `make gen-types` — regenerates `frontend/src/api.gen.d.ts` and auto-stages it so the generated file is never out of sync with the spec. |
 | `yamllint`          | `*.{yml,yaml}` (excl. openapi)  | `yamllint`           (`brew install yamllint` or `pip install yamllint`) |
 | `hadolint`          | `Dockerfile*`                   | `hadolint`           (`brew install hadolint`) |
-| `conventional`      | every commit                    | shell only (uses `grep -E`) |
 
-If a tool isn't installed, the corresponding hook fails — install it (or skip the hook for one commit, see below).
+**`pre-push`** — runs on `git push`. Both tools do whole-project scanning and can't be scoped to staged files, so this stage keeps WIP commits fast while catching dead code before it reaches origin.
 
-**`commit-msg` hook — Conventional Commits format check** (this one runs against every commit, not just files):
+| Hook | Glob | Tool(s) it invokes |
+|---|---|---|
+| `deadcode` | `*.go`                       | `deadcode` (`go install golang.org/x/tools/cmd/deadcode@latest`) — whole-program call-graph analysis for the `serveronly` build tag |
+| `knip`     | `frontend/src/**/*.{ts,vue}` | `knip` (auto-installed by `cd frontend && npm ci`) — unused TypeScript exports and stale devDependencies |
+
+If a tool isn't installed, the corresponding hook fails — install it (or skip the hook for one push/commit, see below).
+
+**`commit-msg`** — runs on every `git commit`. Validates the subject line format (no file glob — always runs):
 
 Subject must match `<type>(<scope>)?(!)?: <description>`. Allowed types:
 
@@ -367,9 +371,10 @@ Atomicity matters: each commit should describe **one** logical change. If the su
 **Bypasses** (use sparingly):
 
 ```sh
-LEFTHOOK=0 git commit -m "wip"                          # skip all hooks
-LEFTHOOK_EXCLUDE=conventional git commit -m "fixup"     # skip just commit-msg
-LEFTHOOK_EXCLUDE='conventional,golangci-lint' git ...   # skip multiple
+LEFTHOOK=0 git commit -m "wip"                              # skip all pre-commit hooks
+LEFTHOOK_EXCLUDE=conventional git commit -m "fixup"         # skip just commit-msg
+LEFTHOOK_EXCLUDE='conventional,golangci-lint' git commit …  # skip multiple
+LEFTHOOK_EXCLUDE='deadcode,knip' git push                   # skip pre-push dead-code scan
 ```
 
 Hooks bypassed locally will still fail in CI on push — bypass is for in-flight WIP commits, not a way around the rules.
