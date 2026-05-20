@@ -42,18 +42,20 @@ export namespace app {
 	    path: string;
 	    found: boolean;
 	    version: string;
+	    supported: boolean;
 	    error: string;
 	    default: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new TesseractStatus(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];
 	        this.found = source["found"];
 	        this.version = source["version"];
+	        this.supported = source["supported"];
 	        this.error = source["error"];
 	        this.default = source["default"];
 	    }
@@ -64,11 +66,11 @@ export namespace app {
 	    available: boolean;
 	    latest: string;
 	    url: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new UpdateInfo(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.checked = source["checked"];

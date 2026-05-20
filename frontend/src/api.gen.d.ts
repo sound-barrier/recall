@@ -905,6 +905,8 @@ export interface components {
             found: boolean;
             /** @description Tesseract `--version` output (e.g. "5.4.1"). Empty when not found. */
             version: string;
+            /** @description True iff the detected major version is 5.x (the only officially supported series). */
+            supported: boolean;
             /** @description Description of the last detection failure, if any. */
             error: string;
             /** @description Platform default path (Homebrew on macOS, /usr/bin on Linux, etc.). */
