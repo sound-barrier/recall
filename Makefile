@@ -359,6 +359,11 @@ test-frontend: ## Run frontend unit tests (Vitest)
 	cd frontend && npm run test
 	@echo "[ recall ] ✓  Frontend tests passed"
 
+cover-frontend: ## Generate JS/TS coverage report (Vitest + V8; output → frontend/coverage/)
+	@echo "[ recall ] Generating frontend coverage report…"
+	cd frontend && npm run test:coverage
+	@echo "[ recall ] ✓  Coverage report written to frontend/coverage/"
+
 # Sync the app icon. Source of truth: assets/icon.png. Wails reads
 # build/appicon.png at 1024x1024 and auto-generates iconfile.icns (macOS)
 # + icon.ico (Windows) during `wails build`, so clearing the cached .ico
