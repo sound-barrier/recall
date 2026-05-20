@@ -42,6 +42,11 @@ pre-commit:
       glob: "api/openapi.yaml"
       run: npx --yes @stoplight/spectral-cli@6.14.2 lint --fail-severity=warn {staged_files}
 
+    gen-types:
+      glob: "api/openapi.yaml"
+      run: make gen-types
+      stage_fixed: true
+
     # ── YAML / Dockerfile / Shell ─────────────────────────────────────
     yamllint:
       glob: "*.{yml,yaml}"
