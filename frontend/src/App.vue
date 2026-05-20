@@ -33,6 +33,9 @@ import {
   heroesForHeader,
   matchTime,
   fmtTime,
+  formatRelativeTime,
+  screenshotURL,
+  computeEarliestMatchDateTime,
 } from './match-helpers'
 
 interface ParseProgressEvent {
@@ -327,27 +330,6 @@ function cancelClear() {
   clearConfirm.value = false
 }
 
-// Lightweight relative-time formatter for the "Last run" hint on
-// Settings. Not reactive to wall-clock ticks — re-renders happen
-// naturally on view/state changes, and stale "2 minutes ago" labels
-// on an idle Settings screen aren't worth a setInterval.
-function formatRelativeTime(ms: number | null | undefined): string {
-  if (!ms) return ''
-  const diff = Date.now() - ms
-  if (diff < 0) return 'just now'
-  if (diff < 60_000) return 'just now'
-  if (diff < 3_600_000) {
-    const m = Math.floor(diff / 60_000)
-    return m === 1 ? '1 minute ago' : `${m} minutes ago`
-  }
-  if (diff < 86_400_000) {
-    const h = Math.floor(diff / 3_600_000)
-    return h === 1 ? '1 hour ago' : `${h} hours ago`
-  }
-  const d = Math.floor(diff / 86_400_000)
-  return d === 1 ? 'yesterday' : `${d} days ago`
-}
-
 // Open the native folder picker via Wails. The Go side persists the
 // choice so subsequent app launches pick up the same directory; we
 // just need to refresh our local mirror.
@@ -536,16 +518,7 @@ function resetDateRange() {
 // Only matches with explicit date + finished_at count toward the min,
 // because those are the only ones that ever pass the date filter
 // anyway (see the `filtered` computed).
-const earliestMatchDateTime = computed(() => {
-  let earliest = null
-  for (const r of records.value) {
-    const d = r.data
-    if (!d?.date || !d?.finished_at) continue
-    const t = `${d.date}T${d.finished_at}`
-    if (!earliest || t < earliest) earliest = t
-  }
-  return earliest || ''
-})
+const earliestMatchDateTime = computed(() => computeEarliestMatchDateTime(records.value))
 
 // Local-time "now" formatted as YYYY-MM-DDTHH:MM for the input's max
 // attribute. Recomputed on every render — Vue treats this as a getter
@@ -633,9 +606,6 @@ function isPreviewError(filename: string) {
 }
 function onPreviewError(filename: string) {
   previewError.value = { ...previewError.value, [filename]: true }
-}
-function screenshotURL(filename: string): string {
-  return `/_screenshot/${encodeURIComponent(filename)}`
 }
 
 // Records that couldn't be resolved to a named match — either the
