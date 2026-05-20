@@ -17,9 +17,9 @@ log() { printf '\033[1;34m[ postCreate ]\033[0m %s\n' "$*"; }
 # is out of date. Matches the workflow files in .github/workflows/ and
 # the per-platform install instructions in CONTRIBUTING.md.
 WAILS_VERSION="v2.12.0"
-HADOLINT_VERSION="v2.13.1"
-LEFTHOOK_VERSION="1.13.6"
-TRIVY_VERSION="0.59.1"
+HADOLINT_VERSION="v2.14.0"
+LEFTHOOK_VERSION="2.1.8"
+TRIVY_VERSION="0.70.0"
 
 # ─── apt packages (Brewfile equivalents) ──────────────────────────────
 log "apt packages: tesseract, sqlite3, jq, yamllint, cloc, direnv, …"
