@@ -68,6 +68,7 @@ brew bundle                     # Go, Node, Tesseract, Podman, golangci-lint, ya
 go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 go install mvdan.cc/gofumpt@latest
 go install github.com/incu6us/goimports-reviser/v3@latest
+go install golang.org/x/tools/cmd/deadcode@latest
 direnv allow                    # activate the repo's .envrc (edit it to set any env overrides)
 ```
 
@@ -269,6 +270,9 @@ make typecheck      # vue-tsc --noEmit — covers .ts files and <script lang="ts
 make gen-types      # regenerate frontend/src/api.gen.d.ts from api/openapi.yaml (run after every spec edit)
 make update-deps    # update Go modules (go get -u + mod tidy) and npm packages
 make trivy          # vulnerability scan — fails on HIGH/CRITICAL findings
+make dead-code      # whole-program dead Go code (serveronly) + unused TS exports (knip)
+make dead-code-go   # Go only: deadcode -tags serveronly ./...
+make dead-code-ts   # TypeScript only: knip (unused exports, files, deps)
 make cloc           # count lines of source code (excludes deps, build artifacts, generated files)
 make icon           # resync build/appicon.png from assets/icon.png (macOS only; run after updating the icon)
 ```

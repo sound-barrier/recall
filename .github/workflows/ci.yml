@@ -233,7 +233,48 @@ jobs:
       - name: Scan Go modules (serveronly build tag)
         run: govulncheck -tags serveronly ./...
 
-  # ── Job 8: OpenAPI ↔ implementation drift check ──────────────────────────
+  # ── Job 8: Dead code analysis ────────────────────────────────────────────
+  # deadcode does whole-program call-graph analysis for Go (serveronly variant
+  # only — the Wails variant registers App methods via reflection so deadcode
+  # would report false positives; golangci-lint `unused` covers that variant).
+  # knip scans the frontend for unused TypeScript exports and stale deps.
+  dead-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Install deadcode
+        run: go install golang.org/x/tools/cmd/deadcode@latest
+
+      - name: Dead Go code (serveronly build tag)
+        # deadcode exits 0 regardless of findings; enforce via output check.
+        # App.Pick* are intentional stubs in app_server.go — dialog methods
+        # that only exist in the Wails desktop variant.
+        run: |
+          pkgs=$(go list -tags serveronly ./... | grep -v node_modules)
+          out=$(deadcode -tags serveronly $pkgs)
+          [ -z "$out" ] || echo "$out"
+          unexpected=$(printf '%s' "$out" | grep -v 'App\.Pick' || true)
+          [ -z "$unexpected" ]
+
+      - name: Dead TypeScript code (knip)
+        run: cd frontend && npm run dead:ts
+
+  # ── Job 9: OpenAPI ↔ implementation drift check ──────────────────────────
   # Spectral checks the spec is well-formed; schemathesis checks the spec
   # matches the running server. Fuzzes spec-derived requests against a
   # freshly-built serveronly binary and verifies every response conforms to

@@ -75,6 +75,9 @@ brew "trivy"
 #     go install mvdan.cc/gofumpt@latest
 #     go install github.com/incu6us/goimports-reviser/v3@latest
 #
+#   Dead code analysis (used by `make dead-code-go`):
+#     go install golang.org/x/tools/cmd/deadcode@latest
+#
 # --- Not in brew, no install needed (handled on demand):
 #
 #   Spectral CLI       — fetched on demand by `npx --yes
