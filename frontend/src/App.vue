@@ -908,24 +908,25 @@ onBeforeUnmount(() => {
               <span class="score-label">Drew</span>
             </div>
           </div>
-          <span v-if="appVersion" class="app-version">v{{ appVersion }}</span>
-          <button
-            v-if="updateInfo?.dev_build"
-            class="update-latest-link"
-            :title="`Latest release: v${updateInfo.latest}`"
-            @click="OpenURL(updateInfo.url)"
-          >latest: v{{ updateInfo.latest }}</button>
-          <button
-            v-else-if="updateInfo?.available"
-            class="update-badge"
-            :title="`v${updateInfo.latest} is available — click to download`"
-            @click="OpenURL(updateInfo.url)"
-          >↑ v{{ updateInfo.latest }} available</button>
-          <span
-            v-else-if="updateInfo?.checked"
-            class="update-current"
-            title="You are on the most recent release"
-          >✓ most recent</span>
+          <div class="ver-block">
+            <span v-if="appVersion" class="app-version">v{{ appVersion }}</span>
+            <button
+              v-if="updateInfo?.dev_build"
+              class="ver-btn ver-btn--dev"
+              :title="`Open release page for v${updateInfo.latest}`"
+              @click="OpenURL(updateInfo.url)"
+            >↗ view release v{{ updateInfo.latest }}</button>
+            <button
+              v-else-if="updateInfo?.available"
+              class="ver-btn ver-btn--update"
+              :title="`Download v${updateInfo.latest}`"
+              @click="OpenURL(updateInfo.url)"
+            >↑ update to v{{ updateInfo.latest }}</button>
+            <span
+              v-else-if="updateInfo?.checked"
+              class="ver-btn ver-btn--current"
+            >✓ up to date</span>
+          </div>
         </div>
       </header>
 
@@ -4766,6 +4767,14 @@ body {
 .engine-status.ok .engine-state   { color: var(--win); }
 .engine-status.fail .engine-state { color: var(--loss); }
 
+/* ── Version block (masthead bottom-right) ──────────────────────────────── */
+.ver-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
 .app-version {
   font-family: var(--mono);
   font-size: 0.62rem;
@@ -4775,37 +4784,58 @@ body {
   user-select: none;
 }
 
-.update-latest-link,
-.update-badge {
+/* Shared button/label shell — consistent shape whether clickable or not */
+.ver-btn {
   appearance: none;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
   font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.06em;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   font-feature-settings: "tnum";
-  border-bottom: 1px solid transparent;
-  transition: border-color 160ms ease, color 160ms ease;
+  padding: 0.22rem 0.55rem;
+  border-radius: 2px;
+  border: 1px solid;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
-.update-latest-link {
+/* Dev build: informational link to latest release */
+.ver-btn--dev {
+  background: transparent;
+  border-color: var(--border);
   color: var(--text-faint);
+  cursor: pointer;
 }
-.update-latest-link:hover { color: var(--text-dim); border-bottom-color: var(--text-dim); }
+.ver-btn--dev:hover {
+  border-color: var(--border-strong);
+  color: var(--text-dim);
+  background: var(--surface-2);
+}
 
-.update-badge {
+/* Update available: orange call-to-action */
+.ver-btn--update {
+  background: transparent;
+  border-color: var(--accent);
   color: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 8px -3px var(--accent-glow);
 }
-.update-badge:hover { border-bottom-color: var(--accent); }
+.ver-btn--update:hover {
+  background: var(--accent);
+  color: #1a0a00;
+  box-shadow: 0 0 14px -3px var(--accent-glow);
+}
 
-.update-current {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.06em;
+/* Up to date: non-interactive status label */
+.ver-btn--current {
+  background: transparent;
+  border-color: var(--win-line);
   color: var(--win);
-  font-feature-settings: "tnum";
+  cursor: default;
   user-select: none;
 }
 
