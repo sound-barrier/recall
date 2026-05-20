@@ -49,6 +49,8 @@ tags:
     description: Server-Sent Events stream.
   - name: Assets
     description: Static screenshot serving.
+  - name: Meta
+    description: Build metadata.
 
 paths:
   /api/match-results:
@@ -306,6 +308,27 @@ paths:
                 $ref: "#/components/schemas/TesseractStatus"
         "500":
           $ref: "#/components/responses/InternalError"
+
+  /api/version:
+    get:
+      tags: [Meta]
+      summary: App build version
+      description: |
+        Returns the version string injected at build time via
+        `-ldflags "-X recall/pkg/app.Version=<tag>"`.
+        Falls back to `"dev"` for local builds outside the release pipeline.
+      responses:
+        "200":
+          description: Current build version.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [version]
+                properties:
+                  version:
+                    type: string
+                    example: 0.0.13-beta.0
 
   /api/new-screenshot-count:
     get:

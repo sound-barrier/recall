@@ -60,6 +60,11 @@ async function _post<T>(path: string, body?: unknown): Promise<T> {
 
 // ─── App methods ───────────────────────────────────────────────────────────
 
+export function GetVersion(): Promise<string> {
+  if (IS_WAILS) return _wails('GetVersion')
+  return _get<{ version: string }>('/api/version').then(d => d.version)
+}
+
 export function GetMatchResults(): Promise<MatchRecord[]> {
   if (IS_WAILS) return _wails('GetMatchResults')
   return _get<MatchRecord[]>('/api/match-results')

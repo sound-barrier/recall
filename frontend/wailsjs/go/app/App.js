@@ -26,6 +26,10 @@ export function GetTesseractStatus() {
   return window['go']['app']['App']['GetTesseractStatus']();
 }
 
+export function GetVersion() {
+  return window['go']['app']['App']['GetVersion']();
+}
+
 export function GetWatchEnabled() {
   return window['go']['app']['App']['GetWatchEnabled']();
 }

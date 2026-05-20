@@ -27,6 +27,10 @@ import (
 	"recall/pkg/parser"
 )
 
+// Version is injected at build time via -ldflags "-X recall/pkg/app.Version=<tag>".
+// Falls back to "dev" when building outside the release pipeline.
+var Version = "dev"
+
 type MatchRecord struct {
 	ID          int64    `json:"id"`
 	MatchKey    string   `json:"match_key"`
@@ -433,8 +437,26 @@ func (a *App) SetPrometheusEnabled(enabled bool) error {
 	return nil
 }
 
-// GetScreenshotsDir returns the directory the parser will read from.
-// Exposed to the frontend so the UI can show "Reading from <path>".
+func (a *App) GetVersion() string {
+	if Version != "dev" {
+		return Version
+	}
+	// No ldflags injection (direct `wails dev` or similar): read the manifest
+	// so the UI shows "<version>-dev" rather than a bare "dev".
+	data, err := os.ReadFile(".release-please-manifest.json")
+	if err != nil {
+		return "dev"
+	}
+	var manifest map[string]string
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return "dev"
+	}
+	if v := manifest["."]; v != "" {
+		return v + "-dev"
+	}
+	return "dev"
+}
+
 func (a *App) GetScreenshotsDir() string {
 	return a.settings.ScreenshotsDir
 }

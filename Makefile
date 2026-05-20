@@ -19,7 +19,10 @@ DIST_SERVER_LINUX   := $(DIST_DIR)/server-linux
 DIST_SERVER_WINDOWS := $(DIST_DIR)/server-windows
 DIST_SERVER_MAC     := $(DIST_DIR)/server-mac
 
-WAILS_FLAGS   := -trimpath
+BUILD_VERSION := $(shell jq -r '."."' .release-please-manifest.json 2>/dev/null || echo dev)
+VERSION_LDFLAG := -X recall/pkg/app.Version=$(BUILD_VERSION)
+
+WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
 
 .PHONY: help \
         build-linux build-windows build-mac build-all build-all-docker \
@@ -43,6 +46,7 @@ build-linux: ## Linux/amd64 Wails app via Docker → dist/linux/Recall
 	@mkdir -p $(DIST_LINUX)
 	$(DOCKER) build \
 	    --file $(DOCKERFILE) \
+	    --build-arg VERSION=$(BUILD_VERSION) \
 	    --target linux-export \
 	    --output type=local,dest=$(DIST_LINUX) \
 	    .
@@ -54,6 +58,7 @@ build-windows: ## Windows/amd64 Wails app via Docker → dist/windows/Recall.exe
 	@mkdir -p $(DIST_WINDOWS)
 	$(DOCKER) build \
 	    --file $(DOCKERFILE) \
+	    --build-arg VERSION=$(BUILD_VERSION) \
 	    --target windows-export \
 	    --output type=local,dest=$(DIST_WINDOWS) \
 	    .
@@ -86,6 +91,7 @@ build-server-linux: ## Linux/amd64 server binary via Docker → dist/server-linu
 	@mkdir -p $(DIST_SERVER_LINUX)
 	$(DOCKER) build \
 	    --file $(DOCKERFILE) \
+	    --build-arg VERSION=$(BUILD_VERSION) \
 	    --target server-linux-export \
 	    --output type=local,dest=$(DIST_SERVER_LINUX) \
 	    .
@@ -97,6 +103,7 @@ build-server-windows: ## Windows/amd64 server binary via Docker → dist/server-
 	@mkdir -p $(DIST_SERVER_WINDOWS)
 	$(DOCKER) build \
 	    --file $(DOCKERFILE) \
+	    --build-arg VERSION=$(BUILD_VERSION) \
 	    --target server-windows-export \
 	    --output type=local,dest=$(DIST_SERVER_WINDOWS) \
 	    .
@@ -110,6 +117,7 @@ build-server-mac: ## macOS arm64 server binary via Docker → dist/server-mac/
 	@mkdir -p $(DIST_SERVER_MAC)
 	$(DOCKER) build \
 	    --file $(DOCKERFILE) \
+	    --build-arg VERSION=$(BUILD_VERSION) \
 	    --target server-mac-export \
 	    --output type=local,dest=$(DIST_SERVER_MAC) \
 	    .
@@ -124,6 +132,7 @@ build-server-container: ## Linux server container image with Tesseract → recal
 	$(DOCKER) build \
 	    --platform linux/amd64 \
 	    --file $(DOCKERFILE) \
+	    --build-arg VERSION=$(BUILD_VERSION) \
 	    --target server-container \
 	    --tag recall-server:local \
 	    .
