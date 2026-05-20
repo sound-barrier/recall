@@ -76,9 +76,10 @@ jobs:
             "${PKG_VERSION}" > _deb-server/DEBIAN/control
           dpkg-deb --build _deb-server "recall-server-${PKG_VERSION}-linux-amd64.deb"
 
-          # ── Windows binaries ──────────────────────────────────
-          cp dist/windows/Recall.exe               "recall-${PKG_VERSION}-windows-amd64.exe"
-          cp dist/server-windows/Recall-server.exe "recall-server-${PKG_VERSION}-windows-amd64.exe"
+          # ── Windows artifacts ─────────────────────────────────
+          # Desktop: NSIS installer (replaces bare exe as the primary artifact)
+          cp dist/windows/Recall-amd64-installer.exe "recall-${PKG_VERSION}-windows-amd64-installer.exe"
+          cp dist/server-windows/Recall-server.exe   "recall-server-${PKG_VERSION}-windows-amd64.exe"
 
           # ── macOS server binary — tarball ─────────────────────
           mkdir -p "_tar/recall-server-${PKG_VERSION}-darwin-arm64"
@@ -94,7 +95,7 @@ jobs:
             recall-*-linux-amd64.deb
             recall-server-*-linux-amd64.tar.gz
             recall-server-*-linux-amd64.deb
-            recall-*-windows-amd64.exe
+            recall-*-windows-amd64-installer.exe
             recall-server-*-windows-amd64.exe
             recall-server-*-darwin-arm64.tar.gz
 

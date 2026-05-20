@@ -9,5 +9,12 @@
   "author": {
     "name": "Jacob Delgado",
     "email": "jacob.delgado@gmail.com"
+  },
+  "info": {
+    "companyName": "sound-barrier",
+    "productName": "recall",
+    "productVersion": "0.0.1",
+    "copyright": "sound-barrier",
+    "comments": "Built using Wails (https://wails.io)"
   }
 }
