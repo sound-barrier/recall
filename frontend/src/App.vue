@@ -411,32 +411,6 @@ const unknownRecords = computed(() =>
   records.value.filter(r => !r.data?.map)
 )
 
-// Per-card expand state for the Unknown Maps view. Separate from
-// the main `expanded` store so collapsing all matches doesn't also
-// reset the unknown cards the user is reviewing.
-const unknownExpanded = ref<Record<number, boolean>>({})
-function toggleUnknownExpand(id: number) {
-  unknownExpanded.value = { ...unknownExpanded.value, [id]: !unknownExpanded.value[id] }
-}
-function isUnknownExpanded(id: number) {
-  return !!unknownExpanded.value[id]
-}
-
-const unknownPreviewOpen = ref<Record<string, boolean>>({})
-const unknownPreviewError = ref<Record<string, boolean>>({})
-function toggleUnknownPreview(filename: string) {
-  unknownPreviewError.value = { ...unknownPreviewError.value, [filename]: false }
-  unknownPreviewOpen.value = { ...unknownPreviewOpen.value, [filename]: !unknownPreviewOpen.value[filename] }
-}
-function isUnknownPreviewOpen(filename: string) {
-  return !!unknownPreviewOpen.value[filename]
-}
-function isUnknownPreviewError(filename: string) {
-  return !!unknownPreviewError.value[filename]
-}
-function onUnknownPreviewError(filename: string) {
-  unknownPreviewError.value = { ...unknownPreviewError.value, [filename]: true }
-}
 
 // Pure helpers (detectScreenshotSlots, screenshotURL, etc.) live in
 // ./match-helpers.ts so they can be unit-tested in isolation.
@@ -1029,10 +1003,10 @@ onBeforeUnmount(() => {
             v-for="(rec, idx) in unknownRecords"
             :key="rec.id"
             class="unknown-card"
-            :class="{ expanded: isUnknownExpanded(rec.id) }"
+            :class="{ expanded: isExpanded(rec.id) }"
           >
             <!-- Card header: index + match key + slot chips + chevron -->
-            <div class="unknown-card-head" @click="toggleUnknownExpand(rec.id)">
+            <div class="unknown-card-head" @click="toggleExpand(rec.id)">
               <div class="unknown-head-lhs">
                 <span class="unknown-idx">{{ String(idx + 1).padStart(2, '0') }}</span>
                 <div class="unknown-key-block">
@@ -1053,7 +1027,7 @@ onBeforeUnmount(() => {
                     {{ slot.label }}
                   </span>
                 </div>
-                <span class="chev" :class="{ open: isUnknownExpanded(rec.id) }" aria-hidden="true">›</span>
+                <span class="chev" :class="{ open: isExpanded(rec.id) }" aria-hidden="true">›</span>
               </div>
             </div>
 
@@ -1080,7 +1054,7 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Expanded: source files + previews + any stats that parsed -->
-            <template v-if="isUnknownExpanded(rec.id)">
+            <template v-if="isExpanded(rec.id)">
               <div class="unknown-expanded">
                 <div v-if="rec.source_files?.length" class="unknown-sources">
                   <div class="block-eyebrow">
@@ -1090,20 +1064,20 @@ onBeforeUnmount(() => {
                     <a
                       class="source-name"
                       :href="screenshotURL(f)"
-                      :title="isUnknownPreviewOpen(f) ? 'Hide preview' : 'Show preview'"
-                      @click.prevent="toggleUnknownPreview(f)"
+                      :title="previewOpen[f] ? 'Hide preview' : 'Show preview'"
+                      @click.prevent="togglePreview(f)"
                     >
-                      <span class="chev small" :class="{ open: isUnknownPreviewOpen(f) }">›</span>
+                      <span class="chev small" :class="{ open: previewOpen[f] }">›</span>
                       <span class="source-name-text">{{ f }}</span>
                     </a>
                     <img
-                      v-if="isUnknownPreviewOpen(f) && !isUnknownPreviewError(f)"
+                      v-if="previewOpen[f] && !previewError[f]"
                       :src="screenshotURL(f)"
                       :alt="f"
                       class="source-preview"
-                      @error="onUnknownPreviewError(f)"
+                      @error="onPreviewError(f)"
                     >
-                    <div v-if="isUnknownPreviewOpen(f) && isUnknownPreviewError(f)" class="source-preview-error">
+                    <div v-if="previewOpen[f] && previewError[f]" class="source-preview-error">
                       Could not load image — check screenshots folder in Settings.
                     </div>
                   </div>
