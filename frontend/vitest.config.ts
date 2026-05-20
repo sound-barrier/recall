@@ -8,5 +8,11 @@ export default defineConfig({
     // so the same environment is available everywhere (pure-function tests
     // are unaffected since they don't use any browser APIs).
     environment: 'happy-dom',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov', 'html'],
+      include: ['src/**/*.ts', 'src/**/*.vue'],
+      exclude: ['src/**/*.d.ts', 'src/**/*.test.ts'],
+    },
   },
 })
