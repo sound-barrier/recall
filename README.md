@@ -33,7 +33,6 @@ flowchart LR
 - [Installation](#installation)
   - [Verifying downloads](#verifying-downloads)
   - [macOS](docs/install-macos.md) · [Linux](docs/install-linux.md)
-- [Prerequisites](#prerequisites)
 - [Capturing matches](#capturing-matches)
 
 **Advanced** — most users can skip these
@@ -52,7 +51,7 @@ flowchart LR
 The desktop app is the simplest way to use Recall. Five steps from zero to your first match record:
 
 1. **Install Recall** — grab `recall-{version}-windows-amd64-installer.exe` from [GitHub Releases](https://github.com/sound-barrier/recall/releases) and run it. For macOS or Linux, see the [Installation](#installation) section below.
-2. **Install Tesseract OCR 5.x** — Recall uses it to read your screenshots. Download the **5.x** installer from [UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki) and run it with the default options. (macOS/Linux instructions are in [docs/install-macos.md](docs/install-macos.md) and [docs/install-linux.md](docs/install-linux.md).)
+2. **Install Tesseract OCR 5.x** — Recall uses it to read your screenshots. Download the **5.x** installer from [UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki) and run it with the default options. Older 3.x / 4.x builds are detected and flagged with a warning — parsing may misread. (macOS/Linux instructions are in [docs/install-macos.md](docs/install-macos.md) and [docs/install-linux.md](docs/install-linux.md).)
 3. **Launch Recall and pick a screenshots folder** under **Settings → Directories**. Overwatch's default on Windows is `Documents\Overwatch\ScreenShots\Overwatch\`.
 4. **Capture screenshots in Overwatch** with **F12** after each match — see [Capturing matches](#capturing-matches) for which post-match tabs to screenshot.
 5. **Click *Ingest → Run Parse*** to scan the folder, or flip on *Ingest → Parse → Watch Folder* to auto-parse as new screenshots land. Parsed matches appear under the **Matches** tab.
@@ -76,53 +75,29 @@ For macOS and Linux setup details (Gatekeeper bypass, package manager Tesseract 
 
 ### Verifying downloads
 
-Every release binary **and its `.sha256` checksum file** are attested with [SLSA provenance](https://slsa.dev/) signed by GitHub's Sigstore integration. This proves both the file and its checksum were produced by this repo's CI — not a third party. Requires the [GitHub CLI](https://cli.github.com/).
+Every release binary ships with a `.sha256` checksum file — the
+[macOS](docs/install-macos.md#verifying-your-download) and
+[Linux](docs/install-linux.md#verifying-your-download) install guides
+have the one-line `shasum --check` command. On Windows, PowerShell:
 
-**Option A — verify the binary directly (strongest):**
+```powershell
+(Get-FileHash recall-{version}-windows-amd64-installer.exe).Hash -eq `
+  (Get-Content recall-{version}-windows-amd64-installer.exe.sha256).Split()[0].ToUpper()
+```
+
+`True` / `OK` means the file is intact; any mismatch means re-download.
+
+For stronger supply-chain guarantees, every binary **and its `.sha256`
+file** are also signed with [SLSA provenance](https://slsa.dev/) via
+GitHub's Sigstore integration. Verify with the
+[GitHub CLI](https://cli.github.com/):
 
 ```sh
 gh attestation verify recall-{version}-windows-amd64-installer.exe --repo sound-barrier/recall
 ```
 
-**Option B — verify the checksum file, then use it (two-step chain):**
-
-```sh
-# Step 1: prove the .sha256 file came from CI
-gh attestation verify recall-{version}-windows-amd64-installer.exe.sha256 --repo sound-barrier/recall
-
-# Step 2: confirm the installer matches the CI-generated checksum
-```
-
-```powershell
-# Windows (PowerShell) — step 2
-(Get-FileHash recall-{version}-windows-amd64-installer.exe).Hash -eq `
-  (Get-Content recall-{version}-windows-amd64-installer.exe.sha256).Split()[0].ToUpper()
-```
-
-```sh
-# macOS — step 2
-shasum -a 256 --check recall-{version}-darwin-arm64.dmg.sha256
-
-# Linux / WSL — step 2
-sha256sum --check recall-{version}-linux-amd64.tar.gz.sha256
-```
-
-`True` (PowerShell) or `OK` (macOS/Linux) means the file is intact. Any mismatch means re-download.
-
-Every release also includes `recall-{version}-sbom.spdx.json` — a bill of materials listing every dependency the release was built from.
-
-## Prerequisites
-
-- **Tesseract OCR 5.x** — required for screenshot parsing. Only the 5.x series is officially supported; 3.x / 4.x binaries are detected and flagged with a caution warning (parsing may produce incorrect results).
-  - **Windows**: download the **5.x** installer from [UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki) and run it with default options. Recall auto-detects the install path on first launch.
-  - macOS / Linux: see the [macOS](docs/install-macos.md) and [Linux](docs/install-linux.md) install guides.
-  - Use **Ingest → Engine** to point Recall at a non-default Tesseract location if needed.
-
-Recall stores settings and the match database at:
-
-- **Windows**: `%AppData%\Recall\`
-- macOS: `~/Library/Application Support/Recall/`
-- Linux: `~/.config/recall/`
+Every release also includes `recall-{version}-sbom.spdx.json` — a
+software bill of materials listing every dependency.
 
 ## Capturing matches
 
@@ -153,8 +128,6 @@ reading here — the desktop app is all you need.
 | [🖥️ Use without the desktop app](docs/server.md) | You want browser access, or to run Recall on a headless machine. |
 | [🐳 Run in Docker](docs/docker.md) | You run containers on a home lab or NAS. |
 | [📊 Charts & Dashboards](docs/grafana.md) | You want SR-over-time graphs and win-rate charts in Grafana. |
-
-See [docs/advanced.md](docs/advanced.md) for a guided overview of all three.
 
 ## Contributing
 
