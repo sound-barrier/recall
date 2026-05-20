@@ -461,6 +461,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/check-update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check for a newer release
+         * @description Queries the GitHub releases API for the latest stable release and
+         *     compares it against the running build version. Returns
+         *     `available: false` when already up to date, running a dev build,
+         *     or when the API is unreachable (network failures are silenced).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Update availability info. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description True when a GitHub API call completed successfully.
+                             *     False on network failure — show nothing in that case.
+                             * @example true
+                             */
+                            checked: boolean;
+                            /**
+                             * @description True when the running version is a dev build. The
+                             *     latest release is then informational context, not an
+                             *     upgrade prompt.
+                             * @example false
+                             */
+                            dev_build: boolean;
+                            /**
+                             * @description True when the latest release is newer than the running
+                             *     version (only meaningful when dev_build=false).
+                             * @example true
+                             */
+                            available: boolean;
+                            /** @example 0.0.15 */
+                            latest: string;
+                            /** @example https://github.com/sound-barrier/recall/releases/tag/v0.0.15 */
+                            url: string;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/version": {
         parameters: {
             query?: never;
