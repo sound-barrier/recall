@@ -76,7 +76,13 @@ For macOS and Linux setup details (Gatekeeper bypass, package manager Tesseract 
 
 ### Verifying downloads
 
-Every release binary and package ships with a companion `.sha256` file containing its SHA256 hash. Download both the artifact and its `.sha256` file, then verify:
+Every release binary is attested with [SLSA provenance](https://slsa.dev/) signed by GitHub's Sigstore integration, proving the file was produced by this repo's CI — not a third party. Verify with the [GitHub CLI](https://cli.github.com/):
+
+```sh
+gh attestation verify recall-{version}-windows-amd64-installer.exe --repo sound-barrier/recall
+```
+
+Every release binary also ships with a companion `.sha256` checksum file. Download both the artifact and its `.sha256` file, then verify:
 
 ```powershell
 # Windows (PowerShell)
