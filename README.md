@@ -37,16 +37,11 @@ flowchart LR
 - [Prerequisites](#prerequisites)
 - [Capturing matches](#capturing-matches)
 
-**Advanced**
+**Advanced** — most users can skip these
 
-- [Running as a server](#running-as-a-server)
-- [Running via Docker](#running-via-docker) — full details in [docs/docker.md](docs/docker.md)
-- [Metrics & Grafana](#metrics--grafana)
-  - [Option A: Bundled Podman/Docker Compose (recommended)](#option-a-bundled-podmandocker-compose-recommended)
-  - [Option B: Your own Docker/Podman containers](#option-b-your-own-dockerpodman-containers)
-  - [Option C: Native installation (no containers)](#option-c-native-installation-no-containers)
-  - [Troubleshooting](#troubleshooting)
-  - [Metric overview](#metric-overview)
+- [🖥️ Use without the desktop app](docs/server.md) — browser access, headless mode, run on startup
+- [🐳 Run in Docker](docs/docker.md) — containers, home lab, NAS
+- [📊 Charts & Dashboards](docs/grafana.md) — Grafana, SR over time, win-rate charts
 
 **Project**
 
@@ -145,219 +140,16 @@ Overwatch saves screenshots to `Documents\Overwatch\ScreenShots\Overwatch\` on W
 
 # Advanced
 
-The sections below cover headless deployment, Docker containers, and the optional Prometheus/Grafana integration. If you're using the desktop app and just want to see your matches, you can stop reading here — these aren't required for normal use.
+If you're just playing Overwatch and want to track your stats, you can stop
+reading here — the desktop app is all you need.
 
-## Running as a server
+| Guide | For when… |
+|---|---|
+| [🖥️ Use without the desktop app](docs/server.md) | You want browser access, or to run Recall on a headless machine. |
+| [🐳 Run in Docker](docs/docker.md) | You run containers on a home lab or NAS. |
+| [📊 Charts & Dashboards](docs/grafana.md) | You want SR-over-time graphs and win-rate charts in Grafana. |
 
-> 🔧 **Advanced.** Skip this unless you specifically want to run Recall on a machine without a display (a home server, a remote box, a Raspberry Pi) and access the UI from a browser on another device.
-
-In addition to the desktop app, Recall can run as a headless HTTP server. Open `http://127.0.0.1:7000` in any browser on the same machine to access the full match dashboard.
-
-```sh
-./Recall-server                 # dedicated server binary — always starts in HTTP mode
-./Recall --server               # Wails binary with runtime flag — same HTTP mode
-./Recall -s                     # short form
-```
-
-The server listens on `http://127.0.0.1:7000` by default (localhost-only). Set
-`RECALL_SERVER_ADDR` to override (e.g. `RECALL_SERVER_ADDR=0.0.0.0:7000` to accept
-connections from other hosts on your network). Recall has no authentication —
-when binding to a non-loopback address, put it behind a reverse proxy with auth
-(or restrict access at the network layer). Endpoints that accept filesystem
-paths (`/api/screenshots-dir`, `/api/tesseract-path`) validate input before it
-reaches `os.Stat` / `exec.Command`; see the validation rules in each
-endpoint's description in the spec below.
-
-The HTTP REST + SSE surface is documented in [`api/openapi.yaml`](api/openapi.yaml) (OpenAPI 3.1.0). Browse it with `make swagger` to spin up Swagger UI at <http://localhost:8080>, or point any OpenAPI-compatible client at the YAML directly.
-
-## Running via Docker
-
-> 🐳 **Most advanced.** You only need this if you want to run Recall inside a container (e.g. alongside other containerized services on a NAS or home lab). For everyday use, the desktop app or the bare server binary above is simpler.
-
-A pre-built image with Tesseract included is on GHCR. Quick start:
-
-```sh
-docker run \
-  -e RECALL_SERVER_ADDR=0.0.0.0:7000 \
-  -p 7000:7000 \
-  ghcr.io/sound-barrier/recall-server:latest
-```
-
-Open `http://localhost:7000` once the container is running. For persistent data, bind-mounting a screenshots volume, and image tag semantics, see **[docs/docker.md](docs/docker.md)**.
-
-## Metrics & Grafana
-
-> 📊 **Advanced — optional.** Recall already shows your full match history in the **Matches** tab without any of this. Set up Prometheus + Grafana only if you want time-series dashboards (win-rate trends, SR over time, damage-vs-healing scatter) on top of the in-app views.
-
-The app exposes its parsed match history as Prometheus metrics on
-`http://localhost:9091/metrics` whenever it's running. Each sample carries
-the match's actual end time (`date + finished_at`) as its timestamp, so
-Grafana plots match stats at the moment they happened — not at scrape time.
-
-Three options are available for running Prometheus and Grafana, in increasing order of complexity.
-
-### Option A: Bundled Podman/Docker Compose (recommended)
-
-The repo ships `docker-compose.yml` and helper scripts that start a
-pre-configured Prometheus + Grafana stack with the Recall dashboard
-auto-provisioned.
-
-**One-time (macOS):**
-
-```sh
-brew install podman podman-compose   # skip if using Docker Desktop / Colima
-```
-
-```sh
-./scripts/stack-up.sh                # starts podman VM if needed, then compose up
-./scripts/stack-down.sh              # stop (volumes preserved)
-./scripts/stack-down.sh --machine    # also stop the podman VM
-./scripts/prometheus-clear.sh        # wipe Prometheus TSDB only
-```
-
-- Prometheus: <http://localhost:9090>
-- Grafana: <http://localhost:3000>  (login `admin` / `admin`)
-
-The compose file is plain v3 — `docker compose` (Docker Desktop / Colima) also
-works. Podman is what we test against.
-
-### Option B: Your own Docker/Podman containers
-
-Use the repo's config files with any container runtime. On Linux add
-`--add-host host.docker.internal:host-gateway` so the container can reach
-the host's Prometheus metrics port; on macOS and Windows with Docker Desktop
-or Podman Desktop `host.docker.internal` resolves automatically.
-
-```sh
-# Prometheus — mounts the repo's prometheus.yml (includes the out-of-order window)
-docker run -d \
-  --name recall-prometheus \
-  -p 9090:9090 \
-  -v "$(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
-  prom/prometheus:v2.53.0
-
-# Grafana — mounts the repo's provisioning directory (datasource + dashboard)
-docker run -d \
-  --name recall-grafana \
-  -p 3000:3000 \
-  --link recall-prometheus:prometheus \
-  -v "$(pwd)/grafana/provisioning:/etc/grafana/provisioning:ro" \
-  grafana/grafana:11.1.0
-```
-
-On Linux, add `--add-host host.docker.internal:host-gateway` to the
-Prometheus `docker run` command. Grafana defaults: `admin` / `admin`.
-
-### Option C: Native installation (no containers)
-
-Install Prometheus and Grafana as local services. Before copying the
-config files, make two edits:
-
-1. In `prometheus.yml`: change the scrape target from
-   `host.docker.internal:9091` to `localhost:9091`.
-2. In `grafana/provisioning/datasources/prometheus.yml`: change the
-   datasource URL from `http://prometheus:9090` to `http://localhost:9090`.
-
-**macOS (Homebrew):**
-
-```sh
-brew install prometheus grafana
-
-cp prometheus.yml /opt/homebrew/etc/prometheus.yml
-mkdir -p /opt/homebrew/etc/grafana/provisioning
-cp -r grafana/provisioning/. /opt/homebrew/etc/grafana/provisioning/
-
-brew services start prometheus
-brew services start grafana
-```
-
-**Linux:**
-
-```sh
-# Prometheus — download from https://prometheus.io/download/ and extract
-sudo cp prometheus.yml /etc/prometheus/prometheus.yml
-sudo systemctl restart prometheus
-
-# Grafana — add the Grafana apt repo per https://grafana.com/docs/grafana/latest/setup-grafana/installation/debian/
-sudo apt install -y grafana
-sudo cp -r grafana/provisioning/. /etc/grafana/provisioning/
-sudo systemctl restart grafana-server
-```
-
-**Windows:**
-
-```powershell
-winget install Grafana.Grafana
-# Prometheus: download from https://prometheus.io/download/; extract anywhere
-
-# Copy prometheus.yml to the Prometheus working directory
-# Copy grafana/provisioning/ to Grafana's conf/provisioning/ directory
-# Start both services
-```
-
-> **Grafana datasource UID**: every panel in `recall.json` hardcodes
-> `"datasource": {"uid": "prometheus"}`. The provisioning file pins this
-> UID automatically. If you add the datasource manually in the Grafana UI
-> instead of using provisioning, set the **UID** field to exactly
-> `prometheus` — otherwise all panels show "datasource not found".
-
-### Troubleshooting
-
-**Grafana shows no data / unsure if metrics are flowing**
-Run the verifier — it walks SQLite → /metrics → Prometheus container →
-scrape state → TSDB and prints a ✓/✗ for each layer:
-
-```sh
-./scripts/verify-stack.sh
-```
-
-The first ✗ line tells you which stage is broken; the rest of the script
-keeps going so you see the state of everything else too.
-
-**`Cannot connect to the Docker daemon …` / `podman ps` exits 125**
-The Linux VM that hosts the daemon isn't running. For Podman, run
-`podman machine start` (one-time `podman machine init` if it's never been
-created). For Docker on Homebrew, you'll need a separate runtime —
-`colima start` is the easiest.
-
-**`error getting credentials … docker-credential-gcloud … executable file not found`**
-Your `~/.docker/config.json` has a `credsStore` or `credHelpers` entry
-(usually left behind by `gcloud auth configure-docker`). Podman's image-pull
-path falls back to `~/.docker/config.json` for credential helpers even when
-its own `auth.json` exists, so just creating an empty Podman auth file
-does NOT fix this — you have to strip the entries from the Docker config
-itself:
-
-```sh
-cp ~/.docker/config.json ~/.docker/config.json.bak
-jq 'del(.credsStore, .credHelpers)' ~/.docker/config.json > /tmp/dc \
-  && mv /tmp/dc ~/.docker/config.json
-podman-compose down                 # clear any half-started state
-podman-compose up -d
-```
-
-This removes both the global `credsStore` line and the per-registry
-`credHelpers` map; any `auths` or other settings in the file are
-preserved. To restore the gcloud helpers later, either
-`cp ~/.docker/config.json.bak ~/.docker/config.json` or re-run
-`gcloud auth configure-docker`.
-
-The "Recall" dashboard is auto-provisioned: eliminations per match, SR
-over time, win rate by hero, and damage-vs-healing scatter.
-
-Override the metrics endpoint address with `OWMETRICS_METRICS_ADDR` (e.g.
-`OWMETRICS_METRICS_ADDR=:9292 wails dev`). Prometheus accepts historical
-timestamps because the stack runs with `--storage.tsdb.out-of-order-time-window=8760h`.
-
-### Metric overview
-
-| Metric | Labels | Notes |
-|---|---|---|
-| `recall_match_eliminations` (and `_assists`, `_deaths`, `_damage`, `_healing`, `_mitigation`) | `match_key, map, type, mode, result, hero, role` | Core scoreboard stats. |
-| `recall_match_result` | …, `result` | Constant `1`; `count()` in Grafana gives match counts grouped by outcome. |
-| `recall_match_rank_level` | … | Competitive rank sub-division (1–5). |
-| `recall_match_sr` / `recall_match_sr_change` | …, `hero`, `role` | Per-hero SR + delta from each match. |
-| `recall_hero_stat` | …, `hero`, `role`, `stat` | Open-ended per-hero stats (`weapon_accuracy`, `players_saved`, …). |
+See [docs/advanced.md](docs/advanced.md) for a guided overview of all three.
 
 ## Contributing
 
