@@ -27,6 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write    # needed by Sigstore to mint a short-lived cert
+      attestations: write  # needed to write SLSA provenance to the repo
     env:
       DOCKER_BUILDKIT: "1"
     steps:
@@ -86,6 +88,21 @@ jobs:
           cp dist/server-mac/Recall-server-arm64 "_tar/recall-server-${PKG_VERSION}-darwin-arm64/recall-server"
           tar -czf "recall-server-${PKG_VERSION}-darwin-arm64.tar.gz" -C _tar "recall-server-${PKG_VERSION}-darwin-arm64"
 
+      # Generate SLSA provenance attestations for every packaged artifact.
+      # Attestations are stored in the repo's attestation store and can be
+      # verified offline with: gh attestation verify <file> --repo sound-barrier/recall
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            recall-*-linux-amd64.tar.gz
+            recall-*-linux-amd64.deb
+            recall-server-*-linux-amd64.tar.gz
+            recall-server-*-linux-amd64.deb
+            recall-*-windows-amd64-installer.exe
+            recall-server-*-windows-amd64.exe
+            recall-server-*-darwin-arm64.tar.gz
+
       - name: Upload Docker-built artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -104,6 +121,8 @@ jobs:
     runs-on: macos-latest
     permissions:
       contents: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v6
 
@@ -128,6 +147,11 @@ jobs:
             -srcfolder dist/mac/Recall-arm64.app \
             -ov -format UDZO \
             "recall-${PKG_VERSION}-darwin-arm64.dmg"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: recall-*-darwin-arm64.dmg
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v7
