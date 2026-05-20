@@ -76,28 +76,38 @@ For macOS and Linux setup details (Gatekeeper bypass, package manager Tesseract 
 
 ### Verifying downloads
 
-Every release binary is attested with [SLSA provenance](https://slsa.dev/) signed by GitHub's Sigstore integration, proving the file was produced by this repo's CI — not a third party. Verify with the [GitHub CLI](https://cli.github.com/):
+Every release binary **and its `.sha256` checksum file** are attested with [SLSA provenance](https://slsa.dev/) signed by GitHub's Sigstore integration. This proves both the file and its checksum were produced by this repo's CI — not a third party. Requires the [GitHub CLI](https://cli.github.com/).
+
+**Option A — verify the binary directly (strongest):**
 
 ```sh
 gh attestation verify recall-{version}-windows-amd64-installer.exe --repo sound-barrier/recall
 ```
 
-Every release binary also ships with a companion `.sha256` checksum file. Download both the artifact and its `.sha256` file, then verify:
+**Option B — verify the checksum file, then use it (two-step chain):**
+
+```sh
+# Step 1: prove the .sha256 file came from CI
+gh attestation verify recall-{version}-windows-amd64-installer.exe.sha256 --repo sound-barrier/recall
+
+# Step 2: confirm the installer matches the CI-generated checksum
+```
 
 ```powershell
-# Windows (PowerShell)
-(Get-FileHash recall-{version}-windows-amd64.exe).Hash -eq (Get-Content recall-{version}-windows-amd64.exe.sha256).Split()[0].ToUpper()
+# Windows (PowerShell) — step 2
+(Get-FileHash recall-{version}-windows-amd64-installer.exe).Hash -eq `
+  (Get-Content recall-{version}-windows-amd64-installer.exe.sha256).Split()[0].ToUpper()
 ```
 
 ```sh
-# macOS
+# macOS — step 2
 shasum -a 256 --check recall-{version}-darwin-arm64.dmg.sha256
 
-# Linux / WSL
+# Linux / WSL — step 2
 sha256sum --check recall-{version}-linux-amd64.tar.gz.sha256
 ```
 
-A match prints `True` (PowerShell) or `OK` (macOS/Linux); any mismatch means the file should be re-downloaded.
+`True` (PowerShell) or `OK` (macOS/Linux) means the file is intact. Any mismatch means re-download.
 
 Every release also includes `recall-{version}-sbom.spdx.json` — a bill of materials listing every dependency the release was built from.
 
