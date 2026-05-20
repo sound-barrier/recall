@@ -51,7 +51,7 @@ flowchart LR
 
 The desktop app is the simplest way to use Recall. Five steps from zero to your first match record:
 
-1. **Install Recall** — grab `recall-{version}-windows-amd64.exe` from [GitHub Releases](https://github.com/sound-barrier/recall/releases). For macOS or Linux, see the [Installation](#installation) section below.
+1. **Install Recall** — grab `recall-{version}-windows-amd64-installer.exe` from [GitHub Releases](https://github.com/sound-barrier/recall/releases) and run it. For macOS or Linux, see the [Installation](#installation) section below.
 2. **Install Tesseract OCR 5.x** — Recall uses it to read your screenshots. Download the **5.x** installer from [UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki) and run it with the default options. (macOS/Linux instructions are in [docs/install-macos.md](docs/install-macos.md) and [docs/install-linux.md](docs/install-linux.md).)
 3. **Launch Recall and pick a screenshots folder** under **Settings → Directories**. Overwatch's default on Windows is `Documents\Overwatch\ScreenShots\Overwatch\`.
 4. **Capture screenshots in Overwatch** with **F12** after each match — see [Capturing matches](#capturing-matches) for which post-match tabs to screenshot.
@@ -65,7 +65,7 @@ Pre-built binaries for every tagged release are on the [GitHub Releases](https:/
 
 | Platform | Desktop app | Server binary |
 |---|---|---|
-| **Windows** | `recall-{version}-windows-amd64.exe` | `recall-server-{version}-windows-amd64.exe` |
+| **Windows** | `recall-{version}-windows-amd64-installer.exe` | `recall-server-{version}-windows-amd64.exe` |
 | macOS arm64 | `recall-{version}-darwin-arm64.dmg` | `recall-server-{version}-darwin-arm64.tar.gz` |
 | Linux | `recall-{version}-linux-amd64.tar.gz` · `recall-{version}-linux-amd64.deb` | `recall-server-{version}-linux-amd64.tar.gz` · `recall-server-{version}-linux-amd64.deb` |
 | Docker | — | `ghcr.io/sound-barrier/recall-server:latest` |

@@ -100,11 +100,12 @@ RUN wails build -s -platform linux/amd64 -trimpath -tags webkit2_4_1 \
 FROM go-base AS windows-builder
 
 # mingw-w64 provides the x86_64 Windows cross-compiler (gcc + g++).
-# This is needed because Wails uses CGo for the WebView2 bridge.
+# nsis provides makensis, which Wails calls to assemble the installer.
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc-mingw-w64-x86-64 \
         g++-mingw-w64-x86-64 \
+        nsis \
     && rm -rf /var/lib/apt/lists/*
 
 COPY . .
@@ -117,8 +118,14 @@ ENV CGO_ENABLED=1 \
     CC=x86_64-w64-mingw32-gcc \
     CXX=x86_64-w64-mingw32-g++
 
+# VIProductVersion in the NSIS script must be numeric (x.x.x.x).
+# Strip any pre-release suffix (e.g. 0.0.10-beta.0 → 0.0.10) before
+# injecting into wails.json; fall back to 0.0.0 for local dev builds.
 ARG VERSION=dev
-RUN wails build -s -platform windows/amd64 -trimpath -nsis \
+# hadolint ignore=DL4006
+RUN NSIS_VER=$(echo "${VERSION}" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+' || echo '0.0.0') && \
+    sed -i "s|\"productVersion\": \"[^\"]*\"|\"productVersion\": \"${NSIS_VER}\"|" wails.json && \
+    wails build -s -platform windows/amd64 -trimpath -nsis \
         -ldflags "-X recall/pkg/app.Version=${VERSION}"
 
 
@@ -127,10 +134,10 @@ FROM scratch AS linux-export
 COPY --from=linux-builder /app/build/bin/Recall /Recall
 
 
-# ─── Stage 6: Windows export (just the binary + installer) ──
+# ─── Stage 6: Windows export (binary + NSIS installer) ──────
 FROM scratch AS windows-export
 COPY --from=windows-builder /app/build/bin/Recall.exe /Recall.exe
-COPY --from=windows-builder /app/build/bin/recall-installer.exe* /
+COPY --from=windows-builder /app/build/bin/Recall-amd64-installer.exe /Recall-amd64-installer.exe
 
 
 # ════════════════════════════════════════════════════════════

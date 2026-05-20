@@ -53,8 +53,8 @@ build-linux: ## Linux/amd64 Wails app via Docker → dist/linux/Recall
 	@echo "[ recall ] ✓  dist/linux/Recall"
 
 
-build-windows: ## Windows/amd64 Wails app via Docker → dist/windows/Recall.exe
-	@echo "[ recall ] Building windows/amd64 Wails app via Docker (mingw-w64)…"
+build-windows: ## Windows/amd64 Wails app + NSIS installer via Docker → dist/windows/
+	@echo "[ recall ] Building windows/amd64 Wails app + NSIS installer via Docker (mingw-w64 + nsis)…"
 	@mkdir -p $(DIST_WINDOWS)
 	$(DOCKER) build \
 	    --file $(DOCKERFILE) \
@@ -62,7 +62,7 @@ build-windows: ## Windows/amd64 Wails app via Docker → dist/windows/Recall.exe
 	    --target windows-export \
 	    --output type=local,dest=$(DIST_WINDOWS) \
 	    .
-	@echo "[ recall ] ✓  dist/windows/"
+	@echo "[ recall ] ✓  dist/windows/Recall.exe + dist/windows/Recall-amd64-installer.exe"
 
 
 # Apple SDK is not redistributable — must run on macOS with Xcode CLT.
