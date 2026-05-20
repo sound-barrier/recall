@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Ref } from 'vue'
 import type { MatchRecord } from './api'
 import {
+  GetVersion,
   ParseScreenshots,
   GetMatchResults,
   GetScreenshotsDir,
@@ -72,6 +73,7 @@ async function goToView(next: string) {
 // "Last run · X ago" feedback under the Parse button on the settings
 // page. Persisted to localStorage so the timestamp survives reloads.
 const lastParsedAt = ref<number | null>(null)
+const appVersion = ref('')
 
 // Tesseract status — mirrors the Go side's TesseractStatus struct.
 // When .found is false, a System Alert banner blocks the main views
@@ -743,6 +745,7 @@ onMounted(() => {
     if (v) lastParsedAt.value = Number(v) || null
   } catch (_) {}
 
+  GetVersion().then(v => { appVersion.value = v }).catch(() => {})
   load()
   EventsOn('parse-complete', () => { load(); lastParsedAt.value = Date.now(); try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {} })
   EventsOn('parse-progress', (data: ParseProgressEvent) => {
@@ -900,6 +903,7 @@ onBeforeUnmount(() => {
               <span class="score-label">Drew</span>
             </div>
           </div>
+          <span v-if="appVersion" class="app-version">v{{ appVersion }}</span>
         </div>
       </header>
 
@@ -4739,6 +4743,15 @@ body {
 }
 .engine-status.ok .engine-state   { color: var(--win); }
 .engine-status.fail .engine-state { color: var(--loss); }
+
+.app-version {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-feature-settings: "tnum";
+  user-select: none;
+}
 
 .engine-version {
   font-family: var(--mono);
