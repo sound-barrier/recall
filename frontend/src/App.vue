@@ -83,8 +83,13 @@ const updateInfo = ref<UpdateInfo | null>(null)
 // When .found is false, a System Alert banner blocks the main views
 // and Parse/Watch controls disable themselves. Refreshed on mount and
 // after every path-changing call.
-const tesseractStatus = ref({ path: '', found: false, version: '', error: '', default: '' })
+const tesseractStatus = ref({ path: '', found: false, version: '', supported: false, error: '', default: '' })
 const tesseractReady = computed(() => !!tesseractStatus.value?.found)
+// True when Tesseract is found AND is a supported major version (5.x).
+const tesseractSupported = computed(() => tesseractReady.value && !!tesseractStatus.value?.supported)
+
+// Confirmation modal for parsing with an unsupported Tesseract version.
+const showUnsupportedModal = ref(false)
 const tesseractPickerBusy = ref(false)
 
 // Directory the parser reads from. Persisted in data/settings.json on
@@ -251,11 +256,7 @@ async function togglePrometheus(e: Event) {
   }
 }
 
-async function parse() {
-  if (!tesseractReady.value) {
-    error.value = 'Tesseract is not configured. Fix it in Ingest → Engine.'
-    return
-  }
+async function runParse() {
   error.value = ''
   loading.value = true
   parseProgress.value = null
@@ -272,6 +273,25 @@ async function parse() {
     loading.value = false
     parseProgress.value = null
   }
+}
+
+async function parse() {
+  if (!tesseractReady.value) {
+    error.value = 'Tesseract is not configured. Fix it in Ingest → Engine.'
+    return
+  }
+  // If the detected version is unsupported, require explicit confirmation
+  // before running — parsing may produce incorrect results.
+  if (!tesseractSupported.value) {
+    showUnsupportedModal.value = true
+    return
+  }
+  await runParse()
+}
+
+async function confirmUnsupportedParse() {
+  showUnsupportedModal.value = false
+  await runParse()
 }
 
 // Whether the parse-progress detail panel (current file + log) is expanded.
@@ -912,19 +932,19 @@ onBeforeUnmount(() => {
             <span v-if="appVersion" class="app-version">v{{ appVersion }}</span>
             <button
               v-if="updateInfo?.dev_build"
-              class="ver-btn ver-btn--dev"
+              class="ver-btn ver-btn-dev"
               :title="`Open release page for v${updateInfo.latest}`"
               @click="OpenURL(updateInfo.url)"
             >↗ view release v{{ updateInfo.latest }}</button>
             <button
               v-else-if="updateInfo?.available"
-              class="ver-btn ver-btn--update"
+              class="ver-btn ver-btn-update"
               :title="`Download v${updateInfo.latest}`"
               @click="OpenURL(updateInfo.url)"
             >↑ update to v{{ updateInfo.latest }}</button>
             <span
               v-else-if="updateInfo?.checked"
-              class="ver-btn ver-btn--current"
+              class="ver-btn ver-btn-current"
             >✓ up to date</span>
           </div>
         </div>
@@ -1085,6 +1105,17 @@ onBeforeUnmount(() => {
                 <p v-if="!tesseractReady && tesseractStatus.error" class="engine-error">
                   {{ tesseractStatus.error }}
                 </p>
+                <div v-if="tesseractReady && !tesseractSupported" class="engine-unsupported-warn" role="alert">
+                  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="warn-icon">
+                    <path d="M12 2.6 L22.4 20.5 L1.6 20.5 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                    <line x1="12" y1="10" x2="12" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    <circle cx="12" cy="17.5" r="1.2" fill="currentColor" />
+                  </svg>
+                  <span>
+                    Tesseract {{ tesseractStatus.version }} is not officially supported. Only version 5.x is tested with Recall.
+                    Proceed at your own caution — results may be incorrect.
+                  </span>
+                </div>
                 <p
                   v-if="tesseractStatus.default && tesseractStatus.default !== tesseractStatus.path"
                   class="engine-meta"
@@ -2002,6 +2033,32 @@ onBeforeUnmount(() => {
         </div>
       </div><!-- /.matches-view -->
     </div>
+
+    <!-- Unsupported Tesseract version confirmation modal -->
+    <transition name="modal-fade">
+      <div v-if="showUnsupportedModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" @click.self="showUnsupportedModal = false">
+        <div class="modal-box">
+          <div class="modal-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28">
+              <path d="M12 2.6 L22.4 20.5 L1.6 20.5 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+              <line x1="12" y1="10" x2="12" y2="15.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <circle cx="12" cy="17.8" r="1.2" fill="currentColor" />
+            </svg>
+          </div>
+          <h3 id="modal-title" class="modal-title">Unsupported Tesseract Version</h3>
+          <p class="modal-body">
+            Tesseract <strong>{{ tesseractStatus.version }}</strong> is detected. Only version <strong>5.x</strong> is officially tested with Recall.
+          </p>
+          <p class="modal-body modal-caution">
+            Proceed at your own caution — OCR results may be incorrect or incomplete with this version.
+          </p>
+          <div class="modal-actions">
+            <button class="btn ghost" @click="showUnsupportedModal = false">Cancel</button>
+            <button class="btn primary" @click="confirmUnsupportedParse">Continue Anyway</button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -4804,34 +4861,36 @@ body {
 }
 
 /* Dev build: informational link to latest release */
-.ver-btn--dev {
+.ver-btn-dev {
   background: transparent;
   border-color: var(--border);
   color: var(--text-faint);
   cursor: pointer;
 }
-.ver-btn--dev:hover {
+
+.ver-btn-dev:hover {
   border-color: var(--border-strong);
   color: var(--text-dim);
   background: var(--surface-2);
 }
 
 /* Update available: orange call-to-action */
-.ver-btn--update {
+.ver-btn-update {
   background: transparent;
   border-color: var(--accent);
   color: var(--accent);
   cursor: pointer;
   box-shadow: 0 0 8px -3px var(--accent-glow);
 }
-.ver-btn--update:hover {
+
+.ver-btn-update:hover {
   background: var(--accent);
   color: #1a0a00;
   box-shadow: 0 0 14px -3px var(--accent-glow);
 }
 
 /* Up to date: non-interactive status label */
-.ver-btn--current {
+.ver-btn-current {
   background: transparent;
   border-color: var(--win-line);
   color: var(--win);
@@ -4888,6 +4947,99 @@ body {
 
 .engine-control {
   align-items: flex-end;
+}
+
+.engine-unsupported-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 3px;
+  font-family: var(--body);
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--accent) 80%, var(--text));
+  line-height: 1.55;
+  max-width: 60ch;
+}
+
+.engine-unsupported-warn .warn-icon {
+  flex-shrink: 0;
+  margin-top: 0.12rem;
+  color: var(--accent);
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 72%);
+  backdrop-filter: blur(4px);
+}
+
+.modal-box {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 2rem 2.2rem 1.6rem;
+  max-width: 420px;
+  width: calc(100% - 3rem);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 60%);
+}
+
+.modal-icon {
+  color: var(--accent);
+  margin-bottom: 0.9rem;
+}
+
+.modal-title {
+  font-family: var(--display);
+  font-size: 1.1rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin: 0 0 0.9rem;
+}
+
+.modal-body {
+  font-family: var(--body);
+  font-size: 0.88rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin: 0 0 0.6rem;
+}
+
+.modal-body strong {
+  color: var(--text);
+}
+
+.modal-caution {
+  color: color-mix(in srgb, var(--accent) 75%, var(--text-dim));
+  font-style: italic;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
 }
 
 /* Inline button styled as a text-link — used in the "Use default" cue. */
