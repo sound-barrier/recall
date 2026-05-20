@@ -28,13 +28,15 @@ pre-commit:
 
     # ── Frontend ──────────────────────────────────────────────────────
     eslint:
-      glob: "frontend/src/**/*.{ts,vue}"
-      run: cd frontend && npx eslint --fix {staged_files}
+      root: "frontend"
+      glob: "src/**/*.{ts,vue}"
+      run: npx eslint --fix {staged_files}
       stage_fixed: true
 
     stylelint:
-      glob: "frontend/src/**/*.{css,vue}"
-      run: cd frontend && npx stylelint --fix {staged_files}
+      root: "frontend"
+      glob: "src/**/*.{css,vue}"
+      run: npx stylelint --fix {staged_files}
       stage_fixed: true
 
     # ── OpenAPI ───────────────────────────────────────────────────────

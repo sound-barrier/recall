@@ -37,6 +37,7 @@ import {
   screenshotURL,
   computeEarliestMatchDateTime,
 } from './match-helpers'
+import { useTheme } from './composables/useTheme'
 
 interface ParseProgressEvent {
   done: number
@@ -688,18 +689,7 @@ const activeFilterCount = computed(() => {
 // this the user would have to click Parse manually to see new matches
 // land in the UI even though the data is already in SQLite.
 
-// Theme: 'dark' (default) or 'light'. Persisted to localStorage so the
-// choice survives across launches. Applied by setting data-theme on the
-// document root, which scopes the light-mode CSS variable overrides.
-const themeMode = ref('dark')
-function applyTheme(mode: string) {
-  document.documentElement.setAttribute('data-theme', mode)
-}
-function toggleTheme() {
-  themeMode.value = themeMode.value === 'dark' ? 'light' : 'dark'
-  applyTheme(themeMode.value)
-  try { localStorage.setItem('recall.theme', themeMode.value) } catch (_) {}
-}
+const { themeMode, toggleTheme } = useTheme()
 
 // Multi-select popover lifecycle. The trigger button toggles the field
 // open; an outside-click or ESC closes it. Only one popover is ever
@@ -726,11 +716,6 @@ function onDocKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
-  let stored = null
-  try { stored = localStorage.getItem('recall.theme') } catch (_) {}
-  if (stored === 'light' || stored === 'dark') themeMode.value = stored
-  applyTheme(themeMode.value)
-
   // Restore last-parse timestamp so the Settings page shows the right
   // "Last run · …" hint immediately on launch, not just after a fresh
   // parse in the current session.
