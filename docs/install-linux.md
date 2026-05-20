@@ -1,7 +1,7 @@
 # Installing Recall on Linux
 
 Recall provides Linux/amd64 binaries. ARM64 Linux is not currently supported
-by the pre-built binary (you can build from source).
+by the pre-built binary — you can [build from source](../CONTRIBUTING.md#building).
 
 ## 1. Download
 

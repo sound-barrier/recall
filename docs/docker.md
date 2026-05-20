@@ -3,7 +3,7 @@
 > **Most advanced.** You only need this if you want to run Recall inside a
 > container (e.g. alongside other containerized services on a NAS or home lab).
 > For everyday use, the desktop app or the bare server binary is simpler — you
-> don't need Docker just to use Recall. See [Running as a server](../README.md#running-as-a-server)
+> don't need Docker just to use Recall. See [Running without the desktop app](server.md)
 > for the lighter-weight headless option.
 
 A pre-built Docker image with Tesseract included is pushed to GHCR on every
