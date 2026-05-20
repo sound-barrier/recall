@@ -40,7 +40,7 @@ flowchart LR
 **Advanced**
 
 - [Running as a server](#running-as-a-server)
-- [Running via Docker](#running-via-docker)
+- [Running via Docker](#running-via-docker) — full details in [docs/docker.md](docs/docker.md)
 - [Metrics & Grafana](#metrics--grafana)
   - [Option A: Bundled Podman/Docker Compose (recommended)](#option-a-bundled-podmandocker-compose-recommended)
   - [Option B: Your own Docker/Podman containers](#option-b-your-own-dockerpodman-containers)
@@ -172,9 +172,9 @@ The HTTP REST + SSE surface is documented in [`api/openapi.yaml`](api/openapi.ya
 
 ## Running via Docker
 
-> 🐳 **Most advanced.** You only need this if you want to run Recall inside a container (e.g. alongside other containerized services on a NAS or home lab). For everyday use, the desktop app or the bare server binary above is simpler — you don't need to install Docker just to use Recall.
+> 🐳 **Most advanced.** You only need this if you want to run Recall inside a container (e.g. alongside other containerized services on a NAS or home lab). For everyday use, the desktop app or the bare server binary above is simpler.
 
-A pre-built Docker image with Tesseract included is pushed to GHCR on every tagged release. The `:latest` tag tracks the most recent **stable** release; prereleases (tags with a hyphenated suffix like `v0.1.0-beta.0`) publish only their exact `:<version>` and never move `:latest`, so `docker pull recall-server:latest` always lands on a non-prerelease build.
+A pre-built image with Tesseract included is on GHCR. Quick start:
 
 ```sh
 docker run \
@@ -183,18 +183,7 @@ docker run \
   ghcr.io/sound-barrier/recall-server:latest
 ```
 
-Open `http://localhost:7000` in your browser once the container is running. The example above is the bare minimum and doesn't persist anything — for real use, bind-mount your screenshots folder (read-only is fine) and a volume for the SQLite database + settings:
-
-```sh
-docker run \
-  -e RECALL_SERVER_ADDR=0.0.0.0:7000 \
-  -p 7000:7000 \
-  -v ~/Documents/Overwatch/ScreenShots/Overwatch:/screenshots:ro \
-  -v recall-data:/root/.config/recall \
-  ghcr.io/sound-barrier/recall-server:latest
-```
-
-Then open the UI, go to **Settings → Directories → Change Folder…**, and point it at `/screenshots`. The `recall-data` named volume keeps your parsed matches and settings across container restarts.
+Open `http://localhost:7000` once the container is running. For persistent data, bind-mounting a screenshots volume, and image tag semantics, see **[docs/docker.md](docs/docker.md)**.
 
 ## Metrics & Grafana
 
