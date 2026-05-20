@@ -26,7 +26,7 @@ WAILS_FLAGS   := -trimpath
         build-server-linux build-server-windows build-server-mac build-server-all \
         build-server-container \
         lint lint-go lint-js lint-css lint-html lint-docker \
-        fmt update-deps trivy \
+        fmt update-deps trivy check-deps \
         dev clean
 
 help: ## Show this help
@@ -237,6 +237,9 @@ trivy: ## Trivy vulnerability scan (fails on HIGH/CRITICAL)
 	@echo "[ recall ] Running Trivy vulnerability scan…"
 	trivy fs --scanners vuln --exit-code 1 --severity HIGH,CRITICAL .
 	@echo "[ recall ] ✓  No HIGH/CRITICAL vulnerabilities found"
+
+check-deps: ## Check pinned tool versions against latest releases (read-only)
+	@bash scripts/check-deps.sh
 
 ##@ Release
 
