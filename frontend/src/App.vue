@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import type { Ref } from 'vue'
 import type { MatchRecord } from './api'
 import {
   GetVersion,
@@ -24,14 +23,12 @@ import {
   EventsOff,
 } from './api'
 import {
-  SCREENSHOT_TYPES,
   sshotTypeLabel,
   sourceType,
   detectScreenshotSlots,
   missingRequiredSlots,
   missingOptionalSlots,
   heroesForHeader,
-  matchTime,
   fmtTime,
   formatRelativeTime,
   screenshotURL,
@@ -39,6 +36,7 @@ import {
 } from './match-helpers'
 import { useTheme } from './composables/useTheme'
 import { useFilterPanel } from './composables/useFilterPanel'
+import { useMatchFilters } from './composables/useMatchFilters'
 
 interface ParseProgressEvent {
   done: number
@@ -112,50 +110,24 @@ const prometheusEnabled = ref(false)
 // (1 minute after the last new file).
 const watchEnabled = ref(false)
 
-// Filter state — every field is now an array. Empty array means "no
-// filter for this field"; multiple entries mean "match any of these"
-// (set-union, not intersection). Migrated from single-string refs so
-// the user can stack picks like "Aatlis + Rialto + Numbani" or
-// "Tank OR Support" in one query.
-const filterMode   = ref<string[]>([])
-const filterType   = ref<string[]>([])
-const filterRole   = ref<string[]>([])
-const filterMap    = ref<string[]>([])
-const filterHero   = ref<string[]>([])
-const filterResult = ref<string[]>([])
-// Filter by which OW screenshot type(s) the match was parsed from.
-// Backed by rec.source_types (per-file map populated at parse time).
-const filterSshot  = ref<string[]>([])
-
 const { openFilter, filterSearch, toggleFilterPanel, closeFilterPanel } = useFilterPanel()
 
-// Date/time range filter. Both bound to <input type="datetime-local">,
-// which emits "YYYY-MM-DDTHH:MM" — the same shape as matchTime(rec),
-// so direct string comparison gives correct chronological ordering.
-const filterFrom = ref('')
-const filterTo   = ref('')
-
-// 'desc' = newest first; 'asc' = oldest first.
-const sortDir = ref('desc')
+const {
+  filterFrom, filterTo, sortDir,
+  filterList,
+  modes, types, roles, maps, results, sshotTypes, heroes,
+  filteredSorted,
+  anyFilter, activeFilterCount, undatedMatchCount,
+  toggleFilter, isActive, selectAllFilter, clearFilterField,
+  clearFilters: clearFilterState,
+  resetDateRange, toggleSort,
+} = useMatchFilters(records)
 
 // Per-card expand/collapse state. Object keyed by record id; truthy =
 // expanded. Plain object (not a Set) so Vue's reactivity sees each
 // toggle naturally without needing to reassign the whole container.
 const expanded = ref<Record<number, boolean>>({})
 
-// Map filter-field names to the ref they're stored in. Lets a single
-// toggleFilter() handler power every clickable badge instead of one
-// per field.
-const filterRefs: Record<string, Ref<string[]>> = {
-  mode:   filterMode,
-  type:   filterType,
-  role:   filterRole,
-  map:    filterMap,
-  hero:   filterHero,
-  result: filterResult,
-  sshot:  filterSshot,
-}
-function filterList(field: string): string[] { return filterRefs[field]?.value ?? [] }
 function filterSearchStr(field: string): string { return filterSearch.value[field] ?? '' }
 
 async function load() {
@@ -350,168 +322,10 @@ async function pickDir() {
   }
 }
 
-type StringMatchField = 'mode' | 'type' | 'role' | 'map' | 'result' | 'hero'
-function uniqueValues(field: StringMatchField): string[] {
-  const set = new Set<string>()
-  for (const r of records.value) {
-    const v = r.data?.[field]
-    if (v) set.add(v)
-  }
-  return [...set].sort()
-}
+// clearFilters resets all filter state AND closes any open popover.
+function clearFilters() { clearFilterState(); closeFilterPanel() }
 
-const modes   = computed(() => uniqueValues('mode'))
-const types   = computed(() => uniqueValues('type'))
-const roles   = computed(() => uniqueValues('role'))
-const maps    = computed(() => uniqueValues('map'))
-const results = computed(() => uniqueValues('result'))
-
-// Screenshot-type filter options exposed as a Vue computed so the
-// filter rail's options binding reacts the same way as the dynamic
-// option lists (modes, maps, etc.).
-const sshotTypes = computed(() => SCREENSHOT_TYPES)
-
-// Heroes need a custom collector — uniqueValues('hero') would only pick
-// up the primary/most-played hero on each row. For multi-hero matches
-// (e.g. Rialto with Wuyang/Juno/Kiriko) the secondaries live in
-// heroes_played[]. We union both sources so every hero the user has
-// actually played shows up in the dropdown.
-const heroes = computed(() => {
-  const set = new Set<string>()
-  for (const r of records.value) {
-    if (r.data?.hero) set.add(r.data.hero)
-    for (const hp of (r.data?.heroes_played || [])) {
-      if (hp.hero) set.add(hp.hero)
-    }
-  }
-  return [...set].sort()
-})
-
-const filtered = computed(() =>
-  records.value.filter(r => {
-    const d = r.data || {}
-    if (!d.map) return false
-    if (filterMode.value.length   && !filterMode.value.includes(d.mode   ?? '')) return false
-    if (filterType.value.length   && !filterType.value.includes(d.type   ?? '')) return false
-    if (filterRole.value.length   && !filterRole.value.includes(d.role   ?? '')) return false
-    if (filterMap.value.length    && !filterMap.value.includes(d.map     ?? '')) return false
-    if (filterResult.value.length && !filterResult.value.includes(d.result ?? '')) return false
-    // Screenshot-type filter: union ("any of the picked types is present"
-    // among this match's parsed source files). Falls back to the
-    // detected-slot inference when source_types is missing so existing
-    // rows parsed before type tracking landed remain filterable.
-    if (filterSshot.value.length) {
-      const picks = filterSshot.value
-      const stored = r.source_types ? Object.values(r.source_types) : []
-      let inferred: string[] = []
-      if (stored.length === 0) {
-        inferred = detectScreenshotSlots(r).filter(s => s.present).map(s => s.key)
-      }
-      const present = stored.length ? stored : inferred
-      if (!picks.some(p => present.includes(p))) return false
-    }
-    // Hero filter matches the primary hero OR any hero in heroes_played,
-    // so picking a secondary hero like Juno (47%-second-fiddle on
-    // Rialto) still surfaces that match. With multi-select, ANY of the
-    // chosen heroes need to match — union, not intersection.
-    if (filterHero.value.length) {
-      const picks = filterHero.value
-      const inPrimary   = picks.includes(d.hero ?? '')
-      const inSecondary = (d.heroes_played || []).some(hp => picks.includes(hp.hero))
-      if (!inPrimary && !inSecondary) return false
-    }
-    // Date/time range. When either bound is set, require an EXPLICIT
-    // datetime on the row — date + finished_at, both from the SUMMARY
-    // screen. The match_key fallback used by matchTime() (derived from
-    // screenshot filename) is too approximate to count as the match's
-    // real time, so rows that only have that estimate are excluded
-    // from date-range queries to match the card UI's behavior of not
-    // displaying a datetime for those rows.
-    if (filterFrom.value || filterTo.value) {
-      if (!d.date || !d.finished_at) return false
-      const t = `${d.date}T${d.finished_at}`
-      if (filterFrom.value && t < filterFrom.value) return false
-      if (filterTo.value   && t > filterTo.value)   return false
-    }
-    return true
-  })
-)
-
-const filteredSorted = computed(() => {
-  const list = [...filtered.value]
-  const dir = sortDir.value === 'asc' ? 1 : -1
-  list.sort((a, b) => {
-    const ta = matchTime(a), tb = matchTime(b)
-    if (ta < tb) return -1 * dir
-    if (ta > tb) return  1 * dir
-    return 0
-  })
-  return list
-})
-
-function toggleSort() {
-  sortDir.value = sortDir.value === 'desc' ? 'asc' : 'desc'
-}
-
-// toggleFilter toggles `value` in or out of the field's array filter.
-// Called from match-card badges and from the popover checkbox rows;
-// the same operation in both places means clicking a Rialto chip
-// twice removes Rialto.
-function toggleFilter(field: string, value: string) {
-  if (!value) return
-  const r = filterRefs[field]
-  if (!r) return
-  const arr = r.value
-  const i = arr.indexOf(value)
-  if (i >= 0) r.value = arr.filter((_, j) => j !== i)
-  else        r.value = [...arr, value]
-}
-
-function isActive(field: string, value: string): boolean {
-  const r = filterRefs[field]
-  return !!(r && r.value.includes(value))
-}
-
-// Bulk popover actions.
-function selectAllFilter(field: string, options: string[]) {
-  const r = filterRefs[field]
-  if (!r) return
-  r.value = [...options]
-}
-function clearFilterField(field: string) {
-  const r = filterRefs[field]
-  if (!r) return
-  r.value = []
-}
-
-function clearFilters() {
-  filterMode.value   = []
-  filterType.value   = []
-  filterRole.value   = []
-  filterMap.value    = []
-  filterHero.value   = []
-  filterResult.value = []
-  filterSshot.value  = []
-  filterFrom.value   = ''
-  filterTo.value     = ''
-  openFilter.value   = ''
-}
-
-// Clear just the date-range filter (separate from clearFilters which
-// resets everything). Useful because the native datetime-local picker
-// on macOS doesn't have a built-in way to set the value back to empty
-// once you've selected something.
-function resetDateRange() {
-  filterFrom.value = ''
-  filterTo.value   = ''
-}
-
-// Bounds for the date pickers. min = the earliest match the user has
-// (so picking earlier than that is meaningless — nothing exists to
-// match), max = right now (no future dates can have matches yet).
-// Only matches with explicit date + finished_at count toward the min,
-// because those are the only ones that ever pass the date filter
-// anyway (see the `filtered` computed).
+// Bounds for the date pickers.
 const earliestMatchDateTime = computed(() => computeEarliestMatchDateTime(records.value))
 
 // Local-time "now" formatted as YYYY-MM-DDTHH:MM for the input's max
@@ -641,39 +455,6 @@ function onUnknownPreviewError(filename: string) {
 // missingOptionalSlots, heroesForHeader) live in ./match-helpers.js
 // so they can be unit-tested in isolation. Imported at the top of
 // this file.
-
-const anyFilter = computed(() =>
-  !!(filterMode.value.length || filterType.value.length || filterRole.value.length ||
-     filterMap.value.length  || filterHero.value.length || filterResult.value.length ||
-     filterSshot.value.length ||
-     filterFrom.value || filterTo.value)
-)
-
-// Count of rows that lack a parseable date+finished_at — these are silently
-// excluded by any active date-range filter (the date filter only matches
-// rows with explicit timestamps). Surfaced as a hint near the date inputs
-// so users understand why their visible-count dropped.
-const undatedMatchCount = computed(() =>
-  records.value.filter(r => !(r.data?.date && r.data?.finished_at)).length,
-)
-
-// activeFilterCount counts how many filter fields are non-empty (date
-// from/to count as one each). Drives the small dot on the Matches nav
-// tab so users notice they have filters applied after navigating away
-// and back.
-const activeFilterCount = computed(() => {
-  let n = 0
-  if (filterMode.value.length)   n++
-  if (filterType.value.length)   n++
-  if (filterRole.value.length)   n++
-  if (filterMap.value.length)    n++
-  if (filterHero.value.length)   n++
-  if (filterResult.value.length) n++
-  if (filterSshot.value.length)  n++
-  if (filterFrom.value)          n++
-  if (filterTo.value)            n++
-  return n
-})
 
 // fmtTime is imported from ./match-helpers.js (extracted for testing).
 
