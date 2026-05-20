@@ -13,9 +13,9 @@ set -euo pipefail
 
 log() { printf '\033[1;34m[ postCreate ]\033[0m %s\n' "$*"; }
 
-# Pinned versions — bump deliberately. Matches the workflow files in
-# .github/workflows/ and the per-platform install instructions in
-# CONTRIBUTING.md.
+# Pinned versions — bump deliberately. Run `make check-deps` to see what
+# is out of date. Matches the workflow files in .github/workflows/ and
+# the per-platform install instructions in CONTRIBUTING.md.
 WAILS_VERSION="v2.12.0"
 HADOLINT_VERSION="v2.13.1"
 LEFTHOOK_VERSION="1.13.6"
