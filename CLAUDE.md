@@ -399,17 +399,30 @@ case).
 
 ## CI/CD (`.github/workflows/`)
 
-Three workflows:
+Five workflows:
 
 | File | Trigger | What it does |
 |---|---|---|
 | `ci.yml` | Push or PR to `main` | **Lint** (golangci-lint × both build tags, ESLint + typescript-eslint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral) → **frontend build** → **bundle-size budget** (200 KB JS / 100 KB CSS) → **Go + Vitest unit tests** → **TypeScript `vue-tsc --noEmit`** → **"api.gen.d.ts in sync with `openapi.yaml`" check**. Plus parallel build jobs for Linux/Windows Wails + all server binaries + container image + macOS Wails. Security jobs: **Trivy** (multi-language vuln scan; SARIF uploaded to GitHub Security tab) and **govulncheck** (Go call-graph-aware CVE scan, both build tags). Drift job: **schemathesis** fuzzes a freshly-built server against `api/openapi.yaml`. |
+| `codeql.yml` | Push to `main` | GitHub CodeQL static analysis for Go + JavaScript/TypeScript. Findings appear in the Security tab; surfaced by the CodeQL badge on the README. |
+| `dependency-review.yml` | PR to `main` | Blocks PRs introducing dependencies with vulnerabilities or disallowed licenses (uses `actions/dependency-review-action`). |
 | `release-please.yml` | Push to `main` | Reads Conventional Commits since the last tag, opens/updates a Release PR that bumps `.release-please-manifest.json` + regenerates `CHANGELOG.md`. Merging the PR creates a `vX.Y.Z` tag which fires `release.yml`. Override the computed version with a `Release-As: X.Y.Z[-suffix]` footer in any commit on `main` — useful for one-off prereleases (the hyphenated suffix is what makes GitHub flag the Release as prerelease). Shortcut: `make release-beta VERSION=…`. Full procedure in [RELEASES.md](RELEASES.md). **Note:** release-please PRs show no CI jobs — GitHub does not trigger `pull_request` workflows for `GITHUB_TOKEN`-authored events; the underlying commits were already tested on push to `main`. |
 | `release.yml` | `v*` tags | Builds and publishes release artifacts — see detail below. |
 
 ### `release.yml` detail
 
 Triggered on `v*` tags (push) and on `workflow_dispatch` (manual fallback for when release-please's `GITHUB_TOKEN`-authored tag failed to chain — `make release-fire TAG=…`). Parallel jobs: `build-docker` (Linux + Windows Wails apps + all server binaries via Docker; packages Linux binaries as `.tar.gz` and `.deb` installing to `/usr/local/bin/`), `build-mac` (macOS Wails arm64 `.app` bundle wrapped in a `.dmg` via `hdiutil`, requires Apple runner), `sbom` (generates `recall-{version}-sbom.spdx.json` via `anchore/sbom-action` — SPDX JSON covering Go modules + npm packages), `publish-container` (builds `server-container` stage and pushes to `ghcr.io/<owner>/recall-server`: every tag publishes the exact `:{{version}}`; rolling `:{{major}}.{{minor}}` and `:latest` only push on stable releases — prerelease tags (those with a hyphen, e.g. `v0.1.0-beta.0`) are guarded by `enable=${{ !contains(github.ref_name, '-') }}` so `docker pull recall-server:latest` always lands on a non-prerelease build. See [RELEASES.md](RELEASES.md) → "Stable vs. prerelease at a glance" for the full matrix. GHCR only, not attached to the release; attempts to set visibility to public via API with `continue-on-error` — `GITHUB_TOKEN` lacks the `write:packages` OAuth scope for visibility changes, so the package must be set public once manually via GitHub Package settings), and `release` (waits on `build-docker` + `build-mac` + `sbom`; generates a per-artifact `<filename>.sha256` file for every binary and package — not for the SBOM; uploads all to GitHub Releases). All release artifacts embed the tag version in their filename: `recall-{version}-linux-amd64.tar.gz`, `recall-{version}-darwin-arm64.dmg`, etc. (`v` prefix stripped from the tag). GHCR auth uses `secrets.GITHUB_TOKEN` — no PAT needed; workflow permissions must include `packages: write`.
+
+## Documentation audiences
+
+| File(s) | Audience | Notes |
+|---|---|---|
+| `README.md`, `docs/install-{macos,linux}.md` | Gamers | Quick start + per-platform install. Keep jargon out of these. |
+| `docs/server.md`, `docs/docker.md`, `docs/grafana.md` | IT-savvy users | The README's "Advanced" section gates entry to these. |
+| `CONTRIBUTING.md`, `RELEASES.md` | Developers | Build, lint, release, commit-message rules. |
+| `CLAUDE.md` | This file — AI assistant context. Not user-facing. |
+
+Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifying-your-download` (linked from README's Verifying section), `CONTRIBUTING.md#building` (linked from `install-linux.md`), `CONTRIBUTING.md#pre-commit-hooks-lefthook` (linked from README and RELEASES). Rename a heading and you'll silently break the inbound link.
 
 ## Conventions worth knowing
 
