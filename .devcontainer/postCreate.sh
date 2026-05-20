@@ -38,7 +38,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
 sudo rm -rf /var/lib/apt/lists/*
 
 # ─── Go tooling (CONTRIBUTING.md "go install" lines) ──────────────────
-log "Go tools: gofumpt, goimports-reviser, shfmt, govulncheck, wails, golangci-lint"
+log "Go tools: gofumpt, goimports-reviser, shfmt, govulncheck, deadcode, wails, golangci-lint"
 # golangci-lint via go install matches what ci.yml does (so the version
 # Go-compiled-this-Go-toolchain matches; pre-built binaries are usually
 # built against older Go).
@@ -49,6 +49,7 @@ go install github.com/incu6us/goimports-reviser/v3@latest
 # Installed via go install here to match what ci.yml does.
 go install mvdan.cc/sh/v3/cmd/shfmt@latest
 go install golang.org/x/vuln/cmd/govulncheck@latest
+go install golang.org/x/tools/cmd/deadcode@latest
 go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
 
 # ─── hadolint (Dockerfile linter) ─────────────────────────────────────

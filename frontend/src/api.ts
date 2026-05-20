@@ -15,10 +15,7 @@ import type { components } from './api.gen'
 // Re-exported types — consumers (App.vue) import these instead of
 // reaching into api.gen directly.
 export type MatchRecord     = components['schemas']['MatchRecord']
-export type MatchResult     = components['schemas']['MatchResult']
 export type HeroPlay        = components['schemas']['HeroPlay']
-export type HeroSR          = components['schemas']['HeroSR']
-export type Performance     = components['schemas']['Performance']
 export type TesseractStatus = components['schemas']['TesseractStatus']
 export type ScreenshotType  = components['schemas']['ScreenshotType']
 
@@ -132,11 +129,6 @@ export function SetWatchEnabled(enabled: boolean): Promise<void> {
 export function GetTesseractStatus(): Promise<TesseractStatus> {
   if (IS_WAILS) return _wails('GetTesseractStatus')
   return _get<TesseractStatus>('/api/tesseract-status')
-}
-
-export function SetTesseractPath(path: string): Promise<TesseractStatus> {
-  if (IS_WAILS) return _wails('SetTesseractPath', path)
-  return _post<TesseractStatus>('/api/tesseract-path', { path })
 }
 
 // In server mode: prompt for the binary path then POST it.
