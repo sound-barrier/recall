@@ -51,10 +51,10 @@ flowchart LR
 The desktop app is the simplest way to use Recall. Five steps from zero to your first match record:
 
 1. **Install Recall** — grab the `.dmg` (macOS), `.deb` / `.tar.gz` (Linux), or `.exe` (Windows) from [GitHub Releases](https://github.com/sound-barrier/recall/releases). See [Installation](#installation) for per-platform notes.
-2. **Install Tesseract OCR** — Recall shells out to it to read your screenshots.
-   - macOS: `brew install tesseract`
-   - Linux: `sudo apt install tesseract-ocr`
-   - Windows: [UB-Mannheim installer](https://github.com/UB-Mannheim/tesseract/wiki)
+2. **Install Tesseract OCR 5.x** — Recall shells out to it to read your screenshots. Version 5.x is required; older versions trigger a caution warning and may produce incorrect results.
+   - macOS: `brew install tesseract` (installs 5.x)
+   - Linux: `sudo apt install tesseract-ocr` (Ubuntu 22.04+ ships 5.x; older distros may need a [PPA](https://launchpad.net/~alex-p/+archive/ubuntu/tesseract-ocr5))
+   - Windows: [UB-Mannheim installer](https://github.com/UB-Mannheim/tesseract/wiki) (choose the 5.x series)
 3. **Launch Recall and pick a screenshots folder** under **Settings → Directories**. On Windows, Overwatch's default is `Documents\Overwatch\ScreenShots\Overwatch\`.
 4. **Capture screenshots in Overwatch** with **F12** after each match — see [Capturing matches](#capturing-matches) for which post-match tabs to screenshot.
 5. **Click *Ingest → Run Parse*** to scan the folder, or flip on *Ingest → Parse → Watch Folder* to auto-parse as new screenshots land. Parsed matches appear under the **Matches** tab.
@@ -110,7 +110,7 @@ Every release also includes `recall-{version}-sbom.spdx.json` — a bill of mate
 
 ## Prerequisites
 
-- **Tesseract OCR** — required for screenshot parsing. Install via Homebrew (`brew install tesseract`) on macOS, `apt install tesseract-ocr` on Linux, or the [Windows installer](https://github.com/UB-Mannheim/tesseract/wiki). On first launch Recall auto-detects the standard install path; use **Ingest → Engine** to point it elsewhere if needed.
+- **Tesseract OCR 5.x** — required for screenshot parsing. Only the 5.x series is officially supported; 3.x / 4.x binaries are detected and flagged with a caution warning (parsing may produce incorrect results). Install via Homebrew (`brew install tesseract`) on macOS, `apt install tesseract-ocr` on Linux (Ubuntu 22.04+ ships 5.x), or the [Windows installer](https://github.com/UB-Mannheim/tesseract/wiki) (choose the 5.x series). On first launch Recall auto-detects the standard install path; use **Ingest → Engine** to point it elsewhere if needed.
 
 Settings and the match database are stored in the platform user-config directory:
 - macOS: `~/Library/Application Support/Recall/`
