@@ -24,12 +24,7 @@ import {
 } from './api'
 import {
   sshotTypeLabel,
-  sourceType,
   detectScreenshotSlots,
-  missingRequiredSlots,
-  missingOptionalSlots,
-  heroesForHeader,
-  fmtTime,
   formatRelativeTime,
   screenshotURL,
   computeEarliestMatchDateTime,
@@ -38,6 +33,7 @@ import { useTheme } from './composables/useTheme'
 import { useFilterPanel } from './composables/useFilterPanel'
 import { useMatchFilters } from './composables/useMatchFilters'
 import ParseProgressPanel, { type ParseProgressEvent } from './components/ParseProgressPanel.vue'
+import MatchCard from './components/MatchCard.vue'
 
 const records = ref<MatchRecord[]>([])
 const error = ref('')
@@ -399,12 +395,6 @@ function togglePreview(filename: string) {
   previewError.value = { ...previewError.value, [filename]: false }
   previewOpen.value = { ...previewOpen.value, [filename]: !previewOpen.value[filename] }
 }
-function isPreviewOpen(filename: string) {
-  return !!previewOpen.value[filename]
-}
-function isPreviewError(filename: string) {
-  return !!previewError.value[filename]
-}
 function onPreviewError(filename: string) {
   previewError.value = { ...previewError.value, [filename]: true }
 }
@@ -444,10 +434,8 @@ function onUnknownPreviewError(filename: string) {
   unknownPreviewError.value = { ...unknownPreviewError.value, [filename]: true }
 }
 
-// Pure helpers (detectScreenshotSlots, missingRequiredSlots,
-// missingOptionalSlots, heroesForHeader) live in ./match-helpers.js
-// so they can be unit-tested in isolation. Imported at the top of
-// this file.
+// Pure helpers (detectScreenshotSlots, screenshotURL, etc.) live in
+// ./match-helpers.ts so they can be unit-tested in isolation.
 
 // fmtTime is imported from ./match-helpers.js (extracted for testing).
 
@@ -1368,268 +1356,24 @@ onBeforeUnmount(() => {
         </section>
 
         <div v-if="records.length > 0" class="match-list">
-          <article
+          <MatchCard
             v-for="(rec, idx) in filteredSorted"
             :id="`match-${rec.id}`"
             :key="rec.id"
-            class="match"
-            :class="[
-              { expanded: isExpanded(rec.id) },
-              `result-${rec.data.result || 'unknown'}`,
-            ]"
             :style="{ animationDelay: Math.min(idx, 12) * 28 + 'ms' }"
-          >
-            <span class="match-bar" aria-hidden="true" />
-            <div class="match-body">
-              <div
-                class="match-header"
-                role="button"
-                tabindex="0"
-                :aria-expanded="isExpanded(rec.id)"
-                :aria-label="`${rec.data.map || 'Unknown map'} — ${isExpanded(rec.id) ? 'collapse' : 'expand'} match details`"
-                @click="toggleExpand(rec.id)"
-                @keydown.enter.space.prevent="toggleExpand(rec.id)"
-              >
-                <div class="match-title-row">
-                  <div class="match-title-lhs">
-                    <span class="match-index">{{ String(idx + 1).padStart(2, '0') }}</span>
-                    <span
-                      class="match-map clickable"
-                      :class="{ active: isActive('map', rec.data.map ?? '') }"
-                      title="Click to filter by this map"
-                      @click.stop="toggleFilter('map', rec.data.map ?? '')"
-                    >{{ rec.data.map || 'Unknown Map' }}</span>
-                  </div>
-                  <div class="match-title-rhs">
-                    <span v-if="fmtTime(rec)" class="when">{{ fmtTime(rec) }}</span>
-                    <span v-if="rec.data.game_length" class="length"><span class="length-mark">▮</span>{{ rec.data.game_length }}</span>
-                    <span class="chev" :class="{ open: isExpanded(rec.id) }" aria-hidden="true">›</span>
-                  </div>
-                </div>
-
-                <div class="match-tag-row">
-                  <span
-                    v-if="rec.data.mode"
-                    class="badge mode clickable"
-                    :class="{ active: isActive('mode', rec.data.mode) }"
-                    title="Click to filter by this mode"
-                    @click.stop="toggleFilter('mode', rec.data.mode)"
-                  >{{ rec.data.mode }}</span>
-                  <span
-                    v-if="rec.data.type"
-                    class="badge type clickable"
-                    :class="{ active: isActive('type', rec.data.type) }"
-                    title="Click to filter by this game type"
-                    @click.stop="toggleFilter('type', rec.data.type)"
-                  >{{ rec.data.type }}</span>
-                  <span
-                    v-if="rec.data.role"
-                    class="badge role clickable"
-                    :class="[rec.data.role, { active: isActive('role', rec.data.role) }]"
-                    title="Click to filter by this role"
-                    @click.stop="toggleFilter('role', rec.data.role)"
-                  >{{ rec.data.role }}</span>
-                  <template v-for="hp in heroesForHeader(rec)" :key="hp.hero">
-                    <span
-                      class="badge hero clickable"
-                      :class="{ active: isActive('hero', hp.hero) }"
-                      :title="hp.percent_played != null ? `${hp.hero} — ${hp.percent_played}% played` : 'Click to filter by this hero'"
-                      @click.stop="toggleFilter('hero', hp.hero)"
-                    >
-                      <span class="hero-name-inline">{{ hp.hero }}</span>
-                      <span v-if="hp.percent_played != null" class="hero-pct-inline">{{ hp.percent_played }}%</span>
-                    </span>
-                  </template>
-                  <span
-                    v-if="rec.data.result"
-                    class="badge result clickable"
-                    :class="[rec.data.result, { active: isActive('result', rec.data.result) }]"
-                    title="Click to filter by this result"
-                    @click.stop="toggleFilter('result', rec.data.result)"
-                  >{{ rec.data.result }}</span>
-                  <span
-                    v-if="missingRequiredSlots(rec).length"
-                    class="incomplete-badge"
-                    :title="`Incomplete match — missing ${missingRequiredSlots(rec).map(s => s.label).join(', ')} screenshot${missingRequiredSlots(rec).length === 1 ? '' : 's'}. Expand for details.`"
-                  >
-                    <span class="incomplete-glyph" aria-hidden="true">!</span>
-                    <span class="incomplete-text">missing <strong>{{ missingRequiredSlots(rec).map(s => s.label).join(' · ') }}</strong></span>
-                  </span>
-                </div>
-              </div>
-
-              <template v-if="isExpanded(rec.id)">
-                <div class="match-expanded">
-                  <!-- Data Coverage (which OW screenshot types were
-                       captured for this match, with the missing-data
-                       explainer when applicable) lives at the bottom of
-                       the expanded card, fused into the Source Screenshots
-                       section so the per-match coverage row and the
-                       per-file type chips appear together. -->
-
-                  <div v-if="rec.data.final_score" class="meta-row">
-                    <span class="meta-eyebrow">Final Score</span>
-                    <span class="meta-value">{{ rec.data.final_score }}</span>
-                  </div>
-
-                  <div class="stats">
-                    <div class="stat">
-                      <span class="stat-value">{{ rec.data.eliminations ?? '—' }}</span>
-                      <span class="stat-label">Elims</span>
-                    </div>
-                    <div class="stat">
-                      <span class="stat-value">{{ rec.data.assists ?? '—' }}</span>
-                      <span class="stat-label">Assists</span>
-                    </div>
-                    <div class="stat">
-                      <span class="stat-value">{{ rec.data.deaths ?? '—' }}</span>
-                      <span class="stat-label">Deaths</span>
-                    </div>
-                    <div class="stat">
-                      <span class="stat-value">{{ rec.data.damage != null ? rec.data.damage.toLocaleString() : '—' }}</span>
-                      <span class="stat-label">Damage</span>
-                    </div>
-                    <div class="stat">
-                      <span class="stat-value">{{ rec.data.healing != null ? rec.data.healing.toLocaleString() : '—' }}</span>
-                      <span class="stat-label">Healing</span>
-                    </div>
-                    <div class="stat">
-                      <span class="stat-value">{{ rec.data.mitigation != null ? rec.data.mitigation.toLocaleString() : '—' }}</span>
-                      <span class="stat-label">Mitigation</span>
-                    </div>
-                  </div>
-
-                  <div v-if="rec.data.rank" class="rank-block">
-                    <div class="block-eyebrow">
-                      Rank
-                    </div>
-                    <div class="rank-line">
-                      <span class="rank-tier" :class="rec.data.rank">{{ rec.data.rank }} {{ rec.data.level }}</span>
-                      <span v-if="rec.data.rank_progress" class="rank-progress">{{ rec.data.rank_progress }}% progress</span>
-                      <span v-if="rec.data.change_percent" class="rank-change">+{{ rec.data.change_percent }}%</span>
-                      <span v-for="m in rec.data.modifiers" :key="m" class="rank-modifier">{{ m }}</span>
-                    </div>
-                    <div v-if="rec.data.sr?.length" class="sr-line">
-                      <span v-for="s in rec.data.sr" :key="s.hero" class="sr-entry">
-                        <span class="sr-hero">{{ s.hero }}</span>
-                        <span class="sr-value">{{ s.sr }}</span>
-                        <span class="sr-delta" :class="s.change >= 0 ? 'up' : 'down'">{{ s.change >= 0 ? '+' : '' }}{{ s.change }}</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  <div v-if="rec.data.heroes_played?.length" class="heroes-played">
-                    <div class="block-eyebrow">
-                      Heroes Played
-                    </div>
-                    <div class="heroes-played-items">
-                      <div v-for="hp in rec.data.heroes_played" :key="hp.hero" class="hero-block">
-                        <div class="hero-header">
-                          <span
-                            class="hero-name clickable"
-                            :class="{ active: isActive('hero', hp.hero) }"
-                            @click="toggleFilter('hero', hp.hero)"
-                          >{{ hp.hero }}</span>
-                          <span class="hero-pct">{{ hp.percent_played }}%</span>
-                          <span v-if="hp.play_time" class="hero-time">{{ hp.play_time }}</span>
-                        </div>
-                        <div v-if="hp.stats && Object.keys(hp.stats).length" class="personal-grid">
-                          <div v-for="(v, k) in hp.stats" :key="k" class="personal-item">
-                            <span class="personal-label">{{ k.replace(/_/g, ' ') }}</span>
-                            <span class="personal-value">{{ v }}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div v-if="rec.source_files?.length" class="sources-block">
-                    <div class="sources-toggle" @click="toggleSources(rec.id)">
-                      <span class="chev small" :class="{ open: isSourcesOpen(rec.id) }">›</span>
-                      <span class="sources-label">Source Screenshots</span>
-                      <span class="sources-count">{{ rec.source_files.length }}</span>
-                      <span class="sources-coverage" :title="`${detectScreenshotSlots(rec).filter(s => s.present).length} of ${detectScreenshotSlots(rec).length} screenshot types captured`">
-                        <span
-                          v-for="slot in detectScreenshotSlots(rec)"
-                          :key="slot.key"
-                          class="slot-chip"
-                          :class="{
-                            present: slot.present,
-                            absent: !slot.present,
-                            optional: !slot.required,
-                            'absent-required': !slot.present && slot.required,
-                            clickable: slot.present,
-                            active: slot.present && isActive('sshot', slot.key),
-                          }"
-                          :title="slot.present ? `Click to filter to matches that have a ${slot.label} screenshot. ${slot.hint}` : slot.hint"
-                          @click.stop="slot.present && toggleFilter('sshot', slot.key)"
-                        >
-                          <span class="slot-dot" aria-hidden="true" />
-                          {{ slot.label }}
-                          <span v-if="!slot.required" class="slot-optional-tag">opt</span>
-                        </span>
-                      </span>
-                    </div>
-                    <div v-if="isSourcesOpen(rec.id)" class="sources">
-                      <div v-for="f in rec.source_files" :key="f" class="source-file">
-                        <div class="source-row">
-                          <a
-                            class="source-name"
-                            :href="screenshotURL(f)"
-                            :title="isPreviewOpen(f) ? 'Hide preview' : 'Show preview'"
-                            @click.prevent="togglePreview(f)"
-                          >
-                            <span class="chev small" :class="{ open: isPreviewOpen(f) }">›</span>
-                            <span class="source-name-text">{{ f }}</span>
-                          </a>
-                          <span
-                            v-if="sourceType(rec, f)"
-                            class="source-type-chip clickable"
-                            :class="[
-                              `source-type-${sourceType(rec, f)}`,
-                              { active: isActive('sshot', sourceType(rec, f)) },
-                            ]"
-                            :title="`Click to filter to matches that have a ${sshotTypeLabel(sourceType(rec, f))} screenshot`"
-                            @click.stop="toggleFilter('sshot', sourceType(rec, f))"
-                          >{{ sshotTypeLabel(sourceType(rec, f)) }}</span>
-                          <span
-                            v-else
-                            class="source-type-chip unknown"
-                            title="Type not yet recorded — parsed before per-file type tracking landed. Clear the database and re-parse to populate."
-                          >?</span>
-                        </div>
-                        <img
-                          v-if="isPreviewOpen(f) && !isPreviewError(f)"
-                          :src="screenshotURL(f)"
-                          :alt="f"
-                          class="source-preview"
-                          @error="onPreviewError(f)"
-                        >
-                        <div v-if="isPreviewOpen(f) && isPreviewError(f)" class="source-preview-error">
-                          Could not load image — check screenshots folder in Settings.
-                        </div>
-                      </div>
-                    </div>
-
-                    <div v-if="isSourcesOpen(rec.id) && (missingRequiredSlots(rec).length || missingOptionalSlots(rec).length)" class="sources-explain">
-                      <p v-for="slot in missingRequiredSlots(rec)" :key="slot.key" class="coverage-line required">
-                        <span class="coverage-line-tag">⚠ {{ slot.label }} missing</span>
-                        <span class="coverage-line-text">
-                          Capture the post-match <strong>{{ slot.label }}</strong> tab and re-parse to recover: {{ slot.missing }}.
-                        </span>
-                      </p>
-                      <p v-for="slot in missingOptionalSlots(rec)" :key="slot.key" class="coverage-line optional">
-                        <span class="coverage-line-tag">· {{ slot.label }} not captured</span>
-                        <span class="coverage-line-text">
-                          Optional — recommended for ranked matches. Provides: {{ slot.missing }}.
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </div>
-          </article>
+            :record="rec"
+            :index="idx"
+            :is-expanded="isExpanded(rec.id)"
+            :is-sources-open="isSourcesOpen(rec.id)"
+            :preview-open="previewOpen"
+            :preview-error="previewError"
+            :is-active="isActive"
+            @toggle-expand="toggleExpand(rec.id)"
+            @toggle-sources="toggleSources(rec.id)"
+            @toggle-preview="togglePreview"
+            @preview-error="onPreviewError"
+            @filter-toggle="toggleFilter"
+          />
         </div>
       </div><!-- /.matches-view -->
     </div>
