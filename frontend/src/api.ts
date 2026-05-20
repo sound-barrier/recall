@@ -29,11 +29,22 @@ declare global {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     go?: { app?: { App?: Record<string, (...args: any[]) => Promise<any>> } }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    runtime?: { EventsOn: (n: string, cb: (data: any) => void) => void; EventsOff: (n: string) => void }
+    runtime?: { EventsOn: (n: string, cb: (data: any) => void) => void; EventsOff: (n: string) => void; BrowserOpenURL: (url: string) => void }
   }
 }
 
 const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
+
+// OpenURL opens a URL in the OS default browser. In Wails mode the WebView
+// does not route target="_blank" links to the system browser, so we must call
+// the runtime bridge explicitly. In server/browser mode window.open suffices.
+export function OpenURL(url: string): void {
+  if (IS_WAILS && window.runtime?.BrowserOpenURL) {
+    window.runtime.BrowserOpenURL(url)
+  } else {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+}
 
 // ─── Internal helpers ──────────────────────────────────────────────────────
 
@@ -63,6 +74,13 @@ async function _post<T>(path: string, body?: unknown): Promise<T> {
 export function GetVersion(): Promise<string> {
   if (IS_WAILS) return _wails('GetVersion')
   return _get<{ version: string }>('/api/version').then(d => d.version)
+}
+
+export type UpdateInfo = { checked: boolean; dev_build: boolean; available: boolean; latest: string; url: string }
+
+export function CheckForUpdate(): Promise<UpdateInfo> {
+  if (IS_WAILS) return _wails('CheckForUpdate')
+  return _get<UpdateInfo>('/api/check-update')
 }
 
 export function GetMatchResults(): Promise<MatchRecord[]> {

@@ -309,6 +309,50 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/check-update:
+    get:
+      tags: [Meta]
+      summary: Check for a newer release
+      description: |
+        Queries the GitHub releases API for the latest stable release and
+        compares it against the running build version. Returns
+        `available: false` when already up to date, running a dev build,
+        or when the API is unreachable (network failures are silenced).
+      responses:
+        "200":
+          description: Update availability info.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [checked, dev_build, available, latest, url]
+                properties:
+                  checked:
+                    type: boolean
+                    description: |
+                      True when a GitHub API call completed successfully.
+                      False on network failure — show nothing in that case.
+                    example: true
+                  dev_build:
+                    type: boolean
+                    description: |
+                      True when the running version is a dev build. The
+                      latest release is then informational context, not an
+                      upgrade prompt.
+                    example: false
+                  available:
+                    type: boolean
+                    description: |
+                      True when the latest release is newer than the running
+                      version (only meaningful when dev_build=false).
+                    example: true
+                  latest:
+                    type: string
+                    example: 0.0.15
+                  url:
+                    type: string
+                    example: https://github.com/sound-barrier/recall/releases/tag/v0.0.15
+
   /api/version:
     get:
       tags: [Meta]

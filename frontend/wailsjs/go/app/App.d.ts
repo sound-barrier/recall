@@ -3,6 +3,8 @@
 import {app} from '../models';
 import {http} from '../models';
 
+export function CheckForUpdate():Promise<app.UpdateInfo>;
+
 export function ClearDatabase():Promise<void>;
 
 export function GetMatchResults():Promise<Array<app.MatchRecord>>;

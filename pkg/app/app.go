@@ -56,6 +56,20 @@ type Settings struct {
 	WatchEnabled      bool   `json:"watch_enabled"`
 }
 
+// UpdateInfo is returned by CheckForUpdate.
+//
+//   - Checked=false: dev build skipped, or network failure — show nothing.
+//   - Checked=true, DevBuild=true: show "Latest: vX" link (informational).
+//   - Checked=true, DevBuild=false, Available=true: show "↑ vX available" link.
+//   - Checked=true, DevBuild=false, Available=false: show "✓ most recent".
+type UpdateInfo struct {
+	Checked   bool   `json:"checked"`
+	DevBuild  bool   `json:"dev_build"`
+	Available bool   `json:"available"`
+	Latest    string `json:"latest"`
+	URL       string `json:"url"`
+}
+
 // TesseractStatus describes whether the configured tesseract binary
 // resolves to a working executable. The frontend renders the System
 // Alert banner and the Engine setting state from this struct.
@@ -455,6 +469,46 @@ func (a *App) GetVersion() string {
 		return v + "-dev"
 	}
 	return "dev"
+}
+
+// CheckForUpdate hits the GitHub releases API and compares the latest stable
+// release against the running version. The caller should invoke this off the
+// hot path — it makes a network request with a 5 s timeout.
+//
+// Dev builds (version ending in "-dev" or bare "dev") always report the
+// latest release as informational context (DevBuild=true) rather than an
+// upgrade prompt. Network failures return an empty UpdateInfo.
+func (a *App) CheckForUpdate() UpdateInfo {
+	v := a.GetVersion()
+	isDev := v == "dev" || strings.HasSuffix(v, "-dev")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get("https://api.github.com/repos/sound-barrier/recall/releases/latest")
+	if err != nil {
+		return UpdateInfo{}
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	var release struct {
+		TagName string `json:"tag_name"`
+		HTMLURL string `json:"html_url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return UpdateInfo{}
+	}
+
+	latest := strings.TrimPrefix(release.TagName, "v")
+	if latest == "" {
+		return UpdateInfo{}
+	}
+
+	if isDev {
+		return UpdateInfo{Checked: true, DevBuild: true, Latest: latest, URL: release.HTMLURL}
+	}
+	if latest == v {
+		return UpdateInfo{Checked: true}
+	}
+	return UpdateInfo{Checked: true, Available: true, Latest: latest, URL: release.HTMLURL}
 }
 
 func (a *App) GetScreenshotsDir() string {

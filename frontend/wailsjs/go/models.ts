@@ -58,6 +58,26 @@ export namespace app {
 	        this.default = source["default"];
 	    }
 	}
+	export class UpdateInfo {
+	    checked: boolean;
+	    dev_build: boolean;
+	    available: boolean;
+	    latest: string;
+	    url: string;
+
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.checked = source["checked"];
+	        this.dev_build = source["dev_build"];
+	        this.available = source["available"];
+	        this.latest = source["latest"];
+	        this.url = source["url"];
+	    }
+	}
 
 }
 
