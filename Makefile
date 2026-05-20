@@ -29,6 +29,7 @@ WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
         build-server-linux build-server-windows build-server-mac build-server-all \
         build-server-container \
         lint lint-go lint-js lint-css lint-html lint-docker \
+        dead-code dead-code-go dead-code-ts \
         fmt update-deps trivy check-deps \
         dev clean
 
@@ -217,6 +218,32 @@ typecheck: ## TypeScript type-check (frontend api.ts + api.gen.d.ts)
 	@echo "[ recall ] Type-checking frontend (tsc --noEmit)…"
 	cd frontend && npm run typecheck
 	@echo "[ recall ] ✓  TypeScript clean"
+
+##@ Dead code analysis
+
+# deadcode does whole-program call-graph analysis — only run for the serveronly
+# variant. The Wails variant registers App methods via reflection so deadcode
+# would report them as unreachable even though they're live; golangci-lint
+# `unused` already covers that variant. deadcode exits 0 regardless of findings
+# so we capture output and fail on unexpected results ourselves.
+# App.Pick* are intentional stubs in app_server.go (dialog methods that only
+# exist in the Wails desktop build; server mode has no file-dialog surface).
+# Install once: go install golang.org/x/tools/cmd/deadcode@latest
+dead-code: dead-code-go dead-code-ts ## Find unreachable Go functions and unused TypeScript exports
+
+dead-code-go: ## Unreachable Go functions (deadcode, serveronly build tag)
+	@echo "[ recall ] Scanning for dead Go code (deadcode -tags serveronly)…"
+	@pkgs=$$(go list -tags serveronly ./... | grep -v node_modules); \
+	 out=$$(deadcode -tags serveronly $$pkgs); \
+	 [ -z "$$out" ] || echo "$$out"; \
+	 unexpected=$$(printf '%s' "$$out" | grep -v 'App\.Pick' || true); \
+	 [ -z "$$unexpected" ]
+	@echo "[ recall ] ✓  No unexpected dead Go code"
+
+dead-code-ts: ## Unused TypeScript exports and stale deps (knip)
+	@echo "[ recall ] Scanning for dead TypeScript code (knip)…"
+	cd frontend && npm run dead:ts
+	@echo "[ recall ] ✓  No dead TypeScript code found"
 
 fmt: fmt-go fmt-shell ## Format all source files (Go + shell scripts)
 
