@@ -16,7 +16,7 @@
     "gen:types": "openapi-typescript ../api/openapi.yaml -o src/api.gen.d.ts"
   },
   "dependencies": {
-    "vue": "^3.2.37"
+    "vue": "^3.5.34"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -24,9 +24,9 @@
     "eslint": "^10.4.0",
     "eslint-plugin-vue": "^10.9.1",
     "globals": "^17.6.0",
-    "htmlhint": "^1.1.0",
+    "htmlhint": "^1.9.2",
     "openapi-typescript": "^7.13.0",
-    "postcss-html": "^1.0.0",
+    "postcss-html": "^1.8.1",
     "stylelint": "^17.11.1",
     "stylelint-config-standard": "^40.0.0",
     "typescript": "^5.9.3",
