@@ -74,11 +74,12 @@ type UpdateInfo struct {
 // resolves to a working executable. The frontend renders the System
 // Alert banner and the Engine setting state from this struct.
 type TesseractStatus struct {
-	Path    string `json:"path"`
-	Found   bool   `json:"found"`
-	Version string `json:"version"`
-	Error   string `json:"error"`
-	Default string `json:"default"`
+	Path      string `json:"path"`
+	Found     bool   `json:"found"`
+	Version   string `json:"version"`
+	Supported bool   `json:"supported"`
+	Error     string `json:"error"`
+	Default   string `json:"default"`
 }
 
 // defaultTesseractPath returns the most likely on-disk install location
@@ -155,6 +156,11 @@ func checkTesseract(path string) TesseractStatus {
 	v := strings.TrimSpace(strings.TrimPrefix(first, "tesseract"))
 	v = strings.TrimSpace(strings.TrimPrefix(v, "v"))
 	s.Version = v
+	// Only major version 5 is officially supported. 3.x and 4.x may
+	// produce incorrect OCR output with the current parser logic.
+	if major := strings.SplitN(v, ".", 2)[0]; major == "5" {
+		s.Supported = true
+	}
 	return s
 }
 

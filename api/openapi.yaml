@@ -236,8 +236,14 @@ paths:
       summary: Get the OCR engine status
       description: |
         Reports the configured Tesseract path, whether it resolves to a
-        working binary, the reported version, the platform default
-        path, and any error from the last detection attempt.
+        working binary, the reported version, whether that version is
+        officially supported (5.x only), the platform default path, and
+        any error from the last detection attempt.
+
+        When `found` is true but `supported` is false (e.g. a 3.x or
+        4.x binary), the UI shows a caution banner and prompts for
+        confirmation before running a parse — results may be incorrect
+        with unsupported versions.
       responses:
         "200":
           description: Current engine status.
@@ -635,7 +641,7 @@ components:
 
     TesseractStatus:
       type: object
-      required: [path, found, version, error, default]
+      required: [path, found, version, supported, error, default]
       properties:
         path:
           type: string
@@ -647,6 +653,9 @@ components:
         version:
           type: string
           description: Tesseract `--version` output (e.g. "5.4.1"). Empty when not found.
+        supported:
+          type: boolean
+          description: True iff the detected major version is 5.x (the only officially supported series).
         error:
           type: string
           description: Description of the last detection failure, if any.
