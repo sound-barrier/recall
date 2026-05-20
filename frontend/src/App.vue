@@ -38,6 +38,7 @@ import {
   computeEarliestMatchDateTime,
 } from './match-helpers'
 import { useTheme } from './composables/useTheme'
+import { useFilterPanel } from './composables/useFilterPanel'
 
 interface ParseProgressEvent {
   done: number
@@ -126,15 +127,7 @@ const filterResult = ref<string[]>([])
 // Backed by rec.source_types (per-file map populated at parse time).
 const filterSshot  = ref<string[]>([])
 
-// Which filter popover is currently open (one at a time). Set to the
-// field name ("mode", "map", ...) when a trigger is clicked; cleared
-// on outside-click, ESC, or selection of "Done".
-const openFilter = ref('')
-
-// Per-popover search query, keyed by field. Used for the Map and Hero
-// rosters which can be long; smaller fields ignore it but the input
-// is hidden anyway when option count < 8.
-const filterSearch = ref<Record<string, string>>({ mode: '', type: '', role: '', map: '', hero: '', result: '', sshot: '' })
+const { openFilter, filterSearch, toggleFilterPanel, closeFilterPanel } = useFilterPanel()
 
 // Date/time range filter. Both bound to <input type="datetime-local">,
 // which emits "YYYY-MM-DDTHH:MM" — the same shape as matchTime(rec),
@@ -691,30 +684,6 @@ const activeFilterCount = computed(() => {
 
 const { themeMode, toggleTheme } = useTheme()
 
-// Multi-select popover lifecycle. The trigger button toggles the field
-// open; an outside-click or ESC closes it. Only one popover is ever
-// open at a time (the second `toggleFilterPanel` call closes the
-// previous one before opening the new one).
-function toggleFilterPanel(field: string) {
-  openFilter.value = openFilter.value === field ? '' : field
-  if (openFilter.value && filterSearch.value[field] !== '') {
-    filterSearch.value = { ...filterSearch.value, [field]: '' }
-  }
-}
-function closeFilterPanel() { openFilter.value = '' }
-
-function onDocMousedown(e: MouseEvent) {
-  if (!openFilter.value) return
-  const t = e.target as HTMLElement | null
-  if (t?.closest('.multi-filter')) return
-  openFilter.value = ''
-}
-function onDocKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && openFilter.value) {
-    openFilter.value = ''
-  }
-}
-
 onMounted(() => {
   // Restore last-parse timestamp so the Settings page shows the right
   // "Last run · …" hint immediately on launch, not just after a fresh
@@ -734,14 +703,10 @@ onMounted(() => {
     parseLog.value = [...parseLog.value, data].slice(-50)
   })
 
-  document.addEventListener('mousedown', onDocMousedown)
-  document.addEventListener('keydown', onDocKeydown)
 })
 onBeforeUnmount(() => {
   EventsOff('parse-complete')
   EventsOff('parse-progress')
-  document.removeEventListener('mousedown', onDocMousedown)
-  document.removeEventListener('keydown', onDocKeydown)
 })
 </script>
 
