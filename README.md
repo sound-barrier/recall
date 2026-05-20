@@ -31,9 +31,8 @@ flowchart LR
 
 - [Quick start](#quick-start)
 - [Installation](#installation)
-  - [macOS first launch](#macos-first-launch)
-  - [Linux installation](#linux-installation)
   - [Verifying downloads](#verifying-downloads)
+  - [macOS](docs/install-macos.md) · [Linux](docs/install-linux.md)
 - [Prerequisites](#prerequisites)
 - [Capturing matches](#capturing-matches)
 
@@ -52,12 +51,9 @@ flowchart LR
 
 The desktop app is the simplest way to use Recall. Five steps from zero to your first match record:
 
-1. **Install Recall** — grab the `.dmg` (macOS), `.deb` / `.tar.gz` (Linux), or `.exe` (Windows) from [GitHub Releases](https://github.com/sound-barrier/recall/releases). See [Installation](#installation) for per-platform notes.
-2. **Install Tesseract OCR 5.x** — Recall shells out to it to read your screenshots. Version 5.x is required; older versions trigger a caution warning and may produce incorrect results.
-   - macOS: `brew install tesseract` (installs 5.x)
-   - Linux: `sudo apt install tesseract-ocr` (Ubuntu 22.04+ ships 5.x; older distros may need a [PPA](https://launchpad.net/~alex-p/+archive/ubuntu/tesseract-ocr5))
-   - Windows: [UB-Mannheim installer](https://github.com/UB-Mannheim/tesseract/wiki) (choose the 5.x series)
-3. **Launch Recall and pick a screenshots folder** under **Settings → Directories**. On Windows, Overwatch's default is `Documents\Overwatch\ScreenShots\Overwatch\`.
+1. **Install Recall** — grab `recall-{version}-windows-amd64.exe` from [GitHub Releases](https://github.com/sound-barrier/recall/releases). For macOS or Linux, see the [Installation](#installation) section below.
+2. **Install Tesseract OCR 5.x** — Recall uses it to read your screenshots. Download the **5.x** installer from [UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki) and run it with the default options. (macOS/Linux instructions are in [docs/install-macos.md](docs/install-macos.md) and [docs/install-linux.md](docs/install-linux.md).)
+3. **Launch Recall and pick a screenshots folder** under **Settings → Directories**. Overwatch's default on Windows is `Documents\Overwatch\ScreenShots\Overwatch\`.
 4. **Capture screenshots in Overwatch** with **F12** after each match — see [Capturing matches](#capturing-matches) for which post-match tabs to screenshot.
 5. **Click *Ingest → Run Parse*** to scan the folder, or flip on *Ingest → Parse → Watch Folder* to auto-parse as new screenshots land. Parsed matches appear under the **Matches** tab.
 
@@ -67,57 +63,50 @@ That's all most users need. The [Advanced](#advanced) sections below cover runni
 
 Pre-built binaries for every tagged release are on the [GitHub Releases](https://github.com/sound-barrier/recall/releases) page.
 
-| Platform | Wails desktop app | Server binary |
+| Platform | Desktop app | Server binary |
 |---|---|---|
-| Linux | `recall-{version}-linux-amd64.tar.gz` · `recall-{version}-linux-amd64.deb` | `recall-server-{version}-linux-amd64.tar.gz` · `recall-server-{version}-linux-amd64.deb` |
-| Windows | `recall-{version}-windows-amd64.exe` | `recall-server-{version}-windows-amd64.exe` |
+| **Windows** | `recall-{version}-windows-amd64.exe` | `recall-server-{version}-windows-amd64.exe` |
 | macOS arm64 | `recall-{version}-darwin-arm64.dmg` | `recall-server-{version}-darwin-arm64.tar.gz` |
+| Linux | `recall-{version}-linux-amd64.tar.gz` · `recall-{version}-linux-amd64.deb` | `recall-server-{version}-linux-amd64.tar.gz` · `recall-server-{version}-linux-amd64.deb` |
 | Docker | — | `ghcr.io/sound-barrier/recall-server:latest` |
 
-### macOS first launch
-
-The `.dmg` is not notarized (notarization requires an Apple Developer certificate). macOS will block the app on first open with a warning about unverified software. To bypass it, **right-click the app → Open**, then click **Open** in the dialog that appears. You only need to do this once; subsequent launches work normally.
-
-Alternatively, from Terminal:
-```sh
-xattr -d com.apple.quarantine /Applications/Recall-arm64.app
-```
-
-Or go to **System Settings → Privacy & Security** and click **Open Anyway** after the first blocked launch.
-
-### Linux installation
-
-`.deb` packages install the binary to `/usr/local/bin/`:
-
-```sh
-sudo dpkg -i recall-{version}-linux-amd64.deb         # installs /usr/local/bin/recall
-sudo dpkg -i recall-server-{version}-linux-amd64.deb  # installs /usr/local/bin/recall-server
-```
+For macOS and Linux setup details (Gatekeeper bypass, package manager Tesseract install, data paths), see the platform guides:
+- [Installing on macOS](docs/install-macos.md)
+- [Installing on Linux](docs/install-linux.md)
 
 ### Verifying downloads
 
 Every release binary and package ships with a companion `.sha256` file containing its SHA256 hash. Download both the artifact and its `.sha256` file, then verify:
 
-```sh
-# Linux / WSL
-sha256sum --check recall-{version}-linux-amd64.tar.gz.sha256
-
-# macOS
-shasum -a 256 --check recall-{version}-darwin-arm64.dmg.sha256
+```powershell
+# Windows (PowerShell)
+(Get-FileHash recall-{version}-windows-amd64.exe).Hash -eq (Get-Content recall-{version}-windows-amd64.exe.sha256).Split()[0].ToUpper()
 ```
 
-`sha256sum` prints `OK` when the file matches what was built in CI; any mismatch prints `FAILED` and exits non-zero.
+```sh
+# macOS
+shasum -a 256 --check recall-{version}-darwin-arm64.dmg.sha256
+
+# Linux / WSL
+sha256sum --check recall-{version}-linux-amd64.tar.gz.sha256
+```
+
+A match prints `True` (PowerShell) or `OK` (macOS/Linux); any mismatch means the file should be re-downloaded.
 
 Every release also includes `recall-{version}-sbom.spdx.json` — a bill of materials listing every dependency the release was built from.
 
 ## Prerequisites
 
-- **Tesseract OCR 5.x** — required for screenshot parsing. Only the 5.x series is officially supported; 3.x / 4.x binaries are detected and flagged with a caution warning (parsing may produce incorrect results). Install via Homebrew (`brew install tesseract`) on macOS, `apt install tesseract-ocr` on Linux (Ubuntu 22.04+ ships 5.x), or the [Windows installer](https://github.com/UB-Mannheim/tesseract/wiki) (choose the 5.x series). On first launch Recall auto-detects the standard install path; use **Ingest → Engine** to point it elsewhere if needed.
+- **Tesseract OCR 5.x** — required for screenshot parsing. Only the 5.x series is officially supported; 3.x / 4.x binaries are detected and flagged with a caution warning (parsing may produce incorrect results).
+  - **Windows**: download the **5.x** installer from [UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki) and run it with default options. Recall auto-detects the install path on first launch.
+  - macOS / Linux: see the [macOS](docs/install-macos.md) and [Linux](docs/install-linux.md) install guides.
+  - Use **Ingest → Engine** to point Recall at a non-default Tesseract location if needed.
 
-Settings and the match database are stored in the platform user-config directory:
+Recall stores settings and the match database at:
+
+- **Windows**: `%AppData%\Recall\`
 - macOS: `~/Library/Application Support/Recall/`
 - Linux: `~/.config/recall/`
-- Windows: `%AppData%\Recall\`
 
 ## Capturing matches
 
