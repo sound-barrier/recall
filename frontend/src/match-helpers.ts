@@ -139,6 +139,44 @@ export function matchTime(rec: Pick<MatchRecord, 'match_key' | 'data'>): string 
   return m ? m[1]! : ''
 }
 
+// Lightweight relative-time formatter for the "Last run" hint.
+// Uses vi.setSystemTime() in tests to control Date.now().
+export function formatRelativeTime(ms: number | null | undefined): string {
+  if (!ms) return ''
+  const diff = Date.now() - ms
+  if (diff < 0) return 'just now'
+  if (diff < 60_000) return 'just now'
+  if (diff < 3_600_000) {
+    const m = Math.floor(diff / 60_000)
+    return m === 1 ? '1 minute ago' : `${m} minutes ago`
+  }
+  if (diff < 86_400_000) {
+    const h = Math.floor(diff / 3_600_000)
+    return h === 1 ? '1 hour ago' : `${h} hours ago`
+  }
+  const d = Math.floor(diff / 86_400_000)
+  return d === 1 ? 'yesterday' : `${d} days ago`
+}
+
+// Builds the URL for the screenshot image server route.
+export function screenshotURL(filename: string): string {
+  return `/_screenshot/${encodeURIComponent(filename)}`
+}
+
+// Returns the earliest `date + finished_at` timestamp across all records
+// that carry both fields, formatted as YYYY-MM-DDTHH:MM (for <input
+// type="datetime-local"> min attributes). Returns '' when none qualify.
+export function computeEarliestMatchDateTime(recs: Pick<MatchRecord, 'data'>[]): string {
+  let earliest: string | null = null
+  for (const r of recs) {
+    const d = r.data
+    if (!d?.date || !d?.finished_at) continue
+    const t = `${d.date}T${d.finished_at}`
+    if (!earliest || t < earliest) earliest = t
+  }
+  return earliest ?? ''
+}
+
 // Format the match's date + end time for the card header. Parser
 // stores date as YYYY-MM-DD and finished_at as 24-hour HH:MM; the
 // Wails UI prefers a friendlier `May 9, 2026 @ 9:08pm` rendering.

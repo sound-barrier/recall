@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { vi, describe, it, expect, afterEach } from 'vitest'
 import {
   SCREENSHOT_TYPES,
   sshotTypeLabel,
@@ -9,6 +9,9 @@ import {
   heroesForHeader,
   matchTime,
   fmtTime,
+  formatRelativeTime,
+  screenshotURL,
+  computeEarliestMatchDateTime,
 } from './match-helpers'
 
 // ─── sshotTypeLabel ──────────────────────────────────────────────────
@@ -288,5 +291,132 @@ describe('fmtTime', () => {
   it('does not zero-pad the day-of-month', () => {
     const rec = { data: { date: '2026-05-03', finished_at: '15:00' } }
     expect(fmtTime(rec)).toMatch(/May 3, 2026/)
+  })
+})
+
+// ─── formatRelativeTime ──────────────────────────────────────────────
+
+describe('formatRelativeTime', () => {
+  afterEach(() => { vi.useRealTimers() })
+
+  it('returns "" for null / undefined / 0', () => {
+    expect(formatRelativeTime(null)).toBe('')
+    expect(formatRelativeTime(undefined)).toBe('')
+    expect(formatRelativeTime(0)).toBe('')
+  })
+
+  it('returns "just now" for events within 60 seconds', () => {
+    const now = 1_748_000_000_000
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    expect(formatRelativeTime(now - 30_000)).toBe('just now')
+    expect(formatRelativeTime(now - 59_999)).toBe('just now')
+  })
+
+  it('returns "just now" for future timestamps', () => {
+    const now = 1_748_000_000_000
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    expect(formatRelativeTime(now + 5_000)).toBe('just now')
+  })
+
+  it('returns "1 minute ago" at exactly 60 s', () => {
+    const now = 1_748_000_000_000
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    expect(formatRelativeTime(now - 60_000)).toBe('1 minute ago')
+  })
+
+  it('returns "N minutes ago" for 2–59 minutes', () => {
+    const now = 1_748_000_000_000
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    expect(formatRelativeTime(now - 5 * 60_000)).toBe('5 minutes ago')
+    expect(formatRelativeTime(now - 59 * 60_000)).toBe('59 minutes ago')
+  })
+
+  it('returns "1 hour ago" at exactly 1 hour', () => {
+    const now = 1_748_000_000_000
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    expect(formatRelativeTime(now - 3_600_000)).toBe('1 hour ago')
+  })
+
+  it('returns "N hours ago" for 2–23 hours', () => {
+    const now = 1_748_000_000_000
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    expect(formatRelativeTime(now - 2 * 3_600_000)).toBe('2 hours ago')
+    expect(formatRelativeTime(now - 23 * 3_600_000)).toBe('23 hours ago')
+  })
+
+  it('returns "yesterday" at exactly 1 day', () => {
+    const now = 1_748_000_000_000
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    expect(formatRelativeTime(now - 86_400_000)).toBe('yesterday')
+  })
+
+  it('returns "N days ago" for 2+ days', () => {
+    const now = 1_748_000_000_000
+    vi.useFakeTimers()
+    vi.setSystemTime(now)
+    expect(formatRelativeTime(now - 3 * 86_400_000)).toBe('3 days ago')
+  })
+})
+
+// ─── screenshotURL ───────────────────────────────────────────────────
+
+describe('screenshotURL', () => {
+  it('builds the expected path for a plain filename', () => {
+    expect(screenshotURL('foo.png')).toBe('/_screenshot/foo.png')
+  })
+
+  it('percent-encodes spaces', () => {
+    expect(screenshotURL('my file.png')).toBe('/_screenshot/my%20file.png')
+  })
+
+  it('encodes & and = (common in OW screenshot naming)', () => {
+    expect(screenshotURL('a&b=c.png')).toBe('/_screenshot/a%26b%3Dc.png')
+  })
+})
+
+// ─── computeEarliestMatchDateTime ────────────────────────────────────
+
+describe('computeEarliestMatchDateTime', () => {
+  it('returns "" for an empty list', () => {
+    expect(computeEarliestMatchDateTime([])).toBe('')
+  })
+
+  it('returns "" when no records have both date and finished_at', () => {
+    expect(computeEarliestMatchDateTime([
+      { data: { hero: 'lucio' } },
+      { data: { date: '2026-05-10' } },
+    ])).toBe('')
+  })
+
+  it('returns the timestamp when exactly one record qualifies', () => {
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:00' } },
+      { data: {} },
+    ]
+    expect(computeEarliestMatchDateTime(recs)).toBe('2026-05-10T21:00')
+  })
+
+  it('returns the earliest across multiple qualifying records', () => {
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:00' } },
+      { data: { date: '2026-04-01', finished_at: '09:00' } },
+      { data: { date: '2026-05-15', finished_at: '14:30' } },
+    ]
+    expect(computeEarliestMatchDateTime(recs)).toBe('2026-04-01T09:00')
+  })
+
+  it('handles same-day records by comparing HH:MM', () => {
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '22:00' } },
+      { data: { date: '2026-05-10', finished_at: '08:30' } },
+    ]
+    expect(computeEarliestMatchDateTime(recs)).toBe('2026-05-10T08:30')
   })
 })
