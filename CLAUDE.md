@@ -426,6 +426,12 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifyin
 
 ## Conventions worth knowing
 
+- **`go list ./...` includes a stray Go package in `node_modules`** — `frontend/node_modules/flatted/golang/pkg/flatted/` contains real `.go` files treated as part of the `recall` module. Any whole-program Go tool that takes a package list (e.g. `deadcode`) must filter: `go list ./... | grep -v node_modules`.
+
+- **`deadcode` always exits 0** — findings are printed to stdout but the exit code is never non-zero. To gate on findings in a Makefile or CI step, capture stdout and assert it's empty (or grep-filter expected stubs). See `make dead-code-go` for the pattern.
+
+- **knip project scope is `src/**/*.{ts,vue}`** — `wailsjs/` is excluded because it's outside `src/`; knip won't flag the Wails-generated bindings. `@eslint/js` must stay in `ignoreDependencies` in `frontend/knip.config.ts`: typescript-eslint consumes it internally but doesn't ES-import it, so knip can't detect the usage. Run via `make dead-code-ts` or `cd frontend && npm run dead:ts`.
+
 - **TypeScript 6.x is blocked by `openapi-typescript`.** `openapi-typescript@7.x` declares `peer typescript: "^5.x"` and will cause `npm install` to fail with an `ERESOLVE` conflict if `typescript` is bumped to `^6.x`. Hold TypeScript at `^5.x` until `openapi-typescript` ships TS 6 support.
 
 - **`stylelint-config-standard` rejects BEM `--` modifiers** — `selector-class-pattern` only allows kebab-case, so `.foo--modifier` is invalid in `App.vue`. Use `.foo-modifier` instead for CSS class variants. Also require an empty line before every rule block (`rule-empty-line-before`), including `:hover` pseudo-selectors that follow a closing `}`. These are **errors**, not warnings — they fail `make lint` (`make: *** [lint-css] Error 2`).
