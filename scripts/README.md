@@ -4,6 +4,20 @@ Helper scripts for running, inspecting, and maintaining Recall locally.
 All scripts are safe to re-run from any working directory — they resolve
 paths relative to their own location.
 
+| Script | Purpose |
+|---|---|
+| [`stack-up.sh`](#stack-upsh) | Start the Prometheus + Grafana stack (starts Podman VM, syncs clock, runs compose up). |
+| [`stack-down.sh`](#stack-downsh) | Stop the stack; pass `--machine` to also stop the Podman VM. |
+| [`prometheus-clear.sh`](#prometheus-clearsh) | Wipe Prometheus's TSDB volume and restart clean; Grafana state is untouched. |
+| [`verify-stack.sh`](#verify-stacksh) | Read-only layer-by-layer diagnostic: SQLite → /metrics → containers → scrape state → TSDB. |
+| [`db-list.sh`](#db-listsh) | Print a one-line summary of every row in `match_results`. |
+| [`db-show.sh`](#db-showsh) | Pretty-print one record's full JSON by id, match key, or source-file substring. |
+| [`db-delete.sh`](#db-deletesh) | Delete one record with a confirmation prompt. |
+| [`db-export.sh`](#db-exportsh) | Dump every record as newline-delimited JSON to stdout. |
+| [`clear-db.sh`](#clear-dbsh) | Delete all rows from `match_results` and vacuum; equivalent to the UI's Clear Database button. |
+| [`check-deps.sh`](#check-depssh) | Compare pinned tool versions (Wails, hadolint, lefthook, trivy) against latest GitHub releases. |
+| [`_lib.sh`](#_libsh) | Internal library sourced by `stack-up.sh` and `prometheus-clear.sh`; not run directly. |
+
 ---
 
 ## Observability stack
