@@ -57,6 +57,7 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `make swagger` | Serve `api/openapi.yaml` via Swagger UI v5 in a container (`$(DOCKER) run`, default port `:8080`; override with `SWAGGER_PORT`). |
 | `make lint-openapi` | Lint `api/openapi.yaml` via Spectral (`spectral:oas` + `.spectral.yaml`) with `--fail-severity=warn`. Also run as part of `make lint`. |
 | `make test` | Run all tests: Go unit tests (`pkg/app/merge_test.go`, `pkg/app/validate_test.go`, `pkg/parser/parser_test.go`) + Vitest (`frontend/src/match-helpers.test.ts`). Parser golden-file integration tests skip unless `RECALL_FIXTURE_DIR` is set. |
+| `make cover-frontend` | Generate JS/TS coverage report via Vitest + V8 (`@vitest/coverage-v8`); writes text summary, lcov, and HTML to `frontend/coverage/` (gitignored). No thresholds enforced. |
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml` (uses `openapi-typescript`). Run after every spec edit; CI fails if the committed `.d.ts` is out of sync. |
 | `make typecheck` | `vue-tsc --noEmit` — covers `.ts` files and `<script lang="ts">` blocks in `.vue` files. `allowJs: false` in tsconfig means no JS can be introduced silently. |
 
@@ -428,9 +429,11 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifyin
 
 - **`go list ./...` includes a stray Go package in `node_modules`** — `frontend/node_modules/flatted/golang/pkg/flatted/` contains real `.go` files treated as part of the `recall` module. Any whole-program Go tool that takes a package list (e.g. `deadcode`) must filter: `go list ./... | grep -v node_modules`.
 
+- **CI jobs in `ci.yml` use sequential numbered comments** (`# ── Job N: ...`). When inserting a new job between existing ones, renumber subsequent comments to keep the sequence contiguous.
+
 - **`deadcode` always exits 0** — findings are printed to stdout but the exit code is never non-zero. To gate on findings in a Makefile or CI step, capture stdout and assert it's empty (or grep-filter expected stubs). See `make dead-code-go` for the pattern.
 
-- **knip project scope is `src/**/*.{ts,vue}`** — `wailsjs/` is excluded because it's outside `src/`; knip won't flag the Wails-generated bindings. `@eslint/js` must stay in `ignoreDependencies` in `frontend/knip.config.ts`: typescript-eslint consumes it internally but doesn't ES-import it, so knip can't detect the usage. Run via `make dead-code-ts` or `cd frontend && npm run dead:ts`.
+- **knip project scope is `src/**/*.{ts,vue}`** — `wailsjs/` is excluded because it's outside `src/`; knip won't flag the Wails-generated bindings. `@eslint/js` must stay in `ignoreDependencies` in `frontend/knip.config.ts`: typescript-eslint consumes it internally but doesn't ES-import it, so knip can't detect the usage. `@vitest/coverage-v8` does NOT need `ignoreDependencies` — vitest detects it via `coverage.provider: 'v8'` in `vitest.config.ts`. Run via `make dead-code-ts` or `cd frontend && npm run dead:ts`.
 
 - **TypeScript 6.x is blocked by `openapi-typescript`.** `openapi-typescript@7.x` declares `peer typescript: "^5.x"` and will cause `npm install` to fail with an `ERESOLVE` conflict if `typescript` is bumped to `^6.x`. Hold TypeScript at `^5.x` until `openapi-typescript` ships TS 6 support.
 
