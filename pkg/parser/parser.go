@@ -8,6 +8,7 @@ import (
 	"image/color"
 	_ "image/jpeg"
 	"image/png"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -293,16 +294,30 @@ func parsePanelStats(text string) map[string]int {
 	return stats
 }
 
-// ProgressFunc is called after each screenshot finishes OCR. done is
-// the number of files processed so far (1-based, including this one);
-// total is the total count of files to process this run.
-type ProgressFunc func(done, total int, filename string, result *MatchResult)
+// parseSingleFunc is the indirection ParseScreenshotsDir routes each file
+// through. Production points at ParseScreenshot; tests swap it (with
+// t.Cleanup) to return canned results / errors so the loop's resilience
+// to per-file failures is testable without real images or Tesseract.
+var parseSingleFunc = ParseScreenshot
+
+// ProgressFunc is called after each screenshot finishes OCR. done is the
+// number of files processed so far (1-based, including this one); total is
+// the count of files to process this run. result is the parsed match data
+// for the current file (nil when the file failed); err is non-nil iff the
+// parse failed. The app layer surfaces a warning when err != nil but the
+// loop continues — a single corrupted screenshot must not abandon every
+// healthy file after it.
+type ProgressFunc func(done, total int, filename string, result *MatchResult, err error)
 
 // ParseScreenshotsDir OCRs every supported image in dir except those in skip
 // (a set of filenames already parsed and stored). The skip set lets the app
 // avoid re-running Tesseract on files that already belong to a DB row — OCR
 // is by far the slowest part of the pipeline. progress is called (if non-nil)
-// after each file completes.
+// after each file completes, including failures.
+//
+// Per-file parse errors are non-fatal: the loop continues and the failing
+// file is reported through the progress callback. Only a directory-level
+// failure (ReadDir error) propagates as the function's error return.
 func ParseScreenshotsDir(dir string, skip map[string]bool, progress ProgressFunc) (map[string]*MatchResult, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -324,13 +339,18 @@ func ParseScreenshotsDir(dir string, skip map[string]bool, progress ProgressFunc
 	}
 	out := map[string]*MatchResult{}
 	for i, name := range toProcess {
-		r, err := ParseScreenshot(filepath.Join(dir, name))
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", name, err)
+		r, parseErr := parseSingleFunc(filepath.Join(dir, name))
+		if parseErr != nil {
+			// Per-file failure: log a warning, surface it through the
+			// progress callback so the UI can flag the file, and keep
+			// going. The whole batch must not abort because one
+			// screenshot is corrupted, unreadable, or a non-OW PNG.
+			log.Printf("parse: %s: %v (skipping; continuing with remaining files)", name, parseErr)
+		} else {
+			out[name] = r
 		}
-		out[name] = r
 		if progress != nil {
-			progress(i+1, len(toProcess), name, r)
+			progress(i+1, len(toProcess), name, r, parseErr)
 		}
 	}
 	return out, nil
