@@ -423,7 +423,10 @@ paths:
       description: |
         Long-lived `text/event-stream` connection. Subscribers receive:
           * `parse-progress` — fired per OCR'd file during a parse run,
-            carries `{done, total, filename, screenshot_type, data?}`
+            carries `{done, total, filename, screenshot_type, data?, error?}`.
+            `error` is set when that single file failed to parse; the
+            batch continues to the next file regardless, so the client
+            should render a warning without aborting the in-flight UI.
           * `parse-complete` — fired after a parse run finishes
           * Keepalive comment lines every 25 s so reverse proxies
             don't close the connection

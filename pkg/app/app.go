@@ -885,14 +885,18 @@ func (a *App) ParseScreenshots() error {
 	if err != nil {
 		return err
 	}
-	results, err := parser.ParseScreenshotsDir(screenshotsDir, parsed, func(done, total int, filename string, result *parser.MatchResult) {
-		a.emitParseProgress(ParseProgressEvent{
+	results, err := parser.ParseScreenshotsDir(screenshotsDir, parsed, func(done, total int, filename string, result *parser.MatchResult, parseErr error) {
+		ev := ParseProgressEvent{
 			Done:     done,
 			Total:    total,
 			Filename: filename,
 			Type:     screenshotType(result),
 			Data:     result,
-		})
+		}
+		if parseErr != nil {
+			ev.Error = parseErr.Error()
+		}
+		a.emitParseProgress(ev)
 	})
 	if err != nil {
 		return err
@@ -1037,13 +1041,16 @@ func unionSortedStrings(a, b []string) []string {
 }
 
 // ParseProgressEvent is emitted on the "parse-progress" channel/event
-// after each screenshot finishes OCR.
+// after each screenshot finishes OCR. Error is non-empty when the file
+// failed to parse — the loop continues regardless, so the frontend can
+// render a per-file warning without the batch aborting.
 type ParseProgressEvent struct {
 	Done     int                 `json:"done"`
 	Total    int                 `json:"total"`
 	Filename string              `json:"filename"`
 	Type     string              `json:"screenshot_type"`
 	Data     *parser.MatchResult `json:"data,omitempty"`
+	Error    string              `json:"error,omitempty"`
 }
 
 // screenshotType infers the screenshot category from the fields that were
