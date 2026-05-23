@@ -390,13 +390,19 @@ func findHighlightedRowY(img image.Image) (int, int) {
 	return bestY, bestY + rowHeight
 }
 
+// runTesseractFunc is the indirection both OCR helpers route through.
+// Production points at runTesseract; tests swap it (with t.Cleanup) to
+// return canned strings keyed on the `name` argument — no Tesseract
+// binary, no temp files, no exec.
+var runTesseractFunc = runTesseract
+
 // ocrInverted writes the cropped region as inverted-luminance grayscale (white
 // in-game text becomes black, dark backgrounds become white) and 3x upscaled.
 // Best for the row stats and header where text is solid white.
 func ocrInverted(img image.Image, rect image.Rectangle, workDir, name, psm, whitelist string) (string, error) {
 	sub := crop(img, rect)
 	pre := preprocessInverted(sub)
-	return runTesseract(pre, workDir, name, psm, whitelist)
+	return runTesseractFunc(pre, workDir, name, psm, whitelist)
 }
 
 // ocrRaw writes the cropped region untouched (just upscaled) for Tesseract's
@@ -405,7 +411,7 @@ func ocrInverted(img image.Image, rect image.Rectangle, workDir, name, psm, whit
 func ocrRaw(img image.Image, rect image.Rectangle, workDir, name, psm, whitelist string) (string, error) {
 	sub := crop(img, rect)
 	pre := upscale(sub, 2)
-	return runTesseract(pre, workDir, name, psm, whitelist)
+	return runTesseractFunc(pre, workDir, name, psm, whitelist)
 }
 
 func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string, error) {

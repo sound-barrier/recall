@@ -142,25 +142,40 @@ func checkTesseract(path string) TesseractStatus {
 		}
 		return s
 	}
-	// `tesseract --version` writes its banner to stderr on most builds,
-	// stdout on others. Concatenate both so we don't depend on the
-	// channel.
-	output := stdout.String() + stderr.String()
-	first := strings.TrimSpace(strings.SplitN(output, "\n", 2)[0])
-	if !strings.HasPrefix(strings.ToLower(first), "tesseract") {
-		s.Error = "Binary at that path doesn't identify as Tesseract: " + first
+	version, supported, vErr := parseTesseractVersion(stdout.String(), stderr.String())
+	if vErr != "" {
+		s.Error = vErr
 		return s
 	}
 	s.Found = true
+	s.Version = version
+	s.Supported = supported
+	return s
+}
+
+// parseTesseractVersion extracts the version string from `tesseract --version`
+// output. The binary writes its banner to stderr on most builds, stdout on
+// others — both are concatenated to be channel-agnostic. Returns:
+//   - version: the parsed version (e.g. "5.5.0")
+//   - supported: true only for major version 5 (the parser was tuned against
+//     it; 3.x and 4.x routinely misread the post-match UI font)
+//   - msg: non-empty diagnostic when the output doesn't look like a Tesseract
+//     banner. Empty when the parse succeeded.
+//
+// Splitting this out of checkTesseract makes the pure parsing testable
+// without shelling out to a real binary.
+func parseTesseractVersion(stdout, stderr string) (version string, supported bool, msg string) {
+	output := stdout + stderr
+	first := strings.TrimSpace(strings.SplitN(output, "\n", 2)[0])
+	if !strings.HasPrefix(strings.ToLower(first), "tesseract") {
+		return "", false, "Binary at that path doesn't identify as Tesseract: " + first
+	}
 	v := strings.TrimSpace(strings.TrimPrefix(first, "tesseract"))
 	v = strings.TrimSpace(strings.TrimPrefix(v, "v"))
-	s.Version = v
-	// Only major version 5 is officially supported. 3.x and 4.x may
-	// produce incorrect OCR output with the current parser logic.
-	if major := strings.SplitN(v, ".", 2)[0]; major == "5" {
-		s.Supported = true
-	}
-	return s
+	// Only major version 5 is officially supported. 3.x and 4.x may produce
+	// incorrect OCR output with the current parser logic.
+	major := strings.SplitN(v, ".", 2)[0]
+	return v, major == "5", ""
 }
 
 // watchDebounce is how long we wait after seeing a new screenshot
