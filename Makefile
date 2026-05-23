@@ -349,9 +349,9 @@ release-fire: ## Manually fire release.yml on an existing tag (usage: make relea
 
 test: test-go test-frontend ## Run all tests
 
-test-go: ## Run Go unit tests (skips parser golden-file tests in -short mode)
+test-go: ## Run Go unit tests with -race (skips parser golden-file tests in -short mode)
 	@echo "[ recall ] Running Go unit tests…"
-	go test ./...
+	go test -race ./...
 	@echo "[ recall ] ✓  Go tests passed"
 
 test-frontend: ## Run frontend unit tests (Vitest)
@@ -362,7 +362,7 @@ test-frontend: ## Run frontend unit tests (Vitest)
 cover-go: ## Generate Go coverage report (text + HTML; output → coverage/go/)
 	@echo "[ recall ] Generating Go coverage report…"
 	@mkdir -p coverage/go
-	go test -short -coverprofile=coverage/go/coverage.out ./...
+	go test -race -short -coverprofile=coverage/go/coverage.out ./...
 	go tool cover -func=coverage/go/coverage.out | tee coverage/go/coverage.txt
 	go tool cover -html=coverage/go/coverage.out -o coverage/go/coverage.html
 	@echo "[ recall ] ✓  Coverage report written to coverage/go/"
