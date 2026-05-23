@@ -359,6 +359,14 @@ test-frontend: ## Run frontend unit tests (Vitest)
 	cd frontend && npm run test
 	@echo "[ recall ] ✓  Frontend tests passed"
 
+cover-go: ## Generate Go coverage report (text + HTML; output → coverage/go/)
+	@echo "[ recall ] Generating Go coverage report…"
+	@mkdir -p coverage/go
+	go test -short -coverprofile=coverage/go/coverage.out ./...
+	go tool cover -func=coverage/go/coverage.out | tee coverage/go/coverage.txt
+	go tool cover -html=coverage/go/coverage.out -o coverage/go/coverage.html
+	@echo "[ recall ] ✓  Coverage report written to coverage/go/"
+
 cover-frontend: ## Generate JS/TS coverage report (Vitest + V8; output → frontend/coverage/)
 	@echo "[ recall ] Generating frontend coverage report…"
 	cd frontend && npm run test:coverage
