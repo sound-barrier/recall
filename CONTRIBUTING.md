@@ -265,7 +265,7 @@ make fmt            # format all Go source files (goimports-reviser for import g
 make lint           # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral
 make lint-yaml      # yamllint only
 make lint-openapi   # Spectral only (api/openapi.yaml)
-make test           # Go unit tests + Vitest frontend tests (parser golden-file tests skip unless RECALL_FIXTURE_DIR is set)
+make test           # Go unit tests (-race) + Vitest frontend tests (parser golden-file tests skip unless RECALL_FIXTURE_DIR is set)
 make cover-go       # Go coverage report → coverage/go/ (HTML + func summary; gitignored)
 make cover-frontend # JS/TS coverage report → frontend/coverage/ (Vitest + V8; gitignored)
 make typecheck      # vue-tsc --noEmit — covers .ts files and <script lang="ts"> Vue SFCs; allowJs: false enforces no JS
