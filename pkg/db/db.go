@@ -1,13 +1,8 @@
+// Package db owns the SQLite persistence layer for Recall. The Store
+// interface is the boundary the app uses; SQLStore is the production
+// implementation. The schema and migrations live here so they can be
+// shared across implementations.
 package db
-
-import (
-	"database/sql"
-	"strings"
-
-	_ "modernc.org/sqlite"
-)
-
-var DB *sql.DB
 
 // schema rebuilds match_results around a derived match_key (the canonical
 // "E:A:D" tuple) so a single logical match — fed by both the SUMMARY screen
@@ -15,7 +10,7 @@ var DB *sql.DB
 // of every screenshot that contributed.
 //
 // This is CREATE TABLE IF NOT EXISTS; column changes require either a real
-// migration (see Init) or deleting recall.db.
+// migration (see the migrations slice) or deleting recall.db.
 const schema = `CREATE TABLE IF NOT EXISTS match_results (
 	id            INTEGER PRIMARY KEY AUTOINCREMENT,
 	match_key     TEXT NOT NULL UNIQUE,
@@ -61,26 +56,4 @@ const schema = `CREATE TABLE IF NOT EXISTS match_results (
 // SQLite has no IF NOT EXISTS for ADD COLUMN until v3.35.
 var migrations = []string{
 	`ALTER TABLE match_results ADD COLUMN source_types TEXT`,
-}
-
-func Init(path string) error {
-	var err error
-	DB, err = sql.Open("sqlite", path)
-	if err != nil {
-		return err
-	}
-	if _, err = DB.Exec(schema); err != nil {
-		return err
-	}
-	for _, m := range migrations {
-		if _, err = DB.Exec(m); err != nil {
-			// Idempotent: ignore "duplicate column" errors that fire
-			// when the migration has already been applied. Anything
-			// else is a real failure.
-			if !strings.Contains(err.Error(), "duplicate column") {
-				return err
-			}
-		}
-	}
-	return nil
 }
