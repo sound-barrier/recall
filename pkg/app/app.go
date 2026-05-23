@@ -3,7 +3,6 @@ package app
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -221,6 +220,9 @@ func saveSettings(s Settings) error {
 type App struct {
 	ctx      context.Context
 	settings Settings
+	// store is the persistence layer. *db.SQLStore in production wiring,
+	// can be a fake in tests via NewWithStore.
+	store db.Store
 	// tessStatus is the last result of checkTesseract(). Refreshed on
 	// Startup, on SetTesseractPath, on PickTesseractBinary, and on
 	// ResetTesseractPath. Read-only from the Wails GetTesseractStatus
@@ -254,6 +256,13 @@ func New() *App {
 	return &App{}
 }
 
+// NewWithStore returns an App with its persistence layer pre-wired. Used by
+// tests that pass an in-memory fake (or a *db.SQLStore opened at ":memory:").
+// Production code paths use New() + Startup() which constructs the SQLStore.
+func NewWithStore(s db.Store) *App {
+	return &App{store: s}
+}
+
 // Startup initializes the app: loads settings, checks Tesseract, opens the
 // SQLite database, and starts the metrics/watcher if configured. Called by
 // the Wails runtime via OnStartup, or directly by pkg/cmd/server.go in
@@ -278,8 +287,12 @@ func (a *App) Startup(ctx context.Context) {
 	if err := os.MkdirAll(dbDir, 0o700); err != nil {
 		log.Fatal("could not create db dir:", err)
 	}
-	if err := db.Init(filepath.Join(dbDir, "recall.db")); err != nil {
-		log.Fatal("could not init db:", err)
+	if a.store == nil {
+		s, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
+		if err != nil {
+			log.Fatal("could not init db:", err)
+		}
+		a.store = s
 	}
 
 	// Start the Prometheus metrics endpoint only if the user has
@@ -419,7 +432,7 @@ func (a *App) startMetrics() {
 	if a.metricsServer != nil {
 		return
 	}
-	s := metrics.NewServer(":9091", scrapeReader)
+	s := metrics.NewServer(":9091", a.scrapeReader)
 	s.Start()
 	a.metricsServer = s
 }
@@ -730,8 +743,8 @@ func (a *App) ResetTesseractPath() (TesseractStatus, error) {
 // Called by the Prometheus collector on every scrape; the read is the same
 // SELECT that backs GetMatchResults, so cardinality and freshness are
 // identical between the Wails UI and the metrics endpoint.
-func scrapeReader() ([]metrics.ScrapeRow, error) {
-	recs, err := readAllRecords()
+func (a *App) scrapeReader() ([]metrics.ScrapeRow, error) {
+	recs, err := a.readAllRecords()
 	if err != nil {
 		return nil, err
 	}
@@ -820,7 +833,7 @@ func (a *App) ParseScreenshots() error {
 
 	// Skip files already in some DB row's source_files. OCR is slow (~seconds
 	// per image), and we only need to re-process newly added screenshots.
-	parsed, err := loadParsedFilenames()
+	parsed, err := a.store.LoadSourceFilenames()
 	if err != nil {
 		return err
 	}
@@ -852,7 +865,7 @@ func (a *App) ParseScreenshots() error {
 	// keeps incremental re-parses idempotent: adding the rank screenshot to
 	// a Lucio match already in the DB updates that row instead of creating
 	// a new one.
-	existing, err := loadExistingMergedRows()
+	existing, err := a.loadExistingMergedRows()
 	if err != nil {
 		return err
 	}
@@ -863,7 +876,7 @@ func (a *App) ParseScreenshots() error {
 			existing[idx].Sources = unionSortedStrings(existing[idx].Sources, nr.Sources)
 			existing[idx].Types = mergeTypeMaps(existing[idx].Types, nr.Types)
 			existing[idx].Key = targetKey
-			if err := upsertMergedRow(existing[idx]); err != nil {
+			if err := a.upsertMergedRow(existing[idx]); err != nil {
 				return err
 			}
 		} else {
@@ -873,7 +886,7 @@ func (a *App) ParseScreenshots() error {
 			// applies its own competitive-only filter at scrape time
 			// (see pkg/metrics/metrics.go) so the Grafana side
 			// keeps its win-rate / KDA series clean.
-			if err := upsertMergedRow(nr); err != nil {
+			if err := a.upsertMergedRow(nr); err != nil {
 				return err
 			}
 		}
@@ -881,35 +894,10 @@ func (a *App) ParseScreenshots() error {
 	return nil
 }
 
-// loadParsedFilenames returns every source filename across every existing
-// DB row, so we can skip OCR for files already on disk.
-func loadParsedFilenames() (map[string]bool, error) {
-	rows, err := db.DB.Query(`SELECT source_files FROM match_results`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	parsed := map[string]bool{}
-	for rows.Next() {
-		var raw string
-		if err := rows.Scan(&raw); err != nil {
-			return nil, err
-		}
-		var files []string
-		if err := json.Unmarshal([]byte(raw), &files); err != nil {
-			return nil, err
-		}
-		for _, f := range files {
-			parsed[f] = true
-		}
-	}
-	return parsed, rows.Err()
-}
-
 // loadExistingMergedRows reads every row back into the mergedRow shape so
 // new parses can be folded into them.
-func loadExistingMergedRows() ([]mergedRow, error) {
-	records, err := readAllRecords()
+func (a *App) loadExistingMergedRows() ([]mergedRow, error) {
+	records, err := a.readAllRecords()
 	if err != nil {
 		return nil, err
 	}
@@ -1049,7 +1037,7 @@ func (a *App) GetNewScreenshotCount() (int, error) {
 	if a.settings.ScreenshotsDir == "" {
 		return 0, nil
 	}
-	parsed, err := loadParsedFilenames()
+	parsed, err := a.store.LoadSourceFilenames()
 	if err != nil {
 		return 0, err
 	}
@@ -1078,7 +1066,7 @@ func (a *App) GetNewScreenshotCount() (int, error) {
 
 // GetMatchResults returns all stored, merged match rows.
 func (a *App) GetMatchResults() ([]MatchRecord, error) {
-	recs, err := readAllRecords()
+	recs, err := a.readAllRecords()
 	if err != nil {
 		return nil, err
 	}
@@ -1091,37 +1079,68 @@ func (a *App) GetMatchResults() ([]MatchRecord, error) {
 
 // ClearDatabase deletes all rows from match_results, resetting the
 // parse history without touching settings or the SQLite schema.
-func (a *App) ClearDatabase() error {
-	_, err := db.DB.Exec(`DELETE FROM match_results`)
-	return err
-}
+func (a *App) ClearDatabase() error { return a.store.Clear() }
 
-func readAllRecords() ([]MatchRecord, error) {
-	rows, err := db.DB.Query(`SELECT
-		id, match_key, source_files, source_types,
-		map, type, mode, role, hero,
-		eliminations, assists, deaths, damage, healing, mitigation,
-		result, final_score, date, finished_at, game_length,
-		heroes_played, performance,
-		rank, level, rank_progress, change_percent, modifiers, sr
-		FROM match_results ORDER BY id`)
+// readAllRecords pulls every match through the Store and decodes the JSON
+// columns into the strongly-typed MatchRecord shape the UI / metrics layer
+// uses. Initializes the slice to length 0 so an empty result set still
+// JSON-marshals as `[]` (the OpenAPI schema for /api/match-results declares
+// `type: array`, which a nil slice would violate).
+func (a *App) readAllRecords() ([]MatchRecord, error) {
+	rows, err := a.store.LoadAll()
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-
-	// Initialize to a non-nil empty slice so an empty result set marshals
-	// as `[]` rather than `null` — `null` violates the OpenAPI schema
-	// `type: array` declaration for GET /api/match-results.
-	records := make([]MatchRecord, 0)
-	for rows.Next() {
-		rec, err := scanMatchRecord(rows)
+	records := make([]MatchRecord, 0, len(rows))
+	for _, r := range rows {
+		rec, err := rowToMatchRecord(r)
 		if err != nil {
 			return nil, err
 		}
 		records = append(records, rec)
 	}
-	return records, rows.Err()
+	return records, nil
+}
+
+// rowToMatchRecord lifts the JSON columns out of a db.MatchRow into their
+// typed counterparts on a MatchRecord.
+func rowToMatchRecord(r db.MatchRow) (MatchRecord, error) {
+	rec := MatchRecord{
+		ID:          r.ID,
+		MatchKey:    r.MatchKey,
+		SourceFiles: r.SourceFiles,
+		SourceTypes: r.SourceTypes,
+		Data: parser.MatchResult{
+			Map: r.Map, Type: r.Type, Mode: r.Mode, Role: r.Role, Hero: r.Hero,
+			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
+			Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
+			Result: r.Result, FinalScore: r.FinalScore,
+			Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
+			Rank: r.Rank, Level: r.Level,
+			RankProgress: r.RankProgress, ChangePercent: r.ChangePercent,
+		},
+	}
+	if r.HeroesPlayedJSON != "" {
+		if err := json.Unmarshal([]byte(r.HeroesPlayedJSON), &rec.Data.HeroesPlayed); err != nil {
+			return rec, err
+		}
+	}
+	if r.PerformanceJSON != "" {
+		if err := json.Unmarshal([]byte(r.PerformanceJSON), &rec.Data.Performance); err != nil {
+			return rec, err
+		}
+	}
+	if r.ModifiersJSON != "" {
+		if err := json.Unmarshal([]byte(r.ModifiersJSON), &rec.Data.Modifiers); err != nil {
+			return rec, err
+		}
+	}
+	if r.SRJSON != "" {
+		if err := json.Unmarshal([]byte(r.SRJSON), &rec.Data.SR); err != nil {
+			return rec, err
+		}
+	}
+	return rec, nil
 }
 
 // mergedRow is one DB row's worth of merged data: a stable key derived from
@@ -1532,154 +1551,68 @@ func mergeMatchResult(dst, src *parser.MatchResult) {
 	}
 }
 
-func upsertMergedRow(row mergedRow) error {
-	sourcesJSON, err := json.Marshal(row.Sources)
+// upsertMergedRow writes one merged row through the Store. JSON columns are
+// pre-encoded here; pkg/db treats them as opaque strings so it doesn't have
+// to know about parser types.
+func (a *App) upsertMergedRow(row mergedRow) error {
+	heroesJSON, err := marshalIfPresent(row.Data.HeroesPlayed, len(row.Data.HeroesPlayed) > 0)
 	if err != nil {
 		return err
 	}
-	typesJSON, err := jsonNullable(row.Types, len(row.Types) > 0)
+	perfJSON, err := marshalIfPresent(row.Data.Performance, row.Data.Performance != nil)
 	if err != nil {
 		return err
 	}
-	heroesJSON, err := jsonNullable(row.Data.HeroesPlayed, len(row.Data.HeroesPlayed) > 0)
+	modifiersJSON, err := marshalIfPresent(row.Data.Modifiers, len(row.Data.Modifiers) > 0)
 	if err != nil {
 		return err
 	}
-	perfJSON, err := jsonNullable(row.Data.Performance, row.Data.Performance != nil)
-	if err != nil {
-		return err
-	}
-	modifiersJSON, err := jsonNullable(row.Data.Modifiers, len(row.Data.Modifiers) > 0)
-	if err != nil {
-		return err
-	}
-	srJSON, err := jsonNullable(row.Data.SR, len(row.Data.SR) > 0)
+	srJSON, err := marshalIfPresent(row.Data.SR, len(row.Data.SR) > 0)
 	if err != nil {
 		return err
 	}
 
-	_, err = db.DB.Exec(
-		`INSERT INTO match_results (
-		match_key, source_files, source_types,
-		map, type, mode, role, hero,
-		eliminations, assists, deaths, damage, healing, mitigation,
-		result, final_score, date, finished_at, game_length,
-		heroes_played, performance,
-		rank, level, rank_progress, change_percent, modifiers, sr
-	) VALUES (?,?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?, ?,?, ?,?,?,?,?,?)
-	ON CONFLICT(match_key) DO UPDATE SET
-		source_files   = excluded.source_files,
-		source_types   = excluded.source_types,
-		map            = excluded.map,
-		type           = excluded.type,
-		mode           = excluded.mode,
-		role           = excluded.role,
-		hero           = excluded.hero,
-		eliminations   = excluded.eliminations,
-		assists        = excluded.assists,
-		deaths         = excluded.deaths,
-		damage         = excluded.damage,
-		healing        = excluded.healing,
-		mitigation     = excluded.mitigation,
-		result         = excluded.result,
-		final_score    = excluded.final_score,
-		date           = excluded.date,
-		finished_at    = excluded.finished_at,
-		game_length    = excluded.game_length,
-		heroes_played  = excluded.heroes_played,
-		performance    = excluded.performance,
-		rank           = excluded.rank,
-		level          = excluded.level,
-		rank_progress  = excluded.rank_progress,
-		change_percent = excluded.change_percent,
-		modifiers      = excluded.modifiers,
-		sr             = excluded.sr,
-		parsed_at      = CURRENT_TIMESTAMP`,
-		row.Key, string(sourcesJSON), typesJSON,
-		nullableString(row.Data.Map), nullableString(row.Data.Type),
-		nullableString(row.Data.Mode), nullableString(row.Data.Role),
-		nullableString(row.Data.Hero),
-		row.Data.Eliminations, row.Data.Assists, row.Data.Deaths,
-		row.Data.Damage, row.Data.Healing, row.Data.Mitigation,
-		nullableString(row.Data.Result), nullableString(row.Data.FinalScore),
-		nullableString(row.Data.Date), nullableString(row.Data.FinishedAt),
-		nullableString(row.Data.GameLength),
-		heroesJSON, perfJSON,
-		nullableString(row.Data.Rank), row.Data.Level,
-		row.Data.RankProgress, row.Data.ChangePercent,
-		modifiersJSON, srJSON,
-	)
-	return err
+	return a.store.Upsert(db.MatchRow{
+		MatchKey:         row.Key,
+		SourceFiles:      row.Sources,
+		SourceTypes:      row.Types,
+		Map:              row.Data.Map,
+		Type:             row.Data.Type,
+		Mode:             row.Data.Mode,
+		Role:             row.Data.Role,
+		Hero:             row.Data.Hero,
+		Eliminations:     row.Data.Eliminations,
+		Assists:          row.Data.Assists,
+		Deaths:           row.Data.Deaths,
+		Damage:           row.Data.Damage,
+		Healing:          row.Data.Healing,
+		Mitigation:       row.Data.Mitigation,
+		Result:           row.Data.Result,
+		FinalScore:       row.Data.FinalScore,
+		Date:             row.Data.Date,
+		FinishedAt:       row.Data.FinishedAt,
+		GameLength:       row.Data.GameLength,
+		HeroesPlayedJSON: heroesJSON,
+		PerformanceJSON:  perfJSON,
+		ModifiersJSON:    modifiersJSON,
+		SRJSON:           srJSON,
+		Rank:             row.Data.Rank,
+		Level:            row.Data.Level,
+		RankProgress:     row.Data.RankProgress,
+		ChangePercent:    row.Data.ChangePercent,
+	})
 }
 
-func jsonNullable(v any, present bool) (sql.NullString, error) {
+// marshalIfPresent returns the JSON encoding of v when present is true, or
+// "" otherwise — matching the "empty string == SQL NULL" convention the
+// store uses for opaque JSON columns.
+func marshalIfPresent(v any, present bool) (string, error) {
 	if !present {
-		return sql.NullString{}, nil
+		return "", nil
 	}
 	b, err := json.Marshal(v)
 	if err != nil {
-		return sql.NullString{}, err
+		return "", err
 	}
-	return sql.NullString{String: string(b), Valid: true}, nil
-}
-
-func scanMatchRecord(rows *sql.Rows) (MatchRecord, error) {
-	var rec MatchRecord
-	var sourcesJSON string
-	var typesJSON sql.NullString
-	var mapCol, typeCol, mode, role, hero sql.NullString
-	var result, finalScore, date, finishedAt, gameLength sql.NullString
-	var heroesJSON, perfJSON sql.NullString
-	var rank sql.NullString
-	var modifiersJSON, srJSON sql.NullString
-	err := rows.Scan(
-		&rec.ID, &rec.MatchKey, &sourcesJSON, &typesJSON,
-		&mapCol, &typeCol, &mode, &role, &hero,
-		&rec.Data.Eliminations, &rec.Data.Assists, &rec.Data.Deaths,
-		&rec.Data.Damage, &rec.Data.Healing, &rec.Data.Mitigation,
-		&result, &finalScore, &date, &finishedAt, &gameLength,
-		&heroesJSON, &perfJSON,
-		&rank, &rec.Data.Level, &rec.Data.RankProgress, &rec.Data.ChangePercent,
-		&modifiersJSON, &srJSON,
-	)
-	if err != nil {
-		return rec, err
-	}
-	rec.Data.Rank = rank.String
-	if err := json.Unmarshal([]byte(sourcesJSON), &rec.SourceFiles); err != nil {
-		return rec, err
-	}
-	if typesJSON.Valid && typesJSON.String != "" {
-		_ = json.Unmarshal([]byte(typesJSON.String), &rec.SourceTypes)
-	}
-	rec.Data.Map = mapCol.String
-	rec.Data.Type = typeCol.String
-	rec.Data.Mode = mode.String
-	rec.Data.Role = role.String
-	rec.Data.Hero = hero.String
-	rec.Data.Result = result.String
-	rec.Data.FinalScore = finalScore.String
-	rec.Data.Date = date.String
-	rec.Data.FinishedAt = finishedAt.String
-	rec.Data.GameLength = gameLength.String
-	if heroesJSON.Valid && heroesJSON.String != "" {
-		_ = json.Unmarshal([]byte(heroesJSON.String), &rec.Data.HeroesPlayed)
-	}
-	if perfJSON.Valid && perfJSON.String != "" {
-		_ = json.Unmarshal([]byte(perfJSON.String), &rec.Data.Performance)
-	}
-	if modifiersJSON.Valid && modifiersJSON.String != "" {
-		_ = json.Unmarshal([]byte(modifiersJSON.String), &rec.Data.Modifiers)
-	}
-	if srJSON.Valid && srJSON.String != "" {
-		_ = json.Unmarshal([]byte(srJSON.String), &rec.Data.SR)
-	}
-	return rec, nil
-}
-
-func nullableString(s string) sql.NullString {
-	if s == "" {
-		return sql.NullString{}
-	}
-	return sql.NullString{String: s, Valid: true}
+	return string(b), nil
 }
