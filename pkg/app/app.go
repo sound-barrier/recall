@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -209,10 +210,23 @@ func appDataDir() string {
 func settingsPath() string { return filepath.Join(appDataDir(), "settings.json") }
 
 func loadSettings() Settings {
-	s := Settings{ScreenshotsDir: "screenshots"} // relative default works for `wails dev`
 	raw, err := os.ReadFile(settingsPath())
 	if err != nil {
-		return s // file doesn't exist yet (first run); use defaults
+		return defaultSettings() // file doesn't exist yet (first run); use defaults
+	}
+	return loadSettingsFrom(bytes.NewReader(raw))
+}
+
+// loadSettingsFrom parses Settings out of an io.Reader, filling defaults for
+// any field the JSON didn't set. Malformed JSON falls back to defaults
+// entirely — matches the historical "first run / corrupted file is harmless"
+// behavior. Split out of loadSettings so tests don't need to round-trip
+// through the real settings.json path.
+func loadSettingsFrom(r io.Reader) Settings {
+	s := defaultSettings()
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		return s
 	}
 	_ = json.Unmarshal(raw, &s) // ignore malformed JSON; keep defaults
 	if s.ScreenshotsDir == "" {
@@ -221,15 +235,26 @@ func loadSettings() Settings {
 	return s
 }
 
+// defaultSettings returns a fresh Settings with first-run defaults applied.
+func defaultSettings() Settings {
+	return Settings{ScreenshotsDir: "screenshots"} // relative default works for `wails dev`
+}
+
 func saveSettings(s Settings) error {
 	if err := os.MkdirAll(filepath.Dir(settingsPath()), 0o700); err != nil {
 		return err
 	}
-	b, err := json.MarshalIndent(s, "", "  ")
+	b, err := marshalSettings(s)
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(settingsPath(), b, 0o644)
+}
+
+// marshalSettings is the pure JSON-encoding step of saveSettings. Pulled out
+// so tests can verify the on-disk shape without touching the filesystem.
+func marshalSettings(s Settings) ([]byte, error) {
+	return json.MarshalIndent(s, "", "  ")
 }
 
 type App struct {
@@ -354,9 +379,17 @@ func (a *App) startWatching() {
 }
 
 func (a *App) runWatchLoop(w *fsnotify.Watcher) {
+	runWatchEvents(w.Events, w.Errors, a.scheduleParseDebounced)
+}
+
+// runWatchEvents is the pure event-loop body, abstracted away from
+// *fsnotify.Watcher so tests can feed synthetic channels. Returns when
+// either channel closes — matches the production behavior where the
+// watcher's goroutine exits on shutdown.
+func runWatchEvents(events <-chan fsnotify.Event, errs <-chan error, onTrigger func()) {
 	for {
 		select {
-		case ev, ok := <-w.Events:
+		case ev, ok := <-events:
 			if !ok {
 				return
 			}
@@ -370,8 +403,8 @@ func (a *App) runWatchLoop(w *fsnotify.Watcher) {
 				continue
 			}
 			log.Printf("watch: new file %s — debouncing parse for %s", filepath.Base(ev.Name), watchDebounce)
-			a.scheduleParseDebounced()
-		case err, ok := <-w.Errors:
+			onTrigger()
+		case err, ok := <-errs:
 			if !ok {
 				return
 			}
