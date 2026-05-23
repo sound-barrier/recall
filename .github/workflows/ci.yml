@@ -107,7 +107,7 @@ jobs:
       # Go unit tests (merge logic, inference helpers, screenshotType
       # classification). Parser golden-file tests are skipped by -short.
       - name: Run Go unit tests
-        run: go test -short ./...
+        run: go test -race -short ./...
 
       # Frontend unit tests (Vitest) — pure-helper coverage for the
       # extracted match-helpers.ts module.
