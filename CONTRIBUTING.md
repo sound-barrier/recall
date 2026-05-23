@@ -266,6 +266,8 @@ make lint           # all linters: golangci-lint (both build tags), ESLint, Styl
 make lint-yaml      # yamllint only
 make lint-openapi   # Spectral only (api/openapi.yaml)
 make test           # Go unit tests + Vitest frontend tests (parser golden-file tests skip unless RECALL_FIXTURE_DIR is set)
+make cover-go       # Go coverage report → coverage/go/ (HTML + func summary; gitignored)
+make cover-frontend # JS/TS coverage report → frontend/coverage/ (Vitest + V8; gitignored)
 make typecheck      # vue-tsc --noEmit — covers .ts files and <script lang="ts"> Vue SFCs; allowJs: false enforces no JS
 make gen-types      # regenerate frontend/src/api.gen.d.ts from api/openapi.yaml (run after every spec edit)
 make update-deps    # update Go modules (go get -u + mod tidy) and npm packages
