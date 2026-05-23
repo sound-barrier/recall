@@ -27,6 +27,47 @@ func RunServer(a *app.App, assets embed.FS) {
 	// the metrics server and file watcher.
 	a.Startup(context.Background())
 
+	// Sub into frontend/dist so paths like "/assets/index.js" resolve correctly.
+	sub, err := fs.Sub(assets, "frontend/dist")
+	if err != nil {
+		log.Fatalf("server: could not sub into embedded assets: %v", err)
+	}
+
+	mux := NewMux(a, sub)
+
+	addr := os.Getenv("RECALL_SERVER_ADDR")
+	if addr == "" {
+		addr = "127.0.0.1:7000"
+	}
+
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: mux,
+	}
+
+	// Graceful shutdown on SIGINT / SIGTERM.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-quit
+		log.Println("server: shutting down…")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = srv.Shutdown(ctx)
+	}()
+
+	log.Printf("Recall server listening on http://%s", addr)
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("server: %v", err)
+	}
+}
+
+// NewMux builds the HTTP handler tree the server-mode binary serves.
+// Split out of RunServer so tests can drive every route through
+// httptest.NewServer without setting up signal handling or binding a
+// real port. assets is the SPA root (e.g. an fs.Sub into the embedded
+// frontend/dist); pass an fstest.MapFS in tests.
+func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// ── REST API ────────────────────────────────────────────────────
@@ -260,38 +301,9 @@ func RunServer(a *app.App, assets embed.FS) {
 	}
 
 	// ── Static frontend assets ──────────────────────────────────────
-	// Sub into frontend/dist so paths like "/assets/index.js" resolve correctly.
-	sub, err := fs.Sub(assets, "frontend/dist")
-	if err != nil {
-		log.Fatalf("server: could not sub into embedded assets: %v", err)
-	}
-	mux.Handle("/", http.FileServer(http.FS(sub)))
+	mux.Handle("/", http.FileServer(http.FS(assets)))
 
-	addr := os.Getenv("RECALL_SERVER_ADDR")
-	if addr == "" {
-		addr = "127.0.0.1:7000"
-	}
-
-	srv := &http.Server{
-		Addr:    addr,
-		Handler: mux,
-	}
-
-	// Graceful shutdown on SIGINT / SIGTERM.
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-quit
-		log.Println("server: shutting down…")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = srv.Shutdown(ctx)
-	}()
-
-	log.Printf("Recall server listening on http://%s", addr)
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("server: %v", err)
-	}
+	return mux
 }
 
 // writeJSON encodes v as JSON. If err is non-nil it writes a 500 instead.
