@@ -236,18 +236,25 @@ func NewServer(addr string, read Reader) *Server {
 	if envAddr := os.Getenv("OWMETRICS_METRICS_ADDR"); envAddr != "" {
 		addr = envAddr
 	}
+	return &Server{
+		addr: addr,
+		srv:  &http.Server{Addr: addr, Handler: newMux(read)},
+	}
+}
+
+// newMux builds the /metrics + index handler against a fresh Prometheus
+// registry. Split out of NewServer so tests can drive the handler against
+// httptest.NewRecorder without binding a real listener.
+func newMux(read Reader) *http.ServeMux {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(New(read))
 
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("Recall exporter — see /metrics\n"))
 	})
-	return &Server{
-		addr: addr,
-		srv:  &http.Server{Addr: addr, Handler: mux},
-	}
+	return mux
 }
 
 // Start begins listening on the configured address in a background
