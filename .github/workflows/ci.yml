@@ -305,7 +305,31 @@ jobs:
           path: frontend/coverage/
           retention-days: 30
 
-  # ── Job 10: OpenAPI ↔ implementation drift check ─────────────────────────
+  # ── Job 10: Go coverage report ───────────────────────────────────────────
+  # Informational only — no thresholds enforced. The HTML report and func
+  # summary are uploaded as a workflow artifact so they can be downloaded
+  # from the Actions run page for any push or PR.
+  coverage-go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Generate Go coverage report
+        run: make cover-go
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-coverage
+          path: coverage/go/
+          retention-days: 30
+
+  # ── Job 11: OpenAPI ↔ implementation drift check ─────────────────────────
   # Spectral checks the spec is well-formed; schemathesis checks the spec
   # matches the running server. Fuzzes spec-derived requests against a
   # freshly-built serveronly binary and verifies every response conforms to
