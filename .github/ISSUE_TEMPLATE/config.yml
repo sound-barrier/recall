@@ -1,0 +1,11 @@
+# Force every new issue through one of the templates above. Blank
+# issues bypass the QA-style fields that make bug triage tractable.
+blank_issues_enabled: false
+
+contact_links:
+  - name: Read the documentation
+    url: https://sound-barrier.github.io/recall/
+    about: Installation, advanced usage, and the API reference are documented at sound-barrier.github.io/recall.
+  - name: Report a security vulnerability
+    url: https://github.com/sound-barrier/recall/security/advisories/new
+    about: Private channel for security issues. Don't open a public issue for a security bug — file a private advisory here.
