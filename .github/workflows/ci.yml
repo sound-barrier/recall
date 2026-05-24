@@ -341,6 +341,14 @@ jobs:
       # and matches how `make lint-gosec` runs locally.
       - name: Install gosec
         run: go install github.com/securego/gosec/v2/cmd/gosec@v2.26.1
+      # assets.go embeds `frontend/dist` (built by Vite). gosec only
+      # needs Go source to compile, not real embed content, so stub the
+      # directory rather than running a full `npm ci && npm run build`
+      # — saves ~30s per CI run while still satisfying the //go:embed
+      # directive. Build jobs that need actual assets handle the real
+      # Vite build themselves.
+      - name: Stub frontend/dist for //go:embed
+        run: mkdir -p frontend/dist && touch frontend/dist/index.html
       - name: Run gosec (default build tag)
         run: gosec -exclude-dir=frontend ./...
       - name: Run gosec (serveronly build tag)
