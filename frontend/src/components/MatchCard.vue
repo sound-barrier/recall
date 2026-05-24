@@ -41,72 +41,103 @@ const emit = defineEmits<{
   >
     <span class="match-bar" aria-hidden="true" />
     <div class="match-body">
+      <!-- Header is a mouse-clickable region for convenience, but the
+           keyboard affordance for expand/collapse is the chev button on
+           the right. Nested interactive elements (chip buttons inside a
+           header button) are invalid HTML / ARIA, so the outer div
+           intentionally has no role or tabindex. -->
       <div
         class="match-header"
-        role="button"
-        tabindex="0"
-        :aria-expanded="isExpanded"
-        :aria-label="`${record.data?.map || 'Unknown map'} — ${isExpanded ? 'collapse' : 'expand'} match details`"
         @click="emit('toggle-expand')"
-        @keydown.enter.space.prevent="emit('toggle-expand')"
       >
         <div class="match-title-row">
           <div class="match-title-lhs">
             <span class="match-index">{{ String(index + 1).padStart(2, '0') }}</span>
-            <span
+            <button
+              type="button"
               class="match-map clickable"
               :class="{ active: isActive('map', record.data?.map ?? '') }"
-              title="Click to filter by this map"
+              :aria-label="`Filter by map: ${record.data?.map || 'Unknown Map'}`"
+              :aria-pressed="isActive('map', record.data?.map ?? '')"
               @click.stop="emit('filter-toggle', 'map', record.data?.map ?? '')"
-            >{{ record.data?.map || 'Unknown Map' }}</span>
+            >
+              {{ record.data?.map || 'Unknown Map' }}
+            </button>
           </div>
           <div class="match-title-rhs">
             <span v-if="fmtTime(record)" class="when">{{ fmtTime(record) }}</span>
             <span v-if="record.data?.game_length" class="length"><span class="length-mark">▮</span>{{ record.data.game_length }}</span>
-            <span class="chev" :class="{ open: isExpanded }" aria-hidden="true">›</span>
+            <button
+              type="button"
+              class="chev chev-btn"
+              :class="{ open: isExpanded }"
+              :aria-expanded="isExpanded"
+              :aria-label="`${record.data?.map || 'Unknown map'} — ${isExpanded ? 'collapse' : 'expand'} match details`"
+              @click.stop="emit('toggle-expand')"
+            >
+              ›
+            </button>
           </div>
         </div>
 
         <div class="match-tag-row">
-          <span
+          <button
             v-if="record.data?.mode"
+            type="button"
             class="badge mode clickable"
             :class="{ active: isActive('mode', record.data.mode) }"
-            title="Click to filter by this mode"
+            :aria-label="`Filter by mode: ${record.data.mode}`"
+            :aria-pressed="isActive('mode', record.data.mode)"
             @click.stop="emit('filter-toggle', 'mode', record.data.mode)"
-          >{{ record.data.mode }}</span>
-          <span
+          >
+            {{ record.data.mode }}
+          </button>
+          <button
             v-if="record.data?.type"
+            type="button"
             class="badge type clickable"
             :class="{ active: isActive('type', record.data.type) }"
-            title="Click to filter by this game type"
+            :aria-label="`Filter by game type: ${record.data.type}`"
+            :aria-pressed="isActive('type', record.data.type)"
             @click.stop="emit('filter-toggle', 'type', record.data.type)"
-          >{{ record.data.type }}</span>
-          <span
+          >
+            {{ record.data.type }}
+          </button>
+          <button
             v-if="record.data?.role"
+            type="button"
             class="badge role clickable"
             :class="[record.data.role, { active: isActive('role', record.data.role) }]"
-            title="Click to filter by this role"
+            :aria-label="`Filter by role: ${record.data.role}`"
+            :aria-pressed="isActive('role', record.data.role)"
             @click.stop="emit('filter-toggle', 'role', record.data.role)"
-          >{{ record.data.role }}</span>
+          >
+            {{ record.data.role }}
+          </button>
           <template v-for="hp in heroesForHeader(record)" :key="hp.hero">
-            <span
+            <button
+              type="button"
               class="badge hero clickable"
               :class="{ active: isActive('hero', hp.hero) }"
-              :title="hp.percent_played != null ? `${hp.hero} — ${hp.percent_played}% played` : 'Click to filter by this hero'"
+              :aria-label="hp.percent_played != null ? `Filter by hero: ${hp.hero}, ${hp.percent_played}% played` : `Filter by hero: ${hp.hero}`"
+              :aria-pressed="isActive('hero', hp.hero)"
               @click.stop="emit('filter-toggle', 'hero', hp.hero)"
             >
               <span class="hero-name-inline">{{ hp.hero }}</span>
               <span v-if="hp.percent_played != null" class="hero-pct-inline">{{ hp.percent_played }}%</span>
-            </span>
+            </button>
           </template>
-          <span
+          <button
             v-if="record.data?.result"
+            type="button"
             class="badge result clickable"
             :class="[record.data.result, { active: isActive('result', record.data.result) }]"
-            title="Click to filter by this result"
+            :aria-label="`Filter by result: ${record.data.result}`"
+            :aria-pressed="isActive('result', record.data.result)"
             @click.stop="emit('filter-toggle', 'result', record.data.result)"
-          >{{ record.data.result }}</span>
+          >
+            {{ record.data.result }}
+          </button>
           <span
             v-if="missingRequiredSlots(record).length"
             class="incomplete-badge"
@@ -183,11 +214,16 @@ const emit = defineEmits<{
             <div class="heroes-played-items">
               <div v-for="hp in record.data.heroes_played" :key="hp.hero" class="hero-block">
                 <div class="hero-header">
-                  <span
+                  <button
+                    type="button"
                     class="hero-name clickable"
                     :class="{ active: isActive('hero', hp.hero) }"
+                    :aria-label="`Filter by hero: ${hp.hero}`"
+                    :aria-pressed="isActive('hero', hp.hero)"
                     @click="emit('filter-toggle', 'hero', hp.hero)"
-                  >{{ hp.hero }}</span>
+                  >
+                    {{ hp.hero }}
+                  </button>
                   <span class="hero-pct">{{ hp.percent_played }}%</span>
                   <span v-if="hp.play_time" class="hero-time">{{ hp.play_time }}</span>
                 </div>
@@ -207,9 +243,11 @@ const emit = defineEmits<{
               <span class="sources-label">Source Screenshots</span>
               <span class="sources-count">{{ record.source_files.length }}</span>
               <span class="sources-coverage" :title="`${detectScreenshotSlots(record).filter(s => s.present).length} of ${detectScreenshotSlots(record).length} screenshot types captured`">
-                <span
+                <component
+                  :is="slot.present ? 'button' : 'span'"
                   v-for="slot in detectScreenshotSlots(record)"
                   :key="slot.key"
+                  :type="slot.present ? 'button' : undefined"
                   class="slot-chip"
                   :class="{
                     present: slot.present,
@@ -220,12 +258,14 @@ const emit = defineEmits<{
                     active: slot.present && isActive('sshot', slot.key),
                   }"
                   :title="slot.present ? `Click to filter to matches that have a ${slot.label} screenshot. ${slot.hint}` : slot.hint"
+                  :aria-label="slot.present ? `Filter by source: ${slot.label} present` : `${slot.label} screenshot not captured`"
+                  :aria-pressed="slot.present ? isActive('sshot', slot.key) : undefined"
                   @click.stop="slot.present && emit('filter-toggle', 'sshot', slot.key)"
                 >
                   <span class="slot-dot" aria-hidden="true" />
                   {{ slot.label }}
                   <span v-if="!slot.required" class="slot-optional-tag">opt</span>
-                </span>
+                </component>
               </span>
             </div>
             <div v-if="isSourcesOpen" class="sources">
@@ -240,16 +280,20 @@ const emit = defineEmits<{
                     <span class="chev small" :class="{ open: props.previewOpen[f] }">›</span>
                     <span class="source-name-text">{{ f }}</span>
                   </a>
-                  <span
+                  <button
                     v-if="sourceType(record, f)"
+                    type="button"
                     class="source-type-chip clickable"
                     :class="[
                       `source-type-${sourceType(record, f)}`,
                       { active: isActive('sshot', sourceType(record, f)) },
                     ]"
-                    :title="`Click to filter to matches that have a ${sshotTypeLabel(sourceType(record, f))} screenshot`"
+                    :aria-label="`Filter by source type: ${sshotTypeLabel(sourceType(record, f))}`"
+                    :aria-pressed="isActive('sshot', sourceType(record, f))"
                     @click.stop="emit('filter-toggle', 'sshot', sourceType(record, f))"
-                  >{{ sshotTypeLabel(sourceType(record, f)) }}</span>
+                  >
+                    {{ sshotTypeLabel(sourceType(record, f)) }}
+                  </button>
                   <span
                     v-else
                     class="source-type-chip unknown"
