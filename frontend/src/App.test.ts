@@ -4,7 +4,7 @@ import type { MatchRecord } from './api'
 import { fireEvent, mountApp } from './test-utils/mountApp'
 
 // Smoke + behavior tests for App.vue. These do not try to cover every
-// branch of the 4700-line SFC — the helpers and composables under it
+// branch of the ~4500-line SFC — the helpers and composables under it
 // have their own dedicated test files. The goal here is to verify
 // that App wires those pieces together correctly: API → composables
 // → DOM. Coverage rolls up via `make cover-frontend`.

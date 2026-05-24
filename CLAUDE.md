@@ -556,6 +556,20 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifyin
 
 - **Refs inside a prop-passed object don't auto-unwrap.** Vue templates auto-unwrap top-level refs but stop at object depth, so when bundling a composable's return as a single prop (the `CardStateApi`, `FiltersApi` pattern in MatchesView), consumers must use `.value` on the inner refs: `cardState.previewOpen.value[filename]`, not `cardState.previewOpen[filename]`. The TypeScript prop types should declare these as `Ref<X>` (not the unwrapped shape) so vue-tsc catches misuse.
 
+- **`null` doesn't drop a Vue attribute the way you'd hope.** vue-tsc rejects `null` for boolean/Booleanish attrs (`:inert`, `:aria-hidden`, `:aria-pressed`). Use `undefined` to omit: `:inert="cond || undefined"`, `:aria-hidden="cond ? 'true' : undefined"`.
+
+- **Use `:where()` for UA-default resets that must not compete with existing class rules.** Promoting a `<span class="badge">` to a `<button class="badge">` brings back UA `appearance`/`background`/`border`/`padding`/`font` defaults. Wrap the overrides in `:where(button.badge, ...) { appearance: none; background: transparent; ... }` so specificity stays 0 and the existing `.badge` / `.badge.active` styles continue to win. Pattern lives in App.vue next to `.match-header`.
+
+- **A clickable container that holds interactive chips cannot be `role="button"`.** Nesting interactive elements is invalid HTML and ARIA, and the outer `role="button"` strips keyboard reach from the inner chips. Pattern in MatchCard.vue: outer `<div class="match-header">` keeps `@click` for mouse convenience but has no role/tabindex; a dedicated `<button class="chev-btn" aria-expanded>` on the right is the keyboard expand affordance.
+
+- **`mountApp` exports `fireEvent(name, data?)`** for tests that need to drive a captured `EventsOn` handler (e.g., simulating `parse-complete` from the watcher or `parse-progress` mid-flight). Pair with `await flushPromises()` when the handler is async (most are — they call `load()`). See the `scoreboard pulse` tests in `App.test.ts`.
+
+- **happy-dom `document.activeElement` fails `.toBe(wrapper.find(...).element)`.** The two references serialize identically but the `.toBe` reference check fails (vitest reports "serializes to the same string"). Compare via `(document.activeElement as HTMLElement)?.id` or another attribute instead of element identity.
+
+- **Lefthook's frontend hooks (eslint/stylelint) routinely skip with "no files for inspection"** even when `frontend/src/**` is staged. Don't rely on the hook — run `cd frontend && npx eslint 'src/**/*.{ts,vue}'` and `npx stylelint 'src/**/*.{vue,css}'` manually after frontend edits. The full `make lint` and CI both catch issues; only the local pre-commit hook is unreliable for the frontend root-scoped commands.
+
+- **A11y patterns to mirror, not reinvent.** Modal dialogs: focus trap + Escape + return-focus + background `inert` is wired inline in App.vue (see `showUnsupportedModal` + `onModalKeydown` + the `watch(showUnsupportedModal, ...)`). Tablist: Arrow/Home/End automatic-activation in `onTabKeydown` over `TAB_ORDER`. Skip-link: `.skip-link` → `<main id="main-content" tabindex="-1">` with `focusMain` handler for browsers that don't move focus on hash navigation. Reduced-motion: a global `@media (prefers-reduced-motion: reduce)` block at the top of App.vue's styles collapses every animation/transition to 0.01ms. Tests for each in `App.test.ts`.
+
 - **knip project scope is `src/**/*.{ts,vue}`** — `wailsjs/` is excluded because it's outside `src/`; knip won't flag the Wails-generated bindings. `@eslint/js` must stay in `ignoreDependencies` in `frontend/knip.config.ts`: typescript-eslint consumes it internally but doesn't ES-import it, so knip can't detect the usage. `@vitest/coverage-v8` does NOT need `ignoreDependencies` — vitest detects it via `coverage.provider: 'v8'` in `vitest.config.ts`. Run via `make dead-code-ts` or `cd frontend && npm run dead:ts`.
 
 - **TypeScript 6.x is blocked by `openapi-typescript`.** `openapi-typescript@7.x` declares `peer typescript: "^5.x"` and will cause `npm install` to fail with an `ERESOLVE` conflict if `typescript` is bumped to `^6.x`. Hold TypeScript at `^5.x` until `openapi-typescript` ships TS 6 support.
@@ -671,7 +685,7 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifyin
   must stay under 200 KB; `*.css` under 100 KB (set in `ci.yml` step
   "Enforce bundle-size budget"). Bump the budgets explicitly when a
   real feature needs the room — don't accidentally regress past the
-  current ~148 KB JS / ~73 KB CSS.
+  current ~156 KB JS / ~80 KB CSS (as of v0.1.0).
 - **Vue 3 ref auto-unwrapping in templates** — in `<script setup>`, refs
   are auto-unwrapped at the template top level: `myRef` in a template
   expression already equals `myRef.value`. Writing `myRef.value[key]` in a
