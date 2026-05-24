@@ -1,0 +1,60 @@
+# Publish docs/api/index.html + api/openapi.yaml as a GitHub Pages site.
+# The result is a Swagger UI rendering of the spec at
+# https://sound-barrier.github.io/recall/api/, auto-updated whenever the
+# spec or page scaffold changes on main.
+#
+# One-time setup: Repo Settings → Pages → Build and deployment →
+# Source = "GitHub Actions". Without it, deploy-pages fails with
+# "Get Pages site failed".
+#
+# Security note on the one ${{ }} expansion below: page_url is a step
+# output from actions/deploy-pages — generated inside this workflow,
+# not a webhook payload field. Not an injection vector.
+
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    # Skip the deploy when only Go / Vue / Docker / tests change.
+    paths:
+      - 'api/openapi.yaml'
+      - 'docs/api/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Pages best practice: only one in-flight deploy, but never cancel
+# a running deploy — cancellation can leave the live site mid-publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Stage the two files side-by-side under /api/ so the deployed
+      # tree is `<root>/api/index.html` + `<root>/api/openapi.yaml`,
+      # matching the relative `url: './openapi.yaml'` in the HTML.
+      - name: Stage site
+        run: |
+          mkdir -p _site/api
+          cp docs/api/index.html _site/api/index.html
+          cp api/openapi.yaml _site/api/openapi.yaml
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
