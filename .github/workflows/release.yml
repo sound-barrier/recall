@@ -140,11 +140,59 @@ jobs:
       - name: Build macOS Wails app
         run: make build-mac
 
+      # DMG layout (what the user sees when they double-click the .dmg):
+      #
+      #     Recall          (the .app bundle, no -arm64 suffix —
+      #                      the DMG filename already carries the
+      #                      arch, the .app inside should not)
+      #     Applications →  (symlink to /Applications so the user
+      #                      can drag-install in one motion)
+      #     README.txt      (drag-install steps + Gatekeeper
+      #                      approval, because the binary is not
+      #                      notarized and macOS 15+ removed the
+      #                      old right-click-Open bypass)
+      #
+      # GITHUB_REF_NAME is the runner-injected ref name (the tag);
+      # no ${{ }} webhook-payload expansion in this step.
       - name: Create DMG
         run: |
           PKG_VERSION="${GITHUB_REF_NAME#v}"
+
+          mkdir -p dmg-staging
+          cp -R dist/mac/Recall.app dmg-staging/
+          ln -s /Applications dmg-staging/Applications
+          cat > dmg-staging/README.txt <<'EOF'
+          Welcome to Recall.
+
+          INSTALL
+          ─────────────────────────────────────────────────────────
+          1. Drag "Recall" onto the "Applications" alias in this
+             window.
+          2. Eject this disk (right-click the Recall icon in
+             Finder's sidebar → Eject) and open the Applications
+             folder.
+
+          FIRST LAUNCH — APPROVE THE APP
+          ─────────────────────────────────────────────────────────
+          Recall is not signed by an Apple Developer account, so
+          macOS will block it on first launch. To approve it:
+
+          1. Double-click Recall in Applications. macOS will show
+             a "cannot be opened" dialog — dismiss it.
+          2. Open the Apple menu → System Settings.
+          3. Click "Privacy & Security" in the sidebar.
+          4. Scroll down to the "Security" section.
+          5. Click "Open Anyway" next to the Recall warning, then
+             confirm in the dialog that appears.
+
+          You only need to do this once.
+
+          More documentation:
+            https://sound-barrier.github.io/recall/
+          EOF
+
           hdiutil create -volname "Recall" \
-            -srcfolder dist/mac/Recall-arm64.app \
+            -srcfolder dmg-staging \
             -ov -format UDZO \
             "recall-${PKG_VERSION}-darwin-arm64.dmg"
 
