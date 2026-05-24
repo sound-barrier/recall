@@ -459,7 +459,7 @@ Treat the spec as the published contract:
 
 - When you **add or remove a route** in `pkg/cmd/server.go`, mirror the change in the spec.
 - When you **change a response shape** in `pkg/app/app.go` or `pkg/parser/parser.go`, update the relevant `components.schemas.*` entry.
-- When you **add a field to an existing Go struct** (not a new method), the update is a 3-step follow-up: (1) update the struct + OpenAPI schema, (2) `make gen-types` to refresh `api.gen.d.ts`, (3) **manually edit `wailsjs/go/models.ts`** to add the field — Wails only auto-regenerates that file on `wails dev` (macOS). Missing step 3 silently breaks Wails mode while server mode continues to work.
+- When you **add a field to an existing Go struct** (not a new method), the update is a 3-step follow-up: (1) update the struct + OpenAPI schema, (2) `make gen-types` to refresh `api.gen.d.ts`, (3) **manually edit `wailsjs/go/models.ts`** to add the field — Wails only auto-regenerates that file on `wails dev` (macOS). `make check-wailsjs` (also wired into the pre-commit hook and CI) verifies every `json:"…"` tag on the Wails-exposed structs has a matching field in `models.ts`; missing step 3 now fails locally before it silently breaks the Wails build.
 
 ```sh
 make swagger        # serve the spec via Swagger UI in a container (default :8080)

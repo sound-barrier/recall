@@ -283,6 +283,16 @@ typecheck: ## TypeScript type-check (frontend api.ts + api.gen.d.ts)
 	cd frontend && npm run typecheck
 	@echo "[ recall ] ✓  TypeScript clean"
 
+# Asserts every json:"…" tag on a Wails-exposed Go struct also appears as
+# a field in frontend/wailsjs/go/models.ts. Catches the silent-failure
+# class CLAUDE.md flags: wails dev regenerates the .ts on macOS only, so
+# Linux/Windows contributors can add a Go field and the Wails build will
+# silently drop the value without this guard.
+check-wailsjs: ## Verify wailsjs/go/models.ts is in sync with Wails-exposed Go structs
+	@echo "[ recall ] Checking wailsjs/go/models.ts is in sync with Go structs…"
+	@bash scripts/check-wailsjs-models.sh
+	@echo "[ recall ] ✓  wailsjs/go/models.ts is in sync"
+
 ##@ Dead code analysis
 
 # deadcode does whole-program call-graph analysis — only run for the serveronly
