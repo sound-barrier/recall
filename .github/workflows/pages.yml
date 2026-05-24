@@ -63,25 +63,35 @@ jobs:
         with:
           node-version: '22'
 
-      # Stage the chapter sources next to book.json / SUMMARY.md so
-      # Honkit can find them. Keep this list in sync with book/.gitignore
-      # and book/SUMMARY.md.
-      - name: Stage book chapters from docs/
+      # Stage book/ + the five chapter copies into a fresh build
+      # directory so the committed book/ stays pure metadata. Two
+      # reasons this matters:
+      #   1. Honkit reads .gitignore from its source dir and skips
+      #      matching files. If chapter filenames are listed in
+      #      book/.gitignore (so local preview doesn't dirty git),
+      #      Honkit silently produces a 1-page book.
+      #   2. Keeping source and derived files separate makes the
+      #      build idempotent and removes any "did I forget to
+      #      clean up after preview" ambiguity.
+      - name: Stage book build directory
         run: |
-          cp docs/install-macos.md book/install-macos.md
-          cp docs/install-linux.md book/install-linux.md
-          cp docs/server.md       book/server.md
-          cp docs/docker.md       book/docker.md
-          cp docs/grafana.md      book/grafana.md
+          mkdir -p _stage/book
+          cp -R book/. _stage/book/
+          cp docs/install-macos.md _stage/book/install-macos.md
+          cp docs/install-linux.md _stage/book/install-linux.md
+          cp docs/server.md       _stage/book/server.md
+          cp docs/docker.md       _stage/book/docker.md
+          cp docs/grafana.md      _stage/book/grafana.md
+          # The committed .gitignore lists no chapter filenames (the
+          # docs are the source of truth), but blow it away inside
+          # the staging dir to be defensive against future drift.
+          rm -f _stage/book/.gitignore
 
       # Honkit resolves SUMMARY.md chapter paths relative to its
-      # working directory, not the source arg. Run it from inside
-      # book/ so `install-macos.md` etc. resolve correctly. (Running
-      # `honkit build book book/_book` from repo root parses
-      # SUMMARY.md but fails to find the chapters and silently
-      # produces a 1-page book.)
+      # working directory, not the source arg, so run from inside
+      # the staged book dir.
       - name: Build the book (Honkit)
-        working-directory: book
+        working-directory: _stage/book
         run: npx --yes "honkit@${HONKIT_VERSION}" build . _book
 
       # Final Pages tree:
@@ -91,7 +101,7 @@ jobs:
       - name: Stage site
         run: |
           mkdir -p _site
-          cp -R book/_book/. _site/
+          cp -R _stage/book/_book/. _site/
           mkdir -p _site/api
           cp docs/api/index.html _site/api/index.html
           cp api/openapi.yaml    _site/api/openapi.yaml
