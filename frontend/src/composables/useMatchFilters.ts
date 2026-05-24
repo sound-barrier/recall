@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import type { Ref } from 'vue'
 import type { MatchRecord } from '../api'
-import { SCREENSHOT_TYPES, matchTime, detectScreenshotSlots } from '../match-helpers'
+import { SCREENSHOT_TYPES, matchTime, detectScreenshotSlots, parseGameLengthMinutes } from '../match-helpers'
 
 // Fields whose values come directly from a scalar property on MatchRecord.data.
 type StringMatchField = 'mode' | 'type' | 'role' | 'map' | 'result' | 'hero'
@@ -14,6 +14,12 @@ export function useMatchFilters(
   // FilterRail's "Undated" toggle button + the localStorage-backed
   // preference exposed by useIncludeUndated.
   includeUndated?: Readonly<Ref<boolean>>,
+  // Optional min-play thresholds — a match qualifies if ANY candidate
+  // hero (the selected hero filter, or all heroes if none selected)
+  // played at least minPlayPercent% OR at least minPlayMinutes minutes
+  // of the match. Both default to 0 = disabled.
+  minPlayPercent?: Readonly<Ref<number>>,
+  minPlayMinutes?: Readonly<Ref<number>>,
 ) {
   // ── Filter state ─────────────────────────────────────────────────────
   // Each field is an array: empty = no filter; multiple entries = union (OR).
@@ -116,6 +122,32 @@ export function useMatchFilters(
         if (!inPrimary && !inSecondary) return false
       }
 
+      // Min-play threshold filter. A match qualifies if AT LEAST ONE
+      // candidate hero meets EITHER threshold (OR semantics — the user
+      // wants "1 minute or 5%" to read as either-suffices). Candidate
+      // set: the active hero filter if one is set; otherwise every
+      // entry in heroes_played. Missing game_length means the minutes
+      // check can't fire for that match, so it's skipped (we'd rather
+      // surface a match we can't fully judge than hide it on a
+      // technicality).
+      const minPct = minPlayPercent?.value ?? 0
+      const minMin = minPlayMinutes?.value ?? 0
+      if (minPct > 0 || minMin > 0) {
+        const allHeroes = d.heroes_played ?? []
+        const candidates = filterHero.value.length
+          ? allHeroes.filter(hp => filterHero.value.includes(hp.hero))
+          : allHeroes
+        if (candidates.length === 0) return false
+        const lengthMin = parseGameLengthMinutes(d.game_length)
+        const qualifies = candidates.some(hp => {
+          const pct = hp.percent_played ?? 0
+          if (minPct > 0 && pct >= minPct) return true
+          if (minMin > 0 && lengthMin !== null && (lengthMin * pct / 100) >= minMin) return true
+          return false
+        })
+        if (!qualifies) return false
+      }
+
       // Date/time range. Requires an explicit date+finished_at on the row —
       // the match_key timestamp fallback is too approximate for range queries,
       // and undated rows are silently excluded to match the card UI.
@@ -143,10 +175,17 @@ export function useMatchFilters(
   })
 
   // ── Derived counts ────────────────────────────────────────────────────
+  // Min-play counts as ONE logical filter even when both knobs are set
+  // (they share OR semantics — see the filter clause above).
+  const minPlayActive = computed(() =>
+    (minPlayPercent?.value ?? 0) > 0 || (minPlayMinutes?.value ?? 0) > 0
+  )
+
   const anyFilter = computed(() =>
     !!(filterMode.value.length || filterType.value.length || filterRole.value.length ||
        filterMap.value.length  || filterHero.value.length || filterResult.value.length ||
-       filterSshot.value.length || filterFrom.value || filterTo.value)
+       filterSshot.value.length || filterFrom.value || filterTo.value ||
+       minPlayActive.value)
   )
 
   const activeFilterCount = computed(() => {
@@ -160,6 +199,7 @@ export function useMatchFilters(
     if (filterSshot.value.length)  n++
     if (filterFrom.value)          n++
     if (filterTo.value)            n++
+    if (minPlayActive.value)       n++
     return n
   })
 

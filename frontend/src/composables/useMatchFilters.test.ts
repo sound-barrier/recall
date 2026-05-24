@@ -12,12 +12,19 @@ import type { MatchRecord } from '../api'
 // default, so this helper opts INTO including them via a `ref(true)`
 // unless the caller overrides. Tests that exercise the toggle pin
 // it to a specific value.
-function setup(initial: MatchRecord[] = [], includeUndated = ref(true)) {
+function setup(
+  initial: MatchRecord[] = [],
+  includeUndated = ref(true),
+  minPlayPercent = ref(0),
+  minPlayMinutes = ref(0),
+) {
   const records = ref<MatchRecord[]>(initial)
   let result!: ReturnType<typeof useMatchFilters>
   const scope = effectScope()
-  scope.run(() => { result = useMatchFilters(records, includeUndated) })
-  return { ...result, records, includeUndated }
+  scope.run(() => {
+    result = useMatchFilters(records, includeUndated, minPlayPercent, minPlayMinutes)
+  })
+  return { ...result, records, includeUndated, minPlayPercent, minPlayMinutes }
 }
 
 // ── Minimal record builder ────────────────────────────────────────────
@@ -513,5 +520,115 @@ describe('includeUndated', () => {
       matchRec({}, 4),                                      // neither
     ]
     expect(filtered.value.map(r => r.id)).toEqual([1])
+  })
+})
+
+// ── min-play threshold filter ────────────────────────────────────────
+//
+// A match qualifies if AT LEAST ONE candidate hero meets EITHER the
+// percent threshold OR the minutes threshold. "Candidate hero" is the
+// selected hero(es) when the hero filter is set; otherwise every entry
+// in heroes_played. Both thresholds default to 0 (filter is a no-op).
+// Game length is encoded "MM:SS"; minutes-played is gameLength × pct.
+
+describe('min-play threshold filter', () => {
+  function makeHeroRec(
+    id: number,
+    heroes: Array<{ hero: string; percent_played: number }>,
+    game_length = '10:00',
+  ): MatchRecord {
+    const primary = heroes[0]?.hero ?? ''
+    return matchRec({ hero: primary, game_length, heroes_played: heroes }, id)
+  }
+
+  it('no-op when both thresholds are 0', () => {
+    const { filtered } = setup([
+      makeHeroRec(1, [{ hero: 'lucio', percent_played: 2 }], '10:00'),
+    ], ref(true), ref(0), ref(0))
+    expect(filtered.value.map(r => r.id)).toEqual([1])
+  })
+
+  it('excludes a match where the only hero falls below the percent threshold', () => {
+    const { filtered } = setup([
+      makeHeroRec(1, [{ hero: 'lucio', percent_played: 2 }], '10:00'),
+      makeHeroRec(2, [{ hero: 'sigma', percent_played: 80 }], '10:00'),
+    ], ref(true), ref(5), ref(0))
+    expect(filtered.value.map(r => r.id)).toEqual([2])
+  })
+
+  it('admits a match where ANY hero meets the percent threshold (max-of, not all-of)', () => {
+    const { filtered } = setup([
+      makeHeroRec(1, [
+        { hero: 'lucio',   percent_played: 2 },
+        { hero: 'kiriko',  percent_played: 70 },
+      ], '10:00'),
+    ], ref(true), ref(5), ref(0))
+    expect(filtered.value.map(r => r.id)).toEqual([1])
+  })
+
+  it('excludes a match where the only hero falls below the minutes threshold', () => {
+    // 2% of a 10-minute game = 0.2 min. Threshold 1 min excludes.
+    const { filtered } = setup([
+      makeHeroRec(1, [{ hero: 'lucio', percent_played: 2 }], '10:00'),
+    ], ref(true), ref(0), ref(1))
+    expect(filtered.value).toHaveLength(0)
+  })
+
+  it('OR semantics: meeting EITHER threshold qualifies the match', () => {
+    // Lucio: 8% of 10 min = 0.8 min. Below 1 min — but 8% >= 5%. Passes.
+    const { filtered } = setup([
+      makeHeroRec(1, [{ hero: 'lucio', percent_played: 8 }], '10:00'),
+    ], ref(true), ref(5), ref(1))
+    expect(filtered.value.map(r => r.id)).toEqual([1])
+  })
+
+  it('with the hero filter set, threshold applies to the selected hero only', () => {
+    // Lucio 2% (fails 5%); Kiriko 70% (passes). With hero filter=[lucio],
+    // we only judge lucio — and lucio fails. Match excluded.
+    const { filtered, filterHero } = setup([
+      makeHeroRec(1, [
+        { hero: 'lucio',  percent_played: 2  },
+        { hero: 'kiriko', percent_played: 70 },
+      ], '10:00'),
+    ], ref(true), ref(5), ref(0))
+    filterHero.value = ['lucio']
+    expect(filtered.value).toHaveLength(0)
+  })
+
+  it('with hero filter selecting kiriko, the match qualifies via kiriko', () => {
+    const { filtered, filterHero } = setup([
+      makeHeroRec(1, [
+        { hero: 'lucio',  percent_played: 2  },
+        { hero: 'kiriko', percent_played: 70 },
+      ], '10:00'),
+    ], ref(true), ref(5), ref(0))
+    filterHero.value = ['kiriko']
+    expect(filtered.value.map(r => r.id)).toEqual([1])
+  })
+
+  it('missing game_length disables the minutes check but the percent check still applies', () => {
+    // No game_length → can't compute minutes. With minMinutes=1 only, the
+    // match should still pass (we can't say it failed). With minPercent=5
+    // also set and a hero at 70%, it passes via percent.
+    const { filtered } = setup([
+      makeHeroRec(1, [{ hero: 'lucio', percent_played: 70 }], ''),
+    ], ref(true), ref(5), ref(1))
+    expect(filtered.value.map(r => r.id)).toEqual([1])
+  })
+
+  it('counts the threshold in activeFilterCount when either threshold is > 0', () => {
+    // With both thresholds 0, no count.
+    const noThresh = setup([], ref(true), ref(0), ref(0))
+    expect(noThresh.activeFilterCount.value).toBe(0)
+
+    const justPercent = setup([], ref(true), ref(5), ref(0))
+    expect(justPercent.activeFilterCount.value).toBe(1)
+
+    const justMinutes = setup([], ref(true), ref(0), ref(1))
+    expect(justMinutes.activeFilterCount.value).toBe(1)
+
+    // Both > 0 still counts as one logical filter (OR group).
+    const both = setup([], ref(true), ref(5), ref(1))
+    expect(both.activeFilterCount.value).toBe(1)
   })
 })

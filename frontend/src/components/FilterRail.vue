@@ -26,6 +26,11 @@ const props = defineProps<{
   // missing date+finished_at are excluded from the matched view. The
   // toggle button only renders when undatedMatchCount > 0.
   includeUndated: boolean
+  // Min-play threshold: a match qualifies only when at least one
+  // candidate hero played the match for >= minPlayPercent OR
+  // >= minPlayMinutes (OR semantics). Both default to 0 = disabled.
+  minPlayPercent: number
+  minPlayMinutes: number
 }>()
 
 const emit = defineEmits<{
@@ -42,7 +47,14 @@ const emit = defineEmits<{
   'toggle-sort': []
   'toggle-all': []
   'set-include-undated': [next: boolean]
+  'set-min-play-percent': [n: number]
+  'set-min-play-minutes': [n: number]
 }>()
+
+function readNumberInput(e: Event): number {
+  const v = (e.target as HTMLInputElement).valueAsNumber
+  return Number.isFinite(v) ? v : 0
+}
 
 // Static per-field config. Options (roster) come in as props.
 const FIELD_CONFIG = [
@@ -245,6 +257,54 @@ function searchStr(field: string): string {
           {{ allExpanded ? 'Collapse All' : 'Expand All' }}
         </button>
 
+        <!-- Min-play threshold. Two narrow inputs sharing one eyebrow
+             label. Either > 0 tints the whole group with the brand
+             accent so the "this filter is engaged" state is obvious
+             at a glance. Filter semantics live in useMatchFilters —
+             a match qualifies when any candidate hero meets EITHER
+             threshold (OR), so the user reads it as "1 min OR 5%". -->
+        <div
+          class="min-play-group"
+          :class="{ active: minPlayPercent > 0 || minPlayMinutes > 0 }"
+          role="group"
+          aria-label="Minimum play threshold"
+        >
+          <span class="min-play-eyebrow">Min play</span>
+          <label class="min-play-cell">
+            <input
+              type="number"
+              inputmode="numeric"
+              min="0"
+              max="100"
+              step="1"
+              class="min-play-input"
+              :value="minPlayPercent || ''"
+              placeholder="0"
+              aria-label="Minimum percent of match played"
+              title="Hide matches where the selected hero played less than this share of the match. 0 = off."
+              @change="emit('set-min-play-percent', readNumberInput($event))"
+            >
+            <span class="min-play-unit">%</span>
+          </label>
+          <span class="min-play-or" aria-hidden="true">or</span>
+          <label class="min-play-cell">
+            <input
+              type="number"
+              inputmode="decimal"
+              min="0"
+              max="60"
+              step="0.5"
+              class="min-play-input"
+              :value="minPlayMinutes || ''"
+              placeholder="0"
+              aria-label="Minimum minutes played"
+              title="Hide matches where the selected hero played less than this many minutes. 0 = off. Needs the SUMMARY screenshot for game length."
+              @change="emit('set-min-play-minutes', readNumberInput($event))"
+            >
+            <span class="min-play-unit">m</span>
+          </label>
+        </div>
+
         <!-- Undated toggle. Only surfaces when at least one undated
              record exists; otherwise the toggle is meaningless. Shows
              count of undated records so the user knows what they'd
@@ -314,5 +374,87 @@ function searchStr(field: string): string {
 
 .undated-toggle.active .undated-mark {
   opacity: 1;
+}
+
+/* Min-play threshold — two narrow number inputs sharing one eyebrow
+   label, ghost styling so they read as ambient knobs in the filter
+   tools row. When either input is non-zero (`.active`), the whole
+   group tints with the brand accent the same way `.undated-toggle.active`
+   does, so the user can scan the row and immediately spot every
+   engaged filter. */
+
+.min-play-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.2rem 0.5rem 0.2rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.min-play-group:hover { border-color: var(--border-strong); }
+
+.min-play-group.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft, transparent);
+}
+
+.min-play-eyebrow {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.min-play-cell {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15rem;
+}
+
+.min-play-input {
+  width: 2.4rem;
+  padding: 0.05rem 0.15rem;
+  background: var(--surface-2, transparent);
+  border: 1px solid var(--border);
+  border-radius: 1px;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  appearance: textfield;
+}
+
+.min-play-input::-webkit-inner-spin-button,
+.min-play-input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.min-play-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+.min-play-group.active .min-play-input {
+  border-color: var(--accent);
+}
+
+.min-play-unit {
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.min-play-or {
+  font-style: italic;
+  text-transform: lowercase;
+  opacity: 0.55;
 }
 </style>
