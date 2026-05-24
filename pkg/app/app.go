@@ -1102,11 +1102,15 @@ type ParseProgressEvent struct {
 // E/A/D combat stats → "scoreboard", per-hero stats → "personal", otherwise
 // "unknown".
 //
-// Order matters: a SCOREBOARD parse populates *both* the E/A/D combat row
-// and the right-side panel's hero stats (which go into HeroesPlayed[*].Stats),
-// while a PERSONAL parse only populates hero stats. So the E/A/D check must
-// come before the hero-stats check — otherwise every scoreboard with a
-// non-empty right panel falls through as "personal".
+// ORDERING INVARIANT (load-bearing — do not reorder):
+// A SCOREBOARD parse populates *both* the E/A/D combat row and the
+// right-side panel's hero stats (HeroesPlayed[*].Stats), while a PERSONAL
+// parse only populates hero stats. The E/A/D check therefore MUST run
+// before the hero-stats check — flipping the two would mis-classify
+// every scoreboard with a populated panel as "personal".
+//
+// Locked by TestScreenshotType "Scoreboard with E/A/D AND panel hero
+// stats → scoreboard (NOT personal)" in merge_test.go.
 func screenshotType(r *parser.MatchResult) string {
 	if r == nil {
 		return "unknown"

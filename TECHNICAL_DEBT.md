@@ -809,38 +809,6 @@ attempting to change the dev model.
 
 ---
 
-## 15. `screenshotType()` ordering is order-dependent
-
-**Size: S**
-
-**What.**
-`pkg/app/app.go::screenshotType` checks: rank → summary → scoreboard
-(E/A/D) → personal (hero stats) → unknown. CLAUDE.md flags: "must
-check E/A/D before hero stats" because scoreboard parses populate
-both — hero-stats-first would mis-classify every scoreboard with a
-populated panel as `personal`.
-
-**Why it's debt.**
-The ordering is correct, but the constraint is enforced only by
-comment + tribal knowledge. A future refactor that "tidies up" the
-chained `if`s (e.g. by switching to a `slices.IndexFunc` over a
-slice of probe-pairs) could reorder them silently.
-
-**Mitigation plan.**
-
-1. Add a test in `pkg/app/`'s test files that constructs a
-   `MatchResult` with **both** populated `Eliminations` and
-   `HeroesPlayed[*].Stats` and asserts `screenshotType` returns
-   `"scoreboard"`, not `"personal"`.
-2. Add a comment block above `screenshotType` documenting the
-   constraint with the test name, so a future refactor that needs
-   to break the order sees what it'd break.
-
-**How large.**
-S. ~30 minutes. Self-contained test addition.
-
----
-
 ## 16. `recall` binary committed at repo root (22 MB)
 
 **Size: S**
@@ -943,11 +911,16 @@ choices.
 - Go coverage floor (was 40%, well below actual ~48%) — ratcheted
   to 46% in `Makefile`'s `GO_COVERAGE_MIN`, with a written ratchet
   policy in `CONTRIBUTING.md` to bump it every release.
+- `screenshotType()` ordering invariant — TestScreenshotType in
+  `pkg/app/merge_test.go` already covered the "scoreboard with both
+  E/A/D and panel hero stats stays scoreboard" case (audit miss);
+  the function's comment block now cross-references that test name
+  so a future refactor sees what would break before touching it.
 
 ### Phase 1 — drift prevention (1 week, mostly S items)
 
 1. ~~#8 Go coverage floor ratchet (S)~~ — done
-2. #15 screenshotType ordering test (S)
+2. ~~#15 screenshotType ordering test (S)~~ — done (audit miss, already covered; tightened the comment to cite the test)
 3. #11 inference invariant test (S)
 4. #16 .gitignore stray binaries (S)
 5. #9 SHA-pin GitHub Actions (M)
