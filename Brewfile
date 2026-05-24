@@ -72,6 +72,12 @@ brew "typos-cli"
 # action inputs, and embeds shellcheck for `run:` script bodies.
 brew "actionlint"
 
+# Go-specific SAST. Used by `make lint-gosec` and the CI security
+# job; catches Go-idiom issues (file permissions, weak crypto,
+# Slowloris timeouts, taint-tracked path/command injection) that
+# CodeQL and govulncheck don't cover.
+brew "gosec"
+
 # --- Not in brew, but required:
 #
 #   Wails CLI itself is a Go binary. Install once after `brew bundle`:

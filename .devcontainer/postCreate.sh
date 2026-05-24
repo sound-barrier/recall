@@ -39,7 +39,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
 sudo rm -rf /var/lib/apt/lists/*
 
 # ─── Go tooling (CONTRIBUTING.md "go install" lines) ──────────────────
-log "Go tools: gofumpt, goimports-reviser, shfmt, govulncheck, deadcode, actionlint, wails, golangci-lint"
+log "Go tools: gofumpt, goimports-reviser, shfmt, govulncheck, deadcode, actionlint, gosec, wails, golangci-lint"
 # golangci-lint via go install matches what ci.yml does (so the version
 # Go-compiled-this-Go-toolchain matches; pre-built binaries are usually
 # built against older Go).
@@ -54,6 +54,8 @@ go install golang.org/x/tools/cmd/deadcode@latest
 # actionlint: GitHub Actions workflow linter. Used by `make lint-actions`
 # and the lefthook pre-push hook.
 go install github.com/rhysd/actionlint/cmd/actionlint@latest
+# gosec: Go SAST. Used by `make lint-gosec` and the CI security job.
+go install github.com/securego/gosec/v2/cmd/gosec@latest
 go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
 
 # ─── hadolint (Dockerfile linter) ─────────────────────────────────────
@@ -116,6 +118,7 @@ log "done — tool versions:"
     printf '  trivy          %s\n' "$(trivy --version 2>&1 | head -1)"
     printf '  typos          %s\n' "$(typos --version 2>&1 | head -1)"
     printf '  actionlint     %s\n' "$(actionlint -version 2>&1 | head -1)"
+    printf '  gosec          %s\n' "$(gosec -version 2>&1 | head -1)"
     printf '  jq             %s\n' "$(jq --version)"
     printf '  direnv         %s\n' "$(direnv --version)"
 } || true

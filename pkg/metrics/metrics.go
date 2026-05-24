@@ -245,7 +245,14 @@ func NewServer(addr string, read Reader) *Server {
 	}
 	return &Server{
 		addr: addr,
-		srv:  &http.Server{Addr: addr, Handler: newMux(read)},
+		srv: &http.Server{
+			Addr:    addr,
+			Handler: newMux(read),
+			// Slowloris mitigation (gosec G112) — same rationale as
+			// the main server in pkg/cmd/server.go. /metrics is a
+			// short, scrape-only endpoint; 10s for headers is ample.
+			ReadHeaderTimeout: 10 * time.Second,
+		},
 	}
 }
 
