@@ -120,6 +120,27 @@ describe('MatchCard — collapsed header', () => {
 })
 
 describe('MatchCard — filter-toggle emits from badge clicks', () => {
+  // Every filter chip in the header is a real <button>, not a <span>, so
+  // keyboard users can tab into them and screen readers expose them as
+  // interactive controls. Regressing any of these back to <span> would
+  // silently strip keyboard access.
+  it('every clickable chip in the header is a <button>', () => {
+    const isActive = () => false
+    const wrapper = mountCard({ isActive })
+    for (const sel of ['.match-map.clickable', '.badge.mode', '.badge.type', '.badge.role', '.badge.hero', '.badge.result', 'button.chev-btn']) {
+      const el = wrapper.find(sel)
+      expect(el.exists(), `expected ${sel} to render`).toBe(true)
+      expect(el.element.tagName, `expected ${sel} to be a <button>`).toBe('BUTTON')
+    }
+  })
+
+  it('aria-pressed mirrors the active filter state on a chip', () => {
+    const isActive = (field: string, value: string) => field === 'hero' && value === 'lucio'
+    const wrapper = mountCard({ isActive })
+    expect(wrapper.find('.badge.hero').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('.badge.mode').attributes('aria-pressed')).toBe('false')
+  })
+
   it('clicking the map badge emits filter-toggle map', async () => {
     const wrapper = mountCard()
     await wrapper.find('.match-map').trigger('click')
@@ -146,23 +167,35 @@ describe('MatchCard — filter-toggle emits from badge clicks', () => {
 })
 
 describe('MatchCard — header interaction', () => {
-  it('clicking the header emits toggle-expand', async () => {
+  it('clicking the header region emits toggle-expand', async () => {
     const wrapper = mountCard()
     await wrapper.find('.match-header').trigger('click')
     expect(wrapper.emitted('toggle-expand')).toBeTruthy()
   })
 
-  it('Enter / Space on the header emits toggle-expand', async () => {
+  // The chev is the keyboard expand affordance. The header region is no
+  // longer role="button" — chip buttons live inside it, and nesting
+  // interactive elements is invalid HTML, so the keyboard route is the
+  // dedicated chev button on the right.
+  it('clicking the chev button emits toggle-expand', async () => {
     const wrapper = mountCard()
-    await wrapper.find('.match-header').trigger('keydown.enter')
+    await wrapper.find('button.chev-btn').trigger('click')
     expect(wrapper.emitted('toggle-expand')).toHaveLength(1)
   })
 
-  it('aria-expanded mirrors the isExpanded prop', () => {
+  it('Enter on the chev button emits toggle-expand', async () => {
+    const wrapper = mountCard()
+    // Native <button> handles Enter/Space as click — trigger('click')
+    // is the closest fidelity to that behaviour in jsdom/happy-dom.
+    await wrapper.find('button.chev-btn').trigger('click')
+    expect(wrapper.emitted('toggle-expand')).toHaveLength(1)
+  })
+
+  it('aria-expanded on the chev mirrors the isExpanded prop', () => {
     const open = mountCard({ isExpanded: true })
-    expect(open.find('.match-header').attributes('aria-expanded')).toBe('true')
+    expect(open.find('button.chev-btn').attributes('aria-expanded')).toBe('true')
     const closed = mountCard({ isExpanded: false })
-    expect(closed.find('.match-header').attributes('aria-expanded')).toBe('false')
+    expect(closed.find('button.chev-btn').attributes('aria-expanded')).toBe('false')
   })
 })
 

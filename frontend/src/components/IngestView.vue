@@ -67,7 +67,9 @@ const emit = defineEmits<{
       </h2>
       <h2 v-else-if="!screenshotsDir" class="settings-heading">
         Set a <em>screenshots folder</em> in
-        <strong class="empty-link" @click="emit('go-to-view', 'settings')">Settings →</strong> first.
+        <button type="button" class="empty-link" @click="emit('go-to-view', 'settings')">
+          Settings →
+        </button> first.
       </h2>
       <h2 v-else-if="watchEnabled" class="settings-heading">
         Watching <em>{{ screenshotsDir }}/</em> for new screenshots.
