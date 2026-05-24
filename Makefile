@@ -33,6 +33,7 @@ WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
         test test-go test-frontend \
         cover cover-go cover-frontend \
         fmt update-deps trivy check-deps \
+        cloc cloc-detail \
         dev clean
 
 help: ## Show this help
@@ -144,10 +145,13 @@ build-server-container: ## Linux server container image with Tesseract → recal
 
 ##@ Quality
 
-cloc: ## Count lines of source code (excludes deps, build artifacts, generated files)
-	cloc . \
-	    --exclude-dir=node_modules,dist,build,wailsjs,data,recall,vendor \
-	    --not-match-f='(go\.sum|package-lock\.json)'
+cloc: ## Count lines of source code, summary table (config in .clocrc)
+	@command -v cloc >/dev/null || { echo "cloc not installed — brew install cloc (or apt install cloc)"; exit 1; }
+	cloc --config .clocrc .
+
+cloc-detail: ## Count lines of source code, per-file breakdown
+	@command -v cloc >/dev/null || { echo "cloc not installed — brew install cloc (or apt install cloc)"; exit 1; }
+	cloc --config .clocrc --by-file-by-lang .
 
 lint: lint-go lint-js lint-css lint-html lint-shell lint-docker lint-yaml lint-openapi ## Run all linters
 
