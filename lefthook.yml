@@ -66,6 +66,17 @@ pre-commit:
     typos:
       run: typos {staged_files}
 
+    # ── Markdown ──────────────────────────────────────────────────────
+    # Config in .markdownlint-cli2.yaml at the repo root. --fix runs
+    # the autofix-safe rules (MD031 blanks-around-fences, MD022
+    # blanks-around-headings, MD004 ul-style); errors that remain
+    # after --fix are real bugs (broken anchors, missing alt text).
+    markdownlint:
+      glob: "*.md"
+      exclude: "CHANGELOG.md"
+      run: npx --yes markdownlint-cli2 --fix {staged_files}
+      stage_fixed: true
+
 # Pre-push dead-code analysis. Both tools do whole-project scanning so they
 # can't be scoped to staged files like the pre-commit hooks above. Running
 # them only on push keeps WIP commits fast while still catching dead code

@@ -52,8 +52,8 @@ drift), and runs `podman-compose up -d`.
 
 | What | Where |
 |---|---|
-| Grafana dashboard | http://localhost:3000 (login: `admin` / `admin`) |
-| Prometheus | http://localhost:9090 |
+| Grafana dashboard | <http://localhost:3000> (login: `admin` / `admin`) |
+| Prometheus | <http://localhost:9090> |
 
 **Stop the stack:**
 

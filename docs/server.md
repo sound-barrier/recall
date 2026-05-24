@@ -28,7 +28,7 @@ Two ways to start server mode:
 ./Recall -s          # short form
 ```
 
-Then open **http://127.0.0.1:7000** in any browser. The full Recall UI loads —
+Then open **<http://127.0.0.1:7000>** in any browser. The full Recall UI loads —
 same features as the desktop app, just in a browser tab.
 
 ## Accessing from another device

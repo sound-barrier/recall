@@ -27,11 +27,13 @@ tar -xzf recall-{version}-linux-amd64.tar.gz
 Recall needs Tesseract to read text from your screenshots.
 
 **Ubuntu 22.04 or later:**
+
 ```sh
 sudo apt install tesseract-ocr
 ```
 
 **Ubuntu 20.04 (ships 4.x — needs PPA):**
+
 ```sh
 sudo add-apt-repository ppa:alex-p/tesseract-ocr5
 sudo apt update
@@ -39,6 +41,7 @@ sudo apt install tesseract-ocr
 ```
 
 **Fedora / RHEL:**
+
 ```sh
 sudo dnf install tesseract
 ```
@@ -50,7 +53,8 @@ at the binary.
 ## 3. Point Recall at your screenshots folder
 
 Overwatch on Linux (via Lutris or Heroic) typically saves screenshots to:
-```
+
+```text
 ~/Games/overwatch/drive_c/users/<username>/Documents/Overwatch/ScreenShots/Overwatch/
 ```
 
@@ -60,9 +64,11 @@ Change Folder…** and select the correct path.
 ## Where Recall stores its data
 
 Settings and the match database live at:
-```
+
+```text
 ~/.config/recall/
 ```
+
 (or `$XDG_CONFIG_HOME/recall/` if you have `XDG_CONFIG_HOME` set)
 
 ## Verifying your download

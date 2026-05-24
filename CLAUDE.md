@@ -32,7 +32,7 @@ Override only when the user explicitly asks for something different.
 - **TypeScript / Vue**: idiomatic TS — no `any`, narrow types at
   boundaries (`Pick<>` or permissive interfaces so callers aren't
   forced to satisfy fields the function never reads). Composition API
-  + composables for stateful logic. Pure helpers in
+  - composables for stateful logic. Pure helpers in
   `frontend/src/match-helpers.ts`, never inside an SFC's
   `<script setup>`.
 - **Comments**: default to none. Only when the WHY is non-obvious — a
@@ -194,7 +194,7 @@ file when done so it doesn't accumulate.
 
 ## Data flow (the big-picture architecture)
 
-```
+```text
 screenshots/*.png
       │
       ▼  (Tesseract via parser.ParseScreenshot, dispatched per screenshot type)
@@ -269,6 +269,7 @@ COMPETITIVE badge). Tesseract is shelled out via `exec.Command` — no
 CGo binding.
 
 **OCR fragility patterns to know about:**
+
 - Letter↔digit confusion in italic OW font: `digitize()` swaps O/Q/I/l/L
   back to digits in numeric captures.
 - "AVG PER 10 MIN: X.XX" lines need to be anchored on `MIN` so the `10`
@@ -340,6 +341,7 @@ enable→disable→enable cycle constructs a fresh `Server`.
 ## App shell (`pkg/app/`)
 
 `App` owns:
+
 - `settings` (`<appDataDir>/settings.json`): screenshots dir, tesseract path, prometheus
   enabled, watch enabled. Each toggle is persisted to disk on change. `appDataDir()`
   resolves to `~/Library/Application Support/Recall/` on macOS, `~/.config/recall/`
@@ -410,7 +412,7 @@ same shape: `ref(default)` + `setX(next)` that writes localStorage +
 `useMatchFilters` (all 7 filter refs + the optional `includeUndated`
 ref, date range, sort, filtered/sorted computeds — the most complex
 and highest-test-ROI module), `useMatchGrouping` (Month→Week→Day tree
-+ expand state). Shared UI is in
+plus expand state). Shared UI is in
 `frontend/src/components/`: `MatchCard`, `FilterRail`, `ParseProgressPanel`,
 `MatchGroupSection`, plus the four top-level view tabs — `SettingsView`,
 `IngestView`, `MatchesView`, `UnknownMapsView`. App.vue is now a router-
@@ -442,7 +444,7 @@ of four view SFCs at a time (see the components list above). State
 concerns owned by App.vue and passed down via props/emits:
 
 - **Nav** — four tabs in workflow order: **Settings (01)** (directories
-  + appearance + calendar/first-day-of-week), **Ingest (02)** (engine /
+  - appearance + calendar/first-day-of-week), **Ingest (02)** (engine /
   parse / export / data),
   **Matches (03)** (default landing tab), **Unknown (04)** (triage). The
   view ref defaults to `'matches'`; the numbering communicates the user
@@ -548,7 +550,7 @@ Triggered on `v*` tags (push) and on `workflow_dispatch` (manual fallback for wh
 | `SECURITY.md` | Security researchers / would-be reporters | Vulnerability-disclosure policy: only the latest release is supported, file privately via GitHub Security Advisories (not public issues), no SLA on response time (matches CoC tone). Scope section enumerates in-scope code/surfaces and out-of-scope items (third-party CVEs go upstream; misconfiguration is the user's responsibility). GitHub auto-surfaces in the Security tab; CoC's "Reporting violations" now cross-refs this file. |
 | `.github/ISSUE_TEMPLATE/bug_report.yml`, `.github/ISSUE_TEMPLATE/config.yml`, `.github/pull_request_template.md` | New issue / PR authors | YAML Issue Form (QA-style bug report: version, OS, Tesseract, expected vs actual, repro steps, screenshots, logs) + a config that disables blank issues and links to docs/security advisories. PR template carries the commit-style + TDD + docs-update checklist plus two enforced attestations (CoC, Apache-2.0 license grant) that `pr-compliance.yml` grep-checks. Edit the template wording AND update the grep regex in `pr-compliance.yml` together — the two are coupled. |
 | `.github/CODEOWNERS` | GitHub PR routing | Single catch-all rule (`* @jacob-delgado`) auto-requests a review from the maintainer on every PR. If branch protection ever turns on "Require review from Code Owners" the rule starts gating merges; until then it's just a routing hint. Add more specific patterns above the catch-all if scope gets divided in the future (last-matching-rule-wins). |
-| `CLAUDE.md` | This file — AI assistant context. Not user-facing. |
+| `CLAUDE.md` | AI assistants | This file — AI assistant context. Not user-facing. |
 
 Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifying-your-download` (linked from README's Verifying section), `CONTRIBUTING.md#building` (linked from `install-linux.md`), `CONTRIBUTING.md#pre-commit-hooks-lefthook` (linked from README and RELEASES). Rename a heading and you'll silently break the inbound link.
 
@@ -732,7 +734,7 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifyin
 - **Windows Tesseract installer paths contain spaces and parens** —
   `defaultTesseractPath()` returns `C:\Program Files\Tesseract-OCR\…`
   or `C:\Program Files (x86)\Tesseract-OCR\…` on Windows. Any regex
-  that constrains path strings must allow `() ` or it'll reject the
+  that constrains path strings must allow `()` or it'll reject the
   Windows default out of the box (one of the test cycles spent
   tracking this down — don't repeat).
 - **`gh workflow run --ref TAG` reads the workflow definition from
