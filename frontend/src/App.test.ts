@@ -89,3 +89,45 @@ describe('App.vue', () => {
     expect(api.OpenURL).toHaveBeenCalledWith('https://github.com/sound-barrier/recall')
   })
 })
+
+describe('App.vue — unsupported-tesseract modal a11y', () => {
+  async function openUnsupportedModal() {
+    // Tesseract is detected but reports an unsupported version (e.g. 4.x).
+    // Clicking Run Parse opens the confirmation modal instead of parsing.
+    const wrapper = await mountApp({
+      screenshotsDir: '/home/me/shots',
+      newScreenshotCount: 3,
+      tesseract: { found: true, supported: false, version: '4.1.1' },
+    })
+    await wrapper.find('#tab-ingest').trigger('click')
+    await wrapper.vm.$nextTick()
+    await wrapper.find('.btn.primary.big').trigger('click') // Run Parse
+    await wrapper.vm.$nextTick()
+    return wrapper
+  }
+
+  it('opening the modal moves focus to the first focusable (Cancel)', async () => {
+    const wrapper = await openUnsupportedModal()
+    expect(wrapper.find('.modal-box').exists()).toBe(true)
+    // Cancel is the first <button> inside .modal-actions by markup order,
+    // chosen specifically so destructive primary actions (Continue
+    // Anyway) never receive default focus.
+    const cancel = wrapper.findAll('.modal-actions button')[0]!
+    expect(document.activeElement).toBe(cancel.element)
+  })
+
+  it('Escape on document closes the modal', async () => {
+    const wrapper = await openUnsupportedModal()
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.modal-box').exists()).toBe(false)
+  })
+
+  it('background container is marked inert and aria-hidden while open', async () => {
+    const wrapper = await openUnsupportedModal()
+    const container = wrapper.find('.container')
+    // Vue serialises boolean inert as the attribute being present.
+    expect(container.attributes('inert')).toBeDefined()
+    expect(container.attributes('aria-hidden')).toBe('true')
+  })
+})
