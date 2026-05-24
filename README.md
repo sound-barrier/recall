@@ -128,6 +128,7 @@ reading here — the desktop app is all you need.
 | [🖥️ Use without the desktop app](docs/server.md) | You want browser access, or to run Recall on a headless machine. |
 | [🐳 Run in Docker](docs/docker.md) | You run containers on a home lab or NAS. |
 | [📊 Charts & Dashboards](docs/grafana.md) | You want SR-over-time graphs and win-rate charts in Grafana. |
+| [📘 API reference](https://sound-barrier.github.io/recall/api/) | You want to read or try the HTTP API — Swagger UI rendering of the OpenAPI spec, auto-deployed from `main`. |
 
 ## Contributing
 
