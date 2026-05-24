@@ -17,9 +17,19 @@ export function useMatchFilters(
   // Optional min-play thresholds — a match qualifies if ANY candidate
   // hero (the selected hero filter, or all heroes if none selected)
   // played at least minPlayPercent% OR at least minPlayMinutes minutes
-  // of the match. Both default to 0 = disabled.
+  // of the match. Both default to 0 = disabled. The UI enforces that
+  // only one of the two is non-zero at a time, but the filter math
+  // tolerates both being set (OR semantics) so a hand-edited
+  // localStorage value can't trap a user in a filtered-out view.
   minPlayPercent?: Readonly<Ref<number>>,
   minPlayMinutes?: Readonly<Ref<number>>,
+  // Optional setters — when provided, clearFilters resets the
+  // thresholds via these so the localStorage-backed preference is
+  // updated (not just the in-memory ref). Without them, "Clear
+  // Filters" would leave the min-play knobs at whatever value the
+  // user last typed, which is the bug fixed here.
+  setMinPlayPercent?: (n: number) => void,
+  setMinPlayMinutes?: (n: number) => void,
 ) {
   // ── Filter state ─────────────────────────────────────────────────────
   // Each field is an array: empty = no filter; multiple entries = union (OR).
@@ -240,6 +250,10 @@ export function useMatchFilters(
 
   // Resets all filter arrays and date range. Does NOT close any open filter
   // popover — callers should also call closeFilterPanel() when needed.
+  // Min-play thresholds reset via the optional setters so the
+  // localStorage-backed preference is cleared too, not just the
+  // in-memory ref. No-op for thresholds when setters weren't provided
+  // (test setups that skip them keep working).
   function clearFilters() {
     filterMode.value   = []
     filterType.value   = []
@@ -250,6 +264,8 @@ export function useMatchFilters(
     filterSshot.value  = []
     filterFrom.value   = ''
     filterTo.value     = ''
+    setMinPlayPercent?.(0)
+    setMinPlayMinutes?.(0)
   }
 
   function resetDateRange() {
