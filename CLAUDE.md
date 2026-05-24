@@ -113,7 +113,7 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `make dev` | Hot-reload dev server (macOS only). Vite on `:5173`, Wails IPC dev on `:34115`. Auto-rebuilds Go on save. |
 | `make build-linux` | Linux/amd64 Wails app → `dist/linux/Recall` via Docker. |
 | `make build-windows` | Windows/amd64 Wails app → `dist/windows/Recall.exe` via Docker + mingw-w64. |
-| `make build-mac` | macOS Wails app → `dist/mac/Recall-arm64.app`. Must run on macOS. |
+| `make build-mac` | macOS Wails app → `dist/mac/Recall.app`. Must run on macOS. The release-workflow DMG step (in `release.yml`) re-stages this into a `dmg-staging/` dir alongside an `Applications` symlink and a `README.txt`; the local target stops at the `.app` for fast iteration. |
 | `make build-all-docker` | Linux + Windows Wails apps — no macOS SDK needed; good for CI. |
 | `make build-server-linux` | Linux/amd64 server binary → `dist/server-linux/Recall-server` via Docker. |
 | `make build-server-windows` | Windows/amd64 server binary → `dist/server-windows/Recall-server.exe` via Docker. |
