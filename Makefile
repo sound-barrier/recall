@@ -430,7 +430,7 @@ SWAGGER_IMAGE ?= swaggerapi/swagger-ui:v5.17.14
 # Honkit pin — keep in sync with HONKIT_VERSION in
 # .github/workflows/pages.yml so local previews build the same site
 # the workflow deploys.
-HONKIT_VERSION ?= 6.0.2
+HONKIT_VERSION ?= 6.2.0
 PAGES_PORT     ?= 4000
 
 swagger: ## Serve api/openapi.yaml via Swagger UI on :$(SWAGGER_PORT) (Ctrl-C to stop)

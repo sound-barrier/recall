@@ -48,7 +48,7 @@ concurrency:
 # postCreate.sh, but Honkit isn't dev-container content so the pin
 # is workflow-local.
 env:
-  HONKIT_VERSION: 6.0.2
+  HONKIT_VERSION: 6.2.0
 
 jobs:
   deploy:
