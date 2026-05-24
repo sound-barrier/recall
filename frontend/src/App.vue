@@ -33,8 +33,7 @@ import { useFilterPanel } from './composables/useFilterPanel'
 import { useMatchFilters } from './composables/useMatchFilters'
 import { useMatchGrouping } from './composables/useMatchGrouping'
 import ParseProgressPanel, { type ParseProgressEvent } from './components/ParseProgressPanel.vue'
-import MatchGroupSection from './components/MatchGroupSection.vue'
-import FilterRail from './components/FilterRail.vue'
+import MatchesView from './components/MatchesView.vue'
 
 const records = ref<MatchRecord[]>([])
 const error = ref('')
@@ -100,42 +99,20 @@ const prometheusEnabled = ref(false)
 // (1 minute after the last new file).
 const watchEnabled = ref(false)
 
-const { openFilter, filterSearch, toggleFilterPanel, closeFilterPanel } = useFilterPanel()
-
-const {
-  filterFrom, filterTo, sortDir,
-  filterList,
-  modes, types, roles, maps, results, sshotTypes, heroes,
-  filteredSorted,
-  anyFilter, activeFilterCount, undatedMatchCount,
-  toggleFilter, isActive, selectAllFilter, clearFilterField,
-  clearFilters: clearFilterState,
-  resetDateRange, toggleSort,
-} = useMatchFilters(records)
-
-// Month → Week → Day outline over the filtered, sorted list. Each
-// group level carries its own W/L/D tally (sub-component of the
-// overall W/L/D, since the source array is already filter-respecting).
-// Newest path is auto-expanded on first non-empty tree.
-const {
-  groups: matchGroups,
-  isGroupExpanded,
-  toggleGroup,
-  expandAll: expandAllGroups,
-  collapseAll: collapseAllGroups,
-  allExpanded: allGroupsExpanded,
-} = useMatchGrouping(filteredSorted, sortDir)
+// Filter / filter-panel / grouping composables — owned here so the
+// extracted view components (MatchesView, eventually others) receive
+// them as bundled props rather than re-instantiating their own state.
+// activeFilterCount surfaces in the matches-tab nav badge so it lives
+// outside the view component too.
+const filterPanel = useFilterPanel()
+const filters = useMatchFilters(records)
+const { activeFilterCount } = filters
+const grouping = useMatchGrouping<MatchRecord>(filters.filteredSorted, filters.sortDir)
 
 // Per-card expand/collapse state. Object keyed by record id; truthy =
 // expanded. Plain object (not a Set) so Vue's reactivity sees each
 // toggle naturally without needing to reassign the whole container.
 const expanded = ref<Record<number, boolean>>({})
-
-function setFilterFrom(v: string) { filterFrom.value = v }
-function setFilterTo(v: string) { filterTo.value = v }
-function setFilterSearch(field: string, value: string) {
-  filterSearch.value = { ...filterSearch.value, [field]: value }
-}
 
 async function load() {
   const [recs, dir, promOn, watchOn, tess, newCount] = await Promise.all([
@@ -329,9 +306,6 @@ async function pickDir() {
   }
 }
 
-// clearFilters resets all filter state AND closes any open popover.
-function clearFilters() { clearFilterState(); closeFilterPanel() }
-
 // Bounds for the date pickers.
 const earliestMatchDateTime = computed(() => computeEarliestMatchDateTime(records.value))
 
@@ -368,14 +342,14 @@ function isExpanded(id: number) {
 // expand all. Operates over the currently-filtered set so it doesn't
 // affect rows the user can't see.
 function toggleAll() {
-  const visible = filteredSorted.value
+  const visible = filters.filteredSorted.value
   const anyOpen = visible.some(r => isExpanded(r.id))
   const next = { ...expanded.value }
   for (const r of visible) next[r.id] = !anyOpen
   expanded.value = next
 }
 const allExpanded = computed(() =>
-  filteredSorted.value.length > 0 && filteredSorted.value.every(r => isExpanded(r.id))
+  filters.filteredSorted.value.length > 0 && filters.filteredSorted.value.every(r => isExpanded(r.id))
 )
 
 // W-L-D summary that reflects the *currently filtered* set so the user
@@ -384,7 +358,7 @@ const allExpanded = computed(() =>
 // this synced with the visible cards below.
 const wld = computed(() => {
   const c: Record<string, number> = { victory: 0, defeat: 0, draw: 0 }
-  for (const r of filteredSorted.value) {
+  for (const r of filters.filteredSorted.value) {
     const k = r.data?.result
     if (k && k in c) c[k] = (c[k] ?? 0) + 1
   }
@@ -415,6 +389,15 @@ function togglePreview(filename: string) {
 }
 function onPreviewError(filename: string) {
   previewError.value = { ...previewError.value, [filename]: true }
+}
+
+// Bundle the per-card UI state into one object so MatchesView /
+// UnknownMapsView can consume it as a single prop — keeps their
+// signatures readable and lets them share the SAME expand / preview
+// state without forking.
+const cardState = {
+  isExpanded, isSourcesOpen, previewOpen, previewError, allExpanded,
+  toggleAll, toggleExpand, toggleSources, togglePreview, onPreviewError,
 }
 
 // Records that couldn't be resolved to a named match — either the
@@ -1135,115 +1118,18 @@ onBeforeUnmount(() => {
       </section>
 
       <!-- ─── MATCHES VIEW (default) ───────────────────────────── -->
-      <div v-if="view === 'matches'" id="panel-matches" key="matches" role="tabpanel" aria-labelledby="tab-matches" tabindex="-1" class="matches-view">
-        <div v-if="records.length === 0 && !loading" class="empty">
-          <div class="empty-mark">
-            ◌
-          </div>
-          <p class="empty-title">
-            No matches on record.
-          </p>
-          <p class="empty-sub">
-            First-time setup runs left-to-right across the nav tabs:
-          </p>
-          <ol class="empty-steps">
-            <li>
-              <strong class="empty-step-num">01</strong>
-              <span>Set your screenshots folder under <strong class="empty-link" @click="goToView('settings')">Settings</strong>.</span>
-            </li>
-            <li>
-              <strong class="empty-step-num">02</strong>
-              <span>Locate Tesseract and click <strong class="empty-link" @click="goToView('ingest')">Ingest → Run Parse</strong>, or flip on <strong class="empty-link" @click="goToView('ingest')">Watch Folder</strong> to auto-ingest as you play.</span>
-            </li>
-            <li>
-              <strong class="empty-step-num">03</strong>
-              <span>Your matches appear here.</span>
-            </li>
-          </ol>
-        </div>
-
-        <FilterRail
-          v-if="records.length > 0"
-          :modes="modes"
-          :maps="maps"
-          :types="types"
-          :roles="roles"
-          :heroes="heroes"
-          :results="results"
-          :sshot-types="sshotTypes"
-          :filter-list="filterList"
-          :filter-search="filterSearch"
-          :open-filter="openFilter"
-          :filter-from="filterFrom"
-          :filter-to="filterTo"
-          :sort-dir="sortDir"
-          :undated-match-count="undatedMatchCount"
-          :any-filter="anyFilter"
-          :earliest-match-date-time="earliestMatchDateTime"
-          :now-date-time="nowDateTime"
-          :all-expanded="allExpanded"
-          :record-count="records.length"
-          :filtered-count="filteredSorted.length"
-          @update:filter-from="setFilterFrom"
-          @update:filter-to="setFilterTo"
-          @update:search="setFilterSearch"
-          @toggle-filter-panel="toggleFilterPanel"
-          @close-filter-panel="closeFilterPanel"
-          @toggle-filter="toggleFilter"
-          @select-all-filter="selectAllFilter"
-          @clear-filter-field="clearFilterField"
-          @clear-filters="clearFilters"
-          @reset-date-range="resetDateRange"
-          @toggle-sort="toggleSort"
-          @toggle-all="toggleAll"
-        />
-
-        <div v-if="records.length > 0 && matchGroups.length > 0" class="match-list">
-          <!-- Outline controls: Expand-all / Collapse-all toggle the
-               whole Month → Week → Day tree at once. Sits above the
-               groups so it's reachable without scrolling. -->
-          <div class="group-rail" role="toolbar" aria-label="Group outline controls">
-            <span class="group-rail-label">
-              {{ matchGroups.length }} {{ matchGroups.length === 1 ? 'month' : 'months' }}
-            </span>
-            <button
-              v-if="allGroupsExpanded"
-              type="button"
-              class="group-rail-btn"
-              @click="collapseAllGroups"
-            >
-              ▾ Collapse all
-            </button>
-            <button
-              v-else
-              type="button"
-              class="group-rail-btn"
-              @click="expandAllGroups"
-            >
-              ▸ Expand all
-            </button>
-          </div>
-
-          <MatchGroupSection
-            v-for="(group, idx) in matchGroups"
-            :key="group.key"
-            :group="group"
-            :is-group-expanded="isGroupExpanded"
-            :is-expanded="isExpanded"
-            :is-sources-open="isSourcesOpen"
-            :preview-open="previewOpen"
-            :preview-error="previewError"
-            :is-active="isActive"
-            :card-offset="idx"
-            @toggle-group="toggleGroup"
-            @toggle-expand="toggleExpand"
-            @toggle-sources="toggleSources"
-            @toggle-preview="togglePreview"
-            @preview-error="onPreviewError"
-            @filter-toggle="toggleFilter"
-          />
-        </div>
-      </div><!-- /.matches-view -->
+      <MatchesView
+        v-if="view === 'matches'"
+        :records="records"
+        :loading="loading"
+        :filters="filters"
+        :filter-panel="filterPanel"
+        :grouping="grouping"
+        :card-state="cardState"
+        :earliest-match-date-time="earliestMatchDateTime"
+        :now-date-time="nowDateTime"
+        @go-to-view="goToView"
+      />
     </div>
 
     <!-- Unsupported Tesseract version confirmation modal -->
