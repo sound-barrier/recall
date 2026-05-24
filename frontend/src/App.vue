@@ -24,6 +24,7 @@ import {
 } from './api'
 import { computeEarliestMatchDateTime } from './match-helpers'
 import { useTheme } from './composables/useTheme'
+import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
 import { useMatchFilters } from './composables/useMatchFilters'
 import { useMatchGrouping } from './composables/useMatchGrouping'
@@ -105,7 +106,11 @@ const watchEnabled = ref(false)
 const filterPanel = useFilterPanel()
 const filters = useMatchFilters(records)
 const { activeFilterCount } = filters
-const grouping = useMatchGrouping<MatchRecord>(filters.filteredSorted, filters.sortDir)
+// First-day-of-week preference (Settings → Calendar). Threaded into
+// useMatchGrouping so the "Week of <date>" labels honor the user's
+// choice across page loads.
+const { weekStart, setWeekStart } = useWeekStart()
+const grouping = useMatchGrouping<MatchRecord>(filters.filteredSorted, filters.sortDir, weekStart)
 
 // Per-card expand/collapse state. Object keyed by record id; truthy =
 // expanded. Plain object (not a Set) so Vue's reactivity sees each
@@ -610,8 +615,10 @@ onBeforeUnmount(() => {
         :screenshots-dir="screenshotsDir"
         :loading="loading"
         :theme-mode="themeMode"
+        :week-start="weekStart"
         @pick-screenshots-dir="pickDir"
         @toggle-theme="toggleTheme"
+        @set-week-start="setWeekStart"
         @go-to-view="goToView"
       />
 

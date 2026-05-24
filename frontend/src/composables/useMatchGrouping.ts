@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import type { Ref } from 'vue'
 import { groupMatchesByMonthWeekDay } from '../match-helpers'
-import type { MatchGroup, GroupableRecord } from '../match-helpers'
+import type { MatchGroup, GroupableRecord, WeekStart } from '../match-helpers'
 
 /**
  * useMatchGrouping owns two pieces of state:
@@ -26,10 +26,16 @@ import type { MatchGroup, GroupableRecord } from '../match-helpers'
 export function useMatchGrouping<R extends GroupableRecord>(
   filteredSorted: Readonly<Ref<R[]>>,
   sortDir: Readonly<Ref<'asc' | 'desc' | string>>,
+  // Optional — defaults to 'sunday' inside the helper when omitted.
+  // Pass the useWeekStart ref to make the "Week of <date>" anchor
+  // honor the user's Settings preference.
+  weekStart?: Readonly<Ref<WeekStart>>,
 ) {
   const groups = computed<MatchGroup<R>[]>(() => {
     const dir = sortDir.value === 'asc' ? 'asc' : 'desc'
-    return groupMatchesByMonthWeekDay(filteredSorted.value, dir)
+    return groupMatchesByMonthWeekDay(filteredSorted.value, dir, {
+      weekStart: weekStart?.value ?? 'sunday',
+    })
   })
 
   // Set<groupKey>. Plain Set wrapped in a ref — mutate by creating a
