@@ -56,4 +56,5 @@ const schema = `CREATE TABLE IF NOT EXISTS match_results (
 // SQLite has no IF NOT EXISTS for ADD COLUMN until v3.35.
 var migrations = []string{
 	`ALTER TABLE match_results ADD COLUMN source_types TEXT`,
+	`ALTER TABLE match_results ADD COLUMN source_parsed_at TEXT`,
 }

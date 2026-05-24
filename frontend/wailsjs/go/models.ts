@@ -45,11 +45,11 @@ export namespace app {
 	    supported: boolean;
 	    error: string;
 	    default: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new TesseractStatus(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];

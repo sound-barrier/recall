@@ -38,6 +38,18 @@ type MatchRow struct {
 	// SourceTypes is the decoded source_types JSON object (filename → type).
 	// May be nil for rows persisted before the column existed.
 	SourceTypes map[string]string
+	// SourceParsedAt is the decoded source_parsed_at JSON object
+	// (filename → ISO8601 timestamp of when that file was first
+	// inserted into the DB). May be nil or missing entries for
+	// rows / files persisted before the column existed.
+	SourceParsedAt map[string]string
+
+	// ParsedAt is the row's match-level "first inserted at" timestamp,
+	// from the schema's parsed_at column. Stable across subsequent
+	// upserts — Upsert intentionally does not refresh this on
+	// conflict so the UI can display "this match was parsed on X"
+	// without the value shifting when a screenshot is added later.
+	ParsedAt string
 
 	Map, Type, Mode, Role, Hero string
 
@@ -125,12 +137,13 @@ func (s *SQLStore) LoadSourceFilenames() (map[string]bool, error) {
 // which a nil slice would violate).
 func (s *SQLStore) LoadAll() ([]MatchRow, error) {
 	rows, err := s.db.Query(`SELECT
-		id, match_key, source_files, source_types,
+		id, match_key, source_files, source_types, source_parsed_at,
 		map, type, mode, role, hero,
 		eliminations, assists, deaths, damage, healing, mitigation,
 		result, final_score, date, finished_at, game_length,
 		heroes_played, performance,
-		rank, level, rank_progress, change_percent, modifiers, sr
+		rank, level, rank_progress, change_percent, modifiers, sr,
+		parsed_at
 		FROM match_results ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -141,14 +154,15 @@ func (s *SQLStore) LoadAll() ([]MatchRow, error) {
 	for rows.Next() {
 		var r MatchRow
 		var sourcesJSON string
-		var typesJSON sql.NullString
+		var typesJSON, parsedAtJSON sql.NullString
 		var mapCol, typeCol, mode, role, hero sql.NullString
 		var result, finalScore, date, finishedAt, gameLength sql.NullString
 		var heroesJSON, perfJSON sql.NullString
 		var rank sql.NullString
 		var modifiersJSON, srJSON sql.NullString
+		var parsedAt sql.NullString
 		err := rows.Scan(
-			&r.ID, &r.MatchKey, &sourcesJSON, &typesJSON,
+			&r.ID, &r.MatchKey, &sourcesJSON, &typesJSON, &parsedAtJSON,
 			&mapCol, &typeCol, &mode, &role, &hero,
 			&r.Eliminations, &r.Assists, &r.Deaths,
 			&r.Damage, &r.Healing, &r.Mitigation,
@@ -156,6 +170,7 @@ func (s *SQLStore) LoadAll() ([]MatchRow, error) {
 			&heroesJSON, &perfJSON,
 			&rank, &r.Level, &r.RankProgress, &r.ChangePercent,
 			&modifiersJSON, &srJSON,
+			&parsedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -165,6 +180,9 @@ func (s *SQLStore) LoadAll() ([]MatchRow, error) {
 		}
 		if typesJSON.Valid && typesJSON.String != "" {
 			_ = json.Unmarshal([]byte(typesJSON.String), &r.SourceTypes)
+		}
+		if parsedAtJSON.Valid && parsedAtJSON.String != "" {
+			_ = json.Unmarshal([]byte(parsedAtJSON.String), &r.SourceParsedAt)
 		}
 		r.Map = mapCol.String
 		r.Type = typeCol.String
@@ -181,12 +199,17 @@ func (s *SQLStore) LoadAll() ([]MatchRow, error) {
 		r.PerformanceJSON = perfJSON.String
 		r.ModifiersJSON = modifiersJSON.String
 		r.SRJSON = srJSON.String
+		r.ParsedAt = parsedAt.String
 		out = append(out, r)
 	}
 	return out, rows.Err()
 }
 
 // Upsert writes one row, replacing any existing row with the same match_key.
+// parsed_at intentionally is NOT refreshed on conflict — once a row exists
+// its parsed_at represents the first time that match key was inserted, and
+// the UI displays it as "this match was parsed on X" without shifting on
+// subsequent re-parses (e.g. when the user adds a rank screenshot later).
 func (s *SQLStore) Upsert(r MatchRow) error {
 	sourcesJSON, err := json.Marshal(r.SourceFiles)
 	if err != nil {
@@ -200,45 +223,55 @@ func (s *SQLStore) Upsert(r MatchRow) error {
 		}
 		typesJSON = sql.NullString{String: string(b), Valid: true}
 	}
+	var parsedAtJSON sql.NullString
+	if len(r.SourceParsedAt) > 0 {
+		b, err := json.Marshal(r.SourceParsedAt)
+		if err != nil {
+			return err
+		}
+		parsedAtJSON = sql.NullString{String: string(b), Valid: true}
+	}
 
 	_, err = s.db.Exec(
 		`INSERT INTO match_results (
-			match_key, source_files, source_types,
+			match_key, source_files, source_types, source_parsed_at,
 			map, type, mode, role, hero,
 			eliminations, assists, deaths, damage, healing, mitigation,
 			result, final_score, date, finished_at, game_length,
 			heroes_played, performance,
 			rank, level, rank_progress, change_percent, modifiers, sr
-		) VALUES (?,?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?, ?,?, ?,?,?,?,?,?)
+		) VALUES (?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?, ?,?, ?,?,?,?,?,?)
 		ON CONFLICT(match_key) DO UPDATE SET
-			source_files   = excluded.source_files,
-			source_types   = excluded.source_types,
-			map            = excluded.map,
-			type           = excluded.type,
-			mode           = excluded.mode,
-			role           = excluded.role,
-			hero           = excluded.hero,
-			eliminations   = excluded.eliminations,
-			assists        = excluded.assists,
-			deaths         = excluded.deaths,
-			damage         = excluded.damage,
-			healing        = excluded.healing,
-			mitigation     = excluded.mitigation,
-			result         = excluded.result,
-			final_score    = excluded.final_score,
-			date           = excluded.date,
-			finished_at    = excluded.finished_at,
-			game_length    = excluded.game_length,
-			heroes_played  = excluded.heroes_played,
-			performance    = excluded.performance,
-			rank           = excluded.rank,
-			level          = excluded.level,
-			rank_progress  = excluded.rank_progress,
-			change_percent = excluded.change_percent,
-			modifiers      = excluded.modifiers,
-			sr             = excluded.sr,
-			parsed_at      = CURRENT_TIMESTAMP`,
-		r.MatchKey, string(sourcesJSON), typesJSON,
+			source_files     = excluded.source_files,
+			source_types     = excluded.source_types,
+			source_parsed_at = excluded.source_parsed_at,
+			map              = excluded.map,
+			type             = excluded.type,
+			mode             = excluded.mode,
+			role             = excluded.role,
+			hero             = excluded.hero,
+			eliminations     = excluded.eliminations,
+			assists          = excluded.assists,
+			deaths           = excluded.deaths,
+			damage           = excluded.damage,
+			healing          = excluded.healing,
+			mitigation       = excluded.mitigation,
+			result           = excluded.result,
+			final_score      = excluded.final_score,
+			date             = excluded.date,
+			finished_at      = excluded.finished_at,
+			game_length      = excluded.game_length,
+			heroes_played    = excluded.heroes_played,
+			performance      = excluded.performance,
+			rank             = excluded.rank,
+			level            = excluded.level,
+			rank_progress    = excluded.rank_progress,
+			change_percent   = excluded.change_percent,
+			modifiers        = excluded.modifiers,
+			sr               = excluded.sr`,
+		// parsed_at: NOT included in the UPDATE so the first-insert
+		// timestamp is preserved across re-parses.
+		r.MatchKey, string(sourcesJSON), typesJSON, parsedAtJSON,
 		nullableString(r.Map), nullableString(r.Type),
 		nullableString(r.Mode), nullableString(r.Role),
 		nullableString(r.Hero),
