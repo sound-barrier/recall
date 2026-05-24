@@ -39,7 +39,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
 sudo rm -rf /var/lib/apt/lists/*
 
 # ─── Go tooling (CONTRIBUTING.md "go install" lines) ──────────────────
-log "Go tools: gofumpt, goimports-reviser, shfmt, govulncheck, deadcode, wails, golangci-lint"
+log "Go tools: gofumpt, goimports-reviser, shfmt, govulncheck, deadcode, actionlint, wails, golangci-lint"
 # golangci-lint via go install matches what ci.yml does (so the version
 # Go-compiled-this-Go-toolchain matches; pre-built binaries are usually
 # built against older Go).
@@ -51,6 +51,9 @@ go install github.com/incu6us/goimports-reviser/v3@latest
 go install mvdan.cc/sh/v3/cmd/shfmt@latest
 go install golang.org/x/vuln/cmd/govulncheck@latest
 go install golang.org/x/tools/cmd/deadcode@latest
+# actionlint: GitHub Actions workflow linter. Used by `make lint-actions`
+# and the lefthook pre-push hook.
+go install github.com/rhysd/actionlint/cmd/actionlint@latest
 go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
 
 # ─── hadolint (Dockerfile linter) ─────────────────────────────────────
@@ -112,6 +115,7 @@ log "done — tool versions:"
     printf '  lefthook       %s\n' "$(lefthook version)"
     printf '  trivy          %s\n' "$(trivy --version 2>&1 | head -1)"
     printf '  typos          %s\n' "$(typos --version 2>&1 | head -1)"
+    printf '  actionlint     %s\n' "$(actionlint -version 2>&1 | head -1)"
     printf '  jq             %s\n' "$(jq --version)"
     printf '  direnv         %s\n' "$(direnv --version)"
 } || true
