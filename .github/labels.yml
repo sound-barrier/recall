@@ -14,6 +14,11 @@
 # overlap (bug, enhancement, …) so the visual identity stays
 # familiar; project-specific labels pick from the same palette
 # (orange/blue/green/purple) rather than introducing new hues.
+#
+# ALWAYS quote color values — `5319e7` parses as YAML scientific
+# notation (5319 × 10^7) and `008672` loses its leading zeros and
+# becomes the integer 8672. EndBug/label-sync rejects both with
+# "color should be a string". The quotes force string parsing.
 
 # ── Conventional Commits types ──────────────────────────────────
 # Useful for "show me every PR that's a feat / fix / docs / etc.".
@@ -21,101 +26,101 @@
 
 - name: feat
   description: New feature (Conventional Commits)
-  color: a2eeef
+  color: "a2eeef"
 
 - name: fix
   description: Bug fix (Conventional Commits)
-  color: d73a4a
+  color: "d73a4a"
 
 - name: chore
   description: Maintenance work (Conventional Commits)
-  color: cfd3d7
+  color: "cfd3d7"
 
 - name: docs
   description: Documentation only (Conventional Commits)
-  color: 0075ca
+  color: "0075ca"
 
 - name: refactor
   description: Code refactor — no behaviour change (Conventional Commits)
-  color: c5def5
+  color: "c5def5"
 
 - name: test
   description: Tests added or updated (Conventional Commits)
-  color: bfd4f2
+  color: "bfd4f2"
 
 - name: perf
   description: Performance improvement (Conventional Commits)
-  color: fbca04
+  color: "fbca04"
 
 - name: build
   description: Build system / external deps (Conventional Commits)
-  color: cfd3d7
+  color: "cfd3d7"
 
 - name: ci
   description: CI configuration change (Conventional Commits)
-  color: cfd3d7
+  color: "cfd3d7"
 
 - name: revert
   description: Reverts a prior commit (Conventional Commits)
-  color: e99695
+  color: "e99695"
 
 - name: style
   description: Formatting / whitespace only (Conventional Commits)
-  color: ededed
+  color: "ededed"
 
 # ── Triage standard ─────────────────────────────────────────────
 # GitHub's defaults plus a couple of common additions.
 
 - name: bug
   description: Something isn't working (used by .github/ISSUE_TEMPLATE/bug_report.yml)
-  color: d73a4a
+  color: "d73a4a"
 
 - name: enhancement
   description: Feature request or improvement
-  color: a2eeef
+  color: "a2eeef"
 
 - name: question
   description: Further information is requested
-  color: d876e3
+  color: "d876e3"
 
 - name: duplicate
   description: This issue or PR already exists
-  color: cfd3d7
+  color: "cfd3d7"
 
 - name: invalid
   description: This doesn't seem right
-  color: e4e669
+  color: "e4e669"
 
 - name: wontfix
   description: This will not be worked on
-  color: ffffff
+  color: "ffffff"
 
 - name: good first issue
   description: Good for newcomers
-  color: 7057ff
+  color: "7057ff"
 
 - name: help wanted
   description: Extra attention is needed
-  color: 008672
+  color: "008672"
 
 # ── Project-specific ────────────────────────────────────────────
 
 - name: a11y
   description: Accessibility — covers axe-core findings + keyboard / screen-reader concerns
-  color: 5319e7
+  color: "5319e7"
 
 - name: security
   description: Security concern (use SECURITY.md for vulnerabilities, NOT public issues)
-  color: b60205
+  color: "b60205"
 
 - name: dependencies
   description: Dependency update (auto-applied by Dependabot)
-  color: 0366d6
+  color: "0366d6"
 
 - name: breaking change
   description: Backwards-incompatible change — flags PRs that would need a major version bump
-  color: b60205
+  color: "b60205"
 
 - name: documentation
   description: Improvements or additions to documentation (sibling of `docs` for issue-side use)
-  color: 0075ca
+  color: "0075ca"
