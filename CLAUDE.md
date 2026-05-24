@@ -16,6 +16,88 @@ The GitHub repo is `sound-barrier/recall` — used for
 `gh api repos/sound-barrier/recall/...` calls (code-scanning alerts,
 PRs, releases, etc.).
 
+## Working style
+
+This section is prescriptive — these are the project's defaults for
+how new code should be written and how changes should be made.
+Override only when the user explicitly asks for something different.
+
+### Code style
+
+- **Go**: follow [Effective Go](https://go.dev/doc/effective_go).
+  Accept interfaces, return structs. Small interfaces (1–3 methods).
+  Composition over inheritance. Embedding only for behavior delegation,
+  never just to store a field. No premature abstraction — three similar
+  lines beat one abstract one.
+- **TypeScript / Vue**: idiomatic TS — no `any`, narrow types at
+  boundaries (`Pick<>` or permissive interfaces so callers aren't
+  forced to satisfy fields the function never reads). Composition API
+  + composables for stateful logic. Pure helpers in
+  `frontend/src/match-helpers.ts`, never inside an SFC's
+  `<script setup>`.
+- **Comments**: default to none. Only when the WHY is non-obvious — a
+  hidden constraint, a surprising invariant, a workaround for a
+  specific bug. Never re-explain WHAT the code does; well-named
+  identifiers already do that.
+
+### Design principles
+
+- **SRP / DIP — dependency-inject seams that make testing possible.**
+  Production wires the real implementation; tests wire a fake. Examples
+  already in the codebase: the `db.Store` interface threaded into
+  `*App` via `NewWithStore`; the `mountApp` helper's
+  `vi.doMock('./api', …)` boundary for SFC tests.
+- **Prefer function-variable seams over interfaces for one-method
+  dependencies** (duck typing in Go). When the seam has a single method
+  and a single fake, introducing an interface is YAGNI. Examples:
+  `runTesseractFunc` and `parseSingleFunc` in
+  `pkg/parser/parser.go` — both swap a real impl for a canned one in
+  tests without ceremony.
+- **Law of Demeter — accept what you read.** When a composable returns
+  many refs/handlers, bundle them as a single typed prop
+  (the `CardStateApi`, `FiltersApi`, `GroupingApi` pattern in
+  `MatchesView.vue`) rather than threading 30 individual props through.
+  Consumers treat the bundle as opaque; don't reach through it for
+  unrelated state.
+- **DRY with the rule of three.** Don't extract a helper or interface
+  on the second occurrence — two is coincidence. The
+  `useTheme` / `useWeekStart` / `useIncludeUndated` family earned the
+  abstraction when it hit three persisted-preference composables;
+  before that it was just two `ref + localStorage` blocks.
+- **YAGNI — hard line.** No speculative interfaces, no "just in case"
+  error handling for conditions that can't occur, no
+  backwards-compatibility shims for code that hasn't been deployed.
+  If a feature is needed, the user will ask. Until then, simpler.
+
+### TDD process
+
+For **new features and bug fixes**:
+
+1. **RED first.** Write a failing test that reproduces the bug or
+   demonstrates the feature's contract. Run it. Watch it fail with a
+   message that names the gap.
+2. **GREEN minimal.** Write the smallest production code change that
+   makes the test pass. Resist scope creep.
+3. **REFACTOR if it earns it.** Clean up only when the resulting
+   shape is genuinely better. Mechanical reshuffling is noise.
+
+For bug fixes specifically: the failing test that reproduces the bug
+is the most valuable artifact in the commit — it documents both the
+bug and the contract that prevents its return. Do **not** write the
+fix first and then add a test "to cover it"; the ordering matters.
+
+**Exempt** (no TDD ceremony required): typo fixes, doc-only edits,
+formatter / linter passes, dependency bumps, configuration-only
+changes. Use judgement for refactors — extracting a helper rarely
+needs a new test, but changing observable behavior does.
+
+### What to avoid
+
+Speculative interfaces; abstract layers without a second concrete
+caller; backwards-compat shims for unreleased code; "just in case"
+error handling for impossible conditions; over-engineering for
+hypothetical future requirements.
+
 ## Build, run, dev
 
 Two binary flavors exist, selected by the `serveronly` Go build tag:
