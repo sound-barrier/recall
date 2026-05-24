@@ -302,6 +302,40 @@ function cardDelayMs(localIdx: number): number {
 
 /* ── Per-level typography ─────────────────────────────────────── */
 
+/* Year — top-level chronological divider. Only renders when records
+   span multiple calendar years (single-year datasets unwrap to a
+   month-rooted tree). Sized larger than Month and given an extra
+   accent rule above so the year boundary reads as a major
+   transition — closer to a section break than a header. */
+.mg-level-year > .mg-head {
+  margin-top: 2rem;
+  padding: 1.1rem 0.85rem 0.75rem;
+  border-top: 2px solid var(--border-strong, var(--border));
+}
+
+.mg-level-year:first-child > .mg-head {
+  margin-top: 0;
+  border-top: 0;
+}
+
+.mg-level-year > .mg-head .mg-label {
+  font-family: var(--brand, 'OW Wordmark', 'Russo One', 'Industry Black', sans-serif);
+  font-size: 1.95rem;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent, var(--text-strong, var(--text)));
+}
+
+.mg-level-year > .mg-head .mg-tally .t em { font-size: 1.15rem; }
+.mg-level-year > .mg-head .mg-bar { width: 12rem; height: 3px; bottom: -0.35rem; }
+
+/* Month groups inside a Year wrapper don't need their own top-rule —
+   the year above already separated them from the previous year. Keep
+   the existing border for the standalone (single-year) case. */
+.mg-level-year .mg-level-month > .mg-head {
+  margin-top: 0.9rem;
+}
+
 .mg-level-month > .mg-head {
   /* Editorial headline treatment. Brand display font carries the
      month + year; the bar sits underneath like a chyron stripe. */
