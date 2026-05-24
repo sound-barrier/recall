@@ -1,16 +1,12 @@
 # Honkit build output and dep cache — generated on demand by the
-# Pages workflow (.github/workflows/pages.yml) or by a local
-# `npx --yes honkit@<pinned-version> build .` invocation; the pinned
-# version lives in the workflow.
+# Pages workflow (.github/workflows/pages.yml). The workflow runs
+# Honkit against a staged copy under _stage/book/ rather than this
+# directory, so book/ stays pure metadata: only book.json, SUMMARY.md,
+# README.md, and this file are committed. If you preview locally by
+# copying chapters into book/ directly, you'll see those copies in
+# `git status` — clean them up with `git restore book/`.
+#
+# Don't list chapter filenames here: Honkit reads .gitignore from
+# its source dir and silently drops matching files from the build.
 _book/
 node_modules/
-
-# Chapter sources staged from docs/ at build time. Source of truth
-# lives in ../docs/; the workflow's `cp` step (and any local-preview
-# script) copies them in. Keep this list in sync with the cp step
-# and book/SUMMARY.md.
-docker.md
-grafana.md
-install-linux.md
-install-macos.md
-server.md
