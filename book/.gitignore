@@ -1,0 +1,16 @@
+# Honkit build output and dep cache — generated on demand by the
+# Pages workflow (.github/workflows/pages.yml) or by a local
+# `npx --yes honkit@<pinned-version> build .` invocation; the pinned
+# version lives in the workflow.
+_book/
+node_modules/
+
+# Chapter sources staged from docs/ at build time. Source of truth
+# lives in ../docs/; the workflow's `cp` step (and any local-preview
+# script) copies them in. Keep this list in sync with the cp step
+# and book/SUMMARY.md.
+docker.md
+grafana.md
+install-linux.md
+install-macos.md
+server.md
