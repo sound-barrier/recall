@@ -24,6 +24,11 @@ export interface MountOverrides {
   prometheusEnabled?: boolean
   watchEnabled?:      boolean
   newScreenshotCount?: number
+  // Seeds localStorage['recall.includeUndated'] so useIncludeUndated
+  // picks it up on mount. Default false (the production default), so
+  // tests that pass dateless records and expect to see the UNKNOWN
+  // DATE bucket must set this to true.
+  includeUndated?: boolean
 }
 
 // Mock factory captured at module scope so EventsOn handlers a test
@@ -95,6 +100,14 @@ function mockApi(overrides: MountOverrides = {}) {
 // before tests assert on the rendered DOM.
 export async function mountApp(overrides: MountOverrides = {}) {
   mockApi(overrides)
+  // Seed localStorage for any preferences App reads on mount via
+  // composables (useIncludeUndated, …). We only write the keys the
+  // test explicitly opted into so we don't surprise unrelated tests.
+  try {
+    if (overrides.includeUndated !== undefined) {
+      localStorage.setItem('recall.includeUndated', overrides.includeUndated ? 'true' : 'false')
+    }
+  } catch (_) { /* private mode etc. — fine */ }
   // Reset modules so a stale cached App.vue from a prior test doesn't
   // bypass the freshly-installed mock.
   vi.resetModules()

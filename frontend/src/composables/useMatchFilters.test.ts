@@ -5,12 +5,19 @@ import type { MatchRecord } from '../api'
 
 // Call the composable inside an effectScope so computed() and ref()
 // work without needing a mounted component.
-function setup(initial: MatchRecord[] = []) {
+//
+// Most existing tests don't bother with date+finished_at on their
+// fixtures — they care about a single dimension at a time (mode,
+// map, role, etc.). The composable now hides undated records by
+// default, so this helper opts INTO including them via a `ref(true)`
+// unless the caller overrides. Tests that exercise the toggle pin
+// it to a specific value.
+function setup(initial: MatchRecord[] = [], includeUndated = ref(true)) {
   const records = ref<MatchRecord[]>(initial)
   let result!: ReturnType<typeof useMatchFilters>
   const scope = effectScope()
-  scope.run(() => { result = useMatchFilters(records) })
-  return { ...result, records }
+  scope.run(() => { result = useMatchFilters(records, includeUndated) })
+  return { ...result, records, includeUndated }
 }
 
 // ── Minimal record builder ────────────────────────────────────────────
@@ -426,5 +433,85 @@ describe('resetDateRange', () => {
     expect(filterFrom.value).toBe('')
     expect(filterTo.value).toBe('')
     expect(filterMode.value).toEqual(['competitive']) // untouched
+  })
+})
+
+// ── includeUndated toggle ─────────────────────────────────────────────
+//
+// Default: undated records (missing data.date or data.finished_at) are
+// dropped from `filtered`. Passing a `ref(true)` opts them back in.
+// The toggle is independent of the date-range filter, which always
+// drops undated rows when a range is set.
+
+describe('includeUndated', () => {
+  it('hides undated records by default (no includeUndated ref provided)', () => {
+    const records = ref<MatchRecord[]>([
+      matchRec({ date: '2026-05-10', finished_at: '21:29' }, 1),
+      matchRec({}, 2), // undated
+    ])
+    let api!: ReturnType<typeof useMatchFilters>
+    effectScope().run(() => { api = useMatchFilters(records) })
+    // Only the dated record survives. (No includeUndated ref → default off.)
+    expect(api.filtered.value.map(r => r.id)).toEqual([1])
+  })
+
+  it('hides undated records when includeUndated ref is false', () => {
+    const include = ref(false)
+    const { filtered, records } = setup([], include)
+    records.value = [
+      matchRec({ date: '2026-05-10', finished_at: '21:29' }, 1),
+      matchRec({}, 2),
+    ]
+    expect(filtered.value.map(r => r.id)).toEqual([1])
+  })
+
+  it('shows undated records when includeUndated ref is true', () => {
+    const include = ref(true)
+    const { filtered, records } = setup([], include)
+    records.value = [
+      matchRec({ date: '2026-05-10', finished_at: '21:29' }, 1),
+      matchRec({}, 2),
+    ]
+    expect(filtered.value.map(r => r.id)).toEqual([1, 2])
+  })
+
+  it('reactively re-filters when the ref flips', async () => {
+    const include = ref(false)
+    const { filtered, records } = setup([], include)
+    records.value = [
+      matchRec({ date: '2026-05-10', finished_at: '21:29' }, 1),
+      matchRec({}, 2),
+    ]
+    expect(filtered.value).toHaveLength(1)
+
+    include.value = true
+    expect(filtered.value).toHaveLength(2)
+
+    include.value = false
+    expect(filtered.value).toHaveLength(1)
+  })
+
+  it('still excludes undated when a date range is active even with includeUndated=true', () => {
+    const include = ref(true)
+    const { filtered, filterFrom, records } = setup([], include)
+    records.value = [
+      matchRec({ date: '2026-05-10', finished_at: '21:29' }, 1),
+      matchRec({}, 2),
+    ]
+    filterFrom.value = '2026-01-01T00:00'
+    // Range filter still drops undated rows regardless of the toggle.
+    expect(filtered.value.map(r => r.id)).toEqual([1])
+  })
+
+  it('treats data.date missing OR data.finished_at missing as undated', () => {
+    const include = ref(false)
+    const { filtered, records } = setup([], include)
+    records.value = [
+      matchRec({ date: '2026-05-10', finished_at: '21:29' }, 1),
+      matchRec({ date: '2026-05-10' }, 2),                  // no finished_at
+      matchRec({ finished_at: '21:29' }, 3),                // no date
+      matchRec({}, 4),                                      // neither
+    ]
+    expect(filtered.value.map(r => r.id)).toEqual([1])
   })
 })

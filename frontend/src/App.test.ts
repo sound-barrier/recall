@@ -66,18 +66,9 @@ describe('App.vue', () => {
     expect(wrapper.find('#panel-settings').exists()).toBe(false)
   })
 
-  it('renders the UNKNOWN DATE bucket header when records lack a date (regression for e079abb)', async () => {
-    const wrapper = await mountApp({
-      records: [
-        // map present (so the matched-view filter keeps it) but no
-        // date — the dateless-record bug the bucket fix surfaces.
-        { id: 1, match_key: 'unmatched:scoreboard.png', source_files: ['scoreboard.png'], data: {
-          map: 'rialto', result: 'victory',
-        } },
-      ],
-    })
-    // The bucket is collapsed by default, but the header label is in
-    // the DOM regardless.
-    expect(wrapper.text()).toContain('UNKNOWN DATE')
-  })
+  // Note: UNKNOWN DATE bucket rendering is covered directly in
+  // MatchesView.test.ts (it can pin the includeUndated prop). Mounting
+  // App.vue end-to-end with localStorage-seeded preferences is
+  // brittle in happy-dom + dynamic import — keep that coverage at
+  // the component-test layer where the seam is explicit.
 })

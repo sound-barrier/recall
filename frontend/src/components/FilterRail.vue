@@ -22,6 +22,10 @@ const props = defineProps<{
   allExpanded: boolean
   recordCount: number
   filteredCount: number
+  // "Include undated" toggle state. When false (default), records
+  // missing date+finished_at are excluded from the matched view. The
+  // toggle button only renders when undatedMatchCount > 0.
+  includeUndated: boolean
 }>()
 
 const emit = defineEmits<{
@@ -37,6 +41,7 @@ const emit = defineEmits<{
   'reset-date-range': []
   'toggle-sort': []
   'toggle-all': []
+  'set-include-undated': [next: boolean]
 }>()
 
 // Static per-field config. Options (roster) come in as props.
@@ -239,6 +244,26 @@ function searchStr(field: string): string {
         >
           {{ allExpanded ? 'Collapse All' : 'Expand All' }}
         </button>
+
+        <!-- Undated toggle. Only surfaces when at least one undated
+             record exists; otherwise the toggle is meaningless. Shows
+             count of undated records so the user knows what they'd
+             see by flipping it. Active state gets the accent tint
+             so it reads as "currently engaged". -->
+        <button
+          v-if="undatedMatchCount > 0"
+          class="btn ghost tiny undated-toggle"
+          :class="{ active: includeUndated }"
+          :title="includeUndated
+            ? `Hide the ${undatedMatchCount} undated match${undatedMatchCount === 1 ? '' : 'es'} (records with no SUMMARY screenshot to anchor a date).`
+            : `Show the ${undatedMatchCount} undated match${undatedMatchCount === 1 ? '' : 'es'} (records with no SUMMARY screenshot to anchor a date). Default is to hide them.`"
+          :aria-pressed="includeUndated"
+          @click="emit('set-include-undated', !includeUndated)"
+        >
+          <span class="undated-mark" aria-hidden="true">{{ includeUndated ? '✓' : '+' }}</span>
+          Undated · {{ undatedMatchCount }}
+        </button>
+
         <button v-if="anyFilter" class="btn ghost tiny danger" @click="emit('clear-filters')">
           Clear Filters
         </button>
@@ -247,3 +272,46 @@ function searchStr(field: string): string {
     </div>
   </section>
 </template>
+
+<style scoped>
+/* Undated toggle — sits between Expand All and Clear Filters. Ghost
+   styling by default (off / "show me what I'm hiding"); the active
+   state tints with the brand accent so it reads as "currently
+   engaged" without needing a separate icon swap. */
+
+.undated-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.undated-mark {
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1;
+  display: inline-flex;
+  width: 0.95em;
+  height: 0.95em;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  opacity: 0.7;
+  transform: translateY(-0.5px);
+}
+
+/* Active state: the toggle is ON, undated rows are being included.
+   Inherits the standard active-pill treatment used elsewhere in the
+   filter rail (accent color + soft accent background). */
+.undated-toggle.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft, transparent);
+}
+.undated-toggle.active .undated-mark {
+  opacity: 1;
+}
+</style>

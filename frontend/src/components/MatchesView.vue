@@ -56,10 +56,15 @@ const props = defineProps<{
   cardState:   CardStateApi
   earliestMatchDateTime: string
   nowDateTime: string
+  // "Include undated" toggle state. Owned by App.vue (via the
+  // useIncludeUndated composable) so the preference persists across
+  // navigation and launches.
+  includeUndated: boolean
 }>()
 
 const emit = defineEmits<{
   'go-to-view': [next: 'settings' | 'ingest' | 'matches' | 'unknown']
+  'set-include-undated': [next: boolean]
 }>()
 
 // Pre-extracted destructures keep the template readable without
@@ -131,6 +136,7 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
       :now-date-time="nowDateTime"
       :all-expanded="cs.allExpanded.value"
       :record-count="records.length"
+      :include-undated="includeUndated"
       :filtered-count="f.filteredSorted.value.length"
       @update:filter-from="setFilterFrom"
       @update:filter-to="setFilterTo"
@@ -144,6 +150,7 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
       @reset-date-range="f.resetDateRange"
       @toggle-sort="f.toggleSort"
       @toggle-all="cs.toggleAll"
+      @set-include-undated="(v: boolean) => emit('set-include-undated', v)"
     />
 
     <div v-if="records.length > 0 && g.groups.value.length > 0" class="match-list">
