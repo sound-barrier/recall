@@ -138,7 +138,7 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `make icon` | Resync `build/appicon.png` from `assets/icon.png` (1024×1024 via `sips`, macOS-only) and clear `build/windows/icon.ico` so Wails regenerates platform icons (`.icns` for macOS, `.ico` for Windows) on next `wails build`. |
 | `make swagger` | Serve `api/openapi.yaml` via Swagger UI v5 in a container (`$(DOCKER) run`, default port `:8080`; override with `SWAGGER_PORT`). |
 | `make lint-openapi` | Lint `api/openapi.yaml` via Spectral (`spectral:oas` + `.spectral.yaml`) with `--fail-severity=warn`. Also run as part of `make lint`. |
-| `make test` | Run all tests: Go unit tests (`-race`; `pkg/app/merge_test.go`, `pkg/app/validate_test.go`, `pkg/parser/parser_test.go`) + Vitest (`frontend/src/**/*.test.ts`). Parser golden-file integration tests skip unless `RECALL_FIXTURE_DIR` is set. CI runs `go test -race -short ./...`. |
+| `make test` | Run all tests: Go unit tests (`-race`; `pkg/{app,db,parser}/*_test.go`) + Vitest (`frontend/src/**/*.test.ts`). Parser golden-file integration tests in `pkg/parser/integration_test.go` skip unless `RECALL_FIXTURE_DIR` is set. CI runs `go test -race -short ./...`. |
 | `make cover` | Generate both Go and frontend coverage reports (umbrella; delegates to `cover-go` + `cover-frontend`). |
 | `make cover-go` | Generate Go coverage report; writes per-function text summary and HTML to `coverage/go/` (gitignored). Fails when total coverage < `GO_COVERAGE_MIN` (default 40%). Override on the CLI for ad-hoc runs. |
 | `make cover-frontend` | Generate JS/TS coverage report via Vitest + V8 (`@vitest/coverage-v8`); writes text summary, lcov, and HTML to `frontend/coverage/` (gitignored). Fails when any of the four `coverage.thresholds` in `vitest.config.ts` aren't met (currently statements/lines 70, branches 60, functions 55). |
@@ -177,11 +177,11 @@ macOS-only (uses `sips`) and skips in the container.
 | `RECALL_PPROF` | *(off)* | When set to anything truthy (`1`, `true`, any non-empty non-`0/false` value), mounts `net/http/pprof` handlers under `/debug/pprof/` in server mode. Off by default — never expose pprof publicly. |
 | `RECALL_FIXTURE_DIR` | *(off)* | Directory of `.png` fixture screenshots for `TestParseScreenshot_GoldenFiles`. Each `foo.png` needs a sidecar `foo.png.golden.json`. Set `RECALL_FIXTURE_UPDATE=1` alongside to regenerate goldens. |
 
-Go unit tests cover the merge / inference / classification helpers in
-`pkg/app/merge_test.go`, the boundary path validators in
-`pkg/app/validate_test.go`, and the parser's text-processing helpers
-in `pkg/parser/parser_test.go`. Full-image parser tests live in
-`pkg/parser/integration_test.go` and skip unless `RECALL_FIXTURE_DIR`
+Go unit tests live in `pkg/app/`, `pkg/db/`, and `pkg/parser/` —
+covering merge orchestration, store integration, boundary path
+validators, screenshot-type detection, OCR text helpers, and the
+platform-tagged `HideWindow` shims. Full-image parser tests live
+in `pkg/parser/integration_test.go` and skip unless `RECALL_FIXTURE_DIR`
 points at a directory of `.png` + `foo.png.golden.json` pairs. For
 quick local exploration outside the test runner, a throwaway
 `x*_test.go` in `pkg/app/` that imports `recall/pkg/app` directly and
@@ -280,7 +280,8 @@ CGo binding.
 
 Single `match_results` table, explicit columns for every scalar field on
 `MatchResult`, JSON blobs for `heroes_played`, `performance`, `modifiers`,
-`sr`, `source_types` (variable-length nested data). Schema is
+`sr`, `source_types`, `source_parsed_at` (variable-length nested
+data). Schema is
 `CREATE TABLE IF NOT EXISTS` plus an idempotent `migrations` slice in
 `pkg/db/db.go` for in-place `ALTER TABLE ADD COLUMN` — "duplicate column"
 errors are swallowed so existing DBs upgrade on next launch. Append a new
@@ -360,10 +361,11 @@ enable→disable→enable cycle constructs a fresh `Server`.
 
 **Wails-bound methods (called from Vue via `wailsjs/go/app/App`)**:
 `ParseScreenshots`, `GetMatchResults`, `GetScreenshotsDir`,
-`PickScreenshotsDir`, `GetPrometheusEnabled`, `SetPrometheusEnabled`,
-`GetWatchEnabled`, `SetWatchEnabled`,
+`SetScreenshotsDir`, `PickScreenshotsDir`, `GetPrometheusEnabled`,
+`SetPrometheusEnabled`, `GetWatchEnabled`, `SetWatchEnabled`,
 `GetTesseractStatus`, `SetTesseractPath`, `PickTesseractBinary`,
-`ResetTesseractPath`, `ClearDatabase`, `GetNewScreenshotCount`.
+`ResetTesseractPath`, `ClearDatabase`, `GetNewScreenshotCount`,
+`GetVersion`, `CheckForUpdate`.
 
 **App constructor**: `app.New()` in `pkg/app` (was `NewApp()` in root).
 
@@ -669,7 +671,7 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifyin
   must stay under 200 KB; `*.css` under 100 KB (set in `ci.yml` step
   "Enforce bundle-size budget"). Bump the budgets explicitly when a
   real feature needs the room — don't accidentally regress past the
-  current ~118 KB JS / ~63 KB CSS.
+  current ~148 KB JS / ~73 KB CSS.
 - **Vue 3 ref auto-unwrapping in templates** — in `<script setup>`, refs
   are auto-unwrapped at the template top level: `myRef` in a template
   expression already equals `myRef.value`. Writing `myRef.value[key]` in a
