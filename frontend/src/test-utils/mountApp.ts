@@ -27,14 +27,12 @@ export interface MountOverrides {
 }
 
 // Mock factory captured at module scope so EventsOn handlers a test
-// installs can be invoked later by name (mimicking the runtime SSE /
-// Wails event firing). `eventHandlers.get('parse-complete')?.(undefined)`
-// triggers the App's re-load path.
+// installs are kept alive across calls (mimicking the runtime SSE /
+// Wails event firing). Tests that need to fire a captured handler can
+// re-import this module and reach into eventHandlers via the getter
+// pattern; for now the Map is internal and the EventsOn/EventsOff
+// stubs just exercise the subscribe/unsubscribe code path.
 let eventHandlers: Map<string, (data: unknown) => void> = new Map()
-
-export function getEventHandler(name: string): ((data: unknown) => void) | undefined {
-  return eventHandlers.get(name)
-}
 
 function defaultTesseract(overrides: Partial<TesseractStatus> = {}): TesseractStatus {
   return {
@@ -59,7 +57,7 @@ function defaultUpdate(overrides: Partial<UpdateInfo> = {}): UpdateInfo {
   }
 }
 
-export function mockApi(overrides: MountOverrides = {}) {
+function mockApi(overrides: MountOverrides = {}) {
   // Reset event handlers each mock install so tests don't leak state.
   eventHandlers = new Map()
 
