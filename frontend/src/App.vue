@@ -121,7 +121,12 @@ const {
   minPlayPercent, minPlayMinutes,
   setMinPlayPercent, setMinPlayMinutes,
 } = useMinPlayThreshold()
-const filters = useMatchFilters(records, includeUndated, minPlayPercent, minPlayMinutes)
+const filters = useMatchFilters(
+  records,
+  includeUndated,
+  minPlayPercent, minPlayMinutes,
+  setMinPlayPercent, setMinPlayMinutes,
+)
 const { activeFilterCount } = filters
 // First-day-of-week preference (Settings → Calendar). Threaded into
 // useMatchGrouping so the "Week of <date>" labels honor the user's

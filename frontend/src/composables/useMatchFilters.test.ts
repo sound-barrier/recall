@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { effectScope, ref } from 'vue'
 import { useMatchFilters } from './useMatchFilters'
 import type { MatchRecord } from '../api'
@@ -17,14 +17,27 @@ function setup(
   includeUndated = ref(true),
   minPlayPercent = ref(0),
   minPlayMinutes = ref(0),
+  setMinPlayPercent = vi.fn(),
+  setMinPlayMinutes = vi.fn(),
 ) {
   const records = ref<MatchRecord[]>(initial)
   let result!: ReturnType<typeof useMatchFilters>
   const scope = effectScope()
   scope.run(() => {
-    result = useMatchFilters(records, includeUndated, minPlayPercent, minPlayMinutes)
+    result = useMatchFilters(
+      records,
+      includeUndated,
+      minPlayPercent,
+      minPlayMinutes,
+      setMinPlayPercent,
+      setMinPlayMinutes,
+    )
   })
-  return { ...result, records, includeUndated, minPlayPercent, minPlayMinutes }
+  return {
+    ...result,
+    records, includeUndated, minPlayPercent, minPlayMinutes,
+    setMinPlayPercent, setMinPlayMinutes,
+  }
 }
 
 // ── Minimal record builder ────────────────────────────────────────────
@@ -630,5 +643,44 @@ describe('min-play threshold filter', () => {
     // Both > 0 still counts as one logical filter (OR group).
     const both = setup([], ref(true), ref(5), ref(1))
     expect(both.activeFilterCount.value).toBe(1)
+  })
+
+  it('clearFilters resets both min-play thresholds via the persisted setters', () => {
+    // Bug being fixed: clearFilters used to leave the min-play knobs
+    // alone because the composable only had read refs. Now the setters
+    // are wired in so "Clear Filters" really clears EVERY filter, not
+    // just the array-shaped ones.
+    const setPct = vi.fn()
+    const setMin = vi.fn()
+    const { clearFilters } = setup(
+      [],
+      ref(true),
+      ref(5),     // percent threshold engaged
+      ref(0.5),   // minutes threshold engaged
+      setPct,
+      setMin,
+    )
+    clearFilters()
+    expect(setPct).toHaveBeenCalledWith(0)
+    expect(setMin).toHaveBeenCalledWith(0)
+  })
+
+  it('clearFilters is a no-op for thresholds already at 0 (but still safe to call)', () => {
+    const setPct = vi.fn()
+    const setMin = vi.fn()
+    const { clearFilters } = setup(
+      [],
+      ref(true),
+      ref(0),
+      ref(0),
+      setPct,
+      setMin,
+    )
+    clearFilters()
+    // We still call the setters — they're cheap and idempotent —
+    // rather than branching on current values. The behaviour the user
+    // sees is unchanged because the value was already 0.
+    expect(setPct).toHaveBeenCalledWith(0)
+    expect(setMin).toHaveBeenCalledWith(0)
   })
 })
