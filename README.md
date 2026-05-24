@@ -136,6 +136,8 @@ reading here — the desktop app is all you need.
 
 Bug reports, feature requests, and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, build instructions, coding conventions, and [git hook requirements](CONTRIBUTING.md#git-hooks-lefthook). The release/tagging process — automated via [release-please](https://github.com/googleapis/release-please), with `make release-beta` / `make release-fire` shortcuts for the manual bits — is documented in [RELEASES.md](RELEASES.md). Commits on `main` follow [Conventional Commits](https://www.conventionalcommits.org/).
 
+By participating in this project — opening an issue, filing a PR, commenting on a discussion — you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md). Short version: be kind, and remember that Recall is given away free of charge and maintained in spare time, so no demands and no expectations of timely replies, bug fixes, or feature requests.
+
 ## License
 
 Licensed under the [Apache License, Version 2.0](LICENSE).

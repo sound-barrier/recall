@@ -542,6 +542,7 @@ Triggered on `v*` tags (push) and on `workflow_dispatch` (manual fallback for wh
 | `README.md`, `docs/install-{macos,linux}.md` | Gamers | Quick start + per-platform install. Keep jargon out of these. |
 | `docs/server.md`, `docs/docker.md`, `docs/grafana.md` | IT-savvy users | The README's "Advanced" section gates entry to these. |
 | `CONTRIBUTING.md`, `RELEASES.md` | Developers | Build, lint, release, commit-message rules. |
+| `CODE_OF_CONDUCT.md` | Everyone interacting with the repo | Two rules: be respectful, and respect that the project is given away free with no SLAs. Plain-spoken, deliberately short (~50 lines) — not the Contributor Covenant. Linked from README's Contributing section and the top of CONTRIBUTING.md. |
 | `CLAUDE.md` | This file — AI assistant context. Not user-facing. |
 
 Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifying-your-download` (linked from README's Verifying section), `CONTRIBUTING.md#building` (linked from `install-linux.md`), `CONTRIBUTING.md#pre-commit-hooks-lefthook` (linked from README and RELEASES). Rename a heading and you'll silently break the inbound link.

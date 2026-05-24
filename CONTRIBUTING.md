@@ -5,6 +5,11 @@ project for all target platforms, and maintaining code quality. For an
 overview of the architecture and internal conventions, see
 [`CLAUDE.md`](CLAUDE.md).
 
+> Before opening an issue or PR, please read the
+> [Code of Conduct](CODE_OF_CONDUCT.md). TL;DR: be kind, and respect that
+> the project is maintained in spare time and given away free — no demands,
+> no SLAs on replies, bug fixes, or feature requests.
+
 ## Table of Contents
 
 - [Development setup](#development-setup)
