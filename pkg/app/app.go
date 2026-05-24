@@ -1430,17 +1430,7 @@ func intsConflict(a, b int) bool       { return a != 0 && b != 0 && a != b }
 
 func combineStatsRows(a, b mergedRow) mergedRow {
 	mergeMatchResult(&a.Data, &b.Data)
-	seen := map[string]struct{}{}
-	for _, s := range a.Sources {
-		seen[s] = struct{}{}
-	}
-	for _, s := range b.Sources {
-		if _, ok := seen[s]; !ok {
-			a.Sources = append(a.Sources, s)
-			seen[s] = struct{}{}
-		}
-	}
-	sort.Strings(a.Sources)
+	a.Sources = unionSortedStrings(a.Sources, b.Sources)
 	a.Types = mergeTypeMaps(a.Types, b.Types)
 	a.ParsedAt = mergeTypeMaps(a.ParsedAt, b.ParsedAt)
 	// Match key follows the earliest screenshot — ISO timestamps compare
