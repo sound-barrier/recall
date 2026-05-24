@@ -77,6 +77,12 @@ type SQLStore struct {
 	db *sql.DB
 }
 
+// Compile-time assertion that *SQLStore satisfies Store. Catches an
+// accidental signature drift (renaming a method, changing a return
+// type) at build time instead of at the call site. Mirrors the
+// pattern used by the fake store in pkg/app/store_integration_test.go.
+var _ Store = (*SQLStore)(nil)
+
 // NewSQLStore opens the SQLite database at path, applies the schema and
 // idempotent migrations, and returns a ready-to-use Store. path may be
 // ":memory:" for tests.
