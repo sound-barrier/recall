@@ -46,6 +46,19 @@ const records = ref<MatchRecord[]>([])
 const error = ref('')
 const loading = ref(false)
 
+// Brief visual pulse on the scoreboard / records-count surface when
+// the watcher (or a manual parse) brings in additional records. Without
+// this the auto-refresh is silent — records simply appear and the user
+// must scan to notice. The pulse class is bound to .scoreboard and
+// auto-clears after the animation completes.
+const recordsPulse = ref(false)
+let recordsPulseTimer: ReturnType<typeof setTimeout> | null = null
+function flashRecordsPulse() {
+  recordsPulse.value = true
+  if (recordsPulseTimer) clearTimeout(recordsPulseTimer)
+  recordsPulseTimer = setTimeout(() => { recordsPulse.value = false }, 1600)
+}
+
 // Parse progress: the most-recently-completed file during an active parse.
 // null when no parse is running.
 const parseProgress = ref<ParseProgressEvent | null>(null)
@@ -237,6 +250,7 @@ const grouping = useMatchGrouping<MatchRecord>(filters.filteredSorted, filters.s
 const expanded = ref<Record<number, boolean>>({})
 
 async function load() {
+  const before = records.value.length
   const [recs, dir, promOn, watchOn, tess, newCount] = await Promise.all([
     GetMatchResults(),
     GetScreenshotsDir(),
@@ -246,6 +260,13 @@ async function load() {
     GetNewScreenshotCount().catch(() => null),
   ])
   records.value = recs ?? []
+  // If the record count grew, briefly pulse the scoreboard so the user
+  // notices the auto-refresh — otherwise watcher-driven loads are
+  // entirely silent and records "just appear". Skip on the very first
+  // load (before === 0) since that's startup, not a refresh.
+  if (before > 0 && records.value.length > before) {
+    flashRecordsPulse()
+  }
   screenshotsDir.value = dir || ''
   prometheusEnabled.value = !!promOn
   watchEnabled.value = !!watchOn
@@ -705,6 +726,7 @@ onBeforeUnmount(() => {
           <div
             v-if="records.length > 0 && view === 'matches'"
             class="scoreboard"
+            :class="{ pulse: recordsPulse }"
             title="Wins · Losses · Draws across the currently filtered matches"
           >
             <div class="score-cell">
@@ -1333,6 +1355,23 @@ main#main-content {
   grid-template-columns: repeat(3, auto);
   gap: 1.4rem;
   padding: 0.1rem 0;
+  border-radius: 2px;
+}
+
+/* Brief pulse triggered when the records list grows (parse-complete →
+   load() sees a higher count). Two beats of an accent ring + slight
+   scale so a glance catches it; auto-clears via the JS-side timer.
+   Wrapped in the standard reduced-motion guard at the top of the file
+   so it's a no-op for vestibular-sensitive users. */
+@keyframes records-pulse {
+  0%   { box-shadow: 0 0 0 0 var(--accent-glow); transform: scale(1); }
+  35%  { box-shadow: 0 0 0 10px transparent;     transform: scale(1.03); }
+  70%  { box-shadow: 0 0 0 0 var(--accent-glow); transform: scale(1); }
+  100% { box-shadow: 0 0 0 10px transparent;     transform: scale(1); }
+}
+
+.scoreboard.pulse {
+  animation: records-pulse 1.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .score-cell {

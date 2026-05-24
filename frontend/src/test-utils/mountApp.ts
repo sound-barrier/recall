@@ -94,6 +94,21 @@ function mockApi(overrides: MountOverrides = {}) {
   }))
 }
 
+// fireEvent reaches into the captured EventsOn handler map and invokes
+// the named handler synchronously. Tests use this to simulate a Wails
+// EventsEmit / SSE broadcast hitting the App in mid-flight.
+//
+// Note: the mocked GetMatchResults always returns whatever `records` the
+// test seeded at mount time, so to verify a record-list change after a
+// fire-event you'll typically want to re-mock the API or assert on a
+// non-record-count side-effect (animations, pulses, etc.).
+export function fireEvent(name: string, data: unknown = undefined): boolean {
+  const cb = eventHandlers.get(name)
+  if (!cb) return false
+  cb(data)
+  return true
+}
+
 // mountApp installs the API mock, dynamically imports App.vue (so the
 // mock is in place before App's static `import './api'` resolves), and
 // runs `flushPromises` to let the onMounted load() / Promise.all settle

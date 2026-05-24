@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mountApp } from './test-utils/mountApp'
+import { flushPromises } from '@vue/test-utils'
+import type { MatchRecord } from './api'
+import { fireEvent, mountApp } from './test-utils/mountApp'
 
 // Smoke + behavior tests for App.vue. These do not try to cover every
 // branch of the 4700-line SFC — the helpers and composables under it
@@ -87,6 +89,50 @@ describe('App.vue', () => {
     const api = await import('./api')
     await wrapper.find('a.brandmark-link').trigger('click')
     expect(api.OpenURL).toHaveBeenCalledWith('https://github.com/sound-barrier/recall')
+  })
+})
+
+describe('App.vue — scoreboard pulse on watcher refresh', () => {
+  // Watcher-driven (or manual) parse fires a parse-complete event. The
+  // App's handler calls load(); when load sees the records count grew,
+  // it flashes a pulse class on the scoreboard so the user notices.
+  it('adds .pulse to the scoreboard when records grow on parse-complete', async () => {
+    const initial: MatchRecord[] = [
+      { id: 1, match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
+        map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
+      } },
+    ]
+    const wrapper = await mountApp({ records: initial })
+    expect(wrapper.find('.scoreboard').classes()).not.toContain('pulse')
+
+    // Re-mock GetMatchResults so the next load() returns one more record.
+    const api = await import('./api')
+    const grown: MatchRecord[] = [
+      ...initial,
+      { id: 2, match_key: 'match:2026-05-10T22:14:02', source_files: ['b.png'], data: {
+        map: 'aatlis', date: '2026-05-10', finished_at: '22:14', result: 'defeat',
+      } },
+    ]
+    ;(api.GetMatchResults as ReturnType<typeof vi.fn>).mockResolvedValueOnce(grown)
+
+    // Fire the watcher event the way the runtime would. The handler
+    // re-runs load() asynchronously, so flushPromises lets the
+    // Promise.all + the post-load reactive update settle.
+    expect(fireEvent('parse-complete')).toBe(true)
+    await flushPromises()
+    expect(wrapper.find('.scoreboard').classes()).toContain('pulse')
+  })
+
+  it('does NOT pulse when records count is unchanged on parse-complete', async () => {
+    const seed: MatchRecord[] = [
+      { id: 1, match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
+        map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
+      } },
+    ]
+    const wrapper = await mountApp({ records: seed })
+    expect(fireEvent('parse-complete')).toBe(true)
+    await flushPromises()
+    expect(wrapper.find('.scoreboard').classes()).not.toContain('pulse')
   })
 })
 
