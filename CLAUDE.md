@@ -316,7 +316,16 @@ in isolation via Vitest. Stateful logic is extracted into composables under
 `useFilterPanel` (popover open/close, ESC/outside-click), `useMatchFilters`
 (all 7 filter refs, date range, sort, filtered/sorted computeds — the most
 complex and highest-test-ROI module). Shared UI is in
-`frontend/src/components/`: `MatchCard`, `FilterRail`, `ParseProgressPanel`.
+`frontend/src/components/`: `MatchCard`, `FilterRail`, `ParseProgressPanel`,
+`MatchGroupSection`, plus the four top-level view tabs — `SettingsView`,
+`IngestView`, `MatchesView`, `UnknownMapsView`. App.vue is now a router-
+shell: masthead, modals, cross-cutting state (records, expand/preview
+maps, composable instances), then four `<XxxView v-if="view === '…'" />`
+mounts that receive props and bubble events back via `emit('go-to-view',
+…)` etc. Per-card UI state (expand, sources, preview) lives in App.vue
+and is passed to MatchesView + UnknownMapsView via the `CardStateApi`
+bundle exported from MatchesView.vue so both views share it without
+forking.
 When adding a new pure helper that takes plain inputs and returns plain
 outputs, add it to `match-helpers.ts` with a Vitest case; stateful logic
 goes in a new composable under `composables/`. Don't define either inside
