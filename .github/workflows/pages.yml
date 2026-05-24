@@ -59,9 +59,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Track the devcontainer's Node pin (.devcontainer/devcontainer.json
+      # → features → node:1.version) so the book builds against the same
+      # Node a local `make pages-build` uses. `make check-deps` validates
+      # both pins against upstream.
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '26'
 
       # Stage book/ + the five chapter copies into a fresh build
       # directory so the committed book/ stays pure metadata. Two
