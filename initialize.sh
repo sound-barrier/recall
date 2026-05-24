@@ -29,6 +29,7 @@ WAILS_VERSION="v2.12.0"
 HADOLINT_VERSION="v2.14.0"
 LEFTHOOK_VERSION="2.1.8"
 TRIVY_VERSION="0.70.0"
+TYPOS_VERSION="v1.46.3"
 
 # Minimum language-toolchain versions. The Brewfile / apt path
 # can't bring these in cleanly (Debian's go/node packages are
@@ -140,6 +141,11 @@ case "$PLATFORM" in
         curl -fsSL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
             | sudo tar -xz -C /usr/local/bin trivy
         sudo chmod +x /usr/local/bin/trivy
+
+        log "typos ${TYPOS_VERSION}"
+        curl -fsSL "https://github.com/crate-ci/typos/releases/download/${TYPOS_VERSION}/typos-${TYPOS_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin ./typos
+        sudo chmod +x /usr/local/bin/typos
         ;;
 esac
 
