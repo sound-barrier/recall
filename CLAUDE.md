@@ -110,6 +110,7 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 
 | Command | Purpose |
 |---|---|
+| `make init` | One-shot setup for a fresh clone — delegates to `./initialize.sh`. Detects macOS vs Debian/Ubuntu, runs `brew bundle` or `apt install`, the `go install` lines for tools not in Brewfile (Wails CLI, gofumpt, goimports-reviser, deadcode, govulncheck), `cd frontend && npm ci`, `lefthook install`, and `direnv allow`. Idempotent. Fails fast if Go 1.26+ / Node 22+ aren't already on PATH (install those yourself first). |
 | `make dev` | Hot-reload dev server (macOS only). Vite on `:5173`, Wails IPC dev on `:34115`. Auto-rebuilds Go on save. |
 | `make build-linux` | Linux/amd64 Wails app → `dist/linux/Recall` via Docker. |
 | `make build-windows` | Windows/amd64 Wails app → `dist/windows/Recall.exe` via Docker + mingw-w64. |
