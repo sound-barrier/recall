@@ -134,6 +134,7 @@ func checkTesseract(path string) TesseractStatus {
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	parser.HideWindow(cmd) // no-op off Windows; suppresses console flash on Windows
 	if err := cmd.Run(); err != nil {
 		// Distinguish "file doesn't exist" from "ran but failed".
 		if _, statErr := os.Stat(path); statErr != nil {

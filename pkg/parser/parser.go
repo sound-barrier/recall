@@ -454,6 +454,7 @@ func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string
 	cmd := exec.Command(getTesseractPath(), args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	HideWindow(cmd) // no-op on macOS/Linux; suppresses console flash on Windows
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("tesseract failed: %w (%s)", err, stderr.String())
 	}
