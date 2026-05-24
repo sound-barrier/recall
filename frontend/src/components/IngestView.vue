@@ -108,7 +108,11 @@ const emit = defineEmits<{
             <p v-if="!tesseractReady && tesseractStatus.error" class="engine-error">
               {{ tesseractStatus.error }}
             </p>
-            <div v-if="tesseractReady && !tesseractSupported" class="engine-unsupported-warn" role="alert">
+            <!-- role="status" (polite live region) rather than role="alert":
+                 the warning is informational, not blocking — parsing still
+                 works, the user is just on an untested Tesseract version.
+                 role="alert" would interrupt screen readers on render. -->
+            <div v-if="tesseractReady && !tesseractSupported" class="engine-unsupported-warn" role="status">
               <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="warn-icon">
                 <path d="M12 2.6 L22.4 20.5 L1.6 20.5 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
                 <line x1="12" y1="10" x2="12" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" />

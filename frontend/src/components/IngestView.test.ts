@@ -124,7 +124,13 @@ describe('IngestView', () => {
       tesseractSupported: false,
       tesseractStatus: readyTesseract({ version: '4.1.1', supported: false }),
     })
-    expect(wrapper.find('.engine-unsupported-warn').exists()).toBe(true)
+    const warn = wrapper.find('.engine-unsupported-warn')
+    expect(warn.exists()).toBe(true)
+    // role="status" (polite), not role="alert" — the warning is
+    // informational; parsing still works, the user is just on an
+    // untested version. role="alert" would interrupt screen readers
+    // every time the panel renders.
+    expect(warn.attributes('role')).toBe('status')
   })
 
   it('emits reset-tesseract when "Use default" is clicked', async () => {
