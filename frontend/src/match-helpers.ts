@@ -185,7 +185,7 @@ export interface WLDTally {
 // placed in the Month → Week → Day tree, but the user still needs to see
 // them — so they get a single pinned-at-bottom group with no children,
 // just the records.
-type MatchGroupLevel = 'month' | 'week' | 'day' | 'unknown'
+type MatchGroupLevel = 'year' | 'month' | 'week' | 'day' | 'unknown'
 
 // GroupableRecord is the minimal shape groupMatchesByMonthWeekDay needs:
 // a date, a finish time, an optional result, and an optional match_key
@@ -375,7 +375,10 @@ export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
   const cmpStr = (a: string, b: string) =>
     a < b ? -1 * dir : a > b ? 1 * dir : 0
 
-  const tree: MatchGroup<R>[] = []
+  let tree: MatchGroup<R>[] = []
+  // Year tag for each month group — populated alongside the push so
+  // the year-wrapping step below can regroup without re-parsing keys.
+  const monthYears = new Map<MatchGroup<R>, number>()
   for (const [monthKey, month] of months) {
     const weekGroups: MatchGroup<R>[] = []
     for (const [weekKey, week] of month.weeks) {
@@ -402,15 +405,46 @@ export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
       })
     }
     weekGroups.sort(byKey)
-    tree.push({
+    const monthGroup: MatchGroup<R> = {
       key: `month:${monthKey}`,
       level: 'month',
       label: monthLabel(month.firstOfMonth),
       tally: sumTally(weekGroups),
       children: weekGroups,
-    })
+    }
+    tree.push(monthGroup)
+    // Track the year alongside each month so the year-wrapping step
+    // below doesn't have to re-parse keys or labels.
+    monthYears.set(monthGroup, month.firstOfMonth.getUTCFullYear())
   }
   tree.sort(byKey)
+
+  // Year wrapping. When records span multiple calendar years, regroup
+  // the flat month list into Year buckets — adds a Year header on top
+  // of the existing Month → Week → Day tree. Single-year datasets stay
+  // month-rooted (no Year header) so users with a few months of data
+  // don't see a noise level in the outline.
+  const yearsSet = new Set([...monthYears.values()])
+  if (yearsSet.size > 1) {
+    const yearBuckets = new Map<number, MatchGroup<R>[]>()
+    for (const m of tree) {
+      const y = monthYears.get(m)!
+      const list = yearBuckets.get(y) ?? []
+      list.push(m)
+      yearBuckets.set(y, list)
+    }
+    tree = []
+    for (const [year, monthList] of yearBuckets) {
+      tree.push({
+        key: `year:${year}`,
+        level: 'year',
+        label: String(year),
+        tally: sumTally(monthList),
+        children: monthList,
+      })
+    }
+    tree.sort(byKey)
+  }
 
   // UNKNOWN DATE bucket — appended AFTER the dated tree sort so it
   // sits at the bottom of the array irrespective of sortDir. Records
