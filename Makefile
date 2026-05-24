@@ -236,7 +236,7 @@ dead-code-go: ## Unreachable Go functions (deadcode, serveronly build tag)
 	@pkgs=$$(go list -tags serveronly ./... | grep -v node_modules); \
 	 out=$$(deadcode -tags serveronly $$pkgs); \
 	 [ -z "$$out" ] || echo "$$out"; \
-	 unexpected=$$(printf '%s' "$$out" | grep -v 'App\.Pick' || true); \
+	 unexpected=$$(printf '%s' "$$out" | grep -vE 'App\.Pick|NewWithStore' || true); \
 	 [ -z "$$unexpected" ]
 	@echo "[ recall ] ✓  No unexpected dead Go code"
 

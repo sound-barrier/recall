@@ -39,17 +39,26 @@ function makeRecord(over: Partial<MatchRecord['data']> = {}, recOver: Partial<Ma
   }
 }
 
-function mountCard(over: Partial<Record<string, unknown>> = {}) {
+interface CardMountOver {
+  record?:        MatchRecord
+  index?:         number
+  isExpanded?:    boolean
+  isSourcesOpen?: boolean
+  previewOpen?:   Record<string, boolean>
+  previewError?:  Record<string, boolean>
+  isActive?:      (field: string, value: string) => boolean
+}
+
+function mountCard(over: CardMountOver = {}) {
   return mount(MatchCard, {
     props: {
       record: over.record ?? makeRecord(),
-      index: 0,
-      isExpanded: false,
-      isSourcesOpen: false,
-      previewOpen: {},
-      previewError: {},
-      isActive: () => false,
-      ...over,
+      index: over.index ?? 0,
+      isExpanded: over.isExpanded ?? false,
+      isSourcesOpen: over.isSourcesOpen ?? false,
+      previewOpen: over.previewOpen ?? {},
+      previewError: over.previewError ?? {},
+      isActive: over.isActive ?? (() => false),
     },
   })
 }
