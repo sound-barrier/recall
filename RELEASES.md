@@ -18,7 +18,7 @@ For background on commit conventions that drive release-please, see [CONTRIBUTIN
 
 ## The happy path
 
-```
+```text
 conventional commits on main
     ↓
 release-please.yml opens "chore(main): release vX.Y.Z" PR

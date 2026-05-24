@@ -45,9 +45,11 @@ on first launch. To approve it:
 You only need to do this once.
 
 > **Terminal alternative** (skips the System Settings dance):
+>
 > ```sh
 > xattr -d com.apple.quarantine /Applications/Recall.app
 > ```
+>
 > Removes the quarantine attribute macOS attaches to downloaded files; the
 > next double-click launches normally.
 
@@ -69,7 +71,8 @@ Tesseract…** to point it at the binary.
 ## 5. Point Recall at your screenshots folder
 
 Overwatch on macOS saves screenshots to:
-```
+
+```text
 ~/Documents/Overwatch/ScreenShots/Overwatch/
 ```
 
@@ -78,7 +81,8 @@ Go to **Settings → Directories → Change Folder…** and select that path.
 ## Where Recall stores its data
 
 Settings and the match database live at:
-```
+
+```text
 ~/Library/Application Support/Recall/
 ```
 

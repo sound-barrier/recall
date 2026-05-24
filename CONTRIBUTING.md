@@ -349,13 +349,13 @@ If a tool isn't installed, the corresponding hook fails — install it (or skip 
 
 Subject must match `<type>(<scope>)?(!)?: <description>`. Allowed types:
 
-```
+```text
 feat fix chore docs refactor test perf build ci revert style
 ```
 
 Example valid messages (single scope only — `feat(parser,app):` is rejected by the commit-msg hook; split the change into two commits, or pick the primary scope):
 
-```
+```text
 feat(parser): add Suravasa map alias
 fix: rename brand-grey CSS var to brand-gray
 feat!: bump min Go to 1.27
@@ -381,7 +381,7 @@ The format isn't cosmetic — `release-please` (next section) reads it to comput
 
 Example combining the layers:
 
-```
+```text
 fix(parser): handle italic-font OCR letter→digit confusion on PERSONAL
 
 The OW italic stat font renders "0" close enough to "O" that Tesseract
