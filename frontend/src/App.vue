@@ -22,15 +22,13 @@ import {
   EventsOn,
   EventsOff,
 } from './api'
-import {
-  formatRelativeTime,
-  computeEarliestMatchDateTime,
-} from './match-helpers'
+import { computeEarliestMatchDateTime } from './match-helpers'
 import { useTheme } from './composables/useTheme'
 import { useFilterPanel } from './composables/useFilterPanel'
 import { useMatchFilters } from './composables/useMatchFilters'
 import { useMatchGrouping } from './composables/useMatchGrouping'
-import ParseProgressPanel, { type ParseProgressEvent } from './components/ParseProgressPanel.vue'
+import type { ParseProgressEvent } from './components/ParseProgressPanel.vue'
+import IngestView from './components/IngestView.vue'
 import MatchesView from './components/MatchesView.vue'
 import SettingsView from './components/SettingsView.vue'
 import UnknownMapsView from './components/UnknownMapsView.vue'
@@ -177,11 +175,9 @@ async function gotoEngineSettings() {
 // state and rolls back on error. Enabling is gated on Tesseract being
 // available — turning Watch on with a broken OCR setup would just
 // queue silent failures.
-async function toggleWatch(e: Event) {
-  const el = e.target as HTMLInputElement
-  const next = el.checked
+async function toggleWatch() {
+  const next = !watchEnabled.value
   if (next && !tesseractReady.value) {
-    el.checked = false
     error.value = 'Configure Tesseract in Ingest → Engine before enabling Watch.'
     return
   }
@@ -190,22 +186,19 @@ async function toggleWatch(e: Event) {
     watchEnabled.value = next
   } catch (err) {
     error.value = String(err)
-    el.checked = watchEnabled.value
   }
 }
 
 // Toggle the Prometheus endpoint. We call the Go method first so the
 // persisted setting drives both the actual server lifecycle and the UI
 // state; if the call fails, fall back to the previous local value.
-async function togglePrometheus(e: Event) {
-  const el = e.target as HTMLInputElement
-  const next = el.checked
+async function togglePrometheus() {
+  const next = !prometheusEnabled.value
   try {
     await SetPrometheusEnabled(next)
     prometheusEnabled.value = next
   } catch (err) {
     error.value = String(err)
-    el.checked = prometheusEnabled.value
   }
 }
 
@@ -623,255 +616,36 @@ onBeforeUnmount(() => {
       />
 
       <!-- ─── INGEST VIEW (engine → parse → export → data) ─────── -->
-      <section v-if="view === 'ingest'" id="panel-ingest" key="ingest" role="tabpanel" aria-labelledby="tab-ingest" tabindex="-1" class="settings ingest-view">
-        <header class="settings-intro">
-          <p class="settings-eyebrow">
-            Parse Pipeline
-          </p>
-          <h2 v-if="!tesseractReady" class="settings-heading missing">
-            Recall can't OCR until <em>Tesseract is located</em>.
-          </h2>
-          <h2 v-else-if="!screenshotsDir" class="settings-heading">
-            Set a <em>screenshots folder</em> in
-            <strong class="empty-link" @click="view = 'settings'">Settings →</strong> first.
-          </h2>
-          <h2 v-else-if="watchEnabled" class="settings-heading">
-            Watching <em>{{ screenshotsDir }}/</em> for new screenshots.
-          </h2>
-          <h2 v-else-if="records.length" class="settings-heading">
-            <em>{{ records.length }} {{ records.length === 1 ? 'match' : 'matches' }}</em> parsed from <em>{{ screenshotsDir }}/</em>
-          </h2>
-          <h2 v-else class="settings-heading">
-            Ready to parse from <em>{{ screenshotsDir }}/</em> — click <em>Run Parse</em> below.
-          </h2>
-        </header>
-
-        <div id="sec-engine" class="settings-section">
-          <div class="section-header">
-            <span class="section-num">01</span>
-            <span class="section-slash" aria-hidden="true">/</span>
-            <h3 class="section-title">
-              Engine
-            </h3>
-          </div>
-          <div class="setting-rows">
-            <div class="setting-row engine-row" :class="{ alert: !tesseractReady }">
-              <div class="setting-info">
-                <h4 class="setting-label">
-                  Tesseract Binary
-                </h4>
-                <p class="setting-desc">
-                  Recall shells out to Tesseract to read text from your Overwatch screenshots. On macOS the Homebrew install lives under <code>/opt/homebrew/bin</code> (Apple Silicon) or <code>/usr/local/bin</code> (Intel); apt installs to <code>/usr/bin</code>; Windows installers put it in <code>Program Files\Tesseract-OCR</code>.
-                </p>
-                <div class="engine-status" :class="{ ok: tesseractReady, fail: !tesseractReady }">
-                  <span class="engine-dot" aria-hidden="true" />
-                  <span class="engine-state">{{ tesseractReady ? 'Detected' : 'Not Found' }}</span>
-                  <span v-if="tesseractReady && tesseractStatus.version" class="engine-version">v{{ tesseractStatus.version }}</span>
-                  <span class="engine-path mono" :title="tesseractStatus.path || ''">{{ tesseractStatus.path || '—' }}</span>
-                </div>
-                <p v-if="!tesseractReady && tesseractStatus.error" class="engine-error">
-                  {{ tesseractStatus.error }}
-                </p>
-                <div v-if="tesseractReady && !tesseractSupported" class="engine-unsupported-warn" role="alert">
-                  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="warn-icon">
-                    <path d="M12 2.6 L22.4 20.5 L1.6 20.5 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-                    <line x1="12" y1="10" x2="12" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                    <circle cx="12" cy="17.5" r="1.2" fill="currentColor" />
-                  </svg>
-                  <span>
-                    Tesseract {{ tesseractStatus.version }} is not officially supported. Only version 5.x is tested with Recall.
-                    Proceed at your own caution — results may be incorrect.
-                  </span>
-                </div>
-                <p
-                  v-if="tesseractStatus.default && tesseractStatus.default !== tesseractStatus.path"
-                  class="engine-meta"
-                >
-                  Default for this platform · <code>{{ tesseractStatus.default }}</code>
-                  · <button class="link-btn" @click="resetTesseractPath">
-                    Use default
-                  </button>
-                </p>
-              </div>
-              <div class="setting-control engine-control">
-                <button
-                  class="btn"
-                  :class="tesseractReady ? 'ghost' : 'primary'"
-                  :disabled="tesseractPickerBusy"
-                  @click="pickTesseractBinary"
-                >
-                  <span v-if="tesseractPickerBusy">Locating…</span>
-                  <span v-else>{{ tesseractReady ? 'Change Binary…' : 'Locate Tesseract…' }}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div id="sec-ingest" class="settings-section">
-          <div class="section-header">
-            <span class="section-num">02</span>
-            <span class="section-slash" aria-hidden="true">/</span>
-            <h3 class="section-title">
-              Parse
-            </h3>
-          </div>
-          <div class="setting-rows">
-            <div class="setting-row">
-              <div class="setting-info">
-                <h4 class="setting-label">
-                  Watch Folder
-                </h4>
-                <p class="setting-desc">
-                  Auto-parse new screenshots as they appear. Recall waits 60 seconds after the last new file, so a 3–4-screenshot post-match session collapses into a single parse.
-                </p>
-                <p v-if="!tesseractReady" class="setting-meta blocked">
-                  <span class="block-mark" aria-hidden="true">⛔</span>
-                  Blocked — needs Tesseract.
-                </p>
-              </div>
-              <div class="setting-control">
-                <label class="big-switch" :class="{ on: watchEnabled, disabled: !tesseractReady }">
-                  <input
-                    type="checkbox"
-                    :checked="watchEnabled"
-                    :disabled="!tesseractReady"
-                    @change="toggleWatch"
-                  >
-                  <span class="big-switch-track"><span class="big-switch-knob" /></span>
-                  <span class="big-switch-state">{{ watchEnabled ? 'Armed' : 'Off' }}</span>
-                </label>
-              </div>
-            </div>
-
-            <div class="setting-row">
-              <div class="setting-info">
-                <h4 class="setting-label">
-                  Manual Parse
-                </h4>
-                <p class="setting-desc">
-                  Scan the folder now, outside the watcher cycle. Idempotent — re-running won't duplicate matches you've already parsed.
-                </p>
-                <p v-if="!tesseractReady" class="setting-meta" :class="{ blocked: true }">
-                  <span class="block-mark" aria-hidden="true">⛔</span>
-                  Blocked — needs Tesseract.
-                </p>
-                <p v-else-if="newScreenshotCount === 0 && !loading" class="setting-meta blocked">
-                  <span class="block-mark" aria-hidden="true">◎</span>
-                  All screenshots already parsed — nothing new in the folder.
-                </p>
-                <p v-else-if="lastParsedAt && !loading" class="setting-meta">
-                  <span class="meta-dot" />
-                  Last run · {{ formatRelativeTime(lastParsedAt) }} · {{ records.length + unknownRecords.length }} record{{ (records.length + unknownRecords.length) === 1 ? '' : 's' }} on record
-                </p>
-              </div>
-              <div class="setting-control">
-                <button
-                  class="btn primary big"
-                  :disabled="loading || !tesseractReady || newScreenshotCount === 0"
-                  :title="!tesseractReady ? 'Locate Tesseract in section 01 / Engine first.' : newScreenshotCount === 0 ? 'All screenshots in the folder have already been parsed.' : ''"
-                  @click="parse"
-                >
-                  <span class="btn-dot" />
-                  <span v-if="loading">Parsing…</span>
-                  <span v-else-if="(newScreenshotCount ?? 0) > 0">Run Parse · {{ newScreenshotCount }}</span>
-                  <span v-else>Run Parse</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Parse progress panel — visible while loading -->
-            <ParseProgressPanel
-              :loading="loading"
-              :parse-progress="parseProgress"
-              :parse-log="parseLog"
-              :is-open="parseProgressOpen"
-              @toggle-open="parseProgressOpen = !parseProgressOpen"
-            />
-          </div>
-        </div>
-
-        <div id="sec-export" class="settings-section">
-          <div class="section-header">
-            <span class="section-num">03</span>
-            <span class="section-slash" aria-hidden="true">/</span>
-            <h3 class="section-title">
-              Export
-            </h3>
-          </div>
-          <div class="setting-rows">
-            <div class="setting-row">
-              <div class="setting-info">
-                <h4 class="setting-label">
-                  Stream to Grafana
-                </h4>
-                <p class="setting-desc">
-                  Expose match history on <code>localhost:9091/metrics</code> so the bundled Prometheus container can scrape it. Off by default — no port is opened until you enable this.
-                </p>
-              </div>
-              <div class="setting-control">
-                <label class="big-switch" :class="{ on: prometheusEnabled }">
-                  <input type="checkbox" :checked="prometheusEnabled" @change="togglePrometheus">
-                  <span class="big-switch-track"><span class="big-switch-knob" /></span>
-                  <span class="big-switch-state">{{ prometheusEnabled ? 'Live' : 'Off' }}</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div id="sec-data" class="settings-section">
-          <div class="section-header">
-            <span class="section-num">04</span>
-            <span class="section-slash" aria-hidden="true">/</span>
-            <h3 class="section-title">
-              Data
-            </h3>
-          </div>
-          <div class="setting-rows">
-            <div class="setting-row" :class="{ 'danger-row': clearConfirm }">
-              <div class="setting-info">
-                <h4 class="setting-label">
-                  Clear Parse Database
-                </h4>
-                <p class="setting-desc">
-                  Permanently delete all {{ records.length + unknownRecords.length }} parsed match record{{ (records.length + unknownRecords.length) === 1 ? '' : 's' }} from the local database. Settings and screenshots are untouched — you can re-parse at any time to rebuild from scratch.
-                </p>
-                <p v-if="clearConfirm" class="setting-meta blocked">
-                  <span class="block-mark" aria-hidden="true">⚠</span>
-                  This cannot be undone.
-                </p>
-              </div>
-              <div class="setting-control">
-                <template v-if="!clearConfirm">
-                  <button
-                    class="btn danger-outline"
-                    :disabled="clearingDB || (records.length + unknownRecords.length) === 0"
-                    @click="armClear"
-                  >
-                    Clear Database…
-                  </button>
-                </template>
-                <template v-else>
-                  <div class="clear-confirm-group">
-                    <button
-                      class="btn danger"
-                      :disabled="clearingDB"
-                      @click="clearDatabase"
-                    >
-                      <span v-if="clearingDB">Deleting…</span>
-                      <span v-else>Delete {{ records.length + unknownRecords.length }} Record{{ (records.length + unknownRecords.length) === 1 ? '' : 's' }}</span>
-                    </button>
-                    <button class="btn ghost" :disabled="clearingDB" @click="cancelClear">
-                      Cancel
-                    </button>
-                  </div>
-                </template>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <IngestView
+        v-if="view === 'ingest'"
+        :tesseract-ready="tesseractReady"
+        :tesseract-supported="tesseractSupported"
+        :tesseract-status="tesseractStatus"
+        :tesseract-picker-busy="tesseractPickerBusy"
+        :screenshots-dir="screenshotsDir"
+        :watch-enabled="watchEnabled"
+        :loading="loading"
+        :new-screenshot-count="newScreenshotCount"
+        :last-parsed-at="lastParsedAt"
+        :parse-progress="parseProgress"
+        :parse-log="parseLog"
+        :parse-progress-open="parseProgressOpen"
+        :matched-count="records.length"
+        :unknown-count="unknownRecords.length"
+        :prometheus-enabled="prometheusEnabled"
+        :clear-confirm="clearConfirm"
+        :clearing-d-b="clearingDB"
+        @pick-tesseract="pickTesseractBinary"
+        @reset-tesseract="resetTesseractPath"
+        @toggle-watch="toggleWatch"
+        @toggle-prometheus="togglePrometheus"
+        @parse="parse"
+        @arm-clear="armClear"
+        @clear-database="clearDatabase"
+        @cancel-clear="cancelClear"
+        @toggle-progress="parseProgressOpen = !parseProgressOpen"
+        @go-to-view="goToView"
+      />
 
       <!-- ─── UNKNOWN MAPS VIEW ────────────────────────────────── -->
       <UnknownMapsView
