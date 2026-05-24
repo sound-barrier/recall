@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { sshotTypeLabel } from '../match-helpers'
 
 const props = defineProps<{
@@ -55,6 +56,36 @@ function readNumberInput(e: Event): number {
   const v = (e.target as HTMLInputElement).valueAsNumber
   return Number.isFinite(v) ? v : 0
 }
+
+// minPlayMinutes is persisted as a single fractional-minutes value.
+// The UI splits it into whole-minutes + remainder-seconds so the user
+// can type "0m 30s" instead of "0.5". Rounded to the nearest second to
+// avoid floating-point drift in the displayed value.
+const minutesWhole = computed(() => Math.floor(props.minPlayMinutes))
+const secondsWhole = computed(() => Math.round((props.minPlayMinutes - minutesWhole.value) * 60))
+
+// Emit a fresh total whenever either half of the m/s pair changes.
+// Seconds outside [0, 59] fold into minutes (90s → +1m 30s) so the
+// user typing past 59 doesn't lose precision.
+function emitMinutesFromMS(newM: number, newS: number) {
+  const m = Math.max(0, Number.isFinite(newM) ? Math.floor(newM) : 0)
+  const s = Math.max(0, Number.isFinite(newS) ? newS : 0)
+  emit('set-min-play-minutes', m + s / 60)
+}
+
+function onMinutesChange(e: Event) {
+  emitMinutesFromMS(readNumberInput(e), secondsWhole.value)
+}
+
+function onSecondsChange(e: Event) {
+  emitMinutesFromMS(minutesWhole.value, readNumberInput(e))
+}
+
+// Mutual exclusion: the user picks ONE threshold, percent OR time.
+// Whichever knob is currently engaged grays out the other half — the
+// user must clear back to 0 before they can switch.
+const percentDisabled = computed(() => props.minPlayMinutes > 0)
+const timeDisabled    = computed(() => props.minPlayPercent > 0)
 
 // Static per-field config. Options (roster) come in as props.
 const FIELD_CONFIG = [
@@ -257,12 +288,15 @@ function searchStr(field: string): string {
           {{ allExpanded ? 'Collapse All' : 'Expand All' }}
         </button>
 
-        <!-- Min-play threshold. Two narrow inputs sharing one eyebrow
-             label. Either > 0 tints the whole group with the brand
-             accent so the "this filter is engaged" state is obvious
-             at a glance. Filter semantics live in useMatchFilters —
-             a match qualifies when any candidate hero meets EITHER
-             threshold (OR), so the user reads it as "1 min OR 5%". -->
+        <!-- Min-play threshold. Three inputs sharing one eyebrow
+             label: percent on the left, time (m + s) on the right,
+             with an "or" divider between. Either side > 0 tints the
+             whole group with the brand accent. Mutual exclusion is
+             enforced via the disabled attribute on the inactive
+             half — the user must clear one back to 0 before they
+             can engage the other. Filter semantics: a match
+             qualifies when any candidate hero meets the engaged
+             threshold. -->
         <div
           class="min-play-group"
           :class="{ active: minPlayPercent > 0 || minPlayMinutes > 0 }"
@@ -270,7 +304,7 @@ function searchStr(field: string): string {
           aria-label="Minimum play threshold"
         >
           <span class="min-play-eyebrow">Min play</span>
-          <label class="min-play-cell">
+          <label class="min-play-cell" :class="{ disabled: percentDisabled }">
             <input
               type="number"
               inputmode="numeric"
@@ -280,28 +314,51 @@ function searchStr(field: string): string {
               class="min-play-input"
               :value="minPlayPercent || ''"
               placeholder="0"
+              :disabled="percentDisabled"
               aria-label="Minimum percent of match played"
-              title="Hide matches where the selected hero played less than this share of the match. 0 = off."
+              :title="percentDisabled
+                ? 'Clear the minutes/seconds back to 0 to switch to a percent threshold.'
+                : 'Hide matches where the selected hero played less than this share of the match. 0 = off.'"
               @change="emit('set-min-play-percent', readNumberInput($event))"
             >
             <span class="min-play-unit">%</span>
           </label>
           <span class="min-play-or" aria-hidden="true">or</span>
-          <label class="min-play-cell">
+          <label class="min-play-cell min-play-time" :class="{ disabled: timeDisabled }">
             <input
               type="number"
-              inputmode="decimal"
+              inputmode="numeric"
               min="0"
-              max="60"
-              step="0.5"
-              class="min-play-input"
-              :value="minPlayMinutes || ''"
+              max="240"
+              step="1"
+              class="min-play-input min-play-input-min"
+              :value="minutesWhole || ''"
               placeholder="0"
+              :disabled="timeDisabled"
               aria-label="Minimum minutes played"
-              title="Hide matches where the selected hero played less than this many minutes. 0 = off. Needs the SUMMARY screenshot for game length."
-              @change="emit('set-min-play-minutes', readNumberInput($event))"
+              :title="timeDisabled
+                ? 'Clear the percent back to 0 to switch to a time threshold.'
+                : 'Minutes component of the minimum play time. Combines with the seconds box on the right.'"
+              @change="onMinutesChange($event)"
             >
             <span class="min-play-unit">m</span>
+            <input
+              type="number"
+              inputmode="numeric"
+              min="0"
+              max="59"
+              step="1"
+              class="min-play-input min-play-input-sec"
+              :value="secondsWhole || ''"
+              placeholder="0"
+              :disabled="timeDisabled"
+              aria-label="Minimum seconds played"
+              :title="timeDisabled
+                ? 'Clear the percent back to 0 to switch to a time threshold.'
+                : 'Seconds component of the minimum play time. 90s rolls over into minutes.'"
+              @change="onSecondsChange($event)"
+            >
+            <span class="min-play-unit">s</span>
           </label>
         </div>
 
@@ -416,6 +473,28 @@ function searchStr(field: string): string {
   display: inline-flex;
   align-items: baseline;
   gap: 0.15rem;
+  transition: opacity 140ms ease;
+}
+
+.min-play-cell.disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+/* The time cell carries the minutes box, "m" label, seconds box, "s"
+   label — tighter gap between the m/s pair than between cells. */
+
+.min-play-time {
+  gap: 0.1rem;
+}
+
+.min-play-time .min-play-unit + .min-play-input {
+  margin-left: 0.2rem;
+}
+
+.min-play-input-min,
+.min-play-input-sec {
+  width: 2rem;
 }
 
 .min-play-input {
@@ -441,6 +520,13 @@ function searchStr(field: string): string {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+.min-play-input:disabled {
+  cursor: not-allowed;
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-faint);
 }
 
 .min-play-group.active .min-play-input {

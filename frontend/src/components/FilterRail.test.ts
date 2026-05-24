@@ -269,26 +269,37 @@ describe('FilterRail — Undated toggle', () => {
 })
 
 describe('FilterRail — min-play threshold inputs', () => {
-  it('renders both inputs with the shared "Min play" eyebrow', () => {
+  it('renders three inputs (percent + minutes + seconds) under one eyebrow', () => {
     const wrapper = mountRail()
     const group = wrapper.find('.min-play-group')
     expect(group.exists()).toBe(true)
     expect(group.text()).toContain('Min play')
-    expect(group.findAll('input[type="number"]')).toHaveLength(2)
+    expect(group.findAll('input[type="number"]')).toHaveLength(3)
   })
 
   it('renders blank value when threshold is 0 (placeholder shows 0)', () => {
     const wrapper = mountRail({ minPlayPercent: 0, minPlayMinutes: 0 })
     const inputs = wrapper.find('.min-play-group').findAll('input[type="number"]')
-    expect((inputs[0]!.element as HTMLInputElement).value).toBe('')
-    expect((inputs[1]!.element as HTMLInputElement).value).toBe('')
+    inputs.forEach(i => expect((i.element as HTMLInputElement).value).toBe(''))
   })
 
   it('reflects non-zero prop values on the input value', () => {
+    // 5% percent + 1m30s (= 1.5 minutes) total
     const wrapper = mountRail({ minPlayPercent: 5, minPlayMinutes: 1.5 })
     const inputs = wrapper.find('.min-play-group').findAll('input[type="number"]')
-    expect((inputs[0]!.element as HTMLInputElement).value).toBe('5')
-    expect((inputs[1]!.element as HTMLInputElement).value).toBe('1.5')
+    expect((inputs[0]!.element as HTMLInputElement).value).toBe('5')   // percent
+    expect((inputs[1]!.element as HTMLInputElement).value).toBe('1')   // minutes
+    expect((inputs[2]!.element as HTMLInputElement).value).toBe('30')  // seconds
+  })
+
+  it('splits fractional minutes into whole minutes + remainder seconds', () => {
+    // 0.5 minutes = 0m 30s — the canonical "I want a half-minute floor".
+    // Minutes input goes blank because the whole-minute count is 0 —
+    // consistent with the other inputs' "0 = placeholder, no value" rule.
+    const wrapper = mountRail({ minPlayPercent: 0, minPlayMinutes: 0.5 })
+    const inputs = wrapper.find('.min-play-group').findAll('input[type="number"]')
+    expect((inputs[1]!.element as HTMLInputElement).value).toBe('')    // m (0 → placeholder)
+    expect((inputs[2]!.element as HTMLInputElement).value).toBe('30')  // s
   })
 
   it('group has .active class only when either threshold > 0', () => {
@@ -308,19 +319,66 @@ describe('FilterRail — min-play threshold inputs', () => {
     expect(wrapper.emitted('set-min-play-percent')![0]).toEqual([5])
   })
 
-  it('emits set-min-play-minutes on the minutes input change', async () => {
+  it('emits set-min-play-minutes (total minutes) when the minutes input changes', async () => {
     const wrapper = mountRail({ minPlayPercent: 0, minPlayMinutes: 0 })
     const minInput = wrapper.find('.min-play-group').findAll('input[type="number"]')[1]!
-    await minInput.setValue('2.5')
+    await minInput.setValue('2')
     await minInput.trigger('change')
+    expect(wrapper.emitted('set-min-play-minutes')![0]).toEqual([2])
+  })
+
+  it('emits set-min-play-minutes with fractional total when the seconds input changes', async () => {
+    // start at 1m0s, type 30 seconds → total = 1.5 minutes
+    const wrapper = mountRail({ minPlayPercent: 0, minPlayMinutes: 1 })
+    const secInput = wrapper.find('.min-play-group').findAll('input[type="number"]')[2]!
+    await secInput.setValue('30')
+    await secInput.trigger('change')
+    expect(wrapper.emitted('set-min-play-minutes')![0]).toEqual([1.5])
+  })
+
+  it('seconds input clamps to 0-59 and folds into total minutes', async () => {
+    // Typing 90 seconds at 1m → expect minutes input to overflow into 2m30s
+    // i.e. total = 1 + 90/60 = 2.5
+    const wrapper = mountRail({ minPlayPercent: 0, minPlayMinutes: 1 })
+    const secInput = wrapper.find('.min-play-group').findAll('input[type="number"]')[2]!
+    await secInput.setValue('90')
+    await secInput.trigger('change')
     expect(wrapper.emitted('set-min-play-minutes')![0]).toEqual([2.5])
   })
 
-  it('clearing the input (NaN valueAsNumber) emits 0', async () => {
+  it('clearing the percent input emits 0', async () => {
     const wrapper = mountRail({ minPlayPercent: 5, minPlayMinutes: 0 })
     const pctInput = wrapper.find('.min-play-group').findAll('input[type="number"]')[0]!
     await pctInput.setValue('')
     await pctInput.trigger('change')
     expect(wrapper.emitted('set-min-play-percent')![0]).toEqual([0])
+  })
+
+  // ── Mutual exclusion: percent OR time, never both ─────────────────────
+  //
+  // Once the user has engaged one threshold (>0), the other is disabled
+  // until they clear the first one back to 0. The UI affordance is the
+  // disabled attribute + a faded look + a tooltip — no auto-clearing.
+
+  it('disables minutes and seconds inputs while percent threshold is engaged', () => {
+    const wrapper = mountRail({ minPlayPercent: 5, minPlayMinutes: 0 })
+    const inputs = wrapper.find('.min-play-group').findAll('input[type="number"]')
+    expect(inputs[0]!.attributes('disabled')).toBeUndefined()       // percent — enabled
+    expect(inputs[1]!.attributes('disabled')).toBeDefined()         // minutes — disabled
+    expect(inputs[2]!.attributes('disabled')).toBeDefined()         // seconds — disabled
+  })
+
+  it('disables percent input while time threshold is engaged', () => {
+    const wrapper = mountRail({ minPlayPercent: 0, minPlayMinutes: 0.5 })
+    const inputs = wrapper.find('.min-play-group').findAll('input[type="number"]')
+    expect(inputs[0]!.attributes('disabled')).toBeDefined()         // percent — disabled
+    expect(inputs[1]!.attributes('disabled')).toBeUndefined()       // minutes — enabled
+    expect(inputs[2]!.attributes('disabled')).toBeUndefined()       // seconds — enabled
+  })
+
+  it('leaves all three inputs enabled while both thresholds are 0', () => {
+    const wrapper = mountRail({ minPlayPercent: 0, minPlayMinutes: 0 })
+    const inputs = wrapper.find('.min-play-group').findAll('input[type="number"]')
+    inputs.forEach(i => expect(i.attributes('disabled')).toBeUndefined())
   })
 })
