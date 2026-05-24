@@ -8,7 +8,16 @@ currently supported by the pre-built binary.
 Grab `recall-{version}-darwin-arm64.dmg` from the
 [GitHub Releases](https://github.com/sound-barrier/recall/releases) page.
 
-## 2. Install: drag to Applications
+<!--
+  Sections 2 + 3 below mirror the README.txt bundled inside the .dmg
+  (built by the "Create DMG" step in .github/workflows/release.yml).
+  Keep the two in sync — when you change the in-DMG README, update
+  this page; when you change this page, update the workflow's
+  heredoc. The "Terminal alternative" callout in section 3 is web-
+  only on purpose (the in-DMG copy stays brief).
+-->
+
+## 2. Install — drag to Applications
 
 Open the downloaded `.dmg` and you'll see three things:
 
@@ -16,16 +25,17 @@ Open the downloaded `.dmg` and you'll see three things:
 - `Applications` — a shortcut to your Applications folder
 - `README.txt` — these same instructions, bundled with the download
 
-Drag `Recall` onto the `Applications` shortcut. Eject the disk (right-click
-the Recall icon in Finder's sidebar → **Eject**) and open Applications.
+1. Drag `Recall` onto the `Applications` alias in this window.
+2. Eject this disk (right-click the Recall icon in Finder's sidebar →
+   **Eject**) and open the Applications folder.
 
 ## 3. First launch — approve the app
 
-The `.dmg` is not notarized (notarization requires an Apple Developer
-certificate), so macOS will block Recall on first launch. To approve it:
+Recall is not signed by an Apple Developer account, so macOS will block it
+on first launch. To approve it:
 
-1. Double-click **Recall** in Applications. macOS will refuse to open it and
-   show a "cannot be opened" dialog — dismiss it.
+1. Double-click **Recall** in Applications. macOS will show a "cannot be
+   opened" dialog — dismiss it.
 2. Open the Apple menu → **System Settings**.
 3. Click **Privacy & Security** in the sidebar.
 4. Scroll down to the **Security** section.
