@@ -1,0 +1,66 @@
+# Verifies that the PR description carries the two required attestations
+# from .github/pull_request_template.md:
+#
+#   - Code of Conduct acceptance
+#   - Apache-2.0 license grant
+#
+# Re-runs on every edit / sync, so a contributor who forgot to tick the
+# boxes can edit the PR description and watch the check go green without
+# having to push a new commit.
+#
+# SECURITY NOTE: github.event.pull_request.body is untrusted (anyone
+# opening a PR controls it). It's passed via env (PR_BODY) and read as
+# a shell variable in the step body — the SAFE pattern documented at
+# github.blog/security/vulnerability-research/how-to-catch-github-
+# actions-workflow-injections-before-attackers-do/. NEVER interpolate
+# the body directly into a run: command.
+
+name: PR Compliance
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  required-checkboxes:
+    runs-on: ubuntu-24.04
+    # release-please opens its release PRs as github-actions[bot]; dependabot
+    # opens dependency-bump PRs as dependabot[bot]. Neither fills the human
+    # checklist and both are trusted (release-please only touches version
+    # files; dependabot is gated by dependency-review.yml).
+    if: >-
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.pull_request.user.login != 'github-actions[bot]'
+    steps:
+      - name: Verify CoC + license-grant checkboxes are ticked
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -u
+          missing=()
+
+          # Match `- [x]`, `* [x]`, or `+ [x]` with any leading whitespace.
+          # -i so an uppercase `[X]` is accepted; -E for the alternation.
+          if ! printf '%s' "$PR_BODY" | grep -qiE '^[[:space:]]*[-*+][[:space:]]+\[x\][[:space:]]+.*code of conduct'; then
+            missing+=("Code of Conduct acceptance")
+          fi
+          if ! printf '%s' "$PR_BODY" | grep -qiE '^[[:space:]]*[-*+][[:space:]]+\[x\][[:space:]]+.*license my contribution'; then
+            missing+=("Apache-2.0 license grant")
+          fi
+
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::PR description is missing the following required checkbox(es):"
+            for m in "${missing[@]}"; do
+              echo "::error::  - $m"
+            done
+            echo ""
+            echo "Tick the boxes in the PR description (click 'Edit' on the PR,"
+            echo "check the boxes near the bottom, save). This check re-runs"
+            echo "automatically on edit — no new commit required."
+            exit 1
+          fi
+
+          echo "✓ Both required checkboxes are ticked."

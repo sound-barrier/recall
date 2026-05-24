@@ -1,0 +1,110 @@
+name: Bug report
+description: Something in Recall is broken or behaves unexpectedly.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a clear bug report. The more
+        of the fields below you can fill in, the faster the bug can be
+        triaged. Skip a field with "n/a" if it genuinely doesn't apply.
+
+  - type: input
+    id: version
+    attributes:
+      label: Recall version
+      description: Shown in the top-right corner of the app (e.g. `v0.1.0`). For the server binary run `recall-server --version`.
+      placeholder: v0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS (Apple Silicon)
+        - Linux (desktop or server)
+        - Windows
+        - Docker (server-only)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS version
+      placeholder: "macOS 15.2, Ubuntu 24.04, Windows 11 23H2, …"
+    validations:
+      required: true
+
+  - type: input
+    id: tesseract
+    attributes:
+      label: Tesseract version
+      description: Shown in Recall's **Ingest → Engine** row, or run `tesseract --version`. 5.x is the supported series; 3.x and 4.x are known to misread the OW post-match font.
+      placeholder: 5.5.0
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: Include the exact error message if any.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered list. The clearer this is, the faster the fix.
+      placeholder: |
+        1. Open Recall
+        2. Click Ingest → Run Parse
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Drag images directly into this box. If the bug is about a specific Overwatch screenshot misparsing, attach the screenshot itself — it's the single most useful piece of data for parser bugs.
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Terminal output, or the contents of the **Ingest → Parse** progress panel. Use a code block (` ``` `) if you can.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that helps — workarounds you've tried, whether this is a regression from a known-good version, related issues, etc.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: code-of-conduct
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I have read and agree to follow the [Code of Conduct](https://github.com/sound-barrier/recall/blob/main/CODE_OF_CONDUCT.md).
+          required: true
