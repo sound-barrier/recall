@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.1.1](https://github.com/sound-barrier/recall/compare/v0.1.0...v0.1.1) (2026-05-24)
+
+
+### Features
+
+* **github:** declarative repo labels + sync workflow ([62f5b0c](https://github.com/sound-barrier/recall/commit/62f5b0cb8fca080b1b2745e3aa7444cbb5c3c1df))
+* **lint:** add actionlint workflow linter + fix two pre-existing bugs ([59bc472](https://github.com/sound-barrier/recall/commit/59bc47207cb5dba7f3e87f0e6b185d48d2dd3207))
+* **lint:** add gosec Go SAST + fix 3 real findings it surfaced ([e58e71f](https://github.com/sound-barrier/recall/commit/e58e71f42f0bb876c2037e91a962ba293a3d6705))
+* **lint:** add markdownlint-cli2 (CI + lefthook + Makefile) ([92ab7ff](https://github.com/sound-barrier/recall/commit/92ab7ffecc5280c14429279f887976ca2104a08a))
+* **lint:** add typos spell-checker (CI + lefthook + Makefile + tooling) ([a08bd69](https://github.com/sound-barrier/recall/commit/a08bd69deb15f47b527adc6d64032f50faaddc88))
+* **release:** sign container images with cosign keyless OIDC ([732de1c](https://github.com/sound-barrier/recall/commit/732de1c63ba60eef875c63fb33084da6065a512c))
+* **test:** add Playwright browser E2E suite ([5e04a24](https://github.com/sound-barrier/recall/commit/5e04a243ede161b0ad617eb6e62a73ad034388b2))
+
+
+### Bug Fixes
+
+* **test:** exclude Playwright e2e specs from Vitest discovery ([aaa1639](https://github.com/sound-barrier/recall/commit/aaa1639511553ac0b4aea4504db12636702f3a3a))
+
+
+### Documentation
+
+* add SECURITY.md and route CoC reports through it ([8bc6a27](https://github.com/sound-barrier/recall/commit/8bc6a2762738749b1a8fe58a37c17e91576d0370))
+* **macos:** quote actual Gatekeeper warning text in approval steps ([0f31176](https://github.com/sound-barrier/recall/commit/0f31176cc34dea980367122c76b5e1d4c31a0917))
+
+
+### Tests
+
+* **a11y:** integrate axe-core via Playwright + baseline known debt ([5333d0e](https://github.com/sound-barrier/recall/commit/5333d0ebace4ad02ca9360cfcdd6402bbfa0d083))
+
 ## [0.1.0](https://github.com/sound-barrier/recall/compare/v0.0.17...v0.1.0) (2026-05-24)
 
 
