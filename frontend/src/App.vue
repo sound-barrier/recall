@@ -80,6 +80,34 @@ function focusMain(e: MouseEvent) {
   if (main) main.focus({ preventScroll: false })
 }
 
+// WAI-ARIA tab-pattern keyboard navigation. Left/Right cycle through
+// the tabs (with wrap-around); Home/End jump to ends. We use
+// "automatic activation" — focusing a tab also switches the view, the
+// same as a click. The four tabs are listed in nav order; goToView
+// handles the actual view swap + panel focus.
+const TAB_ORDER = ['settings', 'ingest', 'matches', 'unknown'] as const
+
+function onTabKeydown(e: KeyboardEvent) {
+  const key = e.key
+  if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'Home' && key !== 'End') return
+  e.preventDefault()
+  const current = TAB_ORDER.indexOf(view.value as typeof TAB_ORDER[number])
+  if (current === -1) return
+  let next = current
+  if (key === 'ArrowLeft')  next = (current - 1 + TAB_ORDER.length) % TAB_ORDER.length
+  if (key === 'ArrowRight') next = (current + 1) % TAB_ORDER.length
+  if (key === 'Home')       next = 0
+  if (key === 'End')        next = TAB_ORDER.length - 1
+  const target = TAB_ORDER[next]!
+  goToView(target)
+  // Move focus from the now-inactive tab to the newly-active one so the
+  // tab pattern's "automatic activation" matches the focus ring.
+  nextTick(() => {
+    const btn = document.getElementById(`tab-${target}`)
+    btn?.focus()
+  })
+}
+
 // Wall-clock time of the last successful manual parse, used to render
 // "Last run · X ago" feedback under the Parse button on the settings
 // page. Persisted to localStorage so the timestamp survives reloads.
@@ -607,7 +635,7 @@ onBeforeUnmount(() => {
           <!-- Workflow order: configure → ingest → view → triage. Matches
                stays the default landing tab even though it sits at position
                03 — the numbering communicates the intended user flow. -->
-          <nav class="page-nav" role="tablist" aria-label="Primary">
+          <nav class="page-nav" role="tablist" aria-label="Primary" @keydown="onTabKeydown">
             <button
               id="tab-settings"
               class="nav-tab"

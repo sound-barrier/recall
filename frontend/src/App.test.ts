@@ -90,6 +90,44 @@ describe('App.vue', () => {
   })
 })
 
+describe('App.vue — tablist keyboard navigation', () => {
+  // WAI-ARIA tab pattern with automatic activation: ArrowLeft/Right wrap
+  // through the tabs, Home/End jump to either end, and each keypress
+  // both moves focus AND switches the visible view.
+  it('ArrowRight from Settings activates Ingest', async () => {
+    const wrapper = await mountApp()
+    await wrapper.find('#tab-settings').trigger('click')
+    await wrapper.find('nav.page-nav').trigger('keydown', { key: 'ArrowRight' })
+    expect(wrapper.find('#tab-ingest').attributes('aria-selected')).toBe('true')
+  })
+
+  it('ArrowLeft from Settings wraps to Unknown', async () => {
+    const wrapper = await mountApp()
+    await wrapper.find('#tab-settings').trigger('click')
+    await wrapper.find('nav.page-nav').trigger('keydown', { key: 'ArrowLeft' })
+    expect(wrapper.find('#tab-unknown').attributes('aria-selected')).toBe('true')
+  })
+
+  it('Home jumps to the first tab (Settings)', async () => {
+    const wrapper = await mountApp()
+    // Default is Matches; Home should jump to Settings.
+    await wrapper.find('nav.page-nav').trigger('keydown', { key: 'Home' })
+    expect(wrapper.find('#tab-settings').attributes('aria-selected')).toBe('true')
+  })
+
+  it('End jumps to the last tab (Unknown)', async () => {
+    const wrapper = await mountApp()
+    await wrapper.find('nav.page-nav').trigger('keydown', { key: 'End' })
+    expect(wrapper.find('#tab-unknown').attributes('aria-selected')).toBe('true')
+  })
+
+  it('typing into a tab without an arrow key does not change selection', async () => {
+    const wrapper = await mountApp()
+    await wrapper.find('nav.page-nav').trigger('keydown', { key: 'a' })
+    expect(wrapper.find('#tab-matches').attributes('aria-selected')).toBe('true')
+  })
+})
+
 describe('App.vue — landmarks and skip-link', () => {
   it('renders a skip-link as the first focusable, pointing at #main-content', async () => {
     const wrapper = await mountApp()
