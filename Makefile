@@ -363,12 +363,28 @@ test-frontend: ## Run frontend unit tests (Vitest)
 
 cover: cover-go cover-frontend ## Generate Go + frontend coverage reports (umbrella)
 
-cover-go: ## Generate Go coverage report (text + HTML; output → coverage/go/)
+# Floor for `make cover-go`. Tuned a few points below the current
+# state (~46% at time of writing) so genuine regressions fail while
+# routine refactors that shuffle uncovered lines don't. Override on
+# the CLI for ad-hoc runs (e.g. `make cover-go GO_COVERAGE_MIN=0`).
+# Bumping this floor in a PR is the safest way to lock in new
+# coverage as the project matures.
+GO_COVERAGE_MIN ?= 40
+
+cover-go: ## Generate Go coverage report; fail if total < GO_COVERAGE_MIN (40)
 	@echo "[ recall ] Generating Go coverage report…"
 	@mkdir -p coverage/go
 	go test -race -short -coverprofile=coverage/go/coverage.out ./...
 	go tool cover -func=coverage/go/coverage.out | tee coverage/go/coverage.txt
 	go tool cover -html=coverage/go/coverage.out -o coverage/go/coverage.html
+	@pct=$$(awk '/^total:/ { gsub(/%/, "", $$NF); print $$NF }' coverage/go/coverage.txt); \
+	 awk -v p="$$pct" -v m="$(GO_COVERAGE_MIN)" 'BEGIN { \
+	   if (p+0 < m+0) { \
+	     printf "[ recall ] ✗  Go coverage %.1f%% is below threshold %s%%\n", p, m; \
+	     exit 1 \
+	   } \
+	   printf "[ recall ] ✓  Go coverage %.1f%% ≥ threshold %s%%\n", p, m \
+	 }'
 	@echo "[ recall ] ✓  Coverage report written to coverage/go/"
 
 cover-frontend: ## Generate JS/TS coverage report (Vitest + V8; output → frontend/coverage/)
