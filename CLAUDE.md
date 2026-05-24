@@ -313,10 +313,16 @@ both the Wails `AssetServer.Handler` and the server-mode HTTP mux.
 Pure helpers (date formatting, screenshot-type detection, hero sorting,
 etc.) live in `frontend/src/match-helpers.ts` so they can be unit-tested
 in isolation via Vitest. Stateful logic is extracted into composables under
-`frontend/src/composables/`: `useTheme` (dark/light/system toggle),
-`useFilterPanel` (popover open/close, ESC/outside-click), `useMatchFilters`
-(all 7 filter refs, date range, sort, filtered/sorted computeds — the most
-complex and highest-test-ROI module). Shared UI is in
+`frontend/src/composables/`: `useTheme` / `useWeekStart` /
+`useIncludeUndated` (persisted-preference composables — all follow the
+same shape: `ref(default)` + `setX(next)` that writes localStorage +
+`onMounted` reader. Add new prefs by copying one; mountApp's
+`MountOverrides` seeds the matching localStorage key for SFC tests),
+`useFilterPanel` (popover open/close, ESC/outside-click),
+`useMatchFilters` (all 7 filter refs + the optional `includeUndated`
+ref, date range, sort, filtered/sorted computeds — the most complex
+and highest-test-ROI module), `useMatchGrouping` (Month→Week→Day tree
++ expand state). Shared UI is in
 `frontend/src/components/`: `MatchCard`, `FilterRail`, `ParseProgressPanel`,
 `MatchGroupSection`, plus the four top-level view tabs — `SettingsView`,
 `IngestView`, `MatchesView`, `UnknownMapsView`. App.vue is now a router-
@@ -342,11 +348,14 @@ Template access to `Record<string, Ref<string[]>>` filter state goes through
 `filterList(field)` / `filterSearchStr(field)` helpers to satisfy
 `noUncheckedIndexedAccess` without littering the template with `!` or `??`.
 
-Single-file Vue 3 SFC, composition API. No router, no Vuex/Pinia — a few
-`ref`s + `computed`s. State concerns:
+Vue 3 + composition API. No router, no Vuex/Pinia — App.vue is the
+router-shell (masthead + modals + cross-cutting state) that mounts one
+of four view SFCs at a time (see the components list above). State
+concerns owned by App.vue and passed down via props/emits:
 
-- **Nav** — four tabs in workflow order: **Settings (01)** (screenshots
-  folder + theme), **Ingest (02)** (engine / parse / export / data),
+- **Nav** — four tabs in workflow order: **Settings (01)** (directories
+  + appearance + calendar/first-day-of-week), **Ingest (02)** (engine /
+  parse / export / data),
   **Matches (03)** (default landing tab), **Unknown (04)** (triage). The
   view ref defaults to `'matches'`; the numbering communicates the user
   flow, not tab order of importance. Settings and Ingest both wear
@@ -368,18 +377,21 @@ Single-file Vue 3 SFC, composition API. No router, no Vuex/Pinia — a few
   (no `match_key` fallback), so undated rows are correctly excluded
   from date-windowed views — matching the card UI's behavior of not
   showing a timestamp for them.
-- **Settings page**: engine (Tesseract path + status), screenshots
-  directory, watch-folder toggle, manual parse button, Grafana/Prometheus
-  toggle. Matches view retains all filters and the match list.
+- **Settings page**: three sections in `SettingsView.vue` — Directories
+  (screenshots folder picker), Appearance (Day/Night theme toggle),
+  Calendar (Sun/Mon first-day-of-week toggle). All persisted via the
+  useTheme / useWeekStart / useIncludeUndated composable family. Engine /
+  Watch / Parse / Prometheus knobs moved to the **Ingest** tab during the
+  view extraction.
 - **Tesseract gate**: `tesseractReady` computed drives a System Alert
   banner and disables Parse/Watch controls when the OCR engine isn't
   found. `GetTesseractStatus` / `SetTesseractPath` / `PickTesseractBinary`
   / `ResetTesseractPath` are the four Wails-bound methods for engine config.
 - **Unknown Maps view**: records where `data.map` is absent surface in a
-  separate Unknown Maps page via the `unknownRecords` computed. Expand and
-  preview state is shared with the Matches view (`expanded`, `previewOpen`,
-  `previewError` maps keyed by `match_key`) — unknown match keys never
-  collide with matched ones, so the same maps work for both.
+  separate Unknown Maps page via the `unknownRecords` computed. Per-card
+  UI state (expand, sources, preview) is shared with the Matches view via
+  the `CardStateApi` bundle exported from `MatchesView.vue` — App.vue
+  owns the underlying refs, both views consume them through one prop.
 - **Per-card expand state** + per-source-file image preview state (each
   in a plain object, reassigned on toggle for Vue reactivity).
   `screenshotURL(filename)` returns `/_screenshot/<encoded>` which the
@@ -453,6 +465,12 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifyin
 - **CI jobs in `ci.yml` use sequential numbered comments** (`# ── Job N: ...`). When inserting a new job between existing ones, renumber subsequent comments to keep the sequence contiguous.
 
 - **`deadcode` always exits 0** — findings are printed to stdout but the exit code is never non-zero. To gate on findings in a Makefile or CI step, capture stdout and assert it's empty (or grep-filter expected stubs). See `make dead-code-go` for the pattern.
+
+- **deadcode "known-good" filter lives in two parallel files** — `Makefile` `dead-code-go:` and `lefthook.yml` `pre-push.deadcode`. Both run `grep -vE 'App\.Pick|NewWithStore'` to swallow intentional unreachables (build-tag stubs whose real impl lives behind the other tag; test-only constructors like `NewWithStore`). Adding a new test-only seam? Extend both regexes the same commit, or the next push silently blocks.
+
+- **`npx vitest` / `npm run *` must run from `frontend/`.** Bash invocations start at repo root and Vite resolves `vitest.config.ts` from cwd, so running from elsewhere errors with a misleading "Install @vitejs/plugin-vue to handle .vue files" even though the plugin IS installed. Use `cd frontend && …` or `npm --prefix frontend run …`. The `make` targets (`make test-frontend`, `make cover-frontend`) handle cwd automatically.
+
+- **Refs inside a prop-passed object don't auto-unwrap.** Vue templates auto-unwrap top-level refs but stop at object depth, so when bundling a composable's return as a single prop (the `CardStateApi`, `FiltersApi` pattern in MatchesView), consumers must use `.value` on the inner refs: `cardState.previewOpen.value[filename]`, not `cardState.previewOpen[filename]`. The TypeScript prop types should declare these as `Ref<X>` (not the unwrapped shape) so vue-tsc catches misuse.
 
 - **knip project scope is `src/**/*.{ts,vue}`** — `wailsjs/` is excluded because it's outside `src/`; knip won't flag the Wails-generated bindings. `@eslint/js` must stay in `ignoreDependencies` in `frontend/knip.config.ts`: typescript-eslint consumes it internally but doesn't ES-import it, so knip can't detect the usage. `@vitest/coverage-v8` does NOT need `ignoreDependencies` — vitest detects it via `coverage.provider: 'v8'` in `vitest.config.ts`. Run via `make dead-code-ts` or `cd frontend && npm run dead:ts`.
 

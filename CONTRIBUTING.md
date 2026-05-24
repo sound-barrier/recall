@@ -280,6 +280,8 @@ make cloc           # count lines of source code (excludes deps, build artifacts
 make icon           # resync build/appicon.png from assets/icon.png (macOS only; run after updating the icon)
 ```
 
+**Running `npx vitest` / `npm run *` directly?** Do it from `frontend/`, not the repo root — Vite resolves `vitest.config.ts` from cwd, so running from elsewhere fails with a misleading "Install @vitejs/plugin-vue to handle .vue files" even though the plugin IS installed. Use `cd frontend && …` or `npm --prefix frontend run …`. The `make` targets above handle cwd automatically.
+
 `trivy` requires a one-time install: `brew install trivy` or `brew bundle`.
 The scan covers Go module dependencies, npm packages, and `Dockerfile.build`.
 
@@ -328,7 +330,7 @@ Subject must match `<type>(<scope>)?(!)?: <description>`. Allowed types:
 feat fix chore docs refactor test perf build ci revert style
 ```
 
-Example valid messages:
+Example valid messages (single scope only — `feat(parser,app):` is rejected by the commit-msg hook; split the change into two commits, or pick the primary scope):
 
 ```
 feat(parser): add Suravasa map alias
@@ -379,6 +381,7 @@ LEFTHOOK=0 git commit -m "wip"                              # skip all pre-commi
 LEFTHOOK_EXCLUDE=conventional git commit -m "fixup"         # skip just commit-msg
 LEFTHOOK_EXCLUDE='conventional,golangci-lint' git commit …  # skip multiple
 LEFTHOOK_EXCLUDE='deadcode,knip' git push                   # skip pre-push dead-code scan
+LEFTHOOK_EXCLUDE=coverage git push                          # skip pre-push coverage gate
 ```
 
 Hooks bypassed locally will still fail in CI on push — bypass is for in-flight WIP commits, not a way around the rules.
