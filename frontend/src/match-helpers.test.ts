@@ -559,42 +559,75 @@ describe('groupMatchesByMonthWeekDay', () => {
     expect(week.label).toContain('May 10')
   })
 
-  it('honors weekStart=monday for the anchor', () => {
+  it('honors weekStart=1 (Monday) for the anchor', () => {
     // 2026-05-10 is a Sunday → its Monday is 2026-05-04.
     const recs = [
       { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
     ]
-    const week = groupMatchesByMonthWeekDay(recs, 'desc', { weekStart: 'monday' })[0]!.children![0]!
+    const week = groupMatchesByMonthWeekDay(recs, 'desc', { weekStart: 1 })[0]!.children![0]!
     expect(week.label).toContain('May 4')
   })
 
-  it('groups Friday + Saturday under one week with weekStart=sunday but splits them under monday', () => {
-    // 2026-05-08 Fri + 2026-05-09 Sat:
-    //   Sunday-start: same week (Sun May 3 – Sat May 9)
-    //   Monday-start: same week (Mon May 4 – Sun May 10) — still same.
-    // Better discriminator: Saturday + Sunday across the weekend boundary:
+  it('groups Saturday + Sunday differently across weekStart 0 vs 1', () => {
     //   2026-05-09 Sat + 2026-05-10 Sun:
-    //     Sunday-start: DIFFERENT weeks (Sat May 9 anchors to Sun May 3; Sun May 10 anchors to itself).
-    //     Monday-start: SAME week (both anchor to Mon May 4 – Sun May 10).
+    //     Sunday-start (0): DIFFERENT weeks (Sat anchors to Sun May 3; Sun anchors to itself).
+    //     Monday-start (1): SAME week (both anchor to Mon May 4 – Sun May 10).
     const recs = [
       { data: { date: '2026-05-09', finished_at: '21:00', result: 'victory' } },
       { data: { date: '2026-05-10', finished_at: '21:00', result: 'victory' } },
     ]
-    const sun = groupMatchesByMonthWeekDay(recs, 'desc') // default sunday
+    const sun = groupMatchesByMonthWeekDay(recs, 'desc') // default Sunday
     expect(sun[0]!.children).toHaveLength(2)
 
-    const mon = groupMatchesByMonthWeekDay(recs, 'desc', { weekStart: 'monday' })
+    const mon = groupMatchesByMonthWeekDay(recs, 'desc', { weekStart: 1 })
     expect(mon[0]!.children).toHaveLength(1)
   })
 
-  it('day label uses a short weekday + month + day form', () => {
+  it('day label spells out the full weekday name (no Sun/Mon/Tue abbreviation)', () => {
     const recs = [
       { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
     ]
     const day = groupMatchesByMonthWeekDay(recs, 'desc')[0]!.children![0]!.children![0]!
-    // 2026-05-10 is a Sunday.
-    expect(day.label).toMatch(/^Sun/)
+    // 2026-05-10 is a Sunday — full name, not "Sun".
+    expect(day.label).toMatch(/^Sunday\b/)
     expect(day.label).toContain('May 10')
+  })
+
+  // ── weekStart can be any day 0-6 ─────────────────────────────────────
+  //
+  // Each test uses the same two records — Saturday 2026-05-09 and the
+  // following Sunday 2026-05-10 — varying only the weekStart. The
+  // weekend boundary makes whether they share a week a function of the
+  // chosen start day.
+
+  it('weekStart=5 (Friday) groups Fri-Thu; Sat May 9 + Sun May 10 share a Friday-anchored week', () => {
+    const recs = [
+      { data: { date: '2026-05-09', finished_at: '21:00', result: 'victory' } }, // Sat
+      { data: { date: '2026-05-10', finished_at: '21:00', result: 'victory' } }, // Sun
+    ]
+    const tree = groupMatchesByMonthWeekDay(recs, 'desc', { weekStart: 5 })
+    expect(tree[0]!.children).toHaveLength(1)
+    expect(tree[0]!.children![0]!.label).toContain('May 8') // Friday May 8 anchors both
+  })
+
+  it('weekStart=6 (Saturday) splits Fri May 8 from Sat May 9 — Sat anchors its own week', () => {
+    const recs = [
+      { data: { date: '2026-05-08', finished_at: '21:00', result: 'victory' } }, // Fri, anchors to prev Sat May 2
+      { data: { date: '2026-05-09', finished_at: '21:00', result: 'victory' } }, // Sat, anchors to itself
+    ]
+    const tree = groupMatchesByMonthWeekDay(recs, 'desc', { weekStart: 6 })
+    expect(tree[0]!.children).toHaveLength(2)
+  })
+
+  it('weekStart accepts every day 0-6 without error', () => {
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:00', result: 'victory' } },
+    ]
+    for (let ws = 0; ws <= 6; ws++) {
+      const tree = groupMatchesByMonthWeekDay(recs, 'desc', { weekStart: ws as 0 | 1 | 2 | 3 | 4 | 5 | 6 })
+      expect(tree).toHaveLength(1)
+      expect(tree[0]!.children![0]!.label).toMatch(/^Week of /)
+    }
   })
 
   it('month tally equals sum of week tallies', () => {

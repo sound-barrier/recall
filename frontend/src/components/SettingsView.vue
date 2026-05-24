@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ThemeMode } from '../composables/useTheme'
 import type { WeekStart } from '../composables/useWeekStart'
+import { WEEKDAYS_FULL } from '../match-helpers'
 
 // SettingsView — Directories + Appearance + Calendar. Engine /
 // Prometheus / Watch-folder knobs live in the Ingest view because
@@ -20,6 +21,17 @@ const emit = defineEmits<{
   'set-week-start':       [next: WeekStart]
   'go-to-view':           [next: 'settings' | 'ingest' | 'matches' | 'unknown']
 }>()
+
+// The seven first-day-of-week options. Order = JS Date.getDay() so
+// the index IS the WeekStart value — no separate mapping needed.
+// Letter is a visual marker for the segmented control (S/M/T/W/T/F/S);
+// the full day name sits beneath each segment so ambiguity (two Ts,
+// two Ss) is always resolved by the label, not by squinting.
+const DAY_SEGMENTS = WEEKDAYS_FULL.map((name, idx) => ({
+  idx: idx as WeekStart,
+  letter: name.charAt(0),
+  name,
+}))
 </script>
 
 <template>
@@ -142,35 +154,25 @@ const emit = defineEmits<{
           </div>
           <div class="setting-control">
             <div
-              class="theme-toggle weekstart-toggle"
+              class="weekstart-row"
               role="radiogroup"
               aria-label="First day of week"
             >
-              <button
-                type="button"
-                class="theme-seg weekstart-seg"
-                role="radio"
-                :aria-checked="weekStart === 'sunday'"
-                :class="{ active: weekStart === 'sunday' }"
-                title="Weeks run Sunday → Saturday"
-                @click="emit('set-week-start', 'sunday')"
-              >
-                <span class="weekstart-letter" aria-hidden="true">S</span>
-                <span class="theme-label">Sun</span>
-              </button>
-              <span class="theme-divider" aria-hidden="true" />
-              <button
-                type="button"
-                class="theme-seg weekstart-seg"
-                role="radio"
-                :aria-checked="weekStart === 'monday'"
-                :class="{ active: weekStart === 'monday' }"
-                title="Weeks run Monday → Sunday (ISO-8601)"
-                @click="emit('set-week-start', 'monday')"
-              >
-                <span class="weekstart-letter" aria-hidden="true">M</span>
-                <span class="theme-label">Mon</span>
-              </button>
+              <template v-for="(seg, i) in DAY_SEGMENTS" :key="seg.idx">
+                <button
+                  type="button"
+                  class="weekstart-seg"
+                  role="radio"
+                  :aria-checked="weekStart === seg.idx"
+                  :class="{ active: weekStart === seg.idx }"
+                  :title="`Weeks begin on ${seg.name}`"
+                  @click="emit('set-week-start', seg.idx)"
+                >
+                  <span class="weekstart-letter" aria-hidden="true">{{ seg.letter }}</span>
+                  <span class="weekstart-name">{{ seg.name }}</span>
+                </button>
+                <span v-if="i < DAY_SEGMENTS.length - 1" class="weekstart-divider" aria-hidden="true" />
+              </template>
             </div>
           </div>
         </div>
@@ -180,39 +182,78 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-/* The weekstart toggle reuses the existing .theme-toggle / .theme-seg
-   styling from App.vue's global stylesheet (segmented control, divider,
-   active state). We just swap the icon-glyph slot for a typographic
-   letter so Sun/Mon read at a glance without leaning on iconography
-   that doesn't exist for "day of week". The letter sits where the
-   theme icon sits, sized to match. */
+/* 7-segment first-day-of-week picker. Same visual idiom as the theme
+   toggle (segmented control, dim border, accent-tinted active state)
+   stretched across all seven days so any culture's week-anchor works.
+   Each segment stacks the big initial letter on top (iconography to
+   scan a column at speed) and the full day name on the bottom (the
+   authoritative label that resolves the two-T / two-S ambiguity). */
 
-.weekstart-toggle {
-  /* Inherit segmented-control geometry from .theme-toggle. */
+.weekstart-row {
+  display: inline-flex;
+  align-items: stretch;
+  padding: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  color: var(--text-faint);
+  user-select: none;
+  transition: border-color 160ms ease, background 160ms ease;
 }
 
-.weekstart-letter {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1em;
-  height: 1em;
-  font-family: var(--brand, 'OW Wordmark', 'Russo One', sans-serif);
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1;
+.weekstart-row:hover { border-color: var(--border-strong); }
 
-  /* Sit slightly low so the optical center matches the theme icons. */
-  transform: translateY(-1px);
+.weekstart-row:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .weekstart-seg {
-  cursor: pointer;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.18rem;
+  padding: 0.4rem 0.65rem;
+  min-width: 4.4rem;
   background: transparent;
   border: 0;
+  border-radius: 1px;
+  cursor: pointer;
   color: inherit;
   font: inherit;
-  padding: 0;
+  transition: color 200ms ease, background 200ms ease, box-shadow 200ms ease;
+}
+
+.weekstart-seg:hover { color: var(--text); }
+
+.weekstart-seg.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.weekstart-letter {
+  font-family: var(--brand, 'OW Wordmark', 'Russo One', sans-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.weekstart-name {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+.weekstart-divider {
+  width: 1px;
+  background: var(--border);
+  margin: 4px 0;
 }
 </style>

@@ -26,15 +26,15 @@ import type { MatchGroup, GroupableRecord, WeekStart } from '../match-helpers'
 export function useMatchGrouping<R extends GroupableRecord>(
   filteredSorted: Readonly<Ref<R[]>>,
   sortDir: Readonly<Ref<'asc' | 'desc' | string>>,
-  // Optional — defaults to 'sunday' inside the helper when omitted.
+  // Optional — defaults to 0 (Sunday) inside the helper when omitted.
   // Pass the useWeekStart ref to make the "Week of <date>" anchor
-  // honor the user's Settings preference.
+  // honor the user's Settings preference (any day 0-6).
   weekStart?: Readonly<Ref<WeekStart>>,
 ) {
   const groups = computed<MatchGroup<R>[]>(() => {
     const dir = sortDir.value === 'asc' ? 'asc' : 'desc'
     return groupMatchesByMonthWeekDay(filteredSorted.value, dir, {
-      weekStart: weekStart?.value ?? 'sunday',
+      weekStart: weekStart?.value ?? 0,
     })
   })
 

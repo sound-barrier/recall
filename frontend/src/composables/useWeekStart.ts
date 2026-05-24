@@ -5,26 +5,32 @@ export type { WeekStart }
 export const WEEK_START_STORAGE_KEY = 'recall.weekStart'
 
 // Persisted preference for the first day of the week — drives the
-// Month → Week → Day grouping's "Week of <date>" labels. US default
-// is Sunday, matching the OS-level locale convention; Settings exposes
-// a Sun/Mon toggle for users who prefer ISO-8601 / European weeks.
+// Month → Week → Day grouping's "Week of <date>" labels. Any day 0-6
+// (per JS Date.getDay(): 0=Sun … 6=Sat). Default 0 (Sunday) matches
+// the US locale convention; users in ISO-8601 regions, the Middle East
+// (Saturday-start, Friday-start), or anywhere else can pick their own.
 //
-// Reads/writes localStorage to survive across launches. Mirrors
-// useTheme's shape so the wiring at the App.vue level is consistent.
+// Reads/writes localStorage to survive across launches. The legacy
+// string values "sunday" and "monday" from the previous binary toggle
+// are migrated to 0 and 1 transparently.
 export function readStoredWeekStart(): WeekStart {
   try {
-    const stored = localStorage.getItem(WEEK_START_STORAGE_KEY)
-    if (stored === 'sunday' || stored === 'monday') return stored
+    const raw = localStorage.getItem(WEEK_START_STORAGE_KEY)
+    if (raw === null) return 0
+    if (raw === 'sunday') return 0
+    if (raw === 'monday') return 1
+    const n = Number(raw)
+    if (Number.isInteger(n) && n >= 0 && n <= 6) return n as WeekStart
   } catch (_) {}
-  return 'sunday'
+  return 0
 }
 
 export function useWeekStart() {
-  const weekStart = ref<WeekStart>('sunday')
+  const weekStart = ref<WeekStart>(0)
 
   function setWeekStart(next: WeekStart) {
     weekStart.value = next
-    try { localStorage.setItem(WEEK_START_STORAGE_KEY, next) } catch (_) {}
+    try { localStorage.setItem(WEEK_START_STORAGE_KEY, String(next)) } catch (_) {}
   }
 
   onMounted(() => {
