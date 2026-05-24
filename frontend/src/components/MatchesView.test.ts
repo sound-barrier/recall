@@ -40,9 +40,12 @@ function makeCardState(records: MatchRecord[]): { api: CardStateApi; expanded: R
   return { api, expanded }
 }
 
-function mountWith(records: MatchRecord[]) {
+function mountWith(records: MatchRecord[], includeUndated = false) {
   const recsRef = ref(records)
-  const filters = useMatchFilters(recsRef)
+  const includeUndatedRef = ref(includeUndated)
+  // Pass the ref into useMatchFilters so the same flag flows through
+  // both `filtered` (filter logic) and `undatedMatchCount` etc.
+  const filters = useMatchFilters(recsRef, includeUndatedRef)
   const filterPanel = useFilterPanel()
   const grouping = useMatchGrouping<MatchRecord>(filters.filteredSorted, filters.sortDir)
   const { api: cardState } = makeCardState(records)
@@ -57,6 +60,7 @@ function mountWith(records: MatchRecord[]) {
       cardState,
       earliestMatchDateTime: '',
       nowDateTime: '2026-05-23T18:00',
+      includeUndated,
     },
   })
   return { wrapper, filters, grouping, cardState }
@@ -95,13 +99,31 @@ describe('MatchesView', () => {
     expect(wrapper.text()).toContain('MAY 2026')
   })
 
-  it('renders the UNKNOWN DATE bucket when a record lacks a date', () => {
+  it('renders the UNKNOWN DATE bucket when a record lacks a date and includeUndated=true', () => {
     const { wrapper } = mountWith([
       { id: 1, match_key: 'unmatched:scoreboard.png', source_files: ['scoreboard.png'], data: {
         map: 'rialto', mode: 'competitive', result: 'victory',
       } },
-    ])
+    ], /* includeUndated */ true)
     expect(wrapper.text()).toContain('UNKNOWN DATE')
+  })
+
+  it('hides the UNKNOWN DATE bucket when includeUndated=false (default), but the rail toggle stays visible', () => {
+    const { wrapper } = mountWith([
+      { id: 1, match_key: 'unmatched:scoreboard.png', source_files: ['scoreboard.png'], data: {
+        map: 'rialto', mode: 'competitive', result: 'victory',
+      } },
+    ]) // includeUndated defaults to false
+    // No bucket — the dateless record was filtered out before grouping.
+    expect(wrapper.text()).not.toContain('UNKNOWN DATE')
+    // But the FilterRail toggle is visible, showing the user the
+    // count of records they could opt into.
+    expect(wrapper.find('.undated-toggle').exists()).toBe(true)
+    expect(wrapper.find('.undated-toggle').text()).toContain('Undated · 1')
+    // Empty state checks raw records.length, not filtered, so it
+    // does NOT render here — the user has parsed matches; they're
+    // just hidden.
+    expect(wrapper.text()).not.toContain('No matches on record.')
   })
 
   it('Expand-all button flips the group tree state', async () => {

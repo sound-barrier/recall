@@ -6,7 +6,15 @@ import { SCREENSHOT_TYPES, matchTime, detectScreenshotSlots } from '../match-hel
 // Fields whose values come directly from a scalar property on MatchRecord.data.
 type StringMatchField = 'mode' | 'type' | 'role' | 'map' | 'result' | 'hero'
 
-export function useMatchFilters(records: Readonly<Ref<MatchRecord[]>>) {
+export function useMatchFilters(
+  records: Readonly<Ref<MatchRecord[]>>,
+  // Optional: when this ref is false (default), records without a
+  // parseable data.date are dropped from the matched view. Toggling
+  // it on surfaces them in the UNKNOWN DATE bucket. Drives the
+  // FilterRail's "Undated" toggle button + the localStorage-backed
+  // preference exposed by useIncludeUndated.
+  includeUndated?: Readonly<Ref<boolean>>,
+) {
   // ── Filter state ─────────────────────────────────────────────────────
   // Each field is an array: empty = no filter; multiple entries = union (OR).
   const filterMode   = ref<string[]>([])
@@ -71,6 +79,14 @@ export function useMatchFilters(records: Readonly<Ref<MatchRecord[]>>) {
     records.value.filter(r => {
       const d = r.data ?? {}
       if (!d.map) return false
+
+      // Undated records (no parseable date+finished_at) are hidden by
+      // default. Toggling the FilterRail's "Undated" button — which
+      // flips this ref — opts them back in. Independent of the
+      // date-range filter below, which excludes undated rows
+      // regardless when a range is set.
+      const undated = !d.date || !d.finished_at
+      if (undated && !(includeUndated?.value ?? false)) return false
       if (filterMode.value.length   && !filterMode.value.includes(d.mode     ?? '')) return false
       if (filterType.value.length   && !filterType.value.includes(d.type     ?? '')) return false
       if (filterRole.value.length   && !filterRole.value.includes(d.role     ?? '')) return false

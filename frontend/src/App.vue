@@ -23,6 +23,7 @@ import {
   EventsOff,
 } from './api'
 import { computeEarliestMatchDateTime } from './match-helpers'
+import { useIncludeUndated } from './composables/useIncludeUndated'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
@@ -104,7 +105,12 @@ const watchEnabled = ref(false)
 // activeFilterCount surfaces in the matches-tab nav badge so it lives
 // outside the view component too.
 const filterPanel = useFilterPanel()
-const filters = useMatchFilters(records)
+// "Include undated matches" toggle. Default off — records without
+// data.date are hidden from the matched view until the user opts in
+// via the FilterRail toggle. Persisted in localStorage so the choice
+// survives across launches.
+const { includeUndated, setIncludeUndated } = useIncludeUndated()
+const filters = useMatchFilters(records, includeUndated)
 const { activeFilterCount } = filters
 // First-day-of-week preference (Settings → Calendar). Threaded into
 // useMatchGrouping so the "Week of <date>" labels honor the user's
@@ -673,7 +679,9 @@ onBeforeUnmount(() => {
         :card-state="cardState"
         :earliest-match-date-time="earliestMatchDateTime"
         :now-date-time="nowDateTime"
+        :include-undated="includeUndated"
         @go-to-view="goToView"
+        @set-include-undated="setIncludeUndated"
       />
     </div>
 

@@ -31,6 +31,7 @@ function mountRail(over: Partial<Record<string, unknown>> = {}) {
       allExpanded: false,
       recordCount: 12,
       filteredCount: 12,
+      includeUndated: false,
       ...over,
     },
   })
@@ -212,5 +213,55 @@ describe('FilterRail — emits', () => {
     const hint = mountRail({ filterFrom: '2026-01-01T00:00', undatedMatchCount: 3 })
     expect(hint.find('.range-hint').exists()).toBe(true)
     expect(hint.find('.range-hint').text()).toContain('3 undated hidden')
+  })
+})
+
+describe('FilterRail — Undated toggle', () => {
+  it('hides the toggle when undatedMatchCount === 0', () => {
+    const wrapper = mountRail({ undatedMatchCount: 0 })
+    expect(wrapper.find('.undated-toggle').exists()).toBe(false)
+  })
+
+  it('shows the toggle with count when undatedMatchCount > 0', () => {
+    const wrapper = mountRail({ undatedMatchCount: 3, includeUndated: false })
+    const btn = wrapper.find('.undated-toggle')
+    expect(btn.exists()).toBe(true)
+    expect(btn.text()).toContain('Undated')
+    expect(btn.text()).toContain('3')
+  })
+
+  it('renders the "+" mark when off, "✓" when on', () => {
+    const off = mountRail({ undatedMatchCount: 3, includeUndated: false })
+    expect(off.find('.undated-mark').text()).toBe('+')
+
+    const on = mountRail({ undatedMatchCount: 3, includeUndated: true })
+    expect(on.find('.undated-mark').text()).toBe('✓')
+  })
+
+  it('applies .active class only when includeUndated=true', () => {
+    expect(mountRail({ undatedMatchCount: 3, includeUndated: false }).find('.undated-toggle').classes())
+      .not.toContain('active')
+    expect(mountRail({ undatedMatchCount: 3, includeUndated: true }).find('.undated-toggle').classes())
+      .toContain('active')
+  })
+
+  it('aria-pressed mirrors includeUndated for assistive tech', () => {
+    expect(mountRail({ undatedMatchCount: 3, includeUndated: false }).find('.undated-toggle').attributes('aria-pressed')).toBe('false')
+    expect(mountRail({ undatedMatchCount: 3, includeUndated: true }).find('.undated-toggle').attributes('aria-pressed')).toBe('true')
+  })
+
+  it('emits set-include-undated with the flipped value on click', async () => {
+    const off = mountRail({ undatedMatchCount: 3, includeUndated: false })
+    await off.find('.undated-toggle').trigger('click')
+    expect(off.emitted('set-include-undated')![0]).toEqual([true])
+
+    const on = mountRail({ undatedMatchCount: 3, includeUndated: true })
+    await on.find('.undated-toggle').trigger('click')
+    expect(on.emitted('set-include-undated')![0]).toEqual([false])
+  })
+
+  it('shows singular "match" copy in the title when count is 1', () => {
+    const wrapper = mountRail({ undatedMatchCount: 1, includeUndated: false })
+    expect(wrapper.find('.undated-toggle').attributes('title')).toContain('1 undated match ')
   })
 })
