@@ -48,7 +48,9 @@ const DAY_SEGMENTS = WEEKDAYS_FULL.map((name, idx) => ({
       </h2>
       <p class="settings-sub">
         OCR engine, parsing, exports, and data management live in
-        <strong class="empty-link" @click="emit('go-to-view', 'ingest')">Ingest →</strong>.
+        <button type="button" class="empty-link" @click="emit('go-to-view', 'ingest')">
+          Ingest →
+        </button>.
       </p>
     </header>
 

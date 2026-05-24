@@ -34,7 +34,9 @@ const emit = defineEmits<{
       </h2>
       <p v-if="unknownRecords.length > 0" class="unknown-desc">
         The slot indicators below show which screenshot types have been parsed for each record. Add the missing ones and
-        <strong class="empty-link" @click="emit('go-to-view', 'ingest')">run Parse</strong>
+        <button type="button" class="empty-link" @click="emit('go-to-view', 'ingest')">
+          run Parse
+        </button>
         again to resolve them.
       </p>
     </header>

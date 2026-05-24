@@ -626,13 +626,17 @@ onBeforeUnmount(() => {
               class="ver-btn ver-btn-dev"
               :title="`Open release page for v${updateInfo.latest}`"
               @click="OpenURL(updateInfo.url)"
-            >↗ view release v{{ updateInfo.latest }}</button>
+            >
+              ↗ view release v{{ updateInfo.latest }}
+            </button>
             <button
               v-else-if="updateInfo?.available"
               class="ver-btn ver-btn-update"
               :title="`Download v${updateInfo.latest}`"
               @click="OpenURL(updateInfo.url)"
-            >↑ update to v{{ updateInfo.latest }}</button>
+            >
+              ↑ update to v{{ updateInfo.latest }}
+            </button>
             <span
               v-else-if="updateInfo?.checked"
               class="ver-btn ver-btn-current"
@@ -730,7 +734,9 @@ onBeforeUnmount(() => {
               <circle cx="12" cy="17.8" r="1.2" fill="currentColor" />
             </svg>
           </div>
-          <h3 id="modal-title" class="modal-title">Unsupported Tesseract Version</h3>
+          <h3 id="modal-title" class="modal-title">
+            Unsupported Tesseract Version
+          </h3>
           <p class="modal-body">
             Tesseract <strong>{{ tesseractStatus.version }}</strong> is detected. Only version <strong>5.x</strong> is officially tested with Recall.
           </p>
@@ -738,8 +744,12 @@ onBeforeUnmount(() => {
             Proceed at your own caution — OCR results may be incorrect or incomplete with this version.
           </p>
           <div class="modal-actions">
-            <button class="btn ghost" @click="showUnsupportedModal = false">Cancel</button>
-            <button class="btn primary" @click="confirmUnsupportedParse">Continue Anyway</button>
+            <button class="btn ghost" @click="showUnsupportedModal = false">
+              Cancel
+            </button>
+            <button class="btn primary" @click="confirmUnsupportedParse">
+              Continue Anyway
+            </button>
           </div>
         </div>
       </div>
@@ -2212,12 +2222,50 @@ body {
   border-radius: 2px;
 }
 
-.match-header:focus { outline: none; }
-
-.match-header:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 4px;
+/* Chip buttons inside the match card — the per-field filter triggers
+   (.match-map, .badge.clickable, .chev-btn, .hero-name, .source-type-chip,
+   .slot-chip). They keep their existing look via the rules already
+   defined for those classes; here we just strip the browser's native
+   button chrome so the visual stays identical to the pre-button markup.
+   Wrapped in :where() so this reset has specificity 0 and never wins
+   against any existing .badge / .match-map / etc. rule. */
+:where(
+  button.match-map,
+  button.badge,
+  button.chev-btn,
+  button.hero-name,
+  button.source-type-chip,
+  button.slot-chip
+) {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  text-align: inherit;
 }
+
+.match-map.clickable:focus-visible,
+.badge.clickable:focus-visible,
+.chev-btn:focus-visible,
+.hero-name.clickable:focus-visible,
+.slot-chip.clickable:focus-visible,
+.source-type-chip.clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The chev is the keyboard expand affordance — give it a real hit
+   target so taps/clicks aren't strictly on the glyph. */
+button.chev-btn {
+  padding: 0.15rem 0.3rem;
+  border-radius: 2px;
+}
+
+button.chev-btn:hover { color: var(--accent-bright); }
 
 .match-title-row {
   display: flex;
@@ -3904,7 +3952,21 @@ body {
 }
 [data-theme="light"] .settings-heading.missing em { color: var(--loss); }
 
-/* ─── Empty-state inline links ───────────────────────────── */
+/* ─── Empty-state inline links ─────────────────────────────
+   .empty-link is rendered as <button> so keyboard users can tab to it.
+   The :where()-wrapped reset strips the native button chrome at
+   specificity 0, so the inline appearance matches the surrounding
+   prose. font: inherit picks up the parent's display/body face. */
+:where(button.empty-link) {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: inherit;
+  display: inline;
+}
 
 .empty-link {
   color: var(--accent);
@@ -3914,6 +3976,12 @@ body {
   transition: border-color 160ms ease, color 160ms ease;
 }
 .empty-link:hover { border-bottom-color: var(--accent); }
+
+.empty-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
 [data-theme="light"] .empty-link { color: var(--accent-text); }
 [data-theme="light"] .empty-link:hover { border-bottom-color: var(--accent-text); }
 

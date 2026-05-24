@@ -109,11 +109,11 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
       <ol class="empty-steps">
         <li>
           <strong class="empty-step-num">01</strong>
-          <span>Set your screenshots folder under <strong class="empty-link" @click="emit('go-to-view', 'settings')">Settings</strong>.</span>
+          <span>Set your screenshots folder under <button type="button" class="empty-link" @click="emit('go-to-view', 'settings')">Settings</button>.</span>
         </li>
         <li>
           <strong class="empty-step-num">02</strong>
-          <span>Locate Tesseract and click <strong class="empty-link" @click="emit('go-to-view', 'ingest')">Ingest → Run Parse</strong>, or flip on <strong class="empty-link" @click="emit('go-to-view', 'ingest')">Watch Folder</strong> to auto-ingest as you play.</span>
+          <span>Locate Tesseract and click <button type="button" class="empty-link" @click="emit('go-to-view', 'ingest')">Ingest → Run Parse</button>, or flip on <button type="button" class="empty-link" @click="emit('go-to-view', 'ingest')">Watch Folder</button> to auto-ingest as you play.</span>
         </li>
         <li>
           <strong class="empty-step-num">03</strong>
