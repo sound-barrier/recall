@@ -149,7 +149,7 @@ const DAY_SEGMENTS = WEEKDAYS_FULL.map((name, idx) => ({
               First Day of Week
             </h4>
             <p class="setting-desc">
-              Anchors the <em>Week of</em> headers on the Matches page. US default is Sunday; switch to Monday for ISO-8601 weeks.
+              Anchors the <em>Week of</em> headers on the Matches page.
             </p>
           </div>
           <div class="setting-control">
