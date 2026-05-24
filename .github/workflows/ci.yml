@@ -148,17 +148,34 @@ jobs:
             --reporter=junit \
             --outputFile.junit=../frontend-junit.xml
 
-      # Post a single sticky comment on PRs with "X passed, Y failed,
-      # Z skipped" plus a collapsible block per failing test (name +
-      # message + stack). check_name is the key used to match-and-update
-      # the comment on subsequent runs, so the PR doesn't accumulate one
-      # comment per push.
-      - name: Publish unit-test results to PR
-        if: always() && github.event_name == 'pull_request'
+      # Upload the JUnit XML so the coverage-comment job can fold its
+      # numbers + per-failure details into the single combined PR
+      # comment. `if: always()` so the artifact still uploads when a
+      # test step exited non-zero (which is the normal path on a
+      # failing test — `continue-on-error: true` makes the step succeed,
+      # but EnricoMi below is what flips the workflow to red).
+      - name: Upload unit-test JUnit XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: |
+            go-junit.xml
+            frontend-junit.xml
+          if-no-files-found: warn
+          retention-days: 7
+
+      # EnricoMi remains the workflow gate (it flips status to failure
+      # via `fail_on: test failures` based on the JUnit XML), but its
+      # own commenter is OFF — the coverage-comment job below renders
+      # one combined sticky comment so the PR doesn't carry two
+      # separate ones for tests and coverage.
+      - name: Gate workflow on unit-test failures
+        if: always()
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           check_name: Unit test results
-          comment_mode: always
+          comment_mode: off
           junit_files: |
             go-junit.xml
             frontend-junit.xml
@@ -490,54 +507,77 @@ jobs:
             kill "$(cat server.pid)" || true
           fi
 
-  # ── Job 12: Coverage comment on PRs ──────────────────────────────────────
-  # Aggregates Go + frontend Cobertura XML into one sticky comment on the
-  # PR. Only runs on pull_request events — push-to-main has nowhere to
-  # comment. The two coverage jobs already enforce thresholds independently
-  # (Vitest via vitest.config.ts, Go via GO_COVERAGE_MIN in the Makefile),
-  # so this job is informational and uses fail_below_min:false to avoid
-  # double-gating.
-  coverage-comment:
-    if: github.event_name == 'pull_request'
-    needs: [coverage-go, coverage-frontend]
+  # ── Job 12: Combined PR report comment ───────────────────────────────────
+  # Renders one sticky comment per PR that folds unit-test pass/fail +
+  # coverage delta (vs. main's last successful CI run) into a single
+  # markdown block. Only runs on pull_request events — push-to-main has
+  # nowhere to comment. needs: ...lint so the JUnit XML artifact is
+  # available; the always() in `if:` ensures the comment still posts
+  # when the lint job has flipped to red due to a test failure (the
+  # failure block is the whole point of the report in that case).
+  pr-report:
+    if: always() && github.event_name == 'pull_request'
+    needs: [coverage-go, coverage-frontend, lint]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
+      actions: read
     steps:
+      - uses: actions/checkout@v6
+
+      # This PR's coverage + JUnit artifacts (from sibling jobs in the
+      # same workflow run).
       - uses: actions/download-artifact@v4
         with:
           name: go-coverage
-          path: coverage-artifacts/go/
+          path: pr-cov/go/
 
       - uses: actions/download-artifact@v4
         with:
           name: frontend-coverage
-          path: coverage-artifacts/frontend/
+          path: pr-cov/frontend/
 
-      # Builds a markdown summary table at ./code-coverage-results.md
-      # combining the two Cobertura files (line + branch + complexity per
-      # file, plus an overall summary). Thresholds are display-only here
-      # (red/yellow/green badge colors) since enforcement lives upstream.
-      - name: Generate coverage markdown summary
-        uses: irongut/CodeCoverageSummary@v1.3.0
+      - uses: actions/download-artifact@v4
+        if: always()
         with:
-          filename: coverage-artifacts/go/cobertura.xml,coverage-artifacts/frontend/cobertura-coverage.xml
-          badge: true
-          fail_below_min: false
-          format: markdown
-          hide_branch_rate: false
-          hide_complexity: true
-          indicators: true
-          output: file
-          thresholds: '50 75'
+          name: unit-test-results
+          path: pr-tests/
 
-      # Stickies on the `coverage` header so re-runs update the same
-      # comment instead of stacking. `recreate: true` deletes and reposts
-      # so the PR notification fires on the new state (vs. silent edit).
-      - name: Post coverage comment to PR
+      # main's most-recent coverage from a separate workflow run. The
+      # baseline gives the Δ column meaning. dawidd6's action does the
+      # cross-run lookup that actions/download-artifact can't (the
+      # built-in only sees same-run artifacts). `if_no_artifact_found:
+      # warn` keeps the job green on first-ever PR — the renderer
+      # degrades gracefully to "—" baselines and explains why.
+      - name: Download main's coverage baseline (Go)
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: ci.yml
+          branch: main
+          name: go-coverage
+          path: main-cov/go/
+          if_no_artifact_found: warn
+
+      - name: Download main's coverage baseline (frontend)
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: ci.yml
+          branch: main
+          name: frontend-coverage
+          path: main-cov/frontend/
+          if_no_artifact_found: warn
+
+      - name: Render combined PR report
+        run: python3 scripts/render-pr-report.py > pr-report.md
+
+      # Stickies on the `pr-report` header so re-pushes update the
+      # same comment instead of stacking. recreate:true reposts the
+      # comment (vs. silent edit) so the PR notification fires on
+      # each new state.
+      - name: Post combined PR report
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          header: coverage
+          header: pr-report
           recreate: true
-          path: code-coverage-results.md
+          path: pr-report.md
