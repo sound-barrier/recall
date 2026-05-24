@@ -571,10 +571,41 @@ jobs:
       - name: Render combined PR report
         run: python3 scripts/render-pr-report.py > pr-report.md
 
-      # Stickies on the `pr-report` header so re-pushes update the
-      # same comment instead of stacking. recreate:true reposts the
-      # comment (vs. silent edit) so the PR notification fires on
-      # each new state.
+      # Single-comment guarantee, part 1 — sweep stale CI-authored
+      # comments before posting the new sticky. Two legacy patterns to
+      # match: (a) EnricoMi's "Unit test results" heading from the
+      # earlier two-comment era; (b) marocchino stickies posted under
+      # the legacy `coverage` header. The current `pr-report` sticky
+      # uses a different header marker, so this filter never touches
+      # it. Idempotent — no-op when nothing matches. Defensive against
+      # any future change that briefly leaks an orphan.
+      - name: Sweep legacy CI-authored comments
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --paginate \
+            "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            --jq '.[]
+              | select(.user.login == "github-actions[bot]")
+              | select(
+                  (.body | startswith("# Unit test results"))
+                  or (.body | startswith("# Unit Test Results"))
+                  or (.body | contains("<!-- Sticky Pull Request Commentcoverage -->"))
+                )
+              | .id' \
+            | while read -r id; do
+                [ -n "$id" ] || continue
+                echo "Deleting legacy CI comment $id"
+                gh api -X DELETE \
+                  "repos/${{ github.repository }}/issues/comments/${id}"
+              done
+
+      # Single-comment guarantee, part 2 — stickies on the `pr-report`
+      # header so re-pushes update the same comment instead of stacking.
+      # `recreate: true` deletes the previous pr-report comment and
+      # posts a fresh one so the PR's notification fires on each new
+      # state (vs. silent edit). Combined with the sweep above, the
+      # PR carries exactly one CI-authored comment after any run.
       - name: Post combined PR report
         uses: marocchino/sticky-pull-request-comment@v2
         with:
