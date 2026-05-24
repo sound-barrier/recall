@@ -755,4 +755,107 @@ describe('groupMatchesByMonthWeekDay', () => {
     expect(tree).toHaveLength(1)
     expect(tree[0]!.level).toBe('unknown')
   })
+
+  // ── Year level ──────────────────────────────────────────────────────
+  //
+  // Multi-year datasets wrap the existing Month → Week → Day tree inside
+  // Year groups. Single-year datasets unwrap the Year level so the tree
+  // shape stays identical to the pre-Year behavior — no noise for the
+  // common case where a user only has a few months of data.
+
+  it('does NOT wrap in Year groups when all records fall within one year', () => {
+    const tree = groupMatchesByMonthWeekDay(
+      [
+        { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+        { data: { date: '2026-04-15', finished_at: '20:00', result: 'defeat' } },
+      ],
+      'desc',
+    )
+    // Single year → root level is 'month', not 'year'.
+    expect(tree.every(g => g.level === 'month')).toBe(true)
+    expect(tree.map(g => g.label)).toEqual(['MAY 2026', 'APRIL 2026'])
+  })
+
+  it('wraps in Year groups when records span multiple years', () => {
+    const tree = groupMatchesByMonthWeekDay(
+      [
+        { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+        { data: { date: '2025-12-30', finished_at: '20:00', result: 'defeat' } },
+      ],
+      'desc',
+    )
+    expect(tree).toHaveLength(2)
+    expect(tree[0]!.level).toBe('year')
+    expect(tree[0]!.label).toBe('2026')
+    expect(tree[1]!.label).toBe('2025')
+  })
+
+  it('keys Year groups as "year:<YYYY>"', () => {
+    const tree = groupMatchesByMonthWeekDay(
+      [
+        { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+        { data: { date: '2025-12-30', finished_at: '20:00', result: 'defeat' } },
+      ],
+      'desc',
+    )
+    expect(tree[0]!.key).toBe('year:2026')
+    expect(tree[1]!.key).toBe('year:2025')
+  })
+
+  it('year tally equals sum of its month tallies', () => {
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+      { data: { date: '2026-03-15', finished_at: '20:00', result: 'defeat' } },
+      { data: { date: '2025-11-01', finished_at: '20:00', result: 'draw' } },
+    ]
+    const tree = groupMatchesByMonthWeekDay(recs, 'desc')
+    const y2026 = tree[0]!
+    const monthSum = y2026.children!.reduce(
+      (acc, m) => ({ w: acc.w + m.tally.w, l: acc.l + m.tally.l, d: acc.d + m.tally.d }),
+      { w: 0, l: 0, d: 0 },
+    )
+    expect(monthSum).toEqual(y2026.tally)
+    expect(y2026.tally).toEqual({ w: 1, l: 1, d: 0 })
+  })
+
+  it('reorders Year groups under sortDir', () => {
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+      { data: { date: '2025-12-30', finished_at: '20:00', result: 'defeat' } },
+    ]
+    const desc = groupMatchesByMonthWeekDay(recs, 'desc')
+    expect(desc.map(g => g.label)).toEqual(['2026', '2025'])
+    const asc = groupMatchesByMonthWeekDay(recs, 'asc')
+    expect(asc.map(g => g.label)).toEqual(['2025', '2026'])
+  })
+
+  it('keeps the UNKNOWN DATE bucket at the bottom irrespective of year wrapping', () => {
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+      { data: { date: '2025-12-30', finished_at: '20:00', result: 'defeat' } },
+      { match_key: 'unmatched:x.png', data: { result: 'victory' } },
+    ]
+    const tree = groupMatchesByMonthWeekDay(recs, 'desc')
+    expect(tree).toHaveLength(3)
+    expect(tree.at(-1)!.level).toBe('unknown')
+    // The two year wrappers come before unknown.
+    expect(tree.slice(0, 2).every(g => g.level === 'year')).toBe(true)
+  })
+
+  it('within a Year, months / weeks / days follow the normal sort + structure', () => {
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+      { data: { date: '2026-04-15', finished_at: '20:00', result: 'victory' } },
+      { data: { date: '2025-11-01', finished_at: '20:00', result: 'defeat' } },
+    ]
+    const tree = groupMatchesByMonthWeekDay(recs, 'desc')
+    const y2026 = tree[0]!
+    // 2026 has two months in newest-first order.
+    expect(y2026.children!.map(m => m.label)).toEqual(['MAY 2026', 'APRIL 2026'])
+    // Drill into the first month → week → day still works.
+    const may = y2026.children![0]!
+    expect(may.children![0]!.level).toBe('week')
+    expect(may.children![0]!.children![0]!.level).toBe('day')
+    expect(may.children![0]!.children![0]!.matches).toHaveLength(1)
+  })
 })

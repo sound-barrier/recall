@@ -81,6 +81,16 @@ describe('MatchGroupSection — header rendering', () => {
 
     const month = monthGroup([day])
     expect(mountSection(month).find('section.mg').classes()).toContain('mg-level-month')
+
+    const year: MatchGroup<MatchRecord> = {
+      key: 'year:2026',
+      level: 'year',
+      label: '2026',
+      tally: month.tally,
+      children: [month],
+    }
+    expect(mountSection(year).find('section.mg').classes()).toContain('mg-level-year')
+    expect(mountSection(year).find('.mg-label').text()).toContain('2026')
   })
 
   it('caret carries the "open" class when isGroupExpanded returns true', () => {
