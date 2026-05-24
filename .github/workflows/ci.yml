@@ -26,6 +26,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # Load shared tool-version pins (SPECTRAL_VERSION, TYPOS_VERSION,
+      # GOSEC_VERSION, HONKIT_VERSION) into $GITHUB_ENV so every step in
+      # this job — including Spectral — reads from the same source as
+      # Make, lefthook, and the dev-environment install scripts. See
+      # tool-versions.env at the repo root.
+      - name: Load tool versions
+        run: cat tool-versions.env >> "$GITHUB_ENV"
+
       # Go — install golangci-lint from source with Go 1.26 so the binary is
       # compiled with Go >= 1.25 (matching go.mod). Using a pre-built binary
       # (golangci-lint-action) would fail because pre-built binaries are
@@ -111,8 +119,9 @@ jobs:
 
       # OpenAPI spec — mirrors `make lint-openapi` (Spectral with the
       # spectral:oas ruleset + project overrides in .spectral.yaml).
+      # Version comes from tool-versions.env (loaded above).
       - name: Lint OpenAPI (Spectral)
-        run: npx --yes @stoplight/spectral-cli@6.16.0 lint api/openapi.yaml --fail-severity=warn
+        run: npx --yes "@stoplight/spectral-cli@${SPECTRAL_VERSION}" lint api/openapi.yaml --fail-severity=warn
 
       # Spell-check code, docs, and identifiers. The action ships the
       # typos binary so the runner doesn't need a separate install
@@ -327,6 +336,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Load tool versions
+        run: cat tool-versions.env >> "$GITHUB_ENV"
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
@@ -338,9 +349,10 @@ jobs:
       # GOTOOLCHAIN=local that setup-go sets — so the container's stale
       # Go can't be auto-upgraded and module loading fails. Going via
       # `go install` reuses the runner's Go 1.26 (set by setup-go above)
-      # and matches how `make lint-gosec` runs locally.
+      # and matches how `make lint-gosec` runs locally. Version pinned
+      # via tool-versions.env (GOSEC_VERSION).
       - name: Install gosec
-        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.26.1
+        run: go install "github.com/securego/gosec/v2/cmd/gosec@${GOSEC_VERSION}"
       # assets.go embeds `frontend/dist` (built by Vite). gosec only
       # needs Go source to compile, not real embed content, so stub the
       # directory rather than running a full `npm ci && npm run build`
@@ -385,20 +397,11 @@ jobs:
         run: go install golang.org/x/tools/cmd/deadcode@latest
 
       - name: Dead Go code (serveronly build tag)
-        # deadcode exits 0 regardless of findings; enforce via output check.
-        # Known-good unreachables — must stay in sync with the matching
-        # filter in Makefile `dead-code-go:` and lefthook `pre-push.deadcode`:
-        #   - App.Pick*: stubs in app_server.go for dialog methods that
-        #     only exist in the Wails desktop variant.
-        #   - NewWithStore: constructor used only by the integration test
-        #     suite; test code isn't in deadcode's call graph.
-        run: |
-          pkgs=$(go list -tags serveronly ./... | grep -v node_modules)
-          # shellcheck disable=SC2086  # $pkgs is space-separated Go import paths; word-split is intentional
-          out=$(deadcode -tags serveronly $pkgs)
-          [ -z "$out" ] || echo "$out"
-          unexpected=$(printf '%s' "$out" | grep -vE 'App\.Pick|NewWithStore' || true)
-          [ -z "$unexpected" ]
+        # Delegates to scripts/deadcode-check.sh; the allow-list of
+        # intentional unreachables lives in scripts/deadcode-allow.txt
+        # and is shared with Make + lefthook so all three call sites
+        # stay in sync.
+        run: bash scripts/deadcode-check.sh
 
       - name: Dead TypeScript code (knip)
         run: cd frontend && npm run dead:ts

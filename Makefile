@@ -9,6 +9,11 @@
 
 .DEFAULT_GOAL := help
 
+# Pinned tool versions shared with lefthook, CI workflows, and the
+# dev-environment install scripts. See tool-versions.env for the full
+# list; `make check-deps` validates these against upstream releases.
+include tool-versions.env
+
 DOCKER        ?= docker
 DOCKERFILE    := Dockerfile.build
 DIST_DIR      := dist
@@ -254,8 +259,9 @@ lint-gosec: ## Go SAST via gosec (both build tags)
 
 # Spectral runs the spectral:oas ruleset against api/openapi.yaml; see
 # .spectral.yaml at the project root for rule overrides. npx pulls a
-# pinned version on demand so no global install is required.
-SPECTRAL ?= npx --yes @stoplight/spectral-cli@6.16.0
+# pinned version on demand so no global install is required. Version
+# pin lives in tool-versions.env (SPECTRAL_VERSION).
+SPECTRAL ?= npx --yes @stoplight/spectral-cli@$(SPECTRAL_VERSION)
 
 lint-openapi: ## Lint api/openapi.yaml (Spectral, spectral:oas ruleset)
 	@echo "[ recall ] Linting OpenAPI (spectral)…"
@@ -280,20 +286,15 @@ typecheck: ## TypeScript type-check (frontend api.ts + api.gen.d.ts)
 # deadcode does whole-program call-graph analysis — only run for the serveronly
 # variant. The Wails variant registers App methods via reflection so deadcode
 # would report them as unreachable even though they're live; golangci-lint
-# `unused` already covers that variant. deadcode exits 0 regardless of findings
-# so we capture output and fail on unexpected results ourselves.
-# App.Pick* are intentional stubs in app_server.go (dialog methods that only
-# exist in the Wails desktop build; server mode has no file-dialog surface).
+# `unused` already covers that variant. The check, including the allow-list
+# of intentional unreachables, lives in scripts/deadcode-check.sh so Make,
+# lefthook, and CI all run the same logic.
 # Install once: go install golang.org/x/tools/cmd/deadcode@latest
 dead-code: dead-code-go dead-code-ts ## Find unreachable Go functions and unused TypeScript exports
 
 dead-code-go: ## Unreachable Go functions (deadcode, serveronly build tag)
 	@echo "[ recall ] Scanning for dead Go code (deadcode -tags serveronly)…"
-	@pkgs=$$(go list -tags serveronly ./... | grep -v node_modules); \
-	 out=$$(deadcode -tags serveronly $$pkgs); \
-	 [ -z "$$out" ] || echo "$$out"; \
-	 unexpected=$$(printf '%s' "$$out" | grep -vE 'App\.Pick|NewWithStore' || true); \
-	 [ -z "$$unexpected" ]
+	@bash scripts/deadcode-check.sh
 	@echo "[ recall ] ✓  No unexpected dead Go code"
 
 dead-code-ts: ## Unused TypeScript exports and stale deps (knip)
@@ -499,10 +500,9 @@ dev: ## Start hot-reload Wails dev server (macOS only)
 SWAGGER_PORT  ?= 8080
 SWAGGER_IMAGE ?= swaggerapi/swagger-ui:v5.32.6
 
-# Honkit pin — keep in sync with HONKIT_VERSION in
-# .github/workflows/pages.yml so local previews build the same site
-# the workflow deploys.
-HONKIT_VERSION ?= 6.2.0
+# Honkit pin lives in tool-versions.env (HONKIT_VERSION).
+# .github/workflows/pages.yml reads from the same source so local
+# previews build the same site the workflow deploys.
 PAGES_PORT     ?= 4000
 
 swagger: ## Serve api/openapi.yaml via Swagger UI on :$(SWAGGER_PORT) (Ctrl-C to stop)

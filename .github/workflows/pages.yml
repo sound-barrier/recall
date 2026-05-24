@@ -43,12 +43,9 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
-# Pinned Honkit version. Bump here when intentionally upgrading; the
-# rest of the project's pinned tooling lives in .devcontainer/
-# postCreate.sh, but Honkit isn't dev-container content so the pin
-# is workflow-local.
-env:
-  HONKIT_VERSION: 6.2.0
+# Honkit pin lives in tool-versions.env at the repo root (shared with
+# Make's pages-build target). Loaded into $GITHUB_ENV by the first
+# job step below.
 
 jobs:
   deploy:
@@ -58,6 +55,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Load tool versions
+        run: cat tool-versions.env >> "$GITHUB_ENV"
 
       # Track the devcontainer's Node pin (.devcontainer/devcontainer.json
       # → features → node:1.version) so the book builds against the same

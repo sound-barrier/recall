@@ -29,132 +29,7 @@ first.
 
 ---
 
-## 1. Triplicated `deadcode` known-good filter
-
-**Size: S**
-
-**What.**
-The grep regex `App\.Pick|NewWithStore` — used to swallow intentional
-unreachables from `golang.org/x/tools/cmd/deadcode` output — is hard-
-coded in three places:
-
-- `Makefile`, target `dead-code-go` (line 295).
-- `lefthook.yml`, hook `pre-push.deadcode` (line 109).
-- `.github/workflows/ci.yml`, step "Dead Go code" (line 400).
-
-**Why it's debt.**
-CLAUDE.md already records that the CI copy drifted once because it
-wasn't named in the cross-reference. Three copies × one regex means
-every new "intentional dead" symbol (a build-tag stub, a test-only
-constructor) has to be added in three places in lock-step or the next
-push fails CI silently — only after the contributor has waited on the
-local hook to pass. The cost grows linearly with the number of
-deliberate-but-unreachable symbols.
-
-**Mitigation plan.**
-
-1. Add `scripts/deadcode-allow.txt` — one regex fragment per line,
-   `#` comments allowed. Seed with the current two entries.
-2. Add `scripts/deadcode-check.sh` that:
-   - shells `go list ./... | grep -v node_modules` into `deadcode`,
-   - filters via `grep -vEf <(grep -vE '^#|^$' scripts/deadcode-allow.txt)`,
-   - exits 1 iff the residual is non-empty.
-3. Replace the Makefile, lefthook, and CI bodies with a single call to
-   `scripts/deadcode-check.sh`.
-4. Cross-reference from `CLAUDE.md`'s "deadcode known-good filter
-   lives in three parallel files" bullet — update the bullet to point
-   at the single allow-list now.
-
-**How large.**
-S. ~1 hour. Single PR. Risk is low — if the script is wrong, the next
-CI run fails the same way the Makefile would have.
-
----
-
-## 2. Triplicated `@stoplight/spectral-cli@6.16.0` pin
-
-**Size: S**
-
-**What.**
-The Spectral CLI version `6.16.0` is hard-coded in three files:
-
-- `Makefile`, `SPECTRAL ?= npx --yes @stoplight/spectral-cli@6.16.0`
-  (line 258).
-- `lefthook.yml`, `pre-commit.spectral.run` (line 45).
-- `.github/workflows/ci.yml`, "Lint OpenAPI (Spectral)" step
-  (line 115).
-
-**Why it's debt.**
-Same shape as #1, and called out in CLAUDE.md as one of "five other
-pinned tools outside `make check-deps` scope". A `make check-deps`
-green light does NOT mean Spectral is current — silently invites
-drift on the version that the dev hook, the dev `make lint` run, and
-CI all use.
-
-**Mitigation plan.**
-
-1. Add `SPECTRAL_VERSION` to `Makefile` as a single source of truth.
-2. Export it from `Makefile` to a `.spectral-version` dotfile via a
-   `gen-spectral-version` target; check the dotfile into git.
-3. `lefthook.yml` reads it via `$(cat .spectral-version)` inside the
-   `run:` shell.
-4. `.github/workflows/ci.yml` reads it the same way.
-5. Extend `make check-deps` to compare `SPECTRAL_VERSION` against
-   `npm view @stoplight/spectral-cli version` and fail if behind.
-
-**How large.**
-S. ~1 hour. Could be combined with #1 in a single "consolidate
-duplicated version pins" PR — same shape, same review surface.
-
----
-
-## 3. Other duplicated version pins outside `make check-deps`
-
-**Size: M**
-
-**What.**
-Tool versions pinned in multiple files but **not** validated by
-`make check-deps`:
-
-| Tool | Files |
-|---|---|
-| Swagger UI image | `Makefile` `SWAGGER_IMAGE` |
-| Honkit | `Makefile` `HONKIT_VERSION` (6.2.0) + `.github/workflows/pages.yml` `HONKIT_VERSION` env (6.2.0) |
-| typos | `initialize.sh` `TYPOS_VERSION` (v1.46.3) + `.devcontainer/postCreate.sh` `TYPOS_VERSION` (v1.46.3) + `.github/workflows/ci.yml` `crate-ci/typos@vX.Y.Z` action pin |
-| gosec | `initialize.sh` `GOSEC_VERSION` (v2.26.1) + `.devcontainer/postCreate.sh` `GOSEC_VERSION` (v2.26.1) + `.github/workflows/ci.yml` `go install …@vX.Y.Z` literal |
-
-CLAUDE.md flags the situation honestly: "A green `make check-deps`
-does NOT mean everything is current." That's the debt.
-
-**Why it's debt.**
-Five tools need manual cross-checking on every bump. Drift between
-the devcontainer copy and the CI copy of the same tool produces
-"works on my machine" / "fails in CI" divergence that's expensive
-to diagnose because the dev environment passes locally.
-
-**Mitigation plan.**
-
-1. Promote `TYPOS_VERSION` and `GOSEC_VERSION` to a shared file —
-   `tool-versions.env` at repo root, one `KEY=value` per line.
-2. Have `initialize.sh` and `.devcontainer/postCreate.sh` `source` it.
-3. Have the relevant CI jobs `cat tool-versions.env >> $GITHUB_ENV`
-   in their first step.
-4. Move the `crate-ci/typos@vX.Y.Z` *action* pin to use the same env
-   var (`uses: crate-ci/typos@${{ env.TYPOS_VERSION }}`).
-5. Move `HONKIT_VERSION` into `tool-versions.env` too; Makefile and
-   pages.yml both consume from there.
-6. Extend `make check-deps` to iterate every key in
-   `tool-versions.env` and look up the latest version per tool
-   (npm view / GitHub releases / Docker Hub) — emit one row per tool
-   and exit non-zero on any "behind".
-
-**How large.**
-M. ~½ day. One PR. Worth bundling with #1 and #2 into a single
-"single source of truth for tool versions" change.
-
----
-
-## 4. `App.vue` style block is a 3 699-line monolith
+## 1. `App.vue` style block is a 3 699-line monolith
 
 **Size: L**
 
@@ -218,7 +93,7 @@ transition. No atomic landing required.
 
 ---
 
-## 5. `pkg/app/app.go` is a 1 710-line grab-bag
+## 2. `pkg/app/app.go` is a 1 710-line grab-bag
 
 **Size: L**
 
@@ -308,7 +183,7 @@ so do this during a quiet period.
 
 ---
 
-## 6. `pkg/parser/parser.go` is a 1 562-line monolith
+## 3. `pkg/parser/parser.go` is a 1 562-line monolith
 
 **Size: L**
 
@@ -341,7 +216,7 @@ summary, personal, scoreboard) plus their shared infrastructure:
 - `ParseScreenshotsDir` (the entry point used by the App).
 
 **Why it's debt.**
-Same shape as #5 but worse: a single file mixes I/O (Tesseract
+Same shape as #2 but worse: a single file mixes I/O (Tesseract
 shell-out), pure data (hero/map tables), pixel math, OCR text
 post-processing, and four distinct dispatch targets. Symptoms:
 
@@ -357,7 +232,7 @@ post-processing, and four distinct dispatch targets. Symptoms:
   package namespace and complicate parallel test isolation.
 
 **Mitigation plan.**
-Same shape as #5: split along the natural seams, keep the package
+Same shape as #2: split along the natural seams, keep the package
 public surface stable.
 
 1. `pkg/parser/types.go` — `MatchResult`, `HeroSR`, `HeroPlay`,
@@ -393,13 +268,13 @@ Each step is a mechanical move + import fix. The existing
 optional — Go's test discovery doesn't care.
 
 **How large.**
-L. 3–5 days spread across 10 PRs. Same risk profile as #5: no
-behavior change. Worth doing **after** #5 so the App reorg is the
+L. 3–5 days spread across 10 PRs. Same risk profile as #2: no
+behavior change. Worth doing **after** #2 so the App reorg is the
 known-good template.
 
 ---
 
-## 7. `wailsjs/go/models.ts` requires manual hand-editing
+## 4. `wailsjs/go/models.ts` requires manual hand-editing
 
 **Size: M**
 
@@ -465,7 +340,7 @@ when the four-step API-binding process becomes a real bottleneck.
 
 ---
 
-## 8. `frontend/node_modules/flatted/golang/` pollutes `go list ./...`
+## 5. `frontend/node_modules/flatted/golang/` pollutes `go list ./...`
 
 **Size: S**
 
@@ -529,7 +404,7 @@ window.
 
 ---
 
-## 9. `//go:embed all:frontend/dist` blocks Go-only CI jobs
+## 6. `//go:embed all:frontend/dist` blocks Go-only CI jobs
 
 **Size: S**
 
@@ -571,7 +446,7 @@ S. ~2 hours. Pays itself back the next time a new CI job is added.
 
 ---
 
-## 10. Pre-existing `KNOWN_CONTRAST_DEBT` a11y exclusions
+## 7. Pre-existing `KNOWN_CONTRAST_DEBT` a11y exclusions
 
 **Size: M**
 
@@ -603,7 +478,7 @@ contrast ratio clears WCAG 2 AA, then delete the line from
    clears 4.5:1 against the current background (or vice versa) and
    matches the visual design intent.
 3. Edit the rule in App.vue (or wherever the rule lands after
-   #4's component-CSS extraction).
+   #1's component-CSS extraction).
 4. Delete the line from `KNOWN_CONTRAST_DEBT`. Run
    `npm --prefix frontend run test:e2e` locally — the test should
    stay green.
@@ -619,7 +494,7 @@ shade", in which case iterate. No functional code change.
 
 ---
 
-## 11. Go coverage gate set to 40%; frontend gate is 70%
+## 8. Go coverage gate set to 40%; frontend gate is 70%
 
 **Size: S**
 
@@ -667,7 +542,7 @@ the floor is too tight — keep the 2-point buffer.
 
 ---
 
-## 12. GitHub Actions are tag-pinned, not SHA-pinned
+## 9. GitHub Actions are tag-pinned, not SHA-pinned
 
 **Size: M**
 
@@ -707,7 +582,7 @@ include `id-token: write` and `packages: write`.
    `actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v4.1.7`.
    The comment after the SHA preserves human-readable version
    tracking.
-2. First-party actions (`./.github/actions/…` once #9 lands) don't
+2. First-party actions (`./.github/actions/…` once #6 lands) don't
    need SHAs — they're checked out from the same repo.
 3. Add `pinact run --check` to CI as a lint step so a future PR
    that adds an unpinned action fails the build.
@@ -724,7 +599,7 @@ Recurring effort is near-zero once dependabot handles the bumps.
 
 ---
 
-## 13. `release.yml` carries a lot of bespoke logic
+## 10. `release.yml` carries a lot of bespoke logic
 
 **Size: M**
 
@@ -791,7 +666,7 @@ non-trivial and would benefit from local testing.
 
 ---
 
-## 14. `pkg/app/app.go`'s read-time inference is fragile by design
+## 11. `pkg/app/app.go`'s read-time inference is fragile by design
 
 **Size: S — documentation, M — behavioral lock-in**
 
@@ -830,7 +705,7 @@ test because the test fixtures match the in-the-wild case.
    constraint is in the symbol name, not just the comment.
 4. If/when the helpers grow beyond two: extract them into
    `pkg/app/inference.go` with a package-level doc comment naming
-   the invariant explicitly. (This becomes natural once #5
+   the invariant explicitly. (This becomes natural once #2
    happens.)
 
 **How large.**
@@ -840,7 +715,7 @@ doing the S version proactively.
 
 ---
 
-## 15. Tests in `pkg/parser/integration_test.go` skip by default
+## 12. Tests in `pkg/parser/integration_test.go` skip by default
 
 **Size: M**
 
@@ -877,7 +752,7 @@ the per-function unit tests.
    exists — promote to a Makefile target).
 7. Tesseract version matters: CI must install the same version as
    the dev environment, else golden text diverges. Pin via
-   `tool-versions.env` (per #3).
+   `tool-versions.env`.
 
 **How large.**
 M. ~½ day for the fixture curation + Makefile wiring + CI step.
@@ -888,7 +763,7 @@ by tolerance-matching the JSON (skip whitespace-only diffs, allow
 
 ---
 
-## 16. `App.vue` directly imports four view SFCs but is also a router
+## 13. `App.vue` directly imports four view SFCs but is also a router
 
 **Size: S**
 
@@ -928,7 +803,7 @@ first-class pattern.
 
 ---
 
-## 17. `wails dev` only works on macOS; Linux/Windows dev runs serveronly
+## 14. `wails dev` only works on macOS; Linux/Windows dev runs serveronly
 
 **Size: L**
 
@@ -982,7 +857,7 @@ attempting to change the dev model.
 
 ---
 
-## 18. `screenshotType()` ordering is order-dependent
+## 15. `screenshotType()` ordering is order-dependent
 
 **Size: S**
 
@@ -1014,7 +889,7 @@ S. ~30 minutes. Self-contained test addition.
 
 ---
 
-## 19. `recall` binary committed at repo root (22 MB)
+## 16. `recall` binary committed at repo root (22 MB)
 
 **Size: S**
 
@@ -1046,7 +921,7 @@ S. ~15 minutes.
 
 ---
 
-## 20. CLAUDE.md is 75 KB and load-bearing for too many gotchas
+## 17. CLAUDE.md is 75 KB and load-bearing for too many gotchas
 
 **Size: M**
 
@@ -1064,12 +939,15 @@ lives only in CLAUDE.md is a constraint that:
 - A new contributor (human or AI) only knows if they read 75 KB of
   prose first.
 - Doesn't fail-loud when violated — silent breakage is the norm
-  (see #1, #2, #3, #7 above).
+  (see #4, #5, #6 above).
 - Drifts from the code over time without anything noticing.
 
-Many of the items in this file (#1, #2, #3, #7, #8, #9, #14, #18)
-are direct attempts to **convert CLAUDE.md prose into executable
-checks**. The closure of that work eventually shrinks CLAUDE.md.
+Many of the items in this file (#4, #5, #6, #11, #15) are direct
+attempts to **convert CLAUDE.md prose into executable checks**. The
+closure of that work eventually shrinks CLAUDE.md. The
+already-completed "tool-versions.env + deadcode allow-list"
+consolidation is the template: each replaced four CLAUDE.md
+gotcha-bullets with one executable check.
 
 **Mitigation plan.**
 This is meta-debt. Pay it off by paying off the others. Track
@@ -1080,13 +958,13 @@ knowledge has been codified.
 
 Concrete near-term:
 
-1. As #1 lands, delete CLAUDE.md's "deadcode known-good filter
-   lives in three parallel files" bullet.
-2. As #2/#3 land, delete the "make check-deps only validates four
-   pins" bullet.
-3. As #7 lands, delete the "Adding a field to an existing Go
+1. As #4 lands, delete the "Adding a field to an existing Go
    struct" bullet (or shrink it to one line cross-referencing the
    CI guard).
+2. As #6 lands, delete the "Any CI job that loads the root `main`
+   package…" bullet — the composite action replaces the convention.
+3. As #5 lands, delete the "`go list ./...` includes a stray Go
+   package in `node_modules`" bullet.
 4. After ~6 months, CLAUDE.md should naturally trim by 20–40%.
 
 **How large.**
@@ -1102,41 +980,49 @@ shaped wins that immediately reduce future debt accrual. The
 middle group is structural refactor. The tail is product-level
 choices.
 
-### Phase 1 — drift prevention (1–2 weeks, mostly S items)
+### Already paid down
 
-1. #1 deadcode allow-list consolidation (S)
-2. #2 + #3 tool-versions.env (M, batched)
-3. #11 Go coverage floor ratchet (S)
-4. #18 screenshotType ordering test (S)
-5. #14 inference invariant test (S)
-6. #19 .gitignore stray binaries (S)
-7. #12 SHA-pin GitHub Actions (M)
+- Triplicated `deadcode` known-good filter — consolidated into
+  `scripts/deadcode-allow.txt` + `scripts/deadcode-check.sh`
+  consumed by Make, lefthook, and CI.
+- Triplicated `@stoplight/spectral-cli` pin and other duplicated
+  tool versions (typos, gosec, Honkit) — consolidated into
+  `tool-versions.env` at repo root, validated by `make check-deps`.
+
+### Phase 1 — drift prevention (1 week, mostly S items)
+
+1. #8 Go coverage floor ratchet (S)
+2. #15 screenshotType ordering test (S)
+3. #11 inference invariant test (S)
+4. #16 .gitignore stray binaries (S)
+5. #9 SHA-pin GitHub Actions (M)
 
 ### Phase 2 — guard rails (1 week, M items)
 
-1. #7 wailsjs models.ts CI guard, short-term form (M)
-2. #9 prepare-go-build composite action (S)
-3. #16 lazy-load view components (S)
-4. #15 commit golden-file fixtures + CI integration (M)
+1. #4 wailsjs models.ts CI guard, short-term form (M)
+2. #6 prepare-go-build composite action (S)
+3. #13 lazy-load view components (S)
+4. #12 commit golden-file fixtures + CI integration (M)
 
 ### Phase 3 — structural refactor (2–3 weeks, L items)
 
-1. #5 split `pkg/app/app.go` into per-concern files (L)
-2. #6 split `pkg/parser/parser.go` into per-concern files (L)
-3. #4 extract App.vue's `<style>` into per-component scoped blocks (L)
-4. #10 retire `KNOWN_CONTRAST_DEBT` selectors one at a time (M)
+1. #2 split `pkg/app/app.go` into per-concern files (L)
+2. #3 split `pkg/parser/parser.go` into per-concern files (L)
+3. #1 extract App.vue's `<style>` into per-component scoped blocks (L)
+4. #7 retire `KNOWN_CONTRAST_DEBT` selectors one at a time (M)
 
 ### Phase 4 — opportunistic / product-level
 
-1. #8 move Go module root out of overlap with frontend/ (S — schedule a quiet window)
-2. #13 release.yml script extraction (M)
-3. #7 long-term: wailsjs from OpenAPI (L)
-4. #17 server-mode parity audit or Wails containerization (L)
-5. #20 CLAUDE.md naturally shrinks as a side effect
+1. #5 move Go module root out of overlap with frontend/ (S — schedule a quiet window)
+2. #10 release.yml script extraction (M)
+3. #4 long-term: wailsjs from OpenAPI (L)
+4. #14 server-mode parity audit or Wails containerization (L)
+5. #17 CLAUDE.md naturally shrinks as a side effect
 
 ### Total estimated cost
 
-Roughly **5–7 weeks of focused work** across all four phases, spread
-across the project's release cadence. None of it is urgent — the
-codebase is in good shape today. The point of this file is to make
-the latent costs visible so they don't compound silently.
+Roughly **4–6 weeks of focused work** remaining across all four
+phases, spread across the project's release cadence. None of it is
+urgent — the codebase is in good shape today. The point of this
+file is to make the latent costs visible so they don't compound
+silently.
