@@ -4,6 +4,12 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   test: {
+    // Unit tests live as src/**/*.test.ts. Playwright e2e specs in
+    // tests/e2e/*.spec.ts use a different runner and must not be picked
+    // up here — without this scope Vitest tries to import them and
+    // crashes on Playwright's test() being called outside a Playwright
+    // runner.
+    include: ['src/**/*.test.ts'],
     // Composable tests need a DOM + localStorage; all tests use happy-dom
     // so the same environment is available everywhere (pure-function tests
     // are unaffected since they don't use any browser APIs).
