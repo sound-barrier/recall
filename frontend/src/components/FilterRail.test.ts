@@ -32,6 +32,8 @@ function mountRail(over: Partial<Record<string, unknown>> = {}) {
       recordCount: 12,
       filteredCount: 12,
       includeUndated: false,
+      minPlayPercent: 0,
+      minPlayMinutes: 0,
       ...over,
     },
   })
@@ -263,5 +265,62 @@ describe('FilterRail — Undated toggle', () => {
   it('shows singular "match" copy in the title when count is 1', () => {
     const wrapper = mountRail({ undatedMatchCount: 1, includeUndated: false })
     expect(wrapper.find('.undated-toggle').attributes('title')).toContain('1 undated match ')
+  })
+})
+
+describe('FilterRail — min-play threshold inputs', () => {
+  it('renders both inputs with the shared "Min play" eyebrow', () => {
+    const wrapper = mountRail()
+    const group = wrapper.find('.min-play-group')
+    expect(group.exists()).toBe(true)
+    expect(group.text()).toContain('Min play')
+    expect(group.findAll('input[type="number"]')).toHaveLength(2)
+  })
+
+  it('renders blank value when threshold is 0 (placeholder shows 0)', () => {
+    const wrapper = mountRail({ minPlayPercent: 0, minPlayMinutes: 0 })
+    const inputs = wrapper.find('.min-play-group').findAll('input[type="number"]')
+    expect((inputs[0]!.element as HTMLInputElement).value).toBe('')
+    expect((inputs[1]!.element as HTMLInputElement).value).toBe('')
+  })
+
+  it('reflects non-zero prop values on the input value', () => {
+    const wrapper = mountRail({ minPlayPercent: 5, minPlayMinutes: 1.5 })
+    const inputs = wrapper.find('.min-play-group').findAll('input[type="number"]')
+    expect((inputs[0]!.element as HTMLInputElement).value).toBe('5')
+    expect((inputs[1]!.element as HTMLInputElement).value).toBe('1.5')
+  })
+
+  it('group has .active class only when either threshold > 0', () => {
+    expect(mountRail({ minPlayPercent: 0, minPlayMinutes: 0 }).find('.min-play-group').classes())
+      .not.toContain('active')
+    expect(mountRail({ minPlayPercent: 5, minPlayMinutes: 0 }).find('.min-play-group').classes())
+      .toContain('active')
+    expect(mountRail({ minPlayPercent: 0, minPlayMinutes: 1 }).find('.min-play-group').classes())
+      .toContain('active')
+  })
+
+  it('emits set-min-play-percent on the percent input change', async () => {
+    const wrapper = mountRail({ minPlayPercent: 0, minPlayMinutes: 0 })
+    const pctInput = wrapper.find('.min-play-group').findAll('input[type="number"]')[0]!
+    await pctInput.setValue('5')
+    await pctInput.trigger('change')
+    expect(wrapper.emitted('set-min-play-percent')![0]).toEqual([5])
+  })
+
+  it('emits set-min-play-minutes on the minutes input change', async () => {
+    const wrapper = mountRail({ minPlayPercent: 0, minPlayMinutes: 0 })
+    const minInput = wrapper.find('.min-play-group').findAll('input[type="number"]')[1]!
+    await minInput.setValue('2.5')
+    await minInput.trigger('change')
+    expect(wrapper.emitted('set-min-play-minutes')![0]).toEqual([2.5])
+  })
+
+  it('clearing the input (NaN valueAsNumber) emits 0', async () => {
+    const wrapper = mountRail({ minPlayPercent: 5, minPlayMinutes: 0 })
+    const pctInput = wrapper.find('.min-play-group').findAll('input[type="number"]')[0]!
+    await pctInput.setValue('')
+    await pctInput.trigger('change')
+    expect(wrapper.emitted('set-min-play-percent')![0]).toEqual([0])
   })
 })

@@ -61,6 +61,8 @@ function mountWith(records: MatchRecord[], includeUndated = false) {
       earliestMatchDateTime: '',
       nowDateTime: '2026-05-23T18:00',
       includeUndated,
+      minPlayPercent: 0,
+      minPlayMinutes: 0,
     },
   })
   return { wrapper, filters, grouping, cardState }

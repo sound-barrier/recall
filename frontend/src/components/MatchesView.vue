@@ -60,11 +60,18 @@ const props = defineProps<{
   // useIncludeUndated composable) so the preference persists across
   // navigation and launches.
   includeUndated: boolean
+  // Min-play threshold state (also persisted by App.vue via the
+  // useMinPlayThreshold composable). 0 means the input is empty /
+  // disabled.
+  minPlayPercent: number
+  minPlayMinutes: number
 }>()
 
 const emit = defineEmits<{
   'go-to-view': [next: 'settings' | 'ingest' | 'matches' | 'unknown']
   'set-include-undated': [next: boolean]
+  'set-min-play-percent': [n: number]
+  'set-min-play-minutes': [n: number]
 }>()
 
 // Pre-extracted destructures keep the template readable without
@@ -137,6 +144,8 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
       :all-expanded="cs.allExpanded.value"
       :record-count="records.length"
       :include-undated="includeUndated"
+      :min-play-percent="minPlayPercent"
+      :min-play-minutes="minPlayMinutes"
       :filtered-count="f.filteredSorted.value.length"
       @update:filter-from="setFilterFrom"
       @update:filter-to="setFilterTo"
@@ -151,6 +160,8 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
       @toggle-sort="f.toggleSort"
       @toggle-all="cs.toggleAll"
       @set-include-undated="(v: boolean) => emit('set-include-undated', v)"
+      @set-min-play-percent="(n: number) => emit('set-min-play-percent', n)"
+      @set-min-play-minutes="(n: number) => emit('set-min-play-minutes', n)"
     />
 
     <div v-if="records.length > 0 && g.groups.value.length > 0" class="match-list">

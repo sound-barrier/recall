@@ -159,6 +159,28 @@ export function formatRelativeTime(ms: number | null | undefined): string {
 }
 
 // Builds the URL for the screenshot image server route.
+// Parse an OW client "game_length" string (e.g. "11:25") into total
+// minutes (fractional). Returns null when the string is missing or
+// doesn't match the MM:SS / M:SS / H:MM:SS shape — callers must treat
+// null as "unknown" rather than 0 so they don't fail a minutes-played
+// threshold purely because the game-length field is absent.
+export function parseGameLengthMinutes(s: string | null | undefined): number | null {
+  if (!s) return null
+  const parts = s.split(':').map(p => Number(p))
+  if (parts.some(n => !Number.isFinite(n))) return null
+  if (parts.length === 2) {
+    const [m, sec] = parts as [number, number]
+    if (m < 0 || sec < 0) return null
+    return m + sec / 60
+  }
+  if (parts.length === 3) {
+    const [h, m, sec] = parts as [number, number, number]
+    if (h < 0 || m < 0 || sec < 0) return null
+    return h * 60 + m + sec / 60
+  }
+  return null
+}
+
 export function screenshotURL(filename: string): string {
   return `/_screenshot/${encodeURIComponent(filename)}`
 }
