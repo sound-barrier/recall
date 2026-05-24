@@ -1528,78 +1528,50 @@ func splitByMatchMetadata(group []fileEntry) [][]fileEntry {
 	return buckets
 }
 
+// firstNonEmpty returns a when a is not its zero value; b otherwise.
+// Mirror of the "first non-empty wins" rule mergeMatchResult applies
+// across the disjoint field sets that SUMMARY / TEAMS / PERSONAL /
+// RANK parses each populate. Works for any comparable type — string,
+// int, pointer; the slice cases below stay inline because []T isn't
+// comparable in Go.
+func firstNonEmpty[T comparable](a, b T) T {
+	var zero T
+	if a != zero {
+		return a
+	}
+	return b
+}
+
 // mergeMatchResult fills empty fields on dst from src — i.e. each field takes
 // the first non-zero / non-empty value seen across the merge group. This
 // works because the two screenshot types populate disjoint subsets: the
 // SUMMARY has map/result/etc., the TEAMS scoreboard has damage/healing/mit.
 func mergeMatchResult(dst, src *parser.MatchResult) {
-	if dst.Map == "" {
-		dst.Map = src.Map
-	}
-	if dst.Type == "" {
-		dst.Type = src.Type
-	}
-	if dst.Mode == "" {
-		dst.Mode = src.Mode
-	}
-	if dst.Role == "" {
-		dst.Role = src.Role
-	}
-	if dst.Hero == "" {
-		dst.Hero = src.Hero
-	}
-	if dst.Eliminations == 0 {
-		dst.Eliminations = src.Eliminations
-	}
-	if dst.Assists == 0 {
-		dst.Assists = src.Assists
-	}
-	if dst.Deaths == 0 {
-		dst.Deaths = src.Deaths
-	}
-	if dst.Damage == 0 {
-		dst.Damage = src.Damage
-	}
-	if dst.Healing == 0 {
-		dst.Healing = src.Healing
-	}
-	if dst.Mitigation == 0 {
-		dst.Mitigation = src.Mitigation
-	}
-	if dst.Result == "" {
-		dst.Result = src.Result
-	}
-	if dst.FinalScore == "" {
-		dst.FinalScore = src.FinalScore
-	}
-	if dst.Date == "" {
-		dst.Date = src.Date
-	}
-	if dst.FinishedAt == "" {
-		dst.FinishedAt = src.FinishedAt
-	}
-	if dst.GameLength == "" {
-		dst.GameLength = src.GameLength
-	}
-	if dst.Performance == nil {
-		dst.Performance = src.Performance
-	}
+	dst.Map = firstNonEmpty(dst.Map, src.Map)
+	dst.Type = firstNonEmpty(dst.Type, src.Type)
+	dst.Mode = firstNonEmpty(dst.Mode, src.Mode)
+	dst.Role = firstNonEmpty(dst.Role, src.Role)
+	dst.Hero = firstNonEmpty(dst.Hero, src.Hero)
+	dst.Eliminations = firstNonEmpty(dst.Eliminations, src.Eliminations)
+	dst.Assists = firstNonEmpty(dst.Assists, src.Assists)
+	dst.Deaths = firstNonEmpty(dst.Deaths, src.Deaths)
+	dst.Damage = firstNonEmpty(dst.Damage, src.Damage)
+	dst.Healing = firstNonEmpty(dst.Healing, src.Healing)
+	dst.Mitigation = firstNonEmpty(dst.Mitigation, src.Mitigation)
+	dst.Result = firstNonEmpty(dst.Result, src.Result)
+	dst.FinalScore = firstNonEmpty(dst.FinalScore, src.FinalScore)
+	dst.Date = firstNonEmpty(dst.Date, src.Date)
+	dst.FinishedAt = firstNonEmpty(dst.FinishedAt, src.FinishedAt)
+	dst.GameLength = firstNonEmpty(dst.GameLength, src.GameLength)
+	dst.Performance = firstNonEmpty(dst.Performance, src.Performance)
 	// Rank-screen fields (filled only by parseRank).
-	if dst.Rank == "" {
-		dst.Rank = src.Rank
-	}
-	if dst.Level == 0 {
-		dst.Level = src.Level
-	}
+	dst.Rank = firstNonEmpty(dst.Rank, src.Rank)
+	dst.Level = firstNonEmpty(dst.Level, src.Level)
 	if len(dst.Modifiers) == 0 {
-		dst.Modifiers = src.Modifiers
+		dst.Modifiers = src.Modifiers // []string — not comparable, can't use firstNonEmpty
 	}
-	if dst.RankProgress == 0 {
-		dst.RankProgress = src.RankProgress
-	}
-	if dst.ChangePercent == 0 {
-		dst.ChangePercent = src.ChangePercent
-	}
+	dst.RankProgress = firstNonEmpty(dst.RankProgress, src.RankProgress)
+	dst.ChangePercent = firstNonEmpty(dst.ChangePercent, src.ChangePercent)
 	// SR is per-hero; merge by hero name like HeroesPlayed.
 	for _, srcSR := range src.SR {
 		exists := false
