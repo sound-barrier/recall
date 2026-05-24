@@ -1,0 +1,50 @@
+# Sync repo labels from .github/labels.yml (the source of truth) to
+# the actual GitHub label set. Triggers:
+#
+#   - push to main when labels.yml or this workflow file changes
+#   - workflow_dispatch for ad-hoc re-sync (after a manual label
+#     edit got reverted, or to confirm idempotency)
+#
+# delete-other-labels stays FALSE so labels added manually via the
+# UI (e.g. one-off triage tags) aren't blown away on every sync.
+# Flip the workflow_dispatch input to "true" once if you ever want
+# to do a cleanup pass that hard-mirrors labels.yml.
+#
+# Action used: EndBug/label-sync@v2 — popular, minimal, no auth
+# beyond the workflow's default GITHUB_TOKEN.
+#
+# SECURITY NOTE: the one ${{ }} expression below — inputs.delete-
+# other-labels — comes from a workflow_dispatch input restricted to
+# users with write access to the repo, and is passed straight to an
+# action `with:` arg (not interpolated into a shell). No injection
+# vector.
+
+name: Labels
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/labels.yml'
+      - '.github/workflows/labels.yml'
+  workflow_dispatch:
+    inputs:
+      delete-other-labels:
+        description: 'Delete labels that are NOT in labels.yml (irreversible)'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EndBug/label-sync@v2
+        with:
+          config-file: .github/labels.yml
+          delete-other-labels: ${{ inputs.delete-other-labels || false }}
