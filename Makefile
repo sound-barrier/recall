@@ -28,7 +28,7 @@ WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
         build-linux build-windows build-mac build-all build-all-docker \
         build-server-linux build-server-windows build-server-mac build-server-all \
         build-server-container \
-        lint lint-go lint-js lint-css lint-html lint-docker lint-typos lint-md \
+        lint lint-go lint-js lint-css lint-html lint-docker lint-typos lint-md lint-actions \
         dead-code dead-code-go dead-code-ts \
         test test-go test-frontend \
         cover cover-go cover-frontend \
@@ -158,7 +158,7 @@ cloc-detail: ## Count lines of source code, per-file breakdown
 	@command -v cloc >/dev/null || { echo "cloc not installed — brew install cloc (or apt install cloc)"; exit 1; }
 	cloc --config .clocrc --by-file-by-lang .
 
-lint: lint-go lint-js lint-css lint-html lint-shell lint-docker lint-yaml lint-openapi lint-typos lint-md ## Run all linters
+lint: lint-go lint-js lint-css lint-html lint-shell lint-docker lint-yaml lint-openapi lint-typos lint-md lint-actions ## Run all linters
 
 lint-go: ## Lint Go source (golangci-lint, both build tags)
 	@echo "[ recall ] Linting Go (golangci-lint)…"
@@ -227,6 +227,16 @@ lint-md: ## Lint Markdown via markdownlint-cli2 (config in .markdownlint-cli2.ya
 	@echo "[ recall ] Linting Markdown (markdownlint-cli2)…"
 	@npx --yes markdownlint-cli2
 	@echo "[ recall ] ✓  Markdown lint clean"
+
+# actionlint catches GitHub Actions workflow bugs: syntax errors,
+# deprecated action inputs, expression mistakes, plus embeds shellcheck
+# for `run:` script bodies (script-injection patterns the
+# security_reminder_hook also flags).
+lint-actions: ## Lint .github/workflows/*.yml via actionlint
+	@command -v actionlint >/dev/null || { echo "[ recall ] ✗  actionlint not installed — brew install actionlint (or see initialize.sh for Debian)"; exit 1; }
+	@echo "[ recall ] Linting GitHub Actions workflows (actionlint)…"
+	actionlint .github/workflows/*.yml
+	@echo "[ recall ] ✓  workflows clean"
 
 # Spectral runs the spectral:oas ruleset against api/openapi.yaml; see
 # .spectral.yaml at the project root for rule overrides. npx pulls a

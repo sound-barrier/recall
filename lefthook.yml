@@ -84,6 +84,15 @@ pre-commit:
 pre-push:
   parallel: true
   commands:
+    # actionlint scans every workflow file each time — fast enough
+    # (Go binary, ~50ms across our seven workflows) that pre-push is
+    # the right phase. Catches deprecated action inputs, syntax
+    # errors, and shellcheck issues in `run:` blocks before they hit
+    # CI and fail there.
+    actionlint:
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: actionlint .github/workflows/*.yml
+
     deadcode:
       glob: "*.go"
       run: |
