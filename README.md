@@ -2,10 +2,15 @@
 
 [![CI](https://github.com/sound-barrier/recall/actions/workflows/ci.yml/badge.svg)](https://github.com/sound-barrier/recall/actions/workflows/ci.yml)
 [![Release](https://github.com/sound-barrier/recall/actions/workflows/release.yml/badge.svg)](https://github.com/sound-barrier/recall/actions/workflows/release.yml)
+[![Pages](https://github.com/sound-barrier/recall/actions/workflows/pages.yml/badge.svg)](https://github.com/sound-barrier/recall/actions/workflows/pages.yml)
 [![CodeQL](https://github.com/sound-barrier/recall/actions/workflows/codeql.yml/badge.svg)](https://github.com/sound-barrier/recall/actions/workflows/codeql.yml)
 [![Latest release](https://img.shields.io/github/v/release/sound-barrier/recall)](https://github.com/sound-barrier/recall/releases/latest)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Go](https://img.shields.io/badge/go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![Vue](https://img.shields.io/badge/vue-3-4FC08D?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
+[![Docs](https://img.shields.io/badge/docs-sound--barrier.github.io%2Frecall-7B36ED?logo=gitbook&logoColor=white)](https://sound-barrier.github.io/recall/)
+[![API](https://img.shields.io/badge/API-Swagger%20UI-85EA2D?logo=swagger&logoColor=black)](https://sound-barrier.github.io/recall/api/)
+[![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-defined-purple)](CODE_OF_CONDUCT.md)
 
 **Recall** is a desktop app for Overwatch players who want to understand
 their performance trends over time. It watches a folder of OW post-match
