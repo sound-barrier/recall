@@ -71,6 +71,15 @@ async function goToView(next: string) {
   if (panel) panel.focus({ preventScroll: true })
 }
 
+// Skip-link target. The native href="#main-content" works in most
+// browsers, but some don't move focus to the target on hash navigation —
+// only scroll. Explicitly focus the <main> for keyboard parity.
+function focusMain(e: MouseEvent) {
+  e.preventDefault()
+  const main = document.getElementById('main-content')
+  if (main) main.focus({ preventScroll: false })
+}
+
 // Wall-clock time of the last successful manual parse, used to render
 // "Last run · X ago" feedback under the Parse button on the settings
 // page. Persisted to localStorage so the timestamp survives reloads.
@@ -529,6 +538,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="app">
+    <!-- Skip-link: first focusable on the page so keyboard users can
+         bypass the masthead and nav tabs on every load. Visually hidden
+         until focused, then snaps in over the top-left corner. -->
+    <a class="skip-link" href="#main-content" @click="focusMain">Skip to main content</a>
     <div class="atmos" aria-hidden="true" />
     <div class="grid-lines" aria-hidden="true" />
 
@@ -709,78 +722,85 @@ onBeforeUnmount(() => {
         <span class="error-tick">✕</span>{{ error }}
       </p>
 
-      <!-- ─── SETTINGS VIEW (folder + theme — minimal config) ──── -->
-      <SettingsView
-        v-if="view === 'settings'"
-        :screenshots-dir="screenshotsDir"
-        :loading="loading"
-        :theme-mode="themeMode"
-        :week-start="weekStart"
-        @pick-screenshots-dir="pickDir"
-        @toggle-theme="toggleTheme"
-        @set-week-start="setWeekStart"
-        @go-to-view="goToView"
-      />
+      <!-- <main> is the page's primary landmark. The skip-link at the
+           top of .app jumps focus here so keyboard users can bypass the
+           masthead and tablist on every load. tabindex="-1" lets us
+           focus it programmatically without putting it in the natural
+           tab order. -->
+      <main id="main-content" tabindex="-1">
+        <!-- ─── SETTINGS VIEW (folder + theme — minimal config) ──── -->
+        <SettingsView
+          v-if="view === 'settings'"
+          :screenshots-dir="screenshotsDir"
+          :loading="loading"
+          :theme-mode="themeMode"
+          :week-start="weekStart"
+          @pick-screenshots-dir="pickDir"
+          @toggle-theme="toggleTheme"
+          @set-week-start="setWeekStart"
+          @go-to-view="goToView"
+        />
 
-      <!-- ─── INGEST VIEW (engine → parse → export → data) ─────── -->
-      <IngestView
-        v-if="view === 'ingest'"
-        :tesseract-ready="tesseractReady"
-        :tesseract-supported="tesseractSupported"
-        :tesseract-status="tesseractStatus"
-        :tesseract-picker-busy="tesseractPickerBusy"
-        :screenshots-dir="screenshotsDir"
-        :watch-enabled="watchEnabled"
-        :loading="loading"
-        :new-screenshot-count="newScreenshotCount"
-        :last-parsed-at="lastParsedAt"
-        :parse-progress="parseProgress"
-        :parse-log="parseLog"
-        :parse-progress-open="parseProgressOpen"
-        :matched-count="records.length"
-        :unknown-count="unknownRecords.length"
-        :prometheus-enabled="prometheusEnabled"
-        :clear-confirm="clearConfirm"
-        :clearing-d-b="clearingDB"
-        @pick-tesseract="pickTesseractBinary"
-        @reset-tesseract="resetTesseractPath"
-        @toggle-watch="toggleWatch"
-        @toggle-prometheus="togglePrometheus"
-        @parse="parse"
-        @arm-clear="armClear"
-        @clear-database="clearDatabase"
-        @cancel-clear="cancelClear"
-        @toggle-progress="parseProgressOpen = !parseProgressOpen"
-        @go-to-view="goToView"
-      />
+        <!-- ─── INGEST VIEW (engine → parse → export → data) ─────── -->
+        <IngestView
+          v-if="view === 'ingest'"
+          :tesseract-ready="tesseractReady"
+          :tesseract-supported="tesseractSupported"
+          :tesseract-status="tesseractStatus"
+          :tesseract-picker-busy="tesseractPickerBusy"
+          :screenshots-dir="screenshotsDir"
+          :watch-enabled="watchEnabled"
+          :loading="loading"
+          :new-screenshot-count="newScreenshotCount"
+          :last-parsed-at="lastParsedAt"
+          :parse-progress="parseProgress"
+          :parse-log="parseLog"
+          :parse-progress-open="parseProgressOpen"
+          :matched-count="records.length"
+          :unknown-count="unknownRecords.length"
+          :prometheus-enabled="prometheusEnabled"
+          :clear-confirm="clearConfirm"
+          :clearing-d-b="clearingDB"
+          @pick-tesseract="pickTesseractBinary"
+          @reset-tesseract="resetTesseractPath"
+          @toggle-watch="toggleWatch"
+          @toggle-prometheus="togglePrometheus"
+          @parse="parse"
+          @arm-clear="armClear"
+          @clear-database="clearDatabase"
+          @cancel-clear="cancelClear"
+          @toggle-progress="parseProgressOpen = !parseProgressOpen"
+          @go-to-view="goToView"
+        />
 
-      <!-- ─── UNKNOWN MAPS VIEW ────────────────────────────────── -->
-      <UnknownMapsView
-        v-if="view === 'unknown'"
-        :unknown-records="unknownRecords"
-        :card-state="cardState"
-        @go-to-view="goToView"
-      />
+        <!-- ─── UNKNOWN MAPS VIEW ────────────────────────────────── -->
+        <UnknownMapsView
+          v-if="view === 'unknown'"
+          :unknown-records="unknownRecords"
+          :card-state="cardState"
+          @go-to-view="goToView"
+        />
 
-      <!-- ─── MATCHES VIEW (default) ───────────────────────────── -->
-      <MatchesView
-        v-if="view === 'matches'"
-        :records="records"
-        :loading="loading"
-        :filters="filters"
-        :filter-panel="filterPanel"
-        :grouping="grouping"
-        :card-state="cardState"
-        :earliest-match-date-time="earliestMatchDateTime"
-        :now-date-time="nowDateTime"
-        :include-undated="includeUndated"
-        :min-play-percent="minPlayPercent"
-        :min-play-minutes="minPlayMinutes"
-        @go-to-view="goToView"
-        @set-include-undated="setIncludeUndated"
-        @set-min-play-percent="setMinPlayPercent"
-        @set-min-play-minutes="setMinPlayMinutes"
-      />
+        <!-- ─── MATCHES VIEW (default) ───────────────────────────── -->
+        <MatchesView
+          v-if="view === 'matches'"
+          :records="records"
+          :loading="loading"
+          :filters="filters"
+          :filter-panel="filterPanel"
+          :grouping="grouping"
+          :card-state="cardState"
+          :earliest-match-date-time="earliestMatchDateTime"
+          :now-date-time="nowDateTime"
+          :include-undated="includeUndated"
+          :min-play-percent="minPlayPercent"
+          :min-play-minutes="minPlayMinutes"
+          @go-to-view="goToView"
+          @set-include-undated="setIncludeUndated"
+          @set-min-play-percent="setMinPlayPercent"
+          @set-min-play-minutes="setMinPlayMinutes"
+        />
+      </main>
     </div>
 
     <!-- Unsupported Tesseract version confirmation modal -->
@@ -967,6 +987,40 @@ body {
   position: relative;
   min-height: 100vh;
   overflow-x: hidden;
+}
+
+/* Skip-link: first focusable in the DOM, visually hidden until it
+   takes focus, then snaps in over the top-left corner. Gives keyboard
+   users a one-key bypass past the masthead and tablist on every load. */
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  padding: 0.6rem 1rem;
+  background: var(--accent);
+  color: var(--primary-text-on-accent);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 0 0 2px;
+  box-shadow: 0 4px 16px -4px rgb(0 0 0 / 40%);
+  transform: translateY(-110%);
+  transition: transform 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+main#main-content {
+  outline: none;
 }
 
 /* Soft atmospheric warmth in the top corners. Anchors the eye and
