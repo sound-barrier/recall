@@ -202,6 +202,7 @@ const emit = defineEmits<{
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1;
+
   /* Sit slightly low so the optical center matches the theme icons. */
   transform: translateY(-1px);
 }
