@@ -62,6 +62,19 @@ func RunServer(a *app.App, assets embed.FS) {
 	}
 }
 
+// methodGuard wraps h so only requests with the given method reach it;
+// anything else is rejected with 405. Replaces the four-line preamble
+// that single-method handlers used to carry by hand.
+func methodGuard(method string, h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != method {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		h(w, r)
+	}
+}
+
 // NewMux builds the HTTP handler tree the server-mode binary serves.
 // Split out of RunServer so tests can drive every route through
 // httptest.NewServer without setting up signal handling or binding a
@@ -71,14 +84,10 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// ── REST API ────────────────────────────────────────────────────
-	mux.HandleFunc("/api/match-results", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("/api/match-results", methodGuard(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
 		rows, err := a.GetMatchResults()
 		writeJSON(w, rows, err)
-	})
+	}))
 
 	mux.HandleFunc("/api/screenshots-dir", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -106,11 +115,7 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		}
 	})
 
-	mux.HandleFunc("/api/parse", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("/api/parse", methodGuard(http.MethodPost, func(w http.ResponseWriter, r *http.Request) {
 		err := a.ParseScreenshots()
 		if err != nil {
 			if errors.Is(err, app.ErrInvalidScreenshotsDir) {
@@ -121,7 +126,7 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 			return
 		}
 		writeJSON(w, map[string]bool{"ok": true}, nil)
-	})
+	}))
 
 	mux.HandleFunc("/api/prometheus-enabled", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -167,19 +172,11 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		}
 	})
 
-	mux.HandleFunc("/api/tesseract-status", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("/api/tesseract-status", methodGuard(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.GetTesseractStatus(), nil)
-	})
+	}))
 
-	mux.HandleFunc("/api/tesseract-path", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("/api/tesseract-path", methodGuard(http.MethodPost, func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Path string `json:"path"`
 		}
@@ -200,53 +197,33 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 			return
 		}
 		writeJSON(w, st, nil)
-	})
+	}))
 
-	mux.HandleFunc("/api/tesseract-reset", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("/api/tesseract-reset", methodGuard(http.MethodPost, func(w http.ResponseWriter, r *http.Request) {
 		st, err := a.ResetTesseractPath()
 		writeJSON(w, st, err)
-	})
+	}))
 
-	mux.HandleFunc("/api/check-update", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("/api/check-update", methodGuard(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.CheckForUpdate(), nil)
-	})
+	}))
 
-	mux.HandleFunc("/api/version", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("/api/version", methodGuard(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"version": a.GetVersion()}, nil)
-	})
+	}))
 
-	mux.HandleFunc("/api/new-screenshot-count", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("/api/new-screenshot-count", methodGuard(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
 		count, err := a.GetNewScreenshotCount()
 		writeJSON(w, map[string]int{"count": count}, err)
-	})
+	}))
 
-	mux.HandleFunc("/api/clear-database", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	mux.HandleFunc("/api/clear-database", methodGuard(http.MethodPost, func(w http.ResponseWriter, r *http.Request) {
 		if err := a.ClearDatabase(); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		writeJSON(w, map[string]bool{"ok": true}, nil)
-	})
+	}))
 
 	// ── Server-Sent Events ──────────────────────────────────────────
 	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {
