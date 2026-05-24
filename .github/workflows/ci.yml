@@ -14,6 +14,15 @@ jobs:
   # ── Job 1: All linters ──────────────────────────────────────────────────
   lint:
     runs-on: ubuntu-latest
+    # Extra scopes are needed by EnricoMi/publish-unit-test-result-action so
+    # it can post the sticky comment + checks summary on pull requests. The
+    # workflow-level default is contents:read; per-job permissions replace
+    # rather than merge, so contents:read is re-listed below.
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+      issues: read
     steps:
       - uses: actions/checkout@v6
 
@@ -106,13 +115,54 @@ jobs:
 
       # Go unit tests (merge logic, inference helpers, screenshotType
       # classification). Parser golden-file tests are skipped by -short.
+      # Tee through go-junit-report so the XML is always produced — the
+      # final pass/fail decision is delegated to the EnricoMi step below
+      # via `fail_on: test failures` so a fork PR without comment perms
+      # still surfaces failures via the workflow conclusion.
+      - name: Install go-junit-report
+        run: go install github.com/jstemmer/go-junit-report/v2@latest
+
       - name: Run Go unit tests
-        run: go test -race -short ./...
+        # continue-on-error keeps the workflow going so the JUnit XML is
+        # uploaded + the EnricoMi step gets a chance to comment. The
+        # EnricoMi step then fails the workflow if any test failed.
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          go test -race -short -v ./... 2>&1 \
+            | tee go-test.log \
+            | go-junit-report -set-exit-code > go-junit.xml
 
       # Frontend unit tests (Vitest) — pure-helper coverage for the
-      # extracted match-helpers.ts module.
+      # extracted match-helpers.ts module. `--reporter=default` keeps the
+      # log readable in the Actions run; `--reporter=junit` adds the XML
+      # consumed by the EnricoMi step. The `--outputFile.junit=` form
+      # scopes the path to the junit reporter only, so the default
+      # reporter still writes to stdout.
       - name: Run frontend unit tests
-        run: cd frontend && npm run test
+        continue-on-error: true
+        run: |
+          cd frontend
+          npx vitest run \
+            --reporter=default \
+            --reporter=junit \
+            --outputFile.junit=../frontend-junit.xml
+
+      # Post a single sticky comment on PRs with "X passed, Y failed,
+      # Z skipped" plus a collapsible block per failing test (name +
+      # message + stack). check_name is the key used to match-and-update
+      # the comment on subsequent runs, so the PR doesn't accumulate one
+      # comment per push.
+      - name: Publish unit-test results to PR
+        if: always() && github.event_name == 'pull_request'
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          check_name: Unit test results
+          comment_mode: always
+          junit_files: |
+            go-junit.xml
+            frontend-junit.xml
+          fail_on: test failures
 
       # TypeScript type-check — confirms api.ts agrees with the
       # OpenAPI-generated types in api.gen.d.ts.
@@ -335,6 +385,16 @@ jobs:
       - name: Generate Go coverage report
         run: make cover-go
 
+      # gocover-cobertura converts Go's native coverprofile into the
+      # Cobertura XML format that irongut/CodeCoverageSummary parses.
+      # Bundled into the artifact so the coverage-comment job downloads
+      # both formats in a single fetch.
+      - name: Install gocover-cobertura
+        run: go install github.com/boumenot/gocover-cobertura@latest
+
+      - name: Convert coverage profile to Cobertura XML
+        run: gocover-cobertura < coverage/go/coverage.out > coverage/go/cobertura.xml
+
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
@@ -425,3 +485,55 @@ jobs:
           if [ -f server.pid ]; then
             kill "$(cat server.pid)" || true
           fi
+
+  # ── Job 12: Coverage comment on PRs ──────────────────────────────────────
+  # Aggregates Go + frontend Cobertura XML into one sticky comment on the
+  # PR. Only runs on pull_request events — push-to-main has nowhere to
+  # comment. The two coverage jobs already enforce thresholds independently
+  # (Vitest via vitest.config.ts, Go via GO_COVERAGE_MIN in the Makefile),
+  # so this job is informational and uses fail_below_min:false to avoid
+  # double-gating.
+  coverage-comment:
+    if: github.event_name == 'pull_request'
+    needs: [coverage-go, coverage-frontend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: go-coverage
+          path: coverage-artifacts/go/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: coverage-artifacts/frontend/
+
+      # Builds a markdown summary table at ./code-coverage-results.md
+      # combining the two Cobertura files (line + branch + complexity per
+      # file, plus an overall summary). Thresholds are display-only here
+      # (red/yellow/green badge colors) since enforcement lives upstream.
+      - name: Generate coverage markdown summary
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: coverage-artifacts/go/cobertura.xml,coverage-artifacts/frontend/cobertura-coverage.xml
+          badge: true
+          fail_below_min: false
+          format: markdown
+          hide_branch_rate: false
+          hide_complexity: true
+          indicators: true
+          output: file
+          thresholds: '50 75'
+
+      # Stickies on the `coverage` header so re-runs update the same
+      # comment instead of stacking. `recreate: true` deletes and reposts
+      # so the PR notification fires on the new state (vs. silent edit).
+      - name: Post coverage comment to PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: coverage
+          recreate: true
+          path: code-coverage-results.md
