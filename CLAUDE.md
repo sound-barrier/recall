@@ -320,7 +320,12 @@ complex and highest-test-ROI module). Shared UI is in
 When adding a new pure helper that takes plain inputs and returns plain
 outputs, add it to `match-helpers.ts` with a Vitest case; stateful logic
 goes in a new composable under `composables/`. Don't define either inside
-the SFC's `<script setup>`. The entire frontend is TypeScript (`allowJs: false`);
+the SFC's `<script setup>`. SFC-level tests use `@vue/test-utils`'s
+`mount()` via the `mountApp(overrides?)` helper in
+`frontend/src/test-utils/mountApp.ts`, which `vi.doMock`s `./api` so the
+Wails/fetch shim never fires during mount. `App.test.ts` shows the
+pattern: each test calls `await mountApp({ records: [...] })` then
+asserts on the wrapper's rendered DOM. The entire frontend is TypeScript (`allowJs: false`);
 ESLint uses `typescript-eslint` (`tseslint.config()` in `eslint.config.js`)
 with `parserOptions.parser: tseslint.parser` wired in for `.vue` files.
 Template access to `Record<string, Ref<string[]>>` filter state goes through
