@@ -1,0 +1,75 @@
+# markdownlint-cli2 config — covers everything matched by the `globs`
+# below. Run via `make lint-md`, the pre-commit hook, or
+# `npx markdownlint-cli2 --fix` to auto-fix the safe rules.
+#
+# Rule reference: https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+globs:
+  - "**/*.md"
+
+ignores:
+  - "frontend/node_modules/**"
+  - "frontend/coverage/**"
+  - "frontend/wailsjs/**"
+  - "frontend/dist/**"
+  - "node_modules/**"
+  - "dist/**"
+  - "build/**"
+  - "book/_book/**"
+  - "CHANGELOG.md"  # release-please-generated
+
+config:
+  # ── Disabled stylistic rules ────────────────────────────────────────
+  # The project's prose style is intentional; these rules would flag
+  # every existing file with no real bug-catching benefit.
+
+  # Line length — prose lines are intentionally long. Hard wrapping
+  # prose to 80 cols is fine for code-adjacent text but actively hurts
+  # documentation readability (search engines, screen-reader phrasing).
+  MD013: false
+
+  # Trailing spaces — Markdown's hard-break syntax is "two trailing
+  # spaces"; .editorconfig already turns OFF trim-trailing-whitespace
+  # for *.md to preserve them. Don't double-enforce here.
+  MD009: false
+
+  # Table column style — existing tables use the compact form
+  # (`|x|y|z|`, not `| x | y | z |`). No real benefit to standardizing.
+  MD060: false
+
+  # Inline HTML — the project deliberately uses HTML comments
+  # (`<!-- … -->`) for editor hints and a few inline tags for
+  # things Markdown can't express (e.g. multi-line table cells).
+  MD033: false
+
+  # Bare URLs — project mixes `<https://…>`-wrapped and bare URLs
+  # depending on context. Not a bug class worth normalizing.
+  MD034: false
+
+  # Emphasis as heading — `**Bold:**` followed by prose is a
+  # widespread project pattern (used in CLAUDE.md Conventions
+  # bullets, CONTRIBUTING.md callouts, etc.). It's deliberate.
+  MD036: false
+
+  # Code block style — mix of fenced and indented blocks across
+  # the existing docs; not worth a sweep.
+  MD046: false
+
+  # First-line heading — some files (SECURITY.md notes, partial
+  # docs) reasonably start with prose or a callout, not an H1.
+  MD041: false
+
+  # Single H1 per document — the existing docs occasionally have
+  # multiple top-level headings for navigation purposes.
+  MD025: false
+
+  # ── Enabled rules (bug-catching, kept on purpose) ──────────────────
+  # MD040 (fenced-code-language)  — code blocks should declare a
+  #                                  language for syntax highlighting.
+  # MD045 (no-alt-text)            — accessibility: images need alt.
+  # MD051 (link-fragments)         — broken anchor links are real bugs.
+  # MD059 (descriptive-link-text)  — "click here" is bad UX + bad a11y.
+  # MD031 (blanks-around-fences)   — autofix-safe; readable diffs.
+  # MD022 (blanks-around-headings) — autofix-safe; readable diffs.
+  # MD004 (ul-style)               — autofix-safe; consistent bullets.
+  # Everything else stays at default.

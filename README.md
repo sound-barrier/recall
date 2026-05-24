@@ -77,6 +77,7 @@ Pre-built binaries for every tagged release are on the [GitHub Releases](https:/
 | Docker | — | `ghcr.io/sound-barrier/recall-server:latest` |
 
 For macOS and Linux setup details (Gatekeeper bypass, package manager Tesseract install, data paths), see the platform guides:
+
 - [Installing on macOS](docs/install-macos.md)
 - [Installing on Linux](docs/install-linux.md)
 

@@ -28,7 +28,7 @@ WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
         build-linux build-windows build-mac build-all build-all-docker \
         build-server-linux build-server-windows build-server-mac build-server-all \
         build-server-container \
-        lint lint-go lint-js lint-css lint-html lint-docker lint-typos \
+        lint lint-go lint-js lint-css lint-html lint-docker lint-typos lint-md \
         dead-code dead-code-go dead-code-ts \
         test test-go test-frontend \
         cover cover-go cover-frontend \
@@ -158,7 +158,7 @@ cloc-detail: ## Count lines of source code, per-file breakdown
 	@command -v cloc >/dev/null || { echo "cloc not installed — brew install cloc (or apt install cloc)"; exit 1; }
 	cloc --config .clocrc --by-file-by-lang .
 
-lint: lint-go lint-js lint-css lint-html lint-shell lint-docker lint-yaml lint-openapi lint-typos ## Run all linters
+lint: lint-go lint-js lint-css lint-html lint-shell lint-docker lint-yaml lint-openapi lint-typos lint-md ## Run all linters
 
 lint-go: ## Lint Go source (golangci-lint, both build tags)
 	@echo "[ recall ] Linting Go (golangci-lint)…"
@@ -216,6 +216,17 @@ lint-typos: ## Spell-check via typos (config in _typos.toml)
 	@echo "[ recall ] Spell-checking (typos)…"
 	typos
 	@echo "[ recall ] ✓  Spelling clean"
+
+# markdownlint-cli2 covers README, CLAUDE.md, docs/, CONTRIBUTING.md,
+# RELEASES.md, etc. Config in .markdownlint-cli2.yaml at the repo root —
+# stylistic noise rules are disabled (long lines, bare URLs, inline
+# HTML) so what remains catches real bugs (broken anchor links,
+# missing alt text, undescriptive link text). `--fix` is safe for
+# the autofix-friendly rules (MD031, MD022, MD004).
+lint-md: ## Lint Markdown via markdownlint-cli2 (config in .markdownlint-cli2.yaml)
+	@echo "[ recall ] Linting Markdown (markdownlint-cli2)…"
+	@npx --yes markdownlint-cli2
+	@echo "[ recall ] ✓  Markdown lint clean"
 
 # Spectral runs the spectral:oas ruleset against api/openapi.yaml; see
 # .spectral.yaml at the project root for rule overrides. npx pulls a

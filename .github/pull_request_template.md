@@ -17,7 +17,7 @@
 
 <!-- How did you verify this works? Tests added? Manual steps? -->
 
-- [ ] 
+- [ ]
 
 ## Notes for reviewer
 

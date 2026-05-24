@@ -120,6 +120,12 @@ jobs:
       - name: Spell-check (typos)
         uses: crate-ci/typos@v1.46.3
 
+      # Markdown lint — mirrors `make lint-md`. Config in
+      # .markdownlint-cli2.yaml at the repo root; npx pulls the
+      # version on demand so no global install is required.
+      - name: Lint Markdown (markdownlint-cli2)
+        run: npx --yes markdownlint-cli2
+
       # Go unit tests (merge logic, inference helpers, screenshotType
       # classification). Parser golden-file tests are skipped by -short.
       # Tee through go-junit-report so the XML is always produced — the
