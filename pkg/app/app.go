@@ -838,9 +838,14 @@ func (a *App) scrapeReader() ([]metrics.ScrapeRow, error) {
 // is on record. Scoreboard-only rows (no SUMMARY screenshot captured) have a
 // single HeroesPlayed entry with PercentPlayed=0 because that field only
 // comes from the SUMMARY tab — if there's just one hero, they were played
-// for the whole match. Applied at read time, not at parse/merge time, so a
-// later SUMMARY screenshot can still write the real percentage into the
-// stored 0 via mergeMatchResult's first-non-zero-wins rule.
+// for the whole match.
+//
+// READ-TIME ONLY (load-bearing). Applied via GetMatchResults / scrapeReader,
+// never inside mergeMatchResult or upsertMergedRow. Storing the inferred
+// value would lock it in via the first-non-zero-wins merge rule when a
+// later SUMMARY screenshot arrives with the real percentage. The invariant
+// is locked by TestInference_NeverPersistedToStore in
+// inference_invariant_test.go.
 func inferSoleHeroPercent(d *parser.MatchResult) {
 	if len(d.HeroesPlayed) != 1 {
 		return
@@ -855,8 +860,15 @@ func inferSoleHeroPercent(d *parser.MatchResult) {
 // where the COMPETITIVE VICTORY/DEFEAT/DRAW banner OCR missed. The italic
 // stylized banner is the parser's primary signal but it's the most brittle
 // piece of the rank screen — when it fails, the signed SR delta on the same
-// screenshot is the next-best signal. Applied at read time so existing rows
-// where the banner failed get the inferred badge without a re-parse.
+// screenshot is the next-best signal.
+//
+// READ-TIME ONLY (load-bearing). Applied via GetMatchResults / scrapeReader,
+// never inside the merge path. If a later SUMMARY screenshot's authoritative
+// Result is "defeat" but an earlier rank screenshot's positive SR change
+// triggered an inferred "victory", the SUMMARY value must win — which it
+// does because nothing inferred ever reaches the store. The invariant is
+// locked by TestInference_NeverPersistedToStore and
+// TestInference_DoesNotOverrideStoredResult in inference_invariant_test.go.
 func inferResultFromRank(d *parser.MatchResult) {
 	if d.Result != "" || len(d.SR) == 0 {
 		return

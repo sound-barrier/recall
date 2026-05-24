@@ -618,55 +618,6 @@ non-trivial and would benefit from local testing.
 
 ---
 
-## 11. `pkg/app/app.go`'s read-time inference is fragile by design
-
-**Size: S — documentation, M — behavioral lock-in**
-
-**What.**
-CLAUDE.md notes: "Some derived fields are filled by helpers in
-`pkg/app/app.go` (`inferSoleHeroPercent`, `inferResultFromRank`)
-that run on the way *out* of the DB via `GetMatchResults` and
-`scrapeReader` — never inside `mergeMatchResult` or
-`loadExistingMergedRows`. Reason: storing the inferred value would
-break the merge's first-non-empty-wins rule when a later screenshot
-arrives with the real value."
-
-**Why it's debt.**
-The constraint is real ("storing the inferred value would break
-merge"), and the current implementation enforces it correctly — but
-it lives entirely in tribal knowledge plus the CLAUDE.md note.
-There's no compile-time or test-time guard preventing a future
-contributor from "helpfully" moving inference into the merge path
-to "avoid recomputing on every read".
-
-If that happens, the bug is subtle: SR-inferred results would
-silently overwrite SUMMARY-screen results. Wouldn't show up in any
-test because the test fixtures match the in-the-wild case.
-
-**Mitigation plan.**
-
-1. **Lock the seam with a test.** Add `inference_invariant_test.go`
-   with a fixture that has a rank-only row in the DB (so inference
-   fires) and assert that `GetMatchResults` returns the inferred
-   `result="victory"` but the *underlying row* (read directly via
-   the Store) still has empty `result`.
-2. Add another test where a SUMMARY screenshot arrives later with
-   the real `result="defeat"`, the merge runs, and the stored row
-   now has `defeat` — confirming inference would have been wrong.
-3. Rename the inference helpers to `inferAtReadTimeX` so the
-   constraint is in the symbol name, not just the comment.
-4. If/when the helpers grow beyond two: extract them into
-   `pkg/app/inference.go` with a package-level doc comment naming
-   the invariant explicitly. (This becomes natural once #2
-   happens.)
-
-**How large.**
-S for the documentation + tests; M if a future "real" inference
-field is added that needs more sophisticated invariants. Worth
-doing the S version proactively.
-
----
-
 ## 12. Tests in `pkg/parser/integration_test.go` skip by default
 
 **Size: M**
@@ -916,12 +867,18 @@ choices.
   E/A/D and panel hero stats stays scoreboard" case (audit miss);
   the function's comment block now cross-references that test name
   so a future refactor sees what would break before touching it.
+- Read-time inference invariant — `pkg/app/inference_invariant_test.go`
+  locks the rule that `inferSoleHeroPercent` and `inferResultFromRank`
+  run on the way OUT of the DB via GetMatchResults / scrapeReader, never
+  inside the merge path. A future refactor that "helpfully" moves
+  inference into mergeMatchResult would silently corrupt match outcomes;
+  the new tests fail loudly in that case.
 
 ### Phase 1 — drift prevention (1 week, mostly S items)
 
 1. ~~#8 Go coverage floor ratchet (S)~~ — done
 2. ~~#15 screenshotType ordering test (S)~~ — done (audit miss, already covered; tightened the comment to cite the test)
-3. #11 inference invariant test (S)
+3. ~~#11 inference invariant test (S)~~ — done
 4. #16 .gitignore stray binaries (S)
 5. #9 SHA-pin GitHub Actions (M)
 
