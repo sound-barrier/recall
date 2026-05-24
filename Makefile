@@ -237,11 +237,13 @@ lint-md: ## Lint Markdown via markdownlint-cli2 (config in .markdownlint-cli2.ya
 # deprecated action inputs, expression mistakes, plus embeds shellcheck
 # for `run:` script bodies (script-injection patterns the
 # security_reminder_hook also flags).
-lint-actions: ## Lint .github/workflows/*.yml via actionlint
+lint-actions: ## Lint .github/workflows/*.yml via actionlint + enforce SHA-pinned external actions
 	@command -v actionlint >/dev/null || { echo "[ recall ] ✗  actionlint not installed — brew install actionlint (or see initialize.sh for Debian)"; exit 1; }
 	@echo "[ recall ] Linting GitHub Actions workflows (actionlint)…"
 	actionlint .github/workflows/*.yml
-	@echo "[ recall ] ✓  workflows clean"
+	@echo "[ recall ] Enforcing SHA-pinned external actions…"
+	@bash scripts/check-action-pins.sh
+	@echo "[ recall ] ✓  workflows clean + actions SHA-pinned"
 
 # gosec Go-specific SAST. Sweeps both build tags so the Wails and
 # serveronly code paths both get covered. -exclude-dir filters the
