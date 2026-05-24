@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Recall HTTP API — OpenAPI 3.1.0 reference rendered by Swagger UI." />
+  <title>Recall API · Swagger UI</title>
+
+  <!--
+    Swagger UI is loaded from a pinned jsDelivr CDN version. Treat the
+    pin the same way `make check-deps` tracks the rest of the project's
+    pinned tools — bump deliberately, not silently. The local
+    `make swagger` target renders the same spec via the
+    `swaggerapi/swagger-ui` container; this hosted page is the public
+    equivalent.
+
+    The companion `openapi.yaml` is copied next to this file by the
+    Pages deploy workflow (.github/workflows/pages.yml), so the
+    `url: './openapi.yaml'` lookup below is same-origin — no CORS,
+    no cross-repo fetch.
+  -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.18.2/swagger-ui.css" />
+  <style>
+    body { margin: 0; background: #fafafa; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.18.2/swagger-ui-bundle.js" crossorigin></script>
+  <script>
+    window.addEventListener('load', function () {
+      window.ui = SwaggerUIBundle({
+        url: './openapi.yaml',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [SwaggerUIBundle.presets.apis],
+        layout: 'BaseLayout',
+      })
+    })
+  </script>
+</body>
+</html>
