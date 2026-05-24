@@ -57,6 +57,7 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `make swagger` | Serve `api/openapi.yaml` via Swagger UI v5 in a container (`$(DOCKER) run`, default port `:8080`; override with `SWAGGER_PORT`). |
 | `make lint-openapi` | Lint `api/openapi.yaml` via Spectral (`spectral:oas` + `.spectral.yaml`) with `--fail-severity=warn`. Also run as part of `make lint`. |
 | `make test` | Run all tests: Go unit tests (`-race`; `pkg/app/merge_test.go`, `pkg/app/validate_test.go`, `pkg/parser/parser_test.go`) + Vitest (`frontend/src/**/*.test.ts`). Parser golden-file integration tests skip unless `RECALL_FIXTURE_DIR` is set. CI runs `go test -race -short ./...`. |
+| `make cover` | Generate both Go and frontend coverage reports (umbrella; delegates to `cover-go` + `cover-frontend`). |
 | `make cover-go` | Generate Go coverage report; writes per-function text summary and HTML to `coverage/go/` (gitignored). No thresholds enforced. |
 | `make cover-frontend` | Generate JS/TS coverage report via Vitest + V8 (`@vitest/coverage-v8`); writes text summary, lcov, and HTML to `frontend/coverage/` (gitignored). No thresholds enforced. |
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml` (uses `openapi-typescript`). Run after every spec edit; CI fails if the committed `.d.ts` is out of sync. |

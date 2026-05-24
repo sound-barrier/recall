@@ -30,6 +30,8 @@ WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
         build-server-container \
         lint lint-go lint-js lint-css lint-html lint-docker \
         dead-code dead-code-go dead-code-ts \
+        test test-go test-frontend \
+        cover cover-go cover-frontend \
         fmt update-deps trivy check-deps \
         dev clean
 
@@ -358,6 +360,8 @@ test-frontend: ## Run frontend unit tests (Vitest)
 	@echo "[ recall ] Running frontend unit tests (Vitest)…"
 	cd frontend && npm run test
 	@echo "[ recall ] ✓  Frontend tests passed"
+
+cover: cover-go cover-frontend ## Generate Go + frontend coverage reports (umbrella)
 
 cover-go: ## Generate Go coverage report (text + HTML; output → coverage/go/)
 	@echo "[ recall ] Generating Go coverage report…"
