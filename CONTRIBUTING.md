@@ -266,9 +266,9 @@ make lint           # all linters: golangci-lint (both build tags), ESLint, Styl
 make lint-yaml      # yamllint only
 make lint-openapi   # Spectral only (api/openapi.yaml)
 make test           # Go unit tests (-race) + Vitest frontend tests (parser golden-file tests skip unless RECALL_FIXTURE_DIR is set)
-make cover          # Go + frontend coverage reports (umbrella)
-make cover-go       # Go coverage report → coverage/go/ (HTML + func summary; gitignored)
-make cover-frontend # JS/TS coverage report → frontend/coverage/ (Vitest + V8; gitignored)
+make cover          # Go + frontend coverage reports (umbrella; both gate on thresholds)
+make cover-go       # Go coverage; fails when total < GO_COVERAGE_MIN (default 40%)
+make cover-frontend # JS/TS coverage; fails when below the thresholds in vitest.config.ts
 make typecheck      # vue-tsc --noEmit — covers .ts files and <script lang="ts"> Vue SFCs; allowJs: false enforces no JS
 make gen-types      # regenerate frontend/src/api.gen.d.ts from api/openapi.yaml (run after every spec edit)
 make update-deps    # update Go modules (go get -u + mod tidy) and npm packages
@@ -310,12 +310,13 @@ lefthook install        # wires the hooks into .git/hooks/{pre-commit,pre-push,c
 | `yamllint`          | `*.{yml,yaml}` (excl. openapi)  | `yamllint`           (`brew install yamllint` or `pip install yamllint`) |
 | `hadolint`          | `Dockerfile*`                   | `hadolint`           (`brew install hadolint`) |
 
-**`pre-push`** — runs on `git push`. Both tools do whole-project scanning and can't be scoped to staged files, so this stage keeps WIP commits fast while catching dead code before it reaches origin.
+**`pre-push`** — runs on `git push`. These hooks all do whole-project scans (dead code, unused exports, coverage roll-up) that can't be meaningfully scoped to staged files, so this stage keeps WIP commits fast while catching cross-cutting regressions before they reach origin.
 
 | Hook | Glob | Tool(s) it invokes |
 |---|---|---|
 | `deadcode` | `*.go`                       | `deadcode` (`go install golang.org/x/tools/cmd/deadcode@latest`) — whole-program call-graph analysis for the `serveronly` build tag |
 | `knip`     | `frontend/src/**/*.{ts,vue}` | `knip` (auto-installed by `cd frontend && npm ci`) — unused TypeScript exports and stale devDependencies |
+| `coverage` | *(always)*                   | `make cover` — runs Go + Vitest coverage, fails when below the thresholds (Go `GO_COVERAGE_MIN` 40%, frontend `vitest.config.ts` 70/70/60/55). Skip with `LEFTHOOK_EXCLUDE=coverage git push` — CI re-runs the same checks so an override on push still fails the PR. |
 
 If a tool isn't installed, the corresponding hook fails — install it (or skip the hook for one push/commit, see below).
 
