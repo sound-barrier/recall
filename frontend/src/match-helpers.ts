@@ -519,3 +519,26 @@ export function fmtTime(rec: Pick<MatchRecord, 'data'>): string {
   if (datePart && timePart) return `${datePart} @ ${timePart}`
   return datePart || timePart
 }
+
+// formatParsedAt renders an ISO8601 timestamp (the shape stored in
+// MatchRecord.parsed_at / MatchRecord.source_parsed_at[*]) as a
+// friendly "May 9, 2026 @ 9:08pm" string matching fmtTime's
+// aesthetic. Returns '' for empty / nullish input; returns the raw
+// string if it doesn't parse as a Date so display never crashes.
+// Renders in the user's local timezone (parsed_at is stored in UTC
+// but shown wherever the user is).
+export function formatParsedAt(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso // unparseable — show raw
+  const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                  'July', 'August', 'September', 'October', 'November', 'December']
+  const datePart = `${months[d.getMonth()]!} ${d.getDate()}, ${d.getFullYear()}`
+  const h = d.getHours()
+  const m = d.getMinutes()
+  const suffix = h >= 12 ? 'pm' : 'am'
+  let hr12 = h % 12
+  if (hr12 === 0) hr12 = 12
+  const timePart = `${hr12}:${String(m).padStart(2, '0')}${suffix}`
+  return `${datePart} @ ${timePart}`
+}

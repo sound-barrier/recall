@@ -9,6 +9,7 @@ import {
   missingOptionalSlots,
   sshotTypeLabel,
   sourceType,
+  formatParsedAt,
 } from '../match-helpers'
 
 const props = defineProps<{
@@ -122,6 +123,11 @@ const emit = defineEmits<{
           <div v-if="record.data?.final_score" class="meta-row">
             <span class="meta-eyebrow">Final Score</span>
             <span class="meta-value">{{ record.data.final_score }}</span>
+          </div>
+
+          <div v-if="record.parsed_at" class="meta-row meta-row-parsed">
+            <span class="meta-eyebrow">Parsed</span>
+            <span class="meta-value" :title="record.parsed_at">{{ formatParsedAt(record.parsed_at) }}</span>
           </div>
 
           <div class="stats">
@@ -249,6 +255,11 @@ const emit = defineEmits<{
                     class="source-type-chip unknown"
                     title="Type not yet recorded — parsed before per-file type tracking landed. Clear the database and re-parse to populate."
                   >?</span>
+                  <span
+                    v-if="record.source_parsed_at?.[f]"
+                    class="source-parsed-chip"
+                    :title="`Inserted into the database at ${record.source_parsed_at[f]} (UTC)`"
+                  >{{ formatParsedAt(record.source_parsed_at[f]) }}</span>
                 </div>
                 <img
                   v-if="props.previewOpen[f] && !props.previewError[f]"
@@ -283,3 +294,29 @@ const emit = defineEmits<{
     </div>
   </article>
 </template>
+
+<style scoped>
+/* Per-source-file "first inserted" timestamp chip — sits next to the
+   source-type chip in the Sources panel. Italic + dimmed so it reads
+   as ambient metadata rather than an interactive control (it's
+   intentionally not clickable; users cannot filter by parse date). */
+
+.source-parsed-chip {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-style: italic;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  margin-left: 0.35rem;
+  opacity: 0.78;
+}
+
+/* Match-level "Parsed" meta row: same shape as the existing Final
+   Score meta row; the parsed row gets a touch of breathing room
+   so the two stack cleanly when both render. */
+
+.meta-row-parsed {
+  margin-top: 0.18rem;
+}
+</style>

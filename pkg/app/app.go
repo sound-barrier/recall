@@ -41,8 +41,20 @@ type MatchRecord struct {
 	// can label each file. May be nil/missing for rows parsed before
 	// type tracking landed — fall back to the per-row Data-Coverage
 	// inference when a file isn't in the map.
-	SourceTypes map[string]string  `json:"source_types,omitempty"`
-	Data        parser.MatchResult `json:"data"`
+	SourceTypes map[string]string `json:"source_types,omitempty"`
+	// SourceParsedAt maps a source filename to the ISO8601 timestamp
+	// when that file was first inserted into the DB. Stamped by
+	// ParseScreenshots at OCR time; preserved across subsequent
+	// re-parses (existing entries are never overwritten). May be nil
+	// or missing entries for rows / files persisted before the
+	// column landed; the UI shows a "—" placeholder in that case.
+	SourceParsedAt map[string]string `json:"source_parsed_at,omitempty"`
+	// ParsedAt is the match-level "first inserted at" timestamp from
+	// the DB schema's parsed_at column. Stable across re-parses so
+	// the UI can show "this match was parsed on X" without the value
+	// shifting when a later screenshot is added.
+	ParsedAt string             `json:"parsed_at,omitempty"`
+	Data     parser.MatchResult `json:"data"`
 }
 
 // Settings is the on-disk JSON config the user persists across runs.
@@ -906,11 +918,22 @@ func (a *App) ParseScreenshots() error {
 		return nil
 	}
 
+	// Stamp every just-OCR'd file with the current UTC time. These
+	// flow through the merge into mergedRow.ParsedAt and ultimately
+	// into the DB's source_parsed_at column. Existing files (already
+	// in the DB) keep their original stamps when folded — see
+	// mergeTypeMaps semantics (a wins over b).
+	now := time.Now().UTC().Format(time.RFC3339)
+	stamps := make(map[string]string, len(results))
+	for f := range results {
+		stamps[f] = now
+	}
+
 	// Two-pass merge across the NEW parses: first by filename timestamp
 	// (catches sequential SUMMARY/TEAMS/PERSONAL clicks of one match), then
 	// by (E, A, D) signature (catches a mid-match scoreboard screenshot
 	// paired with the post-match summary taken minutes or hours later).
-	newRows := mergeByTimestamp(results)
+	newRows := mergeByTimestamp(results, stamps)
 	newRows = mergeByStatsSignature(newRows)
 
 	// Fold each new row into an existing DB row when one matches — by E/A/D
@@ -928,6 +951,9 @@ func (a *App) ParseScreenshots() error {
 			mergeMatchResult(&existing[idx].Data, &nr.Data)
 			existing[idx].Sources = unionSortedStrings(existing[idx].Sources, nr.Sources)
 			existing[idx].Types = mergeTypeMaps(existing[idx].Types, nr.Types)
+			// ParsedAt: existing entries win (their first-insert stamps
+			// are authoritative). New files in nr.ParsedAt fill in.
+			existing[idx].ParsedAt = mergeTypeMaps(existing[idx].ParsedAt, nr.ParsedAt)
 			existing[idx].Key = targetKey
 			if err := a.upsertMergedRow(existing[idx]); err != nil {
 				return err
@@ -957,10 +983,11 @@ func (a *App) loadExistingMergedRows() ([]mergedRow, error) {
 	rows := make([]mergedRow, 0, len(records))
 	for _, rec := range records {
 		rows = append(rows, mergedRow{
-			Key:     rec.MatchKey,
-			Sources: rec.SourceFiles,
-			Types:   rec.SourceTypes,
-			Data:    rec.Data,
+			Key:      rec.MatchKey,
+			Sources:  rec.SourceFiles,
+			Types:    rec.SourceTypes,
+			ParsedAt: rec.SourceParsedAt,
+			Data:     rec.Data,
 		})
 	}
 	return rows, nil
@@ -1162,10 +1189,12 @@ func (a *App) readAllRecords() ([]MatchRecord, error) {
 // typed counterparts on a MatchRecord.
 func rowToMatchRecord(r db.MatchRow) (MatchRecord, error) {
 	rec := MatchRecord{
-		ID:          r.ID,
-		MatchKey:    r.MatchKey,
-		SourceFiles: r.SourceFiles,
-		SourceTypes: r.SourceTypes,
+		ID:             r.ID,
+		MatchKey:       r.MatchKey,
+		SourceFiles:    r.SourceFiles,
+		SourceTypes:    r.SourceTypes,
+		SourceParsedAt: r.SourceParsedAt,
+		ParsedAt:       r.ParsedAt,
 		Data: parser.MatchResult{
 			Map: r.Map, Type: r.Type, Mode: r.Mode, Role: r.Role, Hero: r.Hero,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
@@ -1202,12 +1231,15 @@ func rowToMatchRecord(r db.MatchRow) (MatchRecord, error) {
 // mergedRow is one DB row's worth of merged data: a stable key derived from
 // E/A/D, the list of source files that fed it, and the merged stats.
 // Types carries per-source-file screenshot type (parallel to Sources) so
-// each filename can be labeled in the UI.
+// each filename can be labeled in the UI. ParsedAt is a parallel map of
+// filename → ISO8601 first-insert timestamp; merge functions preserve
+// existing entries so re-parsing never bumps a file's recorded stamp.
 type mergedRow struct {
-	Key     string
-	Sources []string
-	Types   map[string]string
-	Data    parser.MatchResult
+	Key      string
+	Sources  []string
+	Types    map[string]string
+	ParsedAt map[string]string
+	Data     parser.MatchResult
 }
 
 // mergeWindow is how close two screenshot filenames must be in time to count
@@ -1248,7 +1280,14 @@ type fileEntry struct {
 // (in filename-timestamp order) and merges each group into one row. Files
 // without a parseable timestamp are kept as their own rows so we don't
 // silently fold them into an unrelated match.
-func mergeByTimestamp(parsed map[string]*parser.MatchResult) []mergedRow {
+//
+// stamps is a parallel map of filename → ISO8601 first-parsed timestamp,
+// populated by ParseScreenshots when it stamps the OCR'd files with
+// time.Now() before merging. Each built mergedRow carries a ParsedAt
+// map derived from stamps for its source files. Nil stamps map is
+// allowed for callers (test fixtures) that don't care about timestamps;
+// the resulting ParsedAt maps are also nil.
+func mergeByTimestamp(parsed map[string]*parser.MatchResult, stamps map[string]string) []mergedRow {
 	var timed []fileEntry
 	var loners []string
 	for f, r := range parsed {
@@ -1272,6 +1311,21 @@ func mergeByTimestamp(parsed map[string]*parser.MatchResult) []mergedRow {
 		groups = append(groups, []fileEntry{e})
 	}
 
+	// stampsFor returns a per-file ParsedAt map for the given source
+	// files, or nil if stamps wasn't provided (test-fixture path).
+	stampsFor := func(files []string) map[string]string {
+		if stamps == nil {
+			return nil
+		}
+		m := make(map[string]string, len(files))
+		for _, f := range files {
+			if v, ok := stamps[f]; ok {
+				m[f] = v
+			}
+		}
+		return m
+	}
+
 	out := make([]mergedRow, 0, len(groups)+len(loners))
 	for _, g := range groups {
 		// Two distinct matches can fall inside one timestamp window if the
@@ -1289,20 +1343,22 @@ func mergeByTimestamp(parsed map[string]*parser.MatchResult) []mergedRow {
 				mergeMatchResult(&merged, e.res)
 			}
 			out = append(out, mergedRow{
-				Key:     "match:" + sub[0].ts.UTC().Format("2006-01-02T15:04:05"),
-				Sources: sources,
-				Types:   types,
-				Data:    merged,
+				Key:      "match:" + sub[0].ts.UTC().Format("2006-01-02T15:04:05"),
+				Sources:  sources,
+				Types:    types,
+				ParsedAt: stampsFor(sources),
+				Data:     merged,
 			})
 		}
 	}
 	sort.Strings(loners)
 	for _, f := range loners {
 		out = append(out, mergedRow{
-			Key:     "unmatched:" + f,
-			Sources: []string{f},
-			Types:   map[string]string{f: screenshotType(parsed[f])},
-			Data:    *parsed[f],
+			Key:      "unmatched:" + f,
+			Sources:  []string{f},
+			Types:    map[string]string{f: screenshotType(parsed[f])},
+			ParsedAt: stampsFor([]string{f}),
+			Data:     *parsed[f],
 		})
 	}
 	return out
@@ -1386,6 +1442,7 @@ func combineStatsRows(a, b mergedRow) mergedRow {
 	}
 	sort.Strings(a.Sources)
 	a.Types = mergeTypeMaps(a.Types, b.Types)
+	a.ParsedAt = mergeTypeMaps(a.ParsedAt, b.ParsedAt)
 	// Match key follows the earliest screenshot — ISO timestamps compare
 	// lexicographically as chronological, so the smaller string wins.
 	if strings.HasPrefix(a.Key, "match:") && strings.HasPrefix(b.Key, "match:") && b.Key < a.Key {
@@ -1632,6 +1689,7 @@ func (a *App) upsertMergedRow(row mergedRow) error {
 		MatchKey:         row.Key,
 		SourceFiles:      row.Sources,
 		SourceTypes:      row.Types,
+		SourceParsedAt:   row.ParsedAt,
 		Map:              row.Data.Map,
 		Type:             row.Data.Type,
 		Mode:             row.Data.Mode,

@@ -296,3 +296,55 @@ describe('MatchCard — sources panel', () => {
     expect(explain.text()).toContain('SUMMARY missing')
   })
 })
+
+describe('MatchCard — Parsed timestamps', () => {
+  it('renders the match-level "Parsed" meta row in the expanded body when parsed_at is set', () => {
+    const rec = makeRecord({}, { parsed_at: '2026-05-10T21:30:00Z' })
+    const wrapper = mountCard({ record: rec, isExpanded: true })
+    const parsedRow = wrapper.find('.meta-row-parsed')
+    expect(parsedRow.exists()).toBe(true)
+    expect(parsedRow.text()).toContain('Parsed')
+    // The raw ISO is exposed via `title` for power users; the visible
+    // text is the formatted version.
+    expect(parsedRow.find('.meta-value').attributes('title')).toBe('2026-05-10T21:30:00Z')
+  })
+
+  it('does NOT render the Parsed row when parsed_at is missing (pre-migration rows)', () => {
+    const rec = makeRecord({}, { parsed_at: undefined })
+    const wrapper = mountCard({ record: rec, isExpanded: true })
+    expect(wrapper.find('.meta-row-parsed').exists()).toBe(false)
+  })
+
+  it('renders a per-source-file parsed chip in the Sources panel', () => {
+    const rec = makeRecord({}, {
+      source_parsed_at: {
+        'summary.png': '2026-05-10T21:30:00Z',
+        'scoreboard.png': '2026-05-10T21:30:05Z',
+      },
+    })
+    const wrapper = mountCard({ record: rec, isExpanded: true, isSourcesOpen: true })
+    const chips = wrapper.findAll('.source-parsed-chip')
+    expect(chips).toHaveLength(2)
+  })
+
+  it('omits the per-source chip for files missing from source_parsed_at', () => {
+    const rec = makeRecord({}, {
+      source_parsed_at: { 'summary.png': '2026-05-10T21:30:00Z' }, // only one of two files
+    })
+    const wrapper = mountCard({ record: rec, isExpanded: true, isSourcesOpen: true })
+    expect(wrapper.findAll('.source-parsed-chip')).toHaveLength(1)
+  })
+
+  it('the per-source chip is NOT a filter trigger (no click handler, no clickable class)', () => {
+    const rec = makeRecord({}, {
+      source_parsed_at: { 'summary.png': '2026-05-10T21:30:00Z' },
+    })
+    const wrapper = mountCard({ record: rec, isExpanded: true, isSourcesOpen: true })
+    const chip = wrapper.find('.source-parsed-chip')
+    expect(chip.classes()).not.toContain('clickable')
+    // Triggering a click should not emit anything (parsed dates are
+    // not filterable per the product spec).
+    chip.trigger('click')
+    expect(wrapper.emitted('filter-toggle')).toBeFalsy()
+  })
+})
