@@ -42,6 +42,11 @@ var matchLabels = []string{"match_key", "map", "type", "mode", "result", "hero",
 // Collector implements prometheus.Collector. Each Collect() call reads all
 // matches via the Reader and emits one sample per (metric, labels, timestamp)
 // triple — Prometheus dedupes identical triples across scrapes.
+//
+// The compile-time assertion below catches any accidental signature drift
+// on Describe / Collect at build time instead of at the
+// `prometheus.MustRegister(c)` call site, where the failure is harder
+// to diagnose.
 type Collector struct {
 	read Reader
 
@@ -60,6 +65,8 @@ type Collector struct {
 	heroSRChange  *prometheus.Desc
 	heroStat      *prometheus.Desc // matchLabels + "stat"
 }
+
+var _ prometheus.Collector = (*Collector)(nil)
 
 func New(read Reader) *Collector {
 	desc := func(name, help string, extra ...string) *prometheus.Desc {
