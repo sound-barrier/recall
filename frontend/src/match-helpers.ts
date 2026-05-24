@@ -509,6 +509,16 @@ export function computeEarliestMatchDateTime(recs: Pick<MatchRecord, 'data'>[]):
   return earliest ?? ''
 }
 
+// formatHourMinute formats a 24-hour h/m pair as "9:08pm" / "12:30am".
+// Shared by fmtTime (parses parser HH:MM strings) and formatParsedAt
+// (reads Date.getHours / getMinutes) — the AM/PM 12-hour conversion
+// used to be inlined identically in both.
+function formatHourMinute(h: number, m: number): string {
+  const suffix = h >= 12 ? 'pm' : 'am'
+  const hr12 = h % 12 === 0 ? 12 : h % 12
+  return `${hr12}:${String(m).padStart(2, '0')}${suffix}`
+}
+
 // Format the match's date + end time for the card header. Parser
 // stores date as YYYY-MM-DD and finished_at as 24-hour HH:MM; the
 // Wails UI prefers a friendlier `May 9, 2026 @ 9:08pm` rendering.
@@ -531,14 +541,7 @@ export function fmtTime(rec: Pick<MatchRecord, 'data'>): string {
   if (d.finished_at) {
     const [hStr = '', mStr = ''] = d.finished_at.split(':')
     const h = Number(hStr), m = Number(mStr)
-    if (Number.isNaN(h) || Number.isNaN(m)) {
-      timePart = d.finished_at
-    } else {
-      const suffix = h >= 12 ? 'pm' : 'am'
-      let hr12 = h % 12
-      if (hr12 === 0) hr12 = 12
-      timePart = `${hr12}:${String(m).padStart(2, '0')}${suffix}`
-    }
+    timePart = (Number.isNaN(h) || Number.isNaN(m)) ? d.finished_at : formatHourMinute(h, m)
   }
 
   if (datePart && timePart) return `${datePart} @ ${timePart}`
@@ -557,11 +560,6 @@ export function formatParsedAt(iso: string | null | undefined): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso // unparseable — show raw
   const datePart = `${MONTHS_FULL[d.getMonth()]!} ${d.getDate()}, ${d.getFullYear()}`
-  const h = d.getHours()
-  const m = d.getMinutes()
-  const suffix = h >= 12 ? 'pm' : 'am'
-  let hr12 = h % 12
-  if (hr12 === 0) hr12 = 12
-  const timePart = `${hr12}:${String(m).padStart(2, '0')}${suffix}`
+  const timePart = formatHourMinute(d.getHours(), d.getMinutes())
   return `${datePart} @ ${timePart}`
 }
