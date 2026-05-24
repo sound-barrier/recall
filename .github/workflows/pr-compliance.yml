@@ -27,13 +27,18 @@ permissions:
 jobs:
   required-checkboxes:
     runs-on: ubuntu-24.04
-    # release-please opens its release PRs as github-actions[bot]; dependabot
-    # opens dependency-bump PRs as dependabot[bot]. Neither fills the human
-    # checklist and both are trusted (release-please only touches version
-    # files; dependabot is gated by dependency-review.yml).
+    # Trusted automated PRs that don't fill the human checklist:
+    #   - dependabot opens dep-bump PRs as dependabot[bot]; gated by
+    #     dependency-review.yml.
+    #   - release-please opens release PRs from a deterministic branch
+    #     name (`release-please--branches--<base>`); when configured
+    #     with a PAT (so CI runs on the PR) the author is the
+    #     maintainer's account, NOT github-actions[bot], so the user
+    #     check alone misses it. Match on branch-name prefix instead.
     if: >-
       github.event.pull_request.user.login != 'dependabot[bot]' &&
-      github.event.pull_request.user.login != 'github-actions[bot]'
+      github.event.pull_request.user.login != 'github-actions[bot]' &&
+      !startsWith(github.event.pull_request.head.ref, 'release-please--')
     steps:
       - name: Verify CoC + license-grant checkboxes are ticked
         env:
