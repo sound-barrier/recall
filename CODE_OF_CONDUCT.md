@@ -42,10 +42,10 @@ nobody owes you their unpaid time.
 
 ## Reporting violations
 
-If someone is violating either of the above, open a private security
-advisory at <https://github.com/sound-barrier/recall/security/advisories>
-or email the maintainer (commit history has the address). Direct messages
-on third-party social platforms are not monitored.
+If someone is violating either of the above — or if you want to report
+a security vulnerability — see [SECURITY.md](SECURITY.md) for the
+disclosure channel. Direct messages on third-party social platforms are
+not monitored.
 
 ## Scope
 
