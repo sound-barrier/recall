@@ -1,0 +1,13 @@
+# CODEOWNERS — drives auto-requested PR reviews and, if branch
+# protection is configured with "Require review from Code Owners",
+# gates merge until at least one listed owner approves.
+#
+# Patterns are evaluated bottom-to-top — the LAST matching entry
+# wins. Today the project has a single maintainer so the catch-all
+# is the only rule; add more specific patterns above it if scope
+# gets divided in the future (e.g. `/.github/ @team-ci`).
+#
+# Reference:
+#   https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-security/customizing-your-repository/about-code-owners
+
+* @jacob-delgado
