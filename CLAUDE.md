@@ -277,7 +277,7 @@ CGo binding.
   17 in ELIMINATIONS): `parsePerformance` picks the *last pure-digit
   line* before the label, ignoring noise-lines like `"S 4"`.
 - macOS `/tmp` is symlinked to `/private/tmp`; Tesseract sometimes
-  fails to read PNGs at `/tmp/...` paths but works at `/private/tmp/...`.
+  fails to read PNG files at `/tmp/...` paths but works at `/private/tmp/...`.
   Affects debug runs only — production uses `os.MkdirTemp`.
 
 ## Database layer (`pkg/db/db.go`)
@@ -562,7 +562,7 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifyin
 
 - **deadcode "known-good" filter lives in three parallel files** — `Makefile` `dead-code-go:`, `lefthook.yml` `pre-push.deadcode`, and `.github/workflows/ci.yml` "Dead Go code" step. All three run `grep -vE 'App\.Pick|NewWithStore'` to swallow intentional unreachables (build-tag stubs whose real impl lives behind the other tag; test-only constructors like `NewWithStore`). Adding a new test-only seam? Extend all three regexes in the same commit, or CI silently blocks on the next push — the workflow copy drifted once because it wasn't named in this note (only the Makefile + lefthook copies were).
 
-- **`make check-deps` only validates four pins** — Wails CLI, hadolint, lefthook, trivy. Three other pinned tools live outside its scope and need manual checks when bumping: **Spectral CLI** (`@stoplight/spectral-cli@X.Y.Z` appears in `lefthook.yml` `pre-commit.spectral.run`, the `Makefile` `SPECTRAL` variable, AND `.github/workflows/ci.yml` "Lint OpenAPI (Spectral)" step — bump all three in lock-step, same shape as the deadcode known-good filter above), **Swagger UI image** (`Makefile` `SWAGGER_IMAGE`), and **Honkit** (`Makefile` `HONKIT_VERSION` + `.github/workflows/pages.yml` env). Check with `npm view <pkg> version` for the npm-distributed tools, Docker Hub tag list for `swaggerapi/swagger-ui`. A green `make check-deps` does NOT mean everything is current.
+- **`make check-deps` only validates four pins** — Wails CLI, hadolint, lefthook, trivy. Four other pinned tools live outside its scope and need manual checks when bumping: **Spectral CLI** (`@stoplight/spectral-cli@X.Y.Z` appears in `lefthook.yml` `pre-commit.spectral.run`, the `Makefile` `SPECTRAL` variable, AND `.github/workflows/ci.yml` "Lint OpenAPI (Spectral)" step — bump all three in lock-step, same shape as the deadcode known-good filter above), **Swagger UI image** (`Makefile` `SWAGGER_IMAGE`), **Honkit** (`Makefile` `HONKIT_VERSION` + `.github/workflows/pages.yml` env), and **typos** (`TYPOS_VERSION` in `initialize.sh` + `.devcontainer/postCreate.sh` + the `crate-ci/typos@vX.Y.Z` pin in `.github/workflows/ci.yml`). Check with `npm view <pkg> version` for the npm-distributed tools, Docker Hub tag list for `swaggerapi/swagger-ui`, GitHub releases for `crate-ci/typos`. A green `make check-deps` does NOT mean everything is current.
 
 - **`npx vitest` / `npm run *` must run from `frontend/`.** Bash invocations start at repo root and Vite resolves `vitest.config.ts` from cwd, so running from elsewhere errors with a misleading "Install @vitejs/plugin-vue to handle .vue files" even though the plugin IS installed. Use `cd frontend && …` or `npm --prefix frontend run …`. The `make` targets (`make test-frontend`, `make cover-frontend`) handle cwd automatically.
 
