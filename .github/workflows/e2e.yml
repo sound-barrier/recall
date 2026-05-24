@@ -1,0 +1,81 @@
+# Browser E2E tests via Playwright. Separate from ci.yml because the
+# job needs Playwright's browser deps (~300 MB chromium runtime) and
+# is slower than the lint/unit tests — keeping it isolated means a
+# fast CI iteration if you don't touch frontend/.
+#
+# Mirrors the local `make test-e2e` recipe:
+#   1. build the frontend (Vite → frontend/dist)
+#   2. build the serveronly binary (//go:embed pulls in frontend/dist)
+#   3. install Playwright chromium with system deps
+#   4. run `npx playwright test` (Playwright's webServer block boots
+#      the binary on :7099 with HOME=/tmp/recall-e2e for isolation)
+#
+# The only ${{ }} expression below is `${{ failure() }}` — a GitHub
+# Actions built-in, not a webhook input. No script-injection surface.
+
+name: E2E
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'pkg/**'
+      - '**/*.go'
+      - 'api/openapi.yaml'
+      - '.github/workflows/e2e.yml'
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'pkg/**'
+      - '**/*.go'
+      - 'api/openapi.yaml'
+      - '.github/workflows/e2e.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Build frontend (required for Go //go:embed)
+        working-directory: frontend
+        run: npm run build
+
+      - name: Build serveronly binary
+        run: |
+          mkdir -p /tmp/recall-e2e
+          go build -tags serveronly -o /tmp/recall-e2e/recall-server .
+
+      - name: Install Playwright chromium (with system deps)
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright E2E suite
+        working-directory: frontend
+        run: npx playwright test
+
+      - name: Upload Playwright report on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
