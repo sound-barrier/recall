@@ -760,38 +760,6 @@ attempting to change the dev model.
 
 ---
 
-## 16. `recall` binary committed at repo root (22 MB)
-
-**Size: S**
-
-**What.**
-`ls -la` shows a 22 MB executable named `recall` at the repo root,
-dated 2026-05-17. Git status reports the tree clean — so it's
-either in `.gitignore` or was never staged. Likely a dev artifact
-of a manual `go build`.
-
-**Why it's debt.**
-Not debt if it's gitignored. But its presence:
-
-- Confuses new contributors ("is this the right binary to run?
-  why isn't it under `dist/`?")
-- Bloats the workspace.
-- Risks accidentally being staged if `.gitignore` ever drifts.
-
-**Mitigation plan.**
-
-1. Confirm via `git check-ignore -v recall` that it's ignored.
-2. Add an explicit `# Stray dev builds at repo root` section to
-   `.gitignore` covering `/recall`, `/recall-server`, `/recall.exe`,
-   `/Recall.app/`.
-3. Add a `make clean-bin` (or extend `make clean`) target that
-   removes them, so contributors have an explicit cleanup path.
-
-**How large.**
-S. ~15 minutes.
-
----
-
 ## 17. CLAUDE.md is 75 KB and load-bearing for too many gotchas
 
 **Size: M**
@@ -873,13 +841,18 @@ choices.
   inside the merge path. A future refactor that "helpfully" moves
   inference into mergeMatchResult would silently corrupt match outcomes;
   the new tests fail loudly in that case.
+- Stray dev binaries at repo root — `.gitignore` now has an explicit
+  `# Stray dev builds dropped at repo root` section covering all six
+  shapes (Recall, recall, *.exe, .app, server variants) and `make
+  clean` removes them. Contributors who accidentally `go build` at
+  repo root get a one-command cleanup path.
 
 ### Phase 1 — drift prevention (1 week, mostly S items)
 
 1. ~~#8 Go coverage floor ratchet (S)~~ — done
 2. ~~#15 screenshotType ordering test (S)~~ — done (audit miss, already covered; tightened the comment to cite the test)
 3. ~~#11 inference invariant test (S)~~ — done
-4. #16 .gitignore stray binaries (S)
+4. ~~#16 .gitignore stray binaries (S)~~ — done
 5. #9 SHA-pin GitHub Actions (M)
 
 ### Phase 2 — guard rails (1 week, M items)

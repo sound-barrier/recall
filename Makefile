@@ -548,6 +548,9 @@ pages-preview: pages-build ## Build then serve dist/pages/ on http://localhost:$
 	@echo "[ recall ] Docs site on http://localhost:$(PAGES_PORT)/  (Ctrl-C to stop)"
 	@cd dist/pages && python3 -m http.server $(PAGES_PORT) --bind 127.0.0.1
 
-clean: ## Remove dist/, build/bin/, frontend/dist, frontend/node_modules
+clean: ## Remove dist/, build/bin/, frontend/dist, frontend/node_modules, stray repo-root binaries
 	rm -rf $(DIST_DIR) build/bin frontend/dist frontend/node_modules
-	@echo "[ recall ] dist/, build/bin/, frontend/dist, frontend/node_modules removed"
+	# Stray dev builds at repo root from ad-hoc `go build` / `wails build`
+	# invocations. Real release artifacts live under dist/.
+	rm -rf Recall Recall.exe Recall.app recall Recall-server Recall-server.exe recall-server
+	@echo "[ recall ] dist/, build/bin/, frontend/dist, frontend/node_modules, stray repo-root binaries removed"
