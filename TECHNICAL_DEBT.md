@@ -494,54 +494,6 @@ shade", in which case iterate. No functional code change.
 
 ---
 
-## 8. Go coverage gate set to 40%; frontend gate is 70%
-
-**Size: S**
-
-**What.**
-`Makefile`'s `cover-go` target defaults `GO_COVERAGE_MIN ?= 40`.
-`vitest.config.ts` sets:
-
-- `statements: 70`
-- `branches: 60`
-- `functions: 55`
-- `lines: 70`
-
-**Why it's debt.**
-A 40% Go coverage floor is below the actual coverage today, and
-substantially below the frontend's gates. Three concrete risks:
-
-1. A future PR could *delete* tests until coverage hits 40% and CI
-   would still pass — the gate provides no real protection right
-   now.
-2. The visible asymmetry (Go: 40, Frontend: 70) communicates a
-   priority that doesn't match the project's actual quality bar
-   (the merge orchestration is the most fragile code in the repo,
-   per CLAUDE.md's "How match merging works" section).
-3. Vitest's config comment notes the frontend gates were "tuned a
-   few points below the current state … so a real regression trips
-   the gate, while routine refactors don't." Apply the same logic
-   to Go.
-
-**Mitigation plan.**
-
-1. Run `make cover-go` locally. Note the current total.
-2. Set `GO_COVERAGE_MIN` to `floor(current) - 2` (mirror the
-   frontend's "few points below current" rule).
-3. Open a PR that updates the Makefile default.
-4. Add a "Coverage" section to RELEASES.md noting the ratcheting
-   policy: every release cuts the floor up by the lower of
-   `(current - 2)` or `current` rounded down.
-5. After 2–3 releases, the floor will have ratcheted to the same
-   ~70% the frontend enforces.
-
-**How large.**
-S. ~30 minutes for the one-line change + RELEASES.md note. Risk: a
-quirky test depending on machine state could fail occasionally if
-the floor is too tight — keep the 2-point buffer.
-
----
-
 ## 9. GitHub Actions are tag-pinned, not SHA-pinned
 
 **Size: M**
@@ -988,10 +940,13 @@ choices.
 - Triplicated `@stoplight/spectral-cli` pin and other duplicated
   tool versions (typos, gosec, Honkit) — consolidated into
   `tool-versions.env` at repo root, validated by `make check-deps`.
+- Go coverage floor (was 40%, well below actual ~48%) — ratcheted
+  to 46% in `Makefile`'s `GO_COVERAGE_MIN`, with a written ratchet
+  policy in `CONTRIBUTING.md` to bump it every release.
 
 ### Phase 1 — drift prevention (1 week, mostly S items)
 
-1. #8 Go coverage floor ratchet (S)
+1. ~~#8 Go coverage floor ratchet (S)~~ — done
 2. #15 screenshotType ordering test (S)
 3. #11 inference invariant test (S)
 4. #16 .gitignore stray binaries (S)
