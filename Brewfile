@@ -67,6 +67,11 @@ brew "trivy"
 # lint-typos` and the lefthook pre-commit hook; config in _typos.toml.
 brew "typos-cli"
 
+# GitHub Actions workflow linter. Used by `make lint-actions` and
+# the lefthook pre-push hook; catches syntax errors, deprecated
+# action inputs, and embeds shellcheck for `run:` script bodies.
+brew "actionlint"
+
 # --- Not in brew, but required:
 #
 #   Wails CLI itself is a Go binary. Install once after `brew bundle`:

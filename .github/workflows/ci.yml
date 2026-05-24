@@ -126,6 +126,12 @@ jobs:
       - name: Lint Markdown (markdownlint-cli2)
         run: npx --yes markdownlint-cli2
 
+      # GitHub Actions workflow lint — catches deprecated inputs,
+      # syntax errors, and shellcheck issues in `run:` blocks. The
+      # action ships the actionlint binary so no install step.
+      - name: Lint workflows (actionlint)
+        uses: raven-actions/actionlint@v2
+
       # Go unit tests (merge logic, inference helpers, screenshotType
       # classification). Parser golden-file tests are skipped by -short.
       # Tee through go-junit-report so the XML is always produced — the
@@ -189,7 +195,7 @@ jobs:
         with:
           check_name: Unit test results
           comment_mode: off
-          junit_files: |
+          files: |
             go-junit.xml
             frontend-junit.xml
           fail_on: test failures
@@ -353,6 +359,7 @@ jobs:
         #     suite; test code isn't in deadcode's call graph.
         run: |
           pkgs=$(go list -tags serveronly ./... | grep -v node_modules)
+          # shellcheck disable=SC2086  # $pkgs is space-separated Go import paths; word-split is intentional
           out=$(deadcode -tags serveronly $pkgs)
           [ -z "$out" ] || echo "$out"
           unexpected=$(printf '%s' "$out" | grep -vE 'App\.Pick|NewWithStore' || true)
