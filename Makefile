@@ -73,7 +73,7 @@ build-windows: ## Windows/amd64 Wails app + NSIS installer via Docker → dist/w
 # Apple SDK is not redistributable — must run on macOS with Xcode CLT.
 # The npm/vite step is NOT skipped so Wails regenerates JS bindings.
 # wails build always writes to build/bin/; we copy to dist/mac/ after.
-build-mac: ## macOS arm64 Wails app → dist/mac/ (macOS host + Xcode CLT required)
+build-mac: ## macOS arm64 Wails app → dist/mac/Recall.app (macOS host + Xcode CLT required)
 	@if [ "$$(uname -s)" != "Darwin" ]; then \
 	    echo "[ recall ] ✗  build-mac requires macOS (Apple SDK not redistributable)"; \
 	    exit 1; \
@@ -81,8 +81,9 @@ build-mac: ## macOS arm64 Wails app → dist/mac/ (macOS host + Xcode CLT requir
 	@echo "[ recall ] Building macOS Wails app (arm64)…"
 	wails build $(WAILS_FLAGS) -platform darwin/arm64
 	@mkdir -p $(DIST_MAC)
-	@cp -R build/bin/Recall.app $(DIST_MAC)/Recall-arm64.app
-	@echo "[ recall ] ✓  dist/mac/Recall-arm64.app"
+	@rm -rf $(DIST_MAC)/Recall.app
+	@cp -R build/bin/Recall.app $(DIST_MAC)/Recall.app
+	@echo "[ recall ] ✓  dist/mac/Recall.app"
 
 
 build-all-docker: build-linux build-windows ## Linux + Windows Wails apps via Docker
