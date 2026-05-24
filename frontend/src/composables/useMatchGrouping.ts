@@ -74,7 +74,13 @@ export function useMatchGrouping<R extends GroupableRecord>(
   // Returns the keys along the first path of the tree (newest month →
   // newest week → newest day). Pretty light walk — bounded by tree
   // depth, not size.
+  //
+  // Exception: if tree[0] is the UNKNOWN DATE bucket (which happens
+  // only when there are zero dated months), return [] so we don't
+  // auto-expand a triage bucket the user probably doesn't want pried
+  // open every load.
   function firstPathKeys(tree: MatchGroup<R>[]): string[] {
+    if (tree[0]?.level === 'unknown') return []
     const path: string[] = []
     let cursor: MatchGroup<R> | undefined = tree[0]
     while (cursor) {

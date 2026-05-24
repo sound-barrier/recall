@@ -469,9 +469,10 @@ describe('groupMatchesByMonthWeekDay', () => {
     expect(groupMatchesByMonthWeekDay([], 'desc')).toEqual([])
   })
 
-  it('drops records without a parseable date (cannot group them)', () => {
+  it('keeps records without a parseable date, in the UNKNOWN DATE bucket', () => {
     const out = groupMatchesByMonthWeekDay([{ data: {} }], 'desc')
-    expect(out).toEqual([])
+    expect(out).toHaveLength(1)
+    expect(out[0]!.level).toBe('unknown')
   })
 
   it('groups three records on the same day under one Month/Week/Day', () => {
@@ -615,5 +616,115 @@ describe('groupMatchesByMonthWeekDay', () => {
     // But each month bucket holds only its own day(s).
     expect(may.children![0]!.children!.map(d => d.matches!.length)).toEqual([1])
     expect(apr.children![0]!.children!.map(d => d.matches!.length)).toEqual([1])
+  })
+
+  // ── UNKNOWN DATE bucket ────────────────────────────────────────────
+  //
+  // Records that pass the matched-view filter (have a map) but lack a
+  // data.date must NOT vanish from the tree. They get bucketed into a
+  // single "UNKNOWN DATE" group, pinned at the bottom of the tree
+  // regardless of sort direction. (The unknown bucket has no
+  // chronological rank — it's triage, not history.)
+
+  it('puts dateless records into a single UNKNOWN DATE group', () => {
+    const tree = groupMatchesByMonthWeekDay(
+      [{ data: { result: 'victory' } }],
+      'desc',
+    )
+    expect(tree).toHaveLength(1)
+    const unknown = tree[0]!
+    expect(unknown.level).toBe('unknown')
+    expect(unknown.label).toBe('UNKNOWN DATE')
+    expect(unknown.key).toBe('unknown')
+    expect(unknown.matches).toHaveLength(1)
+    expect(unknown.children).toBeUndefined()
+  })
+
+  it('pins UNKNOWN DATE at the bottom under sortDir=desc', () => {
+    const tree = groupMatchesByMonthWeekDay(
+      [
+        { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+        { data: { result: 'defeat' } }, // undated
+        { data: { date: '2026-04-15', finished_at: '20:00', result: 'victory' } },
+      ],
+      'desc',
+    )
+    expect(tree.map(g => g.label)).toEqual(['MAY 2026', 'APRIL 2026', 'UNKNOWN DATE'])
+    expect(tree.at(-1)!.level).toBe('unknown')
+  })
+
+  it('pins UNKNOWN DATE at the bottom under sortDir=asc (does NOT flip with sort)', () => {
+    const tree = groupMatchesByMonthWeekDay(
+      [
+        { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+        { data: { result: 'defeat' } }, // undated
+        { data: { date: '2026-04-15', finished_at: '20:00', result: 'victory' } },
+      ],
+      'asc',
+    )
+    expect(tree.map(g => g.label)).toEqual(['APRIL 2026', 'MAY 2026', 'UNKNOWN DATE'])
+    expect(tree.at(-1)!.level).toBe('unknown')
+  })
+
+  it('tallies W/L/D for the UNKNOWN DATE group from the undated records', () => {
+    const tree = groupMatchesByMonthWeekDay(
+      [
+        { data: { result: 'victory' } },
+        { data: { result: 'defeat' } },
+        { data: { result: 'draw' } },
+        { data: { result: 'victory' } },
+      ],
+      'desc',
+    )
+    expect(tree).toHaveLength(1)
+    expect(tree[0]!.tally).toEqual({ w: 2, l: 1, d: 1 })
+  })
+
+  it('returns only the UNKNOWN DATE group when every record is dateless', () => {
+    const tree = groupMatchesByMonthWeekDay(
+      [
+        { data: { } },
+        { data: { } },
+      ],
+      'desc',
+    )
+    expect(tree).toHaveLength(1)
+    expect(tree[0]!.level).toBe('unknown')
+    expect(tree[0]!.matches).toHaveLength(2)
+  })
+
+  it('does NOT create an UNKNOWN DATE group when every record has a date', () => {
+    const tree = groupMatchesByMonthWeekDay(
+      [{ data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } }],
+      'desc',
+    )
+    expect(tree).toHaveLength(1)
+    expect(tree[0]!.level).toBe('month')
+    // No phantom empty unknown bucket.
+    expect(tree.some(g => g.level === 'unknown')).toBe(false)
+  })
+
+  it('orders dateless records by match_key for a stable bucket order', () => {
+    const tree = groupMatchesByMonthWeekDay(
+      [
+        { match_key: 'unmatched:zzz.png', data: { result: 'victory' } },
+        { match_key: 'unmatched:aaa.png', data: { result: 'defeat' } },
+        { match_key: 'unmatched:mmm.png', data: { result: 'draw' } },
+      ],
+      'desc',
+    )
+    const keys = tree[0]!.matches!.map(r => r.match_key)
+    expect(keys).toEqual(['unmatched:aaa.png', 'unmatched:mmm.png', 'unmatched:zzz.png'])
+  })
+
+  it('also catches records whose date string is unparseable (not just absent)', () => {
+    const tree = groupMatchesByMonthWeekDay(
+      [
+        { data: { date: 'not-a-date', result: 'victory' } },
+      ],
+      'desc',
+    )
+    expect(tree).toHaveLength(1)
+    expect(tree[0]!.level).toBe('unknown')
   })
 })
