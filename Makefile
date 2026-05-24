@@ -34,6 +34,7 @@ WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
         cover cover-go cover-frontend \
         fmt update-deps trivy check-deps \
         cloc cloc-detail \
+        pages-build pages-preview \
         dev clean
 
 help: ## Show this help
@@ -426,6 +427,12 @@ dev: ## Start hot-reload Wails dev server (macOS only)
 SWAGGER_PORT  ?= 8080
 SWAGGER_IMAGE ?= swaggerapi/swagger-ui:v5.17.14
 
+# Honkit pin — keep in sync with HONKIT_VERSION in
+# .github/workflows/pages.yml so local previews build the same site
+# the workflow deploys.
+HONKIT_VERSION ?= 6.0.2
+PAGES_PORT     ?= 4000
+
 swagger: ## Serve api/openapi.yaml via Swagger UI on :$(SWAGGER_PORT) (Ctrl-C to stop)
 	@if [ ! -f api/openapi.yaml ]; then \
 	    echo "[ recall ] ✗  api/openapi.yaml not found"; exit 1; \
@@ -437,6 +444,36 @@ swagger: ## Serve api/openapi.yaml via Swagger UI on :$(SWAGGER_PORT) (Ctrl-C to
 	    -e SWAGGER_JSON=/spec/openapi.yaml \
 	    -v "$(CURDIR)/api/openapi.yaml:/spec/openapi.yaml:ro" \
 	    $(SWAGGER_IMAGE)
+
+# pages-build mirrors the staging+build dance in
+# .github/workflows/pages.yml so what you preview locally is what CI
+# deploys. Source-of-truth is still the workflow — when adding a new
+# chapter, update SUMMARY.md, the workflow's `Stage build directory`
+# step, AND the cp list below in lock-step.
+pages-build: ## Build the docs book + Swagger UI under dist/pages/ (mirrors CI)
+	@command -v npx >/dev/null || { echo "[ recall ] ✗  npx not installed — install Node 22+"; exit 1; }
+	@echo "[ recall ] Staging book/ + docs/ into dist/pages-stage/…"
+	@rm -rf dist/pages dist/pages-stage
+	@mkdir -p dist/pages-stage
+	@cp -R book/. dist/pages-stage/
+	@cp docs/install-macos.md dist/pages-stage/install-macos.md
+	@cp docs/install-linux.md dist/pages-stage/install-linux.md
+	@cp docs/server.md        dist/pages-stage/server.md
+	@cp docs/docker.md        dist/pages-stage/docker.md
+	@cp docs/grafana.md       dist/pages-stage/grafana.md
+	@rm -f dist/pages-stage/.gitignore
+	@echo "[ recall ] Running honkit@$(HONKIT_VERSION)…"
+	@cd dist/pages-stage && npx --yes "honkit@$(HONKIT_VERSION)" build . _book >/dev/null
+	@mkdir -p dist/pages/api
+	@cp -R dist/pages-stage/_book/. dist/pages/
+	@cp docs/api/index.html dist/pages/api/index.html
+	@cp api/openapi.yaml    dist/pages/api/openapi.yaml
+	@echo "[ recall ] ✓  Built dist/pages/  (book root + /api/ Swagger UI)"
+
+pages-preview: pages-build ## Build then serve dist/pages/ on http://localhost:$(PAGES_PORT) (Ctrl-C to stop)
+	@command -v python3 >/dev/null || { echo "[ recall ] ✗  python3 not installed"; exit 1; }
+	@echo "[ recall ] Docs site on http://localhost:$(PAGES_PORT)/  (Ctrl-C to stop)"
+	@cd dist/pages && python3 -m http.server $(PAGES_PORT) --bind 127.0.0.1
 
 clean: ## Remove dist/, build/bin/, frontend/dist, frontend/node_modules
 	rm -rf $(DIST_DIR) build/bin frontend/dist frontend/node_modules
