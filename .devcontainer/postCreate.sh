@@ -21,6 +21,7 @@ HADOLINT_VERSION="v2.14.0"
 LEFTHOOK_VERSION="2.1.8"
 TRIVY_VERSION="0.70.0"
 TYPOS_VERSION="v1.46.3"
+GOSEC_VERSION="v2.26.1"
 
 # ─── apt packages (Brewfile equivalents) ──────────────────────────────
 log "apt packages: tesseract, sqlite3, jq, yamllint, cloc, direnv, …"
@@ -55,7 +56,8 @@ go install golang.org/x/tools/cmd/deadcode@latest
 # and the lefthook pre-push hook.
 go install github.com/rhysd/actionlint/cmd/actionlint@latest
 # gosec: Go SAST. Used by `make lint-gosec` and the CI security job.
-go install github.com/securego/gosec/v2/cmd/gosec@latest
+# Pinned so dev / CI / lefthook all run the same gosec version.
+go install "github.com/securego/gosec/v2/cmd/gosec@${GOSEC_VERSION}"
 go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
 
 # ─── hadolint (Dockerfile linter) ─────────────────────────────────────

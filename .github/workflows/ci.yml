@@ -331,14 +331,20 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # Install gosec as a Go binary against the runner's Go install
+      # rather than via securego/gosec's docker action. The action ships
+      # a docker image with its own bundled Go (older than this repo's
+      # go.mod toolchain requirement) and inherits the runner's
+      # GOTOOLCHAIN=local that setup-go sets — so the container's stale
+      # Go can't be auto-upgraded and module loading fails. Going via
+      # `go install` reuses the runner's Go 1.26 (set by setup-go above)
+      # and matches how `make lint-gosec` runs locally.
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.26.1
       - name: Run gosec (default build tag)
-        uses: securego/gosec@v2.21.4
-        with:
-          args: -exclude-dir=frontend ./...
+        run: gosec -exclude-dir=frontend ./...
       - name: Run gosec (serveronly build tag)
-        uses: securego/gosec@v2.21.4
-        with:
-          args: -exclude-dir=frontend -tags=serveronly ./...
+        run: gosec -exclude-dir=frontend -tags=serveronly ./...
 
   # ── Job 8: Dead code analysis ────────────────────────────────────────────
   # deadcode does whole-program call-graph analysis for Go (serveronly variant

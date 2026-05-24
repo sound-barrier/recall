@@ -30,6 +30,7 @@ HADOLINT_VERSION="v2.14.0"
 LEFTHOOK_VERSION="2.1.8"
 TRIVY_VERSION="0.70.0"
 TYPOS_VERSION="v1.46.3"
+GOSEC_VERSION="v2.26.1"
 
 # Minimum language-toolchain versions. The Brewfile / apt path
 # can't bring these in cleanly (Debian's go/node packages are
@@ -123,7 +124,7 @@ case "$PLATFORM" in
         go install golang.org/x/vuln/cmd/govulncheck@latest
         go install golang.org/x/tools/cmd/deadcode@latest
         go install github.com/rhysd/actionlint/cmd/actionlint@latest
-        go install github.com/securego/gosec/v2/cmd/gosec@latest
+        go install "github.com/securego/gosec/v2/cmd/gosec@${GOSEC_VERSION}"
         go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
 
         # Binary releases — re-installs on every run (idempotent;
