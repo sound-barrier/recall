@@ -264,6 +264,66 @@ func TestApp_RoundTripViaSQLStore(t *testing.T) {
 	}
 }
 
+// ──────────────────────────────────────────────────────────────────────
+// ParsedAt / SourceParsedAt
+// ──────────────────────────────────────────────────────────────────────
+//
+// MatchRecord exposes two timestamp fields:
+//   - ParsedAt: when the match record was first inserted (stable)
+//   - SourceParsedAt: per-file first-insert timestamps (stable)
+//
+// rowToMatchRecord must pass both through from the underlying MatchRow.
+
+func TestApp_GetMatchResults_ExposesParsedAtFields(t *testing.T) {
+	fs := &fakeStore{
+		rows: []db.MatchRow{{
+			MatchKey:    "match:2026-05-10T21:29:28",
+			SourceFiles: []string{"a.png", "b.png"},
+			ParsedAt:    "2026-05-10T21:30:00Z",
+			SourceParsedAt: map[string]string{
+				"a.png": "2026-05-10T21:30:00Z",
+				"b.png": "2026-05-10T21:30:05Z",
+			},
+			Mode: "competitive",
+		}},
+	}
+	a := NewWithStore(fs)
+	got, err := a.GetMatchResults()
+	if err != nil {
+		t.Fatalf("GetMatchResults: %v", err)
+	}
+	if got[0].ParsedAt != "2026-05-10T21:30:00Z" {
+		t.Errorf("ParsedAt not lifted onto MatchRecord: %q", got[0].ParsedAt)
+	}
+	if got[0].SourceParsedAt["a.png"] != "2026-05-10T21:30:00Z" {
+		t.Errorf("SourceParsedAt[a.png] not lifted: %+v", got[0].SourceParsedAt)
+	}
+	if got[0].SourceParsedAt["b.png"] != "2026-05-10T21:30:05Z" {
+		t.Errorf("SourceParsedAt[b.png] not lifted: %+v", got[0].SourceParsedAt)
+	}
+}
+
+func TestApp_UpsertMergedRow_WritesSourceParsedAt(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	row := mergedRow{
+		Key:     "match:2026-05-10T21:29:28",
+		Sources: []string{"a.png", "b.png"},
+		Types:   map[string]string{"a.png": "summary", "b.png": "scoreboard"},
+		ParsedAt: map[string]string{
+			"a.png": "2026-05-10T21:30:00Z",
+			"b.png": "2026-05-10T21:30:05Z",
+		},
+		Data: parser.MatchResult{Mode: "competitive"},
+	}
+	if err := a.upsertMergedRow(row); err != nil {
+		t.Fatalf("upsertMergedRow: %v", err)
+	}
+	if !reflect.DeepEqual(fs.rows[0].SourceParsedAt, row.ParsedAt) {
+		t.Errorf("SourceParsedAt did not reach the store:\n got=%+v\nwant=%+v", fs.rows[0].SourceParsedAt, row.ParsedAt)
+	}
+}
+
 func TestApp_ScrapeReader_FiltersHonoredAtMetricsLayer(t *testing.T) {
 	// scrapeReader returns every row in the DB — competitive filtering is
 	// the metrics layer's job, not the reader's.

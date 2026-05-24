@@ -20,7 +20,7 @@ func TestMergeByTimestamp_GroupsWithinWindow(t *testing.T) {
 		"2026.05.10 - 21.29.41 _scoreboard.png": {Eliminations: 17, Assists: 16, Deaths: 11},
 		"2026.05.10 - 22.05.00 _summary.png":    {Map: "aatlis", Result: "defeat", Date: "2026-05-10", FinishedAt: "22:05"},
 	}
-	got := mergeByTimestamp(parsed)
+	got := mergeByTimestamp(parsed, nil)
 	if len(got) != 2 {
 		t.Fatalf("expected 2 groups, got %d: %+v", len(got), got)
 	}
@@ -42,7 +42,7 @@ func TestMergeByTimestamp_IsolatesLoners(t *testing.T) {
 		"renamed_no_timestamp.png":           {Map: "ilios", Eliminations: 5},
 		"2026.05.10 - 21.29.28 _summary.png": {Map: "rialto", Result: "victory"},
 	}
-	got := mergeByTimestamp(parsed)
+	got := mergeByTimestamp(parsed, nil)
 	if len(got) != 2 {
 		t.Fatalf("loner should not merge with timestamped row; got %d rows", len(got))
 	}
@@ -68,7 +68,7 @@ func TestMergeByTimestamp_SplitsConflictingMetadataInSameWindow(t *testing.T) {
 		"2026.05.10 - 21.29.28 _summary.png": {Map: "rialto", Result: "victory", Date: "2026-05-10", FinishedAt: "21:29"},
 		"2026.05.10 - 21.29.58 _summary.png": {Map: "aatlis", Result: "defeat", Date: "2026-05-10", FinishedAt: "20:50"},
 	}
-	got := mergeByTimestamp(parsed)
+	got := mergeByTimestamp(parsed, nil)
 	if len(got) != 2 {
 		t.Fatalf("expected split into 2 groups by metadata, got %d: %+v", len(got), got)
 	}

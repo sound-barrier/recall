@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MatchRecord } from '../api'
-import { detectScreenshotSlots, screenshotURL } from '../match-helpers'
+import { detectScreenshotSlots, screenshotURL, formatParsedAt } from '../match-helpers'
 import type { CardStateApi } from './MatchesView.vue'
 
 // UnknownMapsView is the triage tab for records that lack a map (the
@@ -123,6 +123,11 @@ const emit = defineEmits<{
                   <span class="chev small" :class="{ open: cardState.previewOpen.value[f] }">›</span>
                   <span class="source-name-text">{{ f }}</span>
                 </a>
+                <span
+                  v-if="rec.source_parsed_at?.[f]"
+                  class="source-parsed-chip"
+                  :title="`Inserted into the database at ${rec.source_parsed_at[f]} (UTC)`"
+                >{{ formatParsedAt(rec.source_parsed_at[f]) }}</span>
                 <img
                   v-if="cardState.previewOpen.value[f] && !cardState.previewError.value[f]"
                   :src="screenshotURL(f)"
@@ -173,3 +178,21 @@ const emit = defineEmits<{
     </div>
   </section>
 </template>
+
+<style scoped>
+/* Per-source-file "first inserted" timestamp chip — sits next to the
+   source filename in the diagnostic source list. Same italic/dim
+   treatment as the matching chip in MatchCard so the two views read
+   consistently when a user jumps between them. */
+
+.source-parsed-chip {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-style: italic;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  margin-left: 0.35rem;
+  opacity: 0.78;
+}
+</style>

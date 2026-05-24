@@ -806,6 +806,28 @@ export interface components {
             source_types?: {
                 [key: string]: components["schemas"]["ScreenshotType"];
             };
+            /**
+             * @description Per-source-file timestamp (ISO8601) of when each screenshot
+             *     was first inserted into the DB. Stable across subsequent
+             *     re-parses of the same match. May be absent on rows / files
+             *     persisted before this column landed.
+             * @example {
+             *       "Overwatch Screenshot 2026.05.10 - 22.21.11.79.png": "2026-05-10T22:30:00Z",
+             *       "Overwatch Screenshot 2026.05.10 - 22.21.57.34.png": "2026-05-10T22:30:00Z"
+             *     }
+             */
+            source_parsed_at?: {
+                [key: string]: string;
+            };
+            /**
+             * Format: date-time
+             * @description Match-level timestamp (ISO8601) of when the match record
+             *     was first inserted into the DB. Stable across subsequent
+             *     re-parses so the UI can display "parsed on X" without the
+             *     value shifting when a later screenshot is added.
+             * @example 2026-05-10T22:30:00Z
+             */
+            parsed_at?: string;
             data: components["schemas"]["MatchResult"];
         };
         /**
