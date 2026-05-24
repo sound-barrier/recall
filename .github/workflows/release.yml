@@ -247,6 +247,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write    # required by cosign for keyless OIDC signing
     env:
       DOCKER_BUILDKIT: "1"
     steps:
@@ -277,6 +278,7 @@ jobs:
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
       - name: Build and push server container
+        id: push
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -288,6 +290,32 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Sign each pushed tag with cosign keyless (Sigstore OIDC). The
+      # workflow's own GitHub Actions identity is the signing identity;
+      # users verify with:
+      #   cosign verify ghcr.io/sound-barrier/recall-server:<tag> \
+      #     --certificate-identity-regexp 'https://github.com/sound-barrier/recall/\.github/workflows/release\.yml@refs/tags/v.*' \
+      #     --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
+      # See docs/docker.md for the full verification recipe.
+      - uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Sign container image (keyless via OIDC)
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          # Sign each tag at the digest the push produced; signing by
+          # digest (not tag) is what prevents a tag re-point from
+          # accidentally invalidating the signature.
+          for tag in ${TAGS}; do
+            image="${tag%:*}@${DIGEST}"
+            echo "::group::cosign sign ${image}"
+            cosign sign --yes "${image}"
+            echo "::endgroup::"
+          done
 
       # GHCR packages default to private for new packages. Explicitly set public
       # so users can pull without authentication. Detects user vs org owner automatically.

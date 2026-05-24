@@ -59,3 +59,30 @@ and settings across container restarts.
 | `RECALL_PPROF` | *(off)* | When set to any non-empty value, mounts `net/http/pprof` handlers under `/debug/pprof/`. Never expose publicly. |
 | `OWMETRICS_METRICS_ADDR` | `:9091` | Prometheus metrics endpoint address (when the Prometheus toggle is on). |
 | `RECALL_DEBUG_DIR` | system temp | Directory for Tesseract work files. |
+
+## Verifying the image
+
+Every container pushed by the release workflow is signed with
+[cosign](https://docs.sigstore.dev/cosign/signing/overview/) using
+keyless OIDC — the workflow's own GitHub Actions identity is the
+signing identity, so no long-lived signing keys exist anywhere.
+
+To verify before pulling, install cosign
+([install guide](https://docs.sigstore.dev/cosign/system_config/installation/))
+then run:
+
+```sh
+cosign verify ghcr.io/sound-barrier/recall-server:latest \
+  --certificate-identity-regexp 'https://github.com/sound-barrier/recall/\.github/workflows/release\.yml@refs/tags/v.*' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
+```
+
+A successful verify prints the signing certificate's claims (workflow
+ref, commit SHA, etc.) and exits 0; tampering or a mismatched
+identity exits non-zero. The same command works against any tag —
+swap `:latest` for `:0.1.0`, `:0.1.0-beta.0`, etc.
+
+This complements the SHA256 + build-provenance attestation chain
+documented in the install guides: provenance proves "built by this
+workflow," cosign proves "the image bits weren't tampered with after
+upload."
