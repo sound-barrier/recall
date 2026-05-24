@@ -17,30 +17,44 @@ describe('readStoredWeekStart', () => {
 
   afterEach(() => { vi.unstubAllGlobals() })
 
-  it('returns "sunday" when nothing is stored', () => {
-    expect(readStoredWeekStart()).toBe('sunday')
+  it('returns 0 (Sunday) when nothing is stored', () => {
+    expect(readStoredWeekStart()).toBe(0)
   })
 
-  it('returns "monday" when monday is stored', () => {
-    storage[WEEK_START_STORAGE_KEY] = 'monday'
-    expect(readStoredWeekStart()).toBe('monday')
+  it('returns each numeric day 0-6 when that value is stored', () => {
+    for (let n = 0; n <= 6; n++) {
+      storage[WEEK_START_STORAGE_KEY] = String(n)
+      expect(readStoredWeekStart()).toBe(n)
+    }
   })
 
-  it('returns "sunday" when sunday is stored', () => {
+  it('migrates the legacy "sunday" string value to 0', () => {
     storage[WEEK_START_STORAGE_KEY] = 'sunday'
-    expect(readStoredWeekStart()).toBe('sunday')
+    expect(readStoredWeekStart()).toBe(0)
   })
 
-  it('falls back to "sunday" for an unrecognized stored value', () => {
-    storage[WEEK_START_STORAGE_KEY] = 'tuesday' // not a valid WeekStart
-    expect(readStoredWeekStart()).toBe('sunday')
+  it('migrates the legacy "monday" string value to 1', () => {
+    storage[WEEK_START_STORAGE_KEY] = 'monday'
+    expect(readStoredWeekStart()).toBe(1)
   })
 
-  it('falls back to "sunday" when localStorage throws (private mode, etc.)', () => {
+  it('falls back to 0 for an unrecognized stored value', () => {
+    storage[WEEK_START_STORAGE_KEY] = 'tuesday' // not 0-6, not legacy
+    expect(readStoredWeekStart()).toBe(0)
+  })
+
+  it('falls back to 0 for an out-of-range numeric string', () => {
+    storage[WEEK_START_STORAGE_KEY] = '7'
+    expect(readStoredWeekStart()).toBe(0)
+    storage[WEEK_START_STORAGE_KEY] = '-1'
+    expect(readStoredWeekStart()).toBe(0)
+  })
+
+  it('falls back to 0 when localStorage throws (private mode, etc.)', () => {
     vi.stubGlobal('localStorage', {
       getItem: () => { throw new Error('SecurityError') },
       setItem: () => {},
     })
-    expect(readStoredWeekStart()).toBe('sunday')
+    expect(readStoredWeekStart()).toBe(0)
   })
 })
