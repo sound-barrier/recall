@@ -207,7 +207,7 @@ lint-yaml: ## Lint YAML files (yamllint)
 # Spectral runs the spectral:oas ruleset against api/openapi.yaml; see
 # .spectral.yaml at the project root for rule overrides. npx pulls a
 # pinned version on demand so no global install is required.
-SPECTRAL ?= npx --yes @stoplight/spectral-cli@6.14.2
+SPECTRAL ?= npx --yes @stoplight/spectral-cli@6.16.0
 
 lint-openapi: ## Lint api/openapi.yaml (Spectral, spectral:oas ruleset)
 	@echo "[ recall ] Linting OpenAPI (spectral)…"
@@ -426,7 +426,7 @@ dev: ## Start hot-reload Wails dev server (macOS only)
 # auto-refreshes on browser reload. Stops on Ctrl-C and removes the
 # container. Honors the $(DOCKER) override (set DOCKER=podman for Podman).
 SWAGGER_PORT  ?= 8080
-SWAGGER_IMAGE ?= swaggerapi/swagger-ui:v5.17.14
+SWAGGER_IMAGE ?= swaggerapi/swagger-ui:v5.32.6
 
 # Honkit pin — keep in sync with HONKIT_VERSION in
 # .github/workflows/pages.yml so local previews build the same site
