@@ -298,7 +298,7 @@ function searchStr(field: string): string {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  border: 1px solid currentColor;
+  border: 1px solid currentcolor;
   opacity: 0.7;
   transform: translateY(-0.5px);
 }
@@ -311,6 +311,7 @@ function searchStr(field: string): string {
   border-color: var(--accent);
   background: var(--accent-soft, transparent);
 }
+
 .undated-toggle.active .undated-mark {
   opacity: 1;
 }
