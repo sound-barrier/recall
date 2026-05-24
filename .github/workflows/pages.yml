@@ -74,8 +74,15 @@ jobs:
           cp docs/docker.md       book/docker.md
           cp docs/grafana.md      book/grafana.md
 
+      # Honkit resolves SUMMARY.md chapter paths relative to its
+      # working directory, not the source arg. Run it from inside
+      # book/ so `install-macos.md` etc. resolve correctly. (Running
+      # `honkit build book book/_book` from repo root parses
+      # SUMMARY.md but fails to find the chapters and silently
+      # produces a 1-page book.)
       - name: Build the book (Honkit)
-        run: npx --yes "honkit@${HONKIT_VERSION}" build book book/_book
+        working-directory: book
+        run: npx --yes "honkit@${HONKIT_VERSION}" build . _book
 
       # Final Pages tree:
       #   _site/                — book index.html + per-chapter HTML
