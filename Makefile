@@ -30,7 +30,7 @@ WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
         build-server-container \
         lint lint-go lint-js lint-css lint-html lint-docker lint-typos lint-md lint-actions \
         dead-code dead-code-go dead-code-ts \
-        test test-go test-frontend \
+        test test-go test-frontend test-e2e test-all \
         cover cover-go cover-frontend \
         fmt update-deps trivy check-deps \
         cloc cloc-detail \
@@ -400,6 +400,29 @@ test-frontend: ## Run frontend unit tests (Vitest)
 	@echo "[ recall ] Running frontend unit tests (Vitest)…"
 	cd frontend && npm run test
 	@echo "[ recall ] ✓  Frontend tests passed"
+
+# E2E browser tests via Playwright. Build the serveronly binary
+# (embeds frontend/dist) into /tmp/recall-e2e/, then let Playwright's
+# webServer block boot it on :7099 with HOME=/tmp/recall-e2e so the
+# suite never touches real ~/Library/Application Support/Recall data.
+# `test:` umbrella stays Go + Vitest by default; opt in to E2E with
+# this target (or `make test-all` which calls both).
+E2E_HOME ?= /tmp/recall-e2e
+
+test-e2e: ## E2E browser tests via Playwright (boots server in $(E2E_HOME) on :7099)
+	@command -v npx >/dev/null || { echo "[ recall ] ✗  npx not installed — install Node 22+"; exit 1; }
+	@echo "[ recall ] Building frontend (required for Go //go:embed)…"
+	@cd frontend && npm run build >/dev/null
+	@echo "[ recall ] Building serveronly binary → $(E2E_HOME)/recall-server…"
+	@mkdir -p $(E2E_HOME)
+	@go build -tags serveronly -o $(E2E_HOME)/recall-server .
+	@echo "[ recall ] Installing Playwright chromium (skipped if cached)…"
+	@cd frontend && npx playwright install chromium
+	@echo "[ recall ] Running Playwright E2E suite…"
+	cd frontend && npx playwright test
+	@echo "[ recall ] ✓  E2E tests passed"
+
+test-all: test test-e2e ## Run unit tests + E2E (everything)
 
 cover: cover-go cover-frontend ## Generate Go + frontend coverage reports (umbrella)
 
