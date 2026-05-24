@@ -90,6 +90,36 @@ describe('App.vue', () => {
   })
 })
 
+describe('App.vue — landmarks and skip-link', () => {
+  it('renders a skip-link as the first focusable, pointing at #main-content', async () => {
+    const wrapper = await mountApp()
+    const skip = wrapper.find('a.skip-link')
+    expect(skip.exists()).toBe(true)
+    expect(skip.attributes('href')).toBe('#main-content')
+    // First <a>/button/input/etc in source order — keyboard users land
+    // here on Tab from outside the page.
+    const firstFocusable = wrapper.element.querySelector('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])')
+    expect(firstFocusable).toBe(skip.element)
+  })
+
+  it('wraps the active view panel in a <main id="main-content">', async () => {
+    const wrapper = await mountApp()
+    const main = wrapper.find('main#main-content')
+    expect(main.exists()).toBe(true)
+    // tabindex="-1" so the skip-link can move focus to it without
+    // putting <main> in the natural tab order.
+    expect(main.attributes('tabindex')).toBe('-1')
+    // The active panel (matches by default) is rendered inside it.
+    expect(main.find('#panel-matches').exists()).toBe(true)
+  })
+
+  it('skip-link click focuses the <main> landmark', async () => {
+    const wrapper = await mountApp()
+    await wrapper.find('a.skip-link').trigger('click')
+    expect((document.activeElement as HTMLElement | null)?.id).toBe('main-content')
+  })
+})
+
 describe('App.vue — unsupported-tesseract modal a11y', () => {
   async function openUnsupportedModal() {
     // Tesseract is detected but reports an unsupported version (e.g. 4.x).
