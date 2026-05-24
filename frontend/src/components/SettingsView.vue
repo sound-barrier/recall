@@ -6,7 +6,7 @@ import { WEEKDAYS_FULL } from '../match-helpers'
 // SettingsView — Directories + Appearance + Calendar. Engine /
 // Prometheus / Watch-folder knobs live in the Ingest view because
 // they're tied to the parse workflow. Pulled out of App.vue so the
-// panel can be unit-tested without mounting the entire 4000-line shell.
+// panel can be unit-tested without mounting the entire ~4500-line shell.
 
 defineProps<{
   screenshotsDir: string
