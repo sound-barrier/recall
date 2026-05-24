@@ -36,6 +36,12 @@ import MatchesView from './components/MatchesView.vue'
 import SettingsView from './components/SettingsView.vue'
 import UnknownMapsView from './components/UnknownMapsView.vue'
 
+// GitHub repository URL — surfaced via the brandmark in the masthead.
+// Centralised here so the markup, hover title, and any future references
+// stay in sync. Routed through OpenURL so Wails-mode clicks open in the
+// user's system browser instead of the embedded WebView.
+const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
+
 const records = ref<MatchRecord[]>([])
 const error = ref('')
 const loading = ref(false)
@@ -496,13 +502,27 @@ onBeforeUnmount(() => {
 
       <header class="masthead">
         <div class="masthead-left">
-          <div class="brandmark-tile">
+          <!-- Brandmark also acts as the repo link. Use <a> so the
+               markup is semantically navigational (and middle-/right-
+               click "open in new tab" work in server mode), but route
+               left-clicks through OpenURL so Wails mode hits the OS
+               browser instead of the embedded WebView. -->
+          <a
+            class="brandmark-tile brandmark-link"
+            :href="GITHUB_REPO_URL"
+            target="_blank"
+            rel="noopener noreferrer"
+            :title="`Open Recall on GitHub — ${GITHUB_REPO_URL}`"
+            aria-label="Open the Recall project on GitHub"
+            @click.prevent="OpenURL(GITHUB_REPO_URL)"
+          >
             <span class="brand-tick">↺</span>
             <h1 class="brand">
               RE<span class="brand-accent">CALL</span>
             </h1>
             <span class="brand-corner" aria-hidden="true" />
-          </div>
+            <span class="brand-extlink" aria-hidden="true">↗</span>
+          </a>
           <p class="tagline">
             Personal Telemetry · Match Almanac
           </p>
@@ -921,6 +941,75 @@ body {
     0 0 0 1px rgb(0 0 0 / 25%) inset,
     0 14px 36px -14px rgb(0 0 0 / 55%);
   isolation: isolate;
+}
+
+/* When the tile carries `.brandmark-link` it doubles as the GitHub
+   repo anchor. Anchor reset + hover lift + accent-rail brightening
+   communicate "this opens something" without disturbing the static
+   visual identity of the tile when at rest. The `↗` glyph stays
+   collapsed by default and slides in on hover/focus — restrained
+   affordance that doesn't compete with the wordmark itself. */
+
+.brandmark-link {
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    transform 180ms ease,
+    box-shadow 200ms ease,
+    filter 200ms ease;
+}
+
+.brandmark-link:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 30%) inset,
+    0 18px 40px -14px rgb(0 0 0 / 65%);
+  filter: brightness(1.06);
+}
+
+.brandmark-link:active {
+  transform: translateY(0);
+  filter: brightness(0.96);
+}
+
+.brandmark-link:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 25%) inset,
+    0 0 0 2px var(--accent-bright),
+    0 14px 36px -14px rgb(0 0 0 / 55%);
+}
+
+/* Hover the tile → the accent rail leaks slightly past its bounds. */
+
+.brandmark-link:hover::before { box-shadow: 0 0 22px var(--accent-glow); }
+
+.brand-extlink {
+  position: absolute;
+  right: 10px;
+  bottom: 4px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--accent-bright);
+  letter-spacing: 0;
+  opacity: 0;
+  transform: translate(-2px, 2px);
+  transition: opacity 180ms ease, transform 180ms ease;
+  pointer-events: none;
+  text-shadow: 0 0 10px var(--accent-glow);
+}
+
+.brandmark-link:hover .brand-extlink,
+.brandmark-link:focus-visible .brand-extlink {
+  opacity: 0.85;
+  transform: translate(0, 0);
+}
+
+[data-theme="light"] .brand-extlink {
+  color: var(--accent-text);
+  text-shadow: none;
 }
 
 .brandmark-tile::before {
