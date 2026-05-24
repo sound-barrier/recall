@@ -1,7 +1,15 @@
-# Publish docs/api/index.html + api/openapi.yaml as a GitHub Pages site.
-# The result is a Swagger UI rendering of the spec at
-# https://sound-barrier.github.io/recall/api/, auto-updated whenever the
-# spec or page scaffold changes on main.
+# Publish two artifacts to GitHub Pages:
+#
+#   1. The user-facing documentation book (Honkit) — built from
+#      book/ + the staged-in docs/*.md chapters. Lives at the Pages
+#      root: https://sound-barrier.github.io/recall/
+#
+#   2. The Swagger UI rendering of api/openapi.yaml. Lives at
+#      https://sound-barrier.github.io/recall/api/ — same URL the
+#      book's sidebar "API reference" link points at.
+#
+# Auto-deploys whenever the book scaffold, the docs/ chapters, the
+# spec, or this workflow itself changes on main.
 #
 # One-time setup: Repo Settings → Pages → Build and deployment →
 # Source = "GitHub Actions". Without it, deploy-pages fails with
@@ -19,7 +27,8 @@ on:
     # Skip the deploy when only Go / Vue / Docker / tests change.
     paths:
       - 'api/openapi.yaml'
-      - 'docs/api/**'
+      - 'docs/**'
+      - 'book/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -34,6 +43,13 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# Pinned Honkit version. Bump here when intentionally upgrading; the
+# rest of the project's pinned tooling lives in .devcontainer/
+# postCreate.sh, but Honkit isn't dev-container content so the pin
+# is workflow-local.
+env:
+  HONKIT_VERSION: 6.0.2
+
 jobs:
   deploy:
     runs-on: ubuntu-24.04
@@ -43,14 +59,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Stage the two files side-by-side under /api/ so the deployed
-      # tree is `<root>/api/index.html` + `<root>/api/openapi.yaml`,
-      # matching the relative `url: './openapi.yaml'` in the HTML.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Stage the chapter sources next to book.json / SUMMARY.md so
+      # Honkit can find them. Keep this list in sync with book/.gitignore
+      # and book/SUMMARY.md.
+      - name: Stage book chapters from docs/
+        run: |
+          cp docs/install-macos.md book/install-macos.md
+          cp docs/install-linux.md book/install-linux.md
+          cp docs/server.md       book/server.md
+          cp docs/docker.md       book/docker.md
+          cp docs/grafana.md      book/grafana.md
+
+      - name: Build the book (Honkit)
+        run: npx --yes "honkit@${HONKIT_VERSION}" build book book/_book
+
+      # Final Pages tree:
+      #   _site/                — book index.html + per-chapter HTML
+      #   _site/api/index.html  — Swagger UI shell
+      #   _site/api/openapi.yaml — the spec the shell loads
       - name: Stage site
         run: |
+          mkdir -p _site
+          cp -R book/_book/. _site/
           mkdir -p _site/api
           cp docs/api/index.html _site/api/index.html
-          cp api/openapi.yaml _site/api/openapi.yaml
+          cp api/openapi.yaml    _site/api/openapi.yaml
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

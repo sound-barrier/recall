@@ -1,0 +1,17 @@
+{
+  "title": "Recall — Documentation",
+  "description": "Personal match history for Overwatch — install, run, and chart your games.",
+  "author": "Sound Barrier",
+  "language": "en",
+  "links": {
+    "sidebar": {
+      "GitHub repository": "https://github.com/sound-barrier/recall",
+      "API reference (Swagger UI)": "/recall/api/"
+    }
+  },
+  "pluginsConfig": {
+    "theme-default": {
+      "showLevel": false
+    }
+  }
+}
