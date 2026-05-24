@@ -25,6 +25,8 @@ flowchart LR
   class F,G opt
 ```
 
+📚 **Full documentation:** [sound-barrier.github.io/recall](https://sound-barrier.github.io/recall/) — installation guides, advanced usage, and the [API reference](https://sound-barrier.github.io/recall/api/). Auto-deployed from `main` on every doc change.
+
 ## Table of Contents
 
 **Getting started**
