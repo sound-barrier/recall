@@ -72,7 +72,14 @@ pre-push:
         pkgs=$(go list -tags serveronly ./... | grep -v node_modules)
         out=$(deadcode -tags serveronly $pkgs)
         [ -z "$out" ] || echo "$out"
-        unexpected=$(printf '%s' "$out" | grep -v 'App\.Pick' || true)
+        # Filter known-good intentional stubs and test-only seams:
+        #   - App.Pick{TesseractBinary,ScreenshotsDir}: stubs in app_server.go;
+        #     real impls live in app_wails.go (other build tag), and the
+        #     server-mode REST endpoints replace the Wails dialog calls.
+        #   - app.NewWithStore: constructor used only by tests (store
+        #     integration suite). Test code isn't in deadcode's call graph
+        #     for the production build, so the function looks unreachable.
+        unexpected=$(printf '%s' "$out" | grep -vE 'App\.Pick|NewWithStore' || true)
         [ -z "$unexpected" ]
 
     knip:
