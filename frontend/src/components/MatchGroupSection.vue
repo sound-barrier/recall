@@ -77,7 +77,17 @@ function cardDelayMs(localIdx: number): number {
     >
       <span class="mg-caret" :class="{ open: open() }" aria-hidden="true">›</span>
 
-      <span class="mg-label">{{ group.label }}</span>
+      <span class="mg-label">
+        {{ group.label }}
+        <!-- Match count after the label for the UNKNOWN DATE bucket
+             only — months / weeks / days infer scale from the W/L/D
+             chyron, but the unknown bucket has no sub-tree to hint at
+             cardinality. -->
+        <span
+          v-if="group.level === 'unknown' && group.matches"
+          class="mg-count"
+        >({{ group.matches.length }} match{{ group.matches.length === 1 ? '' : 'es' }})</span>
+      </span>
 
       <!-- W/L/D chyron — three slabs separated by a vertical hairline.
            Wins glow accent on hover; losses dim down; draws are neutral.
@@ -103,10 +113,13 @@ function cardDelayMs(localIdx: number): number {
     <transition name="mg-collapse">
       <div v-show="open()" class="mg-body" :aria-hidden="!open()">
         <!-- Branches: month/week recurse into MatchGroupSection.
-             Leaf (day) renders MatchCards. -->
-        <template v-if="group.level === 'day'">
+             Leaf nodes (day + unknown) render MatchCards directly.
+             Using `matches !== undefined` as the guard is more honest
+             than checking the level: both `day` and `unknown` are
+             leaves, and any future leaf-shaped level gets handled too. -->
+        <template v-if="group.matches !== undefined">
           <MatchCard
-            v-for="(rec, idx) in group.matches ?? []"
+            v-for="(rec, idx) in group.matches"
             :id="`match-${rec.id}`"
             :key="rec.id"
             :style="{ animationDelay: cardDelayMs(idx) + 'ms' }"
@@ -342,6 +355,54 @@ function cardDelayMs(localIdx: number): number {
   font-weight: 600;
 }
 .mg-level-day > .mg-head .mg-bar { width: 4.5rem; }
+
+/* ── UNKNOWN DATE bucket ──────────────────────────────────────
+   Triage group for records that lack a parseable date. Same head
+   shape as a month so the W/L/D chyron renders identically — but
+   the label is tinted toward `--text-faint` and the rule above
+   is dashed, visually separating chronological browsing from
+   triage. */
+
+.mg-level-unknown > .mg-head {
+  margin-top: 1.3rem;
+  padding: 0.85rem 0.85rem 0.6rem;
+  border-top: 1px dashed var(--border-strong, var(--border));
+}
+
+.mg-level-unknown:first-child > .mg-head {
+  margin-top: 0;
+  border-top: 0;
+}
+
+.mg-level-unknown > .mg-head .mg-label {
+  font-family: var(--brand, 'OW Wordmark', 'Russo One', 'Industry Black', sans-serif);
+  font-size: 1.15rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.55rem;
+}
+
+.mg-level-unknown > .mg-head .mg-tally .t em { font-size: 0.95rem; }
+.mg-level-unknown > .mg-head .mg-bar { width: 8rem; height: 2px; bottom: -0.3rem; }
+
+.mg-count {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: var(--text-faint);
+  opacity: 0.75;
+}
+
+.mg-level-unknown .mg-body {
+  padding-left: 0.85rem;
+  padding-top: 0.4rem;
+  padding-bottom: 0.6rem;
+  gap: 0.55rem;
+}
 
 /* ── Body / nested sections ───────────────────────────────────── */
 

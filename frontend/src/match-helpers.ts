@@ -180,7 +180,12 @@ export interface WLDTally {
   d: number
 }
 
-export type MatchGroupLevel = 'month' | 'week' | 'day'
+// 'unknown' is the triage bucket for records that pass the matched-view
+// filter (have a map) but lack a parseable data.date. They can't be
+// placed in the Month → Week → Day tree, but the user still needs to see
+// them — so they get a single pinned-at-bottom group with no children,
+// just the records.
+export type MatchGroupLevel = 'month' | 'week' | 'day' | 'unknown'
 
 // GroupableRecord is the minimal shape groupMatchesByMonthWeekDay needs:
 // a date, a finish time, an optional result, and an optional match_key
@@ -310,12 +315,16 @@ export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
   type MonthBucket = { firstOfMonth: Date; weeks: Map<string, WeekBucket> }
 
   const months = new Map<string, MonthBucket>()
+  // Records that pass the matched-view filter but lack a parseable
+  // date — captured here and surfaced as a single "UNKNOWN DATE"
+  // group at the bottom of the tree once the dated tree is built.
+  const undated: R[] = []
 
   for (const r of records) {
     const dateStr = r.data?.date
-    if (!dateStr) continue
+    if (!dateStr) { undated.push(r); continue }
     const date = parseISODateUTC(dateStr)
-    if (!date) continue
+    if (!date) { undated.push(r); continue }
 
     const monthKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
     let month = months.get(monthKey)
@@ -344,7 +353,7 @@ export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
     day.recs.push(r)
   }
 
-  if (months.size === 0) return []
+  if (months.size === 0 && undated.length === 0) return []
 
   const dir = sortDir === 'asc' ? 1 : -1
   const byKey = (a: { key: string }, b: { key: string }) =>
@@ -388,6 +397,26 @@ export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
     })
   }
   tree.sort(byKey)
+
+  // UNKNOWN DATE bucket — appended AFTER the dated tree sort so it
+  // sits at the bottom of the array irrespective of sortDir. Records
+  // are sorted by match_key for a stable order (sortDir doesn't apply
+  // — there's no meaningful chronology to flip).
+  if (undated.length > 0) {
+    const sortedUndated = [...undated].sort((a, b) =>
+      (a.match_key ?? '') < (b.match_key ?? '') ? -1
+        : (a.match_key ?? '') > (b.match_key ?? '') ? 1
+        : 0,
+    )
+    tree.push({
+      key: 'unknown',
+      level: 'unknown',
+      label: 'UNKNOWN DATE',
+      tally: tallyWLD(sortedUndated),
+      matches: sortedUndated,
+    })
+  }
+
   return tree
 }
 
