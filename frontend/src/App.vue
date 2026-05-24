@@ -22,7 +22,7 @@ import {
   EventsOn,
   EventsOff,
 } from './api'
-import { computeEarliestMatchDateTime } from './match-helpers'
+import { computeEarliestMatchDateTime, tallyWLD } from './match-helpers'
 import { useIncludeUndated } from './composables/useIncludeUndated'
 import { useMinPlayThreshold } from './composables/useMinPlayThreshold'
 import { useTheme } from './composables/useTheme'
@@ -494,14 +494,7 @@ const allExpanded = computed(() =>
 // can see, for instance, "support role on Aatlis: 6W 2L 0D" by setting
 // the matching filters. Using `filteredSorted` (not raw `records`) keeps
 // this synced with the visible cards below.
-const wld = computed(() => {
-  const c: Record<string, number> = { victory: 0, defeat: 0, draw: 0 }
-  for (const r of filters.filteredSorted.value) {
-    const k = r.data?.result
-    if (k && k in c) c[k] = (c[k] ?? 0) + 1
-  }
-  return c
-})
+const wld = computed(() => tallyWLD(filters.filteredSorted.value))
 
 // Per-card "source screenshots" sub-panel expansion. Independent of the
 // main card expand state — most users don't care which screenshots fed
@@ -730,15 +723,15 @@ onBeforeUnmount(() => {
             title="Wins · Losses · Draws across the currently filtered matches"
           >
             <div class="score-cell">
-              <span class="score-num win">{{ wld.victory }}</span>
+              <span class="score-num win">{{ wld.w }}</span>
               <span class="score-label">Won</span>
             </div>
             <div class="score-cell">
-              <span class="score-num loss">{{ wld.defeat }}</span>
+              <span class="score-num loss">{{ wld.l }}</span>
               <span class="score-label">Lost</span>
             </div>
             <div class="score-cell">
-              <span class="score-num draw">{{ wld.draw }}</span>
+              <span class="score-num draw">{{ wld.d }}</span>
               <span class="score-label">Drew</span>
             </div>
           </div>
