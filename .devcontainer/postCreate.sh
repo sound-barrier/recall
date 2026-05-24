@@ -15,13 +15,17 @@ log() { printf '\033[1;34m[ postCreate ]\033[0m %s\n' "$*"; }
 
 # Pinned versions — bump deliberately. Run `make check-deps` to see what
 # is out of date. Matches the workflow files in .github/workflows/ and
-# the per-platform install instructions in CONTRIBUTING.md.
+# the per-platform install instructions in CONTRIBUTING.md. The typos
+# and gosec versions are sourced from tool-versions.env at repo root so
+# Make, lefthook, CI workflows, and the devcontainer all read the same
+# value.
 WAILS_VERSION="v2.12.0"
 HADOLINT_VERSION="v2.14.0"
 LEFTHOOK_VERSION="2.1.8"
 TRIVY_VERSION="0.70.0"
-TYPOS_VERSION="v1.46.3"
-GOSEC_VERSION="v2.26.1"
+
+# shellcheck source=../tool-versions.env disable=SC1091
+. /workspaces/recall/tool-versions.env
 
 # ─── apt packages (Brewfile equivalents) ──────────────────────────────
 log "apt packages: tesseract, sqlite3, jq, yamllint, cloc, direnv, …"

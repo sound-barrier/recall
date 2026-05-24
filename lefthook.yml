@@ -40,9 +40,14 @@ pre-commit:
       stage_fixed: true
 
     # ── OpenAPI ───────────────────────────────────────────────────────
+    # Spectral pin lives in tool-versions.env (SPECTRAL_VERSION) and is
+    # shared with Make and CI. Sourced inline so a version bump in the
+    # env file flows through here without a hook edit.
     spectral:
       glob: "api/openapi.yaml"
-      run: npx --yes @stoplight/spectral-cli@6.16.0 lint --fail-severity=warn {staged_files}
+      run: |
+        . ./tool-versions.env
+        npx --yes "@stoplight/spectral-cli@${SPECTRAL_VERSION}" lint --fail-severity=warn {staged_files}
 
     gen-types:
       glob: "api/openapi.yaml"
@@ -93,21 +98,13 @@ pre-push:
       glob: ".github/workflows/*.{yml,yaml}"
       run: actionlint .github/workflows/*.yml
 
+    # Delegates to scripts/deadcode-check.sh; the allow-list of
+    # intentional unreachables (build-tag stubs, test-only seams) lives
+    # in scripts/deadcode-allow.txt and is shared with Make + CI so all
+    # three call sites stay in sync.
     deadcode:
       glob: "*.go"
-      run: |
-        pkgs=$(go list -tags serveronly ./... | grep -v node_modules)
-        out=$(deadcode -tags serveronly $pkgs)
-        [ -z "$out" ] || echo "$out"
-        # Filter known-good intentional stubs and test-only seams:
-        #   - App.Pick{TesseractBinary,ScreenshotsDir}: stubs in app_server.go;
-        #     real impls live in app_wails.go (other build tag), and the
-        #     server-mode REST endpoints replace the Wails dialog calls.
-        #   - app.NewWithStore: constructor used only by tests (store
-        #     integration suite). Test code isn't in deadcode's call graph
-        #     for the production build, so the function looks unreachable.
-        unexpected=$(printf '%s' "$out" | grep -vE 'App\.Pick|NewWithStore' || true)
-        [ -z "$unexpected" ]
+      run: bash scripts/deadcode-check.sh
 
     knip:
       glob: "frontend/src/**/*.{ts,vue}"

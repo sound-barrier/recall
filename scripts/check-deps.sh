@@ -25,6 +25,12 @@ done
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# Versions shared across Make, lefthook, CI workflows, and the install
+# scripts. Sourced here so the check rows below can reference them
+# without re-parsing each file.
+# shellcheck source=../tool-versions.env disable=SC1091
+. "${ROOT}/tool-versions.env"
+
 # Color support — disabled when stdout is not a terminal.
 if [ -t 1 ]; then
   BOLD='\033[1m'
@@ -46,6 +52,10 @@ outdated=0
 
 gh_latest() {
   curl -fsSL "https://api.github.com/repos/${1}/releases/latest" | jq -r .tag_name
+}
+
+npm_latest() {
+  curl -fsSL "https://registry.npmjs.org/${1}/latest" | jq -r .version
 }
 
 strip_v() { printf '%s' "${1#v}"; }
@@ -115,6 +125,37 @@ TRIVY_PINNED=$(grep 'TRIVY_VERSION=' "${ROOT}/.devcontainer/postCreate.sh" \
 TRIVY_LATEST=$(strip_v "$(gh_latest aquasecurity/trivy)")
 check "trivy" "$TRIVY_PINNED" "$TRIVY_LATEST" \
   ".devcontainer/postCreate.sh"
+
+# ── tool-versions.env entries ──────────────────────────────────────────────
+# Single source of truth shared with Make, lefthook, and CI workflows.
+
+SPECTRAL_LATEST=$(npm_latest @stoplight/spectral-cli)
+check "Spectral" "$SPECTRAL_VERSION" "$SPECTRAL_LATEST" "tool-versions.env"
+
+TYPOS_LATEST=$(gh_latest crate-ci/typos)
+check "typos" "$TYPOS_VERSION" "$TYPOS_LATEST" "tool-versions.env"
+
+GOSEC_LATEST=$(gh_latest securego/gosec)
+check "gosec" "$GOSEC_VERSION" "$GOSEC_LATEST" "tool-versions.env"
+
+HONKIT_LATEST=$(npm_latest honkit)
+check "Honkit" "$HONKIT_VERSION" "$HONKIT_LATEST" "tool-versions.env"
+
+# Verify literal version strings in workflow files match tool-versions.env.
+# GitHub Actions `uses:` refs cannot interpolate expressions, so the
+# crate-ci/typos action pin stays a literal — but it MUST equal
+# $TYPOS_VERSION or the spell-check step runs a different version than
+# the rest of the project. Fails the script with a clear message if so.
+TYPOS_ACTION_PINNED=$(grep -oE 'crate-ci/typos@v[0-9.]+' \
+  "${ROOT}/.github/workflows/ci.yml" | head -1 | cut -d'@' -f2)
+if [ "$TYPOS_ACTION_PINNED" != "$TYPOS_VERSION" ]; then
+  printf '  %-14s  %-14s  %-14s  %b  → ci.yml uses %s; bump it to match tool-versions.env\n' \
+    "typos@action" "$TYPOS_VERSION" "$TYPOS_ACTION_PINNED" "${RED}✗${RESET}" "$TYPOS_ACTION_PINNED"
+  outdated=1
+else
+  printf '  %-14s  %-14s  %-14s  %b\n' \
+    "typos@action" "$TYPOS_VERSION" "$TYPOS_ACTION_PINNED" "${GREEN}✓${RESET}"
+fi
 
 # ── Toolchain versions (informational) ─────────────────────────────────────
 # The devcontainer feature and CI's setup-go/setup-node actions install the

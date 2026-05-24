@@ -22,15 +22,19 @@ log()  { printf '\033[1;34m[ init ]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[ init ]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[ init ]\033[0m %s\n' "$*" >&2; exit 1; }
 
-# Pinned tool versions for the Debian path. Mirror these from
-# .devcontainer/postCreate.sh; `make check-deps` validates the
-# Wails/hadolint/lefthook/trivy pins against upstream.
+# Pinned tool versions for the Debian path. Mirror Wails/hadolint/
+# lefthook/trivy from .devcontainer/postCreate.sh; `make check-deps`
+# validates them against upstream. The typos and gosec versions are
+# sourced from tool-versions.env at repo root so Make, lefthook,
+# CI workflows, and the devcontainer all read the same value.
 WAILS_VERSION="v2.12.0"
 HADOLINT_VERSION="v2.14.0"
 LEFTHOOK_VERSION="2.1.8"
 TRIVY_VERSION="0.70.0"
-TYPOS_VERSION="v1.46.3"
-GOSEC_VERSION="v2.26.1"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=tool-versions.env disable=SC1091
+. "${SCRIPT_DIR}/tool-versions.env"
 
 # Minimum language-toolchain versions. The Brewfile / apt path
 # can't bring these in cleanly (Debian's go/node packages are

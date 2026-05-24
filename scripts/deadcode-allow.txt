@@ -1,0 +1,23 @@
+# Known-good unreachables surfaced by `deadcode -tags serveronly`.
+# One extended-regex fragment per line; lines starting with `#` or
+# blank lines are ignored.
+#
+# Consumed by scripts/deadcode-check.sh, which is invoked from:
+#   - Makefile  → make dead-code-go
+#   - lefthook.yml → pre-push.deadcode
+#   - .github/workflows/ci.yml → "Dead Go code" step
+#
+# Add an entry here when you introduce a symbol that deadcode can't
+# see as reachable but which is intentionally live (build-tag stubs,
+# test-only constructors, reflection-called methods, etc.). Removing
+# the underlying symbol means deleting the matching line here too.
+
+# App.Pick{TesseractBinary,ScreenshotsDir}: stubs in app_server.go.
+# The real implementations live in app_wails.go (other build tag),
+# and the server-mode REST endpoints replace the Wails dialog calls.
+App\.Pick
+
+# app.NewWithStore: constructor used only by tests (store integration
+# suite). Test code isn't in deadcode's call graph for the production
+# build, so the function looks unreachable.
+NewWithStore
