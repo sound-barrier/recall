@@ -31,8 +31,9 @@ import {
 import { useTheme } from './composables/useTheme'
 import { useFilterPanel } from './composables/useFilterPanel'
 import { useMatchFilters } from './composables/useMatchFilters'
+import { useMatchGrouping } from './composables/useMatchGrouping'
 import ParseProgressPanel, { type ParseProgressEvent } from './components/ParseProgressPanel.vue'
-import MatchCard from './components/MatchCard.vue'
+import MatchGroupSection from './components/MatchGroupSection.vue'
 import FilterRail from './components/FilterRail.vue'
 
 const records = ref<MatchRecord[]>([])
@@ -111,6 +112,19 @@ const {
   clearFilters: clearFilterState,
   resetDateRange, toggleSort,
 } = useMatchFilters(records)
+
+// Month → Week → Day outline over the filtered, sorted list. Each
+// group level carries its own W/L/D tally (sub-component of the
+// overall W/L/D, since the source array is already filter-respecting).
+// Newest path is auto-expanded on first non-empty tree.
+const {
+  groups: matchGroups,
+  isGroupExpanded,
+  toggleGroup,
+  expandAll: expandAllGroups,
+  collapseAll: collapseAllGroups,
+  allExpanded: allGroupsExpanded,
+} = useMatchGrouping(filteredSorted, sortDir)
 
 // Per-card expand/collapse state. Object keyed by record id; truthy =
 // expanded. Plain object (not a Set) so Vue's reactivity sees each
@@ -1184,21 +1198,46 @@ onBeforeUnmount(() => {
           @toggle-all="toggleAll"
         />
 
-        <div v-if="records.length > 0" class="match-list">
-          <MatchCard
-            v-for="(rec, idx) in filteredSorted"
-            :id="`match-${rec.id}`"
-            :key="rec.id"
-            :style="{ animationDelay: Math.min(idx, 12) * 28 + 'ms' }"
-            :record="rec"
-            :index="idx"
-            :is-expanded="isExpanded(rec.id)"
-            :is-sources-open="isSourcesOpen(rec.id)"
+        <div v-if="records.length > 0 && matchGroups.length > 0" class="match-list">
+          <!-- Outline controls: Expand-all / Collapse-all toggle the
+               whole Month → Week → Day tree at once. Sits above the
+               groups so it's reachable without scrolling. -->
+          <div class="group-rail" role="toolbar" aria-label="Group outline controls">
+            <span class="group-rail-label">
+              {{ matchGroups.length }} {{ matchGroups.length === 1 ? 'month' : 'months' }}
+            </span>
+            <button
+              v-if="allGroupsExpanded"
+              type="button"
+              class="group-rail-btn"
+              @click="collapseAllGroups"
+            >
+              ▾ Collapse all
+            </button>
+            <button
+              v-else
+              type="button"
+              class="group-rail-btn"
+              @click="expandAllGroups"
+            >
+              ▸ Expand all
+            </button>
+          </div>
+
+          <MatchGroupSection
+            v-for="(group, idx) in matchGroups"
+            :key="group.key"
+            :group="group"
+            :is-group-expanded="isGroupExpanded"
+            :is-expanded="isExpanded"
+            :is-sources-open="isSourcesOpen"
             :preview-open="previewOpen"
             :preview-error="previewError"
             :is-active="isActive"
-            @toggle-expand="toggleExpand(rec.id)"
-            @toggle-sources="toggleSources(rec.id)"
+            :card-offset="idx"
+            @toggle-group="toggleGroup"
+            @toggle-expand="toggleExpand"
+            @toggle-sources="toggleSources"
             @toggle-preview="togglePreview"
             @preview-error="onPreviewError"
             @filter-toggle="toggleFilter"
@@ -2504,6 +2543,51 @@ body {
   font-size: 0.95rem;
 }
 .count-of { color: var(--text-faint); font-size: 0.72rem; }
+
+/* ─── Group outline rail ──────────────────────────────────── */
+
+.group-rail {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  margin-bottom: 0.55rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.group-rail-label {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.group-rail-btn {
+  margin-left: auto;
+  padding: 0.25rem 0.6rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.group-rail-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft, transparent);
+}
+
+.group-rail-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
 
 /* ─── Match list ─────────────────────────────────────────── */
 
