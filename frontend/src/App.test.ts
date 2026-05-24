@@ -71,4 +71,21 @@ describe('App.vue', () => {
   // App.vue end-to-end with localStorage-seeded preferences is
   // brittle in happy-dom + dynamic import — keep that coverage at
   // the component-test layer where the seam is explicit.
+
+  it('renders the brandmark as a link to the GitHub repo', async () => {
+    const wrapper = await mountApp()
+    const brand = wrapper.find('a.brandmark-link')
+    expect(brand.exists()).toBe(true)
+    expect(brand.attributes('href')).toBe('https://github.com/sound-barrier/recall')
+    expect(brand.attributes('target')).toBe('_blank')
+    expect(brand.attributes('rel')).toContain('noopener')
+    expect(brand.attributes('aria-label')).toContain('GitHub')
+  })
+
+  it('clicking the brandmark routes through OpenURL (so Wails opens the system browser)', async () => {
+    const wrapper = await mountApp()
+    const api = await import('./api')
+    await wrapper.find('a.brandmark-link').trigger('click')
+    expect(api.OpenURL).toHaveBeenCalledWith('https://github.com/sound-barrier/recall')
+  })
 })
