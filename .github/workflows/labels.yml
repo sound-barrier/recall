@@ -10,7 +10,7 @@
 # Flip the workflow_dispatch input to "true" once if you ever want
 # to do a cleanup pass that hard-mirrors labels.yml.
 #
-# Action used: EndBug/label-sync@v2 — popular, minimal, no auth
+# Action used: EndBug/label-sync@52074158190acb45f3077f9099fea818aa43f97a  # v2 — popular, minimal, no auth
 # beyond the workflow's default GITHUB_TOKEN.
 #
 # SECURITY NOTE: the one ${{ }} expression below — inputs.delete-
@@ -43,8 +43,8 @@ jobs:
   sync:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: EndBug/label-sync@v2
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - uses: EndBug/label-sync@52074158190acb45f3077f9099fea818aa43f97a  # v2
         with:
           config-file: .github/labels.yml
           delete-other-labels: ${{ inputs.delete-other-labels || false }}

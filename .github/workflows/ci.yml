@@ -24,7 +24,7 @@ jobs:
       pull-requests: write
       issues: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       # Load shared tool-version pins (SPECTRAL_VERSION, TYPOS_VERSION,
       # GOSEC_VERSION, HONKIT_VERSION) into $GITHUB_ENV so every step in
@@ -39,14 +39,14 @@ jobs:
       # (golangci-lint-action) would fail because pre-built binaries are
       # compiled with an older Go and golangci-lint rejects projects
       # targeting a newer version.
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
         with:
           go-version: '1.26'
           cache: true
 
       # Frontend — set up Node and build frontend/dist before Go linting so the
       # //go:embed all:frontend/dist directive in assets.go passes type-checking.
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version: '26'
           cache: npm
@@ -113,7 +113,7 @@ jobs:
 
       # Dockerfile
       - name: Lint Dockerfile (Hadolint)
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5  # v3.3.0
         with:
           dockerfile: Dockerfile.build
 
@@ -127,7 +127,7 @@ jobs:
       # typos binary so the runner doesn't need a separate install
       # step; config lives in _typos.toml at the repo root.
       - name: Spell-check (typos)
-        uses: crate-ci/typos@v1.46.3
+        uses: crate-ci/typos@7b04f660f4ee4f048d18fd341887cf28dfbedfe2  # v1.46.3
 
       # Markdown lint — mirrors `make lint-md`. Config in
       # .markdownlint-cli2.yaml at the repo root; npx pulls the
@@ -139,7 +139,14 @@ jobs:
       # syntax errors, and shellcheck issues in `run:` blocks. The
       # action ships the actionlint binary so no install step.
       - name: Lint workflows (actionlint)
-        uses: raven-actions/actionlint@v2
+        uses: raven-actions/actionlint@205b530c5d9fa8f44ae9ed59f341a0db994aa6f8  # v2
+
+      # Enforce the project's SHA-pinning policy for third-party
+      # GitHub Actions. A tag-pinned action could be silently
+      # re-pointed to a malicious commit; see CONTRIBUTING.md
+      # → "Pinning GitHub Actions".
+      - name: Enforce SHA-pinned actions
+        run: bash scripts/check-action-pins.sh
 
       # Go unit tests (merge logic, inference helpers, screenshotType
       # classification). Parser golden-file tests are skipped by -short.
@@ -184,7 +191,7 @@ jobs:
       # but EnricoMi below is what flips the workflow to red).
       - name: Upload unit-test JUnit XML
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: unit-test-results
           path: |
@@ -200,7 +207,7 @@ jobs:
       # separate ones for tests and coverage.
       - name: Gate workflow on unit-test failures
         if: always()
-        uses: EnricoMi/publish-unit-test-result-action@v2
+        uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040  # v2
         with:
           check_name: Unit test results
           comment_mode: off
@@ -232,8 +239,8 @@ jobs:
     env:
       DOCKER_BUILDKIT: "1"
     steps:
-      - uses: actions/checkout@v6
-      - uses: docker/setup-buildx-action@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
       - name: Build Linux/amd64 Wails app
         run: make build-linux
 
@@ -243,8 +250,8 @@ jobs:
     env:
       DOCKER_BUILDKIT: "1"
     steps:
-      - uses: actions/checkout@v6
-      - uses: docker/setup-buildx-action@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
       - name: Build Windows/amd64 Wails app
         run: make build-windows
 
@@ -254,8 +261,8 @@ jobs:
     env:
       DOCKER_BUILDKIT: "1"
     steps:
-      - uses: actions/checkout@v6
-      - uses: docker/setup-buildx-action@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
       - name: Build all server binaries (Linux, Windows, macOS arm64+amd64)
         run: make build-server-all
       - name: Build Linux server container image (with Tesseract)
@@ -265,13 +272,13 @@ jobs:
   build-mac:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
         with:
           go-version-file: go.mod
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version: '26'
 
@@ -290,10 +297,10 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Run Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -305,7 +312,7 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa  # v4
         with:
           sarif_file: trivy.sarif
 
@@ -316,8 +323,8 @@ jobs:
   govulncheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
         with:
           go-version-file: go.mod
           cache: true
@@ -335,10 +342,10 @@ jobs:
   gosec:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
       - name: Load tool versions
         run: cat tool-versions.env >> "$GITHUB_ENV"
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
         with:
           go-version-file: go.mod
           cache: true
@@ -374,14 +381,14 @@ jobs:
   dead-code:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
         with:
           go-version-file: go.mod
           cache: true
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version: '26'
           cache: npm
@@ -413,9 +420,9 @@ jobs:
   coverage-frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version: '26'
           cache: npm
@@ -428,7 +435,7 @@ jobs:
         run: cd frontend && npm run test:coverage
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: frontend-coverage
           path: frontend/coverage/
@@ -441,9 +448,9 @@ jobs:
   coverage-go:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
         with:
           go-version-file: go.mod
           cache: true
@@ -452,7 +459,7 @@ jobs:
       # //go:embed all:frontend/dist — compiling the root `recall`
       # package (via `go test ./...`) fails if dist/ is missing.
       # Same prologue the lint and schemathesis jobs use.
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version: '26'
           cache: npm
@@ -475,7 +482,7 @@ jobs:
         run: gocover-cobertura < coverage/go/coverage.out > coverage/go/cobertura.xml
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: go-coverage
           path: coverage/go/
@@ -490,14 +497,14 @@ jobs:
   schemathesis:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
         with:
           go-version-file: go.mod
           cache: true
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version: '26'
           cache: npm
@@ -582,21 +589,21 @@ jobs:
       pull-requests: write
       actions: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       # This PR's coverage + JUnit artifacts (from sibling jobs in the
       # same workflow run).
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
         with:
           name: go-coverage
           path: pr-cov/go/
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
         with:
           name: frontend-coverage
           path: pr-cov/frontend/
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
         if: always()
         with:
           name: unit-test-results
@@ -609,7 +616,7 @@ jobs:
       # warn` keeps the job green on first-ever PR — the renderer
       # degrades gracefully to "—" baselines and explains why.
       - name: Download main's coverage baseline (Go)
-        uses: dawidd6/action-download-artifact@v6
+        uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11  # v6
         with:
           workflow: ci.yml
           branch: main
@@ -618,7 +625,7 @@ jobs:
           if_no_artifact_found: warn
 
       - name: Download main's coverage baseline (frontend)
-        uses: dawidd6/action-download-artifact@v6
+        uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11  # v6
         with:
           workflow: ci.yml
           branch: main
@@ -665,7 +672,7 @@ jobs:
       # state (vs. silent edit). Combined with the sweep above, the
       # PR carries exactly one CI-authored comment after any run.
       - name: Post combined PR report
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405  # v2
         with:
           header: pr-report
           recreate: true

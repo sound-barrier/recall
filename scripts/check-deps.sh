@@ -143,11 +143,12 @@ check "Honkit" "$HONKIT_VERSION" "$HONKIT_LATEST" "tool-versions.env"
 
 # Verify literal version strings in workflow files match tool-versions.env.
 # GitHub Actions `uses:` refs cannot interpolate expressions, so the
-# crate-ci/typos action pin stays a literal — but it MUST equal
-# $TYPOS_VERSION or the spell-check step runs a different version than
-# the rest of the project. Fails the script with a clear message if so.
-TYPOS_ACTION_PINNED=$(grep -oE 'crate-ci/typos@v[0-9.]+' \
-  "${ROOT}/.github/workflows/ci.yml" | head -1 | cut -d'@' -f2)
+# crate-ci/typos action ref stays a literal SHA pin. The trailing
+# "# vX.Y.Z" comment (per the project's SHA-pinning convention) MUST
+# equal $TYPOS_VERSION or the spell-check step runs a different version
+# than the rest of the project.
+TYPOS_ACTION_PINNED=$(grep -oE 'crate-ci/typos@[a-f0-9]{40}  # v[0-9.]+' \
+  "${ROOT}/.github/workflows/ci.yml" | head -1 | sed -E 's/.*# (v[0-9.]+)/\1/')
 if [ "$TYPOS_ACTION_PINNED" != "$TYPOS_VERSION" ]; then
   printf '  %-14s  %-14s  %-14s  %b  → ci.yml uses %s; bump it to match tool-versions.env\n' \
     "typos@action" "$TYPOS_VERSION" "$TYPOS_ACTION_PINNED" "${RED}✗${RESET}" "$TYPOS_ACTION_PINNED"

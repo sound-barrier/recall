@@ -31,7 +31,7 @@ jobs:
             build-mode: none
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       # Go toolchain and frontend dist must be set up BEFORE codeql-action/init.
       # CodeQL's init wraps whichever `go` binary is on PATH at that moment; if
@@ -39,7 +39,7 @@ jobs:
       # gets recorded, causing the "didn't build any of it" fatal error.
       - if: matrix.language == 'go'
         name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
         with:
           go-version-file: go.mod
 
@@ -47,7 +47,7 @@ jobs:
       # `go build` or the embed directive fails at compile time.
       - if: matrix.language == 'go'
         name: Set up Node (required to build frontend/dist for go:embed)
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version: '26'
           cache: npm
@@ -57,7 +57,7 @@ jobs:
         name: Build frontend (satisfies //go:embed all:frontend/dist in assets.go)
         run: cd frontend && npm ci && npm run build
 
-      - uses: github/codeql-action/init@v4
+      - uses: github/codeql-action/init@7211b7c8077ea37d8641b6271f6a365a22a5fbfa  # v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -70,6 +70,6 @@ jobs:
           CGO_ENABLED: "0"
         run: go build -tags serveronly ./...
 
-      - uses: github/codeql-action/analyze@v4
+      - uses: github/codeql-action/analyze@7211b7c8077ea37d8641b6271f6a365a22a5fbfa  # v4
         with:
           category: /language:${{ matrix.language }}

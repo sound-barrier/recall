@@ -25,6 +25,7 @@ overview of the architecture and internal conventions, see
   - [Other build commands](#other-build-commands)
 - [Maintenance](#maintenance)
   - [Git hooks (lefthook)](#git-hooks-lefthook)
+  - [Pinning GitHub Actions](#pinning-github-actions)
   - [Tagging and releasing](#tagging-and-releasing)
 - [Releases](RELEASES.md) — separate doc; covers cutting stable releases and prereleases, `make release-beta` / `make release-fire` shortcuts, and recovery procedures.
 - [API specification](#api-specification)
@@ -408,6 +409,26 @@ LEFTHOOK_EXCLUDE=coverage git push                          # skip pre-push cove
 ```
 
 Hooks bypassed locally will still fail in CI on push — bypass is for in-flight WIP commits, not a way around the rules.
+
+### Pinning GitHub Actions
+
+Every third-party action referenced from `.github/workflows/` is pinned by **40-character commit SHA** with a trailing `# vX.Y.Z` version comment. Tag-pinned refs (e.g. `actions/checkout@v4`) are rejected by `scripts/check-action-pins.sh`, which runs in the `lint` job + the lefthook `actionlint` pre-push hook + `make lint-actions`.
+
+Format:
+
+```yaml
+- uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+```
+
+The SHA is the source of truth; the comment is for humans. **Two spaces before the `#`** to keep yamllint happy.
+
+**Why:** a tag can be silently re-pointed to a malicious commit by a compromised maintainer account or stolen token. Pinning by SHA freezes the exact code that runs. This has happened in the wild — see `tj-actions/changed-files` (March 2025).
+
+**Adding a new action:** resolve the tag to a SHA with `gh api repos/<owner>/<repo>/commits/<tag> --jq .sha`, then paste into `uses:` with the `# vX.Y.Z` comment. The CI guard fails the build if you forget.
+
+**Bumping an action:** Dependabot (configured in `.github/dependabot.yml`) understands the SHA + version-comment format and updates both fields on its weekly run. Most bumps will arrive as a Dependabot PR.
+
+**First-party composite actions** (`./.github/actions/foo`) are exempt — they live in the same repo as the workflow.
 
 ### Tagging and releasing
 

@@ -93,10 +93,13 @@ pre-push:
     # (Go binary, ~50ms across our seven workflows) that pre-push is
     # the right phase. Catches deprecated action inputs, syntax
     # errors, and shellcheck issues in `run:` blocks before they hit
-    # CI and fail there.
+    # CI and fail there. Paired with the SHA-pin check so a contributor
+    # adding a tag-pinned external action fails locally before pushing.
     actionlint:
       glob: ".github/workflows/*.{yml,yaml}"
-      run: actionlint .github/workflows/*.yml
+      run: |
+        actionlint .github/workflows/*.yml
+        bash scripts/check-action-pins.sh
 
     # Delegates to scripts/deadcode-check.sh; the allow-list of
     # intentional unreachables (build-tag stubs, test-only seams) lives

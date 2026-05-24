@@ -48,7 +48,7 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      - uses: googleapis/release-please-action@v5
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7  # v5
         with:
           # Use a PAT when one is configured so the tag release-please
           # creates is attributed to a real account and fires

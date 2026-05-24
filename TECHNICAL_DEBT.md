@@ -494,63 +494,6 @@ shade", in which case iterate. No functional code change.
 
 ---
 
-## 9. GitHub Actions are tag-pinned, not SHA-pinned
-
-**Size: M**
-
-**What.**
-Throughout the workflows under `.github/workflows/`:
-
-- `actions/checkout@v4`
-- `actions/setup-go@v6`
-- `EnricoMi/publish-unit-test-result-action`
-- `irongut/CodeCoverageSummary`
-- `marocchino/sticky-pull-request-comment`
-- `EndBug/label-sync@v2`
-- `crate-ci/typos@vX.Y.Z`
-- `sigstore/cosign-installer@v3`
-- `anchore/sbom-action`
-- `actions/attest-build-provenance@v2`
-
-All pinned by *tag*, not by *commit SHA*.
-
-**Why it's debt.**
-Supply-chain risk: a tag can be silently re-pointed to a malicious
-commit by a compromised maintainer account (this has happened in
-the ecosystem — tj-actions/changed-files in 2025 is the canonical
-case). GitHub's own security guidance is to pin third-party actions
-by SHA.
-
-The cost of NOT pinning is mostly latent: most days nothing
-happens. But when it does happen, every workflow run that fires
-after the malicious push runs malicious code with the workflow's
-permissions — which, on the publish-container and release jobs,
-include `id-token: write` and `packages: write`.
-
-**Mitigation plan.**
-
-1. Use `pinact` (or `actionlint --pin`) to convert every external
-   `uses:` from tag-pinned to SHA-pinned. Result is e.g.:
-   `actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v4.1.7`.
-   The comment after the SHA preserves human-readable version
-   tracking.
-2. First-party actions (`./.github/actions/…` once #6 lands) don't
-   need SHAs — they're checked out from the same repo.
-3. Add `pinact run --check` to CI as a lint step so a future PR
-   that adds an unpinned action fails the build.
-4. Document the policy in CONTRIBUTING.md ("Adding a workflow:
-   third-party actions must be SHA-pinned").
-5. Schedule a recurring task (existing `dependabot.yml` config) to
-   bump the SHAs — dependabot understands the `# v4.1.7` comment
-   suffix and will update both the SHA and the tag comment
-   together.
-
-**How large.**
-M. ~½ day for the initial conversion across ~10 workflows.
-Recurring effort is near-zero once dependabot handles the bumps.
-
----
-
 ## 10. `release.yml` carries a lot of bespoke logic
 
 **Size: M**
@@ -846,14 +789,21 @@ choices.
   shapes (Recall, recall, *.exe, .app, server variants) and `make
   clean` removes them. Contributors who accidentally `go build` at
   repo root get a one-command cleanup path.
+- Tag-pinned GitHub Actions — all 33 unique third-party action refs
+  across `.github/workflows/` converted to SHA pins with trailing
+  `# vX.Y.Z` comments. `scripts/check-action-pins.sh` enforces
+  the convention from `make lint-actions`, the lefthook
+  `pre-push.actionlint` block, and the CI lint job. Dependabot
+  bumps both the SHA and the comment in lock-step. CONTRIBUTING.md
+  documents the policy.
 
-### Phase 1 — drift prevention (1 week, mostly S items)
+### Phase 1 — drift prevention ✅ COMPLETE
 
 1. ~~#8 Go coverage floor ratchet (S)~~ — done
 2. ~~#15 screenshotType ordering test (S)~~ — done (audit miss, already covered; tightened the comment to cite the test)
 3. ~~#11 inference invariant test (S)~~ — done
 4. ~~#16 .gitignore stray binaries (S)~~ — done
-5. #9 SHA-pin GitHub Actions (M)
+5. ~~#9 SHA-pin GitHub Actions (M)~~ — done
 
 ### Phase 2 — guard rails (1 week, M items)
 
