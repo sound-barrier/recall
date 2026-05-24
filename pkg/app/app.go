@@ -551,6 +551,14 @@ func (a *App) GetVersion() string {
 	return "dev"
 }
 
+// releasesURL is the GitHub Releases API endpoint CheckForUpdate
+// queries. Exposed as a package-level var so tests can substitute an
+// httptest.NewServer URL — production code never reassigns it.
+// Pattern matches parser.runTesseractFunc / parseSingleFunc per
+// CLAUDE.md's function-variable-seam guidance for single-method
+// dependencies.
+var releasesURL = "https://api.github.com/repos/sound-barrier/recall/releases/latest"
+
 // CheckForUpdate hits the GitHub releases API and compares the latest stable
 // release against the running version. The caller should invoke this off the
 // hot path — it makes a network request with a 5 s timeout.
@@ -563,7 +571,7 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	isDev := v == "dev" || strings.HasSuffix(v, "-dev")
 
 	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get("https://api.github.com/repos/sound-barrier/recall/releases/latest")
+	resp, err := client.Get(releasesURL)
 	if err != nil {
 		return UpdateInfo{}
 	}
