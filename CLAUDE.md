@@ -134,7 +134,8 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `make update-deps` | Update Go modules (`go get -u ./...` + `go mod tidy`) and npm packages (`npm update` — updates `package-lock.json` within declared ranges; use `npx npm-check-updates -u` to also widen the ranges in `package.json`). |
 | `make check-deps` | Compare pinned tool versions in `.devcontainer/postCreate.sh` (Wails CLI, hadolint, lefthook, trivy) against their latest GitHub releases. Exits 1 if any are behind. Go/Node rows are informational only. |
 | `make trivy` | Trivy vulnerability scan (Go modules + npm + Dockerfile); fails on HIGH/CRITICAL. |
-| `make cloc` | Count lines of source code (excludes deps, build artifacts, and generated files). |
+| `make cloc` | Count lines of source code (summary table; exclusions in `.clocrc`). |
+| `make cloc-detail` | Same as `make cloc` plus per-file breakdown — use when investigating a delta. |
 | `make icon` | Resync `build/appicon.png` from `assets/icon.png` (1024×1024 via `sips`, macOS-only) and clear `build/windows/icon.ico` so Wails regenerates platform icons (`.icns` for macOS, `.ico` for Windows) on next `wails build`. |
 | `make swagger` | Serve `api/openapi.yaml` via Swagger UI v5 in a container (`$(DOCKER) run`, default port `:8080`; override with `SWAGGER_PORT`). |
 | `make lint-openapi` | Lint `api/openapi.yaml` via Spectral (`spectral:oas` + `.spectral.yaml`) with `--fail-severity=warn`. Also run as part of `make lint`. |
