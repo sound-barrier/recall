@@ -8,23 +8,40 @@ currently supported by the pre-built binary.
 Grab `recall-{version}-darwin-arm64.dmg` from the
 [GitHub Releases](https://github.com/sound-barrier/recall/releases) page.
 
-## 2. First launch — bypass Gatekeeper
+## 2. Install: drag to Applications
+
+Open the downloaded `.dmg` and you'll see three things:
+
+- `Recall` — the app bundle
+- `Applications` — a shortcut to your Applications folder
+- `README.txt` — these same instructions, bundled with the download
+
+Drag `Recall` onto the `Applications` shortcut. Eject the disk (right-click
+the Recall icon in Finder's sidebar → **Eject**) and open Applications.
+
+## 3. First launch — approve the app
 
 The `.dmg` is not notarized (notarization requires an Apple Developer
-certificate). macOS will block the app on first open. To bypass it:
+certificate), so macOS will block Recall on first launch. To approve it:
 
-**Option A (easiest):** Right-click the app in Finder → **Open** → click
-**Open** in the dialog. You only need to do this once.
+1. Double-click **Recall** in Applications. macOS will refuse to open it and
+   show a "cannot be opened" dialog — dismiss it.
+2. Open the Apple menu → **System Settings**.
+3. Click **Privacy & Security** in the sidebar.
+4. Scroll down to the **Security** section.
+5. Click **Open Anyway** next to the Recall warning, then confirm in the
+   dialog that appears.
 
-**Option B (Terminal):**
-```sh
-xattr -d com.apple.quarantine /Applications/Recall-arm64.app
-```
+You only need to do this once.
 
-**Option C:** Open **System Settings → Privacy & Security**, scroll down, and
-click **Open Anyway** after the first blocked launch attempt.
+> **Terminal alternative** (skips the System Settings dance):
+> ```sh
+> xattr -d com.apple.quarantine /Applications/Recall.app
+> ```
+> Removes the quarantine attribute macOS attaches to downloaded files; the
+> next double-click launches normally.
 
-## 3. Install Tesseract 5.x
+## 4. Install Tesseract 5.x
 
 Recall needs Tesseract to read text from your screenshots. Install it via
 Homebrew:
@@ -39,7 +56,7 @@ Recall auto-detects the Homebrew install path on first launch. If you install
 Tesseract after Recall is already running, use **Ingest → Engine → Locate
 Tesseract…** to point it at the binary.
 
-## 4. Point Recall at your screenshots folder
+## 5. Point Recall at your screenshots folder
 
 Overwatch on macOS saves screenshots to:
 ```
