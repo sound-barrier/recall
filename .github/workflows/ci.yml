@@ -315,13 +315,17 @@ jobs:
 
       - name: Dead Go code (serveronly build tag)
         # deadcode exits 0 regardless of findings; enforce via output check.
-        # App.Pick* are intentional stubs in app_server.go — dialog methods
-        # that only exist in the Wails desktop variant.
+        # Known-good unreachables — must stay in sync with the matching
+        # filter in Makefile `dead-code-go:` and lefthook `pre-push.deadcode`:
+        #   - App.Pick*: stubs in app_server.go for dialog methods that
+        #     only exist in the Wails desktop variant.
+        #   - NewWithStore: constructor used only by the integration test
+        #     suite; test code isn't in deadcode's call graph.
         run: |
           pkgs=$(go list -tags serveronly ./... | grep -v node_modules)
           out=$(deadcode -tags serveronly $pkgs)
           [ -z "$out" ] || echo "$out"
-          unexpected=$(printf '%s' "$out" | grep -v 'App\.Pick' || true)
+          unexpected=$(printf '%s' "$out" | grep -vE 'App\.Pick|NewWithStore' || true)
           [ -z "$unexpected" ]
 
       - name: Dead TypeScript code (knip)
