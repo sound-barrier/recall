@@ -24,6 +24,7 @@ import {
 } from './api'
 import { computeEarliestMatchDateTime } from './match-helpers'
 import { useIncludeUndated } from './composables/useIncludeUndated'
+import { useMinPlayThreshold } from './composables/useMinPlayThreshold'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
@@ -110,7 +111,11 @@ const filterPanel = useFilterPanel()
 // via the FilterRail toggle. Persisted in localStorage so the choice
 // survives across launches.
 const { includeUndated, setIncludeUndated } = useIncludeUndated()
-const filters = useMatchFilters(records, includeUndated)
+const {
+  minPlayPercent, minPlayMinutes,
+  setMinPlayPercent, setMinPlayMinutes,
+} = useMinPlayThreshold()
+const filters = useMatchFilters(records, includeUndated, minPlayPercent, minPlayMinutes)
 const { activeFilterCount } = filters
 // First-day-of-week preference (Settings → Calendar). Threaded into
 // useMatchGrouping so the "Week of <date>" labels honor the user's
@@ -680,8 +685,12 @@ onBeforeUnmount(() => {
         :earliest-match-date-time="earliestMatchDateTime"
         :now-date-time="nowDateTime"
         :include-undated="includeUndated"
+        :min-play-percent="minPlayPercent"
+        :min-play-minutes="minPlayMinutes"
         @go-to-view="goToView"
         @set-include-undated="setIncludeUndated"
+        @set-min-play-percent="setMinPlayPercent"
+        @set-min-play-minutes="setMinPlayMinutes"
       />
     </div>
 
