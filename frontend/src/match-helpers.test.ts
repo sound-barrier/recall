@@ -12,6 +12,8 @@ import {
   formatRelativeTime,
   screenshotURL,
   computeEarliestMatchDateTime,
+  tallyWLD,
+  groupMatchesByMonthWeekDay,
 } from './match-helpers'
 
 // ─── sshotTypeLabel ──────────────────────────────────────────────────
@@ -418,5 +420,200 @@ describe('computeEarliestMatchDateTime', () => {
       { data: { date: '2026-05-10', finished_at: '08:30' } },
     ]
     expect(computeEarliestMatchDateTime(recs)).toBe('2026-05-10T08:30')
+  })
+})
+
+// ─── tallyWLD ────────────────────────────────────────────────────────
+//
+// W/L/D rollup. Counted case-insensitively (the parser stores "victory"
+// / "defeat" / "draw" but earlier rows have varying casing). Any other
+// value (empty, unknown, "in progress") is silently ignored — partial
+// rolls always sum to W+L+D ≤ length.
+
+describe('tallyWLD', () => {
+  it('counts wins, losses, draws case-insensitively', () => {
+    const t = tallyWLD([
+      { data: { result: 'victory' } },
+      { data: { result: 'VICTORY' } },
+      { data: { result: 'defeat' } },
+      { data: { result: 'Draw' } },
+      { data: { result: 'draw' } },
+    ])
+    expect(t).toEqual({ w: 2, l: 1, d: 2 })
+  })
+
+  it('ignores rows without a result (no inference)', () => {
+    const t = tallyWLD([
+      { data: { result: 'victory' } },
+      { data: {} },
+      { data: { result: '' } },
+      { data: { result: 'unknown' } },
+    ])
+    expect(t).toEqual({ w: 1, l: 0, d: 0 })
+  })
+
+  it('returns zeros for an empty input', () => {
+    expect(tallyWLD([])).toEqual({ w: 0, l: 0, d: 0 })
+  })
+})
+
+// ─── groupMatchesByMonthWeekDay ──────────────────────────────────────
+//
+// Three-level tree (Month → Week → Day). Each level carries its own
+// W/L/D tally — the month tally is the sum of its weeks; the week is
+// the sum of its days. The Monday of each week is the day-bucket key
+// so weeks straddle month boundaries gracefully.
+
+describe('groupMatchesByMonthWeekDay', () => {
+  it('returns an empty array for an empty input', () => {
+    expect(groupMatchesByMonthWeekDay([], 'desc')).toEqual([])
+  })
+
+  it('drops records without a parseable date (cannot group them)', () => {
+    const out = groupMatchesByMonthWeekDay([{ data: {} }], 'desc')
+    expect(out).toEqual([])
+  })
+
+  it('groups three records on the same day under one Month/Week/Day', () => {
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+      { data: { date: '2026-05-10', finished_at: '22:05', result: 'defeat' } },
+      { data: { date: '2026-05-10', finished_at: '22:40', result: 'victory' } },
+    ]
+    const tree = groupMatchesByMonthWeekDay(recs, 'desc')
+    expect(tree).toHaveLength(1)
+    const month = tree[0]!
+    expect(month.level).toBe('month')
+    expect(month.tally).toEqual({ w: 2, l: 1, d: 0 })
+    expect(month.children).toHaveLength(1)
+
+    const week = month.children![0]!
+    expect(week.level).toBe('week')
+    expect(week.tally).toEqual({ w: 2, l: 1, d: 0 })
+    expect(week.children).toHaveLength(1)
+
+    const day = week.children![0]!
+    expect(day.level).toBe('day')
+    expect(day.tally).toEqual({ w: 2, l: 1, d: 0 })
+    expect(day.matches).toHaveLength(3)
+  })
+
+  it('splits two days within the same week into two Day groups', () => {
+    // 2026-05-10 (Sunday) and 2026-05-08 (Friday) — same ISO week.
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+      { data: { date: '2026-05-08', finished_at: '20:00', result: 'defeat' } },
+    ]
+    const tree = groupMatchesByMonthWeekDay(recs, 'desc')
+    expect(tree).toHaveLength(1)
+    expect(tree[0]!.children).toHaveLength(1)
+    expect(tree[0]!.children![0]!.children).toHaveLength(2)
+  })
+
+  it('keys each Month/Week/Day uniquely and stably across calls', () => {
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+    ]
+    const a = groupMatchesByMonthWeekDay(recs, 'desc')
+    const b = groupMatchesByMonthWeekDay(recs, 'desc')
+    expect(a[0]!.key).toBe(b[0]!.key)
+    expect(a[0]!.children![0]!.key).toBe(b[0]!.children![0]!.key)
+    expect(a[0]!.children![0]!.children![0]!.key).toBe(b[0]!.children![0]!.children![0]!.key)
+  })
+
+  it('orders groups newest → oldest under sortDir=desc', () => {
+    const recs = [
+      { data: { date: '2026-04-15', finished_at: '20:00', result: 'victory' } },
+      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+      { data: { date: '2026-05-03', finished_at: '21:00', result: 'defeat' } },
+    ]
+    const tree = groupMatchesByMonthWeekDay(recs, 'desc')
+    // Months: May 2026 first, then April 2026.
+    expect(tree.map(g => g.label)).toEqual(['MAY 2026', 'APRIL 2026'])
+    const may = tree[0]!
+    // Within May, week of May 10 (Mon May 4-Sun 10? actually depends on
+    // anchor; just assert the dates are in the right relative position).
+    const firstWeekFirstDay = may.children![0]!.children![0]!.matches![0]!
+    expect(firstWeekFirstDay.data!.date).toBe('2026-05-10')
+  })
+
+  it('orders groups oldest → newest under sortDir=asc', () => {
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+      { data: { date: '2026-04-15', finished_at: '20:00', result: 'victory' } },
+    ]
+    const tree = groupMatchesByMonthWeekDay(recs, 'asc')
+    expect(tree.map(g => g.label)).toEqual(['APRIL 2026', 'MAY 2026'])
+  })
+
+  it('week label uses "Week of <Mon date>" form', () => {
+    // 2026-05-10 is a Sunday → its Monday is 2026-05-04.
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+    ]
+    const week = groupMatchesByMonthWeekDay(recs, 'desc')[0]!.children![0]!
+    expect(week.label).toMatch(/^Week of /)
+    // Must reference the Monday of that ISO week.
+    expect(week.label).toContain('May 4')
+  })
+
+  it('day label uses a short weekday + month + day form', () => {
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+    ]
+    const day = groupMatchesByMonthWeekDay(recs, 'desc')[0]!.children![0]!.children![0]!
+    // 2026-05-10 is a Sunday.
+    expect(day.label).toMatch(/^Sun/)
+    expect(day.label).toContain('May 10')
+  })
+
+  it('month tally equals sum of week tallies', () => {
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+      { data: { date: '2026-05-03', finished_at: '21:00', result: 'defeat' } },
+      { data: { date: '2026-05-01', finished_at: '21:00', result: 'draw' } },
+    ]
+    const month = groupMatchesByMonthWeekDay(recs, 'desc')[0]!
+    const weekTotal = month.children!.reduce(
+      (acc, w) => ({ w: acc.w + w.tally.w, l: acc.l + w.tally.l, d: acc.d + w.tally.d }),
+      { w: 0, l: 0, d: 0 },
+    )
+    expect(weekTotal).toEqual(month.tally)
+    expect(month.tally).toEqual({ w: 1, l: 1, d: 1 })
+  })
+
+  it('matches inside a day are sorted by finished_at honoring sortDir', () => {
+    const recs = [
+      { match_key: 'a', data: { date: '2026-05-10', finished_at: '20:00', result: 'victory' } },
+      { match_key: 'b', data: { date: '2026-05-10', finished_at: '22:00', result: 'defeat' } },
+      { match_key: 'c', data: { date: '2026-05-10', finished_at: '21:00', result: 'draw' } },
+    ]
+    const desc = groupMatchesByMonthWeekDay(recs, 'desc')[0]!.children![0]!.children![0]!.matches!
+    expect(desc.map(r => r.match_key)).toEqual(['b', 'c', 'a'])
+
+    const asc = groupMatchesByMonthWeekDay(recs, 'asc')[0]!.children![0]!.children![0]!.matches!
+    expect(asc.map(r => r.match_key)).toEqual(['a', 'c', 'b'])
+  })
+
+  it('splits a week that straddles a month boundary into both month buckets', () => {
+    // 2026-05-31 is a Sunday — same ISO week as 2026-06-01 (Monday)?
+    // Actually 2026-05-31 Sun is the END of its week (Mon May 25 - Sun May 31).
+    // Use 2026-04-30 (Thu) and 2026-05-01 (Fri) — same ISO week.
+    const recs = [
+      { match_key: 'apr', data: { date: '2026-04-30', finished_at: '21:00', result: 'victory' } },
+      { match_key: 'may', data: { date: '2026-05-01', finished_at: '21:00', result: 'defeat' } },
+    ]
+    const tree = groupMatchesByMonthWeekDay(recs, 'desc')
+    // Two month buckets, each containing the same calendar week.
+    expect(tree).toHaveLength(2)
+    const may = tree[0]!
+    const apr = tree[1]!
+    expect(may.label).toBe('MAY 2026')
+    expect(apr.label).toBe('APRIL 2026')
+    // The same Monday anchors the week in both buckets.
+    expect(may.children![0]!.key).toBe(apr.children![0]!.key)
+    // But each month bucket holds only its own day(s).
+    expect(may.children![0]!.children!.map(d => d.matches!.length)).toEqual([1])
+    expect(apr.children![0]!.children!.map(d => d.matches!.length)).toEqual([1])
   })
 })
