@@ -868,6 +868,21 @@ onBeforeUnmount(() => {
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Honor the OS-level reduced-motion preference. We have a lot of
+   motion (view fade-ins, panel scaleY, chip overshoot, nav underline,
+   theme transitions) — vestibular-sensitive users get all of it
+   collapsed to a sub-frame so the visual state still settles, but
+   without the animation. Scroll-behaviour: auto avoids the smooth-
+   scroll variant when a panel programmatically focuses on tab switch. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   background: var(--bg);
   color: var(--text);
