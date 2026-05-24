@@ -138,6 +138,8 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `make cloc-detail` | Same as `make cloc` plus per-file breakdown — use when investigating a delta. |
 | `make icon` | Resync `build/appicon.png` from `assets/icon.png` (1024×1024 via `sips`, macOS-only) and clear `build/windows/icon.ico` so Wails regenerates platform icons (`.icns` for macOS, `.ico` for Windows) on next `wails build`. |
 | `make swagger` | Serve `api/openapi.yaml` via Swagger UI v5 in a container (`$(DOCKER) run`, default port `:8080`; override with `SWAGGER_PORT`). Same spec is also published publicly at <https://sound-barrier.github.io/recall/api/> via `pages.yml`. |
+| `make pages-build` | Build the docs book + Swagger UI under `dist/pages/` — mirrors the staging dance in `pages.yml` so what previews locally matches what CI deploys. Honkit pin is `HONKIT_VERSION` (default 6.0.2) and tracks the same env var in the workflow. |
+| `make pages-preview` | `make pages-build` then `python3 -m http.server` on `$(PAGES_PORT)` (default `:4000`) serving the built site. Use this before pushing doc changes to catch broken chapter renders without burning a CI deploy. |
 | `make lint-openapi` | Lint `api/openapi.yaml` via Spectral (`spectral:oas` + `.spectral.yaml`) with `--fail-severity=warn`. Also run as part of `make lint`. |
 | `make test` | Run all tests: Go unit tests (`-race`; `pkg/{app,db,parser}/*_test.go`) + Vitest (`frontend/src/**/*.test.ts`). Parser golden-file integration tests in `pkg/parser/integration_test.go` skip unless `RECALL_FIXTURE_DIR` is set. CI runs `go test -race -short ./...`. |
 | `make cover` | Generate both Go and frontend coverage reports (umbrella; delegates to `cover-go` + `cover-frontend`). |
