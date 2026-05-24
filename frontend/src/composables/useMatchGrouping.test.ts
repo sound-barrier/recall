@@ -127,3 +127,46 @@ describe('useMatchGrouping — toggle / expand-all / collapse-all', () => {
     expect(allExpanded.value).toBe(false)
   })
 })
+
+// ── UNKNOWN DATE bucket — composable interaction ──────────────────────
+
+describe('useMatchGrouping — UNKNOWN DATE bucket', () => {
+  it('does not auto-expand the unknown group when dated months also exist', () => {
+    const records = ref<GroupableRecord[]>([
+      ...SAMPLE,
+      { match_key: 'unmatched:x.png', data: { date: '', finished_at: '', result: 'victory' } },
+    ])
+    const sort = ref<'asc' | 'desc'>('desc')
+    const { groups, isGroupExpanded } = useMatchGrouping(records, sort)
+
+    const unknown = groups.value.find(g => g.level === 'unknown')!
+    expect(unknown).toBeDefined()
+    expect(isGroupExpanded(unknown.key)).toBe(false)
+    // The newest dated path is still expanded.
+    expect(isGroupExpanded(groups.value[0]!.key)).toBe(true)
+  })
+
+  it('leaves the expanded set empty when the tree contains ONLY the unknown group', () => {
+    const records = ref<GroupableRecord[]>([
+      { match_key: 'unmatched:a.png', data: { result: 'victory' } },
+      { match_key: 'unmatched:b.png', data: { result: 'defeat' } },
+    ])
+    const sort = ref<'asc' | 'desc'>('desc')
+    const { groups, anyExpanded } = useMatchGrouping(records, sort)
+    expect(groups.value).toHaveLength(1)
+    expect(groups.value[0]!.level).toBe('unknown')
+    expect(anyExpanded.value).toBe(false)
+  })
+
+  it('expandAll includes the unknown group', () => {
+    const records = ref<GroupableRecord[]>([
+      ...SAMPLE,
+      { match_key: 'unmatched:x.png', data: { result: 'victory' } },
+    ])
+    const sort = ref<'asc' | 'desc'>('desc')
+    const { groups, isGroupExpanded, expandAll } = useMatchGrouping(records, sort)
+    expandAll()
+    const unknown = groups.value.find(g => g.level === 'unknown')!
+    expect(isGroupExpanded(unknown.key)).toBe(true)
+  })
+})
