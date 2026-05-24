@@ -286,10 +286,10 @@ func (s *SQLStore) Upsert(r MatchRow) error {
 		nullableString(r.Result), nullableString(r.FinalScore),
 		nullableString(r.Date), nullableString(r.FinishedAt),
 		nullableString(r.GameLength),
-		nullableJSONString(r.HeroesPlayedJSON), nullableJSONString(r.PerformanceJSON),
+		nullableString(r.HeroesPlayedJSON), nullableString(r.PerformanceJSON),
 		nullableString(r.Rank), r.Level,
 		r.RankProgress, r.ChangePercent,
-		nullableJSONString(r.ModifiersJSON), nullableJSONString(r.SRJSON),
+		nullableString(r.ModifiersJSON), nullableString(r.SRJSON),
 	)
 	return err
 }
@@ -307,7 +307,3 @@ func nullableString(s string) sql.NullString {
 	}
 	return sql.NullString{String: s, Valid: true}
 }
-
-// nullableJSONString is identical to nullableString but reads better at the
-// call sites that pass pre-encoded JSON columns.
-func nullableJSONString(s string) sql.NullString { return nullableString(s) }
