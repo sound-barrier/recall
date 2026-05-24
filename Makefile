@@ -28,7 +28,7 @@ WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
         build-linux build-windows build-mac build-all build-all-docker \
         build-server-linux build-server-windows build-server-mac build-server-all \
         build-server-container \
-        lint lint-go lint-js lint-css lint-html lint-docker lint-typos lint-md lint-actions \
+        lint lint-go lint-js lint-css lint-html lint-docker lint-typos lint-md lint-actions lint-gosec \
         dead-code dead-code-go dead-code-ts \
         test test-go test-frontend test-e2e test-all \
         cover cover-go cover-frontend \
@@ -158,7 +158,7 @@ cloc-detail: ## Count lines of source code, per-file breakdown
 	@command -v cloc >/dev/null || { echo "cloc not installed — brew install cloc (or apt install cloc)"; exit 1; }
 	cloc --config .clocrc --by-file-by-lang .
 
-lint: lint-go lint-js lint-css lint-html lint-shell lint-docker lint-yaml lint-openapi lint-typos lint-md lint-actions ## Run all linters
+lint: lint-go lint-js lint-css lint-html lint-shell lint-docker lint-yaml lint-openapi lint-typos lint-md lint-actions lint-gosec ## Run all linters
 
 lint-go: ## Lint Go source (golangci-lint, both build tags)
 	@echo "[ recall ] Linting Go (golangci-lint)…"
@@ -237,6 +237,20 @@ lint-actions: ## Lint .github/workflows/*.yml via actionlint
 	@echo "[ recall ] Linting GitHub Actions workflows (actionlint)…"
 	actionlint .github/workflows/*.yml
 	@echo "[ recall ] ✓  workflows clean"
+
+# gosec Go-specific SAST. Sweeps both build tags so the Wails and
+# serveronly code paths both get covered. -exclude-dir filters the
+# stray frontend/node_modules/flatted/golang/pkg/flatted package
+# that go list ./... otherwise pulls in (same reason `make
+# dead-code-go` greps it out). False positives are annotated inline
+# via `// #nosec Gxxx -- <reason>` rather than ignored globally.
+lint-gosec: ## Go SAST via gosec (both build tags)
+	@command -v gosec >/dev/null || { echo "[ recall ] ✗  gosec not installed — brew install gosec (or see initialize.sh for Debian)"; exit 1; }
+	@echo "[ recall ] gosec (default build tags)…"
+	gosec -exclude-dir=frontend ./...
+	@echo "[ recall ] gosec (serveronly build tag)…"
+	gosec -exclude-dir=frontend -tags=serveronly ./...
+	@echo "[ recall ] ✓  gosec clean"
 
 # Spectral runs the spectral:oas ruleset against api/openapi.yaml; see
 # .spectral.yaml at the project root for rule overrides. npx pulls a

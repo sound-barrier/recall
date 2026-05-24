@@ -115,7 +115,7 @@ case "$PLATFORM" in
         # Go-installed tools matching .devcontainer/postCreate.sh.
         # golangci-lint via go install (not apt) so the version is
         # compiled against the current Go toolchain.
-        log "go install: golangci-lint, gofumpt, goimports-reviser, shfmt, govulncheck, deadcode, actionlint, wails ${WAILS_VERSION}"
+        log "go install: golangci-lint, gofumpt, goimports-reviser, shfmt, govulncheck, deadcode, actionlint, gosec, wails ${WAILS_VERSION}"
         go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
         go install mvdan.cc/gofumpt@latest
         go install github.com/incu6us/goimports-reviser/v3@latest
@@ -123,6 +123,7 @@ case "$PLATFORM" in
         go install golang.org/x/vuln/cmd/govulncheck@latest
         go install golang.org/x/tools/cmd/deadcode@latest
         go install github.com/rhysd/actionlint/cmd/actionlint@latest
+        go install github.com/securego/gosec/v2/cmd/gosec@latest
         go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
 
         # Binary releases — re-installs on every run (idempotent;

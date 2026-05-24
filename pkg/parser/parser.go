@@ -153,6 +153,10 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 	if _, err := exec.LookPath(tp); err != nil {
 		return nil, fmt.Errorf("tesseract not available at %q — configure the binary in Settings → Engine (%w)", tp, err)
 	}
+	// #nosec G304 -- imagePath comes from ParseScreenshotsDir which builds
+	// it via filepath.Join(screenshotsDir, fileInfo.Name()); screenshotsDir
+	// passed validateScreenshotsDir at the boundary (safePathChars regex +
+	// filepath.Clean equality), and fileInfo.Name() is just a basename.
 	f, err := os.Open(imagePath)
 	if err != nil {
 		return nil, err
@@ -172,6 +176,10 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 		}
 		defer os.RemoveAll(work)
 	} else {
+		// #nosec G703 -- RECALL_DEBUG_DIR is an opt-in developer env
+		// var (documented in CLAUDE.md as "set to a fixed path to
+		// inspect Tesseract work files after a parse run"). Not a
+		// production attack surface.
 		_ = os.MkdirAll(work, 0o700)
 	}
 
@@ -436,6 +444,9 @@ func ocrRaw(img image.Image, rect image.Rectangle, workDir, name, psm, whitelist
 
 func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string, error) {
 	inPath := filepath.Join(workDir, name+".png")
+	// #nosec G304,G703 -- workDir is always os.MkdirTemp output or
+	// RECALL_DEBUG_DIR (developer opt-in); `name` is a fixed
+	// identifier from the dispatch table, never user input.
 	f, err := os.Create(inPath)
 	if err != nil {
 		return "", err
@@ -451,6 +462,9 @@ func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string
 		args = append(args, "-c", "tessedit_char_whitelist="+whitelist)
 	}
 	var stdout, stderr bytes.Buffer
+	// #nosec G204,G702 -- getTesseractPath() returns a value vetted by
+	// validateTesseractPath at the boundary (safePathChars + canonical
+	// + absolute + basename pinned to tesseract|tesseract.exe).
 	cmd := exec.Command(getTesseractPath(), args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -460,6 +474,8 @@ func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string
 	}
 	out := stdout.String()
 	if os.Getenv("OWMETRICS_DEBUG_DIR") != "" {
+		// #nosec G703 -- workDir is from RECALL_DEBUG_DIR when this branch
+		// is reachable (the env var also gates this whole block).
 		_ = os.WriteFile(filepath.Join(workDir, name+".txt"), []byte(out), 0o600)
 	}
 	return out, nil
@@ -679,6 +695,8 @@ func preprocessInverted(src image.Image) image.Image {
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
 			r, g, b, _ := src.At(x, y).RGBA()
+			// #nosec G115 -- ITU-R BT.601 luminance: weights sum to 1000,
+			// each channel ≤ 255 after >>8, so the result is always ≤ 255.
 			lum := uint8((299*int(r>>8) + 587*int(g>>8) + 114*int(b>>8)) / 1000)
 			v := 255 - lum
 			for dy := 0; dy < scale; dy++ {
