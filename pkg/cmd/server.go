@@ -43,6 +43,12 @@ func RunServer(a *app.App, assets embed.FS) {
 	srv := &http.Server{
 		Addr:    addr,
 		Handler: mux,
+		// Slowloris mitigation (gosec G112): cap how long a client may
+		// take to send the request headers. 10s is generous for any
+		// real client; an attacker holding the socket open longer will
+		// be cut off. Read/Write timeouts stay unset because /api/events
+		// is an indefinite-duration SSE stream.
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	// Graceful shutdown on SIGINT / SIGTERM.
@@ -56,6 +62,9 @@ func RunServer(a *app.App, assets embed.FS) {
 		_ = srv.Shutdown(ctx)
 	}()
 
+	// #nosec G706 -- addr is operator-controlled via RECALL_SERVER_ADDR
+	// (or the compile-time default "127.0.0.1:7000"); never derived
+	// from an inbound HTTP request, so no log-injection surface.
 	log.Printf("Recall server listening on http://%s", addr)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("server: %v", err)

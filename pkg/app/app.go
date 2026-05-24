@@ -261,7 +261,10 @@ func saveSettings(s Settings) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(settingsPath(), b, 0o644)
+	// 0o600 (owner-only RW) per gosec G306. settings.json holds
+	// user-controlled paths (screenshots dir, tesseract path); no
+	// reason for other users on the host to read it.
+	return os.WriteFile(settingsPath(), b, 0o600)
 }
 
 // marshalSettings is the pure JSON-encoding step of saveSettings. Pulled out
@@ -751,6 +754,11 @@ func (a *App) ScreenshotHandler() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
+		// #nosec G703 -- `full` survived four explicit guards above
+		// (no /, no \\, no .., directory inside the configured root)
+		// plus the safePathChars regex applied to the ScreenshotsDir
+		// at boundary. See pkg/app/screenshot_handler_test.go for the
+		// exhaustive coverage of every rejection branch.
 		http.ServeFile(w, r, full)
 	})
 }
