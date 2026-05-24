@@ -10,7 +10,11 @@ export default defineConfig({
     environment: 'happy-dom',
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'lcov', 'html'],
+      // cobertura is the format the PR coverage-comment job in CI feeds
+      // into irongut/CodeCoverageSummary; keeping it on the local
+      // reporter list means `make cover-frontend` produces the same
+      // artifact that CI does (one less drift risk).
+      reporter: ['text', 'lcov', 'html', 'cobertura'],
       include: ['src/**/*.ts', 'src/**/*.vue'],
       exclude: ['src/**/*.d.ts', 'src/**/*.test.ts'],
       // Project-wide floors. When `npm run test:coverage` (or
