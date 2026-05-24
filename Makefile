@@ -24,7 +24,7 @@ VERSION_LDFLAG := -X recall/pkg/app.Version=$(BUILD_VERSION)
 
 WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
 
-.PHONY: help \
+.PHONY: help init \
         build-linux build-windows build-mac build-all build-all-docker \
         build-server-linux build-server-windows build-server-mac build-server-all \
         build-server-container \
@@ -42,6 +42,9 @@ help: ## Show this help
 	    /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-26s\033[0m %s\n", $$1, $$2 } \
 	    /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' \
 	    $(MAKEFILE_LIST)
+
+init: ## One-shot setup for a fresh clone — runs ./initialize.sh (macOS or Debian/Ubuntu)
+	./initialize.sh
 
 
 ##@ Wails desktop-app builds
