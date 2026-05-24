@@ -111,7 +111,7 @@ jobs:
       # OpenAPI spec — mirrors `make lint-openapi` (Spectral with the
       # spectral:oas ruleset + project overrides in .spectral.yaml).
       - name: Lint OpenAPI (Spectral)
-        run: npx --yes @stoplight/spectral-cli@6.14.2 lint api/openapi.yaml --fail-severity=warn
+        run: npx --yes @stoplight/spectral-cli@6.16.0 lint api/openapi.yaml --fail-severity=warn
 
       # Go unit tests (merge logic, inference helpers, screenshotType
       # classification). Parser golden-file tests are skipped by -short.

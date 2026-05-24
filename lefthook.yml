@@ -42,7 +42,7 @@ pre-commit:
     # ── OpenAPI ───────────────────────────────────────────────────────
     spectral:
       glob: "api/openapi.yaml"
-      run: npx --yes @stoplight/spectral-cli@6.14.2 lint --fail-severity=warn {staged_files}
+      run: npx --yes @stoplight/spectral-cli@6.16.0 lint --fail-severity=warn {staged_files}
 
     gen-types:
       glob: "api/openapi.yaml"
