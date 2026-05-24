@@ -158,7 +158,6 @@ export function formatRelativeTime(ms: number | null | undefined): string {
   return d === 1 ? 'yesterday' : `${d} days ago`
 }
 
-// Builds the URL for the screenshot image server route.
 // Parse an OW client "game_length" string (e.g. "11:25") into total
 // minutes (fractional). Returns null when the string is missing or
 // doesn't match the MM:SS / M:SS / H:MM:SS shape — callers must treat
@@ -181,6 +180,9 @@ export function parseGameLengthMinutes(s: string | null | undefined): number | n
   return null
 }
 
+// Build the URL for an on-disk screenshot served by the Go
+// ScreenshotHandler at /_screenshot/<encoded filename>. Used by
+// MatchCard's expanded source-file previews.
 export function screenshotURL(filename: string): string {
   return `/_screenshot/${encodeURIComponent(filename)}`
 }
@@ -257,14 +259,16 @@ export function tallyWLD(
   return { w, l, d }
 }
 
-const MONTHS_FULL_UPPER = [
-  'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
-  'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER',
+// Single source of truth for month-name rendering. The two derived
+// arrays (uppercase for month headers, 3-letter for compact week / day
+// labels) used to be duplicated literals; deriving them keeps drift
+// impossible if a locale-aware rendering ever replaces this list.
+const MONTHS_FULL = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ]
-const MONTHS_SHORT = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-]
+const MONTHS_FULL_UPPER = MONTHS_FULL.map(m => m.toUpperCase())
+const MONTHS_SHORT = MONTHS_FULL.map(m => m.slice(0, 3))
 export const WEEKDAYS_FULL = [
   'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
 ] as const
@@ -513,14 +517,12 @@ export function fmtTime(rec: Pick<MatchRecord, 'data'>): string {
   if (!d.date && !d.finished_at) return ''
 
   // Date portion: "May 9, 2026". Full month names; day not zero-padded.
-  const months = ['January', 'February', 'March', 'April', 'May', 'June',
-                  'July', 'August', 'September', 'October', 'November', 'December']
   let datePart = ''
   if (d.date) {
     const [yStr = '', moStr = '', dayStr = ''] = d.date.split('-')
     const y = Number(yStr), mo = Number(moStr), day = Number(dayStr)
     if (!Number.isNaN(y) && !Number.isNaN(mo) && !Number.isNaN(day) && mo >= 1 && mo <= 12) {
-      datePart = `${months[mo - 1]!} ${day}, ${y}`
+      datePart = `${MONTHS_FULL[mo - 1]!} ${day}, ${y}`
     }
   }
 
@@ -554,9 +556,7 @@ export function formatParsedAt(iso: string | null | undefined): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso // unparseable — show raw
-  const months = ['January', 'February', 'March', 'April', 'May', 'June',
-                  'July', 'August', 'September', 'October', 'November', 'December']
-  const datePart = `${months[d.getMonth()]!} ${d.getDate()}, ${d.getFullYear()}`
+  const datePart = `${MONTHS_FULL[d.getMonth()]!} ${d.getDate()}, ${d.getFullYear()}`
   const h = d.getHours()
   const m = d.getMinutes()
   const suffix = h >= 12 ? 'pm' : 'am'
