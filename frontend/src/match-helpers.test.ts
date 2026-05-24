@@ -500,9 +500,10 @@ describe('groupMatchesByMonthWeekDay', () => {
   })
 
   it('splits two days within the same week into two Day groups', () => {
-    // 2026-05-10 (Sunday) and 2026-05-08 (Friday) — same ISO week.
+    // 2026-05-08 (Friday) and 2026-05-09 (Saturday) — same Sun-anchored
+    // week (Sun May 3 – Sat May 9). Default weekStart is Sunday.
     const recs = [
-      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+      { data: { date: '2026-05-09', finished_at: '21:29', result: 'victory' } },
       { data: { date: '2026-05-08', finished_at: '20:00', result: 'defeat' } },
     ]
     const tree = groupMatchesByMonthWeekDay(recs, 'desc')
@@ -547,15 +548,42 @@ describe('groupMatchesByMonthWeekDay', () => {
     expect(tree.map(g => g.label)).toEqual(['APRIL 2026', 'MAY 2026'])
   })
 
-  it('week label uses "Week of <Mon date>" form', () => {
-    // 2026-05-10 is a Sunday → its Monday is 2026-05-04.
+  it('week label uses "Week of <anchor date>" form with the Sunday anchor by default', () => {
+    // Default weekStart is Sunday → 2026-05-10 (Sunday itself) anchors to itself.
     const recs = [
       { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
     ]
     const week = groupMatchesByMonthWeekDay(recs, 'desc')[0]!.children![0]!
     expect(week.label).toMatch(/^Week of /)
-    // Must reference the Monday of that ISO week.
+    expect(week.label).toContain('May 10')
+  })
+
+  it('honors weekStart=monday for the anchor', () => {
+    // 2026-05-10 is a Sunday → its Monday is 2026-05-04.
+    const recs = [
+      { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
+    ]
+    const week = groupMatchesByMonthWeekDay(recs, 'desc', { weekStart: 'monday' })[0]!.children![0]!
     expect(week.label).toContain('May 4')
+  })
+
+  it('groups Friday + Saturday under one week with weekStart=sunday but splits them under monday', () => {
+    // 2026-05-08 Fri + 2026-05-09 Sat:
+    //   Sunday-start: same week (Sun May 3 – Sat May 9)
+    //   Monday-start: same week (Mon May 4 – Sun May 10) — still same.
+    // Better discriminator: Saturday + Sunday across the weekend boundary:
+    //   2026-05-09 Sat + 2026-05-10 Sun:
+    //     Sunday-start: DIFFERENT weeks (Sat May 9 anchors to Sun May 3; Sun May 10 anchors to itself).
+    //     Monday-start: SAME week (both anchor to Mon May 4 – Sun May 10).
+    const recs = [
+      { data: { date: '2026-05-09', finished_at: '21:00', result: 'victory' } },
+      { data: { date: '2026-05-10', finished_at: '21:00', result: 'victory' } },
+    ]
+    const sun = groupMatchesByMonthWeekDay(recs, 'desc') // default sunday
+    expect(sun[0]!.children).toHaveLength(2)
+
+    const mon = groupMatchesByMonthWeekDay(recs, 'desc', { weekStart: 'monday' })
+    expect(mon[0]!.children).toHaveLength(1)
   })
 
   it('day label uses a short weekday + month + day form', () => {

@@ -1,20 +1,23 @@
 <script setup lang="ts">
 import type { ThemeMode } from '../composables/useTheme'
+import type { WeekStart } from '../composables/useWeekStart'
 
-// SettingsView — Directories + Appearance only. Engine / Prometheus /
-// Watch-folder knobs live in the Ingest view because they're tied to
-// the parse workflow. Pulled out of App.vue so the panel can be unit-
-// tested without mounting the entire 4000-line shell.
+// SettingsView — Directories + Appearance + Calendar. Engine /
+// Prometheus / Watch-folder knobs live in the Ingest view because
+// they're tied to the parse workflow. Pulled out of App.vue so the
+// panel can be unit-tested without mounting the entire 4000-line shell.
 
 defineProps<{
   screenshotsDir: string
   loading:        boolean
   themeMode:      ThemeMode
+  weekStart:      WeekStart
 }>()
 
 const emit = defineEmits<{
   'pick-screenshots-dir': []
   'toggle-theme':         []
+  'set-week-start':       [next: WeekStart]
   'go-to-view':           [next: 'settings' | 'ingest' | 'matches' | 'unknown']
 }>()
 </script>
@@ -118,5 +121,97 @@ const emit = defineEmits<{
         </div>
       </div>
     </div>
+
+    <div id="sec-calendar" class="settings-section">
+      <div class="section-header">
+        <span class="section-num">03</span>
+        <span class="section-slash" aria-hidden="true">/</span>
+        <h3 class="section-title">
+          Calendar
+        </h3>
+      </div>
+      <div class="setting-rows">
+        <div class="setting-row">
+          <div class="setting-info">
+            <h4 class="setting-label">
+              First Day of Week
+            </h4>
+            <p class="setting-desc">
+              Anchors the <em>Week of</em> headers on the Matches page. US default is Sunday; switch to Monday for ISO-8601 weeks.
+            </p>
+          </div>
+          <div class="setting-control">
+            <div
+              class="theme-toggle weekstart-toggle"
+              role="radiogroup"
+              aria-label="First day of week"
+            >
+              <button
+                type="button"
+                class="theme-seg weekstart-seg"
+                role="radio"
+                :aria-checked="weekStart === 'sunday'"
+                :class="{ active: weekStart === 'sunday' }"
+                title="Weeks run Sunday → Saturday"
+                @click="emit('set-week-start', 'sunday')"
+              >
+                <span class="weekstart-letter" aria-hidden="true">S</span>
+                <span class="theme-label">Sun</span>
+              </button>
+              <span class="theme-divider" aria-hidden="true" />
+              <button
+                type="button"
+                class="theme-seg weekstart-seg"
+                role="radio"
+                :aria-checked="weekStart === 'monday'"
+                :class="{ active: weekStart === 'monday' }"
+                title="Weeks run Monday → Sunday (ISO-8601)"
+                @click="emit('set-week-start', 'monday')"
+              >
+                <span class="weekstart-letter" aria-hidden="true">M</span>
+                <span class="theme-label">Mon</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
+
+<style scoped>
+/* The weekstart toggle reuses the existing .theme-toggle / .theme-seg
+   styling from App.vue's global stylesheet (segmented control, divider,
+   active state). We just swap the icon-glyph slot for a typographic
+   letter so Sun/Mon read at a glance without leaning on iconography
+   that doesn't exist for "day of week". The letter sits where the
+   theme icon sits, sized to match. */
+
+.weekstart-toggle {
+  /* Inherit segmented-control geometry from .theme-toggle. */
+}
+
+.weekstart-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  font-family: var(--brand, 'OW Wordmark', 'Russo One', sans-serif);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  /* Sit slightly low so the optical center matches the theme icons. */
+  transform: translateY(-1px);
+}
+
+.weekstart-seg {
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+}
+</style>

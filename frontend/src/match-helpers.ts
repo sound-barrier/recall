@@ -260,12 +260,22 @@ function parseISODateUTC(date: string): Date | null {
   return Number.isNaN(dt.getTime()) ? null : dt
 }
 
-function mondayOfUTC(date: Date): Date {
+// Locale preference for "what day starts a week". Threaded through the
+// grouping helpers + the matches view's "Week of <date>" labels so a
+// US-default user sees Sun→Sat weeks and a European user can opt into
+// Mon→Sun via Settings. Stored at the React-side via useWeekStart;
+// pure callers pass it explicitly.
+export type WeekStart = 'sunday' | 'monday'
+
+// Shift `date` back to the most recent week-start day (inclusive).
+// Sunday-start: Sun=0, Mon=-1, Tue=-2, … Sat=-6.
+// Monday-start: Sun=-6, Mon=0, Tue=-1, … Sat=-5.
+function weekAnchorUTC(date: Date, weekStart: WeekStart): Date {
   const d = new Date(date.getTime())
-  // Sun=0, Mon=1, …, Sat=6. Shift to the most recent Monday on or
-  // before `date`. Sun→-6, Mon→0, Tue→-1, Wed→-2, Thu→-3, Fri→-4, Sat→-5.
   const wd = d.getUTCDay()
-  const diff = wd === 0 ? -6 : 1 - wd
+  const diff = weekStart === 'sunday'
+    ? -wd
+    : wd === 0 ? -6 : 1 - wd
   d.setUTCDate(d.getUTCDate() + diff)
   return d
 }
@@ -280,8 +290,8 @@ function isoDateKey(d: Date): string {
 function monthLabel(d: Date): string {
   return `${MONTHS_FULL_UPPER[d.getUTCMonth()]} ${d.getUTCFullYear()}`
 }
-function weekLabel(monday: Date): string {
-  return `Week of ${MONTHS_SHORT[monday.getUTCMonth()]} ${monday.getUTCDate()}`
+function weekLabel(anchor: Date): string {
+  return `Week of ${MONTHS_SHORT[anchor.getUTCMonth()]} ${anchor.getUTCDate()}`
 }
 function dayLabel(d: Date): string {
   return `${WEEKDAYS_SHORT[d.getUTCDay()]} ${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCDate()}`
@@ -300,18 +310,22 @@ function sumTally(groups: { tally: WLDTally }[]): WLDTally {
 // match_key timestamp fallback isn't used here because we only want to
 // group by the authoritative game-reported date.
 //
-// Weeks are anchored on the Monday of the calendar week the date falls
-// in. A week straddling a month boundary appears in both month buckets;
-// each bucket only contains the day(s) that belong to its own month.
+// Weeks are anchored on the first day of the calendar week the date
+// falls in. The anchor day is configurable via options.weekStart
+// (default 'sunday', the US default). A week straddling a month
+// boundary appears in both month buckets; each bucket only contains
+// the day(s) that belong to its own month.
 //
 // sortDir orders all three levels (newest-first under 'desc', oldest-
 // first under 'asc'), including the records inside each day.
 export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
   records: R[],
   sortDir: 'asc' | 'desc',
+  options: { weekStart?: WeekStart } = {},
 ): MatchGroup<R>[] {
+  const weekStart: WeekStart = options.weekStart ?? 'sunday'
   type DayBucket = { date: Date; recs: R[] }
-  type WeekBucket = { monday: Date; days: Map<string, DayBucket> }
+  type WeekBucket = { anchor: Date; days: Map<string, DayBucket> }
   type MonthBucket = { firstOfMonth: Date; weeks: Map<string, WeekBucket> }
 
   const months = new Map<string, MonthBucket>()
@@ -336,11 +350,11 @@ export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
       months.set(monthKey, month)
     }
 
-    const monday = mondayOfUTC(date)
-    const weekKey = isoDateKey(monday)
+    const anchor = weekAnchorUTC(date, weekStart)
+    const weekKey = isoDateKey(anchor)
     let week = month.weeks.get(weekKey)
     if (!week) {
-      week = { monday, days: new Map() }
+      week = { anchor, days: new Map() }
       month.weeks.set(weekKey, week)
     }
 
@@ -382,7 +396,7 @@ export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
       weekGroups.push({
         key: `week:${weekKey}`,
         level: 'week',
-        label: weekLabel(week.monday),
+        label: weekLabel(week.anchor),
         tally: sumTally(dayGroups),
         children: dayGroups,
       })
