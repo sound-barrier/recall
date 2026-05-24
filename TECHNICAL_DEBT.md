@@ -274,50 +274,26 @@ known-good template.
 
 ---
 
-## 4. `wailsjs/go/models.ts` requires manual hand-editing
+## 4. `wailsjs/go/models.ts` — long-term: regenerate from OpenAPI
 
-**Size: M**
+**Size: L**
 
 **What.**
-CLAUDE.md is explicit: "Adding a field to an existing Go struct is a
-3-step follow-up: (1) update the struct + OpenAPI schema, (2)
-`make gen-types` to refresh `api.gen.d.ts`, (3) manually edit
-`wailsjs/go/models.ts` to add the field — Wails only auto-regenerates
-that file during `wails dev` (macOS only). Missing step 3 breaks
-Wails mode silently."
+The short-term guard (`scripts/check-wailsjs-models.sh`, now wired
+into Make, lefthook, and CI) catches silent drift when a Go struct
+field is added without the matching `wailsjs/go/models.ts` update.
+That removes the worst symptom but the underlying duplication —
+two parallel TypeScript type sources for the same Go data shape —
+remains.
 
 **Why it's debt.**
-
-- Silent breakage in Wails mode while server mode (the path
-  contributors on Linux/Windows can actually run) continues to
-  work. The bug only surfaces in a release build on macOS.
-- Linux and Windows contributors can't refresh wailsjs at all
-  without spinning up macOS (or docker-cross with X11, which the
-  devcontainer note says doesn't work).
-- The four-step "add a new exported method on App" process
-  (CLAUDE.md, "Frontend imports from `'./api'`" bullet) has the same
-  problem at step 2: only macOS contributors regenerate wailsjs/.
-- The `wailsjs/` directory is committed to git but generated —
-  every macOS run during dev produces local diffs that contributors
-  have to remember to commit or revert.
+The `wailsjs/` directory is committed to git but generated, and
+generated only on macOS. Linux and Windows contributors can't
+refresh it. The "add a new exported method on App" four-step
+process still requires a macOS contributor to regenerate. Every
+macOS dev run produces uncommitted local diffs.
 
 **Mitigation plan.**
-Two paths, in increasing order of effort:
-
-**Short-term (M):** add a CI guard.
-
-1. Write `scripts/check-wailsjs-models.sh` that:
-   - extracts every `json:"foo"` tag from `pkg/app/app.go` (and
-     other types exposed via Wails),
-   - greps `wailsjs/go/models.ts` for each tag name,
-   - exits 1 with a "models.ts missing field 'foo' — see CLAUDE.md"
-     message on any miss.
-2. Wire it into `ci.yml` as a step that runs on every PR. Now the
-   "silent" failure becomes a CI failure with a pointed message.
-3. Same script can also run in lefthook's pre-push so a contributor
-   catches it locally before the round-trip to CI.
-
-**Long-term (L):** generate `wailsjs/` from the OpenAPI spec.
 
 1. The frontend already typechecks `api.ts` against `api.gen.d.ts`
    (from `make gen-types`). The Wails delegate path in `api.ts`
@@ -333,10 +309,9 @@ Two paths, in increasing order of effort:
    longer load-bearing for typechecking.
 
 **How large.**
-M for the short-term CI guard. L for the long-term wailsjs-from-
-OpenAPI work. Do the short-term first — it's a few hours and turns
-a silent class of bug into a noisy one. Schedule the long-term work
-when the four-step API-binding process becomes a real bottleneck.
+L. Schedule when the four-step API-binding process becomes a real
+bottleneck. The short-term CI guard makes this optional rather than
+urgent.
 
 ---
 
@@ -796,6 +771,14 @@ choices.
   `pre-push.actionlint` block, and the CI lint job. Dependabot
   bumps both the SHA and the comment in lock-step. CONTRIBUTING.md
   documents the policy.
+- Short-term: `wailsjs/go/models.ts` drift —
+  `scripts/check-wailsjs-models.sh` extracts every json tag from the
+  Wails-exposed Go structs (MatchRecord, UpdateInfo, TesseractStatus,
+  MatchResult, HeroSR, HeroPlay, Performance, PerformanceStat) and
+  asserts each appears as a field in `models.ts`. Wired into
+  `make check-wailsjs`, the lefthook `pre-commit.wailsjs-sync` hook,
+  and the CI lint job. The long-term "generate wailsjs from
+  OpenAPI" path remains open as item #4 below.
 
 ### Phase 1 — drift prevention ✅ COMPLETE
 
@@ -807,7 +790,7 @@ choices.
 
 ### Phase 2 — guard rails (1 week, M items)
 
-1. #4 wailsjs models.ts CI guard, short-term form (M)
+1. ~~#4 wailsjs models.ts CI guard, short-term form (M)~~ — done
 2. #6 prepare-go-build composite action (S)
 3. #13 lazy-load view components (S)
 4. #12 commit golden-file fixtures + CI integration (M)

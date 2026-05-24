@@ -54,6 +54,15 @@ pre-commit:
       run: make gen-types
       stage_fixed: true
 
+    # When a Wails-exposed Go struct gains a field, wailsjs/go/models.ts
+    # also needs the new field — but wails dev only regenerates it on
+    # macOS. Surface drift loudly via scripts/check-wailsjs-models.sh
+    # whenever any of the relevant Go files (or the .ts itself) is
+    # staged. See CLAUDE.md → "Adding a field to an existing Go struct".
+    wailsjs-sync:
+      glob: "{pkg/app/*.go,pkg/parser/*.go,frontend/wailsjs/go/models.ts}"
+      run: bash scripts/check-wailsjs-models.sh
+
     # ── YAML / Dockerfile / Shell ─────────────────────────────────────
     yamllint:
       glob: "*.{yml,yaml}"
