@@ -42,6 +42,20 @@ Two workflows exist depending on your platform:
 | `make dev` — Wails hot-reload | **macOS only** | Native WebKit window; Vite HMR on `:5173`, Wails IPC on `:34115`, Go rebuilt on save |
 | Server mode — headless HTTP | macOS, Linux, Windows | `go run -tags serveronly . --server`; open `http://127.0.0.1:7000` in any browser |
 
+### Quick start (macOS + Debian/Ubuntu)
+
+If you've installed [Go 1.26+](https://go.dev/dl/) and [Node 22+](https://nodejs.org/) yourself (use `asdf`/`gvm`/`nvm`, or the official tarball — Debian's `apt golang` is usually too old), one command takes care of the rest:
+
+```sh
+make init        # or:  ./initialize.sh
+```
+
+The script is idempotent and detects the platform: on macOS it runs `brew bundle` and the `go install` lines that aren't covered by brew; on Debian it apt-installs the equivalents, downloads pinned `hadolint`/`lefthook`/`trivy` releases, then `go install`s the rest. Both paths finish with `cd frontend && npm ci` and `lefthook install` to wire the git hooks.
+
+Macs need `xcode-select --install` first (interactive accept; the script can't do this for you).
+
+For other platforms (Windows, non-Debian Linux), or if you'd rather run the steps manually, the detailed per-platform sections below document what `initialize.sh` does step-by-step.
+
 If you don't want to install the toolchain locally, the next section sets you up in a container instead.
 
 ### Dev Container (any host, zero install)
@@ -64,6 +78,8 @@ The forwarded ports (5173, 7000, 8080, 9090, 9091, 34115, 3000) cover Vite, the 
 - `make icon` is macOS-only (uses `sips`). The Linux container will skip it.
 
 ### macOS
+
+> **TL;DR:** `./initialize.sh` (or `make init`) runs every step in this section automatically after you've installed Xcode CLT, Homebrew, Go 1.26+, and Node 22+. Read on if you'd rather run them manually or want to understand what the script does.
 
 **One-time prerequisites:**
 
@@ -106,6 +122,8 @@ wails doctor    # verify toolchain at any time
 ### Linux
 
 `make dev` exits on non-Darwin hosts. Linux developers use **server mode** — the embedded Vue frontend is served over HTTP and works in any browser.
+
+> **TL;DR (Debian/Ubuntu only):** `./initialize.sh` (or `make init`) runs every step in this section automatically after you've installed Go 1.26+ and Node 22+. Read on if you're on a non-apt distro, or if you'd rather run the steps manually.
 
 **One-time prerequisites** (Ubuntu/Debian — adapt for other distros):
 
