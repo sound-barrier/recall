@@ -63,6 +63,10 @@ brew "cloc"
 # Security scanning (used by `make trivy`).
 brew "trivy"
 
+# Spell-checker for code, docs, and identifiers. Used by `make
+# lint-typos` and the lefthook pre-commit hook; config in _typos.toml.
+brew "typos-cli"
+
 # --- Not in brew, but required:
 #
 #   Wails CLI itself is a Go binary. Install once after `brew bundle`:

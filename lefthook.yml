@@ -59,6 +59,13 @@ pre-commit:
       glob: "Dockerfile*"
       run: hadolint {staged_files}
 
+    # ── Spell-check ───────────────────────────────────────────────────
+    # typos is a Rust binary, ~50ms on a typical staged-file set. Config
+    # lives in _typos.toml at the repo root (excludes auto-generated
+    # files + whitelisted false positives).
+    typos:
+      run: typos {staged_files}
+
 # Pre-push dead-code analysis. Both tools do whole-project scanning so they
 # can't be scoped to staged files like the pre-commit hooks above. Running
 # them only on push keeps WIP commits fast while still catching dead code

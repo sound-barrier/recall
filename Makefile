@@ -28,7 +28,7 @@ WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
         build-linux build-windows build-mac build-all build-all-docker \
         build-server-linux build-server-windows build-server-mac build-server-all \
         build-server-container \
-        lint lint-go lint-js lint-css lint-html lint-docker \
+        lint lint-go lint-js lint-css lint-html lint-docker lint-typos \
         dead-code dead-code-go dead-code-ts \
         test test-go test-frontend \
         cover cover-go cover-frontend \
@@ -158,7 +158,7 @@ cloc-detail: ## Count lines of source code, per-file breakdown
 	@command -v cloc >/dev/null || { echo "cloc not installed — brew install cloc (or apt install cloc)"; exit 1; }
 	cloc --config .clocrc --by-file-by-lang .
 
-lint: lint-go lint-js lint-css lint-html lint-shell lint-docker lint-yaml lint-openapi ## Run all linters
+lint: lint-go lint-js lint-css lint-html lint-shell lint-docker lint-yaml lint-openapi lint-typos ## Run all linters
 
 lint-go: ## Lint Go source (golangci-lint, both build tags)
 	@echo "[ recall ] Linting Go (golangci-lint)…"
@@ -206,6 +206,16 @@ lint-yaml: ## Lint YAML files (yamllint)
 	@echo "[ recall ] Linting YAML…"
 	yamllint .
 	@echo "[ recall ] ✓  YAML lint clean"
+
+# typos respects .gitignore by default; `_typos.toml` at the repo root
+# excludes auto-generated files (CHANGELOG.md, frontend/wailsjs/) and
+# lockfiles, and whitelists "mis"/"unparseable" which trip the default
+# dictionary as false positives.
+lint-typos: ## Spell-check via typos (config in _typos.toml)
+	@command -v typos >/dev/null || { echo "[ recall ] ✗  typos not installed — brew install typos-cli (or see initialize.sh for Debian)"; exit 1; }
+	@echo "[ recall ] Spell-checking (typos)…"
+	typos
+	@echo "[ recall ] ✓  Spelling clean"
 
 # Spectral runs the spectral:oas ruleset against api/openapi.yaml; see
 # .spectral.yaml at the project root for rule overrides. npx pulls a

@@ -1,0 +1,33 @@
+# crate-ci/typos config — spell-check for source, docs, and identifiers.
+#
+# Run locally:  typos               (report only)
+# Auto-fix:     typos --write-changes
+# CI:           .github/workflows/ci.yml step "Spell-check (typos)"
+#
+# typos respects .gitignore by default, so dist/, frontend/dist/,
+# frontend/node_modules/, build/bin/, etc. are already skipped without
+# an explicit entry. The `extend-exclude` list below covers committed
+# files that are auto-generated (CHANGELOG.md, wailsjs/) or that hold
+# base64-y noise lockfiles trip the dictionary on.
+
+[default.extend-words]
+# "mis-classify", "mis-classified", "mis-tagged" — common technical-
+# writing prefix that the word splitter sees as a standalone "mis".
+mis = "mis"
+# Acceptable alternate spelling of "unparsable". Both are correct;
+# match-helpers.ts uses this form, no need to bikeshed it.
+unparseable = "unparseable"
+
+[files]
+extend-exclude = [
+    # release-please regenerates CHANGELOG.md on every release; the
+    # commit SHA prefixes ("ba088ea", "c5ba275") trip the dictionary.
+    "CHANGELOG.md",
+    # Wails-generated TS bindings — `classs` is in the upstream
+    # template, not something we can fix from this side.
+    "frontend/wailsjs/",
+    # Lockfiles: tons of base64-y hashes, no source content worth
+    # scanning. (frontend/node_modules/ is .gitignored already.)
+    "frontend/package-lock.json",
+    "go.sum",
+]
