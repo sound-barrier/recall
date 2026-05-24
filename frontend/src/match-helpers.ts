@@ -243,7 +243,9 @@ const MONTHS_SHORT = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ]
-const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+export const WEEKDAYS_FULL = [
+  'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
+] as const
 
 // All date math runs in UTC so that, e.g., parsing "2026-05-10" and
 // rendering "May 10" doesn't drift in timezones behind UTC (US/Pacific
@@ -260,22 +262,21 @@ function parseISODateUTC(date: string): Date | null {
   return Number.isNaN(dt.getTime()) ? null : dt
 }
 
-// Locale preference for "what day starts a week". Threaded through the
-// grouping helpers + the matches view's "Week of <date>" labels so a
-// US-default user sees Sun→Sat weeks and a European user can opt into
-// Mon→Sun via Settings. Stored at the React-side via useWeekStart;
-// pure callers pass it explicitly.
-export type WeekStart = 'sunday' | 'monday'
+// Locale preference for "what day starts a week" — any day 0-6 per
+// JS Date.getDay() (0=Sun … 6=Sat). Threaded through the grouping
+// helpers + the matches view's "Week of <date>" labels so US users
+// see Sun-anchored weeks, ISO-8601 users see Mon-anchored, and
+// Middle-East / cultural Friday- or Saturday-anchored weeks all
+// work. Stored via useWeekStart; pure callers pass it explicitly.
+export type WeekStart = 0 | 1 | 2 | 3 | 4 | 5 | 6
 
 // Shift `date` back to the most recent week-start day (inclusive).
-// Sunday-start: Sun=0, Mon=-1, Tue=-2, … Sat=-6.
-// Monday-start: Sun=-6, Mon=0, Tue=-1, … Sat=-5.
+// (wd - weekStart + 7) % 7 = days since the most recent week-start
+// for any 0-6 pair.
 function weekAnchorUTC(date: Date, weekStart: WeekStart): Date {
   const d = new Date(date.getTime())
   const wd = d.getUTCDay()
-  const diff = weekStart === 'sunday'
-    ? -wd
-    : wd === 0 ? -6 : 1 - wd
+  const diff = -(((wd - weekStart) + 7) % 7)
   d.setUTCDate(d.getUTCDate() + diff)
   return d
 }
@@ -294,7 +295,7 @@ function weekLabel(anchor: Date): string {
   return `Week of ${MONTHS_SHORT[anchor.getUTCMonth()]} ${anchor.getUTCDate()}`
 }
 function dayLabel(d: Date): string {
-  return `${WEEKDAYS_SHORT[d.getUTCDay()]} ${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCDate()}`
+  return `${WEEKDAYS_FULL[d.getUTCDay()]} ${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCDate()}`
 }
 
 function sumTally(groups: { tally: WLDTally }[]): WLDTally {
@@ -323,7 +324,7 @@ export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
   sortDir: 'asc' | 'desc',
   options: { weekStart?: WeekStart } = {},
 ): MatchGroup<R>[] {
-  const weekStart: WeekStart = options.weekStart ?? 'sunday'
+  const weekStart: WeekStart = options.weekStart ?? 0
   type DayBucket = { date: Date; recs: R[] }
   type WeekBucket = { anchor: Date; days: Map<string, DayBucket> }
   type MonthBucket = { firstOfMonth: Date; weeks: Map<string, WeekBucket> }
