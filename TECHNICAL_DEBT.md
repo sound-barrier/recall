@@ -494,51 +494,46 @@ non-trivial and would benefit from local testing.
 
 ---
 
-## 12. Tests in `pkg/parser/integration_test.go` skip by default
+## 12. Tests in `pkg/parser/integration_test.go` skip by default — fixture commit pending maintainer review
 
-**Size: M**
+**Size: S (remaining)**
 
 **What.**
-`pkg/parser/integration_test.go` (the golden-file parser tests)
-skips unless `RECALL_FIXTURE_DIR` is set, and CI never sets it. So
-the OCR pipeline — the most failure-prone part of the codebase —
-has no end-to-end test coverage in CI.
+The infrastructure work landed: `integration_test.go` defaults
+`RECALL_FIXTURE_DIR` to `pkg/parser/testdata/golden/`, the
+`make update-goldens` target seeds + regenerates `.golden.json`
+sidecars, and the test runs as part of `make test` (skipping
+cleanly while the dir is empty).
 
-**Why it's debt.**
-OCR is the most likely place for regressions: a Tesseract upgrade,
-a font tweak, an image-decoding library change can all break
-parsing without breaking any unit test. The golden files exist
-locally (or on the maintainer's machine) but their absence from CI
-means changes to `pkg/parser/` don't have a regression net beyond
-the per-function unit tests.
+What's left: **commit a curated set of 4–6 fixture screenshots**.
+That decision was deferred because the maintainer's
+`screenshots/` dump (gitignored) contains other players'
+BattleTags. See `pkg/parser/testdata/golden/README.md` for the
+licensing + privacy considerations.
 
-**Mitigation plan.**
+**Why it's still debt.**
+Until fixtures are committed, the OCR pipeline — the most
+failure-prone part of the codebase — has no end-to-end regression
+net in CI. A Tesseract upgrade or image-decoding change can break
+parsing without breaking any unit test.
 
-1. **Curate a small fixture set** suitable for committing to the
-   repo: 4–6 PNG fixtures covering each screenshot type (rank, summary,
-   personal, scoreboard), plus 1–2 edge cases (multi-hero, undated).
-   Total maybe 5–10 MB.
-2. License/permission: confirm the maintainer's own screenshots are
-   OK to ship under Apache-2.0. (Game screenshots are user-
-   generated content; Blizzard's policy historically permits non-
-   commercial sharing.)
-3. Drop the fixtures into `pkg/parser/testdata/golden/` with
-   sibling `.golden.json` files (already the convention).
-4. Update `integration_test.go` to default `RECALL_FIXTURE_DIR` to
-   `pkg/parser/testdata/golden` when unset, rather than skipping.
-5. Wire into `make test` and `ci.yml`.
-6. Add `make update-goldens` (currently `RECALL_FIXTURE_UPDATE=1`
-   exists — promote to a Makefile target).
-7. Tesseract version matters: CI must install the same version as
-   the dev environment, else golden text diverges. Pin via
-   `tool-versions.env`.
+**Mitigation plan (remaining steps).**
+
+1. Pick 4–6 source screenshots covering each detected type
+   (rank, summary, personal, scoreboard) plus the in-game
+   scoreboard variant and one multi-hero edge case.
+2. Crop or blur non-self BattleTags before committing — the parser
+   doesn't read them, so blurring is harmless to test signal.
+3. Drop the curated PNG files into `pkg/parser/testdata/golden/`.
+4. Run `make update-goldens` to seed `.golden.json` sidecars.
+5. Eyeball the JSON, commit both.
+6. (Optional, only if golden flakes begin) pin Tesseract version
+   in CI via `tool-versions.env` and add a per-field tolerance
+   for OCR-borderline numeric fields.
 
 **How large.**
-M. ~½ day for the fixture curation + Makefile wiring + CI step.
-Tesseract version pinning is the main risk — if the OCR output is
-sensitive to Tesseract patch versions, this could flake. Mitigate
-by tolerance-matching the JSON (skip whitespace-only diffs, allow
-±1 on numeric fields where OCR confidence is borderline).
+S. ~1 hour of curation once the privacy review is done — no code
+changes remain on the recall side.
 
 ---
 
@@ -713,6 +708,12 @@ choices.
   pattern: any view re-converted to a static `import` fails CI.
   The bundle-size budget step gains separate initial-vs-total
   limits so a regression in either dimension is caught.
+- Parser golden-file fixture infrastructure — `integration_test.go`
+  defaults `RECALL_FIXTURE_DIR` to `pkg/parser/testdata/golden/`,
+  `make update-goldens` seeds + regenerates sidecars, the test
+  skips cleanly while the dir is empty. The actual fixture commit
+  is item #12 below — gated on maintainer privacy / IP review of
+  the candidate screenshots.
 
 ### Phase 1 — drift prevention ✅ COMPLETE
 
@@ -722,12 +723,12 @@ choices.
 4. ~~#16 .gitignore stray binaries (S)~~ — done
 5. ~~#9 SHA-pin GitHub Actions (M)~~ — done
 
-### Phase 2 — guard rails (1 week, M items)
+### Phase 2 — guard rails ✅ COMPLETE
 
 1. ~~#4 wailsjs models.ts CI guard, short-term form (M)~~ — done
 2. ~~#6 prepare-go-build composite action (S)~~ — done (named `prepare-frontend-dist`)
 3. ~~#13 lazy-load view components (S)~~ — done
-4. #12 commit golden-file fixtures + CI integration (M)
+4. ~~#12 commit golden-file fixtures + CI integration (M)~~ — infrastructure done; fixture commit pending maintainer privacy review
 
 ### Phase 3 — structural refactor (2–3 weeks, L items)
 

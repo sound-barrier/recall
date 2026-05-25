@@ -142,7 +142,7 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `make pages-build` | Build the docs book + Swagger UI under `dist/pages/` — mirrors the staging dance in `pages.yml` so what previews locally matches what CI deploys. Honkit pin is `HONKIT_VERSION` (default 6.0.2) and tracks the same env var in the workflow. |
 | `make pages-preview` | `make pages-build` then `python3 -m http.server` on `$(PAGES_PORT)` (default `:4000`) serving the built site. Use this before pushing doc changes to catch broken chapter renders without burning a CI deploy. |
 | `make lint-openapi` | Lint `api/openapi.yaml` via Spectral (`spectral:oas` + `.spectral.yaml`) with `--fail-severity=warn`. Also run as part of `make lint`. |
-| `make test` | Run all tests: Go unit tests (`-race`; `pkg/{app,db,parser}/*_test.go`) + Vitest (`frontend/src/**/*.test.ts`). Parser golden-file integration tests in `pkg/parser/integration_test.go` skip unless `RECALL_FIXTURE_DIR` is set. CI runs `go test -race -short ./...`. |
+| `make test` | Run all tests: Go unit tests (`-race`; `pkg/{app,db,parser}/*_test.go`) + Vitest (`frontend/src/**/*.test.ts`). Parser golden-file integration tests in `pkg/parser/integration_test.go` default to scanning `pkg/parser/testdata/golden/` (empty in git; see that dir's README for the privacy / licensing rationale) — point `RECALL_FIXTURE_DIR` at any other directory to override. CI runs `go test -race -short ./...`. |
 | `make cover` | Generate both Go and frontend coverage reports (umbrella; delegates to `cover-go` + `cover-frontend`). |
 | `make cover-go` | Generate Go coverage report; writes per-function text summary and HTML to `coverage/go/` (gitignored). Fails when total coverage < `GO_COVERAGE_MIN` (default 46%, tuned a few points below the current ~48% so genuine regressions trip the gate). Override on the CLI for ad-hoc runs. Ratchet upward at every release. |
 | `make cover-frontend` | Generate JS/TS coverage report via Vitest + V8 (`@vitest/coverage-v8`); writes text summary, lcov, and HTML to `frontend/coverage/` (gitignored). Fails when any of the four `coverage.thresholds` in `vitest.config.ts` aren't met (currently statements/lines 70, branches 60, functions 55). |
@@ -179,14 +179,20 @@ macOS-only (uses `sips`) and skips in the container.
 | `RECALL_SERVER_ADDR` | `127.0.0.1:7000` | Override the HTTP server bind address. Set to `0.0.0.0:7000` when running inside Docker so the port is reachable from the host. |
 | `DOCKER` | `docker` | Container runtime binary for `make build-*` targets. Set to `podman` when using Podman. |
 | `RECALL_PPROF` | *(off)* | When set to anything truthy (`1`, `true`, any non-empty non-`0/false` value), mounts `net/http/pprof` handlers under `/debug/pprof/` in server mode. Off by default — never expose pprof publicly. |
-| `RECALL_FIXTURE_DIR` | *(off)* | Directory of `.png` fixture screenshots for `TestParseScreenshot_GoldenFiles`. Each `foo.png` needs a sidecar `foo.png.golden.json`. Set `RECALL_FIXTURE_UPDATE=1` alongside to regenerate goldens. |
+| `RECALL_FIXTURE_DIR` | `pkg/parser/testdata/golden` | Directory of `.png` fixture screenshots for `TestParseScreenshot_GoldenFiles`. Each `foo.png` needs a sidecar `foo.png.golden.json`. Default points at the committed testdata dir (which currently has no fixtures). Use `make update-goldens` (or set `RECALL_FIXTURE_UPDATE=1` directly) to regenerate goldens after a parser change. |
 
 Go unit tests live in `pkg/app/`, `pkg/db/`, and `pkg/parser/` —
 covering merge orchestration, store integration, boundary path
 validators, screenshot-type detection, OCR text helpers, and the
 platform-tagged `HideWindow` shims. Full-image parser tests live
-in `pkg/parser/integration_test.go` and skip unless `RECALL_FIXTURE_DIR`
-points at a directory of `.png` + `foo.png.golden.json` pairs. For
+in `pkg/parser/integration_test.go` and default to scanning
+`pkg/parser/testdata/golden/`. The committed directory is empty
+(privacy / Blizzard-IP review gates committing real screenshots;
+see that dir's README.md). Drop your own PNG files into either the
+default dir or point `RECALL_FIXTURE_DIR` at e.g. the repo-root
+`screenshots/` and run `make update-goldens` to seed the
+`.golden.json` sidecars; the test then asserts against them on
+every `make test` run. For
 quick local exploration outside the test runner, a throwaway
 `x*_test.go` in `pkg/app/` that imports `recall/pkg/app` directly and
 calls `app.Startup` + `app.ParseScreenshots` still works — delete the

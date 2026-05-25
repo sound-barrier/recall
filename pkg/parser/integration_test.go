@@ -12,7 +12,11 @@ import (
 
 // TestParseScreenshot_GoldenFiles drives ParseScreenshot against real PNG
 // fixtures and compares the result to a sidecar `<filename>.golden.json`.
-// Skipped by default — set RECALL_FIXTURE_DIR=/path/to/fixtures to enable.
+//
+// Defaults to scanning `pkg/parser/testdata/golden/`. Set
+// RECALL_FIXTURE_DIR=/some/other/path to point at a different set
+// (typically the maintainer's local screenshot dump while curating
+// new fixtures).
 //
 // Layout:
 //
@@ -23,19 +27,21 @@ import (
 //	  other.png.golden.json
 //
 // To regenerate goldens (e.g. after intentionally changing parser output),
-// set RECALL_FIXTURE_UPDATE=1 alongside RECALL_FIXTURE_DIR. The test will
-// rewrite each .golden.json with the current parse result instead of
-// asserting equality. Review the diff before committing.
+// set RECALL_FIXTURE_UPDATE=1 alongside RECALL_FIXTURE_DIR — easier via
+// the `make update-goldens` Makefile target. The test will rewrite each
+// .golden.json with the current parse result instead of asserting
+// equality. Review the diff before committing.
 //
 // The test is also skipped when:
 //   - The `-short` test flag is set (CI's quick lint pass uses this).
 //   - The configured Tesseract binary isn't on PATH.
+//   - The directory has no .png/.jpg fixtures (the committed default
+//     state — see testdata/golden/README.md).
 //
 // Adding a new fixture:
-//  1. Drop the PNG into your fixtures dir.
-//  2. Run the test with RECALL_FIXTURE_UPDATE=1 once to generate the
-//     `.golden.json`.
-//  3. Eyeball the JSON, then commit/keep it.
+//  1. Drop the PNG into testdata/golden/ (or your $RECALL_FIXTURE_DIR).
+//  2. `make update-goldens` to generate the `.golden.json`.
+//  3. Eyeball the JSON, then commit both files.
 func TestParseScreenshot_GoldenFiles(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping golden-file parser tests in -short mode")
@@ -43,7 +49,13 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 
 	dir := os.Getenv("RECALL_FIXTURE_DIR")
 	if dir == "" {
-		t.Skip("RECALL_FIXTURE_DIR not set — drop a fixture dir path here to enable golden-file tests")
+		// Default to the committed fixture directory so `go test
+		// ./pkg/parser/` picks up real fixtures without needing the
+		// env var. The committed default is currently empty (see
+		// testdata/golden/README.md for the privacy/licensing
+		// rationale), so the test still skips cleanly on a fresh
+		// checkout.
+		dir = "testdata/golden"
 	}
 
 	// Resolve Tesseract early — ParseScreenshot will fail with a generic
@@ -74,7 +86,6 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 	}
 
 	for _, name := range pngs {
-		name := name
 		t.Run(name, func(t *testing.T) {
 			imgPath := filepath.Join(dir, name)
 			goldenPath := filepath.Join(dir, name+".golden.json")
