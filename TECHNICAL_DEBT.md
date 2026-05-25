@@ -93,96 +93,6 @@ transition. No atomic landing required.
 
 ---
 
-## 2. `pkg/app/app.go` is a 1 710-line grab-bag
-
-**Size: L**
-
-**What.**
-`pkg/app/app.go` contains, in one file:
-
-- The `App` struct + constructors (`New`, `NewWithStore`).
-- `Settings` + load/save + `defaultSettings`.
-- `MatchRecord`, `UpdateInfo`, `TesseractStatus` types.
-- Tesseract probe + version parsing (`checkTesseract`,
-  `parseTesseractVersion`, `defaultTesseractPath`).
-- `appDataDir` / `settingsPath`.
-- Watcher lifecycle (`startWatching` / `runWatchLoop` /
-  `runWatchEvents` / `scheduleParseDebounced` / `stopWatching`).
-- Metrics lifecycle (`startMetrics` / `stopMetrics` /
-  `GetPrometheusEnabled` / `SetPrometheusEnabled`).
-- Version + update check (`GetVersion`, `CheckForUpdate`,
-  `releasesURL`).
-- Screenshots-dir + tesseract-path getters/setters + validators
-  (`validateScreenshotsDir`, `validateTesseractPath`,
-  `safePathChars`).
-- `ScreenshotHandler` (HTTP).
-- The parse + merge orchestration (`ParseScreenshots`,
-  `loadExistingMergedRows`, `findMergeIntoExisting`,
-  `timestampWindowOverlap`, `rowsConflict`, `unionSortedStrings`).
-- Read-time inference (`inferSoleHeroPercent`,
-  `inferResultFromRank`).
-- `ParseProgressEvent` + `screenshotType` (~50 lines).
-
-**Why it's debt.**
-The file violates SRP at the package-organization level. Symptoms:
-
-- New contributors can't form a mental map of "what lives where"
-  from filenames — they have to grep within one giant file.
-- Diff review pulls in unrelated context every time anything
-  changes (e.g. a Tesseract probe edit shows up in the same file as
-  a merge-orchestration edit).
-- The test files are already split nine ways (`check_for_update_test.go`,
-  `merge_orchestration_test.go`, `merge_test.go`,
-  `screenshot_handler_test.go`, `settings_io_test.go`,
-  `store_integration_test.go`, `tesseract_version_test.go`,
-  `timestamp_test.go`, `validate_test.go`, `watch_events_test.go`)
-  but production code isn't — the split is asymmetric and the
-  test files broadcast where the seams *should* be.
-
-**Mitigation plan.**
-Use the test-file split as the de facto contract for the production
-split. Each refactor is a pure file move (`git mv` + import
-adjustments); the package public surface stays identical so no
-caller changes.
-
-1. `pkg/app/settings.go` — `Settings`, `loadSettings`,
-   `loadSettingsFrom`, `defaultSettings`, `saveSettings`,
-   `marshalSettings`, `settingsPath`, `appDataDir`.
-2. `pkg/app/tesseract.go` — `TesseractStatus`,
-   `defaultTesseractPath`, `checkTesseract`,
-   `parseTesseractVersion`, `GetTesseractStatus`,
-   `SetTesseractPath`, `ResetTesseractPath`,
-   `validateTesseractPath`.
-3. `pkg/app/watcher.go` — `startWatching`, `runWatchLoop`,
-   `runWatchEvents`, `scheduleParseDebounced`, `stopWatching`,
-   `GetWatchEnabled`, `SetWatchEnabled`.
-4. `pkg/app/metrics_lifecycle.go` — `startMetrics`, `stopMetrics`,
-   `GetPrometheusEnabled`, `SetPrometheusEnabled`.
-5. `pkg/app/update.go` — `UpdateInfo`, `GetVersion`,
-   `CheckForUpdate`, `releasesURL`.
-6. `pkg/app/screenshot_handler.go` — `ScreenshotHandler`.
-7. `pkg/app/parse.go` — `ParseScreenshots`,
-   `loadExistingMergedRows`, `findMergeIntoExisting`,
-   `timestampWindowOverlap`, `rowsConflict`, `unionSortedStrings`,
-   `ParseProgressEvent`, `screenshotType`, the read-time inference
-   helpers.
-8. `pkg/app/validate.go` — `validateScreenshotsDir`, `safePathChars`,
-   `GetScreenshotsDir`, `SetScreenshotsDir`.
-9. `pkg/app/app.go` is left with: `App` struct, `New`, `NewWithStore`,
-   `Startup`, `MatchRecord` — < 200 lines.
-
-Each step is a separate, mechanically-reviewable PR. After each
-step: `go build ./... && go build -tags serveronly ./... &&
-make test && make lint` must pass.
-
-**How large.**
-L. 4–6 days spread across 8 PRs. Mechanical refactor with high
-reviewer leverage (small, obvious diffs). No behavior change — risk
-is contained to merge-conflict cost while the refactor is in flight,
-so do this during a quiet period.
-
----
-
 ## 3. `pkg/parser/parser.go` is a 1 562-line monolith
 
 **Size: L**
@@ -714,6 +624,14 @@ choices.
   skips cleanly while the dir is empty. The actual fixture commit
   is item #12 below — gated on maintainer privacy / IP review of
   the candidate screenshots.
+- `pkg/app/app.go` 1 710-line grab-bag — split into 12 per-concern
+  files (`settings.go`, `tesseract.go`, `watcher.go`,
+  `metrics_lifecycle.go`, `update.go`, `screenshots_dir.go`,
+  `screenshot_handler.go`, `inference.go`, `match_record.go`,
+  `merge.go`, `parse.go`, plus `app.go` itself reduced to ~130
+  lines covering only the `App` struct + constructors + `Startup`).
+  Pure file moves — package public surface unchanged; the existing
+  9-way test-file split now mirrors the production split 1:1.
 
 ### Phase 1 — drift prevention ✅ COMPLETE
 
@@ -732,7 +650,7 @@ choices.
 
 ### Phase 3 — structural refactor (2–3 weeks, L items)
 
-1. #2 split `pkg/app/app.go` into per-concern files (L)
+1. ~~#2 split `pkg/app/app.go` into per-concern files (L)~~ — done
 2. #3 split `pkg/parser/parser.go` into per-concern files (L)
 3. #1 extract App.vue's `<style>` into per-component scoped blocks (L)
 4. #7 retire `KNOWN_CONTRAST_DEBT` selectors one at a time (M)
