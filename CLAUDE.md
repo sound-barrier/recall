@@ -422,12 +422,26 @@ both the Wails `AssetServer.Handler` and the server-mode HTTP mux.
 ## Frontend (`frontend/src/App.vue`)
 
 **Style layout.** App.vue's `<script>` and `<template>` live in the SFC
-(~890 lines combined). Global CSS lives in a sibling `frontend/src/styles/app.css`
-(3 698 lines) imported from App.vue's `<script setup>`. Cascade is
-unchanged from when the styles were inline — `app.css` is plain CSS,
-no Vue scoping, all selectors apply globally. The split exists for
-navigability, not isolation. Per-component scoped `<style>` extraction
-remains as a residual cleanup (TECHNICAL_DEBT.md #1).
+(~890 lines combined). Component-specific styles live in each leaf
+SFC's own `<style scoped>` block (Vue scoping rewrites every selector
+with a `[data-v-<hash>]` attribute, so the rule only matches elements
+in that component's template). Cross-cutting / shared styles —
+custom properties, font-faces, theme overrides, the `.btn` family,
+`.badge` family, `.chev`, `.length`, `.clickable`, shared empty-state
+selectors, `.section-*` / `.setting-*` / `.settings-*` (used across
+Settings + Ingest + Unknown views), `.slot-chip` / `.slot-dot`
+(shared between MatchCard's sources-coverage strip and
+UnknownMapsView's slot row), and `.source-name` / `.source-file` /
+`.source-preview` family (shared between MatchCard and
+UnknownMapsView) — stay in `frontend/src/styles/app.css` (~1 850
+lines, down from ~3 700). When migrating a new rule to scoped, check
+all eight component templates first; if more than one references the
+class, leave it in `app.css`. Theme overrides in a scoped block need
+`:global([data-theme="light"])` so the selector pierces the scope
+hash. @keyframes defined in a scoped block get their NAME hashed, so
+animations referenced from multiple components must live in
+`app.css` (`pulse-dot` is the canonical example — referenced by
+ParseProgressPanel + IngestView).
 
 Pure helpers (date formatting, screenshot-type detection, hero sorting,
 etc.) live in `frontend/src/match-helpers.ts` so they can be unit-tested
@@ -614,7 +628,7 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifyin
 
 - **`null` doesn't drop a Vue attribute the way you'd hope.** vue-tsc rejects `null` for boolean/Booleanish attrs (`:inert`, `:aria-hidden`, `:aria-pressed`). Use `undefined` to omit: `:inert="cond || undefined"`, `:aria-hidden="cond ? 'true' : undefined"`.
 
-- **Use `:where()` for UA-default resets that must not compete with existing class rules.** Promoting a `<span class="badge">` to a `<button class="badge">` brings back UA `appearance`/`background`/`border`/`padding`/`font` defaults. Wrap the overrides in `:where(button.badge, ...) { appearance: none; background: transparent; ... }` so specificity stays 0 and the existing `.badge` / `.badge.active` styles continue to win. Pattern lives in `frontend/src/styles/app.css` next to `.match-header`.
+- **Use `:where()` for UA-default resets that must not compete with existing class rules.** Promoting a `<span class="badge">` to a `<button class="badge">` brings back UA `appearance`/`background`/`border`/`padding`/`font` defaults. Wrap the overrides in `:where(button.badge, ...) { appearance: none; background: transparent; ... }` so specificity stays 0 and the existing `.badge` / `.badge.active` styles continue to win. Pattern lives in `MatchCard.vue`'s scoped `<style>` block (the reset targets MatchCard's chip buttons; lifted out of `app.css` during the per-component extraction).
 
 - **A clickable container that holds interactive chips cannot be `role="button"`.** Nesting interactive elements is invalid HTML and ARIA, and the outer `role="button"` strips keyboard reach from the inner chips. Pattern in MatchCard.vue: outer `<div class="match-header">` keeps `@click` for mouse convenience but has no role/tabindex; a dedicated `<button class="chev-btn" aria-expanded>` on the right is the keyboard expand affordance.
 
