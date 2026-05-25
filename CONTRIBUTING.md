@@ -15,10 +15,8 @@ overview of the architecture and internal conventions, see
 - [Development setup](#development-setup)
   - [Dev Container (any host, zero install)](#dev-container-any-host-zero-install)
   - [macOS](#macos)
-  - [Linux](#linux)
-  - [Windows](#windows)
-    - [Option A: WSL2 (recommended)](#option-a-wsl2-recommended)
-    - [Option B: Native Windows](#option-b-native-windows)
+  - [Debian / Ubuntu](#debian--ubuntu)
+  - [Windows (via WSL2)](#windows-via-wsl2)
 - [Building](#building)
   - [Wails desktop app](#wails-desktop-app)
   - [Server-only binary](#server-only-binary)
@@ -41,8 +39,10 @@ Two workflows exist depending on your platform:
 
 | Workflow | Platforms | Entry point |
 |---|---|---|
-| `make dev` — Wails hot-reload | **macOS only** | Native WebKit window; Vite HMR on `:5173`, Wails IPC on `:34115`, Go rebuilt on save |
-| Server mode — headless HTTP | macOS, Linux, Windows | `go run -tags serveronly . --server`; open `http://127.0.0.1:7000` in any browser |
+| `make dev` — Wails hot-reload | macOS, Debian/Ubuntu | Native WebKit/WebKitGTK window; Vite HMR on `:5173`, Wails IPC on `:34115`, Go rebuilt on save |
+| Server mode — headless HTTP | any (macOS, Linux, container, etc.) | `go run -tags serveronly . --server`; open `http://127.0.0.1:7000` in any browser |
+
+Supported dev platforms are **macOS** and **Debian/Ubuntu** (apt-based). Other Linux distros work via server mode but `make dev` won't have its package list automated. Windows is supported as a *target* (release builds, NSIS installer) but not as a dev OS — use [WSL2 Ubuntu](#windows-via-wsl2) below.
 
 ### Quick start (macOS + Debian/Ubuntu)
 
@@ -56,7 +56,7 @@ The script is idempotent and detects the platform: on macOS it runs `brew bundle
 
 Macs need `xcode-select --install` first (interactive accept; the script can't do this for you).
 
-For other platforms (Windows, non-Debian Linux), or if you'd rather run the steps manually, the detailed per-platform sections below document what `initialize.sh` does step-by-step.
+For non-Debian Linux (RHEL/Fedora/Arch/etc.) or if you'd rather run the steps manually, the detailed per-platform sections below document what `initialize.sh` does step-by-step. Windows contributors run inside [WSL2 Ubuntu](#windows-via-wsl2) and follow the Debian path.
 
 If you don't want to install the toolchain locally, the next section sets you up in a container instead.
 
@@ -76,7 +76,7 @@ The forwarded ports (5173, 7000, 8080, 9090, 9091, 34115, 3000) cover Vite, the 
 
 **Caveats:**
 
-- **The Wails desktop UI does not render inside the container** (no GUI surface). Use **server mode** there: `go run -tags serveronly . --server`, then open the forwarded port `7000` in your host browser. For the native window, fall through to the macOS / Linux / Windows host instructions below.
+- **The Wails desktop UI does not render inside the container** (no GUI surface). Use **server mode** there: `go run -tags serveronly . --server`, then open the forwarded port `7000` in your host browser. For the native window, fall through to the [macOS](#macos) or [Debian / Ubuntu](#debian--ubuntu) host instructions below.
 - `make icon` is macOS-only (uses `sips`). The Linux container will skip it.
 
 ### macOS
@@ -110,7 +110,7 @@ cd frontend && npm ci && cd ..
 make dev                            # generates fresh Wails bindings on first run
 ```
 
-`frontend/wailsjs/` is gitignored — `wails build` / `wails dev` regenerates it from Go sources on every invocation. Adding a new exported `App` method? Just add it; the next `make dev` (or any desktop build) picks it up. Frontend code consumes the OpenAPI-generated `api.gen.d.ts` instead of reaching into `wailsjs/`, so Linux/Windows contributors are fine here even without `wails dev`.
+`frontend/wailsjs/` is gitignored — `wails build` / `wails dev` regenerates it from Go sources on every invocation. Adding a new exported `App` method? Just add it; the next `make dev` (or any desktop build) picks it up. Frontend code consumes the OpenAPI-generated `api.gen.d.ts` instead of reaching into `wailsjs/`, so devs who only run server mode (devcontainer, CI, remote box) stay in sync without ever booting the GUI.
 
 **Day-to-day:**
 
@@ -121,13 +121,13 @@ make fmt        # format Go source
 wails doctor    # verify toolchain at any time
 ```
 
-### Linux
+### Debian / Ubuntu
 
-`make dev` exits on non-Darwin hosts. Linux developers use **server mode** — the embedded Vue frontend is served over HTTP and works in any browser.
+`make dev` runs natively here — the apt path installs WebKitGTK + GTK 3 + appindicator dev libraries and the same Wails CLI macOS gets. Vite HMR + live Go rebuild work the same as on macOS; only the native window chrome differs (GTK vs Cocoa).
 
-> **TL;DR (Debian/Ubuntu only):** `./initialize.sh` (or `make init`) runs every step in this section automatically after you've installed Go 1.26+ and Node 22+. Read on if you're on a non-apt distro, or if you'd rather run the steps manually.
+> **TL;DR:** `./initialize.sh` (or `make init`) runs every step in this section automatically once Go 1.26+ and Node 22+ are on PATH. Read on if you're on a non-apt distro (the script bails fast on those) or want to understand what it installs.
 
-**One-time prerequisites** (Ubuntu/Debian — adapt for other distros):
+**One-time prerequisites** (Debian/Ubuntu — adapt for other distros):
 
 ```sh
 # Go 1.26+ (distro packages are often older; official tarball is safest)
@@ -140,10 +140,37 @@ source ~/.profile
 curl -fsSL https://deb.nodesource.com/setup_26.x | sudo -E bash -
 sudo apt install -y nodejs
 
+# Wails native build deps (WebKitGTK 4.1, GTK 3, appindicator)
+sudo apt install -y \
+  libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+  pkg-config build-essential
+
+# pkg-config shims: Wails v2.12.0's webview CGo references webkit2gtk-4.0
+# but Debian bookworm+/Ubuntu 24.04+ only ship 4.1. The shims point the
+# 4.0 names at the installed 4.1 libs. Belt-and-suspenders with
+# `wails dev -tags webkit2_4_1`, which the Makefile passes automatically.
+sudo tee /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc <<'EOF'
+Name: webkit2gtk-4.0
+Description: compat shim
+Version: 4.1
+Requires: webkit2gtk-4.1
+Cflags:
+Libs:
+EOF
+sudo tee /usr/lib/x86_64-linux-gnu/pkgconfig/javascriptcoregtk-4.0.pc <<'EOF'
+Name: javascriptcoregtk-4.0
+Description: compat shim
+Version: 4.1
+Requires: javascriptcoregtk-4.1
+Cflags:
+Libs:
+EOF
+
 # System tools
 sudo apt install -y tesseract-ocr jq sqlite3 docker.io  # or podman
 
-# Go-based tools
+# Go-based tools (Wails CLI included)
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 go install mvdan.cc/gofumpt@latest
 go install github.com/incu6us/goimports-reviser/v3@latest
@@ -170,74 +197,36 @@ After cloning, run `direnv allow` to activate the repo's `.envrc`.
 
 ```sh
 cd frontend && npm ci && cd ..
-go build -tags serveronly ./...   # verify compile
+make dev                            # generates Wails bindings + opens GTK window
 ```
 
 **Day-to-day:**
 
 ```sh
-# Run the server — open http://127.0.0.1:7000 in a browser
-go run -tags serveronly . --server
-
-# Linting
-make lint
-
-# Docker-based cross-platform builds (Docker or Podman)
-make build-server-linux          # Linux server binary → dist/server-linux/
-make build-server-all            # all three server OS targets via Docker
-DOCKER=podman make build-linux   # swap in Podman
+make dev                         # hot-reload Wails desktop app
+make lint                        # all linters before pushing
+make fmt                         # format Go source
+wails doctor                     # verify toolchain at any time
 ```
 
-### Windows
+For headless work (CI, container shell, remote box without a display) use server mode:
 
-`make dev` is macOS-only. The recommended path is **WSL2**, which gives you a complete Linux environment. Native Windows is also documented below.
+```sh
+go run -tags serveronly . --server   # browse http://127.0.0.1:7000
+```
 
-#### Option A: WSL2 (recommended)
+Container builds work identically to macOS — `make build-linux` / `make build-windows` / `make build-server-*` all delegate to `Dockerfile.build` and need Docker (or Podman via `DOCKER=podman make ...`) running.
+
+### Windows (via WSL2)
+
+Windows is supported as a *target* (release builds ship a NSIS installer and a server `.exe`) but not as a native dev OS — the maintained dev flow is **WSL2 Ubuntu**, which gives you a full Debian/Ubuntu environment:
 
 ```powershell
 # In PowerShell — one-time
 wsl --install   # installs Ubuntu by default; reboot if prompted
 ```
 
-Open the WSL2 terminal and follow the **Linux** instructions above.
-
-#### Option B: Native Windows
-
-**One-time prerequisites:**
-
-- [Go 1.26+](https://go.dev/dl/) — use the `.msi` installer; confirm `go version` in a new shell
-- [Node 26+](https://nodejs.org/) or [nvm-windows](https://github.com/coreybutler/nvm-windows)
-- [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) — note the install path; paste it into **Settings → Engine** on first launch
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — needed for `make build-*` targets
-- [Git for Windows](https://git-scm.com/download/win) — provides Git Bash; run all `make` commands from Git Bash
-- `jq` — `winget install jqlang.jq`
-- `golangci-lint` — `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`
-- `gofumpt` — `go install mvdan.cc/gofumpt@latest`
-- `goimports-reviser` — `go install github.com/incu6us/goimports-reviser/v3@latest`
-- `hadolint` — `winget install Hadolint.Hadolint` or [download from GitHub releases](https://github.com/hadolint/hadolint/releases) (`hadolint-Windows-x86_64.exe`)
-- `yamllint` — `pip install yamllint` (requires Python 3)
-- `trivy` — `winget install AquaSecurity.Trivy` or [download from GitHub releases](https://github.com/aquasecurity/trivy/releases)
-
-**First clone setup** (Git Bash):
-
-```sh
-cd frontend && npm ci && cd ..
-go build -tags serveronly ./...   # verify compile
-```
-
-**Day-to-day** (Git Bash):
-
-```sh
-# Run the server — open http://127.0.0.1:7000 in a browser
-go run -tags serveronly . --server
-
-# Lint (Docker Desktop must be running for lint-docker)
-make lint
-
-# Docker-based builds
-make build-server-windows
-make build-server-all
-```
+Open the WSL2 terminal and follow the **Debian / Ubuntu** instructions above. `make dev` works inside WSL2 with [WSLg](https://github.com/microsoft/wslg) handling the GTK window forwarding on Windows 11 / Windows 10 22H2+.
 
 ## Building
 

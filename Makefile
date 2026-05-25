@@ -508,12 +508,18 @@ icon: ## Resync build/appicon.png from assets/icon.png (run after updating the i
 	@rm -f build/windows/icon.ico
 	@echo "[ recall ] ✓  build/appicon.png updated · build/windows/icon.ico cleared (regenerates on next wails build)"
 
-dev: ## Start hot-reload Wails dev server (macOS only)
-	@if [ "$$(uname -s)" != "Darwin" ]; then \
-	    echo "[ recall ] ✗  dev server requires macOS (Wails desktop shell)"; \
-	    exit 1; \
-	fi
-	wails dev
+dev: ## Start hot-reload Wails dev server (macOS or Debian)
+	@case "$$(uname -s)" in \
+	    Darwin) wails dev ;; \
+	    Linux)  wails dev -tags webkit2_4_1 ;; \
+	    *) echo "[ recall ] ✗  wails dev needs macOS or a Debian/Ubuntu host (no display surface elsewhere)"; exit 1 ;; \
+	esac
+# webkit2_4_1 build tag matches what Dockerfile.build's linux-builder
+# stage passes: Wails v2.12.0's pkg/assetserver/webview has CGo
+# directives referencing webkit2gtk-4.0, but Debian bookworm+/Ubuntu
+# 24.04+ only ship 4.1. The build tag steers Wails to 4.1 CGo paths;
+# initialize.sh's Debian path also drops pkg-config shims for the
+# 4.0 names as belt-and-suspenders.
 
 # Spec at api/openapi.yaml (hand-written OpenAPI 3.1.0). Served by the
 # official Swagger UI container — mounted read-only so editing the file

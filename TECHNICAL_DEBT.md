@@ -72,60 +72,13 @@ changes remain on the recall side.
 
 ---
 
-## 14. `wails dev` only on macOS — Linux/Windows dev runs serveronly
-
-**Size: L**
-
-**What.**
-CLAUDE.md states multiple times: `make dev` is macOS-only; the
-devcontainer can't render the Wails GUI; Linux/Windows contributors
-use `go run -tags serveronly . --server`.
-
-**Why it's debt.**
-The Wails desktop variant is the primary product, but only macOS
-contributors can debug its desktop-specific behavior (window chrome,
-AssetServer middleware ordering, NSIS installer under wine, etc.).
-Cross-platform desktop bugs only surface in CI release builds, where
-iteration is slow.
-
-**Mitigation plan.**
-This is structural debt, not a quick fix. Two viable options
-remain (Option A — server-mode parity audit — was closed in Phase 4
-and locked by `pkg/app/screenshots_dir_test.go`):
-
-**Option B (L):** containerize Wails dev with X11/Wayland forwarding.
-
-1. Extend `.devcontainer/devcontainer.json` to mount the host's
-   `/tmp/.X11-unix` (Linux) or use XQuartz (macOS host with Linux
-   container).
-2. Document the setup. Expect breakage on Windows hosts.
-3. CI gains nothing from this; only contributor experience does.
-
-**Option C (XL):** drop Wails-specific UI in favor of server-mode
-only.
-
-1. The server-mode HTTP variant is mostly feature-complete per
-   CLAUDE.md. Could become the only variant, with the desktop
-   experience delivered via a thin native shell (Tauri, Electron,
-   or just "open a browser pointed at localhost:7000").
-2. Substantial product call. Out of scope for tech-debt cleanup.
-
-**How large.**
-L if Option B is pursued, XL for Option C. Neither is urgent; the
-ongoing maintenance posture is to keep `app_wails.go` /
-`app_server.go` the inventory of where the two transports diverge
-and audit every new method against parity at merge time.
-
----
-
 ## Prioritized roadmap
 
-Two items remain, ordered by `risk × cost-to-fix-later`:
+One item remains:
 
 1. **#12** — fixture commit (S). Cheap once the privacy review clears.
-2. **#14** — Wails dev portability (L/XL). Structural; needs product input.
 
-The codebase is in good shape today; none of the above is urgent.
-This file exists to make the latent costs visible so they don't
-compound silently. When an item lands, **delete its section** — git
-history is the audit trail.
+The codebase is in good shape today; this one's not urgent either.
+This file exists to make latent costs visible so they don't compound
+silently. When an item lands, **delete its section** — git history
+is the audit trail.
