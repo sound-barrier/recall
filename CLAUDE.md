@@ -421,6 +421,14 @@ both the Wails `AssetServer.Handler` and the server-mode HTTP mux.
 
 ## Frontend (`frontend/src/App.vue`)
 
+**Style layout.** App.vue's `<script>` and `<template>` live in the SFC
+(~890 lines combined). Global CSS lives in a sibling `frontend/src/styles/app.css`
+(3 698 lines) imported from App.vue's `<script setup>`. Cascade is
+unchanged from when the styles were inline — `app.css` is plain CSS,
+no Vue scoping, all selectors apply globally. The split exists for
+navigability, not isolation. Per-component scoped `<style>` extraction
+remains as a residual cleanup (TECHNICAL_DEBT.md #1).
+
 Pure helpers (date formatting, screenshot-type detection, hero sorting,
 etc.) live in `frontend/src/match-helpers.ts` so they can be unit-tested
 in isolation via Vitest. Stateful logic is extracted into composables under
@@ -602,7 +610,7 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifyin
 
 - **`null` doesn't drop a Vue attribute the way you'd hope.** vue-tsc rejects `null` for boolean/Booleanish attrs (`:inert`, `:aria-hidden`, `:aria-pressed`). Use `undefined` to omit: `:inert="cond || undefined"`, `:aria-hidden="cond ? 'true' : undefined"`.
 
-- **Use `:where()` for UA-default resets that must not compete with existing class rules.** Promoting a `<span class="badge">` to a `<button class="badge">` brings back UA `appearance`/`background`/`border`/`padding`/`font` defaults. Wrap the overrides in `:where(button.badge, ...) { appearance: none; background: transparent; ... }` so specificity stays 0 and the existing `.badge` / `.badge.active` styles continue to win. Pattern lives in App.vue next to `.match-header`.
+- **Use `:where()` for UA-default resets that must not compete with existing class rules.** Promoting a `<span class="badge">` to a `<button class="badge">` brings back UA `appearance`/`background`/`border`/`padding`/`font` defaults. Wrap the overrides in `:where(button.badge, ...) { appearance: none; background: transparent; ... }` so specificity stays 0 and the existing `.badge` / `.badge.active` styles continue to win. Pattern lives in `frontend/src/styles/app.css` next to `.match-header`.
 
 - **A clickable container that holds interactive chips cannot be `role="button"`.** Nesting interactive elements is invalid HTML and ARIA, and the outer `role="button"` strips keyboard reach from the inner chips. Pattern in MatchCard.vue: outer `<div class="match-header">` keeps `@click` for mouse convenience but has no role/tabindex; a dedicated `<button class="chev-btn" aria-expanded>` on the right is the keyboard expand affordance.
 
@@ -626,7 +634,7 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux}.md#verifyin
 
 - **A workflow that "fails" doesn't block merge until it's marked as a required status check.** `pr-compliance.yml` fails the build when the PR description's CoC + license checkboxes aren't ticked, but the PR is still mergeable unless `PR Compliance / required-checkboxes` is added to Repo Settings → Branches → Branch protection rules → main → "Require status checks to pass before merging". Same shape as the `pages.yml` one-time-UI-setup ("Source = GitHub Actions") — invisible from inside the workflow, easy to forget when adding new merge-gating workflows. The `ci.yml` checks were promoted to required at repo setup time and have stayed required since; any new gate needs the same flip.
 
-- **A11y debt is tracked in `frontend/tests/e2e/a11y.spec.ts`'s `KNOWN_CONTRAST_DEBT` list.** axe-core baselined four pre-existing color-contrast issues at integration time (`.theme-toggle`, `.weekstart-row` on Settings; `.setting-meta`, `.big-switch-state` on Ingest). Each is excluded by CSS selector from the audit, NOT silenced via axe's rule config — so any NEW contrast violation on any non-listed element still fails CI, but the integration commit didn't have to wait on the legacy CSS rework. Fixing one is straightforward: tweak the relevant rule in `frontend/src/App.vue`'s styles until the contrast ratio clears WCAG 2 AA, then delete the line from `KNOWN_CONTRAST_DEBT` and watch the test stay green. Don't add new entries without a code-fix follow-up issue.
+- **A11y debt is tracked in `frontend/tests/e2e/a11y.spec.ts`'s `KNOWN_CONTRAST_DEBT` list.** axe-core baselined four pre-existing color-contrast issues at integration time (`.theme-toggle`, `.weekstart-row` on Settings; `.setting-meta`, `.big-switch-state` on Ingest). Each is excluded by CSS selector from the audit, NOT silenced via axe's rule config — so any NEW contrast violation on any non-listed element still fails CI, but the integration commit didn't have to wait on the legacy CSS rework. Fixing one is straightforward: tweak the relevant rule in `frontend/src/styles/app.css` (or the owning component's `<style>` block if extracted) until the contrast ratio clears WCAG 2 AA, then delete the line from `KNOWN_CONTRAST_DEBT` and watch the test stay green. Don't add new entries without a code-fix follow-up issue.
 
 - **A11y patterns to mirror, not reinvent.** Modal dialogs: focus trap + Escape + return-focus + background `inert` is wired inline in App.vue (see `showUnsupportedModal` + `onModalKeydown` + the `watch(showUnsupportedModal, ...)`). Tablist: Arrow/Home/End automatic-activation in `onTabKeydown` over `TAB_ORDER`. Skip-link: `.skip-link` → `<main id="main-content" tabindex="-1">` with `focusMain` handler for browsers that don't move focus on hash navigation. Reduced-motion: a global `@media (prefers-reduced-motion: reduce)` block at the top of App.vue's styles collapses every animation/transition to 0.01ms. Tests for each in `App.test.ts`.
 
