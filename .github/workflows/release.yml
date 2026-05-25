@@ -269,6 +269,13 @@ jobs:
       id-token: write    # needed by Sigstore to mint a short-lived cert
       attestations: write  # needed to write SLSA provenance for sha256 files
     steps:
+      # Checkout is required even though this job only consumes artifacts
+      # from earlier jobs — the "Generate SHA256 checksums" step shells
+      # out to scripts/release/compute-sha256.sh, which lives in the
+      # source tree. Without checkout the script is absent from the
+      # runner filesystem and the step dies with exit 127.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
       # Download all artifacts into the current directory (merge-multiple flattens them).
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
         with:
