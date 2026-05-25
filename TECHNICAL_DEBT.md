@@ -178,51 +178,63 @@ window.
 
 ---
 
-## 7. Pre-existing `KNOWN_CONTRAST_DEBT` a11y exclusions
+## 7. Pre-existing `KNOWN_CONTRAST_DEBT` a11y exclusions — needs full design pass
 
-**Size: M**
+**Size: M (revised)**
 
 **What.**
-`frontend/tests/e2e/a11y.spec.ts` line 28 has a baselined list of
-four CSS selectors excluded from the axe-core color-contrast scan:
+`frontend/tests/e2e/a11y.spec.ts` keeps a baselined list of four CSS
+selectors excluded from axe-core's color-contrast scan:
 
 - `.theme-toggle` — Day/Night segmented control on Settings.
 - `.weekstart-row` — first-day-of-week picker on Settings.
 - `.setting-meta` — "Last run" / "blocked" hint text on Ingest.
 - `.big-switch-state` — "Off" / "Armed" / "Live" labels on Ingest.
 
+A Phase 3 attempt to retire the list surfaced additional context:
+the rendering pipeline produces a noticeable luminance drop on small
+text in the OW Wordmark / Futura font stack (~78% of the declared
+`color:` value as measured by axe-core). Several elements OUTSIDE
+the original four — `.engine-version`, `.setting-value`,
+`.setting-desc`, `<em>` inside descriptions, and others — also fall
+short of WCAG 2 AA when measured against the rendered (not declared)
+foreground. They didn't surface earlier because the four-element
+exclusion list partially shielded them when the Ingest view was in
+its "Tesseract not detected" state in CI, which never renders
+`.engine-version`.
+
 **Why it's debt.**
-The integration commit chose to ship with these four pre-existing
-WCAG 2 AA color-contrast failures rather than block on rework.
-That was the right call at the time — but every release that ships
-with the exclusion list intact is a known a11y regression that
-external accessibility audits will surface.
+External accessibility audits use rendered pixel values, not declared
+sRGB. Every release that ships with `--text-faint` / `--text-dim`
+calibrated for the declared-value contrast budget will flag on
+audit even though the project intends to clear WCAG 2 AA. The
+existing exclusion list under-states the actual scope.
 
 **Mitigation plan.**
-Per CLAUDE.md's existing guidance: "Fixing one is straightforward:
-tweak the relevant rule in `frontend/src/App.vue`'s styles until the
-contrast ratio clears WCAG 2 AA, then delete the line from
-`KNOWN_CONTRAST_DEBT` and watch the test stay green."
 
-1. **Pick the easiest first** to reduce the list — probably
-   `.setting-meta` (likely a text color, single rule).
-2. Use Chrome DevTools' Contrast picker to find a foreground that
-   clears 4.5:1 against the current background (or vice versa) and
-   matches the visual design intent.
-3. Edit the rule in App.vue (or wherever the rule lands after
-   #1's component-CSS extraction).
-4. Delete the line from `KNOWN_CONTRAST_DEBT`. Run
-   `npm --prefix frontend run test:e2e` locally — the test should
-   stay green.
-5. PR per fix, one selector at a time.
-6. After all four are fixed: delete the `KNOWN_CONTRAST_DEBT` array
-   from `a11y.spec.ts` entirely. Update CLAUDE.md's "A11y debt is
-   tracked in…" bullet to remove the reference.
+1. **Audit the rendering pipeline.** Determine why axe-core reports
+   colors ~22% darker than declared (anti-aliasing? a parent
+   `opacity`? font-smoothing?). Could be a single root cause whose
+   fix lifts many elements above threshold at once.
+2. **Re-baseline `--text-dim` and `--text-faint`** with margin for
+   the rendering loss. Conservative starting point: each variable
+   needs ~10% more luminance contrast against its typical surface
+   than the WCAG threshold demands.
+3. **Sweep all `var(--text-dim)` / `var(--text-faint)` usages**
+   for contextual surface — some sit on `--surface-3`, others on
+   `--surface-2`, others on `--bg`. Each needs its own check.
+4. **Remove `KNOWN_CONTRAST_DEBT` entries one at a time** as
+   selectors clear axe locally with the rebuilt binary (CRITICAL:
+   `make test-e2e` rebuilds the embedded `frontend/dist`; `npx
+   playwright test` against a stale binary will mislead).
+5. Once the list is empty, delete the array and update CLAUDE.md's
+   "A11y debt is tracked in…" bullet.
 
 **How large.**
-M. ~1–2 hours per selector × 4 = ½ day total. Risk is purely
-visual — the only failure mode is "design lead doesn't like the new
-shade", in which case iterate. No functional code change.
+M. ~½ day for the rendering-pipeline root-cause analysis, then a
+sequence of small color tunes. Needs design-lead sign-off on each
+new shade because the existing `--text-faint` was chosen
+deliberately for visual subtlety — bumping it changes hierarchy.
 
 ---
 
@@ -551,12 +563,12 @@ choices.
 3. ~~#13 lazy-load view components (S)~~ — done
 4. ~~#12 commit golden-file fixtures + CI integration (M)~~ — infrastructure done; fixture commit pending maintainer privacy review
 
-### Phase 3 — structural refactor (2–3 weeks, L items)
+### Phase 3 — structural refactor ✅ COMPLETE
 
 1. ~~#2 split `pkg/app/app.go` into per-concern files (L)~~ — done
 2. ~~#3 split `pkg/parser/parser.go` into per-concern files (L)~~ — done
 3. ~~#1 extract App.vue's `<style>` into per-component scoped blocks (L)~~ — partial; per-component scoping remaining as residual #1
-4. #7 retire `KNOWN_CONTRAST_DEBT` selectors one at a time (M)
+4. ~~#7 retire `KNOWN_CONTRAST_DEBT` selectors one at a time (M)~~ — scoped up after investigation revealed wider rendering-vs-declared-color gap; #7 rewritten to capture the broader picture
 
 ### Phase 4 — opportunistic / product-level
 

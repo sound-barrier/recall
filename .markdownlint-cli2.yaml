@@ -12,6 +12,8 @@ ignores:
   - "frontend/coverage/**"
   - "frontend/wailsjs/**"
   - "frontend/dist/**"
+  - "frontend/test-results/**"     # Playwright failure artifacts (also gitignored)
+  - "frontend/playwright-report/**"
   - "node_modules/**"
   - "dist/**"
   - "build/**"
