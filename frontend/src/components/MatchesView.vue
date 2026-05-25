@@ -211,3 +211,98 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* ─── Onboarding empty state (numbered setup steps) ──────── */
+
+/* Numbered setup steps shown in the Matches empty state — mirrors the
+   nav-tab numbering (01/02/03) so the user reads "01 Settings → 02
+   Ingest → 03 here" with no ambiguity. */
+.empty-steps {
+  list-style: none;
+  margin: 1.1rem auto 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-width: 44ch;
+  text-align: left;
+}
+
+.empty-steps li {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  gap: 0.65rem;
+  align-items: baseline;
+  color: var(--text-dim);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.empty-step-num {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+  text-align: right;
+}
+
+.empty-steps strong.empty-link {
+  color: var(--accent);
+}
+
+/* ─── Group outline rail (Month → Week → Day grouping picker) ─── */
+
+.group-rail {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  margin-bottom: 0.55rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.group-rail-label {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.group-rail-btn {
+  margin-left: auto;
+  padding: 0.25rem 0.6rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.group-rail-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft, transparent);
+}
+
+.group-rail-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ─── Match list container ───────────────────────────────── */
+
+.match-list {
+  margin-top: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+</style>
