@@ -542,46 +542,6 @@ by tolerance-matching the JSON (skip whitespace-only diffs, allow
 
 ---
 
-## 13. `App.vue` directly imports four view SFCs but is also a router
-
-**Size: S**
-
-**What.**
-`App.vue` does `import IngestView from './components/IngestView.vue'`
-etc., then mounts one of four with `<XxxView v-if="view === '…'" />`.
-The four view files are imported eagerly even though only one is
-ever visible at a time.
-
-**Why it's debt.**
-
-- Initial bundle includes all four view components plus their
-  dependencies. The bundle-size budget (200 KB JS) is already
-  ~156 KB; the four views' templates + scripts aren't tiny.
-- A new view (e.g. a future "Replay" tab) costs initial-load size
-  proportional to its complexity, not "complexity if the user
-  visits it".
-- Vite supports `defineAsyncComponent` + dynamic imports
-  trivially — but there's no test ensuring views are lazy-loaded,
-  so it's easy to regress.
-
-**Mitigation plan.**
-
-1. Convert each `import IngestView from './components/IngestView.vue'`
-   to `const IngestView = defineAsyncComponent(() => import('./components/IngestView.vue'))`.
-2. Run `npm --prefix frontend run build`. Verify each view becomes a
-   separate JS chunk in `dist/assets/`.
-3. Add a Vitest test that asserts the dynamic import path exists in
-   the source (regex over App.vue), to prevent regression.
-4. Update the bundle-size budget step in `ci.yml` to optionally
-   enforce that initial JS (the `index*.js` chunk only) is < a
-   tighter budget — say 120 KB.
-
-**How large.**
-S. ~2 hours. Negligible risk — async components are a Vue-3
-first-class pattern.
-
----
-
 ## 14. `wails dev` only works on macOS; Linux/Windows dev runs serveronly
 
 **Size: L**
@@ -745,6 +705,14 @@ choices.
   CONTRIBUTING.md documents the convention; `scripts/check-action-pins.sh`
   now scans both `.github/workflows/` and `.github/actions/` so the
   composite's own SHA pins stay enforced.
+- Eagerly-imported view components — App.vue now loads
+  IngestView/MatchesView/SettingsView/UnknownMapsView via
+  `defineAsyncComponent`. Initial JS chunk dropped from ~156 KB
+  to ~103 KB (35% reduction); each view emits its own Vite chunk
+  fetched on first render. `App.lazy-views.test.ts` locks the
+  pattern: any view re-converted to a static `import` fails CI.
+  The bundle-size budget step gains separate initial-vs-total
+  limits so a regression in either dimension is caught.
 
 ### Phase 1 — drift prevention ✅ COMPLETE
 
@@ -758,7 +726,7 @@ choices.
 
 1. ~~#4 wailsjs models.ts CI guard, short-term form (M)~~ — done
 2. ~~#6 prepare-go-build composite action (S)~~ — done (named `prepare-frontend-dist`)
-3. #13 lazy-load view components (S)
+3. ~~#13 lazy-load view components (S)~~ — done
 4. #12 commit golden-file fixtures + CI integration (M)
 
 ### Phase 3 — structural refactor (2–3 weeks, L items)

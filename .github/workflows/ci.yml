@@ -53,24 +53,43 @@ jobs:
           real-assets: "true"
 
       # Bundle-size budget. Catches accidental regressions (e.g. someone
-      # imports a 200KB library by mistake). Budgets are intentionally
-      # generous — bump them on purpose if a real feature needs the room.
+      # imports a 200KB library by mistake). Two budgets:
+      #   - Initial chunk (index-*.{js,css}): what every page-load pays.
+      #     The four view components are lazy-loaded via
+      #     defineAsyncComponent so each becomes a separate chunk that
+      #     isn't counted here — only the masthead/modal/router-shell
+      #     code lands in index-*.
+      #   - Total assets/: catches the case where lazy-splitting masks a
+      #     real regression by smearing it across chunks.
+      # Bump deliberately when a real feature needs the room.
       - name: Enforce bundle-size budget
         env:
-          MAX_JS_BYTES: "200000"   # 200 KB
-          MAX_CSS_BYTES: "100000"  # 100 KB
+          MAX_INITIAL_JS_BYTES: "130000"    # 130 KB — initial JS chunk only
+          MAX_INITIAL_CSS_BYTES: "80000"    # 80 KB — initial CSS chunk only
+          MAX_TOTAL_JS_BYTES: "250000"      # 250 KB — every JS chunk combined
+          MAX_TOTAL_CSS_BYTES: "120000"     # 120 KB — every CSS chunk combined
         run: |
           set -e
-          js_size=$(find frontend/dist/assets -name 'index-*.js'  -exec wc -c {} + | awk 'END{print $1}')
-          css_size=$(find frontend/dist/assets -name 'index-*.css' -exec wc -c {} + | awk 'END{print $1}')
-          echo "Bundle sizes: JS=${js_size}  CSS=${css_size}"
+          init_js=$(find frontend/dist/assets -name 'index-*.js'  -exec wc -c {} + | awk 'END{print $1}')
+          init_css=$(find frontend/dist/assets -name 'index-*.css' -exec wc -c {} + | awk 'END{print $1}')
+          total_js=$(find frontend/dist/assets -name '*.js'  -exec wc -c {} + | awk 'END{print $1}')
+          total_css=$(find frontend/dist/assets -name '*.css' -exec wc -c {} + | awk 'END{print $1}')
+          echo "Bundle sizes: initial JS=${init_js} CSS=${init_css}  total JS=${total_js} CSS=${total_css}"
           fail=0
-          if [ "$js_size" -gt "$MAX_JS_BYTES" ]; then
-            echo "::error::JS bundle ${js_size}B exceeds budget ${MAX_JS_BYTES}B"
+          if [ "$init_js" -gt "$MAX_INITIAL_JS_BYTES" ]; then
+            echo "::error::Initial JS chunk ${init_js}B exceeds budget ${MAX_INITIAL_JS_BYTES}B"
             fail=1
           fi
-          if [ "$css_size" -gt "$MAX_CSS_BYTES" ]; then
-            echo "::error::CSS bundle ${css_size}B exceeds budget ${MAX_CSS_BYTES}B"
+          if [ "$init_css" -gt "$MAX_INITIAL_CSS_BYTES" ]; then
+            echo "::error::Initial CSS chunk ${init_css}B exceeds budget ${MAX_INITIAL_CSS_BYTES}B"
+            fail=1
+          fi
+          if [ "$total_js" -gt "$MAX_TOTAL_JS_BYTES" ]; then
+            echo "::error::Total JS ${total_js}B exceeds budget ${MAX_TOTAL_JS_BYTES}B"
+            fail=1
+          fi
+          if [ "$total_css" -gt "$MAX_TOTAL_CSS_BYTES" ]; then
+            echo "::error::Total CSS ${total_css}B exceeds budget ${MAX_TOTAL_CSS_BYTES}B"
             fail=1
           fi
           exit $fail

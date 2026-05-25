@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, defineAsyncComponent } from 'vue'
 import type { MatchRecord } from './api'
 import {
   GetVersion,
@@ -31,10 +31,17 @@ import { useFilterPanel } from './composables/useFilterPanel'
 import { useMatchFilters } from './composables/useMatchFilters'
 import { useMatchGrouping } from './composables/useMatchGrouping'
 import type { ParseProgressEvent } from './components/ParseProgressPanel.vue'
-import IngestView from './components/IngestView.vue'
-import MatchesView from './components/MatchesView.vue'
-import SettingsView from './components/SettingsView.vue'
-import UnknownMapsView from './components/UnknownMapsView.vue'
+
+// View components are lazy-loaded via defineAsyncComponent so each
+// becomes a separate JS chunk emitted by Vite. The initial bundle
+// only ships the currently-visible view (Matches by default); the
+// other three load on first tab click. Keeps initial JS small and
+// makes the cost of adding a new view proportional to "is it
+// visited" rather than "is it imported".
+const IngestView = defineAsyncComponent(() => import('./components/IngestView.vue'))
+const MatchesView = defineAsyncComponent(() => import('./components/MatchesView.vue'))
+const SettingsView = defineAsyncComponent(() => import('./components/SettingsView.vue'))
+const UnknownMapsView = defineAsyncComponent(() => import('./components/UnknownMapsView.vue'))
 
 // GitHub repository URL — surfaced via the brandmark in the masthead.
 // Centralised here so the markup, hover title, and any future references
