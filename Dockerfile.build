@@ -28,7 +28,15 @@ FROM node:26-slim AS frontend-builder
 WORKDIR /frontend
 
 # Install deps in an isolated layer so they're cached across source-only changes.
+# frontend/scripts/seed-go-sentinel.cjs is needed at install time too: it's
+# wired into package.json's `postinstall` hook (to drop the
+# frontend/node_modules/go.mod sentinel that masks the stray Go file in the
+# `flatted` npm package from the host's `go list ./...`). The hook fires
+# unconditionally during `npm ci`, even though the sentinel is a host-only
+# concern that's irrelevant inside this container, so the script file must
+# be present before npm runs or the install fails with MODULE_NOT_FOUND.
 COPY frontend/package.json frontend/package-lock.json ./
+COPY frontend/scripts/seed-go-sentinel.cjs ./scripts/seed-go-sentinel.cjs
 # --maxsockets=1 serializes npm's concurrent fetches and serializes the
 # postinstall scripts that follow. Without it, esbuild's postinstall
 # (which exec's the binary it just wrote to disk) loses a race against

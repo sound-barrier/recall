@@ -32,7 +32,7 @@ jobs:
       # Make, lefthook, and the dev-environment install scripts. See
       # tool-versions.env at the repo root.
       - name: Load tool versions
-        run: cat tool-versions.env >> "$GITHUB_ENV"
+        run: grep -E '^[A-Z_][A-Z0-9_]*=' tool-versions.env >> "$GITHUB_ENV"
 
       # Go — install golangci-lint from source with Go 1.26 so the binary is
       # compiled with Go >= 1.25 (matching go.mod). Using a pre-built binary
@@ -357,7 +357,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
       - name: Load tool versions
-        run: cat tool-versions.env >> "$GITHUB_ENV"
+        run: grep -E '^[A-Z_][A-Z0-9_]*=' tool-versions.env >> "$GITHUB_ENV"
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
         with:
           go-version-file: go.mod

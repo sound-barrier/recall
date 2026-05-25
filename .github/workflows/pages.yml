@@ -57,7 +57,9 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
       - name: Load tool versions
-        run: cat tool-versions.env >> "$GITHUB_ENV"
+        # Filter to KEY=VALUE lines — GitHub's $GITHUB_ENV validator
+        # rejects comments and blank lines.
+        run: grep -E '^[A-Z_][A-Z0-9_]*=' tool-versions.env >> "$GITHUB_ENV"
 
       # Track the devcontainer's Node pin (.devcontainer/devcontainer.json
       # → features → node:1.version) so the book builds against the same
