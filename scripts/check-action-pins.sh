@@ -75,6 +75,7 @@ printf 'Unpinned or improperly-pinned action references:\n' >&2
 for u in "${unpinned[@]}"; do
   printf '  %s\n' "$u" >&2
 done
+# shellcheck disable=SC2016  # backticks are literal markdown formatting in this user-facing message, not command substitution
 printf '\nPolicy: third-party actions must be SHA-pinned with a `  # vX.Y.Z` comment.\n' >&2
 printf 'See CONTRIBUTING.md → "Pinning GitHub Actions".\n' >&2
 exit 1

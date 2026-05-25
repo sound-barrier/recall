@@ -140,62 +140,14 @@ jobs:
       - name: Build macOS Wails app
         run: make build-mac
 
-      # DMG layout (what the user sees when they double-click the .dmg):
-      #
-      #     Recall          (the .app bundle, no -arm64 suffix —
-      #                      the DMG filename already carries the
-      #                      arch, the .app inside should not)
-      #     Applications →  (symlink to /Applications so the user
-      #                      can drag-install in one motion)
-      #     README.txt      (drag-install steps + Gatekeeper
-      #                      approval, because the binary is not
-      #                      notarized and macOS 15+ removed the
-      #                      old right-click-Open bypass)
-      #
-      # GITHUB_REF_NAME is the runner-injected ref name (the tag);
-      # no ${{ }} webhook-payload expansion in this step.
+      # DMG staging + hdiutil call lives in scripts/release/make-dmg.sh.
+      # The in-DMG README.txt is sourced from docs/dmg/README.txt
+      # (single-source-of-truth instead of the previous heredoc paired
+      # with docs/install-macos.md sections 2-3).
       - name: Create DMG
-        run: |
-          PKG_VERSION="${GITHUB_REF_NAME#v}"
-
-          mkdir -p dmg-staging
-          cp -R dist/mac/Recall.app dmg-staging/
-          ln -s /Applications dmg-staging/Applications
-          cat > dmg-staging/README.txt <<'EOF'
-          Welcome to Recall.
-
-          INSTALL
-          ─────────────────────────────────────────────────────────
-          1. Drag "Recall" onto the "Applications" alias in this
-             window.
-          2. Eject this disk (right-click the Recall icon in
-             Finder's sidebar → Eject) and open the Applications
-             folder.
-
-          FIRST LAUNCH — APPROVE THE APP
-          ─────────────────────────────────────────────────────────
-          Recall is not signed by an Apple Developer account, so
-          macOS will block it on first launch. To approve it:
-
-          1. Double-click Recall in Applications. macOS will show
-             a "cannot be opened" dialog — dismiss it.
-          2. Open the Apple menu → System Settings.
-          3. Click "Privacy & Security" in the sidebar.
-          4. Scroll down to the "Security" section.
-          5. Find the message "Recall was blocked to protect your
-             Mac" and click the "Open Anyway" button next to it,
-             then confirm in the dialog that appears.
-
-          You only need to do this once.
-
-          More documentation:
-            https://sound-barrier.github.io/recall/
-          EOF
-
-          hdiutil create -volname "Recall" \
-            -srcfolder dmg-staging \
-            -ov -format UDZO \
-            "recall-${PKG_VERSION}-darwin-arm64.dmg"
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: bash scripts/release/make-dmg.sh
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
@@ -306,39 +258,19 @@ jobs:
         env:
           DIGEST: ${{ steps.push.outputs.digest }}
           TAGS: ${{ steps.meta.outputs.tags }}
-        run: |
-          # Sign each tag at the digest the push produced; signing by
-          # digest (not tag) is what prevents a tag re-point from
-          # accidentally invalidating the signature.
-          for tag in ${TAGS}; do
-            image="${tag%:*}@${DIGEST}"
-            echo "::group::cosign sign ${image}"
-            cosign sign --yes "${image}"
-            echo "::endgroup::"
-          done
+        run: bash scripts/release/sign-image.sh
 
-      # GHCR packages default to private for new packages. Explicitly set public
-      # so users can pull without authentication. Detects user vs org owner automatically.
+      # GHCR packages default to private for new packages. Try to set
+      # public so users can pull without auth — script handles the
+      # org-vs-user owner-type branching + retries. continue-on-error
+      # because GITHUB_TOKEN lacks write:packages OAuth scope for
+      # visibility changes; the package must be set public once
+      # manually via GitHub Package settings.
       - name: Set container image visibility to public
-        continue-on-error: true  # GITHUB_TOKEN lacks write:packages OAuth scope for visibility changes; set public manually in Package settings once
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          OWNER_TYPE=$(gh api "/repos/$GITHUB_REPOSITORY" --jq '.owner.type')
-          if [ "$OWNER_TYPE" = "Organization" ]; then
-            API_PATH="/orgs/$GITHUB_REPOSITORY_OWNER/packages/container/recall-server"
-          else
-            API_PATH="/user/packages/container/recall-server"
-          fi
-          # Retry up to 5 times — package registry may not be indexed immediately after push.
-          for i in 1 2 3 4 5; do
-            if gh api --method PATCH -H "Accept: application/vnd.github+json" \
-              "$API_PATH" -f visibility=public; then
-              break
-            fi
-            echo "Attempt $i failed, retrying in 15s..."
-            sleep 15
-          done
+        run: bash scripts/release/flip-package-public.sh
 
   # ── Job 5: Create GitHub Release with all binaries attached ──
   # github.ref_name is used only in an `actions/` `with:` expression, not
@@ -361,10 +293,7 @@ jobs:
       # Users verify with: sha256sum --check recall-<version>-linux-amd64.tar.gz.sha256
       # On macOS:         shasum -a 256 --check recall-<version>-darwin-arm64.dmg.sha256
       - name: Generate SHA256 checksums
-        run: |
-          for f in recall-*.tar.gz recall-*.deb recall-*.exe recall-*.dmg; do
-            [ -f "$f" ] && sha256sum "$f" > "${f}.sha256"
-          done
+        run: bash scripts/release/compute-sha256.sh
 
       # Attest the sha256 files so users can prove the checksums themselves
       # came from CI, not a tampered release page. Chain:
