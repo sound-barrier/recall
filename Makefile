@@ -426,18 +426,20 @@ test-frontend: ## Run frontend unit tests (Vitest)
 # this target (or `make test-all` which calls both).
 E2E_HOME ?= /tmp/recall-e2e
 
-# Parser golden-file fixtures live in pkg/parser/testdata/golden/.
+# Parser golden-file fixtures live in the repo-root testdata/ directory.
 # This target re-runs ParseScreenshot against each .png there and
 # rewrites its sidecar .golden.json with the current parse result.
 # Use after intentionally changing parser output (or to seed a new
 # fixture's golden after dropping the PNG in). Eyeball the resulting
 # JSON diff before committing.
 #
-# Override the dir to point at an uncommitted set (e.g. your local
-# screenshots/ stash):
-#   make update-goldens RECALL_FIXTURE_DIR=screenshots
+# Override the dir with an ABSOLUTE path to point at an uncommitted set
+# (e.g. your local screenshots/ stash). The test binary's cwd is
+# pkg/parser/, so relative paths must resolve from there — easier to
+# always pass an absolute path here:
+#   make update-goldens RECALL_FIXTURE_DIR="$$PWD/screenshots"
 update-goldens: ## Regenerate parser golden-file fixtures from current parse output
-	@echo "[ recall ] Updating parser goldens from $(or $(RECALL_FIXTURE_DIR),pkg/parser/testdata/golden/)…"
+	@echo "[ recall ] Updating parser goldens from $(or $(RECALL_FIXTURE_DIR),testdata/)…"
 	RECALL_FIXTURE_UPDATE=1 $(if $(RECALL_FIXTURE_DIR),RECALL_FIXTURE_DIR=$(RECALL_FIXTURE_DIR)) \
 	    go test -run TestParseScreenshot_GoldenFiles ./pkg/parser/ -v
 	@echo "[ recall ] ✓  Goldens updated — review the diff and commit"

@@ -13,10 +13,12 @@ import (
 // TestParseScreenshot_GoldenFiles drives ParseScreenshot against real PNG
 // fixtures and compares the result to a sidecar `<filename>.golden.json`.
 //
-// Defaults to scanning `pkg/parser/testdata/golden/`. Set
-// RECALL_FIXTURE_DIR=/some/other/path to point at a different set
-// (typically the maintainer's local screenshot dump while curating
-// new fixtures).
+// Defaults to scanning the repo-root `testdata/` directory (resolved via
+// the relative path `../../testdata` from this package's working
+// directory, which `go test ./pkg/parser/` sets to `pkg/parser/`).
+// Override with `RECALL_FIXTURE_DIR=/absolute/path` to point at a
+// different set — useful when curating new fixtures from a private
+// screenshot dump.
 //
 // Layout:
 //
@@ -35,11 +37,10 @@ import (
 // The test is also skipped when:
 //   - The `-short` test flag is set (CI's quick lint pass uses this).
 //   - The configured Tesseract binary isn't on PATH.
-//   - The directory has no .png/.jpg fixtures (the committed default
-//     state — see testdata/golden/README.md).
+//   - The directory has no .png/.jpg fixtures.
 //
 // Adding a new fixture:
-//  1. Drop the PNG into testdata/golden/ (or your $RECALL_FIXTURE_DIR).
+//  1. Drop the PNG into the repo-root `testdata/` directory.
 //  2. `make update-goldens` to generate the `.golden.json`.
 //  3. Eyeball the JSON, then commit both files.
 func TestParseScreenshot_GoldenFiles(t *testing.T) {
@@ -49,13 +50,12 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 
 	dir := os.Getenv("RECALL_FIXTURE_DIR")
 	if dir == "" {
-		// Default to the committed fixture directory so `go test
-		// ./pkg/parser/` picks up real fixtures without needing the
-		// env var. The committed default is currently empty (see
-		// testdata/golden/README.md for the privacy/licensing
-		// rationale), so the test still skips cleanly on a fresh
-		// checkout.
-		dir = "testdata/golden"
+		// Default to the repo-root testdata/ dir. `go test ./pkg/parser/`
+		// runs with cwd = `pkg/parser/`, so `../../testdata` resolves
+		// to the repo root. The committed fixture set lives there
+		// (see testdata/README.md); when run against any other tree
+		// the test skips cleanly if no PNG fixtures are present.
+		dir = "../../testdata"
 	}
 
 	// Resolve Tesseract early — ParseScreenshot will fail with a generic

@@ -1,0 +1,30 @@
+{
+  "map": "",
+  "type": "",
+  "mode": "competitive",
+  "role": "dps",
+  "hero": "mei",
+  "eliminations": 0,
+  "assists": 0,
+  "deaths": 0,
+  "damage": 0,
+  "healing": 0,
+  "mitigation": 0,
+  "heroes_played": [
+    {
+      "hero": "mei",
+      "percent_played": 33,
+      "play_time": "04:24",
+      "stats": {
+        "average_aura": 26,
+        "binding_chain_accuracy": 36,
+        "enemies_hindered": 4,
+        "healing_kasa_healing": 367,
+        "player_saved": 1,
+        "remedy_aura_healing": 94,
+        "ultimates_negated": 0,
+        "weapon_accuracy": 25
+      }
+    }
+  ]
+}

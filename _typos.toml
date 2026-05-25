@@ -30,4 +30,8 @@ extend-exclude = [
     # scanning. (frontend/node_modules/ is .gitignored already.)
     "frontend/package-lock.json",
     "go.sum",
+    # Parser golden-file fixture PNGs. typos walks them as text —
+    # the deflate stream looks enough like UTF-8 to trip the
+    # dictionary on every "Iy", "ot", "PN" byte run.
+    "testdata/*.png",
 ]
