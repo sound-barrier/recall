@@ -236,27 +236,40 @@ changes remain on the recall side.
 
 ## 14. `wails dev` only works on macOS; Linux/Windows dev runs serveronly
 
-**Size: L**
+**Size: L (residual; Option A audit partially landed)**
 
 **What.**
 CLAUDE.md states multiple times: `make dev` is macOS-only; the
 devcontainer can't render the Wails GUI; Linux/Windows contributors
 use `go run -tags serveronly . --server`.
 
-**Why it's debt.**
+**Status.**
+A scoped Option A audit went through during Phase 4 #14. One real
+parity gap found and fixed: `SetScreenshotsDir` used to leave the
+watcher pointed at the old dir when called from server-mode HTTP,
+because the Wails dialog flow was carrying the `stopWatching` /
+`startWatching` restart inline. Restart logic moved into
+`SetScreenshotsDir` itself, so both transports share the side-
+effect. Locked by three tests in `pkg/app/screenshots_dir_test.go`
+(WatchEnabled → migrates; WatchDisabled → no-op; invalid path →
+old watcher untouched). No other gaps surfaced in the audit.
+
+**Why it's still debt.**
 The Wails desktop variant is the primary product, but only macOS
-contributors can debug its desktop-specific behavior (dialogs,
-window chrome, AssetServer middleware ordering, NSIS installer
-under wine, etc.). Cross-platform desktop bugs only surface in CI
+contributors can debug its desktop-specific behavior (window
+chrome, AssetServer middleware ordering, NSIS installer under
+wine, etc.). Cross-platform desktop bugs only surface in CI
 release builds, where iteration is slow.
 
-**Mitigation plan.**
+**Mitigation plan (remaining).**
 This is structural debt, not a quick fix. Options:
 
-**Option A (M):** improve the server-mode parity guarantee.
+**Option A residual (S):** continue tightening server-mode parity.
 
-1. Audit every Wails-only code path (the `app_wails.go` /
-   `app_server.go` split is the inventory) and tighten the parity.
+1. Audit any future Wails-only code path before merging — the
+   `app_wails.go` / `app_server.go` split is still the inventory
+   and currently only diverges on the unavoidable bits (native
+   dialogs, wruntime event emit).
 2. Ensure every UI flow has equivalent server-mode coverage in
    `frontend/tests/e2e/` — so a regression in a desktop-only
    subtlety is at least detected at e2e time.
@@ -422,6 +435,13 @@ choices.
   `assets.go` still works. The historical filter workarounds in
   `scripts/deadcode-check.sh` and `make lint-gosec` stay as
   defence in depth.
+- Server-mode `SetScreenshotsDir` parity — used to leave the file
+  watcher pointed at the OLD dir when called via the
+  `POST /api/screenshots-dir` HTTP handler (the Wails dialog flow
+  did the restart inline). Restart logic moved into
+  `SetScreenshotsDir` itself so both transports share the side-
+  effect; locked by `pkg/app/screenshots_dir_test.go`. Found
+  during the Phase 4 #14 audit.
 - `wailsjs/` checked-in-bindings → build-artifact —
   `frontend/wailsjs/` is now gitignored; `wails build` /
   `wails dev` regenerates it on demand. `api.ts` consumes the
@@ -489,7 +509,7 @@ choices.
 1. ~~#5 move Go module root out of overlap with frontend/ (S)~~ — done (npm postinstall hook seeds frontend/node_modules/go.mod sentinel; defence-in-depth workarounds kept)
 2. ~~#10 release.yml script extraction (M)~~ — done (composite-action + act-smoke-test residual)
 3. ~~#4 long-term: wailsjs from OpenAPI (L)~~ — done (wailsjs/ removed from git; api.ts uses api.gen.d.ts for both transports; Phase 2 #4 check-wailsjs guard retired)
-4. #14 server-mode parity audit or Wails containerization (L)
+4. ~~#14 server-mode parity audit or Wails containerization (L)~~ — Option A audit done; SetScreenshotsDir parity gap fixed + locked. Wails containerization (Option B) and full server-mode-as-product migration (Option C) remain open as residuals
 5. #17 CLAUDE.md naturally shrinks as a side effect
 
 ### Total estimated cost

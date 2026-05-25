@@ -33,17 +33,37 @@ func (a *App) GetScreenshotsDir() string {
 }
 
 // SetScreenshotsDir updates the configured screenshots directory and
-// persists the change. Used by the REST API in server mode (replaces
-// the native directory dialog). Returns ErrInvalidScreenshotsDir
-// (possibly wrapped with the failing path) when path is empty, fails
-// format validation, doesn't exist, or isn't a directory.
+// persists the change. Used by the REST API in server mode AND by the
+// Wails PickScreenshotsDir dialog flow — both transports go through
+// this method so the validation rule + watcher-restart side-effect
+// stay in one place.
+//
+// Returns ErrInvalidScreenshotsDir (possibly wrapped with the failing
+// path) when path is empty, fails format validation, doesn't exist,
+// or isn't a directory.
+//
+// Watcher behaviour: if the watcher is currently armed (WatchEnabled
+// is true and startWatching has booted an fsnotify watcher), it gets
+// restarted against the new dir. Without this, changing the dir
+// while watching would leave fsnotify pointed at the old path —
+// silent drift between user intent and actual behaviour. The Wails
+// dialog flow used to do the restart inline in PickScreenshotsDir;
+// it now lives here so the server-mode HTTP path inherits the same
+// behaviour (parity audit, TECHNICAL_DEBT.md #14).
 func (a *App) SetScreenshotsDir(path string) error {
 	cleaned, err := validateScreenshotsDir(path)
 	if err != nil {
 		return err
 	}
 	a.settings.ScreenshotsDir = cleaned
-	return saveSettings(a.settings)
+	if err := saveSettings(a.settings); err != nil {
+		return err
+	}
+	if a.settings.WatchEnabled {
+		a.stopWatching()
+		a.startWatching()
+	}
+	return nil
 }
 
 // validateScreenshotsDir confirms path is a real, readable directory and
