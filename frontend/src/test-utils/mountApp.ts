@@ -126,8 +126,28 @@ export async function mountApp(overrides: MountOverrides = {}) {
   // Reset modules so a stale cached App.vue from a prior test doesn't
   // bypass the freshly-installed mock.
   vi.resetModules()
+  // Pre-warm the dynamic-import cache for the four view components.
+  // App.vue loads each via defineAsyncComponent(() => import(...));
+  // in production the bundler emits a separate chunk fetched on first
+  // view render, but in Vitest the dynamic import goes through Vite's
+  // transform pipeline and takes longer than a microtask + macrotask
+  // to resolve. Eager-importing them here lands them in the module
+  // cache so defineAsyncComponent's loader resolves synchronously when
+  // the test triggers a view render. Pre-warming does not undo the
+  // production split — that's verified by App.lazy-views.test.ts.
+  await Promise.all([
+    import('../components/IngestView.vue'),
+    import('../components/MatchesView.vue'),
+    import('../components/SettingsView.vue'),
+    import('../components/UnknownMapsView.vue'),
+  ])
   const App = (await import('../App.vue')).default
   const wrapper = mount(App, { attachTo: document.body })
+  // First flush: App.vue's onMounted load() chain
+  // (CheckForUpdate, GetVersion, GetMatchResults). Second: the async
+  // view component's now-cached loader resolves and the post-import
+  // re-render commits.
+  await flushPromises()
   await flushPromises()
   return wrapper
 }

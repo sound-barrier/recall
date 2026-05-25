@@ -57,13 +57,16 @@ describe('App.vue', () => {
     expect(wrapper.find('#panel-matches').exists()).toBe(true)
 
     // Click the Settings tab; the matches panel disappears, the
-    // settings panel appears.
+    // settings panel appears. flushPromises waits for the async view
+    // component (defineAsyncComponent) to resolve its dynamic import.
     await wrapper.find('#tab-settings').trigger('click')
+    await flushPromises()
     expect(wrapper.find('#panel-settings').exists()).toBe(true)
     expect(wrapper.find('#panel-matches').exists()).toBe(false)
 
     // And back: clicking matches restores it.
     await wrapper.find('#tab-matches').trigger('click')
+    await flushPromises()
     expect(wrapper.find('#panel-matches').exists()).toBe(true)
     expect(wrapper.find('#panel-settings').exists()).toBe(false)
   })
@@ -214,7 +217,11 @@ describe('App.vue — unsupported-tesseract modal a11y', () => {
       tesseract: { found: true, supported: false, version: '4.1.1' },
     })
     await wrapper.find('#tab-ingest').trigger('click')
-    await wrapper.vm.$nextTick()
+    // IngestView is loaded via defineAsyncComponent, so the v-if switch
+    // resolves the dynamic import in a microtask. flushPromises waits
+    // for that AND the post-import re-render; nextTick alone is not
+    // enough.
+    await flushPromises()
     await wrapper.find('.btn.primary.big').trigger('click') // Run Parse
     await wrapper.vm.$nextTick()
     return wrapper
