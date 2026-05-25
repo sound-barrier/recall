@@ -340,11 +340,578 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
+/* ─── Card chrome ────────────────────────────────────────── */
+
+@keyframes match-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.match {
+  position: relative;
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  animation: match-enter 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+.match:hover { border-color: var(--border-strong); }
+
+.match.expanded {
+  border-color: var(--border-strong);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+}
+
+.match-bar {
+  width: 3px;
+  background: var(--unknown-line);
+  flex-shrink: 0;
+  transition: background 200ms ease, width 200ms ease, box-shadow 200ms ease;
+}
+
+.match.result-victory .match-bar {
+  background: var(--win-line);
+  box-shadow: 0 0 12px -2px var(--win-line);
+}
+
+.match.result-defeat .match-bar {
+  background: var(--loss-line);
+  box-shadow: 0 0 12px -2px var(--loss-line);
+}
+
+.match.result-draw .match-bar {
+  background: var(--draw-line);
+  box-shadow: 0 0 12px -2px var(--draw-line);
+}
+.match.expanded .match-bar { width: 5px; }
+
+.match-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.95rem 1.15rem;
+}
+
+.match-header {
+  cursor: pointer;
+  user-select: none;
+  border-radius: 2px;
+}
+
+/* Strip browser button chrome on the chip buttons inside the card.
+   :where() keeps specificity at 0 so existing .badge / .match-map
+   rules continue to win. */
+:where(
+  button.match-map,
+  button.badge,
+  button.chev-btn,
+  button.hero-name,
+  button.source-type-chip,
+  button.slot-chip
+) {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  text-align: inherit;
+}
+
+.match-map.clickable:focus-visible,
+.badge.clickable:focus-visible,
+.chev-btn:focus-visible,
+.hero-name.clickable:focus-visible,
+.slot-chip.clickable:focus-visible,
+.source-type-chip.clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The chev is the keyboard expand affordance — give it a real hit
+   target so taps/clicks aren't strictly on the glyph. */
+button.chev-btn {
+  padding: 0.15rem 0.3rem;
+  border-radius: 2px;
+}
+
+button.chev-btn:hover { color: var(--accent-bright); }
+
+.match-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.55rem;
+}
+
+.match-title-lhs {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.match-index {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-mute);
+  letter-spacing: 0.06em;
+  font-feature-settings: "tnum";
+}
+
+.match-map {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 1.55rem;
+  letter-spacing: 0.005em;
+  color: var(--text);
+  text-transform: uppercase;
+  padding: 0 0.15rem;
+  position: relative;
+  transition: color 160ms ease, text-shadow 200ms ease;
+}
+
+.match-map:hover {
+  color: var(--accent-bright);
+  text-shadow: 0 0 24px var(--accent-glow);
+}
+
+.match-map.active {
+  color: var(--accent);
+  text-shadow: 0 0 18px var(--accent-glow);
+}
+
+.match-title-rhs {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-shrink: 0;
+}
+
+.when {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-feature-settings: "tnum";
+  letter-spacing: 0;
+}
+
+.length-mark {
+  color: var(--accent);
+  font-size: 0.55rem;
+  opacity: 0.7;
+}
+
+.match-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.hero-name-inline {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.hero-pct-inline {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--accent-text);
+  opacity: 0.75;
+  font-weight: 500;
+  font-feature-settings: "tnum";
+  letter-spacing: 0;
+}
+
+/* ─── Incomplete-match warning pill ──────────────────────── */
+
+.incomplete-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.18rem 0.55rem 0.18rem 0.4rem;
+  margin-left: auto;
+  background: rgb(245 166 35 / 8%);
+  border: 1px dashed rgb(245 166 35 / 55%);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+  cursor: help;
+  animation: incomplete-pulse 2.6s ease-in-out infinite;
+}
+
+.incomplete-badge strong {
+  font-weight: 700;
+  color: var(--accent-bright);
+  letter-spacing: 0.12em;
+}
+
+.incomplete-glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1a0a00;
+  font-weight: 900;
+  font-size: 0.65rem;
+  line-height: 1;
+  font-family: var(--mono);
+}
+
+@keyframes incomplete-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(245 166 35 / 0%); }
+  50%      { box-shadow: 0 0 0 3px rgb(245 166 35 / 14%); }
+}
+
+:global([data-theme="light"]) .incomplete-badge {
+  background: rgb(245 166 35 / 12%);
+  color: var(--accent-text);
+}
+
+:global([data-theme="light"]) .incomplete-badge strong { color: var(--accent-text); }
+
+/* ─── Expanded content ───────────────────────────────────── */
+
+.match-expanded {
+  margin-top: 0.95rem;
+  padding-top: 0.95rem;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+}
+
+.meta-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+
+.meta-value {
+  font-family: var(--display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* Match-level "Parsed" meta row: same shape as the existing Final
+   Score meta row; the parsed row gets a touch of breathing room
+   so the two stack cleanly when both render. */
+.meta-row-parsed {
+  margin-top: 0.18rem;
+}
+
+/* ─── Coverage explainer (below sources) ─────────────────── */
+
+.coverage-line {
+  display: grid;
+  grid-template-columns: minmax(9.5rem, max-content) 1fr;
+  gap: 0.7rem;
+  align-items: baseline;
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.coverage-line-tag {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.coverage-line.required .coverage-line-tag { color: var(--accent-bright); }
+.coverage-line.optional .coverage-line-tag { color: var(--text-faint); }
+
+.coverage-line-text {
+  color: var(--text-dim);
+}
+
+.coverage-line.required .coverage-line-text strong {
+  color: var(--accent-bright);
+  font-weight: 700;
+}
+
+:global([data-theme="light"]) .coverage-line.required .coverage-line-tag,
+:global([data-theme="light"]) .coverage-line.required .coverage-line-text strong {
+  color: var(--accent-text);
+}
+
+@media (width <= 720px) {
+  .coverage-line {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+}
+
+/* ─── Rank block ─────────────────────────────────────────── */
+
+.rank-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.rank-tier {
+  font-family: var(--display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.rank-tier.bronze    { color: #d18a4a; border-color: rgb(209 138 74 / 45%); }
+.rank-tier.silver    { color: #d6d6d6; border-color: rgb(214 214 214 / 40%); }
+.rank-tier.gold      { color: #ffd770; border-color: rgb(255 215 112 / 45%); }
+.rank-tier.platinum  { color: #7befd9; border-color: rgb(123 239 217 / 45%); }
+.rank-tier.diamond   { color: #c2e6ff; border-color: rgb(194 230 255 / 45%); }
+.rank-tier.master    { color: #d6b4ff; border-color: rgb(214 180 255 / 45%); }
+.rank-tier.grandmaster, .rank-tier.champion { color: var(--loss); border-color: var(--loss-line); }
+
+.rank-progress {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-feature-settings: "tnum";
+}
+
+.rank-change {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--win);
+  font-weight: 600;
+  font-feature-settings: "tnum";
+}
+
+.rank-modifier {
+  font-size: 0.62rem;
+  padding: 0.18rem 0.5rem;
+  background: var(--surface-3);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.sr-line { display: flex; flex-wrap: wrap; gap: 0.7rem; }
+
+.sr-entry {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.25rem 0.55rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-size: 0.78rem;
+}
+.sr-hero  { color: var(--text-dim); text-transform: capitalize; font-size: 0.75rem; }
+.sr-value { font-family: var(--mono); color: var(--text); font-weight: 600; font-feature-settings: "tnum"; }
+.sr-delta { font-family: var(--mono); font-size: 0.7rem; font-weight: 600; font-feature-settings: "tnum"; }
+.sr-delta.up   { color: var(--win); }
+.sr-delta.down { color: var(--loss); }
+
+/* ─── Heroes Played list ─────────────────────────────────── */
+
+.heroes-played-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.hero-block {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent-soft);
+  border-radius: 2px;
+  padding: 0.75rem 0.9rem;
+}
+
+.hero-header {
+  display: flex;
+  gap: 0.7rem;
+  align-items: baseline;
+  margin-bottom: 0.55rem;
+}
+
+.hero-name {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0 0.15rem;
+  cursor: pointer;
+  transition: color 160ms ease, text-shadow 200ms ease;
+}
+.hero-name:hover { color: var(--accent-bright); text-shadow: 0 0 16px var(--accent-glow); }
+.hero-name.active { text-shadow: 0 0 14px var(--accent-glow); }
+
+.hero-pct {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-feature-settings: "tnum";
+}
+
+.hero-time {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
+.personal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+
+.personal-item {
+  background: var(--surface);
+  padding: 0.45rem 0.7rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.personal-label {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.personal-value {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  font-feature-settings: "tnum";
+}
+
+/* ─── Sources block ──────────────────────────────────────── */
+
+.sources-block {
+  margin-top: 0.2rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.85rem;
+}
+
+.sources-toggle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  transition: color 160ms ease;
+}
+.sources-toggle:hover { color: var(--text-dim); }
+
+.sources-count {
+  font-family: var(--mono);
+  background: var(--surface-3);
+  color: var(--text-dim);
+  padding: 0.05rem 0.4rem;
+  border-radius: 2px;
+  font-size: 0.6rem;
+  letter-spacing: 0;
+  margin-left: 0.2rem;
+}
+
+/* Coverage chips on the Sources toggle row — same .slot-chip styling
+   as the legacy coverage-block, but pushed to the right of the
+   "Source Screenshots · 5" label. */
+.sources-coverage {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+.sources-coverage .slot-chip.clickable {
+  cursor: pointer;
+}
+
+.sources-coverage .slot-chip.clickable:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+.sources-coverage .slot-chip.active {
+  box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
+}
+
+.sources {
+  margin-top: 0.55rem;
+  padding: 0.65rem 0.75rem;
+  background: rgb(0 0 0 / 30%);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+.source-file + .source-file { margin-top: 0.45rem; }
+
+.source-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.source-name-text { font-size: 0.72rem; }
+
 /* Per-source-file "first inserted" timestamp chip — sits next to the
    source-type chip in the Sources panel. Italic + dimmed so it reads
    as ambient metadata rather than an interactive control (it's
    intentionally not clickable; users cannot filter by parse date). */
-
 .source-parsed-chip {
   font-family: var(--mono);
   font-size: 0.68rem;
@@ -356,11 +923,123 @@ const emit = defineEmits<{
   opacity: 0.78;
 }
 
-/* Match-level "Parsed" meta row: same shape as the existing Final
-   Score meta row; the parsed row gets a touch of breathing room
-   so the two stack cleanly when both render. */
+.source-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+  cursor: default;
+  user-select: none;
+  transition: filter 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
 
-.meta-row-parsed {
-  margin-top: 0.18rem;
+.source-type-chip.clickable { cursor: pointer; }
+
+.source-type-chip.clickable:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+.source-type-chip.active {
+  box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
+}
+
+.source-type-summary {
+  background: var(--accent-soft);
+  border-color: rgb(245 166 35 / 50%);
+  color: var(--accent-bright);
+}
+
+.source-type-scoreboard {
+  background: rgb(106 184 255 / 12%);
+  border-color: rgb(106 184 255 / 50%);
+  color: var(--tank);
+}
+
+.source-type-personal {
+  background: rgb(125 255 172 / 12%);
+  border-color: rgb(125 255 172 / 50%);
+  color: var(--support);
+}
+
+.source-type-rank {
+  background: rgb(255 201 77 / 14%);
+  border-color: rgb(255 201 77 / 50%);
+  color: var(--draw);
+}
+
+.source-type-chip.unknown {
+  background: transparent;
+  border-color: var(--border);
+  border-style: dashed;
+  color: var(--text-mute);
+  cursor: help;
+}
+
+:global([data-theme="light"]) .source-type-summary { color: var(--accent-text); }
+
+.sources-explain {
+  margin-top: 0.7rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.source-preview {
+  display: block;
+  margin: 0.5rem 0 0.25rem 1.1rem;
+  max-width: calc(100% - 1.1rem);
+  max-height: 460px;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: #000;
+  box-shadow: 0 8px 30px -8px rgb(0 0 0 / 50%);
+}
+
+.source-preview-error {
+  margin: 0.5rem 0 0.25rem 1.1rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  background: var(--surface-3);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+}
+
+/* ─── Light-mode pinpoint overrides for MatchCard-owned selectors ── */
+
+:global([data-theme="light"]) .match-map:hover,
+:global([data-theme="light"]) .match-map.active {
+  color: var(--accent-text);
+  text-shadow: none;
+}
+:global([data-theme="light"]) .hero-name { color: var(--accent-text); }
+
+:global([data-theme="light"]) .hero-name:hover,
+:global([data-theme="light"]) .hero-name.active {
+  color: var(--accent-text);
+  text-shadow: none;
+}
+:global([data-theme="light"]) .length-mark { color: var(--accent-text); }
+:global([data-theme="light"]) .match.expanded { background: var(--surface-2); }
+:global([data-theme="light"]) .sources { background: var(--surface-2); border-color: var(--border); }
+:global([data-theme="light"]) .source-preview { background: var(--surface-3); }
+
+/* ─── Narrow-viewport overrides ──────────────────────────── */
+
+@media (width <= 580px) {
+  .match-title-rhs { flex-wrap: wrap; }
+  .match-map { font-size: 1.3rem; }
 }
 </style>
