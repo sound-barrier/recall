@@ -1,5 +1,59 @@
 # Changelog
 
+## [0.1.2](https://github.com/sound-barrier/recall/compare/v0.1.1...v0.1.2) (2026-05-25)
+
+
+### Features
+
+* **dev:** make Debian/Ubuntu a first-class wails dev host ([1e6a076](https://github.com/sound-barrier/recall/commit/1e6a0762d2e7b65cf771f295fc53aa390833127a))
+
+
+### Bug Fixes
+
+* **a11y:** retire KNOWN_CONTRAST_DEBT — clear WCAG 2 AA on all views ([0b6054d](https://github.com/sound-barrier/recall/commit/0b6054da779ef20b322d5ea7c3687b345d2b08ce))
+* **app:** SetScreenshotsDir now restarts the watcher (server-mode parity) ([3c85432](https://github.com/sound-barrier/recall/commit/3c854325ae00c630a89dd025007a3e4fb8cc38c5))
+
+
+### Refactors
+
+* **app:** split pkg/app/app.go into per-concern files ([9c4c668](https://github.com/sound-barrier/recall/commit/9c4c6689333f77f7ed61ee8de1c0843e01b26036))
+* **frontend:** extract App.vue style block into styles/app.css ([c2cec9a](https://github.com/sound-barrier/recall/commit/c2cec9a9341d431388dc619d926ef4e8fca844e1))
+* **frontend:** extract FilterRail CSS into scoped style block ([ee44304](https://github.com/sound-barrier/recall/commit/ee44304859c7854f607462f065647a14ebfe08ac))
+* **frontend:** extract IngestView CSS into scoped style block ([533b7a3](https://github.com/sound-barrier/recall/commit/533b7a3a2e12aeee89f9691e035374d3c19989eb))
+* **frontend:** extract MatchCard CSS into scoped style block ([320bd4c](https://github.com/sound-barrier/recall/commit/320bd4c4c426ed8d6b54b3db1a21dc4732b1c0c6))
+* **frontend:** extract MatchesView CSS into scoped style block ([9ef03a6](https://github.com/sound-barrier/recall/commit/9ef03a60c934b4f3daca93277fdce7ab3f6e8b9b))
+* **frontend:** extract SettingsView CSS into scoped style block ([7473ec5](https://github.com/sound-barrier/recall/commit/7473ec54d9a629d1a68d82225dd88a998355511e))
+* **frontend:** extract UnknownMapsView CSS; close TECHNICAL_DEBT [#1](https://github.com/sound-barrier/recall/issues/1) ([38adabc](https://github.com/sound-barrier/recall/commit/38adabc18bd44a0acaaca16e58f56d51924cb99f))
+* **parser:** split pkg/parser/parser.go into per-concern files ([e88bb10](https://github.com/sound-barrier/recall/commit/e88bb109b38a5b8ce74b75b9dd670acd1f505857))
+
+
+### Documentation
+
+* add TECHNICAL_DEBT.md inventory and remediation plan ([feb2947](https://github.com/sound-barrier/recall/commit/feb29477d6f33bed04f15fe6f6cd043b689a13db))
+* **claude:** capture TECHNICAL_DEBT delete-policy + pre-push cover hook ([6ad63aa](https://github.com/sound-barrier/recall/commit/6ad63aae379945b3f86fa8d087cda90707afd04d))
+* **claude:** note new check-wailsjs guard in struct-field bullet ([fc049ef](https://github.com/sound-barrier/recall/commit/fc049ef7dd426e8e89bc50d8adf6515529379e16))
+* **claude:** refresh stale file-path refs after pkg/app split ([4e0975b](https://github.com/sound-barrier/recall/commit/4e0975ba3031bab642dc8485842c8ac3aed2345a))
+* **debt:** honor the file's own delete-when-paid policy ([4f9faf1](https://github.com/sound-barrier/recall/commit/4f9faf18b0f117efdb7dd7fb138011493a34cb4d))
+* **debt:** rescope KNOWN_CONTRAST_DEBT item after deeper investigation ([e1bb301](https://github.com/sound-barrier/recall/commit/e1bb301c29ace6412c33fb39c44d4050e0a64d69))
+* **releases:** document GHCR visibility-flip workaround; close [#10](https://github.com/sound-barrier/recall/issues/10) ([28bcf6e](https://github.com/sound-barrier/recall/commit/28bcf6e47f534b516d1750fa7e92a4408304f0f0))
+
+
+### CI
+
+* add smoke-test harness for scripts/release/*.sh ([b8138ff](https://github.com/sound-barrier/recall/commit/b8138ff9569ac3f21e75890e4a2516372491ee87))
+* extract frontend/dist prep into a composite action ([4eb3fef](https://github.com/sound-barrier/recall/commit/4eb3fefc0345f1c5912d9ad13e219bc7d9b7bbde))
+* extract wails-build-env + docker-build-env composite actions ([1639299](https://github.com/sound-barrier/recall/commit/163929948a9377d9e2c4be6854fc2235fd85b865))
+* **release:** extract release.yml shell bodies into scripts/release/ ([0a98538](https://github.com/sound-barrier/recall/commit/0a985389cdf3e86476bf01fadf7186a284d80a24))
+* **security:** SHA-pin every third-party GitHub Action ([c5ea14f](https://github.com/sound-barrier/recall/commit/c5ea14fe695809e1c2597f51e912f6d4b9ebd8b6))
+* **wails:** guard against wailsjs/models.ts drift from Go struct edits ([eb94396](https://github.com/sound-barrier/recall/commit/eb94396be4c53969ced3a91145cca8e44e96d666))
+
+
+### Tests
+
+* **app:** cite TestScreenshotType in screenshotType's ordering note ([c93dd8b](https://github.com/sound-barrier/recall/commit/c93dd8b06d92af10bd98854e9a1778bb351adfec))
+* **app:** lock read-time inference invariant with explicit tests ([f5fad6e](https://github.com/sound-barrier/recall/commit/f5fad6e88789ae576727c8b3ea7611c101543545))
+* **parser:** wire golden-file fixtures + make update-goldens ([a3ab1dc](https://github.com/sound-barrier/recall/commit/a3ab1dc316ff465b3fb37dd90c0563925a4cc69f))
+
 ## [0.1.1](https://github.com/sound-barrier/recall/compare/v0.1.0...v0.1.1) (2026-05-24)
 
 
