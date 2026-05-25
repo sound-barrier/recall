@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/check-action-pins.sh — enforce SHA pinning on every external
-# GitHub Action referenced from .github/workflows/.
+# GitHub Action referenced from .github/workflows/ and the first-party
+# composite actions under .github/actions/.
 #
 # Policy: third-party actions must be pinned by 40-char commit SHA with
 # a trailing `# vX.Y.Z` comment, e.g.
@@ -11,9 +12,10 @@
 # malicious commit. Dependabot understands the SHA + version-comment
 # format and bumps both fields together on its weekly run.
 #
-# First-party composite actions (./.github/actions/foo) are exempt —
-# they're stored in the same repo as the workflow, so SHA pinning would
-# be redundant.
+# First-party composite actions (./.github/actions/foo) are themselves
+# exempt from SHA pinning (they live in this repo), but any external
+# actions they reference are NOT — scanning both directories keeps the
+# supply-chain perimeter consistent.
 #
 # Usage: bash scripts/check-action-pins.sh
 
@@ -22,10 +24,18 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 WORKFLOWS_DIR="${ROOT}/.github/workflows"
+COMPOSITE_DIR="${ROOT}/.github/actions"
 
 if [ ! -d "${WORKFLOWS_DIR}" ]; then
   printf 'error: %s does not exist\n' "${WORKFLOWS_DIR}" >&2
   exit 1
+fi
+
+# Compose the source list. The composite-actions dir is optional —
+# silently skip when none exist yet.
+SCAN_DIRS=("${WORKFLOWS_DIR}")
+if [ -d "${COMPOSITE_DIR}" ]; then
+  SCAN_DIRS+=("${COMPOSITE_DIR}")
 fi
 
 # Extract every "uses: ..." line, normalise leading whitespace + the
@@ -55,7 +65,7 @@ while IFS= read -r line; do
 
   # Anything else (tag, branch, latest) is unpinned.
   unpinned+=("${ref}")
-done < <(grep -rhE "^\s*-?\s*uses:\s" "${WORKFLOWS_DIR}")
+done < <(grep -rhE "^\s*-?\s*uses:\s" "${SCAN_DIRS[@]}")
 
 if [ ${#unpinned[@]} -eq 0 ]; then
   exit 0

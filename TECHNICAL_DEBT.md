@@ -379,48 +379,6 @@ window.
 
 ---
 
-## 6. `//go:embed all:frontend/dist` blocks Go-only CI jobs
-
-**Size: S**
-
-**What.**
-`assets.go` at the repo root has `//go:embed all:frontend/dist`. The
-`frontend/dist/` directory doesn't exist on a fresh runner. Every CI
-job that loads the root Go package (gosec, deadcode, schemathesis-
-server, the build jobs, anything that runs `go build` or `go list`)
-must either:
-
-- Stub the dist (`mkdir -p frontend/dist && touch frontend/dist/index.html`)
-  — what the gosec job does, per the recent fix commit.
-- Or do a real frontend build first (`cd frontend && npm ci &&
-  npm run build`) — what the e2e and build-server-* jobs do.
-
-**Why it's debt.**
-
-- Every new CI job has to think about which fix to use. Forgetting
-  produces `pattern all:frontend/dist: no matching files found` —
-  noisy but the failure mode isn't obvious until you've seen it.
-- The stub is a magic incantation that lives in N copies of YAML.
-- A future contributor adding a new embed (e.g. for a manifest or
-  signing material) will hit the same shape.
-
-**Mitigation plan.**
-
-1. Add a CI composite action `.github/actions/prepare-go-build/`
-   with two inputs: `with-real-assets: true|false`.
-2. The action does either the stub or the real build based on the
-   input, then sets up Go.
-3. Replace the inline stubs/builds in `ci.yml`, `e2e.yml`,
-   `release.yml` with the composite-action invocation.
-4. Document in CLAUDE.md (under "Any CI job that loads the root
-   `main` package…") that the composite action is the canonical
-   way; ad-hoc stubbing is forbidden.
-
-**How large.**
-S. ~2 hours. Pays itself back the next time a new CI job is added.
-
----
-
 ## 7. Pre-existing `KNOWN_CONTRAST_DEBT` a11y exclusions
 
 **Size: M**
@@ -779,6 +737,14 @@ choices.
   `make check-wailsjs`, the lefthook `pre-commit.wailsjs-sync` hook,
   and the CI lint job. The long-term "generate wailsjs from
   OpenAPI" path remains open as item #4 below.
+- `//go:embed all:frontend/dist` setup duplication — extracted into
+  the `.github/actions/prepare-frontend-dist` composite action with
+  a `real-assets: 'true' | 'false'` input. CodeQL, ci.yml lint,
+  ci.yml gosec, coverage-go, and schemathesis all call the composite
+  instead of inlining `mkdir/touch` or `npm ci && npm run build`.
+  CONTRIBUTING.md documents the convention; `scripts/check-action-pins.sh`
+  now scans both `.github/workflows/` and `.github/actions/` so the
+  composite's own SHA pins stay enforced.
 
 ### Phase 1 — drift prevention ✅ COMPLETE
 
@@ -791,7 +757,7 @@ choices.
 ### Phase 2 — guard rails (1 week, M items)
 
 1. ~~#4 wailsjs models.ts CI guard, short-term form (M)~~ — done
-2. #6 prepare-go-build composite action (S)
+2. ~~#6 prepare-go-build composite action (S)~~ — done (named `prepare-frontend-dist`)
 3. #13 lazy-load view components (S)
 4. #12 commit golden-file fixtures + CI integration (M)
 
