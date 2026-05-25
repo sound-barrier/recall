@@ -1,0 +1,41 @@
+name: Docker build environment
+description: >
+  Set up BuildKit (via docker/setup-buildx-action) plus, optionally,
+  authenticate against GHCR for image push. Used by release.yml's
+  build-docker and publish-container jobs — both need BuildKit because
+  Dockerfile.build uses `--output type=local` in the cross-build
+  stages and `--mount=type=cache,...` for module cache reuse.
+  Pairs with the wails-build-env composite, which sets up the host-
+  side Wails toolchain for the macOS native build.
+
+inputs:
+  ghcr-login:
+    description: >
+      'true' authenticates the runner to ghcr.io using github.actor +
+      GITHUB_TOKEN, so a later `docker push` to
+      ghcr.io/<owner>/<image> succeeds. 'false' (default) skips
+      login — fine for build-only jobs that don't push.
+      The login step itself reads GITHUB_TOKEN from the
+      `github-token` input below (composites can't access secrets.*
+      directly).
+    required: false
+    default: "false"
+  github-token:
+    description: >
+      Token used for the GHCR login. Pass `${{ secrets.GITHUB_TOKEN }}`
+      from the caller. Ignored when ghcr-login is 'false'.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
+
+    - name: Log in to GHCR
+      if: ${{ inputs.ghcr-login == 'true' }}
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.github-token }}

@@ -1,0 +1,48 @@
+name: Wails build environment
+description: >
+  Set up the Go + Node toolchains and install the Wails CLI at the
+  pinned project version. Used by any job that runs `wails build`
+  natively (release.yml's build-mac, future native Wails build
+  jobs). The Wails CLI version is the single source of truth — bumping
+  it here propagates to every consumer.
+  Pairs with the docker-build-env composite, which sets up the
+  Dockerized cross-builds (Linux/Windows Wails + all server
+  binaries).
+
+inputs:
+  go-version:
+    description: >
+      Go major.minor for setup-go. Track go.mod's `go` directive
+      (currently 1.26+). The runner's setup-go install must be
+      ≥ go.mod's directive or `GOTOOLCHAIN=local` (set by setup-go
+      v6) makes the build fail. See CLAUDE.md "setup-go@v6 sets
+      GOTOOLCHAIN=local" for the full gotcha.
+    required: false
+    default: "1.26"
+  node-version:
+    description: >
+      Node major for setup-node. Track .devcontainer/devcontainer.json.
+    required: false
+    default: "26"
+  wails-version:
+    description: >
+      Wails CLI version to `go install`. Track .devcontainer/postCreate.sh
+      (the same pin lives there for the dev container). Bump both
+      together; `make check-deps` enforces parity.
+    required: false
+    default: "v2.12.0"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
+      with:
+        go-version: ${{ inputs.go-version }}
+
+    - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install Wails CLI
+      shell: bash
+      run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ inputs.wails-version }}
