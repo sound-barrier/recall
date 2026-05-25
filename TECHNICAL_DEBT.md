@@ -238,70 +238,57 @@ deliberately for visual subtlety — bumping it changes hierarchy.
 
 ---
 
-## 10. `release.yml` carries a lot of bespoke logic
+## 10. `release.yml` — composite-action + act-smoke-test residual
 
-**Size: M**
+**Size: S (remaining)**
 
-**What.**
-`.github/workflows/release.yml` does:
+**Status.** Phase 4 landed the two biggest wins:
 
-- 4 parallel build jobs (Linux + Windows Wails via Docker, macOS
-  Wails native, all server binaries, container image).
-- SBOM generation.
-- DMG packaging (Apple runner, `hdiutil`, in-DMG `README.txt`
-  generated inline via heredoc).
-- Container signing via cosign (keyless OIDC, sign-by-digest).
-- Build-provenance attestation.
-- Per-artifact `.sha256` files.
-- GHCR push + visibility flip.
-- A `workflow_dispatch` fallback for the case CLAUDE.md documents
-  ("when release-please's `GITHUB_TOKEN`-authored tag failed to
-  chain").
+- The in-DMG `README.txt` heredoc moved to `docs/dmg/README.txt` —
+  edited as a regular text file, copied into DMG staging by
+  `scripts/release/make-dmg.sh`. No more paired-edit fragility with
+  `docs/install-macos.md` sections 2-3 (the install-macos page now
+  documents the file as the source of truth via the synced-region
+  HTML comment).
+- Every non-trivial shell body in `release.yml` extracted into
+  `scripts/release/`:
+  - `package-linux.sh` — Linux/Windows tarball + .deb + Windows
+    artifact staging
+  - `make-dmg.sh` — macOS DMG wrapping
+  - `sign-image.sh` — cosign keyless container signing
+  - `flip-package-public.sh` — GHCR visibility flip
+  - `compute-sha256.sh` — per-artifact .sha256 sidecar files
 
-**Why it's debt.**
-The complexity isn't gratuitous — every piece exists because the
-project deliberately ships signed, verifiable releases. The debt is
-that all of it lives in one YAML file with shell-script bodies, and
-testing changes requires either cutting a tag (high cost) or
-firing `workflow_dispatch` (still produces real GHCR pushes, real
-releases).
+The `SHELL_SCRIPTS` glob in `Makefile` now covers
+`scripts/release/*.sh` so every script is shellcheck + shfmt
+linted on every PR.
 
-Specifically:
+**What's left.**
 
-- The in-DMG `README.txt` heredoc is paired with `docs/install-
-  macos.md` sections 2-3 and has to be edited in lock-step. CLAUDE.md
-  flags this with an HTML comment in the synced region, but the
-  pairing is fragile.
-- The cosign `tag%:*}@${DIGEST}` digest-derivation lives inline in
-  YAML rather than in a tested script.
-- The visibility-flip "with `continue-on-error`" workaround documents
-  that `GITHUB_TOKEN` lacks the right OAuth scope — a band-aid that
-  could be a real fix if the workflow used a PAT for visibility only.
-
-**Mitigation plan.**
-
-1. **Extract shell bodies into `scripts/release/`**: `make-dmg.sh`,
-   `sign-image.sh`, `compute-sha256.sh`, `flip-package-public.sh`.
-   Each gets a unit test where reasonable (e.g. the sha256 logic).
-2. **Move the in-DMG `README.txt` content** into a static file in
-   `docs/dmg/README.txt`. The workflow copies it during DMG
-   staging. `docs/install-macos.md` cross-links to the file
-   instead of CLAUDE.md describing a heredoc.
-3. **Use composite actions** for the repeated "build via Docker"
+1. **Composite actions** for the repeated "build via Docker"
    steps — Linux Wails and Windows Wails share most of their
-   shape.
-4. **Add `act` (Nektos/act) smoke tests** for the workflow's
+   shape, and the same `actions/setup-go` + `actions/setup-node`
+   prologue appears in multiple jobs. Each consolidation saves
+   ~5 lines of YAML and removes a copy-paste drift hazard.
+2. **`act` (Nektos/act) smoke tests** for the workflow's
    shell-only steps so future edits can be validated without
-   cutting a real tag.
-5. **Document the visibility-flip workaround** explicitly in
+   cutting a real tag. Now that the shell logic is in real `.sh`
+   files, each can be smoke-tested in isolation with fake env
+   vars + fixture filesystem layout.
+3. **Document the visibility-flip workaround** explicitly in
    CONTRIBUTING.md (or split off to RELEASES.md) so the
-   `continue-on-error` band-aid is intentional, not accidental.
+   `continue-on-error` band-aid stays intentional rather than
+   accidentally removed. Right now the rationale lives only in
+   the script's header comment and the workflow step's inline
+   note — duplication is fine, but a maintainer-facing pointer
+   would help.
 
 **How large.**
-M. ~1 day for the script extraction + DMG README move; another ½
-day for composite actions if scoped tightly. Don't extract for the
-sake of extracting — only break up the YAML where the *body* is
-non-trivial and would benefit from local testing.
+S. ~½ day for the composite-action consolidation; act smoke tests
+~1 day depending on appetite for testing local docker. None
+urgent — the script extraction already moved the test-iteration
+loop from "cut a release tag" to "run `bash scripts/release/X.sh`
+with stub inputs", which is the biggest unlock.
 
 ---
 
@@ -519,6 +506,13 @@ choices.
   pattern: any view re-converted to a static `import` fails CI.
   The bundle-size budget step gains separate initial-vs-total
   limits so a regression in either dimension is caught.
+- `release.yml` shell extraction — `scripts/release/package-linux.sh`,
+  `make-dmg.sh`, `sign-image.sh`, `flip-package-public.sh`,
+  `compute-sha256.sh` carry the non-trivial shell bodies that used
+  to live inline in the workflow. The in-DMG README.txt is now a
+  real file at `docs/dmg/README.txt` (no more heredoc paired with
+  `docs/install-macos.md`). `Makefile`'s `SHELL_SCRIPTS` glob
+  covers `scripts/release/*.sh` so every script is lint-checked.
 - Parser golden-file fixture infrastructure — `integration_test.go`
   defaults `RECALL_FIXTURE_DIR` to `pkg/parser/testdata/golden/`,
   `make update-goldens` seeds + regenerates sidecars, the test

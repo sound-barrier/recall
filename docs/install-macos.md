@@ -9,12 +9,12 @@ Grab `recall-{version}-darwin-arm64.dmg` from the
 [GitHub Releases](https://github.com/sound-barrier/recall/releases) page.
 
 <!--
-  Sections 2 + 3 below mirror the README.txt bundled inside the .dmg
-  (built by the "Create DMG" step in .github/workflows/release.yml).
-  Keep the two in sync — when you change the in-DMG README, update
-  this page; when you change this page, update the workflow's
-  heredoc. The "Terminal alternative" callout in section 3 is web-
-  only on purpose (the in-DMG copy stays brief).
+  Sections 2 + 3 below mirror the README.txt bundled inside the .dmg.
+  Source of truth: docs/dmg/README.txt — scripts/release/make-dmg.sh
+  copies it into the DMG staging dir during release. Keep this page
+  in sync with that file when either changes. The "Terminal
+  alternative" callout in section 3 is web-only on purpose (the
+  in-DMG copy stays brief).
 -->
 
 ## 2. Install — drag to Applications
