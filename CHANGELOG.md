@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/sound-barrier/recall/compare/v0.1.3...v0.1.4) (2026-05-25)
+
+
+### Bug Fixes
+
+* **ci:** release job needs actions/checkout to run extracted scripts ([eb9f117](https://github.com/sound-barrier/recall/commit/eb9f117566b14eea66c3be7a46bf532e45af826c))
+
 ## [0.1.3](https://github.com/sound-barrier/recall/compare/v0.1.2...v0.1.3) (2026-05-25)
 
 
