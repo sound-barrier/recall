@@ -153,7 +153,7 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 
 | Package | Contents |
 |---|---|
-| `pkg/app` | `App` struct, settings, match merging, `SSEHub`, Wails dialog methods |
+| `pkg/app` | `App` struct + per-concern files: `settings.go`, `tesseract.go`, `watcher.go`, `metrics_lifecycle.go`, `update.go`, `screenshots_dir.go`, `screenshot_handler.go`, `inference.go`, `match_record.go`, `merge.go`, `parse.go`, `sse.go`. Build-tag pair `app_wails.go` / `app_server.go` for dialog methods + event emit |
 | `pkg/cmd` | `RunWails` (Wails init) and `RunServer` (HTTP server + REST API) |
 | `pkg/db` | SQLite `Init()` + `DB` variable |
 | `pkg/metrics` | Prometheus `Collector` + `Server` |
@@ -206,7 +206,7 @@ screenshots/*.png
       ▼  (Tesseract via parser.ParseScreenshot, dispatched per screenshot type)
 parser.MatchResult
       │
-      ▼  (pkg/app/app.go: mergeByTimestamp → splitByMatchMetadata → mergeByStatsSignature → findMergeIntoExisting)
+      ▼  (pkg/app/parse.go + merge.go: mergeByTimestamp → splitByMatchMetadata → mergeByStatsSignature → findMergeIntoExisting)
 SQLite match_results       ← source of truth
       │
       ├──→ Wails GetMatchResults() ──→ Vue UI (App.vue)
@@ -224,7 +224,7 @@ quickplay matches are visible in the Wails UI but never reach Grafana.
 
 A single match produces 3-5 screenshots (SUMMARY, TEAMS, PERSONAL ×N
 heroes, optional rank screen). Each populates a disjoint subset of fields
-on `parser.MatchResult`. `pkg/app/app.go` merges them into one DB row via three
+on `parser.MatchResult`. `pkg/app/merge.go` merges them into one DB row via three
 sequential passes:
 
 1. **`mergeByTimestamp`** — groups screenshots whose filename timestamps
@@ -308,7 +308,7 @@ column landed have `source_types=NULL`; the frontend renders a "?"
 chip and `detectScreenshotSlots()` falls back to field-presence
 inference for those rows.
 
-The DB lives at `<appDataDir>/db/recall.db` where `appDataDir()` in `pkg/app/app.go`
+The DB lives at `<appDataDir>/db/recall.db` where `appDataDir()` in `pkg/app/settings.go`
 resolves to the platform user-config directory:
 
 | OS | Path |
@@ -366,10 +366,23 @@ enable→disable→enable cycle constructs a fresh `Server`.
 
 | File | Tag | Contains |
 |---|---|---|
-| `pkg/app/app.go` | *(none)* | All portable App methods; calls `a.emitParseComplete()` (abstract) |
+| `pkg/app/app.go` | *(none)* | `App` struct + `New` / `NewWithStore` / `Startup` only (~130 lines). Wires settings, tesseract probe, DB, optional metrics + watcher startup. |
+| `pkg/app/settings.go` | *(none)* | `Settings` JSON type, `loadSettings` / `loadSettingsFrom` / `saveSettings`, `appDataDir` / `settingsPath` |
+| `pkg/app/tesseract.go` | *(none)* | `TesseractStatus`, `defaultTesseractPath`, `checkTesseract`, `parseTesseractVersion`, `Get/Set/ResetTesseractPath`, `validateTesseractPath`, `ErrInvalidTesseractPath` |
+| `pkg/app/watcher.go` | *(none)* | fsnotify lifecycle: `startWatching` / `stopWatching` / `runWatchEvents` / `scheduleParseDebounced`, `Get/SetWatchEnabled`, `watchDebounce` |
+| `pkg/app/metrics_lifecycle.go` | *(none)* | Prometheus server start/stop, `Get/SetPrometheusEnabled` |
+| `pkg/app/update.go` | *(none)* | `UpdateInfo`, `GetVersion`, `CheckForUpdate`, `Version` ldflag, `releasesURL` test seam |
+| `pkg/app/screenshots_dir.go` | *(none)* | `Get/SetScreenshotsDir`, `validateScreenshotsDir`, `safePathChars`, `ErrInvalidScreenshotsDir` |
+| `pkg/app/screenshot_handler.go` | *(none)* | HTTP handler at `/_screenshot/<filename>` |
+| `pkg/app/inference.go` | *(none)* | `scrapeReader` + the load-bearing `inferSoleHeroPercent` / `inferResultFromRank` read-time helpers |
+| `pkg/app/match_record.go` | *(none)* | `MatchRecord` type, `GetMatchResults`, `ClearDatabase`, `readAllRecords`, `rowToMatchRecord`, `GetNewScreenshotCount` |
+| `pkg/app/merge.go` | *(none)* | `mergedRow`, `mergeWindow`, `parseFilenameTimestamp`, `mergeByTimestamp`, `mergeByStatsSignature`, `splitByMatchMetadata`, `mergeMatchResult`, `mergeTypeMaps`, `upsertMergedRow`, `marshalIfPresent`, conflict helpers |
+| `pkg/app/parse.go` | *(none)* | `ParseScreenshots` orchestration, `ParseProgressEvent`, `screenshotType` classifier, `findMergeIntoExisting`, `loadExistingMergedRows`, `timestampWindowOverlap`, `rowsConflict`, `unionSortedStrings` |
 | `pkg/app/app_wails.go` | `!serveronly` | `emitParseComplete` (wruntime.EventsEmit + SSEHub), `PickTesseractBinary`, `PickScreenshotsDir` |
 | `pkg/app/app_server.go` | `serveronly` | `emitParseComplete` (SSEHub only), stub errors for the two dialog methods |
 | `pkg/app/sse.go` | *(none)* | Exported `SSEHub` type with `Subscribe/Unsubscribe/Broadcast` |
+
+The split mirrors the existing test-file partition (`settings_io_test.go`, `tesseract_version_test.go`, `watch_events_test.go`, etc.) — production code and tests now have a 1:1 file-pair shape, so finding the implementation behind a test failure is a filename swap, not a grep.
 
 **Wails-bound methods (called from Vue via `wailsjs/go/app/App`)**:
 `ParseScreenshots`, `GetMatchResults`, `GetScreenshotsDir`,
@@ -393,7 +406,7 @@ and `POST /api/tesseract-path` respectively; `api.ts` in the frontend uses
 The full HTTP surface is documented in **`api/openapi.yaml`** (OpenAPI
 3.1.0, hand-written). Treat that file as the source of truth: when
 adding/removing a route in `pkg/cmd/server.go` or changing a response
-shape in `pkg/app/app.go` / `pkg/parser/parser.go`, edit the spec to
+shape in any of the `pkg/app/*.go` files / `pkg/parser/parser.go`, edit the spec to
 match. `make lint-openapi` runs Spectral against it (strict on warnings
 — the `spectral:oas` ruleset emits most useful issues as warnings, not
 errors, so the `--fail-severity=warn` flag in the Makefile is
