@@ -198,7 +198,7 @@ lint-docker: ## Lint Dockerfile.build (hadolint)
 # 2-space / indent-switch / binary-op-at-line-start style we
 # normalized to in commit ___ — `make fmt-shell` rewrites in place,
 # `make lint-shell` runs shfmt in diff mode + shellcheck.
-SHELL_SCRIPTS := $(wildcard scripts/*.sh) $(wildcard scripts/release/*.sh)
+SHELL_SCRIPTS := $(wildcard scripts/*.sh) $(wildcard scripts/release/*.sh) $(wildcard scripts/release/smoke/*.sh)
 
 lint-shell: ## Lint shell scripts (shellcheck + shfmt diff)
 	@echo "[ recall ] Linting shell scripts (shellcheck)…"
@@ -456,6 +456,9 @@ test-e2e: ## E2E browser tests via Playwright (boots server in $(E2E_HOME) on :7
 	@echo "[ recall ] ✓  E2E tests passed"
 
 test-all: test test-e2e ## Run unit tests + E2E (everything)
+
+smoke-release-scripts: ## Smoke-test scripts/release/*.sh in temp dirs (no real tag needed)
+	@bash scripts/release/smoke/smoke.sh
 
 cover: cover-go cover-frontend ## Generate Go + frontend coverage reports (umbrella)
 
