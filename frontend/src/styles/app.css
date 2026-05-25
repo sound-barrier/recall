@@ -10,7 +10,7 @@
   --hairline: rgb(255 255 255 / 7%);
   --text: #ecedf0;
   --text-dim: #9ca0ac;
-  --text-faint: #6b6f7a;
+  --text-faint: #878a96;
   --text-mute: #44474f;
 
   /* Overwatch signature grays. Used as a structural brand element —
@@ -80,7 +80,7 @@
   --hairline: rgb(74 74 74 / 16%);
   --text: #2b2a26;
   --text-dim: #4A4A4A;
-  --text-faint: #6f6a5e;
+  --text-faint: #6a655a;
   --text-mute: #a39e90;
   --brand-gray: #4A4A4A;
   --brand-gray-soft: rgb(74 74 74 / 85%);

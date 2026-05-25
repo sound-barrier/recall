@@ -70,64 +70,6 @@ cascade is already external — so each component move is mechanical
 
 ---
 
-## 7. `KNOWN_CONTRAST_DEBT` a11y exclusions — needs full design pass
-
-**Size: M**
-
-**What.**
-`frontend/tests/e2e/a11y.spec.ts` keeps a baselined list of four CSS
-selectors excluded from axe-core's color-contrast scan:
-
-- `.theme-toggle` — Day/Night segmented control on Settings.
-- `.weekstart-row` — first-day-of-week picker on Settings.
-- `.setting-meta` — "Last run" / "blocked" hint text on Ingest.
-- `.big-switch-state` — "Off" / "Armed" / "Live" labels on Ingest.
-
-The rendering pipeline produces a noticeable luminance drop on small
-text in the OW Wordmark / Futura font stack (~78% of the declared
-`color:` value as measured by axe-core). Several elements OUTSIDE
-the original four — `.engine-version`, `.setting-value`,
-`.setting-desc`, `<em>` inside descriptions — also fall short of
-WCAG 2 AA when measured against the rendered (not declared)
-foreground. They didn't surface earlier because the four-element
-exclusion list partially shielded them when the Ingest view was in
-its "Tesseract not detected" state in CI, which never renders
-`.engine-version`.
-
-**Why it's debt.**
-External accessibility audits use rendered pixel values, not declared
-sRGB. Every release that ships with `--text-faint` / `--text-dim`
-calibrated for the declared-value contrast budget will flag on audit
-even though the project intends to clear WCAG 2 AA.
-
-**Mitigation plan.**
-
-1. **Audit the rendering pipeline.** Determine why axe-core reports
-   colors ~22% darker than declared (anti-aliasing? a parent
-   `opacity`? font-smoothing?). Could be a single root cause whose
-   fix lifts many elements above threshold at once.
-2. **Re-baseline `--text-dim` and `--text-faint`** with margin for
-   the rendering loss. Conservative starting point: each variable
-   needs ~10% more luminance contrast against its typical surface
-   than the WCAG threshold demands.
-3. **Sweep all `var(--text-dim)` / `var(--text-faint)` usages** for
-   contextual surface — some sit on `--surface-3`, others on
-   `--surface-2`, others on `--bg`. Each needs its own check.
-4. **Remove `KNOWN_CONTRAST_DEBT` entries one at a time** as
-   selectors clear axe locally with the rebuilt binary (CRITICAL:
-   `make test-e2e` rebuilds the embedded `frontend/dist`; `npx
-   playwright test` against a stale binary will mislead).
-5. Once the list is empty, delete the array and update CLAUDE.md's
-   "A11y debt is tracked in…" bullet.
-
-**How large.**
-M. ~½ day for the rendering-pipeline root-cause analysis, then a
-sequence of small color tunes. Needs design-lead sign-off on each
-new shade because the existing `--text-faint` was chosen
-deliberately for visual subtlety — bumping it changes hierarchy.
-
----
-
 ## 10. `release.yml` — composite actions + `act` smoke tests
 
 **Size: S**
@@ -264,14 +206,12 @@ and audit every new method against parity at merge time.
 
 ## Prioritized roadmap
 
-Five items remain, ordered by `risk × cost-to-fix-later`:
+Four items remain, ordered by `risk × cost-to-fix-later`:
 
-1. **#7** — `KNOWN_CONTRAST_DEBT` rendering-pipeline audit (M). Highest
-   risk: external a11y audit on any release will surface it.
-2. **#12** — fixture commit (S). Cheap once the privacy review clears.
-3. **#1** — per-component scoped CSS extraction (M, mechanical). 8 small PRs.
-4. **#10** — composite actions + `act` smoke tests (S). Low risk, quality-of-life.
-5. **#14** — Wails dev portability (L/XL). Structural; needs product input.
+1. **#12** — fixture commit (S). Cheap once the privacy review clears.
+2. **#1** — per-component scoped CSS extraction (M, mechanical). 8 small PRs.
+3. **#10** — composite actions + `act` smoke tests (S). Low risk, quality-of-life.
+4. **#14** — Wails dev portability (L/XL). Structural; needs product input.
 
 The codebase is in good shape today; none of the above is urgent.
 This file exists to make the latent costs visible so they don't
