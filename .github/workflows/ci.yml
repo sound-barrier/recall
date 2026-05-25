@@ -246,13 +246,6 @@ jobs:
             exit 1
           fi
 
-      # Verify wailsjs/go/models.ts reflects every json:"…" tag on the
-      # Wails-exposed Go structs. wails dev only regenerates that file
-      # on macOS, so Linux/Windows contributors can introduce silent
-      # drift; this check turns that into a noisy CI failure.
-      - name: Verify wailsjs/go/models.ts is in sync with Go structs
-        run: bash scripts/check-wailsjs-models.sh
-
   # ── Job 2: Linux/amd64 Wails app ────────────────────────────────────────
   build-linux:
     runs-on: ubuntu-latest

@@ -73,45 +73,6 @@ mechanical (find selectors, move, verify, commit).
 
 ---
 
-## 4. `wailsjs/go/models.ts` — long-term: regenerate from OpenAPI
-
-**Size: L**
-
-**What.**
-The short-term guard (`scripts/check-wailsjs-models.sh`, now wired
-into Make, lefthook, and CI) catches silent drift when a Go struct
-field is added without the matching `wailsjs/go/models.ts` update.
-That removes the worst symptom but the underlying duplication —
-two parallel TypeScript type sources for the same Go data shape —
-remains.
-
-**Why it's debt.**
-The `wailsjs/` directory is committed to git but generated, and
-generated only on macOS. Linux and Windows contributors can't
-refresh it. The "add a new exported method on App" four-step
-process still requires a macOS contributor to regenerate. Every
-macOS dev run produces uncommitted local diffs.
-
-**Mitigation plan.**
-
-1. The frontend already typechecks `api.ts` against `api.gen.d.ts`
-   (from `make gen-types`). The Wails delegate path in `api.ts`
-   currently uses untyped `window.go.app.App` calls.
-2. Treat `api/openapi.yaml` as the single source of truth. Wails-
-   mode delegation in `api.ts` can be typed via the same
-   `paths['/api/foo']` types that the server path uses, with the
-   request body shape lifted into the Wails call signature.
-3. Once `api.ts` no longer reads from `wailsjs/go/models.ts`,
-   `wailsjs/` can be removed from git entirely and added to
-   `.gitignore` — it becomes a build artifact like `frontend/dist/`.
-4. The wails-dev regen step on macOS still runs but its output is no
-   longer load-bearing for typechecking.
-
-**How large.**
-L. Schedule when the four-step API-binding process becomes a real
-bottleneck. The short-term CI guard makes this optional rather than
-urgent.
-
 ---
 
 ---
@@ -461,6 +422,17 @@ choices.
   `assets.go` still works. The historical filter workarounds in
   `scripts/deadcode-check.sh` and `make lint-gosec` stay as
   defence in depth.
+- `wailsjs/` checked-in-bindings → build-artifact —
+  `frontend/wailsjs/` is now gitignored; `wails build` /
+  `wails dev` regenerates it on demand. `api.ts` consumes the
+  OpenAPI-generated types in `api.gen.d.ts` for both the Wails
+  delegate and the server-mode fetch path, so no frontend code
+  reads from `wailsjs/`. The previous `scripts/check-wailsjs-models.sh`
+  drift guard (Phase 2 #4) is deleted along with its Makefile +
+  lefthook + CI references, because there's nothing to drift
+  against anymore. Adding a field to a Go struct is now a 2-step
+  follow-up (struct + OpenAPI schema → `make gen-types`); the
+  third "edit wailsjs/go/models.ts by hand" step is gone.
 - Parser golden-file fixture infrastructure — `integration_test.go`
   defaults `RECALL_FIXTURE_DIR` to `pkg/parser/testdata/golden/`,
   `make update-goldens` seeds + regenerates sidecars, the test
@@ -516,7 +488,7 @@ choices.
 
 1. ~~#5 move Go module root out of overlap with frontend/ (S)~~ — done (npm postinstall hook seeds frontend/node_modules/go.mod sentinel; defence-in-depth workarounds kept)
 2. ~~#10 release.yml script extraction (M)~~ — done (composite-action + act-smoke-test residual)
-3. #4 long-term: wailsjs from OpenAPI (L)
+3. ~~#4 long-term: wailsjs from OpenAPI (L)~~ — done (wailsjs/ removed from git; api.ts uses api.gen.d.ts for both transports; Phase 2 #4 check-wailsjs guard retired)
 4. #14 server-mode parity audit or Wails containerization (L)
 5. #17 CLAUDE.md naturally shrinks as a side effect
 
