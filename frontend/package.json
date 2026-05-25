@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "typecheck": "vue-tsc --noEmit",
     "gen:types": "openapi-typescript ../api/openapi.yaml -o src/api.gen.d.ts",
-    "dead:ts": "knip"
+    "dead:ts": "knip",
+    "postinstall": "node ./scripts/seed-go-sentinel.cjs"
   },
   "dependencies": {
     "vue": "^3.5.34"
