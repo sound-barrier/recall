@@ -182,19 +182,187 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-/* Per-source-file "first inserted" timestamp chip — sits next to the
-   source filename in the diagnostic source list. Same italic/dim
-   treatment as the matching chip in MatchCard so the two views read
-   consistently when a user jumps between them. */
+/* ─── View intro ─────────────────────────────────────────── */
 
-.source-parsed-chip {
+/* The heading em uses the draw/amber color — "attention, not alarm" */
+.unknown-heading em {
+  color: var(--draw);
+  background: var(--draw-soft);
+  font-style: normal;
+  padding: 0 0.25rem;
+  margin: 0 -0.05rem;
+  border-radius: 1px;
+}
+:global([data-theme="light"]) .unknown-heading em { color: var(--draw); }
+
+.unknown-desc {
+  margin-top: 0.65rem;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  max-width: 64ch;
+}
+
+/* ─── Unknown-record cards ───────────────────────────────── */
+
+.unknown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 1.6rem;
+}
+
+/* Each unknown record is a card with an amber left bar */
+.unknown-card {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.unknown-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--draw-line);
+}
+
+.unknown-card.expanded {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+/* Card header row */
+.unknown-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1rem 0.8rem 1.4rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 140ms ease;
+}
+
+.unknown-card-head:hover { background: var(--surface-2); }
+.unknown-card.expanded .unknown-card-head { background: transparent; }
+
+.unknown-head-lhs {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.unknown-idx {
   font-family: var(--mono);
-  font-size: 0.68rem;
-  font-style: italic;
+  font-size: 0.72rem;
   color: var(--text-faint);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.unknown-key-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.unknown-key {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text);
   white-space: nowrap;
-  margin-left: 0.35rem;
-  opacity: 0.78;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.01em;
+}
+
+.unknown-src-count {
+  font-size: 0.69rem;
+  color: var(--text-faint);
+}
+
+.unknown-head-rhs {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* ─── 8-column field diagnostic strip ────────────────────── */
+
+.unknown-fields {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  border-top: 1px solid var(--border-soft);
+  padding: 0 1rem 0 1.4rem;
+}
+
+.field-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.5rem 0.5rem 0.5rem 0;
+  border-right: 1px solid var(--border-soft);
+}
+
+.field-cell:last-child { border-right: none; }
+
+.field-label {
+  font-size: 0.6rem;
+  font-family: var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  line-height: 1;
+}
+
+.field-value {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.field-cell.filled .field-label { color: var(--text-dim); }
+.field-cell.filled .field-value { color: var(--text); }
+
+.field-cell.vacant .field-value {
+  font-style: italic;
+  font-size: 0.72rem;
+}
+
+/* ─── Expanded section: sources + stats ──────────────────── */
+
+.unknown-expanded {
+  border-top: 1px solid var(--border-soft);
+  padding: 1rem 1.4rem;
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.unknown-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.unknown-sources .block-eyebrow {
+  margin-bottom: 0.45rem;
+}
+
+.unknown-stats .block-eyebrow {
+  margin-bottom: 0.6rem;
 }
 </style>

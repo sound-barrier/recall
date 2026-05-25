@@ -897,30 +897,16 @@ button.chev-btn:hover { color: var(--accent-bright); }
   font-family: var(--mono);
   font-size: 0.72rem;
 }
-.source-file + .source-file { margin-top: 0.45rem; }
+
+/* .source-file / .source-name-text / .source-parsed-chip moved back to
+   app.css — they're also used by UnknownMapsView. .source-row stays
+   here (MatchCard-only). */
 
 .source-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-}
-
-.source-name-text { font-size: 0.72rem; }
-
-/* Per-source-file "first inserted" timestamp chip — sits next to the
-   source-type chip in the Sources panel. Italic + dimmed so it reads
-   as ambient metadata rather than an interactive control (it's
-   intentionally not clickable; users cannot filter by parse date). */
-.source-parsed-chip {
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  font-style: italic;
-  color: var(--text-faint);
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  margin-left: 0.35rem;
-  opacity: 0.78;
 }
 
 .source-type-chip {
@@ -995,27 +981,8 @@ button.chev-btn:hover { color: var(--accent-bright); }
   gap: 0.45rem;
 }
 
-.source-preview {
-  display: block;
-  margin: 0.5rem 0 0.25rem 1.1rem;
-  max-width: calc(100% - 1.1rem);
-  max-height: 460px;
-  height: auto;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: #000;
-  box-shadow: 0 8px 30px -8px rgb(0 0 0 / 50%);
-}
-
-.source-preview-error {
-  margin: 0.5rem 0 0.25rem 1.1rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.72rem;
-  color: var(--text-faint);
-  background: var(--surface-3);
-  border: 1px solid var(--border-soft);
-  border-radius: 2px;
-}
+/* .source-preview / .source-preview-error moved back to app.css —
+   UnknownMapsView's expanded card also renders a preview <img>. */
 
 /* ─── Light-mode pinpoint overrides for MatchCard-owned selectors ── */
 
@@ -1034,7 +1001,8 @@ button.chev-btn:hover { color: var(--accent-bright); }
 :global([data-theme="light"]) .length-mark { color: var(--accent-text); }
 :global([data-theme="light"]) .match.expanded { background: var(--surface-2); }
 :global([data-theme="light"]) .sources { background: var(--surface-2); border-color: var(--border); }
-:global([data-theme="light"]) .source-preview { background: var(--surface-3); }
+
+/* [data-theme="light"] .source-preview moved back to app.css */
 
 /* ─── Narrow-viewport overrides ──────────────────────────── */
 

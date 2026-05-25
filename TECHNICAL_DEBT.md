@@ -29,47 +29,6 @@ first.
 
 ---
 
-## 1. App.vue styles — per-component scoped extraction
-
-**Size: M**
-
-**What.**
-Component-specific selectors live in the shared
-`frontend/src/styles/app.css` rather than alongside the components
-that own them. Adding a class to `MatchCard.vue` still means opening
-a ~3 700-line file in a separate window to find the matching rule.
-Specificity collisions (the `.match-header` / `:where()` workaround)
-remain easy to miss.
-
-**Why it's debt.**
-Cascade-global selectors mean a class rename in an SFC silently
-loses its styling unless the matching rule in `app.css` is hand-
-synced. Co-locating the rule with the markup makes drift impossible.
-
-**Mitigation plan.**
-
-Per leaf component (smallest first — ParseProgressPanel → MatchCard
-→ MatchGroupSection → FilterRail → IngestView → SettingsView →
-MatchesView → UnknownMapsView), one PR each:
-
-1. Identify selectors in `styles/app.css` that target only the
-   component's classes.
-2. Move them into a `<style scoped>` block in the component SFC.
-3. Verify visually with `npm --prefix frontend run dev` and run
-   `make lint` + `make test`.
-4. Merge.
-
-Cross-cutting tokens (CSS custom properties, font-faces, theme
-overrides) stay in `styles/app.css` as a shared file imported by
-App.vue's shell.
-
-**How large.**
-M. ~1 day across 8 small PRs. The big-bang risk is gone — the shared
-cascade is already external — so each component move is mechanical
-(find selectors, move, verify, commit).
-
----
-
 ## 10. `release.yml` — composite actions + `act` smoke tests
 
 **Size: S**
@@ -206,12 +165,11 @@ and audit every new method against parity at merge time.
 
 ## Prioritized roadmap
 
-Four items remain, ordered by `risk × cost-to-fix-later`:
+Three items remain, ordered by `risk × cost-to-fix-later`:
 
 1. **#12** — fixture commit (S). Cheap once the privacy review clears.
-2. **#1** — per-component scoped CSS extraction (M, mechanical). 8 small PRs.
-3. **#10** — composite actions + `act` smoke tests (S). Low risk, quality-of-life.
-4. **#14** — Wails dev portability (L/XL). Structural; needs product input.
+2. **#10** — composite actions + `act` smoke tests (S). Low risk, quality-of-life.
+3. **#14** — Wails dev portability (L/XL). Structural; needs product input.
 
 The codebase is in good shape today; none of the above is urgent.
 This file exists to make the latent costs visible so they don't
