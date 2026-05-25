@@ -512,59 +512,9 @@ main#main-content {
   text-transform: uppercase;
 }
 
-/* ─── Control Deck (parse row) ───────────────────────────── */
-
-.control-deck {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.2rem;
-  padding: 0.9rem 1.1rem;
-  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  position: relative;
-}
-
-.control-deck::before {
-  content: '';
-  position: absolute; left: 0; top: 0; bottom: 0;
-  width: 2px;
-  background: var(--accent);
-  opacity: 0.85;
-}
-
-.deck-path {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.deck-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.22em;
-}
-
-.deck-path-value {
-  font-family: var(--mono);
-  font-size: 0.85rem;
-  color: var(--text-dim);
-  word-break: break-all;
-  line-height: 1.3;
-}
-
-.deck-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.55rem;
-}
+/* Orphan .control-deck / .deck-* rules deleted — no template references.
+   The parse-row "deck" UI was replaced by .setting-row + the big-switch
+   pattern in IngestView. */
 
 /* ─── Buttons ────────────────────────────────────────────── */
 
@@ -604,12 +554,7 @@ main#main-content {
   transform: translateY(0);
 }
 
-.btn-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: #1a0a00;
-  box-shadow: 0 0 0 2px rgb(26 10 0 / 25%);
-}
+/* .btn-dot moved to IngestView.vue */
 
 .btn.ghost {
   background: transparent;
@@ -660,21 +605,8 @@ main#main-content {
 
 .btn.danger:active:not(:disabled) { transform: translateY(0); }
 
-/* Confirm-state row gets a subtle red tint on the left edge */
-.setting-row.danger-row {
-  border-left: 3px solid var(--loss-line);
-  padding-left: calc(1.4rem - 3px);
-  background: var(--loss-soft);
-  border-radius: 2px;
-  transition: background 200ms ease, border-color 200ms ease;
-}
-
-.clear-confirm-group {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.5rem;
-}
+/* .setting-row.danger-row, .clear-confirm-group, and the matching
+   light-theme override moved to IngestView.vue */
 
 [data-theme="light"] .btn.danger { color: #fff; }
 [data-theme="light"] .btn.danger-outline { color: var(--loss); border-color: var(--loss-line); }
@@ -683,7 +615,6 @@ main#main-content {
   background: var(--loss-soft);
   border-color: var(--loss);
 }
-[data-theme="light"] .setting-row.danger-row { background: var(--loss-soft); }
 
 /* ─── Switch toggle ──────────────────────────────────────── */
 
@@ -1393,25 +1324,11 @@ main#main-content {
   color: var(--accent-text);
 }
 
-.setting-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.55rem;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  color: var(--text-faint);
-  letter-spacing: 0.04em;
-  font-feature-settings: "tnum";
-}
-
-.meta-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--win);
-  box-shadow: 0 0 8px var(--win-line);
-  animation: pulse-dot 2.4s ease-in-out infinite;
-}
+/* .setting-meta and .meta-dot moved to IngestView.vue.
+   @keyframes pulse-dot stays here — referenced by
+   ParseProgressPanel.vue (.pp-scan-dot, .pp-arrow) which lives in
+   its own <style scoped> block. Animation-name references from a
+   scoped block to a global @keyframes do not get hashed. */
 
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -1440,87 +1357,15 @@ main#main-content {
   border-radius: 2px;
 }
 
-/* ─── Big switch (settings-page toggle) ──────────────────── */
-
-.big-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.85rem;
-  cursor: pointer;
-  user-select: none;
-  position: relative;
-}
-
-.big-switch input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-  width: 0; height: 0;
-}
-
-.big-switch-track {
-  position: relative;
-  width: 56px; height: 30px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  border: 1px solid var(--border-strong);
-  transition: background 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
-}
-
-.big-switch-knob {
-  position: absolute;
-  top: 2px; left: 2px;
-  width: 24px; height: 24px;
-  border-radius: 50%;
-  background: var(--text-faint);
-  transition:
-    transform 260ms cubic-bezier(0.4, 0.0, 0.2, 1),
-    background 240ms ease,
-    box-shadow 240ms ease;
-}
-
-.big-switch.on .big-switch-track {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  box-shadow: 0 0 18px -2px var(--accent-glow);
-}
-
-.big-switch.on .big-switch-track .big-switch-knob {
-  transform: translateX(26px);
-  background: var(--accent);
-  box-shadow: 0 0 14px var(--accent-glow);
-}
-
-.big-switch-state {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.22em;
-  color: var(--text-faint);
-  min-width: 3.6rem;
-  transition: color 220ms ease;
-}
-
-.big-switch.on .big-switch-state {
-  color: var(--accent);
-}
-
-.big-switch:focus-within .big-switch-track {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--accent-soft), 0 0 18px -2px var(--accent-glow);
-}
-
-/* ─── Primary button — big variant for the Settings parse CTA ─ */
+/* .big-switch family + .btn.primary.big .btn-dot descendant moved to
+   IngestView.vue. .btn.primary.big base size kept here as a button
+   variant — used by IngestView's parse CTA but stays in the .btn
+   family for consistency. */
 
 .btn.primary.big {
   padding: 0.85rem 1.4rem;
   font-size: 0.85rem;
   letter-spacing: 0.06em;
-}
-
-.btn.primary.big .btn-dot {
-  width: 7px; height: 7px;
 }
 
 /* ─── System Alert banner ────────────────────────────────────
@@ -1681,55 +1526,8 @@ main#main-content {
      overlay regardless of theme (think "warning sticker"). */
 }
 
-/* ─── Engine status panel (Ingest → 01 / Engine) ───────── */
-
-.engine-row { transition: background 220ms ease; }
-.engine-row.alert { background: var(--loss-soft); }
-.engine-row.alert::before { background: var(--loss); box-shadow: 0 0 10px var(--loss-line); }
-
-.engine-status {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  margin-top: 0.7rem;
-  padding: 0.45rem 0.7rem;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  max-width: 100%;
-}
-.engine-status.ok    { border-color: var(--win-line); background: var(--win-soft); }
-.engine-status.fail  { border-color: var(--loss-line); background: var(--loss-soft); }
-
-.engine-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--text-faint);
-  flex-shrink: 0;
-}
-
-.engine-status.ok .engine-dot {
-  background: var(--win);
-  box-shadow: 0 0 10px var(--win-line);
-  animation: pulse-dot 2.4s ease-in-out infinite;
-}
-
-.engine-status.fail .engine-dot {
-  background: var(--loss);
-  box-shadow: 0 0 10px var(--loss-line);
-  animation: pulse-dot 1.4s ease-in-out infinite;
-}
-
-.engine-state {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-}
-.engine-status.ok .engine-state   { color: var(--win); }
-.engine-status.fail .engine-state { color: var(--loss); }
+/* .engine-row/.engine-status/.engine-dot/.engine-state moved to
+   IngestView.vue */
 
 /* ── Version block (masthead bottom-right) ──────────────────────────────── */
 .ver-block {
@@ -1805,78 +1603,8 @@ main#main-content {
   user-select: none;
 }
 
-.engine-version {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  color: var(--text-dim);
-  padding: 0.1rem 0.4rem;
-  background: var(--surface-3);
-  border-radius: 2px;
-  font-feature-settings: "tnum";
-}
-
-.engine-path {
-  font-family: var(--mono);
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  word-break: break-all;
-  letter-spacing: 0;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.engine-error {
-  margin-top: 0.55rem;
-  font-family: var(--body);
-  font-size: 0.82rem;
-  color: var(--loss);
-  line-height: 1.5;
-  max-width: 60ch;
-}
-
-.engine-meta {
-  margin-top: 0.55rem;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  color: var(--text-faint);
-  letter-spacing: 0.04em;
-}
-
-.engine-meta code {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  background: var(--surface-2);
-  border: 1px solid var(--border-soft);
-  padding: 0.05rem 0.35rem;
-  border-radius: 2px;
-  color: var(--text-dim);
-}
-
-.engine-control {
-  align-items: flex-end;
-}
-
-.engine-unsupported-warn {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  margin-top: 0.6rem;
-  padding: 0.6rem 0.85rem;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  border-radius: 3px;
-  font-family: var(--body);
-  font-size: 0.8rem;
-  color: color-mix(in srgb, var(--accent) 80%, var(--text));
-  line-height: 1.55;
-  max-width: 60ch;
-}
-
-.engine-unsupported-warn .warn-icon {
-  flex-shrink: 0;
-  margin-top: 0.12rem;
-  color: var(--accent);
-}
+/* .engine-version/.engine-path/.engine-error/.engine-meta/
+   .engine-control/.engine-unsupported-warn moved to IngestView.vue */
 
 /* Modal overlay */
 .modal-overlay {
@@ -1949,47 +1677,8 @@ main#main-content {
   opacity: 0;
 }
 
-/* Inline button styled as a text-link — used in the "Use default" cue. */
-.link-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: var(--accent);
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  text-decoration-thickness: 1px;
-  text-decoration-color: var(--accent-soft);
-  transition: text-decoration-color 200ms ease, color 200ms ease;
-}
-
-.link-btn:hover {
-  text-decoration-color: var(--accent);
-}
-[data-theme="light"] .link-btn { color: var(--accent-text); }
-[data-theme="light"] .link-btn:hover { text-decoration-color: var(--accent-text); }
-
-/* Disabled state for big-switch (used by Watch when Tesseract is missing). */
-.big-switch.disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.big-switch.disabled .big-switch-track { background: var(--surface-2); border-color: var(--border); }
-.big-switch.disabled .big-switch-knob { background: var(--text-mute); box-shadow: none; }
-
-/* "Blocked — needs Tesseract" meta line under Watch / Manual Parse
-   when those controls are gated. */
-.setting-meta.blocked {
-  color: var(--loss);
-}
-
-.block-mark {
-  font-size: 0.85rem;
-  margin-right: 0.15rem;
-  filter: saturate(0.85);
-}
+/* .link-btn (+ light theme), .big-switch.disabled,
+   .setting-meta.blocked, .block-mark moved to IngestView.vue */
 
 .settings-heading.missing em {
   color: var(--loss);
@@ -2072,8 +1761,6 @@ main#main-content {
 [data-theme="light"] .empty-sub strong { color: var(--accent-text); }
 [data-theme="light"] .count strong { color: var(--accent-text); }
 [data-theme="light"] .chev.open { color: var(--accent-text); }
-[data-theme="light"] .control-deck { background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%); }
-[data-theme="light"] .control-deck::before { opacity: 1; }
 [data-theme="light"] .stats { background: var(--surface); }
 [data-theme="light"] .stat { background: var(--surface); }
 

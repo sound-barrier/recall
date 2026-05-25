@@ -313,3 +313,297 @@ const emit = defineEmits<{
     </div>
   </section>
 </template>
+
+<style scoped>
+/* ─── Engine status panel ────────────────────────────────── */
+
+.engine-row { transition: background 220ms ease; }
+.engine-row.alert { background: var(--loss-soft); }
+.engine-row.alert::before { background: var(--loss); box-shadow: 0 0 10px var(--loss-line); }
+
+.engine-status {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.7rem;
+  padding: 0.45rem 0.7rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  max-width: 100%;
+}
+.engine-status.ok   { border-color: var(--win-line); background: var(--win-soft); }
+.engine-status.fail { border-color: var(--loss-line); background: var(--loss-soft); }
+
+.engine-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.engine-status.ok .engine-dot {
+  background: var(--win);
+  box-shadow: 0 0 10px var(--win-line);
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+
+.engine-status.fail .engine-dot {
+  background: var(--loss);
+  box-shadow: 0 0 10px var(--loss-line);
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+.engine-state {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.engine-status.ok .engine-state   { color: var(--win); }
+.engine-status.fail .engine-state { color: var(--loss); }
+
+.engine-version {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  padding: 0.1rem 0.4rem;
+  background: var(--surface-3);
+  border-radius: 2px;
+  font-feature-settings: "tnum";
+}
+
+.engine-path {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  word-break: break-all;
+  letter-spacing: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.engine-error {
+  margin-top: 0.55rem;
+  font-family: var(--body);
+  font-size: 0.82rem;
+  color: var(--loss);
+  line-height: 1.5;
+  max-width: 60ch;
+}
+
+.engine-meta {
+  margin-top: 0.55rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+
+.engine-meta code {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  padding: 0.05rem 0.35rem;
+  border-radius: 2px;
+  color: var(--text-dim);
+}
+
+.engine-control {
+  align-items: flex-end;
+}
+
+.engine-unsupported-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 3px;
+  font-family: var(--body);
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--accent) 80%, var(--text));
+  line-height: 1.55;
+  max-width: 60ch;
+}
+
+.engine-unsupported-warn .warn-icon {
+  flex-shrink: 0;
+  margin-top: 0.12rem;
+  color: var(--accent);
+}
+
+/* ─── Big switch (Watch toggle) ──────────────────────────── */
+
+.big-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.big-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0; height: 0;
+}
+
+.big-switch-track {
+  position: relative;
+  width: 56px; height: 30px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  transition: background 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+}
+
+.big-switch-knob {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transition:
+    transform 260ms cubic-bezier(0.4, 0.0, 0.2, 1),
+    background 240ms ease,
+    box-shadow 240ms ease;
+}
+
+.big-switch.on .big-switch-track {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: 0 0 18px -2px var(--accent-glow);
+}
+
+.big-switch.on .big-switch-track .big-switch-knob {
+  transform: translateX(26px);
+  background: var(--accent);
+  box-shadow: 0 0 14px var(--accent-glow);
+}
+
+.big-switch-state {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--text-faint);
+  min-width: 3.6rem;
+  transition: color 220ms ease;
+}
+
+.big-switch.on .big-switch-state {
+  color: var(--accent);
+}
+
+.big-switch:focus-within .big-switch-track {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-soft), 0 0 18px -2px var(--accent-glow);
+}
+
+/* Disabled state for big-switch (used by Watch when Tesseract is missing). */
+.big-switch.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.big-switch.disabled .big-switch-track { background: var(--surface-2); border-color: var(--border); }
+.big-switch.disabled .big-switch-knob { background: var(--text-mute); box-shadow: none; }
+
+/* ─── Setting-meta + "blocked" variant ───────────────────── */
+
+.setting-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  font-feature-settings: "tnum";
+}
+
+.meta-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--win);
+  box-shadow: 0 0 8px var(--win-line);
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+
+/* "Blocked — needs Tesseract" meta line under Watch / Manual Parse
+   when those controls are gated. */
+.setting-meta.blocked {
+  color: var(--loss);
+}
+
+.block-mark {
+  font-size: 0.85rem;
+  margin-right: 0.15rem;
+  filter: saturate(0.85);
+}
+
+/* ─── Inline link-as-button (for "Use default" cue, etc.) ── */
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--accent-soft);
+  transition: text-decoration-color 200ms ease, color 200ms ease;
+}
+
+.link-btn:hover {
+  text-decoration-color: var(--accent);
+}
+:global([data-theme="light"]) .link-btn { color: var(--accent-text); }
+:global([data-theme="light"]) .link-btn:hover { text-decoration-color: var(--accent-text); }
+
+/* ─── Btn-dot indicator (inside .btn.primary) ────────────── */
+
+.btn-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #1a0a00;
+  box-shadow: 0 0 0 2px rgb(26 10 0 / 25%);
+}
+
+/* The "big" CTA bumps the dot proportionally. */
+.btn.primary.big .btn-dot {
+  width: 7px; height: 7px;
+}
+
+/* ─── Confirm-state row (Clear DB destructive flow) ──────── */
+
+.setting-row.danger-row {
+  border-left: 3px solid var(--loss-line);
+  padding-left: calc(1.4rem - 3px);
+  background: var(--loss-soft);
+  border-radius: 2px;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+
+:global([data-theme="light"]) .setting-row.danger-row { background: var(--loss-soft); }
+
+.clear-confirm-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+</style>
