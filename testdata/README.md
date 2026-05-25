@@ -48,9 +48,7 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
 
 ## Privacy / licensing
 
-The maintainer cleared this directory for public release on 2026-05-25.
-The committed PNG files are deliberately curated post-match captures
-(no other-player BattleTags visible by the maintainer's review).
+The committed PNG files are deliberately curated post-match captures.
 
 If you're considering adding a new fixture and you're not the
 maintainer, open an issue first describing the source. The parser
