@@ -1,0 +1,127 @@
+# How Recall works
+
+Recall turns a folder of Overwatch screenshots into a personal,
+filterable match history. This page walks through the pipeline so the
+[Settings reference](settings-reference.md),
+[Filtering guide](filtering.md), and
+[Unknown screenshots](unknown-screenshots.md) chapters make sense in
+context.
+
+## The pipeline in one paragraph
+
+You play a comp match. After it ends, you tab through the post-match
+screens (SUMMARY, TEAMS scoreboard, PERSONAL tab) and press the
+in-game **Print Screen** binding on each. Overwatch saves the PNG
+files into your screenshots folder. Recall watches that folder, runs each
+new PNG through Tesseract OCR to read the on-screen text, classifies
+it by screenshot type (rank / summary / scoreboard / personal),
+extracts the fields it can (map, mode, hero, eliminations, deaths,
+SR change, …), and merges 3–5 screenshots from the same match into
+one row in its local database. The Matches tab then shows that
+row alongside every other match you've parsed — filterable by hero,
+map, mode, win/loss, and any combination of date range or
+play-time threshold.
+
+## The four screenshot types
+
+Recall recognises four post-match screen layouts in Overwatch 2.
+You don't need to capture all four for a match to land — but more
+captures = more fields populated:
+
+| Screen | What it shows | Fields Recall extracts |
+|---|---|---|
+| **SUMMARY** | Match overview, top heroes, performance summary | Map, mode, type (control/push/escort/…), role, primary hero, victory/defeat, final score, date, finish time, game length, performance per-10-min averages |
+| **TEAMS scoreboard** | Both teams' stats side by side | Eliminations / assists / deaths, damage, healing, mitigation |
+| **PERSONAL** | One hero's detailed stat grid (3×3) | Hero-specific stats (e.g. Juno's `pulsar_torpedoes_damage`, Mei's `binding_chain_accuracy`) |
+| **RANK** | Competitive ladder badge + per-hero SR | Current rank tier, per-hero SR, recent change |
+
+If you swapped heroes mid-match, Overwatch shows a separate PERSONAL
+tab per hero — Recall captures each one and merges them into the
+same match record. The first hero in the SUMMARY's "Heroes Played"
+list becomes the match's primary hero in filters and card headers.
+
+## Expected workflow
+
+### First-time setup (about 2 minutes)
+
+1. **Install Recall** for your OS — [macOS](install-macos.md),
+   [Linux](install-linux.md), or [Windows](install-windows.md).
+2. **Install Tesseract 5.x** — the OCR engine Recall shells out to.
+   Each install guide has the per-platform command (Homebrew on
+   macOS, apt on Linux, UB-Mannheim installer on Windows).
+3. **Point Recall at your screenshots folder.** Open Recall and go
+   to **Settings → Directories → Change Folder…**. The default
+   Overwatch path on each OS is in the install guide.
+
+That's it for setup. The **Ingest** tab should now show **Engine
+Detected** with a green dot and Tesseract's version.
+
+### Day-to-day
+
+1. **Play matches and capture post-game screens.** Bind a screenshot
+   key in Overwatch (Options → Controls → Take Screenshot — most
+   people use **Print Screen** or **F12**). After every comp match,
+   tab through SUMMARY → TEAMS → PERSONAL × however many heroes you
+   played → optionally RANK, pressing the key on each.
+2. **Recall picks them up.** If you've armed
+   **Ingest → Parse → Watch Folder** (the recommended setting),
+   Recall debounces 60 seconds after the last new PNG and auto-parses
+   the batch. Otherwise click **Run Parse** under
+   **Ingest → Parse → Manual Parse** when you're ready.
+3. **Browse the Matches tab.** Each match appears as a card with map,
+   primary hero, e/a/d, and result. Click the chevron to expand for
+   damage / healing / hero-by-hero stats / source-screenshot list.
+   Use the [filter rail](filtering.md) to narrow the view by any
+   combination of hero, map, role, result, date, or minimum play
+   time.
+
+### Optional: time-series charts
+
+The **Ingest → Export → Stream to Grafana** toggle exposes match
+history on `localhost:9091/metrics` so the bundled Prometheus +
+Grafana stack can scrape it. See
+[Charts & Dashboards](grafana.md) and
+[Run in Docker](docker.md) for the wiring.
+
+## What Recall doesn't do
+
+- **No upload, no account, no telemetry.** Recall is fully local.
+  Screenshots stay on your disk, the database is a single SQLite
+  file under your OS's user-config directory. There is no Recall
+  server to phone home to.
+- **No name extraction.** The parser doesn't try to read BattleTags
+  off scoreboards — only your own stats are kept. If you blur or
+  crop other players' tags before sharing a screenshot, the parser
+  is unaffected.
+- **No real-time stream.** Recall reads PNG files that Overwatch has
+  already written; it doesn't hook into the game process or read
+  the game's network traffic.
+
+## Where things live on disk
+
+Recall keeps state in your OS's user-config directory. The paths
+are in the per-platform install guides but for the record:
+
+| OS | Config + database |
+|---|---|
+| macOS | `~/Library/Application Support/Recall/` |
+| Linux | `~/.config/recall/` (or `$XDG_CONFIG_HOME/recall/`) |
+| Windows | `%AppData%\Recall\` |
+
+Inside that folder:
+
+- `settings.json` — the screenshots folder, Tesseract path, theme,
+  toggle states. One JSON object, human-editable if you want.
+- `db/recall.db` — SQLite database of every parsed match.
+  Single-file; back up by copying.
+
+Wiping `db/recall.db` (or using **Ingest → Data → Clear Parse
+Database**) deletes match history but leaves screenshots and
+settings alone. Re-running Parse against the same screenshot
+folder rebuilds the database from scratch.
+
+## Next chapter
+
+- **Configure Recall**: [Settings reference](settings-reference.md)
+- **Slice your match history**: [Filtering and grouping](filtering.md)
+- **Triage parse failures**: [Unknown screenshots](unknown-screenshots.md)

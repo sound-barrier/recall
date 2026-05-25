@@ -8,6 +8,13 @@
 * [Linux](install-linux.md)
 * [Windows](install-windows.md)
 
+## Using Recall
+
+* [How it works](how-it-works.md)
+* [Settings reference](settings-reference.md)
+* [Filtering and grouping](filtering.md)
+* [Unknown screenshots](unknown-screenshots.md)
+
 ## Advanced usage
 
 * [Run without the desktop app](server.md)

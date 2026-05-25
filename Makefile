@@ -558,13 +558,17 @@ pages-build: ## Build the docs book + Swagger UI under dist/pages/ (mirrors CI)
 	@rm -rf dist/pages dist/pages-stage
 	@mkdir -p dist/pages-stage
 	@cp -R book/. dist/pages-stage/
-	@cp docs/install-macos.md   dist/pages-stage/install-macos.md
-	@cp docs/install-linux.md   dist/pages-stage/install-linux.md
-	@cp docs/install-windows.md dist/pages-stage/install-windows.md
-	@cp docs/server.md          dist/pages-stage/server.md
-	@cp docs/docker.md          dist/pages-stage/docker.md
-	@cp docs/grafana.md         dist/pages-stage/grafana.md
-	@cp docs/feedback.md        dist/pages-stage/feedback.md
+	@cp docs/install-macos.md        dist/pages-stage/install-macos.md
+	@cp docs/install-linux.md        dist/pages-stage/install-linux.md
+	@cp docs/install-windows.md      dist/pages-stage/install-windows.md
+	@cp docs/how-it-works.md         dist/pages-stage/how-it-works.md
+	@cp docs/settings-reference.md   dist/pages-stage/settings-reference.md
+	@cp docs/filtering.md            dist/pages-stage/filtering.md
+	@cp docs/unknown-screenshots.md  dist/pages-stage/unknown-screenshots.md
+	@cp docs/server.md               dist/pages-stage/server.md
+	@cp docs/docker.md               dist/pages-stage/docker.md
+	@cp docs/grafana.md              dist/pages-stage/grafana.md
+	@cp docs/feedback.md             dist/pages-stage/feedback.md
 	@rm -f dist/pages-stage/.gitignore
 	@echo "[ recall ] Running honkit@$(HONKIT_VERSION)…"
 	@cd dist/pages-stage && npx --yes "honkit@$(HONKIT_VERSION)" build . _book >/dev/null
