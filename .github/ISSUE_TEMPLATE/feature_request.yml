@@ -1,0 +1,105 @@
+name: Feature request
+description: Suggest a new capability, workflow, or polish improvement for Recall.
+title: "[feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to write up a feature idea. The
+        clearer the *why* + *how you'd use it*, the easier it is to
+        judge fit and prioritise. Skip a field with "n/a" if it
+        genuinely doesn't apply.
+
+        Note: Recall is maintained in spare time and given away free.
+        Feature requests don't carry an SLA, but they DO get read —
+        real-user workflows are how the next-most-useful thing to
+        build gets identified.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What you'd like Recall to do
+      description: One paragraph. The feature in plain language, no implementation detail required.
+      placeholder: |
+        I'd like the Matches tab to show a "current win streak" chip
+        in the masthead, alongside the existing match count.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why — what problem does this solve, or what insight does it unlock?
+      description: The motivation. Without this, every feature looks equally valuable; with it, trade-offs become legible.
+      placeholder: |
+        After a long session I want to know "am I on a tilt" at a
+        glance. The match list shows results but I have to count
+        manually; a chip would surface it for the decision "play one
+        more or stop now".
+    validations:
+      required: true
+
+  - type: textarea
+    id: how
+    attributes:
+      label: How you'd use it
+      description: A concrete workflow. "After X, I'd want to do Y, expecting Z." Helps judge whether this fits the existing UI vs. needs its own surface.
+      placeholder: |
+        1. Finish a comp match.
+        2. Open Recall (auto-launches when a screenshot lands).
+        3. See "Win streak: 3" or "Loss streak: 4" in the masthead
+           next to the match count.
+        4. Decide to queue again or call it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Workarounds that almost work, competing tools, or things you've ruled out. Helps avoid re-litigating decided trade-offs.
+      placeholder: |
+        - The existing match list with the result chips works, but
+          counting the last N is mental overhead.
+        - Overbuff has a similar streak indicator but only updates
+          after their crawler runs.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope (your best guess)
+      description: Rough mental model — helps the maintainer think about whether this fits a patch release vs. a minor bump. The maintainer reserves the right to disagree with your guess. 🙂
+      options:
+        - "Small — a chip / new field / config flag"
+        - "Medium — a new view section, a new filter, a new endpoint"
+        - "Large — a whole new feature surface (e.g. a Friends view, a stats export pipeline)"
+        - "Not sure"
+    validations:
+      required: false
+
+  - type: textarea
+    id: mockup
+    attributes:
+      label: Mockup / screenshot (optional)
+      description: A sketch / wireframe / annotated screenshot of what you imagine. Drag images directly into this box. Usually shortens the design discussion by half — a rough hand-drawn sketch is fine.
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else — related issues, blog posts, screenshots from other tools doing this well, etc.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: code-of-conduct
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I have read and agree to follow the [Code of Conduct](https://github.com/sound-barrier/recall/blob/main/CODE_OF_CONDUCT.md).
+          required: true

@@ -83,11 +83,13 @@ jobs:
         run: |
           mkdir -p _stage/book
           cp -R book/. _stage/book/
-          cp docs/install-macos.md _stage/book/install-macos.md
-          cp docs/install-linux.md _stage/book/install-linux.md
-          cp docs/server.md       _stage/book/server.md
-          cp docs/docker.md       _stage/book/docker.md
-          cp docs/grafana.md      _stage/book/grafana.md
+          cp docs/install-macos.md   _stage/book/install-macos.md
+          cp docs/install-linux.md   _stage/book/install-linux.md
+          cp docs/install-windows.md _stage/book/install-windows.md
+          cp docs/server.md          _stage/book/server.md
+          cp docs/docker.md          _stage/book/docker.md
+          cp docs/grafana.md         _stage/book/grafana.md
+          cp docs/feedback.md        _stage/book/feedback.md
           # The committed .gitignore lists no chapter filenames (the
           # docs are the source of truth), but blow it away inside
           # the staging dir to be defensive against future drift.

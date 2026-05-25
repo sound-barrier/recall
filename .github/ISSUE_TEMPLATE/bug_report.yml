@@ -77,10 +77,35 @@ body:
       required: true
 
   - type: textarea
-    id: screenshots
+    id: overwatch-screenshot
     attributes:
-      label: Screenshots
-      description: Drag images directly into this box. If the bug is about a specific Overwatch screenshot misparsing, attach the screenshot itself — it's the single most useful piece of data for parser bugs.
+      label: Overwatch screenshot (if a parser bug)
+      description: |
+        If Recall mis-read a specific match (wrong map, wrong hero,
+        wrong stat number, missing match entirely), attach the
+        Overwatch post-match screenshot itself. Drag the PNG / JPG
+        directly into this box.
+
+        This is the single most useful piece of data for parser
+        bugs — without it, the maintainer can only guess at which
+        OCR step went sideways. Recall doesn't read BattleTags, so
+        scoreboard tags don't affect repro; crop / blur them
+        before uploading if you'd like.
+    validations:
+      required: false
+
+  - type: textarea
+    id: app-screenshot
+    attributes:
+      label: Recall app / website screenshot
+      description: |
+        Screenshot of the Recall window (or the browser if you're
+        running server mode at `http://127.0.0.1:7000`) showing the
+        buggy state. Helps for UI glitches, missing data,
+        unexpected filter behavior, or anything visual.
+
+        Drag images directly into this box. Annotations (red
+        arrows, circles) help.
     validations:
       required: false
 
