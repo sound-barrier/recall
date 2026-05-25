@@ -93,97 +93,6 @@ transition. No atomic landing required.
 
 ---
 
-## 3. `pkg/parser/parser.go` is a 1 562-line monolith
-
-**Size: L**
-
-**What.**
-`pkg/parser/parser.go` contains all four parser variants (rank,
-summary, personal, scoreboard) plus their shared infrastructure:
-
-- Tesseract binary path globals (`tesseractPath`, `tesseractMu`,
-  `SetTesseractPath`, `getTesseractPath`).
-- `MatchResult`, `HeroSR`, `HeroPlay`, `Performance`,
-  `PerformanceStat` types.
-- `knownMaps`, `heroRoles`, `HeroRole`.
-- The dispatcher (`ParseScreenshot`).
-- `parseScoreboard` + all its helpers (`parsePanelStats`,
-  `findHighlightedRowY`, `ocrRowCells`, `findRowXExtent`,
-  `findStatColumns`).
-- `parseSummary` + helpers (`extractHeader`, `extractGameType`,
-  `extractInts`, `snapToKnownMap`, `bestKnownMapInText`,
-  `levenshtein`, `extractHeroes`, `heroNamesByLength`,
-  `parseHeroesPlayed`, `parsePerformance`, `parseRightCard`,
-  `digitize`, `normalizeDate`).
-- `parsePersonal` + helpers (`parsePersonalHeroCell`,
-  `parsePersonalStatCell`, `trimShortBoundaryWords`, `labelToKey`).
-- `parseRank` + helpers (`isRankScreenshot`, `extractRank`,
-  `knownRanks`, `knownModifiers`).
-- OCR primitives (`ocrInverted`, `ocrRaw`, `runTesseract`,
-  `runTesseractFunc`).
-- Image utilities (`crop`, `upscale`, `preprocessInverted`).
-- Detection probes (`isSummaryScreenshot`, `isPersonalScreenshot`).
-- `ParseScreenshotsDir` (the entry point used by the App).
-
-**Why it's debt.**
-Same shape as #2 but worse: a single file mixes I/O (Tesseract
-shell-out), pure data (hero/map tables), pixel math, OCR text
-post-processing, and four distinct dispatch targets. Symptoms:
-
-- Adding a new screenshot type requires reading ~1 500 lines to
-  understand where to inject a probe + parser.
-- Refactoring the OCR primitives touches everything because they're
-  in the same file as their callers.
-- The four parser variants have non-obvious dependencies on shared
-  helpers — there's no compile-time enforcement that
-  `parseScoreboard`'s helpers stay isolated from `parseRank`'s.
-- `runTesseractFunc` and `parseSingleFunc` are package-level
-  function-variable seams — fine in isolation, but they pollute the
-  package namespace and complicate parallel test isolation.
-
-**Mitigation plan.**
-Same shape as #2: split along the natural seams, keep the package
-public surface stable.
-
-1. `pkg/parser/types.go` — `MatchResult`, `HeroSR`, `HeroPlay`,
-   `Performance`, `PerformanceStat`.
-2. `pkg/parser/heroes.go` — `heroRoles`, `HeroRole`, `extractHeroes`,
-   `heroNamesByLength`.
-3. `pkg/parser/maps.go` — `knownMaps`, `snapToKnownMap`,
-   `bestKnownMapInText`, `levenshtein`.
-4. `pkg/parser/tesseract.go` — `tesseractPath`/`tesseractMu`/
-   `SetTesseractPath`/`getTesseractPath`, `runTesseract`,
-   `runTesseractFunc`, `ocrInverted`, `ocrRaw`.
-5. `pkg/parser/imageutil.go` — `crop`, `upscale`,
-   `preprocessInverted`.
-6. `pkg/parser/text.go` — `digitize`, `normalizeDate`,
-   `extractInts`, `extractGameType`, `extractHeader`,
-   `trimShortBoundaryWords`, `labelToKey`.
-7. `pkg/parser/parse_rank.go` — `isRankScreenshot`, `parseRank`,
-   `knownRanks`, `knownModifiers`, `extractRank`.
-8. `pkg/parser/parse_summary.go` — `isSummaryScreenshot`,
-   `parseSummary`, `parseHeroesPlayed`, `parsePerformance`,
-   `parseRightCard`.
-9. `pkg/parser/parse_personal.go` — `isPersonalScreenshot`,
-   `parsePersonal`, `parsePersonalHeroCell`,
-   `parsePersonalStatCell`.
-10. `pkg/parser/parse_scoreboard.go` — `parseScoreboard`,
-    `findHighlightedRowY`, `parsePanelStats`, `ocrRowCells`,
-    `findRowXExtent`, `findStatColumns`.
-11. `pkg/parser/parser.go` is left with `ParseScreenshot` (the
-    dispatcher), `ParseScreenshotsDir`, `parseSingleFunc`.
-
-Each step is a mechanical move + import fix. The existing
-`parser_test.go` (526 lines) should be split alongside, but that's
-optional — Go's test discovery doesn't care.
-
-**How large.**
-L. 3–5 days spread across 10 PRs. Same risk profile as #2: no
-behavior change. Worth doing **after** #2 so the App reorg is the
-known-good template.
-
----
-
 ## 4. `wailsjs/go/models.ts` — long-term: regenerate from OpenAPI
 
 **Size: L**
@@ -632,6 +541,14 @@ choices.
   lines covering only the `App` struct + constructors + `Startup`).
   Pure file moves — package public surface unchanged; the existing
   9-way test-file split now mirrors the production split 1:1.
+- `pkg/parser/parser.go` 1 562-line monolith — split into 11
+  per-concern files (`types.go`, `heroes.go`, `maps.go`,
+  `tesseract.go`, `imageutil.go`, `text.go`, `parse_rank.go`,
+  `parse_summary.go`, `parse_personal.go`, `parse_scoreboard.go`,
+  plus `parser.go` itself reduced to 156 lines holding the
+  dispatcher + `ParseScreenshotsDir` + `parseSingleFunc` seam).
+  The four parser-variant probes + entry points now sit one per
+  file alongside the helpers they own.
 
 ### Phase 1 — drift prevention ✅ COMPLETE
 
@@ -651,7 +568,7 @@ choices.
 ### Phase 3 — structural refactor (2–3 weeks, L items)
 
 1. ~~#2 split `pkg/app/app.go` into per-concern files (L)~~ — done
-2. #3 split `pkg/parser/parser.go` into per-concern files (L)
+2. ~~#3 split `pkg/parser/parser.go` into per-concern files (L)~~ — done
 3. #1 extract App.vue's `<style>` into per-component scoped blocks (L)
 4. #7 retire `KNOWN_CONTRAST_DEBT` selectors one at a time (M)
 

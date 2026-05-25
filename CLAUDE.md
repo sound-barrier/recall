@@ -51,7 +51,7 @@ Override only when the user explicitly asks for something different.
   dependencies** (duck typing in Go). When the seam has a single method
   and a single fake, introducing an interface is YAGNI. Examples:
   `runTesseractFunc` and `parseSingleFunc` in
-  `pkg/parser/parser.go` — both swap a real impl for a canned one in
+  `pkg/parser/tesseract.go` / `parser.go` — both swap a real impl for a canned one in
   tests without ceremony.
 - **Law of Demeter — accept what you read.** When a composable returns
   many refs/handlers, bundle them as a single typed prop
@@ -157,7 +157,7 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `pkg/cmd` | `RunWails` (Wails init) and `RunServer` (HTTP server + REST API) |
 | `pkg/db` | SQLite `Init()` + `DB` variable |
 | `pkg/metrics` | Prometheus `Collector` + `Server` |
-| `pkg/parser` | OCR dispatcher, all screenshot parsers, Tesseract exec |
+| `pkg/parser` | OCR pipeline split per concern: `parser.go` (dispatcher + `ParseScreenshotsDir`), `types.go`, `heroes.go`, `maps.go`, `tesseract.go`, `imageutil.go`, `text.go`, `parse_rank.go`, `parse_summary.go`, `parse_personal.go`, `parse_scoreboard.go`, `exec_{other,windows}.go` (HideWindow build-tag pair) |
 
 `.devcontainer/devcontainer.json` + `postCreate.sh` mirror the Brewfile
 on a Debian + Docker-in-Docker base so the project can be developed
@@ -249,9 +249,11 @@ adding one new screenshot to an existing match's group folds it in.
 hero-keyed merge for `heroes_played` (so each hero's stats stay distinct
 across multi-hero matches).
 
-## Per-screenshot-type parsers (`pkg/parser/parser.go`)
+## Per-screenshot-type parsers (`pkg/parser/`)
 
-`ParseScreenshot` dispatches by detector probes:
+`ParseScreenshot` in `parser.go` dispatches by detector probes; each
+probe + parser pair lives in its own file (`parse_rank.go`,
+`parse_summary.go`, `parse_personal.go`, `parse_scoreboard.go`):
 
 - **Rank screen** (`isRankScreenshot` → `parseRank`): the competitive
   ladder badge + per-hero SR card.
@@ -406,7 +408,7 @@ and `POST /api/tesseract-path` respectively; `api.ts` in the frontend uses
 The full HTTP surface is documented in **`api/openapi.yaml`** (OpenAPI
 3.1.0, hand-written). Treat that file as the source of truth: when
 adding/removing a route in `pkg/cmd/server.go` or changing a response
-shape in any of the `pkg/app/*.go` files / `pkg/parser/parser.go`, edit the spec to
+shape in any of the `pkg/app/*.go` or `pkg/parser/*.go` files, edit the spec to
 match. `make lint-openapi` runs Spectral against it (strict on warnings
 — the `spectral:oas` ruleset emits most useful issues as warnings, not
 errors, so the `--fail-severity=warn` flag in the Makefile is
