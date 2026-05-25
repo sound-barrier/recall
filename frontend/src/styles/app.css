@@ -406,59 +406,8 @@ main#main-content {
   gap: 1.15rem;
 }
 
-/* Day / Night theme toggle. Two-segment switch with a sliding indicator
-   on the active half. Lives in the upper right of the masthead. */
-.theme-toggle {
-  position: relative;
-  display: inline-flex;
-  align-items: stretch;
-  padding: 3px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  cursor: pointer;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  user-select: none;
-  transition: border-color 160ms ease, background 160ms ease;
-}
-.theme-toggle:hover { border-color: var(--border-strong); }
-
-.theme-toggle:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-
-.theme-seg {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.34rem 0.65rem;
-  border-radius: 1px;
-  transition: color 200ms ease, background 200ms ease;
-}
-
-.theme-seg.active {
-  color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-
-.theme-icon {
-  width: 13px; height: 13px;
-  display: block;
-}
-.theme-label { font-weight: 600; }
-
-.theme-divider {
-  width: 1px;
-  background: var(--border);
-  margin: 4px 0;
-}
+/* .theme-toggle family + .theme-seg / .theme-icon / .theme-label /
+   .theme-divider moved to SettingsView.vue */
 
 .scoreboard {
   display: grid;
@@ -1141,17 +1090,7 @@ main#main-content {
   font-weight: 600;
 }
 
-.settings-sub {
-  margin-top: 0.85rem;
-  color: var(--text-dim);
-  font-size: 0.875rem;
-  line-height: 1.55;
-  max-width: 60ch;
-}
-
-.settings-sub .empty-link {
-  cursor: pointer;
-}
+/* .settings-sub moved to SettingsView.vue */
 
 .settings-intro {
   margin-top: 1.4rem;
@@ -1343,19 +1282,7 @@ main#main-content {
   min-width: 0;
 }
 
-.setting-value {
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  color: var(--text-dim);
-  letter-spacing: 0;
-  text-align: right;
-  word-break: break-all;
-  max-width: 420px;
-  padding: 0.35rem 0.7rem;
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: 2px;
-}
+/* .setting-value moved to SettingsView.vue */
 
 /* .big-switch family + .btn.primary.big .btn-dot descendant moved to
    IngestView.vue. .btn.primary.big base size kept here as a button
@@ -1778,7 +1705,6 @@ main#main-content {
 
 /* Theme toggle reads on light surface too. The .active state already
    uses --accent-soft + --accent which both adapt to the theme. */
-[data-theme="light"] .theme-toggle { background: var(--surface); }
 
 [data-theme="light"] .btn.primary {
   /* In light mode the dark text on bright orange still works (OW chip).

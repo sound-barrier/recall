@@ -184,6 +184,94 @@ const DAY_SEGMENTS = WEEKDAYS_FULL.map((name, idx) => ({
 </template>
 
 <style scoped>
+/* ─── Day / Night theme toggle ───────────────────────────── */
+
+/* Day / Night theme toggle. Two-segment switch with a sliding indicator
+   on the active half. Lives in the Settings → Appearance row. */
+.theme-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  padding: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  user-select: none;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.theme-toggle:hover { border-color: var(--border-strong); }
+
+.theme-toggle:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.theme-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.34rem 0.65rem;
+  border-radius: 1px;
+  transition: color 200ms ease, background 200ms ease;
+}
+
+.theme-seg.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.theme-icon {
+  width: 13px; height: 13px;
+  display: block;
+}
+.theme-label { font-weight: 600; }
+
+.theme-divider {
+  width: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+:global([data-theme="light"]) .theme-toggle { background: var(--surface); }
+
+/* ─── Sub-heading text in Settings sections ──────────────── */
+
+.settings-sub {
+  margin-top: 0.85rem;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  max-width: 60ch;
+}
+
+.settings-sub .empty-link {
+  cursor: pointer;
+}
+
+/* ─── Right-rail value chip in setting rows ──────────────── */
+
+.setting-value {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  letter-spacing: 0;
+  text-align: right;
+  word-break: break-all;
+  max-width: 420px;
+  padding: 0.35rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+}
+
 /* 7-segment first-day-of-week picker. Same visual idiom as the theme
    toggle (segmented control, dim border, accent-tinted active state)
    stretched across all seven days so any culture's week-anchor works.
