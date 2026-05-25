@@ -569,6 +569,13 @@ pages-build: ## Build the docs book + Swagger UI under dist/pages/ (mirrors CI)
 	@cp docs/docker.md               dist/pages-stage/docker.md
 	@cp docs/grafana.md              dist/pages-stage/grafana.md
 	@cp docs/feedback.md             dist/pages-stage/feedback.md
+	@# Mirror testdata/ into the staged book so how-it-works.md's
+	@# example-screenshot images resolve via the same `testdata/foo.png`
+	@# relative path used in the README. Cheap (~5 MB total) and avoids
+	@# coupling the docs to absolute raw.githubusercontent.com URLs that
+	@# would 404 on every branch rename.
+	@mkdir -p dist/pages-stage/testdata
+	@cp testdata/*.png dist/pages-stage/testdata/
 	@rm -f dist/pages-stage/.gitignore
 	@echo "[ recall ] Running honkit@$(HONKIT_VERSION)…"
 	@cd dist/pages-stage && npx --yes "honkit@$(HONKIT_VERSION)" build . _book >/dev/null

@@ -40,6 +40,50 @@ tab per hero — Recall captures each one and merges them into the
 same match record. The first hero in the SUMMARY's "Heroes Played"
 list becomes the match's primary hero in filters and card headers.
 
+### What each type looks like
+
+Real examples from Recall's parser-regression fixture set — the same
+PNG files live under `testdata/` in the repo and are the inputs
+`TestParseScreenshot_GoldenFiles` runs against on every commit. Click
+any image for the full-resolution source.
+
+<table>
+<tr>
+<th align="left">SUMMARY</th>
+<th align="left">TEAMS scoreboard</th>
+</tr>
+<tr>
+<td valign="top" width="50%">
+<a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.31.03.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.31.03.png" alt="SUMMARY tab — Antarctic Peninsula, Juno, comp victory" width="100%"></a>
+<sub>Antarctic Peninsula · comp victory 2-1. The map + game type + heroes-played list + per-10-min averages all come from this tab.</sub>
+</td>
+<td valign="top" width="50%">
+<a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.33.04.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.33.04.png" alt="Post-match TEAMS scoreboard with both teams' stats" width="100%"></a>
+<sub>Same match. Eliminations / assists / deaths / damage / healing / mitigation come from the highlighted row + the right-hand stat panel.</sub>
+</td>
+</tr>
+<tr>
+<th align="left" colspan="2">PERSONAL (one per hero played)</th>
+</tr>
+<tr>
+<td valign="top" width="50%">
+<a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.34.50.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.34.50.png" alt="PERSONAL tab — Juno hero-specific stats" width="100%"></a>
+<sub>Juno's PERSONAL tab. The 3×3 grid populates hero-specific stats (pulsar torpedoes damage, orbital ray healing, players saved, weapon accuracy).</sub>
+</td>
+<td valign="top" width="50%">
+<a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.36.31.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.36.31.png" alt="PERSONAL tab — Mei hero-specific stats from a hero-swap match" width="100%"></a>
+<sub>Mei's PERSONAL tab from the same match — the player swapped from Juno (67% played) to Mei (33% played). Recall captures one PERSONAL per hero and merges them into the same match record.</sub>
+</td>
+</tr>
+</table>
+
+> **RANK screen** — no example in the test corpus yet. The RANK tab
+> shows your current competitive rank tier + per-hero SR + the recent
+> change; Recall parses it the same way as the others when it's
+> present. Capture one and drop it into `testdata/` with a sidecar
+> golden — see [testdata/README.md](https://github.com/sound-barrier/recall/blob/main/testdata/README.md)
+> for the curate-and-commit flow.
+
 ## Expected workflow
 
 ### First-time setup (about 2 minutes)

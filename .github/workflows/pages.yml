@@ -29,6 +29,7 @@ on:
       - 'api/openapi.yaml'
       - 'docs/**'
       - 'book/**'
+      - 'testdata/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -94,6 +95,11 @@ jobs:
           cp docs/docker.md               _stage/book/docker.md
           cp docs/grafana.md              _stage/book/grafana.md
           cp docs/feedback.md             _stage/book/feedback.md
+          # Mirror testdata/ into the staged book so how-it-works.md's
+          # example-screenshot images resolve via the same
+          # `testdata/foo.png` relative path used in the README.
+          mkdir -p _stage/book/testdata
+          cp testdata/*.png _stage/book/testdata/
           # The committed .gitignore lists no chapter filenames (the
           # docs are the source of truth), but blow it away inside
           # the staging dir to be defensive against future drift.
