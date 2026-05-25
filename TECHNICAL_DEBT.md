@@ -29,67 +29,47 @@ first.
 
 ---
 
-## 1. `App.vue` style block is a 3 699-line monolith
+## 1. App.vue styles — per-component scoped-style extraction (partial)
 
-**Size: L**
+**Size: M (remaining)**
 
-**What.**
-`frontend/src/App.vue` is 4 582 lines total — but only 300 of those
-are `<template>` and 578 are `<script>`. The remaining **3 699 lines
-are `<style>`**, scoped at the App root. Selectors in there target
-elements rendered by SettingsView, IngestView, MatchesView,
-UnknownMapsView, MatchCard, FilterRail, ParseProgressPanel,
-MatchGroupSection — every component in the tree.
+**Status.** Phase 3 landed the easy half: the 3 698-line `<style>`
+block was extracted from App.vue (which dropped from 4 582 to ~890
+lines) into a dedicated `frontend/src/styles/app.css`, imported
+from App.vue's `<script setup>`. Selectors still cascade globally,
+so behaviour is byte-for-byte identical — only the file boundary
+moved. The CSS is now a regular `.css` file with proper editor
+support and lints under the same Stylelint config.
 
-**Why it's debt.**
-The template/script extraction already happened (good!) — App.vue is
-now the "router shell" CLAUDE.md describes. But because the styles
-weren't extracted alongside, every component change still requires
-opening App.vue to find the matching selector. Symptoms:
+**What's left.**
+Component-specific selectors still live in the shared
+`styles/app.css` rather than alongside the components that own
+them. Adding a class to `MatchCard.vue` still means opening a
+3 700-line file in a separate window to find the matching rule.
+Specificity collisions (the `.match-header` / `:where()`
+workaround) remain easy to miss.
 
-- Adding a class to `MatchCard.vue` means scrolling 3.7k lines of
-  unrelated CSS to find where to put the rule.
-- Specificity collisions are easy to miss (the `.match-header` /
-  `:where()` workaround in CLAUDE.md was caused by exactly this
-  shape).
-- The CSS-`.test.ts` mapping is opaque — Vitest snapshot or
-  Stylelint failure references App.vue:NNNN, not the owning
-  component.
-- `make lint` errors point at `App.vue` for issues that semantically
-  belong to other components.
+**Mitigation plan (remaining steps).**
 
-**Mitigation plan.**
-The principle: each component owns its own visual rules. Cross-
-cutting tokens stay shared.
+Per leaf component (smallest first — ParseProgressPanel →
+MatchCard → MatchGroupSection → FilterRail → IngestView →
+SettingsView → MatchesView → UnknownMapsView), one PR each:
 
-1. **Create `frontend/src/styles/` directory** with:
-   - `tokens.css` — CSS custom properties (colors, spacings, fonts).
-   - `reset.css` — global element resets (the `:where(button.badge)` family).
-   - `typography.css` — the three `@font-face` declarations.
-   - `layout.css` — masthead, modal, skip-link, tablist (App.vue-owned UI).
-2. **Move** the cross-cutting rules from App.vue's `<style>` into
-   those files; `import './styles/tokens.css'` etc. from `main.ts`.
-3. For each leaf component, **lift its selectors** out of App.vue
-   into a scoped `<style scoped>` block in the component SFC. Do
-   this one component at a time, in this order (smallest first):
-   ParseProgressPanel → MatchCard → MatchGroupSection → FilterRail →
-   IngestView → SettingsView → MatchesView → UnknownMapsView.
-4. For each component move:
-   - copy selectors that *only* affect that component into the SFC,
-   - delete from App.vue,
-   - run `make lint` + `make test` + `npm --prefix frontend run dev`
-     and eyeball the component before merging,
-   - merge **per component** — small reversible steps.
-5. After all eight moves, App.vue's `<style>` should be < 400 lines
-   covering only the masthead/modal/tablist shell.
-6. Update CLAUDE.md's "Frontend" section to drop the "App.vue is a
-   router-shell" note about style ownership.
+1. Identify selectors in `styles/app.css` that target only the
+   component's classes.
+2. Move them into a `<style scoped>` block in the component SFC.
+3. Verify visually with `npm --prefix frontend run dev` and run
+   `make lint` + `make test`.
+4. Merge.
+
+Cross-cutting tokens (CSS custom properties, font-faces, theme
+overrides) stay in `styles/app.css` as a shared file imported by
+App.vue's shell.
 
 **How large.**
-L. 2–4 days spread across 8 PRs (one per component move). Each PR
-is safe to revert independently because component CSS in the SFC
-takes precedence over App.vue's parent-level rules during the
-transition. No atomic landing required.
+M. ~1 day across 8 small PRs. The big-bang risk is gone — the
+shared cascade is already external — so each component move is
+mechanical (find selectors, move, verify, commit).
 
 ---
 
@@ -549,6 +529,12 @@ choices.
   dispatcher + `ParseScreenshotsDir` + `parseSingleFunc` seam).
   The four parser-variant probes + entry points now sit one per
   file alongside the helpers they own.
+- App.vue's 3 698-line `<style>` block — extracted into
+  `frontend/src/styles/app.css`, imported from App.vue's
+  `<script setup>`. SFC drops from 4 582 lines to ~890 lines;
+  selectors still cascade globally so no specificity changes.
+  Component-by-component extraction into scoped `<style>` blocks
+  is the residual #1 item below.
 
 ### Phase 1 — drift prevention ✅ COMPLETE
 
@@ -569,7 +555,7 @@ choices.
 
 1. ~~#2 split `pkg/app/app.go` into per-concern files (L)~~ — done
 2. ~~#3 split `pkg/parser/parser.go` into per-concern files (L)~~ — done
-3. #1 extract App.vue's `<style>` into per-component scoped blocks (L)
+3. ~~#1 extract App.vue's `<style>` into per-component scoped blocks (L)~~ — partial; per-component scoping remaining as residual #1
 4. #7 retire `KNOWN_CONTRAST_DEBT` selectors one at a time (M)
 
 ### Phase 4 — opportunistic / product-level
