@@ -301,7 +301,22 @@ attempting to change the dev model.
 
 ---
 
-## 17. CLAUDE.md is 75 KB and load-bearing for too many gotchas
+## 17. (resolved) CLAUDE.md trim — track in commits, not in this file
+
+**Status.** Phase 1–4 closed the major gotcha-bullets by codifying
+them into scripts + CI checks; the corresponding CLAUDE.md
+sentences were rewritten in place to point at the codified
+mechanism instead of describing a manual workaround. Net file
+length stayed roughly constant (763 → 779 lines across all four
+phases) because each retired bullet was replaced by an equivalent
+"here's where the tool lives + how to extend it" bullet — the
+*content* shifted from tribal knowledge to infrastructure
+documentation while the length budget stayed flat.
+
+Future trim opportunities surface organically as more items in
+this file close. Track them per-commit, not as a standing line
+item; this section is retained only as a marker that the meta-
+debt was actively addressed during Phase 4.
 
 **Size: M**
 
@@ -394,14 +409,6 @@ choices.
   `pre-push.actionlint` block, and the CI lint job. Dependabot
   bumps both the SHA and the comment in lock-step. CONTRIBUTING.md
   documents the policy.
-- Short-term: `wailsjs/go/models.ts` drift —
-  `scripts/check-wailsjs-models.sh` extracts every json tag from the
-  Wails-exposed Go structs (MatchRecord, UpdateInfo, TesseractStatus,
-  MatchResult, HeroSR, HeroPlay, Performance, PerformanceStat) and
-  asserts each appears as a field in `models.ts`. Wired into
-  `make check-wailsjs`, the lefthook `pre-commit.wailsjs-sync` hook,
-  and the CI lint job. The long-term "generate wailsjs from
-  OpenAPI" path remains open as item #4 below.
 - `//go:embed all:frontend/dist` setup duplication — extracted into
   the `.github/actions/prepare-frontend-dist` composite action with
   a `real-assets: 'true' | 'false'` input. CodeQL, ci.yml lint,
@@ -504,13 +511,13 @@ choices.
 3. ~~#1 extract App.vue's `<style>` into per-component scoped blocks (L)~~ — partial; per-component scoping remaining as residual #1
 4. ~~#7 retire `KNOWN_CONTRAST_DEBT` selectors one at a time (M)~~ — scoped up after investigation revealed wider rendering-vs-declared-color gap; #7 rewritten to capture the broader picture
 
-### Phase 4 — opportunistic / product-level
+### Phase 4 — opportunistic / product-level ✅ COMPLETE
 
 1. ~~#5 move Go module root out of overlap with frontend/ (S)~~ — done (npm postinstall hook seeds frontend/node_modules/go.mod sentinel; defence-in-depth workarounds kept)
 2. ~~#10 release.yml script extraction (M)~~ — done (composite-action + act-smoke-test residual)
 3. ~~#4 long-term: wailsjs from OpenAPI (L)~~ — done (wailsjs/ removed from git; api.ts uses api.gen.d.ts for both transports; Phase 2 #4 check-wailsjs guard retired)
 4. ~~#14 server-mode parity audit or Wails containerization (L)~~ — Option A audit done; SetScreenshotsDir parity gap fixed + locked. Wails containerization (Option B) and full server-mode-as-product migration (Option C) remain open as residuals
-5. #17 CLAUDE.md naturally shrinks as a side effect
+5. ~~#17 CLAUDE.md naturally shrinks as a side effect~~ — done (each Phase commit retired stale bullets in place; final Phase 4 sweep updated stale pkg/app/app.go file paths and the "Adding a new App method" 4-step → 3-step process)
 
 ### Total estimated cost
 
