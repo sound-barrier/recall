@@ -1456,168 +1456,9 @@ main#main-content {
   gap: 0.55rem;
 }
 
-@keyframes match-enter {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.match {
-  position: relative;
-  display: flex;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  overflow: hidden;
-  animation: match-enter 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
-}
-.match:hover { border-color: var(--border-strong); }
-
-.match.expanded {
-  border-color: var(--border-strong);
-  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
-}
-
-.match-bar {
-  width: 3px;
-  background: var(--unknown-line);
-  flex-shrink: 0;
-  transition: background 200ms ease, width 200ms ease, box-shadow 200ms ease;
-}
-
-.match.result-victory .match-bar {
-  background: var(--win-line);
-  box-shadow: 0 0 12px -2px var(--win-line);
-}
-
-.match.result-defeat .match-bar {
-  background: var(--loss-line);
-  box-shadow: 0 0 12px -2px var(--loss-line);
-}
-
-.match.result-draw .match-bar {
-  background: var(--draw-line);
-  box-shadow: 0 0 12px -2px var(--draw-line);
-}
-.match.expanded .match-bar { width: 5px; }
-
-.match-body {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 0.95rem 1.15rem;
-}
-
-.match-header {
-  cursor: pointer;
-  user-select: none;
-  border-radius: 2px;
-}
-
-/* Chip buttons inside the match card — the per-field filter triggers
-   (.match-map, .badge.clickable, .chev-btn, .hero-name, .source-type-chip,
-   .slot-chip). They keep their existing look via the rules already
-   defined for those classes; here we just strip the browser's native
-   button chrome so the visual stays identical to the pre-button markup.
-   Wrapped in :where() so this reset has specificity 0 and never wins
-   against any existing .badge / .match-map / etc. rule. */
-:where(
-  button.match-map,
-  button.badge,
-  button.chev-btn,
-  button.hero-name,
-  button.source-type-chip,
-  button.slot-chip
-) {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  padding: 0;
-  margin: 0;
-  text-align: inherit;
-}
-
-.match-map.clickable:focus-visible,
-.badge.clickable:focus-visible,
-.chev-btn:focus-visible,
-.hero-name.clickable:focus-visible,
-.slot-chip.clickable:focus-visible,
-.source-type-chip.clickable:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* The chev is the keyboard expand affordance — give it a real hit
-   target so taps/clicks aren't strictly on the glyph. */
-button.chev-btn {
-  padding: 0.15rem 0.3rem;
-  border-radius: 2px;
-}
-
-button.chev-btn:hover { color: var(--accent-bright); }
-
-.match-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.55rem;
-}
-
-.match-title-lhs {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
-.match-index {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  color: var(--text-mute);
-  letter-spacing: 0.06em;
-  font-feature-settings: "tnum";
-}
-
-.match-map {
-  font-family: var(--display);
-  font-style: italic;
-  font-weight: 800;
-  font-size: 1.55rem;
-  letter-spacing: 0.005em;
-  color: var(--text);
-  text-transform: uppercase;
-  padding: 0 0.15rem;
-  position: relative;
-  transition: color 160ms ease, text-shadow 200ms ease;
-}
-
-.match-map:hover {
-  color: var(--accent-bright);
-  text-shadow: 0 0 24px var(--accent-glow);
-}
-
-.match-map.active {
-  color: var(--accent);
-  text-shadow: 0 0 18px var(--accent-glow);
-}
-
-.match-title-rhs {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  flex-shrink: 0;
-}
-
-.when {
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  color: var(--text-dim);
-  font-feature-settings: "tnum";
-  letter-spacing: 0;
-}
+/* MatchCard-owned chrome / header / title / map / when / length-mark /
+   .match.* rules moved to MatchCard.vue's \3c style scoped> block.
+   .length stays here — it's shared with FilterRail's match-length filter. */
 
 .length {
   display: inline-flex;
@@ -1627,12 +1468,6 @@ button.chev-btn:hover { color: var(--accent-bright); }
   font-size: 0.74rem;
   color: var(--text-faint);
   font-feature-settings: "tnum";
-}
-
-.length-mark {
-  color: var(--accent);
-  font-size: 0.55rem;
-  opacity: 0.7;
 }
 
 .chev {
@@ -1648,12 +1483,7 @@ button.chev-btn:hover { color: var(--accent-bright); }
 
 /* ─── Tag row (badges) ───────────────────────────────────── */
 
-.match-tag-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  align-items: center;
-}
+/* .match-tag-row moved to MatchCard.vue */
 
 .badge {
   display: inline-flex;
@@ -1695,82 +1525,14 @@ button.chev-btn:hover { color: var(--accent-bright); }
   font-weight: 600;
 }
 
-.hero-name-inline {
-  font-family: var(--display);
-  font-style: italic;
-  font-weight: 700;
-  font-size: 0.95rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.hero-pct-inline {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  color: var(--accent-text);
-  opacity: 0.75;
-  font-weight: 500;
-  font-feature-settings: "tnum";
-  letter-spacing: 0;
-}
+/* .hero-name-inline, .hero-pct-inline moved to MatchCard.vue */
 
 .badge.result { font-weight: 800; padding: 0.18rem 0.6rem; }
 .badge.result.victory { background: var(--win-soft);  color: var(--win);  border-color: var(--win-line); }
 .badge.result.defeat  { background: var(--loss-soft); color: var(--loss); border-color: var(--loss-line); }
 .badge.result.draw    { background: var(--draw-soft); color: var(--draw); border-color: var(--draw-line); }
 
-/* Incomplete-match warning pill — sits at the right end of the badge row
-   only when one or more required screenshot types weren't captured. The
-   pulsing dot draws the eye; tooltip + expanded view explain the why. */
-.incomplete-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.18rem 0.55rem 0.18rem 0.4rem;
-  margin-left: auto;
-  background: rgb(245 166 35 / 8%);
-  border: 1px dashed rgb(245 166 35 / 55%);
-  border-radius: 2px;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--accent-bright);
-  cursor: help;
-  animation: incomplete-pulse 2.6s ease-in-out infinite;
-}
-
-.incomplete-badge strong {
-  font-weight: 700;
-  color: var(--accent-bright);
-  letter-spacing: 0.12em;
-}
-
-.incomplete-glyph {
-  display: inline-grid;
-  place-items: center;
-  width: 0.95rem;
-  height: 0.95rem;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #1a0a00;
-  font-weight: 900;
-  font-size: 0.65rem;
-  line-height: 1;
-  font-family: var(--mono);
-}
-
-@keyframes incomplete-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(245 166 35 / 0%); }
-  50%      { box-shadow: 0 0 0 3px rgb(245 166 35 / 14%); }
-}
-
-[data-theme="light"] .incomplete-badge {
-  background: rgb(245 166 35 / 12%);
-  color: var(--accent-text);
-}
-
-[data-theme="light"] .incomplete-badge strong { color: var(--accent-text); }
+/* .incomplete-badge family + theme overrides moved to MatchCard.vue */
 
 /* Clickable interactions */
 .clickable {
@@ -1784,39 +1546,7 @@ button.chev-btn:hover { color: var(--accent-bright); }
   box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
 }
 
-/* ─── Expanded card content ──────────────────────────────── */
-
-.match-expanded {
-  margin-top: 0.95rem;
-  padding-top: 0.95rem;
-  border-top: 1px dashed var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-}
-
-.meta-row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.7rem;
-}
-
-.meta-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.22em;
-}
-
-.meta-value {
-  font-family: var(--display);
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
+/* .match-expanded, .meta-row, .meta-eyebrow, .meta-value moved to MatchCard.vue */
 
 .block-eyebrow {
   font-family: var(--mono);
@@ -1827,110 +1557,11 @@ button.chev-btn:hover { color: var(--accent-bright); }
   margin-bottom: 0.55rem;
 }
 
-/* Data Coverage block — diagnostic HUD strip at the top of every expanded
-   card. Lists the four OW screenshot type slots, marks each present /
-   absent / optional, and explains the consequence of each missing one. */
-.coverage-block {
-  padding: 0.7rem 0.85rem 0.85rem;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 1%), transparent),
-    var(--surface-2);
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--brand-gray);
-  border-radius: 2px;
-  position: relative;
-}
-
-.coverage-block::before {
-  /* Decorative corner tick — small OW-style registration mark. */
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: -2px;
-  width: 0.6rem;
-  height: 2px;
-  background: var(--accent);
-}
-
-[data-theme="light"] .coverage-block::before {
-  background: var(--accent-text);
-}
-
-.coverage-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.55rem;
-}
-
-.coverage-header .block-eyebrow { margin-bottom: 0; }
-
-.coverage-count {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  color: var(--text-mute);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-feature-settings: "tnum";
-}
-
-.coverage-block .slot-row {
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.coverage-explain {
-  margin-top: 0.7rem;
-  padding-top: 0.65rem;
-  border-top: 1px dashed var(--hairline);
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-.coverage-line {
-  display: grid;
-  grid-template-columns: minmax(9.5rem, max-content) 1fr;
-  gap: 0.7rem;
-  align-items: baseline;
-  margin: 0;
-  font-size: 0.78rem;
-  line-height: 1.4;
-}
-
-.coverage-line-tag {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.coverage-line.required .coverage-line-tag { color: var(--accent-bright); }
-.coverage-line.optional .coverage-line-tag { color: var(--text-faint); }
-
-.coverage-line-text {
-  color: var(--text-dim);
-}
-
-.coverage-line.required .coverage-line-text strong {
-  color: var(--accent-bright);
-  font-weight: 700;
-}
-
-[data-theme="light"] .coverage-line.required .coverage-line-tag,
-[data-theme="light"] .coverage-line.required .coverage-line-text strong {
-  color: var(--accent-text);
-}
-
-@media (width <= 720px) {
-  .coverage-line {
-    grid-template-columns: 1fr;
-    gap: 0.2rem;
-  }
-}
+/* Orphan .coverage-block / .coverage-header / .coverage-count /
+   .coverage-explain rules deleted — those classes are no longer in any
+   template (the diagnostic HUD strip was retired in favor of the
+   .sources-coverage chip strip on the sources toggle row). The still-
+   used .coverage-line family moved to MatchCard.vue. */
 
 /* Stats grid: big mono numbers, tiny tracked labels */
 .stats {
@@ -1982,239 +1613,11 @@ button.chev-btn:hover { color: var(--accent-bright); }
   letter-spacing: 0.18em;
 }
 
-/* Rank block */
-.rank-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.rank-tier {
-  font-family: var(--display);
-  font-size: 0.95rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 0.2rem 0.6rem;
-  border-radius: 2px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text);
-}
-.rank-tier.bronze    { color: #d18a4a; border-color: rgb(209 138 74 / 45%); }
-.rank-tier.silver    { color: #d6d6d6; border-color: rgb(214 214 214 / 40%); }
-.rank-tier.gold      { color: #ffd770; border-color: rgb(255 215 112 / 45%); }
-.rank-tier.platinum  { color: #7befd9; border-color: rgb(123 239 217 / 45%); }
-.rank-tier.diamond   { color: #c2e6ff; border-color: rgb(194 230 255 / 45%); }
-.rank-tier.master    { color: #d6b4ff; border-color: rgb(214 180 255 / 45%); }
-.rank-tier.grandmaster, .rank-tier.champion { color: var(--loss); border-color: var(--loss-line); }
-
-.rank-progress {
-  font-family: var(--mono);
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  font-feature-settings: "tnum";
-}
-
-.rank-change {
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  color: var(--win);
-  font-weight: 600;
-  font-feature-settings: "tnum";
-}
-
-.rank-modifier {
-  font-size: 0.62rem;
-  padding: 0.18rem 0.5rem;
-  background: var(--surface-3);
-  color: var(--text-dim);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-}
-.sr-line { display: flex; flex-wrap: wrap; gap: 0.7rem; }
-
-.sr-entry {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  padding: 0.25rem 0.55rem;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  font-size: 0.78rem;
-}
-.sr-hero { color: var(--text-dim); text-transform: capitalize; font-size: 0.75rem; }
-.sr-value { font-family: var(--mono); color: var(--text); font-weight: 600; font-feature-settings: "tnum"; }
-.sr-delta { font-family: var(--mono); font-size: 0.7rem; font-weight: 600; font-feature-settings: "tnum"; }
-.sr-delta.up   { color: var(--win); }
-.sr-delta.down { color: var(--loss); }
-
-/* Heroes Played list */
-.heroes-played-items {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.hero-block {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--accent-soft);
-  border-radius: 2px;
-  padding: 0.75rem 0.9rem;
-}
-
-.hero-header {
-  display: flex;
-  gap: 0.7rem;
-  align-items: baseline;
-  margin-bottom: 0.55rem;
-}
-
-.hero-name {
-  font-family: var(--display);
-  font-style: italic;
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 0 0.15rem;
-  cursor: pointer;
-  transition: color 160ms ease, text-shadow 200ms ease;
-}
-.hero-name:hover { color: var(--accent-bright); text-shadow: 0 0 16px var(--accent-glow); }
-.hero-name.active { text-shadow: 0 0 14px var(--accent-glow); }
-
-.hero-pct {
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  color: var(--text-dim);
-  font-feature-settings: "tnum";
-}
-
-.hero-time {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  color: var(--text-faint);
-}
-
-.personal-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-  gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
-}
-
-.personal-item {
-  background: var(--surface);
-  padding: 0.45rem 0.7rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.personal-label {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.personal-value {
-  font-family: var(--mono);
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text);
-  font-feature-settings: "tnum";
-}
-
-/* Source screenshots */
-.sources-block {
-  margin-top: 0.2rem;
-  border-top: 1px dashed var(--border);
-  padding-top: 0.85rem;
-}
-
-.sources-toggle {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  cursor: pointer;
-  user-select: none;
-  font-family: var(--mono);
-  font-size: 0.65rem;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  transition: color 160ms ease;
-}
-.sources-toggle:hover { color: var(--text-dim); }
-
-.sources-count {
-  font-family: var(--mono);
-  background: var(--surface-3);
-  color: var(--text-dim);
-  padding: 0.05rem 0.4rem;
-  border-radius: 2px;
-  font-size: 0.6rem;
-  letter-spacing: 0;
-  margin-left: 0.2rem;
-}
-
-/* Coverage chips on the Sources toggle row — same .slot-chip styling
-   as the legacy coverage-block, but pushed to the right of the
-   "Source Screenshots · 5" label. Clicking a present chip toggles
-   the screenshot-type filter; absent chips are inert visuals. */
-.sources-coverage {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.3rem;
-  margin-left: auto;
-}
-
-.sources-coverage .slot-chip.clickable {
-  cursor: pointer;
-}
-
-.sources-coverage .slot-chip.clickable:hover {
-  filter: brightness(1.12);
-  transform: translateY(-1px);
-}
-
-.sources-coverage .slot-chip.active {
-  box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
-}
-
-.sources {
-  margin-top: 0.55rem;
-  padding: 0.65rem 0.75rem;
-  background: rgb(0 0 0 / 30%);
-  border: 1px solid var(--border-soft);
-  border-radius: 2px;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-}
-.source-file + .source-file { margin-top: 0.45rem; }
-
-/* Each source file is one row: the clickable filename on the left,
-   the screenshot-type chip on the right. */
-.source-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
+/* MatchCard expanded body: rank-*, sr-*, heroes-played-items, hero-block,
+   hero-header, hero-name, hero-pct, hero-time, personal-*, sources-block,
+   sources-toggle, sources-count, sources-coverage, sources, source-file,
+   source-row, source-name-text — moved to MatchCard.vue.
+   .source-name stays here — shared with UnknownMapsView. */
 
 .source-name {
   display: inline-flex;
@@ -2231,109 +1634,9 @@ button.chev-btn:hover { color: var(--accent-bright); }
   min-width: 0;
 }
 .source-name:hover { background: var(--surface-2); color: var(--accent-bright); }
-.source-name-text { font-size: 0.72rem; }
 
-/* Per-file type chip — small uppercase mono pill, color-coded by
-   screenshot type. Clickable to add the type to the source filter. */
-.source-type-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-  padding: 0.18rem 0.5rem;
-  border-radius: 2px;
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  border: 1px solid transparent;
-  flex-shrink: 0;
-  cursor: default;
-  user-select: none;
-  transition: filter 140ms ease, transform 140ms ease, box-shadow 140ms ease;
-}
-
-.source-type-chip.clickable {
-  cursor: pointer;
-}
-
-.source-type-chip.clickable:hover {
-  filter: brightness(1.15);
-  transform: translateY(-1px);
-}
-
-.source-type-chip.active {
-  box-shadow: 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft);
-}
-
-/* Type-specific palettes — each screenshot category gets a recognizable
-   color so a glance down the source list shows the capture pattern. */
-.source-type-summary {
-  background: var(--accent-soft);
-  border-color: rgb(245 166 35 / 50%);
-  color: var(--accent-bright);
-}
-
-.source-type-scoreboard {
-  background: rgb(106 184 255 / 12%);
-  border-color: rgb(106 184 255 / 50%);
-  color: var(--tank);
-}
-
-.source-type-personal {
-  background: rgb(125 255 172 / 12%);
-  border-color: rgb(125 255 172 / 50%);
-  color: var(--support);
-}
-
-.source-type-rank {
-  background: rgb(255 201 77 / 14%);
-  border-color: rgb(255 201 77 / 50%);
-  color: var(--draw);
-}
-
-.source-type-chip.unknown {
-  background: transparent;
-  border-color: var(--border);
-  border-style: dashed;
-  color: var(--text-mute);
-  cursor: help;
-}
-
-[data-theme="light"] .source-type-summary { color: var(--accent-text); }
-
-/* Missing-data explainer below the file list — same pattern as the
-   old coverage-block's explain section, just folded into this block. */
-.sources-explain {
-  margin-top: 0.7rem;
-  padding-top: 0.65rem;
-  border-top: 1px dashed var(--hairline);
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-.source-preview {
-  display: block;
-  margin: 0.5rem 0 0.25rem 1.1rem;
-  max-width: calc(100% - 1.1rem);
-  max-height: 460px;
-  height: auto;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: #000;
-  box-shadow: 0 8px 30px -8px rgb(0 0 0 / 50%);
-}
-
-.source-preview-error {
-  margin: 0.5rem 0 0.25rem 1.1rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.72rem;
-  color: var(--text-faint);
-  background: var(--surface-3);
-  border: 1px solid var(--border-soft);
-  border-radius: 2px;
-}
+/* .source-type-chip family, .sources-explain, .source-preview,
+   .source-preview-error moved to MatchCard.vue. */
 
 /* ─── Page Nav (Settings / Ingest / Matches / Unknown) ──── */
 
@@ -3297,8 +2600,9 @@ button.chev-btn:hover { color: var(--accent-bright); }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .stat { border-right: 1px solid var(--border) !important; }
   .stat:nth-child(2n) { border-right: none !important; }
-  .match-title-rhs { flex-wrap: wrap; }
-  .match-map { font-size: 1.3rem; }
+
+  /* .match-title-rhs / .match-map narrow-viewport overrides moved to
+     MatchCard.vue's \3c style scoped> block. */
   .setting-row { grid-template-columns: 1fr; gap: 0.85rem; }
   .setting-control { align-items: flex-start; }
   .setting-value { text-align: left; }
@@ -3311,29 +2615,23 @@ button.chev-btn:hover { color: var(--accent-bright); }
    Spots where the OW orange appears as readable type on a light
    surface need the darker `--accent-text` variant to clear AA contrast.
    Everything else in light mode flows through the variable swap. */
-[data-theme="light"] .match-map:hover,
-[data-theme="light"] .match-map.active { color: var(--accent-text); text-shadow: none; }
-[data-theme="light"] .hero-name { color: var(--accent-text); }
 
-[data-theme="light"] .hero-name:hover,
-[data-theme="light"] .hero-name.active { color: var(--accent-text); text-shadow: none; }
+/* .match-map / .hero-name / .length-mark / .match.expanded / .sources /
+   .source-preview light-mode overrides moved to MatchCard.vue. */
 [data-theme="light"] .empty-sub strong { color: var(--accent-text); }
 [data-theme="light"] .count strong { color: var(--accent-text); }
 [data-theme="light"] .chev.open { color: var(--accent-text); }
-[data-theme="light"] .length-mark { color: var(--accent-text); }
 [data-theme="light"] .control-deck { background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%); }
 [data-theme="light"] .control-deck::before { opacity: 1; }
-[data-theme="light"] .match.expanded { background: var(--surface-2); }
 [data-theme="light"] .stats { background: var(--surface); }
 [data-theme="light"] .stat { background: var(--surface); }
 
 /* The sources block is dim/console-y in dark mode; in light mode soften
    the inner dark background to a clean tonal step that still reads
-   "monospace dossier" without the harsh black-on-light contrast. */
-[data-theme="light"] .sources { background: var(--surface-2); border-color: var(--border); }
+   "monospace dossier" without the harsh black-on-light contrast.
+   .source-name is shared with UnknownMapsView so its override stays here. */
 [data-theme="light"] .source-name { color: var(--text-dim); }
 [data-theme="light"] .source-name:hover { color: var(--accent-text); background: var(--surface-3); }
-[data-theme="light"] .source-preview { background: var(--surface-3); }
 
 /* Brand wordmark on the gray tile stays white-on-gray in both modes —
    the tile is dark in both themes, so no override needed. The corner
