@@ -29,51 +29,6 @@ first.
 
 ---
 
-## 10. `release.yml` — composite actions + `act` smoke tests
-
-**Size: S**
-
-**What.**
-
-1. **Composite actions** for the repeated "build via Docker" steps —
-   Linux Wails and Windows Wails share most of their shape, and the
-   same `actions/setup-go` + `actions/setup-node` prologue appears in
-   multiple jobs. Each consolidation saves ~5 lines of YAML and
-   removes a copy-paste drift hazard.
-2. **`act` (Nektos/act) smoke tests** for the workflow's shell-only
-   steps so future edits can be validated without cutting a real
-   tag. The shell logic already lives in real `.sh` files under
-   `scripts/release/`, so each can be smoke-tested in isolation with
-   fake env vars + fixture filesystem layout.
-3. **Document the GHCR visibility-flip workaround** explicitly in
-   CONTRIBUTING.md (or split off to RELEASES.md) so the
-   `continue-on-error` band-aid stays intentional rather than
-   accidentally removed. Right now the rationale lives only in the
-   script's header comment and the workflow step's inline note.
-
-**Why it's debt.**
-The release workflow is the most consequential CI surface (it ships
-artifacts to users) and the hardest to iterate on (real tags create
-real GitHub Releases). Composite actions + `act` together would let
-contributors edit it confidently.
-
-**Mitigation plan.**
-
-1. Extract the docker-build prologue into
-   `.github/actions/docker-build-prep` (input: target OS).
-2. Write `scripts/release/smoke/` harness that drives each
-   `scripts/release/*.sh` with fixture inputs under `act`.
-3. Wire `make release-smoke` to invoke the harness.
-
-**How large.**
-S. ~½ day for the composite-action consolidation; act smoke tests
-~1 day depending on appetite for local docker testing. None urgent
-— the existing script extraction already moved the iteration loop
-from "cut a release tag" to "run `bash scripts/release/X.sh` with
-stub inputs", which was the biggest unlock.
-
----
-
 ## 12. Parser golden-file fixtures — privacy-reviewed commit pending
 
 **Size: S**
@@ -165,11 +120,10 @@ and audit every new method against parity at merge time.
 
 ## Prioritized roadmap
 
-Three items remain, ordered by `risk × cost-to-fix-later`:
+Two items remain, ordered by `risk × cost-to-fix-later`:
 
 1. **#12** — fixture commit (S). Cheap once the privacy review clears.
-2. **#10** — composite actions + `act` smoke tests (S). Low risk, quality-of-life.
-3. **#14** — Wails dev portability (L/XL). Structural; needs product input.
+2. **#14** — Wails dev portability (L/XL). Structural; needs product input.
 
 The codebase is in good shape today; none of the above is urgent.
 This file exists to make the latent costs visible so they don't

@@ -36,13 +36,19 @@ Config lives in `release-please-config.json` and `.release-please-manifest.json`
 
 ## One-time repo setup
 
-Two settings unlock the full automation. Skip either and you'll fall back to the [manual recovery procedures](#when-releaseyml-doesnt-auto-fire).
+Three settings unlock the full automation. Skip any and you'll fall back to the [manual recovery procedures](#when-releaseyml-doesnt-auto-fire) — or, for #3, every container pull will require auth forever.
 
 1. **Allow GitHub Actions to open PRs.** Settings → Actions → General → Workflow permissions → check **"Allow GitHub Actions to create and approve pull requests"**. Without this, release-please errors with *"GitHub Actions is not permitted to create or approve pull requests."* when it tries to open the Release PR.
 
 2. **`RELEASE_PLEASE_TOKEN` secret.** Create a fine-grained PAT scoped to this repo with `contents: write` + `pull-requests: write` (or use a GitHub App). Save it as the repo secret `RELEASE_PLEASE_TOKEN`.
 
    Why it matters: tags pushed by `GITHUB_TOKEN` do **not** fire downstream workflows (GitHub's anti-loop guard). With `RELEASE_PLEASE_TOKEN` set, the tag release-please creates is attributed to the PAT owner and `release.yml` fires automatically. Without it, you have to nudge `release.yml` manually for every cut — see [When `release.yml` doesn't auto-fire](#when-releaseyml-doesnt-auto-fire). `release-please.yml` already reads the secret (`token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}`); no code change needed once the secret is in place.
+
+3. **GHCR package visibility — flip `recall-server` to public.** After the first container release, the package will be private by default (GHCR's default for newly-created packages). `docker pull ghcr.io/sound-barrier/recall-server:<tag>` will fail with `denied` for unauthenticated users until you flip it:
+
+   GHCR → Packages → `recall-server` → Package settings → Change visibility → **Public** → confirm by typing the package name.
+
+   Why this is manual: `release.yml`'s `publish-container` job runs `scripts/release/flip-package-public.sh` after each push, which calls `PATCH /orgs|user/packages/container/recall-server` with `visibility=public`. The call is wrapped in `continue-on-error: true` because `GITHUB_TOKEN` does **not** carry the `write:packages` OAuth scope required for visibility changes — GHCR refuses the request with HTTP 403. The script retries five times then surrenders; the workflow continues so the rest of the release still ships. The retry loop is intentional: when this scope eventually lands on `GITHUB_TOKEN` (or when a future contributor adds a PAT with the scope to the workflow), the automation will start succeeding without any code change. **Do not delete the script or remove the `continue-on-error` wrapper** — both are load-bearing, the inline comments in `release.yml` and `scripts/release/flip-package-public.sh` explain why. After the one-time UI flip, the package stays public across all subsequent releases; you only do this once per package name.
 
 ## Cutting a stable release
 
