@@ -1,0 +1,55 @@
+name: Prepare frontend/dist
+description: >
+  Ensure frontend/dist exists so the //go:embed all:frontend/dist
+  directive in assets.go can satisfy any Go-source-loading tool
+  (`go build`, `go list`, gosec, deadcode, schemathesis-server, etc.).
+  Pick `real-assets: true` for jobs that need the actual Vite bundle
+  (e2e, coverage, bundle-size budget) and `real-assets: false` for
+  Go-only jobs that just need the embed to typecheck (gosec, deadcode).
+  Centralised here so a future contributor adding a new Go-loading
+  job doesn't have to remember the dance — they call this composite.
+
+inputs:
+  real-assets:
+    description: >
+      'true' runs `cd frontend && npm ci && npm run build` (Vite
+      bundle, ~20s). 'false' (default) creates an empty stub
+      frontend/dist/index.html — cheap satisfaction of the embed
+      directive when the job only cares about Go source.
+    required: false
+    default: "false"
+  node-version:
+    description: >
+      Node major version for the real-assets path. Ignored when
+      real-assets is 'false'. Track .devcontainer/devcontainer.json's
+      features.node:1.version.
+    required: false
+    default: "26"
+
+runs:
+  using: composite
+  steps:
+    - name: Stub frontend/dist
+      if: ${{ inputs.real-assets != 'true' }}
+      shell: bash
+      run: |
+        mkdir -p frontend/dist
+        touch frontend/dist/index.html
+
+    - name: Set up Node (real-assets build)
+      if: ${{ inputs.real-assets == 'true' }}
+      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install frontend dependencies (real-assets build)
+      if: ${{ inputs.real-assets == 'true' }}
+      shell: bash
+      run: cd frontend && npm ci
+
+    - name: Build frontend (real-assets build)
+      if: ${{ inputs.real-assets == 'true' }}
+      shell: bash
+      run: cd frontend && npm run build

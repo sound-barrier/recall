@@ -25,6 +25,7 @@ overview of the architecture and internal conventions, see
   - [Other build commands](#other-build-commands)
 - [Maintenance](#maintenance)
   - [Git hooks (lefthook)](#git-hooks-lefthook)
+  - [Preparing frontend/dist in CI jobs](#preparing-frontenddist-in-ci-jobs)
   - [Pinning GitHub Actions](#pinning-github-actions)
   - [Tagging and releasing](#tagging-and-releasing)
 - [Releases](RELEASES.md) — separate doc; covers cutting stable releases and prereleases, `make release-beta` / `make release-fire` shortcuts, and recovery procedures.
@@ -409,6 +410,26 @@ LEFTHOOK_EXCLUDE=coverage git push                          # skip pre-push cove
 ```
 
 Hooks bypassed locally will still fail in CI on push — bypass is for in-flight WIP commits, not a way around the rules.
+
+### Preparing frontend/dist in CI jobs
+
+`assets.go` has `//go:embed all:frontend/dist`, so any CI job that loads the root Go package — `go build`, `go list`, `gosec`, `deadcode`, schemathesis's server build, etc. — needs `frontend/dist/` to exist. The `.github/actions/prepare-frontend-dist` composite action handles both shapes:
+
+```yaml
+- name: Prepare frontend/dist (real Vite build)
+  uses: ./.github/actions/prepare-frontend-dist
+  with:
+    real-assets: "true"      # ~30s; needed for e2e, coverage, bundle-size
+```
+
+```yaml
+- name: Prepare frontend/dist (stub for //go:embed)
+  uses: ./.github/actions/prepare-frontend-dist
+  with:
+    real-assets: "false"     # cheap stub; for gosec, deadcode, CodeQL Go
+```
+
+Don't open-code `mkdir -p frontend/dist && touch frontend/dist/index.html` or `cd frontend && npm ci && npm run build` in new workflow steps — call the composite. It SHA-pins its own `setup-node` dependency and is covered by `scripts/check-action-pins.sh`.
 
 ### Pinning GitHub Actions
 
