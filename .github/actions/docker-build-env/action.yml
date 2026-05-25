@@ -22,8 +22,14 @@ inputs:
     default: "false"
   github-token:
     description: >
-      Token used for the GHCR login. Pass `${{ secrets.GITHUB_TOKEN }}`
-      from the caller. Ignored when ghcr-login is 'false'.
+      Token used for the GHCR login. Caller passes the value of
+      secrets.GITHUB_TOKEN here — see release.yml's publish-container
+      job for the example invocation. Ignored when ghcr-login is
+      'false'. (Documentation note: the placeholder string is NOT
+      written as a templated expression in this description because
+      composite-action descriptions are parsed for expressions and
+      secrets.* is not accessible from a composite context, which
+      would fail the whole file to load.)
     required: false
     default: ""
 
