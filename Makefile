@@ -35,7 +35,7 @@ WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
         build-server-container \
         lint lint-go lint-js lint-css lint-html lint-docker lint-typos lint-md lint-actions lint-gosec \
         dead-code dead-code-go dead-code-ts \
-        test test-go test-frontend test-e2e test-all \
+        test test-go test-frontend test-e2e test-all update-goldens \
         cover cover-go cover-frontend \
         fmt update-deps trivy check-deps \
         cloc cloc-detail \
@@ -435,6 +435,22 @@ test-frontend: ## Run frontend unit tests (Vitest)
 # `test:` umbrella stays Go + Vitest by default; opt in to E2E with
 # this target (or `make test-all` which calls both).
 E2E_HOME ?= /tmp/recall-e2e
+
+# Parser golden-file fixtures live in pkg/parser/testdata/golden/.
+# This target re-runs ParseScreenshot against each .png there and
+# rewrites its sidecar .golden.json with the current parse result.
+# Use after intentionally changing parser output (or to seed a new
+# fixture's golden after dropping the PNG in). Eyeball the resulting
+# JSON diff before committing.
+#
+# Override the dir to point at an uncommitted set (e.g. your local
+# screenshots/ stash):
+#   make update-goldens RECALL_FIXTURE_DIR=screenshots
+update-goldens: ## Regenerate parser golden-file fixtures from current parse output
+	@echo "[ recall ] Updating parser goldens from $(or $(RECALL_FIXTURE_DIR),pkg/parser/testdata/golden/)…"
+	RECALL_FIXTURE_UPDATE=1 $(if $(RECALL_FIXTURE_DIR),RECALL_FIXTURE_DIR=$(RECALL_FIXTURE_DIR)) \
+	    go test -run TestParseScreenshot_GoldenFiles ./pkg/parser/ -v
+	@echo "[ recall ] ✓  Goldens updated — review the diff and commit"
 
 test-e2e: ## E2E browser tests via Playwright (boots server in $(E2E_HOME) on :7099)
 	@command -v npx >/dev/null || { echo "[ recall ] ✗  npx not installed — install Node 22+"; exit 1; }
