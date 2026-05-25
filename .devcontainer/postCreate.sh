@@ -135,10 +135,12 @@ cat <<'EOF'
 Recall devcontainer ready.
 
 Next steps:
-  • The Wails GUI build (`make dev`, `make build-mac`) won't run here —
-    use server mode instead:
+  • The Wails GUI (`make dev`) won't run here — the container has no
+    display surface. Use server mode instead:
         go run -tags serveronly . --server
     then open http://127.0.0.1:7000 (port-forwarded automatically).
+    For a native Wails window, develop on a macOS or Debian/Ubuntu host
+    (both run `make dev`); `make build-mac` also needs a macOS host.
 
   • Lint/test before committing:
         make lint    # golangci-lint, ESLint+typescript-eslint, Stylelint, HTMLHint, shellcheck+shfmt, Hadolint, yamllint, Spectral

@@ -115,7 +115,37 @@ case "$PLATFORM" in
             ca-certificates \
             curl \
             wget \
-            unzip
+            unzip \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            pkg-config \
+            build-essential
+
+        # Wails v2.12.0 references webkit2gtk-4.0 in its CGo directives,
+        # but Debian bookworm+/Ubuntu 24.04+ only ship 4.1. Drop pkg-config
+        # shim files that redirect the 4.0 names to the installed 4.1
+        # libraries (mirrors Dockerfile.build's linux-builder stage). The
+        # Makefile's `dev` target also passes `-tags webkit2_4_1`, so
+        # this is belt-and-suspenders — either alone would compile, both
+        # together survive a future Wails CGo refactor.
+        log "pkg-config shims: webkit2gtk-4.0 → 4.1, javascriptcoregtk-4.0 → 4.1"
+        sudo tee /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc >/dev/null <<'PC'
+Name: webkit2gtk-4.0
+Description: compat shim
+Version: 4.1
+Requires: webkit2gtk-4.1
+Cflags:
+Libs:
+PC
+        sudo tee /usr/lib/x86_64-linux-gnu/pkgconfig/javascriptcoregtk-4.0.pc >/dev/null <<'PC'
+Name: javascriptcoregtk-4.0
+Description: compat shim
+Version: 4.1
+Requires: javascriptcoregtk-4.1
+Cflags:
+Libs:
+PC
 
         # Go-installed tools matching .devcontainer/postCreate.sh.
         # golangci-lint via go install (not apt) so the version is
@@ -179,9 +209,11 @@ cat <<'EOF'
 Recall ready to develop.
 
 Next steps:
-  • macOS:  make dev                    (Wails hot-reload desktop app)
-  • Debian: go run -tags serveronly . --server
-            (browse http://127.0.0.1:7000)
+  • macOS or Debian: make dev   (Wails hot-reload desktop app
+                                  with Vite HMR + live Go rebuild)
+  • Headless / inside a container:
+      go run -tags serveronly . --server
+      (browse http://127.0.0.1:7000)
 
 Useful targets:
   make help        list every target
