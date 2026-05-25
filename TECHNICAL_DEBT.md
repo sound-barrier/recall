@@ -114,68 +114,6 @@ urgent.
 
 ---
 
-## 5. `frontend/node_modules/flatted/golang/` pollutes `go list ./...`
-
-**Size: S**
-
-**What.**
-The `flatted` npm package ships a `.go` file in `frontend/node_modules/
-flatted/golang/pkg/flatted/`. Because the repo's `go.mod` is at the
-repo root, that file is treated as part of the `recall` Go module.
-
-CLAUDE.md documents the workarounds:
-
-- Any tool that takes a package list must filter:
-  `go list ./... | grep -v node_modules`.
-- gosec uses `gosec -exclude-dir=frontend ./...`.
-
-**Why it's debt.**
-
-- Every new whole-program Go tool added to lint/CI has to remember
-  the dance. Forgetting it produces opaque errors (gosec's "0 files
-  inspected" is the canonical one).
-- The dependency is on `frontend/node_modules/`, which is recreated
-  by `npm ci` — there's no permanent fix at the npm level (the
-  upstream package is what it is).
-- New contributors are likely to hit it the first time they reach
-  for a new Go tool.
-
-**Mitigation plan.**
-Pick one:
-
-**Option A (recommended, S):** move the Go module root.
-
-1. Move `go.mod` + `go.sum` into a subdirectory (e.g. `cmd/recall/`
-   or restructure with the Go code under `./go/`).
-2. Update all import paths once (`gopls rename` handles it).
-3. Update Makefile, Dockerfile.build, all CI workflows to `cd` into
-   the new root.
-4. The `frontend/` tree no longer overlaps the Go module — `go
-   list ./...` is clean.
-
-**Option B (M):** add a `.go-list-filter` convention.
-
-1. Add `scripts/go-pkgs.sh` that prints the filtered package list.
-2. Replace every `go list ./...` invocation in the repo with
-   `$(scripts/go-pkgs.sh)`.
-3. Document the convention in CLAUDE.md.
-
-**Option C (cheapest, S):** leave the workarounds; promote them
-from "convention" to "tested".
-
-1. Add a CI test that asserts the filter still produces a non-empty
-   set + that an unfiltered `go list ./...` exits non-zero (today)
-   or includes the unwanted package — so a future npm dep change
-   that quietly fixes the situation is caught and the workarounds
-   can be removed.
-
-**How large.**
-S for A or C; M for B. **A** is the right long-term answer (most Go
-projects keep the module root under a `cmd/` or `internal/`
-subdirectory anyway) but it's a one-time blast radius across every
-import path. Worth doing as a single atomic PR when there's a quiet
-window.
-
 ---
 
 ## 7. Pre-existing `KNOWN_CONTRAST_DEBT` a11y exclusions — needs full design pass
@@ -513,6 +451,16 @@ choices.
   real file at `docs/dmg/README.txt` (no more heredoc paired with
   `docs/install-macos.md`). `Makefile`'s `SHELL_SCRIPTS` glob
   covers `scripts/release/*.sh` so every script is lint-checked.
+- `frontend/node_modules/flatted/golang/` no longer pollutes
+  `go list ./...` — `frontend/scripts/seed-go-sentinel.cjs` runs
+  as an npm `postinstall` hook and drops a stub
+  `frontend/node_modules/go.mod` after every `npm ci`. Go's
+  package walker stops at that boundary; the recall module no
+  longer absorbs the stray `.go` file. `frontend/dist` is left
+  inside the recall module so `//go:embed all:frontend/dist` in
+  `assets.go` still works. The historical filter workarounds in
+  `scripts/deadcode-check.sh` and `make lint-gosec` stay as
+  defence in depth.
 - Parser golden-file fixture infrastructure — `integration_test.go`
   defaults `RECALL_FIXTURE_DIR` to `pkg/parser/testdata/golden/`,
   `make update-goldens` seeds + regenerates sidecars, the test
@@ -566,8 +514,8 @@ choices.
 
 ### Phase 4 — opportunistic / product-level
 
-1. #5 move Go module root out of overlap with frontend/ (S — schedule a quiet window)
-2. #10 release.yml script extraction (M)
+1. ~~#5 move Go module root out of overlap with frontend/ (S)~~ — done (npm postinstall hook seeds frontend/node_modules/go.mod sentinel; defence-in-depth workarounds kept)
+2. ~~#10 release.yml script extraction (M)~~ — done (composite-action + act-smoke-test residual)
 3. #4 long-term: wailsjs from OpenAPI (L)
 4. #14 server-mode parity audit or Wails containerization (L)
 5. #17 CLAUDE.md naturally shrinks as a side effect
