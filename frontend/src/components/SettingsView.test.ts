@@ -3,15 +3,23 @@ import { mount } from '@vue/test-utils'
 
 import SettingsView from './SettingsView.vue'
 
+// Common probs the test suite reuses. Tests run under happy-dom which
+// has no Wails runtime, so IS_WAILS is false and the Open buttons
+// never render — that's the contract; an Open-button test would have
+// to stub window.go.app.App first.
+
 describe('SettingsView', () => {
-  it('shows the "choose a folder to begin" heading when no folder is selected', () => {
+  it('shows the empty-state hero when no folder is selected', () => {
     const wrapper = mount(SettingsView, {
       props: { screenshotsDir: '', loading: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(wrapper.text()).toContain('Choose a')
     expect(wrapper.text()).toContain('screenshots folder')
-    // The dash placeholder appears for the value.
-    expect(wrapper.find('.setting-value').text()).toBe('— Not selected —')
+    // The empty-state hero card is the primary affordance.
+    expect(wrapper.find('.empty-hero').exists()).toBe(true)
+    // No setting-value chip should render — the row is hidden in the
+    // empty state because the hero owns the CTA.
+    expect(wrapper.find('.setting-value').exists()).toBe(false)
   })
 
   it('shows the "where Recall reads from" heading once a folder is configured', () => {
@@ -20,49 +28,66 @@ describe('SettingsView', () => {
     })
     expect(wrapper.text()).toContain('Where Recall reads from')
     expect(wrapper.find('.setting-value').text()).toBe('/srv/owmetrics')
+    expect(wrapper.find('.empty-hero').exists()).toBe(false)
   })
 
-  it('emits pick-screenshots-dir when Change Folder is clicked', async () => {
+  it('emits pick-screenshots-dir when the Change… button is clicked', async () => {
     const wrapper = mount(SettingsView, {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
     })
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Change Folder'))
+    const btn = wrapper.findAll('button').find(b => b.text().includes('Change'))
     expect(btn).toBeDefined()
     await btn!.trigger('click')
     expect(wrapper.emitted('pick-screenshots-dir')).toBeTruthy()
   })
 
-  it('disables Change Folder while loading=true', () => {
+  it('disables the Change… button while loading=true', () => {
     const wrapper = mount(SettingsView, {
       props: { screenshotsDir: '/srv', loading: true, themeMode: 'dark', weekStart: 0 },
     })
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Change Folder'))!
+    const btn = wrapper.findAll('button').find(b => b.text().includes('Change'))!
     expect(btn.attributes('disabled')).toBeDefined()
   })
 
-  it('emits toggle-theme on theme button click', async () => {
+  it('emits toggle-theme when the inactive theme swatch is clicked', async () => {
     const wrapper = mount(SettingsView, {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
     })
-    await wrapper.find('.theme-toggle').trigger('click')
+    // themeMode === 'dark', so clicking the light swatch should toggle.
+    const lightSwatch = wrapper.find('.light-swatch')
+    await lightSwatch.trigger('click')
     expect(wrapper.emitted('toggle-theme')).toBeTruthy()
   })
 
-  it('marks the active theme segment per themeMode prop', () => {
+  it('does not emit toggle-theme when the active swatch is clicked', async () => {
+    const wrapper = mount(SettingsView, {
+      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+    })
+    // Clicking the dark swatch when dark is already active is a no-op.
+    await wrapper.find('.dark-swatch').trigger('click')
+    expect(wrapper.emitted('toggle-theme')).toBeFalsy()
+  })
+
+  it('marks the active theme swatch per themeMode prop', () => {
     const dark = mount(SettingsView, {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
     })
-    const darkSegs = dark.findAll('.theme-seg')
-    // Order in template: Day (light) first, Night (dark) second.
-    expect(darkSegs[1]!.classes()).toContain('active')
-    expect(darkSegs[0]!.classes()).not.toContain('active')
+    expect(dark.find('.dark-swatch').classes()).toContain('active')
+    expect(dark.find('.light-swatch').classes()).not.toContain('active')
 
     const light = mount(SettingsView, {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'light', weekStart: 0 },
     })
-    const lightSegs = light.findAll('.theme-seg')
-    expect(lightSegs[0]!.classes()).toContain('active')
-    expect(lightSegs[1]!.classes()).not.toContain('active')
+    expect(light.find('.light-swatch').classes()).toContain('active')
+    expect(light.find('.dark-swatch').classes()).not.toContain('active')
+  })
+
+  it('aria-checked mirrors themeMode on each swatch', () => {
+    const wrapper = mount(SettingsView, {
+      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+    })
+    expect(wrapper.find('.dark-swatch').attributes('aria-checked')).toBe('true')
+    expect(wrapper.find('.light-swatch').attributes('aria-checked')).toBe('false')
   })
 
   it('emits go-to-view ingest when the "Ingest →" link is clicked', async () => {
@@ -75,32 +100,37 @@ describe('SettingsView', () => {
     expect(wrapper.emitted('go-to-view')![0]).toEqual(['ingest'])
   })
 
-  // ── Calendar section: First Day of Week 7-segment picker ───────
+  it('emits go-to-view matches when the "Week of" cross-reference is clicked', async () => {
+    const wrapper = mount(SettingsView, {
+      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+    })
+    const link = wrapper.findAll('.empty-link').find(el => el.text().includes('Week of'))!
+    await link.trigger('click')
+    expect(wrapper.emitted('go-to-view')).toBeTruthy()
+    expect(wrapper.emitted('go-to-view')![0]).toEqual(['matches'])
+  })
 
-  it('renders the Calendar section with all seven day segments and full day names', () => {
+  // ── Calendar section: 7-cell first-day picker ─────────────────
+
+  it('renders the Calendar section with seven day cells', () => {
     const wrapper = mount(SettingsView, {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(wrapper.text()).toContain('Calendar')
     expect(wrapper.text()).toContain('First Day of Week')
-    const segs = wrapper.findAll('.weekstart-seg')
-    expect(segs).toHaveLength(7)
-    // Full day names — no abbreviations.
-    const expectedNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-    expectedNames.forEach((name, i) => {
-      expect(segs[i]!.text()).toContain(name)
-    })
+    const cells = wrapper.findAll('.weekstart-cell')
+    expect(cells).toHaveLength(7)
   })
 
-  it('marks the active weekstart segment per weekStart prop (any day 0-6)', () => {
+  it('marks the active weekstart cell per weekStart prop (any day 0-6)', () => {
     for (let day = 0; day <= 6; day++) {
       const wrapper = mount(SettingsView, {
         props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: day as 0 | 1 | 2 | 3 | 4 | 5 | 6 },
       })
-      const segs = wrapper.findAll('.weekstart-seg')
-      segs.forEach((seg, i) => {
-        if (i === day) expect(seg.classes()).toContain('active')
-        else expect(seg.classes()).not.toContain('active')
+      const cells = wrapper.findAll('.weekstart-cell')
+      cells.forEach((cell, i) => {
+        if (i === day) expect(cell.classes()).toContain('active')
+        else expect(cell.classes()).not.toContain('active')
       })
     }
   })
@@ -109,23 +139,39 @@ describe('SettingsView', () => {
     const wrapper = mount(SettingsView, {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 3 },
     })
-    const segs = wrapper.findAll('.weekstart-seg')
-    segs.forEach((seg, i) => {
-      expect(seg.attributes('aria-checked')).toBe(i === 3 ? 'true' : 'false')
+    const cells = wrapper.findAll('.weekstart-cell')
+    cells.forEach((cell, i) => {
+      expect(cell.attributes('aria-checked')).toBe(i === 3 ? 'true' : 'false')
     })
   })
 
-  it('emits set-week-start with the numeric day index on segment click', async () => {
+  it('emits set-week-start with the numeric day index on cell click', async () => {
     const wrapper = mount(SettingsView, {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
     })
-    const segs = wrapper.findAll('.weekstart-seg')
+    const cells = wrapper.findAll('.weekstart-cell')
     // Friday (index 5)
-    await segs[5]!.trigger('click')
+    await cells[5]!.trigger('click')
     expect(wrapper.emitted('set-week-start')![0]).toEqual([5])
     // Saturday (index 6)
-    await segs[6]!.trigger('click')
+    await cells[6]!.trigger('click')
     expect(wrapper.emitted('set-week-start')![1]).toEqual([6])
+  })
+
+  it('shows the resolved day name in the weekstart caption', () => {
+    const wrapper = mount(SettingsView, {
+      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 3 },
+    })
+    const cap = wrapper.find('.weekstart-caption')
+    expect(cap.text()).toContain('Wednesday')
+  })
+
+  it('renders a help affordance for every setting label', () => {
+    const wrapper = mount(SettingsView, {
+      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+    })
+    // Screenshots Folder, Data Location, Theme, First Day of Week.
+    expect(wrapper.findAll('.setting-help')).toHaveLength(4)
   })
 })
 
@@ -160,15 +206,20 @@ describe('SettingsView — Data Location row', () => {
     expect(wrapper.find('.data-loc-grid').exists()).toBe(false)
   })
 
-  it('disables the Copy DB Path button when no dataLocation is loaded yet', () => {
+  it('renders a Copy button per path row', () => {
     const wrapper = mount(SettingsView, {
-      props: { ...baseProps, dataLocation: null },
+      props: { ...baseProps, dataLocation: sampleLoc },
     })
-    const copyBtn = wrapper.findAll('button').find(b => b.text().includes('Copy DB Path'))!
-    expect(copyBtn.attributes('disabled')).toBeDefined()
+    // Two .data-loc-actions clusters — one per path — each with a Copy.
+    const clusters = wrapper.findAll('.data-loc-actions')
+    expect(clusters).toHaveLength(2)
+    clusters.forEach(c => {
+      const copy = c.findAll('button').find(b => b.text().trim() === 'Copy')
+      expect(copy).toBeDefined()
+    })
   })
 
-  it('writes the database path to the clipboard when Copy DB Path is clicked', async () => {
+  it('writes the database path to the clipboard when its Copy is clicked', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText },
@@ -178,12 +229,29 @@ describe('SettingsView — Data Location row', () => {
     const wrapper = mount(SettingsView, {
       props: { ...baseProps, dataLocation: sampleLoc },
     })
-    const copyBtn = wrapper.findAll('button').find(b => b.text().includes('Copy DB Path'))!
-    await copyBtn.trigger('click')
+    const clusters = wrapper.findAll('.data-loc-actions')
+    const dbCopy = clusters[0]!.findAll('button').find(b => b.text().trim() === 'Copy')!
+    await dbCopy.trigger('click')
     expect(writeText).toHaveBeenCalledWith('/data/db/recall.db')
   })
 
-  it('flashes "Copied ✓" after a successful copy and clears after 1.4 s', async () => {
+  it('writes the settings path to the clipboard when its Copy is clicked', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    })
+
+    const wrapper = mount(SettingsView, {
+      props: { ...baseProps, dataLocation: sampleLoc },
+    })
+    const clusters = wrapper.findAll('.data-loc-actions')
+    const settingsCopy = clusters[1]!.findAll('button').find(b => b.text().trim() === 'Copy')!
+    await settingsCopy.trigger('click')
+    expect(writeText).toHaveBeenCalledWith('/data/settings.json')
+  })
+
+  it('flashes Copied ✓ on the right button after a successful copy', async () => {
     vi.useFakeTimers()
     try {
       Object.defineProperty(navigator, 'clipboard', {
@@ -193,18 +261,17 @@ describe('SettingsView — Data Location row', () => {
       const wrapper = mount(SettingsView, {
         props: { ...baseProps, dataLocation: sampleLoc },
       })
-      const copyBtn = wrapper.findAll('button').find(b => b.text().includes('Copy DB Path'))!
-      await copyBtn.trigger('click')
-      // Resolve the writeText microtask first.
+      const dbCopy = wrapper.findAll('.data-loc-actions')[0]!
+        .findAll('button').find(b => b.text().trim() === 'Copy')!
+      await dbCopy.trigger('click')
       await Promise.resolve()
       await wrapper.vm.$nextTick()
       expect(wrapper.text()).toContain('Copied ✓')
 
-      // Bar clears 1.4 s later.
+      // The label clears 1.4 s later.
       vi.advanceTimersByTime(1500)
       await wrapper.vm.$nextTick()
       expect(wrapper.text()).not.toContain('Copied ✓')
-      expect(wrapper.text()).toContain('Copy DB Path')
     } finally {
       vi.useRealTimers()
     }
@@ -215,17 +282,15 @@ describe('SettingsView — Data Location row', () => {
       value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
       configurable: true,
     })
-    // happy-dom doesn't ship a window.prompt — stub it as a global so
-    // the component's `window.prompt(...)` call hits our spy.
     const promptSpy = vi.fn().mockReturnValue(null)
     vi.stubGlobal('prompt', promptSpy)
 
     const wrapper = mount(SettingsView, {
       props: { ...baseProps, dataLocation: sampleLoc },
     })
-    const copyBtn = wrapper.findAll('button').find(b => b.text().includes('Copy DB Path'))!
-    await copyBtn.trigger('click')
-    // Let the rejected promise + catch land.
+    const dbCopy = wrapper.findAll('.data-loc-actions')[0]!
+      .findAll('button').find(b => b.text().trim() === 'Copy')!
+    await dbCopy.trigger('click')
     await Promise.resolve()
     await Promise.resolve()
     expect(promptSpy).toHaveBeenCalledWith('Copy this path:', '/data/db/recall.db')
@@ -233,59 +298,93 @@ describe('SettingsView — Data Location row', () => {
   })
 })
 
-// ── Detect Overwatch Folder row ─────────────────────────────────────────
+// ── Detect Overwatch Folder — empty-state hero + steady-state row ──────
 
-describe('SettingsView — Detect Overwatch Folder', () => {
-  const baseProps = {
+describe('SettingsView — Detect Overwatch Folder (empty state hero)', () => {
+  const emptyProps = {
     screenshotsDir: '', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
   }
 
-  it('renders the Detect button alongside Change Folder', () => {
-    const wrapper = mount(SettingsView, { props: baseProps })
-    const detect = wrapper.findAll('button').find(b => b.text().trim() === 'Detect')
+  it('renders the Auto-Detect Folder primary CTA in the empty-state hero', () => {
+    const wrapper = mount(SettingsView, { props: emptyProps })
+    const detect = wrapper.findAll('button').find(b => b.text().includes('Auto-Detect Folder'))
     expect(detect).toBeDefined()
+    expect(detect!.classes()).toContain('primary')
     expect(detect!.attributes('disabled')).toBeUndefined()
   })
 
-  it('emits detect-screenshots-dir when Detect is clicked', async () => {
-    const wrapper = mount(SettingsView, { props: baseProps })
-    const detect = wrapper.findAll('button').find(b => b.text().trim() === 'Detect')!
+  it('emits detect-screenshots-dir when Auto-Detect is clicked', async () => {
+    const wrapper = mount(SettingsView, { props: emptyProps })
+    const detect = wrapper.findAll('button').find(b => b.text().includes('Auto-Detect Folder'))!
     await detect.trigger('click')
     expect(wrapper.emitted('detect-screenshots-dir')).toBeTruthy()
   })
 
-  it('shows the in-flight label and disables the button while probing=true', () => {
+  it('emits pick-screenshots-dir when "Choose Manually" is clicked', async () => {
+    const wrapper = mount(SettingsView, { props: emptyProps })
+    const manual = wrapper.findAll('button').find(b => b.text().includes('Choose Manually'))!
+    await manual.trigger('click')
+    expect(wrapper.emitted('pick-screenshots-dir')).toBeTruthy()
+  })
+
+  it('shows the in-flight label and disables Auto-Detect while probing=true', () => {
     const wrapper = mount(SettingsView, {
-      props: { ...baseProps, probing: true },
+      props: { ...emptyProps, probing: true },
     })
     const detect = wrapper.findAll('button').find(b => b.text().includes('Detecting'))!
     expect(detect.attributes('disabled')).toBeDefined()
   })
+})
+
+describe('SettingsView — Detect Overwatch Folder (steady state)', () => {
+  const setProps = {
+    screenshotsDir: '/srv', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+  }
+
+  it('renders a Detect button alongside Change… in the steady-state row', () => {
+    const wrapper = mount(SettingsView, { props: setProps })
+    const detect = wrapper.findAll('button').find(b => b.text().trim() === 'Detect')
+    expect(detect).toBeDefined()
+  })
+
+  it('emits detect-screenshots-dir when the steady-state Detect is clicked', async () => {
+    const wrapper = mount(SettingsView, { props: setProps })
+    const detect = wrapper.findAll('button').find(b => b.text().trim() === 'Detect')!
+    await detect.trigger('click')
+    expect(wrapper.emitted('detect-screenshots-dir')).toBeTruthy()
+  })
+})
+
+describe('SettingsView — Probe chip', () => {
+  const emptyProps = {
+    screenshotsDir: '', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+  }
 
   it('renders the success chip when probeStatus=success', () => {
     const wrapper = mount(SettingsView, {
       props: {
-        ...baseProps,
+        ...emptyProps,
         probeStatus: 'success',
         probeMessage: 'Detected · /home/u/Documents/Overwatch/ScreenShots/Overwatch',
       },
     })
-    const chip = wrapper.find('.setting-meta')
+    const chip = wrapper.find('.probe-chip')
     expect(chip.exists()).toBe(true)
     expect(chip.classes()).toContain('success')
     expect(chip.text()).toContain('Detected')
+    expect(chip.find('.probe-chip-bar').exists()).toBe(true)
   })
 
   it('renders the blocked chip + Looked-in disclosure when probeStatus=blocked', () => {
     const wrapper = mount(SettingsView, {
       props: {
-        ...baseProps,
+        ...emptyProps,
         probeStatus: 'blocked',
         probeMessage: 'No default Overwatch folder on this machine.',
         probeTried: ['/a/path', '/b/path'],
       },
     })
-    const chip = wrapper.find('.setting-meta')
+    const chip = wrapper.find('.probe-chip')
     expect(chip.classes()).toContain('blocked')
 
     const details = wrapper.find('.probe-tried')
@@ -296,10 +395,10 @@ describe('SettingsView — Detect Overwatch Folder', () => {
     expect(items[1]!.text()).toBe('/b/path')
   })
 
-  it('hides the Looked-in disclosure when probeTried is empty even on the blocked path', () => {
+  it('hides the Looked-in disclosure when probeTried is empty on the blocked path', () => {
     const wrapper = mount(SettingsView, {
       props: {
-        ...baseProps,
+        ...emptyProps,
         probeStatus: 'blocked',
         probeMessage: 'No default Overwatch folder on this machine.',
         probeTried: [],
@@ -309,7 +408,38 @@ describe('SettingsView — Detect Overwatch Folder', () => {
   })
 
   it('renders no chip at all when probeMessage is empty', () => {
-    const wrapper = mount(SettingsView, { props: baseProps })
-    expect(wrapper.find('.setting-meta').exists()).toBe(false)
+    const wrapper = mount(SettingsView, { props: emptyProps })
+    expect(wrapper.find('.probe-chip').exists()).toBe(false)
+  })
+
+  it('dismisses the chip when the close × is clicked', async () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...emptyProps,
+        probeStatus: 'success',
+        probeMessage: 'Detected · /path',
+      },
+    })
+    expect(wrapper.find('.probe-chip').exists()).toBe(true)
+    await wrapper.find('.probe-chip-close').trigger('click')
+    expect(wrapper.find('.probe-chip').exists()).toBe(false)
+  })
+
+  it('re-opens the chip when a new probeMessage lands after dismissal', async () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...emptyProps,
+        probeStatus: 'blocked',
+        probeMessage: 'No default on this machine.',
+      },
+    })
+    await wrapper.find('.probe-chip-close').trigger('click')
+    expect(wrapper.find('.probe-chip').exists()).toBe(false)
+
+    await wrapper.setProps({
+      probeStatus: 'success',
+      probeMessage: 'Detected · /path',
+    })
+    expect(wrapper.find('.probe-chip').exists()).toBe(true)
   })
 })

@@ -34,7 +34,11 @@ declare global {
   }
 }
 
-const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
+// Exported so feature surfaces can render Wails-only affordances (e.g.
+// "Open in Finder/Explorer" which uses BrowserOpenURL with file://).
+// Stays a `const` rather than a function so tree-shakers can fold
+// dead branches at build time.
+export const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
 
 // OpenURL opens a URL in the OS default browser. In Wails mode the WebView
 // does not route target="_blank" links to the system browser, so we must call
