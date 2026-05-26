@@ -1,11 +1,11 @@
 package parser
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -102,24 +102,24 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ParseScreenshot(%s): %v", imgPath, err)
 			}
-			gotSnap := goldenSnapshot{
+			gotJSON, err := json.MarshalIndent(goldenSnapshot{
 				ScreenshotType: ScreenshotType(got),
-				Result:         *got,
+				Result:         ToGolden(got),
+			}, "", "  ")
+			if err != nil {
+				t.Fatalf("marshal golden: %v", err)
 			}
+			gotJSON = append(gotJSON, '\n')
 
 			if update {
-				b, err := json.MarshalIndent(gotSnap, "", "  ")
-				if err != nil {
-					t.Fatalf("marshal golden: %v", err)
-				}
-				if err := os.WriteFile(goldenPath, append(b, '\n'), 0o644); err != nil {
+				if err := os.WriteFile(goldenPath, gotJSON, 0o644); err != nil {
 					t.Fatalf("write golden: %v", err)
 				}
 				t.Logf("updated %s", goldenPath)
 				return
 			}
 
-			rawWant, err := os.ReadFile(goldenPath)
+			wantJSON, err := os.ReadFile(goldenPath)
 			if os.IsNotExist(err) {
 				t.Skipf("no golden file at %s (run with RECALL_FIXTURE_UPDATE=1 to create)", goldenPath)
 			}
@@ -127,14 +127,12 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 				t.Fatalf("read golden: %v", err)
 			}
 
-			var want goldenSnapshot
-			if err := json.Unmarshal(rawWant, &want); err != nil {
-				t.Fatalf("unmarshal golden: %v", err)
-			}
-
-			if !reflect.DeepEqual(gotSnap, want) {
-				gotJSON, _ := json.MarshalIndent(gotSnap, "", "  ")
-				wantJSON, _ := json.MarshalIndent(want, "", "  ")
+			// Byte-equal compare: marshal output is deterministic per
+			// struct declaration order, so a stable parser produces a
+			// byte-identical golden. Drift in either the parser or the
+			// per-type golden shape (pkg/parser/golden.go) flips the
+			// comparison loudly.
+			if !bytes.Equal(gotJSON, wantJSON) {
 				t.Errorf("parse mismatch for %s\n--- got ---\n%s\n--- want ---\n%s",
 					name, gotJSON, wantJSON)
 			}
@@ -143,9 +141,12 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 }
 
 // goldenSnapshot is the JSON shape of each `<filename>.golden.json`.
-// Two-field wrapper around MatchResult so each fixture asserts both
-// the parser output AND its derived screenshot-type classification.
+// Two-field wrapper so each fixture asserts both the derived
+// screenshot-type classification AND the parser output. `Result` is
+// `any` because the concrete shape is one of *SummaryGolden /
+// *ScoreboardGolden / *PersonalGolden / *RankGolden (or *MatchResult
+// for the unknown fallback) — see ToGolden in pkg/parser/golden.go.
 type goldenSnapshot struct {
-	ScreenshotType string      `json:"screenshot_type"`
-	Result         MatchResult `json:"result"`
+	ScreenshotType string `json:"screenshot_type"`
+	Result         any    `json:"result"`
 }
