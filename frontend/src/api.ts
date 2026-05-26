@@ -205,42 +205,62 @@ export function GetDataLocation(): Promise<DataLocation> {
 // and the call resolves with the chosen path ("" on cancel). In server
 // mode we fetch the payload as a blob and trigger a browser download
 // using a transient <a download> click.
-export async function ExportData(): Promise<string> {
-  if (IS_WAILS) return _wails('SaveExportToFile')
-  const r = await fetch('/api/export')
+export function ExportData(): Promise<string> {
+  return downloadExport('json')
+}
+
+// CSV-format export. Wraps the parsed-match tables as a ZIP of CSV
+// files + a manifest.json — same data as ExportData, different
+// container chosen by the user.
+export function ExportDataCSV(): Promise<string> {
+  return downloadExport('csv')
+}
+
+async function downloadExport(format: 'json' | 'csv'): Promise<string> {
+  if (IS_WAILS) {
+    return _wails(format === 'csv' ? 'SaveExportToFileCSV' : 'SaveExportToFile')
+  }
+  const url = format === 'csv' ? '/api/export.csv' : '/api/export'
+  const r = await fetch(url)
   if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ''))
   // Pull the server-suggested filename out of Content-Disposition.
   const cd = r.headers.get('Content-Disposition') ?? ''
   const matched = /filename="([^"]+)"/.exec(cd)
-  const fallback = `recall-export-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.json`
+  const ext = format === 'csv' ? 'zip' : 'json'
+  const fallback = `recall-export-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.${ext}`
   const name = matched?.[1] ?? fallback
   const blob = await r.blob()
-  const url = URL.createObjectURL(blob)
+  const blobURL = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url
+  a.href = blobURL
   a.download = name
   a.style.display = 'none'
   document.body.appendChild(a)
   a.click()
   a.remove()
-  URL.revokeObjectURL(url)
+  URL.revokeObjectURL(blobURL)
   return name
 }
 
 // Import — Wails opens a native file picker and runs ImportData
 // in-process; resolves with the path ("" on cancel). Server mode
-// opens a transient <input type=file>, reads the chosen file as
-// text, and POSTs to /api/import. Resolves with the chosen filename
-// ("" on cancel).
+// opens a transient <input type=file> accepting either .json or
+// .zip (CSV-flavored exports are ZIP archives), reads the chosen
+// file as bytes, and POSTs to /api/import with a content-type
+// matching the format. The server sniffs the payload's first bytes
+// and routes between the JSON and CSV codepaths automatically.
 export async function ImportData(): Promise<string> {
   if (IS_WAILS) return _wails('LoadImportFromFile')
-  const file = await pickFile('application/json,.json')
+  const file = await pickFile('application/json,application/zip,.json,.zip')
   if (!file) return ''
-  const text = await file.text()
+  // Read as ArrayBuffer so ZIP archives survive the round-trip — a
+  // .text() call would mangle binary bytes via UTF-8 decoding.
+  const buf = await file.arrayBuffer()
+  const isZip = file.name.toLowerCase().endsWith('.zip') || file.type === 'application/zip'
   const r = await fetch('/api/import', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: text,
+    headers: { 'Content-Type': isZip ? 'application/zip' : 'application/json' },
+    body: buf,
   })
   if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ''))
   return file.name

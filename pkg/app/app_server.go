@@ -41,6 +41,12 @@ func (a *App) SaveExportToFile() (string, error) {
 	return "", fmt.Errorf("native dialogs unavailable in server mode; use GET /api/export")
 }
 
+// SaveExportToFileCSV is not available in server mode (no native dialogs).
+// The HTTP API exposes GET /api/export.csv which streams the same payload.
+func (a *App) SaveExportToFileCSV() (string, error) {
+	return "", fmt.Errorf("native dialogs unavailable in server mode; use GET /api/export.csv")
+}
+
 // LoadImportFromFile is not available in server mode (no native dialogs).
 // The HTTP API exposes POST /api/import which accepts the same payload.
 func (a *App) LoadImportFromFile() (string, error) {

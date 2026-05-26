@@ -506,6 +506,34 @@ paths:
               schema:
                 $ref: "#/components/schemas/RecallExport"
 
+  /api/export.csv:
+    get:
+      tags: [Data]
+      summary: Download a CSV-format backup of the local parsed-match database
+      description: |
+        Returns a ZIP archive containing one CSV file per parent and
+        child table plus a `manifest.json` with the envelope metadata.
+        Same data version (`schema = recall-export/v1`) as
+        `/api/export`, different container — chosen by the user when
+        they want to inspect or edit the data in Excel / Sheets.
+
+        Round-trips through `POST /api/import` — that endpoint
+        auto-detects whether the uploaded payload is a JSON document
+        or a ZIP archive via the first bytes.
+      responses:
+        "200":
+          description: ZIP download.
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+                example: 'attachment; filename="recall-export-20260526-020000.zip"'
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+
   /api/import:
     post:
       tags: [Data]
@@ -516,6 +544,10 @@ paths:
         before touching the store; mismatched versions are rejected
         with `400` and the existing data is left untouched.
 
+        Accepts BOTH container formats — the server sniffs the payload's
+        first bytes to detect a JSON envelope (`{` ...) or a ZIP archive
+        (`PK\x03\x04` magic) and routes accordingly.
+
         The operation is REPLACE, not merge: anything currently in the
         store is dropped after the payload is validated and before the
         import lands. Callers should surface a confirmation step.
@@ -525,6 +557,11 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/RecallExport"
+          application/zip:
+            schema:
+              type: string
+              format: binary
+              description: A ZIP archive produced by GET /api/export.csv.
       responses:
         "200":
           $ref: "#/components/responses/Ok"

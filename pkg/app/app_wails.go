@@ -110,6 +110,37 @@ func (a *App) SaveExportToFile() (string, error) {
 	return path, nil
 }
 
+// SaveExportToFileCSV is the CSV-format sibling of SaveExportToFile:
+// opens a save dialog defaulting to `.zip` (the container that wraps
+// the per-table CSVs + manifest.json) and writes the ExportDataCSV
+// payload at the chosen path. Same return contract as the JSON variant.
+func (a *App) SaveExportToFileCSV() (string, error) {
+	defaultName := "recall-export-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+	path, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{
+		Title:                "Save Recall export (CSV)",
+		DefaultFilename:      defaultName,
+		CanCreateDirectories: true,
+		Filters: []wruntime.FileFilter{
+			{DisplayName: "Recall export (ZIP of CSVs)", Pattern: "*.zip"},
+			{DisplayName: "All files", Pattern: "*"},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", nil
+	}
+	data, err := a.ExportDataCSV()
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return "", fmt.Errorf("write csv export: %w", err)
+	}
+	return path, nil
+}
+
 // LoadImportFromFile opens a native open dialog, reads the chosen
 // file, and applies it via ImportData. Returns the path read on
 // success; "" if cancelled. Replaces the current database — caller
@@ -118,7 +149,7 @@ func (a *App) LoadImportFromFile() (string, error) {
 	path, err := wruntime.OpenFileDialog(a.ctx, wruntime.OpenDialogOptions{
 		Title: "Open Recall export",
 		Filters: []wruntime.FileFilter{
-			{DisplayName: "Recall export (JSON)", Pattern: "*.json"},
+			{DisplayName: "Recall export (JSON or ZIP)", Pattern: "*.json;*.zip"},
 			{DisplayName: "All files", Pattern: "*"},
 		},
 	})

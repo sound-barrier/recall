@@ -92,6 +92,7 @@ function mockApi(overrides: MountOverrides = {}) {
       screenshots_dir: overrides.screenshotsDir ?? '',
     })),
     ExportData:          vi.fn(async () => ''),
+    ExportDataCSV:       vi.fn(async () => ''),
     ImportData:          vi.fn(async () => ''),
     // Tests don't exercise canonical-name display; return an empty
     // OWData payload so useOWData's lookups fall through to the

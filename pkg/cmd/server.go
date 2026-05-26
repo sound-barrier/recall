@@ -257,6 +257,22 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		_, _ = w.Write(data)
 	}))
 
+	// CSV-format export. Same envelope schema as the JSON variant, but
+	// wrapped as a zip-of-CSVs (one CSV per parent + child table plus
+	// a manifest.json). Excel/Sheets can open each CSV directly after
+	// the user extracts the archive.
+	mux.HandleFunc("/api/export.csv", methodGuard(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
+		data, err := a.ExportDataCSV()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		fname := "recall-export-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+		w.Header().Set("Content-Type", "application/zip")
+		w.Header().Set("Content-Disposition", `attachment; filename="`+fname+`"`)
+		_, _ = w.Write(data)
+	}))
+
 	// Accept an export payload, REPLACE the local DB with it. POST body
 	// is the JSON payload (no multipart) — the frontend reads the user-
 	// selected file into memory and POSTs it directly.
