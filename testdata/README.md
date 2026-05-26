@@ -92,11 +92,14 @@ content and warrant a sanity check.
 
 ## Tesseract version
 
-Goldens are baselined against whichever Tesseract is on the
-maintainer's dev machine at update time. If CI runs a different
-version and OCR drift trips a single-character mismatch on a
-borderline field, regenerate the sidecars (`make update-goldens
-RECALL_FIXTURE_DIR="$PWD/testdata"`) and commit the diff — that's
-the documented response, not a bug. A future tightening pass could
-pin Tesseract in CI via `tool-versions.env`; for now the maintainer
-just keeps the dev/CI versions roughly in sync.
+Goldens are baselined against the Tesseract version pinned in
+`tool-versions.env` (`TESSERACT_VERSION`, major.minor). CI's
+schemathesis job and `.devcontainer/postCreate.sh` both install
+whatever apt has and assert the installed major.minor matches the
+pin — a mismatch hard-fails CI with an explicit "re-baseline and
+bump" message.
+
+When that fires (Ubuntu base image rolls forward, Homebrew bumps,
+etc.): re-baseline locally with `make update-goldens
+RECALL_FIXTURE_DIR="$PWD/testdata"`, bump `TESSERACT_VERSION` to the
+new major.minor, and commit both changes together.

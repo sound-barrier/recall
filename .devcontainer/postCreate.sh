@@ -43,6 +43,17 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     unzip
 sudo rm -rf /var/lib/apt/lists/*
 
+# Assert Tesseract major.minor matches the pin in tool-versions.env so
+# the parser-integration goldens (testdata/*.golden.json) reproduce
+# byte-for-byte in the devcontainer. Loud-fail when the base image
+# bumps the apt package — that's the signal to re-baseline + bump.
+installed=$(tesseract --version 2>&1 | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+expected_mm=$(printf '%s' "$TESSERACT_VERSION" | cut -d. -f1-2)
+installed_mm=$(printf '%s' "$installed" | cut -d. -f1-2)
+if [ "$installed_mm" != "$expected_mm" ]; then
+  log "WARNING: Tesseract major.minor mismatch: installed=$installed_mm expected=$expected_mm (TESSERACT_VERSION=$TESSERACT_VERSION). Re-baseline testdata/*.golden.json + bump the pin."
+fi
+
 # ─── Go tooling (CONTRIBUTING.md "go install" lines) ──────────────────
 log "Go tools: gofumpt, goimports-reviser, shfmt, govulncheck, deadcode, actionlint, gosec, wails, golangci-lint"
 # golangci-lint via go install matches what ci.yml does (so the version

@@ -397,7 +397,7 @@ func TestParsePanelStats(t *testing.T) {
 PLAYERS KNOCKED BACK
 24
 WEAPON ACCURACY`
-		got := parsePanelStats(text)
+		got := parsePanelStats(text, "")
 		if got["players_knocked_back"] != 35 {
 			t.Errorf("players_knocked_back: got %d, want 35", got["players_knocked_back"])
 		}
@@ -410,7 +410,7 @@ WEAPON ACCURACY`
 		text := `35
 PP
 PLAYERS KNOCKED BACK`
-		got := parsePanelStats(text)
+		got := parsePanelStats(text, "")
 		if got["players_knocked_back"] != 35 {
 			t.Errorf("expected 35, got %d", got["players_knocked_back"])
 		}
@@ -419,14 +419,14 @@ PLAYERS KNOCKED BACK`
 	t.Run("trailing %% on percent-suffixed value", func(t *testing.T) {
 		text := `24%
 WEAPON ACCURACY`
-		got := parsePanelStats(text)
+		got := parsePanelStats(text, "")
 		if got["weapon_accuracy"] != 24 {
 			t.Errorf("expected 24, got %d", got["weapon_accuracy"])
 		}
 	})
 
 	t.Run("empty input → empty map", func(t *testing.T) {
-		got := parsePanelStats("")
+		got := parsePanelStats("", "")
 		if len(got) != 0 {
 			t.Errorf("expected empty, got %v", got)
 		}
@@ -520,6 +520,37 @@ func TestExtractHeader(t *testing.T) {
 			gotMap, _, _ := extractHeader(tc.text)
 			if gotMap != tc.wantMap {
 				t.Errorf("map = %q, want %q", gotMap, tc.wantMap)
+			}
+		})
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// SnapHeroStatKey — corrects OCR mangling of per-hero stat-key names by
+// snapping to the canonical list in hero_stats.yaml.
+// ──────────────────────────────────────────────────────────────────────────
+
+func TestSnapHeroStatKey(t *testing.T) {
+	cases := []struct {
+		name, hero, raw, want string
+	}{
+		// Exact canonical → returned unchanged.
+		{"exact match (juno)", "juno", "orbital_ray_assists", "orbital_ray_assists"},
+		// Real-world OCR mangling captured from a production parse.
+		{"icon noise (juno orbital)", "juno", "ooorsitall_ray_assists", "orbital_ray_assists"},
+		// Dropped trailing 's' on a label — Tesseract eats final S sometimes.
+		{"dropped final s (mizuki)", "mizuki", "player_saved", "players_saved"},
+		// No canonical for this hero — pass through.
+		{"unknown hero", "kiriko", "anything_garbled", "anything_garbled"},
+		// Too far from any canonical (>40% distance) — pass through.
+		{"too far from canonical", "juno", "asdfghjkl", "asdfghjkl"},
+		// Empty input → empty (no canonical to snap to).
+		{"empty input", "juno", "", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := SnapHeroStatKey(tc.hero, tc.raw); got != tc.want {
+				t.Errorf("SnapHeroStatKey(%q, %q) = %q, want %q", tc.hero, tc.raw, got, tc.want)
 			}
 		})
 	}
