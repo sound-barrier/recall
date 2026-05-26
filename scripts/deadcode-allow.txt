@@ -17,6 +17,13 @@
 # and the server-mode REST endpoints replace the Wails dialog calls.
 App\.Pick
 
+# App.SaveExportToFile / App.LoadImportFromFile: same pattern as the
+# Pick* pair — Wails dialogs in app_wails.go; server-mode stubs in
+# app_server.go return errors directing callers to GET /api/export
+# and POST /api/import.
+App\.SaveExportToFile
+App\.LoadImportFromFile
+
 # app.NewWithStore: constructor used only by tests (store integration
 # suite). Test code isn't in deadcode's call graph for the production
 # build, so the function looks unreachable.

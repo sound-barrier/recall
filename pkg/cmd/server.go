@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -233,6 +234,44 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	mux.HandleFunc("/api/clear-database", methodGuard(http.MethodPost, func(w http.ResponseWriter, r *http.Request) {
 		if err := a.ClearDatabase(); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, map[string]bool{"ok": true}, nil)
+	}))
+
+	mux.HandleFunc("/api/data-location", methodGuard(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, a.GetDataLocation(), nil)
+	}))
+
+	// Stream the export payload as a downloadable file. Content-Disposition
+	// triggers the browser's save-as flow with a sensible default name.
+	mux.HandleFunc("/api/export", methodGuard(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
+		data, err := a.ExportData()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		fname := "recall-export-" + time.Now().UTC().Format("20060102-150405") + ".json"
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Disposition", `attachment; filename="`+fname+`"`)
+		_, _ = w.Write(data)
+	}))
+
+	// Accept an export payload, REPLACE the local DB with it. POST body
+	// is the JSON payload (no multipart) — the frontend reads the user-
+	// selected file into memory and POSTs it directly.
+	mux.HandleFunc("/api/import", methodGuard(http.MethodPost, func(w http.ResponseWriter, r *http.Request) {
+		// Cap at 50 MiB — large but generous for years of OW history;
+		// guards against an accidentally-uploaded multi-GB blob.
+		body, err := io.ReadAll(io.LimitReader(r.Body, 50<<20))
+		if err != nil {
+			http.Error(w, "read body: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		if err := a.ImportData(body); err != nil {
+			// ImportData wraps validation + decode failures; the message
+			// is descriptive enough to surface to the user.
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		writeJSON(w, map[string]bool{"ok": true}, nil)

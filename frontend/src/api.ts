@@ -187,6 +187,89 @@ export function ClearDatabase(): Promise<void> {
   return _post('/api/clear-database').then(() => undefined)
 }
 
+// ─── Data location + export/import ─────────────────────────────────────────
+
+export type DataLocation = {
+  base_dir:        string
+  settings_path:   string
+  database_path:   string
+  screenshots_dir: string
+}
+
+export function GetDataLocation(): Promise<DataLocation> {
+  if (IS_WAILS) return _wails('GetDataLocation')
+  return _get<DataLocation>('/api/data-location')
+}
+
+// Export — in Wails mode, the native save dialog handles file writing
+// and the call resolves with the chosen path ("" on cancel). In server
+// mode we fetch the payload as a blob and trigger a browser download
+// using a transient <a download> click.
+export async function ExportData(): Promise<string> {
+  if (IS_WAILS) return _wails('SaveExportToFile')
+  const r = await fetch('/api/export')
+  if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ''))
+  // Pull the server-suggested filename out of Content-Disposition.
+  const cd = r.headers.get('Content-Disposition') ?? ''
+  const matched = /filename="([^"]+)"/.exec(cd)
+  const fallback = `recall-export-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.json`
+  const name = matched?.[1] ?? fallback
+  const blob = await r.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+  return name
+}
+
+// Import — Wails opens a native file picker and runs ImportData
+// in-process; resolves with the path ("" on cancel). Server mode
+// opens a transient <input type=file>, reads the chosen file as
+// text, and POSTs to /api/import. Resolves with the chosen filename
+// ("" on cancel).
+export async function ImportData(): Promise<string> {
+  if (IS_WAILS) return _wails('LoadImportFromFile')
+  const file = await pickFile('application/json,.json')
+  if (!file) return ''
+  const text = await file.text()
+  const r = await fetch('/api/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: text,
+  })
+  if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ''))
+  return file.name
+}
+
+// pickFile — promise wrapper around a transient <input type=file>.
+// Resolves with the selected File, or null on cancel.
+function pickFile(accept: string): Promise<File | null> {
+  return new Promise(resolve => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = accept
+    input.style.display = 'none'
+    let resolved = false
+    const done = (f: File | null) => {
+      if (resolved) return
+      resolved = true
+      input.remove()
+      resolve(f)
+    }
+    input.addEventListener('change', () => {
+      done(input.files?.[0] ?? null)
+    })
+    input.addEventListener('cancel', () => done(null))
+    document.body.appendChild(input)
+    input.click()
+  })
+}
+
 export function GetNewScreenshotCount(): Promise<number> {
   if (IS_WAILS) return _wails('GetNewScreenshotCount')
   return _get<{ count: number }>('/api/new-screenshot-count').then(d => d.count)

@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { ThemeMode } from '../composables/useTheme'
 import type { WeekStart } from '../composables/useWeekStart'
+import type { DataLocation } from '../api'
 import { WEEKDAYS_FULL } from '../match-helpers'
 
 // SettingsView — Directories + Appearance + Calendar. Engine /
@@ -13,6 +15,10 @@ defineProps<{
   loading:        boolean
   themeMode:      ThemeMode
   weekStart:      WeekStart
+  // Nullable + optional: App.vue's load() is async, so the row's
+  // paths render `null` for a beat at mount time. Existing tests
+  // that don't care can omit this prop entirely.
+  dataLocation?:  DataLocation | null
 }>()
 
 const emit = defineEmits<{
@@ -21,6 +27,23 @@ const emit = defineEmits<{
   'set-week-start':       [next: WeekStart]
   'go-to-view':           [next: 'settings' | 'ingest' | 'matches' | 'unknown']
 }>()
+
+// "Copied" pill state for the Data Location row. Set true when the
+// user clicks Copy; cleared after 1.4 s so the pill flashes briefly
+// without sticking on screen.
+const copied = ref(false)
+async function copyDbPath(path: string) {
+  if (!path) return
+  try {
+    await navigator.clipboard.writeText(path)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 1400)
+  } catch (_) {
+    // Clipboard API can fail in some sandboxed contexts; surface the
+    // path via prompt() so the user can copy manually.
+    window.prompt('Copy this path:', path)
+  }
+}
 
 // The seven first-day-of-week options. Order = JS Date.getDay() so
 // the index IS the WeekStart value — no separate mapping needed.
@@ -76,6 +99,34 @@ const DAY_SEGMENTS = WEEKDAYS_FULL.map((name, idx) => ({
             <span class="setting-value mono" :title="screenshotsDir">{{ screenshotsDir || '— Not selected —' }}</span>
             <button class="btn ghost" :disabled="loading" @click="emit('pick-screenshots-dir')">
               Change Folder…
+            </button>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <h4 class="setting-label">
+              Data Location
+            </h4>
+            <p class="setting-desc">
+              Where Recall stores your parsed matches and settings on this machine. Read-only — Recall manages the contents but you can browse the directory at the OS level if you ever need to back it up manually.
+            </p>
+            <p v-if="dataLocation?.base_dir" class="data-loc-grid" :aria-label="'Recall data paths'">
+              <span class="data-loc-key">Database</span>
+              <span class="data-loc-val mono" :title="dataLocation.database_path">{{ dataLocation.database_path }}</span>
+              <span class="data-loc-key">Settings</span>
+              <span class="data-loc-val mono" :title="dataLocation.settings_path">{{ dataLocation.settings_path }}</span>
+            </p>
+          </div>
+          <div class="setting-control">
+            <button
+              class="btn ghost"
+              :disabled="!dataLocation?.database_path"
+              :class="{ 'btn-copied': copied }"
+              @click="copyDbPath(dataLocation?.database_path ?? '')"
+            >
+              <span v-if="copied">Copied ✓</span>
+              <span v-else>Copy DB Path</span>
             </button>
           </div>
         </div>
@@ -270,6 +321,45 @@ const DAY_SEGMENTS = WEEKDAYS_FULL.map((name, idx) => ({
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 2px;
+}
+
+/* ─── Data Location row — labeled key/value grid ─────────── */
+
+/* Two-column grid: small uppercase key on the left, monospaced path
+   on the right, repeated for each captured path. Tighter than a
+   bulleted list and reads like a HUD readout. */
+.data-loc-grid {
+  margin-top: 0.65rem;
+  display: grid;
+  grid-template-columns: 6.4em 1fr;
+  gap: 0.25rem 0.85rem;
+  padding: 0.55rem 0.7rem;
+  background: var(--surface);
+  border-left: 1px solid var(--border-soft);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.data-loc-key {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  align-self: baseline;
+}
+
+.data-loc-val {
+  color: var(--text-dim);
+  word-break: break-all;
+}
+
+/* "Copied ✓" pulse on the Copy DB Path button — accent flash for
+   1.4 s after click, then settles back. */
+.btn-copied {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 /* 7-segment first-day-of-week picker. Same visual idiom as the theme

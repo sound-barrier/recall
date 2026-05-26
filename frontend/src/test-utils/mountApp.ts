@@ -85,6 +85,14 @@ function mockApi(overrides: MountOverrides = {}) {
     ResetTesseractPath:  vi.fn(async () => defaultTesseract(overrides.tesseract)),
     ClearDatabase:       vi.fn(async () => undefined),
     GetNewScreenshotCount: vi.fn(async () => overrides.newScreenshotCount ?? 0),
+    GetDataLocation:     vi.fn(async () => ({
+      base_dir: '/test/base',
+      settings_path: '/test/base/settings.json',
+      database_path: '/test/base/db/recall.db',
+      screenshots_dir: overrides.screenshotsDir ?? '',
+    })),
+    ExportData:          vi.fn(async () => ''),
+    ImportData:          vi.fn(async () => ''),
     // Tests don't exercise canonical-name display; return an empty
     // OWData payload so useOWData's lookups fall through to the
     // stored lowercase form (the test fixtures already use the

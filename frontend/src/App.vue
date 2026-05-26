@@ -9,7 +9,7 @@
 import './styles/app.css'
 
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, defineAsyncComponent } from 'vue'
-import type { MatchRecord } from './api'
+import type { MatchRecord, DataLocation } from './api'
 import {
   GetVersion,
   CheckForUpdate,
@@ -28,6 +28,9 @@ import {
   ResetTesseractPath,
   ClearDatabase,
   GetNewScreenshotCount,
+  GetDataLocation,
+  ExportData,
+  ImportData,
   EventsOn,
   EventsOff,
 } from './api'
@@ -223,6 +226,11 @@ watch(showUnsupportedModal, async (isOpen) => {
 // to the Parse button.
 const screenshotsDir = ref('')
 
+// Platform-resolved data paths — surfaced read-only in Settings →
+// Directories so the user can see where the DB lives. Null until the
+// first load() completes.
+const dataLocation = ref<DataLocation | null>(null)
+
 // Prometheus endpoint enable/disable. The Go side actually binds
 // the port (or doesn't); this ref is just a UI mirror, written via
 // SetPrometheusEnabled so the change persists.
@@ -268,15 +276,17 @@ const expanded = ref<Record<string, boolean>>({})
 
 async function load() {
   const before = records.value.length
-  const [recs, dir, promOn, watchOn, tess, newCount] = await Promise.all([
+  const [recs, dir, promOn, watchOn, tess, newCount, loc] = await Promise.all([
     GetMatchResults(),
     GetScreenshotsDir(),
     GetPrometheusEnabled(),
     GetWatchEnabled(),
     GetTesseractStatus(),
     GetNewScreenshotCount().catch(() => null),
+    GetDataLocation().catch(() => null),
   ])
   records.value = recs ?? []
+  dataLocation.value = loc
   // If the record count grew, briefly pulse the scoreboard so the user
   // notices the auto-refresh — otherwise watcher-driven loads are
   // entirely silent and records "just appear". Skip on the very first
@@ -433,6 +443,67 @@ function armClear() {
 
 function cancelClear() {
   clearConfirm.value = false
+}
+
+// Export the parsed database as a JSON file. In Wails mode the native
+// save dialog handles writing; in server mode the api shim triggers a
+// browser download. The exportStatus ref drives the inline result chip
+// in IngestView (e.g. "Saved to: /path/...json") that flashes for a
+// few seconds after success.
+const exporting   = ref(false)
+const importing   = ref(false)
+const importArmed = ref(false) // first-click confirm (mirrors clearConfirm)
+const exportStatus = ref<{ ok: boolean; message: string } | null>(null)
+
+async function exportData() {
+  if (exporting.value) return
+  exporting.value = true
+  exportStatus.value = null
+  try {
+    const path = await ExportData()
+    if (path) {
+      exportStatus.value = { ok: true, message: `Saved: ${path}` }
+    }
+    // cancel → silent
+  } catch (e) {
+    exportStatus.value = { ok: false, message: `Export failed: ${e}` }
+  } finally {
+    exporting.value = false
+    // Auto-clear the chip after a few seconds so it doesn't linger
+    // forever on a navigation-less tab.
+    if (exportStatus.value) {
+      const captured = exportStatus.value
+      setTimeout(() => {
+        if (exportStatus.value === captured) exportStatus.value = null
+      }, 5000)
+    }
+  }
+}
+
+function armImport() { importArmed.value = true; exportStatus.value = null }
+function cancelImport() { importArmed.value = false }
+
+async function importData() {
+  if (importing.value) return
+  importing.value = true
+  importArmed.value = false
+  try {
+    const path = await ImportData()
+    if (path) {
+      exportStatus.value = { ok: true, message: `Imported: ${path}` }
+      await load() // refresh records + everything else
+    }
+  } catch (e) {
+    exportStatus.value = { ok: false, message: `Import failed: ${e}` }
+  } finally {
+    importing.value = false
+    if (exportStatus.value) {
+      const captured = exportStatus.value
+      setTimeout(() => {
+        if (exportStatus.value === captured) exportStatus.value = null
+      }, 5000)
+    }
+  }
 }
 
 // Open the native folder picker via Wails. The Go side persists the
@@ -816,6 +887,7 @@ onBeforeUnmount(() => {
           :loading="loading"
           :theme-mode="themeMode"
           :week-start="weekStart"
+          :data-location="dataLocation"
           @pick-screenshots-dir="pickDir"
           @toggle-theme="toggleTheme"
           @set-week-start="setWeekStart"
@@ -842,6 +914,10 @@ onBeforeUnmount(() => {
           :prometheus-enabled="prometheusEnabled"
           :clear-confirm="clearConfirm"
           :clearing-d-b="clearingDB"
+          :exporting="exporting"
+          :importing="importing"
+          :import-armed="importArmed"
+          :export-status="exportStatus"
           @pick-tesseract="pickTesseractBinary"
           @reset-tesseract="resetTesseractPath"
           @toggle-watch="toggleWatch"
@@ -850,6 +926,10 @@ onBeforeUnmount(() => {
           @arm-clear="armClear"
           @clear-database="clearDatabase"
           @cancel-clear="cancelClear"
+          @export-data="exportData"
+          @arm-import="armImport"
+          @cancel-import="cancelImport"
+          @import-data="importData"
           @toggle-progress="parseProgressOpen = !parseProgressOpen"
           @go-to-view="goToView"
         />
