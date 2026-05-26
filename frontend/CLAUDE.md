@@ -21,16 +21,21 @@ MatchesView.vue so both views share it without forking.
 - **Stateful logic** goes in a composable under `composables/`. Don't
   define either inside an SFC's `<script setup>`.
 
-Existing composables: `useTheme` / `useWeekStart` / `useIncludeUndated`
-(persisted-preference family — `ref(default)` + `setX(next)` that
-writes localStorage + `onMounted` reader; add new prefs by copying
-one; `mountApp`'s `MountOverrides` seeds the matching localStorage
-key for SFC tests), `useFilterPanel` (popover open/close, ESC +
-outside-click), `useMatchFilters` (7 filter refs plus `includeUndated`,
-date range, sort, filtered/sorted computeds — most complex, highest
-test ROI), `useMatchGrouping` (Month→Week→Day tree plus expand
-state), `useOWData` (module-singleton fetching `/api/owdata` once
-per session for canonical hero/map display names).
+Existing composables fall into three groups. **Persisted-preference
+family** (`ref(default)` + `setX(next)` that writes localStorage +
+`onMounted` reader; add new prefs by copying one; `mountApp`'s
+`MountOverrides` seeds the matching localStorage key for SFC tests):
+`useTheme`, `useWeekStart`, `useIncludeUndated`, `useDensityMode`,
+`useLeaverHandling`, `useMinPlayThreshold`, `useShowHidden`. **Pure
+stateful**: `useFilterPanel` (popover open/close, ESC + outside-click),
+`useMatchFilters` (7 filter refs + includeUndated + leaverHandling +
+showHidden + date range + sort + filtered/sorted computeds — most
+complex, highest test ROI), `useMatchGrouping` (Month→Week→Day tree
+plus expand state). **Session-scoped fetch**: `useOWData`
+(module-singleton fetching `/api/owdata` once per session for
+canonical hero/map display names). `ls frontend/src/composables/*.ts`
+is the source of truth — don't maintain a literal list here, but the
+grouping above shows the patterns to mirror when adding a new one.
 
 The entire frontend is TypeScript (`allowJs: false`); ESLint uses
 `typescript-eslint` (`tseslint.config()` in `eslint.config.js`) with
@@ -142,6 +147,20 @@ loading a Playwright spec under Vitest crashes with `Playwright Test
 did not expect test.describe() to be called here`. Adding a new
 runner: pick a file extension or directory the existing runners
 don't claim, AND update `vitest.config.ts` `test.include`.
+
+**Playwright e2e structure.** Specs live in `frontend/tests/e2e/`
+and run against a hermetic `recall-server` binary (built by
+`make test-e2e` into `/tmp/recall-e2e/`, served on `:7099` with
+`HOME=/tmp/recall-e2e`). Mock backend state via `page.route('**/api/...',
+route => route.fulfill({status, contentType, body: JSON.stringify(...)}))`
+— the bound server stays running across tests, so route mocks are the
+only way to drive feature-specific fixtures. Existing files split by
+concern: `smoke.spec.ts` (page loads, tab nav, skip-link),
+`a11y.spec.ts` (axe-core audits per view). Per the root CLAUDE.md TDD
+rule, any new user-visible affordance starts with a failing spec
+here, BEFORE implementation. Iterating locally requires rebuilding
+the server binary on every frontend/Go change — see the matching
+"Iterating a Playwright e2e spec locally" bullet in root CLAUDE.md.
 
 ## Gotchas
 
