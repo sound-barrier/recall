@@ -72,3 +72,102 @@ func TestAttachAnnotations_MergesIntoRecords(t *testing.T) {
 		t.Errorf("k3 should have enemy annotation: %+v", recs[2].Annotation)
 	}
 }
+
+func TestSetMatchAnnotation_AllFieldsRoundTrip(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	in := AnnotationInput{
+		MatchKey:   "k1",
+		Leaver:     "team",
+		Note:       "long set",
+		ReplayCode: "7H1K9P",
+		Members:    []string{"Apollo#11234", "Cheese#5678"},
+	}
+	if err := a.SetMatchAnnotation(in); err != nil {
+		t.Fatalf("SetMatchAnnotation: %v", err)
+	}
+	got, _ := fs.LoadAnnotations()
+	out := got["k1"]
+	if out.Leaver != "team" || out.Note != "long set" || out.ReplayCode != "7H1K9P" {
+		t.Errorf("scalars wrong: %+v", out)
+	}
+	if len(out.Members) != 2 {
+		t.Errorf("members count = %d, want 2 (%+v)", len(out.Members), out.Members)
+	}
+}
+
+func TestSetMatchAnnotation_AllEmptyDeletes(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	// First seed a row.
+	_ = a.SetMatchAnnotation(AnnotationInput{MatchKey: "k1", Leaver: "team", Note: "x"})
+	// Then call again with everything empty.
+	if err := a.SetMatchAnnotation(AnnotationInput{MatchKey: "k1"}); err != nil {
+		t.Fatalf("SetMatchAnnotation (empty): %v", err)
+	}
+	got, _ := fs.LoadAnnotations()
+	if _, ok := got["k1"]; ok {
+		t.Errorf("row should be deleted on all-empty input; got %+v", got["k1"])
+	}
+}
+
+func TestSetMatchAnnotation_TrimsAndDedupesMembers(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	in := AnnotationInput{
+		MatchKey: "k1",
+		Leaver:   "team",
+		Members:  []string{"  Apollo#11234  ", "", "Cheese#5678", "Apollo#11234"},
+	}
+	if err := a.SetMatchAnnotation(in); err != nil {
+		t.Fatalf("SetMatchAnnotation: %v", err)
+	}
+	got, _ := fs.LoadAnnotations()
+	out := got["k1"]
+	if len(out.Members) != 2 {
+		t.Errorf("expected 2 unique members after trim+dedupe, got %+v", out.Members)
+	}
+}
+
+func TestSetMatchAnnotation_RejectsInvalidLeaver(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	err := a.SetMatchAnnotation(AnnotationInput{MatchKey: "k1", Leaver: "afk"})
+	if err == nil || err.Error() != ErrInvalidLeaver.Error() {
+		t.Errorf("expected ErrInvalidLeaver, got %v", err)
+	}
+}
+
+func TestSetMatchAnnotation_NoteOnlyKeepsRow(t *testing.T) {
+	// Annotation row should persist with just a note and no leaver tag,
+	// which the schema relaxation enables.
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	if err := a.SetMatchAnnotation(AnnotationInput{MatchKey: "k", Note: "no leaver tag yet"}); err != nil {
+		t.Fatalf("SetMatchAnnotation: %v", err)
+	}
+	got, _ := fs.LoadAnnotations()
+	if got["k"].Note != "no leaver tag yet" {
+		t.Errorf("note dropped: %+v", got["k"])
+	}
+}
+
+func TestClearLeaverAnnotation_PreservesNoteAndMembers(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	_ = a.SetMatchAnnotation(AnnotationInput{
+		MatchKey: "k", Leaver: "team", Note: "important",
+		ReplayCode: "ABC", Members: []string{"Apollo#1"},
+	})
+	if err := a.ClearLeaverAnnotation("k"); err != nil {
+		t.Fatalf("ClearLeaverAnnotation: %v", err)
+	}
+	got, _ := fs.LoadAnnotations()
+	out := got["k"]
+	if out.Leaver != "" {
+		t.Errorf("leaver should be cleared, got %q", out.Leaver)
+	}
+	if out.Note != "important" || out.ReplayCode != "ABC" || len(out.Members) != 1 {
+		t.Errorf("other fields lost: %+v", out)
+	}
+}

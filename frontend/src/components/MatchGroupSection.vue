@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MatchRecord } from '../api'
+import type { MatchRecord, MatchAnnotationInput } from '../api'
 import type { MatchGroup, WLDTally } from '../match-helpers'
 import MatchCard from './MatchCard.vue'
 
@@ -44,6 +44,7 @@ const emit = defineEmits<{
   'preview-error':   [filename: string]
   'filter-toggle':   [field: string, value: string]
   'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
+  'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
 }>()
 
 const open = (): boolean => props.isGroupExpanded(props.group.key)
@@ -141,6 +142,7 @@ function cardDelayMs(localIdx: number): number {
             @preview-error="(fn: string) => emit('preview-error', fn)"
             @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"
             @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
+            @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
           />
         </template>
 
@@ -164,6 +166,7 @@ function cardDelayMs(localIdx: number): number {
             @preview-error="(fn: string) => emit('preview-error', fn)"
             @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"
             @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
+            @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
           />
         </template>
       </div>

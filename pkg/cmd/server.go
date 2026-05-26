@@ -253,9 +253,11 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	// maps to 400, everything else to 500.
 	mux.HandleFunc("/api/match-annotations", methodGuard(http.MethodPost, func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
-			MatchKey string `json:"match_key"`
-			Leaver   string `json:"leaver"`
-			Note     string `json:"note"`
+			MatchKey   string   `json:"match_key"`
+			Leaver     string   `json:"leaver"`
+			Note       string   `json:"note"`
+			ReplayCode string   `json:"replay_code"`
+			Members    []string `json:"members"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -265,13 +267,13 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 			http.Error(w, "match_key required", http.StatusBadRequest)
 			return
 		}
-		var err error
-		if body.Leaver == "" {
-			err = a.ClearLeaverAnnotation(body.MatchKey)
-		} else {
-			err = a.SetLeaverAnnotation(body.MatchKey, body.Leaver, body.Note)
-		}
-		if err != nil {
+		if err := a.SetMatchAnnotation(app.AnnotationInput{
+			MatchKey:   body.MatchKey,
+			Leaver:     body.Leaver,
+			Note:       body.Note,
+			ReplayCode: body.ReplayCode,
+			Members:    body.Members,
+		}); err != nil {
 			if errors.Is(err, app.ErrInvalidLeaver) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return

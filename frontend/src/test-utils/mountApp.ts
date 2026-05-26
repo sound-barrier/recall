@@ -77,6 +77,7 @@ function mockApi(overrides: MountOverrides = {}) {
     PickScreenshotsDir:  vi.fn(async () => overrides.screenshotsDir ?? ''),
     ProbeScreenshotsDir: vi.fn(async () => ({ found: false, tried: [] as string[] })),
     SetScreenshotsDir:   vi.fn(async () => undefined),
+    SetMatchAnnotation:    vi.fn(async () => undefined),
     SetLeaverAnnotation:   vi.fn(async () => undefined),
     ClearLeaverAnnotation: vi.fn(async () => undefined),
     // SettingsView imports IS_WAILS to gate Wails-only affordances

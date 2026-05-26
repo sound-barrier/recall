@@ -6,6 +6,7 @@ import type { useMatchFilters } from '../composables/useMatchFilters'
 import type { useFilterPanel } from '../composables/useFilterPanel'
 import type { useMatchGrouping } from '../composables/useMatchGrouping'
 import type { DensityMode } from '../composables/useDensityMode'
+import type { MatchAnnotationInput } from '../api'
 import type { MatchGroup } from '../match-helpers'
 import FilterRail from './FilterRail.vue'
 import MatchGroupSection from './MatchGroupSection.vue'
@@ -86,6 +87,7 @@ const emit = defineEmits<{
   'toggle-density':       []
   'set-leaver-handling':  [next: 'include' | 'exclude-tally' | 'hide']
   'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
+  'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
 }>()
 
 // Pre-extracted destructures keep the template readable without
@@ -238,6 +240,7 @@ const annotatedMatchCount = computed(
         :card-offset="idx"
         :density-mode="densityMode"
         @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
+        @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
         @toggle-group="g.toggleGroup"
         @toggle-expand="cs.toggleExpand"
         @toggle-sources="cs.toggleSources"
