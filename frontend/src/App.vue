@@ -49,6 +49,7 @@ import { useDensityMode } from './composables/useDensityMode'
 import { useLeaverHandling } from './composables/useLeaverHandling'
 import { useShowHidden } from './composables/useShowHidden'
 import { useTabKeyboardNav } from './composables/useTabKeyboardNav'
+import { useModalFocusTrap } from './composables/useModalFocusTrap'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
@@ -138,65 +139,11 @@ const tesseractSupported = computed(() => tesseractReady.value && !!tesseractSta
 const showUnsupportedModal = ref(false)
 const tesseractPickerBusy = ref(false)
 
-// ─── Modal focus management ──────────────────────────────────────────
-// WAI-ARIA dialog pattern: when the modal opens we capture the element
-// that had focus (so we can restore it on close), move focus into the
-// modal, trap Tab/Shift+Tab inside it, and treat Escape as a cancel.
-// Without this, keyboard users tab straight back into the obscured
-// background and screen readers don't have a stable focus anchor.
-const lastFocusedBeforeModal = ref<HTMLElement | null>(null)
-
-function modalFocusable(): HTMLElement[] {
-  const box = document.querySelector<HTMLElement>('.modal-box')
-  if (!box) return []
-  const sel = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-  return Array.from(box.querySelectorAll<HTMLElement>(sel))
-}
-
-function onModalKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') {
-    e.preventDefault()
-    showUnsupportedModal.value = false
-    return
-  }
-  if (e.key !== 'Tab') return
-  const focusable = modalFocusable()
-  if (focusable.length === 0) return
-  const first = focusable[0]!
-  const last  = focusable[focusable.length - 1]!
-  const active = document.activeElement as HTMLElement | null
-  if (e.shiftKey && active === first) {
-    e.preventDefault()
-    last.focus()
-  } else if (!e.shiftKey && active === last) {
-    e.preventDefault()
-    first.focus()
-  }
-}
-
-watch(showUnsupportedModal, async (isOpen) => {
-  if (isOpen) {
-    // Capture the trigger so we can return focus to it on close.
-    lastFocusedBeforeModal.value = (document.activeElement instanceof HTMLElement)
-      ? document.activeElement
-      : null
-    await nextTick()
-    // Initial focus goes to the *first* focusable, which by markup
-    // order is Cancel — never put initial focus on a destructive
-    // primary action (Continue Anyway).
-    modalFocusable()[0]?.focus()
-    document.addEventListener('keydown', onModalKeydown)
-  } else {
-    document.removeEventListener('keydown', onModalKeydown)
-    const prev = lastFocusedBeforeModal.value
-    lastFocusedBeforeModal.value = null
-    // Defer focus restore one tick so the modal's DOM is gone first;
-    // restoring before the focused element is removed can be a no-op
-    // in some browsers.
-    await nextTick()
-    prev?.focus()
-  }
-})
+// Modal focus trap — captures the trigger, focuses the first
+// focusable inside `.modal-box` (markup-first = Cancel button, never
+// the destructive Continue Anyway), traps Tab/Shift+Tab, treats
+// Escape as cancel, restores focus to the trigger on close.
+useModalFocusTrap(showUnsupportedModal, { containerSelector: '.modal-box' })
 
 // Directory the parser reads from. Persisted in data/settings.json on
 // the Go side; we mirror the value here so the UI can render it next
