@@ -235,7 +235,7 @@ func TestResolveMatchKey_RejectsConflictingWindowMatch(t *testing.T) {
 }
 
 func TestResolveMatchKey_TiebreakClosestInTime(t *testing.T) {
-	// Two SUMMARYs in window: one at 21:29:28 (rialto), one at 21:30:00.
+	// Two SUMMARY screens in window: one at 21:29:28 (rialto), one at 21:30:00.
 	// New PERSONAL at 21:29:31 (3s after first, 29s before second) must
 	// land on the closer (first) SUMMARY's key.
 	snap := db.Screenshots{

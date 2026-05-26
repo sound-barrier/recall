@@ -278,8 +278,8 @@ transaction; `PRAGMA foreign_keys = ON` makes the cascade reliable).
 The Parse button is idempotent — re-clicking replaces rows in place,
 no duplicates.
 
-**Read path** (`pkg/app/aggregate.go::aggregateAll`): bulk-SELECTs every
-row across the 5 parent tables, attaches child rows, groups by
+**Read path** (`pkg/app/aggregate.go::aggregateAll`): one bulk SELECT per
+table reads every row across the 5 parents, attaches child rows, groups by
 `match_key`, sorts each group by `(filename-timestamp asc, parsed_at
 asc)`, and folds via `mergeMatchResult` — the same "first non-empty
 wins" precedence the old destructive merge used, just running on the
@@ -367,8 +367,8 @@ each child PK is a composite `(parent_id, hero[, stat_key])`, and a
 re-parse that drops a hero from `HeroesPlayed` must wipe that hero's
 old row — UPSERT alone wouldn't remove it.
 
-**Read path** (`pkg/app/aggregate.go`): five parent SELECTs + five
-child SELECTs grouped by parent id, then re-keyed by `match_key` and
+**Read path** (`pkg/app/aggregate.go`): one SELECT per parent table and
+one per child table, grouped by parent id, then re-keyed by `match_key` and
 folded via `mergeMatchResult`. No N+1 query risk — every table is hit
 exactly once per `aggregateAll` call (called from `GetMatchResults` and
 on every Prometheus scrape).
