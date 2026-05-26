@@ -16,9 +16,9 @@ files into your screenshots folder. Recall watches that folder, runs each
 new PNG through Tesseract OCR to read the on-screen text, classifies
 it by screenshot type (rank / summary / scoreboard / personal),
 extracts the fields it can (map, mode, hero, eliminations, deaths,
-SR change, …), and merges 3–5 screenshots from the same match into
-one row in its local database. The Matches tab then shows that
-row alongside every other match you've parsed — filterable by hero,
+SR change, …), and folds 3–5 screenshots from the same match into
+one match record in its local database. The Matches tab then shows
+that record alongside every other match you've parsed — filterable by hero,
 map, mode, win/loss, and any combination of date range or
 play-time threshold.
 
