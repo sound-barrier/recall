@@ -10,13 +10,18 @@ paths relative to their own location.
 | [`stack-down.sh`](#stack-downsh) | Stop the stack; pass `--machine` to also stop the Podman VM. |
 | [`prometheus-clear.sh`](#prometheus-clearsh) | Wipe Prometheus's TSDB volume and restart clean; Grafana state is untouched. |
 | [`verify-stack.sh`](#verify-stacksh) | Read-only layer-by-layer diagnostic: SQLite → /metrics → containers → scrape state → TSDB. |
-| [`db-list.sh`](#db-listsh) | Print a one-line summary of every row in `match_results`. |
-| [`db-show.sh`](#db-showsh) | Pretty-print one record's full JSON by id, match key, or source-file substring. |
-| [`db-delete.sh`](#db-deletesh) | Delete one record with a confirmation prompt. |
-| [`db-export.sh`](#db-exportsh) | Dump every record as newline-delimited JSON to stdout. |
-| [`clear-db.sh`](#clear-dbsh) | Delete all rows from `match_results` and vacuum; equivalent to the UI's Clear Database button. |
+| [`db-where.sh`](#db-wheresh) | Print the platform-canonical DB path (or `RECALL_DB` override). |
+| [`db-list.sh`](#db-listsh) | One-line summary of every match with a per-type coverage chip. |
+| [`db-show.sh`](#db-showsh) | Dump every per-screenshot-type row contributing to one match, children attached. |
+| [`db-stats.sh`](#db-statssh) | Per-table row counts + coverage histogram (matches by # of contributing types). |
+| [`db-orphans.sh`](#db-orphanssh) | List matches present in only one parent table — re-capture candidates. |
+| [`db-delete.sh`](#db-deletesh) | Delete one match across all 5 parent tables (children CASCADE). |
+| [`db-reparse.sh`](#db-reparsesh) | Drop one match's rows so the next Parse re-OCRs the PNG files fresh. |
+| [`db-export.sh`](#db-exportsh) | Dump every match as newline-delimited JSON (per-type rows preserved). |
+| [`clear-db.sh`](#clear-dbsh) | Wipe every parent table + VACUUM; equivalent to the UI's Clear Database button. |
 | [`check-deps.sh`](#check-depssh) | Compare pinned tool versions (Wails, hadolint, lefthook, trivy) against latest GitHub releases. |
 | [`_lib.sh`](#_libsh) | Internal library sourced by `stack-up.sh` and `prometheus-clear.sh`; not run directly. |
+| [`_db.sh`](#_dbsh) | Internal library sourced by `db-*.sh` (DB-path resolution + schema-version detection); not run directly. |
 
 ---
 
@@ -93,72 +98,127 @@ Exits with a summary of passed / failed layers.
 
 ## Database helpers
 
-All scripts resolve the DB path as `data/db/recall.db` relative to the
-repo root. They accept an **id**, **match\_key**, or **source-file
-substring** as a lookup key (where applicable).
+All `db-*.sh` scripts resolve the SQLite path via `scripts/_db.sh`'s
+`recall_db_path`, which mirrors `pkg/app/settings.go::appDataDir`:
+
+| OS | Default |
+|---|---|
+| macOS | `~/Library/Application Support/Recall/db/recall.db` |
+| Linux | `~/.config/recall/db/recall.db` (or `$XDG_CONFIG_HOME/recall/db/`) |
+| Windows | `%AppData%\Recall\db\recall.db` |
+
+Override with `RECALL_DB=<path>` for any script when inspecting a copy
+or a hermetic fixture DB.
+
+Post-PR-#45 the schema is 3NF: five **parent** tables
+(`summary_screenshots`, `scoreboard_screenshots`, `personal_screenshots`,
+`rank_screenshots`, `unknown_screenshots`), five **child** tables with
+`ON DELETE CASCADE`. A "match" is any distinct `match_key` seen across
+the parents. The Go aggregator in `pkg/app/aggregate.go` is what folds
+them into the shape `/api/match-results` returns; these scripts inspect
+the raw rows the aggregator works from.
+
+Lookups across `db-show.sh` / `db-delete.sh` / `db-reparse.sh` accept:
+
+- `match:YYYY-MM-DDTHH:MM:SS` — exact match_key
+- a filename substring (e.g. the trailing timestamp from a screenshot
+  filename) — matches against `filename` on every parent
+- a map-name substring — only `db-show.sh` (matches `SUMMARY.map`)
+
+### `db-where.sh`
+
+Print the resolved DB path; also prints whether the file exists + its
+size on stderr. Use in shell sessions: `sqlite3 "$(scripts/db-where.sh)"`.
 
 ### `db-list.sh`
 
-Print a one-line summary of every row in `match_results`.
+Print a one-line summary of every match with a five-letter coverage
+chip (`S`/`B`/`P`/`R`/`U` for summary/scoreboard/personal/rank/unknown,
+`-` when absent).
 
 ```sh
 bash scripts/db-list.sh
 ```
 
-Output columns: `id`, `match_key`, `map`, `mode`, `hero`,
+Output columns: `match_key`, `types`, `map`, `mode`, `hero`,
 `eliminations/assists/deaths`, `damage/healing/mitigation`, `result`,
-`score`, `date`.
+`score`, `date`. SUMMARY fields take precedence over SCOREBOARD for
+display when both contribute.
 
 ### `db-show.sh`
 
-Pretty-print one record's full JSON.
+Show every per-screenshot-type row contributing to one match, with
+children nested under their parent. Use this when investigating an
+aggregator surprise — it surfaces the raw truth across all five
+parent tables instead of the folded view.
 
 ```sh
-bash scripts/db-show.sh <id|match-key|source-file-substring>
-
-# examples
-bash scripts/db-show.sh 42
 bash scripts/db-show.sh match:2026-05-10T21:29:28
-bash scripts/db-show.sh Rialto
+bash scripts/db-show.sh 22.36.31.03   # filename substring
+bash scripts/db-show.sh rialto        # map substring
 ```
 
-Pipes through `jq` for formatting if it is available.
+Pipes through `jq` for formatting when available.
+
+### `db-stats.sh`
+
+Per-table row counts + a coverage histogram (matches grouped by how
+many distinct screenshot types they have). Health snapshot for a dev
+DB; tells you at a glance whether a parse run is producing
+well-correlated matches or a pile of singletons.
+
+### `db-orphans.sh`
+
+List matches whose `match_key` appears in only one parent table —
+i.e. incomplete captures that would benefit from re-taking the missing
+screenshot types. The PR-#45 "fix later by adding screenshots" workflow
+starts here: re-capture the missing tab in-game, drop the PNG in the
+screenshots dir, click Parse — the correlation pass folds it into the
+existing key.
 
 ### `db-delete.sh`
 
-Delete one record with a confirmation prompt.
+Delete one match's rows across all 5 parent tables (children CASCADE).
+Prompts before deleting; pass `-y` to skip the prompt for scripted use.
 
 ```sh
-bash scripts/db-delete.sh <id|match-key|source-file-substring>
+bash scripts/db-delete.sh match:2026-05-10T21:29:28
+bash scripts/db-delete.sh -y 22.36.31.03
 ```
 
-Shows the matching row(s) and asks `[y/N]` before deleting. Useful for
-removing a misparse without wiping the whole DB.
+### `db-reparse.sh`
+
+Drop one match's rows so the next Parse re-OCRs its PNG files fresh.
+Inner loop for parser iteration — tweak the parser, run this against a
+match_key you're debugging, click Parse. The PNG files themselves are
+untouched.
+
+Wraps `db-delete.sh`; the separate name documents intent
+(delete = throw away; reparse = iterate on the parser against the same
+captures).
 
 ### `db-export.sh`
 
-Dump every record as newline-delimited JSON to stdout.
+Dump every match as newline-delimited JSON to stdout — one line per
+match, each line a JSON object with the per-type row arrays (`summary`,
+`scoreboard`, `personal`, `rank`, `unknown`).
 
 ```sh
 bash scripts/db-export.sh
 bash scripts/db-export.sh > export.ndjson
+jq -s '.[].match_key' export.ndjson    # all keys
 ```
 
-Each line is a complete match object with all scalar columns and JSON
-blobs (`heroes_played`, `performance`, `modifiers`, `sr`) inlined as
-proper JSON values (not escaped strings).
+Captures the raw per-screenshot truth, not the aggregator's output —
+use `jq` to fold if you need a flat shape.
 
 ### `clear-db.sh`
 
-Delete **all** rows from `match_results` and vacuum the DB.
-
-```sh
-bash scripts/clear-db.sh
-```
-
-No confirmation prompt — intended for development resets. Prints the
-number of rows deleted. Equivalent to the **Clear Database** button in
-the Recall UI.
+Delete **all** rows from every parent table (children CASCADE) and
+VACUUM. No confirmation prompt — intended for development resets.
+Equivalent to the **Clear Database** button in the Recall UI. Also
+detects + wipes a pre-PR-#45 `match_results` table if one is still
+present (lets you cut over a dev DB without manual schema repair).
 
 ---
 
@@ -194,7 +254,7 @@ Requires `curl` and `jq`.
 
 ---
 
-## Internal library
+## Internal libraries
 
 ### `_lib.sh`
 
@@ -208,3 +268,15 @@ common leftover after removing gcloud). Without this workaround,
 `podman-compose` fails to pull images because it falls through to the
 Docker credential helper chain. The original config is restored on
 script exit via a `trap`.
+
+### `_db.sh`
+
+Shared helper library for the `db-*.sh` scripts. Not executable on its
+own. Provides:
+
+- `recall_db_path` — echo the platform-canonical DB path (or the
+  `RECALL_DB` override). Mirrors `pkg/app/settings.go::appDataDir`.
+- `parent_tables` / `child_tables` — newline-separated table-name lists
+  for loops.
+- `require_new_schema "$db"` — exit 1 with a clear message if the DB
+  still carries the pre-PR-#45 `match_results` table.

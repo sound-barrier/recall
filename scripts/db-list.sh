@@ -1,27 +1,61 @@
 #!/usr/bin/env bash
-# List every match_results row as a one-line summary.
+# List every match with a coverage chip showing which screenshot types
+# contributed (S=summary, B=scoreboard, P=personal, R=rank, U=unknown).
+# Aggregates across the 5 parent tables by match_key, prefers SUMMARY
+# fields for display (since SUMMARY is the only type that carries
+# map/date/result/score reliably).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DB="$SCRIPT_DIR/../data/db/recall.db"
+# shellcheck source=_db.sh
+. "$SCRIPT_DIR/_db.sh"
 
-if [[ ! -f "$DB" ]]; then
-  echo "No database at $DB"
-  exit 1
-fi
+DB=$(recall_db_path)
+require_new_schema "$DB"
 
 sqlite3 -header -column "$DB" "
+  WITH all_keys AS (
+    SELECT match_key FROM summary_screenshots
+    UNION SELECT match_key FROM scoreboard_screenshots
+    UNION SELECT match_key FROM personal_screenshots
+    UNION SELECT match_key FROM rank_screenshots
+    UNION SELECT match_key FROM unknown_screenshots
+  ),
+  summaries AS (
+    SELECT match_key, MIN(map) AS map, MIN(mode) AS mode, MIN(hero) AS hero,
+           MIN(result) AS result, MIN(final_score) AS final_score, MIN(date) AS date
+    FROM summary_screenshots GROUP BY match_key
+  ),
+  scoreboards AS (
+    SELECT match_key, MAX(eliminations) AS e, MAX(assists) AS a, MAX(deaths) AS d,
+           MAX(damage) AS dmg, MAX(healing) AS hl, MAX(mitigation) AS mit,
+           MIN(hero) AS hero
+    FROM scoreboard_screenshots GROUP BY match_key
+  ),
+  coverage AS (
+    SELECT k.match_key,
+      CASE WHEN EXISTS(SELECT 1 FROM summary_screenshots    t WHERE t.match_key=k.match_key) THEN 'S' ELSE '-' END ||
+      CASE WHEN EXISTS(SELECT 1 FROM scoreboard_screenshots t WHERE t.match_key=k.match_key) THEN 'B' ELSE '-' END ||
+      CASE WHEN EXISTS(SELECT 1 FROM personal_screenshots   t WHERE t.match_key=k.match_key) THEN 'P' ELSE '-' END ||
+      CASE WHEN EXISTS(SELECT 1 FROM rank_screenshots       t WHERE t.match_key=k.match_key) THEN 'R' ELSE '-' END ||
+      CASE WHEN EXISTS(SELECT 1 FROM unknown_screenshots    t WHERE t.match_key=k.match_key) THEN 'U' ELSE '-' END
+      AS types
+    FROM all_keys k
+  )
   SELECT
-    id,
-    match_key,
-    COALESCE(map, '')                                  AS map,
-    COALESCE(mode, '')                                 AS mode,
-    COALESCE(hero, '')                                 AS hero,
-    eliminations || '/' || assists || '/' || deaths    AS ead,
-    damage || '/' || healing || '/' || mitigation      AS dhm,
-    COALESCE(result, '')                               AS result,
-    COALESCE(final_score, '')                          AS score,
-    COALESCE(date, '')                                 AS date
-  FROM match_results
-  ORDER BY id;
+    k.match_key,
+    c.types                                                                      AS types,
+    COALESCE(s.map, '')                                                          AS map,
+    COALESCE(s.mode, '')                                                         AS mode,
+    COALESCE(s.hero, b.hero, '')                                                 AS hero,
+    COALESCE(b.e, 0)   || '/' || COALESCE(b.a, 0)  || '/' || COALESCE(b.d, 0)    AS ead,
+    COALESCE(b.dmg, 0) || '/' || COALESCE(b.hl, 0) || '/' || COALESCE(b.mit, 0)  AS dhm,
+    COALESCE(s.result, '')                                                       AS result,
+    COALESCE(s.final_score, '')                                                  AS score,
+    COALESCE(s.date, '')                                                         AS date
+  FROM all_keys k
+  LEFT JOIN summaries   s ON s.match_key = k.match_key
+  LEFT JOIN scoreboards b ON b.match_key = k.match_key
+  LEFT JOIN coverage    c ON c.match_key = k.match_key
+  ORDER BY COALESCE(s.date, k.match_key);
 "
