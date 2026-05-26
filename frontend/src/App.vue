@@ -52,6 +52,7 @@ import { useTabKeyboardNav } from './composables/useTabKeyboardNav'
 import { useModalFocusTrap } from './composables/useModalFocusTrap'
 import { useBackupRestore } from './composables/useBackupRestore'
 import { useClearDatabase } from './composables/useClearDatabase'
+import { useTesseractStatus } from './composables/useTesseractStatus'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
@@ -128,18 +129,32 @@ const lastParsedAt = ref<number | null>(null)
 const appVersion = ref('')
 const updateInfo = ref<UpdateInfo | null>(null)
 
-// Tesseract status — mirrors the Go side's TesseractStatus struct.
-// When .found is false, a System Alert banner blocks the main views
-// and Parse/Watch controls disable themselves. Refreshed on mount and
-// after every path-changing call.
-const tesseractStatus = ref({ path: '', found: false, version: '', supported: false, error: '', default: '' })
-const tesseractReady = computed(() => !!tesseractStatus.value?.found)
-// True when Tesseract is found AND is a supported major version (5.x).
-const tesseractSupported = computed(() => tesseractReady.value && !!tesseractStatus.value?.supported)
+// Tesseract status (path / found / version / supported flag) + the
+// "Browse for binary…" + "Reset to default" pickers + the System Alert
+// CTA that deep-links into Settings → Engine.
+const {
+  tesseractStatus,
+  tesseractReady,
+  tesseractSupported,
+  tesseractPickerBusy,
+  setTesseractStatus,
+  pickTesseractBinary,
+  resetTesseractPath,
+  gotoEngineSettings,
+} = useTesseractStatus({
+  pickTesseractBinary: PickTesseractBinary,
+  resetTesseractPath: ResetTesseractPath,
+  onError: (m) => { error.value = m },
+  navigateToEngine: async () => {
+    view.value = 'settings'
+    await nextTick()
+    const el = document.getElementById('sec-engine')
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  },
+})
 
 // Confirmation modal for parsing with an unsupported Tesseract version.
 const showUnsupportedModal = ref(false)
-const tesseractPickerBusy = ref(false)
 
 // Modal focus trap — captures the trigger, focuses the first
 // focusable inside `.modal-box` (markup-first = Cancel button, never
@@ -246,8 +261,8 @@ async function load() {
   if (dir.status === 'fulfilled')      screenshotsDir.value = dir.value || ''
   if (promOn.status === 'fulfilled')   prometheusEnabled.value = !!promOn.value
   if (watchOn.status === 'fulfilled')  watchEnabled.value = !!watchOn.value
-  if (tess.status === 'fulfilled')     tesseractStatus.value = tess.value
-  else                                 tesseractStatus.value = { path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '' }
+  if (tess.status === 'fulfilled')     setTesseractStatus(tess.value)
+  else                                 setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '' })
   newScreenshotCount.value = newCount.status === 'fulfilled' ? newCount.value : null
   dataLocation.value      = loc.status === 'fulfilled' ? loc.value : null
 }
@@ -259,38 +274,6 @@ async function refreshNewCount() {
 // Pick a Tesseract binary via the native file dialog. The Go side
 // handles persistence + re-validation; we only need to mirror the new
 // status into the UI.
-async function pickTesseractBinary() {
-  if (tesseractPickerBusy.value) return
-  tesseractPickerBusy.value = true
-  try {
-    const next = await PickTesseractBinary()
-    if (next) tesseractStatus.value = next
-  } catch (e) {
-    error.value = String(e)
-  } finally {
-    tesseractPickerBusy.value = false
-  }
-}
-
-// Reset to the platform default location (resolved server-side).
-async function resetTesseractPath() {
-  try {
-    const next = await ResetTesseractPath()
-    if (next) tesseractStatus.value = next
-  } catch (e) {
-    error.value = String(e)
-  }
-}
-
-// Jump to Settings and scroll the Engine section into view. Wired
-// from the System Alert banner's "Fix in Settings →" CTA.
-async function gotoEngineSettings() {
-  view.value = 'settings'
-  await nextTick()
-  const el = document.getElementById('sec-engine')
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
 // Toggle directory watching. Same pattern as Prometheus: Go owns the
 // actual side effect (fsnotify watcher start/stop), this just mirrors
 // state and rolls back on error. Enabling is gated on Tesseract being
