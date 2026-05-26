@@ -13,12 +13,19 @@ import (
 // per-type screenshot row that shares a match_key. No `id` field —
 // the previous single-table primary key is gone; match_key is identity.
 type MatchRecord struct {
-	MatchKey       string             `json:"match_key"`
-	SourceFiles    []string           `json:"source_files"`
-	SourceTypes    map[string]string  `json:"source_types,omitempty"`
-	SourceParsedAt map[string]string  `json:"source_parsed_at,omitempty"`
-	ParsedAt       string             `json:"parsed_at,omitempty"`
-	Data           parser.MatchResult `json:"data"`
+	MatchKey       string            `json:"match_key"`
+	SourceFiles    []string          `json:"source_files"`
+	SourceTypes    map[string]string `json:"source_types,omitempty"`
+	SourceParsedAt map[string]string `json:"source_parsed_at,omitempty"`
+	// SourceDirs maps a source filename to the screenshots-folder
+	// path it was ingested from. Populated from the screenshots_dirs
+	// FK on each per-type parent row, so when the user changes their
+	// screenshots folder mid-history we still know where each old
+	// screenshot was originally captured. Empty / missing for legacy
+	// rows or rows where the dir was unset at parse time.
+	SourceDirs map[string]string  `json:"source_dirs,omitempty"`
+	ParsedAt   string             `json:"parsed_at,omitempty"`
+	Data       parser.MatchResult `json:"data"`
 }
 
 // GetNewScreenshotCount returns the number of image files in the

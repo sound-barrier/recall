@@ -32,6 +32,7 @@ type screenshotView struct {
 	typeName string
 	matchKey string
 	parsedAt string
+	dirID    int64 // 0 = unset; resolved against snap.ScreenshotsDirs in foldGroup
 	data     parser.MatchResult
 }
 
@@ -53,7 +54,7 @@ func aggregateScreenshots(snap db.Screenshots) []MatchRecord {
 	for _, r := range snap.Unknowns {
 		views = append(views, screenshotView{
 			filename: r.Filename, typeName: "unknown",
-			matchKey: r.MatchKey, parsedAt: r.ParsedAt,
+			matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		})
 	}
 
@@ -70,12 +71,12 @@ func aggregateScreenshots(snap db.Screenshots) []MatchRecord {
 
 	out := make([]MatchRecord, 0, len(keys))
 	for _, k := range keys {
-		out = append(out, foldGroup(k, groups[k]))
+		out = append(out, foldGroup(k, groups[k], snap.ScreenshotsDirs))
 	}
 	return out
 }
 
-func foldGroup(key string, vs []screenshotView) MatchRecord {
+func foldGroup(key string, vs []screenshotView, dirs map[int64]string) MatchRecord {
 	// Fold order: filename-timestamp asc, then parsed_at asc. This
 	// matches the pre-refactor ordering, where mergeByTimestamp folded
 	// earliest-first inside each window.
@@ -97,6 +98,7 @@ func foldGroup(key string, vs []screenshotView) MatchRecord {
 	sources := make([]string, 0, len(vs))
 	types := make(map[string]string, len(vs))
 	parsedAtPerFile := make(map[string]string, len(vs))
+	dirsPerFile := map[string]string{}
 	matchParsedAt := ""
 	for _, v := range vs {
 		mergeMatchResult(&data, &v.data)
@@ -108,6 +110,11 @@ func foldGroup(key string, vs []screenshotView) MatchRecord {
 				matchParsedAt = v.parsedAt
 			}
 		}
+		if v.dirID != 0 {
+			if path, ok := dirs[v.dirID]; ok {
+				dirsPerFile[v.filename] = path
+			}
+		}
 	}
 	// Derived fields — never stored in the DB.
 	if data.Hero != "" {
@@ -117,7 +124,7 @@ func foldGroup(key string, vs []screenshotView) MatchRecord {
 		data.Type = firstNonEmpty(data.Type, parser.MapType(data.Map))
 	}
 
-	return MatchRecord{
+	rec := MatchRecord{
 		MatchKey:       key,
 		SourceFiles:    unionSortedStrings(sources, nil),
 		SourceTypes:    types,
@@ -125,6 +132,10 @@ func foldGroup(key string, vs []screenshotView) MatchRecord {
 		ParsedAt:       matchParsedAt,
 		Data:           data,
 	}
+	if len(dirsPerFile) > 0 {
+		rec.SourceDirs = dirsPerFile
+	}
+	return rec
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -135,7 +146,7 @@ func foldGroup(key string, vs []screenshotView) MatchRecord {
 func summaryToView(r db.SummaryRow) screenshotView {
 	view := screenshotView{
 		filename: r.Filename, typeName: "summary",
-		matchKey: r.MatchKey, parsedAt: r.ParsedAt,
+		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
 			Map: r.Map, Mode: r.Mode, Hero: r.Hero,
 			Result: r.Result, FinalScore: r.FinalScore,
@@ -171,7 +182,7 @@ func summaryToView(r db.SummaryRow) screenshotView {
 func scoreboardToView(r db.ScoreboardRow) screenshotView {
 	view := screenshotView{
 		filename: r.Filename, typeName: "scoreboard",
-		matchKey: r.MatchKey, parsedAt: r.ParsedAt,
+		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
 			Map: r.Map, Mode: r.Mode, Hero: r.Hero,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
@@ -185,7 +196,7 @@ func scoreboardToView(r db.ScoreboardRow) screenshotView {
 func personalToView(r db.PersonalRow) screenshotView {
 	view := screenshotView{
 		filename: r.Filename, typeName: "personal",
-		matchKey: r.MatchKey, parsedAt: r.ParsedAt,
+		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{Hero: r.Hero},
 	}
 	attachHeroStats(&view.data, r.HeroStats)
@@ -195,7 +206,7 @@ func personalToView(r db.PersonalRow) screenshotView {
 func rankToView(r db.RankRow) screenshotView {
 	view := screenshotView{
 		filename: r.Filename, typeName: "rank",
-		matchKey: r.MatchKey, parsedAt: r.ParsedAt,
+		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
 			Mode: "competitive", // rank screens are always competitive
 			Rank: r.Rank, Level: r.Level,

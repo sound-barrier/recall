@@ -23,6 +23,8 @@ type fakeStore struct {
 	ranks       []db.RankRow
 	unknowns    []db.UnknownRow
 
+	dirIDs map[string]int64
+
 	upsertCalls int
 	clearCalls  int
 	closeCalls  int
@@ -186,6 +188,23 @@ func (f *fakeStore) Close() error {
 	defer f.mu.Unlock()
 	f.closeCalls++
 	return nil
+}
+
+func (f *fakeStore) EnsureScreenshotsDir(path string) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if path == "" {
+		return 0, nil
+	}
+	if f.dirIDs == nil {
+		f.dirIDs = map[string]int64{}
+	}
+	if id, ok := f.dirIDs[path]; ok {
+		return id, nil
+	}
+	id := int64(len(f.dirIDs) + 1)
+	f.dirIDs[path] = id
+	return id, nil
 }
 
 // ──────────────────────────────────────────────────────────────────────────

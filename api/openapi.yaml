@@ -580,6 +580,19 @@ components:
           example:
             "Overwatch Screenshot 2026.05.10 - 22.21.11.79.png": "2026-05-10T22:30:00Z"
             "Overwatch Screenshot 2026.05.10 - 22.21.57.34.png": "2026-05-10T22:30:00Z"
+        source_dirs:
+          type: object
+          additionalProperties:
+            type: string
+          description: |
+            Per-source-file screenshots-folder path the file was ingested
+            from, normalized via the screenshots_dirs FK so changing the
+            configured folder later doesn't rewrite history. May be
+            absent on rows persisted before this column landed or rows
+            where the dir was unset at parse time.
+          example:
+            "Overwatch Screenshot 2026.05.10 - 22.21.11.79.png": "/Users/jacob/Documents/Overwatch/Screenshots"
+            "Overwatch Screenshot 2026.05.10 - 22.21.57.34.png": "/Users/jacob/Documents/Overwatch/Screenshots"
         parsed_at:
           type: string
           format: date-time

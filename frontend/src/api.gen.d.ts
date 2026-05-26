@@ -916,6 +916,20 @@ export interface components {
                 [key: string]: string;
             };
             /**
+             * @description Per-source-file screenshots-folder path the file was ingested
+             *     from, normalized via the screenshots_dirs FK so changing the
+             *     configured folder later doesn't rewrite history. May be
+             *     absent on rows persisted before this column landed or rows
+             *     where the dir was unset at parse time.
+             * @example {
+             *       "Overwatch Screenshot 2026.05.10 - 22.21.11.79.png": "/Users/jacob/Documents/Overwatch/Screenshots",
+             *       "Overwatch Screenshot 2026.05.10 - 22.21.57.34.png": "/Users/jacob/Documents/Overwatch/Screenshots"
+             *     }
+             */
+            source_dirs?: {
+                [key: string]: string;
+            };
+            /**
              * Format: date-time
              * @description Match-level timestamp (ISO8601) of when the match record
              *     was first inserted into the DB. Stable across subsequent
