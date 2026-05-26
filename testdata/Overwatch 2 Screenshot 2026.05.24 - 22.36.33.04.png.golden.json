@@ -1,13 +1,16 @@
 {
-  "map": "",
-  "type": "",
-  "mode": "",
-  "role": "",
-  "hero": "",
-  "eliminations": 9,
-  "assists": 19,
-  "deaths": 6,
-  "damage": 3514,
-  "healing": 10933,
-  "mitigation": 351
+  "screenshot_type": "scoreboard",
+  "result": {
+    "map": "",
+    "type": "",
+    "mode": "",
+    "role": "",
+    "hero": "",
+    "eliminations": 9,
+    "assists": 19,
+    "deaths": 6,
+    "damage": 3514,
+    "healing": 10933,
+    "mitigation": 351
+  }
 }

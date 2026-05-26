@@ -1,44 +1,47 @@
 {
-  "map": "antarctic peninsula",
-  "type": "control",
-  "mode": "competitive",
-  "role": "support",
-  "hero": "juno",
-  "eliminations": 4,
-  "assists": 19,
-  "deaths": 6,
-  "damage": 0,
-  "healing": 0,
-  "mitigation": 0,
-  "result": "victory",
-  "final_score": "2-1",
-  "date": "2026-05-24",
-  "finished_at": "22:35",
-  "game_length": "14:56",
-  "heroes_played": [
-    {
-      "hero": "juno",
-      "percent_played": 67,
-      "play_time": "09:08"
-    },
-    {
-      "hero": "mizuki",
-      "percent_played": 33,
-      "play_time": "04:24"
-    }
-  ],
-  "performance": {
-    "eliminations": {
-      "total": 4,
-      "avg_per_10min": 6.64
-    },
-    "assists": {
-      "total": 19,
-      "avg_per_10min": 14.02
-    },
-    "deaths": {
-      "total": 6,
-      "avg_per_10min": 4.43
+  "screenshot_type": "summary",
+  "result": {
+    "map": "antarctic peninsula",
+    "type": "control",
+    "mode": "competitive",
+    "role": "support",
+    "hero": "juno",
+    "eliminations": 4,
+    "assists": 19,
+    "deaths": 6,
+    "damage": 0,
+    "healing": 0,
+    "mitigation": 0,
+    "result": "victory",
+    "final_score": "2-1",
+    "date": "2026-05-24",
+    "finished_at": "22:35",
+    "game_length": "14:56",
+    "heroes_played": [
+      {
+        "hero": "juno",
+        "percent_played": 67,
+        "play_time": "09:08"
+      },
+      {
+        "hero": "mizuki",
+        "percent_played": 33,
+        "play_time": "04:24"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 4,
+        "avg_per_10min": 6.64
+      },
+      "assists": {
+        "total": 19,
+        "avg_per_10min": 14.02
+      },
+      "deaths": {
+        "total": 6,
+        "avg_per_10min": 4.43
+      }
     }
   }
 }

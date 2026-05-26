@@ -1,29 +1,32 @@
 {
-  "map": "",
-  "type": "",
-  "mode": "competitive",
-  "role": "support",
-  "hero": "juno",
-  "eliminations": 0,
-  "assists": 0,
-  "deaths": 0,
-  "damage": 0,
-  "healing": 0,
-  "mitigation": 0,
-  "heroes_played": [
-    {
-      "hero": "juno",
-      "percent_played": 67,
-      "play_time": "09:08",
-      "stats": {
-        "damage_amplified": 169,
-        "ooorsitall_ray_assists": 2,
-        "orbital_ray_healing": 372,
-        "players_saved": 5,
-        "pulsar_torpedoes_damage": 582,
-        "pulsar_torpedoes_healing": 4496,
-        "weapon_accuracy": 35
+  "screenshot_type": "personal",
+  "result": {
+    "map": "",
+    "type": "",
+    "mode": "competitive",
+    "role": "support",
+    "hero": "juno",
+    "eliminations": 0,
+    "assists": 0,
+    "deaths": 0,
+    "damage": 0,
+    "healing": 0,
+    "mitigation": 0,
+    "heroes_played": [
+      {
+        "hero": "juno",
+        "percent_played": 67,
+        "play_time": "09:08",
+        "stats": {
+          "damage_amplified": 169,
+          "ooorsitall_ray_assists": 2,
+          "orbital_ray_healing": 372,
+          "players_saved": 5,
+          "pulsar_torpedoes_damage": 582,
+          "pulsar_torpedoes_healing": 4496,
+          "weapon_accuracy": 35
+        }
       }
-    }
-  ]
+    ]
+  }
 }

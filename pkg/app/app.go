@@ -5,20 +5,11 @@
 // The package is intentionally split into per-concern files instead of
 // one monolith:
 //
-//   - settings.go         — on-disk JSON settings + appDataDir
-//   - tesseract.go        — TesseractStatus + probe + path validation
-//   - watcher.go          — filesystem watcher lifecycle + debounce
-//   - metrics_lifecycle.go — Prometheus endpoint start/stop
-//   - update.go           — Version + CheckForUpdate (GitHub Releases)
-//   - screenshots_dir.go  — ScreenshotsDir get/set + validation
-//   - screenshot_handler.go — HTTP /_screenshot/<file> file server
-//   - inference.go        — read-time inference helpers + scrapeReader
-//   - match_record.go     — MatchRecord type + read API + record loader
-//   - merge.go            — the mergedRow shape + all merge orchestration
-//   - parse.go            — ParseScreenshots + screenshotType + ParseProgressEvent
-//   - sse.go              — SSEHub (server-mode event broadcaster)
-//   - app_wails.go        — Wails-only methods (dialogs, events) — !serveronly
-//   - app_server.go       — serveronly stubs for the dialog methods
+// Filenames match concerns (`tesseract.go`, `watcher.go`,
+// `correlation.go`, `aggregate.go`, …); production code and tests
+// are 1:1 sibling files. Screenshot classification lives in
+// `parser.ScreenshotType` (pure function over `parser.MatchResult`),
+// not in this package.
 //
 // The split mirrors the existing test-file partition (settings_io_test.go,
 // tesseract_version_test.go, watcher_events_test.go, etc.). All the
