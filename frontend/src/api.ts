@@ -165,13 +165,33 @@ export function SetScreenshotsDir(path: string): Promise<void> {
   return _post('/api/screenshots-dir', { path }).then(() => undefined)
 }
 
-// Per-match user annotation. `leaver` ∈ {'self', 'team', 'enemy'};
-// passing the empty string clears the annotation. The server validates
-// + persists; on success the next /api/match-results fetch (and any
-// live `match-updated` event) carries the annotation under
-// `MatchRecord.annotation`.
+// Per-match user annotation. All four fields are optional; if every
+// field is empty the server deletes the row entirely. `leaver`
+// ∈ {'self', 'team', 'enemy', ''}.
 export type LeaverKind = 'self' | 'team' | 'enemy'
 
+export interface MatchAnnotationInput {
+  leaver?:      LeaverKind | ''
+  note?:        string
+  replay_code?: string
+  members?:     string[]
+}
+
+export function SetMatchAnnotation(matchKey: string, input: MatchAnnotationInput): Promise<void> {
+  const body = {
+    match_key:   matchKey,
+    leaver:      input.leaver ?? '',
+    note:        input.note ?? '',
+    replay_code: input.replay_code ?? '',
+    members:     input.members ?? [],
+  }
+  if (IS_WAILS) return _wails('SetMatchAnnotation', body)
+  return _post('/api/match-annotations', body).then(() => undefined)
+}
+
+// Back-compat shims for callers / tests that only touch the leaver
+// field. New code should call SetMatchAnnotation directly so the
+// other three fields stay preserved in a single round-trip.
 export function SetLeaverAnnotation(matchKey: string, leaver: LeaverKind, note = ''): Promise<void> {
   if (IS_WAILS) return _wails('SetLeaverAnnotation', matchKey, leaver, note)
   return _post('/api/match-annotations', { match_key: matchKey, leaver, note }).then(() => undefined)
@@ -179,7 +199,6 @@ export function SetLeaverAnnotation(matchKey: string, leaver: LeaverKind, note =
 
 export function ClearLeaverAnnotation(matchKey: string): Promise<void> {
   if (IS_WAILS) return _wails('ClearLeaverAnnotation', matchKey)
-  // Server treats `leaver: ""` / null as a clear-request.
   return _post('/api/match-annotations', { match_key: matchKey, leaver: '' }).then(() => undefined)
 }
 

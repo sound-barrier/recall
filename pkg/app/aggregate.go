@@ -43,6 +43,8 @@ func attachAnnotations(recs []MatchRecord, annos map[string]db.Annotation) {
 			recs[i].Annotation = &MatchAnnotation{
 				Leaver:      a.Leaver,
 				Note:        a.Note,
+				ReplayCode:  a.ReplayCode,
+				Members:     a.Members,
 				AnnotatedAt: a.AnnotatedAt,
 			}
 		}
@@ -110,6 +112,8 @@ func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Anno
 		rec.Annotation = &MatchAnnotation{
 			Leaver:      a.Leaver,
 			Note:        a.Note,
+			ReplayCode:  a.ReplayCode,
+			Members:     a.Members,
 			AnnotatedAt: a.AnnotatedAt,
 		}
 	}

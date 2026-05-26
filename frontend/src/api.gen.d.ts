@@ -813,20 +813,26 @@ export interface paths {
         put?: never;
         /**
          * Upsert or clear a per-match user annotation
-         * @description Lets the user note that a match had a leaver. Three scenarios
-         *     are supported:
+         * @description Lets the user tag a match with up to four pieces of metadata:
          *
-         *       - `self`  — the user themselves left mid-match (data is
-         *         incomplete; usually want to exclude from W/L tallies)
-         *       - `team`  — a teammate left (loss is partly excused)
-         *       - `enemy` — an opponent left (win is tainted)
+         *       - **leaver** — `self` (user left, data incomplete) /
+         *         `team` (ally left, loss excused) / `enemy` (opponent left,
+         *         win tainted). Drives W/L/D tally exclusion via the
+         *         FilterRail leaver-handling setting.
+         *       - **note** — free-text per-match commentary.
+         *       - **replay_code** — Overwatch's six-character replay ID so
+         *         the match can be re-watched in the in-game viewer.
+         *       - **members** — BattleTags of group members; verbatim, no
+         *         canonicalisation.
          *
-         *     Pass `leaver: null` (or omit the field) to clear an existing
-         *     annotation. Idempotent — clearing a non-existent annotation
+         *     Every field is optional. If *every* field is empty (or the
+         *     members array is empty) the request acts as a delete — the
+         *     annotation row is removed entirely, cascading any member rows
+         *     away. Idempotent — clearing a non-existent annotation
          *     succeeds.
          *
          *     Returns 204 on success, 400 on validation failure
-         *     (`match_key` empty or `leaver` not in the enum), 500 on
+         *     (`match_key` empty or `leaver` outside the enum), 500 on
          *     store error.
          */
         post: {
@@ -842,14 +848,23 @@ export interface paths {
                         /** @description Match identity (same `match_key` exposed in `MatchRecord`). */
                         match_key: string;
                         /**
-                         * @description One of the three leaver scenarios, or `""` to clear.
-                         *     Clients can also omit the field — both forms map to
-                         *     "delete the annotation for this match_key".
+                         * @description One of the three leaver scenarios, or `""` to leave
+                         *     untagged. Whole-row deletion happens only when *every*
+                         *     field (leaver, note, replay_code, members) is empty.
                          * @enum {string}
                          */
                         leaver?: "" | "self" | "team" | "enemy";
-                        /** @description Free-text annotation (reserved; not yet surfaced in the UI). */
+                        /** @description Free-text per-match commentary. */
                         note?: string;
+                        /** @description Overwatch six-character replay ID. No format validation server-side. */
+                        replay_code?: string;
+                        /**
+                         * @description BattleTags of group members for this match. The server
+                         *     trims whitespace, drops empty strings, and deduplicates;
+                         *     the composite-PK on the child table catches any
+                         *     duplicates that slip through.
+                         */
+                        members?: string[];
                     };
                 };
             };
@@ -1351,21 +1366,25 @@ export interface components {
             annotation?: components["schemas"]["MatchAnnotation"];
         };
         /**
-         * @description User-curated per-match note. Currently surfaces a single
-         *     `leaver` flag (self / team / enemy); `note` is reserved for
-         *     future free-text commentary. Omitted (or null) when no
-         *     annotation has been set for the match.
+         * @description User-curated per-match metadata. Up to four optional fields —
+         *     every field is independent, but the row only exists if at
+         *     least one carries content. Omitted from `MatchRecord` when
+         *     the match is unannotated.
          */
         MatchAnnotation: {
             /**
-             * @description Which leaver scenario the user tagged this match with.
-             *     `self` = the current user left (data incomplete);
-             *     `team` = an ally left; `enemy` = an opponent left.
+             * @description Which leaver scenario the user tagged this match with, or
+             *     `""` if no leaver tag is set. `self` = user left (data
+             *     incomplete); `team` = ally left; `enemy` = opponent left.
              * @enum {string}
              */
-            leaver: "self" | "team" | "enemy";
-            /** @description Free-text per-match commentary (reserved; not surfaced in the UI yet). */
+            leaver?: "" | "self" | "team" | "enemy";
+            /** @description Free-text per-match commentary. */
             note?: string;
+            /** @description Overwatch six-character replay ID. Stored verbatim. */
+            replay_code?: string;
+            /** @description BattleTags of group members for this match. */
+            members?: string[];
             /**
              * Format: date-time
              * @description Server-set timestamp of when the annotation was last upserted.

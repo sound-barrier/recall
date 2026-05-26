@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { MatchRecord } from '../api'
+import { ref, computed, watch } from 'vue'
+import type { MatchRecord, MatchAnnotationInput } from '../api'
 import {
   fmtTime,
   heroesForHeader,
@@ -46,7 +47,86 @@ const emit = defineEmits<{
   // ClearLeaverAnnotation, and re-loads records so the new
   // Annotation reflects on the next render.
   'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
+  // User edits the note / replay code / members and confirms the
+  // change (debounced or on blur). App.vue calls SetMatchAnnotation
+  // which writes the whole row in a single round-trip so the three
+  // free-text fields can't drift independently.
+  'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
 }>()
+
+// Local draft state for the three free-text annotation fields. These
+// hydrate from props.record.annotation when the card is opened or the
+// underlying record changes; the user types here and we emit on
+// commit (blur for note/replay, Enter for member chip add).
+const noteDraft       = ref(props.record.annotation?.note ?? '')
+const replayDraft     = ref(props.record.annotation?.replay_code ?? '')
+const memberInput     = ref('')
+const memberDraft     = ref<string[]>(props.record.annotation?.members ?? [])
+// Track which annotation field, if any, is currently being edited so
+// we can render a "saved ✓" pulse without it stomping on the active
+// editor's value.
+const savedFlash      = ref<'' | 'note' | 'replay' | 'members'>('')
+
+watch(
+  () => props.record.annotation,
+  (next) => {
+    noteDraft.value = next?.note ?? ''
+    replayDraft.value = next?.replay_code ?? ''
+    memberDraft.value = next?.members ?? []
+  },
+  { immediate: false },
+)
+
+const hasAnyNote = computed(
+  () => !!(noteDraft.value.trim() || replayDraft.value.trim() || memberDraft.value.length),
+)
+
+// Commits the current draft to the parent. Always writes ALL FOUR
+// annotation fields so the unified setter doesn't accidentally null
+// something the user typed in another input. Leaver is read from the
+// existing annotation (the chooser owns that field independently).
+function commitAnnotation(field: 'note' | 'replay' | 'members') {
+  emit('set-match-annotation', props.record.match_key, {
+    leaver:      (props.record.annotation?.leaver ?? '') as MatchAnnotationInput['leaver'],
+    note:        noteDraft.value.trim(),
+    replay_code: replayDraft.value.trim(),
+    members:     memberDraft.value,
+  })
+  savedFlash.value = field
+  setTimeout(() => { if (savedFlash.value === field) savedFlash.value = '' }, 900)
+}
+
+function addMember() {
+  const v = memberInput.value.trim()
+  if (!v || memberDraft.value.includes(v)) {
+    memberInput.value = ''
+    return
+  }
+  memberDraft.value = [...memberDraft.value, v]
+  memberInput.value = ''
+  commitAnnotation('members')
+}
+
+function removeMember(name: string) {
+  memberDraft.value = memberDraft.value.filter(m => m !== name)
+  commitAnnotation('members')
+}
+
+// Keydown handler for the member input. Enter/comma both commit the
+// chip (Vue's v-on doesn't support the `comma` key modifier so we
+// have to read e.key by hand). Backspace on an empty input removes
+// the last chip — standard tagify-style behaviour.
+function onMemberKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault()
+    addMember()
+    return
+  }
+  if (e.key === 'Backspace' && memberInput.value === '' && memberDraft.value.length > 0) {
+    e.preventDefault()
+    removeMember(memberDraft.value[memberDraft.value.length - 1]!)
+  }
+}
 </script>
 
 <template>
@@ -174,6 +254,23 @@ const emit = defineEmits<{
           >
             <span class="leaver-mark-l" aria-hidden="true">L</span>
           </span>
+
+          <!-- Note-present mark. Surfaces when the user has saved any
+               of note / replay_code / members — same pill footprint as
+               the leaver mark, accent-tinted instead of result-tinted.
+               Tooltip echoes which fields are populated. -->
+          <span
+            v-if="record.annotation && (record.annotation.note || record.annotation.replay_code || (record.annotation.members && record.annotation.members.length))"
+            class="note-mark"
+            :title="[
+              record.annotation.note ? 'has note' : '',
+              record.annotation.replay_code ? 'replay: ' + record.annotation.replay_code : '',
+              (record.annotation.members && record.annotation.members.length) ? (record.annotation.members.length + ' group member' + (record.annotation.members.length === 1 ? '' : 's')) : '',
+            ].filter(Boolean).join(' · ')"
+            aria-label="Match has user notes"
+          >
+            <span class="note-mark-glyph" aria-hidden="true">N</span>
+          </span>
           <span
             v-if="missingRequiredSlots(record).length"
             class="incomplete-badge"
@@ -253,6 +350,73 @@ const emit = defineEmits<{
             >
               × Clear
             </button>
+          </div>
+
+          <!-- Free-text annotation block. Stays mounted (no v-if) so
+               the user can interact with note / replay / members
+               independently — each field commits on blur or chip
+               add, never on every keystroke. -->
+          <div class="match-notes" :class="{ active: hasAnyNote }">
+            <div class="match-notes-row">
+              <label class="match-notes-label" :for="`note-${record.match_key}`">Note</label>
+              <textarea
+                :id="`note-${record.match_key}`"
+                v-model="noteDraft"
+                class="match-notes-textarea"
+                rows="2"
+                placeholder="Quick context — what happened this match?"
+                @blur="commitAnnotation('note')"
+              />
+              <span v-if="savedFlash === 'note'" class="match-notes-saved" aria-hidden="true">saved ✓</span>
+            </div>
+
+            <div class="match-notes-row">
+              <label class="match-notes-label" :for="`replay-${record.match_key}`">Replay</label>
+              <input
+                :id="`replay-${record.match_key}`"
+                v-model="replayDraft"
+                class="match-notes-input mono"
+                placeholder="6-char OW replay code (e.g. 7H1K9P)"
+                spellcheck="false"
+                autocomplete="off"
+                maxlength="32"
+                @blur="commitAnnotation('replay')"
+                @keydown.enter.prevent="commitAnnotation('replay')"
+              >
+              <span v-if="savedFlash === 'replay'" class="match-notes-saved" aria-hidden="true">saved ✓</span>
+            </div>
+
+            <div class="match-notes-row">
+              <label class="match-notes-label" :for="`members-${record.match_key}`">Group</label>
+              <div class="match-notes-members">
+                <span
+                  v-for="m in memberDraft"
+                  :key="m"
+                  class="member-chip"
+                >
+                  <span class="member-chip-tag">{{ m }}</span>
+                  <button
+                    type="button"
+                    class="member-chip-remove"
+                    :aria-label="`Remove ${m} from group`"
+                    @click="removeMember(m)"
+                  >
+                    ×
+                  </button>
+                </span>
+                <input
+                  :id="`members-${record.match_key}`"
+                  v-model="memberInput"
+                  class="match-notes-input member-input mono"
+                  placeholder="Add BattleTag · Enter to confirm"
+                  spellcheck="false"
+                  autocomplete="off"
+                  @keydown="onMemberKeydown"
+                  @blur="addMember"
+                >
+              </div>
+              <span v-if="savedFlash === 'members'" class="match-notes-saved" aria-hidden="true">saved ✓</span>
+            </div>
           </div>
 
           <div v-if="record.data?.final_score" class="meta-row">
@@ -1315,6 +1479,187 @@ button.chev-btn:hover { color: var(--accent-bright); }
 .leaver-chip-glyph.leaver-team  { color: var(--loss); }
 .leaver-chip-glyph.leaver-enemy { color: var(--win); }
 .leaver-chip.active .leaver-chip-glyph { color: var(--accent); }
+
+/* ─── Note-present mark on the collapsed header ──────────── */
+
+/* Sister to .leaver-mark — same pill footprint, accent-tinted to
+   read as "this match has notes" without competing visually with
+   the L mark when both are present. */
+.note-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  cursor: help;
+  flex-shrink: 0;
+}
+
+/* ─── Match notes block (expanded view) ──────────────────── */
+
+/* Three-row grid under the leaver chooser: Note textarea, Replay
+   input, Members tag-input. Each row commits independently on blur /
+   Enter; the unified backend call writes all four annotation fields
+   in one round-trip so partial state can't strand a draft. */
+.match-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  transition: border-color 200ms ease;
+}
+
+.match-notes.active {
+  border-color: var(--accent-glow);
+}
+
+.match-notes-row {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr auto;
+  align-items: start;
+  gap: 0.6rem;
+}
+
+.match-notes-label {
+  padding-top: 0.42rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  user-select: none;
+}
+
+.match-notes-textarea,
+.match-notes-input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  resize: vertical;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.match-notes-textarea {
+  min-height: 2.4rem;
+  font-family: var(--body);
+}
+
+.match-notes-input.mono {
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.match-notes-textarea:focus,
+.match-notes-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.match-notes-saved {
+  padding: 0.3rem 0.45rem;
+  align-self: center;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--win);
+  animation: notes-saved-fade 900ms ease forwards;
+}
+
+@keyframes notes-saved-fade {
+  0%   { opacity: 0; transform: translateY(2px); }
+  20%  { opacity: 1; transform: translateY(0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Members chip list — flex-wrap so chips reflow to a new line on
+   narrow widths. The add-input expands to fill remaining row width
+   so the placeholder text stays readable. */
+.match-notes-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.3rem 0.4rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+}
+
+.match-notes-members:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.18rem 0.2rem 0.18rem 0.5rem;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+.member-chip-tag {
+  white-space: nowrap;
+}
+
+.member-chip-remove {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0 0.2rem;
+  color: currentcolor;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  border-radius: 1px;
+  transition: background 140ms ease;
+}
+
+.member-chip-remove:hover {
+  background: color-mix(in srgb, currentcolor 18%, transparent);
+}
+
+.member-input {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+  padding: 0.18rem 0.35rem;
+  background: transparent;
+  border: 0;
+  font-size: 0.78rem;
+}
+
+.member-input:focus {
+  outline: none;
+  box-shadow: none;
+}
 
 /* ─── Narrow-viewport overrides ──────────────────────────── */
 

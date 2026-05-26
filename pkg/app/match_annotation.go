@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"recall/pkg/db"
 )
@@ -13,22 +14,70 @@ import (
 //   - "team"  — an ally left the match
 //   - "enemy" — an opposing-team player left the match
 //
-// The empty string means "no annotation"; callers use
-// ClearLeaverAnnotation to remove an existing one instead of passing
-// "".
+// The empty string means "no leaver tag set"; an annotation row can
+// exist without a leaver as long as at least one of note /
+// replay_code / members is populated.
 var validLeavers = map[string]bool{"self": true, "team": true, "enemy": true}
 
 // ErrInvalidLeaver is returned by SetLeaverAnnotation when the leaver
-// value isn't one of the three allowed scenarios. HTTP handlers map
-// this to 400 (user-input error) rather than 500.
+// value isn't one of the three allowed scenarios (or empty for "no
+// tag"). HTTP handlers map this to 400 (user-input error) rather than
+// 500.
 var ErrInvalidLeaver = errors.New("invalid leaver: must be 'self', 'team', or 'enemy'")
 
-// SetLeaverAnnotation upserts a user-curated leaver annotation for the
-// match identified by matchKey. The leaver string is validated
-// client-side AND server-side (the SQLite CHECK constraint is the
-// last line of defence). `note` is reserved free-text storage —
-// currently unused in the UI but plumbed through so future per-match
-// commentary can ride the same channel.
+// AnnotationInput is the App-layer DTO for SetMatchAnnotation. Each
+// field is optional; if every field is empty after trimming, the
+// annotation row is deleted entirely (cascading members away).
+type AnnotationInput struct {
+	MatchKey   string
+	Leaver     string
+	Note       string
+	ReplayCode string
+	Members    []string
+}
+
+// SetMatchAnnotation upserts (or deletes) a per-match annotation. The
+// "delete on empty" policy keeps the annotation table small and the
+// FilterRail "leaver / note count" gates accurate — a row that
+// carries no user content shouldn't pretend to exist.
+//
+// Validation:
+//   - match_key required.
+//   - leaver, when non-empty, must be in {self, team, enemy}.
+//   - members are trimmed + deduped + dropped-if-empty before reaching
+//     SQL; the composite-PK on the child table also guards duplicates.
+//   - replay_code is left as-is — Overwatch's format isn't pinned
+//     strongly enough to validate client-side.
+func (a *App) SetMatchAnnotation(in AnnotationInput) error {
+	if in.MatchKey == "" {
+		return fmt.Errorf("match_key required")
+	}
+	leaver := strings.TrimSpace(in.Leaver)
+	if leaver != "" && !validLeavers[leaver] {
+		return ErrInvalidLeaver
+	}
+	note := strings.TrimSpace(in.Note)
+	replay := strings.TrimSpace(in.ReplayCode)
+	members := normalizeMembers(in.Members)
+
+	// All-empty input → delete the row entirely. Idempotent — deleting
+	// a non-existent row is a no-op.
+	if leaver == "" && note == "" && replay == "" && len(members) == 0 {
+		return a.store.DeleteAnnotation(in.MatchKey)
+	}
+	return a.store.SetAnnotation(db.Annotation{
+		MatchKey:   in.MatchKey,
+		Leaver:     leaver,
+		Note:       note,
+		ReplayCode: replay,
+		Members:    members,
+	})
+}
+
+// SetLeaverAnnotation kept as a thin wrapper around SetMatchAnnotation
+// for back-compat with callers / tests that touch only the leaver
+// field. New code should use SetMatchAnnotation directly so all four
+// fields stay in lock-step.
 func (a *App) SetLeaverAnnotation(matchKey, leaver, note string) error {
 	if matchKey == "" {
 		return fmt.Errorf("match_key required")
@@ -36,18 +85,53 @@ func (a *App) SetLeaverAnnotation(matchKey, leaver, note string) error {
 	if !validLeavers[leaver] {
 		return ErrInvalidLeaver
 	}
+	// Preserve any existing replay_code + members on the row, since
+	// the legacy entry point only touches leaver+note.
+	existing, _ := a.store.LoadAnnotations()
+	prev := existing[matchKey]
 	return a.store.SetAnnotation(db.Annotation{
-		MatchKey: matchKey,
-		Leaver:   leaver,
-		Note:     note,
+		MatchKey:   matchKey,
+		Leaver:     leaver,
+		Note:       note,
+		ReplayCode: prev.ReplayCode,
+		Members:    prev.Members,
 	})
 }
 
-// ClearLeaverAnnotation removes any annotation for matchKey. Idempotent
-// — deleting a non-existent annotation is a no-op, not an error.
+// ClearLeaverAnnotation removes the leaver tag while preserving any
+// note / replay_code / members on the row. If all four end up empty
+// after the clear, the row is deleted entirely.
 func (a *App) ClearLeaverAnnotation(matchKey string) error {
 	if matchKey == "" {
 		return fmt.Errorf("match_key required")
 	}
-	return a.store.DeleteAnnotation(matchKey)
+	existing, _ := a.store.LoadAnnotations()
+	prev := existing[matchKey]
+	return a.SetMatchAnnotation(AnnotationInput{
+		MatchKey:   matchKey,
+		Leaver:     "",
+		Note:       prev.Note,
+		ReplayCode: prev.ReplayCode,
+		Members:    prev.Members,
+	})
+}
+
+// normalizeMembers trims whitespace, drops empties, and dedupes
+// case-preserving. Members are stored verbatim (`Apollo#11234` and
+// `apollo#11234` would be distinct rows), so we don't lowercase.
+func normalizeMembers(in []string) []string {
+	if len(in) == 0 {
+		return nil
+	}
+	seen := make(map[string]bool, len(in))
+	out := make([]string, 0, len(in))
+	for _, m := range in {
+		m = strings.TrimSpace(m)
+		if m == "" || seen[m] {
+			continue
+		}
+		seen[m] = true
+		out = append(out, m)
+	}
+	return out
 }

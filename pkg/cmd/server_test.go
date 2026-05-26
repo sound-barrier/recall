@@ -339,3 +339,32 @@ func TestMatchAnnotations_MissingMatchKey400(t *testing.T) {
 		t.Fatalf("missing match_key should 400, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
+
+func TestMatchAnnotations_AllFieldsAccepted(t *testing.T) {
+	fs := &fakeStore{}
+	_, mux := newTestApp(t, fs)
+	rec := post(t, mux, "/api/match-annotations", map[string]any{
+		"match_key":   "k1",
+		"leaver":      "team",
+		"note":        "ally rage-quit",
+		"replay_code": "7H1K9P",
+		"members":     []string{"Apollo#1", "Cheese#5"},
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchAnnotations_NoteOnlyPersists(t *testing.T) {
+	// All-empty leaver but a note present — the row should persist.
+	fs := &fakeStore{}
+	_, mux := newTestApp(t, fs)
+	rec := post(t, mux, "/api/match-annotations", map[string]any{
+		"match_key": "k1",
+		"leaver":    "",
+		"note":      "no leaver tag yet",
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("note-only should 204, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}

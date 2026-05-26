@@ -528,3 +528,93 @@ func TestSQLStore_Annotation_LeaverCheckConstraint(t *testing.T) {
 		t.Fatal("expected CHECK constraint to reject 'afk'")
 	}
 }
+
+func TestSQLStore_Annotation_RoundTrip_AllFields(t *testing.T) {
+	s := openMemory(t)
+	want := Annotation{
+		MatchKey:   "match:nx",
+		Leaver:     "team",
+		Note:       "ally rage-quit at 3min",
+		ReplayCode: "7H1K9P",
+		Members:    []string{"Apollo#11234", "Cheese#5678"},
+	}
+	if err := s.SetAnnotation(want); err != nil {
+		t.Fatalf("SetAnnotation: %v", err)
+	}
+	got, err := s.LoadAnnotations()
+	if err != nil {
+		t.Fatalf("LoadAnnotations: %v", err)
+	}
+	a, ok := got["match:nx"]
+	if !ok {
+		t.Fatal("annotation missing after Set")
+	}
+	if a.Leaver != "team" || a.Note != want.Note || a.ReplayCode != want.ReplayCode {
+		t.Errorf("scalar round-trip mismatch: %+v", a)
+	}
+	if len(a.Members) != 2 {
+		t.Fatalf("members count = %d, want 2", len(a.Members))
+	}
+	// LoadAnnotations orders members by (match_key, member); both inputs
+	// happen to sort the same in this case, so just check the set.
+	gotSet := map[string]bool{a.Members[0]: true, a.Members[1]: true}
+	for _, m := range want.Members {
+		if !gotSet[m] {
+			t.Errorf("member %q missing from %+v", m, a.Members)
+		}
+	}
+}
+
+func TestSQLStore_Annotation_LeaverlessNoteOnly(t *testing.T) {
+	s := openMemory(t)
+	// Annotation with empty leaver — should still persist because the
+	// CHECK constraint allows NULL after the relax migration.
+	if err := s.SetAnnotation(Annotation{
+		MatchKey: "k", Leaver: "", Note: "no leaver here",
+	}); err != nil {
+		t.Fatalf("SetAnnotation with empty leaver: %v", err)
+	}
+	got, _ := s.LoadAnnotations()
+	if got["k"].Leaver != "" {
+		t.Errorf("leaver should be empty, got %q", got["k"].Leaver)
+	}
+	if got["k"].Note != "no leaver here" {
+		t.Errorf("note round-trip lost: %q", got["k"].Note)
+	}
+}
+
+func TestSQLStore_Annotation_MembersRewrittenWholesale(t *testing.T) {
+	s := openMemory(t)
+	_ = s.SetAnnotation(Annotation{
+		MatchKey: "k", Leaver: "team",
+		Members: []string{"a", "b", "c"},
+	})
+	// Re-Set with a smaller list — old members should be replaced.
+	_ = s.SetAnnotation(Annotation{
+		MatchKey: "k", Leaver: "team",
+		Members: []string{"x"},
+	})
+	got, _ := s.LoadAnnotations()
+	if len(got["k"].Members) != 1 || got["k"].Members[0] != "x" {
+		t.Errorf("expected members [x], got %+v", got["k"].Members)
+	}
+}
+
+func TestSQLStore_Annotation_DeleteCascadesMembers(t *testing.T) {
+	s := openMemory(t)
+	_ = s.SetAnnotation(Annotation{
+		MatchKey: "k", Leaver: "team",
+		Members: []string{"a", "b"},
+	})
+	if err := s.DeleteAnnotation("k"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	// Members rows should have cascaded.
+	var n int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM match_annotation_members WHERE match_key = ?`, "k").Scan(&n); err != nil {
+		t.Fatalf("count members: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("expected 0 members after cascade, got %d", n)
+	}
+}

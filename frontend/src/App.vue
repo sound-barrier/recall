@@ -36,10 +36,11 @@ import {
   ImportData,
   SetLeaverAnnotation,
   ClearLeaverAnnotation,
+  SetMatchAnnotation,
   EventsOn,
   EventsOff,
 } from './api'
-import type { LeaverKind } from './api'
+import type { LeaverKind, MatchAnnotationInput } from './api'
 import { computeEarliestMatchDateTime, tallyWLD } from './match-helpers'
 import { useIncludeUndated } from './composables/useIncludeUndated'
 import { useMinPlayThreshold } from './composables/useMinPlayThreshold'
@@ -608,6 +609,19 @@ async function onSetLeaverAnnotation(matchKey: string, leaver: '' | 'self' | 'te
   }
 }
 
+// Unified annotation setter — used by the MatchCard "Match notes"
+// block when the user edits note / replay_code / members in one go.
+// The whole row is written in a single round-trip so partial state
+// can't strand the user mid-edit.
+async function onSetMatchAnnotation(matchKey: string, input: MatchAnnotationInput) {
+  try {
+    await SetMatchAnnotation(matchKey, input)
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
 // Bounds for the date pickers.
 const earliestMatchDateTime = computed(() => computeEarliestMatchDateTime(records.value))
 
@@ -1050,6 +1064,7 @@ onBeforeUnmount(() => {
           @toggle-density="toggleDensityMode"
           @set-leaver-handling="setLeaverHandling"
           @set-leaver-annotation="onSetLeaverAnnotation"
+          @set-match-annotation="onSetMatchAnnotation"
         />
       </main>
     </div>

@@ -495,3 +495,105 @@ describe('MatchCard — leaver annotation', () => {
     expect(e[0]).toEqual([wrapper.props('record').match_key, ''])
   })
 })
+
+describe('MatchCard — match notes block', () => {
+  it('hides the notes block when collapsed', () => {
+    const wrapper = mountCard()
+    expect(wrapper.find('.match-notes').exists()).toBe(false)
+  })
+
+  it('renders all three rows (note / replay / members) when expanded', () => {
+    const wrapper = mountCard({ isExpanded: true })
+    expect(wrapper.find('.match-notes').exists()).toBe(true)
+    const labels = wrapper.findAll('.match-notes-label').map(l => l.text())
+    expect(labels).toEqual(['Note', 'Replay', 'Group'])
+  })
+
+  it('hydrates from record.annotation values on first render', () => {
+    const rec = makeRecord({}, {
+      annotation: { leaver: '', note: 'huge clutch', replay_code: 'A7B2C9', members: ['Apollo#1', 'Cheese#5'] },
+    } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: rec, isExpanded: true })
+    const ta = wrapper.find('.match-notes-textarea').element as HTMLTextAreaElement
+    const replay = wrapper.find('.match-notes-input.mono').element as HTMLInputElement
+    expect(ta.value).toBe('huge clutch')
+    expect(replay.value).toBe('A7B2C9')
+    expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Apollo#1', 'Cheese#5'])
+  })
+
+  it('emits set-match-annotation on note blur with the trimmed value', async () => {
+    const wrapper = mountCard({ isExpanded: true })
+    const ta = wrapper.find('.match-notes-textarea')
+    await ta.setValue('  draft text  ')
+    await ta.trigger('blur')
+    const e = wrapper.emitted('set-match-annotation')!
+    expect(e[0]).toEqual([
+      wrapper.props('record').match_key,
+      { leaver: '', note: 'draft text', replay_code: '', members: [] },
+    ])
+  })
+
+  it('emits set-match-annotation on replay-code Enter', async () => {
+    const wrapper = mountCard({ isExpanded: true })
+    const replay = wrapper.find('.match-notes-input.mono')
+    await replay.setValue('7H1K9P')
+    await replay.trigger('keydown.enter')
+    const e = wrapper.emitted('set-match-annotation')!
+    expect(e[0]).toEqual([
+      wrapper.props('record').match_key,
+      { leaver: '', note: '', replay_code: '7H1K9P', members: [] },
+    ])
+  })
+
+  it('Enter on the member input adds a chip and emits with the new list', async () => {
+    const wrapper = mountCard({ isExpanded: true })
+    const memberInput = wrapper.find('.member-input')
+    await memberInput.setValue('Apollo#11234')
+    await memberInput.trigger('keydown', { key: 'Enter' })
+    expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Apollo#11234'])
+    const e = wrapper.emitted('set-match-annotation')!
+    expect(e[0]).toEqual([
+      wrapper.props('record').match_key,
+      { leaver: '', note: '', replay_code: '', members: ['Apollo#11234'] },
+    ])
+  })
+
+  it('comma key also commits the member chip', async () => {
+    const wrapper = mountCard({ isExpanded: true })
+    const memberInput = wrapper.find('.member-input')
+    await memberInput.setValue('Cheese#5')
+    await memberInput.trigger('keydown', { key: ',' })
+    expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Cheese#5'])
+  })
+
+  it('removing a chip emits set-match-annotation without that member', async () => {
+    const rec = makeRecord({}, {
+      annotation: { leaver: '', members: ['Apollo#1', 'Cheese#5'] },
+    } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: rec, isExpanded: true })
+    const remove = wrapper.findAll('.member-chip-remove')[0]!
+    await remove.trigger('click')
+    const e = wrapper.emitted('set-match-annotation')!
+    expect((e[e.length - 1] as unknown[])[1]).toMatchObject({ members: ['Cheese#5'] })
+  })
+
+  it('shows the N mark on the collapsed card when notes are present', () => {
+    const rec = makeRecord({}, {
+      annotation: { leaver: '', note: 'something' },
+    } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: rec })
+    expect(wrapper.find('.note-mark').exists()).toBe(true)
+  })
+
+  it('does not show the N mark when no annotation', () => {
+    expect(mountCard().find('.note-mark').exists()).toBe(false)
+  })
+
+  it('shows the N mark when only members are populated', () => {
+    const rec = makeRecord({}, {
+      annotation: { leaver: '', members: ['Apollo#1'] },
+    } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: rec })
+    expect(wrapper.find('.note-mark').exists()).toBe(true)
+  })
+})

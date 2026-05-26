@@ -33,3 +33,12 @@ NewWithStore
 # TestParseScreenshot_GoldenFiles to serialize the golden fixtures.
 # Test code isn't in deadcode's call graph, so this looks unreachable.
 ToGolden
+
+# App.SetLeaverAnnotation / App.ClearLeaverAnnotation: kept for
+# back-compat with the api.ts shims that bind to them by name in
+# Wails mode (`_wails('SetLeaverAnnotation', …)`). Wails bindings
+# are reflection-based so deadcode can't see them as reachable;
+# meanwhile server mode goes through the unified SetMatchAnnotation
+# path so the legacy methods look orphaned in the call graph.
+App\.SetLeaverAnnotation
+App\.ClearLeaverAnnotation

@@ -46,13 +46,18 @@ type Store interface {
 	Close() error
 }
 
-// Annotation is one row of match_annotations. Leaver is one of
-// {"self", "team", "enemy"}; the empty string is treated as "no
-// annotation" and callers should DeleteAnnotation instead.
+// Annotation is one row of match_annotations plus its joined-on child
+// member list. Every scalar is optional; the App-layer policy is "if
+// every field is empty, delete the row entirely" (see
+// App.SetMatchAnnotation). Leaver, when set, is one of
+// {"self", "team", "enemy"} — the SQL CHECK constraint enforces this
+// at the boundary too.
 type Annotation struct {
 	MatchKey    string
 	Leaver      string
 	Note        string
+	ReplayCode  string
+	Members     []string
 	AnnotatedAt string
 }
 
@@ -221,6 +226,37 @@ func NewSQLStore(path string) (*SQLStore, error) {
 			}
 			_ = d.Close()
 			return nil, fmt.Errorf("migration: %w (stmt: %s)", err, firstLine(stmt))
+		}
+	}
+	// Rebuild migrations (CREATE new → COPY → DROP → RENAME) for
+	// schema changes ALTER TABLE can't express, e.g. relaxing a
+	// CHECK constraint. Each block is guarded by a SELECT COUNT that
+	// returns 0 when the migration is already applied — re-running
+	// is a no-op.
+	for _, m := range rebuildMigrations {
+		var n int
+		if err := d.QueryRow(m.guard).Scan(&n); err != nil {
+			_ = d.Close()
+			return nil, fmt.Errorf("rebuild guard %q: %w", m.name, err)
+		}
+		if n == 0 {
+			continue
+		}
+		tx, err := d.Begin()
+		if err != nil {
+			_ = d.Close()
+			return nil, fmt.Errorf("rebuild %q: begin: %w", m.name, err)
+		}
+		for _, stmt := range m.statements {
+			if _, err := tx.Exec(stmt); err != nil {
+				_ = tx.Rollback()
+				_ = d.Close()
+				return nil, fmt.Errorf("rebuild %q: %w (stmt: %s)", m.name, err, firstLine(stmt))
+			}
+		}
+		if err := tx.Commit(); err != nil {
+			_ = d.Close()
+			return nil, fmt.Errorf("rebuild %q: commit: %w", m.name, err)
 		}
 	}
 	return &SQLStore{db: d}, nil
@@ -557,26 +593,65 @@ func (s *SQLStore) UpsertUnknown(r UnknownRow) error {
 // ──────────────────────────────────────────────────────────────────────
 
 func (s *SQLStore) SetAnnotation(a Annotation) error {
-	_, err := s.db.Exec(
-		`INSERT INTO match_annotations (match_key, leaver, note)
-		 VALUES (?, ?, ?)
+	// Empty-string leaver is the App-layer "no leaver tag" signal; the
+	// SQLite CHECK constraint only accepts NULL or the three valid
+	// values, so coerce here. Same for replay_code so an empty string
+	// stays an empty string (NULL would be lossy; the column is plain
+	// TEXT, an empty string round-trips fine).
+	var leaver any
+	if a.Leaver == "" {
+		leaver = nil
+	} else {
+		leaver = a.Leaver
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.Exec(
+		`INSERT INTO match_annotations (match_key, leaver, note, replay_code)
+		 VALUES (?, ?, ?, ?)
 		 ON CONFLICT(match_key) DO UPDATE SET
 		   leaver       = excluded.leaver,
 		   note         = excluded.note,
+		   replay_code  = excluded.replay_code,
 		   annotated_at = CURRENT_TIMESTAMP`,
-		a.MatchKey, a.Leaver, a.Note,
-	)
-	return err
+		a.MatchKey, leaver, a.Note, a.ReplayCode,
+	); err != nil {
+		return err
+	}
+	// Rewrite the member set wholesale — simplest concurrency model
+	// (delete-then-reinsert in one txn). Composite-PK on the child
+	// table guards against accidental duplicates in the input list.
+	if _, err := tx.Exec(`DELETE FROM match_annotation_members WHERE match_key = ?`, a.MatchKey); err != nil {
+		return err
+	}
+	for _, m := range a.Members {
+		if m == "" {
+			continue
+		}
+		if _, err := tx.Exec(
+			`INSERT OR IGNORE INTO match_annotation_members (match_key, member) VALUES (?, ?)`,
+			a.MatchKey, m,
+		); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *SQLStore) DeleteAnnotation(matchKey string) error {
+	// ON DELETE CASCADE on the child table FK takes care of the
+	// member rows in the same statement.
 	_, err := s.db.Exec(`DELETE FROM match_annotations WHERE match_key = ?`, matchKey)
 	return err
 }
 
 func (s *SQLStore) LoadAnnotations() (map[string]Annotation, error) {
 	rows, err := s.db.Query(
-		`SELECT match_key, leaver, COALESCE(note, ''), annotated_at FROM match_annotations`,
+		`SELECT match_key, COALESCE(leaver, ''), COALESCE(note, ''), COALESCE(replay_code, ''), annotated_at
+		 FROM match_annotations`,
 	)
 	if err != nil {
 		return nil, err
@@ -585,12 +660,37 @@ func (s *SQLStore) LoadAnnotations() (map[string]Annotation, error) {
 	out := make(map[string]Annotation)
 	for rows.Next() {
 		var a Annotation
-		if err := rows.Scan(&a.MatchKey, &a.Leaver, &a.Note, &a.AnnotatedAt); err != nil {
+		if err := rows.Scan(&a.MatchKey, &a.Leaver, &a.Note, &a.ReplayCode, &a.AnnotatedAt); err != nil {
 			return nil, err
 		}
 		out[a.MatchKey] = a
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Attach members. One round-trip across the whole table; ordered
+	// by match_key for stable iteration during the attach loop.
+	memberRows, err := s.db.Query(`SELECT match_key, member FROM match_annotation_members ORDER BY match_key, member`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = memberRows.Close() }()
+	for memberRows.Next() {
+		var key, member string
+		if err := memberRows.Scan(&key, &member); err != nil {
+			return nil, err
+		}
+		a, ok := out[key]
+		if !ok {
+			// Orphan member row (shouldn't happen with FK enforcement
+			// on, but guard against the case for robustness).
+			continue
+		}
+		a.Members = append(a.Members, member)
+		out[key] = a
+	}
+	return out, memberRows.Err()
 }
 
 // ──────────────────────────────────────────────────────────────────────
