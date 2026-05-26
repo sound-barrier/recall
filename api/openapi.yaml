@@ -461,6 +461,35 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/probe-screenshots-dir:
+    get:
+      tags: [Settings]
+      summary: Probe the OS for the default Overwatch screenshots folder
+      description: |
+        Walks an ordered list of platform-specific candidate paths
+        (Windows Documents + OneDrive-redirected variant; macOS
+        Documents / Library Application Support; Linux Steam-Proton
+        compatdata + standalone Wine prefix) and returns the first
+        existing directory.
+
+        Read-only. Does NOT persist anything — the caller decides
+        whether to apply the discovered path via `POST /api/screenshots-dir`.
+
+        On first launch (when no folder is configured) the Wails
+        runtime calls this internally and writes the result to
+        `settings.json` directly; the HTTP endpoint serves the
+        manual re-probe path (UI button "Detect Overwatch Folder").
+      responses:
+        "200":
+          description: |
+            Probe result. `found: true` carries the discovered path;
+            `found: false` includes the full `tried` list for the
+            user to inspect.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProbeResult"
+
   /api/data-location:
     get:
       tags: [Data]
@@ -660,6 +689,30 @@ paths:
 
 components:
   schemas:
+    ProbeResult:
+      type: object
+      required: [found, tried]
+      properties:
+        found:
+          type: boolean
+          description: True when at least one candidate directory existed.
+        path:
+          type: string
+          description: |
+            First existing candidate path. Empty when `found` is false.
+          example: /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch
+        tried:
+          type: array
+          items:
+            type: string
+          description: |
+            Ordered list of candidate paths inspected by the probe.
+            Useful diagnostic when `found` is false — surfaces "we
+            looked here and here" rather than a generic miss.
+          example:
+            - /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch
+            - /Users/jacob/Documents/Blizzard/Overwatch/ScreenShots/Overwatch
+
     DataLocation:
       type: object
       required: [base_dir, settings_path, database_path]

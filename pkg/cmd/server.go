@@ -243,6 +243,10 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		writeJSON(w, a.GetDataLocation(), nil)
 	}))
 
+	mux.HandleFunc("/api/probe-screenshots-dir", methodGuard(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, a.ProbeScreenshotsDir(), nil)
+	}))
+
 	// Stream the export payload as a downloadable file. Content-Disposition
 	// triggers the browser's save-as flow with a sensible default name.
 	mux.HandleFunc("/api/export", methodGuard(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {

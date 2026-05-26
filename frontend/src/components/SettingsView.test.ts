@@ -232,3 +232,84 @@ describe('SettingsView — Data Location row', () => {
     vi.unstubAllGlobals()
   })
 })
+
+// ── Detect Overwatch Folder row ─────────────────────────────────────────
+
+describe('SettingsView — Detect Overwatch Folder', () => {
+  const baseProps = {
+    screenshotsDir: '', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+  }
+
+  it('renders the Detect button alongside Change Folder', () => {
+    const wrapper = mount(SettingsView, { props: baseProps })
+    const detect = wrapper.findAll('button').find(b => b.text().trim() === 'Detect')
+    expect(detect).toBeDefined()
+    expect(detect!.attributes('disabled')).toBeUndefined()
+  })
+
+  it('emits detect-screenshots-dir when Detect is clicked', async () => {
+    const wrapper = mount(SettingsView, { props: baseProps })
+    const detect = wrapper.findAll('button').find(b => b.text().trim() === 'Detect')!
+    await detect.trigger('click')
+    expect(wrapper.emitted('detect-screenshots-dir')).toBeTruthy()
+  })
+
+  it('shows the in-flight label and disables the button while probing=true', () => {
+    const wrapper = mount(SettingsView, {
+      props: { ...baseProps, probing: true },
+    })
+    const detect = wrapper.findAll('button').find(b => b.text().includes('Detecting'))!
+    expect(detect.attributes('disabled')).toBeDefined()
+  })
+
+  it('renders the success chip when probeStatus=success', () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...baseProps,
+        probeStatus: 'success',
+        probeMessage: 'Detected · /home/u/Documents/Overwatch/ScreenShots/Overwatch',
+      },
+    })
+    const chip = wrapper.find('.setting-meta')
+    expect(chip.exists()).toBe(true)
+    expect(chip.classes()).toContain('success')
+    expect(chip.text()).toContain('Detected')
+  })
+
+  it('renders the blocked chip + Looked-in disclosure when probeStatus=blocked', () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...baseProps,
+        probeStatus: 'blocked',
+        probeMessage: 'No default Overwatch folder on this machine.',
+        probeTried: ['/a/path', '/b/path'],
+      },
+    })
+    const chip = wrapper.find('.setting-meta')
+    expect(chip.classes()).toContain('blocked')
+
+    const details = wrapper.find('.probe-tried')
+    expect(details.exists()).toBe(true)
+    const items = wrapper.findAll('.probe-tried-list li')
+    expect(items).toHaveLength(2)
+    expect(items[0]!.text()).toBe('/a/path')
+    expect(items[1]!.text()).toBe('/b/path')
+  })
+
+  it('hides the Looked-in disclosure when probeTried is empty even on the blocked path', () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...baseProps,
+        probeStatus: 'blocked',
+        probeMessage: 'No default Overwatch folder on this machine.',
+        probeTried: [],
+      },
+    })
+    expect(wrapper.find('.probe-tried').exists()).toBe(false)
+  })
+
+  it('renders no chip at all when probeMessage is empty', () => {
+    const wrapper = mount(SettingsView, { props: baseProps })
+    expect(wrapper.find('.setting-meta').exists()).toBe(false)
+  })
+})
