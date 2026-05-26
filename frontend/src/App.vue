@@ -53,6 +53,7 @@ import { useModalFocusTrap } from './composables/useModalFocusTrap'
 import { useBackupRestore } from './composables/useBackupRestore'
 import { useClearDatabase } from './composables/useClearDatabase'
 import { useTesseractStatus } from './composables/useTesseractStatus'
+import { useScreenshotsDir } from './composables/useScreenshotsDir'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
@@ -162,10 +163,27 @@ const showUnsupportedModal = ref(false)
 // Escape as cancel, restores focus to the trigger on close.
 useModalFocusTrap(showUnsupportedModal, { containerSelector: '.modal-box' })
 
-// Directory the parser reads from. Persisted in data/settings.json on
-// the Go side; we mirror the value here so the UI can render it next
-// to the Parse button.
-const screenshotsDir = ref('')
+// Screenshots dir — persisted on the Go side; mirrored here for
+// rendering. The composable also owns the platform-probe state
+// (probing / probeMessage / probeStatus / probeTried) consumed by
+// SettingsView's "Detect Overwatch Folder" button.
+const {
+  screenshotsDir,
+  probing,
+  probeMessage,
+  probeStatus,
+  probeTried,
+  setScreenshotsDir,
+  pickDir,
+  detectDir,
+} = useScreenshotsDir({
+  pickScreenshotsDir: PickScreenshotsDir,
+  probeScreenshotsDir: ProbeScreenshotsDir,
+  setScreenshotsDir: SetScreenshotsDir,
+  refreshNewCount: () => refreshNewCount(),
+  shouldConfirmPickWhile: () => watchEnabled.value,
+  onError: (m) => { error.value = m },
+})
 
 // Platform-resolved data paths — surfaced read-only in Settings →
 // Directories so the user can see where the DB lives. Null until the
@@ -258,7 +276,7 @@ async function load() {
   } else {
     error.value = `Could not load matches: ${String(recs.reason)}`
   }
-  if (dir.status === 'fulfilled')      screenshotsDir.value = dir.value || ''
+  if (dir.status === 'fulfilled')      setScreenshotsDir(dir.value || '')
   if (promOn.status === 'fulfilled')   prometheusEnabled.value = !!promOn.value
   if (watchOn.status === 'fulfilled')  watchEnabled.value = !!watchOn.value
   if (tess.status === 'fulfilled')     setTesseractStatus(tess.value)
@@ -388,59 +406,6 @@ const {
 // watcher to a new folder. The watcher otherwise silently switches and
 // (if the new folder is empty or invalid) keeps running against nothing
 // with no feedback to the user.
-async function pickDir() {
-  if (watchEnabled.value) {
-    const ok = window.confirm(
-      'Watch Folder is currently armed.\n\n' +
-      'Switching the screenshots folder will re-target the watcher to the new directory. ' +
-      'Continue?',
-    )
-    if (!ok) return
-  }
-  try {
-    const dir = await PickScreenshotsDir()
-    if (dir) screenshotsDir.value = dir
-    await refreshNewCount()
-  } catch (e) {
-    error.value = String(e)
-  }
-}
-
-// "Detect Overwatch Folder" — runs the backend probe + persists the
-// first hit when one exists. Probe state is mirrored into SettingsView
-// via props so the button's in-flight + result chip is purely
-// reactive. `probeStatus` is split from `probeMessage` so the styling
-// (accent vs muted) doesn't depend on string parsing.
-const probing      = ref(false)
-const probeMessage = ref('')
-const probeStatus  = ref<'' | 'success' | 'blocked'>('')
-const probeTried   = ref<string[]>([])
-
-async function detectDir() {
-  probing.value = true
-  probeMessage.value = ''
-  probeStatus.value = ''
-  probeTried.value = []
-  try {
-    const res = await ProbeScreenshotsDir()
-    probeTried.value = res.tried || []
-    if (res.found && res.path) {
-      await SetScreenshotsDir(res.path)
-      screenshotsDir.value = res.path
-      probeStatus.value = 'success'
-      probeMessage.value = `Detected · ${res.path}`
-      await refreshNewCount()
-    } else {
-      probeStatus.value = 'blocked'
-      probeMessage.value = 'No default Overwatch folder on this machine. Use Change Folder… to point at it.'
-    }
-  } catch (e) {
-    probeStatus.value = 'blocked'
-    probeMessage.value = `Detect failed: ${String(e)}`
-  } finally {
-    probing.value = false
-  }
-}
 
 // User-curated per-match leaver annotation. Pass-through to
 // SetLeaverAnnotation / ClearLeaverAnnotation; reload records on
