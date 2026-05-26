@@ -1,0 +1,37 @@
+control:
+  - "Antarctic Peninsula"
+  - Busan
+  - Ilios
+  - "Lijiang Tower"
+  - Nepal
+  - Oasis
+  - Samoa
+escort:
+  - "Circuit Royal"
+  - Dorado
+  - Havana
+  - Junkertown
+  - Rialto
+  - "Route 66"
+  - "Shambali Monastery"
+  - "Watchpoint Gibraltar"
+flashpoint:
+  - Aatlis
+  - "New Junk City"
+  - Suravasa
+hybrid:
+  - "Blizzard World"
+  - Eichenwalde
+  - Hollywood
+  - "King's Row"
+  - Midtown
+  - Numbani
+  - Paraíso
+push:
+  - Colosseo
+  - Esperança
+  - "New Queen Street"
+  - Runasapi
+clash:
+  - Hanoaka
+  - "Throne of Anubis"

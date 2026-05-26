@@ -380,6 +380,48 @@ paths:
                     type: string
                     example: 0.0.13-beta.0
 
+  /api/owdata:
+    get:
+      tags: [Meta]
+      summary: Overwatch reference data (hero roster + map roster)
+      description: |
+        Returns the static reference data baked into the parser at
+        compile time from `pkg/parser/heroes.yaml` and
+        `pkg/parser/maps.yaml`. Stable across an app session — the
+        frontend may fetch once at load and cache. Source-of-truth
+        for UI surfaces that render canonical Blizzard spelling
+        (diacritics + capitalization preserved) and group heroes by
+        role / maps by game type.
+      responses:
+        "200":
+          description: The embedded OW reference data.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [heroes_by_role, maps_by_type]
+                properties:
+                  heroes_by_role:
+                    type: object
+                    description: Hero names grouped by role, alphabetised within each role.
+                    additionalProperties:
+                      type: array
+                      items: { type: string }
+                    example:
+                      tank: [Doomfist, "D.va", Reinhardt]
+                      dps: [Ashe, Genji, Tracer]
+                      support: [Ana, Juno, Mercy]
+                  maps_by_type:
+                    type: object
+                    description: Map names grouped by game type, alphabetised within each type.
+                    additionalProperties:
+                      type: array
+                      items: { type: string }
+                    example:
+                      control: ["Antarctic Peninsula", Busan, Nepal]
+                      escort: [Dorado, "Watchpoint Gibraltar"]
+                      hybrid: ["King's Row", Midtown]
+
   /api/new-screenshot-count:
     get:
       tags: [Pipeline]

@@ -577,6 +577,96 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/owdata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Overwatch reference data (hero roster + map roster)
+         * @description Returns the static reference data baked into the parser at
+         *     compile time from `pkg/parser/heroes.yaml` and
+         *     `pkg/parser/maps.yaml`. Stable across an app session — the
+         *     frontend may fetch once at load and cache. Source-of-truth
+         *     for UI surfaces that render canonical Blizzard spelling
+         *     (diacritics + capitalization preserved) and group heroes by
+         *     role / maps by game type.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The embedded OW reference data. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * @description Hero names grouped by role, alphabetised within each role.
+                             * @example {
+                             *       "tank": [
+                             *         "Doomfist",
+                             *         "D.va",
+                             *         "Reinhardt"
+                             *       ],
+                             *       "dps": [
+                             *         "Ashe",
+                             *         "Genji",
+                             *         "Tracer"
+                             *       ],
+                             *       "support": [
+                             *         "Ana",
+                             *         "Juno",
+                             *         "Mercy"
+                             *       ]
+                             *     }
+                             */
+                            heroes_by_role: {
+                                [key: string]: string[];
+                            };
+                            /**
+                             * @description Map names grouped by game type, alphabetised within each type.
+                             * @example {
+                             *       "control": [
+                             *         "Antarctic Peninsula",
+                             *         "Busan",
+                             *         "Nepal"
+                             *       ],
+                             *       "escort": [
+                             *         "Dorado",
+                             *         "Watchpoint Gibraltar"
+                             *       ],
+                             *       "hybrid": [
+                             *         "King's Row",
+                             *         "Midtown"
+                             *       ]
+                             *     }
+                             */
+                            maps_by_type: {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/new-screenshot-count": {
         parameters: {
             query?: never;

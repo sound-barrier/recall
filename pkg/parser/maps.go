@@ -1,27 +1,22 @@
 package parser
 
-import "strings"
+// knownMaps + mapTypes + mapDisplayNames are populated in owdata.go's
+// init() from pkg/parser/maps.yaml. Edit maps.yaml to add or rename
+// a map.
 
-// knownMaps is the OW map list, used to fix Tesseract misreads on map names
-// by snapping the OCR result to the closest match.
-var knownMaps = []string{
-	"aatlis", "antarctic peninsula", "blizzard world", "busan", "circuit royal",
-	"colosseo", "dorado", "esperanca", "eichenwalde", "havana", "hollywood",
-	"horizon lunar colony", "ilios", "junkertown", "king's row", "lijiang tower",
-	"midtown", "nepal", "new junk city", "new queen street", "numbani",
-	"oasis", "paraiso", "rialto", "route 66", "runasapi", "samoa", "shambali monastery",
-	"suravasa", "throne of anubis", "watchpoint: gibraltar", "volskaya industries",
-}
-
-// snapToKnownMap returns the known OW map whose lowercase name is closest to
-// the OCR'd string by Levenshtein distance, but only if the match is decent
-// (distance below ~40% of the candidate length). Otherwise it returns the input
-// unchanged so genuinely-unknown maps don't get rewritten to the wrong thing.
+// snapToKnownMap returns the known OW map whose normalized name is
+// closest to the OCR'd string by Levenshtein distance, but only if
+// the match is decent (distance below ~40% of the candidate length).
+// Otherwise it returns the input unchanged so genuinely-unknown maps
+// don't get rewritten to the wrong thing. Caller is expected to pass
+// already-OCR'd text; this function normalizes both sides via the
+// same rule the lookup keys were built with.
 func snapToKnownMap(ocr string) string {
+	normOCR := normalize(ocr)
 	best := ocr
 	bestDist := -1
 	for _, m := range knownMaps {
-		d := levenshtein(ocr, m)
+		d := levenshtein(normOCR, m)
 		threshold := len(m) * 4 / 10
 		if d <= threshold && (bestDist < 0 || d < bestDist) {
 			bestDist = d
@@ -34,21 +29,22 @@ func snapToKnownMap(ocr string) string {
 // bestKnownMapInText slides every known map name across the OCR text as a
 // fuzzy substring match and returns the closest match (or "" if none clear the
 // quality threshold). This handles map names embedded inside garbled headers
-// like "© HYBRID - COMPETITIVE] HOLLYWooD [/MF'7:/]5".
+// like "© HYBRID - COMPETITIVE] HOLLYWooD [/MF'7:/]5". Both text and map
+// names are normalized via the same rule (see owdata.go's normalize).
 func bestKnownMapInText(text string) string {
-	lower := strings.ToLower(text)
+	normText := normalize(text)
 	bestMap := ""
 	bestDist := -1
 	for _, m := range knownMaps {
-		if len(m) > len(lower) {
+		if len(m) > len(normText) {
 			continue
 		}
 		threshold := len(m) * 3 / 10
 		if threshold < 1 {
 			threshold = 1
 		}
-		for i := 0; i+len(m) <= len(lower); i++ {
-			d := levenshtein(lower[i:i+len(m)], m)
+		for i := 0; i+len(m) <= len(normText); i++ {
+			d := levenshtein(normText[i:i+len(m)], m)
 			if d <= threshold && (bestDist < 0 || d < bestDist) {
 				bestDist = d
 				bestMap = m

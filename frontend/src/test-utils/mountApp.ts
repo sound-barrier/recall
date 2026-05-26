@@ -85,6 +85,11 @@ function mockApi(overrides: MountOverrides = {}) {
     ResetTesseractPath:  vi.fn(async () => defaultTesseract(overrides.tesseract)),
     ClearDatabase:       vi.fn(async () => undefined),
     GetNewScreenshotCount: vi.fn(async () => overrides.newScreenshotCount ?? 0),
+    // Tests don't exercise canonical-name display; return an empty
+    // OWData payload so useOWData's lookups fall through to the
+    // stored lowercase form (the test fixtures already use the
+    // lowercase form).
+    GetOWData:           vi.fn(async () => ({ heroes_by_role: {}, maps_by_type: {} })),
     EventsOn: vi.fn((name: string, cb: (data: unknown) => void) => {
       eventHandlers.set(name, cb)
     }),

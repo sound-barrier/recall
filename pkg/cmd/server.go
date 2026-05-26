@@ -221,6 +221,10 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		writeJSON(w, map[string]string{"version": a.GetVersion()}, nil)
 	}))
 
+	mux.HandleFunc("/api/owdata", methodGuard(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, a.GetOWData(), nil)
+	}))
+
 	mux.HandleFunc("/api/new-screenshot-count", methodGuard(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
 		count, err := a.GetNewScreenshotCount()
 		writeJSON(w, map[string]int{"count": count}, err)

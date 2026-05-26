@@ -2,8 +2,8 @@
   "map": "",
   "type": "",
   "mode": "competitive",
-  "role": "dps",
-  "hero": "mei",
+  "role": "support",
+  "hero": "mizuki",
   "eliminations": 0,
   "assists": 0,
   "deaths": 0,
@@ -12,7 +12,7 @@
   "mitigation": 0,
   "heroes_played": [
     {
-      "hero": "mei",
+      "hero": "mizuki",
       "percent_played": 33,
       "play_time": "04:24",
       "stats": {

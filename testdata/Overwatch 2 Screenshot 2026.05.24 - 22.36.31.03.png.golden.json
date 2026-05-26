@@ -20,6 +20,11 @@
       "hero": "juno",
       "percent_played": 67,
       "play_time": "09:08"
+    },
+    {
+      "hero": "mizuki",
+      "percent_played": 33,
+      "play_time": "04:24"
     }
   ],
   "performance": {

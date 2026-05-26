@@ -11,6 +11,14 @@ import {
   sourceType,
   formatParsedAt,
 } from '../match-helpers'
+import { useOWData } from '../composables/useOWData'
+
+// Canonical-name lookups (Lúcio, King's Row, …) from
+// pkg/parser/{heroes,maps}.yaml via /api/owdata. Singleton — every
+// MatchCard mount shares the same fetched data. Until the fetch
+// resolves the helpers return the stored lowercase form, so the
+// card renders correctly even on a cold app load.
+const ow = useOWData()
 
 const props = defineProps<{
   record: MatchRecord
@@ -57,11 +65,11 @@ const emit = defineEmits<{
               type="button"
               class="match-map clickable"
               :class="{ active: isActive('map', record.data?.map ?? '') }"
-              :aria-label="`Filter by map: ${record.data?.map || 'Unknown Map'}`"
+              :aria-label="`Filter by map: ${ow.mapDisplayName(record.data?.map) || 'Unknown Map'}`"
               :aria-pressed="isActive('map', record.data?.map ?? '')"
               @click.stop="emit('filter-toggle', 'map', record.data?.map ?? '')"
             >
-              {{ record.data?.map || 'Unknown Map' }}
+              {{ ow.mapDisplayName(record.data?.map) || 'Unknown Map' }}
             </button>
           </div>
           <div class="match-title-rhs">
@@ -72,7 +80,7 @@ const emit = defineEmits<{
               class="chev chev-btn"
               :class="{ open: isExpanded }"
               :aria-expanded="isExpanded"
-              :aria-label="`${record.data?.map || 'Unknown map'} — ${isExpanded ? 'collapse' : 'expand'} match details`"
+              :aria-label="`${ow.mapDisplayName(record.data?.map) || 'Unknown map'} — ${isExpanded ? 'collapse' : 'expand'} match details`"
               @click.stop="emit('toggle-expand')"
             >
               ›
@@ -119,11 +127,11 @@ const emit = defineEmits<{
               type="button"
               class="badge hero clickable"
               :class="{ active: isActive('hero', hp.hero) }"
-              :aria-label="hp.percent_played != null ? `Filter by hero: ${hp.hero}, ${hp.percent_played}% played` : `Filter by hero: ${hp.hero}`"
+              :aria-label="hp.percent_played != null ? `Filter by hero: ${ow.heroDisplayName(hp.hero)}, ${hp.percent_played}% played` : `Filter by hero: ${ow.heroDisplayName(hp.hero)}`"
               :aria-pressed="isActive('hero', hp.hero)"
               @click.stop="emit('filter-toggle', 'hero', hp.hero)"
             >
-              <span class="hero-name-inline">{{ hp.hero }}</span>
+              <span class="hero-name-inline">{{ ow.heroDisplayName(hp.hero) }}</span>
               <span v-if="hp.percent_played != null" class="hero-pct-inline">{{ hp.percent_played }}%</span>
             </button>
           </template>
@@ -200,7 +208,7 @@ const emit = defineEmits<{
             </div>
             <div v-if="record.data.sr?.length" class="sr-line">
               <span v-for="s in record.data.sr" :key="s.hero" class="sr-entry">
-                <span class="sr-hero">{{ s.hero }}</span>
+                <span class="sr-hero">{{ ow.heroDisplayName(s.hero) }}</span>
                 <span class="sr-value">{{ s.sr }}</span>
                 <span class="sr-delta" :class="s.change >= 0 ? 'up' : 'down'">{{ s.change >= 0 ? '+' : '' }}{{ s.change }}</span>
               </span>
@@ -218,11 +226,11 @@ const emit = defineEmits<{
                     type="button"
                     class="hero-name clickable"
                     :class="{ active: isActive('hero', hp.hero) }"
-                    :aria-label="`Filter by hero: ${hp.hero}`"
+                    :aria-label="`Filter by hero: ${ow.heroDisplayName(hp.hero)}`"
                     :aria-pressed="isActive('hero', hp.hero)"
                     @click="emit('filter-toggle', 'hero', hp.hero)"
                   >
-                    {{ hp.hero }}
+                    {{ ow.heroDisplayName(hp.hero) }}
                   </button>
                   <span class="hero-pct">{{ hp.percent_played }}%</span>
                   <span v-if="hp.play_time" class="hero-time">{{ hp.play_time }}</span>

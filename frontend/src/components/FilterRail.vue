@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { sshotTypeLabel } from '../match-helpers'
+import { useOWData } from '../composables/useOWData'
+
+// Canonical-name lookups for the hero + map filter pills. The OWData
+// fetch is shared across every component that calls useOWData; this
+// component pays no extra network cost. Until the fetch resolves the
+// helpers return the stored lowercase form (graceful fall-back).
+const ow = useOWData()
 
 const props = defineProps<{
   modes: string[]
@@ -88,12 +95,16 @@ const percentDisabled = computed(() => props.minPlayMinutes > 0)
 const timeDisabled    = computed(() => props.minPlayPercent > 0)
 
 // Static per-field config. Options (roster) come in as props.
+// `formatOption` runs every time a chip / row label renders, so it
+// must be cheap — the heroDisplayName / mapDisplayName helpers are
+// O(1) Map lookups and fall back to the input untouched until the
+// /api/owdata fetch resolves.
 const FIELD_CONFIG = [
   { field: 'mode',   label: 'Mode',   short: 'MODES',   optionKey: 'modes'   as const },
-  { field: 'map',    label: 'Map',    short: 'MAPS',    optionKey: 'maps'    as const },
+  { field: 'map',    label: 'Map',    short: 'MAPS',    optionKey: 'maps'    as const, formatOption: (v: string) => ow.mapDisplayName(v) },
   { field: 'type',   label: 'Type',   short: 'TYPES',   optionKey: 'types'   as const },
   { field: 'role',   label: 'Role',   short: 'ROLES',   optionKey: 'roles'   as const },
-  { field: 'hero',   label: 'Hero',   short: 'HEROES',  optionKey: 'heroes'  as const },
+  { field: 'hero',   label: 'Hero',   short: 'HEROES',  optionKey: 'heroes'  as const, formatOption: (v: string) => ow.heroDisplayName(v) },
   { field: 'result', label: 'Result', short: 'RESULTS', optionKey: 'results' as const },
   { field: 'sshot',  label: 'Source', short: 'SOURCES', optionKey: 'sshotTypes' as const, formatOption: sshotTypeLabel },
 ] as const

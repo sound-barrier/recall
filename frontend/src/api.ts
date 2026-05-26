@@ -109,6 +109,19 @@ export function GetMatchResults(): Promise<MatchRecord[]> {
   return _get<MatchRecord[]>('/api/match-results')
 }
 
+export type OWData = {
+  heroes_by_role: Record<string, string[]>
+  maps_by_type:   Record<string, string[]>
+}
+
+// Static Overwatch reference data baked into the parser at compile
+// time from pkg/parser/{heroes,maps}.yaml. Stable across a session —
+// callers may fetch once at app load and cache.
+export function GetOWData(): Promise<OWData> {
+  if (IS_WAILS) return _wails('GetOWData')
+  return _get<OWData>('/api/owdata')
+}
+
 export function GetScreenshotsDir(): Promise<string> {
   if (IS_WAILS) return _wails('GetScreenshotsDir')
   return _get<{ path: string }>('/api/screenshots-dir').then(d => d.path)
