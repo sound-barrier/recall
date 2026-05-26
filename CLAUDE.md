@@ -91,6 +91,21 @@ formatter / linter passes, dependency bumps, configuration-only
 changes. Use judgement for refactors — extracting a helper rarely
 needs a new test, but changing observable behavior does.
 
+**UI features need a failing Playwright e2e first.** Any feature
+that adds or changes a user-visible affordance (new button, new
+filter, new card state, new modal, new view) starts with a RED
+`frontend/tests/e2e/*.spec.ts` that drives the affordance through
+a real browser via `page.route()` mocks. Unit tests in
+`frontend/src/**/*.test.ts` cover render branches and composable
+contracts, but only the e2e proves the full transport chain
+(api.ts ↔ /api/* ↔ Go handler ↔ Store ↔ aggregator ↔ Vue render)
+works as the user will experience it. "Stitching a known pattern
+across layers" is NOT an exemption from RED-first — the match-
+deletion feature shipped with a latent `r.json()`-on-204 bug in
+`api.ts` because there was no e2e exercising the POST → reload
+round-trip; the test that surfaced it should have driven the
+implementation.
+
 ### What to avoid
 
 Speculative interfaces; abstract layers without a second concrete
