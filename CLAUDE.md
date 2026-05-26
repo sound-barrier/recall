@@ -21,7 +21,7 @@ PRs, releases, etc.).
 - *How do I build / test / lint / release?* → "Build, run, dev" table
 - *Where does the OCR pipeline read / write?* → "Data flow", "How match merging works", "Per-screenshot-type parsers"
 - *Where is `<feature>` implemented?* → "App shell" (Go) or "Frontend" (Vue) — both list per-concern file inventories
-- *Is `<thing>` a documented gotcha?* → "Conventions worth knowing" (66 bullets, search by keyword)
+- *Is `<thing>` a documented gotcha?* → "Conventions worth knowing" (91 bullets, search by keyword)
 - *How does CI / release wiring work?* → "CI/CD" + the `release.yml` detail subsection
 
 ## Working style
@@ -453,9 +453,10 @@ enable→disable→enable cycle constructs a fresh `Server`.
 | `pkg/app/screenshots_dir.go` | *(none)* | `Get/SetScreenshotsDir`, `validateScreenshotsDir`, `safePathChars`, `ErrInvalidScreenshotsDir` |
 | `pkg/app/screenshot_handler.go` | *(none)* | HTTP handler at `/_screenshot/<filename>` |
 | `pkg/app/inference.go` | *(none)* | `scrapeReader` + the load-bearing `inferSoleHeroPercent` / `inferResultFromRank` read-time helpers |
-| `pkg/app/match_record.go` | *(none)* | `MatchRecord` type, `GetMatchResults`, `ClearDatabase`, `readAllRecords`, `rowToMatchRecord`, `GetNewScreenshotCount` |
-| `pkg/app/merge.go` | *(none)* | `mergedRow`, `mergeWindow`, `parseFilenameTimestamp`, `mergeByTimestamp`, `mergeByStatsSignature`, `splitByMatchMetadata`, `mergeMatchResult`, `mergeTypeMaps`, `upsertMergedRow`, `marshalIfPresent`, conflict helpers |
-| `pkg/app/parse.go` | *(none)* | `ParseScreenshots` orchestration, `ParseProgressEvent`, `screenshotType` classifier, `findMergeIntoExisting`, `loadExistingMergedRows`, `timestampWindowOverlap`, `rowsConflict`, `unionSortedStrings` |
+| `pkg/app/match_record.go` | *(none)* | `MatchRecord` type, `GetMatchResults`, `ClearDatabase`, `GetNewScreenshotCount` |
+| `pkg/app/correlation.go` | *(none)* | `mergeWindow`, `parseFilenameTimestamp`, `firstNonEmpty`, `mergeMatchResult`, `resolveMatchKey`, `matchByEAD`, `matchByTimestampWindow`, `snapshotExisting`, `rowsConflict`, `stringsConflict`/`intsConflict`, `unionSortedStrings` |
+| `pkg/app/aggregate.go` | *(none)* | `aggregateAll`, `aggregateScreenshots`, `foldGroup`, per-type `*ToView` adapters, `attachHeroStats` — read-time aggregation across the 5 parent/5 child tables |
+| `pkg/app/parse.go` | *(none)* | `ParseScreenshots` orchestration, `ParseProgressEvent`, `screenshotType` classifier, `insertParsed`, `flattenHeroStats` |
 | `pkg/app/app_wails.go` | `!serveronly` | `emitParseComplete` (wruntime.EventsEmit + SSEHub), `PickTesseractBinary`, `PickScreenshotsDir` |
 | `pkg/app/app_server.go` | `serveronly` | `emitParseComplete` (SSEHub only), stub errors for the two dialog methods |
 | `pkg/app/sse.go` | *(none)* | Exported `SSEHub` type with `Subscribe/Unsubscribe/Broadcast` |
@@ -683,6 +684,14 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux,windows}.md#
 
 ## Conventions worth knowing
 
+- **Fixing CI on a remote-authored PR (Ultraplan / Claude Code on the web).** Those sessions don't install lefthook, so commits land that pass review but routinely fail the same gates the local pre-commit catches: `gofumpt`, `goimports-reviser`, `golangci-lint`, `typos`, `conventional`. Pattern:
+  - `lint` failure → `git checkout <branch>`, fix with `make lint-go` + `typos .`, commit `style:` / `docs:`, push.
+  - `pr-report` failure is downstream — it downloads the `unit-test-results` artifact that `lint` uploads. Lint fail → no artifact → pr-report fail. Don't debug separately; it clears when lint goes green.
+  - `required-checkboxes` failure → bot leaves the PR-template attestation boxes unticked. Fetch the body via `gh pr view N --json body --jq .body > /tmp/body.md`, flip the two lines starting with `- [ ] **I have read and agree to the [Code of Conduct]` and `- [ ] **I license my contribution` to `- [x] …`, then `gh pr edit N --body-file /tmp/body.md`. Body comes back with CRLF — use Python `replace()` not BSD sed for the substitution.
+  - `typos` flags identifier+plural-s runs (e.g. pluralising `SELECT` or `SUMMARY` by appending an `s`) because it parses the trailing `Ts` / `Ys` as a separate token and the truncated leading run as a misspelled word. Rephrase prose ("SELECT calls", "SUMMARY screens") rather than extending `_typos.toml`.
+
+- **sqlclosecheck + per-iteration `*sql.Rows` close.** When a loop opens a fresh `s.db.Query(...)` on every iteration with multiple exit paths, extract the per-iteration body into a helper so a single `defer rows.Close()` covers every return — open-coding `_ = rows.Close()` at each exit will be flagged. Pattern: `SQLStore.collectFilenames` in `pkg/db/store.go`.
+
 - **`frontend/node_modules/` no longer pollutes `go list ./...`** — the `flatted` npm package ships a stray `golang/pkg/flatted/flatted.go` that Go's package walker used to absorb into the recall module. `frontend/scripts/seed-go-sentinel.cjs` runs as an npm `postinstall` hook and drops a stub `frontend/node_modules/go.mod` so the walker stops at that boundary. After every `npm ci` the sentinel re-seeds automatically; `frontend/dist` is left in the recall module so `//go:embed all:frontend/dist` in `assets.go` still works. Belt-and-suspenders: `scripts/deadcode-check.sh` still pipes through `grep -v node_modules` and `make lint-gosec` still passes `-exclude-dir=frontend`, so a sentinel that gets accidentally deleted or never seeded (someone editing `node_modules/` by hand) keeps the rest of the project working. New whole-program Go tools should keep the filter as defence-in-depth.
 
 - **`Dockerfile.build` frontend-builder runs `npm ci` BEFORE the full `frontend/` source is copied** — only `package.json`, `package-lock.json`, and `frontend/scripts/seed-go-sentinel.cjs` are in the layer at that point. The third file is required because `package.json`'s `postinstall` hook invokes it; without an explicit `COPY frontend/scripts/seed-go-sentinel.cjs ./scripts/seed-go-sentinel.cjs` line, npm ci dies with `Cannot find module '/frontend/scripts/seed-go-sentinel.cjs'` and every Docker build target breaks. Any new postinstall hook that references a project file needs the same up-front COPY.
@@ -788,9 +797,10 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux,windows}.md#
 - **HTTP array responses initialize to `make([]T, 0)`, never `var x []T`.**
   A nil slice JSON-marshals to `null`, which violates any OpenAPI
   `type: array` declaration and fails schemathesis's
-  `response_schema_conformance` check in CI. `readAllRecords` in
-  `readAllRecords` in `pkg/app/match_record.go` is the canonical example. Same rule for any new
-  `/api/*` endpoint that returns a list.
+  `response_schema_conformance` check in CI. `aggregateAll` in
+  `pkg/app/aggregate.go` (and the per-table loaders in `pkg/db/store.go`)
+  are the canonical examples. Same rule for any new `/api/*` endpoint
+  that returns a list.
 - **Bad client or config input is 4xx, not 5xx.** App-layer code returns
   a typed sentinel error (e.g. `app.ErrInvalidScreenshotsDir`,
   `fmt.Errorf("%w: ...", sentinel, ...)`); HTTP handlers use
@@ -818,7 +828,7 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux,windows}.md#
   by helpers in `pkg/app/inference.go` (`inferSoleHeroPercent`,
   `inferResultFromRank`) that run on the way *out* of the DB via
   `GetMatchResults` and `scrapeReader` — never inside `mergeMatchResult`
-  or `loadExistingMergedRows`. Reason: storing the inferred value would
+  or anywhere on the write/persistence path. Reason: storing the inferred value would
   break the merge's first-non-empty-wins rule when a later screenshot
   arrives with the real value (e.g. an inferred `result="victory"` from
   SR change would block a SUMMARY's authoritative `result` from
