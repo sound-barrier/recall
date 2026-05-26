@@ -133,3 +133,155 @@ describe('POST 4xx error', () => {
     expect((err as ApiError).status).toBe(422)
   })
 })
+
+// ── Data location + export/import ────────────────────────────────────────
+
+describe('GetDataLocation', () => {
+  afterEach(() => { vi.unstubAllGlobals() })
+
+  it('GETs /api/data-location and resolves to the payload', async () => {
+    const payload = {
+      base_dir: '/Users/jacob/Library/Application Support/Recall',
+      settings_path: '/Users/jacob/Library/Application Support/Recall/settings.json',
+      database_path: '/Users/jacob/Library/Application Support/Recall/db/recall.db',
+      screenshots_dir: '/Users/jacob/Documents/Overwatch/Screenshots',
+    }
+    const spy = mockFetch(200, payload)
+    vi.stubGlobal('fetch', spy)
+    const { GetDataLocation } = await import('./api')
+    const got = await GetDataLocation()
+    // fetch is called as fetch(url, init) — the GET path passes undefined.
+    expect(spy).toHaveBeenCalledWith('/api/data-location', undefined)
+    expect(got).toEqual(payload)
+  })
+})
+
+// ── ExportData (browser/server mode) ──────────────────────────────────────
+
+describe('ExportData (browser mode)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  function fetchExportOK(body: string, disposition: string) {
+    return vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: (k: string) => k === 'Content-Disposition' ? disposition : null },
+      blob: () => Promise.resolve(new Blob([body], { type: 'application/json' })),
+      text: () => Promise.resolve(''),
+    })
+  }
+
+  it('parses the filename out of Content-Disposition and returns it', async () => {
+    vi.stubGlobal('fetch', fetchExportOK('{}', 'attachment; filename="recall-export-20260526-013000.json"'))
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn(() => 'blob:fake'),
+      revokeObjectURL: vi.fn(),
+    })
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    const { ExportData } = await import('./api')
+    const name = await ExportData()
+    expect(name).toBe('recall-export-20260526-013000.json')
+    expect(clickSpy).toHaveBeenCalledOnce()
+  })
+
+  it('falls back to a generated filename when Content-Disposition is missing', async () => {
+    vi.stubGlobal('fetch', fetchExportOK('{}', ''))
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn(() => 'blob:fake'),
+      revokeObjectURL: vi.fn(),
+    })
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    const { ExportData } = await import('./api')
+    const name = await ExportData()
+    expect(name).toMatch(/^recall-export-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.json$/)
+  })
+
+  it('throws ApiError on a non-2xx response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: { get: () => null },
+      text: () => Promise.resolve('server boom'),
+    }))
+    const { ExportData } = await import('./api')
+    const err = await ExportData().catch(e => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as ApiError).status).toBe(500)
+  })
+})
+
+// ── ImportData (browser/server mode) ──────────────────────────────────────
+
+describe('ImportData (browser mode)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  // installFilePicker patches createElement so the next <input>'s
+  // .click() synchronously dispatches the chosen event.
+  function installFilePicker(event: 'change' | 'cancel', file?: File) {
+    const orig = document.createElement.bind(document)
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = orig(tag) as HTMLElement
+      if (tag === 'input') {
+        const input = el as HTMLInputElement
+        vi.spyOn(input, 'click').mockImplementation(() => {
+          queueMicrotask(() => {
+            if (event === 'change' && file) {
+              Object.defineProperty(input, 'files', { value: [file] })
+              input.dispatchEvent(new Event('change'))
+            } else {
+              input.dispatchEvent(new Event('cancel'))
+            }
+          })
+        })
+      }
+      return el
+    })
+  }
+
+  it('returns "" when the user cancels the file picker', async () => {
+    installFilePicker('cancel')
+    const { ImportData } = await import('./api')
+    const result = await ImportData()
+    expect(result).toBe('')
+  })
+
+  it('POSTs the file body and returns the filename on success', async () => {
+    const file = new File(['{"schema":"recall-export/v1"}'], 'my-backup.json', { type: 'application/json' })
+    installFilePicker('change', file)
+    const fetchSpy = mockFetch(200, { ok: true })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const { ImportData } = await import('./api')
+    const result = await ImportData()
+    expect(result).toBe('my-backup.json')
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/import',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{"schema":"recall-export/v1"}',
+      }),
+    )
+  })
+
+  it('throws ApiError when the server rejects the payload', async () => {
+    const file = new File(['{not json'], 'bad.json', { type: 'application/json' })
+    installFilePicker('change', file)
+    vi.stubGlobal('fetch', mockFetch(400, 'import: decode: invalid character'))
+
+    const { ImportData } = await import('./api')
+    const err = await ImportData().catch(e => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as ApiError).status).toBe(400)
+  })
+})
