@@ -21,13 +21,14 @@ so a bundled Grafana dashboard can chart win rates, SR trends, and per-hero stat
 ```mermaid
 flowchart LR
   A[OW screenshots<br/>SUMMARY · TEAMS<br/>PERSONAL · RANK] -->|fsnotify watcher<br/>or manual Parse| B(Tesseract OCR<br/>+ per-screenshot<br/>parsers)
-  B --> C[Merge passes<br/>by timestamp<br/>+ E/A/D signature]
-  C --> D[(SQLite<br/>match_results)]
-  D --> E[Vue UI<br/>Wails desktop<br/>or browser]
-  D -.->|optional| F[Prometheus<br/>collector<br/>:9091/metrics]
-  F -.-> G[Grafana<br/>dashboard]
+  B --> C[Correlation pass<br/>resolves match_key<br/>by timestamp or E/A/D]
+  C --> D[(SQLite<br/>5 per-type tables<br/>+ 5 child tables)]
+  D --> E[Read-time<br/>aggregator<br/>folds by match_key]
+  E --> F[Vue UI<br/>Wails desktop<br/>or browser]
+  D -.->|optional| G[Prometheus<br/>collector<br/>:9091/metrics]
+  G -.-> H[Grafana<br/>dashboard]
   classDef opt stroke-dasharray: 4 3
-  class F,G opt
+  class G,H opt
 ```
 
 📚 **Full documentation:** [sound-barrier.github.io/recall](https://sound-barrier.github.io/recall/) — installation guides, advanced usage, and the [API reference](https://sound-barrier.github.io/recall/api/). Auto-deployed from `main` on every doc change.

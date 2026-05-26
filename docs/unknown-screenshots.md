@@ -71,42 +71,45 @@ how recoverable the record is.
 
 ## How to resolve an Unknown record
 
-### Capture the missing slot and re-parse
+Recall stores each parsed screenshot as its own row, keyed by
+`match_key` (a stable identity derived from the earliest screenshot's
+timestamp). When a new screenshot lands later that resolves to an
+existing `match_key`, Recall folds it into the same match record on
+the next Parse — no DB wipe required. **Incomplete matches can be
+repaired without losing what you already parsed.**
+
+### Add the missing slot — even days later
 
 The slot indicators tell you what's missing. If the record shows
 TEAMS + PERSONAL chips green but SUMMARY dashed, that's a "you
-forgot to capture the SUMMARY tab" — the most common cause.
+forgot to capture the SUMMARY tab" — the most common cause. The fix:
 
-What to do:
+1. Reopen the match in Overwatch's **Career Profile → Match History**.
+   Recent matches stay viewable for several days; the post-match
+   tabs appear the same way they did right after the match ended.
+2. Screenshot the missing tab (SUMMARY, usually). Save it into the
+   same folder Recall watches.
+3. Go to the **Ingest** tab and click **Run Parse** (or just wait
+   for the watch debounce if **Watch Folder** is on).
 
-1. The match is over; you can't go back and re-capture in-game.
-2. But: future matches won't repeat the problem if you set a
-   consistent capture habit. Most people use a single key bound to
-   screenshot and press it once on each post-game tab: SUMMARY first
-   (always), then TEAMS, then PERSONAL × however many heroes you
-   played. Optionally RANK at the end if it's a comp game.
+Recall will pick up the new PNG, run the correlation pass against
+its filename timestamp and stats, find the existing Unknown
+record's `match_key`, and fold the new SUMMARY into it. The record
+graduates to the Matches tab with the map field populated. Your
+existing per-screenshot rows are untouched.
 
-For the existing Unknown record: it'll stay in this queue as a
-permanent reminder until you either accept it (it can sit there
-indefinitely; doesn't break anything) or delete the whole database
-via **Ingest → Data → Clear Parse Database** and re-parse what
-you've kept.
+If the match has aged out of Overwatch's history, you can't recover
+the original SUMMARY — but the Unknown record can stay in this queue
+indefinitely without breaking anything. Or accept the data you have:
+the e/a/d/damage/healing fields are still surfaced on the card, just
+without map/result context.
 
-### Re-trigger Parse if the screenshots ARE there
+### Build a consistent capture habit going forward
 
-Sometimes a record lands in Unknown because Recall hadn't seen a
-SUMMARY screenshot at parse time, but you've since added it to the
-folder. The fix:
-
-1. Confirm the SUMMARY PNG is in your screenshots folder (the path
-   under **Settings → Directories → Screenshots Folder**).
-2. Go to the **Ingest** tab.
-3. Click **Run Parse**.
-
-Recall will pick up the new SUMMARY, match it to the existing
-Unknown record by filename timestamp (post-match tabs landed within
-the same 2-minute window get merged), and the record graduates to
-the Matches tab with the map populated.
+Future matches won't repeat the problem if you bind a single
+screenshot key and press it once on each post-game tab: SUMMARY first
+(always), then TEAMS, then PERSONAL × however many heroes you played,
+optionally RANK at the end if it's a comp game.
 
 ### Verify the SUMMARY actually parsed
 
