@@ -108,7 +108,10 @@ All `db-*.sh` scripts resolve the SQLite path via `scripts/_db.sh`'s
 | Windows | `%AppData%\Recall\db\recall.db` |
 
 Override with `RECALL_DB=<path>` for any script when inspecting a copy
-or a hermetic fixture DB.
+or a hermetic fixture DB. The scripts also honor `RECALL_DATA_DIR`
+(root dir; the script appends `/db/recall.db`) — the repo's `.envrc`
+sets this to `$PWD/data` so `wails dev` + the `db-*.sh` scripts share
+the in-repo dev DB automatically when direnv is loaded.
 
 Post-PR-#45 the schema is 3NF: five **parent** tables
 (`summary_screenshots`, `scoreboard_screenshots`, `personal_screenshots`,

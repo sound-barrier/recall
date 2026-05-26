@@ -74,3 +74,25 @@ func TestMarshalSettings_IndentedShape(t *testing.T) {
 		t.Errorf("expected 2-space indent, got %q", raw)
 	}
 }
+
+func TestAppDataDir_RECALLDATADIROverride(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", "/tmp/recall-dev-fixture")
+	if got := appDataDir(); got != "/tmp/recall-dev-fixture" {
+		t.Errorf("appDataDir() with RECALL_DATA_DIR set: got %q, want %q",
+			got, "/tmp/recall-dev-fixture")
+	}
+}
+
+func TestAppDataDir_FallsThroughWhenOverrideUnset(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", "")
+	// Don't assert the exact platform path — just that we get something
+	// non-empty containing the platform-canonical name. Avoids hard-
+	// coding macOS-vs-Linux paths into the assertion.
+	got := appDataDir()
+	if got == "" {
+		t.Fatalf("appDataDir() returned empty string")
+	}
+	if !strings.Contains(got, "Recall") && !strings.Contains(got, "recall") {
+		t.Errorf("appDataDir() = %q, expected to contain Recall/recall", got)
+	}
+}
