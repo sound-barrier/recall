@@ -24,11 +24,28 @@ Each golden has shape:
 }
 ```
 
-Wrapping the `MatchResult` in a two-field snapshot means a parser
-change that breaks classification (e.g. SUMMARY stops populating
-`Date`, which `ScreenshotType` keys off → suddenly classifies as
-`scoreboard`) trips the test even when the underlying `MatchResult`
-fields look reasonable.
+The `result` is the **per-screenshot-type projection** of
+`MatchResult` (see `pkg/parser/golden.go`): a SUMMARY golden has
+no `damage` / `healing` / `mitigation` (SUMMARY doesn't extract
+them); a PERSONAL golden has no `map` / `type` / `E/A/D`; a
+SCOREBOARD has no `result` / `date` / `game_length`; a RANK has
+no `map` / combat stats. Showing only the fields a screenshot type
+*can* populate keeps `0` / `""` from looking like "the parser saw
+0 deaths" when it actually means "this screen has no deaths to
+parse".
+
+Wrapping the result in a two-field snapshot means a parser change
+that breaks classification (e.g. SUMMARY stops populating `Date`,
+which `ScreenshotType` keys off → suddenly classifies as
+`scoreboard`) trips the test even when the underlying fields look
+reasonable.
+
+**Maintenance:** when a `parse_<type>.go` starts populating a new
+`MatchResult` field, add it to the matching `*Golden` struct in
+`pkg/parser/golden.go`, run `make update-goldens`, and commit the
+diff. If you forget, the new field is silently dropped from the
+golden — the test still passes, but the regression coverage on
+that field is invisible.
 
 `go test ./pkg/parser/` picks the directory up automatically (the test
 defaults to `../../testdata` relative to its package dir, which

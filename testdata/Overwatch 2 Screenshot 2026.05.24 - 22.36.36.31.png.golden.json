@@ -1,17 +1,9 @@
 {
   "screenshot_type": "personal",
   "result": {
-    "map": "",
-    "type": "",
     "mode": "competitive",
     "role": "support",
     "hero": "mizuki",
-    "eliminations": 0,
-    "assists": 0,
-    "deaths": 0,
-    "damage": 0,
-    "healing": 0,
-    "mitigation": 0,
     "heroes_played": [
       {
         "hero": "mizuki",

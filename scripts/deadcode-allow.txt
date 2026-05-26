@@ -21,3 +21,8 @@ App\.Pick
 # suite). Test code isn't in deadcode's call graph for the production
 # build, so the function looks unreachable.
 NewWithStore
+
+# parser.ToGolden: per-screenshot-type projection used only by
+# TestParseScreenshot_GoldenFiles to serialize the golden fixtures.
+# Test code isn't in deadcode's call graph, so this looks unreachable.
+ToGolden
