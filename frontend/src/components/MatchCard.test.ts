@@ -11,7 +11,6 @@ import type { MatchRecord } from '../api'
 
 function makeRecord(over: Partial<MatchRecord['data']> = {}, recOver: Partial<MatchRecord> = {}): MatchRecord {
   return {
-    id: 1,
     match_key: 'match:2026-05-10T21:29:28',
     source_files: ['summary.png', 'scoreboard.png'],
     source_types: { 'summary.png': 'summary', 'scoreboard.png': 'scoreboard' },

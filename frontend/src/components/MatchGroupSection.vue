@@ -22,8 +22,8 @@ const props = defineProps<{
   // state stores around. Same shape App.vue exposes to MatchCard for
   // per-card expanded / sources / preview / filter state.
   isGroupExpanded: (key: string) => boolean
-  isExpanded:      (id: number) => boolean
-  isSourcesOpen:   (id: number) => boolean
+  isExpanded:      (id: string) => boolean
+  isSourcesOpen:   (id: string) => boolean
   previewOpen:     Record<string, boolean>
   previewError:    Record<string, boolean>
   isActive:        (field: string, value: string) => boolean
@@ -35,8 +35,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'toggle-group':    [key: string]
-  'toggle-expand':   [id: number]
-  'toggle-sources':  [id: number]
+  'toggle-expand':   [id: string]
+  'toggle-sources':  [id: string]
   'toggle-preview':  [filename: string]
   'preview-error':   [filename: string]
   'filter-toggle':   [field: string, value: string]
@@ -120,18 +120,18 @@ function cardDelayMs(localIdx: number): number {
         <template v-if="group.matches !== undefined">
           <MatchCard
             v-for="(rec, idx) in group.matches"
-            :id="`match-${rec.id}`"
-            :key="rec.id"
+            :id="`match-${rec.match_key}`"
+            :key="rec.match_key"
             :style="{ animationDelay: cardDelayMs(idx) + 'ms' }"
             :record="rec"
             :index="(cardOffset ?? 0) + idx"
-            :is-expanded="isExpanded(rec.id)"
-            :is-sources-open="isSourcesOpen(rec.id)"
+            :is-expanded="isExpanded(rec.match_key)"
+            :is-sources-open="isSourcesOpen(rec.match_key)"
             :preview-open="previewOpen"
             :preview-error="previewError"
             :is-active="isActive"
-            @toggle-expand="emit('toggle-expand', rec.id)"
-            @toggle-sources="emit('toggle-sources', rec.id)"
+            @toggle-expand="emit('toggle-expand', rec.match_key)"
+            @toggle-sources="emit('toggle-sources', rec.match_key)"
             @toggle-preview="(fn: string) => emit('toggle-preview', fn)"
             @preview-error="(fn: string) => emit('preview-error', fn)"
             @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"
@@ -151,8 +151,8 @@ function cardDelayMs(localIdx: number): number {
             :is-active="isActive"
             :card-offset="(cardOffset ?? 0) + idx"
             @toggle-group="(k: string) => emit('toggle-group', k)"
-            @toggle-expand="(id: number) => emit('toggle-expand', id)"
-            @toggle-sources="(id: number) => emit('toggle-sources', id)"
+            @toggle-expand="(id: string) => emit('toggle-expand', id)"
+            @toggle-sources="(id: string) => emit('toggle-sources', id)"
             @toggle-preview="(fn: string) => emit('toggle-preview', fn)"
             @preview-error="(fn: string) => emit('preview-error', fn)"
             @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"

@@ -13,9 +13,12 @@ export interface paths {
         };
         /**
          * List all parsed match records
-         * @description Returns every row from the SQLite `match_results` table, in
-         *     insertion order. Read-time derivations (`inferSoleHeroPercent`,
-         *     `inferResultFromRank`) are already applied to each record.
+         * @description Returns one record per match, assembled by JOINing the
+         *     per-screenshot-type rows (summary / scoreboard / personal /
+         *     rank / unknown) that share each `match_key`. Read-time
+         *     derivations (`inferSoleHeroPercent`, `inferResultFromRank`)
+         *     plus role-from-hero and type-from-map lookups are applied
+         *     on the fly — the underlying rows are never mutated.
          */
         get: {
             parameters: {
@@ -755,10 +758,13 @@ export interface paths {
          * Server-Sent Events stream
          * @description Long-lived `text/event-stream` connection. Subscribers receive:
          *       * `parse-progress` — fired per OCR'd file during a parse run,
-         *         carries `{done, total, filename, screenshot_type, data?, error?}`.
-         *         `error` is set when that single file failed to parse; the
-         *         batch continues to the next file regardless, so the client
-         *         should render a warning without aborting the in-flight UI.
+         *         carries `{done, total, filename, screenshot_type, match_key?, data?, error?}`.
+         *         `match_key` is the resolved key for the just-inserted row
+         *         (present on post-insert events; absent on the mid-OCR
+         *         preview event). `error` is set when that single file failed
+         *         to parse; the batch continues to the next file regardless,
+         *         so the client should render a warning without aborting the
+         *         in-flight UI.
          *       * `parse-complete` — fired after a parse run finishes
          *       * Keepalive comment lines every 25 s so reverse proxies
          *         don't close the connection
@@ -862,13 +868,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description One DB row — the merged result of one or more screenshots. */
+        /**
+         * @description One match — assembled by JOINing the per-screenshot-type rows
+         *     that share the same `match_key`. Identity is `match_key`; no
+         *     separate `id` exists because no single row underlies a match
+         *     anymore.
+         */
         MatchRecord: {
-            /**
-             * Format: int64
-             * @example 24
-             */
-            id: number;
             /**
              * @description Stable identity. Either `match:<ISO-timestamp>` (from the
              *     earliest screenshot's filename) or `unmatched:<filename>` for

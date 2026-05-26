@@ -41,15 +41,24 @@ function setup(
 }
 
 // ── Minimal record builder ────────────────────────────────────────────
+//
+// Tests historically used a numeric `id` to identify fixture records.
+// With the per-screenshot-type schema the canonical identity is
+// `match_key` (a string). To keep the existing assertion style readable
+// (`r.match_key === 'k1'` instead of `r.match_key === 'match:…1'`), the
+// builder accepts a short numeric tag that gets stringified into the
+// match_key. Tests that already pass a custom match_key keep working.
 
-function rec(overrides: Partial<MatchRecord> = {}): MatchRecord {
+function rec(overrides: Partial<MatchRecord> & { id?: number } = {}): MatchRecord {
+  const { id, ...rest } = overrides
+  const match_key =
+    rest.match_key ?? (id != null ? `k${id}` : 'match:2026-05-01T12:00:00')
   return {
-    id: 1,
-    match_key: 'match:2026-05-01T12:00:00',
+    match_key,
     source_files: [],
     source_types: undefined,
     data: {},
-    ...overrides,
+    ...rest,
   }
 }
 
@@ -122,7 +131,7 @@ describe('filtered', () => {
       rec({ id: 2, data: {} }),       // no map
     ]
     expect(filtered.value).toHaveLength(1)
-    expect(filtered.value[0]!.id).toBe(1)
+    expect(filtered.value[0]!.match_key).toBe('k1')
   })
 
   it('returns all records when no filters are active', () => {
@@ -140,7 +149,7 @@ describe('filtered', () => {
       ]
       filterMode.value = ['competitive']
       expect(filtered.value).toHaveLength(1)
-      expect(filtered.value[0]!.id).toBe(1)
+      expect(filtered.value[0]!.match_key).toBe('k1')
     })
 
     it('is a union across multiple selected modes', () => {
@@ -170,7 +179,7 @@ describe('filtered', () => {
       ]
       filterHero.value = ['lucio']
       expect(filtered.value).toHaveLength(1)
-      expect(filtered.value[0]!.id).toBe(1)
+      expect(filtered.value[0]!.match_key).toBe('k1')
     })
 
     it('matches a secondary hero from heroes_played', () => {
@@ -187,7 +196,7 @@ describe('filtered', () => {
       ]
       filterHero.value = ['juno']
       expect(filtered.value).toHaveLength(1)
-      expect(filtered.value[0]!.id).toBe(1)
+      expect(filtered.value[0]!.match_key).toBe('k1')
     })
 
     it('multi-pick is a union — match appears if ANY picked hero is present', () => {
@@ -198,10 +207,10 @@ describe('filtered', () => {
         matchRec({ hero: 'kiriko' }, 3),
       ]
       filterHero.value = ['lucio', 'ana']
-      const ids = filtered.value.map(r => r.id)
-      expect(ids).toContain(1)
-      expect(ids).toContain(2)
-      expect(ids).not.toContain(3)
+      const ids = filtered.value.map(r => r.match_key)
+      expect(ids).toContain('k1')
+      expect(ids).toContain('k2')
+      expect(ids).not.toContain('k3')
     })
   })
 
@@ -214,7 +223,7 @@ describe('filtered', () => {
       ]
       filterFrom.value = '2026-04-01T00:00'
       expect(filtered.value).toHaveLength(1)
-      expect(filtered.value[0]!.id).toBe(1)
+      expect(filtered.value[0]!.match_key).toBe('k1')
     })
 
     it('respects the from bound', () => {
@@ -225,7 +234,7 @@ describe('filtered', () => {
       ]
       filterFrom.value = '2026-04-01T00:00'
       expect(filtered.value).toHaveLength(1)
-      expect(filtered.value[0]!.id).toBe(1)
+      expect(filtered.value[0]!.match_key).toBe('k1')
     })
 
     it('respects the to bound', () => {
@@ -236,7 +245,7 @@ describe('filtered', () => {
       ]
       filterTo.value = '2026-04-01T00:00'
       expect(filtered.value).toHaveLength(1)
-      expect(filtered.value[0]!.id).toBe(1)
+      expect(filtered.value[0]!.match_key).toBe('k1')
     })
   })
 
@@ -249,7 +258,7 @@ describe('filtered', () => {
       ]
       filterSshot.value = ['summary']
       expect(filtered.value).toHaveLength(1)
-      expect(filtered.value[0]!.id).toBe(1)
+      expect(filtered.value[0]!.match_key).toBe('k1')
     })
 
     it('falls back to slot inference for rows without source_types', () => {
@@ -273,7 +282,7 @@ describe('filtered', () => {
     filterMode.value = ['competitive']
     filterMap.value  = ['kings-row']
     expect(filtered.value).toHaveLength(1)
-    expect(filtered.value[0]!.id).toBe(1)
+    expect(filtered.value[0]!.match_key).toBe('k1')
   })
 })
 
@@ -286,7 +295,7 @@ describe('filteredSorted', () => {
       matchRec({ date: '2026-03-01', finished_at: '20:00' }, 1),
       matchRec({ date: '2026-05-01', finished_at: '20:00' }, 2),
     ]
-    expect(filteredSorted.value.map(r => r.id)).toEqual([2, 1])
+    expect(filteredSorted.value.map(r => r.match_key)).toEqual(['k2', 'k1'])
   })
 
   it('toggleSort switches to oldest first', () => {
@@ -296,7 +305,7 @@ describe('filteredSorted', () => {
       matchRec({ date: '2026-05-01', finished_at: '20:00' }, 2),
     ]
     toggleSort()
-    expect(filteredSorted.value.map(r => r.id)).toEqual([1, 2])
+    expect(filteredSorted.value.map(r => r.match_key)).toEqual(['k1', 'k2'])
   })
 
   it('double-toggle returns to newest first', () => {
@@ -307,7 +316,7 @@ describe('filteredSorted', () => {
     ]
     toggleSort()
     toggleSort()
-    expect(filteredSorted.value.map(r => r.id)).toEqual([2, 1])
+    expect(filteredSorted.value.map(r => r.match_key)).toEqual(['k2', 'k1'])
   })
 })
 
@@ -472,7 +481,7 @@ describe('includeUndated', () => {
     let api!: ReturnType<typeof useMatchFilters>
     effectScope().run(() => { api = useMatchFilters(records) })
     // Only the dated record survives. (No includeUndated ref → default off.)
-    expect(api.filtered.value.map(r => r.id)).toEqual([1])
+    expect(api.filtered.value.map(r => r.match_key)).toEqual(['k1'])
   })
 
   it('hides undated records when includeUndated ref is false', () => {
@@ -482,7 +491,7 @@ describe('includeUndated', () => {
       matchRec({ date: '2026-05-10', finished_at: '21:29' }, 1),
       matchRec({}, 2),
     ]
-    expect(filtered.value.map(r => r.id)).toEqual([1])
+    expect(filtered.value.map(r => r.match_key)).toEqual(['k1'])
   })
 
   it('shows undated records when includeUndated ref is true', () => {
@@ -492,7 +501,7 @@ describe('includeUndated', () => {
       matchRec({ date: '2026-05-10', finished_at: '21:29' }, 1),
       matchRec({}, 2),
     ]
-    expect(filtered.value.map(r => r.id)).toEqual([1, 2])
+    expect(filtered.value.map(r => r.match_key)).toEqual(['k1', 'k2'])
   })
 
   it('reactively re-filters when the ref flips', async () => {
@@ -520,7 +529,7 @@ describe('includeUndated', () => {
     ]
     filterFrom.value = '2026-01-01T00:00'
     // Range filter still drops undated rows regardless of the toggle.
-    expect(filtered.value.map(r => r.id)).toEqual([1])
+    expect(filtered.value.map(r => r.match_key)).toEqual(['k1'])
   })
 
   it('treats data.date missing OR data.finished_at missing as undated', () => {
@@ -532,7 +541,7 @@ describe('includeUndated', () => {
       matchRec({ finished_at: '21:29' }, 3),                // no date
       matchRec({}, 4),                                      // neither
     ]
-    expect(filtered.value.map(r => r.id)).toEqual([1])
+    expect(filtered.value.map(r => r.match_key)).toEqual(['k1'])
   })
 })
 
@@ -558,7 +567,7 @@ describe('min-play threshold filter', () => {
     const { filtered } = setup([
       makeHeroRec(1, [{ hero: 'lucio', percent_played: 2 }], '10:00'),
     ], ref(true), ref(0), ref(0))
-    expect(filtered.value.map(r => r.id)).toEqual([1])
+    expect(filtered.value.map(r => r.match_key)).toEqual(['k1'])
   })
 
   it('excludes a match where the only hero falls below the percent threshold', () => {
@@ -566,7 +575,7 @@ describe('min-play threshold filter', () => {
       makeHeroRec(1, [{ hero: 'lucio', percent_played: 2 }], '10:00'),
       makeHeroRec(2, [{ hero: 'sigma', percent_played: 80 }], '10:00'),
     ], ref(true), ref(5), ref(0))
-    expect(filtered.value.map(r => r.id)).toEqual([2])
+    expect(filtered.value.map(r => r.match_key)).toEqual(['k2'])
   })
 
   it('admits a match where ANY hero meets the percent threshold (max-of, not all-of)', () => {
@@ -576,7 +585,7 @@ describe('min-play threshold filter', () => {
         { hero: 'kiriko',  percent_played: 70 },
       ], '10:00'),
     ], ref(true), ref(5), ref(0))
-    expect(filtered.value.map(r => r.id)).toEqual([1])
+    expect(filtered.value.map(r => r.match_key)).toEqual(['k1'])
   })
 
   it('excludes a match where the only hero falls below the minutes threshold', () => {
@@ -592,7 +601,7 @@ describe('min-play threshold filter', () => {
     const { filtered } = setup([
       makeHeroRec(1, [{ hero: 'lucio', percent_played: 8 }], '10:00'),
     ], ref(true), ref(5), ref(1))
-    expect(filtered.value.map(r => r.id)).toEqual([1])
+    expect(filtered.value.map(r => r.match_key)).toEqual(['k1'])
   })
 
   it('with the hero filter set, threshold applies to the selected hero only', () => {
@@ -616,7 +625,7 @@ describe('min-play threshold filter', () => {
       ], '10:00'),
     ], ref(true), ref(5), ref(0))
     filterHero.value = ['kiriko']
-    expect(filtered.value.map(r => r.id)).toEqual([1])
+    expect(filtered.value.map(r => r.match_key)).toEqual(['k1'])
   })
 
   it('missing game_length disables the minutes check but the percent check still applies', () => {
@@ -626,7 +635,7 @@ describe('min-play threshold filter', () => {
     const { filtered } = setup([
       makeHeroRec(1, [{ hero: 'lucio', percent_played: 70 }], ''),
     ], ref(true), ref(5), ref(1))
-    expect(filtered.value.map(r => r.id)).toEqual([1])
+    expect(filtered.value.map(r => r.match_key)).toEqual(['k1'])
   })
 
   it('counts the threshold in activeFilterCount when either threshold is > 0', () => {

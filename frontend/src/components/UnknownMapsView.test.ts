@@ -10,19 +10,19 @@ import type { MatchRecord } from '../api'
 // views can share expand / preview behavior. The fake here just
 // records calls so we can assert the view bubbles them upward.
 function makeCardState(records: MatchRecord[]) {
-  const expanded = ref<Record<number, boolean>>({})
+  const expanded = ref<Record<string, boolean>>({})
   const previewOpen = ref<Record<string, boolean>>({})
   const previewError = ref<Record<string, boolean>>({})
-  const sourcesOpen = ref<Record<number, boolean>>({})
+  const sourcesOpen = ref<Record<string, boolean>>({})
   const calls = { toggleExpand: 0, toggleAll: 0, togglePreview: 0 }
   const api: CardStateApi = {
-    isExpanded: (id: number) => !!expanded.value[id],
-    isSourcesOpen: (id: number) => !!sourcesOpen.value[id],
+    isExpanded: (id: string) => !!expanded.value[id],
+    isSourcesOpen: (id: string) => !!sourcesOpen.value[id],
     previewOpen,
     previewError,
-    allExpanded: computed(() => records.length > 0 && records.every(r => !!expanded.value[r.id])),
+    allExpanded: computed(() => records.length > 0 && records.every(r => !!expanded.value[r.match_key])),
     toggleAll: () => { calls.toggleAll++ },
-    toggleExpand: (id: number) => {
+    toggleExpand: (id: string) => {
       calls.toggleExpand++
       expanded.value = { ...expanded.value, [id]: !expanded.value[id] }
     },
@@ -53,10 +53,10 @@ describe('UnknownMapsView', () => {
 
   it('renders one card per unknown record with the right match key', () => {
     const records: MatchRecord[] = [
-      { id: 1, match_key: 'unmatched:scoreboard1.png', source_files: ['scoreboard1.png'], data: {
+      { match_key: 'unmatched:scoreboard1.png', source_files: ['scoreboard1.png'], data: {
         eliminations: 17, assists: 16, deaths: 11, result: 'victory',
       } },
-      { id: 2, match_key: 'unmatched:broken.png', source_files: ['broken.png'], data: {} },
+      { match_key: 'unmatched:broken.png', source_files: ['broken.png'], data: {} },
     ]
     const { wrapper } = mountWith(records)
     expect(wrapper.findAll('.unknown-card')).toHaveLength(2)
@@ -68,7 +68,7 @@ describe('UnknownMapsView', () => {
 
   it('emits go-to-view when "run Parse" link is clicked', async () => {
     const records: MatchRecord[] = [
-      { id: 1, match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+      { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
     ]
     const { wrapper } = mountWith(records)
     const link = wrapper.findAll('.empty-link').find(el => el.text().toLowerCase().includes('parse'))
@@ -80,7 +80,7 @@ describe('UnknownMapsView', () => {
 
   it('clicking the card head delegates to cardState.toggleExpand', async () => {
     const records: MatchRecord[] = [
-      { id: 7, match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+      { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
     ]
     const { wrapper, calls } = mountWith(records)
     await wrapper.find('.unknown-card-head').trigger('click')
@@ -89,7 +89,7 @@ describe('UnknownMapsView', () => {
 
   it('shows the field diagnostic strip with vacant cells for missing values', () => {
     const records: MatchRecord[] = [
-      { id: 1, match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+      { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
     ]
     const { wrapper } = mountWith(records)
     const filledCells = wrapper.findAll('.field-cell.filled')

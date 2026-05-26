@@ -13,47 +13,27 @@ import (
 	"recall/pkg/db"
 )
 
-// fakeStore is a tiny in-memory db.Store used by these tests to drive *App
-// without SQLite. Mirrors the pkg/app store_integration_test.go fake but
-// can't share it across packages.
+// fakeStore is a minimal in-memory db.Store used by these handler tests
+// to drive *App without SQLite. The cmd-layer tests don't seed any
+// fixtures — they only exercise serialization and the Clear handler —
+// so this implementation is intentionally bare.
 type fakeStore struct {
-	rows        []db.MatchRow
-	upsertCalls int
-	clearCalls  int
-	upsertErr   error
+	clearCalls int
 }
 
-func (f *fakeStore) LoadAll() ([]db.MatchRow, error) {
-	out := make([]db.MatchRow, len(f.rows))
-	copy(out, f.rows)
-	return out, nil
+func (f *fakeStore) UpsertSummary(db.SummaryRow) error       { return nil }
+func (f *fakeStore) UpsertScoreboard(db.ScoreboardRow) error { return nil }
+func (f *fakeStore) UpsertPersonal(db.PersonalRow) error     { return nil }
+func (f *fakeStore) UpsertRank(db.RankRow) error             { return nil }
+func (f *fakeStore) UpsertUnknown(db.UnknownRow) error       { return nil }
+func (f *fakeStore) LoadAllFilenames() (map[string]bool, error) {
+	return map[string]bool{}, nil
 }
-
-func (f *fakeStore) LoadSourceFilenames() (map[string]bool, error) {
-	out := map[string]bool{}
-	for _, r := range f.rows {
-		for _, s := range r.SourceFiles {
-			out[s] = true
-		}
-	}
-	return out, nil
-}
-
-func (f *fakeStore) Upsert(r db.MatchRow) error {
-	f.upsertCalls++
-	if f.upsertErr != nil {
-		return f.upsertErr
-	}
-	f.rows = append(f.rows, r)
-	return nil
-}
-
+func (f *fakeStore) LoadAll() (db.Screenshots, error) { return db.Screenshots{}, nil }
 func (f *fakeStore) Clear() error {
 	f.clearCalls++
-	f.rows = nil
 	return nil
 }
-
 func (f *fakeStore) Close() error { return nil }
 
 // newTestApp wires *App against a fakeStore + empty SPA. Skips Startup
