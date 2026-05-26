@@ -51,6 +51,7 @@ import { useShowHidden } from './composables/useShowHidden'
 import { useTabKeyboardNav } from './composables/useTabKeyboardNav'
 import { useModalFocusTrap } from './composables/useModalFocusTrap'
 import { useBackupRestore } from './composables/useBackupRestore'
+import { useClearDatabase } from './composables/useClearDatabase'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
@@ -364,34 +365,16 @@ async function confirmUnsupportedParse() {
 // Collapsed by default — user sees only the count row until they open it.
 const parseProgressOpen = ref(false)
 
-// Clear all parse records from the database. Two-step: first click
-// arms clearConfirm (shows the destructive confirm UI); second click
-// executes. cancelClear resets without deleting.
-const clearingDB  = ref(false)
-const clearConfirm = ref(false)
-
-async function clearDatabase() {
-  clearingDB.value = true
-  clearConfirm.value = false
-  try {
-    await ClearDatabase()
-    await load()
+// Two-step "Clear database" flow: arm → confirm → execute → reload.
+const { clearingDB, clearConfirm, clearDatabase, armClear, cancelClear } = useClearDatabase({
+  clearDatabase: ClearDatabase,
+  afterClear: () => load(),
+  resetLastParsedAt: () => {
     lastParsedAt.value = null
     try { localStorage.removeItem('recall.lastParsedAt') } catch (_) {}
-  } catch (e) {
-    error.value = String(e)
-  } finally {
-    clearingDB.value = false
-  }
-}
-
-function armClear() {
-  clearConfirm.value = true
-}
-
-function cancelClear() {
-  clearConfirm.value = false
-}
+  },
+  onError: (m) => { error.value = m },
+})
 
 // Backup / restore (JSON export + CSV export + JSON import). Inline
 // result chip ("Saved: …" / "Imported: …" / failure) is owned by the
