@@ -747,6 +747,152 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/data-location": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Report the on-disk paths used by this install
+         * @description Surface the SQLite database path, settings file path, base
+         *     data directory, and the currently-configured screenshots
+         *     folder. Honors the `RECALL_DATA_DIR` env override (set in
+         *     `.envrc` for `wails dev`), so the response matches what the
+         *     running app actually reads/writes.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Path inventory. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DataLocation"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a full backup of the local parsed-match database
+         * @description Streams a JSON document containing every per-screenshot row
+         *     across all 5 parent tables plus the screenshots-dirs lookup,
+         *     wrapped in a schema-versioned envelope. The result is
+         *     round-trippable via `POST /api/import` — the canonical Recall
+         *     backup format.
+         *
+         *     The payload is opaque to users (download and feed back later);
+         *     the envelope's `schema` field gates compatibility across
+         *     Recall versions.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description JSON download. */
+                200: {
+                    headers: {
+                        "Content-Disposition"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecallExport"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore the local database from a previously-exported backup
+         * @description Replaces every row in the local database with the contents of
+         *     the uploaded payload. Validates the envelope's `schema` field
+         *     before touching the store; mismatched versions are rejected
+         *     with `400` and the existing data is left untouched.
+         *
+         *     The operation is REPLACE, not merge: anything currently in the
+         *     store is dropped after the payload is validated and before the
+         *     import lands. Callers should surface a confirmation step.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RecallExport"];
+                };
+            };
+            responses: {
+                200: components["responses"]["Ok"];
+                /**
+                 * @description Malformed or wrong-schema payload. Body is a plain-text
+                 *     error message safe to surface to the user.
+                 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": string;
+                    };
+                };
+                500: components["responses"]["InternalError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events": {
         parameters: {
             query?: never;
@@ -877,6 +1023,64 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        DataLocation: {
+            /**
+             * @description Root directory Recall reads/writes from. Honors
+             *     `RECALL_DATA_DIR`; otherwise the platform user-config
+             *     directory.
+             * @example /Users/jacob/Library/Application Support/Recall
+             */
+            base_dir: string;
+            /**
+             * @description Absolute path to `settings.json`.
+             * @example /Users/jacob/Library/Application Support/Recall/settings.json
+             */
+            settings_path: string;
+            /**
+             * @description Absolute path to the SQLite database file.
+             * @example /Users/jacob/Library/Application Support/Recall/db/recall.db
+             */
+            database_path: string;
+            /**
+             * @description Currently-configured screenshots folder. Empty string
+             *     when not yet set.
+             * @example /Users/jacob/Documents/Overwatch/Screenshots
+             */
+            screenshots_dir?: string;
+        };
+        /**
+         * @description Schema-versioned envelope for the local backup format produced
+         *     by `GET /api/export` and consumed by `POST /api/import`. The
+         *     per-row arrays mirror the SQLite parent + child tables; the
+         *     `screenshots_dirs` map carries the path-by-id reference so
+         *     FKs survive the auto-increment reset that happens during
+         *     import.
+         */
+        RecallExport: {
+            /**
+             * @description Envelope version. Current value `recall-export/v1`.
+             * @example recall-export/v1
+             */
+            schema: string;
+            /** Format: date-time */
+            exported_at: string;
+            /** @example 0.1.4 */
+            recall_version: string;
+            /**
+             * @description source-side `id` (stringified) → screenshots folder path
+             * @example {
+             *       "1": "/Users/jacob/Documents/Overwatch/Screenshots"
+             *     }
+             */
+            screenshots_dirs?: {
+                [key: string]: string;
+            };
+            summaries?: Record<string, never>[];
+            scoreboards?: Record<string, never>[];
+            personals?: Record<string, never>[];
+            ranks?: Record<string, never>[];
+            unknowns?: Record<string, never>[];
+        };
         /**
          * @description One match — assembled by JOINing the per-screenshot-type rows
          *     that share the same `match_key`. Identity is `match_key`; no

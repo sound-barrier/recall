@@ -4,8 +4,10 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -76,6 +78,64 @@ func (a *App) PickTesseractBinary() (TesseractStatus, error) {
 		return a.tessStatus, nil
 	}
 	return a.SetTesseractPath(file)
+}
+
+// SaveExportToFile opens a native save dialog, runs ExportData, and
+// writes the resulting JSON to the chosen path. Returns the path on
+// success; "" if the user cancelled.
+func (a *App) SaveExportToFile() (string, error) {
+	defaultName := "recall-export-" + time.Now().UTC().Format("20060102-150405") + ".json"
+	path, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{
+		Title:                "Save Recall export",
+		DefaultFilename:      defaultName,
+		CanCreateDirectories: true,
+		Filters: []wruntime.FileFilter{
+			{DisplayName: "Recall export (JSON)", Pattern: "*.json"},
+			{DisplayName: "All files", Pattern: "*"},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", nil // user cancelled
+	}
+	data, err := a.ExportData()
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return "", fmt.Errorf("write export: %w", err)
+	}
+	return path, nil
+}
+
+// LoadImportFromFile opens a native open dialog, reads the chosen
+// file, and applies it via ImportData. Returns the path read on
+// success; "" if cancelled. Replaces the current database — caller
+// is expected to confirm before invoking.
+func (a *App) LoadImportFromFile() (string, error) {
+	path, err := wruntime.OpenFileDialog(a.ctx, wruntime.OpenDialogOptions{
+		Title: "Open Recall export",
+		Filters: []wruntime.FileFilter{
+			{DisplayName: "Recall export (JSON)", Pattern: "*.json"},
+			{DisplayName: "All files", Pattern: "*"},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", nil
+	}
+	data, err := os.ReadFile(path) // #nosec G304 -- path returned by native dialog
+	if err != nil {
+		return "", fmt.Errorf("read import: %w", err)
+	}
+	if err := a.ImportData(data); err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 // PickScreenshotsDir opens a native directory chooser and persists the

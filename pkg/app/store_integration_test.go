@@ -62,12 +62,17 @@ func (f *fakeStore) LoadAll() (db.Screenshots, error) {
 	if f.loadErr != nil {
 		return db.Screenshots{}, f.loadErr
 	}
+	dirs := make(map[int64]string, len(f.dirIDs))
+	for path, id := range f.dirIDs {
+		dirs[id] = path
+	}
 	return db.Screenshots{
-		Summaries:   append([]db.SummaryRow(nil), f.summaries...),
-		Scoreboards: append([]db.ScoreboardRow(nil), f.scoreboards...),
-		Personals:   append([]db.PersonalRow(nil), f.personals...),
-		Ranks:       append([]db.RankRow(nil), f.ranks...),
-		Unknowns:    append([]db.UnknownRow(nil), f.unknowns...),
+		Summaries:       append([]db.SummaryRow(nil), f.summaries...),
+		Scoreboards:     append([]db.ScoreboardRow(nil), f.scoreboards...),
+		Personals:       append([]db.PersonalRow(nil), f.personals...),
+		Ranks:           append([]db.RankRow(nil), f.ranks...),
+		Unknowns:        append([]db.UnknownRow(nil), f.unknowns...),
+		ScreenshotsDirs: dirs,
 	}, nil
 }
 
@@ -180,6 +185,7 @@ func (f *fakeStore) Clear() error {
 	f.personals = nil
 	f.ranks = nil
 	f.unknowns = nil
+	f.dirIDs = nil
 	return nil
 }
 

@@ -40,6 +40,14 @@ defineProps<{
   // Data / destructive
   clearConfirm:         boolean
   clearingDB:           boolean
+
+  // Backup / restore — App.vue holds the in-flight flags + a single
+  // status chip that flashes after either action completes. Optional
+  // so existing tests that pre-date this row don't have to seed them.
+  exporting?:           boolean
+  importing?:           boolean
+  importArmed?:         boolean
+  exportStatus?:        { ok: boolean; message: string } | null
 }>()
 
 const emit = defineEmits<{
@@ -51,6 +59,10 @@ const emit = defineEmits<{
   'arm-clear':          []
   'clear-database':     []
   'cancel-clear':       []
+  'export-data':        []
+  'arm-import':         []
+  'cancel-import':      []
+  'import-data':        []
   'toggle-progress':    []
   'go-to-view':         [next: 'settings' | 'ingest' | 'matches' | 'unknown']
 }>()
@@ -269,6 +281,81 @@ const emit = defineEmits<{
         </h3>
       </div>
       <div class="setting-rows">
+        <!-- Backup / restore. Two rows so the surrounding visual rhythm
+             stays consistent with the rest of the section. Export is
+             non-destructive (one click); Import replaces the DB and
+             arms a confirmation just like Clear. The transient
+             exportStatus chip flashes after either action. -->
+        <div class="setting-row">
+          <div class="setting-info">
+            <h4 class="setting-label">
+              Export Data
+            </h4>
+            <p class="setting-desc">
+              Download a portable JSON backup of every parsed match. Round-trips through <strong>Import Data</strong> below. Settings + screenshots aren't included (those live as plain files on disk you can copy directly).
+            </p>
+            <p v-if="exportStatus && exportStatus.ok" class="setting-meta success">
+              <span class="block-mark" aria-hidden="true">✓</span>
+              {{ exportStatus.message }}
+            </p>
+            <p v-else-if="exportStatus && !exportStatus.ok" class="setting-meta blocked">
+              <span class="block-mark" aria-hidden="true">✕</span>
+              {{ exportStatus.message }}
+            </p>
+          </div>
+          <div class="setting-control">
+            <button
+              class="btn ghost"
+              :disabled="exporting || importing"
+              @click="emit('export-data')"
+            >
+              <span v-if="exporting">Saving…</span>
+              <span v-else>Export Backup…</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="setting-row" :class="{ 'danger-row': importArmed }">
+          <div class="setting-info">
+            <h4 class="setting-label">
+              Import Data
+            </h4>
+            <p class="setting-desc">
+              Restore from a previously-exported JSON backup. <strong>Replaces</strong> everything currently in the database — local matches that aren't in the backup will be lost.
+            </p>
+            <p v-if="importArmed" class="setting-meta blocked">
+              <span class="block-mark" aria-hidden="true">⚠</span>
+              This wipes {{ matchedCount + unknownCount }} record{{ (matchedCount + unknownCount) === 1 ? '' : 's' }} before loading the backup.
+            </p>
+          </div>
+          <div class="setting-control">
+            <template v-if="!importArmed">
+              <button
+                class="btn danger-outline"
+                :disabled="importing || exporting"
+                @click="emit('arm-import')"
+              >
+                Import Backup…
+              </button>
+            </template>
+            <template v-else>
+              <div class="clear-confirm-group">
+                <button
+                  class="btn danger"
+                  :disabled="importing"
+                  @click="emit('import-data')"
+                >
+                  <span v-if="importing">Loading…</span>
+                  <span v-else>Choose File…</span>
+                </button>
+                <button class="btn ghost" :disabled="importing" @click="emit('cancel-import')">
+                  Cancel
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+
         <div class="setting-row" :class="{ 'danger-row': clearConfirm }">
           <div class="setting-info">
             <h4 class="setting-label">
@@ -543,6 +630,12 @@ const emit = defineEmits<{
    when those controls are gated. */
 .setting-meta.blocked {
   color: var(--loss);
+}
+
+/* "Saved: /path/..." flash after an Export / Import succeeds. Echoes
+   the same chip footprint as .blocked but in the accent/win color. */
+.setting-meta.success {
+  color: var(--win);
 }
 
 .block-mark {

@@ -35,6 +35,18 @@ func (a *App) emitParseComplete() {
 	}
 }
 
+// SaveExportToFile is not available in server mode (no native dialogs).
+// The HTTP API exposes GET /api/export which streams the same payload.
+func (a *App) SaveExportToFile() (string, error) {
+	return "", fmt.Errorf("native dialogs unavailable in server mode; use GET /api/export")
+}
+
+// LoadImportFromFile is not available in server mode (no native dialogs).
+// The HTTP API exposes POST /api/import which accepts the same payload.
+func (a *App) LoadImportFromFile() (string, error) {
+	return "", fmt.Errorf("native dialogs unavailable in server mode; use POST /api/import")
+}
+
 // PickTesseractBinary is not available in server mode (no native dialogs).
 // The HTTP API exposes POST /api/tesseract-path for the same purpose.
 func (a *App) PickTesseractBinary() (TesseractStatus, error) {
