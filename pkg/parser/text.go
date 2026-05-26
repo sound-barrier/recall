@@ -17,8 +17,9 @@ func extractHeader(text string) (mapName, gameType, mode string) {
 	upper := strings.ToUpper(text)
 
 	// Mode: "MPETIT" is the most distinctive substring of "COMPETITIVE";
-	// anything else (no match) defaults to quickplay.
-	mode = "quickplay"
+	// anything else (no match) leaves mode empty. The aggregator picks
+	// `competitive` from a SUMMARY sibling when one exists — preferable
+	// to guessing "quickplay" and locking in a wrong value at write time.
 	for _, sig := range []string{"MPETIT", "ETITIV", "OMPETI"} {
 		if strings.Contains(upper, sig) {
 			mode = "competitive"

@@ -2,308 +2,738 @@ package db
 
 import (
 	"database/sql"
-	"encoding/json"
+	"fmt"
 	"strings"
 
 	_ "modernc.org/sqlite"
 )
 
-// Store is the persistence boundary the app interacts with. Methods take/
-// return MatchRow (a flat SQL-shaped struct) so this package stays free of
-// any dependency on pkg/parser — JSON columns are passed through as raw
-// strings and decoded by the caller.
-//
-// Tests in pkg/app use a fake Store (no SQLite needed); the production
-// wiring uses *SQLStore against modernc.org/sqlite at the on-disk path
-// (or ":memory:" in pkg/db's own tests).
+// Store is the persistence boundary the app interacts with. Five typed
+// Upsert methods (one per screenshot type) write a parent row plus its
+// child rows in a single transaction; LoadAll reads every parent row
+// across the five tables with children pre-attached.
 type Store interface {
-	LoadAll() ([]MatchRow, error)
-	LoadSourceFilenames() (map[string]bool, error)
-	Upsert(r MatchRow) error
+	UpsertSummary(r SummaryRow) error
+	UpsertScoreboard(r ScoreboardRow) error
+	UpsertPersonal(r PersonalRow) error
+	UpsertRank(r RankRow) error
+	UpsertUnknown(r UnknownRow) error
+
+	// LoadAllFilenames returns every filename across all five parent
+	// tables, so the parse loop can skip OCR for already-parsed files.
+	LoadAllFilenames() (map[string]bool, error)
+
+	// LoadAll bulk-reads every row across all 10 tables and returns
+	// them grouped by parent type with children already attached.
+	LoadAll() (Screenshots, error)
+
+	// Clear deletes every row in every table — children cascade.
 	Clear() error
 	Close() error
 }
 
-// MatchRow mirrors one match_results row. Scalars use "" / 0 to mean SQL
-// NULL — the SQLStore handles the conversion. JSON-encoded columns stay as
-// raw strings here so this package doesn't have to know about HeroPlay,
-// Performance, HeroSR, or Modifiers from pkg/parser. The caller decodes.
-type MatchRow struct {
-	ID       int64
-	MatchKey string
+// SummaryRow holds one parsed SUMMARY screenshot. Match identity is
+// MatchKey (resolved at insert time by the correlation pass); per-file
+// uniqueness is Filename (UNIQUE constraint).
+type SummaryRow struct {
+	ID        int64
+	Filename  string
+	MatchKey  string
+	ParsedAt  string
+	Map       string
+	Mode      string
+	Hero      string
+	Result    string
+	FinalScore string
+	Date      string
+	FinishedAt string
+	GameLength string
 
-	// SourceFiles is the decoded source_files JSON array. Decoded for
-	// convenience because every caller iterates it.
-	SourceFiles []string
-	// SourceTypes is the decoded source_types JSON object (filename → type).
-	// May be nil for rows persisted before the column existed.
-	SourceTypes map[string]string
-	// SourceParsedAt is the decoded source_parsed_at JSON object
-	// (filename → ISO8601 timestamp of when that file was first
-	// inserted into the DB). May be nil or missing entries for
-	// rows / files persisted before the column existed.
-	SourceParsedAt map[string]string
+	PerfElimTotal           int
+	PerfElimAvgPer10Min     float64
+	PerfAssistsTotal        int
+	PerfAssistsAvgPer10Min  float64
+	PerfDeathsTotal         int
+	PerfDeathsAvgPer10Min   float64
 
-	// ParsedAt is the row's match-level "first inserted at" timestamp,
-	// from the schema's parsed_at column. Stable across subsequent
-	// upserts — Upsert intentionally does not refresh this on
-	// conflict so the UI can display "this match was parsed on X"
-	// without the value shifting when a screenshot is added later.
-	ParsedAt string
-
-	Map, Type, Mode, Role, Hero string
-
-	Eliminations, Assists, Deaths int
-	Damage, Healing, Mitigation   int
-
-	Result, FinalScore           string
-	Date, FinishedAt, GameLength string
-
-	// Pre-encoded JSON for columns the store doesn't decode (callers own the
-	// Go types these encode/decode to). "" means SQL NULL.
-	HeroesPlayedJSON string
-	PerformanceJSON  string
-	ModifiersJSON    string
-	SRJSON           string
-
-	Rank                               string
-	Level, RankProgress, ChangePercent int
+	HeroesPlayed []SummaryHeroPlayed
 }
 
-// SQLStore is the production Store, backed by *sql.DB (modernc.org/sqlite).
-// Holds a *sql.DB by composition — embedding would expose every database/sql
-// method on SQLStore, which is more surface than the interface needs.
+// SummaryHeroPlayed is one row of summary_heroes_played.
+type SummaryHeroPlayed struct {
+	Hero          string
+	PercentPlayed int
+	PlayTime      string
+}
+
+// ScoreboardRow holds one parsed SCOREBOARD screenshot.
+type ScoreboardRow struct {
+	ID           int64
+	Filename     string
+	MatchKey     string
+	ParsedAt     string
+	Map          string
+	Mode         string
+	Hero         string
+	Eliminations int
+	Assists      int
+	Deaths       int
+	Damage       int
+	Healing      int
+	Mitigation   int
+
+	HeroStats []HeroStat
+}
+
+// HeroStat is one (hero, stat_key, stat_value) row. Shared shape used by
+// both scoreboard_hero_stats and personal_hero_stats.
+type HeroStat struct {
+	Hero      string
+	StatKey   string
+	StatValue int
+}
+
+// PersonalRow holds one parsed PERSONAL screenshot.
+type PersonalRow struct {
+	ID        int64
+	Filename  string
+	MatchKey  string
+	ParsedAt  string
+	Hero      string
+
+	HeroStats []HeroStat
+}
+
+// RankRow holds one parsed RANK screenshot.
+type RankRow struct {
+	ID            int64
+	Filename      string
+	MatchKey      string
+	ParsedAt      string
+	Rank          string
+	Level         int
+	RankProgress  int
+	ChangePercent int
+	Result        string
+
+	Modifiers []string
+	SR        []HeroSR
+}
+
+// HeroSR is one row of rank_sr.
+type HeroSR struct {
+	Hero   string
+	SR     int
+	Change int
+}
+
+// UnknownRow holds one parsed screenshot that didn't match any
+// screenshotType heuristic. Kept so parses aren't silently dropped.
+type UnknownRow struct {
+	ID       int64
+	Filename string
+	MatchKey string
+	ParsedAt string
+}
+
+// Screenshots is the bulk-load result — every row in the DB grouped by
+// parent type, with children attached.
+type Screenshots struct {
+	Summaries   []SummaryRow
+	Scoreboards []ScoreboardRow
+	Personals   []PersonalRow
+	Ranks       []RankRow
+	Unknowns    []UnknownRow
+}
+
+// SQLStore is the production Store, backed by *sql.DB.
 type SQLStore struct {
 	db *sql.DB
 }
 
-// Compile-time assertion that *SQLStore satisfies Store. Catches an
-// accidental signature drift (renaming a method, changing a return
-// type) at build time instead of at the call site. Mirrors the
-// pattern used by the fake store in pkg/app/store_integration_test.go.
 var _ Store = (*SQLStore)(nil)
 
-// NewSQLStore opens the SQLite database at path, applies the schema and
-// idempotent migrations, and returns a ready-to-use Store. path may be
-// ":memory:" for tests.
+// NewSQLStore opens the SQLite database at path, applies the schema, and
+// enables foreign-key enforcement so ON DELETE CASCADE fires for child
+// rows. path may be ":memory:" for tests.
 func NewSQLStore(path string) (*SQLStore, error) {
 	d, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := d.Exec(schema); err != nil {
+	// SQLite ships with FK enforcement OFF by default — without this
+	// PRAGMA, the ON DELETE CASCADE rules in the schema are parsed and
+	// silently ignored.
+	if _, err := d.Exec(`PRAGMA foreign_keys = ON`); err != nil {
 		_ = d.Close()
 		return nil, err
 	}
-	for _, m := range migrations {
-		if _, err := d.Exec(m); err != nil {
-			// Lightweight migrations are idempotent; "duplicate column"
-			// fires when the migration already applied. Anything else is a
-			// real failure.
-			if !strings.Contains(err.Error(), "duplicate column") {
-				_ = d.Close()
-				return nil, err
-			}
+	for _, stmt := range schemaStatements {
+		if _, err := d.Exec(stmt); err != nil {
+			_ = d.Close()
+			return nil, fmt.Errorf("schema: %w (stmt: %s)", err, firstLine(stmt))
 		}
 	}
 	return &SQLStore{db: d}, nil
 }
 
-// Close releases the underlying connection pool.
+func firstLine(s string) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		return s[:i]
+	}
+	return s
+}
+
 func (s *SQLStore) Close() error { return s.db.Close() }
 
-// LoadSourceFilenames returns a set of every source filename across every
-// row, so the app can skip OCR for already-parsed files.
-func (s *SQLStore) LoadSourceFilenames() (map[string]bool, error) {
-	rows, err := s.db.Query(`SELECT source_files FROM match_results`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	parsed := map[string]bool{}
-	for rows.Next() {
-		var raw string
-		if err := rows.Scan(&raw); err != nil {
-			return nil, err
-		}
-		var files []string
-		if err := json.Unmarshal([]byte(raw), &files); err != nil {
-			return nil, err
-		}
-		for _, f := range files {
-			parsed[f] = true
-		}
-	}
-	return parsed, rows.Err()
-}
-
-// LoadAll returns every match_results row, ordered by id. Initializes the
-// slice to length 0 so an empty result set still JSON-marshals as `[]`
-// (the OpenAPI spec for GET /api/match-results declares `type: array`,
-// which a nil slice would violate).
-func (s *SQLStore) LoadAll() ([]MatchRow, error) {
-	rows, err := s.db.Query(`SELECT
-		id, match_key, source_files, source_types, source_parsed_at,
-		map, type, mode, role, hero,
-		eliminations, assists, deaths, damage, healing, mitigation,
-		result, final_score, date, finished_at, game_length,
-		heroes_played, performance,
-		rank, level, rank_progress, change_percent, modifiers, sr,
-		parsed_at
-		FROM match_results ORDER BY id`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	out := make([]MatchRow, 0)
-	for rows.Next() {
-		var r MatchRow
-		var sourcesJSON string
-		var typesJSON, parsedAtJSON sql.NullString
-		var mapCol, typeCol, mode, role, hero sql.NullString
-		var result, finalScore, date, finishedAt, gameLength sql.NullString
-		var heroesJSON, perfJSON sql.NullString
-		var rank sql.NullString
-		var modifiersJSON, srJSON sql.NullString
-		var parsedAt sql.NullString
-		err := rows.Scan(
-			&r.ID, &r.MatchKey, &sourcesJSON, &typesJSON, &parsedAtJSON,
-			&mapCol, &typeCol, &mode, &role, &hero,
-			&r.Eliminations, &r.Assists, &r.Deaths,
-			&r.Damage, &r.Healing, &r.Mitigation,
-			&result, &finalScore, &date, &finishedAt, &gameLength,
-			&heroesJSON, &perfJSON,
-			&rank, &r.Level, &r.RankProgress, &r.ChangePercent,
-			&modifiersJSON, &srJSON,
-			&parsedAt,
-		)
+// LoadAllFilenames returns the union of every filename across every
+// parent table. Used to skip already-parsed files in the next OCR run.
+func (s *SQLStore) LoadAllFilenames() (map[string]bool, error) {
+	out := map[string]bool{}
+	for _, t := range parentTables {
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		rows, err := s.db.Query(`SELECT filename FROM ` + t)
 		if err != nil {
 			return nil, err
 		}
-		if err := json.Unmarshal([]byte(sourcesJSON), &r.SourceFiles); err != nil {
+		for rows.Next() {
+			var f string
+			if err := rows.Scan(&f); err != nil {
+				_ = rows.Close()
+				return nil, err
+			}
+			out[f] = true
+		}
+		if err := rows.Err(); err != nil {
+			_ = rows.Close()
 			return nil, err
 		}
-		if typesJSON.Valid && typesJSON.String != "" {
-			_ = json.Unmarshal([]byte(typesJSON.String), &r.SourceTypes)
-		}
-		if parsedAtJSON.Valid && parsedAtJSON.String != "" {
-			_ = json.Unmarshal([]byte(parsedAtJSON.String), &r.SourceParsedAt)
-		}
-		r.Map = mapCol.String
-		r.Type = typeCol.String
-		r.Mode = mode.String
-		r.Role = role.String
-		r.Hero = hero.String
-		r.Result = result.String
-		r.FinalScore = finalScore.String
-		r.Date = date.String
-		r.FinishedAt = finishedAt.String
-		r.GameLength = gameLength.String
-		r.Rank = rank.String
-		r.HeroesPlayedJSON = heroesJSON.String
-		r.PerformanceJSON = perfJSON.String
-		r.ModifiersJSON = modifiersJSON.String
-		r.SRJSON = srJSON.String
-		r.ParsedAt = parsedAt.String
-		out = append(out, r)
+		_ = rows.Close()
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
-// Upsert writes one row, replacing any existing row with the same match_key.
-// parsed_at intentionally is NOT refreshed on conflict — once a row exists
-// its parsed_at represents the first time that match key was inserted, and
-// the UI displays it as "this match was parsed on X" without shifting on
-// subsequent re-parses (e.g. when the user adds a rank screenshot later).
-func (s *SQLStore) Upsert(r MatchRow) error {
-	sourcesJSON, err := json.Marshal(r.SourceFiles)
-	if err != nil {
-		return err
-	}
-	var typesJSON sql.NullString
-	if len(r.SourceTypes) > 0 {
-		b, err := json.Marshal(r.SourceTypes)
-		if err != nil {
-			return err
-		}
-		typesJSON = sql.NullString{String: string(b), Valid: true}
-	}
-	var parsedAtJSON sql.NullString
-	if len(r.SourceParsedAt) > 0 {
-		b, err := json.Marshal(r.SourceParsedAt)
-		if err != nil {
-			return err
-		}
-		parsedAtJSON = sql.NullString{String: string(b), Valid: true}
-	}
-
-	_, err = s.db.Exec(
-		`INSERT INTO match_results (
-			match_key, source_files, source_types, source_parsed_at,
-			map, type, mode, role, hero,
-			eliminations, assists, deaths, damage, healing, mitigation,
-			result, final_score, date, finished_at, game_length,
-			heroes_played, performance,
-			rank, level, rank_progress, change_percent, modifiers, sr
-		) VALUES (?,?,?,?, ?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?, ?,?, ?,?,?,?,?,?)
-		ON CONFLICT(match_key) DO UPDATE SET
-			source_files     = excluded.source_files,
-			source_types     = excluded.source_types,
-			source_parsed_at = excluded.source_parsed_at,
-			map              = excluded.map,
-			type             = excluded.type,
-			mode             = excluded.mode,
-			role             = excluded.role,
-			hero             = excluded.hero,
-			eliminations     = excluded.eliminations,
-			assists          = excluded.assists,
-			deaths           = excluded.deaths,
-			damage           = excluded.damage,
-			healing          = excluded.healing,
-			mitigation       = excluded.mitigation,
-			result           = excluded.result,
-			final_score      = excluded.final_score,
-			date             = excluded.date,
-			finished_at      = excluded.finished_at,
-			game_length      = excluded.game_length,
-			heroes_played    = excluded.heroes_played,
-			performance      = excluded.performance,
-			rank             = excluded.rank,
-			level            = excluded.level,
-			rank_progress    = excluded.rank_progress,
-			change_percent   = excluded.change_percent,
-			modifiers        = excluded.modifiers,
-			sr               = excluded.sr`,
-		// parsed_at: NOT included in the UPDATE so the first-insert
-		// timestamp is preserved across re-parses.
-		r.MatchKey, string(sourcesJSON), typesJSON, parsedAtJSON,
-		nullableString(r.Map), nullableString(r.Type),
-		nullableString(r.Mode), nullableString(r.Role),
-		nullableString(r.Hero),
-		r.Eliminations, r.Assists, r.Deaths,
-		r.Damage, r.Healing, r.Mitigation,
-		nullableString(r.Result), nullableString(r.FinalScore),
-		nullableString(r.Date), nullableString(r.FinishedAt),
-		nullableString(r.GameLength),
-		nullableString(r.HeroesPlayedJSON), nullableString(r.PerformanceJSON),
-		nullableString(r.Rank), r.Level,
-		r.RankProgress, r.ChangePercent,
-		nullableString(r.ModifiersJSON), nullableString(r.SRJSON),
-	)
-	return err
-}
-
-// Clear deletes every row in match_results without touching the schema.
+// Clear deletes every row in every table. Children cascade.
 func (s *SQLStore) Clear() error {
-	_, err := s.db.Exec(`DELETE FROM match_results`)
-	return err
+	for _, t := range parentTables {
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		if _, err := s.db.Exec(`DELETE FROM ` + t); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-// nullableString maps a Go "" to SQL NULL.
+// nullableString maps Go "" to SQL NULL for nullable TEXT columns.
 func nullableString(s string) sql.NullString {
 	if s == "" {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: s, Valid: true}
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// UPSERT — per parent type. Each runs the parent + child writes inside
+// one transaction so a partial failure (child violates a constraint)
+// rolls the parent back too.
+//
+// Parent UPSERT excludes parsed_at from the SET clause so the
+// first-insert timestamp is preserved across re-parses (matches the
+// previous single-table behaviour).
+//
+// Child writes use DELETE-then-INSERT (not UPSERT) because the child
+// table has no UNIQUE on a non-PK column we can hook ON CONFLICT to;
+// the parent's id may also change semantically on conflict-update.
+// Wiping and reinserting is correct and simple.
+// ──────────────────────────────────────────────────────────────────────
+
+func (s *SQLStore) UpsertSummary(r SummaryRow) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var id int64
+	err = tx.QueryRow(
+		`INSERT INTO summary_screenshots (
+			filename, match_key,
+			map, mode, hero, result, final_score, date, finished_at, game_length,
+			perf_elim_total, perf_elim_avg_per_10min,
+			perf_assists_total, perf_assists_avg_per_10min,
+			perf_deaths_total, perf_deaths_avg_per_10min
+		) VALUES (?,?, ?,?,?,?,?,?,?,?, ?,?, ?,?, ?,?)
+		ON CONFLICT(filename) DO UPDATE SET
+			match_key   = excluded.match_key,
+			map         = excluded.map,
+			mode        = excluded.mode,
+			hero        = excluded.hero,
+			result      = excluded.result,
+			final_score = excluded.final_score,
+			date        = excluded.date,
+			finished_at = excluded.finished_at,
+			game_length = excluded.game_length,
+			perf_elim_total            = excluded.perf_elim_total,
+			perf_elim_avg_per_10min    = excluded.perf_elim_avg_per_10min,
+			perf_assists_total         = excluded.perf_assists_total,
+			perf_assists_avg_per_10min = excluded.perf_assists_avg_per_10min,
+			perf_deaths_total          = excluded.perf_deaths_total,
+			perf_deaths_avg_per_10min  = excluded.perf_deaths_avg_per_10min
+		RETURNING id`,
+		r.Filename, r.MatchKey,
+		nullableString(r.Map), nullableString(r.Mode), nullableString(r.Hero),
+		nullableString(r.Result), nullableString(r.FinalScore),
+		nullableString(r.Date), nullableString(r.FinishedAt), nullableString(r.GameLength),
+		r.PerfElimTotal, r.PerfElimAvgPer10Min,
+		r.PerfAssistsTotal, r.PerfAssistsAvgPer10Min,
+		r.PerfDeathsTotal, r.PerfDeathsAvgPer10Min,
+	).Scan(&id)
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`DELETE FROM summary_heroes_played WHERE summary_screenshot_id = ?`, id); err != nil {
+		return err
+	}
+	for _, h := range r.HeroesPlayed {
+		if _, err := tx.Exec(
+			`INSERT INTO summary_heroes_played (summary_screenshot_id, hero, percent_played, play_time)
+			VALUES (?,?,?,?)`,
+			id, h.Hero, h.PercentPlayed, nullableString(h.PlayTime),
+		); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var id int64
+	err = tx.QueryRow(
+		`INSERT INTO scoreboard_screenshots (
+			filename, match_key,
+			map, mode, hero,
+			eliminations, assists, deaths, damage, healing, mitigation
+		) VALUES (?,?, ?,?,?, ?,?,?,?,?,?)
+		ON CONFLICT(filename) DO UPDATE SET
+			match_key    = excluded.match_key,
+			map          = excluded.map,
+			mode         = excluded.mode,
+			hero         = excluded.hero,
+			eliminations = excluded.eliminations,
+			assists      = excluded.assists,
+			deaths       = excluded.deaths,
+			damage       = excluded.damage,
+			healing      = excluded.healing,
+			mitigation   = excluded.mitigation
+		RETURNING id`,
+		r.Filename, r.MatchKey,
+		nullableString(r.Map), nullableString(r.Mode), nullableString(r.Hero),
+		r.Eliminations, r.Assists, r.Deaths, r.Damage, r.Healing, r.Mitigation,
+	).Scan(&id)
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`DELETE FROM scoreboard_hero_stats WHERE scoreboard_screenshot_id = ?`, id); err != nil {
+		return err
+	}
+	for _, st := range r.HeroStats {
+		if _, err := tx.Exec(
+			`INSERT INTO scoreboard_hero_stats (scoreboard_screenshot_id, hero, stat_key, stat_value)
+			VALUES (?,?,?,?)`,
+			id, st.Hero, st.StatKey, st.StatValue,
+		); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *SQLStore) UpsertPersonal(r PersonalRow) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var id int64
+	err = tx.QueryRow(
+		`INSERT INTO personal_screenshots (filename, match_key, hero)
+		VALUES (?,?,?)
+		ON CONFLICT(filename) DO UPDATE SET
+			match_key = excluded.match_key,
+			hero      = excluded.hero
+		RETURNING id`,
+		r.Filename, r.MatchKey, nullableString(r.Hero),
+	).Scan(&id)
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`DELETE FROM personal_hero_stats WHERE personal_screenshot_id = ?`, id); err != nil {
+		return err
+	}
+	for _, st := range r.HeroStats {
+		if _, err := tx.Exec(
+			`INSERT INTO personal_hero_stats (personal_screenshot_id, hero, stat_key, stat_value)
+			VALUES (?,?,?,?)`,
+			id, st.Hero, st.StatKey, st.StatValue,
+		); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *SQLStore) UpsertRank(r RankRow) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var id int64
+	err = tx.QueryRow(
+		`INSERT INTO rank_screenshots (
+			filename, match_key,
+			rank, level, rank_progress, change_percent, result
+		) VALUES (?,?, ?,?,?,?,?)
+		ON CONFLICT(filename) DO UPDATE SET
+			match_key      = excluded.match_key,
+			rank           = excluded.rank,
+			level          = excluded.level,
+			rank_progress  = excluded.rank_progress,
+			change_percent = excluded.change_percent,
+			result         = excluded.result
+		RETURNING id`,
+		r.Filename, r.MatchKey,
+		nullableString(r.Rank), r.Level, r.RankProgress, r.ChangePercent,
+		nullableString(r.Result),
+	).Scan(&id)
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`DELETE FROM rank_modifiers WHERE rank_screenshot_id = ?`, id); err != nil {
+		return err
+	}
+	for _, m := range r.Modifiers {
+		if _, err := tx.Exec(
+			`INSERT INTO rank_modifiers (rank_screenshot_id, modifier) VALUES (?,?)`,
+			id, m,
+		); err != nil {
+			return err
+		}
+	}
+
+	if _, err := tx.Exec(`DELETE FROM rank_sr WHERE rank_screenshot_id = ?`, id); err != nil {
+		return err
+	}
+	for _, sr := range r.SR {
+		if _, err := tx.Exec(
+			`INSERT INTO rank_sr (rank_screenshot_id, hero, sr, change) VALUES (?,?,?,?)`,
+			id, sr.Hero, sr.SR, sr.Change,
+		); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *SQLStore) UpsertUnknown(r UnknownRow) error {
+	_, err := s.db.Exec(
+		`INSERT INTO unknown_screenshots (filename, match_key) VALUES (?,?)
+		ON CONFLICT(filename) DO UPDATE SET match_key = excluded.match_key`,
+		r.Filename, r.MatchKey,
+	)
+	return err
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// LoadAll — bulk read. Returns every parent row across all five tables
+// with children attached. Aggregator does the per-match grouping.
+// ──────────────────────────────────────────────────────────────────────
+
+func (s *SQLStore) LoadAll() (Screenshots, error) {
+	var out Screenshots
+	var err error
+	if out.Summaries, err = s.loadSummaries(); err != nil {
+		return out, err
+	}
+	if out.Scoreboards, err = s.loadScoreboards(); err != nil {
+		return out, err
+	}
+	if out.Personals, err = s.loadPersonals(); err != nil {
+		return out, err
+	}
+	if out.Ranks, err = s.loadRanks(); err != nil {
+		return out, err
+	}
+	if out.Unknowns, err = s.loadUnknowns(); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (s *SQLStore) loadSummaries() ([]SummaryRow, error) {
+	rows, err := s.db.Query(`SELECT
+		id, filename, match_key, parsed_at,
+		map, mode, hero, result, final_score, date, finished_at, game_length,
+		perf_elim_total, perf_elim_avg_per_10min,
+		perf_assists_total, perf_assists_avg_per_10min,
+		perf_deaths_total, perf_deaths_avg_per_10min
+		FROM summary_screenshots ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byID := map[int64]*SummaryRow{}
+	out := make([]SummaryRow, 0)
+	for rows.Next() {
+		var r SummaryRow
+		var mapC, mode, hero, result, fs, date, fa, gl sql.NullString
+		if err := rows.Scan(
+			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt,
+			&mapC, &mode, &hero, &result, &fs, &date, &fa, &gl,
+			&r.PerfElimTotal, &r.PerfElimAvgPer10Min,
+			&r.PerfAssistsTotal, &r.PerfAssistsAvgPer10Min,
+			&r.PerfDeathsTotal, &r.PerfDeathsAvgPer10Min,
+		); err != nil {
+			return nil, err
+		}
+		r.Map = mapC.String
+		r.Mode = mode.String
+		r.Hero = hero.String
+		r.Result = result.String
+		r.FinalScore = fs.String
+		r.Date = date.String
+		r.FinishedAt = fa.String
+		r.GameLength = gl.String
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for i := range out {
+		byID[out[i].ID] = &out[i]
+	}
+
+	hpRows, err := s.db.Query(
+		`SELECT summary_screenshot_id, hero, percent_played, play_time
+		FROM summary_heroes_played`)
+	if err != nil {
+		return nil, err
+	}
+	defer hpRows.Close()
+	for hpRows.Next() {
+		var id int64
+		var h SummaryHeroPlayed
+		var pt sql.NullString
+		if err := hpRows.Scan(&id, &h.Hero, &h.PercentPlayed, &pt); err != nil {
+			return nil, err
+		}
+		h.PlayTime = pt.String
+		if parent, ok := byID[id]; ok {
+			parent.HeroesPlayed = append(parent.HeroesPlayed, h)
+		}
+	}
+	return out, hpRows.Err()
+}
+
+func (s *SQLStore) loadScoreboards() ([]ScoreboardRow, error) {
+	rows, err := s.db.Query(`SELECT
+		id, filename, match_key, parsed_at,
+		map, mode, hero,
+		eliminations, assists, deaths, damage, healing, mitigation
+		FROM scoreboard_screenshots ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byID := map[int64]*ScoreboardRow{}
+	out := make([]ScoreboardRow, 0)
+	for rows.Next() {
+		var r ScoreboardRow
+		var mapC, mode, hero sql.NullString
+		if err := rows.Scan(
+			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt,
+			&mapC, &mode, &hero,
+			&r.Eliminations, &r.Assists, &r.Deaths,
+			&r.Damage, &r.Healing, &r.Mitigation,
+		); err != nil {
+			return nil, err
+		}
+		r.Map = mapC.String
+		r.Mode = mode.String
+		r.Hero = hero.String
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for i := range out {
+		byID[out[i].ID] = &out[i]
+	}
+
+	hsRows, err := s.db.Query(
+		`SELECT scoreboard_screenshot_id, hero, stat_key, stat_value
+		FROM scoreboard_hero_stats`)
+	if err != nil {
+		return nil, err
+	}
+	defer hsRows.Close()
+	for hsRows.Next() {
+		var id int64
+		var h HeroStat
+		if err := hsRows.Scan(&id, &h.Hero, &h.StatKey, &h.StatValue); err != nil {
+			return nil, err
+		}
+		if parent, ok := byID[id]; ok {
+			parent.HeroStats = append(parent.HeroStats, h)
+		}
+	}
+	return out, hsRows.Err()
+}
+
+func (s *SQLStore) loadPersonals() ([]PersonalRow, error) {
+	rows, err := s.db.Query(
+		`SELECT id, filename, match_key, parsed_at, hero
+		FROM personal_screenshots ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byID := map[int64]*PersonalRow{}
+	out := make([]PersonalRow, 0)
+	for rows.Next() {
+		var r PersonalRow
+		var hero sql.NullString
+		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &hero); err != nil {
+			return nil, err
+		}
+		r.Hero = hero.String
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for i := range out {
+		byID[out[i].ID] = &out[i]
+	}
+
+	hsRows, err := s.db.Query(
+		`SELECT personal_screenshot_id, hero, stat_key, stat_value
+		FROM personal_hero_stats`)
+	if err != nil {
+		return nil, err
+	}
+	defer hsRows.Close()
+	for hsRows.Next() {
+		var id int64
+		var h HeroStat
+		if err := hsRows.Scan(&id, &h.Hero, &h.StatKey, &h.StatValue); err != nil {
+			return nil, err
+		}
+		if parent, ok := byID[id]; ok {
+			parent.HeroStats = append(parent.HeroStats, h)
+		}
+	}
+	return out, hsRows.Err()
+}
+
+func (s *SQLStore) loadRanks() ([]RankRow, error) {
+	rows, err := s.db.Query(`SELECT
+		id, filename, match_key, parsed_at,
+		rank, level, rank_progress, change_percent, result
+		FROM rank_screenshots ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	byID := map[int64]*RankRow{}
+	out := make([]RankRow, 0)
+	for rows.Next() {
+		var r RankRow
+		var rank, result sql.NullString
+		if err := rows.Scan(
+			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt,
+			&rank, &r.Level, &r.RankProgress, &r.ChangePercent, &result,
+		); err != nil {
+			return nil, err
+		}
+		r.Rank = rank.String
+		r.Result = result.String
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for i := range out {
+		byID[out[i].ID] = &out[i]
+	}
+
+	modRows, err := s.db.Query(`SELECT rank_screenshot_id, modifier FROM rank_modifiers`)
+	if err != nil {
+		return nil, err
+	}
+	defer modRows.Close()
+	for modRows.Next() {
+		var id int64
+		var m string
+		if err := modRows.Scan(&id, &m); err != nil {
+			return nil, err
+		}
+		if parent, ok := byID[id]; ok {
+			parent.Modifiers = append(parent.Modifiers, m)
+		}
+	}
+	if err := modRows.Err(); err != nil {
+		return nil, err
+	}
+
+	srRows, err := s.db.Query(`SELECT rank_screenshot_id, hero, sr, change FROM rank_sr`)
+	if err != nil {
+		return nil, err
+	}
+	defer srRows.Close()
+	for srRows.Next() {
+		var id int64
+		var sr HeroSR
+		if err := srRows.Scan(&id, &sr.Hero, &sr.SR, &sr.Change); err != nil {
+			return nil, err
+		}
+		if parent, ok := byID[id]; ok {
+			parent.SR = append(parent.SR, sr)
+		}
+	}
+	return out, srRows.Err()
+}
+
+func (s *SQLStore) loadUnknowns() ([]UnknownRow, error) {
+	rows, err := s.db.Query(
+		`SELECT id, filename, match_key, parsed_at FROM unknown_screenshots ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]UnknownRow, 0)
+	for rows.Next() {
+		var r UnknownRow
+		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }

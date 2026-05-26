@@ -56,12 +56,12 @@ const emit = defineEmits<{
     <div v-else class="unknown-list">
       <article
         v-for="(rec, idx) in unknownRecords"
-        :key="rec.id"
+        :key="rec.match_key"
         class="unknown-card"
-        :class="{ expanded: cardState.isExpanded(rec.id) }"
+        :class="{ expanded: cardState.isExpanded(rec.match_key) }"
       >
         <!-- Card header: index + match key + slot chips + chevron -->
-        <div class="unknown-card-head" @click="cardState.toggleExpand(rec.id)">
+        <div class="unknown-card-head" @click="cardState.toggleExpand(rec.match_key)">
           <div class="unknown-head-lhs">
             <span class="unknown-idx">{{ String(idx + 1).padStart(2, '0') }}</span>
             <div class="unknown-key-block">
@@ -82,7 +82,7 @@ const emit = defineEmits<{
                 {{ slot.label }}
               </span>
             </div>
-            <span class="chev" :class="{ open: cardState.isExpanded(rec.id) }" aria-hidden="true">›</span>
+            <span class="chev" :class="{ open: cardState.isExpanded(rec.match_key) }" aria-hidden="true">›</span>
           </div>
         </div>
 
@@ -109,7 +109,7 @@ const emit = defineEmits<{
         </div>
 
         <!-- Expanded: source files + previews + any stats that parsed -->
-        <template v-if="cardState.isExpanded(rec.id)">
+        <template v-if="cardState.isExpanded(rec.match_key)">
           <div class="unknown-expanded">
             <div v-if="rec.source_files?.length" class="unknown-sources">
               <div class="block-eyebrow">

@@ -260,10 +260,10 @@ const { activeFilterCount } = filters
 const { weekStart, setWeekStart } = useWeekStart()
 const grouping = useMatchGrouping<MatchRecord>(filters.filteredSorted, filters.sortDir, weekStart)
 
-// Per-card expand/collapse state. Object keyed by record id; truthy =
+// Per-card expand/collapse state. Object keyed by match_key; truthy =
 // expanded. Plain object (not a Set) so Vue's reactivity sees each
 // toggle naturally without needing to reassign the whole container.
-const expanded = ref<Record<number, boolean>>({})
+const expanded = ref<Record<string, boolean>>({})
 
 async function load() {
   const before = records.value.length
@@ -474,7 +474,7 @@ const nowDateTime = computed(() => {
 })
 
 // Card collapse/expand.
-async function toggleExpand(id: number) {
+async function toggleExpand(id: string) {
   const wasExpanded = !!expanded.value[id]
   // Reassign the object so Vue sees a new reference. Mutating in place
   // works for plain objects with Vue 3 deep reactivity, but being
@@ -489,7 +489,7 @@ async function toggleExpand(id: number) {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }
 }
-function isExpanded(id: number) {
+function isExpanded(id: string) {
   return !!expanded.value[id]
 }
 // Bulk toggle: if any visible card is expanded, collapse all; otherwise
@@ -497,13 +497,13 @@ function isExpanded(id: number) {
 // affect rows the user can't see.
 function toggleAll() {
   const visible = filters.filteredSorted.value
-  const anyOpen = visible.some(r => isExpanded(r.id))
+  const anyOpen = visible.some(r => isExpanded(r.match_key))
   const next = { ...expanded.value }
-  for (const r of visible) next[r.id] = !anyOpen
+  for (const r of visible) next[r.match_key] = !anyOpen
   expanded.value = next
 }
 const allExpanded = computed(() =>
-  filters.filteredSorted.value.length > 0 && filters.filteredSorted.value.every(r => isExpanded(r.id))
+  filters.filteredSorted.value.length > 0 && filters.filteredSorted.value.every(r => isExpanded(r.match_key))
 )
 
 // W-L-D summary that reflects the *currently filtered* set so the user
@@ -516,11 +516,11 @@ const wld = computed(() => tallyWLD(filters.filteredSorted.value))
 // main card expand state — most users don't care which screenshots fed
 // a row, so we keep this folded by default even when the card itself
 // is open.
-const sourcesExpanded = ref<Record<number, boolean>>({})
-function toggleSources(id: number) {
+const sourcesExpanded = ref<Record<string, boolean>>({})
+function toggleSources(id: string) {
   sourcesExpanded.value = { ...sourcesExpanded.value, [id]: !sourcesExpanded.value[id] }
 }
-function isSourcesOpen(id: number) {
+function isSourcesOpen(id: string) {
   return !!sourcesExpanded.value[id]
 }
 

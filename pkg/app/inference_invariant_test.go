@@ -3,20 +3,21 @@ package app
 // Tests in this file lock the load-bearing invariant that the read-time
 // inference helpers (inferSoleHeroPercent, inferResultFromRank) run on
 // the way OUT of the DB — via GetMatchResults and scrapeReader — never
-// inside the merge path that writes to the store.
+// inside the write path that persists per-screenshot rows.
 //
-// Why this matters: mergeMatchResult uses first-non-empty-wins for
-// scalars. If inference fired before the merge, the inferred value
-// would land in the DB, then a later SUMMARY screenshot's authoritative
-// value (e.g. a `defeat` when the SR-delta inference picked `victory`)
-// would lose to the already-stored inferred value. The current
-// architecture sidesteps that by NEVER persisting inferred fields:
-// the store always holds the raw OCR output, and inference is recomputed
-// on every read.
+// Why this matters: mergeMatchResult (now invoked at read time by the
+// aggregator) uses first-non-empty-wins for scalars. If inference fired
+// before the merge AND the inferred value were persisted, the inferred
+// value would land in the DB, then a later SUMMARY screenshot's
+// authoritative value (e.g. a `defeat` when the SR-delta inference
+// picked `victory`) would lose to the already-stored inferred value.
+// The current architecture sidesteps that by NEVER persisting inferred
+// fields: the store always holds the raw OCR output, and inference is
+// recomputed on every read.
 //
-// A future refactor that "helpfully" moves inference into the merge path
-// to "avoid recomputing on every read" would silently corrupt match
-// outcomes. These tests fail loudly in that case.
+// A future refactor that "helpfully" moves inference into the write
+// path to "avoid recomputing on every read" would silently corrupt
+// match outcomes. These tests fail loudly in that case.
 
 import (
 	"testing"
@@ -30,12 +31,10 @@ func TestInference_ResultFromRank_FiresAtReadTime(t *testing.T) {
 	// but whose SR row has a positive Change. inferResultFromRank should
 	// fill Result with "victory" when GetMatchResults runs.
 	fs := &fakeStore{
-		rows: []db.MatchRow{{
-			MatchKey:    "match:2026-05-10T21:29:28",
-			SourceFiles: []string{"rank.png"},
-			Rank:        "platinum",
-			SRJSON:      `[{"hero":"juno","start":2845,"end":2867,"change":22}]`,
-			// Note: Result column NOT set — that's what triggers inference.
+		ranks: []db.RankRow{{
+			ID: 1, Filename: "rank.png", MatchKey: "match:2026-05-10T21:29:28",
+			Rank: "platinum",
+			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
 		}},
 	}
 	a := NewWithStore(fs)
@@ -53,55 +52,54 @@ func TestInference_ResultFromRank_FiresAtReadTime(t *testing.T) {
 }
 
 func TestInference_NeverPersistedToStore(t *testing.T) {
-	// Same setup as the read-time test above — but after calling
-	// GetMatchResults (which mutates a *copy* of each row), the
-	// underlying store row MUST still have Result="" and PercentPlayed=0.
-	// If a future refactor moved inference into mergeMatchResult or
-	// upsertMergedRow, this assertion would catch the regression.
+	// After calling GetMatchResults (which mutates a *copy* of each row),
+	// the underlying store rows MUST still have Result="" and unchanged
+	// HeroesPlayed[].PercentPlayed. If a future refactor moved inference
+	// into a write path, this assertion would catch the regression.
 	fs := &fakeStore{
-		rows: []db.MatchRow{{
-			MatchKey:         "match:2026-05-10T21:29:28",
-			SourceFiles:      []string{"rank.png"},
-			Rank:             "platinum",
-			SRJSON:           `[{"hero":"juno","start":2845,"end":2867,"change":22}]`,
-			HeroesPlayedJSON: `[{"hero":"juno","percent_played":0}]`,
+		ranks: []db.RankRow{{
+			ID: 1, Filename: "rank.png", MatchKey: "match:2026-05-10T21:29:28",
+			Rank: "platinum",
+			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
+		}},
+		personals: []db.PersonalRow{{
+			ID: 1, Filename: "personal.png", MatchKey: "match:2026-05-10T21:29:28",
+			Hero: "juno",
+			HeroStats: []db.HeroStat{
+				{Hero: "juno", StatKey: "weapon_accuracy", StatValue: 24},
+			},
 		}},
 	}
 	a := NewWithStore(fs)
 
-	// Pull through the read-time inference path.
 	if _, err := a.GetMatchResults(); err != nil {
 		t.Fatalf("GetMatchResults: %v", err)
 	}
 
-	// Now query the store directly — the raw row should be untouched.
+	// Direct DB inspection — the stored rank row should still carry
+	// Result="" (no leakage from inferResultFromRank).
 	raw, err := fs.LoadAll()
 	if err != nil {
 		t.Fatalf("fakeStore.LoadAll: %v", err)
 	}
-	if got := raw[0].Result; got != "" {
-		t.Errorf("inference leaked into store: raw.Result = %q, want \"\" (raw); inference must run at read time only", got)
-	}
-	// The HeroesPlayedJSON column is the source of truth for hero stats.
-	// inferSoleHeroPercent should not have rewritten the percent_played:0
-	// embedded in the JSON.
-	wantJSON := `[{"hero":"juno","percent_played":0}]`
-	if got := raw[0].HeroesPlayedJSON; got != wantJSON {
-		t.Errorf("inferSoleHeroPercent leaked into HeroesPlayedJSON\n got: %s\nwant: %s", got, wantJSON)
+	if got := raw.Ranks[0].Result; got != "" {
+		t.Errorf("inferResultFromRank leaked into store: raw.Result = %q, want \"\" (raw)", got)
 	}
 }
 
 func TestInference_DoesNotOverrideStoredResult(t *testing.T) {
 	// SR.Change > 0 would normally trigger inferResultFromRank → "victory",
-	// but the stored row already has Result="defeat" from a SUMMARY
-	// screenshot. Inference must NOT overwrite an authoritative value.
+	// but the SUMMARY screenshot already carries Result="defeat". Inference
+	// must NOT overwrite an authoritative value.
 	fs := &fakeStore{
-		rows: []db.MatchRow{{
-			MatchKey:    "match:2026-05-10T21:29:28",
-			SourceFiles: []string{"summary.png", "rank.png"},
-			Rank:        "platinum",
-			Result:      "defeat",
-			SRJSON:      `[{"hero":"juno","start":2845,"end":2867,"change":22}]`,
+		summaries: []db.SummaryRow{{
+			ID: 1, Filename: "summary.png", MatchKey: "match:2026-05-10T21:29:28",
+			Result: "defeat",
+		}},
+		ranks: []db.RankRow{{
+			ID: 1, Filename: "rank.png", MatchKey: "match:2026-05-10T21:29:28",
+			Rank: "platinum",
+			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
 		}},
 	}
 	a := NewWithStore(fs)
@@ -116,16 +114,15 @@ func TestInference_DoesNotOverrideStoredResult(t *testing.T) {
 }
 
 func TestInference_SoleHeroPercent_DoesNotOverrideStored(t *testing.T) {
-	// A single-hero row already has PercentPlayed=80 (e.g. from a SUMMARY
-	// screenshot where the player swapped briefly to another hero whose
-	// row was lost). inferSoleHeroPercent's "one hero → 100%" rule must
-	// NOT clobber that stored value.
+	// A summary with PercentPlayed=80 — inferSoleHeroPercent's "one hero
+	// → 100%" rule must NOT clobber it.
 	fs := &fakeStore{
-		rows: []db.MatchRow{{
-			MatchKey:         "match:2026-05-10T21:29:28",
-			SourceFiles:      []string{"summary.png"},
-			Hero:             "lucio",
-			HeroesPlayedJSON: `[{"hero":"lucio","percent_played":80}]`,
+		summaries: []db.SummaryRow{{
+			ID: 1, Filename: "summary.png", MatchKey: "k1",
+			Hero: "lucio",
+			HeroesPlayed: []db.SummaryHeroPlayed{
+				{Hero: "lucio", PercentPlayed: 80},
+			},
 		}},
 	}
 	a := NewWithStore(fs)
@@ -142,7 +139,6 @@ func TestInference_SoleHeroPercent_DoesNotOverrideStored(t *testing.T) {
 
 // Sanity: the inference helpers themselves should be pure — calling
 // them twice in a row must produce the same result as calling them once.
-// Catches a refactor that introduces hidden state or non-idempotent logic.
 func TestInference_Idempotent(t *testing.T) {
 	d := &parser.MatchResult{
 		Rank: "platinum",

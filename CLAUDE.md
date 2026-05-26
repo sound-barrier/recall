@@ -222,48 +222,69 @@ screenshots/*.png
       ▼  (Tesseract via parser.ParseScreenshot, dispatched per screenshot type)
 parser.MatchResult
       │
-      ▼  (pkg/app/parse.go + merge.go: mergeByTimestamp → splitByMatchMetadata → mergeByStatsSignature → findMergeIntoExisting)
-SQLite match_results       ← source of truth
+      ▼  (pkg/app/parse.go: screenshotType + resolveMatchKey, then per-type Upsert)
+SQLite per-type tables:
+   summary_screenshots + summary_heroes_played
+   scoreboard_screenshots + scoreboard_hero_stats
+   personal_screenshots + personal_hero_stats
+   rank_screenshots + rank_modifiers + rank_sr
+   unknown_screenshots          ← source of truth (one row per screenshot)
+      │
+      │  (read time: pkg/app/aggregate.go::aggregateAll bulk-loads,
+      │   groups by match_key, folds via mergeMatchResult)
+      ▼
+   MatchRecord
       │
       ├──→ Wails GetMatchResults() ──→ Vue UI (App.vue)
       │
       └──→ metrics.Collector reads on every Prometheus scrape ──→ Grafana
 ```
 
-**SQLite is the source of truth.** The Prometheus collector reads it on
-every scrape; nothing else writes to the TSDB. Filters (e.g.
-competitive-only) live at the metrics boundary in
+**SQLite is the source of truth.** The raw per-screenshot rows are
+preserved verbatim — aggregation (folding multiple screenshots into one
+match) happens at read time, so a wrong scalar from one screenshot can
+be corrected later by adding another screenshot to the match. The
+Prometheus collector reads via the same aggregator on every scrape;
+filters (e.g. competitive-only) live at the metrics boundary in
 `pkg/metrics/metrics.go::Collect`, **not** in the parser or DB — so
 quickplay matches are visible in the Wails UI but never reach Grafana.
 
-## How match merging works (the hard part)
+## How match aggregation works (the hard part)
 
 A single match produces 3-5 screenshots (SUMMARY, TEAMS, PERSONAL ×N
-heroes, optional rank screen). Each populates a disjoint subset of fields
-on `parser.MatchResult`. `pkg/app/merge.go` merges them into one DB row via three
-sequential passes:
+heroes, optional rank screen). Each populates a disjoint subset of
+fields on `parser.MatchResult`. The pipeline splits into two halves:
 
-1. **`mergeByTimestamp`** — groups screenshots whose filename timestamps
-   are within `mergeWindow` (2 min) of each other. Captures sequential
-   post-match tab clicks.
-2. **`splitByMatchMetadata`** — re-splits any group that contains
-   conflicting `(date, finished_at)` signatures. Catches the
-   back-to-back-matches case where two SUMMARY screens land in one
-   timestamp window (we hit this with Rialto + Aatlis only 13 s apart).
-3. **`mergeByStatsSignature`** — folds rows that share `(eliminations,
-   assists, deaths)` plus compatible map/date/hero. Bridges the in-game
-   scoreboard (taken mid-match) to its post-match SUMMARY/TEAMS/PERSONAL
-   group, which can be tens of minutes apart.
+**Write path** (`pkg/app/parse.go`, `pkg/app/correlation.go`): each
+screenshot is OCR'd and inserted into its own per-type table
+(`UpsertSummary`, `UpsertScoreboard`, `UpsertPersonal`, `UpsertRank`,
+`UpsertUnknown`). The new row's `match_key` is resolved by
+`resolveMatchKey`, which scans every parent table for an existing
+screenshot to adopt the key from:
 
-Then the loop in `ParseScreenshots` tries to merge each new `mergedRow`
-into an *existing* DB row via `findMergeIntoExisting` (same two criteria:
-E/A/D signature OR timestamp window with no metadata conflict). This is
-what makes the Parse button idempotent — re-clicking doesn't duplicate;
-adding one new screenshot to an existing match's group folds it in.
+1. **EAD-signature match** — any existing scoreboard with the same
+   non-zero `(eliminations, assists, deaths)` and no `(map, hero)`
+   conflict. Bridges in-game scoreboard ↔ post-match summary.
+2. **Timestamp-window match** — any existing screenshot within
+   `mergeWindow` (2 min) with no signature conflict. Closest-in-time
+   wins — handles a PERSONAL screenshot landing between two adjacent
+   SUMMARY windows.
+3. **Fresh key** — `match:<earliest-filename-ts>`, or
+   `unmatched:<filename>` for files without a parseable timestamp.
 
-**`mergeMatchResult`** uses "first non-empty wins" for scalars and a
-hero-keyed merge for `heroes_played` (so each hero's stats stay distinct
-across multi-hero matches).
+Re-parsing the same filename triggers `ON CONFLICT(filename) DO UPDATE`
+on the parent (children are DELETE-then-INSERT inside the same
+transaction; `PRAGMA foreign_keys = ON` makes the cascade reliable).
+The Parse button is idempotent — re-clicking replaces rows in place,
+no duplicates.
+
+**Read path** (`pkg/app/aggregate.go::aggregateAll`): bulk-SELECTs every
+row across the 5 parent tables, attaches child rows, groups by
+`match_key`, sorts each group by `(filename-timestamp asc, parsed_at
+asc)`, and folds via `mergeMatchResult` — the same "first non-empty
+wins" precedence the old destructive merge used, just running on the
+read side now. `role` (from hero) and `type` (from map) are resolved
+on the fly via `parser.HeroRole` / `parser.MapType`, never stored.
 
 ## Per-screenshot-type parsers (`pkg/parser/`)
 
@@ -307,24 +328,57 @@ CGo binding.
 
 ## Database layer (`pkg/db/db.go`)
 
-Single `match_results` table, explicit columns for every scalar field on
-`MatchResult`, JSON blobs for `heroes_played`, `performance`, `modifiers`,
-`sr`, `source_types`, `source_parsed_at` (variable-length nested
-data). Schema is
-`CREATE TABLE IF NOT EXISTS` plus an idempotent `migrations` slice in
-`pkg/db/db.go` for in-place `ALTER TABLE ADD COLUMN` — "duplicate column"
-errors are swallowed so existing DBs upgrade on next launch. Append a new
-statement to that slice when adding a column; only DROP/RENAME or NOT
-NULL changes still require wiping `recall.db`.
+Ten tables in 3NF: five **parent** tables (one per screenshot type) plus
+five **child** tables for the repeating-group fields:
 
-Per-source-file screenshot type is stored in the JSON `source_types`
-column — `map[filename]type` where type ∈ {`summary`, `scoreboard`,
-`personal`, `rank`}. Populated by `screenshotType(*MatchResult)` at
-parse time, threaded through `mergedRow.Types`, surfaced as
-`MatchRecord.SourceTypes` to the frontend. Rows parsed before this
-column landed have `source_types=NULL`; the frontend renders a "?"
-chip and `detectScreenshotSlots()` falls back to field-presence
-inference for those rows.
+| Parent | Children |
+|---|---|
+| `summary_screenshots` (scalar SUMMARY fields + 6 inlined `perf_*` columns) | `summary_heroes_played` (hero, percent_played, play_time) |
+| `scoreboard_screenshots` (E/A/D + damage/healing/mit + map/mode/hero) | `scoreboard_hero_stats` (hero, stat_key, stat_value) |
+| `personal_screenshots` (hero only) | `personal_hero_stats` (hero, stat_key, stat_value) |
+| `rank_screenshots` (rank/level/progress/change/result) | `rank_modifiers` (modifier), `rank_sr` (hero, sr, change) |
+| `unknown_screenshots` (no domain fields) | *(none)* |
+
+Each parent has `id INTEGER PK AUTOINCREMENT`, `filename TEXT UNIQUE`,
+`match_key TEXT NOT NULL`, and `parsed_at DATETIME DEFAULT
+CURRENT_TIMESTAMP`. Each child references its parent with
+`ON DELETE CASCADE` and has a composite PK that prevents duplicate
+fold-ins on re-parse. **`NewSQLStore` must `PRAGMA foreign_keys = ON`**
+— SQLite parses the CASCADE rules but only enforces them when this
+pragma is set on every connection.
+
+**Derived fields are not stored.** `role` is computed from `hero` via
+`parser.HeroRole`, `type` from `map` via `parser.MapType`; both lookups
+hit the YAML-derived in-memory tables (`pkg/parser/heroes.yaml`,
+`pkg/parser/maps.yaml`). Storing them would be a 3NF violation
+(transitive dependency) and would surface as "row A says juno=support
+but row B says juno=dps" inconsistencies after a YAML change.
+
+**Write path** (per screenshot, inside one `BEGIN…COMMIT`):
+
+1. Parent UPSERT via `ON CONFLICT(filename) DO UPDATE SET … RETURNING id` —
+   note `parsed_at` is intentionally **not** in the SET clause so the
+   first-insert timestamp survives re-parses.
+2. `DELETE FROM <child> WHERE <parent>_id = ?` to wipe stale children.
+3. `INSERT INTO <child> …` for every new child row.
+
+The DELETE-then-INSERT (instead of UPSERT) for children is deliberate:
+each child PK is a composite `(parent_id, hero[, stat_key])`, and a
+re-parse that drops a hero from `HeroesPlayed` must wipe that hero's
+old row — UPSERT alone wouldn't remove it.
+
+**Read path** (`pkg/app/aggregate.go`): five parent SELECTs + five
+child SELECTs grouped by parent id, then re-keyed by `match_key` and
+folded via `mergeMatchResult`. No N+1 query risk — every table is hit
+exactly once per `aggregateAll` call (called from `GetMatchResults` and
+on every Prometheus scrape).
+
+Adding a new parser scalar field: add an `ALTER TABLE … ADD COLUMN`
+statement (idempotent — "duplicate column" errors are tolerated) to
+the appropriate parent table, plus the field on the matching `*Row`
+struct in `pkg/db/store.go`, plus the Upsert SET clause. Adding a new
+repeating-group dimension: a new child table referencing the right
+parent with `ON DELETE CASCADE`.
 
 The DB lives at `<appDataDir>/db/recall.db` where `appDataDir()` in `pkg/app/settings.go`
 resolves to the platform user-config directory:
@@ -335,11 +389,17 @@ resolves to the platform user-config directory:
 | Linux | `~/.config/recall/db/recall.db` (or `$XDG_CONFIG_HOME/recall/db/`) |
 | Windows | `%AppData%\Recall\db\recall.db` |
 
-Match identity is `match_key TEXT NOT NULL UNIQUE` derived from the
-earliest screenshot's filename timestamp (`match:2026-05-10T21:29:28`).
-Orphan/unparseable rows get `unmatched:<filename>` as their key.
+Match identity is `match_key` — string identity, **no integer `id`**
+on the API surface. The aggregator builds it on the fly from the parent
+tables; identity is derived from the earliest screenshot's filename
+timestamp (`match:2026-05-10T21:29:28`). Files without a parseable
+timestamp get `unmatched:<filename>`.
 
-The `parsed_at` column is the row's insert/update time, not the match's
+Per-source-file screenshot type is the parent table the row lives in —
+no separate `source_types` column required. `MatchRecord.SourceTypes`
+is built at aggregate time from each row's parent table name.
+
+The `parsed_at` column is the row's first-insert time, not the match's
 time — match time comes from `date` + `finished_at` (SUMMARY) or the
 match_key timestamp prefix (fallback).
 

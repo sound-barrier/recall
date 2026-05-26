@@ -44,10 +44,10 @@ describe('GET success', () => {
   afterEach(() => { vi.unstubAllGlobals() })
 
   it('resolves with the parsed JSON body', async () => {
-    vi.stubGlobal('fetch', mockFetch(200, [{ id: 1, match_key: 'match:x', source_files: [], data: {} }]))
+    vi.stubGlobal('fetch', mockFetch(200, [{ match_key: 'match:x', source_files: [], data: {} }]))
     const result = await GetMatchResults()
     expect(result).toHaveLength(1)
-    expect(result[0]?.id).toBe(1)
+    expect(result[0]?.match_key).toBe('match:x')
   })
 
   it('resolves a numeric unwrap correctly', async () => {

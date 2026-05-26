@@ -10,7 +10,7 @@ import (
 // SELECT that backs GetMatchResults, so cardinality and freshness are
 // identical between the Wails UI and the metrics endpoint.
 func (a *App) scrapeReader() ([]metrics.ScrapeRow, error) {
-	recs, err := a.readAllRecords()
+	recs, err := a.aggregateAll()
 	if err != nil {
 		return nil, err
 	}

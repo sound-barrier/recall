@@ -41,7 +41,7 @@ describe('App.vue', () => {
     await mountApp({
       records: [
         // Minimal valid MatchRecord — only the fields the helpers actually read.
-        { id: 1, match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
+        { match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
           map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
         } },
       ],
@@ -101,7 +101,7 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
   // it flashes a pulse class on the scoreboard so the user notices.
   it('adds .pulse to the scoreboard when records grow on parse-complete', async () => {
     const initial: MatchRecord[] = [
-      { id: 1, match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
+      { match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
         map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
       } },
     ]
@@ -112,7 +112,7 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
     const api = await import('./api')
     const grown: MatchRecord[] = [
       ...initial,
-      { id: 2, match_key: 'match:2026-05-10T22:14:02', source_files: ['b.png'], data: {
+      { match_key: 'match:2026-05-10T22:14:02', source_files: ['b.png'], data: {
         map: 'aatlis', date: '2026-05-10', finished_at: '22:14', result: 'defeat',
       } },
     ]
@@ -128,7 +128,7 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
 
   it('does NOT pulse when records count is unchanged on parse-complete', async () => {
     const seed: MatchRecord[] = [
-      { id: 1, match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
+      { match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
         map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
       } },
     ]

@@ -32,8 +32,8 @@ type GroupingApi = ReturnType<typeof useMatchGrouping<MatchRecord>>
 // view); CardStateApi packages the accessors + handlers so this view
 // can stay state-free.
 export interface CardStateApi {
-  isExpanded:    (id: number) => boolean
-  isSourcesOpen: (id: number) => boolean
+  isExpanded:    (id: string) => boolean
+  isSourcesOpen: (id: string) => boolean
   // Refs (not their unwrapped values) — they're nested inside an
   // object, so Vue's template auto-unwrap doesn't reach them at this
   // depth. Consumers access via `.value`.
@@ -41,8 +41,8 @@ export interface CardStateApi {
   previewError:  Ref<Record<string, boolean>>
   allExpanded:   Readonly<Ref<boolean> | ComputedRef<boolean>>
   toggleAll:     () => void
-  toggleExpand:  (id: number) => void
-  toggleSources: (id: number) => void
+  toggleExpand:  (id: string) => void
+  toggleSources: (id: string) => void
   togglePreview: (filename: string) => void
   onPreviewError: (filename: string) => void
 }

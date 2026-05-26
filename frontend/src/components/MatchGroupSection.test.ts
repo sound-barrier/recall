@@ -12,7 +12,6 @@ import type { MatchRecord } from '../api'
 
 function makeRecord(id: number, over: Partial<MatchRecord['data']> = {}): MatchRecord {
   return {
-    id,
     match_key: `match:2026-05-10T21:29:${String(id).padStart(2, '0')}`,
     source_files: [`screenshot-${id}.png`],
     data: {
@@ -191,7 +190,7 @@ describe('MatchGroupSection — toggle / collapse / leaf vs branch', () => {
     const wrapper = mountSection(g)
     // Click the MatchCard header.
     await wrapper.find('.match-header').trigger('click')
-    expect(wrapper.emitted('toggle-expand')![0]).toEqual([7])
+    expect(wrapper.emitted('toggle-expand')![0]).toEqual(['match:2026-05-10T21:29:07'])
   })
 })
 

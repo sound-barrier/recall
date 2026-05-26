@@ -4,6 +4,15 @@ package parser
 // init() from pkg/parser/maps.yaml. Edit maps.yaml to add or rename
 // a map.
 
+// MapType returns the type ("control", "escort", "hybrid", …) for the
+// given map name, or "" for an unknown map. Accepts any casing — input
+// is normalized to the same key form mapTypes was built with. Exported
+// so the aggregator can resolve type at read time from the stored map
+// name without persisting a redundant `type` column on every row.
+func MapType(mapName string) string {
+	return mapTypes[normalize(mapName)]
+}
+
 // snapToKnownMap returns the known OW map whose normalized name is
 // closest to the OCR'd string by Levenshtein distance, but only if
 // the match is decent (distance below ~40% of the candidate length).

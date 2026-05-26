@@ -14,26 +14,26 @@ import type { MatchRecord } from '../api'
 // path App.vue does, but without dragging in the rest of the SFC's
 // onMounted side effects.
 
-function makeCardState(records: MatchRecord[]): { api: CardStateApi; expanded: Ref<Record<number, boolean>> } {
-  const expanded = ref<Record<number, boolean>>({})
+function makeCardState(records: MatchRecord[]): { api: CardStateApi; expanded: Ref<Record<string, boolean>> } {
+  const expanded = ref<Record<string, boolean>>({})
   const previewOpen = ref<Record<string, boolean>>({})
   const previewError = ref<Record<string, boolean>>({})
-  const sourcesOpen = ref<Record<number, boolean>>({})
+  const sourcesOpen = ref<Record<string, boolean>>({})
 
   const api: CardStateApi = {
-    isExpanded: (id: number) => !!expanded.value[id],
-    isSourcesOpen: (id: number) => !!sourcesOpen.value[id],
+    isExpanded: (id: string) => !!expanded.value[id],
+    isSourcesOpen: (id: string) => !!sourcesOpen.value[id],
     previewOpen,
     previewError,
-    allExpanded: computed(() => records.length > 0 && records.every(r => !!expanded.value[r.id])),
+    allExpanded: computed(() => records.length > 0 && records.every(r => !!expanded.value[r.match_key])),
     toggleAll: () => {
-      const any = records.some(r => !!expanded.value[r.id])
-      const next: Record<number, boolean> = {}
-      for (const r of records) next[r.id] = !any
+      const any = records.some(r => !!expanded.value[r.match_key])
+      const next: Record<string, boolean> = {}
+      for (const r of records) next[r.match_key] = !any
       expanded.value = next
     },
-    toggleExpand: (id: number) => { expanded.value = { ...expanded.value, [id]: !expanded.value[id] } },
-    toggleSources: (id: number) => { sourcesOpen.value = { ...sourcesOpen.value, [id]: !sourcesOpen.value[id] } },
+    toggleExpand: (id: string) => { expanded.value = { ...expanded.value, [id]: !expanded.value[id] } },
+    toggleSources: (id: string) => { sourcesOpen.value = { ...sourcesOpen.value, [id]: !sourcesOpen.value[id] } },
     togglePreview: () => undefined,
     onPreviewError: () => undefined,
   }
@@ -86,7 +86,7 @@ describe('MatchesView', () => {
 
   it('renders the FilterRail and group list once records are present', () => {
     const { wrapper } = mountWith([
-      { id: 1, match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
+      { match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
         map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory', mode: 'competitive',
       } },
     ])
@@ -103,7 +103,7 @@ describe('MatchesView', () => {
 
   it('renders the UNKNOWN DATE bucket when a record lacks a date and includeUndated=true', () => {
     const { wrapper } = mountWith([
-      { id: 1, match_key: 'unmatched:scoreboard.png', source_files: ['scoreboard.png'], data: {
+      { match_key: 'unmatched:scoreboard.png', source_files: ['scoreboard.png'], data: {
         map: 'rialto', mode: 'competitive', result: 'victory',
       } },
     ], /* includeUndated */ true)
@@ -112,7 +112,7 @@ describe('MatchesView', () => {
 
   it('hides the UNKNOWN DATE bucket when includeUndated=false (default), but the rail toggle stays visible', () => {
     const { wrapper } = mountWith([
-      { id: 1, match_key: 'unmatched:scoreboard.png', source_files: ['scoreboard.png'], data: {
+      { match_key: 'unmatched:scoreboard.png', source_files: ['scoreboard.png'], data: {
         map: 'rialto', mode: 'competitive', result: 'victory',
       } },
     ]) // includeUndated defaults to false
@@ -130,10 +130,10 @@ describe('MatchesView', () => {
 
   it('Expand-all button flips the group tree state', async () => {
     const { wrapper, grouping } = mountWith([
-      { id: 1, match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
+      { match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
         map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory', mode: 'competitive',
       } },
-      { id: 2, match_key: 'match:2026-04-15T20:00:00', source_files: ['b.png'], data: {
+      { match_key: 'match:2026-04-15T20:00:00', source_files: ['b.png'], data: {
         map: 'aatlis', date: '2026-04-15', finished_at: '20:00', result: 'defeat', mode: 'competitive',
       } },
     ])
