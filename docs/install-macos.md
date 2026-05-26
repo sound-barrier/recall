@@ -66,7 +66,7 @@ brew install tesseract
 If you don't have Homebrew: [brew.sh](https://brew.sh)
 
 Recall auto-detects the Homebrew install path on first launch. If you install
-Tesseract after Recall is already running, use **Ingest → Engine → Locate
+Tesseract after Recall is already running, use **Settings → Engine → Locate
 Tesseract…** to point it at the binary.
 
 ## 5. Point Recall at your screenshots folder

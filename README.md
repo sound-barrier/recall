@@ -40,7 +40,7 @@ flowchart LR
 - [Quick start](#quick-start)
 - [Installation](#installation)
   - [Verifying downloads](#verifying-downloads)
-  - [macOS](docs/install-macos.md) · [Linux](docs/install-linux.md)
+  - [Windows](docs/install-windows.md) · [macOS](docs/install-macos.md) · [Linux](docs/install-linux.md)
 - [Capturing matches](#capturing-matches)
 
 **Advanced** — most users can skip these
@@ -58,11 +58,11 @@ flowchart LR
 
 The desktop app is the simplest way to use Recall. Five steps from zero to your first match record:
 
-1. **Install Recall** — grab `recall-{version}-windows-amd64-installer.exe` from [GitHub Releases](https://github.com/sound-barrier/recall/releases) and run it. For macOS or Linux, see the [Installation](#installation) section below.
+1. **Install Recall** — grab `recall-{version}-windows-amd64-installer.exe` from [GitHub Releases](https://github.com/sound-barrier/recall/releases) and run it. Full step-by-step in the [Windows install guide](docs/install-windows.md). For macOS or Linux, see the [Installation](#installation) section below.
 2. **Install Tesseract OCR 5.x** — Recall uses it to read your screenshots. Download the **5.x** installer from [UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki) and run it with the default options. Older 3.x / 4.x builds are detected and flagged with a warning — parsing may misread. (macOS/Linux instructions are in [docs/install-macos.md](docs/install-macos.md) and [docs/install-linux.md](docs/install-linux.md).)
 3. **Launch Recall and pick a screenshots folder** under **Settings → Directories**. Overwatch's default on Windows is `Documents\Overwatch\ScreenShots\Overwatch\`.
 4. **Capture screenshots in Overwatch** with **F12** after each match — see [Capturing matches](#capturing-matches) for which post-match tabs to screenshot.
-5. **Click *Ingest → Run Parse*** to scan the folder, or flip on *Ingest → Parse → Watch Folder* to auto-parse as new screenshots land. Parsed matches appear under the **Matches** tab.
+5. **Click *Parse → Run Parse*** to scan the folder, or flip on *Parse → Watch Folder* to auto-parse as new screenshots land. Parsed matches appear under the **Matches** tab.
 
 That's all most users need. The [Advanced](#advanced) sections below cover running Recall headless and streaming matches into a local Grafana dashboard — neither is required for everyday use.
 
@@ -77,8 +77,9 @@ Pre-built binaries for every tagged release are on the [GitHub Releases](https:/
 | Linux | `recall-{version}-linux-amd64.tar.gz` · `recall-{version}-linux-amd64.deb` | `recall-server-{version}-linux-amd64.tar.gz` · `recall-server-{version}-linux-amd64.deb` |
 | Docker | — | `ghcr.io/sound-barrier/recall-server:latest` |
 
-For macOS and Linux setup details (Gatekeeper bypass, package manager Tesseract install, data paths), see the platform guides:
+For per-platform setup details (SmartScreen / Gatekeeper bypass, package-manager Tesseract install, data paths), see the platform guides:
 
+- [Installing on Windows](docs/install-windows.md)
 - [Installing on macOS](docs/install-macos.md)
 - [Installing on Linux](docs/install-linux.md)
 
@@ -121,7 +122,7 @@ Recall reads four kinds of post-match screenshots from Overwatch. Three are requ
 
 The in-game screenshot key is **F12** by default (rebindable under *Options → Controls → General → Screenshot*). After a match ends, cycle through the post-match tabs and press F12 on each. Recall stitches the screenshots into a single match record using the filename timestamps Overwatch embeds — taking them within a couple of minutes of each other is enough.
 
-Overwatch saves screenshots to `Documents\Overwatch\ScreenShots\Overwatch\` on Windows by default. Point Recall at that folder under **Settings → Directories**; the watcher (enabled under **Ingest → Parse → Watch Folder**) auto-parses any new `.png` / `.jpg` that lands in it.
+Overwatch saves screenshots to `Documents\Overwatch\ScreenShots\Overwatch\` on Windows by default. Point Recall at that folder under **Settings → Directories**; the watcher (enabled under **Parse → Watch Folder**) auto-parses any new `.png` / `.jpg` that lands in it.
 
 **What if a screenshot type is missing?** Each match card has a *Data Coverage* strip in its expanded view that flags which of the four screenshot types were captured. Required-but-missing types are highlighted with a warning chip; the optional RANK is shown greyed out when absent. Screenshots Recall couldn't match to a known map collect in the **Unknown** tab for triage.
 
@@ -153,8 +154,8 @@ Real examples from Recall's parser-regression fixture set. The same PNG files li
 <sub>Juno's PERSONAL tab. The 3×3 grid populates hero-specific stats (pulsar torpedoes damage, orbital ray healing, players saved, weapon accuracy).</sub>
 </td>
 <td valign="top" width="50%">
-<a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.36.31.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.36.31.png" alt="PERSONAL tab — Mei hero-specific stats from a hero-swap match" width="100%"></a>
-<sub>Mei's PERSONAL tab from the same match — the player swapped from Juno (67% played) to Mei (33% played). Recall captures one PERSONAL per hero and merges them into the same match record.</sub>
+<a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.36.31.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.36.31.png" alt="PERSONAL tab — Mizuki hero-specific stats from a hero-swap match" width="100%"></a>
+<sub>Mizuki's PERSONAL tab from the same match — the player swapped from Juno (67% played) to Mizuki (33% played). Recall captures one PERSONAL per hero and merges them into the same match record.</sub>
 </td>
 </tr>
 </table>

@@ -58,33 +58,45 @@ and the `.source-name` / `.source-file` / `.source-preview` family
 
 When migrating a new rule to scoped, check all eight component
 templates first; if more than one references the class, leave it in
-`app.css`. Theme overrides in a scoped block need
-`:global([data-theme="light"])` so the selector pierces the scope
-hash. `@keyframes` defined in a scoped block get their NAME hashed,
-so animations referenced from multiple components must live in
-`app.css` (`pulse-dot` is the canonical example — referenced by
+`app.css`. Theme overrides DO NOT belong in a scoped block. Vue's
+compiler miscompiles `:global([data-theme="light"]) .x { … }` into a
+bare `[data-theme="light"] { … }` rule that targets `<html>`
+globally (see root `CLAUDE.md`); put theme-conditional rules in
+`app.css` scoped under a parent id (e.g.
+`[data-theme="light"] #panel-settings .x`) instead. `@keyframes`
+defined in a scoped block get their NAME hashed, so animations
+referenced from multiple components must live in `app.css`
+(`pulse-dot` is the canonical example — referenced by
 ParseProgressPanel + IngestView).
 
-**Custom fonts.** `frontend/src/style.css` registers three OW
-typefaces (`Big Noodle Too Oblique` for hero/map names, `Futura No.
-2 Demi` for the Settings tab, `OW Wordmark` for the RECALL masthead)
-with a fallback chain: licensed `local()` lookup → bundled
-`./assets/fonts/*.woff2` (drop-in slot for the licensed files) →
-Google Fonts free lookalikes loaded via `index.html` (Barlow
-Condensed italic, Jost, Russo One). Keep all three layers when
-reworking the font stack.
+**Custom fonts.** `frontend/src/style.css` registers two active OW
+typefaces — `Big Noodle Too Oblique` (hero/map names + all view
+headings) and `OW Wordmark` (the RECALL masthead) — with a fallback
+chain: licensed `local()` lookup → bundled `./assets/fonts/*.woff2`
+(drop-in slot for the licensed files) → Google Fonts free lookalikes
+loaded via `index.html` (Barlow Condensed italic, Russo One). The
+`Futura No. 2 Demi` `@font-face` is still declared but currently
+unused; the previous "editorial Settings" scope was removed because
+it read as washed-out next to the Big Noodle headings on cream
+paper. Don't reintroduce a per-view typeface override without
+verifying glyph density matches Big Noodle's weight presence.
 
 ## App.vue concerns
 
 State concerns owned by App.vue and passed down via props/emits:
 
-- **Nav** — four tabs in workflow order: **Settings (01)**, **Ingest
-  (02)**, **Matches (03)** (default landing), **Unknown (04)**
-  (triage). The numbering communicates user flow, not tab importance.
-  Settings and Ingest both wear `class="settings"` for shared layout
-  but Ingest gets the modifier `ingest-view` so the Futura font scope
-  (`.settings:not(.unknown-view, .ingest-view)`) stays on the actual
-  Settings tab.
+- **Nav** — four tabs in workflow order: **Settings (01)**,
+  **Parse (02)** (internal route id is still `'ingest'` and the
+  file is still `IngestView.vue` — only the visible tab label
+  changed during the consolidation), **Matches (03)** (default
+  landing), **Unknown (04)** (triage). Settings owns all config —
+  Folders / Engine / Appearance / Calendar / Backup & Restore plus
+  a collapsible Advanced (Grafana stream + Clear Database). Parse
+  is reserved for the operational loop: Watch Folder + Manual
+  Parse + the live progress panel. Don't add config rows to Parse.
+  Cross-references from Parse's heading state machine (Tesseract
+  missing, screenshots folder unset) deep-link to Settings →
+  Engine / Folders.
 - **Filters**: multi-select popovers (mode/map/type/role/hero/result)
   plus date range inputs and sort dir. Each filter field is a `ref([])` —
   empty = no filter, multiple entries = union (OR). `filterRefs` maps
@@ -242,15 +254,18 @@ don't claim, AND update `vitest.config.ts` `test.include`.
   in `beforeEach` is the only reliable lever. Any new a11y spec must
   do the same.
 
-- **`--text-faint` luminance was bumped to clear WCAG 2 AA on
-  `--surface-3`.** Night `#6b6f7a → #878a96` (5.02:1 on surface-2,
-  4.74:1 on surface-3, 5.97:1 on bg). Day `#6f6a5e → #6a655a` (5.20:1
-  on surface-2, 4.72:1 on surface-3). When introducing new
-  "faint"/"muted" greys, compute contrast against ALL of
-  `--surface-2`, `--surface-3`, AND `--bg` — small UI text (≤14px
-  non-bold) needs 4.5:1 against every surface it might land on, and
-  the project's surfaces vary by ~0.4% luminance which is enough to
-  flip a borderline color across the threshold.
+- **WCAG AA on every surface.** When introducing or tweaking any
+  text colour or accent that's used as type, compute contrast against
+  ALL of `--surface-2`, `--surface-3`, AND `--bg` — small UI text
+  (≤14px non-bold) needs 4.5:1 against every surface it might land
+  on. The project's surfaces vary by ~0.4% luminance which is enough
+  to flip a borderline colour across the threshold. The light-mode
+  `--accent` is rust `#b03a0a` precisely because bright `#F5A623`
+  only hit 1.78:1 on cream; `--accent-soft` / `--accent-glow` stay
+  derived from the bright orange so highlight tints stay visible.
+  Use any WCAG calc to verify (e.g. a quick Python script using the
+  sRGB → relative-luminance formula) before committing palette
+  changes.
 
 - **A11y patterns to mirror, not reinvent.**
   - Modal dialogs: focus trap + Escape + return-focus + background

@@ -32,7 +32,7 @@ captures = more fields populated:
 |---|---|---|
 | **SUMMARY** | Match overview, top heroes, performance summary | Map, mode, type (control/push/escort/…), role, primary hero, victory/defeat, final score, date, finish time, game length, performance per-10-min averages |
 | **TEAMS scoreboard** | Both teams' stats side by side | Eliminations / assists / deaths, damage, healing, mitigation |
-| **PERSONAL** | One hero's detailed stat grid (3×3) | Hero-specific stats (e.g. Juno's `pulsar_torpedoes_damage`, Mei's `binding_chain_accuracy`) |
+| **PERSONAL** | One hero's detailed stat grid (3×3) | Hero-specific stats (e.g. Juno's `pulsar_torpedoes_damage`, Mizuki's `binding_chain_accuracy`) |
 | **RANK** | Competitive ladder badge + per-hero SR | Current rank tier, per-hero SR, recent change |
 
 If you swapped heroes mid-match, Overwatch shows a separate PERSONAL
@@ -71,8 +71,8 @@ any image for the full-resolution source.
 <sub>Juno's PERSONAL tab. The 3×3 grid populates hero-specific stats (pulsar torpedoes damage, orbital ray healing, players saved, weapon accuracy).</sub>
 </td>
 <td valign="top" width="50%">
-<a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.36.31.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.36.31.png" alt="PERSONAL tab — Mei hero-specific stats from a hero-swap match" width="100%"></a>
-<sub>Mei's PERSONAL tab from the same match — the player swapped from Juno (67% played) to Mei (33% played). Recall captures one PERSONAL per hero and merges them into the same match record.</sub>
+<a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.36.31.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.36.31.png" alt="PERSONAL tab — Mizuki hero-specific stats from a hero-swap match" width="100%"></a>
+<sub>Mizuki's PERSONAL tab from the same match — the player swapped from Juno (67% played) to Mizuki (33% played). Recall captures one PERSONAL per hero and merges them into the same match record.</sub>
 </td>
 </tr>
 </table>
@@ -97,8 +97,8 @@ any image for the full-resolution source.
    to **Settings → Directories → Change Folder…**. The default
    Overwatch path on each OS is in the install guide.
 
-That's it for setup. The **Ingest** tab should now show **Engine
-Detected** with a green dot and Tesseract's version.
+That's it for setup. **Settings → Engine** should now show
+**Detected** with a green dot and Tesseract's version.
 
 ### Day-to-day
 
@@ -108,10 +108,9 @@ Detected** with a green dot and Tesseract's version.
    tab through SUMMARY → TEAMS → PERSONAL × however many heroes you
    played → optionally RANK, pressing the key on each.
 2. **Recall picks them up.** If you've armed
-   **Ingest → Parse → Watch Folder** (the recommended setting),
-   Recall debounces 60 seconds after the last new PNG and auto-parses
-   the batch. Otherwise click **Run Parse** under
-   **Ingest → Parse → Manual Parse** when you're ready.
+   **Parse → Watch Folder** (the recommended setting), Recall
+   debounces 60 seconds after the last new PNG and auto-parses the
+   batch. Otherwise click **Parse → Run Parse** when you're ready.
 3. **Browse the Matches tab.** Each match appears as a card with map,
    primary hero, e/a/d, and result. Click the chevron to expand for
    damage / healing / hero-by-hero stats / source-screenshot list.
@@ -121,7 +120,7 @@ Detected** with a green dot and Tesseract's version.
 
 ### Optional: time-series charts
 
-The **Ingest → Export → Stream to Grafana** toggle exposes match
+The **Settings → Advanced → Stream to Grafana** toggle exposes match
 history on `localhost:9091/metrics` so the bundled Prometheus +
 Grafana stack can scrape it. See
 [Charts & Dashboards](grafana.md) and
@@ -159,7 +158,7 @@ Inside that folder:
 - `db/recall.db` — SQLite database of every parsed match.
   Single-file; back up by copying.
 
-Wiping `db/recall.db` (or using **Ingest → Data → Clear Parse
+Wiping `db/recall.db` (or using **Settings → Advanced → Clear Parse
 Database**) deletes match history but leaves screenshots and
 settings alone. Re-running Parse against the same screenshot
 folder rebuilds the database from scratch.

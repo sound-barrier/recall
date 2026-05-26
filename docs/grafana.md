@@ -150,7 +150,7 @@ winget install Grafana.Grafana
 
 ## Turning on the metrics endpoint in Recall
 
-Open Recall and go to **Ingest → Export → Stream to Grafana** and switch it on.
+Open Recall and go to **Settings → Advanced → Stream to Grafana** and switch it on.
 This starts the metrics endpoint at `http://localhost:9091/metrics`. Nothing
 is exposed until you enable it.
 
