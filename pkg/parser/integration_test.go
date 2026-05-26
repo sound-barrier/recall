@@ -11,7 +11,8 @@ import (
 )
 
 // TestParseScreenshot_GoldenFiles drives ParseScreenshot against real PNG
-// fixtures and compares the result to a sidecar `<filename>.golden.json`.
+// fixtures and compares both the parser output AND the screenshot-type
+// classification to a sidecar `<filename>.golden.json`.
 //
 // Defaults to scanning the repo-root `testdata/` directory (resolved via
 // the relative path `../../testdata` from this package's working
@@ -24,9 +25,16 @@ import (
 //
 //	$RECALL_FIXTURE_DIR/
 //	  some-match.png
-//	  some-match.png.golden.json   ← expected MatchResult, JSON-encoded
+//	  some-match.png.golden.json   ← {"screenshot_type": "...", "result": {MatchResult}}
 //	  other.png
 //	  other.png.golden.json
+//
+// Each golden captures TWO things:
+//   - `screenshot_type` — the classification ScreenshotType(result)
+//     returns. A drift here means either the parser stopped populating
+//     a field the classifier keys off, OR ScreenshotType's thresholds
+//     moved. Either is worth catching.
+//   - `result` — the full parser.MatchResult struct.
 //
 // To regenerate goldens (e.g. after intentionally changing parser output),
 // set RECALL_FIXTURE_UPDATE=1 alongside RECALL_FIXTURE_DIR — easier via
@@ -94,9 +102,13 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ParseScreenshot(%s): %v", imgPath, err)
 			}
+			gotSnap := goldenSnapshot{
+				ScreenshotType: ScreenshotType(got),
+				Result:         *got,
+			}
 
 			if update {
-				b, err := json.MarshalIndent(got, "", "  ")
+				b, err := json.MarshalIndent(gotSnap, "", "  ")
 				if err != nil {
 					t.Fatalf("marshal golden: %v", err)
 				}
@@ -115,17 +127,25 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 				t.Fatalf("read golden: %v", err)
 			}
 
-			var want MatchResult
+			var want goldenSnapshot
 			if err := json.Unmarshal(rawWant, &want); err != nil {
 				t.Fatalf("unmarshal golden: %v", err)
 			}
 
-			if !reflect.DeepEqual(*got, want) {
-				gotJSON, _ := json.MarshalIndent(got, "", "  ")
+			if !reflect.DeepEqual(gotSnap, want) {
+				gotJSON, _ := json.MarshalIndent(gotSnap, "", "  ")
 				wantJSON, _ := json.MarshalIndent(want, "", "  ")
 				t.Errorf("parse mismatch for %s\n--- got ---\n%s\n--- want ---\n%s",
 					name, gotJSON, wantJSON)
 			}
 		})
 	}
+}
+
+// goldenSnapshot is the JSON shape of each `<filename>.golden.json`.
+// Two-field wrapper around MatchResult so each fixture asserts both
+// the parser output AND its derived screenshot-type classification.
+type goldenSnapshot struct {
+	ScreenshotType string      `json:"screenshot_type"`
+	Result         MatchResult `json:"result"`
 }

@@ -10,8 +10,25 @@ against to catch OCR / parser regressions.
 For each `foo.png` in this directory, the test:
 
 1. Runs `ParseScreenshot("foo.png")`.
-2. Reads `foo.png.golden.json` from the same directory.
-3. Fails if the parsed `MatchResult` doesn't match.
+2. Computes the screenshot classification via `parser.ScreenshotType(result)`.
+3. Reads `foo.png.golden.json` from the same directory.
+4. Fails if either the classification OR the parsed `MatchResult`
+   doesn't match.
+
+Each golden has shape:
+
+```json
+{
+  "screenshot_type": "summary",
+  "result": { "map": "rialto", "mode": "competitive", "...": "..." }
+}
+```
+
+Wrapping the `MatchResult` in a two-field snapshot means a parser
+change that breaks classification (e.g. SUMMARY stops populating
+`Date`, which `ScreenshotType` keys off → suddenly classifies as
+`scoreboard`) trips the test even when the underlying `MatchResult`
+fields look reasonable.
 
 `go test ./pkg/parser/` picks the directory up automatically (the test
 defaults to `../../testdata` relative to its package dir, which

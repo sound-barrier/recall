@@ -1,39 +1,42 @@
 {
-  "map": "new queen street",
-  "type": "push",
-  "mode": "competitive",
-  "role": "support",
-  "hero": "lucio",
-  "eliminations": 12,
-  "assists": 18,
-  "deaths": 6,
-  "damage": 0,
-  "healing": 0,
-  "mitigation": 0,
-  "result": "victory",
-  "final_score": "1-0",
-  "date": "2026-05-24",
-  "finished_at": "23:32",
-  "game_length": "9:33",
-  "heroes_played": [
-    {
-      "hero": "lucio",
-      "percent_played": 100,
-      "play_time": "09:32"
-    }
-  ],
-  "performance": {
-    "eliminations": {
-      "total": 12,
-      "avg_per_10min": 12.58
-    },
-    "assists": {
-      "total": 18,
-      "avg_per_10min": 18.86
-    },
-    "deaths": {
-      "total": 6,
-      "avg_per_10min": 6.29
+  "screenshot_type": "summary",
+  "result": {
+    "map": "new queen street",
+    "type": "push",
+    "mode": "competitive",
+    "role": "support",
+    "hero": "lucio",
+    "eliminations": 12,
+    "assists": 18,
+    "deaths": 6,
+    "damage": 0,
+    "healing": 0,
+    "mitigation": 0,
+    "result": "victory",
+    "final_score": "1-0",
+    "date": "2026-05-24",
+    "finished_at": "23:32",
+    "game_length": "9:33",
+    "heroes_played": [
+      {
+        "hero": "lucio",
+        "percent_played": 100,
+        "play_time": "09:32"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 12,
+        "avg_per_10min": 12.58
+      },
+      "assists": {
+        "total": 18,
+        "avg_per_10min": 18.86
+      },
+      "deaths": {
+        "total": 6,
+        "avg_per_10min": 6.29
+      }
     }
   }
 }

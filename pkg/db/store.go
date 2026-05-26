@@ -128,7 +128,7 @@ type HeroSR struct {
 }
 
 // UnknownRow holds one parsed screenshot that didn't match any
-// screenshotType heuristic. Kept so parses aren't silently dropped.
+// parser.ScreenshotType heuristic. Kept so parses aren't silently dropped.
 type UnknownRow struct {
 	ID       int64
 	Filename string

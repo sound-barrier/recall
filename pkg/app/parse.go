@@ -21,31 +21,6 @@ type ParseProgressEvent struct {
 	Error    string              `json:"error,omitempty"`
 }
 
-// screenshotType infers the screenshot category from which fields the
-// parser populated. Order is load-bearing: a SCOREBOARD parse populates
-// both E/A/D and per-hero panel stats, so the E/A/D check must run
-// before the hero-stats check.
-func screenshotType(r *parser.MatchResult) string {
-	if r == nil {
-		return "unknown"
-	}
-	if r.Rank != "" {
-		return "rank"
-	}
-	if r.Result != "" || r.Date != "" || r.GameLength != "" {
-		return "summary"
-	}
-	if r.Eliminations > 0 || r.Assists > 0 || r.Deaths > 0 || r.Damage > 0 {
-		return "scoreboard"
-	}
-	for _, hp := range r.HeroesPlayed {
-		if len(hp.Stats) > 0 {
-			return "personal"
-		}
-	}
-	return "unknown"
-}
-
 // ParseScreenshots OCRs every image in screenshots/ and writes each
 // result to its per-type table. Correlation (resolveMatchKey) runs per
 // screenshot in filename-timestamp order so cross-file deps (e.g. a
@@ -77,7 +52,7 @@ func (a *App) ParseScreenshots() error {
 			Done:     done,
 			Total:    total,
 			Filename: filename,
-			Type:     screenshotType(result),
+			Type:     parser.ScreenshotType(result),
 			Data:     result,
 		}
 		if parseErr != nil {
@@ -119,7 +94,7 @@ func (a *App) ParseScreenshots() error {
 			return err
 		}
 		key := resolveMatchKey(filename, r, snap)
-		t := screenshotType(r)
+		t := parser.ScreenshotType(r)
 		if err := a.insertParsed(filename, key, t, r); err != nil {
 			return err
 		}
