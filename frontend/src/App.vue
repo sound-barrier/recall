@@ -8,7 +8,7 @@
 // per-SFC scoped <style> blocks (TECHNICAL_DEBT.md #1).
 import './styles/app.css'
 
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, defineAsyncComponent } from 'vue'
 import type { MatchRecord, DataLocation } from './api'
 import {
   GetVersion,
