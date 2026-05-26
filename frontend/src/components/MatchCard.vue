@@ -28,6 +28,11 @@ const props = defineProps<{
   previewOpen: Record<string, boolean>
   previewError: Record<string, boolean>
   isActive: (field: string, value: string) => boolean
+  // 'compact' tightens card padding + map font and inlines a small
+  // E/A/D + damage strip in the tag-row so high-volume players see
+  // at-a-glance stats without expanding every match. Optional so
+  // existing tests can omit it; defaults to 'comfortable' behaviour.
+  densityMode?: 'comfortable' | 'compact'
 }>()
 
 const emit = defineEmits<{
@@ -43,7 +48,7 @@ const emit = defineEmits<{
   <article
     class="match"
     :class="[
-      { expanded: isExpanded },
+      { expanded: isExpanded, compact: densityMode === 'compact' },
       `result-${record.data?.result || 'unknown'}`,
     ]"
   >
@@ -153,6 +158,23 @@ const emit = defineEmits<{
           >
             <span class="incomplete-glyph" aria-hidden="true">!</span>
             <span class="incomplete-text">missing <strong>{{ missingRequiredSlots(record).map(s => s.label).join(' · ') }}</strong></span>
+          </span>
+
+          <!-- Compact-mode inline stats. Only renders when density is
+               'compact' AND at least one of E/A/D/damage exists. Sits
+               at the far-right of the tag-row so a horizontal scan
+               picks up "what did I do this match" without expanding.
+               Mono digits + tabular figures keep columns from jittering
+               across cards. -->
+          <span
+            v-if="densityMode === 'compact' && (record.data?.eliminations != null || record.data?.assists != null || record.data?.deaths != null || record.data?.damage != null)"
+            class="compact-stats"
+            aria-label="Match stats at a glance"
+          >
+            <span class="compact-ead">
+              <span>{{ record.data?.eliminations ?? '—' }}</span><span class="compact-sep">/</span><span>{{ record.data?.assists ?? '—' }}</span><span class="compact-sep">/</span><span>{{ record.data?.deaths ?? '—' }}</span>
+            </span>
+            <span v-if="record.data?.damage != null" class="compact-dmg">{{ record.data.damage.toLocaleString() }}<span class="compact-unit">dmg</span></span>
           </span>
         </div>
       </div>
@@ -1012,10 +1034,115 @@ button.chev-btn:hover { color: var(--accent-bright); }
 
 /* [data-theme="light"] .source-preview moved back to app.css */
 
+/* ─── Compact density (toggle in MatchesView group-rail) ─── */
+
+/* Tightens the collapsed-card header by ~50% vertically: smaller
+   padding, shorter map font, smaller index, no inter-row gap.
+   Adds an inline E/A/D + damage strip in the tag-row so high-volume
+   players can scan stats without expanding. Expanded content stays
+   identical to comfortable density — only the header compresses. */
+.match.compact .match-body {
+  padding: 0.5rem 0.9rem;
+}
+
+.match.compact .match-title-row {
+  margin-bottom: 0.2rem;
+}
+
+.match.compact .match-title-lhs {
+  gap: 0.55rem;
+}
+
+.match.compact .match-index {
+  font-size: 0.62rem;
+}
+
+.match.compact .match-map {
+  font-size: 1.15rem;
+}
+
+.match.compact .match-tag-row {
+  gap: 0.3rem;
+  padding-top: 0;
+}
+
+.match.compact .badge {
+  padding: 0.14rem 0.5rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+}
+
+.match.compact .badge.hero {
+  padding: 0.14rem 0.5rem;
+}
+
+.match.compact .badge.result {
+  padding: 0.14rem 0.55rem;
+}
+
+/* Inline stats strip — right-aligned within .match-tag-row via
+   margin-left: auto so the chips on the left pack normally and the
+   stats sit at the row's far end. Tabular figures keep digit columns
+   stable when scanning a list of cards. */
+.compact-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-feature-settings: "tnum";
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
+}
+
+.compact-ead {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.compact-ead .compact-sep {
+  color: var(--text-faint);
+  font-weight: 400;
+  padding: 0 0.05rem;
+}
+
+.compact-dmg {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  color: var(--text-dim);
+}
+
+.compact-unit {
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* Hide the verbose "missing X · Y" text in compact mode — keep just
+   the glyph + tooltip. Saves a chunk of horizontal space on cards
+   that have incomplete coverage. */
+.match.compact .incomplete-text {
+  display: none;
+}
+
+.match.compact .incomplete-badge {
+  padding: 0.14rem 0.4rem;
+}
+
 /* ─── Narrow-viewport overrides ──────────────────────────── */
 
 @media (width <= 580px) {
   .match-title-rhs { flex-wrap: wrap; }
   .match-map { font-size: 1.3rem; }
+
+  /* On narrow widths the inline stats wrap to a new line; tighten
+     the gap so the wrap still feels tidy. */
+  .match.compact .compact-stats { margin-left: 0; gap: 0.5rem; }
 }
 </style>

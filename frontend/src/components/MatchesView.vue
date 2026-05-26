@@ -4,6 +4,7 @@ import type { MatchRecord } from '../api'
 import type { useMatchFilters } from '../composables/useMatchFilters'
 import type { useFilterPanel } from '../composables/useFilterPanel'
 import type { useMatchGrouping } from '../composables/useMatchGrouping'
+import type { DensityMode } from '../composables/useDensityMode'
 import type { MatchGroup } from '../match-helpers'
 import FilterRail from './FilterRail.vue'
 import MatchGroupSection from './MatchGroupSection.vue'
@@ -65,6 +66,10 @@ const props = defineProps<{
   // disabled.
   minPlayPercent: number
   minPlayMinutes: number
+  // Match-list density toggle (persisted via useDensityMode). 'compact'
+  // tightens padding + map font and inlines E/A/D + damage on the
+  // card header so high-volume players see stats at a glance.
+  densityMode:    DensityMode
 }>()
 
 const emit = defineEmits<{
@@ -72,6 +77,7 @@ const emit = defineEmits<{
   'set-include-undated': [next: boolean]
   'set-min-play-percent': [n: number]
   'set-min-play-minutes': [n: number]
+  'toggle-density':       []
 }>()
 
 // Pre-extracted destructures keep the template readable without
@@ -164,7 +170,7 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
       @set-min-play-minutes="(n: number) => emit('set-min-play-minutes', n)"
     />
 
-    <div v-if="records.length > 0 && g.groups.value.length > 0" class="match-list">
+    <div v-if="records.length > 0 && g.groups.value.length > 0" class="match-list" :class="{ compact: densityMode === 'compact' }">
       <!-- Outline controls: Expand-all / Collapse-all toggle the whole
            Month → Week → Day tree at once. Sits above the groups so
            it's reachable without scrolling. -->
@@ -172,6 +178,17 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
         <span class="group-rail-label">
           {{ g.groups.value.length }} {{ g.groups.value.length === 1 ? 'month' : 'months' }}
         </span>
+        <button
+          type="button"
+          class="group-rail-btn density-btn"
+          :class="{ active: densityMode === 'compact' }"
+          :aria-pressed="densityMode === 'compact'"
+          :title="densityMode === 'compact' ? 'Switch back to comfortable density' : 'Switch to compact density (one-line cards + inline stats)'"
+          @click="emit('toggle-density')"
+        >
+          <span class="density-glyph" aria-hidden="true">{{ densityMode === 'compact' ? '▤' : '▥' }}</span>
+          {{ densityMode === 'compact' ? 'Compact' : 'Comfy' }}
+        </button>
         <button
           v-if="g.allExpanded.value"
           type="button"
@@ -201,6 +218,7 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
         :preview-error="cs.previewError.value"
         :is-active="f.isActive"
         :card-offset="idx"
+        :density-mode="densityMode"
         @toggle-group="g.toggleGroup"
         @toggle-expand="cs.toggleExpand"
         @toggle-sources="cs.toggleSources"
@@ -297,6 +315,35 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
   outline-offset: 1px;
 }
 
+/* Density toggle — same chip footprint as the other group-rail
+   buttons, with an `active` state when compact density is on so it
+   reads as a sticky toggle rather than a one-shot action. The
+   little glyph + label flip per state to make the next click's
+   destination obvious without needing a tooltip. */
+.density-btn {
+  margin-left: auto;
+}
+
+.density-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft, transparent);
+}
+
+.density-btn + .group-rail-btn {
+  /* The Expand/Collapse button sits next to Density when both are
+     present — separate visual unit, no margin-left:auto on it. */
+  margin-left: 0.4rem;
+}
+
+.density-glyph {
+  display: inline-block;
+  margin-right: 0.3rem;
+  font-size: 0.78rem;
+  line-height: 1;
+  transform: translateY(1px);
+}
+
 /* ─── Match list container ───────────────────────────────── */
 
 .match-list {
@@ -304,5 +351,11 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+}
+
+/* Compact mode tightens vertical rhythm between cards — the cards
+   themselves carry the density class for their internal compression. */
+.match-list.compact {
+  gap: 0.3rem;
 }
 </style>

@@ -46,6 +46,7 @@ interface CardMountOver {
   previewOpen?:   Record<string, boolean>
   previewError?:  Record<string, boolean>
   isActive?:      (field: string, value: string) => boolean
+  densityMode?:   'comfortable' | 'compact'
 }
 
 function mountCard(over: CardMountOver = {}) {
@@ -58,6 +59,7 @@ function mountCard(over: CardMountOver = {}) {
       previewOpen: over.previewOpen ?? {},
       previewError: over.previewError ?? {},
       isActive: over.isActive ?? (() => false),
+      densityMode: over.densityMode ?? 'comfortable',
     },
   })
 }
@@ -378,5 +380,46 @@ describe('MatchCard — Parsed timestamps', () => {
     // not filterable per the product spec).
     chip.trigger('click')
     expect(wrapper.emitted('filter-toggle')).toBeFalsy()
+  })
+})
+
+describe('MatchCard — compact density', () => {
+  it('does not apply the compact class in comfortable mode', () => {
+    const wrapper = mountCard({ densityMode: 'comfortable' })
+    expect(wrapper.find('article').classes()).not.toContain('compact')
+    expect(wrapper.find('.compact-stats').exists()).toBe(false)
+  })
+
+  it('applies the compact class on the article root in compact mode', () => {
+    const wrapper = mountCard({ densityMode: 'compact' })
+    expect(wrapper.find('article').classes()).toContain('compact')
+  })
+
+  it('renders inline E/A/D + damage in the tag-row when compact', () => {
+    const wrapper = mountCard({ densityMode: 'compact' })
+    const stats = wrapper.find('.compact-stats')
+    expect(stats.exists()).toBe(true)
+    const ead = stats.find('.compact-ead')
+    expect(ead.text()).toMatch(/17.*16.*11/)
+    expect(stats.find('.compact-dmg').text()).toContain('7,200')
+  })
+
+  it('omits the inline stats strip when none of E/A/D/damage are populated', () => {
+    const sparse = makeRecord({
+      eliminations: undefined,
+      assists: undefined,
+      deaths: undefined,
+      damage: undefined,
+    })
+    const wrapper = mountCard({ densityMode: 'compact', record: sparse })
+    expect(wrapper.find('article').classes()).toContain('compact')
+    expect(wrapper.find('.compact-stats').exists()).toBe(false)
+  })
+
+  it('renders the EAD strip even when damage is missing (partial stats)', () => {
+    const partial = makeRecord({ damage: undefined })
+    const wrapper = mountCard({ densityMode: 'compact', record: partial })
+    expect(wrapper.find('.compact-stats').exists()).toBe(true)
+    expect(wrapper.find('.compact-dmg').exists()).toBe(false)
   })
 })
