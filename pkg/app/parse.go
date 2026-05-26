@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"sort"
 
 	"recall/pkg/db"
 	"recall/pkg/parser"
@@ -44,86 +43,84 @@ func (a *App) ParseScreenshots() error {
 	if err != nil {
 		return err
 	}
-	results, err := parser.ParseScreenshotsDir(screenshotsDir, parsed, func(done, total int, filename string, result *parser.MatchResult, parseErr error) {
-		// The progress callback is for UI flicker only; the per-file
-		// insert (which emits its own progress event with MatchKey
-		// resolved) happens below in the main loop.
+
+	// Record the source folder once per batch so every screenshot in
+	// this Parse run is FK'd to the same screenshots_dirs row. Resolved
+	// up-front because the parser callback below fires per-file during
+	// OCR and we don't want to repeat this lookup on every shot.
+	dirID, err := a.store.EnsureScreenshotsDir(screenshotsDir)
+	if err != nil {
+		return err
+	}
+
+	// Per-file work runs INSIDE the parser callback so insert + match-
+	// updated emit fire as each screenshot finishes OCR. Before this
+	// shape, the writes lived in a post-OCR for-loop that only ran
+	// after every file had been OCR'd; the UI saw `parse-progress`
+	// stream cleanly but `match-updated` arrived in a single
+	// last-instant burst, so the Matches tab stayed blank until
+	// parse-complete.
+	//
+	// The parser walks files in os.ReadDir order (alphabetical), which
+	// for OW screenshots equals chronological (filenames carry the
+	// capture timestamp). resolveMatchKey is order-tolerant — a later
+	// scoreboard can still correlate to an earlier summary via the
+	// E/A/D + timestamp-window rules — but the alphabetical order
+	// keeps the natural case fast.
+	var inserts int
+	_, err = parser.ParseScreenshotsDir(screenshotsDir, parsed, func(done, total int, filename string, result *parser.MatchResult, parseErr error) {
+		t := parser.ScreenshotType(result)
+
+		// Always fire the progress event so the footer counter
+		// advances regardless of parse outcome. MatchKey is set
+		// later after correlation resolves.
 		ev := ParseProgressEvent{
 			Done:     done,
 			Total:    total,
 			Filename: filename,
-			Type:     parser.ScreenshotType(result),
+			Type:     t,
 			Data:     result,
 		}
 		if parseErr != nil {
 			ev.Error = parseErr.Error()
+		}
+
+		// Skip insert/aggregate on per-file parse failure but still
+		// emit the progress event so the user sees the file count
+		// for accurate progress.
+		if parseErr != nil || result == nil {
+			a.emitParseProgress(ev)
+			return
+		}
+
+		snap, err := a.store.LoadAll()
+		if err != nil {
+			ev.Error = "load before correlation: " + err.Error()
+			a.emitParseProgress(ev)
+			return
+		}
+		key := resolveMatchKey(filename, result, snap)
+		ev.MatchKey = key
+
+		if err := a.insertParsed(filename, key, t, dirID, result); err != nil {
+			ev.Error = "insert: " + err.Error()
+			a.emitParseProgress(ev)
+			return
+		}
+		inserts++
+
+		snapAfter, err := a.store.LoadAll()
+		if err == nil {
+			if rec, ok := aggregateMatchKey(key, snapAfter); ok {
+				a.emitMatchUpdated(rec)
+			}
 		}
 		a.emitParseProgress(ev)
 	})
 	if err != nil {
 		return err
 	}
-	if len(results) == 0 {
-		return nil
-	}
-
-	// Order new files by filename-timestamp so correlation against
-	// previously-inserted siblings (in the same batch) works.
-	order := make([]string, 0, len(results))
-	for f := range results {
-		order = append(order, f)
-	}
-	sort.Slice(order, func(i, j int) bool {
-		ti, oki := parseFilenameTimestamp(order[i])
-		tj, okj := parseFilenameTimestamp(order[j])
-		switch {
-		case oki && okj && !ti.Equal(tj):
-			return ti.Before(tj)
-		case oki && !okj:
-			return true
-		case !oki && okj:
-			return false
-		}
-		return order[i] < order[j]
-	})
-
-	// Record the source folder once per batch so every screenshot in
-	// this Parse run is FK'd to the same screenshots_dirs row. If the
-	// user later changes the screenshots folder, this row preserves
-	// the path the file was ingested from.
-	dirID, err := a.store.EnsureScreenshotsDir(screenshotsDir)
-	if err != nil {
-		return err
-	}
-
-	for _, filename := range order {
-		r := results[filename]
-		snap, err := a.store.LoadAll()
-		if err != nil {
-			return err
-		}
-		key := resolveMatchKey(filename, r, snap)
-		t := parser.ScreenshotType(r)
-		if err := a.insertParsed(filename, key, t, dirID, r); err != nil {
-			return err
-		}
-		// Re-read after the insert so the streamed MatchRecord includes
-		// the row we just wrote (LoadAll above ran before insertParsed).
-		// The next iteration's LoadAll then sees this row too.
-		snapAfter, err := a.store.LoadAll()
-		if err != nil {
-			return err
-		}
-		if rec, ok := aggregateMatchKey(key, snapAfter); ok {
-			a.emitMatchUpdated(rec)
-		}
-		a.emitParseProgress(ParseProgressEvent{
-			Filename: filename,
-			Type:     t,
-			MatchKey: key,
-			Data:     r,
-		})
-	}
+	_ = inserts // value is reserved for a future debug log; suppress unused
 	return nil
 }
 
