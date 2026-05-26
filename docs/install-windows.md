@@ -69,7 +69,7 @@ C:\Program Files\Tesseract-OCR\tesseract.exe
 Recall auto-detects this path on first launch. If you installed
 Tesseract somewhere else (or earlier installations dropped it under
 `C:\Program Files (x86)\Tesseract-OCR\…`), use
-**Ingest → Engine → Locate Tesseract…** to point it at the binary.
+**Settings → Engine → Locate Tesseract…** to point it at the binary.
 
 > **Don't use Tesseract 3.x or 4.x.** Those releases predate the
 > Overwatch post-match font and misread "ELIMINATIONS" / "ASSISTS" /
@@ -87,8 +87,8 @@ Overwatch on Windows saves screenshots to:
 (typically `C:\Users\<you>\Documents\Overwatch\ScreenShots\Overwatch\`)
 
 Go to **Settings → Directories → Change Folder…** and select that
-path. The Watch toggle on the **Ingest** tab makes Recall auto-parse
-new screenshots as Overwatch writes them.
+path. The **Watch Folder** toggle on the **Parse** tab makes Recall
+auto-parse new screenshots as Overwatch writes them.
 
 ## Where Recall stores its data
 

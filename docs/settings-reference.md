@@ -1,10 +1,13 @@
 # Settings reference
 
-Every knob in Recall, what it does, and when to touch it. Settings
-live on two tabs:
+Every knob in Recall, what it does, and when to touch it. Recall has
+two configuration surfaces:
 
-- **Settings (01)** — user-preference knobs you set once.
-- **Ingest (02)** — the parse engine + run controls.
+- **Settings (01)** — everything you set up. Folders, Tesseract,
+  theme, calendar, backup + restore, plus a collapsible Advanced
+  section for power-user controls.
+- **Parse (02)** — the operational tab. Watch Folder toggle + the
+  Run Parse button. That's the whole tab — nothing to configure here.
 
 Persistence: every setting saves to `settings.json` in your OS user-
 config dir (see [How it works → Where things live on disk](how-it-works.md#where-things-live-on-disk))
@@ -16,54 +19,38 @@ the moment you change it. No "Save" button.
 
 #### Screenshots Folder
 
-The folder Recall watches for new Overwatch screenshots. Click
-**Change Folder…** to point it at a different directory.
+The folder Recall watches for new Overwatch screenshots.
 
-The default Overwatch screenshot path per OS is in the install
-guides:
+On first launch, Recall tries to auto-detect the default Overwatch
+screenshots location on your platform. If it lands on the right path,
+you don't need to touch this. Otherwise:
 
-- macOS: `~/Documents/Overwatch/ScreenShots/Overwatch/`
-- Linux (Lutris/Heroic): `~/Games/overwatch/drive_c/users/<you>/Documents/Overwatch/ScreenShots/Overwatch/`
+- **Detect** — re-runs the auto-detect (handy after you move an
+  Overwatch install).
+- **Change Folder…** — opens the system folder picker so you can
+  point at any directory.
+
+The platform defaults Recall looks for:
+
 - Windows: `%USERPROFILE%\Documents\Overwatch\ScreenShots\Overwatch\`
+- macOS: `~/Documents/Overwatch/ScreenShots/Overwatch/`
+- Linux (Steam Proton): `~/.steam/steam/steamapps/compatdata/2357570/pfx/drive_c/users/steamuser/Documents/Overwatch/ScreenShots/Overwatch/`
 
-You can point Recall at any directory — useful if you keep screenshots
-in a synced folder (Dropbox, OneDrive, iCloud Drive) or want to feed
-it screenshots from a friend's matches.
+You can point Recall at any directory — useful if you keep
+screenshots in a synced folder (Dropbox, OneDrive, iCloud Drive) or
+want to feed it screenshots from a friend's matches.
 
-Changing the folder while the **Watch Folder** toggle is armed
-restarts the watcher against the new directory; no manual restart
-needed.
+Changing the folder while **Watch Folder** is armed restarts the
+watcher against the new directory; no manual restart needed.
 
-### 02 / Appearance
+#### Data Location
 
-#### Theme
+Read-only paths showing where Recall stores its database and
+`settings.json` on this machine. Each path has a **Copy** button;
+in the desktop app, **Open** opens the directory in your OS file
+manager.
 
-Two-segment toggle: **Day** (light palette, cream + brand orange) or
-**Night** (dark palette, off-black + brand orange). Recall remembers
-the choice across launches. The toggle lives in the upper-right of
-the masthead too, for quick switching without leaving the current
-view.
-
-### 03 / Calendar
-
-#### First Day of Week
-
-Anchors the **Week of …** headers on the Matches tab when you group
-by week. Seven-segment picker (Sun / Mon / Tue / Wed / Thu / Fri /
-Sat). Matches the cultural default in your region:
-
-- US, Canada, Japan: Sunday
-- Most of Europe + ISO 8601: Monday
-- Middle East: Saturday
-
-Doesn't change which matches appear in which week — Recall calculates
-the week boundary from this setting, so a Tuesday match shows up
-under either "Week of Sunday Jan 12" or "Week of Monday Jan 13"
-depending on what you picked.
-
-## Ingest tab
-
-### 01 / Engine
+### 02 / Engine
 
 #### Tesseract Binary
 
@@ -78,10 +65,10 @@ binary Recall shells out to. The status row underneath shows:
 
 Recall auto-detects on first launch:
 
+- Windows (UB-Mannheim default): `C:\Program Files\Tesseract-OCR\tesseract.exe`
 - macOS Apple Silicon: `/opt/homebrew/bin/tesseract`
 - macOS Intel: `/usr/local/bin/tesseract`
 - Linux (apt-installed): `/usr/bin/tesseract`
-- Windows (UB-Mannheim default): `C:\Program Files\Tesseract-OCR\tesseract.exe`
 
 **Version compatibility:** Tesseract 5.x is the supported series.
 Versions 3.x and 4.x predate the Overwatch post-match font and
@@ -94,53 +81,65 @@ If your install path has drifted (e.g. you moved from Intel to Apple
 Silicon Homebrew), the **Use default** link under the path row
 resets to the platform default in one click.
 
-### 02 / Parse
+### 03 / Appearance
 
-#### Watch Folder
+#### Theme
 
-Auto-parse new screenshots as they appear in the screenshots folder.
-Big switch — **Off** by default, **Armed** when on. Disabled (greyed
-out) when Tesseract is not detected.
+Two preview cards: **Day** (light palette, cream + brand orange) or
+**Night** (dark palette, off-black + brand orange). Click a card to
+apply; the active card shows an orange ring. Recall remembers the
+choice across launches.
 
-Behavior when armed:
+### 04 / Calendar
 
-1. Recall registers a filesystem watch on the screenshots folder.
-2. When a new `.png` or `.jpg` lands, Recall starts a 60-second
-   timer. Every subsequent new file resets the timer.
-3. After 60 seconds of silence, Recall runs Parse against all new
-   files in one batch.
+#### First Day of Week
 
-The debounce window matches a typical post-match capture session
-(SUMMARY → TEAMS → PERSONAL × hero count, ~5–15 seconds of
-tabbing). The whole batch lands as one match record instead of
-five separate "partial-data" rows.
+Anchors the **Week of …** headers on the Matches tab when you group
+by week. Seven-cell grid (S / M / T / W / T / F / S). The selected
+cell fills orange; a caption underneath spells it out ("Weeks begin
+on Sunday") so the two-T / two-S ambiguity is always resolved.
+Matches the cultural default in your region:
 
-#### Manual Parse
+- US, Canada, Japan: Sunday
+- Most of Europe + ISO 8601: Monday
+- Middle East: Saturday
 
-Big **Run Parse** button. Same parse logic as the watcher but on
-demand — useful if you just dragged screenshots into the folder
-from another machine, want to re-parse after upgrading Tesseract,
-or simply prefer not to leave the watcher armed.
+Doesn't change which matches appear in which week — Recall
+calculates the week boundary from this setting, so a Tuesday match
+shows up under either "Week of Sunday Jan 12" or "Week of Monday Jan
+13" depending on what you picked.
 
-The button shows the count of new screenshots in the folder
-(**Run Parse · 5**) and disables itself when there's nothing new
-to parse. Re-running it against the same screenshots is idempotent
-— Recall stores which files it's already seen, so duplicates don't
-create duplicate matches.
+### 05 / Backup & Restore
 
-The status line below shows either:
+#### Export Data
 
-- **Last run · X ago · N records on record** — when there are no
-  new screenshots to process.
-- **All screenshots already parsed — nothing new in the folder.** —
-  same idea, sterner.
-- **Blocked — needs Tesseract.** — Engine row needs fixing first.
+Download a portable backup of every parsed match. Two formats:
 
-While parsing, the button reads **Parsing…** and a progress panel
-expands under the row showing per-file status. Click the chevron to
-collapse it down to a single progress bar.
+- **JSON** — the canonical Recall format. Smallest, round-trips
+  losslessly through Import. One file.
+- **CSV** — a ZIP archive of one CSV per database table, for opening
+  in Excel / Google Sheets.
 
-### 03 / Export
+Settings and screenshots aren't included — only parsed match
+records. A confirmation chip flashes the save path once the export
+completes.
+
+#### Import Data
+
+Restore a previously-exported backup. JSON and CSV (the same ZIP
+format Export emits) both work — Recall sniffs the content type
+automatically.
+
+Two-step confirm: clicking **Import Backup…** arms the action and
+turns the row's stripe red, then **Choose File…** opens the file
+picker. **Replaces** the current database — local matches that
+aren't in the backup will be lost. Cancel button next to it backs
+out without touching anything.
+
+### 06 / Advanced
+
+A collapsible section, closed by default. Contains power-user
+controls most players never need to touch.
 
 #### Stream to Grafana
 
@@ -173,8 +172,6 @@ config — is in [Charts & Dashboards](grafana.md).
 > reach it. Nothing leaves your computer unless you add a remote
 > Prometheus scrape target yourself.
 
-### 04 / Data
-
 #### Clear Parse Database
 
 Permanently delete every parsed match record from the local SQLite
@@ -196,11 +193,58 @@ When to use:
 When NOT to use:
 
 - You think Recall is showing stale data. The right move is
-  **Manual Parse** (which re-reads any unparsed screenshots) — not
-  a full wipe.
+  **Parse → Run Parse** (which re-reads any unparsed screenshots) —
+  not a full wipe.
 - You think a single match record is wrong. Re-capture the SUMMARY
   and PERSONAL screens for that match into the folder; Recall will
   merge them into the existing record without duplicating it.
+
+## Parse tab
+
+### Watch Folder
+
+Auto-parse new screenshots as they appear in the screenshots folder.
+Big switch — **Off** by default, **Armed** when on. Disabled (greyed
+out) when Tesseract is not detected.
+
+Behavior when armed:
+
+1. Recall registers a filesystem watch on the screenshots folder.
+2. When a new `.png` or `.jpg` lands, Recall starts a 60-second
+   timer. Every subsequent new file resets the timer.
+3. After 60 seconds of silence, Recall runs Parse against all new
+   files in one batch.
+
+The debounce window matches a typical post-match capture session
+(SUMMARY → TEAMS → PERSONAL × hero count, ~5–15 seconds of tabbing).
+The whole batch lands as one match record instead of several
+"partial-data" rows.
+
+### Run Parse
+
+Big primary button. Same parse logic as the watcher but on demand —
+useful if you just dragged screenshots into the folder from another
+machine, want to re-parse after upgrading Tesseract, or simply
+prefer not to leave the watcher armed.
+
+The button shows the count of new screenshots in the folder
+(**Run Parse · 5**) and disables itself when there's nothing new to
+parse. Re-running it against the same screenshots is idempotent —
+Recall stores which files it's already seen, so duplicates don't
+create duplicate matches.
+
+The status line below shows either:
+
+- **Last run · X ago · N records on record** — when there are no
+  new screenshots to process.
+- **All screenshots already parsed — nothing new in the folder.** —
+  same idea, sterner.
+- **Blocked — needs Tesseract.** — Engine row needs fixing first;
+  click **Fix in Settings →** to jump to **Settings → Engine**.
+
+While parsing, the button reads **Parsing…** and a progress panel
+expands under the row showing per-file status. Click the chevron to
+collapse it down to a single progress bar.
 
 ## Sidebar version block (masthead, lower-right)
 

@@ -153,11 +153,11 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 
 | Package | Contents |
 |---|---|
-| `pkg/app` | `App` struct + per-concern files: `settings.go`, `tesseract.go`, `watcher.go`, `metrics_lifecycle.go`, `update.go`, `screenshots_dir.go`, `screenshot_handler.go`, `inference.go`, `match_record.go`, `merge.go`, `parse.go`, `sse.go`. Build-tag pair `app_wails.go` / `app_server.go` for dialog methods + event emit |
+| `pkg/app` | `App` struct + file-per-concern under `pkg/app/*.go` — settings, tesseract, watcher, metrics lifecycle, update, screenshots dir, screenshot handler, inference, match record, parse, aggregate, correlation, export (json + csv), owdata, probe, sse. Production / test files are 1:1 siblings (`watcher.go` ↔ `watch_events_test.go`). Build-tag pair `app_wails.go` / `app_server.go` for dialog methods + event-emit shims. `ls pkg/app/*.go` is the source of truth — don't maintain a literal list here. |
 | `pkg/cmd` | `RunWails` (Wails init) and `RunServer` (HTTP server + REST API) |
 | `pkg/db` | SQLite `Init()` + `DB` variable |
 | `pkg/metrics` | Prometheus `Collector` + `Server` |
-| `pkg/parser` | OCR pipeline split per concern: `parser.go` (dispatcher + `ParseScreenshotsDir`), `types.go`, `heroes.go`, `maps.go`, `tesseract.go`, `imageutil.go`, `text.go`, `parse_rank.go`, `parse_summary.go`, `parse_personal.go`, `parse_scoreboard.go`, `exec_{other,windows}.go` (HideWindow build-tag pair) |
+| `pkg/parser` | OCR pipeline split per concern. `parser.go` (dispatcher + `ParseScreenshotsDir`), `classify.go` (screenshot-type detection), `types.go`, `heroes.go` / `maps.go` / `owdata.go` (YAML-backed roster + map tables, embedded at compile time), `tesseract.go`, `imageutil.go`, `text.go`, four `parse_*.go` files per screenshot type, `exec_{other,windows}.go` HideWindow build-tag pair, `golden.go` for integration-test fixture helpers. `ls pkg/parser/*.go` is the source of truth. |
 
 `.devcontainer/devcontainer.json` + `postCreate.sh` mirror the Brewfile
 on a Debian + Docker-in-Docker base so the project can be developed
@@ -360,13 +360,7 @@ enable→disable→enable cycle constructs a fresh `Server`.
 
 **File layout**: `ls pkg/app/*.go` — every file is named for its concern (e.g. `tesseract.go`, `watcher.go`, `correlation.go`, `aggregate.go`); production code and tests are 1:1 sibling files (`watcher.go` ↔ `watch_events_test.go`). Two build-tag pairs: `app_wails.go` / `app_server.go` for the dialog methods + event-emit shim, and `pkg/parser/exec_other.go` / `exec_windows.go` for the `HideWindow` shim.
 
-**Wails-bound methods (called from Vue via `wailsjs/go/app/App`)**:
-`ParseScreenshots`, `GetMatchResults`, `GetScreenshotsDir`,
-`SetScreenshotsDir`, `PickScreenshotsDir`, `GetPrometheusEnabled`,
-`SetPrometheusEnabled`, `GetWatchEnabled`, `SetWatchEnabled`,
-`GetTesseractStatus`, `SetTesseractPath`, `PickTesseractBinary`,
-`ResetTesseractPath`, `ClearDatabase`, `GetNewScreenshotCount`,
-`GetVersion`, `CheckForUpdate`.
+**Wails-bound methods (called from Vue via `wailsjs/go/app/App`)**: every exported method on `*app.App` is bound automatically — `grep -rE '^func \(a \*App\) [A-Z]' pkg/app/*.go` lists the current surface. The same methods are exposed under `/api/...` in server mode via `pkg/cmd/server.go`. Treat `api/openapi.yaml` as the contract for both transports; `make gen-types` regenerates `frontend/src/api.gen.d.ts`.
 
 **App constructor**: `app.New()` in `pkg/app` (was `NewApp()` in root).
 
@@ -445,7 +439,7 @@ Nine workflows:
 |---|---|---|
 | `README.md`, `docs/install-{macos,linux,windows}.md` | Gamers | Quick start + per-platform install. Keep jargon out of these. |
 | `docs/how-it-works.md` | Gamers | Pipeline overview + expected user workflow + the four screenshot types. Anchors the book's "Using Recall" section. |
-| `docs/settings-reference.md` | Gamers | Every Settings + Ingest tab field documented (Directories / Appearance / Calendar / Engine / Parse / Export / Data). Source of truth for "what does this knob do?". |
+| `docs/settings-reference.md` | Gamers | Every Settings + Parse tab field documented (Folders / Engine / Appearance / Calendar / Backup & Restore / Advanced on Settings; Watch + Manual Parse on Parse). Source of truth for "what does this knob do?". |
 | `docs/filtering.md` | Gamers | The Matches tab filter rail end-to-end: 7 multi-filter pills, search-inside-popover, date range, sort, Expand/Collapse, Min-play threshold, Undated toggle, Clear Filters, group rail. |
 | `docs/unknown-screenshots.md` | Gamers | Unknown tab triage. Lists the 4 common causes of a record landing there, the field-diagnostic strip's columns, and the recover-via-recapture / re-parse / file-bug paths. |
 | `docs/feedback.md` | Gamers | "How do I file a bug or feature request" — book chapter pointing at the two `.github/ISSUE_TEMPLATE/*.yml` forms + the security-advisory channel. |
@@ -467,6 +461,8 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux,windows}.md#
   - `pr-report` failure is downstream — it downloads the `unit-test-results` artifact that `lint` uploads. Lint fail → no artifact → pr-report fail. Don't debug separately; it clears when lint goes green.
   - `required-checkboxes` failure → bot leaves the PR-template attestation boxes unticked. Fetch the body via `gh pr view N --json body --jq .body > /tmp/body.md`, flip the two lines starting with `- [ ] **I have read and agree to the [Code of Conduct]` and `- [ ] **I license my contribution` to `- [x] …`, then `gh pr edit N --body-file /tmp/body.md`. Body comes back with CRLF — use Python `replace()` not BSD sed for the substitution.
   - `typos` flags identifier+plural-s runs (e.g. pluralising `SELECT` or `SUMMARY` by appending an `s`) because it parses the trailing `Ts` / `Ys` as a separate token and the truncated leading run as a misspelled word. Rephrase prose ("SELECT calls", "SUMMARY screens") rather than extending `_typos.toml`.
+
+- **Vue `<style scoped>` miscompiles the `:global(X) .y { … }` partial form.** Vue's compiler strips the descendant from the second rule and emits a bare `X { … }` rule that targets whatever `X` matches — e.g. `:global([data-theme="light"]) .link-btn { color: var(--accent-text); }` produces `[data-theme="light"] { color: var(--accent-text); }`, which then matches `<html>` directly. If the body sets `opacity`, `background`, or any property that wins specificity over `style.css`'s `html[data-theme="light"]` (0,0,1,1), the entire page gets globally polluted once the SFC first mounts — scoped `<style>` tags persist in `<head>` after Vue unmounts the component, so the wash sticks across every subsequent tab. Workaround: put cross-theme overrides in `app.css` as proper global rules scoped under a parent id (`[data-theme="light"] #panel-settings .x`), not in `<style scoped>`. Verify with `cd frontend && npm run build && grep -c "^\[data-theme=light\]{" dist/assets/*.css` — that count must stay 0. Latent occurrences still exist in `MatchCard.vue` / `ParseProgressPanel.vue` / `ParseStatusBar.vue` but their broken rules only set color/background that lose specificity to style.css's `html[data-theme]`; defensive cleanup is a follow-up.
 
 - **sqlclosecheck + per-iteration `*sql.Rows` close.** When a loop opens a fresh `s.db.Query(...)` on every iteration with multiple exit paths, extract the per-iteration body into a helper so a single `defer rows.Close()` covers every return — open-coding `_ = rows.Close()` at each exit will be flagged. Pattern: `SQLStore.collectFilenames` in `pkg/db/store.go`.
 

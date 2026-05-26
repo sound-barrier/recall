@@ -89,7 +89,7 @@ forgot to capture the SUMMARY tab" — the most common cause. The fix:
    tabs appear the same way they did right after the match ended.
 2. Screenshot the missing tab (SUMMARY, usually). Save it into the
    same folder Recall watches.
-3. Go to the **Ingest** tab and click **Run Parse** (or just wait
+3. Go to the **Parse** tab and click **Run Parse** (or just wait
    for the watch debounce if **Watch Folder** is on).
 
 Recall will pick up the new PNG, run the correlation pass against
@@ -137,8 +137,8 @@ an Overwatch match (a desktop screenshot, a screenshot from another
 game, etc.), the simplest fix is:
 
 1. Delete the offending PNG from your screenshots folder.
-2. **Ingest → Data → Clear Parse Database**.
-3. Re-run **Manual Parse**.
+2. **Settings → Advanced → Clear Parse Database**.
+3. Re-run **Parse → Run Parse**.
 
 This rebuilds the database cleanly without the orphan.
 

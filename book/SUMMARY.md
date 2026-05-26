@@ -1,12 +1,12 @@
 # Summary
 
-* [Introduction](README.md)
+* [Quick start (Windows)](README.md)
 
 ## Installation
 
+* [Windows](install-windows.md)
 * [macOS](install-macos.md)
 * [Linux](install-linux.md)
-* [Windows](install-windows.md)
 
 ## Using Recall
 

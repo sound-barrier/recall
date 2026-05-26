@@ -17,7 +17,7 @@ reproduce the problem:
   `v0.1.0`), or run `recall-server --version` for the server binary.
 - **Operating system + version** — `macOS 15.2`, `Ubuntu 24.04`,
   `Windows 11 23H2`, etc.
-- **Tesseract version** — shown in **Ingest → Engine**, or run
+- **Tesseract version** — shown in **Settings → Engine**, or run
   `tesseract --version`.
 - **Expected vs actual** — what you thought would happen, what
   actually happened.
@@ -28,7 +28,7 @@ reproduce the problem:
     times easier to fix when the source PNG is attached.
   - **The Recall app or website screenshot** showing what looked wrong
     (UI glitch, missing data, weird filter behavior, etc.).
-- **Logs** — terminal output for the server, or the **Ingest → Parse**
+- **Logs** — terminal output for the server, or the **Parse** tab's
   progress panel for the desktop app.
 
 Skip a field with `n/a` if it doesn't apply.

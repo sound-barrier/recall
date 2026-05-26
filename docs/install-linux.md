@@ -47,7 +47,7 @@ sudo dnf install tesseract
 ```
 
 Recall auto-detects `/usr/bin/tesseract` on first launch. If you installed
-Tesseract elsewhere, use **Ingest → Engine → Locate Tesseract…** to point it
+Tesseract elsewhere, use **Settings → Engine → Locate Tesseract…** to point it
 at the binary.
 
 ## 3. Point Recall at your screenshots folder
