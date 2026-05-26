@@ -61,9 +61,6 @@
      RECALL masthead title. Russo One is the free visual fallback. */
   --brand: 'OW Wordmark', 'Russo One', 'Industry Black', 'Impact', sans-serif;
 
-  /* Settings page typeface — OW's Futura No. 2 Demi (with Jost as the free
-     Indestructible-Type clone fallback). Scoped to the Settings view only. */
-  --settings: 'Futura No. 2 Demi', 'Jost', 'Futura', 'Avenir Next', 'Avenir', sans-serif;
 }
 
 /* LIGHT MODE — brand-gray (#4A4A4A) becomes the dominant structural
@@ -1024,48 +1021,6 @@ main#main-content {
 
 .settings, .matches-view, .unknown-view {
   animation: view-fade-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-/* Settings tab adopts the OW Futura No. 2 Demi typeface (via the --settings
-   fallback chain). We re-point --display and --body at --settings inside the
-   scope so the page's existing rules (settings-heading, section-title, btn,
-   labels, etc.) all pick it up. .unknown-view and .ingest-view share the
-   .settings class for layout/animation but keep their content on the
-   in-game display font — hence the compound :not selector. */
-.settings:not(.unknown-view, .ingest-view) {
-  --display: var(--settings);
-  --body: var(--settings);
-
-  font-family: var(--settings);
-}
-
-.settings:not(.unknown-view, .ingest-view) input,
-.settings:not(.unknown-view, .ingest-view) textarea,
-.settings:not(.unknown-view, .ingest-view) select,
-.settings:not(.unknown-view, .ingest-view) button {
-  font-family: var(--settings);
-}
-
-.settings:not(.unknown-view, .ingest-view) .settings-heading {
-  font-style: normal;
-  font-weight: 600;
-  letter-spacing: 0.005em;
-}
-
-.settings:not(.unknown-view, .ingest-view) .settings-heading em {
-  font-style: normal;
-  font-weight: 600;
-}
-
-.settings:not(.unknown-view, .ingest-view) .section-title {
-  font-style: normal;
-  font-weight: 600;
-  letter-spacing: 0.015em;
-}
-
-.settings:not(.unknown-view, .ingest-view) .section-num {
-  font-style: normal;
-  font-weight: 600;
 }
 
 /* .settings-sub moved to SettingsView.vue */
