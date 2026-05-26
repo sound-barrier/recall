@@ -66,54 +66,73 @@
   --settings: 'Futura No. 2 Demi', 'Jost', 'Futura', 'Avenir Next', 'Avenir', sans-serif;
 }
 
-/* LIGHT MODE — keep brand-gray (#4A4A4A) and brand-orange (#F5A623)
-   prominent. The brand-gray now becomes the dominant structural color:
-   primary text, strong borders, the wordmark tile bg, hairlines. */
+/* LIGHT MODE — brand-gray (#4A4A4A) becomes the dominant structural
+   color (primary text, strong borders, hairlines); brand-orange
+   shifts to a darker rust (#b03a0a) so the same accent token works
+   both as text and as a fill on cream. The brighter brand orange is
+   preserved as --accent-bright for hover / highlight states only. */
 [data-theme="light"] {
+  /* Cream-paper editorial palette. Contrast values verified vs the
+     bg/surface/surface-3 trio with WCAG 2 — the previous palette had
+     several pairings under AA (text-mute 2.4:1 on cream, accent
+     1.78:1 as text). This rebalance keeps the warm-cream identity
+     but widens the ink/paper luminance gap so secondary text and
+     brand accents read at a glance instead of bleaching into the
+     page.
+
+     Surfaces: bg slightly darker than surface so cards "lift" off
+     the page. Hairlines a touch firmer for clearer separation. */
   --bg: #f3f0e8;
   --surface: #fbf9f3;
   --surface-2: #f5f2ea;
   --surface-3: #ebe6da;
-  --border: #d4ccba;
-  --border-soft: #e0d9c6;
+  --border: #b9b09c;
+  --border-soft: #cec5af;
   --border-strong: #4A4A4A;
-  --hairline: rgb(74 74 74 / 16%);
+  --hairline: rgb(74 74 74 / 22%);
   --text: #2b2a26;
   --text-dim: #4A4A4A;
-  --text-faint: #6a655a;
-  --text-mute: #a39e90;
+  --text-faint: #56524a;
+  --text-mute: #7a7568;
   --brand-gray: #4A4A4A;
   --brand-gray-soft: rgb(74 74 74 / 85%);
 
-  /* Keep #F5A623 dominant in light mode too — it's the OW signature.
-     Type-on-light contrast is handled with a darker `--accent-text`
-     used in selector-level overrides below. */
-  --accent: #F5A623;
-  --accent-bright: #d68a14;   /* darker on light bg hover, more readable */
-  --accent-text: #9a6512;     /* AA-contrast text variant for orange-on-cream */
+  /* Brand orange shifts to a darker "rust" hue in light mode so the
+     same `var(--accent)` token works as both text colour AND fill —
+     prior bright orange #F5A623 was 1.78:1 on cream as text. Rust
+     #b03a0a hits ≥4.88:1 on every surface (AA-small on s3). The
+     --accent-soft / --accent-glow tints stay derived from the bright
+     orange so highlight fills stay visible against the cream paper. */
+  --accent: #b03a0a;
+  --accent-bright: #c2410c;   /* hover — lighter rust, still AA-safe vs --primary-text-on-accent */
+  --accent-text: #b03a0a;     /* aliased to --accent; was a separate burnt-orange */
   --accent-soft: rgb(245 166 35 / 22%);
-  --accent-glow: rgb(245 166 35 / 42%);
-  --win: #137a3a;
-  --win-soft: rgb(19 122 58 / 14%);
-  --win-line: rgb(19 122 58 / 60%);
+  --accent-glow: rgb(176 58 10 / 42%);
+  --win: #106d33;
+  --win-soft: rgb(16 109 51 / 14%);
+  --win-line: rgb(16 109 51 / 60%);
   --loss: #b03346;
   --loss-soft: rgb(176 51 70 / 12%);
   --loss-line: rgb(176 51 70 / 55%);
-  --draw: #a07020;
-  --draw-soft: rgb(160 112 32 / 14%);
-  --draw-line: rgb(160 112 32 / 55%);
+  --draw: #8b5c14;
+  --draw-soft: rgb(139 92 20 / 14%);
+  --draw-line: rgb(139 92 20 / 55%);
   --unknown-line: rgb(74 74 74 / 35%);
-  --tank: #2c6eb8;
-  --tank-soft: rgb(44 110 184 / 14%);
+  --tank: #1f5491;
+  --tank-soft: rgb(31 84 145 / 14%);
   --dps: #c54a2c;
   --dps-soft: rgb(197 74 44 / 13%);
-  --support: #2d8a4d;
-  --support-soft: rgb(45 138 77 / 13%);
+  --support: #1e6f3a;
+  --support-soft: rgb(30 111 58 / 13%);
   --atmos-orange: rgb(245 166 35 / 14%);
   --atmos-blue:   rgb(44 110 184 / 5%);
   --atmos-coral:  rgb(176 51 70 / 4%);
   --grid-line:    rgb(74 74 74 / 4%);
-  --primary-text-on-accent: #1a0a00;
+
+  /* Buttons fill with --accent (rust #b03a0a in light mode). The
+     dark brown text from dark-mode-on-bright-orange only hits 3.18:1
+     on rust; #fff8ef cream-white reads 5.8:1 with a paper feel. */
+  --primary-text-on-accent: #fff8ef;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

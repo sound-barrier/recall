@@ -1008,9 +1008,9 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
 .light-swatch {
   --swatch-bg:     #faf6ee;
   --swatch-mast:   #ece6d6;
-  --swatch-border: #d8d1bd;
+  --swatch-border: #b9b09c;
   --swatch-text:   #2a2722;
-  --swatch-accent: #c2410c;
+  --swatch-accent: #b03a0a;
 }
 
 /* Dark-swatch palette (frozen — matches the live dark theme). */
