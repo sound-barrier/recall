@@ -596,4 +596,46 @@ describe('MatchCard — match notes block', () => {
     const wrapper = mountCard({ record: rec })
     expect(wrapper.find('.note-mark').exists()).toBe(true)
   })
+
+  it('Backspace on empty member input removes the last chip', async () => {
+    const rec = makeRecord({}, {
+      annotation: { leaver: '', members: ['Apollo#1', 'Cheese#5'] },
+    } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: rec, isExpanded: true })
+    const memberInput = wrapper.find('.member-input')
+    // Input is empty by default; Backspace should drop the last chip.
+    await memberInput.trigger('keydown', { key: 'Backspace' })
+    expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Apollo#1'])
+    const e = wrapper.emitted('set-match-annotation')!
+    expect((e[e.length - 1] as unknown[])[1]).toMatchObject({ members: ['Apollo#1'] })
+  })
+
+  it('Backspace with text in the input does NOT remove a chip', async () => {
+    const rec = makeRecord({}, {
+      annotation: { leaver: '', members: ['Apollo#1'] },
+    } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: rec, isExpanded: true })
+    const memberInput = wrapper.find('.member-input')
+    await memberInput.setValue('Ches')
+    await memberInput.trigger('keydown', { key: 'Backspace' })
+    // Chip list unchanged; the Backspace is consumed by the input's
+    // native delete-character behaviour.
+    expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Apollo#1'])
+  })
+
+  it('adding a duplicate BattleTag clears the input without emitting', async () => {
+    const rec = makeRecord({}, {
+      annotation: { leaver: '', members: ['Apollo#1'] },
+    } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: rec, isExpanded: true })
+    const memberInput = wrapper.find('.member-input')
+    await memberInput.setValue('Apollo#1')
+    await memberInput.trigger('keydown', { key: 'Enter' })
+    // Chip list unchanged.
+    expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Apollo#1'])
+    // Input is cleared so the user knows the entry was processed.
+    expect((memberInput.element as HTMLInputElement).value).toBe('')
+    // No annotation event fired — nothing actually changed.
+    expect(wrapper.emitted('set-match-annotation')).toBeFalsy()
+  })
 })
