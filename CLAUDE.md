@@ -176,6 +176,7 @@ macOS-only (uses `sips`) and skips elsewhere.
 
 | Var | Default | Effect |
 |---|---|---|
+| `RECALL_DATA_DIR` | platform user-config dir | Root directory for `settings.json` + `db/recall.db`. The repo's `.envrc` sets this to `$PWD/data` so `wails dev` (and `go run`) keep their state under the repo for inspection. Released app launches don't load `.envrc`, so the platform path applies. `scripts/_db.sh::recall_db_path` honors the same env var so the `db-*.sh` scripts see the same DB. |
 | `RECALL_DEBUG_DIR` | system temp | Directory for Tesseract work files; set to a fixed path to inspect them after a parse run. |
 | `OWMETRICS_DEBUG_DIR` | *(off)* | When non-empty, dumps raw Tesseract output `.txt` files into the work dir for each OCR call. |
 | `OWMETRICS_METRICS_ADDR` | `:9091` | Override Prometheus metrics bind address (e.g. `OWMETRICS_METRICS_ADDR=:9292 wails dev`). |

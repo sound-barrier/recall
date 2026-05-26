@@ -15,13 +15,22 @@
 #   child_tables    → space-separated list of the five child tables (in
 #                     the order their CASCADE deletes should fire).
 
-# recall_db_path resolves the platform-canonical DB location, mirroring
-# pkg/app/settings.go::appDataDir. Override with RECALL_DB=<path> when
-# inspecting a copy. Does NOT verify the file exists — callers can `[[ -f
-# … ]]` if needed.
+# recall_db_path resolves the SQLite path, mirroring
+# pkg/app/settings.go::appDataDir. Resolution order:
+#   1. RECALL_DB        — full path to the .db file (most specific).
+#   2. RECALL_DATA_DIR  — root dir; appends /db/recall.db. The repo's
+#                         .envrc sets this to $PWD/data when direnv is
+#                         active, so `wails dev` + scripts share the
+#                         in-repo dev DB without further config.
+#   3. Platform user-config dir — what the released app uses.
+# Does NOT verify the file exists — callers can `[[ -f … ]]` if needed.
 recall_db_path() {
   if [[ -n "${RECALL_DB:-}" ]]; then
     printf '%s\n' "$RECALL_DB"
+    return
+  fi
+  if [[ -n "${RECALL_DATA_DIR:-}" ]]; then
+    printf '%s\n' "$RECALL_DATA_DIR/db/recall.db"
     return
   fi
   case "$(uname -s)" in

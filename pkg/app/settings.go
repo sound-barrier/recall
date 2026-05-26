@@ -20,14 +20,24 @@ type Settings struct {
 	WatchEnabled      bool   `json:"watch_enabled"`
 }
 
-// appDataDir returns the platform-appropriate directory for Recall's
-// settings and database. It follows OS conventions so the files land in
-// the right place for a distributed app regardless of cwd:
+// appDataDir returns the directory Recall reads/writes settings + the
+// SQLite DB from. Honors the `RECALL_DATA_DIR` env override (set in
+// `.envrc` to `<repo>/data` so `wails dev` keeps its data under the
+// repo for easy inspection); falls through to the platform-appropriate
+// user-config directory for shipped builds:
 //
 //	macOS:   ~/Library/Application Support/Recall/
 //	Linux:   $XDG_CONFIG_HOME/recall/  (fallback ~/.config/recall/)
 //	Windows: %AppData%\Recall\
+//
+// The env-var path is taken as-is — no platform-name suffix appended —
+// so the override is a complete, absolute placement decision. Released
+// app launches don't have `.envrc` loaded, so the override stays
+// unset and the platform path applies.
 func appDataDir() string {
+	if dir := os.Getenv("RECALL_DATA_DIR"); dir != "" {
+		return dir
+	}
 	base, err := os.UserConfigDir()
 	if err != nil {
 		// Should not happen on any supported OS; fall back to ~/.recall.
