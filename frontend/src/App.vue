@@ -334,12 +334,10 @@ async function resetTesseractPath() {
   }
 }
 
-// Jump to the Ingest view and scroll the Engine section into view.
-// Wired from the System Alert banner's "Fix in Ingest →" CTA and
-// from the empty-state shortcut. (Engine config lives in Ingest, not
-// Settings — Settings is reserved for screenshot folder + theme.)
+// Jump to Settings and scroll the Engine section into view. Wired
+// from the System Alert banner's "Fix in Settings →" CTA.
 async function gotoEngineSettings() {
-  view.value = 'ingest'
+  view.value = 'settings'
   await nextTick()
   const el = document.getElementById('sec-engine')
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -353,7 +351,7 @@ async function gotoEngineSettings() {
 async function toggleWatch() {
   const next = !watchEnabled.value
   if (next && !tesseractReady.value) {
-    error.value = 'Configure Tesseract in Ingest → Engine before enabling Watch.'
+    error.value = 'Configure Tesseract in Settings → Engine before enabling Watch.'
     return
   }
   try {
@@ -398,7 +396,7 @@ async function runParse() {
 
 async function parse() {
   if (!tesseractReady.value) {
-    error.value = 'Tesseract is not configured. Fix it in Ingest → Engine.'
+    error.value = 'Tesseract is not configured. Fix it in Settings → Engine.'
     return
   }
   // If the detected version is unsupported, require explicit confirmation
@@ -762,13 +760,13 @@ onBeforeUnmount(() => {
             <span class="system-alert-path" :title="tesseractStatus.path">{{ tesseractStatus.path || '— no path —' }}</span>
           </h3>
           <p class="system-alert-desc">
-            {{ tesseractStatus.error || 'Recall cannot OCR screenshots without Tesseract. Install it, or point Recall at the existing binary in Ingest → Engine.' }}
+            {{ tesseractStatus.error || 'Recall cannot OCR screenshots without Tesseract. Install it, or point Recall at the existing binary in Settings → Engine.' }}
           </p>
         </div>
         <div class="system-alert-actions">
           <button class="btn alert-cta" @click="gotoEngineSettings">
             <span class="alert-cta-arrow" aria-hidden="true">→</span>
-            Fix in Ingest → Engine
+            Fix in Settings → Engine
           </button>
         </div>
       </div>
@@ -827,7 +825,7 @@ onBeforeUnmount(() => {
               @click="goToView('ingest')"
             >
               <span class="nav-tab-num">02</span>
-              <span class="nav-tab-label">Ingest</span>
+              <span class="nav-tab-label">Parse</span>
             </button>
             <button
               id="tab-matches"
@@ -936,20 +934,41 @@ onBeforeUnmount(() => {
           :probe-message="probeMessage"
           :probe-status="probeStatus"
           :probe-tried="probeTried"
+          :tesseract-ready="tesseractReady"
+          :tesseract-supported="tesseractSupported"
+          :tesseract-status="tesseractStatus"
+          :tesseract-picker-busy="tesseractPickerBusy"
+          :matched-count="records.length"
+          :unknown-count="unknownRecords.length"
+          :exporting="exporting"
+          :importing="importing"
+          :import-armed="importArmed"
+          :export-status="exportStatus"
+          :prometheus-enabled="prometheusEnabled"
+          :clear-confirm="clearConfirm"
+          :clearing-d-b="clearingDB"
           @pick-screenshots-dir="pickDir"
           @detect-screenshots-dir="detectDir"
           @toggle-theme="toggleTheme"
           @set-week-start="setWeekStart"
           @go-to-view="goToView"
+          @pick-tesseract="pickTesseractBinary"
+          @reset-tesseract="resetTesseractPath"
+          @export-data="exportData"
+          @export-data-csv="exportDataCSV"
+          @arm-import="armImport"
+          @cancel-import="cancelImport"
+          @import-data="importData"
+          @toggle-prometheus="togglePrometheus"
+          @arm-clear="armClear"
+          @clear-database="clearDatabase"
+          @cancel-clear="cancelClear"
         />
 
-        <!-- ─── INGEST VIEW (engine → parse → export → data) ─────── -->
+        <!-- ─── PARSE VIEW (Watch + Manual Parse + Progress) ─────── -->
         <IngestView
           v-if="view === 'ingest'"
           :tesseract-ready="tesseractReady"
-          :tesseract-supported="tesseractSupported"
-          :tesseract-status="tesseractStatus"
-          :tesseract-picker-busy="tesseractPickerBusy"
           :screenshots-dir="screenshotsDir"
           :watch-enabled="watchEnabled"
           :loading="loading"
@@ -960,26 +979,8 @@ onBeforeUnmount(() => {
           :parse-progress-open="parseProgressOpen"
           :matched-count="records.length"
           :unknown-count="unknownRecords.length"
-          :prometheus-enabled="prometheusEnabled"
-          :clear-confirm="clearConfirm"
-          :clearing-d-b="clearingDB"
-          :exporting="exporting"
-          :importing="importing"
-          :import-armed="importArmed"
-          :export-status="exportStatus"
-          @pick-tesseract="pickTesseractBinary"
-          @reset-tesseract="resetTesseractPath"
           @toggle-watch="toggleWatch"
-          @toggle-prometheus="togglePrometheus"
           @parse="parse"
-          @arm-clear="armClear"
-          @clear-database="clearDatabase"
-          @cancel-clear="cancelClear"
-          @export-data="exportData"
-          @export-data-csv="exportDataCSV"
-          @arm-import="armImport"
-          @cancel-import="cancelImport"
-          @import-data="importData"
           @toggle-progress="parseProgressOpen = !parseProgressOpen"
           @go-to-view="goToView"
         />

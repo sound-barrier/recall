@@ -2,14 +2,25 @@
 import { ref, computed, watch } from 'vue'
 import type { ThemeMode } from '../composables/useTheme'
 import type { WeekStart } from '../composables/useWeekStart'
-import type { DataLocation } from '../api'
+import type { DataLocation, TesseractStatus } from '../api'
 import { OpenURL, IS_WAILS } from '../api'
 import { WEEKDAYS_FULL } from '../match-helpers'
 
-// SettingsView — Directories + Appearance + Calendar. Engine /
-// Prometheus / Watch-folder knobs live in the Ingest view because
-// they're tied to the parse workflow. Pulled out of App.vue so the
-// panel can be unit-tested without mounting the entire ~4500-line shell.
+// SettingsView — every knob a user might want to touch, sorted by
+// frequency of first-time use:
+//   01 Folders          — Screenshots Folder + Data Location
+//   02 Engine           — Tesseract Binary (one-time setup)
+//   03 Appearance       — Day/Night swatches
+//   04 Calendar         — First Day of Week
+//   05 Backup & Restore — Export JSON/CSV + Import Backup
+//   06 Advanced         — Stream to Grafana + Clear Database
+//                          (collapsed behind a <details> by default)
+//
+// Engine, Backup & Restore, and Advanced used to live on the Ingest
+// tab — moved here so casual users see a single config destination
+// and the Ingest tab can focus on one job: "run a parse." The Wails
+// runtime alert banner still deep-links to `#sec-engine` to fix a
+// missing Tesseract.
 
 const props = defineProps<{
   screenshotsDir: string
@@ -30,6 +41,24 @@ const props = defineProps<{
   probeMessage?:  string
   probeStatus?:   '' | 'success' | 'blocked'
   probeTried?:    string[]
+  // Engine section — moved from IngestView. All optional so the
+  // existing test cases that mount SettingsView with only the
+  // first four props still pass.
+  tesseractReady?:      boolean
+  tesseractSupported?:  boolean
+  tesseractStatus?:     TesseractStatus
+  tesseractPickerBusy?: boolean
+  // Backup & Restore section — flash chip + arm/confirm state.
+  matchedCount?: number
+  unknownCount?: number
+  exporting?:    false | 'json' | 'csv'
+  importing?:    boolean
+  importArmed?:  boolean
+  exportStatus?: { ok: boolean; message: string } | null
+  // Advanced section — Grafana stream toggle + destructive Clear DB.
+  prometheusEnabled?: boolean
+  clearConfirm?:      boolean
+  clearingDB?:        boolean
 }>()
 
 const emit = defineEmits<{
@@ -38,6 +67,20 @@ const emit = defineEmits<{
   'toggle-theme':           []
   'set-week-start':         [next: WeekStart]
   'go-to-view':             [next: 'settings' | 'ingest' | 'matches' | 'unknown']
+  // Engine
+  'pick-tesseract':         []
+  'reset-tesseract':        []
+  // Backup & Restore
+  'export-data':            []
+  'export-data-csv':        []
+  'arm-import':             []
+  'cancel-import':          []
+  'import-data':            []
+  // Advanced
+  'toggle-prometheus':      []
+  'arm-clear':              []
+  'clear-database':         []
+  'cancel-clear':           []
 }>()
 
 function onDetect() {
@@ -112,9 +155,9 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
         Where Recall reads from, and how it looks.
       </h2>
       <p class="settings-sub">
-        OCR engine, parsing, exports, and data management live in
+        Run a parse — armed watch or one-click manual — from
         <button type="button" class="empty-link" @click="emit('go-to-view', 'ingest')">
-          Ingest →
+          Parse →
         </button>.
       </p>
     </header>
@@ -323,9 +366,78 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
       </div>
     </div>
 
-    <div id="sec-appearance" class="settings-section">
+    <div id="sec-engine" class="settings-section">
       <div class="section-header">
         <span class="section-num">02</span>
+        <span class="section-slash" aria-hidden="true">/</span>
+        <h3 class="section-title">
+          Engine
+        </h3>
+      </div>
+      <div class="setting-rows">
+        <div class="setting-row engine-row" :class="{ alert: tesseractReady === false }">
+          <div class="setting-info">
+            <h4 class="setting-label">
+              Tesseract Binary
+              <span class="setting-help" tabindex="0" role="note">
+                <span class="setting-help-mark" aria-hidden="true">?</span>
+                <span class="setting-help-label">About Tesseract</span>
+                <span class="setting-help-pop" role="tooltip">
+                  Recall reads text out of your screenshots by calling the open-source Tesseract OCR engine. Install once per machine — Recall finds the binary on its own most of the time.
+                </span>
+              </span>
+            </h4>
+            <p class="setting-desc">
+              Recall shells out to Tesseract to read text from your Overwatch screenshots. On macOS the Homebrew install lives under <code>/opt/homebrew/bin</code> (Apple Silicon) or <code>/usr/local/bin</code> (Intel); apt installs to <code>/usr/bin</code>; Windows installers put it in <code>Program Files\Tesseract-OCR</code>.
+            </p>
+            <div v-if="tesseractStatus" class="engine-status" :class="{ ok: tesseractReady, fail: !tesseractReady }">
+              <span class="engine-dot" aria-hidden="true" />
+              <span class="engine-state">{{ tesseractReady ? 'Detected' : 'Not Found' }}</span>
+              <span v-if="tesseractReady && tesseractStatus.version" class="engine-version">v{{ tesseractStatus.version }}</span>
+              <span class="engine-path mono" :title="tesseractStatus.path || ''">{{ tesseractStatus.path || '—' }}</span>
+            </div>
+            <p v-if="tesseractStatus && !tesseractReady && tesseractStatus.error" class="engine-error">
+              {{ tesseractStatus.error }}
+            </p>
+            <div v-if="tesseractStatus && tesseractReady && !tesseractSupported" class="engine-unsupported-warn" role="status">
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" class="warn-icon">
+                <path d="M12 2.6 L22.4 20.5 L1.6 20.5 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                <line x1="12" y1="10" x2="12" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                <circle cx="12" cy="17.5" r="1.2" fill="currentColor" />
+              </svg>
+              <span>
+                Tesseract {{ tesseractStatus.version }} is not officially supported. Only version 5.x is tested with Recall.
+                Proceed at your own caution — results may be incorrect.
+              </span>
+            </div>
+            <p
+              v-if="tesseractStatus && tesseractStatus.default && tesseractStatus.default !== tesseractStatus.path"
+              class="engine-meta"
+            >
+              Default for this platform · <code>{{ tesseractStatus.default }}</code>
+              · <button class="link-btn" @click="emit('reset-tesseract')">
+                Use default
+              </button>
+            </p>
+          </div>
+          <div class="setting-control engine-control">
+            <button
+              class="btn"
+              :class="tesseractReady ? 'ghost' : 'primary'"
+              :disabled="tesseractPickerBusy"
+              @click="emit('pick-tesseract')"
+            >
+              <span v-if="tesseractPickerBusy">Locating…</span>
+              <span v-else>{{ tesseractReady ? 'Change Binary…' : 'Locate Tesseract…' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-appearance" class="settings-section">
+      <div class="section-header">
+        <span class="section-num">03</span>
         <span class="section-slash" aria-hidden="true">/</span>
         <h3 class="section-title">
           Appearance
@@ -416,7 +528,7 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
 
     <div id="sec-calendar" class="settings-section">
       <div class="section-header">
-        <span class="section-num">03</span>
+        <span class="section-num">04</span>
         <span class="section-slash" aria-hidden="true">/</span>
         <h3 class="section-title">
           Calendar
@@ -470,6 +582,199 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
         </div>
       </div>
     </div>
+
+    <div id="sec-backup" class="settings-section">
+      <div class="section-header">
+        <span class="section-num">05</span>
+        <span class="section-slash" aria-hidden="true">/</span>
+        <h3 class="section-title">
+          Backup &amp; Restore
+        </h3>
+      </div>
+      <div class="setting-rows">
+        <div class="setting-row">
+          <div class="setting-info">
+            <h4 class="setting-label">
+              Export Data
+              <span class="setting-help" tabindex="0" role="note">
+                <span class="setting-help-mark" aria-hidden="true">?</span>
+                <span class="setting-help-label">About Export</span>
+                <span class="setting-help-pop" role="tooltip">
+                  Pick <strong>JSON</strong> for a portable single-file Recall backup. Pick <strong>CSV</strong> for a ZIP of per-table spreadsheets you can open in Excel / Sheets. Both round-trip through Import.
+                </span>
+              </span>
+            </h4>
+            <p class="setting-desc">
+              Download a portable backup of every parsed match. <strong>JSON</strong> is the canonical Recall format (smallest, round-trips losslessly); <strong>CSV</strong> exports a ZIP archive of one CSV per table for Excel / Sheets. Settings + screenshots aren't included.
+            </p>
+            <p v-if="exportStatus && exportStatus.ok" class="setting-meta success">
+              <span class="block-mark" aria-hidden="true">✓</span>
+              {{ exportStatus.message }}
+            </p>
+            <p v-else-if="exportStatus && !exportStatus.ok" class="setting-meta blocked">
+              <span class="block-mark" aria-hidden="true">✕</span>
+              {{ exportStatus.message }}
+            </p>
+          </div>
+          <div class="setting-control">
+            <div class="export-btn-group">
+              <button
+                class="btn ghost"
+                :disabled="!!exporting || importing"
+                @click="emit('export-data')"
+              >
+                <span v-if="exporting === 'json'">Saving…</span>
+                <span v-else>JSON</span>
+              </button>
+              <button
+                class="btn ghost"
+                :disabled="!!exporting || importing"
+                @click="emit('export-data-csv')"
+              >
+                <span v-if="exporting === 'csv'">Saving…</span>
+                <span v-else>CSV</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-row" :class="{ 'danger-row': importArmed }">
+          <div class="setting-info">
+            <h4 class="setting-label">
+              Import Data
+              <span class="setting-help" tabindex="0" role="note">
+                <span class="setting-help-mark" aria-hidden="true">?</span>
+                <span class="setting-help-label">About Import</span>
+                <span class="setting-help-pop" role="tooltip">
+                  Restores a previously-exported backup. <strong>Replaces</strong> the live database — local matches not in the backup are lost. Two-step arm/confirm prevents accidental wipes.
+                </span>
+              </span>
+            </h4>
+            <p class="setting-desc">
+              Restore from a previously-exported JSON backup. <strong>Replaces</strong> everything currently in the database — local matches that aren't in the backup will be lost.
+            </p>
+            <p v-if="importArmed" class="setting-meta blocked">
+              <span class="block-mark" aria-hidden="true">⚠</span>
+              This wipes {{ (matchedCount ?? 0) + (unknownCount ?? 0) }} record{{ ((matchedCount ?? 0) + (unknownCount ?? 0)) === 1 ? '' : 's' }} before loading the backup.
+            </p>
+          </div>
+          <div class="setting-control">
+            <template v-if="!importArmed">
+              <button
+                class="btn danger-outline"
+                :disabled="importing || !!exporting"
+                @click="emit('arm-import')"
+              >
+                Import Backup…
+              </button>
+            </template>
+            <template v-else>
+              <div class="clear-confirm-group">
+                <button
+                  class="btn danger"
+                  :disabled="importing"
+                  @click="emit('import-data')"
+                >
+                  <span v-if="importing">Loading…</span>
+                  <span v-else>Choose File…</span>
+                </button>
+                <button class="btn ghost" :disabled="importing" @click="emit('cancel-import')">
+                  Cancel
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 06 Advanced — collapsed by default. Holds power-user
+         controls (Grafana streaming + destructive Clear DB) that
+         casual users should not see. Native <details> gives free
+         keyboard support; the styled <summary> mirrors a section
+         header for visual continuity. -->
+    <details id="sec-advanced" class="settings-section advanced-section">
+      <summary class="advanced-summary">
+        <span class="section-num">06</span>
+        <span class="section-slash" aria-hidden="true">/</span>
+        <span class="section-title">Advanced</span>
+        <span class="advanced-chev" aria-hidden="true">›</span>
+      </summary>
+      <div class="setting-rows advanced-rows">
+        <div class="setting-row">
+          <div class="setting-info">
+            <h4 class="setting-label">
+              Stream to Grafana
+              <span class="setting-help" tabindex="0" role="note">
+                <span class="setting-help-mark" aria-hidden="true">?</span>
+                <span class="setting-help-label">About Grafana streaming</span>
+                <span class="setting-help-pop" role="tooltip">
+                  Exposes Prometheus metrics on <code>localhost:9091/metrics</code> so the bundled Grafana dashboard can chart your trends. Requires the docker-compose stack to be running locally.
+                </span>
+              </span>
+            </h4>
+            <p class="setting-desc">
+              Expose match history on <code>localhost:9091/metrics</code> so the bundled Prometheus container can scrape it. Off by default — no port is opened until you enable this.
+            </p>
+          </div>
+          <div class="setting-control">
+            <label class="big-switch" :class="{ on: prometheusEnabled }">
+              <input type="checkbox" :checked="prometheusEnabled" @change="emit('toggle-prometheus')">
+              <span class="big-switch-track"><span class="big-switch-knob" /></span>
+              <span class="big-switch-state">{{ prometheusEnabled ? 'Live' : 'Off' }}</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-row" :class="{ 'danger-row': clearConfirm }">
+          <div class="setting-info">
+            <h4 class="setting-label">
+              Clear Parse Database
+              <span class="setting-help" tabindex="0" role="note">
+                <span class="setting-help-mark" aria-hidden="true">?</span>
+                <span class="setting-help-label">About Clear Database</span>
+                <span class="setting-help-pop" role="tooltip">
+                  Wipes every parsed match. Settings and screenshots stay; you can re-parse to rebuild. Two-step arm/confirm prevents accidental data loss.
+                </span>
+              </span>
+            </h4>
+            <p class="setting-desc">
+              Permanently delete all {{ (matchedCount ?? 0) + (unknownCount ?? 0) }} parsed match record{{ ((matchedCount ?? 0) + (unknownCount ?? 0)) === 1 ? '' : 's' }} from the local database. Settings and screenshots are untouched — you can re-parse at any time to rebuild from scratch.
+            </p>
+            <p v-if="clearConfirm" class="setting-meta blocked">
+              <span class="block-mark" aria-hidden="true">⚠</span>
+              This cannot be undone.
+            </p>
+          </div>
+          <div class="setting-control">
+            <template v-if="!clearConfirm">
+              <button
+                class="btn danger-outline"
+                :disabled="clearingDB || ((matchedCount ?? 0) + (unknownCount ?? 0)) === 0"
+                @click="emit('arm-clear')"
+              >
+                Clear Database…
+              </button>
+            </template>
+            <template v-else>
+              <div class="clear-confirm-group">
+                <button
+                  class="btn danger"
+                  :disabled="clearingDB"
+                  @click="emit('clear-database')"
+                >
+                  <span v-if="clearingDB">Deleting…</span>
+                  <span v-else>Delete {{ (matchedCount ?? 0) + (unknownCount ?? 0) }} Record{{ ((matchedCount ?? 0) + (unknownCount ?? 0)) === 1 ? '' : 's' }}</span>
+                </button>
+                <button class="btn ghost" :disabled="clearingDB" @click="emit('cancel-clear')">
+                  Cancel
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </details>
   </section>
 </template>
 
@@ -1131,6 +1436,359 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
   opacity: 0.4;
 }
 
+/* ─── Engine status panel (lifted from IngestView) ───────── */
+
+.engine-row { transition: background 220ms ease; }
+.engine-row.alert { background: var(--loss-soft); }
+.engine-row.alert::before { background: var(--loss); box-shadow: 0 0 10px var(--loss-line); }
+
+.engine-status {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.7rem;
+  padding: 0.45rem 0.7rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  max-width: 100%;
+}
+.engine-status.ok   { border-color: var(--win-line); background: var(--win-soft); }
+.engine-status.fail { border-color: var(--loss-line); background: var(--loss-soft); }
+
+.engine-dot {
+  flex-shrink: 0;
+  width: 8px; height: 8px;
+  background: var(--text-faint);
+  border-radius: 50%;
+}
+
+.engine-status.ok .engine-dot {
+  background: var(--win);
+  box-shadow: 0 0 10px var(--win-line);
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+
+.engine-status.fail .engine-dot {
+  background: var(--loss);
+  box-shadow: 0 0 10px var(--loss-line);
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+.engine-state {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.engine-status.ok .engine-state   { color: var(--win); }
+.engine-status.fail .engine-state { color: var(--loss); }
+
+.engine-version {
+  padding: 0.1rem 0.4rem;
+  background: var(--surface-3);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  font-feature-settings: "tnum";
+  border-radius: 2px;
+}
+
+.engine-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  word-break: break-all;
+  letter-spacing: 0;
+}
+
+.engine-error {
+  margin-top: 0.55rem;
+  max-width: 60ch;
+  font-family: var(--body);
+  font-size: 0.82rem;
+  color: var(--loss);
+  line-height: 1.5;
+}
+
+.engine-meta {
+  margin-top: 0.55rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+
+.engine-meta code {
+  padding: 0.05rem 0.35rem;
+  background: var(--surface-2);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+}
+
+.engine-control { align-items: flex-end; }
+
+.engine-unsupported-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  max-width: 60ch;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 3px;
+  font-family: var(--body);
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--accent) 80%, var(--text));
+  line-height: 1.55;
+}
+
+.engine-unsupported-warn .warn-icon {
+  flex-shrink: 0;
+  margin-top: 0.12rem;
+  color: var(--accent);
+}
+
+.link-btn {
+  margin: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: var(--accent);
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--accent-soft);
+  text-decoration-thickness: 1px;
+  transition: text-decoration-color 200ms ease, color 200ms ease;
+}
+
+.link-btn:hover {
+  text-decoration-color: var(--accent);
+}
+:global([data-theme="light"]) .link-btn { color: var(--accent-text); }
+:global([data-theme="light"]) .link-btn:hover { text-decoration-color: var(--accent-text); }
+
+/* ─── Backup & Restore (lifted from IngestView) ─────────── */
+
+/* Side-by-side JSON | CSV format picker. Mono labels + tight gap
+   so the pair reads as one choice rather than two actions. */
+.export-btn-group {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: stretch;
+}
+
+.export-btn-group .btn {
+  padding: 0.4rem 0.95rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Armed-import + armed-clear rows share the same destructive bar. */
+.setting-row.danger-row {
+  padding-left: calc(1.4rem - 3px);
+  background: var(--loss-soft);
+  border-left: 3px solid var(--loss-line);
+  border-radius: 2px;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+:global([data-theme="light"]) .setting-row.danger-row { background: var(--loss-soft); }
+
+.clear-confirm-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+/* Status meta strip shared between blocked + success states.
+   The block-mark glyph carries the semantic colour so a colour-
+   blind reader still gets the win/loss cue from the leading char. */
+.setting-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  font-feature-settings: "tnum";
+}
+
+.setting-meta.blocked { color: var(--loss); }
+.setting-meta.success { color: var(--win); }
+
+.block-mark {
+  margin-right: 0.15rem;
+  font-size: 0.85rem;
+  filter: saturate(0.85);
+}
+
+/* ─── Advanced collapsible (Grafana + Clear DB) ──────────── */
+
+.advanced-section {
+  margin-top: 2.6rem;
+}
+
+/* Strip native disclosure triangle — replaced by our own ›. */
+.advanced-section > summary {
+  list-style: none;
+}
+
+.advanced-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  padding-bottom: 0.85rem;
+  margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--brand-gray);
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+  transition: border-color 160ms ease;
+}
+
+.advanced-summary:hover { border-color: var(--border-strong); }
+
+.advanced-summary:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 2px 0 var(--accent);
+}
+
+.advanced-summary::after {
+  /* Same orange tick as .section-header — visual continuity. */
+  content: '';
+  position: absolute;
+  right: 0; bottom: -1px;
+  width: 28px; height: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+[data-theme="light"] .advanced-summary::after {
+  background: var(--accent-text);
+  box-shadow: none;
+}
+
+.advanced-summary .section-num,
+.advanced-summary .section-title {
+  /* Reuse the global section-header typography directly. */
+  transform: translateY(2px);
+}
+
+.advanced-chev {
+  margin-left: auto;
+  font-family: var(--display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-faint);
+  line-height: 1;
+  transition: transform 200ms ease, color 200ms ease;
+}
+
+.advanced-section[open] .advanced-chev {
+  transform: rotate(90deg);
+  color: var(--accent);
+}
+
+.advanced-rows {
+  /* Subtle fade-in when the user expands. Reduced-motion clobbers it
+     via the @media block at the bottom of this file. */
+  animation: advanced-reveal 240ms ease;
+}
+
+@keyframes advanced-reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Big-switch (Grafana toggle — lifted from IngestView) ── */
+
+.big-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.big-switch input {
+  position: absolute;
+  width: 0; height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.big-switch-track {
+  position: relative;
+  width: 56px; height: 30px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  transition: background 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+}
+
+.big-switch-knob {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 24px; height: 24px;
+  background: var(--text-faint);
+  border-radius: 50%;
+  transition:
+    transform 260ms cubic-bezier(0.4, 0.0, 0.2, 1),
+    background 240ms ease,
+    box-shadow 240ms ease;
+}
+
+.big-switch.on .big-switch-track {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  box-shadow: 0 0 18px -2px var(--accent-glow);
+}
+
+.big-switch.on .big-switch-track .big-switch-knob {
+  background: var(--accent);
+  box-shadow: 0 0 14px var(--accent-glow);
+  transform: translateX(26px);
+}
+
+.big-switch-state {
+  min-width: 3.6rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--text-faint);
+  transition: color 220ms ease;
+}
+
+.big-switch.on .big-switch-state { color: var(--accent); }
+
+.big-switch:focus-within .big-switch-track {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-soft), 0 0 18px -2px var(--accent-glow);
+}
+
 /* ─── Reduced-motion override ─────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1142,7 +1800,13 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
   .probe-chip-close,
   .settings-section::after,
   .btn,
-  .empty-hero {
+  .empty-hero,
+  .advanced-summary,
+  .advanced-chev,
+  .advanced-rows,
+  .big-switch-track,
+  .big-switch-knob,
+  .engine-row {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }

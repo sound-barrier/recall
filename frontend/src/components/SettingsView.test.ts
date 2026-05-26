@@ -90,11 +90,11 @@ describe('SettingsView', () => {
     expect(wrapper.find('.light-swatch').attributes('aria-checked')).toBe('false')
   })
 
-  it('emits go-to-view ingest when the "Ingest →" link is clicked', async () => {
+  it('emits go-to-view ingest when the "Parse →" link is clicked', async () => {
     const wrapper = mount(SettingsView, {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
     })
-    const link = wrapper.findAll('.empty-link').find(el => el.text().includes('Ingest'))!
+    const link = wrapper.findAll('.empty-link').find(el => el.text().includes('Parse'))!
     await link.trigger('click')
     expect(wrapper.emitted('go-to-view')).toBeTruthy()
     expect(wrapper.emitted('go-to-view')![0]).toEqual(['ingest'])
@@ -170,8 +170,266 @@ describe('SettingsView', () => {
     const wrapper = mount(SettingsView, {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
     })
-    // Screenshots Folder, Data Location, Theme, First Day of Week.
-    expect(wrapper.findAll('.setting-help')).toHaveLength(4)
+    // Screenshots Folder, Data Location, Engine, Theme, First Day
+    // of Week, Export, Import, Grafana stream, Clear DB. The last
+    // four live inside the closed <details> but are still in the DOM.
+    expect(wrapper.findAll('.setting-help')).toHaveLength(9)
+  })
+})
+
+// ── Engine section (Tesseract) ───────────────────────────────────────────
+
+import type { TesseractStatus } from '../api'
+
+function readyTesseract(over: Partial<TesseractStatus> = {}): TesseractStatus {
+  return {
+    path: '/usr/local/bin/tesseract',
+    found: true,
+    version: '5.5.0',
+    supported: true,
+    error: '',
+    default: '/usr/local/bin/tesseract',
+    ...over,
+  }
+}
+
+describe('SettingsView — Engine section', () => {
+  const baseEngineProps = {
+    screenshotsDir: '/srv',
+    loading: false,
+    themeMode: 'dark' as const,
+    weekStart: 0 as const,
+    tesseractReady: true,
+    tesseractSupported: true,
+    tesseractStatus: readyTesseract(),
+    tesseractPickerBusy: false,
+  }
+
+  it('shows the engine-status panel as "Detected" when Tesseract is ready', () => {
+    const wrapper = mount(SettingsView, { props: baseEngineProps })
+    const status = wrapper.find('.engine-status')
+    expect(status.exists()).toBe(true)
+    expect(status.classes()).toContain('ok')
+    expect(status.text()).toContain('Detected')
+  })
+
+  it('marks the row as alert + status fail when Tesseract is not ready', () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...baseEngineProps,
+        tesseractReady: false,
+        tesseractStatus: readyTesseract({ found: false, error: 'binary not found' }),
+      },
+    })
+    expect(wrapper.find('.engine-row').classes()).toContain('alert')
+    expect(wrapper.find('.engine-status').classes()).toContain('fail')
+    expect(wrapper.text()).toContain('binary not found')
+  })
+
+  it('renders engine-unsupported warning with role="status" for non-5.x Tesseract', () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...baseEngineProps,
+        tesseractSupported: false,
+        tesseractStatus: readyTesseract({ version: '4.1.1', supported: false }),
+      },
+    })
+    const warn = wrapper.find('.engine-unsupported-warn')
+    expect(warn.exists()).toBe(true)
+    expect(warn.attributes('role')).toBe('status')
+  })
+
+  it('emits pick-tesseract from the Change Binary button', async () => {
+    const wrapper = mount(SettingsView, { props: baseEngineProps })
+    const btn = wrapper.findAll('button').find(b => b.text().includes('Change Binary'))!
+    await btn.trigger('click')
+    expect(wrapper.emitted('pick-tesseract')).toBeTruthy()
+  })
+
+  it('renders Locate Tesseract (primary CTA) when not ready', () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...baseEngineProps,
+        tesseractReady: false,
+        tesseractStatus: readyTesseract({ found: false }),
+      },
+    })
+    const btn = wrapper.findAll('button').find(b => b.text().includes('Locate Tesseract'))!
+    expect(btn).toBeDefined()
+    expect(btn.classes()).toContain('primary')
+  })
+
+  it('emits reset-tesseract when "Use default" is clicked', async () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...baseEngineProps,
+        tesseractStatus: readyTesseract({
+          path: '/elsewhere/tesseract',
+          default: '/usr/local/bin/tesseract',
+        }),
+      },
+    })
+    const link = wrapper.findAll('.link-btn').find(b => b.text().includes('Use default'))!
+    await link.trigger('click')
+    expect(wrapper.emitted('reset-tesseract')).toBeTruthy()
+  })
+})
+
+// ── Backup & Restore section ─────────────────────────────────────────────
+
+describe('SettingsView — Backup & Restore', () => {
+  const baseProps = {
+    screenshotsDir: '/srv', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+  }
+
+  it('renders both JSON and CSV format buttons', () => {
+    const wrapper = mount(SettingsView, { props: baseProps })
+    const json = wrapper.findAll('button').find(b => b.text().trim() === 'JSON')
+    const csv  = wrapper.findAll('button').find(b => b.text().trim() === 'CSV')
+    expect(json).toBeDefined()
+    expect(csv).toBeDefined()
+  })
+
+  it('emits export-data when the JSON button is clicked', async () => {
+    const wrapper = mount(SettingsView, { props: baseProps })
+    const json = wrapper.findAll('button').find(b => b.text().trim() === 'JSON')!
+    await json.trigger('click')
+    expect(wrapper.emitted('export-data')).toBeTruthy()
+  })
+
+  it('emits export-data-csv when the CSV button is clicked', async () => {
+    const wrapper = mount(SettingsView, { props: baseProps })
+    const csv = wrapper.findAll('button').find(b => b.text().trim() === 'CSV')!
+    await csv.trigger('click')
+    expect(wrapper.emitted('export-data-csv')).toBeTruthy()
+  })
+
+  it('shows "Saving…" on the JSON button while exporting="json" and disables both', () => {
+    const wrapper = mount(SettingsView, {
+      props: { ...baseProps, exporting: 'json' },
+    })
+    const saving = wrapper.findAll('button').find(b => b.text().includes('Saving'))!
+    expect(saving.attributes('disabled')).toBeDefined()
+    const csv = wrapper.findAll('button').find(b => b.text().trim() === 'CSV')!
+    expect(csv.attributes('disabled')).toBeDefined()
+  })
+
+  it('renders the success chip when exportStatus.ok is true', () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...baseProps,
+        exportStatus: { ok: true, message: 'Saved: /tmp/recall.json' },
+      },
+    })
+    expect(wrapper.text()).toContain('Saved: /tmp/recall.json')
+    expect(wrapper.find('.setting-meta.success').exists()).toBe(true)
+  })
+
+  it('renders the failure chip when exportStatus.ok is false', () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...baseProps,
+        exportStatus: { ok: false, message: 'Export failed: boom' },
+      },
+    })
+    expect(wrapper.text()).toContain('Export failed: boom')
+    expect(wrapper.find('.setting-meta.blocked').exists()).toBe(true)
+  })
+
+  it('shows the unarmed "Import Backup…" button by default', () => {
+    const wrapper = mount(SettingsView, { props: baseProps })
+    const btn = wrapper.findAll('button').find(b => b.text().includes('Import Backup'))!
+    expect(btn).toBeDefined()
+    expect(btn.classes()).toContain('danger-outline')
+  })
+
+  it('arms / confirms / cancels the Import flow', async () => {
+    const wrapper = mount(SettingsView, { props: baseProps })
+    const arm = wrapper.findAll('button').find(b => b.text().includes('Import Backup'))!
+    await arm.trigger('click')
+    expect(wrapper.emitted('arm-import')).toBeTruthy()
+
+    await wrapper.setProps({ importArmed: true, matchedCount: 5 })
+    const choose = wrapper.findAll('button').find(b => b.text().includes('Choose File'))!
+    expect(choose).toBeDefined()
+    expect(wrapper.text()).toMatch(/wipes 5 record/)
+
+    await choose.trigger('click')
+    expect(wrapper.emitted('import-data')).toBeTruthy()
+
+    const cancel = wrapper.findAll('button').find(b => b.text().trim() === 'Cancel')!
+    await cancel.trigger('click')
+    expect(wrapper.emitted('cancel-import')).toBeTruthy()
+  })
+
+  it('disables Import while exporting (and vice versa)', () => {
+    const exporting = mount(SettingsView, {
+      props: { ...baseProps, exporting: 'json' },
+    })
+    const importBtn = exporting.findAll('button').find(b => b.text().includes('Import Backup'))!
+    expect(importBtn.attributes('disabled')).toBeDefined()
+
+    const importing = mount(SettingsView, {
+      props: { ...baseProps, importing: true },
+    })
+    const json = importing.findAll('button').find(b => b.text().trim() === 'JSON')!
+    expect(json.attributes('disabled')).toBeDefined()
+  })
+})
+
+// ── Advanced collapsible (Grafana + Clear DB) ────────────────────────────
+
+describe('SettingsView — Advanced section', () => {
+  const baseProps = {
+    screenshotsDir: '/srv', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+  }
+
+  it('renders the Advanced <details> closed by default', () => {
+    const wrapper = mount(SettingsView, { props: baseProps })
+    const det = wrapper.find('details.advanced-section')
+    expect(det.exists()).toBe(true)
+    expect((det.element as HTMLDetailsElement).open).toBe(false)
+  })
+
+  it('renders the Grafana toggle inside the Advanced section', () => {
+    const wrapper = mount(SettingsView, { props: baseProps })
+    const det = wrapper.find('details.advanced-section')
+    expect(det.text()).toContain('Stream to Grafana')
+  })
+
+  it('emits toggle-prometheus when the Grafana switch changes', async () => {
+    const wrapper = mount(SettingsView, { props: baseProps })
+    // The big-switch checkbox is inside the (closed but rendered) <details>.
+    const cb = wrapper.find('details.advanced-section input[type="checkbox"]')
+    await cb.trigger('change')
+    expect(wrapper.emitted('toggle-prometheus')).toBeTruthy()
+  })
+
+  it('arms Clear Database, confirms delete, then cancels', async () => {
+    const wrapper = mount(SettingsView, {
+      props: { ...baseProps, matchedCount: 4, unknownCount: 0 },
+    })
+    const arm = wrapper.findAll('button').find(b => b.text().includes('Clear Database'))!
+    await arm.trigger('click')
+    expect(wrapper.emitted('arm-clear')).toBeTruthy()
+
+    await wrapper.setProps({ clearConfirm: true, matchedCount: 4, unknownCount: 0 })
+    const del = wrapper.findAll('button').find(b => b.text().includes('Delete 4 Records'))!
+    expect(del).toBeDefined()
+    await del.trigger('click')
+    expect(wrapper.emitted('clear-database')).toBeTruthy()
+
+    const cancel = wrapper.findAll('button').find(b => b.text().trim() === 'Cancel')!
+    await cancel.trigger('click')
+    expect(wrapper.emitted('cancel-clear')).toBeTruthy()
+  })
+
+  it('disables Clear Database when no records exist', () => {
+    const wrapper = mount(SettingsView, {
+      props: { ...baseProps, matchedCount: 0, unknownCount: 0 },
+    })
+    const btn = wrapper.findAll('button').find(b => b.text().includes('Clear Database'))!
+    expect(btn.attributes('disabled')).toBeDefined()
   })
 })
 
