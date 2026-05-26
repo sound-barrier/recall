@@ -30,6 +30,11 @@ type MatchRecord struct {
 	// the UI ("self" | "team" | "enemy"); empty string means no
 	// annotation. Note is reserved for future per-match commentary.
 	Annotation *MatchAnnotation `json:"annotation,omitempty"`
+	// True iff the user soft-deleted this match. Omitted from the JSON
+	// when false (the common case). Hidden matches are filtered out of
+	// GetMatchResults by default — the frontend opts back in via the
+	// FilterRail "Hidden · N" toggle so the user can unhide.
+	Hidden bool `json:"hidden,omitempty"`
 }
 
 // MatchAnnotation is the per-match user note returned alongside

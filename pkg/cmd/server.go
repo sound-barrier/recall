@@ -251,6 +251,35 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	// is non-empty; clears when `leaver` is "" / null (idempotent
 	// delete). Validation lives in app.SetLeaverAnnotation; bad input
 	// maps to 400, everything else to 500.
+	// Soft-delete (hide / unhide) a match. `hidden: true` adds the
+	// match to hidden_matches; `hidden: false` removes it. Both are
+	// idempotent — repeated identical calls succeed without error.
+	mux.HandleFunc("/api/match-visibility", methodGuard(http.MethodPost, func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			MatchKey string `json:"match_key"`
+			Hidden   bool   `json:"hidden"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if body.MatchKey == "" {
+			http.Error(w, "match_key required", http.StatusBadRequest)
+			return
+		}
+		var err error
+		if body.Hidden {
+			err = a.HideMatch(body.MatchKey)
+		} else {
+			err = a.UnhideMatch(body.MatchKey)
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
 	mux.HandleFunc("/api/match-annotations", methodGuard(http.MethodPost, func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			MatchKey   string   `json:"match_key"`

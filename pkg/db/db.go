@@ -177,6 +177,19 @@ var schemaStatements = []string{
 		PRIMARY KEY (match_key, member),
 		FOREIGN KEY (match_key) REFERENCES match_annotations(match_key) ON DELETE CASCADE
 	)`,
+	// Soft-deleted matches. Presence in this table = the user clicked
+	// Hide on the match in the UI. The aggregator filters these out of
+	// MatchRecord output by default; the FilterRail "Hidden · N"
+	// toggle opts them back in so users can review / unhide. Keyed by
+	// match_key only — the per-screenshot rows stay in their respective
+	// parent tables so a re-parse of the same source files doesn't surface the
+	// hidden match again (LoadAllFilenames sees them as already parsed).
+	// 3NF-clean: existence in the table is the hidden state; hidden_at
+	// is server-set audit timestamp dependent solely on match_key.
+	`CREATE TABLE IF NOT EXISTS hidden_matches (
+		match_key TEXT PRIMARY KEY,
+		hidden_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`,
 	`CREATE TABLE IF NOT EXISTS unknown_screenshots (
 		id          INTEGER PRIMARY KEY AUTOINCREMENT,
 		filename    TEXT NOT NULL UNIQUE,

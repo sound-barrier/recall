@@ -37,6 +37,7 @@ import {
   SetLeaverAnnotation,
   ClearLeaverAnnotation,
   SetMatchAnnotation,
+  SetMatchVisibility,
   EventsOn,
   EventsOff,
 } from './api'
@@ -46,6 +47,7 @@ import { useIncludeUndated } from './composables/useIncludeUndated'
 import { useMinPlayThreshold } from './composables/useMinPlayThreshold'
 import { useDensityMode } from './composables/useDensityMode'
 import { useLeaverHandling } from './composables/useLeaverHandling'
+import { useShowHidden } from './composables/useShowHidden'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
@@ -267,12 +269,16 @@ const {
 } = useMinPlayThreshold()
 const { densityMode, toggleDensityMode } = useDensityMode()
 const { leaverHandling, setLeaverHandling } = useLeaverHandling()
+// "Show hidden matches" toggle. Default off — soft-deleted matches
+// stay out of view until the user opts in to see them.
+const { showHidden, setShowHidden } = useShowHidden()
 const filters = useMatchFilters(
   records,
   includeUndated,
   minPlayPercent, minPlayMinutes,
   setMinPlayPercent, setMinPlayMinutes,
   leaverHandling,
+  showHidden,
 )
 const { activeFilterCount } = filters
 // First-day-of-week preference (Settings → Calendar). Threaded into
@@ -626,6 +632,19 @@ async function onSetLeaverAnnotation(matchKey: string, leaver: '' | 'self' | 'te
 async function onSetMatchAnnotation(matchKey: string, input: MatchAnnotationInput) {
   try {
     await SetMatchAnnotation(matchKey, input)
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+// Hide / unhide handler. Soft-delete via SetMatchVisibility — the
+// per-screenshot rows stay in the DB so a re-parse won't re-add the
+// screenshots. After the round-trip we reload records so the dimmed
+// state + Hidden · N count both update in lock-step.
+async function onSetMatchHidden(matchKey: string, hidden: boolean) {
+  try {
+    await SetMatchVisibility(matchKey, hidden)
     await load()
   } catch (e) {
     error.value = String(e)
@@ -1067,6 +1086,7 @@ onBeforeUnmount(() => {
           :min-play-minutes="minPlayMinutes"
           :density-mode="densityMode"
           :leaver-handling="leaverHandling"
+          :show-hidden="showHidden"
           @go-to-view="goToView"
           @set-include-undated="setIncludeUndated"
           @set-min-play-percent="setMinPlayPercent"
@@ -1075,6 +1095,8 @@ onBeforeUnmount(() => {
           @set-leaver-handling="setLeaverHandling"
           @set-leaver-annotation="onSetLeaverAnnotation"
           @set-match-annotation="onSetMatchAnnotation"
+          @set-show-hidden="setShowHidden"
+          @set-match-hidden="onSetMatchHidden"
         />
       </main>
     </div>

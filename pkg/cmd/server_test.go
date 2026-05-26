@@ -18,7 +18,9 @@ import (
 // fixtures — they only exercise serialization and the Clear handler —
 // so this implementation is intentionally bare.
 type fakeStore struct {
-	clearCalls int
+	clearCalls  int
+	hideCalls   []string
+	unhideCalls []string
 }
 
 func (f *fakeStore) UpsertSummary(db.SummaryRow) error       { return nil }
@@ -44,6 +46,18 @@ func (f *fakeStore) DeleteAnnotation(string) error     { return nil }
 func (f *fakeStore) LoadAnnotations() (map[string]db.Annotation, error) {
 	return map[string]db.Annotation{}, nil
 }
+
+func (f *fakeStore) HideMatch(k string) error {
+	f.hideCalls = append(f.hideCalls, k)
+	return nil
+}
+
+func (f *fakeStore) UnhideMatch(k string) error {
+	f.unhideCalls = append(f.unhideCalls, k)
+	return nil
+}
+
+func (f *fakeStore) LoadHiddenKeys() (map[string]bool, error) { return map[string]bool{}, nil }
 
 // newTestApp wires *App against a fakeStore + empty SPA. Skips Startup
 // because the production wiring touches the filesystem.
@@ -312,6 +326,47 @@ func TestMatchAnnotations_ClearByEmptyLeaver(t *testing.T) {
 	})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("clear status = %d, body: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchVisibility_Hide(t *testing.T) {
+	fs := &fakeStore{}
+	_, mux := newTestApp(t, fs)
+	rec := post(t, mux, "/api/match-visibility", map[string]any{
+		"match_key": "k1",
+		"hidden":    true,
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("hide status = %d, body: %s", rec.Code, rec.Body.String())
+	}
+	if len(fs.hideCalls) != 1 || fs.hideCalls[0] != "k1" {
+		t.Errorf("HideMatch not called with k1: %+v", fs.hideCalls)
+	}
+}
+
+func TestMatchVisibility_Unhide(t *testing.T) {
+	fs := &fakeStore{}
+	_, mux := newTestApp(t, fs)
+	rec := post(t, mux, "/api/match-visibility", map[string]any{
+		"match_key": "k1",
+		"hidden":    false,
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("unhide status = %d, body: %s", rec.Code, rec.Body.String())
+	}
+	if len(fs.unhideCalls) != 1 || fs.unhideCalls[0] != "k1" {
+		t.Errorf("UnhideMatch not called with k1: %+v", fs.unhideCalls)
+	}
+}
+
+func TestMatchVisibility_MissingMatchKey400(t *testing.T) {
+	fs := &fakeStore{}
+	_, mux := newTestApp(t, fs)
+	rec := post(t, mux, "/api/match-visibility", map[string]any{
+		"hidden": true,
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("missing match_key should 400, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 

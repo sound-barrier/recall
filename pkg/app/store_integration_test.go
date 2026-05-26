@@ -25,6 +25,7 @@ type fakeStore struct {
 
 	dirIDs      map[string]int64
 	annotations map[string]db.Annotation
+	hidden      map[string]bool
 
 	upsertCalls int
 	clearCalls  int
@@ -236,6 +237,33 @@ func (f *fakeStore) LoadAnnotations() (map[string]db.Annotation, error) {
 	defer f.mu.Unlock()
 	out := make(map[string]db.Annotation, len(f.annotations))
 	for k, v := range f.annotations {
+		out[k] = v
+	}
+	return out, nil
+}
+
+func (f *fakeStore) HideMatch(matchKey string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.hidden == nil {
+		f.hidden = map[string]bool{}
+	}
+	f.hidden[matchKey] = true
+	return nil
+}
+
+func (f *fakeStore) UnhideMatch(matchKey string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.hidden, matchKey)
+	return nil
+}
+
+func (f *fakeStore) LoadHiddenKeys() (map[string]bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string]bool, len(f.hidden))
+	for k, v := range f.hidden {
 		out[k] = v
 	}
 	return out, nil
@@ -455,4 +483,76 @@ func TestApp_ScrapeReader_ReturnsAllRows(t *testing.T) {
 		t.Errorf("hero lost in scrapeReader projection: %+v", heroes)
 	}
 	_ = parser.MatchResult{} // import used for cross-file types
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Soft-delete (hide / unhide) surface.
+// ──────────────────────────────────────────────────────────────────────────
+
+func TestApp_HideMatch_RequiresMatchKey(t *testing.T) {
+	a := NewWithStore(&fakeStore{})
+	if err := a.HideMatch(""); err == nil {
+		t.Fatal("HideMatch with empty match_key should error")
+	}
+	if err := a.UnhideMatch(""); err == nil {
+		t.Fatal("UnhideMatch with empty match_key should error")
+	}
+}
+
+func TestApp_HideMatch_DelegatesToStore(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	if err := a.HideMatch("m1"); err != nil {
+		t.Fatalf("HideMatch: %v", err)
+	}
+	if !fs.hidden["m1"] {
+		t.Errorf("store did not receive HideMatch: %+v", fs.hidden)
+	}
+	// Idempotent: a second call must still leave the row hidden.
+	if err := a.HideMatch("m1"); err != nil {
+		t.Fatalf("HideMatch idempotent: %v", err)
+	}
+	if !fs.hidden["m1"] {
+		t.Errorf("idempotent HideMatch lost row: %+v", fs.hidden)
+	}
+	if err := a.UnhideMatch("m1"); err != nil {
+		t.Fatalf("UnhideMatch: %v", err)
+	}
+	if fs.hidden["m1"] {
+		t.Errorf("UnhideMatch did not remove row: %+v", fs.hidden)
+	}
+	// Unhide of a not-hidden match is a no-op.
+	if err := a.UnhideMatch("never-hidden"); err != nil {
+		t.Fatalf("UnhideMatch unknown key: %v", err)
+	}
+}
+
+func TestApp_GetMatchResults_TagsHiddenMatches(t *testing.T) {
+	// When a match_key is in hidden_matches, the aggregator must set
+	// MatchRecord.Hidden = true so the frontend can dim or filter.
+	fs := &fakeStore{
+		scoreboards: []db.ScoreboardRow{
+			{ID: 1, Filename: "a.png", MatchKey: "m1", Eliminations: 1},
+			{ID: 2, Filename: "b.png", MatchKey: "m2", Eliminations: 2},
+		},
+		hidden: map[string]bool{"m2": true},
+	}
+	a := NewWithStore(fs)
+	got, err := a.GetMatchResults()
+	if err != nil {
+		t.Fatalf("GetMatchResults: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 records, got %d", len(got))
+	}
+	seen := map[string]bool{}
+	for _, r := range got {
+		seen[r.MatchKey] = r.Hidden
+	}
+	if seen["m1"] {
+		t.Errorf("m1 (not hidden) should have Hidden=false")
+	}
+	if !seen["m2"] {
+		t.Errorf("m2 (hidden in store) should have Hidden=true")
+	}
 }
