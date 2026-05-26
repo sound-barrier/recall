@@ -40,6 +40,7 @@ import {
 import { computeEarliestMatchDateTime, tallyWLD } from './match-helpers'
 import { useIncludeUndated } from './composables/useIncludeUndated'
 import { useMinPlayThreshold } from './composables/useMinPlayThreshold'
+import { useDensityMode } from './composables/useDensityMode'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
@@ -259,6 +260,7 @@ const {
   minPlayPercent, minPlayMinutes,
   setMinPlayPercent, setMinPlayMinutes,
 } = useMinPlayThreshold()
+const { densityMode, toggleDensityMode } = useDensityMode()
 const filters = useMatchFilters(
   records,
   includeUndated,
@@ -1007,10 +1009,12 @@ onBeforeUnmount(() => {
           :include-undated="includeUndated"
           :min-play-percent="minPlayPercent"
           :min-play-minutes="minPlayMinutes"
+          :density-mode="densityMode"
           @go-to-view="goToView"
           @set-include-undated="setIncludeUndated"
           @set-min-play-percent="setMinPlayPercent"
           @set-min-play-minutes="setMinPlayMinutes"
+          @toggle-density="toggleDensityMode"
         />
       </main>
     </div>

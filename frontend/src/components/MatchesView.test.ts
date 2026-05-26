@@ -63,6 +63,7 @@ function mountWith(records: MatchRecord[], includeUndated = false) {
       includeUndated,
       minPlayPercent: 0,
       minPlayMinutes: 0,
+      densityMode: 'comfortable' as const,
     },
   })
   return { wrapper, filters, grouping, cardState }
@@ -145,5 +146,53 @@ describe('MatchesView', () => {
     expect(btn).toBeDefined()
     await btn!.trigger('click')
     expect(grouping.allExpanded.value).toBe(true)
+  })
+
+  it('renders the density toggle in the group-rail', () => {
+    const { wrapper } = mountWith([
+      { match_key: 'match:1', source_files: ['a.png'], data: { map: 'rialto', date: '2026-05-10', finished_at: '21:29' } },
+    ])
+    const density = wrapper.find('.density-btn')
+    expect(density.exists()).toBe(true)
+    expect(density.text()).toContain('Comfy')
+    expect(density.attributes('aria-pressed')).toBe('false')
+  })
+
+  it('emits toggle-density when the density button is clicked', async () => {
+    const { wrapper } = mountWith([
+      { match_key: 'match:1', source_files: ['a.png'], data: { map: 'rialto', date: '2026-05-10', finished_at: '21:29' } },
+    ])
+    await wrapper.find('.density-btn').trigger('click')
+    expect(wrapper.emitted('toggle-density')).toBeTruthy()
+  })
+
+  it('reflects compact mode in the density button label + active state + list class', async () => {
+    const wrapper = mount(MatchesView, {
+      props: {
+        records: [{ match_key: 'match:1', source_files: ['a.png'], data: { map: 'rialto', date: '2026-05-10', finished_at: '21:29' } }],
+        loading: false,
+        filters: useMatchFilters(ref([{ match_key: 'match:1', source_files: ['a.png'], data: { map: 'rialto', date: '2026-05-10', finished_at: '21:29' } }] as MatchRecord[]), ref(false)),
+        filterPanel: useFilterPanel(),
+        grouping: useMatchGrouping<MatchRecord>(
+          (() => {
+            const recs: MatchRecord[] = [{ match_key: 'match:1', source_files: ['a.png'], data: { map: 'rialto', date: '2026-05-10', finished_at: '21:29' } }]
+            return useMatchFilters(ref(recs), ref(false)).filteredSorted
+          })(),
+          ref<'asc' | 'desc'>('desc'),
+        ),
+        cardState: makeCardState([{ match_key: 'match:1', source_files: ['a.png'], data: { map: 'rialto', date: '2026-05-10', finished_at: '21:29' } }]).api,
+        earliestMatchDateTime: '',
+        nowDateTime: '2026-05-23T18:00',
+        includeUndated: false,
+        minPlayPercent: 0,
+        minPlayMinutes: 0,
+        densityMode: 'compact' as const,
+      },
+    })
+    const density = wrapper.find('.density-btn')
+    expect(density.classes()).toContain('active')
+    expect(density.attributes('aria-pressed')).toBe('true')
+    expect(density.text()).toContain('Compact')
+    expect(wrapper.find('.match-list').classes()).toContain('compact')
   })
 })

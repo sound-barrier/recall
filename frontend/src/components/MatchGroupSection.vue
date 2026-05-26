@@ -31,6 +31,9 @@ const props = defineProps<{
   // match-enter animations. Parent passes its running counter down so
   // groups don't re-zero their delays.
   cardOffset?:     number
+  // 'compact' | 'comfortable' — forwarded to MatchCard. Optional so
+  // existing tests that don't care about density can omit it.
+  densityMode?:    'comfortable' | 'compact'
 }>()
 
 const emit = defineEmits<{
@@ -130,6 +133,7 @@ function cardDelayMs(localIdx: number): number {
             :preview-open="previewOpen"
             :preview-error="previewError"
             :is-active="isActive"
+            :density-mode="densityMode"
             @toggle-expand="emit('toggle-expand', rec.match_key)"
             @toggle-sources="emit('toggle-sources', rec.match_key)"
             @toggle-preview="(fn: string) => emit('toggle-preview', fn)"
@@ -150,6 +154,7 @@ function cardDelayMs(localIdx: number): number {
             :preview-error="previewError"
             :is-active="isActive"
             :card-offset="(cardOffset ?? 0) + idx"
+            :density-mode="densityMode"
             @toggle-group="(k: string) => emit('toggle-group', k)"
             @toggle-expand="(id: string) => emit('toggle-expand', id)"
             @toggle-sources="(id: string) => emit('toggle-sources', id)"
