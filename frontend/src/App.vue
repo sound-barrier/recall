@@ -54,6 +54,7 @@ import { useBackupRestore } from './composables/useBackupRestore'
 import { useClearDatabase } from './composables/useClearDatabase'
 import { useTesseractStatus } from './composables/useTesseractStatus'
 import { useScreenshotsDir } from './composables/useScreenshotsDir'
+import { useFeatureToggle } from './composables/useFeatureToggle'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
@@ -190,15 +191,30 @@ const {
 // first load() completes.
 const dataLocation = ref<DataLocation | null>(null)
 
-// Prometheus endpoint enable/disable. The Go side actually binds
-// the port (or doesn't); this ref is just a UI mirror, written via
-// SetPrometheusEnabled so the change persists.
-const prometheusEnabled = ref(false)
-
-// Directory watch toggle. When on, the Go side watches the
-// screenshots directory; new files trigger a debounced auto-parse
-// (1 minute after the last new file).
-const watchEnabled = ref(false)
+// Prometheus + Watch feature toggles. Each calls a Go setter that
+// owns the actual side effect (server bind / fsnotify watcher) and
+// rolls back the UI on round-trip failure. Watch is gated on
+// Tesseract being ready — turning it on with a broken OCR setup
+// would queue silent failures.
+const {
+  enabled: prometheusEnabled,
+  setEnabled: setPrometheusEnabled,
+  toggle: togglePrometheus,
+} = useFeatureToggle({
+  set: SetPrometheusEnabled,
+  onError: (m) => { error.value = m },
+})
+const {
+  enabled: watchEnabled,
+  setEnabled: setWatchEnabled,
+  toggle: toggleWatch,
+} = useFeatureToggle({
+  set: SetWatchEnabled,
+  canEnable: () => tesseractReady.value
+    ? null
+    : 'Configure Tesseract in Settings → Engine before enabling Watch.',
+  onError: (m) => { error.value = m },
+})
 
 // Filter / filter-panel / grouping composables — owned here so the
 // extracted view components (MatchesView, eventually others) receive
@@ -277,8 +293,8 @@ async function load() {
     error.value = `Could not load matches: ${String(recs.reason)}`
   }
   if (dir.status === 'fulfilled')      setScreenshotsDir(dir.value || '')
-  if (promOn.status === 'fulfilled')   prometheusEnabled.value = !!promOn.value
-  if (watchOn.status === 'fulfilled')  watchEnabled.value = !!watchOn.value
+  if (promOn.status === 'fulfilled')   setPrometheusEnabled(!!promOn.value)
+  if (watchOn.status === 'fulfilled')  setWatchEnabled(!!watchOn.value)
   if (tess.status === 'fulfilled')     setTesseractStatus(tess.value)
   else                                 setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '' })
   newScreenshotCount.value = newCount.status === 'fulfilled' ? newCount.value : null
@@ -287,41 +303,6 @@ async function load() {
 
 async function refreshNewCount() {
   try { newScreenshotCount.value = await GetNewScreenshotCount() } catch (_) {}
-}
-
-// Pick a Tesseract binary via the native file dialog. The Go side
-// handles persistence + re-validation; we only need to mirror the new
-// status into the UI.
-// Toggle directory watching. Same pattern as Prometheus: Go owns the
-// actual side effect (fsnotify watcher start/stop), this just mirrors
-// state and rolls back on error. Enabling is gated on Tesseract being
-// available — turning Watch on with a broken OCR setup would just
-// queue silent failures.
-async function toggleWatch() {
-  const next = !watchEnabled.value
-  if (next && !tesseractReady.value) {
-    error.value = 'Configure Tesseract in Settings → Engine before enabling Watch.'
-    return
-  }
-  try {
-    await SetWatchEnabled(next)
-    watchEnabled.value = next
-  } catch (err) {
-    error.value = String(err)
-  }
-}
-
-// Toggle the Prometheus endpoint. We call the Go method first so the
-// persisted setting drives both the actual server lifecycle and the UI
-// state; if the call fails, fall back to the previous local value.
-async function togglePrometheus() {
-  const next = !prometheusEnabled.value
-  try {
-    await SetPrometheusEnabled(next)
-    prometheusEnabled.value = next
-  } catch (err) {
-    error.value = String(err)
-  }
 }
 
 async function runParse() {
