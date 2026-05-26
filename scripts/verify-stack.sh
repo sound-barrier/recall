@@ -18,12 +18,14 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_db.sh
+. "$SCRIPT_DIR/_db.sh"
 cd "$SCRIPT_DIR/.." || {
   echo "[verify-stack] could not cd into repo root from $SCRIPT_DIR" >&2
   exit 1
 }
 
-DB="data/db/recall.db"
+DB=$(recall_db_path)
 
 # Default to :9091; honor the same env var app.go / metrics.ListenAndServe do.
 METRICS_ADDR="${OWMETRICS_METRICS_ADDR:-:9091}"
@@ -47,18 +49,32 @@ fail() {
 note() { echo "    $*"; }
 
 # ── Layer 1: SQLite ────────────────────────────────────────────────────────
+# Post-PR-#45 schema: 5 parent tables (one per screenshot type). A match is
+# any distinct match_key seen across them; the SUMMARY table is the only
+# one that carries the date+finished_at range we want to display.
 echo "[1] SQLite (source of truth)"
 if [[ -f "$DB" ]]; then
   pass "db file present at $DB"
-  rows=$(sqlite3 "$DB" "SELECT COUNT(*) FROM match_results" 2>/dev/null || echo "?")
-  if [[ "$rows" =~ ^[0-9]+$ ]] && ((rows > 0)); then
-    pass "$rows row(s) in match_results"
-    range=$(sqlite3 "$DB" \
-      "SELECT MIN(date || ' ' || finished_at) || ' → ' || MAX(date || ' ' || finished_at)
-       FROM match_results WHERE date != '' AND finished_at != ''" 2>/dev/null)
-    [[ -n "$range" && "$range" != " → " ]] && note "match timestamps: $range"
+  if sqlite3 "$DB" "SELECT name FROM sqlite_master WHERE type='table' AND name='match_results'" 2>/dev/null | grep -q match_results; then
+    fail "DB carries pre-PR-#45 'match_results' schema — wipe with: bash scripts/clear-db.sh"
+    rows=0
   else
-    fail "match_results is empty (run the Wails app and click Parse Screenshots)"
+    rows=$(sqlite3 "$DB" "
+      SELECT COUNT(DISTINCT match_key) FROM (
+        SELECT match_key FROM summary_screenshots
+        UNION SELECT match_key FROM scoreboard_screenshots
+        UNION SELECT match_key FROM personal_screenshots
+        UNION SELECT match_key FROM rank_screenshots
+        UNION SELECT match_key FROM unknown_screenshots)" 2>/dev/null || echo "?")
+    if [[ "$rows" =~ ^[0-9]+$ ]] && ((rows > 0)); then
+      pass "$rows distinct match_key(s) across the 5 parent tables"
+      range=$(sqlite3 "$DB" \
+        "SELECT MIN(date || ' ' || finished_at) || ' → ' || MAX(date || ' ' || finished_at)
+         FROM summary_screenshots WHERE date != '' AND finished_at != ''" 2>/dev/null)
+      [[ -n "$range" && "$range" != " → " ]] && note "match timestamps (SUMMARY screens only): $range"
+    else
+      fail "DB is empty (run the Wails app and click Parse Screenshots)"
+    fi
   fi
 else
   fail "no db at $DB — start the Wails app at least once"
