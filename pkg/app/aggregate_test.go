@@ -177,3 +177,89 @@ func TestAggregate_OneMatchRecordPerMatchKey(t *testing.T) {
 		t.Fatalf("expected 2 records (one per match_key), got %d", len(got))
 	}
 }
+
+// ──────────────────────────────────────────────────────────────────
+// aggregateMatchKey — per-match extract that powers the
+// "match-updated" SSE event. Same precedence rules as
+// aggregateScreenshots, scoped to one key.
+// ──────────────────────────────────────────────────────────────────
+
+func TestAggregateMatchKey_FusesAcrossTypesForOneKey(t *testing.T) {
+	snap := db.Screenshots{
+		Summaries: []db.SummaryRow{{
+			ID: 1, Filename: "s.png", MatchKey: "m1",
+			Map: "rialto", Mode: "competitive", Hero: "lucio",
+			Result: "victory", Date: "2026-05-10", FinishedAt: "21:29",
+		}},
+		Scoreboards: []db.ScoreboardRow{{
+			ID: 1, Filename: "sb.png", MatchKey: "m1",
+			Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
+		}},
+		// A second match that should NOT contaminate the m1 fold.
+		Personals: []db.PersonalRow{{
+			ID: 1, Filename: "p2.png", MatchKey: "m2", Hero: "juno",
+		}},
+	}
+	rec, ok := aggregateMatchKey("m1", snap)
+	if !ok {
+		t.Fatal("aggregateMatchKey returned ok=false for an existing key")
+	}
+	if rec.MatchKey != "m1" {
+		t.Errorf("MatchKey = %q, want m1", rec.MatchKey)
+	}
+	if rec.Data.Map != "rialto" || rec.Data.Damage != 7200 || rec.Data.Result != "victory" {
+		t.Errorf("scalars not fused as expected: %+v", rec.Data)
+	}
+	if len(rec.SourceFiles) != 2 {
+		t.Errorf("SourceFiles should have 2 entries, got %v", rec.SourceFiles)
+	}
+}
+
+func TestAggregateMatchKey_MissingKeyReturnsFalse(t *testing.T) {
+	snap := db.Screenshots{
+		Summaries: []db.SummaryRow{{ID: 1, Filename: "s.png", MatchKey: "m1"}},
+	}
+	_, ok := aggregateMatchKey("nonexistent", snap)
+	if ok {
+		t.Error("aggregateMatchKey returned ok=true for an unseen key")
+	}
+}
+
+func TestAggregateMatchKey_SingleScreenshotMatch(t *testing.T) {
+	snap := db.Screenshots{
+		Scoreboards: []db.ScoreboardRow{{
+			ID: 1, Filename: "lone.png", MatchKey: "m-lonely",
+			Eliminations: 8, Assists: 2, Deaths: 4,
+		}},
+	}
+	rec, ok := aggregateMatchKey("m-lonely", snap)
+	if !ok {
+		t.Fatal("expected ok=true")
+	}
+	if rec.Data.Eliminations != 8 || rec.Data.Assists != 2 || rec.Data.Deaths != 4 {
+		t.Errorf("single-scoreboard data not propagated: %+v", rec.Data)
+	}
+	if got := rec.SourceTypes["lone.png"]; got != "scoreboard" {
+		t.Errorf("SourceTypes[lone.png] = %q, want scoreboard", got)
+	}
+}
+
+func TestAggregateMatchKey_InferenceAppliedAtReadTime(t *testing.T) {
+	// Rank-only match with a positive SR change should have Result
+	// inferred to "victory" — same behaviour as GetMatchResults, which
+	// is the contract for the live-stream event.
+	snap := db.Screenshots{
+		Ranks: []db.RankRow{{
+			ID: 1, Filename: "rank.png", MatchKey: "m-rank",
+			Rank: "platinum", Level: 3,
+			SR: []db.HeroSR{{Hero: "lucio", SR: 2350, Change: 23}},
+		}},
+	}
+	rec, ok := aggregateMatchKey("m-rank", snap)
+	if !ok {
+		t.Fatal("expected ok=true")
+	}
+	if rec.Data.Result != "victory" {
+		t.Errorf("expected inferred Result=victory from positive SR change, got %q", rec.Data.Result)
+	}
+}

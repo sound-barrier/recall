@@ -36,6 +36,54 @@ type screenshotView struct {
 	data     parser.MatchResult
 }
 
+// aggregateMatchKey produces a single MatchRecord for the given
+// match_key, reading just its rows out of snap. Returns
+// (record, true) when at least one row matched; (_, false) when
+// nothing in snap references the key.
+//
+// Same precedence rules as aggregateScreenshots — this is the
+// per-key extract for the live-streaming "match-updated" event.
+// Inference helpers (inferSoleHeroPercent, inferResultFromRank)
+// are applied so the streamed shape matches GetMatchResults output.
+func aggregateMatchKey(key string, snap db.Screenshots) (MatchRecord, bool) {
+	vs := make([]screenshotView, 0, 8)
+	for _, r := range snap.Summaries {
+		if r.MatchKey == key {
+			vs = append(vs, summaryToView(r))
+		}
+	}
+	for _, r := range snap.Scoreboards {
+		if r.MatchKey == key {
+			vs = append(vs, scoreboardToView(r))
+		}
+	}
+	for _, r := range snap.Personals {
+		if r.MatchKey == key {
+			vs = append(vs, personalToView(r))
+		}
+	}
+	for _, r := range snap.Ranks {
+		if r.MatchKey == key {
+			vs = append(vs, rankToView(r))
+		}
+	}
+	for _, r := range snap.Unknowns {
+		if r.MatchKey == key {
+			vs = append(vs, screenshotView{
+				filename: r.Filename, typeName: "unknown",
+				matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
+			})
+		}
+	}
+	if len(vs) == 0 {
+		return MatchRecord{}, false
+	}
+	rec := foldGroup(key, vs, snap.ScreenshotsDirs)
+	inferSoleHeroPercent(&rec.Data)
+	inferResultFromRank(&rec.Data)
+	return rec, true
+}
+
 func aggregateScreenshots(snap db.Screenshots) []MatchRecord {
 	views := make([]screenshotView, 0,
 		len(snap.Summaries)+len(snap.Scoreboards)+len(snap.Personals)+len(snap.Ranks)+len(snap.Unknowns))

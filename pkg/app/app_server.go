@@ -16,6 +16,17 @@ func (a *App) emitParseProgress(p ParseProgressEvent) {
 	a.SSEHub.BroadcastData("parse-progress", string(data))
 }
 
+// emitMatchUpdated broadcasts a freshly-aggregated MatchRecord to SSE
+// subscribers. Counterpart to the Wails build's variant — same wire
+// shape, server-only emit path.
+func (a *App) emitMatchUpdated(rec MatchRecord) {
+	if a.SSEHub == nil {
+		return
+	}
+	data, _ := json.Marshal(rec)
+	a.SSEHub.BroadcastData("match-updated", string(data))
+}
+
 // emitParseComplete is a no-op in server mode — the SSE hub handles
 // parse-complete notifications instead of the Wails event bus.
 func (a *App) emitParseComplete() {

@@ -107,6 +107,16 @@ func (a *App) ParseScreenshots() error {
 		if err := a.insertParsed(filename, key, t, dirID, r); err != nil {
 			return err
 		}
+		// Re-read after the insert so the streamed MatchRecord includes
+		// the row we just wrote (LoadAll above ran before insertParsed).
+		// The next iteration's LoadAll then sees this row too.
+		snapAfter, err := a.store.LoadAll()
+		if err != nil {
+			return err
+		}
+		if rec, ok := aggregateMatchKey(key, snapAfter); ok {
+			a.emitMatchUpdated(rec)
+		}
 		a.emitParseProgress(ParseProgressEvent{
 			Filename: filename,
 			Type:     t,
