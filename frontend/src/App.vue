@@ -8,7 +8,7 @@
 // per-SFC scoped <style> blocks (TECHNICAL_DEBT.md #1).
 import './styles/app.css'
 
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, nextTick, defineAsyncComponent } from 'vue'
 import type { MatchRecord, DataLocation } from './api'
 import {
   GetVersion,
@@ -38,8 +38,6 @@ import {
   ClearLeaverAnnotation,
   SetMatchAnnotation,
   SetMatchVisibility,
-  EventsOn,
-  EventsOff,
 } from './api'
 import type { LeaverKind, MatchAnnotationInput } from './api'
 import { computeEarliestMatchDateTime, tallyWLD } from './match-helpers'
@@ -55,6 +53,7 @@ import { useClearDatabase } from './composables/useClearDatabase'
 import { useTesseractStatus } from './composables/useTesseractStatus'
 import { useScreenshotsDir } from './composables/useScreenshotsDir'
 import { useFeatureToggle } from './composables/useFeatureToggle'
+import { useEventStream } from './composables/useEventStream'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
@@ -552,38 +551,21 @@ onMounted(() => {
   GetVersion().then(v => { appVersion.value = v }).catch(() => {})
   CheckForUpdate().then(u => { if (u.checked) updateInfo.value = u }).catch(() => {})
   load()
-  EventsOn('parse-complete', () => { load(); lastParsedAt.value = Date.now(); try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {} })
-  EventsOn('parse-progress', (data: ParseProgressEvent) => {
-    if (!data) return
-    parseProgress.value = data
-    parseLog.value = [...parseLog.value, data].slice(-50)
-  })
-  // Live-stream individual MatchRecords as each screenshot's insert
-  // resolves a match_key. Upsert by match_key into the same records
-  // ref the static load() populates — every downstream filter, group,
-  // and card-render computed recomputes for free. The post-batch
-  // parse-complete handler still calls load() as the authoritative
-  // reconciliation in case any of these events were dropped on a slow
-  // SSE connection.
-  EventsOn<MatchRecord>('match-updated', (rec) => {
-    if (!rec || !rec.match_key) return
-    const i = records.value.findIndex(r => r.match_key === rec.match_key)
-    if (i >= 0) {
-      records.value = [
-        ...records.value.slice(0, i),
-        rec,
-        ...records.value.slice(i + 1),
-      ]
-    } else {
-      records.value = [...records.value, rec]
-    }
-  })
-
 })
-onBeforeUnmount(() => {
-  EventsOff('parse-complete')
-  EventsOff('parse-progress')
-  EventsOff('match-updated')
+
+// SSE / Wails event subscriptions for the ingest lifecycle.
+// parse-progress drives the inline log + counter; parse-complete is
+// the authoritative reload after a batch; match-updated upserts a
+// single record by match_key for live streaming during a long parse.
+useEventStream({
+  records,
+  parseProgress,
+  parseLog,
+  onParseComplete: async () => {
+    await load()
+    lastParsedAt.value = Date.now()
+    try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {}
+  },
 })
 </script>
 
