@@ -161,6 +161,8 @@ Two binary flavors exist, selected by the `serveronly` Go build tag:
 | `make cover` | Generate both Go and frontend coverage reports (umbrella; delegates to `cover-go` + `cover-frontend`). |
 | `make cover-go` | Generate Go coverage report; writes per-function text summary and HTML to `coverage/go/` (gitignored). Fails when total coverage < `GO_COVERAGE_MIN` (default 46%, tuned a few points below the current ~48% so genuine regressions trip the gate). Override on the CLI for ad-hoc runs. Ratchet upward at every release. |
 | `make cover-frontend` | Generate JS/TS coverage report via Vitest + V8 (`@vitest/coverage-v8`); writes text summary, lcov, and HTML to `frontend/coverage/` (gitignored). Fails when any of the four `coverage.thresholds` in `vitest.config.ts` aren't met (currently statements/lines 70, branches 60, functions 55). |
+| `make test-e2e` | Run Playwright browser E2E suite (`frontend/tests/e2e/*.spec.ts`). Builds the frontend, builds the `serveronly` binary into `/tmp/recall-e2e/recall-server`, installs Chromium, runs Playwright with a hermetic `HOME=/tmp/recall-e2e` on `127.0.0.1:7099`. Required gate for any UI feature (see TDD-process rule). |
+| `make test-all` | `make test` + `make test-e2e` — full pre-push verification. |
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml` (uses `openapi-typescript`). Run after every spec edit; CI fails if the committed `.d.ts` is out of sync. |
 | `make typecheck` | `vue-tsc --noEmit` — covers `.ts` files and `<script lang="ts">` blocks in `.vue` files. `allowJs: false` in tsconfig means no JS can be introduced silently. |
 
@@ -185,7 +187,7 @@ the supported dev hosts are **macOS** and **Debian/Ubuntu** (both run
 work happens inside WSL2 Ubuntu via the Debian path. `make icon` is
 macOS-only (uses `sips`) and skips elsewhere.
 
-`Dockerfile.build` has 12 named stages. Stages 1–6 are the Wails builds (need CGo + WebView libs). Stages 7–11 are the `serveronly` builds — pure Go, `CGO_ENABLED=0`, cross-compiled on Linux for all three OS targets. The server stages inherit from `go-base` (module deps already downloaded) and need no apt packages. Stage 12 (`server-container`) is a `debian:bookworm-slim` runtime image with Tesseract pre-installed, used for Docker deployments.
+`Dockerfile.build` has 14 named stages. Stages 1–6 are the Wails builds (need CGo + WebView libs). Stages 7–13 are the `serveronly` builds — pure Go, `CGO_ENABLED=0`, cross-compiled on Linux for all three OS targets including a macOS arm64 variant. The server stages inherit from `go-base` (module deps already downloaded) and need no apt packages. Stage 14 (`server-container`) is a `debian:bookworm-slim` runtime image with Tesseract pre-installed, used for Docker deployments.
 
 **Environment variable overrides** (all optional, mainly for debugging):
 
