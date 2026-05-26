@@ -19,6 +19,8 @@ import {
   GetMatchResults,
   GetScreenshotsDir,
   PickScreenshotsDir,
+  ProbeScreenshotsDir,
+  SetScreenshotsDir,
   GetPrometheusEnabled,
   SetPrometheusEnabled,
   GetWatchEnabled,
@@ -538,6 +540,42 @@ async function pickDir() {
   }
 }
 
+// "Detect Overwatch Folder" — runs the backend probe + persists the
+// first hit when one exists. Probe state is mirrored into SettingsView
+// via props so the button's in-flight + result chip is purely
+// reactive. `probeStatus` is split from `probeMessage` so the styling
+// (accent vs muted) doesn't depend on string parsing.
+const probing      = ref(false)
+const probeMessage = ref('')
+const probeStatus  = ref<'' | 'success' | 'blocked'>('')
+const probeTried   = ref<string[]>([])
+
+async function detectDir() {
+  probing.value = true
+  probeMessage.value = ''
+  probeStatus.value = ''
+  probeTried.value = []
+  try {
+    const res = await ProbeScreenshotsDir()
+    probeTried.value = res.tried || []
+    if (res.found && res.path) {
+      await SetScreenshotsDir(res.path)
+      screenshotsDir.value = res.path
+      probeStatus.value = 'success'
+      probeMessage.value = `Detected · ${res.path}`
+      await refreshNewCount()
+    } else {
+      probeStatus.value = 'blocked'
+      probeMessage.value = 'No default Overwatch folder on this machine. Use Change Folder… to point at it.'
+    }
+  } catch (e) {
+    probeStatus.value = 'blocked'
+    probeMessage.value = `Detect failed: ${String(e)}`
+  } finally {
+    probing.value = false
+  }
+}
+
 // Bounds for the date pickers.
 const earliestMatchDateTime = computed(() => computeEarliestMatchDateTime(records.value))
 
@@ -894,7 +932,12 @@ onBeforeUnmount(() => {
           :theme-mode="themeMode"
           :week-start="weekStart"
           :data-location="dataLocation"
+          :probing="probing"
+          :probe-message="probeMessage"
+          :probe-status="probeStatus"
+          :probe-tried="probeTried"
           @pick-screenshots-dir="pickDir"
+          @detect-screenshots-dir="detectDir"
           @toggle-theme="toggleTheme"
           @set-week-start="setWeekStart"
           @go-to-view="goToView"

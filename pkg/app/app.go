@@ -99,6 +99,13 @@ func (a *App) Startup(ctx context.Context) {
 	a.tessStatus = checkTesseract(a.settings.TesseractPath)
 	parser.SetTesseractPath(a.settings.TesseractPath)
 
+	// First-run auto-probe — if the user hasn't set a screenshots
+	// folder yet, walk the platform-specific OW default locations
+	// and persist the first match. Silent on no-match; the Settings
+	// view has a manual "Detect Overwatch Folder" button for the
+	// "I moved my install" case.
+	a.autoProbeOnFirstRun()
+
 	dbDir := filepath.Join(appDataDir(), "db")
 	if err := os.MkdirAll(dbDir, 0o700); err != nil {
 		log.Fatal("could not create db dir:", err)

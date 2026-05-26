@@ -19,14 +19,29 @@ defineProps<{
   // paths render `null` for a beat at mount time. Existing tests
   // that don't care can omit this prop entirely.
   dataLocation?:  DataLocation | null
+  // "Detect Overwatch Folder" state, owned by App.vue. `probing`
+  // disables the button while the probe is in flight;
+  // `probeMessage` renders the result chip; `probeStatus` drives
+  // success/blocked styling; `probeTried` populates the "Looked in"
+  // details disclosure on the blocked path. All optional so older
+  // tests / sibling mounts can ignore.
+  probing?:       boolean
+  probeMessage?:  string
+  probeStatus?:   '' | 'success' | 'blocked'
+  probeTried?:    string[]
 }>()
 
 const emit = defineEmits<{
-  'pick-screenshots-dir': []
-  'toggle-theme':         []
-  'set-week-start':       [next: WeekStart]
-  'go-to-view':           [next: 'settings' | 'ingest' | 'matches' | 'unknown']
+  'pick-screenshots-dir':   []
+  'detect-screenshots-dir': []
+  'toggle-theme':           []
+  'set-week-start':         [next: WeekStart]
+  'go-to-view':             [next: 'settings' | 'ingest' | 'matches' | 'unknown']
 }>()
+
+function onDetect() {
+  emit('detect-screenshots-dir')
+}
 
 // "Copied" pill state for the Data Location row. Set true when the
 // user clicks Copy; cleared after 1.4 s so the pill flashes briefly
@@ -92,14 +107,36 @@ const DAY_SEGMENTS = WEEKDAYS_FULL.map((name, idx) => ({
               Screenshots Folder
             </h4>
             <p class="setting-desc">
-              Where Recall watches for new Overwatch screenshots. Click <strong>Change Folder</strong> to point it at a different directory.
+              Where Recall watches for new Overwatch screenshots. Click <strong>Change Folder</strong> to point it at a different directory, or <strong>Detect</strong> to walk the default OW install locations on this platform.
             </p>
+            <p v-if="probeMessage" class="setting-meta" :class="probeStatus">
+              <span class="block-mark" aria-hidden="true">{{ probeStatus === 'success' ? '✓' : '⚠' }}</span>
+              <span>{{ probeMessage }}</span>
+            </p>
+            <details v-if="probeStatus === 'blocked' && (probeTried?.length ?? 0) > 0" class="probe-tried">
+              <summary>Looked in</summary>
+              <ol class="probe-tried-list">
+                <li v-for="(p, i) in (probeTried ?? [])" :key="i" class="mono">
+                  {{ p }}
+                </li>
+              </ol>
+            </details>
           </div>
           <div class="setting-control">
             <span class="setting-value mono" :title="screenshotsDir">{{ screenshotsDir || '— Not selected —' }}</span>
-            <button class="btn ghost" :disabled="loading" @click="emit('pick-screenshots-dir')">
-              Change Folder…
-            </button>
+            <div class="folder-btn-group">
+              <button
+                class="btn ghost"
+                :disabled="loading || probing"
+                @click="onDetect"
+              >
+                <span v-if="probing">Detecting…</span>
+                <span v-else>Detect</span>
+              </button>
+              <button class="btn ghost" :disabled="loading" @click="emit('pick-screenshots-dir')">
+                Change Folder…
+              </button>
+            </div>
           </div>
         </div>
 
@@ -360,6 +397,88 @@ const DAY_SEGMENTS = WEEKDAYS_FULL.map((name, idx) => ({
   color: var(--accent);
   border-color: var(--accent);
   background: var(--accent-soft);
+}
+
+/* ─── Detect Overwatch Folder ────────────────────────────── */
+
+/* Two-button cluster: Detect + Change Folder. Stacks the buttons
+   vertically on narrow rails so the right edge of the row stays
+   tidy; wider columns get them side-by-side. */
+.folder-btn-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+/* Inline result chip below the Screenshots Folder description. Has
+   two states: success (probe found a real OW dir) and blocked (no
+   default candidate exists on this machine). Color is communicated
+   by the leading mark + the chip border; never by hue alone. */
+.setting-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+  padding: 0.32rem 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  border-radius: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  color: var(--text-dim);
+  max-width: 100%;
+  word-break: break-all;
+}
+
+.setting-meta.success {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.setting-meta.blocked {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.setting-meta .block-mark {
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+/* Disclosure for the ordered list of paths probed when no match
+   was found. Defaults closed so the row stays compact; the user
+   opens it on demand for diagnostic context. */
+.probe-tried {
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
+.probe-tried > summary {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.probe-tried-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.3rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  word-break: break-all;
+}
+
+.probe-tried-list li + li {
+  margin-top: 0.2rem;
 }
 
 /* 7-segment first-day-of-week picker. Same visual idiom as the theme

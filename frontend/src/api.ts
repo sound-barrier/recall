@@ -138,6 +138,29 @@ export async function PickScreenshotsDir(): Promise<string> {
   return p
 }
 
+export type ProbeResult = {
+  found: boolean
+  path?: string
+  tried: string[]
+}
+
+// ProbeScreenshotsDir walks platform-specific OW default-screenshot
+// locations and returns the first directory that exists. Read-only —
+// the caller decides whether to apply the result via
+// PickScreenshotsDir / SetScreenshotsDir.
+export function ProbeScreenshotsDir(): Promise<ProbeResult> {
+  if (IS_WAILS) return _wails('ProbeScreenshotsDir')
+  return _get<ProbeResult>('/api/probe-screenshots-dir')
+}
+
+// SetScreenshotsDir persists `path` as the active screenshots
+// directory. Used by the "Detect Overwatch Folder" button to apply
+// a probe result without going through the native folder picker.
+export function SetScreenshotsDir(path: string): Promise<void> {
+  if (IS_WAILS) return _wails('SetScreenshotsDir', path)
+  return _post('/api/screenshots-dir', { path }).then(() => undefined)
+}
+
 export function ParseScreenshots(): Promise<void> {
   if (IS_WAILS) return _wails('ParseScreenshots')
   return _post('/api/parse').then(() => undefined)
