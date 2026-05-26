@@ -19,6 +19,8 @@ function setup(
   minPlayMinutes = ref(0),
   setMinPlayPercent = vi.fn(),
   setMinPlayMinutes = vi.fn(),
+  leaverHandling = ref<'include' | 'exclude-tally' | 'hide'>('include'),
+  showHidden = ref(false),
 ) {
   const records = ref<MatchRecord[]>(initial)
   let result!: ReturnType<typeof useMatchFilters>
@@ -31,12 +33,15 @@ function setup(
       minPlayMinutes,
       setMinPlayPercent,
       setMinPlayMinutes,
+      leaverHandling,
+      showHidden,
     )
   })
   return {
     ...result,
     records, includeUndated, minPlayPercent, minPlayMinutes,
     setMinPlayPercent, setMinPlayMinutes,
+    leaverHandling, showHidden,
   }
 }
 
@@ -691,5 +696,53 @@ describe('min-play threshold filter', () => {
     // sees is unchanged because the value was already 0.
     expect(setPct).toHaveBeenCalledWith(0)
     expect(setMin).toHaveBeenCalledWith(0)
+  })
+})
+
+describe('showHidden + hiddenMatchCount', () => {
+  it('drops hidden records from filtered by default', () => {
+    const { filtered } = setup([
+      matchRec({ map: 'kings-row' }, 1),
+      { ...matchRec({ map: 'rialto' }, 2), hidden: true },
+    ])
+    const keys = filtered.value.map(r => r.match_key)
+    expect(keys).toEqual(['k1'])
+  })
+
+  it('includes hidden records when showHidden is on', () => {
+    const showHidden = ref(true)
+    const { filtered } = setup(
+      [
+        matchRec({ map: 'kings-row' }, 1),
+        { ...matchRec({ map: 'rialto' }, 2), hidden: true },
+      ],
+      undefined, undefined, undefined, undefined, undefined,
+      undefined,
+      showHidden,
+    )
+    const keys = filtered.value.map(r => r.match_key).sort()
+    expect(keys).toEqual(['k1', 'k2'])
+  })
+
+  it('hiddenMatchCount totals every hidden record regardless of other filters', () => {
+    // Set a mode filter that excludes k2 (mode mismatch) and verify
+    // hiddenMatchCount still reports 2 — it counts source rows, not
+    // post-filter rows, so the FilterRail label stays stable as the
+    // user adjusts other filters.
+    const { filterMode, hiddenMatchCount } = setup([
+      { ...matchRec({ map: 'kings-row', mode: 'competitive' }, 1), hidden: true },
+      { ...matchRec({ map: 'rialto', mode: 'quickplay' }, 2), hidden: true },
+      matchRec({ map: 'ilios', mode: 'competitive' }, 3),
+    ])
+    filterMode.value = ['competitive']
+    expect(hiddenMatchCount.value).toBe(2)
+  })
+
+  it('hiddenMatchCount is 0 when no records are hidden', () => {
+    const { hiddenMatchCount } = setup([
+      matchRec({ map: 'kings-row' }, 1),
+      matchRec({ map: 'rialto' }, 2),
+    ])
+    expect(hiddenMatchCount.value).toBe(0)
   })
 })

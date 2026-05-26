@@ -272,6 +272,63 @@ describe('FilterRail — Undated toggle', () => {
   })
 })
 
+describe('FilterRail — Hidden toggle', () => {
+  // The Hidden toggle reuses the `.undated-toggle` CSS class (same
+  // pill style), so individual queries find both buttons. We pick out
+  // the Hidden one by its text — `Hidden · N` is unique on the rail.
+  function findHidden(wrapper: ReturnType<typeof mountRail>) {
+    return wrapper.findAll('.undated-toggle').find(b => b.text().includes('Hidden'))
+  }
+
+  it('hides the toggle when hiddenMatchCount === 0', () => {
+    const wrapper = mountRail({ hiddenMatchCount: 0 })
+    expect(findHidden(wrapper)).toBeUndefined()
+  })
+
+  it('shows the toggle with count when hiddenMatchCount > 0', () => {
+    const wrapper = mountRail({ hiddenMatchCount: 4, showHidden: false })
+    const btn = findHidden(wrapper)
+    expect(btn).toBeDefined()
+    expect(btn!.text()).toContain('Hidden')
+    expect(btn!.text()).toContain('4')
+  })
+
+  it('renders the "+" mark when off, "✓" when on', () => {
+    const off = mountRail({ hiddenMatchCount: 4, showHidden: false })
+    expect(findHidden(off)!.find('.undated-mark').text()).toBe('+')
+
+    const on = mountRail({ hiddenMatchCount: 4, showHidden: true })
+    expect(findHidden(on)!.find('.undated-mark').text()).toBe('✓')
+  })
+
+  it('applies .active class only when showHidden=true', () => {
+    const off = mountRail({ hiddenMatchCount: 4, showHidden: false })
+    expect(findHidden(off)!.classes()).not.toContain('active')
+    const on = mountRail({ hiddenMatchCount: 4, showHidden: true })
+    expect(findHidden(on)!.classes()).toContain('active')
+  })
+
+  it('aria-pressed mirrors showHidden for assistive tech', () => {
+    expect(findHidden(mountRail({ hiddenMatchCount: 4, showHidden: false }))!.attributes('aria-pressed')).toBe('false')
+    expect(findHidden(mountRail({ hiddenMatchCount: 4, showHidden: true }))!.attributes('aria-pressed')).toBe('true')
+  })
+
+  it('emits set-show-hidden with the flipped value on click', async () => {
+    const off = mountRail({ hiddenMatchCount: 4, showHidden: false })
+    await findHidden(off)!.trigger('click')
+    expect(off.emitted('set-show-hidden')![0]).toEqual([true])
+
+    const on = mountRail({ hiddenMatchCount: 4, showHidden: true })
+    await findHidden(on)!.trigger('click')
+    expect(on.emitted('set-show-hidden')![0]).toEqual([false])
+  })
+
+  it('shows singular "match" copy in the title when count is 1', () => {
+    const wrapper = mountRail({ hiddenMatchCount: 1, showHidden: false })
+    expect(findHidden(wrapper)!.attributes('title')).toContain('1 match ')
+  })
+})
+
 describe('FilterRail — min-play threshold inputs', () => {
   it('renders three inputs (percent + minutes + seconds) under one eyebrow', () => {
     const wrapper = mountRail()

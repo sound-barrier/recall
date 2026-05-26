@@ -79,6 +79,11 @@ async function _fetch<T>(input: string, init?: RequestInit): Promise<T> {
     const body = await r.text().catch(() => '')
     throw new ApiError(r.status, body)
   }
+  // 204 No Content (the visibility + annotation writers) has no body
+  // and r.json() would throw "Unexpected end of JSON input". Callers
+  // for these endpoints discard the return value via `.then(() =>
+  // undefined)`, so returning undefined here is safe.
+  if (r.status === 204) return undefined as T
   return r.json() as Promise<T>
 }
 

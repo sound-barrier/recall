@@ -370,6 +370,23 @@ func TestMatchVisibility_MissingMatchKey400(t *testing.T) {
 	}
 }
 
+func TestMatchVisibility_BadJSON400(t *testing.T) {
+	fs := &fakeStore{}
+	_, mux := newTestApp(t, fs)
+	rec := post(t, mux, "/api/match-visibility", "not-json-at-all")
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("malformed body should 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchVisibility_MethodNotAllowed(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := get(t, mux, "/api/match-visibility")
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("GET on POST-only route should 405, got %d", rec.Code)
+	}
+}
+
 func TestMatchAnnotations_InvalidLeaver400(t *testing.T) {
 	fs := &fakeStore{}
 	a, mux := newTestApp(t, fs)

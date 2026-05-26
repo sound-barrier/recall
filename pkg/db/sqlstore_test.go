@@ -618,3 +618,85 @@ func TestSQLStore_Annotation_DeleteCascadesMembers(t *testing.T) {
 		t.Errorf("expected 0 members after cascade, got %d", n)
 	}
 }
+
+// ──────────────────────────────────────────────────────────────────
+// Soft-delete (hide / unhide).
+// ──────────────────────────────────────────────────────────────────
+
+func TestSQLStore_HiddenMatches_RoundTrip(t *testing.T) {
+	s := openMemory(t)
+
+	// Initial state — nothing hidden.
+	got, err := s.LoadHiddenKeys()
+	if err != nil {
+		t.Fatalf("LoadHiddenKeys empty: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected empty hidden set, got %d entries", len(got))
+	}
+
+	// Hide two keys; both show up in the next load.
+	if err := s.HideMatch("m1"); err != nil {
+		t.Fatalf("HideMatch m1: %v", err)
+	}
+	if err := s.HideMatch("m2"); err != nil {
+		t.Fatalf("HideMatch m2: %v", err)
+	}
+	got, _ = s.LoadHiddenKeys()
+	if !got["m1"] || !got["m2"] || len(got) != 2 {
+		t.Errorf("expected {m1, m2}, got %+v", got)
+	}
+
+	// Unhide one — the other survives.
+	if err := s.UnhideMatch("m1"); err != nil {
+		t.Fatalf("UnhideMatch m1: %v", err)
+	}
+	got, _ = s.LoadHiddenKeys()
+	if got["m1"] {
+		t.Error("m1 should be gone")
+	}
+	if !got["m2"] || len(got) != 1 {
+		t.Errorf("expected just {m2}, got %+v", got)
+	}
+
+	// Unhide a key that isn't hidden is a no-op (idempotent).
+	if err := s.UnhideMatch("never-hidden"); err != nil {
+		t.Errorf("UnhideMatch unknown key should be no-op, got: %v", err)
+	}
+}
+
+func TestSQLStore_HiddenMatches_IdempotentHideRefreshesTimestamp(t *testing.T) {
+	// The Hide UPSERT (ON CONFLICT DO UPDATE SET hidden_at =
+	// CURRENT_TIMESTAMP) is what keeps a re-hide from inserting a
+	// duplicate row and lets us observe a refresh.
+	s := openMemory(t)
+	if err := s.HideMatch("m1"); err != nil {
+		t.Fatalf("first hide: %v", err)
+	}
+	var first string
+	if err := s.db.QueryRow(`SELECT hidden_at FROM hidden_matches WHERE match_key = ?`, "m1").Scan(&first); err != nil {
+		t.Fatalf("read first hidden_at: %v", err)
+	}
+	// CURRENT_TIMESTAMP is whole-second resolution in SQLite; sleep a
+	// second to make a refresh observable. Long enough to be reliable,
+	// short enough to keep the test cheap.
+	time.Sleep(1100 * time.Millisecond)
+	if err := s.HideMatch("m1"); err != nil {
+		t.Fatalf("second hide: %v", err)
+	}
+	var second string
+	if err := s.db.QueryRow(`SELECT hidden_at FROM hidden_matches WHERE match_key = ?`, "m1").Scan(&second); err != nil {
+		t.Fatalf("read second hidden_at: %v", err)
+	}
+	if second == first {
+		t.Errorf("second Hide should refresh hidden_at; both = %q", first)
+	}
+	// Still exactly one row — no duplicate insert.
+	var n int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM hidden_matches`).Scan(&n); err != nil {
+		t.Fatalf("count rows: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("expected exactly 1 row after re-hide, got %d", n)
+	}
+}
