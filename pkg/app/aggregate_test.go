@@ -17,7 +17,7 @@ func TestAggregate_FusesSummaryAndScoreboardByMatchKey(t *testing.T) {
 		}},
 		Scoreboards: []db.ScoreboardRow{{
 			ID: 1, Filename: "sb.png", MatchKey: "m1", ParsedAt: "2026-05-10T21:30:05Z",
-			Mode: "", // intentional: aggregator should pick "competitive" from sibling
+			Mode:         "", // intentional: aggregator should pick "competitive" from sibling
 			Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 		}},
 	}

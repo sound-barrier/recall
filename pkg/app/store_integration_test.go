@@ -257,7 +257,7 @@ func TestApp_GetMatchResults_AppliesReadTimeInference(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMatchResults: %v", err)
 	}
-	if got[0].Data.HeroesPlayed == nil || len(got[0].Data.HeroesPlayed) == 0 {
+	if len(got[0].Data.HeroesPlayed) == 0 {
 		// scoreboards now don't auto-populate HeroesPlayed unless they
 		// have panel stats — so this test verifies the single-hero
 		// fallback isn't triggered when there's no HeroesPlayed entry

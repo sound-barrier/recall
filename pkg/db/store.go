@@ -36,25 +36,25 @@ type Store interface {
 // MatchKey (resolved at insert time by the correlation pass); per-file
 // uniqueness is Filename (UNIQUE constraint).
 type SummaryRow struct {
-	ID        int64
-	Filename  string
-	MatchKey  string
-	ParsedAt  string
-	Map       string
-	Mode      string
-	Hero      string
-	Result    string
+	ID         int64
+	Filename   string
+	MatchKey   string
+	ParsedAt   string
+	Map        string
+	Mode       string
+	Hero       string
+	Result     string
 	FinalScore string
-	Date      string
+	Date       string
 	FinishedAt string
 	GameLength string
 
-	PerfElimTotal           int
-	PerfElimAvgPer10Min     float64
-	PerfAssistsTotal        int
-	PerfAssistsAvgPer10Min  float64
-	PerfDeathsTotal         int
-	PerfDeathsAvgPer10Min   float64
+	PerfElimTotal          int
+	PerfElimAvgPer10Min    float64
+	PerfAssistsTotal       int
+	PerfAssistsAvgPer10Min float64
+	PerfDeathsTotal        int
+	PerfDeathsAvgPer10Min  float64
 
 	HeroesPlayed []SummaryHeroPlayed
 }
@@ -95,11 +95,11 @@ type HeroStat struct {
 
 // PersonalRow holds one parsed PERSONAL screenshot.
 type PersonalRow struct {
-	ID        int64
-	Filename  string
-	MatchKey  string
-	ParsedAt  string
-	Hero      string
+	ID       int64
+	Filename string
+	MatchKey string
+	ParsedAt string
+	Hero     string
 
 	HeroStats []HeroStat
 }
@@ -191,26 +191,28 @@ func (s *SQLStore) Close() error { return s.db.Close() }
 func (s *SQLStore) LoadAllFilenames() (map[string]bool, error) {
 	out := map[string]bool{}
 	for _, t := range parentTables {
-		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
-		rows, err := s.db.Query(`SELECT filename FROM ` + t)
-		if err != nil {
+		if err := s.collectFilenames(t, out); err != nil {
 			return nil, err
 		}
-		for rows.Next() {
-			var f string
-			if err := rows.Scan(&f); err != nil {
-				_ = rows.Close()
-				return nil, err
-			}
-			out[f] = true
-		}
-		if err := rows.Err(); err != nil {
-			_ = rows.Close()
-			return nil, err
-		}
-		_ = rows.Close()
 	}
 	return out, nil
+}
+
+func (s *SQLStore) collectFilenames(table string, out map[string]bool) error {
+	// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+	rows, err := s.db.Query(`SELECT filename FROM ` + table)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var f string
+		if err := rows.Scan(&f); err != nil {
+			return err
+		}
+		out[f] = true
+	}
+	return rows.Err()
 }
 
 // Clear deletes every row in every table. Children cascade.
@@ -528,7 +530,8 @@ func (s *SQLStore) loadSummaries() ([]SummaryRow, error) {
 
 	hpRows, err := s.db.Query(
 		`SELECT summary_screenshot_id, hero, percent_played, play_time
-		FROM summary_heroes_played`)
+		FROM summary_heroes_played`,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -586,7 +589,8 @@ func (s *SQLStore) loadScoreboards() ([]ScoreboardRow, error) {
 
 	hsRows, err := s.db.Query(
 		`SELECT scoreboard_screenshot_id, hero, stat_key, stat_value
-		FROM scoreboard_hero_stats`)
+		FROM scoreboard_hero_stats`,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -607,7 +611,8 @@ func (s *SQLStore) loadScoreboards() ([]ScoreboardRow, error) {
 func (s *SQLStore) loadPersonals() ([]PersonalRow, error) {
 	rows, err := s.db.Query(
 		`SELECT id, filename, match_key, parsed_at, hero
-		FROM personal_screenshots ORDER BY id`)
+		FROM personal_screenshots ORDER BY id`,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -633,7 +638,8 @@ func (s *SQLStore) loadPersonals() ([]PersonalRow, error) {
 
 	hsRows, err := s.db.Query(
 		`SELECT personal_screenshot_id, hero, stat_key, stat_value
-		FROM personal_hero_stats`)
+		FROM personal_hero_stats`,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -722,7 +728,8 @@ func (s *SQLStore) loadRanks() ([]RankRow, error) {
 
 func (s *SQLStore) loadUnknowns() ([]UnknownRow, error) {
 	rows, err := s.db.Query(
-		`SELECT id, filename, match_key, parsed_at FROM unknown_screenshots ORDER BY id`)
+		`SELECT id, filename, match_key, parsed_at FROM unknown_screenshots ORDER BY id`,
+	)
 	if err != nil {
 		return nil, err
 	}
