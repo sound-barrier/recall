@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import SettingsView from './SettingsView.vue'
@@ -126,5 +126,109 @@ describe('SettingsView', () => {
     // Saturday (index 6)
     await segs[6]!.trigger('click')
     expect(wrapper.emitted('set-week-start')![1]).toEqual([6])
+  })
+})
+
+// ── Data Location row (Directories section) ──────────────────────────────
+
+describe('SettingsView — Data Location row', () => {
+  const baseProps = {
+    screenshotsDir: '/srv', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+  }
+  const sampleLoc = {
+    base_dir: '/data',
+    settings_path: '/data/settings.json',
+    database_path: '/data/db/recall.db',
+    screenshots_dir: '/srv',
+  }
+
+  it('renders both paths when dataLocation is populated', () => {
+    const wrapper = mount(SettingsView, {
+      props: { ...baseProps, dataLocation: sampleLoc },
+    })
+    const grid = wrapper.find('.data-loc-grid')
+    expect(grid.exists()).toBe(true)
+    expect(grid.text()).toContain('/data/db/recall.db')
+    expect(grid.text()).toContain('/data/settings.json')
+  })
+
+  it('hides the path grid when dataLocation is null but still shows the label', () => {
+    const wrapper = mount(SettingsView, {
+      props: { ...baseProps, dataLocation: null },
+    })
+    expect(wrapper.text()).toContain('Data Location')
+    expect(wrapper.find('.data-loc-grid').exists()).toBe(false)
+  })
+
+  it('disables the Copy DB Path button when no dataLocation is loaded yet', () => {
+    const wrapper = mount(SettingsView, {
+      props: { ...baseProps, dataLocation: null },
+    })
+    const copyBtn = wrapper.findAll('button').find(b => b.text().includes('Copy DB Path'))!
+    expect(copyBtn.attributes('disabled')).toBeDefined()
+  })
+
+  it('writes the database path to the clipboard when Copy DB Path is clicked', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    })
+
+    const wrapper = mount(SettingsView, {
+      props: { ...baseProps, dataLocation: sampleLoc },
+    })
+    const copyBtn = wrapper.findAll('button').find(b => b.text().includes('Copy DB Path'))!
+    await copyBtn.trigger('click')
+    expect(writeText).toHaveBeenCalledWith('/data/db/recall.db')
+  })
+
+  it('flashes "Copied ✓" after a successful copy and clears after 1.4 s', async () => {
+    vi.useFakeTimers()
+    try {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: vi.fn().mockResolvedValue(undefined) },
+        configurable: true,
+      })
+      const wrapper = mount(SettingsView, {
+        props: { ...baseProps, dataLocation: sampleLoc },
+      })
+      const copyBtn = wrapper.findAll('button').find(b => b.text().includes('Copy DB Path'))!
+      await copyBtn.trigger('click')
+      // Resolve the writeText microtask first.
+      await Promise.resolve()
+      await wrapper.vm.$nextTick()
+      expect(wrapper.text()).toContain('Copied ✓')
+
+      // Bar clears 1.4 s later.
+      vi.advanceTimersByTime(1500)
+      await wrapper.vm.$nextTick()
+      expect(wrapper.text()).not.toContain('Copied ✓')
+      expect(wrapper.text()).toContain('Copy DB Path')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('falls back to a prompt() when the Clipboard API rejects', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      configurable: true,
+    })
+    // happy-dom doesn't ship a window.prompt — stub it as a global so
+    // the component's `window.prompt(...)` call hits our spy.
+    const promptSpy = vi.fn().mockReturnValue(null)
+    vi.stubGlobal('prompt', promptSpy)
+
+    const wrapper = mount(SettingsView, {
+      props: { ...baseProps, dataLocation: sampleLoc },
+    })
+    const copyBtn = wrapper.findAll('button').find(b => b.text().includes('Copy DB Path'))!
+    await copyBtn.trigger('click')
+    // Let the rejected promise + catch land.
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(promptSpy).toHaveBeenCalledWith('Copy this path:', '/data/db/recall.db')
+    vi.unstubAllGlobals()
   })
 })

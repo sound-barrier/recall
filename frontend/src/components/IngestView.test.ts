@@ -157,3 +157,102 @@ describe('IngestView', () => {
     expect(wrapper.emitted('go-to-view')![0]).toEqual(['settings'])
   })
 })
+
+// ── Backup / restore (Data section) ──────────────────────────────────────
+
+describe('IngestView — Export Backup', () => {
+  it('renders the Export Backup row with a button', () => {
+    const wrapper = mountIngest()
+    const btn = wrapper.findAll('button').find(b => b.text().includes('Export Backup'))
+    expect(btn).toBeDefined()
+    expect(btn!.attributes('disabled')).toBeUndefined()
+  })
+
+  it('emits export-data when the button is clicked', async () => {
+    const wrapper = mountIngest()
+    const btn = wrapper.findAll('button').find(b => b.text().includes('Export Backup'))!
+    await btn.trigger('click')
+    expect(wrapper.emitted('export-data')).toBeTruthy()
+  })
+
+  it('shows "Saving…" while exporting=true and disables the button', () => {
+    const wrapper = mountIngest({ exporting: true })
+    const btn = wrapper.findAll('button').find(b => b.text().includes('Saving'))!
+    expect(btn).toBeDefined()
+    expect(btn.attributes('disabled')).toBeDefined()
+  })
+
+  it('renders the success chip when exportStatus.ok is true', () => {
+    const wrapper = mountIngest({
+      exportStatus: { ok: true, message: 'Saved: /tmp/recall.json' },
+    })
+    expect(wrapper.text()).toContain('Saved: /tmp/recall.json')
+    expect(wrapper.find('.setting-meta.success').exists()).toBe(true)
+  })
+
+  it('renders the failure chip when exportStatus.ok is false', () => {
+    const wrapper = mountIngest({
+      exportStatus: { ok: false, message: 'Export failed: boom' },
+    })
+    expect(wrapper.text()).toContain('Export failed: boom')
+    expect(wrapper.find('.setting-meta.blocked').exists()).toBe(true)
+  })
+})
+
+describe('IngestView — Import Backup', () => {
+  it('shows the unarmed "Import Backup…" button initially', () => {
+    const wrapper = mountIngest()
+    const btn = wrapper.findAll('button').find(b => b.text().includes('Import Backup'))!
+    expect(btn).toBeDefined()
+    expect(btn.classes()).toContain('danger-outline')
+  })
+
+  it('emits arm-import when the unarmed button is clicked', async () => {
+    const wrapper = mountIngest()
+    const btn = wrapper.findAll('button').find(b => b.text().includes('Import Backup'))!
+    await btn.trigger('click')
+    expect(wrapper.emitted('arm-import')).toBeTruthy()
+  })
+
+  it('shows Choose File + Cancel buttons once armed', () => {
+    const wrapper = mountIngest({ importArmed: true, matchedCount: 5 })
+    const chooseBtn = wrapper.findAll('button').find(b => b.text().includes('Choose File'))!
+    const cancelBtn = wrapper.findAll('button').find(b => b.text().trim() === 'Cancel')!
+    expect(chooseBtn).toBeDefined()
+    expect(cancelBtn).toBeDefined()
+    // Warning meta names the record count that would be lost.
+    expect(wrapper.text()).toMatch(/wipes 5 record/)
+  })
+
+  it('emits import-data when Choose File is clicked', async () => {
+    const wrapper = mountIngest({ importArmed: true })
+    const choose = wrapper.findAll('button').find(b => b.text().includes('Choose File'))!
+    await choose.trigger('click')
+    expect(wrapper.emitted('import-data')).toBeTruthy()
+  })
+
+  it('emits cancel-import when Cancel is clicked in the armed state', async () => {
+    const wrapper = mountIngest({ importArmed: true })
+    const cancel = wrapper.findAll('button').find(b => b.text().trim() === 'Cancel')!
+    await cancel.trigger('click')
+    expect(wrapper.emitted('cancel-import')).toBeTruthy()
+  })
+
+  it('shows "Loading…" + disables Choose File while importing=true', () => {
+    const wrapper = mountIngest({ importArmed: true, importing: true })
+    const loadingBtn = wrapper.findAll('button').find(b => b.text().includes('Loading'))!
+    expect(loadingBtn).toBeDefined()
+    expect(loadingBtn.attributes('disabled')).toBeDefined()
+  })
+
+  it('disables Export Backup while Import is in flight (and vice versa)', () => {
+    const importing = mountIngest({ importing: true })
+    const exportBtn = importing.findAll('button').find(b => b.text().includes('Export Backup'))!
+    expect(exportBtn.attributes('disabled')).toBeDefined()
+
+    const exporting = mountIngest({ exporting: true })
+    // While exporting, the Import button (unarmed state) is also disabled.
+    const importBtn = exporting.findAll('button').find(b => b.text().includes('Import Backup'))!
+    expect(importBtn.attributes('disabled')).toBeDefined()
+  })
+})
