@@ -456,6 +456,27 @@ describe('tallyWLD', () => {
   it('returns zeros for an empty input', () => {
     expect(tallyWLD([])).toEqual({ w: 0, l: 0, d: 0 })
   })
+
+  it('skips annotated leaver matches when skipAnnotated=true', () => {
+    const recs = [
+      { data: { result: 'victory' } },
+      { data: { result: 'victory' }, annotation: { leaver: 'enemy' } }, // tainted win
+      { data: { result: 'defeat' }, annotation: { leaver: 'team' } },   // excused loss
+      { data: { result: 'defeat' } },
+    ]
+    // Default behaviour counts everything.
+    expect(tallyWLD(recs)).toEqual({ w: 2, l: 2, d: 0 })
+    // With skipAnnotated the two annotated matches drop out.
+    expect(tallyWLD(recs, true)).toEqual({ w: 1, l: 1, d: 0 })
+  })
+
+  it('a null annotation does not count as annotated for skipAnnotated', () => {
+    const recs = [
+      { data: { result: 'victory' }, annotation: null },
+      { data: { result: 'defeat' }, annotation: { leaver: '' } }, // empty leaver = no annotation
+    ]
+    expect(tallyWLD(recs, true)).toEqual({ w: 1, l: 1, d: 0 })
+  })
 })
 
 // ─── groupMatchesByMonthWeekDay ──────────────────────────────────────

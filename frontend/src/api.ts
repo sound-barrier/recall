@@ -165,6 +165,24 @@ export function SetScreenshotsDir(path: string): Promise<void> {
   return _post('/api/screenshots-dir', { path }).then(() => undefined)
 }
 
+// Per-match user annotation. `leaver` ∈ {'self', 'team', 'enemy'};
+// passing the empty string clears the annotation. The server validates
+// + persists; on success the next /api/match-results fetch (and any
+// live `match-updated` event) carries the annotation under
+// `MatchRecord.annotation`.
+export type LeaverKind = 'self' | 'team' | 'enemy'
+
+export function SetLeaverAnnotation(matchKey: string, leaver: LeaverKind, note = ''): Promise<void> {
+  if (IS_WAILS) return _wails('SetLeaverAnnotation', matchKey, leaver, note)
+  return _post('/api/match-annotations', { match_key: matchKey, leaver, note }).then(() => undefined)
+}
+
+export function ClearLeaverAnnotation(matchKey: string): Promise<void> {
+  if (IS_WAILS) return _wails('ClearLeaverAnnotation', matchKey)
+  // Server treats `leaver: ""` / null as a clear-request.
+  return _post('/api/match-annotations', { match_key: matchKey, leaver: '' }).then(() => undefined)
+}
+
 export function ParseScreenshots(): Promise<void> {
   if (IS_WAILS) return _wails('ParseScreenshots')
   return _post('/api/parse').then(() => undefined)

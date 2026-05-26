@@ -23,7 +23,8 @@ type fakeStore struct {
 	ranks       []db.RankRow
 	unknowns    []db.UnknownRow
 
-	dirIDs map[string]int64
+	dirIDs      map[string]int64
+	annotations map[string]db.Annotation
 
 	upsertCalls int
 	clearCalls  int
@@ -211,6 +212,33 @@ func (f *fakeStore) EnsureScreenshotsDir(path string) (int64, error) {
 	id := int64(len(f.dirIDs) + 1)
 	f.dirIDs[path] = id
 	return id, nil
+}
+
+func (f *fakeStore) SetAnnotation(a db.Annotation) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.annotations == nil {
+		f.annotations = map[string]db.Annotation{}
+	}
+	f.annotations[a.MatchKey] = a
+	return nil
+}
+
+func (f *fakeStore) DeleteAnnotation(matchKey string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.annotations, matchKey)
+	return nil
+}
+
+func (f *fakeStore) LoadAnnotations() (map[string]db.Annotation, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string]db.Annotation, len(f.annotations))
+	for k, v := range f.annotations {
+		out[k] = v
+	}
+	return out, nil
 }
 
 // ──────────────────────────────────────────────────────────────────────────

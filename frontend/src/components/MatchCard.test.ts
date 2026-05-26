@@ -423,3 +423,75 @@ describe('MatchCard — compact density', () => {
     expect(wrapper.find('.compact-dmg').exists()).toBe(false)
   })
 })
+
+describe('MatchCard — leaver annotation', () => {
+  it('hides the L mark when no annotation is set', () => {
+    const wrapper = mountCard()
+    expect(wrapper.find('.leaver-mark').exists()).toBe(false)
+  })
+
+  it('shows the L mark + correct class when annotation.leaver=self', () => {
+    const annotated = makeRecord({}, {
+      annotation: { leaver: 'self' },
+    } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: annotated })
+    const mark = wrapper.find('.leaver-mark')
+    expect(mark.exists()).toBe(true)
+    expect(mark.classes()).toContain('leaver-self')
+    expect(mark.attributes('title')).toContain('You left')
+  })
+
+  it('hides the chooser when the card is collapsed', () => {
+    const wrapper = mountCard()
+    expect(wrapper.find('.leaver-chooser').exists()).toBe(false)
+  })
+
+  it('renders the three scenario chips + no Clear when card is expanded and unannotated', () => {
+    const wrapper = mountCard({ isExpanded: true })
+    const chips = wrapper.findAll('.leaver-chip')
+    expect(chips).toHaveLength(3) // self / team / enemy; Clear is hidden
+    expect(wrapper.find('.leaver-chip.leaver-clear').exists()).toBe(false)
+  })
+
+  it('marks the active chip when an annotation is set', () => {
+    const annotated = makeRecord({}, {
+      annotation: { leaver: 'team' },
+    } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: annotated, isExpanded: true })
+    const team = wrapper.findAll('.leaver-chip').find(c => c.text().includes('Ally'))!
+    expect(team.classes()).toContain('active')
+    expect(team.attributes('aria-pressed')).toBe('true')
+    // Clear shows up alongside the three scenarios.
+    expect(wrapper.find('.leaver-chip.leaver-clear').exists()).toBe(true)
+  })
+
+  it('emits set-leaver-annotation with the picked scenario', async () => {
+    const wrapper = mountCard({ isExpanded: true })
+    const self = wrapper.findAll('.leaver-chip').find(c => c.text().includes('I left'))!
+    await self.trigger('click')
+    const e = wrapper.emitted('set-leaver-annotation')!
+    expect(e[0]).toEqual([wrapper.props('record').match_key, 'self'])
+  })
+
+  it('clicking the active chip emits a clear (empty leaver)', async () => {
+    const annotated = makeRecord({}, {
+      annotation: { leaver: 'enemy' },
+    } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: annotated, isExpanded: true })
+    const enemy = wrapper.findAll('.leaver-chip').find(c => c.text().includes('Enemy'))!
+    await enemy.trigger('click')
+    const e = wrapper.emitted('set-leaver-annotation')!
+    expect(e[0]).toEqual([wrapper.props('record').match_key, ''])
+  })
+
+  it('clicking Clear emits with empty leaver', async () => {
+    const annotated = makeRecord({}, {
+      annotation: { leaver: 'self' },
+    } as unknown as Partial<MatchRecord>)
+    const wrapper = mountCard({ record: annotated, isExpanded: true })
+    const clear = wrapper.find('.leaver-chip.leaver-clear')
+    await clear.trigger('click')
+    const e = wrapper.emitted('set-leaver-annotation')!
+    expect(e[0]).toEqual([wrapper.props('record').match_key, ''])
+  })
+})

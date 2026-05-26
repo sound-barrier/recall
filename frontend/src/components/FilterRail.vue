@@ -39,6 +39,14 @@ const props = defineProps<{
   // >= minPlayMinutes (OR semantics). Both default to 0 = disabled.
   minPlayPercent: number
   minPlayMinutes: number
+  // Leaver-handling preference. Drives the 3-state segmented control
+  // that appears only when at least one record carries an annotation.
+  // Three states:
+  //   'include'        — show + count as normal (default)
+  //   'exclude-tally'  — show, but W/L/D omits the result
+  //   'hide'           — drop from the list entirely
+  leaverHandling:     'include' | 'exclude-tally' | 'hide'
+  annotatedMatchCount: number
 }>()
 
 const emit = defineEmits<{
@@ -57,6 +65,7 @@ const emit = defineEmits<{
   'set-include-undated': [next: boolean]
   'set-min-play-percent': [n: number]
   'set-min-play-minutes': [n: number]
+  'set-leaver-handling': [next: 'include' | 'exclude-tally' | 'hide']
 }>()
 
 function readNumberInput(e: Event): number {
@@ -391,6 +400,55 @@ function searchStr(field: string): string {
           <span class="undated-mark" aria-hidden="true">{{ includeUndated ? '✓' : '+' }}</span>
           Undated · {{ undatedMatchCount }}
         </button>
+
+        <!-- Leaver-handling segmented control. Only renders when at
+             least one match carries a user-set leaver annotation —
+             otherwise the control is noise. Three exclusive states:
+             show & count (default), show but skip from W/L/D tally,
+             or hide entirely. Default styling matches `.undated-toggle`
+             but with three pill-stacked options. -->
+        <div
+          v-if="annotatedMatchCount > 0"
+          class="leaver-segmented"
+          role="radiogroup"
+          aria-label="Leaver-match handling"
+          :title="`${annotatedMatchCount} match${annotatedMatchCount === 1 ? '' : 'es'} tagged as a leaver scenario.`"
+        >
+          <span class="leaver-label" aria-hidden="true">⚑ leaver · {{ annotatedMatchCount }}</span>
+          <button
+            type="button"
+            class="leaver-seg"
+            :class="{ active: leaverHandling === 'include' }"
+            :aria-checked="leaverHandling === 'include'"
+            role="radio"
+            title="Show leaver matches and count them in the W/L/D tally (default)."
+            @click="emit('set-leaver-handling', 'include')"
+          >
+            Show
+          </button>
+          <button
+            type="button"
+            class="leaver-seg"
+            :class="{ active: leaverHandling === 'exclude-tally' }"
+            :aria-checked="leaverHandling === 'exclude-tally'"
+            role="radio"
+            title="Show leaver matches in the list, but skip them in the W/L/D tally."
+            @click="emit('set-leaver-handling', 'exclude-tally')"
+          >
+            Skip tally
+          </button>
+          <button
+            type="button"
+            class="leaver-seg"
+            :class="{ active: leaverHandling === 'hide' }"
+            :aria-checked="leaverHandling === 'hide'"
+            role="radio"
+            title="Hide leaver matches from the list entirely."
+            @click="emit('set-leaver-handling', 'hide')"
+          >
+            Hide
+          </button>
+        </div>
 
         <button v-if="anyFilter" class="btn ghost tiny danger" @click="emit('clear-filters')">
           Clear Filters
@@ -1006,6 +1064,62 @@ function searchStr(field: string): string {
 
 .undated-toggle.active .undated-mark {
   opacity: 1;
+}
+
+/* ─── Leaver handling 3-state segmented control ──────────── */
+
+/* A small inline radiogroup with a leading label + count chip.
+   Shares the visual footprint of `.undated-toggle` so the filter
+   tools row stays rhythmic, but renders three click targets so the
+   user can pick include / exclude-tally / hide in one place. Only
+   surfaces when at least one annotated match exists. */
+.leaver-segmented {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+}
+
+.leaver-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.5rem 0 0.4rem;
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.leaver-seg {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0.28rem 0.55rem;
+  border-radius: 1px;
+  color: var(--text-faint);
+  font: inherit;
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+.leaver-seg:hover { color: var(--text); }
+
+.leaver-seg.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.leaver-seg:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-soft), inset 0 0 0 1px var(--accent);
 }
 
 /* Min-play threshold — two narrow number inputs sharing one eyebrow

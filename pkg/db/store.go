@@ -33,9 +33,27 @@ type Store interface {
 	// them grouped by parent type with children already attached.
 	LoadAll() (Screenshots, error)
 
+	// Match-annotation surface — user-curated per-match notes.
+	// SetAnnotation upserts; DeleteAnnotation removes by key; LoadAnnotations
+	// returns the full map keyed by match_key for the aggregator to attach
+	// to MatchRecords at read time.
+	SetAnnotation(a Annotation) error
+	DeleteAnnotation(matchKey string) error
+	LoadAnnotations() (map[string]Annotation, error)
+
 	// Clear deletes every row in every table — children cascade.
 	Clear() error
 	Close() error
+}
+
+// Annotation is one row of match_annotations. Leaver is one of
+// {"self", "team", "enemy"}; the empty string is treated as "no
+// annotation" and callers should DeleteAnnotation instead.
+type Annotation struct {
+	MatchKey    string
+	Leaver      string
+	Note        string
+	AnnotatedAt string
 }
 
 // SummaryRow holds one parsed SUMMARY screenshot. Match identity is
@@ -525,6 +543,54 @@ func (s *SQLStore) UpsertUnknown(r UnknownRow) error {
 		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID),
 	)
 	return err
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Match annotations — user-curated per-match notes (leaver flag + free
+// text). UPSERT semantics on SetAnnotation; DeleteAnnotation is a
+// targeted delete; LoadAnnotations returns the full snapshot the
+// aggregator merges into MatchRecord at read time. The CHECK
+// constraint on the leaver column is the source of truth for the
+// enum — the App layer additionally validates before reaching SQL so
+// the error surface is friendlier than a raw SQLite constraint
+// violation.
+// ──────────────────────────────────────────────────────────────────────
+
+func (s *SQLStore) SetAnnotation(a Annotation) error {
+	_, err := s.db.Exec(
+		`INSERT INTO match_annotations (match_key, leaver, note)
+		 VALUES (?, ?, ?)
+		 ON CONFLICT(match_key) DO UPDATE SET
+		   leaver       = excluded.leaver,
+		   note         = excluded.note,
+		   annotated_at = CURRENT_TIMESTAMP`,
+		a.MatchKey, a.Leaver, a.Note,
+	)
+	return err
+}
+
+func (s *SQLStore) DeleteAnnotation(matchKey string) error {
+	_, err := s.db.Exec(`DELETE FROM match_annotations WHERE match_key = ?`, matchKey)
+	return err
+}
+
+func (s *SQLStore) LoadAnnotations() (map[string]Annotation, error) {
+	rows, err := s.db.Query(
+		`SELECT match_key, leaver, COALESCE(note, ''), annotated_at FROM match_annotations`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := make(map[string]Annotation)
+	for rows.Next() {
+		var a Annotation
+		if err := rows.Scan(&a.MatchKey, &a.Leaver, &a.Note, &a.AnnotatedAt); err != nil {
+			return nil, err
+		}
+		out[a.MatchKey] = a
+	}
+	return out, rows.Err()
 }
 
 // ──────────────────────────────────────────────────────────────────────

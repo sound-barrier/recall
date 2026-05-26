@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
 import type { MatchRecord } from '../api'
 import type { useMatchFilters } from '../composables/useMatchFilters'
@@ -70,6 +71,11 @@ const props = defineProps<{
   // tightens padding + map font and inlines E/A/D + damage on the
   // card header so high-volume players see stats at a glance.
   densityMode:    DensityMode
+  // Leaver-handling preference (persisted via useLeaverHandling). The
+  // FilterRail's segmented control only surfaces when at least one
+  // record carries `annotation.leaver` — passed in via
+  // `annotatedMatchCount` for the rendering gate.
+  leaverHandling: 'include' | 'exclude-tally' | 'hide'
 }>()
 
 const emit = defineEmits<{
@@ -78,6 +84,8 @@ const emit = defineEmits<{
   'set-min-play-percent': [n: number]
   'set-min-play-minutes': [n: number]
   'toggle-density':       []
+  'set-leaver-handling':  [next: 'include' | 'exclude-tally' | 'hide']
+  'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
 }>()
 
 // Pre-extracted destructures keep the template readable without
@@ -98,6 +106,13 @@ function setFilterSearch(field: string, value: string) {
 function matchGroupKey(group: MatchGroup<MatchRecord>): string {
   return group.key
 }
+
+// Gate for the FilterRail's leaver-handling segmented control. Hides
+// the control entirely when nobody has annotated any match yet — keeps
+// the rail uncluttered until the feature is actually being used.
+const annotatedMatchCount = computed(
+  () => props.records.filter(r => !!r.annotation?.leaver).length,
+)
 </script>
 
 <template>
@@ -152,6 +167,8 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
       :include-undated="includeUndated"
       :min-play-percent="minPlayPercent"
       :min-play-minutes="minPlayMinutes"
+      :leaver-handling="leaverHandling"
+      :annotated-match-count="annotatedMatchCount"
       :filtered-count="f.filteredSorted.value.length"
       @update:filter-from="setFilterFrom"
       @update:filter-to="setFilterTo"
@@ -168,6 +185,7 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
       @set-include-undated="(v: boolean) => emit('set-include-undated', v)"
       @set-min-play-percent="(n: number) => emit('set-min-play-percent', n)"
       @set-min-play-minutes="(n: number) => emit('set-min-play-minutes', n)"
+      @set-leaver-handling="(v: 'include' | 'exclude-tally' | 'hide') => emit('set-leaver-handling', v)"
     />
 
     <div v-if="records.length > 0 && g.groups.value.length > 0" class="match-list" :class="{ compact: densityMode === 'compact' }">
@@ -219,6 +237,7 @@ function matchGroupKey(group: MatchGroup<MatchRecord>): string {
         :is-active="f.isActive"
         :card-offset="idx"
         :density-mode="densityMode"
+        @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
         @toggle-group="g.toggleGroup"
         @toggle-expand="cs.toggleExpand"
         @toggle-sources="cs.toggleSources"

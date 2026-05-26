@@ -43,6 +43,7 @@ const emit = defineEmits<{
   'toggle-preview':  [filename: string]
   'preview-error':   [filename: string]
   'filter-toggle':   [field: string, value: string]
+  'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
 }>()
 
 const open = (): boolean => props.isGroupExpanded(props.group.key)
@@ -139,6 +140,7 @@ function cardDelayMs(localIdx: number): number {
             @toggle-preview="(fn: string) => emit('toggle-preview', fn)"
             @preview-error="(fn: string) => emit('preview-error', fn)"
             @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"
+            @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
           />
         </template>
 
@@ -161,6 +163,7 @@ function cardDelayMs(localIdx: number): number {
             @toggle-preview="(fn: string) => emit('toggle-preview', fn)"
             @preview-error="(fn: string) => emit('preview-error', fn)"
             @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"
+            @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
           />
         </template>
       </div>

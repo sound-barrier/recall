@@ -38,7 +38,12 @@ func (f *fakeStore) Clear() error {
 	f.clearCalls++
 	return nil
 }
-func (f *fakeStore) Close() error { return nil }
+func (f *fakeStore) Close() error                      { return nil }
+func (f *fakeStore) SetAnnotation(db.Annotation) error { return nil }
+func (f *fakeStore) DeleteAnnotation(string) error     { return nil }
+func (f *fakeStore) LoadAnnotations() (map[string]db.Annotation, error) {
+	return map[string]db.Annotation{}, nil
+}
 
 // newTestApp wires *App against a fakeStore + empty SPA. Skips Startup
 // because the production wiring touches the filesystem.
@@ -279,5 +284,58 @@ func TestServerMux_ServesIndexFromAssetsFS(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "doctype") {
 		t.Errorf("body should contain SPA shell, got %q", rec.Body.String())
+	}
+}
+
+func TestMatchAnnotations_Upsert(t *testing.T) {
+	fs := &fakeStore{}
+	a, mux := newTestApp(t, fs)
+	_ = a
+
+	rec := post(t, mux, "/api/match-annotations", map[string]any{
+		"match_key": "k1",
+		"leaver":    "team",
+		"note":      "ally dc'd",
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("upsert status = %d, body: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchAnnotations_ClearByEmptyLeaver(t *testing.T) {
+	fs := &fakeStore{}
+	a, mux := newTestApp(t, fs)
+	_ = a
+	rec := post(t, mux, "/api/match-annotations", map[string]any{
+		"match_key": "k1",
+		"leaver":    "",
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("clear status = %d, body: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchAnnotations_InvalidLeaver400(t *testing.T) {
+	fs := &fakeStore{}
+	a, mux := newTestApp(t, fs)
+	_ = a
+	rec := post(t, mux, "/api/match-annotations", map[string]any{
+		"match_key": "k1",
+		"leaver":    "afk",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid leaver should 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchAnnotations_MissingMatchKey400(t *testing.T) {
+	fs := &fakeStore{}
+	a, mux := newTestApp(t, fs)
+	_ = a
+	rec := post(t, mux, "/api/match-annotations", map[string]any{
+		"leaver": "team",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("missing match_key should 400, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
