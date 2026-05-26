@@ -490,6 +490,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProbeResult"
 
+  /api/match-visibility:
+    post:
+      tags: [Data]
+      summary: Hide or unhide a match (soft delete)
+      description: |
+        Flips a match's hidden state. `hidden: true` records a
+        soft-delete entry in the `hidden_matches` table; the
+        aggregator then sets `MatchRecord.hidden = true` on every
+        read and the default filter drops the match from the
+        Matches list. The per-screenshot rows in the parent tables
+        are untouched, so a re-parse of the same PNG files continues to
+        skip them (`LoadAllFilenames` sees them as parsed).
+
+        `hidden: false` removes the soft-delete and the match
+        re-appears. Both directions are idempotent — repeated
+        identical calls succeed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [match_key, hidden]
+              properties:
+                match_key:
+                  type: string
+                  description: Match identity (same `match_key` exposed in `MatchRecord`).
+                hidden:
+                  type: boolean
+                  description: True to hide; false to unhide.
+      responses:
+        "204":
+          description: Visibility updated.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/match-annotations:
     post:
       tags: [Data]
@@ -915,6 +953,13 @@ components:
           $ref: "#/components/schemas/MatchResult"
         annotation:
           $ref: "#/components/schemas/MatchAnnotation"
+        hidden:
+          type: boolean
+          description: |
+            True iff the user soft-deleted this match via
+            `POST /api/match-visibility`. Omitted (or false) for
+            normal records. The per-screenshot parent rows are
+            untouched — only the aggregator hides the surface.
 
     MatchAnnotation:
       type: object

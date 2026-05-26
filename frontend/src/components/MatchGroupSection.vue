@@ -45,6 +45,7 @@ const emit = defineEmits<{
   'filter-toggle':   [field: string, value: string]
   'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
   'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
+  'set-match-hidden':      [matchKey: string, hidden: boolean]
 }>()
 
 const open = (): boolean => props.isGroupExpanded(props.group.key)
@@ -143,6 +144,7 @@ function cardDelayMs(localIdx: number): number {
             @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"
             @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
             @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
+            @set-match-hidden="(k: string, h: boolean) => emit('set-match-hidden', k, h)"
           />
         </template>
 
@@ -167,6 +169,7 @@ function cardDelayMs(localIdx: number): number {
             @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"
             @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
             @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
+            @set-match-hidden="(k: string, h: boolean) => emit('set-match-hidden', k, h)"
           />
         </template>
       </div>

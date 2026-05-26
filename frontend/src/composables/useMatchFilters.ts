@@ -36,6 +36,11 @@ export function useMatchFilters(
   //                         callers of tallyWLD, not here).
   //   'hide'              — drop from filteredSorted entirely.
   leaverHandling?: Readonly<Ref<'include' | 'exclude-tally' | 'hide'>>,
+  // Optional: when this ref is false (default), soft-deleted matches
+  // (record.hidden === true) are dropped from filteredSorted. Toggling
+  // it on surfaces them with the dimmed visual state so the user can
+  // review or unhide. Drives the FilterRail "Hidden · N" toggle.
+  showHidden?: Readonly<Ref<boolean>>,
 ) {
   // ── Filter state ─────────────────────────────────────────────────────
   // Each field is an array: empty = no filter; multiple entries = union (OR).
@@ -109,6 +114,12 @@ export function useMatchFilters(
       // regardless when a range is set.
       const undated = !d.date || !d.finished_at
       if (undated && !(includeUndated?.value ?? false)) return false
+
+      // Soft-deleted (hidden) matches drop out unless the user has
+      // flipped the "Show hidden" toggle. They stay in the DB so a
+      // re-parse doesn't re-add the screenshots; the toggle is just
+      // a render-time filter.
+      if (r.hidden && !(showHidden?.value ?? false)) return false
 
       // Leaver-annotated matches are dropped from the list entirely
       // when handling is 'hide'. 'exclude-tally' and 'include' both
@@ -231,6 +242,12 @@ export function useMatchFilters(
     records.value.filter(r => !(r.data?.date && r.data?.finished_at)).length
   )
 
+  // Soft-deleted match count. Drives the FilterRail "Hidden · N"
+  // toggle — only renders the toggle when N > 0.
+  const hiddenMatchCount = computed(() =>
+    records.value.filter(r => r.hidden).length
+  )
+
   // ── Mutations ─────────────────────────────────────────────────────────
   function toggleSort() {
     sortDir.value = sortDir.value === 'desc' ? 'asc' : 'desc'
@@ -291,7 +308,7 @@ export function useMatchFilters(
     filterRefs, filterList,
     modes, types, roles, maps, results, sshotTypes, heroes,
     filtered, filteredSorted,
-    anyFilter, activeFilterCount, undatedMatchCount,
+    anyFilter, activeFilterCount, undatedMatchCount, hiddenMatchCount,
     toggleFilter, isActive, selectAllFilter, clearFilterField, clearFilters, resetDateRange, toggleSort,
   }
 }

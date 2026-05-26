@@ -25,9 +25,27 @@ func (a *App) aggregateAll() ([]MatchRecord, error) {
 	if err != nil {
 		return nil, err
 	}
+	hidden, err := a.store.LoadHiddenKeys()
+	if err != nil {
+		return nil, err
+	}
 	recs := aggregateScreenshots(snap)
 	attachAnnotations(recs, annos)
+	attachHidden(recs, hidden)
 	return recs, nil
+}
+
+// attachHidden flips `Hidden` to true on every record whose match_key
+// is in the soft-delete set. Pure function, called once per aggregateAll.
+func attachHidden(recs []MatchRecord, hidden map[string]bool) {
+	if len(hidden) == 0 {
+		return
+	}
+	for i := range recs {
+		if hidden[recs[i].MatchKey] {
+			recs[i].Hidden = true
+		}
+	}
 }
 
 // attachAnnotations grafts user-curated leaver/note records onto the
@@ -72,7 +90,7 @@ type screenshotView struct {
 // per-key extract for the live-streaming "match-updated" event.
 // Inference helpers (inferSoleHeroPercent, inferResultFromRank)
 // are applied so the streamed shape matches GetMatchResults output.
-func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation) (MatchRecord, bool) {
+func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool) (MatchRecord, bool) {
 	vs := make([]screenshotView, 0, 8)
 	for _, r := range snap.Summaries {
 		if r.MatchKey == key {
@@ -116,6 +134,9 @@ func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Anno
 			Members:     a.Members,
 			AnnotatedAt: a.AnnotatedAt,
 		}
+	}
+	if hidden[key] {
+		rec.Hidden = true
 	}
 	return rec, true
 }

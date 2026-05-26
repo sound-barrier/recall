@@ -47,6 +47,11 @@ const props = defineProps<{
   //   'hide'           — drop from the list entirely
   leaverHandling:     'include' | 'exclude-tally' | 'hide'
   annotatedMatchCount: number
+  // "Show hidden matches" toggle state. Default false — soft-deleted
+  // matches stay out of view. Button only renders when
+  // hiddenMatchCount > 0 so the user has something to reveal.
+  showHidden: boolean
+  hiddenMatchCount: number
 }>()
 
 const emit = defineEmits<{
@@ -66,6 +71,7 @@ const emit = defineEmits<{
   'set-min-play-percent': [n: number]
   'set-min-play-minutes': [n: number]
   'set-leaver-handling': [next: 'include' | 'exclude-tally' | 'hide']
+  'set-show-hidden': [next: boolean]
 }>()
 
 function readNumberInput(e: Event): number {
@@ -399,6 +405,24 @@ function searchStr(field: string): string {
         >
           <span class="undated-mark" aria-hidden="true">{{ includeUndated ? '✓' : '+' }}</span>
           Undated · {{ undatedMatchCount }}
+        </button>
+
+        <!-- Hidden toggle. Surfaces only when at least one
+             soft-deleted match exists; flipping it on reveals the
+             rows (with their MatchCard rendered in dimmed state) so
+             the user can review or unhide. -->
+        <button
+          v-if="hiddenMatchCount > 0"
+          class="btn ghost tiny undated-toggle"
+          :class="{ active: showHidden }"
+          :title="showHidden
+            ? `Hide the ${hiddenMatchCount} soft-deleted match${hiddenMatchCount === 1 ? '' : 'es'} again.`
+            : `Reveal the ${hiddenMatchCount} match${hiddenMatchCount === 1 ? '' : 'es'} you previously hid. Default is to keep them out of the list.`"
+          :aria-pressed="showHidden"
+          @click="emit('set-show-hidden', !showHidden)"
+        >
+          <span class="undated-mark" aria-hidden="true">{{ showHidden ? '✓' : '+' }}</span>
+          Hidden · {{ hiddenMatchCount }}
         </button>
 
         <!-- Leaver-handling segmented control. Only renders when at

@@ -52,6 +52,11 @@ const emit = defineEmits<{
   // which writes the whole row in a single round-trip so the three
   // free-text fields can't drift independently.
   'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
+  // User pressed Hide (after confirming) or Unhide on the expanded
+  // danger row. App.vue persists via SetMatchVisibility and re-loads
+  // records — the next render either drops the card (hide while the
+  // "Show hidden" toggle is off) or removes the dimmed state (unhide).
+  'set-match-hidden':       [matchKey: string, hidden: boolean]
 }>()
 
 // Local draft state for the three free-text annotation fields. These
@@ -116,6 +121,30 @@ function removeMember(name: string) {
 // chip (Vue's v-on doesn't support the `comma` key modifier so we
 // have to read e.key by hand). Backspace on an empty input removes
 // the last chip — standard tagify-style behaviour.
+// Hide/Unhide confirmation state. The Hide button reveals an
+// inline "Confirm? · Cancel" pair instead of a modal — the action is
+// reversible (presence-in-table soft-delete) so a single confirm step
+// is enough friction. Unhide is one-click since it's strictly
+// restorative.
+const confirmingHide = ref(false)
+
+function startHideConfirm() {
+  confirmingHide.value = true
+}
+
+function cancelHideConfirm() {
+  confirmingHide.value = false
+}
+
+function confirmHide() {
+  confirmingHide.value = false
+  emit('set-match-hidden', props.record.match_key, true)
+}
+
+function unhide() {
+  emit('set-match-hidden', props.record.match_key, false)
+}
+
 function onMemberKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter' || e.key === ',') {
     e.preventDefault()
@@ -133,7 +162,7 @@ function onMemberKeydown(e: KeyboardEvent) {
   <article
     class="match"
     :class="[
-      { expanded: isExpanded, compact: densityMode === 'compact' },
+      { expanded: isExpanded, compact: densityMode === 'compact', hidden: record.hidden },
       `result-${record.data?.result || 'unknown'}`,
     ]"
   >
@@ -249,7 +278,7 @@ function onMemberKeydown(e: KeyboardEvent) {
             :class="`leaver-${record.annotation.leaver}`"
             :title="record.annotation.leaver === 'self' ? 'You left this match (data incomplete)'
               : record.annotation.leaver === 'team' ? 'An ally left this match'
-              : 'An enemy left this match'"
+                : 'An enemy left this match'"
             aria-label="Leaver-annotated match"
           >
             <span class="leaver-mark-l" aria-hidden="true">L</span>
@@ -600,6 +629,60 @@ function onMemberKeydown(e: KeyboardEvent) {
                 </span>
               </p>
             </div>
+          </div>
+
+          <!-- Soft-delete row. Hide is destructive in user intent
+               ("I don't want to see this match"), but reversible at
+               the data layer (no rows are dropped), so we use an
+               inline two-step confirm instead of a modal. Unhide is
+               one-click — strictly restorative. -->
+          <div class="match-danger" role="group" aria-label="Match visibility">
+            <template v-if="!record.hidden">
+              <template v-if="!confirmingHide">
+                <button
+                  type="button"
+                  class="danger-btn"
+                  title="Hide this match. Soft delete — the row stays in the database (a re-parse won't re-add the screenshots), and you can unhide it later via the Hidden toggle in the filter rail."
+                  @click="startHideConfirm"
+                >
+                  <span class="danger-glyph" aria-hidden="true">⌫</span>
+                  Hide match
+                </button>
+              </template>
+              <template v-else>
+                <span class="danger-prompt">Hide this match?</span>
+                <button
+                  type="button"
+                  class="danger-btn danger-confirm"
+                  title="Confirm. The match will disappear from the list. Reveal it again via the Hidden · N toggle in the filter rail."
+                  @click="confirmHide"
+                >
+                  Confirm
+                </button>
+                <button
+                  type="button"
+                  class="danger-btn danger-cancel"
+                  title="Cancel — leave the match visible."
+                  @click="cancelHideConfirm"
+                >
+                  Cancel
+                </button>
+              </template>
+            </template>
+            <template v-else>
+              <span class="danger-prompt hidden-prompt">
+                <span class="danger-glyph" aria-hidden="true">⌫</span>
+                This match is hidden.
+              </span>
+              <button
+                type="button"
+                class="danger-btn danger-unhide"
+                title="Restore this match to the list."
+                @click="unhide"
+              >
+                Unhide
+              </button>
+            </template>
           </div>
         </div>
       </template>
@@ -1659,6 +1742,98 @@ button.chev-btn:hover { color: var(--accent-bright); }
 .member-input:focus {
   outline: none;
   box-shadow: none;
+}
+
+/* ─── Soft-delete row + dimmed card ──────────────────────── */
+
+/* Dimmed card: reduce opacity + desaturate so it reads as
+   "filtered out, but still here for inspection". The match-bar
+   along the left edge keeps full opacity so the result colour
+   remains scannable in the row. */
+.match.hidden {
+  opacity: 0.55;
+  filter: saturate(0.6);
+}
+
+.match.hidden > .match-bar {
+  opacity: 1;
+}
+
+.match.hidden.expanded {
+  opacity: 0.85;
+  filter: none;
+}
+
+.match-danger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px dashed color-mix(in srgb, currentcolor 18%, transparent);
+}
+
+.danger-prompt {
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.danger-prompt.hidden-prompt {
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.danger-glyph {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.danger-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, currentcolor 22%, transparent);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  font-family: inherit;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.danger-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.danger-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.danger-btn.danger-confirm {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.danger-btn.danger-confirm:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.danger-btn.danger-unhide {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 /* ─── Narrow-viewport overrides ──────────────────────────── */

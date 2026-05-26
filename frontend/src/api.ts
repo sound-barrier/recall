@@ -202,6 +202,15 @@ export function ClearLeaverAnnotation(matchKey: string): Promise<void> {
   return _post('/api/match-annotations', { match_key: matchKey, leaver: '' }).then(() => undefined)
 }
 
+// Soft-delete a match. Reversible: pass hidden=false to restore.
+// Both directions are idempotent — repeated identical calls succeed.
+export function SetMatchVisibility(matchKey: string, hidden: boolean): Promise<void> {
+  if (IS_WAILS) {
+    return hidden ? _wails('HideMatch', matchKey) : _wails('UnhideMatch', matchKey)
+  }
+  return _post('/api/match-visibility', { match_key: matchKey, hidden }).then(() => undefined)
+}
+
 export function ParseScreenshots(): Promise<void> {
   if (IS_WAILS) return _wails('ParseScreenshots')
   return _post('/api/parse').then(() => undefined)

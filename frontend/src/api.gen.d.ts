@@ -802,6 +802,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/match-visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hide or unhide a match (soft delete)
+         * @description Flips a match's hidden state. `hidden: true` records a
+         *     soft-delete entry in the `hidden_matches` table; the
+         *     aggregator then sets `MatchRecord.hidden = true` on every
+         *     read and the default filter drops the match from the
+         *     Matches list. The per-screenshot rows in the parent tables
+         *     are untouched, so a re-parse of the same PNG files continues to
+         *     skip them (`LoadAllFilenames` sees them as parsed).
+         *
+         *     `hidden: false` removes the soft-delete and the match
+         *     re-appears. Both directions are idempotent — repeated
+         *     identical calls succeed.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Match identity (same `match_key` exposed in `MatchRecord`). */
+                        match_key: string;
+                        /** @description True to hide; false to unhide. */
+                        hidden: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Visibility updated. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                400: components["responses"]["BadRequest"];
+                500: components["responses"]["InternalError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/match-annotations": {
         parameters: {
             query?: never;
@@ -1364,6 +1422,13 @@ export interface components {
             parsed_at?: string;
             data: components["schemas"]["MatchResult"];
             annotation?: components["schemas"]["MatchAnnotation"];
+            /**
+             * @description True iff the user soft-deleted this match via
+             *     `POST /api/match-visibility`. Omitted (or false) for
+             *     normal records. The per-screenshot parent rows are
+             *     untouched — only the aggregator hides the surface.
+             */
+            hidden?: boolean;
         };
         /**
          * @description User-curated per-match metadata. Up to four optional fields —

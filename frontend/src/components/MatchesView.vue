@@ -77,6 +77,10 @@ const props = defineProps<{
   // record carries `annotation.leaver` — passed in via
   // `annotatedMatchCount` for the rendering gate.
   leaverHandling: 'include' | 'exclude-tally' | 'hide'
+  // "Show hidden" toggle (persisted via useShowHidden). The
+  // FilterRail's Hidden · N button only surfaces when
+  // hiddenMatchCount > 0.
+  showHidden: boolean
 }>()
 
 const emit = defineEmits<{
@@ -88,6 +92,8 @@ const emit = defineEmits<{
   'set-leaver-handling':  [next: 'include' | 'exclude-tally' | 'hide']
   'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
   'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
+  'set-show-hidden':       [next: boolean]
+  'set-match-hidden':      [matchKey: string, hidden: boolean]
 }>()
 
 // Pre-extracted destructures keep the template readable without
@@ -171,6 +177,8 @@ const annotatedMatchCount = computed(
       :min-play-minutes="minPlayMinutes"
       :leaver-handling="leaverHandling"
       :annotated-match-count="annotatedMatchCount"
+      :show-hidden="showHidden"
+      :hidden-match-count="f.hiddenMatchCount.value"
       :filtered-count="f.filteredSorted.value.length"
       @update:filter-from="setFilterFrom"
       @update:filter-to="setFilterTo"
@@ -188,6 +196,7 @@ const annotatedMatchCount = computed(
       @set-min-play-percent="(n: number) => emit('set-min-play-percent', n)"
       @set-min-play-minutes="(n: number) => emit('set-min-play-minutes', n)"
       @set-leaver-handling="(v: 'include' | 'exclude-tally' | 'hide') => emit('set-leaver-handling', v)"
+      @set-show-hidden="(v: boolean) => emit('set-show-hidden', v)"
     />
 
     <div v-if="records.length > 0 && g.groups.value.length > 0" class="match-list" :class="{ compact: densityMode === 'compact' }">
@@ -241,6 +250,7 @@ const annotatedMatchCount = computed(
         :density-mode="densityMode"
         @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
         @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
+        @set-match-hidden="(k: string, h: boolean) => emit('set-match-hidden', k, h)"
         @toggle-group="g.toggleGroup"
         @toggle-expand="cs.toggleExpand"
         @toggle-sources="cs.toggleSources"

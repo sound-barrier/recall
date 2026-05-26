@@ -36,6 +36,8 @@ function mountRail(over: Partial<Record<string, unknown>> = {}) {
       minPlayMinutes: 0,
       leaverHandling: 'include' as const,
       annotatedMatchCount: 0,
+      showHidden: false,
+      hiddenMatchCount: 0,
       ...over,
     },
   })
