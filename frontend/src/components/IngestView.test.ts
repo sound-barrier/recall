@@ -161,25 +161,46 @@ describe('IngestView', () => {
 // ── Backup / restore (Data section) ──────────────────────────────────────
 
 describe('IngestView — Export Backup', () => {
-  it('renders the Export Backup row with a button', () => {
+  it('renders both JSON and CSV format buttons', () => {
     const wrapper = mountIngest()
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Export Backup'))
-    expect(btn).toBeDefined()
-    expect(btn!.attributes('disabled')).toBeUndefined()
+    const json = wrapper.findAll('button').find(b => b.text().trim() === 'JSON')
+    const csv  = wrapper.findAll('button').find(b => b.text().trim() === 'CSV')
+    expect(json).toBeDefined()
+    expect(csv).toBeDefined()
+    expect(json!.attributes('disabled')).toBeUndefined()
+    expect(csv!.attributes('disabled')).toBeUndefined()
   })
 
-  it('emits export-data when the button is clicked', async () => {
+  it('emits export-data when the JSON button is clicked', async () => {
     const wrapper = mountIngest()
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Export Backup'))!
-    await btn.trigger('click')
+    const json = wrapper.findAll('button').find(b => b.text().trim() === 'JSON')!
+    await json.trigger('click')
     expect(wrapper.emitted('export-data')).toBeTruthy()
   })
 
-  it('shows "Saving…" while exporting=true and disables the button', () => {
-    const wrapper = mountIngest({ exporting: true })
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Saving'))!
-    expect(btn).toBeDefined()
-    expect(btn.attributes('disabled')).toBeDefined()
+  it('emits export-data-csv when the CSV button is clicked', async () => {
+    const wrapper = mountIngest()
+    const csv = wrapper.findAll('button').find(b => b.text().trim() === 'CSV')!
+    await csv.trigger('click')
+    expect(wrapper.emitted('export-data-csv')).toBeTruthy()
+  })
+
+  it('shows "Saving…" on the JSON button while exporting="json" and disables both', () => {
+    const wrapper = mountIngest({ exporting: 'json' })
+    const saving = wrapper.findAll('button').find(b => b.text().includes('Saving'))!
+    expect(saving).toBeDefined()
+    expect(saving.attributes('disabled')).toBeDefined()
+    // CSV button stays labeled but is also disabled.
+    const csv = wrapper.findAll('button').find(b => b.text().trim() === 'CSV')!
+    expect(csv.attributes('disabled')).toBeDefined()
+  })
+
+  it('shows "Saving…" on the CSV button while exporting="csv"', () => {
+    const wrapper = mountIngest({ exporting: 'csv' })
+    const saving = wrapper.findAll('button').find(b => b.text().includes('Saving'))!
+    expect(saving).toBeDefined()
+    const json = wrapper.findAll('button').find(b => b.text().trim() === 'JSON')!
+    expect(json.attributes('disabled')).toBeDefined()
   })
 
   it('renders the success chip when exportStatus.ok is true', () => {
@@ -245,12 +266,14 @@ describe('IngestView — Import Backup', () => {
     expect(loadingBtn.attributes('disabled')).toBeDefined()
   })
 
-  it('disables Export Backup while Import is in flight (and vice versa)', () => {
+  it('disables both Export format buttons while Import is in flight (and vice versa)', () => {
     const importing = mountIngest({ importing: true })
-    const exportBtn = importing.findAll('button').find(b => b.text().includes('Export Backup'))!
-    expect(exportBtn.attributes('disabled')).toBeDefined()
+    const json = importing.findAll('button').find(b => b.text().trim() === 'JSON')!
+    const csv  = importing.findAll('button').find(b => b.text().trim() === 'CSV')!
+    expect(json.attributes('disabled')).toBeDefined()
+    expect(csv.attributes('disabled')).toBeDefined()
 
-    const exporting = mountIngest({ exporting: true })
+    const exporting = mountIngest({ exporting: 'json' })
     // While exporting, the Import button (unarmed state) is also disabled.
     const importBtn = exporting.findAll('button').find(b => b.text().includes('Import Backup'))!
     expect(importBtn.attributes('disabled')).toBeDefined()

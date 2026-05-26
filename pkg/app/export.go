@@ -97,10 +97,24 @@ func (a *App) ExportData() ([]byte, error) {
 // re-Upsert), and remaps screenshots_dirs FKs so the destination DB's
 // auto-increment ids don't collide with the source's.
 //
+// Accepts BOTH container formats:
+//   - JSON envelope (single document — `recall-export/v1`)
+//   - ZIP-of-CSVs (manifest.json + per-table .csv files inside)
+//
+// The format is detected from the payload's magic bytes (`{` vs
+// `PK\x03\x04`); the caller doesn't need to pre-select.
+//
 // The operation is REPLACE, not MERGE — anything currently in the
 // store is dropped before the import lands. The caller is expected to
 // surface a confirmation step before invoking this.
 func (a *App) ImportData(payload []byte) error {
+	payload = stripBOM(payload)
+	if looksLikeZIP(payload) {
+		return a.importDataCSV(payload)
+	}
+	if !looksLikeJSON(payload) {
+		return fmt.Errorf("import: payload is neither JSON nor a ZIP archive")
+	}
 	var doc exportV1
 	if err := json.Unmarshal(payload, &doc); err != nil {
 		return fmt.Errorf("import: decode: %w", err)

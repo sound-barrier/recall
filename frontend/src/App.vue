@@ -30,6 +30,7 @@ import {
   GetNewScreenshotCount,
   GetDataLocation,
   ExportData,
+  ExportDataCSV,
   ImportData,
   EventsOn,
   EventsOff,
@@ -450,17 +451,20 @@ function cancelClear() {
 // browser download. The exportStatus ref drives the inline result chip
 // in IngestView (e.g. "Saved to: /path/...json") that flashes for a
 // few seconds after success.
-const exporting   = ref(false)
+// `exporting` is a string discriminator ('json'|'csv') so IngestView
+// can show "Saving…" on the specific button the user clicked while
+// the other one stays selectable. `false` = idle.
+const exporting   = ref<false | 'json' | 'csv'>(false)
 const importing   = ref(false)
 const importArmed = ref(false) // first-click confirm (mirrors clearConfirm)
 const exportStatus = ref<{ ok: boolean; message: string } | null>(null)
 
-async function exportData() {
+async function exportData(format: 'json' | 'csv' = 'json') {
   if (exporting.value) return
-  exporting.value = true
+  exporting.value = format
   exportStatus.value = null
   try {
-    const path = await ExportData()
+    const path = format === 'csv' ? await ExportDataCSV() : await ExportData()
     if (path) {
       exportStatus.value = { ok: true, message: `Saved: ${path}` }
     }
@@ -479,6 +483,8 @@ async function exportData() {
     }
   }
 }
+
+function exportDataCSV() { return exportData('csv') }
 
 function armImport() { importArmed.value = true; exportStatus.value = null }
 function cancelImport() { importArmed.value = false }
@@ -927,6 +933,7 @@ onBeforeUnmount(() => {
           @clear-database="clearDatabase"
           @cancel-clear="cancelClear"
           @export-data="exportData"
+          @export-data-csv="exportDataCSV"
           @arm-import="armImport"
           @cancel-import="cancelImport"
           @import-data="importData"

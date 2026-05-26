@@ -44,7 +44,11 @@ defineProps<{
   // Backup / restore — App.vue holds the in-flight flags + a single
   // status chip that flashes after either action completes. Optional
   // so existing tests that pre-date this row don't have to seed them.
-  exporting?:           boolean
+  //
+  // `exporting` is a string discriminator ("json" or "csv") so the
+  // template can show "Saving…" on whichever format the user clicked,
+  // without two parallel boolean flags. Falsy = idle.
+  exporting?:           false | 'json' | 'csv'
   importing?:           boolean
   importArmed?:         boolean
   exportStatus?:        { ok: boolean; message: string } | null
@@ -60,6 +64,7 @@ const emit = defineEmits<{
   'clear-database':     []
   'cancel-clear':       []
   'export-data':        []
+  'export-data-csv':    []
   'arm-import':         []
   'cancel-import':      []
   'import-data':        []
@@ -292,7 +297,7 @@ const emit = defineEmits<{
               Export Data
             </h4>
             <p class="setting-desc">
-              Download a portable JSON backup of every parsed match. Round-trips through <strong>Import Data</strong> below. Settings + screenshots aren't included (those live as plain files on disk you can copy directly).
+              Download a portable backup of every parsed match. <strong>JSON</strong> is the canonical Recall format (smallest, round-trips losslessly); <strong>CSV</strong> exports a ZIP archive of one CSV per table for Excel / Sheets. Both formats round-trip through <strong>Import Data</strong>. Settings + screenshots aren't included.
             </p>
             <p v-if="exportStatus && exportStatus.ok" class="setting-meta success">
               <span class="block-mark" aria-hidden="true">✓</span>
@@ -304,14 +309,24 @@ const emit = defineEmits<{
             </p>
           </div>
           <div class="setting-control">
-            <button
-              class="btn ghost"
-              :disabled="exporting || importing"
-              @click="emit('export-data')"
-            >
-              <span v-if="exporting">Saving…</span>
-              <span v-else>Export Backup…</span>
-            </button>
+            <div class="export-btn-group">
+              <button
+                class="btn ghost"
+                :disabled="!!exporting || importing"
+                @click="emit('export-data')"
+              >
+                <span v-if="exporting === 'json'">Saving…</span>
+                <span v-else>JSON</span>
+              </button>
+              <button
+                class="btn ghost"
+                :disabled="!!exporting || importing"
+                @click="emit('export-data-csv')"
+              >
+                <span v-if="exporting === 'csv'">Saving…</span>
+                <span v-else>CSV</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -332,7 +347,7 @@ const emit = defineEmits<{
             <template v-if="!importArmed">
               <button
                 class="btn danger-outline"
-                :disabled="importing || exporting"
+                :disabled="importing || !!exporting"
                 @click="emit('arm-import')"
               >
                 Import Backup…
@@ -698,5 +713,23 @@ const emit = defineEmits<{
   flex-direction: column;
   align-items: flex-end;
   gap: 0.5rem;
+}
+
+/* Side-by-side "JSON | CSV" buttons in the Export Data row. Mono
+   labels, tight gap — reads as a format picker, not two unrelated
+   actions. The buttons share a 1px hairline divider via a pseudo
+   element on the second so the pair feels like one control. */
+.export-btn-group {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: stretch;
+}
+
+.export-btn-group .btn {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.95rem;
 }
 </style>

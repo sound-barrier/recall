@@ -838,6 +838,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a CSV-format backup of the local parsed-match database
+         * @description Returns a ZIP archive containing one CSV file per parent and
+         *     child table plus a `manifest.json` with the envelope metadata.
+         *     Same data version (`schema = recall-export/v1`) as
+         *     `/api/export`, different container — chosen by the user when
+         *     they want to inspect or edit the data in Excel / Sheets.
+         *
+         *     Round-trips through `POST /api/import` — that endpoint
+         *     auto-detects whether the uploaded payload is a JSON document
+         *     or a ZIP archive via the first bytes.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ZIP download. */
+                200: {
+                    headers: {
+                        "Content-Disposition"?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/zip": string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/import": {
         parameters: {
             query?: never;
@@ -854,6 +902,10 @@ export interface paths {
          *     before touching the store; mismatched versions are rejected
          *     with `400` and the existing data is left untouched.
          *
+         *     Accepts BOTH container formats — the server sniffs the payload's
+         *     first bytes to detect a JSON envelope (`{` ...) or a ZIP archive
+         *     (`PK\x03\x04` magic) and routes accordingly.
+         *
          *     The operation is REPLACE, not merge: anything currently in the
          *     store is dropped after the payload is validated and before the
          *     import lands. Callers should surface a confirmation step.
@@ -868,6 +920,7 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": components["schemas"]["RecallExport"];
+                    "application/zip": string;
                 };
             };
             responses: {

@@ -255,7 +255,7 @@ describe('ImportData (browser mode)', () => {
     expect(result).toBe('')
   })
 
-  it('POSTs the file body and returns the filename on success', async () => {
+  it('POSTs JSON files as application/json with the byte body', async () => {
     const file = new File(['{"schema":"recall-export/v1"}'], 'my-backup.json', { type: 'application/json' })
     installFilePicker('change', file)
     const fetchSpy = mockFetch(200, { ok: true })
@@ -264,12 +264,35 @@ describe('ImportData (browser mode)', () => {
     const { ImportData } = await import('./api')
     const result = await ImportData()
     expect(result).toBe('my-backup.json')
+    // The shim posts an ArrayBuffer; we assert the type rather than
+    // the exact bytes (Buffer comparison is awkward in this env).
     expect(fetchSpy).toHaveBeenCalledWith(
       '/api/import',
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: '{"schema":"recall-export/v1"}',
+        body: expect.any(ArrayBuffer),
+      }),
+    )
+  })
+
+  it('POSTs ZIP files as application/zip (auto-detected from .zip extension)', async () => {
+    // Fake ZIP magic so file.arrayBuffer() returns recognizable bytes.
+    const zipBytes = new Uint8Array([0x50, 0x4B, 0x03, 0x04, 0x00, 0x00])
+    const file = new File([zipBytes], 'backup.zip', { type: 'application/zip' })
+    installFilePicker('change', file)
+    const fetchSpy = mockFetch(200, { ok: true })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const { ImportData } = await import('./api')
+    const result = await ImportData()
+    expect(result).toBe('backup.zip')
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/import',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/zip' },
+        body: expect.any(ArrayBuffer),
       }),
     )
   })
@@ -283,5 +306,55 @@ describe('ImportData (browser mode)', () => {
     const err = await ImportData().catch(e => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(400)
+  })
+})
+
+// ── ExportDataCSV ────────────────────────────────────────────────────────
+
+describe('ExportDataCSV (browser mode)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('GETs /api/export.csv and uses the suggested filename', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: { get: (k: string) => k === 'Content-Disposition' ? 'attachment; filename="recall-export-20260526-020000.zip"' : null },
+      blob: () => Promise.resolve(new Blob([new Uint8Array([0x50, 0x4B, 0x03, 0x04])], { type: 'application/zip' })),
+      text: () => Promise.resolve(''),
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn(() => 'blob:fake'),
+      revokeObjectURL: vi.fn(),
+    })
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    const { ExportDataCSV } = await import('./api')
+    const name = await ExportDataCSV()
+    expect(fetchSpy).toHaveBeenCalledWith('/api/export.csv')
+    expect(name).toBe('recall-export-20260526-020000.zip')
+  })
+
+  it('falls back to a generated .zip filename when Content-Disposition is missing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => null },
+      blob: () => Promise.resolve(new Blob([new Uint8Array([0x50, 0x4B])])),
+      text: () => Promise.resolve(''),
+    }))
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn(() => 'blob:fake'),
+      revokeObjectURL: vi.fn(),
+    })
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    const { ExportDataCSV } = await import('./api')
+    const name = await ExportDataCSV()
+    expect(name).toMatch(/^recall-export-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.zip$/)
   })
 })
