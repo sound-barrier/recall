@@ -296,29 +296,39 @@ const expanded = ref<Record<string, boolean>>({})
 
 async function load() {
   const before = records.value.length
-  const [recs, dir, promOn, watchOn, tess, newCount, loc] = await Promise.all([
+  // Promise.allSettled, not Promise.all — one endpoint blowing up
+  // (e.g. /api/match-results returning a 500 because the DB schema
+  // is stale from a previous dev session) MUST NOT keep the rest of
+  // the boot from rendering. The previous Promise.all + missing
+  // `.catch()` would silently swallow the rejection and leave every
+  // ref at its initial value, which surfaces as a misleading
+  // "Tesseract not detected" banner even when the OCR engine is
+  // perfectly fine. allSettled lets each call land independently and
+  // we report failures through the global error banner instead of
+  // pretending unrelated subsystems are broken.
+  const results = await Promise.allSettled([
     GetMatchResults(),
     GetScreenshotsDir(),
     GetPrometheusEnabled(),
     GetWatchEnabled(),
     GetTesseractStatus(),
-    GetNewScreenshotCount().catch(() => null),
-    GetDataLocation().catch(() => null),
+    GetNewScreenshotCount(),
+    GetDataLocation(),
   ])
-  records.value = recs ?? []
-  dataLocation.value = loc
-  // If the record count grew, briefly pulse the scoreboard so the user
-  // notices the auto-refresh — otherwise watcher-driven loads are
-  // entirely silent and records "just appear". Skip on the very first
-  // load (before === 0) since that's startup, not a refresh.
-  if (before > 0 && records.value.length > before) {
-    flashRecordsPulse()
+  const [recs, dir, promOn, watchOn, tess, newCount, loc] = results
+  if (recs.status === 'fulfilled') {
+    records.value = recs.value ?? []
+    if (before > 0 && records.value.length > before) flashRecordsPulse()
+  } else {
+    error.value = `Could not load matches: ${String(recs.reason)}`
   }
-  screenshotsDir.value = dir || ''
-  prometheusEnabled.value = !!promOn
-  watchEnabled.value = !!watchOn
-  tesseractStatus.value = tess || { path: '', found: false, error: 'No status returned.' }
-  newScreenshotCount.value = newCount
+  if (dir.status === 'fulfilled')      screenshotsDir.value = dir.value || ''
+  if (promOn.status === 'fulfilled')   prometheusEnabled.value = !!promOn.value
+  if (watchOn.status === 'fulfilled')  watchEnabled.value = !!watchOn.value
+  if (tess.status === 'fulfilled')     tesseractStatus.value = tess.value
+  else                                 tesseractStatus.value = { path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '' }
+  newScreenshotCount.value = newCount.status === 'fulfilled' ? newCount.value : null
+  dataLocation.value      = loc.status === 'fulfilled' ? loc.value : null
 }
 
 async function refreshNewCount() {
