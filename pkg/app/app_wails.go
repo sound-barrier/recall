@@ -22,6 +22,20 @@ func (a *App) emitParseProgress(p ParseProgressEvent) {
 	}
 }
 
+// emitMatchUpdated broadcasts a freshly-aggregated MatchRecord to the
+// Wails event bus and the SSE hub. Fired after each per-screenshot
+// insert resolves a match_key so the frontend can incrementally
+// render the affected card without waiting for parse-complete.
+func (a *App) emitMatchUpdated(rec MatchRecord) {
+	data, _ := json.Marshal(rec)
+	if a.ctx != nil {
+		wruntime.EventsEmit(a.ctx, "match-updated", rec)
+	}
+	if a.SSEHub != nil {
+		a.SSEHub.BroadcastData("match-updated", string(data))
+	}
+}
+
 // emitParseComplete notifies the Wails frontend that a parse run finished.
 // Called from scheduleParseDebounced; gated by the !serveronly build tag so
 // the wruntime import is absent from server-only binaries.

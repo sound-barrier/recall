@@ -765,12 +765,21 @@ export interface paths {
          *         to parse; the batch continues to the next file regardless,
          *         so the client should render a warning without aborting the
          *         in-flight UI.
+         *       * `match-updated` — fired immediately after each successful
+         *         per-screenshot insert, carrying the fully-aggregated
+         *         `MatchRecord` for the affected `match_key`. Lets the
+         *         frontend incrementally render the Matches list as a parse
+         *         run progresses (upsert by `match_key`). Same shape as one
+         *         element of `GET /api/match-results`. May fire multiple
+         *         times for the same match within a single parse batch as
+         *         additional screenshots refine its fields.
          *       * `parse-complete` — fired after a parse run finishes
          *       * Keepalive comment lines every 25 s so reverse proxies
          *         don't close the connection
          *
          *     Clients should reconnect on disconnect; messages are not
-         *     replayed.
+         *     replayed. After reconnect, the client should re-fetch
+         *     `GET /api/match-results` as the authoritative reconciliation.
          */
         get: {
             parameters: {

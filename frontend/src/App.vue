@@ -40,6 +40,7 @@ import { useFilterPanel } from './composables/useFilterPanel'
 import { useMatchFilters } from './composables/useMatchFilters'
 import { useMatchGrouping } from './composables/useMatchGrouping'
 import type { ParseProgressEvent } from './components/ParseProgressPanel.vue'
+import ParseStatusBar from './components/ParseStatusBar.vue'
 
 // View components are lazy-loaded via defineAsyncComponent so each
 // becomes a separate JS chunk emitted by Vite. The initial bundle
@@ -586,11 +587,32 @@ onMounted(() => {
     parseProgress.value = data
     parseLog.value = [...parseLog.value, data].slice(-50)
   })
+  // Live-stream individual MatchRecords as each screenshot's insert
+  // resolves a match_key. Upsert by match_key into the same records
+  // ref the static load() populates — every downstream filter, group,
+  // and card-render computed recomputes for free. The post-batch
+  // parse-complete handler still calls load() as the authoritative
+  // reconciliation in case any of these events were dropped on a slow
+  // SSE connection.
+  EventsOn<MatchRecord>('match-updated', (rec) => {
+    if (!rec || !rec.match_key) return
+    const i = records.value.findIndex(r => r.match_key === rec.match_key)
+    if (i >= 0) {
+      records.value = [
+        ...records.value.slice(0, i),
+        rec,
+        ...records.value.slice(i + 1),
+      ]
+    } else {
+      records.value = [...records.value, rec]
+    }
+  })
 
 })
 onBeforeUnmount(() => {
   EventsOff('parse-complete')
   EventsOff('parse-progress')
+  EventsOff('match-updated')
 })
 </script>
 
@@ -861,6 +883,16 @@ onBeforeUnmount(() => {
         />
       </main>
     </div>
+
+    <!-- Persistent parse-status footer — visible from every tab while a
+         parse is in flight; slides off-bottom 1.5 s after completion.
+         Click anywhere on it to jump to the Ingest tab for the detailed
+         log view. -->
+    <ParseStatusBar
+      :parse-progress="parseProgress"
+      :parse-log="parseLog"
+      @go-to-view="goToView"
+    />
 
     <!-- Unsupported Tesseract version confirmation modal -->
     <transition name="modal-fade">
