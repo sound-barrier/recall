@@ -639,3 +639,88 @@ describe('MatchCard — match notes block', () => {
     expect(wrapper.emitted('set-match-annotation')).toBeFalsy()
   })
 })
+
+describe('MatchCard — soft-delete (hide/unhide)', () => {
+  // Card chrome dim class: a hidden record gets `.match.hidden` so
+  // the user sees it as "filtered out, still here." Independent of
+  // expansion state.
+  it('applies the .hidden class on a hidden record', () => {
+    const wrapper = mountCard({ record: makeRecord({}, { hidden: true }) })
+    expect(wrapper.find('.match').classes()).toContain('hidden')
+  })
+
+  it('does NOT apply .hidden on a normal record', () => {
+    const wrapper = mountCard()
+    expect(wrapper.find('.match').classes()).not.toContain('hidden')
+  })
+
+  // Danger row only renders when the card is expanded — it lives at
+  // the bottom of the expanded view, paired with the annotation block.
+  it('hides the danger row when collapsed', () => {
+    const wrapper = mountCard({ isExpanded: false })
+    expect(wrapper.find('.match-danger').exists()).toBe(false)
+  })
+
+  it('shows the Hide button on a normal expanded card', () => {
+    const wrapper = mountCard({ isExpanded: true })
+    const danger = wrapper.find('.match-danger')
+    expect(danger.exists()).toBe(true)
+    expect(danger.text()).toContain('Hide match')
+  })
+
+  it('first Hide click reveals Confirm + Cancel; does NOT emit yet', async () => {
+    const wrapper = mountCard({ isExpanded: true })
+    const hideBtn = wrapper.findAll('.danger-btn').find(b => b.text().includes('Hide match'))!
+    await hideBtn.trigger('click')
+    // First click must not fire the destructive event — that requires
+    // the explicit Confirm step.
+    expect(wrapper.emitted('set-match-hidden')).toBeFalsy()
+    // Confirm + Cancel now visible.
+    const btns = wrapper.findAll('.danger-btn').map(b => b.text())
+    expect(btns).toContain('Confirm')
+    expect(btns).toContain('Cancel')
+  })
+
+  it('Confirm emits set-match-hidden(match_key, true)', async () => {
+    const wrapper = mountCard({ isExpanded: true })
+    await wrapper.findAll('.danger-btn').find(b => b.text().includes('Hide match'))!.trigger('click')
+    await wrapper.findAll('.danger-btn').find(b => b.text() === 'Confirm')!.trigger('click')
+    const events = wrapper.emitted('set-match-hidden')
+    expect(events).toBeTruthy()
+    expect(events![0]).toEqual(['match:2026-05-10T21:29:28', true])
+  })
+
+  it('Cancel resets the confirm state without emitting', async () => {
+    const wrapper = mountCard({ isExpanded: true })
+    await wrapper.findAll('.danger-btn').find(b => b.text().includes('Hide match'))!.trigger('click')
+    await wrapper.findAll('.danger-btn').find(b => b.text() === 'Cancel')!.trigger('click')
+    expect(wrapper.emitted('set-match-hidden')).toBeFalsy()
+    // Hide button is back, Confirm is gone.
+    const btns = wrapper.findAll('.danger-btn').map(b => b.text())
+    expect(btns.some(t => t.includes('Hide match'))).toBe(true)
+    expect(btns).not.toContain('Confirm')
+  })
+
+  it('shows Unhide (not Hide) on a hidden expanded card', () => {
+    const wrapper = mountCard({
+      isExpanded: true,
+      record: makeRecord({}, { hidden: true }),
+    })
+    const danger = wrapper.find('.match-danger')
+    expect(danger.text()).toContain('This match is hidden')
+    expect(danger.text()).toContain('Unhide')
+    // No Hide button on a hidden card.
+    expect(danger.text()).not.toContain('Hide match')
+  })
+
+  it('Unhide click emits set-match-hidden(match_key, false) — no confirm step', async () => {
+    const wrapper = mountCard({
+      isExpanded: true,
+      record: makeRecord({}, { hidden: true }),
+    })
+    await wrapper.findAll('.danger-btn').find(b => b.text() === 'Unhide')!.trigger('click')
+    const events = wrapper.emitted('set-match-hidden')
+    expect(events).toBeTruthy()
+    expect(events![0]).toEqual(['match:2026-05-10T21:29:28', false])
+  })
+})

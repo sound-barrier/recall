@@ -556,3 +556,67 @@ func TestApp_GetMatchResults_TagsHiddenMatches(t *testing.T) {
 		t.Errorf("m2 (hidden in store) should have Hidden=true")
 	}
 }
+
+func TestApp_HideMatch_PreservesSourceFilenamesSoReparseSkipsThem(t *testing.T) {
+	// The core feature contract: hiding a match must NOT remove the
+	// per-screenshot rows from the parent tables. ParseScreenshots calls
+	// LoadAllFilenames() up front and skips any file already in the set,
+	// so the source files for a hidden match must continue to appear
+	// there. If hide ever turned into a hard delete, this test trips.
+	fs := &fakeStore{
+		summaries: []db.SummaryRow{
+			{ID: 1, Filename: "a-summary.png", MatchKey: "m1"},
+		},
+		scoreboards: []db.ScoreboardRow{
+			{ID: 1, Filename: "a-scoreboard.png", MatchKey: "m1"},
+		},
+	}
+	a := NewWithStore(fs)
+	if err := a.HideMatch("m1"); err != nil {
+		t.Fatalf("HideMatch: %v", err)
+	}
+	got, err := fs.LoadAllFilenames()
+	if err != nil {
+		t.Fatalf("LoadAllFilenames: %v", err)
+	}
+	if !got["a-summary.png"] || !got["a-scoreboard.png"] {
+		t.Errorf(
+			"hidden match's source files should remain in LoadAllFilenames "+
+				"so a re-parse skips them, got %+v",
+			got,
+		)
+	}
+	if len(got) != 2 {
+		t.Errorf("expected 2 filenames, got %d (%+v)", len(got), got)
+	}
+}
+
+func TestApp_ScrapeReader_StillEmitsHiddenMatches(t *testing.T) {
+	// Pinning test: the Prometheus reader (scrapeReader) does NOT
+	// filter out hidden matches. Rationale — hiding is a UI list-view
+	// concern; long-term Grafana trend data should reflect every
+	// competitive match the user played, including ones they later
+	// hid from their Recall list. The metrics-layer filter that DOES
+	// apply (competitive-only) lives in pkg/metrics/metrics.go::Collect
+	// and is independent.
+	//
+	// If we ever decide hidden matches should drop from Prometheus too,
+	// this test flips and the filter belongs in scrapeReader (so both
+	// the SourceTypes-derived UI tally and the metrics export stay in
+	// sync with one decision point).
+	fs := &fakeStore{
+		scoreboards: []db.ScoreboardRow{
+			{ID: 1, Filename: "a.png", MatchKey: "m1", Mode: "competitive", Eliminations: 1},
+			{ID: 2, Filename: "b.png", MatchKey: "m2", Mode: "competitive", Eliminations: 2},
+		},
+		hidden: map[string]bool{"m2": true},
+	}
+	a := NewWithStore(fs)
+	got, err := a.scrapeReader()
+	if err != nil {
+		t.Fatalf("scrapeReader: %v", err)
+	}
+	if len(got) != 2 {
+		t.Errorf("scrapeReader should include hidden matches, got %d rows (expected 2)", len(got))
+	}
+}
