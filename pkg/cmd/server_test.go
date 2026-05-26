@@ -26,6 +26,10 @@ func (f *fakeStore) UpsertScoreboard(db.ScoreboardRow) error { return nil }
 func (f *fakeStore) UpsertPersonal(db.PersonalRow) error     { return nil }
 func (f *fakeStore) UpsertRank(db.RankRow) error             { return nil }
 func (f *fakeStore) UpsertUnknown(db.UnknownRow) error       { return nil }
+func (f *fakeStore) EnsureScreenshotsDir(string) (int64, error) {
+	return 0, nil
+}
+
 func (f *fakeStore) LoadAllFilenames() (map[string]bool, error) {
 	return map[string]bool{}, nil
 }

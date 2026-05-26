@@ -361,3 +361,100 @@ func TestSQLStore_ForeignKeysEnforced(t *testing.T) {
 		t.Fatal("expected FK violation when inserting child without parent")
 	}
 }
+
+// ──────────────────────────────────────────────────────────────────
+// EnsureScreenshotsDir — INSERT-or-lookup for the screenshots_dirs
+// reference table. Idempotent; empty path returns 0 (= SQL NULL).
+// ──────────────────────────────────────────────────────────────────
+
+func TestSQLStore_EnsureScreenshotsDir(t *testing.T) {
+	s := openMemory(t)
+
+	// Empty path → 0, no row created.
+	id, err := s.EnsureScreenshotsDir("")
+	if err != nil {
+		t.Fatalf("empty path: %v", err)
+	}
+	if id != 0 {
+		t.Errorf("empty path: got id %d, want 0", id)
+	}
+
+	// First call creates the row.
+	id1, err := s.EnsureScreenshotsDir("/Users/jacob/Documents/Overwatch/Screenshots")
+	if err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+	if id1 == 0 {
+		t.Fatalf("first call: got id 0, want non-zero")
+	}
+
+	// Second call with the same path returns the same id.
+	id2, err := s.EnsureScreenshotsDir("/Users/jacob/Documents/Overwatch/Screenshots")
+	if err != nil {
+		t.Fatalf("repeat call: %v", err)
+	}
+	if id2 != id1 {
+		t.Errorf("repeat call: got id %d, want %d (idempotent)", id2, id1)
+	}
+
+	// Different path → different id.
+	id3, err := s.EnsureScreenshotsDir("/tmp/some-other-dir")
+	if err != nil {
+		t.Fatalf("different path: %v", err)
+	}
+	if id3 == id1 {
+		t.Errorf("different path: collided with first dir's id %d", id3)
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────
+// ScreenshotsDirID propagation — round-trip the FK from Upsert →
+// LoadAll for every parent type. Catches "I added the column to the
+// schema but forgot to read/write it on table X".
+// ──────────────────────────────────────────────────────────────────
+
+func TestSQLStore_ScreenshotsDirID_RoundTrip(t *testing.T) {
+	s := openMemory(t)
+	dirID, err := s.EnsureScreenshotsDir("/test/dir")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpsertSummary(SummaryRow{Filename: "s.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpsertScoreboard(ScoreboardRow{Filename: "sb.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpsertPersonal(PersonalRow{Filename: "p.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpsertRank(RankRow{Filename: "r.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpsertUnknown(UnknownRow{Filename: "u.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.LoadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ScreenshotsDirs[dirID] != "/test/dir" {
+		t.Errorf("ScreenshotsDirs[%d] = %q, want %q", dirID, got.ScreenshotsDirs[dirID], "/test/dir")
+	}
+	checks := []struct {
+		name string
+		id   int64
+	}{
+		{"summary", got.Summaries[0].ScreenshotsDirID},
+		{"scoreboard", got.Scoreboards[0].ScreenshotsDirID},
+		{"personal", got.Personals[0].ScreenshotsDirID},
+		{"rank", got.Ranks[0].ScreenshotsDirID},
+		{"unknown", got.Unknowns[0].ScreenshotsDirID},
+	}
+	for _, c := range checks {
+		if c.id != dirID {
+			t.Errorf("%s.ScreenshotsDirID = %d, want %d", c.name, c.id, dirID)
+		}
+	}
+}

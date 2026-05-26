@@ -87,6 +87,15 @@ func (a *App) ParseScreenshots() error {
 		return order[i] < order[j]
 	})
 
+	// Record the source folder once per batch so every screenshot in
+	// this Parse run is FK'd to the same screenshots_dirs row. If the
+	// user later changes the screenshots folder, this row preserves
+	// the path the file was ingested from.
+	dirID, err := a.store.EnsureScreenshotsDir(screenshotsDir)
+	if err != nil {
+		return err
+	}
+
 	for _, filename := range order {
 		r := results[filename]
 		snap, err := a.store.LoadAll()
@@ -95,7 +104,7 @@ func (a *App) ParseScreenshots() error {
 		}
 		key := resolveMatchKey(filename, r, snap)
 		t := parser.ScreenshotType(r)
-		if err := a.insertParsed(filename, key, t, r); err != nil {
+		if err := a.insertParsed(filename, key, t, dirID, r); err != nil {
 			return err
 		}
 		a.emitParseProgress(ParseProgressEvent{
@@ -110,11 +119,13 @@ func (a *App) ParseScreenshots() error {
 
 // insertParsed dispatches a parsed result to the right Upsert method on
 // the store, materializing children from the parser's nested types.
-func (a *App) insertParsed(filename, key, t string, r *parser.MatchResult) error {
+// dirID is the screenshots_dirs FK resolved once per batch by the
+// caller (0 = unset; the store renders that as SQL NULL).
+func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.MatchResult) error {
 	switch t {
 	case "summary":
 		row := db.SummaryRow{
-			Filename: filename, MatchKey: key,
+			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
 			Map: r.Map, Mode: r.Mode, Hero: r.Hero,
 			Result: r.Result, FinalScore: r.FinalScore,
 			Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
@@ -136,7 +147,7 @@ func (a *App) insertParsed(filename, key, t string, r *parser.MatchResult) error
 
 	case "scoreboard":
 		row := db.ScoreboardRow{
-			Filename: filename, MatchKey: key,
+			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
 			Map: r.Map, Mode: r.Mode, Hero: r.Hero,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
 			Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
@@ -146,14 +157,14 @@ func (a *App) insertParsed(filename, key, t string, r *parser.MatchResult) error
 
 	case "personal":
 		row := db.PersonalRow{
-			Filename: filename, MatchKey: key, Hero: r.Hero,
+			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID, Hero: r.Hero,
 		}
 		row.HeroStats = flattenHeroStats(r.HeroesPlayed)
 		return a.store.UpsertPersonal(row)
 
 	case "rank":
 		row := db.RankRow{
-			Filename: filename, MatchKey: key,
+			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
 			Rank: r.Rank, Level: r.Level,
 			RankProgress: r.RankProgress, ChangePercent: r.ChangePercent,
 			Result:    r.Result,
@@ -165,7 +176,9 @@ func (a *App) insertParsed(filename, key, t string, r *parser.MatchResult) error
 		return a.store.UpsertRank(row)
 
 	default: // unknown
-		return a.store.UpsertUnknown(db.UnknownRow{Filename: filename, MatchKey: key})
+		return a.store.UpsertUnknown(db.UnknownRow{
+			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
+		})
 	}
 }
 

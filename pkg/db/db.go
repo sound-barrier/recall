@@ -26,11 +26,25 @@ var schemaStatements = []string{
 	// fresh installs; on upgrade-in-place it cleans up once.
 	`DROP TABLE IF EXISTS match_results`,
 
+	// screenshots_dirs records the source folder each screenshot was
+	// ingested from. 3NF: one row per distinct path, referenced by
+	// nullable screenshots_dir_id on every parent table — when the
+	// user changes their screenshots folder later, the path captured
+	// at parse time is preserved without duplicating the string on
+	// every row. ON DELETE SET NULL means deleting a dir row leaves
+	// parents pointing at NULL rather than orphan-cascading them out.
+	`CREATE TABLE IF NOT EXISTS screenshots_dirs (
+		id            INTEGER PRIMARY KEY AUTOINCREMENT,
+		path          TEXT NOT NULL UNIQUE,
+		first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+
 	`CREATE TABLE IF NOT EXISTS summary_screenshots (
 		id            INTEGER PRIMARY KEY AUTOINCREMENT,
 		filename      TEXT NOT NULL UNIQUE,
 		match_key     TEXT NOT NULL,
 		parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL,
 		map           TEXT,
 		mode          TEXT,
 		hero          TEXT,
@@ -61,6 +75,7 @@ var schemaStatements = []string{
 		filename      TEXT NOT NULL UNIQUE,
 		match_key     TEXT NOT NULL,
 		parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL,
 		map           TEXT,
 		mode          TEXT,
 		hero          TEXT,
@@ -87,6 +102,7 @@ var schemaStatements = []string{
 		filename      TEXT NOT NULL UNIQUE,
 		match_key     TEXT NOT NULL,
 		parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL,
 		hero          TEXT
 	)`,
 	`CREATE INDEX IF NOT EXISTS idx_personal_match_key ON personal_screenshots(match_key)`,
@@ -104,6 +120,7 @@ var schemaStatements = []string{
 		filename        TEXT NOT NULL UNIQUE,
 		match_key       TEXT NOT NULL,
 		parsed_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL,
 		rank            TEXT,
 		level           INTEGER NOT NULL DEFAULT 0,
 		rank_progress   INTEGER NOT NULL DEFAULT 0,
@@ -130,9 +147,24 @@ var schemaStatements = []string{
 		id          INTEGER PRIMARY KEY AUTOINCREMENT,
 		filename    TEXT NOT NULL UNIQUE,
 		match_key   TEXT NOT NULL,
-		parsed_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		parsed_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL
 	)`,
 	`CREATE INDEX IF NOT EXISTS idx_unknown_match_key ON unknown_screenshots(match_key)`,
+}
+
+// migrations are additive ALTER TABLE statements run after
+// schemaStatements. SQLite has no "ADD COLUMN IF NOT EXISTS" before
+// v3.35, so "duplicate column" errors are tolerated by NewSQLStore;
+// any other error is fatal. Append a new line here when adding a
+// nullable column to an existing parent table — fresh installs get it
+// via the CREATE; in-place upgrades pick it up here.
+var migrations = []string{
+	`ALTER TABLE summary_screenshots    ADD COLUMN screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL`,
+	`ALTER TABLE scoreboard_screenshots ADD COLUMN screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL`,
+	`ALTER TABLE personal_screenshots   ADD COLUMN screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL`,
+	`ALTER TABLE rank_screenshots       ADD COLUMN screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL`,
+	`ALTER TABLE unknown_screenshots    ADD COLUMN screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL`,
 }
 
 // parentTables enumerates every parent screenshot table. Used by

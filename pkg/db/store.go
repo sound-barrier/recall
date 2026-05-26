@@ -19,6 +19,12 @@ type Store interface {
 	UpsertRank(r RankRow) error
 	UpsertUnknown(r UnknownRow) error
 
+	// EnsureScreenshotsDir inserts a screenshots_dirs row for path if
+	// one doesn't exist and returns its id. Idempotent — repeated calls
+	// with the same path return the same id. Empty path returns
+	// (0, nil) so callers can store NULL for unset/legacy.
+	EnsureScreenshotsDir(path string) (int64, error)
+
 	// LoadAllFilenames returns every filename across all five parent
 	// tables, so the parse loop can skip OCR for already-parsed files.
 	LoadAllFilenames() (map[string]bool, error)
@@ -36,18 +42,23 @@ type Store interface {
 // MatchKey (resolved at insert time by the correlation pass); per-file
 // uniqueness is Filename (UNIQUE constraint).
 type SummaryRow struct {
-	ID         int64
-	Filename   string
-	MatchKey   string
-	ParsedAt   string
-	Map        string
-	Mode       string
-	Hero       string
-	Result     string
-	FinalScore string
-	Date       string
-	FinishedAt string
-	GameLength string
+	ID       int64
+	Filename string
+	MatchKey string
+	ParsedAt string
+	// ScreenshotsDirID points at the screenshots_dirs row recording
+	// which folder this screenshot was ingested from. 0 = NULL (legacy
+	// rows parsed before the column existed, or rows where the dir
+	// was unset at parse time).
+	ScreenshotsDirID int64
+	Map              string
+	Mode             string
+	Hero             string
+	Result           string
+	FinalScore       string
+	Date             string
+	FinishedAt       string
+	GameLength       string
 
 	PerfElimTotal          int
 	PerfElimAvgPer10Min    float64
@@ -68,19 +79,20 @@ type SummaryHeroPlayed struct {
 
 // ScoreboardRow holds one parsed SCOREBOARD screenshot.
 type ScoreboardRow struct {
-	ID           int64
-	Filename     string
-	MatchKey     string
-	ParsedAt     string
-	Map          string
-	Mode         string
-	Hero         string
-	Eliminations int
-	Assists      int
-	Deaths       int
-	Damage       int
-	Healing      int
-	Mitigation   int
+	ID               int64
+	Filename         string
+	MatchKey         string
+	ParsedAt         string
+	ScreenshotsDirID int64 // 0 = NULL
+	Map              string
+	Mode             string
+	Hero             string
+	Eliminations     int
+	Assists          int
+	Deaths           int
+	Damage           int
+	Healing          int
+	Mitigation       int
 
 	HeroStats []HeroStat
 }
@@ -95,26 +107,28 @@ type HeroStat struct {
 
 // PersonalRow holds one parsed PERSONAL screenshot.
 type PersonalRow struct {
-	ID       int64
-	Filename string
-	MatchKey string
-	ParsedAt string
-	Hero     string
+	ID               int64
+	Filename         string
+	MatchKey         string
+	ParsedAt         string
+	ScreenshotsDirID int64 // 0 = NULL
+	Hero             string
 
 	HeroStats []HeroStat
 }
 
 // RankRow holds one parsed RANK screenshot.
 type RankRow struct {
-	ID            int64
-	Filename      string
-	MatchKey      string
-	ParsedAt      string
-	Rank          string
-	Level         int
-	RankProgress  int
-	ChangePercent int
-	Result        string
+	ID               int64
+	Filename         string
+	MatchKey         string
+	ParsedAt         string
+	ScreenshotsDirID int64 // 0 = NULL
+	Rank             string
+	Level            int
+	RankProgress     int
+	ChangePercent    int
+	Result           string
 
 	Modifiers []string
 	SR        []HeroSR
@@ -130,10 +144,11 @@ type HeroSR struct {
 // UnknownRow holds one parsed screenshot that didn't match any
 // parser.ScreenshotType heuristic. Kept so parses aren't silently dropped.
 type UnknownRow struct {
-	ID       int64
-	Filename string
-	MatchKey string
-	ParsedAt string
+	ID               int64
+	Filename         string
+	MatchKey         string
+	ParsedAt         string
+	ScreenshotsDirID int64 // 0 = NULL
 }
 
 // Screenshots is the bulk-load result — every row in the DB grouped by
@@ -144,6 +159,10 @@ type Screenshots struct {
 	Personals   []PersonalRow
 	Ranks       []RankRow
 	Unknowns    []UnknownRow
+
+	// ScreenshotsDirs maps screenshots_dirs.id → path so the aggregator
+	// can surface SourceDirs on each MatchRecord without a per-row JOIN.
+	ScreenshotsDirs map[int64]string
 }
 
 // SQLStore is the production Store, backed by *sql.DB.
@@ -172,6 +191,18 @@ func NewSQLStore(path string) (*SQLStore, error) {
 		if _, err := d.Exec(stmt); err != nil {
 			_ = d.Close()
 			return nil, fmt.Errorf("schema: %w (stmt: %s)", err, firstLine(stmt))
+		}
+	}
+	// Additive migrations: tolerate "duplicate column" since SQLite has
+	// no ADD COLUMN IF NOT EXISTS before 3.35. Fail loudly on anything
+	// else so a real schema error doesn't get swallowed.
+	for _, stmt := range migrations {
+		if _, err := d.Exec(stmt); err != nil {
+			if strings.Contains(err.Error(), "duplicate column") {
+				continue
+			}
+			_ = d.Close()
+			return nil, fmt.Errorf("migration: %w (stmt: %s)", err, firstLine(stmt))
 		}
 	}
 	return &SQLStore{db: d}, nil
@@ -223,7 +254,29 @@ func (s *SQLStore) Clear() error {
 			return err
 		}
 	}
+	if _, err := s.db.Exec(`DELETE FROM screenshots_dirs`); err != nil {
+		return err
+	}
 	return nil
+}
+
+// EnsureScreenshotsDir is the upsert+lookup for screenshots_dirs.
+// Returns (0, nil) on empty path so callers can store NULL for "no
+// dir set at parse time". For non-empty paths: INSERT OR IGNORE
+// (creates if missing, no-ops if present), then SELECT to return
+// the id either way.
+func (s *SQLStore) EnsureScreenshotsDir(path string) (int64, error) {
+	if path == "" {
+		return 0, nil
+	}
+	if _, err := s.db.Exec(`INSERT OR IGNORE INTO screenshots_dirs (path) VALUES (?)`, path); err != nil {
+		return 0, err
+	}
+	var id int64
+	if err := s.db.QueryRow(`SELECT id FROM screenshots_dirs WHERE path = ?`, path).Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 // nullableString maps Go "" to SQL NULL for nullable TEXT columns.
@@ -232,6 +285,15 @@ func nullableString(s string) sql.NullString {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: s, Valid: true}
+}
+
+// nullableInt64 maps Go 0 to SQL NULL for nullable INTEGER FK columns
+// (specifically screenshots_dir_id, which uses 0 as the unset sentinel).
+func nullableInt64(n int64) sql.NullInt64 {
+	if n == 0 {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: n, Valid: true}
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -259,14 +321,15 @@ func (s *SQLStore) UpsertSummary(r SummaryRow) error {
 	var id int64
 	err = tx.QueryRow(
 		`INSERT INTO summary_screenshots (
-			filename, match_key,
+			filename, match_key, screenshots_dir_id,
 			map, mode, hero, result, final_score, date, finished_at, game_length,
 			perf_elim_total, perf_elim_avg_per_10min,
 			perf_assists_total, perf_assists_avg_per_10min,
 			perf_deaths_total, perf_deaths_avg_per_10min
-		) VALUES (?,?, ?,?,?,?,?,?,?,?, ?,?, ?,?, ?,?)
+		) VALUES (?,?,?, ?,?,?,?,?,?,?,?, ?,?, ?,?, ?,?)
 		ON CONFLICT(filename) DO UPDATE SET
-			match_key   = excluded.match_key,
+			match_key          = excluded.match_key,
+			screenshots_dir_id = excluded.screenshots_dir_id,
 			map         = excluded.map,
 			mode        = excluded.mode,
 			hero        = excluded.hero,
@@ -282,7 +345,7 @@ func (s *SQLStore) UpsertSummary(r SummaryRow) error {
 			perf_deaths_total          = excluded.perf_deaths_total,
 			perf_deaths_avg_per_10min  = excluded.perf_deaths_avg_per_10min
 		RETURNING id`,
-		r.Filename, r.MatchKey,
+		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID),
 		nullableString(r.Map), nullableString(r.Mode), nullableString(r.Hero),
 		nullableString(r.Result), nullableString(r.FinalScore),
 		nullableString(r.Date), nullableString(r.FinishedAt), nullableString(r.GameLength),
@@ -319,12 +382,13 @@ func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
 	var id int64
 	err = tx.QueryRow(
 		`INSERT INTO scoreboard_screenshots (
-			filename, match_key,
+			filename, match_key, screenshots_dir_id,
 			map, mode, hero,
 			eliminations, assists, deaths, damage, healing, mitigation
-		) VALUES (?,?, ?,?,?, ?,?,?,?,?,?)
+		) VALUES (?,?,?, ?,?,?, ?,?,?,?,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
-			match_key    = excluded.match_key,
+			match_key          = excluded.match_key,
+			screenshots_dir_id = excluded.screenshots_dir_id,
 			map          = excluded.map,
 			mode         = excluded.mode,
 			hero         = excluded.hero,
@@ -335,7 +399,7 @@ func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
 			healing      = excluded.healing,
 			mitigation   = excluded.mitigation
 		RETURNING id`,
-		r.Filename, r.MatchKey,
+		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID),
 		nullableString(r.Map), nullableString(r.Mode), nullableString(r.Hero),
 		r.Eliminations, r.Assists, r.Deaths, r.Damage, r.Healing, r.Mitigation,
 	).Scan(&id)
@@ -367,13 +431,14 @@ func (s *SQLStore) UpsertPersonal(r PersonalRow) error {
 
 	var id int64
 	err = tx.QueryRow(
-		`INSERT INTO personal_screenshots (filename, match_key, hero)
-		VALUES (?,?,?)
+		`INSERT INTO personal_screenshots (filename, match_key, screenshots_dir_id, hero)
+		VALUES (?,?,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
-			match_key = excluded.match_key,
-			hero      = excluded.hero
+			match_key          = excluded.match_key,
+			screenshots_dir_id = excluded.screenshots_dir_id,
+			hero               = excluded.hero
 		RETURNING id`,
-		r.Filename, r.MatchKey, nullableString(r.Hero),
+		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID), nullableString(r.Hero),
 	).Scan(&id)
 	if err != nil {
 		return err
@@ -404,18 +469,19 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 	var id int64
 	err = tx.QueryRow(
 		`INSERT INTO rank_screenshots (
-			filename, match_key,
+			filename, match_key, screenshots_dir_id,
 			rank, level, rank_progress, change_percent, result
-		) VALUES (?,?, ?,?,?,?,?)
+		) VALUES (?,?,?, ?,?,?,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
-			match_key      = excluded.match_key,
+			match_key          = excluded.match_key,
+			screenshots_dir_id = excluded.screenshots_dir_id,
 			rank           = excluded.rank,
 			level          = excluded.level,
 			rank_progress  = excluded.rank_progress,
 			change_percent = excluded.change_percent,
 			result         = excluded.result
 		RETURNING id`,
-		r.Filename, r.MatchKey,
+		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID),
 		nullableString(r.Rank), r.Level, r.RankProgress, r.ChangePercent,
 		nullableString(r.Result),
 	).Scan(&id)
@@ -451,9 +517,12 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 
 func (s *SQLStore) UpsertUnknown(r UnknownRow) error {
 	_, err := s.db.Exec(
-		`INSERT INTO unknown_screenshots (filename, match_key) VALUES (?,?)
-		ON CONFLICT(filename) DO UPDATE SET match_key = excluded.match_key`,
-		r.Filename, r.MatchKey,
+		`INSERT INTO unknown_screenshots (filename, match_key, screenshots_dir_id)
+		VALUES (?,?,?)
+		ON CONFLICT(filename) DO UPDATE SET
+			match_key          = excluded.match_key,
+			screenshots_dir_id = excluded.screenshots_dir_id`,
+		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID),
 	)
 	return err
 }
@@ -466,6 +535,9 @@ func (s *SQLStore) UpsertUnknown(r UnknownRow) error {
 func (s *SQLStore) LoadAll() (Screenshots, error) {
 	var out Screenshots
 	var err error
+	if out.ScreenshotsDirs, err = s.loadScreenshotsDirs(); err != nil {
+		return out, err
+	}
 	if out.Summaries, err = s.loadSummaries(); err != nil {
 		return out, err
 	}
@@ -484,9 +556,27 @@ func (s *SQLStore) LoadAll() (Screenshots, error) {
 	return out, nil
 }
 
+func (s *SQLStore) loadScreenshotsDirs() (map[int64]string, error) {
+	out := map[int64]string{}
+	rows, err := s.db.Query(`SELECT id, path FROM screenshots_dirs`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var path string
+		if err := rows.Scan(&id, &path); err != nil {
+			return nil, err
+		}
+		out[id] = path
+	}
+	return out, rows.Err()
+}
+
 func (s *SQLStore) loadSummaries() ([]SummaryRow, error) {
 	rows, err := s.db.Query(`SELECT
-		id, filename, match_key, parsed_at,
+		id, filename, match_key, parsed_at, screenshots_dir_id,
 		map, mode, hero, result, final_score, date, finished_at, game_length,
 		perf_elim_total, perf_elim_avg_per_10min,
 		perf_assists_total, perf_assists_avg_per_10min,
@@ -501,9 +591,10 @@ func (s *SQLStore) loadSummaries() ([]SummaryRow, error) {
 	out := make([]SummaryRow, 0)
 	for rows.Next() {
 		var r SummaryRow
+		var dirID sql.NullInt64
 		var mapC, mode, hero, result, fs, date, fa, gl sql.NullString
 		if err := rows.Scan(
-			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt,
+			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
 			&mapC, &mode, &hero, &result, &fs, &date, &fa, &gl,
 			&r.PerfElimTotal, &r.PerfElimAvgPer10Min,
 			&r.PerfAssistsTotal, &r.PerfAssistsAvgPer10Min,
@@ -511,6 +602,7 @@ func (s *SQLStore) loadSummaries() ([]SummaryRow, error) {
 		); err != nil {
 			return nil, err
 		}
+		r.ScreenshotsDirID = dirID.Int64
 		r.Map = mapC.String
 		r.Mode = mode.String
 		r.Hero = hero.String
@@ -553,7 +645,7 @@ func (s *SQLStore) loadSummaries() ([]SummaryRow, error) {
 
 func (s *SQLStore) loadScoreboards() ([]ScoreboardRow, error) {
 	rows, err := s.db.Query(`SELECT
-		id, filename, match_key, parsed_at,
+		id, filename, match_key, parsed_at, screenshots_dir_id,
 		map, mode, hero,
 		eliminations, assists, deaths, damage, healing, mitigation
 		FROM scoreboard_screenshots ORDER BY id`)
@@ -566,15 +658,17 @@ func (s *SQLStore) loadScoreboards() ([]ScoreboardRow, error) {
 	out := make([]ScoreboardRow, 0)
 	for rows.Next() {
 		var r ScoreboardRow
+		var dirID sql.NullInt64
 		var mapC, mode, hero sql.NullString
 		if err := rows.Scan(
-			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt,
+			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
 			&mapC, &mode, &hero,
 			&r.Eliminations, &r.Assists, &r.Deaths,
 			&r.Damage, &r.Healing, &r.Mitigation,
 		); err != nil {
 			return nil, err
 		}
+		r.ScreenshotsDirID = dirID.Int64
 		r.Map = mapC.String
 		r.Mode = mode.String
 		r.Hero = hero.String
@@ -610,7 +704,7 @@ func (s *SQLStore) loadScoreboards() ([]ScoreboardRow, error) {
 
 func (s *SQLStore) loadPersonals() ([]PersonalRow, error) {
 	rows, err := s.db.Query(
-		`SELECT id, filename, match_key, parsed_at, hero
+		`SELECT id, filename, match_key, parsed_at, screenshots_dir_id, hero
 		FROM personal_screenshots ORDER BY id`,
 	)
 	if err != nil {
@@ -622,10 +716,12 @@ func (s *SQLStore) loadPersonals() ([]PersonalRow, error) {
 	out := make([]PersonalRow, 0)
 	for rows.Next() {
 		var r PersonalRow
+		var dirID sql.NullInt64
 		var hero sql.NullString
-		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &hero); err != nil {
+		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID, &hero); err != nil {
 			return nil, err
 		}
+		r.ScreenshotsDirID = dirID.Int64
 		r.Hero = hero.String
 		out = append(out, r)
 	}
@@ -659,7 +755,7 @@ func (s *SQLStore) loadPersonals() ([]PersonalRow, error) {
 
 func (s *SQLStore) loadRanks() ([]RankRow, error) {
 	rows, err := s.db.Query(`SELECT
-		id, filename, match_key, parsed_at,
+		id, filename, match_key, parsed_at, screenshots_dir_id,
 		rank, level, rank_progress, change_percent, result
 		FROM rank_screenshots ORDER BY id`)
 	if err != nil {
@@ -671,13 +767,15 @@ func (s *SQLStore) loadRanks() ([]RankRow, error) {
 	out := make([]RankRow, 0)
 	for rows.Next() {
 		var r RankRow
+		var dirID sql.NullInt64
 		var rank, result sql.NullString
 		if err := rows.Scan(
-			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt,
+			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
 			&rank, &r.Level, &r.RankProgress, &r.ChangePercent, &result,
 		); err != nil {
 			return nil, err
 		}
+		r.ScreenshotsDirID = dirID.Int64
 		r.Rank = rank.String
 		r.Result = result.String
 		out = append(out, r)
@@ -728,7 +826,8 @@ func (s *SQLStore) loadRanks() ([]RankRow, error) {
 
 func (s *SQLStore) loadUnknowns() ([]UnknownRow, error) {
 	rows, err := s.db.Query(
-		`SELECT id, filename, match_key, parsed_at FROM unknown_screenshots ORDER BY id`,
+		`SELECT id, filename, match_key, parsed_at, screenshots_dir_id
+		FROM unknown_screenshots ORDER BY id`,
 	)
 	if err != nil {
 		return nil, err
@@ -737,9 +836,11 @@ func (s *SQLStore) loadUnknowns() ([]UnknownRow, error) {
 	out := make([]UnknownRow, 0)
 	for rows.Next() {
 		var r UnknownRow
-		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt); err != nil {
+		var dirID sql.NullInt64
+		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID); err != nil {
 			return nil, err
 		}
+		r.ScreenshotsDirID = dirID.Int64
 		out = append(out, r)
 	}
 	return out, rows.Err()
