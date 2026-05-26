@@ -48,6 +48,9 @@ var heroesYAML []byte
 //go:embed maps.yaml
 var mapsYAML []byte
 
+//go:embed hero_stats.yaml
+var heroStatsYAML []byte
+
 // HeroesByRole / MapsByType expose the YAML structure as-is, with
 // canonical-display names. UI consumers (via the /api/owdata
 // endpoint) iterate these for ordered display.
@@ -59,11 +62,12 @@ var (
 // Internal lookup tables — keyed by the lowercase-ASCII normalized form
 // the parser uses for OCR matching.
 var (
-	heroRoles        = map[string]string{} // "lúcio"→"lucio" key → "support"
-	mapTypes         = map[string]string{} // "lijiang tower" → "control"
-	heroDisplayNames = map[string]string{} // "lucio" → "Lúcio"
-	mapDisplayNames  = map[string]string{} // "lijiang tower" → "Lijiang Tower"
-	knownMaps        []string              // sorted-by-length-desc normalized map names
+	heroRoles        = map[string]string{}   // "lúcio"→"lucio" key → "support"
+	mapTypes         = map[string]string{}   // "lijiang tower" → "control"
+	heroDisplayNames = map[string]string{}   // "lucio" → "Lúcio"
+	mapDisplayNames  = map[string]string{}   // "lijiang tower" → "Lijiang Tower"
+	knownMaps        []string                // sorted-by-length-desc normalized map names
+	heroStatKeys     = map[string][]string{} // "juno" → ["damage_amplified", "orbital_ray_assists", …]
 )
 
 // normalize derives the OCR-matching key from a YAML canonical name:
@@ -128,6 +132,47 @@ func init() {
 		}
 	}
 	sort.Strings(knownMaps) // stable iteration in tests + Levenshtein scan
+
+	statsRaw := map[string][]string{}
+	if err := yaml.Unmarshal(heroStatsYAML, &statsRaw); err != nil {
+		panic(fmt.Sprintf("parser: hero_stats.yaml parse: %v", err))
+	}
+	for hero, keys := range statsRaw {
+		sorted := append([]string(nil), keys...)
+		sort.Strings(sorted)
+		heroStatKeys[normalize(hero)] = sorted
+	}
+}
+
+// SnapHeroStatKey returns the canonical stat-key for `hero` that's
+// closest (by Levenshtein distance) to the OCR-derived `rawKey`. If
+// there's no canonical list for `hero` (unknown hero, or one not yet
+// seeded in hero_stats.yaml), or no canonical is within ~40% edit
+// distance of the raw key, returns `rawKey` unchanged.
+//
+// Used by parse_personal.go + parse_scoreboard.go to clean up
+// stat-name OCR mangling (Juno's "ORBITAL RAY ASSISTS" landing as
+// `ooorsitall_ray_assists`, Mizuki's "PLAYERS SAVED" as
+// `player_saved`). Threshold mirrors snapToKnownMap in maps.go.
+func SnapHeroStatKey(hero, rawKey string) string {
+	canonicals, ok := heroStatKeys[normalize(hero)]
+	if !ok || rawKey == "" {
+		return rawKey
+	}
+	best := rawKey
+	bestDist := -1
+	for _, c := range canonicals {
+		if c == rawKey {
+			return c // exact match — no further search needed
+		}
+		d := levenshtein(rawKey, c)
+		threshold := len(c) * 4 / 10
+		if d <= threshold && (bestDist < 0 || d < bestDist) {
+			bestDist = d
+			best = c
+		}
+	}
+	return best
 }
 
 // Note: HeroDisplayName / MapDisplayName / MapType wrappers around

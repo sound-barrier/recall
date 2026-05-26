@@ -1,0 +1,35 @@
+# Canonical per-hero stat keys for the PERSONAL tab + scoreboard
+# right-side panel. Consumed by SnapHeroStatKey() in parse_personal.go
+# / parse_scoreboard.go to correct OCR mangling — Tesseract reads
+# Juno's orbital-ring icon as letter noise and the "ORBITAL RAY
+# ASSISTS" label sometimes lands as `ooorsitall_ray_assists` instead.
+#
+# Format: hero name (lowercase, the same form used as stored MatchResult
+# hero strings) → list of canonical snake_case stat keys. Keys are also
+# lowercase. When a new fixture lands with garbled stat keys, eyeball
+# the canonical form from in-game, add it here, re-baseline goldens
+# via `make update-goldens RECALL_FIXTURE_DIR="$PWD/testdata"`, and
+# commit both this file and the golden diff.
+#
+# Heroes with no entry here just pass their OCR-mangled key through
+# unchanged — additive maintenance, no global break when a hero is
+# missing.
+
+juno:
+  - damage_amplified
+  - orbital_ray_assists
+  - orbital_ray_healing
+  - players_saved
+  - pulsar_torpedoes_damage
+  - pulsar_torpedoes_healing
+  - weapon_accuracy
+
+mizuki:
+  - average_aura
+  - binding_chain_accuracy
+  - enemies_hindered
+  - healing_kasa_healing
+  - players_saved
+  - remedy_aura_healing
+  - ultimates_negated
+  - weapon_accuracy

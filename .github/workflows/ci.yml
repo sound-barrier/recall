@@ -506,6 +506,9 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
+      - name: Load tool versions
+        run: grep -E '^[A-Z_][A-Z0-9_]*=' tool-versions.env >> "$GITHUB_ENV"
+
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
         with:
           go-version-file: go.mod
@@ -520,7 +523,22 @@ jobs:
         run: go build -tags serveronly -o recall-server .
 
       - name: Install Tesseract (no-op for API surface but Startup checks for it)
-        run: sudo apt-get update -y && sudo apt-get install -y --no-install-recommends tesseract-ocr
+        # Assert installed major.minor matches TESSERACT_VERSION from
+        # tool-versions.env so OCR drift can't silently land between
+        # what dev baselined the goldens against and what CI runs.
+        # Loud-fail when Ubuntu bumps the package version — that's
+        # the signal to re-baseline goldens + bump the pin.
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends tesseract-ocr
+          installed=$(tesseract --version 2>&1 | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          expected_mm=$(printf '%s' "$TESSERACT_VERSION" | cut -d. -f1-2)
+          installed_mm=$(printf '%s' "$installed" | cut -d. -f1-2)
+          if [ "$installed_mm" != "$expected_mm" ]; then
+            echo "::error::Tesseract major.minor mismatch: installed=$installed_mm expected=$expected_mm (TESSERACT_VERSION=$TESSERACT_VERSION in tool-versions.env). Bump the pin + re-baseline testdata/*.golden.json."
+            exit 1
+          fi
+          echo "Tesseract $installed matches pinned major.minor $expected_mm"
 
       - name: Install schemathesis
         # Pinned to v3.x — v4 renamed --base-url → --url and changed

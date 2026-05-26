@@ -20,6 +20,12 @@ package db
 // constraint, which `ON CONFLICT(filename) DO UPDATE` keys off so
 // re-parsing the same file replaces its row in place.
 var schemaStatements = []string{
+	// PR #45 cut over from a single match_results table to the 10-table
+	// 3NF schema with no migration. Existing installs would otherwise
+	// keep the orphaned legacy table forever. DROP IF EXISTS no-ops on
+	// fresh installs; on upgrade-in-place it cleans up once.
+	`DROP TABLE IF EXISTS match_results`,
+
 	`CREATE TABLE IF NOT EXISTS summary_screenshots (
 		id            INTEGER PRIMARY KEY AUTOINCREMENT,
 		filename      TEXT NOT NULL UNIQUE,

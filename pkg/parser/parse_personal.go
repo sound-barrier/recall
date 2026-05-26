@@ -102,7 +102,7 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 				if res.HeroesPlayed[0].Stats == nil {
 					res.HeroesPlayed[0].Stats = map[string]int{}
 				}
-				res.HeroesPlayed[0].Stats[key] = val
+				res.HeroesPlayed[0].Stats[SnapHeroStatKey(res.Hero, key)] = val
 			}
 		}
 	}

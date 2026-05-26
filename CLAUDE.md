@@ -487,7 +487,7 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux,windows}.md#
 
 - **deadcode known-good filter is centralised in `scripts/deadcode-allow.txt`.** `Makefile` `dead-code-go:`, `lefthook.yml` `pre-push.deadcode`, and `.github/workflows/ci.yml` "Dead Go code" step all shell out to `scripts/deadcode-check.sh`, which reads one regex fragment per line from `scripts/deadcode-allow.txt` and fails iff the filtered residual is non-empty. Adding a new intentional unreachable (build-tag stub, test-only constructor): append a line to the allow-list file. No need to touch the three callers.
 
-- **Pinned tool versions live in `tool-versions.env` at the repo root.** Pinned keys: `SPECTRAL_VERSION`, `TYPOS_VERSION`, `GOSEC_VERSION`, `HONKIT_VERSION`. Consumers per syntax:
+- **Pinned tool versions live in `tool-versions.env` at the repo root.** Pinned keys: `SPECTRAL_VERSION`, `TYPOS_VERSION`, `GOSEC_VERSION`, `HONKIT_VERSION`, `TESSERACT_VERSION` (informational major.minor — `ci.yml` schemathesis + `.devcontainer/postCreate.sh` install whatever apt has and assert the major.minor matches; mismatch = re-baseline `testdata/*.golden.json` and bump the pin). Consumers per syntax:
   - `Makefile` — `include tool-versions.env`
   - `lefthook.yml` — `. ./tool-versions.env` inside the run block
   - `.github/workflows/ci.yml` + `pages.yml` — `grep -E '^[A-Z_][A-Z0-9_]*=' tool-versions.env >> "$GITHUB_ENV"` (the grep filter is required — GitHub Actions' env-file validator rejects comment + blank lines that the file carries for the shell consumers)

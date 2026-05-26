@@ -69,7 +69,7 @@ func parseScoreboard(img image.Image, work string) (*MatchResult, error) {
 		// SAVED, WEAPON ACCURACY, etc.). Surface them on the HeroPlay entry
 		// so a standalone scoreboard screenshot isn't missing them, and so
 		// they cross-validate against the PERSONAL screen when both exist.
-		if heroStats := parsePanelStats(panelText); len(heroStats) > 0 {
+		if heroStats := parsePanelStats(panelText, res.Hero); len(heroStats) > 0 {
 			res.HeroesPlayed = []HeroPlay{{Hero: res.Hero, Stats: heroStats}}
 		}
 	}
@@ -87,7 +87,7 @@ var (
 	panelLabelRe = regexp.MustCompile(`^[A-Z][A-Z\s]{4,}[A-Z]$`)
 )
 
-func parsePanelStats(text string) map[string]int {
+func parsePanelStats(text, hero string) map[string]int {
 	lines := strings.Split(text, "\n")
 	stats := map[string]int{}
 	for i, line := range lines {
@@ -102,7 +102,7 @@ func parsePanelStats(text string) map[string]int {
 				continue
 			}
 			if panelLabelRe.MatchString(l) {
-				stats[labelToKey(l)] = val
+				stats[SnapHeroStatKey(hero, labelToKey(l))] = val
 				break
 			}
 			// Hitting another value before a label means the current value
