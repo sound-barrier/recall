@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -64,14 +65,16 @@ func TestProbeScreenshotsDir_NoMatchReturnsTriedList(t *testing.T) {
 		t.Fatalf("expected non-empty Tried list on %s", runtime.GOOS)
 	}
 	// Every tried path must be under the scratch HOME, never the real one.
+	// `filepath.Rel(home, p)` returns ".."-prefixed paths when `p` escapes
+	// `home`. A leading dot alone is fine — Linux candidates legitimately
+	// start with .steam / .wine.
 	for _, p := range got.Tried {
 		if !filepath.IsAbs(p) {
 			t.Errorf("tried path %q is not absolute", p)
 		}
-		// The scratch HOME is a tempdir, so leaking outside that tree
-		// would be a path-construction bug.
-		if rel, err := filepath.Rel(home, p); err != nil || rel == "" || rel[0] == '.' && rel != "." {
-			t.Errorf("tried path %q is not under HOME=%s", p, home)
+		rel, err := filepath.Rel(home, p)
+		if err != nil || rel == "" || strings.HasPrefix(rel, "..") {
+			t.Errorf("tried path %q is not under HOME=%s (rel=%q err=%v)", p, home, rel, err)
 		}
 	}
 }
