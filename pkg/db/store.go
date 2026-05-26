@@ -228,37 +228,6 @@ func NewSQLStore(path string) (*SQLStore, error) {
 			return nil, fmt.Errorf("migration: %w (stmt: %s)", err, firstLine(stmt))
 		}
 	}
-	// Rebuild migrations (CREATE new → COPY → DROP → RENAME) for
-	// schema changes ALTER TABLE can't express, e.g. relaxing a
-	// CHECK constraint. Each block is guarded by a SELECT COUNT that
-	// returns 0 when the migration is already applied — re-running
-	// is a no-op.
-	for _, m := range rebuildMigrations {
-		var n int
-		if err := d.QueryRow(m.guard).Scan(&n); err != nil {
-			_ = d.Close()
-			return nil, fmt.Errorf("rebuild guard %q: %w", m.name, err)
-		}
-		if n == 0 {
-			continue
-		}
-		tx, err := d.Begin()
-		if err != nil {
-			_ = d.Close()
-			return nil, fmt.Errorf("rebuild %q: begin: %w", m.name, err)
-		}
-		for _, stmt := range m.statements {
-			if _, err := tx.Exec(stmt); err != nil {
-				_ = tx.Rollback()
-				_ = d.Close()
-				return nil, fmt.Errorf("rebuild %q: %w (stmt: %s)", m.name, err, firstLine(stmt))
-			}
-		}
-		if err := tx.Commit(); err != nil {
-			_ = d.Close()
-			return nil, fmt.Errorf("rebuild %q: commit: %w", m.name, err)
-		}
-	}
 	return &SQLStore{db: d}, nil
 }
 

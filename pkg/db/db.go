@@ -199,51 +199,6 @@ var migrations = []string{
 	`ALTER TABLE personal_screenshots   ADD COLUMN screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL`,
 	`ALTER TABLE rank_screenshots       ADD COLUMN screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL`,
 	`ALTER TABLE unknown_screenshots    ADD COLUMN screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL`,
-	// Add replay_code to match_annotations for in-place upgrades from
-	// the initial leaver-only schema. Fresh installs already have it
-	// via the CREATE TABLE above.
-	`ALTER TABLE match_annotations      ADD COLUMN replay_code TEXT`,
-}
-
-// rebuildMigrations are non-additive schema changes that need
-// table-rebuild semantics (CREATE new → COPY → DROP old → RENAME).
-// SQLite can't ALTER a CHECK constraint in place; runMigrations applies
-// each block inside a transaction so a partial failure rolls back.
-// Each block must be idempotent — running it a second time on an
-// already-migrated DB must be a no-op.
-var rebuildMigrations = []multiStatementMigration{
-	{
-		name: "relax_match_annotations_leaver_to_nullable",
-		// Skip the rebuild when the column is already nullable. SQLite
-		// stores per-column NOT NULL in pragma_table_info; pragma_table_xinfo
-		// gives `notnull` as 1/0. Run the rebuild only when notnull=1.
-		guard: `SELECT COUNT(*) FROM pragma_table_info('match_annotations') WHERE name='leaver' AND "notnull"=1`,
-		statements: []string{
-			`CREATE TABLE match_annotations_new (
-				match_key    TEXT PRIMARY KEY,
-				leaver       TEXT CHECK (leaver IS NULL OR leaver IN ('self','team','enemy')),
-				note         TEXT,
-				replay_code  TEXT,
-				annotated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-			)`,
-			`INSERT INTO match_annotations_new (match_key, leaver, note, replay_code, annotated_at)
-			 SELECT match_key, leaver, note,
-			        COALESCE((SELECT replay_code FROM match_annotations ma2 WHERE ma2.match_key = match_annotations.match_key), NULL),
-			        annotated_at
-			 FROM match_annotations`,
-			`DROP TABLE match_annotations`,
-			`ALTER TABLE match_annotations_new RENAME TO match_annotations`,
-		},
-	},
-}
-
-// multiStatementMigration carries a guard query (count > 0 = run)
-// plus the SQL block to execute. Used for schema rebuilds that ALTER
-// TABLE can't express.
-type multiStatementMigration struct {
-	name       string
-	guard      string
-	statements []string
 }
 
 // parentTables enumerates every parent screenshot table. Used by
