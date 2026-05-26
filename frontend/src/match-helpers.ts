@@ -244,13 +244,24 @@ export interface MatchGroup<R extends GroupableRecord = MatchRecord> {
 // whose `data.result` is empty, missing, or anything other than
 // victory/defeat/draw are silently ignored — partial rolls are fine
 // (W+L+D ≤ length).
+//
+// Optional `skipAnnotated` flag drops any record that carries a
+// non-empty `annotation.leaver` from the tally. Used by the
+// "Don't tally leaver matches" preference on the FilterRail — the
+// matches still appear in the list, they just don't count toward
+// the win-rate readouts.
 export function tallyWLD(
-  records: { data?: { result?: string | null } | null }[],
+  records: {
+    data?: { result?: string | null } | null
+    annotation?: { leaver?: string | null } | null
+  }[],
+  skipAnnotated = false,
 ): WLDTally {
   let w = 0
   let l = 0
   let d = 0
   for (const r of records) {
+    if (skipAnnotated && r.annotation && r.annotation.leaver) continue
     const result = (r.data?.result ?? '').toLowerCase()
     if (result === 'victory') w++
     else if (result === 'defeat') l++
@@ -348,9 +359,10 @@ function sumTally(groups: { tally: WLDTally }[]): WLDTally {
 export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
   records: R[],
   sortDir: 'asc' | 'desc',
-  options: { weekStart?: WeekStart } = {},
+  options: { weekStart?: WeekStart; skipAnnotatedInTally?: boolean } = {},
 ): MatchGroup<R>[] {
   const weekStart: WeekStart = options.weekStart ?? 0
+  const skipAnnotated = options.skipAnnotatedInTally === true
   type DayBucket = { date: Date; recs: R[] }
   type WeekBucket = { anchor: Date; days: Map<string, DayBucket> }
   type MonthBucket = { firstOfMonth: Date; weeks: Map<string, WeekBucket> }
@@ -418,7 +430,7 @@ export function groupMatchesByMonthWeekDay<R extends GroupableRecord>(
           key: `day:${dayKey}`,
           level: 'day',
           label: dayLabel(day.date),
-          tally: tallyWLD(sortedRecs),
+          tally: tallyWLD(sortedRecs, skipAnnotated),
           matches: sortedRecs,
         })
       }

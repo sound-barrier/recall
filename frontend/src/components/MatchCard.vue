@@ -41,6 +41,11 @@ const emit = defineEmits<{
   'toggle-preview': [filename: string]
   'preview-error': [filename: string]
   'filter-toggle': [field: string, value: string]
+  // User clicks one of the four leaver-chooser buttons in the
+  // expanded view. App.vue listens, calls SetLeaverAnnotation /
+  // ClearLeaverAnnotation, and re-loads records so the new
+  // Annotation reflects on the next render.
+  'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
 }>()
 </script>
 
@@ -151,6 +156,24 @@ const emit = defineEmits<{
           >
             {{ record.data.result }}
           </button>
+
+          <!-- Leaver-mark — only renders when the user has annotated
+               this match. Glyph is a single uppercase L in a circle
+               (mono, tactical-readout feel). Carries the leaver-type
+               in the title attribute so a hover reveals which side
+               had the leaver. Not a button — the chooser lives in
+               the expanded view to keep the collapsed header clean. -->
+          <span
+            v-if="record.annotation?.leaver"
+            class="leaver-mark"
+            :class="`leaver-${record.annotation.leaver}`"
+            :title="record.annotation.leaver === 'self' ? 'You left this match (data incomplete)'
+              : record.annotation.leaver === 'team' ? 'An ally left this match'
+              : 'An enemy left this match'"
+            aria-label="Leaver-annotated match"
+          >
+            <span class="leaver-mark-l" aria-hidden="true">L</span>
+          </span>
           <span
             v-if="missingRequiredSlots(record).length"
             class="incomplete-badge"
@@ -181,6 +204,57 @@ const emit = defineEmits<{
 
       <template v-if="isExpanded">
         <div class="match-expanded">
+          <!-- Leaver annotation chooser. Three scenario buttons + a
+               Clear option. Active button gets the accent ring; the
+               others are tactical-grey ghosts. Wired bottom-up: the
+               component emits, App.vue persists via
+               SetLeaverAnnotation / ClearLeaverAnnotation. -->
+          <div class="leaver-chooser" role="group" aria-label="Leaver annotation">
+            <span class="leaver-chooser-label" aria-hidden="true">Leaver?</span>
+            <button
+              type="button"
+              class="leaver-chip"
+              :class="{ active: record.annotation?.leaver === 'self' }"
+              :aria-pressed="record.annotation?.leaver === 'self'"
+              title="Tag this match as: I left the game (data is incomplete)."
+              @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'self' ? '' : 'self')"
+            >
+              <span class="leaver-chip-glyph leaver-self" aria-hidden="true">⊘</span>
+              I left
+            </button>
+            <button
+              type="button"
+              class="leaver-chip"
+              :class="{ active: record.annotation?.leaver === 'team' }"
+              :aria-pressed="record.annotation?.leaver === 'team'"
+              title="Tag this match as: an ally left."
+              @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'team' ? '' : 'team')"
+            >
+              <span class="leaver-chip-glyph leaver-team" aria-hidden="true">↙</span>
+              Ally left
+            </button>
+            <button
+              type="button"
+              class="leaver-chip"
+              :class="{ active: record.annotation?.leaver === 'enemy' }"
+              :aria-pressed="record.annotation?.leaver === 'enemy'"
+              title="Tag this match as: an enemy left."
+              @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'enemy' ? '' : 'enemy')"
+            >
+              <span class="leaver-chip-glyph leaver-enemy" aria-hidden="true">↗</span>
+              Enemy left
+            </button>
+            <button
+              v-if="record.annotation?.leaver"
+              type="button"
+              class="leaver-chip leaver-clear"
+              title="Remove the leaver annotation."
+              @click="emit('set-leaver-annotation', record.match_key, '')"
+            >
+              × Clear
+            </button>
+          </div>
+
           <div v-if="record.data?.final_score" class="meta-row">
             <span class="meta-eyebrow">Final Score</span>
             <span class="meta-value">{{ record.data.final_score }}</span>
@@ -1134,6 +1208,113 @@ button.chev-btn:hover { color: var(--accent-bright); }
 .match.compact .incomplete-badge {
   padding: 0.14rem 0.4rem;
 }
+
+/* ─── Leaver annotation — collapsed mark + expanded chooser ─── */
+
+/* Inline `L` mark that sits next to the result badge on annotated
+   matches. Pill-shaped, tactical-mono, colour-coded per scenario:
+   self (red — your data is broken), team (loss-tinted — excuses a
+   loss), enemy (win-tinted — tarnishes a win). Used in both
+   comfortable and compact density modes. */
+.leaver-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  cursor: help;
+  background: var(--surface-2);
+  border: 1px solid var(--text-faint);
+  color: var(--text);
+  flex-shrink: 0;
+}
+.leaver-mark.leaver-self  { background: var(--loss-soft); border-color: var(--loss-line);  color: var(--loss); }
+.leaver-mark.leaver-team  { background: var(--loss-soft); border-color: var(--loss-line);  color: var(--loss); }
+.leaver-mark.leaver-enemy { background: var(--win-soft);  border-color: var(--win-line);   color: var(--win); }
+
+/* Expanded-view chooser. Sits at the top of `.match-expanded` so
+   the user reaches it without scrolling past stats / heroes. The
+   label is mono-eyebrow style; the chips reuse the .badge visual
+   vocabulary but are explicitly tagged with their own classes so
+   they can be styled independently of the filter chips above. */
+.leaver-chooser {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px dashed var(--border);
+}
+
+.leaver-chooser-label {
+  margin-right: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.leaver-chip {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.6rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.leaver-chip:hover {
+  color: var(--text);
+  border-color: var(--text-faint);
+  transform: translateY(-1px);
+}
+
+.leaver-chip.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.leaver-chip.leaver-clear {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.leaver-chip.leaver-clear:hover {
+  color: var(--loss);
+  border-color: var(--loss-line);
+  background: var(--loss-soft);
+}
+
+.leaver-chip-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.leaver-chip-glyph.leaver-self  { color: var(--loss); }
+.leaver-chip-glyph.leaver-team  { color: var(--loss); }
+.leaver-chip-glyph.leaver-enemy { color: var(--win); }
+.leaver-chip.active .leaver-chip-glyph { color: var(--accent); }
 
 /* ─── Narrow-viewport overrides ──────────────────────────── */
 

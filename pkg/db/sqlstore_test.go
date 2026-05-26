@@ -458,3 +458,73 @@ func TestSQLStore_ScreenshotsDirID_RoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestSQLStore_Annotation_UpsertLoadDelete(t *testing.T) {
+	s := openMemory(t)
+
+	// Initial state — no annotations.
+	got, err := s.LoadAnnotations()
+	if err != nil {
+		t.Fatalf("LoadAnnotations empty: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected empty annotations map, got %d entries", len(got))
+	}
+
+	// Set one — round-trip.
+	want := Annotation{MatchKey: "match:k1", Leaver: "team", Note: "ally dc'd at 3min"}
+	if err := s.SetAnnotation(want); err != nil {
+		t.Fatalf("SetAnnotation: %v", err)
+	}
+	got, err = s.LoadAnnotations()
+	if err != nil {
+		t.Fatalf("LoadAnnotations: %v", err)
+	}
+	rt, ok := got["match:k1"]
+	if !ok {
+		t.Fatal("annotation not present after Set")
+	}
+	if rt.Leaver != "team" || rt.Note != want.Note {
+		t.Errorf("round-trip mismatch: %+v", rt)
+	}
+	if rt.AnnotatedAt == "" {
+		t.Error("AnnotatedAt should be auto-populated by the DEFAULT")
+	}
+
+	// Upsert changes leaver in place without inserting a duplicate.
+	if err := s.SetAnnotation(Annotation{MatchKey: "match:k1", Leaver: "enemy"}); err != nil {
+		t.Fatalf("Set upsert: %v", err)
+	}
+	got, _ = s.LoadAnnotations()
+	if got["match:k1"].Leaver != "enemy" {
+		t.Errorf("upsert didn't replace: %+v", got["match:k1"])
+	}
+	if len(got) != 1 {
+		t.Errorf("upsert inserted a duplicate row; have %d", len(got))
+	}
+
+	// Delete clears.
+	if err := s.DeleteAnnotation("match:k1"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	got, _ = s.LoadAnnotations()
+	if len(got) != 0 {
+		t.Errorf("expected empty after delete, got %d", len(got))
+	}
+
+	// Idempotent delete on a missing key.
+	if err := s.DeleteAnnotation("missing"); err != nil {
+		t.Errorf("Delete of missing key should be a no-op, got: %v", err)
+	}
+}
+
+func TestSQLStore_Annotation_LeaverCheckConstraint(t *testing.T) {
+	s := openMemory(t)
+	// Invalid leaver value should fail the CHECK constraint at the SQL
+	// layer. The App.SetLeaverAnnotation validator catches this first
+	// in production; this test pins the belt-and-suspenders DB guard.
+	err := s.SetAnnotation(Annotation{MatchKey: "k", Leaver: "afk"})
+	if err == nil {
+		t.Fatal("expected CHECK constraint to reject 'afk'")
+	}
+}

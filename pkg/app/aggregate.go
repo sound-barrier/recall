@@ -21,7 +21,32 @@ func (a *App) aggregateAll() ([]MatchRecord, error) {
 	if err != nil {
 		return nil, err
 	}
-	return aggregateScreenshots(snap), nil
+	annos, err := a.store.LoadAnnotations()
+	if err != nil {
+		return nil, err
+	}
+	recs := aggregateScreenshots(snap)
+	attachAnnotations(recs, annos)
+	return recs, nil
+}
+
+// attachAnnotations grafts user-curated leaver/note records onto the
+// aggregated MatchRecord slice. Match-key lookup; missing → nil
+// (unannotated). Pure function, exported only via aggregateAll +
+// the streaming path in app_wails.go / app_server.go's emit.
+func attachAnnotations(recs []MatchRecord, annos map[string]db.Annotation) {
+	if len(annos) == 0 {
+		return
+	}
+	for i := range recs {
+		if a, ok := annos[recs[i].MatchKey]; ok {
+			recs[i].Annotation = &MatchAnnotation{
+				Leaver:      a.Leaver,
+				Note:        a.Note,
+				AnnotatedAt: a.AnnotatedAt,
+			}
+		}
+	}
 }
 
 // screenshotView is the per-screenshot row the aggregator folds. The
@@ -45,7 +70,7 @@ type screenshotView struct {
 // per-key extract for the live-streaming "match-updated" event.
 // Inference helpers (inferSoleHeroPercent, inferResultFromRank)
 // are applied so the streamed shape matches GetMatchResults output.
-func aggregateMatchKey(key string, snap db.Screenshots) (MatchRecord, bool) {
+func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation) (MatchRecord, bool) {
 	vs := make([]screenshotView, 0, 8)
 	for _, r := range snap.Summaries {
 		if r.MatchKey == key {
@@ -81,6 +106,13 @@ func aggregateMatchKey(key string, snap db.Screenshots) (MatchRecord, bool) {
 	rec := foldGroup(key, vs, snap.ScreenshotsDirs)
 	inferSoleHeroPercent(&rec.Data)
 	inferResultFromRank(&rec.Data)
+	if a, ok := annos[key]; ok {
+		rec.Annotation = &MatchAnnotation{
+			Leaver:      a.Leaver,
+			Note:        a.Note,
+			AnnotatedAt: a.AnnotatedAt,
+		}
+	}
 	return rec, true
 }
 

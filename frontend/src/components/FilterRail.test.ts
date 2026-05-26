@@ -34,6 +34,8 @@ function mountRail(over: Partial<Record<string, unknown>> = {}) {
       includeUndated: false,
       minPlayPercent: 0,
       minPlayMinutes: 0,
+      leaverHandling: 'include' as const,
+      annotatedMatchCount: 0,
       ...over,
     },
   })
@@ -380,5 +382,40 @@ describe('FilterRail — min-play threshold inputs', () => {
     const wrapper = mountRail({ minPlayPercent: 0, minPlayMinutes: 0 })
     const inputs = wrapper.find('.min-play-group').findAll('input[type="number"]')
     inputs.forEach(i => expect(i.attributes('disabled')).toBeUndefined())
+  })
+})
+
+describe('FilterRail — Leaver-handling segmented control', () => {
+  it('does not render when annotatedMatchCount is 0', () => {
+    const wrapper = mountRail({ annotatedMatchCount: 0 })
+    expect(wrapper.find('.leaver-segmented').exists()).toBe(false)
+  })
+
+  it('renders three radio segments when annotatedMatchCount > 0', () => {
+    const wrapper = mountRail({ annotatedMatchCount: 3 })
+    const seg = wrapper.find('.leaver-segmented')
+    expect(seg.exists()).toBe(true)
+    expect(seg.findAll('.leaver-seg')).toHaveLength(3)
+  })
+
+  it('marks the active segment per leaverHandling prop', () => {
+    const wrapper = mountRail({ annotatedMatchCount: 1, leaverHandling: 'exclude-tally' })
+    const segs = wrapper.findAll('.leaver-seg')
+    expect(segs[0]!.classes()).not.toContain('active')  // Show
+    expect(segs[1]!.classes()).toContain('active')      // Skip tally
+    expect(segs[2]!.classes()).not.toContain('active')  // Hide
+    expect(segs[1]!.attributes('aria-checked')).toBe('true')
+  })
+
+  it('emits set-leaver-handling with the chosen value', async () => {
+    const wrapper = mountRail({ annotatedMatchCount: 1 })
+    const hide = wrapper.findAll('.leaver-seg')[2]!
+    await hide.trigger('click')
+    expect(wrapper.emitted('set-leaver-handling')![0]).toEqual(['hide'])
+  })
+
+  it('shows the annotated match count in the leading label', () => {
+    const wrapper = mountRail({ annotatedMatchCount: 5 })
+    expect(wrapper.find('.leaver-label').text()).toContain('5')
   })
 })

@@ -30,11 +30,17 @@ export function useMatchGrouping<R extends GroupableRecord>(
   // Pass the useWeekStart ref to make the "Week of <date>" anchor
   // honor the user's Settings preference (any day 0-6).
   weekStart?: Readonly<Ref<WeekStart>>,
+  // Optional — when true, tallyWLD drops user-annotated leaver matches
+  // from the W/L/D readouts on each group level. The matches still
+  // appear in the day's record list; only the tally numbers change.
+  // Wired from the FilterRail's 'exclude-tally' setting.
+  skipAnnotatedInTally?: Readonly<Ref<boolean>>,
 ) {
   const groups = computed<MatchGroup<R>[]>(() => {
     const dir = sortDir.value === 'asc' ? 'asc' : 'desc'
     return groupMatchesByMonthWeekDay(filteredSorted.value, dir, {
       weekStart: weekStart?.value ?? 0,
+      skipAnnotatedInTally: skipAnnotatedInTally?.value === true,
     })
   })
 

@@ -26,6 +26,19 @@ type MatchRecord struct {
 	SourceDirs map[string]string  `json:"source_dirs,omitempty"`
 	ParsedAt   string             `json:"parsed_at,omitempty"`
 	Data       parser.MatchResult `json:"data"`
+	// User-curated annotation. Currently only `leaver` is surfaced in
+	// the UI ("self" | "team" | "enemy"); empty string means no
+	// annotation. Note is reserved for future per-match commentary.
+	Annotation *MatchAnnotation `json:"annotation,omitempty"`
+}
+
+// MatchAnnotation is the per-match user note returned alongside
+// MatchRecord. Mirrors the db.Annotation shape but lives in the App
+// package so the JSON contract doesn't leak SQL field names.
+type MatchAnnotation struct {
+	Leaver      string `json:"leaver"`
+	Note        string `json:"note,omitempty"`
+	AnnotatedAt string `json:"annotated_at,omitempty"`
 }
 
 // GetNewScreenshotCount returns the number of image files in the

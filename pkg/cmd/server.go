@@ -247,6 +247,41 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		writeJSON(w, a.ProbeScreenshotsDir(), nil)
 	}))
 
+	// User-curated per-match annotations. POST upserts when `leaver`
+	// is non-empty; clears when `leaver` is "" / null (idempotent
+	// delete). Validation lives in app.SetLeaverAnnotation; bad input
+	// maps to 400, everything else to 500.
+	mux.HandleFunc("/api/match-annotations", methodGuard(http.MethodPost, func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			MatchKey string `json:"match_key"`
+			Leaver   string `json:"leaver"`
+			Note     string `json:"note"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if body.MatchKey == "" {
+			http.Error(w, "match_key required", http.StatusBadRequest)
+			return
+		}
+		var err error
+		if body.Leaver == "" {
+			err = a.ClearLeaverAnnotation(body.MatchKey)
+		} else {
+			err = a.SetLeaverAnnotation(body.MatchKey, body.Leaver, body.Note)
+		}
+		if err != nil {
+			if errors.Is(err, app.ErrInvalidLeaver) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
 	// Stream the export payload as a downloadable file. Content-Disposition
 	// triggers the browser's save-as flow with a sensible default name.
 	mux.HandleFunc("/api/export", methodGuard(http.MethodGet, func(w http.ResponseWriter, r *http.Request) {

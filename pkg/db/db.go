@@ -143,6 +143,19 @@ var schemaStatements = []string{
 		PRIMARY KEY (rank_screenshot_id, hero)
 	)`,
 
+	// User-curated per-match notes. Currently only `leaver` is
+	// surfaced in the UI ('self' | 'team' | 'enemy'); `note` is a
+	// free-text slot reserved for future per-match commentary. Keyed
+	// by match_key with no FK so the annotation survives a re-parse
+	// that re-derives the same key from the same screenshots — and
+	// also persists across a Clear+Restore if the backup includes
+	// the table (Backup & Restore extension is a follow-up).
+	`CREATE TABLE IF NOT EXISTS match_annotations (
+		match_key    TEXT PRIMARY KEY,
+		leaver       TEXT NOT NULL CHECK (leaver IN ('self','team','enemy')),
+		note         TEXT,
+		annotated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`,
 	`CREATE TABLE IF NOT EXISTS unknown_screenshots (
 		id          INTEGER PRIMARY KEY AUTOINCREMENT,
 		filename    TEXT NOT NULL UNIQUE,

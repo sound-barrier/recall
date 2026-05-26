@@ -34,13 +34,17 @@ import {
   ExportData,
   ExportDataCSV,
   ImportData,
+  SetLeaverAnnotation,
+  ClearLeaverAnnotation,
   EventsOn,
   EventsOff,
 } from './api'
+import type { LeaverKind } from './api'
 import { computeEarliestMatchDateTime, tallyWLD } from './match-helpers'
 import { useIncludeUndated } from './composables/useIncludeUndated'
 import { useMinPlayThreshold } from './composables/useMinPlayThreshold'
 import { useDensityMode } from './composables/useDensityMode'
+import { useLeaverHandling } from './composables/useLeaverHandling'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
@@ -261,18 +265,28 @@ const {
   setMinPlayPercent, setMinPlayMinutes,
 } = useMinPlayThreshold()
 const { densityMode, toggleDensityMode } = useDensityMode()
+const { leaverHandling, setLeaverHandling } = useLeaverHandling()
 const filters = useMatchFilters(
   records,
   includeUndated,
   minPlayPercent, minPlayMinutes,
   setMinPlayPercent, setMinPlayMinutes,
+  leaverHandling,
 )
 const { activeFilterCount } = filters
 // First-day-of-week preference (Settings → Calendar). Threaded into
 // useMatchGrouping so the "Week of <date>" labels honor the user's
 // choice across page loads.
 const { weekStart, setWeekStart } = useWeekStart()
-const grouping = useMatchGrouping<MatchRecord>(filters.filteredSorted, filters.sortDir, weekStart)
+// Tallies skip annotated leaver matches when the user picks
+// 'exclude-tally' (or 'hide' — those records are already gone from
+// filteredSorted but excluding them belt-and-suspenders).
+const skipAnnotatedInTally = computed(
+  () => leaverHandling.value === 'exclude-tally' || leaverHandling.value === 'hide',
+)
+const grouping = useMatchGrouping<MatchRecord>(
+  filters.filteredSorted, filters.sortDir, weekStart, skipAnnotatedInTally,
+)
 
 // Per-card expand/collapse state. Object keyed by match_key; truthy =
 // expanded. Plain object (not a Set) so Vue's reactivity sees each
@@ -573,6 +587,24 @@ async function detectDir() {
     probeMessage.value = `Detect failed: ${String(e)}`
   } finally {
     probing.value = false
+  }
+}
+
+// User-curated per-match leaver annotation. Pass-through to
+// SetLeaverAnnotation / ClearLeaverAnnotation; reload records on
+// success so the new annotation propagates to the rendered list.
+// Errors bubble to the global error banner so the user knows the
+// click didn't take.
+async function onSetLeaverAnnotation(matchKey: string, leaver: '' | 'self' | 'team' | 'enemy') {
+  try {
+    if (leaver === '') {
+      await ClearLeaverAnnotation(matchKey)
+    } else {
+      await SetLeaverAnnotation(matchKey, leaver as LeaverKind)
+    }
+    await load()
+  } catch (e) {
+    error.value = String(e)
   }
 }
 
@@ -1010,11 +1042,14 @@ onBeforeUnmount(() => {
           :min-play-percent="minPlayPercent"
           :min-play-minutes="minPlayMinutes"
           :density-mode="densityMode"
+          :leaver-handling="leaverHandling"
           @go-to-view="goToView"
           @set-include-undated="setIncludeUndated"
           @set-min-play-percent="setMinPlayPercent"
           @set-min-play-minutes="setMinPlayMinutes"
           @toggle-density="toggleDensityMode"
+          @set-leaver-handling="setLeaverHandling"
+          @set-leaver-annotation="onSetLeaverAnnotation"
         />
       </main>
     </div>

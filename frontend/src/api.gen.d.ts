@@ -802,6 +802,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/match-annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upsert or clear a per-match user annotation
+         * @description Lets the user note that a match had a leaver. Three scenarios
+         *     are supported:
+         *
+         *       - `self`  — the user themselves left mid-match (data is
+         *         incomplete; usually want to exclude from W/L tallies)
+         *       - `team`  — a teammate left (loss is partly excused)
+         *       - `enemy` — an opponent left (win is tainted)
+         *
+         *     Pass `leaver: null` (or omit the field) to clear an existing
+         *     annotation. Idempotent — clearing a non-existent annotation
+         *     succeeds.
+         *
+         *     Returns 204 on success, 400 on validation failure
+         *     (`match_key` empty or `leaver` not in the enum), 500 on
+         *     store error.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Match identity (same `match_key` exposed in `MatchRecord`). */
+                        match_key: string;
+                        /**
+                         * @description One of the three leaver scenarios, or `""` to clear.
+                         *     Clients can also omit the field — both forms map to
+                         *     "delete the annotation for this match_key".
+                         * @enum {string}
+                         */
+                        leaver?: "" | "self" | "team" | "enemy";
+                        /** @description Free-text annotation (reserved; not yet surfaced in the UI). */
+                        note?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Annotation persisted or cleared. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                400: components["responses"]["BadRequest"];
+                500: components["responses"]["InternalError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/data-location": {
         parameters: {
             query?: never;
@@ -1279,6 +1348,29 @@ export interface components {
              */
             parsed_at?: string;
             data: components["schemas"]["MatchResult"];
+            annotation?: components["schemas"]["MatchAnnotation"];
+        };
+        /**
+         * @description User-curated per-match note. Currently surfaces a single
+         *     `leaver` flag (self / team / enemy); `note` is reserved for
+         *     future free-text commentary. Omitted (or null) when no
+         *     annotation has been set for the match.
+         */
+        MatchAnnotation: {
+            /**
+             * @description Which leaver scenario the user tagged this match with.
+             *     `self` = the current user left (data incomplete);
+             *     `team` = an ally left; `enemy` = an opponent left.
+             * @enum {string}
+             */
+            leaver: "self" | "team" | "enemy";
+            /** @description Free-text per-match commentary (reserved; not surfaced in the UI yet). */
+            note?: string;
+            /**
+             * Format: date-time
+             * @description Server-set timestamp of when the annotation was last upserted.
+             */
+            annotated_at?: string;
         };
         /**
          * @description Classification of one screenshot:

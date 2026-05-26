@@ -490,6 +490,55 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProbeResult"
 
+  /api/match-annotations:
+    post:
+      tags: [Data]
+      summary: Upsert or clear a per-match user annotation
+      description: |
+        Lets the user note that a match had a leaver. Three scenarios
+        are supported:
+
+          - `self`  — the user themselves left mid-match (data is
+            incomplete; usually want to exclude from W/L tallies)
+          - `team`  — a teammate left (loss is partly excused)
+          - `enemy` — an opponent left (win is tainted)
+
+        Pass `leaver: null` (or omit the field) to clear an existing
+        annotation. Idempotent — clearing a non-existent annotation
+        succeeds.
+
+        Returns 204 on success, 400 on validation failure
+        (`match_key` empty or `leaver` not in the enum), 500 on
+        store error.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [match_key]
+              properties:
+                match_key:
+                  type: string
+                  description: Match identity (same `match_key` exposed in `MatchRecord`).
+                leaver:
+                  type: string
+                  enum: ["", self, team, enemy]
+                  description: |
+                    One of the three leaver scenarios, or `""` to clear.
+                    Clients can also omit the field — both forms map to
+                    "delete the annotation for this match_key".
+                note:
+                  type: string
+                  description: Free-text annotation (reserved; not yet surfaced in the UI).
+      responses:
+        "204":
+          description: Annotation persisted or cleared.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/data-location:
     get:
       tags: [Data]
@@ -845,6 +894,32 @@ components:
           example: "2026-05-10T22:30:00Z"
         data:
           $ref: "#/components/schemas/MatchResult"
+        annotation:
+          $ref: "#/components/schemas/MatchAnnotation"
+
+    MatchAnnotation:
+      type: object
+      description: |
+        User-curated per-match note. Currently surfaces a single
+        `leaver` flag (self / team / enemy); `note` is reserved for
+        future free-text commentary. Omitted (or null) when no
+        annotation has been set for the match.
+      required: [leaver]
+      properties:
+        leaver:
+          type: string
+          enum: [self, team, enemy]
+          description: |
+            Which leaver scenario the user tagged this match with.
+            `self` = the current user left (data incomplete);
+            `team` = an ally left; `enemy` = an opponent left.
+        note:
+          type: string
+          description: Free-text per-match commentary (reserved; not surfaced in the UI yet).
+        annotated_at:
+          type: string
+          format: date-time
+          description: Server-set timestamp of when the annotation was last upserted.
 
     ScreenshotType:
       type: string

@@ -30,6 +30,12 @@ export function useMatchFilters(
   // user last typed, which is the bug fixed here.
   setMinPlayPercent?: (n: number) => void,
   setMinPlayMinutes?: (n: number) => void,
+  // Optional: how to treat user-tagged leaver matches.
+  //   'include' (default) — show + tally as normal.
+  //   'exclude-tally'     — show, but tallyWLD drops them (handled by
+  //                         callers of tallyWLD, not here).
+  //   'hide'              — drop from filteredSorted entirely.
+  leaverHandling?: Readonly<Ref<'include' | 'exclude-tally' | 'hide'>>,
 ) {
   // ── Filter state ─────────────────────────────────────────────────────
   // Each field is an array: empty = no filter; multiple entries = union (OR).
@@ -103,6 +109,12 @@ export function useMatchFilters(
       // regardless when a range is set.
       const undated = !d.date || !d.finished_at
       if (undated && !(includeUndated?.value ?? false)) return false
+
+      // Leaver-annotated matches are dropped from the list entirely
+      // when handling is 'hide'. 'exclude-tally' and 'include' both
+      // keep them visible; the tally-exclusion happens downstream
+      // when consumers of filteredSorted call tallyWLD(records, true).
+      if (leaverHandling?.value === 'hide' && r.annotation && r.annotation.leaver) return false
       if (filterMode.value.length   && !filterMode.value.includes(d.mode     ?? '')) return false
       if (filterType.value.length   && !filterType.value.includes(d.type     ?? '')) return false
       if (filterRole.value.length   && !filterRole.value.includes(d.role     ?? '')) return false
