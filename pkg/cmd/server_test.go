@@ -368,3 +368,113 @@ func TestMatchAnnotations_NoteOnlyPersists(t *testing.T) {
 		t.Fatalf("note-only should 204, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestMatchAnnotations_E2E_PostThenReadBackOnMatchResults(t *testing.T) {
+	// End-to-end: write a real SQLite store (in-memory), seed a
+	// SUMMARY screenshot so a match exists, POST an annotation via
+	// /api/match-annotations, then GET /api/match-results and
+	// confirm the annotation surfaces on the returned record.
+	//
+	// Catches wiring regressions between the three layers: route →
+	// app.SetMatchAnnotation → store, and then store → aggregator →
+	// MatchRecord JSON.
+	store, err := db.NewSQLStore(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLStore: %v", err)
+	}
+	defer func() { _ = store.Close() }()
+
+	// One summary row so GetMatchResults returns something.
+	if err := store.UpsertSummary(db.SummaryRow{
+		Filename:   "s.png",
+		MatchKey:   "match:e2e",
+		Map:        "rialto",
+		Mode:       "competitive",
+		Result:     "victory",
+		Date:       "2026-05-10",
+		FinishedAt: "21:29",
+	}); err != nil {
+		t.Fatalf("UpsertSummary: %v", err)
+	}
+
+	a := app.NewWithStore(store)
+	a.SSEHub = app.NewSSEHub()
+	mux := NewMux(a, fstest.MapFS{})
+
+	// POST a full annotation.
+	rec := post(t, mux, "/api/match-annotations", map[string]any{
+		"match_key":   "match:e2e",
+		"leaver":      "team",
+		"note":        "ally rage-quit",
+		"replay_code": "7H1K9P",
+		"members":     []string{"Apollo#11234", "Cheese#5678"},
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("annotation POST status %d, body %s", rec.Code, rec.Body.String())
+	}
+
+	// GET /api/match-results — expect the annotation to surface on the
+	// returned MatchRecord.
+	rec = get(t, mux, "/api/match-results")
+	if rec.Code != 200 {
+		t.Fatalf("match-results status %d", rec.Code)
+	}
+	var records []map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &records); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("expected 1 record, got %d", len(records))
+	}
+	annoRaw, ok := records[0]["annotation"]
+	if !ok {
+		t.Fatalf("record missing annotation: %+v", records[0])
+	}
+	anno, ok := annoRaw.(map[string]any)
+	if !ok {
+		t.Fatalf("annotation not an object: %T", annoRaw)
+	}
+	if anno["leaver"] != "team" {
+		t.Errorf("annotation.leaver = %v, want team", anno["leaver"])
+	}
+	if anno["note"] != "ally rage-quit" {
+		t.Errorf("annotation.note = %v", anno["note"])
+	}
+	if anno["replay_code"] != "7H1K9P" {
+		t.Errorf("annotation.replay_code = %v", anno["replay_code"])
+	}
+	members, ok := anno["members"].([]any)
+	if !ok || len(members) != 2 {
+		t.Errorf("annotation.members shape wrong: %v", anno["members"])
+	}
+
+	// Idempotency contract: a POST with everything empty deletes the
+	// row; the next GET should drop the annotation field entirely.
+	rec = post(t, mux, "/api/match-annotations", map[string]any{
+		"match_key": "match:e2e",
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("clear POST status %d, body %s", rec.Code, rec.Body.String())
+	}
+	// Verify the deletion landed in the store, independent of the
+	// JSON round-trip below.
+	annos, err := store.LoadAnnotations()
+	if err != nil {
+		t.Fatalf("LoadAnnotations after clear: %v", err)
+	}
+	if a, present := annos["match:e2e"]; present {
+		t.Errorf("annotation row not deleted from store: %+v", a)
+	}
+	rec = get(t, mux, "/api/match-results")
+	// json.Unmarshal merges into a non-nil slice destination — without
+	// resetting, residual keys from the first decode survive and the
+	// "annotation absent" assertion below would be a false positive.
+	records = nil
+	_ = json.Unmarshal(rec.Body.Bytes(), &records)
+	if len(records) != 1 {
+		t.Fatalf("expected 1 record after clear, got %d", len(records))
+	}
+	if v, present := records[0]["annotation"]; present && v != nil {
+		t.Errorf("annotation should be absent or null after clear: %+v", v)
+	}
+}

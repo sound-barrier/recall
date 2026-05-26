@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"reflect"
 	"sort"
 	"testing"
@@ -616,5 +617,92 @@ func TestSQLStore_Annotation_DeleteCascadesMembers(t *testing.T) {
 	}
 	if n != 0 {
 		t.Errorf("expected 0 members after cascade, got %d", n)
+	}
+}
+
+func TestSQLStore_Annotation_Migration_RebuildPreservesRows(t *testing.T) {
+	// Construct a file-backed DB with the OLD match_annotations schema
+	// (leaver NOT NULL CHECK, no replay_code), seed one row, then
+	// reopen via NewSQLStore so the rebuild migration runs. Verify
+	// the row survives + the schema relaxed.
+	tmp := t.TempDir() + "/migration.db"
+
+	// Step 1: open raw sql.DB and create the legacy table by hand.
+	// We can't reuse NewSQLStore here because it would apply the new
+	// schema, defeating the test.
+	{
+		raw, err := sql.Open("sqlite", tmp)
+		if err != nil {
+			t.Fatalf("open raw: %v", err)
+		}
+		if _, err := raw.Exec(`PRAGMA foreign_keys = ON`); err != nil {
+			t.Fatalf("pragma: %v", err)
+		}
+		// Old schema — leaver NOT NULL CHECK, no replay_code column.
+		if _, err := raw.Exec(`
+			CREATE TABLE match_annotations (
+				match_key    TEXT PRIMARY KEY,
+				leaver       TEXT NOT NULL CHECK (leaver IN ('self','team','enemy')),
+				note         TEXT,
+				annotated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+			)`); err != nil {
+			t.Fatalf("create legacy: %v", err)
+		}
+		if _, err := raw.Exec(
+			`INSERT INTO match_annotations (match_key, leaver, note) VALUES (?, ?, ?)`,
+			"k1", "team", "ally dc'd",
+		); err != nil {
+			t.Fatalf("insert legacy: %v", err)
+		}
+		_ = raw.Close()
+	}
+
+	// Step 2: reopen via NewSQLStore — this runs the rebuild migration.
+	s, err := NewSQLStore(tmp)
+	if err != nil {
+		t.Fatalf("NewSQLStore after legacy seed: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	// Step 3: the legacy row should still be there.
+	got, err := s.LoadAnnotations()
+	if err != nil {
+		t.Fatalf("LoadAnnotations: %v", err)
+	}
+	if got["k1"].Leaver != "team" || got["k1"].Note != "ally dc'd" {
+		t.Errorf("legacy row not preserved: %+v", got["k1"])
+	}
+
+	// Step 4: the new CHECK should allow NULL leaver — set one and
+	// reload to confirm.
+	if err := s.SetAnnotation(Annotation{MatchKey: "k2", Note: "no leaver"}); err != nil {
+		t.Fatalf("SetAnnotation with empty leaver after migration: %v", err)
+	}
+	got, _ = s.LoadAnnotations()
+	if got["k2"].Note != "no leaver" {
+		t.Errorf("post-migration insert lost note: %+v", got["k2"])
+	}
+
+	// Step 5: replay_code column exists (additive migration). Try
+	// writing a value and reading it back.
+	if err := s.SetAnnotation(Annotation{MatchKey: "k3", Leaver: "self", ReplayCode: "ABC123"}); err != nil {
+		t.Fatalf("SetAnnotation with replay_code: %v", err)
+	}
+	got, _ = s.LoadAnnotations()
+	if got["k3"].ReplayCode != "ABC123" {
+		t.Errorf("replay_code lost: %+v", got["k3"])
+	}
+
+	// Step 6: re-opening one more time runs the guard query and skips
+	// the rebuild (idempotent contract).
+	_ = s.Close()
+	s2, err := NewSQLStore(tmp)
+	if err != nil {
+		t.Fatalf("second NewSQLStore (guard should no-op): %v", err)
+	}
+	t.Cleanup(func() { _ = s2.Close() })
+	got2, _ := s2.LoadAnnotations()
+	if len(got2) != 3 {
+		t.Errorf("second open lost rows: got %d, want 3", len(got2))
 	}
 }
