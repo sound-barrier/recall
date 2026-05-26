@@ -1430,11 +1430,12 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
   box-shadow: 0 0 10px var(--accent-glow);
 }
 
-/* Light-mode swap — the dark theme's CRT-glow look would clash. */
-:global([data-theme="light"]) .settings-section::after {
-  background: var(--accent-text);
-  opacity: 0.4;
-}
+/* Light-mode override for the diamond corner lives in app.css under
+   `#panel-settings .settings-section::after` so it stays a proper
+   global rule. Vue's scoped CSS compiler miscompiles the
+   `:global(...) .x::pseudo` pattern into a bare `[data-theme="light"]`
+   rule on <html>, which would set opacity: 0.4 globally and wash
+   the entire app once SettingsView mounted. */
 
 /* ─── Engine status panel (lifted from IngestView) ───────── */
 
@@ -1575,8 +1576,9 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
 .link-btn:hover {
   text-decoration-color: var(--accent);
 }
-:global([data-theme="light"]) .link-btn { color: var(--accent-text); }
-:global([data-theme="light"]) .link-btn:hover { text-decoration-color: var(--accent-text); }
+
+/* Light-mode override for .link-btn lives in app.css — see note
+   above the .settings-section::after override for why. */
 
 /* ─── Backup & Restore (lifted from IngestView) ─────────── */
 
@@ -1604,7 +1606,8 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
   border-radius: 2px;
   transition: background 200ms ease, border-color 200ms ease;
 }
-:global([data-theme="light"]) .setting-row.danger-row { background: var(--loss-soft); }
+
+/* Light-mode override for .setting-row.danger-row lives in app.css. */
 
 .clear-confirm-group {
   display: flex;
@@ -1674,18 +1677,15 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
 }
 
 .advanced-summary::after {
-  /* Same orange tick as .section-header — visual continuity. */
+  /* Same orange tick as .section-header — visual continuity. The
+     light-mode override (rust + no glow) lives in app.css as a
+     properly-scoped global rule. */
   content: '';
   position: absolute;
   right: 0; bottom: -1px;
   width: 28px; height: 3px;
   background: var(--accent);
   box-shadow: 0 0 12px var(--accent-glow);
-}
-
-[data-theme="light"] .advanced-summary::after {
-  background: var(--accent-text);
-  box-shadow: none;
 }
 
 .advanced-summary .section-num,

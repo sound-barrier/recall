@@ -1579,6 +1579,27 @@ main#main-content {
 [data-theme="light"] .empty-link { color: var(--accent-text); }
 [data-theme="light"] .empty-link:hover { border-bottom-color: var(--accent-text); }
 
+/* SettingsView light-mode overrides. These rules used to live inside
+   SettingsView's scoped \3c style> block via :global([data-theme="light"]) …
+   selectors, but Vue's scoped-CSS compiler miscompiles that pattern and
+   emits a bare `[data-theme="light"] { … }` rule on <html> — one variant
+   in particular set `opacity: 0.4` and washed out the entire page across
+   every tab once SettingsView mounted (the styles persist in <head>
+   after Vue unmounts the component). Keeping them as proper global
+   rules here scoped to #panel-settings sidesteps the compiler bug. */
+[data-theme="light"] #panel-settings .settings-section::after {
+  background: var(--accent-text);
+  opacity: 0.4;
+}
+[data-theme="light"] #panel-settings .link-btn { color: var(--accent-text); }
+[data-theme="light"] #panel-settings .link-btn:hover { text-decoration-color: var(--accent-text); }
+[data-theme="light"] #panel-settings .setting-row.danger-row { background: var(--loss-soft); }
+
+[data-theme="light"] #panel-settings .advanced-summary::after {
+  background: var(--accent-text);
+  box-shadow: none;
+}
+
 /* ─── Responsive ─────────────────────────────────────────── */
 
 @media (width <= 880px) {
