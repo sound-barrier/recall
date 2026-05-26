@@ -51,116 +51,32 @@ Component-specific styles live in each leaf SFC's own `<style scoped>`
 block (Vue rewrites every selector with a `[data-v-<hash>]` attribute
 so the rule only matches that component's template).
 
-Cross-cutting / shared styles stay in `frontend/src/styles/app.css`
-(~1 850 lines, down from ~3 700): custom properties, font-faces,
-theme overrides, the `.btn` family, `.badge` family, `.chev`,
-`.length`, `.clickable`, shared empty-state selectors, `.section-*`
-/ `.setting-*` / `.settings-*` (used across Settings + Ingest +
-Unknown views), `.slot-chip` / `.slot-dot` (shared between
-MatchCard's sources-coverage strip and UnknownMapsView's slot row),
-and the `.source-name` / `.source-file` / `.source-preview` family
-(shared between MatchCard and UnknownMapsView).
+Cross-cutting styles in `frontend/src/styles/app.css` (~1850 lines): custom properties, font-faces, theme overrides, `.btn` / `.badge` / `.chev` / `.length` / `.clickable` families, shared empty-state selectors, `.section-*` / `.setting-*` / `.settings-*` (across Settings/Ingest/Unknown), `.slot-chip` / `.slot-dot` (MatchCard + UnknownMapsView), `.source-name` / `.source-file` / `.source-preview` family.
 
-When migrating a new rule to scoped, check all eight component
-templates first; if more than one references the class, leave it in
-`app.css`. Theme overrides DO NOT belong in a scoped block. Vue's
-compiler miscompiles `:global([data-theme="light"]) .x { … }` into a
-bare `[data-theme="light"] { … }` rule that targets `<html>`
-globally (see root `CLAUDE.md`); put theme-conditional rules in
-`app.css` scoped under a parent id (e.g.
-`[data-theme="light"] #panel-settings .x`) instead. `@keyframes`
-defined in a scoped block get their NAME hashed, so animations
-referenced from multiple components must live in `app.css`
-(`pulse-dot` is the canonical example — referenced by
-ParseProgressPanel + IngestView).
+When migrating a rule to scoped, check all eight component templates first — if more than one references it, keep it in `app.css`. Theme overrides DO NOT belong in scoped (Vue miscompiles `:global([data-theme="light"]) .x`; see root CLAUDE.md). Put theme-conditional rules in `app.css` under a parent id (`[data-theme="light"] #panel-settings .x`). `@keyframes` in scoped blocks get their NAME hashed, so animations used by multiple components must live in `app.css` (`pulse-dot` is canonical — used by ParseProgressPanel + IngestView).
 
-**Custom fonts.** `frontend/src/style.css` registers two active OW
-typefaces — `Big Noodle Too Oblique` (hero/map names + all view
-headings) and `OW Wordmark` (the RECALL masthead) — with a fallback
-chain: licensed `local()` lookup → bundled `./assets/fonts/*.woff2`
-(drop-in slot for the licensed files) → Google Fonts free lookalikes
-loaded via `index.html` (Barlow Condensed italic, Russo One). The
-`Futura No. 2 Demi` `@font-face` is still declared but currently
-unused; the previous "editorial Settings" scope was removed because
-it read as washed-out next to the Big Noodle headings on cream
-paper. Don't reintroduce a per-view typeface override without
-verifying glyph density matches Big Noodle's weight presence.
+**Custom fonts.** `frontend/src/style.css` registers `Big Noodle Too Oblique` (hero/map names + view headings) and `OW Wordmark` (masthead). Fallback chain: licensed `local()` → bundled `./assets/fonts/*.woff2` → Google Fonts lookalikes (Barlow Condensed italic, Russo One). `Futura No. 2 Demi` is declared but unused (previous "editorial Settings" scope removed — read washed-out against Big Noodle on cream). Don't reintroduce per-view typeface overrides without checking glyph density.
 
 ## App.vue concerns
 
 State concerns owned by App.vue and passed down via props/emits:
 
-- **Nav** — four tabs in workflow order: **Settings (01)**,
-  **Parse (02)** (internal route id is still `'ingest'` and the
-  file is still `IngestView.vue` — only the visible tab label
-  changed during the consolidation), **Matches (03)** (default
-  landing), **Unknown (04)** (triage). Settings owns all config —
-  Folders / Engine / Appearance / Calendar / Backup & Restore plus
-  a collapsible Advanced (Grafana stream + Clear Database). Parse
-  is reserved for the operational loop: Watch Folder + Manual
-  Parse + the live progress panel. Don't add config rows to Parse.
-  Cross-references from Parse's heading state machine (Tesseract
-  missing, screenshots folder unset) deep-link to Settings →
-  Engine / Folders.
-- **Filters**: multi-select popovers (mode/map/type/role/hero/result)
-  plus date range inputs and sort dir. Each filter field is a `ref([])` —
-  empty = no filter, multiple entries = union (OR). `filterRefs` maps
-  field name → ref so `toggleFilter(field, value)` and card badge
-  clicks share one handler. `openFilter` tracks the one currently
-  open; outside-click and ESC close it via document-level listeners.
-- **Hero filter** matches primary (`data.hero`) OR any secondary in
-  `data.heroes_played[]` — picking Juno + Kiriko surfaces matches
-  where either was played, even as second-fiddle.
-- **Date filter** only matches rows with explicit `date + finished_at`
-  (no `match_key` fallback), so undated rows are correctly excluded
-  from date-windowed views.
-- **Tesseract gate**: `tesseractReady` computed drives a System Alert
-  banner and disables Parse/Watch controls when the OCR engine isn't
-  found.
-- **Unknown Maps view**: records where `data.map` is absent surface
-  in the Unknown view via the `unknownRecords` computed.
-- **Per-card expand/preview state** in plain objects, reassigned on
-  toggle for Vue reactivity. `screenshotURL(filename)` returns
-  `/_screenshot/<encoded>` served by `ScreenshotHandler()`.
-- **Event subscription**: `EventsOn('parse-complete', load)` on mount,
-  `EventsOff` on unmount.
+- **Nav** — 4 tabs in workflow order: Settings (01), Parse (02) (internal id still `'ingest'`; `IngestView.vue` only the label changed), Matches (03) default landing, Unknown (04) triage. Settings owns all config (Folders/Engine/Appearance/Calendar/Backup & Restore + collapsible Advanced). Parse is just the operational loop (Watch + Manual Parse + progress panel) — don't add config rows there. Parse heading state-machine deep-links to Settings → Engine/Folders on missing-Tesseract / unset-folder.
+- **Filters**: multi-select popovers (mode/map/type/role/hero/result) + date range + sort. Each field is `ref([])` (empty = no filter; entries = OR). `filterRefs` maps field → ref so `toggleFilter()` and badge clicks share one handler. `openFilter` tracks the open popover; outside-click + ESC close.
+- **Hero filter** matches `data.hero` OR any `data.heroes_played[]` entry — Juno+Kiriko surfaces matches where either was played.
+- **Date filter** only matches rows with explicit `date + finished_at` (no `match_key` fallback) — undated rows excluded from date-windowed views.
+- **Tesseract gate**: `tesseractReady` computed drives a System Alert banner + disables Parse/Watch when OCR engine missing.
+- **Unknown Maps view**: records with no `data.map` surface via `unknownRecords` computed.
+- **Per-card expand/preview state** in plain objects, reassigned on toggle for reactivity. `screenshotURL(filename)` → `/_screenshot/<encoded>` served by `ScreenshotHandler()`.
+- **Event subscription**: `EventsOn('parse-complete', load)` on mount, `EventsOff` on unmount.
 
 ## Tests
 
-SFC-level tests use `@vue/test-utils`'s `mount()` via the
-`mountApp(overrides?)` helper in `frontend/src/test-utils/mountApp.ts`,
-which `vi.doMock`s `./api` so the Wails/fetch shim never fires
-during mount. `App.test.ts` shows the pattern: `await mountApp({
-records: [...] })` then assert on the wrapper's DOM.
+SFC-level tests use `@vue/test-utils`'s `mount()` via `mountApp(overrides?)` in `frontend/src/test-utils/mountApp.ts` (which `vi.doMock`s `./api`, so the Wails/fetch shim never fires). Pattern: `await mountApp({ records: [...] })` then assert on the wrapper's DOM. `mountApp` also exports `fireEvent(name, data?)` for driving captured `EventsOn` handlers (simulating `parse-complete` / `parse-progress`) — pair with `await flushPromises()` for async handlers.
 
-`mountApp` exports `fireEvent(name, data?)` for tests that drive a
-captured `EventsOn` handler (simulating `parse-complete` from the
-watcher or `parse-progress` mid-flight). Pair with `await
-flushPromises()` when the handler is async — most are.
+**Two runners with disjoint file patterns.** Vitest → `src/**/*.test.ts` (unit + composable + SFC via `mount()`). Playwright → `frontend/tests/e2e/*.spec.ts` (real browser + axe-core a11y). Vitest's default discovery (`**/*.{test,spec}.ts`) WILL sweep in Playwright specs unless the include glob is pinned — loading one under Vitest crashes with `Playwright Test did not expect test.describe()`. Adding a new runner: pick an extension/dir the others don't claim AND update `vitest.config.ts` `test.include`.
 
-**Two test runners; each owns a disjoint file pattern.** Vitest reads
-`src/**/*.test.ts` (unit + composable + SFC tests via `mount()`).
-Playwright reads `frontend/tests/e2e/*.spec.ts` (real browser,
-axe-core a11y). Vitest's default discovery (`**/*.{test,spec}.ts`)
-WILL sweep in Playwright specs unless the include glob is pinned —
-loading a Playwright spec under Vitest crashes with `Playwright Test
-did not expect test.describe() to be called here`. Adding a new
-runner: pick a file extension or directory the existing runners
-don't claim, AND update `vitest.config.ts` `test.include`.
-
-**Playwright e2e structure.** Specs live in `frontend/tests/e2e/`
-and run against a hermetic `recall-server` binary (built by
-`make test-e2e` into `/tmp/recall-e2e/`, served on `:7099` with
-`HOME=/tmp/recall-e2e`). Mock backend state via `page.route('**/api/...',
-route => route.fulfill({status, contentType, body: JSON.stringify(...)}))`
-— the bound server stays running across tests, so route mocks are the
-only way to drive feature-specific fixtures. Existing files split by
-concern: `smoke.spec.ts` (page loads, tab nav, skip-link),
-`a11y.spec.ts` (axe-core audits per view). Per the root CLAUDE.md TDD
-rule, any new user-visible affordance starts with a failing spec
-here, BEFORE implementation. Iterating locally requires rebuilding
-the server binary on every frontend/Go change — see the matching
-"Iterating a Playwright e2e spec locally" bullet in root CLAUDE.md.
+**Playwright e2e.** Specs in `frontend/tests/e2e/`. `make test-e2e` builds the frontend + `serveronly` binary into `/tmp/recall-e2e/`, serves on `:7099` with `HOME=/tmp/recall-e2e`. Mock backend with `page.route('**/api/...', route => route.fulfill({status, contentType, body: JSON.stringify(...)}))` — the server stays running across tests, so route mocks are the only way to drive feature-specific fixtures. Existing files: `smoke.spec.ts` (loads, tab nav, skip-link), `a11y.spec.ts` (axe per view). Per the root CLAUDE.md TDD rule, every user-visible affordance starts with a failing spec here BEFORE implementation. Iteration loop (rebuild server on every change) is documented in root CLAUDE.md.
 
 ## Gotchas
 
@@ -187,104 +103,31 @@ the server binary on every frontend/Go change — see the matching
   `cardState.previewOpen[filename]`. TypeScript prop types should
   declare these as `Ref<X>` so vue-tsc catches misuse.
 
-- **`null` doesn't drop a Vue attribute the way you'd hope.** vue-tsc
-  rejects `null` for boolean/Booleanish attrs (`:inert`,
-  `:aria-hidden`, `:aria-pressed`). Use `undefined` to omit:
-  `:inert="cond || undefined"`, `:aria-hidden="cond ? 'true' :
-  undefined"`.
+- **`null` doesn't drop a Vue attribute.** vue-tsc rejects `null` for boolean/Booleanish attrs (`:inert`, `:aria-hidden`, `:aria-pressed`). Use `undefined`: `:inert="cond || undefined"`, `:aria-hidden="cond ? 'true' : undefined"`.
 
-- **`loading="lazy"` breaks `v-if`-inserted images.** Browsers assign
-  zero viewport presence to `<img>` added to the DOM by `v-if`, so
-  the Intersection Observer never fetches. Any image that appears on
-  explicit user action must omit `loading="lazy"` (or use `eager`).
+- **`loading="lazy"` breaks `v-if`-inserted images.** Browsers assign zero viewport presence to `<img>` added by `v-if`, so IntersectionObserver never fetches. Images appearing on user action must omit `loading="lazy"` (or use `eager`).
 
-- **Use `:where()` for UA-default resets.** Promoting a `<span
-  class="badge">` to a `<button class="badge">` brings back UA
-  `appearance`/`background`/`border`/`padding`/`font` defaults. Wrap
-  the overrides in `:where(button.badge, ...) { appearance: none;
-  ... }` so specificity stays 0 and the existing `.badge` rules win.
-  Pattern in `MatchCard.vue`'s scoped `<style>` block.
+- **Use `:where()` for UA-default resets.** Promoting `<span class="badge">` → `<button class="badge">` brings back UA `appearance`/`background`/`border`/`padding`/`font` defaults. Wrap overrides in `:where(button.badge, ...) { appearance: none; ... }` so specificity stays 0 and existing `.badge` rules win. Pattern in `MatchCard.vue`.
 
-- **A clickable container that holds interactive chips cannot be
-  `role="button"`.** Nesting interactive elements is invalid HTML +
-  ARIA and the outer role strips keyboard reach from the chips.
-  Pattern in MatchCard.vue: outer `<div class="match-header">` keeps
-  `@click` but no role/tabindex; a dedicated `<button
-  class="chev-btn" aria-expanded>` on the right is the keyboard
-  expand affordance.
+- **A clickable container with interactive chips cannot be `role="button"`.** Nesting interactive elements is invalid HTML/ARIA and the outer role strips keyboard reach from the chips. Pattern in MatchCard.vue: outer `<div class="match-header">` has `@click` but no role/tabindex; a dedicated `<button class="chev-btn" aria-expanded>` is the keyboard affordance.
 
-- **happy-dom `document.activeElement` fails `.toBe(wrapper.find(...).element)`.**
-  The two references serialize identically but the `.toBe` reference
-  check fails (vitest reports "serializes to the same string").
-  Compare via `(document.activeElement as HTMLElement)?.id` or
-  another attribute instead of element identity.
+- **happy-dom `document.activeElement` fails `.toBe(wrapper.find(...).element)`** despite identical serialization. Compare via `.id` or another attribute, not element identity.
 
-- **Lefthook's frontend hooks (eslint/stylelint) routinely skip with
-  "no files for inspection"** even when `frontend/src/**` is staged.
-  Run `cd frontend && npx eslint 'src/**/*.{ts,vue}'` and `npx
-  stylelint 'src/**/*.{vue,css}'` manually after frontend edits. Full
-  `make lint` and CI both catch issues; only the local pre-commit
-  hook is unreliable.
+- **Lefthook's frontend hooks (eslint/stylelint) routinely skip "no files for inspection"** even with `frontend/src/**` staged. Run `cd frontend && npx eslint 'src/**/*.{ts,vue}'` + `npx stylelint 'src/**/*.{vue,css}'` manually. `make lint` + CI catch it; only the local hook is unreliable.
 
-- **`stylelint-config-standard` rejects BEM `--` modifiers.**
-  `selector-class-pattern` only allows kebab-case, so
-  `.foo--modifier` is invalid. Use `.foo-modifier`. Also requires an
-  empty line before every rule block (`rule-empty-line-before`),
-  including `:hover` pseudo-selectors that follow a closing `}`.
-  Errors, not warnings — fail `make lint`. Most stylelint errors
-  here are autofixable: `cd frontend && npx stylelint --fix
-  "src/**/*.{css,vue}"`.
+- **`stylelint-config-standard` rejects BEM `--`.** `selector-class-pattern` only allows kebab-case (`.foo-modifier`, not `.foo--modifier`). Also requires empty line before every rule block (including `:hover` after `}`). Errors not warnings — most are autofixable via `npx stylelint --fix`.
 
-- **knip project scope is `src/**/*.{ts,vue}`.** `@eslint/js` must
-  stay in `ignoreDependencies` in `frontend/knip.config.ts`:
-  typescript-eslint consumes it internally but doesn't ES-import it,
-  so knip can't detect the usage. `@vitest/coverage-v8` does NOT
-  need `ignoreDependencies` — vitest detects it via
-  `coverage.provider: 'v8'`. Run via `make dead-code-ts` or `cd
-  frontend && npm run dead:ts`.
+- **knip project scope is `src/**/*.{ts,vue}`.** Keep `@eslint/js` in `ignoreDependencies` (typescript-eslint consumes it internally without ES-import). `@vitest/coverage-v8` doesn't need it — vitest detects via `coverage.provider: 'v8'`. Run via `make dead-code-ts`.
 
-- **TypeScript 6.x is blocked by `openapi-typescript`.**
-  `openapi-typescript@7.x` declares `peer typescript: "^5.x"` and
-  `npm install` fails with `ERESOLVE` if `typescript` is bumped to
-  `^6.x`. Hold at `^5.x` until `openapi-typescript` ships TS 6
-  support.
+- **TypeScript 6.x blocked by `openapi-typescript@7.x`** (`peer typescript: "^5.x"`). Hold at `^5.x` until upstream supports TS 6.
 
-- **Bundle-size budget is enforced in CI.** Four limits in `ci.yml`
-  "Enforce bundle-size budget": initial JS < 130 KB, initial CSS <
-  80 KB, total JS < 250 KB, total CSS < 120 KB. The four view
-  components (Matches, Ingest, Settings, Unknown) are lazy-loaded
-  via `defineAsyncComponent` in App.vue so each emits its own Vite
-  chunk and only the masthead/router-shell code counts toward the
-  initial budget — `App.lazy-views.test.ts` is the regression guard
-  against a refactor that converts a view back to a static `import`.
-  Current state: ~103 KB initial JS / ~65 KB initial CSS / ~165 KB
-  total JS / ~80 KB total CSS.
+- **Bundle-size budget enforced in CI** (`ci.yml` "Enforce bundle-size budget"): initial JS <130KB, initial CSS <80KB, total JS <250KB, total CSS <120KB. The four view components (Matches, Ingest, Settings, Unknown) are lazy-loaded via `defineAsyncComponent` in App.vue so only the router-shell counts toward initial budget. `App.lazy-views.test.ts` guards against regression to static `import`. Current: ~103KB / ~65KB / ~165KB / ~80KB.
 
 ## A11y
 
-- **Forces `prefers-reduced-motion: reduce`** in the Playwright a11y
-  suite via `page.emulateMedia()` in a `beforeEach`. Without it,
-  axe-core's color-contrast check samples mid-animation alpha — the
-  `view-fade-in` keyframes ramp opacity 0→1 over 360ms and axe runs
-  before that completes, so legible colors get reported as failing.
-  Setting `use.reducedMotion: 'reduce'` in `playwright.config.ts`
-  does NOT work as of Playwright 1.60: the project-level `use: {
-  ...devices['Desktop Chrome'] }` shadows it. `page.emulateMedia()`
-  in `beforeEach` is the only reliable lever. Any new a11y spec must
-  do the same.
+- **Force `prefers-reduced-motion: reduce` in a11y specs** via `page.emulateMedia()` in `beforeEach`. Without it, axe-core's color-contrast check samples mid-animation alpha (`view-fade-in` ramps opacity 0→1 over 360ms) and reports legible colors as failing. `use.reducedMotion: 'reduce'` in `playwright.config.ts` does NOT work as of Playwright 1.60 — the project-level `use: { ...devices['Desktop Chrome'] }` shadows it. `page.emulateMedia()` in `beforeEach` is the only reliable lever.
 
-- **WCAG AA on every surface.** When introducing or tweaking any
-  text colour or accent that's used as type, compute contrast against
-  ALL of `--surface-2`, `--surface-3`, AND `--bg` — small UI text
-  (≤14px non-bold) needs 4.5:1 against every surface it might land
-  on. The project's surfaces vary by ~0.4% luminance which is enough
-  to flip a borderline colour across the threshold. The light-mode
-  `--accent` is rust `#b03a0a` precisely because bright `#F5A623`
-  only hit 1.78:1 on cream; `--accent-soft` / `--accent-glow` stay
-  derived from the bright orange so highlight tints stay visible.
-  Use any WCAG calc to verify (e.g. a quick Python script using the
-  sRGB → relative-luminance formula) before committing palette
-  changes.
+- **WCAG AA on every surface.** Compute contrast for new text/accent colors against ALL of `--surface-2`, `--surface-3`, `--bg` — small UI text (≤14px non-bold) needs 4.5:1 on every surface. The ~0.4% luminance variance between surfaces is enough to flip borderline colors. Light-mode `--accent` is rust `#b03a0a` because bright `#F5A623` hit 1.78:1 on cream; `--accent-soft` / `--accent-glow` stay derived from the bright orange so highlight tints stay visible.
 
 - **A11y patterns to mirror, not reinvent.**
   - Modal dialogs: focus trap + Escape + return-focus + background
