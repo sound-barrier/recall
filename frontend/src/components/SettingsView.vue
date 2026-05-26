@@ -333,13 +333,6 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
                   <span v-if="copied === 'db'">Copied ✓</span>
                   <span v-else>Copy</span>
                 </button>
-                <button
-                  v-if="canOpenFolder"
-                  class="btn ghost tiny"
-                  @click="openFolder(dataLocation.base_dir + '/db')"
-                >
-                  Open
-                </button>
               </div>
               <span class="data-loc-key">Settings</span>
               <span class="data-loc-val mono" :title="dataLocation.settings_path">{{ dataLocation.settings_path }}</span>
@@ -351,13 +344,6 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
                 >
                   <span v-if="copied === 'settings'">Copied ✓</span>
                   <span v-else>Copy</span>
-                </button>
-                <button
-                  v-if="canOpenFolder"
-                  class="btn ghost tiny"
-                  @click="openFolder(dataLocation.base_dir)"
-                >
-                  Open
                 </button>
               </div>
             </div>
