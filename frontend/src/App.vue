@@ -50,6 +50,7 @@ import { useLeaverHandling } from './composables/useLeaverHandling'
 import { useShowHidden } from './composables/useShowHidden'
 import { useTabKeyboardNav } from './composables/useTabKeyboardNav'
 import { useModalFocusTrap } from './composables/useModalFocusTrap'
+import { useBackupRestore } from './composables/useBackupRestore'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
@@ -392,71 +393,26 @@ function cancelClear() {
   clearConfirm.value = false
 }
 
-// Export the parsed database as a JSON file. In Wails mode the native
-// save dialog handles writing; in server mode the api shim triggers a
-// browser download. The exportStatus ref drives the inline result chip
-// in IngestView (e.g. "Saved to: /path/...json") that flashes for a
-// few seconds after success.
-// `exporting` is a string discriminator ('json'|'csv') so IngestView
-// can show "Saving…" on the specific button the user clicked while
-// the other one stays selectable. `false` = idle.
-const exporting   = ref<false | 'json' | 'csv'>(false)
-const importing   = ref(false)
-const importArmed = ref(false) // first-click confirm (mirrors clearConfirm)
-const exportStatus = ref<{ ok: boolean; message: string } | null>(null)
-
-async function exportData(format: 'json' | 'csv' = 'json') {
-  if (exporting.value) return
-  exporting.value = format
-  exportStatus.value = null
-  try {
-    const path = format === 'csv' ? await ExportDataCSV() : await ExportData()
-    if (path) {
-      exportStatus.value = { ok: true, message: `Saved: ${path}` }
-    }
-    // cancel → silent
-  } catch (e) {
-    exportStatus.value = { ok: false, message: `Export failed: ${e}` }
-  } finally {
-    exporting.value = false
-    // Auto-clear the chip after a few seconds so it doesn't linger
-    // forever on a navigation-less tab.
-    if (exportStatus.value) {
-      const captured = exportStatus.value
-      setTimeout(() => {
-        if (exportStatus.value === captured) exportStatus.value = null
-      }, 5000)
-    }
-  }
-}
-
-function exportDataCSV() { return exportData('csv') }
-
-function armImport() { importArmed.value = true; exportStatus.value = null }
-function cancelImport() { importArmed.value = false }
-
-async function importData() {
-  if (importing.value) return
-  importing.value = true
-  importArmed.value = false
-  try {
-    const path = await ImportData()
-    if (path) {
-      exportStatus.value = { ok: true, message: `Imported: ${path}` }
-      await load() // refresh records + everything else
-    }
-  } catch (e) {
-    exportStatus.value = { ok: false, message: `Import failed: ${e}` }
-  } finally {
-    importing.value = false
-    if (exportStatus.value) {
-      const captured = exportStatus.value
-      setTimeout(() => {
-        if (exportStatus.value === captured) exportStatus.value = null
-      }, 5000)
-    }
-  }
-}
+// Backup / restore (JSON export + CSV export + JSON import). Inline
+// result chip ("Saved: …" / "Imported: …" / failure) is owned by the
+// composable and auto-clears after 5s; the IngestView consumes the
+// refs as props and emits handlers that map back to these methods.
+const {
+  exporting,
+  importing,
+  importArmed,
+  exportStatus,
+  exportData,
+  exportDataCSV,
+  armImport,
+  cancelImport,
+  importData,
+} = useBackupRestore({
+  exportJSON: ExportData,
+  exportCSV: ExportDataCSV,
+  importJSON: ImportData,
+  afterImport: () => load(),
+})
 
 // Open the native folder picker via Wails. The Go side persists the
 // choice so subsequent app launches pick up the same directory; we
