@@ -48,6 +48,7 @@ import { useMinPlayThreshold } from './composables/useMinPlayThreshold'
 import { useDensityMode } from './composables/useDensityMode'
 import { useLeaverHandling } from './composables/useLeaverHandling'
 import { useShowHidden } from './composables/useShowHidden'
+import { useTabKeyboardNav } from './composables/useTabKeyboardNav'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
@@ -115,42 +116,7 @@ async function goToView(next: string) {
   if (panel) panel.focus({ preventScroll: true })
 }
 
-// Skip-link target. The native href="#main-content" works in most
-// browsers, but some don't move focus to the target on hash navigation —
-// only scroll. Explicitly focus the <main> for keyboard parity.
-function focusMain(e: MouseEvent) {
-  e.preventDefault()
-  const main = document.getElementById('main-content')
-  if (main) main.focus({ preventScroll: false })
-}
-
-// WAI-ARIA tab-pattern keyboard navigation. Left/Right cycle through
-// the tabs (with wrap-around); Home/End jump to ends. We use
-// "automatic activation" — focusing a tab also switches the view, the
-// same as a click. The four tabs are listed in nav order; goToView
-// handles the actual view swap + panel focus.
-const TAB_ORDER = ['settings', 'ingest', 'matches', 'unknown'] as const
-
-function onTabKeydown(e: KeyboardEvent) {
-  const key = e.key
-  if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'Home' && key !== 'End') return
-  e.preventDefault()
-  const current = TAB_ORDER.indexOf(view.value as typeof TAB_ORDER[number])
-  if (current === -1) return
-  let next = current
-  if (key === 'ArrowLeft')  next = (current - 1 + TAB_ORDER.length) % TAB_ORDER.length
-  if (key === 'ArrowRight') next = (current + 1) % TAB_ORDER.length
-  if (key === 'Home')       next = 0
-  if (key === 'End')        next = TAB_ORDER.length - 1
-  const target = TAB_ORDER[next]!
-  goToView(target)
-  // Move focus from the now-inactive tab to the newly-active one so the
-  // tab pattern's "automatic activation" matches the focus ring.
-  nextTick(() => {
-    const btn = document.getElementById(`tab-${target}`)
-    btn?.focus()
-  })
-}
+const { onTabKeydown, focusMain } = useTabKeyboardNav(view, goToView)
 
 // Wall-clock time of the last successful manual parse, used to render
 // "Last run · X ago" feedback under the Parse button on the settings
