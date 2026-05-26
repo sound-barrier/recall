@@ -16,14 +16,6 @@ The GitHub repo is `sound-barrier/recall` — used for
 `gh api repos/sound-barrier/recall/...` calls (code-scanning alerts,
 PRs, releases, etc.).
 
-**Where to look first**, by question type:
-
-- *How do I build / test / lint / release?* → "Build, run, dev" table
-- *Where does the OCR pipeline read / write?* → "Data flow", "How match merging works", "Per-screenshot-type parsers"
-- *Where is `<feature>` implemented?* → "App shell" (Go) or "Frontend" (Vue) — both list per-concern file inventories
-- *Is `<thing>` a documented gotcha?* → "Conventions worth knowing" (91 bullets, search by keyword)
-- *How does CI / release wiring work?* → "CI/CD" + the `release.yml` detail subsection
-
 ## Working style
 
 This section is prescriptive — these are the project's defaults for
@@ -214,7 +206,7 @@ quick local exploration outside the test runner, a throwaway
 calls `app.Startup` + `app.ParseScreenshots` still works — delete the
 file when done so it doesn't accumulate.
 
-## Data flow (the big-picture architecture)
+## Pipeline
 
 ```text
 screenshots/*.png
@@ -224,11 +216,11 @@ parser.MatchResult
       │
       ▼  (pkg/app/parse.go: screenshotType + resolveMatchKey, then per-type Upsert)
 SQLite per-type tables:
-   summary_screenshots + summary_heroes_played
+   summary_screenshots    + summary_heroes_played
    scoreboard_screenshots + scoreboard_hero_stats
-   personal_screenshots + personal_hero_stats
-   rank_screenshots + rank_modifiers + rank_sr
-   unknown_screenshots          ← source of truth (one row per screenshot)
+   personal_screenshots   + personal_hero_stats
+   rank_screenshots       + rank_modifiers + rank_sr
+   unknown_screenshots                                  ← source of truth (1 row per screenshot)
       │
       │  (read time: pkg/app/aggregate.go::aggregateAll bulk-loads,
       │   groups by match_key, folds via mergeMatchResult)
@@ -236,55 +228,57 @@ SQLite per-type tables:
    MatchRecord
       │
       ├──→ Wails GetMatchResults() ──→ Vue UI (App.vue)
-      │
       └──→ metrics.Collector reads on every Prometheus scrape ──→ Grafana
 ```
 
-**SQLite is the source of truth.** The raw per-screenshot rows are
-preserved verbatim — aggregation (folding multiple screenshots into one
-match) happens at read time, so a wrong scalar from one screenshot can
-be corrected later by adding another screenshot to the match. The
-Prometheus collector reads via the same aggregator on every scrape;
-filters (e.g. competitive-only) live at the metrics boundary in
-`pkg/metrics/metrics.go::Collect`, **not** in the parser or DB — so
-quickplay matches are visible in the Wails UI but never reach Grafana.
+**SQLite is the source of truth.** The raw per-screenshot rows are preserved verbatim — aggregation (folding multiple screenshots into one match) happens at read time, so a wrong scalar from one screenshot can be corrected later by adding another screenshot to the match. The Prometheus collector reads via the same aggregator on every scrape; filters (e.g. competitive-only) live at the metrics boundary in `pkg/metrics/metrics.go::Collect`, **not** in the parser or DB — so quickplay matches are visible in the Wails UI but never reach Grafana.
 
-## How match aggregation works (the hard part)
+### Schema (3NF, 10 tables)
 
-A single match produces 3-5 screenshots (SUMMARY, TEAMS, PERSONAL ×N
-heroes, optional rank screen). Each populates a disjoint subset of
-fields on `parser.MatchResult`. The pipeline splits into two halves:
+Five **parent** tables (one per screenshot type) plus five **child** tables for the repeating-group fields:
 
-**Write path** (`pkg/app/parse.go`, `pkg/app/correlation.go`): each
-screenshot is OCR'd and inserted into its own per-type table
-(`UpsertSummary`, `UpsertScoreboard`, `UpsertPersonal`, `UpsertRank`,
-`UpsertUnknown`). The new row's `match_key` is resolved by
-`resolveMatchKey`, which scans every parent table for an existing
-screenshot to adopt the key from:
+| Parent | Children |
+|---|---|
+| `summary_screenshots` (scalar SUMMARY fields + 6 inlined `perf_*` columns) | `summary_heroes_played` (hero, percent_played, play_time) |
+| `scoreboard_screenshots` (E/A/D + damage/healing/mit + map/mode/hero) | `scoreboard_hero_stats` (hero, stat_key, stat_value) |
+| `personal_screenshots` (hero only) | `personal_hero_stats` (hero, stat_key, stat_value) |
+| `rank_screenshots` (rank/level/progress/change/result) | `rank_modifiers` (modifier), `rank_sr` (hero, sr, change) |
+| `unknown_screenshots` (no domain fields) | *(none)* |
 
-1. **EAD-signature match** — any existing scoreboard with the same
-   non-zero `(eliminations, assists, deaths)` and no `(map, hero)`
-   conflict. Bridges in-game scoreboard ↔ post-match summary.
-2. **Timestamp-window match** — any existing screenshot within
-   `mergeWindow` (2 min) with no signature conflict. Closest-in-time
-   wins — handles a PERSONAL screenshot landing between two adjacent
-   SUMMARY windows.
-3. **Fresh key** — `match:<earliest-filename-ts>`, or
-   `unmatched:<filename>` for files without a parseable timestamp.
+Each parent has `id INTEGER PK AUTOINCREMENT`, `filename TEXT UNIQUE`, `match_key TEXT NOT NULL`, and `parsed_at DATETIME DEFAULT CURRENT_TIMESTAMP`. Children reference their parent with `ON DELETE CASCADE` and have a composite PK that prevents duplicate fold-ins on re-parse. **`NewSQLStore` must `PRAGMA foreign_keys = ON`** — SQLite parses the CASCADE rules but only enforces them when this pragma is set on every connection.
 
-Re-parsing the same filename triggers `ON CONFLICT(filename) DO UPDATE`
-on the parent (children are DELETE-then-INSERT inside the same
-transaction; `PRAGMA foreign_keys = ON` makes the cascade reliable).
-The Parse button is idempotent — re-clicking replaces rows in place,
-no duplicates.
+**Derived fields are not stored.** `role` is computed from `hero` via `parser.HeroRole`, `type` from `map` via `parser.MapType`; both lookups hit the YAML-derived in-memory tables (`pkg/parser/heroes.yaml`, `pkg/parser/maps.yaml`). Storing them would be a 3NF violation (transitive dependency) and would surface as "row A says juno=support but row B says juno=dps" inconsistencies after a YAML change.
 
-**Read path** (`pkg/app/aggregate.go::aggregateAll`): one bulk SELECT per
-table reads every row across the 5 parents, attaches child rows, groups by
-`match_key`, sorts each group by `(filename-timestamp asc, parsed_at
-asc)`, and folds via `mergeMatchResult` — the same "first non-empty
-wins" precedence the old destructive merge used, just running on the
-read side now. `role` (from hero) and `type` (from map) are resolved
-on the fly via `parser.HeroRole` / `parser.MapType`, never stored.
+### Write path (per screenshot, inside one `BEGIN…COMMIT`)
+
+1. `screenshotType()` classifies the parse result and dispatches to one of `UpsertSummary` / `UpsertScoreboard` / `UpsertPersonal` / `UpsertRank` / `UpsertUnknown`.
+2. **`resolveMatchKey()`** scans every parent table for an existing screenshot to adopt the key from:
+   - **EAD-signature match** — any existing scoreboard with the same non-zero `(eliminations, assists, deaths)` and no `(map, hero)` conflict. Bridges in-game scoreboard ↔ post-match summary.
+   - **Timestamp-window match** — any existing screenshot within `mergeWindow` (2 min) with no signature conflict. Closest-in-time wins — handles a PERSONAL screenshot landing between two adjacent SUMMARY windows.
+   - **Fresh key** — `match:<earliest-filename-ts>`, or `unmatched:<filename>` for files without a parseable timestamp.
+3. Parent UPSERT via `ON CONFLICT(filename) DO UPDATE SET … RETURNING id` — `parsed_at` is intentionally **not** in the SET clause so the first-insert timestamp survives re-parses.
+4. `DELETE FROM <child> WHERE <parent>_id = ?` to wipe stale children, then `INSERT INTO <child> …` for every new child row.
+
+The DELETE-then-INSERT (instead of UPSERT) for children is deliberate: each child PK is a composite `(parent_id, hero[, stat_key])`, and a re-parse that drops a hero from `HeroesPlayed` must wipe that hero's old row — UPSERT alone wouldn't remove it. Idempotent: re-clicking Parse replaces rows in place, no duplicates.
+
+### Read path (`pkg/app/aggregate.go::aggregateAll`)
+
+One bulk SELECT per parent + one per child table — every table is hit exactly once per call (called from `GetMatchResults` and on every Prometheus scrape, so no N+1 risk). Child rows attach to parents by id, parents re-key by `match_key`, each group sorts by `(filename-timestamp asc, parsed_at asc)`, and `mergeMatchResult` folds via "first non-empty wins". `role` and `type` are resolved on the fly via `parser.HeroRole` / `parser.MapType`, never stored.
+
+### DB location + identity
+
+| OS | Path |
+|---|---|
+| macOS | `~/Library/Application Support/Recall/db/recall.db` |
+| Linux | `~/.config/recall/db/recall.db` (or `$XDG_CONFIG_HOME/recall/db/`) |
+| Windows | `%AppData%\Recall\db\recall.db` |
+
+Resolved by `appDataDir()` in `pkg/app/settings.go`. Match identity is `match_key` (string) — **no integer `id`** on the API surface. Per-source-file screenshot type is the parent table the row lives in (no separate `source_types` column); `MatchRecord.SourceTypes` is built at aggregate time from each row's parent table name.
+
+### Adding a field
+
+- **New parser scalar** → `ALTER TABLE … ADD COLUMN` in `schemaStatements` (idempotent — "duplicate column" errors tolerated), add the field to the matching `*Row` struct in `pkg/db/store.go`, add it to the Upsert SET clause.
+- **New repeating-group dimension** → new child table referencing the right parent with `ON DELETE CASCADE`.
 
 ## Per-screenshot-type parsers (`pkg/parser/`)
 
@@ -326,83 +320,6 @@ CGo binding.
   fails to read PNG files at `/tmp/...` paths but works at `/private/tmp/...`.
   Affects debug runs only — production uses `os.MkdirTemp`.
 
-## Database layer (`pkg/db/db.go`)
-
-Ten tables in 3NF: five **parent** tables (one per screenshot type) plus
-five **child** tables for the repeating-group fields:
-
-| Parent | Children |
-|---|---|
-| `summary_screenshots` (scalar SUMMARY fields + 6 inlined `perf_*` columns) | `summary_heroes_played` (hero, percent_played, play_time) |
-| `scoreboard_screenshots` (E/A/D + damage/healing/mit + map/mode/hero) | `scoreboard_hero_stats` (hero, stat_key, stat_value) |
-| `personal_screenshots` (hero only) | `personal_hero_stats` (hero, stat_key, stat_value) |
-| `rank_screenshots` (rank/level/progress/change/result) | `rank_modifiers` (modifier), `rank_sr` (hero, sr, change) |
-| `unknown_screenshots` (no domain fields) | *(none)* |
-
-Each parent has `id INTEGER PK AUTOINCREMENT`, `filename TEXT UNIQUE`,
-`match_key TEXT NOT NULL`, and `parsed_at DATETIME DEFAULT
-CURRENT_TIMESTAMP`. Each child references its parent with
-`ON DELETE CASCADE` and has a composite PK that prevents duplicate
-fold-ins on re-parse. **`NewSQLStore` must `PRAGMA foreign_keys = ON`**
-— SQLite parses the CASCADE rules but only enforces them when this
-pragma is set on every connection.
-
-**Derived fields are not stored.** `role` is computed from `hero` via
-`parser.HeroRole`, `type` from `map` via `parser.MapType`; both lookups
-hit the YAML-derived in-memory tables (`pkg/parser/heroes.yaml`,
-`pkg/parser/maps.yaml`). Storing them would be a 3NF violation
-(transitive dependency) and would surface as "row A says juno=support
-but row B says juno=dps" inconsistencies after a YAML change.
-
-**Write path** (per screenshot, inside one `BEGIN…COMMIT`):
-
-1. Parent UPSERT via `ON CONFLICT(filename) DO UPDATE SET … RETURNING id` —
-   note `parsed_at` is intentionally **not** in the SET clause so the
-   first-insert timestamp survives re-parses.
-2. `DELETE FROM <child> WHERE <parent>_id = ?` to wipe stale children.
-3. `INSERT INTO <child> …` for every new child row.
-
-The DELETE-then-INSERT (instead of UPSERT) for children is deliberate:
-each child PK is a composite `(parent_id, hero[, stat_key])`, and a
-re-parse that drops a hero from `HeroesPlayed` must wipe that hero's
-old row — UPSERT alone wouldn't remove it.
-
-**Read path** (`pkg/app/aggregate.go`): one SELECT per parent table and
-one per child table, grouped by parent id, then re-keyed by `match_key` and
-folded via `mergeMatchResult`. No N+1 query risk — every table is hit
-exactly once per `aggregateAll` call (called from `GetMatchResults` and
-on every Prometheus scrape).
-
-Adding a new parser scalar field: add an `ALTER TABLE … ADD COLUMN`
-statement (idempotent — "duplicate column" errors are tolerated) to
-the appropriate parent table, plus the field on the matching `*Row`
-struct in `pkg/db/store.go`, plus the Upsert SET clause. Adding a new
-repeating-group dimension: a new child table referencing the right
-parent with `ON DELETE CASCADE`.
-
-The DB lives at `<appDataDir>/db/recall.db` where `appDataDir()` in `pkg/app/settings.go`
-resolves to the platform user-config directory:
-
-| OS | Path |
-|---|---|
-| macOS | `~/Library/Application Support/Recall/db/recall.db` |
-| Linux | `~/.config/recall/db/recall.db` (or `$XDG_CONFIG_HOME/recall/db/`) |
-| Windows | `%AppData%\Recall\db\recall.db` |
-
-Match identity is `match_key` — string identity, **no integer `id`**
-on the API surface. The aggregator builds it on the fly from the parent
-tables; identity is derived from the earliest screenshot's filename
-timestamp (`match:2026-05-10T21:29:28`). Files without a parseable
-timestamp get `unmatched:<filename>`.
-
-Per-source-file screenshot type is the parent table the row lives in —
-no separate `source_types` column required. `MatchRecord.SourceTypes`
-is built at aggregate time from each row's parent table name.
-
-The `parsed_at` column is the row's first-insert time, not the match's
-time — match time comes from `date` + `finished_at` (SUMMARY) or the
-match_key timestamp prefix (fallback).
-
 ## Metrics layer (`pkg/metrics/metrics.go`)
 
 Custom `prometheus.Collector` whose `Collect()` reads SQLite via a
@@ -440,28 +357,7 @@ enable→disable→enable cycle constructs a fresh `Server`.
 - `SSEHub *SSEHub` — non-nil in server mode; the SSE hub that broadcasts
   `parse-complete` events to connected browser tabs.
 
-**Build-tag split** — methods that touch the Wails runtime live in separate files:
-
-| File | Tag | Contains |
-|---|---|---|
-| `pkg/app/app.go` | *(none)* | `App` struct + `New` / `NewWithStore` / `Startup` only (~130 lines). Wires settings, tesseract probe, DB, optional metrics + watcher startup. |
-| `pkg/app/settings.go` | *(none)* | `Settings` JSON type, `loadSettings` / `loadSettingsFrom` / `saveSettings`, `appDataDir` / `settingsPath` |
-| `pkg/app/tesseract.go` | *(none)* | `TesseractStatus`, `defaultTesseractPath`, `checkTesseract`, `parseTesseractVersion`, `Get/Set/ResetTesseractPath`, `validateTesseractPath`, `ErrInvalidTesseractPath` |
-| `pkg/app/watcher.go` | *(none)* | fsnotify lifecycle: `startWatching` / `stopWatching` / `runWatchEvents` / `scheduleParseDebounced`, `Get/SetWatchEnabled`, `watchDebounce` |
-| `pkg/app/metrics_lifecycle.go` | *(none)* | Prometheus server start/stop, `Get/SetPrometheusEnabled` |
-| `pkg/app/update.go` | *(none)* | `UpdateInfo`, `GetVersion`, `CheckForUpdate`, `Version` ldflag, `releasesURL` test seam |
-| `pkg/app/screenshots_dir.go` | *(none)* | `Get/SetScreenshotsDir`, `validateScreenshotsDir`, `safePathChars`, `ErrInvalidScreenshotsDir` |
-| `pkg/app/screenshot_handler.go` | *(none)* | HTTP handler at `/_screenshot/<filename>` |
-| `pkg/app/inference.go` | *(none)* | `scrapeReader` + the load-bearing `inferSoleHeroPercent` / `inferResultFromRank` read-time helpers |
-| `pkg/app/match_record.go` | *(none)* | `MatchRecord` type, `GetMatchResults`, `ClearDatabase`, `GetNewScreenshotCount` |
-| `pkg/app/correlation.go` | *(none)* | `mergeWindow`, `parseFilenameTimestamp`, `firstNonEmpty`, `mergeMatchResult`, `resolveMatchKey`, `matchByEAD`, `matchByTimestampWindow`, `snapshotExisting`, `rowsConflict`, `stringsConflict`/`intsConflict`, `unionSortedStrings` |
-| `pkg/app/aggregate.go` | *(none)* | `aggregateAll`, `aggregateScreenshots`, `foldGroup`, per-type `*ToView` adapters, `attachHeroStats` — read-time aggregation across the 5 parent/5 child tables |
-| `pkg/app/parse.go` | *(none)* | `ParseScreenshots` orchestration, `ParseProgressEvent`, `screenshotType` classifier, `insertParsed`, `flattenHeroStats` |
-| `pkg/app/app_wails.go` | `!serveronly` | `emitParseComplete` (wruntime.EventsEmit + SSEHub), `PickTesseractBinary`, `PickScreenshotsDir` |
-| `pkg/app/app_server.go` | `serveronly` | `emitParseComplete` (SSEHub only), stub errors for the two dialog methods |
-| `pkg/app/sse.go` | *(none)* | Exported `SSEHub` type with `Subscribe/Unsubscribe/Broadcast` |
-
-The split mirrors the existing test-file partition (`settings_io_test.go`, `tesseract_version_test.go`, `watch_events_test.go`, etc.) — production code and tests now have a 1:1 file-pair shape, so finding the implementation behind a test failure is a filename swap, not a grep.
+**File layout**: `ls pkg/app/*.go` — every file is named for its concern (e.g. `tesseract.go`, `watcher.go`, `correlation.go`, `aggregate.go`); production code and tests are 1:1 sibling files (`watcher.go` ↔ `watch_events_test.go`). Two build-tag pairs: `app_wails.go` / `app_server.go` for the dialog methods + event-emit shim, and `pkg/parser/exec_other.go` / `exec_windows.go` for the `HideWindow` shim.
 
 **Wails-bound methods (called from Vue via `wailsjs/go/app/App`)**:
 `ParseScreenshots`, `GetMatchResults`, `GetScreenshotsDir`,
@@ -496,127 +392,12 @@ browsing.
 `/_screenshot/<filename>` from the configured screenshots dir — used by
 both the Wails `AssetServer.Handler` and the server-mode HTTP mux.
 
-## Frontend (`frontend/src/App.vue`)
+## Frontend
 
-**Style layout.** App.vue's `<script>` and `<template>` live in the SFC
-(~890 lines combined). Component-specific styles live in each leaf
-SFC's own `<style scoped>` block (Vue scoping rewrites every selector
-with a `[data-v-<hash>]` attribute, so the rule only matches elements
-in that component's template). Cross-cutting / shared styles —
-custom properties, font-faces, theme overrides, the `.btn` family,
-`.badge` family, `.chev`, `.length`, `.clickable`, shared empty-state
-selectors, `.section-*` / `.setting-*` / `.settings-*` (used across
-Settings + Ingest + Unknown views), `.slot-chip` / `.slot-dot`
-(shared between MatchCard's sources-coverage strip and
-UnknownMapsView's slot row), and `.source-name` / `.source-file` /
-`.source-preview` family (shared between MatchCard and
-UnknownMapsView) — stay in `frontend/src/styles/app.css` (~1 850
-lines, down from ~3 700). When migrating a new rule to scoped, check
-all eight component templates first; if more than one references the
-class, leave it in `app.css`. Theme overrides in a scoped block need
-`:global([data-theme="light"])` so the selector pierces the scope
-hash. @keyframes defined in a scoped block get their NAME hashed, so
-animations referenced from multiple components must live in
-`app.css` (`pulse-dot` is the canonical example — referenced by
-ParseProgressPanel + IngestView).
-
-Pure helpers (date formatting, screenshot-type detection, hero sorting,
-etc.) live in `frontend/src/match-helpers.ts` so they can be unit-tested
-in isolation via Vitest. Stateful logic is extracted into composables under
-`frontend/src/composables/`: `useTheme` / `useWeekStart` /
-`useIncludeUndated` (persisted-preference composables — all follow the
-same shape: `ref(default)` + `setX(next)` that writes localStorage +
-`onMounted` reader. Add new prefs by copying one; mountApp's
-`MountOverrides` seeds the matching localStorage key for SFC tests),
-`useFilterPanel` (popover open/close, ESC/outside-click),
-`useMatchFilters` (all 7 filter refs + the optional `includeUndated`
-ref, date range, sort, filtered/sorted computeds — the most complex
-and highest-test-ROI module), `useMatchGrouping` (Month→Week→Day tree
-plus expand state). Shared UI is in
-`frontend/src/components/`: `MatchCard`, `FilterRail`, `ParseProgressPanel`,
-`MatchGroupSection`, plus the four top-level view tabs — `SettingsView`,
-`IngestView`, `MatchesView`, `UnknownMapsView`. App.vue is now a router-
-shell: masthead, modals, cross-cutting state (records, expand/preview
-maps, composable instances), then four `<XxxView v-if="view === '…'" />`
-mounts that receive props and bubble events back via `emit('go-to-view',
-…)` etc. Per-card UI state (expand, sources, preview) lives in App.vue
-and is passed to MatchesView + UnknownMapsView via the `CardStateApi`
-bundle exported from MatchesView.vue so both views share it without
-forking.
-When adding a new pure helper that takes plain inputs and returns plain
-outputs, add it to `match-helpers.ts` with a Vitest case; stateful logic
-goes in a new composable under `composables/`. Don't define either inside
-the SFC's `<script setup>`. SFC-level tests use `@vue/test-utils`'s
-`mount()` via the `mountApp(overrides?)` helper in
-`frontend/src/test-utils/mountApp.ts`, which `vi.doMock`s `./api` so the
-Wails/fetch shim never fires during mount. `App.test.ts` shows the
-pattern: each test calls `await mountApp({ records: [...] })` then
-asserts on the wrapper's rendered DOM. The entire frontend is TypeScript (`allowJs: false`);
-ESLint uses `typescript-eslint` (`tseslint.config()` in `eslint.config.js`)
-with `parserOptions.parser: tseslint.parser` wired in for `.vue` files.
-Template access to `Record<string, Ref<string[]>>` filter state goes through
-`filterList(field)` / `filterSearchStr(field)` helpers to satisfy
-`noUncheckedIndexedAccess` without littering the template with `!` or `??`.
-
-Vue 3 + composition API. No router, no Vuex/Pinia — App.vue is the
-router-shell (masthead + modals + cross-cutting state) that mounts one
-of four view SFCs at a time (see the components list above). State
-concerns owned by App.vue and passed down via props/emits:
-
-- **Nav** — four tabs in workflow order: **Settings (01)** (directories
-  - appearance + calendar/first-day-of-week), **Ingest (02)** (engine /
-  parse / export / data),
-  **Matches (03)** (default landing tab), **Unknown (04)** (triage). The
-  view ref defaults to `'matches'`; the numbering communicates the user
-  flow, not tab order of importance. Settings and Ingest both wear
-  `class="settings"` for shared layout but Ingest gets the modifier
-  `ingest-view` so the Futura font scope (`.settings:not(.unknown-view,
-  .ingest-view)`) stays on the actual Settings tab.
-- **Filters**: multi-select popovers (mode/map/type/role/hero/result) +
-  date range inputs + sort dir. Each filter field is a `ref([])` — empty
-  array = no filter, multiple entries = union (OR logic). `filterRefs`
-  maps field name → ref so `toggleFilter(field, value)` and card badge
-  clicks share one handler that toggles array membership. `openFilter`
-  tracks which popover is currently open (one at a time); outside-click
-  and ESC close it via document-level listeners registered in `onMounted`.
-- **Hero filter** matches primary (`data.hero`) OR any secondary in
-  `data.heroes_played[]` against the full set of selected heroes — so
-  picking Juno + Kiriko surfaces matches where either was played, even as
-  a second-fiddle. Same union logic powers the `heroes` computed.
-- **Date filter** only matches rows with explicit `date + finished_at`
-  (no `match_key` fallback), so undated rows are correctly excluded
-  from date-windowed views — matching the card UI's behavior of not
-  showing a timestamp for them.
-- **Settings page**: three sections in `SettingsView.vue` — Directories
-  (screenshots folder picker), Appearance (Day/Night theme toggle),
-  Calendar (Sun/Mon first-day-of-week toggle). All persisted via the
-  useTheme / useWeekStart / useIncludeUndated composable family. Engine /
-  Watch / Parse / Prometheus knobs moved to the **Ingest** tab during the
-  view extraction.
-- **Tesseract gate**: `tesseractReady` computed drives a System Alert
-  banner and disables Parse/Watch controls when the OCR engine isn't
-  found. `GetTesseractStatus` / `SetTesseractPath` / `PickTesseractBinary`
-  / `ResetTesseractPath` are the four Wails-bound methods for engine config.
-- **Unknown Maps view**: records where `data.map` is absent surface in a
-  separate Unknown Maps page via the `unknownRecords` computed. Per-card
-  UI state (expand, sources, preview) is shared with the Matches view via
-  the `CardStateApi` bundle exported from `MatchesView.vue` — App.vue
-  owns the underlying refs, both views consume them through one prop.
-- **Per-card expand state** + per-source-file image preview state (each
-  in a plain object, reassigned on toggle for Vue reactivity).
-  `screenshotURL(filename)` returns `/_screenshot/<encoded>` which the
-  Wails AssetServer (or server-mode mux) serves via `ScreenshotHandler()`.
-- **Event subscription**: `EventsOn('parse-complete', load)` on mount,
-  `EventsOff` on unmount — auto-refreshes the records list after the
-  watcher fires an auto-parse.
-- **Custom fonts are loaded via `local()` first.** `frontend/src/style.css`
-  registers three OW typefaces (`Big Noodle Too Oblique` for hero/map
-  names, `Futura No. 2 Demi` for the Settings tab, `OW Wordmark` for the
-  RECALL masthead) with a fallback chain: licensed `local()` lookup →
-  bundled `./assets/fonts/*.woff2` (drop-in slot for the licensed files)
-  → Google Fonts free lookalikes loaded via `index.html` (Barlow
-  Condensed italic, Jost, Russo One). Keep all three layers when
-  reworking the font stack.
+Lives in `frontend/`. Auto-discovered nested `frontend/CLAUDE.md` carries
+the Vue/CSS/composables/a11y/Vitest/Playwright/bundle-budget context.
+Cross-boundary concerns (the `api.ts` / `/api/*` contract, build wiring,
+`//go:embed all:frontend/dist`) stay in this file's Conventions section.
 
 ## Bundled observability stack
 
@@ -655,11 +436,7 @@ Nine workflows:
 | `labels.yml` | Push to `main` (paths: `.github/labels.yml`, `.github/workflows/labels.yml`) + `workflow_dispatch` | Syncs the repo's labels to match `.github/labels.yml` (declarative source of truth — Conventional Commits types + triage standard + project-specific). Uses `EndBug/label-sync@v2`. `delete-other-labels: false` by default so manually-added UI labels survive each run; the `workflow_dispatch` form exposes a boolean input to flip that to `true` for an occasional cleanup pass. |
 | `pages.yml` | Push to `main` (paths: `api/openapi.yaml`, `docs/**`, `book/**`, `testdata/**`, `pages.yml` itself) + `workflow_dispatch` | Two artifacts: (1) the user-docs **book** built with Honkit from `book/` plus the eleven `docs/*.md` chapters (`install-{macos,linux,windows}`, `how-it-works`, `settings-reference`, `filtering`, `unknown-screenshots`, `server`, `docker`, `grafana`, `feedback`) staged in at build time, plus a `testdata/` mirror so the example-screenshot images in `how-it-works.md` resolve via the same relative path the README uses — lands at the Pages root <https://sound-barrier.github.io/recall/>; (2) the **Swagger UI** rendering of `api/openapi.yaml` at <https://sound-barrier.github.io/recall/api/>, linked from the book's sidebar. When adding a new chapter, update `book/SUMMARY.md`, the workflow's "Stage book build directory" cp list, AND the Makefile's `pages-build` target's cp list in lock-step. Honkit pin lives in the workflow's `HONKIT_VERSION` env. **One-time setup:** Repo Settings → Pages → Source = "GitHub Actions" (the workflow can't flip this itself; missing it surfaces as `Get Pages site failed`). |
 | `release-please.yml` | Push to `main` | Reads Conventional Commits since the last tag, opens/updates a Release PR that bumps `.release-please-manifest.json` + regenerates `CHANGELOG.md`. Merging the PR creates a `vX.Y.Z` tag which fires `release.yml`. Override the computed version with a `Release-As: X.Y.Z[-suffix]` footer in any commit on `main` — useful for one-off prereleases (the hyphenated suffix is what makes GitHub flag the Release as prerelease). Shortcut: `make release-beta VERSION=…`. Full procedure in [RELEASES.md](RELEASES.md). **Authoring identity:** release-please is configured with a PAT (not `GITHUB_TOKEN`), so the PR is authored under the maintainer's account, not `github-actions[bot]`. That has two consequences: `pull_request` workflows (CI, pr-compliance, etc.) DO trigger on the release PR; and bot-login-based exemptions need a branch-name fallback (`startsWith(head.ref, 'release-please--')`) to recognise it. |
-| `release.yml` | `v*` tags | Builds and publishes release artifacts — see detail below. |
-
-### `release.yml` detail
-
-Triggered on `v*` tags (push) and on `workflow_dispatch` (manual fallback for when release-please's `GITHUB_TOKEN`-authored tag failed to chain — `make release-fire TAG=…`). Parallel jobs: `build-docker` (Linux + Windows Wails apps + all server binaries via Docker; packages Linux binaries as `.tar.gz` and `.deb` installing to `/usr/local/bin/`), `build-mac` (macOS Wails arm64 `.app` bundle wrapped in a `.dmg` via `hdiutil`, requires Apple runner), `sbom` (generates `recall-{version}-sbom.spdx.json` via `anchore/sbom-action` — SPDX JSON covering Go modules + npm packages), `publish-container` (builds `server-container` stage and pushes to `ghcr.io/<owner>/recall-server`: every tag publishes the exact `:{{version}}`; rolling `:{{major}}.{{minor}}` and `:latest` only push on stable releases — prerelease tags (those with a hyphen, e.g. `v0.1.0-beta.0`) are guarded by `enable=${{ !contains(github.ref_name, '-') }}` so `docker pull recall-server:latest` always lands on a non-prerelease build. See [RELEASES.md](RELEASES.md) → "Stable vs. prerelease at a glance" for the full matrix. GHCR only, not attached to the release; attempts to set visibility to public via API with `continue-on-error` — `GITHUB_TOKEN` lacks the `write:packages` OAuth scope for visibility changes, so the package must be set public once manually via GitHub Package settings. **Image signing**: after push, every tag is signed with `sigstore/cosign-installer@v3` + `cosign sign --yes` using keyless OIDC — the workflow's GitHub Actions identity is the signing identity (no long-lived keys). Signing is by digest (`${tag%:*}@${DIGEST}`), not tag, so a tag re-point cannot accidentally invalidate the signature. Requires `id-token: write` on the publish-container job. Users verify with `cosign verify ghcr.io/sound-barrier/recall-server:<tag> --certificate-identity-regexp 'https://github.com/sound-barrier/recall/\.github/workflows/release\.yml@refs/tags/v.*' --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'` — full recipe in [docs/docker.md](docs/docker.md) → "Verifying the image"), and `release` (waits on `build-docker` + `build-mac` + `sbom`; generates a per-artifact `<filename>.sha256` file for every binary and package — not for the SBOM; uploads all to GitHub Releases). All release artifacts embed the tag version in their filename: `recall-{version}-linux-amd64.tar.gz`, `recall-{version}-darwin-arm64.dmg`, etc. (`v` prefix stripped from the tag). GHCR auth uses `secrets.GITHUB_TOKEN` — no PAT needed; workflow permissions must include `packages: write`.
+| `release.yml` | `v*` tags | Builds and publishes release artifacts. Per-job breakdown, GHCR tag matrix, cosign signing details, and the `workflow_dispatch` fallback recipe live in [RELEASES.md](RELEASES.md) → "`release.yml` jobs". |
 
 ## Documentation audiences
 
@@ -722,24 +499,6 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux,windows}.md#
 
 - **Third-party GitHub Actions are SHA-pinned with a `# vX.Y.Z` comment** — `scripts/check-action-pins.sh` enforces it from `make lint-actions`, the lefthook `pre-push.actionlint` block, and the CI lint job. Tag-pinned refs are rejected. Pattern: `uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4` (two spaces before the `#` to satisfy yamllint). First-party composite actions (`./.github/actions/foo`) are exempt. Dependabot understands the SHA + comment format and bumps both fields together. Resolve a new SHA with `gh api repos/<owner>/<repo>/commits/<tag> --jq .sha`. See CONTRIBUTING.md → "Pinning GitHub Actions" for the contributor-facing rules.
 
-- **`npx vitest` / `npm run *` must run from `frontend/`.** Bash invocations start at repo root and Vite resolves `vitest.config.ts` from cwd, so running from elsewhere errors with a misleading "Install @vitejs/plugin-vue to handle .vue files" even though the plugin IS installed. Use `cd frontend && …` or `npm --prefix frontend run …`. The `make` targets (`make test-frontend`, `make cover-frontend`) handle cwd automatically.
-
-- **This repo runs two test runners; each owns a disjoint file pattern.** Vitest reads `src/**/*.test.ts` (unit + composable + SFC tests via `mount()`). Playwright reads `frontend/tests/e2e/*.spec.ts` (real browser, axe-core a11y). Vitest's default discovery (`**/*.{test,spec}.ts`) WILL sweep in Playwright specs unless the include glob is pinned — loading a Playwright spec under Vitest crashes with `Playwright Test did not expect test.describe() to be called here`. Adding a new test runner (Cypress, contract tests, screenshot diff, …) means: pick a file extension or directory the existing runners don't claim, AND update `vitest.config.ts` `test.include` if needed to keep Vitest from picking it up.
-
-- **Refs inside a prop-passed object don't auto-unwrap.** Vue templates auto-unwrap top-level refs but stop at object depth, so when bundling a composable's return as a single prop (the `CardStateApi`, `FiltersApi` pattern in MatchesView), consumers must use `.value` on the inner refs: `cardState.previewOpen.value[filename]`, not `cardState.previewOpen[filename]`. The TypeScript prop types should declare these as `Ref<X>` (not the unwrapped shape) so vue-tsc catches misuse.
-
-- **`null` doesn't drop a Vue attribute the way you'd hope.** vue-tsc rejects `null` for boolean/Booleanish attrs (`:inert`, `:aria-hidden`, `:aria-pressed`). Use `undefined` to omit: `:inert="cond || undefined"`, `:aria-hidden="cond ? 'true' : undefined"`.
-
-- **Use `:where()` for UA-default resets that must not compete with existing class rules.** Promoting a `<span class="badge">` to a `<button class="badge">` brings back UA `appearance`/`background`/`border`/`padding`/`font` defaults. Wrap the overrides in `:where(button.badge, ...) { appearance: none; background: transparent; ... }` so specificity stays 0 and the existing `.badge` / `.badge.active` styles continue to win. Pattern lives in `MatchCard.vue`'s scoped `<style>` block (the reset targets MatchCard's chip buttons; lifted out of `app.css` during the per-component extraction).
-
-- **A clickable container that holds interactive chips cannot be `role="button"`.** Nesting interactive elements is invalid HTML and ARIA, and the outer `role="button"` strips keyboard reach from the inner chips. Pattern in MatchCard.vue: outer `<div class="match-header">` keeps `@click` for mouse convenience but has no role/tabindex; a dedicated `<button class="chev-btn" aria-expanded>` on the right is the keyboard expand affordance.
-
-- **`mountApp` exports `fireEvent(name, data?)`** for tests that need to drive a captured `EventsOn` handler (e.g., simulating `parse-complete` from the watcher or `parse-progress` mid-flight). Pair with `await flushPromises()` when the handler is async (most are — they call `load()`). See the `scoreboard pulse` tests in `App.test.ts`.
-
-- **happy-dom `document.activeElement` fails `.toBe(wrapper.find(...).element)`.** The two references serialize identically but the `.toBe` reference check fails (vitest reports "serializes to the same string"). Compare via `(document.activeElement as HTMLElement)?.id` or another attribute instead of element identity.
-
-- **Lefthook's frontend hooks (eslint/stylelint) routinely skip with "no files for inspection"** even when `frontend/src/**` is staged. Don't rely on the hook — run `cd frontend && npx eslint 'src/**/*.{ts,vue}'` and `npx stylelint 'src/**/*.{vue,css}'` manually after frontend edits. The full `make lint` and CI both catch issues; only the local pre-commit hook is unreliable for the frontend root-scoped commands.
-
 - **`httptest.NewRequest` + `NewRecorder` is the HTTP-handler test pattern.** Used in `pkg/cmd/server_test.go` (mux-level via the `get(t, mux, path)` / `post(t, mux, path, body)` helpers), `pkg/metrics/metrics_test.go` (collector), and `pkg/app/screenshot_handler_test.go` (single `http.Handler`). For App handlers, write the test in `package app` and mutate `a.settings.X` directly rather than calling `SetX` — the latter saves to the real on-disk `settings.json`. Gotcha: `httptest.NewRequest` parses+validates the URL at construction time and **panics** on malformed escapes like `%ZZ`. To exercise a handler's url.PathUnescape branch, build a syntactically-valid request first and then mutate `req.URL.Path` directly — the post-construction assignment skips re-validation. See `TestScreenshotHandler_RejectsMalformedURLEscape` for the exact recipe.
 
 - **Outbound HTTP gets a `var url = "..."` seam, not an injected `*http.Client`.** `pkg/app/update.go` exposes `releasesURL` as a package-level var so `pkg/app/check_for_update_test.go` can swap it for an `httptest.NewServer` URL without touching the real GitHub API. Mirrors the function-variable-seam guidance for single-method dependencies (see `parser.runTesseractFunc`). Same shape works for any package-level test mutation — `withVersion(t, "0.1.0-dev")` in the same file swaps the ldflags-injected `Version` for the test's scope. Pattern is `prev := X; X = newVal; t.Cleanup(func() { X = prev })` — keeps parallel tests safe and never leaves global state mutated across files.
@@ -757,18 +516,6 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux,windows}.md#
 - **Release-time shell logic lives in `scripts/release/`**, not inline in `release.yml`: `package-linux.sh` (Linux/Windows/macOS-server artifact staging), `make-dmg.sh` (macOS DMG wrapping), `sign-image.sh` (cosign keyless), `flip-package-public.sh` (GHCR visibility), `compute-sha256.sh` (per-artifact sha256 sidecar files). Each script reads its inputs from env vars set in the corresponding workflow step. Adding a release-time step that's more than a trivial one-liner: drop a new `scripts/release/*.sh` and call it from `release.yml`. The Makefile's `SHELL_SCRIPTS` glob covers `scripts/release/*.sh` so `make lint-shell` (which CI runs) catches shellcheck / shfmt issues.
 
 - **A workflow that "fails" doesn't block merge until it's marked as a required status check.** `pr-compliance.yml` fails the build when the PR description's CoC + license checkboxes aren't ticked, but the PR is still mergeable unless `PR Compliance / required-checkboxes` is added to Repo Settings → Branches → Branch protection rules → main → "Require status checks to pass before merging". Same shape as the `pages.yml` one-time-UI-setup ("Source = GitHub Actions") — invisible from inside the workflow, easy to forget when adding new merge-gating workflows. The `ci.yml` checks were promoted to required at repo setup time and have stayed required since; any new gate needs the same flip.
-
-- **The a11y suite forces `prefers-reduced-motion: reduce` via `page.emulateMedia()` in a `beforeEach`.** Without it, axe-core's color-contrast check samples mid-animation alpha — the `view-fade-in` keyframes ramp opacity 0→1 over 360ms, and axe runs before that completes, so legible colors get reported as failing. Setting `use.reducedMotion: 'reduce'` in `playwright.config.ts` does NOT work as of Playwright 1.60: the project-level `use: { ...devices['Desktop Chrome'] }` shadows it, and re-asserting it inside the project still doesn't propagate. `page.emulateMedia()` in a `beforeEach` is the only reliable lever. Any new a11y spec must do the same — accessibility audits should run in reduced-motion mode so animations can't mask issues.
-
-- **`--text-faint` luminance was bumped to clear WCAG 2 AA on `--surface-3`.** Night `#6b6f7a → #878a96` (5.02:1 on surface-2, 4.74:1 on surface-3, 5.97:1 on bg). Day `#6f6a5e → #6a655a` (5.20:1 on surface-2, 4.72:1 on surface-3). When introducing new "faint" or "muted" greys, compute contrast against ALL of `--surface-2`, `--surface-3`, AND `--bg` — small UI text (≤14px non-bold) needs 4.5:1 against every surface it might land on, and the project's surfaces vary by ~0.4% luminance which is enough to flip a borderline color across the threshold.
-
-- **A11y patterns to mirror, not reinvent.** Modal dialogs: focus trap + Escape + return-focus + background `inert` is wired inline in App.vue (see `showUnsupportedModal` + `onModalKeydown` + the `watch(showUnsupportedModal, ...)`). Tablist: Arrow/Home/End automatic-activation in `onTabKeydown` over `TAB_ORDER`. Skip-link: `.skip-link` → `<main id="main-content" tabindex="-1">` with `focusMain` handler for browsers that don't move focus on hash navigation. Reduced-motion: a global `@media (prefers-reduced-motion: reduce)` block at the top of App.vue's styles collapses every animation/transition to 0.01ms. Tests for each in `App.test.ts`.
-
-- **knip project scope is `src/**/*.{ts,vue}`.** `@eslint/js` must stay in `ignoreDependencies` in `frontend/knip.config.ts`: typescript-eslint consumes it internally but doesn't ES-import it, so knip can't detect the usage. `@vitest/coverage-v8` does NOT need `ignoreDependencies` — vitest detects it via `coverage.provider: 'v8'` in `vitest.config.ts`. Run via `make dead-code-ts` or `cd frontend && npm run dead:ts`.
-
-- **TypeScript 6.x is blocked by `openapi-typescript`.** `openapi-typescript@7.x` declares `peer typescript: "^5.x"` and will cause `npm install` to fail with an `ERESOLVE` conflict if `typescript` is bumped to `^6.x`. Hold TypeScript at `^5.x` until `openapi-typescript` ships TS 6 support.
-
-- **`stylelint-config-standard` rejects BEM `--` modifiers** — `selector-class-pattern` only allows kebab-case, so `.foo--modifier` is invalid in `App.vue`. Use `.foo-modifier` instead for CSS class variants. Also require an empty line before every rule block (`rule-empty-line-before`), including `:hover` pseudo-selectors that follow a closing `}`. These are **errors**, not warnings — they fail `make lint` (`make: *** [lint-css] Error 2`). Most stylelint errors here (`value-keyword-case`, `rule-empty-line-before`, `comment-empty-line-before`) are autofixable: `cd frontend && npx stylelint --fix "src/**/*.{css,vue}"`.
 
 - **Adding a field to an existing Go struct** is a 2-step follow-up now: (1) update the struct + OpenAPI schema, (2) `make gen-types` to refresh `api.gen.d.ts`. `frontend/wailsjs/` is gitignored and regenerated by `wails build` at desktop-build time, so the old "edit `wailsjs/go/models.ts` by hand" step is gone. `api.ts` consumes the OpenAPI-generated types in `api.gen.d.ts` for both transport paths (Wails delegate + server-mode fetch), so the contract lives in one place. Devs who only run server mode (devcontainer, headless boxes) stay in sync without ever touching `wailsjs/`.
 
@@ -794,55 +541,13 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux,windows}.md#
   Skipping step 3 silently breaks server mode while Wails mode continues to work. The Wails bindings (`frontend/wailsjs/`) are gitignored and regenerated by `wails build` automatically — no manual step.
 - **The `_screenshot/<filename>` URL prefix** is reserved for the
   on-disk screenshots handler. Don't reuse it for other dynamic assets.
-- **HTTP array responses initialize to `make([]T, 0)`, never `var x []T`.**
-  A nil slice JSON-marshals to `null`, which violates any OpenAPI
-  `type: array` declaration and fails schemathesis's
-  `response_schema_conformance` check in CI. `aggregateAll` in
-  `pkg/app/aggregate.go` (and the per-table loaders in `pkg/db/store.go`)
-  are the canonical examples. Same rule for any new `/api/*` endpoint
-  that returns a list.
-- **Bad client or config input is 4xx, not 5xx.** App-layer code returns
-  a typed sentinel error (e.g. `app.ErrInvalidScreenshotsDir`,
-  `fmt.Errorf("%w: ...", sentinel, ...)`); HTTP handlers use
-  `errors.Is` to map the sentinel to 400 and let other errors fall
-  through to 500. 5xx is reserved for unexpected internal failures —
-  anything reproducibly triggered by fuzzed or user-config input is a
-  4xx. Pattern established by the `/api/screenshots-dir` and `/api/parse`
-  handlers.
-- **Smoke-test the server with isolated HOME.** Running `recall-server`
-  from the repo root hits real user data: the default `ScreenshotsDir =
-  "screenshots"` resolves to `./screenshots` (which exists locally), and
-  settings + SQLite live under `$HOME/Library/Application Support/Recall/`
-  on macOS. To test fresh-install behavior without touching real data:
-  `HOME=/tmp/recall-smoke RECALL_SERVER_ADDR=127.0.0.1:7099 ./recall-server`
-  from a directory with no `./screenshots`. Clean up with `rm -rf
-  /tmp/recall-smoke/Library`.
+- **HTTP array responses initialize to `make([]T, 0)`, never `var x []T`** — a nil slice marshals to `null` which violates `type: array` and trips schemathesis's `response_schema_conformance` in CI. Canonical: `aggregateAll` + the per-table loaders in `pkg/db/store.go`.
+- **Bad client/config input is 4xx, not 5xx.** App layer returns a typed sentinel (`app.ErrInvalidScreenshotsDir`, `fmt.Errorf("%w: ...", sentinel, ...)`); HTTP handlers `errors.Is` it to 400, everything else falls through to 500. Reserve 5xx for unexpected internal failures; anything reproducibly triggered by user input is 4xx. Canonical handlers: `/api/screenshots-dir`, `/api/parse`.
+- **Smoke-test the server with isolated HOME** — `recall-server` from repo root hits real user data (`./screenshots` exists; settings + SQLite live in the platform user-config dir). For fresh-install behavior: `HOME=/tmp/recall-smoke RECALL_SERVER_ADDR=127.0.0.1:7099 ./recall-server` from a dir with no `./screenshots`. Clean up with `rm -rf /tmp/recall-smoke/Library`.
 - **`set -u` not `-e`** in shell scripts that should keep going after an
   individual failure (`verify-stack.sh` is the canonical example).
-- **`loading="lazy"` breaks `v-if`-inserted images** — browsers assign
-  zero viewport presence to `<img>` elements added to the DOM by `v-if`
-  (zero intrinsic dimensions at mount time), so the Intersection Observer
-  never fetches them. Any image that appears on an explicit user action
-  must omit `loading="lazy"` (or use `loading="eager"`).
-- **Read-time inference, not merge-time.** Some derived fields are filled
-  by helpers in `pkg/app/inference.go` (`inferSoleHeroPercent`,
-  `inferResultFromRank`) that run on the way *out* of the DB via
-  `GetMatchResults` and `scrapeReader` — never inside `mergeMatchResult`
-  or anywhere on the write/persistence path. Reason: storing the inferred value would
-  break the merge's first-non-empty-wins rule when a later screenshot
-  arrives with the real value (e.g. an inferred `result="victory"` from
-  SR change would block a SUMMARY's authoritative `result` from
-  overriding the stored value). New inference helpers belong on this
-  read-time path.
-- **Wails AssetServer custom routes need Middleware, not Handler, in
-  dev mode.** `assetserver.Options.Handler` only fires when the dev
-  proxy returns 404/405, but Vite's SPA fallback returns the bundled
-  `index.html` with `200 OK` for unknown routes — so any path-prefixed
-  handler (e.g. `/_screenshot/`) never runs and the browser receives
-  HTML labeled as the asset's content-type. The Wails desktop wiring
-  in `pkg/cmd/wails.go` registers `ScreenshotHandler` as a Middleware
-  that short-circuits before the proxy. Production builds work either
-  way; only `wails dev` needs the middleware pattern.
+- **Read-time inference, not merge-time.** Derived helpers in `pkg/app/inference.go` (`inferSoleHeroPercent`, `inferResultFromRank`) run on the way *out* via `GetMatchResults` / `scrapeReader` — never inside `mergeMatchResult` or anywhere on the write path. Storing an inferred value would block a later screenshot's real value from winning the first-non-empty-wins fold (e.g. inferred `result="victory"` from SR change would shadow a SUMMARY's authoritative `result`). New inference helpers belong on the read-time path.
+- **Wails AssetServer custom routes need Middleware, not Handler, in dev mode.** `assetserver.Options.Handler` only fires on 404/405, but Vite's SPA fallback returns `index.html` with `200 OK` for unknown routes — any path-prefixed handler (e.g. `/_screenshot/`) never runs and the browser receives HTML labeled as the asset's content-type. `pkg/cmd/wails.go` registers `ScreenshotHandler` as a Middleware that short-circuits before the proxy. Production works either way; only `wails dev` needs middleware.
 - **`screenshotType(r)` must check E/A/D before hero stats.**
   Scoreboard parses populate both `r.Eliminations/Assists/Deaths` and
   `r.HeroesPlayed[*].Stats` (the right-side panel cards). A
@@ -853,54 +558,15 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux,windows}.md#
   responds. When probing routes via `curl` from a script, sleep at
   least 14 s after starting the dev server. Vite (`:5173`) is up
   faster but doesn't see custom handlers.
-- **Commits follow Conventional Commits *plus* the [Linux kernel
-  commit guidelines](https://www.kernel.org/doc/html/latest/process/submitting-patches.html#describe-your-changes).**
-  Conventional Commits governs the subject prefix
-  (`<type>(<scope>)?(!)?: <description>`, allowed types: `feat`,
-  `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `build`,
-  `ci`, `revert`, `style`) and is enforced by lefthook's
-  `commit-msg` hook. Kernel style governs everything below: subject
-  ≤ 72 chars in imperative mood with no trailing period, blank line,
-  body wrapped at 72 chars explaining *why* not *what*, kernel-style
-  trailers (`Fixes: <sha> ("subject")`, `Reported-by:`,
-  `Reviewed-by:`, `Signed-off-by:`, `Co-Authored-By:`) at the bottom.
-  One logical change per commit. `release-please` reads the
-  Conventional prefix to compute version bumps + regenerate
-  `CHANGELOG.md`. Bypass once with `LEFTHOOK_EXCLUDE=conventional
-  git commit …`. See CONTRIBUTING.md → "Pre-commit hooks (lefthook)"
-  for the full example.
-- **Bundle-size budget is enforced in CI.** Four limits in `ci.yml` step "Enforce bundle-size budget": initial JS chunk < 130 KB, initial CSS chunk < 80 KB, total assets/ JS < 250 KB, total CSS < 120 KB. The four view components (Matches, Ingest, Settings, Unknown) are lazy-loaded via `defineAsyncComponent` in App.vue so each emits its own Vite chunk and only the masthead/router-shell code counts toward the initial budget — `App.lazy-views.test.ts` is the regression guard against a refactor that converts a view back to a static `import`. Bump the budgets explicitly when a real feature needs the room — current state: ~103 KB initial JS / ~65 KB initial CSS / ~165 KB total JS / ~80 KB total CSS.
-- **Vue 3 ref auto-unwrapping in templates** — in `<script setup>`, refs
-  are auto-unwrapped at the template top level: `myRef` in a template
-  expression already equals `myRef.value`. Writing `myRef.value[key]` in a
-  template therefore double-unwraps and returns `undefined` silently.
-  Always access `.value` inside a wrapper function in TypeScript, then call the
-  function from the template.
-- **User-controlled paths from HTTP go through a boundary validator
-  before reaching `exec.Command` / `os.Stat`.** `validateScreenshotsDir`
-  in `pkg/app/screenshots_dir.go` and `validateTesseractPath` in
-  `pkg/app/tesseract.go` are the canonical
-  examples: shared `safePathChars` regex + `filepath.Clean` equality +
-  return the cleaned value so the *sanitized* form is what downstream
-  syscalls see (not the raw input). This is the pattern CodeQL's
-  `go/command-injection` and `go/path-injection` rules recognize as a
-  sanitizer. New HTTP endpoints that accept a filesystem path must
-  follow the same shape — re-use `safePathChars` so the regex stays
-  permissive enough for Windows `Program Files (x86)\…` paths and
-  usernames with apostrophes/parens.
+- **Commits**: Conventional Commits prefix (`feat` `fix` `chore` `docs` `refactor` `test` `perf` `build` `ci` `revert` `style`) enforced by lefthook's `commit-msg` hook + Linux kernel style for the body (subject ≤ 72 chars imperative no-period, body wrapped at 72 explaining *why* not *what*, kernel-style trailers). One logical change per commit. release-please reads the prefix for version bumps. Bypass once with `LEFTHOOK_EXCLUDE=conventional`. Full example in CONTRIBUTING.md → "Pre-commit hooks (lefthook)".
+- **User-controlled paths from HTTP go through a boundary validator before reaching `exec.Command` / `os.Stat`.** Canonical: `validateScreenshotsDir` (`pkg/app/screenshots_dir.go`) + `validateTesseractPath` (`pkg/app/tesseract.go`) — shared `safePathChars` regex + `filepath.Clean` equality + return the cleaned value so the *sanitized* form reaches syscalls. CodeQL's `go/command-injection` + `go/path-injection` rules recognize this as a sanitizer. New path-accepting HTTP endpoints must reuse `safePathChars` so it stays permissive enough for Windows `Program Files (x86)\…` + usernames with apostrophes/parens.
 - **Windows Tesseract installer paths contain spaces and parens** —
   `defaultTesseractPath()` returns `C:\Program Files\Tesseract-OCR\…`
   or `C:\Program Files (x86)\Tesseract-OCR\…` on Windows. Any regex
   that constrains path strings must allow `()` or it'll reject the
   Windows default out of the box (one of the test cycles spent
   tracking this down — don't repeat).
-- **`gh workflow run --ref TAG` reads the workflow definition from
-  that ref.** A `workflow_dispatch:` trigger added later on `main`
-  is invisible to tags cut before the trigger landed — those refs
-  can't be fired manually, only re-pushed (destructive). Current
-  cutoff: `workflow_dispatch:` exists in `release.yml` from
-  `v0.0.12-beta.0` onward. [RELEASES.md](RELEASES.md) →
-  "When `release.yml` doesn't auto-fire" has the full procedure.
+- **`gh workflow run --ref TAG` reads the workflow definition from that ref.** A `workflow_dispatch:` added later on `main` is invisible to tags cut before — those can't be fired manually. `release.yml` has `workflow_dispatch:` from `v0.0.12-beta.0` onward. Procedure: [RELEASES.md](RELEASES.md) → "When `release.yml` doesn't auto-fire".
 - **NSIS installer** — `wails build -nsis` requires the `nsis` apt package in the Docker `windows-builder` stage so `makensis` is on PATH. `VIProductVersion` in `project.nsi` must be numeric `x.x.x.x`; strip pre-release suffix before injecting into `wails.json` (`0.0.10-beta.0` → `0.0.10` via `grep -oE '^[0-9]+\.[0-9]+\.[0-9]+'`, fallback `0.0.0` for `dev`). Output: `build/bin/${INFO_PROJECTNAME}-${ARCH}-installer.exe` (e.g. `Recall-amd64-installer.exe`). Default install path uses `$PROGRAMFILES64\${INFO_PRODUCTNAME}` (no company-name subfolder).
 - **Build provenance attestation** — `actions/attest-build-provenance@v2` requires `id-token: write` + `attestations: write` at the job level. Attest packaged artifacts (binaries) in the build jobs and sha256 files in the release job so the checksum verification chain is also signed. Users verify with `gh attestation verify <file> --repo sound-barrier/recall`. Does NOT replace Windows Authenticode — SmartScreen still warns without an EV certificate.
 - **cosign keyless image signing** — every GHCR tag pushed by `publish-container` is signed by `cosign sign --yes "${tag%:*}@${DIGEST}"`.
@@ -911,6 +577,6 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux,windows}.md#
   - Cosign pin lives in release.yml (`cosign-release: 'v2.4.1'`).
 - **`# hadolint ignore=DL4006`** — add above any Dockerfile `RUN` that contains a shell pipe (`|`); same pattern as the existing `# hadolint ignore=DL3008` used for unpinned apt packages.
 - **Quote every hex color in `.github/labels.yml`.** YAML 1.1 (which most parsers including EndBug/label-sync use) parses unquoted hex like `5319e7` as scientific notation (`5319 × 10^7`) and `008672` as an octal-style integer losing the leading zeros. Both fail label-sync's `color should be a string` validation. Always write `color: "008672"` — the quotes force string parsing regardless of what the hex digits happen to spell. Header comment in `labels.yml` calls this out for future editors.
-- **`actions/setup-go@v6` sets `GOTOOLCHAIN=local` on the runner** as a determinism guard, and that env var is inherited by every subsequent docker-based step (the runner passes its env into containers by default). Combined with this project's `go 1.26.x` directive in `go.mod`, any docker action whose bundled Go is older than 1.26 fails with `go: go.mod requires go >= 1.26.x (running go 1.23.x; GOTOOLCHAIN=local)`. Three fixes ranked by reliability: (a) install the tool via `go install …@vX.Y.Z` to use the runner's setup-go install (what the gosec job now does); (b) skip setup-go entirely for jobs that only call docker actions; (c) override with `env: GOTOOLCHAIN: auto` on the step. The first is what we do everywhere now — keep it that way.
+- **`actions/setup-go@v6` sets `GOTOOLCHAIN=local`** which subsequent docker steps inherit, so any docker action with bundled Go older than `go.mod`'s `go 1.26.x` fails (`go: go.mod requires go >= 1.26.x (running go 1.23.x; GOTOOLCHAIN=local)`). Fix: install the tool via `go install …@vX.Y.Z` to use setup-go's install — what the gosec job does. Do this everywhere; don't switch to `GOTOOLCHAIN: auto` or skip setup-go.
 - **Any CI job that loads the root `main` package must first satisfy `//go:embed all:frontend/dist`.** `assets.go` embeds the Vite build output; on a fresh runner `frontend/dist/` doesn't exist and `go build` / `go list` / `gosec` / any other Go-source-loader fails with `pattern all:frontend/dist: no matching files found`. Use the `.github/actions/prepare-frontend-dist` composite action with `real-assets: 'true'` (real Vite bundle, ~30s — for e2e, coverage, bundle-size jobs) or `real-assets: 'false'` (cheap stub — for gosec, deadcode, CodeQL Go analysis). Ad-hoc inline `mkdir -p frontend/dist` or `cd frontend && npm ci && npm run build` invocations are forbidden — every new Go-loading job calls the composite.
-- **release-please / dependabot / web-UI-merge commit identity comes from the GitHub account's primary email, NOT from anything in the repo.** `release-please-config.json` has no committer field; `dependabot.yml` has no committer field; the action workflows have no committer field. release-please commits via the GitHub API using whichever account's token authorized it (`secrets.RELEASE_PLEASE_TOKEN` PAT here — falls back to `GITHUB_TOKEN`), and the API uses that account's primary email. Dependabot merges and "Merge pull request" UI clicks similarly stamp the merger's account primary email. So: when bot commits show the wrong email, change github.com → Settings → Emails → "Primary email address" (and re-verify the desired address there if needed). No repo edits will fix it.
+- **release-please / dependabot / web-UI-merge commit identity comes from the GitHub account's primary email**, not from any repo file. release-please uses the API with `secrets.RELEASE_PLEASE_TOKEN`'s account; dependabot merges and "Merge pull request" UI clicks stamp the merger's account email. Fix wrong bot-commit email at github.com → Settings → Emails → Primary email; no repo edits will fix it.

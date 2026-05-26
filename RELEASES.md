@@ -12,6 +12,7 @@ For background on commit conventions that drive release-please, see [CONTRIBUTIN
 - [Cutting a prerelease (beta / rc / alpha)](#cutting-a-prerelease-beta--rc--alpha)
 - [Version-bump rules](#version-bump-rules)
 - [Stable vs. prerelease at a glance](#stable-vs-prerelease-at-a-glance)
+- [`release.yml` jobs](#releaseyml-jobs)
 - [When `release.yml` doesn't auto-fire](#when-releaseyml-doesnt-auto-fire)
 - [Skipping or pausing release-please](#skipping-or-pausing-release-please)
 - [Emergency manual tag (last resort)](#emergency-manual-tag-last-resort)
@@ -129,6 +130,32 @@ flowchart TD
     J -- "no" --> K["GitHub Release: stable<br/>container: :0.1.0 + :0.1 + :latest"]
     J -- "yes" --> L["GitHub Release: prerelease<br/>container: :0.1.0-beta.0 only"]
 ```
+
+## `release.yml` jobs
+
+Triggered on `v*` tag push and on `workflow_dispatch` (the manual-fallback path documented below). Every job keys off `github.ref_name` (the tag name) so both triggers produce identical artifacts.
+
+| Job | Output | Notes |
+|---|---|---|
+| `build-docker` | Linux + Windows Wails apps; all server binaries; Linux `.tar.gz` + `.deb` | Docker-driven. `.deb` installs to `/usr/local/bin/`. |
+| `build-mac` | macOS Wails arm64 `.app` bundle → `.dmg` via `hdiutil` | Apple runner required. Wraps the staging dance in `scripts/release/make-dmg.sh`. |
+| `sbom` | `recall-{version}-sbom.spdx.json` | `anchore/sbom-action`. SPDX JSON covering Go modules + npm packages. |
+| `publish-container` | `ghcr.io/<owner>/recall-server:<tags>` | Tag matrix below. Signed with cosign keyless OIDC (see below). |
+| `release` | GitHub Release with all artifacts + per-artifact `<filename>.sha256` | Waits on `build-docker` + `build-mac` + `sbom`. SBOM does not get a sha256 sidecar. Artifact filenames embed the version with the `v` prefix stripped. |
+
+**GHCR tag matrix.** Every tag publishes the exact `:{{version}}`. Rolling `:{{major}}.{{minor}}` and `:latest` only push on stable releases — prerelease tags (hyphenated, e.g. `v0.1.0-beta.0`) are guarded by `enable=${{ !contains(github.ref_name, '-') }}`. So `docker pull recall-server:latest` always lands on a non-prerelease build. The full matrix is in [Stable vs. prerelease at a glance](#stable-vs-prerelease-at-a-glance).
+
+**GHCR auth + visibility.** Push uses `secrets.GITHUB_TOKEN`; no PAT needed. Workflow permissions must include `packages: write`. The job attempts `continue-on-error` to flip the package to public via API, but `GITHUB_TOKEN` lacks the `write:packages` OAuth scope for visibility — set public once manually via GitHub Package settings.
+
+**Image signing.** After push, every tag is signed via `sigstore/cosign-installer@v3` + `cosign sign --yes` keyless OIDC — the workflow's GitHub Actions identity is the signing identity (no long-lived keys). Signing is by digest (`${tag%:*}@${DIGEST}`), not tag, so a tag re-point cannot invalidate the signature. Requires `id-token: write` on `publish-container`. User verification:
+
+```sh
+cosign verify ghcr.io/sound-barrier/recall-server:<tag> \
+  --certificate-identity-regexp 'https://github.com/sound-barrier/recall/\.github/workflows/release\.yml@refs/tags/v.*' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
+```
+
+Full recipe in [docs/docker.md](docs/docker.md) → "Verifying the image".
 
 ## When `release.yml` doesn't auto-fire
 
