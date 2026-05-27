@@ -281,38 +281,3 @@ code generator we adopt.
 
 **Size.** **S** (mostly spec edits; ~26 routes × one line each =
 ~1 hour).
-
----
-
-## 10. App.vue references a `TECHNICAL_DEBT.md #1` that doesn't exist
-
-**What.** `frontend/src/App.vue` line ~8 carries the comment:
-
-> component-specific selectors are tracked for a follow-up
-> extraction into per-SFC scoped `<style>` blocks
-> (TECHNICAL_DEBT.md #1).
-
-But this file has been empty until now; there was no #1 to follow.
-The work the comment refers to — moving per-component selectors out
-of `app.css` into the SFC's own scoped `<style>` block — is real
-and ongoing (the scoped blocks in MatchCard / FilterRail /
-SettingsView are the result of this effort partially completed).
-
-**Why this matters.** A reader following the breadcrumb hits a dead
-end. Either delete the reference, or formalise the remaining work
-as a numbered item. Cheapest closure: drop the parenthetical.
-
-**Plan.** Either:
-
-1. **Delete** the `(TECHNICAL_DEBT.md #1)` parenthetical from the
-   App.vue comment — the surrounding sentence still reads cleanly
-   ("component-specific selectors are tracked for a follow-up
-   extraction into per-SFC scoped `<style>` blocks."). Atomic 1-line
-   edit; ship in any PR that already touches App.vue.
-
-2. **Or**, if there's residual `app.css` rule extraction worth
-   tracking, expand into a numbered section here, listing the
-   specific `.match-*` / `.filter-*` / `.settings-*` selectors still
-   in `app.css` that should move.
-
-**Size.** **S** (literally one line, in either direction).

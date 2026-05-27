@@ -5,7 +5,7 @@
 // the dependency lives next to the component that anchors the cascade.
 // Still globally scoped (matches the historical behaviour); component-
 // specific selectors are tracked for a follow-up extraction into
-// per-SFC scoped <style> blocks (TECHNICAL_DEBT.md #1).
+// per-SFC scoped <style> blocks.
 import './styles/app.css'
 
 import { ref, computed, onMounted, nextTick, defineAsyncComponent } from 'vue'
