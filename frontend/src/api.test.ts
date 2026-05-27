@@ -309,6 +309,11 @@ describe('ImportData (browser mode)', () => {
   })
 })
 
+// Wails-mode tests for api.ts live in src/api.wails.test.ts — the
+// module-cache reset they require pollutes any later test in the
+// same file that depends on global state (e.g. happy-dom's URL),
+// so Vitest's file-level worker isolation is the cleanest fix.
+
 // ── ExportDataCSV ────────────────────────────────────────────────────────
 
 describe('ExportDataCSV (browser mode)', () => {

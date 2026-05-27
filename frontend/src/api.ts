@@ -220,22 +220,39 @@ export interface MatchAnnotationInput {
 }
 
 // Match annotations are a hierarchical sub-resource of the parent
-// match (PUT /api/v1/matches/{matchKey}/annotation), so the match
-// key only lives in the URL — not the body. SetMatchAnnotation
+// match (PUT /api/v1/matches/{matchKey}/annotation), so the HTTP
+// body carries only the annotation fields — match_key lives in the
+// URL. Wails mode can't use the same body shape: the Go method's
+// signature is `SetMatchAnnotation(in AnnotationInput)` (one struct,
+// match_key inside it), so the bridge gets a single argument with
+// Go-field-name keys. Mismatched arity ("received 2 arguments to
+// method 'app.App.SetMatchAnnotation', expected 1") is exactly what
+// the old `_dualVoid` form produced — it spread (matchKey, input)
+// into two positional args on the Wails path. SetMatchAnnotation
 // always sends the full four-field row so partial inputs from the
 // frontend (note-only edit, members-only edit) don't accidentally
 // null fields the user typed in another input.
-export const SetMatchAnnotation = _dualVoid<[matchKey: string, input: MatchAnnotationInput]>(
-  'SetMatchAnnotation',
-  'PUT',
-  (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}/annotation`,
-  (_matchKey, input) => ({
+export function SetMatchAnnotation(matchKey: string, input: MatchAnnotationInput): Promise<void> {
+  if (IS_WAILS) {
+    // AnnotationInput in pkg/app/match_annotation.go has no json
+    // tags, so encoding/json uses exact Go field names. Pass them
+    // verbatim — anything else case-insensitive-fails to match.
+    return _wails('SetMatchAnnotation', {
+      MatchKey:   matchKey,
+      Leaver:     input.leaver ?? '',
+      Note:       input.note ?? '',
+      ReplayCode: input.replay_code ?? '',
+      Members:    input.members ?? [],
+    })
+  }
+  const path = `/api/v1/matches/${encodeURIComponent(matchKey)}/annotation`
+  return _send('PUT', path, {
     leaver:      input.leaver ?? '',
     note:        input.note ?? '',
     replay_code: input.replay_code ?? '',
     members:     input.members ?? [],
-  }),
-)
+  }).then(() => undefined)
+}
 
 // Back-compat shims for callers / tests that only touch the leaver
 // field. New code should call SetMatchAnnotation directly so the
