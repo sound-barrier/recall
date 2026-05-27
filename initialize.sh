@@ -116,6 +116,7 @@ case "$PLATFORM" in
             curl \
             wget \
             unzip \
+            pipx \
             libwebkit2gtk-4.1-dev \
             libgtk-3-dev \
             libayatana-appindicator3-dev \
@@ -183,6 +184,12 @@ PC
         curl -fsSL "https://github.com/crate-ci/typos/releases/download/${TYPOS_VERSION}/typos-${TYPOS_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
             | sudo tar -xz -C /usr/local/bin ./typos
         sudo chmod +x /usr/local/bin/typos
+
+        # semgrep — JS/TS SAST. Installed via pipx so the CLI lands
+        # on PATH without polluting system Python. Matches the
+        # devcontainer + CI install path.
+        log "semgrep ${SEMGREP_VERSION}"
+        pipx install "semgrep==${SEMGREP_VERSION}"
         ;;
 esac
 
