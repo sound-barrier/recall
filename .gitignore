@@ -32,6 +32,10 @@ frontend/package.json.md5
 
 .claude/
 data/
+# Ad-hoc scratch space (PR bodies, intermediate jq output, scratch
+# scripts). See CLAUDE.md → "Conventions worth knowing" for the
+# rule: Claude writes ephemeral files here, not /tmp.
+/tmp/
 # Go test artifacts
 *.test
 *.out

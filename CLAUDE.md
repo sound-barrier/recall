@@ -542,10 +542,12 @@ Cross-doc anchors that are load-bearing: `docs/install-{macos,linux,windows}.md#
 
 ## Conventions worth knowing
 
+- **Use `tmp/` under the repo root for ad-hoc scratch files — never `/tmp/...` or any path outside the repo root.** PR-body drafts, intermediate `jq` output, scratch scripts, downloaded log dumps — anywhere you'd reach for `/tmp/foo.md`, use `tmp/foo.md` (relative to the project root) instead. `tmp/` is gitignored so it stays out of commits. **Carve-out**: existing project infrastructure paths (`/tmp/recall-e2e/...` from `make test-e2e` / `e2e.yml`, `HOME=/tmp/recall-smoke` for smoke tests, `/private/tmp/...` for the macOS Tesseract symlink workaround) are baked into Makefile + CI + scripts and stay as-is — don't refactor those, but don't add new ad-hoc `/tmp` paths in your own commands either. This keeps Claude's filesystem footprint inside the project's working directory.
+
 - **Fixing CI on a remote-authored PR (Ultraplan / Claude Code on the web).** Those sessions skip lefthook, so commits routinely fail `gofumpt` / `goimports-reviser` / `golangci-lint` / `typos` / `conventional`. Pattern:
   - `lint` failure → checkout the branch, fix with `make lint-go` + `typos .`, commit `style:`/`docs:`, push.
   - `pr-report` failure is downstream of `lint` (downloads its artifact); clears when lint goes green.
-  - `required-checkboxes` failure → bot left attestation boxes unticked. `gh pr view N --json body --jq .body > /tmp/body.md`, flip the two `- [ ]` lines to `- [x]`, `gh pr edit N --body-file /tmp/body.md`. Body comes back CRLF — use Python `replace()`, not BSD sed.
+  - `required-checkboxes` failure → bot left attestation boxes unticked. `gh pr view N --json body --jq .body > tmp/body.md`, flip the two `- [ ]` lines to `- [x]`, `gh pr edit N --body-file tmp/body.md`. Body comes back CRLF — use Python `replace()`, not BSD sed.
   - `typos` flags identifier+plural-s runs (pluralising an all-caps word by appending `s` splits as `<word>` + `Ys`/`Ts`). Rephrase ("SUMMARY screens") rather than extending `_typos.toml`.
 
 - **Iterating a Playwright e2e spec locally** — `reuseExistingServer: !process.env.CI` keeps `recall-server` running across `npx playwright test` runs, but the binary embeds `frontend/dist` at build time. After any `frontend/src/**` or `pkg/**` change, rebuild + kill before retesting: `cd frontend && npm run build && cd .. && go build -tags serveronly -o /tmp/recall-e2e/recall-server . && lsof -i :7099 | awk 'NR==2 {print $2}' | xargs -r kill`. Symptom of stale server: locator counts stay at pre-change values for 14 polling retries despite `page.route()` mocks being correct. `make test-e2e` rebuilds for you.
