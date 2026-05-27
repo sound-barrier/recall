@@ -29,63 +29,39 @@ first.
 
 ---
 
-## 5. `MatchCard.vue`, `SettingsView.vue`, `FilterRail.vue` are 1200+ lines each
+## 5. Residual SFC splits — finish the big-file extractions
 
-**What.** Three SFCs are each above the 1000-line mark:
+**What.** Three first-pass extractions landed (`MinPlayInput.vue` +
+`LeaverSegmented.vue` out of `FilterRail.vue`; `MatchCardDanger.vue`
+out of `MatchCard.vue`; `SettingsCalendar.vue` out of
+`SettingsView.vue`) — proves the seam pattern. The bigger remaining
+extractions are:
 
-| File | Total | `<script>` | `<template>` | `<style scoped>` |
-|---|---|---|---|---|
-| `MatchCard.vue` | 1849 | 159 | 531 | 1157 |
-| `SettingsView.vue` | 1800 | 143 | 621 | 1034 |
-| `FilterRail.vue` | 1259 | 136 | 347 | 774 |
+| File | Current | Target | Children still to extract |
+|---|---|---|---|
+| `MatchCard.vue` | 1714 | ~900 | `MatchCardHeader.vue` (collapsed view) + `MatchCardExpanded.vue` (annotation + notes + stats + sources blocks) |
+| `SettingsView.vue` | 1666 | ~250 | `SettingsFolders.vue`, `SettingsEngine.vue`, `SettingsAppearance.vue`, `SettingsBackupRestore.vue`, `SettingsAdvanced.vue` |
+| `FilterRail.vue` | 951 | ~700 | Optional: combined `<TallyToggle>` for the Hidden + Undated buttons |
 
-**Why this matters.** Each file has multiple distinct concerns that
-could reasonably live in their own SFC. `MatchCard.vue` is the
-clearest example: the collapsed header (title row + tag row +
-badges) is independent of the expanded view (leaver chooser + notes
-block + stats grid + sources + danger row). The 1157-line style
-block is mostly per-section rules that would naturally scope into
-the child SFC. `SettingsView.vue` is six independent panels
-(Folders / Engine / Appearance / Calendar / Backup & Restore /
-Advanced) glued in one template; each gets ~100 template lines plus
-~150 style lines. `FilterRail.vue` has the seven filter popovers,
-date range, min-play input, leaver segmented control, hidden
-toggle, and Clear/Expand-all controls — at least three extractable
-children.
+**Why this matters.** Each remaining extraction is independent —
+none blocks any other. The biggest payoff is the MatchCard
+Header/Expanded split (~−800 lines off MatchCard's footprint) since
+that file is the most-edited frontend SFC. SettingsView's five
+remaining panels are mechanically the easiest (each panel is already
+a self-contained `<section>` in the template) but the total payoff
+is the largest reduction.
 
-A new contributor opening MatchCard.vue scrolls past 1100 lines of
-CSS before finding the template. Vue's reactivity tracking is
-unhurt by the size, but the `Go to definition` ergonomics are.
+**Plan.** One extraction per PR, smallest first to keep review
+manageable. Each must:
 
-**Plan.** Three independent extractions, each its own PR. Land in
-this order (smallest first to prove the pattern):
+1. Move the matching `<section>` (Settings) or template block
+   (MatchCard) into a new SFC under `frontend/src/components/`.
+2. Move the corresponding scoped-style block too — scoped CSS lives
+   with the SFC that owns the template.
+3. Wire props/emits through; only the wiring that survives the cut
+   should remain on the parent.
+4. `make typecheck` + `npx vitest run` + `npx eslint` + `npx
+   stylelint` clean before commit.
 
-1. **FilterRail → 3 children.**
-   - `MinPlayInput.vue` — the percent + minutes + seconds inputs +
-     `min-play-group` shell + 80 lines of scoped style.
-   - `LeaverSegmented.vue` — the three-state segmented control +
-     ~60 lines of scoped style.
-   - `HiddenToggle.vue` / `UndatedToggle.vue` — these share enough
-     shape that a single `<TallyToggle>` component with a "kind"
-     prop might cover both, but only after looking at whether the
-     emit + class differences are stable. Either way: extract.
-
-2. **MatchCard → `MatchCardHeader.vue` + `MatchCardExpanded.vue`.**
-   The expansion split is the natural seam — `v-if="isExpanded"`
-   already gates the entire bottom half. Header takes the badge
-   logic + danger-row collapsed state; Expanded takes the
-   annotation/notes/stats/sources/danger-confirmed flow. Style block
-   splits cleanly along the same line.
-
-3. **SettingsView → 6 panel children.**
-   `SettingsFolders.vue`, `SettingsEngine.vue`, `SettingsAppearance.vue`,
-   `SettingsCalendar.vue`, `SettingsBackupRestore.vue`,
-   `SettingsAdvanced.vue`. Each panel becomes a self-contained
-   `<section>` with its own scoped styles. `SettingsView.vue`
-   becomes a ~150-line shell that emits prop/event wiring.
-
-Each step must keep the existing test surface green; Vitest fixtures
-already mount via `mountApp({ ... })` so child SFCs ride for free
-as long as no event name changes.
-
-**Size.** **L** total (M per extraction × 3).
+**Size.** **M** per remaining extraction; **L** if all six land in
+one go (not recommended).
