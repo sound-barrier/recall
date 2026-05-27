@@ -5,6 +5,7 @@ import type { WeekStart } from '../composables/useWeekStart'
 import type { DataLocation, TesseractStatus } from '../api'
 import { OpenURL, IS_WAILS } from '../api'
 import SettingsAppearance from './SettingsAppearance.vue'
+import SettingsBackupRestore from './SettingsBackupRestore.vue'
 import SettingsCalendar from './SettingsCalendar.vue'
 
 // SettingsView — every knob a user might want to touch, sorted by
@@ -421,110 +422,19 @@ async function copyPath(path: string, which: 'db' | 'settings') {
       @go-to-view="(v: 'settings' | 'ingest' | 'matches' | 'unknown') => emit('go-to-view', v)"
     />
 
-    <div id="sec-backup" class="settings-section">
-      <div class="section-header">
-        <span class="section-num">05</span>
-        <span class="section-slash" aria-hidden="true">/</span>
-        <h3 class="section-title">
-          Backup &amp; Restore
-        </h3>
-      </div>
-      <div class="setting-rows">
-        <div class="setting-row">
-          <div class="setting-info">
-            <h4 class="setting-label">
-              Export Data
-              <span class="setting-help" tabindex="0" role="note">
-                <span class="setting-help-mark" aria-hidden="true">?</span>
-                <span class="setting-help-label">About Export</span>
-                <span class="setting-help-pop" role="tooltip">
-                  Pick <strong>JSON</strong> for a portable single-file Recall backup. Pick <strong>CSV</strong> for a ZIP of per-table spreadsheets you can open in Excel / Sheets. Both round-trip through Import.
-                </span>
-              </span>
-            </h4>
-            <p class="setting-desc">
-              Download a portable backup of every parsed match. <strong>JSON</strong> is the canonical Recall format (smallest, round-trips losslessly); <strong>CSV</strong> exports a ZIP archive of one CSV per table for Excel / Sheets. Settings + screenshots aren't included.
-            </p>
-            <p v-if="exportStatus && exportStatus.ok" class="setting-meta success">
-              <span class="block-mark" aria-hidden="true">✓</span>
-              {{ exportStatus.message }}
-            </p>
-            <p v-else-if="exportStatus && !exportStatus.ok" class="setting-meta blocked">
-              <span class="block-mark" aria-hidden="true">✕</span>
-              {{ exportStatus.message }}
-            </p>
-          </div>
-          <div class="setting-control">
-            <div class="export-btn-group">
-              <button
-                class="btn ghost"
-                :disabled="!!exporting || importing"
-                @click="emit('export-data')"
-              >
-                <span v-if="exporting === 'json'">Saving…</span>
-                <span v-else>JSON</span>
-              </button>
-              <button
-                class="btn ghost"
-                :disabled="!!exporting || importing"
-                @click="emit('export-data-csv')"
-              >
-                <span v-if="exporting === 'csv'">Saving…</span>
-                <span v-else>CSV</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="setting-row" :class="{ 'danger-row': importArmed }">
-          <div class="setting-info">
-            <h4 class="setting-label">
-              Import Data
-              <span class="setting-help" tabindex="0" role="note">
-                <span class="setting-help-mark" aria-hidden="true">?</span>
-                <span class="setting-help-label">About Import</span>
-                <span class="setting-help-pop" role="tooltip">
-                  Restores a previously-exported backup. <strong>Replaces</strong> the live database — local matches not in the backup are lost. Two-step arm/confirm prevents accidental wipes.
-                </span>
-              </span>
-            </h4>
-            <p class="setting-desc">
-              Restore from a previously-exported JSON backup. <strong>Replaces</strong> everything currently in the database — local matches that aren't in the backup will be lost.
-            </p>
-            <p v-if="importArmed" class="setting-meta blocked">
-              <span class="block-mark" aria-hidden="true">⚠</span>
-              This wipes {{ (matchedCount ?? 0) + (unknownCount ?? 0) }} record{{ ((matchedCount ?? 0) + (unknownCount ?? 0)) === 1 ? '' : 's' }} before loading the backup.
-            </p>
-          </div>
-          <div class="setting-control">
-            <template v-if="!importArmed">
-              <button
-                class="btn danger-outline"
-                :disabled="importing || !!exporting"
-                @click="emit('arm-import')"
-              >
-                Import Backup…
-              </button>
-            </template>
-            <template v-else>
-              <div class="clear-confirm-group">
-                <button
-                  class="btn danger"
-                  :disabled="importing"
-                  @click="emit('import-data')"
-                >
-                  <span v-if="importing">Loading…</span>
-                  <span v-else>Choose File…</span>
-                </button>
-                <button class="btn ghost" :disabled="importing" @click="emit('cancel-import')">
-                  Cancel
-                </button>
-              </div>
-            </template>
-          </div>
-        </div>
-      </div>
-    </div>
+    <SettingsBackupRestore
+      :exporting="exporting"
+      :importing="importing"
+      :import-armed="importArmed"
+      :export-status="exportStatus"
+      :matched-count="matchedCount"
+      :unknown-count="unknownCount"
+      @export-data="() => emit('export-data')"
+      @export-data-csv="() => emit('export-data-csv')"
+      @arm-import="() => emit('arm-import')"
+      @import-data="() => emit('import-data')"
+      @cancel-import="() => emit('cancel-import')"
+    />
 
     <!-- Section 06 Advanced — collapsed by default. Holds power-user
          controls (Grafana streaming + destructive Clear DB) that
@@ -1222,23 +1132,10 @@ async function copyPath(path: string, which: 'db' | 'settings') {
 /* Light-mode override for .link-btn lives in app.css — see note
    above the .settings-section::after override for why. */
 
-/* ─── Backup & Restore (lifted from IngestView) ─────────── */
-
-/* Side-by-side JSON | CSV format picker. Mono labels + tight gap
-   so the pair reads as one choice rather than two actions. */
-.export-btn-group {
-  display: inline-flex;
-  gap: 0.4rem;
-  align-items: stretch;
-}
-
-.export-btn-group .btn {
-  padding: 0.4rem 0.95rem;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
+/* `.export-btn-group` styles moved to SettingsBackupRestore.vue.
+   `.setting-row.danger-row` + `.clear-confirm-group` stay here
+   because they're shared with the Advanced section's Clear DB
+   confirm flow. */
 
 /* Armed-import + armed-clear rows share the same destructive bar. */
 .setting-row.danger-row {
