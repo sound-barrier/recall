@@ -1,7 +1,11 @@
 # Frontend (`frontend/src/App.vue`)
 
 This file is auto-loaded by Claude Code when working in `frontend/`.
-The root `CLAUDE.md` carries the cross-cutting project context.
+The root `CLAUDE.md` carries the cross-cutting project context —
+including the **REST API design** rules (verbs, status codes,
+response shapes, the 3-step add-an-endpoint recipe) under
+*Working style → REST API design*. Read that before touching
+`src/api.ts` or adding/changing any `/api/v1/...` call.
 
 ## Architecture
 
