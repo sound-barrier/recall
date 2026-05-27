@@ -99,6 +99,28 @@ function _post<T>(path: string, body?: unknown): Promise<T> {
   })
 }
 
+// _dualVoid bundles the Wails-vs-fetch branching for every void-
+// returning POST. Each writer used to repeat the same five lines:
+//
+//   if (IS_WAILS) return _wails('SetX', arg)
+//   return _post('/api/x', body).then(() => undefined)
+//
+// The helper takes a Wails method name, a fetch path, and a body
+// factory that maps the call args to the JSON payload. The fetch
+// branch's `.then(() => undefined)` is the type-correct way to
+// discard the server response (204 endpoints return undefined via
+// _fetch's 204 special case, so this is a no-op at runtime).
+function _dualVoid<TArgs extends unknown[]>(
+  wailsName: string,
+  fetchPath: string,
+  body: (...args: TArgs) => unknown,
+): (...args: TArgs) => Promise<void> {
+  return (...args: TArgs) => {
+    if (IS_WAILS) return _wails(wailsName, ...args)
+    return _post(fetchPath, body(...args)).then(() => undefined)
+  }
+}
+
 // ─── App methods ───────────────────────────────────────────────────────────
 
 export function GetVersion(): Promise<string> {
@@ -165,10 +187,11 @@ export function ProbeScreenshotsDir(): Promise<ProbeResult> {
 // SetScreenshotsDir persists `path` as the active screenshots
 // directory. Used by the "Detect Overwatch Folder" button to apply
 // a probe result without going through the native folder picker.
-export function SetScreenshotsDir(path: string): Promise<void> {
-  if (IS_WAILS) return _wails('SetScreenshotsDir', path)
-  return _post('/api/screenshots-dir', { path }).then(() => undefined)
-}
+export const SetScreenshotsDir = _dualVoid<[path: string]>(
+  'SetScreenshotsDir',
+  '/api/screenshots-dir',
+  (path) => ({ path }),
+)
 
 // Per-match user annotation. All four fields are optional; if every
 // field is empty the server deletes the row entirely. `leaver`
@@ -182,33 +205,42 @@ export interface MatchAnnotationInput {
   members?:     string[]
 }
 
-export function SetMatchAnnotation(matchKey: string, input: MatchAnnotationInput): Promise<void> {
-  const body = {
+// `_dualVoid` for the body-shape transformation; SetMatchAnnotation
+// always sends the full four-field row so partial inputs from the
+// frontend (note-only edit, members-only edit) don't accidentally
+// null fields the user typed in another input.
+export const SetMatchAnnotation = _dualVoid<[matchKey: string, input: MatchAnnotationInput]>(
+  'SetMatchAnnotation',
+  '/api/match-annotations',
+  (matchKey, input) => ({
     match_key:   matchKey,
     leaver:      input.leaver ?? '',
     note:        input.note ?? '',
     replay_code: input.replay_code ?? '',
     members:     input.members ?? [],
-  }
-  if (IS_WAILS) return _wails('SetMatchAnnotation', body)
-  return _post('/api/match-annotations', body).then(() => undefined)
-}
+  }),
+)
 
 // Back-compat shims for callers / tests that only touch the leaver
 // field. New code should call SetMatchAnnotation directly so the
 // other three fields stay preserved in a single round-trip.
-export function SetLeaverAnnotation(matchKey: string, leaver: LeaverKind, note = ''): Promise<void> {
-  if (IS_WAILS) return _wails('SetLeaverAnnotation', matchKey, leaver, note)
-  return _post('/api/match-annotations', { match_key: matchKey, leaver, note }).then(() => undefined)
-}
+export const SetLeaverAnnotation = _dualVoid<[matchKey: string, leaver: LeaverKind, note?: string]>(
+  'SetLeaverAnnotation',
+  '/api/match-annotations',
+  (matchKey, leaver, note = '') => ({ match_key: matchKey, leaver, note }),
+)
 
-export function ClearLeaverAnnotation(matchKey: string): Promise<void> {
-  if (IS_WAILS) return _wails('ClearLeaverAnnotation', matchKey)
-  return _post('/api/match-annotations', { match_key: matchKey, leaver: '' }).then(() => undefined)
-}
+export const ClearLeaverAnnotation = _dualVoid<[matchKey: string]>(
+  'ClearLeaverAnnotation',
+  '/api/match-annotations',
+  (matchKey) => ({ match_key: matchKey, leaver: '' }),
+)
 
 // Soft-delete a match. Reversible: pass hidden=false to restore.
 // Both directions are idempotent — repeated identical calls succeed.
+// Wails-side this dispatches to HideMatch / UnhideMatch (two
+// separate App methods), so the boolean determines which method name
+// the bridge resolves. Server-mode keeps the unified route.
 export function SetMatchVisibility(matchKey: string, hidden: boolean): Promise<void> {
   if (IS_WAILS) {
     return hidden ? _wails('HideMatch', matchKey) : _wails('UnhideMatch', matchKey)
@@ -216,30 +248,33 @@ export function SetMatchVisibility(matchKey: string, hidden: boolean): Promise<v
   return _post('/api/match-visibility', { match_key: matchKey, hidden }).then(() => undefined)
 }
 
-export function ParseScreenshots(): Promise<void> {
-  if (IS_WAILS) return _wails('ParseScreenshots')
-  return _post('/api/parse').then(() => undefined)
-}
+export const ParseScreenshots = _dualVoid<[]>(
+  'ParseScreenshots',
+  '/api/parse',
+  () => undefined,
+)
 
 export function GetPrometheusEnabled(): Promise<boolean> {
   if (IS_WAILS) return _wails('GetPrometheusEnabled')
   return _get<{ enabled: boolean }>('/api/prometheus-enabled').then(d => d.enabled)
 }
 
-export function SetPrometheusEnabled(enabled: boolean): Promise<void> {
-  if (IS_WAILS) return _wails('SetPrometheusEnabled', enabled)
-  return _post('/api/prometheus-enabled', { enabled }).then(() => undefined)
-}
+export const SetPrometheusEnabled = _dualVoid<[enabled: boolean]>(
+  'SetPrometheusEnabled',
+  '/api/prometheus-enabled',
+  (enabled) => ({ enabled }),
+)
 
 export function GetWatchEnabled(): Promise<boolean> {
   if (IS_WAILS) return _wails('GetWatchEnabled')
   return _get<{ enabled: boolean }>('/api/watch-enabled').then(d => d.enabled)
 }
 
-export function SetWatchEnabled(enabled: boolean): Promise<void> {
-  if (IS_WAILS) return _wails('SetWatchEnabled', enabled)
-  return _post('/api/watch-enabled', { enabled }).then(() => undefined)
-}
+export const SetWatchEnabled = _dualVoid<[enabled: boolean]>(
+  'SetWatchEnabled',
+  '/api/watch-enabled',
+  (enabled) => ({ enabled }),
+)
 
 export function GetTesseractStatus(): Promise<TesseractStatus> {
   if (IS_WAILS) return _wails('GetTesseractStatus')
@@ -260,10 +295,11 @@ export function ResetTesseractPath(): Promise<TesseractStatus> {
   return _post<TesseractStatus>('/api/tesseract-reset')
 }
 
-export function ClearDatabase(): Promise<void> {
-  if (IS_WAILS) return _wails('ClearDatabase')
-  return _post('/api/clear-database').then(() => undefined)
-}
+export const ClearDatabase = _dualVoid<[]>(
+  'ClearDatabase',
+  '/api/clear-database',
+  () => undefined,
+)
 
 // ─── Data location + export/import ─────────────────────────────────────────
 
