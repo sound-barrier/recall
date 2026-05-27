@@ -1,4 +1,4 @@
-import { ref, onMounted } from 'vue'
+import { usePersistedRef, parseEnum } from './usePersistedRef'
 
 export type LeaverHandling = 'include' | 'exclude-tally' | 'hide'
 export const LEAVER_HANDLING_STORAGE_KEY = 'recall.leaverHandling'
@@ -6,38 +6,31 @@ export const LEAVER_HANDLING_STORAGE_KEY = 'recall.leaverHandling'
 // Persisted preference for how to treat matches the user has tagged
 // with a leaver scenario (self / team / enemy):
 //
-//   - 'include'        — the default. Match is visible AND its
-//                        win/loss/draw counts toward the W/L/D tally.
+//   - 'include'        — the default. Match visible AND its
+//                        win/loss/draw counts toward the tally.
 //   - 'exclude-tally'  — match stays visible in the list, but its
 //                        result is omitted from the W/L/D tally so
 //                        the win-rate reflects "real" games only.
-//   - 'hide'           — match is dropped from the list entirely
+//   - 'hide'           — match dropped from the list entirely
 //                        (which also means it doesn't count toward
-//                        the tally). Useful for users who don't want
-//                        leaver-affected matches in their library at
-//                        all.
-//
-// Same shape as useTheme / useWeekStart / useIncludeUndated /
-// useDensityMode — readStored*, set*, onMounted hydrator.
+//                        the tally).
+
+const parseLeaver = parseEnum<LeaverHandling>('include', 'exclude-tally', 'hide')
+
 export function readStoredLeaverHandling(): LeaverHandling {
   try {
     const stored = localStorage.getItem(LEAVER_HANDLING_STORAGE_KEY)
-    if (stored === 'include' || stored === 'exclude-tally' || stored === 'hide') return stored
-  } catch (_) {}
-  return 'include'
+    return parseLeaver(stored ?? '') ?? 'include'
+  } catch (_) {
+    return 'include'
+  }
 }
 
 export function useLeaverHandling() {
-  const leaverHandling = ref<LeaverHandling>('include')
-
-  function setLeaverHandling(next: LeaverHandling) {
-    leaverHandling.value = next
-    try { localStorage.setItem(LEAVER_HANDLING_STORAGE_KEY, next) } catch (_) {}
-  }
-
-  onMounted(() => {
-    leaverHandling.value = readStoredLeaverHandling()
+  const { value: leaverHandling, set: setLeaverHandling } = usePersistedRef<LeaverHandling>({
+    key: LEAVER_HANDLING_STORAGE_KEY,
+    defaultValue: 'include',
+    parse: parseLeaver,
   })
-
   return { leaverHandling, setLeaverHandling }
 }

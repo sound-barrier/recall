@@ -1,39 +1,35 @@
-import { ref, onMounted } from 'vue'
+import { usePersistedRef, parseEnum } from './usePersistedRef'
 
 export type DensityMode = 'comfortable' | 'compact'
 export const DENSITY_STORAGE_KEY = 'recall.densityMode'
 
 // Persisted toggle for the match-list density. Default 'comfortable'
-// (the original full card). Switching to 'compact' tightens padding
-// + map-name font and inlines E/A/D + damage in the card header so
-// high-volume players see at-a-glance stats without expanding every
-// card. Per-card expand state is unaffected — orthogonal concern.
-//
-// Same shape as useTheme / useWeekStart / useIncludeUndated —
-// readStored* / set* / onMounted hydrator.
+// (the original full card). 'compact' tightens padding + map-name
+// font and inlines E/A/D + damage in the card header so high-volume
+// players see at-a-glance stats without expanding every card.
+// Per-card expand state is unaffected — orthogonal concern.
+
+const parseDensity = parseEnum<DensityMode>('comfortable', 'compact')
+
 export function readStoredDensityMode(): DensityMode {
   try {
     const stored = localStorage.getItem(DENSITY_STORAGE_KEY)
-    if (stored === 'compact' || stored === 'comfortable') return stored
-  } catch (_) {}
-  return 'comfortable'
+    return parseDensity(stored ?? '') ?? 'comfortable'
+  } catch (_) {
+    return 'comfortable'
+  }
 }
 
 export function useDensityMode() {
-  const densityMode = ref<DensityMode>('comfortable')
-
-  function setDensityMode(next: DensityMode) {
-    densityMode.value = next
-    try { localStorage.setItem(DENSITY_STORAGE_KEY, next) } catch (_) {}
-  }
+  const { value: densityMode, set: setDensityMode } = usePersistedRef<DensityMode>({
+    key: DENSITY_STORAGE_KEY,
+    defaultValue: 'comfortable',
+    parse: parseDensity,
+  })
 
   function toggleDensityMode() {
     setDensityMode(densityMode.value === 'compact' ? 'comfortable' : 'compact')
   }
-
-  onMounted(() => {
-    densityMode.value = readStoredDensityMode()
-  })
 
   return { densityMode, setDensityMode, toggleDensityMode }
 }
