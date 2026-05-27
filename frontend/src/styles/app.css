@@ -804,6 +804,32 @@ main#main-content {
 
 [data-theme="light"] .incomplete-badge strong { color: var(--accent-text); }
 
+/* Light-mode pinpoint overrides for MatchCard-owned selectors —
+   live here because Vue scoped CSS miscompiles the
+   `:global([data-theme="light"]) .x` form. The selectors all hit
+   markup rendered by MatchCardHeader.vue or MatchCardExpanded.vue. */
+[data-theme="light"] .match-map:hover,
+[data-theme="light"] .match-map.active {
+  color: var(--accent-text);
+  text-shadow: none;
+}
+[data-theme="light"] .hero-name { color: var(--accent-text); }
+
+[data-theme="light"] .hero-name:hover,
+[data-theme="light"] .hero-name.active {
+  color: var(--accent-text);
+  text-shadow: none;
+}
+[data-theme="light"] .length-mark { color: var(--accent-text); }
+[data-theme="light"] .match.expanded { background: var(--surface-2); }
+[data-theme="light"] .sources { background: var(--surface-2); border-color: var(--border); }
+[data-theme="light"] .source-type-summary { color: var(--accent-text); }
+
+[data-theme="light"] .coverage-line.required .coverage-line-tag,
+[data-theme="light"] .coverage-line.required .coverage-line-text strong {
+  color: var(--accent-text);
+}
+
 /* Clickable interactions */
 .clickable {
   cursor: pointer;
