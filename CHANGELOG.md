@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.3](https://github.com/sound-barrier/recall/compare/v0.2.2...v0.2.3) (2026-05-27)
+
+
+### CI
+
+* bump Node 20 actions to Node 24 ahead of June 2 forced cutover ([2038d68](https://github.com/sound-barrier/recall/commit/2038d689bb4b898e9bc5184feaa3cb65f43efa9d))
+* **release:** matrix-parallel builds + shared cache + post-release container push ([bff6318](https://github.com/sound-barrier/recall/commit/bff63188ccb48f2ac2b39c3d66c88dbbf8bf391a))
+
 ## [0.2.2](https://github.com/sound-barrier/recall/compare/v0.2.1...v0.2.2) (2026-05-27)
 
 
