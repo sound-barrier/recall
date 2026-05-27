@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/sound-barrier/recall/compare/v0.2.1...v0.2.2) (2026-05-27)
+
+
+### Bug Fixes
+
+* **release:** retry hdiutil create on "Resource busy" flake ([7cc4262](https://github.com/sound-barrier/recall/commit/7cc42625a758f50ef3ef80c2d7e01c6c68e90199))
+
 ## [0.2.1](https://github.com/sound-barrier/recall/compare/v0.2.0...v0.2.1) (2026-05-27)
 
 
