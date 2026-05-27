@@ -229,6 +229,11 @@ const timeDisabled    = computed(() => props.minPlayPercent > 0)
 .min-play-or {
   font-style: italic;
   text-transform: lowercase;
-  opacity: 0.55;
+
+  /* Used to dim via `opacity: 0.55` on the inherited --text-faint, but
+     compositing pushed the effective foreground to #53555e on --surface
+     (2.46:1, fails WCAG AA). Use --text-mute directly so the colour
+     stays muted while clearing 4.5:1 on every surface. */
+  color: var(--text-mute);
 }
 </style>

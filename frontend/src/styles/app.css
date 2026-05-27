@@ -11,7 +11,14 @@
   --text: #ecedf0;
   --text-dim: #9ca0ac;
   --text-faint: #878a96;
-  --text-mute: #44474f;
+
+  /* --text-mute was #44474f → 1.85:1 on --surface-2 (fails WCAG AA
+     "color-contrast" — axe flagged .match-index, .mf-placeholder-meta).
+     Bumped to a value that meets 4.5:1 on every dark surface
+     (bg=5.33:1, surface=4.96:1, surface-2=4.72:1, surface-3=4.55:1)
+     while staying slightly dimmer than --text-faint so the
+     hierarchy is preserved. */
+  --text-mute: #838690;
 
   /* Overwatch signature grays. Used as a structural brand element —
      the masthead branding tile, strong borders, divider blocks. */
@@ -90,7 +97,11 @@
   --text: #2b2a26;
   --text-dim: #4A4A4A;
   --text-faint: #56524a;
-  --text-mute: #7a7568;
+
+  /* Light-mode --text-mute was #7a7568 → 4.20:1 on --surface-3
+     (just under AA Small). Darkened so every cream surface clears
+     4.5:1 with the same hierarchy step (dimmer than --text-faint). */
+  --text-mute: #6c695a;
   --brand-gray: #4A4A4A;
   --brand-gray-soft: rgb(74 74 74 / 85%);
 
