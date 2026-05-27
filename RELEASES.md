@@ -14,6 +14,7 @@ For background on commit conventions that drive release-please, see [CONTRIBUTIN
 - [Stable vs. prerelease at a glance](#stable-vs-prerelease-at-a-glance)
 - [`release.yml` jobs](#releaseyml-jobs)
 - [When `release.yml` doesn't auto-fire](#when-releaseyml-doesnt-auto-fire)
+- [When a release published with no assets](#when-a-release-published-with-no-assets)
 - [Skipping or pausing release-please](#skipping-or-pausing-release-please)
 - [Emergency manual tag (last resort)](#emergency-manual-tag-last-resort)
 
@@ -172,6 +173,50 @@ Equivalent without `make`: `gh workflow run release.yml --ref v0.0.13-beta.0`, o
 Every job in `release.yml` keys off `github.ref_name`, which is the tag name for both `push: tags` and `workflow_dispatch`, so no other knobs to flip. The `workflow_dispatch:` trigger must exist in the workflow file *at the tag's ref* for this to work — tags cut before `workflow_dispatch:` was added (anything before `v0.0.12-beta.0`) can't be fired this way and need the [emergency manual tag](#emergency-manual-tag-last-resort) re-push instead.
 
 **Long-term fix** — configure `RELEASE_PLEASE_TOKEN` per [One-time repo setup](#one-time-repo-setup). Future tags will be authored by the PAT owner and fire `release.yml` automatically.
+
+## When a release published with no assets
+
+You see a `vX.Y.Z` release on the Releases page with the changelog body but **zero assets attached** (no `.dmg`, no `.tar.gz`, no `.sha256` files). The `release` job in `release.yml` failed with:
+
+```text
+Cannot upload asset recall-…  to an immutable release.
+GitHub only allows asset uploads before a release is published,
+so upload assets to a draft release before you publish it.
+```
+
+**Cause** — historically release-please created the GitHub Release as **published** the moment it pushed the tag. `release.yml` would then race GitHub's "immutable once published" check on the first asset upload and lose. The fix in `release-please-config.json` (`packages."." → "draft": true`) tells release-please to create the release as a **draft**; `release.yml`'s `softprops/action-gh-release` step (default `draft: false`) uploads to the draft and flips it to published. So this only happens on releases cut *before* the draft-first toggle landed.
+
+**Recovery procedure** for an already-published-but-empty release:
+
+```sh
+TAG=v0.2.0
+
+# 1. Capture the existing body so the recovered release keeps the
+#    CHANGELOG-derived notes (release-please writes them at creation).
+gh release view "$TAG" --json body --jq .body > /tmp/release-body.md
+
+# 2. Delete the GitHub Release ONLY (keep the git tag — release.yml
+#    keys off the tag, and re-running with the tag intact lets it
+#    create a fresh release).
+gh release delete "$TAG" --yes
+
+# 3. Re-fire release.yml on the existing tag. The first asset upload
+#    will now succeed (no immutable release blocks it).
+gh workflow run release.yml --ref "$TAG"
+# or: make release-fire TAG="$TAG"
+
+# 4. Once the new run finishes, the auto-generated body from
+#    softprops will *not* match release-please's CHANGELOG notes
+#    (softprops emits "## What's Changed" from PR titles). Restore
+#    the release-please body, keeping the auto-notes as a suffix:
+gh release view "$TAG" --json body --jq .body > /tmp/softprops-body.md
+{ cat /tmp/release-body.md; printf '\n\n'; cat /tmp/softprops-body.md; } \
+  | gh release edit "$TAG" --notes-file -
+```
+
+Step 4 is optional — the release will be fully functional after step 3 with just the softprops-generated body — but the CHANGELOG-derived sections are what users actually read.
+
+**Do not** push a new tag (`vX.Y.Z` → `vX.Y.Z+1`) just to recover. The tag stays valid; you only need to re-emit the release page for it.
 
 ## Skipping or pausing release-please
 
