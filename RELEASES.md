@@ -176,7 +176,11 @@ Every job in `release.yml` keys off `github.ref_name`, which is the tag name for
 
 ## When a release published with no assets
 
-You see a `vX.Y.Z` release on the Releases page with the changelog body but **zero assets attached** (no `.dmg`, no `.tar.gz`, no `.sha256` files). The `release` job in `release.yml` failed with:
+You see a `vX.Y.Z` release on the Releases page (or in Drafts) with **zero assets attached** (no `.dmg`, no `.tar.gz`, no `.sha256` files). Two distinct causes have produced this end-state historically — the recovery differs by cause.
+
+### Cause A — immutable-release race (pre `skip-github-release`)
+
+Symptom: `release.yml` ran but the `release` job failed with:
 
 ```text
 Cannot upload asset recall-…  to an immutable release.
@@ -184,37 +188,49 @@ GitHub only allows asset uploads before a release is published,
 so upload assets to a draft release before you publish it.
 ```
 
-**Cause** — historically release-please created the GitHub Release as **published** the moment it pushed the tag. `release.yml` would then race GitHub's "immutable once published" check on the first asset upload and lose. The fix in `release-please-config.json` (`packages."." → "draft": true`) tells release-please to create the release as a **draft**; `release.yml`'s `softprops/action-gh-release` step (default `draft: false`) uploads to the draft and flips it to published. So this only happens on releases cut *before* the draft-first toggle landed.
+Historically release-please created the GitHub Release itself as **published** the moment it pushed the tag, and `release.yml`'s `softprops/action-gh-release` lost a race against GitHub's "immutable once published" check on the first asset upload. The current config (`release-please-config.json` `packages."." → "skip-github-release": true`) makes release-please skip Release creation entirely — `release.yml`'s softprops creates+uploads the release atomically in one call, no immutability window opens.
 
-**Recovery procedure** for an already-published-but-empty release:
+Affects: anything cut *before* `skip-github-release` landed (v0.2.0, v0.2.1).
+
+### Cause B — `release.yml` build job failed
+
+Symptom: `release.yml` ran but one of `build-docker` / `build-mac` / `sbom` failed, so the `release` job (which `needs:` all three) never ran and no assets were uploaded.
+
+Affects: any release where the build-side flaked (most commonly `build-mac`'s `hdiutil create` — the retry loop in `scripts/release/make-dmg.sh` covers that specific case; other build failures need to be diagnosed individually).
+
+### Recovery procedure
 
 ```sh
 TAG=v0.2.0
 
-# 1. Capture the existing body so the recovered release keeps the
-#    CHANGELOG-derived notes (release-please writes them at creation).
-gh release view "$TAG" --json body --jq .body > /tmp/release-body.md
+# 1. If a draft GitHub Release exists for the tag (from the
+#    pre-skip-github-release era), delete it — softprops will create
+#    a fresh one on re-fire.
+gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null && \
+  gh release delete "$TAG" --yes
 
-# 2. Delete the GitHub Release ONLY (keep the git tag — release.yml
-#    keys off the tag, and re-running with the tag intact lets it
-#    create a fresh release).
-gh release delete "$TAG" --yes
+# 2. If the published-but-empty release exists, delete it too. The
+#    tag stays on origin (we are NOT deleting the tag).
+gh release delete "$TAG" --yes 2>/dev/null || true
 
-# 3. Re-fire release.yml on the existing tag. The first asset upload
-#    will now succeed (no immutable release blocks it).
+# 3. Confirm the tag still exists on origin — release.yml keys off
+#    the tag, not the Release object.
+git ls-remote --tags origin "refs/tags/$TAG"
+
+# 4. If the tag is missing too (the `draft: true` regression deleted
+#    only the Release; release-please never pushed the tag), recreate
+#    it from the merge commit of the corresponding "chore(main):
+#    release X.Y.Z" PR:
+MERGE_SHA=$(gh pr list --search "chore(main): release ${TAG#v}" \
+              --state merged --json mergeCommit --jq '.[0].mergeCommit.oid')
+git tag "$TAG" "$MERGE_SHA"
+git push origin "$TAG"
+
+# 5. Re-fire release.yml. softprops creates the release fresh,
+#    uploads all assets in the same call.
 gh workflow run release.yml --ref "$TAG"
 # or: make release-fire TAG="$TAG"
-
-# 4. Once the new run finishes, the auto-generated body from
-#    softprops will *not* match release-please's CHANGELOG notes
-#    (softprops emits "## What's Changed" from PR titles). Restore
-#    the release-please body, keeping the auto-notes as a suffix:
-gh release view "$TAG" --json body --jq .body > /tmp/softprops-body.md
-{ cat /tmp/release-body.md; printf '\n\n'; cat /tmp/softprops-body.md; } \
-  | gh release edit "$TAG" --notes-file -
 ```
-
-Step 4 is optional — the release will be fully functional after step 3 with just the softprops-generated body — but the CHANGELOG-derived sections are what users actually read.
 
 **Do not** push a new tag (`vX.Y.Z` → `vX.Y.Z+1`) just to recover. The tag stays valid; you only need to re-emit the release page for it.
 
