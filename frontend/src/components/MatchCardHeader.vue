@@ -147,10 +147,13 @@ const emit = defineEmits<{
         v-if="record.annotation?.leaver"
         class="leaver-mark"
         :class="`leaver-${record.annotation.leaver}`"
+        role="img"
         :title="record.annotation.leaver === 'self' ? 'You left this match (data incomplete)'
           : record.annotation.leaver === 'team' ? 'An ally left this match'
             : 'An enemy left this match'"
-        aria-label="Leaver-annotated match"
+        :aria-label="record.annotation.leaver === 'self' ? 'You left this match'
+          : record.annotation.leaver === 'team' ? 'An ally left this match'
+            : 'An enemy left this match'"
       >
         <span class="leaver-mark-l" aria-hidden="true">L</span>
       </span>
@@ -162,6 +165,7 @@ const emit = defineEmits<{
       <span
         v-if="record.annotation && (record.annotation.note || record.annotation.replay_code || (record.annotation.members && record.annotation.members.length))"
         class="note-mark"
+        role="img"
         :title="[
           record.annotation.note ? 'has note' : '',
           record.annotation.replay_code ? 'replay: ' + record.annotation.replay_code : '',
