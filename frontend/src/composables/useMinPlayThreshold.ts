@@ -1,4 +1,4 @@
-import { ref, onMounted } from 'vue'
+import { usePersistedRef, parseClampedNumber } from './usePersistedRef'
 
 export const MIN_PLAY_PERCENT_STORAGE_KEY = 'recall.minPlayPercent'
 export const MIN_PLAY_MINUTES_STORAGE_KEY = 'recall.minPlayMinutes'
@@ -6,59 +6,59 @@ export const MIN_PLAY_MINUTES_STORAGE_KEY = 'recall.minPlayMinutes'
 // Persisted "minimum-play" threshold for the FilterRail. Two knobs in
 // one composable because they're conceptually one filter — a match
 // qualifies if a candidate hero meets EITHER threshold (OR semantics).
-// Use cases the user gave: "if I touched Lucio for 2% to cap a point,
-// don't surface that in the Lucio history; require at least 5% or 1
-// minute of actual play." Both default to 0 = filter disabled.
-//
-// Storage shape matches useIncludeUndated / useWeekStart: plain string
-// representation, parsed on read with bounds enforcement so a hand-
-// edited localStorage entry can't crash the app.
+// Use case: "if I touched Lucio for 2% to cap a point, don't surface
+// that in the Lucio history; require ≥ 5% or ≥ 1 minute of play."
+// Both default to 0 = filter disabled.
 
-function readNumberClamped(key: string, min: number, max: number): number {
+const parsePercent = parseClampedNumber(0, 100)
+// No hard upper bound on minutes — a user could conceivably set 60 to
+// mean "only matches I played a full hour of one hero". 9999 acts as
+// "no upper bound" without admitting Infinity.
+const parseMinutes = parseClampedNumber(0, 9999)
+
+export function readStoredMinPlayPercent(): number {
   try {
-    const raw = localStorage.getItem(key)
-    if (raw === null) return 0
-    const n = Number(raw)
-    if (!Number.isFinite(n)) return 0
-    if (n < min) return min
-    if (n > max) return max
-    return n
+    return parsePercent(localStorage.getItem(MIN_PLAY_PERCENT_STORAGE_KEY) ?? '') ?? 0
   } catch (_) {
     return 0
   }
 }
 
-export function readStoredMinPlayPercent(): number {
-  return readNumberClamped(MIN_PLAY_PERCENT_STORAGE_KEY, 0, 100)
-}
-
 export function readStoredMinPlayMinutes(): number {
-  // No hard upper bound — a user could conceivably set 60 to mean
-  // "only matches I played a full hour of one hero". 9999 is generous
-  // enough to act as "no upper bound" without admitting Infinity.
-  return readNumberClamped(MIN_PLAY_MINUTES_STORAGE_KEY, 0, 9999)
+  try {
+    return parseMinutes(localStorage.getItem(MIN_PLAY_MINUTES_STORAGE_KEY) ?? '') ?? 0
+  } catch (_) {
+    return 0
+  }
 }
 
 export function useMinPlayThreshold() {
-  const minPlayPercent = ref(0)
-  const minPlayMinutes = ref(0)
+  const { value: minPlayPercent, set: setPercent } = usePersistedRef<number>({
+    key: MIN_PLAY_PERCENT_STORAGE_KEY,
+    defaultValue: 0,
+    parse: parsePercent,
+  })
+  const { value: minPlayMinutes, set: setMinutes } = usePersistedRef<number>({
+    key: MIN_PLAY_MINUTES_STORAGE_KEY,
+    defaultValue: 0,
+    parse: parseMinutes,
+  })
+
+  // Clamp on the write path too so the in-memory ref can't drift
+  // out of range between mounts (the read path's parseClampedNumber
+  // covers only the hydrate). NaN / non-finite inputs collapse to 0.
+  function clamp(n: number, min: number, max: number): number {
+    if (!Number.isFinite(n)) return 0
+    return Math.max(min, Math.min(max, n))
+  }
 
   function setMinPlayPercent(next: number) {
-    const clamped = Math.max(0, Math.min(100, Number.isFinite(next) ? next : 0))
-    minPlayPercent.value = clamped
-    try { localStorage.setItem(MIN_PLAY_PERCENT_STORAGE_KEY, String(clamped)) } catch (_) {}
+    setPercent(clamp(next, 0, 100))
   }
 
   function setMinPlayMinutes(next: number) {
-    const clamped = Math.max(0, Math.min(9999, Number.isFinite(next) ? next : 0))
-    minPlayMinutes.value = clamped
-    try { localStorage.setItem(MIN_PLAY_MINUTES_STORAGE_KEY, String(clamped)) } catch (_) {}
+    setMinutes(clamp(next, 0, 9999))
   }
-
-  onMounted(() => {
-    minPlayPercent.value = readStoredMinPlayPercent()
-    minPlayMinutes.value = readStoredMinPlayMinutes()
-  })
 
   return { minPlayPercent, minPlayMinutes, setMinPlayPercent, setMinPlayMinutes }
 }
