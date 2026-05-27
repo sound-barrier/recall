@@ -947,5 +947,5 @@ function searchStr(field: string): string {
 }
 
 /* `.leaver-segmented` + `.min-play-*` styles moved to their
-   respective sub-component <style scoped> blocks. */
+   respective sub-component \3c style scoped> blocks. */
 </style>

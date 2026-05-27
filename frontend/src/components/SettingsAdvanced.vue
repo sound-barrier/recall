@@ -185,7 +185,7 @@ const emit = defineEmits<{
 
 .advanced-rows {
   /* Subtle fade-in when the user expands. Reduced-motion clobbers it
-     via the @media block at the bottom of SettingsView's <style>. */
+     via the @media block at the bottom of SettingsView's \3c style>. */
   animation: advanced-reveal 240ms ease;
 }
 
