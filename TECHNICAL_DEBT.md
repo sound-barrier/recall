@@ -29,56 +29,6 @@ first.
 
 ---
 
-## 3. 0% unit coverage on scoreboard-geometry helpers
-
-**What.** Four pure functions in `pkg/parser/parse_scoreboard.go`
-take an `image.Image` and do pixel-level region detection:
-`findHighlightedRowY`, `ocrRowCells`, `findRowXExtent`,
-`findStatColumns`. All four sit at 0% unit coverage. They're
-exercised by golden-file integration tests, but only across 5
-committed PNG fixtures in `testdata/`, so a regression in (say) the
-highlighted-row detection only trips when one of those five
-specific layouts shifts. Pure helpers `extractHeroes`, `digitize`,
-`normalizeDate`, `extractRank`, `extractInts`, etc. are all at
-85-100%, so the gap is concentrated in image geometry.
-
-**Why this matters.** These four functions hold the "find the
-brightest blue row" + "find the columns between this and that x
-extent" heuristics that decide what part of a screenshot is read
-for E/A/D/dmg/heal/mit. A single off-by-N change ripples into every
-scoreboard match's stats — silently, because the golden test only
-asserts the final integer values, not the intermediate rectangles.
-A regression here would only be caught by a contributor noticing
-the wrong numbers in their own UI. Crafted image fixtures (e.g. a
-100×100 PNG with one row painted `#5b95c5`) can drive the helpers
-without Tesseract and pin the geometry contract.
-
-**Plan.**
-
-1. Add a `pkg/parser/imageutil_test.go` (already exists — extend it)
-   that builds `image.RGBA` test fixtures inline via
-   `image.NewRGBA` + `Set(x, y, color.RGBA{...})`. Pattern matches
-   what `extractHeroes_test.go` does for text-only tests.
-2. `findHighlightedRowY`: paint a 200×100 image with a 10-pixel-tall
-   `#5b95c5` band at y=40–50; assert the returned `(yTop, yBot)` is
-   `(40, 50)` (or whatever the function's intended return).
-3. `findRowXExtent`: paint the same band only across `x=30..170`;
-   assert `(xLeft, xRight) = (30, 170)`.
-4. `findStatColumns`: paint six evenly-spaced bright cells in the
-   row band; assert the returned `[]image.Rectangle` has 6 entries
-   with the expected x-ranges.
-5. `ocrRowCells` shells out to Tesseract — out of scope for unit
-   tests; leave at integration-coverage. (Or, gate it behind a
-   `runTesseractFunc` package-level seam the way `parser.go` already
-   does for `parseSingleFunc`.)
-
-Each step is a single test function; lands incrementally in one PR.
-
-**Size.** **M** (~3-4 hours, mostly fixture-painting + assertion
-boilerplate).
-
----
-
 ## 4. 7-way duplication of the persisted-preference composable shape
 
 **What.** `useTheme`, `useWeekStart`, `useIncludeUndated`,
