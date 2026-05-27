@@ -794,7 +794,15 @@ main#main-content {
 .badge.result.defeat  { background: var(--loss-soft); color: var(--loss); border-color: var(--loss-line); }
 .badge.result.draw    { background: var(--draw-soft); color: var(--draw); border-color: var(--draw-line); }
 
-/* .incomplete-badge family + theme overrides moved to MatchCard.vue */
+/* .incomplete-badge family lives in MatchCardHeader.vue. Light-mode
+   theme override has to be a global rule because Vue scoped CSS
+   miscompiles `:global([data-theme="light"]) .x`. */
+[data-theme="light"] .incomplete-badge {
+  background: rgb(245 166 35 / 12%);
+  color: var(--accent-text);
+}
+
+[data-theme="light"] .incomplete-badge strong { color: var(--accent-text); }
 
 /* Clickable interactions */
 .clickable {
