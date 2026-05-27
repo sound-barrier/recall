@@ -2,9 +2,10 @@ name: release-please
 
 # release-please reads conventional-commit messages on main, opens a PR
 # that bumps the version + regenerates CHANGELOG.md, and — when that
-# PR merges — this workflow pushes the `vX.Y.Z` tag. The GitHub
-# Release itself is created by release.yml; release-please is
-# configured with `skip-github-release: true` so it manages PRs only.
+# PR merges — this workflow pushes the `vX.Y.Z` tag and explicitly
+# triggers release.yml. The GitHub Release itself is created by
+# release.yml; release-please is configured with
+# `skip-github-release: true` so it manages PRs only.
 #
 # So the flow is:
 #   1. Conventional commits land on main (enforced by lefthook commit-msg).
@@ -13,12 +14,14 @@ name: release-please
 #   3. Maintainer merges the release PR.
 #   4. The "Push tag for merged release-please PR" step in THIS
 #      workflow (via scripts/release/push-release-tag.sh) detects the
-#      `chore(main): release X.Y.Z` merge commit and pushes the
-#      v<version> tag, then flips the PR label from
+#      `chore(main): release X.Y.Z` merge commit, pushes the
+#      v<version> tag, calls `gh workflow run release.yml --ref vX.Y.Z`
+#      to fire the release workflow, and flips the PR label from
 #      `autorelease: pending` to `autorelease: tagged`.
-#   5. release.yml fires on the tag, builds binaries, and — via
-#      softprops/action-gh-release — creates the GitHub Release
-#      ATOMICALLY with the asset uploads in the same call.
+#   5. release.yml fires (via workflow_dispatch from step 4), builds
+#      binaries, and — via softprops/action-gh-release — creates the
+#      GitHub Release ATOMICALLY with the asset uploads in the same
+#      call.
 #
 # Why this two-step shape: GitHub treats PUBLISHED releases as
 # IMMUTABLE for asset uploads. The historical setup (release-please
@@ -41,35 +44,35 @@ name: release-please
 # `git tag` + `git push origin v...` from the maintainer's shell.
 # The companion push-release-tag.sh step closes that gap.
 #
+# Why no PAT (RELEASE_PLEASE_TOKEN): GitHub's anti-loop guard
+# normally suppresses workflow chaining when refs are pushed by
+# github-actions[bot] (the identity GITHUB_TOKEN surfaces as). That's
+# why earlier revisions of this workflow required a maintainer-owned
+# PAT — only a real-user-authored tag push would fire release.yml's
+# `push: tags` trigger. push-release-tag.sh now sidesteps that by
+# calling `gh workflow run release.yml --ref vX.Y.Z` after the tag
+# push, which fires release.yml via the workflow_dispatch path (no
+# anti-loop guard applies). Net: no PAT to maintain, the auto-fire
+# still works, and the only cosmetic change is that tag commits are
+# now authored by github-actions[bot] instead of the PAT owner.
+#
 # REPO SETUP — one-time:
 #   1. Settings -> Actions -> General -> Workflow permissions ->
 #      check "Allow GitHub Actions to create and approve pull requests".
 #      Without this, the action runs to completion but fails with:
 #      "GitHub Actions is not permitted to create or approve pull
 #      requests."
-#
-#   2. (Strongly recommended.) Create a fine-grained PAT with
-#      contents:write + pull-requests:write on this repo and save it
-#      as the repo secret RELEASE_PLEASE_TOKEN. The action below uses
-#      it when present and falls back to GITHUB_TOKEN otherwise.
-#
-#      Why: tags pushed by GITHUB_TOKEN do NOT fire downstream
-#      workflows (GitHub anti-loop guard), so without a PAT the
-#      vX.Y.Z tag release-please creates will NOT auto-trigger
-#      release.yml -- you will have to fire that workflow manually
-#      (`make release-fire TAG=vX.Y.Z`, or
-#      `gh workflow run release.yml --ref vX.Y.Z`). With a PAT the
-#      tag push is attributed to the PAT owner and release.yml runs
-#      automatically. See RELEASES.md "When release.yml does not
-#      auto-fire" for the full procedure.
 
 on:
   push:
     branches: [main]
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: write     # release-please-action commits + tag pushes
+  pull-requests: write  # release-please-action opens release PRs;
+  # gh pr edit flips labels
+  actions: write      # push-release-tag.sh calls `gh workflow run
+  # release.yml --ref vX.Y.Z` after pushing the tag
 
 jobs:
   release-please:
@@ -77,13 +80,7 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7  # v5
         with:
-          # Use a PAT when one is configured so the tag release-please
-          # creates is attributed to a real account and fires
-          # release.yml automatically. Falls back to GITHUB_TOKEN so
-          # the action still runs (and the Release PR still opens) on
-          # forks or repos without the secret -- the cost is that
-          # release.yml has to be triggered manually for those tags.
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           # Config + manifest live in release-please-config.json and
           # .release-please-manifest.json at the project root. The
           # release-type: simple setting in config means release-please
@@ -92,17 +89,17 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-      # Checkout with the SAME token release-please uses, so the
-      # subsequent `git push` of the release tag fires release.yml
-      # downstream. With GITHUB_TOKEN this is suppressed by GitHub's
-      # anti-loop guard; with RELEASE_PLEASE_TOKEN (PAT) the tag is
-      # attributed to the PAT owner and downstream workflows fire.
-      # fetch-depth: 0 because the script's `git ls-remote` check is
-      # remote-only but `git rev-parse HEAD` and `git tag` need the
-      # local history.
+      # Checkout with the same token, so the subsequent `git push` of
+      # the release tag uses GITHUB_TOKEN as the credential. The
+      # anti-loop guard does suppress release.yml's `push: tags`
+      # trigger for this push, but push-release-tag.sh calls
+      # `gh workflow run release.yml` directly to fire it anyway —
+      # see the header comment above.
+      # fetch-depth: 0 because `git ls-remote` is remote-only but
+      # `git rev-parse HEAD` and `git tag` need local history.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
         with:
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Push tag for merged release-please PR
@@ -112,10 +109,9 @@ jobs:
           # script reads it from this env var rather than letting the
           # workflow interpolate it into the run: command line.
           HEAD_COMMIT_MSG: ${{ github.event.head_commit.message }}
-          # GH_TOKEN powers the `gh pr edit` call that flips the
-          # release PR's label from `autorelease: pending` to
-          # `autorelease: tagged`. Same token as release-please uses
-          # for symmetry (both PAT and GITHUB_TOKEN can edit PR
-          # labels — only the tag-push trigger semantics differ).
-          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          # GH_TOKEN powers both `gh workflow run release.yml`
+          # (needs the actions: write permission granted at the job
+          # level above) and `gh pr edit ... --label ...` (needs
+          # pull-requests: write).
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/release/push-release-tag.sh

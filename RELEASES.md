@@ -38,15 +38,11 @@ Config lives in `release-please-config.json` and `.release-please-manifest.json`
 
 ## One-time repo setup
 
-Three settings unlock the full automation. Skip any and you'll fall back to the [manual recovery procedures](#when-releaseyml-doesnt-auto-fire) — or, for #3, every container pull will require auth forever.
+Two settings unlock the full automation. Skip either and you'll fall back to the [manual recovery procedures](#when-releaseyml-doesnt-auto-fire) — or, for #2, every container pull will require auth forever.
 
 1. **Allow GitHub Actions to open PRs.** Settings → Actions → General → Workflow permissions → check **"Allow GitHub Actions to create and approve pull requests"**. Without this, release-please errors with *"GitHub Actions is not permitted to create or approve pull requests."* when it tries to open the Release PR.
 
-2. **`RELEASE_PLEASE_TOKEN` secret.** Create a fine-grained PAT scoped to this repo with `contents: write` + `pull-requests: write` (or use a GitHub App). Save it as the repo secret `RELEASE_PLEASE_TOKEN`.
-
-   Why it matters: tags pushed by `GITHUB_TOKEN` do **not** fire downstream workflows (GitHub's anti-loop guard). With `RELEASE_PLEASE_TOKEN` set, the tag release-please creates is attributed to the PAT owner and `release.yml` fires automatically. Without it, you have to nudge `release.yml` manually for every cut — see [When `release.yml` doesn't auto-fire](#when-releaseyml-doesnt-auto-fire). `release-please.yml` already reads the secret (`token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}`); no code change needed once the secret is in place.
-
-3. **GHCR package visibility — flip `recall-server` to public.** After the first container release, the package will be private by default (GHCR's default for newly-created packages). `docker pull ghcr.io/sound-barrier/recall-server:<tag>` will fail with `denied` for unauthenticated users until you flip it:
+2. **GHCR package visibility — flip `recall-server` to public.** After the first container release, the package will be private by default (GHCR's default for newly-created packages). `docker pull ghcr.io/sound-barrier/recall-server:<tag>` will fail with `denied` for unauthenticated users until you flip it:
 
    GHCR → Packages → `recall-server` → Package settings → Change visibility → **Public** → confirm by typing the package name.
 
@@ -79,8 +75,8 @@ What happens next:
 
 1. release-please re-evaluates on the push, reads the `Release-As:` footer, and opens (or updates) a **Release PR** titled `chore(main): release v0.0.13-beta.0`.
 2. The PR diff bumps `.release-please-manifest.json` to `0.0.13-beta.0` and adds a `## [0.0.13-beta.0]` heading to `CHANGELOG.md` listing every commit since the last release tag.
-3. Merge the PR. release-please creates the `v0.0.13-beta.0` git tag.
-4. **If `RELEASE_PLEASE_TOKEN` is configured**, `release.yml` fires on the `v*` tag automatically. **Otherwise**, fire it yourself: `make release-fire TAG=v0.0.13-beta.0`. GitHub marks the resulting Release as a **prerelease** automatically because the tag has a hyphenated suffix — no separate workflow or flag needed. The published container is tagged `:0.0.13-beta.0` only; the rolling `:latest` and `:0.0` tags don't move, so production pulls of `:latest` continue to land on the most recent stable build.
+3. Merge the PR. `release-please.yml`'s `push-release-tag.sh` step detects the `chore(main): release X.Y.Z` merge commit, pushes the `v0.0.13-beta.0` tag, and calls `gh workflow run release.yml --ref v0.0.13-beta.0` to fire the release workflow. (The explicit `gh workflow run` is required because tag pushes from `github-actions[bot]` don't fire `release.yml`'s `push: tags` trigger on their own — see the [auto-fire section](#when-releaseyml-doesnt-auto-fire) for the why.)
+4. `release.yml` builds artifacts and creates the Release page. GitHub marks the resulting Release as a **prerelease** automatically because the tag has a hyphenated suffix — no separate workflow or flag needed. The published container is tagged `:0.0.13-beta.0` only; the rolling `:latest` and `:0.0` tags don't move, so production pulls of `:latest` continue to land on the most recent stable build.
 
 The next beta in the same line: `make release-beta VERSION=0.0.13-beta.1`. The next *official* release: don't use `release-beta` — let release-please bump normally from the most recent tag (e.g. `v0.0.13` from `fix:` commits, `v0.1.0` from `feat:`). The absence of a hyphenated suffix in the tag is what makes a release "official"; the same `release.yml` builds artifacts either way.
 
@@ -160,7 +156,9 @@ Full recipe in [docs/docker.md](docs/docker.md) → "Verifying the image".
 
 ## When `release.yml` doesn't auto-fire
 
-You merged a Release PR, the `vX.Y.Z` tag exists on origin (`git ls-remote --tags origin | grep vX.Y.Z`), but no `Release` workflow run appears under Actions. **This is expected when `release-please.yml` is using the default `GITHUB_TOKEN`** — GitHub deliberately suppresses workflow chaining for refs authored by `github-actions[bot]` (anti-loop guard), so the tag push doesn't fire `release.yml`'s `push: tags` trigger.
+You merged a Release PR, the `vX.Y.Z` tag exists on origin (`git ls-remote --tags origin | grep vX.Y.Z`), but no `Release` workflow run appears under Actions.
+
+**Background** — tag pushes from `github-actions[bot]` (which the workflow's `GITHUB_TOKEN` auth surfaces us as) do NOT fire downstream workflows on their own; GitHub deliberately suppresses workflow chaining for bot-authored refs (anti-loop guard). The normal flow sidesteps this by having `release-please.yml`'s `push-release-tag.sh` call `gh workflow run release.yml --ref vX.Y.Z` immediately after the tag push. If that explicit dispatch step failed (network blip, transient API error, missing `actions: write` permission), the tag exists but `release.yml` was never invoked.
 
 **Immediate unblock** — fire `release.yml` manually for the existing tag:
 
@@ -172,7 +170,7 @@ Equivalent without `make`: `gh workflow run release.yml --ref v0.0.13-beta.0`, o
 
 Every job in `release.yml` keys off `github.ref_name`, which is the tag name for both `push: tags` and `workflow_dispatch`, so no other knobs to flip. The `workflow_dispatch:` trigger must exist in the workflow file *at the tag's ref* for this to work — tags cut before `workflow_dispatch:` was added (anything before `v0.0.12-beta.0`) can't be fired this way and need the [emergency manual tag](#emergency-manual-tag-last-resort) re-push instead.
 
-**Long-term fix** — configure `RELEASE_PLEASE_TOKEN` per [One-time repo setup](#one-time-repo-setup). Future tags will be authored by the PAT owner and fire `release.yml` automatically.
+**Diagnose the auto-dispatch failure** — check the most recent `release-please.yml` run on `main`. The `Push tag for merged release-please PR` step's log will show either `Triggered release.yml for vX.Y.Z` (success — re-run via the immediate-unblock command above) or a `gh workflow run` error explaining what went wrong (auth, permission, or rate limit).
 
 ## When a release published with no assets
 
