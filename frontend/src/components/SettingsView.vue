@@ -379,21 +379,10 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
   cursor: pointer;
 }
 
-/* ─── Right-rail value chip in setting rows ──────────────── */
-
-.setting-value {
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  color: var(--text-dim);
-  letter-spacing: 0;
-  text-align: right;
-  word-break: break-all;
-  max-width: 420px;
-  padding: 0.35rem 0.7rem;
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: 2px;
-}
+/* `.setting-value` moved to app.css — used by SettingsFolders.vue's
+   path display and SettingsEngine.vue's binary path, so a scoped
+   block here wouldn't reach either child component (same
+   data-v-hash mismatch that broke the Settings tooltip earlier). */
 
 /* `.data-loc-*`, `.btn-copied`, `.folder-btn-group`, `.detect-btn`
    are single-consumer (SettingsFolders.vue only) and were moved

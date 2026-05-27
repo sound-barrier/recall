@@ -1260,7 +1260,29 @@ main#main-content {
   min-width: 0;
 }
 
-/* .setting-value moved to SettingsView.vue */
+/* ─── Right-rail value chip in setting rows ──────────────── */
+
+/* Used by SettingsFolders (screenshots-folder path), SettingsEngine
+   (Tesseract binary path), and any future Settings panel that
+   renders a mono path/value on the right edge of a row. Lives
+   globally — multiple consumers — and was the source of an earlier
+   layout-overflow bug when scoped to SettingsView.vue only (the
+   data-v hash didn't match the children's DOM, so the cap +
+   word-break + chip styling silently dropped and a long path
+   stretched the grid column off the page). */
+.setting-value {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  letter-spacing: 0;
+  text-align: right;
+  word-break: break-all;
+  max-width: min(420px, 100%);
+  padding: 0.35rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+}
 
 /* .big-switch family + .btn.primary.big .btn-dot descendant moved to
    IngestView.vue. .btn.primary.big base size kept here as a button
@@ -1927,9 +1949,20 @@ main#main-content {
 .setting-help-pop {
   position: absolute;
   top: calc(100% + 0.45rem);
-  left: 50%;
-  transform: translateX(-50%) translateY(-4px);
-  width: 260px;
+  /* Anchor the tooltip's LEFT edge to the icon's left edge so it
+     opens rightward, not centred. Centring with translateX(-50%)
+     used to clip the tooltip off the left edge of the viewport
+     whenever the `?` icon sat near the page's left margin — which is
+     every Settings row, because labels are in the left column. The
+     icons in this app are always in the left half of the row, so a
+     rightward-opening tooltip is robust against narrow windows too.
+     max-width caps the width against the viewport so even a tiny
+     window can still see the whole tooltip (text wraps to extra
+     lines instead of overflowing). */
+  left: 0;
+  transform: translateY(-4px);
+  width: max-content;
+  max-width: min(280px, calc(100vw - 2rem));
   padding: 0.6rem 0.75rem;
   background: var(--surface-3);
   border: 1px solid var(--accent);
@@ -1949,12 +1982,12 @@ main#main-content {
 }
 
 .setting-help-pop::before {
-  /* Pointer triangle at the top of the popover, lined up with the ? icon. */
+  /* Pointer triangle lined up under the `?` icon — sits at the
+     tooltip's left edge now that the body itself is left-anchored. */
   content: '';
   position: absolute;
   bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0.4rem;
   width: 0; height: 0;
   border: 5px solid transparent;
   border-bottom-color: var(--accent);
@@ -1972,7 +2005,7 @@ main#main-content {
 .setting-help:hover .setting-help-pop,
 .setting-help:focus-visible .setting-help-pop {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  transform: translateY(0);
   pointer-events: auto;
 }
 
