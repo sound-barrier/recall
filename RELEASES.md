@@ -27,9 +27,10 @@ release-please.yml opens "chore(main): release vX.Y.Z" PR
     ↓
 maintainer reviews + merges the PR
     ↓
-release-please creates the vX.Y.Z tag
+release-please.yml fires again on the merge commit;
+push-release-tag.sh pushes the vX.Y.Z tag and dispatches release.yml
     ↓
-release.yml builds binaries + DMG + container image
+release.yml builds binaries + DMG + container image (matrix-parallel)
     ↓
 GitHub Release published with artifacts attached
 ```
@@ -42,7 +43,9 @@ Two settings unlock the full automation. Skip either and you'll fall back to the
 
 1. **Allow GitHub Actions to open PRs.** Settings → Actions → General → Workflow permissions → check **"Allow GitHub Actions to create and approve pull requests"**. Without this, release-please errors with *"GitHub Actions is not permitted to create or approve pull requests."* when it tries to open the Release PR.
 
-2. **GHCR package visibility — flip `recall-server` to public.** After the first container release, the package will be private by default (GHCR's default for newly-created packages). `docker pull ghcr.io/sound-barrier/recall-server:<tag>` will fail with `denied` for unauthenticated users until you flip it:
+2. **GHCR package visibility — flip `recall-server` to public.** ✅ Already done for `sound-barrier/recall`. The instructions below stay for forks and any future package renames.
+
+   New container packages on GHCR default to private. `docker pull ghcr.io/<owner>/recall-server:<tag>` fails with `denied` for unauthenticated users until you flip the visibility:
 
    GHCR → Packages → `recall-server` → Package settings → Change visibility → **Public** → confirm by typing the package name.
 
@@ -52,8 +55,8 @@ Two settings unlock the full automation. Skip either and you'll fall back to the
 
 1. **Merge the Release PR.** release-please opens it titled `chore(main): release vX.Y.Z` whenever there are tag-bumping commits on `main`. The PR diff shows the version bump in `.release-please-manifest.json` and the additions to `CHANGELOG.md`.
 2. **Review the changelog content** before merging — anything `chore:` or `style:` is hidden, anything else is grouped by type. If the changelog is missing a notable change, fix the underlying commit subject (amend + force-push, OR add an empty `git commit --allow-empty -m "fix: …"` if the original PR is already squashed in).
-3. **Merge the PR** (squash). release-please creates the `vX.Y.Z` git tag on the merge commit.
-4. **`release.yml` fires** and builds artifacts. Wait for `build-docker`, `build-mac`, `sbom`, `publish-container`, and `release` to go green — typically 8–15 minutes. **If no `Release` workflow run shows up at all**, see [When `release.yml` doesn't auto-fire](#when-releaseyml-doesnt-auto-fire).
+3. **Merge the PR** (rebase). `release-please.yml` fires again on the merge commit; its `push-release-tag.sh` step detects the `chore(main): release X.Y.Z` subject, pushes the `vX.Y.Z` tag, calls `gh workflow run release.yml --ref vX.Y.Z` to fire the release workflow, and flips the PR label from `autorelease: pending` to `autorelease: tagged`.
+4. **`release.yml` runs** and builds artifacts. The five `build` matrix entries (wails-linux, wails-windows, server-linux, server-windows, server-mac) plus `build-mac` start in parallel. `sbom` waits on those, `release` waits on `sbom`, and `publish-container` waits on `release`. Wall-clock is ~5m cold cache / ~3m30s warm. **If no `Release` workflow run shows up at all**, see [When `release.yml` doesn't auto-fire](#when-releaseyml-doesnt-auto-fire).
 5. **Verify the GitHub Release**: `.dmg`, `.tar.gz`, `.deb`, `.exe`, SBOM, and per-artifact `.sha256` files should all be attached. The container image at `ghcr.io/<owner>/recall-server:X.Y.Z` should be present in Packages, with the rolling `:X.Y` and `:latest` tags pointing at it. (Rolling tags only move on stable releases — see the [stable vs. prerelease table](#stable-vs-prerelease-at-a-glance).)
 
 ## Cutting a prerelease (beta / rc / alpha)
@@ -130,19 +133,19 @@ flowchart TD
 
 ## `release.yml` jobs
 
-Triggered on `v*` tag push and on `workflow_dispatch` (the manual-fallback path documented below). Every job keys off `github.ref_name` (the tag name) so both triggers produce identical artifacts.
+Triggered on `v*` tag push (the auto-fire path from `push-release-tag.sh`'s `gh workflow run`) and on `workflow_dispatch` (manual fallback, same path the script uses). Every job keys off `github.ref_name` (the tag name) so both triggers produce identical artifacts. Workflow-level `concurrency: { group: release-${{ github.ref_name }}, cancel-in-progress: false }` serialises duplicate runs against the same tag — important because `softprops/action-gh-release` is non-idempotent.
 
-| Job | Output | Notes |
-|---|---|---|
-| `build-docker` | Linux + Windows Wails apps; all server binaries; Linux `.tar.gz` + `.deb` | Docker-driven. `.deb` installs to `/usr/local/bin/`. |
-| `build-mac` | macOS Wails arm64 `.app` bundle → `.dmg` via `hdiutil` | Apple runner required. Wraps the staging dance in `scripts/release/make-dmg.sh`. |
-| `sbom` | `recall-{version}-sbom.spdx.json` | `anchore/sbom-action`. SPDX JSON covering Go modules + npm packages. |
-| `publish-container` | `ghcr.io/<owner>/recall-server:<tags>` | Tag matrix below. Signed with cosign keyless OIDC (see below). |
-| `release` | GitHub Release with all artifacts + per-artifact `<filename>.sha256` | Waits on `build-docker` + `build-mac` + `sbom`. SBOM does not get a sha256 sidecar. Artifact filenames embed the version with the `v` prefix stripped. |
+| Job | `needs:` | Output | Notes |
+|---|---|---|---|
+| `build` *(matrix × 5)* | — | One artifact set per matrix target: wails-linux (`.tar.gz` + `.deb`), wails-windows (NSIS `installer.exe`), server-linux (`.tar.gz` + `.deb`), server-windows (`.exe`), server-mac (`.tar.gz`) | Each entry runs on its own ubuntu-latest runner via `docker/build-push-action` against a `Dockerfile.build` target. All five share GHA cache scope `release-build`, so the `go-base` / `server-base` layers materialise once across runs. Packaging logic lives in `scripts/release/package-{wails,server}-{linux,windows,mac}.sh`. |
+| `build-mac` | — | macOS Wails arm64 `.app` bundle → `.dmg` via `hdiutil` | Apple runner required (Apple SDK isn't redistributable). DMG staging in `scripts/release/make-dmg.sh`, which retries `hdiutil create` up to 3× on the "Resource busy" CI flake. |
+| `sbom` | `build`, `build-mac` | `recall-{version}-sbom.spdx.json` | `anchore/sbom-action`. Downloads built artifacts, untars tarballs so syft scans both source AND binaries. Captures Go-build-info indirect deps the source-only scan misses. |
+| `release` | `build`, `build-mac`, `sbom` | GitHub Release with all artifacts + per-artifact `<filename>.sha256` | `softprops/action-gh-release` creates+uploads atomically — no pre-existing release means no GitHub-immutability race. SBOM does not get a sha256 sidecar. Artifact filenames embed the version with the `v` prefix stripped. |
+| `publish-container` | `release` | `ghcr.io/<owner>/recall-server:<tags>` | Tag matrix below. Signed with cosign keyless OIDC (see below). Gated on `release` succeeding so GHCR never has a tag without matching downloadable assets. |
 
 **GHCR tag matrix.** Every tag publishes the exact `:{{version}}`. Rolling `:{{major}}.{{minor}}` and `:latest` only push on stable releases — prerelease tags (hyphenated, e.g. `v0.1.0-beta.0`) are guarded by `enable=${{ !contains(github.ref_name, '-') }}`. So `docker pull recall-server:latest` always lands on a non-prerelease build. The full matrix is in [Stable vs. prerelease at a glance](#stable-vs-prerelease-at-a-glance).
 
-**GHCR auth + visibility.** Push uses `secrets.GITHUB_TOKEN`; no PAT needed. Workflow permissions must include `packages: write`. The job attempts `continue-on-error` to flip the package to public via API, but `GITHUB_TOKEN` lacks the `write:packages` OAuth scope for visibility — set public once manually via GitHub Package settings.
+**GHCR auth + visibility.** Push uses `secrets.GITHUB_TOKEN`; no PAT needed. Workflow permissions include `packages: write`. The job attempts `continue-on-error` to flip the package to public via API, but `GITHUB_TOKEN` lacks the `write:packages` OAuth scope for visibility — for `sound-barrier/recall` the package was already flipped public manually (one-time, see [One-time repo setup](#one-time-repo-setup) → step 2). Forks need to do the same once per package name.
 
 **Image signing.** After push, every tag is signed via `sigstore/cosign-installer@v3` + `cosign sign --yes` keyless OIDC — the workflow's GitHub Actions identity is the signing identity (no long-lived keys). Signing is by digest (`${tag%:*}@${DIGEST}`), not tag, so a tag re-point cannot invalidate the signature. Requires `id-token: write` on `publish-container`. User verification:
 
@@ -192,7 +195,7 @@ Affects: anything cut *before* `skip-github-release` landed (v0.2.0, v0.2.1).
 
 ### Cause B — `release.yml` build job failed
 
-Symptom: `release.yml` ran but one of `build-docker` / `build-mac` / `sbom` failed, so the `release` job (which `needs:` all three) never ran and no assets were uploaded.
+Symptom: `release.yml` ran but one of the `build` matrix entries, `build-mac`, or `sbom` failed, so the `release` job (which `needs:` all three groups) never ran and no assets were uploaded.
 
 Affects: any release where the build-side flaked (most commonly `build-mac`'s `hdiutil create` — the retry loop in `scripts/release/make-dmg.sh` covers that specific case; other build failures need to be diagnosed individually).
 
