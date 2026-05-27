@@ -673,7 +673,7 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
 }
 
 /* Theme swatch + weekstart styles moved to their respective
-   sub-component <style scoped> blocks. */
+   sub-component \3c style scoped> blocks. */
 
 /* ─── Tactical-frame motif on settings-section ────────────── */
 
@@ -712,7 +712,7 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
    the entire app once SettingsView mounted. */
 
 /* `.engine-*`, `.warn-icon`, `.link-btn` styles moved to
-   SettingsEngine.vue's <style scoped> block. */
+   SettingsEngine.vue's \3c style scoped> block. */
 
 /* `.export-btn-group` styles moved to SettingsBackupRestore.vue.
    `.setting-row.danger-row` + `.clear-confirm-group` stay here
@@ -762,7 +762,7 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
 }
 
 /* `.advanced-*` + `.big-switch*` styles moved to
-   SettingsAdvanced.vue's <style scoped> block. */
+   SettingsAdvanced.vue's \3c style scoped> block. */
 
 /* ─── Reduced-motion override ─────────────────────────────── */
 
