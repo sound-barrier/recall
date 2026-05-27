@@ -40,8 +40,15 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     wget \
-    unzip
+    unzip \
+    pipx
 sudo rm -rf /var/lib/apt/lists/*
+
+# Wire pipx onto PATH for the rest of this script + the user's shell.
+# pipx itself is in apt as `pipx`; binaries land in ~/.local/bin which
+# isn't on PATH by default on a fresh container.
+pipx ensurepath
+export PATH="$HOME/.local/bin:$PATH"
 
 # Assert Tesseract major.minor matches the pin in tool-versions.env so
 # the parser-integration goldens (testdata/*.golden.json) reproduce
@@ -98,6 +105,13 @@ log "typos ${TYPOS_VERSION}"
 curl -fsSL "https://github.com/crate-ci/typos/releases/download/${TYPOS_VERSION}/typos-${TYPOS_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
     | sudo tar -xz -C /usr/local/bin ./typos
 sudo chmod +x /usr/local/bin/typos
+
+# ─── semgrep (JS/TS SAST) ─────────────────────────────────────────────
+# Python-based — install via pipx so the binary lands on PATH without
+# polluting the system Python. Matches how CI installs it; the version
+# pin keeps dev / CI / lefthook in lockstep.
+log "semgrep ${SEMGREP_VERSION}"
+pipx install "semgrep==${SEMGREP_VERSION}"
 
 # ─── direnv shell hook ────────────────────────────────────────────────
 # The Dev Containers spec gives the `vscode` user a bash login shell.

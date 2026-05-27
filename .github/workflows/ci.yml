@@ -385,6 +385,12 @@ jobs:
       - name: Run gosec (serveronly build tag)
         run: gosec -exclude-dir=frontend -tags=serveronly ./...
 
+  # JS/TS SAST in CI is handled by CodeQL's javascript-typescript
+  # language matrix in .github/workflows/codeql.yml. Semgrep runs
+  # locally only — via `make lint-semgrep` and the pre-push lefthook
+  # hook — so contributors get fast feedback before push without
+  # duplicating coverage with CodeQL.
+
   # ── Job 8: Dead code analysis ────────────────────────────────────────────
   # deadcode does whole-program call-graph analysis for Go (serveronly variant
   # only — the Wails variant registers App methods via reflection so deadcode

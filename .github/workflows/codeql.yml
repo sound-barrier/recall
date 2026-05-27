@@ -29,6 +29,15 @@ jobs:
             build-mode: manual
           - language: javascript-typescript
             build-mode: none
+          # GitHub Actions workflow analysis. CodeQL's `actions` language
+          # parses every .github/workflows/*.yml plus composite actions
+          # under .github/actions/ and runs queries that catch workflow
+          # security smells — script-injection sinks (untrusted PR/issue
+          # context interpolated into run: blocks), missing checkout
+          # persist-credentials hardening, untrusted input flowing into
+          # env vars, etc. No toolchain prep needed.
+          - language: actions
+            build-mode: none
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6

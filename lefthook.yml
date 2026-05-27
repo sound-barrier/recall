@@ -118,6 +118,27 @@ pre-push:
       glob: "frontend/src/**/*.{ts,vue}"
       run: cd frontend && npm run dead:ts
 
+    # gosec — Go SAST. Whole-program; can't be scoped to staged files
+    # like the pre-commit Go hooks above. Both build tags swept so
+    # Wails-only and serveronly code paths both get covered. Same tool
+    # invocation as `make lint-gosec` and the CI security job — bypass
+    # is `LEFTHOOK_EXCLUDE=gosec git push`. The repo's CI runs gosec on
+    # every push, so skipping locally just shifts the failure point.
+    gosec:
+      glob: "*.go"
+      run: make lint-gosec
+
+    # Semgrep — JS/TS SAST counterpart to gosec. Sweeps frontend/src/
+    # via the community rulesets (p/javascript + p/typescript +
+    # p/owasp-top-ten). Server-side coverage comes from CodeQL's
+    # javascript-typescript language (in codeql.yml); Semgrep here is
+    # the fast local feedback loop so contributors catch findings
+    # before push instead of in a 5-min CodeQL run. Registry rulesets
+    # are fetched at scan time — needs internet.
+    semgrep:
+      glob: "frontend/src/**/*.{ts,js}"
+      run: make lint-semgrep
+
     # Coverage gate. Runs the same `make cover` umbrella developers
     # invoke locally; vitest enforces the per-metric thresholds in
     # vitest.config.ts, and the cover-go target enforces the Go floor

@@ -163,7 +163,7 @@ cloc-detail: ## Count lines of source code, per-file breakdown
 	@command -v cloc >/dev/null || { echo "cloc not installed — brew install cloc (or apt install cloc)"; exit 1; }
 	cloc --config .clocrc --by-file-by-lang .
 
-lint: lint-go lint-js lint-css lint-html lint-shell lint-docker lint-yaml lint-openapi lint-typos lint-md lint-actions lint-gosec ## Run all linters
+lint: lint-go lint-js lint-css lint-html lint-shell lint-docker lint-yaml lint-openapi lint-typos lint-md lint-actions lint-gosec lint-semgrep ## Run all linters
 
 lint-go: ## Lint Go source (golangci-lint, both build tags)
 	@echo "[ recall ] Linting Go (golangci-lint)…"
@@ -258,6 +258,31 @@ lint-gosec: ## Go SAST via gosec (both build tags)
 	@echo "[ recall ] gosec (serveronly build tag)…"
 	gosec -exclude-dir=frontend -tags=serveronly ./...
 	@echo "[ recall ] ✓  gosec clean"
+
+# Semgrep — JS/TS SAST equivalent to gosec. Sweeps frontend/src/ for
+# eval / exec / innerHTML / hardcoded-secret / unsafe-regex / DOM-XSS
+# patterns via the community-maintained rulesets (p/javascript +
+# p/typescript + p/owasp-top-ten). The registry packs are fetched at
+# scan time (needs internet); the CLI itself is version-pinned.
+#
+# .vue files aren't scanned — Semgrep's analyzer set is per-extension
+# and .vue isn't supported as a first-class language. The main
+# Vue-specific XSS risk (v-html) is covered by vue/no-v-html in
+# eslint-plugin-vue, which runs in `make lint-js`. False positives
+# can be silenced with `// nosemgrep` inline comments (per-rule:
+# `// nosemgrep: rule-id`).
+lint-semgrep: ## JS/TS SAST via Semgrep (frontend/src/, TypeScript only — .vue handled by eslint-plugin-vue)
+	@command -v semgrep >/dev/null || { echo "[ recall ] ✗  semgrep not installed — brew install semgrep (or pipx install semgrep==$(SEMGREP_VERSION))"; exit 1; }
+	@echo "[ recall ] semgrep (JS/TS SAST)…"
+	semgrep scan \
+		--config=p/javascript \
+		--config=p/typescript \
+		--config=p/owasp-top-ten \
+		--error \
+		--metrics=off \
+		--quiet \
+		frontend/src/
+	@echo "[ recall ] ✓  semgrep clean"
 
 # Spectral runs the spectral:oas ruleset against api/openapi.yaml; see
 # .spectral.yaml at the project root for rule overrides. npx pulls a

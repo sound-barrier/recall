@@ -78,6 +78,13 @@ brew "actionlint"
 # CodeQL and govulncheck don't cover.
 brew "gosec"
 
+# JS/TS SAST counterpart to gosec. Used by `make lint-semgrep` and
+# the CI `semgrep` job; sweeps frontend/src/*.ts via the community
+# rulesets (p/javascript, p/typescript, p/owasp-top-ten). Brew may
+# trail tool-versions.env by a few patch releases — CI uses the
+# exact pin via pipx, dev uses whatever brew has.
+brew "semgrep"
+
 # --- Not in brew, but required:
 #
 #   Wails CLI itself is a Go binary. Install once after `brew bundle`:
