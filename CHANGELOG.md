@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.4](https://github.com/sound-barrier/recall/compare/v0.2.3...v0.2.4) (2026-05-27)
+
+
+### Documentation
+
+* **releases:** align RELEASES.md with current pipeline state ([0559c3f](https://github.com/sound-barrier/recall/commit/0559c3f9dba7411ae22dd580604c971aaa860fbd))
+
+
+### CI
+
+* **release-please:** auto-push the release tag after PR merge ([e30cd65](https://github.com/sound-barrier/recall/commit/e30cd65bbb82cc52adfde731dcf4a5c4c522fe3c))
+* **release-please:** drop RELEASE_PLEASE_TOKEN PAT, use GITHUB_TOKEN ([f6d02d9](https://github.com/sound-barrier/recall/commit/f6d02d9895a32420bf60ecdcb038d0064bb4d6c5))
+
 ## [0.2.3](https://github.com/sound-barrier/recall/compare/v0.2.2...v0.2.3) (2026-05-27)
 
 
