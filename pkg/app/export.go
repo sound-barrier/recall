@@ -11,7 +11,7 @@ import (
 
 // DataLocation surfaces the on-disk paths Recall uses for state.
 // Shown in SettingsView's Directories section and returned by
-// GET /api/data-location.
+// GET /api/v1/system/data-location.
 type DataLocation struct {
 	BaseDir        string `json:"base_dir"`        // <appDataDir>
 	SettingsPath   string `json:"settings_path"`   // <baseDir>/settings.json
@@ -48,7 +48,7 @@ func dbPath(base string) string {
 
 const exportSchemaV1 = "recall-export/v1"
 
-// exportV1 is the wire format for `/api/export` and the Wails save
+// exportV1 is the wire format for `GET /api/v1/exports` and the Wails save
 // dialog. Mirrors db.Screenshots with a metadata envelope; the
 // screenshots_dirs map renders ids→paths so the import side can
 // remap auto-increment ids without forcing the source DB's IDs onto

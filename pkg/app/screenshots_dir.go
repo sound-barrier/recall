@@ -24,8 +24,8 @@ var ErrInvalidScreenshotsDir = errors.New("screenshots directory is not configur
 // because they signal abuse and because CodeQL's go/command-injection
 // and go/path-injection rules recognize this regex-match pattern as a
 // sanitizer on user-controlled paths flowing into exec.Command /
-// os.Stat (alerts on POST /api/tesseract-path and
-// POST /api/screenshots-dir).
+// os.Stat (alerts on PUT /api/v1/settings/tesseract and
+// PUT /api/v1/settings/screenshots-folder).
 var safePathChars = regexp.MustCompile(`^[\w./\\:\- ()+',]+$`)
 
 func (a *App) GetScreenshotsDir() string {

@@ -36,31 +36,31 @@ func (a *App) emitParseComplete() {
 }
 
 // SaveExportToFile is not available in server mode (no native dialogs).
-// The HTTP API exposes GET /api/export which streams the same payload.
+// The HTTP API exposes GET /api/v1/exports which streams the same payload.
 func (a *App) SaveExportToFile() (string, error) {
-	return "", fmt.Errorf("native dialogs unavailable in server mode; use GET /api/export")
+	return "", fmt.Errorf("native dialogs unavailable in server mode; use GET /api/v1/exports")
 }
 
 // SaveExportToFileCSV is not available in server mode (no native dialogs).
-// The HTTP API exposes GET /api/export.csv which streams the same payload.
+// The HTTP API exposes GET /api/v1/exports?format=csv for the same payload.
 func (a *App) SaveExportToFileCSV() (string, error) {
-	return "", fmt.Errorf("native dialogs unavailable in server mode; use GET /api/export.csv")
+	return "", fmt.Errorf("native dialogs unavailable in server mode; use GET /api/v1/exports?format=csv")
 }
 
 // LoadImportFromFile is not available in server mode (no native dialogs).
-// The HTTP API exposes POST /api/import which accepts the same payload.
+// The HTTP API exposes POST /api/v1/imports which accepts the same payload.
 func (a *App) LoadImportFromFile() (string, error) {
-	return "", fmt.Errorf("native dialogs unavailable in server mode; use POST /api/import")
+	return "", fmt.Errorf("native dialogs unavailable in server mode; use POST /api/v1/imports")
 }
 
 // PickTesseractBinary is not available in server mode (no native dialogs).
-// The HTTP API exposes POST /api/tesseract-path for the same purpose.
+// The HTTP API exposes PUT /api/v1/settings/tesseract for the same purpose.
 func (a *App) PickTesseractBinary() (TesseractStatus, error) {
-	return a.tessStatus, fmt.Errorf("native dialogs unavailable in server mode; use POST /api/tesseract-path")
+	return a.tessStatus, fmt.Errorf("native dialogs unavailable in server mode; use PUT /api/v1/settings/tesseract")
 }
 
 // PickScreenshotsDir is not available in server mode (no native dialogs).
-// The HTTP API exposes POST /api/screenshots-dir for the same purpose.
+// The HTTP API exposes PUT /api/v1/settings/screenshots-folder for the same purpose.
 func (a *App) PickScreenshotsDir() (string, error) {
-	return a.settings.ScreenshotsDir, fmt.Errorf("native dialogs unavailable in server mode; use POST /api/screenshots-dir")
+	return a.settings.ScreenshotsDir, fmt.Errorf("native dialogs unavailable in server mode; use PUT /api/v1/settings/screenshots-folder")
 }

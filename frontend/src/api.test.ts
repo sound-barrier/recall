@@ -113,9 +113,9 @@ describe('POST success', () => {
     vi.stubGlobal('fetch', spy)
     await SetWatchEnabled(true)
     expect(spy).toHaveBeenCalledWith(
-      '/api/watch-enabled',
+      '/api/v1/settings/watcher',
       expect.objectContaining({
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: true }),
       }),
@@ -139,7 +139,7 @@ describe('POST 4xx error', () => {
 describe('GetDataLocation', () => {
   afterEach(() => { vi.unstubAllGlobals() })
 
-  it('GETs /api/data-location and resolves to the payload', async () => {
+  it('GETs /api/v1/system/data-location and resolves to the payload', async () => {
     const payload = {
       base_dir: '/Users/jacob/Library/Application Support/Recall',
       settings_path: '/Users/jacob/Library/Application Support/Recall/settings.json',
@@ -151,7 +151,7 @@ describe('GetDataLocation', () => {
     const { GetDataLocation } = await import('./api')
     const got = await GetDataLocation()
     // fetch is called as fetch(url, init) — the GET path passes undefined.
-    expect(spy).toHaveBeenCalledWith('/api/data-location', undefined)
+    expect(spy).toHaveBeenCalledWith('/api/v1/system/data-location', undefined)
     expect(got).toEqual(payload)
   })
 })
@@ -267,7 +267,7 @@ describe('ImportData (browser mode)', () => {
     // The shim posts an ArrayBuffer; we assert the type rather than
     // the exact bytes (Buffer comparison is awkward in this env).
     expect(fetchSpy).toHaveBeenCalledWith(
-      '/api/import',
+      '/api/v1/imports',
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -288,7 +288,7 @@ describe('ImportData (browser mode)', () => {
     const result = await ImportData()
     expect(result).toBe('backup.zip')
     expect(fetchSpy).toHaveBeenCalledWith(
-      '/api/import',
+      '/api/v1/imports',
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/zip' },
@@ -317,7 +317,7 @@ describe('ExportDataCSV (browser mode)', () => {
     vi.restoreAllMocks()
   })
 
-  it('GETs /api/export.csv and uses the suggested filename', async () => {
+  it('GETs /api/v1/exports?format=csv and uses the suggested filename', async () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -335,7 +335,7 @@ describe('ExportDataCSV (browser mode)', () => {
 
     const { ExportDataCSV } = await import('./api')
     const name = await ExportDataCSV()
-    expect(fetchSpy).toHaveBeenCalledWith('/api/export.csv')
+    expect(fetchSpy).toHaveBeenCalledWith('/api/v1/exports?format=csv')
     expect(name).toBe('recall-export-20260526-020000.zip')
   })
 

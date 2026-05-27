@@ -189,7 +189,7 @@ func (a *App) PickScreenshotsDir() (string, error) {
 		return a.settings.ScreenshotsDir, nil
 	}
 	// Route through SetScreenshotsDir so the path passes the same
-	// validation as the /api/screenshots-dir HTTP endpoint — the
+	// validation as the PUT /api/v1/settings/screenshots-folder HTTP endpoint — the
 	// native dialog is trusted but funneling everything through one
 	// validator keeps behaviour (validation + watcher restart)
 	// consistent between Wails and server mode.

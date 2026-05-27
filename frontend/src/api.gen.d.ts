@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/api/match-results": {
+    "/api/v1/matches": {
         parameters: {
             query?: never;
             header?: never;
@@ -23,13 +23,156 @@ export interface paths {
         get: operations["GetMatchResults"];
         put?: never;
         post?: never;
+        /**
+         * Wipe all parsed match records
+         * @description Deletes every row from the per-screenshot tables (and their
+         *     child rows via `ON DELETE CASCADE`). Settings and the
+         *     screenshots folder are untouched; you can re-parse to rebuild.
+         */
+        delete: operations["ClearMatches"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{matchKey}/visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Hide or unhide a match (soft delete)
+         * @description Flips a match's hidden state. `hidden: true` records a
+         *     soft-delete entry in the `hidden_matches` table; the
+         *     aggregator then sets `MatchRecord.hidden = true` on every
+         *     read and the default filter drops the match from the
+         *     Matches list. The per-screenshot rows in the parent tables
+         *     are untouched, so a re-parse of the same PNG files continues to
+         *     skip them (`LoadAllFilenames` sees them as parsed).
+         *
+         *     `hidden: false` removes the soft-delete and the match
+         *     re-appears. Both directions are idempotent — repeated
+         *     identical calls succeed.
+         */
+        put: operations["SetMatchVisibility"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/screenshots-dir": {
+    "/api/v1/matches/{matchKey}/annotation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upsert or clear a per-match user annotation
+         * @description Lets the user tag a match with up to four pieces of metadata:
+         *
+         *       - **leaver** — `self` (user left, data incomplete) /
+         *         `team` (ally left, loss excused) / `enemy` (opponent left,
+         *         win tainted). Drives W/L/D tally exclusion via the
+         *         FilterRail leaver-handling setting.
+         *       - **note** — free-text per-match commentary.
+         *       - **replay_code** — Overwatch's six-character replay ID so
+         *         the match can be re-watched in the in-game viewer.
+         *       - **members** — BattleTags of group members; verbatim, no
+         *         canonicalisation.
+         *
+         *     Every field is optional. If *every* field is empty (or the
+         *     members array is empty) the request acts as a delete — the
+         *     annotation row is removed entirely, cascading any member rows
+         *     away. Idempotent — clearing a non-existent annotation
+         *     succeeds.
+         *
+         *     Returns 204 on success, 400 on validation failure (`leaver`
+         *     outside the enum), 500 on store error.
+         */
+        put: operations["SetMatchAnnotation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/parses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run a one-shot parse
+         * @description Walks the configured screenshots folder, OCRs anything not
+         *     already in the DB, and writes the merged rows. Idempotent —
+         *     re-running won't duplicate matches already on record.
+         *
+         *     Returns `202 Accepted` because the meaningful side-effect is
+         *     the SQLite writes and SSE broadcast, not the HTTP response
+         *     body. Subscribe to `GET /api/v1/events` for progress and
+         *     re-fetch `GET /api/v1/matches` when done.
+         *
+         *     The handler is currently synchronous (the response holds until
+         *     parsing finishes), but the 202 contract keeps callers from
+         *     depending on that internal detail.
+         */
+        post: operations["ParseScreenshots"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screenshots/pending-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Count of screenshots awaiting parse
+         * @description Returns the number of files in the configured folder that are
+         *     not yet present in any per-screenshot-type table's `filename`.
+         */
+        get: operations["GetPendingScreenshotCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/screenshots-folder": {
         parameters: {
             query?: never;
             header?: never;
@@ -42,8 +185,7 @@ export interface paths {
          *     absolute (e.g. `/Users/.../Overwatch/ScreenShots/Overwatch`) or
          *     relative to the server's working directory.
          */
-        get: operations["GetScreenshotsDir"];
-        put?: never;
+        get: operations["GetScreenshotsFolder"];
         /**
          * Set the screenshots folder
          * @description Persists to `settings.json` and re-targets the file watcher if
@@ -60,92 +202,15 @@ export interface paths {
          *
          *     The echoed-back `path` is the cleaned form actually stored.
          */
-        post: operations["SetScreenshotsDir"];
+        put: operations["SetScreenshotsFolder"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/parse": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Run a one-shot parse
-         * @description Walks the configured screenshots folder, OCRs anything not
-         *     already in the DB, and writes the merged rows. Idempotent —
-         *     re-running won't duplicate matches already on record.
-         *     Synchronous: the response only returns after parsing finishes.
-         *     Progress is also broadcast via the SSE endpoint.
-         */
-        post: operations["ParseScreenshots"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/prometheus-enabled": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get the Prometheus metrics-endpoint toggle
-         * @description `true` iff the `:9091/metrics` listener is currently bound and
-         *     the Prometheus collector is registered.
-         */
-        get: operations["GetPrometheusEnabled"];
-        put?: never;
-        /**
-         * Toggle the Prometheus metrics endpoint
-         * @description Enabling binds `:9091/metrics` (override via
-         *     `OWMETRICS_METRICS_ADDR`). Disabling shuts the listener down
-         *     with a 2s grace period.
-         */
-        post: operations["SetPrometheusEnabled"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/watch-enabled": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get the file-watcher toggle
-         * @description `true` iff the fsnotify watcher is armed against the configured
-         *     screenshots folder.
-         */
-        get: operations["GetWatchEnabled"];
-        put?: never;
-        /**
-         * Toggle the file watcher
-         * @description When on, new `.png` / `.jpg` files in the configured folder are
-         *     auto-parsed after a 60s debounce. Requires a working Tesseract
-         *     binary — turning it on without one returns 500.
-         */
-        post: operations["SetWatchEnabled"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tesseract-status": {
+    "/api/v1/settings/tesseract": {
         parameters: {
             query?: never;
             header?: never;
@@ -164,24 +229,7 @@ export interface paths {
          *     confirmation before running a parse — results may be incorrect
          *     with unsupported versions.
          */
-        get: operations["GetTesseractStatus"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tesseract-path": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
+        get: operations["GetTesseractSettings"];
         /**
          * Set the Tesseract binary path
          * @description Re-runs detection on the new path. The status returned reflects
@@ -199,39 +247,103 @@ export interface paths {
          *       pins the endpoint to "swap which Tesseract is used" and
          *       forbids using it to launch arbitrary binaries.
          *
-         *     `POST /api/tesseract-reset` bypasses this validation because the
-         *     platform default (`defaultTesseractPath()`) is trusted.
+         *     `DELETE /api/v1/settings/tesseract` bypasses this validation
+         *     because the platform default (`defaultTesseractPath()`) is
+         *     trusted.
          */
-        post: operations["PickTesseractBinary"];
-        delete?: never;
+        put: operations["SetTesseractPath"];
+        post?: never;
+        /**
+         * Reset the Tesseract path to the platform default
+         * @description Replaces the configured path with the platform default (Homebrew
+         *     on macOS, `/usr/bin/tesseract` on Linux, the Windows installer
+         *     path on Windows) and re-runs detection. Modeled as a DELETE
+         *     because it removes the user-set override, returning the field
+         *     to its implicit default.
+         */
+        delete: operations["ResetTesseractPath"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/tesseract-reset": {
+    "/api/v1/settings/prometheus": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
         /**
-         * Reset the Tesseract path to the platform default
-         * @description Replaces the configured path with the platform default (Homebrew
-         *     on macOS, `/usr/bin/tesseract` on Linux, the Windows installer
-         *     path on Windows) and re-runs detection.
+         * Get the Prometheus metrics-endpoint toggle
+         * @description `true` iff the `:9091/metrics` listener is currently bound and
+         *     the Prometheus collector is registered.
          */
-        post: operations["ResetTesseractPath"];
+        get: operations["GetPrometheusEnabled"];
+        /**
+         * Toggle the Prometheus metrics endpoint
+         * @description Enabling binds `:9091/metrics` (override via
+         *     `OWMETRICS_METRICS_ADDR`). Disabling shuts the listener down
+         *     with a 2s grace period.
+         */
+        put: operations["SetPrometheusEnabled"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/check-update": {
+    "/api/v1/settings/watcher": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the file-watcher toggle
+         * @description `true` iff the fsnotify watcher is armed against the configured
+         *     screenshots folder.
+         */
+        get: operations["GetWatchEnabled"];
+        /**
+         * Toggle the file watcher
+         * @description When on, new `.png` / `.jpg` files in the configured folder are
+         *     auto-parsed after a 60s debounce. Requires a working Tesseract
+         *     binary — turning it on without one returns 500.
+         */
+        put: operations["SetWatchEnabled"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * App build version
+         * @description Returns the version string injected at build time via
+         *     `-ldflags "-X recall/pkg/app.Version=<tag>"`.
+         *     Falls back to `"dev"` for local builds outside the release pipeline.
+         */
+        get: operations["GetVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/update": {
         parameters: {
             query?: never;
             header?: never;
@@ -254,199 +366,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/version": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * App build version
-         * @description Returns the version string injected at build time via
-         *     `-ldflags "-X recall/pkg/app.Version=<tag>"`.
-         *     Falls back to `"dev"` for local builds outside the release pipeline.
-         */
-        get: operations["GetVersion"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/owdata": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Overwatch reference data (hero roster + map roster)
-         * @description Returns the static reference data baked into the parser at
-         *     compile time from `pkg/parser/heroes.yaml` and
-         *     `pkg/parser/maps.yaml`. Stable across an app session — the
-         *     frontend may fetch once at load and cache. Source-of-truth
-         *     for UI surfaces that render canonical Blizzard spelling
-         *     (diacritics + capitalization preserved) and group heroes by
-         *     role / maps by game type.
-         */
-        get: operations["GetOWData"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/new-screenshot-count": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Count of new screenshots awaiting parse
-         * @description Returns the number of files in the configured folder that are
-         *     not yet present in any `match_results` row's `source_files`.
-         */
-        get: operations["GetNewScreenshotCount"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/clear-database": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Wipe all parsed match records
-         * @description Deletes every row from `match_results`. Settings and the
-         *     screenshots folder are untouched; you can re-parse to rebuild.
-         */
-        post: operations["ClearDatabase"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/probe-screenshots-dir": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Probe the OS for the default Overwatch screenshots folder
-         * @description Walks an ordered list of platform-specific candidate paths
-         *     (Windows Documents + OneDrive-redirected variant; macOS
-         *     Documents / Library Application Support; Linux Steam-Proton
-         *     compatdata + standalone Wine prefix) and returns the first
-         *     existing directory.
-         *
-         *     Read-only. Does NOT persist anything — the caller decides
-         *     whether to apply the discovered path via `POST /api/screenshots-dir`.
-         *
-         *     On first launch (when no folder is configured) the Wails
-         *     runtime calls this internally and writes the result to
-         *     `settings.json` directly; the HTTP endpoint serves the
-         *     manual re-probe path (UI button "Detect Overwatch Folder").
-         */
-        get: operations["ProbeScreenshotsDir"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/match-visibility": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Hide or unhide a match (soft delete)
-         * @description Flips a match's hidden state. `hidden: true` records a
-         *     soft-delete entry in the `hidden_matches` table; the
-         *     aggregator then sets `MatchRecord.hidden = true` on every
-         *     read and the default filter drops the match from the
-         *     Matches list. The per-screenshot rows in the parent tables
-         *     are untouched, so a re-parse of the same PNG files continues to
-         *     skip them (`LoadAllFilenames` sees them as parsed).
-         *
-         *     `hidden: false` removes the soft-delete and the match
-         *     re-appears. Both directions are idempotent — repeated
-         *     identical calls succeed.
-         */
-        post: operations["SetMatchVisibility"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/match-annotations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Upsert or clear a per-match user annotation
-         * @description Lets the user tag a match with up to four pieces of metadata:
-         *
-         *       - **leaver** — `self` (user left, data incomplete) /
-         *         `team` (ally left, loss excused) / `enemy` (opponent left,
-         *         win tainted). Drives W/L/D tally exclusion via the
-         *         FilterRail leaver-handling setting.
-         *       - **note** — free-text per-match commentary.
-         *       - **replay_code** — Overwatch's six-character replay ID so
-         *         the match can be re-watched in the in-game viewer.
-         *       - **members** — BattleTags of group members; verbatim, no
-         *         canonicalisation.
-         *
-         *     Every field is optional. If *every* field is empty (or the
-         *     members array is empty) the request acts as a delete — the
-         *     annotation row is removed entirely, cascading any member rows
-         *     away. Idempotent — clearing a non-existent annotation
-         *     succeeds.
-         *
-         *     Returns 204 on success, 400 on validation failure
-         *     (`match_key` empty or `leaver` outside the enum), 500 on
-         *     store error.
-         */
-        post: operations["SetMatchAnnotation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/data-location": {
+    "/api/v1/system/data-location": {
         parameters: {
             query?: never;
             header?: never;
@@ -470,7 +390,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/export": {
+    "/api/v1/system/reference-data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Overwatch reference data (hero roster + map roster)
+         * @description Returns the static reference data baked into the parser at
+         *     compile time from `pkg/parser/heroes.yaml` and
+         *     `pkg/parser/maps.yaml`. Stable across an app session — the
+         *     frontend may fetch once at load and cache. Source-of-truth
+         *     for UI surfaces that render canonical Blizzard spelling
+         *     (diacritics + capitalization preserved) and group heroes by
+         *     role / maps by game type.
+         */
+        get: operations["GetReferenceData"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/screenshots-folder-probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Probe the OS for the default Overwatch screenshots folder
+         * @description Walks an ordered list of platform-specific candidate paths
+         *     (Windows Documents + OneDrive-redirected variant; macOS
+         *     Documents / Library Application Support; Linux Steam-Proton
+         *     compatdata + standalone Wine prefix) and returns the first
+         *     existing directory.
+         *
+         *     Read-only. Does NOT persist anything — the caller decides
+         *     whether to apply the discovered path via
+         *     `PUT /api/v1/settings/screenshots-folder`.
+         *
+         *     On first launch (when no folder is configured) the Wails
+         *     runtime calls this internally and writes the result to
+         *     `settings.json` directly; the HTTP endpoint serves the
+         *     manual re-probe path (UI button "Detect Overwatch Folder").
+         */
+        get: operations["ProbeScreenshotsFolder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exports": {
         parameters: {
             query?: never;
             header?: never;
@@ -479,15 +458,21 @@ export interface paths {
         };
         /**
          * Download a full backup of the local parsed-match database
-         * @description Streams a JSON document containing every per-screenshot row
-         *     across all 5 parent tables plus the screenshots-dirs lookup,
-         *     wrapped in a schema-versioned envelope. The result is
-         *     round-trippable via `POST /api/import` — the canonical Recall
-         *     backup format.
+         * @description Returns a snapshot of the local database in one of two formats:
          *
-         *     The payload is opaque to users (download and feed back later);
-         *     the envelope's `schema` field gates compatibility across
-         *     Recall versions.
+         *       * `format=json` (default) — a single JSON document containing
+         *         every per-screenshot row across all parent tables plus the
+         *         screenshots-dirs lookup, wrapped in a schema-versioned
+         *         envelope.
+         *       * `format=csv` — a ZIP archive containing one CSV file per
+         *         parent and child table plus a `manifest.json` with the
+         *         envelope metadata. Same data version as the JSON variant
+         *         (`schema = recall-export/v1`), different container chosen
+         *         by users who want to inspect or edit the data in Excel /
+         *         Sheets.
+         *
+         *     Both round-trip through `POST /api/v1/imports` — the server
+         *     sniffs the first bytes to detect the format.
          */
         get: operations["ExportData"];
         put?: never;
@@ -498,35 +483,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/export.csv": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Download a CSV-format backup of the local parsed-match database
-         * @description Returns a ZIP archive containing one CSV file per parent and
-         *     child table plus a `manifest.json` with the envelope metadata.
-         *     Same data version (`schema = recall-export/v1`) as
-         *     `/api/export`, different container — chosen by the user when
-         *     they want to inspect or edit the data in Excel / Sheets.
-         *
-         *     Round-trips through `POST /api/import` — that endpoint
-         *     auto-detects whether the uploaded payload is a JSON document
-         *     or a ZIP archive via the first bytes.
-         */
-        get: operations["ExportDataCSV"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/import": {
+    "/api/v1/imports": {
         parameters: {
             query?: never;
             header?: never;
@@ -557,7 +514,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/events": {
+    "/api/v1/events": {
         parameters: {
             query?: never;
             header?: never;
@@ -580,7 +537,7 @@ export interface paths {
          *         `MatchRecord` for the affected `match_key`. Lets the
          *         frontend incrementally render the Matches list as a parse
          *         run progresses (upsert by `match_key`). Same shape as one
-         *         element of `GET /api/match-results`. May fire multiple
+         *         element of `GET /api/v1/matches`. May fire multiple
          *         times for the same match within a single parse batch as
          *         additional screenshots refine its fields.
          *       * `parse-complete` — fired after a parse run finishes
@@ -589,7 +546,7 @@ export interface paths {
          *
          *     Clients should reconnect on disconnect; messages are not
          *     replayed. After reconnect, the client should re-fetch
-         *     `GET /api/match-results` as the authoritative reconciliation.
+         *     `GET /api/v1/matches` as the authoritative reconciliation.
          */
         get: operations["Events"];
         put?: never;
@@ -613,7 +570,8 @@ export interface paths {
          *     `{filename}` parameter must be a plain basename; path traversal
          *     (`..`, `/`, `\`) is rejected. Used by the frontend to render
          *     `<img>` previews without round-tripping bytes through the JSON
-         *     bridge.
+         *     bridge. Sits outside `/api/v1/` because it serves binary
+         *     content, not JSON resources.
          */
         get: operations["GetScreenshot"];
         put?: never;
@@ -628,6 +586,10 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        FolderPath: {
+            /** @example /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch */
+            path: string;
+        };
         ProbeResult: {
             /** @description True when at least one candidate directory existed. */
             found: boolean;
@@ -674,9 +636,9 @@ export interface components {
         };
         /**
          * @description Schema-versioned envelope for the local backup format produced
-         *     by `GET /api/export` and consumed by `POST /api/import`. The
-         *     per-row arrays mirror the SQLite parent + child tables; the
-         *     `screenshots_dirs` map carries the path-by-id reference so
+         *     by `GET /api/v1/exports` and consumed by `POST /api/v1/imports`.
+         *     The per-row arrays mirror the SQLite parent + child tables;
+         *     the `screenshots_dirs` map carries the path-by-id reference so
          *     FKs survive the auto-increment reset that happens during
          *     import.
          */
@@ -779,9 +741,9 @@ export interface components {
             annotation?: components["schemas"]["MatchAnnotation"];
             /**
              * @description True iff the user soft-deleted this match via
-             *     `POST /api/match-visibility`. Omitted (or false) for
-             *     normal records. The per-screenshot parent rows are
-             *     untouched — only the aggregator hides the surface.
+             *     `PUT /api/v1/matches/{matchKey}/visibility`. Omitted (or
+             *     false) for normal records. The per-screenshot parent rows
+             *     are untouched — only the aggregator hides the surface.
              */
             hidden?: boolean;
         };
@@ -927,21 +889,8 @@ export interface components {
         EnabledFlag: {
             enabled: boolean;
         };
-        Ok: {
-            /** @enum {boolean} */
-            ok: true;
-        };
     };
     responses: {
-        /** @description Success — `{ "ok": true }`. */
-        Ok: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Ok"];
-            };
-        };
         /** @description Malformed request body or query parameters. */
         BadRequest: {
             headers: {
@@ -961,7 +910,15 @@ export interface components {
             };
         };
     };
-    parameters: never;
+    parameters: {
+        /**
+         * @description Match identity — same `match_key` exposed in `MatchRecord`.
+         *     URL-encoded because the value normally contains a colon
+         *     (e.g. `match:2026-05-10T22:21:11`).
+         * @example match%3A2026-05-10T22%3A21%3A11
+         */
+        MatchKey: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -989,7 +946,7 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
-    GetScreenshotsDir: {
+    ClearMatches: {
         parameters: {
             query?: never;
             header?: never;
@@ -998,46 +955,97 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Current path. */
-            200: {
+            /** @description All matches cleared. */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": {
-                        /** @example screenshots */
-                        path: string;
-                    };
-                };
+                content?: never;
             };
+            500: components["responses"]["InternalError"];
         };
     };
-    SetScreenshotsDir: {
+    SetMatchVisibility: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
             cookie?: never;
         };
         requestBody: {
             content: {
                 "application/json": {
-                    /** @example /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch */
-                    path: string;
+                    /** @description True to hide; false to unhide. */
+                    hidden: boolean;
                 };
             };
         };
         responses: {
-            /** @description New path echoed back. */
-            200: {
+            /** @description Visibility updated. */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": {
-                        path: string;
-                    };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    SetMatchAnnotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description One of the three leaver scenarios, or `""` to leave
+                     *     untagged. Whole-row deletion happens only when *every*
+                     *     field (leaver, note, replay_code, members) is empty.
+                     * @enum {string}
+                     */
+                    leaver?: "" | "self" | "team" | "enemy";
+                    /** @description Free-text per-match commentary. */
+                    note?: string;
+                    /** @description Overwatch six-character replay ID. No format validation server-side. */
+                    replay_code?: string;
+                    /**
+                     * @description BattleTags of group members for this match. The server
+                     *     trims whitespace, drops empty strings, and deduplicates;
+                     *     the composite-PK on the child table catches any
+                     *     duplicates that slip through.
+                     */
+                    members?: string[];
                 };
+            };
+        };
+        responses: {
+            /** @description Annotation persisted or cleared. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             400: components["responses"]["BadRequest"];
             500: components["responses"]["InternalError"];
@@ -1052,11 +1060,18 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: components["responses"]["Ok"];
+            /** @description Parse run complete; subscribe to events for incremental updates. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
             500: components["responses"]["InternalError"];
         };
     };
-    GetPrometheusEnabled: {
+    GetPendingScreenshotCount: {
         parameters: {
             query?: never;
             header?: never;
@@ -1065,44 +1080,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Current state. */
+            /** @description Count. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EnabledFlag"];
+                    "application/json": {
+                        /** @example 3 */
+                        count: number;
+                    };
                 };
             };
-        };
-    };
-    SetPrometheusEnabled: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EnabledFlag"];
-            };
-        };
-        responses: {
-            /** @description New state echoed back. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EnabledFlag"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
             500: components["responses"]["InternalError"];
         };
     };
-    GetWatchEnabled: {
+    GetScreenshotsFolder: {
         parameters: {
             query?: never;
             header?: never;
@@ -1111,18 +1104,18 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Current state. */
+            /** @description Current path. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EnabledFlag"];
+                    "application/json": components["schemas"]["FolderPath"];
                 };
             };
         };
     };
-    SetWatchEnabled: {
+    SetScreenshotsFolder: {
         parameters: {
             query?: never;
             header?: never;
@@ -1131,24 +1124,24 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["EnabledFlag"];
+                "application/json": components["schemas"]["FolderPath"];
             };
         };
         responses: {
-            /** @description New state echoed back. */
+            /** @description New path echoed back. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EnabledFlag"];
+                    "application/json": components["schemas"]["FolderPath"];
                 };
             };
             400: components["responses"]["BadRequest"];
             500: components["responses"]["InternalError"];
         };
     };
-    GetTesseractStatus: {
+    GetTesseractSettings: {
         parameters: {
             query?: never;
             header?: never;
@@ -1168,7 +1161,7 @@ export interface operations {
             };
         };
     };
-    PickTesseractBinary: {
+    SetTesseractPath: {
         parameters: {
             query?: never;
             header?: never;
@@ -1218,6 +1211,117 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
+    GetPrometheusEnabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnabledFlag"];
+                };
+            };
+        };
+    };
+    SetPrometheusEnabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnabledFlag"];
+            };
+        };
+        responses: {
+            /** @description Toggle applied. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetWatchEnabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnabledFlag"];
+                };
+            };
+        };
+    };
+    SetWatchEnabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnabledFlag"];
+            };
+        };
+        responses: {
+            /** @description Toggle applied. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current build version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 0.0.13-beta.0 */
+                        version: string;
+                    };
+                };
+            };
+        };
+    };
     CheckForUpdate: {
         parameters: {
             query?: never;
@@ -1262,7 +1366,7 @@ export interface operations {
             };
         };
     };
-    GetVersion: {
+    GetDataLocation: {
         parameters: {
             query?: never;
             header?: never;
@@ -1271,21 +1375,18 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Current build version. */
+            /** @description Path inventory. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @example 0.0.13-beta.0 */
-                        version: string;
-                    };
+                    "application/json": components["schemas"]["DataLocation"];
                 };
             };
         };
     };
-    GetOWData: {
+    GetReferenceData: {
         parameters: {
             query?: never;
             header?: never;
@@ -1350,44 +1451,7 @@ export interface operations {
             };
         };
     };
-    GetNewScreenshotCount: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Count. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @example 3 */
-                        count: number;
-                    };
-                };
-            };
-            500: components["responses"]["InternalError"];
-        };
-    };
-    ClearDatabase: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: components["responses"]["Ok"];
-            500: components["responses"]["InternalError"];
-        };
-    };
-    ProbeScreenshotsDir: {
+    ProbeScreenshotsFolder: {
         parameters: {
             query?: never;
             header?: never;
@@ -1411,110 +1475,19 @@ export interface operations {
             };
         };
     };
-    SetMatchVisibility: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @description Match identity (same `match_key` exposed in `MatchRecord`). */
-                    match_key: string;
-                    /** @description True to hide; false to unhide. */
-                    hidden: boolean;
-                };
-            };
-        };
-        responses: {
-            /** @description Visibility updated. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            400: components["responses"]["BadRequest"];
-            500: components["responses"]["InternalError"];
-        };
-    };
-    SetMatchAnnotation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @description Match identity (same `match_key` exposed in `MatchRecord`). */
-                    match_key: string;
-                    /**
-                     * @description One of the three leaver scenarios, or `""` to leave
-                     *     untagged. Whole-row deletion happens only when *every*
-                     *     field (leaver, note, replay_code, members) is empty.
-                     * @enum {string}
-                     */
-                    leaver?: "" | "self" | "team" | "enemy";
-                    /** @description Free-text per-match commentary. */
-                    note?: string;
-                    /** @description Overwatch six-character replay ID. No format validation server-side. */
-                    replay_code?: string;
-                    /**
-                     * @description BattleTags of group members for this match. The server
-                     *     trims whitespace, drops empty strings, and deduplicates;
-                     *     the composite-PK on the child table catches any
-                     *     duplicates that slip through.
-                     */
-                    members?: string[];
-                };
-            };
-        };
-        responses: {
-            /** @description Annotation persisted or cleared. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            400: components["responses"]["BadRequest"];
-            500: components["responses"]["InternalError"];
-        };
-    };
-    GetDataLocation: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Path inventory. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DataLocation"];
-                };
-            };
-        };
-    };
     ExportData: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Wire format. Defaults to JSON. */
+                format?: "json" | "csv";
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description JSON download. */
+            /** @description Export download. */
             200: {
                 headers: {
                     "Content-Disposition"?: string;
@@ -1522,29 +1495,11 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecallExport"];
-                };
-            };
-        };
-    };
-    ExportDataCSV: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ZIP download. */
-            200: {
-                headers: {
-                    "Content-Disposition"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
                     "application/zip": string;
                 };
             };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
         };
     };
     ImportData: {
@@ -1561,7 +1516,13 @@ export interface operations {
             };
         };
         responses: {
-            200: components["responses"]["Ok"];
+            /** @description Import applied. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /**
              * @description Malformed or wrong-schema payload. Body is a plain-text
              *     error message safe to surface to the user.

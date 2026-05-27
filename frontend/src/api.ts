@@ -6,8 +6,16 @@
  * In Wails mode (native window):  delegates to window['go']['app']['App']
  *   and window.runtime — identical behavior to the generated wailsjs/ bindings.
  *
- * In server mode (regular browser): uses fetch('/api/...') for calls and
- *   EventSource('/api/events') for the parse-complete notification.
+ * In server mode (regular browser): uses fetch('/api/v1/...') for calls and
+ *   EventSource('/api/v1/events') for the parse-complete notification.
+ *
+ * Server-mode HTTP conventions:
+ *   - All JSON endpoints under /api/v1/.
+ *   - GET to read, PUT to replace/upsert a resource, DELETE to clear
+ *     or reset, POST to start an action that doesn't map to a single
+ *     resource (the parse run).
+ *   - Writers with no useful return body resolve via the 204 No Content
+ *     branch in _fetch.
  */
 
 import type { components } from './api.gen'
@@ -79,11 +87,11 @@ async function _fetch<T>(input: string, init?: RequestInit): Promise<T> {
     const body = await r.text().catch(() => '')
     throw new ApiError(r.status, body)
   }
-  // 204 No Content (the visibility + annotation writers) has no body
-  // and r.json() would throw "Unexpected end of JSON input". Callers
-  // for these endpoints discard the return value via `.then(() =>
-  // undefined)`, so returning undefined here is safe.
-  if (r.status === 204) return undefined as T
+  // 204 No Content (writers with no useful echo) and 202 Accepted
+  // (POST /api/v1/parses) both arrive without a body. r.json() would
+  // throw "Unexpected end of JSON input", so short-circuit and let
+  // void-returning callers resolve to undefined.
+  if (r.status === 204 || r.status === 202) return undefined as T
   return r.json() as Promise<T>
 }
 
@@ -91,33 +99,38 @@ function _get<T>(path: string): Promise<T> {
   return _fetch<T>(path)
 }
 
-function _post<T>(path: string, body?: unknown): Promise<T> {
-  return _fetch<T>(path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
+function _send<T>(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown): Promise<T> {
+  const init: RequestInit = { method }
+  if (body !== undefined) {
+    init.headers = { 'Content-Type': 'application/json' }
+    init.body = JSON.stringify(body)
+  }
+  return _fetch<T>(path, init)
 }
 
 // _dualVoid bundles the Wails-vs-fetch branching for every void-
-// returning POST. Each writer used to repeat the same five lines:
+// returning write. Each writer used to repeat the same five lines:
 //
 //   if (IS_WAILS) return _wails('SetX', arg)
-//   return _post('/api/x', body).then(() => undefined)
+//   return _send('PUT', '/api/v1/x', body).then(() => undefined)
 //
-// The helper takes a Wails method name, a fetch path, and a body
-// factory that maps the call args to the JSON payload. The fetch
-// branch's `.then(() => undefined)` is the type-correct way to
-// discard the server response (204 endpoints return undefined via
-// _fetch's 204 special case, so this is a no-op at runtime).
+// The helper takes a Wails method name, an HTTP method, a fetch path
+// (or a function that builds it from args, for hierarchical sub-
+// resources like /matches/{key}/annotation), and an optional body
+// factory. The fetch branch's `.then(() => undefined)` is the type-
+// correct way to discard the server response (204/202 endpoints
+// return undefined via _fetch's empty-body special case, so this is
+// a no-op at runtime).
 function _dualVoid<TArgs extends unknown[]>(
   wailsName: string,
-  fetchPath: string,
-  body: (...args: TArgs) => unknown,
+  httpMethod: 'POST' | 'PUT' | 'DELETE',
+  fetchPath: ((...args: TArgs) => string) | string,
+  body?: (...args: TArgs) => unknown,
 ): (...args: TArgs) => Promise<void> {
   return (...args: TArgs) => {
     if (IS_WAILS) return _wails(wailsName, ...args)
-    return _post(fetchPath, body(...args)).then(() => undefined)
+    const path = typeof fetchPath === 'function' ? fetchPath(...args) : fetchPath
+    return _send(httpMethod, path, body?.(...args)).then(() => undefined)
   }
 }
 
@@ -125,19 +138,19 @@ function _dualVoid<TArgs extends unknown[]>(
 
 export function GetVersion(): Promise<string> {
   if (IS_WAILS) return _wails('GetVersion')
-  return _get<{ version: string }>('/api/version').then(d => d.version)
+  return _get<{ version: string }>('/api/v1/system/version').then(d => d.version)
 }
 
 export type UpdateInfo = { checked: boolean; dev_build: boolean; available: boolean; latest: string; url: string }
 
 export function CheckForUpdate(): Promise<UpdateInfo> {
   if (IS_WAILS) return _wails('CheckForUpdate')
-  return _get<UpdateInfo>('/api/check-update')
+  return _get<UpdateInfo>('/api/v1/system/update')
 }
 
 export function GetMatchResults(): Promise<MatchRecord[]> {
   if (IS_WAILS) return _wails('GetMatchResults')
-  return _get<MatchRecord[]>('/api/match-results')
+  return _get<MatchRecord[]>('/api/v1/matches')
 }
 
 export type OWData = {
@@ -150,22 +163,22 @@ export type OWData = {
 // callers may fetch once at app load and cache.
 export function GetOWData(): Promise<OWData> {
   if (IS_WAILS) return _wails('GetOWData')
-  return _get<OWData>('/api/owdata')
+  return _get<OWData>('/api/v1/system/reference-data')
 }
 
 export function GetScreenshotsDir(): Promise<string> {
   if (IS_WAILS) return _wails('GetScreenshotsDir')
-  return _get<{ path: string }>('/api/screenshots-dir').then(d => d.path)
+  return _get<{ path: string }>('/api/v1/settings/screenshots-folder').then(d => d.path)
 }
 
-// In server mode: prompt the user for a path and POST it. Falls back
+// In server mode: prompt the user for a path and PUT it. Falls back
 // to the existing value on cancel (mirrors Wails dialog-cancel behavior).
 export async function PickScreenshotsDir(): Promise<string> {
   if (IS_WAILS) return _wails('PickScreenshotsDir')
-  const current = await _get<{ path: string }>('/api/screenshots-dir').then(d => d.path)
+  const current = await _get<{ path: string }>('/api/v1/settings/screenshots-folder').then(d => d.path)
   const p = window.prompt('Screenshots directory path:', current)
   if (!p) return current
-  await _post('/api/screenshots-dir', { path: p })
+  await _send('PUT', '/api/v1/settings/screenshots-folder', { path: p })
   return p
 }
 
@@ -181,7 +194,7 @@ export type ProbeResult = {
 // PickScreenshotsDir / SetScreenshotsDir.
 export function ProbeScreenshotsDir(): Promise<ProbeResult> {
   if (IS_WAILS) return _wails('ProbeScreenshotsDir')
-  return _get<ProbeResult>('/api/probe-screenshots-dir')
+  return _get<ProbeResult>('/api/v1/system/screenshots-folder-probe')
 }
 
 // SetScreenshotsDir persists `path` as the active screenshots
@@ -189,7 +202,8 @@ export function ProbeScreenshotsDir(): Promise<ProbeResult> {
 // a probe result without going through the native folder picker.
 export const SetScreenshotsDir = _dualVoid<[path: string]>(
   'SetScreenshotsDir',
-  '/api/screenshots-dir',
+  'PUT',
+  '/api/v1/settings/screenshots-folder',
   (path) => ({ path }),
 )
 
@@ -205,15 +219,17 @@ export interface MatchAnnotationInput {
   members?:     string[]
 }
 
-// `_dualVoid` for the body-shape transformation; SetMatchAnnotation
+// Match annotations are a hierarchical sub-resource of the parent
+// match (PUT /api/v1/matches/{matchKey}/annotation), so the match
+// key only lives in the URL — not the body. SetMatchAnnotation
 // always sends the full four-field row so partial inputs from the
 // frontend (note-only edit, members-only edit) don't accidentally
 // null fields the user typed in another input.
 export const SetMatchAnnotation = _dualVoid<[matchKey: string, input: MatchAnnotationInput]>(
   'SetMatchAnnotation',
-  '/api/match-annotations',
-  (matchKey, input) => ({
-    match_key:   matchKey,
+  'PUT',
+  (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}/annotation`,
+  (_matchKey, input) => ({
     leaver:      input.leaver ?? '',
     note:        input.note ?? '',
     replay_code: input.replay_code ?? '',
@@ -226,79 +242,89 @@ export const SetMatchAnnotation = _dualVoid<[matchKey: string, input: MatchAnnot
 // other three fields stay preserved in a single round-trip.
 export const SetLeaverAnnotation = _dualVoid<[matchKey: string, leaver: LeaverKind, note?: string]>(
   'SetLeaverAnnotation',
-  '/api/match-annotations',
-  (matchKey, leaver, note = '') => ({ match_key: matchKey, leaver, note }),
+  'PUT',
+  (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}/annotation`,
+  (_matchKey, leaver, note = '') => ({ leaver, note }),
 )
 
 export const ClearLeaverAnnotation = _dualVoid<[matchKey: string]>(
   'ClearLeaverAnnotation',
-  '/api/match-annotations',
-  (matchKey) => ({ match_key: matchKey, leaver: '' }),
+  'PUT',
+  (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}/annotation`,
+  () => ({ leaver: '' }),
 )
 
 // Soft-delete a match. Reversible: pass hidden=false to restore.
 // Both directions are idempotent — repeated identical calls succeed.
 // Wails-side this dispatches to HideMatch / UnhideMatch (two
 // separate App methods), so the boolean determines which method name
-// the bridge resolves. Server-mode keeps the unified route.
+// the bridge resolves. Server-mode posts the new state to the
+// /visibility sub-resource on the parent match.
 export function SetMatchVisibility(matchKey: string, hidden: boolean): Promise<void> {
   if (IS_WAILS) {
     return hidden ? _wails('HideMatch', matchKey) : _wails('UnhideMatch', matchKey)
   }
-  return _post('/api/match-visibility', { match_key: matchKey, hidden }).then(() => undefined)
+  const path = `/api/v1/matches/${encodeURIComponent(matchKey)}/visibility`
+  return _send('PUT', path, { hidden }).then(() => undefined)
 }
 
 export const ParseScreenshots = _dualVoid<[]>(
   'ParseScreenshots',
-  '/api/parse',
-  () => undefined,
+  'POST',
+  '/api/v1/parses',
 )
 
 export function GetPrometheusEnabled(): Promise<boolean> {
   if (IS_WAILS) return _wails('GetPrometheusEnabled')
-  return _get<{ enabled: boolean }>('/api/prometheus-enabled').then(d => d.enabled)
+  return _get<{ enabled: boolean }>('/api/v1/settings/prometheus').then(d => d.enabled)
 }
 
 export const SetPrometheusEnabled = _dualVoid<[enabled: boolean]>(
   'SetPrometheusEnabled',
-  '/api/prometheus-enabled',
+  'PUT',
+  '/api/v1/settings/prometheus',
   (enabled) => ({ enabled }),
 )
 
 export function GetWatchEnabled(): Promise<boolean> {
   if (IS_WAILS) return _wails('GetWatchEnabled')
-  return _get<{ enabled: boolean }>('/api/watch-enabled').then(d => d.enabled)
+  return _get<{ enabled: boolean }>('/api/v1/settings/watcher').then(d => d.enabled)
 }
 
 export const SetWatchEnabled = _dualVoid<[enabled: boolean]>(
   'SetWatchEnabled',
-  '/api/watch-enabled',
+  'PUT',
+  '/api/v1/settings/watcher',
   (enabled) => ({ enabled }),
 )
 
 export function GetTesseractStatus(): Promise<TesseractStatus> {
   if (IS_WAILS) return _wails('GetTesseractStatus')
-  return _get<TesseractStatus>('/api/tesseract-status')
+  return _get<TesseractStatus>('/api/v1/settings/tesseract')
 }
 
-// In server mode: prompt for the binary path then POST it.
+// In server mode: prompt for the binary path then PUT it.
 export async function PickTesseractBinary(): Promise<TesseractStatus> {
   if (IS_WAILS) return _wails('PickTesseractBinary')
-  const current = await _get<TesseractStatus>('/api/tesseract-status').then(d => d.path || '')
+  const current = await _get<TesseractStatus>('/api/v1/settings/tesseract').then(d => d.path || '')
   const p = window.prompt('Path to Tesseract binary:', current)
-  if (!p) return _get<TesseractStatus>('/api/tesseract-status')
-  return _post<TesseractStatus>('/api/tesseract-path', { path: p })
+  if (!p) return _get<TesseractStatus>('/api/v1/settings/tesseract')
+  return _send<TesseractStatus>('PUT', '/api/v1/settings/tesseract', { path: p })
 }
 
+// Reset to the platform default — modeled server-side as DELETE on
+// the tesseract setting (i.e. remove the user-set override).
 export function ResetTesseractPath(): Promise<TesseractStatus> {
   if (IS_WAILS) return _wails('ResetTesseractPath')
-  return _post<TesseractStatus>('/api/tesseract-reset')
+  return _send<TesseractStatus>('DELETE', '/api/v1/settings/tesseract')
 }
 
+// Wipe all parsed-match data — DELETE on the matches collection.
+// Settings and the screenshots folder are untouched.
 export const ClearDatabase = _dualVoid<[]>(
   'ClearDatabase',
-  '/api/clear-database',
-  () => undefined,
+  'DELETE',
+  '/api/v1/matches',
 )
 
 // ─── Data location + export/import ─────────────────────────────────────────
@@ -312,7 +338,7 @@ export type DataLocation = {
 
 export function GetDataLocation(): Promise<DataLocation> {
   if (IS_WAILS) return _wails('GetDataLocation')
-  return _get<DataLocation>('/api/data-location')
+  return _get<DataLocation>('/api/v1/system/data-location')
 }
 
 // Export — in Wails mode, the native save dialog handles file writing
@@ -334,7 +360,7 @@ async function downloadExport(format: 'json' | 'csv'): Promise<string> {
   if (IS_WAILS) {
     return _wails(format === 'csv' ? 'SaveExportToFileCSV' : 'SaveExportToFile')
   }
-  const url = format === 'csv' ? '/api/export.csv' : '/api/export'
+  const url = `/api/v1/exports?format=${format}`
   const r = await fetch(url)
   if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ''))
   // Pull the server-suggested filename out of Content-Disposition.
@@ -360,7 +386,7 @@ async function downloadExport(format: 'json' | 'csv'): Promise<string> {
 // in-process; resolves with the path ("" on cancel). Server mode
 // opens a transient <input type=file> accepting either .json or
 // .zip (CSV-flavored exports are ZIP archives), reads the chosen
-// file as bytes, and POSTs to /api/import with a content-type
+// file as bytes, and POSTs to /api/v1/imports with a content-type
 // matching the format. The server sniffs the payload's first bytes
 // and routes between the JSON and CSV codepaths automatically.
 export async function ImportData(): Promise<string> {
@@ -371,7 +397,7 @@ export async function ImportData(): Promise<string> {
   // .text() call would mangle binary bytes via UTF-8 decoding.
   const buf = await file.arrayBuffer()
   const isZip = file.name.toLowerCase().endsWith('.zip') || file.type === 'application/zip'
-  const r = await fetch('/api/import', {
+  const r = await fetch('/api/v1/imports', {
     method: 'POST',
     headers: { 'Content-Type': isZip ? 'application/zip' : 'application/json' },
     body: buf,
@@ -406,12 +432,12 @@ function pickFile(accept: string): Promise<File | null> {
 
 export function GetNewScreenshotCount(): Promise<number> {
   if (IS_WAILS) return _wails('GetNewScreenshotCount')
-  return _get<{ count: number }>('/api/new-screenshot-count').then(d => d.count)
+  return _get<{ count: number }>('/api/v1/screenshots/pending-count').then(d => d.count)
 }
 
 // ─── Events ────────────────────────────────────────────────────────────────
 // In Wails mode: thin pass-through to window.runtime.
-// In server mode: EventSource on /api/events, keyed by event name so
+// In server mode: EventSource on /api/v1/events, keyed by event name so
 //   EventsOff can close the matching source.
 
 const _sources: Record<string, EventSource> = {}
@@ -426,7 +452,7 @@ export function EventsOn<T = unknown>(eventName: string, callback: (data: T) => 
   if (_sources[eventName]) {
     _sources[eventName].close()
   }
-  const es = new EventSource('/api/events')
+  const es = new EventSource('/api/v1/events')
   es.addEventListener(eventName, (e) => {
     try {
       const raw = (e as MessageEvent).data
