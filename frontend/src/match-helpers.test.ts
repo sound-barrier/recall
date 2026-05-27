@@ -15,6 +15,9 @@ import {
   tallyWLD,
   groupMatchesByMonthWeekDay,
   formatParsedAt,
+  formatMinutesAsClock,
+  modeOf,
+  avgGameLengthMinutes,
 } from './match-helpers'
 
 // ─── sshotTypeLabel ──────────────────────────────────────────────────
@@ -959,5 +962,107 @@ describe('formatParsedAt', () => {
     // never emits "0:00". Easier: stub Date in a focused test.
     const out = formatParsedAt('2026-05-10T05:00:00Z')
     expect(out).not.toMatch(/@ 0:/)
+  })
+})
+
+// ─── formatMinutesAsClock ───────────────────────────────────────────
+
+describe('formatMinutesAsClock', () => {
+  it('renders integer minutes as "N:00"', () => {
+    expect(formatMinutesAsClock(11)).toBe('11:00')
+  })
+
+  it('rounds fractional minutes to the nearest second', () => {
+    // 11.5 min = 11m 30s; 11.51 min = 11m 30.6s = 31s after round.
+    expect(formatMinutesAsClock(11.5)).toBe('11:30')
+    expect(formatMinutesAsClock(11.51)).toBe('11:31')
+  })
+
+  it('zero-pads seconds < 10', () => {
+    expect(formatMinutesAsClock(11 + 5 / 60)).toBe('11:05')
+  })
+
+  it('renders null / undefined / NaN as em-dash', () => {
+    expect(formatMinutesAsClock(null)).toBe('—')
+    expect(formatMinutesAsClock(undefined)).toBe('—')
+    expect(formatMinutesAsClock(NaN)).toBe('—')
+    expect(formatMinutesAsClock(-1)).toBe('—')
+  })
+
+  it('handles >60 minute values (carries into another minutes slot)', () => {
+    // 65.5 minutes = 65m 30s. The clock format doesn't escape into
+    // hours — that's the agg-stats panel's choice — but the
+    // mm:ss split must still be correct.
+    expect(formatMinutesAsClock(65.5)).toBe('65:30')
+  })
+})
+
+// ─── modeOf ────────────────────────────────────────────────────────
+
+describe('modeOf', () => {
+  it('returns the most-common value with its count', () => {
+    const recs = [
+      { hero: 'lucio' },
+      { hero: 'lucio' },
+      { hero: 'ana' },
+    ]
+    expect(modeOf(recs, r => r.hero)).toEqual({ value: 'lucio', count: 2 })
+  })
+
+  it('returns null when the record set is empty', () => {
+    expect(modeOf([], r => (r as { hero: string }).hero)).toBeNull()
+  })
+
+  it('returns null when every picker result is null/undefined/empty', () => {
+    expect(modeOf([{ hero: null }, { hero: '' }, { hero: undefined }], r => r.hero)).toBeNull()
+  })
+
+  it('ignores null / undefined / empty-string values from the picker', () => {
+    const recs = [{ hero: 'lucio' }, { hero: null }, { hero: 'lucio' }, { hero: '' }]
+    expect(modeOf(recs, r => r.hero)).toEqual({ value: 'lucio', count: 2 })
+  })
+
+  it('breaks ties alphabetically so the readout is stable across reloads', () => {
+    // "ana" and "lucio" both appear twice; "ana" is alphabetically
+    // earlier so it wins the tie even though it was seen first.
+    const recs = [
+      { hero: 'lucio' },
+      { hero: 'lucio' },
+      { hero: 'ana' },
+      { hero: 'ana' },
+    ]
+    expect(modeOf(recs, r => r.hero)).toEqual({ value: 'ana', count: 2 })
+  })
+})
+
+// ─── avgGameLengthMinutes ──────────────────────────────────────────
+
+describe('avgGameLengthMinutes', () => {
+  it('averages parseable game lengths in fractional minutes', () => {
+    const recs = [
+      { data: { game_length: '10:00' } },
+      { data: { game_length: '12:00' } },
+    ]
+    expect(avgGameLengthMinutes(recs)).toBe(11)
+  })
+
+  it('skips records with missing / unparseable game_length', () => {
+    const recs = [
+      { data: { game_length: '10:00' } },
+      { data: { game_length: null } },
+      { data: { game_length: '' } },
+      { data: { game_length: 'not a duration' } },
+      { data: { game_length: '14:00' } },
+    ]
+    expect(avgGameLengthMinutes(recs)).toBe(12)
+  })
+
+  it('returns null when no record contributes a parseable value', () => {
+    expect(avgGameLengthMinutes([])).toBeNull()
+    expect(avgGameLengthMinutes([{ data: { game_length: null } }])).toBeNull()
+  })
+
+  it('handles records with no data object at all', () => {
+    expect(avgGameLengthMinutes([{ data: null }])).toBeNull()
   })
 })

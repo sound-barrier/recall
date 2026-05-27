@@ -10,6 +10,8 @@ import type { MatchAnnotationInput } from '../api'
 import type { MatchGroup } from '../match-helpers'
 import FilterRail from './FilterRail.vue'
 import MatchGroupSection from './MatchGroupSection.vue'
+import MatchesAggregateStats from './MatchesAggregateStats.vue'
+import MatchesFilterPills from './MatchesFilterPills.vue'
 
 // MatchesView is the tab-panel for the "Matches" view. Pulled out of
 // App.vue so it can be unit-tested with @vue/test-utils against the
@@ -203,6 +205,68 @@ const annotatedMatchCount = computed(
       @set-show-hidden="(v: boolean) => emit('set-show-hidden', v)"
     />
 
+    <!-- Active-filter summary. Renders just below the FilterRail
+         only when at least one filter is engaged. Each chip's ×
+         removes that single filter; "Clear all" resets every
+         active filter at once. -->
+    <MatchesFilterPills
+      v-if="records.length > 0"
+      :modes="f.filterMode.value"
+      :maps="f.filterMap.value"
+      :types="f.filterType.value"
+      :roles="f.filterRole.value"
+      :heroes="f.filterHero.value"
+      :results="f.filterResult.value"
+      :sshots="f.filterSshot.value"
+      :tags="f.filterTags.value"
+      :note-search="f.noteSearch.value"
+      :filter-from="f.filterFrom.value"
+      :filter-to="f.filterTo.value"
+      :any-filter="f.anyFilter.value"
+      @remove-filter="f.toggleFilter"
+      @clear-note-search="() => f.noteSearch.value = ''"
+      @clear-date-range="f.resetDateRange"
+      @clear-all="f.clearFilters"
+    />
+
+    <!-- Aggregate stats across the currently-filtered match set.
+         Renders unconditionally above the list so the user always
+         sees "what's true about this view" without scrolling into
+         per-group tallies. -->
+    <MatchesAggregateStats
+      v-if="records.length > 0"
+      :filtered="f.filteredSorted.value"
+      :total-count="records.length"
+      :skip-annotated-from-tally="leaverHandling === 'exclude-tally'"
+    />
+
+    <!-- Filtered-empty state — distinct from the first-run "no
+         matches on record" path above. Standalone v-if (not chained
+         to the AggregateStats v-if, which would create an unreachable
+         branch). Surfaces only when records exist but every one has
+         filtered out, so the user sees an explicit "filters narrowed
+         everything away" message with a clear-all CTA instead of a
+         blank scroll region. -->
+    <div
+      v-if="records.length > 0 && g.groups.value.length === 0 && f.anyFilter.value"
+      class="filtered-empty"
+      role="status"
+    >
+      <div class="filtered-empty-mark" aria-hidden="true">
+        ⌀
+      </div>
+      <p class="filtered-empty-title">
+        No matches fit these filters.
+      </p>
+      <p class="filtered-empty-sub">
+        {{ records.length }} {{ records.length === 1 ? 'match' : 'matches' }} on record;
+        {{ f.activeFilterCount.value }} active filter{{ f.activeFilterCount.value === 1 ? '' : 's' }} excluded all of them.
+      </p>
+      <button class="btn ghost" @click="f.clearFilters">
+        Clear all filters
+      </button>
+    </div>
+
     <div v-if="records.length > 0 && g.groups.value.length > 0" class="match-list" :class="{ compact: densityMode === 'compact' }">
       <!-- Outline controls: Expand-all / Collapse-all toggle the whole
            Month → Week → Day tree at once. Sits above the groups so
@@ -393,5 +457,59 @@ const annotatedMatchCount = computed(
    themselves carry the density class for their internal compression. */
 .match-list.compact {
   gap: 0.3rem;
+}
+
+/* ─── Filtered-empty state ────────────────────────────────
+   Renders when records exist but every one filters out. Distinct
+   from the first-run empty state — this is "your filters are too
+   tight", not "you haven't parsed anything yet". CTA resets every
+   active filter via clearFilters. */
+.filtered-empty {
+  margin-top: 1.6rem;
+  padding: 1.6rem 1.4rem;
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: 2px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  animation: filtered-empty-in 240ms ease both;
+}
+
+.filtered-empty-mark {
+  font-family: var(--mono);
+  font-size: 2.4rem;
+  line-height: 1;
+  color: var(--text-faint);
+  margin-bottom: 0.35rem;
+}
+
+.filtered-empty-title {
+  margin: 0;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.filtered-empty-sub {
+  margin: 0 0 0.35rem;
+  font-size: 0.86rem;
+  color: var(--text-dim);
+  max-width: 52ch;
+}
+
+@keyframes filtered-empty-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filtered-empty { animation: none; }
 }
 </style>
