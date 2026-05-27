@@ -32,7 +32,7 @@ stateful**: `useFilterPanel` (popover open/close, ESC + outside-click),
 showHidden + date range + sort + filtered/sorted computeds — most
 complex, highest test ROI), `useMatchGrouping` (Month→Week→Day tree
 plus expand state). **Session-scoped fetch**: `useOWData`
-(module-singleton fetching `/api/owdata` once per session for
+(module-singleton fetching `/api/v1/system/reference-data` once per session for
 canonical hero/map display names). `ls frontend/src/composables/*.ts`
 is the source of truth — don't maintain a literal list here, but the
 grouping above shows the patterns to mirror when adding a new one.

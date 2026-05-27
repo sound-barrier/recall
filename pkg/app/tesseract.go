@@ -190,9 +190,9 @@ func (a *App) ResetTesseractPath() (TesseractStatus, error) {
 // sanitized form is what reaches the syscall.
 //
 // The basename restriction prevents the endpoint from being abused to
-// execute arbitrary binaries — `POST /api/tesseract-path` was the path
-// CodeQL flagged as a command-injection sink, and pinning the basename
-// reduces the attack surface to "swap which Tesseract is used."
+// execute arbitrary binaries — `PUT /api/v1/settings/tesseract` was the
+// path CodeQL flagged as a command-injection sink, and pinning the
+// basename reduces the attack surface to "swap which Tesseract is used."
 func validateTesseractPath(path string) (string, error) {
 	path = strings.TrimSpace(path)
 	if path == "" {

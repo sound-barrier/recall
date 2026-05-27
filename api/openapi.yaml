@@ -6,7 +6,7 @@
 openapi: 3.1.0
 info:
   title: Recall API
-  version: 0.0.1
+  version: "1"
   description: |
     HTTP REST + SSE surface for the Recall Overwatch metrics app.
 
@@ -14,10 +14,24 @@ info:
       * **Server binary** (`Recall-server`) — exposes this API by default
       * **Wails desktop binary with `--server`** — same API, same routes
 
-    All `application/json` request and response bodies. Errors come back
-    as `text/plain` from `http.Error` with the appropriate 4xx/5xx
-    status. The base URL defaults to `http://127.0.0.1:7000`; override
-    via `RECALL_SERVER_ADDR`.
+    Conventions:
+      * Every JSON endpoint is mounted under the `/api/v1/` prefix —
+        the version is bumped on breaking changes.
+      * Resources are nouns; sub-resources hang off the parent
+        (`/matches/{matchKey}/visibility`, `/settings/tesseract`).
+      * Methods reflect intent: `GET` to read, `PUT` to replace/upsert,
+        `DELETE` to clear or wipe, `POST` to start a server-side action
+        that doesn't map to a single resource (the parse run).
+      * Writes return `204 No Content` when there is no useful body
+        to echo back; `202 Accepted` for actions whose effect is
+        asynchronous (parse).
+      * Errors come back as `text/plain` from `http.Error` with the
+        appropriate 4xx/5xx status.
+      * Static image binaries stay at `/_screenshot/{filename}` —
+        served from disk, not the JSON surface.
+
+    The base URL defaults to `http://127.0.0.1:7000`; override via
+    `RECALL_SERVER_ADDR`.
   license:
     name: Apache-2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
@@ -43,17 +57,17 @@ tags:
     description: Trigger and observe the OCR ingest pipeline.
   - name: Settings
     description: App configuration — screenshots folder, OCR engine, toggles.
-  - name: Data
-    description: Database administration.
+  - name: System
+    description: Build metadata, update check, reference data, on-disk paths.
+  - name: Backup
+    description: Database export + restore.
   - name: Events
     description: Server-Sent Events stream.
   - name: Assets
     description: Static screenshot serving.
-  - name: Meta
-    description: Build metadata.
 
 paths:
-  /api/match-results:
+  /api/v1/matches:
     get:
       operationId: GetMatchResults
       tags: [Matches]
@@ -76,10 +90,177 @@ paths:
                   $ref: "#/components/schemas/MatchRecord"
         "500":
           $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: ClearMatches
+      tags: [Matches]
+      summary: Wipe all parsed match records
+      description: |
+        Deletes every row from the per-screenshot tables (and their
+        child rows via `ON DELETE CASCADE`). Settings and the
+        screenshots folder are untouched; you can re-parse to rebuild.
+      responses:
+        "204":
+          description: All matches cleared.
+        "500":
+          $ref: "#/components/responses/InternalError"
 
-  /api/screenshots-dir:
+  /api/v1/matches/{matchKey}/visibility:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+    put:
+      operationId: SetMatchVisibility
+      tags: [Matches]
+      summary: Hide or unhide a match (soft delete)
+      description: |
+        Flips a match's hidden state. `hidden: true` records a
+        soft-delete entry in the `hidden_matches` table; the
+        aggregator then sets `MatchRecord.hidden = true` on every
+        read and the default filter drops the match from the
+        Matches list. The per-screenshot rows in the parent tables
+        are untouched, so a re-parse of the same PNG files continues to
+        skip them (`LoadAllFilenames` sees them as parsed).
+
+        `hidden: false` removes the soft-delete and the match
+        re-appears. Both directions are idempotent — repeated
+        identical calls succeed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [hidden]
+              properties:
+                hidden:
+                  type: boolean
+                  description: True to hide; false to unhide.
+      responses:
+        "204":
+          description: Visibility updated.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/matches/{matchKey}/annotation:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+    put:
+      operationId: SetMatchAnnotation
+      tags: [Matches]
+      summary: Upsert or clear a per-match user annotation
+      description: |
+        Lets the user tag a match with up to four pieces of metadata:
+
+          - **leaver** — `self` (user left, data incomplete) /
+            `team` (ally left, loss excused) / `enemy` (opponent left,
+            win tainted). Drives W/L/D tally exclusion via the
+            FilterRail leaver-handling setting.
+          - **note** — free-text per-match commentary.
+          - **replay_code** — Overwatch's six-character replay ID so
+            the match can be re-watched in the in-game viewer.
+          - **members** — BattleTags of group members; verbatim, no
+            canonicalisation.
+
+        Every field is optional. If *every* field is empty (or the
+        members array is empty) the request acts as a delete — the
+        annotation row is removed entirely, cascading any member rows
+        away. Idempotent — clearing a non-existent annotation
+        succeeds.
+
+        Returns 204 on success, 400 on validation failure (`leaver`
+        outside the enum), 500 on store error.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                leaver:
+                  type: string
+                  enum: ["", self, team, enemy]
+                  description: |
+                    One of the three leaver scenarios, or `""` to leave
+                    untagged. Whole-row deletion happens only when *every*
+                    field (leaver, note, replay_code, members) is empty.
+                note:
+                  type: string
+                  description: Free-text per-match commentary.
+                replay_code:
+                  type: string
+                  description: Overwatch six-character replay ID. No format validation server-side.
+                members:
+                  type: array
+                  description: |
+                    BattleTags of group members for this match. The server
+                    trims whitespace, drops empty strings, and deduplicates;
+                    the composite-PK on the child table catches any
+                    duplicates that slip through.
+                  items:
+                    type: string
+                    example: "Apollo#11234"
+      responses:
+        "204":
+          description: Annotation persisted or cleared.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/parses:
+    post:
+      operationId: ParseScreenshots
+      tags: [Pipeline]
+      summary: Run a one-shot parse
+      description: |
+        Walks the configured screenshots folder, OCRs anything not
+        already in the DB, and writes the merged rows. Idempotent —
+        re-running won't duplicate matches already on record.
+
+        Returns `202 Accepted` because the meaningful side-effect is
+        the SQLite writes and SSE broadcast, not the HTTP response
+        body. Subscribe to `GET /api/v1/events` for progress and
+        re-fetch `GET /api/v1/matches` when done.
+
+        The handler is currently synchronous (the response holds until
+        parsing finishes), but the 202 contract keeps callers from
+        depending on that internal detail.
+      responses:
+        "202":
+          description: Parse run complete; subscribe to events for incremental updates.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/screenshots/pending-count:
     get:
-      operationId: GetScreenshotsDir
+      operationId: GetPendingScreenshotCount
+      tags: [Pipeline]
+      summary: Count of screenshots awaiting parse
+      description: |
+        Returns the number of files in the configured folder that are
+        not yet present in any per-screenshot-type table's `filename`.
+      responses:
+        "200":
+          description: Count.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count:
+                    type: integer
+                    minimum: 0
+                    example: 3
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/settings/screenshots-folder:
+    get:
+      operationId: GetScreenshotsFolder
       tags: [Settings]
       summary: Get the configured screenshots folder
       description: |
@@ -92,14 +273,9 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required: [path]
-                properties:
-                  path:
-                    type: string
-                    example: screenshots
-    post:
-      operationId: SetScreenshotsDir
+                $ref: "#/components/schemas/FolderPath"
+    put:
+      operationId: SetScreenshotsFolder
       tags: [Settings]
       summary: Set the screenshots folder
       description: |
@@ -121,129 +297,22 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [path]
-              properties:
-                path:
-                  type: string
-                  example: /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch
+              $ref: "#/components/schemas/FolderPath"
       responses:
         "200":
           description: New path echoed back.
           content:
             application/json:
               schema:
-                type: object
-                required: [path]
-                properties:
-                  path: { type: string }
+                $ref: "#/components/schemas/FolderPath"
         "400":
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/parse:
-    post:
-      operationId: ParseScreenshots
-      tags: [Pipeline]
-      summary: Run a one-shot parse
-      description: |
-        Walks the configured screenshots folder, OCRs anything not
-        already in the DB, and writes the merged rows. Idempotent —
-        re-running won't duplicate matches already on record.
-        Synchronous: the response only returns after parsing finishes.
-        Progress is also broadcast via the SSE endpoint.
-      responses:
-        "200":
-          $ref: "#/components/responses/Ok"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /api/prometheus-enabled:
+  /api/v1/settings/tesseract:
     get:
-      operationId: GetPrometheusEnabled
-      tags: [Settings]
-      summary: Get the Prometheus metrics-endpoint toggle
-      description: |
-        `true` iff the `:9091/metrics` listener is currently bound and
-        the Prometheus collector is registered.
-      responses:
-        "200":
-          description: Current state.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/EnabledFlag"
-    post:
-      operationId: SetPrometheusEnabled
-      tags: [Settings]
-      summary: Toggle the Prometheus metrics endpoint
-      description: |
-        Enabling binds `:9091/metrics` (override via
-        `OWMETRICS_METRICS_ADDR`). Disabling shuts the listener down
-        with a 2s grace period.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/EnabledFlag"
-      responses:
-        "200":
-          description: New state echoed back.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/EnabledFlag"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /api/watch-enabled:
-    get:
-      operationId: GetWatchEnabled
-      tags: [Settings]
-      summary: Get the file-watcher toggle
-      description: |
-        `true` iff the fsnotify watcher is armed against the configured
-        screenshots folder.
-      responses:
-        "200":
-          description: Current state.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/EnabledFlag"
-    post:
-      operationId: SetWatchEnabled
-      tags: [Settings]
-      summary: Toggle the file watcher
-      description: |
-        When on, new `.png` / `.jpg` files in the configured folder are
-        auto-parsed after a 60s debounce. Requires a working Tesseract
-        binary — turning it on without one returns 500.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/EnabledFlag"
-      responses:
-        "200":
-          description: New state echoed back.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/EnabledFlag"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /api/tesseract-status:
-    get:
-      operationId: GetTesseractStatus
+      operationId: GetTesseractSettings
       tags: [Settings]
       summary: Get the OCR engine status
       description: |
@@ -263,10 +332,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TesseractStatus"
-
-  /api/tesseract-path:
-    post:
-      operationId: PickTesseractBinary
+    put:
+      operationId: SetTesseractPath
       tags: [Settings]
       summary: Set the Tesseract binary path
       description: |
@@ -285,8 +352,9 @@ paths:
           pins the endpoint to "swap which Tesseract is used" and
           forbids using it to launch arbitrary binaries.
 
-        `POST /api/tesseract-reset` bypasses this validation because the
-        platform default (`defaultTesseractPath()`) is trusted.
+        `DELETE /api/v1/settings/tesseract` bypasses this validation
+        because the platform default (`defaultTesseractPath()`) is
+        trusted.
       requestBody:
         required: true
         content:
@@ -309,16 +377,16 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
-
-  /api/tesseract-reset:
-    post:
+    delete:
       operationId: ResetTesseractPath
       tags: [Settings]
       summary: Reset the Tesseract path to the platform default
       description: |
         Replaces the configured path with the platform default (Homebrew
         on macOS, `/usr/bin/tesseract` on Linux, the Windows installer
-        path on Windows) and re-runs detection.
+        path on Windows) and re-runs detection. Modeled as a DELETE
+        because it removes the user-set override, returning the field
+        to its implicit default.
       responses:
         "200":
           description: Re-detected status against the default path.
@@ -329,10 +397,106 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/check-update:
+  /api/v1/settings/prometheus:
+    get:
+      operationId: GetPrometheusEnabled
+      tags: [Settings]
+      summary: Get the Prometheus metrics-endpoint toggle
+      description: |
+        `true` iff the `:9091/metrics` listener is currently bound and
+        the Prometheus collector is registered.
+      responses:
+        "200":
+          description: Current state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnabledFlag"
+    put:
+      operationId: SetPrometheusEnabled
+      tags: [Settings]
+      summary: Toggle the Prometheus metrics endpoint
+      description: |
+        Enabling binds `:9091/metrics` (override via
+        `OWMETRICS_METRICS_ADDR`). Disabling shuts the listener down
+        with a 2s grace period.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnabledFlag"
+      responses:
+        "204":
+          description: Toggle applied.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/settings/watcher:
+    get:
+      operationId: GetWatchEnabled
+      tags: [Settings]
+      summary: Get the file-watcher toggle
+      description: |
+        `true` iff the fsnotify watcher is armed against the configured
+        screenshots folder.
+      responses:
+        "200":
+          description: Current state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnabledFlag"
+    put:
+      operationId: SetWatchEnabled
+      tags: [Settings]
+      summary: Toggle the file watcher
+      description: |
+        When on, new `.png` / `.jpg` files in the configured folder are
+        auto-parsed after a 60s debounce. Requires a working Tesseract
+        binary — turning it on without one returns 500.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnabledFlag"
+      responses:
+        "204":
+          description: Toggle applied.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/system/version:
+    get:
+      operationId: GetVersion
+      tags: [System]
+      summary: App build version
+      description: |
+        Returns the version string injected at build time via
+        `-ldflags "-X recall/pkg/app.Version=<tag>"`.
+        Falls back to `"dev"` for local builds outside the release pipeline.
+      responses:
+        "200":
+          description: Current build version.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [version]
+                properties:
+                  version:
+                    type: string
+                    example: 0.0.13-beta.0
+
+  /api/v1/system/update:
     get:
       operationId: CheckForUpdate
-      tags: [Meta]
+      tags: [System]
       summary: Check for a newer release
       description: |
         Queries the GitHub releases API for the latest stable release and
@@ -374,32 +538,29 @@ paths:
                     type: string
                     example: https://github.com/sound-barrier/recall/releases/tag/v0.0.15
 
-  /api/version:
+  /api/v1/system/data-location:
     get:
-      operationId: GetVersion
-      tags: [Meta]
-      summary: App build version
+      operationId: GetDataLocation
+      tags: [System]
+      summary: Report the on-disk paths used by this install
       description: |
-        Returns the version string injected at build time via
-        `-ldflags "-X recall/pkg/app.Version=<tag>"`.
-        Falls back to `"dev"` for local builds outside the release pipeline.
+        Surface the SQLite database path, settings file path, base
+        data directory, and the currently-configured screenshots
+        folder. Honors the `RECALL_DATA_DIR` env override (set in
+        `.envrc` for `wails dev`), so the response matches what the
+        running app actually reads/writes.
       responses:
         "200":
-          description: Current build version.
+          description: Path inventory.
           content:
             application/json:
               schema:
-                type: object
-                required: [version]
-                properties:
-                  version:
-                    type: string
-                    example: 0.0.13-beta.0
+                $ref: "#/components/schemas/DataLocation"
 
-  /api/owdata:
+  /api/v1/system/reference-data:
     get:
-      operationId: GetOWData
-      tags: [Meta]
+      operationId: GetReferenceData
+      tags: [System]
       summary: Overwatch reference data (hero roster + map roster)
       description: |
         Returns the static reference data baked into the parser at
@@ -439,48 +600,10 @@ paths:
                       escort: [Dorado, "Watchpoint Gibraltar"]
                       hybrid: ["King's Row", Midtown]
 
-  /api/new-screenshot-count:
+  /api/v1/system/screenshots-folder-probe:
     get:
-      operationId: GetNewScreenshotCount
-      tags: [Pipeline]
-      summary: Count of new screenshots awaiting parse
-      description: |
-        Returns the number of files in the configured folder that are
-        not yet present in any `match_results` row's `source_files`.
-      responses:
-        "200":
-          description: Count.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [count]
-                properties:
-                  count:
-                    type: integer
-                    minimum: 0
-                    example: 3
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /api/clear-database:
-    post:
-      operationId: ClearDatabase
-      tags: [Data]
-      summary: Wipe all parsed match records
-      description: |
-        Deletes every row from `match_results`. Settings and the
-        screenshots folder are untouched; you can re-parse to rebuild.
-      responses:
-        "200":
-          $ref: "#/components/responses/Ok"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /api/probe-screenshots-dir:
-    get:
-      operationId: ProbeScreenshotsDir
-      tags: [Settings]
+      operationId: ProbeScreenshotsFolder
+      tags: [System]
       summary: Probe the OS for the default Overwatch screenshots folder
       description: |
         Walks an ordered list of platform-specific candidate paths
@@ -490,7 +613,8 @@ paths:
         existing directory.
 
         Read-only. Does NOT persist anything — the caller decides
-        whether to apply the discovered path via `POST /api/screenshots-dir`.
+        whether to apply the discovered path via
+        `PUT /api/v1/settings/screenshots-folder`.
 
         On first launch (when no folder is configured) the Wails
         runtime calls this internally and writes the result to
@@ -507,151 +631,39 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProbeResult"
 
-  /api/match-visibility:
-    post:
-      operationId: SetMatchVisibility
-      tags: [Data]
-      summary: Hide or unhide a match (soft delete)
-      description: |
-        Flips a match's hidden state. `hidden: true` records a
-        soft-delete entry in the `hidden_matches` table; the
-        aggregator then sets `MatchRecord.hidden = true` on every
-        read and the default filter drops the match from the
-        Matches list. The per-screenshot rows in the parent tables
-        are untouched, so a re-parse of the same PNG files continues to
-        skip them (`LoadAllFilenames` sees them as parsed).
-
-        `hidden: false` removes the soft-delete and the match
-        re-appears. Both directions are idempotent — repeated
-        identical calls succeed.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [match_key, hidden]
-              properties:
-                match_key:
-                  type: string
-                  description: Match identity (same `match_key` exposed in `MatchRecord`).
-                hidden:
-                  type: boolean
-                  description: True to hide; false to unhide.
-      responses:
-        "204":
-          description: Visibility updated.
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /api/match-annotations:
-    post:
-      operationId: SetMatchAnnotation
-      tags: [Data]
-      summary: Upsert or clear a per-match user annotation
-      description: |
-        Lets the user tag a match with up to four pieces of metadata:
-
-          - **leaver** — `self` (user left, data incomplete) /
-            `team` (ally left, loss excused) / `enemy` (opponent left,
-            win tainted). Drives W/L/D tally exclusion via the
-            FilterRail leaver-handling setting.
-          - **note** — free-text per-match commentary.
-          - **replay_code** — Overwatch's six-character replay ID so
-            the match can be re-watched in the in-game viewer.
-          - **members** — BattleTags of group members; verbatim, no
-            canonicalisation.
-
-        Every field is optional. If *every* field is empty (or the
-        members array is empty) the request acts as a delete — the
-        annotation row is removed entirely, cascading any member rows
-        away. Idempotent — clearing a non-existent annotation
-        succeeds.
-
-        Returns 204 on success, 400 on validation failure
-        (`match_key` empty or `leaver` outside the enum), 500 on
-        store error.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [match_key]
-              properties:
-                match_key:
-                  type: string
-                  description: Match identity (same `match_key` exposed in `MatchRecord`).
-                leaver:
-                  type: string
-                  enum: ["", self, team, enemy]
-                  description: |
-                    One of the three leaver scenarios, or `""` to leave
-                    untagged. Whole-row deletion happens only when *every*
-                    field (leaver, note, replay_code, members) is empty.
-                note:
-                  type: string
-                  description: Free-text per-match commentary.
-                replay_code:
-                  type: string
-                  description: Overwatch six-character replay ID. No format validation server-side.
-                members:
-                  type: array
-                  description: |
-                    BattleTags of group members for this match. The server
-                    trims whitespace, drops empty strings, and deduplicates;
-                    the composite-PK on the child table catches any
-                    duplicates that slip through.
-                  items:
-                    type: string
-                    example: "Apollo#11234"
-      responses:
-        "204":
-          description: Annotation persisted or cleared.
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
-  /api/data-location:
-    get:
-      operationId: GetDataLocation
-      tags: [Data]
-      summary: Report the on-disk paths used by this install
-      description: |
-        Surface the SQLite database path, settings file path, base
-        data directory, and the currently-configured screenshots
-        folder. Honors the `RECALL_DATA_DIR` env override (set in
-        `.envrc` for `wails dev`), so the response matches what the
-        running app actually reads/writes.
-      responses:
-        "200":
-          description: Path inventory.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DataLocation"
-
-  /api/export:
+  /api/v1/exports:
     get:
       operationId: ExportData
-      tags: [Data]
+      tags: [Backup]
       summary: Download a full backup of the local parsed-match database
       description: |
-        Streams a JSON document containing every per-screenshot row
-        across all 5 parent tables plus the screenshots-dirs lookup,
-        wrapped in a schema-versioned envelope. The result is
-        round-trippable via `POST /api/import` — the canonical Recall
-        backup format.
+        Returns a snapshot of the local database in one of two formats:
 
-        The payload is opaque to users (download and feed back later);
-        the envelope's `schema` field gates compatibility across
-        Recall versions.
+          * `format=json` (default) — a single JSON document containing
+            every per-screenshot row across all parent tables plus the
+            screenshots-dirs lookup, wrapped in a schema-versioned
+            envelope.
+          * `format=csv` — a ZIP archive containing one CSV file per
+            parent and child table plus a `manifest.json` with the
+            envelope metadata. Same data version as the JSON variant
+            (`schema = recall-export/v1`), different container chosen
+            by users who want to inspect or edit the data in Excel /
+            Sheets.
+
+        Both round-trip through `POST /api/v1/imports` — the server
+        sniffs the first bytes to detect the format.
+      parameters:
+        - in: query
+          name: format
+          required: false
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+          description: Wire format. Defaults to JSON.
       responses:
         "200":
-          description: JSON download.
+          description: Export download.
           headers:
             Content-Disposition:
               schema:
@@ -661,40 +673,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RecallExport"
-
-  /api/export.csv:
-    get:
-      operationId: ExportDataCSV
-      tags: [Data]
-      summary: Download a CSV-format backup of the local parsed-match database
-      description: |
-        Returns a ZIP archive containing one CSV file per parent and
-        child table plus a `manifest.json` with the envelope metadata.
-        Same data version (`schema = recall-export/v1`) as
-        `/api/export`, different container — chosen by the user when
-        they want to inspect or edit the data in Excel / Sheets.
-
-        Round-trips through `POST /api/import` — that endpoint
-        auto-detects whether the uploaded payload is a JSON document
-        or a ZIP archive via the first bytes.
-      responses:
-        "200":
-          description: ZIP download.
-          headers:
-            Content-Disposition:
-              schema:
-                type: string
-                example: 'attachment; filename="recall-export-20260526-020000.zip"'
-          content:
             application/zip:
               schema:
                 type: string
                 format: binary
+                description: A ZIP archive — returned when `format=csv`.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
-  /api/import:
+  /api/v1/imports:
     post:
       operationId: ImportData
-      tags: [Data]
+      tags: [Backup]
       summary: Restore the local database from a previously-exported backup
       description: |
         Replaces every row in the local database with the contents of
@@ -719,10 +711,10 @@ paths:
             schema:
               type: string
               format: binary
-              description: A ZIP archive produced by GET /api/export.csv.
+              description: A ZIP archive produced by `GET /api/v1/exports?format=csv`.
       responses:
-        "200":
-          $ref: "#/components/responses/Ok"
+        "204":
+          description: Import applied.
         "400":
           description: |
             Malformed or wrong-schema payload. Body is a plain-text
@@ -735,7 +727,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/events:
+  /api/v1/events:
     get:
       operationId: Events
       tags: [Events]
@@ -755,7 +747,7 @@ paths:
             `MatchRecord` for the affected `match_key`. Lets the
             frontend incrementally render the Matches list as a parse
             run progresses (upsert by `match_key`). Same shape as one
-            element of `GET /api/match-results`. May fire multiple
+            element of `GET /api/v1/matches`. May fire multiple
             times for the same match within a single parse batch as
             additional screenshots refine its fields.
           * `parse-complete` — fired after a parse run finishes
@@ -764,7 +756,7 @@ paths:
 
         Clients should reconnect on disconnect; messages are not
         replayed. After reconnect, the client should re-fetch
-        `GET /api/match-results` as the authoritative reconciliation.
+        `GET /api/v1/matches` as the authoritative reconciliation.
       responses:
         "200":
           description: SSE stream.
@@ -792,7 +784,8 @@ paths:
         `{filename}` parameter must be a plain basename; path traversal
         (`..`, `/`, `\`) is rejected. Used by the frontend to render
         `<img>` previews without round-tripping bytes through the JSON
-        bridge.
+        bridge. Sits outside `/api/v1/` because it serves binary
+        content, not JSON resources.
       parameters:
         - in: path
           name: filename
@@ -819,7 +812,28 @@ paths:
           description: File not found, no folder configured, or path traversal rejected.
 
 components:
+  parameters:
+    MatchKey:
+      in: path
+      name: matchKey
+      required: true
+      schema:
+        type: string
+      description: |
+        Match identity — same `match_key` exposed in `MatchRecord`.
+        URL-encoded because the value normally contains a colon
+        (e.g. `match:2026-05-10T22:21:11`).
+      example: "match%3A2026-05-10T22%3A21%3A11"
+
   schemas:
+    FolderPath:
+      type: object
+      required: [path]
+      properties:
+        path:
+          type: string
+          example: /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch
+
     ProbeResult:
       type: object
       required: [found, tried]
@@ -875,9 +889,9 @@ components:
       required: [schema, exported_at, recall_version]
       description: |
         Schema-versioned envelope for the local backup format produced
-        by `GET /api/export` and consumed by `POST /api/import`. The
-        per-row arrays mirror the SQLite parent + child tables; the
-        `screenshots_dirs` map carries the path-by-id reference so
+        by `GET /api/v1/exports` and consumed by `POST /api/v1/imports`.
+        The per-row arrays mirror the SQLite parent + child tables;
+        the `screenshots_dirs` map carries the path-by-id reference so
         FKs survive the auto-increment reset that happens during
         import.
       properties:
@@ -982,9 +996,9 @@ components:
           type: boolean
           description: |
             True iff the user soft-deleted this match via
-            `POST /api/match-visibility`. Omitted (or false) for
-            normal records. The per-screenshot parent rows are
-            untouched — only the aggregator hides the surface.
+            `PUT /api/v1/matches/{matchKey}/visibility`. Omitted (or
+            false) for normal records. The per-screenshot parent rows
+            are untouched — only the aggregator hides the surface.
 
     MatchAnnotation:
       type: object
@@ -1169,21 +1183,7 @@ components:
         enabled:
           type: boolean
 
-    Ok:
-      type: object
-      required: [ok]
-      properties:
-        ok:
-          type: boolean
-          enum: [true]
-
   responses:
-    Ok:
-      description: 'Success — `{ "ok": true }`.'
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Ok"
     BadRequest:
       description: Malformed request body or query parameters.
       content:

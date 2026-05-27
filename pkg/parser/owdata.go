@@ -52,8 +52,9 @@ var mapsYAML []byte
 var heroStatsYAML []byte
 
 // HeroesByRole / MapsByType expose the YAML structure as-is, with
-// canonical-display names. UI consumers (via the /api/owdata
-// endpoint) iterate these for ordered display.
+// canonical-display names. UI consumers (via the
+// /api/v1/system/reference-data endpoint) iterate these for ordered
+// display.
 var (
 	HeroesByRole = map[string][]string{} // "dps" → ["Anran", "Ashe", …] (canonical)
 	MapsByType   = map[string][]string{} // "control" → ["Antarctic Peninsula", …]
@@ -177,7 +178,7 @@ func SnapHeroStatKey(hero, rawKey string) string {
 
 // Note: HeroDisplayName / MapDisplayName / MapType wrappers around
 // the unexported lookup maps were intentionally NOT added at the Go
-// layer — the frontend reaches the same data via /api/owdata and
+// layer — the frontend reaches the same data via /api/v1/system/reference-data and
 // applies its own normalization there (see
 // frontend/src/composables/useOWData.ts). If a future Go-side caller
 // (e.g. metrics labels, server-mode templating) needs canonical

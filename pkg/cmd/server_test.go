@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -32,24 +33,45 @@ func newTestApp(t *testing.T, fs *dbtest.Fake) (*app.App, *http.ServeMux) {
 	return a, mux
 }
 
-func get(t *testing.T, mux *http.ServeMux, path string) *httptest.ResponseRecorder {
-	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, path, nil)
-	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, req)
-	return rec
-}
-
-func post(t *testing.T, mux *http.ServeMux, path string, body any) *httptest.ResponseRecorder {
+// fire builds and dispatches an httptest request. Encoding the body
+// as JSON happens unconditionally when body != nil — the handlers
+// all accept JSON requests.
+func fire(t *testing.T, mux *http.ServeMux, method, path string, body any) *httptest.ResponseRecorder {
 	t.Helper()
 	var buf bytes.Buffer
 	if body != nil {
 		_ = json.NewEncoder(&buf).Encode(body)
 	}
-	req := httptest.NewRequest(http.MethodPost, path, &buf)
+	req := httptest.NewRequest(method, path, &buf)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	return rec
+}
+
+func get(t *testing.T, mux *http.ServeMux, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	return fire(t, mux, http.MethodGet, path, nil)
+}
+
+func put(t *testing.T, mux *http.ServeMux, path string, body any) *httptest.ResponseRecorder {
+	t.Helper()
+	return fire(t, mux, http.MethodPut, path, body)
+}
+
+func del(t *testing.T, mux *http.ServeMux, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	return fire(t, mux, http.MethodDelete, path, nil)
+}
+
+// annotationPath builds the per-match annotation URL with the key
+// properly URL-encoded — match keys normally contain colons (e.g.
+// "match:2026-05-10T22:21:11") which must be percent-encoded.
+func annotationPath(matchKey string) string {
+	return "/api/v1/matches/" + url.PathEscape(matchKey) + "/annotation"
+}
+
+func visibilityPath(matchKey string) string {
+	return "/api/v1/matches/" + url.PathEscape(matchKey) + "/visibility"
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -58,7 +80,7 @@ func post(t *testing.T, mux *http.ServeMux, path string, body any) *httptest.Res
 
 func TestServerMux_GetMatchResults_EmptyIsEmptyArray(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := get(t, mux, "/api/match-results")
+	rec := get(t, mux, "/api/v1/matches")
 	if rec.Code != 200 {
 		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
 	}
@@ -70,7 +92,7 @@ func TestServerMux_GetMatchResults_EmptyIsEmptyArray(t *testing.T) {
 
 func TestServerMux_GetVersion(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := get(t, mux, "/api/version")
+	rec := get(t, mux, "/api/v1/system/version")
 	if rec.Code != 200 {
 		t.Fatalf("status %d", rec.Code)
 	}
@@ -86,7 +108,7 @@ func TestServerMux_GetVersion(t *testing.T) {
 func TestServerMux_MethodNotAllowed(t *testing.T) {
 	_, mux := newTestApp(t, nil)
 	// GET on POST-only endpoint
-	rec := get(t, mux, "/api/parse")
+	rec := get(t, mux, "/api/v1/parses")
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Errorf("expected 405, got %d", rec.Code)
 	}
@@ -96,9 +118,9 @@ func TestServerMux_MethodNotAllowed(t *testing.T) {
 // Write endpoints with typed-error → 4xx mapping.
 // ──────────────────────────────────────────────────────────────────────────
 
-func TestServerMux_PostScreenshotsDir_400OnInvalid(t *testing.T) {
+func TestServerMux_PutScreenshotsFolder_400OnInvalid(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := post(t, mux, "/api/screenshots-dir", map[string]string{"path": "/nonexistent/no-such-dir-12345"})
+	rec := put(t, mux, "/api/v1/settings/screenshots-folder", map[string]string{"path": "/nonexistent/no-such-dir-12345"})
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
 	}
@@ -108,31 +130,31 @@ func TestServerMux_PostScreenshotsDir_400OnInvalid(t *testing.T) {
 	}
 }
 
-func TestServerMux_PostScreenshotsDir_400OnMissingPath(t *testing.T) {
+func TestServerMux_PutScreenshotsFolder_400OnMissingPath(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := post(t, mux, "/api/screenshots-dir", map[string]string{}) // no `path`
+	rec := put(t, mux, "/api/v1/settings/screenshots-folder", map[string]string{}) // no `path`
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("expected 400 for missing path, got %d", rec.Code)
 	}
 }
 
-func TestServerMux_PostTesseractPath_400OnInvalid(t *testing.T) {
+func TestServerMux_PutTesseract_400OnInvalid(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := post(t, mux, "/api/tesseract-path", map[string]string{"path": "../traversal/../etc/passwd"})
+	rec := put(t, mux, "/api/v1/settings/tesseract", map[string]string{"path": "../traversal/../etc/passwd"})
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// ClearDatabase delegates to the store.
+// DELETE /api/v1/matches delegates to the store and returns 204.
 // ──────────────────────────────────────────────────────────────────────────
 
-func TestServerMux_ClearDatabase_DelegatesToStore(t *testing.T) {
+func TestServerMux_DeleteMatches_DelegatesToStore(t *testing.T) {
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
-	rec := post(t, mux, "/api/clear-database", nil)
-	if rec.Code != 200 {
+	rec := del(t, mux, "/api/v1/matches")
+	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
 	}
 	if fs.ClearCalls != 1 {
@@ -141,13 +163,13 @@ func TestServerMux_ClearDatabase_DelegatesToStore(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Toggle endpoints.
+// Toggle endpoints — PUT for setters, GET for read, 204 for writes.
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestServerMux_WatchEnabled_RoundTrip(t *testing.T) {
 	_, mux := newTestApp(t, nil)
 	// GET initial — defaults to false.
-	rec := get(t, mux, "/api/watch-enabled")
+	rec := get(t, mux, "/api/v1/settings/watcher")
 	if rec.Code != 200 {
 		t.Fatalf("GET status %d", rec.Code)
 	}
@@ -160,23 +182,23 @@ func TestServerMux_WatchEnabled_RoundTrip(t *testing.T) {
 
 func TestServerMux_PrometheusEnabled_RoundTrip(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := get(t, mux, "/api/prometheus-enabled")
+	rec := get(t, mux, "/api/v1/settings/prometheus")
 	if rec.Code != 200 {
 		t.Fatalf("GET status %d", rec.Code)
 	}
-	rec = post(t, mux, "/api/prometheus-enabled", map[string]bool{"enabled": false})
-	if rec.Code != 200 {
-		t.Errorf("POST status %d body=%s", rec.Code, rec.Body.String())
+	rec = put(t, mux, "/api/v1/settings/prometheus", map[string]bool{"enabled": false})
+	if rec.Code != http.StatusNoContent {
+		t.Errorf("PUT status %d body=%s", rec.Code, rec.Body.String())
 	}
-	rec = post(t, mux, "/api/prometheus-enabled", "not-json-at-all")
+	rec = put(t, mux, "/api/v1/settings/prometheus", "not-json-at-all")
 	if rec.Code != http.StatusBadRequest {
-		t.Errorf("POST with bad body should 400, got %d", rec.Code)
+		t.Errorf("PUT with bad body should 400, got %d", rec.Code)
 	}
 }
 
-func TestServerMux_WatchEnabled_POSTBadJSON(t *testing.T) {
+func TestServerMux_WatchEnabled_PUTBadJSON(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := post(t, mux, "/api/watch-enabled", "not json")
+	rec := put(t, mux, "/api/v1/settings/watcher", "not json")
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("expected 400 for bad JSON body, got %d", rec.Code)
 	}
@@ -188,7 +210,7 @@ func TestServerMux_WatchEnabled_POSTBadJSON(t *testing.T) {
 
 func TestServerMux_TesseractStatus(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := get(t, mux, "/api/tesseract-status")
+	rec := get(t, mux, "/api/v1/settings/tesseract")
 	if rec.Code != 200 {
 		t.Fatalf("status %d", rec.Code)
 	}
@@ -202,19 +224,21 @@ func TestServerMux_TesseractStatus(t *testing.T) {
 
 func TestServerMux_TesseractReset(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := post(t, mux, "/api/tesseract-reset", nil)
+	// Reset is DELETE on the tesseract setting — removes the user
+	// override and re-detects against the platform default.
+	rec := del(t, mux, "/api/v1/settings/tesseract")
 	if rec.Code != 200 {
 		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Screenshots dir.
+// Screenshots-folder setting.
 // ──────────────────────────────────────────────────────────────────────────
 
-func TestServerMux_ScreenshotsDir_GET(t *testing.T) {
+func TestServerMux_ScreenshotsFolder_GET(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := get(t, mux, "/api/screenshots-dir")
+	rec := get(t, mux, "/api/v1/settings/screenshots-folder")
 	if rec.Code != 200 {
 		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
 	}
@@ -226,9 +250,9 @@ func TestServerMux_ScreenshotsDir_GET(t *testing.T) {
 	}
 }
 
-func TestServerMux_NewScreenshotCount(t *testing.T) {
+func TestServerMux_PendingScreenshotCount(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := get(t, mux, "/api/new-screenshot-count")
+	rec := get(t, mux, "/api/v1/screenshots/pending-count")
 	if rec.Code != 200 {
 		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
 	}
@@ -236,14 +260,14 @@ func TestServerMux_NewScreenshotCount(t *testing.T) {
 
 func TestServerMux_CheckUpdate(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := get(t, mux, "/api/check-update")
+	rec := get(t, mux, "/api/v1/system/update")
 	if rec.Code != 200 {
 		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Static SPA fallback — anything outside /api/* is served from the assets FS.
+// Static SPA fallback — anything outside /api/v1/* is served from the assets FS.
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestServerMux_ServesIndexFromAssetsFS(t *testing.T) {
@@ -261,15 +285,18 @@ func TestServerMux_ServesIndexFromAssetsFS(t *testing.T) {
 	}
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// Match annotations — hierarchical sub-resource at
+// PUT /api/v1/matches/{matchKey}/annotation.
+// ──────────────────────────────────────────────────────────────────────────
+
 func TestMatchAnnotations_Upsert(t *testing.T) {
 	fs := dbtest.New()
-	a, mux := newTestApp(t, fs)
-	_ = a
+	_, mux := newTestApp(t, fs)
 
-	rec := post(t, mux, "/api/match-annotations", map[string]any{
-		"match_key": "k1",
-		"leaver":    "team",
-		"note":      "ally dc'd",
+	rec := put(t, mux, annotationPath("k1"), map[string]any{
+		"leaver": "team",
+		"note":   "ally dc'd",
 	})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("upsert status = %d, body: %s", rec.Code, rec.Body.String())
@@ -278,11 +305,9 @@ func TestMatchAnnotations_Upsert(t *testing.T) {
 
 func TestMatchAnnotations_ClearByEmptyLeaver(t *testing.T) {
 	fs := dbtest.New()
-	a, mux := newTestApp(t, fs)
-	_ = a
-	rec := post(t, mux, "/api/match-annotations", map[string]any{
-		"match_key": "k1",
-		"leaver":    "",
+	_, mux := newTestApp(t, fs)
+	rec := put(t, mux, annotationPath("k1"), map[string]any{
+		"leaver": "",
 	})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("clear status = %d, body: %s", rec.Code, rec.Body.String())
@@ -292,9 +317,8 @@ func TestMatchAnnotations_ClearByEmptyLeaver(t *testing.T) {
 func TestMatchVisibility_Hide(t *testing.T) {
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
-	rec := post(t, mux, "/api/match-visibility", map[string]any{
-		"match_key": "k1",
-		"hidden":    true,
+	rec := put(t, mux, visibilityPath("k1"), map[string]any{
+		"hidden": true,
 	})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("hide status = %d, body: %s", rec.Code, rec.Body.String())
@@ -307,9 +331,8 @@ func TestMatchVisibility_Hide(t *testing.T) {
 func TestMatchVisibility_Unhide(t *testing.T) {
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
-	rec := post(t, mux, "/api/match-visibility", map[string]any{
-		"match_key": "k1",
-		"hidden":    false,
+	rec := put(t, mux, visibilityPath("k1"), map[string]any{
+		"hidden": false,
 	})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("unhide status = %d, body: %s", rec.Code, rec.Body.String())
@@ -319,21 +342,10 @@ func TestMatchVisibility_Unhide(t *testing.T) {
 	}
 }
 
-func TestMatchVisibility_MissingMatchKey400(t *testing.T) {
-	fs := dbtest.New()
-	_, mux := newTestApp(t, fs)
-	rec := post(t, mux, "/api/match-visibility", map[string]any{
-		"hidden": true,
-	})
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("missing match_key should 400, got %d (%s)", rec.Code, rec.Body.String())
-	}
-}
-
 func TestMatchVisibility_BadJSON400(t *testing.T) {
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
-	rec := post(t, mux, "/api/match-visibility", "not-json-at-all")
+	rec := put(t, mux, visibilityPath("k1"), "not-json-at-all")
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("malformed body should 400, got %d (%s)", rec.Code, rec.Body.String())
 	}
@@ -341,42 +353,27 @@ func TestMatchVisibility_BadJSON400(t *testing.T) {
 
 func TestMatchVisibility_MethodNotAllowed(t *testing.T) {
 	_, mux := newTestApp(t, nil)
-	rec := get(t, mux, "/api/match-visibility")
+	rec := get(t, mux, visibilityPath("k1"))
 	if rec.Code != http.StatusMethodNotAllowed {
-		t.Errorf("GET on POST-only route should 405, got %d", rec.Code)
+		t.Errorf("GET on PUT-only route should 405, got %d", rec.Code)
 	}
 }
 
 func TestMatchAnnotations_InvalidLeaver400(t *testing.T) {
 	fs := dbtest.New()
-	a, mux := newTestApp(t, fs)
-	_ = a
-	rec := post(t, mux, "/api/match-annotations", map[string]any{
-		"match_key": "k1",
-		"leaver":    "afk",
+	_, mux := newTestApp(t, fs)
+	rec := put(t, mux, annotationPath("k1"), map[string]any{
+		"leaver": "afk",
 	})
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("invalid leaver should 400, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 
-func TestMatchAnnotations_MissingMatchKey400(t *testing.T) {
-	fs := dbtest.New()
-	a, mux := newTestApp(t, fs)
-	_ = a
-	rec := post(t, mux, "/api/match-annotations", map[string]any{
-		"leaver": "team",
-	})
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("missing match_key should 400, got %d (%s)", rec.Code, rec.Body.String())
-	}
-}
-
 func TestMatchAnnotations_AllFieldsAccepted(t *testing.T) {
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
-	rec := post(t, mux, "/api/match-annotations", map[string]any{
-		"match_key":   "k1",
+	rec := put(t, mux, annotationPath("k1"), map[string]any{
 		"leaver":      "team",
 		"note":        "ally rage-quit",
 		"replay_code": "7H1K9P",
@@ -391,21 +388,20 @@ func TestMatchAnnotations_NoteOnlyPersists(t *testing.T) {
 	// All-empty leaver but a note present — the row should persist.
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
-	rec := post(t, mux, "/api/match-annotations", map[string]any{
-		"match_key": "k1",
-		"leaver":    "",
-		"note":      "no leaver tag yet",
+	rec := put(t, mux, annotationPath("k1"), map[string]any{
+		"leaver": "",
+		"note":   "no leaver tag yet",
 	})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("note-only should 204, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 
-func TestMatchAnnotations_E2E_PostThenReadBackOnMatchResults(t *testing.T) {
+func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 	// End-to-end: write a real SQLite store (in-memory), seed a
-	// SUMMARY screenshot so a match exists, POST an annotation via
-	// /api/match-annotations, then GET /api/match-results and
-	// confirm the annotation surfaces on the returned record.
+	// SUMMARY screenshot so a match exists, PUT an annotation via
+	// /api/v1/matches/{matchKey}/annotation, then GET /api/v1/matches
+	// and confirm the annotation surfaces on the returned record.
 	//
 	// Catches wiring regressions between the three layers: route →
 	// app.SetMatchAnnotation → store, and then store → aggregator →
@@ -433,23 +429,22 @@ func TestMatchAnnotations_E2E_PostThenReadBackOnMatchResults(t *testing.T) {
 	a.SSEHub = app.NewSSEHub()
 	mux := NewMux(a, fstest.MapFS{})
 
-	// POST a full annotation.
-	rec := post(t, mux, "/api/match-annotations", map[string]any{
-		"match_key":   "match:e2e",
+	// PUT a full annotation.
+	rec := put(t, mux, annotationPath("match:e2e"), map[string]any{
 		"leaver":      "team",
 		"note":        "ally rage-quit",
 		"replay_code": "7H1K9P",
 		"members":     []string{"Apollo#11234", "Cheese#5678"},
 	})
 	if rec.Code != http.StatusNoContent {
-		t.Fatalf("annotation POST status %d, body %s", rec.Code, rec.Body.String())
+		t.Fatalf("annotation PUT status %d, body %s", rec.Code, rec.Body.String())
 	}
 
-	// GET /api/match-results — expect the annotation to surface on the
+	// GET /api/v1/matches — expect the annotation to surface on the
 	// returned MatchRecord.
-	rec = get(t, mux, "/api/match-results")
+	rec = get(t, mux, "/api/v1/matches")
 	if rec.Code != 200 {
-		t.Fatalf("match-results status %d", rec.Code)
+		t.Fatalf("matches status %d", rec.Code)
 	}
 	var records []map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &records); err != nil {
@@ -480,13 +475,11 @@ func TestMatchAnnotations_E2E_PostThenReadBackOnMatchResults(t *testing.T) {
 		t.Errorf("annotation.members shape wrong: %v", anno["members"])
 	}
 
-	// Idempotency contract: a POST with everything empty deletes the
+	// Idempotency contract: a PUT with every field empty deletes the
 	// row; the next GET should drop the annotation field entirely.
-	rec = post(t, mux, "/api/match-annotations", map[string]any{
-		"match_key": "match:e2e",
-	})
+	rec = put(t, mux, annotationPath("match:e2e"), map[string]any{})
 	if rec.Code != http.StatusNoContent {
-		t.Fatalf("clear POST status %d, body %s", rec.Code, rec.Body.String())
+		t.Fatalf("clear PUT status %d, body %s", rec.Code, rec.Body.String())
 	}
 	// Verify the deletion landed in the store, independent of the
 	// JSON round-trip below.
@@ -497,7 +490,7 @@ func TestMatchAnnotations_E2E_PostThenReadBackOnMatchResults(t *testing.T) {
 	if a, present := annos["match:e2e"]; present {
 		t.Errorf("annotation row not deleted from store: %+v", a)
 	}
-	rec = get(t, mux, "/api/match-results")
+	rec = get(t, mux, "/api/v1/matches")
 	// json.Unmarshal merges into a non-nil slice destination — without
 	// resetting, residual keys from the first decode survive and the
 	// "annotation absent" assertion below would be a false positive.

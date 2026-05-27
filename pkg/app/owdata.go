@@ -6,7 +6,7 @@ import "recall/pkg/parser"
 // against — the canonical hero roster (per role) and map roster (per
 // game type). The bytes ultimately come from `pkg/parser/heroes.yaml`
 // and `pkg/parser/maps.yaml`, embedded at compile time. Surfaced to
-// the frontend via the /api/owdata HTTP route + the Wails-bound
+// the frontend via the /api/v1/system/reference-data HTTP route + the Wails-bound
 // `App.GetOWData` so the UI can render canonical names (with diacritic
 // + capitalization preserved) and group heroes by role / maps by type
 // without re-shipping the same lists in TypeScript.

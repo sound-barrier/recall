@@ -4,15 +4,20 @@
  * The hermetic e2e server boots against an empty SQLite DB, so we
  * intercept the JSON endpoints with `page.route()` and serve canned
  * fixtures — that exercises the full client-side flow (filter rail
- * toggle, MatchCard danger row, confirm step, outbound POST to
- * `/api/match-visibility`).
+ * toggle, MatchCard danger row, confirm step, outbound PUT to
+ * `/api/v1/matches/{matchKey}/visibility`).
  */
 import { test, expect, type Route } from '@playwright/test'
 
 const NORMAL_KEY = 'match:2026-05-10T22:00:00'
+// Path-encoded form of NORMAL_KEY — the colon must be percent-encoded
+// because it carries meaning in URLs. encodeURIComponent on the
+// frontend produces this exact form.
+const NORMAL_KEY_ENCODED = encodeURIComponent(NORMAL_KEY)
+const VISIBILITY_PATH_GLOB = `**/api/v1/matches/${NORMAL_KEY_ENCODED}/visibility`
 
 // A single match. Tests flip `hidden` between requests to drive the
-// flow: hide-confirm → next /api/match-results sees hidden=true →
+// flow: hide-confirm → next /api/v1/matches sees hidden=true →
 // card disappears; show-hidden toggle reveals it dimmed; unhide →
 // next response drops the flag.
 const singleRecord = (hidden: boolean) => ({
@@ -43,7 +48,7 @@ test.describe('match deletion — soft delete + unhide', () => {
     let postBody: Record<string, unknown> | null = null
     let getCount = 0
 
-    await page.route('**/api/match-results', async (route: Route) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
       getCount++
       await route.fulfill({
         status: 200,
@@ -51,7 +56,7 @@ test.describe('match deletion — soft delete + unhide', () => {
         body: JSON.stringify([singleRecord(hidden)]),
       })
     })
-    await page.route('**/api/match-visibility', async (route: Route) => {
+    await page.route(VISIBILITY_PATH_GLOB, async (route: Route) => {
       postBody = JSON.parse(route.request().postData() ?? '{}')
       hidden = !!postBody.hidden
       await route.fulfill({ status: 204, body: '' })
@@ -71,26 +76,27 @@ test.describe('match deletion — soft delete + unhide', () => {
     await page.locator('.danger-btn', { hasText: 'Confirm' }).click()
 
     // Wait for the post-confirm re-fetch to complete by polling on
-    // getCount — the click does POST → load() and load() fires
-    // /api/match-results once. Without this, toHaveCount(0) races
+    // getCount — the click does PUT → load() and load() fires
+    // /api/v1/matches once. Without this, toHaveCount(0) races
     // with the in-flight refetch.
     await expect.poll(() => getCount).toBeGreaterThanOrEqual(2)
     // Card disappears (default view drops hidden matches).
     await expect(page.locator('.match')).toHaveCount(0)
-    // POST was made with hidden=true.
-    expect(postBody).toEqual({ match_key: NORMAL_KEY, hidden: true })
+    // PUT body carries just the visibility flag — match_key lives in
+    // the URL now, not the payload.
+    expect(postBody).toEqual({ hidden: true })
   })
 
   test('Cancel aborts the hide without POSTing', async ({ page }) => {
     let postCount = 0
-    await page.route('**/api/match-results', async (route: Route) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([singleRecord(false)]),
       })
     })
-    await page.route('**/api/match-visibility', async (route: Route) => {
+    await page.route(VISIBILITY_PATH_GLOB, async (route: Route) => {
       postCount++
       await route.fulfill({ status: 204, body: '' })
     })
@@ -107,12 +113,12 @@ test.describe('match deletion — soft delete + unhide', () => {
     await expect(page.locator('.danger-btn', { hasText: 'Confirm' })).toHaveCount(0)
     // Match still present.
     await expect(page.locator('.match')).toHaveCount(1)
-    // Critical: no destructive POST happened.
+    // Critical: no destructive PUT happened.
     expect(postCount).toBe(0)
   })
 
   test('Show-hidden toggle reveals a hidden match with the dimmed class', async ({ page }) => {
-    await page.route('**/api/match-results', async (route: Route) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -135,16 +141,16 @@ test.describe('match deletion — soft delete + unhide', () => {
     await expect(page.locator('.match.hidden')).toHaveCount(1)
   })
 
-  test('Unhide on a hidden card POSTs hidden=false (no confirm step)', async ({ page }) => {
+  test('Unhide on a hidden card PUTs hidden=false (no confirm step)', async ({ page }) => {
     let postBody: Record<string, unknown> | null = null
-    await page.route('**/api/match-results', async (route: Route) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([singleRecord(true)]),
       })
     })
-    await page.route('**/api/match-visibility', async (route: Route) => {
+    await page.route(VISIBILITY_PATH_GLOB, async (route: Route) => {
       postBody = JSON.parse(route.request().postData() ?? '{}')
       await route.fulfill({ status: 204, body: '' })
     })
@@ -158,6 +164,6 @@ test.describe('match deletion — soft delete + unhide', () => {
 
     // Unhide is one-click — strictly restorative, no confirm step.
     await page.locator('.danger-btn', { hasText: 'Unhide' }).click()
-    expect(postBody).toEqual({ match_key: NORMAL_KEY, hidden: false })
+    expect(postBody).toEqual({ hidden: false })
   })
 })
