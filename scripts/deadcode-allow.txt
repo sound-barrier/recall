@@ -19,8 +19,8 @@ App\.Pick
 
 # App.SaveExportToFile / App.LoadImportFromFile: same pattern as the
 # Pick* pair — Wails dialogs in app_wails.go; server-mode stubs in
-# app_server.go return errors directing callers to GET /api/export
-# and POST /api/import.
+# app_server.go return errors directing callers to GET /api/v1/exports
+# and POST /api/v1/imports.
 App\.SaveExportToFile
 App\.LoadImportFromFile
 
