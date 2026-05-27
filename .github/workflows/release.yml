@@ -122,7 +122,7 @@ jobs:
       # server-mac tarball). Subject-paths below mirror each script's
       # documented outputs.
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4
         with:
           subject-path: |
             recall-*-linux-amd64.tar.gz
@@ -175,7 +175,7 @@ jobs:
         run: bash scripts/release/make-dmg.sh
 
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4
         with:
           subject-path: recall-*-darwin-arm64.dmg
 
@@ -272,7 +272,7 @@ jobs:
       #   gh attestation verify <file>.sha256 → sha256sum --check <file>.sha256
       # This closes the loop: even the fallback verification path is signed.
       - name: Attest SHA256 checksums
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4
         with:
           subject-path: |
             recall-*.tar.gz.sha256
