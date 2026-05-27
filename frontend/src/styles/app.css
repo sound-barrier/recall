@@ -1854,6 +1854,242 @@ main#main-content {
   box-shadow: none;
 }
 
+/* ─── Per-row "?" help affordance ─────────────────────────────
+   Lived in SettingsView.vue's scoped block until the Settings
+   panels (Folders/Engine/Appearance/Calendar/BackupRestore/Advanced)
+   were extracted into their own SFCs. Vue scoped styles don't
+   cascade into child components — the data-v hash differs — so
+   every child SFC's `.setting-help` got positioned static, its
+   `.setting-help-label` SR-only span rendered as visible text,
+   and the `.setting-help-pop` tooltip body flowed inline (and
+   inherited `.setting-label`'s `text-transform: uppercase`,
+   producing the all-caps "?ABOUT SCREENSHOTS FOLDER RECALL
+   WATCHES THIS DIRECTORY..." run-on bug). Multi-consumer rule per
+   the layering rule in frontend/CLAUDE.md → lives here.
+
+   Small "?" mark to the right of each setting label. Hovering or
+   focusing it pops a tooltip with deeper context. Pure CSS — no
+   JS popover. The hidden span carrying the accessible label keeps
+   the icon screen-reader-meaningful even when the tooltip is
+   hidden. */
+.setting-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  margin-left: 0.45rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+  vertical-align: middle;
+}
+
+.setting-help:hover,
+.setting-help:focus-visible {
+  outline: none;
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.setting-help-mark { line-height: 1; }
+
+.setting-help-label {
+  /* Visible-to-screen-readers-only. */
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.setting-help-pop {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  width: 260px;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface-3);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  font-family: var(--body);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease;
+  z-index: 5;
+  box-shadow: 0 8px 24px -8px rgb(0 0 0 / 50%);
+}
+
+.setting-help-pop::before {
+  /* Pointer triangle at the top of the popover, lined up with the ? icon. */
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border: 5px solid transparent;
+  border-bottom-color: var(--accent);
+}
+
+.setting-help-pop code {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  background: var(--surface);
+  padding: 0.05rem 0.3rem;
+  border-radius: 2px;
+  color: var(--accent-text);
+}
+
+.setting-help:hover .setting-help-pop,
+.setting-help:focus-visible .setting-help-pop {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+/* ─── Probe chip + "Looked in" disclosure ─────────────────
+   Two-state pill with a fat coloured bar on the left, a mark
+   glyph, the body text, and a × dismiss. Reused both inside
+   SettingsView's empty-state hero (parent SFC) and inside the
+   steady-state Screenshots Folder row in SettingsFolders.vue
+   (child SFC), so the rules live globally rather than scoped to
+   either. */
+.probe-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  margin-top: 0.65rem;
+  padding-right: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+  color: var(--text-dim);
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.probe-chip.success {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  color: var(--accent-text);
+}
+
+.probe-chip.blocked {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.probe-chip-bar {
+  flex: 0 0 4px;
+  background: var(--border-strong);
+}
+
+.probe-chip.success .probe-chip-bar { background: var(--accent); }
+.probe-chip.blocked .probe-chip-bar { background: var(--text-faint); }
+
+.probe-chip-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.55rem 0 0.6rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.probe-chip.success .probe-chip-mark { color: var(--accent); }
+.probe-chip.blocked .probe-chip-mark { color: var(--text); }
+
+.probe-chip-text {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.42rem 0.6rem 0.42rem 0;
+  word-break: break-all;
+  flex: 1;
+}
+
+.probe-chip-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: currentcolor;
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0 0.45rem;
+  cursor: pointer;
+  align-self: center;
+  border-radius: 1px;
+  transition: background 140ms ease;
+}
+
+.probe-chip-close:hover  { background: color-mix(in srgb, currentcolor 12%, transparent); }
+
+.probe-chip-close:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, currentcolor 18%, transparent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.probe-tried {
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
+.probe-tried > summary {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.probe-tried-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.3rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  word-break: break-all;
+}
+
+.probe-tried-list li + li {
+  margin-top: 0.2rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setting-help,
+  .setting-help-pop,
+  .probe-chip-close {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
 /* ─── Unknown view responsive ────────────────────────────── */
 @media (width <= 880px) {
   .unknown-fields { grid-template-columns: repeat(4, 1fr); }

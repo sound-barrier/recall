@@ -200,3 +200,79 @@ async function copyPath(path: string, which: 'db' | 'settings') {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* SettingsFolders-only styles. Multi-consumer Settings rules
+   (.setting-help*, .probe-chip*, .probe-tried*) live in
+   frontend/src/styles/app.css because Vue scoped styles don't
+   cascade into sibling/child SFCs. See app.css for the regression
+   note. */
+
+/* ─── Data Location row — labeled key/value grid with actions ─── */
+
+/* Three-column grid: small uppercase key on the left, monospaced
+   path in the middle, action buttons (Copy / Open) on the right.
+   Reads like a HUD readout with affordances per row. */
+.data-loc-grid {
+  margin-top: 0.65rem;
+  display: grid;
+  grid-template-columns: 6.4em minmax(0, 1fr) auto;
+  gap: 0.45rem 0.85rem;
+  padding: 0.65rem 0.7rem;
+  background: var(--surface);
+  border-left: 2px solid var(--accent);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.data-loc-key {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  align-self: center;
+}
+
+.data-loc-val {
+  color: var(--text-dim);
+  word-break: break-all;
+  align-self: center;
+}
+
+.data-loc-actions {
+  display: inline-flex;
+  gap: 0.35rem;
+  place-self: center end;
+}
+
+/* "Copied ✓" pulse on Copy buttons — accent flash for 1.4 s. */
+.btn-copied {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* ─── Screenshots Folder steady-state ─────────────────────── */
+
+/* Two-button cluster: Open + Detect + Change. Stacks on narrow
+   rails so the right edge of the row stays tidy. The Detect
+   button gets a subtle accent border because it's the "smart"
+   affordance — the OS folder picker is the boring fallback. */
+.folder-btn-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.detect-btn {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.detect-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+</style>
