@@ -1,23 +1,26 @@
 name: release-please
 
 # release-please reads conventional-commit messages on main, opens a PR
-# that bumps the version + regenerates CHANGELOG.md, and — when that PR
-# merges — creates the `vX.Y.Z` tag. The GitHub Release itself is
-# created by release.yml; release-please is configured with
-# `skip-github-release: true` so it ONLY emits the tag.
+# that bumps the version + regenerates CHANGELOG.md, and — when that
+# PR merges — this workflow pushes the `vX.Y.Z` tag. The GitHub
+# Release itself is created by release.yml; release-please is
+# configured with `skip-github-release: true` so it manages PRs only.
 #
 # So the flow is:
 #   1. Conventional commits land on main (enforced by lefthook commit-msg).
 #   2. release-please-action opens/updates a release PR with version bump
 #      + changelog.
 #   3. Maintainer merges the release PR.
-#   4. release-please-action pushes the v<version> tag. No GitHub
-#      Release is created at this step.
+#   4. The "Push tag for merged release-please PR" step in THIS
+#      workflow (via scripts/release/push-release-tag.sh) detects the
+#      `chore(main): release X.Y.Z` merge commit and pushes the
+#      v<version> tag, then flips the PR label from
+#      `autorelease: pending` to `autorelease: tagged`.
 #   5. release.yml fires on the tag, builds binaries, and — via
-#      softprops/action-gh-release — creates the GitHub Release ATOMICALLY
-#      with the asset uploads in the same call.
+#      softprops/action-gh-release — creates the GitHub Release
+#      ATOMICALLY with the asset uploads in the same call.
 #
-# Why this split-of-responsibility: GitHub treats PUBLISHED releases as
+# Why this two-step shape: GitHub treats PUBLISHED releases as
 # IMMUTABLE for asset uploads. The historical setup (release-please
 # creates the release published, then release.yml tries to attach
 # assets) races against GitHub's immutability check — symptom:
@@ -29,10 +32,14 @@ name: release-please
 # in release-please's model live without a tag until publication), so
 # release.yml never fired and release-please couldn't anchor its
 # "latest release" detection — every subsequent run proposed a fresh
-# 0.1.0 PR off the unparseable initial commits. `skip-github-release`
-# is the correct knob: tag IS created, GitHub Release is NOT, so
-# release.yml gets a clean tag-push event and creates+uploads the
-# release in one atomic operation.
+# 0.1.0 PR off the unparseable initial commits.
+#
+# `skip-github-release: true` was the correct knob to keep
+# release-please away from release-page creation, but it bundles tag
+# creation with release creation in release-please's strategy — both
+# get skipped together. v0.2.2 and v0.2.3 each required a manual
+# `git tag` + `git push origin v...` from the maintainer's shell.
+# The companion push-release-tag.sh step closes that gap.
 #
 # REPO SETUP — one-time:
 #   1. Settings -> Actions -> General -> Workflow permissions ->
@@ -84,3 +91,31 @@ jobs:
           # it does not try to parse Go module versions or similar.
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # Checkout with the SAME token release-please uses, so the
+      # subsequent `git push` of the release tag fires release.yml
+      # downstream. With GITHUB_TOKEN this is suppressed by GitHub's
+      # anti-loop guard; with RELEASE_PLEASE_TOKEN (PAT) the tag is
+      # attributed to the PAT owner and downstream workflows fire.
+      # fetch-depth: 0 because the script's `git ls-remote` check is
+      # remote-only but `git rev-parse HEAD` and `git tag` need the
+      # local history.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Push tag for merged release-please PR
+        env:
+          # head_commit.message is untrusted (anyone with push access
+          # to a release-please-managed PR could craft it), so the
+          # script reads it from this env var rather than letting the
+          # workflow interpolate it into the run: command line.
+          HEAD_COMMIT_MSG: ${{ github.event.head_commit.message }}
+          # GH_TOKEN powers the `gh pr edit` call that flips the
+          # release PR's label from `autorelease: pending` to
+          # `autorelease: tagged`. Same token as release-please uses
+          # for symmetry (both PAT and GITHUB_TOKEN can edit PR
+          # labels — only the tag-push trigger semantics differ).
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: bash scripts/release/push-release-tag.sh
