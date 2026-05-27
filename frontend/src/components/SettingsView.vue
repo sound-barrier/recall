@@ -357,222 +357,13 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
 
 /* ─── Dismissible probe-result chip ───────────────────────── */
 
-/* Two-state pill with a fat coloured bar on the left, a 1.05rem
-   mark glyph, the body text, and a × dismiss. Reused both inside
-   the empty-state hero and inside the steady-state Screenshots
-   Folder row's left column. */
-.probe-chip {
-  position: relative;
-  display: inline-flex;
-  align-items: stretch;
-  gap: 0;
-  margin-top: 0.65rem;
-  padding-right: 0.4rem;
-  font-family: var(--mono);
-  font-size: 0.74rem;
-  letter-spacing: 0.02em;
-  line-height: 1.4;
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: 2px;
-  color: var(--text-dim);
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.probe-chip.success {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
-  color: var(--accent-text);
-}
-
-.probe-chip.blocked {
-  border-color: var(--border-strong);
-  background: var(--surface-2);
-  color: var(--text);
-}
-
-.probe-chip-bar {
-  flex: 0 0 4px;
-  background: var(--border-strong);
-}
-
-.probe-chip.success .probe-chip-bar { background: var(--accent); }
-.probe-chip.blocked .probe-chip-bar { background: var(--text-faint); }
-
-.probe-chip-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 0.55rem 0 0.6rem;
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.probe-chip.success .probe-chip-mark { color: var(--accent); }
-.probe-chip.blocked .probe-chip-mark { color: var(--text); }
-
-.probe-chip-text {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.42rem 0.6rem 0.42rem 0;
-  word-break: break-all;
-  flex: 1;
-}
-
-.probe-chip-close {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: currentcolor;
-  font-size: 1.05rem;
-  line-height: 1;
-  padding: 0 0.45rem;
-  cursor: pointer;
-  align-self: center;
-  border-radius: 1px;
-  transition: background 140ms ease;
-}
-
-.probe-chip-close:hover  { background: color-mix(in srgb, currentcolor 12%, transparent); }
-
-.probe-chip-close:focus-visible {
-  outline: none;
-  background: color-mix(in srgb, currentcolor 18%, transparent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-
-/* ─── Probe "Looked in" disclosure ────────────────────────── */
-
-/* Defaults closed so the row stays compact; the user opens it on
-   demand for diagnostic context on a no-match. */
-.probe-tried {
-  margin-top: 0.45rem;
-  font-size: 0.72rem;
-  color: var(--text-faint);
-}
-
-.probe-tried > summary {
-  cursor: pointer;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-.probe-tried-list {
-  margin: 0.35rem 0 0;
-  padding-left: 1.3rem;
-  font-size: 0.72rem;
-  color: var(--text-dim);
-  word-break: break-all;
-}
-
-.probe-tried-list li + li {
-  margin-top: 0.2rem;
-}
-
-/* ─── Per-row help affordance ─────────────────────────────── */
-
-/* Small "?" mark to the right of each setting label. Hovering or
-   focussing it pops a tooltip with deeper context. Pure CSS — no
-   JS popover. The hidden span carrying the accessible label keeps
-   the icon screen-reader-meaningful even when the tooltip is
-   hidden. */
-.setting-help {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  width: 18px;
-  height: 18px;
-  margin-left: 0.45rem;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  color: var(--text-faint);
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  line-height: 1;
-  cursor: help;
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
-  vertical-align: middle;
-}
-
-.setting-help:hover,
-.setting-help:focus-visible {
-  outline: none;
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.setting-help-mark { line-height: 1; }
-
-.setting-help-label {
-  /* Visible-to-screen-readers-only. */
-  position: absolute;
-  width: 1px; height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.setting-help-pop {
-  position: absolute;
-  top: calc(100% + 0.45rem);
-  left: 50%;
-  transform: translateX(-50%) translateY(-4px);
-  width: 260px;
-  padding: 0.6rem 0.75rem;
-  background: var(--surface-3);
-  border: 1px solid var(--accent);
-  border-radius: 2px;
-  font-family: var(--body);
-  font-size: 0.75rem;
-  font-weight: 400;
-  line-height: 1.45;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--text);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 140ms ease, transform 140ms ease;
-  z-index: 5;
-  box-shadow: 0 8px 24px -8px rgb(0 0 0 / 50%);
-}
-
-.setting-help-pop::before {
-  /* Pointer triangle at the top of the popover, lined up with the ? icon. */
-  content: '';
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0; height: 0;
-  border: 5px solid transparent;
-  border-bottom-color: var(--accent);
-}
-
-.setting-help-pop code {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  background: var(--surface);
-  padding: 0.05rem 0.3rem;
-  border-radius: 2px;
-  color: var(--accent-text);
-}
-
-.setting-help:hover .setting-help-pop,
-.setting-help:focus-visible .setting-help-pop {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-  pointer-events: auto;
-}
+/* `.probe-chip*`, `.probe-tried*`, and `.setting-help*` rules
+   moved to `frontend/src/styles/app.css` because they're
+   referenced by multiple SFCs (this view's empty-hero, plus the
+   extracted SettingsFolders / SettingsEngine / SettingsAppearance
+   / SettingsCalendar / SettingsBackupRestore / SettingsAdvanced
+   panels) and Vue scoped styles don't cascade across components.
+   See the comment in app.css for the regression context. */
 
 /* ─── Sub-heading text in Settings sections ──────────────── */
 
@@ -604,76 +395,10 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
   border-radius: 2px;
 }
 
-/* ─── Data Location row — labeled key/value grid with actions ─── */
-
-/* Three-column grid: small uppercase key on the left, monospaced
-   path in the middle, action buttons (Copy / Open) on the right.
-   Reads like a HUD readout with affordances per row. */
-.data-loc-grid {
-  margin-top: 0.65rem;
-  display: grid;
-  grid-template-columns: 6.4em minmax(0, 1fr) auto;
-  gap: 0.45rem 0.85rem;
-  padding: 0.65rem 0.7rem;
-  background: var(--surface);
-  border-left: 2px solid var(--accent);
-  font-size: 0.78rem;
-  line-height: 1.45;
-}
-
-.data-loc-key {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  align-self: center;
-}
-
-.data-loc-val {
-  color: var(--text-dim);
-  word-break: break-all;
-  align-self: center;
-}
-
-.data-loc-actions {
-  display: inline-flex;
-  gap: 0.35rem;
-  place-self: center end;
-}
-
-/* "Copied ✓" pulse on Copy buttons — accent flash for 1.4 s. */
-.btn-copied {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-/* ─── Screenshots Folder steady-state ─────────────────────── */
-
-/* Two-button cluster: Open + Detect + Change. Stacks on narrow
-   rails so the right edge of the row stays tidy. The Detect
-   button gets a subtle accent border because it's the "smart"
-   affordance — the OS folder picker is the boring fallback. */
-.folder-btn-group {
-  display: inline-flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.4rem;
-}
-
-.detect-btn {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.detect-btn:hover:not(:disabled) {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-}
-
-/* Theme swatch + weekstart styles moved to their respective
-   sub-component \3c style scoped> blocks. */
+/* `.data-loc-*`, `.btn-copied`, `.folder-btn-group`, `.detect-btn`
+   are single-consumer (SettingsFolders.vue only) and were moved
+   into that SFC's own \3c style scoped> block. Theme-swatch +
+   weekstart styles live with their respective Settings* panels. */
 
 /* ─── Tactical-frame motif on settings-section ────────────── */
 
@@ -766,22 +491,16 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
 
 /* ─── Reduced-motion override ─────────────────────────────── */
 
+/* Reduced-motion for moved classes (.setting-help, .probe-chip-close,
+   .theme-swatch, .weekstart-cell, .advanced-*, .big-switch*,
+   .engine-row) lives where the corresponding rule lives — in
+   app.css for the shared widgets, in each child SFC's scoped
+   block for the panel-specific ones. Anything that's still
+   defined inside this scoped block stays here. */
 @media (prefers-reduced-motion: reduce) {
-  .theme-swatch,
-  .theme-swatch:hover,
-  .weekstart-cell,
-  .setting-help,
-  .setting-help-pop,
-  .probe-chip-close,
   .settings-section::after,
   .btn,
-  .empty-hero,
-  .advanced-summary,
-  .advanced-chev,
-  .advanced-rows,
-  .big-switch-track,
-  .big-switch-knob,
-  .engine-row {
+  .empty-hero {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
