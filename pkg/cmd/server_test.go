@@ -11,60 +11,20 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/db"
+	"recall/pkg/db/dbtest"
 )
 
-// fakeStore is a minimal in-memory db.Store used by these handler tests
-// to drive *App without SQLite. The cmd-layer tests don't seed any
-// fixtures — they only exercise serialization and the Clear handler —
-// so this implementation is intentionally bare.
-type fakeStore struct {
-	clearCalls  int
-	hideCalls   []string
-	unhideCalls []string
-}
-
-func (f *fakeStore) UpsertSummary(db.SummaryRow) error       { return nil }
-func (f *fakeStore) UpsertScoreboard(db.ScoreboardRow) error { return nil }
-func (f *fakeStore) UpsertPersonal(db.PersonalRow) error     { return nil }
-func (f *fakeStore) UpsertRank(db.RankRow) error             { return nil }
-func (f *fakeStore) UpsertUnknown(db.UnknownRow) error       { return nil }
-func (f *fakeStore) EnsureScreenshotsDir(string) (int64, error) {
-	return 0, nil
-}
-
-func (f *fakeStore) LoadAllFilenames() (map[string]bool, error) {
-	return map[string]bool{}, nil
-}
-func (f *fakeStore) LoadAll() (db.Screenshots, error) { return db.Screenshots{}, nil }
-func (f *fakeStore) Clear() error {
-	f.clearCalls++
-	return nil
-}
-func (f *fakeStore) Close() error                      { return nil }
-func (f *fakeStore) SetAnnotation(db.Annotation) error { return nil }
-func (f *fakeStore) DeleteAnnotation(string) error     { return nil }
-func (f *fakeStore) LoadAnnotations() (map[string]db.Annotation, error) {
-	return map[string]db.Annotation{}, nil
-}
-
-func (f *fakeStore) HideMatch(k string) error {
-	f.hideCalls = append(f.hideCalls, k)
-	return nil
-}
-
-func (f *fakeStore) UnhideMatch(k string) error {
-	f.unhideCalls = append(f.unhideCalls, k)
-	return nil
-}
-
-func (f *fakeStore) LoadHiddenKeys() (map[string]bool, error) { return map[string]bool{}, nil }
-
-// newTestApp wires *App against a fakeStore + empty SPA. Skips Startup
-// because the production wiring touches the filesystem.
-func newTestApp(t *testing.T, fs *fakeStore) (*app.App, *http.ServeMux) {
+// newTestApp wires *App against a dbtest.Fake + empty SPA. Skips
+// Startup because the production wiring touches the filesystem.
+//
+// The shared `dbtest.Fake` carries call-tracking fields (HideCalls /
+// UnhideCalls / ClearCalls / …) — tests that previously inspected
+// the package-local fakeStore's private state now read the matching
+// exported field.
+func newTestApp(t *testing.T, fs *dbtest.Fake) (*app.App, *http.ServeMux) {
 	t.Helper() // small leaf helper; keeps the per-test boilerplate readable
 	if fs == nil {
-		fs = &fakeStore{}
+		fs = dbtest.New()
 	}
 	a := app.NewWithStore(fs)
 	a.SSEHub = app.NewSSEHub()
@@ -169,14 +129,14 @@ func TestServerMux_PostTesseractPath_400OnInvalid(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestServerMux_ClearDatabase_DelegatesToStore(t *testing.T) {
-	fs := &fakeStore{}
+	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
 	rec := post(t, mux, "/api/clear-database", nil)
 	if rec.Code != 200 {
 		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
 	}
-	if fs.clearCalls != 1 {
-		t.Errorf("expected 1 Clear call, got %d", fs.clearCalls)
+	if fs.ClearCalls != 1 {
+		t.Errorf("expected 1 Clear call, got %d", fs.ClearCalls)
 	}
 }
 
@@ -287,7 +247,7 @@ func TestServerMux_CheckUpdate(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestServerMux_ServesIndexFromAssetsFS(t *testing.T) {
-	a := app.NewWithStore(&fakeStore{})
+	a := app.NewWithStore(dbtest.New())
 	a.SSEHub = app.NewSSEHub()
 	mux := NewMux(a, fstest.MapFS{
 		"index.html": &fstest.MapFile{Data: []byte("<!doctype html>")},
@@ -302,7 +262,7 @@ func TestServerMux_ServesIndexFromAssetsFS(t *testing.T) {
 }
 
 func TestMatchAnnotations_Upsert(t *testing.T) {
-	fs := &fakeStore{}
+	fs := dbtest.New()
 	a, mux := newTestApp(t, fs)
 	_ = a
 
@@ -317,7 +277,7 @@ func TestMatchAnnotations_Upsert(t *testing.T) {
 }
 
 func TestMatchAnnotations_ClearByEmptyLeaver(t *testing.T) {
-	fs := &fakeStore{}
+	fs := dbtest.New()
 	a, mux := newTestApp(t, fs)
 	_ = a
 	rec := post(t, mux, "/api/match-annotations", map[string]any{
@@ -330,7 +290,7 @@ func TestMatchAnnotations_ClearByEmptyLeaver(t *testing.T) {
 }
 
 func TestMatchVisibility_Hide(t *testing.T) {
-	fs := &fakeStore{}
+	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
 	rec := post(t, mux, "/api/match-visibility", map[string]any{
 		"match_key": "k1",
@@ -339,13 +299,13 @@ func TestMatchVisibility_Hide(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("hide status = %d, body: %s", rec.Code, rec.Body.String())
 	}
-	if len(fs.hideCalls) != 1 || fs.hideCalls[0] != "k1" {
-		t.Errorf("HideMatch not called with k1: %+v", fs.hideCalls)
+	if len(fs.HideCalls) != 1 || fs.HideCalls[0] != "k1" {
+		t.Errorf("HideMatch not called with k1: %+v", fs.HideCalls)
 	}
 }
 
 func TestMatchVisibility_Unhide(t *testing.T) {
-	fs := &fakeStore{}
+	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
 	rec := post(t, mux, "/api/match-visibility", map[string]any{
 		"match_key": "k1",
@@ -354,13 +314,13 @@ func TestMatchVisibility_Unhide(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("unhide status = %d, body: %s", rec.Code, rec.Body.String())
 	}
-	if len(fs.unhideCalls) != 1 || fs.unhideCalls[0] != "k1" {
-		t.Errorf("UnhideMatch not called with k1: %+v", fs.unhideCalls)
+	if len(fs.UnhideCalls) != 1 || fs.UnhideCalls[0] != "k1" {
+		t.Errorf("UnhideMatch not called with k1: %+v", fs.UnhideCalls)
 	}
 }
 
 func TestMatchVisibility_MissingMatchKey400(t *testing.T) {
-	fs := &fakeStore{}
+	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
 	rec := post(t, mux, "/api/match-visibility", map[string]any{
 		"hidden": true,
@@ -371,7 +331,7 @@ func TestMatchVisibility_MissingMatchKey400(t *testing.T) {
 }
 
 func TestMatchVisibility_BadJSON400(t *testing.T) {
-	fs := &fakeStore{}
+	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
 	rec := post(t, mux, "/api/match-visibility", "not-json-at-all")
 	if rec.Code != http.StatusBadRequest {
@@ -388,7 +348,7 @@ func TestMatchVisibility_MethodNotAllowed(t *testing.T) {
 }
 
 func TestMatchAnnotations_InvalidLeaver400(t *testing.T) {
-	fs := &fakeStore{}
+	fs := dbtest.New()
 	a, mux := newTestApp(t, fs)
 	_ = a
 	rec := post(t, mux, "/api/match-annotations", map[string]any{
@@ -401,7 +361,7 @@ func TestMatchAnnotations_InvalidLeaver400(t *testing.T) {
 }
 
 func TestMatchAnnotations_MissingMatchKey400(t *testing.T) {
-	fs := &fakeStore{}
+	fs := dbtest.New()
 	a, mux := newTestApp(t, fs)
 	_ = a
 	rec := post(t, mux, "/api/match-annotations", map[string]any{
@@ -413,7 +373,7 @@ func TestMatchAnnotations_MissingMatchKey400(t *testing.T) {
 }
 
 func TestMatchAnnotations_AllFieldsAccepted(t *testing.T) {
-	fs := &fakeStore{}
+	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
 	rec := post(t, mux, "/api/match-annotations", map[string]any{
 		"match_key":   "k1",
@@ -429,7 +389,7 @@ func TestMatchAnnotations_AllFieldsAccepted(t *testing.T) {
 
 func TestMatchAnnotations_NoteOnlyPersists(t *testing.T) {
 	// All-empty leaver but a note present — the row should persist.
-	fs := &fakeStore{}
+	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
 	rec := post(t, mux, "/api/match-annotations", map[string]any{
 		"match_key": "k1",
