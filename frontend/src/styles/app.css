@@ -1949,6 +1949,7 @@ main#main-content {
 .setting-help-pop {
   position: absolute;
   top: calc(100% + 0.45rem);
+
   /* Anchor the tooltip's LEFT edge to the icon's left edge so it
      opens rightward, not centred. Centring with translateX(-50%)
      used to clip the tooltip off the left edge of the viewport
