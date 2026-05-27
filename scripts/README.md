@@ -118,7 +118,7 @@ Post-PR-#45 the schema is 3NF: five **parent** tables
 `rank_screenshots`, `unknown_screenshots`), five **child** tables with
 `ON DELETE CASCADE`. A "match" is any distinct `match_key` seen across
 the parents. The Go aggregator in `pkg/app/aggregate.go` is what folds
-them into the shape `/api/match-results` returns; these scripts inspect
+them into the shape `/api/v1/matches` returns; these scripts inspect
 the raw rows the aggregator works from.
 
 Lookups across `db-show.sh` / `db-delete.sh` / `db-reparse.sh` accept:

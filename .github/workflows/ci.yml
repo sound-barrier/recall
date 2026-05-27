@@ -555,7 +555,7 @@ jobs:
           echo $! > server.pid
           # Wait up to 30s for the server to accept connections.
           for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:7000/api/tesseract-status >/dev/null 2>&1; then
+            if curl -fsS http://127.0.0.1:7000/api/v1/settings/tesseract >/dev/null 2>&1; then
               echo "Server up after ${i}s"
               break
             fi
@@ -571,7 +571,7 @@ jobs:
         # only fully supports OpenAPI 3.0 by default and refuses 3.1 specs
         # without this opt-in. The flag becomes a no-op (and the install
         # pin <4 can be relaxed) once we move to schemathesis 4.x.
-        # `--exclude-path /api/events` skips the SSE endpoint: it's a
+        # `--exclude-path /api/v1/events` skips the SSE endpoint: it's a
         # long-lived text/event-stream that never closes from the server
         # side, so request-response fuzzing always trips the 10s response
         # timeout. The endpoint stays in the spec for documentation but
@@ -582,7 +582,7 @@ jobs:
             --checks all \
             --hypothesis-max-examples 20 \
             --exclude-method DELETE \
-            --exclude-path /api/events \
+            --exclude-path /api/v1/events \
             --experimental=openapi-3.1 \
             api/openapi.yaml
 
