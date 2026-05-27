@@ -145,14 +145,16 @@ func ParseScreenshotsDir(dir string, skip map[string]bool, progress ProgressFunc
 			// going. The whole batch must not abort because one
 			// screenshot is corrupted, unreadable, or a non-OW PNG.
 			//
-			// `%q` (not `%s`) on `name` — the filename comes from the
-			// user's screenshots directory and could in theory contain
-			// control characters (e.g. `\n`) that would forge a new
-			// log line ("log-injection"). %q goes through Go's quoting
-			// rules, escaping every control char into its literal
-			// `\n` / `\t` / `\x07` form. CodeQL's go/log-injection
-			// query recognises %q as a sanitizer.
-			log.Printf("parse: %q: %v (skipping; continuing with remaining files)", name, parseErr)
+			// `%q` (not `%s`/`%v`) on both args — `name` is the
+			// filename from the user's screenshots directory, and
+			// `parseErr` typically wraps tesseract's stderr which can
+			// include the user-set tesseract path. Either could in
+			// theory carry a control character (`\n`) that forges a
+			// new log line ("log-injection"). %q runs each through
+			// Go's quoting rules, escaping every control char into
+			// its literal `\n` / `\t` / `\x07` form. CodeQL's
+			// go/log-injection query recognises %q as a sanitizer.
+			log.Printf("parse: %q: %q (skipping; continuing with remaining files)", name, parseErr)
 		} else {
 			out[name] = r
 		}
