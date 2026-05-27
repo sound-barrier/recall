@@ -66,6 +66,18 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+          # security-and-quality bundles three query packs in one suite:
+          #   1. code-scanning (default)     — core security queries
+          #   2. security-extended           — adds hardcoded-credentials /
+          #                                    weak-crypto / extra taint sinks
+          #                                    (the "secret scanning" layer)
+          #   3. plus code-quality queries   — dead code, redundant logic,
+          #                                    complexity smells
+          # Higher false-positive rate than the default code-scanning suite,
+          # so triage every alert that lands in the Security tab. Languages
+          # without a security-and-quality pack (currently `actions`)
+          # silently fall back to their default suite.
+          queries: security-and-quality
 
       # Build the serveronly variant (pure Go, CGO_ENABLED=0) — covers all
       # business logic without needing WebKitGTK/CGo deps on the runner.
