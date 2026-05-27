@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/sound-barrier/recall/compare/v0.2.0...v0.2.1) (2026-05-27)
+
+
+### Bug Fixes
+
+* **release:** create draft release first to dodge GitHub immutability race ([4606fb6](https://github.com/sound-barrier/recall/commit/4606fb6fdce0848bc7cb5c90ab71892bce3cdec3))
+
 ## [0.2.0](https://github.com/sound-barrier/recall/compare/v0.1.4...v0.2.0) (2026-05-27)
 
 
