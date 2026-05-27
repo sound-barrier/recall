@@ -56,6 +56,23 @@ func (s *SQLStore) SetAnnotation(a Annotation) error {
 			return err
 		}
 	}
+	// Tags use the same wholesale-rewrite pattern. Composite-PK on
+	// (match_key, tag) drops duplicates the app layer's normalize
+	// stage missed.
+	if _, err := tx.Exec(`DELETE FROM match_annotation_tags WHERE match_key = ?`, a.MatchKey); err != nil {
+		return err
+	}
+	for _, tag := range a.Tags {
+		if tag == "" {
+			continue
+		}
+		if _, err := tx.Exec(
+			`INSERT OR IGNORE INTO match_annotation_tags (match_key, tag) VALUES (?, ?)`,
+			a.MatchKey, tag,
+		); err != nil {
+			return err
+		}
+	}
 	return tx.Commit()
 }
 
@@ -108,5 +125,29 @@ func (s *SQLStore) LoadAnnotations() (map[string]Annotation, error) {
 		a.Members = append(a.Members, member)
 		out[key] = a
 	}
-	return out, memberRows.Err()
+	if err := memberRows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Attach tags. Same wholesale-read pattern as members; sorted
+	// (match_key, tag) so each annotation's tag list is alphabetised
+	// downstream without an extra sort in the aggregator.
+	tagRows, err := s.db.Query(`SELECT match_key, tag FROM match_annotation_tags ORDER BY match_key, tag`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tagRows.Close() }()
+	for tagRows.Next() {
+		var key, tag string
+		if err := tagRows.Scan(&key, &tag); err != nil {
+			return nil, err
+		}
+		a, ok := out[key]
+		if !ok {
+			continue
+		}
+		a.Tags = append(a.Tags, tag)
+		out[key] = a
+	}
+	return out, tagRows.Err()
 }

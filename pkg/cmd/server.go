@@ -158,6 +158,7 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 			Note       string   `json:"note"`
 			ReplayCode string   `json:"replay_code"`
 			Members    []string `json:"members"`
+			Tags       []string `json:"tags"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -169,6 +170,7 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 			Note:       body.Note,
 			ReplayCode: body.ReplayCode,
 			Members:    body.Members,
+			Tags:       body.Tags,
 		}); err != nil {
 			if errors.Is(err, app.ErrInvalidLeaver) {
 				http.Error(w, err.Error(), http.StatusBadRequest)

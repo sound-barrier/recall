@@ -748,7 +748,7 @@ export interface components {
             hidden?: boolean;
         };
         /**
-         * @description User-curated per-match metadata. Up to four optional fields —
+         * @description User-curated per-match metadata. Up to five optional fields —
          *     every field is independent, but the row only exists if at
          *     least one carries content. Omitted from `MatchRecord` when
          *     the match is unannotated.
@@ -767,6 +767,12 @@ export interface components {
             replay_code?: string;
             /** @description BattleTags of group members for this match. */
             members?: string[];
+            /**
+             * @description Free-form match labels (lowercase, deduped). `stack`,
+             *     `stream`, `placement` are the conventional three; users
+             *     can add anything. Drives the FilterRail "Tags" filter.
+             */
+            tags?: string[];
             /**
              * Format: date-time
              * @description Server-set timestamp of when the annotation was last upserted.
@@ -1036,6 +1042,16 @@ export interface operations {
                      *     duplicates that slip through.
                      */
                     members?: string[];
+                    /**
+                     * @description Free-form labels applied to the match. `stack`,
+                     *     `stream`, and `placement` are the conventional
+                     *     three (the UI surfaces them as quick-add toggles)
+                     *     but any string is accepted. Server lowercases +
+                     *     trims + deduplicates before persistence so
+                     *     `Stack` and `stack` collapse to one entry. Drives
+                     *     the FilterRail "Tags" multi-select.
+                     */
+                    tags?: string[];
                 };
             };
         };

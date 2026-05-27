@@ -41,15 +41,16 @@ type MatchRecord struct {
 // MatchRecord. Mirrors the db.Annotation shape but lives in the App
 // package so the JSON contract doesn't leak SQL field names.
 //
-// All four user-settable fields (leaver / note / replay_code / members)
-// are optional; the App-layer policy is "if every field is empty,
-// delete the row". `members` is omitted from the JSON when empty so
-// the wire shape stays compact for the common case.
+// All five user-settable fields (leaver / note / replay_code / members
+// / tags) are optional; the App-layer policy is "if every field is
+// empty, delete the row". `members` and `tags` are omitted from the
+// JSON when empty so the wire shape stays compact for the common case.
 type MatchAnnotation struct {
 	Leaver      string   `json:"leaver"`
 	Note        string   `json:"note,omitempty"`
 	ReplayCode  string   `json:"replay_code,omitempty"`
 	Members     []string `json:"members,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
 	AnnotatedAt string   `json:"annotated_at,omitempty"`
 }
 

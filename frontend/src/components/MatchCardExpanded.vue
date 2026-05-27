@@ -55,18 +55,23 @@ const emit = defineEmits<{
   'set-match-hidden':      [matchKey: string, hidden: boolean]
 }>()
 
-// Local draft state for the three free-text annotation fields.
-// Hydrates from props.record.annotation when the card opens or the
-// underlying record changes; the user types here and we emit on
-// commit (blur for note/replay, Enter for member chip add).
+// Local draft state for the free-text annotation fields. Hydrates
+// from props.record.annotation when the card opens or the underlying
+// record changes; the user types here and we emit on commit
+// (blur for note/replay, Enter for chip-add inputs).
 const noteDraft       = ref(props.record.annotation?.note ?? '')
 const replayDraft     = ref(props.record.annotation?.replay_code ?? '')
 const memberInput     = ref('')
 const memberDraft     = ref<string[]>(props.record.annotation?.members ?? [])
-// Track which annotation field, if any, is currently being edited so
-// we can render a "saved ✓" pulse without it stomping on the active
-// editor's value.
-const savedFlash      = ref<'' | 'note' | 'replay' | 'members'>('')
+const tagInput        = ref('')
+const tagDraft        = ref<string[]>(props.record.annotation?.tags ?? [])
+// Track which annotation field, if any, just saved so a "saved ✓"
+// pulse can render without stomping on the active editor's value.
+const savedFlash      = ref<'' | 'note' | 'replay' | 'members' | 'tags'>('')
+
+// The three conventional tags. Order here is presentation order in
+// the quick-add row; the user can still add anything via free-form.
+const NAMED_TAGS = ['stack', 'stream', 'placement'] as const
 
 watch(
   () => props.record.annotation,
@@ -74,24 +79,26 @@ watch(
     noteDraft.value = next?.note ?? ''
     replayDraft.value = next?.replay_code ?? ''
     memberDraft.value = next?.members ?? []
+    tagDraft.value = next?.tags ?? []
   },
   { immediate: false },
 )
 
 const hasAnyNote = computed(
-  () => !!(noteDraft.value.trim() || replayDraft.value.trim() || memberDraft.value.length),
+  () => !!(noteDraft.value.trim() || replayDraft.value.trim() || memberDraft.value.length || tagDraft.value.length),
 )
 
-// Commits the current draft to the parent. Always writes ALL FOUR
+// Commits the current draft to the parent. Always writes ALL FIVE
 // annotation fields so the unified setter doesn't accidentally null
 // something the user typed in another input. Leaver is read from the
 // existing annotation (the chooser owns that field independently).
-function commitAnnotation(field: 'note' | 'replay' | 'members') {
+function commitAnnotation(field: 'note' | 'replay' | 'members' | 'tags') {
   emit('set-match-annotation', props.record.match_key, {
     leaver:      (props.record.annotation?.leaver ?? '') as MatchAnnotationInput['leaver'],
     note:        noteDraft.value.trim(),
     replay_code: replayDraft.value.trim(),
     members:     memberDraft.value,
+    tags:        tagDraft.value,
   })
   savedFlash.value = field
   setTimeout(() => { if (savedFlash.value === field) savedFlash.value = '' }, 900)
@@ -126,6 +133,58 @@ function onMemberKeydown(e: KeyboardEvent) {
   if (e.key === 'Backspace' && memberInput.value === '' && memberDraft.value.length > 0) {
     e.preventDefault()
     removeMember(memberDraft.value[memberDraft.value.length - 1]!)
+  }
+}
+
+// Tags mirror the members editor pattern (chip list + free-form
+// input) but with three quick-add toggles for the conventional tag
+// vocabulary. The server lowercases + dedupes on persist; the
+// client mirrors so the optimistic UI matches the round-tripped
+// state byte-for-byte.
+function normalizeTagLabel(t: string): string {
+  return t.trim().toLowerCase()
+}
+
+function hasTag(t: string): boolean {
+  return tagDraft.value.includes(normalizeTagLabel(t))
+}
+
+function toggleNamedTag(t: string) {
+  const v = normalizeTagLabel(t)
+  if (!v) return
+  tagDraft.value = hasTag(v)
+    ? tagDraft.value.filter(x => x !== v)
+    : [...tagDraft.value, v]
+  commitAnnotation('tags')
+}
+
+function addCustomTag() {
+  const v = normalizeTagLabel(tagInput.value)
+  if (!v) {
+    tagInput.value = ''
+    return
+  }
+  if (!tagDraft.value.includes(v)) {
+    tagDraft.value = [...tagDraft.value, v]
+    commitAnnotation('tags')
+  }
+  tagInput.value = ''
+}
+
+function removeTag(t: string) {
+  tagDraft.value = tagDraft.value.filter(x => x !== t)
+  commitAnnotation('tags')
+}
+
+function onTagKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault()
+    addCustomTag()
+    return
+  }
+  if (e.key === 'Backspace' && tagInput.value === '' && tagDraft.value.length > 0) {
+    e.preventDefault()
+    removeTag(tagDraft.value[tagDraft.value.length - 1]!)
   }
 }
 </script>
@@ -245,6 +304,57 @@ function onMemberKeydown(e: KeyboardEvent) {
           >
         </div>
         <span v-if="savedFlash === 'members'" class="match-notes-saved" aria-hidden="true">saved ✓</span>
+      </div>
+
+      <!-- Tags row — three quick-add toggles for the conventional
+           tags (stack / stream / placement), a chip list of
+           currently-applied tags, and a free-form input for custom
+           tags. Same commit-on-action pattern as members; Backspace
+           on an empty input removes the last chip. -->
+      <div class="match-notes-row">
+        <span class="match-notes-label">Tags</span>
+        <div class="match-tags-editor">
+          <button
+            v-for="t in NAMED_TAGS"
+            :key="t"
+            type="button"
+            class="match-tag-toggle"
+            :class="{ active: hasTag(t) }"
+            :data-tag="t"
+            :data-tag-add="t"
+            :aria-pressed="hasTag(t)"
+            @click="toggleNamedTag(t)"
+          >
+            <span class="match-tag-mark" aria-hidden="true" />
+            <span class="match-tag-text">{{ t }}</span>
+          </button>
+          <span
+            v-for="t in tagDraft.filter(x => !(NAMED_TAGS as readonly string[]).includes(x))"
+            :key="t"
+            class="match-tag removable"
+            :data-tag="t"
+          >
+            <span class="match-tag-mark" aria-hidden="true" />
+            <span class="match-tag-text">{{ t }}</span>
+            <button
+              type="button"
+              class="match-tag-x"
+              :aria-label="`Remove ${t} tag`"
+              @click="removeTag(t)"
+            >×</button>
+          </span>
+          <input
+            :id="`tags-${record.match_key}`"
+            v-model="tagInput"
+            class="match-tag-input"
+            placeholder="add tag"
+            spellcheck="false"
+            autocomplete="off"
+            @keydown="onTagKeydown"
+            @blur="addCustomTag"
+          >
+        </div>
+        <span v-if="savedFlash === 'tags'" class="match-notes-saved" aria-hidden="true">saved ✓</span>
       </div>
     </div>
 

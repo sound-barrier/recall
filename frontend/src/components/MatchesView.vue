@@ -160,6 +160,7 @@ const annotatedMatchCount = computed(
       :heroes="f.heroes.value"
       :results="f.results.value"
       :sshot-types="f.sshotTypes.value"
+      :tags="f.tags.value"
       :filter-list="f.filterList"
       :filter-search="fp.filterSearch.value"
       :open-filter="fp.openFilter.value"

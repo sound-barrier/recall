@@ -502,11 +502,11 @@ describe('MatchCard — match notes block', () => {
     expect(wrapper.find('.match-notes').exists()).toBe(false)
   })
 
-  it('renders all three rows (note / replay / members) when expanded', () => {
+  it('renders all four rows (note / replay / members / tags) when expanded', () => {
     const wrapper = mountCard({ isExpanded: true })
     expect(wrapper.find('.match-notes').exists()).toBe(true)
     const labels = wrapper.findAll('.match-notes-label').map(l => l.text())
-    expect(labels).toEqual(['Note', 'Replay', 'Group'])
+    expect(labels).toEqual(['Note', 'Replay', 'Group', 'Tags'])
   })
 
   it('hydrates from record.annotation values on first render', () => {
@@ -529,7 +529,7 @@ describe('MatchCard — match notes block', () => {
     const e = wrapper.emitted('set-match-annotation')!
     expect(e[0]).toEqual([
       wrapper.props('record').match_key,
-      { leaver: '', note: 'draft text', replay_code: '', members: [] },
+      { leaver: '', note: 'draft text', replay_code: '', members: [], tags: [] },
     ])
   })
 
@@ -541,7 +541,7 @@ describe('MatchCard — match notes block', () => {
     const e = wrapper.emitted('set-match-annotation')!
     expect(e[0]).toEqual([
       wrapper.props('record').match_key,
-      { leaver: '', note: '', replay_code: '7H1K9P', members: [] },
+      { leaver: '', note: '', replay_code: '7H1K9P', members: [], tags: [] },
     ])
   })
 
@@ -554,7 +554,7 @@ describe('MatchCard — match notes block', () => {
     const e = wrapper.emitted('set-match-annotation')!
     expect(e[0]).toEqual([
       wrapper.props('record').match_key,
-      { leaver: '', note: '', replay_code: '', members: ['Apollo#11234'] },
+      { leaver: '', note: '', replay_code: '', members: ['Apollo#11234'], tags: [] },
     ])
   })
 

@@ -18,6 +18,7 @@ const props = defineProps<{
   heroes: string[]
   results: string[]
   sshotTypes: string[]
+  tags: string[]
   filterList: (field: string) => string[]
   filterSearch: Record<string, string>
   openFilter: string
@@ -88,6 +89,7 @@ const FIELD_CONFIG = [
   { field: 'hero',   label: 'Hero',   short: 'HEROES',  optionKey: 'heroes'  as const, formatOption: (v: string) => ow.heroDisplayName(v) },
   { field: 'result', label: 'Result', short: 'RESULTS', optionKey: 'results' as const },
   { field: 'sshot',  label: 'Source', short: 'SOURCES', optionKey: 'sshotTypes' as const, formatOption: sshotTypeLabel },
+  { field: 'tags',   label: 'Tags',   short: 'TAGS',    optionKey: 'tags'    as const },
 ] as const
 
 type OptionKey = typeof FIELD_CONFIG[number]['optionKey']

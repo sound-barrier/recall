@@ -63,6 +63,7 @@ func attachAnnotations(recs []MatchRecord, annos map[string]db.Annotation) {
 				Note:        a.Note,
 				ReplayCode:  a.ReplayCode,
 				Members:     a.Members,
+				Tags:        a.Tags,
 				AnnotatedAt: a.AnnotatedAt,
 			}
 		}
@@ -132,6 +133,7 @@ func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Anno
 			Note:        a.Note,
 			ReplayCode:  a.ReplayCode,
 			Members:     a.Members,
+			Tags:        a.Tags,
 			AnnotatedAt: a.AnnotatedAt,
 		}
 	}
