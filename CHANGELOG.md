@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.5](https://github.com/sound-barrier/recall/compare/v0.2.4...v0.2.5) (2026-05-27)
+
+
+### Bug Fixes
+
+* **release-please:** repair stale-label cleanup in push-release-tag.sh ([8e4a484](https://github.com/sound-barrier/recall/commit/8e4a4849563bc42d5275738ac14cd53202e4ae8e))
+
 ## [0.2.4](https://github.com/sound-barrier/recall/compare/v0.2.3...v0.2.4) (2026-05-27)
 
 
