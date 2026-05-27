@@ -106,6 +106,113 @@ deletion feature shipped with a latent `r.json()`-on-204 bug in
 round-trip; the test that surfaced it should have driven the
 implementation.
 
+### REST API design
+
+Apply when adding or changing any `/api/v1/...` route so the surface
+stays predictable. `api/openapi.yaml` is the canonical wire
+contract; this section explains the rules behind it. The
+[Swagger UI](https://sound-barrier.github.io/recall/api/) renders
+the spec for human readers.
+
+**Versioning.** Every JSON endpoint sits under `/api/v1/`.
+Breaking changes go to a new `/api/v2/` — never quietly mutate an
+existing route's shape. Binary content (image bytes, file downloads
+with non-JSON wire shapes) stays outside the JSON surface; current
+example is `/_screenshot/{filename}`.
+
+**Resources are nouns.** Plural for collections (`/matches`,
+`/exports`, `/parses`); hierarchical for ownership
+(`/matches/{matchKey}/annotation`, `/settings/tesseract`). Don't
+put verbs in paths — what used to be `POST /api/clear-database`
+became `DELETE /api/v1/matches`, and `GET /api/probe-screenshots-dir`
+became `GET /api/v1/system/screenshots-folder-probe` (the "probe"
+is the noun-form of the result). The "match keys are colon-bearing"
+encoding rule applies whenever an identifier with `:` lands in a
+URL path — see the Conventions bullet.
+
+**Method-to-intent mapping**:
+
+| Verb | Semantics | Example |
+|---|---|---|
+| `GET` | Read; safe + idempotent. | `GET /api/v1/matches` |
+| `PUT` | Upsert / replace a resource; idempotent. | `PUT /api/v1/settings/watcher` |
+| `DELETE` | Wipe a collection, or reset a setting to its platform default (the user-set override is the thing being deleted). | `DELETE /api/v1/matches`, `DELETE /api/v1/settings/tesseract` |
+| `POST` | Trigger an action that doesn't map to a single resource. | `POST /api/v1/parses` |
+
+Don't use `POST` for setters — `PUT` is the right verb when
+replacing a field value. Model "reset to default" as `DELETE` on
+the setting.
+
+**Status codes**:
+
+| Code | When |
+|---|---|
+| `200 OK` | GET with body, or write that echoes the new state (e.g. `GET`/`PUT`/`DELETE /api/v1/settings/tesseract` all return the re-detected status). |
+| `202 Accepted` | Action whose meaningful effect is out-of-band — `POST /api/v1/parses` writes to SQLite + broadcasts SSE; HTTP body is irrelevant. |
+| `204 No Content` | Write succeeded with no useful body (most setters, `PUT /matches/{key}/visibility`, `PUT /matches/{key}/annotation`, `DELETE /api/v1/matches`). |
+| `400 Bad Request` | Client validation failure. Reach via a typed sentinel (`app.ErrInvalidScreenshotsDir`, `app.ErrInvalidLeaver`, `app.ErrInvalidTesseractPath`) and `errors.Is` in the handler so it stays out of the catch-all 500. |
+| `405 Method Not Allowed` | Wrong method on a registered route. Handled automatically by `apiMux` — see the "Go ServeMux's no-method `/`" Conventions bullet for why a sub-mux is required. |
+| `500 Internal Server Error` | Unexpected store / I/O failure. Anything reproducibly triggered by user input is 4xx, not 5xx. |
+
+**Response shapes**:
+
+- JSON for data; handlers emit `Content-Type: application/json`
+  via `writeJSON`.
+- Arrays use `make([]T, 0)` server-side, never `var x []T` — nil
+  marshals to `null`, violates `type: array`, and trips
+  schemathesis in CI.
+- Errors are plain text via `http.Error`, descriptive enough to
+  surface to the user. (Structured JSON errors are deferred until
+  there's a real machine-parsing need on the client.)
+- `204` / `202` carry no body; `_fetch` in `api.ts` resolves both
+  to `undefined`.
+
+**Request shapes**:
+
+- JSON body for writes; `Content-Type: application/json`.
+- Identity goes in the URL for hierarchical sub-resources
+  (`/matches/{matchKey}/annotation` — the body carries only the
+  annotation fields, not `match_key`).
+- Query params for variants of the same operation
+  (`/exports?format=json|csv`).
+
+**Mux structure** (`pkg/cmd/server.go`):
+
+API routes mount on `apiMux`, not the outer `mux`. Method-prefixed
+Go 1.22 patterns (`apiMux.HandleFunc("PUT /api/v1/foo", ...)`)
+give native 405 behavior because the sub-mux has no `/` catch-all
+to swallow method-mismatched requests. The outer `mux` mounts
+`apiMux` at `/api/v1/`, the `ScreenshotHandler` at `/_screenshot/`,
+and the SPA `FileServer` at `/`.
+
+**Adding or changing an endpoint** (3 steps):
+
+1. Add / modify the method on `*app.App` in `pkg/app/*.go`. Use
+   a typed sentinel for any user-input-driven error you want to
+   surface as 4xx.
+2. Edit `api/openapi.yaml` (pick verb + status code per the tables
+   above) and mount the route on `apiMux` in `pkg/cmd/server.go`.
+   `make gen-types` regenerates `frontend/src/api.gen.d.ts`; the
+   lefthook pre-commit hook reruns it automatically so a stale
+   types file can't slip into a commit.
+3. Add the `api.ts` wrapper with BOTH the Wails-IPC delegation and
+   the `fetch` path (use `_dualVoid` for void-returning writes;
+   pass a path-builder function when the URL embeds an identifier).
+   Skipping step (3) silently breaks server mode while Wails keeps
+   working — there's no compile-time check.
+
+**Generation + validation**:
+
+| Command | Purpose |
+|---|---|
+| `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from the spec. Runs on every commit via lefthook; CI fails if the file is out of sync. |
+| `make lint-openapi` | Spectral lint on `api/openapi.yaml` (`spectral:oas` + `.spectral.yaml`, `--fail-severity=warn`). Bundled into `make lint` and a pre-commit hook. |
+| `make swagger` | Browse the spec locally — Swagger UI v5 in a container (`:8080` default; override via `SWAGGER_PORT`). |
+| schemathesis (CI) | Fuzzes a built `recall-server` against the spec to catch shape drift between YAML and live responses. Runs in `ci.yml`. |
+
+Public Swagger UI auto-deploys from `main` on every spec change to
+<https://sound-barrier.github.io/recall/api/>.
+
 ### What to avoid
 
 Speculative interfaces; abstract layers without a second concrete
