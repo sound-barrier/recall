@@ -42,7 +42,36 @@ cp -R dist/mac/Recall.app dmg-staging/
 ln -s /Applications dmg-staging/Applications
 cp "${ROOT}/docs/dmg/README.txt" dmg-staging/README.txt
 
-hdiutil create -volname "Recall" \
-  -srcfolder dmg-staging \
-  -ov -format UDZO \
-  "recall-${PKG_VERSION}-darwin-arm64.dmg"
+DMG_NAME="recall-${PKG_VERSION}-darwin-arm64.dmg"
+
+# hdiutil flakes intermittently on the macos-latest runner with
+# "hdiutil: create failed - Resource busy" — usually because Spotlight
+# / fseventsd is still scanning dmg-staging when hdiutil tries to take
+# an exclusive lock on the source folder, or because a prior
+# /Volumes/Recall mount from a stuck previous run hasn't been
+# released. Retry with a short backoff and force-detach the volume
+# name between attempts.
+attempts=3
+delay=5
+for attempt in $(seq 1 $attempts); do
+  # Best-effort detach in case /Volumes/Recall is lingering from a
+  # previous attempt or a stuck runner. `|| true` swallows the
+  # expected "no such volume" exit on the first try.
+  hdiutil detach -force "/Volumes/Recall" >/dev/null 2>&1 || true
+
+  if hdiutil create -volname "Recall" \
+    -srcfolder dmg-staging \
+    -ov -format UDZO \
+    "${DMG_NAME}"; then
+    exit 0
+  fi
+
+  if [ "$attempt" -lt "$attempts" ]; then
+    printf 'hdiutil create failed (attempt %d/%d); sleeping %ds before retry...\n' \
+      "$attempt" "$attempts" "$delay" >&2
+    sleep "$delay"
+  fi
+done
+
+printf 'hdiutil create failed after %d attempts\n' "$attempts" >&2
+exit 1
