@@ -2,31 +2,37 @@ name: release-please
 
 # release-please reads conventional-commit messages on main, opens a PR
 # that bumps the version + regenerates CHANGELOG.md, and — when that PR
-# merges — creates a `vX.Y.Z` tag plus a *draft* GitHub Release. The
-# existing release.yml workflow triggers on that tag, uploads binaries
-# to the draft, and publishes it.
+# merges — creates the `vX.Y.Z` tag. The GitHub Release itself is
+# created by release.yml; release-please is configured with
+# `skip-github-release: true` so it ONLY emits the tag.
 #
 # So the flow is:
 #   1. Conventional commits land on main (enforced by lefthook commit-msg).
 #   2. release-please-action opens/updates a release PR with version bump
 #      + changelog.
 #   3. Maintainer merges the release PR.
-#   4. release-please-action creates the v<version> tag AND a draft
-#      GitHub Release with release-please's CHANGELOG-derived body.
-#   5. release.yml fires on the tag, downloads the per-job artifacts,
-#      uploads them to the draft release, and flips `draft → false` via
-#      softprops/action-gh-release (which runs with the default
-#      `draft: false`, equivalent to "publish").
+#   4. release-please-action pushes the v<version> tag. No GitHub
+#      Release is created at this step.
+#   5. release.yml fires on the tag, builds binaries, and — via
+#      softprops/action-gh-release — creates the GitHub Release ATOMICALLY
+#      with the asset uploads in the same call.
 #
-# Why DRAFT and not PUBLISHED at step 4: GitHub treats *published*
-# releases as IMMUTABLE for asset uploads. If release-please published
-# the release at creation time (the historical default), `release.yml`
-# would lose a race against GitHub's immutability check on the very
-# first asset upload — symptom: "Cannot upload asset … to an immutable
-# release. GitHub only allows asset uploads before a release is
-# published, so upload assets to a draft release before you publish
-# it." See `release-please-config.json` `packages."." → "draft": true`
-# for the toggle.
+# Why this split-of-responsibility: GitHub treats PUBLISHED releases as
+# IMMUTABLE for asset uploads. The historical setup (release-please
+# creates the release published, then release.yml tries to attach
+# assets) races against GitHub's immutability check — symptom:
+# "Cannot upload asset … to an immutable release. GitHub only allows
+# asset uploads before a release is published, so upload assets to a
+# draft release before you publish it." A previous attempt (PR #60)
+# set `draft: true` in release-please-config.json to avoid this, but
+# that ALSO suppresses tag creation in release-please (draft releases
+# in release-please's model live without a tag until publication), so
+# release.yml never fired and release-please couldn't anchor its
+# "latest release" detection — every subsequent run proposed a fresh
+# 0.1.0 PR off the unparseable initial commits. `skip-github-release`
+# is the correct knob: tag IS created, GitHub Release is NOT, so
+# release.yml gets a clean tag-push event and creates+uploads the
+# release in one atomic operation.
 #
 # REPO SETUP — one-time:
 #   1. Settings -> Actions -> General -> Workflow permissions ->

@@ -20,7 +20,7 @@
   ],
   "packages": {
     ".": {
-      "draft": true
+      "skip-github-release": true
     }
   }
 }
