@@ -84,16 +84,23 @@ gh workflow run release.yml --ref "${TAG}"
 printf 'Triggered release.yml for %s\n' "${TAG}"
 
 # Find the merged release PR for this version and flip its label.
-# Narrowing by title + state + label is unambiguous — release-please
-# only ever has ONE "autorelease: pending" merged PR for a given
-# version (any prior attempt would be either closed-unmerged or
-# already flipped to "autorelease: tagged").
+# Filtering by state + label + post-filter on title is unambiguous —
+# release-please only ever has ONE "autorelease: pending" merged PR
+# for a given version (any prior attempt is either closed-unmerged
+# or already flipped to "autorelease: tagged"). The post-filter on
+# title is belt-and-suspenders.
+#
+# `--search` is deliberately NOT used here: GitHub PR search treats
+# `:` as a qualifier separator (e.g. `is:merged`, `label:"x"`), so
+# `chore(main): release X.Y.Z` is parsed as the qualifier `chore(main)`
+# with the unknown value `release ...` — the call returns empty.
+# Filtering by --state + --label and then jq-matching the title
+# avoids the search parser entirely.
 PR_NUMBER=$(gh pr list \
-  --search "chore(main): release ${VERSION}" \
   --state merged \
   --label "autorelease: pending" \
-  --json number \
-  -q '.[0].number' 2>/dev/null || echo "")
+  --json number,title \
+  --jq "[.[] | select(.title == \"chore(main): release ${VERSION}\") | .number] | first // empty" 2>/dev/null || echo "")
 
 if [ -n "$PR_NUMBER" ]; then
   gh pr edit "$PR_NUMBER" \
