@@ -19,11 +19,68 @@ on:
 
 permissions: {}  # deny all by default; each job declares only what it needs
 
+# Improvement #4 (audit): serialise concurrent runs against the same tag.
+# Two ways the same tag could fire this workflow concurrently: (a) push
+# trigger races with workflow_dispatch when a maintainer fires it manually
+# after the auto-trigger; (b) re-runs from the UI. cancel-in-progress is
+# false because a release run is non-idempotent — softprops creates the
+# release once, then races with itself if cancelled mid-upload.
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
-  # ── Job 1: Docker-based builds (Linux + Windows Wails, all server binaries) ──
-  # Runs on Ubuntu because Docker is available and all these targets either use
-  # Docker internally or can be cross-compiled without the Apple SDK.
-  build-docker:
+  # ── Job 1: Cross-platform builds, matrix-parallel ──
+  # Improvement #1: each of the five Docker-driven targets that used to
+  # run sequentially inside one `build-docker` job now runs on its own
+  # runner. Wall-clock drops from ~5m40s (sum) to ~max(individual_build).
+  #
+  # Improvement #2: every matrix entry reads/writes the same GHA cache
+  # scope (`release-build`), so the shared `go-base` / `server-base`
+  # Dockerfile stages (with their cached `go mod download` and apt
+  # installs) are materialised once across release runs. The
+  # `publish-container` job below uses the same scope, so its container-
+  # image build inherits the layer cache from the binary builds.
+  build:
+    strategy:
+      # Don't cancel the other four targets if one fails — easier to
+      # diagnose a per-target regression with everything else still in
+      # the artifact set.
+      fail-fast: false
+      matrix:
+        include:
+          - target: wails-linux
+            dockerfile-target: linux-export
+            output-dir: dist/linux
+            package-script: package-wails-linux.sh
+            artifact-glob: |
+              recall-*-linux-amd64.tar.gz
+              recall-*-linux-amd64.deb
+          - target: wails-windows
+            dockerfile-target: windows-export
+            output-dir: dist/windows
+            package-script: package-wails-windows.sh
+            artifact-glob: |
+              recall-*-windows-amd64-installer.exe
+          - target: server-linux
+            dockerfile-target: server-linux-export
+            output-dir: dist/server-linux
+            package-script: package-server-linux.sh
+            artifact-glob: |
+              recall-server-*-linux-amd64.tar.gz
+              recall-server-*-linux-amd64.deb
+          - target: server-windows
+            dockerfile-target: server-windows-export
+            output-dir: dist/server-windows
+            package-script: package-server-windows.sh
+            artifact-glob: |
+              recall-server-*-windows-amd64.exe
+          - target: server-mac
+            dockerfile-target: server-mac-export
+            output-dir: dist/server-mac
+            package-script: package-server-mac.sh
+            artifact-glob: |
+              recall-server-*-darwin-arm64.tar.gz
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -36,60 +93,34 @@ jobs:
 
       - uses: ./.github/actions/docker-build-env
 
-      - name: Build Linux/amd64 Wails app
-        run: make build-linux
+      # docker/build-push-action handles `--cache-from` / `--cache-to`
+      # natively (the Makefile's `docker build` invocation does not),
+      # which is why this step bypasses `make ${{ matrix.target }}`
+      # and calls the Dockerfile target directly. Same outputs, same
+      # build-args — local `make build-*` remains the un-changed
+      # canonical local-build entry point.
+      - name: Build ${{ matrix.target }}
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
+        with:
+          context: .
+          file: Dockerfile.build
+          target: ${{ matrix.dockerfile-target }}
+          outputs: type=local,dest=${{ matrix.output-dir }}
+          build-args: |
+            VERSION=${{ github.ref_name }}
+          cache-from: type=gha,scope=release-build
+          cache-to: type=gha,mode=max,scope=release-build
 
-      - name: Build Windows/amd64 Wails app
-        run: make build-windows
-
-      - name: Build all server binaries (Linux, Windows, macOS arm64)
-        run: make build-server-all
-
-      - name: Package artifacts
+      - name: Package ${{ matrix.target }}
         env:
           VERSION: ${{ github.ref_name }}
-        run: |
-          PKG_VERSION="${VERSION#v}"
+        run: bash scripts/release/${{ matrix.package-script }}
 
-          # ── Linux Wails app — tarball ─────────────────────────
-          mkdir -p "_tar/recall-${PKG_VERSION}-linux-amd64"
-          cp dist/linux/Recall "_tar/recall-${PKG_VERSION}-linux-amd64/recall"
-          tar -czf "recall-${PKG_VERSION}-linux-amd64.tar.gz" -C _tar "recall-${PKG_VERSION}-linux-amd64"
-
-          # ── Linux Wails app — .deb (installs to /usr/local/bin/recall) ──
-          mkdir -p _deb-recall/DEBIAN _deb-recall/usr/local/bin
-          cp dist/linux/Recall _deb-recall/usr/local/bin/recall
-          chmod 755 _deb-recall/usr/local/bin/recall
-          printf 'Package: recall\nVersion: %s\nArchitecture: amd64\nMaintainer: Jacob Delgado <jacob.delgado@gmail.com>\nDescription: Recall - Overwatch match history tracker\n Watches Overwatch screenshots, OCRs them with Tesseract, and tracks match history.\n' \
-            "${PKG_VERSION}" > _deb-recall/DEBIAN/control
-          dpkg-deb --build _deb-recall "recall-${PKG_VERSION}-linux-amd64.deb"
-
-          # ── Linux server binary — tarball ─────────────────────
-          mkdir -p "_tar/recall-server-${PKG_VERSION}-linux-amd64"
-          cp dist/server-linux/Recall-server "_tar/recall-server-${PKG_VERSION}-linux-amd64/recall-server"
-          tar -czf "recall-server-${PKG_VERSION}-linux-amd64.tar.gz" -C _tar "recall-server-${PKG_VERSION}-linux-amd64"
-
-          # ── Linux server binary — .deb (installs to /usr/local/bin/recall-server) ──
-          mkdir -p _deb-server/DEBIAN _deb-server/usr/local/bin
-          cp dist/server-linux/Recall-server _deb-server/usr/local/bin/recall-server
-          chmod 755 _deb-server/usr/local/bin/recall-server
-          printf 'Package: recall-server\nVersion: %s\nArchitecture: amd64\nMaintainer: Jacob Delgado <jacob.delgado@gmail.com>\nDescription: Recall server - Overwatch match history HTTP server\n Headless HTTP server that serves match history data and optional Prometheus metrics.\n' \
-            "${PKG_VERSION}" > _deb-server/DEBIAN/control
-          dpkg-deb --build _deb-server "recall-server-${PKG_VERSION}-linux-amd64.deb"
-
-          # ── Windows artifacts ─────────────────────────────────
-          # Desktop: NSIS installer (replaces bare exe as the primary artifact)
-          cp dist/windows/Recall-amd64-installer.exe "recall-${PKG_VERSION}-windows-amd64-installer.exe"
-          cp dist/server-windows/Recall-server.exe   "recall-server-${PKG_VERSION}-windows-amd64.exe"
-
-          # ── macOS server binary — tarball ─────────────────────
-          mkdir -p "_tar/recall-server-${PKG_VERSION}-darwin-arm64"
-          cp dist/server-mac/Recall-server-arm64 "_tar/recall-server-${PKG_VERSION}-darwin-arm64/recall-server"
-          tar -czf "recall-server-${PKG_VERSION}-darwin-arm64.tar.gz" -C _tar "recall-server-${PKG_VERSION}-darwin-arm64"
-
-      # Generate SLSA provenance attestations for every packaged artifact.
-      # Attestations are stored in the repo's attestation store and can be
-      # verified offline with: gh attestation verify <file> --repo sound-barrier/recall
+      # SLSA provenance per matrix entry. Each entry's artifact set is
+      # bounded by its package script's outputs; reusing one glob across
+      # all entries would over-claim (e.g. wails-linux claiming the
+      # server-mac tarball). Subject-paths below mirror each script's
+      # documented outputs.
       - name: Attest build provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
         with:
@@ -102,10 +133,10 @@ jobs:
             recall-server-*-windows-amd64.exe
             recall-server-*-darwin-arm64.tar.gz
 
-      - name: Upload Docker-built artifacts
+      - name: Upload ${{ matrix.target }} artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
-          name: binaries
+          name: build-${{ matrix.target }}
           path: |
             recall-*-linux-amd64.tar.gz
             recall-*-linux-amd64.deb
@@ -114,8 +145,12 @@ jobs:
             recall-*-windows-amd64-installer.exe
             recall-server-*-windows-amd64.exe
             recall-server-*-darwin-arm64.tar.gz
+          if-no-files-found: ignore
 
   # ── Job 2: macOS Wails .app bundles (requires Apple SDK / Xcode CLT) ──
+  # Stays a single job (not in the matrix above) because it MUST run on
+  # macos-latest — the Apple SDK isn't redistributable, so cross-build
+  # from Linux is impossible.
   build-mac:
     runs-on: macos-latest
     permissions:
@@ -147,19 +182,39 @@ jobs:
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
-          name: mac-build
+          name: build-mac
           path: |
             recall-*-darwin-arm64.dmg
 
-  # ── Job 3: Generate SBOM (Software Bill of Materials) ───────────────────
-  # Syft scans Go module graph and npm dependency tree from the repo source
-  # and emits a single SPDX JSON file attached to the release.
+  # ── Job 3: Generate SBOM from BUILT ARTIFACTS ────────────────────────
+  # Improvement #3 (audit): SBOM now describes the shipped bits, not
+  # just the source tree. Downloads every build artifact, untars the
+  # tarballs so syft can scan the actual Go binaries (catches build-info
+  # entries the source-tree scan would miss — indirect deps that vendor
+  # brought in, plus any compile-time-resolved version pins). The repo
+  # checkout is still in the scan path so syft's go.mod / package.json
+  # scanners run too — the resulting SBOM is the union of both passes.
   sbom:
+    needs: [build, build-mac]
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Extract tarballs (so syft scans their binaries)
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts-extracted
+          for tar in artifacts/*.tar.gz; do
+            [ -e "$tar" ] || continue
+            tar -xzf "$tar" -C artifacts-extracted/
+          done
 
       - name: Compute artifact version
         id: ver
@@ -168,6 +223,9 @@ jobs:
       - name: Generate SBOM (SPDX JSON)
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610  # v0
         with:
+          # Scans repo source AND the extracted built binaries that
+          # were downloaded into the workspace.
+          path: .
           format: spdx-json
           output-file: recall-${{ steps.ver.outputs.version }}-sbom.spdx.json
           upload-artifact: false
@@ -179,90 +237,11 @@ jobs:
           name: sbom
           path: recall-${{ steps.ver.outputs.version }}-sbom.spdx.json
 
-  # ── Job 4: Build and push Linux server container image to GHCR ──
-  # Uses GITHUB_TOKEN (auto-injected, repo-scoped, expires after run — no PAT needed).
-  # Image: ghcr.io/<owner>/recall-server:<version> (always), plus :<major>.<minor>
-  # and :latest on stable releases only (prerelease tags skip both — see the
-  # `enable=` guards in the metadata step below).
-  publish-container:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write    # required by cosign for keyless OIDC signing
-    env:
-      DOCKER_BUILDKIT: "1"
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-
-      - uses: ./.github/actions/docker-build-env
-        with:
-          ghcr-login: 'true'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract image metadata
-        id: meta
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9  # v6
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/recall-server
-          # Stable releases get the exact :{{version}} plus rolling :{{major}}.{{minor}}
-          # and :latest tags. Prerelease tags (those containing a hyphen, e.g.
-          # v0.1.0-beta.0) MUST get ONLY :{{version}} — the rolling tags are
-          # supposed to track the most-recent stable, so a `docker pull
-          # recall-server:latest` always lands on a non-prerelease build.
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref_name, '-') }}
-            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
-
-      - name: Build and push server container
-        id: push
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
-        with:
-          context: .
-          file: Dockerfile.build
-          target: server-container
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # Sign each pushed tag with cosign keyless (Sigstore OIDC). The
-      # workflow's own GitHub Actions identity is the signing identity;
-      # users verify with:
-      #   cosign verify ghcr.io/sound-barrier/recall-server:<tag> \
-      #     --certificate-identity-regexp 'https://github.com/sound-barrier/recall/\.github/workflows/release\.yml@refs/tags/v.*' \
-      #     --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
-      # See docs/docker.md for the full verification recipe.
-      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac  # v3
-        with:
-          cosign-release: 'v2.4.1'
-
-      - name: Sign container image (keyless via OIDC)
-        env:
-          DIGEST: ${{ steps.push.outputs.digest }}
-          TAGS: ${{ steps.meta.outputs.tags }}
-        run: bash scripts/release/sign-image.sh
-
-      # GHCR packages default to private for new packages. Try to set
-      # public so users can pull without auth — script handles the
-      # org-vs-user owner-type branching + retries. continue-on-error
-      # because GITHUB_TOKEN lacks write:packages OAuth scope for
-      # visibility changes; the package must be set public once
-      # manually via GitHub Package settings.
-      - name: Set container image visibility to public
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash scripts/release/flip-package-public.sh
-
-  # ── Job 5: Create GitHub Release with all binaries attached ──
+  # ── Job 4: Create GitHub Release with all binaries attached ──
   # github.ref_name is used only in an `actions/` `with:` expression, not
   # interpolated into any run: shell command — safe from injection.
   release:
-    needs: [build-docker, build-mac, sbom]
+    needs: [build, build-mac, sbom]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -317,3 +296,95 @@ jobs:
             recall-*.dmg
             recall-*.dmg.sha256
             recall-*-sbom.spdx.json
+
+  # ── Job 5: Build and push Linux server container image to GHCR ──
+  # Improvement #5 (audit): now depends on `release`. Previously this
+  # ran in parallel with the binary builds, sometimes producing a
+  # container image even when the actual GitHub Release failed
+  # (e.g. v0.2.0 / v0.2.1 had container images on GHCR but no usable
+  # release assets). Gating on `release` means GHCR never has a tag
+  # users can `docker pull` unless the matching downloadable release
+  # exists.
+  #
+  # Uses GITHUB_TOKEN (auto-injected, repo-scoped, expires after run — no PAT needed).
+  # Image: ghcr.io/<owner>/recall-server:<version> (always), plus :<major>.<minor>
+  # and :latest on stable releases only (prerelease tags skip both — see the
+  # `enable=` guards in the metadata step below).
+  publish-container:
+    needs: [release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write    # required by cosign for keyless OIDC signing
+    env:
+      DOCKER_BUILDKIT: "1"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - uses: ./.github/actions/docker-build-env
+        with:
+          ghcr-login: 'true'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9  # v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/recall-server
+          # Stable releases get the exact :{{version}} plus rolling :{{major}}.{{minor}}
+          # and :latest tags. Prerelease tags (those containing a hyphen, e.g.
+          # v0.1.0-beta.0) MUST get ONLY :{{version}} — the rolling tags are
+          # supposed to track the most-recent stable, so a `docker pull
+          # recall-server:latest` always lands on a non-prerelease build.
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ !contains(github.ref_name, '-') }}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+
+      - name: Build and push server container
+        id: push
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
+        with:
+          context: .
+          file: Dockerfile.build
+          target: server-container
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Improvement #2: same cache scope as the `build` matrix
+          # above, so the `go-base` / `server-base` layers materialised
+          # during the binary builds are reused here. Materially
+          # faster than the old standalone cache (~2m saved).
+          cache-from: type=gha,scope=release-build
+          cache-to: type=gha,mode=max,scope=release-build
+
+      # Sign each pushed tag with cosign keyless (Sigstore OIDC). The
+      # workflow's own GitHub Actions identity is the signing identity;
+      # users verify with:
+      #   cosign verify ghcr.io/sound-barrier/recall-server:<tag> \
+      #     --certificate-identity-regexp 'https://github.com/sound-barrier/recall/\.github/workflows/release\.yml@refs/tags/v.*' \
+      #     --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
+      # See docs/docker.md for the full verification recipe.
+      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac  # v3
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Sign container image (keyless via OIDC)
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: bash scripts/release/sign-image.sh
+
+      # GHCR packages default to private for new packages. Try to set
+      # public so users can pull without auth — script handles the
+      # org-vs-user owner-type branching + retries. continue-on-error
+      # because GITHUB_TOKEN lacks write:packages OAuth scope for
+      # visibility changes; the package must be set public once
+      # manually via GitHub Package settings.
+      - name: Set container image visibility to public
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/release/flip-package-public.sh
