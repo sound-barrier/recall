@@ -19,6 +19,8 @@
     {"type": "revert",   "section": "Reverts"}
   ],
   "packages": {
-    ".": {}
+    ".": {
+      "draft": true
+    }
   }
 }

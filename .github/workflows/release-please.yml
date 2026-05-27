@@ -2,17 +2,31 @@ name: release-please
 
 # release-please reads conventional-commit messages on main, opens a PR
 # that bumps the version + regenerates CHANGELOG.md, and — when that PR
-# merges — creates a `vX.Y.Z` tag. The existing release.yml workflow
-# triggers on that tag and produces the actual artifacts.
+# merges — creates a `vX.Y.Z` tag plus a *draft* GitHub Release. The
+# existing release.yml workflow triggers on that tag, uploads binaries
+# to the draft, and publishes it.
 #
 # So the flow is:
 #   1. Conventional commits land on main (enforced by lefthook commit-msg).
 #   2. release-please-action opens/updates a release PR with version bump
 #      + changelog.
 #   3. Maintainer merges the release PR.
-#   4. release-please-action creates the v<version> tag.
-#   5. release.yml fires on the tag and uploads binaries to the GitHub
-#      Release.
+#   4. release-please-action creates the v<version> tag AND a draft
+#      GitHub Release with release-please's CHANGELOG-derived body.
+#   5. release.yml fires on the tag, downloads the per-job artifacts,
+#      uploads them to the draft release, and flips `draft → false` via
+#      softprops/action-gh-release (which runs with the default
+#      `draft: false`, equivalent to "publish").
+#
+# Why DRAFT and not PUBLISHED at step 4: GitHub treats *published*
+# releases as IMMUTABLE for asset uploads. If release-please published
+# the release at creation time (the historical default), `release.yml`
+# would lose a race against GitHub's immutability check on the very
+# first asset upload — symptom: "Cannot upload asset … to an immutable
+# release. GitHub only allows asset uploads before a release is
+# published, so upload assets to a draft release before you publish
+# it." See `release-please-config.json` `packages."." → "draft": true`
+# for the toggle.
 #
 # REPO SETUP — one-time:
 #   1. Settings -> Actions -> General -> Workflow permissions ->
