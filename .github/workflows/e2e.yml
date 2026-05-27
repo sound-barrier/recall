@@ -3,6 +3,14 @@
 # is slower than the lint/unit tests — keeping it isolated means a
 # fast CI iteration if you don't touch frontend/.
 #
+# Workflow ALWAYS triggers (no `paths:` filter at the workflow level)
+# so the `playwright` context required by branch protection is always
+# reported. A `Detect e2e-relevant changes` step short-circuits the
+# heavy steps when nothing in frontend/, pkg/, *.go, or the OpenAPI
+# spec changed — docs-only and release-please PRs go green in ~10s
+# instead of leaving `playwright` stuck on "Expected — Waiting for
+# status to be reported".
+#
 # Mirrors the local `make test-e2e` recipe:
 #   1. build the frontend (Vite → frontend/dist)
 #   2. build the serveronly binary (//go:embed pulls in frontend/dist)
@@ -10,27 +18,17 @@
 #   4. run `npx playwright test` (Playwright's webServer block boots
 #      the binary on :7099 with HOME=/tmp/recall-e2e for isolation)
 #
-# The only ${{ }} expression below is `${{ failure() }}` — a GitHub
-# Actions built-in, not a webhook input. No script-injection surface.
+# All ${{ }} expressions inside `run:` blocks go through env vars (the
+# PR_BODY-safe pattern); SHAs from `github.event.pull_request.base.sha`
+# / `github.event.before` / `github.sha` are validated to be 40-hex by
+# GitHub, but env-var passing is the conservative default.
 
 name: E2E
 
 on:
   push:
     branches: [main]
-    paths:
-      - 'frontend/**'
-      - 'pkg/**'
-      - '**/*.go'
-      - 'api/openapi.yaml'
-      - '.github/workflows/e2e.yml'
   pull_request:
-    paths:
-      - 'frontend/**'
-      - 'pkg/**'
-      - '**/*.go'
-      - 'api/openapi.yaml'
-      - '.github/workflows/e2e.yml'
 
 permissions:
   contents: read
@@ -40,40 +38,81 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          # Full history so the path-detect step can diff against the
+          # PR base / push-event predecessor.
+          fetch-depth: 0
+
+      - name: Detect e2e-relevant changes
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -eu
+          # PR events: diff against base.sha. Push events: diff
+          # against `before` (the previous tip of main). On a brand-
+          # new branch or initial push, both can be empty / all-zeros
+          # — fall back to HEAD~1 (or HEAD if even that's missing).
+          base=""
+          if [ -n "${BASE_SHA:-}" ]; then
+            base="$BASE_SHA"
+          elif [ -n "${BEFORE_SHA:-}" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            base="$BEFORE_SHA"
+          else
+            base="$(git rev-parse "${HEAD_SHA}^" 2>/dev/null || echo "$HEAD_SHA")"
+          fi
+          changed="$(git diff --name-only "${base}..${HEAD_SHA}" || true)"
+          relevant=false
+          if printf '%s\n' "$changed" | grep -qE '^(frontend/|pkg/|api/openapi\.yaml$|\.github/workflows/e2e\.yml$)|\.go$'; then
+            relevant=true
+          fi
+          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+          if [ "$relevant" = "false" ]; then
+            echo "::notice::No e2e-relevant changes (diff: ${base}..${HEAD_SHA}) — skipping Playwright, posting success."
+          fi
 
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
+        if: steps.changes.outputs.relevant == 'true'
         with:
           go-version: '1.26'
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        if: steps.changes.outputs.relevant == 'true'
         with:
           node-version: '26'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend deps
+        if: steps.changes.outputs.relevant == 'true'
         working-directory: frontend
         run: npm ci --no-audit --no-fund
 
       - name: Build frontend (required for Go //go:embed)
+        if: steps.changes.outputs.relevant == 'true'
         working-directory: frontend
         run: npm run build
 
       - name: Build serveronly binary
+        if: steps.changes.outputs.relevant == 'true'
         run: |
           mkdir -p /tmp/recall-e2e
           go build -tags serveronly -o /tmp/recall-e2e/recall-server .
 
       - name: Install Playwright chromium (with system deps)
+        if: steps.changes.outputs.relevant == 'true'
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright E2E suite
+        if: steps.changes.outputs.relevant == 'true'
         working-directory: frontend
         run: npx playwright test
 
       - name: Upload Playwright report on failure
-        if: ${{ failure() }}
+        if: ${{ failure() && steps.changes.outputs.relevant == 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: playwright-report

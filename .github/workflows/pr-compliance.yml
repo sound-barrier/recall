@@ -35,12 +35,27 @@ jobs:
     #     with a PAT (so CI runs on the PR) the author is the
     #     maintainer's account, NOT github-actions[bot], so the user
     #     check alone misses it. Match on branch-name prefix instead.
-    if: >-
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
-      github.event.pull_request.user.login != 'github-actions[bot]' &&
-      !startsWith(github.event.pull_request.head.ref, 'release-please--')
+    #
+    # The trusted-automation conditional lives at STEP level (not job
+    # level) so the job always runs and reports the `required-
+    # checkboxes` context required by branch protection. When trusted,
+    # the verify step is skipped and the job completes with zero
+    # failing steps → green check. Job-level `if:` would leave the
+    # context stuck on "Expected — Waiting for status to be reported"
+    # and block merges.
     steps:
+      - name: Note trusted-automation skip
+        if: >-
+          github.event.pull_request.user.login == 'dependabot[bot]' ||
+          github.event.pull_request.user.login == 'github-actions[bot]' ||
+          startsWith(github.event.pull_request.head.ref, 'release-please--')
+        run: echo "✓ Trusted automation — checkbox attestation bypassed."
+
       - name: Verify CoC + license-grant checkboxes are ticked
+        if: >-
+          github.event.pull_request.user.login != 'dependabot[bot]' &&
+          github.event.pull_request.user.login != 'github-actions[bot]' &&
+          !startsWith(github.event.pull_request.head.ref, 'release-please--')
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
