@@ -16,18 +16,14 @@
 #      `chore(main): release X.Y.Z` pattern, parse the version.
 #   3. If the corresponding `vX.Y.Z` tag does NOT already exist on
 #      origin (idempotency — protects against re-runs), push it.
-#   4. Flip the just-merged release PR's label from
+#   4. Fire release.yml explicitly via `gh workflow run release.yml
+#      --ref vX.Y.Z`. The tag push itself comes from
+#      github-actions[bot] (GITHUB_TOKEN auth), and GitHub's anti-
+#      loop guard would otherwise suppress release.yml's `push: tags`
+#      trigger. The workflow_dispatch path bypasses that guard.
+#   5. Flip the just-merged release PR's label from
 #      `autorelease: pending` to `autorelease: tagged` so
 #      release-please doesn't see it as outstanding on the next run.
-#
-# Whether the tag push fires release.yml downstream depends on which
-# token authenticated the push:
-#   - RELEASE_PLEASE_TOKEN (a PAT) → release.yml fires automatically.
-#   - GITHUB_TOKEN (the anti-loop guard suppresses workflow chaining)
-#     → release.yml has to be fired manually via
-#     `make release-fire TAG=vX.Y.Z` (or
-#     `gh workflow run release.yml --ref vX.Y.Z`).
-# Same constraint as release-please's normal tag-push.
 #
 # Required inputs (env vars):
 #   HEAD_COMMIT_MSG  — github.event.head_commit.message from the
@@ -75,6 +71,17 @@ git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 git tag "${TAG}"
 git push origin "${TAG}"
 printf 'Pushed tag %s at %s\n' "${TAG}" "$(git rev-parse HEAD)"
+
+# Explicitly fire release.yml via workflow_dispatch. Required because
+# GitHub's anti-loop guard suppresses workflow chaining when refs are
+# pushed by github-actions[bot] (which the GITHUB_TOKEN auth surfaces
+# us as) — release.yml's `push: tags` trigger doesn't fire on its
+# own. The workflow_dispatch trigger lives on release.yml itself
+# (added as the documented manual fallback) so this just exercises
+# that same path automatically. Needs actions: write permission on
+# the calling job, which release-please.yml grants explicitly.
+gh workflow run release.yml --ref "${TAG}"
+printf 'Triggered release.yml for %s\n' "${TAG}"
 
 # Find the merged release PR for this version and flip its label.
 # Narrowing by title + state + label is unambiguous — release-please
