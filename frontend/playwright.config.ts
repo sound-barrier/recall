@@ -45,6 +45,14 @@ export default defineConfig({
     env: {
       HOME: E2E_HOME,
       RECALL_SERVER_ADDR: `127.0.0.1:${E2E_PORT}`,
+      // Pin RECALL_DATA_DIR explicitly so the e2e suite stays hermetic
+      // even when direnv has exported `RECALL_DATA_DIR=$PWD/data` in
+      // the shell `make test-e2e` is invoked from. Without this,
+      // appDataDir() falls through to the env var and the server
+      // reads/writes the repo's dev SQLite — leaking real records into
+      // the tests and breaking the "fresh empty server" assumption
+      // the a11y + match-* specs depend on.
+      RECALL_DATA_DIR: `${E2E_HOME}/data`,
     },
     // Locally, keep an already-running server alive across re-runs
     // (saves the ~5s boot per iteration). CI gets a fresh server.
