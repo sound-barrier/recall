@@ -4,6 +4,7 @@ import type { ThemeMode } from '../composables/useTheme'
 import type { WeekStart } from '../composables/useWeekStart'
 import type { DataLocation, TesseractStatus } from '../api'
 import { OpenURL, IS_WAILS } from '../api'
+import SettingsAppearance from './SettingsAppearance.vue'
 import SettingsCalendar from './SettingsCalendar.vue'
 
 // SettingsView — every knob a user might want to touch, sorted by
@@ -409,96 +410,10 @@ async function copyPath(path: string, which: 'db' | 'settings') {
       </div>
     </div>
 
-    <div id="sec-appearance" class="settings-section">
-      <div class="section-header">
-        <span class="section-num">03</span>
-        <span class="section-slash" aria-hidden="true">/</span>
-        <h3 class="section-title">
-          Appearance
-        </h3>
-      </div>
-      <div class="setting-rows">
-        <div class="setting-row appearance-row">
-          <div class="setting-info">
-            <h4 class="setting-label">
-              Theme
-              <span class="setting-help" tabindex="0" role="note">
-                <span class="setting-help-mark" aria-hidden="true">?</span>
-                <span class="setting-help-label">About Theme</span>
-                <span class="setting-help-pop" role="tooltip">
-                  Day and Night share the same orange accent but invert surface/text values. Match the room you play in — Night for evenings, Day for sunlit screens.
-                </span>
-              </span>
-            </h4>
-            <p class="setting-desc">
-              Switch between Day and Night palettes. Click a preview to apply; the choice persists across launches.
-            </p>
-          </div>
-          <div class="setting-control">
-            <div class="theme-swatch-row" role="radiogroup" aria-label="Theme">
-              <button
-                type="button"
-                class="theme-swatch light-swatch"
-                role="radio"
-                :aria-checked="themeMode === 'light'"
-                :class="{ active: themeMode === 'light' }"
-                @click="themeMode === 'light' ? null : emit('toggle-theme')"
-              >
-                <div class="swatch-preview" aria-hidden="true">
-                  <div class="swatch-mast" />
-                  <div class="swatch-body">
-                    <div class="swatch-line w-70" />
-                    <div class="swatch-line w-45" />
-                    <div class="swatch-line w-60" />
-                    <div class="swatch-tick" />
-                  </div>
-                </div>
-                <div class="swatch-label">
-                  <svg viewBox="0 0 24 24" class="swatch-icon" aria-hidden="true">
-                    <circle cx="12" cy="12" r="4" fill="currentColor" />
-                    <g stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
-                      <line x1="12" y1="2" x2="12" y2="5" />
-                      <line x1="12" y1="19" x2="12" y2="22" />
-                      <line x1="2" y1="12" x2="5" y2="12" />
-                      <line x1="19" y1="12" x2="22" y2="12" />
-                      <line x1="4.6" y1="4.6" x2="6.7" y2="6.7" />
-                      <line x1="17.3" y1="17.3" x2="19.4" y2="19.4" />
-                      <line x1="4.6" y1="19.4" x2="6.7" y2="17.3" />
-                      <line x1="17.3" y1="6.7" x2="19.4" y2="4.6" />
-                    </g>
-                  </svg>
-                  Day
-                </div>
-              </button>
-              <button
-                type="button"
-                class="theme-swatch dark-swatch"
-                role="radio"
-                :aria-checked="themeMode === 'dark'"
-                :class="{ active: themeMode === 'dark' }"
-                @click="themeMode === 'dark' ? null : emit('toggle-theme')"
-              >
-                <div class="swatch-preview" aria-hidden="true">
-                  <div class="swatch-mast" />
-                  <div class="swatch-body">
-                    <div class="swatch-line w-70" />
-                    <div class="swatch-line w-45" />
-                    <div class="swatch-line w-60" />
-                    <div class="swatch-tick" />
-                  </div>
-                </div>
-                <div class="swatch-label">
-                  <svg viewBox="0 0 24 24" class="swatch-icon" aria-hidden="true">
-                    <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8z" fill="currentColor" />
-                  </svg>
-                  Night
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <SettingsAppearance
+      :theme-mode="themeMode"
+      @toggle-theme="() => emit('toggle-theme')"
+    />
 
     <SettingsCalendar
       :week-start="weekStart"
@@ -1125,133 +1040,8 @@ async function copyPath(path: string, which: 'db' | 'settings') {
   border-color: var(--accent);
 }
 
-/* ─── Theme swatch cards (replaces the old segmented toggle) ─── */
-
-/* Two side-by-side preview cards showing a miniature of the
-   theme's palette. Active card gets the accent ring + glow.
-   Each card sets its own CSS variables inline (via the
-   .light-swatch / .dark-swatch class) so both render their own
-   palette regardless of the document's [data-theme]. */
-.theme-swatch-row {
-  display: inline-flex;
-  gap: 0.7rem;
-}
-
-.theme-swatch {
-  appearance: none;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.55rem;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 160ms ease, box-shadow 200ms ease, transform 140ms ease;
-  font: inherit;
-  color: var(--text-dim);
-}
-
-.theme-swatch:hover:not(.active)        { border-color: var(--border-strong); transform: translateY(-1px); }
-
-.theme-swatch:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-
-.theme-swatch.active {
-  border-color: var(--accent);
-  box-shadow:
-    0 0 0 1px var(--accent),
-    0 6px 24px -12px var(--accent-glow);
-  color: var(--accent);
-}
-
-.swatch-preview {
-  position: relative;
-  width: 132px;
-  height: 78px;
-  border-radius: 1px;
-  overflow: hidden;
-  background: var(--swatch-bg);
-  border: 1px solid var(--swatch-border);
-}
-
-.swatch-mast {
-  height: 11px;
-  background: var(--swatch-mast);
-  border-bottom: 1px solid var(--swatch-border);
-}
-
-.swatch-body {
-  position: relative;
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.swatch-line {
-  height: 5px;
-  border-radius: 1px;
-  background: var(--swatch-text);
-  opacity: 0.7;
-}
-.swatch-line.w-70 { width: 70%; }
-.swatch-line.w-45 { width: 45%; }
-.swatch-line.w-60 { width: 60%; }
-
-.swatch-tick {
-  position: absolute;
-  right: 9px;
-  bottom: 8px;
-  width: 14px;
-  height: 3px;
-  background: var(--swatch-accent);
-  box-shadow: 0 0 8px var(--swatch-accent);
-}
-
-.swatch-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-family: var(--mono);
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.swatch-icon {
-  width: 13px;
-  height: 13px;
-  display: block;
-}
-
-/* Light-swatch palette (frozen — these match the live light theme
-   surfaces in app.css; if the tokens there drift, refresh these). */
-.light-swatch {
-  --swatch-bg:     #faf6ee;
-  --swatch-mast:   #ece6d6;
-  --swatch-border: #b9b09c;
-  --swatch-text:   #2a2722;
-  --swatch-accent: #b03a0a;
-}
-
-/* Dark-swatch palette (frozen — matches the live dark theme). */
-.dark-swatch {
-  --swatch-bg:     #15161a;
-  --swatch-mast:   #1d1f24;
-  --swatch-border: #2a2d33;
-  --swatch-text:   #d8d9de;
-  --swatch-accent: #ff7a3a;
-}
-
-/* `.weekstart-*` styles moved to SettingsCalendar.vue's
-   <style scoped> block. */
+/* Theme swatch + weekstart styles moved to their respective
+   sub-component <style scoped> blocks. */
 
 /* ─── Tactical-frame motif on settings-section ────────────── */
 
