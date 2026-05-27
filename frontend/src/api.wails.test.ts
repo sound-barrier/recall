@@ -47,6 +47,7 @@ describe('SetMatchAnnotation (Wails mode)', () => {
       Note:       'ally rage-quit',
       ReplayCode: '7H1K9P',
       Members:    ['Apollo#1'],
+      Tags:       [],
     }])
   })
 
@@ -60,7 +61,7 @@ describe('SetMatchAnnotation (Wails mode)', () => {
     const { SetMatchAnnotation } = await import('./api')
     await SetMatchAnnotation('match:x', { note: 'just a note' })
     expect(setSpy.mock.lastCall).toEqual([{
-      MatchKey: 'match:x', Leaver: '', Note: 'just a note', ReplayCode: '', Members: [],
+      MatchKey: 'match:x', Leaver: '', Note: 'just a note', ReplayCode: '', Members: [], Tags: [],
     }])
   })
 })

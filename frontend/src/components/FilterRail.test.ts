@@ -18,6 +18,7 @@ function mountRail(over: Partial<Record<string, unknown>> = {}) {
       heroes: ['lucio', 'kiriko', 'juno'],
       results: ['victory', 'defeat'],
       sshotTypes: ['summary', 'scoreboard', 'personal', 'rank'],
+      tags: [],
       filterList: () => [],
       filterSearch: {},
       openFilter: '',
@@ -44,11 +45,11 @@ function mountRail(over: Partial<Record<string, unknown>> = {}) {
 }
 
 describe('FilterRail — initial render', () => {
-  it('renders seven filter fields in order', () => {
+  it('renders eight filter fields in order', () => {
     const wrapper = mountRail()
     const eyebrows = wrapper.findAll('.filter-eyebrow').map(e => e.text().split(' ')[0])
     // Eyebrow label is the field's pretty name.
-    expect(eyebrows).toEqual(['Mode', 'Map', 'Type', 'Role', 'Hero', 'Result', 'Source'])
+    expect(eyebrows).toEqual(['Mode', 'Map', 'Type', 'Role', 'Hero', 'Result', 'Source', 'Tags'])
   })
 
   it('shows "All" placeholder when a filter is empty', () => {

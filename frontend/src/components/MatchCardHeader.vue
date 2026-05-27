@@ -171,6 +171,26 @@ const emit = defineEmits<{
       >
         <span class="note-mark-glyph" aria-hidden="true">N</span>
       </span>
+
+      <!-- Tag chips. Render the actual tag labels inline so a
+           horizontal scan reveals which matches are stacks,
+           streams, placements, or carry custom user labels.
+           Same `.match-tag` chip class as the inline editor. -->
+      <span
+        v-if="record.annotation?.tags && record.annotation.tags.length"
+        class="match-tags-row"
+        :aria-label="`Tagged: ${record.annotation.tags.join(', ')}`"
+      >
+        <span
+          v-for="t in record.annotation.tags"
+          :key="t"
+          class="match-tag"
+          :data-tag="t"
+        >
+          <span class="match-tag-mark" aria-hidden="true" />
+          <span class="match-tag-text">{{ t }}</span>
+        </span>
+      </span>
       <span
         v-if="missingRequiredSlots(record).length"
         class="incomplete-badge"

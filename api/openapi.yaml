@@ -200,6 +200,19 @@ paths:
                   items:
                     type: string
                     example: "Apollo#11234"
+                tags:
+                  type: array
+                  description: |
+                    Free-form labels applied to the match. `stack`,
+                    `stream`, and `placement` are the conventional
+                    three (the UI surfaces them as quick-add toggles)
+                    but any string is accepted. Server lowercases +
+                    trims + deduplicates before persistence so
+                    `Stack` and `stack` collapse to one entry. Drives
+                    the FilterRail "Tags" multi-select.
+                  items:
+                    type: string
+                    example: stack
       responses:
         "204":
           description: Annotation persisted or cleared.
@@ -1003,7 +1016,7 @@ components:
     MatchAnnotation:
       type: object
       description: |
-        User-curated per-match metadata. Up to four optional fields —
+        User-curated per-match metadata. Up to five optional fields —
         every field is independent, but the row only exists if at
         least one carries content. Omitted from `MatchRecord` when
         the match is unannotated.
@@ -1027,6 +1040,15 @@ components:
           items:
             type: string
             example: "Apollo#11234"
+        tags:
+          type: array
+          description: |
+            Free-form match labels (lowercase, deduped). `stack`,
+            `stream`, `placement` are the conventional three; users
+            can add anything. Drives the FilterRail "Tags" filter.
+          items:
+            type: string
+            example: stack
         annotated_at:
           type: string
           format: date-time

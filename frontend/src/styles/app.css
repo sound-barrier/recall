@@ -2135,6 +2135,180 @@ main#main-content {
   }
 }
 
+/* ─── Match tags ──────────────────────────────────────────
+   User-applied labels on a match annotation (`stack`, `stream`,
+   `placement`, plus free-form custom). Renders in three places:
+
+     1. Inline editor on the expanded match card — toggle buttons +
+        a free-form input feed the same backing list.
+     2. Compact chip row on the collapsed card header so tags are
+        visible without expanding.
+     3. FilterRail multi-select (Tags) — the rendered chip is the
+        same class the card uses, so the picker reads visually as
+        "pick from the same chip family that's on the card".
+
+   Leading colored square (`.match-tag-mark`) is the brand gesture.
+   Named tags map to existing role tokens (--tank / --dps /
+   --accent) so the palette doesn't fork; custom tags keep a
+   neutral mute. */
+
+.match-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.18rem 0.5rem 0.18rem 0.42rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+  white-space: nowrap;
+}
+
+.match-tag-mark {
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
+  background: var(--text-faint);
+
+  /* Diamond rotation reads as a "tactical marker" rather than a
+     generic dot — same gesture the settings-section accent ticks
+     use. */
+  transform: rotate(45deg);
+  transition: background 160ms ease;
+}
+
+.match-tag[data-tag="stack"]     .match-tag-mark { background: var(--tank); }
+.match-tag[data-tag="stream"]    .match-tag-mark { background: var(--dps); }
+.match-tag[data-tag="placement"] .match-tag-mark { background: var(--accent); }
+
+.match-tag.removable {
+  padding-right: 0.32rem;
+}
+
+.match-tag-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 0.05rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 1px;
+  transition: color 140ms ease, background 140ms ease;
+}
+.match-tag-x:hover         { color: var(--loss); background: var(--loss-soft); }
+.match-tag-x:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent-soft); }
+
+.match-tag-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.18rem 0.55rem 0.18rem 0.42rem;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.match-tag-toggle:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.match-tag-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.match-tag-toggle.active {
+  background: var(--surface-2);
+  border-style: solid;
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+.match-tag-toggle .match-tag-mark { opacity: 0.55; }
+.match-tag-toggle.active .match-tag-mark { opacity: 1; }
+.match-tag-toggle[data-tag="stack"]     .match-tag-mark { background: var(--tank); }
+.match-tag-toggle[data-tag="stream"]    .match-tag-mark { background: var(--dps); }
+.match-tag-toggle[data-tag="placement"] .match-tag-mark { background: var(--accent); }
+
+.match-tag-input {
+  flex: 1 1 12ch;
+  min-width: 10ch;
+  padding: 0.2rem 0.45rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text);
+  letter-spacing: 0.06em;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.match-tag-input::placeholder {
+  color: var(--text-faint);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+}
+
+.match-tag-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+.match-tags-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+
+.match-tags-editor-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  margin-right: 0.2rem;
+}
+
+.match-tags-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.32rem;
+}
+
+[data-theme="light"] .match-tag {
+  background: var(--surface-3);
+  color: var(--text-dim);
+}
+
+[data-theme="light"] .match-tag-toggle.active {
+  background: var(--surface-3);
+}
+
 /* ─── Unknown view responsive ────────────────────────────── */
 @media (width <= 880px) {
   .unknown-fields { grid-template-columns: repeat(4, 1fr); }

@@ -129,6 +129,70 @@ func TestSetMatchAnnotation_TrimsAndDedupesMembers(t *testing.T) {
 	}
 }
 
+// Tags carry the same trim+dedupe contract as members but also
+// case-fold (`Stack` and `stack` collapse to one). The annotation
+// row should also persist when ONLY tags are set — tags alone are
+// user content that shouldn't trigger the all-empty cleanup.
+func TestSetMatchAnnotation_NormalizesTags(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	in := AnnotationInput{
+		MatchKey: "k1",
+		// Cases include the three conventional tags plus duplicates,
+		// case variants, and whitespace-only entries that should drop.
+		Tags: []string{"Stack", "stack", "  STREAM  ", "placement", "", " ", "Placement"},
+	}
+	if err := a.SetMatchAnnotation(in); err != nil {
+		t.Fatalf("SetMatchAnnotation: %v", err)
+	}
+	got, _ := fs.LoadAnnotations()
+	out := got["k1"]
+	if len(out.Tags) != 3 {
+		t.Errorf("expected 3 unique normalized tags, got %+v", out.Tags)
+	}
+	want := map[string]bool{"stack": true, "stream": true, "placement": true}
+	for _, tag := range out.Tags {
+		if !want[tag] {
+			t.Errorf("unexpected tag %q in %+v (want one of %v)", tag, out.Tags, want)
+		}
+	}
+}
+
+// Tags-only annotation should persist — the all-empty cleanup must
+// treat tags the same as members/note/replay (content that gates
+// the delete).
+func TestSetMatchAnnotation_TagsOnlyKeepsRow(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	if err := a.SetMatchAnnotation(AnnotationInput{
+		MatchKey: "k",
+		Tags:     []string{"stack"},
+	}); err != nil {
+		t.Fatalf("SetMatchAnnotation: %v", err)
+	}
+	got, _ := fs.LoadAnnotations()
+	if len(got["k"].Tags) != 1 || got["k"].Tags[0] != "stack" {
+		t.Errorf("tags-only row dropped or mangled: %+v", got["k"])
+	}
+}
+
+// And tags-cleared (alongside every other field empty) should
+// delete the row, matching the existing all-empty contract.
+func TestSetMatchAnnotation_AllEmptyDeletesIncludingTags(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	// Seed first.
+	_ = a.SetMatchAnnotation(AnnotationInput{MatchKey: "k", Tags: []string{"stack"}})
+	// Now clear everything.
+	if err := a.SetMatchAnnotation(AnnotationInput{MatchKey: "k"}); err != nil {
+		t.Fatalf("SetMatchAnnotation: %v", err)
+	}
+	got, _ := fs.LoadAnnotations()
+	if _, present := got["k"]; present {
+		t.Errorf("row should be deleted when every field (incl. tags) is empty; got %+v", got["k"])
+	}
+}
+
 func TestSetMatchAnnotation_RejectsInvalidLeaver(t *testing.T) {
 	fs := &fakeStore{}
 	a := NewWithStore(fs)

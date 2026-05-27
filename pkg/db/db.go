@@ -177,6 +177,28 @@ var schemaStatements = []string{
 		PRIMARY KEY (match_key, member),
 		FOREIGN KEY (match_key) REFERENCES match_annotations(match_key) ON DELETE CASCADE
 	)`,
+	// One row per user-applied tag on a given match's annotation.
+	// Tags are free-form strings — `stack`, `stream`, `placement` are
+	// the conventional three but the user can add anything. The
+	// composite PK prevents duplicate tags on the same match;
+	// ON DELETE CASCADE drops the tag list when the parent annotation
+	// row is removed. Tags are lower-cased + trimmed at the app layer
+	// before they reach this table (case-insensitive equivalence —
+	// `Stack` and `stack` collapse to one row), unlike Members which
+	// are stored verbatim because BattleTag case is significant.
+	//
+	// The `idx_match_annotation_tags_tag` index supports the
+	// "match by tag" lookup that the FilterRail Tags multi-select
+	// drives — without it, the LoadAnnotations table-scan + the
+	// future explicit `WHERE tag = ?` queries would full-scan the
+	// child table.
+	`CREATE TABLE IF NOT EXISTS match_annotation_tags (
+		match_key TEXT NOT NULL,
+		tag       TEXT NOT NULL,
+		PRIMARY KEY (match_key, tag),
+		FOREIGN KEY (match_key) REFERENCES match_annotations(match_key) ON DELETE CASCADE
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_match_annotation_tags_tag ON match_annotation_tags(tag)`,
 	// Soft-deleted matches. Presence in this table = the user clicked
 	// Hide on the match in the UI. The aggregator filters these out of
 	// MatchRecord output by default; the FilterRail "Hidden · N"

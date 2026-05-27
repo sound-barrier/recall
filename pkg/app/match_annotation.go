@@ -27,13 +27,18 @@ var ErrInvalidLeaver = errors.New("invalid leaver: must be 'self', 'team', or 'e
 
 // AnnotationInput is the App-layer DTO for SetMatchAnnotation. Each
 // field is optional; if every field is empty after trimming, the
-// annotation row is deleted entirely (cascading members away).
+// annotation row is deleted entirely (cascading members + tags away).
 type AnnotationInput struct {
 	MatchKey   string
 	Leaver     string
 	Note       string
 	ReplayCode string
 	Members    []string
+	// Free-form user tags. `stack`, `stream`, `placement` are the
+	// conventional three (quick-add toggles in the inline editor);
+	// the user can add anything. Normalized via normalizeTags before
+	// reaching the store (lowercased + trimmed + deduped).
+	Tags []string
 }
 
 // SetMatchAnnotation upserts (or deletes) a per-match annotation. The
@@ -46,6 +51,8 @@ type AnnotationInput struct {
 //   - leaver, when non-empty, must be in {self, team, enemy}.
 //   - members are trimmed + deduped + dropped-if-empty before reaching
 //     SQL; the composite-PK on the child table also guards duplicates.
+//   - tags are lowercased + trimmed + deduped (case-insensitive
+//     equivalence — `Stack` and `stack` collapse to one).
 //   - replay_code is left as-is — Overwatch's format isn't pinned
 //     strongly enough to validate client-side.
 func (a *App) SetMatchAnnotation(in AnnotationInput) error {
@@ -59,10 +66,11 @@ func (a *App) SetMatchAnnotation(in AnnotationInput) error {
 	note := strings.TrimSpace(in.Note)
 	replay := strings.TrimSpace(in.ReplayCode)
 	members := normalizeMembers(in.Members)
+	tags := normalizeTags(in.Tags)
 
 	// All-empty input → delete the row entirely. Idempotent — deleting
 	// a non-existent row is a no-op.
-	if leaver == "" && note == "" && replay == "" && len(members) == 0 {
+	if leaver == "" && note == "" && replay == "" && len(members) == 0 && len(tags) == 0 {
 		return a.store.DeleteAnnotation(in.MatchKey)
 	}
 	return a.store.SetAnnotation(db.Annotation{
@@ -71,6 +79,7 @@ func (a *App) SetMatchAnnotation(in AnnotationInput) error {
 		Note:       note,
 		ReplayCode: replay,
 		Members:    members,
+		Tags:       tags,
 	})
 }
 
@@ -85,8 +94,8 @@ func (a *App) SetLeaverAnnotation(matchKey, leaver, note string) error {
 	if !validLeavers[leaver] {
 		return ErrInvalidLeaver
 	}
-	// Preserve any existing replay_code + members on the row, since
-	// the legacy entry point only touches leaver+note.
+	// Preserve any existing replay_code + members + tags on the row,
+	// since the legacy entry point only touches leaver+note.
 	existing, _ := a.store.LoadAnnotations()
 	prev := existing[matchKey]
 	return a.store.SetAnnotation(db.Annotation{
@@ -95,12 +104,13 @@ func (a *App) SetLeaverAnnotation(matchKey, leaver, note string) error {
 		Note:       note,
 		ReplayCode: prev.ReplayCode,
 		Members:    prev.Members,
+		Tags:       prev.Tags,
 	})
 }
 
 // ClearLeaverAnnotation removes the leaver tag while preserving any
-// note / replay_code / members on the row. If all four end up empty
-// after the clear, the row is deleted entirely.
+// note / replay_code / members / tags on the row. If every field
+// ends up empty after the clear, the row is deleted entirely.
 func (a *App) ClearLeaverAnnotation(matchKey string) error {
 	if matchKey == "" {
 		return fmt.Errorf("match_key required")
@@ -113,6 +123,7 @@ func (a *App) ClearLeaverAnnotation(matchKey string) error {
 		Note:       prev.Note,
 		ReplayCode: prev.ReplayCode,
 		Members:    prev.Members,
+		Tags:       prev.Tags,
 	})
 }
 
@@ -132,6 +143,27 @@ func normalizeMembers(in []string) []string {
 		}
 		seen[m] = true
 		out = append(out, m)
+	}
+	return out
+}
+
+// normalizeTags trims, lowercases, drops empties, and dedupes. Tags
+// are user-facing labels with no significant case (`Stack` and
+// `stack` should collapse into one), unlike Members where case can
+// be load-bearing.
+func normalizeTags(in []string) []string {
+	if len(in) == 0 {
+		return nil
+	}
+	seen := make(map[string]bool, len(in))
+	out := make([]string, 0, len(in))
+	for _, t := range in {
+		t = strings.ToLower(strings.TrimSpace(t))
+		if t == "" || seen[t] {
+			continue
+		}
+		seen[t] = true
+		out = append(out, t)
 	}
 	return out
 }

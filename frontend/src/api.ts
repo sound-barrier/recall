@@ -217,6 +217,11 @@ export interface MatchAnnotationInput {
   note?:        string
   replay_code?: string
   members?:     string[]
+  // Free-form match labels — `stack`, `stream`, `placement` are the
+  // three conventional ones surfaced as quick-add toggles in the
+  // inline editor. Server lowercases + dedupes; any string is
+  // accepted. Empty array (or omitted) = no tags on this match.
+  tags?:        string[]
 }
 
 // Match annotations are a hierarchical sub-resource of the parent
@@ -243,6 +248,7 @@ export function SetMatchAnnotation(matchKey: string, input: MatchAnnotationInput
       Note:       input.note ?? '',
       ReplayCode: input.replay_code ?? '',
       Members:    input.members ?? [],
+      Tags:       input.tags ?? [],
     })
   }
   const path = `/api/v1/matches/${encodeURIComponent(matchKey)}/annotation`
@@ -251,6 +257,7 @@ export function SetMatchAnnotation(matchKey: string, input: MatchAnnotationInput
     note:        input.note ?? '',
     replay_code: input.replay_code ?? '',
     members:     input.members ?? [],
+    tags:        input.tags ?? [],
   }).then(() => undefined)
 }
 

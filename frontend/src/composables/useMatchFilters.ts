@@ -51,6 +51,7 @@ export function useMatchFilters(
   const filterHero   = ref<string[]>([])
   const filterResult = ref<string[]>([])
   const filterSshot  = ref<string[]>([])
+  const filterTags   = ref<string[]>([])
   const filterFrom   = ref('')
   const filterTo     = ref('')
   const sortDir      = ref('desc')
@@ -64,6 +65,7 @@ export function useMatchFilters(
     hero:   filterHero,
     result: filterResult,
     sshot:  filterSshot,
+    tags:   filterTags,
   }
 
   function filterList(field: string): string[] {
@@ -97,6 +99,19 @@ export function useMatchFilters(
       for (const hp of (r.data?.heroes_played ?? [])) {
         if (hp.hero) set.add(hp.hero)
       }
+    }
+    return [...set].sort()
+  })
+
+  // Tag roster — every distinct tag that appears on any annotation in
+  // the current record set. Computed (not static) so the FilterRail
+  // surfaces user-added custom tags alongside the conventional three
+  // (stack/stream/placement). Always-present-but-empty tag-arrays
+  // contribute nothing.
+  const tags = computed(() => {
+    const set = new Set<string>()
+    for (const r of records.value) {
+      for (const t of (r.annotation?.tags ?? [])) set.add(t)
     }
     return [...set].sort()
   })
@@ -153,6 +168,15 @@ export function useMatchFilters(
         const inPrimary   = picks.includes(d.hero ?? '')
         const inSecondary = (d.heroes_played ?? []).some(hp => picks.includes(hp.hero))
         if (!inPrimary && !inSecondary) return false
+      }
+
+      // Tag filter — multi-select OR over the annotation's tag list.
+      // Matches if any selected tag appears on the record. Untagged
+      // matches always drop out when the filter is engaged.
+      if (filterTags.value.length) {
+        const picks = filterTags.value
+        const have  = r.annotation?.tags ?? []
+        if (!picks.some(t => have.includes(t))) return false
       }
 
       // Min-play threshold filter. A match qualifies if AT LEAST ONE
@@ -217,7 +241,8 @@ export function useMatchFilters(
   const anyFilter = computed(() =>
     !!(filterMode.value.length || filterType.value.length || filterRole.value.length ||
        filterMap.value.length  || filterHero.value.length || filterResult.value.length ||
-       filterSshot.value.length || filterFrom.value || filterTo.value ||
+       filterSshot.value.length || filterTags.value.length ||
+       filterFrom.value || filterTo.value ||
        minPlayActive.value)
   )
 
@@ -230,6 +255,7 @@ export function useMatchFilters(
     if (filterHero.value.length)   n++
     if (filterResult.value.length) n++
     if (filterSshot.value.length)  n++
+    if (filterTags.value.length)   n++
     if (filterFrom.value)          n++
     if (filterTo.value)            n++
     if (minPlayActive.value)       n++
@@ -291,6 +317,7 @@ export function useMatchFilters(
     filterHero.value   = []
     filterResult.value = []
     filterSshot.value  = []
+    filterTags.value   = []
     filterFrom.value   = ''
     filterTo.value     = ''
     setMinPlayPercent?.(0)
@@ -303,10 +330,10 @@ export function useMatchFilters(
   }
 
   return {
-    filterMode, filterType, filterRole, filterMap, filterHero, filterResult, filterSshot,
+    filterMode, filterType, filterRole, filterMap, filterHero, filterResult, filterSshot, filterTags,
     filterFrom, filterTo, sortDir,
     filterRefs, filterList,
-    modes, types, roles, maps, results, sshotTypes, heroes,
+    modes, types, roles, maps, results, sshotTypes, heroes, tags,
     filtered, filteredSorted,
     anyFilter, activeFilterCount, undatedMatchCount, hiddenMatchCount,
     toggleFilter, isActive, selectAllFilter, clearFilterField, clearFilters, resetDateRange, toggleSort,

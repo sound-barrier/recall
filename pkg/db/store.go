@@ -61,11 +61,17 @@ type Store interface {
 // {"self", "team", "enemy"} — the SQL CHECK constraint enforces this
 // at the boundary too.
 type Annotation struct {
-	MatchKey    string
-	Leaver      string
-	Note        string
-	ReplayCode  string
-	Members     []string
+	MatchKey   string
+	Leaver     string
+	Note       string
+	ReplayCode string
+	Members    []string
+	// Free-form user tags applied to the match. `stack`, `stream`,
+	// `placement` are the conventional three (surfaced as quick-add
+	// toggles in the inline editor); the user can add anything.
+	// Normalised to lowercase + trimmed at the app layer before
+	// reaching SQL, so `Stack` and `stack` collapse to one row.
+	Tags        []string
 	AnnotatedAt string
 }
 
