@@ -19,6 +19,7 @@ function mountRail(over: Partial<Record<string, unknown>> = {}) {
       results: ['victory', 'defeat'],
       sshotTypes: ['summary', 'scoreboard', 'personal', 'rank'],
       tags: [],
+      noteSearch: '',
       filterList: () => [],
       filterSearch: {},
       openFilter: '',

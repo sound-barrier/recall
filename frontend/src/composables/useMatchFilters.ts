@@ -52,6 +52,11 @@ export function useMatchFilters(
   const filterResult = ref<string[]>([])
   const filterSshot  = ref<string[]>([])
   const filterTags   = ref<string[]>([])
+  // Free-text substring filter over annotation.note content
+  // (case-insensitive, surrounding whitespace ignored). Empty
+  // string = no filter; the FilterRail's note-search input is the
+  // only writer.
+  const noteSearch   = ref('')
   const filterFrom   = ref('')
   const filterTo     = ref('')
   const sortDir      = ref('desc')
@@ -179,6 +184,16 @@ export function useMatchFilters(
         if (!picks.some(t => have.includes(t))) return false
       }
 
+      // Note-content substring filter. Case-insensitive, whitespace
+      // trimmed from the query. Records without a note (or with no
+      // annotation at all) drop out when the search is active —
+      // there's nothing to search.
+      const q = noteSearch.value.trim().toLowerCase()
+      if (q) {
+        const note = (r.annotation?.note ?? '').toLowerCase()
+        if (!note.includes(q)) return false
+      }
+
       // Min-play threshold filter. A match qualifies if AT LEAST ONE
       // candidate hero meets EITHER threshold (OR semantics — the user
       // wants "1 minute or 5%" to read as either-suffices). Candidate
@@ -242,23 +257,25 @@ export function useMatchFilters(
     !!(filterMode.value.length || filterType.value.length || filterRole.value.length ||
        filterMap.value.length  || filterHero.value.length || filterResult.value.length ||
        filterSshot.value.length || filterTags.value.length ||
+       noteSearch.value.trim() ||
        filterFrom.value || filterTo.value ||
        minPlayActive.value)
   )
 
   const activeFilterCount = computed(() => {
     let n = 0
-    if (filterMode.value.length)   n++
-    if (filterType.value.length)   n++
-    if (filterRole.value.length)   n++
-    if (filterMap.value.length)    n++
-    if (filterHero.value.length)   n++
-    if (filterResult.value.length) n++
-    if (filterSshot.value.length)  n++
-    if (filterTags.value.length)   n++
-    if (filterFrom.value)          n++
-    if (filterTo.value)            n++
-    if (minPlayActive.value)       n++
+    if (filterMode.value.length)    n++
+    if (filterType.value.length)    n++
+    if (filterRole.value.length)    n++
+    if (filterMap.value.length)     n++
+    if (filterHero.value.length)    n++
+    if (filterResult.value.length)  n++
+    if (filterSshot.value.length)   n++
+    if (filterTags.value.length)    n++
+    if (noteSearch.value.trim())    n++
+    if (filterFrom.value)           n++
+    if (filterTo.value)             n++
+    if (minPlayActive.value)        n++
     return n
   })
 
@@ -318,6 +335,7 @@ export function useMatchFilters(
     filterResult.value = []
     filterSshot.value  = []
     filterTags.value   = []
+    noteSearch.value   = ''
     filterFrom.value   = ''
     filterTo.value     = ''
     setMinPlayPercent?.(0)
@@ -331,6 +349,7 @@ export function useMatchFilters(
 
   return {
     filterMode, filterType, filterRole, filterMap, filterHero, filterResult, filterSshot, filterTags,
+    noteSearch,
     filterFrom, filterTo, sortDir,
     filterRefs, filterList,
     modes, types, roles, maps, results, sshotTypes, heroes, tags,
