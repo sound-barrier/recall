@@ -4,7 +4,7 @@ import type { ThemeMode } from '../composables/useTheme'
 import type { WeekStart } from '../composables/useWeekStart'
 import type { DataLocation, TesseractStatus } from '../api'
 import { OpenURL, IS_WAILS } from '../api'
-import { WEEKDAYS_FULL } from '../match-helpers'
+import SettingsCalendar from './SettingsCalendar.vue'
 
 // SettingsView — every knob a user might want to touch, sorted by
 // frequency of first-time use:
@@ -128,18 +128,6 @@ async function copyPath(path: string, which: 'db' | 'settings') {
   }
 }
 
-// The seven first-day-of-week options. Order = JS Date.getDay() so
-// the index IS the WeekStart value — no separate mapping needed.
-// Letter is a visual marker for the segmented control (S/M/T/W/T/F/S);
-// the full day name sits beneath each segment so ambiguity (two Ts,
-// two Ss) is always resolved by the label, not by squinting.
-const DAY_SEGMENTS = WEEKDAYS_FULL.map((name, idx) => ({
-  idx: idx as WeekStart,
-  letter: name.charAt(0),
-  name,
-}))
-
-const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sunday')
 </script>
 
 <template>
@@ -512,62 +500,11 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
       </div>
     </div>
 
-    <div id="sec-calendar" class="settings-section">
-      <div class="section-header">
-        <span class="section-num">04</span>
-        <span class="section-slash" aria-hidden="true">/</span>
-        <h3 class="section-title">
-          Calendar
-        </h3>
-      </div>
-      <div class="setting-rows">
-        <div class="setting-row">
-          <div class="setting-info">
-            <h4 class="setting-label">
-              First Day of Week
-              <span class="setting-help" tabindex="0" role="note">
-                <span class="setting-help-mark" aria-hidden="true">?</span>
-                <span class="setting-help-label">About First Day of Week</span>
-                <span class="setting-help-pop" role="tooltip">
-                  Sets where weeks begin in date grouping. Sunday-anchored in the US/CA, Monday-anchored across most of Europe and ISO calendars.
-                </span>
-              </span>
-            </h4>
-            <p class="setting-desc">
-              Anchors the
-              <button type="button" class="empty-link" @click="emit('go-to-view', 'matches')">
-                Week of
-              </button>
-              headers on the Matches page.
-            </p>
-          </div>
-          <div class="setting-control weekstart-control">
-            <div
-              class="weekstart-grid"
-              role="radiogroup"
-              aria-label="First day of week"
-            >
-              <button
-                v-for="seg in DAY_SEGMENTS"
-                :key="seg.idx"
-                type="button"
-                class="weekstart-cell"
-                role="radio"
-                :aria-checked="weekStart === seg.idx"
-                :class="{ active: weekStart === seg.idx }"
-                :title="`Weeks begin on ${seg.name}`"
-                @click="emit('set-week-start', seg.idx)"
-              >
-                <span class="weekstart-letter" aria-hidden="true">{{ seg.letter }}</span>
-              </button>
-            </div>
-            <p class="weekstart-caption">
-              Weeks begin on <strong>{{ activeWeekDayName }}</strong>.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <SettingsCalendar
+      :week-start="weekStart"
+      @set-week-start="(v: WeekStart) => emit('set-week-start', v)"
+      @go-to-view="(v: 'settings' | 'ingest' | 'matches' | 'unknown') => emit('go-to-view', v)"
+    />
 
     <div id="sec-backup" class="settings-section">
       <div class="section-header">
@@ -1313,79 +1250,8 @@ const activeWeekDayName = computed(() => WEEKDAYS_FULL[props.weekStart] ?? 'Sund
   --swatch-accent: #ff7a3a;
 }
 
-/* ─── First-day-of-week — compact 7-cell grid ────────────── */
-
-/* Replaces the old ~490 px segmented row. Seven 36 px cells
-   shoulder-to-shoulder, each carrying a single Big Noodle initial.
-   Active cell is filled solid orange. A caption below resolves the
-   "two T / two S" ambiguity without forcing labels into every cell. */
-.weekstart-control {
-  align-items: flex-end;
-  gap: 0.5rem;
-}
-
-.weekstart-grid {
-  display: inline-grid;
-  grid-template-columns: repeat(7, 36px);
-  gap: 2px;
-  padding: 3px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  transition: border-color 160ms ease;
-}
-
-.weekstart-grid:hover         { border-color: var(--border-strong); }
-
-.weekstart-grid:focus-within  {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-
-.weekstart-cell {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 38px;
-  background: transparent;
-  border: 0;
-  border-radius: 1px;
-  color: var(--text-faint);
-  cursor: pointer;
-  transition: color 140ms ease, background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
-}
-
-.weekstart-cell:hover         { color: var(--text); background: rgb(255 255 255 / 3%); }
-
-.weekstart-cell.active {
-  color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-
-.weekstart-letter {
-  font-family: var(--brand, 'OW Wordmark', 'Russo One', sans-serif);
-  font-size: 1.15rem;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0;
-  transform: translateY(1px);
-}
-
-.weekstart-caption {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-.weekstart-caption strong {
-  color: var(--text);
-  font-weight: 700;
-}
+/* `.weekstart-*` styles moved to SettingsCalendar.vue's
+   <style scoped> block. */
 
 /* ─── Tactical-frame motif on settings-section ────────────── */
 
