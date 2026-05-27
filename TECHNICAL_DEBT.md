@@ -29,55 +29,6 @@ first.
 
 ---
 
-## 2. `pkg/db/store.go` is 1028 lines covering 11 concerns
-
-**What.** The single file holds: the SQLStore struct + constructor +
-helpers (`nullableString`, `nullableInt64`, `firstLine`,
-`collectFilenames`), five parent-table upserts (summary / scoreboard
-/ personal / rank / unknown) each with its DELETE-then-INSERT
-children block, annotation CRUD, visibility CRUD, screenshots-dir
-EnsureFK + loader, and the bulk-load `LoadAll` + `LoadAllFilenames` +
-`Clear`. Every method shares one receiver but the concerns are
-genuinely independent — adding a column to ScoreboardRow touches
-none of the other code paths.
-
-**Why this matters.** Every new schema addition (annotations,
-visibility) appended ~80 lines without splitting. The next concern
-that lands (match tags? user-supplied corrections?) will add
-another ~80 lines. At ~1100+ lines a single file becomes harder
-to navigate via `Go to symbol` and the cognitive overhead of
-"which UPSERT clause am I editing" grows. The shape mirrors what
-`pkg/app/` did successfully (file-per-concern with `ls pkg/app/*.go`
-as source of truth — see CLAUDE.md) but `pkg/db/` never followed.
-
-**Plan.** Mechanical split, one PR:
-
-1. Keep `pkg/db/db.go` (already separate — schema DDL).
-2. Keep `pkg/db/store.go` for the Store interface, the SQLStore
-   struct, NewSQLStore, Close, and the package-private helpers.
-3. New files, each with the methods named:
-   - `store_summary.go`: `UpsertSummary`
-   - `store_scoreboard.go`: `UpsertScoreboard`
-   - `store_personal.go`: `UpsertPersonal`
-   - `store_rank.go`: `UpsertRank`
-   - `store_unknown.go`: `UpsertUnknown`
-   - `store_annotation.go`: `SetAnnotation`, `DeleteAnnotation`, `LoadAnnotations`
-   - `store_visibility.go`: `HideMatch`, `UnhideMatch`, `LoadHiddenKeys`
-   - `store_screenshots_dir.go`: `EnsureScreenshotsDir`, `loadScreenshotsDirs`
-   - `store_bulk.go`: `LoadAll`, `LoadAllFilenames`, `Clear`,
-     `collectFilenames`
-4. `pkg/db/sqlstore_test.go` (702 lines) splits along the same
-   boundaries — `sqlstore_summary_test.go`, etc. — but that can land
-   in a follow-up PR if step 3 is too noisy on its own.
-
-No interface change, no behavioral change. CI catches any miss
-because `SQLStore` is verified against `db.Store` by `var _ db.Store
-= (*SQLStore)(nil)` in `store.go`.
-
-**Size.** **M** (mostly a `git mv`-equivalent across 9 functions).
-
----
-
 ## 3. 0% unit coverage on scoreboard-geometry helpers
 
 **What.** Four pure functions in `pkg/parser/parse_scoreboard.go`
