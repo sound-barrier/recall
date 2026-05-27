@@ -180,6 +180,64 @@ export function parseGameLengthMinutes(s: string | null | undefined): number | n
   return null
 }
 
+// Round a fractional-minutes value (the shape parseGameLengthMinutes
+// returns) back into a "MM:SS" display string. Used by the
+// aggregate-stats strip to render the average match length.
+// Negative or non-finite inputs render as "—".
+export function formatMinutesAsClock(minutes: number | null | undefined): string {
+  if (minutes == null || !Number.isFinite(minutes) || minutes < 0) return '—'
+  const totalSeconds = Math.round(minutes * 60)
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+// Top-N value picker for a set of records. Walks the record list and
+// counts via the picker; returns the most-common value plus its count,
+// or null when no record produced a non-empty value. Used by the
+// aggregate-stats panel to find "top hero" / "top map" over the
+// filtered set. Ties resolve alphabetically so the readout is stable
+// across reloads.
+export interface Mode<T> { value: T; count: number }
+export function modeOf<R, T>(records: R[], pick: (r: R) => T | null | undefined): Mode<T> | null {
+  const counts = new Map<T, number>()
+  for (const r of records) {
+    const v = pick(r)
+    if (v === null || v === undefined) continue
+    if (typeof v === 'string' && v === '') continue
+    counts.set(v, (counts.get(v) ?? 0) + 1)
+  }
+  if (counts.size === 0) return null
+  let bestValue: T | null = null
+  let bestCount = -1
+  for (const [v, c] of counts) {
+    if (c > bestCount) {
+      bestCount = c
+      bestValue = v
+    } else if (c === bestCount && bestValue !== null
+      && typeof v === 'string' && typeof bestValue === 'string'
+      && v < bestValue) {
+      bestValue = v
+    }
+  }
+  return bestValue === null ? null : { value: bestValue, count: bestCount }
+}
+
+// Mean of game_length across records that have one parseable. Returns
+// null when no record contributes a value — callers render null as "—"
+// rather than collapsing to 0:00 (which would be a lie about the data).
+export function avgGameLengthMinutes(records: { data?: { game_length?: string | null } | null }[]): number | null {
+  let sum = 0
+  let n = 0
+  for (const r of records) {
+    const m = parseGameLengthMinutes(r.data?.game_length)
+    if (m === null) continue
+    sum += m
+    n++
+  }
+  return n === 0 ? null : sum / n
+}
+
 // Build the URL for an on-disk screenshot served by the Go
 // ScreenshotHandler at /_screenshot/<encoded filename>. Used by
 // MatchCard's expanded source-file previews.
