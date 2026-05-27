@@ -20,27 +20,7 @@ export interface paths {
          *     plus role-from-hero and type-from-map lookups are applied
          *     on the fly — the underlying rows are never mutated.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Array of match records. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["MatchRecord"][];
-                    };
-                };
-                500: components["responses"]["InternalError"];
-            };
-        };
+        get: operations["GetMatchResults"];
         put?: never;
         post?: never;
         delete?: never;
@@ -62,29 +42,7 @@ export interface paths {
          *     absolute (e.g. `/Users/.../Overwatch/ScreenShots/Overwatch`) or
          *     relative to the server's working directory.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Current path. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example screenshots */
-                            path: string;
-                        };
-                    };
-                };
-            };
-        };
+        get: operations["GetScreenshotsDir"];
         put?: never;
         /**
          * Set the screenshots folder
@@ -102,37 +60,7 @@ export interface paths {
          *
          *     The echoed-back `path` is the cleaned form actually stored.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch */
-                        path: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description New path echoed back. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            path: string;
-                        };
-                    };
-                };
-                400: components["responses"]["BadRequest"];
-                500: components["responses"]["InternalError"];
-            };
-        };
+        post: operations["SetScreenshotsDir"];
         delete?: never;
         options?: never;
         head?: never;
@@ -156,19 +84,7 @@ export interface paths {
          *     Synchronous: the response only returns after parsing finishes.
          *     Progress is also broadcast via the SSE endpoint.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: components["responses"]["Ok"];
-                500: components["responses"]["InternalError"];
-            };
-        };
+        post: operations["ParseScreenshots"];
         delete?: never;
         options?: never;
         head?: never;
@@ -187,26 +103,7 @@ export interface paths {
          * @description `true` iff the `:9091/metrics` listener is currently bound and
          *     the Prometheus collector is registered.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Current state. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["EnabledFlag"];
-                    };
-                };
-            };
-        };
+        get: operations["GetPrometheusEnabled"];
         put?: never;
         /**
          * Toggle the Prometheus metrics endpoint
@@ -214,32 +111,7 @@ export interface paths {
          *     `OWMETRICS_METRICS_ADDR`). Disabling shuts the listener down
          *     with a 2s grace period.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["EnabledFlag"];
-                };
-            };
-            responses: {
-                /** @description New state echoed back. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["EnabledFlag"];
-                    };
-                };
-                400: components["responses"]["BadRequest"];
-                500: components["responses"]["InternalError"];
-            };
-        };
+        post: operations["SetPrometheusEnabled"];
         delete?: never;
         options?: never;
         head?: never;
@@ -258,26 +130,7 @@ export interface paths {
          * @description `true` iff the fsnotify watcher is armed against the configured
          *     screenshots folder.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Current state. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["EnabledFlag"];
-                    };
-                };
-            };
-        };
+        get: operations["GetWatchEnabled"];
         put?: never;
         /**
          * Toggle the file watcher
@@ -285,32 +138,7 @@ export interface paths {
          *     auto-parsed after a 60s debounce. Requires a working Tesseract
          *     binary — turning it on without one returns 500.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["EnabledFlag"];
-                };
-            };
-            responses: {
-                /** @description New state echoed back. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["EnabledFlag"];
-                    };
-                };
-                400: components["responses"]["BadRequest"];
-                500: components["responses"]["InternalError"];
-            };
-        };
+        post: operations["SetWatchEnabled"];
         delete?: never;
         options?: never;
         head?: never;
@@ -336,26 +164,7 @@ export interface paths {
          *     confirmation before running a parse — results may be incorrect
          *     with unsupported versions.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Current engine status. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TesseractStatus"];
-                    };
-                };
-            };
-        };
+        get: operations["GetTesseractStatus"];
         put?: never;
         post?: never;
         delete?: never;
@@ -393,35 +202,7 @@ export interface paths {
          *     `POST /api/tesseract-reset` bypasses this validation because the
          *     platform default (`defaultTesseractPath()`) is trusted.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example /opt/homebrew/bin/tesseract */
-                        path: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Re-detected status. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TesseractStatus"];
-                    };
-                };
-                400: components["responses"]["BadRequest"];
-                500: components["responses"]["InternalError"];
-            };
-        };
+        post: operations["PickTesseractBinary"];
         delete?: never;
         options?: never;
         head?: never;
@@ -443,27 +224,7 @@ export interface paths {
          *     on macOS, `/usr/bin/tesseract` on Linux, the Windows installer
          *     path on Windows) and re-runs detection.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Re-detected status against the default path. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TesseractStatus"];
-                    };
-                };
-                500: components["responses"]["InternalError"];
-            };
-        };
+        post: operations["ResetTesseractPath"];
         delete?: never;
         options?: never;
         head?: never;
@@ -484,50 +245,7 @@ export interface paths {
          *     `available: false` when already up to date, running a dev build,
          *     or when the API is unreachable (network failures are silenced).
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Update availability info. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /**
-                             * @description True when a GitHub API call completed successfully.
-                             *     False on network failure — show nothing in that case.
-                             * @example true
-                             */
-                            checked: boolean;
-                            /**
-                             * @description True when the running version is a dev build. The
-                             *     latest release is then informational context, not an
-                             *     upgrade prompt.
-                             * @example false
-                             */
-                            dev_build: boolean;
-                            /**
-                             * @description True when the latest release is newer than the running
-                             *     version (only meaningful when dev_build=false).
-                             * @example true
-                             */
-                            available: boolean;
-                            /** @example 0.0.15 */
-                            latest: string;
-                            /** @example https://github.com/sound-barrier/recall/releases/tag/v0.0.15 */
-                            url: string;
-                        };
-                    };
-                };
-            };
-        };
+        get: operations["CheckForUpdate"];
         put?: never;
         post?: never;
         delete?: never;
@@ -549,29 +267,7 @@ export interface paths {
          *     `-ldflags "-X recall/pkg/app.Version=<tag>"`.
          *     Falls back to `"dev"` for local builds outside the release pipeline.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Current build version. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example 0.0.13-beta.0 */
-                            version: string;
-                        };
-                    };
-                };
-            };
-        };
+        get: operations["GetVersion"];
         put?: never;
         post?: never;
         delete?: never;
@@ -597,71 +293,7 @@ export interface paths {
          *     (diacritics + capitalization preserved) and group heroes by
          *     role / maps by game type.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description The embedded OW reference data. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /**
-                             * @description Hero names grouped by role, alphabetised within each role.
-                             * @example {
-                             *       "tank": [
-                             *         "Doomfist",
-                             *         "D.va",
-                             *         "Reinhardt"
-                             *       ],
-                             *       "dps": [
-                             *         "Ashe",
-                             *         "Genji",
-                             *         "Tracer"
-                             *       ],
-                             *       "support": [
-                             *         "Ana",
-                             *         "Juno",
-                             *         "Mercy"
-                             *       ]
-                             *     }
-                             */
-                            heroes_by_role: {
-                                [key: string]: string[];
-                            };
-                            /**
-                             * @description Map names grouped by game type, alphabetised within each type.
-                             * @example {
-                             *       "control": [
-                             *         "Antarctic Peninsula",
-                             *         "Busan",
-                             *         "Nepal"
-                             *       ],
-                             *       "escort": [
-                             *         "Dorado",
-                             *         "Watchpoint Gibraltar"
-                             *       ],
-                             *       "hybrid": [
-                             *         "King's Row",
-                             *         "Midtown"
-                             *       ]
-                             *     }
-                             */
-                            maps_by_type: {
-                                [key: string]: string[];
-                            };
-                        };
-                    };
-                };
-            };
-        };
+        get: operations["GetOWData"];
         put?: never;
         post?: never;
         delete?: never;
@@ -682,30 +314,7 @@ export interface paths {
          * @description Returns the number of files in the configured folder that are
          *     not yet present in any `match_results` row's `source_files`.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Count. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example 3 */
-                            count: number;
-                        };
-                    };
-                };
-                500: components["responses"]["InternalError"];
-            };
-        };
+        get: operations["GetNewScreenshotCount"];
         put?: never;
         post?: never;
         delete?: never;
@@ -728,19 +337,7 @@ export interface paths {
          * @description Deletes every row from `match_results`. Settings and the
          *     screenshots folder are untouched; you can re-parse to rebuild.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: components["responses"]["Ok"];
-                500: components["responses"]["InternalError"];
-            };
-        };
+        post: operations["ClearDatabase"];
         delete?: never;
         options?: never;
         head?: never;
@@ -770,30 +367,7 @@ export interface paths {
          *     `settings.json` directly; the HTTP endpoint serves the
          *     manual re-probe path (UI button "Detect Overwatch Folder").
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /**
-                 * @description Probe result. `found: true` carries the discovered path;
-                 *     `found: false` includes the full `tried` list for the
-                 *     user to inspect.
-                 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ProbeResult"];
-                    };
-                };
-            };
-        };
+        get: operations["ProbeScreenshotsDir"];
         put?: never;
         post?: never;
         delete?: never;
@@ -825,35 +399,7 @@ export interface paths {
          *     re-appears. Both directions are idempotent — repeated
          *     identical calls succeed.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description Match identity (same `match_key` exposed in `MatchRecord`). */
-                        match_key: string;
-                        /** @description True to hide; false to unhide. */
-                        hidden: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description Visibility updated. */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                400: components["responses"]["BadRequest"];
-                500: components["responses"]["InternalError"];
-            };
-        };
+        post: operations["SetMatchVisibility"];
         delete?: never;
         options?: never;
         head?: never;
@@ -893,51 +439,7 @@ export interface paths {
          *     (`match_key` empty or `leaver` outside the enum), 500 on
          *     store error.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description Match identity (same `match_key` exposed in `MatchRecord`). */
-                        match_key: string;
-                        /**
-                         * @description One of the three leaver scenarios, or `""` to leave
-                         *     untagged. Whole-row deletion happens only when *every*
-                         *     field (leaver, note, replay_code, members) is empty.
-                         * @enum {string}
-                         */
-                        leaver?: "" | "self" | "team" | "enemy";
-                        /** @description Free-text per-match commentary. */
-                        note?: string;
-                        /** @description Overwatch six-character replay ID. No format validation server-side. */
-                        replay_code?: string;
-                        /**
-                         * @description BattleTags of group members for this match. The server
-                         *     trims whitespace, drops empty strings, and deduplicates;
-                         *     the composite-PK on the child table catches any
-                         *     duplicates that slip through.
-                         */
-                        members?: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description Annotation persisted or cleared. */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                400: components["responses"]["BadRequest"];
-                500: components["responses"]["InternalError"];
-            };
-        };
+        post: operations["SetMatchAnnotation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -959,26 +461,7 @@ export interface paths {
          *     `.envrc` for `wails dev`), so the response matches what the
          *     running app actually reads/writes.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Path inventory. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["DataLocation"];
-                    };
-                };
-            };
-        };
+        get: operations["GetDataLocation"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1006,27 +489,7 @@ export interface paths {
          *     the envelope's `schema` field gates compatibility across
          *     Recall versions.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description JSON download. */
-                200: {
-                    headers: {
-                        "Content-Disposition"?: string;
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RecallExport"];
-                    };
-                };
-            };
-        };
+        get: operations["ExportData"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1054,27 +517,7 @@ export interface paths {
          *     auto-detects whether the uploaded payload is a JSON document
          *     or a ZIP archive via the first bytes.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description ZIP download. */
-                200: {
-                    headers: {
-                        "Content-Disposition"?: string;
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/zip": string;
-                    };
-                };
-            };
-        };
+        get: operations["ExportDataCSV"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1107,36 +550,7 @@ export interface paths {
          *     store is dropped after the payload is validated and before the
          *     import lands. Callers should surface a confirmation step.
          */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["RecallExport"];
-                    "application/zip": string;
-                };
-            };
-            responses: {
-                200: components["responses"]["Ok"];
-                /**
-                 * @description Malformed or wrong-schema payload. Body is a plain-text
-                 *     error message safe to surface to the user.
-                 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": string;
-                    };
-                };
-                500: components["responses"]["InternalError"];
-            };
-        };
+        post: operations["ImportData"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1177,26 +591,7 @@ export interface paths {
          *     replayed. After reconnect, the client should re-fetch
          *     `GET /api/match-results` as the authoritative reconciliation.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description SSE stream. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/event-stream": string;
-                    };
-                };
-            };
-        };
+        get: operations["Events"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1220,47 +615,7 @@ export interface paths {
          *     `<img>` previews without round-tripping bytes through the JSON
          *     bridge.
          */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /**
-                     * @description URL-encoded basename of a file in the screenshots folder.
-                     * @example Overwatch%202%20Screenshot%202026.05.10%20-%2021.49.34.41.png
-                     */
-                    filename: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Image bytes. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "image/png": string;
-                        "image/jpeg": string;
-                    };
-                };
-                /** @description Malformed path or filename. */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description File not found, no folder configured, or path traversal rejected. */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        get: operations["GetScreenshot"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1612,4 +967,675 @@ export interface components {
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    GetMatchResults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of match records. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchRecord"][];
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetScreenshotsDir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current path. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example screenshots */
+                        path: string;
+                    };
+                };
+            };
+        };
+    };
+    SetScreenshotsDir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch */
+                    path: string;
+                };
+            };
+        };
+        responses: {
+            /** @description New path echoed back. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        path: string;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    ParseScreenshots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Ok"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetPrometheusEnabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnabledFlag"];
+                };
+            };
+        };
+    };
+    SetPrometheusEnabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnabledFlag"];
+            };
+        };
+        responses: {
+            /** @description New state echoed back. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnabledFlag"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetWatchEnabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnabledFlag"];
+                };
+            };
+        };
+    };
+    SetWatchEnabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnabledFlag"];
+            };
+        };
+        responses: {
+            /** @description New state echoed back. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnabledFlag"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetTesseractStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current engine status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TesseractStatus"];
+                };
+            };
+        };
+    };
+    PickTesseractBinary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example /opt/homebrew/bin/tesseract */
+                    path: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Re-detected status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TesseractStatus"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    ResetTesseractPath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Re-detected status against the default path. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TesseractStatus"];
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    CheckForUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Update availability info. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description True when a GitHub API call completed successfully.
+                         *     False on network failure — show nothing in that case.
+                         * @example true
+                         */
+                        checked: boolean;
+                        /**
+                         * @description True when the running version is a dev build. The
+                         *     latest release is then informational context, not an
+                         *     upgrade prompt.
+                         * @example false
+                         */
+                        dev_build: boolean;
+                        /**
+                         * @description True when the latest release is newer than the running
+                         *     version (only meaningful when dev_build=false).
+                         * @example true
+                         */
+                        available: boolean;
+                        /** @example 0.0.15 */
+                        latest: string;
+                        /** @example https://github.com/sound-barrier/recall/releases/tag/v0.0.15 */
+                        url: string;
+                    };
+                };
+            };
+        };
+    };
+    GetVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current build version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 0.0.13-beta.0 */
+                        version: string;
+                    };
+                };
+            };
+        };
+    };
+    GetOWData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The embedded OW reference data. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Hero names grouped by role, alphabetised within each role.
+                         * @example {
+                         *       "tank": [
+                         *         "Doomfist",
+                         *         "D.va",
+                         *         "Reinhardt"
+                         *       ],
+                         *       "dps": [
+                         *         "Ashe",
+                         *         "Genji",
+                         *         "Tracer"
+                         *       ],
+                         *       "support": [
+                         *         "Ana",
+                         *         "Juno",
+                         *         "Mercy"
+                         *       ]
+                         *     }
+                         */
+                        heroes_by_role: {
+                            [key: string]: string[];
+                        };
+                        /**
+                         * @description Map names grouped by game type, alphabetised within each type.
+                         * @example {
+                         *       "control": [
+                         *         "Antarctic Peninsula",
+                         *         "Busan",
+                         *         "Nepal"
+                         *       ],
+                         *       "escort": [
+                         *         "Dorado",
+                         *         "Watchpoint Gibraltar"
+                         *       ],
+                         *       "hybrid": [
+                         *         "King's Row",
+                         *         "Midtown"
+                         *       ]
+                         *     }
+                         */
+                        maps_by_type: {
+                            [key: string]: string[];
+                        };
+                    };
+                };
+            };
+        };
+    };
+    GetNewScreenshotCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Count. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 3 */
+                        count: number;
+                    };
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    ClearDatabase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Ok"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    ProbeScreenshotsDir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /**
+             * @description Probe result. `found: true` carries the discovered path;
+             *     `found: false` includes the full `tried` list for the
+             *     user to inspect.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProbeResult"];
+                };
+            };
+        };
+    };
+    SetMatchVisibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Match identity (same `match_key` exposed in `MatchRecord`). */
+                    match_key: string;
+                    /** @description True to hide; false to unhide. */
+                    hidden: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Visibility updated. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    SetMatchAnnotation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Match identity (same `match_key` exposed in `MatchRecord`). */
+                    match_key: string;
+                    /**
+                     * @description One of the three leaver scenarios, or `""` to leave
+                     *     untagged. Whole-row deletion happens only when *every*
+                     *     field (leaver, note, replay_code, members) is empty.
+                     * @enum {string}
+                     */
+                    leaver?: "" | "self" | "team" | "enemy";
+                    /** @description Free-text per-match commentary. */
+                    note?: string;
+                    /** @description Overwatch six-character replay ID. No format validation server-side. */
+                    replay_code?: string;
+                    /**
+                     * @description BattleTags of group members for this match. The server
+                     *     trims whitespace, drops empty strings, and deduplicates;
+                     *     the composite-PK on the child table catches any
+                     *     duplicates that slip through.
+                     */
+                    members?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Annotation persisted or cleared. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetDataLocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Path inventory. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataLocation"];
+                };
+            };
+        };
+    };
+    ExportData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JSON download. */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecallExport"];
+                };
+            };
+        };
+    };
+    ExportDataCSV: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ZIP download. */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+        };
+    };
+    ImportData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecallExport"];
+                "application/zip": string;
+            };
+        };
+        responses: {
+            200: components["responses"]["Ok"];
+            /**
+             * @description Malformed or wrong-schema payload. Body is a plain-text
+             *     error message safe to surface to the user.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    Events: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SSE stream. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+        };
+    };
+    GetScreenshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description URL-encoded basename of a file in the screenshots folder.
+                 * @example Overwatch%202%20Screenshot%202026.05.10%20-%2021.49.34.41.png
+                 */
+                filename: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Image bytes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                    "image/jpeg": string;
+                };
+            };
+            /** @description Malformed path or filename. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description File not found, no folder configured, or path traversal rejected. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+}

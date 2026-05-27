@@ -55,6 +55,7 @@ tags:
 paths:
   /api/match-results:
     get:
+      operationId: GetMatchResults
       tags: [Matches]
       summary: List all parsed match records
       description: |
@@ -78,6 +79,7 @@ paths:
 
   /api/screenshots-dir:
     get:
+      operationId: GetScreenshotsDir
       tags: [Settings]
       summary: Get the configured screenshots folder
       description: |
@@ -97,6 +99,7 @@ paths:
                     type: string
                     example: screenshots
     post:
+      operationId: SetScreenshotsDir
       tags: [Settings]
       summary: Set the screenshots folder
       description: |
@@ -141,6 +144,7 @@ paths:
 
   /api/parse:
     post:
+      operationId: ParseScreenshots
       tags: [Pipeline]
       summary: Run a one-shot parse
       description: |
@@ -157,6 +161,7 @@ paths:
 
   /api/prometheus-enabled:
     get:
+      operationId: GetPrometheusEnabled
       tags: [Settings]
       summary: Get the Prometheus metrics-endpoint toggle
       description: |
@@ -170,6 +175,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/EnabledFlag"
     post:
+      operationId: SetPrometheusEnabled
       tags: [Settings]
       summary: Toggle the Prometheus metrics endpoint
       description: |
@@ -196,6 +202,7 @@ paths:
 
   /api/watch-enabled:
     get:
+      operationId: GetWatchEnabled
       tags: [Settings]
       summary: Get the file-watcher toggle
       description: |
@@ -209,6 +216,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/EnabledFlag"
     post:
+      operationId: SetWatchEnabled
       tags: [Settings]
       summary: Toggle the file watcher
       description: |
@@ -235,6 +243,7 @@ paths:
 
   /api/tesseract-status:
     get:
+      operationId: GetTesseractStatus
       tags: [Settings]
       summary: Get the OCR engine status
       description: |
@@ -257,6 +266,7 @@ paths:
 
   /api/tesseract-path:
     post:
+      operationId: PickTesseractBinary
       tags: [Settings]
       summary: Set the Tesseract binary path
       description: |
@@ -302,6 +312,7 @@ paths:
 
   /api/tesseract-reset:
     post:
+      operationId: ResetTesseractPath
       tags: [Settings]
       summary: Reset the Tesseract path to the platform default
       description: |
@@ -320,6 +331,7 @@ paths:
 
   /api/check-update:
     get:
+      operationId: CheckForUpdate
       tags: [Meta]
       summary: Check for a newer release
       description: |
@@ -364,6 +376,7 @@ paths:
 
   /api/version:
     get:
+      operationId: GetVersion
       tags: [Meta]
       summary: App build version
       description: |
@@ -385,6 +398,7 @@ paths:
 
   /api/owdata:
     get:
+      operationId: GetOWData
       tags: [Meta]
       summary: Overwatch reference data (hero roster + map roster)
       description: |
@@ -427,6 +441,7 @@ paths:
 
   /api/new-screenshot-count:
     get:
+      operationId: GetNewScreenshotCount
       tags: [Pipeline]
       summary: Count of new screenshots awaiting parse
       description: |
@@ -450,6 +465,7 @@ paths:
 
   /api/clear-database:
     post:
+      operationId: ClearDatabase
       tags: [Data]
       summary: Wipe all parsed match records
       description: |
@@ -463,6 +479,7 @@ paths:
 
   /api/probe-screenshots-dir:
     get:
+      operationId: ProbeScreenshotsDir
       tags: [Settings]
       summary: Probe the OS for the default Overwatch screenshots folder
       description: |
@@ -492,6 +509,7 @@ paths:
 
   /api/match-visibility:
     post:
+      operationId: SetMatchVisibility
       tags: [Data]
       summary: Hide or unhide a match (soft delete)
       description: |
@@ -530,6 +548,7 @@ paths:
 
   /api/match-annotations:
     post:
+      operationId: SetMatchAnnotation
       tags: [Data]
       summary: Upsert or clear a per-match user annotation
       description: |
@@ -598,6 +617,7 @@ paths:
 
   /api/data-location:
     get:
+      operationId: GetDataLocation
       tags: [Data]
       summary: Report the on-disk paths used by this install
       description: |
@@ -616,6 +636,7 @@ paths:
 
   /api/export:
     get:
+      operationId: ExportData
       tags: [Data]
       summary: Download a full backup of the local parsed-match database
       description: |
@@ -643,6 +664,7 @@ paths:
 
   /api/export.csv:
     get:
+      operationId: ExportDataCSV
       tags: [Data]
       summary: Download a CSV-format backup of the local parsed-match database
       description: |
@@ -671,6 +693,7 @@ paths:
 
   /api/import:
     post:
+      operationId: ImportData
       tags: [Data]
       summary: Restore the local database from a previously-exported backup
       description: |
@@ -714,6 +737,7 @@ paths:
 
   /api/events:
     get:
+      operationId: Events
       tags: [Events]
       summary: Server-Sent Events stream
       description: |
@@ -760,6 +784,7 @@ paths:
 
   /_screenshot/{filename}:
     get:
+      operationId: GetScreenshot
       tags: [Assets]
       summary: Serve a screenshot image from the configured folder
       description: |
