@@ -54,11 +54,17 @@ const props = defineProps<{
   // hiddenMatchCount > 0 so the user has something to reveal.
   showHidden: boolean
   hiddenMatchCount: number
+  // Free-text search over annotation.note content. Empty string =
+  // no search. Case-insensitive substring match — the actual
+  // filtering happens in useMatchFilters; this prop is the input's
+  // current value. Mirrored back via update:note-search.
+  noteSearch: string
 }>()
 
 const emit = defineEmits<{
   'update:filterFrom': [value: string]
   'update:filterTo': [value: string]
+  'update:note-search': [value: string]
   'update:search': [field: string, value: string]
   'toggle-filter-panel': [field: string]
   'close-filter-panel': []
@@ -225,6 +231,36 @@ function searchStr(field: string): string {
     </div>
 
     <div class="filter-bar">
+      <!-- Note search — free-text substring filter over
+           annotation.note. Lives in the filter-bar (between the
+           multi-select grid and the date range / tools row) so it
+           reads in the natural progression "narrow by content →
+           narrow by time → sort / inspect". The × clear control
+           sits inline inside the input shell. -->
+      <div class="note-search" :class="{ active: !!noteSearch.trim() }">
+        <span class="note-search-icon" aria-hidden="true">⌕</span>
+        <input
+          :value="noteSearch"
+          type="text"
+          class="note-search-input"
+          placeholder="Search notes…"
+          aria-label="Search match notes"
+          spellcheck="false"
+          autocomplete="off"
+          @input="emit('update:note-search', ($event.target as HTMLInputElement).value)"
+        >
+        <button
+          v-if="noteSearch"
+          type="button"
+          class="note-search-clear"
+          aria-label="Clear note search"
+          title="Clear search"
+          @click="emit('update:note-search', '')"
+        >
+          ×
+        </button>
+      </div>
+
       <div class="range-group">
         <label class="range-label">
           <span>From</span>
@@ -838,6 +874,94 @@ function searchStr(field: string): string {
   align-items: center;
   gap: 0.55rem;
   flex-wrap: wrap;
+}
+
+/* ─── Note search ──────────────────────────────────────────
+   Free-text substring filter over annotation.note. Single-line
+   shell — magnifier icon on the left, accent-glow on focus,
+   inline × clear button on the right when populated. The
+   `active` class (set by the parent when noteSearch.trim() is
+   non-empty) brightens the border + the icon so the filter's
+   engaged-state matches how the multi-select chips signal
+   `populated`. */
+.note-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.32rem 0.5rem 0.32rem 0.55rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  flex: 0 1 16rem;
+  min-width: 12rem;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.note-search:focus-within {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.note-search.active {
+  border-color: var(--accent-soft);
+}
+.note-search.active .note-search-icon { color: var(--accent); }
+
+.note-search-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--text-faint);
+  transition: color 160ms ease;
+}
+
+.note-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+.note-search-input::placeholder {
+  color: var(--text-faint);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+}
+
+.note-search-input:focus {
+  outline: none;
+}
+
+.note-search-clear {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: transparent;
+  border: 0;
+  color: var(--text-faint);
+  font-size: 1rem;
+  line-height: 1;
+  border-radius: 1px;
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.note-search-clear:hover {
+  color: var(--loss);
+  background: var(--loss-soft);
+}
+
+.note-search-clear:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .range-label {

@@ -107,6 +107,7 @@ const cs = props.cardState
 
 function setFilterFrom(v: string) { f.filterFrom.value = v }
 function setFilterTo(v: string) { f.filterTo.value = v }
+function setNoteSearch(v: string) { f.noteSearch.value = v }
 function setFilterSearch(field: string, value: string) {
   fp.filterSearch.value = { ...fp.filterSearch.value, [field]: value }
 }
@@ -161,6 +162,7 @@ const annotatedMatchCount = computed(
       :results="f.results.value"
       :sshot-types="f.sshotTypes.value"
       :tags="f.tags.value"
+      :note-search="f.noteSearch.value"
       :filter-list="f.filterList"
       :filter-search="fp.filterSearch.value"
       :open-filter="fp.openFilter.value"
@@ -183,6 +185,7 @@ const annotatedMatchCount = computed(
       :filtered-count="f.filteredSorted.value.length"
       @update:filter-from="setFilterFrom"
       @update:filter-to="setFilterTo"
+      @update:note-search="setNoteSearch"
       @update:search="setFilterSearch"
       @toggle-filter-panel="fp.toggleFilterPanel"
       @close-filter-panel="fp.closeFilterPanel"
