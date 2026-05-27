@@ -1,5 +1,121 @@
 # Changelog
 
+## [0.2.0](https://github.com/sound-barrier/recall/compare/v0.1.4...v0.2.0) (2026-05-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **api:** version under /api/v1/ and use REST-conventional verbs
+* **db:** per-screenshot 3NF schema + read-time aggregation
+
+### Features
+
+* **data:** CSV export/import alongside JSON (auto-detect on import) ([5e2b48b](https://github.com/sound-barrier/recall/commit/5e2b48b663070b28a21a5549573d934bef6970c4))
+* **data:** expose DB location + JSON export/import for backups ([42d03d2](https://github.com/sound-barrier/recall/commit/42d03d20091c5ccc1a625b9e03d6bb2c13513453))
+* **db:** record screenshots-folder per parsed screenshot (3NF) ([2b4c0b4](https://github.com/sound-barrier/recall/commit/2b4c0b4a734a99a8b3516cc2fb99c5bada514fe3))
+* **ingest:** live-stream matches + persistent parse-status footer ([5c8c32a](https://github.com/sound-barrier/recall/commit/5c8c32a2f921dbb82c1ff392a691e014096ab421))
+* **matches:** aggregate-stats panel + active-filter pills + filtered-empty state ([aa18b46](https://github.com/sound-barrier/recall/commit/aa18b46a4ce85ae661afa926ddddcb902cfa414b))
+* **matches:** compact-density toggle with inline E/A/D + damage ([70feb59](https://github.com/sound-barrier/recall/commit/70feb5962f1f346712fb1c120b5087d47a4ef483))
+* **matches:** free-text note search in the FilterRail ([f527f27](https://github.com/sound-barrier/recall/commit/f527f27249fafbc1a426cd154266c399a2e9e2e7))
+* **matches:** per-match leaver annotation + W/L/D handling preference ([20fb54d](https://github.com/sound-barrier/recall/commit/20fb54dbd02732f837cd2efb6e286b9042bbb407))
+* **matches:** per-match notes, replay code, group members ([bdea028](https://github.com/sound-barrier/recall/commit/bdea0285c629f082058380fbe1c6fff2332dc805))
+* **matches:** soft-delete (hide) matches with confirmation + unhide ([e153c19](https://github.com/sound-barrier/recall/commit/e153c19fee27f53f1dfb1f7a3f5611c952df382b))
+* **matches:** user-defined match tags with quick-add + filter ([c6992c2](https://github.com/sound-barrier/recall/commit/c6992c2440a206fac8ff7327cff0cb6428a388e1))
+* **owdata:** YAML source-of-truth for OW hero + map roster ([74cc3de](https://github.com/sound-barrier/recall/commit/74cc3defaebd0e67978c30d60bf1c91645f3fcfb))
+* **settings:** auto-detect screenshots folder on first run ([5e03b66](https://github.com/sound-barrier/recall/commit/5e03b6665aff0151e528872aad31e4eb59d7856b))
+* **settings:** RECALL_DATA_DIR env override for dev DB inspection ([6a913fe](https://github.com/sound-barrier/recall/commit/6a913fee553950d262c4da9f34862341da4d9135))
+* **settings:** remove Open-folder buttons from Data Location rows ([aa45b09](https://github.com/sound-barrier/recall/commit/aa45b097ba3ac7c8ebfd18caa24e18228ae3684d))
+* **settings:** UX pass — empty-state hero, swatch theme picker, compact calendar grid ([bf4268e](https://github.com/sound-barrier/recall/commit/bf4268e80482bb77c7214c900d35c169a068352b))
+
+
+### Bug Fixes
+
+* **a11y:** bump --text-mute + drop .min-play-or opacity for WCAG AA ([f463bc2](https://github.com/sound-barrier/recall/commit/f463bc2c554ddd0a43b6f1a0cb3df6e581153538))
+* **api:** pass single struct arg to SetMatchAnnotation in Wails mode ([a6fbb95](https://github.com/sound-barrier/recall/commit/a6fbb9576e5d02224bc03e60bca234cdc1cf3312))
+* **app:** one failing endpoint no longer fakes a "Tesseract not detected" banner ([1816d89](https://github.com/sound-barrier/recall/commit/1816d898e08c7c4d01ec488cbab596c6771801ee))
+* **ci:** point schemathesis at /api/v1/ routes ([da5e98d](https://github.com/sound-barrier/recall/commit/da5e98d3e2524f48468f5cb5eb3f0245992c3814))
+* close out all three TECHNICAL_DEBT.md items ([5029a8e](https://github.com/sound-barrier/recall/commit/5029a8ee3b98df27e2260c789e930891b9e989fb))
+* **matches:** a11y role on annotation marks + hermetic RECALL_DATA_DIR for e2e ([e5e4872](https://github.com/sound-barrier/recall/commit/e5e4872296f6e64a21d8a5db5817d43972a173e0))
+* **parse:** emit match-updated during OCR, not after ([4a2be81](https://github.com/sound-barrier/recall/commit/4a2be81b0849cfa46a6c6531ef1ea68d417488c3))
+* **security:** quote parseErr in parse-failure log (CodeQL go/log-injection) ([dd30572](https://github.com/sound-barrier/recall/commit/dd30572ff374741c1aa7e3ec803644bf2d9f2cdb))
+* **security:** sanitize log lines with user-controlled paths (CodeQL go/log-injection) ([6f6112f](https://github.com/sound-barrier/recall/commit/6f6112fe26825e2d2fe3486fc194aea684fa6754))
+* **settings:** move shared Settings CSS out of scoped block ([38c028e](https://github.com/sound-barrier/recall/commit/38c028e0612f84cfaecd85d8ce369f436de5a8a2))
+* **settings:** un-clip help tooltip + cap long path-value chips ([54da338](https://github.com/sound-barrier/recall/commit/54da338f98ba3035720c46e35602ef21a8590b61))
+* **test:** allow .steam / .wine prefixes under HOME in probe test ([277563c](https://github.com/sound-barrier/recall/commit/277563c171ee1df1ec02441cb7a6d8e4a03a4541))
+* **theme:** drop Settings-only Futura typeface override ([56f9989](https://github.com/sound-barrier/recall/commit/56f998982c7db32f75bfb13fdad5be10eb07e7ca))
+* **theme:** page-wide opacity wash after first Settings visit ([80a2c66](https://github.com/sound-barrier/recall/commit/80a2c668443293e2b0d6ea947dcff2c472a9226a))
+* **theme:** rebuild light palette to clear WCAG AA across surfaces ([eb7ae87](https://github.com/sound-barrier/recall/commit/eb7ae87c3f0ad37a1da5b3aa1481a8110346c154))
+
+
+### Refactors
+
+* **api:** collapse Wails-vs-fetch branching into _dualVoid helper ([404bf05](https://github.com/sound-barrier/recall/commit/404bf058afb4a6767366a64ec2b8902c752b65ae))
+* **api:** version under /api/v1/ and use REST-conventional verbs ([239ca4e](https://github.com/sound-barrier/recall/commit/239ca4edf89ce1e7c0504e852e03dbefd2228845))
+* **app:** extract backup/restore flow into useBackupRestore composable ([f2c1687](https://github.com/sound-barrier/recall/commit/f2c16879ae897167a3a1f3d6e4f10cec807d4d7b))
+* **app:** extract clear-database flow into useClearDatabase composable ([4b58791](https://github.com/sound-barrier/recall/commit/4b587914d0842f51339089d8ad4e53da1085e133))
+* **app:** extract feature toggle pattern into useFeatureToggle ([abfc735](https://github.com/sound-barrier/recall/commit/abfc7353173b9dfef23f96dde92a1637c7822d00))
+* **app:** extract modal focus trap into useModalFocusTrap composable ([4e922ce](https://github.com/sound-barrier/recall/commit/4e922ce5d6d8810fd612f0df06b2021e0055081a))
+* **app:** extract screenshots dir + probe into useScreenshotsDir ([4b0483e](https://github.com/sound-barrier/recall/commit/4b0483e4b1025166f3bd80020dfc5df745caa80b))
+* **app:** extract SSE event subscriptions into useEventStream ([48ab518](https://github.com/sound-barrier/recall/commit/48ab5187119445f977e755aa5019f0548e278cfa))
+* **app:** extract tab keyboard nav into useTabKeyboardNav composable ([3474c2a](https://github.com/sound-barrier/recall/commit/3474c2a10fb3a4dc88b885ee722b0e85423fb04b))
+* **app:** extract Tesseract status into useTesseractStatus composable ([8b9bb9d](https://github.com/sound-barrier/recall/commit/8b9bb9d245a48477985e03022a04cfa300982a38))
+* **composables:** collapse 7-way persisted-preference duplication into usePersistedRef ([5728ba6](https://github.com/sound-barrier/recall/commit/5728ba6a02faf7aa8eed6c8c6493c31dfef432d9))
+* **db:** drop match_annotations migration plumbing — 0.2.0 is a clean cut ([1c35c59](https://github.com/sound-barrier/recall/commit/1c35c59f5a79c9b7b9a4de8d4a3f3ec1e8cf8a35))
+* **db:** per-screenshot 3NF schema + read-time aggregation ([ecc4f2f](https://github.com/sound-barrier/recall/commit/ecc4f2f1832c00ecc7e17704c88092b5d652c0e8))
+* **db:** split store.go into file-per-concern ([1328879](https://github.com/sound-barrier/recall/commit/13288798a49e72c6c68e1f91614c46941418dbca))
+* **filter-rail:** extract MinPlayInput + LeaverSegmented sub-components ([f1810b5](https://github.com/sound-barrier/recall/commit/f1810b55b37e722613028f7e90c542bbdcde13cb))
+* **match-card:** extract MatchCardDanger for the soft-delete row ([577a82a](https://github.com/sound-barrier/recall/commit/577a82a04d753624e4251991ee5742e50a280d21))
+* **matches:** extract MatchCardExpanded (annotation + stats + sources) ([b956c29](https://github.com/sound-barrier/recall/commit/b956c29904aa1d2ecfb47e4cff305ce114cb04d2))
+* **matches:** extract MatchCardHeader (collapsed view) ([dd7a155](https://github.com/sound-barrier/recall/commit/dd7a155c7ed7070f7b9d9a456ada2e0a73103a2c))
+* **settings:** extract SettingsAdvanced panel (Grafana + Clear DB) ([a56d8dd](https://github.com/sound-barrier/recall/commit/a56d8ddfd2344a1f808f1446a06ec398ef319e9b))
+* **settings:** extract SettingsAppearance panel (theme swatches) ([5010f8f](https://github.com/sound-barrier/recall/commit/5010f8fd4c4036be7502bb7659637bf89625c5b4))
+* **settings:** extract SettingsBackupRestore panel ([c1d0aba](https://github.com/sound-barrier/recall/commit/c1d0aba1020b6bf7c2c8e5be045e41b8b3ace49b))
+* **settings:** extract SettingsCalendar panel; downscope item [#5](https://github.com/sound-barrier/recall/issues/5) ([fe3076e](https://github.com/sound-barrier/recall/commit/fe3076eaa28f73ddde0361a6dd281e5ecc96bf0b))
+* **settings:** extract SettingsEngine panel (Tesseract) ([07b42b4](https://github.com/sound-barrier/recall/commit/07b42b485f26a9a553d155c84d488bca4c5c8fd3))
+* **settings:** extract SettingsFolders panel (Directories) ([7cef0eb](https://github.com/sound-barrier/recall/commit/7cef0eb92c725c697c6b5192d2e9adc1b942124b))
+* **testing:** single dbtest.Fake replaces the two divergent fakeStores ([031b100](https://github.com/sound-barrier/recall/commit/031b100dcd56f3c3c6e047aa60d8a757f62aa1fb))
+* **ui:** consolidate config in Settings; Parse tab does one job ([c09c48b](https://github.com/sound-barrier/recall/commit/c09c48b8913dae5dbcde27c0eeaabc48435c6ccc))
+
+
+### Documentation
+
+* add FEATURES.md feature backlog with triage workflow ([746c589](https://github.com/sound-barrier/recall/commit/746c589b3558fb9282032b0a659ce7c9e9f48f30))
+* **api:** add operationId to every OpenAPI route ([e8adf23](https://github.com/sound-barrier/recall/commit/e8adf23bf0e5619d17a94bb0323f57fd02ac40cb))
+* **app:** drop orphan TECHNICAL_DEBT.md [#1](https://github.com/sound-barrier/recall/issues/1) reference ([6e081b7](https://github.com/sound-barrier/recall/commit/6e081b7b5846be6089b43a191c2bda831a118d71))
+* capture future Matches-view UX recommendations ([a49b7ce](https://github.com/sound-barrier/recall/commit/a49b7ce135d6a4a3df09acd1ba5c286c9aa165f2))
+* **claude:** canonical REST API design guide ([f90c138](https://github.com/sound-barrier/recall/commit/f90c1388e2b18c325ca55760d37d0ee948231217))
+* **claude:** fix stale references after API redesign ([97da36b](https://github.com/sound-barrier/recall/commit/97da36b7f0ecc06710266eea0635d55fc7637541))
+* **claude:** pin three conventions surfaced by the match-deletion PR ([8fb943b](https://github.com/sound-barrier/recall/commit/8fb943bcc1c770f87eaa17009232f6f19ef03df5))
+* **claude:** refresh stale rosters + surface e2e in make/composables sections ([bbf8df0](https://github.com/sound-barrier/recall/commit/bbf8df06d6e3cc7e875cdc426d2d0da6c454964f))
+* **claude:** repair currency drift from per-screenshot-table refactor ([e774107](https://github.com/sound-barrier/recall/commit/e774107a9c320ba1d38a741b7a7011cd52e2bd23))
+* **claude:** require failing Playwright e2e before any UI feature ([2f8a9c0](https://github.com/sound-barrier/recall/commit/2f8a9c0fa393fb80655080c1d2f85e0eae021de8))
+* **claude:** tighten CLAUDE.md prose — drop ~22% of bytes, keep all rules ([6a86b88](https://github.com/sound-barrier/recall/commit/6a86b8892677d0e9eb9474a713923178dd232c24))
+* **claude:** trim CLAUDE.md by ~36% via 6 targeted reductions ([64c53c2](https://github.com/sound-barrier/recall/commit/64c53c24adaeb301451d85c18f2575581626c4e1))
+* **debt:** capture audit findings — 10 prioritized debt items ([2c999b2](https://github.com/sound-barrier/recall/commit/2c999b22f20fae49d8e4077475a11d7027260a3c))
+* **debt:** delete paid-down SFC-extraction item ([71c5b3e](https://github.com/sound-barrier/recall/commit/71c5b3ed894785d48d793bd85bde1862e064325d))
+* **features:** record what's shipped + expand the triaging backlog ([324fb2a](https://github.com/sound-barrier/recall/commit/324fb2a0d13b887cf1f884682c6f67e7767c4c26))
+* Mei→Mizuki, Ingest→Parse, Windows-first landing page ([3897006](https://github.com/sound-barrier/recall/commit/3897006009dd2c8470ea5db4ef17d507115270fe))
+* record three debt items accrued this session ([68c04b3](https://github.com/sound-barrier/recall/commit/68c04b3f5f7541dcb06cedef9287210e3f1b46c7))
+* reflect the per-screenshot 3NF schema in user-facing copy ([f9db9dd](https://github.com/sound-barrier/recall/commit/f9db9dd6c0d7a303997fc511905c71b6a92073dc))
+* rephrase to dodge typos false-positives on SELECT-s / SUMMARY-s ([b394404](https://github.com/sound-barrier/recall/commit/b394404876efbef11e4dc79c42dd625787348dd6))
+
+
+### CI
+
+* always report playwright + required-checkboxes contexts ([59778bd](https://github.com/sound-barrier/recall/commit/59778bdbd61ae9573c2ecf48db6c0e6b8cde58ff))
+* **codeql:** switch to security-and-quality query suite ([bc9ca46](https://github.com/sound-barrier/recall/commit/bc9ca46bac04f6e855d309af87509b02394602ab))
+
+
+### Tests
+
+* **annotations:** migration rebuild + server e2e + member edge cases ([71a4c32](https://github.com/sound-barrier/recall/commit/71a4c3262b6f5ad9f34cbcca25de294b48fdc3aa))
+* **data:** vitest coverage for export/import + data-location UI ([56dec0e](https://github.com/sound-barrier/recall/commit/56dec0ea438ba29710499e22961d3b112756e357))
+* **frontend:** cover ParseProgressPanel + useOWData ([de49be3](https://github.com/sound-barrier/recall/commit/de49be3104d1eb16aa0f6a218f5a099faf3b0d93))
+* **matches:** cover soft-delete end-to-end + fix 204 JSON-parse bug ([dd7f5b9](https://github.com/sound-barrier/recall/commit/dd7f5b9307cd519b352890e9bbce78787f555e08))
+* **parser:** assert screenshot_type alongside MatchResult in goldens ([b41a504](https://github.com/sound-barrier/recall/commit/b41a504e4436b93fe896b363812a0ee939db5926))
+* **parser:** pin scoreboard-geometry helpers with crafted image fixtures ([004a6b3](https://github.com/sound-barrier/recall/commit/004a6b3d9a745323a3a7ffa848e3805364a534d0))
+* **parser:** project goldens onto per-screenshot-type shapes ([fd5d7a5](https://github.com/sound-barrier/recall/commit/fd5d7a58b71166d78ce408af40f15ec20339c179))
+
 ## [0.1.4](https://github.com/sound-barrier/recall/compare/v0.1.3...v0.1.4) (2026-05-25)
 
 
