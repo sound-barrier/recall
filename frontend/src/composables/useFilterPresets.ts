@@ -70,10 +70,7 @@ export function parsePresetSnapshot(raw: unknown): FilterPresetSnapshot {
       sshot:  strArr(f.sshot),
       tags:   strArr(f.tags),
     },
-    // Accept either the new `matchQuery` key (post-rename) or the
-    // legacy `noteSearch` key (presets saved before the global search
-    // shipped) so older localStorage payloads keep loading.
-    matchQuery:     str(obj.matchQuery ?? obj.noteSearch),
+    matchQuery:     str(obj.matchQuery),
     filterFrom:     str(obj.filterFrom),
     filterTo:       str(obj.filterTo),
     sortDir:        obj.sortDir === 'asc' ? 'asc' : 'desc',
