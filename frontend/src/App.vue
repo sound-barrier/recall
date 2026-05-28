@@ -732,7 +732,7 @@ const unknownRecords = computed(() =>
 // this the user would have to click Parse manually to see new matches
 // land in the UI even though the data is already in SQLite.
 
-const { themeMode, toggleTheme } = useTheme()
+const { themeMode, setTheme } = useTheme()
 
 onMounted(() => {
   // Restore last-parse timestamp so the Settings page shows the right
@@ -985,7 +985,7 @@ useEventStream({
           :clearing-d-b="clearingDB"
           @pick-screenshots-dir="pickDir"
           @detect-screenshots-dir="detectDir"
-          @toggle-theme="toggleTheme"
+          @set-theme="setTheme"
           @set-week-start="setWeekStart"
           @go-to-view="goToView"
           @pick-tesseract="pickTesseractBinary"

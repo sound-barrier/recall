@@ -69,7 +69,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'pick-screenshots-dir':   []
   'detect-screenshots-dir': []
-  'toggle-theme':           []
+  'set-theme':              [mode: ThemeMode]
   'set-week-start':         [next: WeekStart]
   'go-to-view':             [next: 'settings' | 'ingest' | 'matches' | 'unknown']
   // Engine
@@ -213,7 +213,7 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
 
     <SettingsAppearance
       :theme-mode="themeMode"
-      @toggle-theme="() => emit('toggle-theme')"
+      @set-theme="(mode: ThemeMode) => emit('set-theme', mode)"
     />
 
     <SettingsCalendar
