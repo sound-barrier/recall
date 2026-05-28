@@ -23,18 +23,66 @@ func TestSetLeaverAnnotation_RejectsEmptyMatchKey(t *testing.T) {
 	}
 }
 
-func TestSetLeaverAnnotation_PersistsThroughStore(t *testing.T) {
+func TestSetLeaverAnnotation_PersistsLeaver(t *testing.T) {
 	fs := &fakeStore{}
 	a := NewWithStore(fs)
-	if err := a.SetLeaverAnnotation("k1", "team", "ally dc"); err != nil {
+	// The `note` parameter is ignored — the method now preserves
+	// prev.Note (which is empty on a fresh row). Pass a non-empty
+	// value to assert it does NOT bleed through into the stored row.
+	if err := a.SetLeaverAnnotation("k1", "team", "this should be ignored"); err != nil {
 		t.Fatalf("SetLeaverAnnotation: %v", err)
 	}
 	got, err := fs.LoadAnnotations()
 	if err != nil {
 		t.Fatalf("LoadAnnotations: %v", err)
 	}
-	if got["k1"].Leaver != "team" || got["k1"].Note != "ally dc" {
-		t.Errorf("expected (team, ally dc), got %+v", got["k1"])
+	if got["k1"].Leaver != "team" {
+		t.Errorf("leaver = %q, want team", got["k1"].Leaver)
+	}
+	if got["k1"].Note != "" {
+		t.Errorf("note should stay empty when prev had none; got %q", got["k1"].Note)
+	}
+}
+
+// Regression: clicking a leaver chip on a match that already carries
+// a saved note + replay_code + members + tags must NOT wipe those
+// fields. Earlier versions wrote the passed `note` arg through; the
+// production caller passes "" so every leaver click silently erased
+// the saved note.
+func TestSetLeaverAnnotation_PreservesAllOtherFields(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	// Seed a full annotation row.
+	if err := a.SetMatchAnnotation(AnnotationInput{
+		MatchKey:   "k1",
+		Leaver:     "",
+		Note:       "huge clutch on point B",
+		ReplayCode: "7H1K9P",
+		Members:    []string{"Apollo#11234"},
+		Tags:       []string{"stack"},
+	}); err != nil {
+		t.Fatalf("seed SetMatchAnnotation: %v", err)
+	}
+	// Click a leaver chip — the legacy entry point.
+	if err := a.SetLeaverAnnotation("k1", "team", ""); err != nil {
+		t.Fatalf("SetLeaverAnnotation: %v", err)
+	}
+	got, _ := fs.LoadAnnotations()
+	out := got["k1"]
+	if out.Leaver != "team" {
+		t.Errorf("leaver = %q, want team", out.Leaver)
+	}
+	if out.Note != "huge clutch on point B" {
+		t.Errorf("note lost: got %q", out.Note)
+	}
+	if out.ReplayCode != "7H1K9P" {
+		t.Errorf("replay_code lost: got %q", out.ReplayCode)
+	}
+	if len(out.Members) != 1 || out.Members[0] != "Apollo#11234" {
+		t.Errorf("members lost: %+v", out.Members)
+	}
+	if len(out.Tags) != 1 || out.Tags[0] != "stack" {
+		t.Errorf("tags lost: %+v", out.Tags)
 	}
 }
 
