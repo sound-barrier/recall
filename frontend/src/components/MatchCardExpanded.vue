@@ -12,6 +12,7 @@ import {
   highlightSubstring,
 } from '../match-helpers'
 import { useOWData } from '../composables/useOWData'
+import { useHeroesExpanded } from '../composables/useHeroesExpanded'
 import MatchCardDanger from './MatchCardDanger.vue'
 
 // Expanded match-card body: leaver chooser → free-text annotation
@@ -27,6 +28,11 @@ import MatchCardDanger from './MatchCardDanger.vue'
 // persist).
 
 const ow = useOWData()
+
+// Global Heroes-Played collapse preference. Persists once the user
+// flips it on any card; default expanded preserves the long-standing
+// open-by-default behaviour.
+const { heroesExpanded, toggleHeroesExpanded } = useHeroesExpanded()
 
 const props = defineProps<{
   record: MatchRecord
@@ -93,6 +99,17 @@ watch(
 const hasAnyNote = computed(
   () => !!(noteDraft.value.trim() || replayDraft.value.trim() || memberDraft.value.length || tagDraft.value.length),
 )
+
+// Top heroes by percent_played for the collapsed Heroes-Played
+// summary line. Two is enough to fit on one row alongside the count
+// + chev without wrapping on the common card width; the user opens
+// the block if they need the long tail.
+const topHeroesPlayed = computed(() => {
+  const all = props.record.data?.heroes_played ?? []
+  return [...all]
+    .sort((a, b) => (b.percent_played ?? 0) - (a.percent_played ?? 0))
+    .slice(0, 2)
+})
 
 // Click-to-edit state for the Note row. The preview is the default
 // surface when the note is non-empty: a div renders the note text
@@ -338,145 +355,177 @@ function onTagKeydown(e: KeyboardEvent) {
       </button>
     </div>
 
-    <!-- Free-text annotation block. Each row commits independently
-         on blur or chip add, never on every keystroke. -->
-    <div class="match-notes" :class="{ active: hasAnyNote }">
-      <div class="match-notes-row">
-        <label class="match-notes-label" :for="`note-${record.match_key}`">Note</label>
-        <!-- Preview surface: a div that renders the saved note with
-             <mark> hits against the live FilterRail query. Click
-             promotes to the textarea editor (focused at click
-             position). The textarea is the canonical editor and the
-             one labelled by the <label for=…>. -->
+    <!-- MATCH JOURNAL — the user's notes about the match. Four cells
+         in a hierarchy: Note (primary, full-width), Replay code +
+         Squad (secondary, two-column row), Tags (full-width pill
+         tray). Each cell commits independently on blur / Enter / chip
+         add; the savedFlash class pulses the cell border instead of
+         taking a 3rd grid column. -->
+    <section
+      class="match-journal"
+      :class="{ populated: hasAnyNote }"
+      :aria-label="`Match journal — ${hasAnyNote ? 'has annotations' : 'empty'}`"
+    >
+      <div class="journal-head">
+        <span class="journal-head-title">MATCH JOURNAL</span>
+        <span class="journal-head-meta" :data-status="hasAnyNote ? 'logged' : 'empty'">
+          <span class="journal-head-pip" aria-hidden="true" />
+          {{ hasAnyNote ? 'LOGGED' : 'AWAITING ENTRY' }}
+        </span>
+      </div>
+
+      <div class="journal-body">
+        <!-- Note (primary) — same click-to-edit preview + textarea
+             swap as before, just hosted inside the journal cell shell. -->
         <div
-          v-if="!isEditingNote && noteDraft"
-          class="match-notes-preview"
-          :class="{ 'has-hits': noteHighlightSegments.some(s => s.hit) }"
-          role="textbox"
-          aria-readonly="true"
-          tabindex="0"
-          title="Click to edit"
-          @click="enterEditMode"
-          @keydown.enter.prevent="enterEditMode($event as unknown as MouseEvent)"
-          @keydown.space.prevent="enterEditMode($event as unknown as MouseEvent)"
+          class="journal-cell journal-cell-note"
+          :class="{ saved: savedFlash === 'note', filled: !!noteDraft.trim() }"
         >
-          <template v-for="(seg, i) in noteHighlightSegments" :key="i">
-            <mark v-if="seg.hit" class="note-hit">{{ seg.text }}</mark>
-            <template v-else>{{ seg.text }}</template>
-          </template>
-        </div>
-        <textarea
-          v-else
-          :id="`note-${record.match_key}`"
-          ref="noteTextareaRef"
-          v-model="noteDraft"
-          class="match-notes-textarea"
-          rows="2"
-          placeholder="Quick context — what happened this match?"
-          @blur="exitNoteEditMode"
-        />
-        <span v-if="savedFlash === 'note'" class="match-notes-saved" aria-hidden="true">saved ✓</span>
-      </div>
-
-      <div class="match-notes-row">
-        <label class="match-notes-label" :for="`replay-${record.match_key}`">Replay</label>
-        <input
-          :id="`replay-${record.match_key}`"
-          v-model="replayDraft"
-          class="match-notes-input mono"
-          placeholder="6-char OW replay code (e.g. 7H1K9P)"
-          spellcheck="false"
-          autocomplete="off"
-          maxlength="32"
-          @blur="commitAnnotation('replay')"
-          @keydown.enter.prevent="commitAnnotation('replay')"
-        >
-        <span v-if="savedFlash === 'replay'" class="match-notes-saved" aria-hidden="true">saved ✓</span>
-      </div>
-
-      <div class="match-notes-row">
-        <label class="match-notes-label" :for="`members-${record.match_key}`">Group</label>
-        <div class="match-notes-members">
-          <span
-            v-for="m in memberDraft"
-            :key="m"
-            class="member-chip"
+          <label class="journal-eyebrow" :for="`note-${record.match_key}`">Note</label>
+          <div
+            v-if="!isEditingNote && noteDraft"
+            class="match-notes-preview"
+            :class="{ 'has-hits': noteHighlightSegments.some(s => s.hit) }"
+            role="textbox"
+            aria-readonly="true"
+            tabindex="0"
+            title="Click to edit"
+            @click="enterEditMode"
+            @keydown.enter.prevent="enterEditMode($event as unknown as MouseEvent)"
+            @keydown.space.prevent="enterEditMode($event as unknown as MouseEvent)"
           >
-            <span class="member-chip-tag">{{ m }}</span>
-            <button
-              type="button"
-              class="member-chip-remove"
-              :aria-label="`Remove ${m} from group`"
-              @click="removeMember(m)"
+            <template v-for="(seg, i) in noteHighlightSegments" :key="i">
+              <mark v-if="seg.hit" class="note-hit">{{ seg.text }}</mark>
+              <template v-else>{{ seg.text }}</template>
+            </template>
+          </div>
+          <textarea
+            v-else
+            :id="`note-${record.match_key}`"
+            ref="noteTextareaRef"
+            v-model="noteDraft"
+            class="match-notes-textarea"
+            rows="2"
+            placeholder="What happened this match? Mistakes, wins, who was carrying…"
+            @blur="exitNoteEditMode"
+          />
+        </div>
+
+        <!-- Replay + Squad on one row — the replay code is intrinsically
+             short (~10 chars), so pairing it with the wider Squad chip
+             tray reclaims the vertical space the 4-row layout wasted. -->
+        <div class="journal-row-2col">
+          <div
+            class="journal-cell journal-cell-replay"
+            :class="{ saved: savedFlash === 'replay', filled: !!replayDraft.trim() }"
+          >
+            <label class="journal-eyebrow" :for="`replay-${record.match_key}`">Replay code</label>
+            <input
+              :id="`replay-${record.match_key}`"
+              v-model="replayDraft"
+              class="match-notes-input mono"
+              placeholder="e.g. 7H1K9P"
+              spellcheck="false"
+              autocomplete="off"
+              maxlength="32"
+              @blur="commitAnnotation('replay')"
+              @keydown.enter.prevent="commitAnnotation('replay')"
             >
-              ×
-            </button>
-          </span>
-          <input
-            :id="`members-${record.match_key}`"
-            v-model="memberInput"
-            class="match-notes-input member-input mono"
-            placeholder="Add BattleTag · Enter to confirm"
-            spellcheck="false"
-            autocomplete="off"
-            @keydown="onMemberKeydown"
-            @blur="addMember"
-          >
-        </div>
-        <span v-if="savedFlash === 'members'" class="match-notes-saved" aria-hidden="true">saved ✓</span>
-      </div>
+          </div>
 
-      <!-- Tags row — three quick-add toggles for the conventional
-           tags (stack / stream / placement), a chip list of
-           currently-applied tags, and a free-form input for custom
-           tags. Same commit-on-action pattern as members; Backspace
-           on an empty input removes the last chip. -->
-      <div class="match-notes-row">
-        <span class="match-notes-label">Tags</span>
-        <div class="match-tags-editor">
-          <button
-            v-for="t in NAMED_TAGS"
-            :key="t"
-            type="button"
-            class="match-tag-toggle"
-            :class="{ active: hasTag(t) }"
-            :data-tag="t"
-            :data-tag-add="t"
-            :aria-pressed="hasTag(t)"
-            @click="toggleNamedTag(t)"
+          <div
+            class="journal-cell journal-cell-squad"
+            :class="{ saved: savedFlash === 'members', filled: memberDraft.length > 0 }"
           >
-            <span class="match-tag-mark" aria-hidden="true" />
-            <span class="match-tag-text">{{ t }}</span>
-          </button>
-          <span
-            v-for="t in tagDraft.filter(x => !(NAMED_TAGS as readonly string[]).includes(x))"
-            :key="t"
-            class="match-tag removable"
-            :data-tag="t"
-          >
-            <span class="match-tag-mark" aria-hidden="true" />
-            <span class="match-tag-text">{{ t }}</span>
-            <button
-              type="button"
-              class="match-tag-x"
-              :aria-label="`Remove ${t} tag`"
-              @click="removeTag(t)"
-            >×</button>
-          </span>
-          <input
-            :id="`tags-${record.match_key}`"
-            v-model="tagInput"
-            class="match-tag-input"
-            placeholder="add tag"
-            spellcheck="false"
-            autocomplete="off"
-            @keydown="onTagKeydown"
-            @blur="addCustomTag"
-          >
+            <label class="journal-eyebrow" :for="`members-${record.match_key}`">
+              Group
+              <span v-if="memberDraft.length" class="journal-eyebrow-count">· {{ memberDraft.length }}</span>
+            </label>
+            <div class="match-notes-members">
+              <span
+                v-for="m in memberDraft"
+                :key="m"
+                class="member-chip"
+              >
+                <span class="member-chip-tag">{{ m }}</span>
+                <button
+                  type="button"
+                  class="member-chip-remove"
+                  :aria-label="`Remove ${m} from group`"
+                  @click="removeMember(m)"
+                >
+                  ×
+                </button>
+              </span>
+              <input
+                :id="`members-${record.match_key}`"
+                v-model="memberInput"
+                class="match-notes-input member-input mono"
+                :placeholder="memberDraft.length ? 'Add BattleTag…' : 'Add BattleTag · Enter to confirm'"
+                spellcheck="false"
+                autocomplete="off"
+                @keydown="onMemberKeydown"
+                @blur="addMember"
+              >
+            </div>
+          </div>
         </div>
-        <span v-if="savedFlash === 'tags'" class="match-notes-saved" aria-hidden="true">saved ✓</span>
+
+        <!-- Tags — three quick-add toggles for the conventional vocabulary,
+             a chip list of currently-applied custom tags, and a free-form
+             input. Backspace on an empty input removes the last chip. -->
+        <div
+          class="journal-cell journal-cell-tags"
+          :class="{ saved: savedFlash === 'tags', filled: tagDraft.length > 0 }"
+        >
+          <span class="journal-eyebrow">
+            Tags
+            <span v-if="tagDraft.length" class="journal-eyebrow-count">· {{ tagDraft.length }}</span>
+          </span>
+          <div class="match-tags-editor">
+            <button
+              v-for="t in NAMED_TAGS"
+              :key="t"
+              type="button"
+              class="match-tag-toggle"
+              :class="{ active: hasTag(t) }"
+              :data-tag="t"
+              :data-tag-add="t"
+              :aria-pressed="hasTag(t)"
+              @click="toggleNamedTag(t)"
+            >
+              <span class="match-tag-mark" aria-hidden="true" />
+              <span class="match-tag-text">{{ t }}</span>
+            </button>
+            <span
+              v-for="t in tagDraft.filter(x => !(NAMED_TAGS as readonly string[]).includes(x))"
+              :key="t"
+              class="match-tag removable"
+              :data-tag="t"
+            >
+              <span class="match-tag-mark" aria-hidden="true" />
+              <span class="match-tag-text">{{ t }}</span>
+              <button
+                type="button"
+                class="match-tag-x"
+                :aria-label="`Remove ${t} tag`"
+                @click="removeTag(t)"
+              >×</button>
+            </span>
+            <input
+              :id="`tags-${record.match_key}`"
+              v-model="tagInput"
+              class="match-tag-input"
+              placeholder="add tag"
+              spellcheck="false"
+              autocomplete="off"
+              @keydown="onTagKeydown"
+              @blur="addCustomTag"
+            >
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
 
     <div v-if="record.data?.final_score" class="meta-row">
       <span class="meta-eyebrow">Final Score</span>
@@ -534,11 +583,38 @@ function onTagKeydown(e: KeyboardEvent) {
       </div>
     </div>
 
-    <div v-if="record.data?.heroes_played?.length" class="heroes-played">
-      <div class="block-eyebrow">
-        Heroes Played
-      </div>
-      <div class="heroes-played-items">
+    <div v-if="record.data?.heroes_played?.length" class="heroes-played" :class="{ collapsed: !heroesExpanded }">
+      <button
+        type="button"
+        class="heroes-played-toggle"
+        :aria-expanded="heroesExpanded"
+        :aria-controls="`heroes-played-${record.match_key}`"
+        :title="heroesExpanded ? 'Collapse heroes played' : 'Expand heroes played'"
+        @click="toggleHeroesExpanded"
+      >
+        <span class="chev small" :class="{ open: heroesExpanded }" aria-hidden="true">›</span>
+        <span class="block-eyebrow">Heroes Played</span>
+        <span class="heroes-count" aria-hidden="true">{{ record.data.heroes_played.length }}</span>
+        <span v-if="!heroesExpanded" class="heroes-summary">
+          <span
+            v-for="(hp, idx) in topHeroesPlayed"
+            :key="hp.hero"
+            class="heroes-summary-entry"
+          >
+            <span v-if="idx > 0" class="heroes-summary-sep" aria-hidden="true">·</span>
+            <span class="heroes-summary-name">{{ ow.heroDisplayName(hp.hero) }}</span>
+            <span class="heroes-summary-pct">{{ hp.percent_played }}%</span>
+          </span>
+          <span v-if="(record.data.heroes_played.length ?? 0) > topHeroesPlayed.length" class="heroes-summary-more">
+            +{{ (record.data.heroes_played.length ?? 0) - topHeroesPlayed.length }}
+          </span>
+        </span>
+      </button>
+      <div
+        v-if="heroesExpanded"
+        :id="`heroes-played-${record.match_key}`"
+        class="heroes-played-items"
+      >
         <div v-for="hp in record.data.heroes_played" :key="hp.hero" class="hero-block">
           <div class="hero-header">
             <button
@@ -861,10 +937,138 @@ function onTagKeydown(e: KeyboardEvent) {
 
 /* ─── Heroes Played list ─────────────────────────────────── */
 
+/* Collapsible block — when collapsed the entire .hero-block grid is
+   gone from the DOM (v-if), but the header eyebrow stays as a
+   single-line summary so the user reads the count + top heroes
+   without expanding. Default is expanded; the preference persists in
+   localStorage via useHeroesExpanded so a user with very long match
+   histories collapses once and the choice survives every subsequent
+   card open. */
+
+.heroes-played.collapsed { margin-bottom: -0.2rem; }
+
+.heroes-played-toggle {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.35rem 0.45rem 0.35rem 0.1rem;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 2px;
+  margin-bottom: 0.55rem;
+  transition: background 140ms ease;
+}
+
+.heroes-played-toggle:hover { background: var(--surface-2); }
+
+.heroes-played-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.heroes-played .chev.small {
+  display: inline-block;
+  font-family: var(--mono);
+  color: var(--accent);
+  transition: transform 200ms ease;
+  transform: rotate(90deg);
+  width: 0.9rem;
+  text-align: center;
+}
+
+.heroes-played .chev.small.open { transform: rotate(90deg); }
+.heroes-played.collapsed .chev.small { transform: rotate(0deg); }
+
+.heroes-played-toggle .block-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.heroes-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  padding: 0 0.32rem;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 1px;
+  font-feature-settings: "tnum";
+}
+
+.heroes-summary {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-left: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-mute);
+  font-feature-settings: "tnum";
+}
+
+.heroes-summary-entry {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.heroes-summary-sep { color: var(--text-faint); }
+
+.heroes-summary-name {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.heroes-summary-pct {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.heroes-summary-more {
+  padding: 0.05rem 0.32rem;
+  background: var(--surface-3);
+  border: 1px dashed var(--border);
+  color: var(--text-faint);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  border-radius: 1px;
+}
+
 .heroes-played-items {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  animation: heroes-items-in 200ms ease both;
+}
+
+@keyframes heroes-items-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroes-played-items { animation: none; }
 }
 
 .hero-block {
@@ -1178,74 +1382,242 @@ function onTagKeydown(e: KeyboardEvent) {
 .leaver-chip-glyph.leaver-enemy { color: var(--win); }
 .leaver-chip.active .leaver-chip-glyph { color: var(--accent); }
 
-/* ─── Match notes block ──────────────────────────────────── */
+/* ─── Match Journal ──────────────────────────────────────── */
 
-/* Three-row grid under the leaver chooser: Note textarea, Replay
-   input, Members tag-input. Each row commits independently on blur /
-   Enter; the unified backend call writes all four annotation fields
-   in one round-trip so partial state can't strand a draft. */
-.match-notes {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
+/* The user's annotations on a match — Note, Replay code, Group
+   members, Tags. Promoted to its own panel because (a) the user
+   explicitly flagged the section as important, and (b) the previous
+   one-input-per-row layout took 4× the vertical space the data
+   actually needs. New layout:
+     1. Striped header strip → reads as a dossier / after-action
+        report rather than a generic form.
+     2. Cells with their own eyebrow + inline focus-within glow →
+        each field feels distinct without forcing 4 horizontal labels.
+     3. Replay + Group share a row → reclaims one row of vertical
+        space because the replay code is intrinsically narrow.
+     4. saved✓ pulse on the cell border (not a 3rd grid column) → no
+        layout shift when commit confirms; the affordance lives on
+        the cell it confirms. */
+
+.match-journal {
+  position: relative;
   margin: 0 0 0.85rem;
-  padding: 0.65rem 0.75rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 2px;
-  transition: border-color 200ms ease;
+  overflow: hidden;
+  transition: border-color 220ms ease, box-shadow 220ms ease;
 }
 
-.match-notes.active {
-  border-color: var(--accent-glow);
+.match-journal.populated {
+  border-color: var(--accent-soft);
+  box-shadow: inset 2px 0 0 0 var(--accent);
 }
 
-.match-notes-row {
-  display: grid;
-  grid-template-columns: 4.5rem 1fr auto;
-  align-items: start;
-  gap: 0.6rem;
+/* Corner ticks — fade in when the panel has content so the user gets
+   a soft "active dossier" affordance. Off when empty so the empty
+   state stays calm. */
+.match-journal::before,
+.match-journal::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
 }
 
-.match-notes-label {
-  padding-top: 0.42rem;
+.match-journal::before {
+  top: -1px; right: -1px;
+  border-left: none; border-bottom: none;
+}
+
+.match-journal::after {
+  bottom: -1px; left: -1px;
+  border-right: none; border-top: none;
+}
+
+.match-journal.populated::before,
+.match-journal.populated::after { opacity: 0.7; }
+
+.journal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.4rem 0.7rem 0.4rem 0.75rem;
+  background: repeating-linear-gradient(135deg, var(--surface-3) 0 14px, var(--surface-2) 14px 28px);
+  border-bottom: 1px solid var(--border);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.journal-head-title {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.journal-head-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.58rem;
+  letter-spacing: 0.2em;
+  color: var(--text-faint);
+}
+
+.journal-head-pip {
+  width: 6px;
+  height: 6px;
+  background: currentcolor;
+  transform: rotate(45deg);
+  opacity: 0.7;
+}
+
+.match-journal.populated .journal-head-meta { color: var(--accent); }
+.match-journal.populated .journal-head-meta .journal-head-pip { opacity: 1; }
+
+.journal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.7rem 0.75rem 0.8rem;
+}
+
+/* Replay + Group share a row; the replay code is short, group is
+   wide. On narrow widths the grid collapses to a single column so
+   the chip list doesn't squeeze. */
+.journal-row-2col {
+  display: grid;
+  grid-template-columns: minmax(11rem, 0.45fr) 1fr;
+  gap: 0.55rem;
+}
+
+@media (width <= 720px) {
+  .journal-row-2col { grid-template-columns: 1fr; }
+}
+
+/* Each cell is a self-contained mini-card: eyebrow up top, control
+   below. Focus-within glows the cell with the accent ring so the
+   user always knows which field they're editing. */
+.journal-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0.6rem 0.55rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 2px;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.journal-cell:focus-within {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+.journal-cell.filled { border-color: var(--border); }
+
+/* Confirmation pulse — the parent flips the `saved` class for 900 ms
+   after a commit. Border + tiny corner tick fade through accent
+   then back. No layout shift; replaces the prior "saved ✓" text
+   column. */
+.journal-cell.saved {
+  animation: journal-cell-saved 900ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.journal-cell.saved::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 14px;
+  height: 14px;
+  background:
+    linear-gradient(135deg, transparent 50%, var(--accent) 50%);
+  animation: journal-cell-tick 900ms ease both;
+  pointer-events: none;
+}
+
+@keyframes journal-cell-saved {
+  0%   { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft), 0 0 22px -2px var(--accent-glow); }
+  100% { border-color: var(--border); box-shadow: 0 0 0 0 transparent; }
+}
+
+@keyframes journal-cell-tick {
+  0%   { opacity: 0; transform: translate(-2px, 2px); }
+  20%  { opacity: 1; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journal-cell.saved { animation: none; }
+  .journal-cell.saved::after { animation: none; opacity: 0; }
+}
+
+.journal-eyebrow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--text-faint);
   user-select: none;
 }
 
-/* Preview shares the textarea's frame so the click-to-edit swap
-   doesn't reflow the row. The textarea-only extras (resize,
-   min-height) sit in the next rule. */
+.journal-cell.filled .journal-eyebrow { color: var(--text-dim); }
+.journal-cell:focus-within .journal-eyebrow { color: var(--accent); }
+
+.journal-eyebrow-count {
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  font-feature-settings: "tnum";
+}
+
+.journal-cell-note { grid-column: 1 / -1; }
+
+/* The note + replay + members fields all share the same control
+   chrome — borderless inputs that sit flush inside their journal
+   cell. The cell IS the visual frame; the input is just text. */
 .match-notes-textarea,
 .match-notes-input,
 .match-notes-preview {
   width: 100%;
-  padding: 0.4rem 0.6rem;
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: 2px;
+  padding: 0.25rem 0;
+  background: transparent;
+  border: 0;
   color: var(--text);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   line-height: 1.45;
-  transition: border-color 140ms ease, background 140ms ease;
 }
 
 .match-notes-textarea,
 .match-notes-preview {
-  min-height: 2.4rem;
+  min-height: 2.2rem;
   font-family: var(--body);
 }
 
-.match-notes-textarea { resize: vertical; }
+.match-notes-textarea {
+  resize: vertical;
+  outline: none;
+}
 
-/* HUD-style preview: cursor: text + a focus ring signal "editable"
-   without a pencil icon. The ⌕ pinned right confirms the search
-   landed when the active query has at least one hit inside. */
+.match-notes-input { outline: none; }
+
+/* HUD-style preview — cursor: text + the focus-within glow on the
+   parent cell signal "editable" without a pencil icon. The ⌕ pinned
+   right confirms the active note-search query landed at least one
+   hit inside this note. */
 .match-notes-preview {
   position: relative;
   padding-right: 1.6rem;
@@ -1254,23 +1626,17 @@ function onTagKeydown(e: KeyboardEvent) {
   cursor: text;
 }
 
-.match-notes-preview:hover { border-color: var(--accent-glow); }
-
-.match-notes-preview:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
+.match-notes-preview:focus-visible { outline: none; }
 
 .match-notes-preview.has-hits::after {
   content: "⌕";
   position: absolute;
-  top: 0.32rem;
-  right: 0.45rem;
+  top: 0.05rem;
+  right: 0.1rem;
   font-family: var(--mono);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: var(--accent);
-  opacity: 0.85;
+  opacity: 0.9;
   pointer-events: none;
 }
 
@@ -1302,49 +1668,15 @@ function onTagKeydown(e: KeyboardEvent) {
   letter-spacing: 0.04em;
 }
 
-.match-notes-textarea:focus,
-.match-notes-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  background: var(--surface);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-
-.match-notes-saved {
-  padding: 0.3rem 0.45rem;
-  align-self: center;
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--win);
-  animation: notes-saved-fade 900ms ease forwards;
-}
-
-@keyframes notes-saved-fade {
-  0%   { opacity: 0; transform: translateY(2px); }
-  20%  { opacity: 1; transform: translateY(0); }
-  80%  { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-/* Members chip list — flex-wrap so chips reflow to a new line on
-   narrow widths. The add-input expands to fill remaining row width
-   so the placeholder text stays readable. */
+/* Members chip list — flex-wraps so chips reflow on narrow widths.
+   The host journal cell owns the border + focus glow, so the chip
+   tray itself is borderless. */
 .match-notes-members {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   align-items: center;
-  padding: 0.3rem 0.4rem;
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: 2px;
-}
-
-.match-notes-members:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
+  padding: 0.05rem 0;
 }
 
 .member-chip {
@@ -1383,16 +1715,17 @@ function onTagKeydown(e: KeyboardEvent) {
 }
 
 .member-input {
-  flex: 1 1 12rem;
+  flex: 1 1 11rem;
   min-width: 8rem;
-  padding: 0.18rem 0.35rem;
+  padding: 0.15rem 0;
   background: transparent;
   border: 0;
   font-size: 0.78rem;
+  outline: none;
 }
 
-.member-input:focus {
-  outline: none;
-  box-shadow: none;
-}
+/* Tags editor sits flush inside .journal-cell-tags — kill the
+   margin-top app.css adds since the parent journal cell already
+   provides the gap. */
+.journal-cell-tags .match-tags-editor { margin-top: 0; }
 </style>
