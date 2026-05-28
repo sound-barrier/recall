@@ -34,6 +34,12 @@ const props = defineProps<{
   // 'compact' | 'comfortable' — forwarded to MatchCard. Optional so
   // existing tests that don't care about density can omit it.
   densityMode?:    'comfortable' | 'compact'
+  // The card index (flat, across the whole filtered+sorted list)
+  // that the keyboard-shortcut dispatcher considers "focused". Cards
+  // compare their own absolute index against this and flip the
+  // roving tabindex. Optional so existing tests don't have to wire
+  // it; defaults to -1 (no card focused).
+  focusedCardIndex?: number
 }>()
 
 const emit = defineEmits<{
@@ -46,6 +52,7 @@ const emit = defineEmits<{
   'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
   'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
   'set-match-hidden':      [matchKey: string, hidden: boolean]
+  'card-focus':            [index: number]
 }>()
 
 const open = (): boolean => props.isGroupExpanded(props.group.key)
@@ -137,6 +144,7 @@ function cardDelayMs(localIdx: number): number {
             :preview-error="previewError"
             :is-active="isActive"
             :density-mode="densityMode"
+            :is-focused="((cardOffset ?? 0) + idx) === (focusedCardIndex ?? -1)"
             @toggle-expand="emit('toggle-expand', rec.match_key)"
             @toggle-sources="emit('toggle-sources', rec.match_key)"
             @toggle-preview="(fn: string) => emit('toggle-preview', fn)"
@@ -145,6 +153,7 @@ function cardDelayMs(localIdx: number): number {
             @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
             @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
             @set-match-hidden="(k: string, h: boolean) => emit('set-match-hidden', k, h)"
+            @card-focus="(i: number) => emit('card-focus', i)"
           />
         </template>
 
@@ -161,6 +170,7 @@ function cardDelayMs(localIdx: number): number {
             :is-active="isActive"
             :card-offset="(cardOffset ?? 0) + idx"
             :density-mode="densityMode"
+            :focused-card-index="focusedCardIndex"
             @toggle-group="(k: string) => emit('toggle-group', k)"
             @toggle-expand="(id: string) => emit('toggle-expand', id)"
             @toggle-sources="(id: string) => emit('toggle-sources', id)"
@@ -170,6 +180,7 @@ function cardDelayMs(localIdx: number): number {
             @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
             @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
             @set-match-hidden="(k: string, h: boolean) => emit('set-match-hidden', k, h)"
+            @card-focus="(i: number) => emit('card-focus', i)"
           />
         </template>
       </div>

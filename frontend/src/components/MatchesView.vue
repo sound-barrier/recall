@@ -83,6 +83,11 @@ const props = defineProps<{
   // FilterRail's Hidden · N button only surfaces when
   // hiddenMatchCount > 0.
   showHidden: boolean
+  // Index of the card the keyboard-shortcut dispatcher considers
+  // "focused" (j/k advances this in App.vue). -1 = no card focused.
+  // Optional so existing SFC tests that mount MatchesView without
+  // the keyboard wiring still pass.
+  focusedCardIndex?: number
 }>()
 
 const emit = defineEmits<{
@@ -96,6 +101,7 @@ const emit = defineEmits<{
   'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
   'set-show-hidden':       [next: boolean]
   'set-match-hidden':      [matchKey: string, hidden: boolean]
+  'card-focus':            [index: number]
 }>()
 
 // Pre-extracted destructures keep the template readable without
@@ -316,6 +322,7 @@ const annotatedMatchCount = computed(
         :is-active="f.isActive"
         :card-offset="idx"
         :density-mode="densityMode"
+        :focused-card-index="focusedCardIndex"
         @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
         @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
         @set-match-hidden="(k: string, h: boolean) => emit('set-match-hidden', k, h)"
@@ -325,6 +332,7 @@ const annotatedMatchCount = computed(
         @toggle-preview="cs.togglePreview"
         @preview-error="cs.onPreviewError"
         @filter-toggle="f.toggleFilter"
+        @card-focus="(i: number) => emit('card-focus', i)"
       />
     </div>
   </div>

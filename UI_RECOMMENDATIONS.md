@@ -73,30 +73,6 @@ of matches) is already past the comfortable point.
 - **Tradeoff**: adds a dependency. Discuss before pulling the
   trigger.
 
-### 4. Keyboard shortcuts
-
-The page is mouse-heavy. Power users (the target audience for a
-"track every match" app) need keyboard navigation.
-
-- **Bindings**:
-  - `/` — focus the note-search input.
-  - `j` / `k` — next / previous card (scroll-into-view).
-  - `e` — expand / collapse the focused card.
-  - `t` — focus the tags editor on the focused card (auto-
-    expands first).
-  - `g` then `m` / `i` / `s` / `u` — go to Matches / Ingest /
-    Settings / Unknown views.
-- **Implementation**: a `useKeyboardShortcuts` composable that
-  registers a single capture-phase keydown listener on
-  `document` and dispatches via a registry. Respects an
-  `<input>`/`<textarea>` focus check so typing doesn't trigger
-  shortcuts.
-- **Effort**: ~3 hours core + ~1 hour per shortcut for
-  unit testing.
-- **A11y consideration**: every shortcut must have an
-  equivalent visible affordance (already true for the per-card
-  ones). Add a `?` shortcut that opens a cheat-sheet modal.
-
 ## Needs design exploration
 
 ### 5. Brushable timeline / sparkline header
