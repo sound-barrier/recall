@@ -174,16 +174,48 @@ for the regional defaults.
 
 ## Filter state persistence
 
-Filter selections, sort direction, min-play threshold, and the
-undated toggle are **not** persisted across launches — every
-session starts with a clean filter state. The reasoning: filters
-are typically a "right now, I want to see…" question, not a
-permanent view. The Theme + First Day of Week + screenshots
-folder are persisted because they're set-once preferences.
+Filter selections, sort direction, and date range are **not**
+persisted across launches — every session starts with a clean
+filter state. The reasoning: filters are typically a "right now,
+I want to see…" question, not a permanent view.
 
-If you find yourself re-applying the same filter set every session,
-consider [filing a feature request](feedback.md#want-a-feature)
-for saved filter presets.
+A handful of cross-cutting preferences DO persist (they're
+set-once, not session-scoped):
+
+- **Theme** (Day / Night / Contrast — fresh installs follow the
+  OS preference)
+- **First day of week** (Sunday / Monday / …)
+- **Screenshots folder**
+- **Density** (Comfy / Compact)
+- **Min-play threshold** (% played and minutes played gates)
+- **Leaver handling** (Include / Don't tally / Hide)
+- **Include undated** toggle
+- **Show hidden** toggle
+
+If you settle into 3–4 recurring filter combinations ("my
+placements", "stack games only", "last week's session"), use the
+**Presets** dropdown in the filter tools row to save the
+current filter state as a named preset. Saved presets persist
+across launches and reinstalls (localStorage lives outside the
+app bundle), so transferring a setup to a new machine just
+means importing your settings.
+
+## Search syntax
+
+The search box accepts a vim-style query language with two clause
+shapes:
+
+- **Bare token** (e.g. `clutch`) — substring-matches anywhere
+  in the note, replay code, group members, or tags.
+- **Field-scoped** (e.g. `note:clutch`, `replay:7H1`,
+  `member:Apollo`, `tag:stack`) — restricts to that single
+  field. Plural aliases (`notes:`, `tags:`, …) collapse to the
+  canonical singular. Unknown field prefixes fall through as
+  bare text.
+
+Multiple clauses **AND** together; quoted values
+(`note:"huge clutch"`) preserve internal whitespace. Press `/`
+from anywhere to focus the search box.
 
 ## Next chapter
 

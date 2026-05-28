@@ -24,67 +24,94 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 
 ### Analysis & Insights
 
-- **Win rate by time of day / day of week** — surface "you tilt after 11pm" patterns.
-- **Tilt detection** — flag long sessions with consecutive losses; optional pop-up nudge to stop.
-- **Streak tracking** — current and longest win/loss streaks, per role and overall.
-- **Map-specific performance drill-down** — best/worst maps per hero, with sample-size caveats.
-- **Hero matchup matrix** — your hero × enemy hero → win rate (requires enemy team capture).
+- **Win rate by time of day / day of week** — surface "you tilt after 11pm" patterns. Surfaces as a 7×24 mini-heatmap on the Settings → Insights tab; cell tooltip carries match-count + significance hint.
+- **Tilt detection** — flag long sessions with consecutive losses; optional pop-up nudge to stop. Two-pronged trigger: ≥3 losses in a row AND the rolling-window K/D dropped >25% from the user's 30-day average. Nudge is dismissible without persistence (so it doesn't moralise on a single bad day).
+- **Streak tracking** — current and longest win/loss streaks, per role and overall. Streak panel beside the W/L tally on the AggregateStats surface.
+- **Map-specific performance drill-down** — best/worst maps per hero, with sample-size caveats. Confidence interval rather than raw win-rate (`62% ± 8%, n=14`) so a 100% streak on n=2 doesn't dominate.
+- **Hero matchup matrix** — your hero × enemy hero → win rate (requires enemy team capture, which is a parser stretch).
 - **Role performance comparison** — tank vs DPS vs support averages side-by-side.
-- **Performance trend lines per hero over time** — are you improving on Juno, regressing on Ana?
+- **Performance trend lines per hero over time** — are you improving on Juno, regressing on Ana? Mini-sparkline beside the hero name inside the journal/expanded card.
 - **SR / rank velocity** — climb rate per session, week, season.
 - **Goal tracking** — "reach Diamond by end of season" with progress bar.
-- **Session boundary detection** — auto-group consecutive matches into "sessions" (gaps > 30 min), then surface session-level W/L/avg-stats.
+- **Session boundary detection** — auto-group consecutive matches into "sessions" (gaps > 30 min), then surface session-level W/L/avg-stats. Visual divider in the match list when the gap to the previous match exceeds the threshold; session header shows "Session · 4 matches · 75% WR · ~52 min".
 - **Hero pool diversity score** — how many heroes you played in a window, weighted by play-time; flag over-reliance on a single pick.
 - **Performance vs SR delta** — does the W/L / E-A-D shape this week actually match the rank change? Highlights "rank deflation" or "lucky climbing."
 - **Off-role surprise stat** — when you queue a non-main role, do you over/underperform the role average?
 - **Pre / post-patch performance split** — bucket matches by OW patch dates (manually entered or auto-fetched) so you can see "I was good before the Juno nerf."
-- **Best-time-of-week heatmap** — calendar grid of W% across hour × day of week (more visual than the "time of day" tally).
 - **Fresh-queue vs tilted-queue** — performance after >1h break vs after a <5 min re-queue, side by side.
-- **Rolling baseline comparison** — this week's stats vs your own 30-day rolling average (with significance hint when sample is too small).
+- **Rolling baseline comparison** — this week's stats vs your own 30-day rolling average (with significance hint when sample is too small). Significance check: t-test on the mean difference; show `↑ +1.4σ` style annotation rather than a raw percentage delta.
+- **Form chart** — small W/L/W/W/L sparkline of the last 10 matches per role, refreshed live as new matches parse. Same dimensions as the existing slot-chip family so it lives in the masthead header band without disturbing the layout.
+- **Annual recap** — Spotify-style year-end review: total hours, most-played hero, peak SR, best W-streak, longest losing skid, "you played Juno on Rialto N times". Generated as a single shareable image (PNG) via an offscreen canvas + the existing Big Noodle font.
 
 ### Match Data & Editing
 
-- **Edit / correct parsed fields in the UI** — override OCR mistakes without re-screenshotting.
-- **Bulk re-parse** — re-run a newer parser version across the full screenshot history.
-- **Match tags** — `stack`, `stream`, `placement`, custom user tags; filterable.
-- **Pin matches** — pin notable matches (a personal-best, a tournament game) to the top of the list regardless of date.
-- **Annotation templates** — copy a match's annotation (group members, replay-code prefix) to another match in one click; useful for stacks playing many matches together.
-- **Duplicate-match detector** — flag when two records look like the same match parsed twice from screenshots taken at near-identical timestamps.
-- **Manual match merge** — UI to fuse two records into one match-key when correlation didn't catch them automatically.
+- **Edit / correct parsed fields in the UI** — override OCR mistakes without re-screenshotting. Inline pencil affordance on each stat cell; PATCH to a typed-sentinel-validated `/api/v1/matches/{matchKey}/overrides` endpoint that layers on top of the per-screenshot rows at aggregate time without mutating the parse history.
+- **Bulk re-parse** — re-run a newer parser version across the full screenshot history. Progress UI mirrors the existing `ParseStatusBar`; per-file delta visible (`old → new` numeric change) so the user knows what actually moved.
+- **Pin matches** — pin notable matches (a personal-best, a tournament game) to the top of the list regardless of date. Use a star (`★`) on the card header — single click toggles. Pinned matches form their own group above the date-grouped list, with its own count.
+- **Annotation templates** — copy a match's annotation (group members, replay-code prefix, tag set) to another match in one click; useful for stacks playing many matches together. "Apply previous annotation" button on the journal panel head, populates the draft state but waits for confirmation before persisting.
+- **Duplicate-match detector** — flag when two records look like the same match parsed twice from screenshots taken at near-identical timestamps. Suggest merge or hide on the second occurrence; add a `data-duplicate-of` link in the card chrome for navigation.
+- **Manual match merge** — UI to fuse two records into one match-key when correlation didn't catch them automatically. Drag one card onto another (with a hover-state confirm zone) to invoke; the merged row's match_key is the older of the two.
+- **Match exclusion reasons** — annotation field for *why* a match is being de-emphasised (placement / MMR adjustment / DC / internet outage). Drives a filter that hides them from win-rate calculations without removing them from the list, complementing the existing leaver-handling control.
+- **Per-match audit log** — every annotation edit / leaver flag / hide-toggle timestamped + recoverable in Settings → Advanced. Useful for "did I mistakenly hide this one last month?" recovery; storage is a single appended row per change, capped to N most-recent edits.
 
 ### Ingest & OCR
 
-- **Multi-language Tesseract support** — non-English OW clients.
-- **Video clip support** — extract end-of-match frames from `.mp4` recordings.
-- **OCR confidence scoring** — surface low-confidence parses for human review (Tesseract returns per-line confidence; expose it).
-- **User-trainable hero-name aliases** — when OCR consistently mangles a specific hero name, let the user save a mapping ("ornBITAL → ORBITAL").
-- **Partial-match recovery** — if SUMMARY is missing, attempt match-key derivation from scoreboard + timestamp + map alone, then degrade gracefully.
-- **Drag-and-drop screenshot import** — drop a PNG anywhere in the app to ingest it without touching the watcher folder.
-- **Background watcher status indicator** — small dot in the masthead showing "watching · N new" so the state is visible from every tab.
+- **Multi-language Tesseract support** — non-English OW clients. `pkg/parser/tesseract.go` invokes Tesseract with `-l eng`; replace with the user's configured language code from `Settings → Engine`. Hero/map roster dictionaries (`heroes.yaml`, `maps.yaml`) become localisation-aware: each entry has a `display_name` map keyed by locale plus the canonical English token used for storage.
+- **Video clip support** — extract end-of-match frames from `.mp4` recordings using `ffmpeg`. Frame-selection heuristic: every 0.5s, classify; once the classifier hits SUMMARY/TEAMS/PERSONAL, capture that exact frame and feed to the existing OCR pipeline.
+- **OCR confidence scoring** — surface low-confidence parses for human review (Tesseract returns per-line `--c=stderr` confidence; expose it). Stat cells under a configurable threshold get a subtle dashed underline + tooltip; aggregated into a per-match "confidence score" surfaced as a chip on the card.
+- **User-trainable hero-name aliases** — when OCR consistently mangles a specific hero name, let the user save a mapping (`ornBITAL → ORBITAL`). Lives in `pkg/parser/aliases.yaml` (gitignored, user-local); applied by the classifier before hero-roster lookup.
+- **Partial-match recovery** — if SUMMARY is missing, attempt match-key derivation from scoreboard + timestamp + map alone, then degrade gracefully. Reuses the existing EAD-signature matching in `resolveMatchKey`; surfaces under a "partial" badge on the card so the user knows this match has incomplete data.
+- **Drag-and-drop screenshot import** — drop a PNG anywhere in the app to ingest it without touching the watcher folder. HTML5 file API on the Matches view's outer dropzone; bypasses the watcher and writes directly into the configured screenshots dir under a `manual/` subdir.
+- **Background watcher status indicator** — small dot in the masthead showing "watching · N new" so the state is visible from every tab. Two states: idle (dim green) and processing (pulsing accent); tooltip surfaces the most recent activity timestamp.
+- **Screenshot content-hash dedup** — SHA-256 the file content at ingest; if a hash matches an already-parsed file, skip Tesseract entirely and link the rows. Catches "saved the same screenshot twice via Steam + system shortcut" cases without re-OCR cost.
+- **Watcher pause when game not running** — detect OW process / active window via OS APIs (macOS `NSWorkspace`, Windows `EnumWindows`, Linux `wmctrl`); pause the file-watcher when OW isn't running so a system sleep+wake doesn't re-scan everything. Single boolean preference in Settings → Engine.
+- **OCR debug overlay** — toggle "show raw Tesseract output" on each card to compare the parsed values against the raw text. Useful for filing OCR bugs; surfaces under Settings → Advanced.
 
 ### UX & Settings
 
-- **Multiple profiles** — main + alt accounts, separate DBs per profile.
-- **Customizable dashboard widgets** — pick which stats appear on the home view.
-- **Saved filter presets** — save a filter combination as a named view ("Last 7 days, tank only, undated hidden") in localStorage; recall from a dropdown.
-- **Command palette (⌘K)** — fuzzy-find across views, settings, and individual matches by hero/map/date.
-- **High-contrast theme** — for streaming / tournament-booth use; sits alongside the existing dark/light/auto toggle.
+- **Multiple profiles** — main + alt accounts, separate DBs per profile. Switcher chip in the masthead; each profile gets its own `RECALL_DATA_DIR` subdir. `--profile=<name>` CLI flag for the server-mode binary to scope a single launch.
+- **Customizable dashboard widgets** — pick which stats appear on the home view. Drag-to-reorder card list of widgets; each widget is a self-contained `<DashboardWidget>` SFC with a fixed grid footprint so the layout stays tractable.
+- **Command palette (⌘K)** — fuzzy-find across views, settings, and individual matches by hero/map/date. Modal overlay with the same scoring engine as the existing match-search parser; live preview surfaces the top 5 results as the user types.
 - **Recent-matches widget on Settings** — small "last 5 matches" strip on the Settings tab so the user always has context while configuring.
+- **Natural-language date picker** — `last week`, `this season`, `before Mauga buff`, `since Tuesday` parses to date ranges and pre-fills the date filter. Falls back to the existing datetime pickers for ambiguous input.
+- **Live ranked progress tracker** — sticky banner during a session showing W/L count + estimated SR delta + remaining matches needed to hit the next rank tier. Activates when the user has parsed ≥3 matches within a 90-minute window.
+- **Inline image preview on Unknown** — hover an entry in the Unknown Maps view for a small thumbnail without click. Pairs with the existing click-to-expand preview so triage gets faster.
+- **Multi-window support** — open the Matches view in a separate Wails window while parsing continues in the main window. Per-window state (filters, focused card) but shared records.
+- **Quick-edit popover on stat cells** — click any displayed stat on a card → 1-click ± nudge or numeric input without expanding the whole card. Useful for correcting OCR mistakes without opening the journal.
+- **Onboarding skip-ahead** — let the user skip directly to a specific step from the tour, instead of forcing the linear order. Side-rail chips become clickable jump points.
+- **Animated skeleton loaders** — replace the spinner with skeleton cards on first paint when records are still being fetched, so the layout doesn't pop into place a beat after the masthead settles.
+- **Settings export/import** — share configuration with a teammate (folder paths, theme, filter prefs, presets) as a small JSON. Useful for stack-mate parity; lives next to the existing Backup & Restore section.
+- **Match journal writing mode** — dedicated full-viewport markdown editor for the note field, with side-rail preview + word count. Reached via a small "expand" affordance on the journal panel; submission persists back through `SetMatchAnnotation`.
 
 ### Integrations
 
-- **iCal export** — when you played, for "is OW eating my life" reflection.
-- **Bad-streak webhook** — fire a configurable webhook (Discord, Slack, custom) when ≥ N losses in a row, so a friend or `pushover` can intervene.
-- **Friend-roster lookup** — match BattleTags in `annotation.members` against a saved roster so the chip shows the friend's display name.
-- **Strava-style weekly recap** — generate a shareable weekly-summary image / markdown blob from the session-level stats.
+- **iCal export** — when you played, for "is OW eating my life" reflection. Generates a `.ics` file from session-grouped matches; each session becomes a single event with the W/L tally in the description.
+- **Bad-streak webhook** — fire a configurable webhook (Discord, Slack, custom) when ≥ N losses in a row, so a friend or `pushover` can intervene. The webhook URL is per-user secret — store in `settings.json` but flag in the export to redact.
+- **Friend-roster lookup** — match BattleTags in `annotation.members` against a saved roster so the chip shows the friend's display name. Roster file is YAML at `~/.config/recall/roster.yaml`, optionally synced via the Backup & Restore export.
+- **Strava-style weekly recap** — generate a shareable weekly-summary image / markdown blob from the session-level stats. Hooks the existing `tallyWLD` aggregator + a server-side PNG render via `chromedp`.
+- **Markdown export per match** — single-match summary as markdown for blog posts / coaching review. Three-section template: scoreboard table, journal annotation rendered as markdown, embedded source-screenshot file references.
+- **OBS scene switcher** — switch OBS scenes via the OBS WebSocket protocol when a SUMMARY screenshot is detected. Use case: streamers running a "between matches" scene that flips to "match in progress" the moment the parser sees a non-summary screenshot.
+- **Replay-code QR code** — generate a QR encoding the replay code for sharing with a coach via phone scan. Pure SVG, no external service.
+- **Match → calendar event** — auto-create a system calendar event for "OW match" with the result + length so habit-tracker apps see it. Uses macOS EventKit / Windows Outlook / Linux CalDAV, gated behind explicit permission.
 
 ### Data & Export
 
-- **Compressed export bundle** — `.zip` containing the DB + every referenced screenshot, for full-fidelity backups and bug reports.
-- **Snapshot diff** — load two export files and report what changed (new matches, hidden matches, annotation edits).
-- **Per-season slice** — export only the matches in a specific competitive season for archival.
-- **Shareable read-only view** — emit a static HTML bundle of stats (no DB writes possible) suitable for hosting on GitHub Pages.
-- **Database integrity check** — surface `PRAGMA integrity_check` in Settings → Advanced so users can verify their DB after a crash.
+- **Compressed export bundle** — `.zip` containing the DB + every referenced screenshot, for full-fidelity backups and bug reports. Manifest at the root lists screenshot file ↔ match_key mapping for sanity-checking after restore.
+- **Snapshot diff** — load two export files and report what changed (new matches, hidden matches, annotation edits). Three-pane diff view: added / removed / edited; uses the existing `MatchRecord` equality semantics.
+- **Per-season slice** — export only the matches in a specific competitive season for archival. Season boundaries auto-detected from rank screens; manual override per export.
+- **Shareable read-only view** — emit a static HTML bundle of stats (no DB writes possible) suitable for hosting on GitHub Pages. Re-uses the existing Vite build via a "no-server" entry point that swaps the `fetch`-based api.ts for a static JSON bundle inlined into the HTML.
+- **Database integrity check** — surface `PRAGMA integrity_check` in Settings → Advanced so users can verify their DB after a crash. Pair with a `PRAGMA optimize` button for the same surface.
+- **Cross-device sync via export** — explicit "Snapshot for transfer" button creating a timestamped JSON for moving the DB to a new machine. Bundles the screenshots dir reference too so the new install knows where to pick up watching.
+- **Read-only / archival mode** — Settings → Advanced toggle that freezes writes (no parses, no edits) for long-term archival use. Useful for retired alt accounts; visible state in the masthead as a "READ ONLY" badge.
+
+### Performance & Robustness
+
+- **Background parse queue visualisation** — explicit "12 / 47 files" progress in the masthead or status bar, replacing the current "parallelism is happening behind the curtain" feel. Drives off the existing `parse-progress` SSE event; doesn't require new server endpoints.
+- **Memory / DB profiler in Advanced** — show on-disk DB size, per-table row counts, aggregator allocation, parse queue depth. Helps the user understand why a 10k-match history feels slow before they file a perf bug.
+- **Schema verifier in Settings** — Advanced tool that walks every parent + child table, compares column shapes against the canonical CREATE TABLE in `pkg/db/db.go`, and reports drift. Catches "I hand-edited the DB and now things look weird" cases.
+- **Resilient parse with retry** — auto-retry failed Tesseract calls (single-screenshot transient I/O failures) with exponential backoff before marking the file unknown. Failures lifted out of the screenshot's exec context so the rest of the parse loop continues.
+- **Parser benchmarks dashboard** — Settings tool that times each per-type parser against the bundled golden fixtures and surfaces a regression flag if any path slows >25% versus baseline. Pairs with the existing `make test` golden-file run.
+- **Vacuum scheduler** — auto-run `PRAGMA optimize` after every N parse cycles, with a manual "Vacuum now" button in Advanced. Keeps the DB compact without requiring user intervention.
 
 ## Accepted
 
@@ -96,8 +123,10 @@ Add issue / PR links inline: `- Feature — short description ([#123](url))`.
 Grouped by original Triaging category for cross-reference; no H3 subheads
 to avoid heading collisions with the live backlog above.
 
-- **Match Data & Editing — Manual match annotation** — per-match notes, replay code, group-member chips, and a leaver flag (self / ally / enemy). Edits land in `match_annotations` + `match_annotation_members`; surfaced in MatchCard's expanded view and as collapsed `N` / `L` glyphs in the card header.
+- **Match Data & Editing — Manual match annotation** — per-match notes, replay code, group-member chips, a leaver flag (self / ally / enemy), and a tag set (the conventional `stack` / `stream` / `placement` quick-adds plus arbitrary user tags, normalised to lowercase). Edits land in `match_annotations` + `match_annotation_members` + `match_annotation_tags`; surfaced in MatchCard's expanded view as the Match Journal panel (striped header, dossier-style cells, focus-within accent glow, 900ms saved-pulse on the cell border) and as collapsed glyphs in the card header (`N` notes, `L` leavers, `T` tags).
 - **Match Data & Editing — Match deletion (soft-delete)** — Hide → Confirm step in MatchCard's expanded view drops the match from the list and skips it on re-parse, but preserves every per-screenshot row. The FilterRail's `Hidden · N` toggle reveals dimmed cards for review or one-click Unhide.
+- **UX & Settings — Saved filter presets** — Presets dropdown in the FilterRail's tools row. Stores named filter combinations (every multi-select array + note query + date range + sort + min-play threshold + leaver mode + show-hidden) as JSON in localStorage; serialises via a defensive `parsePresetSnapshot` that drops unknown keys, so hand-edited values can't crash the parser. Save-current prompts for a name; per-preset apply / delete; persistence survives reinstalls because localStorage lives outside the app bundle on every supported platform. Component in `FilterPresetsMenu.vue`; composable in `useFilterPresets.ts`; coverage in `frontend/tests/e2e/filter-presets.spec.ts`.
+- **UX & Settings — Heroes Played collapsibility + Match Journal redesign** — the expanded match-card's "Heroes Played" block is now a clickable chev with a count badge and an in-line summary of the top two heroes (italic Big Noodle + percent) when collapsed. The preference persists globally via `useHeroesExpanded`; default expanded. The annotation block was rebuilt as a "Match Journal" panel — striped header strip with a `LOGGED` / `AWAITING ENTRY` status pip, dossier-style cells with accent corner ticks, Replay code + Group on a single 2-column row to reclaim vertical space, and a 900ms cell-border pulse on save instead of a 3rd grid column for `saved ✓`.
 - **UX & Settings — Group-jump timeline rail** — sticky vertical rail anchored to the right edge of the match list with one spec-plate chip per month group. Suppressed when fewer than two month groups are present (nothing to jump between). Each chip shows an abbreviated label (`May '26`), the total match count for that month, and a leading pip that fills with accent when the month is the one currently in view. Clicking a chip auto-expands the target group's ancestor chain (so the user lands on content, not a closed chevron), smooth-scrolls the section to the viewport with `scrollIntoView({ block: 'start' })`, and runs a brief `target-acquired` flash on the group head so the destination is unmistakable. An `IntersectionObserver` with a narrow `rootMargin` of `-20% 0px -55% 0px` tracks which month occupies the user's primary reading line and lifts the corresponding chip's active treatment (accent border + `-3px` translateX + `aria-current="location"`) as they scroll. The chip itself eagerly takes the active state on click — `scrollIntoView` clamps to `maxScroll` on short pages, and without the eager update the observer would never elect the target and the rail would look unresponsive. Honors `prefers-reduced-motion` (no smooth scroll, no transform animations, but the active-marker swap stays so the state change is still readable). Hidden under 1180px viewport — the chip column collides with card content on narrower layouts and the user has the group headers right there to click. Component in `MatchGroupTimeline.vue`; jump handler + ancestor-expand walk + flash in `MatchesView.onJumpToGroup`; flash keyframes attached to the outer `.mg` in `MatchGroupSection.vue`. Coverage: `frontend/tests/e2e/group-timeline.spec.ts` (chip rendering, single-month suppression, scroll + expand, aria-current update).
 - **Match Data & Editing — Global match search (vim-style)** — free-text input in the FilterRail's filter-bar accepts a vim/less-style query that searches across every annotation field. Two clause shapes:
   - **Bare token** (e.g. `clutch`) — substring-matches anywhere in `annotation.note`, `replay_code`, members, OR tags.
