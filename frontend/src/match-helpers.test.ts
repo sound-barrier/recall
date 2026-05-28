@@ -114,50 +114,13 @@ describe('detectScreenshotSlots', () => {
     })
   })
 
-  describe('without stored source_types (fallback inference)', () => {
-    it('combat stats > 0 → TEAMS present', () => {
-      const rec = { data: { eliminations: 17, deaths: 11 } }
-      expect(detectScreenshotSlots(rec).find(s => s.key === 'scoreboard')!.present).toBe(true)
-    })
-
-    it('SUMMARY-only fields → SUMMARY present', () => {
-      const rec = { data: { final_score: '3-1', game_length: '11:25' } }
-      expect(detectScreenshotSlots(rec).find(s => s.key === 'summary')!.present).toBe(true)
-    })
-
-    it('hero stats with combat > 0 does NOT light up PERSONAL (scoreboard wins)', () => {
-      // Without source_types, scoreboard's right-panel stats would falsely
-      // light up PERSONAL. Fix: PERSONAL fallback requires combatTotal === 0.
-      const rec = {
-        data: {
-          eliminations: 17,
-          heroes_played: [{ hero: 'lucio', percent_played: 100, stats: { weapon_accuracy: 24 } }],
-        },
-      }
-      const slots = detectScreenshotSlots(rec)
-      expect(slots.find(s => s.key === 'scoreboard')!.present).toBe(true)
-      expect(slots.find(s => s.key === 'personal')!.present).toBe(false)
-    })
-
-    it('hero stats with no combat → PERSONAL present', () => {
-      const rec = {
-        data: {
-          heroes_played: [{ hero: 'lucio', percent_played: 100, stats: { weapon_accuracy: 24 } }],
-        },
-      }
-      expect(detectScreenshotSlots(rec).find(s => s.key === 'personal')!.present).toBe(true)
-    })
-
-    it('rank/level/sr → RANK present', () => {
-      const rec = { data: { rank: 'platinum', level: 5 } }
-      expect(detectScreenshotSlots(rec).find(s => s.key === 'rank')!.present).toBe(true)
-    })
-
-    it('result alone does NOT light up SUMMARY (inferResultFromRank false-positive guard)', () => {
-      // result can be inferred from SR change at read time; SUMMARY chip
-      // must not light up just because result is set.
-      const rec = { data: { result: 'victory' as const } }
-      expect(detectScreenshotSlots(rec).find(s => s.key === 'summary')!.present).toBe(false)
+  describe('without source_types', () => {
+    // source_types is populated at parse time, so a record without it
+    // can only come from a hand-built fixture or a defensive-null
+    // path. Every chip falls to absent.
+    it('every slot reports absent', () => {
+      const rec = { data: { eliminations: 17, deaths: 11, final_score: '3-1', rank: 'platinum' } }
+      expect(detectScreenshotSlots(rec).every(s => !s.present)).toBe(true)
     })
   })
 })

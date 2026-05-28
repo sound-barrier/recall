@@ -22,7 +22,7 @@ type Store interface {
 	// EnsureScreenshotsDir inserts a screenshots_dirs row for path if
 	// one doesn't exist and returns its id. Idempotent — repeated calls
 	// with the same path return the same id. Empty path returns
-	// (0, nil) so callers can store NULL for unset/legacy.
+	// (0, nil) so callers can store NULL for unset dir.
 	EnsureScreenshotsDir(path string) (int64, error)
 
 	// LoadAllFilenames returns every filename across all five parent
@@ -84,8 +84,7 @@ type SummaryRow struct {
 	MatchKey string
 	ParsedAt string
 	// ScreenshotsDirID points at the screenshots_dirs row recording
-	// which folder this screenshot was ingested from. 0 = NULL (legacy
-	// rows parsed before the column existed, or rows where the dir
+	// which folder this screenshot was ingested from. 0 = NULL (the dir
 	// was unset at parse time).
 	ScreenshotsDirID int64
 	Map              string
@@ -239,18 +238,6 @@ func NewSQLStore(path string) (*SQLStore, error) {
 		if _, err := d.Exec(stmt); err != nil {
 			_ = d.Close()
 			return nil, fmt.Errorf("schema: %w (stmt: %s)", err, firstLine(stmt))
-		}
-	}
-	// Additive migrations: tolerate "duplicate column" since SQLite has
-	// no ADD COLUMN IF NOT EXISTS before 3.35. Fail loudly on anything
-	// else so a real schema error doesn't get swallowed.
-	for _, stmt := range migrations {
-		if _, err := d.Exec(stmt); err != nil {
-			if strings.Contains(err.Error(), "duplicate column") {
-				continue
-			}
-			_ = d.Close()
-			return nil, fmt.Errorf("migration: %w (stmt: %s)", err, firstLine(stmt))
 		}
 	}
 	return &SQLStore{db: d}, nil

@@ -8,13 +8,8 @@ export const WEEK_START_STORAGE_KEY = 'recall.weekStart'
 // Month → Week → Day grouping's "Week of <date>" labels. Any day 0-6
 // (per JS Date.getDay(): 0=Sun … 6=Sat). Default 0 (Sunday) matches
 // the US locale convention.
-//
-// Migrates the legacy string values "sunday" / "monday" from the
-// previous binary toggle to 0 / 1 transparently.
 
 function parseWeekStart(raw: string): WeekStart | undefined {
-  if (raw === 'sunday') return 0
-  if (raw === 'monday') return 1
   const n = Number(raw)
   if (Number.isInteger(n) && n >= 0 && n <= 6) return n as WeekStart
   return undefined

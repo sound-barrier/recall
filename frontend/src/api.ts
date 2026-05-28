@@ -210,7 +210,7 @@ export const SetScreenshotsDir = _dualVoid<[path: string]>(
 // Per-match user annotation. All four fields are optional; if every
 // field is empty the server deletes the row entirely. `leaver`
 // ∈ {'self', 'team', 'enemy', ''}.
-export type LeaverKind = 'self' | 'team' | 'enemy'
+type LeaverKind = 'self' | 'team' | 'enemy'
 
 export interface MatchAnnotationInput {
   leaver?:      LeaverKind | ''
@@ -260,28 +260,6 @@ export function SetMatchAnnotation(matchKey: string, input: MatchAnnotationInput
     tags:        input.tags ?? [],
   }).then(() => undefined)
 }
-
-// Back-compat shims for callers / tests that only touch the leaver
-// field. New code should call SetMatchAnnotation directly so the
-// other three fields stay preserved in a single round-trip.
-//
-// `note` is REQUIRED — the Wails-side Go signature is
-// `SetLeaverAnnotation(matchKey, leaver, note string)` and the
-// bridge does a strict arity check, so omitting the empty string
-// produces "received 2 arguments, expected 3" at runtime.
-export const SetLeaverAnnotation = _dualVoid<[matchKey: string, leaver: LeaverKind, note: string]>(
-  'SetLeaverAnnotation',
-  'PUT',
-  (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}/annotation`,
-  (_matchKey, leaver, note) => ({ leaver, note }),
-)
-
-export const ClearLeaverAnnotation = _dualVoid<[matchKey: string]>(
-  'ClearLeaverAnnotation',
-  'PUT',
-  (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}/annotation`,
-  () => ({ leaver: '' }),
-)
 
 // Soft-delete a match. Reversible: pass hidden=false to restore.
 // Both directions are idempotent — repeated identical calls succeed.

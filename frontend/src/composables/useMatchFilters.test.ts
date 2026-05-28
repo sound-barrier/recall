@@ -266,14 +266,13 @@ describe('filtered', () => {
       expect(filtered.value[0]!.match_key).toBe('k1')
     })
 
-    it('falls back to slot inference for rows without source_types', () => {
+    it('drops rows without source_types from a scoped filter', () => {
       const { filtered, filterSshot, records } = setup()
-      // scoreboard: combatTotal > 0 triggers the inference
       records.value = [
-        rec({ id: 1, data: { map: 'kings-row', eliminations: 10, assists: 5, deaths: 3, damage: 1000, healing: 0, mitigation: 0 }, source_types: undefined }),
+        rec({ id: 1, data: { map: 'kings-row', eliminations: 10, assists: 5, deaths: 3, damage: 1000 }, source_types: undefined }),
       ]
       filterSshot.value = ['scoreboard']
-      expect(filtered.value).toHaveLength(1)
+      expect(filtered.value).toHaveLength(0)
     })
   })
 

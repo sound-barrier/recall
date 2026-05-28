@@ -28,18 +28,8 @@ describe('readStoredWeekStart', () => {
     }
   })
 
-  it('migrates the legacy "sunday" string value to 0', () => {
-    storage[WEEK_START_STORAGE_KEY] = 'sunday'
-    expect(readStoredWeekStart()).toBe(0)
-  })
-
-  it('migrates the legacy "monday" string value to 1', () => {
-    storage[WEEK_START_STORAGE_KEY] = 'monday'
-    expect(readStoredWeekStart()).toBe(1)
-  })
-
-  it('falls back to 0 for an unrecognized stored value', () => {
-    storage[WEEK_START_STORAGE_KEY] = 'tuesday' // not 0-6, not legacy
+  it('falls back to 0 for a non-numeric stored value', () => {
+    storage[WEEK_START_STORAGE_KEY] = 'tuesday'
     expect(readStoredWeekStart()).toBe(0)
   })
 

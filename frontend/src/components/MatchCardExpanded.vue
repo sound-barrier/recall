@@ -55,9 +55,9 @@ const emit = defineEmits<{
   'preview-error':  [filename: string]
   'filter-toggle':  [field: string, value: string]
   // User clicks one of the four leaver-chooser buttons. App.vue
-  // listens, calls SetLeaverAnnotation / ClearLeaverAnnotation, and
-  // re-loads records so the new Annotation reflects on the next
-  // render.
+  // listens, routes through SetMatchAnnotation with the existing
+  // annotation fields preserved, and re-loads records so the new
+  // Annotation reflects on the next render.
   'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
   // User edits the note / replay code / members and confirms the
   // change (debounced or on blur). App.vue calls SetMatchAnnotation
@@ -309,8 +309,9 @@ function onTagKeydown(e: KeyboardEvent) {
     <!-- Leaver annotation chooser. Three scenario buttons + a
          Clear option. Active button gets the accent ring; the
          others are tactical-grey ghosts. Wired bottom-up: this
-         component emits, App.vue persists via
-         SetLeaverAnnotation / ClearLeaverAnnotation. -->
+         component emits set-leaver-annotation, App.vue persists
+         via SetMatchAnnotation with the other annotation fields
+         preserved. -->
     <div class="leaver-chooser" role="group" aria-label="Leaver annotation">
       <span class="leaver-chooser-label" aria-hidden="true">Leaver?</span>
       <button
@@ -686,7 +687,6 @@ function onTagKeydown(e: KeyboardEvent) {
               <span class="source-name-text">{{ f }}</span>
             </a>
             <button
-              v-if="sourceType(record, f)"
               type="button"
               class="source-type-chip clickable"
               :class="[
@@ -699,11 +699,6 @@ function onTagKeydown(e: KeyboardEvent) {
             >
               {{ sshotTypeLabel(sourceType(record, f)) }}
             </button>
-            <span
-              v-else
-              class="source-type-chip unknown"
-              title="Type not yet recorded — parsed before per-file type tracking landed. Clear the database and re-parse to populate."
-            >?</span>
             <span
               v-if="record.source_parsed_at?.[f]"
               class="source-parsed-chip"
@@ -1280,14 +1275,6 @@ function onTagKeydown(e: KeyboardEvent) {
   background: rgb(255 201 77 / 14%);
   border-color: rgb(255 201 77 / 50%);
   color: var(--draw);
-}
-
-.source-type-chip.unknown {
-  background: transparent;
-  border-color: var(--border);
-  border-style: dashed;
-  color: var(--text-mute);
-  cursor: help;
 }
 
 /* Light-mode `.source-type-summary` / `.hero-name` / `.sources`

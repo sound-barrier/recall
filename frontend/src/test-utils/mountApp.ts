@@ -78,8 +78,6 @@ function mockApi(overrides: MountOverrides = {}) {
     ProbeScreenshotsDir: vi.fn(async () => ({ found: false, tried: [] as string[] })),
     SetScreenshotsDir:   vi.fn(async () => undefined),
     SetMatchAnnotation:    vi.fn(async () => undefined),
-    SetLeaverAnnotation:   vi.fn(async () => undefined),
-    ClearLeaverAnnotation: vi.fn(async () => undefined),
     // SettingsView imports IS_WAILS to gate Wails-only affordances
     // (Open in Finder/Explorer). Tests run under happy-dom — false.
     IS_WAILS:            false,

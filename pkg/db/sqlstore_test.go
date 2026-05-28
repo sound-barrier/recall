@@ -521,7 +521,7 @@ func TestSQLStore_Annotation_UpsertLoadDelete(t *testing.T) {
 func TestSQLStore_Annotation_LeaverCheckConstraint(t *testing.T) {
 	s := openMemory(t)
 	// Invalid leaver value should fail the CHECK constraint at the SQL
-	// layer. The App.SetLeaverAnnotation validator catches this first
+	// layer. The App.SetMatchAnnotation validator catches this first
 	// in production; this test pins the belt-and-suspenders DB guard.
 	err := s.SetAnnotation(Annotation{MatchKey: "k", Leaver: "afk"})
 	if err == nil {

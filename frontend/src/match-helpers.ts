@@ -28,8 +28,9 @@ export function sshotTypeLabel(t: string | null | undefined): string {
 }
 
 // Look up the parser-assigned type for a specific source file on a
-// record. Returns '' (empty string) for files parsed before per-file
-// type tracking landed — the UI renders a "?" chip in that case.
+// record. Parser fills source_types on every ingest, so this is a
+// straight map lookup — '' only surfaces if the row lacks the file
+// entirely (defensive null-coalesce).
 export function sourceType(
   rec: Pick<MatchRecord, 'source_types'> | null | undefined,
   filename: string,
@@ -45,34 +46,17 @@ export function sourceType(
 // (SUMMARY / TEAMS / PERSONAL). `required: false` is RANK — useful
 // but not strictly needed.
 //
-// When the row carries a stored source_types map (populated at parse
-// time from each individual file's classifier), that map is the
-// source of truth — a chip is PRESENT iff at least one source file
-// is tagged with that type. For pre-migration rows (no source_types)
-// we fall back to field-presence inference, which is fuzzier —
-// read-time inferences like inferResultFromRank can falsely light up
-// SUMMARY, and a scoreboard-only row will light up PERSONAL because
-// the scoreboard's right-panel stats are stored in
-// HeroesPlayed[*].Stats.
+// source_types is populated at parse time from each file's
+// classifier, so a chip is PRESENT iff at least one source file is
+// tagged with that type.
 export function detectScreenshotSlots(rec: Pick<MatchRecord, 'data' | 'source_types'>): ScreenshotSlot[] {
-  const d = rec.data ?? {}
-  const hp = Array.isArray(d.heroes_played) ? d.heroes_played : []
-  const storedTypes = rec.source_types
-    ? new Set(Object.values(rec.source_types).filter(Boolean))
-    : null
-  const combatTotal = (d.eliminations ?? 0) + (d.assists ?? 0) + (d.deaths ?? 0) +
-                      (d.damage ?? 0) + (d.healing ?? 0) + (d.mitigation ?? 0)
-  const presence = (key: ScreenshotType, fallback: boolean): boolean =>
-    storedTypes ? storedTypes.has(key) : fallback
+  const storedTypes = new Set(Object.values(rec.source_types ?? {}).filter(Boolean))
   return [
     {
       key: 'summary',
       label: 'SUMMARY',
       required: true,
-      present: presence('summary',
-        !!(d.final_score || d.date || d.finished_at || d.game_length ||
-           d.type || d.mode ||
-           hp.some(h => h.percent_played || h.play_time))),
+      present: storedTypes.has('summary'),
       hint: 'Post-match SUMMARY tab — match result, final score, date, game length',
       missing: 'match result, final score, date & time, game length',
     },
@@ -80,7 +64,7 @@ export function detectScreenshotSlots(rec: Pick<MatchRecord, 'data' | 'source_ty
       key: 'scoreboard',
       label: 'TEAMS',
       required: true,
-      present: presence('scoreboard', combatTotal > 0),
+      present: storedTypes.has('scoreboard'),
       hint: 'TEAMS scoreboard (in-game or post-match) — E/A/D, damage, healing, mitigation',
       missing: 'eliminations, assists, deaths, damage, healing, mitigation',
     },
@@ -88,8 +72,7 @@ export function detectScreenshotSlots(rec: Pick<MatchRecord, 'data' | 'source_ty
       key: 'personal',
       label: 'PERSONAL',
       required: true,
-      present: presence('personal',
-        hp.some(h => h.stats && Object.keys(h.stats).length > 0) && combatTotal === 0),
+      present: storedTypes.has('personal'),
       hint: 'Post-match PERSONAL tab — per-hero detailed stats (accuracy, ult charges, role-specific cards)',
       missing: 'per-hero detailed stats (accuracy, ult charges, role-specific cards)',
     },
@@ -97,8 +80,7 @@ export function detectScreenshotSlots(rec: Pick<MatchRecord, 'data' | 'source_ty
       key: 'rank',
       label: 'RANK',
       required: false,
-      present: presence('rank',
-        !!(d.rank || d.level || (Array.isArray(d.sr) && d.sr.length > 0))),
+      present: storedTypes.has('rank'),
       hint: 'Competitive rank screen — SR, rank tier, rank change. Optional but recommended for ranked matches.',
       missing: 'SR / rank tier / rank change',
     },
