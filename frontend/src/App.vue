@@ -497,7 +497,7 @@ async function onSetLeaverAnnotation(matchKey: string, leaver: '' | 'self' | 'te
     if (leaver === '') {
       await ClearLeaverAnnotation(matchKey)
     } else {
-      await SetLeaverAnnotation(matchKey, leaver as LeaverKind)
+      await SetLeaverAnnotation(matchKey, leaver as LeaverKind, '')
     }
     await load()
   } catch (e) {

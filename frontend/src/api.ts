@@ -264,11 +264,16 @@ export function SetMatchAnnotation(matchKey: string, input: MatchAnnotationInput
 // Back-compat shims for callers / tests that only touch the leaver
 // field. New code should call SetMatchAnnotation directly so the
 // other three fields stay preserved in a single round-trip.
-export const SetLeaverAnnotation = _dualVoid<[matchKey: string, leaver: LeaverKind, note?: string]>(
+//
+// `note` is REQUIRED — the Wails-side Go signature is
+// `SetLeaverAnnotation(matchKey, leaver, note string)` and the
+// bridge does a strict arity check, so omitting the empty string
+// produces "received 2 arguments, expected 3" at runtime.
+export const SetLeaverAnnotation = _dualVoid<[matchKey: string, leaver: LeaverKind, note: string]>(
   'SetLeaverAnnotation',
   'PUT',
   (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}/annotation`,
-  (_matchKey, leaver, note = '') => ({ leaver, note }),
+  (_matchKey, leaver, note) => ({ leaver, note }),
 )
 
 export const ClearLeaverAnnotation = _dualVoid<[matchKey: string]>(
