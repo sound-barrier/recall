@@ -75,6 +75,13 @@ const MatchesView = defineAsyncComponent(() => import('./components/MatchesView.
 const SettingsView = defineAsyncComponent(() => import('./components/SettingsView.vue'))
 const UnknownMapsView = defineAsyncComponent(() => import('./components/UnknownMapsView.vue'))
 
+// OnboardingTour is mounted eagerly (not lazy) because it auto-opens
+// on first launch and the localStorage gate runs inside its
+// onMounted — fetching a separate chunk would briefly show the
+// landing view first, then pop the briefing overlay in late. Cost:
+// ~3KB to the initial bundle, comfortably under the budget.
+import OnboardingTour from './components/OnboardingTour.vue'
+
 // GitHub repository URL — surfaced via the brandmark in the masthead.
 // Centralised here so the markup, hover title, and any future references
 // stay in sync. Routed through OpenURL so Wails-mode clicks open in the
@@ -1036,6 +1043,12 @@ useEventStream({
       :open="openCheatsheet"
       @close="openCheatsheet = false"
     />
+
+    <!-- First-launch briefing overlay. Self-gates via
+         localStorage; renders nothing once dismissed. Navigation
+         events drive the underlying tab via goToView so the visible
+         view follows along with each step. -->
+    <OnboardingTour @navigate="goToView" />
   </div>
 </template>
 

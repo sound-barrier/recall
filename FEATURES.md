@@ -70,7 +70,6 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 - **Saved filter presets** — save a filter combination as a named view ("Last 7 days, tank only, undated hidden") in localStorage; recall from a dropdown.
 - **Command palette (⌘K)** — fuzzy-find across views, settings, and individual matches by hero/map/date.
 - **High-contrast theme** — for streaming / tournament-booth use; sits alongside the existing dark/light/auto toggle.
-- **First-launch onboarding tour** — overlay walkthrough on the first run (gated by a localStorage key).
 - **Recent-matches widget on Settings** — small "last 5 matches" strip on the Settings tab so the user always has context while configuring.
 
 ### Integrations
@@ -107,6 +106,7 @@ to avoid heading collisions with the live backlog above.
 - **UX & Settings — First-day-of-week preference** — Settings → Calendar; threads through `useMatchGrouping` so the "Week of …" labels honor the user's choice.
 - **UX & Settings — Theme toggle (dark / light / auto)** — Settings → Appearance; `useTheme` composable persists the choice and applies `data-theme` to the document root.
 - **UX & Settings — Keyboard shortcuts + cheatsheet (`?`)** — power-user bindings exposed by `useKeyboardShortcuts` (single capture-phase document listener, input-gated, sequence-prefix support for vim-style `g`+x view nav). Global: `/` (focus the note-search input), `g`+`m`/`i`/`s`/`u` (view nav), `?` (open the cheatsheet). Matches view: `j`/`k` (card focus, no wrap), `e` (toggle expand), `t` (focus tags editor on the focused card, auto-expanding first). The cheatsheet modal lists every binding the app exposes — including existing tablist arrows + Esc-dismiss + focus-trap Tab cycle — so users discovering one affordance learn about all of them. Composable in `useKeyboardShortcuts.ts`; modal in `KeyboardShortcutsModal.vue`; Playwright e2e in `frontend/tests/e2e/keyboard-shortcuts.spec.ts`.
+- **UX & Settings — First-launch onboarding tour** — full-viewport HUD-style briefing overlay that walks new users through configure → parse → explore. Vertical progress rail with ult-charge-style segments on the left, giant Big-Noodle-italic step numbers + accent flares on the right. Gated by the `recall.onboardingCompleted` localStorage key (skip / finish / Escape all persist). Each step's "Next" navigates the underlying tab so the briefing copy and visible view stay synchronised. State + step-machine in `useOnboardingTour`; component in `OnboardingTour.vue`; Playwright e2e in `frontend/tests/e2e/onboarding-tour.spec.ts`.
 - **Data & Export — CSV / JSON export** — `ExportData` + `ExportDataCSV` produce full match history dumps; surfaced via Settings → Backup & Restore.
 - **Data & Export — Local backup / restore** — one-click DB export + import via Settings → Backup & Restore (`ImportData`), with idempotent re-import semantics.
 
