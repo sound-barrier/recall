@@ -18,6 +18,7 @@ import {
   formatMinutesAsClock,
   modeOf,
   avgGameLengthMinutes,
+  highlightSubstring,
 } from './match-helpers'
 
 // ─── sshotTypeLabel ──────────────────────────────────────────────────
@@ -1064,5 +1065,80 @@ describe('avgGameLengthMinutes', () => {
 
   it('handles records with no data object at all', () => {
     expect(avgGameLengthMinutes([{ data: null }])).toBeNull()
+  })
+})
+
+// ─── highlightSubstring ─────────────────────────────────────────────
+
+describe('highlightSubstring', () => {
+  it('returns an empty array for empty text', () => {
+    expect(highlightSubstring('', 'anything')).toEqual([])
+    expect(highlightSubstring('', '')).toEqual([])
+  })
+
+  it('returns a single non-hit segment when the query is empty / whitespace', () => {
+    expect(highlightSubstring('huge clutch', '')).toEqual([{ text: 'huge clutch', hit: false }])
+    expect(highlightSubstring('huge clutch', '   ')).toEqual([{ text: 'huge clutch', hit: false }])
+  })
+
+  it('returns a single non-hit segment when the query does not match', () => {
+    expect(highlightSubstring('huge clutch', 'win')).toEqual([
+      { text: 'huge clutch', hit: false },
+    ])
+  })
+
+  it('splits around a single mid-string hit', () => {
+    expect(highlightSubstring('huge clutch finish', 'clutch')).toEqual([
+      { text: 'huge ', hit: false },
+      { text: 'clutch', hit: true },
+      { text: ' finish', hit: false },
+    ])
+  })
+
+  it('preserves original casing in the hit segment (case-insensitive match)', () => {
+    expect(highlightSubstring('huge CLUTCH finish', 'clutch')).toEqual([
+      { text: 'huge ', hit: false },
+      { text: 'CLUTCH', hit: true },
+      { text: ' finish', hit: false },
+    ])
+  })
+
+  it('emits alternating segments for repeated matches', () => {
+    expect(highlightSubstring('win win win', 'win')).toEqual([
+      { text: 'win', hit: true },
+      { text: ' ', hit: false },
+      { text: 'win', hit: true },
+      { text: ' ', hit: false },
+      { text: 'win', hit: true },
+    ])
+  })
+
+  it('handles a hit at the very start with no leading non-hit segment', () => {
+    expect(highlightSubstring('clutch finish', 'clutch')).toEqual([
+      { text: 'clutch', hit: true },
+      { text: ' finish', hit: false },
+    ])
+  })
+
+  it('handles a hit at the very end with no trailing non-hit segment', () => {
+    expect(highlightSubstring('huge clutch', 'clutch')).toEqual([
+      { text: 'huge ', hit: false },
+      { text: 'clutch', hit: true },
+    ])
+  })
+
+  it('treats the query as a plain substring, not a regex', () => {
+    expect(highlightSubstring('the (clutch) finish', '(clutch)')).toEqual([
+      { text: 'the ', hit: false },
+      { text: '(clutch)', hit: true },
+      { text: ' finish', hit: false },
+    ])
+  })
+
+  it('trims surrounding whitespace from the query before matching', () => {
+    expect(highlightSubstring('huge clutch', '  clutch  ')).toEqual([
+      { text: 'huge ', hit: false },
+      { text: 'clutch', hit: true },
+    ])
   })
 })

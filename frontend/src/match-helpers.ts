@@ -618,6 +618,39 @@ export function fmtTime(rec: Pick<MatchRecord, 'data'>): string {
   return datePart || timePart
 }
 
+// highlightSubstring segments `text` into alternating hit / non-hit
+// runs against a (case-insensitive, trimmed) query. Pure — caller
+// renders each segment as a <mark> or plain text. Empty text →
+// empty array (let the template render the placeholder). Empty
+// query → one non-hit segment carrying the whole string.
+export interface HighlightSegment {
+  text: string
+  hit: boolean
+}
+
+export function highlightSubstring(text: string, query: string): HighlightSegment[] {
+  if (!text) return []
+  const q = (query ?? '').trim()
+  if (!q) return [{ text, hit: false }]
+
+  const segments: HighlightSegment[] = []
+  const haystack = text.toLowerCase()
+  const needle = q.toLowerCase()
+  let cursor = 0
+
+  while (cursor < text.length) {
+    const idx = haystack.indexOf(needle, cursor)
+    if (idx < 0) {
+      segments.push({ text: text.slice(cursor), hit: false })
+      break
+    }
+    if (idx > cursor) segments.push({ text: text.slice(cursor, idx), hit: false })
+    segments.push({ text: text.slice(idx, idx + needle.length), hit: true })
+    cursor = idx + needle.length
+  }
+  return segments
+}
+
 // formatParsedAt renders an ISO8601 timestamp (the shape stored in
 // MatchRecord.parsed_at / MatchRecord.source_parsed_at[*]) as a
 // friendly "May 9, 2026 @ 9:08pm" string matching fmtTime's

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import type { MatchRecord, MatchAnnotationInput } from '../api'
 import {
   screenshotURL,
@@ -9,6 +9,7 @@ import {
   sshotTypeLabel,
   sourceType,
   formatParsedAt,
+  highlightSubstring,
 } from '../match-helpers'
 import { useOWData } from '../composables/useOWData'
 import MatchCardDanger from './MatchCardDanger.vue'
@@ -33,6 +34,11 @@ const props = defineProps<{
   previewOpen: Record<string, boolean>
   previewError: Record<string, boolean>
   isActive: (field: string, value: string) => boolean
+  // The active FilterRail note-search query. Threaded down purely
+  // so the saved Note can render `<mark>` hits in the click-to-edit
+  // preview. Optional — older mount sites omit it and the preview
+  // simply renders without hits.
+  noteSearch?: string
 }>()
 
 const emit = defineEmits<{
@@ -87,6 +93,96 @@ watch(
 const hasAnyNote = computed(
   () => !!(noteDraft.value.trim() || replayDraft.value.trim() || memberDraft.value.length || tagDraft.value.length),
 )
+
+// Click-to-edit state for the Note row. The preview is the default
+// surface when the note is non-empty: a div renders the note text
+// with <mark> around the live FilterRail substring matches. Click
+// promotes to the existing textarea editor (focused at the click
+// position via the cached caret offset); blur reverts to preview.
+//
+// An empty note skips the preview swap entirely — the textarea
+// stays mounted so the user can type their first character without
+// an extra click.
+const isEditingNote   = ref(false)
+const noteTextareaRef = ref<HTMLTextAreaElement | null>(null)
+let pendingCaretPos: number | null = null
+
+const noteHighlightSegments = computed(() =>
+  highlightSubstring(noteDraft.value, props.noteSearch ?? ''),
+)
+
+// Compute a 0-based offset into `text` from a click DOM position
+// (node + offset-inside-node) inside a preview container whose
+// children are a flat list of text nodes and <mark> wrappers (each
+// containing exactly one text node). Walks descendants in document
+// order, summing the lengths of preceding text content until the
+// click target is reached. Returns null when the click landed on
+// something we can't translate (defensive — falls back to focusing
+// the end of the textarea).
+function caretOffsetFromClick(
+  container: HTMLElement,
+  node: Node,
+  offsetInNode: number,
+): number | null {
+  let acc = 0
+  let found = false
+  const walk = (n: Node): void => {
+    if (found) return
+    if (n === node) {
+      acc += offsetInNode
+      found = true
+      return
+    }
+    if (n.nodeType === Node.TEXT_NODE) {
+      acc += (n.textContent ?? '').length
+      return
+    }
+    if (!container.contains(n) && n !== container) return
+    n.childNodes.forEach(walk)
+  }
+  walk(container)
+  return found ? acc : null
+}
+
+function enterEditMode(e: MouseEvent) {
+  const container = e.currentTarget as HTMLElement
+  // Prefer the standard API; fall back to the WebKit-only name.
+  type CaretPositionFromPoint = (x: number, y: number) => { offsetNode: Node, offset: number } | null
+  type CaretRangeFromPoint = (x: number, y: number) => Range | null
+  type DocWithCaretAPIs = Document & {
+    caretPositionFromPoint?: CaretPositionFromPoint
+    caretRangeFromPoint?: CaretRangeFromPoint
+  }
+  const doc: DocWithCaretAPIs = document
+  let clickedNode: Node | null = null
+  let clickedOffset = 0
+  if (typeof doc.caretPositionFromPoint === 'function') {
+    const pos = doc.caretPositionFromPoint(e.clientX, e.clientY)
+    if (pos) { clickedNode = pos.offsetNode; clickedOffset = pos.offset }
+  } else if (typeof doc.caretRangeFromPoint === 'function') {
+    const range = doc.caretRangeFromPoint(e.clientX, e.clientY)
+    if (range) { clickedNode = range.startContainer; clickedOffset = range.startOffset }
+  }
+  pendingCaretPos = clickedNode
+    ? caretOffsetFromClick(container, clickedNode, clickedOffset)
+    : null
+
+  isEditingNote.value = true
+  void nextTick(() => {
+    const ta = noteTextareaRef.value
+    if (!ta) return
+    ta.focus()
+    const len = ta.value.length
+    const pos = pendingCaretPos === null ? len : Math.max(0, Math.min(pendingCaretPos, len))
+    ta.setSelectionRange(pos, pos)
+    pendingCaretPos = null
+  })
+}
+
+function exitNoteEditMode() {
+  commitAnnotation('note')
+  isEditingNote.value = false
+}
 
 // Commits the current draft to the parent. Always writes ALL FIVE
 // annotation fields so the unified setter doesn't accidentally null
@@ -247,13 +343,37 @@ function onTagKeydown(e: KeyboardEvent) {
     <div class="match-notes" :class="{ active: hasAnyNote }">
       <div class="match-notes-row">
         <label class="match-notes-label" :for="`note-${record.match_key}`">Note</label>
+        <!-- Preview surface: a div that renders the saved note with
+             <mark> hits against the live FilterRail query. Click
+             promotes to the textarea editor (focused at click
+             position). The textarea is the canonical editor and the
+             one labelled by the <label for=…>. -->
+        <div
+          v-if="!isEditingNote && noteDraft"
+          class="match-notes-preview"
+          :class="{ 'has-hits': noteHighlightSegments.some(s => s.hit) }"
+          role="textbox"
+          aria-readonly="true"
+          tabindex="0"
+          title="Click to edit"
+          @click="enterEditMode"
+          @keydown.enter.prevent="enterEditMode($event as unknown as MouseEvent)"
+          @keydown.space.prevent="enterEditMode($event as unknown as MouseEvent)"
+        >
+          <template v-for="(seg, i) in noteHighlightSegments" :key="i">
+            <mark v-if="seg.hit" class="note-hit">{{ seg.text }}</mark>
+            <template v-else>{{ seg.text }}</template>
+          </template>
+        </div>
         <textarea
+          v-else
           :id="`note-${record.match_key}`"
+          ref="noteTextareaRef"
           v-model="noteDraft"
           class="match-notes-textarea"
           rows="2"
           placeholder="Quick context — what happened this match?"
-          @blur="commitAnnotation('note')"
+          @blur="exitNoteEditMode"
         />
         <span v-if="savedFlash === 'note'" class="match-notes-saved" aria-hidden="true">saved ✓</span>
       </div>
@@ -1097,8 +1217,12 @@ function onTagKeydown(e: KeyboardEvent) {
   user-select: none;
 }
 
+/* Preview shares the textarea's frame so the click-to-edit swap
+   doesn't reflow the row. The textarea-only extras (resize,
+   min-height) sit in the next rule. */
 .match-notes-textarea,
-.match-notes-input {
+.match-notes-input,
+.match-notes-preview {
   width: 100%;
   padding: 0.4rem 0.6rem;
   background: var(--surface);
@@ -1108,13 +1232,69 @@ function onTagKeydown(e: KeyboardEvent) {
   font: inherit;
   font-size: 0.82rem;
   line-height: 1.45;
-  resize: vertical;
   transition: border-color 140ms ease, background 140ms ease;
 }
 
-.match-notes-textarea {
+.match-notes-textarea,
+.match-notes-preview {
   min-height: 2.4rem;
   font-family: var(--body);
+}
+
+.match-notes-textarea { resize: vertical; }
+
+/* HUD-style preview: cursor: text + a focus ring signal "editable"
+   without a pencil icon. The ⌕ pinned right confirms the search
+   landed when the active query has at least one hit inside. */
+.match-notes-preview {
+  position: relative;
+  padding-right: 1.6rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+.match-notes-preview:hover { border-color: var(--accent-glow); }
+
+.match-notes-preview:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.match-notes-preview.has-hits::after {
+  content: "⌕";
+  position: absolute;
+  top: 0.32rem;
+  right: 0.45rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--accent);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* "Target acquired" mark: accent-soft fill + 2px accent under-rule,
+   sharp corners (OW HUD, not notion soft-pill). decoration-break
+   makes wrap-to-next-line marks get the under-rule too. */
+.match-notes-preview :deep(mark.note-hit) {
+  background: var(--accent-soft);
+  color: var(--text);
+  border-radius: 0;
+  padding: 0 2px;
+  margin: 0 1px;
+  box-shadow: inset 0 -2px 0 0 var(--accent);
+  box-decoration-break: clone;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .match-notes-preview :deep(mark.note-hit) {
+    animation: note-hit-acquire 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes note-hit-acquire {
+  from { background: transparent; box-shadow: inset 0 -2px 0 0 transparent; }
 }
 
 .match-notes-input.mono {
