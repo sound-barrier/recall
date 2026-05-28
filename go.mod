@@ -3,6 +3,7 @@ module recall
 go 1.26.3
 
 require (
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/wailsapp/wails/v2 v2.12.0

@@ -190,3 +190,72 @@ func TestCheckForUpdate_StripsLeadingVFromTag(t *testing.T) {
 		t.Errorf("Latest: want 'v' stripped, got %q", got.Latest)
 	}
 }
+
+// Regression: production binaries built via release.yml have
+// `Version="v0.2.5"` because release.yml passes `${{ github.ref_name }}`
+// (the tag name, WITH the leading `v`) into the Dockerfile's
+// `-ldflags "-X recall/pkg/app.Version=${VERSION}"`. Local Makefile
+// builds get `"0.2.5"` (no v) from `jq -r '."."'
+// .release-please-manifest.json`. Pre-fix, the up-to-date check
+// stripped only the GitHub tag's `v` and string-compared against
+// Version verbatim — so a user running the OFFICIAL v0.2.5 release
+// always saw "upgrade available" prompting them to 0.2.5 (the
+// version they already had). User report:
+// "I installed the official release for v0.2.5 and yet it still
+// says that an upgrade is available."
+func TestCheckForUpdate_TaggedReleaseWithVPrefixIsNotAnUpgrade(t *testing.T) {
+	srv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v0.2.5","html_url":"https://example/v0.2.5"}`)
+	withReleasesURL(t, srv.URL)
+	// Production binaries have the `v` prefix in Version because
+	// of how release.yml passes `github.ref_name` to ldflags.
+	withVersion(t, "v0.2.5")
+
+	got := (&App{}).CheckForUpdate()
+
+	if !got.Checked {
+		t.Fatal("Checked: want true")
+	}
+	if got.Available {
+		t.Errorf("Available: want false — installed v0.2.5 matches latest v0.2.5, got %+v", got)
+	}
+	if got.DevBuild {
+		t.Error("DevBuild: want false for tagged release version")
+	}
+}
+
+// Belt-and-suspenders: prove semver ordering is used (not raw string
+// equality). Without semver, "0.2.10" < "0.2.9" in lexicographic
+// order — a user on 0.2.10 would be prompted to "upgrade" to 0.2.9
+// because string compare flags them as different and the old `latest
+// != v` branch fires.
+func TestCheckForUpdate_DoubleDigitPatchIsNotOlderThanSingleDigit(t *testing.T) {
+	srv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v0.2.9","html_url":"https://example/v0.2.9"}`)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "0.2.10")
+
+	got := (&App{}).CheckForUpdate()
+
+	if got.Available {
+		t.Errorf("Available: want false — 0.2.10 > 0.2.9 by semver, got %+v", got)
+	}
+}
+
+// Belt-and-suspenders: prerelease ordering. If a user is on
+// 0.3.0-beta.0 and the latest stable is 0.2.5, semver says
+// 0.2.5 < 0.3.0-beta.0, so no upgrade prompt. Raw string compare
+// would have flagged them as different and prompted to "downgrade"
+// to 0.2.5.
+func TestCheckForUpdate_PrereleaseInstallNeverPromptsDowngrade(t *testing.T) {
+	srv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v0.2.5","html_url":"https://example/v0.2.5"}`)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "0.3.0-beta.0")
+
+	got := (&App{}).CheckForUpdate()
+
+	if got.Available {
+		t.Errorf("Available: want false — 0.2.5 < 0.3.0-beta.0 by semver, got %+v", got)
+	}
+}

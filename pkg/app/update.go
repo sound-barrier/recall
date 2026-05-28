@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/Masterminds/semver/v3"
 )
 
 // Version is injected at build time via -ldflags "-X recall/pkg/app.Version=<tag>".
@@ -88,7 +90,33 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	if isDev {
 		return UpdateInfo{Checked: true, DevBuild: true, Latest: latest, URL: release.HTMLURL}
 	}
-	if latest == v {
+
+	// Semver compare instead of raw string equality. Two reasons:
+	//   1. The production binary's `Version` carries a leading `v`
+	//      (release.yml passes `${{ github.ref_name }}` — the tag
+	//      name — to the Dockerfile's ldflags), but local Makefile
+	//      builds get bare semver from the manifest. semver.NewVersion
+	//      accepts both forms, so the comparison stops caring about
+	//      the prefix-mismatch that pre-fix made every official
+	//      install show a perpetual "upgrade to <your-own-version>"
+	//      prompt.
+	//   2. Lexicographic compare flags 0.2.10 != 0.2.9 and would
+	//      prompt the user to "upgrade" from 10 to 9. semver.LessThan
+	//      orders them correctly.
+	// Parse failures fall back to raw string equality so a malformed
+	// release tag on GitHub's side (or a hand-built binary with a
+	// non-semver Version string) doesn't trip the "Available" flag
+	// any more aggressively than the old code did.
+	current, errCurrent := semver.NewVersion(v)
+	upstream, errUpstream := semver.NewVersion(latest)
+	if errCurrent != nil || errUpstream != nil {
+		if latest == v {
+			return UpdateInfo{Checked: true}
+		}
+		return UpdateInfo{Checked: true, Available: true, Latest: latest, URL: release.HTMLURL}
+	}
+
+	if !current.LessThan(upstream) {
 		return UpdateInfo{Checked: true}
 	}
 	return UpdateInfo{Checked: true, Available: true, Latest: latest, URL: release.HTMLURL}
