@@ -1618,7 +1618,7 @@ function onTagKeydown(e: KeyboardEvent) {
 
 /* HUD-style preview — cursor: text + the focus-within glow on the
    parent cell signal "editable" without a pencil icon. The ⌕ pinned
-   right confirms the active note-search query landed at least one
+   right confirms the active match-search query landed at least one
    hit inside this note. */
 .match-notes-preview {
   position: relative;

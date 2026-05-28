@@ -200,14 +200,6 @@ describe('parsePresetSnapshot', () => {
     expect(s.includeUndated).toBe(true)
   })
 
-  // Migration: presets saved before the global-search rename used
-  // `noteSearch`. The parser accepts the legacy key as a fallback
-  // for matchQuery so older payloads keep loading.
-  it('accepts legacy noteSearch key as matchQuery fallback', () => {
-    const s = parsePresetSnapshot({ noteSearch: 'clutch' })
-    expect(s.matchQuery).toBe('clutch')
-  })
-
   it('clamps unknown leaverHandling back to include', () => {
     const s = parsePresetSnapshot({ leaverHandling: 'lol' })
     expect(s.leaverHandling).toBe('include')

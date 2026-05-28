@@ -62,9 +62,9 @@ test.describe('match notes search', () => {
     await page.locator('#tab-matches').click()
     await expect(page.locator('.match')).toHaveCount(3)
 
-    // Type into the dedicated note-search input on the FilterRail.
-    // The input carries aria-label="Search match notes" so the
-    // selector is stable against text/icon-only changes.
+    // Type into the dedicated match-search input on the FilterRail.
+    // The input carries aria-label="Search matches" so the selector
+    // is stable against text/icon-only changes.
     const search = page.locator('input[aria-label="Search matches"]')
     await search.fill('clutch')
     await expect(page.locator('.match')).toHaveCount(1)
