@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { sshotTypeLabel } from '../match-helpers'
 import { useOWData } from '../composables/useOWData'
+import type { SearchClause } from '../search-query'
 
 // Active-filter summary. Renders every currently-engaged filter
 // (multi-selects, date range, note search) as a removable chip on
@@ -33,10 +34,13 @@ const props = defineProps<{
   results: string[]
   sshots:  string[]
   tags:    string[]
-  // Free-text + date filters.
-  noteSearch: string
-  filterFrom: string
-  filterTo:   string
+  // Match-search state. `matchQuery` is the raw user-typed string;
+  // `searchClauses` is the parsed list — one chip per clause so the
+  // user can drop individual clauses from the active-filter strip.
+  matchQuery:    string
+  searchClauses: SearchClause[]
+  filterFrom:    string
+  filterTo:      string
   // The "any filter engaged" flag — single source of truth for
   // whether the strip should render at all. Mirrors useMatchFilters'
   // anyFilter computed.
@@ -50,7 +54,7 @@ const emit = defineEmits<{
   // dropdowns, so the parent can reuse its handler.
   'remove-filter':       [field: string, value: string]
   // Per-field clears for the singleton filters (no per-value chips).
-  'clear-note-search':   []
+  'clear-match-query':   []
   'clear-date-range':    []
   // One-shot "reset everything" button.
   'clear-all':           []
@@ -66,7 +70,7 @@ interface PillRow {
   label:       string         // short eyebrow ("Mode", "Hero", …)
   value:       string         // user-facing text in the chip
   removeArgs:  [string, string] | null
-  clearEvent?: 'clear-note-search' | 'clear-date-range'
+  clearEvent?: 'clear-match-query' | 'clear-date-range'
 }
 
 // Build the flat pill list reactively from the eight multi-select
@@ -98,16 +102,24 @@ const pills = computed<PillRow[]>(() => {
   push('sshot',  'Source', props.sshots, sshotTypeLabel)
   push('tags',   'Tag',    props.tags)
 
-  if (props.noteSearch.trim()) {
+  // Active search clauses each get their own chip — drop individually
+  // via the × or wipe them all via "Clear all". Scoped clauses
+  // surface their field (NOTE / REPLAY / MEMBER / TAG); bare clauses
+  // render as ANY so the global-vs-scoped distinction stays visible.
+  // The whole batch routes through `clear-match-query` because we
+  // wipe the raw query string rather than reconstruct it from the
+  // surviving subset — the in-rail × already covers per-clause
+  // removal, and reconstructing here would double the logic.
+  if (props.searchClauses.length) {
     out.push({
-      key:        'note-search',
-      field:      'note-search',
-      label:      'Note',
-      // The mini-input renders the value with surrounding quotes so
-      // the user reads it as a literal search term, not a category.
-      value:      `"${props.noteSearch.trim()}"`,
+      key:        'search-query',
+      field:      'match-search',
+      label:      'Search',
+      // `:value` joined back into a single readable token list — the
+      // active-pills strip is a summary, not an editor.
+      value:      `"${props.matchQuery.trim()}"`,
       removeArgs: null,
-      clearEvent: 'clear-note-search',
+      clearEvent: 'clear-match-query',
     })
   }
 
@@ -129,8 +141,8 @@ const pills = computed<PillRow[]>(() => {
 function onRemove(p: PillRow) {
   if (p.removeArgs) {
     emit('remove-filter', p.removeArgs[0], p.removeArgs[1])
-  } else if (p.clearEvent === 'clear-note-search') {
-    emit('clear-note-search')
+  } else if (p.clearEvent === 'clear-match-query') {
+    emit('clear-match-query')
   } else if (p.clearEvent === 'clear-date-range') {
     emit('clear-date-range')
   }

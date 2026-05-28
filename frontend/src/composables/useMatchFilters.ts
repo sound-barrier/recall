@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import type { Ref } from 'vue'
 import type { MatchRecord } from '../api'
 import { SCREENSHOT_TYPES, matchTime, detectScreenshotSlots, parseGameLengthMinutes } from '../match-helpers'
+import { parseSearchQuery } from '../search-query'
 
 // Fields whose values come directly from a scalar property on MatchRecord.data.
 type StringMatchField = 'mode' | 'type' | 'role' | 'map' | 'result' | 'hero'
@@ -52,16 +53,23 @@ export function useMatchFilters(
   const filterResult = ref<string[]>([])
   const filterSshot  = ref<string[]>([])
   const filterTags   = ref<string[]>([])
-  // Free-text substring filter over annotation.note content
-  // (case-insensitive, surrounding whitespace ignored). Empty
-  // string = no filter; the FilterRail's note-search input is the
-  // only writer.
-  const noteSearch   = ref('')
+  // Free-text search over the user's annotation fields. Accepts a
+  // vim/less-style query string: bare tokens match across every
+  // annotation field (note / replay_code / members / tags), while
+  // `<field>:<value>` scopes a clause. Multiple clauses AND together.
+  // Empty string = no filter; the FilterRail's match-search input
+  // is the only writer. Parsing happens in `searchClauses` below so
+  // the parse cost is paid once per ref change, not once per record.
+  const matchQuery   = ref('')
   const filterFrom   = ref('')
   const filterTo     = ref('')
   const sortDir      = ref('desc')
 
   // Field name → ref lookup so a single toggleFilter() drives every field.
+  // Parse once per query change; the filter loop reads the parsed
+  // clause list. Keeps the per-record work O(clauses × fields).
+  const searchClauses = computed(() => parseSearchQuery(matchQuery.value))
+
   const filterRefs: Record<string, Ref<string[]>> = {
     mode:   filterMode,
     type:   filterType,
@@ -184,14 +192,38 @@ export function useMatchFilters(
         if (!picks.some(t => have.includes(t))) return false
       }
 
-      // Note-content substring filter. Case-insensitive, whitespace
-      // trimmed from the query. Records without a note (or with no
-      // annotation at all) drop out when the search is active —
-      // there's nothing to search.
-      const q = noteSearch.value.trim().toLowerCase()
-      if (q) {
-        const note = (r.annotation?.note ?? '').toLowerCase()
-        if (!note.includes(q)) return false
+      // Global match-search. Each parsed clause must match somewhere:
+      //   • bare clause → matches if the value appears in note OR
+      //     replay_code OR any member OR any tag (OR across fields).
+      //   • field-scoped clause → only that field is checked.
+      // Records without an annotation drop out whenever the parsed
+      // clause list is non-empty — there's nothing to match against.
+      // Multiple clauses AND together (vim-style "all of these must
+      // hold"), which is the semantic users carry over from grep.
+      if (searchClauses.value.length > 0) {
+        const ann   = r.annotation
+        const note  = (ann?.note ?? '').toLowerCase()
+        const reply = (ann?.replay_code ?? '').toLowerCase()
+        const members = ann?.members ?? []
+        const tags    = ann?.tags ?? []
+        for (const c of searchClauses.value) {
+          const v = c.value
+          if (!v) continue
+          let hit = false
+          switch (c.field) {
+            case 'note':   hit = note.includes(v); break
+            case 'replay': hit = reply.includes(v); break
+            case 'member': hit = members.some(m => m.toLowerCase().includes(v)); break
+            case 'tag':    hit = tags.some(t => t.toLowerCase().includes(v)); break
+            case null:
+              hit = note.includes(v)
+                || reply.includes(v)
+                || members.some(m => m.toLowerCase().includes(v))
+                || tags.some(t => t.toLowerCase().includes(v))
+              break
+          }
+          if (!hit) return false
+        }
       }
 
       // Min-play threshold filter. A match qualifies if AT LEAST ONE
@@ -257,7 +289,7 @@ export function useMatchFilters(
     !!(filterMode.value.length || filterType.value.length || filterRole.value.length ||
        filterMap.value.length  || filterHero.value.length || filterResult.value.length ||
        filterSshot.value.length || filterTags.value.length ||
-       noteSearch.value.trim() ||
+       searchClauses.value.length ||
        filterFrom.value || filterTo.value ||
        minPlayActive.value)
   )
@@ -272,7 +304,7 @@ export function useMatchFilters(
     if (filterResult.value.length)  n++
     if (filterSshot.value.length)   n++
     if (filterTags.value.length)    n++
-    if (noteSearch.value.trim())    n++
+    if (searchClauses.value.length) n++
     if (filterFrom.value)           n++
     if (filterTo.value)             n++
     if (minPlayActive.value)        n++
@@ -335,7 +367,7 @@ export function useMatchFilters(
     filterResult.value = []
     filterSshot.value  = []
     filterTags.value   = []
-    noteSearch.value   = ''
+    matchQuery.value   = ''
     filterFrom.value   = ''
     filterTo.value     = ''
     setMinPlayPercent?.(0)
@@ -349,7 +381,7 @@ export function useMatchFilters(
 
   return {
     filterMode, filterType, filterRole, filterMap, filterHero, filterResult, filterSshot, filterTags,
-    noteSearch,
+    matchQuery, searchClauses,
     filterFrom, filterTo, sortDir,
     filterRefs, filterList,
     modes, types, roles, maps, results, sshotTypes, heroes, tags,

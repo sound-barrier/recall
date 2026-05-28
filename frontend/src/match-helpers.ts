@@ -629,24 +629,44 @@ export interface HighlightSegment {
 }
 
 export function highlightSubstring(text: string, query: string): HighlightSegment[] {
+  return highlightSubstrings(text, query ? [query] : [])
+}
+
+// highlightSubstrings is the n-term variant. Useful when the search
+// query parses into multiple clauses that all want to highlight in
+// the same field — feed each clause's value in and the resulting
+// segments will mark every hit in one pass.
+//
+// Each non-hit segment is recursively re-split by the next term, so
+// the output is correct even when one term is a substring of another
+// (e.g. `["clutch", "lutch"]` produces non-overlapping marks where
+// the longer term wins by virtue of being applied first; ordering is
+// deterministic by input order).
+export function highlightSubstrings(text: string, terms: string[]): HighlightSegment[] {
   if (!text) return []
-  const q = (query ?? '').trim()
-  if (!q) return [{ text, hit: false }]
+  const cleaned = terms.map(t => (t ?? '').trim()).filter(t => t.length > 0)
+  if (cleaned.length === 0) return [{ text, hit: false }]
 
-  const segments: HighlightSegment[] = []
-  const haystack = text.toLowerCase()
-  const needle = q.toLowerCase()
-  let cursor = 0
-
-  while (cursor < text.length) {
-    const idx = haystack.indexOf(needle, cursor)
-    if (idx < 0) {
-      segments.push({ text: text.slice(cursor), hit: false })
-      break
+  let segments: HighlightSegment[] = [{ text, hit: false }]
+  for (const term of cleaned) {
+    const needle = term.toLowerCase()
+    const next: HighlightSegment[] = []
+    for (const seg of segments) {
+      if (seg.hit) { next.push(seg); continue }
+      const haystack = seg.text.toLowerCase()
+      let cursor = 0
+      while (cursor < seg.text.length) {
+        const idx = haystack.indexOf(needle, cursor)
+        if (idx < 0) {
+          next.push({ text: seg.text.slice(cursor), hit: false })
+          break
+        }
+        if (idx > cursor) next.push({ text: seg.text.slice(cursor, idx), hit: false })
+        next.push({ text: seg.text.slice(idx, idx + needle.length), hit: true })
+        cursor = idx + needle.length
+      }
     }
-    if (idx > cursor) segments.push({ text: text.slice(cursor, idx), hit: false })
-    segments.push({ text: text.slice(idx, idx + needle.length), hit: true })
-    cursor = idx + needle.length
+    segments = next
   }
   return segments
 }

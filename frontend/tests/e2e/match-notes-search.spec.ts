@@ -65,12 +65,12 @@ test.describe('match notes search', () => {
     // Type into the dedicated note-search input on the FilterRail.
     // The input carries aria-label="Search match notes" so the
     // selector is stable against text/icon-only changes.
-    const search = page.locator('input[aria-label="Search match notes"]')
+    const search = page.locator('input[aria-label="Search matches"]')
     await search.fill('clutch')
     await expect(page.locator('.match')).toHaveCount(1)
 
     // The clear control sits inline inside the input shell.
-    await page.locator('button[aria-label="Clear note search"]').click()
+    await page.locator('button[aria-label="Clear search"]').click()
     await expect(search).toHaveValue('')
     await expect(page.locator('.match')).toHaveCount(3)
   })
@@ -88,7 +88,7 @@ test.describe('match notes search', () => {
     })
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('input[aria-label="Search match notes"]').fill('ALLY')
+    await page.locator('input[aria-label="Search matches"]').fill('ALLY')
     await expect(page.locator('.match')).toHaveCount(1)
   })
 })
@@ -117,7 +117,7 @@ test.describe('match notes search — hit highlighting in the expanded card', ()
     await page.goto('/')
     await page.locator('#tab-matches').click()
 
-    await page.locator('input[aria-label="Search match notes"]').fill('clutch')
+    await page.locator('input[aria-label="Search matches"]').fill('clutch')
     await page.locator('.match').first().locator('.chev-btn').click()
 
     const preview = page.locator('.match-notes-preview')
@@ -145,7 +145,7 @@ test.describe('match notes search — hit highlighting in the expanded card', ()
 
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('input[aria-label="Search match notes"]').fill('win')
+    await page.locator('input[aria-label="Search matches"]').fill('win')
     await page.locator('.match').first().locator('.chev-btn').click()
 
     await expect(page.locator('.match-notes-preview mark.note-hit')).toHaveCount(4)
@@ -167,7 +167,7 @@ test.describe('match notes search — hit highlighting in the expanded card', ()
 
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('input[aria-label="Search match notes"]').fill('clutch')
+    await page.locator('input[aria-label="Search matches"]').fill('clutch')
     await page.locator('.match').first().locator('.chev-btn').click()
 
     // Click → preview is replaced by the textarea, which is focused
@@ -197,7 +197,7 @@ test.describe('match notes search — hit highlighting in the expanded card', ()
 
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('input[aria-label="Search match notes"]').fill('clutch')
+    await page.locator('input[aria-label="Search matches"]').fill('clutch')
     await page.locator('.match').first().locator('.chev-btn').click()
 
     await page.locator('.match-notes-preview').click()

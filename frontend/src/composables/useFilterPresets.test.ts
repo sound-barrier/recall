@@ -18,7 +18,7 @@ function emptySnapshot(): FilterPresetSnapshot {
       mode: [], type: [], role: [], map: [],
       hero: [], result: [], sshot: [], tags: [],
     },
-    noteSearch: '',
+    matchQuery: '',
     filterFrom: '',
     filterTo: '',
     sortDir: 'desc',
@@ -184,7 +184,7 @@ describe('parsePresetSnapshot', () => {
   it('preserves valid fields, drops alien ones', () => {
     const s = parsePresetSnapshot({
       filters: { hero: ['juno'], tags: ['stack', 'stream'], bogus: ['ignored'] },
-      noteSearch: 'clutch',
+      matchQuery: 'note:clutch',
       sortDir: 'asc',
       leaverHandling: 'hide',
       minPlayPercent: 25,
@@ -193,11 +193,19 @@ describe('parsePresetSnapshot', () => {
     })
     expect(s.filters.hero).toEqual(['juno'])
     expect(s.filters.tags).toEqual(['stack', 'stream'])
-    expect(s.noteSearch).toBe('clutch')
+    expect(s.matchQuery).toBe('note:clutch')
     expect(s.sortDir).toBe('asc')
     expect(s.leaverHandling).toBe('hide')
     expect(s.minPlayPercent).toBe(25)
     expect(s.includeUndated).toBe(true)
+  })
+
+  // Migration: presets saved before the global-search rename used
+  // `noteSearch`. The parser accepts the legacy key as a fallback
+  // for matchQuery so older payloads keep loading.
+  it('accepts legacy noteSearch key as matchQuery fallback', () => {
+    const s = parsePresetSnapshot({ noteSearch: 'clutch' })
+    expect(s.matchQuery).toBe('clutch')
   })
 
   it('clamps unknown leaverHandling back to include', () => {

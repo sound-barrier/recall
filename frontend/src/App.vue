@@ -308,7 +308,7 @@ function buildFilterPresetSnapshot(): FilterPresetSnapshot {
       sshot:  [...filters.filterSshot.value],
       tags:   [...filters.filterTags.value],
     },
-    noteSearch:     filters.noteSearch.value,
+    matchQuery:     filters.matchQuery.value,
     filterFrom:     filters.filterFrom.value,
     filterTo:       filters.filterTo.value,
     sortDir:        filters.sortDir.value === 'asc' ? 'asc' : 'desc',
@@ -329,7 +329,7 @@ function applyFilterPresetSnapshot(s: FilterPresetSnapshot) {
   filters.filterResult.value = [...s.filters.result]
   filters.filterSshot.value  = [...s.filters.sshot]
   filters.filterTags.value   = [...s.filters.tags]
-  filters.noteSearch.value   = s.noteSearch
+  filters.matchQuery.value   = s.matchQuery
   filters.filterFrom.value   = s.filterFrom
   filters.filterTo.value     = s.filterTo
   filters.sortDir.value      = s.sortDir
@@ -635,13 +635,13 @@ const cardState = {
 // predicates gate view-specific shortcuts. See UI_RECOMMENDATIONS.md
 // item 4 for the design + FEATURES.md for the cheatsheet contract.
 useKeyboardShortcuts([
-  // Global: focus the FilterRail's note-search input. Input-gated:
+  // Global: focus the FilterRail's match-search input. Input-gated:
   // only fires OUTSIDE inputs (so typing `/` in a search field
   // doesn't recursively re-focus).
   {
     key: '/',
     handler: () => {
-      const el = document.getElementById('note-search')
+      const el = document.getElementById('match-search')
       if (el instanceof HTMLInputElement) el.focus()
     },
   },
