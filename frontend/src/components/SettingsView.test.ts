@@ -49,23 +49,21 @@ describe('SettingsView', () => {
     expect(btn.attributes('disabled')).toBeDefined()
   })
 
-  it('emits toggle-theme when the inactive theme swatch is clicked', async () => {
+  it('emits set-theme with the picked mode when a swatch is clicked', async () => {
     const wrapper = mount(SettingsView, {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
     })
-    // themeMode === 'dark', so clicking the light swatch should toggle.
-    const lightSwatch = wrapper.find('.light-swatch')
-    await lightSwatch.trigger('click')
-    expect(wrapper.emitted('toggle-theme')).toBeTruthy()
+    await wrapper.find('.light-swatch').trigger('click')
+    expect(wrapper.emitted('set-theme')).toBeTruthy()
+    expect(wrapper.emitted('set-theme')![0]).toEqual(['light'])
   })
 
-  it('does not emit toggle-theme when the active swatch is clicked', async () => {
+  it('emits set-theme with "high-contrast" when the Contrast swatch is clicked', async () => {
     const wrapper = mount(SettingsView, {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
     })
-    // Clicking the dark swatch when dark is already active is a no-op.
-    await wrapper.find('.dark-swatch').trigger('click')
-    expect(wrapper.emitted('toggle-theme')).toBeFalsy()
+    await wrapper.find('.contrast-swatch').trigger('click')
+    expect(wrapper.emitted('set-theme')![0]).toEqual(['high-contrast'])
   })
 
   it('marks the active theme swatch per themeMode prop', () => {

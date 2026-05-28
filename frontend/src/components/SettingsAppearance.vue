@@ -1,21 +1,26 @@
 <script setup lang="ts">
 import type { ThemeMode } from '../composables/useTheme'
 
-// Appearance panel of the Settings view — Day/Night theme swatches.
-// Two side-by-side preview cards showing a miniature of the theme's
-// palette; clicking the inactive card emits toggle-theme.
+// Appearance panel of the Settings view — three theme swatches.
+// Each preview card is a miniature of the theme's palette; clicking
+// emits set-theme with the picked mode. Inactive swatches dim slightly
+// so the active pick reads at a glance.
 //
 // Extracted from SettingsView so the swatch markup + the per-card
-// CSS-variable palettes (light-swatch / dark-swatch) live with the
-// component that owns the surface.
+// CSS-variable palettes (light-swatch / dark-swatch / contrast-swatch)
+// live with the component that owns the surface.
 
 defineProps<{
   themeMode: ThemeMode
 }>()
 
 const emit = defineEmits<{
-  'toggle-theme': []
+  'set-theme': [mode: ThemeMode]
 }>()
+
+function pick(mode: ThemeMode) {
+  emit('set-theme', mode)
+}
 </script>
 
 <template>
@@ -36,12 +41,16 @@ const emit = defineEmits<{
               <span class="setting-help-mark" aria-hidden="true">?</span>
               <span class="setting-help-label">About Theme</span>
               <span class="setting-help-pop" role="tooltip">
-                Day and Night share the same orange accent but invert surface/text values. Match the room you play in — Night for evenings, Day for sunlit screens.
+                Day and Night share the same orange accent but invert surface/text values.
+                Contrast is a high-contrast variant for tournament-booth or low-vision use —
+                pure black ground, white text, boosted gold accent. First-launch defaults to your
+                OS light/dark preference; your pick after that survives reinstalls.
               </span>
             </span>
           </h4>
           <p class="setting-desc">
-            Switch between Day and Night palettes. Click a preview to apply; the choice persists across launches.
+            Pick a preview to apply; the choice persists across launches and reinstalls.
+            Fresh installs follow your OS light/dark preference.
           </p>
         </div>
         <div class="setting-control">
@@ -52,7 +61,7 @@ const emit = defineEmits<{
               role="radio"
               :aria-checked="themeMode === 'light'"
               :class="{ active: themeMode === 'light' }"
-              @click="themeMode === 'light' ? null : emit('toggle-theme')"
+              @click="pick('light')"
             >
               <div class="swatch-preview" aria-hidden="true">
                 <div class="swatch-mast" />
@@ -86,7 +95,7 @@ const emit = defineEmits<{
               role="radio"
               :aria-checked="themeMode === 'dark'"
               :class="{ active: themeMode === 'dark' }"
-              @click="themeMode === 'dark' ? null : emit('toggle-theme')"
+              @click="pick('dark')"
             >
               <div class="swatch-preview" aria-hidden="true">
                 <div class="swatch-mast" />
@@ -104,6 +113,35 @@ const emit = defineEmits<{
                 Night
               </div>
             </button>
+            <button
+              type="button"
+              class="theme-swatch contrast-swatch"
+              role="radio"
+              :aria-checked="themeMode === 'high-contrast'"
+              :class="{ active: themeMode === 'high-contrast' }"
+              @click="pick('high-contrast')"
+            >
+              <div class="swatch-preview" aria-hidden="true">
+                <div class="swatch-mast" />
+                <div class="swatch-body">
+                  <div class="swatch-line w-70" />
+                  <div class="swatch-line w-45" />
+                  <div class="swatch-line w-60" />
+                  <div class="swatch-tick" />
+                </div>
+              </div>
+              <div class="swatch-label">
+                <svg viewBox="0 0 24 24" class="swatch-icon" aria-hidden="true">
+                  <!-- Half-filled circle — the canonical "contrast"
+                       glyph (top half filled with currentColor; bottom
+                       half outlined). Reads at small sizes without
+                       relying on detail. -->
+                  <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7" />
+                  <path d="M12 3 A9 9 0 0 1 12 21 Z" fill="currentColor" />
+                </svg>
+                Contrast
+              </div>
+            </button>
           </div>
         </div>
       </div>
@@ -112,14 +150,15 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-/* Two side-by-side preview cards showing a miniature of the theme's
-   palette. Active card gets the accent ring + glow. Each card sets
-   its own CSS variables inline (via the .light-swatch / .dark-swatch
-   class) so both render their own palette regardless of the
-   document's [data-theme]. */
+/* Three preview cards showing a miniature of each theme's palette.
+   Active card gets the accent ring + glow. Each card sets its own
+   CSS variables inline (via the .light-swatch / .dark-swatch /
+   .contrast-swatch class) so all three render their own palette
+   regardless of the document's [data-theme]. */
 
 .theme-swatch-row {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 0.7rem;
 }
 
@@ -238,5 +277,25 @@ const emit = defineEmits<{
   --swatch-border: #2a2d33;
   --swatch-text:   #d8d9de;
   --swatch-accent: #ff7a3a;
+}
+
+/* Contrast-swatch palette (frozen — matches the live high-contrast
+   theme: pure black surfaces, white text, boosted gold accent. The
+   mast is a touch above pure black so the strip reads as a divider
+   in the miniature). */
+.contrast-swatch {
+  --swatch-bg:     #000;
+  --swatch-mast:   #0e0e0e;
+  --swatch-border: #fff;
+  --swatch-text:   #fff;
+  --swatch-accent: #ffbf4d;
+}
+
+/* The contrast swatch's brighter accent benefits from a slightly
+   thicker tick — the bar's glow gets clipped against pure black if
+   the bar itself is too thin. */
+.contrast-swatch .swatch-tick {
+  height: 4px;
+  box-shadow: 0 0 10px var(--swatch-accent);
 }
 </style>

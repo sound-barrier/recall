@@ -31,6 +31,15 @@ const VIEWS: { name: string; tabId: string }[] = [
 // mode anyway — animations must not mask contrast issues.
 test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
+  // Pin the theme to dark for axe sweeps. `useTheme` now defaults to
+  // the OS `prefers-color-scheme`, which Chromium reports as `light`
+  // by default — letting that win here would silently switch which
+  // palette gets audited test-by-test. The dark palette is the one
+  // the bulk of the contrast tuning is anchored against; the
+  // theme-specific axe coverage runs in theme.spec.ts.
+  await page.addInitScript(() => {
+    try { localStorage.setItem('recall.theme', 'dark') } catch (_) {}
+  })
 })
 
 for (const view of VIEWS) {

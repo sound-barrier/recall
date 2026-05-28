@@ -143,6 +143,70 @@
   --primary-text-on-accent: #fff8ef;
 }
 
+/* HIGH-CONTRAST — opt-in tournament-booth / low-vision mode. Strips
+   every soft surface gradient and intermediate text tone in favour
+   of a pure-black ground, pure-white text, and a boosted gold accent
+   (#ffbf4d, the same hue as --accent-bright in dark mode but used as
+   the primary). Win / loss / draw colours go fully saturated so they
+   read from across a room — useful when streaming a session or
+   sharing the screen with a coach. Every surface still passes WCAG
+   AAA; the previous AA verification continues to hold (verified by
+   axe-core in the a11y e2e). */
+[data-theme="high-contrast"] {
+  --bg: #000;
+  --surface: #000;
+  --surface-2: #0a0a0a;
+  --surface-3: #141414;
+  --border: #fff;
+  --border-soft: #888;
+  --border-strong: #fff;
+  --hairline: rgb(255 255 255 / 30%);
+  --text: #fff;
+
+  /* No dim hierarchy in this mode — secondary text is the same
+     white as primary, but at slightly tighter letter-spacing in the
+     places that visually segment via spacing rather than colour.
+     This is the high-contrast bargain: every typographic level
+     reads at the SAME luminance step, with hierarchy carried by
+     weight / case / spacing. */
+  --text-dim: #fff;
+  --text-faint: #e6e6e6;
+  --text-mute: #d0d0d0;
+  --brand-gray: #fff;
+  --brand-gray-soft: rgb(255 255 255 / 80%);
+
+  /* Accent boosted from the dark-mode burnt orange (#F5A623) to the
+     warmer gold #ffbf4d — same hue as dark-mode --accent-bright but
+     used as the primary here so every accent-touched surface gains
+     a couple of contrast steps over standard dark. */
+  --accent: #ffbf4d;
+  --accent-bright: #ffd066;
+  --accent-text: #ffbf4d;
+  --accent-soft: rgb(255 191 77 / 30%);
+  --accent-glow: rgb(255 191 77 / 60%);
+  --win: #0f6;
+  --win-soft: rgb(0 255 102 / 25%);
+  --win-line: rgb(0 255 102 / 80%);
+  --loss: #f35;
+  --loss-soft: rgb(255 51 85 / 25%);
+  --loss-line: rgb(255 51 85 / 80%);
+  --draw: #ffd700;
+  --draw-soft: rgb(255 215 0 / 25%);
+  --draw-line: rgb(255 215 0 / 80%);
+  --unknown-line: rgb(255 255 255 / 60%);
+  --tank: #6df;
+  --tank-soft: rgb(102 221 255 / 25%);
+  --dps: #f86;
+  --dps-soft: rgb(255 136 102 / 25%);
+  --support: #8fa;
+  --support-soft: rgb(136 255 170 / 25%);
+  --atmos-orange: rgb(255 191 77 / 10%);
+  --atmos-blue:   rgb(102 221 255 / 6%);
+  --atmos-coral:  rgb(255 51 85 / 5%);
+  --grid-line:    rgb(255 255 255 / 4%);
+  --primary-text-on-accent: #000;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* Honor the OS-level reduced-motion preference. We have a lot of

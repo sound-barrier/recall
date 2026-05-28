@@ -6,9 +6,10 @@ gaps (active-filter pills, aggregate stats, filtered-empty state).
 Since then: **filter-preset save & recall** (Presets dropdown +
 `useFilterPresets`), **collapsible Heroes Played + Match Journal**
 redesign, **global match search** with vim-style scoped clauses
-(`note:` / `replay:` / `member:` / `tag:`), and the **group-jump
+(`note:` / `replay:` / `member:` / `tag:`), the **group-jump
 timeline rail** (sticky right-edge chip column that scrolls + auto-
-expands the target month on click) have all shipped. What's left
+expands the target month on click), and the **high-contrast theme
+variant + OS-preference autodetect** have all shipped. What's left
 below is the remaining backlog — sorted by impact-to-effort ratio,
 not by which is most fun.
 
@@ -111,14 +112,6 @@ appears when the selection count > 0.
 Hover a card → show a small thumbnail of the screenshot in a
 floating preview, anchored to the cursor. Useful for "which
 match was the Rialto one with the comeback".
-
-### 7. High-contrast theme variant
-
-The current dark theme passes WCAG AA on every surface (verified
-in the a11y e2e). A "high contrast" theme variant — pure black
-background, white text, accent boosted to `#ffbf4d` — would help
-users with low vision. New CSS variable layer, gated by a third
-`themeMode` value.
 
 ## Out of scope (deliberately not recommending)
 
