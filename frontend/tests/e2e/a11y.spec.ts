@@ -7,8 +7,9 @@
  *
  * Sister file: smoke.spec.ts (functional smoke + keyboard nav).
  */
-import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+
+import { test, expect } from './_fixtures'
 
 const VIEWS: { name: string; tabId: string }[] = [
   { name: 'matches (default landing)', tabId: 'tab-matches' },

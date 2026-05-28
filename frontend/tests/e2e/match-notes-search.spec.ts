@@ -15,7 +15,9 @@
  * Same `page.route()` mocking pattern as match-tags.spec.ts — no
  * mutation of state, just substring-matching against a canned list.
  */
-import { test, expect, type Route } from '@playwright/test'
+import type { Route } from '@playwright/test'
+
+import { test, expect } from './_fixtures'
 
 function record(matchKey: string, note?: string) {
   return {
