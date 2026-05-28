@@ -17,7 +17,9 @@
  * tracks state in closure-captured `tags` so subsequent GETs see the
  * updated annotation.
  */
-import { test, expect, type Route } from '@playwright/test'
+import type { Route } from '@playwright/test'
+
+import { test, expect } from './_fixtures'
 
 const KEY = 'match:2026-05-10T22:00:00'
 const KEY_ENCODED = encodeURIComponent(KEY)

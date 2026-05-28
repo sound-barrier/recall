@@ -7,7 +7,9 @@
  * toggle, MatchCard danger row, confirm step, outbound PUT to
  * `/api/v1/matches/{matchKey}/visibility`).
  */
-import { test, expect, type Route } from '@playwright/test'
+import type { Route } from '@playwright/test'
+
+import { test, expect } from './_fixtures'
 
 const NORMAL_KEY = 'match:2026-05-10T22:00:00'
 // Path-encoded form of NORMAL_KEY — the colon must be percent-encoded

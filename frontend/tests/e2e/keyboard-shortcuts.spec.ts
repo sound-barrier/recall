@@ -17,7 +17,9 @@
  * something to navigate. Same `page.route()` pattern as
  * match-tags.spec.ts.
  */
-import { test, expect, type Route } from '@playwright/test'
+import type { Route } from '@playwright/test'
+
+import { test, expect } from './_fixtures'
 
 function record(matchKey: string, hero: string) {
   return {

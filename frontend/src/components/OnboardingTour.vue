@@ -37,6 +37,18 @@ import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 const tour = useOnboardingTour()
 useModalFocusTrap(tour.open, { containerSelector: '.onboarding-panel' })
 
+// useModalFocusTrap's Escape handler closes the modal by setting
+// `tour.open` directly — it doesn't know to also persist the
+// completion flag. Without this watcher a user who Escapes out of
+// the tour would see it reappear on every reload. Fires only on
+// open=true → false transitions where completed hasn't already been
+// recorded (so the normal finish/skip path doesn't double-fire).
+watch(tour.open, (isOpen, wasOpen) => {
+  if (wasOpen && !isOpen && !tour.completed.value) {
+    tour.finish()
+  }
+})
+
 const emit = defineEmits<{
   navigate: [view: OnboardingViewId]
 }>()

@@ -6,7 +6,7 @@
  *
  * Sister file: a11y.spec.ts (axe-core audits per view).
  */
-import { test, expect } from '@playwright/test'
+import { test, expect } from './_fixtures'
 
 test.describe('smoke — page loads + navigation', () => {
   test('masthead renders with the RECALL wordmark', async ({ page }) => {
