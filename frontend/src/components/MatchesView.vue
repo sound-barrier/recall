@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
 import type { MatchRecord } from '../api'
 import type { useMatchFilters } from '../composables/useMatchFilters'
@@ -11,6 +11,7 @@ import type { MatchGroup } from '../match-helpers'
 import type { FilterPreset } from '../composables/useFilterPresets'
 import FilterRail from './FilterRail.vue'
 import MatchGroupSection from './MatchGroupSection.vue'
+import MatchGroupTimeline from './MatchGroupTimeline.vue'
 import MatchesAggregateStats from './MatchesAggregateStats.vue'
 import MatchesFilterPills from './MatchesFilterPills.vue'
 
@@ -130,6 +131,55 @@ function setFilterSearch(field: string, value: string) {
 
 function matchGroupKey(group: MatchGroup<MatchRecord>): string {
   return group.key
+}
+
+// Jump-rail click handler. Walks the tree to find the target group
+// (almost always a month, but the same code path is correct for any
+// level), opens it + every ancestor if collapsed, then smooth-scrolls
+// the section into view and flashes a brief "target acquired" tint
+// on the group head so the user sees where they landed.
+//
+// Auto-expand goes through grouping.toggleGroup so it counts as user
+// intent — re-filtering after a jump won't snap the freshly-opened
+// month closed again.
+function ensureGroupChainExpanded(key: string) {
+  // Walk top-down so parents open before children. Hard cap at the
+  // tree's known depth (year → month → week → day) so a corrupt tree
+  // can't push us into recursion.
+  const path: string[] = []
+  function find(nodes: MatchGroup<MatchRecord>[]): boolean {
+    for (const n of nodes) {
+      if (n.key === key) { path.push(n.key); return true }
+      if (n.children && find(n.children)) { path.unshift(n.key); return true }
+    }
+    return false
+  }
+  find(g.groups.value)
+  for (const k of path) {
+    if (!g.isGroupExpanded(k)) g.toggleGroup(k)
+  }
+}
+
+function flashTarget(el: HTMLElement) {
+  el.classList.add('mg-target-flash')
+  window.setTimeout(() => el.classList.remove('mg-target-flash'), 1200)
+}
+
+async function onJumpToGroup(key: string) {
+  ensureGroupChainExpanded(key)
+  // Wait for Vue to flush the expansion → DOM, then one RAF so layout
+  // settles before we measure / scroll. Without the chain, the
+  // measured position is whatever the section had BEFORE its newly-
+  // expanded children pushed siblings down.
+  await nextTick()
+  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  const el = document.querySelector<HTMLElement>(
+    `section.mg[data-key="${CSS.escape(key)}"]`,
+  )
+  if (!el) return
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+  flashTarget(el)
 }
 
 // Gate for the FilterRail's leaver-handling segmented control. Hides
@@ -349,6 +399,17 @@ const annotatedMatchCount = computed(
         @card-focus="(i: number) => emit('card-focus', i)"
       />
     </div>
+
+    <!-- Sticky jump rail. Position-fixed via its own scoped CSS so
+         its placement in the template is mount-order driven, not
+         layout-driven — mounted AFTER the section list so its
+         IntersectionObserver finds the section nodes in the DOM on
+         first attach. -->
+    <MatchGroupTimeline
+      v-if="records.length > 0 && g.groups.value.length > 0"
+      :groups="g.groups.value"
+      @jump-to-group="onJumpToGroup"
+    />
   </div>
 </template>
 

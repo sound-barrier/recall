@@ -5,10 +5,12 @@ Working notes for the next pass of Matches-page modernization. The
 gaps (active-filter pills, aggregate stats, filtered-empty state).
 Since then: **filter-preset save & recall** (Presets dropdown +
 `useFilterPresets`), **collapsible Heroes Played + Match Journal**
-redesign, and **global match search** with vim-style scoped clauses
-(`note:` / `replay:` / `member:` / `tag:`) have all shipped. What's
-left below is the remaining backlog — sorted by impact-to-effort
-ratio, not by which is most fun.
+redesign, **global match search** with vim-style scoped clauses
+(`note:` / `replay:` / `member:` / `tag:`), and the **group-jump
+timeline rail** (sticky right-edge chip column that scrolls + auto-
+expands the target month on click) have all shipped. What's left
+below is the remaining backlog — sorted by impact-to-effort ratio,
+not by which is most fun.
 
 Use this as the menu for a future `frontend-design` session. Each
 item names files to touch and the closest existing component to
@@ -110,13 +112,7 @@ Hover a card → show a small thumbnail of the screenshot in a
 floating preview, anchored to the cursor. Useful for "which
 match was the Rialto one with the comeback".
 
-### 7. Smooth scroll-to-card from group jump links
-
-The expand-all / collapse-all controls jump to top. A "jump
-to group" sidebar (or sticky month/week chips along the right
-gutter) would help large-history users navigate.
-
-### 8. High-contrast theme variant
+### 7. High-contrast theme variant
 
 The current dark theme passes WCAG AA on every surface (verified
 in the a11y e2e). A "high contrast" theme variant — pure black
