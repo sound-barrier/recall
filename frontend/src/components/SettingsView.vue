@@ -28,6 +28,7 @@ import SettingsFolders from './SettingsFolders.vue'
 
 const props = defineProps<{
   screenshotsDir: string
+  watchEnabled?:  boolean
   loading:        boolean
   themeMode:      ThemeMode
   weekStart:      WeekStart
@@ -190,6 +191,7 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
 
     <SettingsFolders
       :screenshots-dir="screenshotsDir"
+      :watch-enabled="watchEnabled"
       :loading="loading"
       :data-location="dataLocation"
       :probing="probing"

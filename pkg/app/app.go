@@ -20,6 +20,7 @@ package app
 
 import (
 	"context"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -72,6 +73,39 @@ func New() *App {
 	return &App{}
 }
 
+// isReadableDir reports whether `path` is an existing, readable
+// directory. Used by Startup to gate against stale ScreenshotsDir
+// values surviving across releases / test runs. Three conditions
+// have to hold: the path resolves at all (os.Open), it's a directory
+// (Stat().IsDir()), and we can enumerate its contents
+// (Readdirnames). Anything else — a file, a deleted dir, a path the
+// process lacks read permission on — returns false.
+func isReadableDir(path string) bool {
+	// #nosec G304 -- path is the user-configured ScreenshotsDir
+	// read from their own settings.json. They can already write
+	// anything to that file (it lives in their home dir); the
+	// only access we perform here is "can I list this dir?", and
+	// we discard the result without exposing it elsewhere. The
+	// matching validator at the HTTP boundary
+	// (validateScreenshotsDir / safePathChars) catches malformed
+	// values before they get persisted.
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = f.Close() }()
+	info, err := f.Stat()
+	if err != nil || !info.IsDir() {
+		return false
+	}
+	// Readdirnames(1) succeeds with no error for a readable dir
+	// containing at least one entry. io.EOF means readable but empty
+	// — also fine. Any other error (permission denied, I/O failure)
+	// disqualifies it.
+	_, err = f.Readdirnames(1)
+	return err == nil || err == io.EOF
+}
+
 // NewWithStore returns an App with its persistence layer pre-wired. Used by
 // tests that pass an in-memory fake (or a *db.SQLStore opened at ":memory:").
 // Production code paths use New() + Startup() which constructs the SQLStore.
@@ -86,6 +120,25 @@ func NewWithStore(s db.Store) *App {
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	a.settings = loadSettings()
+
+	// Validate ScreenshotsDir against the filesystem and clear it if
+	// the path no longer resolves to a readable directory. Three real
+	// failure modes this catches:
+	//   1. A stale t.TempDir() path that leaked into settings.json
+	//      from an earlier test run and is now long-deleted.
+	//   2. The platform default "screenshots" (a relative path that
+	//      `defaultSettings()` returns for first-run wails-dev
+	//      ergonomics) which doesn't resolve inside the shipped
+	//      Recall.app bundle's cwd.
+	//   3. A configured external-drive folder the user has since
+	//      unmounted.
+	// Clearing it lets autoProbeOnFirstRun (below) re-detect, and
+	// stops the "Open" button from silently no-op-ing on a path the
+	// OS file manager can't find.
+	if a.settings.ScreenshotsDir != "" && !isReadableDir(a.settings.ScreenshotsDir) {
+		a.settings.ScreenshotsDir = ""
+		_ = saveSettings(a.settings)
+	}
 
 	// Resolve tesseract first — if the user hasn't configured a path,
 	// pick the platform default and persist it so the value is visible
