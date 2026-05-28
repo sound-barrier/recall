@@ -209,6 +209,28 @@ function cardDelayMs(localIdx: number): number {
   position: relative;
 }
 
+/* Target-acquired flash — fired by MatchesView's jump-to-group handler
+   when the user lands on a section via the timeline rail. The :deep
+   selector is intentional: this rule applies to the OUTER .mg the
+   handler tags, but the scoped attribute would otherwise prevent it
+   from matching the dynamically-added class. The accent under-rule +
+   soft halo fade over ~1.2s so the user sees "yes you landed here"
+   without a long-lived distraction. Reduced-motion clients keep the
+   instant border tint but skip the halo + transform. */
+.mg.mg-target-flash > .mg-head {
+  animation: mg-target-flash 1200ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes mg-target-flash {
+  0%   { box-shadow: 0 0 0 0 var(--accent), inset 0 -2px 0 0 var(--accent); background: var(--accent-soft); }
+  60%  { box-shadow: 0 0 0 4px var(--accent-glow), inset 0 -2px 0 0 var(--accent); background: var(--accent-soft); }
+  100% { box-shadow: 0 0 0 0 transparent, inset 0 -2px 0 0 transparent; background: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mg.mg-target-flash > .mg-head { animation: none; background: var(--accent-soft); }
+}
+
 /* The shared head: chevron + label + tally, laid out so the tally
    always anchors to the right of a fluid label column. The grid lets
    the bar continue across the row width without the label or tally
