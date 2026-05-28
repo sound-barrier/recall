@@ -83,25 +83,29 @@ func (a *App) SetMatchAnnotation(in AnnotationInput) error {
 	})
 }
 
-// SetLeaverAnnotation kept as a thin wrapper around SetMatchAnnotation
-// for back-compat with callers / tests that touch only the leaver
-// field. New code should use SetMatchAnnotation directly so all four
-// fields stay in lock-step.
-func (a *App) SetLeaverAnnotation(matchKey, leaver, note string) error {
+// SetLeaverAnnotation toggles the leaver field on a match's
+// annotation row while preserving every other field (note,
+// replay_code, members, tags). The `note` parameter is RETAINED in
+// the signature for Wails-bridge ABI stability (the bridge does a
+// strict arity check) but is INTENTIONALLY IGNORED — earlier
+// versions wrote it through, which silently wiped a user's saved
+// note every time they clicked a leaver chip. Mirrors
+// ClearLeaverAnnotation's preserve-everything-else pattern; new
+// code should use SetMatchAnnotation directly for the full-row
+// write.
+func (a *App) SetLeaverAnnotation(matchKey, leaver, _ string) error {
 	if matchKey == "" {
 		return fmt.Errorf("match_key required")
 	}
 	if !validLeavers[leaver] {
 		return ErrInvalidLeaver
 	}
-	// Preserve any existing replay_code + members + tags on the row,
-	// since the legacy entry point only touches leaver+note.
 	existing, _ := a.store.LoadAnnotations()
 	prev := existing[matchKey]
 	return a.store.SetAnnotation(db.Annotation{
 		MatchKey:   matchKey,
 		Leaver:     leaver,
-		Note:       note,
+		Note:       prev.Note,
 		ReplayCode: prev.ReplayCode,
 		Members:    prev.Members,
 		Tags:       prev.Tags,

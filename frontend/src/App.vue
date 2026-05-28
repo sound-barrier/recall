@@ -34,12 +34,10 @@ import {
   ExportData,
   ExportDataCSV,
   ImportData,
-  SetLeaverAnnotation,
-  ClearLeaverAnnotation,
   SetMatchAnnotation,
   SetMatchVisibility,
 } from './api'
-import type { LeaverKind, MatchAnnotationInput } from './api'
+import type { MatchAnnotationInput } from './api'
 import { computeEarliestMatchDateTime, tallyWLD } from './match-helpers'
 import { useIncludeUndated } from './composables/useIncludeUndated'
 import { useMinPlayThreshold } from './composables/useMinPlayThreshold'
@@ -487,18 +485,29 @@ const {
 // (if the new folder is empty or invalid) keeps running against nothing
 // with no feedback to the user.
 
-// User-curated per-match leaver annotation. Pass-through to
-// SetLeaverAnnotation / ClearLeaverAnnotation; reload records on
-// success so the new annotation propagates to the rendered list.
-// Errors bubble to the global error banner so the user knows the
-// click didn't take.
+// User-curated per-match leaver annotation. Routes through the
+// unified SetMatchAnnotation writer with every other field carried
+// over from the existing record so a leaver-chip click only changes
+// the leaver bit — note / replay_code / members / tags survive.
+//
+// Why not SetLeaverAnnotation? Server mode's PUT /annotation handler
+// always calls SetMatchAnnotation with whatever fields are in the
+// body; the legacy SetLeaverAnnotation shim's body carried only
+// `{leaver, note}` so replay/members/tags would be silently wiped.
+// Reading the current annotation from `records` and PUTting the full
+// row is the only way to make a "change just one field" semantic
+// work over the unified endpoint. Same call shape works in Wails too.
 async function onSetLeaverAnnotation(matchKey: string, leaver: '' | 'self' | 'team' | 'enemy') {
   try {
-    if (leaver === '') {
-      await ClearLeaverAnnotation(matchKey)
-    } else {
-      await SetLeaverAnnotation(matchKey, leaver as LeaverKind, '')
-    }
+    const rec = records.value.find(r => r.match_key === matchKey)
+    const prev = rec?.annotation
+    await SetMatchAnnotation(matchKey, {
+      leaver:      leaver as MatchAnnotationInput['leaver'],
+      note:        prev?.note ?? '',
+      replay_code: prev?.replay_code ?? '',
+      members:     prev?.members ?? [],
+      tags:        prev?.tags ?? [],
+    })
     await load()
   } catch (e) {
     error.value = String(e)
