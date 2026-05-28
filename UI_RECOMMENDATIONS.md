@@ -33,27 +33,6 @@ rebuilds the same multi-select selections by hand.
 - **Mirror**: `useTheme.ts` for the persistence shape; the
   `MinPlayInput.vue` button family for the dropdown chrome.
 
-### 2. Note-search hit highlighting
-
-The just-shipped note search (`useMatchFilters.noteSearch`)
-narrows the list but the matched substring isn't surfaced
-inside the expanded card. Adds high information value at low
-cost — *except* the note display is a `<textarea>` and `<mark>`
-doesn't work inside textareas.
-
-- **Pattern**: swap the textarea for a click-to-edit preview.
-  Default state renders a `<div>` with the note text and
-  `<mark>` around matched substrings; click promotes to a
-  textarea focused at the cursor click position; blur reverts
-  to the preview.
-- **Files**: `MatchCardExpanded.vue` (note row), new helper
-  `highlightSubstring(text, query)` in `match-helpers.ts`.
-- **Effort**: ~2–3 hours including focus-position transfer
-  and the Vitest cases for the helper.
-- **Mirror**: nothing in-repo; the swap pattern is canonical
-  enough that any popular editor (Notion, Linear) is a fair
-  reference.
-
 ### 3. List virtualization
 
 `MatchGroupSection.vue` renders every card in the DOM. Fine

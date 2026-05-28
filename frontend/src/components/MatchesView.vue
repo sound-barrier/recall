@@ -323,6 +323,7 @@ const annotatedMatchCount = computed(
         :card-offset="idx"
         :density-mode="densityMode"
         :focused-card-index="focusedCardIndex"
+        :note-search="f.noteSearch.value"
         @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
         @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
         @set-match-hidden="(k: string, h: boolean) => emit('set-match-hidden', k, h)"

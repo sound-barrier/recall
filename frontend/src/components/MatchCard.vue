@@ -28,6 +28,11 @@ defineProps<{
   // so existing SFC tests that mount MatchCard without the parent
   // wiring still work.
   isFocused?: boolean
+  // Live FilterRail note-search query, forwarded to MatchCardExpanded
+  // so the saved Note can render `<mark>` hits in the click-to-edit
+  // preview. Optional — omitted in tests that don't exercise the
+  // expanded view.
+  noteSearch?: string
 }>()
 
 const emit = defineEmits<{
@@ -78,6 +83,7 @@ const emit = defineEmits<{
         :preview-open="previewOpen"
         :preview-error="previewError"
         :is-active="isActive"
+        :note-search="noteSearch"
         @toggle-sources="emit('toggle-sources')"
         @toggle-preview="(f: string) => emit('toggle-preview', f)"
         @preview-error="(f: string) => emit('preview-error', f)"

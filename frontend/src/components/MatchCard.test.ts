@@ -514,9 +514,14 @@ describe('MatchCard — match notes block', () => {
       annotation: { leaver: '', note: 'huge clutch', replay_code: 'A7B2C9', members: ['Apollo#1', 'Cheese#5'] },
     } as unknown as Partial<MatchRecord>)
     const wrapper = mountCard({ record: rec, isExpanded: true })
-    const ta = wrapper.find('.match-notes-textarea').element as HTMLTextAreaElement
+    // A non-empty saved note renders the click-to-edit preview, not
+    // the textarea — the textarea only mounts after the user clicks
+    // into the preview to start editing.
+    const preview = wrapper.find('.match-notes-preview')
+    expect(preview.exists()).toBe(true)
+    expect(preview.text()).toBe('huge clutch')
+    expect(wrapper.find('.match-notes-textarea').exists()).toBe(false)
     const replay = wrapper.find('.match-notes-input.mono').element as HTMLInputElement
-    expect(ta.value).toBe('huge clutch')
     expect(replay.value).toBe('A7B2C9')
     expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Apollo#1', 'Cheese#5'])
   })
