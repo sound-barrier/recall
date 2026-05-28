@@ -240,6 +240,7 @@ function searchStr(field: string): string {
       <div class="note-search" :class="{ active: !!noteSearch.trim() }">
         <span class="note-search-icon" aria-hidden="true">⌕</span>
         <input
+          id="note-search"
           :value="noteSearch"
           type="text"
           class="note-search-input"

@@ -46,7 +46,9 @@ import { useMinPlayThreshold } from './composables/useMinPlayThreshold'
 import { useDensityMode } from './composables/useDensityMode'
 import { useLeaverHandling } from './composables/useLeaverHandling'
 import { useShowHidden } from './composables/useShowHidden'
-import { useTabKeyboardNav } from './composables/useTabKeyboardNav'
+import { useTabKeyboardNav, TAB_ORDER, type TabId } from './composables/useTabKeyboardNav'
+import { useKeyboardShortcuts, type Shortcut } from './composables/useKeyboardShortcuts'
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.vue'
 import { useModalFocusTrap } from './composables/useModalFocusTrap'
 import { useBackupRestore } from './composables/useBackupRestore'
 import { useClearDatabase } from './composables/useClearDatabase'
@@ -122,6 +124,29 @@ async function goToView(next: string) {
 }
 
 const { onTabKeydown, focusMain } = useTabKeyboardNav(view, goToView)
+
+// ── Keyboard-shortcut state ───────────────────────────────────
+// `focusedCardIndex` is the flat index (across the filteredSorted
+// list) of the card the j/k/e/t bindings target. -1 = no card
+// focused; the MatchCard wrapper's roving tabindex reads this and
+// flips between 0 / -1. `openCheatsheet` toggles the `?` modal.
+const focusedCardIndex = ref(-1)
+const openCheatsheet = ref(false)
+
+// Programmatically focus the card at the given index in the
+// filteredSorted list. Used by the j/k handlers below; we
+// queryselector by data-card-index because the card lives several
+// levels deep inside MatchGroupSection's recursive render and
+// template refs would be awkward.
+async function focusCardByIndex(idx: number) {
+  focusedCardIndex.value = idx
+  await nextTick()
+  const el = document.querySelector<HTMLElement>(
+    `article.match[data-card-index="${idx}"]`,
+  )
+  el?.focus({ preventScroll: false })
+  if (el) el.scrollIntoView({ block: 'nearest', behavior: 'auto' })
+}
 
 // Wall-clock time of the last successful manual parse, used to render
 // "Last run · X ago" feedback under the Parse button on the settings
@@ -518,6 +543,100 @@ const cardState = {
   toggleAll, toggleExpand, toggleSources, togglePreview, onPreviewError,
 }
 
+// ── Keyboard shortcuts — full registry ─────────────────────────
+// Wired here (after filters + toggleExpand + goToView are all in
+// scope) rather than alongside the focusedCardIndex ref above so
+// every handler can capture stable references. The dispatcher
+// installs ONE capture-phase document listener; per-binding `when`
+// predicates gate view-specific shortcuts. See UI_RECOMMENDATIONS.md
+// item 4 for the design + FEATURES.md for the cheatsheet contract.
+useKeyboardShortcuts([
+  // Global: focus the FilterRail's note-search input. Input-gated:
+  // only fires OUTSIDE inputs (so typing `/` in a search field
+  // doesn't recursively re-focus).
+  {
+    key: '/',
+    handler: () => {
+      const el = document.getElementById('note-search')
+      if (el instanceof HTMLInputElement) el.focus()
+    },
+  },
+  // Global: open the cheatsheet. allowInInput so the user can hit
+  // `?` from anywhere — including while typing in a search box.
+  {
+    key: '?',
+    allowInInput: true,
+    handler: () => { openCheatsheet.value = true },
+  },
+  // Global: vim-style view navigation (`g` then m/i/s/u).
+  ...(['m', 'i', 's', 'u'] as const).map((follow): Shortcut => {
+    const target: TabId = (
+      follow === 'm' ? 'matches' :
+      follow === 'i' ? 'ingest'  :
+      follow === 's' ? 'settings' : 'unknown'
+    )
+    return {
+      key: follow,
+      prefix: 'g',
+      handler: () => { void goToView(target) },
+    }
+  }),
+  // Matches view: j/k move card focus, no wrap.
+  {
+    key: 'j',
+    when: () => view.value === 'matches',
+    handler: () => {
+      const len = filters.filteredSorted.value.length
+      if (len === 0) return
+      const next = Math.min(focusedCardIndex.value + 1, len - 1)
+      if (next === focusedCardIndex.value && focusedCardIndex.value !== -1) return
+      void focusCardByIndex(Math.max(0, next))
+    },
+  },
+  {
+    key: 'k',
+    when: () => view.value === 'matches',
+    handler: () => {
+      const len = filters.filteredSorted.value.length
+      if (len === 0) return
+      // First k from "no card focused" lands on card 0; otherwise
+      // step back, clamped at 0.
+      const next = focusedCardIndex.value === -1 ? 0 : Math.max(0, focusedCardIndex.value - 1)
+      void focusCardByIndex(next)
+    },
+  },
+  // Matches view: expand/collapse the focused card.
+  {
+    key: 'e',
+    when: () => view.value === 'matches' && focusedCardIndex.value >= 0,
+    handler: () => {
+      const rec = filters.filteredSorted.value[focusedCardIndex.value]
+      if (!rec) return
+      void toggleExpand(rec.match_key)
+    },
+  },
+  // Matches view: auto-expand the focused card AND focus its tags
+  // input. Tags input has id="tags-<match_key>" per
+  // MatchCardExpanded.vue.
+  {
+    key: 't',
+    when: () => view.value === 'matches' && focusedCardIndex.value >= 0,
+    handler: async () => {
+      const rec = filters.filteredSorted.value[focusedCardIndex.value]
+      if (!rec) return
+      if (!expanded.value[rec.match_key]) await toggleExpand(rec.match_key)
+      await nextTick()
+      const input = document.getElementById(`tags-${rec.match_key}`)
+      if (input instanceof HTMLInputElement) input.focus()
+    },
+  },
+])
+
+// Keep TAB_ORDER referenced so a future tab addition can lint-check
+// the g-prefix coverage above. (Each entry in TAB_ORDER must have a
+// matching g+x handler.)
+void TAB_ORDER
+
 // Records that couldn't be resolved to a named match — either the
 // screenshot filename had no parseable OW timestamp ("unmatched:…")
 // or OCR failed to determine a map name. These surface in the
@@ -851,7 +970,9 @@ useEventStream({
           :density-mode="densityMode"
           :leaver-handling="leaverHandling"
           :show-hidden="showHidden"
+          :focused-card-index="focusedCardIndex"
           @go-to-view="goToView"
+          @card-focus="(i: number) => focusedCardIndex = i"
           @set-include-undated="setIncludeUndated"
           @set-min-play-percent="setMinPlayPercent"
           @set-min-play-minutes="setMinPlayMinutes"
@@ -906,6 +1027,15 @@ useEventStream({
         </div>
       </div>
     </transition>
+
+    <!-- Keyboard-shortcut cheatsheet. Self-gated by `openCheatsheet`,
+         opened by the `?` binding registered in useKeyboardShortcuts
+         above and closed via Esc (focus-trap) or the modal's footer
+         button + click-outside. -->
+    <KeyboardShortcutsModal
+      :open="openCheatsheet"
+      @close="openCheatsheet = false"
+    />
   </div>
 </template>
 

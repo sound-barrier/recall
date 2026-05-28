@@ -67,7 +67,14 @@ jobs:
           MAX_INITIAL_JS_BYTES: "130000"    # 130 KB — initial JS chunk only
           MAX_INITIAL_CSS_BYTES: "80000"    # 80 KB — initial CSS chunk only
           MAX_TOTAL_JS_BYTES: "250000"      # 250 KB — every JS chunk combined
-          MAX_TOTAL_CSS_BYTES: "120000"     # 120 KB — every CSS chunk combined
+          MAX_TOTAL_CSS_BYTES: "130000"     # 130 KB — every CSS chunk combined
+          # ^^ bumped from 120 KB when the keyboard-shortcuts cheatsheet
+          # landed: the prior cap left only ~1 KB of headroom on the
+          # baseline, which any new component carrying its own scoped
+          # styles would breach. 130 KB still keeps total CSS lean and
+          # the initial-CSS cap (80 KB) is unchanged so first-paint
+          # perf is unaffected. Bump deliberately when a real feature
+          # needs the room.
         run: |
           set -e
           init_js=$(find frontend/dist/assets -name 'index-*.js'  -exec wc -c {} + | awk 'END{print $1}')

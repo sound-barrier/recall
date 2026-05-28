@@ -65,12 +65,10 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 
 ### UX & Settings
 
-- **Keyboard shortcuts** — `j/k` navigate matches, `/` to focus search, etc.
 - **Multiple profiles** — main + alt accounts, separate DBs per profile.
 - **Customizable dashboard widgets** — pick which stats appear on the home view.
 - **Saved filter presets** — save a filter combination as a named view ("Last 7 days, tank only, undated hidden") in localStorage; recall from a dropdown.
 - **Command palette (⌘K)** — fuzzy-find across views, settings, and individual matches by hero/map/date.
-- **Keyboard-shortcut overview (`?`)** — modal cheatsheet for every binding the app exposes.
 - **High-contrast theme** — for streaming / tournament-booth use; sits alongside the existing dark/light/auto toggle.
 - **First-launch onboarding tour** — overlay walkthrough on the first run (gated by a localStorage key).
 - **Recent-matches widget on Settings** — small "last 5 matches" strip on the Settings tab so the user always has context while configuring.
@@ -108,6 +106,7 @@ to avoid heading collisions with the live backlog above.
 - **UX & Settings — Leaver-handling segmented control** — three-state FilterRail control (`include` / `exclude-tally` / `hide`) for matches the user has flagged as a leaver scenario, so the tally panel can treat them honestly.
 - **UX & Settings — First-day-of-week preference** — Settings → Calendar; threads through `useMatchGrouping` so the "Week of …" labels honor the user's choice.
 - **UX & Settings — Theme toggle (dark / light / auto)** — Settings → Appearance; `useTheme` composable persists the choice and applies `data-theme` to the document root.
+- **UX & Settings — Keyboard shortcuts + cheatsheet (`?`)** — power-user bindings exposed by `useKeyboardShortcuts` (single capture-phase document listener, input-gated, sequence-prefix support for vim-style `g`+x view nav). Global: `/` (focus the note-search input), `g`+`m`/`i`/`s`/`u` (view nav), `?` (open the cheatsheet). Matches view: `j`/`k` (card focus, no wrap), `e` (toggle expand), `t` (focus tags editor on the focused card, auto-expanding first). The cheatsheet modal lists every binding the app exposes — including existing tablist arrows + Esc-dismiss + focus-trap Tab cycle — so users discovering one affordance learn about all of them. Composable in `useKeyboardShortcuts.ts`; modal in `KeyboardShortcutsModal.vue`; Playwright e2e in `frontend/tests/e2e/keyboard-shortcuts.spec.ts`.
 - **Data & Export — CSV / JSON export** — `ExportData` + `ExportDataCSV` produce full match history dumps; surfaced via Settings → Backup & Restore.
 - **Data & Export — Local backup / restore** — one-click DB export + import via Settings → Backup & Restore (`ImportData`), with idempotent re-import semantics.
 

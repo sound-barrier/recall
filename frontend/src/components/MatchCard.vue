@@ -21,6 +21,13 @@ defineProps<{
   // at-a-glance stats without expanding every match. Optional so
   // existing tests can omit it; defaults to 'comfortable' behaviour.
   densityMode?: 'comfortable' | 'compact'
+  // Roving-tabindex flag. The keyboard-shortcuts dispatcher tracks a
+  // `focusedCardIndex` ref; only the matching card gets tabindex="0"
+  // so Tab lands on the list once and j/k navigates between cards
+  // via programmatic .focus() (queried by data-card-index). Optional
+  // so existing SFC tests that mount MatchCard without the parent
+  // wiring still work.
+  isFocused?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -32,6 +39,11 @@ const emit = defineEmits<{
   'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
   'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
   'set-match-hidden':       [matchKey: string, hidden: boolean]
+  // Emitted whenever the card's <article> receives focus (Tab,
+  // click on a non-interactive area, or programmatic .focus()).
+  // The parent uses this to keep `focusedCardIndex` in sync when
+  // the user moves focus via something other than j/k.
+  'card-focus':            [index: number]
 }>()
 </script>
 
@@ -39,9 +51,13 @@ const emit = defineEmits<{
   <article
     class="match"
     :class="[
-      { expanded: isExpanded, compact: densityMode === 'compact', hidden: record.hidden },
+      { expanded: isExpanded, compact: densityMode === 'compact', hidden: record.hidden, focused: isFocused },
       `result-${record.data?.result || 'unknown'}`,
     ]"
+    :tabindex="isFocused ? 0 : -1"
+    :data-card-index="index"
+    :aria-current="isFocused ? 'true' : undefined"
+    @focus="emit('card-focus', index)"
   >
     <span class="match-bar" aria-hidden="true" />
     <div class="match-body">
@@ -93,6 +109,20 @@ const emit = defineEmits<{
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 .match:hover { border-color: var(--border-strong); }
+
+/* Keyboard-shortcut focus ring. tabindex="0" + :focus-visible
+   shows the browser-native outline only on keyboard focus (j/k or
+   Tab), not on click. Plus the logical-focus `.focused` class
+   strips a 2px accent stub on the left so the user can still see
+   which card is "selected" after focus moves into a modal. */
+.match:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.match.focused {
+  border-color: var(--accent);
+}
 
 .match.expanded {
   border-color: var(--border-strong);
