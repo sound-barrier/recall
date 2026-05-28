@@ -113,6 +113,88 @@ Hover a card → show a small thumbnail of the screenshot in a
 floating preview, anchored to the cursor. Useful for "which
 match was the Rialto one with the comeback".
 
+- **Source**: prefer the SUMMARY screenshot (most recognisable
+  thumbnail); fall back to TEAMS if SUMMARY is missing.
+- **Constraint**: must not stutter on long lists — preload the
+  hovered card's source img with `prefetch` link tags on
+  visibility, not on hover.
+- **Effort**: ~3 hours. Mirror `MatchCardExpanded.vue`'s
+  `<img class="source-preview">` chrome.
+
+### 7. Sticky FilterRail summary on scroll
+
+Once the user scrolls past the FilterRail (large filtered
+sets push it off-screen quickly), the active-filter state
+becomes invisible. A compressed sticky strip — `4 of 87 ·
+clutch · tag:stack · 2026-05-01 → 2026-05-15 · Clear all`
+— would keep the answer to "what am I looking at" one glance
+away regardless of scroll depth.
+
+- **Where**: pinned `position: sticky; top: 0` on the
+  MatchesView's `<main>` container, slides in only when the
+  full FilterRail has scrolled off; eased opacity / translateY
+  transition.
+- **Constraint**: must NOT introduce a new sticky context
+  inside the existing card-list scroll — keep the rail strip
+  at the same DOM depth as the FilterRail so the scroll
+  context stays the same.
+- **Effort**: ~3 hours. Mirror the existing
+  `MatchesFilterPills.vue` chip vocabulary.
+
+### 8. Inline tag autocomplete
+
+The tag input in the Match Journal accepts free text but
+doesn't help the user discover their existing tag vocabulary.
+Typing into the input should drop a small popover listing
+matching tags from `useMatchFilters.tags` (already computed),
+plus an "add new tag" affordance.
+
+- **Pattern**: combobox with arrow-key navigation; Enter on
+  a selection adopts the tag, Enter on free text adds it as
+  new. Same focus-flow as the existing FilterRail multi-select.
+- **Constraint**: the popover sits inside the Match Journal
+  cell, which is itself inside the expanded card — z-index
+  collisions with the FilterRail multi-select popovers and
+  the FilterPresetsMenu need explicit ordering.
+- **Effort**: ~4 hours. Mirror `FilterRail.vue`'s `.mf-row`
+  shape for the popover.
+
+### 9. Smart-empty filter messaging
+
+The current empty-state ("No matches fit these filters") is
+correct but unhelpful. When the filter set excludes every
+record, suggest the closest non-empty combination — drop the
+clause with the smallest contribution to the exclusion
+("Try removing `note:clutch` — 12 matches would surface").
+
+- **Algorithm**: for each active filter clause, count how
+  many records the rest-of-the-filter-set would surface
+  without it; rank by the resulting count, show the top 1–2
+  removals as one-click suggestions.
+- **Constraint**: filter recomputation per-suggestion is
+  O(filters × records); cache the per-clause exclusions
+  inside the `useMatchFilters` computed so the UI suggestion
+  is O(filters).
+- **Effort**: ~4 hours. Filter math expansion in
+  `useMatchFilters.ts`; new component
+  `MatchesFilteredEmpty.vue` replacing the inline empty-state
+  block in `MatchesView.vue`.
+
+### 10. Right-click context menu on cards
+
+Fast-track per-card actions without forcing the user to
+expand the card first: Hide, Tag, Star, Copy replay code,
+Copy match link, Edit annotation, Open source folder. Lives
+on the right-click contextmenu; left-click stays "expand".
+
+- **Constraint**: the native browser context menu must remain
+  accessible via Shift+Right-click; the app's menu only fires
+  on the standard right-click path.
+- **Constraint**: keyboard-accessible — Menu key (`Apps`) on
+  the focused card opens the same menu.
+- **Effort**: ~5 hours. Mirror the `KeyboardShortcutsModal`'s
+  modal pattern but with positioned anchoring.
+
 ## Out of scope (deliberately not recommending)
 
 - **Drag-to-reorder match cards** — matches are immutable
@@ -129,18 +211,51 @@ match was the Rialto one with the comeback".
 - **Keep the aesthetic**. Big Noodle italic for display, mono
   for eyebrows / data / values, body font for paragraphs. The
   palette is settled (`--accent`, `--win` / `--loss` / `--draw`,
-  surface levels, text levels). Don't add new tokens unless
-  the existing palette genuinely can't carry the new surface.
+  surface levels, text levels). Three themes now live behind
+  `[data-theme]`: dark (default; the tactical OW-HUD ground
+  state), light (cream paper editorial), high-contrast
+  (tournament-booth / low-vision; pure black + boosted gold).
+  Verify any new colour decision in all three palettes before
+  shipping; the a11y e2e pins to dark, so per-theme contrast
+  drift in light or contrast is your job to catch.
 - **WCAG AA on every surface**. The a11y e2e spec catches
-  regressions, but the contrast budget at small text sizes is
-  tight — `--text-mute` at `#838690` is the floor that still
-  clears 4.5:1 on `--surface-3` in dark mode.
+  regressions in dark mode (the canonical sweep), but the
+  contrast budget at small text sizes is tight — `--text-mute`
+  at `#838690` is the floor that still clears 4.5:1 on
+  `--surface-3` in dark mode. Light mode rebalanced the
+  cream-paper palette (#c2410c rust accent, #6c695a text-mute)
+  to hit AA on every surface after an earlier 1.78:1 regression
+  on bright orange.
 - **Scoped-style leak rule**. Any class referenced by more
   than one SFC's template lives in `frontend/src/styles/app.css`.
   Vue rewrites scoped selectors with a per-component
   `data-v-<hash>` attribute and the hash doesn't cascade —
   scoped styles in a parent component never reach child SFCs.
+  Vue also miscompiles `:global(X) .y { ... }` to a bare `X
+  { ... }` rule that matches `<html>` directly — put
+  cross-theme overrides in `app.css` under a parent id, never
+  in scoped `<style>` blocks (see root CLAUDE.md "Vue scoped
+  miscompiles").
 - **TDD for UI**. Every new user-facing affordance starts with
   a failing Playwright spec in `frontend/tests/e2e/`. The
-  match-tags and match-notes-search work is the canonical
-  pattern.
+  match-tags, global match search, and theme work are the
+  canonical patterns: write the e2e against the live UI
+  contract (aria-labels, `data-*` attributes, observable DOM
+  state), THEN build the component. The unit-test pattern
+  (`mountApp(overrides)` in `test-utils/mountApp.ts`) is for
+  composable contracts + render branches, not for proving
+  the transport chain works.
+- **Breaking changes are fine, just declare them**. Pre-1.0
+  the project explicitly allows breaking changes at every
+  layer (HTTP `/api/v1/`, Wails IPC, SQL schema, settings.json,
+  exported Go API, on-disk export format). Use `feat!:` or a
+  `BREAKING CHANGE:` footer on the commit — release-please
+  picks up the marker and cuts the right SemVer bump. Don't
+  add backwards-compat shims for "soft landings"; declare and
+  break clean (see root CLAUDE.md).
+- **Bundle budgets** are CI-enforced (`ci.yml` "Enforce
+  bundle-size budget"): init JS < 135 KB, init CSS < 80 KB,
+  total JS < 250 KB, total CSS < 145 KB. New features that
+  push these caps should bump deliberately (with a comment
+  explaining why) rather than golf the implementation past
+  readability.
