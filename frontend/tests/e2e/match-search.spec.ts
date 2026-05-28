@@ -183,4 +183,43 @@ test.describe('match search — global + field-scoped syntax', () => {
     await expect(chips.nth(1)).toContainText(/tag/i)
     await expect(chips.nth(1)).toContainText(/stack/i)
   })
+
+  // Vim-style cancel: `/` opens the search "mode" by focusing the
+  // input; `<Esc>` should cancel that mode — clear the query and blur
+  // the input — so the user gets back to "normal mode" without
+  // reaching for the mouse. Previously Esc was a no-op inside the
+  // input, which left users stranded in the search row.
+  test('Esc in the search input clears the query AND blurs', async ({ page }) => {
+    const input = searchInput(page)
+    // `note:clutch` narrows to match:1 (the only note containing "clutch").
+    await input.fill('note:clutch')
+    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(input).toBeFocused()
+
+    await page.keyboard.press('Escape')
+    await expect(input).toHaveValue('')
+    await expect(input).not.toBeFocused()
+    // Filter restored — the global corpus comes back.
+    await expect(page.locator('.match')).toHaveCount(4)
+  })
+
+  test('Esc on an empty search input still blurs', async ({ page }) => {
+    const input = searchInput(page)
+    await input.focus()
+    await expect(input).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(input).not.toBeFocused()
+  })
+
+  // `/` from anywhere focuses the input; `<Esc>` then takes the user
+  // straight out. Round-trip confirms the two halves play together.
+  test('/ then Esc → in and out of the search row without mouse', async ({ page }) => {
+    // Start focus outside the input (the masthead brand is a stable
+    // outside-of-input anchor).
+    await page.locator('.brand').first().click()
+    await page.keyboard.press('/')
+    await expect(searchInput(page)).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(searchInput(page)).not.toBeFocused()
+  })
 })
