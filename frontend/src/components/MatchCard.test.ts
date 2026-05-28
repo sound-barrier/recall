@@ -270,17 +270,6 @@ describe('MatchCard — sources panel', () => {
     expect(labels).toContain('TEAMS') // scoreboard → TEAMS
   })
 
-  it('renders "?" chip when source_types missing for a file', () => {
-    const rec = makeRecord({}, {
-      source_files: ['mystery.png'],
-      source_types: undefined,
-    })
-    const wrapper = mountCard({ record: rec, isExpanded: true, isSourcesOpen: true })
-    const unknownChip = wrapper.find('.source-type-chip.unknown')
-    expect(unknownChip.exists()).toBe(true)
-    expect(unknownChip.text()).toBe('?')
-  })
-
   it('clicking a source filename emits toggle-preview', async () => {
     const wrapper = mountCard({ isExpanded: true, isSourcesOpen: true })
     await wrapper.findAll('.source-name')[0]!.trigger('click')

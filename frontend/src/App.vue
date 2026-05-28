@@ -489,14 +489,6 @@ const {
 // unified SetMatchAnnotation writer with every other field carried
 // over from the existing record so a leaver-chip click only changes
 // the leaver bit — note / replay_code / members / tags survive.
-//
-// Why not SetLeaverAnnotation? Server mode's PUT /annotation handler
-// always calls SetMatchAnnotation with whatever fields are in the
-// body; the legacy SetLeaverAnnotation shim's body carried only
-// `{leaver, note}` so replay/members/tags would be silently wiped.
-// Reading the current annotation from `records` and PUTting the full
-// row is the only way to make a "change just one field" semantic
-// work over the unified endpoint. Same call shape works in Wails too.
 async function onSetLeaverAnnotation(matchKey: string, leaver: '' | 'self' | 'team' | 'enemy') {
   try {
     const rec = records.value.find(r => r.match_key === matchKey)

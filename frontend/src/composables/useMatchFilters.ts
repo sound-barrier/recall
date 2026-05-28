@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import type { Ref } from 'vue'
 import type { MatchRecord } from '../api'
-import { SCREENSHOT_TYPES, matchTime, detectScreenshotSlots, parseGameLengthMinutes } from '../match-helpers'
+import { SCREENSHOT_TYPES, matchTime, parseGameLengthMinutes } from '../match-helpers'
 import { parseSearchQuery } from '../search-query'
 
 // Fields whose values come directly from a scalar property on MatchRecord.data.
@@ -160,17 +160,11 @@ export function useMatchFilters(
       if (filterMap.value.length    && !filterMap.value.includes(d.map       ?? '')) return false
       if (filterResult.value.length && !filterResult.value.includes(d.result ?? '')) return false
 
-      // Screenshot-type filter: union ("any of the picked types is present"
-      // among this match's parsed source files). Falls back to slot-detection
-      // inference for rows parsed before per-file type tracking landed.
+      // Screenshot-type filter: union ("any of the picked types is
+      // present" among this match's parsed source files).
       if (filterSshot.value.length) {
-        const picks  = filterSshot.value
-        const stored: string[] = r.source_types ? Object.values(r.source_types) : []
-        const inferred = stored.length === 0
-          ? detectScreenshotSlots(r).filter(s => s.present).map(s => s.key)
-          : []
-        const present = stored.length ? stored : inferred
-        if (!picks.some(p => present.includes(p))) return false
+        const present: string[] = Object.values(r.source_types ?? {})
+        if (!filterSshot.value.some(p => present.includes(p))) return false
       }
 
       // Hero filter matches the primary hero OR any entry in heroes_played,

@@ -20,12 +20,6 @@ package db
 // constraint, which `ON CONFLICT(filename) DO UPDATE` keys off so
 // re-parsing the same file replaces its row in place.
 var schemaStatements = []string{
-	// PR #45 cut over from a single match_results table to the 10-table
-	// 3NF schema with no migration. Existing installs would otherwise
-	// keep the orphaned legacy table forever. DROP IF EXISTS no-ops on
-	// fresh installs; on upgrade-in-place it cleans up once.
-	`DROP TABLE IF EXISTS match_results`,
-
 	// screenshots_dirs records the source folder each screenshot was
 	// ingested from. 3NF: one row per distinct path, referenced by
 	// nullable screenshots_dir_id on every parent table — when the
@@ -220,20 +214,6 @@ var schemaStatements = []string{
 		screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL
 	)`,
 	`CREATE INDEX IF NOT EXISTS idx_unknown_match_key ON unknown_screenshots(match_key)`,
-}
-
-// migrations are additive ALTER TABLE statements run after
-// schemaStatements. SQLite has no "ADD COLUMN IF NOT EXISTS" before
-// v3.35, so "duplicate column" errors are tolerated by NewSQLStore;
-// any other error is fatal. Append a new line here when adding a
-// nullable column to an existing parent table — fresh installs get it
-// via the CREATE; in-place upgrades pick it up here.
-var migrations = []string{
-	`ALTER TABLE summary_screenshots    ADD COLUMN screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL`,
-	`ALTER TABLE scoreboard_screenshots ADD COLUMN screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL`,
-	`ALTER TABLE personal_screenshots   ADD COLUMN screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL`,
-	`ALTER TABLE rank_screenshots       ADD COLUMN screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL`,
-	`ALTER TABLE unknown_screenshots    ADD COLUMN screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL`,
 }
 
 // parentTables enumerates every parent screenshot table. Used by

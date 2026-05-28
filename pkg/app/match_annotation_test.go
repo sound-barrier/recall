@@ -1,103 +1,10 @@
 package app
 
 import (
-	"errors"
 	"testing"
 
 	"recall/pkg/db"
 )
-
-func TestSetLeaverAnnotation_ValidatesEnum(t *testing.T) {
-	fs := &fakeStore{}
-	a := NewWithStore(fs)
-	if err := a.SetLeaverAnnotation("k1", "afk", ""); !errors.Is(err, ErrInvalidLeaver) {
-		t.Errorf("expected ErrInvalidLeaver for invalid leaver value, got %v", err)
-	}
-}
-
-func TestSetLeaverAnnotation_RejectsEmptyMatchKey(t *testing.T) {
-	fs := &fakeStore{}
-	a := NewWithStore(fs)
-	if err := a.SetLeaverAnnotation("", "team", ""); err == nil {
-		t.Error("expected error for empty match_key")
-	}
-}
-
-func TestSetLeaverAnnotation_PersistsLeaver(t *testing.T) {
-	fs := &fakeStore{}
-	a := NewWithStore(fs)
-	// The `note` parameter is ignored — the method now preserves
-	// prev.Note (which is empty on a fresh row). Pass a non-empty
-	// value to assert it does NOT bleed through into the stored row.
-	if err := a.SetLeaverAnnotation("k1", "team", "this should be ignored"); err != nil {
-		t.Fatalf("SetLeaverAnnotation: %v", err)
-	}
-	got, err := fs.LoadAnnotations()
-	if err != nil {
-		t.Fatalf("LoadAnnotations: %v", err)
-	}
-	if got["k1"].Leaver != "team" {
-		t.Errorf("leaver = %q, want team", got["k1"].Leaver)
-	}
-	if got["k1"].Note != "" {
-		t.Errorf("note should stay empty when prev had none; got %q", got["k1"].Note)
-	}
-}
-
-// Regression: clicking a leaver chip on a match that already carries
-// a saved note + replay_code + members + tags must NOT wipe those
-// fields. Earlier versions wrote the passed `note` arg through; the
-// production caller passes "" so every leaver click silently erased
-// the saved note.
-func TestSetLeaverAnnotation_PreservesAllOtherFields(t *testing.T) {
-	fs := &fakeStore{}
-	a := NewWithStore(fs)
-	// Seed a full annotation row.
-	if err := a.SetMatchAnnotation(AnnotationInput{
-		MatchKey:   "k1",
-		Leaver:     "",
-		Note:       "huge clutch on point B",
-		ReplayCode: "7H1K9P",
-		Members:    []string{"Apollo#11234"},
-		Tags:       []string{"stack"},
-	}); err != nil {
-		t.Fatalf("seed SetMatchAnnotation: %v", err)
-	}
-	// Click a leaver chip — the legacy entry point.
-	if err := a.SetLeaverAnnotation("k1", "team", ""); err != nil {
-		t.Fatalf("SetLeaverAnnotation: %v", err)
-	}
-	got, _ := fs.LoadAnnotations()
-	out := got["k1"]
-	if out.Leaver != "team" {
-		t.Errorf("leaver = %q, want team", out.Leaver)
-	}
-	if out.Note != "huge clutch on point B" {
-		t.Errorf("note lost: got %q", out.Note)
-	}
-	if out.ReplayCode != "7H1K9P" {
-		t.Errorf("replay_code lost: got %q", out.ReplayCode)
-	}
-	if len(out.Members) != 1 || out.Members[0] != "Apollo#11234" {
-		t.Errorf("members lost: %+v", out.Members)
-	}
-	if len(out.Tags) != 1 || out.Tags[0] != "stack" {
-		t.Errorf("tags lost: %+v", out.Tags)
-	}
-}
-
-func TestClearLeaverAnnotation_DeletesFromStore(t *testing.T) {
-	fs := &fakeStore{}
-	a := NewWithStore(fs)
-	_ = a.SetLeaverAnnotation("k1", "self", "")
-	if err := a.ClearLeaverAnnotation("k1"); err != nil {
-		t.Fatalf("ClearLeaverAnnotation: %v", err)
-	}
-	got, _ := fs.LoadAnnotations()
-	if _, ok := got["k1"]; ok {
-		t.Errorf("annotation still present after clear: %+v", got)
-	}
-}
 
 func TestAttachAnnotations_MergesIntoRecords(t *testing.T) {
 	annos := map[string]db.Annotation{
@@ -264,15 +171,21 @@ func TestSetMatchAnnotation_NoteOnlyKeepsRow(t *testing.T) {
 	}
 }
 
-func TestClearLeaverAnnotation_PreservesNoteAndMembers(t *testing.T) {
+// Clearing a leaver via SetMatchAnnotation (empty Leaver, other
+// fields preserved) is the canonical path now that the legacy
+// ClearLeaverAnnotation shim is gone.
+func TestSetMatchAnnotation_EmptyLeaverPreservesOtherFields(t *testing.T) {
 	fs := &fakeStore{}
 	a := NewWithStore(fs)
 	_ = a.SetMatchAnnotation(AnnotationInput{
 		MatchKey: "k", Leaver: "team", Note: "important",
 		ReplayCode: "ABC", Members: []string{"Apollo#1"},
 	})
-	if err := a.ClearLeaverAnnotation("k"); err != nil {
-		t.Fatalf("ClearLeaverAnnotation: %v", err)
+	if err := a.SetMatchAnnotation(AnnotationInput{
+		MatchKey: "k", Leaver: "", Note: "important",
+		ReplayCode: "ABC", Members: []string{"Apollo#1"},
+	}); err != nil {
+		t.Fatalf("SetMatchAnnotation: %v", err)
 	}
 	got, _ := fs.LoadAnnotations()
 	out := got["k"]

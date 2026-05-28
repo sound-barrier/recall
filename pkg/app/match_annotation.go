@@ -19,7 +19,7 @@ import (
 // replay_code / members is populated.
 var validLeavers = map[string]bool{"self": true, "team": true, "enemy": true}
 
-// ErrInvalidLeaver is returned by SetLeaverAnnotation when the leaver
+// ErrInvalidLeaver is returned by SetMatchAnnotation when the leaver
 // value isn't one of the three allowed scenarios (or empty for "no
 // tag"). HTTP handlers map this to 400 (user-input error) rather than
 // 500.
@@ -80,54 +80,6 @@ func (a *App) SetMatchAnnotation(in AnnotationInput) error {
 		ReplayCode: replay,
 		Members:    members,
 		Tags:       tags,
-	})
-}
-
-// SetLeaverAnnotation toggles the leaver field on a match's
-// annotation row while preserving every other field (note,
-// replay_code, members, tags). The `note` parameter is RETAINED in
-// the signature for Wails-bridge ABI stability (the bridge does a
-// strict arity check) but is INTENTIONALLY IGNORED — earlier
-// versions wrote it through, which silently wiped a user's saved
-// note every time they clicked a leaver chip. Mirrors
-// ClearLeaverAnnotation's preserve-everything-else pattern; new
-// code should use SetMatchAnnotation directly for the full-row
-// write.
-func (a *App) SetLeaverAnnotation(matchKey, leaver, _ string) error {
-	if matchKey == "" {
-		return fmt.Errorf("match_key required")
-	}
-	if !validLeavers[leaver] {
-		return ErrInvalidLeaver
-	}
-	existing, _ := a.store.LoadAnnotations()
-	prev := existing[matchKey]
-	return a.store.SetAnnotation(db.Annotation{
-		MatchKey:   matchKey,
-		Leaver:     leaver,
-		Note:       prev.Note,
-		ReplayCode: prev.ReplayCode,
-		Members:    prev.Members,
-		Tags:       prev.Tags,
-	})
-}
-
-// ClearLeaverAnnotation removes the leaver tag while preserving any
-// note / replay_code / members / tags on the row. If every field
-// ends up empty after the clear, the row is deleted entirely.
-func (a *App) ClearLeaverAnnotation(matchKey string) error {
-	if matchKey == "" {
-		return fmt.Errorf("match_key required")
-	}
-	existing, _ := a.store.LoadAnnotations()
-	prev := existing[matchKey]
-	return a.SetMatchAnnotation(AnnotationInput{
-		MatchKey:   matchKey,
-		Leaver:     "",
-		Note:       prev.Note,
-		ReplayCode: prev.ReplayCode,
-		Members:    prev.Members,
-		Tags:       prev.Tags,
 	})
 }
 

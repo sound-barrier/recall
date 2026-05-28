@@ -21,8 +21,8 @@ type MatchRecord struct {
 	// path it was ingested from. Populated from the screenshots_dirs
 	// FK on each per-type parent row, so when the user changes their
 	// screenshots folder mid-history we still know where each old
-	// screenshot was originally captured. Empty / missing for legacy
-	// rows or rows where the dir was unset at parse time.
+	// screenshot was originally captured. Empty / missing when the
+	// dir was unset at parse time.
 	SourceDirs map[string]string  `json:"source_dirs,omitempty"`
 	ParsedAt   string             `json:"parsed_at,omitempty"`
 	Data       parser.MatchResult `json:"data"`
