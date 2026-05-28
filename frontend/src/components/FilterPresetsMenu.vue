@@ -135,7 +135,7 @@ function summary(p: FilterPreset): string {
   for (const [label, n] of counts) {
     if (n > 0) parts.push(`${label} ${n}`)
   }
-  if (s.noteSearch.trim()) parts.push(`Note "${s.noteSearch.trim()}"`)
+  if (s.matchQuery.trim()) parts.push(`Search "${s.matchQuery.trim()}"`)
   if (s.filterFrom || s.filterTo) parts.push('Date range')
   if (s.minPlayPercent > 0) parts.push(`≥${s.minPlayPercent}% played`)
   if (s.minPlayMinutes > 0) {

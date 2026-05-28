@@ -9,8 +9,9 @@ import {
   sshotTypeLabel,
   sourceType,
   formatParsedAt,
-  highlightSubstring,
+  highlightSubstrings,
 } from '../match-helpers'
+import { highlightTermsFor, type SearchClause } from '../search-query'
 import { useOWData } from '../composables/useOWData'
 import { useHeroesExpanded } from '../composables/useHeroesExpanded'
 import MatchCardDanger from './MatchCardDanger.vue'
@@ -40,11 +41,12 @@ const props = defineProps<{
   previewOpen: Record<string, boolean>
   previewError: Record<string, boolean>
   isActive: (field: string, value: string) => boolean
-  // The active FilterRail note-search query. Threaded down purely
-  // so the saved Note can render `<mark>` hits in the click-to-edit
-  // preview. Optional — older mount sites omit it and the preview
-  // simply renders without hits.
-  noteSearch?: string
+  // Parsed search clauses from the FilterRail. The expanded note
+  // preview renders `<mark>` around every hit whose clause either
+  // targets the note field or is unscoped (matches any field).
+  // Optional — older mount sites omit it and the preview renders
+  // without hits.
+  searchClauses?: SearchClause[]
 }>()
 
 const emit = defineEmits<{
@@ -125,7 +127,7 @@ const noteTextareaRef = ref<HTMLTextAreaElement | null>(null)
 let pendingCaretPos: number | null = null
 
 const noteHighlightSegments = computed(() =>
-  highlightSubstring(noteDraft.value, props.noteSearch ?? ''),
+  highlightSubstrings(noteDraft.value, highlightTermsFor('note', props.searchClauses ?? [])),
 )
 
 // Compute a 0-based offset into `text` from a click DOM position

@@ -5,7 +5,7 @@
  * `KeyboardShortcutsModal`:
  *
  *   `?`               opens the cheatsheet; `Esc` closes it.
- *   `/`               focuses the FilterRail's note-search input.
+ *   `/`               focuses the FilterRail's match-search input.
  *   `g` then `s/m/u`  navigates between views; the `g`-prefix
  *                     expires after the SEQUENCE_TIMEOUT_MS window.
  *   `j` / `k`         move card focus on the Matches view (no wrap
@@ -69,7 +69,7 @@ test.describe('keyboard shortcuts — cheatsheet modal', () => {
     await page.keyboard.press('?')
     await expect(sheet).toBeVisible()
     await expect(sheet).toContainText(/keyboard shortcuts/i)
-    await expect(sheet).toContainText('Focus the note-search input')
+    await expect(sheet).toContainText('Focus the match-search input')
 
     await page.keyboard.press('Escape')
     await expect(sheet).toBeHidden()
@@ -87,7 +87,7 @@ test.describe('keyboard shortcuts — cheatsheet modal', () => {
 })
 
 test.describe('keyboard shortcuts — global bindings', () => {
-  test('/ focuses the note-search input', async ({ page }) => {
+  test('/ focuses the match-search input', async ({ page }) => {
     await seed(page)
     await page.goto('/')
     await page.locator('#tab-matches').click()
@@ -96,7 +96,7 @@ test.describe('keyboard shortcuts — global bindings', () => {
     await page.locator('.brand').first().click()
     await page.keyboard.press('/')
     const focusedId = await page.evaluate(() => document.activeElement?.id)
-    expect(focusedId).toBe('note-search')
+    expect(focusedId).toBe('match-search')
   })
 
   test('g then s switches to the Settings view', async ({ page }) => {
@@ -190,24 +190,24 @@ test.describe('keyboard shortcuts — Matches view per-card', () => {
 })
 
 test.describe('keyboard shortcuts — input gating', () => {
-  test('j typed in the note-search input does NOT navigate cards', async ({ page }) => {
+  test('j typed in the match-search input does NOT navigate cards', async ({ page }) => {
     await seed(page)
     await page.goto('/')
     await page.locator('#tab-matches').click()
 
-    // Open the FilterRail note-search via the binding, then type `j`.
+    // Open the FilterRail match-search via the binding, then type `j`.
     await page.locator('.brand').first().click()
     await page.keyboard.press('/')
     await page.keyboard.type('j')
 
     // The input received the `j` character; no card focused.
-    const value = await page.locator('#note-search').inputValue()
+    const value = await page.locator('#match-search').inputValue()
     expect(value).toBe('j')
     const focusedCount = await page.locator('article.match[aria-current="true"]').count()
     expect(focusedCount).toBe(0)
   })
 
-  test('? typed in the note-search input STILL opens the cheatsheet (allowInInput)', async ({ page }) => {
+  test('? typed in the match-search input STILL opens the cheatsheet (allowInInput)', async ({ page }) => {
     await seed(page)
     await page.goto('/')
     await page.locator('#tab-matches').click()

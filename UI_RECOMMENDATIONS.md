@@ -3,12 +3,12 @@
 Working notes for the next pass of Matches-page modernization. The
 "Operations Bay" pass on PR #57 closed the three most expensive UX
 gaps (active-filter pills, aggregate stats, filtered-empty state).
-The next pass shipped **filter-preset save & recall** — a "Presets"
-dropdown in the FilterRail's tools row backed by
-`composables/useFilterPresets.ts` + `components/FilterPresetsMenu.vue`,
-covered by `frontend/tests/e2e/filter-presets.spec.ts`. What's left
-below is the remaining backlog — sorted by impact-to-effort ratio,
-not by which is most fun.
+Since then: **filter-preset save & recall** (Presets dropdown +
+`useFilterPresets`), **collapsible Heroes Played + Match Journal**
+redesign, and **global match search** with vim-style scoped clauses
+(`note:` / `replay:` / `member:` / `tag:`) have all shipped. What's
+left below is the remaining backlog — sorted by impact-to-effort
+ratio, not by which is most fun.
 
 Use this as the menu for a future `frontend-design` session. Each
 item names files to touch and the closest existing component to
@@ -123,20 +123,6 @@ in the a11y e2e). A "high contrast" theme variant — pure black
 background, white text, accent boosted to `#ffbf4d` — would help
 users with low vision. New CSS variable layer, gated by a third
 `themeMode` value.
-
-### 9. Search across more than `annotation.note`
-
-The note-search currently matches only `annotation.note`. Users
-might expect it to also match `replay_code`, members (BattleTag
-list), or arbitrary fields. Either:
-
-- Expand to a global "search" (annotation note + replay_code +
-  members + tag values).
-- Or add a per-field search type-ahead, so the user types
-  `note:clutch` or `member:Apollo` to scope the query.
-
-The second is more powerful and discoverable; the first is
-simpler. Pick after a usage data review.
 
 ## Out of scope (deliberately not recommending)
 

@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { sshotTypeLabel } from '../match-helpers'
 import { useOWData } from '../composables/useOWData'
 import type { FilterPreset } from '../composables/useFilterPresets'
+import { parseSearchQuery, type SearchField } from '../search-query'
 import MinPlayInput from './MinPlayInput.vue'
 import LeaverSegmented from './LeaverSegmented.vue'
 import FilterPresetsMenu from './FilterPresetsMenu.vue'
@@ -56,11 +58,13 @@ const props = defineProps<{
   // hiddenMatchCount > 0 so the user has something to reveal.
   showHidden: boolean
   hiddenMatchCount: number
-  // Free-text search over annotation.note content. Empty string =
-  // no search. Case-insensitive substring match — the actual
-  // filtering happens in useMatchFilters; this prop is the input's
-  // current value. Mirrored back via update:note-search.
-  noteSearch: string
+  // Vim-style search query. Bare tokens match across every
+  // annotation field; `<field>:<value>` scopes a clause. Multiple
+  // clauses AND together. Empty string = no search. The actual
+  // filtering happens in useMatchFilters via parseSearchQuery; this
+  // prop is the input's current value, mirrored back via
+  // update:match-query.
+  matchQuery: string
   // Saved filter-combo presets — surfaced via the Presets dropdown
   // in the .filter-tools row. Persistence + apply mechanics live in
   // App.vue; the rail only renders the menu and bubbles intent.
@@ -70,7 +74,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:filterFrom': [value: string]
   'update:filterTo': [value: string]
-  'update:note-search': [value: string]
+  'update:match-query': [value: string]
   'update:search': [field: string, value: string]
   'toggle-filter-panel': [field: string]
   'close-filter-panel': []
@@ -115,6 +119,38 @@ function optionsFor(key: OptionKey): string[] {
 
 function searchStr(field: string): string {
   return props.filterSearch[field] ?? ''
+}
+
+// Live-parsed clauses from the match-search input. Surfaces below the
+// input as chips so the user gets visual confirmation that the parser
+// understood their syntax — `note:clutch tag:stack` becomes two
+// labelled tokens. Bare clauses render with an `any` field label so
+// the global-vs-scoped distinction stays visible.
+const parsedSearchClauses = computed(() => parseSearchQuery(props.matchQuery))
+
+// Drop one clause from the query string. Used by the × on each chip.
+// Rebuilds the raw query rather than reaching into the parser's
+// state, which keeps quoting / whitespace decisions consistent with
+// what the user originally typed (we don't try to round-trip quotes —
+// just rejoin the surviving clauses).
+function removeClause(index: number) {
+  const surviving = parsedSearchClauses.value.filter((_, i) => i !== index)
+  const next = surviving.map(c => {
+    const v = /\s/.test(c.value) ? `"${c.value}"` : c.value
+    return c.field ? `${c.field}:${v}` : v
+  }).join(' ')
+  emit('update:match-query', next)
+}
+
+const SEARCH_FIELD_LABELS: Record<SearchField, string> = {
+  note:   'NOTE',
+  replay: 'REPLAY',
+  member: 'MEMBER',
+  tag:    'TAG',
+}
+
+function clauseFieldLabel(field: SearchField | null): string {
+  return field ? SEARCH_FIELD_LABELS[field] : 'ANY'
 }
 </script>
 
@@ -240,35 +276,61 @@ function searchStr(field: string): string {
     </div>
 
     <div class="filter-bar">
-      <!-- Note search — free-text substring filter over
-           annotation.note. Lives in the filter-bar (between the
-           multi-select grid and the date range / tools row) so it
-           reads in the natural progression "narrow by content →
-           narrow by time → sort / inspect". The × clear control
-           sits inline inside the input shell. -->
-      <div class="note-search" :class="{ active: !!noteSearch.trim() }">
-        <span class="note-search-icon" aria-hidden="true">⌕</span>
-        <input
-          id="note-search"
-          :value="noteSearch"
-          type="text"
-          class="note-search-input"
-          placeholder="Search notes…"
-          aria-label="Search match notes"
-          spellcheck="false"
-          autocomplete="off"
-          @input="emit('update:note-search', ($event.target as HTMLInputElement).value)"
-        >
-        <button
-          v-if="noteSearch"
-          type="button"
-          class="note-search-clear"
-          aria-label="Clear note search"
-          title="Clear search"
-          @click="emit('update:note-search', '')"
-        >
-          ×
-        </button>
+      <!-- Match search — vim-style command line. Bare tokens match
+           across every annotation field (note / replay_code /
+           members / tags); `<field>:<value>` scopes a clause; quoted
+           values preserve whitespace. Multiple clauses AND together.
+           Parsed clauses surface below the input as chips so the
+           user gets visual confirmation that the parser understood
+           the syntax. -->
+      <div class="match-search" :class="{ active: !!matchQuery.trim() }">
+        <div class="match-search-row">
+          <span class="match-search-icon" aria-hidden="true">/</span>
+          <input
+            id="match-search"
+            :value="matchQuery"
+            type="text"
+            class="match-search-input"
+            placeholder="Search · clutch  note:wave  tag:stack"
+            aria-label="Search matches"
+            aria-describedby="match-search-syntax"
+            spellcheck="false"
+            autocomplete="off"
+            @input="emit('update:match-query', ($event.target as HTMLInputElement).value)"
+          >
+          <button
+            v-if="matchQuery"
+            type="button"
+            class="match-search-clear"
+            aria-label="Clear search"
+            title="Clear search"
+            @click="emit('update:match-query', '')"
+          >
+            ×
+          </button>
+        </div>
+        <p id="match-search-syntax" class="sr-only">
+          Bare term matches any annotation field. Prefix with note:, replay:, member:, or tag:
+          to scope. Quote values with whitespace. Multiple clauses combine with AND.
+        </p>
+        <ul v-if="parsedSearchClauses.length" class="match-search-clauses" aria-live="polite">
+          <li
+            v-for="(c, i) in parsedSearchClauses"
+            :key="`${c.field ?? 'any'}:${c.value}:${i}`"
+            class="match-search-clause"
+            :class="{ scoped: !!c.field }"
+          >
+            <span class="match-search-clause-field" aria-hidden="true">{{ clauseFieldLabel(c.field) }}</span>
+            <span class="match-search-clause-value">{{ c.value }}</span>
+            <button
+              type="button"
+              class="match-search-clause-x"
+              :aria-label="`Remove ${clauseFieldLabel(c.field)} ${c.value} from search`"
+              :title="`Remove ${clauseFieldLabel(c.field)} ${c.value}`"
+              @click="removeClause(i)"
+            >×</button>
+          </li>
+        </ul>
       </div>
 
       <div class="range-group">
@@ -894,45 +956,54 @@ function searchStr(field: string): string {
   flex-wrap: wrap;
 }
 
-/* ─── Note search ──────────────────────────────────────────
-   Free-text substring filter over annotation.note. Single-line
-   shell — magnifier icon on the left, accent-glow on focus,
-   inline × clear button on the right when populated. The
-   `active` class (set by the parent when noteSearch.trim() is
-   non-empty) brightens the border + the icon so the filter's
-   engaged-state matches how the multi-select chips signal
-   `populated`. */
-.note-search {
+/* ─── Match search — vim-style command line ───────────────
+   Single-line input that takes either a bare term (matches any
+   annotation field) or `<field>:<value>` clauses for scoped
+   search. Magnifier glyph is a `/` so the input visually echoes
+   the keyboard shortcut that focuses it. Parsed clauses surface
+   below the input as spec-plate chips: scoped clauses carry the
+   field label in accent; bare clauses are labelled ANY in
+   text-faint so the global-vs-scoped distinction is visible. */
+.match-search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 0 1 22rem;
+  min-width: 14rem;
+}
+
+.match-search-row {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
   padding: 0.32rem 0.5rem 0.32rem 0.55rem;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 2px;
-  flex: 0 1 16rem;
-  min-width: 12rem;
   transition: border-color 160ms ease, background 160ms ease;
 }
 
-.note-search:focus-within {
+.match-search-row:focus-within {
   border-color: var(--accent);
   background: var(--surface);
 }
 
-.note-search.active {
-  border-color: var(--accent-soft);
-}
-.note-search.active .note-search-icon { color: var(--accent); }
+.match-search.active .match-search-row { border-color: var(--accent-soft); }
+.match-search.active .match-search-icon { color: var(--accent); }
 
-.note-search-icon {
+.match-search-icon {
+  width: 0.95rem;
+  font-family: var(--mono);
+  font-style: italic;
+  font-weight: 700;
   font-size: 0.95rem;
   line-height: 1;
   color: var(--text-faint);
+  text-align: center;
   transition: color 160ms ease;
 }
 
-.note-search-input {
+.match-search-input {
   flex: 1 1 auto;
   min-width: 0;
   padding: 0;
@@ -944,18 +1015,19 @@ function searchStr(field: string): string {
   color: var(--text);
 }
 
-.note-search-input::placeholder {
+.match-search-input::placeholder {
   color: var(--text-faint);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-size: 0.74rem;
+  font-style: italic;
 }
 
-.note-search-input:focus {
+.match-search-input:focus {
   outline: none;
 }
 
-.note-search-clear {
+.match-search-clear {
   appearance: none;
   display: inline-flex;
   align-items: center;
@@ -972,14 +1044,121 @@ function searchStr(field: string): string {
   transition: color 140ms ease, background 140ms ease;
 }
 
-.note-search-clear:hover {
+.match-search-clear:hover {
   color: var(--loss);
   background: var(--loss-soft);
 }
 
-.note-search-clear:focus-visible {
+.match-search-clear:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* Parsed-clause chips. Two visual tiers:
+     • scoped (note: / replay: / member: / tag:) — accent field
+       label, surface-3 background, solid border. Reads as
+       "captured" intent.
+     • bare (any field) — text-faint ANY label, dashed border.
+       Reads as "wildcard probe" without screaming. */
+.match-search-clauses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  animation: match-search-clauses-in 200ms ease both;
+}
+
+@keyframes match-search-clauses-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match-search-clauses { animation: none; }
+}
+
+.match-search-clause {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.2rem 0.15rem 0.45rem;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 1px;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.match-search-clause.scoped {
+  background: var(--surface-3);
+  border-style: solid;
+  border-color: var(--accent-soft);
+  color: var(--text);
+}
+
+.match-search-clause-field {
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+
+.match-search-clause.scoped .match-search-clause-field { color: var(--accent); }
+
+.match-search-clause-value {
+  font-weight: 600;
+  font-feature-settings: "tnum";
+  max-width: 16ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-search-clause-x {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  background: transparent;
+  border: 0;
+  color: var(--text-faint);
+  font-size: 0.85rem;
+  line-height: 1;
+  border-radius: 1px;
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.match-search-clause-x:hover {
+  color: var(--loss);
+  background: var(--loss-soft);
+}
+
+.match-search-clause-x:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* Screen-reader-only utility for the syntax-help <p>. The hint
+   matters for AT users but visually duplicates the placeholder and
+   would crowd the rail. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .range-label {

@@ -40,10 +40,11 @@ const props = defineProps<{
   // roving tabindex. Optional so existing tests don't have to wire
   // it; defaults to -1 (no card focused).
   focusedCardIndex?: number
-  // Live FilterRail note-search query — forwarded to each MatchCard
-  // (and recursively to nested MatchGroupSections) so the expanded
-  // note can render `<mark>` hits.
-  noteSearch?: string
+  // Parsed match-search clauses — forwarded to each MatchCard so the
+  // expanded card can render `<mark>` hits on whichever annotation
+  // field a clause targets (note, replay, members, tags). Optional
+  // because existing fixtures mount this without the search wired.
+  searchClauses?: import('../search-query').SearchClause[]
 }>()
 
 const emit = defineEmits<{
@@ -149,7 +150,7 @@ function cardDelayMs(localIdx: number): number {
             :is-active="isActive"
             :density-mode="densityMode"
             :is-focused="((cardOffset ?? 0) + idx) === (focusedCardIndex ?? -1)"
-            :note-search="noteSearch"
+            :search-clauses="searchClauses"
             @toggle-expand="emit('toggle-expand', rec.match_key)"
             @toggle-sources="emit('toggle-sources', rec.match_key)"
             @toggle-preview="(fn: string) => emit('toggle-preview', fn)"
@@ -176,7 +177,7 @@ function cardDelayMs(localIdx: number): number {
             :card-offset="(cardOffset ?? 0) + idx"
             :density-mode="densityMode"
             :focused-card-index="focusedCardIndex"
-            :note-search="noteSearch"
+            :search-clauses="searchClauses"
             @toggle-group="(k: string) => emit('toggle-group', k)"
             @toggle-expand="(id: string) => emit('toggle-expand', id)"
             @toggle-sources="(id: string) => emit('toggle-sources', id)"

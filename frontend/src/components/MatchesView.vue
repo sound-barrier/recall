@@ -123,7 +123,7 @@ const cs = props.cardState
 
 function setFilterFrom(v: string) { f.filterFrom.value = v }
 function setFilterTo(v: string) { f.filterTo.value = v }
-function setNoteSearch(v: string) { f.noteSearch.value = v }
+function setMatchQuery(v: string) { f.matchQuery.value = v }
 function setFilterSearch(field: string, value: string) {
   fp.filterSearch.value = { ...fp.filterSearch.value, [field]: value }
 }
@@ -178,7 +178,7 @@ const annotatedMatchCount = computed(
       :results="f.results.value"
       :sshot-types="f.sshotTypes.value"
       :tags="f.tags.value"
-      :note-search="f.noteSearch.value"
+      :match-query="f.matchQuery.value"
       :filter-list="f.filterList"
       :filter-search="fp.filterSearch.value"
       :open-filter="fp.openFilter.value"
@@ -202,7 +202,7 @@ const annotatedMatchCount = computed(
       :filter-presets="filterPresets"
       @update:filter-from="setFilterFrom"
       @update:filter-to="setFilterTo"
-      @update:note-search="setNoteSearch"
+      @update:match-query="setMatchQuery"
       @update:search="setFilterSearch"
       @toggle-filter-panel="fp.toggleFilterPanel"
       @close-filter-panel="fp.closeFilterPanel"
@@ -237,12 +237,13 @@ const annotatedMatchCount = computed(
       :results="f.filterResult.value"
       :sshots="f.filterSshot.value"
       :tags="f.filterTags.value"
-      :note-search="f.noteSearch.value"
+      :match-query="f.matchQuery.value"
+      :search-clauses="f.searchClauses.value"
       :filter-from="f.filterFrom.value"
       :filter-to="f.filterTo.value"
       :any-filter="f.anyFilter.value"
       @remove-filter="f.toggleFilter"
-      @clear-note-search="() => f.noteSearch.value = ''"
+      @clear-match-query="() => f.matchQuery.value = ''"
       @clear-date-range="f.resetDateRange"
       @clear-all="f.clearFilters"
     />
@@ -335,7 +336,7 @@ const annotatedMatchCount = computed(
         :card-offset="idx"
         :density-mode="densityMode"
         :focused-card-index="focusedCardIndex"
-        :note-search="f.noteSearch.value"
+        :search-clauses="f.searchClauses.value"
         @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
         @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
         @set-match-hidden="(k: string, h: boolean) => emit('set-match-hidden', k, h)"
