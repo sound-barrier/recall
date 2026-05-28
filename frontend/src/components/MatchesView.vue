@@ -8,6 +8,7 @@ import type { useMatchGrouping } from '../composables/useMatchGrouping'
 import type { DensityMode } from '../composables/useDensityMode'
 import type { MatchAnnotationInput } from '../api'
 import type { MatchGroup } from '../match-helpers'
+import type { FilterPreset } from '../composables/useFilterPresets'
 import FilterRail from './FilterRail.vue'
 import MatchGroupSection from './MatchGroupSection.vue'
 import MatchesAggregateStats from './MatchesAggregateStats.vue'
@@ -88,6 +89,10 @@ const props = defineProps<{
   // Optional so existing SFC tests that mount MatchesView without
   // the keyboard wiring still pass.
   focusedCardIndex?: number
+  // Saved filter-combo presets. Owned by App.vue (via useFilterPresets)
+  // so persistence survives navigation; this view threads the list into
+  // FilterRail and bubbles the three intents back up.
+  filterPresets: FilterPreset[]
 }>()
 
 const emit = defineEmits<{
@@ -102,6 +107,9 @@ const emit = defineEmits<{
   'set-show-hidden':       [next: boolean]
   'set-match-hidden':      [matchKey: string, hidden: boolean]
   'card-focus':            [index: number]
+  'save-preset':           [name: string]
+  'apply-preset':          [name: string]
+  'delete-preset':         [name: string]
 }>()
 
 // Pre-extracted destructures keep the template readable without
@@ -191,6 +199,7 @@ const annotatedMatchCount = computed(
       :show-hidden="showHidden"
       :hidden-match-count="f.hiddenMatchCount.value"
       :filtered-count="f.filteredSorted.value.length"
+      :filter-presets="filterPresets"
       @update:filter-from="setFilterFrom"
       @update:filter-to="setFilterTo"
       @update:note-search="setNoteSearch"
@@ -209,6 +218,9 @@ const annotatedMatchCount = computed(
       @set-min-play-minutes="(n: number) => emit('set-min-play-minutes', n)"
       @set-leaver-handling="(v: 'include' | 'exclude-tally' | 'hide') => emit('set-leaver-handling', v)"
       @set-show-hidden="(v: boolean) => emit('set-show-hidden', v)"
+      @save-preset="(name: string) => emit('save-preset', name)"
+      @apply-preset="(name: string) => emit('apply-preset', name)"
+      @delete-preset="(name: string) => emit('delete-preset', name)"
     />
 
     <!-- Active-filter summary. Renders just below the FilterRail

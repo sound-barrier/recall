@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { sshotTypeLabel } from '../match-helpers'
 import { useOWData } from '../composables/useOWData'
+import type { FilterPreset } from '../composables/useFilterPresets'
 import MinPlayInput from './MinPlayInput.vue'
 import LeaverSegmented from './LeaverSegmented.vue'
+import FilterPresetsMenu from './FilterPresetsMenu.vue'
 
 // Canonical-name lookups for the hero + map filter pills. The OWData
 // fetch is shared across every component that calls useOWData; this
@@ -59,6 +61,10 @@ const props = defineProps<{
   // filtering happens in useMatchFilters; this prop is the input's
   // current value. Mirrored back via update:note-search.
   noteSearch: string
+  // Saved filter-combo presets — surfaced via the Presets dropdown
+  // in the .filter-tools row. Persistence + apply mechanics live in
+  // App.vue; the rail only renders the menu and bubbles intent.
+  filterPresets: FilterPreset[]
 }>()
 
 const emit = defineEmits<{
@@ -80,6 +86,9 @@ const emit = defineEmits<{
   'set-min-play-minutes': [n: number]
   'set-leaver-handling': [next: 'include' | 'exclude-tally' | 'hide']
   'set-show-hidden': [next: boolean]
+  'save-preset':   [name: string]
+  'apply-preset':  [name: string]
+  'delete-preset': [name: string]
 }>()
 
 // Static per-field config. Options (roster) come in as props.
@@ -367,6 +376,14 @@ function searchStr(field: string): string {
           :leaver-handling="leaverHandling"
           :annotated-match-count="annotatedMatchCount"
           @set-leaver-handling="(v: 'include' | 'exclude-tally' | 'hide') => emit('set-leaver-handling', v)"
+        />
+
+        <FilterPresetsMenu
+          :presets="filterPresets"
+          :any-filter="anyFilter"
+          @save-current="(name: string) => emit('save-preset', name)"
+          @apply="(name: string) => emit('apply-preset', name)"
+          @delete="(name: string) => emit('delete-preset', name)"
         />
 
         <button v-if="anyFilter" class="btn ghost tiny danger" @click="emit('clear-filters')">

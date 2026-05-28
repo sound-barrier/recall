@@ -61,6 +61,7 @@ import { useWeekStart } from './composables/useWeekStart'
 import { useFilterPanel } from './composables/useFilterPanel'
 import { useMatchFilters } from './composables/useMatchFilters'
 import { useMatchGrouping } from './composables/useMatchGrouping'
+import { useFilterPresets, type FilterPresetSnapshot } from './composables/useFilterPresets'
 import type { ParseProgressEvent } from './components/ParseProgressPanel.vue'
 import ParseStatusBar from './components/ParseStatusBar.vue'
 
@@ -289,6 +290,73 @@ const skipAnnotatedInTally = computed(
 const grouping = useMatchGrouping<MatchRecord>(
   filters.filteredSorted, filters.sortDir, weekStart, skipAnnotatedInTally,
 )
+
+// Filter-preset storage. The composable persists in localStorage; this
+// shell owns the snapshot collect + apply because the underlying state
+// is owned here (filter refs from useMatchFilters, plus the
+// persisted-preference composables for thresholds / undated / leaver /
+// hidden). Threaded through MatchesView → FilterRail → FilterPresetsMenu.
+const { presets: filterPresets, savePreset, getPreset, deletePreset } = useFilterPresets()
+
+function buildFilterPresetSnapshot(): FilterPresetSnapshot {
+  return {
+    filters: {
+      mode:   [...filters.filterMode.value],
+      type:   [...filters.filterType.value],
+      role:   [...filters.filterRole.value],
+      map:    [...filters.filterMap.value],
+      hero:   [...filters.filterHero.value],
+      result: [...filters.filterResult.value],
+      sshot:  [...filters.filterSshot.value],
+      tags:   [...filters.filterTags.value],
+    },
+    noteSearch:     filters.noteSearch.value,
+    filterFrom:     filters.filterFrom.value,
+    filterTo:       filters.filterTo.value,
+    sortDir:        filters.sortDir.value === 'asc' ? 'asc' : 'desc',
+    minPlayPercent: minPlayPercent.value,
+    minPlayMinutes: minPlayMinutes.value,
+    includeUndated: includeUndated.value,
+    leaverHandling: leaverHandling.value,
+    showHidden:     showHidden.value,
+  }
+}
+
+function applyFilterPresetSnapshot(s: FilterPresetSnapshot) {
+  filters.filterMode.value   = [...s.filters.mode]
+  filters.filterType.value   = [...s.filters.type]
+  filters.filterRole.value   = [...s.filters.role]
+  filters.filterMap.value    = [...s.filters.map]
+  filters.filterHero.value   = [...s.filters.hero]
+  filters.filterResult.value = [...s.filters.result]
+  filters.filterSshot.value  = [...s.filters.sshot]
+  filters.filterTags.value   = [...s.filters.tags]
+  filters.noteSearch.value   = s.noteSearch
+  filters.filterFrom.value   = s.filterFrom
+  filters.filterTo.value     = s.filterTo
+  filters.sortDir.value      = s.sortDir
+  // Threshold setters write to localStorage; assigning the raw refs
+  // would leave the persisted preference out of sync.
+  setMinPlayPercent(s.minPlayPercent)
+  setMinPlayMinutes(s.minPlayMinutes)
+  setIncludeUndated(s.includeUndated)
+  setLeaverHandling(s.leaverHandling)
+  setShowHidden(s.showHidden)
+}
+
+function onSavePreset(name: string) {
+  savePreset(name, buildFilterPresetSnapshot())
+}
+
+function onApplyPreset(name: string) {
+  const p = getPreset(name)
+  if (!p) return
+  applyFilterPresetSnapshot(p.snapshot)
+}
+
+function onDeletePreset(name: string) {
+  deletePreset(name)
+}
 
 // Per-card expand/collapse state. Object keyed by match_key; truthy =
 // expanded. Plain object (not a Set) so Vue's reactivity sees each
@@ -978,6 +1046,7 @@ useEventStream({
           :leaver-handling="leaverHandling"
           :show-hidden="showHidden"
           :focused-card-index="focusedCardIndex"
+          :filter-presets="filterPresets"
           @go-to-view="goToView"
           @card-focus="(i: number) => focusedCardIndex = i"
           @set-include-undated="setIncludeUndated"
@@ -989,6 +1058,9 @@ useEventStream({
           @set-match-annotation="onSetMatchAnnotation"
           @set-show-hidden="setShowHidden"
           @set-match-hidden="onSetMatchHidden"
+          @save-preset="onSavePreset"
+          @apply-preset="onApplyPreset"
+          @delete-preset="onDeletePreset"
         />
       </main>
     </div>

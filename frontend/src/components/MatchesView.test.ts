@@ -66,6 +66,7 @@ function mountWith(records: MatchRecord[], includeUndated = false) {
       densityMode: 'comfortable' as const,
       leaverHandling: 'include' as const,
       showHidden: false,
+      filterPresets: [],
     },
   })
   return { wrapper, filters, grouping, cardState }
@@ -191,6 +192,7 @@ describe('MatchesView', () => {
         densityMode: 'compact' as const,
         leaverHandling: 'include' as const,
         showHidden: false,
+        filterPresets: [],
       },
     })
     const density = wrapper.find('.density-btn')

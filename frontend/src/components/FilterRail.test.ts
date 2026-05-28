@@ -40,6 +40,7 @@ function mountRail(over: Partial<Record<string, unknown>> = {}) {
       annotatedMatchCount: 0,
       showHidden: false,
       hiddenMatchCount: 0,
+      filterPresets: [],
       ...over,
     },
   })

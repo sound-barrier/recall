@@ -3,7 +3,11 @@
 Working notes for the next pass of Matches-page modernization. The
 "Operations Bay" pass on PR #57 closed the three most expensive UX
 gaps (active-filter pills, aggregate stats, filtered-empty state).
-What's left below is the backlog — sorted by impact-to-effort ratio,
+The next pass shipped **filter-preset save & recall** — a "Presets"
+dropdown in the FilterRail's tools row backed by
+`composables/useFilterPresets.ts` + `components/FilterPresetsMenu.vue`,
+covered by `frontend/tests/e2e/filter-presets.spec.ts`. What's left
+below is the remaining backlog — sorted by impact-to-effort ratio,
 not by which is most fun.
 
 Use this as the menu for a future `frontend-design` session. Each
@@ -12,28 +16,7 @@ mirror, so the next session can skip the survey step.
 
 ## Ready to implement (clear scope, no design research needed)
 
-### 1. Filter-preset save & recall
-
-Users settle into 3–4 recurring filter combos ("my placements",
-"last week's stack", "support games only"). Today every visit
-rebuilds the same multi-select selections by hand.
-
-- **Storage**: `localStorage`-backed; reuse the
-  `usePersistedRef` pattern from `useTheme` / `useWeekStart`.
-- **API surface**: a new composable `useFilterPresets` —
-  `presets`, `savePreset(name)`, `applyPreset(name)`,
-  `deletePreset(name)`. Serialises every filter ref from
-  `useMatchFilters`.
-- **UI**: a small "Presets ▾" button in the FilterRail's
-  `.filter-tools` row, dropdown lists saved presets, with a
-  Save-current-as menu item that prompts for a name. Apply on
-  click; long-press / × removes.
-- **Effort**: ~3–4 hours including a Vitest spec for the
-  composable and a Playwright e2e for the save/apply round-trip.
-- **Mirror**: `useTheme.ts` for the persistence shape; the
-  `MinPlayInput.vue` button family for the dropdown chrome.
-
-### 3. List virtualization
+### 1. List virtualization
 
 `MatchGroupSection.vue` renders every card in the DOM. Fine
 through ~200 matches; degrades past ~500. Mid-tier user (year
@@ -54,7 +37,7 @@ of matches) is already past the comfortable point.
 
 ## Needs design exploration
 
-### 5. Brushable timeline / sparkline header
+### 2. Brushable timeline / sparkline header
 
 The match list is a time series. A small histogram of match
 volume over time at the top of the page, brushable to set the
@@ -72,7 +55,7 @@ date-range filter, would be both decorative AND functional.
 - **Effort**: ~6–8 hours. Wireframe first; do not start in
   code.
 
-### 6. Detail panel instead of inline expansion
+### 3. Detail panel instead of inline expansion
 
 Inline expansion (current behavior) is good for scanning
 adjacent cards but bad for deep inspection — the user loses
@@ -91,7 +74,7 @@ for vertical space with the rest of the list.
   preference.
 - **Effort**: ~10–12 hours. Probably its own PR.
 
-### 7. Hero × Map heatmap
+### 4. Hero × Map heatmap
 
 For users with hundreds of matches, "which heroes win on which
 maps" is a real question. A small heatmap (rows = heroes,
@@ -110,7 +93,7 @@ surface non-obvious patterns.
 
 ## Polish / lower-priority
 
-### 8. Multi-select cards for bulk operations
+### 5. Multi-select cards for bulk operations
 
 Today every action is per-card. Useful bulk ops:
 
@@ -121,19 +104,19 @@ Today every action is per-card. Useful bulk ops:
 Shift-click range select + a contextual action bar that
 appears when the selection count > 0.
 
-### 9. Match-card hover preview
+### 6. Match-card hover preview
 
 Hover a card → show a small thumbnail of the screenshot in a
 floating preview, anchored to the cursor. Useful for "which
 match was the Rialto one with the comeback".
 
-### 10. Smooth scroll-to-card from group jump links
+### 7. Smooth scroll-to-card from group jump links
 
 The expand-all / collapse-all controls jump to top. A "jump
 to group" sidebar (or sticky month/week chips along the right
 gutter) would help large-history users navigate.
 
-### 11. High-contrast theme variant
+### 8. High-contrast theme variant
 
 The current dark theme passes WCAG AA on every surface (verified
 in the a11y e2e). A "high contrast" theme variant — pure black
@@ -141,7 +124,7 @@ background, white text, accent boosted to `#ffbf4d` — would help
 users with low vision. New CSS variable layer, gated by a third
 `themeMode` value.
 
-### 12. Search across more than `annotation.note`
+### 9. Search across more than `annotation.note`
 
 The note-search currently matches only `annotation.note`. Users
 might expect it to also match `replay_code`, members (BattleTag
