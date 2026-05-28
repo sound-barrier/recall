@@ -45,6 +45,7 @@ const groups: readonly BindingGroup[] = [
     scope: 'Global',
     bindings: [
       { keys: ['/'],            action: 'Focus the match-search input' },
+      { keys: ['Esc'],          action: 'Clear & blur the match-search input (when focused)' },
       { keys: ['g', 'm'],       action: 'Go to Matches view' },
       { keys: ['g', 'i'],       action: 'Go to Parse view' },
       { keys: ['g', 's'],       action: 'Go to Settings view' },

@@ -152,6 +152,19 @@ const SEARCH_FIELD_LABELS: Record<SearchField, string> = {
 function clauseFieldLabel(field: SearchField | null): string {
   return field ? SEARCH_FIELD_LABELS[field] : 'ANY'
 }
+
+// Vim-style cancel for the search input. The leading `/` glyph and
+// the `/` global shortcut frame this input as a vim-search mode;
+// Esc is the canonical "cancel and return to normal mode" key in
+// that vocabulary. Clear the query (so the filter resets) AND blur
+// the input (so the user is back at the masthead-level focus
+// without having to mouse). `.prevent` on the binding keeps the
+// browser's native "reset to defaultValue" behavior from racing
+// with our state update.
+function onSearchEscape(e: KeyboardEvent) {
+  if (props.matchQuery !== '') emit('update:match-query', '')
+  ;(e.target as HTMLInputElement).blur()
+}
 </script>
 
 <template>
@@ -297,6 +310,7 @@ function clauseFieldLabel(field: SearchField | null): string {
             spellcheck="false"
             autocomplete="off"
             @input="emit('update:match-query', ($event.target as HTMLInputElement).value)"
+            @keydown.esc.prevent="onSearchEscape($event)"
           >
           <button
             v-if="matchQuery"
