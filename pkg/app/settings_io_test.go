@@ -8,8 +8,14 @@ import (
 
 func TestLoadSettingsFrom_DefaultsWhenEmpty(t *testing.T) {
 	got := loadSettingsFrom(strings.NewReader(""))
-	if got.ScreenshotsDir != "screenshots" {
-		t.Errorf("empty input must yield default ScreenshotsDir, got %q", got.ScreenshotsDir)
+	// Empty ScreenshotsDir is the correct first-run state: it lets
+	// autoProbeOnFirstRun fire (the probe early-returns on any
+	// non-empty value). Earlier revisions filled this with the
+	// relative literal "screenshots" for wails-dev ergonomics, but
+	// the fill broke the auto-probe AND surfaced as an unusable
+	// relative path inside the shipped Recall.app.
+	if got.ScreenshotsDir != "" {
+		t.Errorf("empty input must yield empty ScreenshotsDir so auto-probe fires; got %q", got.ScreenshotsDir)
 	}
 	if got.PrometheusEnabled || got.WatchEnabled {
 		t.Errorf("empty input must yield false toggles, got %+v", got)
@@ -18,19 +24,22 @@ func TestLoadSettingsFrom_DefaultsWhenEmpty(t *testing.T) {
 
 func TestLoadSettingsFrom_MalformedJSON(t *testing.T) {
 	got := loadSettingsFrom(strings.NewReader("not json at all"))
-	// Malformed JSON must fall back to defaults, not return zero values
-	// (the empty ScreenshotsDir branch). Matches the "first run / corrupt
-	// file is harmless" historical behavior.
-	if got.ScreenshotsDir != "screenshots" {
-		t.Errorf("malformed input must yield default ScreenshotsDir, got %q", got.ScreenshotsDir)
+	// Malformed JSON must fall back to defaults (the empty-Settings
+	// zero value), same first-run-ish state as the file-doesn't-exist
+	// branch.
+	if got.ScreenshotsDir != "" {
+		t.Errorf("malformed input must yield empty ScreenshotsDir; got %q", got.ScreenshotsDir)
 	}
 }
 
-func TestLoadSettingsFrom_EmptyScreenshotsDirFilledIn(t *testing.T) {
-	// A user could persist ScreenshotsDir="" — we should still backfill it.
+func TestLoadSettingsFrom_EmptyScreenshotsDirRoundTrips(t *testing.T) {
+	// A persisted "" stays "" on load — the fill-with-"screenshots"
+	// step that previously lived here was removed because it
+	// sabotaged autoProbeOnFirstRun. See `defaultSettings()` doc
+	// comment for the full rationale.
 	got := loadSettingsFrom(strings.NewReader(`{"screenshots_dir":""}`))
-	if got.ScreenshotsDir != "screenshots" {
-		t.Errorf(`explicit "" must be filled with default, got %q`, got.ScreenshotsDir)
+	if got.ScreenshotsDir != "" {
+		t.Errorf(`explicit "" must round-trip as ""; got %q`, got.ScreenshotsDir)
 	}
 }
 

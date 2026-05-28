@@ -73,15 +73,20 @@ func loadSettingsFrom(r io.Reader) Settings {
 		return s
 	}
 	_ = json.Unmarshal(raw, &s) // ignore malformed JSON; keep defaults
-	if s.ScreenshotsDir == "" {
-		s.ScreenshotsDir = "screenshots"
-	}
 	return s
 }
 
-// defaultSettings returns a fresh Settings with first-run defaults applied.
+// defaultSettings returns a fresh Settings with first-run defaults
+// applied. ScreenshotsDir intentionally stays "" so that
+// autoProbeOnFirstRun (called from Startup) actually fires — the
+// previous default of the relative literal "screenshots" was a
+// wails-dev ergonomic shortcut that silently sabotaged the
+// auto-probe (it early-returns on any non-empty value) AND survived
+// into the shipped Recall.app where the relative path resolves to
+// nothing under the .app bundle's working directory. Startup's
+// validate-and-clear step catches any stale absolute value too.
 func defaultSettings() Settings {
-	return Settings{ScreenshotsDir: "screenshots"} // relative default works for `wails dev`
+	return Settings{}
 }
 
 func saveSettings(s Settings) error {

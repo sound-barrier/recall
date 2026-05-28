@@ -766,6 +766,7 @@ useEventStream({
         <SettingsView
           v-if="view === 'settings'"
           :screenshots-dir="screenshotsDir"
+          :watch-enabled="watchEnabled"
           :loading="loading"
           :theme-mode="themeMode"
           :week-start="weekStart"

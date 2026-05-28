@@ -15,6 +15,7 @@ import { OpenURL, IS_WAILS } from '../api'
 const props = defineProps<{
   screenshotsDir: string
   loading: boolean
+  watchEnabled?:  boolean
   dataLocation?:  DataLocation | null
   probing?:       boolean
   probeMessage?:  string
@@ -98,7 +99,10 @@ async function copyPath(path: string, which: 'db' | 'settings') {
             </span>
           </h4>
           <p class="setting-desc">
-            Recall is watching this folder. <strong>Detect</strong> walks the default OW install locations again; <strong>Change…</strong> opens the system folder picker.
+            <template v-if="props.watchEnabled">Recall is watching this folder for new screenshots.</template>
+            <template v-else>Recall reads from this folder when you click <strong>Parse</strong>.</template>
+            <template v-if="canOpenFolder"> <strong>Reveal</strong> opens it in your file manager.</template>
+            <strong>Detect</strong> walks the default Overwatch install locations; <strong>Change…</strong> opens the system folder picker.
           </p>
           <div v-if="showProbeChip" class="probe-chip" :class="probeStatus" role="status">
             <span class="probe-chip-bar" aria-hidden="true" />
@@ -131,13 +135,13 @@ async function copyPath(path: string, which: 'db' | 'settings') {
               v-if="canOpenFolder"
               class="btn ghost tiny"
               :disabled="loading"
-              :title="'Open ' + screenshotsDir + ' in file manager'"
+              :title="'Reveal ' + screenshotsDir + ' in your file manager'"
               @click="openFolder(screenshotsDir)"
             >
               <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
                 <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
               </svg>
-              Open
+              Reveal
             </button>
             <button
               class="btn ghost tiny detect-btn"
