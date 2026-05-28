@@ -499,13 +499,13 @@ describe('MatchCard — leaver annotation', () => {
 describe('MatchCard — match notes block', () => {
   it('hides the notes block when collapsed', () => {
     const wrapper = mountCard()
-    expect(wrapper.find('.match-notes').exists()).toBe(false)
+    expect(wrapper.find('.match-journal').exists()).toBe(false)
   })
 
-  it('renders all four rows (note / replay / members / tags) when expanded', () => {
+  it('renders all four cells (note / replay / group / tags) when expanded', () => {
     const wrapper = mountCard({ isExpanded: true })
-    expect(wrapper.find('.match-notes').exists()).toBe(true)
-    const labels = wrapper.findAll('.match-notes-label').map(l => l.text())
+    expect(wrapper.find('.match-journal').exists()).toBe(true)
+    const labels = wrapper.findAll('.journal-eyebrow').map(l => l.text().split(/\s+/)[0])
     expect(labels).toEqual(['Note', 'Replay', 'Group', 'Tags'])
   })
 
