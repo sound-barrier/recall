@@ -352,6 +352,34 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     await expect(page.locator('aside.detail-panel')).toBeVisible()
   })
 
+  test('? cheatsheet over an open panel: shows panel-scoped section, Esc closes only the cheatsheet', async ({ page }) => {
+    await page.locator('.match').first().locator('.chev-btn').click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+
+    // Open the cheatsheet with `?` (no Shift+/ keys needed —
+    // useKeyboardShortcuts maps the `?` key directly).
+    await page.keyboard.press('?')
+    const cheatsheet = page.locator('[data-testid="kbd-shortcuts-modal"]')
+    await expect(cheatsheet).toBeVisible()
+
+    // Group headings inside the cheatsheet — when the panel is up,
+    // we want to see Global, Detail panel, Tablist + modals; the
+    // Matches-view group is irrelevant here (j / k focus cards in
+    // the matches list, which is inert while the panel is open).
+    const groupTitles = await cheatsheet.locator('.kbd-group-title').allTextContents()
+    expect(groupTitles).toContain('Global')
+    expect(groupTitles).toContain('Detail panel')
+    expect(groupTitles).not.toContain('Matches view')
+
+    // Esc dismisses the cheatsheet only. Wait past the panel's
+    // 260 ms slide-out transition so a buggy implementation that
+    // also closes the panel can't sneak by on race timing.
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(400)
+    await expect(cheatsheet).toHaveCount(0)
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+  })
+
   test('Heroes Played starts expanded for every match, even after a collapse on a sibling', async ({ page }) => {
     await page.locator('.match').first().locator('.chev-btn').click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
