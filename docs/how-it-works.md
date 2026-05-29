@@ -112,11 +112,19 @@ That's it for setup. **Settings → Engine** should now show
    debounces 60 seconds after the last new PNG and auto-parses the
    batch. Otherwise click **Parse → Run Parse** when you're ready.
 3. **Browse the Matches tab.** Each match appears as a card with map,
-   primary hero, e/a/d, and result. Click the chevron to expand for
-   damage / healing / hero-by-hero stats / source-screenshot list.
-   Use the [filter rail](filtering.md) to narrow the view by any
-   combination of hero, map, role, result, date, or minimum play
-   time.
+   primary hero, e/a/d, and result. Click a card (or the chevron, or
+   press `e` on the focused row) to open the **detail panel** — a
+   slide-in surface on the right with the full readout: When · Final
+   Score · Parsed, your match journal (notes / replay / squad / tags),
+   the leaver chooser, the Match Stats grid, a Rank Update card (when
+   a rank screenshot was captured for this match), Heroes Played, and
+   the source screenshots. Use `←` / `→` to step through the filtered
+   list without closing the panel; `↑` / `↓` scroll inside the panel.
+   Click a source screenshot inline-preview to enlarge it fullscreen
+   (× / Esc / backdrop click closes). Press `?` for the full
+   keyboard cheatsheet. Use the [filter rail](filtering.md) to narrow
+   the view by any combination of hero, map, role, result, date, or
+   minimum play time.
 
 ### Optional: time-series charts
 
