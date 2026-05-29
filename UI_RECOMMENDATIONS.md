@@ -8,8 +8,11 @@ Since then: **filter-preset save & recall** (Presets dropdown +
 redesign, **global match search** with vim-style scoped clauses
 (`note:` / `replay:` / `member:` / `tag:`), the **group-jump
 timeline rail** (sticky right-edge chip column that scrolls + auto-
-expands the target month on click), and the **high-contrast theme
-variant + OS-preference autodetect** have all shipped. What's left
+expands the target month on click), the **high-contrast theme
+variant + OS-preference autodetect**, and the **right-edge detail
+panel** (replaces inline expansion — single selected match,
+keyboard pagination, modal focus trap, fullscreen screenshot
+lightbox, context-gated cheatsheet) have all shipped. What's left
 below is the remaining backlog — sorted by impact-to-effort ratio,
 not by which is most fun.
 
@@ -58,26 +61,7 @@ date-range filter, would be both decorative AND functional.
 - **Effort**: ~6–8 hours. Wireframe first; do not start in
   code.
 
-### 3. Detail panel instead of inline expansion
-
-Inline expansion (current behavior) is good for scanning
-adjacent cards but bad for deep inspection — the user loses
-scroll position when collapsing, and the editor surfaces compete
-for vertical space with the rest of the list.
-
-- **Pattern**: click a card → opens a side panel from the
-  right; ESC or click-out closes; `j` / `k` paginates within
-  the open panel without scrolling the underlying list.
-- **Architectural cost**: significant — MatchCardExpanded
-  becomes a standalone panel mounted at the page root, not a
-  child of the card. Routing-style state management
-  (which match is "selected") needs to be added.
-- **Tradeoff**: better for deep inspection, worse for
-  side-by-side comparison. Could ship both with a user
-  preference.
-- **Effort**: ~10–12 hours. Probably its own PR.
-
-### 4. Hero × Map heatmap
+### 3. Hero × Map heatmap
 
 For users with hundreds of matches, "which heroes win on which
 maps" is a real question. A small heatmap (rows = heroes,
@@ -96,7 +80,7 @@ surface non-obvious patterns.
 
 ## Polish / lower-priority
 
-### 5. Multi-select cards for bulk operations
+### 4. Multi-select cards for bulk operations
 
 Today every action is per-card. Useful bulk ops:
 
@@ -107,7 +91,7 @@ Today every action is per-card. Useful bulk ops:
 Shift-click range select + a contextual action bar that
 appears when the selection count > 0.
 
-### 6. Match-card hover preview
+### 5. Match-card hover preview
 
 Hover a card → show a small thumbnail of the screenshot in a
 floating preview, anchored to the cursor. Useful for "which
@@ -121,7 +105,7 @@ match was the Rialto one with the comeback".
 - **Effort**: ~3 hours. Mirror `MatchCardExpanded.vue`'s
   `<img class="source-preview">` chrome.
 
-### 7. Sticky FilterRail summary on scroll
+### 6. Sticky FilterRail summary on scroll
 
 Once the user scrolls past the FilterRail (large filtered
 sets push it off-screen quickly), the active-filter state
@@ -141,7 +125,7 @@ away regardless of scroll depth.
 - **Effort**: ~3 hours. Mirror the existing
   `MatchesFilterPills.vue` chip vocabulary.
 
-### 8. Inline tag autocomplete
+### 7. Inline tag autocomplete
 
 The tag input in the Match Journal accepts free text but
 doesn't help the user discover their existing tag vocabulary.
@@ -159,7 +143,7 @@ plus an "add new tag" affordance.
 - **Effort**: ~4 hours. Mirror `FilterRail.vue`'s `.mf-row`
   shape for the popover.
 
-### 9. Smart-empty filter messaging
+### 8. Smart-empty filter messaging
 
 The current empty-state ("No matches fit these filters") is
 correct but unhelpful. When the filter set excludes every
@@ -180,7 +164,7 @@ clause with the smallest contribution to the exclusion
   `MatchesFilteredEmpty.vue` replacing the inline empty-state
   block in `MatchesView.vue`.
 
-### 10. Right-click context menu on cards
+### 9. Right-click context menu on cards
 
 Fast-track per-card actions without forcing the user to
 expand the card first: Hide, Tag, Star, Copy replay code,
@@ -200,8 +184,10 @@ on the right-click contextmenu; left-click stays "expand".
 - **Drag-to-reorder match cards** — matches are immutable
   history, the order is `parsed_at`/`finished_at`. Reordering
   would be lying.
-- **Match comparison side-by-side view** — niche enough that
-  detail-panel + future tabs in the panel can cover it later.
+- **Match comparison side-by-side view** — the detail panel
+  is single-match; if comparison ever earns its way back in,
+  it'd be a future "tabs inside the panel" extension, not a
+  return to dual inline expansion.
 - **Match deletion confirmation modal** — the existing
   two-click confirm-then-act pattern in `MatchCardDanger.vue`
   is already correct UX; no upgrade needed.
@@ -255,7 +241,12 @@ on the right-click contextmenu; left-click stays "expand".
   break clean (see root CLAUDE.md).
 - **Bundle budgets** are CI-enforced (`ci.yml` "Enforce
   bundle-size budget"): init JS < 135 KB, init CSS < 80 KB,
-  total JS < 250 KB, total CSS < 145 KB. New features that
+  total JS < 270 KB, total CSS < 160 KB. New features that
   push these caps should bump deliberately (with a comment
   explaining why) rather than golf the implementation past
-  readability.
+  readability. Substantial modal surfaces should ride on
+  `defineAsyncComponent(() => import(...))` so they land in
+  their own chunk and stay out of the initial budget — the
+  detail panel, screenshot lightbox, and cheatsheet are the
+  pattern to mirror. `App.lazy-views.test.ts` is the regression
+  guard that fails if someone re-adds a static import.
