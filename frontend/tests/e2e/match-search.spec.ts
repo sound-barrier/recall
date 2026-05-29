@@ -74,7 +74,7 @@ test.describe('match search — global + field-scoped syntax', () => {
     })
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await expect(page.locator('.match')).toHaveCount(4)
+    await expect(page.locator('.leaf-row')).toHaveCount(4)
   })
 
   // The input's aria-label is the stable selector. It changed from
@@ -86,51 +86,51 @@ test.describe('match search — global + field-scoped syntax', () => {
   test('bare term hits any annotation field', async ({ page }) => {
     // "clutch" only appears in match:1's note → narrows to that one.
     await searchInput(page).fill('clutch')
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
 
     await searchInput(page).fill('7H1K9P')
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
 
     await searchInput(page).fill('apollo')
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
 
     await searchInput(page).fill('stack')
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
   })
 
   test('field-scoped `note:` only hits notes', async ({ page }) => {
     // "clutch" is in match:1's note → narrows to 1.
     await searchInput(page).fill('note:clutch')
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
 
     // "stack" only exists as a tag value — scoping to note returns 0.
     await searchInput(page).fill('note:stack')
-    await expect(page.locator('.match')).toHaveCount(0)
+    await expect(page.locator('.leaf-row')).toHaveCount(0)
   })
 
   test('field-scoped `replay:` only hits replay codes', async ({ page }) => {
     await searchInput(page).fill('replay:7H1')
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
 
     await searchInput(page).fill('replay:clutch')
-    await expect(page.locator('.match')).toHaveCount(0)
+    await expect(page.locator('.leaf-row')).toHaveCount(0)
   })
 
   test('field-scoped `member:` only hits members', async ({ page }) => {
     // Substring match on BattleTag (case-insensitive).
     await searchInput(page).fill('member:apollo')
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
 
     await searchInput(page).fill('member:stack')
-    await expect(page.locator('.match')).toHaveCount(0)
+    await expect(page.locator('.leaf-row')).toHaveCount(0)
   })
 
   test('field-scoped `tag:` only hits tags', async ({ page }) => {
     await searchInput(page).fill('tag:stack')
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
 
     await searchInput(page).fill('tag:apollo')
-    await expect(page.locator('.match')).toHaveCount(0)
+    await expect(page.locator('.leaf-row')).toHaveCount(0)
   })
 
   test('multiple clauses AND together', async ({ page }) => {
@@ -144,33 +144,33 @@ test.describe('match search — global + field-scoped syntax', () => {
     })
     await page.reload()
     await page.locator('#tab-matches').click()
-    await expect(page.locator('.match')).toHaveCount(5)
+    await expect(page.locator('.leaf-row')).toHaveCount(5)
 
     await searchInput(page).fill('tag:stack note:clutch')
     // Only match:5 carries both — the others fail one or the other.
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
   })
 
   test('quoted values preserve whitespace', async ({ page }) => {
     // `huge clutch` is two words; without quoting, the second word
     // becomes its own clause and changes the AND set.
     await searchInput(page).fill('note:"huge clutch"')
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
   })
 
   test('clearing the input restores all matches', async ({ page }) => {
     await searchInput(page).fill('note:clutch')
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
     await page.locator('button[aria-label="Clear search"]').click()
     await expect(searchInput(page)).toHaveValue('')
-    await expect(page.locator('.match')).toHaveCount(4)
+    await expect(page.locator('.leaf-row')).toHaveCount(4)
   })
 
   test('unknown field prefix falls through to bare-text search', async ({ page }) => {
     // `bogus:foo` isn't a known field — should match the literal text
     // "bogus:foo" against any field. No record carries it → 0.
     await searchInput(page).fill('bogus:foo')
-    await expect(page.locator('.match')).toHaveCount(0)
+    await expect(page.locator('.leaf-row')).toHaveCount(0)
   })
 
   test('parsed-clause chips render below the input as visual confirmation', async ({ page }) => {
@@ -193,14 +193,14 @@ test.describe('match search — global + field-scoped syntax', () => {
     const input = searchInput(page)
     // `note:clutch` narrows to match:1 (the only note containing "clutch").
     await input.fill('note:clutch')
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
     await expect(input).toBeFocused()
 
     await page.keyboard.press('Escape')
     await expect(input).toHaveValue('')
     await expect(input).not.toBeFocused()
     // Filter restored — the global corpus comes back.
-    await expect(page.locator('.match')).toHaveCount(4)
+    await expect(page.locator('.leaf-row')).toHaveCount(4)
   })
 
   test('Esc on an empty search input still blurs', async ({ page }) => {

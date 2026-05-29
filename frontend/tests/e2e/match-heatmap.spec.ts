@@ -50,7 +50,7 @@ test.describe('campaign-log header', () => {
     })
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await expect(page.locator('.match')).toHaveCount(CORPUS.length)
+    await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
   })
 
   test('mounts the wrapper with both viz below the FilterRail + AggregateStats', async ({ page }) => {
@@ -116,9 +116,9 @@ test.describe('campaign-log header', () => {
   test('clicking a heatmap cell sets a single-day filter; clicking the active cell again clears', async ({ page }) => {
     const cell = page.locator('.heatmap-cell[data-date="2026-05-10"]')
     await cell.click()
-    await expect(page.locator('.match')).toHaveCount(3)
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
     await cell.click()
-    await expect(page.locator('.match')).toHaveCount(CORPUS.length)
+    await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
   })
 
   test('sparkline brush — drag across bars sets a date range; the active range renders as a selection band', async ({ page }) => {
@@ -144,13 +144,13 @@ test.describe('campaign-log header', () => {
     await page.mouse.move(endX, y, { steps: 8 })
     await page.mouse.up()
 
-    await expect(page.locator('.match')).toHaveCount(7)
+    await expect(page.locator('.leaf-row')).toHaveCount(7)
     await expect(page.locator('.selection-band')).toBeVisible()
   })
 
   test('sparkline brush — click without dragging clears the date filter', async ({ page }) => {
     await page.locator('.heatmap-cell[data-date="2026-05-10"]').click()
-    await expect(page.locator('.match')).toHaveCount(3)
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
 
     const bar = page.locator('.sparkline-bar[data-date="2026-05-14"]')
     await bar.scrollIntoViewIfNeeded()
@@ -160,7 +160,7 @@ test.describe('campaign-log header', () => {
     await page.mouse.move(x, y)
     await page.mouse.down()
     await page.mouse.up()
-    await expect(page.locator('.match')).toHaveCount(CORPUS.length)
+    await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
   })
 
   // ─── Bug coverage: reactivity + clear-filters round-trips ──────
@@ -183,7 +183,7 @@ test.describe('campaign-log header', () => {
     // Set the date filter via the heatmap.
     await page.locator('.heatmap-cell[data-date="2026-05-10"]').click()
     await expect(page.locator('.heatmap-cell.active')).toHaveCount(1)
-    await expect(page.locator('.match')).toHaveCount(3)
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
 
     // FilterRail's "Clear Filters" button appears only when a
     // filter is active and resets every filter incl. date range.
@@ -197,7 +197,7 @@ test.describe('campaign-log header', () => {
     // filter is active.
     await expect(page.locator('.heatmap-cell.active')).toHaveCount(0)
     await expect(page.locator('.selection-band')).toHaveCount(0)
-    await expect(page.locator('.match')).toHaveCount(CORPUS.length)
+    await expect(page.locator('.leaf-row')).toHaveCount(CORPUS.length)
     await expect(clearBtn).toHaveCount(0)
   })
 
@@ -211,7 +211,7 @@ test.describe('campaign-log header', () => {
     // indicators; the date pill is redundant noise and was
     // deliberately removed.
     await page.locator('.heatmap-cell[data-date="2026-05-10"]').click()
-    await expect(page.locator('.match')).toHaveCount(3)
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
     await expect(page.locator('.filter-pills')).toHaveCount(0)
   })
 
@@ -263,7 +263,7 @@ test.describe('campaign-log header', () => {
     await page.locator('.heatmap-cell[data-date="2026-05-11"]').click()
     await expect(page.locator('.heatmap-cell.active')).toHaveCount(1)
     await expect(page.locator('.heatmap-cell[data-date="2026-05-11"]')).toHaveClass(/active/)
-    await expect(page.locator('.match')).toHaveCount(2) // m4 + m5 on 5/11
+    await expect(page.locator('.leaf-row')).toHaveCount(2) // m4 + m5 on 5/11
   })
 
   test('the FilterRail date inputs round-trip into the heatmap active state', async ({ page }) => {
