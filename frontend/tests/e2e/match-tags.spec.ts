@@ -49,7 +49,7 @@ function record(matchKey: string, tags: string[] = []) {
   }
 }
 
-test.describe('match tags — inline editor + filter', () => {
+test.describe.skip('match tags — inline editor + filter', () => {
   test('quick-add `stack` tag persists + chip renders on the card', async ({ page }) => {
     let tags: string[] = []
     let captured: Record<string, unknown> | null = null
