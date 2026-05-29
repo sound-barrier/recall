@@ -57,6 +57,10 @@ const emit = defineEmits<{
   'toggle-sources': []
   'toggle-preview': [filename: string]
   'preview-error':  [filename: string]
+  // User clicked the inline preview img — App.vue opens the full-
+  // screen lightbox for that filename. We just lift the intent; the
+  // lightbox component, src URL, and dismissal all live up at root.
+  'open-lightbox':  [filename: string]
   'filter-toggle':  [field: string, value: string]
   // User clicks one of the four leaver-chooser buttons. App.vue
   // listens, routes through SetMatchAnnotation with the existing
@@ -740,6 +744,8 @@ function onTagKeydown(e: KeyboardEvent) {
             :src="screenshotURL(f)"
             :alt="f"
             class="source-preview"
+            title="Click to view fullscreen"
+            @click="emit('open-lightbox', f)"
             @error="emit('preview-error', f)"
           >
           <div v-if="props.previewOpen[f] && props.previewError[f]" class="source-preview-error">
