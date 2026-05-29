@@ -143,9 +143,9 @@ test.describe('matches set-workspace', () => {
   test('combobox picks narrow the set', async ({ page }) => {
     await page.locator('button:has-text("Narrow this set")').click()
     // Hero combobox — broad-match against heroes_played + primary hero.
-    const heroSection = page.locator('section[data-combo-id="hero"]')
-    await heroSection.locator('.combo-input').click()
-    await heroSection.locator('.combo-list li:has-text("lucio")').click()
+    const heroCombo = page.locator('[data-combo-id="hero"]')
+    await heroCombo.locator('.combo-input').click()
+    await heroCombo.locator('.combo-list li:has-text("lucio")').click()
     await page.keyboard.press('Escape')
     // 3 records have hero=lucio (m1, m3, unk — but unk is hidden by default).
     await expect(page.locator('.leaf-row')).toHaveCount(2)

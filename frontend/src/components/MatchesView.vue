@@ -6,6 +6,7 @@ import { useMatchesGroup } from '../composables/useMatchesGroup'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
 import { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import MatchTimelineHeader from './MatchTimelineHeader.vue'
+import FilterCombobox from './FilterCombobox.vue'
 
 // Matches page — "set workspace" layout.
 //
@@ -71,22 +72,10 @@ const narrowOpen = ref(false)
 const sortOrder = ref<'newest' | 'oldest'>('newest')
 const groupBy   = ref<'none' | 'day' | 'week' | 'month' | 'year'>('day')
 
-// Combobox typeahead + open state — UI presentation, not filter
-// math, so it stays here. The composable exposes available* /
-// picked* refs and the picker actions; this layer adds the
-// typeahead-narrow on top.
-const mapSearch  = ref('')
-const heroSearch = ref('')
-const comboOpen  = ref<'map' | 'hero' | null>(null)
-
-const filteredMapOptions = computed(() => {
-  const q = mapSearch.value.trim().toLowerCase()
-  return q ? availableMaps.value.filter((m) => m.toLowerCase().includes(q)) : availableMaps.value
-})
-const filteredHeroOptions = computed(() => {
-  const q = heroSearch.value.trim().toLowerCase()
-  return q ? availableHeroes.value.filter((h) => h.toLowerCase().includes(q)) : availableHeroes.value
-})
+// Combobox open state — which one (if any) currently shows its
+// dropdown. Only one open at a time. Typeahead text is owned by
+// each FilterCombobox instance internally.
+const comboOpen = ref<'map' | 'hero' | null>(null)
 
 // ─── Dossier KPIs / breakdowns via useMatchesDossier ───────
 const { wld, winrate, topMaps, topHeroes } = useMatchesDossier(narrowedRecords, leaverHandling)
@@ -499,7 +488,7 @@ onBeforeUnmount(() => {
                 <div class="np-cols">
                   <div class="np-col">
                     <!-- Map — combobox (31 maps, too many for chip cloud) -->
-                    <section class="np-section" data-combo-id="map">
+                    <section class="np-section">
                       <div class="np-section-head">
                         <span class="np-section-eyebrow">Map</span>
                         <span class="np-section-meta">
@@ -507,48 +496,18 @@ onBeforeUnmount(() => {
                           · {{ availableMaps.length }} available
                         </span>
                       </div>
-                      <div v-if="pickedMaps.size" class="combo-selected">
-                        <span v-for="m in [...pickedMaps]" :key="m" class="combo-pill">
-                          {{ m }}
-                          <button class="combo-pill-x" :aria-label="`Drop ${m}`" @click="pickMap(m)">×</button>
-                        </span>
-                      </div>
-                      <div class="combo">
-                        <input
-                          v-model="mapSearch"
-                          type="search"
-                          class="combo-input"
-                          :placeholder="`type to search ${availableMaps.length} maps…`"
-                          autocomplete="off"
-                          @focus="comboOpen = 'map'"
-                        >
-                        <button
-                          type="button"
-                          class="combo-caret"
-                          :class="{ open: comboOpen === 'map' }"
-                          :aria-expanded="comboOpen === 'map' ? 'true' : 'false'"
-                          :aria-label="comboOpen === 'map' ? 'Close map list' : 'Open map list'"
-                          @click="comboOpen = comboOpen === 'map' ? null : 'map'"
-                        >
-                          ▾
-                        </button>
-                        <ul v-if="comboOpen === 'map'" class="combo-list" role="listbox" aria-label="Maps">
-                          <li
-                            v-for="opt in filteredMapOptions"
-                            :key="opt"
-                            :class="{ picked: pickedMaps.has(opt) }"
-                            role="option"
-                            :aria-selected="pickedMaps.has(opt) ? 'true' : 'false'"
-                            @mousedown.prevent="pickMap(opt)"
-                          >
-                            <span class="combo-check" aria-hidden="true">{{ pickedMaps.has(opt) ? '✓' : '' }}</span>
-                            <span class="combo-opt-name">{{ opt }}</span>
-                          </li>
-                          <li v-if="!filteredMapOptions.length" class="combo-empty">
-                            no maps match
-                          </li>
-                        </ul>
-                      </div>
+                      <FilterCombobox
+                        combo-id="map"
+                        label="Maps"
+                        :options="availableMaps"
+                        :picked="pickedMaps"
+                        :open="comboOpen === 'map'"
+                        :placeholder="`type to search ${availableMaps.length} maps…`"
+                        empty-message="no maps match"
+                        @toggle="pickMap"
+                        @open="comboOpen = 'map'"
+                        @close="comboOpen = null"
+                      />
                     </section>
 
                     <!-- Map type -->
@@ -572,7 +531,7 @@ onBeforeUnmount(() => {
                     </section>
 
                     <!-- Hero — combobox (51 heroes, broad-match against heroes_played) -->
-                    <section class="np-section" data-combo-id="hero">
+                    <section class="np-section">
                       <div class="np-section-head">
                         <span class="np-section-eyebrow">Hero</span>
                         <span class="np-section-meta">
@@ -580,48 +539,18 @@ onBeforeUnmount(() => {
                           · {{ availableHeroes.length }} available · matches any played
                         </span>
                       </div>
-                      <div v-if="pickedHeroes.size" class="combo-selected">
-                        <span v-for="h in [...pickedHeroes]" :key="h" class="combo-pill">
-                          {{ h }}
-                          <button class="combo-pill-x" :aria-label="`Drop ${h}`" @click="pickHero(h)">×</button>
-                        </span>
-                      </div>
-                      <div class="combo">
-                        <input
-                          v-model="heroSearch"
-                          type="search"
-                          class="combo-input"
-                          :placeholder="`type to search ${availableHeroes.length} heroes…`"
-                          autocomplete="off"
-                          @focus="comboOpen = 'hero'"
-                        >
-                        <button
-                          type="button"
-                          class="combo-caret"
-                          :class="{ open: comboOpen === 'hero' }"
-                          :aria-expanded="comboOpen === 'hero' ? 'true' : 'false'"
-                          :aria-label="comboOpen === 'hero' ? 'Close hero list' : 'Open hero list'"
-                          @click="comboOpen = comboOpen === 'hero' ? null : 'hero'"
-                        >
-                          ▾
-                        </button>
-                        <ul v-if="comboOpen === 'hero'" class="combo-list" role="listbox" aria-label="Heroes">
-                          <li
-                            v-for="opt in filteredHeroOptions"
-                            :key="opt"
-                            :class="{ picked: pickedHeroes.has(opt) }"
-                            role="option"
-                            :aria-selected="pickedHeroes.has(opt) ? 'true' : 'false'"
-                            @mousedown.prevent="pickHero(opt)"
-                          >
-                            <span class="combo-check" aria-hidden="true">{{ pickedHeroes.has(opt) ? '✓' : '' }}</span>
-                            <span class="combo-opt-name">{{ opt }}</span>
-                          </li>
-                          <li v-if="!filteredHeroOptions.length" class="combo-empty">
-                            no heroes match
-                          </li>
-                        </ul>
-                      </div>
+                      <FilterCombobox
+                        combo-id="hero"
+                        label="Heroes"
+                        :options="availableHeroes"
+                        :picked="pickedHeroes"
+                        :open="comboOpen === 'hero'"
+                        :placeholder="`type to search ${availableHeroes.length} heroes…`"
+                        empty-message="no heroes match"
+                        @toggle="pickHero"
+                        @open="comboOpen = 'hero'"
+                        @close="comboOpen = null"
+                      />
                     </section>
 
                     <!-- Role -->
@@ -1493,134 +1422,6 @@ onBeforeUnmount(() => {
   color: var(--text-faint);
   font-style: italic;
 }
-
-/* ─── Combobox (used by Map + Hero where chip clouds don't fit) ── */
-
-.combo-selected {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-}
-
-.combo-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.18rem 0.18rem 0.18rem 0.5rem;
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  border: 1px solid var(--accent);
-  border-radius: 2px;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  color: var(--accent);
-  font-weight: 700;
-  text-transform: lowercase;
-}
-
-.combo-pill-x {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  color: var(--accent);
-  padding: 0 0.3rem;
-  cursor: pointer;
-  font-size: 0.9rem;
-  line-height: 1;
-}
-.combo-pill-x:hover { color: var(--text); }
-
-.combo {
-  position: relative;
-}
-
-.combo-input {
-  width: 100%;
-  appearance: none;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 0.36rem 2.4rem 0.36rem 0.6rem;
-  font-family: var(--mono);
-  font-size: 0.74rem;
-  color: var(--text);
-  outline: 0;
-}
-.combo-input:focus { border-color: var(--accent); }
-.combo-input::placeholder { color: var(--text-faint); }
-
-.combo-caret {
-  position: absolute;
-  right: 0.25rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: 0;
-  color: var(--text-faint);
-  padding: 0.2rem 0.5rem;
-  cursor: pointer;
-  font-size: 0.85rem;
-  line-height: 1;
-  transition: color 120ms ease, transform 160ms ease;
-}
-.combo-caret:hover { color: var(--accent); }
-
-.combo-caret.open {
-  color: var(--accent);
-  transform: translateY(-50%) rotate(180deg);
-}
-
-.combo-list {
-  list-style: none;
-  margin: 0.3rem 0 0;
-  padding: 0.2rem 0;
-  border: 1px solid var(--accent);
-  background: var(--surface);
-  border-radius: 2px;
-  max-height: 14rem;
-  overflow-y: auto;
-  box-shadow: 0 12px 24px -16px rgb(0 0 0 / 50%);
-}
-
-.combo-list li {
-  display: grid;
-  grid-template-columns: 1.4rem 1fr;
-  align-items: center;
-  gap: 0.2rem;
-  padding: 0.32rem 0.6rem;
-  font-family: var(--mono);
-  font-size: 0.74rem;
-  color: var(--text);
-  cursor: pointer;
-}
-
-.combo-list li:hover {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-}
-
-.combo-list li.picked {
-  color: var(--accent);
-  font-weight: 700;
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
-}
-
-.combo-list li.picked:hover {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-}
-
-.combo-check {
-  color: var(--accent);
-  font-weight: 800;
-  text-align: center;
-}
-.combo-opt-name { text-transform: lowercase; }
-
-.combo-empty {
-  font-style: italic;
-  color: var(--text-faint);
-  padding: 0.4rem 0.6rem !important;
-  cursor: default !important;
-}
-.combo-empty:hover { background: transparent !important; }
 
 /* Refinement: dual thresholds + unknown */
 .np-refine-row {
