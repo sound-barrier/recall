@@ -280,8 +280,10 @@ describe('MatchCard — expanded body', () => {
 
   it('renders the Final Score meta when present', () => {
     const wrapper = mountCard({ isExpanded: true })
-    expect(wrapper.find('.meta-eyebrow').text()).toBe('Final Score')
-    expect(wrapper.find('.meta-value').text()).toBe('3-1')
+    const scoreCell = wrapper.find('.meta-cell-score')
+    expect(scoreCell.exists()).toBe(true)
+    expect(scoreCell.find('.meta-eyebrow').text()).toBe('Final Score')
+    expect(scoreCell.find('.meta-value').text()).toBe('3-1')
   })
 
   it('renders heroes_played list with percent + play time + stats', () => {
@@ -392,18 +394,18 @@ describe('MatchCard — Parsed timestamps', () => {
   it('renders the match-level "Parsed" meta row in the expanded body when parsed_at is set', () => {
     const rec = makeRecord({}, { parsed_at: '2026-05-10T21:30:00Z' })
     const wrapper = mountCard({ record: rec, isExpanded: true })
-    const parsedRow = wrapper.find('.meta-row-parsed')
-    expect(parsedRow.exists()).toBe(true)
-    expect(parsedRow.text()).toContain('Parsed')
+    const parsedCell = wrapper.find('.meta-cell-parsed')
+    expect(parsedCell.exists()).toBe(true)
+    expect(parsedCell.text()).toContain('Parsed')
     // The raw ISO is exposed via `title` for power users; the visible
     // text is the formatted version.
-    expect(parsedRow.find('.meta-value').attributes('title')).toBe('2026-05-10T21:30:00Z')
+    expect(parsedCell.find('.meta-value').attributes('title')).toBe('2026-05-10T21:30:00Z')
   })
 
   it('does NOT render the Parsed row when parsed_at is missing (pre-migration rows)', () => {
     const rec = makeRecord({}, { parsed_at: undefined })
     const wrapper = mountCard({ record: rec, isExpanded: true })
-    expect(wrapper.find('.meta-row-parsed').exists()).toBe(false)
+    expect(wrapper.find('.meta-cell-parsed').exists()).toBe(false)
   })
 
   it('renders a per-source-file parsed chip in the Sources panel', () => {

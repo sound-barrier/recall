@@ -13,7 +13,7 @@
 import { test, expect } from './_fixtures'
 import type { Route } from '@playwright/test'
 
-function record(matchKey: string, opts: { note?: string; result?: string; finishedAt?: string } = {}) {
+function record(matchKey: string, opts: { note?: string; result?: string; finishedAt?: string; withRank?: boolean; finalScore?: string } = {}) {
   return {
     match_key: matchKey,
     source_files: [`${matchKey}.png`],
@@ -24,6 +24,8 @@ function record(matchKey: string, opts: { note?: string; result?: string; finish
       date: '2026-05-10', finished_at: opts.finishedAt ?? '22:00',
       eliminations: 17, assists: 16, deaths: 11, damage: 7200,
       heroes_played: [{ hero: 'lucio', percent_played: 100, play_time: '11:25' }],
+      final_score: opts.finalScore ?? '3-2',
+      ...(opts.withRank ? { rank: 'diamond', level: '3', rank_progress: 42, change_percent: 24 } : {}),
     },
     parsed_at: `2026-05-10T${(opts.finishedAt ?? '22:30').slice(0, 2)}:30:00Z`,
     ...(opts.note ? { annotation: { note: opts.note } } : {}),
@@ -33,7 +35,7 @@ function record(matchKey: string, opts: { note?: string; result?: string; finish
 // All on the same day so the Month→Week→Day grouping keeps every
 // card visible; finished_at orders them within the day.
 const CORPUS = [
-  record('m1', { note: 'huge clutch second point', finishedAt: '22:00' }),
+  record('m1', { note: 'huge clutch second point', finishedAt: '22:00', withRank: true }),
   record('m2', { result: 'defeat', finishedAt: '21:00' }),
   record('m3', { result: 'draw',   finishedAt: '20:00' }),
 ]
@@ -112,6 +114,64 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     await page.keyboard.press('Enter')
     await expect(page.locator('aside.detail-panel')).toBeVisible()
     await expect(page.locator('.detail-title-result')).toContainText(/victory/i)
+  })
+
+  test('panel body sections appear in the documented order', async ({ page }) => {
+    // m1 has rank data, an annotation, and a final score — the only
+    // match in the corpus that exercises every section, so we open
+    // it to compare the rendered order against the contract.
+    await page.locator('.match').first().locator('.chev-btn').click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+
+    // Top-of-panel meta strip: date + final score. Rendered as its
+    // own block right under the toolbar, NOT buried below the stats.
+    await expect(page.locator('.detail-body .detail-meta-strip').first()).toBeVisible()
+
+    // Walk the panel body and read each top-level child's selector
+    // signature. We assert the ORDER of major sections:
+    //   1. .detail-meta-strip  (date + final score)
+    //   2. .match-journal      (note / replay / squad / tags)
+    //   3. .leaver-chooser     (Leaver? scenario chips)
+    //   4. .stats              (Match Stats grid)
+    //   5. .rank-block         (rank — only when present)
+    //   6. .heroes-played      (Heroes Played list)
+    //   7. .sources-block      (Source Screenshots)
+    const order = await page.evaluate(() => {
+      const body = document.querySelector('.detail-body')
+      if (!body) return []
+      const interesting = ['detail-meta-strip', 'match-journal', 'leaver-chooser', 'stats', 'rank-block', 'heroes-played', 'sources-block']
+      const out: string[] = []
+      const seen = new Set<string>()
+      const walker = body.querySelectorAll('*')
+      for (const el of Array.from(walker)) {
+        for (const cls of interesting) {
+          if (el.classList.contains(cls) && !seen.has(cls)) {
+            seen.add(cls)
+            out.push(cls)
+          }
+        }
+      }
+      return out
+    })
+    expect(order).toEqual([
+      'detail-meta-strip',
+      'match-journal',
+      'leaver-chooser',
+      'stats',
+      'rank-block',
+      'heroes-played',
+      'sources-block',
+    ])
+
+    // Stats block carries a "Match Stats" eyebrow now (it used to be
+    // unlabeled). User-facing label so the section reads as a card
+    // header, not a free-floating digits row.
+    await expect(page.locator('.match-stats-block .block-eyebrow')).toHaveText(/match stats/i)
+
+    // Rank block is decorated as a rare/important section. We assert
+    // the marker class — a non-default visual treatment that signals
+    // "this match included a rank update."
+    await expect(page.locator('.rank-block.rare')).toBeVisible()
   })
 
   test('Heroes Played starts expanded for every match, even after a collapse on a sibling', async ({ page }) => {
