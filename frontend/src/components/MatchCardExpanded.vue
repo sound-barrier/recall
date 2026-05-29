@@ -13,7 +13,6 @@ import {
 } from '../match-helpers'
 import { highlightTermsFor, type SearchClause } from '../search-query'
 import { useOWData } from '../composables/useOWData'
-import { useHeroesExpanded } from '../composables/useHeroesExpanded'
 import MatchCardDanger from './MatchCardDanger.vue'
 
 // Expanded match-card body: leaver chooser → free-text annotation
@@ -30,10 +29,14 @@ import MatchCardDanger from './MatchCardDanger.vue'
 
 const ow = useOWData()
 
-// Global Heroes-Played collapse preference. Persists once the user
-// flips it on any card; default expanded preserves the long-standing
-// open-by-default behaviour.
-const { heroesExpanded, toggleHeroesExpanded } = useHeroesExpanded()
+// Heroes-Played collapse state — LOCAL to this card instance.
+// MatchDetailPanel keys MatchCardExpanded by match_key, so this
+// component is destroyed + remounted on every pagination. That
+// makes "always start expanded; user can collapse for this view"
+// the natural per-card behaviour without any explicit reset: each
+// new match selection mounts a fresh ref(true).
+const heroesExpanded = ref(true)
+function toggleHeroesExpanded() { heroesExpanded.value = !heroesExpanded.value }
 
 const props = defineProps<{
   record: MatchRecord
@@ -937,10 +940,10 @@ function onTagKeydown(e: KeyboardEvent) {
 /* Collapsible block — when collapsed the entire .hero-block grid is
    gone from the DOM (v-if), but the header eyebrow stays as a
    single-line summary so the user reads the count + top heroes
-   without expanding. Default is expanded; the preference persists in
-   localStorage via useHeroesExpanded so a user with very long match
-   histories collapses once and the choice survives every subsequent
-   card open. */
+   without expanding. Default is expanded; state is local to the
+   card instance, so paginating to the next match re-mounts the
+   block in its default-expanded form (the detail panel keys
+   MatchCardExpanded by match_key). */
 
 .heroes-played.collapsed { margin-bottom: -0.2rem; }
 

@@ -113,4 +113,27 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     await expect(page.locator('aside.detail-panel')).toBeVisible()
     await expect(page.locator('.detail-title-result')).toContainText(/victory/i)
   })
+
+  test('Heroes Played starts expanded for every match, even after a collapse on a sibling', async ({ page }) => {
+    await page.locator('.match').first().locator('.chev-btn').click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+
+    // First match: heroes-played panel is open by default.
+    const heroesItems = page.locator('.heroes-played-items')
+    await expect(heroesItems).toBeVisible()
+    await expect(page.locator('.heroes-played-toggle')).toHaveAttribute('aria-expanded', 'true')
+
+    // User collapses it on this card.
+    await page.locator('.heroes-played-toggle').click()
+    await expect(heroesItems).toHaveCount(0)
+    await expect(page.locator('.heroes-played-toggle')).toHaveAttribute('aria-expanded', 'false')
+
+    // Paginate to the next match — the new card should auto-expand
+    // the section again so the user lands on full context, not on
+    // the collapsed summary they were just on.
+    await page.keyboard.press('ArrowRight')
+    await expect(page.locator('.detail-pos strong')).toHaveText('2')
+    await expect(page.locator('.heroes-played-items')).toBeVisible()
+    await expect(page.locator('.heroes-played-toggle')).toHaveAttribute('aria-expanded', 'true')
+  })
 })
