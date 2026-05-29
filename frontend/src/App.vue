@@ -38,11 +38,10 @@ import {
   SetMatchVisibility,
 } from './api'
 import type { MatchAnnotationInput } from './api'
-import { computeEarliestMatchDateTime, tallyWLD, screenshotURL } from './match-helpers'
+import { tallyWLD, screenshotURL } from './match-helpers'
 import { useIncludeUndated } from './composables/useIncludeUndated'
 import { useIncludeUnknown } from './composables/useIncludeUnknown'
 import { useMinPlayThreshold } from './composables/useMinPlayThreshold'
-import { useDensityMode } from './composables/useDensityMode'
 import { useLeaverHandling } from './composables/useLeaverHandling'
 import { useShowHidden } from './composables/useShowHidden'
 import { useTabKeyboardNav, TAB_ORDER, type TabId } from './composables/useTabKeyboardNav'
@@ -56,10 +55,7 @@ import { useFeatureToggle } from './composables/useFeatureToggle'
 import { useEventStream } from './composables/useEventStream'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
-import { useFilterPanel } from './composables/useFilterPanel'
 import { useMatchFilters } from './composables/useMatchFilters'
-import { useMatchGrouping } from './composables/useMatchGrouping'
-import { useFilterPresets, type FilterPresetSnapshot } from './composables/useFilterPresets'
 import { useSelectedMatch } from './composables/useSelectedMatch'
 import type { ParseProgressEvent } from './components/ParseProgressPanel.vue'
 import ParseStatusBar from './components/ParseStatusBar.vue'
@@ -265,24 +261,22 @@ const {
 // them as bundled props rather than re-instantiating their own state.
 // activeFilterCount surfaces in the matches-tab nav badge so it lives
 // outside the view component too.
-const _filterPanel = useFilterPanel()
 // "Include undated matches" toggle. Default off — records without
 // data.date are hidden from the matched view until the user opts in
 // via the FilterRail toggle. Persisted in localStorage so the choice
 // survives across launches.
-const { includeUndated, setIncludeUndated } = useIncludeUndated()
+const { includeUndated } = useIncludeUndated()
 const {
   minPlayPercent, minPlayMinutes,
   setMinPlayPercent, setMinPlayMinutes,
 } = useMinPlayThreshold()
-const { densityMode: _densityMode, toggleDensityMode: _toggleDensityMode } = useDensityMode()
-const { leaverHandling, setLeaverHandling } = useLeaverHandling()
+const { leaverHandling } = useLeaverHandling()
 // "Show hidden matches" toggle. Default off — soft-deleted matches
 // stay out of view until the user opts in to see them.
-const { showHidden, setShowHidden } = useShowHidden()
+const { showHidden } = useShowHidden()
 // "Show unknown-map matches" toggle for the Matches narrow panel.
 // Default off — unknown-map records live in the Unknown tab.
-const { includeUnknown, setIncludeUnknown: _setIncludeUnknown } = useIncludeUnknown()
+const { includeUnknown } = useIncludeUnknown()
 const filters = useMatchFilters(
   records,
   includeUndated,
@@ -293,86 +287,8 @@ const filters = useMatchFilters(
   includeUnknown,
 )
 const { activeFilterCount } = filters
-// First-day-of-week preference (Settings → Calendar). Threaded into
-// useMatchGrouping so the "Week of <date>" labels honor the user's
-// choice across page loads.
+// First-day-of-week preference (Settings → Calendar).
 const { weekStart, setWeekStart } = useWeekStart()
-// Tallies skip annotated leaver matches when the user picks
-// 'exclude-tally' (or 'hide' — those records are already gone from
-// filteredSorted but excluding them belt-and-suspenders).
-const skipAnnotatedInTally = computed(
-  () => leaverHandling.value === 'exclude-tally' || leaverHandling.value === 'hide',
-)
-const _grouping = useMatchGrouping<MatchRecord>(
-  filters.filteredSorted, filters.sortDir, weekStart, skipAnnotatedInTally,
-)
-
-// Filter-preset storage. The composable persists in localStorage; this
-// shell owns the snapshot collect + apply because the underlying state
-// is owned here (filter refs from useMatchFilters, plus the
-// persisted-preference composables for thresholds / undated / leaver /
-// hidden). Threaded through MatchesView → FilterRail → FilterPresetsMenu.
-const { presets: _filterPresets, savePreset, getPreset, deletePreset } = useFilterPresets()
-
-function buildFilterPresetSnapshot(): FilterPresetSnapshot {
-  return {
-    filters: {
-      mode:   [...filters.filterMode.value],
-      type:   [...filters.filterType.value],
-      role:   [...filters.filterRole.value],
-      map:    [...filters.filterMap.value],
-      hero:   [...filters.filterHero.value],
-      result: [...filters.filterResult.value],
-      sshot:  [...filters.filterSshot.value],
-      tags:   [...filters.filterTags.value],
-    },
-    matchQuery:     filters.matchQuery.value,
-    filterFrom:     filters.filterFrom.value,
-    filterTo:       filters.filterTo.value,
-    sortDir:        filters.sortDir.value === 'asc' ? 'asc' : 'desc',
-    minPlayPercent: minPlayPercent.value,
-    minPlayMinutes: minPlayMinutes.value,
-    includeUndated: includeUndated.value,
-    leaverHandling: leaverHandling.value,
-    showHidden:     showHidden.value,
-  }
-}
-
-function applyFilterPresetSnapshot(s: FilterPresetSnapshot) {
-  filters.filterMode.value   = [...s.filters.mode]
-  filters.filterType.value   = [...s.filters.type]
-  filters.filterRole.value   = [...s.filters.role]
-  filters.filterMap.value    = [...s.filters.map]
-  filters.filterHero.value   = [...s.filters.hero]
-  filters.filterResult.value = [...s.filters.result]
-  filters.filterSshot.value  = [...s.filters.sshot]
-  filters.filterTags.value   = [...s.filters.tags]
-  filters.matchQuery.value   = s.matchQuery
-  filters.filterFrom.value   = s.filterFrom
-  filters.filterTo.value     = s.filterTo
-  filters.sortDir.value      = s.sortDir
-  // Threshold setters write to localStorage; assigning the raw refs
-  // would leave the persisted preference out of sync.
-  setMinPlayPercent(s.minPlayPercent)
-  setMinPlayMinutes(s.minPlayMinutes)
-  setIncludeUndated(s.includeUndated)
-  setLeaverHandling(s.leaverHandling)
-  setShowHidden(s.showHidden)
-}
-
-function _onSavePreset(name: string) {
-  savePreset(name, buildFilterPresetSnapshot())
-}
-
-function _onApplyPreset(name: string) {
-  const p = getPreset(name)
-  if (!p) return
-  applyFilterPresetSnapshot(p.snapshot)
-}
-
-function _onDeletePreset(name: string) {
-  deletePreset(name)
-}
 
 // (Per-card expand state replaced by the `selection` composable
 // introduced for the detail-panel pattern. See below.)
@@ -548,19 +464,6 @@ async function onSetMatchHidden(matchKey: string, hidden: boolean) {
   }
 }
 
-// Bounds for the date pickers.
-const _earliestMatchDateTime = computed(() => computeEarliestMatchDateTime(records.value))
-
-// Local-time "now" formatted as YYYY-MM-DDTHH:MM for the input's max
-// attribute. Recomputed on every render — Vue treats this as a getter
-// without a reactive dep, but in practice the user reopens the dropdown
-// often enough that minute-level staleness isn't visible.
-const _nowDateTime = computed(() => {
-  const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-})
-
 // Selected-match panel (replaces the old inline-expansion model).
 // Clicking a card opens the right-side MatchDetailPanel and pins
 // `selection.selectedKey` to that match_key. ← / → inside the panel
@@ -603,15 +506,6 @@ watch(
   },
 )
 
-// Enter in the FilterRail's match-search input opens the first hit
-// in the panel. The "search and reveal" gesture — user types a
-// query, hits Enter, immediately sees the top hit in the panel
-// instead of having to click on a card. No-op when the filtered
-// list is empty.
-function _onSearchSubmit() {
-  if (filters.filteredSorted.value.length === 0) return
-  selection.openFirst()
-}
 
 // True for the row that drives the open MatchDetailPanel. MatchCard
 // reads this via the cardState bundle to apply the .selected accent
