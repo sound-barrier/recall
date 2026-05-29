@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { ref } from 'vue'
 import type { MatchRecord } from '../api'
-import { useMatchesNarrow } from './useMatchesNarrow'
+import { useMatchesNarrow, createMatchesNarrowState } from './useMatchesNarrow'
 
 function rec(opts: {
   key?: string
@@ -44,36 +44,45 @@ describe('useMatchesNarrow', () => {
   describe('defaults', () => {
     it('returns all records (minus unknown-map) when no narrow is active', () => {
       const records = ref([rec({ key: 'a' }), rec({ key: 'b' })])
-      const { narrowedRecords, anyNarrow } = useMatchesNarrow({ records })
+      const { narrowedRecords, anyNarrow } = useMatchesNarrow(records, createMatchesNarrowState())
       expect(anyNarrow.value).toBe(false)
       expect(narrowedRecords.value).toHaveLength(2)
     })
 
     it('hides unknown-map records by default', () => {
       const records = ref([rec({ key: 'mapped' }), rec({ key: 'unmapped', map: null })])
-      const { narrowedRecords } = useMatchesNarrow({ records })
+      const { narrowedRecords } = useMatchesNarrow(records, createMatchesNarrowState())
       expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['mapped'])
     })
 
     it('includeUnknown=true surfaces unknown-map records', () => {
       const records = ref([rec({ key: 'mapped' }), rec({ key: 'unmapped', map: null })])
-      const { narrowedRecords, includeUnknown } = useMatchesNarrow({ records })
+      const { narrowedRecords, includeUnknown } = useMatchesNarrow(records, createMatchesNarrowState())
       includeUnknown.value = true
       expect(narrowedRecords.value).toHaveLength(2)
+    })
+
+    it('drops soft-deleted (hidden=true) records unconditionally', () => {
+      const records = ref([
+        rec({ key: 'visible' }),
+        { ...rec({ key: 'gone' }), hidden: true } as MatchRecord,
+      ])
+      const { narrowedRecords } = useMatchesNarrow(records, createMatchesNarrowState())
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['visible'])
     })
   })
 
   describe('free-text search', () => {
     it('matches map name', () => {
       const records = ref([rec({ key: 'a', map: 'rialto' }), rec({ key: 'b', map: 'numbani' })])
-      const { narrowedRecords, searchText } = useMatchesNarrow({ records })
+      const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
       searchText.value = 'numbani'
       expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['b'])
     })
 
     it('matches primary hero', () => {
       const records = ref([rec({ key: 'a', hero: 'lucio' }), rec({ key: 'b', hero: 'mercy' })])
-      const { narrowedRecords, searchText } = useMatchesNarrow({ records })
+      const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
       searchText.value = 'mercy'
       expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['b'])
     })
@@ -86,7 +95,7 @@ describe('useMatchesNarrow', () => {
         ]}),
         rec({ key: 'b', hero: 'mercy' }),
       ])
-      const { narrowedRecords, searchText } = useMatchesNarrow({ records })
+      const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
       searchText.value = 'kiriko'
       expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['a'])
     })
@@ -96,28 +105,28 @@ describe('useMatchesNarrow', () => {
         rec({ key: 'a', note: 'huge clutch hold' }),
         rec({ key: 'b', note: 'rolled them' }),
       ])
-      const { narrowedRecords, searchText } = useMatchesNarrow({ records })
+      const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
       searchText.value = 'clutch'
       expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['a'])
     })
 
     it('matches annotation tags', () => {
       const records = ref([rec({ key: 'a', tags: ['scrim'] }), rec({ key: 'b', tags: ['ranked'] })])
-      const { narrowedRecords, searchText } = useMatchesNarrow({ records })
+      const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
       searchText.value = 'scrim'
       expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['a'])
     })
 
     it('is case-insensitive', () => {
       const records = ref([rec({ key: 'a', map: 'rialto' })])
-      const { narrowedRecords, searchText } = useMatchesNarrow({ records })
+      const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
       searchText.value = 'RIALTO'
       expect(narrowedRecords.value).toHaveLength(1)
     })
 
     it('empty/whitespace search returns all records', () => {
       const records = ref([rec({ key: 'a' }), rec({ key: 'b' })])
-      const { narrowedRecords, searchText } = useMatchesNarrow({ records })
+      const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
       searchText.value = '   '
       expect(narrowedRecords.value).toHaveLength(2)
     })
@@ -130,7 +139,7 @@ describe('useMatchesNarrow', () => {
         rec({ key: 'b', map: 'numbani' }),
         rec({ key: 'c', map: 'oasis' }),
       ])
-      const { narrowedRecords, pickMap } = useMatchesNarrow({ records })
+      const { narrowedRecords, pickMap } = useMatchesNarrow(records, createMatchesNarrowState())
       pickMap('rialto')
       pickMap('numbani')
       expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['a', 'b'])
@@ -138,7 +147,7 @@ describe('useMatchesNarrow', () => {
 
     it('toggling off removes from selection', () => {
       const records = ref([rec({ key: 'a', map: 'rialto' }), rec({ key: 'b', map: 'numbani' })])
-      const { narrowedRecords, pickMap, pickedMaps } = useMatchesNarrow({ records })
+      const { narrowedRecords, pickMap, pickedMaps } = useMatchesNarrow(records, createMatchesNarrowState())
       pickMap('rialto')
       pickMap('rialto') // toggle off
       expect(pickedMaps.value.size).toBe(0)
@@ -149,7 +158,7 @@ describe('useMatchesNarrow', () => {
   describe('hero filter — broad match', () => {
     it('matches primary hero', () => {
       const records = ref([rec({ key: 'a', hero: 'lucio' }), rec({ key: 'b', hero: 'mercy' })])
-      const { narrowedRecords, pickHero } = useMatchesNarrow({ records })
+      const { narrowedRecords, pickHero } = useMatchesNarrow(records, createMatchesNarrowState())
       pickHero('lucio')
       expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['a'])
     })
@@ -162,7 +171,7 @@ describe('useMatchesNarrow', () => {
         ]}),
         rec({ key: 'b', hero: 'mercy' }),
       ])
-      const { narrowedRecords, pickHero } = useMatchesNarrow({ records })
+      const { narrowedRecords, pickHero } = useMatchesNarrow(records, createMatchesNarrowState())
       pickHero('kiriko')
       expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['a'])
     })
@@ -177,7 +186,7 @@ describe('useMatchesNarrow', () => {
 
     it('minPlayMinutes filters by heroes_played.play_time', () => {
       const records = ref(corpus)
-      const { narrowedRecords, pickHero, minPlayMinutes } = useMatchesNarrow({ records })
+      const { narrowedRecords, pickHero, minPlayMinutes } = useMatchesNarrow(records, createMatchesNarrowState())
       pickHero('lucio')
       minPlayMinutes.value = 5
       expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['high', 'mid'])
@@ -185,7 +194,7 @@ describe('useMatchesNarrow', () => {
 
     it('minPlayPercent filters by heroes_played.percent_played', () => {
       const records = ref(corpus)
-      const { narrowedRecords, pickHero, minPlayPercent } = useMatchesNarrow({ records })
+      const { narrowedRecords, pickHero, minPlayPercent } = useMatchesNarrow(records, createMatchesNarrowState())
       pickHero('lucio')
       minPlayPercent.value = 50
       expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['high', 'mid'])
@@ -200,7 +209,7 @@ describe('useMatchesNarrow', () => {
         // Neither.
         rec({ key: 'neither', hero: 'lucio', heroesPlayed: [{ hero: 'lucio', percent_played: 20, play_time: '2:00' }] }),
       ])
-      const { narrowedRecords, pickHero, minPlayMinutes, minPlayPercent } = useMatchesNarrow({ records })
+      const { narrowedRecords, pickHero, minPlayMinutes, minPlayPercent } = useMatchesNarrow(records, createMatchesNarrowState())
       pickHero('lucio')
       minPlayMinutes.value = 5
       minPlayPercent.value = 50
@@ -215,7 +224,7 @@ describe('useMatchesNarrow', () => {
         rec({ key: 'l', result: 'defeat' }),
         rec({ key: 'd', result: 'draw' }),
       ])
-      const { narrowedRecords, pickResult } = useMatchesNarrow({ records })
+      const { narrowedRecords, pickResult } = useMatchesNarrow(records, createMatchesNarrowState())
       pickResult('victory')
       pickResult('draw')
       expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['d', 'w'])
@@ -229,7 +238,7 @@ describe('useMatchesNarrow', () => {
         rec({ key: 'b', tags: ['solo'] }),
         rec({ key: 'c', tags: ['stack'] }),
       ])
-      const { narrowedRecords, pickTag } = useMatchesNarrow({ records })
+      const { narrowedRecords, pickTag } = useMatchesNarrow(records, createMatchesNarrowState())
       pickTag('stack')
       expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['a', 'c'])
     })
@@ -241,7 +250,7 @@ describe('useMatchesNarrow', () => {
         rec({ key: 'clean' }),
         rec({ key: 'tagged', leaver: 'self' }),
       ])
-      const { narrowedRecords, leaverHandling } = useMatchesNarrow({ records })
+      const { narrowedRecords, leaverHandling } = useMatchesNarrow(records, createMatchesNarrowState())
       leaverHandling.value = 'hide'
       expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['clean'])
     })
@@ -251,7 +260,7 @@ describe('useMatchesNarrow', () => {
         rec({ key: 'clean' }),
         rec({ key: 'tagged', leaver: 'self' }),
       ])
-      const { narrowedRecords, leaverHandling } = useMatchesNarrow({ records })
+      const { narrowedRecords, leaverHandling } = useMatchesNarrow(records, createMatchesNarrowState())
       leaverHandling.value = 'exclude-tally'
       expect(narrowedRecords.value).toHaveLength(2)
     })
@@ -261,7 +270,7 @@ describe('useMatchesNarrow', () => {
         rec({ key: 'clean' }),
         rec({ key: 'tagged', leaver: 'team' }),
       ])
-      const { narrowedRecords } = useMatchesNarrow({ records })
+      const { narrowedRecords } = useMatchesNarrow(records, createMatchesNarrowState())
       expect(narrowedRecords.value).toHaveLength(2)
     })
   })
@@ -275,14 +284,14 @@ describe('useMatchesNarrow', () => {
 
     it('customFrom drops earlier dates', () => {
       const records = ref(corpus)
-      const { narrowedRecords, customFrom } = useMatchesNarrow({ records })
+      const { narrowedRecords, customFrom } = useMatchesNarrow(records, createMatchesNarrowState())
       customFrom.value = '2026-01-01'
       expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['mid', 'new'])
     })
 
     it('customTo drops later dates', () => {
       const records = ref(corpus)
-      const { narrowedRecords, customTo } = useMatchesNarrow({ records })
+      const { narrowedRecords, customTo } = useMatchesNarrow(records, createMatchesNarrowState())
       customTo.value = '2026-04-01'
       expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['mid', 'old'])
     })
@@ -292,14 +301,14 @@ describe('useMatchesNarrow', () => {
       // assert the contract: when preset is non-all, customFrom is
       // populated with a date.
       const records = ref(corpus)
-      const { pickRange, customFrom } = useMatchesNarrow({ records })
+      const { pickRange, customFrom } = useMatchesNarrow(records, createMatchesNarrowState())
       pickRange('7d')
       expect(customFrom.value).not.toBe('')
     })
 
     it('preset "all" clears the range', () => {
       const records = ref(corpus)
-      const { pickRange, customFrom, customTo } = useMatchesNarrow({ records })
+      const { pickRange, customFrom, customTo } = useMatchesNarrow(records, createMatchesNarrowState())
       customFrom.value = '2026-01-01'
       customTo.value = '2026-12-01'
       pickRange('all')
@@ -316,7 +325,7 @@ describe('useMatchesNarrow', () => {
         rec({ key: 'wrongHero', map: 'rialto', hero: 'mercy', result: 'victory' }),
         rec({ key: 'wrongResult', map: 'rialto', hero: 'lucio', result: 'defeat' }),
       ])
-      const { narrowedRecords, pickMap, pickHero, pickResult } = useMatchesNarrow({ records })
+      const { narrowedRecords, pickMap, pickHero, pickResult } = useMatchesNarrow(records, createMatchesNarrowState())
       pickMap('rialto')
       pickHero('lucio')
       pickResult('victory')
@@ -327,27 +336,27 @@ describe('useMatchesNarrow', () => {
   describe('anyNarrow flag', () => {
     it('false when nothing is picked', () => {
       const records = ref([rec()])
-      const { anyNarrow } = useMatchesNarrow({ records })
+      const { anyNarrow } = useMatchesNarrow(records, createMatchesNarrowState())
       expect(anyNarrow.value).toBe(false)
     })
 
     it('true when search has content', () => {
       const records = ref([rec()])
-      const { anyNarrow, searchText } = useMatchesNarrow({ records })
+      const { anyNarrow, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
       searchText.value = 'x'
       expect(anyNarrow.value).toBe(true)
     })
 
     it('true when a picker is non-empty', () => {
       const records = ref([rec({ map: 'rialto' })])
-      const { anyNarrow, pickMap } = useMatchesNarrow({ records })
+      const { anyNarrow, pickMap } = useMatchesNarrow(records, createMatchesNarrowState())
       pickMap('rialto')
       expect(anyNarrow.value).toBe(true)
     })
 
     it('true when includeUnknown is on (it is a deviation from the default)', () => {
       const records = ref([rec()])
-      const { anyNarrow, includeUnknown } = useMatchesNarrow({ records })
+      const { anyNarrow, includeUnknown } = useMatchesNarrow(records, createMatchesNarrowState())
       includeUnknown.value = true
       expect(anyNarrow.value).toBe(true)
     })
@@ -356,7 +365,7 @@ describe('useMatchesNarrow', () => {
   describe('resetNarrow', () => {
     it('clears every clause', () => {
       const records = ref([rec({ map: 'rialto', hero: 'lucio', result: 'victory' })])
-      const { resetNarrow, pickMap, pickHero, pickResult, searchText, leaverHandling, minPlayMinutes, includeUnknown, anyNarrow } = useMatchesNarrow({ records })
+      const { resetNarrow, pickMap, pickHero, pickResult, searchText, leaverHandling, minPlayMinutes, includeUnknown, anyNarrow } = useMatchesNarrow(records, createMatchesNarrowState())
       pickMap('rialto')
       pickHero('lucio')
       pickResult('victory')
@@ -382,7 +391,7 @@ describe('useMatchesNarrow', () => {
         ]}),
         rec({ hero: 'mercy' }),
       ])
-      const { availableHeroes } = useMatchesNarrow({ records })
+      const { availableHeroes } = useMatchesNarrow(records, createMatchesNarrowState())
       expect([...availableHeroes.value].sort()).toEqual(['kiriko', 'lucio', 'mercy'])
     })
   })

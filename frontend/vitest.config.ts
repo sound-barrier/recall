@@ -31,7 +31,7 @@ export default defineConfig({
       // Update these floors deliberately — a PR that ratchets them
       // upward is the safest way to lock in new coverage.
       thresholds: {
-        statements: 70,
+        statements: 71,
         branches:   60,
         functions:  55,
         lines:      70,
