@@ -301,6 +301,57 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     await expect(page.locator('aside.detail-panel')).toHaveCount(0)
   })
 
+  test('clicking a source-preview image opens a fullscreen lightbox; Esc / × close it without closing the panel', async ({ page }) => {
+    // Stub the screenshot endpoint with a tiny valid PNG so the
+    // <img> loads (previewError doesn't get set, the click target
+    // is rendered).
+    await page.route('**/_screenshot/**', async (route) => {
+      const png = Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'base64',
+      )
+      await route.fulfill({ status: 200, contentType: 'image/png', body: png })
+    })
+
+    await page.locator('.match').first().locator('.chev-btn').click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+
+    // Expand the sources block; click the source row to flip its
+    // inline preview on. `.sources-toggle` includes slot-chip
+    // buttons with `@click.stop`, and Playwright's default click
+    // lands on the geometric center — which sometimes hits one of
+    // those chips and never bubbles to the toggle handler. Click
+    // the static label child instead to dodge the chip strip.
+    await page.locator('.sources-toggle .sources-label').click()
+    await page.locator('.source-name').first().click()
+    const previewImg = page.locator('img.source-preview').first()
+    await expect(previewImg).toBeVisible()
+
+    // Click the inline preview → fullscreen lightbox over the
+    // whole window.
+    await previewImg.click()
+    const lightbox = page.locator('.lightbox-backdrop')
+    await expect(lightbox).toBeVisible()
+    await expect(lightbox.locator('img.lightbox-img')).toBeVisible()
+    await expect(lightbox.locator('.lightbox-close')).toBeVisible()
+
+    // Esc dismisses the lightbox but NOT the panel beneath. Wait
+    // past both transitions (lightbox fade + would-be panel slide)
+    // before asserting, so a buggy implementation that closes both
+    // can't pass on race timing.
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(400)
+    await expect(page.locator('.lightbox-backdrop')).toHaveCount(0)
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+
+    // Re-open + × button closes too.
+    await previewImg.click()
+    await expect(page.locator('.lightbox-backdrop')).toBeVisible()
+    await page.locator('.lightbox-close').click()
+    await expect(page.locator('.lightbox-backdrop')).toHaveCount(0)
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+  })
+
   test('Heroes Played starts expanded for every match, even after a collapse on a sibling', async ({ page }) => {
     await page.locator('.match').first().locator('.chev-btn').click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()

@@ -38,7 +38,7 @@ import {
   SetMatchVisibility,
 } from './api'
 import type { MatchAnnotationInput } from './api'
-import { computeEarliestMatchDateTime, tallyWLD } from './match-helpers'
+import { computeEarliestMatchDateTime, tallyWLD, screenshotURL } from './match-helpers'
 import { useIncludeUndated } from './composables/useIncludeUndated'
 import { useMinPlayThreshold } from './composables/useMinPlayThreshold'
 import { useDensityMode } from './composables/useDensityMode'
@@ -62,6 +62,7 @@ import { useMatchGrouping } from './composables/useMatchGrouping'
 import { useFilterPresets, type FilterPresetSnapshot } from './composables/useFilterPresets'
 import { useSelectedMatch } from './composables/useSelectedMatch'
 import MatchDetailPanel from './components/MatchDetailPanel.vue'
+import MatchScreenshotLightbox from './components/MatchScreenshotLightbox.vue'
 import type { ParseProgressEvent } from './components/ParseProgressPanel.vue'
 import ParseStatusBar from './components/ParseStatusBar.vue'
 
@@ -641,6 +642,22 @@ function onPreviewError(filename: string) {
   previewError.value = { ...previewError.value, [filename]: true }
 }
 
+// Fullscreen screenshot lightbox state. null = closed. Opened from
+// the inline preview img in MatchCardExpanded (event bubbles up
+// through MatchDetailPanel); closed via × / Esc / backdrop click
+// inside MatchScreenshotLightbox itself. Lives at App.vue root so
+// the modal stacks above the detail panel.
+const lightboxFilename = ref<string | null>(null)
+const lightboxSrc = computed(() =>
+  lightboxFilename.value ? screenshotURL(lightboxFilename.value) : null,
+)
+function openLightbox(filename: string) {
+  lightboxFilename.value = filename
+}
+function closeLightbox() {
+  lightboxFilename.value = null
+}
+
 // Bundle the per-card UI state into one object so MatchesView /
 // UnknownMapsView can consume it as a single prop — keeps their
 // signatures readable and lets them share the SAME expand / preview
@@ -1139,16 +1156,26 @@ useEventStream({
       :can-next="selection.canNext.value"
       :position-index="selection.selectedIndex.value + 1"
       :position-total="filters.filteredSorted.value.length"
+      :has-lightbox="lightboxFilename !== null"
       @close="selection.close"
       @prev="selection.openPrev"
       @next="selection.openNext"
       @toggle-sources="toggleSources(selection.selectedKey.value)"
       @toggle-preview="togglePreview"
       @preview-error="onPreviewError"
+      @open-lightbox="openLightbox"
       @filter-toggle="filters.toggleFilter"
       @set-leaver-annotation="onSetLeaverAnnotation"
       @set-match-annotation="onSetMatchAnnotation"
       @set-match-hidden="onSetMatchHidden"
+    />
+
+    <!-- Fullscreen screenshot lightbox — stacks above the detail
+         panel via z-index. Esc / × / backdrop click close it. -->
+    <MatchScreenshotLightbox
+      :filename="lightboxFilename"
+      :src="lightboxSrc"
+      @close="closeLightbox"
     />
 
     <!-- Unsupported Tesseract version confirmation modal -->

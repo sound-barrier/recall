@@ -36,6 +36,11 @@ const props = defineProps<{
   // Both 1-based and clamped to >= 0 by the parent.
   positionIndex: number
   positionTotal: number
+  // True while the fullscreen screenshot lightbox is open above the
+  // panel. Drives `inert` on the panel root so Tab + click events
+  // can't bleed back into panel controls while the user is looking
+  // at the full image.
+  hasLightbox: boolean
 }>()
 
 const emit = defineEmits<{
@@ -45,6 +50,7 @@ const emit = defineEmits<{
   'toggle-sources': []
   'toggle-preview': [filename: string]
   'preview-error':  [filename: string]
+  'open-lightbox':  [filename: string]
   'filter-toggle':  [field: string, value: string]
   'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
   'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
@@ -271,7 +277,12 @@ function onBackdropClick(e: MouseEvent) {
       aria-labelledby="detail-panel-title"
       @click="onBackdropClick"
     >
-      <aside class="detail-panel" :class="resultClass">
+      <aside
+        class="detail-panel"
+        :class="resultClass"
+        :inert="hasLightbox || undefined"
+        :aria-hidden="hasLightbox ? 'true' : undefined"
+      >
         <header class="detail-toolbar">
           <button
             ref="closeBtnRef"
@@ -334,6 +345,7 @@ function onBackdropClick(e: MouseEvent) {
             @toggle-sources="emit('toggle-sources')"
             @toggle-preview="(f: string) => emit('toggle-preview', f)"
             @preview-error="(f: string) => emit('preview-error', f)"
+            @open-lightbox="(f: string) => emit('open-lightbox', f)"
             @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"
             @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
             @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
