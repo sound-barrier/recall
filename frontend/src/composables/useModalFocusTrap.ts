@@ -80,7 +80,12 @@ export function useModalFocusTrap(
       // DOM may not be mounted yet on the same tick the ref flipped.
       document.addEventListener('keydown', onKeydown)
       await nextTick()
-      focusable()[0]?.focus()
+      // `preventScroll: true` keeps the modal's body from jumping
+      // to wherever the first focusable lives — e.g. the cheat-
+      // sheet's only focusable is the Close button at the bottom,
+      // and a default `.focus()` would auto-scrollIntoView and
+      // open the modal already scrolled to the foot.
+      focusable()[0]?.focus({ preventScroll: true })
     } else {
       document.removeEventListener('keydown', onKeydown)
       const prev = lastFocusedBeforeModal.value

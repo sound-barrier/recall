@@ -768,7 +768,7 @@ useKeyboardShortcuts([
       if (input instanceof HTMLInputElement) input.focus()
     },
   },
-])
+], { suppressed: openCheatsheet })
 
 // Keep TAB_ORDER referenced so a future tab addition can lint-check
 // the g-prefix coverage above. (Each entry in TAB_ORDER must have a

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, toRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
 
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import type { TabId } from '../composables/useTabKeyboardNav'
@@ -44,31 +44,116 @@ useModalFocusTrap(openRef, {
   onClose: () => emit('close'),
 })
 
-// Capture-phase Escape handler. When the cheatsheet is stacked over
-// the detail panel (which has its OWN useModalFocusTrap with its
-// own bubble-phase Escape → emit close), a plain bubble-phase
-// listener fires after — or alongside — the panel's, and a single
-// Esc dismisses BOTH modals. Capturing on the document beats every
-// bubble-phase listener; we close the cheatsheet, preventDefault +
-// stopImmediatePropagation, and the panel never sees the event.
-function onCaptureEscape(e: KeyboardEvent) {
+// rAF-driven momentum scroller (same pattern as MatchDetailPanel —
+// each keypress nudges a target value, a single animation loop
+// closes the gap, so OS key-repeat reads as a continuous glide
+// rather than a stutter of restarted scrollBy animations).
+const bodyRef = ref<HTMLElement | null>(null)
+const SCROLL_STEP_PX = 50
+const scrollTarget = ref(0)
+let scrollRAF = 0
+
+function tickScroll() {
+  const el = bodyRef.value
+  if (!el) { scrollRAF = 0; return }
+  const delta = scrollTarget.value - el.scrollTop
+  if (Math.abs(delta) < 0.5) {
+    el.scrollTop = scrollTarget.value
+    scrollRAF = 0
+    return
+  }
+  el.scrollTop += delta * 0.18
+  scrollRAF = requestAnimationFrame(tickScroll)
+}
+
+function nudgeScroll(deltaPx: number) {
+  const el = bodyRef.value
+  if (!el) return
+  if (scrollRAF === 0) scrollTarget.value = el.scrollTop
+  const max = Math.max(0, el.scrollHeight - el.clientHeight)
+  scrollTarget.value = Math.max(0, Math.min(max, scrollTarget.value + deltaPx))
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    el.scrollTop = scrollTarget.value
+    return
+  }
+  if (scrollRAF === 0) scrollRAF = requestAnimationFrame(tickScroll)
+}
+
+// Capture-phase keydown handler. Three responsibilities:
+//
+//   1. Esc closes the modal. Capture phase beats every bubble-phase
+//      listener — including the detail panel's useModalFocusTrap
+//      Esc — so a single press dismisses ONLY the cheatsheet, not
+//      the panel underneath. (Same pattern as
+//      MatchScreenshotLightbox.)
+//   2. j / ↑ scroll the modal body up; k / ↓ scroll it down.
+//   3. Every other non-modifier, non-Tab key is swallowed via
+//      stopImmediatePropagation so the app's global shortcuts
+//      (g→m view nav, `/` search focus, etc.) can't fire from
+//      behind the modal. The user asked: while the cheatsheet is
+//      open, nothing should happen except scrolling or closing.
+//
+// Modified keys (Ctrl/Cmd/Alt) pass through untouched so browser
+// shortcuts (Cmd+W, F5, etc.) still work; Tab stays untouched so
+// the focus trap can move focus inside the modal.
+function onCaptureKey(e: KeyboardEvent) {
   if (!props.open) return
-  if (e.key !== 'Escape') return
-  e.preventDefault()
+  if (e.ctrlKey || e.metaKey || e.altKey) return
+
+  switch (e.key) {
+    case 'Escape':
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      emit('close')
+      return
+    case 'j':
+    case 'ArrowUp':
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      nudgeScroll(-SCROLL_STEP_PX)
+      return
+    case 'k':
+    case 'ArrowDown':
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      nudgeScroll(SCROLL_STEP_PX)
+      return
+    case 'Tab':
+    case 'Shift':
+    case 'Control':
+    case 'Alt':
+    case 'Meta':
+      return
+  }
+
+  // Any other key: swallow so app shortcuts behind the modal don't
+  // fire. Don't preventDefault — leave OS / browser defaults
+  // (F-keys, screenshot keys, etc.) intact.
   e.stopImmediatePropagation()
-  emit('close')
 }
 
 watch(
   () => props.open,
   (isOpen) => {
-    if (isOpen) document.addEventListener('keydown', onCaptureEscape, true)
-    else document.removeEventListener('keydown', onCaptureEscape, true)
+    if (isOpen) document.addEventListener('keydown', onCaptureKey, true)
+    else {
+      document.removeEventListener('keydown', onCaptureKey, true)
+      // Cancel any in-flight scroll animation so an open→close→open
+      // cycle starts fresh.
+      if (scrollRAF !== 0) {
+        cancelAnimationFrame(scrollRAF)
+        scrollRAF = 0
+      }
+    }
   },
 )
 
 onBeforeUnmount(() => {
-  document.removeEventListener('keydown', onCaptureEscape, true)
+  document.removeEventListener('keydown', onCaptureKey, true)
+  if (scrollRAF !== 0) {
+    cancelAnimationFrame(scrollRAF)
+    scrollRAF = 0
+  }
 })
 
 function onOverlayClick() {
@@ -179,7 +264,7 @@ const visibleGroups = computed(() =>
       data-testid="kbd-shortcuts-modal"
       @click.self="onOverlayClick"
     >
-      <div class="kbd-modal-box">
+      <div ref="bodyRef" class="kbd-modal-box">
         <header class="kbd-modal-header">
           <span class="kbd-modal-tag">CONTROLS</span>
           <h2 id="kbd-modal-title" class="kbd-modal-title">

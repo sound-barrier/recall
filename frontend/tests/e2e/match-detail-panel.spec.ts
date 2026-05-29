@@ -380,6 +380,71 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     await expect(page.locator('aside.detail-panel')).toBeVisible()
   })
 
+  test('cheatsheet: j / ↑ scroll up, k / ↓ scroll down, every other key is a no-op except Esc', async ({ page }) => {
+    // Force cheatsheet content to overflow by shrinking the viewport.
+    await page.setViewportSize({ width: 800, height: 400 })
+
+    await page.locator('.match').first().locator('.chev-btn').click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+
+    await page.keyboard.press('?')
+    const cheatsheet = page.locator('[data-testid="kbd-shortcuts-modal"]')
+    await expect(cheatsheet).toBeVisible()
+
+    // ↓ scrolls the modal body down.
+    for (let i = 0; i < 8; i++) await page.keyboard.press('ArrowDown')
+    await page.waitForFunction(() => {
+      const el = document.querySelector('.kbd-modal-box') as HTMLElement | null
+      return !!el && el.scrollTop > 0
+    }, { timeout: 2000 })
+    const downScroll = await page.evaluate(() => {
+      const el = document.querySelector('.kbd-modal-box') as HTMLElement | null
+      return el ? el.scrollTop : -1
+    })
+    expect(downScroll).toBeGreaterThan(0)
+
+    // 'k' continues scrolling down.
+    for (let i = 0; i < 4; i++) await page.keyboard.press('k')
+    await page.waitForFunction((prev) => {
+      const el = document.querySelector('.kbd-modal-box') as HTMLElement | null
+      return !!el && el.scrollTop > prev
+    }, downScroll, { timeout: 2000 })
+
+    // ↑ scrolls back up (eventually toward 0).
+    for (let i = 0; i < 30; i++) await page.keyboard.press('ArrowUp')
+    await page.waitForFunction(() => {
+      const el = document.querySelector('.kbd-modal-box') as HTMLElement | null
+      return !!el && el.scrollTop < 5
+    }, { timeout: 2000 })
+
+    // 'g' then 'm' is a no-op while the cheatsheet is up — without
+    // the modal swallowing the keys, this would navigate to Matches
+    // view (here we're already on Matches, so we'd ALSO close the
+    // cheatsheet via the view change). Asserting the cheatsheet
+    // stays open is the simplest pin.
+    await page.keyboard.press('g')
+    await page.keyboard.press('s')
+    await page.waitForTimeout(150)
+    await expect(cheatsheet).toBeVisible()
+    // And underlying view didn't change.
+    const onMatchesTab = await page.locator('#tab-matches[aria-selected="true"]').count()
+    expect(onMatchesTab).toBe(1)
+
+    // '/' would normally focus the match-search input — should also
+    // be swallowed.
+    await page.keyboard.press('/')
+    await page.waitForTimeout(150)
+    await expect(cheatsheet).toBeVisible()
+    const searchFocused = await page.evaluate(() => document.activeElement?.id === 'match-search')
+    expect(searchFocused).toBe(false)
+
+    // Esc closes only the cheatsheet (panel stays open).
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
+    await expect(cheatsheet).toHaveCount(0)
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+  })
+
   test('Heroes Played starts expanded for every match, even after a collapse on a sibling', async ({ page }) => {
     await page.locator('.match').first().locator('.chev-btn').click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()

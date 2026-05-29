@@ -79,7 +79,21 @@ function keyMatches(shortcut: Shortcut, key: string): boolean {
   return k.includes(key)
 }
 
-export function useKeyboardShortcuts(shortcuts: readonly Shortcut[]) {
+// Options bag for `useKeyboardShortcuts`. `suppressed` is read by
+// the dispatcher on every keydown — when its `.value` is true the
+// dispatcher early-exits without matching anything, modal-eats-
+// everything style. Used by the cheatsheet so opening it instantly
+// disables global shortcuts (g→m view nav, `/` search, etc.) without
+// each shortcut needing its own `when:` predicate. The `?`/Esc
+// modal-control keys are handled by the cheatsheet itself.
+export interface UseKeyboardShortcutsOptions {
+  suppressed?: { value: boolean }
+}
+
+export function useKeyboardShortcuts(
+  shortcuts: readonly Shortcut[],
+  opts: UseKeyboardShortcutsOptions = {},
+) {
   // Set of declared prefix keys — pressing one of these primes the
   // pending-prefix slot; nothing else happens until the next key.
   const prefixKeys = new Set<string>()
@@ -90,6 +104,14 @@ export function useKeyboardShortcuts(shortcuts: readonly Shortcut[]) {
   let pendingPrefix: { key: string; expiresAt: number } | null = null
 
   function onKeydown(e: KeyboardEvent) {
+    // Modal suppression — bail before any matching so a pending
+    // sequence prefix from before the modal opened doesn't get
+    // consumed by a key the user typed inside the modal.
+    if (opts.suppressed?.value) {
+      pendingPrefix = null
+      return
+    }
+
     // Modifier suppression. Shift is allowed because `?` is
     // Shift+/ on US keyboards.
     if (e.ctrlKey || e.metaKey || e.altKey) return
