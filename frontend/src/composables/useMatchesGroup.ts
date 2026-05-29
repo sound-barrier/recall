@@ -29,7 +29,7 @@ function sortKey(r: MatchRecord): string {
   return `${r.data?.date ?? ''}T${r.data?.finished_at ?? ''}` || (r.parsed_at ?? '')
 }
 
-export function bucketFor(date: string, bucket: GroupBy): { key: string; label: string } {
+function bucketFor(date: string, bucket: GroupBy): { key: string; label: string } {
   if (!date) return { key: 'no-date', label: 'No date' }
   if (bucket === 'none') return { key: date, label: '' }
   if (bucket === 'year') return { key: date.slice(0, 4), label: date.slice(0, 4) }
