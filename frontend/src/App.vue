@@ -119,14 +119,14 @@ const newScreenshotCount = ref<number | null>(null)
 // Which top-level view is shown: 'matches' (default — filter rail +
 // match cards) or 'settings' (config sections — directory, watch,
 // parse, Grafana export). Switched via the masthead nav tabs.
-const view = ref('matches')
+const view = ref<TabId>('matches')
 
 // goToView switches the active tab AND moves focus into the newly visible
 // panel so keyboard users land in the new content rather than staying on
 // the nav button. Each <section> has tabindex="-1" so it can receive
 // programmatic focus without entering the natural tab order.
 async function goToView(next: string) {
-  view.value = next
+  view.value = next as TabId
   await nextTick()
   const panel = document.getElementById(`panel-${next}`)
   if (panel) panel.focus({ preventScroll: true })
@@ -1216,6 +1216,8 @@ useEventStream({
          button + click-outside. -->
     <KeyboardShortcutsModal
       :open="openCheatsheet"
+      :view="view"
+      :panel-open="selection.isOpen.value"
       @close="openCheatsheet = false"
     />
 

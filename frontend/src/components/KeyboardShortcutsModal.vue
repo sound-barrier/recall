@@ -1,12 +1,18 @@
 <script setup lang="ts">
-import { toRef } from 'vue'
+import { computed, onBeforeUnmount, toRef, watch } from 'vue'
 
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
+import type { TabId } from '../composables/useTabKeyboardNav'
 
-// "?" cheat-sheet modal. Lists every keyboard binding the app
-// exposes — the new shortcuts AND the existing tablist arrows /
-// Esc-dismiss / focus-trap Tab cycle — so users discovering one
-// affordance learn about all of them.
+// "?" cheat-sheet modal. Lists keyboard bindings filtered to the
+// user's current context — the binding catalog covers every scope
+// the app exposes, but the rendered groups are gated by `view` +
+// `panelOpen` so the user only sees what's actually reachable from
+// where they are right now. The j / k pagination keys, for
+// example, only show in the Matches view group when there's no
+// detail panel open; when the panel IS open we hide that group
+// and instead surface the Detail panel scope (which owns its own
+// arrow / scroll / Esc bindings).
 //
 // Visual register matches the OnboardingTour HUD direction: sharp
 // 3px --accent left border, monospace <kbd> pills, Big-Noodle italic
@@ -15,7 +21,14 @@ import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 // headings + a compact two-column key→action grid is the whole
 // surface area.
 
-const props = defineProps<{ open: boolean }>()
+const props = defineProps<{
+  open: boolean
+  // Current top-level view. Used to gate per-view groups.
+  view: TabId
+  // True when the detail panel is open in front of the current
+  // view — flips the Matches/Detail-panel pair of groups.
+  panelOpen: boolean
+}>()
 const emit = defineEmits<{ close: [] }>()
 
 // `open` arrives as a prop owned by App.vue. useModalFocusTrap can
@@ -31,13 +44,48 @@ useModalFocusTrap(openRef, {
   onClose: () => emit('close'),
 })
 
+// Capture-phase Escape handler. When the cheatsheet is stacked over
+// the detail panel (which has its OWN useModalFocusTrap with its
+// own bubble-phase Escape → emit close), a plain bubble-phase
+// listener fires after — or alongside — the panel's, and a single
+// Esc dismisses BOTH modals. Capturing on the document beats every
+// bubble-phase listener; we close the cheatsheet, preventDefault +
+// stopImmediatePropagation, and the panel never sees the event.
+function onCaptureEscape(e: KeyboardEvent) {
+  if (!props.open) return
+  if (e.key !== 'Escape') return
+  e.preventDefault()
+  e.stopImmediatePropagation()
+  emit('close')
+}
+
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (isOpen) document.addEventListener('keydown', onCaptureEscape, true)
+    else document.removeEventListener('keydown', onCaptureEscape, true)
+  },
+)
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onCaptureEscape, true)
+})
+
 function onOverlayClick() {
   emit('close')
 }
 
-// Binding catalog. Grouped by scope so users see the cluster they're
-// reading about. `keys` is the visual sequence (each item rendered
-// as its own <kbd>); `action` is the descriptive label.
+// Binding catalog. `context` discriminates when the group is
+// visible:
+//   - 'always'         → render unconditionally
+//   - 'matches-no-panel' → only on the Matches view AND no panel up
+//   - 'panel'          → only when the detail panel is open
+//   - <TabId>          → only on that view
+// The Matches/Detail-panel pair flips on `panelOpen` because
+// Matches-view bindings (j / k card focus) are suppressed while the
+// panel is up — the panel takes over those keys.
+type Context = 'always' | 'matches-no-panel' | 'panel' | TabId
+
 interface Binding {
   keys: readonly string[]
   action: string
@@ -45,12 +93,14 @@ interface Binding {
 
 interface BindingGroup {
   scope: string
+  context: Context
   bindings: readonly Binding[]
 }
 
 const groups: readonly BindingGroup[] = [
   {
     scope: 'Global',
+    context: 'always',
     bindings: [
       { keys: ['/'],            action: 'Focus the match-search input' },
       { keys: ['Esc'],          action: 'Clear & blur the match-search input (when focused)' },
@@ -64,15 +114,17 @@ const groups: readonly BindingGroup[] = [
   },
   {
     scope: 'Matches view',
+    context: 'matches-no-panel',
     bindings: [
-      { keys: ['j'],            action: 'Focus the next match card (panel closed)' },
-      { keys: ['k'],            action: 'Focus the previous match card (panel closed)' },
-      { keys: ['e'],            action: 'Open / close the detail panel for the focused card' },
+      { keys: ['j'],            action: 'Focus the next match card' },
+      { keys: ['k'],            action: 'Focus the previous match card' },
+      { keys: ['e'],            action: 'Open the detail panel for the focused card' },
       { keys: ['t'],            action: 'Focus the tags editor (auto-opens the detail panel)' },
     ],
   },
   {
     scope: 'Detail panel',
+    context: 'panel',
     bindings: [
       { keys: ['→'],            action: 'Next match (timeline →)' },
       { keys: ['←'],            action: 'Previous match (timeline ←)' },
@@ -89,6 +141,7 @@ const groups: readonly BindingGroup[] = [
   },
   {
     scope: 'Tablist + modals',
+    context: 'always',
     bindings: [
       { keys: ['←', '→'],      action: 'Cycle tabs (focus a tab button first)' },
       { keys: ['Home'],         action: 'First tab' },
@@ -98,6 +151,21 @@ const groups: readonly BindingGroup[] = [
     ],
   },
 ]
+
+const visibleGroups = computed(() =>
+  groups.filter((g) => {
+    switch (g.context) {
+      case 'always':
+        return true
+      case 'panel':
+        return props.panelOpen
+      case 'matches-no-panel':
+        return props.view === 'matches' && !props.panelOpen
+      default:
+        return g.context === props.view
+    }
+  }),
+)
 </script>
 
 <template>
@@ -120,7 +188,7 @@ const groups: readonly BindingGroup[] = [
         </header>
 
         <section
-          v-for="group in groups"
+          v-for="group in visibleGroups"
           :key="group.scope"
           class="kbd-group"
         >
