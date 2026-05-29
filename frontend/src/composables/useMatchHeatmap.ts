@@ -23,7 +23,7 @@ function unref<T>(v: MaybeRef<T>): T {
 // heavy day doesn't drag W% toward 50% artificially. `total` still
 // counts draws so saturation (caller-side) reflects activity volume.
 
-export interface HeatmapCell {
+interface HeatmapCell {
   date: string          // 'YYYY-MM-DD'
   dayOfWeek: number     // 0..6 — row position, respects weekStartsOn
   weekIndex: number     // 0..N-1 — column position
@@ -35,7 +35,7 @@ export interface HeatmapCell {
   empty: boolean        // total === 0
 }
 
-export interface MonthLabel {
+interface MonthLabel {
   weekIndex: number     // column where the month label anchors
   label: string         // 'Jan' / 'Feb' / …
 }
