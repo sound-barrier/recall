@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 
 import UnknownMapsView from './UnknownMapsView.vue'
@@ -14,14 +14,12 @@ function makeCardState(records: MatchRecord[]) {
   const previewOpen = ref<Record<string, boolean>>({})
   const previewError = ref<Record<string, boolean>>({})
   const sourcesOpen = ref<Record<string, boolean>>({})
-  const calls = { toggleExpand: 0, toggleAll: 0, togglePreview: 0 }
+  const calls = { toggleExpand: 0, togglePreview: 0 }
   const api: CardStateApi = {
-    isExpanded: (id: string) => !!expanded.value[id],
+    isSelected: (id: string) => !!expanded.value[id],
     isSourcesOpen: (id: string) => !!sourcesOpen.value[id],
     previewOpen,
     previewError,
-    allExpanded: computed(() => records.length > 0 && records.every(r => !!expanded.value[r.match_key])),
-    toggleAll: () => { calls.toggleAll++ },
     toggleExpand: (id: string) => {
       calls.toggleExpand++
       expanded.value = { ...expanded.value, [id]: !expanded.value[id] }

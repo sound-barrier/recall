@@ -23,7 +23,7 @@ const ow = useOWData()
 defineProps<{
   record: MatchRecord
   index: number
-  isExpanded: boolean
+  isSelected: boolean
   isActive: (field: string, value: string) => boolean
   // 'compact' tightens card padding + map font and inlines a small
   // E/A/D + damage strip in the tag-row so high-volume players see
@@ -68,9 +68,9 @@ const emit = defineEmits<{
         <button
           type="button"
           class="chev chev-btn"
-          :class="{ open: isExpanded }"
-          :aria-expanded="isExpanded"
-          :aria-label="`${ow.mapDisplayName(record.data?.map) || 'Unknown map'} — ${isExpanded ? 'collapse' : 'expand'} match details`"
+          :class="{ open: isSelected }"
+          :aria-expanded="isSelected"
+          :aria-label="`${ow.mapDisplayName(record.data?.map) || 'Unknown map'} — ${isSelected ? 'collapse' : 'expand'} match details`"
           @click.stop="emit('toggle-expand')"
         >
           ›

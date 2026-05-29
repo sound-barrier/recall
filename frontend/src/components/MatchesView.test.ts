@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import type { Ref } from 'vue'
 import { mount } from '@vue/test-utils'
 
@@ -21,17 +21,10 @@ function makeCardState(records: MatchRecord[]): { api: CardStateApi; expanded: R
   const sourcesOpen = ref<Record<string, boolean>>({})
 
   const api: CardStateApi = {
-    isExpanded: (id: string) => !!expanded.value[id],
+    isSelected: (id: string) => !!expanded.value[id],
     isSourcesOpen: (id: string) => !!sourcesOpen.value[id],
     previewOpen,
     previewError,
-    allExpanded: computed(() => records.length > 0 && records.every(r => !!expanded.value[r.match_key])),
-    toggleAll: () => {
-      const any = records.some(r => !!expanded.value[r.match_key])
-      const next: Record<string, boolean> = {}
-      for (const r of records) next[r.match_key] = !any
-      expanded.value = next
-    },
     toggleExpand: (id: string) => { expanded.value = { ...expanded.value, [id]: !expanded.value[id] } },
     toggleSources: (id: string) => { sourcesOpen.value = { ...sourcesOpen.value, [id]: !sourcesOpen.value[id] } },
     togglePreview: () => undefined,

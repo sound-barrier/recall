@@ -30,7 +30,6 @@ function mountRail(over: Partial<Record<string, unknown>> = {}) {
       anyFilter: false,
       earliestMatchDateTime: '2026-01-01T00:00',
       nowDateTime: '2026-05-23T18:00',
-      allExpanded: false,
       recordCount: 12,
       filteredCount: 12,
       includeUndated: false,
@@ -74,13 +73,6 @@ describe('FilterRail — initial render', () => {
     expect(desc.text()).toContain('↓ Newest')
     const asc = mountRail({ sortDir: 'asc' })
     expect(asc.text()).toContain('↑ Oldest')
-  })
-
-  it('expand/collapse button label reflects allExpanded prop', () => {
-    const collapsed = mountRail({ allExpanded: false })
-    expect(collapsed.text()).toContain('Expand All')
-    const expanded = mountRail({ allExpanded: true })
-    expect(expanded.text()).toContain('Collapse All')
   })
 
   it('hides Clear Filters button when anyFilter=false', () => {
@@ -205,13 +197,11 @@ describe('FilterRail — emits', () => {
     expect(wrapperFilled.emitted('reset-date-range')).toBeTruthy()
   })
 
-  it('toggle-sort / toggle-all / clear-filters emits fire from the tools row', async () => {
+  it('toggle-sort / clear-filters emits fire from the tools row', async () => {
     const wrapper = mountRail({ anyFilter: true })
     await wrapper.findAll('button').find(b => b.text().includes('Newest'))!.trigger('click')
-    await wrapper.findAll('button').find(b => b.text() === 'Expand All')!.trigger('click')
     await wrapper.findAll('button').find(b => b.text() === 'Clear Filters')!.trigger('click')
     expect(wrapper.emitted('toggle-sort')).toBeTruthy()
-    expect(wrapper.emitted('toggle-all')).toBeTruthy()
     expect(wrapper.emitted('clear-filters')).toBeTruthy()
   })
 

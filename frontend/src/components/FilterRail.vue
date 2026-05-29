@@ -33,7 +33,6 @@ const props = defineProps<{
   anyFilter: boolean
   earliestMatchDateTime: string
   nowDateTime: string
-  allExpanded: boolean
   recordCount: number
   filteredCount: number
   // "Include undated" toggle state. When false (default), records
@@ -89,7 +88,6 @@ const emit = defineEmits<{
   'clear-filters': []
   'reset-date-range': []
   'toggle-sort': []
-  'toggle-all': []
   'set-include-undated': [next: boolean]
   'set-min-play-percent': [n: number]
   'set-min-play-minutes': [n: number]
@@ -402,14 +400,6 @@ function onSearchEscape(e: KeyboardEvent) {
         >
           {{ sortDir === 'desc' ? '↓ Newest' : '↑ Oldest' }}
         </button>
-        <button
-          class="btn ghost tiny"
-          :title="allExpanded ? 'Collapse every visible card' : 'Expand every visible card'"
-          @click="emit('toggle-all')"
-        >
-          {{ allExpanded ? 'Collapse All' : 'Expand All' }}
-        </button>
-
         <MinPlayInput
           :min-play-percent="minPlayPercent"
           :min-play-minutes="minPlayMinutes"

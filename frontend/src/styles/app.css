@@ -896,7 +896,7 @@ main#main-content {
   text-shadow: none;
 }
 [data-theme="light"] .length-mark { color: var(--accent-text); }
-[data-theme="light"] .match.expanded { background: var(--surface-2); }
+[data-theme="light"] .match.selected { background: var(--surface-2); }
 [data-theme="light"] .sources { background: var(--surface-2); border-color: var(--border); }
 [data-theme="light"] .source-type-summary { color: var(--accent-text); }
 

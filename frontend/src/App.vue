@@ -583,12 +583,11 @@ function onSearchSubmit() {
   selection.openFirst()
 }
 
-// Backwards-compatible adapter: cardState.isExpanded(id) now means
-// "is this the currently-selected match" — the list highlights the
-// row that drives the open panel. Same prop name keeps MatchCard's
-// existing styling rule (the `.match.expanded` accent treatment)
-// continuing to work as the "selected" indicator.
-function isExpanded(id: string) {
+// True for the row that drives the open MatchDetailPanel. MatchCard
+// reads this via the cardState bundle to apply the .selected accent
+// styling so the user always sees which match the open panel is
+// anchored to.
+function isSelected(id: string) {
   return selection.selectedKey.value === id
 }
 
@@ -601,14 +600,6 @@ async function toggleExpand(id: string) {
   const el = document.getElementById(`match-${id}`)
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
-
-// Bulk expand/collapse is gone (the rail toolbar's expand-all button
-// is hidden in the new mode — there's no inline expansion to
-// collectively flip). Kept as a stub so the existing MatchesView
-// prop wiring doesn't break; the toolbar button is suppressed in
-// the template.
-function toggleAll() { /* no-op in detail-panel mode */ }
-const allExpanded = computed(() => false)
 
 // W-L-D summary that reflects the *currently filtered* set so the user
 // can see, for instance, "support role on Aatlis: 6W 2L 0D" by setting
@@ -663,8 +654,8 @@ function closeLightbox() {
 // signatures readable and lets them share the SAME expand / preview
 // state without forking.
 const cardState = {
-  isExpanded, isSourcesOpen, previewOpen, previewError, allExpanded,
-  toggleAll, toggleExpand, toggleSources, togglePreview, onPreviewError,
+  isSelected, isSourcesOpen, previewOpen, previewError,
+  toggleExpand, toggleSources, togglePreview, onPreviewError,
 }
 
 // ── Keyboard shortcuts — full registry ─────────────────────────

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick } from 'vue'
-import type { Ref, ComputedRef } from 'vue'
+import type { Ref } from 'vue'
 import type { MatchRecord } from '../api'
 import type { useMatchFilters } from '../composables/useMatchFilters'
 import type { useFilterPanel } from '../composables/useFilterPanel'
@@ -39,15 +39,13 @@ type GroupingApi = ReturnType<typeof useMatchGrouping<MatchRecord>>
 // view); CardStateApi packages the accessors + handlers so this view
 // can stay state-free.
 export interface CardStateApi {
-  isExpanded:    (id: string) => boolean
+  isSelected:    (id: string) => boolean
   isSourcesOpen: (id: string) => boolean
   // Refs (not their unwrapped values) — they're nested inside an
   // object, so Vue's template auto-unwrap doesn't reach them at this
   // depth. Consumers access via `.value`.
   previewOpen:   Ref<Record<string, boolean>>
   previewError:  Ref<Record<string, boolean>>
-  allExpanded:   Readonly<Ref<boolean> | ComputedRef<boolean>>
-  toggleAll:     () => void
   toggleExpand:  (id: string) => void
   toggleSources: (id: string) => void
   togglePreview: (filename: string) => void
@@ -242,7 +240,6 @@ const annotatedMatchCount = computed(
       :any-filter="f.anyFilter.value"
       :earliest-match-date-time="earliestMatchDateTime"
       :now-date-time="nowDateTime"
-      :all-expanded="cs.allExpanded.value"
       :record-count="records.length"
       :include-undated="includeUndated"
       :min-play-percent="minPlayPercent"
@@ -266,7 +263,6 @@ const annotatedMatchCount = computed(
       @clear-filters="f.clearFilters"
       @reset-date-range="f.resetDateRange"
       @toggle-sort="f.toggleSort"
-      @toggle-all="cs.toggleAll"
       @set-include-undated="(v: boolean) => emit('set-include-undated', v)"
       @set-min-play-percent="(n: number) => emit('set-min-play-percent', n)"
       @set-min-play-minutes="(n: number) => emit('set-min-play-minutes', n)"
@@ -382,7 +378,7 @@ const annotatedMatchCount = computed(
         :key="matchGroupKey(group)"
         :group="group"
         :is-group-expanded="g.isGroupExpanded"
-        :is-expanded="cs.isExpanded"
+        :is-selected="cs.isSelected"
         :is-sources-open="cs.isSourcesOpen"
         :preview-open="cs.previewOpen.value"
         :preview-error="cs.previewError.value"

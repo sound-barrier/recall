@@ -56,7 +56,7 @@ function mountSection(group: MatchGroup<MatchRecord>, over: Partial<Record<strin
     props: {
       group,
       isGroupExpanded: (k: string) => k === group.key, // open by default for assertions
-      isExpanded: () => false,
+      isSelected: () => false,
       isSourcesOpen: () => false,
       previewOpen: {},
       previewError: {},
