@@ -54,7 +54,14 @@ const ow = useOWData()
 
 const closeBtnRef = ref<HTMLButtonElement | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
+const bodyRef = ref<HTMLElement | null>(null)
 const lastFocusBeforeOpen = ref<HTMLElement | null>(null)
+
+// How far ↑ / ↓ scroll the panel body per press. Browser-default
+// line-by-line is too slow for a tall journal; 80px is roughly two
+// stat rows / one journal cell. Holding the key still scrolls
+// smoothly because Chromium re-fires keydown.
+const SCROLL_STEP_PX = 80
 
 // Focus management. Open → move focus to the close button so the
 // keyboard chain is predictable. Close → restore focus to whatever
@@ -75,12 +82,29 @@ watch(() => props.isOpen, async (isOpen) => {
   }
 })
 
-// Document-level keydown listener — Esc closes; j/k paginates within
-// the open panel. We bind on the document (not on the panel
-// element) so the keys keep working when focus is anywhere inside
-// the panel, including the close button or a textarea (textarea j/k
-// would otherwise just type literal characters). The textarea case
-// is handled by checking activeElement before consuming j/k.
+// Document-level keydown listener.
+//
+//   • Esc          → close (always)
+//   • ← / → / k j  → previous / next match (timeline metaphor: left
+//                    is earlier, right is later). j / k are kept as
+//                    vim-style alternates.
+//   • ↑ / ↓        → scroll panel body, NOT the page behind. The
+//                    browser-default scroll target depends on which
+//                    element has focus — close button at the top of
+//                    the panel isn't inside the scroll container, so
+//                    its arrow keys would bleed up to the document.
+//                    Intercepting + scrollBy on bodyRef guarantees
+//                    the scroll lands inside the panel regardless.
+//   • PageUp/Down  → also scroll panel body (one viewport height).
+//   • Home / End   → top / bottom of the panel body.
+//
+// All of the above are input-gated: when focus is in a textarea /
+// input / contenteditable, every key passes through to the native
+// editing behavior so the user can type literal arrows / j / k.
+// `match-search` is the one exception — it lives OUTSIDE the panel
+// but a user can `/` to focus it while the panel is open, and the
+// auto-tracking flow in App.vue handles "the panel follows what
+// you're typing" so we don't need to intercept anything here.
 function onKeydown(e: KeyboardEvent) {
   if (!props.isOpen) return
   if (e.key === 'Escape') {
@@ -88,18 +112,55 @@ function onKeydown(e: KeyboardEvent) {
     emit('close')
     return
   }
-  // j/k only paginate when focus is outside an editable element —
-  // otherwise typing in the note field would skip cards instead of
-  // letting the user type 'j' or 'k' literally.
   const target = document.activeElement as HTMLElement | null
   const tag = target?.tagName ?? ''
   const inEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
     !!target?.isContentEditable
   if (inEditable) return
-  if (e.key === 'j') {
-    if (props.canNext) { e.preventDefault(); emit('next') }
-  } else if (e.key === 'k') {
-    if (props.canPrev) { e.preventDefault(); emit('prev') }
+
+  switch (e.key) {
+    case 'ArrowRight':
+    case 'j':
+      if (props.canNext) { e.preventDefault(); emit('next') }
+      return
+    case 'ArrowLeft':
+    case 'k':
+      if (props.canPrev) { e.preventDefault(); emit('prev') }
+      return
+    case 'ArrowDown':
+      e.preventDefault()
+      bodyRef.value?.scrollBy({ top: SCROLL_STEP_PX, behavior: 'auto' })
+      return
+    case 'ArrowUp':
+      e.preventDefault()
+      bodyRef.value?.scrollBy({ top: -SCROLL_STEP_PX, behavior: 'auto' })
+      return
+    case 'PageDown':
+    case ' ': {
+      const el = bodyRef.value
+      if (!el) return
+      e.preventDefault()
+      el.scrollBy({ top: el.clientHeight - 40, behavior: 'auto' })
+      return
+    }
+    case 'PageUp': {
+      const el = bodyRef.value
+      if (!el) return
+      e.preventDefault()
+      el.scrollBy({ top: -(el.clientHeight - 40), behavior: 'auto' })
+      return
+    }
+    case 'Home':
+      e.preventDefault()
+      bodyRef.value?.scrollTo({ top: 0, behavior: 'auto' })
+      return
+    case 'End': {
+      const el = bodyRef.value
+      if (!el) return
+      e.preventDefault()
+      el.scrollTo({ top: el.scrollHeight, behavior: 'auto' })
+      return
+    }
   }
 }
 
@@ -185,7 +246,7 @@ function onBackdropClick(e: MouseEvent) {
           </div>
         </header>
 
-        <div class="detail-body">
+        <div ref="bodyRef" class="detail-body">
           <!-- Keyed by match_key so MatchCardExpanded's local annotation
                drafts reset cleanly when the user paginates. Without the
                key, switching from match A to match B would carry A's
