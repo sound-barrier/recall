@@ -1,8 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { defineComponent, h } from 'vue'
 
 import MatchCard from './MatchCard.vue'
+import MatchCardExpanded from './MatchCardExpanded.vue'
 import type { MatchRecord } from '../api'
+
+// MatchCard.test.ts predates the detail-panel pattern from
+// UI_RECOMMENDATIONS item #3. In the panel branch the expanded
+// annotation / stats / sources surfaces no longer render inline
+// inside MatchCard — they render inside MatchDetailPanel.vue. To
+// avoid a 700-line migration of every existing assertion to a
+// MatchDetailPanel test surface (which would be the right move on
+// merge but is overkill for the evaluation branch), the
+// mountCard() helper here renders BOTH pieces in a sibling shell
+// when `isExpanded: true` is passed — same DOM the tests have
+// always queried, so the selectors stay valid. Re-evaluate when
+// deciding whether to merge the panel pattern: if kept, port the
+// body assertions to a proper MatchDetailPanel.test.ts.
 
 // MatchCard fixtures. Each test asserts on either rendered DOM or
 // emitted events. The isActive predicate is the only callback the
@@ -50,18 +65,70 @@ interface CardMountOver {
 }
 
 function mountCard(over: CardMountOver = {}) {
-  return mount(MatchCard, {
-    props: {
-      record: over.record ?? makeRecord(),
-      index: over.index ?? 0,
-      isExpanded: over.isExpanded ?? false,
-      isSourcesOpen: over.isSourcesOpen ?? false,
-      previewOpen: over.previewOpen ?? {},
-      previewError: over.previewError ?? {},
-      isActive: over.isActive ?? (() => false),
-      densityMode: over.densityMode ?? 'comfortable',
+  const record = over.record ?? makeRecord()
+  const isExpanded = over.isExpanded ?? false
+  const isSourcesOpen = over.isSourcesOpen ?? false
+  const previewOpen = over.previewOpen ?? {}
+  const previewError = over.previewError ?? {}
+  const isActive = over.isActive ?? (() => false)
+  const densityMode = over.densityMode ?? 'comfortable'
+
+  // Test shell: MatchCard always; MatchCardExpanded as a sibling
+  // when isExpanded is true. The existing test assertions query
+  // `wrapper.find('.match-notes-textarea')` etc., which find inside
+  // the rendered tree regardless of which child rendered them.
+  // Child events are re-emitted on the Shell so the existing
+  // `wrapper.emitted('toggle-expand')` etc. assertions keep working.
+  // Shell also exposes `record` as a prop so tests that introspect
+  // `wrapper.props('record')` continue to resolve.
+  const Shell = defineComponent({
+    props: { record: { type: Object, default: () => record } },
+    emits: [
+      'toggle-expand', 'filter-toggle', 'card-focus',
+      'toggle-sources', 'toggle-preview', 'preview-error',
+      'set-leaver-annotation', 'set-match-annotation', 'set-match-hidden',
+    ],
+    setup(_, { emit }) {
+      function relay(name: string) {
+        return (...args: unknown[]) => emit(name, ...args)
+      }
+      return () => {
+        const children: ReturnType<typeof h>[] = [
+          h(MatchCard, {
+            record,
+            index: over.index ?? 0,
+            isExpanded,
+            isActive,
+            densityMode,
+            onToggleExpand: relay('toggle-expand'),
+            onFilterToggle: relay('filter-toggle'),
+            onCardFocus: relay('card-focus'),
+          }),
+        ]
+        if (isExpanded) {
+          children.push(
+            h(MatchCardExpanded, {
+              record,
+              isSourcesOpen,
+              previewOpen,
+              previewError,
+              isActive,
+              onToggleSources: relay('toggle-sources'),
+              onTogglePreview: relay('toggle-preview'),
+              onPreviewError: relay('preview-error'),
+              onFilterToggle: relay('filter-toggle'),
+              onSetLeaverAnnotation: relay('set-leaver-annotation'),
+              onSetMatchAnnotation: relay('set-match-annotation'),
+              onSetMatchHidden: relay('set-match-hidden'),
+            }),
+          )
+        }
+        return h('div', children)
+      }
     },
   })
+
+  return mount(Shell)
 }
 
 describe('MatchCard — collapsed header', () => {

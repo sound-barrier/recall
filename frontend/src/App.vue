@@ -60,6 +60,8 @@ import { useFilterPanel } from './composables/useFilterPanel'
 import { useMatchFilters } from './composables/useMatchFilters'
 import { useMatchGrouping } from './composables/useMatchGrouping'
 import { useFilterPresets, type FilterPresetSnapshot } from './composables/useFilterPresets'
+import { useSelectedMatch } from './composables/useSelectedMatch'
+import MatchDetailPanel from './components/MatchDetailPanel.vue'
 import type { ParseProgressEvent } from './components/ParseProgressPanel.vue'
 import ParseStatusBar from './components/ParseStatusBar.vue'
 
@@ -356,10 +358,8 @@ function onDeletePreset(name: string) {
   deletePreset(name)
 }
 
-// Per-card expand/collapse state. Object keyed by match_key; truthy =
-// expanded. Plain object (not a Set) so Vue's reactivity sees each
-// toggle naturally without needing to reassign the whole container.
-const expanded = ref<Record<string, boolean>>({})
+// (Per-card expand state replaced by the `selection` composable
+// introduced for the detail-panel pattern. See below.)
 
 async function load() {
   const before = records.value.length
@@ -545,38 +545,40 @@ const nowDateTime = computed(() => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 })
 
-// Card collapse/expand.
-async function toggleExpand(id: string) {
-  const wasExpanded = !!expanded.value[id]
-  // Reassign the object so Vue sees a new reference. Mutating in place
-  // works for plain objects with Vue 3 deep reactivity, but being
-  // explicit avoids surprises if `expanded` later becomes a shallowRef.
-  expanded.value = { ...expanded.value, [id]: !wasExpanded }
-  // On expand, keep the card header in view — long expansions otherwise
-  // push the header off-screen and the user loses their place. nearest
-  // block alignment avoids scrolling if the header is already visible.
-  if (!wasExpanded) {
-    await nextTick()
-    const el = document.getElementById(`match-${id}`)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }
-}
+// Selected-match panel (replaces the old inline-expansion model).
+// Clicking a card opens the right-side MatchDetailPanel and pins
+// `selection.selectedKey` to that match_key. j/k inside the panel
+// paginates through the filtered list. The composable auto-closes
+// when the selected match leaves the filtered set (filter change,
+// hide-toggle, re-parse drop).
+const selection = useSelectedMatch(filters.filteredSorted)
+
+// Backwards-compatible adapter: cardState.isExpanded(id) now means
+// "is this the currently-selected match" — the list highlights the
+// row that drives the open panel. Same prop name keeps MatchCard's
+// existing styling rule (the `.match.expanded` accent treatment)
+// continuing to work as the "selected" indicator.
 function isExpanded(id: string) {
-  return !!expanded.value[id]
+  return selection.selectedKey.value === id
 }
-// Bulk toggle: if any visible card is expanded, collapse all; otherwise
-// expand all. Operates over the currently-filtered set so it doesn't
-// affect rows the user can't see.
-function toggleAll() {
-  const visible = filters.filteredSorted.value
-  const anyOpen = visible.some(r => isExpanded(r.match_key))
-  const next = { ...expanded.value }
-  for (const r of visible) next[r.match_key] = !anyOpen
-  expanded.value = next
+
+// Click / Enter on a card opens the detail panel. Scroll the source
+// card into view so it stays visible behind the panel — the user
+// shouldn't lose their place in the list when they pick something.
+async function toggleExpand(id: string) {
+  selection.open(id)
+  await nextTick()
+  const el = document.getElementById(`match-${id}`)
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
-const allExpanded = computed(() =>
-  filters.filteredSorted.value.length > 0 && filters.filteredSorted.value.every(r => isExpanded(r.match_key))
-)
+
+// Bulk expand/collapse is gone (the rail toolbar's expand-all button
+// is hidden in the new mode — there's no inline expansion to
+// collectively flip). Kept as a stub so the existing MatchesView
+// prop wiring doesn't break; the toolbar button is suppressed in
+// the template.
+function toggleAll() { /* no-op in detail-panel mode */ }
+const allExpanded = computed(() => false)
 
 // W-L-D summary that reflects the *currently filtered* set so the user
 // can see, for instance, "support role on Aatlis: 6W 2L 0D" by setting
@@ -657,10 +659,12 @@ useKeyboardShortcuts([
       handler: () => { void goToView(target) },
     }
   }),
-  // Matches view: j/k move card focus, no wrap.
+  // Matches view: j/k move card focus, no wrap. Suppressed when the
+  // detail panel is open — the panel's own keydown listener takes
+  // over (j/k paginates within the open panel).
   {
     key: 'j',
-    when: () => view.value === 'matches',
+    when: () => view.value === 'matches' && !selection.isOpen.value,
     handler: () => {
       const len = filters.filteredSorted.value.length
       if (len === 0) return
@@ -671,7 +675,7 @@ useKeyboardShortcuts([
   },
   {
     key: 'k',
-    when: () => view.value === 'matches',
+    when: () => view.value === 'matches' && !selection.isOpen.value,
     handler: () => {
       const len = filters.filteredSorted.value.length
       if (len === 0) return
@@ -681,18 +685,25 @@ useKeyboardShortcuts([
       void focusCardByIndex(next)
     },
   },
-  // Matches view: expand/collapse the focused card.
+  // Matches view: open / close the detail panel for the focused card.
+  // From the closed state this is the keyboard alternative to clicking
+  // the card. With the panel already open `e` closes it (the panel's
+  // own Esc handler does the same).
   {
     key: 'e',
     when: () => view.value === 'matches' && focusedCardIndex.value >= 0,
     handler: () => {
       const rec = filters.filteredSorted.value[focusedCardIndex.value]
       if (!rec) return
-      void toggleExpand(rec.match_key)
+      if (selection.isOpen.value && selection.selectedKey.value === rec.match_key) {
+        selection.close()
+      } else {
+        void toggleExpand(rec.match_key)
+      }
     },
   },
-  // Matches view: auto-expand the focused card AND focus its tags
-  // input. Tags input has id="tags-<match_key>" per
+  // Matches view: open the detail panel for the focused card AND
+  // focus its tags input. Tags input has id="tags-<match_key>" per
   // MatchCardExpanded.vue.
   {
     key: 't',
@@ -700,7 +711,9 @@ useKeyboardShortcuts([
     handler: async () => {
       const rec = filters.filteredSorted.value[focusedCardIndex.value]
       if (!rec) return
-      if (!expanded.value[rec.match_key]) await toggleExpand(rec.match_key)
+      if (selection.selectedKey.value !== rec.match_key) {
+        await toggleExpand(rec.match_key)
+      }
       await nextTick()
       const input = document.getElementById(`tags-${rec.match_key}`)
       if (input instanceof HTMLInputElement) input.focus()
@@ -1074,6 +1087,33 @@ useEventStream({
       :parse-progress="parseProgress"
       :parse-log="parseLog"
       @go-to-view="goToView"
+    />
+
+    <!-- Match detail panel — replaces inline expansion. Slides in
+         from the right when a match is selected; j/k paginates
+         within the panel, Esc / click-outside closes. -->
+    <MatchDetailPanel
+      :record="selection.selectedRecord.value"
+      :is-open="selection.isOpen.value"
+      :is-sources-open="isSourcesOpen(selection.selectedKey.value)"
+      :preview-open="previewOpen"
+      :preview-error="previewError"
+      :is-active="filters.isActive"
+      :search-clauses="filters.searchClauses.value"
+      :can-prev="selection.canPrev.value"
+      :can-next="selection.canNext.value"
+      :position-index="selection.selectedIndex.value + 1"
+      :position-total="filters.filteredSorted.value.length"
+      @close="selection.close"
+      @prev="selection.openPrev"
+      @next="selection.openNext"
+      @toggle-sources="toggleSources(selection.selectedKey.value)"
+      @toggle-preview="togglePreview"
+      @preview-error="onPreviewError"
+      @filter-toggle="filters.toggleFilter"
+      @set-leaver-annotation="onSetLeaverAnnotation"
+      @set-match-annotation="onSetMatchAnnotation"
+      @set-match-hidden="onSetMatchHidden"
     />
 
     <!-- Unsupported Tesseract version confirmation modal -->
