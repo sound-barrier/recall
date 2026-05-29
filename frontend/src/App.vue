@@ -40,6 +40,7 @@ import {
 import type { MatchAnnotationInput } from './api'
 import { computeEarliestMatchDateTime, tallyWLD, screenshotURL } from './match-helpers'
 import { useIncludeUndated } from './composables/useIncludeUndated'
+import { useIncludeUnknown } from './composables/useIncludeUnknown'
 import { useMinPlayThreshold } from './composables/useMinPlayThreshold'
 import { useDensityMode } from './composables/useDensityMode'
 import { useLeaverHandling } from './composables/useLeaverHandling'
@@ -79,6 +80,11 @@ const UnknownMapsView = defineAsyncComponent(() => import('./components/UnknownM
 // pattern the views use; the brief load-on-first-open delay is
 // invisible at LAN/local speeds.
 const MatchDetailPanel = defineAsyncComponent(() => import('./components/MatchDetailPanel.vue'))
+// Sketch-only preview of the analytics-first dashboard (Phase E in
+// ROADMAP.md → "Analysis tab"). The component is mounted on the
+// dedicated Analysis tab so the shipping Matches view stays
+// untouched while we iterate on the dashboard's data wiring.
+const MatchesDashboardSketch = defineAsyncComponent(() => import('./components/MatchesDashboardSketch.vue'))
 const MatchScreenshotLightbox = defineAsyncComponent(() => import('./components/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = defineAsyncComponent(() => import('./components/KeyboardShortcutsModal.vue'))
 
@@ -259,7 +265,7 @@ const {
 // them as bundled props rather than re-instantiating their own state.
 // activeFilterCount surfaces in the matches-tab nav badge so it lives
 // outside the view component too.
-const filterPanel = useFilterPanel()
+const _filterPanel = useFilterPanel()
 // "Include undated matches" toggle. Default off — records without
 // data.date are hidden from the matched view until the user opts in
 // via the FilterRail toggle. Persisted in localStorage so the choice
@@ -269,11 +275,14 @@ const {
   minPlayPercent, minPlayMinutes,
   setMinPlayPercent, setMinPlayMinutes,
 } = useMinPlayThreshold()
-const { densityMode, toggleDensityMode } = useDensityMode()
+const { densityMode: _densityMode, toggleDensityMode: _toggleDensityMode } = useDensityMode()
 const { leaverHandling, setLeaverHandling } = useLeaverHandling()
 // "Show hidden matches" toggle. Default off — soft-deleted matches
 // stay out of view until the user opts in to see them.
 const { showHidden, setShowHidden } = useShowHidden()
+// "Show unknown-map matches" toggle for the Matches narrow panel.
+// Default off — unknown-map records live in the Unknown tab.
+const { includeUnknown, setIncludeUnknown: _setIncludeUnknown } = useIncludeUnknown()
 const filters = useMatchFilters(
   records,
   includeUndated,
@@ -281,6 +290,7 @@ const filters = useMatchFilters(
   setMinPlayPercent, setMinPlayMinutes,
   leaverHandling,
   showHidden,
+  includeUnknown,
 )
 const { activeFilterCount } = filters
 // First-day-of-week preference (Settings → Calendar). Threaded into
@@ -293,7 +303,7 @@ const { weekStart, setWeekStart } = useWeekStart()
 const skipAnnotatedInTally = computed(
   () => leaverHandling.value === 'exclude-tally' || leaverHandling.value === 'hide',
 )
-const grouping = useMatchGrouping<MatchRecord>(
+const _grouping = useMatchGrouping<MatchRecord>(
   filters.filteredSorted, filters.sortDir, weekStart, skipAnnotatedInTally,
 )
 
@@ -302,7 +312,7 @@ const grouping = useMatchGrouping<MatchRecord>(
 // is owned here (filter refs from useMatchFilters, plus the
 // persisted-preference composables for thresholds / undated / leaver /
 // hidden). Threaded through MatchesView → FilterRail → FilterPresetsMenu.
-const { presets: filterPresets, savePreset, getPreset, deletePreset } = useFilterPresets()
+const { presets: _filterPresets, savePreset, getPreset, deletePreset } = useFilterPresets()
 
 function buildFilterPresetSnapshot(): FilterPresetSnapshot {
   return {
@@ -350,17 +360,17 @@ function applyFilterPresetSnapshot(s: FilterPresetSnapshot) {
   setShowHidden(s.showHidden)
 }
 
-function onSavePreset(name: string) {
+function _onSavePreset(name: string) {
   savePreset(name, buildFilterPresetSnapshot())
 }
 
-function onApplyPreset(name: string) {
+function _onApplyPreset(name: string) {
   const p = getPreset(name)
   if (!p) return
   applyFilterPresetSnapshot(p.snapshot)
 }
 
-function onDeletePreset(name: string) {
+function _onDeletePreset(name: string) {
   deletePreset(name)
 }
 
@@ -539,13 +549,13 @@ async function onSetMatchHidden(matchKey: string, hidden: boolean) {
 }
 
 // Bounds for the date pickers.
-const earliestMatchDateTime = computed(() => computeEarliestMatchDateTime(records.value))
+const _earliestMatchDateTime = computed(() => computeEarliestMatchDateTime(records.value))
 
 // Local-time "now" formatted as YYYY-MM-DDTHH:MM for the input's max
 // attribute. Recomputed on every render — Vue treats this as a getter
 // without a reactive dep, but in practice the user reopens the dropdown
 // often enough that minute-level staleness isn't visible.
-const nowDateTime = computed(() => {
+const _nowDateTime = computed(() => {
   const d = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
@@ -557,7 +567,22 @@ const nowDateTime = computed(() => {
 // paginates through the filtered list. The composable auto-closes
 // when the selected match leaves the filtered set (filter change,
 // hide-toggle, re-parse drop).
-const selection = useSelectedMatch(filters.filteredSorted)
+// MatchesView owns its own filter state and surfaces matches that
+// the global useMatchFilters may exclude, so selection.open(matchKey)
+// must resolve against the raw record list. Prev/next nav inside the
+// panel falls back to chronological order across the corpus — good
+// enough until we share filter state across views.
+const selection = useSelectedMatch(records)
+
+// MatchesView's left-side "Narrow this set" panel mirrors
+// MatchDetailPanel's modal contract: while open, the background
+// container + status bar go inert + aria-hidden. The view emits its
+// open/close state up here so the inert binding picks it up
+// alongside `selection.isOpen` and `showUnsupportedModal`.
+const matchesNarrowOpen = ref(false)
+function onMatchesNarrowOpen(open: boolean) {
+  matchesNarrowOpen.value = open
+}
 
 // Search → panel auto-track. When the panel is open AND the user
 // is actively searching (any clauses parsed), the panel selection
@@ -583,7 +608,7 @@ watch(
 // query, hits Enter, immediately sees the top hit in the panel
 // instead of having to click on a card. No-op when the filtered
 // list is empty.
-function onSearchSubmit() {
+function _onSearchSubmit() {
   if (filters.filteredSorted.value.length === 0) return
   selection.openFirst()
 }
@@ -691,12 +716,13 @@ useKeyboardShortcuts([
     allowInInput: true,
     handler: () => { openCheatsheet.value = true },
   },
-  // Global: vim-style view navigation (`g` then m/i/s/u).
-  ...(['m', 'i', 's', 'u'] as const).map((follow): Shortcut => {
+  // Global: vim-style view navigation (`g` then a/m/i/s/u).
+  ...(['m', 'i', 's', 'u', 'a'] as const).map((follow): Shortcut => {
     const target: TabId = (
-      follow === 'm' ? 'matches' :
-      follow === 'i' ? 'ingest'  :
-      follow === 's' ? 'settings' : 'unknown'
+      follow === 'm' ? 'matches'  :
+      follow === 'i' ? 'ingest'   :
+      follow === 's' ? 'settings' :
+      follow === 'a' ? 'analysis' : 'unknown'
     )
     return {
       key: follow,
@@ -831,7 +857,7 @@ useEventStream({
     <div class="atmos" aria-hidden="true" />
     <div class="grid-lines" aria-hidden="true" />
 
-    <div class="container" :inert="(showUnsupportedModal || selection.isOpen.value) || undefined" :aria-hidden="(showUnsupportedModal || selection.isOpen.value) ? 'true' : undefined">
+    <div class="container" :inert="(showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) || undefined" :aria-hidden="(showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) ? 'true' : undefined">
       <!-- System Alert: blocks both Matches and Settings flow when the
            OCR engine isn't usable. Renders ABOVE the masthead so it's
            the first thing a user sees on a broken install. -->
@@ -942,6 +968,19 @@ useEventStream({
               </span>
             </button>
             <button
+              id="tab-analysis"
+              class="nav-tab"
+              :class="{ active: view === 'analysis' }"
+              :aria-selected="view === 'analysis'"
+              :tabindex="view === 'analysis' ? 0 : -1"
+              role="tab"
+              aria-controls="panel-analysis"
+              @click="goToView('analysis')"
+            >
+              <span class="nav-tab-num">04</span>
+              <span class="nav-tab-label">Analysis</span>
+            </button>
+            <button
               id="tab-unknown"
               class="nav-tab"
               :class="{ active: view === 'unknown' }"
@@ -951,7 +990,7 @@ useEventStream({
               aria-controls="panel-unknown"
               @click="goToView('unknown')"
             >
-              <span class="nav-tab-num">04</span>
+              <span class="nav-tab-num">05</span>
               <span class="nav-tab-label">
                 Unknown
                 <span v-if="unknownRecords.length > 0" class="nav-tab-badge">{{ unknownRecords.length }}</span>
@@ -1087,40 +1126,21 @@ useEventStream({
           @go-to-view="goToView"
         />
 
-        <!-- ─── MATCHES VIEW (default) ───────────────────────────── -->
+        <!-- ─── MATCHES VIEW ───────────────────────────────────── -->
         <MatchesView
           v-if="view === 'matches'"
           :records="records"
           :loading="loading"
-          :filters="filters"
-          :filter-panel="filterPanel"
-          :grouping="grouping"
-          :card-state="cardState"
-          :earliest-match-date-time="earliestMatchDateTime"
-          :now-date-time="nowDateTime"
-          :include-undated="includeUndated"
-          :min-play-percent="minPlayPercent"
-          :min-play-minutes="minPlayMinutes"
-          :density-mode="densityMode"
-          :leaver-handling="leaverHandling"
-          :show-hidden="showHidden"
-          :focused-card-index="focusedCardIndex"
-          :filter-presets="filterPresets"
-          @go-to-view="goToView"
-          @card-focus="(i: number) => focusedCardIndex = i"
-          @set-include-undated="setIncludeUndated"
-          @set-min-play-percent="setMinPlayPercent"
-          @set-min-play-minutes="setMinPlayMinutes"
-          @toggle-density="toggleDensityMode"
-          @set-leaver-handling="setLeaverHandling"
-          @set-leaver-annotation="onSetLeaverAnnotation"
-          @set-match-annotation="onSetMatchAnnotation"
-          @set-show-hidden="setShowHidden"
-          @set-match-hidden="onSetMatchHidden"
-          @save-preset="onSavePreset"
-          @apply-preset="onApplyPreset"
-          @delete-preset="onDeletePreset"
-          @submit-search="onSearchSubmit"
+          @open-match="(k: string) => selection.open(k)"
+          @narrow-open="onMatchesNarrowOpen"
+        />
+
+        <!-- ─── ANALYSIS VIEW (coaching dashboard sketch) ────────── -->
+        <MatchesDashboardSketch
+          v-if="view === 'analysis'"
+          :records="records"
+          :selected-match-key="selection.selectedKey.value"
+          @open-match="(matchKey: string) => selection.open(matchKey)"
         />
       </main>
     </div>
@@ -1132,8 +1152,8 @@ useEventStream({
     <ParseStatusBar
       :parse-progress="parseProgress"
       :parse-log="parseLog"
-      :inert="(showUnsupportedModal || selection.isOpen.value) || undefined"
-      :aria-hidden="(showUnsupportedModal || selection.isOpen.value) ? 'true' : undefined"
+      :inert="(showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) || undefined"
+      :aria-hidden="(showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) ? 'true' : undefined"
       @go-to-view="goToView"
     />
 

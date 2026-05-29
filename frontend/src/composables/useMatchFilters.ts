@@ -42,6 +42,14 @@ export function useMatchFilters(
   // it on surfaces them with the dimmed visual state so the user can
   // review or unhide. Drives the FilterRail "Hidden · N" toggle.
   showHidden?: Readonly<Ref<boolean>>,
+  // Optional: when this ref is false (default), records whose
+  // `data.map` is empty (parser couldn't classify the screenshot)
+  // are hidden from the matched view. Toggling it on surfaces them
+  // in the Matches dossier + leaves. Independent of the Unknown
+  // tab, which always shows unknown-map records as the triage list.
+  // Drives the narrow panel's "Show unknown-map matches" checkbox +
+  // the localStorage-backed preference exposed by useIncludeUnknown.
+  includeUnknown?: Readonly<Ref<boolean>>,
 ) {
   // ── Filter state ─────────────────────────────────────────────────────
   // Each field is an array: empty = no filter; multiple entries = union (OR).
@@ -142,6 +150,11 @@ export function useMatchFilters(
       // regardless when a range is set.
       const undated = !d.date || !d.finished_at
       if (undated && !(includeUndated?.value ?? false)) return false
+
+      // Unknown-map records (data.map empty) are dropped by default;
+      // the Unknown tab is where those triage. Opt in via the narrow
+      // panel toggle.
+      if (!d.map && !(includeUnknown?.value ?? false)) return false
 
       // Soft-deleted (hidden) matches drop out unless the user has
       // flipped the "Show hidden" toggle. They stay in the DB so a

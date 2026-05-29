@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 
 import UnknownMapsView from './UnknownMapsView.vue'
-import type { CardStateApi } from './MatchesView.vue'
+import type { CardStateApi } from '../types/cardState'
 import type { MatchRecord } from '../api'
 
 // Shared with MatchesView: per-card state owned by the parent so both

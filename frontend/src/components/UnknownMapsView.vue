@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MatchRecord } from '../api'
 import { detectScreenshotSlots, screenshotURL, formatParsedAt } from '../match-helpers'
-import type { CardStateApi } from './MatchesView.vue'
+import type { CardStateApi } from '../types/cardState'
 
 // UnknownMapsView is the triage tab for records that lack a map (the
 // most common pre-flight failure: a corrupted SUMMARY/TEAMS screenshot,

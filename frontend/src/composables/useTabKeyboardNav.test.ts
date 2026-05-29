@@ -36,7 +36,7 @@ describe('useTabKeyboardNav', () => {
   })
 
   it('exports TAB_ORDER in nav order', () => {
-    expect(TAB_ORDER).toEqual(['settings', 'ingest', 'matches', 'unknown'])
+    expect(TAB_ORDER).toEqual(['settings', 'ingest', 'matches', 'analysis', 'unknown'])
   })
 
   it('ArrowRight moves to the next tab and calls goToView', () => {

@@ -392,7 +392,9 @@ function onTagKeydown(e: KeyboardEvent) {
     </div>
 
     <section class="match-stats-block" aria-labelledby="match-stats-eyebrow">
-      <div id="match-stats-eyebrow" class="block-eyebrow">Match Stats</div>
+      <div id="match-stats-eyebrow" class="block-eyebrow">
+        Match Stats
+      </div>
       <div class="stats">
         <div class="stat">
           <span class="stat-value">{{ record.data?.eliminations ?? '—' }}</span>
@@ -489,7 +491,9 @@ function onTagKeydown(e: KeyboardEvent) {
           >
             <template v-for="(seg, i) in noteHighlightSegments" :key="i">
               <mark v-if="seg.hit" class="note-hit">{{ seg.text }}</mark>
-              <template v-else>{{ seg.text }}</template>
+              <template v-else>
+                {{ seg.text }}
+              </template>
             </template>
           </div>
           <textarea
