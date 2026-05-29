@@ -223,11 +223,11 @@ function onBackdropClick(e: MouseEvent) {
               type="button"
               class="detail-icon-btn"
               :disabled="!canPrev"
-              :aria-label="`Previous match (k). Position ${positionIndex} of ${positionTotal}`"
-              :title="canPrev ? 'Previous match (k)' : 'No previous match'"
+              :aria-label="`Previous match (left arrow). Position ${positionIndex} of ${positionTotal}`"
+              :title="canPrev ? 'Previous match (←)' : 'No previous match'"
               @click="emit('prev')"
             >
-              <span aria-hidden="true">↑</span>
+              <span aria-hidden="true">←</span>
             </button>
             <span class="detail-pos" aria-live="polite">
               <strong>{{ positionIndex }}</strong>
@@ -237,11 +237,11 @@ function onBackdropClick(e: MouseEvent) {
               type="button"
               class="detail-icon-btn"
               :disabled="!canNext"
-              :aria-label="`Next match (j). Position ${positionIndex} of ${positionTotal}`"
-              :title="canNext ? 'Next match (j)' : 'No next match'"
+              :aria-label="`Next match (right arrow). Position ${positionIndex} of ${positionTotal}`"
+              :title="canNext ? 'Next match (→)' : 'No next match'"
               @click="emit('next')"
             >
-              <span aria-hidden="true">↓</span>
+              <span aria-hidden="true">→</span>
             </button>
           </div>
         </header>
