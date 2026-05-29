@@ -167,6 +167,23 @@ function onKeydown(e: KeyboardEvent) {
   const tag = target?.tagName ?? ''
   const inEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
     !!target?.isContentEditable
+
+  // Escape inside an editable field is "cancel this edit / drop
+  // focus", NOT "close the dialog". Without this, the user types
+  // a draft note, hits Esc to bail out of the textarea, and the
+  // whole panel disappears — losing the in-flight draft and the
+  // match they were inspecting. Blur the field and stop the event
+  // before useModalFocusTrap's document listener (registered AFTER
+  // ours, so still in the dispatch queue) sees it; the user's next
+  // Escape — now that focus is no longer in an editable — falls
+  // through to the trap and closes the panel as usual.
+  if (e.key === 'Escape' && inEditable) {
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    target?.blur()
+    return
+  }
+
   if (inEditable) return
 
   switch (e.key) {
