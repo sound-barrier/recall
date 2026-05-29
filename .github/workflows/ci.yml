@@ -66,10 +66,12 @@ jobs:
         env:
           MAX_INITIAL_JS_BYTES: "135000"    # 135 KB — initial JS chunk only
           MAX_INITIAL_CSS_BYTES: "80000"    # 80 KB — initial CSS chunk only
-          MAX_TOTAL_JS_BYTES: "250000"      # 250 KB — every JS chunk combined
-          MAX_TOTAL_CSS_BYTES: "145000"     # 145 KB — every CSS chunk combined
+          MAX_TOTAL_JS_BYTES: "270000"      # 270 KB — every JS chunk combined
+          MAX_TOTAL_CSS_BYTES: "160000"     # 160 KB — every CSS chunk combined
           # ^^ initial JS bumped from 130 → 135 KB during filter-preset
-          # save & recall; total CSS bumped from 130 → 140 → 145 KB
+          # save & recall; total CSS bumped from 130 → 140 → 145 → 160
+          # KB; total JS bumped from 250 → 270 KB after the detail-panel
+          # feature surface (panel + lightbox + extended cheatsheet)
           # across filter-presets, match-journal redesign, and global
           # match-search (parsed-clause chips + new search chrome).
           # Initial CSS (80 KB) stays put — first-paint cost is the

@@ -1,27 +1,31 @@
-// Regression test for the view-component lazy-loading split.
+// Regression test for the lazy-loading split.
 //
 // App.vue's four view components (Matches, Ingest, Settings, Unknown)
-// are loaded via defineAsyncComponent so each becomes a separate Vite
-// chunk. A naïve refactor that converts one back to a static `import
-// X from '…'` would silently undo the bundle-size win and inflate the
-// initial JS payload that every page-load pays for.
+// AND the three modal surfaces (detail panel, screenshot lightbox,
+// cheatsheet) are loaded via defineAsyncComponent so each becomes a
+// separate Vite chunk. A naïve refactor that converts one back to a
+// static `import X from '…'` would silently undo the bundle-size win
+// and inflate the initial JS payload that every page-load pays for.
 //
-// Asserts the source still uses the async-import pattern for all four
-// views. Pure text inspection — doesn't try to drive the runtime, which
-// is fragile across happy-dom versions.
+// Asserts the source still uses the async-import pattern for every
+// entry below. Pure text inspection — doesn't try to drive the
+// runtime, which is fragile across happy-dom versions.
 
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-describe('App.vue view-component lazy loading', () => {
+describe('App.vue lazy-loaded components', () => {
   const source = readFileSync(resolve(__dirname, 'App.vue'), 'utf-8')
 
   const views: Array<{ name: string; path: string }> = [
-    { name: 'IngestView',      path: './components/IngestView.vue' },
-    { name: 'MatchesView',     path: './components/MatchesView.vue' },
-    { name: 'SettingsView',    path: './components/SettingsView.vue' },
-    { name: 'UnknownMapsView', path: './components/UnknownMapsView.vue' },
+    { name: 'IngestView',             path: './components/IngestView.vue' },
+    { name: 'MatchesView',            path: './components/MatchesView.vue' },
+    { name: 'SettingsView',           path: './components/SettingsView.vue' },
+    { name: 'UnknownMapsView',        path: './components/UnknownMapsView.vue' },
+    { name: 'MatchDetailPanel',       path: './components/MatchDetailPanel.vue' },
+    { name: 'MatchScreenshotLightbox', path: './components/MatchScreenshotLightbox.vue' },
+    { name: 'KeyboardShortcutsModal', path: './components/KeyboardShortcutsModal.vue' },
   ]
 
   for (const { name, path } of views) {

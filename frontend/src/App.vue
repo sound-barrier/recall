@@ -46,7 +46,6 @@ import { useLeaverHandling } from './composables/useLeaverHandling'
 import { useShowHidden } from './composables/useShowHidden'
 import { useTabKeyboardNav, TAB_ORDER, type TabId } from './composables/useTabKeyboardNav'
 import { useKeyboardShortcuts, type Shortcut } from './composables/useKeyboardShortcuts'
-import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.vue'
 import { useModalFocusTrap } from './composables/useModalFocusTrap'
 import { useBackupRestore } from './composables/useBackupRestore'
 import { useClearDatabase } from './composables/useClearDatabase'
@@ -61,8 +60,6 @@ import { useMatchFilters } from './composables/useMatchFilters'
 import { useMatchGrouping } from './composables/useMatchGrouping'
 import { useFilterPresets, type FilterPresetSnapshot } from './composables/useFilterPresets'
 import { useSelectedMatch } from './composables/useSelectedMatch'
-import MatchDetailPanel from './components/MatchDetailPanel.vue'
-import MatchScreenshotLightbox from './components/MatchScreenshotLightbox.vue'
 import type { ParseProgressEvent } from './components/ParseProgressPanel.vue'
 import ParseStatusBar from './components/ParseStatusBar.vue'
 
@@ -76,6 +73,14 @@ const IngestView = defineAsyncComponent(() => import('./components/IngestView.vu
 const MatchesView = defineAsyncComponent(() => import('./components/MatchesView.vue'))
 const SettingsView = defineAsyncComponent(() => import('./components/SettingsView.vue'))
 const UnknownMapsView = defineAsyncComponent(() => import('./components/UnknownMapsView.vue'))
+// Modal surfaces only mount on demand — keep their (substantial)
+// scoped CSS + JS out of the initial chunk so the router shell
+// stays under the bundle-size budget. Same defineAsyncComponent
+// pattern the views use; the brief load-on-first-open delay is
+// invisible at LAN/local speeds.
+const MatchDetailPanel = defineAsyncComponent(() => import('./components/MatchDetailPanel.vue'))
+const MatchScreenshotLightbox = defineAsyncComponent(() => import('./components/MatchScreenshotLightbox.vue'))
+const KeyboardShortcutsModal = defineAsyncComponent(() => import('./components/KeyboardShortcutsModal.vue'))
 
 // OnboardingTour is mounted eagerly (not lazy) because it auto-opens
 // on first launch and the localStorage gate runs inside its
