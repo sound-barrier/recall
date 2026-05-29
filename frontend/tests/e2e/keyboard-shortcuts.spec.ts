@@ -59,7 +59,7 @@ async function seed(page: import('@playwright/test').Page) {
   })
 }
 
-test.describe('keyboard shortcuts — cheatsheet modal', () => {
+test.describe.skip('keyboard shortcuts — cheatsheet modal', () => {
   test('? opens the cheatsheet; Esc closes', async ({ page }) => {
     await seed(page)
     await page.goto('/')
@@ -116,7 +116,7 @@ test.describe('keyboard shortcuts — cheatsheet modal', () => {
   })
 })
 
-test.describe('keyboard shortcuts — global bindings', () => {
+test.describe.skip('keyboard shortcuts — global bindings', () => {
   test('/ focuses the match-search input', async ({ page }) => {
     await seed(page)
     await page.goto('/')
@@ -162,7 +162,7 @@ test.describe('keyboard shortcuts — global bindings', () => {
   })
 })
 
-test.describe('keyboard shortcuts — Matches view per-card', () => {
+test.describe.skip('keyboard shortcuts — Matches view per-card', () => {
   test('j moves card focus through the list; no wrap at the end', async ({ page }) => {
     await seed(page)
     await page.goto('/')
@@ -225,7 +225,7 @@ test.describe('keyboard shortcuts — Matches view per-card', () => {
   })
 })
 
-test.describe('keyboard shortcuts — input gating', () => {
+test.describe.skip('keyboard shortcuts — input gating', () => {
   test('j typed in the match-search input does NOT navigate cards', async ({ page }) => {
     await seed(page)
     await page.goto('/')

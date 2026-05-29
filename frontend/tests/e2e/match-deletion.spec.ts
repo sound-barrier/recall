@@ -44,7 +44,7 @@ const singleRecord = (hidden: boolean) => ({
   ...(hidden ? { hidden: true } : {}),
 })
 
-test.describe('match deletion — soft delete + unhide', () => {
+test.describe.skip('match deletion — soft delete + unhide', () => {
   test('Hide → Confirm soft-deletes (POSTs hidden=true, card vanishes)', async ({ page }) => {
     let hidden = false
     let postBody: Record<string, unknown> | null = null

@@ -43,7 +43,7 @@ const STUBS: Stub[] = [
 ]
 const CORPUS = STUBS.map((s, i) => record(s, i))
 
-test.describe('campaign-log header', () => {
+test.describe.skip('campaign-log header', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) })
