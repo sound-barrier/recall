@@ -417,6 +417,33 @@ function onTagKeydown(e: KeyboardEvent) {
       </div>
     </section>
 
+    <!-- Rank update section. Only renders for matches that included
+         a rank-screen screenshot (most don't — placements, promos,
+         demos), so we lean into "rare" framing: distinct border,
+         accent-glow background, a chevron eyebrow with a CHANGE
+         tag so the user immediately reads it as a milestone, not
+         another stat row. Sits above the journal so the milestone
+         is read alongside the stats that produced it. -->
+    <div v-if="record.data?.rank" class="rank-block rare">
+      <div class="block-eyebrow rank-eyebrow">
+        <span class="rare-pip" aria-hidden="true">◆</span>
+        Rank Update
+      </div>
+      <div class="rank-line">
+        <span class="rank-tier" :class="record.data.rank">{{ record.data.rank }} {{ record.data.level }}</span>
+        <span v-if="record.data.rank_progress" class="rank-progress">{{ record.data.rank_progress }}% progress</span>
+        <span v-if="record.data.change_percent" class="rank-change">+{{ record.data.change_percent }}%</span>
+        <span v-for="m in record.data.modifiers" :key="m" class="rank-modifier">{{ m }}</span>
+      </div>
+      <div v-if="record.data.sr?.length" class="sr-line">
+        <span v-for="s in record.data.sr" :key="s.hero" class="sr-entry">
+          <span class="sr-hero">{{ ow.heroDisplayName(s.hero) }}</span>
+          <span class="sr-value">{{ s.sr }}</span>
+          <span class="sr-delta" :class="s.change >= 0 ? 'up' : 'down'">{{ s.change >= 0 ? '+' : '' }}{{ s.change }}</span>
+        </span>
+      </div>
+    </div>
+
     <!-- MATCH JOURNAL — the user's notes about the match. Four cells
          in a hierarchy: Note (primary, full-width), Replay code +
          Squad (secondary, two-column row), Tags (full-width pill
@@ -588,32 +615,6 @@ function onTagKeydown(e: KeyboardEvent) {
         </div>
       </div>
     </section>
-
-    <!-- Rank update section. Only renders for matches that included
-         a rank-screen screenshot (most don't — placements, promos,
-         demos), so we lean into "rare" framing: distinct border,
-         accent-glow background, a chevron eyebrow with a CHANGE
-         tag so the user immediately reads it as a milestone, not
-         another stat row. -->
-    <div v-if="record.data?.rank" class="rank-block rare">
-      <div class="block-eyebrow rank-eyebrow">
-        <span class="rare-pip" aria-hidden="true">◆</span>
-        Rank Update
-      </div>
-      <div class="rank-line">
-        <span class="rank-tier" :class="record.data.rank">{{ record.data.rank }} {{ record.data.level }}</span>
-        <span v-if="record.data.rank_progress" class="rank-progress">{{ record.data.rank_progress }}% progress</span>
-        <span v-if="record.data.change_percent" class="rank-change">+{{ record.data.change_percent }}%</span>
-        <span v-for="m in record.data.modifiers" :key="m" class="rank-modifier">{{ m }}</span>
-      </div>
-      <div v-if="record.data.sr?.length" class="sr-line">
-        <span v-for="s in record.data.sr" :key="s.hero" class="sr-entry">
-          <span class="sr-hero">{{ ow.heroDisplayName(s.hero) }}</span>
-          <span class="sr-value">{{ s.sr }}</span>
-          <span class="sr-delta" :class="s.change >= 0 ? 'up' : 'down'">{{ s.change >= 0 ? '+' : '' }}{{ s.change }}</span>
-        </span>
-      </div>
-    </div>
 
     <div v-if="record.data?.heroes_played?.length" class="heroes-played" :class="{ collapsed: !heroesExpanded }">
       <button

@@ -132,8 +132,11 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     //   1. .detail-meta-strip  (date + final score)
     //   2. .leaver-chooser     (Leaver? scenario chips)
     //   3. .stats              (Match Stats grid)
-    //   4. .match-journal      (note / replay / squad / tags)
-    //   5. .rank-block         (rank — only when present)
+    //   4. .rank-block         (rank — only when present; bumped
+    //                           above the journal so the milestone
+    //                           sits next to the stats it just
+    //                           contextualised)
+    //   5. .match-journal      (note / replay / squad / tags)
     //   6. .heroes-played      (Heroes Played list)
     //   7. .sources-block      (Source Screenshots)
     const order = await page.evaluate(() => {
@@ -157,8 +160,8 @@ test.describe('match detail panel — keyboard ergonomics', () => {
       'detail-meta-strip',
       'leaver-chooser',
       'stats',
-      'match-journal',
       'rank-block',
+      'match-journal',
       'heroes-played',
       'sources-block',
     ])
