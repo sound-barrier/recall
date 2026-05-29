@@ -59,9 +59,67 @@ const bodyRef = ref<HTMLElement | null>(null)
 
 // How far ↑ / ↓ scroll the panel body per press. Browser-default
 // line-by-line is too slow for a tall journal; 80px is roughly two
-// stat rows / one journal cell. Holding the key still scrolls
-// smoothly because Chromium re-fires keydown.
+// stat rows / one journal cell.
 const SCROLL_STEP_PX = 80
+
+// rAF-driven momentum scroller. Plain `scrollBy({ behavior: 'smooth' })`
+// is the obvious choice, but the browser cancels and restarts the
+// smooth animation on every scrollBy call — at 30Hz OS key-repeat
+// that surfaces as a visible step-and-glide stutter ("skipping").
+//
+// Instead we maintain a single target position. Each keypress nudges
+// the target; a single rAF loop tweens the body's scrollTop toward
+// the target at 18% of the remaining gap per frame (~critically
+// damped). Hold the key → target grows faster than position, the
+// loop never stops, the body glides. Tap once → target jumps 80px,
+// loop runs for ~25 frames (~400ms) until the gap closes.
+//
+// Honours `prefers-reduced-motion: reduce` by snapping instantly.
+const scrollTarget = ref(0)
+let scrollRAF = 0
+
+function tickScroll() {
+  const el = bodyRef.value
+  if (!el) { scrollRAF = 0; return }
+  const delta = scrollTarget.value - el.scrollTop
+  if (Math.abs(delta) < 0.5) {
+    el.scrollTop = scrollTarget.value
+    scrollRAF = 0
+    return
+  }
+  el.scrollTop += delta * 0.18
+  scrollRAF = requestAnimationFrame(tickScroll)
+}
+
+function commitScrollTarget(next: number) {
+  const el = bodyRef.value
+  if (!el) return
+  const max = Math.max(0, el.scrollHeight - el.clientHeight)
+  scrollTarget.value = Math.max(0, Math.min(max, next))
+  // Reduced-motion: skip the tween.
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    el.scrollTop = scrollTarget.value
+    return
+  }
+  if (scrollRAF === 0) scrollRAF = requestAnimationFrame(tickScroll)
+}
+
+function nudgeScroll(deltaPx: number) {
+  const el = bodyRef.value
+  if (!el) return
+  // First nudge after idle re-seeds target from the body's actual
+  // scrollTop — the user may have scrolled via wheel / drag /
+  // touchpad since the last keypress, and we want the next step
+  // to land relative to where they are now (otherwise the first
+  // arrow press would yank them back to wherever the last anim
+  // ended).
+  if (scrollRAF === 0) scrollTarget.value = el.scrollTop
+  commitScrollTarget(scrollTarget.value + deltaPx)
+}
+
+function setScrollAbsolute(next: number) {
+  commitScrollTarget(next)
+}
 
 // Modal focus management.
 //
@@ -122,36 +180,36 @@ function onKeydown(e: KeyboardEvent) {
       return
     case 'ArrowDown':
       e.preventDefault()
-      bodyRef.value?.scrollBy({ top: SCROLL_STEP_PX, behavior: 'auto' })
+      nudgeScroll(SCROLL_STEP_PX)
       return
     case 'ArrowUp':
       e.preventDefault()
-      bodyRef.value?.scrollBy({ top: -SCROLL_STEP_PX, behavior: 'auto' })
+      nudgeScroll(-SCROLL_STEP_PX)
       return
     case 'PageDown':
     case ' ': {
       const el = bodyRef.value
       if (!el) return
       e.preventDefault()
-      el.scrollBy({ top: el.clientHeight - 40, behavior: 'auto' })
+      nudgeScroll(el.clientHeight - 40)
       return
     }
     case 'PageUp': {
       const el = bodyRef.value
       if (!el) return
       e.preventDefault()
-      el.scrollBy({ top: -(el.clientHeight - 40), behavior: 'auto' })
+      nudgeScroll(-(el.clientHeight - 40))
       return
     }
     case 'Home':
       e.preventDefault()
-      bodyRef.value?.scrollTo({ top: 0, behavior: 'auto' })
+      setScrollAbsolute(0)
       return
     case 'End': {
       const el = bodyRef.value
       if (!el) return
       e.preventDefault()
-      el.scrollTo({ top: el.scrollHeight, behavior: 'auto' })
+      setScrollAbsolute(el.scrollHeight)
       return
     }
   }
@@ -163,6 +221,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown)
+  if (scrollRAF !== 0) {
+    cancelAnimationFrame(scrollRAF)
+    scrollRAF = 0
+  }
 })
 
 const mapDisplay = computed(() =>
@@ -492,6 +554,9 @@ function onBackdropClick(e: MouseEvent) {
   .detail-panel-leave-active .detail-panel {
     transition: none;
   }
+  /* The rAF scroll tween in <script> already short-circuits to an
+     instant scrollTop assignment when this media query matches —
+     see setScrollAbsolute / commitScrollTarget. */
 }
 
 /* ─── Narrow-viewport handling ────────────────────────────── */
