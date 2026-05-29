@@ -116,6 +116,34 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     expect(onSearch).toBe(false)
   })
 
+  test('background sections behind an open panel are inert (no focusable leaks)', async ({ page }) => {
+    await page.locator('.match').first().locator('.chev-btn').click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+
+    // The masthead, nav, FilterRail and matches list all live inside
+    // a single `.container` wrapper. When the panel is open that
+    // wrapper carries `inert` so its descendants are not focusable
+    // (defense in depth on top of the focus trap — Tab order can't
+    // even reach them, and click-to-focus on background text is
+    // suppressed). ParseStatusBar lives outside `.container` so it
+    // carries its own `inert` flag in the same situation.
+    const inertOnContainer = await page.evaluate(() => {
+      const c = document.querySelector('.container') as HTMLElement | null
+      return c?.hasAttribute('inert') ?? false
+    })
+    expect(inertOnContainer).toBe(true)
+
+    // Specifically, the match-search input — the most obvious leak
+    // path — must not be focusable while the panel is up.
+    const searchInputFocusable = await page.evaluate(() => {
+      const input = document.getElementById('match-search') as HTMLInputElement | null
+      if (!input) return false
+      input.focus()
+      return document.activeElement === input
+    })
+    expect(searchInputFocusable).toBe(false)
+  })
+
   test('Tab cycles focusable elements within the panel — no escape to background', async ({ page }) => {
     await page.locator('.match').first().locator('.chev-btn').click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
