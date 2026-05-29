@@ -1,20 +1,22 @@
 <script setup lang="ts">
-import type { MatchRecord, MatchAnnotationInput } from '../api'
+import type { MatchRecord } from '../api'
 import MatchCardHeader from './MatchCardHeader.vue'
-import MatchCardExpanded from './MatchCardExpanded.vue'
 
-// MatchCard is now a thin outer shell that wires the two children
-// (Header always, Expanded only when isExpanded). The collapsed-view
-// chip row + the expanded annotation/stats/sources blocks each live
-// in their own SFC alongside the scoped CSS that owns them.
+// MatchCard is now a thin row-shell — header + chrome only. The
+// expanded annotation / stats / sources blocks are no longer rendered
+// inline; clicking the row (or the chev affordance, or pressing `e`
+// on the focused card) opens MatchDetailPanel.vue at the page root.
+// The `isExpanded` prop is now read as "is this the currently-
+// selected row" and drives the accent treatment on the card so the
+// user always knows which match the open panel is anchored to.
 
 defineProps<{
   record: MatchRecord
   index: number
+  // True for the row that drives the open MatchDetailPanel. Adds the
+  // .expanded class for the accent border + surface gradient so the
+  // anchor is visible behind the panel.
   isExpanded: boolean
-  isSourcesOpen: boolean
-  previewOpen: Record<string, boolean>
-  previewError: Record<string, boolean>
   isActive: (field: string, value: string) => boolean
   // 'compact' tightens card padding + map font and inlines a small
   // E/A/D + damage strip in the tag-row so high-volume players see
@@ -28,23 +30,14 @@ defineProps<{
   // so existing SFC tests that mount MatchCard without the parent
   // wiring still work.
   isFocused?: boolean
-  // Parsed match-search clauses, forwarded to MatchCardExpanded so
-  // it can render `<mark>` hits in the click-to-edit note preview
-  // AND across the other annotation fields the search now reaches
-  // (replay code / members / tags). Optional — omitted in tests
-  // that don't exercise the expanded view.
-  searchClauses?: import('../search-query').SearchClause[]
 }>()
 
 const emit = defineEmits<{
+  // "Open detail panel for this match." Kept on the same name as
+  // the legacy inline-expand emit so the parent's existing
+  // @toggle-expand bindings continue to work without renaming.
   'toggle-expand': []
-  'toggle-sources': []
-  'toggle-preview': [filename: string]
-  'preview-error': [filename: string]
   'filter-toggle': [field: string, value: string]
-  'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
-  'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
-  'set-match-hidden':       [matchKey: string, hidden: boolean]
   // Emitted whenever the card's <article> receives focus (Tab,
   // click on a non-interactive area, or programmatic .focus()).
   // The parent uses this to keep `focusedCardIndex` in sync when
@@ -75,23 +68,6 @@ const emit = defineEmits<{
         :density-mode="densityMode"
         @toggle-expand="emit('toggle-expand')"
         @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"
-      />
-
-      <MatchCardExpanded
-        v-if="isExpanded"
-        :record="record"
-        :is-sources-open="isSourcesOpen"
-        :preview-open="previewOpen"
-        :preview-error="previewError"
-        :is-active="isActive"
-        :search-clauses="searchClauses"
-        @toggle-sources="emit('toggle-sources')"
-        @toggle-preview="(f: string) => emit('toggle-preview', f)"
-        @preview-error="(f: string) => emit('preview-error', f)"
-        @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"
-        @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
-        @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
-        @set-match-hidden="(k: string, h: boolean) => emit('set-match-hidden', k, h)"
       />
     </div>
   </article>
