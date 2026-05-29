@@ -84,12 +84,14 @@ SFC-level tests use `@vue/test-utils`'s `mount()` via `mountApp(overrides?)` in 
 
 ## Gotchas
 
-- **Run from `frontend/`.** `npx vitest` / `npm run *` need the cwd
-  to be `frontend/` so Vite resolves `vitest.config.ts`. Running
-  from repo root errors with a misleading "Install
-  @vitejs/plugin-vue to handle .vue files" even though the plugin
-  IS installed. Use `cd frontend && …` or `npm --prefix frontend run
-  …`. The `make` targets (`make test-frontend`, `make
+- **Run from `frontend/`.** `npx vitest` / `npx playwright test` /
+  `npm run *` need the cwd to be `frontend/`. Vitest errors with a
+  misleading "Install @vitejs/plugin-vue to handle .vue files";
+  Playwright errors with "two versions of @playwright/test" / "No
+  tests found" because it resolves its config relative to cwd and
+  the sibling `node_modules` at the repo root confuses resolution.
+  Use `cd frontend && …` or `npm --prefix frontend run …`. The
+  `make` targets (`make test-frontend`, `make test-e2e`, `make
   cover-frontend`) handle cwd automatically.
 
 - **Vue 3 ref auto-unwrapping.** In `<script setup>`, refs are
@@ -125,7 +127,11 @@ SFC-level tests use `@vue/test-utils`'s `mount()` via `mountApp(overrides?)` in 
 
 - **TypeScript 6.x blocked by `openapi-typescript@7.x`** (`peer typescript: "^5.x"`). Hold at `^5.x` until upstream supports TS 6.
 
-- **Bundle-size budget enforced in CI** (`ci.yml` "Enforce bundle-size budget"): initial JS <130KB, initial CSS <80KB, total JS <250KB, total CSS <120KB. The four view components (Matches, Ingest, Settings, Unknown) are lazy-loaded via `defineAsyncComponent` in App.vue so only the router-shell counts toward initial budget. `App.lazy-views.test.ts` guards against regression to static `import`. Current: ~103KB / ~65KB / ~165KB / ~80KB.
+- **Bundle-size budget enforced in CI** (`ci.yml` "Enforce bundle-size budget"): initial JS <135KB, initial CSS <80KB, total JS <270KB, total CSS <160KB. Lazy-load via `defineAsyncComponent(() => import(...))` in App.vue so only the router-shell counts toward initial budget — applies to the four view components (Matches, Ingest, Settings, Unknown) AND to any substantial modal surface (currently MatchDetailPanel, MatchScreenshotLightbox, KeyboardShortcutsModal). `App.lazy-views.test.ts` guards against regression to static `import` for every entry; a new modal needs to be added there too.
+
+- **Nested modals: inner Esc needs CAPTURE phase + `stopImmediatePropagation`.** `useModalFocusTrap` registers Esc on `document` at bubble phase; a second modal stacked over the first (lightbox over detail panel, cheatsheet over either) can't prevent the outer trap from also firing by adding another bubble-phase listener — both run on the same target. Use `document.addEventListener('keydown', …, true)` (capture) and call `e.stopImmediatePropagation()` so the outer trap's bubble Esc never sees the event. Pattern in `MatchScreenshotLightbox.vue` + `KeyboardShortcutsModal.vue`. Same logic for the outer modal needing to suppress global shortcuts: `useKeyboardShortcuts` also installs its dispatcher at capture phase, registered at App mount before any per-modal listener — capture-phase `stopImmediatePropagation` from inside a later-mounted modal can't beat it, so the composable accepts a `suppressed: Ref<boolean>` opt-out (App.vue passes `openCheatsheet`).
+
+- **Playwright `.click()` on a parent with `@click.stop` children.** The default `.click()` lands on the element's geometric centre. If the centre falls on a child that calls `e.stopPropagation()` (slot chips inside `.sources-toggle`, removable filter chips inside `.mf-trigger`, etc.), the parent's click handler never fires and the test waits-then-fails on state that won't change. Click a stable text-only child instead — e.g. `.sources-toggle .sources-label` — or pass `{ position: { x, y } }` to land on a known coordinate.
 
 ## A11y
 

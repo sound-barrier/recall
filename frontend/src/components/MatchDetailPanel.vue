@@ -583,6 +583,7 @@ function onBackdropClick(e: MouseEvent) {
   .detail-panel-leave-active .detail-panel {
     transition: none;
   }
+
   /* The rAF scroll tween in <script> already short-circuits to an
      instant scrollTop assignment when this media query matches —
      see setScrollAbsolute / commitScrollTarget. */
