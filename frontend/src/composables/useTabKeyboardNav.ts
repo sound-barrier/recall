@@ -11,7 +11,7 @@ import { nextTick, type Ref } from 'vue'
 // in isolation and so adding a new tab doesn't require re-reading
 // 800 lines of script-setup to find the order constant.
 
-export const TAB_ORDER = ['settings', 'ingest', 'matches', 'unknown'] as const
+export const TAB_ORDER = ['settings', 'ingest', 'matches', 'analysis', 'unknown'] as const
 
 export type TabId = typeof TAB_ORDER[number]
 

@@ -99,9 +99,15 @@ async function copyPath(path: string, which: 'db' | 'settings') {
             </span>
           </h4>
           <p class="setting-desc">
-            <template v-if="props.watchEnabled">Recall is watching this folder for new screenshots.</template>
-            <template v-else>Recall reads from this folder when you click <strong>Parse</strong>.</template>
-            <template v-if="canOpenFolder"> <strong>Reveal</strong> opens it in your file manager.</template>
+            <template v-if="props.watchEnabled">
+              Recall is watching this folder for new screenshots.
+            </template>
+            <template v-else>
+              Recall reads from this folder when you click <strong>Parse</strong>.
+            </template>
+            <template v-if="canOpenFolder">
+              <strong>Reveal</strong> opens it in your file manager.
+            </template>
             <strong>Detect</strong> walks the default Overwatch install locations; <strong>Change…</strong> opens the system folder picker.
           </p>
           <div v-if="showProbeChip" class="probe-chip" :class="probeStatus" role="status">
