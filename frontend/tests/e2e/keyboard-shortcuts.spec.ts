@@ -84,6 +84,36 @@ test.describe('keyboard shortcuts — cheatsheet modal', () => {
     await expect(sheet).toContainText('Matches view')
     await expect(sheet).toContainText('Tablist + modals')
   })
+
+  // Regression: useModalFocusTrap used to mutate `toRef(props, 'open').value`
+  // directly on Esc. That writes to the prop locally but never propagates
+  // back to the parent's `openCheatsheet` ref via the `@close` channel —
+  // so after Esc the parent's state was stuck `true` and pressing `?`
+  // again was a no-op. The mouse-click close button worked because it
+  // emits `close`. Per-press toggle behavior is the contract the test
+  // pins.
+  test('? then Esc reopens via ? again (no stuck-true parent state)', async ({ page }) => {
+    await seed(page)
+    await page.goto('/')
+    const sheet = page.locator('[data-testid="kbd-shortcuts-modal"]')
+
+    // First cycle.
+    await page.keyboard.press('?')
+    await expect(sheet).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(sheet).toBeHidden()
+
+    // Second cycle — the bug: parent ref stayed true after Esc, so this
+    // press was a no-op and the modal never reopened.
+    await page.keyboard.press('?')
+    await expect(sheet).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(sheet).toBeHidden()
+
+    // Third — make sure repeated cycles keep working.
+    await page.keyboard.press('?')
+    await expect(sheet).toBeVisible()
+  })
 })
 
 test.describe('keyboard shortcuts — global bindings', () => {

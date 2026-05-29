@@ -21,11 +21,18 @@ export interface ModalFocusTrapOptions {
   // CSS selector for the element whose descendants form the focus
   // ring (typically the modal's content box, NOT the overlay).
   containerSelector: string
+  // Optional explicit close callback. Pass when the `open` ref is a
+  // derived ref (e.g. `toRef(props, 'open')`) whose source can't be
+  // written through — the cheatsheet modal lives behind a prop and
+  // closing requires an `emit('close')`, not a local mutation. When
+  // omitted, the composable falls back to writing `open.value = false`
+  // directly (correct for the case where the caller owns the ref).
+  onClose?: () => void
 }
 
 export function useModalFocusTrap(
   open: Ref<boolean>,
-  { containerSelector }: ModalFocusTrapOptions,
+  { containerSelector, onClose }: ModalFocusTrapOptions,
 ) {
   const lastFocusedBeforeModal = ref<HTMLElement | null>(null)
 
@@ -36,10 +43,15 @@ export function useModalFocusTrap(
     return Array.from(box.querySelectorAll<HTMLElement>(sel))
   }
 
+  function close() {
+    if (onClose) onClose()
+    else open.value = false
+  }
+
   function onKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       e.preventDefault()
-      open.value = false
+      close()
       return
     }
     if (e.key !== 'Tab') return

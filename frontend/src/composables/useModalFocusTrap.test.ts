@@ -43,7 +43,7 @@ describe('useModalFocusTrap', () => {
     expect(focusSpy).toHaveBeenCalled()
   })
 
-  it('Escape sets open to false', async () => {
+  it('Escape sets open to false when no onClose callback is provided', async () => {
     const open = ref(false)
     useModalFocusTrap(open, { containerSelector: '.modal-box' })
     open.value = true
@@ -51,6 +51,24 @@ describe('useModalFocusTrap', () => {
     const ev = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true })
     document.dispatchEvent(ev)
     expect(open.value).toBe(false)
+  })
+
+  // Caller-owned open ref: useModalFocusTrap mutates open.value.
+  // Prop-derived open ref: writes through the toRef proxy are local-
+  // only and don't bubble back to the parent — caller passes onClose
+  // so Esc fires the emit('close') path instead. This test pins the
+  // contract used by KeyboardShortcutsModal.
+  it('Escape invokes onClose and does NOT mutate open when callback provided', async () => {
+    const open = ref(false)
+    const onClose = vi.fn()
+    useModalFocusTrap(open, { containerSelector: '.modal-box', onClose })
+    open.value = true
+    await nextTick()
+    const ev = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true })
+    document.dispatchEvent(ev)
+    expect(onClose).toHaveBeenCalledTimes(1)
+    // open ref is untouched — the parent's @close handler owns the close.
+    expect(open.value).toBe(true)
   })
 
   it('Tab from the last focusable wraps to the first', async () => {
