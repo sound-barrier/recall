@@ -111,6 +111,9 @@ const emit = defineEmits<{
   'save-preset':           [name: string]
   'apply-preset':          [name: string]
   'delete-preset':         [name: string]
+  // Enter pressed inside the match-search input. App.vue treats this
+  // as "submit and reveal" — opens the detail panel on the first hit.
+  'submit-search':         []
 }>()
 
 // Pre-extracted destructures keep the template readable without
@@ -253,6 +256,7 @@ const annotatedMatchCount = computed(
       @update:filter-from="setFilterFrom"
       @update:filter-to="setFilterTo"
       @update:match-query="setMatchQuery"
+      @submit-search="emit('submit-search')"
       @update:search="setFilterSearch"
       @toggle-filter-panel="fp.toggleFilterPanel"
       @close-filter-panel="fp.closeFilterPanel"

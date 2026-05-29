@@ -8,7 +8,7 @@
 // per-SFC scoped <style> blocks.
 import './styles/app.css'
 
-import { ref, computed, onMounted, nextTick, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, onMounted, nextTick, defineAsyncComponent } from 'vue'
 import type { MatchRecord, DataLocation } from './api'
 import {
   GetVersion,
@@ -547,11 +547,40 @@ const nowDateTime = computed(() => {
 
 // Selected-match panel (replaces the old inline-expansion model).
 // Clicking a card opens the right-side MatchDetailPanel and pins
-// `selection.selectedKey` to that match_key. j/k inside the panel
+// `selection.selectedKey` to that match_key. ← / → inside the panel
 // paginates through the filtered list. The composable auto-closes
 // when the selected match leaves the filtered set (filter change,
 // hide-toggle, re-parse drop).
 const selection = useSelectedMatch(filters.filteredSorted)
+
+// Search → panel auto-track. When the panel is open AND the user
+// is actively searching (any clauses parsed), the panel selection
+// follows the first hit so the highlighted content is visible
+// without an extra click. The watcher fires on every matchQuery
+// change while the panel is open; when the user clears the search,
+// we leave the selection where it last landed (don't snap back to
+// a previous match — that would surprise the user).
+watch(
+  () => filters.matchQuery.value,
+  () => {
+    if (!selection.isOpen.value) return
+    if (filters.searchClauses.value.length === 0) return
+    const first = filters.filteredSorted.value[0]
+    if (first && first.match_key !== selection.selectedKey.value) {
+      selection.open(first.match_key)
+    }
+  },
+)
+
+// Enter in the FilterRail's match-search input opens the first hit
+// in the panel. The "search and reveal" gesture — user types a
+// query, hits Enter, immediately sees the top hit in the panel
+// instead of having to click on a card. No-op when the filtered
+// list is empty.
+function onSearchSubmit() {
+  if (filters.filteredSorted.value.length === 0) return
+  selection.openFirst()
+}
 
 // Backwards-compatible adapter: cardState.isExpanded(id) now means
 // "is this the currently-selected match" — the list highlights the
@@ -1075,6 +1104,7 @@ useEventStream({
           @save-preset="onSavePreset"
           @apply-preset="onApplyPreset"
           @delete-preset="onDeletePreset"
+          @submit-search="onSearchSubmit"
         />
       </main>
     </div>

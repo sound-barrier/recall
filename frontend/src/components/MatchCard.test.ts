@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, type PropType } from 'vue'
 
 import MatchCard from './MatchCard.vue'
 import MatchCardExpanded from './MatchCardExpanded.vue'
@@ -82,15 +82,16 @@ function mountCard(over: CardMountOver = {}) {
   // Shell also exposes `record` as a prop so tests that introspect
   // `wrapper.props('record')` continue to resolve.
   const Shell = defineComponent({
-    props: { record: { type: Object, default: () => record } },
+    props: { record: { type: Object as PropType<MatchRecord>, required: true, default: () => record } },
     emits: [
       'toggle-expand', 'filter-toggle', 'card-focus',
       'toggle-sources', 'toggle-preview', 'preview-error',
       'set-leaver-annotation', 'set-match-annotation', 'set-match-hidden',
     ],
     setup(_, { emit }) {
-      function relay(name: string) {
-        return (...args: unknown[]) => emit(name, ...args)
+      type EmitName = Parameters<typeof emit>[0]
+      function relay(name: EmitName) {
+        return (...args: unknown[]) => (emit as (n: EmitName, ...a: unknown[]) => void)(name, ...args)
       }
       return () => {
         const children: ReturnType<typeof h>[] = [
@@ -526,7 +527,7 @@ describe('MatchCard — leaver annotation', () => {
     const self = wrapper.findAll('.leaver-chip').find(c => c.text().includes('I left'))!
     await self.trigger('click')
     const e = wrapper.emitted('set-leaver-annotation')!
-    expect(e[0]).toEqual([wrapper.props('record').match_key, 'self'])
+    expect(e[0]!).toEqual([wrapper.props('record')!.match_key, 'self'])
   })
 
   it('clicking the active chip emits a clear (empty leaver)', async () => {
@@ -537,7 +538,7 @@ describe('MatchCard — leaver annotation', () => {
     const enemy = wrapper.findAll('.leaver-chip').find(c => c.text().includes('Enemy'))!
     await enemy.trigger('click')
     const e = wrapper.emitted('set-leaver-annotation')!
-    expect(e[0]).toEqual([wrapper.props('record').match_key, ''])
+    expect(e[0]!).toEqual([wrapper.props('record')!.match_key, ''])
   })
 
   it('clicking Clear emits with empty leaver', async () => {
@@ -548,7 +549,7 @@ describe('MatchCard — leaver annotation', () => {
     const clear = wrapper.find('.leaver-chip.leaver-clear')
     await clear.trigger('click')
     const e = wrapper.emitted('set-leaver-annotation')!
-    expect(e[0]).toEqual([wrapper.props('record').match_key, ''])
+    expect(e[0]!).toEqual([wrapper.props('record')!.match_key, ''])
   })
 })
 
@@ -588,8 +589,8 @@ describe('MatchCard — match notes block', () => {
     await ta.setValue('  draft text  ')
     await ta.trigger('blur')
     const e = wrapper.emitted('set-match-annotation')!
-    expect(e[0]).toEqual([
-      wrapper.props('record').match_key,
+    expect(e[0]!).toEqual([
+      wrapper.props('record')!.match_key,
       { leaver: '', note: 'draft text', replay_code: '', members: [], tags: [] },
     ])
   })
@@ -600,8 +601,8 @@ describe('MatchCard — match notes block', () => {
     await replay.setValue('7H1K9P')
     await replay.trigger('keydown.enter')
     const e = wrapper.emitted('set-match-annotation')!
-    expect(e[0]).toEqual([
-      wrapper.props('record').match_key,
+    expect(e[0]!).toEqual([
+      wrapper.props('record')!.match_key,
       { leaver: '', note: '', replay_code: '7H1K9P', members: [], tags: [] },
     ])
   })
@@ -613,8 +614,8 @@ describe('MatchCard — match notes block', () => {
     await memberInput.trigger('keydown', { key: 'Enter' })
     expect(wrapper.findAll('.member-chip-tag').map(c => c.text())).toEqual(['Apollo#11234'])
     const e = wrapper.emitted('set-match-annotation')!
-    expect(e[0]).toEqual([
-      wrapper.props('record').match_key,
+    expect(e[0]!).toEqual([
+      wrapper.props('record')!.match_key,
       { leaver: '', note: '', replay_code: '', members: ['Apollo#11234'], tags: [] },
     ])
   })

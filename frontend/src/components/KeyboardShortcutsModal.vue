@@ -54,6 +54,7 @@ const groups: readonly BindingGroup[] = [
     bindings: [
       { keys: ['/'],            action: 'Focus the match-search input' },
       { keys: ['Esc'],          action: 'Clear & blur the match-search input (when focused)' },
+      { keys: ['Enter'],        action: 'Open first hit in the detail panel (from match-search)' },
       { keys: ['g', 'm'],       action: 'Go to Matches view' },
       { keys: ['g', 'i'],       action: 'Go to Parse view' },
       { keys: ['g', 's'],       action: 'Go to Settings view' },
@@ -64,10 +65,26 @@ const groups: readonly BindingGroup[] = [
   {
     scope: 'Matches view',
     bindings: [
-      { keys: ['j'],            action: 'Focus the next match card' },
-      { keys: ['k'],            action: 'Focus the previous match card' },
-      { keys: ['e'],            action: 'Expand / collapse the focused card' },
-      { keys: ['t'],            action: 'Focus the tags editor (auto-expands the card)' },
+      { keys: ['j'],            action: 'Focus the next match card (panel closed)' },
+      { keys: ['k'],            action: 'Focus the previous match card (panel closed)' },
+      { keys: ['e'],            action: 'Open / close the detail panel for the focused card' },
+      { keys: ['t'],            action: 'Focus the tags editor (auto-opens the detail panel)' },
+    ],
+  },
+  {
+    scope: 'Detail panel',
+    bindings: [
+      { keys: ['→'],            action: 'Next match (timeline →)' },
+      { keys: ['←'],            action: 'Previous match (timeline ←)' },
+      { keys: ['j'],            action: 'Next match (alternate)' },
+      { keys: ['k'],            action: 'Previous match (alternate)' },
+      { keys: ['↓'],            action: 'Scroll panel body down' },
+      { keys: ['↑'],            action: 'Scroll panel body up' },
+      { keys: ['PgDn', 'Space'], action: 'Scroll panel body one page down' },
+      { keys: ['PgUp'],         action: 'Scroll panel body one page up' },
+      { keys: ['Home'],         action: 'Jump to top of panel body' },
+      { keys: ['End'],          action: 'Jump to bottom of panel body' },
+      { keys: ['Esc'],          action: 'Close the detail panel' },
     ],
   },
   {

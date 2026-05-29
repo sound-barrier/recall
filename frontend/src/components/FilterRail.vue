@@ -75,6 +75,11 @@ const emit = defineEmits<{
   'update:filterFrom': [value: string]
   'update:filterTo': [value: string]
   'update:match-query': [value: string]
+  // Enter pressed inside the match-search input. App.vue uses this
+  // as the "submit and reveal" gesture — opens the detail panel on
+  // the current first hit. The value isn't carried because the
+  // parent already tracks `matchQuery` via `update:match-query`.
+  'submit-search': []
   'update:search': [field: string, value: string]
   'toggle-filter-panel': [field: string]
   'close-filter-panel': []
@@ -311,6 +316,7 @@ function onSearchEscape(e: KeyboardEvent) {
             autocomplete="off"
             @input="emit('update:match-query', ($event.target as HTMLInputElement).value)"
             @keydown.esc.prevent="onSearchEscape($event)"
+            @keydown.enter.prevent="emit('submit-search')"
           >
           <button
             v-if="matchQuery"

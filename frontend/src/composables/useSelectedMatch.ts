@@ -71,6 +71,17 @@ export function useSelectedMatch(filteredSorted: Readonly<Ref<MatchRecord[]>>) {
     if (next) selectedKey.value = next.match_key
   }
 
+  // Open whichever match sits at the top of the filtered list. Used
+  // by the search "auto-preview" flow — when the panel is open and
+  // the user is searching, the panel jumps to whatever match is
+  // currently the first hit so the highlighted content is visible
+  // without an extra click. Also driven by Enter in the search input
+  // (the "submit and reveal" gesture). No-op when the list is empty.
+  function openFirst() {
+    const first = filteredSorted.value[0]
+    if (first) selectedKey.value = first.match_key
+  }
+
   // Auto-close when the selected match leaves the filter result.
   // Triggered by: user typing a filter clause that excludes it, the
   // user hiding the match, a re-parse dropping the row. Without this
@@ -94,5 +105,6 @@ export function useSelectedMatch(filteredSorted: Readonly<Ref<MatchRecord[]>>) {
     close,
     openPrev,
     openNext,
+    openFirst,
   }
 }
