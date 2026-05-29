@@ -130,9 +130,9 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     // Walk the panel body and read each top-level child's selector
     // signature. We assert the ORDER of major sections:
     //   1. .detail-meta-strip  (date + final score)
-    //   2. .match-journal      (note / replay / squad / tags)
-    //   3. .leaver-chooser     (Leaver? scenario chips)
-    //   4. .stats              (Match Stats grid)
+    //   2. .leaver-chooser     (Leaver? scenario chips)
+    //   3. .stats              (Match Stats grid)
+    //   4. .match-journal      (note / replay / squad / tags)
     //   5. .rank-block         (rank — only when present)
     //   6. .heroes-played      (Heroes Played list)
     //   7. .sources-block      (Source Screenshots)
@@ -155,9 +155,9 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     })
     expect(order).toEqual([
       'detail-meta-strip',
-      'match-journal',
       'leaver-chooser',
       'stats',
+      'match-journal',
       'rank-block',
       'heroes-played',
       'sources-block',
