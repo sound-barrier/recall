@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, watch, nextTick, ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, toRef, onMounted, onBeforeUnmount } from 'vue'
 import type { MatchRecord, MatchAnnotationInput } from '../api'
 import type { SearchClause } from '../search-query'
 import { useOWData } from '../composables/useOWData'
+import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import MatchCardExpanded from './MatchCardExpanded.vue'
 
 // Detail panel — slides in from the right when a match is selected.
@@ -55,7 +56,6 @@ const ow = useOWData()
 const closeBtnRef = ref<HTMLButtonElement | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
 const bodyRef = ref<HTMLElement | null>(null)
-const lastFocusBeforeOpen = ref<HTMLElement | null>(null)
 
 // How far ↑ / ↓ scroll the panel body per press. Browser-default
 // line-by-line is too slow for a tall journal; 80px is roughly two
@@ -63,28 +63,26 @@ const lastFocusBeforeOpen = ref<HTMLElement | null>(null)
 // smoothly because Chromium re-fires keydown.
 const SCROLL_STEP_PX = 80
 
-// Focus management. Open → move focus to the close button so the
-// keyboard chain is predictable. Close → restore focus to whatever
-// element triggered the open (typically the card's <article>) so the
-// user lands where they started.
-watch(() => props.isOpen, async (isOpen) => {
-  if (isOpen) {
-    lastFocusBeforeOpen.value =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null
-    await nextTick()
-    closeBtnRef.value?.focus()
-  } else {
-    await nextTick()
-    lastFocusBeforeOpen.value?.focus()
-    lastFocusBeforeOpen.value = null
-  }
+// Modal focus management.
+//
+// The panel is treated as a true dialog: while open, Tab / Shift+Tab
+// cycle only through focusable descendants of `.detail-panel`, and
+// Escape closes via the emit('close') callback. The composable also
+// captures the triggering element on open and restores focus on
+// close, so the user lands back where they started (typically the
+// card's chev button).
+//
+// `containerSelector: '.detail-panel'` (not `.detail-backdrop`)
+// keeps the backdrop's click-to-close affordance reachable by mouse
+// while excluding it from the keyboard focus ring — there's nothing
+// to do on a backdrop with a keyboard.
+useModalFocusTrap(toRef(props, 'isOpen'), {
+  containerSelector: '.detail-panel',
+  onClose: () => emit('close'),
 })
 
 // Document-level keydown listener.
 //
-//   • Esc          → close (always)
 //   • ← / → / k j  → previous / next match (timeline metaphor: left
 //                    is earlier, right is later). j / k are kept as
 //                    vim-style alternates.
@@ -98,20 +96,15 @@ watch(() => props.isOpen, async (isOpen) => {
 //   • PageUp/Down  → also scroll panel body (one viewport height).
 //   • Home / End   → top / bottom of the panel body.
 //
+// Escape + Tab/Shift+Tab are handled by useModalFocusTrap — that
+// composable installs its own document listener so we don't have
+// to duplicate the trap logic here.
+//
 // All of the above are input-gated: when focus is in a textarea /
 // input / contenteditable, every key passes through to the native
 // editing behavior so the user can type literal arrows / j / k.
-// `match-search` is the one exception — it lives OUTSIDE the panel
-// but a user can `/` to focus it while the panel is open, and the
-// auto-tracking flow in App.vue handles "the panel follows what
-// you're typing" so we don't need to intercept anything here.
 function onKeydown(e: KeyboardEvent) {
   if (!props.isOpen) return
-  if (e.key === 'Escape') {
-    e.preventDefault()
-    emit('close')
-    return
-  }
   const target = document.activeElement as HTMLElement | null
   const tag = target?.tagName ?? ''
   const inEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
@@ -195,7 +188,7 @@ function onBackdropClick(e: MouseEvent) {
       ref="panelRef"
       class="detail-backdrop"
       role="dialog"
-      aria-modal="false"
+      aria-modal="true"
       aria-labelledby="detail-panel-title"
       @click="onBackdropClick"
     >

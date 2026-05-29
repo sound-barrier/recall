@@ -660,9 +660,12 @@ const cardState = {
 useKeyboardShortcuts([
   // Global: focus the FilterRail's match-search input. Input-gated:
   // only fires OUTSIDE inputs (so typing `/` in a search field
-  // doesn't recursively re-focus).
+  // doesn't recursively re-focus). Suppressed while the detail
+  // panel is open — the panel acts as a modal dialog and every
+  // keyboard action stays inside it.
   {
     key: '/',
+    when: () => !selection.isOpen.value,
     handler: () => {
       const el = document.getElementById('match-search')
       if (el instanceof HTMLInputElement) el.focus()
