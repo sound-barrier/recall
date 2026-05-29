@@ -86,6 +86,13 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     expect(afterWindowScroll).toBe(initialWindowScroll)
 
     // Panel body scrolled — pin via the inner scroll position.
+    // `scroll-behavior: smooth` makes each scrollBy() animate, so
+    // scrollTop ramps up over a couple of animation frames after
+    // each keypress. Poll until the cumulative scroll has landed.
+    await page.waitForFunction(() => {
+      const el = document.querySelector('.detail-body') as HTMLElement | null
+      return !!el && el.scrollTop > 0
+    }, { timeout: 2000 })
     const panelScroll = await page.evaluate(() => {
       const el = document.querySelector('.detail-body')
       return el ? (el as HTMLElement).scrollTop : -1
