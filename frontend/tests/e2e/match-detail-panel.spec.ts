@@ -472,12 +472,7 @@ test.describe('match detail panel — contract: auto-close + click-outside', () 
   // click-outside tests don't share the rank fixture with the keyboard
   // ergonomics describe block.
 
-  // Skipped: auto-close on hide depends on selection being bound to
-  // a filtered view (one that excludes hidden records). Phase 1 binds
-  // selection to the raw record list so clicked rows always resolve;
-  // Phase 2 will lift filter state into a shared composable and the
-  // selection source will track it again. Re-enable once that lands.
-  test.skip('hiding the open match auto-closes the panel', async ({ page }) => {
+  test('hiding the open match auto-closes the panel', async ({ page }) => {
     const KEY_ENCODED = encodeURIComponent('m1')
     let hidden = false
     function rec() {

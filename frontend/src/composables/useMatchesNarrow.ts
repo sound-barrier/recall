@@ -26,8 +26,47 @@ import type { LeaverHandling } from './useMatchesDossier'
 
 export type PresetRange = 'all' | '7d' | '30d' | '90d' | 'custom'
 
-export interface MatchesNarrowOptions {
-  records: Readonly<Ref<MatchRecord[]>>
+// Parent-owned state bundle. App.vue creates it once via
+// `createMatchesNarrowState()` and passes the same object to both
+// `useMatchesNarrow` (which derives narrowedRecords) and to
+// MatchesView (via the `narrow` prop). Sharing the refs is what
+// lets `selection` (in App.vue) track the same filtered set the
+// view shows — fixing the prev/next + auto-close-on-hide contract
+// that broke when each consumer owned its own copy.
+export interface MatchesNarrowState {
+  searchText:      Ref<string>
+  pickedMaps:      Ref<Set<string>>
+  pickedMapTypes:  Ref<Set<string>>
+  pickedHeroes:    Ref<Set<string>>
+  pickedRoles:     Ref<Set<string>>
+  pickedResults:   Ref<Set<string>>
+  pickedTags:      Ref<Set<string>>
+  pickedRange:     Ref<PresetRange>
+  customFrom:      Ref<string>
+  customTo:        Ref<string>
+  leaverHandling:  Ref<LeaverHandling>
+  minPlayMinutes:  Ref<number>
+  minPlayPercent:  Ref<number>
+  includeUnknown:  Ref<boolean>
+}
+
+export function createMatchesNarrowState(): MatchesNarrowState {
+  return {
+    searchText:     ref(''),
+    pickedMaps:     ref(new Set<string>()),
+    pickedMapTypes: ref(new Set<string>()),
+    pickedHeroes:   ref(new Set<string>()),
+    pickedRoles:    ref(new Set<string>()),
+    pickedResults:  ref(new Set<string>()),
+    pickedTags:     ref(new Set<string>()),
+    pickedRange:    ref<PresetRange>('all'),
+    customFrom:     ref(''),
+    customTo:       ref(''),
+    leaverHandling: ref<LeaverHandling>('include'),
+    minPlayMinutes: ref(0),
+    minPlayPercent: ref(0),
+    includeUnknown: ref(false),
+  }
 }
 
 function toggleSet(set: Set<string>, value: string): Set<string> {
@@ -60,24 +99,16 @@ function daysAgoISO(days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-export function useMatchesNarrow(opts: MatchesNarrowOptions) {
-  const { records } = opts
-
-  // ── Filter state ────────────────────────────────────────
-  const searchText      = ref('')
-  const pickedMaps      = ref(new Set<string>())
-  const pickedMapTypes  = ref(new Set<string>())
-  const pickedHeroes    = ref(new Set<string>())
-  const pickedRoles     = ref(new Set<string>())
-  const pickedResults   = ref(new Set<string>())
-  const pickedTags      = ref(new Set<string>())
-  const pickedRange     = ref<PresetRange>('all')
-  const customFrom      = ref('')
-  const customTo        = ref('')
-  const leaverHandling  = ref<LeaverHandling>('include')
-  const minPlayMinutes  = ref(0)
-  const minPlayPercent  = ref(0)
-  const includeUnknown  = ref(false)
+export function useMatchesNarrow(
+  records: Readonly<Ref<MatchRecord[]>>,
+  state: MatchesNarrowState,
+) {
+  const {
+    searchText, pickedMaps, pickedMapTypes, pickedHeroes,
+    pickedRoles, pickedResults, pickedTags,
+    pickedRange, customFrom, customTo,
+    leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
+  } = state
 
   // ── Pickers ─────────────────────────────────────────────
   const pickMap     = (v: string) => { pickedMaps.value     = toggleSet(pickedMaps.value,     v) }
@@ -161,9 +192,15 @@ export function useMatchesNarrow(opts: MatchesNarrowOptions) {
 
   // ── Filtering ──────────────────────────────────────────
   const narrowedRecords = computed(() => {
-    const base = includeUnknown.value
-      ? records.value
-      : records.value.filter((r) => !!r.data?.map)
+    // Soft-deleted (hidden) records drop out unconditionally. The
+    // new MatchesView doesn't surface a "show hidden" toggle —
+    // users unhide via the detail panel. Filtering here lets
+    // `selection` auto-close when the open match gets hidden,
+    // since narrowedRecords stops containing it.
+    let base = records.value.filter((r) => !r.hidden)
+    if (!includeUnknown.value) {
+      base = base.filter((r) => !!r.data?.map)
+    }
 
     const search = searchText.value.trim().toLowerCase()
 

@@ -4,7 +4,7 @@ import type { MatchRecord } from '../api'
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import { useMatchesGroup } from '../composables/useMatchesGroup'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
-import { useMatchesNarrow } from '../composables/useMatchesNarrow'
+import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import MatchTimelineHeader from './MatchTimelineHeader.vue'
 import FilterCombobox from './FilterCombobox.vue'
 
@@ -38,6 +38,12 @@ import FilterCombobox from './FilterCombobox.vue'
 
 const props = defineProps<{
   records: MatchRecord[]
+  // The narrow API bundle, constructed in App.vue so its selection
+  // composable can track the same narrowedRecords this view shows.
+  // Refs inside the object don't auto-unwrap (Vue 3 caveat), so we
+  // destructure into top-level setup vars below — templates then
+  // auto-unwrap them.
+  narrow: ReturnType<typeof useMatchesNarrow>
 }>()
 
 const emit = defineEmits<{
@@ -49,12 +55,13 @@ const emit = defineEmits<{
   'narrow-open': [open: boolean]
 }>()
 
-// ─── Narrow state via useMatchesNarrow composable ───────────
+// ─── Narrow state via the parent-supplied composable bundle ──
 //
-// Everything filter-related is in the composable. MatchesView owns
-// the view-side state (panel open, combobox open, view sort/group)
-// and lets the composable own the filter math.
-const records = computed(() => props.records)
+// All filter math lives in `useMatchesNarrow`, which App.vue
+// instantiates once with shared state so `selection` (the right-
+// side detail panel) can paginate against the same narrowedRecords
+// this view renders. Destructure into top-level setup vars so
+// templates auto-unwrap.
 const {
   searchText,
   pickedMaps, pickedMapTypes, pickedHeroes, pickedRoles, pickedResults, pickedTags,
@@ -65,7 +72,7 @@ const {
   activeClauseCount, anyNarrow,
   availableMaps, availableMapTypes, availableHeroes, availableRoles, availableResults, availableTags,
   narrowedRecords,
-} = useMatchesNarrow({ records })
+} = props.narrow
 
 // ─── View-side state owned by MatchesView ───────────────────
 const narrowOpen = ref(false)

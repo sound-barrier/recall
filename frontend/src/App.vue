@@ -57,6 +57,7 @@ import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useMatchFilters } from './composables/useMatchFilters'
 import { useSelectedMatch } from './composables/useSelectedMatch'
+import { useMatchesNarrow, createMatchesNarrowState } from './composables/useMatchesNarrow'
 import type { ParseProgressEvent } from './components/ParseProgressPanel.vue'
 import ParseStatusBar from './components/ParseStatusBar.vue'
 
@@ -470,12 +471,15 @@ async function onSetMatchHidden(matchKey: string, hidden: boolean) {
 // paginates through the filtered list. The composable auto-closes
 // when the selected match leaves the filtered set (filter change,
 // hide-toggle, re-parse drop).
-// MatchesView owns its own filter state and surfaces matches that
-// the global useMatchFilters may exclude, so selection.open(matchKey)
-// must resolve against the raw record list. Prev/next nav inside the
-// panel falls back to chronological order across the corpus — good
-// enough until we share filter state across views.
-const selection = useSelectedMatch(records)
+// MatchesView's filter state is owned here so the right-side
+// MatchDetailPanel (driven by `selection`) can paginate against the
+// same narrowedRecords the view shows. Refs inside `matchesNarrow`
+// don't auto-unwrap when passed as a prop bundle, but MatchesView
+// destructures them into top-level setup vars on receipt — same
+// CardStateApi convention as elsewhere in the app.
+const matchesNarrowState = createMatchesNarrowState()
+const matchesNarrow = useMatchesNarrow(records, matchesNarrowState)
+const selection = useSelectedMatch(matchesNarrow.narrowedRecords)
 
 // MatchesView's left-side "Narrow this set" panel mirrors
 // MatchDetailPanel's modal contract: while open, the background
@@ -1025,6 +1029,7 @@ useEventStream({
           v-if="view === 'matches'"
           :records="records"
           :loading="loading"
+          :narrow="matchesNarrow"
           @open-match="(k: string) => selection.open(k)"
           @narrow-open="onMatchesNarrowOpen"
         />
