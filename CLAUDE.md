@@ -499,9 +499,12 @@ case).
 | `stack-down.sh` | `podman-compose down`. Add `--machine` to also stop the VM. |
 | `prometheus-clear.sh` | Tears down stack, removes the `*_prometheus_data` volume (preserves Grafana state), restarts. |
 | `verify-stack.sh` | Layer-by-layer diagnostic: SQLite → /metrics → Podman container → Prometheus scrape state → TSDB sample count. Read-only. Run this first whenever Grafana shows no data. |
-| `db-list.sh` / `db-show.sh` / `db-delete.sh` / `db-export.sh` / `clear-db.sh` | SQLite CRUD helpers. `db-show` accepts id, match_key, or filename substring; `db-export` emits one rebuilt JSON object per row. |
+| `db-list.sh` / `db-show.sh` / `db-delete.sh` / `db-export.sh` / `clear-db.sh` / `db-stats.sh` / `db-where.sh` / `db-orphans.sh` / `db-reparse.sh` | SQLite CRUD + diagnostic helpers. `db-show` accepts id, match_key, or filename substring; `db-export` emits one rebuilt JSON object per row; `db-stats` aggregates row counts per table; `db-where` filters by SQL fragment; `db-orphans` finds child rows whose parent vanished; `db-reparse` queues a re-parse for a filename. |
 | `_lib.sh` | Shared `docker_config_aside()` helper used by stack-up and prometheus-clear to work around the gcloud cred-helper trap (see Troubleshooting in README). |
 | `check-deps.sh` | Compares pinned tool versions (Wails CLI, hadolint, lefthook, trivy) in `postCreate.sh` against latest GitHub releases. Called by `make check-deps`. |
+| `check-action-pins.sh` | Validates that every `uses:` in `.github/workflows/*.yml` is SHA-pinned with a `# vX.Y.Z` trailing comment. Called by `make lint-actions` + the `pre-push.actionlint` lefthook hook + CI. |
+| `deadcode-check.sh` | Runs `deadcode` against the `serveronly` build tag, filters via `scripts/deadcode-allow.txt`, fails on non-empty residual. Called by `make dead-code-go`, the pre-push hook, and CI. |
+| `render-pr-report.py` | Renders the markdown PR report from CI artifacts (unit-test JUnit + coverage XML) — used by the `pr-report` workflow job. |
 
 ## CI/CD (`.github/workflows/`)
 
