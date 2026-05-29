@@ -333,6 +333,90 @@ function onTagKeydown(e: KeyboardEvent) {
       </div>
     </div>
 
+    <!-- Leaver annotation chooser. Three scenario buttons + a
+         Clear option. Active button gets the accent ring; the
+         others are tactical-grey ghosts. Wired bottom-up: this
+         component emits set-leaver-annotation, App.vue persists
+         via SetMatchAnnotation with the other annotation fields
+         preserved. Sits above the journal so the read-only "what
+         happened" fields (Stats below) flow before the writable
+         "what did I think about it" fields (Journal). -->
+    <div class="leaver-chooser" role="group" aria-label="Leaver annotation">
+      <span class="leaver-chooser-label" aria-hidden="true">Leaver?</span>
+      <button
+        type="button"
+        class="leaver-chip"
+        :class="{ active: record.annotation?.leaver === 'self' }"
+        :aria-pressed="record.annotation?.leaver === 'self'"
+        title="Tag this match as: I left the game (data is incomplete)."
+        @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'self' ? '' : 'self')"
+      >
+        <span class="leaver-chip-glyph leaver-self" aria-hidden="true">⊘</span>
+        I left
+      </button>
+      <button
+        type="button"
+        class="leaver-chip"
+        :class="{ active: record.annotation?.leaver === 'team' }"
+        :aria-pressed="record.annotation?.leaver === 'team'"
+        title="Tag this match as: an ally left."
+        @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'team' ? '' : 'team')"
+      >
+        <span class="leaver-chip-glyph leaver-team" aria-hidden="true">↙</span>
+        Ally left
+      </button>
+      <button
+        type="button"
+        class="leaver-chip"
+        :class="{ active: record.annotation?.leaver === 'enemy' }"
+        :aria-pressed="record.annotation?.leaver === 'enemy'"
+        title="Tag this match as: an enemy left."
+        @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'enemy' ? '' : 'enemy')"
+      >
+        <span class="leaver-chip-glyph leaver-enemy" aria-hidden="true">↗</span>
+        Enemy left
+      </button>
+      <button
+        v-if="record.annotation?.leaver"
+        type="button"
+        class="leaver-chip leaver-clear"
+        title="Remove the leaver annotation."
+        @click="emit('set-leaver-annotation', record.match_key, '')"
+      >
+        × Clear
+      </button>
+    </div>
+
+    <section class="match-stats-block" aria-labelledby="match-stats-eyebrow">
+      <div id="match-stats-eyebrow" class="block-eyebrow">Match Stats</div>
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-value">{{ record.data?.eliminations ?? '—' }}</span>
+          <span class="stat-label">Elims</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ record.data?.assists ?? '—' }}</span>
+          <span class="stat-label">Assists</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ record.data?.deaths ?? '—' }}</span>
+          <span class="stat-label">Deaths</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ record.data?.damage != null ? record.data.damage.toLocaleString() : '—' }}</span>
+          <span class="stat-label">Damage</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ record.data?.healing != null ? record.data.healing.toLocaleString() : '—' }}</span>
+          <span class="stat-label">Healing</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ record.data?.mitigation != null ? record.data.mitigation.toLocaleString() : '—' }}</span>
+          <span class="stat-label">Mitigation</span>
+        </div>
+      </div>
+    </section>
+
     <!-- MATCH JOURNAL — the user's notes about the match. Four cells
          in a hierarchy: Note (primary, full-width), Replay code +
          Squad (secondary, two-column row), Tags (full-width pill
@@ -501,88 +585,6 @@ function onTagKeydown(e: KeyboardEvent) {
               @blur="addCustomTag"
             >
           </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Leaver annotation chooser. Three scenario buttons + a
-         Clear option. Active button gets the accent ring; the
-         others are tactical-grey ghosts. Wired bottom-up: this
-         component emits set-leaver-annotation, App.vue persists
-         via SetMatchAnnotation with the other annotation fields
-         preserved. -->
-    <div class="leaver-chooser" role="group" aria-label="Leaver annotation">
-      <span class="leaver-chooser-label" aria-hidden="true">Leaver?</span>
-      <button
-        type="button"
-        class="leaver-chip"
-        :class="{ active: record.annotation?.leaver === 'self' }"
-        :aria-pressed="record.annotation?.leaver === 'self'"
-        title="Tag this match as: I left the game (data is incomplete)."
-        @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'self' ? '' : 'self')"
-      >
-        <span class="leaver-chip-glyph leaver-self" aria-hidden="true">⊘</span>
-        I left
-      </button>
-      <button
-        type="button"
-        class="leaver-chip"
-        :class="{ active: record.annotation?.leaver === 'team' }"
-        :aria-pressed="record.annotation?.leaver === 'team'"
-        title="Tag this match as: an ally left."
-        @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'team' ? '' : 'team')"
-      >
-        <span class="leaver-chip-glyph leaver-team" aria-hidden="true">↙</span>
-        Ally left
-      </button>
-      <button
-        type="button"
-        class="leaver-chip"
-        :class="{ active: record.annotation?.leaver === 'enemy' }"
-        :aria-pressed="record.annotation?.leaver === 'enemy'"
-        title="Tag this match as: an enemy left."
-        @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'enemy' ? '' : 'enemy')"
-      >
-        <span class="leaver-chip-glyph leaver-enemy" aria-hidden="true">↗</span>
-        Enemy left
-      </button>
-      <button
-        v-if="record.annotation?.leaver"
-        type="button"
-        class="leaver-chip leaver-clear"
-        title="Remove the leaver annotation."
-        @click="emit('set-leaver-annotation', record.match_key, '')"
-      >
-        × Clear
-      </button>
-    </div>
-
-    <section class="match-stats-block" aria-labelledby="match-stats-eyebrow">
-      <div id="match-stats-eyebrow" class="block-eyebrow">Match Stats</div>
-      <div class="stats">
-        <div class="stat">
-          <span class="stat-value">{{ record.data?.eliminations ?? '—' }}</span>
-          <span class="stat-label">Elims</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value">{{ record.data?.assists ?? '—' }}</span>
-          <span class="stat-label">Assists</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value">{{ record.data?.deaths ?? '—' }}</span>
-          <span class="stat-label">Deaths</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value">{{ record.data?.damage != null ? record.data.damage.toLocaleString() : '—' }}</span>
-          <span class="stat-label">Damage</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value">{{ record.data?.healing != null ? record.data.healing.toLocaleString() : '—' }}</span>
-          <span class="stat-label">Healing</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value">{{ record.data?.mitigation != null ? record.data.mitigation.toLocaleString() : '—' }}</span>
-          <span class="stat-label">Mitigation</span>
         </div>
       </div>
     </section>
