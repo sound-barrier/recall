@@ -18,10 +18,18 @@ import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
-// Mirror App.vue's modal pattern. The `open` prop is the
-// canonical visibility ref; useModalFocusTrap reads it directly.
+// `open` arrives as a prop owned by App.vue. useModalFocusTrap can
+// observe the state via a derived ref, but Esc inside the trap MUST
+// route through the parent's `@close` handler — directly mutating
+// `toRef(props, 'open').value` only updates the local prop binding
+// and leaves App.vue's `openCheatsheet` ref stuck `true`, which
+// would block the next `?` press from reopening the modal (a real
+// regression caught in keyboard-shortcuts.spec.ts).
 const openRef = toRef(props, 'open')
-useModalFocusTrap(openRef, { containerSelector: '.kbd-modal-box' })
+useModalFocusTrap(openRef, {
+  containerSelector: '.kbd-modal-box',
+  onClose: () => emit('close'),
+})
 
 function onOverlayClick() {
   emit('close')
