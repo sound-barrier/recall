@@ -14,7 +14,7 @@ import type { MatchRecord } from '../api'
 // path App.vue does, but without dragging in the rest of the SFC's
 // onMounted side effects.
 
-function makeCardState(records: MatchRecord[]): { api: CardStateApi; expanded: Ref<Record<string, boolean>> } {
+function makeCardState(_records: MatchRecord[]): { api: CardStateApi; expanded: Ref<Record<string, boolean>> } {
   const expanded = ref<Record<string, boolean>>({})
   const previewOpen = ref<Record<string, boolean>>({})
   const previewError = ref<Record<string, boolean>>({})

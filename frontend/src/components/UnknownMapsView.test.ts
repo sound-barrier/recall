@@ -9,7 +9,7 @@ import type { MatchRecord } from '../api'
 // Shared with MatchesView: per-card state owned by the parent so both
 // views can share expand / preview behavior. The fake here just
 // records calls so we can assert the view bubbles them upward.
-function makeCardState(records: MatchRecord[]) {
+function makeCardState(_records: MatchRecord[]) {
   const expanded = ref<Record<string, boolean>>({})
   const previewOpen = ref<Record<string, boolean>>({})
   const previewError = ref<Record<string, boolean>>({})
