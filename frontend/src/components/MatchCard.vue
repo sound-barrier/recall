@@ -6,17 +6,16 @@ import MatchCardHeader from './MatchCardHeader.vue'
 // expanded annotation / stats / sources blocks are no longer rendered
 // inline; clicking the row (or the chev affordance, or pressing `e`
 // on the focused card) opens MatchDetailPanel.vue at the page root.
-// The `isExpanded` prop is now read as "is this the currently-
-// selected row" and drives the accent treatment on the card so the
-// user always knows which match the open panel is anchored to.
+// `isSelected` drives the .selected class on the card so the user
+// always knows which match the open panel is anchored to.
 
 defineProps<{
   record: MatchRecord
   index: number
   // True for the row that drives the open MatchDetailPanel. Adds the
-  // .expanded class for the accent border + surface gradient so the
+  // .selected class for the accent border + surface gradient so the
   // anchor is visible behind the panel.
-  isExpanded: boolean
+  isSelected: boolean
   isActive: (field: string, value: string) => boolean
   // 'compact' tightens card padding + map font and inlines a small
   // E/A/D + damage strip in the tag-row so high-volume players see
@@ -50,7 +49,7 @@ const emit = defineEmits<{
   <article
     class="match"
     :class="[
-      { expanded: isExpanded, compact: densityMode === 'compact', hidden: record.hidden, focused: isFocused },
+      { selected: isSelected, compact: densityMode === 'compact', hidden: record.hidden, focused: isFocused },
       `result-${record.data?.result || 'unknown'}`,
     ]"
     :tabindex="isFocused ? 0 : -1"
@@ -63,7 +62,7 @@ const emit = defineEmits<{
       <MatchCardHeader
         :record="record"
         :index="index"
-        :is-expanded="isExpanded"
+        :is-selected="isSelected"
         :is-active="isActive"
         :density-mode="densityMode"
         @toggle-expand="emit('toggle-expand')"
@@ -107,7 +106,7 @@ const emit = defineEmits<{
   border-color: var(--accent);
 }
 
-.match.expanded {
+.match.selected {
   border-color: var(--border-strong);
   background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
 }
@@ -133,7 +132,7 @@ const emit = defineEmits<{
   background: var(--draw-line);
   box-shadow: 0 0 12px -2px var(--draw-line);
 }
-.match.expanded .match-bar { width: 5px; }
+.match.selected .match-bar { width: 5px; }
 
 .match-body {
   flex: 1 1 auto;
@@ -147,7 +146,7 @@ const emit = defineEmits<{
    chrome only.
 
    Light-mode pinpoint overrides for `.hero-name`, `.length-mark`,
-   `.match.expanded` background, `.sources` background, and the
+   `.match.selected` background, `.sources` background, and the
    `.source-type-summary` chip migrated to app.css as proper global
    rules — Vue scoped CSS miscompiles the `:global([data-theme="light"]) .x`
    form (see CLAUDE.md). */
@@ -173,7 +172,7 @@ const emit = defineEmits<{
   opacity: 1;
 }
 
-.match.hidden.expanded {
+.match.hidden.selected {
   opacity: 0.85;
   filter: none;
 }

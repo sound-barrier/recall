@@ -22,7 +22,7 @@ const props = defineProps<{
   // state stores around. Same shape App.vue exposes to MatchCard for
   // per-card expanded / sources / preview / filter state.
   isGroupExpanded: (key: string) => boolean
-  isExpanded:      (id: string) => boolean
+  isSelected:      (id: string) => boolean
   isSourcesOpen:   (id: string) => boolean
   previewOpen:     Record<string, boolean>
   previewError:    Record<string, boolean>
@@ -143,7 +143,7 @@ function cardDelayMs(localIdx: number): number {
             :style="{ animationDelay: cardDelayMs(idx) + 'ms' }"
             :record="rec"
             :index="(cardOffset ?? 0) + idx"
-            :is-expanded="isExpanded(rec.match_key)"
+            :is-selected="isSelected(rec.match_key)"
             :is-active="isActive"
             :density-mode="densityMode"
             :is-focused="((cardOffset ?? 0) + idx) === (focusedCardIndex ?? -1)"
@@ -159,7 +159,7 @@ function cardDelayMs(localIdx: number): number {
             :key="child.key"
             :group="child"
             :is-group-expanded="isGroupExpanded"
-            :is-expanded="isExpanded"
+            :is-selected="isSelected"
             :is-sources-open="isSourcesOpen"
             :preview-open="previewOpen"
             :preview-error="previewError"

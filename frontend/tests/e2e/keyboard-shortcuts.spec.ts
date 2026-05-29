@@ -201,7 +201,7 @@ test.describe('keyboard shortcuts — Matches view per-card', () => {
     await expect(page.locator('article.match[data-card-index="0"]')).toHaveAttribute('aria-current', 'true')
   })
 
-  test('e expands the focused card; e again collapses', async ({ page }) => {
+  test('e opens the detail panel for the focused card; e again closes it', async ({ page }) => {
     await seed(page)
     await page.goto('/')
     await page.locator('#tab-matches').click()
@@ -209,13 +209,19 @@ test.describe('keyboard shortcuts — Matches view per-card', () => {
 
     await page.keyboard.press('j')
     const card = page.locator('article.match[data-card-index="0"]')
-    await expect(card).not.toHaveClass(/expanded/)
+    // `.selected` is the row-highlight that signals "the open panel
+    // is anchored to this match" — what `.expanded` used to mean
+    // back when the body rendered inline.
+    await expect(card).not.toHaveClass(/selected/)
+    await expect(page.locator('aside.detail-panel')).toHaveCount(0)
 
     await page.keyboard.press('e')
-    await expect(card).toHaveClass(/expanded/)
+    await expect(card).toHaveClass(/selected/)
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
 
     await page.keyboard.press('e')
-    await expect(card).not.toHaveClass(/expanded/)
+    await expect(card).not.toHaveClass(/selected/)
+    await expect(page.locator('aside.detail-panel')).toHaveCount(0)
   })
 })
 
