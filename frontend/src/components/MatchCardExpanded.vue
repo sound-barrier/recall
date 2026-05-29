@@ -9,6 +9,7 @@ import {
   sshotTypeLabel,
   sourceType,
   formatParsedAt,
+  fmtTime,
   highlightSubstrings,
 } from '../match-helpers'
 import { highlightTermsFor, type SearchClause } from '../search-query'
@@ -309,56 +310,27 @@ function onTagKeydown(e: KeyboardEvent) {
 
 <template>
   <div class="match-expanded">
-    <!-- Leaver annotation chooser. Three scenario buttons + a
-         Clear option. Active button gets the accent ring; the
-         others are tactical-grey ghosts. Wired bottom-up: this
-         component emits set-leaver-annotation, App.vue persists
-         via SetMatchAnnotation with the other annotation fields
-         preserved. -->
-    <div class="leaver-chooser" role="group" aria-label="Leaver annotation">
-      <span class="leaver-chooser-label" aria-hidden="true">Leaver?</span>
-      <button
-        type="button"
-        class="leaver-chip"
-        :class="{ active: record.annotation?.leaver === 'self' }"
-        :aria-pressed="record.annotation?.leaver === 'self'"
-        title="Tag this match as: I left the game (data is incomplete)."
-        @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'self' ? '' : 'self')"
-      >
-        <span class="leaver-chip-glyph leaver-self" aria-hidden="true">⊘</span>
-        I left
-      </button>
-      <button
-        type="button"
-        class="leaver-chip"
-        :class="{ active: record.annotation?.leaver === 'team' }"
-        :aria-pressed="record.annotation?.leaver === 'team'"
-        title="Tag this match as: an ally left."
-        @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'team' ? '' : 'team')"
-      >
-        <span class="leaver-chip-glyph leaver-team" aria-hidden="true">↙</span>
-        Ally left
-      </button>
-      <button
-        type="button"
-        class="leaver-chip"
-        :class="{ active: record.annotation?.leaver === 'enemy' }"
-        :aria-pressed="record.annotation?.leaver === 'enemy'"
-        title="Tag this match as: an enemy left."
-        @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'enemy' ? '' : 'enemy')"
-      >
-        <span class="leaver-chip-glyph leaver-enemy" aria-hidden="true">↗</span>
-        Enemy left
-      </button>
-      <button
-        v-if="record.annotation?.leaver"
-        type="button"
-        class="leaver-chip leaver-clear"
-        title="Remove the leaver annotation."
-        @click="emit('set-leaver-annotation', record.match_key, '')"
-      >
-        × Clear
-      </button>
+    <!-- Top meta strip: when the match was played + final score +
+         when the screenshot was parsed. Lives at the top of the
+         panel body so the user reads "what / when / how it ended"
+         before scrolling into the journal. Three small lockups in
+         one row; collapses to a stack on narrow widths. -->
+    <div
+      v-if="fmtTime(record) || record.data?.final_score || record.parsed_at"
+      class="detail-meta-strip"
+    >
+      <div v-if="fmtTime(record)" class="meta-cell meta-cell-when">
+        <span class="meta-eyebrow">When</span>
+        <span class="meta-value">{{ fmtTime(record) }}</span>
+      </div>
+      <div v-if="record.data?.final_score" class="meta-cell meta-cell-score">
+        <span class="meta-eyebrow">Final Score</span>
+        <span class="meta-value">{{ record.data.final_score }}</span>
+      </div>
+      <div v-if="record.parsed_at" class="meta-cell meta-cell-parsed">
+        <span class="meta-eyebrow">Parsed</span>
+        <span class="meta-value mono-value" :title="record.parsed_at">{{ formatParsedAt(record.parsed_at) }}</span>
+      </div>
     </div>
 
     <!-- MATCH JOURNAL — the user's notes about the match. Four cells
@@ -533,46 +505,98 @@ function onTagKeydown(e: KeyboardEvent) {
       </div>
     </section>
 
-    <div v-if="record.data?.final_score" class="meta-row">
-      <span class="meta-eyebrow">Final Score</span>
-      <span class="meta-value">{{ record.data.final_score }}</span>
+    <!-- Leaver annotation chooser. Three scenario buttons + a
+         Clear option. Active button gets the accent ring; the
+         others are tactical-grey ghosts. Wired bottom-up: this
+         component emits set-leaver-annotation, App.vue persists
+         via SetMatchAnnotation with the other annotation fields
+         preserved. -->
+    <div class="leaver-chooser" role="group" aria-label="Leaver annotation">
+      <span class="leaver-chooser-label" aria-hidden="true">Leaver?</span>
+      <button
+        type="button"
+        class="leaver-chip"
+        :class="{ active: record.annotation?.leaver === 'self' }"
+        :aria-pressed="record.annotation?.leaver === 'self'"
+        title="Tag this match as: I left the game (data is incomplete)."
+        @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'self' ? '' : 'self')"
+      >
+        <span class="leaver-chip-glyph leaver-self" aria-hidden="true">⊘</span>
+        I left
+      </button>
+      <button
+        type="button"
+        class="leaver-chip"
+        :class="{ active: record.annotation?.leaver === 'team' }"
+        :aria-pressed="record.annotation?.leaver === 'team'"
+        title="Tag this match as: an ally left."
+        @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'team' ? '' : 'team')"
+      >
+        <span class="leaver-chip-glyph leaver-team" aria-hidden="true">↙</span>
+        Ally left
+      </button>
+      <button
+        type="button"
+        class="leaver-chip"
+        :class="{ active: record.annotation?.leaver === 'enemy' }"
+        :aria-pressed="record.annotation?.leaver === 'enemy'"
+        title="Tag this match as: an enemy left."
+        @click="emit('set-leaver-annotation', record.match_key, record.annotation?.leaver === 'enemy' ? '' : 'enemy')"
+      >
+        <span class="leaver-chip-glyph leaver-enemy" aria-hidden="true">↗</span>
+        Enemy left
+      </button>
+      <button
+        v-if="record.annotation?.leaver"
+        type="button"
+        class="leaver-chip leaver-clear"
+        title="Remove the leaver annotation."
+        @click="emit('set-leaver-annotation', record.match_key, '')"
+      >
+        × Clear
+      </button>
     </div>
 
-    <div v-if="record.parsed_at" class="meta-row meta-row-parsed">
-      <span class="meta-eyebrow">Parsed</span>
-      <span class="meta-value" :title="record.parsed_at">{{ formatParsedAt(record.parsed_at) }}</span>
-    </div>
+    <section class="match-stats-block" aria-labelledby="match-stats-eyebrow">
+      <div id="match-stats-eyebrow" class="block-eyebrow">Match Stats</div>
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-value">{{ record.data?.eliminations ?? '—' }}</span>
+          <span class="stat-label">Elims</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ record.data?.assists ?? '—' }}</span>
+          <span class="stat-label">Assists</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ record.data?.deaths ?? '—' }}</span>
+          <span class="stat-label">Deaths</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ record.data?.damage != null ? record.data.damage.toLocaleString() : '—' }}</span>
+          <span class="stat-label">Damage</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ record.data?.healing != null ? record.data.healing.toLocaleString() : '—' }}</span>
+          <span class="stat-label">Healing</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ record.data?.mitigation != null ? record.data.mitigation.toLocaleString() : '—' }}</span>
+          <span class="stat-label">Mitigation</span>
+        </div>
+      </div>
+    </section>
 
-    <div class="stats">
-      <div class="stat">
-        <span class="stat-value">{{ record.data?.eliminations ?? '—' }}</span>
-        <span class="stat-label">Elims</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value">{{ record.data?.assists ?? '—' }}</span>
-        <span class="stat-label">Assists</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value">{{ record.data?.deaths ?? '—' }}</span>
-        <span class="stat-label">Deaths</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value">{{ record.data?.damage != null ? record.data.damage.toLocaleString() : '—' }}</span>
-        <span class="stat-label">Damage</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value">{{ record.data?.healing != null ? record.data.healing.toLocaleString() : '—' }}</span>
-        <span class="stat-label">Healing</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value">{{ record.data?.mitigation != null ? record.data.mitigation.toLocaleString() : '—' }}</span>
-        <span class="stat-label">Mitigation</span>
-      </div>
-    </div>
-
-    <div v-if="record.data?.rank" class="rank-block">
-      <div class="block-eyebrow">
-        Rank
+    <!-- Rank update section. Only renders for matches that included
+         a rank-screen screenshot (most don't — placements, promos,
+         demos), so we lean into "rare" framing: distinct border,
+         accent-glow background, a chevron eyebrow with a CHANGE
+         tag so the user immediately reads it as a milestone, not
+         another stat row. -->
+    <div v-if="record.data?.rank" class="rank-block rare">
+      <div class="block-eyebrow rank-eyebrow">
+        <span class="rare-pip" aria-hidden="true">◆</span>
+        Rank Update
       </div>
       <div class="rank-line">
         <span class="rank-tier" :class="record.data.rank">{{ record.data.rank }} {{ record.data.level }}</span>
@@ -787,6 +811,42 @@ function onTagKeydown(e: KeyboardEvent) {
   gap: 1.1rem;
 }
 
+/* Detail-panel top meta strip: When / Final Score / Parsed in
+   one horizontal row. On the inline-expand view this lives at the
+   top of the body so the user reads the temporal frame before
+   diving into the journal. Auto-wraps to a stack on narrow widths
+   (the panel itself goes full-width below 720px so this should
+   only kick in on really cramped screens). */
+.detail-meta-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.6rem;
+  align-items: baseline;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.meta-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.meta-cell-score .meta-value {
+  font-size: 1.45rem;
+  color: var(--accent-bright, var(--accent));
+  letter-spacing: 0.05em;
+}
+
+.meta-cell-parsed .meta-value {
+  font-size: 0.85rem;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
 .meta-row {
   display: flex;
   align-items: baseline;
@@ -808,6 +868,11 @@ function onTagKeydown(e: KeyboardEvent) {
   color: var(--text);
   letter-spacing: 0.02em;
   text-transform: uppercase;
+}
+
+.mono-value {
+  font-family: var(--mono);
+  font-feature-settings: "tnum";
 }
 
 /* Match-level "Parsed" meta row: same shape as the existing Final
@@ -861,7 +926,70 @@ function onTagKeydown(e: KeyboardEvent) {
   }
 }
 
+/* ─── Match Stats wrapper ────────────────────────────────── */
+
+/* .stats itself (the 6-column grid) is styled in app.css since it
+   ships in both the inline-expand legacy view and this expanded
+   view. The wrapper adds the "Match Stats" eyebrow above the grid
+   so the section reads as a labeled card, matching Heroes Played
+   / Rank Update / etc. */
+.match-stats-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.match-stats-block .block-eyebrow {
+  margin-bottom: 0;
+}
+
 /* ─── Rank block ─────────────────────────────────────────── */
+
+/* Rare-section framing. Rank updates are uncommon (placements,
+   promotions, demotions), so when one is present we want it to
+   read as a milestone — colored border, accent-tinted background
+   gradient, a diamond pip on the eyebrow. The base .rank-block
+   without `.rare` (legacy inline-expand callers, if any) keeps
+   the flat look. */
+.rank-block.rare {
+  position: relative;
+  padding: 0.85rem 1rem 0.9rem;
+  border-radius: 4px;
+  border: 1px solid var(--accent-soft);
+  background:
+    linear-gradient(135deg, rgb(245 166 35 / 7%) 0%, rgb(245 166 35 / 0%) 60%),
+    var(--surface-2);
+  box-shadow: 0 0 0 1px rgb(245 166 35 / 8%);
+}
+
+/* A thin accent strip along the left edge of the rare rank block —
+   echoes the result-tinted strip on the panel itself and reads as
+   a "this is highlighted" affordance without screaming. */
+.rank-block.rare::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 10%;
+  width: 3px; height: 80%;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+  opacity: 0.85;
+}
+
+.rank-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--accent-bright, var(--accent));
+  letter-spacing: 0.24em;
+}
+
+.rare-pip {
+  display: inline-block;
+  color: var(--accent);
+  font-size: 0.7rem;
+  transform: translateY(-0.05em);
+  text-shadow: 0 0 8px var(--accent-glow);
+}
 
 .rank-line {
   display: flex;
