@@ -29,16 +29,21 @@ Existing composables fall into three groups. **Persisted-preference
 family** (`ref(default)` + `setX(next)` that writes localStorage +
 `onMounted` reader; add new prefs by copying one; `mountApp`'s
 `MountOverrides` seeds the matching localStorage key for SFC tests):
-`useTheme`, `useWeekStart`, `useIncludeUndated`, `useDensityMode`,
+`useTheme`, `useWeekStart`, `useIncludeUndated`, `useIncludeUnknown`,
 `useLeaverHandling`, `useMinPlayThreshold`, `useShowHidden`. **Pure
-stateful**: `useFilterPanel` (popover open/close, ESC + outside-click),
-`useMatchFilters` (7 filter refs + includeUndated + leaverHandling +
-showHidden + date range + sort + filtered/sorted computeds — most
-complex, highest test ROI), `useMatchGrouping` (Month→Week→Day tree
-plus expand state). **Session-scoped fetch**: `useOWData`
-(module-singleton fetching `/api/v1/system/reference-data` once per session for
-canonical hero/map display names). `ls frontend/src/composables/*.ts`
-is the source of truth — don't maintain a literal list here, but the
+stateful**: `useMatchFilters` (legacy filter refs that drive the
+masthead tally + saved-view scaffolding — kept while the new
+MatchesView owns its own narrow), `useMatchesNarrow` (the new
+Matches-view filter state: search, picked maps/heroes/roles/results/
+tags/map-types, preset + custom date range, leaver handling, dual
+min-play thresholds, includeUnknown — + `narrowedRecords` /
+`anyNarrow` / `activeClauseCount` computeds), `useMatchesGroup`
+(sort + Y/M/W/D bucketing for the leaves list), `useMatchesDossier`
+(W-L-D + winrate + top-N maps/heroes KPIs). **Session-scoped
+fetch**: `useOWData` (module-singleton fetching
+`/api/v1/system/reference-data` once per session for canonical
+hero/map display names). `ls frontend/src/composables/*.ts` is the
+source of truth — don't maintain a literal list here, but the
 grouping above shows the patterns to mirror when adding a new one.
 
 The entire frontend is TypeScript (`allowJs: false`); ESLint uses
@@ -55,7 +60,7 @@ Component-specific styles live in each leaf SFC's own `<style scoped>`
 block (Vue rewrites every selector with a `[data-v-<hash>]` attribute
 so the rule only matches that component's template).
 
-Cross-cutting styles in `frontend/src/styles/app.css` (~1850 lines): custom properties, font-faces, theme overrides, `.btn` / `.badge` / `.chev` / `.length` / `.clickable` families, shared empty-state selectors, `.section-*` / `.setting-*` / `.settings-*` (across Settings/Ingest/Unknown), `.slot-chip` / `.slot-dot` (MatchCard + UnknownMapsView), `.source-name` / `.source-file` / `.source-preview` family.
+Cross-cutting styles in `frontend/src/styles/app.css` (~1850 lines): custom properties, font-faces, theme overrides, `.btn` / `.badge` / `.chev` / `.length` / `.clickable` families, shared empty-state selectors, `.section-*` / `.setting-*` / `.settings-*` (across Settings/Ingest/Unknown), `.slot-chip` / `.slot-dot` (UnknownMapsView), `.source-name` / `.source-file` / `.source-preview` family.
 
 When migrating a rule to scoped, check all eight component templates first — if more than one references it, keep it in `app.css`. Theme overrides DO NOT belong in scoped (Vue miscompiles `:global([data-theme="light"]) .x`; see root CLAUDE.md). Put theme-conditional rules in `app.css` under a parent id (`[data-theme="light"] #panel-settings .x`). `@keyframes` in scoped blocks get their NAME hashed, so animations used by multiple components must live in `app.css` (`pulse-dot` is canonical — used by ParseProgressPanel + IngestView).
 
@@ -66,9 +71,9 @@ When migrating a rule to scoped, check all eight component templates first — i
 State concerns owned by App.vue and passed down via props/emits:
 
 - **Nav** — 4 tabs in workflow order: Settings (01), Parse (02) (internal id still `'ingest'`; `IngestView.vue` only the label changed), Matches (03) default landing, Unknown (04) triage. Settings owns all config (Folders/Engine/Appearance/Calendar/Backup & Restore + collapsible Advanced). Parse is just the operational loop (Watch + Manual Parse + progress panel) — don't add config rows there. Parse heading state-machine deep-links to Settings → Engine/Folders on missing-Tesseract / unset-folder.
-- **Filters**: multi-select popovers (mode/map/type/role/hero/result) + date range + sort. Each field is `ref([])` (empty = no filter; entries = OR). `filterRefs` maps field → ref so `toggleFilter()` and badge clicks share one handler. `openFilter` tracks the open popover; outside-click + ESC close.
-- **Hero filter** matches `data.hero` OR any `data.heroes_played[]` entry — Juno+Kiriko surfaces matches where either was played.
-- **Date filter** only matches rows with explicit `date + finished_at` (no `match_key` fallback) — undated rows excluded from date-windowed views.
+- **Matches view layout** — `MatchesView.vue` is a *set workspace*: dossier (active-clause chips + W/L/D + top maps/heroes via `useMatchesDossier`) at top, Campaign Log (heatmap + brushable sparkline via `MatchTimelineHeader`) in the middle, compact `.leaf-row` list below with sort + Y/M/W/D grouping via `useMatchesGroup`. The left-side *"Narrow this set"* panel mirrors `MatchDetailPanel`'s modal contract (focus trap, Esc, backdrop, `inert` + `aria-hidden` on the background container while open) and consolidates every filter dimension into one place — search, date range (preset + custom), map/map-type/hero/role/result/tags, leaver handling, dual min-play thresholds, include-unknown toggle. State lives in `useMatchesNarrow`; the Map + Hero pickers reuse the `FilterCombobox` component (typeahead + selected-pill row + dropdown listbox with role="option" + aria-selected). Hero filter is **broad match** against the primary `data.hero` AND every `data.heroes_played[]` entry.
+- **Date filter** only matches rows with explicit `data.date` — undated rows excluded from date-windowed views.
+- **Unknown-map records hidden by default** in the Matches dossier; the narrow panel exposes a toggle to surface them for one-off investigations. The Unknown tab always shows them.
 - **Tesseract gate**: `tesseractReady` computed drives a System Alert banner + disables Parse/Watch when OCR engine missing.
 - **Unknown Maps view**: records with no `data.map` surface via `unknownRecords` computed.
 - **Per-card expand/preview state** in plain objects, reassigned on toggle for reactivity. `screenshotURL(filename)` → `/_screenshot/<encoded>` served by `ScreenshotHandler()`.
@@ -113,9 +118,9 @@ SFC-level tests use `@vue/test-utils`'s `mount()` via `mountApp(overrides?)` in 
 
 - **`loading="lazy"` breaks `v-if`-inserted images.** Browsers assign zero viewport presence to `<img>` added by `v-if`, so IntersectionObserver never fetches. Images appearing on user action must omit `loading="lazy"` (or use `eager`).
 
-- **Use `:where()` for UA-default resets.** Promoting `<span class="badge">` → `<button class="badge">` brings back UA `appearance`/`background`/`border`/`padding`/`font` defaults. Wrap overrides in `:where(button.badge, ...) { appearance: none; ... }` so specificity stays 0 and existing `.badge` rules win. Pattern in `MatchCard.vue`.
+- **Use `:where()` for UA-default resets.** Promoting `<span class="badge">` → `<button class="badge">` brings back UA `appearance`/`background`/`border`/`padding`/`font` defaults. Wrap overrides in `:where(button.badge, ...) { appearance: none; ... }` so specificity stays 0 and existing `.badge` rules win.
 
-- **A clickable container with interactive chips cannot be `role="button"`.** Nesting interactive elements is invalid HTML/ARIA and the outer role strips keyboard reach from the chips. Pattern in MatchCard.vue: outer `<div class="match-header">` has `@click` but no role/tabindex; a dedicated `<button class="chev-btn" aria-expanded>` is the keyboard affordance.
+- **A clickable container with interactive chips cannot be `role="button"`.** Nesting interactive elements is invalid HTML/ARIA and the outer role strips keyboard reach from the chips. When the row needs both an outer click handler AND inner chips, leave the container as a plain `<div>` (or `<li>` for list rows) with `@click` but no role/tabindex, and give the keyboard affordance a dedicated `<button>` inside. Canonical in the new `.leaf-row` (no outer role; click opens the detail panel) — and previously the same pattern shipped on the now-removed MatchCard.
 
 - **happy-dom `document.activeElement` fails `.toBe(wrapper.find(...).element)`** despite identical serialization. Compare via `.id` or another attribute, not element identity.
 
