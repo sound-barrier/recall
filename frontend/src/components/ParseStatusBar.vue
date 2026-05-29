@@ -140,7 +140,14 @@ function onJumpToIngest(e: MouseEvent) {
         <span class="counter-slash" aria-hidden="true">/</span>
         <span class="counter-total">{{ totalText }}</span>
       </span>
-      <span class="ticks" role="progressbar" :aria-valuemin="0" :aria-valuemax="total" :aria-valuenow="done">
+      <span
+        class="ticks"
+        role="progressbar"
+        aria-label="Parse progress"
+        :aria-valuemin="0"
+        :aria-valuemax="total"
+        :aria-valuenow="done"
+      >
         <span
           v-for="(tick, i) in ticks"
           :key="i"

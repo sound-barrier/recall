@@ -818,7 +818,7 @@ useEventStream({
     <div class="atmos" aria-hidden="true" />
     <div class="grid-lines" aria-hidden="true" />
 
-    <div class="container" :inert="showUnsupportedModal || undefined" :aria-hidden="showUnsupportedModal ? 'true' : undefined">
+    <div class="container" :inert="(showUnsupportedModal || selection.isOpen.value) || undefined" :aria-hidden="(showUnsupportedModal || selection.isOpen.value) ? 'true' : undefined">
       <!-- System Alert: blocks both Matches and Settings flow when the
            OCR engine isn't usable. Renders ABOVE the masthead so it's
            the first thing a user sees on a broken install. -->
@@ -1119,6 +1119,8 @@ useEventStream({
     <ParseStatusBar
       :parse-progress="parseProgress"
       :parse-log="parseLog"
+      :inert="(showUnsupportedModal || selection.isOpen.value) || undefined"
+      :aria-hidden="(showUnsupportedModal || selection.isOpen.value) ? 'true' : undefined"
       @go-to-view="goToView"
     />
 
