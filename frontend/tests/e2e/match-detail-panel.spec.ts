@@ -265,6 +265,42 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     await expect(page.locator('.rank-block.rare')).toBeVisible()
   })
 
+  test('Escape inside a text field blurs the field — does NOT close the panel', async ({ page }) => {
+    await page.locator('.match').first().locator('.chev-btn').click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+
+    // Focus a real input inside the journal — the replay-code field
+    // is always an <input> regardless of annotation state, so it's
+    // the most reliable handle.
+    const replayInput = page.locator('input.match-notes-input.mono').first()
+    await replayInput.focus()
+    await expect(replayInput).toBeFocused()
+
+    // Sanity: typing works (proves we're inside the editable).
+    await page.keyboard.type('ABC123')
+    await expect(replayInput).toHaveValue('ABC123')
+
+    // Escape should blur the input but keep the panel open. Without
+    // a guard, useModalFocusTrap's document-level keydown would
+    // intercept Escape and emit close — surfacing as "I hit Esc to
+    // dismiss the textarea and the whole panel went away."
+    //
+    // Wait past the panel's slide-out transition (260ms) before
+    // re-checking visibility — otherwise a buggy implementation
+    // that DOES close the panel passes here just because the exit
+    // animation hasn't completed yet.
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(400)
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+    await expect(replayInput).not.toBeFocused()
+
+    // A SECOND Escape — now that focus is no longer in an editable
+    // — should close the panel (preserves the global "Esc dismisses
+    // modal" contract).
+    await page.keyboard.press('Escape')
+    await expect(page.locator('aside.detail-panel')).toHaveCount(0)
+  })
+
   test('Heroes Played starts expanded for every match, even after a collapse on a sibling', async ({ page }) => {
     await page.locator('.match').first().locator('.chev-btn').click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
