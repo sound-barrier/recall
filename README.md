@@ -124,7 +124,7 @@ The in-game screenshot key is **F12** by default (rebindable under *Options → 
 
 Overwatch saves screenshots to `Documents\Overwatch\ScreenShots\Overwatch\` on Windows by default. Point Recall at that folder under **Settings → Directories**; the watcher (enabled under **Parse → Watch Folder**) auto-parses any new `.png` / `.jpg` that lands in it.
 
-**What if a screenshot type is missing?** Each match card has a *Data Coverage* strip in its expanded view that flags which of the four screenshot types were captured. Required-but-missing types are highlighted with a warning chip; the optional RANK is shown greyed out when absent. Screenshots Recall couldn't match to a known map collect in the **Unknown** tab for triage.
+**What if a screenshot type is missing?** Each match card has a *Data Coverage* strip in the detail panel (click any card to open) that flags which of the four screenshot types were captured. Required-but-missing types are highlighted with a warning chip; the optional RANK is shown greyed out when absent. Screenshots Recall couldn't match to a known map collect in the **Unknown** tab for triage.
 
 ### What each screenshot type looks like
 

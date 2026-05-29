@@ -2,8 +2,8 @@
 
 The Matches tab's filter rail at the top of the page is the main
 slicing tool. Seven multi-select pills, two date inputs, a sort
-toggle, an expand-all button, a minimum-play-time threshold, an
-include-undated switch, and a "Clear Filters" escape hatch.
+toggle, a minimum-play-time threshold, an include-undated switch,
+and a "Clear Filters" escape hatch.
 
 Every selection is combined with **AND**: pick "Hero: Juno" + "Map:
 King's Row" + "Result: Victory" and you see only Juno wins on King's
@@ -92,16 +92,6 @@ Single toggle in the lower-right of the filter rail:
 Sorting is by the match's `finished_at` time (the SUMMARY-derived
 end timestamp) when available, falling back to the screenshot
 filename timestamp otherwise.
-
-## Expand / Collapse all
-
-Toggles the expand state of every visible card at once. Switches
-between **Expand All** and **Collapse All** based on the current
-state.
-
-Useful when you've just applied a filter that narrows to a handful
-of matches and you want to see everyone's full stats without
-clicking the chevron on each.
 
 ## Min-play threshold
 
