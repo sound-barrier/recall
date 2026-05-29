@@ -93,18 +93,71 @@ test.describe('match detail panel — keyboard ergonomics', () => {
     expect(panelScroll).toBeGreaterThan(0)
   })
 
-  test('typing in search while panel is open jumps the panel to the first hit', async ({ page }) => {
-    // Open the panel on m2 (defeat, no annotation).
+  test('/ is a no-op while the panel is open — focus stays inside the panel', async ({ page }) => {
+    // Open the panel on m2.
     await page.locator('.match').nth(1).locator('.chev-btn').click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
-    // Sanity-check that defeat result chip shows.
-    await expect(page.locator('.detail-title-result')).toContainText(/defeat/i)
 
-    // Now type a search that uniquely matches m1.
+    // Panel-open contract: every keyboard action stays inside the
+    // panel. `/` would normally focus the FilterRail match-search
+    // input, which lives OUTSIDE the panel — so it should be
+    // suppressed while the panel is open.
     await page.keyboard.press('/')
-    await page.keyboard.type('clutch')
-    // Panel content should follow — m1 is the only hit.
-    await expect(page.locator('.detail-title-result')).toContainText(/victory/i)
+
+    const insidePanel = await page.evaluate(() => {
+      const panel = document.querySelector('aside.detail-panel')
+      const active = document.activeElement
+      return !!panel && !!active && panel.contains(active)
+    })
+    expect(insidePanel).toBe(true)
+
+    // And specifically NOT on the match-search input.
+    const onSearch = await page.evaluate(() => document.activeElement?.id === 'match-search')
+    expect(onSearch).toBe(false)
+  })
+
+  test('Tab cycles focusable elements within the panel — no escape to background', async ({ page }) => {
+    await page.locator('.match').first().locator('.chev-btn').click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+
+    // After open, focus lands on the close button (markup-first
+    // focusable inside the panel).
+    let onCloseBtn = await page.evaluate(() => document.activeElement?.classList.contains('detail-close'))
+    expect(onCloseBtn).toBe(true)
+
+    // Tab forward many times. Every focused element should stay
+    // inside the panel — if Tab leaked to FilterRail / nav / etc,
+    // this would fail.
+    for (let i = 0; i < 12; i++) {
+      await page.keyboard.press('Tab')
+      const inside = await page.evaluate(() => {
+        const panel = document.querySelector('aside.detail-panel')
+        const active = document.activeElement
+        return !!panel && !!active && panel.contains(active)
+      })
+      expect(inside, `Tab #${i + 1} escaped the panel`).toBe(true)
+    }
+
+    // Shift+Tab walks backwards; same containment contract.
+    for (let i = 0; i < 8; i++) {
+      await page.keyboard.press('Shift+Tab')
+      const inside = await page.evaluate(() => {
+        const panel = document.querySelector('aside.detail-panel')
+        const active = document.activeElement
+        return !!panel && !!active && panel.contains(active)
+      })
+      expect(inside, `Shift+Tab #${i + 1} escaped the panel`).toBe(true)
+    }
+
+    // Cycling forward enough should eventually land back on the
+    // close button (proving the trap WRAPS rather than just stops).
+    let wrappedToClose = false
+    for (let i = 0; i < 40; i++) {
+      await page.keyboard.press('Tab')
+      const onClose = await page.evaluate(() => document.activeElement?.classList.contains('detail-close'))
+      if (onClose) { wrappedToClose = true; break }
+    }
+    expect(wrappedToClose).toBe(true)
   })
 
   test('Enter in match-search (panel closed) opens the first hit', async ({ page }) => {
