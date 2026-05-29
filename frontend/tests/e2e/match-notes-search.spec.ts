@@ -60,19 +60,19 @@ test.describe('match notes search', () => {
 
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await expect(page.locator('.match')).toHaveCount(3)
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
 
     // Type into the dedicated match-search input on the FilterRail.
     // The input carries aria-label="Search matches" so the selector
     // is stable against text/icon-only changes.
     const search = page.locator('input[aria-label="Search matches"]')
     await search.fill('clutch')
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
 
     // The clear control sits inline inside the input shell.
     await page.locator('button[aria-label="Clear search"]').click()
     await expect(search).toHaveValue('')
-    await expect(page.locator('.match')).toHaveCount(3)
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
   })
 
   test('search is case-insensitive', async ({ page }) => {
@@ -89,7 +89,7 @@ test.describe('match notes search', () => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
     await page.locator('input[aria-label="Search matches"]').fill('ALLY')
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
   })
 })
 
@@ -118,7 +118,7 @@ test.describe('match notes search — hit highlighting in the expanded card', ()
     await page.locator('#tab-matches').click()
 
     await page.locator('input[aria-label="Search matches"]').fill('clutch')
-    await page.locator('.match').first().locator('.chev-btn').click()
+    await page.locator('.leaf-row').first().click()
 
     const preview = page.locator('.match-notes-preview')
     await expect(preview).toBeVisible()
@@ -146,7 +146,7 @@ test.describe('match notes search — hit highlighting in the expanded card', ()
     await page.goto('/')
     await page.locator('#tab-matches').click()
     await page.locator('input[aria-label="Search matches"]').fill('win')
-    await page.locator('.match').first().locator('.chev-btn').click()
+    await page.locator('.leaf-row').first().click()
 
     await expect(page.locator('.match-notes-preview mark.note-hit')).toHaveCount(4)
   })
@@ -168,7 +168,7 @@ test.describe('match notes search — hit highlighting in the expanded card', ()
     await page.goto('/')
     await page.locator('#tab-matches').click()
     await page.locator('input[aria-label="Search matches"]').fill('clutch')
-    await page.locator('.match').first().locator('.chev-btn').click()
+    await page.locator('.leaf-row').first().click()
 
     // Click → preview is replaced by the textarea, which is focused
     // (the user can keep typing without a second click).
@@ -198,7 +198,7 @@ test.describe('match notes search — hit highlighting in the expanded card', ()
     await page.goto('/')
     await page.locator('#tab-matches').click()
     await page.locator('input[aria-label="Search matches"]').fill('clutch')
-    await page.locator('.match').first().locator('.chev-btn').click()
+    await page.locator('.leaf-row').first().click()
 
     await page.locator('.match-notes-preview').click()
     const textarea = page.locator('textarea.match-notes-textarea')
@@ -233,7 +233,7 @@ test.describe('match notes search — hit highlighting in the expanded card', ()
     await page.goto('/')
     await page.locator('#tab-matches').click()
     // No fill in the search input — query is empty.
-    await page.locator('.match').first().locator('.chev-btn').click()
+    await page.locator('.leaf-row').first().click()
 
     const preview = page.locator('.match-notes-preview')
     await expect(preview).toBeVisible()
@@ -252,7 +252,7 @@ test.describe('match notes search — hit highlighting in the expanded card', ()
 
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('.match').first().locator('.chev-btn').click()
+    await page.locator('.leaf-row').first().click()
 
     // Without a saved note, the editor must be ready to receive
     // the user's first character — no click-to-edit indirection.

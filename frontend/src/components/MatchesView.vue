@@ -4,6 +4,7 @@ import type { MatchRecord } from '../api'
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import { useMatchesGroup } from '../composables/useMatchesGroup'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
+import { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import MatchTimelineHeader from './MatchTimelineHeader.vue'
 
 // Matches page — "set workspace" layout.
@@ -47,134 +48,36 @@ const emit = defineEmits<{
   'narrow-open': [open: boolean]
 }>()
 
-// ─── Narrow state ───────────────────────────────────────────
+// ─── Narrow state via useMatchesNarrow composable ───────────
 //
-// Everything mutable lives here as refs so the dossier + leaves
-// react to picker changes without a separate "apply" step. The
-// real implementation will route through useMatchFilters so the
-// heatmap / sparkline / other surfaces see the same scope; this
-// sketch keeps the filter logic inline so the layout iteration
-// stays decoupled from the composable surface.
+// Everything filter-related is in the composable. MatchesView owns
+// the view-side state (panel open, combobox open, view sort/group)
+// and lets the composable own the filter math.
+const records = computed(() => props.records)
+const {
+  searchText,
+  pickedMaps, pickedMapTypes, pickedHeroes, pickedRoles, pickedResults, pickedTags,
+  pickedRange, customFrom, customTo,
+  leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
+  pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickRange,
+  resetNarrow,
+  activeClauseCount, anyNarrow,
+  availableMaps, availableMapTypes, availableHeroes, availableRoles, availableResults, availableTags,
+  narrowedRecords,
+} = useMatchesNarrow({ records })
 
+// ─── View-side state owned by MatchesView ───────────────────
 const narrowOpen = ref(false)
-
-const searchText  = ref('')
-
-const pickedMaps      = ref(new Set<string>())
-const pickedMapTypes  = ref(new Set<string>())
-const pickedHeroes    = ref(new Set<string>())
-const pickedRoles     = ref(new Set<string>())
-const pickedResults   = ref(new Set<string>())
-const pickedTags      = ref(new Set<string>())
-
-const pickedRange = ref<'all' | '7d' | '30d' | '90d' | 'custom'>('all')
-const customFrom  = ref('')   // YYYY-MM-DD
-const customTo    = ref('')
-
-const leaverHandling = ref<'include' | 'exclude-tally' | 'hide'>('include')
-// Two thresholds — either one triggers the hero filter to require
-// the picked hero have at least that play time. OR semantics, just
-// like useMinPlayThreshold in production.
-const minPlayMinutes = ref(0)
-const minPlayPercent = ref(0)
-const includeUnknown = ref(false) // Unknown-map matches live in the Unknown tab by default.
-
 const sortOrder = ref<'newest' | 'oldest'>('newest')
 const groupBy   = ref<'none' | 'day' | 'week' | 'month' | 'year'>('day')
 
-// Combobox: typeahead text + which combo is currently open. 51 heroes
-// and 31 maps don't fit a chip cloud — buttons would either wrap into
-// a wall or scroll behind picked chips. A combobox shows selected
-// items above as removable pills + a typeahead input + a scrollable
-// dropdown of all options below.
+// Combobox typeahead + open state — UI presentation, not filter
+// math, so it stays here. The composable exposes available* /
+// picked* refs and the picker actions; this layer adds the
+// typeahead-narrow on top.
 const mapSearch  = ref('')
 const heroSearch = ref('')
 const comboOpen  = ref<'map' | 'hero' | null>(null)
-
-function toggleSet(set: Set<string>, value: string): Set<string> {
-  const next = new Set(set)
-  if (next.has(value)) next.delete(value)
-  else next.add(value)
-  return next
-}
-const pickMap     = (v: string) => { pickedMaps.value     = toggleSet(pickedMaps.value, v) }
-const pickMapType = (v: string) => { pickedMapTypes.value = toggleSet(pickedMapTypes.value, v) }
-const pickHero    = (v: string) => { pickedHeroes.value   = toggleSet(pickedHeroes.value, v) }
-const pickRole    = (v: string) => { pickedRoles.value    = toggleSet(pickedRoles.value, v) }
-const pickResult  = (v: string) => { pickedResults.value  = toggleSet(pickedResults.value, v) }
-const pickTag     = (v: string) => { pickedTags.value     = toggleSet(pickedTags.value, v) }
-
-function pickRange(v: 'all' | '7d' | '30d' | '90d' | 'custom') {
-  pickedRange.value = v
-  if (v !== 'custom') { customFrom.value = ''; customTo.value = '' }
-}
-
-function resetNarrow() {
-  searchText.value      = ''
-  pickedMaps.value      = new Set()
-  pickedMapTypes.value  = new Set()
-  pickedHeroes.value    = new Set()
-  pickedRoles.value     = new Set()
-  pickedResults.value   = new Set()
-  pickedTags.value      = new Set()
-  pickedRange.value     = 'all'
-  customFrom.value      = ''
-  customTo.value        = ''
-  leaverHandling.value  = 'include'
-  minPlayMinutes.value  = 0
-  minPlayPercent.value  = 0
-  includeUnknown.value  = false
-}
-
-const activeClauseCount = computed(() => {
-  let n = 0
-  if (searchText.value.trim()) n++
-  if (pickedRange.value !== 'all') n++
-  if (customFrom.value || customTo.value) n++
-  n += pickedMaps.value.size
-  n += pickedMapTypes.value.size
-  n += pickedHeroes.value.size
-  n += pickedRoles.value.size
-  n += pickedResults.value.size
-  n += pickedTags.value.size
-  if (leaverHandling.value !== 'include') n++
-  if (minPlayMinutes.value > 0) n++
-  if (minPlayPercent.value > 0) n++
-  if (includeUnknown.value) n++
-  return n
-})
-const anyNarrow = computed(() => activeClauseCount.value > 0)
-
-// ─── Helpers ────────────────────────────────────────────────
-
-function uniq<T>(arr: T[]): T[] {
-  return [...new Set(arr)].filter((v) => v != null && v !== '') as T[]
-}
-
-// Hero universe — UNION of `data.hero` AND every entry in
-// `data.heroes_played[]`. The current FilterRail does the same
-// (matches "any hero played in the match", not just the primary).
-const availableMaps = computed(() => uniq(props.records.map((r) => r.data?.map ?? '')).sort())
-const availableMapTypes = computed(() => uniq(props.records.map((r) => r.data?.type ?? '')).sort())
-const availableHeroes = computed(() => {
-  const set = new Set<string>()
-  for (const r of props.records) {
-    if (r.data?.hero) set.add(r.data.hero)
-    for (const hp of r.data?.heroes_played ?? []) {
-      if (hp.hero) set.add(hp.hero)
-    }
-  }
-  return [...set].sort()
-})
-const availableRoles   = computed(() => uniq(props.records.map((r) => r.data?.role ?? '')).sort())
-const availableResults = computed(() => uniq(props.records.map((r) => r.data?.result ?? '')).sort())
-const availableTags    = computed(() => {
-  const set = new Set<string>()
-  for (const r of props.records) {
-    for (const t of r.annotation?.tags ?? []) if (t) set.add(t)
-  }
-  return [...set].sort()
-})
 
 const filteredMapOptions = computed(() => {
   const q = mapSearch.value.trim().toLowerCase()
@@ -183,108 +86,6 @@ const filteredMapOptions = computed(() => {
 const filteredHeroOptions = computed(() => {
   const q = heroSearch.value.trim().toLowerCase()
   return q ? availableHeroes.value.filter((h) => h.toLowerCase().includes(q)) : availableHeroes.value
-})
-
-// Parse "M:SS" or "H:MM:SS" play_time / game_length into minutes.
-function parsePlayTimeMinutes(s: string): number {
-  if (!s) return 0
-  const parts = s.split(':').map((x) => parseInt(x, 10))
-  if (parts.some((n) => isNaN(n))) return 0
-  if (parts.length === 2) return parts[0]! + parts[1]! / 60
-  if (parts.length === 3) return parts[0]! * 60 + parts[1]! + parts[2]! / 60
-  return parts[0] ?? 0
-}
-
-function daysAgoISO(days: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() - days)
-  return d.toISOString().slice(0, 10)
-}
-
-// ─── Filtering ──────────────────────────────────────────────
-
-const narrowedRecords = computed(() => {
-  // Unknown-map matches default to hidden — they live in the
-  // Unknown tab. The toggle in the popover lets a user override
-  // for specific investigations.
-  const base = includeUnknown.value
-    ? props.records
-    : props.records.filter((r) => !!r.data?.map)
-
-  const search = searchText.value.trim().toLowerCase()
-
-  // Time window — custom dates win when set, otherwise preset.
-  let cutoffFrom: string | null = null
-  let cutoffTo:   string | null = null
-  if (customFrom.value) cutoffFrom = customFrom.value
-  if (customTo.value)   cutoffTo   = customTo.value
-  if (!cutoffFrom && pickedRange.value !== 'all' && pickedRange.value !== 'custom') {
-    const days = pickedRange.value === '7d' ? 7 : pickedRange.value === '30d' ? 30 : 90
-    cutoffFrom = daysAgoISO(days)
-  }
-
-  return base.filter((r) => {
-    const d = r.data
-    if (!d) return false
-
-    // Free-text search across the obvious lexical surfaces.
-    if (search) {
-      const heroesPlayedNames = (d.heroes_played ?? []).map((h) => h.hero ?? '').filter(Boolean)
-      const blob = [
-        d.map, d.mode, d.hero, d.role, d.type,
-        r.annotation?.note,
-        ...heroesPlayedNames,
-        ...(r.annotation?.tags ?? []),
-      ].filter(Boolean).join(' ').toLowerCase()
-      if (!blob.includes(search)) return false
-    }
-
-    // Date range — applies only to dated rows; undated rows fall
-    // through unfiltered to stay consistent with includeUndated
-    // semantics in the real FilterRail.
-    const dateKey = d.date ?? ''
-    if (dateKey) {
-      if (cutoffFrom && dateKey < cutoffFrom) return false
-      if (cutoffTo   && dateKey > cutoffTo)   return false
-    }
-
-    if (pickedMaps.value.size     && !pickedMaps.value.has(d.map ?? ''))   return false
-    if (pickedMapTypes.value.size && !pickedMapTypes.value.has(d.type ?? '')) return false
-    if (pickedRoles.value.size    && !pickedRoles.value.has(d.role ?? ''))  return false
-    if (pickedResults.value.size  && !pickedResults.value.has(d.result ?? '')) return false
-
-    // Hero filter — broad match against the primary AND every
-    // heroes_played entry. When either min-play threshold is set,
-    // the picked hero must satisfy at least one of them via a
-    // heroes_played row (the primary alone isn't enough when a
-    // threshold is active — same semantics as useMatchFilters).
-    if (pickedHeroes.value.size) {
-      const minMin = minPlayMinutes.value
-      const minPct = minPlayPercent.value
-      const anyThreshold = minMin > 0 || minPct > 0
-      const matchedAny = [...pickedHeroes.value].some((wanted) => {
-        if (d.hero === wanted && !anyThreshold) return true
-        return (d.heroes_played ?? []).some((hp) => {
-          if (hp.hero !== wanted) return false
-          if (!anyThreshold) return true
-          const minutes = parsePlayTimeMinutes(hp.play_time ?? '')
-          const pct = hp.percent_played ?? 0
-          return (minMin > 0 && minutes >= minMin) || (minPct > 0 && pct >= minPct)
-        })
-      })
-      if (!matchedAny) return false
-    }
-
-    if (pickedTags.value.size) {
-      const tags = new Set(r.annotation?.tags ?? [])
-      const hit = [...pickedTags.value].some((t) => tags.has(t))
-      if (!hit) return false
-    }
-
-    if (leaverHandling.value === 'hide' && r.annotation?.leaver) return false
-
-    return true
-  })
 })
 
 // ─── Dossier KPIs / breakdowns via useMatchesDossier ───────
@@ -369,6 +170,11 @@ function onOpenShortcut(e: KeyboardEvent) {
   if (e.key !== '/') return
   const t = e.target as HTMLElement | null
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+  // Don't intercept while the right-side detail panel is in front
+  // of us — every keystroke should stay inside that modal until
+  // the user closes it. Same contract as useKeyboardShortcuts'
+  // `when` predicate for the global `/` binding pre-redesign.
+  if (document.querySelector('aside.detail-panel')) return
   e.preventDefault()
   narrowOpen.value = true
   // Override the trap's default first-focusable target — the close

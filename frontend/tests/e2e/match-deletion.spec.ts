@@ -66,9 +66,9 @@ test.describe('match deletion — soft delete + unhide', () => {
 
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
 
-    await page.locator('.match').first().locator('.chev-btn').click()
+    await page.locator('.leaf-row').first().click()
     await page.locator('.danger-btn', { hasText: 'Hide match' }).click()
 
     // Two-step affordance.
@@ -83,7 +83,7 @@ test.describe('match deletion — soft delete + unhide', () => {
     // with the in-flight refetch.
     await expect.poll(() => getCount).toBeGreaterThanOrEqual(2)
     // Card disappears (default view drops hidden matches).
-    await expect(page.locator('.match')).toHaveCount(0)
+    await expect(page.locator('.leaf-row')).toHaveCount(0)
     // PUT body carries just the visibility flag — match_key lives in
     // the URL now, not the payload.
     expect(postBody).toEqual({ hidden: true })
@@ -105,7 +105,7 @@ test.describe('match deletion — soft delete + unhide', () => {
 
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('.match').first().locator('.chev-btn').click()
+    await page.locator('.leaf-row').first().click()
 
     await page.locator('.danger-btn', { hasText: 'Hide match' }).click()
     await page.locator('.danger-btn', { hasText: 'Cancel' }).click()
@@ -114,7 +114,7 @@ test.describe('match deletion — soft delete + unhide', () => {
     await expect(page.locator('.danger-btn', { hasText: 'Hide match' })).toBeVisible()
     await expect(page.locator('.danger-btn', { hasText: 'Confirm' })).toHaveCount(0)
     // Match still present.
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
     // Critical: no destructive PUT happened.
     expect(postCount).toBe(0)
   })
@@ -133,7 +133,7 @@ test.describe('match deletion — soft delete + unhide', () => {
 
     // Default: hidden match is invisible. But the Hidden · 1 toggle
     // still surfaces because hiddenMatchCount counts all records.
-    await expect(page.locator('.match')).toHaveCount(0)
+    await expect(page.locator('.leaf-row')).toHaveCount(0)
     const toggle = page.locator('.undated-toggle').filter({ hasText: 'Hidden' })
     await expect(toggle).toBeVisible()
     await expect(toggle).toHaveAttribute('aria-pressed', 'false')
@@ -162,7 +162,7 @@ test.describe('match deletion — soft delete + unhide', () => {
 
     // Reveal the hidden card via the toggle.
     await page.locator('.undated-toggle').filter({ hasText: 'Hidden' }).click()
-    await page.locator('.match.hidden').first().locator('.chev-btn').click()
+    await page.locator('.match.hidden').first()
 
     // Unhide is one-click — strictly restorative, no confirm step.
     await page.locator('.danger-btn', { hasText: 'Unhide' }).click()

@@ -69,7 +69,7 @@ test.describe('match tags — inline editor + filter', () => {
 
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('.match').first().locator('.chev-btn').click()
+    await page.locator('.leaf-row').first().click()
 
     // The quick-add buttons are toggle controls — one per named tag.
     // Data-attribute selectors are cheaper + more durable than aria
@@ -99,7 +99,7 @@ test.describe('match tags — inline editor + filter', () => {
 
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await expect(page.locator('.match')).toHaveCount(3)
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
 
     // Open the Tags filter and pick `stack`. The filter trigger is the
     // shared MultiSelectField shape used by Mode/Map/Hero/etc., so
@@ -110,7 +110,7 @@ test.describe('match tags — inline editor + filter', () => {
     await page.keyboard.press('Escape')
 
     // Only the `stack`-tagged match remains.
-    await expect(page.locator('.match')).toHaveCount(1)
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
     await expect(page.locator('.match .match-tag').filter({ hasText: /stack/i })).toBeVisible()
   })
 })
