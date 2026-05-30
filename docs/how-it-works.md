@@ -122,9 +122,9 @@ That's it for setup. **Settings → Engine** should now show
    list without closing the panel; `↑` / `↓` scroll inside the panel.
    Click a source screenshot inline-preview to enlarge it fullscreen
    (× / Esc / backdrop click closes). Press `?` for the full
-   keyboard cheatsheet. Use the [filter rail](filtering.md) to narrow
-   the view by any combination of hero, map, role, result, date, or
-   minimum play time.
+   keyboard cheatsheet. Use the [Narrow this set panel](filtering.md)
+   to slice the view by any combination of hero, map, role, result,
+   date, tag, or minimum play time.
 
 ### Optional: time-series charts
 

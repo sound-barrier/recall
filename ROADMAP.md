@@ -22,9 +22,11 @@ This section is the design north star for the new **Analysis** tab
 — a parallel surface to the existing **Matches** tab. The two
 coexist:
 
-- **Matches** stays the way it is — a chronological log with the
-  FilterRail, the match cards, the detail panel + lightbox the user
-  built. The audience there is "I want to look at *this match*."
+- **Matches** is the set-workspace landed in PR #100 — dossier
+  headline + Campaign Log + compact leaf rows backed by the
+  consolidated *Narrow this set* panel + the existing right-side
+  detail panel + lightbox. Audience there is "I want to look at
+  *this match*, or this *set* of matches."
 - **Analysis** is new — an analytics-first coaching dashboard
   optimised for *finding patterns over time* in the player's own
   play and using those patterns to improve. Historical
@@ -39,7 +41,7 @@ per-match deep-inspection work is reused, not forked.
 
 | Phase | Status | Outcome |
 |---|---|---|
-| **E — Analytics-first Analysis tab** | In progress | Build the new Analysis tab as a chart grid. KPIs + time-series + breakdowns + the Campaign Log heatmap. A drill-down drawer drops into the existing detail panel for per-match inspection. The scope bar replaces a per-page FilterRail. |
+| **E — Analytics-first Analysis tab** | In progress | Build the new Analysis tab as a chart grid. KPIs + time-series + breakdowns + the Campaign Log heatmap. A drill-down drawer drops into the existing detail panel for per-match inspection. The scope bar uses the same parent-owned `MatchesNarrowState` pattern as the Matches set-workspace so both tabs share filter semantics. |
 | **F — Coaching insight cards** | Planned (this doc) | Pair each chart with a rule-based observation card that calls out what's worth looking at. Cards are the *coach*; charts are the *evidence*. |
 | **G — Statistical / ML** | Future, out of scope for now | Anomaly detection, forecasting, LLM-narrated insights, curated coaching playlists. |
 
@@ -252,13 +254,16 @@ chart.
 
 ### Why we paused
 
-The Matches tab needs a parallel redesign focused on its own
-strengths (per-match drill-down, narrow-to-a-set affordances).
-Once that lands and the FilterRail / detail-panel patterns settle,
-the Analysis tab will resume on a stable substrate; the scope-bar
-mechanics may end up sharing primitives with whatever the Matches
-redesign produces. Picking up here means: pick a chart, write its
-composable + SVG component, swap it in for the sketch slot.
+The Matches tab had a parallel redesign focused on its own
+strengths (per-match drill-down, narrow-to-a-set affordances) —
+PR #100 + #101 landed the set-workspace. Now Phase E can resume
+on stable substrate: the scope-bar should reuse the same
+parent-owned `MatchesNarrowState` factory that drives the new
+Matches view, so Analysis and Matches share filter semantics
+without duplicating the picker code. Picking up here means: pick
+a chart, write its composable + SVG component, swap it in for
+the sketch slot, wire its filter reads to the shared narrow
+state.
 
 ## Phase E: Layout sketch ground rules
 
@@ -274,16 +279,18 @@ because they pre-shape F:
   surface on Analysis.** Keeps F's "anchor chart" semantics
   meaningful — the chart an insight card points at is always the
   *current chart on screen*, not a transient pop-up. (The Matches
-  tab still has its FilterRail; the two tabs filter independently.)
+  tab uses the same parent-owned `MatchesNarrowState` factory but
+  its own instance, so the two tabs filter independently for now;
+  promoting to a global scope is its own follow-up if shared
+  narrow ever earns the cross-tab coupling.)
 - **Match drill-down opens the shared detail panel.** Clicking a
   drawer row or a chart segment that wants per-match inspection
   fires through to `useSelectedMatch.open(matchKey)` — the same
   composable that drives the Matches tab's detail panel + lightbox.
   No new per-match UI on Analysis.
 - **Campaign Log keeps its place.** The calendar heatmap + brush
-  sparkline are the canonical "when did I play" widget; they
+  sparkline are the canonical "when did I play" widget. They sit
+  below the dossier in the Matches set-workspace today and
   promote into the Analysis chart grid as the temporal anchor.
-  Until the FilterRail / Matches refactor decides their fate, they
-  also still mount on the Matches tab.
 
 That's enough rules to keep the F overlay coherent later.
