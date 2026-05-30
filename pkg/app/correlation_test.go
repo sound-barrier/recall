@@ -182,8 +182,9 @@ func TestUnionSortedStrings(t *testing.T) {
 
 func TestResolveMatchKey_AdoptsByEADSignature(t *testing.T) {
 	// Existing scoreboard row with E/A/D=17/16/11, no map conflict.
-	// New SUMMARY arrives later (different filename timestamp) with the
-	// same E/A/D — must adopt the existing match_key.
+	// New SUMMARY arrives ~3 min later with the same E/A/D — must
+	// adopt the existing match_key via the auto-adopt EAD-bridge
+	// window (<5 min).
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
 			Filename:     "2026.05.10 - 21.29.28 _sb.png",
@@ -192,9 +193,12 @@ func TestResolveMatchKey_AdoptsByEADSignature(t *testing.T) {
 		}},
 	}
 	newR := &parser.MatchResult{Eliminations: 17, Assists: 16, Deaths: 11, Map: "rialto"}
-	key := resolveMatchKey("2026.05.10 - 22.05.00 _summary.png", newR, snap)
+	key, cands := resolveMatchKey("2026.05.10 - 21.32.30 _summary.png", newR, snap)
 	if key != "match:2026-05-10T21:29:28" {
 		t.Errorf("expected EAD-bridge adoption, got %q", key)
+	}
+	if cands != nil {
+		t.Errorf("expected no candidates on auto-adopt, got %+v", cands)
 	}
 }
 
@@ -209,7 +213,7 @@ func TestResolveMatchKey_AdoptsByTimestampWindow(t *testing.T) {
 		}},
 	}
 	newR := &parser.MatchResult{Hero: "lucio"}
-	key := resolveMatchKey("2026.05.10 - 21.29.41 _personal.png", newR, snap)
+	key, _ := resolveMatchKey("2026.05.10 - 21.29.41 _personal.png", newR, snap)
 	if key != "match:2026-05-10T21:29:28" {
 		t.Errorf("expected timestamp-window adoption, got %q", key)
 	}
@@ -225,7 +229,7 @@ func TestResolveMatchKey_RejectsConflictingWindowMatch(t *testing.T) {
 		}},
 	}
 	newR := &parser.MatchResult{Map: "aatlis"}
-	key := resolveMatchKey("2026.05.10 - 21.29.41 .png", newR, snap)
+	key, _ := resolveMatchKey("2026.05.10 - 21.29.41 .png", newR, snap)
 	if key == "match:2026-05-10T21:29:28" {
 		t.Errorf("expected conflict to block adoption, got %q", key)
 	}
@@ -245,7 +249,7 @@ func TestResolveMatchKey_TiebreakClosestInTime(t *testing.T) {
 		},
 	}
 	newR := &parser.MatchResult{Hero: "lucio"}
-	key := resolveMatchKey("2026.05.10 - 21.29.31 _p.png", newR, snap)
+	key, _ := resolveMatchKey("2026.05.10 - 21.29.31 _p.png", newR, snap)
 	if key != "match:A" {
 		t.Errorf("expected closer match (A) to win tiebreak, got %q", key)
 	}
@@ -253,7 +257,7 @@ func TestResolveMatchKey_TiebreakClosestInTime(t *testing.T) {
 
 func TestResolveMatchKey_FreshKeyForUntimestamped(t *testing.T) {
 	snap := db.Screenshots{}
-	key := resolveMatchKey("manually_renamed.png", &parser.MatchResult{Hero: "lucio"}, snap)
+	key, _ := resolveMatchKey("manually_renamed.png", &parser.MatchResult{Hero: "lucio"}, snap)
 	if key != "unmatched:manually_renamed.png" {
 		t.Errorf("expected unmatched: prefix, got %q", key)
 	}
@@ -261,7 +265,7 @@ func TestResolveMatchKey_FreshKeyForUntimestamped(t *testing.T) {
 
 func TestResolveMatchKey_FreshKeyForTimestampedNoCandidates(t *testing.T) {
 	snap := db.Screenshots{}
-	key := resolveMatchKey("2026.05.10 - 21.29.28 .png", &parser.MatchResult{Hero: "lucio"}, snap)
+	key, _ := resolveMatchKey("2026.05.10 - 21.29.28 .png", &parser.MatchResult{Hero: "lucio"}, snap)
 	if key != "match:2026-05-10T21:29:28" {
 		t.Errorf("expected match:<ts> from filename, got %q", key)
 	}
