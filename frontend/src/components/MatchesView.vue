@@ -1720,6 +1720,7 @@ onBeforeUnmount(() => {
    internally with flex. */
 .leaf-row {
   display: grid;
+
   /* All columns to the left of `hero block` must have stable widths
      across rows or the hero name's left edge drifts when adjacent
      columns vary (e.g. one row with 50/4/3 stats vs another with
