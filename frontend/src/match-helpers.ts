@@ -174,6 +174,22 @@ export function formatMinutesAsClock(minutes: number | null | undefined): string
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+// Render a play-time total (in minutes, possibly fractional) as a
+// compact "Xh Ymin" / "Ymin" string. Used by the dossier's Top heroes
+// breakdown to show summed time per hero alongside the share %.
+// Rounds to the nearest whole minute; sub-minute totals collapse to
+// "0min" rather than "—" because the field is well-defined at zero.
+// Negative / non-finite inputs render as "—" (same convention as
+// formatMinutesAsClock).
+export function formatPlayMinutes(minutes: number | null | undefined): string {
+  if (minutes == null || !Number.isFinite(minutes) || minutes < 0) return '—'
+  const total = Math.round(minutes)
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  if (h === 0) return `${m}min`
+  return `${h}h${m}min`
+}
+
 // Top-N value picker for a set of records. Walks the record list and
 // counts via the picker; returns the most-common value plus its count,
 // or null when no record produced a non-empty value. Used by the

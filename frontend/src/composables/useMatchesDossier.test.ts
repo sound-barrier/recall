@@ -189,13 +189,82 @@ describe('useMatchesDossier', () => {
   })
 
   describe('topHeroes', () => {
-    it('orders by count, caps at 5', () => {
+    // Ranking is by total play time across every `heroes_played[]`
+    // entry, not by primary-hero match count. Capped at 3 for the
+    // dossier's compact breakdown.
+    function recWithHeroes(heroes: { hero: string; play_time: string }[], result: 'victory' | 'defeat' = 'victory'): MatchRecord {
+      return {
+        match_key: `m-${Math.random()}`,
+        source_files: ['a.png'],
+        source_types: { 'a.png': 'summary' },
+        data: {
+          map: 'rialto', hero: heroes[0]?.hero, mode: 'competitive',
+          result, date: '2026-05-10', finished_at: '14:00',
+          heroes_played: heroes.map(h => ({ hero: h.hero, play_time: h.play_time, percent_played: 0 })),
+        },
+        parsed_at: '2026-05-10T14:00:00Z',
+      } as unknown as MatchRecord
+    }
+
+    it('orders by summed play_time across heroes_played, caps at 3', () => {
       const records = ref([
-        ...['lucio', 'lucio', 'lucio', 'mercy', 'mercy', 'soldier', 'rein', 'kiriko', 'ana'].map((h) => rec({ hero: h })),
+        recWithHeroes([
+          { hero: 'lucio',  play_time: '11:25' }, // 11.42 min
+        ]),
+        recWithHeroes([
+          { hero: 'juno',   play_time: '03:26' }, // 3.43 min
+          { hero: 'wuyang', play_time: '03:30' }, // 3.5 min
+          { hero: 'kiriko', play_time: '00:29' }, // 0.48 min
+        ], 'defeat'),
+        recWithHeroes([
+          { hero: 'juno',   play_time: '08:00' }, // 8 min → juno now 11.43 total
+        ]),
+        recWithHeroes([
+          { hero: 'mercy',  play_time: '02:00' }, // 2 min
+        ]),
       ])
       const { topHeroes } = useMatchesDossier(records, ref<LeaverHandling>('include'))
-      expect(topHeroes.value).toHaveLength(5)
+      expect(topHeroes.value).toHaveLength(3)
+      expect(topHeroes.value.map((h) => h.key)).toEqual(['juno', 'lucio', 'wuyang'])
+    })
+
+    it('renders timeLabel in "XhYmin" / "Ymin" shape per entry', () => {
+      const records = ref([
+        recWithHeroes([{ hero: 'lucio', play_time: '11:25' }]), // 11min
+        recWithHeroes([{ hero: 'mercy', play_time: '02:00' }]), // 2min
+      ])
+      const { topHeroes } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(topHeroes.value[0]).toMatchObject({ key: 'lucio', timeLabel: '11min' })
+      expect(topHeroes.value[1]).toMatchObject({ key: 'mercy', timeLabel: '2min' })
+    })
+
+    it('share is a percentage of total time across all heroes', () => {
+      const records = ref([
+        recWithHeroes([
+          { hero: 'lucio', play_time: '30:00' }, // 30 min → 75%
+          { hero: 'mercy', play_time: '10:00' }, // 10 min → 25%
+        ]),
+      ])
+      const { topHeroes } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(topHeroes.value[0]).toMatchObject({ key: 'lucio', share: 75 })
+      expect(topHeroes.value[1]).toMatchObject({ key: 'mercy', share: 25 })
+    })
+
+    it('drops records without parseable play_time on a hero', () => {
+      const records = ref([
+        recWithHeroes([{ hero: 'lucio', play_time: '11:25' }]),
+        // No play_time — contributes nothing.
+        { ...recWithHeroes([{ hero: 'mercy', play_time: '' }]) } as MatchRecord,
+      ])
+      const { topHeroes } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(topHeroes.value).toHaveLength(1)
       expect(topHeroes.value[0]!.key).toBe('lucio')
+    })
+
+    it('returns an empty list when no record has heroes_played time', () => {
+      const records = ref([rec({ hero: 'lucio' })])
+      const { topHeroes } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(topHeroes.value).toEqual([])
     })
   })
 
