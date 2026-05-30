@@ -69,6 +69,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   'pick-screenshots-dir':   []
   'detect-screenshots-dir': []
+  'reveal-screenshots-dir': []
+  'reset-screenshots-dir':  []
   'set-theme':              [mode: ThemeMode]
   'set-week-start':         [next: WeekStart]
   'go-to-view':             [next: 'settings' | 'ingest' | 'matches' | 'unknown']
@@ -200,6 +202,8 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
       :probe-tried="probeTried"
       @pick-screenshots-dir="() => emit('pick-screenshots-dir')"
       @detect-screenshots-dir="() => emit('detect-screenshots-dir')"
+      @reveal-screenshots-dir="() => emit('reveal-screenshots-dir')"
+      @reset-screenshots-dir="() => emit('reset-screenshots-dir')"
     />
 
     <SettingsEngine

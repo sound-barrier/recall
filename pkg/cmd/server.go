@@ -262,6 +262,19 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		}
 		writeJSON(w, map[string]string{"path": body.Path}, nil)
 	})
+	// DELETE clears the persisted screenshots folder. Symmetric with
+	// DELETE /api/v1/settings/tesseract — "the user-set override is
+	// the thing being deleted." There's no platform default to fall
+	// back to here (unlike tesseract); the natural empty state is
+	// "no folder configured" and the user re-picks via Detect /
+	// Change. The frontend's Reset button is the only caller.
+	apiMux.HandleFunc("DELETE /api/v1/settings/screenshots-folder", func(w http.ResponseWriter, r *http.Request) {
+		if err := a.ResetScreenshotsDir(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 
 	apiMux.HandleFunc("GET /api/v1/settings/tesseract", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.GetTesseractStatus(), nil)
@@ -344,6 +357,21 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	})
 	apiMux.HandleFunc("GET /api/v1/system/screenshots-folder-probe", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.ProbeScreenshotsDir(), nil)
+	})
+	// Reveal: open the configured screenshots folder in the host OS
+	// file manager. Action-style POST — no resource state change, the
+	// effect (a Finder / Explorer / xdg-open window appearing) is
+	// out-of-band relative to the HTTP response.
+	apiMux.HandleFunc("POST /api/v1/system/screenshots-folder-reveal", func(w http.ResponseWriter, r *http.Request) {
+		if err := a.RevealScreenshotsDir(); err != nil {
+			if errors.Is(err, app.ErrInvalidScreenshotsDir) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
 	})
 
 	// ── Backup (exports) + Restore (imports) ────────────────────────

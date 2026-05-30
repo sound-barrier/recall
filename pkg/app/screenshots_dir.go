@@ -4,9 +4,19 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 )
+
+// revealCommand is a seam over exec.Command so RevealScreenshotsDir
+// can be exercised in tests without actually popping a Finder /
+// Explorer window. Production wiring is plain exec.Command; tests
+// swap in a recorder via t.Cleanup. Mirrors the runTesseractFunc /
+// parseSingleFunc pattern in pkg/parser — one-method seams stay as
+// function variables rather than interfaces.
+var revealCommand = exec.Command
 
 // ErrInvalidScreenshotsDir is returned when the configured screenshots
 // directory is empty, doesn't exist, or isn't a directory. Callers (the
@@ -64,6 +74,80 @@ func (a *App) SetScreenshotsDir(path string) error {
 		a.startWatching()
 	}
 	return nil
+}
+
+// ResetScreenshotsDir clears the persisted screenshots folder and
+// tears down the file watcher if it was armed. Symmetric with
+// ResetTesseractPath, but the "default" state for screenshots is
+// "no folder configured" rather than a platform default — the user
+// uses Detect / Pick to choose one again.
+//
+// Persists the empty value so the next Startup loads "" (not the
+// old configured path), and stops any armed watcher so we don't
+// leak an fsnotify handle pointing at the now-orphaned dir.
+func (a *App) ResetScreenshotsDir() error {
+	a.settings.ScreenshotsDir = ""
+	if err := saveSettings(a.settings); err != nil {
+		return err
+	}
+	a.stopWatching()
+	return nil
+}
+
+// RevealScreenshotsDir opens the configured screenshots folder in the
+// host OS file manager. Replaces the Reveal button's old
+// BrowserOpenURL('file://…') call which Wails v2.12 rejects with
+// "scheme not allowed" (utils.ValidateAndSanitizeURL blocks file://).
+//
+// The path is the in-memory settings.ScreenshotsDir, re-validated via
+// validateScreenshotsDir before reaching the shell so the cleaned
+// form is what we exec — even though the value was already validated
+// at write time, re-running the check here means a settings.json that
+// got hand-edited to inject metacharacters can't sneak past the
+// boundary.
+//
+// Per-platform opener:
+//   - macOS:    `open <path>`     (Finder)
+//   - Linux:    `xdg-open <path>` (whatever the desktop's default is)
+//   - Windows:  `explorer <path>` (File Explorer)
+//
+// Returns ErrInvalidScreenshotsDir wrapped with the failing path when
+// the configured folder doesn't pass validation, so HTTP handlers
+// surface 400 instead of 500.
+func (a *App) RevealScreenshotsDir() error {
+	cleaned, err := validateScreenshotsDir(a.settings.ScreenshotsDir)
+	if err != nil {
+		return err
+	}
+	name, ok := revealOpenerForGOOS(runtime.GOOS)
+	if !ok {
+		return fmt.Errorf("reveal: unsupported platform %q", runtime.GOOS)
+	}
+	// #nosec G204 -- cleaned has already passed safePathChars +
+	// filepath.Clean (validateScreenshotsDir above); name is a
+	// hard-coded per-GOOS string from revealOpenerForGOOS, not user
+	// input. The combination is what CodeQL's go/command-injection
+	// rule recognizes as sanitized.
+	cmd := revealCommand(name, cleaned)
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("reveal: %s %q: %w", name, cleaned, err)
+	}
+	// Release the child without waiting — the opener forks the GUI
+	// process and returns immediately; we'd block forever otherwise.
+	go func() { _ = cmd.Wait() }()
+	return nil
+}
+
+func revealOpenerForGOOS(goos string) (string, bool) {
+	switch goos {
+	case "darwin":
+		return "open", true
+	case "windows":
+		return "explorer", true
+	case "linux", "freebsd", "openbsd", "netbsd":
+		return "xdg-open", true
+	}
+	return "", false
 }
 
 // validateScreenshotsDir confirms path is a real, readable directory and

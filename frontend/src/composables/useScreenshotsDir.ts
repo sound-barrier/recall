@@ -22,6 +22,13 @@ export interface ScreenshotsDirApi {
   pickScreenshotsDir: () => Promise<string | undefined>
   probeScreenshotsDir: () => Promise<ProbeResult>
   setScreenshotsDir: (path: string) => Promise<unknown>
+  // Reveal opens the configured folder in the host OS file manager
+  // via a backend action. Optional so existing tests that don't
+  // exercise Reveal can omit it.
+  revealScreenshotsDir?: () => Promise<unknown>
+  // Reset clears the persisted folder + tears down the watcher.
+  // Optional for the same reason as revealScreenshotsDir.
+  resetScreenshotsDir?: () => Promise<unknown>
   // Called after a successful pick/detect so the "N new" counter
   // can re-roll against the new directory.
   refreshNewCount?: () => Promise<void> | void
@@ -97,6 +104,29 @@ export function useScreenshotsDir(api: ScreenshotsDirApi) {
     }
   }
 
+  async function revealDir() {
+    if (!screenshotsDir.value) return
+    try {
+      await api.revealScreenshotsDir?.()
+    } catch (e) {
+      api.onError?.(String(e))
+    }
+  }
+
+  async function resetDir() {
+    try {
+      await api.resetScreenshotsDir?.()
+      screenshotsDir.value = ''
+      // Probe state is now stale (the chip described the prior
+      // folder); wipe it so a fresh Detect after Reset starts clean.
+      probeMessage.value = ''
+      probeStatus.value = ''
+      probeTried.value = []
+    } catch (e) {
+      api.onError?.(String(e))
+    }
+  }
+
   return {
     screenshotsDir: screenshotsDir as Readonly<Ref<string>>,
     probing,
@@ -106,5 +136,7 @@ export function useScreenshotsDir(api: ScreenshotsDirApi) {
     setScreenshotsDir,
     pickDir,
     detectDir,
+    revealDir,
+    resetDir,
   }
 }

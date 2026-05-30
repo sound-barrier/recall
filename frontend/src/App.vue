@@ -20,6 +20,8 @@ import {
   GetScreenshotsDir,
   PickScreenshotsDir,
   ProbeScreenshotsDir,
+  ResetScreenshotsDir,
+  RevealScreenshotsDir,
   SetScreenshotsDir,
   GetPrometheusEnabled,
   SetPrometheusEnabled,
@@ -245,10 +247,14 @@ const {
   setScreenshotsDir,
   pickDir,
   detectDir,
+  revealDir,
+  resetDir,
 } = useScreenshotsDir({
   pickScreenshotsDir: PickScreenshotsDir,
   probeScreenshotsDir: ProbeScreenshotsDir,
   setScreenshotsDir: SetScreenshotsDir,
+  revealScreenshotsDir: RevealScreenshotsDir,
+  resetScreenshotsDir: ResetScreenshotsDir,
   refreshNewCount: () => refreshNewCount(),
   shouldConfirmPickWhile: () => watchEnabled.value,
   onError: (m) => { error.value = m },
@@ -1083,6 +1089,8 @@ useEventStream({
           :clearing-d-b="clearingDB"
           @pick-screenshots-dir="pickDir"
           @detect-screenshots-dir="detectDir"
+          @reveal-screenshots-dir="revealDir"
+          @reset-screenshots-dir="resetDir"
           @set-theme="setTheme"
           @set-week-start="setWeekStart"
           @go-to-view="goToView"

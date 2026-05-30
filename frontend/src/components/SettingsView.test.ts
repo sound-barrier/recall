@@ -592,7 +592,7 @@ describe('SettingsView — Detect Overwatch Folder (empty state hero)', () => {
   })
 })
 
-describe('SettingsView — Detect Overwatch Folder (steady state)', () => {
+describe('SettingsView — steady-state row affordances', () => {
   const setProps = {
     screenshotsDir: '/srv', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
   }
@@ -603,11 +603,27 @@ describe('SettingsView — Detect Overwatch Folder (steady state)', () => {
     expect(detect).toBeDefined()
   })
 
-  it('emits detect-screenshots-dir when the steady-state Detect is clicked', async () => {
+  // Detect renders but stays disabled when a folder is set — the
+  // user must Reset first to re-enable auto-detection. Confirmed
+  // emit-side: a click on a disabled button produces no event.
+  it('keeps the steady-state Detect button disabled', () => {
     const wrapper = mount(SettingsView, { props: setProps })
     const detect = wrapper.findAll('button').find(b => b.text().trim() === 'Detect')!
-    await detect.trigger('click')
-    expect(wrapper.emitted('detect-screenshots-dir')).toBeTruthy()
+    expect(detect.attributes('disabled')).toBeDefined()
+  })
+
+  it('emits reveal-screenshots-dir when Reveal is clicked', async () => {
+    const wrapper = mount(SettingsView, { props: setProps })
+    const reveal = wrapper.findAll('button').find(b => b.text().trim() === 'Reveal')!
+    await reveal.trigger('click')
+    expect(wrapper.emitted('reveal-screenshots-dir')).toBeTruthy()
+  })
+
+  it('emits reset-screenshots-dir when Reset is clicked', async () => {
+    const wrapper = mount(SettingsView, { props: setProps })
+    const reset = wrapper.findAll('button').find(b => b.text().trim() === 'Reset')!
+    await reset.trigger('click')
+    expect(wrapper.emitted('reset-screenshots-dir')).toBeTruthy()
   })
 })
 

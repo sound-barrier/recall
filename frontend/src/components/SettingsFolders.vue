@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { DataLocation } from '../api'
-import { OpenURL, IS_WAILS } from '../api'
 
 // Folders panel (steady-state section 01) — Screenshots Folder row
 // + Data Location read-only paths. The first-run empty-hero stays
@@ -9,8 +8,9 @@ import { OpenURL, IS_WAILS } from '../api'
 // any one section.
 //
 // Extracted from SettingsView so the probe-chip / probe-dismissed
-// transient state + the copy-path "✓" flash + the Wails-only Open
-// folder button all live with the section that owns them.
+// transient state + the copy-path "✓" flash + the Reveal / Detect /
+// Change / Reset button cluster all live with the section that owns
+// them.
 
 const props = defineProps<{
   screenshotsDir: string
@@ -24,27 +24,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'pick-screenshots-dir':   []
-  'detect-screenshots-dir': []
+  'pick-screenshots-dir':    []
+  'detect-screenshots-dir':  []
+  'reveal-screenshots-dir':  []
+  'reset-screenshots-dir':   []
 }>()
-
-function onDetect() {
-  emit('detect-screenshots-dir')
-}
-
-// Open the OS file manager at `path`. Wails routes file:// through
-// BrowserOpenURL → Finder / Explorer / xdg-open. Browser/server
-// mode can't reach the user's filesystem, so the affordance is
-// hidden via `canOpenFolder` and this never fires there.
-function openFolder(path: string) {
-  if (!path) return
-  // Wails normalises forward/back slashes, so we don't need to
-  // hand-roll a Windows-vs-POSIX file URL.
-  const url = path.startsWith('file://') ? path : 'file://' + path
-  OpenURL(url)
-}
-
-const canOpenFolder = IS_WAILS
 
 // Probe-chip dismissal — local-only transient UI noise. Reset
 // whenever a fresh probeMessage lands so a second Detect click
@@ -105,10 +89,10 @@ async function copyPath(path: string, which: 'db' | 'settings') {
             <template v-else>
               Recall reads from this folder when you click <strong>Parse</strong>.
             </template>
-            <template v-if="canOpenFolder">
-              <strong>Reveal</strong> opens it in your file manager.
-            </template>
-            <strong>Detect</strong> walks the default Overwatch install locations; <strong>Change…</strong> opens the system folder picker.
+            <strong>Reveal</strong> opens it in your file manager.
+            <strong>Change…</strong> opens the system folder picker;
+            <strong>Reset</strong> clears the configured folder so
+            <strong>Detect</strong> becomes available again.
           </p>
           <div v-if="showProbeChip" class="probe-chip" :class="probeStatus" role="status">
             <span class="probe-chip-bar" aria-hidden="true" />
@@ -138,27 +122,39 @@ async function copyPath(path: string, which: 'db' | 'settings') {
           <span class="setting-value mono" :title="screenshotsDir">{{ screenshotsDir }}</span>
           <div class="folder-btn-group">
             <button
-              v-if="canOpenFolder"
               class="btn ghost tiny"
               :disabled="loading"
               :title="'Reveal ' + screenshotsDir + ' in your file manager'"
-              @click="openFolder(screenshotsDir)"
+              @click="emit('reveal-screenshots-dir')"
             >
               <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
                 <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
               </svg>
               Reveal
             </button>
+            <!-- Detect renders disabled in the steady-state row by
+                 design: when a folder is already configured the user
+                 must Reset first to un-gate auto-detection. Showing
+                 it (rather than hiding) keeps the row's verb cluster
+                 stable so the user's eye doesn't relearn the layout
+                 between empty-hero and steady-state. -->
             <button
               class="btn ghost tiny detect-btn"
-              :disabled="loading || probing"
-              @click="onDetect"
+              disabled
+              :title="'Reset the folder first to re-enable Detect'"
             >
-              <span v-if="probing">Detecting…</span>
-              <span v-else>Detect</span>
+              Detect
             </button>
             <button class="btn ghost tiny" :disabled="loading" @click="emit('pick-screenshots-dir')">
               Change…
+            </button>
+            <button
+              class="btn ghost tiny reset-btn"
+              :disabled="loading"
+              :title="'Clear the configured folder'"
+              @click="emit('reset-screenshots-dir')"
+            >
+              Reset
             </button>
           </div>
         </div>
