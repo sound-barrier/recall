@@ -143,6 +143,62 @@
   --primary-text-on-accent: #fff8ef;
 }
 
+/* OW LIGHT — the Overwatch-skinned light family member. Grounds on
+   "Overwatch white" #EFEDE6 (the warm cream that fills the post-
+   match summary screen behind the heroes panel). The brand-gray
+   #4A4A4A from the Overwatch UI becomes the structural border / dim
+   text token so dividers, plates, and borders carry the same heft
+   the in-game scoreboard does. Orange accent stays the signature
+   #FA9C1B — Blizzard's OW logo orange, AAA-safe on every cream
+   surface for both fill and text. Distinct from the editorial
+   `light` theme's cream-paper-with-rust-accent palette: that one
+   leans magazine; this one leans game-UI. */
+[data-theme="ow-light"] {
+  --bg: #efede6;
+  --surface: #f5f3ed;
+  --surface-2: #e8e5dd;
+  --surface-3: #dcd8cd;
+  --border: #4a4a4a;
+  --border-soft: #b9b3a5;
+  --border-strong: #2a2a2a;
+  --hairline: rgb(74 74 74 / 20%);
+  --text: #1a1a1a;
+  --text-dim: #4a4a4a;
+  --text-faint: #5c5a52;
+  --text-mute: #6a675c;
+  --brand-gray: #4a4a4a;
+  --brand-gray-soft: rgb(74 74 74 / 78%);
+
+  /* OW signature orange straight from the logo. Stays the same hue
+     across both OW variants — it's the cross-family identity. */
+  --accent: #fa9c1b;
+  --accent-bright: #ffaa33;
+  --accent-text: #b8650a;      /* darker rust — AA-safe small text on cream */
+  --accent-soft: rgb(250 156 27 / 22%);
+  --accent-glow: rgb(250 156 27 / 45%);
+  --win: #0f7a3a;
+  --win-soft: rgb(15 122 58 / 14%);
+  --win-line: rgb(15 122 58 / 60%);
+  --loss: #c0354a;
+  --loss-soft: rgb(192 53 74 / 12%);
+  --loss-line: rgb(192 53 74 / 55%);
+  --draw: #8b5c14;
+  --draw-soft: rgb(139 92 20 / 14%);
+  --draw-line: rgb(139 92 20 / 55%);
+  --unknown-line: rgb(74 74 74 / 40%);
+  --tank: #1f5491;
+  --tank-soft: rgb(31 84 145 / 14%);
+  --dps: #c4451f;
+  --dps-soft: rgb(196 69 31 / 13%);
+  --support: #1e6f3a;
+  --support-soft: rgb(30 111 58 / 13%);
+  --atmos-orange: rgb(250 156 27 / 12%);
+  --atmos-blue:   rgb(31 84 145 / 5%);
+  --atmos-coral:  rgb(192 53 74 / 4%);
+  --grid-line:    rgb(74 74 74 / 5%);
+  --primary-text-on-accent: #fff8ef;
+}
+
 /* HIGH-CONTRAST — opt-in tournament-booth / low-vision mode. Strips
    every soft surface gradient and intermediate text tone in favour
    of a pure-black ground, pure-white text, and a boosted gold accent

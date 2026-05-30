@@ -85,6 +85,18 @@ describe('readStoredTheme', () => {
     expect(readStoredTheme()).toBe('high-contrast')
   })
 
+  it('returns "ow-light" when ow-light is stored', () => {
+    stubMatchMedia(false)
+    storage[THEME_STORAGE_KEY] = 'ow-light'
+    expect(readStoredTheme()).toBe('ow-light')
+  })
+
+  it('returns "ow-dark" when ow-dark is stored', () => {
+    stubMatchMedia(true)
+    storage[THEME_STORAGE_KEY] = 'ow-dark'
+    expect(readStoredTheme()).toBe('ow-dark')
+  })
+
   it('falls back to the OS preference for invalid stored values', () => {
     stubMatchMedia(false)
     storage[THEME_STORAGE_KEY] = 'solarized'
@@ -127,6 +139,16 @@ describe('applyTheme', () => {
   it('sets data-theme="high-contrast" on the document root', () => {
     applyTheme('high-contrast')
     expect(attrs['data-theme']).toBe('high-contrast')
+  })
+
+  it('sets data-theme="ow-light" on the document root', () => {
+    applyTheme('ow-light')
+    expect(attrs['data-theme']).toBe('ow-light')
+  })
+
+  it('sets data-theme="ow-dark" on the document root', () => {
+    applyTheme('ow-dark')
+    expect(attrs['data-theme']).toBe('ow-dark')
   })
 
   it('overwrites a previous value', () => {

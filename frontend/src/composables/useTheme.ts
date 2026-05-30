@@ -1,18 +1,34 @@
 import { usePersistedRef, parseEnum } from './usePersistedRef'
 
-export type ThemeMode = 'dark' | 'light' | 'high-contrast'
+// Two theme families share one preference slot:
+//
+//   - "Recall" family: dark / light / high-contrast — editorial
+//     cream-and-rust light + photographer's-darkroom dark plus a
+//     tournament-booth contrast variant.
+//   - "OW" family: ow-light / ow-dark — palettes lifted directly from
+//     the Overwatch UI. ow-light grounds on Overwatch white (cream-
+//     paper that matches the post-match summary screen); ow-dark
+//     grounds on the brand gray (#4A4A4A) that Blizzard uses for the
+//     in-game scoreboard plate. Both keep the same OW orange accent
+//     so cross-theme transitions feel cohesive.
+//
+// All five share one localStorage key — the user picks one preference,
+// the rest live in the Appearance picker.
+export type ThemeMode = 'dark' | 'light' | 'high-contrast' | 'ow-light' | 'ow-dark'
 export const THEME_STORAGE_KEY = 'recall.theme'
 
-const parseTheme = parseEnum<ThemeMode>('dark', 'light', 'high-contrast')
+const parseTheme = parseEnum<ThemeMode>('dark', 'light', 'high-contrast', 'ow-light', 'ow-dark')
 
 // detectSystemPreference reads the OS-level light/dark preference via
 // matchMedia. Used as the fresh-install fallback so a user running
 // their OS in light mode doesn't land on a dark UI by default. Never
-// returns 'high-contrast' — that variant is opt-in only because most
-// OSes don't expose a granular "I want a tournament-booth UI" signal,
-// and `forced-colors: active` is a separate concept (system high-
-// contrast for AT, not a stylistic pick).
-export function detectSystemPreference(): Exclude<ThemeMode, 'high-contrast'> {
+// returns 'high-contrast' or an OW variant — those are opt-in only
+// because OSes don't expose a granular "I want a tournament-booth UI"
+// or "OW-styled chrome" signal, and `forced-colors: active` is a
+// separate concept (system high-contrast for AT, not a stylistic
+// pick). First launch lands on "dark" or "light"; the OW palettes
+// require an explicit pick.
+export function detectSystemPreference(): Exclude<ThemeMode, 'high-contrast' | 'ow-light' | 'ow-dark'> {
   try {
     if (typeof window === 'undefined' || !window.matchMedia) return 'dark'
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'

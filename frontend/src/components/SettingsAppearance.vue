@@ -42,9 +42,11 @@ function pick(mode: ThemeMode) {
               <span class="setting-help-label">About Theme</span>
               <span class="setting-help-pop" role="tooltip">
                 Day and Night share the same orange accent but invert surface/text values.
-                Contrast is a high-contrast variant for tournament-booth or low-vision use —
-                pure black ground, white text, boosted gold accent. First-launch defaults to your
-                OS light/dark preference; your pick after that survives reinstalls.
+                OW Light grounds on Overwatch white (the cream from the post-match summary
+                screen) with the in-game brand gray as borders. Contrast is a high-contrast
+                variant for tournament-booth or low-vision use — pure black ground, white
+                text, boosted gold accent. First-launch defaults to your OS light/dark
+                preference; your pick after that survives reinstalls.
               </span>
             </span>
           </h4>
@@ -111,6 +113,34 @@ function pick(mode: ThemeMode) {
                   <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8z" fill="currentColor" />
                 </svg>
                 Night
+              </div>
+            </button>
+            <button
+              type="button"
+              class="theme-swatch ow-light-swatch"
+              role="radio"
+              :aria-checked="themeMode === 'ow-light'"
+              :class="{ active: themeMode === 'ow-light' }"
+              @click="pick('ow-light')"
+            >
+              <div class="swatch-preview" aria-hidden="true">
+                <div class="swatch-mast" />
+                <div class="swatch-body">
+                  <div class="swatch-line w-70" />
+                  <div class="swatch-line w-45" />
+                  <div class="swatch-line w-60" />
+                  <div class="swatch-tick" />
+                </div>
+              </div>
+              <div class="swatch-label">
+                <svg viewBox="0 0 24 24" class="swatch-icon" aria-hidden="true">
+                  <!-- Sun with thicker bar through it — evokes the OW
+                       symbol's geometric solidity while still reading
+                       as a daytime glyph at small sizes. -->
+                  <circle cx="12" cy="12" r="4" fill="currentColor" />
+                  <rect x="3" y="11" width="18" height="2" fill="currentColor" />
+                </svg>
+                OW Light
               </div>
             </button>
             <button
@@ -268,6 +298,18 @@ function pick(mode: ThemeMode) {
   --swatch-border: #b9b09c;
   --swatch-text:   #2a2722;
   --swatch-accent: #b03a0a;
+}
+
+/* OW Light swatch — Overwatch white background, brand-gray border
+   (the in-game scoreboard plate read), pure OW orange accent. The
+   mast strip stays close to the bg so the preview reads as "single
+   ground" with a darker plate ring around it. */
+.ow-light-swatch {
+  --swatch-bg:     #efede6;
+  --swatch-mast:   #e3e0d6;
+  --swatch-border: #4a4a4a;
+  --swatch-text:   #1a1a1a;
+  --swatch-accent: #fa9c1b;
 }
 
 /* Dark-swatch palette (frozen — matches the live dark theme). */
