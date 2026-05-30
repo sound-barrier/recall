@@ -1,211 +1,226 @@
 # Filtering and grouping
 
-The Matches tab's filter rail at the top of the page is the main
-slicing tool. Seven multi-select pills, two date inputs, a sort
-toggle, a minimum-play-time threshold, an include-undated switch,
-and a "Clear Filters" escape hatch.
+The Matches tab is built around the **dossier + narrow panel + leaves**
+shape. The dossier at the top of the page is the headline summary
+of "the set you're currently looking at": its W/L/D, winrate,
+top maps, top heroes, and the active narrowing clauses. The
+**Narrow this set** button on the dossier opens a left-side panel
+that consolidates every filter dimension into one place. The
+**leaves list** below the dossier is the match-by-match view of
+the set, with sort + group controls in its header.
 
-Every selection is combined with **AND**: pick "Hero: Juno" + "Map:
-King's Row" + "Result: Victory" and you see only Juno wins on King's
-Row. Within a single field, multiple selections are combined with
-**OR**: pick "Hero: Juno" + "Hero: Mercy" and you see matches where
-either was played. So the mental model is "any of these heroes AND
-any of these maps AND any of these results AND …".
+Every selection inside the narrow panel is combined with **AND**:
+pick "Hero: Juno" + "Map: King's Row" + "Result: Victory" and you
+see only Juno wins on King's Row. Within a single field, multiple
+selections are combined with **OR**: pick "Hero: Juno" + "Hero:
+Mercy" and you see matches where either was played. So the mental
+model is "any of these heroes AND any of these maps AND any of
+these results AND …".
 
-## The seven multi-filter pills
+## Opening the narrow panel
 
-Each pill is a popover-style multi-select with the same shape:
+Two ways:
 
-| Pill | What it filters on |
-|---|---|
-| **Mode** | Quickplay, Competitive, Unranked, Arcade modes you've played |
-| **Map** | Antarctic Peninsula, King's Row, Nepal, … only maps that appear in your match history are listed |
-| **Type** | Control, Push, Escort, Hybrid, Flashpoint, Clash — Overwatch's game type |
-| **Role** | Tank, DPS, Support |
-| **Hero** | Every hero you've played; clicking checks the match's primary AND any swap heroes (heroes_played) — so "filter by Mercy" finds matches where you played Mercy even briefly |
-| **Result** | Victory, Defeat, Draw, (and "unknown" for matches where the result wasn't parseable) |
-| **Source** | Which screenshot types fed each match: SUMMARY, TEAMS, PERSONAL, RANK. Useful for spotting partial parses ("show me matches that have a SUMMARY but no PERSONAL") |
+- Click the **⌗ Narrow this set** button on the dossier
+  (right-hand side, just below the breakdowns).
+- Press `/` from anywhere on the Matches tab — the panel slides
+  in and the search box receives focus immediately.
 
-### Inside a filter popover
+The panel mirrors the right-side match detail panel's contract:
+focus stays trapped inside the panel via Tab/Shift+Tab, the
+background goes `inert` (no clicks bleed through), `Esc` closes,
+and clicking the dim backdrop dismisses. The page underneath
+stays visible — every filter change reflows the dossier KPIs +
+top breakdowns + leaves list live so the consequences of a pick
+are immediately readable.
 
-Click the pill to open. The panel has:
+## What lives in the panel
 
-- **A small hint** — *"Picking multiple matches any of them."* — to
-  reinforce the OR-within-a-field semantics.
-- **Search box** — appears when there are 8+ options. Type to narrow
-  the list (case-insensitive substring match).
-- **Roster** — checkbox-style row per option. The currently-selected
-  count appears in the header (e.g. *"3 / 12"*).
-- **Foot bar** — three buttons:
-  - **Select all** — check every option in the current search.
-  - **None** — uncheck every option.
-  - **Done** — close the popover. (Clicking outside or pressing
-    Escape also closes it.)
+```text
+Search        ⌕ map · hero · mode · note · tag       [/]
 
-The pill itself shows up to one selected chip inline. If you've
-picked multiple, it shows the first chip plus **+N** where N is the
-remaining count.
+Time scope    [All] [7d] [30d] [90d]
+              From [📅]   To [📅]   (Clear dates)
 
-The eyebrow above the pill turns brand-orange once at least one
-option is selected — quick visual scan of "which filters are
-currently engaged" without opening every popover.
+Map           [pill × pill ×]  + typeahead dropdown
+Map type      [control] [escort] [hybrid] [push] …
+Hero          [pill × pill ×]  + typeahead dropdown
+              · matches any played
+Role          [tank] [support] [dps]
 
-### Quick-filter from a match card
+Result        [victory] [defeat] [draw]
+Tags          [#stack] [#stream] [#review] …
+Leavers       [Include] [Drop from tally] [Hide entirely]
 
-Every chip on a match card (mode badge, hero name, role pill, map
-name, result tag) is itself a clickable filter trigger. Click a hero
-name and it toggles that hero into the **Hero** filter; click a map
-name and it toggles into **Map**. Active state is shown as a
-glowing orange outline on the chip — click it again to remove the
-filter.
+Refinement    Min play time  [__] min
+              Min played %    [__] %
+              ☐ Show unknown-map matches
+```
 
-This is the fastest path to questions like "show me other matches
-on this hero", "show me other matches on this map", or "show me
-every Mei game I lost".
+### Search
 
-## Date range
+Free-text substring match across map, hero (primary + every
+heroes-played entry), mode, role, map type, annotation note, and
+annotation tags. Case-insensitive. The match shows as you type;
+clear the input to drop the clause.
 
-Two `datetime-local` inputs (**From** / **To**) below the pills.
-Both inputs default to empty; either side or both can be set.
+> **Note:** the previous vim-style scoped-clause syntax
+> (`note:clutch`, `tag:stack`, `member:Apollo`, `replay:7H1`)
+> isn't part of the current search — substring match only.
+> See `UI_RECOMMENDATIONS.md` for the plan to restore scoped
+> clauses.
 
-- Only **From** set → "show matches at or after this datetime".
-- Only **To** set → "show matches at or before this datetime".
-- Both set → "show matches inside this window".
+### Time scope
 
-The **Reset** button next to the inputs clears both at once.
+Preset chips set common windows: **All time** (default),
+**Last 7d**, **Last 30d**, **Last 90d**. The From / To date
+inputs accept arbitrary windows — picking either flips the
+preset to "Custom" and the chips deselect. **Clear dates**
+removes both.
 
-**Heads-up — undated matches.** Recall computes a match's date from
-the SUMMARY tab. If you captured only a scoreboard for a match (no
-SUMMARY), the date is unknown and that match is **hidden** while
-the date filter is active. A small ⓘ chip appears next to **Reset**
-showing how many matches are currently hidden by this rule, with
-the count and a tooltip — and the **Undated** toggle (below) lets
-you bring them back if you want.
+Date filtering applies only to records that have a parseable
+`data.date` — undated rows (no SUMMARY screenshot to anchor the
+date) pass through every date filter and appear in the leaves
+list under the **No date** group when grouping is active.
 
-## Sort direction
+### Map + Map type, Hero + Role
 
-Single toggle in the lower-right of the filter rail:
+**Map** and **Hero** are typeahead comboboxes — 31 maps and 51
+heroes are too many for a chip cloud. Click the input, type to
+narrow the list, click an option to pick or unpick. Selected
+items appear as removable pills above the input; `×` drops one.
 
-- **↓ Newest** — most recent matches first (default).
-- **↑ Oldest** — oldest matches first.
+**Map type** and **Role** are small chip rows (5–6 options each).
 
-Sorting is by the match's `finished_at` time (the SUMMARY-derived
-end timestamp) when available, falling back to the screenshot
-filename timestamp otherwise.
+The Hero filter is a **broad match** — picking "Lúcio" qualifies
+any match where Lúcio was the primary hero OR appeared in the
+`heroes_played` array, regardless of how briefly he was played.
+To require a meaningful play duration, set a **Min play time** or
+**Min played %** threshold below (see [Refinement](#refinement)).
 
-## Min-play threshold
+### Result, Tags, Leavers
 
-Hides matches where the selected hero played less than the
-configured share of the match. Two mutually-exclusive ways to
-express the threshold:
+**Result** is one row with three chips: victory, defeat, draw.
 
-- **As percent** (e.g. 50%) — show only matches where the hero
-  played at least half the match.
-- **As time** (e.g. 5m 0s) — show only matches where the hero
-  played at least 5 minutes.
+**Tags** lists every annotation tag in your corpus. The
+conventional three are `stack`, `stream`, `placement`, but any tag
+the user added via the detail panel surfaces here. Multi-select
+with OR-within semantics ("any of these tags").
 
-Engaging one side disables the other (you can switch by zeroing the
-active side first). When at least one threshold is engaged, the
-**Min play** label turns brand-orange, matching the eyebrow
-treatment on the multi-filter pills.
+**Leavers** is a segmented control. Three modes:
 
-Filter semantics: a match qualifies when **any** candidate hero
-meets the threshold. So if you've also filtered "Hero: Juno" and
-set min play to 50%, you see only matches where Juno played at
-least half the match — not matches where Juno was *one of* the
-heroes for any duration.
+- **Include** (default) — every match, leaver-tagged or not,
+  counts the same.
+- **Drop from tally** — leaver-tagged matches stay visible in
+  the leaves but the dossier W/L/D and winrate skip them.
+- **Hide entirely** — drop leaver-tagged matches from the leaves
+  list and the dossier.
 
-## Undated toggle
+### Refinement
 
-Appears in the filter tools row only when at least one undated
-match exists (records with no SUMMARY screenshot to anchor a
-date).
+**Min play time** and **Min played %** are two numeric inputs
+that further qualify the Hero filter. A match passes when the
+picked hero has ≥ N minutes of play time **OR** ≥ N % of the
+match — either threshold passing is enough. Both at zero (the
+default) means the threshold doesn't apply.
 
-- **Off** (default) — undated matches are hidden everywhere date
-  matters: from the Matches list, from the date filter, from group
-  headers.
-- **On** — undated matches show up in the list under a synthetic
-  "Undated" group at the top.
+**Show unknown-map matches** — by default, matches whose map
+couldn't be parsed (corrupt SUMMARY / non-OW PNG / classifier
+failure) don't appear in the Matches dossier; they live in the
+**Unknown** tab where the triage UI is. Toggle this on to surface
+them in the leaves list — useful for one-off investigations.
 
-The toggle's label shows the current count
-(**Undated · 7**) so you know what's hiding before you click it.
+## Active-clause chips on the dossier
 
-## Clear Filters
+Once at least one clause is engaged, the dossier eyebrow flips
+from "Set" → "Narrowed set" and a removable-pill row appears
+below the headline:
 
-Red "Clear Filters" button appears in the filter tools row whenever
-any filter is active. One click resets every filter, date range,
-min-play threshold, undated toggle, and search box back to default.
-Sort direction and the Expand/Collapse state aren't reset (those
-are display preferences, not filters).
+```text
+Narrowed set
+last 30d — Lijiang Tower — lúcio · mercy
+3M / 1L / 0D · 75% WR
 
-## Match count
+[Range: last 30d ×] [Map: lijiang tower ×] [Hero: lúcio ×]
+[Hero: mercy ×]                                  [Clear all]
+```
 
-`N of M` chip in the lower-right of the filter tools row. **N** is
-the count after filters; **M** is the total in the database. When
-filters are off, **N == M**.
+Each chip's `×` drops just that single clause from the narrow.
+**Clear all** drops every clause back to defaults (same as the
+**Reset** button inside the panel's footer).
 
-## Group rail (Month → Week → Day)
+The panel's **Done** button closes the panel without changing
+state. Reopen with `⌗ Narrow this set` or `/`.
 
-Above the match list, a small toolbar shows the count of months
-visible and one button:
+## Sort + group controls on the leaves
 
-- **Expand all** / **Collapse all** — opens or closes every Month →
-  Week → Day group in one shot.
+Above the leaves list (`Members · N matches in this set`):
 
-Matches are always grouped by Month → Week → Day. Each group header
-shows the win/loss/draw tally for that bucket. Click any group
-header to expand/collapse just that bucket; use the rail's
-**Expand/Collapse all** for the whole tree.
+- **Sort** — two-button segmented control: **Newest ↓** (default)
+  or **Oldest ↑**. Sorted by `data.date` + `data.finished_at`
+  composite; ties break by parse order.
+- **Group** — five-button segmented control: **—** (none, flat
+  list), **D** (day), **W** (week, Monday-anchored to match the
+  Calendar setting's default), **M** (month), **Y** (year).
+  Default is **D**.
 
-The **First Day of Week** setting (Settings → Calendar) determines
-where week boundaries land — see
+When grouping is active, thin section dividers separate buckets:
+
+```text
+─── Sat May 24                    [3]   ─────────────────
+```
+
+Bucket label on the left, member count in the chip, line trailing
+to the right edge. Undated records collect under a **No date**
+divider when any grouping is active.
+
+The **First Day of Week** setting (Settings → Calendar)
+determines where the week boundary lands — see
 [Settings reference → Calendar](settings-reference.md#first-day-of-week)
 for the regional defaults.
 
+## Per-row drill-down
+
+Clicking any leaf row opens the **match detail panel** from the
+right edge. Inside the panel you can edit the annotation
+(note, replay code, group members, leaver flag, tags),
+soft-delete the match, and see the full Heroes Played + Match
+Stats + Rank Update + Source Screenshots dossier. The panel
+honors ← / → for prev/next match against the *currently narrowed*
+list, so once you've narrowed down "every Lúcio loss on Rialto"
+the arrow keys paginate through that exact set. See
+[How it works → The Matches view](how-it-works.md#the-matches-view)
+for the panel's keyboard contract in detail.
+
+## Match count
+
+The dossier subline reads the current state:
+
+- **No narrow active** — `spans your full history`
+- **Narrow active** — `N of M matches in this view` (N is the
+  filtered count; M is the total corpus, minus any soft-deleted
+  matches you haven't surfaced via the detail panel)
+
 ## Filter state persistence
 
-Filter selections, sort direction, and date range are **not**
-persisted across launches — every session starts with a clean
-filter state. The reasoning: filters are typically a "right now,
-I want to see…" question, not a permanent view.
+Narrow-panel selections are **session-scoped** — they don't
+survive a page reload. The reasoning: a narrow is typically a
+"right now, I want to see…" question, not a permanent view.
 
-A handful of cross-cutting preferences DO persist (they're
-set-once, not session-scoped):
+A handful of cross-cutting preferences DO persist across launches
+(localStorage on every supported platform):
 
 - **Theme** (Day / Night / Contrast — fresh installs follow the
   OS preference)
 - **First day of week** (Sunday / Monday / …)
 - **Screenshots folder**
-- **Density** (Comfy / Compact)
-- **Min-play threshold** (% played and minutes played gates)
-- **Leaver handling** (Include / Don't tally / Hide)
-- **Include undated** toggle
-- **Show hidden** toggle
+- **Window size** for the Campaign Log heatmap (3M / 6M / 12M)
+- **Tesseract path** + the rest of Settings
 
-If you settle into 3–4 recurring filter combinations ("my
-placements", "stack games only", "last week's session"), use the
-**Presets** dropdown in the filter tools row to save the
-current filter state as a named preset. Saved presets persist
-across launches and reinstalls (localStorage lives outside the
-app bundle), so transferring a setup to a new machine just
-means importing your settings.
-
-## Search syntax
-
-The search box accepts a vim-style query language with two clause
-shapes:
-
-- **Bare token** (e.g. `clutch`) — substring-matches anywhere
-  in the note, replay code, group members, or tags.
-- **Field-scoped** (e.g. `note:clutch`, `replay:7H1`,
-  `member:Apollo`, `tag:stack`) — restricts to that single
-  field. Plural aliases (`notes:`, `tags:`, …) collapse to the
-  canonical singular. Unknown field prefixes fall through as
-  bare text.
-
-Multiple clauses **AND** together; quoted values
-(`note:"huge clutch"`) preserve internal whitespace. Press `/`
-from anywhere to focus the search box.
+Saved-narrow presets (so a "stack games last weekend" narrow
+survives a reload) are tracked in `UI_RECOMMENDATIONS.md` —
+the old preset feature was retired with the FilterRail and a
+typed replacement is in the backlog.
 
 ## Next chapter
 
