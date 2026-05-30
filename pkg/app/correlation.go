@@ -198,13 +198,51 @@ func candidateFromParse(filename string, r *parser.MatchResult) candidate {
 
 // existing pulls every screenshot in the snapshot into one comparison
 // slice. Each entry carries its parent type's MatchKey + a candidate
-// view of its scalar fields.
+// view of its scalar fields, plus the per-match-key hero set so the
+// hero-conflict predicate in rowsConflict can recognize multi-hero
+// matches (SUMMARY anchored on one hero with SCOREBOARD / PERSONAL
+// captured during a mid-game swap to another).
 type existing struct {
-	key string
-	c   candidate
+	key         string
+	c           candidate
+	matchHeroes map[string]bool
+}
+
+// matchHeroSets returns map[matchKey] → set of every hero that appears
+// in any row attributed to that match. SUMMARY contributes its primary
+// Hero plus every HeroesPlayed entry; SCOREBOARD and PERSONAL each
+// contribute their row Hero. The set is what rowsConflict consults
+// when deciding whether a hero mismatch between cand and an existing
+// row is a real conflict or just a swap captured in one of the two
+// rows but missing from the other.
+func matchHeroSets(snap db.Screenshots) map[string]map[string]bool {
+	out := map[string]map[string]bool{}
+	add := func(key, hero string) {
+		if key == "" || hero == "" {
+			return
+		}
+		if out[key] == nil {
+			out[key] = map[string]bool{}
+		}
+		out[key][hero] = true
+	}
+	for _, r := range snap.Summaries {
+		add(r.MatchKey, r.Hero)
+		for _, h := range r.HeroesPlayed {
+			add(r.MatchKey, h.Hero)
+		}
+	}
+	for _, r := range snap.Scoreboards {
+		add(r.MatchKey, r.Hero)
+	}
+	for _, r := range snap.Personals {
+		add(r.MatchKey, r.Hero)
+	}
+	return out
 }
 
 func snapshotExisting(snap db.Screenshots) []existing {
+	heroSets := matchHeroSets(snap)
 	var out []existing
 	for _, r := range snap.Summaries {
 		out = append(out, existing{
@@ -216,6 +254,7 @@ func snapshotExisting(snap db.Screenshots) []existing {
 					Date: r.Date, FinishedAt: r.FinishedAt,
 				},
 			},
+			matchHeroes: heroSets[r.MatchKey],
 		})
 	}
 	for _, r := range snap.Scoreboards {
@@ -233,12 +272,14 @@ func snapshotExisting(snap db.Screenshots) []existing {
 					Mitigation:   r.Mitigation,
 				},
 			},
+			matchHeroes: heroSets[r.MatchKey],
 		})
 	}
 	for _, r := range snap.Personals {
 		out = append(out, existing{
-			key: r.MatchKey,
-			c:   candidate{filename: r.Filename, r: &parser.MatchResult{Hero: r.Hero}},
+			key:         r.MatchKey,
+			c:           candidate{filename: r.Filename, r: &parser.MatchResult{Hero: r.Hero}},
+			matchHeroes: heroSets[r.MatchKey],
 		})
 	}
 	for _, r := range snap.Ranks {
@@ -250,10 +291,15 @@ func snapshotExisting(snap db.Screenshots) []existing {
 					Rank: r.Rank, Result: r.Result,
 				},
 			},
+			matchHeroes: heroSets[r.MatchKey],
 		})
 	}
 	for _, r := range snap.Unknowns {
-		out = append(out, existing{key: r.MatchKey, c: candidate{filename: r.Filename, r: &parser.MatchResult{}}})
+		out = append(out, existing{
+			key:         r.MatchKey,
+			c:           candidate{filename: r.Filename, r: &parser.MatchResult{}},
+			matchHeroes: heroSets[r.MatchKey],
+		})
 	}
 	for i := range out {
 		if ts, ok := parseFilenameTimestamp(out[i].c.filename); ok {
@@ -297,7 +343,7 @@ func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCand
 			e.c.r.Deaths != cand.r.Deaths {
 			continue
 		}
-		if rowsConflict(cand.r, e.c.r) {
+		if rowsConflict(cand.r, e.c.r, e.matchHeroes) {
 			continue
 		}
 		if !e.c.hasTS {
@@ -366,7 +412,7 @@ func matchByTimestampWindow(cand candidate, snap db.Screenshots) (string, bool) 
 		if d > mergeWindow {
 			continue
 		}
-		if rowsConflict(cand.r, e.c.r) {
+		if rowsConflict(cand.r, e.c.r, e.matchHeroes) {
 			continue
 		}
 		if d < bestDelta {
@@ -380,20 +426,43 @@ func matchByTimestampWindow(cand candidate, snap db.Screenshots) (string, bool) 
 	return bestKey, true
 }
 
-// rowsConflict reports whether the two parsed results disagree on any
-// signature field (each side has a non-zero value and they differ).
-// Same predicate the pre-refactor merge used.
-func rowsConflict(a, b *parser.MatchResult) bool {
-	if stringsConflict(a.Map, b.Map) ||
-		stringsConflict(a.Date, b.Date) ||
-		stringsConflict(a.FinishedAt, b.FinishedAt) ||
-		stringsConflict(a.Hero, b.Hero) {
+// rowsConflict reports whether cand and an existing row disagree on a
+// signature field strongly enough to block the bridge. existingMatchHeroes
+// is the per-match-key hero set from snapshotExisting; it lets the
+// predicate recognize multi-hero matches where SUMMARY anchors on one
+// hero and SCOREBOARD / PERSONAL were captured during a mid-game swap
+// to another. A hero mismatch is a soft conflict — allowed iff the
+// candidate's hero is already in the existing match's hero set, or the
+// existing row's hero is in the candidate's HeroesPlayed list.
+func rowsConflict(cand, existing *parser.MatchResult, existingMatchHeroes map[string]bool) bool {
+	if stringsConflict(cand.Map, existing.Map) ||
+		stringsConflict(cand.Date, existing.Date) ||
+		stringsConflict(cand.FinishedAt, existing.FinishedAt) {
 		return true
 	}
-	if intsConflict(a.Eliminations, b.Eliminations) ||
-		intsConflict(a.Assists, b.Assists) ||
-		intsConflict(a.Deaths, b.Deaths) {
+	if stringsConflict(cand.Hero, existing.Hero) && !heroesOverlap(cand, existing, existingMatchHeroes) {
 		return true
+	}
+	if intsConflict(cand.Eliminations, existing.Eliminations) ||
+		intsConflict(cand.Assists, existing.Assists) ||
+		intsConflict(cand.Deaths, existing.Deaths) {
+		return true
+	}
+	return false
+}
+
+// heroesOverlap is true when either cand's hero is in the existing
+// match's known-hero set, OR existing's hero is in cand's
+// HeroesPlayed list. Either direction means the two rows plausibly
+// belong to the same multi-hero match.
+func heroesOverlap(cand, existing *parser.MatchResult, existingMatchHeroes map[string]bool) bool {
+	if existingMatchHeroes[cand.Hero] {
+		return true
+	}
+	for _, hp := range cand.HeroesPlayed {
+		if hp.Hero == existing.Hero {
+			return true
+		}
 	}
 	return false
 }

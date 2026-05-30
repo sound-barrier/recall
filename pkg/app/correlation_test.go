@@ -152,7 +152,7 @@ func TestRowsConflict(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := rowsConflict(base, tc.b); got != tc.want {
+			if got := rowsConflict(base, tc.b, nil); got != tc.want {
 				t.Fatalf("got %v want %v", got, tc.want)
 			}
 		})
