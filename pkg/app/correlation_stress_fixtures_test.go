@@ -295,11 +295,20 @@ func (s *snapshotState) Insert(f fixture) {
 	switch f.scrType {
 	case "summary":
 		r := f.result
+		heroesPlayed := make([]db.SummaryHeroPlayed, 0, len(r.HeroesPlayed))
+		for _, h := range r.HeroesPlayed {
+			heroesPlayed = append(heroesPlayed, db.SummaryHeroPlayed{
+				Hero:          h.Hero,
+				PercentPlayed: h.PercentPlayed,
+				PlayTime:      h.PlayTime,
+			})
+		}
 		s.snap.Summaries = append(s.snap.Summaries, db.SummaryRow{
 			Filename: f.filename, MatchKey: f.expectedKey,
 			Map: r.Map, Mode: r.Mode, Hero: r.Hero,
 			Result: r.Result, FinalScore: r.FinalScore,
 			Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
+			HeroesPlayed: heroesPlayed,
 		})
 	case "scoreboard":
 		r := f.result

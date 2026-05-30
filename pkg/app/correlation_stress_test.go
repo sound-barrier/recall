@@ -543,17 +543,16 @@ func TestCorrelation_Stress_TimestampWindowEdge(t *testing.T) {
 //
 // 10 matches. Each match's SUMMARY records hero=Hero1 (the most-
 // played one, e.g. Lúcio 70%). SCOREBOARD + PERSONAL were captured
-// during the Kiriko portion (the secondary hero). The resolver's
-// rowsConflict() refuses to bridge a SCOREBOARD with hero=Kiriko to
-// a SUMMARY with hero=Lúcio.
+// during the Kiriko portion (the secondary hero).
 //
-// Result: SUMMARY mints match:<X>, SCOREBOARD mints its own key,
-// PERSONAL mints its own key. ONE logical match becomes THREE
-// match_keys in the database. Significant bug.
+// Before PR #105, rowsConflict() refused to bridge a SCOREBOARD
+// with hero=Kiriko to a SUMMARY with hero=Lúcio — ONE logical match
+// became THREE match_keys. PR #105 weakens the hero predicate to
+// consult the per-match hero set (SUMMARY's HeroesPlayed union)
+// so the swap hero is recognized and the rows fold together.
 //
 // Per match: 4 fixtures (SUMMARY + SCOREBOARD + PERSONAL + RANK).
-// RANK isn't gated by hero conflict so it adopts SUMMARY's key
-// cleanly via timestamp window.
+// All four now adopt SUMMARY's anchor cleanly.
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_MultiHeroScoreboardSwap(t *testing.T) {
@@ -588,8 +587,10 @@ func TestCorrelation_Stress_MultiHeroScoreboardSwap(t *testing.T) {
 			expectedKey: matchKeyFor(start),
 		})
 
-		// SCOREBOARD with hero=swap can't bridge — mints its own
-		// fresh key (this is the bug).
+		// SCOREBOARD with hero=swap adopts SUMMARY's key via the
+		// timestamp window — rowsConflict consults the per-match
+		// hero set ({primary, swap} from SUMMARY.HeroesPlayed) and
+		// the hero mismatch is no longer a hard reject.
 		sbStart := start.Add(30 * time.Second)
 		specs = append(specs, matchSpec{
 			startTime:    sbStart,
@@ -601,15 +602,13 @@ func TestCorrelation_Stress_MultiHeroScoreboardSwap(t *testing.T) {
 			emitScoreboard:   true,
 			scoreboardOffset: 0,
 			suffix:           fmt.Sprintf("F%02db", i),
-			expectedKey:      matchKeyFor(sbStart),
-			bugNote:          "Multi-hero match: SCOREBOARD's hero (Kiriko) conflicts with SUMMARY's primary hero (Lúcio); resolver splits one match into two match_keys",
+			expectedKey:      matchKeyFor(start),
 		})
 
-		// PERSONAL of swap hero — adopts the SCOREBOARD's split-off
-		// key via timestamp window (closer in time AND shares the
-		// secondary hero, so no rowsConflict). The match's data
-		// keeps collecting under the SCOREBOARD's wrong key instead
-		// of the SUMMARY's correct anchor.
+		// PERSONAL of swap hero — adopts the same SUMMARY anchor
+		// for the same reason; SCOREBOARD's hero is in the match's
+		// hero set so the rowsConflict short-circuit allows the
+		// timestamp-window bridge to the existing key.
 		pStart := start.Add(45 * time.Second)
 		specs = append(specs, matchSpec{
 			startTime:      pStart,
@@ -617,24 +616,19 @@ func TestCorrelation_Stress_MultiHeroScoreboardSwap(t *testing.T) {
 			emitPersonal:   true,
 			personalOffset: 0,
 			suffix:         fmt.Sprintf("F%02dp", i),
-			expectedKey:    matchKeyFor(sbStart),
-			bugNote:        "Multi-hero match: PERSONAL of secondary hero follows the SCOREBOARD's split-off key (the cascade — once SCOREBOARD splits, subsequent screenshots compound the wrong attribution)",
+			expectedKey:    matchKeyFor(start),
 		})
 
-		// RANK (no hero field on RANK; adopts via timestamp window).
-		// At start+90s, RANK is equidistant from PERSONAL (45s away)
-		// and SCOREBOARD (60s away). It rolls back through
-		// snapshotExisting and the SCOREBOARD's entry is iterated
-		// first → adopted as best-so-far → PERSONAL's later entry at
-		// 45s distance overrides. Result: RANK adopts the SCOREBOARD's
-		// key (via PERSONAL's chain).
+		// RANK has no hero field; adopts via timestamp window without
+		// needing the hero set. Now points back at SUMMARY since the
+		// SCOREBOARD/PERSONAL chain it used to follow is collapsed
+		// into the same match_key.
 		rStart := start.Add(90 * time.Second)
 		specs = append(specs, matchSpec{
 			startTime: rStart, emitRank: true, rankOffset: 0,
 			rankBand: "diamond", rankLevel: 3, rankProgress: 60, rankChange: 24, rankResult: "victory",
 			suffix:      fmt.Sprintf("F%02dr", i),
-			expectedKey: matchKeyFor(sbStart),
-			bugNote:     "Multi-hero match: RANK follows the SCOREBOARD/PERSONAL chain rather than reaching back to SUMMARY (timestamp window — PERSONAL at -45s wins the closest-tied tiebreak over SUMMARY at -90s)",
+			expectedKey: matchKeyFor(start),
 		})
 	}
 
@@ -653,8 +647,9 @@ func TestCorrelation_Stress_MultiHeroScoreboardSwap(t *testing.T) {
 //
 // 5 matches. SUMMARY hero=A. Player opened PERSONAL on Hero A early
 // then PERSONAL on Hero B later in the same match. Same multi-hero
-// bug as cohort F, but exercises the dual-PERSONAL path that cohort
-// F doesn't.
+// fix as cohort F: PR #105's hero-set check recognizes hero B as
+// belonging to the match (SUMMARY.HeroesPlayed includes it) and the
+// second PERSONAL adopts the existing match_key.
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
@@ -711,9 +706,10 @@ func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
 			expectedKey:    matchKeyFor(start),
 		})
 
-		// PERSONAL 2 (heroB) — would adopt via timestamp window IF
-		// no hero conflict, but SUMMARY+SCOREBOARD+PERSONAL1 all
-		// carry heroA. rowsConflict refuses → fresh key.
+		// PERSONAL 2 (heroB) adopts via timestamp window — heroB is
+		// in SUMMARY.HeroesPlayed, so the per-match hero set lets
+		// rowsConflict allow the bridge despite the local
+		// heroB↔heroA mismatch on PERSONAL 1.
 		p2Start := start.Add(75 * time.Second)
 		specs = append(specs, matchSpec{
 			startTime:      p2Start,
@@ -721,8 +717,7 @@ func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
 			emitPersonal:   true,
 			personalOffset: 0,
 			suffix:         fmt.Sprintf("G%02dp2", i),
-			expectedKey:    matchKeyFor(p2Start),
-			bugNote:        "Second PERSONAL (Hero B) can't adopt match's existing key because rowsConflict rejects A↔B hero mismatch — one match → two match_keys",
+			expectedKey:    matchKeyFor(start),
 		})
 	}
 
