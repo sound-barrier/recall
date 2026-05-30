@@ -1150,6 +1150,7 @@ useEventStream({
           :card-state="cardState"
           @go-to-view="goToView"
           @resolve-ambiguous="onResolveAmbiguous"
+          @open-lightbox="openLightbox"
         />
 
         <!-- ─── MATCHES VIEW ───────────────────────────────────── -->
