@@ -76,7 +76,11 @@ test.describe('matches set-workspace', () => {
     // Unknown-map record is hidden by default → 5 leaves, not 6.
     await expect(page.locator('.dossier-title')).toContainText(/all matches/i)
     await expect(page.locator('.leaf-row')).toHaveCount(5)
-    await expect(page.locator('.kpi-tile').nth(1)).toContainText('3') // wins
+    // 3 victories / 2 defeats / 0 draws across the 5 visible matches
+    // = 60% winrate. The Record-as-W·L·D tile was replaced by Avg
+    // K/D/A; the headline W/L/D lives in the masthead scoreboard.
+    await expect(page.locator('.kpi-tile', { hasText: 'Winrate' }).locator('.kpi-value')).toHaveText('60%')
+    await expect(page.locator('.scoreboard .score-num').nth(0)).toHaveText('3')
   })
 
   test('narrow panel opens with focus trap and inerts the background', async ({ page }) => {
