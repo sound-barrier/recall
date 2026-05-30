@@ -5,9 +5,19 @@ match records Recall couldn't fully resolve. If everything parsed
 cleanly the tab title reads "All screenshots resolved." and the
 view is empty.
 
-Otherwise: each unresolved record gets a card with an amber left
-bar, an internal `match_key`, and a per-field diagnostic strip
-showing which fields the parser could and couldn't extract.
+The tab surfaces two kinds of records:
+
+1. **Needs your review** — screenshots the resolver couldn't pin
+   to a single match. Statistics (eliminations / assists / deaths)
+   matched one or more existing matches in a time window short
+   enough that "this could be the same match or a different match
+   with identical stats" is genuinely ambiguous. See
+   [Needs your review (ambiguous attribution)](#needs-your-review-ambiguous-attribution)
+   below.
+2. **Unknown maps** — records where the map couldn't be parsed at
+   all. Each gets a card with an amber left bar, an internal
+   `match_key`, and a per-field diagnostic strip showing which
+   fields the parser could and couldn't extract.
 
 ## Why a record ends up here
 
@@ -161,6 +171,39 @@ won't extract it, that's a parser bug worth reporting. Open the
 
 Recall doesn't read BattleTags, so scoreboard tags don't affect
 repro; crop or blur them before uploading if you'd like.
+
+## Needs your review (ambiguous attribution)
+
+If two matches share the same hero, map, and `(eliminations,
+assists, deaths)` triple inside a 30-minute window, Recall can't
+tell them apart from the screenshots alone. Rather than guess —
+which can silently merge two distinct matches into one record —
+the resolver hands the call back to you.
+
+Ambiguous records appear at the top of the Unknown tab under the
+**"Needs your review — N"** subheading. Each card shows:
+
+- The filename of the screenshot needing attribution.
+- A **"Pick the match"** block listing candidate matches. For each
+  candidate you'll see its key, hero / map / date headline, and
+  how far apart in time it is from the ambiguous screenshot
+  (e.g. *"12 min apart"*).
+- An **Attach to this match** button per candidate.
+- A **Treat as new match** escape hatch — picks a fresh
+  `match:<timestamp>` derived from the screenshot's filename, so
+  the row becomes its own standalone match instead of joining
+  any candidate.
+
+Clicking **Attach** rewrites every parent row carrying the
+ambiguous sentinel (the original screenshot AND any siblings
+captured within 2 minutes of it) to the chosen match key in one
+atomic write. The card disappears and the receiving match's
+source-file list grows by one.
+
+There's no way for Recall to know which choice is right — you do,
+because you played the matches. The ambiguity surface is the
+honest answer: a heuristic that picks wrong is worse than a
+prompt that asks.
 
 ## Next chapter
 
