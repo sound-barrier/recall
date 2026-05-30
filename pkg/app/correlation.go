@@ -258,6 +258,15 @@ func snapshotExisting(snap db.Screenshots) []existing {
 				r: &parser.MatchResult{
 					Map: r.Map, Mode: r.Mode, Hero: r.Hero,
 					Date: r.Date, FinishedAt: r.FinishedAt,
+					// Perf totals are the SUMMARY's authoritative
+					// E/A/D — expose them so matchByEAD can bridge a
+					// just-arrived SCOREBOARD to an existing SUMMARY
+					// (closing the cascade after a SUMMARY adopts an
+					// in-game SCOREBOARD's key via finished_at
+					// corroboration).
+					Eliminations: r.PerfElimTotal,
+					Assists:      r.PerfAssistsTotal,
+					Deaths:       r.PerfDeathsTotal,
 				},
 			},
 			matchHeroes: heroSets[r.MatchKey],
@@ -321,11 +330,20 @@ func snapshotExisting(snap db.Screenshots) []existing {
 // filename timestamp within eadBridgeAmbiguousWindow. Returns:
 //
 //	key, nil, true    — exactly one distinct match_key within
-//	                    eadBridgeAutoWindow; caller auto-adopts.
-//	"",  cands, true  — multiple distinct candidates, OR a single
+//	                    eadBridgeAutoWindow, OR exactly one
+//	                    corroborated match_key at any distance in the
+//	                    window; caller auto-adopts.
+//	"",  cands, true  — multiple distinct candidates with no single
+//	                    corroborated winner, OR a single uncorroborated
 //	                    candidate in the 5–30 min ambiguous zone;
 //	                    caller mints "ambiguous:<filename>".
 //	"",  nil, false   — no candidates within eadBridgeAmbiguousWindow.
+//
+// "Corroborated" means the candidate's SUMMARY.finished_at HH:MM
+// matches the existing key's filename HH:MM (see corroborated() for
+// the exact rule). Corroboration overrides the time-threshold rule,
+// so a SUMMARY whose finished_at HH:MM matches an in-game
+// SCOREBOARD's filename HH:MM auto-adopts even when 20 minutes apart.
 //
 // Candidates are deduped by match_key (the closest-in-time screenshot
 // per existing match wins) and sorted by distance ascending.
@@ -339,7 +357,11 @@ func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCand
 		// apply downstream.
 		return "", nil, false
 	}
-	closestByKey := map[string]time.Duration{}
+	type keyInfo struct {
+		d            time.Duration
+		corroborated bool
+	}
+	byKey := map[string]keyInfo{}
 	for _, e := range snapshotExisting(snap) {
 		if e.c.r.Eliminations == 0 && e.c.r.Assists == 0 && e.c.r.Deaths == 0 {
 			continue
@@ -362,20 +384,28 @@ func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCand
 		if d > eadBridgeAmbiguousWindow {
 			continue
 		}
-		if prev, ok := closestByKey[e.key]; !ok || d < prev {
-			closestByKey[e.key] = d
+		isCorrob := corroborated(cand, e)
+		if prev, ok := byKey[e.key]; ok {
+			if d < prev.d {
+				prev.d = d
+			}
+			prev.corroborated = prev.corroborated || isCorrob
+			byKey[e.key] = prev
+		} else {
+			byKey[e.key] = keyInfo{d: d, corroborated: isCorrob}
 		}
 	}
-	if len(closestByKey) == 0 {
+	if len(byKey) == 0 {
 		return "", nil, false
 	}
 	type kd struct {
-		key string
-		d   time.Duration
+		key          string
+		d            time.Duration
+		corroborated bool
 	}
-	sorted := make([]kd, 0, len(closestByKey))
-	for k, d := range closestByKey {
-		sorted = append(sorted, kd{k, d})
+	sorted := make([]kd, 0, len(byKey))
+	for k, info := range byKey {
+		sorted = append(sorted, kd{k, info.d, info.corroborated})
 	}
 	sort.Slice(sorted, func(i, j int) bool {
 		if sorted[i].d != sorted[j].d {
@@ -383,6 +413,21 @@ func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCand
 		}
 		return sorted[i].key < sorted[j].key
 	})
+	// Corroboration overrides the time-threshold rule. If exactly one
+	// existing match_key has a strong same-match signal beyond EAD,
+	// adopt it regardless of distance — that's a stronger guarantee
+	// than the 5-minute auto-window alone.
+	var corrobKey string
+	corrobCount := 0
+	for _, h := range sorted {
+		if h.corroborated {
+			corrobCount++
+			corrobKey = h.key
+		}
+	}
+	if corrobCount == 1 {
+		return corrobKey, nil, true
+	}
 	if len(sorted) == 1 && sorted[0].d < eadBridgeAutoWindow {
 		return sorted[0].key, nil, true
 	}
@@ -394,6 +439,30 @@ func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCand
 		})
 	}
 	return "", cands, true
+}
+
+// corroborated reports whether the existing key carries a strong
+// same-match signal beyond EAD agreement. EAD alone can collide
+// between unrelated matches; finished_at HH:MM equality is unlikely
+// to align by coincidence.
+//
+// SUMMARY.finished_at HH:MM equals the existing screenshot's filename
+// HH:MM. The SUMMARY's finished_at is the match's actual end-of-match
+// clock time; an existing row taken in that same minute is almost
+// certainly the same match. (A map+hero+date triple agreement rule
+// was considered but is unreachable: snapshotExisting only exposes
+// Date on SUMMARY rows, and an existing SUMMARY row never carries
+// EAD into matchByEAD's snapshot view — so any candidate that needs
+// Date agreement against an existing EAD-bearing row has no Date to
+// compare against. finished_at via the filename timestamp is the
+// available signal.)
+func corroborated(cand candidate, e existing) bool {
+	if cand.r.FinishedAt != "" && e.c.hasTS {
+		if cand.r.FinishedAt == e.c.ts.UTC().Format("15:04") {
+			return true
+		}
+	}
+	return false
 }
 
 // tieToleranceWindow groups timestamp-window candidates from
