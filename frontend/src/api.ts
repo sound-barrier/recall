@@ -207,6 +207,26 @@ export const SetScreenshotsDir = _dualVoid<[path: string]>(
   (path) => ({ path }),
 )
 
+// ResetScreenshotsDir clears the persisted screenshots folder and
+// tears down the watcher. Symmetric with ResetTesseractPath. UI:
+// the Reset button in SettingsFolders' steady-state row.
+export const ResetScreenshotsDir = _dualVoid<[]>(
+  'ResetScreenshotsDir',
+  'DELETE',
+  '/api/v1/settings/screenshots-folder',
+)
+
+// RevealScreenshotsDir opens the configured folder in the host OS
+// file manager. Replaces the old BrowserOpenURL('file://…') shape
+// which Wails v2.12 rejects with "scheme not allowed". No path
+// argument: the configured folder is the only thing this action
+// reveals, so passing an arbitrary path would widen attack surface.
+export const RevealScreenshotsDir = _dualVoid<[]>(
+  'RevealScreenshotsDir',
+  'POST',
+  '/api/v1/system/screenshots-folder-reveal',
+)
+
 // Per-match user annotation. All four fields are optional; if every
 // field is empty the server deletes the row entirely. `leaver`
 // ∈ {'self', 'team', 'enemy', ''}.

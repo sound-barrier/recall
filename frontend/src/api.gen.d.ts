@@ -249,7 +249,18 @@ export interface paths {
          */
         put: operations["SetScreenshotsFolder"];
         post?: never;
-        delete?: never;
+        /**
+         * Clear the configured screenshots folder
+         * @description Symmetric with `DELETE /api/v1/settings/tesseract` — the user-
+         *     set override is the thing being deleted. There's no platform
+         *     default to fall back to; the natural empty state is "no folder
+         *     configured" and the user re-picks via Detect / Change.
+         *
+         *     Also tears down the file watcher if it was armed against the
+         *     now-cleared path so we don't leak an fsnotify handle pointing
+         *     at an orphaned dir.
+         */
+        delete: operations["ResetScreenshotsFolder"];
         options?: never;
         head?: never;
         patch?: never;
@@ -488,6 +499,43 @@ export interface paths {
         get: operations["ProbeScreenshotsFolder"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/screenshots-folder-reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open the configured screenshots folder in the host OS file manager
+         * @description Action endpoint — the effect (a Finder / Explorer / xdg-open
+         *     window appearing on the server's host) is out-of-band relative
+         *     to the HTTP response. The opener choice is per-platform:
+         *
+         *       * macOS:   `open <path>`
+         *       * Linux:   `xdg-open <path>`
+         *       * Windows: `explorer <path>`
+         *
+         *     The path is the in-memory `settings.ScreenshotsDir`, re-
+         *     validated via the same `validateScreenshotsDir` boundary used
+         *     by `PUT /api/v1/settings/screenshots-folder` before reaching
+         *     the shell. Replaces an earlier frontend behavior that called
+         *     `BrowserOpenURL('file://…')`, which Wails v2.12 rejects with
+         *     "scheme not allowed".
+         *
+         *     No request body — the configured folder is the only thing
+         *     this action can reveal, so passing an arbitrary path would
+         *     widen the attack surface for no UX gain.
+         */
+        post: operations["RevealScreenshotsFolder"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1284,6 +1332,25 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
+    ResetScreenshotsFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cleared. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
     GetTesseractSettings: {
         parameters: {
             query?: never;
@@ -1616,6 +1683,26 @@ export interface operations {
                     "application/json": components["schemas"]["ProbeResult"];
                 };
             };
+        };
+    };
+    RevealScreenshotsFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Opener spawned. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
         };
     };
     ExportData: {
