@@ -1893,7 +1893,14 @@ onBeforeUnmount(() => {
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text-faint);
-  min-width: 5rem;
+
+  /* Fixed width — VICTORY (7 chars + letter-spacing) was outgrowing
+     the 5rem min-width and pushing the chip wider than DEFEAT / DRAW
+     so the result column lost its vertical alignment across rows.
+     6rem fits the longest label comfortably and the rest center inside
+     it. (Global box-sizing: border-box means width includes padding +
+     border.) */
+  width: 6rem;
   text-align: center;
   line-height: 1;
 }
