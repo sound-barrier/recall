@@ -11,7 +11,6 @@
 package dbtest
 
 import (
-	"errors"
 	"strings"
 	"sync"
 
@@ -322,22 +321,19 @@ func (f *Fake) ApplyAmbiguity(filename string, cands []db.AmbiguousCandidate) er
 func (f *Fake) LoadAmbiguousCandidatesFor(filename string) ([]db.AmbiguousCandidate, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	cands, ok := f.Ambiguous[filename]
-	if !ok {
-		return nil, db.ErrAmbiguousNotFound
-	}
+	cands := f.Ambiguous[filename]
 	return append([]db.AmbiguousCandidate(nil), cands...), nil
 }
 
-func (f *Fake) ResolveAmbiguous(ambiguousMatchKey, newMatchKey string) error {
+func (f *Fake) ResolveAmbiguous(ambiguousMatchKey, newMatchKey string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if !strings.HasPrefix(ambiguousMatchKey, "ambiguous:") {
-		return errors.New("ambiguousMatchKey must start with 'ambiguous:'")
+		return false, nil
 	}
 	filename := strings.TrimPrefix(ambiguousMatchKey, "ambiguous:")
 	if _, ok := f.Ambiguous[filename]; !ok {
-		return db.ErrAmbiguousNotFound
+		return false, nil
 	}
 	delete(f.Ambiguous, filename)
 	for i, r := range f.Summaries {
@@ -365,5 +361,5 @@ func (f *Fake) ResolveAmbiguous(ambiguousMatchKey, newMatchKey string) error {
 			f.Unknowns[i].MatchKey = newMatchKey
 		}
 	}
-	return nil
+	return true, nil
 }

@@ -78,7 +78,7 @@ func TestResolveAmbiguousMatch_AcceptsFreshMatchKey(t *testing.T) {
 func TestResolveAmbiguousMatch_NotFoundReturnsErr(t *testing.T) {
 	a := NewWithStore(&fakeStore{})
 	err := a.ResolveAmbiguousMatch("ambiguous:nope.png", "match:foo")
-	if !errors.Is(err, db.ErrAmbiguousNotFound) {
-		t.Errorf("expected db.ErrAmbiguousNotFound, got %v", err)
+	if !errors.Is(err, ErrAmbiguousNotFound) {
+		t.Errorf("expected ErrAmbiguousNotFound, got %v", err)
 	}
 }
