@@ -20,7 +20,9 @@ package app
 
 import (
 	"context"
+	"errors"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -106,6 +108,37 @@ func isReadableDir(path string) bool {
 	return err == nil || err == io.EOF
 }
 
+// pathIsMissingOrNotADir reports whether `path` is in a state that
+// no longer represents a directory. Only ENOENT-style absence or a
+// "this is a file, not a dir" mismatch count — a path that exists
+// and is a dir but the current process can't enumerate (permission
+// denied, network volume unreachable, TCC sandbox declined) returns
+// false here even though `isReadableDir` would also return false.
+//
+// Used by Startup's validate-and-clear so a transient access issue
+// (e.g. a wails-dev rebuild that re-prompts macOS TCC and the user
+// dismissed the prompt) doesn't silently wipe a still-valid
+// configuration. The user-reported bug shape: "each time I start up
+// my app I have to change my screenshot folder" — pre-fix, EPERM
+// on the configured dir's Stat path triggered the clear, and the
+// next session's GetScreenshotsDir returned "" so the UI showed
+// the first-run empty hero again.
+//
+// The clear-on-ENOENT case is still the original motivation (a
+// leaked t.TempDir that got garbage-collected between sessions
+// would otherwise persist forever); the "exists-but-unreadable"
+// case is what we now preserve.
+func pathIsMissingOrNotADir(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		// ENOENT or path-too-long-style absence. errors.Is unwraps
+		// PathError so this catches the common "directory was
+		// deleted between sessions" shape.
+		return errors.Is(err, fs.ErrNotExist)
+	}
+	return !info.IsDir()
+}
+
 // NewWithStore returns an App with its persistence layer pre-wired. Used by
 // tests that pass an in-memory fake (or a *db.SQLStore opened at ":memory:").
 // Production code paths use New() + Startup() which constructs the SQLStore.
@@ -121,21 +154,27 @@ func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	a.settings = loadSettings()
 
-	// Validate ScreenshotsDir against the filesystem and clear it if
-	// the path no longer resolves to a readable directory. Three real
-	// failure modes this catches:
+	// Validate ScreenshotsDir against the filesystem and clear it
+	// when the path is definitively gone (or has become a file
+	// where it was a dir). Two real failure modes this catches:
 	//   1. A stale t.TempDir() path that leaked into settings.json
 	//      from an earlier test run and is now long-deleted.
 	//   2. The platform default "screenshots" (a relative path that
 	//      `defaultSettings()` returns for first-run wails-dev
 	//      ergonomics) which doesn't resolve inside the shipped
 	//      Recall.app bundle's cwd.
-	//   3. A configured external-drive folder the user has since
-	//      unmounted.
-	// Clearing it lets autoProbeOnFirstRun (below) re-detect, and
-	// stops the "Open" button from silently no-op-ing on a path the
-	// OS file manager can't find.
-	if a.settings.ScreenshotsDir != "" && !isReadableDir(a.settings.ScreenshotsDir) {
+	// What we DON'T clear: a configured dir that exists but the
+	// process can't enumerate (permission denied, TCC sandbox
+	// declined, removable / network volume unreachable). Pre-fix
+	// this used `isReadableDir` which lumped EPERM in with ENOENT,
+	// and a wails-dev rebuild that re-prompted macOS TCC ended up
+	// wiping a perfectly-valid configuration on every startup —
+	// the user-reported "each time I start up my app I have to
+	// change my screenshot folder" regression. Now those transient
+	// access issues surface through the layers that need access
+	// (watcher fails to start; parse handler returns 4xx; Open
+	// button no-ops) instead of silently dropping the setting.
+	if a.settings.ScreenshotsDir != "" && pathIsMissingOrNotADir(a.settings.ScreenshotsDir) {
 		a.settings.ScreenshotsDir = ""
 		_ = saveSettings(a.settings)
 	}
