@@ -1,24 +1,52 @@
 <script setup lang="ts">
+import { ref, computed, watch } from 'vue'
 import type { TesseractStatus } from '../api'
 
-// Engine panel — Tesseract status display + binary picker + "Use
-// platform default" reset link. Extracted from SettingsView so the
-// status-chip + path-display state + unsupported-version warning
-// all live with the component that renders them.
+// Engine panel — Tesseract status display + Detect / Change / Reset
+// button cluster mirroring the screenshots-dir affordances. Extracted
+// from SettingsView so the status-chip + path-display state + probe-
+// chip + unsupported-version warning all live with the component that
+// renders them.
 //
 // `.engine-*` + `.warn-icon` + `.link-btn` scoped styles move too.
 
-defineProps<{
+const props = defineProps<{
   tesseractReady?:      boolean
   tesseractSupported?:  boolean
   tesseractStatus?:     TesseractStatus
   tesseractPickerBusy?: boolean
+  // Detect-button state — shared shape with screenshots-dir probe so
+  // both rows render the same chip + "Looked in" disclosure.
+  tesseractProbing?:      boolean
+  tesseractProbeMessage?: string
+  tesseractProbeStatus?:  '' | 'success' | 'blocked'
+  tesseractProbeTried?:   string[]
 }>()
 
 const emit = defineEmits<{
-  'pick-tesseract':  []
-  'reset-tesseract': []
+  'pick-tesseract':   []
+  'reset-tesseract':  []
+  'detect-tesseract': []
 }>()
+
+// Reset is meaningful only when the current path differs from the
+// platform default — there's no override to clear otherwise.
+const hasOverride = computed(() =>
+  !!props.tesseractStatus
+    && !!props.tesseractStatus.default
+    && props.tesseractStatus.path !== props.tesseractStatus.default,
+)
+
+// Probe-chip dismissal — same shape as SettingsFolders. Reset every
+// time a fresh probeMessage lands so a second Detect click re-opens
+// the chip rather than leaving the stale "dismissed" state.
+const probeDismissed = ref(false)
+watch(() => props.tesseractProbeMessage, (next) => {
+  if (next) probeDismissed.value = false
+})
+const showProbeChip = computed(
+  () => !!props.tesseractProbeMessage && !probeDismissed.value,
+)
 </script>
 
 <template>
@@ -76,25 +104,71 @@ const emit = defineEmits<{
             </span>
           </div>
           <p
-            v-if="tesseractStatus && tesseractStatus.default && tesseractStatus.default !== tesseractStatus.path"
+            v-if="tesseractStatus && tesseractStatus.default && hasOverride"
             class="engine-meta"
           >
             Default for this platform · <code>{{ tesseractStatus.default }}</code>
-            · <button class="link-btn" @click="emit('reset-tesseract')">
-              Use default
-            </button>
           </p>
+          <div v-if="showProbeChip" class="probe-chip" :class="tesseractProbeStatus" role="status">
+            <span class="probe-chip-bar" aria-hidden="true" />
+            <span class="probe-chip-mark" aria-hidden="true">
+              {{ tesseractProbeStatus === 'success' ? '✓' : '⚠' }}
+            </span>
+            <span class="probe-chip-text">{{ tesseractProbeMessage }}</span>
+            <button
+              type="button"
+              class="probe-chip-close"
+              aria-label="Dismiss"
+              @click="probeDismissed = true"
+            >
+              ×
+            </button>
+          </div>
+          <details
+            v-if="tesseractProbeStatus === 'blocked' && !probeDismissed && (tesseractProbeTried?.length ?? 0) > 0"
+            class="probe-tried"
+          >
+            <summary>Looked in</summary>
+            <ol class="probe-tried-list">
+              <li v-for="(p, i) in (tesseractProbeTried ?? [])" :key="i" class="mono">
+                {{ p }}
+              </li>
+            </ol>
+          </details>
         </div>
         <div class="setting-control engine-control">
-          <button
-            class="btn"
-            :class="tesseractReady ? 'ghost' : 'primary'"
-            :disabled="tesseractPickerBusy"
-            @click="emit('pick-tesseract')"
-          >
-            <span v-if="tesseractPickerBusy">Locating…</span>
-            <span v-else>{{ tesseractReady ? 'Change Binary…' : 'Locate Tesseract…' }}</span>
-          </button>
+          <div class="engine-btn-group">
+            <!-- Detect: enabled + primary when not ready (the
+                 recommended action — auto-find the binary); disabled
+                 when ready (parallel with the screenshots-dir Detect
+                 staying disabled once a folder is set). -->
+            <button
+              class="btn tiny detect-btn"
+              :class="tesseractReady ? 'ghost' : 'primary'"
+              :disabled="tesseractReady || tesseractProbing || tesseractPickerBusy"
+              :title="tesseractReady ? 'Reset to platform default first to re-detect' : 'Search the usual install locations for Tesseract'"
+              @click="emit('detect-tesseract')"
+            >
+              <span v-if="tesseractProbing">Detecting…</span>
+              <span v-else>Detect</span>
+            </button>
+            <button
+              class="btn ghost tiny"
+              :disabled="tesseractPickerBusy"
+              @click="emit('pick-tesseract')"
+            >
+              <span v-if="tesseractPickerBusy">Locating…</span>
+              <span v-else>Change Binary…</span>
+            </button>
+            <button
+              class="btn ghost tiny reset-btn"
+              :disabled="!hasOverride || tesseractPickerBusy"
+              :title="hasOverride ? 'Restore the platform default path' : 'Already using the platform default'"
+              @click="emit('reset-tesseract')"
+            >
+              Reset
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -223,6 +297,28 @@ const emit = defineEmits<{
 
 .engine-control {
   align-items: flex-end;
+}
+
+/* Three-button cluster mirroring SettingsFolders' .folder-btn-group. */
+.engine-btn-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.engine-btn-group .detect-btn:not(:disabled).primary {
+  border-color: var(--accent);
+}
+
+.engine-btn-group .detect-btn:not(:disabled).ghost {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.engine-btn-group .detect-btn:not(:disabled).ghost:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
 .engine-unsupported-warn {

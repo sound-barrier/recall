@@ -359,6 +359,24 @@ export function ResetTesseractPath(): Promise<TesseractStatus> {
   return _send<TesseractStatus>('DELETE', '/api/v1/settings/tesseract')
 }
 
+// ProbeTesseractBinary walks per-OS install locations + PATH and
+// returns the first that resolves to a working Tesseract 5.x. Read-
+// only — the caller (Detect button) decides whether to apply via
+// SetTesseractPath.
+export function ProbeTesseractBinary(): Promise<ProbeResult> {
+  if (IS_WAILS) return _wails('ProbeTesseractBinary')
+  return _get<ProbeResult>('/api/v1/system/tesseract-probe')
+}
+
+// SetTesseractPath applies a known path (from the picker or the
+// Detect probe) and returns the re-detected status. Used by the
+// Detect button to swap to the discovered binary without forcing
+// the user through the picker UI.
+export function SetTesseractPath(path: string): Promise<TesseractStatus> {
+  if (IS_WAILS) return _wails('SetTesseractPath', path)
+  return _send<TesseractStatus>('PUT', '/api/v1/settings/tesseract', { path })
+}
+
 // Wipe all parsed-match data — DELETE on the matches collection.
 // Settings and the screenshots folder are untouched.
 export const ClearDatabase = _dualVoid<[]>(

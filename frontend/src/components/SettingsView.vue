@@ -53,6 +53,13 @@ const props = defineProps<{
   tesseractSupported?:  boolean
   tesseractStatus?:     TesseractStatus
   tesseractPickerBusy?: boolean
+  // Probe state for the Detect button — mirrors the screenshots-dir
+  // probe shape so the Engine row can render the same chip + "Looked
+  // in" disclosure on hit / miss.
+  tesseractProbing?:      boolean
+  tesseractProbeMessage?: string
+  tesseractProbeStatus?:  '' | 'success' | 'blocked'
+  tesseractProbeTried?:   string[]
   // Backup & Restore section — flash chip + arm/confirm state.
   matchedCount?: number
   unknownCount?: number
@@ -77,6 +84,7 @@ const emit = defineEmits<{
   // Engine
   'pick-tesseract':         []
   'reset-tesseract':        []
+  'detect-tesseract':       []
   // Backup & Restore
   'export-data':            []
   'export-data-csv':        []
@@ -211,8 +219,13 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
       :tesseract-supported="tesseractSupported"
       :tesseract-status="tesseractStatus"
       :tesseract-picker-busy="tesseractPickerBusy"
+      :tesseract-probing="tesseractProbing"
+      :tesseract-probe-message="tesseractProbeMessage"
+      :tesseract-probe-status="tesseractProbeStatus"
+      :tesseract-probe-tried="tesseractProbeTried"
       @pick-tesseract="() => emit('pick-tesseract')"
       @reset-tesseract="() => emit('reset-tesseract')"
+      @detect-tesseract="() => emit('detect-tesseract')"
     />
 
     <SettingsAppearance

@@ -245,7 +245,23 @@ describe('SettingsView — Engine section', () => {
     expect(wrapper.emitted('pick-tesseract')).toBeTruthy()
   })
 
-  it('renders Locate Tesseract (primary CTA) when not ready', () => {
+  // Detect-button gating mirrors the screenshots-dir Detect: enabled
+  // + primary when no binary is configured (or the configured one
+  // isn't working), disabled when the binary is healthy. After the
+  // user-reported regression — "I had to pick the binary manually on
+  // Windows" — Detect is the recommended action and gets the primary
+  // CTA style when it'd actually do something useful.
+  //
+  // Helper: scope button lookups to the Engine row (`#sec-engine`)
+  // because the screenshots-folder row ALSO renders a Detect/Reset
+  // button and `.find()` would return that one first otherwise.
+  function findEngineBtn(wrapper: ReturnType<typeof mount>, text: string) {
+    return wrapper.find('#sec-engine')
+      .findAll('button')
+      .find(b => b.text().trim() === text)
+  }
+
+  it('renders Detect as the primary CTA when Tesseract is not ready', () => {
     const wrapper = mount(SettingsView, {
       props: {
         ...baseEngineProps,
@@ -253,12 +269,35 @@ describe('SettingsView — Engine section', () => {
         tesseractStatus: readyTesseract({ found: false }),
       },
     })
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Locate Tesseract'))!
+    const btn = findEngineBtn(wrapper, 'Detect')!
     expect(btn).toBeDefined()
     expect(btn.classes()).toContain('primary')
+    expect(btn.attributes('disabled')).toBeUndefined()
   })
 
-  it('emits reset-tesseract when "Use default" is clicked', async () => {
+  it('disables Detect when Tesseract is already detected', () => {
+    const wrapper = mount(SettingsView, {
+      props: baseEngineProps,
+    })
+    const btn = findEngineBtn(wrapper, 'Detect')!
+    expect(btn).toBeDefined()
+    expect(btn.attributes('disabled')).toBeDefined()
+  })
+
+  it('emits detect-tesseract when the Detect button is clicked while not ready', async () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...baseEngineProps,
+        tesseractReady: false,
+        tesseractStatus: readyTesseract({ found: false }),
+      },
+    })
+    const btn = findEngineBtn(wrapper, 'Detect')!
+    await btn.trigger('click')
+    expect(wrapper.emitted('detect-tesseract')).toBeTruthy()
+  })
+
+  it('emits reset-tesseract when the Reset button is clicked', async () => {
     const wrapper = mount(SettingsView, {
       props: {
         ...baseEngineProps,
@@ -268,9 +307,23 @@ describe('SettingsView — Engine section', () => {
         }),
       },
     })
-    const link = wrapper.findAll('.link-btn').find(b => b.text().includes('Use default'))!
-    await link.trigger('click')
+    const btn = findEngineBtn(wrapper, 'Reset')!
+    await btn.trigger('click')
     expect(wrapper.emitted('reset-tesseract')).toBeTruthy()
+  })
+
+  it('disables Reset when the configured path is already the platform default', () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...baseEngineProps,
+        tesseractStatus: readyTesseract({
+          path: '/usr/local/bin/tesseract',
+          default: '/usr/local/bin/tesseract',
+        }),
+      },
+    })
+    const btn = findEngineBtn(wrapper, 'Reset')!
+    expect(btn.attributes('disabled')).toBeDefined()
   })
 })
 
