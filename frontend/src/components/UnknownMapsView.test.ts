@@ -31,10 +31,15 @@ function makeCardState(_records: MatchRecord[]) {
   return { api, expanded, calls }
 }
 
-function mountWith(records: MatchRecord[]) {
+function mountWith(records: MatchRecord[], extras: Partial<{ ambiguousRecords: MatchRecord[]; allRecords: MatchRecord[] }> = {}) {
   const { api: cardState, calls } = makeCardState(records)
   const wrapper = mount(UnknownMapsView, {
-    props: { unknownRecords: records, cardState },
+    props: {
+      unknownRecords: records,
+      ambiguousRecords: extras.ambiguousRecords ?? [],
+      allRecords: extras.allRecords ?? [],
+      cardState,
+    },
   })
   return { wrapper, calls }
 }
@@ -61,7 +66,7 @@ describe('UnknownMapsView', () => {
     expect(wrapper.text()).toContain('unmatched:scoreboard1.png')
     expect(wrapper.text()).toContain('unmatched:broken.png')
     // The heading reflects the count.
-    expect(wrapper.text()).toMatch(/2 records.*couldn't be matched/)
+    expect(wrapper.text()).toMatch(/2 records.*need your attention/)
   })
 
   it('emits go-to-view when "run Parse" link is clicked', async () => {
@@ -94,5 +99,81 @@ describe('UnknownMapsView', () => {
     const vacantCells = wrapper.findAll('.field-cell.vacant')
     expect(filledCells).toHaveLength(0)
     expect(vacantCells.length).toBeGreaterThan(0)
+  })
+
+  // ─── Ambiguous attribution surface ─────────────────────────
+
+  it('renders the "Needs your review" subheading with the ambiguous count', () => {
+    const ambig: MatchRecord[] = [
+      {
+        match_key: 'ambiguous:scoreboard-2.png',
+        source_files: ['scoreboard-2.png'],
+        data: { hero: 'lucio' },
+        ambiguous: true,
+        candidates: [{ match_key: 'match:foo', distance_seconds: 720 }],
+      },
+    ]
+    const { wrapper } = mountWith([], { ambiguousRecords: ambig })
+    expect(wrapper.text()).toContain('Needs your review — 1')
+    expect(wrapper.findAll('.ambiguous-card')).toHaveLength(1)
+  })
+
+  it('expanding an ambiguous card surfaces the candidate picker', async () => {
+    const ambig: MatchRecord[] = [
+      {
+        match_key: 'ambiguous:scoreboard-2.png',
+        source_files: ['scoreboard-2.png'],
+        data: { hero: 'lucio' },
+        ambiguous: true,
+        candidates: [{ match_key: 'match:foo', distance_seconds: 720 }],
+      },
+    ]
+    const all: MatchRecord[] = [
+      {
+        match_key: 'match:foo', source_files: ['sb1.png'],
+        data: { map: 'rialto', hero: 'lucio', date: '2026-05-10' },
+      },
+    ]
+    const { wrapper } = mountWith([], { ambiguousRecords: ambig, allRecords: all })
+    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
+    expect(wrapper.findAll('.candidate-row')).toHaveLength(1)
+    expect(wrapper.text()).toContain('12 min apart')
+    expect(wrapper.text()).toContain('rialto')
+  })
+
+  it('clicking Attach emits resolve-ambiguous with the candidate key', async () => {
+    const ambig: MatchRecord[] = [
+      {
+        match_key: 'ambiguous:scoreboard-2.png',
+        source_files: ['scoreboard-2.png'],
+        data: { hero: 'lucio' },
+        ambiguous: true,
+        candidates: [{ match_key: 'match:foo', distance_seconds: 720 }],
+      },
+    ]
+    const { wrapper } = mountWith([], { ambiguousRecords: ambig })
+    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
+    await wrapper.find('.candidate-attach').trigger('click')
+    const emitted = wrapper.emitted('resolve-ambiguous')
+    expect(emitted).toBeTruthy()
+    expect(emitted![0]).toEqual(['ambiguous:scoreboard-2.png', 'match:foo'])
+  })
+
+  it('"Treat as new match" mints a fresh match:<ts> key from the filename', async () => {
+    const ambig: MatchRecord[] = [
+      {
+        match_key: 'ambiguous:Overwatch 2 Screenshot 2026.05.10 - 21.41.28.00_scoreboard.png',
+        source_files: ['Overwatch 2 Screenshot 2026.05.10 - 21.41.28.00_scoreboard.png'],
+        data: {},
+        ambiguous: true,
+        candidates: [{ match_key: 'match:old', distance_seconds: 720 }],
+      },
+    ]
+    const { wrapper } = mountWith([], { ambiguousRecords: ambig })
+    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
+    await wrapper.find('.candidate-fresh').trigger('click')
+    const emitted = wrapper.emitted('resolve-ambiguous')
+    expect(emitted).toBeTruthy()
+    expect(emitted![0]![1]).toBe('match:2026-05-10T21:41:28')
   })
 })

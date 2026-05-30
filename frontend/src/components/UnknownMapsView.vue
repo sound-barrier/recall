@@ -1,22 +1,67 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import type { MatchRecord } from '../api'
 import { detectScreenshotSlots, screenshotURL, formatParsedAt } from '../match-helpers'
 import type { CardStateApi } from '../types/cardState'
 
-// UnknownMapsView is the triage tab for records that lack a map (the
-// most common pre-flight failure: a corrupted SUMMARY/TEAMS screenshot,
-// or a non-OW PNG in the watched folder). Per-card UI state is shared
-// with MatchesView via the CardStateApi bundle, so the user's expand
-// choices for a record carry across tabs.
+// UnknownMapsView is the triage tab for records the user needs to
+// take action on:
+//
+//   1. AMBIGUOUS — the resolver couldn't pin the screenshot to a
+//      single match. Surfaced under "Needs your review" with a
+//      candidate-picker so the user attaches the screenshot to one
+//      of the candidate matches (or treats it as a new match).
+//   2. UNKNOWN — no map could be parsed (corrupted screenshot, or a
+//      non-OW PNG in the watched folder).
+//
+// Per-card UI state is shared with MatchesView via the CardStateApi
+// bundle, so the user's expand choices for a record carry across tabs.
 
-defineProps<{
-  unknownRecords: MatchRecord[]
-  cardState:      CardStateApi
+const props = defineProps<{
+  unknownRecords:    MatchRecord[]
+  ambiguousRecords?: MatchRecord[]
+  allRecords?:       MatchRecord[]
+  cardState:         CardStateApi
 }>()
 
 const emit = defineEmits<{
-  'go-to-view': [next: 'settings' | 'ingest' | 'matches' | 'unknown']
+  'go-to-view':         [next: 'settings' | 'ingest' | 'matches' | 'unknown']
+  'resolve-ambiguous':  [ambiguousKey: string, resolvedTo: string]
 }>()
+
+const ambiguousList = computed(() => props.ambiguousRecords ?? [])
+
+// Look up a candidate match by key so the picker can show the
+// candidate's hero/map/date headline without round-tripping. Returns
+// undefined when the candidate is no longer in `records` (e.g. it
+// was hidden + the user has show-hidden off).
+function findRecord(matchKey: string): MatchRecord | undefined {
+  return (props.allRecords ?? []).find(r => r.match_key === matchKey)
+}
+
+function formatDistance(seconds: number): string {
+  if (seconds < 60) return `${seconds}s apart`
+  const mins = Math.round(seconds / 60)
+  return `${mins} min apart`
+}
+
+// "Treat as new match" mints a fresh match:<ts> key from the
+// ambiguous screenshot's filename timestamp so the row gets a
+// standalone identity. Filename has the canonical OW format
+// "...YYYY.MM.DD - HH.MM.SS.NN_*.png".
+function freshKeyFromAmbiguous(rec: MatchRecord): string | null {
+  const filename = rec.match_key.startsWith('ambiguous:')
+    ? rec.match_key.slice('ambiguous:'.length)
+    : (rec.source_files?.[0] ?? '')
+  const m = /(\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})/.exec(filename)
+  if (!m) return null
+  return `match:${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`
+}
+
+function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
+  emit('resolve-ambiguous', rec.match_key, resolvedTo)
+}
 </script>
 
 <template>
@@ -25,12 +70,12 @@ const emit = defineEmits<{
       <p class="settings-eyebrow">
         Diagnostic Review
       </p>
-      <h2 v-if="unknownRecords.length === 0" class="settings-heading">
+      <h2 v-if="unknownRecords.length === 0 && ambiguousList.length === 0" class="settings-heading">
         All screenshots resolved.
       </h2>
       <h2 v-else class="settings-heading unknown-heading">
-        <em>{{ unknownRecords.length }} record{{ unknownRecords.length === 1 ? '' : 's' }}</em>
-        couldn't be matched to a map.
+        <em>{{ unknownRecords.length + ambiguousList.length }} record{{ unknownRecords.length + ambiguousList.length === 1 ? '' : 's' }}</em>
+        need your attention.
       </h2>
       <p v-if="unknownRecords.length > 0" class="unknown-desc">
         The slot indicators below show which screenshot types have been parsed for each record. Add the missing ones and
@@ -41,7 +86,76 @@ const emit = defineEmits<{
       </p>
     </header>
 
-    <div v-if="unknownRecords.length === 0" class="empty">
+    <!-- ─── AMBIGUOUS: needs your review ───────────────────────── -->
+
+    <div v-if="ambiguousList.length > 0" class="ambiguous-section">
+      <h3 class="needs-review-heading">
+        Needs your review — {{ ambiguousList.length }}
+      </h3>
+      <p class="needs-review-desc">
+        These screenshots share statistics with other matches close in time. Pick the match each one belongs to, or treat it as a new match if none of the candidates is right.
+      </p>
+      <div class="unknown-list">
+        <article
+          v-for="rec in ambiguousList"
+          :key="rec.match_key"
+          class="unknown-card ambiguous-card"
+          :class="{ expanded: cardState.isSelected(rec.match_key) }"
+        >
+          <div class="unknown-card-head" @click="cardState.toggleExpand(rec.match_key)">
+            <div class="unknown-head-lhs">
+              <span class="unknown-key-block">
+                <span class="unknown-key mono">{{ rec.source_files?.[0] ?? rec.match_key }}</span>
+                <span class="unknown-src-count">
+                  {{ rec.candidates?.length ?? 0 }} candidate match{{ (rec.candidates?.length ?? 0) === 1 ? '' : 'es' }}
+                </span>
+              </span>
+            </div>
+            <span class="chev" :class="{ open: cardState.isSelected(rec.match_key) }" aria-hidden="true">›</span>
+          </div>
+
+          <template v-if="cardState.isSelected(rec.match_key)">
+            <div class="unknown-expanded">
+              <div class="candidate-picker">
+                <div class="block-eyebrow">
+                  Pick the match
+                </div>
+                <div
+                  v-for="cand in rec.candidates ?? []"
+                  :key="cand.match_key"
+                  class="candidate-row"
+                >
+                  <div class="candidate-headline">
+                    <span class="candidate-key mono">{{ cand.match_key }}</span>
+                    <span class="candidate-distance">{{ formatDistance(cand.distance_seconds) }}</span>
+                    <span v-if="findRecord(cand.match_key)" class="candidate-summary">
+                      {{ [findRecord(cand.match_key)?.data?.map, findRecord(cand.match_key)?.data?.hero, findRecord(cand.match_key)?.data?.date].filter(Boolean).join(' · ') }}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn primary candidate-attach"
+                    @click="onPickCandidate(rec, cand.match_key)"
+                  >
+                    Attach to this match
+                  </button>
+                </div>
+                <button
+                  v-if="freshKeyFromAmbiguous(rec)"
+                  type="button"
+                  class="btn ghost candidate-fresh"
+                  @click="onPickCandidate(rec, freshKeyFromAmbiguous(rec)!)"
+                >
+                  Treat as new match
+                </button>
+              </div>
+            </div>
+          </template>
+        </article>
+      </div>
+    </div>
+
+    <div v-if="unknownRecords.length === 0 && ambiguousList.length === 0" class="empty">
       <div class="empty-mark">
         ◉
       </div>
@@ -53,7 +167,7 @@ const emit = defineEmits<{
       </p>
     </div>
 
-    <div v-else class="unknown-list">
+    <div v-if="unknownRecords.length > 0" class="unknown-list">
       <article
         v-for="(rec, idx) in unknownRecords"
         :key="rec.match_key"
@@ -364,5 +478,87 @@ const emit = defineEmits<{
 
 .unknown-stats .block-eyebrow {
   margin-bottom: 0.6rem;
+}
+
+/* ─── Ambiguous-attribution section ──────────────────────── */
+
+.ambiguous-section {
+  margin-top: 1.4rem;
+  margin-bottom: 1.6rem;
+}
+
+.needs-review-heading {
+  font-family: var(--font-display, var(--mono));
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  margin: 0 0 0.45rem;
+  text-transform: uppercase;
+}
+
+.needs-review-desc {
+  margin: 0 0 0.85rem;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  max-width: 64ch;
+}
+
+/* Ambiguous cards get a violet left bar so they stand apart from
+   the amber map-unknown cards. */
+.ambiguous-card::before { background: var(--accent, var(--draw-line)); }
+
+.candidate-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.candidate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+}
+
+.candidate-headline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.candidate-key {
+  font-size: 0.78rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.candidate-distance {
+  font-size: 0.69rem;
+  color: var(--text-faint);
+}
+
+.candidate-summary {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.candidate-attach,
+.candidate-fresh {
+  flex-shrink: 0;
+}
+
+.candidate-fresh {
+  align-self: flex-start;
+  margin-top: 0.35rem;
 }
 </style>

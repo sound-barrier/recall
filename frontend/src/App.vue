@@ -34,6 +34,7 @@ import {
   ExportData,
   ExportDataCSV,
   ImportData,
+  ResolveAmbiguousMatch,
   SetMatchAnnotation,
   SetMatchVisibility,
 } from './api'
@@ -465,6 +466,20 @@ async function onSetMatchHidden(matchKey: string, hidden: boolean) {
   }
 }
 
+// Ambiguous-attribution resolver. The user picks which candidate
+// match an ambiguous screenshot belongs to from the Unknown tab's
+// "Needs your review" subsection; we PUT the resolution, then
+// reload so the row disappears + the resolved match's source-file
+// count updates.
+async function onResolveAmbiguous(ambiguousKey: string, resolvedTo: string) {
+  try {
+    await ResolveAmbiguousMatch(ambiguousKey, resolvedTo)
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
 // Selected-match panel (replaces the old inline-expansion model).
 // Clicking a card opens the right-side MatchDetailPanel and pins
 // `selection.selectedKey` to that match_key. ← / → inside the panel
@@ -700,7 +715,14 @@ void TAB_ORDER
 // or OCR failed to determine a map name. These surface in the
 // Unknown Maps view for triage.
 const unknownRecords = computed(() =>
-  records.value.filter(r => !r.data?.map)
+  records.value.filter(r => !r.data?.map && !r.ambiguous)
+)
+// Records the resolver couldn't pin to a single match (EAD-bridge
+// ambiguity). Surface above unknownRecords in the Unknown tab so
+// the user can pick the correct attribution via the candidate
+// picker.
+const ambiguousRecords = computed(() =>
+  records.value.filter(r => r.ambiguous),
 )
 
 
@@ -1020,8 +1042,11 @@ useEventStream({
         <UnknownMapsView
           v-if="view === 'unknown'"
           :unknown-records="unknownRecords"
+          :ambiguous-records="ambiguousRecords"
+          :all-records="records"
           :card-state="cardState"
           @go-to-view="goToView"
+          @resolve-ambiguous="onResolveAmbiguous"
         />
 
         <!-- ─── MATCHES VIEW ───────────────────────────────────── -->
