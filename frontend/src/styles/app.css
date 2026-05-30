@@ -206,7 +206,7 @@
      composite reaches #613a40 which the saturated #ff6680 can't
      clear at AA. Lighter pink + lower tint keeps the loss read
      semantically while every text-on-tinted-bg pair clears AA. */
-  --loss: #ff99aa;
+  --loss: #f9a;
   --loss-soft: rgb(255 102 128 / 8%);
   --loss-line: rgb(255 102 128 / 60%);
   --draw: #ffd34d;
