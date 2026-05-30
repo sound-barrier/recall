@@ -450,6 +450,109 @@ describe('useMatchesDossier', () => {
     })
   })
 
+  describe('averageKDA', () => {
+    // The KPI tile sources from data.performance.{eliminations,
+    // deaths, assists}.avg_per_10min and averages the per-match
+    // rates across every tally-eligible record that carries the
+    // field set. K/D/A order matches gaming convention (Kills /
+    // Deaths / Assists), so the display row reads
+    // "12.14 / 5.08 / 10.16" with eliminations on the left.
+    function recWithKDA(
+      elim: number | undefined,
+      deaths: number | undefined,
+      assists: number | undefined,
+      opts: { leaver?: '' | 'self' | 'team' | 'enemy' } = {},
+    ): MatchRecord {
+      const perf = elim === undefined && deaths === undefined && assists === undefined
+        ? undefined
+        : {
+          eliminations: elim !== undefined ? { total: 0, avg_per_10min: elim } : undefined,
+          deaths:       deaths !== undefined ? { total: 0, avg_per_10min: deaths } : undefined,
+          assists:      assists !== undefined ? { total: 0, avg_per_10min: assists } : undefined,
+        }
+      return {
+        match_key: `m-${Math.random()}`,
+        source_files: ['a.png'],
+        source_types: { 'a.png': 'summary' },
+        data: {
+          map: 'rialto', hero: 'lucio', mode: 'competitive',
+          result: 'victory', date: '2026-05-10', finished_at: '14:00',
+          ...(perf ? { performance: perf } : {}),
+        },
+        annotation: opts.leaver ? { leaver: opts.leaver } : undefined,
+        parsed_at: '2026-05-10T14:00:00Z',
+      } as unknown as MatchRecord
+    }
+
+    it('averages per-match avg_per_10min across the narrow', () => {
+      const records = ref([
+        recWithKDA(14.87, 6.12, 12.25),
+        recWithKDA(9.40, 4.03, 8.06),
+      ])
+      const { averageKDA } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(averageKDA.value).not.toBeNull()
+      expect(averageKDA.value!.eliminations).toBeCloseTo(12.135, 4)
+      expect(averageKDA.value!.deaths).toBeCloseTo(5.075, 4)
+      expect(averageKDA.value!.assists).toBeCloseTo(10.155, 4)
+      expect(averageKDA.value!.qualifyingMatches).toBe(2)
+    })
+
+    it('renders the label as "K.KK / D.DD / A.AA" rounded to hundredths', () => {
+      const records = ref([
+        recWithKDA(14.87, 6.12, 12.25),
+        recWithKDA(9.40, 4.03, 8.06),
+      ])
+      const { averageKDA } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      // 12.135 → 12.14, 5.075 → 5.08, 10.155 → 10.16. JS toFixed
+      // uses round-half-away-from-zero for these values (post-float-
+      // representation), which matches the user-facing convention.
+      expect(averageKDA.value!.label).toBe('12.14 / 5.08 / 10.16')
+    })
+
+    it('returns null when no record carries performance data', () => {
+      const records = ref([rec({ result: 'victory' }), rec({ result: 'defeat' })])
+      const { averageKDA } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(averageKDA.value).toBeNull()
+    })
+
+    it('skips records that lack any of the three avg_per_10min fields', () => {
+      const records = ref([
+        recWithKDA(10, 5, 8),
+        // Partial — missing deaths' avg_per_10min. The record is
+        // skipped entirely rather than averaged with a 0 stand-in.
+        recWithKDA(20, undefined, 12),
+        recWithKDA(15, 7, 10),
+      ])
+      const { averageKDA } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(averageKDA.value!.eliminations).toBeCloseTo(12.5, 4)
+      expect(averageKDA.value!.qualifyingMatches).toBe(2)
+    })
+
+    it('honors leaver-exclude-tally — leaver records drop from the average', () => {
+      const records = ref([
+        recWithKDA(10, 5, 8),
+        recWithKDA(30, 5, 8, { leaver: 'self' }),
+      ])
+      const handling = ref<LeaverHandling>('include')
+      const { averageKDA } = useMatchesDossier(records, handling)
+      expect(averageKDA.value!.eliminations).toBeCloseTo(20, 4)
+      handling.value = 'exclude-tally'
+      expect(averageKDA.value!.eliminations).toBeCloseTo(10, 4)
+      expect(averageKDA.value!.qualifyingMatches).toBe(1)
+    })
+
+    it('reports coverage when some records lack performance', () => {
+      const records = ref([
+        recWithKDA(10, 5, 8),
+        rec({ result: 'victory' }), // no performance
+        rec({ result: 'defeat' }),  // no performance
+      ])
+      const { averageKDA } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(averageKDA.value!.qualifyingMatches).toBe(1)
+      expect(averageKDA.value!.recordsTotal).toBe(3)
+    })
+  })
+
   describe('reactivity', () => {
     it('updates when records change', () => {
       const records = ref([rec({ result: 'victory' })])

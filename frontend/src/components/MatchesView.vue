@@ -85,7 +85,7 @@ const groupBy   = ref<'none' | 'day' | 'week' | 'month' | 'year'>('day')
 const comboOpen = ref<'map' | 'hero' | null>(null)
 
 // ─── Dossier KPIs / breakdowns via useMatchesDossier ───────
-const { wld, winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero } = useMatchesDossier(narrowedRecords, leaverHandling)
+const { winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero, averageKDA } = useMatchesDossier(narrowedRecords, leaverHandling)
 
 const setHeadline = computed(() => {
   if (!anyNarrow.value) return 'All matches on record'
@@ -354,9 +354,18 @@ onBeforeUnmount(() => {
           <span class="kpi-value">{{ winrate !== null ? `${winrate}%` : '—' }}</span>
         </div>
         <div class="kpi-tile">
-          <span class="kpi-eyebrow">Record</span>
-          <span class="kpi-value">
-            <span class="t-w">{{ wld.w }}</span>·<span class="t-l">{{ wld.l }}</span>·<span class="t-d">{{ wld.d }}</span>
+          <span class="kpi-eyebrow">Avg K/D/A per 10min</span>
+          <!-- K/D/A = Kills (eliminations) / Deaths / Assists, the
+               canonical gaming-stat order. Each match's avg_per_10min
+               is straight-averaged across qualifying records so each
+               match counts equally regardless of duration. The W/L/D
+               record stays surfaced in the masthead scoreboard. -->
+          <span class="kpi-value kda-value">{{ averageKDA?.label ?? '—' }}</span>
+          <span
+            v-if="averageKDA && averageKDA.qualifyingMatches < averageKDA.recordsTotal"
+            class="kpi-sub"
+          >
+            {{ averageKDA.qualifyingMatches }} of {{ averageKDA.recordsTotal }} matches
           </span>
         </div>
         <div class="kpi-tile">
@@ -1005,9 +1014,14 @@ onBeforeUnmount(() => {
   font-feature-settings: "tnum";
 }
 
-.t-w { color: var(--win); }
-.t-l { color: var(--loss); }
-.t-d { color: var(--text-mute); }
+/* K/D/A label is six glyphs + two delimiters at minimum
+   ("99.99 / 99.99 / 99.99" is the realistic ceiling); the headline
+   display-italic at 1.45rem is too wide for the kpi-tile minmax.
+   Drop a notch so the row reads compactly without truncation. */
+.kpi-value.kda-value {
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
 
 .dossier-breakdowns {
   display: grid;

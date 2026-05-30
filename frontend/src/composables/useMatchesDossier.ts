@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue'
 import type { MatchRecord } from '../api'
-import { formatPlayMinutes, parseGameLengthMinutes } from '../match-helpers'
+import { formatPlayMinutes, formatToHundredths, parseGameLengthMinutes } from '../match-helpers'
 
 // Pure KPI / breakdown computations for the Matches dossier.
 // Extracted from MatchesView so the tally math (winrate excluding
@@ -49,6 +49,24 @@ export interface HeroBreakdownEntry {
   share: number
   winrate: number
   timeLabel: string
+}
+
+// Average per-10-min K/D/A rates across the tally-eligible records.
+// Each match's `performance.{eliminations,deaths,assists}.avg_per_10min`
+// is already game-length-normalized; we straight-average across
+// matches so each match counts equally regardless of duration.
+// `label` is the pre-formatted "K.KK / D.DD / A.AA" render — two
+// decimal places, rounded — for direct binding in the KPI tile.
+// recordsTotal exposes the data-coverage fraction so the caller
+// can disclose "averaged over N of M" when not every record
+// contributed performance data.
+export interface AverageKDA {
+  eliminations: number
+  deaths: number
+  assists: number
+  label: string
+  qualifyingMatches: number
+  recordsTotal: number
 }
 
 // Total match time across the narrow. `minutes` carries the raw
@@ -244,5 +262,39 @@ export function useMatchesDossier(
     }
   })
 
-  return { wld, winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero }
+  // Average per-10-min K/D/A across the tally-eligible records.
+  // Only records carrying ALL three avg_per_10min fields contribute
+  // — a missing field would otherwise pull the average against
+  // zero, which is misleading. K/D/A ordering follows gaming
+  // convention: Kills (eliminations) / Deaths / Assists.
+  const averageKDA = computed<AverageKDA | null>(() => {
+    let elimSum = 0, deathSum = 0, assistSum = 0
+    let qualifyingMatches = 0
+    for (const r of tallyRecords.value) {
+      const p = r.data?.performance
+      if (!p) continue
+      const elim    = p.eliminations?.avg_per_10min
+      const deaths  = p.deaths?.avg_per_10min
+      const assists = p.assists?.avg_per_10min
+      if (elim === undefined || deaths === undefined || assists === undefined) continue
+      elimSum   += elim
+      deathSum  += deaths
+      assistSum += assists
+      qualifyingMatches++
+    }
+    if (qualifyingMatches === 0) return null
+    const e = elimSum / qualifyingMatches
+    const d = deathSum / qualifyingMatches
+    const a = assistSum / qualifyingMatches
+    return {
+      eliminations: e,
+      deaths: d,
+      assists: a,
+      label: `${formatToHundredths(e)} / ${formatToHundredths(d)} / ${formatToHundredths(a)}`,
+      qualifyingMatches,
+      recordsTotal: tallyRecords.value.length,
+    }
+  })
+
+  return { wld, winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero, averageKDA }
 }

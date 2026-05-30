@@ -190,6 +190,22 @@ export function formatPlayMinutes(minutes: number | null | undefined): string {
   return `${h}h${m}min`
 }
 
+// Round-half-away-from-zero to two decimal places and render as
+// "N.NN" with trailing zeros preserved. The naive
+// `n.toFixed(2)` rounds against the IEEE 754 representation: 12.135
+// is stored as 12.134999…, so `(12.135).toFixed(2)` yields "12.13"
+// — surprising to a user who entered a clean decimal. The 1e-10
+// shift nudges values past the boundary without affecting genuinely
+// sub-boundary numbers (12.134999 → 12.13 still).
+//
+// Returns "—" for null / undefined / non-finite inputs (parity with
+// the other formatters in this file).
+export function formatToHundredths(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return '—'
+  const epsilon = n >= 0 ? 1e-10 : -1e-10
+  return (Math.round((n + epsilon) * 100) / 100).toFixed(2)
+}
+
 // Top-N value picker for a set of records. Walks the record list and
 // counts via the picker; returns the most-common value plus its count,
 // or null when no record produced a non-empty value. Used by the

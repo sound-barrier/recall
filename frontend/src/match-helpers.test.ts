@@ -17,6 +17,7 @@ import {
   formatParsedAt,
   formatMinutesAsClock,
   formatPlayMinutes,
+  formatToHundredths,
   modeOf,
   avgGameLengthMinutes,
   highlightSubstring,
@@ -987,6 +988,45 @@ describe('formatPlayMinutes', () => {
     expect(formatPlayMinutes(undefined)).toBe('—')
     expect(formatPlayMinutes(NaN)).toBe('—')
     expect(formatPlayMinutes(-1)).toBe('—')
+  })
+})
+
+// ─── formatToHundredths ────────────────────────────────────────────
+
+describe('formatToHundredths', () => {
+  it('renders integer inputs with two trailing zeros', () => {
+    expect(formatToHundredths(7)).toBe('7.00')
+    expect(formatToHundredths(0)).toBe('0.00')
+  })
+
+  it('rounds half away from zero past the IEEE 754 boundary', () => {
+    // The naive toFixed(2) returns "12.13" because 12.135 is
+    // stored as 12.134999…. The epsilon shift corrects to "12.14".
+    expect(formatToHundredths(12.135)).toBe('12.14')
+    expect(formatToHundredths(5.075)).toBe('5.08')
+  })
+
+  it('preserves sub-boundary decimals (no over-correction)', () => {
+    expect(formatToHundredths(12.134)).toBe('12.13')
+    expect(formatToHundredths(5.073)).toBe('5.07')
+  })
+
+  it('rounds genuinely halfway floats upward', () => {
+    expect(formatToHundredths(0.005)).toBe('0.01')
+    expect(formatToHundredths(0.015)).toBe('0.02')
+  })
+
+  it('handles negatives with sign-aware rounding', () => {
+    // Sign-aware so −12.135 → −12.14, not −12.13.
+    expect(formatToHundredths(-12.135)).toBe('-12.14')
+    expect(formatToHundredths(-5.075)).toBe('-5.08')
+  })
+
+  it('renders null / undefined / NaN as em-dash', () => {
+    expect(formatToHundredths(null)).toBe('—')
+    expect(formatToHundredths(undefined)).toBe('—')
+    expect(formatToHundredths(NaN)).toBe('—')
+    expect(formatToHundredths(Infinity)).toBe('—')
   })
 })
 
