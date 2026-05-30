@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"recall/pkg/app"
-	"recall/pkg/db"
 )
 
 // RunServer initializes the App without the Wails GUI and serves the
@@ -171,7 +170,7 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 				errors.Is(err, app.ErrInvalidResolution):
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
-			case errors.Is(err, db.ErrAmbiguousNotFound):
+			case errors.Is(err, app.ErrAmbiguousNotFound):
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}

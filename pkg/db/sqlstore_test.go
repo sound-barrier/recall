@@ -734,8 +734,12 @@ func TestSQLStore_ApplyAmbiguity_EmptyCandsClearsRow(t *testing.T) {
 	if err := s.ApplyAmbiguity("a.png", nil); err != nil {
 		t.Fatalf("clear apply: %v", err)
 	}
-	if _, err := s.LoadAmbiguousCandidatesFor("a.png"); err == nil {
-		t.Fatalf("expected ErrAmbiguousNotFound after clear")
+	cs, err := s.LoadAmbiguousCandidatesFor("a.png")
+	if err != nil {
+		t.Fatalf("LoadAmbiguousCandidatesFor: %v", err)
+	}
+	if len(cs) != 0 {
+		t.Fatalf("expected zero candidates after clear, got %d", len(cs))
 	}
 }
 
@@ -814,8 +818,12 @@ func TestSQLStore_ResolveAmbiguous_UpdatesAllSiblingRows(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("seed ambig: %v", err)
 	}
-	if err := s.ResolveAmbiguous("ambiguous:sb.png", "match:foo"); err != nil {
+	ok, err := s.ResolveAmbiguous("ambiguous:sb.png", "match:foo")
+	if err != nil {
 		t.Fatalf("ResolveAmbiguous: %v", err)
+	}
+	if !ok {
+		t.Fatal("ResolveAmbiguous returned ok=false on a present row")
 	}
 	got, err := s.LoadAll()
 	if err != nil {
@@ -827,24 +835,32 @@ func TestSQLStore_ResolveAmbiguous_UpdatesAllSiblingRows(t *testing.T) {
 	if got.Summaries[0].MatchKey != "match:foo" {
 		t.Errorf("summary match_key not updated: %q", got.Summaries[0].MatchKey)
 	}
-	if _, err := s.LoadAmbiguousCandidatesFor("sb.png"); err == nil {
-		t.Errorf("expected ambiguous row to be deleted")
+	if cs, err := s.LoadAmbiguousCandidatesFor("sb.png"); err != nil || len(cs) != 0 {
+		t.Errorf("expected zero candidates after resolve, got %d (err=%v)", len(cs), err)
 	}
 	if n := len(got.AmbiguousCandidates); n != 0 {
 		t.Errorf("expected no candidates after resolve, got %d", n)
 	}
 }
 
-func TestSQLStore_ResolveAmbiguous_MissingReturnsErr(t *testing.T) {
+func TestSQLStore_ResolveAmbiguous_MissingReturnsFalse(t *testing.T) {
 	s := openMemory(t)
-	if err := s.ResolveAmbiguous("ambiguous:nope.png", "match:foo"); err == nil {
-		t.Errorf("expected ErrAmbiguousNotFound for missing row")
+	ok, err := s.ResolveAmbiguous("ambiguous:nope.png", "match:foo")
+	if err != nil {
+		t.Fatalf("ResolveAmbiguous: %v", err)
+	}
+	if ok {
+		t.Error("expected ok=false for missing row")
 	}
 }
 
 func TestSQLStore_ResolveAmbiguous_RejectsNonAmbiguousKey(t *testing.T) {
 	s := openMemory(t)
-	if err := s.ResolveAmbiguous("match:foo", "match:bar"); err == nil {
-		t.Errorf("expected error for key missing the ambiguous: prefix")
+	ok, err := s.ResolveAmbiguous("match:foo", "match:bar")
+	if err != nil {
+		t.Fatalf("ResolveAmbiguous: %v", err)
+	}
+	if ok {
+		t.Error("expected ok=false for key missing the ambiguous: prefix")
 	}
 }

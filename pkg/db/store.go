@@ -35,20 +35,26 @@ type Store interface {
 
 	// Ambiguous-attribution surface. When a screenshot's parse can't
 	// pin a single match (EAD signature matches in the 5-30 min
-	// ambiguous zone, or multiple matches inside 0-30 min), the
-	// resolver records candidates here and the screenshot's parent
-	// row stores `match_key = "ambiguous:<filename>"`. Other
-	// screenshots within mergeWindow of that screenshot inherit the
-	// same sentinel via the timestamp-window pass, so several rows
-	// can share one ambiguous match_key. The user picks the real
-	// match via `ResolveAmbiguous`, which rewrites every parent row
-	// carrying that match_key in lockstep.
+	// ambiguous zone, multiple matches inside 0-30 min, or a
+	// timestamp-window tie), the resolver records candidates here
+	// and the screenshot's parent row stores
+	// `match_key = "ambiguous:<filename>"`. Other screenshots within
+	// mergeWindow of that screenshot inherit the same sentinel via
+	// the timestamp-window pass, so several rows can share one
+	// ambiguous match_key. The user picks the real match via
+	// `ResolveAmbiguous`, which rewrites every parent row carrying
+	// that match_key in lockstep.
 	//
 	// ApplyAmbiguity is idempotent: it always deletes the filename's
-	// row first, then re-inserts iff cands is non-empty.
+	// rows first, then re-inserts iff cands is non-empty. Presence
+	// of any row for filename in ambiguous_candidates is itself the
+	// ambiguity flag.
+	//
+	// ResolveAmbiguous returns (true, nil) on success, (false, nil)
+	// when there are no candidates to resolve (caller maps to 404).
 	ApplyAmbiguity(filename string, cands []AmbiguousCandidate) error
 	LoadAmbiguousCandidatesFor(filename string) ([]AmbiguousCandidate, error)
-	ResolveAmbiguous(ambiguousMatchKey, newMatchKey string) error
+	ResolveAmbiguous(ambiguousMatchKey, newMatchKey string) (bool, error)
 
 	// Match-annotation surface — user-curated per-match notes.
 	// SetAnnotation upserts; DeleteAnnotation removes by key; LoadAnnotations

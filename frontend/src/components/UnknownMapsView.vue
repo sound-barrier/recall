@@ -19,10 +19,10 @@ import type { CardStateApi } from '../types/cardState'
 // bundle, so the user's expand choices for a record carry across tabs.
 
 const props = defineProps<{
-  unknownRecords:    MatchRecord[]
-  ambiguousRecords?: MatchRecord[]
-  allRecords?:       MatchRecord[]
-  cardState:         CardStateApi
+  unknownRecords:   MatchRecord[]
+  ambiguousRecords: MatchRecord[]
+  allRecords:       MatchRecord[]
+  cardState:        CardStateApi
 }>()
 
 const emit = defineEmits<{
@@ -30,14 +30,14 @@ const emit = defineEmits<{
   'resolve-ambiguous':  [ambiguousKey: string, resolvedTo: string]
 }>()
 
-const ambiguousList = computed(() => props.ambiguousRecords ?? [])
+const ambiguousList = computed(() => props.ambiguousRecords)
 
 // Look up a candidate match by key so the picker can show the
 // candidate's hero/map/date headline without round-tripping. Returns
 // undefined when the candidate is no longer in `records` (e.g. it
 // was hidden + the user has show-hidden off).
 function findRecord(matchKey: string): MatchRecord | undefined {
-  return (props.allRecords ?? []).find(r => r.match_key === matchKey)
+  return props.allRecords.find(r => r.match_key === matchKey)
 }
 
 function formatDistance(seconds: number): string {

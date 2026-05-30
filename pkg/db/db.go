@@ -215,24 +215,15 @@ var schemaStatements = []string{
 	)`,
 	`CREATE INDEX IF NOT EXISTS idx_unknown_match_key ON unknown_screenshots(match_key)`,
 
-	// Ambiguous-attribution storage. When the resolver finds an EAD
-	// candidate inside the 5-30 min ambiguous zone (or multiple
-	// candidates in 0-30 min), it mints the parent row's match_key as
-	// "ambiguous:<filename>" and records the candidate matches here so
-	// the user can pick which match the screenshot belongs to via the
-	// Unknown tab. `filename` is the natural key — every parent table
-	// already enforces UNIQUE(filename), so the same screenshot can't
-	// be ambiguous in two places. No FK to any parent table because
-	// the screenshot can live in any of the five parents; cleanup is
-	// enforced at the app layer (each Upsert calls ApplyAmbiguity to
-	// wipe + re-insert).
-	`CREATE TABLE IF NOT EXISTS ambiguous_screenshots (
-		filename     TEXT PRIMARY KEY,
-		detected_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		reason       TEXT NOT NULL
-	)`,
+	// Ambiguous-attribution storage. When the resolver can't pin a
+	// screenshot to a single match (EAD signature ambiguity, or a
+	// timestamp-window tie between two matches), it mints the parent
+	// row's match_key as "ambiguous:<filename>" and records the
+	// candidate matches here so the user can pick the right one via
+	// the Unknown tab. One row per (filename, candidate_match_key);
+	// presence in this table = the screenshot is ambiguous.
 	`CREATE TABLE IF NOT EXISTS ambiguous_candidates (
-		filename     TEXT NOT NULL REFERENCES ambiguous_screenshots(filename) ON DELETE CASCADE,
+		filename     TEXT NOT NULL,
 		match_key    TEXT NOT NULL,
 		distance_s   INTEGER NOT NULL,
 		PRIMARY KEY (filename, match_key)

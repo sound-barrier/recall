@@ -19,6 +19,10 @@ var ErrInvalidAmbiguousKey = errors.New("invalid ambiguous match key")
 // itself). HTTP layer maps this to 400.
 var ErrInvalidResolution = errors.New("resolved_to is not a valid candidate")
 
+// ErrAmbiguousNotFound is returned when there's no ambiguous row to
+// resolve for the given match_key. HTTP layer maps this to 404.
+var ErrAmbiguousNotFound = errors.New("ambiguous screenshot not found")
+
 // ResolveAmbiguousMatch rewrites every parent row carrying the given
 // ambiguous match_key to resolvedTo. The user has chosen one of the
 // recorded candidates (or, via the escape hatch, a fresh
@@ -30,7 +34,7 @@ var ErrInvalidResolution = errors.New("resolved_to is not a valid candidate")
 //     list, or be a "match:<...>" key. Other shapes are rejected as
 //     ErrInvalidResolution. The fresh-key escape hatch is the
 //     "treat as new match" affordance in the Unknown tab.
-//   - Returns db.ErrAmbiguousNotFound when there's no ambiguous row
+//   - Returns ErrAmbiguousNotFound when there's no ambiguous row
 //     to resolve; HTTP layer maps this to 404.
 //
 // On success, the in-memory aggregate cache (delivered via SSE) is
@@ -44,11 +48,18 @@ func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error 
 	if err != nil {
 		return err
 	}
+	if len(cands) == 0 {
+		return ErrAmbiguousNotFound
+	}
 	if !validResolution(resolvedTo, cands) {
 		return fmt.Errorf("%w: %q", ErrInvalidResolution, resolvedTo)
 	}
-	if err := a.store.ResolveAmbiguous(ambiguousMatchKey, resolvedTo); err != nil {
+	ok, err := a.store.ResolveAmbiguous(ambiguousMatchKey, resolvedTo)
+	if err != nil {
 		return err
+	}
+	if !ok {
+		return ErrAmbiguousNotFound
 	}
 	// Re-aggregate the resolved match so subscribers see the updated
 	// state without needing to re-fetch the full match list.
