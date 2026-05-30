@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import type { ThemeMode } from '../composables/useTheme'
 
-// Appearance panel of the Settings view — three theme swatches.
+// Appearance panel of the Settings view — four theme swatches.
 // Each preview card is a miniature of the theme's palette; clicking
 // emits set-theme with the picked mode. Inactive swatches dim slightly
 // so the active pick reads at a glance.
 //
+// Order: Day, Dark, Night, High contrast.
+//
 // Extracted from SettingsView so the swatch markup + the per-card
-// CSS-variable palettes (light-swatch / dark-swatch / contrast-swatch)
-// live with the component that owns the surface.
+// CSS-variable palettes (day-swatch / dark-swatch / night-swatch /
+// contrast-swatch) live with the component that owns the surface.
 
 defineProps<{
   themeMode: ThemeMode
@@ -41,13 +43,13 @@ function pick(mode: ThemeMode) {
               <span class="setting-help-mark" aria-hidden="true">?</span>
               <span class="setting-help-label">About Theme</span>
               <span class="setting-help-pop" role="tooltip">
-                Day and Night share the same orange accent but invert surface/text values.
-                OW Light and OW Dark drop the chrome onto the Overwatch UI palette —
-                Overwatch white for OW Light (the cream from the post-match summary screen)
-                and the OW brand gray #4A4A4A for OW Dark (the in-game scoreboard plate).
-                Contrast is a high-contrast variant for tournament-booth or low-vision use —
-                pure black ground, white text, boosted gold accent. First-launch defaults
-                to your OS light/dark preference; your pick after that survives reinstalls.
+                Day grounds on Overwatch white (the cream from the post-match summary screen).
+                Dark grounds on the OW brand gray #4A4A4A (the in-game scoreboard plate) with
+                surfaces stepping up in luminance. Night is the editorial photographer's-darkroom
+                palette — deep blue-charcoal with bright-orange highlights. High contrast is the
+                tournament-booth / low-vision variant — pure black ground, white text, boosted
+                gold accent. First-launch defaults to your OS light/dark preference (Day or
+                Night); your pick after that survives reinstalls.
               </span>
             </span>
           </h4>
@@ -60,11 +62,11 @@ function pick(mode: ThemeMode) {
           <div class="theme-swatch-row" role="radiogroup" aria-label="Theme">
             <button
               type="button"
-              class="theme-swatch light-swatch"
+              class="theme-swatch day-swatch"
               role="radio"
-              :aria-checked="themeMode === 'light'"
-              :class="{ active: themeMode === 'light' }"
-              @click="pick('light')"
+              :aria-checked="themeMode === 'day'"
+              :class="{ active: themeMode === 'day' }"
+              @click="pick('day')"
             >
               <div class="swatch-preview" aria-hidden="true">
                 <div class="swatch-mast" />
@@ -77,6 +79,8 @@ function pick(mode: ThemeMode) {
               </div>
               <div class="swatch-label">
                 <svg viewBox="0 0 24 24" class="swatch-icon" aria-hidden="true">
+                  <!-- Sun with rays — the classic Day glyph; reads
+                       at small sizes without relying on detail. -->
                   <circle cx="12" cy="12" r="4" fill="currentColor" />
                   <g stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
                     <line x1="12" y1="2" x2="12" y2="5" />
@@ -111,65 +115,41 @@ function pick(mode: ThemeMode) {
               </div>
               <div class="swatch-label">
                 <svg viewBox="0 0 24 24" class="swatch-icon" aria-hidden="true">
-                  <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8z" fill="currentColor" />
-                </svg>
-                Night
-              </div>
-            </button>
-            <button
-              type="button"
-              class="theme-swatch ow-light-swatch"
-              role="radio"
-              :aria-checked="themeMode === 'ow-light'"
-              :class="{ active: themeMode === 'ow-light' }"
-              @click="pick('ow-light')"
-            >
-              <div class="swatch-preview" aria-hidden="true">
-                <div class="swatch-mast" />
-                <div class="swatch-body">
-                  <div class="swatch-line w-70" />
-                  <div class="swatch-line w-45" />
-                  <div class="swatch-line w-60" />
-                  <div class="swatch-tick" />
-                </div>
-              </div>
-              <div class="swatch-label">
-                <svg viewBox="0 0 24 24" class="swatch-icon" aria-hidden="true">
-                  <!-- Sun with thicker bar through it — evokes the OW
-                       symbol's geometric solidity while still reading
-                       as a daytime glyph at small sizes. -->
-                  <circle cx="12" cy="12" r="4" fill="currentColor" />
-                  <rect x="3" y="11" width="18" height="2" fill="currentColor" />
-                </svg>
-                OW Light
-              </div>
-            </button>
-            <button
-              type="button"
-              class="theme-swatch ow-dark-swatch"
-              role="radio"
-              :aria-checked="themeMode === 'ow-dark'"
-              :class="{ active: themeMode === 'ow-dark' }"
-              @click="pick('ow-dark')"
-            >
-              <div class="swatch-preview" aria-hidden="true">
-                <div class="swatch-mast" />
-                <div class="swatch-body">
-                  <div class="swatch-line w-70" />
-                  <div class="swatch-line w-45" />
-                  <div class="swatch-line w-60" />
-                  <div class="swatch-tick" />
-                </div>
-              </div>
-              <div class="swatch-label">
-                <svg viewBox="0 0 24 24" class="swatch-icon" aria-hidden="true">
-                  <!-- Filled crescent over a bar — the OW Dark
-                       equivalent of the OW Light sun: same geometric
-                       solidity, dark variant glyph. -->
+                  <!-- Crescent over a bar — the "OW plate" reading,
+                       distinct from Night's bare crescent so the two
+                       darks read at a glance. -->
                   <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8z" fill="currentColor" />
                   <rect x="3" y="20" width="18" height="1.6" fill="currentColor" />
                 </svg>
-                OW Dark
+                Dark
+              </div>
+            </button>
+            <button
+              type="button"
+              class="theme-swatch night-swatch"
+              role="radio"
+              :aria-checked="themeMode === 'night'"
+              :class="{ active: themeMode === 'night' }"
+              @click="pick('night')"
+            >
+              <div class="swatch-preview" aria-hidden="true">
+                <div class="swatch-mast" />
+                <div class="swatch-body">
+                  <div class="swatch-line w-70" />
+                  <div class="swatch-line w-45" />
+                  <div class="swatch-line w-60" />
+                  <div class="swatch-tick" />
+                </div>
+              </div>
+              <div class="swatch-label">
+                <svg viewBox="0 0 24 24" class="swatch-icon" aria-hidden="true">
+                  <!-- Bare crescent moon — the deep-night counterpart
+                       to Day's sun. Distinct from Dark's
+                       crescent-on-plate so the two darks read at a
+                       glance. -->
+                  <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8z" fill="currentColor" />
+                </svg>
+                Night
               </div>
             </button>
             <button
@@ -198,7 +178,7 @@ function pick(mode: ThemeMode) {
                   <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7" />
                   <path d="M12 3 A9 9 0 0 1 12 21 Z" fill="currentColor" />
                 </svg>
-                Contrast
+                High contrast
               </div>
             </button>
           </div>
@@ -209,11 +189,11 @@ function pick(mode: ThemeMode) {
 </template>
 
 <style scoped>
-/* Three preview cards showing a miniature of each theme's palette.
+/* Four preview cards showing a miniature of each theme's palette.
    Active card gets the accent ring + glow. Each card sets its own
-   CSS variables inline (via the .light-swatch / .dark-swatch /
-   .contrast-swatch class) so all three render their own palette
-   regardless of the document's [data-theme]. */
+   CSS variables inline (via the .day-swatch / .dark-swatch /
+   .night-swatch / .contrast-swatch class) so all four render their
+   own palette regardless of the document's [data-theme]. */
 
 .theme-swatch-row {
   display: inline-flex;
@@ -319,21 +299,11 @@ function pick(mode: ThemeMode) {
   display: block;
 }
 
-/* Light-swatch palette (frozen — matches the live light theme
-   surfaces in app.css; if the tokens there drift, refresh these). */
-.light-swatch {
-  --swatch-bg:     #faf6ee;
-  --swatch-mast:   #ece6d6;
-  --swatch-border: #b9b09c;
-  --swatch-text:   #2a2722;
-  --swatch-accent: #b03a0a;
-}
-
-/* OW Light swatch — Overwatch white background, brand-gray border
-   (the in-game scoreboard plate read), pure OW orange accent. The
-   mast strip stays close to the bg so the preview reads as "single
+/* Day swatch — Overwatch white background, brand-gray border (the
+   in-game scoreboard plate read), pure OW orange accent. The mast
+   strip stays close to the bg so the preview reads as "single
    ground" with a darker plate ring around it. */
-.ow-light-swatch {
+.day-swatch {
   --swatch-bg:     #efede6;
   --swatch-mast:   #e3e0d6;
   --swatch-border: #4a4a4a;
@@ -341,11 +311,11 @@ function pick(mode: ThemeMode) {
   --swatch-accent: #fa9c1b;
 }
 
-/* OW Dark swatch — OW brand-gray background (#4A4A4A, the live
-   plate gray), borders tinted with the OW orange so the preview
-   reads as "game UI structural" rather than "muted dashboard."
-   Mast bumps slightly darker to mark it as a heading bar. */
-.ow-dark-swatch {
+/* Dark swatch — OW brand-gray background (#4A4A4A, the live plate
+   gray), borders tinted with the OW orange so the preview reads as
+   "game UI structural" rather than "muted dashboard." Mast bumps
+   slightly darker to mark it as a heading bar. */
+.dark-swatch {
   --swatch-bg:     #4a4a4a;
   --swatch-mast:   #3a3a3a;
   --swatch-border: #fa9c1b;
@@ -353,14 +323,16 @@ function pick(mode: ThemeMode) {
   --swatch-accent: #fa9c1b;
 }
 
-/* The OW Dark tick rides on a mid-gray ground; lift the glow a
-   touch so the orange bar still pops. */
-.ow-dark-swatch .swatch-tick {
+/* The Dark tick rides on a mid-gray ground; lift the glow a touch
+   so the orange bar still pops. */
+.dark-swatch .swatch-tick {
   box-shadow: 0 0 10px var(--swatch-accent);
 }
 
-/* Dark-swatch palette (frozen — matches the live dark theme). */
-.dark-swatch {
+/* Night swatch (frozen — matches the editorial photographer's-
+   darkroom :root palette in app.css; if those tokens drift, refresh
+   these). Deep blue-charcoal bg with bright orange. */
+.night-swatch {
   --swatch-bg:     #15161a;
   --swatch-mast:   #1d1f24;
   --swatch-border: #2a2d33;
@@ -368,16 +340,16 @@ function pick(mode: ThemeMode) {
   --swatch-accent: #ff7a3a;
 }
 
-/* Contrast-swatch palette (frozen — matches the live high-contrast
-   theme: pure black surfaces, white text, boosted gold accent. The
-   mast is a touch above pure black so the strip reads as a divider
-   in the miniature). */
+/* Contrast swatch (frozen — matches the live high-contrast theme:
+   pure black surfaces, white text, boosted gold accent. The mast is
+   a touch above pure black so the strip reads as a divider in the
+   miniature). */
 .contrast-swatch {
   --swatch-bg:     #000;
   --swatch-mast:   #0e0e0e;
   --swatch-border: #fff;
   --swatch-text:   #fff;
-  --swatch-accent: #ffbf4d;
+  --swatch-accent: #fa3;
 }
 
 /* The contrast swatch's brighter accent benefits from a slightly

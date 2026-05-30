@@ -55,9 +55,9 @@ html {
   transition: background 220ms ease, color 220ms ease;
 }
 
-html[data-theme="light"] {
-  background: #f3f0e8;
-  color: #2b2a26;
+html[data-theme="day"] {
+  background: #efede6;
+  color: #1a1a1a;
   color-scheme: light;
 }
 

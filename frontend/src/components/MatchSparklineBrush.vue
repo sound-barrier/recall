@@ -239,6 +239,7 @@ function onPointerUp(e: PointerEvent) {
           :width="Math.max(barWidth - 0.5, BAR_MIN_WIDTH - 0.5)"
           :height="cell.empty ? 1.5 : barHeight(cell.total)"
           :fill="barFill(cell)"
+          role="img"
           :aria-label="barLabel(cell)"
         />
       </g>
