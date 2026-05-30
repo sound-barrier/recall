@@ -42,11 +42,12 @@ function pick(mode: ThemeMode) {
               <span class="setting-help-label">About Theme</span>
               <span class="setting-help-pop" role="tooltip">
                 Day and Night share the same orange accent but invert surface/text values.
-                OW Light grounds on Overwatch white (the cream from the post-match summary
-                screen) with the in-game brand gray as borders. Contrast is a high-contrast
-                variant for tournament-booth or low-vision use — pure black ground, white
-                text, boosted gold accent. First-launch defaults to your OS light/dark
-                preference; your pick after that survives reinstalls.
+                OW Light and OW Dark drop the chrome onto the Overwatch UI palette —
+                Overwatch white for OW Light (the cream from the post-match summary screen)
+                and the OW brand gray #4A4A4A for OW Dark (the in-game scoreboard plate).
+                Contrast is a high-contrast variant for tournament-booth or low-vision use —
+                pure black ground, white text, boosted gold accent. First-launch defaults
+                to your OS light/dark preference; your pick after that survives reinstalls.
               </span>
             </span>
           </h4>
@@ -141,6 +142,34 @@ function pick(mode: ThemeMode) {
                   <rect x="3" y="11" width="18" height="2" fill="currentColor" />
                 </svg>
                 OW Light
+              </div>
+            </button>
+            <button
+              type="button"
+              class="theme-swatch ow-dark-swatch"
+              role="radio"
+              :aria-checked="themeMode === 'ow-dark'"
+              :class="{ active: themeMode === 'ow-dark' }"
+              @click="pick('ow-dark')"
+            >
+              <div class="swatch-preview" aria-hidden="true">
+                <div class="swatch-mast" />
+                <div class="swatch-body">
+                  <div class="swatch-line w-70" />
+                  <div class="swatch-line w-45" />
+                  <div class="swatch-line w-60" />
+                  <div class="swatch-tick" />
+                </div>
+              </div>
+              <div class="swatch-label">
+                <svg viewBox="0 0 24 24" class="swatch-icon" aria-hidden="true">
+                  <!-- Filled crescent over a bar — the OW Dark
+                       equivalent of the OW Light sun: same geometric
+                       solidity, dark variant glyph. -->
+                  <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8z" fill="currentColor" />
+                  <rect x="3" y="20" width="18" height="1.6" fill="currentColor" />
+                </svg>
+                OW Dark
               </div>
             </button>
             <button
@@ -310,6 +339,24 @@ function pick(mode: ThemeMode) {
   --swatch-border: #4a4a4a;
   --swatch-text:   #1a1a1a;
   --swatch-accent: #fa9c1b;
+}
+
+/* OW Dark swatch — OW brand-gray background (#4A4A4A, the live
+   plate gray), borders tinted with the OW orange so the preview
+   reads as "game UI structural" rather than "muted dashboard."
+   Mast bumps slightly darker to mark it as a heading bar. */
+.ow-dark-swatch {
+  --swatch-bg:     #4a4a4a;
+  --swatch-mast:   #3a3a3a;
+  --swatch-border: #fa9c1b;
+  --swatch-text:   #f0f0f0;
+  --swatch-accent: #fa9c1b;
+}
+
+/* The OW Dark tick rides on a mid-gray ground; lift the glow a
+   touch so the orange bar still pops. */
+.ow-dark-swatch .swatch-tick {
+  box-shadow: 0 0 10px var(--swatch-accent);
 }
 
 /* Dark-swatch palette (frozen — matches the live dark theme). */
