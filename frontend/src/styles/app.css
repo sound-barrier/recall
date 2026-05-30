@@ -172,7 +172,7 @@
   /* OW signature orange straight from the logo. Stays the same hue
      across both OW variants — it's the cross-family identity. */
   --accent: #fa9c1b;
-  --accent-bright: #ffaa33;
+  --accent-bright: #fa3;
   --accent-text: #b8650a;      /* darker rust — AA-safe small text on cream */
   --accent-soft: rgb(250 156 27 / 22%);
   --accent-glow: rgb(250 156 27 / 45%);
@@ -217,9 +217,9 @@
   --surface-3: #6c6c6c;
   --border: #fa9c1b;
   --border-soft: #707070;
-  --border-strong: #ffaa33;
+  --border-strong: #fa3;
   --hairline: rgb(255 255 255 / 14%);
-  --text: #ffffff;
+  --text: #fff;
   --text-dim: #e0ddd6;
   --text-faint: #c5c2bb;
   --text-mute: #b0ada6;
@@ -230,10 +230,9 @@
      the brand plate needs to step further to maintain hierarchy. */
   --brand-gray: #2a2a2a;
   --brand-gray-soft: rgb(42 42 42 / 80%);
-
   --accent: #fa9c1b;
-  --accent-bright: #ffaa33;
-  --accent-text: #ffaa33;
+  --accent-bright: #fa3;
+  --accent-text: #fa3;
   --accent-soft: rgb(250 156 27 / 22%);
   --accent-glow: rgb(250 156 27 / 50%);
   --win: #4dff8e;
