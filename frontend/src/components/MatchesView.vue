@@ -85,7 +85,7 @@ const groupBy   = ref<'none' | 'day' | 'week' | 'month' | 'year'>('day')
 const comboOpen = ref<'map' | 'hero' | null>(null)
 
 // ─── Dossier KPIs / breakdowns via useMatchesDossier ───────
-const { wld, winrate, topMaps, topHeroes, totalTimePlayed } = useMatchesDossier(narrowedRecords, leaverHandling)
+const { wld, winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero } = useMatchesDossier(narrowedRecords, leaverHandling)
 
 const setHeadline = computed(() => {
   if (!anyNarrow.value) return 'All matches on record'
@@ -377,6 +377,16 @@ onBeforeUnmount(() => {
         <div class="kpi-tile">
           <span class="kpi-eyebrow">Most played hero</span>
           <span class="kpi-value kpi-text">{{ topHeroes[0]?.key || '—' }}</span>
+          <!-- Win-rate for the time-ranked top hero, computed over
+               matches where their percent_played cleared the 20%
+               threshold (sub-threshold flex picks would otherwise
+               drag the rate around). Surfaces "67% in 3 matches"
+               so the user reads both the number and what fed it.
+               Hidden when no decisive qualifying matches exist
+               (winrate=null) — the hero name still shows. -->
+          <span v-if="mostPlayedHero?.winrate !== null && mostPlayedHero?.winrate !== undefined" class="kpi-sub">
+            {{ mostPlayedHero.winrate }}% in {{ mostPlayedHero.qualifyingMatches }} match<span v-if="mostPlayedHero.qualifyingMatches !== 1">es</span>
+          </span>
         </div>
       </div>
 
@@ -981,9 +991,12 @@ onBeforeUnmount(() => {
 }
 .kpi-value.kpi-text { font-size: 1.15rem; text-transform: uppercase; }
 
-/* Coverage hint under the Total time played value — disclosed only
-   when the sum doesn't cover the whole narrow ("2 of 4 matches").
-   Faint mono so it reads as metadata, not headline. */
+/* Supporting metadata under a headline kpi-value. Used by two
+   tiles: the Total time played tile discloses partial coverage
+   ("2 of 4 matches" when game_length is missing on some records),
+   and the Most played hero tile surfaces the 20%-threshold win
+   rate ("67% in 3 matches"). Faint mono so the sub-label reads
+   as secondary, never competing with the headline. */
 .kpi-sub {
   font-family: var(--mono);
   font-size: 0.58rem;

@@ -64,6 +64,27 @@ export interface TotalTimePlayed {
   recordsTotal: number
 }
 
+// Most-played-hero annotation for the dossier KPI tile. `key` is
+// the time-ranked top hero (topHeroes[0]); `winrate` is the
+// integer percentage over matches where THAT hero's percent_played
+// cleared MOST_PLAYED_HERO_THRESHOLD. Sub-threshold appearances
+// don't count toward the denom — a one-trick whose flex picks
+// land at 5% shouldn't drag their main hero's read down because of
+// matches they weren't really playing that hero in. Null winrate
+// means no qualifying matches existed (or no decisive ones).
+export interface MostPlayedHero {
+  key: string
+  winrate: number | null
+  qualifyingMatches: number
+}
+
+// Minimum heroes_played[].percent_played for a record to count
+// toward the most-played-hero win-rate denom. Picked at 20% so a
+// brief experimental swap doesn't drag the rate around, but the
+// canonical "split your time across two heroes" case (e.g.
+// 60/40 ana/baptiste) still attributes win/loss to both.
+const MOST_PLAYED_HERO_THRESHOLD = 20
+
 export function useMatchesDossier(
   records: Readonly<Ref<MatchRecord[]>>,
   leaverHandling: Readonly<Ref<LeaverHandling>>,
@@ -197,5 +218,31 @@ export function useMatchesDossier(
     }
   })
 
-  return { wld, winrate, topMaps, topHeroes, totalTimePlayed }
+  // Win-rate annotation for the Most-played-hero KPI tile. Sources
+  // the hero name from topHeroes[0] (time-ranked) and the W/L
+  // counts from records where that hero's percent_played cleared
+  // MOST_PLAYED_HERO_THRESHOLD. Draws skip both buckets (same rule
+  // as the headline winrate). Null winrate when no qualifying
+  // decisive matches exist — caller renders the hero name without
+  // a percentage in that case.
+  const mostPlayedHero = computed<MostPlayedHero | null>(() => {
+    const top = topHeroes.value[0]
+    if (!top) return null
+    let w = 0, l = 0
+    for (const r of tallyRecords.value) {
+      const played = (r.data?.heroes_played ?? []).find((hp) => hp.hero === top.key)
+      if (!played) continue
+      if ((played.percent_played ?? 0) < MOST_PLAYED_HERO_THRESHOLD) continue
+      if (r.data?.result === 'victory') w++
+      else if (r.data?.result === 'defeat') l++
+    }
+    const qualifyingMatches = w + l
+    return {
+      key: top.key,
+      winrate: qualifyingMatches === 0 ? null : Math.round((w / qualifyingMatches) * 100),
+      qualifyingMatches,
+    }
+  })
+
+  return { wld, winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero }
 }

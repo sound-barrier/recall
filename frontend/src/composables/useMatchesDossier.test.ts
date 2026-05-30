@@ -338,6 +338,118 @@ describe('useMatchesDossier', () => {
     })
   })
 
+  describe('mostPlayedHero', () => {
+    // The KPI tile's win-rate annotation reads "where you actually
+    // PLAYED that hero" — counted only over matches where the
+    // most-played hero contributed at least 20% of the play time.
+    // Five-percent flex picks would otherwise drag a focused
+    // one-trick's win-rate around for reasons unrelated to their
+    // performance on that hero.
+    function recWithPlay(
+      heroes: { hero: string; percent_played: number }[],
+      result: 'victory' | 'defeat' | 'draw' = 'victory',
+      leaver?: '' | 'self' | 'team' | 'enemy',
+    ): MatchRecord {
+      return {
+        match_key: `m-${Math.random()}`,
+        source_files: ['a.png'],
+        source_types: { 'a.png': 'summary' },
+        data: {
+          map: 'rialto', hero: heroes[0]?.hero, mode: 'competitive',
+          result, date: '2026-05-10', finished_at: '14:00',
+          heroes_played: heroes.map(h => ({
+            hero: h.hero, percent_played: h.percent_played,
+            // play_time required so topHeroes ranks the hero.
+            play_time: '10:00',
+          })),
+        },
+        annotation: leaver ? { leaver } : undefined,
+        parsed_at: '2026-05-10T14:00:00Z',
+      } as unknown as MatchRecord
+    }
+
+    it('counts wins/losses where the most-played hero played ≥ 20%', () => {
+      const records = ref([
+        recWithPlay([{ hero: 'lucio', percent_played: 100 }], 'victory'),
+        recWithPlay([{ hero: 'lucio', percent_played: 80 }], 'victory'),
+        recWithPlay([{ hero: 'lucio', percent_played: 60 }], 'defeat'),
+        // Sub-threshold — Lúcio appeared as a flex pick; doesn't
+        // contribute to the win-rate denom.
+        recWithPlay([{ hero: 'lucio', percent_played: 10 }, { hero: 'mercy', percent_played: 90 }], 'defeat'),
+      ])
+      const { mostPlayedHero } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(mostPlayedHero.value).toMatchObject({
+        key: 'lucio',
+        winrate: 67, // 2W / 3 qualifying matches = 66.67% → 67
+        qualifyingMatches: 3,
+      })
+    })
+
+    it('returns null winrate when no match clears the 20% threshold', () => {
+      const records = ref([
+        recWithPlay([{ hero: 'lucio', percent_played: 10 }, { hero: 'kiriko', percent_played: 90 }], 'victory'),
+        recWithPlay([{ hero: 'lucio', percent_played: 15 }, { hero: 'ana', percent_played: 85 }], 'defeat'),
+      ])
+      const { mostPlayedHero } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(mostPlayedHero.value).toMatchObject({
+        key: 'lucio',
+        winrate: null,
+        qualifyingMatches: 0,
+      })
+    })
+
+    it('returns null when topHeroes is empty', () => {
+      const records = ref<MatchRecord[]>([])
+      const { mostPlayedHero } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(mostPlayedHero.value).toBeNull()
+    })
+
+    it('uses the time-ranked top hero, not the primary-hero count winner', () => {
+      // Mercy clicked 3× at 10% (below threshold) vs Lúcio once at
+      // 80%. topHeroes ranks by total time: Mercy 3 min × 3 = 9 min,
+      // Lúcio 8 min × 1 = 8 min → Mercy wins ranking, but only Lúcio
+      // clears the 20% bar on any match.
+      const records = ref([
+        recWithPlay([{ hero: 'mercy', percent_played: 10 }, { hero: 'kiriko', percent_played: 90 }], 'victory'),
+        recWithPlay([{ hero: 'mercy', percent_played: 10 }, { hero: 'kiriko', percent_played: 90 }], 'defeat'),
+        recWithPlay([{ hero: 'mercy', percent_played: 10 }, { hero: 'kiriko', percent_played: 90 }], 'defeat'),
+        recWithPlay([{ hero: 'lucio', percent_played: 80 }], 'victory'),
+      ])
+      const { mostPlayedHero, topHeroes } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      // Sanity: Mercy is the time leader.
+      expect(topHeroes.value[0]!.key).toBe('mercy')
+      // Mercy contributes to qualifyingMatches only if percent_played ≥ 20.
+      expect(mostPlayedHero.value).toMatchObject({
+        key: 'mercy',
+        winrate: null,
+        qualifyingMatches: 0,
+      })
+    })
+
+    it('honors leaver-exclude-tally — leaver matches drop from the win-rate denom', () => {
+      const records = ref([
+        recWithPlay([{ hero: 'lucio', percent_played: 100 }], 'victory'),
+        recWithPlay([{ hero: 'lucio', percent_played: 100 }], 'defeat', 'self'),
+      ])
+      const handling = ref<LeaverHandling>('include')
+      const { mostPlayedHero } = useMatchesDossier(records, handling)
+      expect(mostPlayedHero.value).toMatchObject({ winrate: 50, qualifyingMatches: 2 })
+      handling.value = 'exclude-tally'
+      expect(mostPlayedHero.value).toMatchObject({ winrate: 100, qualifyingMatches: 1 })
+    })
+
+    it('draws do not count toward the win-rate denom (parity with headline winrate)', () => {
+      const records = ref([
+        recWithPlay([{ hero: 'lucio', percent_played: 100 }], 'victory'),
+        recWithPlay([{ hero: 'lucio', percent_played: 100 }], 'draw'),
+      ])
+      const { mostPlayedHero } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      // Draw skips both w++ and l++ so winrate = 100% over 1 decisive match.
+      // qualifyingMatches counts decisive matches (parity with the denom).
+      expect(mostPlayedHero.value).toMatchObject({ winrate: 100, qualifyingMatches: 1 })
+    })
+  })
+
   describe('reactivity', () => {
     it('updates when records change', () => {
       const records = ref([rec({ result: 'victory' })])
