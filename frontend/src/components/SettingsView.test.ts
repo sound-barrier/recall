@@ -187,6 +187,7 @@ function readyTesseract(over: Partial<TesseractStatus> = {}): TesseractStatus {
     supported: true,
     error: '',
     default: '/usr/local/bin/tesseract',
+    platform: 'darwin',
     ...over,
   }
 }
@@ -270,6 +271,67 @@ describe('SettingsView — Engine section', () => {
     const link = wrapper.findAll('.link-btn').find(b => b.text().includes('Use default'))!
     await link.trigger('click')
     expect(wrapper.emitted('reset-tesseract')).toBeTruthy()
+  })
+})
+
+// ── Engine description — only the host OS's install paths render ─────────
+
+describe('SettingsView — Engine description per platform', () => {
+  // User-reported confusion: the prior copy named all three install
+  // locations in one sentence ("On macOS … /opt/homebrew/bin … apt
+  // installs to /usr/bin … Windows installers put it in Program Files").
+  // A user reading it on their own machine has no idea which path to
+  // follow. The fix surfaces only the host-platform paragraph based on
+  // tesseractStatus.platform (sourced from runtime.GOOS server-side).
+
+  const baseEngineProps = {
+    screenshotsDir: '/srv', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+    tesseractReady: true, tesseractSupported: true, tesseractPickerBusy: false,
+  }
+
+  it('shows only the macOS Homebrew paths when platform=darwin', () => {
+    const wrapper = mount(SettingsView, {
+      props: { ...baseEngineProps, tesseractStatus: readyTesseract({ platform: 'darwin' }) },
+    })
+    const desc = wrapper.find('.engine-row .setting-desc')
+    expect(desc.text()).toContain('/opt/homebrew/bin')
+    expect(desc.text()).toContain('/usr/local/bin')
+    expect(desc.text()).not.toContain('Program Files')
+    expect(desc.text()).not.toContain('/usr/bin')
+  })
+
+  it('shows only the Linux apt path when platform=linux', () => {
+    const wrapper = mount(SettingsView, {
+      props: { ...baseEngineProps, tesseractStatus: readyTesseract({ platform: 'linux' }) },
+    })
+    const desc = wrapper.find('.engine-row .setting-desc')
+    expect(desc.text()).toContain('/usr/bin')
+    expect(desc.text()).not.toContain('Program Files')
+    expect(desc.text()).not.toContain('/opt/homebrew/bin')
+  })
+
+  it('shows only the Windows Program Files path when platform=windows', () => {
+    const wrapper = mount(SettingsView, {
+      props: { ...baseEngineProps, tesseractStatus: readyTesseract({ platform: 'windows' }) },
+    })
+    const desc = wrapper.find('.engine-row .setting-desc')
+    expect(desc.text()).toContain('Program Files')
+    expect(desc.text()).toContain('Tesseract-OCR')
+    expect(desc.text()).not.toContain('/opt/homebrew/bin')
+    expect(desc.text()).not.toContain('/usr/bin')
+  })
+
+  // Fallback: unknown platform (BSD variants, an old client running
+  // against a newer server) should still see the lead sentence so the
+  // panel doesn't look broken. We just won't promise specific paths.
+  it('falls back to a generic sentence when platform is unknown', () => {
+    const wrapper = mount(SettingsView, {
+      props: { ...baseEngineProps, tesseractStatus: readyTesseract({ platform: 'plan9' }) },
+    })
+    const desc = wrapper.find('.engine-row .setting-desc')
+    expect(desc.text()).toContain('Tesseract')
+    expect(desc.text()).not.toContain('Program Files')
+    expect(desc.text()).not.toContain('/opt/homebrew/bin')
   })
 })
 

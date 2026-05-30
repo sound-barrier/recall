@@ -359,7 +359,7 @@ async function load() {
   if (promOn.status === 'fulfilled')   setPrometheusEnabled(!!promOn.value)
   if (watchOn.status === 'fulfilled')  setWatchEnabled(!!watchOn.value)
   if (tess.status === 'fulfilled')     setTesseractStatus(tess.value)
-  else                                 setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '' })
+  else                                 setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '', platform: '' })
   newScreenshotCount.value = newCount.status === 'fulfilled' ? newCount.value : null
   dataLocation.value      = loc.status === 'fulfilled' ? loc.value : null
 }

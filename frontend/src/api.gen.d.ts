@@ -1017,6 +1017,14 @@ export interface components {
             error: string;
             /** @description Platform default path (Homebrew on macOS, /usr/bin on Linux, etc.). */
             default: string;
+            /**
+             * @description Host's `runtime.GOOS` value — `darwin`, `linux`, `windows`,
+             *     `freebsd`, etc. The frontend uses it to surface only the
+             *     install-path guidance that matches the host, instead of
+             *     listing every OS in one confusing paragraph.
+             * @example darwin
+             */
+            platform: string;
         };
         EnabledFlag: {
             enabled: boolean;

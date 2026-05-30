@@ -44,7 +44,16 @@ const emit = defineEmits<{
             </span>
           </h4>
           <p class="setting-desc">
-            Recall shells out to Tesseract to read text from your Overwatch screenshots. On macOS the Homebrew install lives under <code>/opt/homebrew/bin</code> (Apple Silicon) or <code>/usr/local/bin</code> (Intel); apt installs to <code>/usr/bin</code>; Windows installers put it in <code>Program Files\Tesseract-OCR</code>.
+            Recall shells out to Tesseract to read text from your Overwatch screenshots.
+            <template v-if="tesseractStatus?.platform === 'darwin'">
+              The Homebrew install lives under <code>/opt/homebrew/bin</code> (Apple Silicon) or <code>/usr/local/bin</code> (Intel).
+            </template>
+            <template v-else-if="tesseractStatus?.platform === 'linux'">
+              The apt install lives at <code>/usr/bin</code>.
+            </template>
+            <template v-else-if="tesseractStatus?.platform === 'windows'">
+              The installer puts it in <code>Program Files\Tesseract-OCR</code>.
+            </template>
           </p>
           <div v-if="tesseractStatus" class="engine-status" :class="{ ok: tesseractReady, fail: !tesseractReady }">
             <span class="engine-dot" aria-hidden="true" />

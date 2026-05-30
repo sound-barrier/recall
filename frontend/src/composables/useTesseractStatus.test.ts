@@ -9,6 +9,7 @@ const SAMPLE: TesseractStatus = {
   supported: true,
   error: '',
   default: '/usr/bin/tesseract',
+  platform: 'linux',
 }
 
 function makeApi(overrides: Partial<TesseractStatusApi> = {}): TesseractStatusApi {

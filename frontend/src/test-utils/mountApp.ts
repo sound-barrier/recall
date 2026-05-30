@@ -47,6 +47,7 @@ function defaultTesseract(overrides: Partial<TesseractStatus> = {}): TesseractSt
     supported: true,
     error:     '',
     default:   '/usr/local/bin/tesseract',
+    platform:  'darwin',
     ...overrides,
   }
 }
