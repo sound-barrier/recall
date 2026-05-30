@@ -85,7 +85,7 @@ const groupBy   = ref<'none' | 'day' | 'week' | 'month' | 'year'>('day')
 const comboOpen = ref<'map' | 'hero' | null>(null)
 
 // ─── Dossier KPIs / breakdowns via useMatchesDossier ───────
-const { wld, winrate, topMaps, topHeroes } = useMatchesDossier(narrowedRecords, leaverHandling)
+const { wld, winrate, topMaps, topHeroes, totalTimePlayed } = useMatchesDossier(narrowedRecords, leaverHandling)
 
 const setHeadline = computed(() => {
   if (!anyNarrow.value) return 'All matches on record'
@@ -360,11 +360,22 @@ onBeforeUnmount(() => {
           </span>
         </div>
         <div class="kpi-tile">
-          <span class="kpi-eyebrow">Top map</span>
-          <span class="kpi-value kpi-text">{{ topMaps[0]?.key || '—' }}</span>
+          <span class="kpi-eyebrow">Total time played</span>
+          <span class="kpi-value">{{ totalTimePlayed.label }}</span>
+          <!-- Surface coverage when not every record contributed a
+               game_length — the sum is honest about what data fed it
+               so the user knows whether "20min" is "20 across the
+               whole narrow" or "20 across the 2 of 4 with data." -->
+          <span
+            v-if="totalTimePlayed.recordsWithTime > 0
+              && totalTimePlayed.recordsWithTime < totalTimePlayed.recordsTotal"
+            class="kpi-sub"
+          >
+            {{ totalTimePlayed.recordsWithTime }} of {{ totalTimePlayed.recordsTotal }} matches
+          </span>
         </div>
         <div class="kpi-tile">
-          <span class="kpi-eyebrow">Top hero</span>
+          <span class="kpi-eyebrow">Most played hero</span>
           <span class="kpi-value kpi-text">{{ topHeroes[0]?.key || '—' }}</span>
         </div>
       </div>
@@ -372,19 +383,19 @@ onBeforeUnmount(() => {
       <div class="dossier-breakdowns">
         <article class="breakdown">
           <header class="breakdown-head">
-            <span class="breakdown-eyebrow">Top maps</span>
+            <span class="breakdown-eyebrow">Most played maps</span>
           </header>
           <ul>
             <li v-for="m in topMaps" :key="m.key">
               <span class="bd-name">{{ m.key }}</span>
               <span class="bd-bar"><span class="bd-fill" :style="{ width: m.share + '%' }" /></span>
-              <span class="bd-stats">{{ m.share }}% <span class="bd-total">·{{ m.total }}</span></span>
+              <span class="bd-stats">{{ m.share }}%</span>
             </li>
           </ul>
         </article>
         <article class="breakdown">
           <header class="breakdown-head">
-            <span class="breakdown-eyebrow">Top heroes</span>
+            <span class="breakdown-eyebrow">Most played heroes</span>
           </header>
           <ul>
             <li v-for="h in topHeroes" :key="h.key">
@@ -969,6 +980,17 @@ onBeforeUnmount(() => {
   font-feature-settings: "tnum";
 }
 .kpi-value.kpi-text { font-size: 1.15rem; text-transform: uppercase; }
+
+/* Coverage hint under the Total time played value — disclosed only
+   when the sum doesn't cover the whole narrow ("2 of 4 matches").
+   Faint mono so it reads as metadata, not headline. */
+.kpi-sub {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  font-feature-settings: "tnum";
+}
 
 .t-w { color: var(--win); }
 .t-l { color: var(--loss); }

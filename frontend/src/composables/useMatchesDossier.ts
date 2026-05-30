@@ -51,6 +51,19 @@ export interface HeroBreakdownEntry {
   timeLabel: string
 }
 
+// Total match time across the narrow. `minutes` carries the raw
+// fractional total (so callers can compute averages without re-
+// parsing the label) and `label` is the formatPlayMinutes render
+// ("7h32min" / "—"). recordsWithTime / recordsTotal expose the
+// data-coverage fraction — the KPI tile can disclose "2 of 4
+// matches" when not every record contributed a game_length.
+export interface TotalTimePlayed {
+  minutes: number
+  label: string
+  recordsWithTime: number
+  recordsTotal: number
+}
+
 export function useMatchesDossier(
   records: Readonly<Ref<MatchRecord[]>>,
   leaverHandling: Readonly<Ref<LeaverHandling>>,
@@ -156,5 +169,33 @@ export function useMatchesDossier(
       }))
   })
 
-  return { wld, winrate, topMaps, topHeroes }
+  // Total match time across the tally-eligible records. Sourced
+  // from data.game_length (the SUMMARY screen's "match length"
+  // field) — NOT from heroes_played[].play_time. game_length is
+  // the wall-clock duration of the match; summing per-hero times
+  // would either equal it (single-hero match) or undercount
+  // (heroes_played omits the spectator gap between hero swaps and
+  // doesn't carry play_time for swaps captured only in SCOREBOARD).
+  // Records lacking a parseable game_length contribute nothing —
+  // we don't fabricate a number from adjacent fields; recordsWithTime
+  // exposes the coverage so the KPI tile can surface "N of M" when
+  // it's not 1:1.
+  const totalTimePlayed = computed<TotalTimePlayed>(() => {
+    let minutes = 0
+    let recordsWithTime = 0
+    for (const r of tallyRecords.value) {
+      const m = parseGameLengthMinutes(r.data?.game_length)
+      if (m === null) continue
+      minutes += m
+      recordsWithTime++
+    }
+    return {
+      minutes,
+      label: recordsWithTime === 0 ? '—' : formatPlayMinutes(minutes),
+      recordsWithTime,
+      recordsTotal: tallyRecords.value.length,
+    }
+  })
+
+  return { wld, winrate, topMaps, topHeroes, totalTimePlayed }
 }

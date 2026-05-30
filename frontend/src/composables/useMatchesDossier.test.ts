@@ -268,6 +268,76 @@ describe('useMatchesDossier', () => {
     })
   })
 
+  describe('totalTimePlayed', () => {
+    function recWithGameLength(gameLength: string | undefined): MatchRecord {
+      return {
+        match_key: `m-${Math.random()}`,
+        source_files: ['a.png'],
+        source_types: { 'a.png': 'summary' },
+        data: {
+          map: 'rialto', hero: 'lucio', mode: 'competitive',
+          result: 'victory', date: '2026-05-10', finished_at: '14:00',
+          ...(gameLength !== undefined ? { game_length: gameLength } : {}),
+        },
+        parsed_at: '2026-05-10T14:00:00Z',
+      } as unknown as MatchRecord
+    }
+
+    it('sums game_length across the narrow', () => {
+      const records = ref([
+        recWithGameLength('11:25'),
+        recWithGameLength('08:54'),
+      ])
+      const { totalTimePlayed } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(totalTimePlayed.value.minutes).toBeCloseTo(11.42 + 8.9, 1)
+      expect(totalTimePlayed.value.label).toBe('20min')
+      expect(totalTimePlayed.value.recordsWithTime).toBe(2)
+      expect(totalTimePlayed.value.recordsTotal).toBe(2)
+    })
+
+    it('renders hour-plus totals via formatPlayMinutes', () => {
+      // 30 minutes × 16 matches = 480 min → 8h0min
+      const records = ref(Array.from({ length: 16 }, () => recWithGameLength('30:00')))
+      const { totalTimePlayed } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(totalTimePlayed.value.label).toBe('8h0min')
+    })
+
+    it('reports coverage when some records lack game_length', () => {
+      const records = ref([
+        recWithGameLength('10:00'),
+        recWithGameLength(undefined),
+        recWithGameLength('05:00'),
+      ])
+      const { totalTimePlayed } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(totalTimePlayed.value.label).toBe('15min')
+      expect(totalTimePlayed.value.recordsWithTime).toBe(2)
+      expect(totalTimePlayed.value.recordsTotal).toBe(3)
+    })
+
+    it('renders zero coverage as "—" and reports 0/N', () => {
+      const records = ref([
+        recWithGameLength(undefined),
+        recWithGameLength(undefined),
+      ])
+      const { totalTimePlayed } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(totalTimePlayed.value.label).toBe('—')
+      expect(totalTimePlayed.value.recordsWithTime).toBe(0)
+      expect(totalTimePlayed.value.recordsTotal).toBe(2)
+    })
+
+    it('honors the leaver-exclude-tally rule, like wld/winrate', () => {
+      const records = ref([
+        recWithGameLength('10:00'),
+        { ...recWithGameLength('20:00'), annotation: { leaver: 'self' } } as MatchRecord,
+      ])
+      const handling = ref<LeaverHandling>('include')
+      const { totalTimePlayed } = useMatchesDossier(records, handling)
+      expect(totalTimePlayed.value.label).toBe('30min')
+      handling.value = 'exclude-tally'
+      expect(totalTimePlayed.value.label).toBe('10min')
+    })
+  })
+
   describe('reactivity', () => {
     it('updates when records change', () => {
       const records = ref([rec({ result: 'victory' })])
