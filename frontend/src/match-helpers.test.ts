@@ -16,6 +16,7 @@ import {
   groupMatchesByMonthWeekDay,
   formatParsedAt,
   formatMinutesAsClock,
+  formatPlayMinutes,
   modeOf,
   avgGameLengthMinutes,
   highlightSubstring,
@@ -958,6 +959,34 @@ describe('formatMinutesAsClock', () => {
     // hours — that's the agg-stats panel's choice — but the
     // mm:ss split must still be correct.
     expect(formatMinutesAsClock(65.5)).toBe('65:30')
+  })
+})
+
+// ─── formatPlayMinutes ─────────────────────────────────────────────
+
+describe('formatPlayMinutes', () => {
+  it('renders sub-hour totals as "Nmin"', () => {
+    expect(formatPlayMinutes(32)).toBe('32min')
+    expect(formatPlayMinutes(11.42)).toBe('11min') // 11m 25s rounds to 11
+    expect(formatPlayMinutes(11.51)).toBe('12min') // 11m 30.6s rounds to 12
+  })
+
+  it('renders hour-plus totals as "XhYmin"', () => {
+    expect(formatPlayMinutes(60)).toBe('1h0min')
+    expect(formatPlayMinutes(7 * 60 + 32)).toBe('7h32min')
+    expect(formatPlayMinutes(125)).toBe('2h5min')
+  })
+
+  it('rounds sub-minute totals to "0min" (data shape, not absence)', () => {
+    expect(formatPlayMinutes(0.4)).toBe('0min')
+    expect(formatPlayMinutes(0)).toBe('0min')
+  })
+
+  it('renders null / undefined / NaN / negative as em-dash', () => {
+    expect(formatPlayMinutes(null)).toBe('—')
+    expect(formatPlayMinutes(undefined)).toBe('—')
+    expect(formatPlayMinutes(NaN)).toBe('—')
+    expect(formatPlayMinutes(-1)).toBe('—')
   })
 })
 

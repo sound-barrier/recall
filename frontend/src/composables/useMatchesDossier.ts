@@ -1,5 +1,6 @@
 import { computed, type Ref } from 'vue'
 import type { MatchRecord } from '../api'
+import { formatPlayMinutes, parseGameLengthMinutes } from '../match-helpers'
 
 // Pure KPI / breakdown computations for the Matches dossier.
 // Extracted from MatchesView so the tally math (winrate excluding
@@ -33,6 +34,21 @@ export interface BreakdownEntry {
   // counts produces wildly bimodal 0 / 100 bars that don't
   // communicate volume.
   share: number
+}
+
+// Top-hero breakdown row. Same `key` / `share` / `winrate` contract
+// as BreakdownEntry, but `total` is summed play-time minutes (not
+// match count), and `timeLabel` is the human-facing render of that
+// total ("7h32min" / "32min"). The hero breakdown ranks by time
+// played across every heroes_played[] entry — a 100% Lúcio one-trick
+// across five 12-minute matches reads higher than three 4-minute
+// secondary picks even though both are "three matches as Lúcio."
+export interface HeroBreakdownEntry {
+  key: string
+  totalMinutes: number
+  share: number
+  winrate: number
+  timeLabel: string
 }
 
 export function useMatchesDossier(
@@ -103,7 +119,42 @@ export function useMatchesDossier(
   }
 
   const topMaps   = computed(() => topByCount((r) => r.data?.map))
-  const topHeroes = computed(() => topByCount((r) => r.data?.hero))
+
+  // Top heroes by SUMMED play time across every heroes_played[]
+  // entry — not by primary-hero match count. The dossier's bar
+  // visualization then reads "what hero did you spend the most time
+  // on" rather than "what hero did you click first most often."
+  // Limit defaults to 3 (vs topMaps' 5) because the time-based row
+  // carries a longer label ("7h32min") that needs room to breathe in
+  // the breakdown grid. Records whose heroes_played[] is missing or
+  // whose entries lack a parseable play_time contribute nothing.
+  const topHeroes = computed<HeroBreakdownEntry[]>(() => {
+    const buckets = new Map<string, { minutes: number; w: number; l: number }>()
+    for (const r of records.value) {
+      const heroes = r.data?.heroes_played ?? []
+      for (const hp of heroes) {
+        if (!hp.hero) continue
+        const m = parseGameLengthMinutes(hp.play_time)
+        if (m === null) continue
+        const bucket = buckets.get(hp.hero) ?? { minutes: 0, w: 0, l: 0 }
+        bucket.minutes += m
+        if (r.data?.result === 'victory') bucket.w++
+        else if (r.data?.result === 'defeat') bucket.l++
+        buckets.set(hp.hero, bucket)
+      }
+    }
+    const totalMinutes = [...buckets.values()].reduce((sum, b) => sum + b.minutes, 0)
+    return [...buckets.entries()]
+      .sort((a, b) => b[1].minutes - a[1].minutes)
+      .slice(0, 3)
+      .map(([key, b]) => ({
+        key,
+        totalMinutes: b.minutes,
+        share: totalMinutes === 0 ? 0 : Math.round((b.minutes / totalMinutes) * 100),
+        winrate: b.w + b.l === 0 ? 0 : Math.round((b.w / (b.w + b.l)) * 100),
+        timeLabel: formatPlayMinutes(b.minutes),
+      }))
+  })
 
   return { wld, winrate, topMaps, topHeroes }
 }

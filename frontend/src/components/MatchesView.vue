@@ -389,8 +389,11 @@ onBeforeUnmount(() => {
           <ul>
             <li v-for="h in topHeroes" :key="h.key">
               <span class="bd-name">{{ h.key }}</span>
-              <span class="bd-bar"><span class="bd-fill" :style="{ width: h.share + '%' }" /></span>
-              <span class="bd-stats">{{ h.share }}% <span class="bd-total">·{{ h.total }}</span></span>
+              <span class="bd-bar">
+                <span class="bd-fill" :style="{ width: h.share + '%' }" />
+                <span class="bd-time">{{ h.timeLabel }}</span>
+              </span>
+              <span class="bd-stats">{{ h.share }}%</span>
             </li>
           </ul>
         </article>
@@ -1029,12 +1032,50 @@ onBeforeUnmount(() => {
   border-radius: 2px;
   border: 1px solid var(--border);
   overflow: hidden;
+  position: relative;
 }
 
 .bd-fill {
   display: block;
   height: 100%;
   background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 50%, var(--win)));
+}
+
+/* In-bar play-time label for the Top heroes breakdown. Sits centred
+   over the bar so the "7h32min" reads against either the filled or
+   empty portion depending on share; tabular-nums keeps the label
+   from jittering as values change. The hero bar gets extra height
+   (and slightly tighter monospaced letter-spacing) so a four- or
+   five-glyph label fits without crowding the gradient. Maps don't
+   use this — their bar carries the count in .bd-stats instead. */
+.breakdown li:has(.bd-time) .bd-bar {
+  height: 18px;
+}
+
+.bd-time {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text);
+  font-feature-settings: "tnum";
+  letter-spacing: 0.01em;
+
+  /* Multi-offset outline so the label stays legible against either
+     the rust-gradient fill or the surface-2 empty portion. text-
+     shadow's stacked offsets paint a 1px halo in the surface colour
+     without forcing a paint-cost backdrop-filter. */
+  text-shadow:
+    0 0 2px var(--surface-2),
+    1px 0 0 var(--surface-2),
+    -1px 0 0 var(--surface-2),
+    0 1px 0 var(--surface-2),
+    0 -1px 0 var(--surface-2);
+  pointer-events: none;
 }
 
 .bd-stats {
