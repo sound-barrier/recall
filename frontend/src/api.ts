@@ -275,6 +275,19 @@ export function SetMatchVisibility(matchKey: string, hidden: boolean): Promise<v
   return _send('PUT', path, { hidden }).then(() => undefined)
 }
 
+// Resolve an ambiguous-attribution screenshot by attaching every
+// parent row carrying the sentinel to the user's chosen match.
+// `resolvedTo` must be one of the candidates surfaced on
+// `MatchRecord.candidates` OR a freshly-minted "match:<ts>" key
+// (the "Treat as new match" escape hatch in the Unknown tab).
+export function ResolveAmbiguousMatch(ambiguousMatchKey: string, resolvedTo: string): Promise<void> {
+  if (IS_WAILS) {
+    return _wails('ResolveAmbiguousMatch', ambiguousMatchKey, resolvedTo)
+  }
+  const path = `/api/v1/matches/${encodeURIComponent(ambiguousMatchKey)}/resolution`
+  return _send('PUT', path, { resolved_to: resolvedTo }).then(() => undefined)
+}
+
 export const ParseScreenshots = _dualVoid<[]>(
   'ParseScreenshots',
   'POST',
