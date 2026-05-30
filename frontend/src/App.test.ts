@@ -139,6 +139,43 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
   })
 })
 
+describe('App.vue — masthead scoreboard W/L/D consistency', () => {
+  // The masthead scoreboard and the MatchesView "Record" KPI tile
+  // both count wins/losses/draws across the same set of records.
+  // Before the consistency fix, the masthead used the LEGACY
+  // useMatchFilters pipeline (which silently dropped undated rows)
+  // while MatchesView's Record tile used useMatchesNarrow.narrowed
+  // (which keeps undated rows in by default). A live match whose
+  // result was inferred from a rank-screen SR change but with no
+  // SUMMARY-supplied date/finished_at would show up in the Record
+  // tile but not in the masthead — surfacing the same data as two
+  // different W/L/D readings to the user.
+  it('counts undated rows the same way as the Matches view Record tile', async () => {
+    const records: MatchRecord[] = [
+      // Dated victory — both pipelines count this.
+      { match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
+        map: 'aatlis', hero: 'lucio', date: '2026-05-10', finished_at: '21:29', result: 'victory',
+      } },
+      // Dated defeat — both pipelines count this.
+      { match_key: 'match:2026-05-10T21:49:34', source_files: ['b.png'], data: {
+        map: 'rialto', hero: 'wuyang', date: '2026-05-10', finished_at: '21:49', result: 'defeat',
+      } },
+      // UNDATED victory (rank-inferred result with no SUMMARY) —
+      // the live-DB Suravasa case. Legacy pipeline drops it; the
+      // Record tile counts it; masthead now must count it too.
+      { match_key: 'match:2026-05-10T22:21:11', source_files: ['c.png'], data: {
+        map: 'suravasa', hero: 'lucio', result: 'victory',
+      } },
+    ]
+    const wrapper = await mountApp({ records })
+    const cells = wrapper.findAll('.scoreboard .score-num')
+    expect(cells.length).toBe(3)
+    expect(cells[0]!.text()).toBe('2') // wins
+    expect(cells[1]!.text()).toBe('1') // losses
+    expect(cells[2]!.text()).toBe('0') // draws
+  })
+})
+
 describe('App.vue — tablist keyboard navigation', () => {
   // WAI-ARIA tab pattern with automatic activation: ArrowLeft/Right wrap
   // through the tabs, Home/End jump to either end, and each keypress
