@@ -80,9 +80,6 @@ function mockApi(overrides: MountOverrides = {}) {
     ResetScreenshotsDir: vi.fn(async () => undefined),
     RevealScreenshotsDir: vi.fn(async () => undefined),
     SetMatchAnnotation:    vi.fn(async () => undefined),
-    // SettingsView imports IS_WAILS to gate Wails-only affordances
-    // (Open in Finder/Explorer). Tests run under happy-dom — false.
-    IS_WAILS:            false,
     GetPrometheusEnabled: vi.fn(async () => overrides.prometheusEnabled ?? false),
     SetPrometheusEnabled: vi.fn(async () => undefined),
     GetWatchEnabled:     vi.fn(async () => overrides.watchEnabled ?? false),
