@@ -114,6 +114,28 @@ const { sortedRecords, groupedSections } = useMatchesGroup(narrowedRecords, grou
 function formatTime(rec: MatchRecord): string {
   return rec.data?.finished_at ?? ''
 }
+
+// Comma-separated hero list, most-played first. Commas pick over
+// `|` because the row reads as a natural-language label first and
+// a table cell second; `,` matches English list convention. If
+// the primary hero (`data.hero`) isn't represented in
+// `heroes_played` (an OCR edge case), include it at the end of
+// the list so the user always sees the parsed primary. Falls back
+// to `—` only when both `heroes_played` is empty AND there's no
+// primary hero.
+function formatHeroes(rec: MatchRecord): string {
+  const played = [...(rec.data?.heroes_played ?? [])]
+  const primary = rec.data?.hero
+  if (primary && !played.some((h) => h.hero === primary)) {
+    played.push({ hero: primary, percent_played: 0 })
+  }
+  if (played.length === 0) return '—'
+  const sorted = played.sort(
+    (a, b) => (b.percent_played ?? 0) - (a.percent_played ?? 0),
+  )
+  return sorted.map((h) => h.hero).filter(Boolean).join(', ')
+}
+
 function formatRowDate(rec: MatchRecord): string {
   const d = rec.data?.date
   if (!d) return '—'
@@ -804,7 +826,7 @@ onBeforeUnmount(() => {
 
             <!-- 4. Who — hero over role. -->
             <div class="leaf-hero-block">
-              <span class="leaf-hero">{{ rec.data?.hero || '—' }}</span>
+              <span class="leaf-hero">{{ formatHeroes(rec) }}</span>
               <span v-if="rec.data?.role" class="leaf-role">{{ rec.data.role }}</span>
             </div>
 
@@ -1698,14 +1720,22 @@ onBeforeUnmount(() => {
    internally with flex. */
 .leaf-row {
   display: grid;
+  /* All columns to the left of `hero block` must have stable widths
+     across rows or the hero name's left edge drifts when adjacent
+     columns vary (e.g. one row with 50/4/3 stats vs another with
+     9/4/11). The stats column was previously `auto` and that's
+     what was shifting the hero block. Lock it to a 7rem track that
+     fits two-digit E/A/D comfortably; three-digit edge cases still
+     fit because the stat-num spans are `inline-flex` with their own
+     tabular-numeral metrics. */
   grid-template-columns:
     4px                  /* strip */
     72px                 /* when */
     minmax(0, 1.4fr)     /* map block */
     minmax(0, 1fr)       /* hero block */
-    auto                 /* stats */
+    7rem                 /* stats — fixed so hero left edge aligns */
     minmax(0, 1fr)       /* meta */
-    auto;                /* result chip */
+    6rem;                /* result chip — match the chip's own width */
 
   gap: 0.85rem;
   align-items: center;
