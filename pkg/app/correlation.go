@@ -157,7 +157,10 @@ func mergeMatchResult(dst, src *parser.MatchResult) {
 //     caller persists the candidates via store.ApplyAmbiguity so the
 //     user can pick the correct match via the Unknown tab.
 //   - Else if an existing screenshot is within mergeWindow of this
-//     filename AND no signature field conflicts — adopt its key.
+//     filename AND no signature field conflicts — adopt its key,
+//     unless multiple distinct match_keys tie within
+//     tieToleranceWindow of the closest, in which case mint
+//     "ambiguous:<filename>" + the tied candidates.
 //   - Else mint a fresh key: `match:<ts>` from the filename, or
 //     `unmatched:<filename>` for files without a parseable timestamp.
 func resolveMatchKey(filename string, result *parser.MatchResult, snap db.Screenshots) (string, []db.AmbiguousCandidate) {
@@ -168,8 +171,11 @@ func resolveMatchKey(filename string, result *parser.MatchResult, snap db.Screen
 		}
 		return "ambiguous:" + filename, cands
 	}
-	if k, ok := matchByTimestampWindow(cand, snap); ok {
-		return k, nil
+	if k, cands, ok := matchByTimestampWindow(cand, snap); ok {
+		if k != "" {
+			return k, nil
+		}
+		return "ambiguous:" + filename, cands
 	}
 	if cand.hasTS {
 		return "match:" + cand.ts.UTC().Format("2006-01-02T15:04:05"), nil
@@ -390,17 +396,36 @@ func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCand
 	return "", cands, true
 }
 
+// tieToleranceWindow groups timestamp-window candidates from
+// different match_keys whose distances are within this slack of
+// each other. Two minute-scale screenshots a few seconds apart on
+// either side of a tie are functionally equidistant; arbitrarily
+// picking the closer one hides a real attribution decision from
+// the user. Five seconds catches both strict ties and the
+// real-world capture-jitter case while staying well below the
+// 30 s default offset between adjacent screenshots in the same
+// match.
+const tieToleranceWindow = 5 * time.Second
+
 // matchByTimestampWindow looks for an existing screenshot within
-// mergeWindow of cand and with no signature conflicts. Closest-in-time
-// wins; this is the rule that used to live in splitByMatchMetadata
-// (PERSONAL sandwiched between two SUMMARY windows goes to the nearer
-// one).
-func matchByTimestampWindow(cand candidate, snap db.Screenshots) (string, bool) {
+// mergeWindow of cand and with no signature conflicts. Returns:
+//
+//	key, nil, true    — single distinct match_key wins by a clear
+//	                    margin (> tieToleranceWindow ahead of any
+//	                    other match's closest screenshot); auto-adopt.
+//	"",  cands, true  — two or more distinct match_keys tie within
+//	                    tieToleranceWindow; caller mints
+//	                    "ambiguous:<filename>".
+//	"",  nil, false   — no candidates within mergeWindow.
+//
+// Candidates are deduped by match_key (closest screenshot per key
+// wins) and the returned candidate slice is sorted by distance
+// ascending.
+func matchByTimestampWindow(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCandidate, bool) {
 	if !cand.hasTS {
-		return "", false
+		return "", nil, false
 	}
-	bestKey := ""
-	bestDelta := time.Duration(1<<62 - 1)
+	closestByKey := map[string]time.Duration{}
 	for _, e := range snapshotExisting(snap) {
 		if !e.c.hasTS {
 			continue
@@ -415,15 +440,49 @@ func matchByTimestampWindow(cand candidate, snap db.Screenshots) (string, bool) 
 		if rowsConflict(cand.r, e.c.r, e.matchHeroes) {
 			continue
 		}
-		if d < bestDelta {
-			bestDelta = d
-			bestKey = e.key
+		if prev, ok := closestByKey[e.key]; !ok || d < prev {
+			closestByKey[e.key] = d
 		}
 	}
-	if bestKey == "" {
-		return "", false
+	if len(closestByKey) == 0 {
+		return "", nil, false
 	}
-	return bestKey, true
+	type kd struct {
+		key string
+		d   time.Duration
+	}
+	sorted := make([]kd, 0, len(closestByKey))
+	for k, d := range closestByKey {
+		sorted = append(sorted, kd{k, d})
+	}
+	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].d != sorted[j].d {
+			return sorted[i].d < sorted[j].d
+		}
+		return sorted[i].key < sorted[j].key
+	})
+	minD := sorted[0].d
+	// Pull every candidate within tieToleranceWindow of the minimum
+	// into the tie set. Any further keys lose by a clear margin.
+	ties := sorted[:0:0]
+	for _, h := range sorted {
+		if h.d-minD <= tieToleranceWindow {
+			ties = append(ties, h)
+			continue
+		}
+		break
+	}
+	if len(ties) == 1 {
+		return ties[0].key, nil, true
+	}
+	cands := make([]db.AmbiguousCandidate, 0, len(ties))
+	for _, t := range ties {
+		cands = append(cands, db.AmbiguousCandidate{
+			MatchKey:  t.key,
+			DistanceS: int(t.d / time.Second),
+		})
+	}
+	return "", cands, true
 }
 
 // rowsConflict reports whether cand and an existing row disagree on a
