@@ -39,7 +39,11 @@ tags/map-types, preset + custom date range, leaver handling, dual
 min-play thresholds, includeUnknown — + `narrowedRecords` /
 `anyNarrow` / `activeClauseCount` computeds), `useMatchesGroup`
 (sort + Y/M/W/D bucketing for the leaves list), `useMatchesDossier`
-(W-L-D + winrate + top-N maps/heroes KPIs). **Session-scoped
+(W-L-D + winrate + top-N maps/heroes KPIs), `useTabKeyboardNav`
+(WAI-ARIA Arrow/Home/End cycle over a `tabs` ref — passed from
+App.vue's `visibleTabs` computed so the cycle stays inside
+currently-rendered tabs; defaults to `TAB_ORDER` if no arg).
+**Session-scoped
 fetch**: `useOWData` (module-singleton fetching
 `/api/v1/system/reference-data` once per session for canonical
 hero/map display names). `ls frontend/src/composables/*.ts` is the
@@ -70,7 +74,7 @@ When migrating a rule to scoped, check all eight component templates first — i
 
 State concerns owned by App.vue and passed down via props/emits:
 
-- **Nav** — 4 tabs in workflow order: Settings (01), Parse (02) (internal id still `'ingest'`; `IngestView.vue` only the label changed), Matches (03) default landing, Unknown (04) triage. Settings owns all config (Folders/Engine/Appearance/Calendar/Backup & Restore + collapsible Advanced). Parse is just the operational loop (Watch + Manual Parse + progress panel) — don't add config rows there. Parse heading state-machine deep-links to Settings → Engine/Folders on missing-Tesseract / unset-folder.
+- **Nav** — 5 tabs (4 on release builds): Settings (01), Parse (02) (internal id still `'ingest'`; `IngestView.vue` only the label changed), Matches (03) default landing, Analysis (04) — *dev-build only*, hidden when `appVersion` lacks the `-dev` suffix via `visibleTabs` computed, Unknown (05) triage. Settings owns all config (Folders/Engine/Appearance/Calendar/Backup & Restore + collapsible Advanced). Parse is just the operational loop (Watch + Manual Parse + progress panel) — don't add config rows there. Parse heading state-machine deep-links to Settings → Engine/Folders on missing-Tesseract / unset-folder.
 - **Matches view layout** — `MatchesView.vue` is a *set workspace*: dossier (active-clause chips + W/L/D + top maps/heroes via `useMatchesDossier`) at top, Campaign Log (heatmap + brushable sparkline via `MatchTimelineHeader`) in the middle, compact `.leaf-row` list below with sort + Y/M/W/D grouping via `useMatchesGroup`. The left-side *"Narrow this set"* panel mirrors `MatchDetailPanel`'s modal contract (focus trap, Esc, backdrop, `inert` + `aria-hidden` on the background container while open) and consolidates every filter dimension into one place — search, date range (preset + custom), map/map-type/hero/role/result/tags, leaver handling, dual min-play thresholds, include-unknown toggle. State lives in `useMatchesNarrow`; the Map + Hero pickers reuse the `FilterCombobox` component (typeahead + selected-pill row + dropdown listbox with role="option" + aria-selected). Hero filter is **broad match** against the primary `data.hero` AND every `data.heroes_played[]` entry.
 - **Date filter** only matches rows with explicit `data.date` — undated rows excluded from date-windowed views.
 - **Unknown-map records hidden by default** in the Matches dossier; the narrow panel exposes a toggle to surface them for one-off investigations. The Unknown tab always shows them.
@@ -138,18 +142,24 @@ SFC-level tests use `@vue/test-utils`'s `mount()` via `mountApp(overrides?)` in 
 
 - **Playwright `.click()` on a parent with `@click.stop` children.** The default `.click()` lands on the element's geometric centre. If the centre falls on a child that calls `e.stopPropagation()` (slot chips inside `.sources-toggle`, removable filter chips inside `.mf-trigger`, etc.), the parent's click handler never fires and the test waits-then-fails on state that won't change. Click a stable text-only child instead — e.g. `.sources-toggle .sources-label` — or pass `{ position: { x, y } }` to land on a known coordinate.
 
+- **Tab visibility flows through `visibleTabs`, not just `v-if`.** Hiding a tab needs both the `<button v-if="…">` *and* the `visibleTabs` computed update — the latter feeds `useTabKeyboardNav` so ←/→ wrap-around skips the hidden tab. The panel `<v-if>` should AND the same gate as defence-in-depth (`view === 'analysis' && isDevBuild`) even though `view` is in-memory only; the gate is what keeps the WIP panel out of release renders if `view` ever gets persisted.
+
+- **No network calls on mount unless the user asked.** The masthead update check used to fire `GET /api/v1/system/update` on every boot — replaced with a "Check for updates" button. New chrome that calls GitHub / external services should follow the same user-pulled pattern (button + Checking… state) rather than silently roundtripping at boot.
+
 ## A11y
 
 - **Force `prefers-reduced-motion: reduce` in a11y specs** via `page.emulateMedia()` in `beforeEach`. Without it, axe-core's color-contrast check samples mid-animation alpha (`view-fade-in` ramps opacity 0→1 over 360ms) and reports legible colors as failing. `use.reducedMotion: 'reduce'` in `playwright.config.ts` does NOT work as of Playwright 1.60 — the project-level `use: { ...devices['Desktop Chrome'] }` shadows it. `page.emulateMedia()` in `beforeEach` is the only reliable lever.
 
-- **WCAG AA on every surface.** Compute contrast for new text/accent colors against ALL of `--surface-2`, `--surface-3`, `--bg` — small UI text (≤14px non-bold) needs 4.5:1 on every surface. The ~0.4% luminance variance between surfaces is enough to flip borderline colors. Light-mode `--accent` is rust `#b03a0a` because bright `#F5A623` hit 1.78:1 on cream; `--accent-soft` / `--accent-glow` stay derived from the bright orange so highlight tints stay visible.
+- **WCAG AA on every surface.** Compute contrast for new text/accent colors against ALL of `--surface-2`, `--surface-3`, `--bg` — small UI text (≤14px non-bold) needs 4.5:1 on every surface. The ~0.4% luminance variance between surfaces is enough to flip borderline colors. OW Dark grounds on `#2a2a2a` (not the literal brand-gray `#4A4A4A`) because the latter caps the OW orange `#fa9c1b` at ~3.8:1 on the brightest surface — sub-AA. `--brand-gray` stays `#4A4A4A` as a *structural plate* token (brandmark tile, dossier surfaces) so the OW identity reads. Day's `--accent` is the same OW orange `#fa9c1b`; text-on-fill uses the `--primary-text-on-accent` token. OW Dark's `--loss` was bumped to `#f9a` (lighter pink) and `--loss-soft` opacity dropped to 8% so loss text on double-tinted bgs (a danger card containing a danger chip) clears AA.
 
 - **A11y patterns to mirror, not reinvent.**
   - Modal dialogs: focus trap + Escape + return-focus + background
     `inert` wired inline in App.vue (`showUnsupportedModal` +
     `onModalKeydown` + the `watch(showUnsupportedModal, ...)`).
-  - Tablist: Arrow/Home/End automatic-activation in `onTabKeydown`
-    over `TAB_ORDER`.
+  - Tablist: Arrow/Home/End automatic-activation via
+    `useTabKeyboardNav`. The cycle iterates a `tabs` ref (defaults
+    to `TAB_ORDER`); App.vue passes `visibleTabs` so dev-gated tabs
+    don't keyboard-trap on release builds.
   - Skip-link: `.skip-link` → `<main id="main-content" tabindex="-1">`
     with `focusMain` handler for browsers that don't move focus on
     hash navigation.
