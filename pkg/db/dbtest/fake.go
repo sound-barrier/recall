@@ -11,6 +11,8 @@
 package dbtest
 
 import (
+	"errors"
+	"strings"
 	"sync"
 
 	"recall/pkg/db"
@@ -36,6 +38,11 @@ type Fake struct {
 	DirIDs      map[string]int64
 	Annotations map[string]db.Annotation
 	Hidden      map[string]bool
+
+	// Ambiguous holds one candidate-list per filename. Tests seed it
+	// directly to verify aggregator behavior for ambiguous screenshots
+	// without going through the resolver / write path.
+	Ambiguous map[string][]db.AmbiguousCandidate
 
 	// Inspectable counters / call lists. Tests assert on these to
 	// verify the App layer (or HTTP handlers) actually reached the
@@ -90,13 +97,18 @@ func (f *Fake) LoadAll() (db.Screenshots, error) {
 	for path, id := range f.DirIDs {
 		dirs[id] = path
 	}
+	ambig := make(map[string][]db.AmbiguousCandidate, len(f.Ambiguous))
+	for k, v := range f.Ambiguous {
+		ambig[k] = append([]db.AmbiguousCandidate(nil), v...)
+	}
 	return db.Screenshots{
-		Summaries:       append([]db.SummaryRow(nil), f.Summaries...),
-		Scoreboards:     append([]db.ScoreboardRow(nil), f.Scoreboards...),
-		Personals:       append([]db.PersonalRow(nil), f.Personals...),
-		Ranks:           append([]db.RankRow(nil), f.Ranks...),
-		Unknowns:        append([]db.UnknownRow(nil), f.Unknowns...),
-		ScreenshotsDirs: dirs,
+		Summaries:           append([]db.SummaryRow(nil), f.Summaries...),
+		Scoreboards:         append([]db.ScoreboardRow(nil), f.Scoreboards...),
+		Personals:           append([]db.PersonalRow(nil), f.Personals...),
+		Ranks:               append([]db.RankRow(nil), f.Ranks...),
+		Unknowns:            append([]db.UnknownRow(nil), f.Unknowns...),
+		ScreenshotsDirs:     dirs,
+		AmbiguousCandidates: ambig,
 	}, nil
 }
 
@@ -291,4 +303,67 @@ func (f *Fake) LoadHiddenKeys() (map[string]bool, error) {
 		out[k] = v
 	}
 	return out, nil
+}
+
+func (f *Fake) ApplyAmbiguity(filename string, cands []db.AmbiguousCandidate) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Ambiguous == nil {
+		f.Ambiguous = map[string][]db.AmbiguousCandidate{}
+	}
+	if len(cands) == 0 {
+		delete(f.Ambiguous, filename)
+		return nil
+	}
+	f.Ambiguous[filename] = append([]db.AmbiguousCandidate(nil), cands...)
+	return nil
+}
+
+func (f *Fake) LoadAmbiguousCandidatesFor(filename string) ([]db.AmbiguousCandidate, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	cands, ok := f.Ambiguous[filename]
+	if !ok {
+		return nil, db.ErrAmbiguousNotFound
+	}
+	return append([]db.AmbiguousCandidate(nil), cands...), nil
+}
+
+func (f *Fake) ResolveAmbiguous(ambiguousMatchKey, newMatchKey string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !strings.HasPrefix(ambiguousMatchKey, "ambiguous:") {
+		return errors.New("ambiguousMatchKey must start with 'ambiguous:'")
+	}
+	filename := strings.TrimPrefix(ambiguousMatchKey, "ambiguous:")
+	if _, ok := f.Ambiguous[filename]; !ok {
+		return db.ErrAmbiguousNotFound
+	}
+	delete(f.Ambiguous, filename)
+	for i, r := range f.Summaries {
+		if r.MatchKey == ambiguousMatchKey {
+			f.Summaries[i].MatchKey = newMatchKey
+		}
+	}
+	for i, r := range f.Scoreboards {
+		if r.MatchKey == ambiguousMatchKey {
+			f.Scoreboards[i].MatchKey = newMatchKey
+		}
+	}
+	for i, r := range f.Personals {
+		if r.MatchKey == ambiguousMatchKey {
+			f.Personals[i].MatchKey = newMatchKey
+		}
+	}
+	for i, r := range f.Ranks {
+		if r.MatchKey == ambiguousMatchKey {
+			f.Ranks[i].MatchKey = newMatchKey
+		}
+	}
+	for i, r := range f.Unknowns {
+		if r.MatchKey == ambiguousMatchKey {
+			f.Unknowns[i].MatchKey = newMatchKey
+		}
+	}
+	return nil
 }
