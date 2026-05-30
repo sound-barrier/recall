@@ -74,6 +74,10 @@ func visibilityPath(matchKey string) string {
 	return "/api/v1/matches/" + url.PathEscape(matchKey) + "/visibility"
 }
 
+func resolutionPath(matchKey string) string {
+	return "/api/v1/matches/" + url.PathEscape(matchKey) + "/resolution"
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Read endpoints.
 // ──────────────────────────────────────────────────────────────────────────
@@ -356,6 +360,60 @@ func TestMatchVisibility_MethodNotAllowed(t *testing.T) {
 	rec := get(t, mux, visibilityPath("k1"))
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Errorf("GET on PUT-only route should 405, got %d", rec.Code)
+	}
+}
+
+func TestMatchResolution_HappyPath(t *testing.T) {
+	fs := dbtest.New()
+	fs.Scoreboards = []db.ScoreboardRow{
+		{Filename: "sb.png", MatchKey: "ambiguous:sb.png"},
+	}
+	fs.Ambiguous = map[string][]db.AmbiguousCandidate{
+		"sb.png": {{MatchKey: "match:foo", DistanceS: 600}},
+	}
+	_, mux := newTestApp(t, fs)
+	rec := put(t, mux, resolutionPath("ambiguous:sb.png"), map[string]any{
+		"resolved_to": "match:foo",
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("resolution status = %d, body: %s", rec.Code, rec.Body.String())
+	}
+	if fs.Scoreboards[0].MatchKey != "match:foo" {
+		t.Errorf("scoreboard not updated: %q", fs.Scoreboards[0].MatchKey)
+	}
+}
+
+func TestMatchResolution_InvalidKey400(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	rec := put(t, mux, resolutionPath("match:not-ambiguous"), map[string]any{
+		"resolved_to": "match:foo",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("non-ambiguous key should 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchResolution_NotFound404(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	rec := put(t, mux, resolutionPath("ambiguous:nope.png"), map[string]any{
+		"resolved_to": "match:foo",
+	})
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("missing ambiguous row should 404, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchResolution_BadResolvedTo400(t *testing.T) {
+	fs := dbtest.New()
+	fs.Ambiguous = map[string][]db.AmbiguousCandidate{
+		"sb.png": {{MatchKey: "match:foo", DistanceS: 600}},
+	}
+	_, mux := newTestApp(t, fs)
+	rec := put(t, mux, resolutionPath("ambiguous:sb.png"), map[string]any{
+		"resolved_to": "garbage-not-a-match-key",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("non-candidate non-match: should 400, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 
