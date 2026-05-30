@@ -99,11 +99,20 @@ func (a *App) ParseScreenshots() error {
 			a.emitParseProgress(ev)
 			return
 		}
-		key := resolveMatchKey(filename, result, snap)
+		key, ambigCands := resolveMatchKey(filename, result, snap)
 		ev.MatchKey = key
 
 		if err := a.insertParsed(filename, key, t, dirID, result); err != nil {
 			ev.Error = "insert: " + err.Error()
+			a.emitParseProgress(ev)
+			return
+		}
+		// ApplyAmbiguity wipes any prior ambiguous record for this
+		// filename and re-inserts iff ambigCands is non-empty — a
+		// re-parse that newly resolves (or newly surfaces) ambiguity
+		// updates the candidates table in lockstep.
+		if err := a.store.ApplyAmbiguity(filename, ambigCands); err != nil {
+			ev.Error = "ambiguity: " + err.Error()
 			a.emitParseProgress(ev)
 			return
 		}

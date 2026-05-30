@@ -15,6 +15,23 @@ import (
 // slow tab-cycler but tight enough that two separate matches never collide.
 const mergeWindow = 2 * time.Minute
 
+// EAD-bridge windows. The EAD-bridge bridges in-game scoreboard ↔
+// post-match summary which can be minutes apart, so it accepts a
+// longer time gap than the strict mergeWindow. Two thresholds:
+//
+//   - <eadBridgeAutoWindow: high confidence this is the same match.
+//     Auto-adopt iff there's exactly one EAD candidate.
+//   - eadBridgeAutoWindow..eadBridgeAmbiguousWindow: could be the same
+//     match (delayed capture) OR a different match with coincidentally
+//     identical stats. Surface as ambiguous so the user picks.
+//   - >eadBridgeAmbiguousWindow: refuse to bridge — at that gap, an
+//     identical stat line is overwhelmingly more likely to be a
+//     coincidence than the same match.
+const (
+	eadBridgeAutoWindow      = 5 * time.Minute
+	eadBridgeAmbiguousWindow = 30 * time.Minute
+)
+
 var filenameTimestampRe = regexp.MustCompile(`(\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})`)
 
 // parseFilenameTimestamp extracts the YYYY.MM.DD - HH.MM.SS portion the OW
@@ -131,27 +148,33 @@ func mergeMatchResult(dst, src *parser.MatchResult) {
 // resolveMatchKey returns the match_key the just-parsed file should
 // adopt, based on existing screenshots in the store:
 //
-//   - If an existing scoreboard row has the same non-zero (E, A, D)
-//     signature and doesn't conflict on (map, hero), adopt its key.
-//     (Bridges in-game scoreboard ↔ post-match summary, which can be
-//     minutes apart.)
-//   - Otherwise, if an existing screenshot is within mergeWindow of
-//     this filename AND no signature field conflicts, adopt its key.
-//     Ties (multiple qualifying rows) break to the closest in time.
-//   - Otherwise mint a fresh key — `match:<ts>` from the filename, or
+//   - If exactly one existing screenshot has the same non-zero (E, A, D)
+//     signature, no conflict on (map, hero), AND it's within
+//     eadBridgeAutoWindow of this filename — adopt its key.
+//   - Else if EAD candidates exist within eadBridgeAmbiguousWindow
+//     (single in 5–30 min zone, OR multiple anywhere in 0–30 min) —
+//     mint "ambiguous:<filename>" and return the candidate list. The
+//     caller persists the candidates via store.ApplyAmbiguity so the
+//     user can pick the correct match via the Unknown tab.
+//   - Else if an existing screenshot is within mergeWindow of this
+//     filename AND no signature field conflicts — adopt its key.
+//   - Else mint a fresh key: `match:<ts>` from the filename, or
 //     `unmatched:<filename>` for files without a parseable timestamp.
-func resolveMatchKey(filename string, result *parser.MatchResult, snap db.Screenshots) string {
+func resolveMatchKey(filename string, result *parser.MatchResult, snap db.Screenshots) (string, []db.AmbiguousCandidate) {
 	cand := candidateFromParse(filename, result)
-	if k, ok := matchByEAD(cand, snap); ok {
-		return k
+	if k, cands, ok := matchByEAD(cand, snap); ok {
+		if k != "" {
+			return k, nil
+		}
+		return "ambiguous:" + filename, cands
 	}
 	if k, ok := matchByTimestampWindow(cand, snap); ok {
-		return k
+		return k, nil
 	}
 	if cand.hasTS {
-		return "match:" + cand.ts.UTC().Format("2006-01-02T15:04:05")
+		return "match:" + cand.ts.UTC().Format("2006-01-02T15:04:05"), nil
 	}
-	return "unmatched:" + filename
+	return "unmatched:" + filename, nil
 }
 
 // candidate is the comparison shape used by the two match passes.
@@ -241,14 +264,30 @@ func snapshotExisting(snap db.Screenshots) []existing {
 	return out
 }
 
-// matchByEAD looks for an existing screenshot with the same non-zero
-// (E, A, D) and no conflicting (map, hero). Returns its match_key on
-// hit. Used to bridge in-game scoreboard ↔ post-match summary which
-// may be far apart in time but share the canonical stat signature.
-func matchByEAD(cand candidate, snap db.Screenshots) (string, bool) {
+// matchByEAD looks for existing screenshots with the same non-zero
+// (E, A, D), no conflicting (map, hero, date), and a parseable
+// filename timestamp within eadBridgeAmbiguousWindow. Returns:
+//
+//	key, nil, true    — exactly one distinct match_key within
+//	                    eadBridgeAutoWindow; caller auto-adopts.
+//	"",  cands, true  — multiple distinct candidates, OR a single
+//	                    candidate in the 5–30 min ambiguous zone;
+//	                    caller mints "ambiguous:<filename>".
+//	"",  nil, false   — no candidates within eadBridgeAmbiguousWindow.
+//
+// Candidates are deduped by match_key (the closest-in-time screenshot
+// per existing match wins) and sorted by distance ascending.
+func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCandidate, bool) {
 	if cand.r.Eliminations == 0 && cand.r.Assists == 0 && cand.r.Deaths == 0 {
-		return "", false
+		return "", nil, false
 	}
+	if !cand.hasTS {
+		// No filename timestamp = can't enforce the window. Skip the
+		// EAD bridge; the timestamp-window and fresh-key passes still
+		// apply downstream.
+		return "", nil, false
+	}
+	closestByKey := map[string]time.Duration{}
 	for _, e := range snapshotExisting(snap) {
 		if e.c.r.Eliminations == 0 && e.c.r.Assists == 0 && e.c.r.Deaths == 0 {
 			continue
@@ -261,9 +300,48 @@ func matchByEAD(cand candidate, snap db.Screenshots) (string, bool) {
 		if rowsConflict(cand.r, e.c.r) {
 			continue
 		}
-		return e.key, true
+		if !e.c.hasTS {
+			continue
+		}
+		d := cand.ts.Sub(e.c.ts)
+		if d < 0 {
+			d = -d
+		}
+		if d > eadBridgeAmbiguousWindow {
+			continue
+		}
+		if prev, ok := closestByKey[e.key]; !ok || d < prev {
+			closestByKey[e.key] = d
+		}
 	}
-	return "", false
+	if len(closestByKey) == 0 {
+		return "", nil, false
+	}
+	type kd struct {
+		key string
+		d   time.Duration
+	}
+	sorted := make([]kd, 0, len(closestByKey))
+	for k, d := range closestByKey {
+		sorted = append(sorted, kd{k, d})
+	}
+	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].d != sorted[j].d {
+			return sorted[i].d < sorted[j].d
+		}
+		return sorted[i].key < sorted[j].key
+	})
+	if len(sorted) == 1 && sorted[0].d < eadBridgeAutoWindow {
+		return sorted[0].key, nil, true
+	}
+	cands := make([]db.AmbiguousCandidate, 0, len(sorted))
+	for _, h := range sorted {
+		cands = append(cands, db.AmbiguousCandidate{
+			MatchKey:  h.key,
+			DistanceS: int(h.d / time.Second),
+		})
+	}
+	return "", cands, true
 }
 
 // matchByTimestampWindow looks for an existing screenshot within

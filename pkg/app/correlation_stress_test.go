@@ -147,25 +147,24 @@ func TestCorrelation_Stress_BaselineClean(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// COHORT B — EAD-bridge collisions across distant time.
+// COHORT B — EAD-bridge across distant time.
 //
 // 10 pairs of matches MANY days apart that happen to share the same
-// (E, A, D) signature on the same map + hero. The matcher's EAD-
-// bridge is time-blind — it adopts the older match's key regardless
-// of how far back in time the older row lives.
+// (E, A, D) signature on the same map + hero. PR #104 time-bounded
+// the EAD-bridge to 30 minutes, so Y no longer adopts X's key — Y
+// mints its own anchor from Y's filename timestamp. (Before the fix,
+// the time-blind bridge silently merged Y into X.)
 //
 // Pattern per pair:
-//   Match X (2026-05-10) → SUMMARY x:00, SCOREBOARD x:30
-//   Match Y (2026-05-X+W weeks later) → SUMMARY same EAD same hero+map
-//     - Y SUMMARY tries to mint match:<Y-anchor> but matchByEAD
-//       sees Match X's SCOREBOARD with identical (E,A,D,map,hero)
-//       and adopts X's key. WRONG.
+//   Match X (anchor day)         → SUMMARY x:00, SCOREBOARD x:30
+//   Match Y (7–16 days later)    → SCOREBOARD y−10s (first), SUMMARY y
+//     - Y SCOREBOARD: EAD bridge sees X but X is >30m away, refuses.
+//       Mints fresh key matchKeyFor(y−10s).
+//     - Y SUMMARY: no EAD on summary side; falls into timestamp window
+//       and adopts the just-inserted Y SCOREBOARD's key (10s away).
 //
 // Per-pair fixture count: 2 screenshots × 2 matches = 4 fixtures.
-// Pin the buggy expectation (Y's screenshots adopt X's key) so the
-// dataset documents what the resolver currently does, and a future
-// PR that fixes the time-blind bridge has to update the bugNotes
-// to empty + the expected keys to Y's own anchor.
+// 40 total; 0 buggy pins remaining.
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
@@ -198,7 +197,9 @@ func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
 			expectedKey:       matchKeyFor(x),
 		})
 
-		// Match Y — adopts X's key via the time-blind EAD bridge.
+		// Match Y — no longer adopts X (>30m gap blocks the bridge).
+		// SCOREBOARD is emitted at y−10s; SUMMARY at y. Both adopt the
+		// fresh SCOREBOARD-anchor key.
 		specs = append(specs, matchSpec{
 			startTime:    y,
 			mapName:      mapName,
@@ -214,8 +215,7 @@ func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
 			emitSummary:    true,
 			emitScoreboard: true,
 			suffix:         fmt.Sprintf("B%02dy", i),
-			expectedKey:    matchKeyFor(x), // BUG: should be matchKeyFor(y)
-			bugNote:        "EAD-bridge ignores time distance — Y's stats == X's stats → resolver adopts X's key from days ago",
+			expectedKey:    matchKeyFor(y.Add(-10 * time.Second)),
 		})
 	}
 
@@ -360,9 +360,13 @@ func TestCorrelation_Stress_SameHeroBackToBackClean(t *testing.T) {
 // COHORT D — same-hero back-to-back, identical EAD.
 //
 // 10 pairs of matches 10 minutes apart. Same hero + same map +
-// IDENTICAL EAD. Cousin of cohort B but at minute-scale instead of
-// week-scale — same bug, different time horizon. The "you popped a
-// 15/9/4 game, queue popped, you popped another 15/9/4 game" case.
+// IDENTICAL EAD. With PR #104's tight EAD-bridge windows, 10 min
+// lands in the 5–30 min ambiguous zone — the resolver mints the
+// "ambiguous:<filename>" sentinel and records X's match as the
+// only candidate. Y's SUMMARY follows 30 s later, has no EAD of
+// its own, and adopts Y's SCOREBOARD's sentinel via the
+// timestamp-window pass. Both rows resolve together when the user
+// picks an attribution in the Unknown tab.
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
@@ -374,6 +378,12 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 		mapName := pickAt(owMaps, i)
 		hero := pickAt(owHeroes, i)
 		e, a, d := 15+i, 9, 4
+
+		// Y's SCOREBOARD filename is what the ambiguous sentinel is
+		// built from; both Y rows share that sentinel because the
+		// SUMMARY adopts via timestamp window.
+		yScoreboardFilename := filenameForTS(y, fmt.Sprintf("D%02dyb", i), "scoreboard")
+		yAmbiguousKey := "ambiguous:" + yScoreboardFilename
 
 		specs = append(specs, matchSpec{
 			startTime:    x,
@@ -393,9 +403,9 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 			expectedKey:       matchKeyFor(x),
 		})
 
-		// Y emits SCOREBOARD first (no date in MatchResult) so the
-		// EAD-bridge fires against X's SCOREBOARD without the date
-		// conflict short-circuiting it.
+		// Y emits SCOREBOARD first (no date in MatchResult so the
+		// rowsConflict predicate can't short-circuit the bridge).
+		// Lands in the 5–30 min ambiguous zone → ambiguous sentinel.
 		specs = append(specs, matchSpec{
 			startTime:    y,
 			mapName:      mapName,
@@ -406,11 +416,10 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 			emitScoreboard:   true,
 			scoreboardOffset: 0,
 			suffix:           fmt.Sprintf("D%02dyb", i),
-			expectedKey:      matchKeyFor(x), // BUG
-			bugNote:          "Back-to-back same-hero match with identical EAD adopts the earlier match's key",
+			expectedKey:      yAmbiguousKey,
 		})
-		// Then Y's SUMMARY (will adopt via its own SCOREBOARD, which
-		// adopted X's key — chain of buggy adoption).
+		// Y SUMMARY 30s later — no EAD on summary side; adopts Y's
+		// SCOREBOARD's sentinel via the timestamp-window pass.
 		specs = append(specs, matchSpec{
 			startTime:    y,
 			mapName:      mapName,
@@ -423,8 +432,7 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 			emitSummary:   true,
 			summaryOffset: 30 * time.Second,
 			suffix:        fmt.Sprintf("D%02dys", i),
-			expectedKey:   matchKeyFor(x), // BUG (inherits)
-			bugNote:       "Y SUMMARY inherits its own SCOREBOARD's (buggy) adoption of X's key",
+			expectedKey:   yAmbiguousKey,
 			heroesPlayed: []parser.HeroPlay{
 				{Hero: hero, PercentPlayed: 100, PlayTime: "12:34"},
 			},
