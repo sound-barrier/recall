@@ -53,9 +53,9 @@ describe('SettingsView', () => {
     const wrapper = mount(SettingsView, {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
     })
-    await wrapper.find('.light-swatch').trigger('click')
+    await wrapper.find('.day-swatch').trigger('click')
     expect(wrapper.emitted('set-theme')).toBeTruthy()
-    expect(wrapper.emitted('set-theme')![0]).toEqual(['light'])
+    expect(wrapper.emitted('set-theme')![0]).toEqual(['day'])
   })
 
   it('emits set-theme with "high-contrast" when the Contrast swatch is clicked', async () => {
@@ -71,12 +71,12 @@ describe('SettingsView', () => {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(dark.find('.dark-swatch').classes()).toContain('active')
-    expect(dark.find('.light-swatch').classes()).not.toContain('active')
+    expect(dark.find('.day-swatch').classes()).not.toContain('active')
 
     const light = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'light', weekStart: 0 },
+      props: { screenshotsDir: '/srv', loading: false, themeMode: 'day', weekStart: 0 },
     })
-    expect(light.find('.light-swatch').classes()).toContain('active')
+    expect(light.find('.day-swatch').classes()).toContain('active')
     expect(light.find('.dark-swatch').classes()).not.toContain('active')
   })
 
@@ -85,7 +85,7 @@ describe('SettingsView', () => {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(wrapper.find('.dark-swatch').attributes('aria-checked')).toBe('true')
-    expect(wrapper.find('.light-swatch').attributes('aria-checked')).toBe('false')
+    expect(wrapper.find('.day-swatch').attributes('aria-checked')).toBe('false')
   })
 
   it('emits go-to-view ingest when the "Parse →" link is clicked', async () => {

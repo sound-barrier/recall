@@ -1,21 +1,21 @@
 /**
  * Theme E2E.
  *
- * Three modes (`dark` | `light` | `high-contrast`) live behind the
- * Settings → Appearance swatches. The high-contrast variant is
- * never auto-picked. First-launch fallback honours the OS-level
- * `prefers-color-scheme` so users running their OS in light mode
- * don't land on a dark UI for no reason.
+ * Four modes (`day` | `dark` | `night` | `high-contrast`) live behind
+ * the Settings → Appearance swatches. `high-contrast` and `dark` are
+ * never auto-picked — the first-launch fallback only ever lands on
+ * `day` or `night` based on `prefers-color-scheme`. Users running
+ * their OS in light mode don't land on a dark UI for no reason.
  */
 import { test, expect } from './_fixtures'
 
 test.describe('theme — swatch selection', () => {
-  test('clicking the Contrast swatch flips data-theme and persists', async ({ page }) => {
+  test('clicking the High contrast swatch flips data-theme and persists', async ({ page }) => {
     await page.goto('/')
     await page.locator('#tab-settings').click()
 
-    // Three swatches, named via aria-label on the radiogroup +
-    // role=radio on each. The Contrast swatch is the third entry.
+    // Four swatches, named via aria-label on the radiogroup +
+    // role=radio on each. The High contrast swatch is the rightmost.
     const contrast = page.locator('button.theme-swatch.contrast-swatch')
     await expect(contrast).toBeVisible()
     await contrast.click()
@@ -28,15 +28,18 @@ test.describe('theme — swatch selection', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'high-contrast')
   })
 
-  test('Day / Night swatches still work and switch live', async ({ page }) => {
+  test('Day / Dark / Night swatches switch live', async ({ page }) => {
     await page.goto('/')
     await page.locator('#tab-settings').click()
 
-    await page.locator('button.theme-swatch.light-swatch').click()
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    await page.locator('button.theme-swatch.day-swatch').click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'day')
 
     await page.locator('button.theme-swatch.dark-swatch').click()
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+
+    await page.locator('button.theme-swatch.night-swatch').click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'night')
   })
 
   test('active swatch carries aria-checked=true', async ({ page }) => {
@@ -45,8 +48,9 @@ test.describe('theme — swatch selection', () => {
 
     await page.locator('button.theme-swatch.contrast-swatch').click()
     await expect(page.locator('button.theme-swatch.contrast-swatch')).toHaveAttribute('aria-checked', 'true')
+    await expect(page.locator('button.theme-swatch.day-swatch')).toHaveAttribute('aria-checked', 'false')
     await expect(page.locator('button.theme-swatch.dark-swatch')).toHaveAttribute('aria-checked', 'false')
-    await expect(page.locator('button.theme-swatch.light-swatch')).toHaveAttribute('aria-checked', 'false')
+    await expect(page.locator('button.theme-swatch.night-swatch')).toHaveAttribute('aria-checked', 'false')
   })
 })
 
@@ -59,24 +63,24 @@ test.describe('theme — OS preference on fresh install', () => {
     await page.evaluate(() => { try { localStorage.removeItem('recall.theme') } catch (_) {} })
   }
 
-  test('prefers-color-scheme: light → first paint is light', async ({ page }) => {
+  test('prefers-color-scheme: light → first paint is day', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' })
     await page.goto('/')
     await clearTheme(page)
     await page.reload()
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'day')
   })
 
-  test('prefers-color-scheme: dark → first paint is dark', async ({ page }) => {
+  test('prefers-color-scheme: dark → first paint is night', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.goto('/')
     await clearTheme(page)
     await page.reload()
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'night')
   })
 
   test('OS preference never picks high-contrast on its own', async ({ page }) => {
-    // Even forced contrast at the OS level lands on dark/light, not
+    // Even forced contrast at the OS level lands on day/night, not
     // high-contrast — high-contrast is opt-in only.
     await page.emulateMedia({ colorScheme: 'dark', forcedColors: 'active' })
     await page.goto('/')
@@ -85,17 +89,28 @@ test.describe('theme — OS preference on fresh install', () => {
     await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'high-contrast')
   })
 
+  test('OS preference never picks dark (OW gray) on its own', async ({ page }) => {
+    // "dark" is the opt-in OW-gray palette; the fresh-install dark
+    // default is "night" (the deeper editorial darkroom). This
+    // distinguishes the user-opt-in dark from the OS-driven dark.
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await page.goto('/')
+    await clearTheme(page)
+    await page.reload()
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'dark')
+  })
+
   test('once the user picks any theme, OS preference no longer overrides', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.goto('/')
     await clearTheme(page)
     await page.locator('#tab-settings').click()
-    await page.locator('button.theme-swatch.light-swatch').click()
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    await page.locator('button.theme-swatch.day-swatch').click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'day')
 
-    // OS flips to dark — user's `light` pick wins on reload.
+    // OS flips to dark — user's `day` pick wins on reload.
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.reload()
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'day')
   })
 })

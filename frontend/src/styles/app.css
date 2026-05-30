@@ -1,5 +1,11 @@
 :root {
-  /* DARK MODE (default) — variables here are overridden by [data-theme="light"] below. */
+  /* NIGHT (the default cascade target) — the editorial
+     photographer's-darkroom palette. Variables here are overridden
+     by [data-theme="day"] / [data-theme="dark"] /
+     [data-theme="high-contrast"] below. data-theme="night" is set
+     by useTheme.applyTheme but doesn't have a scoped override —
+     this :root block IS the Night palette, so the cascade lands
+     here intentionally. */
   --bg: #0a0b0d;
   --surface: #13151a;
   --surface-2: #181b22;
@@ -70,90 +76,20 @@
 
 }
 
-/* LIGHT MODE — brand-gray (#4A4A4A) becomes the dominant structural
-   color (primary text, strong borders, hairlines); brand-orange
-   shifts to a darker rust (#b03a0a) so the same accent token works
-   both as text and as a fill on cream. The brighter brand orange is
-   preserved as --accent-bright for hover / highlight states only. */
-[data-theme="light"] {
-  /* Cream-paper editorial palette. Contrast values verified vs the
-     bg/surface/surface-3 trio with WCAG 2 — the previous palette had
-     several pairings under AA (text-mute 2.4:1 on cream, accent
-     1.78:1 as text). This rebalance keeps the warm-cream identity
-     but widens the ink/paper luminance gap so secondary text and
-     brand accents read at a glance instead of bleaching into the
-     page.
-
-     Surfaces: bg slightly darker than surface so cards "lift" off
-     the page. Hairlines a touch firmer for clearer separation. */
-  --bg: #f3f0e8;
-  --surface: #fbf9f3;
-  --surface-2: #f5f2ea;
-  --surface-3: #ebe6da;
-  --border: #b9b09c;
-  --border-soft: #cec5af;
-  --border-strong: #4A4A4A;
-  --hairline: rgb(74 74 74 / 22%);
-  --text: #2b2a26;
-  --text-dim: #4A4A4A;
-  --text-faint: #56524a;
-
-  /* Light-mode --text-mute was #7a7568 → 4.20:1 on --surface-3
-     (just under AA Small). Darkened so every cream surface clears
-     4.5:1 with the same hierarchy step (dimmer than --text-faint). */
-  --text-mute: #6c695a;
-  --brand-gray: #4A4A4A;
-  --brand-gray-soft: rgb(74 74 74 / 85%);
-
-  /* Brand orange shifts to a darker "rust" hue in light mode so the
-     same `var(--accent)` token works as both text colour AND fill —
-     prior bright orange #F5A623 was 1.78:1 on cream as text. Rust
-     #b03a0a hits ≥4.88:1 on every surface (AA-small on s3). The
-     --accent-soft / --accent-glow tints stay derived from the bright
-     orange so highlight fills stay visible against the cream paper. */
-  --accent: #b03a0a;
-  --accent-bright: #c2410c;   /* hover — lighter rust, still AA-safe vs --primary-text-on-accent */
-  --accent-text: #b03a0a;     /* aliased to --accent; was a separate burnt-orange */
-  --accent-soft: rgb(245 166 35 / 22%);
-  --accent-glow: rgb(176 58 10 / 42%);
-  --win: #106d33;
-  --win-soft: rgb(16 109 51 / 14%);
-  --win-line: rgb(16 109 51 / 60%);
-  --loss: #b03346;
-  --loss-soft: rgb(176 51 70 / 12%);
-  --loss-line: rgb(176 51 70 / 55%);
-  --draw: #8b5c14;
-  --draw-soft: rgb(139 92 20 / 14%);
-  --draw-line: rgb(139 92 20 / 55%);
-  --unknown-line: rgb(74 74 74 / 35%);
-  --tank: #1f5491;
-  --tank-soft: rgb(31 84 145 / 14%);
-  --dps: #c54a2c;
-  --dps-soft: rgb(197 74 44 / 13%);
-  --support: #1e6f3a;
-  --support-soft: rgb(30 111 58 / 13%);
-  --atmos-orange: rgb(245 166 35 / 14%);
-  --atmos-blue:   rgb(44 110 184 / 5%);
-  --atmos-coral:  rgb(176 51 70 / 4%);
-  --grid-line:    rgb(74 74 74 / 4%);
-
-  /* Buttons fill with --accent (rust #b03a0a in light mode). The
-     dark brown text from dark-mode-on-bright-orange only hits 3.18:1
-     on rust; #fff8ef cream-white reads 5.8:1 with a paper feel. */
-  --primary-text-on-accent: #fff8ef;
-}
-
-/* OW LIGHT — the Overwatch-skinned light family member. Grounds on
-   "Overwatch white" #EFEDE6 (the warm cream that fills the post-
-   match summary screen behind the heroes panel). The brand-gray
-   #4A4A4A from the Overwatch UI becomes the structural border / dim
-   text token so dividers, plates, and borders carry the same heft
-   the in-game scoreboard does. Orange accent stays the signature
+/* DAY — light family member, grounded on Overwatch white #EFEDE6
+   (the warm cream that fills the post-match summary screen behind
+   the heroes panel). The brand-gray #4A4A4A becomes the structural
+   border / dim-text token so dividers, plates, and borders carry
+   the same heft the in-game scoreboard does. Orange accent stays
    #FA9C1B — Blizzard's OW logo orange, AAA-safe on every cream
-   surface for both fill and text. Distinct from the editorial
-   `light` theme's cream-paper-with-rust-accent palette: that one
-   leans magazine; this one leans game-UI. */
-[data-theme="ow-light"] {
+   surface for both fill and text.
+
+   Was the "OW Light" theme; renamed to "day" so the picker reads
+   Day / Dark / Night / High contrast. The pre-rename editorial
+   "light" palette (cream paper with rust accent) was removed in
+   the same rename — useTheme migrates old "light" picks to "day"
+   so the user's "I want a light theme" intent survives. */
+[data-theme="day"] {
   --bg: #efede6;
   --surface: #f5f3ed;
   --surface-2: #e8e5dd;
@@ -199,24 +135,46 @@
   --primary-text-on-accent: #fff8ef;
 }
 
-/* OW DARK — the Overwatch-skinned dark family member. Grounds on
-   the OW brand gray #4A4A4A — the same gray Blizzard uses for the
-   in-game scoreboard plate and the post-match heroes-played panel.
-   Surfaces step up in luminance from the bg rather than down (the
-   gray is mid-tone, not a near-black), so cards "rise" off the
-   page the way the OW UI's plate stack does. Borders stay tinted
-   with the OW orange so the chrome reads as "game UI" rather than
-   "muted dashboard." Distinct from the editorial `dark` theme's
-   photographer's-darkroom palette (deep blue-charcoal with bright
-   orange highlights): that one leans cinematic; this one leans
-   game-UI structural. */
-[data-theme="ow-dark"] {
-  --bg: #4a4a4a;
-  --surface: #555;
-  --surface-2: #606060;
-  --surface-3: #6c6c6c;
+/* DARK — sits between Day's cream and Night's near-black. Grounds
+   on the OW brand gray #4A4A4A — the same gray Blizzard uses for
+   the in-game scoreboard plate and the post-match heroes-played
+   panel. Surfaces step UP in luminance from the bg rather than
+   down (the gray is mid-tone, not near-black), so cards "rise"
+   off the page the way the OW UI's plate stack does. Borders are
+   tinted with the OW orange so the chrome reads as "game UI"
+   rather than "muted dashboard." Distinct from the deeper "night"
+   palette in :root (deep blue-charcoal photographer's-darkroom):
+   Night leans cinematic; Dark leans game-UI structural.
+
+   Was the "OW Dark" theme; renamed to "dark" so the picker reads
+   Day / Dark / Night / High contrast. The original editorial
+   "dark" palette moved to "night"; useTheme intentionally does
+   NOT migrate stored "dark" picks (the string is reused). */
+[data-theme="dark"] {
+  /* The OW brand gray #4A4A4A is the structural plate level — the
+     same gray Blizzard uses for the in-game scoreboard panel and
+     the post-match heroes-played plate. Setting it as the page bg
+     directly would cap the accent contrast at ~3.8:1 (the OW
+     orange #fa9c1b just doesn't have the luminance headroom over
+     a mid-tone gray). Instead bg lands at #2a2a2a — a darker shade
+     of OW gray that the OW menu screens use as their canvas — and
+     the brand gray rises into the upper surface tiers via
+     --brand-gray (used by the brandmark plate) so the structural
+     identity reads. Surfaces step up modestly so dim text still
+     clears AA on every tier.
+     Verified pairings (per WCAG 2 contrast):
+       text       #fff on surface-3 #3a3a3a → 12.6:1 (AAA)
+       text-dim   #e0ddd6 on surface-3      → 9.6:1  (AAA)
+       text-faint #c5c2bb on surface-3      → 7.1:1  (AAA-small)
+       text-mute  #b0ada6 on surface-3      → 5.6:1  (AA-small)
+       accent     #fa9c1b on bg #2a2a2a     → 6.5:1  (AAA-small)
+       accent     #fa9c1b on surface-3      → 4.9:1  (AA-small) */
+  --bg: #2a2a2a;
+  --surface: #303030;
+  --surface-2: #353535;
+  --surface-3: #3a3a3a;
   --border: #fa9c1b;
-  --border-soft: #707070;
+  --border-soft: #4a4a4a;
   --border-strong: #fa3;
   --hairline: rgb(255 255 255 / 14%);
   --text: #fff;
@@ -224,15 +182,16 @@
   --text-faint: #c5c2bb;
   --text-mute: #b0ada6;
 
-  /* The brandmark plate inverts to near-black so the wordmark stays
-     legible against the gray bg — same logic as the HC brandmark
-     inversion: when the bg already occupies the brand-gray slot,
-     the brand plate needs to step further to maintain hierarchy. */
-  --brand-gray: #2a2a2a;
-  --brand-gray-soft: rgb(42 42 42 / 80%);
+  /* The brandmark plate rises to the OW brand gray #4A4A4A — the
+     in-game scoreboard plate value. Sits above the #2a2a2a page
+     ground as a structural anchor, surfacing the brand identity
+     even though the bg dropped a step to give the accent contrast
+     headroom. */
+  --brand-gray: #4a4a4a;
+  --brand-gray-soft: rgb(74 74 74 / 80%);
   --accent: #fa9c1b;
   --accent-bright: #fa3;
-  --accent-text: #fa3;
+  --accent-text: #fa9c1b;
   --accent-soft: rgb(250 156 27 / 22%);
   --accent-glow: rgb(250 156 27 / 50%);
   --win: #4dff8e;
@@ -517,7 +476,7 @@ main#main-content {
   transform: translate(0, 0);
 }
 
-[data-theme="light"] .brand-extlink {
+[data-theme="day"] .brand-extlink {
   color: var(--accent-text);
   text-shadow: none;
 }
@@ -534,7 +493,7 @@ main#main-content {
 /* The left-rail accent glow reads as a hard halo on the cream background.
    Drop the box-shadow in light mode and use the deeper accent-text color
    for the rail itself so it still pops against the gray tile. */
-[data-theme="light"] .brandmark-tile::before {
+[data-theme="day"] .brandmark-tile::before {
   background: var(--accent-text);
   box-shadow: none;
 }
@@ -556,7 +515,7 @@ main#main-content {
 
 /* White hatch is invisible against light-mode backgrounds — swap to a
    dark stencil so the registration mark still reads. */
-[data-theme="light"] .brand-corner {
+[data-theme="day"] .brand-corner {
   background:
     repeating-linear-gradient(
       45deg,
@@ -575,7 +534,7 @@ main#main-content {
   font-feature-settings: "tnum";
 }
 
-[data-theme="light"] .brand-tick {
+[data-theme="day"] .brand-tick {
   color: var(--accent-text);
   text-shadow: none;
 }
@@ -843,10 +802,10 @@ main#main-content {
 /* .setting-row.danger-row, .clear-confirm-group, and the matching
    light-theme override moved to IngestView.vue */
 
-[data-theme="light"] .btn.danger { color: #fff; }
-[data-theme="light"] .btn.danger-outline { color: var(--loss); border-color: var(--loss-line); }
+[data-theme="day"] .btn.danger { color: #fff; }
+[data-theme="day"] .btn.danger-outline { color: var(--loss); border-color: var(--loss-line); }
 
-[data-theme="light"] .btn.danger-outline:hover:not(:disabled) {
+[data-theme="day"] .btn.danger-outline:hover:not(:disabled) {
   background: var(--loss-soft);
   border-color: var(--loss);
 }
@@ -1066,37 +1025,37 @@ main#main-content {
 
 /* .incomplete-badge family lives in MatchCardHeader.vue. Light-mode
    theme override has to be a global rule because Vue scoped CSS
-   miscompiles `:global([data-theme="light"]) .x`. */
-[data-theme="light"] .incomplete-badge {
+   miscompiles `:global([data-theme="day"]) .x`. */
+[data-theme="day"] .incomplete-badge {
   background: rgb(245 166 35 / 12%);
   color: var(--accent-text);
 }
 
-[data-theme="light"] .incomplete-badge strong { color: var(--accent-text); }
+[data-theme="day"] .incomplete-badge strong { color: var(--accent-text); }
 
 /* Light-mode pinpoint overrides for MatchCard-owned selectors —
    live here because Vue scoped CSS miscompiles the
-   `:global([data-theme="light"]) .x` form. The selectors all hit
+   `:global([data-theme="day"]) .x` form. The selectors all hit
    markup rendered by MatchCardHeader.vue or MatchCardExpanded.vue. */
-[data-theme="light"] .match-map:hover,
-[data-theme="light"] .match-map.active {
+[data-theme="day"] .match-map:hover,
+[data-theme="day"] .match-map.active {
   color: var(--accent-text);
   text-shadow: none;
 }
-[data-theme="light"] .hero-name { color: var(--accent-text); }
+[data-theme="day"] .hero-name { color: var(--accent-text); }
 
-[data-theme="light"] .hero-name:hover,
-[data-theme="light"] .hero-name.active {
+[data-theme="day"] .hero-name:hover,
+[data-theme="day"] .hero-name.active {
   color: var(--accent-text);
   text-shadow: none;
 }
-[data-theme="light"] .length-mark { color: var(--accent-text); }
-[data-theme="light"] .match.selected { background: var(--surface-2); }
-[data-theme="light"] .sources { background: var(--surface-2); border-color: var(--border); }
-[data-theme="light"] .source-type-summary { color: var(--accent-text); }
+[data-theme="day"] .length-mark { color: var(--accent-text); }
+[data-theme="day"] .match.selected { background: var(--surface-2); }
+[data-theme="day"] .sources { background: var(--surface-2); border-color: var(--border); }
+[data-theme="day"] .source-type-summary { color: var(--accent-text); }
 
-[data-theme="light"] .coverage-line.required .coverage-line-tag,
-[data-theme="light"] .coverage-line.required .coverage-line-text strong {
+[data-theme="day"] .coverage-line.required .coverage-line-tag,
+[data-theme="day"] .coverage-line.required .coverage-line-text strong {
   color: var(--accent-text);
 }
 
@@ -1399,7 +1358,7 @@ main#main-content {
   box-shadow: 0 0 12px var(--accent-glow);
 }
 
-[data-theme="light"] .section-header::after {
+[data-theme="day"] .section-header::after {
   background: var(--accent-text);
   box-shadow: none;
 }
@@ -1712,7 +1671,7 @@ main#main-content {
 }
 .btn.alert-cta:hover .alert-cta-arrow { transform: translateX(3px); }
 
-[data-theme="light"] .system-alert {
+[data-theme="day"] .system-alert {
   background: linear-gradient(180deg, var(--brand-gray) 0%, #3a3a3a 100%);
 
   /* Stays dark in light mode — system alerts feel right as a dark
@@ -1877,7 +1836,7 @@ main#main-content {
   color: var(--loss);
   background: var(--loss-soft);
 }
-[data-theme="light"] .settings-heading.missing em { color: var(--loss); }
+[data-theme="day"] .settings-heading.missing em { color: var(--loss); }
 
 /* ─── Empty-state inline links ─────────────────────────────
    .empty-link is rendered as <button> so keyboard users can tab to it.
@@ -1909,26 +1868,26 @@ main#main-content {
   outline-offset: 2px;
   border-radius: 1px;
 }
-[data-theme="light"] .empty-link { color: var(--accent-text); }
-[data-theme="light"] .empty-link:hover { border-bottom-color: var(--accent-text); }
+[data-theme="day"] .empty-link { color: var(--accent-text); }
+[data-theme="day"] .empty-link:hover { border-bottom-color: var(--accent-text); }
 
 /* SettingsView light-mode overrides. These rules used to live inside
-   SettingsView's scoped \3c style> block via :global([data-theme="light"]) …
+   SettingsView's scoped \3c style> block via :global([data-theme="day"]) …
    selectors, but Vue's scoped-CSS compiler miscompiles that pattern and
-   emits a bare `[data-theme="light"] { … }` rule on <html> — one variant
+   emits a bare `[data-theme="day"] { … }` rule on <html> — one variant
    in particular set `opacity: 0.4` and washed out the entire page across
    every tab once SettingsView mounted (the styles persist in <head>
    after Vue unmounts the component). Keeping them as proper global
    rules here scoped to #panel-settings sidesteps the compiler bug. */
-[data-theme="light"] #panel-settings .settings-section::after {
+[data-theme="day"] #panel-settings .settings-section::after {
   background: var(--accent-text);
   opacity: 0.4;
 }
-[data-theme="light"] #panel-settings .link-btn { color: var(--accent-text); }
-[data-theme="light"] #panel-settings .link-btn:hover { text-decoration-color: var(--accent-text); }
-[data-theme="light"] #panel-settings .setting-row.danger-row { background: var(--loss-soft); }
+[data-theme="day"] #panel-settings .link-btn { color: var(--accent-text); }
+[data-theme="day"] #panel-settings .link-btn:hover { text-decoration-color: var(--accent-text); }
+[data-theme="day"] #panel-settings .setting-row.danger-row { background: var(--loss-soft); }
 
-[data-theme="light"] #panel-settings .advanced-summary::after {
+[data-theme="day"] #panel-settings .advanced-summary::after {
   background: var(--accent-text);
   box-shadow: none;
 }
@@ -1972,35 +1931,35 @@ main#main-content {
 
 /* .match-map / .hero-name / .length-mark / .match.expanded / .sources /
    .source-preview light-mode overrides moved to MatchCard.vue. */
-[data-theme="light"] .empty-sub strong { color: var(--accent-text); }
-[data-theme="light"] .count strong { color: var(--accent-text); }
-[data-theme="light"] .chev.open { color: var(--accent-text); }
-[data-theme="light"] .stats { background: var(--surface); }
-[data-theme="light"] .stat { background: var(--surface); }
+[data-theme="day"] .empty-sub strong { color: var(--accent-text); }
+[data-theme="day"] .count strong { color: var(--accent-text); }
+[data-theme="day"] .chev.open { color: var(--accent-text); }
+[data-theme="day"] .stats { background: var(--surface); }
+[data-theme="day"] .stat { background: var(--surface); }
 
 /* The sources block is dim/console-y in dark mode; in light mode soften
    the inner dark background to a clean tonal step that still reads
    "monospace dossier" without the harsh black-on-light contrast.
    .source-name is shared with UnknownMapsView so its override stays here. */
-[data-theme="light"] .source-name { color: var(--text-dim); }
-[data-theme="light"] .source-name:hover { color: var(--accent-text); background: var(--surface-3); }
-[data-theme="light"] .source-preview { background: var(--surface-3); }
+[data-theme="day"] .source-name { color: var(--text-dim); }
+[data-theme="day"] .source-name:hover { color: var(--accent-text); background: var(--surface-3); }
+[data-theme="day"] .source-preview { background: var(--surface-3); }
 
 /* Brand wordmark on the gray tile stays white-on-gray in both modes —
    the tile is dark in both themes, so no override needed. The corner
    tape stays subtle. */
-[data-theme="light"] .brand { color: #f5f3ee; }
+[data-theme="day"] .brand { color: #f5f3ee; }
 
 /* Theme toggle reads on light surface too. The .active state already
    uses --accent-soft + --accent which both adapt to the theme. */
 
-[data-theme="light"] .btn.primary {
+[data-theme="day"] .btn.primary {
   /* In light mode the dark text on bright orange still works (OW chip).
      Make it pop a touch more with a deeper shadow. */
   box-shadow: 0 0 0 1px rgb(0 0 0 / 20%) inset, 0 6px 22px -10px var(--accent-glow);
 }
 
-[data-theme="light"] .btn.primary:hover:not(:disabled) {
+[data-theme="day"] .btn.primary:hover:not(:disabled) {
   background: var(--accent);
   filter: brightness(0.95);
 }
@@ -2008,22 +1967,22 @@ main#main-content {
 /* Multi-filter light-mode polish. The hazard strip in the panel head
    stays dark in both themes (industrial sticker feel). Trigger surface
    needs slightly more contrast against the cream page background. */
-[data-theme="light"] .mf-trigger { background: var(--surface); }
+[data-theme="day"] .mf-trigger { background: var(--surface); }
 
-[data-theme="light"] .mf-trigger:hover,
-[data-theme="light"] .multi-filter.open .mf-trigger { background: var(--surface-2); }
-[data-theme="light"] .mf-placeholder { color: var(--text-faint); }
-[data-theme="light"] .mf-row.checked { background: var(--accent-soft); color: var(--text); }
-[data-theme="light"] .mf-row-mark { background: #fff; }
+[data-theme="day"] .mf-trigger:hover,
+[data-theme="day"] .multi-filter.open .mf-trigger { background: var(--surface-2); }
+[data-theme="day"] .mf-placeholder { color: var(--text-faint); }
+[data-theme="day"] .mf-row.checked { background: var(--accent-soft); color: var(--text); }
+[data-theme="day"] .mf-row-mark { background: #fff; }
 
-[data-theme="light"] .mf-panel {
+[data-theme="day"] .mf-panel {
   box-shadow:
     0 24px 60px -18px rgb(74 74 74 / 45%),
     0 0 0 1px var(--accent-soft);
 }
-[data-theme="light"] .mf-search { background: var(--surface-3); }
-[data-theme="light"] .mf-panel-foot { background: var(--surface-3); }
-[data-theme="light"] .eyebrow-count { color: var(--accent-text); }
+[data-theme="day"] .mf-search { background: var(--surface-3); }
+[data-theme="day"] .mf-panel-foot { background: var(--surface-3); }
+[data-theme="day"] .eyebrow-count { color: var(--accent-text); }
 
 
 /* All .unknown-* rules + .field-cell/.field-label/.field-value moved to
@@ -2099,9 +2058,9 @@ main#main-content {
   color: var(--win);
 }
 
-[data-theme="light"] .slot-chip.present { color: var(--win); }
-[data-theme="light"] .slot-chip.absent { color: var(--text-faint); }
-[data-theme="light"] .slot-chip.absent-required { color: var(--accent-text); }
+[data-theme="day"] .slot-chip.present { color: var(--win); }
+[data-theme="day"] .slot-chip.absent { color: var(--text-faint); }
+[data-theme="day"] .slot-chip.absent-required { color: var(--accent-text); }
 
 .slot-dot {
   width: 5px;
@@ -2148,7 +2107,7 @@ main#main-content {
   vertical-align: middle;
 }
 
-[data-theme="light"] .nav-tab-filter-dot {
+[data-theme="day"] .nav-tab-filter-dot {
   background: var(--accent-text);
   box-shadow: none;
 }
@@ -2566,12 +2525,12 @@ main#main-content {
   gap: 0.32rem;
 }
 
-[data-theme="light"] .match-tag {
+[data-theme="day"] .match-tag {
   background: var(--surface-3);
   color: var(--text-dim);
 }
 
-[data-theme="light"] .match-tag-toggle.active {
+[data-theme="day"] .match-tag-toggle.active {
   background: var(--surface-3);
 }
 
