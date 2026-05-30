@@ -505,6 +505,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/tesseract-probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Probe the OS for an installed Tesseract binary
+         * @description Walks an ordered list of per-platform candidate paths
+         *     (Homebrew + MacPorts on macOS; apt / snap / Flatpak on Linux;
+         *     Program Files + Chocolatey + per-user AppData + scoop on
+         *     Windows) and returns the first one that resolves to a working
+         *     Tesseract 5.x binary. Falls back to `PATH` lookup if none of
+         *     the well-known locations match.
+         *
+         *     Each candidate is validated via the same `--version` check as
+         *     `GET /api/v1/settings/tesseract` so a forgotten 3.x install
+         *     on `PATH` doesn't "succeed" while producing wrong OCR output.
+         *
+         *     Read-only — does not persist. The caller (UI Detect button)
+         *     decides whether to apply the discovered path via
+         *     `PUT /api/v1/settings/tesseract`.
+         */
+        get: operations["ProbeTesseractBinary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/screenshots-folder-reveal": {
         parameters: {
             query?: never;
@@ -1670,6 +1703,30 @@ export interface operations {
         };
     };
     ProbeScreenshotsFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /**
+             * @description Probe result. `found: true` carries the discovered path;
+             *     `found: false` includes the full `tried` list for the
+             *     user to inspect.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProbeResult"];
+                };
+            };
+        };
+    };
+    ProbeTesseractBinary: {
         parameters: {
             query?: never;
             header?: never;

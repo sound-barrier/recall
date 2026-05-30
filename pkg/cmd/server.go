@@ -358,6 +358,9 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	apiMux.HandleFunc("GET /api/v1/system/screenshots-folder-probe", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.ProbeScreenshotsDir(), nil)
 	})
+	apiMux.HandleFunc("GET /api/v1/system/tesseract-probe", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, a.ProbeTesseractBinary(), nil)
+	})
 	// Reveal: open the configured screenshots folder in the host OS
 	// file manager. Action-style POST — no resource state change, the
 	// effect (a Finder / Explorer / xdg-open window appearing) is

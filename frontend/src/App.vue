@@ -29,7 +29,9 @@ import {
   SetWatchEnabled,
   GetTesseractStatus,
   PickTesseractBinary,
+  ProbeTesseractBinary,
   ResetTesseractPath,
+  SetTesseractPath,
   ClearDatabase,
   GetNewScreenshotCount,
   GetDataLocation,
@@ -209,13 +211,20 @@ const {
   tesseractReady,
   tesseractSupported,
   tesseractPickerBusy,
+  tesseractProbing,
+  tesseractProbeMessage,
+  tesseractProbeStatus,
+  tesseractProbeTried,
   setTesseractStatus,
   pickTesseractBinary,
   resetTesseractPath,
+  detectTesseractBinary,
   gotoEngineSettings,
 } = useTesseractStatus({
   pickTesseractBinary: PickTesseractBinary,
   resetTesseractPath: ResetTesseractPath,
+  probeTesseractBinary: ProbeTesseractBinary,
+  setTesseractPath: SetTesseractPath,
   onError: (m) => { error.value = m },
   navigateToEngine: async () => {
     view.value = 'settings'
@@ -1078,6 +1087,10 @@ useEventStream({
           :tesseract-supported="tesseractSupported"
           :tesseract-status="tesseractStatus"
           :tesseract-picker-busy="tesseractPickerBusy"
+          :tesseract-probing="tesseractProbing"
+          :tesseract-probe-message="tesseractProbeMessage"
+          :tesseract-probe-status="tesseractProbeStatus"
+          :tesseract-probe-tried="tesseractProbeTried"
           :matched-count="records.length"
           :unknown-count="unknownRecords.length"
           :exporting="exporting"
@@ -1096,6 +1109,7 @@ useEventStream({
           @go-to-view="goToView"
           @pick-tesseract="pickTesseractBinary"
           @reset-tesseract="resetTesseractPath"
+          @detect-tesseract="detectTesseractBinary"
           @export-data="exportData"
           @export-data-csv="exportDataCSV"
           @arm-import="armImport"

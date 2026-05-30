@@ -89,6 +89,7 @@ function mockApi(overrides: MountOverrides = {}) {
     PickTesseractBinary: vi.fn(async () => defaultTesseract(overrides.tesseract)),
     SetTesseractPath:    vi.fn(async () => defaultTesseract(overrides.tesseract)),
     ResetTesseractPath:  vi.fn(async () => defaultTesseract(overrides.tesseract)),
+    ProbeTesseractBinary: vi.fn(async () => ({ found: false, tried: [] as string[] })),
     ClearDatabase:       vi.fn(async () => undefined),
     GetNewScreenshotCount: vi.fn(async () => overrides.newScreenshotCount ?? 0),
     GetDataLocation:     vi.fn(async () => ({

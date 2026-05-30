@@ -100,9 +100,9 @@ test.describe('settings — Reset clears the persisted path', () => {
     await expect(page.locator('.setting-value.mono')).toContainText(PERSISTED_PATH)
     await expect(page.locator('.empty-hero')).toHaveCount(0)
 
-    // Click Reset. The button is new — pre-this-PR there was no
-    // such affordance.
-    const resetBtn = page.locator('button:has-text("Reset")')
+    // Click Reset. The Engine row ALSO has a Reset button now, so
+    // scope to the directories section to avoid strict-mode failures.
+    const resetBtn = page.locator('#sec-directories button:has-text("Reset")')
     await expect(resetBtn).toBeVisible()
     await resetBtn.click()
 
@@ -123,15 +123,15 @@ test.describe('settings — Detect is disabled in the steady-state row', () => {
     await page.locator('#tab-settings').click()
 
     // In the steady-state row, Detect renders but is disabled.
-    // Looking at the scoped class `.detect-btn` (set on the steady-
-    // state button only) so we don't catch the empty-hero's primary
-    // Detect button (which uses `.btn.primary`, no `.detect-btn`).
-    const detectInRow = page.locator('.detect-btn')
+    // Scope to the directories section because Engine ALSO has a
+    // `.detect-btn` now (the Tesseract Detect button shipped in this
+    // PR).
+    const detectInRow = page.locator('#sec-directories .detect-btn')
     await expect(detectInRow).toBeVisible()
     await expect(detectInRow).toBeDisabled()
 
     // Reset → empty-hero re-renders → Detect in the hero IS enabled.
-    await page.locator('button:has-text("Reset")').click()
+    await page.locator('#sec-directories button:has-text("Reset")').click()
 
     const detectInHero = page.locator('.empty-hero button:has-text("Auto-Detect Folder")')
     await expect(detectInHero).toBeVisible()
