@@ -1,5 +1,96 @@
 # Changelog
 
+## [0.3.0](https://github.com/sound-barrier/recall/compare/v0.2.5...v0.3.0) (2026-05-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* Matches view UX is rebuilt. The FilterRail multi-popover is replaced by a consolidated left side panel; nested Y/M/W/D group expand is replaced by single-axis sort + group controls; per-match cards are replaced by compact leaf rows that drill into the existing detail panel. Unknown-map matches hidden by default. No backwards-compatible shim — pre-1.0, no deployed users to migrate.
+* dropped App methods `SetLeaverAnnotation` and `ClearLeaverAnnotation` from the Wails IPC + HTTP surface. Callers must use `SetMatchAnnotation` with the full annotation row. The SQLite migrations layer is gone — in-place upgrades from older binaries that lacked `screenshots_dir_id` won't auto-add the column. `useWeekStart` localStorage values `"sunday"` / `"monday"` no longer hydrate; affected users fall back to the default of 0.
+* filter-preset snapshots with the legacy `noteSearch` key no longer hydrate the search clause. Users with old presets will see the saved search field empty on first load.
+* filter-preset snapshot field renamed from `noteSearch` to `matchQuery`. Legacy `noteSearch` localStorage values are still accepted via the parser's fallback, so existing presets keep loading.
+
+### Features
+
+* **api:** add PUT /api/v1/matches/{matchKey}/resolution ([a275aed](https://github.com/sound-barrier/recall/commit/a275aed6a4fed6c5ef07a0cbcb744bf1b50ddba3))
+* **app:** surface ambiguous candidates on MatchRecord ([79a1c3a](https://github.com/sound-barrier/recall/commit/79a1c3af08732f41ccf722de75e34ff12363b49a))
+* **cheatsheet:** context-gated bindings + capture-phase Esc ([b18efae](https://github.com/sound-barrier/recall/commit/b18efaec79199bf0ee56e7a62edf3ec6aa937416))
+* **cheatsheet:** scroll with j / ↑ / k / ↓; swallow every other key ([4fde277](https://github.com/sound-barrier/recall/commit/4fde27714c22175774c53e38181c392425224401))
+* **correlation:** allow multi-hero bridging via per-match hero set ([6321caf](https://github.com/sound-barrier/recall/commit/6321caf4ab8c1dea06bb52541d5489b1878b00c4))
+* **correlation:** surface timestamp-window ties as ambiguous ([dcf2d87](https://github.com/sound-barrier/recall/commit/dcf2d878bdd51bbe378622c261d7713c428a7b32))
+* **correlation:** time-bound EAD bridge to 30 min ([ecbdb2d](https://github.com/sound-barrier/recall/commit/ecbdb2d4fc45c766265a85d652e0452e712ed930))
+* **db:** add ambiguous_screenshots tables + resolver methods ([e3d5461](https://github.com/sound-barrier/recall/commit/e3d5461c320f237add4a9935a089208ea2262b18))
+* **detail-panel:** float Rank Update above Match Journal when present ([cc32e24](https://github.com/sound-barrier/recall/commit/cc32e24ec5a5ed2884627da12625f440ceb37d78))
+* **detail-panel:** fullscreen screenshot lightbox ([e1e49b1](https://github.com/sound-barrier/recall/commit/e1e49b117c2918164eb53a029af25cb823e471fd))
+* **detail-panel:** heroes-played always starts expanded on match select ([1930792](https://github.com/sound-barrier/recall/commit/1930792b6443890fcac7ba73dd6f983616433271))
+* **detail-panel:** move Leaver + Match Stats above Match Journal ([da0da51](https://github.com/sound-barrier/recall/commit/da0da51d6e863e0860c21115beaef65932b34df6))
+* **detail-panel:** rAF momentum scroll for ↑ / ↓ in the panel body ([835e283](https://github.com/sound-barrier/recall/commit/835e28321c52b58ed04ec0c4dbc0139a70b56f83))
+* **detail-panel:** reorder sections + Match Stats label + rare Rank framing ([4f695b1](https://github.com/sound-barrier/recall/commit/4f695b1b3c875f917c685e64c1f4f8ffd7ad2f25))
+* **detail-panel:** treat the panel as a real modal — Tab + / stay inside ([c0b4a83](https://github.com/sound-barrier/recall/commit/c0b4a83c7895dc443e28438ff2dba40ce8355a86))
+* drop legacy noteSearch fallback in filter-preset parser ([cca121e](https://github.com/sound-barrier/recall/commit/cca121ed6d9d51f724fa7004046fd49b3fb0fad6))
+* drop legacy paths — fresh-install only ([171541f](https://github.com/sound-barrier/recall/commit/171541feda544902e47b8c62e854d08594631675))
+* global match search with vim-style scoped clauses ([5934fbf](https://github.com/sound-barrier/recall/commit/5934fbf50b4d964c1c656c4a9d2828de2347f2d3))
+* **matches:** collapsible Heroes Played + Match Journal redesign ([79d47fd](https://github.com/sound-barrier/recall/commit/79d47fd13acd117e763a5d2f28de2ff137012b0e))
+* **matches:** detail panel instead of inline expansion (EVAL) ([a1665a5](https://github.com/sound-barrier/recall/commit/a1665a54e48004c1a88b45124e1e494c8fef8f76))
+* **matches:** filter-preset save & recall menu ([a01a979](https://github.com/sound-barrier/recall/commit/a01a979a7e38c5385ece637d20428efb1fe4b147))
+* **matches:** hit highlighting + click-to-edit preview on note row ([0579de3](https://github.com/sound-barrier/recall/commit/0579de391a0ffef42e2a0d6f3485fcec2c9742ff))
+* **matches:** resolve ambiguous attribution in Unknown tab ([4e3bef5](https://github.com/sound-barrier/recall/commit/4e3bef5693d910f75ed6be904beb41fc4832f987))
+* **matches:** sticky group-jump timeline rail ([e356542](https://github.com/sound-barrier/recall/commit/e3565426e511b095cd79b6e3d794079a3cc3ff70))
+* **matches:** timeline arrow keys + search auto-reveal in detail panel ([6699cbd](https://github.com/sound-barrier/recall/commit/6699cbd6ef90aaa0972ae8e7f337e6006f6f86a5))
+* **onboarding:** first-launch briefing overlay ([4faa545](https://github.com/sound-barrier/recall/commit/4faa54579a161a305cca63f11ce00c678c7cc0cb))
+* redesign Matches view as set-workspace ([e41a6c5](https://github.com/sound-barrier/recall/commit/e41a6c5b847b25df5409a8e9352469297944f87e))
+* **shortcuts:** keyboard bindings + cheatsheet modal ([9c40eb1](https://github.com/sound-barrier/recall/commit/9c40eb1ed774d7f3f3a224ac44bd3b53a797c30a))
+* **theme:** high-contrast variant + OS-preference autodetect ([86ad1e0](https://github.com/sound-barrier/recall/commit/86ad1e078d46bad58b8618b06826cf8f6f6a2b99))
+
+
+### Bug Fixes
+
+* **api:** require note arg in SetLeaverAnnotation for Wails bridge ([d809175](https://github.com/sound-barrier/recall/commit/d809175b66d53444c18bbd0a375683dc70046722))
+* **cheatsheet:** Esc routes through [@close](https://github.com/close) so ? reopen works ([5973012](https://github.com/sound-barrier/recall/commit/597301258e95e93d004eaa4bbb92aaa0bd4a03c7))
+* **detail-panel:** Esc in a text field blurs the field, not the panel ([98bf056](https://github.com/sound-barrier/recall/commit/98bf056dabc470840beaf59c0ffac4b876b42cbd))
+* **detail-panel:** inert background to fully contain focus ([707d17d](https://github.com/sound-barrier/recall/commit/707d17dec13e0fde8277284129c1022316f893f3))
+* **detail-panel:** nav buttons show ← / → to match key bindings ([8331e32](https://github.com/sound-barrier/recall/commit/8331e32cabc2dd123dd9547194f5a3582590e37f))
+* **matches:** dossier breakdown share + no-date section position ([ea9d91a](https://github.com/sound-barrier/recall/commit/ea9d91a6c3fb99a8178769f4de1b819db6a02aec))
+* **matches:** Esc clears + blurs the match-search input ([a079a41](https://github.com/sound-barrier/recall/commit/a079a416ee08a3389b893c368046a688e0aa561c))
+* **matches:** preserve other annotation fields on leaver-chip click ([27f5279](https://github.com/sound-barrier/recall/commit/27f5279ef32e407a1406e82f565220d59eee2305))
+* **settings:** validate screenshots folder on startup + clarify the Folders UI ([0234390](https://github.com/sound-barrier/recall/commit/0234390de83777a5bdcb33475b78adabde2a7d33))
+* **update:** use semver comparison so installed releases stop prompting upgrades ([1c49eae](https://github.com/sound-barrier/recall/commit/1c49eae6631d726f88333d9e46cae9e883abeebd))
+
+
+### Refactors
+
+* **ambiguous:** drop the marker-only parent table ([6ba93fa](https://github.com/sound-barrier/recall/commit/6ba93fa4e1c2b742e5ea470bb208887341a36632))
+* **matches:** extract FilterCombobox component ([49a1a82](https://github.com/sound-barrier/recall/commit/49a1a821a29fc8b16fa30c2d6a1a29cb3cf7b05a))
+* **matches:** extract narrow + group + dossier composables ([598b136](https://github.com/sound-barrier/recall/commit/598b1369ce4d2186e55a1b6a22a5fc58943a6860))
+* **matches:** lift narrow state so selection tracks the filter ([416df5e](https://github.com/sound-barrier/recall/commit/416df5eaa7509eea3082a3110bfe8c4f6f16d766))
+* **matches:** rip dead Expand All button + rename isExpanded → isSelected ([7b4b4c7](https://github.com/sound-barrier/recall/commit/7b4b4c75e062c27c5fec6ef5589dbbcd24b47588))
+
+
+### Documentation
+
+* **claude:** allow breaking changes declared via Conventional Commits ([7cd9a48](https://github.com/sound-barrier/recall/commit/7cd9a485172db8d56a0a112a8a6ccdbb968a7baa))
+* **claude:** extend Helper scripts table to cover newer entries ([5e78368](https://github.com/sound-barrier/recall/commit/5e7836885f27159d5d0611f9b4db76cfab135e8b))
+* **claude:** pin gotchas surfaced by the detail-panel PR + fix stylelint ([01fba93](https://github.com/sound-barrier/recall/commit/01fba93a8f4dd475d29d08397e83eea42aa743b4))
+* describe detail panel + remove dead Expand/Collapse-all entries ([dd99a07](https://github.com/sound-barrier/recall/commit/dd99a07fc90a6cffb637213b4456b61c1817a43a))
+* explain Needs-your-review section in unknown-screenshots.md ([ffb7708](https://github.com/sound-barrier/recall/commit/ffb7708b48e60158a240a16aabfa2e5487bbbf61))
+* **features:** mark "Match notes search" as shipped ([0273c9a](https://github.com/sound-barrier/recall/commit/0273c9a1dfbd95b2ad3a0adf550bf25e608a67e2))
+* log detail-panel + lightbox + cheatsheet feature surface ([5dddcf8](https://github.com/sound-barrier/recall/commit/5dddcf83a9ffb45dea99fb9f881d48541c4bb34a))
+* refresh feature backlog + UI recommendations + filtering chapter ([26d4b22](https://github.com/sound-barrier/recall/commit/26d4b228074e742e780034fcb27125eeca56897c))
+* refresh for set-workspace redesign ([2a4c546](https://github.com/sound-barrier/recall/commit/2a4c546f05ce9c8c54aff9ea87dd84b52b5eab76))
+* **releases:** correct wall-clock estimate against measured runs ([7258dc9](https://github.com/sound-barrier/recall/commit/7258dc91818a593eba1ed68fdfac59c2e7e524d7))
+
+
+### Tests
+
+* **app:** 400-screenshot correlation stress dataset ([0cbac62](https://github.com/sound-barrier/recall/commit/0cbac6229f6684b0cf8e4b89f41c88a3bfdc7d43))
+* **app:** cohort E exercises real timestamp-window ambiguity ([f0b04d6](https://github.com/sound-barrier/recall/commit/f0b04d6d7b4c0acb2f6c8feb22a3b5a39cc9109e))
+* **app:** update cohort F + G stress expectations ([9dabafc](https://github.com/sound-barrier/recall/commit/9dabafc66f64acc38706bc1dd78a56f886e72841))
+* **e2e:** cover auto-close + cheatsheet + lightbox click-outside contracts ([53aee7d](https://github.com/sound-barrier/recall/commit/53aee7d6d2f4ca6a82df1eec765d5d0a74f5f7e9))
+* **e2e:** pre-dismiss the onboarding tour for non-tour specs ([d12e71a](https://github.com/sound-barrier/recall/commit/d12e71acb26ba1e3538567787c21e7b9b4ff7095))
+* **e2e:** skip pre-redesign specs pending set-workspace rewrites ([fdcd496](https://github.com/sound-barrier/recall/commit/fdcd496cae2b9c72be65bbdfd74b50c2a89b9126))
+* **matches:** cover useIncludeUnknown + drop unused heatmap exports ([b65bb87](https://github.com/sound-barrier/recall/commit/b65bb8739a5634e0c832ff135b0807b483be6f8c))
+* **matches:** migrate body assertions from MatchCard.test.ts to MatchDetailPanel.test.ts ([357f7f7](https://github.com/sound-barrier/recall/commit/357f7f7af189189b51e0acef000056ae2fd8a03f))
+
 ## [0.2.5](https://github.com/sound-barrier/recall/compare/v0.2.4...v0.2.5) (2026-05-27)
 
 
