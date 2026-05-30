@@ -28,6 +28,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   'go-to-view':         [next: 'settings' | 'ingest' | 'matches' | 'unknown']
   'resolve-ambiguous':  [ambiguousKey: string, resolvedTo: string]
+  // Forwarded to App.vue's openLightbox handler — fires when the
+  // user clicks an inline source-preview thumbnail. Parity with the
+  // MatchDetailPanel side-panel sources block: click filename →
+  // thumbnail toggle, click thumbnail → fullscreen lightbox.
+  'open-lightbox':      [filename: string]
 }>()
 
 const ambiguousList = computed(() => props.ambiguousRecords)
@@ -116,6 +121,40 @@ function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
 
           <template v-if="cardState.isSelected(rec.match_key)">
             <div class="unknown-expanded">
+              <!-- Source screenshot preview — same toggle + click-to-
+                   lightbox shape as the Unknown card's Source Files
+                   block. Surfacing it here means the user can see the
+                   actual screenshot they're triaging before picking a
+                   candidate, instead of choosing blind from the match-
+                   key strings alone. -->
+              <div v-if="rec.source_files?.length" class="unknown-sources">
+                <div class="block-eyebrow">
+                  Source Screenshot
+                </div>
+                <div v-for="f in rec.source_files" :key="f" class="source-file">
+                  <a
+                    class="source-name"
+                    :href="screenshotURL(f)"
+                    :title="cardState.previewOpen.value[f] ? 'Hide preview' : 'Show preview'"
+                    @click.prevent="cardState.togglePreview(f)"
+                  >
+                    <span class="chev small" :class="{ open: cardState.previewOpen.value[f] }">›</span>
+                    <span class="source-name-text">{{ f }}</span>
+                  </a>
+                  <img
+                    v-if="cardState.previewOpen.value[f] && !cardState.previewError.value[f]"
+                    :src="screenshotURL(f)"
+                    :alt="f"
+                    class="source-preview"
+                    title="Click to view fullscreen"
+                    @click="emit('open-lightbox', f)"
+                    @error="cardState.onPreviewError(f)"
+                  >
+                  <div v-if="cardState.previewOpen.value[f] && cardState.previewError.value[f]" class="source-preview-error">
+                    Could not load image — check screenshots folder in Settings.
+                  </div>
+                </div>
+              </div>
               <div class="candidate-picker">
                 <div class="block-eyebrow">
                   Pick the match
@@ -249,6 +288,8 @@ function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
                   :src="screenshotURL(f)"
                   :alt="f"
                   class="source-preview"
+                  title="Click to view fullscreen"
+                  @click="emit('open-lightbox', f)"
                   @error="cardState.onPreviewError(f)"
                 >
                 <div v-if="cardState.previewOpen.value[f] && cardState.previewError.value[f]" class="source-preview-error">

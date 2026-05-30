@@ -25,7 +25,13 @@ function makeCardState(_records: MatchRecord[]) {
       expanded.value = { ...expanded.value, [id]: !expanded.value[id] }
     },
     toggleSources: () => undefined,
-    togglePreview: () => { calls.togglePreview++ },
+    togglePreview: (filename: string) => {
+      // Realistic toggle so the <img v-if="previewOpen[f]"> actually
+      // renders when the test clicks the source-name affordance.
+      // Click-to-open-lightbox tests need the img in the DOM.
+      calls.togglePreview++
+      previewOpen.value = { ...previewOpen.value, [filename]: !previewOpen.value[filename] }
+    },
     onPreviewError: () => undefined,
   }
   return { api, expanded, calls }
@@ -175,5 +181,63 @@ describe('UnknownMapsView', () => {
     const emitted = wrapper.emitted('resolve-ambiguous')
     expect(emitted).toBeTruthy()
     expect(emitted![0]![1]).toBe('match:2026-05-10T21:41:28')
+  })
+
+  // ─── Screenshot preview → fullscreen lightbox ──────────────
+  //
+  // The Unknown tab's Source Files list shows a small preview
+  // thumbnail per file when the user toggles it open (same
+  // chevron-on-the-filename interaction as MatchDetailPanel's side-
+  // panel sources block). Clicking that thumbnail used to do nothing
+  // — the `<img>` had no @click handler. Parity with the side panel
+  // means clicking the thumbnail opens the fullscreen lightbox via
+  // an `open-lightbox` event the parent (App.vue) routes to the
+  // existing MatchScreenshotLightbox component.
+
+  it('clicking a source-preview thumbnail in an Unknown card emits open-lightbox', async () => {
+    const records: MatchRecord[] = [
+      { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+    ]
+    const { wrapper } = mountWith(records)
+    // Expand the card so the Source Files block renders.
+    await wrapper.find('.unknown-card-head').trigger('click')
+    // Flip the preview open so the <img> exists.
+    await wrapper.find('.source-name').trigger('click')
+    const img = wrapper.find('img.source-preview')
+    expect(img.exists()).toBe(true)
+    await img.trigger('click')
+    expect(wrapper.emitted('open-lightbox')).toBeTruthy()
+    expect(wrapper.emitted('open-lightbox')![0]).toEqual(['x.png'])
+  })
+
+  // Ambiguous cards historically had no Source Files block — the
+  // user picks a candidate without seeing the actual screenshot,
+  // which is unhelpful. Same Source Files block as the Unknown
+  // card now renders inside the expanded ambiguous card so the
+  // user can preview + open-lightbox the screenshot they're
+  // triaging.
+  it('ambiguous card surfaces a Source Files preview that emits open-lightbox', async () => {
+    const ambig: MatchRecord[] = [
+      {
+        match_key: 'ambiguous:ambig-sb.png',
+        source_files: ['ambig-sb.png'],
+        data: {},
+        ambiguous: true,
+        candidates: [{ match_key: 'match:foo', distance_seconds: 720 }],
+      },
+    ]
+    const { wrapper } = mountWith([], { ambiguousRecords: ambig })
+    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
+    // The Source Files block must render inside the expanded
+    // ambiguous card AND honour the same toggle-preview gesture as
+    // the Unknown card.
+    const sourceName = wrapper.find('.ambiguous-card .source-name')
+    expect(sourceName.exists()).toBe(true)
+    await sourceName.trigger('click')
+    const img = wrapper.find('.ambiguous-card img.source-preview')
+    expect(img.exists()).toBe(true)
+    await img.trigger('click')
+    expect(wrapper.emitted('open-lightbox')).toBeTruthy()
+    expect(wrapper.emitted('open-lightbox')![0]).toEqual(['ambig-sb.png'])
   })
 })
