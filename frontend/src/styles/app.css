@@ -197,8 +197,17 @@
   --win: #4dff8e;
   --win-soft: rgb(77 255 142 / 14%);
   --win-line: rgb(77 255 142 / 60%);
-  --loss: #ff6680;
-  --loss-soft: rgb(255 102 128 / 14%);
+
+  /* --loss bumps lighter (#ff99aa) and --loss-soft drops to 8%
+     opacity because the OW Dark bg (#2a2a2a) lifts the composite
+     ground higher than the editorial darkroom does. Loss chips in
+     "danger" cards get tinted TWICE (the card's loss-soft bg +
+     internal chip's loss-soft bg) — at 14% that double-layered
+     composite reaches #613a40 which the saturated #ff6680 can't
+     clear at AA. Lighter pink + lower tint keeps the loss read
+     semantically while every text-on-tinted-bg pair clears AA. */
+  --loss: #ff99aa;
+  --loss-soft: rgb(255 102 128 / 8%);
   --loss-line: rgb(255 102 128 / 60%);
   --draw: #ffd34d;
   --draw-soft: rgb(255 211 77 / 14%);
