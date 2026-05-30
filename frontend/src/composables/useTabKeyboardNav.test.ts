@@ -126,6 +126,52 @@ describe('useTabKeyboardNav', () => {
     expect(focusSpy).toHaveBeenCalled()
   })
 
+  // ── Optional `tabs` argument: callers (App.vue) pass a visible-
+  // tabs ref so the nav cycle stays inside currently-rendered tabs.
+  // Hiding the dev-only Analysis tab on release builds must keep
+  // ←/→ wrap-around correct.
+
+  it('cycles through a filtered tabs ref instead of the default TAB_ORDER', () => {
+    // Hide "analysis" — release-build state.
+    const visibleTabs = ref<readonly TabId[]>(['settings', 'ingest', 'matches', 'unknown'])
+    const view = ref<string>('matches')
+    const go = vi.fn()
+    const { onTabKeydown } = useTabKeyboardNav(view, go, visibleTabs)
+    onTabKeydown(key('ArrowRight'))
+    // From "matches" → "unknown" (analysis skipped).
+    expect(go).toHaveBeenCalledWith('unknown')
+  })
+
+  it('End jumps to the last *visible* tab, not the last in TAB_ORDER', () => {
+    const visibleTabs = ref<readonly TabId[]>(['settings', 'ingest', 'matches', 'unknown'])
+    const view = ref<string>('settings')
+    const go = vi.fn()
+    const { onTabKeydown } = useTabKeyboardNav(view, go, visibleTabs)
+    onTabKeydown(key('End'))
+    expect(go).toHaveBeenCalledWith('unknown')
+  })
+
+  it('ArrowLeft from the first visible tab wraps to the last visible tab', () => {
+    const visibleTabs = ref<readonly TabId[]>(['settings', 'ingest', 'matches', 'unknown'])
+    const view = ref<string>('settings')
+    const go = vi.fn()
+    const { onTabKeydown } = useTabKeyboardNav(view, go, visibleTabs)
+    onTabKeydown(key('ArrowLeft'))
+    expect(go).toHaveBeenCalledWith('unknown')
+  })
+
+  it('returns without calling goToView when the visible tabs list is empty', () => {
+    // Defensive — should never happen in practice (App.vue always
+    // passes at least 4 tabs), but the composable must not divide
+    // by zero or modulo against a length-0 array.
+    const visibleTabs = ref<readonly TabId[]>([])
+    const view = ref<string>('settings')
+    const go = vi.fn()
+    const { onTabKeydown } = useTabKeyboardNav(view, go, visibleTabs)
+    onTabKeydown(key('ArrowRight'))
+    expect(go).not.toHaveBeenCalled()
+  })
+
   it('focusMain focuses #main-content and preventDefaults the click', () => {
     const main = seedMain()
     const view = ref<string>('settings')

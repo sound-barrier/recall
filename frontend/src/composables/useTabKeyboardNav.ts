@@ -1,4 +1,4 @@
-import { nextTick, type Ref } from 'vue'
+import { nextTick, ref, type Ref } from 'vue'
 
 // WAI-ARIA tab-pattern keyboard navigation for the masthead tablist.
 //
@@ -15,22 +15,29 @@ export const TAB_ORDER = ['settings', 'ingest', 'matches', 'analysis', 'unknown'
 
 export type TabId = typeof TAB_ORDER[number]
 
+// useTabKeyboardNav optionally accepts a `tabs` ref so callers can
+// hide tabs (e.g. dev-only Analysis tab on release builds) without
+// the keyboard nav cycle landing on an invisible tab. Defaults to
+// the full TAB_ORDER so existing call sites stay one-arg.
 export function useTabKeyboardNav(
   view: Readonly<Ref<string>>,
   goToView: (next: TabId) => unknown | Promise<unknown>,
+  tabs: Readonly<Ref<readonly TabId[]>> = ref(TAB_ORDER),
 ) {
   function onTabKeydown(e: KeyboardEvent) {
     const key = e.key
     if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'Home' && key !== 'End') return
     e.preventDefault()
-    const current = TAB_ORDER.indexOf(view.value as TabId)
+    const order = tabs.value
+    if (order.length === 0) return
+    const current = order.indexOf(view.value as TabId)
     if (current === -1) return
     let next = current
-    if (key === 'ArrowLeft')  next = (current - 1 + TAB_ORDER.length) % TAB_ORDER.length
-    if (key === 'ArrowRight') next = (current + 1) % TAB_ORDER.length
+    if (key === 'ArrowLeft')  next = (current - 1 + order.length) % order.length
+    if (key === 'ArrowRight') next = (current + 1) % order.length
     if (key === 'Home')       next = 0
-    if (key === 'End')        next = TAB_ORDER.length - 1
-    const target = TAB_ORDER[next]!
+    if (key === 'End')        next = order.length - 1
+    const target = order[next]!
     void goToView(target)
     // Move focus from the now-inactive tab to the newly-active one
     // so the tab pattern's "automatic activation" matches the focus

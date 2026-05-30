@@ -130,6 +130,34 @@ const newScreenshotCount = ref<number | null>(null)
 // parse, Grafana export). Switched via the masthead nav tabs.
 const view = ref<TabId>('matches')
 
+// Version + update + dev-build state. appVersion drives the masthead
+// "v0.3.0" / "v0.3.0-dev" label; the -dev suffix gates dev-only
+// chrome via isDevBuild / visibleTabs (the latter feeds
+// useTabKeyboardNav so ←/→ wrap-around stays inside rendered tabs).
+const appVersion = ref('')
+const updateInfo = ref<UpdateInfo | null>(null)
+// updateCheckBusy gates the "Check for updates" button while the
+// GitHub releases roundtrip is in flight. The check is user-
+// triggered (NOT on mount) so users on metered connections or
+// stricter network postures don't pay for a release lookup they
+// didn't ask for. Pre-rename this fired automatically on mount and
+// the "↑ update available" pill rendered silently — regressed when
+// the masthead got rewired; this is the deliberate-pull restoration.
+const updateCheckBusy = ref(false)
+// isDevBuild gates dev-only chrome — currently the "04 Analysis"
+// tab + panel. Dev builds carry a "-dev" suffix on the version
+// string (e.g. "0.3.0-dev"); release builds don't. The check is
+// purely string-suffix, no network calls.
+const isDevBuild = computed(() => appVersion.value.endsWith('-dev'))
+// visibleTabs is the subset of TAB_ORDER currently exposed to the
+// user. Analysis is a work-in-progress dashboard sketch only
+// rendered on dev builds; everything else stays. Drives both the
+// rendered <button>s and the keyboard nav cycle (useTabKeyboardNav
+// reads from this so ←/→ wrap correctly when analysis is hidden).
+const visibleTabs = computed<readonly TabId[]>(() =>
+  isDevBuild.value ? TAB_ORDER : TAB_ORDER.filter((t) => t !== 'analysis'),
+)
+
 // goToView switches the active tab AND moves focus into the newly visible
 // panel so keyboard users land in the new content rather than staying on
 // the nav button. Each <section> has tabindex="-1" so it can receive
@@ -141,7 +169,7 @@ async function goToView(next: string) {
   if (panel) panel.focus({ preventScroll: true })
 }
 
-const { onTabKeydown, focusMain } = useTabKeyboardNav(view, goToView)
+const { onTabKeydown, focusMain } = useTabKeyboardNav(view, goToView, visibleTabs)
 
 // ── Keyboard-shortcut state ───────────────────────────────────
 // `focusedCardIndex` is the flat index (across the filteredSorted
@@ -170,8 +198,6 @@ async function focusCardByIndex(idx: number) {
 // "Last run · X ago" feedback under the Parse button on the settings
 // page. Persisted to localStorage so the timestamp survives reloads.
 const lastParsedAt = ref<number | null>(null)
-const appVersion = ref('')
-const updateInfo = ref<UpdateInfo | null>(null)
 
 // Tesseract status (path / found / version / supported flag) + the
 // "Browse for binary…" + "Reset to default" pickers + the System Alert
@@ -334,6 +360,25 @@ async function load() {
 
 async function refreshNewCount() {
   try { newScreenshotCount.value = await GetNewScreenshotCount() } catch (_) {}
+}
+
+// User-triggered GitHub release check. Idempotent — re-clicks while
+// in flight are no-ops; re-clicks after a result silently replace
+// the cached updateInfo. Network failure leaves the button in its
+// default state so the user can retry without an explicit error
+// surface (the masthead can't carry a banner here).
+async function checkForUpdates() {
+  if (updateCheckBusy.value) return
+  updateCheckBusy.value = true
+  try {
+    const u = await CheckForUpdate()
+    if (u.checked) updateInfo.value = u
+  } catch (_) {
+    // Silent — the button reverts to "Check for updates" so the
+    // user can retry. The error doesn't merit a global banner.
+  } finally {
+    updateCheckBusy.value = false
+  }
 }
 
 async function runParse() {
@@ -756,7 +801,9 @@ onMounted(() => {
   } catch (_) {}
 
   GetVersion().then(v => { appVersion.value = v }).catch(() => {})
-  CheckForUpdate().then(u => { if (u.checked) updateInfo.value = u }).catch(() => {})
+  // CheckForUpdate is no longer called on mount — it's gated behind
+  // the "Check for updates" button in the masthead's ver-block. See
+  // checkForUpdates() below + the v-if chain on .ver-block.
   load()
 })
 
@@ -895,7 +942,13 @@ useEventStream({
                 />
               </span>
             </button>
+            <!-- 04 Analysis is a work-in-progress dashboard sketch.
+                 Only exposed to dev builds so release users don't see
+                 the incomplete chrome. Hidden from both the tablist
+                 and the keyboard nav cycle (via visibleTabs) when the
+                 version string lacks the "-dev" suffix. -->
             <button
+              v-if="isDevBuild"
               id="tab-analysis"
               class="nav-tab"
               :class="{ active: view === 'analysis' }"
@@ -948,26 +1001,46 @@ useEventStream({
           </div>
           <div class="ver-block">
             <span v-if="appVersion" class="app-version">v{{ appVersion }}</span>
+            <!-- Default state — manual update check. Clicking fires
+                 CheckForUpdate (GitHub releases roundtrip); the
+                 result swaps the button for one of the three result
+                 states below. NOT auto-fired on mount: opting in
+                 keeps the boot path off the network. -->
             <button
-              v-if="updateInfo?.dev_build"
+              v-if="updateInfo === null"
+              class="ver-btn ver-btn-check"
+              :disabled="updateCheckBusy"
+              :title="updateCheckBusy ? 'Checking GitHub releases…' : 'Check GitHub for a newer release'"
+              @click="checkForUpdates"
+            >
+              {{ updateCheckBusy ? 'Checking…' : 'Check for updates' }}
+            </button>
+            <!-- Result: dev build — link out to the latest release
+                 regardless of whether it's "newer" than this build's
+                 SHA. The server returns dev_build=true when the
+                 local version is "0.0.0-dev" / similar. -->
+            <button
+              v-else-if="updateInfo.dev_build"
               class="ver-btn ver-btn-dev"
               :title="`Open release page for v${updateInfo.latest}`"
               @click="OpenURL(updateInfo.url)"
             >
               ↗ view release v{{ updateInfo.latest }}
             </button>
+            <!-- Result: a newer release is published. -->
             <button
-              v-else-if="updateInfo?.available"
+              v-else-if="updateInfo.available"
               class="ver-btn ver-btn-update"
               :title="`Download v${updateInfo.latest}`"
               @click="OpenURL(updateInfo.url)"
             >
-              ↑ update to v{{ updateInfo.latest }}
+              ↑ New version ready · v{{ updateInfo.latest }}
             </button>
+            <!-- Result: at the latest release. -->
             <span
-              v-else-if="updateInfo?.checked"
+              v-else
               class="ver-btn ver-btn-current"
-            >✓ up to date</span>
+            >✓ Up to date</span>
           </div>
         </div>
       </header>
@@ -1067,9 +1140,13 @@ useEventStream({
           @narrow-open="onMatchesNarrowOpen"
         />
 
-        <!-- ─── ANALYSIS VIEW (coaching dashboard sketch) ────────── -->
+        <!-- ─── ANALYSIS VIEW (coaching dashboard sketch) ──────────
+             Gated on isDevBuild — keeps the WIP panel out of release
+             builds even if a user somehow ends up with view='analysis'
+             persisted (currently view is in-memory only, but the gate
+             stays defence-in-depth). -->
         <MatchesDashboardSketch
-          v-if="view === 'analysis'"
+          v-if="view === 'analysis' && isDevBuild"
           :records="records"
           :selected-match-key="selection.selectedKey.value"
           @open-match="(matchKey: string) => selection.open(matchKey)"
