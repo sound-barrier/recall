@@ -142,6 +142,50 @@ describe('useMatchesDossier', () => {
       const { topMaps } = useMatchesDossier(records, ref<LeaverHandling>('include'))
       expect(topMaps.value[0]!.winrate).toBe(50)
     })
+
+    it('reports share of the breakdown as integer percentage', () => {
+      // Three records, three distinct maps — each map's share is 33.
+      // Bug fix: the bar/percent column was previously bound to winrate,
+      // which renders as wildly bimodal 0/100 for low-count maps.
+      const records = ref([
+        rec({ map: 'atlas',    result: 'victory' }),
+        rec({ map: 'rialto',   result: 'defeat'  }),
+        rec({ map: 'suravasa', result: 'victory' }),
+      ])
+      const { topMaps } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      for (const m of topMaps.value) {
+        expect(m.share).toBe(33)
+      }
+    })
+
+    it('share weights heavier counts more', () => {
+      const records = ref([
+        ...Array(6).fill(0).map(() => rec({ map: 'rialto' })),
+        ...Array(3).fill(0).map(() => rec({ map: 'numbani' })),
+        ...Array(1).fill(0).map(() => rec({ map: 'oasis' })),
+      ])
+      const { topMaps } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(topMaps.value.find((m) => m.key === 'rialto')!.share).toBe(60)
+      expect(topMaps.value.find((m) => m.key === 'numbani')!.share).toBe(30)
+      expect(topMaps.value.find((m) => m.key === 'oasis')!.share).toBe(10)
+    })
+
+    it('share denominator is records-with-key, not total records', () => {
+      // 4 dated matches: 2 on Rialto, 2 on Numbani. Plus 2 records
+      // missing a map (unparseable). Rialto + Numbani each fill 50
+      // % of the *map-carrying* records, not 25 % of the total.
+      const records = ref([
+        rec({ map: 'rialto' }),
+        rec({ map: 'rialto' }),
+        rec({ map: 'numbani' }),
+        rec({ map: 'numbani' }),
+        { ...rec({}), data: { ...rec({}).data, map: undefined } } as unknown as MatchRecord,
+        { ...rec({}), data: { ...rec({}).data, map: undefined } } as unknown as MatchRecord,
+      ])
+      const { topMaps } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(topMaps.value.find((m) => m.key === 'rialto')!.share).toBe(50)
+      expect(topMaps.value.find((m) => m.key === 'numbani')!.share).toBe(50)
+    })
   })
 
   describe('topHeroes', () => {

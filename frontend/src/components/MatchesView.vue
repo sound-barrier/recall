@@ -355,8 +355,8 @@ onBeforeUnmount(() => {
           <ul>
             <li v-for="m in topMaps" :key="m.key">
               <span class="bd-name">{{ m.key }}</span>
-              <span class="bd-bar"><span class="bd-fill" :style="{ width: m.winrate + '%' }" /></span>
-              <span class="bd-stats">{{ m.winrate }}% <span class="bd-total">·{{ m.total }}</span></span>
+              <span class="bd-bar"><span class="bd-fill" :style="{ width: m.share + '%' }" /></span>
+              <span class="bd-stats">{{ m.share }}% <span class="bd-total">·{{ m.total }}</span></span>
             </li>
           </ul>
         </article>
@@ -367,8 +367,8 @@ onBeforeUnmount(() => {
           <ul>
             <li v-for="h in topHeroes" :key="h.key">
               <span class="bd-name">{{ h.key }}</span>
-              <span class="bd-bar"><span class="bd-fill" :style="{ width: h.winrate + '%' }" /></span>
-              <span class="bd-stats">{{ h.winrate }}% <span class="bd-total">·{{ h.total }}</span></span>
+              <span class="bd-bar"><span class="bd-fill" :style="{ width: h.share + '%' }" /></span>
+              <span class="bd-stats">{{ h.share }}% <span class="bd-total">·{{ h.total }}</span></span>
             </li>
           </ul>
         </article>
