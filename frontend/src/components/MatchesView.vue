@@ -407,7 +407,10 @@ onBeforeUnmount(() => {
           <ul>
             <li v-for="m in topMaps" :key="m.key">
               <span class="bd-name">{{ m.key }}</span>
-              <span class="bd-bar"><span class="bd-fill" :style="{ width: m.share + '%' }" /></span>
+              <span class="bd-bar">
+                <span class="bd-fill" :style="{ width: m.share + '%' }" />
+                <span class="bd-time">{{ m.total }}x</span>
+              </span>
               <span class="bd-stats">{{ m.share }}%</span>
             </li>
           </ul>
@@ -1090,13 +1093,15 @@ onBeforeUnmount(() => {
   background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 50%, var(--win)));
 }
 
-/* In-bar play-time label for the Top heroes breakdown. Sits centred
-   over the bar so the "7h32min" reads against either the filled or
-   empty portion depending on share; tabular-nums keeps the label
-   from jittering as values change. The hero bar gets extra height
-   (and slightly tighter monospaced letter-spacing) so a four- or
-   five-glyph label fits without crowding the gradient. Maps don't
-   use this — their bar carries the count in .bd-stats instead. */
+/* In-bar volume label for the Most-played-heroes + Most-played-maps
+   breakdowns. The heroes row carries summed play-time ("7h32min" /
+   "32min"); the maps row carries the play-count ("3x" / "1x"). Both
+   sit centred over the bar so the label reads against either the
+   filled or empty portion depending on share; tabular-nums keeps it
+   from jittering as values change. The bar gets extra height (and
+   slightly tighter monospaced letter-spacing) so a four- or five-
+   glyph label fits without crowding the gradient. The right-side
+   .bd-stats column carries the share-percent for both breakdowns. */
 .breakdown li:has(.bd-time) .bd-bar {
   height: 18px;
 }
