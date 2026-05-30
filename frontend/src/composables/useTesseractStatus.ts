@@ -18,6 +18,11 @@ export const EMPTY_TESSERACT_STATUS: TesseractStatus = {
   supported: false,
   error: '',
   default: '',
+  // Empty platform short-circuits the per-OS branch in
+  // SettingsEngine.vue's description copy until the first round-
+  // trip lands, so we never render stale OS-specific guidance
+  // during the boot window.
+  platform: '',
 }
 
 export interface TesseractStatusApi {

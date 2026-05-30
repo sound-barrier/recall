@@ -23,6 +23,13 @@ type TesseractStatus struct {
 	Supported bool   `json:"supported"`
 	Error     string `json:"error"`
 	Default   string `json:"default"`
+	// Platform is the host's runtime.GOOS value ("darwin", "linux",
+	// "windows", "freebsd", …). Surfaced so the frontend can render
+	// only the install-path guidance that matches where the server
+	// is actually running, instead of listing all three OSes in one
+	// paragraph (the earlier shape was confusing to non-technical
+	// users). Pure passthrough — no normalisation, no validation.
+	Platform string `json:"platform"`
 }
 
 // ErrInvalidTesseractPath is returned when a user-supplied path to the
@@ -74,7 +81,11 @@ func defaultTesseractPath() string {
 // populates the Error field with a human-readable explanation suitable
 // for surfacing directly in the UI banner.
 func checkTesseract(path string) TesseractStatus {
-	s := TesseractStatus{Path: path, Default: defaultTesseractPath()}
+	s := TesseractStatus{
+		Path:     path,
+		Default:  defaultTesseractPath(),
+		Platform: runtime.GOOS,
+	}
 	if path == "" {
 		s.Error = "Tesseract path is empty — pick the binary in Settings → Engine."
 		return s
@@ -132,8 +143,17 @@ func parseTesseractVersion(stdout, stderr string) (version string, supported boo
 // GetTesseractStatus returns the cached result of the last detection
 // run (refreshed on Startup + any path-changing call). Cheap — does not
 // re-shell out to tesseract.
+//
+// Platform is always populated even when no detection has run yet, so
+// the frontend's per-OS Engine description branch in SettingsEngine.vue
+// has a value to switch on during the first paint (before Startup-
+// triggered checkTesseract lands).
 func (a *App) GetTesseractStatus() TesseractStatus {
-	return a.tessStatus
+	s := a.tessStatus
+	if s.Platform == "" {
+		s.Platform = runtime.GOOS
+	}
+	return s
 }
 
 // SetTesseractPath persists a user-typed or user-picked path, re-runs

@@ -224,6 +224,13 @@ func TestServerMux_TesseractStatus(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
+	// Platform must be present + non-empty so the frontend's per-OS
+	// description branch in SettingsEngine.vue has a value to switch
+	// on. Empty would silently fall through to the no-paths fallback
+	// and the user would lose the install-path guidance entirely.
+	if v, ok := got["platform"].(string); !ok || v == "" {
+		t.Errorf("response missing platform field; got %v (type %T)", got["platform"], got["platform"])
+	}
 }
 
 func TestServerMux_TesseractReset(t *testing.T) {
