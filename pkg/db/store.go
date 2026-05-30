@@ -33,6 +33,23 @@ type Store interface {
 	// them grouped by parent type with children already attached.
 	LoadAll() (Screenshots, error)
 
+	// Ambiguous-attribution surface. When a screenshot's parse can't
+	// pin a single match (EAD signature matches in the 5-30 min
+	// ambiguous zone, or multiple matches inside 0-30 min), the
+	// resolver records candidates here and the screenshot's parent
+	// row stores `match_key = "ambiguous:<filename>"`. Other
+	// screenshots within mergeWindow of that screenshot inherit the
+	// same sentinel via the timestamp-window pass, so several rows
+	// can share one ambiguous match_key. The user picks the real
+	// match via `ResolveAmbiguous`, which rewrites every parent row
+	// carrying that match_key in lockstep.
+	//
+	// ApplyAmbiguity is idempotent: it always deletes the filename's
+	// row first, then re-inserts iff cands is non-empty.
+	ApplyAmbiguity(filename string, cands []AmbiguousCandidate) error
+	LoadAmbiguousCandidatesFor(filename string) ([]AmbiguousCandidate, error)
+	ResolveAmbiguous(ambiguousMatchKey, newMatchKey string) error
+
 	// Match-annotation surface — user-curated per-match notes.
 	// SetAnnotation upserts; DeleteAnnotation removes by key; LoadAnnotations
 	// returns the full map keyed by match_key for the aggregator to attach
@@ -199,6 +216,20 @@ type Screenshots struct {
 	// ScreenshotsDirs maps screenshots_dirs.id → path so the aggregator
 	// can surface SourceDirs on each MatchRecord without a per-row JOIN.
 	ScreenshotsDirs map[int64]string
+
+	// AmbiguousCandidates maps filename → candidate matches it could
+	// belong to, populated for screenshots whose match_key is
+	// "ambiguous:<filename>". Empty for the common case.
+	AmbiguousCandidates map[string][]AmbiguousCandidate
+}
+
+// AmbiguousCandidate is one row of ambiguous_candidates — a possible
+// match the screenshot could belong to, captured by the resolver when
+// `matchByEAD` finds an EAD signature match in the 5-30 min ambiguous
+// zone or multiple matches anywhere in the 0-30 min window.
+type AmbiguousCandidate struct {
+	MatchKey  string
+	DistanceS int
 }
 
 // SQLStore is the production Store, backed by *sql.DB. Methods are

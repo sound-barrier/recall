@@ -700,3 +700,151 @@ func TestSQLStore_HiddenMatches_IdempotentHideRefreshesTimestamp(t *testing.T) {
 		t.Errorf("expected exactly 1 row after re-hide, got %d", n)
 	}
 }
+
+// ──────────────────────────────────────────────────────────────────
+// Ambiguous-attribution storage.
+// ──────────────────────────────────────────────────────────────────
+
+func TestSQLStore_Ambiguity_RoundTrip(t *testing.T) {
+	s := openMemory(t)
+	cands := []AmbiguousCandidate{
+		{MatchKey: "match:2026-05-10T21:29:28", DistanceS: 720},
+		{MatchKey: "match:2026-05-10T22:11:50", DistanceS: 1200},
+	}
+	if err := s.ApplyAmbiguity("scoreboard-2.png", cands); err != nil {
+		t.Fatalf("ApplyAmbiguity: %v", err)
+	}
+	got, err := s.LoadAmbiguousCandidatesFor("scoreboard-2.png")
+	if err != nil {
+		t.Fatalf("LoadAmbiguousCandidatesFor: %v", err)
+	}
+	if !reflect.DeepEqual(got, cands) {
+		t.Errorf("round-trip mismatch:\n got=%+v\nwant=%+v", got, cands)
+	}
+}
+
+func TestSQLStore_ApplyAmbiguity_EmptyCandsClearsRow(t *testing.T) {
+	s := openMemory(t)
+	if err := s.ApplyAmbiguity(
+		"a.png",
+		[]AmbiguousCandidate{{MatchKey: "match:foo", DistanceS: 60}},
+	); err != nil {
+		t.Fatalf("first apply: %v", err)
+	}
+	if err := s.ApplyAmbiguity("a.png", nil); err != nil {
+		t.Fatalf("clear apply: %v", err)
+	}
+	if _, err := s.LoadAmbiguousCandidatesFor("a.png"); err == nil {
+		t.Fatalf("expected ErrAmbiguousNotFound after clear")
+	}
+}
+
+func TestSQLStore_ApplyAmbiguity_ReplacesOnReapply(t *testing.T) {
+	s := openMemory(t)
+	first := []AmbiguousCandidate{{MatchKey: "match:a", DistanceS: 60}}
+	second := []AmbiguousCandidate{
+		{MatchKey: "match:b", DistanceS: 120},
+		{MatchKey: "match:c", DistanceS: 240},
+	}
+	if err := s.ApplyAmbiguity("a.png", first); err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	if err := s.ApplyAmbiguity("a.png", second); err != nil {
+		t.Fatalf("second: %v", err)
+	}
+	got, err := s.LoadAmbiguousCandidatesFor("a.png")
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if !reflect.DeepEqual(got, second) {
+		t.Errorf("expected second set to replace first:\n got=%+v\nwant=%+v", got, second)
+	}
+}
+
+func TestSQLStore_LoadAll_PopulatesAmbiguousCandidates(t *testing.T) {
+	s := openMemory(t)
+	if err := s.ApplyAmbiguity("a.png", []AmbiguousCandidate{
+		{MatchKey: "match:a1", DistanceS: 60},
+		{MatchKey: "match:a2", DistanceS: 360},
+	}); err != nil {
+		t.Fatalf("apply a: %v", err)
+	}
+	if err := s.ApplyAmbiguity("b.png", []AmbiguousCandidate{
+		{MatchKey: "match:b1", DistanceS: 720},
+	}); err != nil {
+		t.Fatalf("apply b: %v", err)
+	}
+	got, err := s.LoadAll()
+	if err != nil {
+		t.Fatalf("LoadAll: %v", err)
+	}
+	if len(got.AmbiguousCandidates) != 2 {
+		t.Fatalf("expected 2 filenames in AmbiguousCandidates, got %d", len(got.AmbiguousCandidates))
+	}
+	if len(got.AmbiguousCandidates["a.png"]) != 2 {
+		t.Errorf("a.png: want 2 cands, got %d", len(got.AmbiguousCandidates["a.png"]))
+	}
+	if got.AmbiguousCandidates["b.png"][0].MatchKey != "match:b1" {
+		t.Errorf("b.png: wrong candidate: %+v", got.AmbiguousCandidates["b.png"][0])
+	}
+}
+
+func TestSQLStore_ResolveAmbiguous_UpdatesAllSiblingRows(t *testing.T) {
+	// Two screenshots share the ambiguous sentinel — the SCOREBOARD
+	// that originally minted it, and a SUMMARY captured 30s later that
+	// adopted the same sentinel via the timestamp-window pass.
+	// ResolveAmbiguous must rewrite BOTH match_keys in lockstep so the
+	// match stays whole after the user picks the real attribution.
+	s := openMemory(t)
+	if err := s.UpsertScoreboard(ScoreboardRow{
+		Filename: "sb.png", MatchKey: "ambiguous:sb.png",
+		Map: "rialto", Hero: "lucio",
+		Eliminations: 12, Assists: 8, Deaths: 3,
+	}); err != nil {
+		t.Fatalf("seed scoreboard: %v", err)
+	}
+	if err := s.UpsertSummary(SummaryRow{
+		Filename: "sum.png", MatchKey: "ambiguous:sb.png",
+		Map: "rialto", Hero: "lucio",
+	}); err != nil {
+		t.Fatalf("seed summary: %v", err)
+	}
+	if err := s.ApplyAmbiguity("sb.png", []AmbiguousCandidate{
+		{MatchKey: "match:foo", DistanceS: 720},
+	}); err != nil {
+		t.Fatalf("seed ambig: %v", err)
+	}
+	if err := s.ResolveAmbiguous("ambiguous:sb.png", "match:foo"); err != nil {
+		t.Fatalf("ResolveAmbiguous: %v", err)
+	}
+	got, err := s.LoadAll()
+	if err != nil {
+		t.Fatalf("LoadAll: %v", err)
+	}
+	if got.Scoreboards[0].MatchKey != "match:foo" {
+		t.Errorf("scoreboard match_key not updated: %q", got.Scoreboards[0].MatchKey)
+	}
+	if got.Summaries[0].MatchKey != "match:foo" {
+		t.Errorf("summary match_key not updated: %q", got.Summaries[0].MatchKey)
+	}
+	if _, err := s.LoadAmbiguousCandidatesFor("sb.png"); err == nil {
+		t.Errorf("expected ambiguous row to be deleted")
+	}
+	if n := len(got.AmbiguousCandidates); n != 0 {
+		t.Errorf("expected no candidates after resolve, got %d", n)
+	}
+}
+
+func TestSQLStore_ResolveAmbiguous_MissingReturnsErr(t *testing.T) {
+	s := openMemory(t)
+	if err := s.ResolveAmbiguous("ambiguous:nope.png", "match:foo"); err == nil {
+		t.Errorf("expected ErrAmbiguousNotFound for missing row")
+	}
+}
+
+func TestSQLStore_ResolveAmbiguous_RejectsNonAmbiguousKey(t *testing.T) {
+	s := openMemory(t)
+	if err := s.ResolveAmbiguous("match:foo", "match:bar"); err == nil {
+		t.Errorf("expected error for key missing the ambiguous: prefix")
+	}
+}

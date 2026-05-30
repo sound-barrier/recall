@@ -28,6 +28,9 @@ func (s *SQLStore) LoadAll() (Screenshots, error) {
 	if out.Unknowns, err = s.loadUnknowns(); err != nil {
 		return out, err
 	}
+	if out.AmbiguousCandidates, err = s.loadAllAmbiguousCandidates(); err != nil {
+		return out, err
+	}
 	return out, nil
 }
 
