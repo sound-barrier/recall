@@ -26,8 +26,8 @@ func TestScreenshotsDir_PersistsAcrossAppRestart(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	// User's screenshots dir for the session. Must be a real
-	// readable directory so SetScreenshotsDir's validateScreenshotsDir
-	// accepts it AND Startup's isReadableDir preserves it.
+	// directory so SetScreenshotsDir's validateScreenshotsDir
+	// accepts it AND Startup's pathIsMissingOrNotADir preserves it.
 	dir := t.TempDir()
 
 	// ── Session 1: pick the folder ──────────────────────────────
@@ -101,8 +101,10 @@ func TestStartup_PreservesScreenshotsDirWhenExistsButUnreadable(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	// Create a directory that exists but the process can't enumerate.
-	// Strip read/execute bits so isReadableDir's Readdirnames fails
-	// with EACCES while the dir itself is still present.
+	// Strip read/execute bits so any Readdirnames / Open call would
+	// fail with EACCES — the dir itself is still present, so
+	// pathIsMissingOrNotADir's os.Stat succeeds and the path is
+	// preserved (which is the contract under test).
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o000); err != nil {
 		t.Fatalf("chmod %q to unreadable: %v", dir, err)

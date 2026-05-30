@@ -21,7 +21,6 @@ package app
 import (
 	"context"
 	"errors"
-	"io"
 	"io/fs"
 	"log"
 	"os"
@@ -75,45 +74,12 @@ func New() *App {
 	return &App{}
 }
 
-// isReadableDir reports whether `path` is an existing, readable
-// directory. Used by Startup to gate against stale ScreenshotsDir
-// values surviving across releases / test runs. Three conditions
-// have to hold: the path resolves at all (os.Open), it's a directory
-// (Stat().IsDir()), and we can enumerate its contents
-// (Readdirnames). Anything else — a file, a deleted dir, a path the
-// process lacks read permission on — returns false.
-func isReadableDir(path string) bool {
-	// #nosec G304 -- path is the user-configured ScreenshotsDir
-	// read from their own settings.json. They can already write
-	// anything to that file (it lives in their home dir); the
-	// only access we perform here is "can I list this dir?", and
-	// we discard the result without exposing it elsewhere. The
-	// matching validator at the HTTP boundary
-	// (validateScreenshotsDir / safePathChars) catches malformed
-	// values before they get persisted.
-	f, err := os.Open(path)
-	if err != nil {
-		return false
-	}
-	defer func() { _ = f.Close() }()
-	info, err := f.Stat()
-	if err != nil || !info.IsDir() {
-		return false
-	}
-	// Readdirnames(1) succeeds with no error for a readable dir
-	// containing at least one entry. io.EOF means readable but empty
-	// — also fine. Any other error (permission denied, I/O failure)
-	// disqualifies it.
-	_, err = f.Readdirnames(1)
-	return err == nil || err == io.EOF
-}
-
 // pathIsMissingOrNotADir reports whether `path` is in a state that
 // no longer represents a directory. Only ENOENT-style absence or a
 // "this is a file, not a dir" mismatch count — a path that exists
 // and is a dir but the current process can't enumerate (permission
 // denied, network volume unreachable, TCC sandbox declined) returns
-// false here even though `isReadableDir` would also return false.
+// false here.
 //
 // Used by Startup's validate-and-clear so a transient access issue
 // (e.g. a wails-dev rebuild that re-prompts macOS TCC and the user
