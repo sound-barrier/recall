@@ -481,6 +481,86 @@ main#main-content {
   text-shadow: 0 0 24px var(--accent-glow);
 }
 
+/* HIGH-CONTRAST BRANDMARK
+   --------------------------------------------------------------
+   In standard themes the wordmark sits on the brand-gray plate
+   (#4A4A4A) — the cream `#f5f3ee` letters read at WCAG AAA on
+   that ground. But high-contrast overrides --brand-gray to pure
+   white (so every surface gets a white plate), which collapses
+   the cream-on-white "RE" to ~1.04:1 and makes the lead glyphs
+   invisible (only the gold "CALL" survives at ~3:1, well under
+   AA). The fix inverts the plate to pure black with a white
+   border so the wordmark reads at AAA against a HC surface,
+   and lifts the accent rail / corner stencil / external-link
+   hint to colours that pop against the inverted plate. Every
+   value stays inside the HC mode's strict palette
+   (#000 / #fff / #ffbf4d gold) — no new tokens needed.
+   -------------------------------------------------------------- */
+[data-theme="high-contrast"] .brandmark-tile {
+  background: #000;
+  box-shadow:
+    0 0 0 2px #fff inset,
+    0 0 0 1px rgb(255 255 255 / 30%);
+}
+
+[data-theme="high-contrast"] .brandmark-tile::before {
+  background: var(--accent);
+  width: 4px;
+  box-shadow: none;
+}
+
+[data-theme="high-contrast"] .brandmark-link:hover {
+  /* Brightness lift on a pure-black plate would noop — switch to
+     a luminance shift via a soft white wash inside. */
+  box-shadow:
+    0 0 0 2px #fff inset,
+    0 0 0 1px rgb(255 255 255 / 55%),
+    0 18px 40px -14px rgb(0 0 0 / 65%);
+  filter: none;
+}
+
+[data-theme="high-contrast"] .brandmark-link:focus-visible {
+  box-shadow:
+    0 0 0 2px #fff inset,
+    0 0 0 3px var(--accent),
+    0 14px 36px -14px rgb(0 0 0 / 55%);
+}
+
+[data-theme="high-contrast"] .brand {
+  /* Pure white at AAA on the inverted plate. */
+  color: #fff;
+}
+
+[data-theme="high-contrast"] .brand-accent {
+  /* The boosted gold lands ~10.7:1 on black — HC AAA territory. */
+  color: var(--accent);
+  text-shadow: none;
+}
+
+[data-theme="high-contrast"] .brand-tick {
+  color: var(--accent);
+  text-shadow: none;
+}
+
+[data-theme="high-contrast"] .brand-corner {
+  /* White stencil hatch on the inverted plate, slightly stronger
+     than the dark-mode opacity so the registration mark reads at
+     a glance — HC users get the same incidental detail dark/light
+     users do. */
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgb(255 255 255 / 70%) 0 2px,
+      transparent 2px 4px
+    );
+  opacity: 0.9;
+}
+
+[data-theme="high-contrast"] .brand-extlink {
+  color: var(--accent);
+  text-shadow: none;
+}
+
 .tagline {
   margin-top: 0.7rem;
   font-family: var(--mono);
