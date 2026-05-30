@@ -59,7 +59,7 @@ test.describe('dossier — Top heroes by time', () => {
   })
 
   test('orders by total play time, caps at 3, renders in-bar time labels', async ({ page }) => {
-    const rows = page.locator('.breakdown', { hasText: 'Top heroes' }).locator('li')
+    const rows = page.locator('.breakdown', { hasText: 'Most played heroes' }).locator('li')
     await expect(rows).toHaveCount(3)
 
     await expect(rows.nth(0).locator('.bd-name')).toHaveText('lucio')
@@ -76,13 +76,13 @@ test.describe('dossier — Top heroes by time', () => {
   })
 
   test('share percentage sits beside the bar (not inside it)', async ({ page }) => {
-    const rows = page.locator('.breakdown', { hasText: 'Top heroes' }).locator('li')
+    const rows = page.locator('.breakdown', { hasText: 'Most played heroes' }).locator('li')
     // Total time = 30 + 5 + 3 + 2 = 40 min. Lucio = 75%.
     await expect(rows.nth(0).locator('.bd-stats')).toHaveText('75%')
   })
 
-  test('Top hero KPI tile reflects the time-ranked leader', async ({ page }) => {
-    const kpi = page.locator('.kpi-tile', { hasText: 'Top hero' }).locator('.kpi-value')
+  test('Most played hero KPI tile reflects the time-ranked leader', async ({ page }) => {
+    const kpi = page.locator('.kpi-tile', { hasText: 'Most played hero' }).locator('.kpi-value')
     await expect(kpi).toHaveText('lucio')
   })
 })
