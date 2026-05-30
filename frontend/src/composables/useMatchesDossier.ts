@@ -22,6 +22,17 @@ export interface BreakdownEntry {
   // Per-row winrate as an integer percentage. Draws excluded from
   // the denominator (same convention as the headline winrate).
   winrate: number
+  // Per-row share of the breakdown's full count, as an integer
+  // percentage. With a corpus of three records each on a different
+  // map, each map's `share` is 33; sums across a complete breakdown
+  // approximate 100 (rounding drift is fine — the bar visualization
+  // is the primary consumer). The dossier bar width binds to
+  // `share`, not `winrate`, so the visual reads as "how much of
+  // your play is on this map" rather than "what's the per-map
+  // winrate" — the latter answers a different question and at low
+  // counts produces wildly bimodal 0 / 100 bars that don't
+  // communicate volume.
+  share: number
 }
 
 export function useMatchesDossier(
@@ -74,6 +85,12 @@ export function useMatchesDossier(
       else if (r.data?.result === 'defeat') entry.l++
       counts.set(key, entry)
     }
+    // Share denominator is "total records that contributed a key" —
+    // records without the field (no map / no hero) don't dilute the
+    // percentages of the ones that did. With 100 matches, 95 of
+    // them on parseable maps, an Atlas count of 30 reports as
+    // 30 / 95 ≈ 32 % share, not 30 / 100.
+    const totalForBreakdown = [...counts.values()].reduce((sum, c) => sum + c.total, 0)
     return [...counts.entries()]
       .sort((a, b) => b[1].total - a[1].total)
       .slice(0, limit)
@@ -81,6 +98,7 @@ export function useMatchesDossier(
         key,
         total: c.total,
         winrate: c.w + c.l === 0 ? 0 : Math.round((c.w / (c.w + c.l)) * 100),
+        share: totalForBreakdown === 0 ? 0 : Math.round((c.total / totalForBreakdown) * 100),
       }))
   }
 

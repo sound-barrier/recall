@@ -82,14 +82,28 @@ export function useMatchesGroup(
     }
     const sections: GroupedSection[] = []
     let cur: GroupedSection | null = null
+    // Records without a parseable date collect into a dedicated
+    // "no-date" section that's always appended at the end of the
+    // list, regardless of sort order. Otherwise they end up
+    // wherever their parsed_at timestamp lands them in the dated
+    // stream — which is jarring when a recently-parsed undated
+    // row jumps to the top of "newest first" above genuinely
+    // recent matches.
+    let noDateSection: GroupedSection | null = null
     for (const rec of sortedRecords.value) {
       const { key, label } = bucketFor(rec.data?.date ?? '', groupBy.value)
+      if (key === 'no-date') {
+        if (!noDateSection) noDateSection = { key, header: label, records: [] }
+        noDateSection.records.push(rec)
+        continue
+      }
       if (!cur || cur.key !== key) {
         cur = { key, header: label, records: [] }
         sections.push(cur)
       }
       cur.records.push(rec)
     }
+    if (noDateSection) sections.push(noDateSection)
     return sections
   })
 

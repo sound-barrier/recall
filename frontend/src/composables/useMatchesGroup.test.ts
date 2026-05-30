@@ -167,5 +167,28 @@ describe('useMatchesGroup', () => {
       const undatedSection = groupedSections.value.find((s) => s.key === 'no-date')
       expect(undatedSection?.records.map((r) => r.match_key)).toContain('undated')
     })
+
+    it('always appends the no-date section last under newest-first sort', () => {
+      // Without the fix, a recently-parsed undated row jumps to the
+      // top of the list because sortKey falls back to parsed_at; the
+      // no-date bucket would then render as the FIRST section.
+      const records = ref([
+        rec('2026-05-10', '12:00', 'dated-old'),
+        { ...rec('', '', 'undated'), data: { ...rec('', '', 'undated').data, date: '' } },
+        rec('2027-01-15', '12:00', 'dated-new'),
+      ])
+      const { groupedSections } = useMatchesGroup(records, ref<GroupBy>('day'), ref<SortOrder>('newest'))
+      expect(groupedSections.value[groupedSections.value.length - 1]!.key).toBe('no-date')
+    })
+
+    it('always appends the no-date section last under oldest-first sort', () => {
+      const records = ref([
+        rec('2026-05-10', '12:00', 'dated-old'),
+        { ...rec('', '', 'undated'), data: { ...rec('', '', 'undated').data, date: '' } },
+        rec('2027-01-15', '12:00', 'dated-new'),
+      ])
+      const { groupedSections } = useMatchesGroup(records, ref<GroupBy>('day'), ref<SortOrder>('oldest'))
+      expect(groupedSections.value[groupedSections.value.length - 1]!.key).toBe('no-date')
+    })
   })
 })
