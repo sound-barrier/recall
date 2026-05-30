@@ -544,11 +544,19 @@ async function toggleExpand(id: string) {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
-// W-L-D summary that reflects the *currently filtered* set so the user
+// W-L-D summary that reflects the *currently narrowed* set so the user
 // can see, for instance, "support role on Aatlis: 6W 2L 0D" by setting
-// the matching filters. Using `filteredSorted` (not raw `records`) keeps
-// this synced with the visible cards below.
-const wld = computed(() => tallyWLD(filters.filteredSorted.value))
+// the matching filters. Sources from MatchesView's `narrowedRecords`
+// (NOT the legacy `filters.filteredSorted`) so this stays in sync with
+// the MatchesView dossier's Record KPI tile — the legacy pipeline
+// silently drops undated rows, which would surface the same data as
+// two different W/L/D readings between the masthead and the Record
+// tile when a rank-inferred result has no SUMMARY-supplied date.
+// Honors the same `leaver-exclude-tally` rule the dossier applies.
+const wld = computed(() => tallyWLD(
+  matchesNarrow.narrowedRecords.value,
+  matchesNarrow.leaverHandling.value === 'exclude-tally',
+))
 
 // Per-card "source screenshots" sub-panel expansion. Independent of the
 // main card expand state — most users don't care which screenshots fed
