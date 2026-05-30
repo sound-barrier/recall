@@ -35,6 +35,22 @@ type MatchRecord struct {
 	// GetMatchResults by default — the frontend opts back in via the
 	// FilterRail "Hidden · N" toggle so the user can unhide.
 	Hidden bool `json:"hidden,omitempty"`
+
+	// Ambiguous + Candidates are populated when match_key starts with
+	// "ambiguous:" — the resolver found multiple plausible matches
+	// for the screenshot and is asking the user to pick the right
+	// one. The frontend surfaces these in the Unknown tab's "Needs
+	// your review" subsection.
+	Ambiguous  bool                   `json:"ambiguous,omitempty"`
+	Candidates []AmbiguousAttribution `json:"candidates,omitempty"`
+}
+
+// AmbiguousAttribution is one candidate match the user can pick to
+// resolve the ambiguity. Mirrors db.AmbiguousCandidate but exposes the
+// JSON wire shape so the App package owns the contract.
+type AmbiguousAttribution struct {
+	MatchKey        string `json:"match_key"`
+	DistanceSeconds int    `json:"distance_seconds"`
 }
 
 // MatchAnnotation is the per-match user note returned alongside

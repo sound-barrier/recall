@@ -263,3 +263,60 @@ func TestAggregateMatchKey_InferenceAppliedAtReadTime(t *testing.T) {
 		t.Errorf("expected inferred Result=victory from positive SR change, got %q", rec.Data.Result)
 	}
 }
+
+func TestAggregate_AmbiguousSurfacesCandidates(t *testing.T) {
+	// A scoreboard + summary share the ambiguous sentinel. The
+	// aggregator should fuse them into one MatchRecord, flag it
+	// Ambiguous=true, and attach the candidate list pulled from
+	// snap.AmbiguousCandidates keyed by the filename embedded in
+	// the sentinel.
+	snap := db.Screenshots{
+		Scoreboards: []db.ScoreboardRow{{
+			ID: 1, Filename: "sb.png", MatchKey: "ambiguous:sb.png",
+			Eliminations: 17, Assists: 8, Deaths: 4,
+		}},
+		Summaries: []db.SummaryRow{{
+			ID: 1, Filename: "sum.png", MatchKey: "ambiguous:sb.png",
+			Map: "rialto",
+		}},
+		AmbiguousCandidates: map[string][]db.AmbiguousCandidate{
+			"sb.png": {
+				{MatchKey: "match:2026-05-10T21:29:28", DistanceS: 600},
+				{MatchKey: "match:2026-05-10T22:00:00", DistanceS: 1800},
+			},
+		},
+	}
+	recs := aggregateScreenshots(snap)
+	attachAmbiguity(recs, snap.AmbiguousCandidates)
+	if len(recs) != 1 {
+		t.Fatalf("expected 1 fused record, got %d", len(recs))
+	}
+	r := recs[0]
+	if !r.Ambiguous {
+		t.Errorf("Ambiguous=false; expected true for ambiguous: sentinel")
+	}
+	if len(r.Candidates) != 2 {
+		t.Fatalf("expected 2 candidates, got %d", len(r.Candidates))
+	}
+	if r.Candidates[0].MatchKey != "match:2026-05-10T21:29:28" || r.Candidates[0].DistanceSeconds != 600 {
+		t.Errorf("first candidate wrong: %+v", r.Candidates[0])
+	}
+}
+
+func TestAggregate_NonAmbiguousLeavesFieldsZero(t *testing.T) {
+	// Sanity check — a regular record stays clean.
+	snap := db.Screenshots{
+		Summaries: []db.SummaryRow{{
+			ID: 1, Filename: "s.png", MatchKey: "match:foo",
+			Map: "rialto",
+		}},
+	}
+	recs := aggregateScreenshots(snap)
+	attachAmbiguity(recs, snap.AmbiguousCandidates)
+	if recs[0].Ambiguous {
+		t.Errorf("Ambiguous flipped on a non-ambiguous record")
+	}
+	if recs[0].Candidates != nil {
+		t.Errorf("Candidates set on a non-ambiguous record: %+v", recs[0].Candidates)
+	}
+}
