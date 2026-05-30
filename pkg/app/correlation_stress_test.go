@@ -452,17 +452,19 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────
 // COHORT E — timestamp-window edges.
 //
-// 10 pairs of matches with SUMMARY finish-times 90 seconds apart
-// (inside the 2-minute mergeWindow). Each match has its own EAD so
-// EAD-bridge is OFF; PERSONAL screenshots have only `hero` and
-// adopt via timestamp window only.
+// 8 pairs of matches: two SUMMARY anchors 90 seconds apart with a
+// PERSONAL captured exactly between them. No SCOREBOARDs — they'd
+// pull PERSONAL toward whichever SUMMARY they neighbor and mask the
+// genuine equidistance bug. PERSONAL is 45 s from each SUMMARY,
+// hero matches both via the multi-hero set so neither side hard-
+// conflicts.
 //
-// We position a PERSONAL exactly between the two SUMMARY anchors;
-// it's *equidistant* but closest-in-time uses `d := cand.ts.Sub(e.c.ts)`
-// after absolute-valuing — first existing row wins on a tie. The
-// "first" row depends on insertion order. The cohort emits SUMMARY
-// X before SUMMARY Y so X wins the tie. That's not WRONG per se;
-// it's just arbitrary. Pin the behavior, no bugNote.
+// PR #106 surfaces this as ambiguous via the new tieToleranceWindow
+// path in matchByTimestampWindow: two distinct match_keys tied
+// within 5 s of each other → mint "ambiguous:<filename>" + a
+// candidate list. The user resolves via the Unknown tab's
+// "Needs your review" subsection (same UI PR #104 introduced for
+// EAD-bridge ambiguity).
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_TimestampWindowEdge(t *testing.T) {
@@ -476,63 +478,56 @@ func TestCorrelation_Stress_TimestampWindowEdge(t *testing.T) {
 		mapNameX := pickAt(owMaps, i)
 		mapNameY := pickAt(owMaps, i+5) // different so EAD bridge can't fire on map
 		heroX := pickAt(owHeroes, i)
-		heroY := heroX // SAME hero so PERSONAL adoption isn't blocked by hero conflict
+		heroY := heroX // SAME hero so PERSONAL doesn't hit hero conflict
 
-		// X SUMMARY + SCOREBOARD with EAD signature 1.
+		// PERSONAL's filename is what the ambiguous sentinel embeds.
+		personalFilename := filenameForTS(midPersonal, fmt.Sprintf("E%02dp", i), "personal")
+		ambiguousKey := "ambiguous:" + personalFilename
+
 		specs = append(specs, matchSpec{
-			startTime:    x,
-			mapName:      mapNameX,
-			mode:         "competitive",
-			primaryHero:  heroX,
-			eliminations: 14 + i, assists: 6, deaths: 5,
-			damage: 5000, result: "victory",
+			startTime:   x,
+			mapName:     mapNameX,
+			mode:        "competitive",
+			primaryHero: heroX,
+			result:      "victory",
 			date:        x.Format("01/02/2006"),
 			finishedAt:  x.Format("15:04"),
-			emitSummary: true, emitScoreboard: true,
-			useDefaultOffsets: true,
-			suffix:            fmt.Sprintf("E%02dx", i),
-			expectedKey:       matchKeyFor(x),
+			emitSummary: true,
+			suffix:      fmt.Sprintf("E%02dx", i),
+			expectedKey: matchKeyFor(x),
 		})
 
-		// Y SUMMARY + SCOREBOARD with EAD signature 2 — different so
-		// no EAD bridge across X/Y. Different map for the same
-		// reason on the SCOREBOARD bridge path.
 		specs = append(specs, matchSpec{
-			startTime:    y,
-			mapName:      mapNameY,
-			mode:         "competitive",
-			primaryHero:  heroY,
-			eliminations: 22, assists: 11, deaths: 8,
-			damage: 6500, result: "victory",
+			startTime:   y,
+			mapName:     mapNameY,
+			mode:        "competitive",
+			primaryHero: heroY,
+			result:      "victory",
 			date:        y.Format("01/02/2006"),
 			finishedAt:  y.Format("15:04"),
-			emitSummary: true, emitScoreboard: true,
-			useDefaultOffsets: true,
-			suffix:            fmt.Sprintf("E%02dy", i),
-			expectedKey:       matchKeyFor(y),
+			emitSummary: true,
+			suffix:      fmt.Sprintf("E%02dy", i),
+			expectedKey: matchKeyFor(y),
 		})
 
-		// PERSONAL between them — closer to X by 45s vs Y at 45s,
-		// but X SUMMARY landed first in insertion order so the tie
-		// resolves to X. (Strictly arithmetic: midPersonal - x =
-		// 45s; y - midPersonal = 45s. Equal. First-existing wins.)
+		// PERSONAL midway — tied 45 s from each SUMMARY, both within
+		// the 5 s tieToleranceWindow → ambiguous sentinel.
 		specs = append(specs, matchSpec{
 			startTime:      midPersonal,
 			primaryHero:    heroX,
 			emitPersonal:   true,
 			personalOffset: 0,
 			suffix:         fmt.Sprintf("E%02dp", i),
-			expectedKey:    matchKeyFor(x),
-			bugNote:        "Equidistant PERSONAL between two summaries is arbitrarily attached to the first-inserted one (X); on a real session this could go to Y instead and there's no way to tell which is right",
+			expectedKey:    ambiguousKey,
 		})
 	}
 
-	fixtures := make([]fixture, 0, 40)
+	fixtures := make([]fixture, 0, 24)
 	for _, s := range specs {
 		fixtures = append(fixtures, buildFixtures(s)...)
 	}
-	// 8 pairs × (X:2 + Y:2 + P:1) = 40.
-	if got, want := len(fixtures), 40; got != want {
+	// 8 pairs × (X:1 + Y:1 + P:1) = 24.
+	if got, want := len(fixtures), 24; got != want {
 		t.Fatalf("cohort E fixture count: got %d, want %d", got, want)
 	}
 	runStressCohort(t, "E-timestamp-window-edge", fixtures)
