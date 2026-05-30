@@ -73,6 +73,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/{matchKey}/resolution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Resolve an ambiguous-attribution screenshot
+         * @description When the resolver can't pin a screenshot to a single match
+         *     (identical EAD signature within the 5-30 min ambiguous window,
+         *     or multiple candidates within 30 min), the parent row's
+         *     `match_key` is set to `ambiguous:<filename>` and the candidate
+         *     list is recorded in `ambiguous_candidates`. Other screenshots
+         *     captured within `mergeWindow` of that one adopt the same
+         *     sentinel via the timestamp-window pass — so several rows can
+         *     share one ambiguous `match_key`.
+         *
+         *     This endpoint rewrites every parent row carrying the given
+         *     ambiguous key to `resolved_to`. `matchKey` must start with
+         *     `ambiguous:` (anything else returns 400). `resolved_to` must
+         *     either be one of the recorded candidates OR a freshly-minted
+         *     `match:<...>` key (the "Treat as new match" escape hatch in
+         *     the Unknown tab).
+         *
+         *     On success the ambiguous row + its candidates cascade-delete
+         *     and a `match-updated` SSE event fires for the resolved key.
+         */
+        put: operations["ResolveAmbiguousMatch"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/matches/{matchKey}/annotation": {
         parameters: {
             query?: never;
@@ -746,6 +791,39 @@ export interface components {
              *     are untouched — only the aggregator hides the surface.
              */
             hidden?: boolean;
+            /**
+             * @description True iff the resolver couldn't pin this screenshot to a
+             *     single match (EAD signature match in the 5-30 min
+             *     ambiguous window, or multiple candidates inside 30 min).
+             *     The `match_key` carries the `ambiguous:<filename>`
+             *     sentinel and the `candidates` array lists the possible
+             *     matches the user can pick from in the Unknown tab.
+             */
+            ambiguous?: boolean;
+            /**
+             * @description Candidate matches this ambiguous screenshot could belong
+             *     to. Only present when `ambiguous=true`. Sorted by
+             *     `distance_seconds` ascending.
+             */
+            candidates?: components["schemas"]["AmbiguousCandidate"][];
+        };
+        /**
+         * @description One candidate match an ambiguous screenshot could belong to.
+         *     Populated by the resolver when EAD-bridge ambiguity is
+         *     detected; surfaced to the user in the Unknown tab.
+         */
+        AmbiguousCandidate: {
+            /**
+             * @description The candidate match's `match_key`.
+             * @example match:2026-05-10T21:29:28
+             */
+            match_key: string;
+            /**
+             * @description |Δt| between the ambiguous screenshot's filename timestamp
+             *     and the candidate match's anchor timestamp, in seconds.
+             * @example 720
+             */
+            distance_seconds: number;
         };
         /**
          * @description User-curated per-match metadata. Up to five optional fields —
@@ -906,6 +984,15 @@ export interface components {
                 "text/plain": string;
             };
         };
+        /** @description The requested resource was not found. */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "text/plain": string;
+            };
+        };
         /** @description Unhandled server-side error. */
         InternalError: {
             headers: {
@@ -1003,6 +1090,46 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    ResolveAmbiguousMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description The match the user picked. Must be one of the
+                     *     recorded candidates or a `match:<...>` key.
+                     * @example match:2026-05-10T21:29:28
+                     */
+                    resolved_to: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Resolution applied. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
         };
     };

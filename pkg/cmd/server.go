@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"recall/pkg/app"
+	"recall/pkg/db"
 )
 
 // RunServer initializes the App without the Wails GUI and serves the
@@ -139,6 +140,41 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 			err = a.UnhideMatch(matchKey)
 		}
 		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	// Resolve an ambiguous-attribution screenshot by attaching every
+	// parent row carrying the ambiguous: sentinel to the user's chosen
+	// match. resolved_to must be one of the recorded candidates OR a
+	// freshly-minted "match:<ts>" the user wants to attribute to a
+	// new standalone match (escape hatch when none of the candidates
+	// is right).
+	apiMux.HandleFunc("PUT /api/v1/matches/{matchKey}/resolution", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("matchKey")
+		if matchKey == "" {
+			http.Error(w, "match_key required in URL", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			ResolvedTo string `json:"resolved_to"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if err := a.ResolveAmbiguousMatch(matchKey, body.ResolvedTo); err != nil {
+			switch {
+			case errors.Is(err, app.ErrInvalidAmbiguousKey),
+				errors.Is(err, app.ErrInvalidResolution):
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			case errors.Is(err, db.ErrAmbiguousNotFound):
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
