@@ -53,6 +53,15 @@ const emit = defineEmits<{
   // background container and ParseStatusBar so screen readers + Tab
   // keyboard nav don't bleed into the dimmed page.
   'narrow-open': [open: boolean]
+  // Bulk-hide pipe — emitted once with the full ticked-key list when
+  // the user clicks Hide on the bulk action bar. App.vue does
+  // Promise.all of SetMatchVisibility(true) + one reload.
+  'hide-matches': [matchKeys: string[]]
+  // Drawer Unhide — flips a single hidden match back to visible.
+  'unhide-match': [matchKey: string]
+  // Drawer "Delete forever" — hard-deletes from the database after
+  // the user confirms the two-step affordance.
+  'hard-delete-match': [matchKey: string]
 }>()
 
 // ─── Narrow state via the parent-supplied composable bundle ──
@@ -78,6 +87,57 @@ const {
 const narrowOpen = ref(false)
 const sortOrder = ref<'newest' | 'oldest'>('newest')
 const groupBy   = ref<'none' | 'day' | 'week' | 'month' | 'year'>('day')
+
+// ─── Bulk-select state ──────────────────────────────────────
+// `bulkSelect` toggles the mode; while true, .leaf-row clicks
+// toggle membership in `selectedKeys` instead of opening the detail
+// panel. Leaving the mode (Cancel or successful Hide) clears the set.
+const bulkSelect = ref(false)
+const selectedKeys = ref<Set<string>>(new Set())
+
+function toggleBulkSelect() {
+  bulkSelect.value = !bulkSelect.value
+  if (!bulkSelect.value) selectedKeys.value = new Set()
+}
+function toggleSelected(key: string) {
+  const next = new Set(selectedKeys.value)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
+  selectedKeys.value = next
+}
+function cancelBulk() {
+  bulkSelect.value = false
+  selectedKeys.value = new Set()
+}
+function hideSelected() {
+  const keys = [...selectedKeys.value]
+  if (keys.length === 0) return
+  cancelBulk()
+  emit('hide-matches', keys)
+}
+
+// ─── Hidden drawer state ────────────────────────────────────
+// `archiveOpen` toggles the drawer's expanded panel. Hidden records
+// come straight off `props.records` (the parent gives the
+// hidden flag on every row); the dossier / narrow / timeline all
+// consume `narrowedRecords` which already drops them.
+const archiveOpen = ref(false)
+const hiddenRecords = computed(() => props.records.filter((r) => r.hidden))
+// The visible-only set fed to the campaign log (MatchTimelineHeader)
+// so the heatmap + sparkline both drop hidden matches in lockstep
+// with the dossier.
+const visibleRecords = computed(() => props.records.filter((r) => !r.hidden))
+const archiveConfirmKey = ref<string | null>(null)
+function confirmHardDelete(key: string) {
+  archiveConfirmKey.value = key
+}
+function cancelHardDelete() {
+  archiveConfirmKey.value = null
+}
+function commitHardDelete(key: string) {
+  archiveConfirmKey.value = null
+  emit('hard-delete-match', key)
+}
 
 // Combobox open state — which one (if any) currently shows its
 // dropdown. Only one open at a time. Typeahead text is owned by
@@ -774,9 +834,13 @@ onBeforeUnmount(() => {
     </section>
 
     <!-- ─── CAMPAIGN LOG (heatmap + sparkline) ──────────────── -->
+    <!-- `visibleRecords` strips hidden matches so the heatmap and
+         sparkline reconcile with the dossier / scrapeReader — every
+         data surface honours the user's "this match doesn't count"
+         signal in lockstep. -->
     <MatchTimelineHeader
-      v-if="props.records.length > 0"
-      :records="props.records"
+      v-if="visibleRecords.length > 0"
+      :records="visibleRecords"
       :filter-from="customFrom"
       :filter-to="customTo"
       @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
@@ -826,8 +890,40 @@ onBeforeUnmount(() => {
               {{ opt === 'none' ? '—' : opt[0]!.toUpperCase() }}
             </button>
           </fieldset>
+          <button
+            class="bulk-select-toggle"
+            :class="{ engaged: bulkSelect }"
+            :aria-pressed="bulkSelect ? 'true' : 'false'"
+            type="button"
+            @click="toggleBulkSelect"
+          >
+            <span class="bst-glyph" aria-hidden="true">{{ bulkSelect ? '▣' : '▢' }}</span>
+            <span class="bst-label">{{ bulkSelect ? 'Selecting' : 'Select' }}</span>
+          </button>
         </div>
       </header>
+
+      <!-- Bulk action bar — appears below the header while at least
+           one row is ticked. Inline (not floating) so the layout
+           stays predictable across themes; sticky-top within the
+           section so it follows the user down the leaves list. -->
+      <div
+        v-if="bulkSelect && selectedKeys.size > 0"
+        class="bulk-action-bar"
+        role="region"
+        aria-label="Bulk action bar"
+      >
+        <span class="bab-glyph" aria-hidden="true">▣</span>
+        <span class="bab-count">{{ selectedKeys.size }} selected</span>
+        <span class="bab-spacer" aria-hidden="true" />
+        <button type="button" class="bulk-hide" @click="hideSelected">
+          <span class="bab-btn-glyph" aria-hidden="true">⌀</span>
+          Hide
+        </button>
+        <button type="button" class="bulk-cancel" @click="cancelBulk">
+          Cancel
+        </button>
+      </div>
 
       <ul v-if="sortedRecords.length" class="leaves-list" role="list">
         <template v-for="section in groupedSections" :key="section.key">
@@ -840,9 +936,24 @@ onBeforeUnmount(() => {
             v-for="rec in section.records"
             :key="rec.match_key"
             class="leaf-row"
-            :class="`result-${rec.data?.result || 'unknown'}`"
-            @click="emit('open-match', rec.match_key)"
+            :class="[
+              `result-${rec.data?.result || 'unknown'}`,
+              { 'is-bulk-select': bulkSelect, 'is-ticked': selectedKeys.has(rec.match_key) },
+            ]"
+            @click="bulkSelect ? toggleSelected(rec.match_key) : emit('open-match', rec.match_key)"
           >
+            <!-- 0. Checkbox slot — only rendered in bulk-select mode
+                 so the row geometry stays put when the mode is off. -->
+            <span
+              v-if="bulkSelect"
+              class="leaf-checkbox"
+              role="checkbox"
+              :aria-checked="selectedKeys.has(rec.match_key) ? 'true' : 'false'"
+              :aria-label="`Select match ${rec.match_key}`"
+            >
+              <span class="leaf-checkbox-glyph" aria-hidden="true">{{ selectedKeys.has(rec.match_key) ? '✓' : '' }}</span>
+            </span>
+
             <!-- 1. Result-tinted color strip — instant scan target. -->
             <span class="leaf-strip" aria-hidden="true" />
 
@@ -898,6 +1009,104 @@ onBeforeUnmount(() => {
           Clear narrowing
         </button>
       </p>
+    </section>
+
+    <!-- ─── HIDDEN DRAWER (Archive) ──────────────────────────
+         Collapsed by default. Surfaces a count chip in the header.
+         Body lists every record whose `hidden` flag is set on the
+         parent props.records (which the dossier / heatmap /
+         sparkline / scrapeReader all already drop). Each row offers
+         Unhide (returns it to the active set) and Delete forever
+         (two-step affordance; second click hard-deletes from DB). -->
+    <section
+      v-if="hiddenRecords.length > 0 || archiveOpen"
+      class="archive"
+      aria-label="Hidden matches archive"
+    >
+      <button
+        type="button"
+        class="archive-toggle"
+        :aria-expanded="archiveOpen ? 'true' : 'false'"
+        aria-controls="archive-panel"
+        @click="archiveOpen = !archiveOpen"
+      >
+        <span class="archive-eyebrow">Archive</span>
+        <span class="archive-title">
+          <span class="archive-count">{{ hiddenRecords.length }}</span>
+          <span class="archive-noun">hidden {{ hiddenRecords.length === 1 ? 'match' : 'matches' }}</span>
+        </span>
+        <span class="archive-chev" :class="{ open: archiveOpen }" aria-hidden="true">▾</span>
+      </button>
+
+      <div v-if="archiveOpen" id="archive-panel" class="archive-panel">
+        <p v-if="hiddenRecords.length === 0" class="archive-empty">
+          Archive is empty.
+        </p>
+        <ul v-else class="archive-list" role="list">
+          <li
+            v-for="rec in hiddenRecords"
+            :key="rec.match_key"
+            class="archive-row"
+            :class="`result-${rec.data?.result || 'unknown'}`"
+          >
+            <span class="archive-row-strip" aria-hidden="true" />
+            <div class="archive-row-when">
+              <span class="archive-row-date">{{ formatRowDate(rec) }}</span>
+              <span class="archive-row-time">{{ formatTime(rec) }}</span>
+            </div>
+            <div class="archive-row-map">
+              <span class="archive-row-map-name">{{ rec.data?.map || 'unknown' }}</span>
+              <span v-if="rec.data?.mode" class="archive-row-mode">{{ rec.data.mode }}</span>
+            </div>
+            <div class="archive-row-hero">
+              <span class="archive-row-hero-name">{{ formatHeroes(rec) }}</span>
+              <span v-if="rec.data?.role" class="archive-row-role">{{ rec.data.role }}</span>
+            </div>
+            <div class="archive-row-stats">
+              <span class="archive-row-stat">{{ rec.data?.eliminations ?? '—' }}</span>
+              <span class="archive-row-sep" aria-hidden="true">/</span>
+              <span class="archive-row-stat">{{ rec.data?.assists ?? '—' }}</span>
+              <span class="archive-row-sep" aria-hidden="true">/</span>
+              <span class="archive-row-stat archive-row-stat-deaths">{{ rec.data?.deaths ?? '—' }}</span>
+            </div>
+            <div class="archive-row-actions">
+              <template v-if="archiveConfirmKey !== rec.match_key">
+                <button
+                  type="button"
+                  class="archive-unhide"
+                  @click="emit('unhide-match', rec.match_key)"
+                >
+                  Unhide
+                </button>
+                <button
+                  type="button"
+                  class="archive-delete"
+                  @click="confirmHardDelete(rec.match_key)"
+                >
+                  Delete forever
+                </button>
+              </template>
+              <template v-else>
+                <span class="archive-confirm-pre" aria-hidden="true">⚠</span>
+                <button
+                  type="button"
+                  class="archive-confirm"
+                  @click="commitHardDelete(rec.match_key)"
+                >
+                  Confirm
+                </button>
+                <button
+                  type="button"
+                  class="archive-cancel"
+                  @click="cancelHardDelete"
+                >
+                  Cancel
+                </button>
+              </template>
+            </div>
+          </li>
+        </ul>
+      </div>
     </section>
   </section>
 </template>
@@ -2076,4 +2285,384 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 .leaves-empty-btn:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+/* ─── Bulk-select mode ─────────────────────────────────────── */
+
+.bulk-select-toggle {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 2px;
+  padding: 0.35rem 0.7rem 0.32rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+  align-self: end;
+  line-height: 1;
+}
+.bulk-select-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+.bulk-select-toggle.engaged {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.bst-glyph { font-size: 0.85rem; line-height: 1; }
+
+.bulk-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
+  border-radius: 2px;
+  position: sticky;
+  top: 0.4rem;
+  z-index: 4;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.bab-glyph { color: var(--accent); font-size: 0.95rem; line-height: 1; }
+
+.bab-count {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text);
+}
+.bab-spacer { flex: 1 1 auto; }
+
+.bulk-action-bar button {
+  appearance: none;
+  border-radius: 2px;
+  padding: 0.32rem 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  line-height: 1;
+}
+
+.bulk-action-bar .bulk-hide {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--primary-text-on-accent, #111);
+}
+
+.bulk-action-bar .bulk-hide:hover {
+  filter: brightness(1.08);
+}
+
+.bulk-action-bar .bulk-cancel {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.bulk-action-bar .bulk-cancel:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+.bab-btn-glyph { font-size: 0.85rem; }
+
+/* Ticked row treatment + checkbox cell. */
+.leaf-row.is-bulk-select { cursor: pointer; }
+
+.leaf-row.is-bulk-select .leaf-when,
+.leaf-row.is-bulk-select .leaf-map-block,
+.leaf-row.is-bulk-select .leaf-hero-block,
+.leaf-row.is-bulk-select .leaf-stats-block,
+.leaf-row.is-bulk-select .leaf-meta-block { pointer-events: none; }
+
+.leaf-row.is-ticked {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  outline: 1px solid var(--accent);
+}
+
+.leaf-checkbox {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1.5px solid var(--border);
+  border-radius: 2px;
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-right: 0.1rem;
+  transition: background-color 80ms ease, border-color 80ms ease;
+}
+
+.leaf-row.is-ticked .leaf-checkbox {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.leaf-checkbox-glyph {
+  font-family: var(--mono);
+  font-weight: 800;
+  font-size: 0.75rem;
+  color: var(--primary-text-on-accent, #111);
+  line-height: 1;
+}
+
+/* ─── Hidden drawer (Archive) ──────────────────────────────── */
+
+.archive {
+  margin-top: 0.4rem;
+  border: 1px dashed color-mix(in srgb, var(--border) 80%, transparent);
+  background:
+    repeating-linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--text-dim) 3%, transparent) 0,
+      color-mix(in srgb, var(--text-dim) 3%, transparent) 8px,
+      transparent 8px,
+      transparent 16px
+    ),
+    var(--surface);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.archive-toggle {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  padding: 0.6rem 0.85rem;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.archive-toggle:hover { background: color-mix(in srgb, var(--text-dim) 5%, transparent); }
+
+.archive-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 700;
+}
+.archive-title { display: inline-flex; align-items: baseline; gap: 0.5rem; }
+
+.archive-count {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: var(--text);
+  line-height: 1;
+}
+
+.archive-noun {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.archive-chev {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  transform: rotate(-90deg);
+  transition: transform 120ms ease;
+}
+.archive-chev.open { transform: rotate(0deg); }
+
+.archive-panel {
+  border-top: 1px dashed color-mix(in srgb, var(--border) 80%, transparent);
+  padding: 0.55rem 0.7rem 0.7rem;
+}
+
+.archive-empty {
+  margin: 0;
+  text-align: center;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  padding: 0.7rem 0;
+}
+
+.archive-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.archive-row {
+  display: grid;
+  grid-template-columns:
+    6px           /* result strip */
+    minmax(64px, auto) /* date/time */
+    minmax(140px, 1fr) /* map */
+    minmax(140px, 1fr) /* hero */
+    minmax(110px, auto) /* stats */
+    auto;         /* actions */
+
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+
+  /* dimmed treatment — archived feel without losing legibility */
+  opacity: 0.78;
+}
+.archive-row:hover { opacity: 0.96; }
+
+.archive-row-strip {
+  width: 4px;
+  height: 1.6rem;
+  background: var(--text-faint);
+  border-radius: 1px;
+}
+.archive-row.result-victory .archive-row-strip { background: var(--win); }
+.archive-row.result-defeat  .archive-row-strip { background: var(--loss); }
+.archive-row.result-draw    .archive-row-strip { background: var(--accent); }
+
+.archive-row-when {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-dim);
+}
+.archive-row-date { color: var(--text); font-weight: 700; letter-spacing: 0.04em; }
+.archive-row-time { color: var(--text-faint); }
+.archive-row-map { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; }
+
+.archive-row-map-name {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archive-row-mode {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.archive-row-hero { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; }
+
+.archive-row-hero-name {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-transform: uppercase;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.archive-row-role {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.archive-row-stats {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 700;
+  color: var(--text);
+}
+.archive-row-stat { font-size: 0.95rem; letter-spacing: 0.02em; }
+.archive-row-stat-deaths { color: var(--text-dim); }
+.archive-row-sep { color: var(--text-faint); font-size: 0.8rem; }
+
+.archive-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.archive-row-actions button {
+  appearance: none;
+  border-radius: 2px;
+  padding: 0.3rem 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.archive-unhide {
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+}
+.archive-unhide:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+.archive-delete {
+  border: 1px solid color-mix(in srgb, var(--loss) 70%, var(--border));
+  background: transparent;
+  color: var(--loss);
+}
+.archive-delete:hover { background: color-mix(in srgb, var(--loss) 12%, transparent); }
+
+.archive-confirm-pre {
+  color: var(--loss);
+  font-size: 0.95rem;
+  line-height: 1;
+  padding-right: 0.1rem;
+}
+
+.archive-confirm {
+  border: 1px solid var(--loss);
+  background: var(--loss);
+  color: var(--primary-text-on-accent, #111);
+}
+.archive-confirm:hover { filter: brightness(1.06); }
+
+.archive-cancel {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+}
+.archive-cancel:hover { color: var(--text); border-color: var(--text); }
 </style>

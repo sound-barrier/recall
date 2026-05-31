@@ -281,6 +281,18 @@ export function SetMatchAnnotation(matchKey: string, input: MatchAnnotationInput
   }).then(() => undefined)
 }
 
+// Hard-delete a single match. Every parent row + annotation + the
+// hidden_matches flag for matchKey is wiped from the database — the
+// screenshot files on disk are untouched, so a re-parse will
+// rediscover them. Idempotent: unknown keys resolve quietly.
+// Surfaced by the Hidden drawer's "Delete forever" affordance after
+// the user has already moved the match to the archive.
+export const HardDeleteMatch = _dualVoid<[matchKey: string]>(
+  'HardDeleteMatch',
+  'DELETE',
+  (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}`,
+)
+
 // Soft-delete a match. Reversible: pass hidden=false to restore.
 // Both directions are idempotent — repeated identical calls succeed.
 // Wails-side this dispatches to HideMatch / UnhideMatch (two
