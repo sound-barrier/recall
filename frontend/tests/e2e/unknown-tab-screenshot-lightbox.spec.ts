@@ -97,6 +97,12 @@ test.describe('Unknown tab — screenshot preview click → lightbox', () => {
     await expect(lightbox).toBeVisible()
     await expect(lightbox.locator('img.lightbox-img')).toBeVisible()
 
+    // Single-source-file record → both arrow buttons render disabled
+    // and the position caption suppresses (no "1 of 1" noise).
+    await expect(lightbox.locator('.lightbox-prev')).toBeDisabled()
+    await expect(lightbox.locator('.lightbox-next')).toBeDisabled()
+    await expect(lightbox.locator('.lightbox-count')).toHaveCount(0)
+
     // Esc dismisses the lightbox; the Unknown tab stays active.
     await page.keyboard.press('Escape')
     await page.waitForTimeout(300)

@@ -50,7 +50,7 @@ const emit = defineEmits<{
   'toggle-sources': []
   'toggle-preview': [filename: string]
   'preview-error':  [filename: string]
-  'open-lightbox':  [filename: string]
+  'open-lightbox':  [filename: string, files: readonly string[]]
   'filter-toggle':  [field: string, value: string]
   'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
   'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
@@ -195,10 +195,12 @@ function onKeydown(e: KeyboardEvent) {
   switch (e.key) {
     case 'ArrowRight':
     case 'j':
+    case 'l':
       if (props.canNext) { e.preventDefault(); emit('next') }
       return
     case 'ArrowLeft':
     case 'k':
+    case 'h':
       if (props.canPrev) { e.preventDefault(); emit('prev') }
       return
     case 'ArrowDown':
@@ -345,7 +347,7 @@ function onBackdropClick(e: MouseEvent) {
             @toggle-sources="emit('toggle-sources')"
             @toggle-preview="(f: string) => emit('toggle-preview', f)"
             @preview-error="(f: string) => emit('preview-error', f)"
-            @open-lightbox="(f: string) => emit('open-lightbox', f)"
+            @open-lightbox="(f: string, files: readonly string[]) => emit('open-lightbox', f, files)"
             @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"
             @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
             @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"

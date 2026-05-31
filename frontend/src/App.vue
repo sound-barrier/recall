@@ -642,15 +642,40 @@ function onPreviewError(filename: string) {
 // through MatchDetailPanel); closed via × / Esc / backdrop click
 // inside MatchScreenshotLightbox itself. Lives at App.vue root so
 // the modal stacks above the detail panel.
+//
+// `lightboxFiles` carries a snapshot of the owning record's
+// `source_files` at the time the user opened the lightbox — the
+// lightbox uses it for prev/next navigation (←/→ + h/l + < / >
+// buttons) without having to reach back into the Vue tree for the
+// owning record. Snapshotting protects against the underlying
+// record changing mid-view (e.g. an SSE-driven reload of the matches
+// list) — the user keeps walking the set they actually opened.
 const lightboxFilename = ref<string | null>(null)
+const lightboxFiles    = ref<string[]>([])
 const lightboxSrc = computed(() =>
   lightboxFilename.value ? screenshotURL(lightboxFilename.value) : null,
 )
-function openLightbox(filename: string) {
+const lightboxIndex = computed(() =>
+  lightboxFilename.value
+    ? lightboxFiles.value.indexOf(lightboxFilename.value)
+    : -1,
+)
+function openLightbox(filename: string, files: readonly string[] = [filename]) {
   lightboxFilename.value = filename
+  lightboxFiles.value = files.length > 0 ? [...files] : [filename]
 }
 function closeLightbox() {
   lightboxFilename.value = null
+  lightboxFiles.value = []
+}
+function lightboxPrev() {
+  const i = lightboxIndex.value
+  if (i > 0) lightboxFilename.value = lightboxFiles.value[i - 1]!
+}
+function lightboxNext() {
+  const i = lightboxIndex.value
+  if (i >= 0 && i < lightboxFiles.value.length - 1)
+    lightboxFilename.value = lightboxFiles.value[i + 1]!
 }
 
 // Per-card UI state for UnknownMapsView. The Unknown tab's expand/
@@ -1237,11 +1262,17 @@ useEventStream({
     />
 
     <!-- Fullscreen screenshot lightbox — stacks above the detail
-         panel via z-index. Esc / × / backdrop click close it. -->
+         panel via z-index. Esc / × / backdrop click close it.
+         < / > buttons + ← / → / h / l keys navigate between the
+         OWNING match's source_files (snapshotted on open). -->
     <MatchScreenshotLightbox
       :filename="lightboxFilename"
       :src="lightboxSrc"
+      :files="lightboxFiles"
+      :index="lightboxIndex"
       @close="closeLightbox"
+      @prev="lightboxPrev"
+      @next="lightboxNext"
     />
 
     <!-- Unsupported Tesseract version confirmation modal -->

@@ -31,8 +31,11 @@ const emit = defineEmits<{
   // Forwarded to App.vue's openLightbox handler — fires when the
   // user clicks an inline source-preview thumbnail. Parity with the
   // MatchDetailPanel side-panel sources block: click filename →
-  // thumbnail toggle, click thumbnail → fullscreen lightbox.
-  'open-lightbox':      [filename: string]
+  // thumbnail toggle, click thumbnail → fullscreen lightbox. The
+  // second arg is the owning record's source_files so the lightbox
+  // can navigate between the record's screenshots without reaching
+  // back into the Vue tree.
+  'open-lightbox':      [filename: string, files: readonly string[]]
 }>()
 
 const ambiguousList = computed(() => props.ambiguousRecords)
@@ -147,7 +150,7 @@ function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
                     :alt="f"
                     class="source-preview"
                     title="Click to view fullscreen"
-                    @click="emit('open-lightbox', f)"
+                    @click="emit('open-lightbox', f, rec.source_files ?? [])"
                     @error="cardState.onPreviewError(f)"
                   >
                   <div v-if="cardState.previewOpen.value[f] && cardState.previewError.value[f]" class="source-preview-error">
@@ -289,7 +292,7 @@ function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
                   :alt="f"
                   class="source-preview"
                   title="Click to view fullscreen"
-                  @click="emit('open-lightbox', f)"
+                  @click="emit('open-lightbox', f, rec.source_files ?? [])"
                   @error="cardState.onPreviewError(f)"
                 >
                 <div v-if="cardState.previewOpen.value[f] && cardState.previewError.value[f]" class="source-preview-error">
