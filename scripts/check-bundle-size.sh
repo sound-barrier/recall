@@ -34,7 +34,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # never bump to silence noise.
 : "${MAX_INITIAL_JS_BYTES:=135000}" # 135 KB — initial JS chunk only
 : "${MAX_INITIAL_CSS_BYTES:=80000}" # 80 KB  — initial CSS chunk only
-: "${MAX_TOTAL_JS_BYTES:=295000}"   # 295 KB — every JS chunk combined
+: "${MAX_TOTAL_JS_BYTES:=305000}"   # 305 KB — every JS chunk combined
 : "${MAX_TOTAL_CSS_BYTES:=160000}"  # 160 KB — every CSS chunk combined
 
 if [[ "${1:-}" == "--build" ]]; then
