@@ -56,6 +56,16 @@ const GAP    = 22  // gap between target and callout
 const pos = ref({ left: 0, top: 0, placement: 'bottom' as CalloutPlacement })
 const calloutEl = ref<HTMLDivElement | null>(null)
 
+// Drag state. Once the user grabs the header and moves the callout,
+// `userMoved` flips true and auto-placement stops updating `pos` —
+// the callout stays exactly where the user dropped it for the rest
+// of the step. The parent re-keys this component on every step
+// change, so dragging resets naturally between steps.
+const userMoved = ref(false)
+const dragging = ref(false)
+let dragOffsetX = 0
+let dragOffsetY = 0
+
 function getTargetRect(): { x: number; y: number; w: number; h: number } | null {
   if (!props.target) return null
   let el: HTMLElement | null = null
@@ -63,6 +73,13 @@ function getTargetRect(): { x: number; y: number; w: number; h: number } | null 
   if (!el) return null
   const r = el.getBoundingClientRect()
   return { x: r.left, y: r.top, w: r.width, h: r.height }
+}
+
+function rectsOverlap(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+): boolean {
+  return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y)
 }
 
 function calloutHeight(): number {
@@ -90,33 +107,42 @@ function computePos(): { left: number; top: number; placement: CalloutPlacement 
   const tt = t
 
   // Helper: produce coords for a given side, clamped into the
-  // viewport. Returns null when there's not enough room.
+  // viewport AND verified to not overlap the target rect. Returns
+  // null when there's not enough room OR the resulting position
+  // would still cover the spotlighted element. Overlap-checking
+  // matters because viewport-fit on its own can still place a wide
+  // callout horizontally on top of a wide target when "centre on
+  // target's centre" math + clamping produces a rect that visually
+  // covers what the step is talking about.
   function place(side: CalloutPlacement): { left: number; top: number } | null {
+    let left: number
+    let top: number
     if (side === 'bottom') {
-      const top = tt.y + tt.h + GAP
+      top = tt.y + tt.h + GAP
       if (top + h + SAFETY > vh) return null
-      const left = Math.max(SAFETY, Math.min(vw - CALLOUT_W - SAFETY, tt.x + tt.w / 2 - CALLOUT_W / 2))
-      return { left, top }
-    }
-    if (side === 'top') {
-      const top = tt.y - GAP - h
+      left = Math.max(SAFETY, Math.min(vw - CALLOUT_W - SAFETY, tt.x + tt.w / 2 - CALLOUT_W / 2))
+    } else if (side === 'top') {
+      top = tt.y - GAP - h
       if (top < SAFETY) return null
-      const left = Math.max(SAFETY, Math.min(vw - CALLOUT_W - SAFETY, tt.x + tt.w / 2 - CALLOUT_W / 2))
-      return { left, top }
-    }
-    if (side === 'right') {
-      const left = tt.x + tt.w + GAP
+      left = Math.max(SAFETY, Math.min(vw - CALLOUT_W - SAFETY, tt.x + tt.w / 2 - CALLOUT_W / 2))
+    } else if (side === 'right') {
+      left = tt.x + tt.w + GAP
       if (left + CALLOUT_W + SAFETY > vw) return null
-      const top = Math.max(SAFETY, Math.min(vh - h - SAFETY, tt.y + tt.h / 2 - h / 2))
-      return { left, top }
-    }
-    if (side === 'left') {
-      const left = tt.x - GAP - CALLOUT_W
+      top = Math.max(SAFETY, Math.min(vh - h - SAFETY, tt.y + tt.h / 2 - h / 2))
+    } else if (side === 'left') {
+      left = tt.x - GAP - CALLOUT_W
       if (left < SAFETY) return null
-      const top = Math.max(SAFETY, Math.min(vh - h - SAFETY, tt.y + tt.h / 2 - h / 2))
-      return { left, top }
+      top = Math.max(SAFETY, Math.min(vh - h - SAFETY, tt.y + tt.h / 2 - h / 2))
+    } else {
+      return null
     }
-    return null
+    // Final no-overlap check: if the clamped rect still covers any
+    // part of the target, treat the side as un-placeable. Padded by
+    // a small buffer so brushing edges still count as "clear".
+    const calloutRect = { x: left, y: top, w: CALLOUT_W, h }
+    const targetWithMargin = { x: tt.x - 4, y: tt.y - 4, w: tt.w + 8, h: tt.h + 8 }
+    if (rectsOverlap(calloutRect, targetWithMargin)) return null
+    return { left, top }
   }
 
   const preferred = props.placement ?? 'auto'
@@ -128,23 +154,74 @@ function computePos(): { left: number; top: number; placement: CalloutPlacement 
     const out = place(side)
     if (out) return { ...out, placement: side }
   }
-  // No side fits — fall back to centre with the target visible if
-  // possible. Better than clipping off-viewport.
-  return {
-    left: Math.max(SAFETY, (vw - CALLOUT_W) / 2),
-    top:  Math.max(SAFETY, (vh - h) / 2),
-    placement: 'auto',
-  }
+  // No side has room without overlap — fall back to a corner of the
+  // viewport that's farthest from the target's centre so the user
+  // can still read the body and drag the callout if it covers
+  // something. Beats centring on top of the target.
+  const targetCx = tt.x + tt.w / 2
+  const targetCy = tt.y + tt.h / 2
+  const left = targetCx < vw / 2 ? vw - CALLOUT_W - SAFETY : SAFETY
+  const top  = targetCy < vh / 2 ? vh - h - SAFETY        : SAFETY
+  return { left, top, placement: 'auto' }
 }
 
 async function syncPos() {
   await nextTick()
   await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  // Once the user has dragged the callout, freeze the position so
+  // resize / scroll resyncs don't snap it back. The :key on the
+  // parent destroys + remounts the callout per step, so the freeze
+  // is automatically reset between steps.
+  if (userMoved.value) return
   pos.value = computePos()
 }
 
-function onWindowScroll() { pos.value = computePos() }
-function onWindowResize() { pos.value = computePos() }
+function onWindowScroll() {
+  if (userMoved.value) return
+  pos.value = computePos()
+}
+function onWindowResize() {
+  if (userMoved.value) return
+  pos.value = computePos()
+}
+
+// ── Drag handlers ─────────────────────────────────────────────
+// The header is the drag handle (mirrors the OS convention for
+// movable panels). Pointer events let one handler cover mouse +
+// pen + touch in one go. We capture the pointer so move/up land on
+// us even if the cursor leaves the header element.
+
+function onDragPointerDown(e: PointerEvent) {
+  // Don't initiate a drag from clicks on controls inside the header
+  // (none today, but defensive — the eyebrow / counter spans aren't
+  // interactive).
+  if (e.button !== 0) return
+  dragging.value = true
+  dragOffsetX = e.clientX - pos.value.left
+  dragOffsetY = e.clientY - pos.value.top
+  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  e.preventDefault()
+}
+
+function onDragPointerMove(e: PointerEvent) {
+  if (!dragging.value) return
+  // Clamp into the viewport so the callout can't be dragged
+  // off-screen. CALLOUT_W is fixed; height comes from the live
+  // element.
+  const h = calloutHeight()
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const nextLeft = Math.max(0, Math.min(vw - CALLOUT_W, e.clientX - dragOffsetX))
+  const nextTop  = Math.max(0, Math.min(vh - h, e.clientY - dragOffsetY))
+  pos.value = { left: nextLeft, top: nextTop, placement: pos.value.placement }
+  userMoved.value = true
+}
+
+function onDragPointerUp(e: PointerEvent) {
+  if (!dragging.value) return
+  dragging.value = false
+  ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
+}
 
 watch(() => [props.target, props.placement, props.heading], () => { void syncPos() })
 
@@ -200,7 +277,16 @@ const connector = computed(() => {
     aria-modal="false"
     aria-labelledby="tour-callout-heading"
   >
-    <header class="tour-callout-head">
+    <header
+      class="tour-callout-head"
+      :class="{ 'tour-callout-head-dragging': dragging }"
+      title="Drag to move"
+      @pointerdown="onDragPointerDown"
+      @pointermove="onDragPointerMove"
+      @pointerup="onDragPointerUp"
+      @pointercancel="onDragPointerUp"
+    >
+      <span class="tour-callout-drag-handle" aria-hidden="true">⋮⋮</span>
       <span class="tour-callout-eyebrow">{{ eyebrow }}</span>
       <span class="tour-callout-counter">{{ counter }}</span>
     </header>
@@ -230,7 +316,7 @@ const connector = computed(() => {
           :disabled="!canBack"
           @click="emit('back')"
         >
-          Back
+          Previous
         </button>
         <button
           type="button"
@@ -304,7 +390,26 @@ const connector = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 1rem;
+  gap: 0.5rem;
+
+  /* The header doubles as the drag handle. cursor: grab telegraphs
+     it without needing a label; cursor: grabbing flips while the
+     pointer is captured. user-select: none so a quick drag doesn't
+     accidentally start a text selection on the eyebrow/counter. */
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.tour-callout-head-dragging { cursor: grabbing; }
+
+.tour-callout-drag-handle {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: -0.1em;
+  color: var(--text-faint, #6a6a6a);
+  margin-right: 0.15rem;
+  opacity: 0.7;
 }
 
 .tour-callout-eyebrow {
