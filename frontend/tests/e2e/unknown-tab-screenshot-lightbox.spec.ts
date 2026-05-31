@@ -76,20 +76,23 @@ test.describe('Unknown tab — screenshot preview click → lightbox', () => {
     await page.locator('#tab-unknown').click()
 
     // Expand the unknown card, then toggle the filename → preview
-    // appears. Playwright's auto-hit-test for the inline-flow
-    // <a class="source-name"> keeps reporting .app as the
-    // interceptor in this layout — repro doesn't happen in the
-    // real runtime, and dispatching click directly on the element
-    // fires the Vue handler without the hit-test detour.
+    // appears. Expanding the card MUST NOT open the Matches detail
+    // panel — App.vue's outer `.container` becomes `inert` whenever
+    // `selection.isOpen` is true, which locks every clickable
+    // affordance inside the Unknown tab. The user-reported "page
+    // gets hyperfocused, only Esc unlocks" symptom was exactly this:
+    // the cardState.toggleExpand wired to selection.open dragged
+    // the detail panel up over a record with no real match data
+    // and froze the container.
     await page.locator('.unknown-card .unknown-card-head').first().click()
-    await page.locator('.unknown-card .source-name').first()
-      .dispatchEvent('click')
+    await expect(page.locator('aside.detail-panel')).toHaveCount(0)
+    await expect(page.locator('.container[inert]')).toHaveCount(0)
+    await page.locator('.unknown-card .source-name').first().click()
     const preview = page.locator('.unknown-card img.source-preview').first()
     await expect(preview).toBeVisible()
 
     // Click the preview → fullscreen lightbox over the whole window.
-    // Same dispatchEvent rationale as the source-name click above.
-    await preview.dispatchEvent('click')
+    await preview.click()
     const lightbox = page.locator('.lightbox-backdrop')
     await expect(lightbox).toBeVisible()
     await expect(lightbox.locator('img.lightbox-img')).toBeVisible()
@@ -113,18 +116,21 @@ test.describe('Unknown tab — screenshot preview click → lightbox', () => {
     await page.locator('#tab-unknown').click()
 
     // Expand the ambiguous card → Source Screenshot block + Pick the
-    // match section both render.
+    // match section both render. Same detail-panel/inert assertion
+    // as the Unknown case — expanding an ambiguous card must keep
+    // the container interactive.
     await page.locator('.ambiguous-card .unknown-card-head').click()
+    await expect(page.locator('aside.detail-panel')).toHaveCount(0)
+    await expect(page.locator('.container[inert]')).toHaveCount(0)
     await expect(page.locator('.ambiguous-card .block-eyebrow', { hasText: 'Source Screenshot' })).toBeVisible()
     await expect(page.locator('.ambiguous-card .block-eyebrow', { hasText: 'Pick the match' })).toBeVisible()
 
     // Toggle the filename → thumbnail renders → click → lightbox.
-    // Same dispatchEvent rationale as the Unknown case above.
-    await page.locator('.ambiguous-card .source-name').dispatchEvent('click')
+    await page.locator('.ambiguous-card .source-name').click()
     const preview = page.locator('.ambiguous-card img.source-preview')
     await expect(preview).toBeVisible()
 
-    await preview.dispatchEvent('click')
+    await preview.click()
     const lightbox = page.locator('.lightbox-backdrop')
     await expect(lightbox).toBeVisible()
     await expect(lightbox.locator('img.lightbox-img')).toBeVisible()

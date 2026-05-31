@@ -586,17 +586,10 @@ watch(
 )
 
 
-// True for the row that drives the open MatchDetailPanel. MatchCard
-// reads this via the cardState bundle to apply the .selected accent
-// styling so the user always sees which match the open panel is
-// anchored to.
-function isSelected(id: string) {
-  return selection.selectedKey.value === id
-}
-
-// Click / Enter on a card opens the detail panel. Scroll the source
-// card into view so it stays visible behind the panel — the user
-// shouldn't lose their place in the list when they pick something.
+// Open the Matches detail panel for a given match key + scroll the
+// source row into view behind it so the user doesn't lose their
+// place. Used by Matches-view keyboard shortcuts ('e' / 't'); the
+// Unknown tab uses its own local toggleUnknownExpand below.
 async function toggleExpand(id: string) {
   selection.open(id)
   await nextTick()
@@ -660,13 +653,38 @@ function closeLightbox() {
   lightboxFilename.value = null
 }
 
-// Bundle the per-card UI state into one object so MatchesView /
-// UnknownMapsView can consume it as a single prop — keeps their
-// signatures readable and lets them share the SAME expand / preview
-// state without forking.
+// Per-card UI state for UnknownMapsView. The Unknown tab's expand/
+// collapse gesture is INLINE — clicking a card head flips the local
+// `unknownExpanded` map without touching `selection`. Pre-fix this
+// reused App.vue's `toggleExpand` which calls `selection.open(id)`
+// + scrolls the Matches detail panel into view, but the outer
+// `.container` becomes `inert` whenever `selection.isOpen` is true.
+// Result: the user clicked an unknown card, the empty detail panel
+// dragged itself open over a non-Matches record, and the entire
+// container locked down. Only Esc (which closes the panel) restored
+// interactivity. The user-reported "page gets hyperfocused, only
+// Esc unlocks" symptom is exactly this state. Local state keeps the
+// Unknown tab self-contained.
+const unknownExpanded = ref<Record<string, boolean>>({})
+function isUnknownExpanded(id: string) {
+  return !!unknownExpanded.value[id]
+}
+function toggleUnknownExpand(id: string) {
+  unknownExpanded.value = {
+    ...unknownExpanded.value,
+    [id]: !unknownExpanded.value[id],
+  }
+}
+
 const cardState = {
-  isSelected, isSourcesOpen, previewOpen, previewError,
-  toggleExpand, toggleSources, togglePreview, onPreviewError,
+  isSelected: isUnknownExpanded,
+  isSourcesOpen,
+  previewOpen,
+  previewError,
+  toggleExpand: toggleUnknownExpand,
+  toggleSources,
+  togglePreview,
+  onPreviewError,
 }
 
 // ── Keyboard shortcuts — full registry ─────────────────────────
