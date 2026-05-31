@@ -71,16 +71,20 @@ test.describe('theme — OS preference on fresh install', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'day')
   })
 
-  test('prefers-color-scheme: dark → first paint is night', async ({ page }) => {
+  test('prefers-color-scheme: dark → first paint is dark (OW gray)', async ({ page }) => {
+    // OS-driven dark lands on the OW-gray palette so the auto-detected
+    // default matches the neutral system-dark expectation users bring
+    // from other apps. 'night' (the editorial darkroom) is opt-in via
+    // Settings → Appearance.
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.goto('/')
     await clearTheme(page)
     await page.reload()
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'night')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   })
 
   test('OS preference never picks high-contrast on its own', async ({ page }) => {
-    // Even forced contrast at the OS level lands on day/night, not
+    // Even forced contrast at the OS level lands on day/dark, not
     // high-contrast — high-contrast is opt-in only.
     await page.emulateMedia({ colorScheme: 'dark', forcedColors: 'active' })
     await page.goto('/')
@@ -89,15 +93,16 @@ test.describe('theme — OS preference on fresh install', () => {
     await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'high-contrast')
   })
 
-  test('OS preference never picks dark (OW gray) on its own', async ({ page }) => {
-    // "dark" is the opt-in OW-gray palette; the fresh-install dark
-    // default is "night" (the deeper editorial darkroom). This
-    // distinguishes the user-opt-in dark from the OS-driven dark.
+  test('OS preference never picks night (editorial darkroom) on its own', async ({ page }) => {
+    // 'night' is the opt-in deep blue-charcoal palette; the fresh-
+    // install dark default is 'dark' (the OW-gray scoreboard plate).
+    // This distinguishes the user-opt-in night from the OS-driven
+    // dark.
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.goto('/')
     await clearTheme(page)
     await page.reload()
-    await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'dark')
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'night')
   })
 
   test('once the user picks any theme, OS preference no longer overrides', async ({ page }) => {
