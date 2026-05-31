@@ -116,6 +116,23 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
+	// Hard-delete a single match — every parent row + annotation +
+	// hidden flag for matchKey goes. Surfaced by the Hidden drawer's
+	// "Delete forever" affordance once a user has already moved the
+	// match to the archive. Idempotent: unknown keys return 204.
+	apiMux.HandleFunc("DELETE /api/v1/matches/{matchKey}", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("matchKey")
+		if matchKey == "" {
+			http.Error(w, "match_key required in URL", http.StatusBadRequest)
+			return
+		}
+		if err := a.HardDeleteMatch(matchKey); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	// Soft-delete (hide / unhide) a match. `hidden: true` adds the
 	// match to hidden_matches; `hidden: false` removes it. Both are
 	// idempotent — repeated identical calls succeed without error.

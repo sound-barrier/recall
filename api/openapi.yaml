@@ -104,6 +104,32 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/matches/{matchKey}:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+    delete:
+      operationId: HardDeleteMatch
+      tags: [Matches]
+      summary: Hard-delete a single match
+      description: |
+        Removes every trace of the match from the database: rows
+        across all five parent screenshot tables (children CASCADE),
+        the `match_annotations` row, and the `hidden_matches` flag.
+        Source PNG files on disk are NOT touched, but `LoadAllFilenames`
+        will then re-classify them as new and the next parse will
+        re-ingest. Surfaced by the Hidden drawer's **Delete forever**
+        affordance — the user has already moved the match to the
+        archive and explicitly confirmed.
+
+        Idempotent: unknown keys return 204.
+      responses:
+        "204":
+          description: Match removed (or already absent).
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/matches/{matchKey}/visibility:
     parameters:
       - $ref: "#/components/parameters/MatchKey"

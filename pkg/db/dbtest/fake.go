@@ -46,11 +46,12 @@ type Fake struct {
 	// Inspectable counters / call lists. Tests assert on these to
 	// verify the App layer (or HTTP handlers) actually reached the
 	// store.
-	UpsertCalls int
-	ClearCalls  int
-	CloseCalls  int
-	HideCalls   []string
-	UnhideCalls []string
+	UpsertCalls     int
+	ClearCalls      int
+	CloseCalls      int
+	HideCalls       []string
+	UnhideCalls     []string
+	HardDeleteCalls []string
 
 	// Error injection. When non-nil, Upsert* methods return UpsertErr
 	// and LoadAll returns LoadErr (after acquiring the mutex).
@@ -291,6 +292,50 @@ func (f *Fake) UnhideMatch(matchKey string) error {
 	defer f.mu.Unlock()
 	f.UnhideCalls = append(f.UnhideCalls, matchKey)
 	delete(f.Hidden, matchKey)
+	return nil
+}
+
+func (f *Fake) HardDeleteMatch(matchKey string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.HardDeleteCalls = append(f.HardDeleteCalls, matchKey)
+	sums := f.Summaries[:0]
+	for _, r := range f.Summaries {
+		if r.MatchKey != matchKey {
+			sums = append(sums, r)
+		}
+	}
+	f.Summaries = sums
+	sbs := f.Scoreboards[:0]
+	for _, r := range f.Scoreboards {
+		if r.MatchKey != matchKey {
+			sbs = append(sbs, r)
+		}
+	}
+	f.Scoreboards = sbs
+	pers := f.Personals[:0]
+	for _, r := range f.Personals {
+		if r.MatchKey != matchKey {
+			pers = append(pers, r)
+		}
+	}
+	f.Personals = pers
+	rnks := f.Ranks[:0]
+	for _, r := range f.Ranks {
+		if r.MatchKey != matchKey {
+			rnks = append(rnks, r)
+		}
+	}
+	f.Ranks = rnks
+	unks := f.Unknowns[:0]
+	for _, r := range f.Unknowns {
+		if r.MatchKey != matchKey {
+			unks = append(unks, r)
+		}
+	}
+	f.Unknowns = unks
+	delete(f.Hidden, matchKey)
+	delete(f.Annotations, matchKey)
 	return nil
 }
 

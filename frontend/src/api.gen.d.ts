@@ -35,6 +35,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/{matchKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Hard-delete a single match
+         * @description Removes every trace of the match from the database: rows
+         *     across all five parent screenshot tables (children CASCADE),
+         *     the `match_annotations` row, and the `hidden_matches` flag.
+         *     Source PNG files on disk are NOT touched, but `LoadAllFilenames`
+         *     will then re-classify them as new and the next parse will
+         *     re-ingest. Surfaced by the Hidden drawer's **Delete forever**
+         *     affordance — the user has already moved the match to the
+         *     archive and explicitly confirmed.
+         *
+         *     Idempotent: unknown keys return 204.
+         */
+        delete: operations["HardDeleteMatch"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/matches/{matchKey}/visibility": {
         parameters: {
             query?: never;
@@ -1144,6 +1181,34 @@ export interface operations {
                 };
                 content?: never;
             };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    HardDeleteMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Match removed (or already absent). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
             500: components["responses"]["InternalError"];
         };
     };

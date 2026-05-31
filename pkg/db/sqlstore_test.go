@@ -701,6 +701,90 @@ func TestSQLStore_HiddenMatches_IdempotentHideRefreshesTimestamp(t *testing.T) {
 	}
 }
 
+func TestSQLStore_HardDeleteMatch_WipesParentChildrenAnnotationHidden(t *testing.T) {
+	// Hard delete is the "remove from the database forever" path
+	// surfaced via the Hidden drawer's Delete affordance. Every row
+	// keyed on the match — across all five parent tables, both
+	// annotation tables, and hidden_matches — has to go in one
+	// transaction; orphan children would survive the FK CASCADE
+	// only if the parent rows escape, so an explicit "delete all
+	// then verify zero rows" assertion is the contract test.
+	s := openMemory(t)
+	const key = "match:2026-05-10T21:29:28"
+
+	if err := s.UpsertSummary(SummaryRow{
+		Filename: "sum.png", MatchKey: key, Map: "rialto",
+		HeroesPlayed: []SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100}},
+	}); err != nil {
+		t.Fatalf("UpsertSummary: %v", err)
+	}
+	if err := s.UpsertScoreboard(ScoreboardRow{
+		Filename: "sb.png", MatchKey: key, Eliminations: 17,
+		HeroStats: []HeroStat{{Hero: "lucio", StatKey: "deaths", StatValue: 11}},
+	}); err != nil {
+		t.Fatalf("UpsertScoreboard: %v", err)
+	}
+	if err := s.HideMatch(key); err != nil {
+		t.Fatalf("HideMatch: %v", err)
+	}
+	if err := s.SetAnnotation(Annotation{MatchKey: key, Note: "smurf lobby"}); err != nil {
+		t.Fatalf("SetAnnotation: %v", err)
+	}
+
+	if err := s.HardDeleteMatch(key); err != nil {
+		t.Fatalf("HardDeleteMatch: %v", err)
+	}
+
+	got, err := s.LoadAll()
+	if err != nil {
+		t.Fatalf("LoadAll: %v", err)
+	}
+	if len(got.Summaries) != 0 {
+		t.Errorf("summary rows survived: %+v", got.Summaries)
+	}
+	if len(got.Scoreboards) != 0 {
+		t.Errorf("scoreboard rows survived: %+v", got.Scoreboards)
+	}
+	// Children cascade — verify the join children are gone too.
+	var n int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM summary_heroes_played`).Scan(&n); err != nil {
+		t.Fatalf("count summary_heroes_played: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("summary_heroes_played rows survived: %d", n)
+	}
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM scoreboard_hero_stats`).Scan(&n); err != nil {
+		t.Fatalf("count scoreboard_hero_stats: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("scoreboard_hero_stats rows survived: %d", n)
+	}
+	hidden, err := s.LoadHiddenKeys()
+	if err != nil {
+		t.Fatalf("LoadHiddenKeys: %v", err)
+	}
+	if hidden[key] {
+		t.Errorf("hidden_matches row survived")
+	}
+	anns, err := s.LoadAnnotations()
+	if err != nil {
+		t.Fatalf("LoadAnnotations: %v", err)
+	}
+	if _, ok := anns[key]; ok {
+		t.Errorf("annotation survived")
+	}
+}
+
+func TestSQLStore_HardDeleteMatch_UnknownKeyIsNoOp(t *testing.T) {
+	// Idempotency contract — the UI's "Delete forever" button can
+	// race with a parallel re-hide / re-parse without the user
+	// seeing a 500.
+	s := openMemory(t)
+	if err := s.HardDeleteMatch("match:nothing-here"); err != nil {
+		t.Errorf("HardDeleteMatch on unknown key should be no-op, got: %v", err)
+	}
+}
+
 // ──────────────────────────────────────────────────────────────────
 // Ambiguous-attribution storage.
 // ──────────────────────────────────────────────────────────────────

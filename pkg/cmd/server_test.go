@@ -166,6 +166,23 @@ func TestServerMux_DeleteMatches_DelegatesToStore(t *testing.T) {
 	}
 }
 
+func TestServerMux_DeleteSingleMatch_DelegatesToStore(t *testing.T) {
+	fs := dbtest.New()
+	_, mux := newTestApp(t, fs)
+	key := "match:2026-05-10T21:29:28"
+	path := "/api/v1/matches/" + url.PathEscape(key)
+	rec := del(t, mux, path)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+	if got := fs.HardDeleteCalls; len(got) != 1 || got[0] != key {
+		t.Errorf("expected one HardDeleteCalls entry for %q, got %+v", key, got)
+	}
+	if fs.ClearCalls != 0 {
+		t.Errorf("single-match DELETE must not call Clear (got %d Clear calls)", fs.ClearCalls)
+	}
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Toggle endpoints — PUT for setters, GET for read, 204 for writes.
 // ──────────────────────────────────────────────────────────────────────────
