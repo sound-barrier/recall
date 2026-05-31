@@ -228,11 +228,13 @@ const cutoutVisible = computed(() => rect.value.w > 0 && rect.value.h > 0)
   inset: 0;
   width: 100vw;
   height: 100vh;
+
   /* z-index sits ABOVE the detail panel + the lightbox so the cutout
      can spotlight elements inside either. The tour callout uses
      z-index: 2001 to layer above the spotlight. */
   z-index: 2000;
   pointer-events: none;
+
   /* SVG transitions between two targets ride the same easing as the
      callout slide. */
 }
@@ -258,6 +260,7 @@ const cutoutVisible = computed(() => rect.value.w > 0 && rect.value.h > 0)
   stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+
   /* Subtle pulse to draw the eye to the target. The brackets are
      SVG paths so we animate opacity rather than transform for crisp
      anti-aliasing through the cycle. */
@@ -274,6 +277,7 @@ const cutoutVisible = computed(() => rect.value.w > 0 && rect.value.h > 0)
   .tour-spotlight-cutout {
     transition: none;
   }
+
   .tour-spotlight-brackets {
     animation: none;
     opacity: 1;

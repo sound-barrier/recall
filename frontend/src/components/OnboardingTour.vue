@@ -187,6 +187,7 @@ function onBack()   { void tour.prev() }
   position: fixed;
   inset: 0;
   z-index: 1999;
+
   /* Children (spotlight at 2000, connector at 2001, callout at 2002)
      stack INSIDE this overlay. The overlay itself blocks pointer
      events so the underlying app isn't accidentally clickable
