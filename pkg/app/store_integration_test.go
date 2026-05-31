@@ -30,6 +30,20 @@ func TestApp_ClearDatabase_DelegatesToStore(t *testing.T) {
 	}
 }
 
+func TestApp_HardDeleteMatch_DelegatesAndValidates(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	if err := a.HardDeleteMatch(""); err == nil {
+		t.Error("expected error for empty match_key")
+	}
+	if err := a.HardDeleteMatch("match:k1"); err != nil {
+		t.Fatalf("HardDeleteMatch: %v", err)
+	}
+	if got := fs.HardDeleteCalls; len(got) != 1 || got[0] != "match:k1" {
+		t.Errorf("expected one HardDeleteCalls entry for match:k1, got %+v", got)
+	}
+}
+
 func TestApp_GetMatchResults_DecodesAndFolds(t *testing.T) {
 	// Two rows for the same match_key: a SUMMARY + a SCOREBOARD. The
 	// aggregator must fuse them into one MatchRecord with both halves
@@ -337,19 +351,14 @@ func TestApp_HideMatch_PreservesSourceFilenamesSoReparseSkipsThem(t *testing.T) 
 	}
 }
 
-func TestApp_ScrapeReader_StillEmitsHiddenMatches(t *testing.T) {
-	// Pinning test: the Prometheus reader (scrapeReader) does NOT
-	// filter out hidden matches. Rationale — hiding is a UI list-view
-	// concern; long-term Grafana trend data should reflect every
-	// competitive match the user played, including ones they later
-	// hid from their Recall list. The metrics-layer filter that DOES
-	// apply (competitive-only) lives in pkg/metrics/metrics.go::Collect
-	// and is independent.
-	//
-	// If we ever decide hidden matches should drop from Prometheus too,
-	// this test flips and the filter belongs in scrapeReader (so both
-	// the SourceTypes-derived UI tally and the metrics export stay in
-	// sync with one decision point).
+func TestApp_ScrapeReader_DropsHiddenMatches(t *testing.T) {
+	// Pinning test: the Prometheus reader (scrapeReader) drops hidden
+	// matches. Hidden is the user's "this match shouldn't count toward
+	// my stats" signal — the dossier / heatmap / sparkline already
+	// honor it, and Grafana trend data must agree so the long-term
+	// curves reconcile with the in-app totals. The metrics-layer
+	// filter for competitive-only still lives in
+	// pkg/metrics/metrics.go::Collect.
 	fs := &fakeStore{
 		Scoreboards: []db.ScoreboardRow{
 			{ID: 1, Filename: "a.png", MatchKey: "m1", Mode: "competitive", Eliminations: 1},
@@ -362,7 +371,10 @@ func TestApp_ScrapeReader_StillEmitsHiddenMatches(t *testing.T) {
 	if err != nil {
 		t.Fatalf("scrapeReader: %v", err)
 	}
-	if len(got) != 2 {
-		t.Errorf("scrapeReader should include hidden matches, got %d rows (expected 2)", len(got))
+	if len(got) != 1 {
+		t.Fatalf("scrapeReader should drop hidden matches, got %d rows (expected 1)", len(got))
+	}
+	if got[0].MatchKey != "m1" {
+		t.Errorf("expected the surviving row to be m1, got %q", got[0].MatchKey)
 	}
 }
