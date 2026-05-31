@@ -1,32 +1,53 @@
 #!/usr/bin/env bash
-# Boot Recall against an isolated data dir so you can repeatedly
-# walk the first-launch onboarding tour without touching your real
-# settings, real matches, or your normal browser's tour-completed
-# flag.
+# Boot Recall against an isolated data dir + a fresh WebView
+# localStorage so you can repeatedly walk the first-launch
+# onboarding tour without touching your real settings, real
+# matches, or your normal browser's tour-completed flag.
 #
 # How the tour decides "new user":
 #
-#   useOnboardingTour reads the BROWSER localStorage key
+#   useOnboardingTour reads the BROWSER / WebView localStorage key
 #   `recall.onboardingCompleted` on mount. If it's missing or the
 #   value isn't the literal string "true", the tour opens. Skip /
 #   Finish / Escape all write "true" to that key, so the tour
 #   stays dismissed across reloads for the lifetime of that
 #   browser-profile + origin (or WebView profile) pair.
 #
-#   The flag lives in the browser / WebView, never the server.
-#   Wiping the server's data dir does NOT reset the tour — the
-#   tour decision never round-trips to the API.
+#   The flag lives in the browser / WebView, NEVER the server.
+#   Wiping settings.json + the SQLite DB does NOT reset the tour
+#   — the tour decision never round-trips to the API.
+#
+# Why this script wipes WebView storage:
+#
+#   `wails dev` runs unsandboxed, so the WebView ignores $HOME and
+#   reads from NSHomeDirectory() (macOS) / XDG_*_HOME (Linux). Just
+#   setting RECALL_DATA_DIR to an isolated path doesn't redirect
+#   WKWebView's WebsiteData. The actual paths used:
+#
+#     macOS:   ~/Library/WebKit/com.wails.Recall/WebsiteData/
+#     Linux:   ~/.local/share/Recall/  (webkit2gtk default)
+#
+#   The script removes those locations before launching so the
+#   first paint of the WebView always lands on a fresh
+#   localStorage and the tour gate fires. `--keep-webview-state`
+#   skips the wipe if you want to test "user with the tour
+#   already dismissed" behaviour.
 #
 # Two modes:
 #
 #   --mode=wails  (default — your primary dev path)
-#       Runs `wails dev` against an isolated RECALL_DATA_DIR. Hot-
-#       reload is on; the Wails WebView opens on its own. To reset
-#       the tour gate: right-click in the app window → Inspect →
-#       Console → `localStorage.removeItem(
-#       'recall.onboardingCompleted')` → Cmd/Ctrl+R to reload.
-#       (Incognito-style isolation isn't available in a single
-#       WebView session, so DevTools is the reset path here.)
+#       Runs `wails dev` against an isolated RECALL_DATA_DIR + a
+#       just-wiped WebView. Hot-reload is on; the Wails window
+#       opens on its own. If the tour STILL doesn't pop up,
+#       open DevTools (right-click → Inspect Element), then in
+#       the Console:
+#         > localStorage.getItem('recall.onboardingCompleted')
+#       If that returns "true", the wipe missed your WebView's
+#       path; clear it manually with:
+#         > localStorage.removeItem('recall.onboardingCompleted')
+#         > location.reload()
+#       and tell me which path your WebView is using so this
+#       script can target it.
 #
 #   --mode=server
 #       Builds frontend + a `serveronly` binary and listens on
@@ -40,10 +61,11 @@
 #
 # Usage:
 #
-#   scripts/tour-test.sh                    # wails dev, default
-#   scripts/tour-test.sh --mode=server      # serveronly + browser
+#   scripts/tour-test.sh                       # wails, fresh WebView
+#   scripts/tour-test.sh --keep-webview-state  # wails, retain WebView
+#   scripts/tour-test.sh --mode=server         # serveronly + browser
 #   scripts/tour-test.sh --mode=server --port=7102
-#   scripts/tour-test.sh --keep
+#   scripts/tour-test.sh --keep                # retain isolated data dir
 #
 # `set -u` so unset env references fail loudly. Not `-e`; the
 # trap-based cleanup needs the script to keep running through a
@@ -56,6 +78,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MODE="wails"
 PORT=7100
 KEEP_DATA=0
+KEEP_WEBVIEW=0
 
 for arg in "$@"; do
   case "$arg" in
@@ -75,13 +98,16 @@ for arg in "$@"; do
     --keep)
       KEEP_DATA=1
       ;;
+    --keep-webview-state)
+      KEEP_WEBVIEW=1
+      ;;
     -h | --help)
       sed -n '1,/^set -u$/ p' "$0"
       exit 0
       ;;
     *)
       echo "[tour-test] unknown arg: $arg" >&2
-      echo "[tour-test] usage: $0 [--mode={wails,server}] [--port=N] [--keep]" >&2
+      echo "[tour-test] usage: $0 [--mode={wails,server}] [--port=N] [--keep] [--keep-webview-state]" >&2
       exit 2
       ;;
   esac
@@ -119,6 +145,77 @@ cd "$REPO_ROOT" || {
 
 mkdir -p "$ISOLATED_DIR"
 
+# wipe_webview_storage clears the Wails WebView's persistent storage
+# so the next `wails dev` launch hits a fresh localStorage and the
+# tour gate fires. The Wails project name "Recall" + the
+# `com.wails.<ProjectName>` convention gives the bundle id used by
+# WKWebView (macOS) and webkit2gtk (Linux).
+#
+# WKWebView keeps storage at ~/Library/WebKit/<bundle-id>/WebsiteData/.
+# webkit2gtk under Wails dev keeps storage at
+# ~/.local/share/<ProjectName>/ but the exact subtree depends on the
+# Wails release; we delete the whole tree and let Wails rebuild it.
+# The deletion takes localStorage AND IndexedDB AND cookies — there
+# is no "just localStorage" affordance through the OS APIs.
+#
+# Returns 0 on success or no-op (path not present yet). Prints which
+# path(s) it touched so the user can see what got wiped.
+wipe_webview_storage() {
+  local touched=0
+  local real_home
+  real_home="$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f6)"
+  if [ -z "$real_home" ]; then
+    # Fallback for macOS where `getent passwd` doesn't exist.
+    real_home="$(eval echo "~$(id -un)")"
+  fi
+
+  case "$(uname -s)" in
+    Darwin)
+      local mac_path="$real_home/Library/WebKit/com.wails.Recall"
+      if [ -d "$mac_path" ]; then
+        rm -rf "$mac_path"
+        echo "[tour-test] wiped WKWebView storage: $mac_path"
+        touched=1
+      fi
+      # Older project name (com.wails.OWMetrics) — wipe defensively
+      # so a stale tree from an earlier rename doesn't shadow the
+      # fresh launch.
+      local mac_alt="$real_home/Library/WebKit/com.wails.OWMetrics"
+      if [ -d "$mac_alt" ]; then
+        rm -rf "$mac_alt"
+        echo "[tour-test] wiped stale WKWebView storage: $mac_alt"
+        touched=1
+      fi
+      ;;
+    Linux)
+      # webkit2gtk + Wails on Linux: storage lives in
+      # ~/.local/share/<ProjectName>/ (or $XDG_DATA_HOME if set).
+      local data_root="${XDG_DATA_HOME:-$real_home/.local/share}"
+      local linux_path="$data_root/Recall"
+      if [ -d "$linux_path" ]; then
+        rm -rf "$linux_path"
+        echo "[tour-test] wiped webkit2gtk storage: $linux_path"
+        touched=1
+      fi
+      # Cache too — some webkit2gtk builds keep localStorage under cache.
+      local cache_root="${XDG_CACHE_HOME:-$real_home/.cache}"
+      local linux_cache="$cache_root/Recall"
+      if [ -d "$linux_cache" ]; then
+        rm -rf "$linux_cache"
+        echo "[tour-test] wiped webkit2gtk cache: $linux_cache"
+        touched=1
+      fi
+      ;;
+    *)
+      echo "[tour-test] WebView wipe: unsupported OS '$(uname -s)' — skipping" >&2
+      ;;
+  esac
+
+  if [ "$touched" = "0" ]; then
+    echo "[tour-test] WebView storage was already empty (no paths to wipe)"
+  fi
+}
+
 # ─── wails dev mode (default) ─────────────────────────────────────
 if [ "$MODE" = "wails" ]; then
   if ! command -v wails > /dev/null 2>&1; then
@@ -143,6 +240,16 @@ EOF
       ;;
   esac
 
+  # Wipe the WebView's persistent storage BEFORE launching wails dev
+  # so the next first-paint of the WebView sees empty localStorage
+  # and the tour gate fires. --keep-webview-state opts out for the
+  # "user with the tour already dismissed" case.
+  if [ "$KEEP_WEBVIEW" = "0" ]; then
+    wipe_webview_storage
+  else
+    echo "[tour-test] retaining WebView state (--keep-webview-state)"
+  fi
+
   cat <<EOF
 
 ──────────────────────────────────────────────────────────────────
@@ -152,18 +259,19 @@ EOF
   Vite dev:  :5173   (default)
 ──────────────────────────────────────────────────────────────────
 
-✓ When the Wails window opens, the tour auto-fires if this WebView
-  profile has no recall.onboardingCompleted='true' on record.
+✓ The Wails window will open with a fresh WebView. The tour
+  auto-fires on first paint because recall.onboardingCompleted
+  is no longer set.
 
-  To re-trigger after a previous dismissal:
-
-    1. Right-click anywhere in the Recall window → "Inspect Element"
-       (Wails dev mode enables WebView DevTools by default).
-    2. In the Console:
-         > localStorage.removeItem('recall.onboardingCompleted')
-         > location.reload()
-    3. The next paint walks the tour fresh, with the demo-data
-       overlay populating the dossier + matches list.
+  If the tour still doesn't open, the wipe missed your WebView's
+  storage location. Open DevTools (right-click → Inspect Element)
+  and run:
+      > localStorage.getItem('recall.onboardingCompleted')
+  If that returns "true", manually clear:
+      > localStorage.removeItem('recall.onboardingCompleted')
+      > location.reload()
+  Then tell me which path your WebView is using (DevTools →
+  Application → Local Storage) so this script can target it.
 
   The tour reads recall.onboardingCompleted; if it's missing or
   not literally "true", it auto-opens. Skip / Done / Esc all
