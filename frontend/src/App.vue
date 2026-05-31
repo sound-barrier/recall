@@ -41,6 +41,7 @@ import {
   ResolveAmbiguousMatch,
   SetMatchAnnotation,
   SetMatchVisibility,
+  HardDeleteMatch,
 } from './api'
 import type { MatchAnnotationInput } from './api'
 import { tallyWLD, screenshotURL } from './match-helpers'
@@ -555,6 +556,35 @@ async function onSetMatchAnnotation(matchKey: string, input: MatchAnnotationInpu
 async function onSetMatchHidden(matchKey: string, hidden: boolean) {
   try {
     await SetMatchVisibility(matchKey, hidden)
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+// Bulk-hide handler — MatchesView emits this when the user clicks
+// Hide on the bulk action bar after ticking N rows. Fans out
+// SetMatchVisibility(true) in parallel so the request stream
+// pipelines instead of serializing, then reloads once when every
+// PUT settles. A single failure aborts and surfaces the error;
+// partial state is fine because each /visibility PUT is idempotent
+// and the user can retry.
+async function onHideMatches(matchKeys: string[]) {
+  if (matchKeys.length === 0) return
+  try {
+    await Promise.all(matchKeys.map((k) => SetMatchVisibility(k, true)))
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+// Hard-delete handler — drawer "Delete forever" affordance after
+// the user confirms the two-step. Idempotent on the server so a
+// double-fire from a stale UI is safe.
+async function onHardDeleteMatch(matchKey: string) {
+  try {
+    await HardDeleteMatch(matchKey)
     await load()
   } catch (e) {
     error.value = String(e)
@@ -1281,6 +1311,9 @@ useEventStream({
           :narrow="matchesNarrow"
           @open-match="(k: string) => selection.open(k)"
           @narrow-open="onMatchesNarrowOpen"
+          @hide-matches="onHideMatches"
+          @unhide-match="(k: string) => onSetMatchHidden(k, false)"
+          @hard-delete-match="onHardDeleteMatch"
         />
 
         <!-- ─── ANALYSIS VIEW (coaching dashboard sketch) ──────────
