@@ -218,7 +218,7 @@ wipe_webview_storage() {
 
 # ─── wails dev mode (default) ─────────────────────────────────────
 if [ "$MODE" = "wails" ]; then
-  if ! command -v wails > /dev/null 2>&1; then
+  if ! command -v wails >/dev/null 2>&1; then
     cat <<'EOF' >&2
 [tour-test] `wails` CLI not on PATH.
   Install with:
@@ -296,7 +296,7 @@ fi
 mkdir -p "$(dirname "$SERVER_BINARY")"
 
 echo "[tour-test] building frontend bundle…"
-if ! (cd frontend && npm run build > /dev/null 2>&1); then
+if ! (cd frontend && npm run build >/dev/null 2>&1); then
   echo "[tour-test] frontend build FAILED — running again with output for triage:" >&2
   (cd frontend && npm run build) || exit 1
 fi
