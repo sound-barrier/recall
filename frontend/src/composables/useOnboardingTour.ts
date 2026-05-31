@@ -74,6 +74,12 @@ export interface OnboardingStep {
   // Where the callout panel anchors relative to the target. `auto`
   // picks the side with the most room (default).
   placement?: CalloutPlacement
+  // Optional padding (in CSS px) the spotlight cutout extends BEYOND
+  // the target's bounding rect. Lets a step that targets a small
+  // button (e.g. the Parse button) bump the cutout up so the ring
+  // feels emphasized rather than skin-tight. Default 8 in
+  // TourSpotlight.
+  padding?: number
   // Optional setup hook: opens the detail panel, scrolls a block
   // into view, etc. Runs after the view switch and before the
   // spotlight calculates the target rect.
@@ -113,16 +119,17 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     view: 'settings',
   },
   // ── 4. Screenshots folder row ───────────────────────────────
-  // Target the empty-hero Auto-Detect button itself (rather than the
-  // whole section) so the user sees the exact affordance to click on
-  // first launch. On replay (dir already set), the empty-hero block
-  // does not render and the spotlight gracefully collapses — the
-  // body copy still explains the row's controls.
+  // Target the WHOLE first-time setup hero block so the heading +
+  // both buttons (Auto-Detect, Choose Manually) ring up together —
+  // the user wanted the box highlighted rather than a single button
+  // singled out. Selector list lets the spotlight gracefully fall
+  // back to `#sec-directories` on tour replay (the empty-hero block
+  // is absent once a folder is configured).
   {
     id: 'settings-folder',
     heading: 'Your screenshots folder',
-    body: 'Click Auto-Detect Folder and Recall walks the standard Overwatch install paths. Choose Manually opens a folder picker; the row also exposes Change… and Reset once a folder is set.',
-    target: '#sec-directories .empty-hero-actions .btn.primary',
+    body: 'Auto-Detect Folder walks the standard Overwatch install paths. Choose Manually opens a folder picker. Once a folder is set, this section turns into a row with Change… and Reset controls.',
+    target: '.empty-hero, #sec-directories',
     placement: 'right',
     view: 'settings',
   },
@@ -145,12 +152,16 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     view: 'ingest',
   },
   // ── 7. The Parse button itself ──────────────────────────────
+  // Bump padding above the spotlight default (8) so the brackets sit
+  // visibly clear of the button edge — at the default the ring hugs
+  // a small target too tightly to read as emphasis.
   {
     id: 'parse-button',
     heading: 'The Parse button',
     body: 'Click this big primary action to scan your screenshots folder and merge every new file into your match history. The progress panel below it streams per-file status as Tesseract reads each image.',
     target: '#panel-ingest .btn.primary.big',
     placement: 'right',
+    padding: 18,
     view: 'ingest',
   },
   // ── 8. Matches tab — the dossier ───────────────────────────

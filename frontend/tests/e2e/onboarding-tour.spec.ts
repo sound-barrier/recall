@@ -82,19 +82,19 @@ test.describe('onboarding tour — first-launch behaviour', () => {
     await expect(tour).toBeHidden()
   })
 
-  test('Back navigates to the previous step (and is disabled on step 1)', async ({ page }) => {
+  test('Previous navigates to the previous step (and is disabled on step 1)', async ({ page }) => {
     await page.goto('/')
     const tour = page.locator('[data-testid="onboarding-tour"]')
 
-    // Back should be disabled on step 1 — there's no earlier step.
-    const back = tour.getByRole('button', { name: /back/i })
-    await expect(back).toBeDisabled()
+    // Previous should be disabled on step 1 — there's no earlier step.
+    const previous = tour.getByRole('button', { name: /previous/i })
+    await expect(previous).toBeDisabled()
 
     await tour.getByRole('button', { name: /next/i }).click()
     await expect(tour).toContainText(/five tabs/i)
 
-    await expect(back).toBeEnabled()
-    await back.click()
+    await expect(previous).toBeEnabled()
+    await previous.click()
     await expect(tour).toContainText(/welcome to recall/i)
   })
 

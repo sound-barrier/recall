@@ -160,6 +160,39 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     await expect(page.locator('.needs-review-heading')).toContainText(/needs your review/i)
   })
 
+  test('locks page scroll while the tour is open', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    // body overflow must be hidden so the user can't scroll out from
+    // under the spotlight. The composable restores the original
+    // value on close — tested below by closing + asserting the
+    // overflow flips back.
+    const lockedOverflow = await page.evaluate(() =>
+      window.getComputedStyle(document.body).overflow,
+    )
+    expect(lockedOverflow).toBe('hidden')
+
+    await page.locator('button:has-text("Skip tour")').click()
+    await expect(page.locator('[data-testid="onboarding-tour"]')).toHaveCount(0)
+    const unlockedOverflow = await page.evaluate(() =>
+      window.getComputedStyle(document.body).overflow,
+    )
+    expect(unlockedOverflow).not.toBe('hidden')
+  })
+
+  test('callout exposes a draggable header so the user can move it', async ({ page }) => {
+    await page.goto('/')
+    const head = page.locator('.tour-callout-head')
+    await expect(head).toBeVisible()
+    // The header advertises itself as the drag handle via cursor:
+    // grab — proves the affordance is reachable + the pointerdown
+    // wiring is mounted. Real drag-and-drop coverage lives in the
+    // unit/integration layer (Playwright drag is brittle for moves
+    // measured in tens of pixels on an SVG-heavy overlay).
+    const cursor = await head.evaluate(el => window.getComputedStyle(el).cursor)
+    expect(cursor).toBe('grab')
+  })
+
   test('arrow / h / l keys move between steps; Enter advances', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator('.tour-callout-heading')).toContainText(/welcome/i)

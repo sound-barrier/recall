@@ -113,6 +113,25 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
+// Body scroll lock — set on open, restored on close. Prevents the
+// user from scrolling the underlying page out from under the
+// spotlighted target while a step is being talked about. Tour
+// internals still use scrollIntoView() to bring the next target into
+// view; that's a programmatic call and is unaffected by the
+// overflow:hidden lock on body.
+let savedBodyOverflow = ''
+let savedHtmlOverflow = ''
+function lockBodyScroll() {
+  savedBodyOverflow = document.body.style.overflow
+  savedHtmlOverflow = document.documentElement.style.overflow
+  document.body.style.overflow = 'hidden'
+  document.documentElement.style.overflow = 'hidden'
+}
+function unlockBodyScroll() {
+  document.body.style.overflow = savedBodyOverflow
+  document.documentElement.style.overflow = savedHtmlOverflow
+}
+
 // Install / remove the document keydown listener on open transitions
 // so a closed tour doesn't intercept site-wide keys. Capture-phase
 // for the same reason MatchScreenshotLightbox uses it — the tour
@@ -120,6 +139,7 @@ function onKeydown(e: KeyboardEvent) {
 watch(tour.open, (isOpen, wasOpen) => {
   if (isOpen && !wasOpen) {
     document.addEventListener('keydown', onKeydown, true)
+    lockBodyScroll()
     emit('active-change', true)
     // If the first step has a view associated, drive the underlying
     // app to it. The composable's restart() handles this, but the
@@ -129,12 +149,17 @@ watch(tour.open, (isOpen, wasOpen) => {
   }
   if (!isOpen && wasOpen) {
     document.removeEventListener('keydown', onKeydown, true)
+    unlockBodyScroll()
     emit('active-change', false)
   }
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown, true)
+  // Defensive: if the component unmounts while the tour is still
+  // open (route-level teardown), make sure we leave the page in a
+  // scrollable state.
+  if (tour.open.value) unlockBodyScroll()
 })
 
 function onSkip()   { tour.skip() }
@@ -167,7 +192,10 @@ function onBack()   { void tour.prev() }
         <span class="tour-marker-text">TOUR MODE · DEMO DATA</span>
       </div>
 
-      <TourSpotlight :target="tour.step.value.target ?? null" />
+      <TourSpotlight
+        :target="tour.step.value.target ?? null"
+        :padding="tour.step.value.padding"
+      />
 
       <!-- :key on the wrapper ensures the callout slide animation
            replays on every step change. -->
