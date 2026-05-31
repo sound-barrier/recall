@@ -15,7 +15,12 @@ import { nextTick, ref, type Ref } from 'vue'
 // in isolation and so adding a new tab doesn't require re-reading
 // 800 lines of script-setup to find the order constant.
 
-export const TAB_ORDER = ['settings', 'ingest', 'matches', 'analysis', 'unknown'] as const
+// Analysis is positioned LAST so it doesn't slot between Matches and
+// Unknown (where its dev-build-only `v-if` would shift Unknown from
+// position 04 → 05 depending on build flavour). Keeping Analysis at
+// the tail of the order pins Unknown to 04 on every build; on
+// release builds the order is just settings/ingest/matches/unknown.
+export const TAB_ORDER = ['settings', 'ingest', 'matches', 'unknown', 'analysis'] as const
 
 export type TabId = typeof TAB_ORDER[number]
 

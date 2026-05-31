@@ -166,7 +166,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   // ── 10. Unknown tab — triage ───────────────────────────────
   {
     id: 'unknown-tab',
-    heading: 'Unknown (05)',
+    heading: 'Unknown (04)',
     body: 'Screenshots that did not fully parse land here. Add the missing screenshot type and Parse again, or click the source filename to see the original.',
     target: '#tab-unknown',
     placement: 'bottom',
