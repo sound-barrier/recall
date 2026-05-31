@@ -38,24 +38,33 @@ test.describe('onboarding tour — first-launch behaviour', () => {
     expect(completed).toBe('true')
   })
 
-  test('Next + Done steps through every panel and finishes', async ({ page }) => {
+  test('Next walks every step in order; final step shows Done', async ({ page }) => {
     await page.goto('/')
     const tour = page.locator('[data-testid="onboarding-tour"]')
     await expect(tour).toBeVisible()
     await expect(tour).toContainText(/welcome to recall/i)
 
-    // Walk through each step. Final step's button is "Done" (the
-    // tour-finishing affordance), not "Next" — matches the
-    // copy-on-button convention used by the rest of the app.
+    // Step 2: tablist briefing.
     await tour.getByRole('button', { name: /next/i }).click()
-    await expect(tour).toContainText(/configure your folder/i)
+    await expect(tour).toContainText(/five tabs/i)
 
+    // Step 3: Settings tab — the tour switches the underlying view.
     await tour.getByRole('button', { name: /next/i }).click()
-    await expect(tour).toContainText(/parse your screenshots/i)
+    await expect(tour).toContainText(/settings/i)
+    await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
 
-    await tour.getByRole('button', { name: /next/i }).click()
-    await expect(tour).toContainText(/explore your matches/i)
+    // Skip through the middle of the walkthrough — assertions on
+    // every step's copy live in onboarding-tour-spotlight.spec.ts.
+    // 13 steps total; we're on step 3 after the assertions above,
+    // so 10 Next clicks lands us on step 13 (Done).
+    for (let i = 0; i < 10; i++) {
+      await tour.getByRole('button', { name: /next/i }).click()
+      await page.waitForTimeout(150)
+    }
 
+    // Final step's button is "Done" (the tour-finishing affordance),
+    // not "Next" — matches the copy-on-button convention used by
+    // the rest of the app.
     await tour.getByRole('button', { name: /done/i }).click()
     await expect(tour).toBeHidden()
   })
@@ -82,7 +91,7 @@ test.describe('onboarding tour — first-launch behaviour', () => {
     await expect(back).toBeDisabled()
 
     await tour.getByRole('button', { name: /next/i }).click()
-    await expect(tour).toContainText(/configure your folder/i)
+    await expect(tour).toContainText(/five tabs/i)
 
     await expect(back).toBeEnabled()
     await back.click()

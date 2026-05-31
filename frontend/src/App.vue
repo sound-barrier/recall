@@ -93,9 +93,9 @@ const KeyboardShortcutsModal = defineAsyncComponent(() => import('./components/K
 // OnboardingTour is mounted eagerly (not lazy) because it auto-opens
 // on first launch and the localStorage gate runs inside its
 // onMounted — fetching a separate chunk would briefly show the
-// landing view first, then pop the briefing overlay in late. Cost:
-// ~3KB to the initial bundle, comfortably under the budget.
+// landing view first, then pop the briefing overlay in late.
 import OnboardingTour from './components/OnboardingTour.vue'
+import { DEMO_MATCHES } from './composables/useDemoMatches'
 
 // GitHub repository URL — surfaced via the brandmark in the masthead.
 // Centralised here so the markup, hover title, and any future references
@@ -106,6 +106,26 @@ const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
 const records = ref<MatchRecord[]>([])
 const error = ref('')
 const loading = ref(false)
+
+// Onboarding tour: when the tour is active we substitute the live
+// records for the curated DEMO_MATCHES so every tour step has
+// something realistic to land on. The swap is purely in-memory — the
+// user's real records are stashed in `savedRecords` and restored the
+// moment the tour closes (finish / skip / Esc). Nothing is persisted
+// to the API or to SQLite.
+const tourActive = ref(false)
+const savedRecords = ref<MatchRecord[]>([])
+function onTourActiveChange(active: boolean) {
+  if (active) {
+    savedRecords.value = records.value
+    records.value = [...DEMO_MATCHES]
+    tourActive.value = true
+  } else {
+    records.value = savedRecords.value
+    savedRecords.value = []
+    tourActive.value = false
+  }
+}
 
 // Brief visual pulse on the scoreboard / records-count surface when
 // the watcher (or a manual parse) brings in additional records. Without
@@ -359,8 +379,15 @@ async function load() {
   ])
   const [recs, dir, promOn, watchOn, tess, newCount, loc] = results
   if (recs.status === 'fulfilled') {
-    records.value = recs.value ?? []
-    if (before > 0 && records.value.length > before) flashRecordsPulse()
+    // While the tour is active, the records ref carries the demo
+    // corpus — stash the real records for restore-on-close but don't
+    // clobber the demo data the user is looking at.
+    if (tourActive.value) {
+      savedRecords.value = recs.value ?? []
+    } else {
+      records.value = recs.value ?? []
+      if (before > 0 && records.value.length > before) flashRecordsPulse()
+    }
   } else {
     error.value = `Could not load matches: ${String(recs.reason)}`
   }
@@ -1318,11 +1345,17 @@ useEventStream({
       @close="openCheatsheet = false"
     />
 
-    <!-- First-launch briefing overlay. Self-gates via
-         localStorage; renders nothing once dismissed. Navigation
-         events drive the underlying tab via goToView so the visible
-         view follows along with each step. -->
-    <OnboardingTour @navigate="goToView" />
+    <!-- First-launch tour overlay. Self-gates via localStorage;
+         renders nothing once dismissed. Steps drive the underlying
+         app via @navigate (tab switch) + @open-match / @close-match
+         (detail panel). @active-change flips the records swap so
+         every tour step lands on demo data. -->
+    <OnboardingTour
+      @navigate="goToView"
+      @active-change="onTourActiveChange"
+      @open-match="(k: string) => selection.open(k)"
+      @close-match="selection.close"
+    />
   </div>
 </template>
 

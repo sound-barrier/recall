@@ -1,92 +1,137 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, watch, onUnmounted } from 'vue'
 
 import {
   useOnboardingTour,
   ONBOARDING_STEPS,
   type OnboardingViewId,
+  type TourActionContext,
 } from '../composables/useOnboardingTour'
-import { useModalFocusTrap } from '../composables/useModalFocusTrap'
+import TourSpotlight from './TourSpotlight.vue'
+import TourCallout from './TourCallout.vue'
 
-// First-launch onboarding briefing. Renders as a full-viewport HUD
-// overlay (asymmetric panel — vertical progress rail on the left,
-// numbered step content on the right) instead of a centred modal.
-// The aesthetic intentionally evokes a pre-match objective briefing
-// in OW itself, matching the existing Recall display-font + accent-
-// orange + monospace-eyebrow vocabulary used across the masthead,
-// MatchCard headers and Settings section labels. Decisions:
+// First-launch onboarding tour. Spotlighted, step-by-step product
+// walkthrough — see useOnboardingTour.ts for the step list, the
+// composable's design notes, and the gate semantics.
 //
-//   - Big Noodle Too Oblique for the step number + heading (the
-//     same family the masthead uses); it carries the most aesthetic
-//     weight in the panel.
-//   - Vertical "ult-charge" segmented progress rail on the left, with
-//     a "01 / 04" counter at the foot. Active segment scans in;
-//     completed segments stay lit at 50%.
-//   - Monospace eyebrow tag ("BRIEFING" / "OBJECTIVE N") for the
-//     HUD/industrial register.
-//   - Step transitions: 280ms slide-from-right + opacity. The
-//     heading underline draws in over 360ms. All animations gated by
-//     `prefers-reduced-motion`.
+// Composition:
+//   - <TourSpotlight> draws the SVG mask cutout + viewfinder corner
+//     brackets that ring the current step's target.
+//   - <TourCallout> anchors the briefing panel to the target with
+//     a dashed connector line.
+//   - This file owns the controller (`useOnboardingTour`), the
+//     keyboard handlers (Esc / Enter / ←/→ / h/l), and the parent-
+//     facing emits that drive App.vue's view changes + records
+//     swap.
 //
-// A11y: useModalFocusTrap installs the Tab-cycle + Escape-dismiss
-// keyboard contract. The container is `role="dialog"` +
-// `aria-modal="true"` + `aria-labelledby="onboarding-title"`. Click-
-// to-dismiss only on the overlay self (NOT on the panel) per WCAG
-// modal patterns.
+// Focus management: the callout panel is the active dialog. The
+// previous static-modal implementation used useModalFocusTrap; the
+// spotlighted callout doesn't need a trap because (a) the dim
+// overlay blocks click interactions with the page underneath, and
+// (b) Esc and Enter are the only required keyboard moves — both
+// captured here. The Next button is focused on every step change so
+// keyboard-only users move through the tour by pressing Enter.
 
-const tour = useOnboardingTour()
-useModalFocusTrap(tour.open, { containerSelector: '.onboarding-panel' })
+const emit = defineEmits<{
+  navigate:    [view: OnboardingViewId]
+  // Tour-active state — App.vue swaps records.value for the demo
+  // corpus while this is true.
+  'active-change': [active: boolean]
+  // App.vue passes these in via TourActionContext setters so the
+  // tour can drive the detail panel. Emitting them lets the tour
+  // stay decoupled from App.vue's `selection` plumbing.
+  'open-match':  [matchKey: string]
+  'close-match': []
+}>()
 
-// useModalFocusTrap's Escape handler closes the modal by setting
-// `tour.open` directly — it doesn't know to also persist the
-// completion flag. Without this watcher a user who Escapes out of
-// the tour would see it reappear on every reload. Fires only on
-// open=true → false transitions where completed hasn't already been
-// recorded (so the normal finish/skip path doesn't double-fire).
+const actions: TourActionContext = {
+  goToView:   (v) => emit('navigate', v),
+  openMatch:  (k) => emit('open-match', k),
+  closeMatch: () => emit('close-match'),
+}
+
+const tour = useOnboardingTour({ actions })
+
+// Per-step copy: tag defaults to "OBJECTIVE N", num is the two-digit
+// step index. The Welcome / Done steps override tag with "BRIEFING"
+// / "BRIEFING COMPLETE" — that override is carried in the step data
+// itself.
+const eyebrow = computed(() =>
+  tour.step.value.tag ?? `OBJECTIVE ${tour.stepNumber.value}`,
+)
+const num = computed(() => String(tour.stepNumber.value).padStart(2, '0'))
+const counter = computed(() =>
+  `${String(tour.stepNumber.value).padStart(2, '0')} / ${String(tour.totalSteps).padStart(2, '0')}`,
+)
+
+// Keyboard contract — registered at document level (capture phase)
+// so the tour absorbs navigation keys before the panel underneath
+// can react. ←/h step back, →/l step forward, Enter advances, Esc
+// dismisses.
+function onKeydown(e: KeyboardEvent) {
+  if (!tour.open.value) return
+  const target = document.activeElement as HTMLElement | null
+  const tag = target?.tagName ?? ''
+  const inEditable = tag === 'INPUT' || tag === 'TEXTAREA' || !!target?.isContentEditable
+  // Don't intercept in an input — the user can type "h" in a search
+  // box without ending the tour.
+  if (inEditable) return
+
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    tour.skip()
+    return
+  }
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    if (tour.isLastStep.value) tour.finish()
+    else void tour.next()
+    return
+  }
+  if (e.key === 'ArrowRight' || e.key === 'l') {
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    void tour.next()
+    return
+  }
+  if (e.key === 'ArrowLeft' || e.key === 'h') {
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    void tour.prev()
+    return
+  }
+}
+
+// Install / remove the document keydown listener on open transitions
+// so a closed tour doesn't intercept site-wide keys. Capture-phase
+// for the same reason MatchScreenshotLightbox uses it — the tour
+// outranks the panel's prev/next-match handler.
 watch(tour.open, (isOpen, wasOpen) => {
-  if (wasOpen && !isOpen && !tour.completed.value) {
-    tour.finish()
+  if (isOpen && !wasOpen) {
+    document.addEventListener('keydown', onKeydown, true)
+    emit('active-change', true)
+    // If the first step has a view associated, drive the underlying
+    // app to it. The composable's restart() handles this, but the
+    // automatic on-mount open does not.
+    const first = ONBOARDING_STEPS[0]
+    if (first?.view) emit('navigate', first.view)
+  }
+  if (!isOpen && wasOpen) {
+    document.removeEventListener('keydown', onKeydown, true)
+    emit('active-change', false)
   }
 })
 
-const emit = defineEmits<{
-  navigate: [view: OnboardingViewId]
-}>()
-
-// When the active step has an associated view, drive the real
-// underlying Recall tab to match. The watch fires AFTER the
-// stepIndex updates, so the tour copy and the visible tab stay
-// synchronised through every Next / Back press.
-watch(() => tour.stepIndex.value, (idx) => {
-  const v = ONBOARDING_STEPS[idx]?.viewId
-  if (v) emit('navigate', v)
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydown, true)
 })
 
-// Per-segment state for the left rail. `done` = a step the user has
-// already moved past (lit at 50%); `active` = current step (lit +
-// scan animation); `future` = ahead (outline only).
-const segments = computed(() =>
-  ONBOARDING_STEPS.map((s, i) => ({
-    num: s.num,
-    state:
-      i < tour.stepIndex.value ? 'done'
-      : i === tour.stepIndex.value ? 'active'
-      : 'future',
-  })),
-)
-
-const pad2 = (n: number) => String(n).padStart(2, '0')
-
-function onOverlayClick() {
-  // Background-click is a dismissal affordance; treat it like Skip
-  // so the completion flag persists.
-  tour.skip()
-}
-
-function onPrimaryClick() {
-  if (tour.isLastStep.value) tour.finish()
-  else tour.next()
-}
+function onSkip()   { tour.skip() }
+function onFinish() { tour.finish() }
+function onNext()   { void tour.next() }
+function onBack()   { void tour.prev() }
 </script>
 
 <template>
@@ -96,270 +141,114 @@ function onPrimaryClick() {
       class="onboarding-overlay"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="onboarding-title"
+      aria-labelledby="tour-callout-heading"
       data-testid="onboarding-tour"
-      @click.self="onOverlayClick"
     >
-      <div class="onboarding-panel">
-        <!-- ── Left rail: ult-charge progress + step counter ── -->
-        <aside class="onboarding-rail" aria-hidden="true">
-          <div class="rail-mark">
-            ↳ ONBOARDING
-          </div>
-          <ol class="rail-segments">
-            <li
-              v-for="(seg, i) in segments"
-              :key="i"
-              class="rail-segment"
-              :class="`rail-segment-${seg.state}`"
-            >
-              <span class="rail-segment-num">{{ seg.num }}</span>
-              <span class="rail-segment-bar" />
-            </li>
-          </ol>
-          <div class="rail-counter">
-            <span class="rail-counter-cur">{{ pad2(tour.stepNumber.value) }}</span>
-            <span class="rail-counter-sep">/</span>
-            <span class="rail-counter-total">{{ pad2(tour.totalSteps) }}</span>
-          </div>
-        </aside>
+      <!-- Atmospheric noise + diagonal hairlines behind everything,
+           gating it as a "training mode" register rather than a plain
+           dark scrim. The spotlight SVG layers on top and dims the
+           rest. -->
+      <div class="tour-atmos" aria-hidden="true" />
 
-        <!-- ── Step content (re-mounts on stepIndex change so the
-             slide + underline animations replay) ── -->
-        <div :key="tour.stepIndex.value" class="onboarding-step">
-          <div class="step-tag">
-            {{ tour.step.value.tag }}
-          </div>
-          <div class="step-num" aria-hidden="true">
-            {{ tour.step.value.num }}
-          </div>
-          <h2 id="onboarding-title" class="step-heading">
-            {{ tour.step.value.heading }}
-          </h2>
-          <p class="step-body">
-            {{ tour.step.value.body }}
-          </p>
-        </div>
-
-        <!-- ── Actions: skip (low-priority) + back/next/done ── -->
-        <div class="onboarding-actions">
-          <button
-            type="button"
-            class="onboarding-skip"
-            @click="tour.skip"
-          >
-            Skip tour
-          </button>
-          <div class="onboarding-actions-primary">
-            <button
-              type="button"
-              class="btn ghost"
-              :disabled="tour.isFirstStep.value"
-              @click="tour.prev"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              class="btn primary onboarding-next"
-              @click="onPrimaryClick"
-            >
-              {{ tour.isLastStep.value ? 'Done' : 'Next' }}
-              <span class="onboarding-next-arrow" aria-hidden="true">→</span>
-            </button>
-          </div>
-        </div>
+      <!-- HUD marker at the top-left so the user always knows they're
+           IN a tour — protects against the "is this real or is this
+           a tutorial?" ambiguity. -->
+      <div class="tour-marker" aria-hidden="true">
+        <span class="tour-marker-rune">↳</span>
+        <span class="tour-marker-text">TOUR MODE · DEMO DATA</span>
       </div>
+
+      <TourSpotlight :target="tour.step.value.target ?? null" />
+
+      <!-- :key on the wrapper ensures the callout slide animation
+           replays on every step change. -->
+      <TourCallout
+        :key="tour.step.value.id"
+        :target="tour.step.value.target ?? null"
+        :placement="tour.step.value.placement ?? 'auto'"
+        :eyebrow="eyebrow"
+        :num="num"
+        :heading="tour.step.value.heading"
+        :body="tour.step.value.body"
+        :counter="counter"
+        :can-back="!tour.isFirstStep.value"
+        :is-last="tour.isLastStep.value"
+        @back="onBack"
+        @next="onNext"
+        @skip="onSkip"
+        @finish="onFinish"
+      />
     </div>
   </transition>
 </template>
 
 <style scoped>
-/* HUD briefing overlay. Asymmetric grid: ult-charge progress rail
-   on the left, giant Big-Noodle step number + monospace eyebrow on
-   the right. Decoration trimmed aggressively to stay inside the
-   total-CSS budget (CI enforces 120kB) — the visual register comes
-   from the typography + accent border, not from background
-   textures or animated chrome. */
-
 .onboarding-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
-  display: grid;
-  place-items: center;
-  padding: 2rem;
-  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  z-index: 1999;
+  /* Children (spotlight at 2000, connector at 2001, callout at 2002)
+     stack INSIDE this overlay. The overlay itself blocks pointer
+     events so the underlying app isn't accidentally clickable
+     between the cutout and the callout. */
+  pointer-events: auto;
 }
 
-.onboarding-panel {
-  width: min(820px, 100%);
-  display: grid;
-  grid-template-columns: minmax(7rem, 12rem) 1fr;
-  column-gap: 1.6rem;
-  background: var(--surface);
-  border: 1px solid var(--surface-3);
-  border-left: 3px solid var(--accent);
-  padding: 2rem 2.2rem 1.6rem 1.6rem;
-  box-shadow: 0 26px 70px rgb(0 0 0 / 55%);
+/* Atmospheric texture — concentric subtle gradients + diagonal
+   pinstripes. Sits beneath the spotlight at z-index 0 of the
+   overlay. */
+.tour-atmos {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 8% -10%, color-mix(in srgb, var(--accent, #d96a2e) 16%, transparent), transparent 60%),
+    radial-gradient(45% 40% at 100% 110%, color-mix(in srgb, var(--accent, #d96a2e) 10%, transparent), transparent 60%),
+    repeating-linear-gradient(120deg, transparent 0 14px, rgb(255 255 255 / 1.2%) 14px 15px);
+  opacity: 0.6;
 }
 
-.onboarding-rail {
-  grid-row: 1 / 3;
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  padding-right: 1rem;
-  border-right: 1px dashed color-mix(in srgb, var(--accent) 22%, var(--text-faint));
-}
-
-.rail-mark {
+/* HUD marker — top-left badge. Brutalist monospace label so the
+   user always reads "tour" in their peripheral vision. */
+.tour-marker {
+  position: fixed;
+  top: 0.95rem;
+  left: 1.1rem;
+  z-index: 2003;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.32rem 0.7rem 0.3rem 0.45rem;
+  background: rgb(0 0 0 / 65%);
+  border: 1px solid var(--border, #3a3a3a);
+  border-left: 2px solid var(--accent, #d96a2e);
   font-family: var(--mono);
   font-size: 0.62rem;
   letter-spacing: 0.22em;
-  color: var(--accent);
+  color: var(--accent, #d96a2e);
+  user-select: none;
+  animation: tour-marker-pulse 3.2s ease-in-out infinite;
 }
 
-.rail-segments {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.rail-segment {
-  display: grid;
-  grid-template-columns: 2.4em 1fr;
-  align-items: center;
-  gap: 0.4rem;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  color: var(--text-faint);
-}
-
-.rail-segment-bar {
-  display: block;
-  height: 4px;
-  background: color-mix(in srgb, var(--text-faint) 28%, transparent);
-}
-
-.rail-segment-done .rail-segment-num,
-.rail-segment-active .rail-segment-num { color: var(--accent); }
-
-.rail-segment-done .rail-segment-bar {
-  background: color-mix(in srgb, var(--accent) 55%, transparent);
-}
-
-.rail-segment-active .rail-segment-bar { background: var(--accent); }
-
-.rail-counter {
-  margin-top: auto;
-  font-family: var(--mono);
+.tour-marker-rune {
   font-size: 0.85rem;
-  color: var(--text-faint);
+  line-height: 1;
 }
 
-.rail-counter-cur { color: var(--accent); }
-.rail-counter-sep { opacity: 0.6; padding: 0 0.2em; }
-
-.onboarding-step {
-  grid-column: 2;
-  grid-row: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  animation: step-slide 240ms ease-out;
+@keyframes tour-marker-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #d96a2e) 0%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent, #d96a2e) 16%, transparent); }
 }
-
-@keyframes step-slide {
-  from { opacity: 0; transform: translateX(8px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-.step-tag {
-  font-family: var(--mono);
-  font-size: 0.64rem;
-  letter-spacing: 0.3em;
-  color: var(--accent);
-  text-transform: uppercase;
-}
-
-.step-num {
-  font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', Impact, sans-serif;
-  font-size: clamp(3.2rem, 6vw, 5rem);
-  line-height: 0.9;
-  color: var(--accent);
-  margin: 0.05em 0;
-}
-
-.step-heading {
-  font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', Impact, sans-serif;
-  font-weight: 400;
-  font-size: clamp(1.4rem, 2.2vw, 1.85rem);
-  line-height: 1.05;
-  color: var(--text);
-  margin: 0;
-  border-bottom: 2px solid var(--accent);
-  padding-bottom: 0.4rem;
-  align-self: flex-start;
-}
-
-.step-body {
-  margin: 0.5rem 0 0;
-  color: var(--text-dim);
-  font-size: 0.95rem;
-  line-height: 1.55;
-  max-width: 48ch;
-}
-
-.onboarding-actions {
-  grid-column: 2;
-  grid-row: 2;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 1.4rem;
-  padding-top: 0.85rem;
-  border-top: 1px dashed color-mix(in srgb, var(--text-faint) 38%, transparent);
-}
-
-.onboarding-actions-primary { display: inline-flex; gap: 0.5rem; }
-
-.onboarding-skip {
-  background: transparent;
-  border: 0;
-  padding: 0.4rem 0.2rem;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  cursor: pointer;
-}
-
-.onboarding-skip:hover { color: var(--text-dim); }
-
-.onboarding-skip:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-
-.onboarding-next-arrow { margin-left: 0.35em; }
 
 .onboarding-fade-enter-active,
-.onboarding-fade-leave-active { transition: opacity 220ms ease; }
+.onboarding-fade-leave-active { transition: opacity 240ms ease; }
 
 .onboarding-fade-enter-from,
 .onboarding-fade-leave-to { opacity: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .onboarding-step,
-  .onboarding-fade-enter-active,
-  .onboarding-fade-leave-active {
-    animation: none !important;
-    transition: none !important;
+  .tour-marker {
+    animation: none;
   }
 }
 </style>

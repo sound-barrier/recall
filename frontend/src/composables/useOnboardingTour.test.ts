@@ -162,25 +162,36 @@ describe('useOnboardingTour — step content shape', () => {
     expect(ONBOARDING_STEPS.length).toBeGreaterThanOrEqual(3)
   })
 
-  it('every step carries a num + tag + heading + body', () => {
+  it('every step carries an id + heading + body', () => {
     for (const s of ONBOARDING_STEPS) {
-      expect(s.num).toMatch(/^\d{2}$/)
-      expect(s.tag).toBeTruthy()
+      expect(s.id).toMatch(/^[a-z][a-z0-9-]*$/)
       expect(s.heading).toBeTruthy()
       expect(s.body).toBeTruthy()
     }
   })
 
-  it('non-welcome steps carry a viewId pointing at a real tab', () => {
+  it('every step\'s view (when set) points at a real tab', () => {
     const validViews = new Set(['settings', 'ingest', 'matches', 'unknown'])
-    for (let i = 1; i < ONBOARDING_STEPS.length; i++) {
-      const v = ONBOARDING_STEPS[i]!.viewId
-      expect(v).toBeDefined()
-      expect(validViews.has(v!)).toBe(true)
+    for (const s of ONBOARDING_STEPS) {
+      if (s.view !== undefined) {
+        expect(validViews.has(s.view)).toBe(true)
+      }
     }
   })
 
-  it('welcome step (0) has no viewId so the user keeps the view they landed on', () => {
-    expect(ONBOARDING_STEPS[0]!.viewId).toBeUndefined()
+  it('welcome step (0) has no view so the user keeps the view they landed on', () => {
+    expect(ONBOARDING_STEPS[0]!.view).toBeUndefined()
+    expect(ONBOARDING_STEPS[0]!.target ?? null).toBeNull()
+  })
+
+  it('the final step is a no-target Done briefing', () => {
+    const last = ONBOARDING_STEPS[ONBOARDING_STEPS.length - 1]!
+    expect(last.id).toMatch(/done|complete|finish/)
+    expect(last.target ?? null).toBeNull()
+  })
+
+  it('all step ids are unique (drives DOM keys + e2e selectors)', () => {
+    const ids = new Set(ONBOARDING_STEPS.map(s => s.id))
+    expect(ids.size).toBe(ONBOARDING_STEPS.length)
   })
 })
