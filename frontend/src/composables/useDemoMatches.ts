@@ -8,11 +8,14 @@ import type { MatchRecord } from '../api'
 //
 // Design rules for the corpus:
 //
-//   - Five matches across one evening session (newest first).
+//   - Six records across one evening session (newest first).
 //   - Mix of victories / defeats / one ambiguous + one unknown so
 //     every tour stop has something to land on. The Unknown card
 //     uses `unmatched:tour-broken.png` so the existing UnknownMapsView
-//     classifier handles it.
+//     classifier handles it. The ambiguous card uses
+//     `ambiguous:tour-aatlis-ambig.png` with one candidate pointing
+//     at the aatlis demo match so the "Needs your review" subsection
+//     + the candidate picker actually render during the tour.
 //   - Hero / map / mode / role values use names that resolve through
 //     the real heroes.yaml / maps.yaml lookup tables so role chips
 //     light up correctly.
@@ -177,9 +180,47 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
     },
     parsed_at: '2026-05-10T19:51:00Z',
   },
-  // One unknown record so the Unknown tab stop has something to land
-  // on. Match-key shape mirrors the real "unmatched:<file>" sentinel
-  // App.vue's filter classifies as unknown.
+  // One AMBIGUOUS record so the Unknown tab's "Needs your review"
+  // subsection + the .ambiguous-card / .candidate-picker UI lights
+  // up during the tour. Match-key shape mirrors the real
+  // "ambiguous:<filename>" sentinel App.vue's filter classifies as
+  // ambiguous (records.filter(r => r.ambiguous)).
+  //
+  // The single candidate points at the aatlis demo match (one of
+  // the entries above), so when the tour user expands this card the
+  // candidate picker shows "demo:match:…21:49:34 · 12 min apart ·
+  // aatlis · soldier-76 · 2026-05-10". A second candidate would be
+  // more realistic, but the picker already conveys the contract
+  // with one — and the heading "1 candidate match" reads naturally.
+  //
+  // Stats deliberately mirror the aatlis match's EAD (24/9/6) so the
+  // story holds together: "two screenshots with the same E/A/D
+  // signature inside the 30-min window — Recall asks you to attach."
+  {
+    match_key: 'ambiguous:tour-aatlis-ambig.png',
+    source_files: ['tour-aatlis-ambig.png'],
+    source_types: { 'tour-aatlis-ambig.png': 'scoreboard' },
+    source_parsed_at: { 'tour-aatlis-ambig.png': '2026-05-10T22:01:00Z' },
+    data: {
+      mode: 'competitive',
+      hero: 'soldier-76',
+      eliminations: 24,
+      assists: 9,
+      deaths: 6,
+    },
+    parsed_at: '2026-05-10T22:01:00Z',
+    ambiguous: true,
+    candidates: [
+      {
+        match_key: 'demo:match:2026-05-10T21:49:34',
+        distance_seconds: 720,
+      },
+    ],
+  },
+  // One unknown record so the rest of the Unknown tab (below the
+  // ambiguous subsection) has something to land on. Match-key shape
+  // mirrors the real "unmatched:<file>" sentinel App.vue's filter
+  // classifies as unknown.
   {
     match_key: 'unmatched:tour-broken.png',
     source_files: ['tour-broken.png'],

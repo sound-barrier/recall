@@ -55,9 +55,9 @@ test.describe('onboarding tour — first-launch behaviour', () => {
 
     // Skip through the middle of the walkthrough — assertions on
     // every step's copy live in onboarding-tour-spotlight.spec.ts.
-    // 13 steps total; we're on step 3 after the assertions above,
-    // so 10 Next clicks lands us on step 13 (Done).
-    for (let i = 0; i < 10; i++) {
+    // 14 steps total; we're on step 3 after the assertions above,
+    // so 11 Next clicks lands us on step 14 (Done).
+    for (let i = 0; i < 11; i++) {
       await tour.getByRole('button', { name: /next/i }).click()
       await page.waitForTimeout(150)
     }

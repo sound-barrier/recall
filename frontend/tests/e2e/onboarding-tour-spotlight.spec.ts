@@ -51,10 +51,10 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     await expect(page.locator('.tour-callout-heading')).toContainText(/settings/i)
     await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
 
-    // Walk through every remaining step. The tour has 13 stops total
-    // (12 forward presses from step 1). Each click moves to the next
+    // Walk through every remaining step. The tour has 14 stops total
+    // (13 forward presses from step 1). Each click moves to the next
     // step; the last advance flips Next → Done.
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 11; i++) {
       await page.locator('button:has-text("Next")').click()
       await page.waitForTimeout(150)
     }
@@ -104,6 +104,25 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     await expect(page.locator('.tour-callout-heading')).toContainText(/dossier/i)
     const winrate = await page.locator('.set-dossier').textContent()
     expect(winrate).toMatch(/75%/)
+  })
+
+  test('ambiguous-attribution step lights up the .ambiguous-card', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    // Welcome is step 1; ambiguous-attribution is step 12 in the
+    // 14-step list (after unknown-tab, before cheatsheet). 11 Next
+    // clicks lands on it.
+    for (let i = 0; i < 11; i++) {
+      await page.locator('button:has-text("Next")').click()
+      await page.waitForTimeout(120)
+    }
+    await expect(page.locator('.tour-callout-heading')).toContainText(/ambiguous attribution/i)
+    // The Unknown tab is active + the ambiguous demo record renders
+    // its card. Without an ambiguous record in DEMO_MATCHES this
+    // assertion would catch a regression that drops the seed.
+    await expect(page.locator('#tab-unknown')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.locator('.ambiguous-card')).toBeVisible()
+    await expect(page.locator('.needs-review-heading')).toContainText(/needs your review/i)
   })
 
   test('arrow / h / l keys move between steps; Enter advances', async ({ page }) => {

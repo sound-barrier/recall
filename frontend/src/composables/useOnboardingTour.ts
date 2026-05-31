@@ -172,14 +172,28 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     placement: 'bottom',
     view: 'unknown',
   },
-  // ── 11. Cheatsheet pointer (no target — centred briefing) ──
+  // ── 11. Ambiguous attribution — "Needs your review" ────────
+  // Sits on the Unknown tab right above the unmatched cards. Walks
+  // the user through the candidate-picker so they recognise it the
+  // first time the resolver trips on their real data: when two of
+  // their matches share the same (eliminations, assists, deaths)
+  // signature inside 30 minutes, Recall asks rather than guesses.
+  {
+    id: 'ambiguous-attribution',
+    heading: 'Ambiguous attribution',
+    body: 'When two matches share the same E/A/D signature inside 30 minutes, Recall hands the call back to you instead of guessing. Click Attach to merge with a candidate, or Treat as new match for a standalone row.',
+    target: '.ambiguous-card',
+    placement: 'right',
+    view: 'unknown',
+  },
+  // ── 12. Cheatsheet pointer (no target — centred briefing) ──
   {
     id: 'cheatsheet',
     heading: 'Keyboard shortcuts',
     body: 'Press ? anywhere to open the cheatsheet. h / l navigate left and right; j / k navigate up and down. The lightbox uses the same letters for screenshots.',
     target: null,
   },
-  // ── 12. Done ───────────────────────────────────────────────
+  // ── 13. Done ───────────────────────────────────────────────
   {
     id: 'done',
     tag: 'BRIEFING COMPLETE',
