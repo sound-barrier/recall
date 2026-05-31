@@ -591,6 +591,45 @@ const matchesNarrowState = createMatchesNarrowState()
 const matchesNarrow = useMatchesNarrow(records, matchesNarrowState)
 const selection = useSelectedMatch(matchesNarrow.narrowedRecords)
 
+// Tour-driven narrow popover + filter handlers. The tour fires
+// these via emits on <OnboardingTour /> so a step can demonstrate
+// "open Narrow, filter to Lucio" without simulating clicks across
+// the MatchesView surface. openNarrow / closeNarrow click the same
+// trigger buttons a real user uses (so MatchesView's existing open
+// state stays the single source of truth); the filter mutators
+// write directly to the shared `matchesNarrowState` refs so
+// narrowedRecords + the panel UI both update in one pass. nextTick
+// gives the v-if'd popover a render frame before the close click
+// goes looking for the .np-close button.
+async function onTourOpenNarrow() {
+  if (view.value !== 'matches') await goToView('matches')
+  await nextTick()
+  const trigger = document.querySelector<HTMLButtonElement>(
+    '.dossier-actions .dossier-btn.primary',
+  )
+  trigger?.click()
+}
+async function onTourCloseNarrow() {
+  await nextTick()
+  const close = document.querySelector<HTMLButtonElement>('#narrow-popover .np-close')
+  close?.click()
+}
+function onTourApplyHeroFilter(hero: string) {
+  matchesNarrowState.pickedHeroes.value = new Set([hero])
+}
+function onTourClearFilters() {
+  matchesNarrowState.searchText.value = ''
+  matchesNarrowState.pickedMaps.value = new Set()
+  matchesNarrowState.pickedMapTypes.value = new Set()
+  matchesNarrowState.pickedHeroes.value = new Set()
+  matchesNarrowState.pickedRoles.value = new Set()
+  matchesNarrowState.pickedResults.value = new Set()
+  matchesNarrowState.pickedTags.value = new Set()
+  matchesNarrowState.pickedRange.value = 'all'
+  matchesNarrowState.customFrom.value = ''
+  matchesNarrowState.customTo.value = ''
+}
+
 // MatchesView's left-side "Narrow this set" panel mirrors
 // MatchDetailPanel's modal contract: while open, the background
 // container + status bar go inert + aria-hidden. The view emits its
@@ -1358,14 +1397,20 @@ useEventStream({
 
     <!-- First-launch tour overlay. Self-gates via localStorage;
          renders nothing once dismissed. Steps drive the underlying
-         app via @navigate (tab switch) + @open-match / @close-match
-         (detail panel). @active-change flips the records swap so
-         every tour step lands on demo data. -->
+         app via @navigate (tab switch), @open-match / @close-match
+         (detail panel), @open-narrow / @close-narrow (filter
+         popover), and @apply-hero-filter / @clear-filters
+         (matchesNarrowState picks). @active-change flips the
+         records swap so every tour step lands on demo data. -->
     <OnboardingTour
       @navigate="goToView"
       @active-change="onTourActiveChange"
       @open-match="(k: string) => selection.open(k)"
       @close-match="selection.close"
+      @open-narrow="onTourOpenNarrow"
+      @close-narrow="onTourCloseNarrow"
+      @apply-hero-filter="onTourApplyHeroFilter"
+      @clear-filters="onTourClearFilters"
     />
   </div>
 </template>
