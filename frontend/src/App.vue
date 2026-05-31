@@ -176,7 +176,7 @@ const updateInfo = ref<UpdateInfo | null>(null)
 // the "↑ update available" pill rendered silently — regressed when
 // the masthead got rewired; this is the deliberate-pull restoration.
 const updateCheckBusy = ref(false)
-// isDevBuild gates dev-only chrome — currently the "04 Analysis"
+// isDevBuild gates dev-only chrome — currently the "05 Analysis"
 // tab + panel. Dev builds carry a "-dev" suffix on the version
 // string (e.g. "0.3.0-dev"); release builds don't. The check is
 // purely string-suffix, no network calls.
@@ -1035,11 +1035,30 @@ useEventStream({
                 />
               </span>
             </button>
-            <!-- 04 Analysis is a work-in-progress dashboard sketch.
+            <button
+              id="tab-unknown"
+              class="nav-tab"
+              :class="{ active: view === 'unknown' }"
+              :aria-selected="view === 'unknown'"
+              :tabindex="view === 'unknown' ? 0 : -1"
+              role="tab"
+              aria-controls="panel-unknown"
+              @click="goToView('unknown')"
+            >
+              <span class="nav-tab-num">04</span>
+              <span class="nav-tab-label">
+                Unknown
+                <span v-if="unknownRecords.length > 0" class="nav-tab-badge">{{ unknownRecords.length }}</span>
+              </span>
+            </button>
+            <!-- 05 Analysis is a work-in-progress dashboard sketch.
                  Only exposed to dev builds so release users don't see
                  the incomplete chrome. Hidden from both the tablist
                  and the keyboard nav cycle (via visibleTabs) when the
-                 version string lacks the "-dev" suffix. -->
+                 version string lacks the "-dev" suffix. Positioned
+                 last so Unknown's number stays "04" across dev +
+                 release — dev users see the same Unknown anchor
+                 release users do, just with an extra tab on the end. -->
             <button
               v-if="isDevBuild"
               id="tab-analysis"
@@ -1051,24 +1070,8 @@ useEventStream({
               aria-controls="panel-analysis"
               @click="goToView('analysis')"
             >
-              <span class="nav-tab-num">04</span>
-              <span class="nav-tab-label">Analysis</span>
-            </button>
-            <button
-              id="tab-unknown"
-              class="nav-tab"
-              :class="{ active: view === 'unknown' }"
-              :aria-selected="view === 'unknown'"
-              :tabindex="view === 'unknown' ? 0 : -1"
-              role="tab"
-              aria-controls="panel-unknown"
-              @click="goToView('unknown')"
-            >
               <span class="nav-tab-num">05</span>
-              <span class="nav-tab-label">
-                Unknown
-                <span v-if="unknownRecords.length > 0" class="nav-tab-badge">{{ unknownRecords.length }}</span>
-              </span>
+              <span class="nav-tab-label">Analysis</span>
             </button>
           </nav>
         </div>
