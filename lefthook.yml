@@ -149,6 +149,17 @@ pre-push:
     coverage:
       run: make cover
 
+    # Bundle-size budget — same script CI runs in the lint job, with
+    # --build so the hook produces fresh frontend/dist/ artifacts to
+    # measure (CI builds in an earlier step; locally we need to do
+    # the build ourselves). Caps a contributor against pushing a
+    # change that would fail CI's "Enforce bundle-size budget" step.
+    # Budgets live as defaults in the script itself; bump them there.
+    # Skip with: LEFTHOOK_EXCLUDE=bundle-size git push
+    bundle-size:
+      glob: "frontend/**"
+      run: bash scripts/check-bundle-size.sh --build
+
 # Commit-message format check (optional but pairs with release-please).
 # Enable conventional commits via `commit-msg` hook — see release-please
 # workflow for how commit messages drive automated versioning.

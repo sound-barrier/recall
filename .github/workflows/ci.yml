@@ -62,48 +62,13 @@ jobs:
       #   - Total assets/: catches the case where lazy-splitting masks a
       #     real regression by smearing it across chunks.
       # Bump deliberately when a real feature needs the room.
+      # Bundle-size budget. Logic lives in scripts/check-bundle-size.sh
+      # so the lefthook pre-push hook can reuse the same assertion —
+      # contributors fail locally before push instead of finding out
+      # from a red CI badge. Per-chunk + total caps live in the script
+      # as defaults; override via env var if a one-off needs room.
       - name: Enforce bundle-size budget
-        env:
-          MAX_INITIAL_JS_BYTES: "135000"    # 135 KB — initial JS chunk only
-          MAX_INITIAL_CSS_BYTES: "80000"    # 80 KB — initial CSS chunk only
-          MAX_TOTAL_JS_BYTES: "290000"      # 290 KB — every JS chunk combined
-          MAX_TOTAL_CSS_BYTES: "160000"     # 160 KB — every CSS chunk combined
-          # ^^ initial JS bumped from 130 → 135 KB during filter-preset
-          # save & recall; total CSS bumped from 130 → 140 → 145 → 160
-          # KB; total JS bumped from 250 → 270 → 275 → 290 KB across
-          # the detail-panel feature surface, the Engine row's
-          # Detect/Change/Reset cluster, and the onboarding-tour
-          # redesign (TourSpotlight + TourCallout + 13-step demo-data
-          # walkthrough — all in its own async chunk so the bump
-          # doesn't touch initial JS; first-launch only). Initial CSS
-          # (80 KB) stays put — first-paint cost is the same; only
-          # post-mount lazy-chunk budgets moved.
-          # Bump deliberately when a real feature needs the room.
-        run: |
-          set -e
-          init_js=$(find frontend/dist/assets -name 'index-*.js'  -exec wc -c {} + | awk 'END{print $1}')
-          init_css=$(find frontend/dist/assets -name 'index-*.css' -exec wc -c {} + | awk 'END{print $1}')
-          total_js=$(find frontend/dist/assets -name '*.js'  -exec wc -c {} + | awk 'END{print $1}')
-          total_css=$(find frontend/dist/assets -name '*.css' -exec wc -c {} + | awk 'END{print $1}')
-          echo "Bundle sizes: initial JS=${init_js} CSS=${init_css}  total JS=${total_js} CSS=${total_css}"
-          fail=0
-          if [ "$init_js" -gt "$MAX_INITIAL_JS_BYTES" ]; then
-            echo "::error::Initial JS chunk ${init_js}B exceeds budget ${MAX_INITIAL_JS_BYTES}B"
-            fail=1
-          fi
-          if [ "$init_css" -gt "$MAX_INITIAL_CSS_BYTES" ]; then
-            echo "::error::Initial CSS chunk ${init_css}B exceeds budget ${MAX_INITIAL_CSS_BYTES}B"
-            fail=1
-          fi
-          if [ "$total_js" -gt "$MAX_TOTAL_JS_BYTES" ]; then
-            echo "::error::Total JS ${total_js}B exceeds budget ${MAX_TOTAL_JS_BYTES}B"
-            fail=1
-          fi
-          if [ "$total_css" -gt "$MAX_TOTAL_CSS_BYTES" ]; then
-            echo "::error::Total CSS ${total_css}B exceeds budget ${MAX_TOTAL_CSS_BYTES}B"
-            fail=1
-          fi
-          exit $fail
+        run: bash scripts/check-bundle-size.sh
 
       - name: Install golangci-lint
         run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
