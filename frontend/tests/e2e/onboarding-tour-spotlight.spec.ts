@@ -51,10 +51,10 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     await expect(page.locator('.tour-callout-heading')).toContainText(/settings/i)
     await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
 
-    // Walk through every remaining step. The tour has 13 stops total
-    // (12 forward presses from step 1). Each click moves to the next
+    // Walk through every remaining step. The tour has 15 stops total
+    // (14 forward presses from step 1). Each click moves to the next
     // step; the last advance flips Next → Done.
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 12; i++) {
       await page.locator('button:has-text("Next")').click()
       await page.waitForTimeout(150)
     }
@@ -93,8 +93,9 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     })
     await page.goto('/')
     await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
-    // Click Next to step 7 (Matches tab) — walks through 6 steps.
-    for (let i = 0; i < 7; i++) {
+    // Click Next to land on the dossier step — 8 clicks from
+    // welcome lands on step 9 (matches-dossier) in the 15-step list.
+    for (let i = 0; i < 8; i++) {
       await page.locator('button:has-text("Next")').click()
       await page.waitForTimeout(120)
     }
@@ -104,6 +105,40 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     await expect(page.locator('.tour-callout-heading')).toContainText(/dossier/i)
     const winrate = await page.locator('.set-dossier').textContent()
     expect(winrate).toMatch(/75%/)
+  })
+
+  test('matches-narrow step actively opens the Narrow popover and filters to Lucio', async ({ page }) => {
+    // Mock matches as empty — demo records should still drive the
+    // narrowed set since the tour overlays them in-memory.
+    await page.route('**/api/v1/matches', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    })
+    await page.goto('/')
+    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    // 9 Next clicks: welcome → matches-narrow (step 10).
+    for (let i = 0; i < 9; i++) {
+      await page.locator('button:has-text("Next")').click()
+      await page.waitForTimeout(120)
+    }
+    await expect(page.locator('.tour-callout-heading')).toContainText(/narrow to one hero/i)
+    // The popover and a Lucio-bearing filter chip must both be live.
+    await expect(page.locator('#narrow-popover')).toBeVisible()
+    await expect(page.locator('#narrow-popover')).toContainText(/lucio/i)
+  })
+
+  test('matches-detail step actively opens the demo detail panel', async ({ page }) => {
+    await page.route('**/api/v1/matches', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    })
+    await page.goto('/')
+    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    // 11 Next clicks: welcome → matches-detail (step 12).
+    for (let i = 0; i < 11; i++) {
+      await page.locator('button:has-text("Next")').click()
+      await page.waitForTimeout(120)
+    }
+    await expect(page.locator('.tour-callout-heading')).toContainText(/the detail panel/i)
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
   })
 
   test('arrow / h / l keys move between steps; Enter advances', async ({ page }) => {
