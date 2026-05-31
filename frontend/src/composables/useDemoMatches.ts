@@ -192,42 +192,9 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
   },
 ]
 
-// Stub data URL for screenshot previews during the tour. A single 1×1
-// PNG keeps the lightbox + inline previews from 404'ing while the
-// tour points at them — we never want to ship the user's real
-// screenshot folder URL while the demo records own the records ref.
-//
-// Generated from a 100×60 pixel mock with an accent gradient (so the
-// inline preview thumbnail reads as "a screenshot" not "a broken
-// image icon"). Inlined here so the tour is fully self-contained.
-export const DEMO_SCREENSHOT_DATA_URL =
-  'data:image/svg+xml;utf8,' +
-  encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#1d1d1d" />
-          <stop offset="1" stop-color="#2a2a2a" />
-        </linearGradient>
-      </defs>
-      <rect width="320" height="180" fill="url(#g)" />
-      <rect x="14" y="14" width="48" height="6" fill="#d96a2e" />
-      <rect x="14" y="28" width="160" height="4" fill="#525252" />
-      <rect x="14" y="38" width="100" height="4" fill="#525252" />
-      <g font-family="ui-monospace, monospace" font-size="11" fill="#8a8a8a" letter-spacing="0.06em">
-        <text x="14" y="158">RECALL · TOUR PREVIEW</text>
-      </g>
-      <g stroke="#d96a2e" stroke-width="1" fill="none" opacity="0.6">
-        <path d="M 220 70 L 290 70 L 290 140 L 220 140 Z" />
-        <path d="M 226 76 L 284 76 L 284 134 L 226 134 Z" stroke-dasharray="3 4" />
-      </g>
-    </svg>`,
-  )
-
-// Returns the demo screenshot data URL for any tour-prefixed filename
-// so the App.vue screenshotURL substitution can recognise tour assets
-// without leaking through to the real handler.
-export function isDemoScreenshot(filename: string | null | undefined): boolean {
-  if (!filename) return false
-  return filename.startsWith('tour-')
-}
+// Note: the tour deliberately does NOT advance through any step
+// that opens the lightbox or inline preview, so the demo records'
+// "tour-*.png" filenames never get served. If a future iteration
+// adds a "click the source-preview" step, drop in a screenshot
+// stub here (data:image/svg+xml ...) and route App.vue's
+// screenshotURL helper through it for tour-prefixed names.
