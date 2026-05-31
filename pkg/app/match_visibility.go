@@ -26,3 +26,14 @@ func (a *App) UnhideMatch(matchKey string) error {
 	}
 	return a.store.UnhideMatch(matchKey)
 }
+
+// HardDeleteMatch wipes every row keyed on matchKey from the database.
+// Surfaced by the Hidden drawer's Delete affordance — the user has
+// already moved the match to the archive and explicitly confirmed.
+// Idempotent: unknown keys complete with no error.
+func (a *App) HardDeleteMatch(matchKey string) error {
+	if matchKey == "" {
+		return fmt.Errorf("match_key required")
+	}
+	return a.store.HardDeleteMatch(matchKey)
+}

@@ -72,6 +72,12 @@ type Store interface {
 	UnhideMatch(matchKey string) error
 	LoadHiddenKeys() (map[string]bool, error)
 
+	// HardDeleteMatch removes every trace of matchKey from the DB —
+	// rows across all five parent tables (children CASCADE), the
+	// hidden_matches flag, and the annotation. Surface for the
+	// "Delete forever" affordance on the Hidden drawer. Idempotent.
+	HardDeleteMatch(matchKey string) error
+
 	// Clear deletes every row in every table — children cascade.
 	Clear() error
 	Close() error

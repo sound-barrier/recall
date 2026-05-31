@@ -20,6 +20,32 @@ func (s *SQLStore) UnhideMatch(matchKey string) error {
 	return err
 }
 
+// HardDeleteMatch wipes every row keyed on matchKey across all
+// parent tables (children CASCADE), plus annotations and the
+// hidden_matches flag. Used by the Hidden drawer's Delete affordance
+// — once a user explicitly asks to forget a match, no trace stays in
+// the DB. Idempotent: unknown keys complete with no error.
+func (s *SQLStore) HardDeleteMatch(matchKey string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	for _, t := range parentTables {
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		if _, err := tx.Exec(`DELETE FROM `+t+` WHERE match_key = ?`, matchKey); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(`DELETE FROM hidden_matches WHERE match_key = ?`, matchKey); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM match_annotations WHERE match_key = ?`, matchKey); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (s *SQLStore) LoadHiddenKeys() (map[string]bool, error) {
 	rows, err := s.db.Query(`SELECT match_key FROM hidden_matches`)
 	if err != nil {
