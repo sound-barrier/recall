@@ -136,14 +136,34 @@ export function fireEvent(name: string, data: unknown = undefined): boolean {
 // before tests assert on the rendered DOM.
 export async function mountApp(overrides: MountOverrides = {}) {
   mockApi(overrides)
+  // happy-dom's localStorage is a noop without `--localstorage-file`
+  // (vitest's default config doesn't pass it), so any test that
+  // relies on App.vue reading a persisted preference needs a real
+  // in-memory store. Stub one before mount so every persisted-pref
+  // composable hydrates from these seeds rather than always falling
+  // back to the default.
+  const storage: Record<string, string> = {}
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => storage[key] ?? null,
+    setItem: (key: string, value: string) => { storage[key] = String(value) },
+    removeItem: (key: string) => { delete storage[key] },
+    clear:      () => { for (const k of Object.keys(storage)) delete storage[k] },
+    key:        (i: number) => Object.keys(storage)[i] ?? null,
+    get length() { return Object.keys(storage).length },
+  })
+
   // Seed localStorage for any preferences App reads on mount via
   // composables (useIncludeUndated, …). We only write the keys the
   // test explicitly opted into so we don't surprise unrelated tests.
-  try {
-    if (overrides.includeUndated !== undefined) {
-      localStorage.setItem('recall.includeUndated', overrides.includeUndated ? 'true' : 'false')
-    }
-  } catch (_) { /* private mode etc. — fine */ }
+  if (overrides.includeUndated !== undefined) {
+    localStorage.setItem('recall.includeUndated', overrides.includeUndated ? 'true' : 'false')
+  }
+  // Suppress the first-launch onboarding tour by default — the tour
+  // installs a document-level capture-phase keydown listener that
+  // intercepts arrow keys and Esc, which breaks unrelated tablist
+  // / modal tests. Tests that want to exercise the tour itself
+  // would need to delete this seed before mounting.
+  localStorage.setItem('recall.onboardingCompleted', 'true')
   // Reset modules so a stale cached App.vue from a prior test doesn't
   // bypass the freshly-installed mock.
   vi.resetModules()
