@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 import type { CalloutPlacement } from '../composables/useOnboardingTour'
+import { rectsOverlap } from './tour-callout-helpers'
 
 // Anchored callout panel. Renders the step's tag / number / heading
 // / body plus the Skip / Back / Next controls. Anchors to the
@@ -75,12 +76,6 @@ function getTargetRect(): { x: number; y: number; w: number; h: number } | null 
   return { x: r.left, y: r.top, w: r.width, h: r.height }
 }
 
-function rectsOverlap(
-  a: { x: number; y: number; w: number; h: number },
-  b: { x: number; y: number; w: number; h: number },
-): boolean {
-  return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y)
-}
 
 function calloutHeight(): number {
   return calloutEl.value?.offsetHeight ?? CALLOUT_H_INITIAL
