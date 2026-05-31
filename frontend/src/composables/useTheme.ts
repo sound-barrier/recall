@@ -57,20 +57,23 @@ const parseTheme = (raw: string): ThemeMode | undefined => {
 
 // detectSystemPreference reads the OS-level light/dark preference via
 // matchMedia. Used as the fresh-install fallback so a user running
-// their OS in light mode doesn't land on a dark UI by default. Never
-// returns 'high-contrast' or 'dark' — those are opt-in only because
-// OSes don't expose a granular "I want a tournament-booth UI" or
-// "I want the OW gray plate look" signal, and `forced-colors: active`
-// is a separate concept (system high-contrast for AT, not a
-// stylistic pick). First launch lands on 'day' or 'night'; 'dark'
-// (the OW gray palette) and 'high-contrast' require an explicit
-// pick.
-export function detectSystemPreference(): Exclude<ThemeMode, 'high-contrast' | 'dark'> {
+// their OS in light mode doesn't land on a dark UI by default.
+// `prefers-color-scheme: dark` resolves to the OW-gray 'dark' palette
+// (the in-game scoreboard plate look), not the editorial 'night'
+// darkroom. Rationale: 'dark' is the system-dark expectation users
+// bring from other Mac/Windows/Linux apps — neutral surfaces with
+// raised cards — whereas 'night' is a deliberate atmospheric pick
+// (deep blue-charcoal with bright-orange highlights) that should
+// require opt-in. Never returns 'high-contrast' — that's a
+// `forced-colors: active` / AT concept, separate from the stylistic
+// pick. First launch lands on 'day' or 'dark'; 'night' and
+// 'high-contrast' require an explicit pick via Settings → Appearance.
+export function detectSystemPreference(): Exclude<ThemeMode, 'high-contrast' | 'night'> {
   try {
-    if (typeof window === 'undefined' || !window.matchMedia) return 'night'
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'night' : 'day'
+    if (typeof window === 'undefined' || !window.matchMedia) return 'dark'
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'day'
   } catch (_) {
-    return 'night'
+    return 'dark'
   }
 }
 

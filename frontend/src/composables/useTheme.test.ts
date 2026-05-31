@@ -20,9 +20,13 @@ function stubMatchMedia(prefersDark: boolean) {
 describe('detectSystemPreference', () => {
   afterEach(() => { vi.unstubAllGlobals() })
 
-  it('returns "night" when matchMedia says prefers-color-scheme: dark', () => {
+  // System-dark resolves to 'dark' (the OW-gray palette), NOT 'night'
+  // (the editorial darkroom). 'night' is opt-in via Settings →
+  // Appearance — see the rationale at detectSystemPreference's
+  // declaration.
+  it('returns "dark" when matchMedia says prefers-color-scheme: dark', () => {
     stubMatchMedia(true)
-    expect(detectSystemPreference()).toBe('night')
+    expect(detectSystemPreference()).toBe('dark')
   })
 
   it('returns "day" when matchMedia says prefers-color-scheme: light', () => {
@@ -30,16 +34,16 @@ describe('detectSystemPreference', () => {
     expect(detectSystemPreference()).toBe('day')
   })
 
-  it('returns "night" when matchMedia is absent (SSR / older sandbox)', () => {
+  it('returns "dark" when matchMedia is absent (SSR / older sandbox)', () => {
     vi.stubGlobal('window', { matchMedia: undefined })
-    expect(detectSystemPreference()).toBe('night')
+    expect(detectSystemPreference()).toBe('dark')
   })
 
-  it('returns "night" when matchMedia throws', () => {
+  it('returns "dark" when matchMedia throws', () => {
     vi.stubGlobal('window', {
       matchMedia: () => { throw new Error('CSP-blocked') },
     })
-    expect(detectSystemPreference()).toBe('night')
+    expect(detectSystemPreference()).toBe('dark')
   })
 })
 
@@ -60,7 +64,7 @@ describe('readStoredTheme', () => {
 
   it('returns the OS preference when nothing is stored (fresh install, dark OS)', () => {
     stubMatchMedia(true)
-    expect(readStoredTheme()).toBe('night')
+    expect(readStoredTheme()).toBe('dark')
   })
 
   it('returns the OS preference when nothing is stored (fresh install, light OS)', () => {
