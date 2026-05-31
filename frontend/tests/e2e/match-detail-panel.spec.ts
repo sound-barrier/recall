@@ -69,6 +69,14 @@ test.describe('match detail panel — keyboard ergonomics', () => {
 
     await page.keyboard.press('ArrowLeft')
     await expect(page.locator('.detail-pos strong')).toHaveText('2')
+
+    // h / l vim aliases — l advances forward, h walks back. Same
+    // handler branch as ArrowLeft/ArrowRight; same canPrev/canNext
+    // gating.
+    await page.keyboard.press('l')
+    await expect(page.locator('.detail-pos strong')).toHaveText('3')
+    await page.keyboard.press('h')
+    await expect(page.locator('.detail-pos strong')).toHaveText('2')
   })
 
   test('↑ / ↓ scrolls the panel body, the page behind stays put', async ({ page }) => {

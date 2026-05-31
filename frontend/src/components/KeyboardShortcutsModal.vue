@@ -212,10 +212,10 @@ const groups: readonly BindingGroup[] = [
     scope: 'Detail panel',
     context: 'panel',
     bindings: [
-      { keys: ['→'],            action: 'Next match (timeline →)' },
-      { keys: ['←'],            action: 'Previous match (timeline ←)' },
-      { keys: ['j'],            action: 'Next match (alternate)' },
-      { keys: ['k'],            action: 'Previous match (alternate)' },
+      // `<` and `>` glyphs lead the row so the user reads "go back /
+      // go forward" at a glance. The actual key tokens follow.
+      { keys: ['<', '←', 'h', 'k'], action: 'Previous match (timeline ←)' },
+      { keys: ['>', '→', 'l', 'j'], action: 'Next match (timeline →)' },
       { keys: ['↓'],            action: 'Scroll panel body down' },
       { keys: ['↑'],            action: 'Scroll panel body up' },
       { keys: ['PgDn', 'Space'], action: 'Scroll panel body one page down' },
@@ -226,10 +226,26 @@ const groups: readonly BindingGroup[] = [
     ],
   },
   {
+    // New group — surfaces when the panel is open (which is also when
+    // the lightbox can be reached). Explicit "only for the same
+    // match" copy so the user doesn't conflate this with the panel's
+    // own prev/next-match shortcut.
+    scope: 'Screenshots (in the fullscreen lightbox)',
+    context: 'panel',
+    bindings: [
+      { keys: ['<', '←', 'h'], action: 'Previous screenshot — only for the same match' },
+      { keys: ['>', '→', 'l'], action: 'Next screenshot — only for the same match' },
+      { keys: ['Esc'],         action: 'Close the lightbox (returns to the panel)' },
+    ],
+  },
+  {
     scope: 'Tablist + modals',
     context: 'always',
     bindings: [
-      { keys: ['←', '→'],      action: 'Cycle tabs (focus a tab button first)' },
+      // `<` / `>` glyphs lead the row for consistency with the panel
+      // and lightbox rows above.
+      { keys: ['<', '←', 'h'], action: 'Previous tab (focus a tab button first)' },
+      { keys: ['>', '→', 'l'], action: 'Next tab (focus a tab button first)' },
       { keys: ['Home'],         action: 'First tab' },
       { keys: ['End'],          action: 'Last tab' },
       { keys: ['Tab'],          action: 'Cycle focusable elements (Shift+Tab reverses)' },

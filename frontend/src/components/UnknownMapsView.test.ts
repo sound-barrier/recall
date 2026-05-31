@@ -207,7 +207,10 @@ describe('UnknownMapsView', () => {
     expect(img.exists()).toBe(true)
     await img.trigger('click')
     expect(wrapper.emitted('open-lightbox')).toBeTruthy()
-    expect(wrapper.emitted('open-lightbox')![0]).toEqual(['x.png'])
+    // Emit signature: (filename, source_files). The second arg is
+    // the owning record's source_files so the lightbox can navigate
+    // between screenshots of the same match.
+    expect(wrapper.emitted('open-lightbox')![0]).toEqual(['x.png', ['x.png']])
   })
 
   // Ambiguous cards historically had no Source Files block — the
@@ -238,6 +241,7 @@ describe('UnknownMapsView', () => {
     expect(img.exists()).toBe(true)
     await img.trigger('click')
     expect(wrapper.emitted('open-lightbox')).toBeTruthy()
-    expect(wrapper.emitted('open-lightbox')![0]).toEqual(['ambig-sb.png'])
+    // Emit signature: (filename, source_files).
+    expect(wrapper.emitted('open-lightbox')![0]).toEqual(['ambig-sb.png', ['ambig-sb.png']])
   })
 })

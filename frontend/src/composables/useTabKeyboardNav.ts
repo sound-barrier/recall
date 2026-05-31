@@ -3,9 +3,13 @@ import { nextTick, ref, type Ref } from 'vue'
 // WAI-ARIA tab-pattern keyboard navigation for the masthead tablist.
 //
 // Left/Right cycle the tabs (wrap-around); Home/End jump to the ends.
-// "Automatic activation" — focusing a tab also switches the view,
-// same as a click. Focus moves to the newly-active tab on the next
-// tick so the focus ring matches the selected state.
+// `h` / `l` work as vim-style aliases for Left/Right respectively,
+// matching the pattern used everywhere else in the app
+// (MatchDetailPanel prev/next match, MatchScreenshotLightbox
+// prev/next screenshot). "Automatic activation" — focusing a tab
+// also switches the view, same as a click. Focus moves to the newly-
+// active tab on the next tick so the focus ring matches the selected
+// state.
 //
 // Extracted from App.vue so the keyboard behaviour can be unit-tested
 // in isolation and so adding a new tab doesn't require re-reading
@@ -26,17 +30,21 @@ export function useTabKeyboardNav(
 ) {
   function onTabKeydown(e: KeyboardEvent) {
     const key = e.key
-    if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'Home' && key !== 'End') return
+    // h/l act as vim aliases for ArrowLeft/ArrowRight. The tab buttons
+    // are not editable, so absorbing single-letter keys is safe.
+    const isLeft  = key === 'ArrowLeft'  || key === 'h'
+    const isRight = key === 'ArrowRight' || key === 'l'
+    if (!isLeft && !isRight && key !== 'Home' && key !== 'End') return
     e.preventDefault()
     const order = tabs.value
     if (order.length === 0) return
     const current = order.indexOf(view.value as TabId)
     if (current === -1) return
     let next = current
-    if (key === 'ArrowLeft')  next = (current - 1 + order.length) % order.length
-    if (key === 'ArrowRight') next = (current + 1) % order.length
-    if (key === 'Home')       next = 0
-    if (key === 'End')        next = order.length - 1
+    if (isLeft)         next = (current - 1 + order.length) % order.length
+    if (isRight)        next = (current + 1) % order.length
+    if (key === 'Home') next = 0
+    if (key === 'End')  next = order.length - 1
     const target = order[next]!
     void goToView(target)
     // Move focus from the now-inactive tab to the newly-active one

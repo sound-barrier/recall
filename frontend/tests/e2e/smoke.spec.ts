@@ -56,6 +56,14 @@ test.describe('a11y patterns — keyboard navigation', () => {
     // ArrowLeft from Settings wraps to Unknown
     await page.locator('#tab-settings').press('ArrowLeft')
     await expect(page.locator('#tab-unknown')).toHaveAttribute('aria-selected', 'true')
+
+    // Vim-style h / l aliases — l advances right, h walks left.
+    // Same handler as ArrowLeft/ArrowRight, just an alternate key.
+    await page.locator('#tab-settings').click()
+    await page.locator('#tab-settings').press('l')
+    await expect(page.locator('#tab-ingest')).toHaveAttribute('aria-selected', 'true')
+    await page.locator('#tab-ingest').press('h')
+    await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
   })
 
   test('skip-link is the first focusable + jumps to <main>', async ({ page }) => {
