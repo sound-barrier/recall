@@ -5,20 +5,24 @@ import (
 	"recall/pkg/parser"
 )
 
-// scrapeReader returns every match in the DB as a slice of metrics.ScrapeRow.
-// Called by the Prometheus collector on every scrape; the read is the same
-// SELECT that backs GetMatchResults, so cardinality and freshness are
-// identical between the Wails UI and the metrics endpoint.
+// scrapeReader returns every non-hidden match in the DB as a slice of
+// metrics.ScrapeRow. Called by the Prometheus collector on every scrape;
+// the read is the same SELECT that backs GetMatchResults, then hidden
+// matches are filtered out so Grafana trends reconcile with the in-app
+// dossier / heatmap / sparkline (which also drop hidden).
 func (a *App) scrapeReader() ([]metrics.ScrapeRow, error) {
 	recs, err := a.aggregateAll()
 	if err != nil {
 		return nil, err
 	}
-	out := make([]metrics.ScrapeRow, len(recs))
-	for i, r := range recs {
+	out := make([]metrics.ScrapeRow, 0, len(recs))
+	for _, r := range recs {
+		if r.Hidden {
+			continue
+		}
 		inferSoleHeroPercent(&r.Data)
 		inferResultFromRank(&r.Data)
-		out[i] = metrics.ScrapeRow{MatchKey: r.MatchKey, Data: r.Data}
+		out = append(out, metrics.ScrapeRow{MatchKey: r.MatchKey, Data: r.Data})
 	}
 	return out, nil
 }
