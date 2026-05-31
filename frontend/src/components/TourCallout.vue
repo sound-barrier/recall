@@ -288,6 +288,7 @@ const connector = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+
   /* Slide-in on every step change. Drives off the parent's :key
      attr on the wrapper so the animation replays. */
   animation: tour-callout-in 320ms cubic-bezier(0.18, 1, 0.32, 1) both;
@@ -335,6 +336,7 @@ const connector = computed(() => {
   font-size: 3.2rem;
   line-height: 0.82;
   color: var(--accent, #d96a2e);
+
   /* Tilt that mirrors the masthead wordmark. Subtle — keeps
      proportions readable. */
   transform: translateY(0.06em);
@@ -386,6 +388,7 @@ const connector = computed(() => {
 }
 
 .tour-callout-skip:hover { color: var(--text-dim, #c0c0c0); }
+
 .tour-callout-skip:focus-visible {
   outline: 2px solid var(--accent, #d96a2e);
   outline-offset: 3px;
