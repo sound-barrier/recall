@@ -38,6 +38,18 @@ export interface TourActionContext {
   goToView:   (v: OnboardingViewId) => void
   openMatch:  (matchKey: string) => void
   closeMatch: () => void
+  // Narrow popover control — opens / closes the left-side filter
+  // panel that lives inside MatchesView. App.vue drives this via a
+  // DOM click on the `.dossier-actions .dossier-btn.primary`
+  // trigger (and the `.np-close` button on the popover header), so
+  // the tour exercises the same path a real user click would.
+  openNarrow:  () => void | Promise<void>
+  closeNarrow: () => void | Promise<void>
+  // Filter mutation — applies a single hero filter / clears every
+  // narrow facet. Bypasses the popover UI so a tour step can show
+  // "Lucio filter applied" without animating through the picker.
+  applyHeroFilter: (hero: string) => void
+  clearFilters:    () => void
 }
 
 export interface OnboardingStep {
@@ -101,11 +113,16 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     view: 'settings',
   },
   // ── 4. Screenshots folder row ───────────────────────────────
+  // Target the empty-hero Auto-Detect button itself (rather than the
+  // whole section) so the user sees the exact affordance to click on
+  // first launch. On replay (dir already set), the empty-hero block
+  // does not render and the spotlight gracefully collapses — the
+  // body copy still explains the row's controls.
   {
     id: 'settings-folder',
     heading: 'Your screenshots folder',
-    body: 'Detect walks the standard Overwatch install paths. Change… opens a folder picker. Reset clears the configured path so Detect re-runs from scratch.',
-    target: '#sec-directories',
+    body: 'Click Auto-Detect Folder and Recall walks the standard Overwatch install paths. Choose Manually opens a folder picker; the row also exposes Change… and Reset once a folder is set.',
+    target: '#sec-directories .empty-hero-actions .btn.primary',
     placement: 'right',
     view: 'settings',
   },
@@ -127,7 +144,16 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     placement: 'bottom',
     view: 'ingest',
   },
-  // ── 7. Matches tab — the dossier ───────────────────────────
+  // ── 7. The Parse button itself ──────────────────────────────
+  {
+    id: 'parse-button',
+    heading: 'The Parse button',
+    body: 'Click this big primary action to scan your screenshots folder and merge every new file into your match history. The progress panel below it streams per-file status as Tesseract reads each image.',
+    target: '#panel-ingest .btn.primary.big',
+    placement: 'right',
+    view: 'ingest',
+  },
+  // ── 8. Matches tab — the dossier ───────────────────────────
   {
     id: 'matches-tab',
     heading: 'Matches (03)',
@@ -136,7 +162,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     placement: 'bottom',
     view: 'matches',
   },
-  // ── 8. Dossier — the rolled-up summary ─────────────────────
+  // ── 9. Dossier — the rolled-up summary ─────────────────────
   {
     id: 'matches-dossier',
     heading: 'The dossier',
@@ -145,16 +171,30 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     placement: 'bottom',
     view: 'matches',
   },
-  // ── 9. Narrow button — the filter affordance ───────────────
+  // ── 10. Narrow + live Lucio filter demo ────────────────────
+  // setup() opens the Narrow popover (via App.vue's DOM click on
+  // .dossier-actions .dossier-btn.primary) and applies a one-hero
+  // filter so the user sees the dossier + list collapse to a
+  // single hero in real time. teardown() reverses both — clears
+  // the picked-heroes set and closes the popover — so the next
+  // step lands on an unfiltered Matches view.
   {
     id: 'matches-narrow',
-    heading: 'Narrow this set',
-    body: 'Tap here to filter by hero, map, role, mode, date, result, or free-text search. The dossier above and the list below both update as you narrow.',
-    target: '.dossier-actions',
-    placement: 'top',
+    heading: 'Narrow to one hero',
+    body: 'Recall just opened the Narrow panel and filtered the set to Lucio. Pick any combination of hero, map, role, result, date, or free-text search; the dossier above and the list behind both update as you go.',
+    target: '#narrow-popover',
+    placement: 'right',
     view: 'matches',
+    setup: async (ctx) => {
+      await ctx.openNarrow()
+      ctx.applyHeroFilter('lucio')
+    },
+    teardown: async (ctx) => {
+      ctx.clearFilters()
+      await ctx.closeNarrow()
+    },
   },
-  // ── 10. Match list ─────────────────────────────────────────
+  // ── 11. Match list ─────────────────────────────────────────
   {
     id: 'matches-list',
     heading: 'Click any match',
@@ -163,7 +203,26 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     placement: 'top',
     view: 'matches',
   },
-  // ── 10. Unknown tab — triage ───────────────────────────────
+  // ── 12. Detail panel — opened on a demo match ──────────────
+  // setup() opens the Lucio / Rialto demo match so the user sees
+  // the actual right-side panel rather than imagining it from the
+  // body copy. teardown() closes it so the next step's spotlight
+  // isn't covered by the panel.
+  {
+    id: 'matches-detail',
+    heading: 'The detail panel',
+    body: 'Clicking a row opens this panel. Every screenshot tied to the match lives here — scoreboards, summaries, personal cards — plus annotation, hide, and leaver controls. Use h / l to walk through matches without closing.',
+    target: 'aside.detail-panel',
+    placement: 'left',
+    view: 'matches',
+    setup: (ctx) => {
+      ctx.openMatch('demo:match:2026-05-10T22:21:11')
+    },
+    teardown: (ctx) => {
+      ctx.closeMatch()
+    },
+  },
+  // ── 13. Unknown tab — triage ───────────────────────────────
   {
     id: 'unknown-tab',
     heading: 'Unknown (04)',
@@ -172,14 +231,14 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     placement: 'bottom',
     view: 'unknown',
   },
-  // ── 11. Cheatsheet pointer (no target — centred briefing) ──
+  // ── 14. Cheatsheet pointer (no target — centred briefing) ──
   {
     id: 'cheatsheet',
     heading: 'Keyboard shortcuts',
     body: 'Press ? anywhere to open the cheatsheet. h / l navigate left and right; j / k navigate up and down. The lightbox uses the same letters for screenshots.',
     target: null,
   },
-  // ── 12. Done ───────────────────────────────────────────────
+  // ── 15. Done ───────────────────────────────────────────────
   {
     id: 'done',
     tag: 'BRIEFING COMPLETE',

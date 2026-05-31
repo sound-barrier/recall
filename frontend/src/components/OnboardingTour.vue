@@ -38,16 +38,25 @@ const emit = defineEmits<{
   // corpus while this is true.
   'active-change': [active: boolean]
   // App.vue passes these in via TourActionContext setters so the
-  // tour can drive the detail panel. Emitting them lets the tour
-  // stay decoupled from App.vue's `selection` plumbing.
-  'open-match':  [matchKey: string]
-  'close-match': []
+  // tour can drive the detail panel + narrow popover + filters.
+  // Emitting them lets the tour stay decoupled from App.vue's
+  // `selection` / `matchesNarrowState` plumbing.
+  'open-match':         [matchKey: string]
+  'close-match':        []
+  'open-narrow':        []
+  'close-narrow':       []
+  'apply-hero-filter':  [hero: string]
+  'clear-filters':      []
 }>()
 
 const actions: TourActionContext = {
-  goToView:   (v) => emit('navigate', v),
-  openMatch:  (k) => emit('open-match', k),
-  closeMatch: () => emit('close-match'),
+  goToView:        (v) => emit('navigate', v),
+  openMatch:       (k) => emit('open-match', k),
+  closeMatch:      () => emit('close-match'),
+  openNarrow:      () => emit('open-narrow'),
+  closeNarrow:     () => emit('close-narrow'),
+  applyHeroFilter: (h) => emit('apply-hero-filter', h),
+  clearFilters:    () => emit('clear-filters'),
 }
 
 const tour = useOnboardingTour({ actions })
