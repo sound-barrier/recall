@@ -141,6 +141,62 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     await expect(page.locator('aside.detail-panel')).toBeVisible()
   })
 
+  test('matches-narrow callout lands to the right of the Narrow popover', async ({ page }) => {
+    // The Narrow popover renders on the LEFT side of the viewport;
+    // step 10 sets placement: 'right' so the callout sits to the
+    // right of the popover. Pin the geometry — the callout's left
+    // edge must be at or past the popover's right edge so it isn't
+    // overlapping the navigation rail the user is being walked
+    // through. Catches a regression in the placement-honoring path
+    // that would silently relocate it (auto-fallback covered the
+    // popover before this fix).
+    //
+    // `.tour-callout-ready` flips after syncPos's second-pass resync
+    // (which absorbs the popover's 240ms slide-in transition before
+    // measuring the final rect). Waiting on the class is the cheap
+    // way to be sure the position has settled before asserting.
+    await page.goto('/')
+    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    for (let i = 0; i < 9; i++) {
+      await page.locator('button:has-text("Next")').click()
+      await page.waitForTimeout(120)
+    }
+    await expect(page.locator('.tour-callout-heading')).toContainText(/narrow to one hero/i)
+    await expect(page.locator('.tour-callout')).toHaveClass(/tour-callout-ready/)
+    const popoverBox = await page.locator('#narrow-popover').boundingBox()
+    const calloutBox = await page.locator('.tour-callout').boundingBox()
+    expect(popoverBox).not.toBeNull()
+    expect(calloutBox).not.toBeNull()
+    if (popoverBox && calloutBox) {
+      expect(calloutBox.x).toBeGreaterThanOrEqual(popoverBox.x + popoverBox.width - 1)
+    }
+  })
+
+  test('matches-detail callout lands to the left of the detail panel', async ({ page }) => {
+    // The detail panel renders on the RIGHT side of the viewport;
+    // step 12 sets placement: 'left' so the callout sits to the
+    // left of the panel. Pin the geometry — the callout's right
+    // edge must be at or before the panel's left edge.
+    await page.route('**/api/v1/matches', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    })
+    await page.goto('/')
+    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    for (let i = 0; i < 11; i++) {
+      await page.locator('button:has-text("Next")').click()
+      await page.waitForTimeout(120)
+    }
+    await expect(page.locator('.tour-callout-heading')).toContainText(/the detail panel/i)
+    await expect(page.locator('.tour-callout')).toHaveClass(/tour-callout-ready/)
+    const panelBox = await page.locator('aside.detail-panel').boundingBox()
+    const calloutBox = await page.locator('.tour-callout').boundingBox()
+    expect(panelBox).not.toBeNull()
+    expect(calloutBox).not.toBeNull()
+    if (panelBox && calloutBox) {
+      expect(calloutBox.x + calloutBox.width).toBeLessThanOrEqual(panelBox.x + 1)
+    }
+  })
+
   test('ambiguous-attribution step lights up the .ambiguous-card', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()

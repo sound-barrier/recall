@@ -67,6 +67,18 @@ const dragging = ref(false)
 let dragOffsetX = 0
 let dragOffsetY = 0
 
+// Position-ready flag. `false` while the callout is positioning
+// itself for the first time on a step (and during the second-pass
+// resync that absorbs the target's CSS slide-in transition). The
+// callout's CSS keeps it invisible until this flips true — without
+// the gate, a step whose target enters with `transform: translateX`
+// (Narrow popover, detail panel) measures its pre-transition rect
+// on the first pass and lands at the wrong x for ~320ms before the
+// second pass corrects it. Users see that flash; gating it on
+// `posReady` keeps the callout hidden until the final position is
+// known.
+const posReady = ref(false)
+
 function getTargetRect(): { x: number; y: number; w: number; h: number } | null {
   if (!props.target) return null
   let el: HTMLElement | null = null
@@ -102,14 +114,16 @@ function computePos(): { left: number; top: number; placement: CalloutPlacement 
   const tt = t
 
   // Helper: produce coords for a given side, clamped into the
-  // viewport AND verified to not overlap the target rect. Returns
-  // null when there's not enough room OR the resulting position
-  // would still cover the spotlighted element. Overlap-checking
-  // matters because viewport-fit on its own can still place a wide
-  // callout horizontally on top of a wide target when "centre on
-  // target's centre" math + clamping produces a rect that visually
-  // covers what the step is talking about.
-  function place(side: CalloutPlacement): { left: number; top: number } | null {
+  // viewport. When `checkOverlap` is true (auto-placement path),
+  // also reject sides where the clamped rect would still cover any
+  // part of the target. When false (explicit step-level placement),
+  // honor the requested side as long as it fits in the viewport —
+  // the step author already chose where the callout should land and
+  // an overlap rejection here would silently relocate it.
+  function place(
+    side: CalloutPlacement,
+    checkOverlap: boolean,
+  ): { left: number; top: number } | null {
     let left: number
     let top: number
     if (side === 'bottom') {
@@ -131,22 +145,29 @@ function computePos(): { left: number; top: number; placement: CalloutPlacement 
     } else {
       return null
     }
-    // Final no-overlap check: if the clamped rect still covers any
-    // part of the target, treat the side as un-placeable. Padded by
-    // a small buffer so brushing edges still count as "clear".
-    const calloutRect = { x: left, y: top, w: CALLOUT_W, h }
-    const targetWithMargin = { x: tt.x - 4, y: tt.y - 4, w: tt.w + 8, h: tt.h + 8 }
-    if (rectsOverlap(calloutRect, targetWithMargin)) return null
+    if (checkOverlap) {
+      const calloutRect = { x: left, y: top, w: CALLOUT_W, h }
+      const targetWithMargin = { x: tt.x - 4, y: tt.y - 4, w: tt.w + 8, h: tt.h + 8 }
+      if (rectsOverlap(calloutRect, targetWithMargin)) return null
+    }
     return { left, top }
   }
 
   const preferred = props.placement ?? 'auto'
-  const trySides: CalloutPlacement[] = preferred === 'auto'
-    ? ['bottom', 'right', 'left', 'top']
-    : [preferred, 'bottom', 'right', 'left', 'top']
+  if (preferred !== 'auto') {
+    // Explicit placement requested — try it first WITHOUT the
+    // overlap check so the step author's choice always wins when it
+    // physically fits. If the preferred side is off-viewport
+    // (clamped negative, etc.), fall through to the auto search.
+    const explicit = place(preferred, false)
+    if (explicit) return { ...explicit, placement: preferred }
+  }
 
+  // Auto-placement search — try every side with overlap rejection so
+  // an unspecified step never lands on top of its target.
+  const trySides: CalloutPlacement[] = ['bottom', 'right', 'left', 'top']
   for (const side of trySides) {
-    const out = place(side)
+    const out = place(side, true)
     if (out) return { ...out, placement: side }
   }
   // No side has room without overlap — fall back to a corner of the
@@ -168,7 +189,33 @@ async function syncPos() {
   // parent destroys + remounts the callout per step, so the freeze
   // is automatically reset between steps.
   if (userMoved.value) return
+  // Wait for the target's enter transition to settle BEFORE the
+  // first compute. The Narrow popover (MatchesView's `.left-panel`)
+  // and the detail-panel translate-in over ~240ms; measuring before
+  // they settle would put `right` placement at the popover's
+  // translateX(-100%) edge (x≈22) instead of its final x≈442.
+  //
+  // Skipping the pre-settle pass entirely means the callout has no
+  // wrong-position to flash AT — it stays invisible via opacity:0
+  // until `posReady` flips, then snaps to the final position
+  // (transition: left/top is only declared on `.tour-callout-ready`
+  // so the snap is instant) and fades in over 200ms.
+  await new Promise<void>(resolve => setTimeout(resolve, 320))
+  if (userMoved.value) return
   pos.value = computePos()
+  // Two rAFs between writing the final position and flipping the
+  // ready class. Vue's nextTick alone commits the DOM mutation, but
+  // the browser hasn't necessarily PAINTED the new inline left/top
+  // yet. If we add `tour-callout-ready` (which carries the
+  // `transition: left/top` declaration) before paint, the browser
+  // captures pre-paint coords as the transition's start and
+  // animates from there — visible as the callout sliding from
+  // (0, 0) into the computed position. Two requestAnimationFrame
+  // cycles guarantee a paint between mutation and class flip.
+  await nextTick()
+  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  posReady.value = true
 }
 
 function onWindowScroll() {
@@ -266,6 +313,7 @@ const connector = computed(() => {
   <div
     ref="calloutEl"
     class="tour-callout"
+    :class="{ 'tour-callout-ready': posReady }"
     :data-placement="pos.placement"
     :style="{ left: `${pos.left}px`, top: `${pos.top}px`, width: `${CALLOUT_W}px` }"
     role="dialog"
@@ -370,15 +418,25 @@ const connector = computed(() => {
   flex-direction: column;
   gap: 0.55rem;
 
-  /* Slide-in on every step change. Drives off the parent's :key
-     attr on the wrapper so the animation replays. */
+  /* Stay invisible until syncPos's settle wait completes (the
+     `tour-callout-ready` modifier flips on). The transition: left/
+     top declaration lives ONLY on `.tour-callout-ready` so that
+     the FIRST application of the computed position is an instant
+     snap, not a 280ms glide from (0, 0). On subsequent updates
+     (window resize, target rect change), the class is already
+     present and the transitions animate normally. */
+  opacity: 0;
+}
+
+.tour-callout-ready {
+  opacity: 1;
   animation: tour-callout-in 320ms cubic-bezier(0.18, 1, 0.32, 1) both;
-  transition: left 280ms ease, top 280ms ease;
+  transition: opacity 200ms ease 60ms, left 280ms ease, top 280ms ease;
 }
 
 @keyframes tour-callout-in {
-  from { opacity: 0; transform: translateY(6px) scale(0.985); }
-  to   { opacity: 1; transform: translateY(0)   scale(1); }
+  from { transform: translateY(6px) scale(0.985); }
+  to   { transform: translateY(0)   scale(1); }
 }
 
 .tour-callout-head {
