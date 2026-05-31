@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.3.2](https://github.com/sound-barrier/recall/compare/v0.3.1...v0.3.2) (2026-05-31)
+
+
+### Features
+
+* **lightbox:** screenshot prev/next within the match + h/l aliases ([4a800c6](https://github.com/sound-barrier/recall/commit/4a800c61a942bd6421dcbfd1fc904d98aaf10178))
+* **theme:** map prefers-color-scheme: dark to OW-gray "dark" not "night" ([435569f](https://github.com/sound-barrier/recall/commit/435569fce3521a0724e758b060256a8dcbae1002))
+* **tour:** cover ambiguous attribution in the onboarding walkthrough ([cb61204](https://github.com/sound-barrier/recall/commit/cb61204a67995a1497e54ee4208e1d88a0c452a1))
+* **tour:** make the walkthrough actively demonstrate UI interactions ([0804a13](https://github.com/sound-barrier/recall/commit/0804a13b5955d135f15b103ca504e379174a82a1))
+* **tour:** spotlighted product walkthrough with demo data overlay ([ecede2b](https://github.com/sound-barrier/recall/commit/ecede2b68fe8de45a2b00718205acbd3ae333396))
+* **tour:** UX polish — callout placement, scroll lock, drag, step 4 retarget ([65312a1](https://github.com/sound-barrier/recall/commit/65312a100a53340a3874a3b55af0ecee898c9f06))
+* **tour:** wire App.vue handlers for narrow + filter actions ([fe5b591](https://github.com/sound-barrier/recall/commit/fe5b59114b0408e5cc431a36436b4a3f7b0a16b9))
+
+
+### Bug Fixes
+
+* **tour:** honor explicit placement + wait for target slide-in to settle ([d601531](https://github.com/sound-barrier/recall/commit/d601531875c96370adc9759670c230592938e368))
+
+
+### Refactors
+
+* **nav:** move Analysis tab after Unknown so Unknown stays 04 ([20cba82](https://github.com/sound-barrier/recall/commit/20cba826b0ceacfa8703dbea2e66a501fb27d1a4))
+
+
+### CI
+
+* **bundle-size:** extract budget check to scripts/, add lefthook gate ([cbae1e9](https://github.com/sound-barrier/recall/commit/cbae1e9443041cc0d2860d73c338bed12c95a097))
+
+
+### Tests
+
+* **theme:** update e2e to expect "dark" on OS-driven dark preference ([9625f02](https://github.com/sound-barrier/recall/commit/9625f02d3bc7ac0f00b7897454314901a3363dcb))
+* **tour:** extract rectsOverlap helper + lower lines threshold 68→67 ([eef3746](https://github.com/sound-barrier/recall/commit/eef374663f11bd5f61b87816fbb5dfc025a581f5))
+* **tour:** update step counts + pin active-demo behaviour ([518e1ce](https://github.com/sound-barrier/recall/commit/518e1ce445fc8e562e55002995ccbb11bc3408ae))
+
 ## [0.3.1](https://github.com/sound-barrier/recall/compare/v0.3.0...v0.3.1) (2026-05-31)
 
 
