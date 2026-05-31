@@ -1,5 +1,50 @@
 # Changelog
 
+## [0.3.1](https://github.com/sound-barrier/recall/compare/v0.3.0...v0.3.1) (2026-05-31)
+
+
+### Features
+
+* **dossier:** show in-bar play-count on Most-played-maps rows ([ae48192](https://github.com/sound-barrier/recall/commit/ae48192fc76fe497c33692c1263ca802c76ae6c6))
+* **matches:** rank Top heroes by play time, surface time in the bar ([7d361e9](https://github.com/sound-barrier/recall/commit/7d361e9c20dae988e488a49110ba787020da5993))
+* **matches:** rename Top→Most played, add Total time played tile ([38644a4](https://github.com/sound-barrier/recall/commit/38644a4b72c9f31d9e3f5dc5c3d05e50a8c08da3))
+* **matches:** replace Record tile with Avg K/D/A per 10min ([0e05011](https://github.com/sound-barrier/recall/commit/0e05011fdf2741adb7814007a15e3887502ee11f))
+* **matches:** show top hero win rate over ≥20% matches in the KPI tile ([29098d8](https://github.com/sound-barrier/recall/commit/29098d8ac2f4deb26b60aff2743596d3f25f3671))
+* **settings:** add Detect/Change/Reset cluster to the Tesseract row ([0a48221](https://github.com/sound-barrier/recall/commit/0a4822136daa0e7a3dddc05643d57ea6df3948a0))
+* **settings:** replace Reveal scheme call with backend action, add Reset ([0313696](https://github.com/sound-barrier/recall/commit/03136969135672a896d197f98556d1ce105a916a))
+* **theme:** add OW Dark theme grounded on Overwatch brand gray ([c62975d](https://github.com/sound-barrier/recall/commit/c62975d320b84047646957532d0dc2e38b210ff3))
+* **theme:** add OW Light theme grounded on Overwatch white ([43ae8bd](https://github.com/sound-barrier/recall/commit/43ae8bd570b00ca2e9958a39eb4264588a9bbd99))
+* **theme:** collapse to Day / Dark / Night / High contrast set ([4c3c6c2](https://github.com/sound-barrier/recall/commit/4c3c6c26cc14ef9b64a3bf564b9c5de76d59b1b6))
+
+
+### Bug Fixes
+
+* **correlation:** auto-adopt corroborated EAD candidates in 5-30m zone ([7fb9de8](https://github.com/sound-barrier/recall/commit/7fb9de89171ce5f692b9e44b366541c803bf54dd))
+* **masthead:** restore RECALL brandmark legibility in high-contrast ([59e7ebb](https://github.com/sound-barrier/recall/commit/59e7ebb441c389d7833bdec486d6dd035e11e927))
+* **masthead:** user-pulled update check + dev-build gate for Analysis ([64bbff3](https://github.com/sound-barrier/recall/commit/64bbff3477e05f34201686bf9fd9a9d817250b31))
+* **matches:** align masthead W/L/D with MatchesView Record tile ([329dc5a](https://github.com/sound-barrier/recall/commit/329dc5a22264c420dea8f4c57afc9dfac76dedff))
+* **settings:** keep ScreenshotsDir on transient access failures ([d890815](https://github.com/sound-barrier/recall/commit/d890815df37107df96e28121142e7d3303b1d30b))
+* **settings:** show Tesseract install paths for the host OS only ([0e88442](https://github.com/sound-barrier/recall/commit/0e884426f4bd73829a1a40f54cc79daf019bbebe))
+* **theme:** bump --loss in Dark to clear AA on tinted bg ([8877595](https://github.com/sound-barrier/recall/commit/88775952c81810d3b0c24564a63caf9787ef069e))
+* **unknown:** clickable screenshot previews + ambiguous source preview ([d37dc60](https://github.com/sound-barrier/recall/commit/d37dc60793b63c9dd92f39bc693c2622bb42935e))
+* **unknown:** local expand state — stop opening Matches detail panel ([5a4fd9b](https://github.com/sound-barrier/recall/commit/5a4fd9bde6824c1c92de56bee08e9e0c388e4883))
+
+
+### Refactors
+
+* **api:** drop unused IS_WAILS export ([4a76e77](https://github.com/sound-barrier/recall/commit/4a76e77e4cb3470d69608f558830400b65617a40))
+* **settings:** drop unused isReadableDir helper ([e94cf82](https://github.com/sound-barrier/recall/commit/e94cf82aa6f16620c1cdba616f657b8fc5ddbba8))
+
+
+### Documentation
+
+* **claude:** document theme set, dev-build gate, update-check pattern ([f706338](https://github.com/sound-barrier/recall/commit/f706338c156a9a5ed00001ed161d209b79e48745))
+
+
+### CI
+
+* bump total JS budget 270 → 275 KB for the Engine cluster ([152eed4](https://github.com/sound-barrier/recall/commit/152eed48f1f3f74e07cb09d476f2706a5cf54718))
+
 ## [0.3.0](https://github.com/sound-barrier/recall/compare/v0.2.5...v0.3.0) (2026-05-30)
 
 
