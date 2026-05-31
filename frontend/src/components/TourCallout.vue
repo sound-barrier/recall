@@ -173,16 +173,19 @@ const connector = computed(() => {
   const cy = pos.value.top + h / 2
   const dx = targetCx - cx
   const dy = targetCy - cy
-  // Pick edge: dominant axis.
-  let anchorX = pos.value.left + CALLOUT_W / 2
-  let anchorY = pos.value.top + h / 2
-  if (Math.abs(dx) > Math.abs(dy)) {
-    anchorX = dx > 0 ? pos.value.left + CALLOUT_W : pos.value.left
-    anchorY = pos.value.top + h / 2
-  } else {
-    anchorX = pos.value.left + CALLOUT_W / 2
-    anchorY = dy > 0 ? pos.value.top + h : pos.value.top
-  }
+  // Pick edge: dominant axis. Horizontal-dominant → anchor on the
+  // left/right edge at the callout's vertical centre; vertical-
+  // dominant → anchor on the top/bottom edge at the horizontal
+  // centre. Single ternary per coord so CodeQL doesn't flag a dead
+  // initial assignment (the previous let-then-overwrite shape had
+  // both branches always rewriting the seed).
+  const horizontalDominant = Math.abs(dx) > Math.abs(dy)
+  const anchorX = horizontalDominant
+    ? (dx > 0 ? pos.value.left + CALLOUT_W : pos.value.left)
+    : pos.value.left + CALLOUT_W / 2
+  const anchorY = horizontalDominant
+    ? pos.value.top + h / 2
+    : (dy > 0 ? pos.value.top + h : pos.value.top)
   return { x1: anchorX, y1: anchorY, x2: targetCx, y2: targetCy }
 })
 </script>

@@ -90,12 +90,15 @@ const MatchesDashboardSketch = defineAsyncComponent(() => import('./components/M
 const MatchScreenshotLightbox = defineAsyncComponent(() => import('./components/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = defineAsyncComponent(() => import('./components/KeyboardShortcutsModal.vue'))
 
-// OnboardingTour is mounted eagerly (not lazy) because it auto-opens
-// on first launch and the localStorage gate runs inside its
-// onMounted — fetching a separate chunk would briefly show the
-// landing view first, then pop the briefing overlay in late.
-import OnboardingTour from './components/OnboardingTour.vue'
-import { DEMO_MATCHES } from './composables/useDemoMatches'
+// OnboardingTour lives in its own chunk. The redesigned tour pulled
+// in TourSpotlight + TourCallout + demo-match data + the controller
+// composable — eagerly importing would have lifted ~12KB into the
+// initial bundle for code only first-launch users actually see. The
+// chunk fetches in parallel with App.vue's onMounted load(); the
+// brief delay between "page paints" and "tour overlay appears" is
+// imperceptible against the network round-trip the load() itself is
+// already doing for /api/v1/matches.
+const OnboardingTour = defineAsyncComponent(() => import('./components/OnboardingTour.vue'))
 
 // GitHub repository URL — surfaced via the brandmark in the masthead.
 // Centralised here so the markup, hover title, and any future references
@@ -113,10 +116,15 @@ const loading = ref(false)
 // user's real records are stashed in `savedRecords` and restored the
 // moment the tour closes (finish / skip / Esc). Nothing is persisted
 // to the API or to SQLite.
+//
+// The demo dataset is dynamic-imported on activation so it lives in
+// the OnboardingTour async chunk (kept out of the initial JS budget;
+// users who never trigger the tour never download it).
 const tourActive = ref(false)
 const savedRecords = ref<MatchRecord[]>([])
-function onTourActiveChange(active: boolean) {
+async function onTourActiveChange(active: boolean) {
   if (active) {
+    const { DEMO_MATCHES } = await import('./composables/useDemoMatches')
     savedRecords.value = records.value
     records.value = [...DEMO_MATCHES]
     tourActive.value = true
