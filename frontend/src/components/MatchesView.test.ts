@@ -373,6 +373,84 @@ describe('MatchesView — Archive bulk selection', () => {
   })
 })
 
+describe('MatchesView — Move to profile picker', () => {
+  // The Move-to picker fetches /api/v1/profiles on mount. Stub the
+  // api module so the SFC sees a fixture state with one other
+  // profile available.
+  it('Move to… is suppressed when no other profile exists', async () => {
+    const records = [makeRecord({ match_key: 'k1' })]
+    const wrapper = mountView(records)
+    await wrapper.find('.leaf-checkbox').trigger('click')
+    // Default mountApp mock returns profiles=['main'] — no others.
+    expect(wrapper.find('.bulk-move').exists()).toBe(false)
+  })
+
+  it('clicking Move to… reveals the target picker (when other profiles exist)', async () => {
+    const records = [makeRecord({ match_key: 'k1' })]
+    const wrapper = mountView(records)
+
+    // Inject a fixture availableProfiles state directly (skips the
+    // onMount fetch which the unit test isn't trying to exercise).
+    // The component exposes availableProfiles via setup return for
+    // template binding; we reach in via the public-ish `vm` for the
+    // test only.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vm = wrapper.vm as any
+    vm.availableProfiles = { active: 'main', profiles: ['alt', 'main'] }
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('.leaf-checkbox').trigger('click')
+    await wrapper.find('.bulk-move').trigger('click')
+
+    expect(wrapper.find('.bab-prompt').exists()).toBe(true)
+    const targets = wrapper.findAll('.bulk-move-target')
+    expect(targets).toHaveLength(1)
+    expect(targets[0]!.text()).toBe('alt')
+  })
+
+  it('clicking a target chip emits move-matches with the ticked keys + target', async () => {
+    const records = [
+      makeRecord({ match_key: 'k1' }),
+      makeRecord({ match_key: 'k2' }, { finished_at: '22:30' }),
+    ]
+    const wrapper = mountView(records)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vm = wrapper.vm as any
+    vm.availableProfiles = { active: 'main', profiles: ['alt', 'main'] }
+    await wrapper.vm.$nextTick()
+
+    await wrapper.findAll('.leaf-checkbox')[0]!.trigger('click')
+    await wrapper.findAll('.leaf-checkbox')[1]!.trigger('click')
+    await wrapper.find('.bulk-move').trigger('click')
+    await wrapper.find('.bulk-move-target').trigger('click')
+
+    const emitted = wrapper.emitted('move-matches')
+    expect(emitted).toBeTruthy()
+    const [keys, target] = emitted![0]!
+    expect([...(keys as string[])].sort()).toEqual(['k1', 'k2'])
+    expect(target).toBe('alt')
+    // Picker resets after commit.
+    expect(wrapper.find('.bab-prompt').exists()).toBe(false)
+  })
+
+  it('Cancel reverts the picker without emitting', async () => {
+    const records = [makeRecord({ match_key: 'k1' })]
+    const wrapper = mountView(records)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vm = wrapper.vm as any
+    vm.availableProfiles = { active: 'main', profiles: ['alt', 'main'] }
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('.leaf-checkbox').trigger('click')
+    await wrapper.find('.bulk-move').trigger('click')
+    await wrapper.find('.bulk-cancel').trigger('click')
+
+    expect(wrapper.find('.bab-prompt').exists()).toBe(false)
+    expect(wrapper.find('.bulk-move').exists()).toBe(true)
+    expect(wrapper.emitted('move-matches')).toBeFalsy()
+  })
+})
+
 describe('MatchesView — campaign log hidden filter', () => {
   it('hidden matches drop out of the timeline (visibleRecords feeds it)', () => {
     const records = [makeRecord({ match_key: 'k1', hidden: true })]
