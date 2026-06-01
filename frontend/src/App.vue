@@ -753,14 +753,16 @@ function onMatchesNarrowOpen(open: boolean) {
 // before naming their main account. ESC / backdrop intentionally do
 // NOT close it. The composable persists the dismissal in localStorage
 // so the modal never returns once acknowledged.
-const { acknowledged: firstRunAcknowledged, ack: ackFirstRun } = useFirstRunAcknowledged()
+const { pending: firstRunPending, ack: ackFirstRun } = useFirstRunAcknowledged()
 // Gate on the tour too — `it should not appear if the tour is
 // starting or continuing on`. `tourActive` is seeded synchronously
 // from the onboarding flag (see readTourWillOpen above), so on a
 // fresh install where both flags are unset the tour wins the first
 // paint; once the user finishes / skips the tour, `tourActive`
-// flips false and the modal surfaces.
-const firstRunModalOpen = computed(() => !firstRunAcknowledged.value && !tourActive.value)
+// flips false and the modal surfaces. `firstRunPending` itself ANDs
+// localStorage acknowledgement with the active-profile-is-default
+// check — see useFirstRunAcknowledged.
+const firstRunModalOpen = computed(() => firstRunPending.value && !tourActive.value)
 
 function onFirstRunDismiss(renamedTo: string | null) {
   ackFirstRun()
