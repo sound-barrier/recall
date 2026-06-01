@@ -160,6 +160,24 @@ pre-push:
       glob: "frontend/**"
       run: bash scripts/check-bundle-size.sh --build
 
+    # OpenAPI ↔ server drift — same `schemathesis` job CI runs (see
+    # .github/workflows/ci.yml). The build+boot+fuzz+teardown logic
+    # lives in scripts/check-api-drift.sh so the hook and CI stay in
+    # sync. Fuzzes spec-derived requests against a freshly-built
+    # serveronly binary on port 7099 with a HOME-isolated tempdir
+    # and asserts every response conforms to the declared schema.
+    # Catches the "I added a route but forgot to update
+    # api/openapi.yaml" + "I echoed JSON without setting
+    # Content-Type" classes of bug that Spectral + unit tests can't
+    # see. Glob-scoped to API + server code so a docs-only push
+    # doesn't pay the ~15s cost.
+    # Requires: pipx install 'schemathesis>=3.36,<4'. The hook
+    # short-circuits with an actionable error if schemathesis isn't
+    # on PATH. Skip with: LEFTHOOK_EXCLUDE=schemathesis git push
+    schemathesis:
+      glob: "{api/openapi.yaml,pkg/cmd/**/*.go,pkg/app/**/*.go,main*.go}"
+      run: bash scripts/check-api-drift.sh
+
 # Commit-message format check (optional but pairs with release-please).
 # Enable conventional commits via `commit-msg` hook — see release-please
 # workflow for how commit messages drive automated versioning.

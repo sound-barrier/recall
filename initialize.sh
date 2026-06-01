@@ -92,13 +92,21 @@ case "$PLATFORM" in
 
         # Go-installed tools NOT in the Brewfile. macOS gets the rest
         # (golangci-lint, shfmt, hadolint, lefthook, trivy, yamllint,
-        # tesseract, jq, cloc, direnv) from brew above.
+        # tesseract, jq, cloc, direnv, semgrep, pipx) from brew above.
         log "go install: wails ${WAILS_VERSION}, gofumpt, goimports-reviser, deadcode, govulncheck"
         go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
         go install mvdan.cc/gofumpt@latest
         go install github.com/incu6us/goimports-reviser/v3@latest
         go install golang.org/x/tools/cmd/deadcode@latest
         go install golang.org/x/vuln/cmd/govulncheck@latest
+
+        # schemathesis — OpenAPI ↔ server contract fuzzer. Pipx is
+        # installed via brew above; ensure pipx's bin dir is on PATH
+        # so the install lands somewhere usable. Pin matches the
+        # debian / devcontainer / CI install paths.
+        pipx ensurepath >/dev/null
+        log "pipx schemathesis (>=3.36,<4)"
+        pipx install 'schemathesis>=3.36,<4' >/dev/null || true
         ;;
 
     debian)
@@ -190,6 +198,13 @@ PC
         # devcontainer + CI install path.
         log "semgrep ${SEMGREP_VERSION}"
         pipx install "semgrep==${SEMGREP_VERSION}"
+
+        # schemathesis — OpenAPI ↔ server contract fuzzer. Powers
+        # `make check-api-drift` and the pre-push lefthook hook of
+        # the same name. Pinned to v3.x (v4 renamed --base-url →
+        # --url and changed several flag shapes).
+        log "schemathesis (>=3.36,<4)"
+        pipx install 'schemathesis>=3.36,<4'
         ;;
 esac
 

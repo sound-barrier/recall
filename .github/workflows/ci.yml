@@ -501,9 +501,6 @@ jobs:
         with:
           real-assets: "true"
 
-      - name: Build server binary
-        run: go build -tags serveronly -o recall-server .
-
       - name: Install Tesseract (no-op for API surface but Startup checks for it)
         # Assert installed major.minor matches TESSERACT_VERSION from
         # tool-versions.env so OCR drift can't silently land between
@@ -529,51 +526,14 @@ jobs:
         # CLI invocation below.
         run: pipx install 'schemathesis>=3.36,<4'
 
-      - name: Start server in background
-        env:
-          RECALL_SERVER_ADDR: 127.0.0.1:7000
-        run: |
-          ./recall-server &
-          echo $! > server.pid
-          # Wait up to 30s for the server to accept connections.
-          for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:7000/api/v1/settings/tesseract >/dev/null 2>&1; then
-              echo "Server up after ${i}s"
-              break
-            fi
-            sleep 1
-          done
-
-      - name: Run schemathesis against live server
-        # `--checks all` enables every built-in compliance check:
-        #   not_a_server_error, status_code_conformance, content_type_conformance,
-        #   response_schema_conformance, response_headers_conformance.
-        # `--hypothesis-max-examples=20` keeps wall time reasonable.
-        # `--experimental=openapi-3.1` is required because schemathesis 3.x
-        # only fully supports OpenAPI 3.0 by default and refuses 3.1 specs
-        # without this opt-in. The flag becomes a no-op (and the install
-        # pin <4 can be relaxed) once we move to schemathesis 4.x.
-        # `--exclude-path /api/v1/events` skips the SSE endpoint: it's a
-        # long-lived text/event-stream that never closes from the server
-        # side, so request-response fuzzing always trips the 10s response
-        # timeout. The endpoint stays in the spec for documentation but
-        # isn't a candidate for compliance fuzzing.
-        run: |
-          schemathesis run \
-            --base-url http://127.0.0.1:7000 \
-            --checks all \
-            --hypothesis-max-examples 20 \
-            --exclude-method DELETE \
-            --exclude-path /api/v1/events \
-            --experimental=openapi-3.1 \
-            api/openapi.yaml
-
-      - name: Stop server
-        if: always()
-        run: |
-          if [ -f server.pid ]; then
-            kill "$(cat server.pid)" || true
-          fi
+      - name: Build + boot + fuzz + teardown via shared script
+        # scripts/check-api-drift.sh handles the build-serveronly →
+        # boot-on-isolated-tempdir → schemathesis-run → teardown
+        # sequence. Same script lefthook's pre-push schemathesis hook
+        # invokes so the local + CI signals stay 1:1. The script
+        # short-circuits with an actionable error if schemathesis or
+        # frontend/dist are missing.
+        run: SKIP_FRONTEND_BUILD=1 bash scripts/check-api-drift.sh
 
   # ── Job 12: Combined PR report comment ───────────────────────────────────
   # Renders one sticky comment per PR that folds unit-test pass/fail +

@@ -113,6 +113,14 @@ sudo chmod +x /usr/local/bin/typos
 log "semgrep ${SEMGREP_VERSION}"
 pipx install "semgrep==${SEMGREP_VERSION}"
 
+# ─── schemathesis (OpenAPI ↔ server fuzzer) ──────────────────────────
+# Powers `make check-api-drift` + the pre-push lefthook hook of the
+# same name. Pinned to v3.x (v4 renamed --base-url → --url and
+# changed several flag shapes); matches the initialize.sh + CI
+# install paths.
+log "schemathesis (>=3.36,<4)"
+pipx install 'schemathesis>=3.36,<4'
+
 # ─── direnv shell hook ────────────────────────────────────────────────
 # The Dev Containers spec gives the `vscode` user a bash login shell.
 # Wire direnv into it so cd-ing into the workspace activates .envrc.
