@@ -427,13 +427,11 @@ export function SwitchProfile(name: string): Promise<ProfilesResponse> {
   return _send<ProfilesResponse>('PUT', '/api/v1/profiles/active', { name })
 }
 
-// Hard-delete a non-active profile + wipe its directory. 409 if the
-// profile is active (caller must SwitchProfile first).
-export const DeleteProfile = _dualVoid<[name: string]>(
-  'DeleteProfile',
-  'DELETE',
-  (name) => `/api/v1/profiles/${encodeURIComponent(name)}`,
-)
+// Profile deletion is server-only for now — the masthead chip's MVP
+// scope is switch + create. The backend route (DELETE
+// /api/v1/profiles/{name}) is reachable via direct API for power
+// users / scripted cleanup; the frontend wrapper will land when the
+// UX for "delete with confirm" is designed.
 
 // ─── Data location + export/import ─────────────────────────────────────────
 

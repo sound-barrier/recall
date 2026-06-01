@@ -164,9 +164,6 @@ func (p *Profiles) ActiveDir() string {
 	return p.ProfileDir(p.active)
 }
 
-// BaseDir returns the install-wide base directory.
-func (p *Profiles) BaseDir() string { return p.baseDir }
-
 // Active returns the active profile name.
 func (p *Profiles) Active() string {
 	p.mu.RLock()
