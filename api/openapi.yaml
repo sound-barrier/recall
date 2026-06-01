@@ -255,31 +255,42 @@ paths:
             schema:
               type: object
               properties:
+                # `note` and `replay_code` treat `null` and `""` as
+                # the same "no value" — they're optional and the
+                # server decodes either form as empty. `leaver` keeps
+                # the strict enum because Spectral can't validate a
+                # null member mixed into an enum (the parser bails);
+                # the handler still tolerates `null` (Go decodes to
+                # "" which is the explicit "no leaver tag" enum
+                # value), so leaver: null lands as 204 — same outcome
+                # as leaver: "".
                 leaver:
                   type: string
                   enum: ["", self, team, enemy]
                   description: |
                     One of the three leaver scenarios, or `""` to leave
                     untagged. Whole-row deletion happens only when *every*
-                    field (leaver, note, replay_code, members) is empty.
+                    field (leaver, note, replay_code, members, tags) is
+                    empty.
                 note:
-                  type: string
-                  description: Free-text per-match commentary.
+                  type: [string, "null"]
+                  description: Free-text per-match commentary. `null` = empty.
                 replay_code:
-                  type: string
-                  description: Overwatch six-character replay ID. No format validation server-side.
+                  type: [string, "null"]
+                  description: Overwatch six-character replay ID. No format validation server-side. `null` = empty.
                 members:
-                  type: array
+                  type: [array, "null"]
                   description: |
                     BattleTags of group members for this match. The server
                     trims whitespace, drops empty strings, and deduplicates;
                     the composite-PK on the child table catches any
-                    duplicates that slip through.
+                    duplicates that slip through. `null` is treated as an
+                    empty list (clear members) — equivalent to `[]`.
                   items:
                     type: string
                     example: "Apollo#11234"
                 tags:
-                  type: array
+                  type: [array, "null"]
                   description: |
                     Free-form labels applied to the match. `stack`,
                     `stream`, and `placement` are the conventional
@@ -287,7 +298,9 @@ paths:
                     but any string is accepted. Server lowercases +
                     trims + deduplicates before persistence so
                     `Stack` and `stack` collapse to one entry. Drives
-                    the FilterRail "Tags" multi-select.
+                    the FilterRail "Tags" multi-select. `null` is
+                    treated as an empty list (clear tags) — equivalent
+                    to `[]`.
                   items:
                     type: string
                     example: stack
@@ -773,7 +786,11 @@ paths:
               required: [match_keys, target_profile]
               properties:
                 match_keys:
-                  type: array
+                  # `null` is treated as an empty list — the request
+                  # short-circuits to a no-op (204). Individual `null`
+                  # entries inside the array are still rejected (400);
+                  # see derefStringArray in pkg/cmd/server.go.
+                  type: [array, "null"]
                   items:
                     type: string
                 target_profile:
@@ -1272,7 +1289,12 @@ components:
 
     RecallExport:
       type: object
-      required: [schema, exported_at, recall_version]
+      # `schema` is the only field the import path strictly requires
+      # — it gates the version check. `exported_at` and
+      # `recall_version` are metadata-only echoes; both can be absent
+      # on hand-edited or older-format payloads without breaking the
+      # import.
+      required: [schema]
       description: |
         Schema-versioned envelope for the local backup format produced
         by `GET /api/v1/exports` and consumed by `POST /api/v1/imports`.
@@ -1286,23 +1308,37 @@ components:
           description: Envelope version. Current value `recall-export/v1`.
           example: recall-export/v1
         exported_at:
-          type: string
-          format: date-time
+          # Stored verbatim — the import never parses this string, it
+          # only echoes back in any "import succeeded at" UI surface.
+          # No format constraint so an old export from a different
+          # build (or a hand-edited payload) imports cleanly even if
+          # its timestamp shape isn't strictly RFC 3339. `null` is
+          # also accepted (= unknown export time).
+          type: [string, "null"]
         recall_version:
-          type: string
+          # Optional metadata — `null` = unknown source version,
+          # equivalent to omitting the field.
+          type: [string, "null"]
           example: 0.1.4
         screenshots_dirs:
-          type: object
+          # `null` is treated as an empty map — semantically equivalent
+          # to `{}`. ImportData iterates a nil map without effect.
+          type: [object, "null"]
           additionalProperties:
             type: string
           description: source-side `id` (stringified) → screenshots folder path
           example:
             "1": /Users/jacob/Documents/Overwatch/Screenshots
-        summaries:    { type: array, items: { type: object } }
-        scoreboards:  { type: array, items: { type: object } }
-        personals:    { type: array, items: { type: object } }
-        ranks:        { type: array, items: { type: object } }
-        unknowns:     { type: array, items: { type: object } }
+        # `null` is treated as an empty list — equivalent to `[]`. A
+        # missing field decodes the same way. The server still rejects
+        # individual `null` entries inside the array (each row must
+        # carry a non-empty filename); see ImportData's loop in
+        # pkg/app/export.go.
+        summaries:    { type: [array, "null"], items: { type: object } }
+        scoreboards:  { type: [array, "null"], items: { type: object } }
+        personals:    { type: [array, "null"], items: { type: object } }
+        ranks:        { type: [array, "null"], items: { type: object } }
+        unknowns:     { type: [array, "null"], items: { type: object } }
 
     MatchRecord:
       type: object

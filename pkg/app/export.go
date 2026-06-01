@@ -124,6 +124,41 @@ func (a *App) ImportData(payload []byte) error {
 		return fmt.Errorf("import: unsupported schema %q (this build expects %q)", doc.Schema, exportSchemaV1)
 	}
 
+	// Validate every row carries a non-empty filename. Filename is the
+	// UNIQUE upsert key on every parent table — a row without one would
+	// either collide with a previous null-filename row or store junk.
+	// Catches two real shapes of bad import: a hand-edited payload
+	// where someone deleted a filename, and a JSON `null` entry in an
+	// array (Go's json package silently decodes `[null]` into
+	// `[zero-value struct]` for `[]Row`, which is a schema-violating
+	// shape the spec doesn't allow — schemathesis v4's
+	// negative_data_rejection catches it).
+	for i, r := range doc.Summaries {
+		if r.Filename == "" {
+			return fmt.Errorf("import: summaries[%d] missing required filename", i)
+		}
+	}
+	for i, r := range doc.Scoreboards {
+		if r.Filename == "" {
+			return fmt.Errorf("import: scoreboards[%d] missing required filename", i)
+		}
+	}
+	for i, r := range doc.Personals {
+		if r.Filename == "" {
+			return fmt.Errorf("import: personals[%d] missing required filename", i)
+		}
+	}
+	for i, r := range doc.Ranks {
+		if r.Filename == "" {
+			return fmt.Errorf("import: ranks[%d] missing required filename", i)
+		}
+	}
+	for i, r := range doc.Unknowns {
+		if r.Filename == "" {
+			return fmt.Errorf("import: unknowns[%d] missing required filename", i)
+		}
+	}
+
 	// Build the source-id → destination-id remap. EnsureScreenshotsDir
 	// is idempotent on path; calling it for each source path gives us
 	// the destination id whether the path already existed or not.
