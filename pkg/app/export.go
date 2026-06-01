@@ -116,12 +116,31 @@ func (a *App) ImportData(payload []byte) error {
 	if !looksLikeJSON(payload) {
 		return fmt.Errorf("import: payload is neither JSON nor a ZIP archive")
 	}
+	// Peek at just the schema field before committing to a full decode
+	// so future versions can route through their own typed unmarshaller
+	// instead of all converging on exportV1.
+	var head struct {
+		Schema string `json:"schema"`
+	}
+	if err := json.Unmarshal(payload, &head); err != nil {
+		return fmt.Errorf("import: decode: %w", err)
+	}
+	switch head.Schema {
+	case exportSchemaV1:
+		return a.importJSONv1(payload)
+	default:
+		return fmt.Errorf("import: unsupported schema %q (this build expects %q)", head.Schema, exportSchemaV1)
+	}
+}
+
+// importJSONv1 decodes and applies a `recall-export/v1` payload. When a
+// v2 ships, the dispatch in ImportData adds a sibling case + helper;
+// each version stays decoupled and the v1 reader keeps loading the
+// frozen v1 shape forever.
+func (a *App) importJSONv1(payload []byte) error {
 	var doc exportV1
 	if err := json.Unmarshal(payload, &doc); err != nil {
 		return fmt.Errorf("import: decode: %w", err)
-	}
-	if doc.Schema != exportSchemaV1 {
-		return fmt.Errorf("import: unsupported schema %q (this build expects %q)", doc.Schema, exportSchemaV1)
 	}
 
 	// Validate every row carries a non-empty filename. Filename is the
