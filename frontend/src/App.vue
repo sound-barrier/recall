@@ -67,6 +67,8 @@ import { useSelectedMatch } from './composables/useSelectedMatch'
 import { useMatchesNarrow, createMatchesNarrowState } from './composables/useMatchesNarrow'
 import type { ParseProgressEvent } from './components/ParseProgressPanel.vue'
 import ParseStatusBar from './components/ParseStatusBar.vue'
+import MastheadParseChip from './components/MastheadParseChip.vue'
+import MatchesSkeleton from './components/MatchesSkeleton.vue'
 
 // View components are lazy-loaded via defineAsyncComponent so each
 // becomes a separate JS chunk emitted by Vite. The initial bundle
@@ -116,6 +118,13 @@ const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
 const records = ref<MatchRecord[]>([])
 const error = ref('')
 const loading = ref(false)
+// `initialLoading` is true from boot until the first load() resolves
+// (or fails). Drives the Matches skeleton placeholder so the view
+// doesn't render its empty-state for a frame between mount and the
+// first /api/v1/matches response. Distinct from `loading` (the
+// parse-button busy ref) because a manual parse should NOT swap the
+// real records for skeleton rows.
+const initialLoading = ref(true)
 
 // Onboarding tour: when the tour is active we substitute the live
 // records for the curated DEMO_MATCHES so every tour step has
@@ -413,6 +422,7 @@ async function load() {
   else                                 setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '', platform: '' })
   newScreenshotCount.value = newCount.status === 'fulfilled' ? newCount.value : null
   dataLocation.value      = loc.status === 'fulfilled' ? loc.value : null
+  initialLoading.value = false
 }
 
 async function refreshNewCount() {
@@ -1192,6 +1202,10 @@ useEventStream({
           </nav>
         </div>
         <div class="masthead-right">
+          <MastheadParseChip
+            :parse-progress="parseProgress"
+            @go-to-view="goToView"
+          />
           <div
             v-if="records.length > 0 && view === 'matches'"
             class="scoreboard"
@@ -1352,8 +1366,14 @@ useEventStream({
         />
 
         <!-- ─── MATCHES VIEW ───────────────────────────────────── -->
+        <!-- First paint: render skeleton leaf-rows until the initial
+             /api/v1/matches roundtrip lands. The skeleton mirrors the
+             real .leaf-row grid so the page geometry doesn't shift. -->
+        <MatchesSkeleton
+          v-if="view === 'matches' && initialLoading && records.length === 0"
+        />
         <MatchesView
-          v-if="view === 'matches'"
+          v-else-if="view === 'matches'"
           :records="records"
           :loading="loading"
           :narrow="matchesNarrow"
