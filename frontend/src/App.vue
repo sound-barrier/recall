@@ -743,12 +743,15 @@ const firstRunModalOpen = computed(() => !firstRunAcknowledged.value)
 
 function onFirstRunDismiss(renamedTo: string | null) {
   ackFirstRun()
-  // If the user renamed the active profile, refresh so any cached
-  // profile state surfaces the new name. The rename hit the server;
-  // reload the records + dependent state so the masthead chip
-  // re-fetches GetProfiles() the next time it mounts.
+  // If the user renamed the active profile, the server tore down +
+  // re-init'd the SQLite store at the new directory — same teardown
+  // as the masthead chip's switch/create/rename flow. Mirror that
+  // flow's window.location.reload() so every composable (including
+  // ProfileSwitcher's onMounted GetProfiles()) re-fetches against
+  // the renamed profile. A targeted refresh isn't enough: profile
+  // state is owned by the chip, not App.vue.
   if (renamedTo !== null) {
-    void load()
+    window.location.reload()
   }
 }
 

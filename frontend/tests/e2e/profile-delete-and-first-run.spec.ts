@@ -209,6 +209,44 @@ test.describe('first-run profile-name modal', () => {
     expect(putBody).toEqual({ new_name: 'SilentStorm' })
   })
 
+  test('Save reloads so the masthead chip immediately reflects the new name', async ({ page }) => {
+    // Regression: typing a custom name and clicking Save originally
+    // emitted dismiss + called load() only, which refetches matches
+    // but leaves the ProfileSwitcher chip stuck on its initial
+    // GetProfiles() snapshot ('main'). Fix is to mirror the chip's
+    // own switch/create/rename flow and reload after the rename.
+    const state = { active: 'main', profiles: ['main'] }
+    await page.route('**/api/v1/profiles', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(state) })
+    })
+    await page.route('**/api/v1/profiles/*', async (route: Route, request) => {
+      if (request.method() !== 'PUT') { await route.fallback(); return }
+      const body = JSON.parse(request.postData() ?? '{}') as { new_name?: string }
+      const next = body.new_name ?? state.active
+      state.active = next
+      state.profiles = [next]
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(state) })
+    })
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    })
+
+    await page.goto('/')
+    const modal = page.locator('.first-run-modal')
+    await expect(modal).toBeVisible()
+    // Chip starts on the default `main` profile.
+    await expect(page.locator('.profile-chip')).toContainText('main')
+
+    await modal.locator('.first-run-input').fill('dpsmoira')
+    await modal.locator('.first-run-save').click()
+
+    // After the post-save reload the chip re-fetches GetProfiles and
+    // surfaces the renamed active. The file-level beforeEach clears
+    // the ack flag on every navigation so the modal briefly returns
+    // post-reload — but the chip text still updates regardless.
+    await expect(page.locator('.profile-chip')).toContainText('dpsmoira', { timeout: 8000 })
+  })
+
   test('Keep as "main" records the acknowledgement so the modal does not return', async ({ page }) => {
     await page.route('**/api/v1/profiles', async (route: Route) => {
       await route.fulfill({
