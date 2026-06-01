@@ -14,7 +14,7 @@ function mountIngest(over: Partial<Record<string, unknown>> = {}) {
       tesseractReady: true,
       screenshotsDir: '/srv/owmetrics',
       watchEnabled: false,
-      loading: false,
+      parseBusy: false,
       newScreenshotCount: 3,
       lastParsedAt: null,
       parseProgress: null,

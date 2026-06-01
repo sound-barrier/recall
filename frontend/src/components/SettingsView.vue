@@ -31,7 +31,7 @@ import SettingsProfiles from './SettingsProfiles.vue'
 const props = defineProps<{
   screenshotsDir: string
   watchEnabled?:  boolean
-  loading:        boolean
+  parseBusy:        boolean
   themeMode:      ThemeMode
   weekStart:      WeekStart
   // Nullable + optional: App.vue's load() is async, so the row's
@@ -162,7 +162,7 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
       <div class="empty-hero-actions">
         <button
           class="btn primary"
-          :disabled="loading || probing"
+          :disabled="parseBusy || probing"
           @click="onDetect"
         >
           <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
@@ -172,7 +172,7 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
           <span v-if="probing">Detecting…</span>
           <span v-else>Auto-Detect Folder</span>
         </button>
-        <button class="btn ghost" :disabled="loading" @click="emit('pick-screenshots-dir')">
+        <button class="btn ghost" :disabled="parseBusy" @click="emit('pick-screenshots-dir')">
           Choose Manually
         </button>
       </div>
@@ -204,7 +204,7 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
     <SettingsFolders
       :screenshots-dir="screenshotsDir"
       :watch-enabled="watchEnabled"
-      :loading="loading"
+      :parse-busy="parseBusy"
       :data-location="dataLocation"
       :probing="probing"
       :probe-message="probeMessage"

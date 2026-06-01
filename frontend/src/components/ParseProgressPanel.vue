@@ -12,7 +12,7 @@ export interface ParseProgressEvent {
 
 <script setup lang="ts">
 defineProps<{
-  loading: boolean
+  parseBusy: boolean
   parseProgress: ParseProgressEvent | null
   parseLog: ParseProgressEvent[]
   isOpen: boolean
@@ -24,7 +24,7 @@ defineEmits<{
 </script>
 
 <template>
-  <div v-if="loading" class="parse-progress-panel" :class="{ 'pp-open': isOpen }">
+  <div v-if="parseBusy" class="parse-progress-panel" :class="{ 'pp-open': isOpen }">
     <!-- Summary row: always visible. Click to expand/collapse details. -->
     <div class="pp-summary" @click="$emit('toggle-open')">
       <div class="pp-scan-label">
