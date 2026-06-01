@@ -20,14 +20,15 @@ type DataLocation struct {
 }
 
 // GetDataLocation returns the on-disk paths the running app reads and
-// writes. The base directory honors the RECALL_DATA_DIR override (set
-// in .envrc for `wails dev`) so the value the user sees in Settings
-// matches what they'd inspect via `bash scripts/db-where.sh`.
+// writes. The base directory is the active profile's data dir
+// (<RECALL_DATA_DIR>/profiles/<active>/); RECALL_DATA_DIR still drives
+// the install root so the value the user sees in Settings matches
+// what `bash scripts/db-where.sh` would inspect.
 func (a *App) GetDataLocation() DataLocation {
-	base := appDataDir()
+	base := a.dataDir()
 	return DataLocation{
 		BaseDir:        base,
-		SettingsPath:   settingsPath(),
+		SettingsPath:   a.settingsPath(),
 		DatabasePath:   dbPath(base),
 		ScreenshotsDir: a.settings.ScreenshotsDir,
 	}

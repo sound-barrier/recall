@@ -140,7 +140,7 @@ func (a *App) GetWatchEnabled() bool {
 // preference. Enabling/disabling takes effect immediately.
 func (a *App) SetWatchEnabled(enabled bool) error {
 	a.settings.WatchEnabled = enabled
-	if err := saveSettings(a.settings); err != nil {
+	if err := a.saveSettings(a.settings); err != nil {
 		return err
 	}
 	if enabled {

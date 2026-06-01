@@ -25,6 +25,7 @@ func TestSetScreenshotsDir_RestartsWatcherWhenEnabled(t *testing.T) {
 	// playwright.config.ts.)
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	a := NewWithStore(&fakeStore{})
 	a.settings.ScreenshotsDir = oldDir
@@ -50,6 +51,7 @@ func TestSetScreenshotsDir_NoWatcherRestartWhenDisabled(t *testing.T) {
 
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	a := NewWithStore(&fakeStore{})
 	a.settings.ScreenshotsDir = oldDir
@@ -74,6 +76,7 @@ func TestSetScreenshotsDir_InvalidPathLeavesWatcherAlone(t *testing.T) {
 
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	a := NewWithStore(&fakeStore{})
 	a.settings.ScreenshotsDir = oldDir

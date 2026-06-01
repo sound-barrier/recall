@@ -38,6 +38,16 @@ import (
 type App struct {
 	ctx      context.Context
 	settings Settings
+	// profiles tracks the per-installation profile set + which one is
+	// active. Initialized in Startup; nil for tests wired via
+	// NewWithStore. When nil, dataDir() falls back to appBaseDir() so
+	// settings IO still resolves under the test's HOME isolation.
+	profiles *Profiles
+	// profileOverride is set when the launch carries a --profile=<name>
+	// CLI flag; Startup uses it to activate the named profile (creating
+	// it if needed) without persisting "this is now the default" — the
+	// override is for the single launch only.
+	profileOverride string
 	// store is the persistence layer. *db.SQLStore in production wiring,
 	// can be a fake in tests via NewWithStore.
 	store db.Store
@@ -118,7 +128,33 @@ func NewWithStore(s db.Store) *App {
 // headless mode.
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
-	a.settings = loadSettings()
+
+	// Load (or initialize) the profile manager FIRST — every subsequent
+	// path (settings.json, db/recall.db, export base dir) hangs off the
+	// active profile's directory. Failures here are fatal: the install
+	// has no usable storage if profiles.json can't be written.
+	profiles, err := LoadProfiles(appBaseDir())
+	if err != nil {
+		log.Fatal("could not init profiles: ", err)
+	}
+	a.profiles = profiles
+
+	// CLI --profile=<name> override (set on the App before Startup by
+	// main.go / main_server.go). Auto-creates the named profile if it
+	// doesn't exist, then activates it. The activation persists, so a
+	// fresh launch without --profile remembers the user's last choice.
+	if name := a.profileOverride; name != "" {
+		if !containsProfile(a.profiles.List(), name) {
+			if cerr := a.profiles.Create(name); cerr != nil {
+				log.Fatal("could not create --profile target: ", cerr)
+			}
+		}
+		if aerr := a.profiles.Activate(name); aerr != nil {
+			log.Fatal("could not activate --profile target: ", aerr)
+		}
+	}
+
+	a.settings = a.loadSettings()
 
 	// Validate ScreenshotsDir against the filesystem and clear it
 	// when the path is definitively gone (or has become a file
@@ -142,7 +178,7 @@ func (a *App) Startup(ctx context.Context) {
 	// button no-ops) instead of silently dropping the setting.
 	if a.settings.ScreenshotsDir != "" && pathIsMissingOrNotADir(a.settings.ScreenshotsDir) {
 		a.settings.ScreenshotsDir = ""
-		_ = saveSettings(a.settings)
+		_ = a.saveSettings(a.settings)
 	}
 
 	// Resolve tesseract first — if the user hasn't configured a path,
@@ -152,7 +188,7 @@ func (a *App) Startup(ctx context.Context) {
 	// if the path doesn't resolve to a working binary.
 	if a.settings.TesseractPath == "" {
 		a.settings.TesseractPath = defaultTesseractPath()
-		_ = saveSettings(a.settings)
+		_ = a.saveSettings(a.settings)
 	}
 	a.tessStatus = checkTesseract(a.settings.TesseractPath)
 	parser.SetTesseractPath(a.settings.TesseractPath)
@@ -164,7 +200,7 @@ func (a *App) Startup(ctx context.Context) {
 	// "I moved my install" case.
 	a.autoProbeOnFirstRun()
 
-	dbDir := filepath.Join(appDataDir(), "db")
+	dbDir := filepath.Join(a.dataDir(), "db")
 	if err := os.MkdirAll(dbDir, 0o700); err != nil {
 		log.Fatal("could not create db dir:", err)
 	}

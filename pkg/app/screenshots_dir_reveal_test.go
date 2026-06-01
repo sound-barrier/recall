@@ -25,6 +25,7 @@ import (
 func TestRevealScreenshotsDir_FailsWhenUnconfigured(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	// Skip Startup entirely so the auto-probe doesn't accidentally
 	// adopt some folder on the dev machine (the repo's own
@@ -49,9 +50,10 @@ func TestRevealScreenshotsDir_FailsWhenUnconfigured(t *testing.T) {
 func TestRevealScreenshotsDir_SpawnsExpectedCommand(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	dir := t.TempDir()
-	if err := saveSettings(Settings{ScreenshotsDir: dir}); err != nil {
+	if err := (&App{}).saveSettings(Settings{ScreenshotsDir: dir}); err != nil {
 		t.Fatalf("seed saveSettings: %v", err)
 	}
 
@@ -92,9 +94,10 @@ func TestRevealScreenshotsDir_SpawnsExpectedCommand(t *testing.T) {
 func TestResetScreenshotsDir_ClearsInMemoryAndPersistedState(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	dir := t.TempDir()
-	if err := saveSettings(Settings{ScreenshotsDir: dir}); err != nil {
+	if err := (&App{}).saveSettings(Settings{ScreenshotsDir: dir}); err != nil {
 		t.Fatalf("seed saveSettings: %v", err)
 	}
 	a := NewWithStore(&fakeStore{})
@@ -112,7 +115,7 @@ func TestResetScreenshotsDir_ClearsInMemoryAndPersistedState(t *testing.T) {
 	}
 	// And the persisted shape must match — otherwise the next Startup
 	// re-loads the old value and Reset is a no-op across restarts.
-	persisted := loadSettings()
+	persisted := a.loadSettings()
 	if persisted.ScreenshotsDir != "" {
 		t.Errorf("settings.json ScreenshotsDir = %q; want \"\" (Reset must persist the empty value)", persisted.ScreenshotsDir)
 	}
@@ -126,9 +129,10 @@ func TestResetScreenshotsDir_ClearsInMemoryAndPersistedState(t *testing.T) {
 func TestResetScreenshotsDir_StopsArmedWatcher(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	dir := t.TempDir()
-	if err := saveSettings(Settings{
+	if err := (&App{}).saveSettings(Settings{
 		ScreenshotsDir: dir,
 		WatchEnabled:   true,
 	}); err != nil {

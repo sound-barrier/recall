@@ -35,7 +35,7 @@ func (a *App) GetPrometheusEnabled() bool {
 // than as an error here because they're non-fatal.
 func (a *App) SetPrometheusEnabled(enabled bool) error {
 	a.settings.PrometheusEnabled = enabled
-	if err := saveSettings(a.settings); err != nil {
+	if err := a.saveSettings(a.settings); err != nil {
 		return err
 	}
 	if enabled {
