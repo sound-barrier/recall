@@ -1,27 +1,32 @@
 /**
  * Match-deletion (soft-delete) E2E.
  *
- * The hermetic e2e server boots against an empty SQLite DB, so we
- * intercept the JSON endpoints with `page.route()` and serve canned
- * fixtures — that exercises the full client-side flow (filter rail
- * toggle, MatchCard danger row, confirm step, outbound PUT to
- * `/api/v1/matches/{matchKey}/visibility`).
+ * Drives the full client-side flow:
+ *   1. Click a `.leaf-row` → MatchDetailPanel opens.
+ *   2. Click "Hide match" inside the panel's danger row → confirm step.
+ *   3. Confirm → `PUT /api/v1/matches/{matchKey}/visibility` fires with
+ *      `{ hidden: true }` (no `match_key` in the body — it lives in
+ *      the URL).
+ *   4. The detail panel closes; the row vanishes from the leaves list;
+ *      the hidden record shows up in the Archive drawer.
+ *   5. Cancel aborts without firing any destructive PUT.
+ *
+ * This spec is the regression test for the original `r.json()`-on-204
+ * bug that motivated the CLAUDE.md "UI features need a failing
+ * Playwright e2e first" rule — the void-returning writer silently
+ * threw and load() never fired. Keep it green forever.
+ *
+ * Mocks `/api/v1/matches` with a closure-captured `hidden` flag so
+ * subsequent GETs see the post-PUT state.
  */
 import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
 
 const NORMAL_KEY = 'match:2026-05-10T22:00:00'
-// Path-encoded form of NORMAL_KEY — the colon must be percent-encoded
-// because it carries meaning in URLs. encodeURIComponent on the
-// frontend produces this exact form.
 const NORMAL_KEY_ENCODED = encodeURIComponent(NORMAL_KEY)
 const VISIBILITY_PATH_GLOB = `**/api/v1/matches/${NORMAL_KEY_ENCODED}/visibility`
 
-// A single match. Tests flip `hidden` between requests to drive the
-// flow: hide-confirm → next /api/v1/matches sees hidden=true →
-// card disappears; show-hidden toggle reveals it dimmed; unhide →
-// next response drops the flag.
 const singleRecord = (hidden: boolean) => ({
   match_key: NORMAL_KEY,
   source_files: [`${NORMAL_KEY}.png`],
@@ -44,10 +49,10 @@ const singleRecord = (hidden: boolean) => ({
   ...(hidden ? { hidden: true } : {}),
 })
 
-test.describe.skip('match deletion — soft delete + unhide', () => {
-  test('Hide → Confirm soft-deletes (POSTs hidden=true, card vanishes)', async ({ page }) => {
+test.describe('match deletion — soft delete + unhide', () => {
+  test('Hide → Confirm soft-deletes (PUT hidden=true, row vanishes, Archive shows it)', async ({ page }) => {
     let hidden = false
-    let postBody: Record<string, unknown> | null = null
+    let putBody: Record<string, unknown> | null = null
     let getCount = 0
 
     await page.route('**/api/v1/matches', async (route: Route) => {
@@ -59,8 +64,10 @@ test.describe.skip('match deletion — soft delete + unhide', () => {
       })
     })
     await page.route(VISIBILITY_PATH_GLOB, async (route: Route) => {
-      postBody = JSON.parse(route.request().postData() ?? '{}')
-      hidden = !!postBody.hidden
+      putBody = JSON.parse(route.request().postData() ?? '{}')
+      hidden = !!putBody.hidden
+      // 204 No Content — the canonical writer shape. This is exactly
+      // the response that exposed the r.json()-on-204 bug.
       await route.fulfill({ status: 204, body: '' })
     })
 
@@ -68,29 +75,38 @@ test.describe.skip('match deletion — soft delete + unhide', () => {
     await page.locator('#tab-matches').click()
     await expect(page.locator('.leaf-row')).toHaveCount(1)
 
+    // Click the row → detail panel opens with the MatchCardDanger
+    // block rendered inside.
     await page.locator('.leaf-row').first().click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
     await page.locator('.danger-btn', { hasText: 'Hide match' }).click()
 
-    // Two-step affordance.
-    await expect(page.locator('.danger-btn', { hasText: 'Confirm' })).toBeVisible()
-    await expect(page.locator('.danger-btn', { hasText: 'Cancel' })).toBeVisible()
+    // Two-step affordance — Confirm + Cancel surface inline.
+    await expect(page.locator('.danger-btn.danger-confirm')).toBeVisible()
+    await expect(page.locator('.danger-btn.danger-cancel')).toBeVisible()
 
-    await page.locator('.danger-btn', { hasText: 'Confirm' }).click()
+    await page.locator('.danger-btn.danger-confirm').click()
 
     // Wait for the post-confirm re-fetch to complete by polling on
     // getCount — the click does PUT → load() and load() fires
-    // /api/v1/matches once. Without this, toHaveCount(0) races
-    // with the in-flight refetch.
+    // /api/v1/matches once.
     await expect.poll(() => getCount).toBeGreaterThanOrEqual(2)
-    // Card disappears (default view drops hidden matches).
+    // Row disappears (default view drops hidden matches).
     await expect(page.locator('.leaf-row')).toHaveCount(0)
     // PUT body carries just the visibility flag — match_key lives in
     // the URL now, not the payload.
-    expect(postBody).toEqual({ hidden: true })
+    expect(putBody).toEqual({ hidden: true })
+
+    // Archive drawer shows the hidden record. The toggle surfaces
+    // because hiddenRecords.length > 0.
+    const archiveToggle = page.locator('.archive-toggle')
+    await expect(archiveToggle).toBeVisible()
+    await archiveToggle.click()
+    await expect(page.locator('.archive-row')).toHaveCount(1)
   })
 
-  test('Cancel aborts the hide without POSTing', async ({ page }) => {
-    let postCount = 0
+  test('Cancel aborts the hide without firing the PUT', async ({ page }) => {
+    let putCount = 0
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200,
@@ -99,7 +115,7 @@ test.describe.skip('match deletion — soft delete + unhide', () => {
       })
     })
     await page.route(VISIBILITY_PATH_GLOB, async (route: Route) => {
-      postCount++
+      putCount++
       await route.fulfill({ status: 204, body: '' })
     })
 
@@ -108,64 +124,50 @@ test.describe.skip('match deletion — soft delete + unhide', () => {
     await page.locator('.leaf-row').first().click()
 
     await page.locator('.danger-btn', { hasText: 'Hide match' }).click()
-    await page.locator('.danger-btn', { hasText: 'Cancel' }).click()
+    await page.locator('.danger-btn.danger-cancel').click()
 
     // Hide button is back, Confirm is gone.
     await expect(page.locator('.danger-btn', { hasText: 'Hide match' })).toBeVisible()
-    await expect(page.locator('.danger-btn', { hasText: 'Confirm' })).toHaveCount(0)
-    // Match still present.
+    await expect(page.locator('.danger-btn.danger-confirm')).toHaveCount(0)
+    // Match still present in the leaves list.
     await expect(page.locator('.leaf-row')).toHaveCount(1)
     // Critical: no destructive PUT happened.
-    expect(postCount).toBe(0)
+    expect(putCount).toBe(0)
   })
 
-  test('Show-hidden toggle reveals a hidden match with the dimmed class', async ({ page }) => {
+  test('Archive Unhide PUTs hidden=false and restores the row to the leaves list', async ({ page }) => {
+    let hidden = true
+    let putBody: Record<string, unknown> | null = null
+
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([singleRecord(true)]),
-      })
-    })
-
-    await page.goto('/')
-    await page.locator('#tab-matches').click()
-
-    // Default: hidden match is invisible. But the Hidden · 1 toggle
-    // still surfaces because hiddenMatchCount counts all records.
-    await expect(page.locator('.leaf-row')).toHaveCount(0)
-    const toggle = page.locator('.undated-toggle').filter({ hasText: 'Hidden' })
-    await expect(toggle).toBeVisible()
-    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
-
-    await toggle.click()
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.locator('.match.hidden')).toHaveCount(1)
-  })
-
-  test('Unhide on a hidden card PUTs hidden=false (no confirm step)', async ({ page }) => {
-    let postBody: Record<string, unknown> | null = null
-    await page.route('**/api/v1/matches', async (route: Route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([singleRecord(true)]),
+        body: JSON.stringify([singleRecord(hidden)]),
       })
     })
     await page.route(VISIBILITY_PATH_GLOB, async (route: Route) => {
-      postBody = JSON.parse(route.request().postData() ?? '{}')
+      putBody = JSON.parse(route.request().postData() ?? '{}')
+      hidden = !!putBody.hidden
       await route.fulfill({ status: 204, body: '' })
     })
 
     await page.goto('/')
     await page.locator('#tab-matches').click()
 
-    // Reveal the hidden card via the toggle.
-    await page.locator('.undated-toggle').filter({ hasText: 'Hidden' }).click()
-    await page.locator('.match.hidden').first()
+    // Hidden row isn't in the leaves list but surfaces in the
+    // archive drawer.
+    await expect(page.locator('.leaf-row')).toHaveCount(0)
+    await page.locator('.archive-toggle').click()
+    await expect(page.locator('.archive-row')).toHaveCount(1)
 
-    // Unhide is one-click — strictly restorative, no confirm step.
-    await page.locator('.danger-btn', { hasText: 'Unhide' }).click()
-    expect(postBody).toEqual({ hidden: false })
+    // Click Unhide — single-click, no confirm step (restorative).
+    await page.locator('.archive-row .archive-unhide').click()
+    await expect.poll(() => putBody).not.toBeNull()
+    expect(putBody).toEqual({ hidden: false })
+
+    // After the post-PUT reload, the row is back in the leaves list
+    // and the archive drawer empties.
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
   })
 })

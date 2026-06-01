@@ -222,11 +222,20 @@ export function useMatchesNarrow(
         if (!blob.includes(search)) return false
       }
 
-      // Date range — applies only to dated rows.
+      // Date range — applies only to dated rows. Slice the bound
+      // strings to YYYY-MM-DD before comparing: the heatmap cell-
+      // click writes `${date}T00:00` / `${date}T23:59` (because the
+      // selection band needs sub-day resolution), while preset
+      // ranges and the manual datepicker write bare YYYY-MM-DD. A
+      // raw lexicographic compare between the two forms drops every
+      // record on the active day — the longer "T00:00" string sorts
+      // strictly greater than the shorter bare date that matches it.
       const dateKey = d.date ?? ''
       if (dateKey) {
-        if (customFrom.value && dateKey < customFrom.value) return false
-        if (customTo.value   && dateKey > customTo.value)   return false
+        const fromBound = customFrom.value.slice(0, 10)
+        const toBound   = customTo.value.slice(0, 10)
+        if (fromBound && dateKey < fromBound) return false
+        if (toBound   && dateKey > toBound)   return false
       }
 
       if (pickedMaps.value.size     && !pickedMaps.value.has(d.map     ?? '')) return false

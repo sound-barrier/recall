@@ -36,8 +36,12 @@ off first.
 
 > **Next release focus** (per the maintainer's working note):
 >
-> 1. Burn down the **skipped e2e suites** (item 1) — most ROI per
->    hour, low risk.
+> 1. ~~Burn down the **skipped e2e suites** (item 1)~~ — **paid
+>    down**: 10 describe-blocks across 6 specs un-skipped and
+>    rewritten against the current UI; surfaced + fixed two
+>    production bugs (heatmap date-format mismatch dropping every
+>    record, `/` shortcut targeting a removed `#match-search`
+>    element).
 > 2. Fix the **ScreenshotHandler dir-ID bug** (item 2) — small,
 >    surfaces a real user-visible failure mode.
 > 3. Lift coverage on **App.vue + api.ts + MatchDetailPanel**
@@ -47,53 +51,6 @@ off first.
 > Pre-1.0 there's no backwards-compat constraint, so items 2, 3,
 > and 4 can ship with breaking changes if that's the cleaner path
 > — declare via `feat!:` per CLAUDE.md.
-
----
-
-## 1. Skipped e2e suites — feature affordances without browser-level coverage
-
-**Where:** `frontend/tests/e2e/*.spec.ts`. Ten `test.describe.skip`
-blocks across six files:
-
-| Spec | Skipped blocks |
-|---|---|
-| `keyboard-shortcuts.spec.ts` | cheatsheet modal · global bindings · per-card bindings · input gating |
-| `match-deletion.spec.ts` | soft-delete + unhide |
-| `match-heatmap.spec.ts` | campaign-log header |
-| `match-notes-search.spec.ts` | global notes search · hit highlighting |
-| `match-search.spec.ts` | global + field-scoped syntax |
-| `match-tags.spec.ts` | inline editor + filter |
-
-These are shipped features (each has working production code) but
-the e2e suites are dormant. The CLAUDE.md TDD rule was added AFTER
-some of them landed — pre-rule features didn't get the RED-first
-treatment, and the specs have drifted from the current markup. They
-were skipped to keep CI green rather than maintained to keep
-contracts honest.
-
-**Why it bites:** every refactor inside these surfaces relies on
-Vitest SFC tests alone. SFC tests use happy-dom; they miss
-real-browser focus, keyboard-event ordering, scroll behaviour, and
-the `inert` / `aria-hidden` propagation the modal stack depends on.
-The match-deletion regression that motivated the e2e TDD rule
-(`r.json()` on 204 silently broke every void-returning writer)
-would not be caught by the SFC layer alone.
-
-**Plan** (each block is independently mergeable):
-
-1. **Per spec**: un-skip one `describe`, run it, fix the locator /
-   route-mock drift one regression at a time, commit. Don't bundle.
-2. The keyboard-shortcuts file is the heaviest (four blocks). Start
-   with `cheatsheet modal` (simplest — `?` key opens, Esc closes,
-   shortcut rows render). Then `input gating` (typing in an input
-   suppresses global shortcuts). Then `global bindings`. Then
-   `per-card bindings` (depends on stable Match list state, hardest).
-3. `match-deletion` is the regression-test for the original
-   `r.json()`-on-204 bug. High-priority to re-arm.
-
-**Size:** L (cumulative — 10 specs, roughly half a day each).
-**Risk:** Low (purely additive — un-skipping a spec can't break
-production; it can only fail CI).
 
 ---
 
@@ -660,6 +617,72 @@ Add `pkg/metrics/metrics_filter_test.go` that:
 
 **Size:** S.
 **Risk:** Low.
+
+---
+
+## 18. j/k keyboard nav walks `narrowedRecords` ignoring the rendered sort order
+
+**Where:** `frontend/src/App.vue` j/k handlers + `MatchesView.vue`
+`narrowedIndexByKey` computed.
+
+After paying down item 1, the j/k keyboard nav was repaired so it
+walks `matchesNarrow.narrowedRecords` (instead of the now-defunct
+`filters.filteredSorted`). MatchesView's leaf-rows carry
+`data-card-index` matching their position in `narrowedRecords`.
+That works for the default `sortOrder='newest'` because both
+orders coincide for a date-descending corpus.
+
+When the user flips Sort → Oldest (or the upcoming "by hero" /
+"by map" sorts), the rendered order diverges from
+`narrowedRecords` order. `j` then advances to a row that's NOT
+the visually next one. The aria-current attribute still lights up
+the correct row, but the user's mental model breaks.
+
+**Plan:**
+
+Move the keyboard handlers (or at least the j/k/e/t set that
+depend on the rendered list) into MatchesView. The view owns
+`sortedRecords` and can index against the rendered order
+directly. App.vue keeps only the global shortcuts (`?`, `/`, the
+`g`-prefix view nav).
+
+**Size:** M.
+**Risk:** Low — typed seam between App.vue and MatchesView; the
+keyboard-shortcuts e2e covers the contract.
+
+---
+
+## 19. `useMatchFilters.matchQuery` is dead but its `searchClauses` still feed the hit-highlighter
+
+**Where:** `frontend/src/composables/useMatchFilters.ts:71`
+exports `matchQuery` and a `searchClauses` computed parsed from
+it. The narrow-panel search lives on `useMatchesNarrow.searchText`
+and writes nowhere else. `matchQuery` is never written outside
+`reset()` — meaning `searchClauses.value.length` is always 0.
+
+`MatchCardExpanded.vue` reads `searchClauses` to build the
+`mark.note-hit` highlight markup. With no clauses ever produced,
+the highlight branch is unreachable: typing a query in the narrow
+panel narrows the list but doesn't highlight hits inside the
+expanded note preview.
+
+This is why the pre-redesign `match-notes-search.spec.ts`
+hit-highlight tests stayed skipped through the item-1 burn-down —
+the feature is wired but dead. The current spec only covers the
+preview / textarea swap.
+
+**Plan:**
+
+Wire `matchesNarrowState.searchText` → `filters.matchQuery` via
+a one-line watcher in App.vue. Or simpler: drop `matchQuery` from
+`useMatchFilters` entirely and have `MatchCardExpanded` accept the
+search term as a prop from MatchesView (which already owns
+`searchText`). Either way, re-arm the hit-highlight tests once
+the wiring lands.
+
+**Size:** S.
+**Risk:** Low — the highlight is a passive render branch; wiring
+it up can't break the existing substring filter.
 
 ---
 

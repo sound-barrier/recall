@@ -45,6 +45,11 @@ const props = defineProps<{
   // destructure into top-level setup vars below — templates then
   // auto-unwrap them.
   narrow: ReturnType<typeof useMatchesNarrow>
+  // App.vue's j/k keyboard handlers set this index into narrowed
+  // Records; the matching leaf-row carries data-card-index +
+  // aria-current="true" so the keyboard nav can scroll the row into
+  // view and screen readers announce the focused row.
+  focusedCardIndex?: number
 }>()
 
 const emit = defineEmits<{
@@ -281,6 +286,18 @@ const setSubline = computed(() => {
 
 // ─── Sort + group via useMatchesGroup composable ───────────
 const { sortedRecords, groupedSections } = useMatchesGroup(narrowedRecords, groupBy, sortOrder)
+
+// Index every visible leaf-row by its position in narrowedRecords so
+// App.vue's j/k keyboard nav (which walks `matchesNarrow.narrowedRecords`)
+// can target the matching .leaf-row via `data-card-index`. The order
+// matches App.vue's iteration; for `sortOrder='newest'` (the default)
+// + a typical date-descending corpus the rendered order also matches,
+// so `j` advances down the visible list.
+const narrowedIndexByKey = computed(() => {
+  const m = new Map<string, number>()
+  narrowedRecords.value.forEach((r, i) => m.set(r.match_key, i))
+  return m
+})
 
 function formatTime(rec: MatchRecord): string {
   return rec.data?.finished_at ?? ''
@@ -1075,9 +1092,19 @@ onBeforeUnmount(() => {
             v-for="rec in section.records"
             :key="rec.match_key"
             class="leaf-row"
+            tabindex="-1"
+            :data-card-index="narrowedIndexByKey.get(rec.match_key) ?? -1"
+            :aria-current="props.focusedCardIndex !== undefined
+              && narrowedIndexByKey.get(rec.match_key) === props.focusedCardIndex
+              ? 'true' : undefined"
             :class="[
               `result-${rec.data?.result || 'unknown'}`,
-              { 'has-selection': selectedKeys.size > 0, 'is-ticked': selectedKeys.has(rec.match_key) },
+              {
+                'has-selection': selectedKeys.size > 0,
+                'is-ticked': selectedKeys.has(rec.match_key),
+                'kbd-focused': props.focusedCardIndex !== undefined
+                  && narrowedIndexByKey.get(rec.match_key) === props.focusedCardIndex,
+              },
             ]"
             @click="emit('open-match', rec.match_key)"
           >
