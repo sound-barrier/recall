@@ -491,6 +491,20 @@ test-all: test test-e2e ## Run unit tests + E2E (everything)
 smoke-release-scripts: ## Smoke-test scripts/release/*.sh in temp dirs (no real tag needed)
 	@bash scripts/release/smoke/smoke.sh
 
+smoke-wails: ## Compile-check the full Wails desktop binary on the host
+	@echo "[ recall ] Smoke-building Wails desktop binary…"
+	@# Compile-only check. Booting the GUI requires a display surface
+	@# the CI runner doesn't have, but a build failure surfaces the
+	@# vast majority of Wails-side regressions (missing CGo deps,
+	@# tag drift, AssetServer wiring, embed pattern misses). The
+	@# AssetServer Middleware shim is unit-tested in
+	@# pkg/cmd/middleware_test.go.
+	@mkdir -p build/bin
+	@cd frontend && npm run build > /dev/null
+	@go build -o build/bin/.recall-smoke .
+	@rm -f build/bin/.recall-smoke
+	@echo "[ recall ] ✓  Wails binary builds cleanly"
+
 cover: cover-go cover-frontend ## Generate Go + frontend coverage reports (umbrella)
 
 # Floor for `make cover-go`. Tuned a few points below the current
