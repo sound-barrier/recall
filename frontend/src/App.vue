@@ -88,6 +88,11 @@ const MatchDetailPanel = defineAsyncComponent(() => import('./components/MatchDe
 // dedicated Analysis tab so the shipping Matches view stays
 // untouched while we iterate on the dashboard's data wiring.
 const MatchesDashboardSketch = defineAsyncComponent(() => import('./components/MatchesDashboardSketch.vue'))
+// ProfileSwitcher is part of the always-visible masthead chrome, so
+// it's a static import — lazy-loading it would just buy a tiny
+// initial-bundle saving at the cost of a render-blocking flash on
+// every first paint.
+import ProfileSwitcher from './components/ProfileSwitcher.vue'
 const MatchScreenshotLightbox = defineAsyncComponent(() => import('./components/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = defineAsyncComponent(() => import('./components/KeyboardShortcutsModal.vue'))
 
@@ -1190,6 +1195,7 @@ useEventStream({
               <span class="score-label">Drew</span>
             </div>
           </div>
+          <ProfileSwitcher />
           <div class="ver-block">
             <span v-if="appVersion" class="app-version">v{{ appVersion }}</span>
             <!-- Default state — manual update check. Clicking fires
