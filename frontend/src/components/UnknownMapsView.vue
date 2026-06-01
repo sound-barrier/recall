@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { MatchRecord } from '../api'
 import { detectScreenshotSlots, screenshotURL, formatParsedAt } from '../match-helpers'
@@ -69,6 +69,25 @@ function freshKeyFromAmbiguous(rec: MatchRecord): string | null {
 
 function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
   emit('resolve-ambiguous', rec.match_key, resolvedTo)
+}
+
+// Hover-preview state for the Unknown card list. Mouseenter on a
+// collapsed card sets the hovered key → the floating thumbnail
+// renders anchored to the bottom-right of the card head; mouseleave
+// clears it. Suppressed when the card is expanded (the per-source-file
+// thumbnails in the expanded body already cover that need) and when
+// the record has no source files. Pairs with the existing click-to-
+// expand preview as the lower-friction triage path.
+const hoveredUnknownKey = ref<string | null>(null)
+
+function onHoverUnknown(rec: MatchRecord) {
+  if (props.cardState.isSelected(rec.match_key)) return
+  if (!rec.source_files?.length) return
+  hoveredUnknownKey.value = rec.match_key
+}
+
+function onLeaveUnknown() {
+  hoveredUnknownKey.value = null
 }
 </script>
 
@@ -215,6 +234,8 @@ function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
         :key="rec.match_key"
         class="unknown-card"
         :class="{ expanded: cardState.isSelected(rec.match_key) }"
+        @mouseenter="onHoverUnknown(rec)"
+        @mouseleave="onLeaveUnknown"
       >
         <!-- Card header: index + match key + slot chips + chevron -->
         <div class="unknown-card-head" @click="cardState.toggleExpand(rec.match_key)">
@@ -334,6 +355,21 @@ function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
             </div>
           </div>
         </template>
+
+        <!-- Hover-only floating thumbnail of the first source file.
+             Renders ONLY while the card is collapsed + has at least
+             one source_file + the user is hovering. The expanded
+             view has its own per-file thumbnails in `.unknown-sources`
+             so overlapping floating thumbs would just be noise. -->
+        <img
+          v-if="hoveredUnknownKey === rec.match_key
+            && rec.source_files?.[0]
+            && !cardState.isSelected(rec.match_key)"
+          class="unknown-hover-thumb"
+          :src="screenshotURL(rec.source_files[0])"
+          alt=""
+          aria-hidden="true"
+        >
       </article>
     </div>
   </section>
@@ -604,5 +640,41 @@ function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
 .candidate-fresh {
   align-self: flex-start;
   margin-top: 0.35rem;
+}
+
+/* Hover-only floating thumbnail. Anchored to the top-right of the
+   card; overflows the card on hover so it doesn't squeeze the head
+   row. 16:9 aspect mirrors the OW screenshot ratio so the peek
+   actually looks like the source file rather than a stretched
+   blob. The pointer-events: none keeps the floating element from
+   intercepting the user's mouseleave when they move toward it. */
+.unknown-card:has(.unknown-hover-thumb) {
+  /* The default `overflow: hidden` on .unknown-card clips the
+     overflowing thumb. Only relax this while a thumb is rendering
+     so the ::before edge-strip clip behaviour stays intact for
+     the steady-state card. */
+  overflow: visible;
+}
+
+.unknown-hover-thumb {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 240px;
+  height: 135px;
+  object-fit: cover;
+  background: var(--surface-2);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  box-shadow:
+    0 8px 22px color-mix(in srgb, var(--bg) 60%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* Reduced motion: thumb appears without any fade. */
+@media (prefers-reduced-motion: reduce) {
+  .unknown-hover-thumb { transition: none; }
 }
 </style>
