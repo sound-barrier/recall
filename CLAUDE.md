@@ -393,8 +393,9 @@ Resolved by `App.dataDir()` (returns `a.profiles.ActiveDir()`) in `pkg/app/setti
 
 ### Adding a field
 
-- **New parser scalar** → `ALTER TABLE … ADD COLUMN` in `schemaStatements` (idempotent — "duplicate column" errors tolerated), add the field to the matching `*Row` struct in `pkg/db/store.go`, add it to the Upsert SET clause.
-- **New repeating-group dimension** → new child table referencing the right parent with `ON DELETE CASCADE`.
+- **New parser scalar** → add a migration pair under `pkg/db/migrations/NNNN_<name>.{up,down}.sql` (`ALTER TABLE … ADD COLUMN` in up, the reverse drop in down). The runner in `pkg/db/migrate.go` applies pending migrations on every `NewSQLStore` open and records each in `schema_version`. Then add the field to the matching `*Row` struct in `pkg/db/store.go` and to the Upsert SET clause.
+- **New repeating-group dimension** → new migration pair with a child table referencing the right parent with `ON DELETE CASCADE`.
+- **Migration framework details:** files split on a whole-line `-- statement-end` sentinel; each statement runs inside one transaction per migration. On a legacy DB (parent tables exist but no `schema_version`) the runner adopts the current version without re-running the baseline. A test asserts every `.up.sql` has a paired `.down.sql`.
 
 ## Per-screenshot-type parsers (`pkg/parser/`)
 

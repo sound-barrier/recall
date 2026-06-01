@@ -289,11 +289,9 @@ func NewSQLStore(path string) (*SQLStore, error) {
 		_ = d.Close()
 		return nil, err
 	}
-	for _, stmt := range schemaStatements {
-		if _, err := d.Exec(stmt); err != nil {
-			_ = d.Close()
-			return nil, fmt.Errorf("schema: %w (stmt: %s)", err, firstLine(stmt))
-		}
+	if err := applyMigrations(d); err != nil {
+		_ = d.Close()
+		return nil, fmt.Errorf("schema: %w", err)
 	}
 	// Pre-1.0 break: rewrite legacy colon-form match_keys to the
 	// new URL-safe `-` form. Idempotent — once every row carries

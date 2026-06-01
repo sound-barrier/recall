@@ -204,41 +204,6 @@ from `app.css` — those references survive.
 
 ---
 
-## 10. No SQLite migrations framework
-
-**Where:** `pkg/db/db.go::schemaStatements`.
-
-Schema evolution today is `CREATE TABLE IF NOT EXISTS` plus
-`ALTER TABLE … ADD COLUMN` with "duplicate column" errors
-swallowed. That works for one-way additive changes; it can't:
-
-- Drop a column (SQLite needs the create-temp / copy / swap
-  dance pre-3.35).
-- Add a `NOT NULL` column without a default.
-- Rename a column safely across versions.
-- Track which migrations have run (no schema_version table).
-
-**Why it hasn't bit yet:** pre-1.0, breaking changes are allowed.
-The "delete the DB and re-parse" recovery path is acceptable for
-beta users.
-
-**Plan (do this BEFORE 1.0):**
-
-1. Add a `schema_version` table; seed at the current version.
-2. Adopt `golang-migrate` (or a 50-line homegrown version —
-   `pressly/goose` is the established midpoint).
-3. Per-version migrations live in `pkg/db/migrations/*.sql` with
-   `up` / `down`. `Init()` runs `up` migrations in order; CI
-   asserts every `up` has a paired `down`.
-4. Document the upgrade path in `RELEASES.md`.
-
-**Size:** L.
-**Risk:** High — once the first migration ships, the schema is
-contractually stable. Get the framework right before the first
-real migration.
-
----
-
 ## 11. Export schema has one version + no migration path
 
 **Where:** `pkg/app/export.go:50` — `const exportSchemaV1 =
