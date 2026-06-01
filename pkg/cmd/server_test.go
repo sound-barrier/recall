@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -76,6 +77,22 @@ func visibilityPath(matchKey string) string {
 
 func resolutionPath(matchKey string) string {
 	return "/api/v1/matches/" + url.PathEscape(matchKey) + "/resolution"
+}
+
+// newTestAppWithProfiles boots a real App against a tempdir so the
+// profile manager is fully wired (Create / Switch / Delete are no-ops
+// without an initialized Profiles). Uses the production SQLStore at
+// <tempdir>/profiles/<active>/db/recall.db.
+func newTestAppWithProfiles(t *testing.T) (*app.App, *http.ServeMux) {
+	t.Helper()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	a := app.New()
+	a.SSEHub = app.NewSSEHub()
+	a.Startup(context.Background())
+	mux := NewMux(a, fstest.MapFS{})
+	return a, mux
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -583,5 +600,120 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 	}
 	if v, present := records[0]["annotation"]; present && v != nil {
 		t.Errorf("annotation should be absent or null after clear: %+v", v)
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Profiles — multi-profile switcher routes.
+// ──────────────────────────────────────────────────────────────────────────
+
+func TestProfiles_GetReturnsDefaultOnFreshInstall(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	rec := get(t, mux, "/api/v1/profiles")
+	if rec.Code != 200 {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Active   string   `json:"active"`
+		Profiles []string `json:"profiles"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v\n%s", err, rec.Body.String())
+	}
+	if got.Active != "main" {
+		t.Errorf("active = %q, want main", got.Active)
+	}
+	if len(got.Profiles) != 1 || got.Profiles[0] != "main" {
+		t.Errorf("profiles = %v, want [main]", got.Profiles)
+	}
+}
+
+func TestProfiles_PostCreatesAndActivates(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	rec := fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "alt"})
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+	getRec := get(t, mux, "/api/v1/profiles")
+	var got struct {
+		Active   string   `json:"active"`
+		Profiles []string `json:"profiles"`
+	}
+	_ = json.Unmarshal(getRec.Body.Bytes(), &got)
+	if got.Active != "alt" {
+		t.Errorf("Post should activate the new profile; active=%q", got.Active)
+	}
+	if len(got.Profiles) != 2 {
+		t.Errorf("profiles=%v, want 2 entries", got.Profiles)
+	}
+}
+
+func TestProfiles_PostRejectsInvalidNameAs400(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	rec := fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "../traversal"})
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status %d, want 400; body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProfiles_PostRejectsDuplicateAs400(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	rec := fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "main"})
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status %d, want 400; body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProfiles_PutActiveSwitches(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	_ = fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "alt"})
+
+	rec := put(t, mux, "/api/v1/profiles/active", map[string]string{"name": "main"})
+	if rec.Code != 200 {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+	getRec := get(t, mux, "/api/v1/profiles")
+	var got struct {
+		Active string `json:"active"`
+	}
+	_ = json.Unmarshal(getRec.Body.Bytes(), &got)
+	if got.Active != "main" {
+		t.Errorf("active=%q, want main", got.Active)
+	}
+}
+
+func TestProfiles_PutActiveUnknownReturns404(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	rec := put(t, mux, "/api/v1/profiles/active", map[string]string{"name": "nope"})
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status %d, want 404; body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProfiles_DeleteRemovesNonActive(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	_ = fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "alt"})
+	// alt was activated by POST — switch back to main so we can delete alt.
+	_ = put(t, mux, "/api/v1/profiles/active", map[string]string{"name": "main"})
+
+	rec := del(t, mux, "/api/v1/profiles/alt")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+	getRec := get(t, mux, "/api/v1/profiles")
+	var got struct {
+		Profiles []string `json:"profiles"`
+	}
+	_ = json.Unmarshal(getRec.Body.Bytes(), &got)
+	if len(got.Profiles) != 1 || got.Profiles[0] != "main" {
+		t.Errorf("profiles=%v, want [main]", got.Profiles)
+	}
+}
+
+func TestProfiles_DeleteActiveReturns409(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	rec := del(t, mux, "/api/v1/profiles/main")
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status %d, want 409; body=%s", rec.Code, rec.Body.String())
 	}
 }

@@ -65,6 +65,8 @@ tags:
     description: Server-Sent Events stream.
   - name: Assets
     description: Static screenshot serving.
+  - name: Profiles
+    description: Multi-profile switcher — main + alt accounts.
 
 paths:
   /api/v1/matches:
@@ -575,6 +577,128 @@ paths:
           description: Toggle applied.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/profiles:
+    get:
+      operationId: GetProfiles
+      tags: [Profiles]
+      summary: List all known profiles and which is active
+      description: |
+        Each profile gets its own settings + SQLite DB under
+        `<base>/profiles/<name>/`. The masthead switcher chip
+        renders the list and highlights the active one.
+      responses:
+        "200":
+          description: Active + list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfilesResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      operationId: CreateProfile
+      tags: [Profiles]
+      summary: Create a new profile and activate it
+      description: |
+        Creates the profile directory, adds it to the list, and
+        activates it in one shot. The app tears down the active store
+        and re-initializes against the new profile's directory before
+        the response returns — so callers can re-fetch all data
+        immediately afterward (or window.location.reload() the SPA).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  description: |
+                    Profile name. Must match `^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$`
+                    (filesystem-safe).
+                  example: "alt"
+      responses:
+        "201":
+          description: Created and activated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfilesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/profiles/active:
+    put:
+      operationId: SwitchProfile
+      tags: [Profiles]
+      summary: Switch the active profile
+      description: |
+        Tears down the App's in-memory state tied to the previous
+        profile (settings, store, watcher, metrics endpoint) and
+        re-initializes everything against the new profile's directory.
+        The wire response carries the new state so the caller can update
+        UI without a round-trip.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  example: "main"
+      responses:
+        "200":
+          description: Switched.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfilesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/profiles/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      operationId: DeleteProfile
+      tags: [Profiles]
+      summary: Delete a non-active profile and wipe its directory
+      description: |
+        Removes the profile from the list AND removes its directory
+        tree (including the SQLite DB + settings) from disk. The
+        active profile cannot be deleted — callers must
+        `PUT /api/v1/profiles/active` to a different profile first.
+      responses:
+        "204":
+          description: Deleted.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Profile is active; switch away first.
+          content:
+            text/plain:
+              schema:
+                type: string
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -1366,6 +1490,21 @@ components:
         avg_per_10min:
           type: number
           format: double
+
+    ProfilesResponse:
+      type: object
+      required: [active, profiles]
+      properties:
+        active:
+          type: string
+          description: The currently-active profile name.
+          example: "main"
+        profiles:
+          type: array
+          items:
+            type: string
+          description: Sorted list of every known profile name.
+          example: ["alt", "main"]
 
     TesseractStatus:
       type: object

@@ -414,6 +414,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all known profiles and which is active
+         * @description Each profile gets its own settings + SQLite DB under
+         *     `<base>/profiles/<name>/`. The masthead switcher chip
+         *     renders the list and highlights the active one.
+         */
+        get: operations["GetProfiles"];
+        put?: never;
+        /**
+         * Create a new profile and activate it
+         * @description Creates the profile directory, adds it to the list, and
+         *     activates it in one shot. The app tears down the active store
+         *     and re-initializes against the new profile's directory before
+         *     the response returns — so callers can re-fetch all data
+         *     immediately afterward (or window.location.reload() the SPA).
+         */
+        post: operations["CreateProfile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/profiles/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Switch the active profile
+         * @description Tears down the App's in-memory state tied to the previous
+         *     profile (settings, store, watcher, metrics endpoint) and
+         *     re-initializes everything against the new profile's directory.
+         *     The wire response carries the new state so the caller can update
+         *     UI without a round-trip.
+         */
+        put: operations["SwitchProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/profiles/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a non-active profile and wipe its directory
+         * @description Removes the profile from the list AND removes its directory
+         *     tree (including the SQLite DB + settings) from disk. The
+         *     active profile cannot be deleted — callers must
+         *     `PUT /api/v1/profiles/active` to a different profile first.
+         */
+        delete: operations["DeleteProfile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/version": {
         parameters: {
             query?: never;
@@ -1071,6 +1150,21 @@ export interface components {
             /** Format: double */
             avg_per_10min?: number;
         };
+        ProfilesResponse: {
+            /**
+             * @description The currently-active profile name.
+             * @example main
+             */
+            active: string;
+            /**
+             * @description Sorted list of every known profile name.
+             * @example [
+             *       "alt",
+             *       "main"
+             *     ]
+             */
+            profiles: string[];
+        };
         TesseractStatus: {
             /**
              * @description The currently-configured path.
@@ -1612,6 +1706,122 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetProfiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active + list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfilesResponse"];
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    CreateProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Profile name. Must match `^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$`
+                     *     (filesystem-safe).
+                     * @example alt
+                     */
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created and activated. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfilesResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    SwitchProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example main */
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Switched. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfilesResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    DeleteProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description Profile is active; switch away first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
             500: components["responses"]["InternalError"];
         };
     };
