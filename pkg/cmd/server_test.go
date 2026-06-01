@@ -800,3 +800,18 @@ func TestProfiles_PostMatchTransfers_TargetActive409(t *testing.T) {
 		t.Errorf("status %d, want 409; body=%s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestProfiles_PostMatchTransfers_InvalidTargetName400(t *testing.T) {
+	// Defence-in-depth: a malformed target_profile short-circuits at
+	// validateProfileName before reaching the path-construction
+	// downstream. Maps to 400 at the HTTP boundary, NOT 404 (which
+	// the in-list membership check would have produced).
+	_, mux := newTestAppWithProfiles(t)
+	rec := fire(t, mux, http.MethodPost, "/api/v1/matches/transfers", map[string]any{
+		"match_keys":     []string{"k1"},
+		"target_profile": "../traversal",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status %d, want 400; body=%s", rec.Code, rec.Body.String())
+	}
+}

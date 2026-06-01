@@ -42,6 +42,25 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 	if len(matchKeys) == 0 {
 		return nil
 	}
+	// Validate targetProfile against the same regex Create / Rename use
+	// BEFORE membership in the active list. Two reasons:
+	//  1. Defence in depth — the list contents come from a runtime
+	//     read that, while validated at write time, is not a static
+	//     allow-list as far as taint analysis is concerned. Routing
+	//     the name through the regex sanitises the value before it
+	//     flows into the path-construction below
+	//     (a.profiles.ProfileDir → filepath.Join → os.MkdirAll).
+	//     CodeQL's "Uncontrolled data used in path expression" rule
+	//     recognises the regex check; the slice-membership probe alone
+	//     does not.
+	//  2. Clearer 400 vs 404 mapping at the HTTP boundary —
+	//     malformed names (path-traversal, special chars) return
+	//     ErrInvalidProfileName → 400, while well-formed-but-unknown
+	//     names return ErrProfileNotFound → 404. The membership
+	//     check below catches the second case.
+	if err := validateProfileName(targetProfile); err != nil {
+		return err
+	}
 	if !containsProfile(a.profiles.List(), targetProfile) {
 		return fmt.Errorf("%w: %q", ErrProfileNotFound, targetProfile)
 	}
