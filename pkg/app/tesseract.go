@@ -177,7 +177,7 @@ func (a *App) SetTesseractPath(path string) (TesseractStatus, error) {
 		return a.tessStatus, err
 	}
 	a.settings.TesseractPath = cleaned
-	if err := saveSettings(a.settings); err != nil {
+	if err := a.saveSettings(a.settings); err != nil {
 		return a.tessStatus, err
 	}
 	a.tessStatus = checkTesseract(cleaned)
@@ -194,7 +194,7 @@ func (a *App) SetTesseractPath(path string) (TesseractStatus, error) {
 func (a *App) ResetTesseractPath() (TesseractStatus, error) {
 	path := defaultTesseractPath()
 	a.settings.TesseractPath = path
-	if err := saveSettings(a.settings); err != nil {
+	if err := a.saveSettings(a.settings); err != nil {
 		return a.tessStatus, err
 	}
 	a.tessStatus = checkTesseract(path)

@@ -111,5 +111,5 @@ func (a *App) autoProbeOnFirstRun() {
 		return
 	}
 	a.settings.ScreenshotsDir = res.Path
-	_ = saveSettings(a.settings)
+	_ = a.saveSettings(a.settings)
 }

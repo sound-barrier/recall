@@ -23,6 +23,7 @@ import (
 func TestStartup_ClearsScreenshotsDirWhenPathDoesNotExist(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	// Persist a non-existent path so Startup's loadSettings() reads it.
 	stale := filepath.Join(t.TempDir(), "deleted-by-the-os-an-hour-ago")
@@ -30,7 +31,7 @@ func TestStartup_ClearsScreenshotsDirWhenPathDoesNotExist(t *testing.T) {
 		ScreenshotsDir: stale,
 		TesseractPath:  "/dev/null", // anything; we don't assert on it
 	}
-	if err := saveSettings(seed); err != nil {
+	if err := (&App{}).saveSettings(seed); err != nil {
 		t.Fatalf("seed saveSettings: %v", err)
 	}
 	if _, err := os.Stat(stale); !os.IsNotExist(err) {
@@ -48,7 +49,7 @@ func TestStartup_ClearsScreenshotsDirWhenPathDoesNotExist(t *testing.T) {
 	// next Startup re-loads the stale value and the user sees the bug
 	// again. (Verify via a fresh load through the same code path the
 	// production startup uses.)
-	persisted := loadSettings()
+	persisted := a.loadSettings()
 	if persisted.ScreenshotsDir != "" {
 		t.Errorf("saved settings still carry stale ScreenshotsDir; got %q", persisted.ScreenshotsDir)
 	}
@@ -57,6 +58,7 @@ func TestStartup_ClearsScreenshotsDirWhenPathDoesNotExist(t *testing.T) {
 func TestStartup_ClearsScreenshotsDirWhenPathIsAFile(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	// A file (not a dir) is structurally invalid — a user could have
 	// accidentally pointed Recall at a screenshot itself instead of
@@ -66,7 +68,7 @@ func TestStartup_ClearsScreenshotsDirWhenPathIsAFile(t *testing.T) {
 	if err := os.WriteFile(file, []byte("not a real png"), 0o600); err != nil {
 		t.Fatalf("seed file: %v", err)
 	}
-	if err := saveSettings(Settings{ScreenshotsDir: file}); err != nil {
+	if err := (&App{}).saveSettings(Settings{ScreenshotsDir: file}); err != nil {
 		t.Fatalf("seed saveSettings: %v", err)
 	}
 
@@ -81,9 +83,10 @@ func TestStartup_ClearsScreenshotsDirWhenPathIsAFile(t *testing.T) {
 func TestStartup_PreservesValidScreenshotsDir(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	good := t.TempDir() // exists, is a dir, readable
-	if err := saveSettings(Settings{ScreenshotsDir: good}); err != nil {
+	if err := (&App{}).saveSettings(Settings{ScreenshotsDir: good}); err != nil {
 		t.Fatalf("seed saveSettings: %v", err)
 	}
 
@@ -107,6 +110,7 @@ func TestStartup_ClearsDefaultRelativePathWhenItDoesNotResolve(t *testing.T) {
 	// a chance to fire.
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	// cwd a directory that does NOT contain a "screenshots" subdir.
 	cwd := t.TempDir()
@@ -138,6 +142,7 @@ func TestStartup_ClearsDefaultRelativePathWhenItDoesNotResolve(t *testing.T) {
 func TestStartup_ClearsLeakedTempDirPathFromAPriorTestRun(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	// Mimic the exact shape of the path the user reported:
 	// /var/folders/9h/<random>/T/TestSetScreenshotsDir.../002
@@ -146,7 +151,7 @@ func TestStartup_ClearsLeakedTempDirPathFromAPriorTestRun(t *testing.T) {
 	if err := os.MkdirAll(leaked, 0o700); err != nil {
 		t.Fatalf("seed: create leaked path: %v", err)
 	}
-	if err := saveSettings(Settings{ScreenshotsDir: leaked}); err != nil {
+	if err := (&App{}).saveSettings(Settings{ScreenshotsDir: leaked}); err != nil {
 		t.Fatalf("seed saveSettings: %v", err)
 	}
 	// Now delete it to simulate the test-temp dir being cleaned up by

@@ -66,7 +66,7 @@ func (a *App) SetScreenshotsDir(path string) error {
 		return err
 	}
 	a.settings.ScreenshotsDir = cleaned
-	if err := saveSettings(a.settings); err != nil {
+	if err := a.saveSettings(a.settings); err != nil {
 		return err
 	}
 	if a.settings.WatchEnabled {
@@ -87,7 +87,7 @@ func (a *App) SetScreenshotsDir(path string) error {
 // leak an fsnotify handle pointing at the now-orphaned dir.
 func (a *App) ResetScreenshotsDir() error {
 	a.settings.ScreenshotsDir = ""
-	if err := saveSettings(a.settings); err != nil {
+	if err := a.saveSettings(a.settings); err != nil {
 		return err
 	}
 	a.stopWatching()

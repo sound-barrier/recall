@@ -24,6 +24,7 @@ import (
 func TestScreenshotsDir_PersistsAcrossAppRestart(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	// User's screenshots dir for the session. Must be a real
 	// directory so SetScreenshotsDir's validateScreenshotsDir
@@ -40,7 +41,7 @@ func TestScreenshotsDir_PersistsAcrossAppRestart(t *testing.T) {
 		t.Fatalf("session 1 in-memory dir = %q; want %q", a1.settings.ScreenshotsDir, dir)
 	}
 	// Sanity: the write reached disk so a fresh loadSettings sees it.
-	persisted := loadSettings()
+	persisted := a1.loadSettings()
 	if persisted.ScreenshotsDir != dir {
 		t.Fatalf("session 1 settings.json ScreenshotsDir = %q; want %q (the write to disk silently dropped)", persisted.ScreenshotsDir, dir)
 	}
@@ -62,6 +63,7 @@ func TestScreenshotsDir_PersistsAcrossAppRestart(t *testing.T) {
 func TestScreenshotsDir_PersistsAcrossMultipleRestarts(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	dir := t.TempDir()
 
@@ -99,6 +101,7 @@ func TestScreenshotsDir_PersistsAcrossMultipleRestarts(t *testing.T) {
 func TestStartup_PreservesScreenshotsDirWhenExistsButUnreadable(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	// Create a directory that exists but the process can't enumerate.
 	// Strip read/execute bits so any Readdirnames / Open call would
@@ -112,7 +115,7 @@ func TestStartup_PreservesScreenshotsDirWhenExistsButUnreadable(t *testing.T) {
 	// Restore permissions on cleanup so t.TempDir's own cleanup works.
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
 
-	if err := saveSettings(Settings{ScreenshotsDir: dir}); err != nil {
+	if err := (&App{}).saveSettings(Settings{ScreenshotsDir: dir}); err != nil {
 		t.Fatalf("seed saveSettings: %v", err)
 	}
 
@@ -125,7 +128,7 @@ func TestStartup_PreservesScreenshotsDirWhenExistsButUnreadable(t *testing.T) {
 	// And the persisted shape must match: if Startup re-saved an
 	// empty value, the next session reads it back as "" and the bug
 	// surfaces on every restart instead of just one.
-	persisted := loadSettings()
+	persisted := a.loadSettings()
 	if persisted.ScreenshotsDir != dir {
 		t.Errorf("settings.json ScreenshotsDir got cleared on disk; got %q want %q", persisted.ScreenshotsDir, dir)
 	}
@@ -134,6 +137,7 @@ func TestStartup_PreservesScreenshotsDirWhenExistsButUnreadable(t *testing.T) {
 func TestScreenshotsDir_PersistsWhenDirContainsCommonRealWorldChars(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	// Use a path with characters that show up in real user setups:
 	// spaces (common on macOS / Windows). The user-visible bug

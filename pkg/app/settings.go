@@ -20,21 +20,21 @@ type Settings struct {
 	WatchEnabled      bool   `json:"watch_enabled"`
 }
 
-// appDataDir returns the directory Recall reads/writes settings + the
-// SQLite DB from. Honors the `RECALL_DATA_DIR` env override (set in
-// `.envrc` to `<repo>/data` so `wails dev` keeps its data under the
-// repo for easy inspection); falls through to the platform-appropriate
-// user-config directory for shipped builds:
+// appBaseDir returns the install-wide base directory. Used by the
+// profile manager to root the <base>/profiles/<name>/ tree and by
+// pre-Startup tests that haven't loaded profiles. Honors the
+// `RECALL_DATA_DIR` env override (set in `.envrc` to `<repo>/data` so
+// `wails dev` keeps its data under the repo for easy inspection);
+// falls through to the platform-appropriate user-config directory
+// for shipped builds:
 //
 //	macOS:   ~/Library/Application Support/Recall/
 //	Linux:   $XDG_CONFIG_HOME/recall/  (fallback ~/.config/recall/)
 //	Windows: %AppData%\Recall\
 //
 // The env-var path is taken as-is — no platform-name suffix appended —
-// so the override is a complete, absolute placement decision. Released
-// app launches don't have `.envrc` loaded, so the override stays
-// unset and the platform path applies.
-func appDataDir() string {
+// so the override is a complete, absolute placement decision.
+func appBaseDir() string {
 	if dir := os.Getenv("RECALL_DATA_DIR"); dir != "" {
 		return dir
 	}
@@ -51,10 +51,25 @@ func appDataDir() string {
 	return filepath.Join(base, name)
 }
 
-func settingsPath() string { return filepath.Join(appDataDir(), "settings.json") }
+// dataDir returns the directory the App reads/writes settings + the
+// SQLite DB from. Once profiles have been loaded (Startup), it's the
+// active profile's directory under <base>/profiles/<name>/. Before
+// that — and in tests that wire an App via NewWithStore without
+// running Startup — it falls back to the base dir so settings IO
+// stays HOME-isolation friendly.
+func (a *App) dataDir() string {
+	if a.profiles != nil {
+		return a.profiles.ActiveDir()
+	}
+	return appBaseDir()
+}
 
-func loadSettings() Settings {
-	raw, err := os.ReadFile(settingsPath())
+func (a *App) settingsPath() string {
+	return filepath.Join(a.dataDir(), "settings.json")
+}
+
+func (a *App) loadSettings() Settings {
+	raw, err := os.ReadFile(a.settingsPath())
 	if err != nil {
 		return defaultSettings() // file doesn't exist yet (first run); use defaults
 	}
@@ -89,8 +104,8 @@ func defaultSettings() Settings {
 	return Settings{}
 }
 
-func saveSettings(s Settings) error {
-	if err := os.MkdirAll(filepath.Dir(settingsPath()), 0o700); err != nil {
+func (a *App) saveSettings(s Settings) error {
+	if err := os.MkdirAll(filepath.Dir(a.settingsPath()), 0o700); err != nil {
 		return err
 	}
 	b, err := marshalSettings(s)
@@ -100,7 +115,7 @@ func saveSettings(s Settings) error {
 	// 0o600 (owner-only RW) per gosec G306. settings.json holds
 	// user-controlled paths (screenshots dir, tesseract path); no
 	// reason for other users on the host to read it.
-	return os.WriteFile(settingsPath(), b, 0o600)
+	return os.WriteFile(a.settingsPath(), b, 0o600)
 }
 
 // marshalSettings is the pure JSON-encoding step of saveSettings. Pulled out
