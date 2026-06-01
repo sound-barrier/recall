@@ -229,38 +229,6 @@ actually bites before paying this cost.
 
 ---
 
-## 16. Settings/Profiles destructive action is gated by localStorage, not server state
-
-**Where:** `frontend/src/composables/useFirstRunAcknowledged.ts`
-and the `recall.firstRunAccountNamed` flag.
-
-The first-run "Main account name" modal records its dismissal in
-localStorage. That binding is per-browser-profile and per-device.
-A user who:
-
-- Clears browser storage,
-- Switches browsers in server mode,
-- Reinstalls the desktop app on a new machine,
-
-will get the modal again even if they've already named their
-profile. The modal's "the profile is still named 'main'" check
-doesn't exist — it relies entirely on the flag.
-
-**Plan:**
-
-Skip the modal if the active profile's name is anything other
-than the default (`main`). The composable already has the
-profile list available via `GetProfiles()` — the gate becomes
-`!firstRunAcknowledged && activeProfile === DEFAULT_PROFILE_NAME`.
-
-**Size:** S.
-**Risk:** Low — a user who legitimately names their profile
-"main" still gets the modal on first launch; subsequent launches
-either pick up the localStorage ack or, if missing, see the
-profile is still "main" and re-show the modal. Acceptable.
-
----
-
 ## 17. Metrics filter is hard-coded; no test of the boundary
 
 **Where:** `pkg/metrics/metrics.go::Collect` — drops every row
