@@ -204,40 +204,28 @@ from `app.css` — those references survive.
 
 ---
 
-## 13. No e2e covers the Wails desktop runtime
+## 13. No real desktop-runtime e2e for Wails
 
-**Where:** `frontend/tests/e2e/` exclusively drives the
-serveronly binary. The Wails dev / production binary has zero
-browser-level coverage.
+**Where:** `frontend/tests/e2e/` still exclusively drives the
+serveronly binary. Steps 1 + 2 of the original item 13 plan are
+shipped (`make smoke-wails` compile-check + `pkg/cmd/middleware_test.go`
+unit coverage of the AssetServer shim), so the dev-mode SPA-fallback
+class of bug is now lit up by unit tests.
 
-**What's invisible:** the AssetServer Middleware shim for
-`/_screenshot/`, the `EventsOn` / `EventsOff` runtime bridge,
-the native dialog calls (`PickScreenshotsDir` /
-`PickTesseractBinary`), the file-system watcher's interaction
-with the real OS. Bugs in any of these surface only on the
-released desktop app.
+**What's still invisible:** the `EventsOn` / `EventsOff` runtime
+bridge, the native dialog calls (`PickScreenshotsDir` /
+`PickTesseractBinary`), the file-system watcher's interaction with
+the real OS. Bugs in those still surface only on the released
+desktop app.
 
-**Plan:**
+**Plan (step 3 of the original ladder, deferred):** integrate a Wails
+runtime driver (e.g. `wails dev` + `playwright connect` over CDP to
+the embedded WebView). Cross-platform-fragile and XL effort — wait
+until one of the EventsOn / file-watcher / native-dialog regressions
+actually bites before paying this cost.
 
-This is genuinely hard. Wails doesn't ship a Playwright-style
-harness. Options, from cheapest to most ambitious:
-
-1. **Smoke-mode**: a `make smoke-wails` target that builds the
-   desktop binary, boots it headlessly with a temp HOME, and
-   hits the AssetServer at `:34115` via curl. Catches the
-   "did it boot" class of bugs. (S, Low)
-2. **AssetServer middleware coverage**: write unit tests in Go
-   that exercise the screenshot Middleware in isolation
-   (`ScreenshotHandler()` already has these; expand to cover
-   the dev-mode SPA-fallback path documented in CLAUDE.md). (S, Low)
-3. **Real desktop e2e**: integrate a Wails runtime driver
-   (e.g. via `wails dev` + `playwright connect over CDP` to
-   the embedded WebView). Cross-platform, fragile. (XL, High)
-
-Steps 1 + 2 are the realistic next-release targets.
-
-**Size:** S–XL depending on ambition.
-**Risk:** Low for steps 1–2; High for step 3.
+**Size:** XL.
+**Risk:** High.
 
 ---
 
