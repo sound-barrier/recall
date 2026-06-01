@@ -68,43 +68,39 @@ off first.
 
 ---
 
-## 4. Schemathesis exclusions (5 v4 checks + DELETE method)
+## 4. Schemathesis: two excluded checks remain
 
-**Where:** `scripts/check-api-drift.sh:164`.
+**Where:** `scripts/check-api-drift.sh`.
 
-```bash
---exclude-checks unsupported_method,positive_data_acceptance,\
-                 missing_required_header,use_after_free,\
-                 ensure_resource_availability \
---exclude-method DELETE \
-```
+Three of the five previously-excluded checks are now enabled:
+`missing_required_header`, `use_after_free`,
+`ensure_resource_availability` — they pass cleanly against the
+current API surface. `--exclude-method DELETE` is also gone (the
+test server runs in an isolated HOME, so a DB-wiping DELETE is
+safe). Two checks stay excluded:
 
-Each exclusion documents a real spec / server gap, deferred for
-"its own dedicated PR" — none of which have landed.
+1. **`positive_data_acceptance`** — the server accepts lenient
+   JSON several setters' specs tighten. Real contract gap;
+   tracked here in case a future change to either side makes the
+   gap easier to close.
+2. **`unsupported_method`** — `transfers` and `active` path
+   segments collide with the `{matchKey}` / `{name}` wildcards
+   on the same level of the Go 1.22 ServeMux, so a `DELETE
+   /api/v1/profiles/transfers` routes to the wildcard handler
+   instead of returning 405. Closing this needs mux
+   disambiguation across several routes — out of scope for the
+   schemathesis hardening but worth doing standalone.
 
-**Plan** (one PR per check):
+**Plan:**
 
-1. **`positive_data_acceptance`** — server accepts lenient JSON
-   the spec tightens. Tighten the spec (the easier path) OR
-   loosen the validators. Concrete cases: nullable strings the
-   server accepts but the spec marks `required`.
-2. **`unsupported_method`** — `transfers` + `active` path segments
-   collide with `{matchKey}` + `{name}` wildcards. The Go 1.22
-   ServeMux routes `DELETE /api/v1/profiles/transfers` to the
-   wildcard handler (a no-op delete with a 4xx body) instead of
-   the 405 the spec demands. Disambiguate by pulling `transfers`
-   and `active` out of the wildcard namespace.
-3. **`missing_required_header`**, **`use_after_free`**,
-   **`ensure_resource_availability`** — not yet evaluated. Run
-   once, document each finding, fix or excuse.
-4. **`--exclude-method DELETE`** — DELETE on `/matches` and
-   `/profiles/{name}` would wipe the live test server's state.
-   Fix: the schemathesis harness already runs against an isolated
-   `HOME=$tmp` install (`scripts/check-api-drift.sh:101`). Just
-   stop excluding DELETE; the worst case is the test server
-   wipes its own scratch DB, which is fine.
+1. For `positive_data_acceptance`, audit the spec's `required`
+   declarations against what each handler actually accepts; for
+   each pair tighten the handler or loosen the spec.
+2. For `unsupported_method`, pull `transfers` and `active` out
+   of the wildcard namespace (e.g. dedicated registrations
+   ordered before the wildcard, or sub-mux groupings).
 
-**Size:** M per check (the five together are L).
+**Size:** M per check.
 **Risk:** Low (each gap surfaces as a contract-spec mismatch the
 fuzzer reports; no runtime behaviour change).
 
