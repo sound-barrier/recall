@@ -113,6 +113,15 @@ const KeyboardShortcutsModal = defineAsyncComponent(() => import('./components/K
 // imperceptible against the network round-trip the load() itself is
 // already doing for /api/v1/matches.
 const OnboardingTour = defineAsyncComponent(() => import('./components/OnboardingTour.vue'))
+// localStorage key the tour writes when the user finishes / skips.
+// Duplicated as a literal here (not imported from
+// './composables/useOnboardingTour') because a static `import` would
+// pull the whole tour controller into the initial JS chunk, defeating
+// the lazy-load above. The pair is locked at runtime by the
+// `App.lazy-views` + tour e2e tests — a divergence between the two
+// keys breaks the gate and is caught by `does NOT render while the
+// onboarding tour is active` in profile-delete-and-first-run.spec.ts.
+const ONBOARDING_COMPLETED_KEY = 'recall.onboardingCompleted'
 
 // GitHub repository URL — surfaced via the brandmark in the masthead.
 // Centralised here so the markup, hover title, and any future references
@@ -141,7 +150,19 @@ const initialLoading = ref(true)
 // The demo dataset is dynamic-imported on activation so it lives in
 // the OnboardingTour async chunk (kept out of the initial JS budget;
 // users who never trigger the tour never download it).
-const tourActive = ref(false)
+// Seed tourActive synchronously from the same localStorage flag the
+// tour reads. On a TRUE first launch both `recall.onboardingCompleted`
+// and `recall.firstRunAccountNamed` are unset; without this seed the
+// modal renders on tick 0, the tour's `active-change(true)` event
+// fires a frame later, and the two overlays stack on top of each
+// other. Seeding the ref `true` keeps the modal hidden until the
+// tour completes (or is skipped) and the parent receives
+// `active-change(false)` — then the modal can surface normally.
+function readTourWillOpen(): boolean {
+  try { return localStorage.getItem(ONBOARDING_COMPLETED_KEY) !== 'true' }
+  catch (_) { return false }
+}
+const tourActive = ref(readTourWillOpen())
 const savedRecords = ref<MatchRecord[]>([])
 async function onTourActiveChange(active: boolean) {
   if (active) {
@@ -739,7 +760,13 @@ function onMatchesNarrowOpen(open: boolean) {
 // NOT close it. The composable persists the dismissal in localStorage
 // so the modal never returns once acknowledged.
 const { acknowledged: firstRunAcknowledged, ack: ackFirstRun } = useFirstRunAcknowledged()
-const firstRunModalOpen = computed(() => !firstRunAcknowledged.value)
+// Gate on the tour too — `it should not appear if the tour is
+// starting or continuing on`. `tourActive` is seeded synchronously
+// from the onboarding flag (see readTourWillOpen above), so on a
+// fresh install where both flags are unset the tour wins the first
+// paint; once the user finishes / skips the tour, `tourActive`
+// flips false and the modal surfaces.
+const firstRunModalOpen = computed(() => !firstRunAcknowledged.value && !tourActive.value)
 
 function onFirstRunDismiss(renamedTo: string | null) {
   ackFirstRun()
