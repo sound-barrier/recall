@@ -25,6 +25,15 @@ type Store interface {
 	// (0, nil) so callers can store NULL for unset dir.
 	EnsureScreenshotsDir(path string) (int64, error)
 
+	// LookupScreenshotsDir returns the on-disk path recorded for the
+	// given screenshots_dirs row id. Used by ScreenshotHandler to
+	// resolve `/_screenshot/<dir-id>/<filename>` URLs at request time.
+	// Returns ("", nil) for id == 0 (the "use current setting"
+	// sentinel embedded in URLs for unparsed files in the watched
+	// folder) and for unknown ids. Errors only surface for DB-level
+	// failures.
+	LookupScreenshotsDir(id int64) (string, error)
+
 	// LoadAllFilenames returns every filename across all five parent
 	// tables, so the parse loop can skip OCR for already-parsed files.
 	LoadAllFilenames() (map[string]bool, error)
@@ -226,7 +235,9 @@ type Screenshots struct {
 	Unknowns    []UnknownRow
 
 	// ScreenshotsDirs maps screenshots_dirs.id → path so the aggregator
-	// can surface SourceDirs on each MatchRecord without a per-row JOIN.
+	// can validate per-row dirIDs before populating SourceDirIDs on
+	// each MatchRecord (stale FKs whose path was deleted yield no
+	// URL — the client falls back to the configured dir).
 	ScreenshotsDirs map[int64]string
 
 	// AmbiguousCandidates maps filename → candidate matches it could

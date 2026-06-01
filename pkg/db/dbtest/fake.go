@@ -249,6 +249,23 @@ func (f *Fake) EnsureScreenshotsDir(path string) (int64, error) {
 	return id, nil
 }
 
+// LookupScreenshotsDir mirrors SQLStore: 0 → empty, unknown id →
+// empty, otherwise the seeded path. The reverse-lookup walk is fine
+// in-memory; tests seed at most a handful of dirs.
+func (f *Fake) LookupScreenshotsDir(id int64) (string, error) {
+	if id == 0 {
+		return "", nil
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for path, dirID := range f.DirIDs {
+		if dirID == id {
+			return path, nil
+		}
+	}
+	return "", nil
+}
+
 func (f *Fake) SetAnnotation(a db.Annotation) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

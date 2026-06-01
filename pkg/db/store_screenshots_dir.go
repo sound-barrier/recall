@@ -1,5 +1,7 @@
 package db
 
+import "database/sql"
+
 // EnsureScreenshotsDir is the upsert+lookup for screenshots_dirs.
 // Returns (0, nil) on empty path so callers can store NULL for "no
 // dir set at parse time". For non-empty paths: INSERT OR IGNORE
@@ -17,6 +19,29 @@ func (s *SQLStore) EnsureScreenshotsDir(path string) (int64, error) {
 		return 0, err
 	}
 	return id, nil
+}
+
+// LookupScreenshotsDir resolves a screenshots_dirs row by id and
+// returns its on-disk path. Used by ScreenshotHandler to turn the
+// `<dir-id>` segment of `/_screenshot/<dir-id>/<filename>` URLs into
+// the actual directory to serve from. Returns ("", nil) for id == 0
+// (the "use current setting" sentinel embedded for unparsed files)
+// and for unknown ids — the handler then falls back to
+// `a.settings.ScreenshotsDir`. Errors only surface for real DB-level
+// failures, not the "no such id" case.
+func (s *SQLStore) LookupScreenshotsDir(id int64) (string, error) {
+	if id == 0 {
+		return "", nil
+	}
+	var path string
+	err := s.db.QueryRow(`SELECT path FROM screenshots_dirs WHERE id = ?`, id).Scan(&path)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 func (s *SQLStore) loadScreenshotsDirs() (map[int64]string, error) {

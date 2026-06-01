@@ -210,7 +210,9 @@ describe('UnknownMapsView', () => {
     // Emit signature: (filename, source_files). The second arg is
     // the owning record's source_files so the lightbox can navigate
     // between screenshots of the same match.
-    expect(wrapper.emitted('open-lightbox')![0]).toEqual(['x.png', ['x.png']])
+    // Open-lightbox now carries a third arg: per-file dir-id map.
+    // The test record has no source_dir_ids → empty object.
+    expect(wrapper.emitted('open-lightbox')![0]).toEqual(['x.png', ['x.png'], {}])
   })
 
   // Ambiguous cards historically had no Source Files block — the
@@ -242,7 +244,7 @@ describe('UnknownMapsView', () => {
     await img.trigger('click')
     expect(wrapper.emitted('open-lightbox')).toBeTruthy()
     // Emit signature: (filename, source_files).
-    expect(wrapper.emitted('open-lightbox')![0]).toEqual(['ambig-sb.png', ['ambig-sb.png']])
+    expect(wrapper.emitted('open-lightbox')![0]).toEqual(['ambig-sb.png', ['ambig-sb.png'], {}])
   })
 
   // ── Hover thumbnail (FEATURES.md: "Inline image preview on Unknown")
@@ -282,7 +284,7 @@ describe('UnknownMapsView', () => {
         await fireMouseenter(wrapper)
         const thumb = document.querySelector<HTMLImageElement>('.unknown-hover-thumb')
         expect(thumb).not.toBeNull()
-        expect(thumb!.getAttribute('src')).toMatch(/_screenshot\/x\.png/)
+        expect(thumb!.getAttribute('src')).toMatch(/_screenshot\/0\/x\.png/)
       } finally {
         wrapper.unmount()
       }
@@ -390,12 +392,12 @@ describe('UnknownMapsView', () => {
         { match_key: 'unmatched:two.png', source_files: ['two.png', 'twoB.png'], data: {} },
       ]
       mountWith(records)
-      expect(probeSrcs).toContain('/_screenshot/one.png')
-      expect(probeSrcs).toContain('/_screenshot/two.png')
+      expect(probeSrcs).toContain('/_screenshot/0/one.png')
+      expect(probeSrcs).toContain('/_screenshot/0/two.png')
       // Only the first source per record is preloaded — twoB shouldn't
       // be touched. The expanded view's per-file thumbnails carry the
       // rest of the load.
-      expect(probeSrcs).not.toContain('/_screenshot/twoB.png')
+      expect(probeSrcs).not.toContain('/_screenshot/0/twoB.png')
     })
 
     it('skips records with no source_files', () => {

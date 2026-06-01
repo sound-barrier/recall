@@ -244,7 +244,14 @@ func foldGroup(key string, vs []screenshotView, dirs map[int64]string) MatchReco
 	sources := make([]string, 0, len(vs))
 	types := make(map[string]string, len(vs))
 	parsedAtPerFile := make(map[string]string, len(vs))
-	dirsPerFile := map[string]string{}
+	// dirIDsPerFile maps each source filename to the screenshots_dirs
+	// row id it was ingested from. Frontends build
+	// `/_screenshot/<id>/<filename>` URLs from this map; the handler
+	// reads the id back out, looks up the path, and serves. Filename
+	// entries are only added when the per-row dirID is non-zero AND
+	// resolves to a known dir (a stale FK after a `screenshots_dirs`
+	// row delete would otherwise yield a broken URL).
+	dirIDsPerFile := map[string]int64{}
 	matchParsedAt := ""
 	for _, v := range vs {
 		mergeMatchResult(&data, &v.data)
@@ -257,8 +264,8 @@ func foldGroup(key string, vs []screenshotView, dirs map[int64]string) MatchReco
 			}
 		}
 		if v.dirID != 0 {
-			if path, ok := dirs[v.dirID]; ok {
-				dirsPerFile[v.filename] = path
+			if _, ok := dirs[v.dirID]; ok {
+				dirIDsPerFile[v.filename] = v.dirID
 			}
 		}
 	}
@@ -278,8 +285,8 @@ func foldGroup(key string, vs []screenshotView, dirs map[int64]string) MatchReco
 		ParsedAt:       matchParsedAt,
 		Data:           data,
 	}
-	if len(dirsPerFile) > 0 {
-		rec.SourceDirs = dirsPerFile
+	if len(dirIDsPerFile) > 0 {
+		rec.SourceDirIDs = dirIDsPerFile
 	}
 	return rec
 }

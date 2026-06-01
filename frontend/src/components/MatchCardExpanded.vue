@@ -62,7 +62,7 @@ const emit = defineEmits<{
   // the owning match's full source-files array so the lightbox can
   // surface prev/next navigation across the same match's screenshots
   // without reaching back into the Vue tree for the record.
-  'open-lightbox':  [filename: string, files: readonly string[]]
+  'open-lightbox':  [filename: string, files: readonly string[], dirIDs: Record<string, number>]
   'filter-toggle':  [field: string, value: string]
   // User clicks one of the four leaver-chooser buttons. App.vue
   // listens, routes through SetMatchAnnotation with the existing
@@ -719,7 +719,7 @@ function onTagKeydown(e: KeyboardEvent) {
           <div class="source-row">
             <a
               class="source-name"
-              :href="screenshotURL(f)"
+              :href="screenshotURL(f, record.source_dir_ids?.[f] ?? 0)"
               :title="props.previewOpen[f] ? 'Hide preview' : 'Show preview'"
               @click.prevent="emit('toggle-preview', f)"
             >
@@ -747,11 +747,11 @@ function onTagKeydown(e: KeyboardEvent) {
           </div>
           <img
             v-if="props.previewOpen[f] && !props.previewError[f]"
-            :src="screenshotURL(f)"
+            :src="screenshotURL(f, record.source_dir_ids?.[f] ?? 0)"
             :alt="f"
             class="source-preview"
             title="Click to view fullscreen"
-            @click="emit('open-lightbox', f, record.source_files ?? [])"
+            @click="emit('open-lightbox', f, record.source_files ?? [], record.source_dir_ids ?? {})"
             @error="emit('preview-error', f)"
           >
           <div v-if="props.previewOpen[f] && props.previewError[f]" class="source-preview-error">

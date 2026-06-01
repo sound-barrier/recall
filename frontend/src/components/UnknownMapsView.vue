@@ -35,7 +35,7 @@ const emit = defineEmits<{
   // second arg is the owning record's source_files so the lightbox
   // can navigate between the record's screenshots without reaching
   // back into the Vue tree.
-  'open-lightbox':      [filename: string, files: readonly string[]]
+  'open-lightbox':      [filename: string, files: readonly string[], dirIDs: Record<string, number>]
 }>()
 
 const ambiguousList = computed(() => props.ambiguousRecords)
@@ -102,7 +102,7 @@ function onHoverUnknown(rec: MatchRecord, e: MouseEvent) {
   const first = rec.source_files?.[0]
   if (!first) return
   hoveredUnknownKey.value = rec.match_key
-  hoveredUnknownSrc.value = screenshotURL(first)
+  hoveredUnknownSrc.value = screenshotURL(first, rec.source_dir_ids?.[first] ?? 0)
   updateThumbPosition(e)
 }
 
@@ -139,17 +139,17 @@ const showHoverThumb = computed(() => {
 // the inline source-preview img which stayed mounted long enough
 // to cache the bytes; subsequent hovers then read from cache.
 //
-// `Image()` requests use the same /_screenshot/<name> endpoint and
-// hit the same browser HTTP cache as the <img> element, so a hit
-// here warms the cache for the hover-time fetch. We track URLs
-// already preloaded so re-renders don't double-fetch.
+// `Image()` requests use the same /_screenshot/<dir-id>/<name>
+// endpoint and hit the same browser HTTP cache as the <img> element,
+// so a hit here warms the cache for the hover-time fetch. We track
+// URLs already preloaded so re-renders don't double-fetch.
 const preloadedURLs = new Set<string>()
 function preloadVisibleScreenshots() {
   if (typeof window === 'undefined') return
   for (const rec of props.unknownRecords) {
     const first = rec.source_files?.[0]
     if (!first) continue
-    const url = screenshotURL(first)
+    const url = screenshotURL(first, rec.source_dir_ids?.[first] ?? 0)
     if (preloadedURLs.has(url)) continue
     preloadedURLs.add(url)
     // `new Image()` issues a GET; the result lives in the browser's
@@ -250,7 +250,7 @@ function updateThumbPosition(e: MouseEvent) {
                 <div v-for="f in rec.source_files" :key="f" class="source-file">
                   <a
                     class="source-name"
-                    :href="screenshotURL(f)"
+                    :href="screenshotURL(f, rec.source_dir_ids?.[f] ?? 0)"
                     :title="cardState.previewOpen.value[f] ? 'Hide preview' : 'Show preview'"
                     @click.prevent="cardState.togglePreview(f)"
                   >
@@ -259,11 +259,11 @@ function updateThumbPosition(e: MouseEvent) {
                   </a>
                   <img
                     v-if="cardState.previewOpen.value[f] && !cardState.previewError.value[f]"
-                    :src="screenshotURL(f)"
+                    :src="screenshotURL(f, rec.source_dir_ids?.[f] ?? 0)"
                     :alt="f"
                     class="source-preview"
                     title="Click to view fullscreen"
-                    @click="emit('open-lightbox', f, rec.source_files ?? [])"
+                    @click="emit('open-lightbox', f, rec.source_files ?? [], rec.source_dir_ids ?? {})"
                     @error="cardState.onPreviewError(f)"
                   >
                   <div v-if="cardState.previewOpen.value[f] && cardState.previewError.value[f]" class="source-preview-error">
@@ -390,7 +390,7 @@ function updateThumbPosition(e: MouseEvent) {
               <div v-for="f in rec.source_files" :key="f" class="source-file">
                 <a
                   class="source-name"
-                  :href="screenshotURL(f)"
+                  :href="screenshotURL(f, rec.source_dir_ids?.[f] ?? 0)"
                   :title="cardState.previewOpen.value[f] ? 'Hide preview' : 'Show preview'"
                   @click.prevent="cardState.togglePreview(f)"
                 >
@@ -404,11 +404,11 @@ function updateThumbPosition(e: MouseEvent) {
                 >{{ formatParsedAt(rec.source_parsed_at[f]) }}</span>
                 <img
                   v-if="cardState.previewOpen.value[f] && !cardState.previewError.value[f]"
-                  :src="screenshotURL(f)"
+                  :src="screenshotURL(f, rec.source_dir_ids?.[f] ?? 0)"
                   :alt="f"
                   class="source-preview"
                   title="Click to view fullscreen"
-                  @click="emit('open-lightbox', f, rec.source_files ?? [])"
+                  @click="emit('open-lightbox', f, rec.source_files ?? [], rec.source_dir_ids ?? {})"
                   @error="cardState.onPreviewError(f)"
                 >
                 <div v-if="cardState.previewOpen.value[f] && cardState.previewError.value[f]" class="source-preview-error">

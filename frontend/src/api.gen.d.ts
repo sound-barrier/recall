@@ -996,18 +996,21 @@ export interface components {
                 [key: string]: string;
             };
             /**
-             * @description Per-source-file screenshots-folder path the file was ingested
-             *     from, normalized via the screenshots_dirs FK so changing the
-             *     configured folder later doesn't rewrite history. May be
-             *     absent on rows persisted before this column landed or rows
-             *     where the dir was unset at parse time.
+             * @description Per-source-file screenshots_dirs row id the file was ingested
+             *     from. Frontends build `/_screenshot/{dir_id}/{filename}` URLs
+             *     from this map so the screenshot handler can serve the right
+             *     directory even after the user changes their screenshots
+             *     folder (re-install, move, profile switch). Absent for rows
+             *     where the dir was unset at parse time; clients should send
+             *     `0` to fall back to the currently-configured screenshots
+             *     folder.
              * @example {
-             *       "Overwatch Screenshot 2026.05.10 - 22.21.11.79.png": "/Users/jacob/Documents/Overwatch/Screenshots",
-             *       "Overwatch Screenshot 2026.05.10 - 22.21.57.34.png": "/Users/jacob/Documents/Overwatch/Screenshots"
+             *       "Overwatch Screenshot 2026.05.10 - 22.21.11.79.png": 3,
+             *       "Overwatch Screenshot 2026.05.10 - 22.21.57.34.png": 3
              *     }
              */
-            source_dirs?: {
-                [key: string]: string;
+            source_dir_ids?: {
+                [key: string]: number;
             };
             /**
              * Format: date-time

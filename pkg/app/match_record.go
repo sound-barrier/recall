@@ -17,15 +17,17 @@ type MatchRecord struct {
 	SourceFiles    []string          `json:"source_files"`
 	SourceTypes    map[string]string `json:"source_types,omitempty"`
 	SourceParsedAt map[string]string `json:"source_parsed_at,omitempty"`
-	// SourceDirs maps a source filename to the screenshots-folder
-	// path it was ingested from. Populated from the screenshots_dirs
-	// FK on each per-type parent row, so when the user changes their
-	// screenshots folder mid-history we still know where each old
-	// screenshot was originally captured. Empty / missing when the
-	// dir was unset at parse time.
-	SourceDirs map[string]string  `json:"source_dirs,omitempty"`
-	ParsedAt   string             `json:"parsed_at,omitempty"`
-	Data       parser.MatchResult `json:"data"`
+	// SourceDirIDs maps a source filename to the screenshots_dirs row
+	// id it was ingested from. The frontend builds
+	// `/_screenshot/<id>/<filename>` URLs from this map so the
+	// ScreenshotHandler can serve the right directory even after the
+	// user changes their screenshots folder (re-install, move,
+	// profile switch). Empty / missing means the dir was unset at
+	// parse time; the client sends `0` to fall back to
+	// `a.settings.ScreenshotsDir`.
+	SourceDirIDs map[string]int64   `json:"source_dir_ids,omitempty"`
+	ParsedAt     string             `json:"parsed_at,omitempty"`
+	Data         parser.MatchResult `json:"data"`
 	// User-curated annotation. Currently only `leaver` is surfaced in
 	// the UI ("self" | "team" | "enemy"); empty string means no
 	// annotation. Note is reserved for future per-match commentary.
