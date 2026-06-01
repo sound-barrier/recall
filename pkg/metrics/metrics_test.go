@@ -93,6 +93,90 @@ func TestCollector_SkipsNonCompetitive(t *testing.T) {
 	}
 }
 
+// Pins the metrics filter contract: every non-competitive row in a
+// mixed batch stays out of /metrics, every competitive row appears.
+// CLAUDE.md flags this filter as "the only place modes are filtered
+// for Prometheus" — a future "expand which modes count" change has
+// to update this test alongside the filter literal in Collect().
+func TestCollector_FilterIsCompetitiveOnly(t *testing.T) {
+	reader := func() ([]ScrapeRow, error) {
+		return []ScrapeRow{
+			{
+				MatchKey: "match-2026-05-10T20-00-00",
+				Data: parser.MatchResult{
+					Mode: "competitive", Map: "rialto", Hero: "ana",
+					Date: "2026-05-10", FinishedAt: "20:00",
+					Eliminations: 1,
+				},
+			},
+			{
+				MatchKey: "match-2026-05-10T20-30-00",
+				Data: parser.MatchResult{
+					Mode: "quickplay", Map: "ilios", Hero: "zarya",
+					Date: "2026-05-10", FinishedAt: "20:30",
+					Eliminations: 2,
+				},
+			},
+			{
+				MatchKey: "match-2026-05-10T21-00-00",
+				Data: parser.MatchResult{
+					Mode: "arcade", Map: "kings_row", Hero: "tracer",
+					Date: "2026-05-10", FinishedAt: "21:00",
+					Eliminations: 3,
+				},
+			},
+			{
+				MatchKey: "match-2026-05-10T21-30-00",
+				Data: parser.MatchResult{
+					Mode: "competitive", Map: "hanamura", Hero: "lucio",
+					Date: "2026-05-10", FinishedAt: "21:30",
+					Eliminations: 4,
+				},
+			},
+			{
+				MatchKey: "match-2026-05-10T22-00-00",
+				Data: parser.MatchResult{
+					Mode: "", Map: "junkertown", Hero: "soldier",
+					Date: "2026-05-10", FinishedAt: "22:00",
+					Eliminations: 5,
+				},
+			},
+		}, nil
+	}
+	out := scrape(t, reader)
+
+	// Every competitive match_key surfaces.
+	for _, key := range []string{
+		"match-2026-05-10T20-00-00",
+		"match-2026-05-10T21-30-00",
+	} {
+		if !strings.Contains(out, `match_key="`+key+`"`) {
+			t.Errorf("competitive match %q missing from /metrics output", key)
+		}
+	}
+	// Every non-competitive match_key is absent.
+	for _, key := range []string{
+		"match-2026-05-10T20-30-00", // quickplay
+		"match-2026-05-10T21-00-00", // arcade
+		"match-2026-05-10T22-00-00", // mode unset
+	} {
+		if strings.Contains(out, `match_key="`+key+`"`) {
+			t.Errorf("non-competitive match %q leaked into /metrics output", key)
+		}
+	}
+	// Belt-and-suspenders: the labels confirm we're filtering on mode,
+	// not on something coincidental. Every emitted eliminations sample
+	// carries mode="competitive".
+	for _, line := range strings.Split(out, "\n") {
+		if !strings.HasPrefix(line, "recall_match_eliminations{") {
+			continue
+		}
+		if !strings.Contains(line, `mode="competitive"`) {
+			t.Errorf("eliminations sample with non-competitive mode label:\n  %s", line)
+		}
+	}
+}
+
 func TestCollector_SkipsRowsWithoutTimestamp(t *testing.T) {
 	reader := func() ([]ScrapeRow, error) {
 		return []ScrapeRow{{

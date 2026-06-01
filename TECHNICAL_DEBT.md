@@ -229,29 +229,6 @@ actually bites before paying this cost.
 
 ---
 
-## 17. Metrics filter is hard-coded; no test of the boundary
-
-**Where:** `pkg/metrics/metrics.go::Collect` — drops every row
-where `r.Mode != "competitive"`. The filter is documented in
-CLAUDE.md as "the only place modes are filtered for Prometheus,"
-but there's no Go test of the filter itself.
-
-**Plan:**
-
-Add `pkg/metrics/metrics_filter_test.go` that:
-
-1. Boots a metrics collector with a stub Reader returning
-   mixed competitive / quickplay / arcade records.
-2. Calls `Collect` and inspects the emitted samples.
-3. Asserts only competitive rows produced samples.
-4. Pins the contract — any future "expand which modes count"
-   change has to update the test alongside.
-
-**Size:** S.
-**Risk:** Low.
-
----
-
 ## 18. j/k keyboard nav walks `narrowedRecords` ignoring the rendered sort order
 
 **Where:** `frontend/src/App.vue` j/k handlers + `MatchesView.vue`
