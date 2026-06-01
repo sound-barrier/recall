@@ -309,3 +309,57 @@ test.describe('first-run profile-name modal', () => {
     await expect(modal.locator('.first-run-hint')).toBeVisible()
   })
 })
+
+test.describe('first-run modal — onboarding-tour interaction', () => {
+  // On a TRUE first launch both `recall.onboardingCompleted` and
+  // `recall.firstRunAccountNamed` are unset. Without coordination
+  // the modal stacks on top of the tour and the two overlays trap
+  // each other's focus. The modal should yield to the tour and
+  // surface only after the tour is dismissed.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.removeItem('recall.firstRunAccountNamed')
+        localStorage.removeItem('recall.onboardingCompleted')
+      } catch (_) { /* ignore */ }
+    })
+  })
+
+  test('does NOT render while the onboarding tour is active', async ({ page }) => {
+    await page.route('**/api/v1/profiles', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ active: 'main', profiles: ['main'] }),
+      })
+    })
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    })
+
+    await page.goto('/')
+    await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
+    // Modal stays out of the DOM while the tour drives the page.
+    await expect(page.locator('.first-run-modal')).toHaveCount(0)
+  })
+
+  test('surfaces after the tour is skipped', async ({ page }) => {
+    await page.route('**/api/v1/profiles', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ active: 'main', profiles: ['main'] }),
+      })
+    })
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    })
+
+    await page.goto('/')
+    const tour = page.locator('[data-testid="onboarding-tour"]')
+    await expect(tour).toBeVisible()
+    // Skip the tour.
+    await tour.getByRole('button', { name: /skip/i }).click()
+    await expect(tour).toBeHidden()
+    // Now the modal can surface (account flag is still unset).
+    await expect(page.locator('.first-run-modal')).toBeVisible()
+  })
+})
