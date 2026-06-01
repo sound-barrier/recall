@@ -262,6 +262,45 @@ async function focusCardByIndex(idx: number) {
   if (el) el.scrollIntoView({ block: 'nearest', behavior: 'auto' })
 }
 
+// Walk to the next/prev leaf-row in RENDERED order (DOM-document
+// order under .leaves-list). j/k previously walked
+// `narrowedRecords` order directly, which only matched the visible
+// list when `sortOrder='newest'` — flip Sort to Oldest (or any
+// non-default order) and `j` advanced to a row that wasn't the
+// visually next one. DOM order is the cheapest reliable source of
+// the rendered sequence — MatchesView owns the sort + group logic,
+// the rendered list owns the order, and we just walk it.
+// TECHNICAL_DEBT.md item 18.
+async function focusCardByRenderedDelta(delta: 1 | -1) {
+  const rows = Array.from(
+    document.querySelectorAll<HTMLElement>('.leaf-row[data-card-index]'),
+  )
+  if (rows.length === 0) return
+  let currentRowIdx = -1
+  if (focusedCardIndex.value !== -1) {
+    currentRowIdx = rows.findIndex(
+      (r) => Number(r.dataset.cardIndex) === focusedCardIndex.value,
+    )
+  }
+  let nextRowIdx: number
+  if (currentRowIdx === -1) {
+    // No card focused yet — first j lands on row 0, first k on row 0
+    // too (preserves the pre-fix "k from -1 lands on 0" behavior).
+    nextRowIdx = 0
+  } else {
+    nextRowIdx = Math.max(
+      0,
+      Math.min(rows.length - 1, currentRowIdx + delta),
+    )
+  }
+  const target = rows[nextRowIdx]
+  if (!target) return
+  const newIndex = Number(target.dataset.cardIndex)
+  if (Number.isNaN(newIndex)) return
+  if (newIndex === focusedCardIndex.value) return
+  await focusCardByIndex(newIndex)
+}
+
 // Wall-clock time of the last successful manual parse, used to render
 // "Last run · X ago" feedback under the Parse button on the settings
 // page. Persisted to localStorage so the timestamp survives reloads.
@@ -957,33 +996,20 @@ useKeyboardShortcuts([
       handler: () => { void goToView(target) },
     }
   }),
-  // Matches view: j/k move card focus, no wrap. Suppressed when the
-  // detail panel is open — the panel's own keydown listener takes
-  // over (j/k paginates within the open panel). The list driving the
-  // index is the same narrowedRecords MatchesView renders, so the
-  // index always points at the row the user sees.
+  // Matches view: j/k move card focus, no wrap, in RENDERED order
+  // (so flipping Sort=Oldest still has j advance down the visible
+  // list — TECHNICAL_DEBT.md item 18). Suppressed when the detail
+  // panel is open; the panel's own keydown listener takes over
+  // (j/k paginates within the open panel).
   {
     key: 'j',
     when: () => view.value === 'matches' && !selection.isOpen.value,
-    handler: () => {
-      const len = matchesNarrow.narrowedRecords.value.length
-      if (len === 0) return
-      const next = Math.min(focusedCardIndex.value + 1, len - 1)
-      if (next === focusedCardIndex.value && focusedCardIndex.value !== -1) return
-      void focusCardByIndex(Math.max(0, next))
-    },
+    handler: () => { void focusCardByRenderedDelta(1) },
   },
   {
     key: 'k',
     when: () => view.value === 'matches' && !selection.isOpen.value,
-    handler: () => {
-      const len = matchesNarrow.narrowedRecords.value.length
-      if (len === 0) return
-      // First k from "no card focused" lands on card 0; otherwise
-      // step back, clamped at 0.
-      const next = focusedCardIndex.value === -1 ? 0 : Math.max(0, focusedCardIndex.value - 1)
-      void focusCardByIndex(next)
-    },
+    handler: () => { void focusCardByRenderedDelta(-1) },
   },
   // Matches view: open / close the detail panel for the focused card.
   // From the closed state this is the keyboard alternative to clicking

@@ -229,38 +229,6 @@ actually bites before paying this cost.
 
 ---
 
-## 18. j/k keyboard nav walks `narrowedRecords` ignoring the rendered sort order
-
-**Where:** `frontend/src/App.vue` j/k handlers + `MatchesView.vue`
-`narrowedIndexByKey` computed.
-
-After paying down item 1, the j/k keyboard nav was repaired so it
-walks `matchesNarrow.narrowedRecords` (instead of the now-defunct
-`filters.filteredSorted`). MatchesView's leaf-rows carry
-`data-card-index` matching their position in `narrowedRecords`.
-That works for the default `sortOrder='newest'` because both
-orders coincide for a date-descending corpus.
-
-When the user flips Sort → Oldest (or the upcoming "by hero" /
-"by map" sorts), the rendered order diverges from
-`narrowedRecords` order. `j` then advances to a row that's NOT
-the visually next one. The aria-current attribute still lights up
-the correct row, but the user's mental model breaks.
-
-**Plan:**
-
-Move the keyboard handlers (or at least the j/k/e/t set that
-depend on the rendered list) into MatchesView. The view owns
-`sortedRecords` and can index against the rendered order
-directly. App.vue keeps only the global shortcuts (`?`, `/`, the
-`g`-prefix view nav).
-
-**Size:** M.
-**Risk:** Low — typed seam between App.vue and MatchesView; the
-keyboard-shortcuts e2e covers the contract.
-
----
-
 ## 19. `useMatchFilters.matchQuery` is dead but its `searchClauses` still feed the hit-highlighter
 
 **Where:** `frontend/src/composables/useMatchFilters.ts:71`
