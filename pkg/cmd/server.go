@@ -132,6 +132,9 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		}
 		if err := a.MoveMatches(body.MatchKeys, body.TargetProfile); err != nil {
 			switch {
+			case errors.Is(err, app.ErrInvalidProfileName):
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
 			case errors.Is(err, app.ErrProfileNotFound):
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
