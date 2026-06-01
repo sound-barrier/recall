@@ -56,13 +56,15 @@ interface PanelMountOver {
 
 function mountPanel(over: PanelMountOver = {}) {
   const record = over.record ?? makeRecord()
+  const previewOpen  = over.previewOpen  ?? {}
+  const previewError = over.previewError ?? {}
   return mount(MatchDetailPanel, {
     props: {
       record,
       isOpen: true,
       isSourcesOpen: over.isSourcesOpen ?? false,
-      previewOpen: over.previewOpen ?? {},
-      previewError: over.previewError ?? {},
+      isPreviewOpen:   (f: string) => !!previewOpen[f],
+      hasPreviewError: (f: string) => !!previewError[f],
       isActive: over.isActive ?? (() => false),
       canPrev: false,
       canNext: false,

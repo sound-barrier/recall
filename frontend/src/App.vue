@@ -60,6 +60,7 @@ import { useTesseractStatus } from './composables/useTesseractStatus'
 import { useScreenshotsDir } from './composables/useScreenshotsDir'
 import { useFeatureToggle } from './composables/useFeatureToggle'
 import { useEventStream } from './composables/useEventStream'
+import { useScreenshotPreview } from './composables/useScreenshotPreview'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useMatchFilters } from './composables/useMatchFilters'
@@ -839,72 +840,31 @@ function isSourcesOpen(id: string) {
   return !!sourcesExpanded.value[id]
 }
 
-// Per-filename screenshot preview expansion. Keyed by filename so the
-// same screenshot stays open if you collapse and re-open the source
-// list. Image bytes come from the Go ScreenshotHandler at
-// /_screenshot/<filename> — no IPC round-trip.
-const previewOpen = ref<Record<string, boolean>>({})
-const previewError = ref<Record<string, boolean>>({})
-function togglePreview(filename: string) {
-  previewError.value = { ...previewError.value, [filename]: false }
-  previewOpen.value = { ...previewOpen.value, [filename]: !previewOpen.value[filename] }
-}
-function onPreviewError(filename: string) {
-  previewError.value = { ...previewError.value, [filename]: true }
-}
-
-// Fullscreen screenshot lightbox state. null = closed. Opened from
-// the inline preview img in MatchCardExpanded (event bubbles up
-// through MatchDetailPanel); closed via × / Esc / backdrop click
-// inside MatchScreenshotLightbox itself. Lives at App.vue root so
-// the modal stacks above the detail panel.
-//
-// `lightboxFiles` carries a snapshot of the owning record's
-// `source_files` at the time the user opened the lightbox — the
-// lightbox uses it for prev/next navigation (←/→ + h/l + < / >
-// buttons) without having to reach back into the Vue tree for the
-// owning record. Snapshotting protects against the underlying
-// record changing mid-view (e.g. an SSE-driven reload of the matches
-// list) — the user keeps walking the set they actually opened.
-const lightboxFilename = ref<string | null>(null)
-const lightboxFiles    = ref<string[]>([])
-// Filename → dir-id map snapshot for the lightbox session. Captured
-// at open time from the owning record's source_dir_ids so the
-// fullscreen URL stays accurate as the user paginates with ←/→
-// even if the underlying record refreshes mid-view.
-const lightboxDirIDs   = ref<Record<string, number>>({})
+// Screenshot UI state — per-filename inline expand + fullscreen
+// lightbox + cache-warm preload registry. Image bytes come from the
+// Go ScreenshotHandler at /_screenshot/<filename>; the lightbox
+// snapshot of files/dirIDs protects ←/→ navigation against the
+// underlying record refreshing mid-view (e.g. SSE-driven reload).
+const screenshotPreview = useScreenshotPreview()
+const {
+  isPreviewOpen,
+  hasPreviewError,
+  togglePreview,
+  onPreviewError,
+  lightboxFilename,
+  lightboxFiles,
+  lightboxDirIDs,
+  lightboxIndex,
+  openLightbox,
+  closeLightbox,
+  lightboxPrev,
+  lightboxNext,
+} = screenshotPreview
 const lightboxSrc = computed(() => {
   const f = lightboxFilename.value
   if (!f) return null
   return screenshotURL(f, lightboxDirIDs.value[f] ?? 0)
 })
-const lightboxIndex = computed(() =>
-  lightboxFilename.value
-    ? lightboxFiles.value.indexOf(lightboxFilename.value)
-    : -1,
-)
-function openLightbox(
-  filename: string,
-  files: readonly string[] = [filename],
-  dirIDs: Record<string, number> = {},
-) {
-  lightboxFilename.value = filename
-  lightboxFiles.value = files.length > 0 ? [...files] : [filename]
-  lightboxDirIDs.value = { ...dirIDs }
-}
-function closeLightbox() {
-  lightboxFilename.value = null
-  lightboxFiles.value = []
-}
-function lightboxPrev() {
-  const i = lightboxIndex.value
-  if (i > 0) lightboxFilename.value = lightboxFiles.value[i - 1]!
-}
-function lightboxNext() {
-  const i = lightboxIndex.value
-  if (i >= 0 && i < lightboxFiles.value.length - 1)
-    lightboxFilename.value = lightboxFiles.value[i + 1]!
-}
 
 // Per-card UI state for UnknownMapsView. The Unknown tab's expand/
 // collapse gesture is INLINE — clicking a card head flips the local
@@ -929,16 +889,17 @@ function toggleUnknownExpand(id: string) {
   }
 }
 
-// CardStateApi exposed as all-functions (post item-8). The underlying
-// state (previewOpen, previewError refs) is still owned here at the
-// App.vue scope so the same preview-open state survives a tab swap
-// from Unknown → Matches → Unknown; the getter functions just close
-// over those refs.
+// CardStateApi: all-function shape post item-8; the underlying
+// preview state lives inside the `useScreenshotPreview` composable
+// (item 12) so MatchDetailPanel + UnknownMapsView + the fullscreen
+// lightbox all consult one owner. The composable persists for the
+// life of App.vue so the same preview-open state survives a tab
+// swap from Unknown → Matches → Unknown.
 const cardState = {
   isSelected: isUnknownExpanded,
   isSourcesOpen,
-  isPreviewOpen:   (filename: string) => !!previewOpen.value[filename],
-  hasPreviewError: (filename: string) => !!previewError.value[filename],
+  isPreviewOpen,
+  hasPreviewError,
   toggleExpand: toggleUnknownExpand,
   toggleSources,
   togglePreview,
@@ -1448,6 +1409,7 @@ useEventStream({
           :ambiguous-records="ambiguousRecords"
           :all-records="records"
           :card-state="cardState"
+          :preload-screenshot="screenshotPreview.preload"
           @go-to-view="goToView"
           @resolve-ambiguous="onResolveAmbiguous"
           @open-lightbox="openLightbox"
@@ -1509,8 +1471,8 @@ useEventStream({
       :record="selection.selectedRecord.value"
       :is-open="selection.isOpen.value"
       :is-sources-open="isSourcesOpen(selection.selectedKey.value)"
-      :preview-open="previewOpen"
-      :preview-error="previewError"
+      :is-preview-open="isPreviewOpen"
+      :has-preview-error="hasPreviewError"
       :is-active="filters.isActive"
       :search-clauses="filters.searchClauses.value"
       :can-prev="selection.canPrev.value"

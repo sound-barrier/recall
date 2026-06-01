@@ -204,46 +204,6 @@ from `app.css` — those references survive.
 
 ---
 
-## 12. Two parallel "open the lightbox" paths
-
-**Where:**
-
-- `MatchDetailPanel.vue` → `togglePreview(f)` flips
-  `cardState.previewOpen[f]` → `<img class="source-preview">`
-  renders → click opens the lightbox.
-- `UnknownMapsView.vue` → same toggle path inside the expanded
-  card.
-- `UnknownMapsView.vue` → the new floating hover thumb
-  Teleport'd to body, with its own cursor-tracking state.
-
-Three independent ways to surface a screenshot, each owning its
-own state machine. The hover thumb's preload of `source_files[0]`
-warms the cache the in-card preview also relies on, but the
-consumers don't know about each other.
-
-**Plan:**
-
-Consolidate into a single `useScreenshotPreview()` composable:
-
-- `peek(filename)` — float a cursor-anchored thumb (today's
-  hover thumb behaviour).
-- `expand(filename)` — pin a same-position thumb open
-  (today's `previewOpen[f]` toggle).
-- `lightbox(filename, files)` — fullscreen modal (today's
-  `emit('open-lightbox', …)`).
-
-Each consumer asks for the gesture it wants; the composable
-handles cache warming, request deduping, and the click→escalate
-path (peek → expand → lightbox).
-
-**Size:** M.
-**Risk:** Med — the lightbox keyboard contract (capture-phase
-Esc) is sensitive to event registration order; the consolidation
-has to preserve it. The existing lightbox e2e + the new hover
-spec lock the contracts.
-
----
-
 ## 13. No e2e covers the Wails desktop runtime
 
 **Where:** `frontend/tests/e2e/` exclusively drives the
