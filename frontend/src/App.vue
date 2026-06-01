@@ -132,14 +132,15 @@ const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
 
 const records = ref<MatchRecord[]>([])
 const error = ref('')
-const loading = ref(false)
-// `initialLoading` is true from boot until the first load() resolves
+// `parseBusy` flips true during runParse(); used to disable the
+// manual Parse button and its peers in IngestView / SettingsView.
+const parseBusy = ref(false)
+// `firstLoadPending` is true from boot until the first load() resolves
 // (or fails). Drives the Matches skeleton placeholder so the view
 // doesn't render its empty-state for a frame between mount and the
-// first /api/v1/matches response. Distinct from `loading` (the
-// parse-button busy ref) because a manual parse should NOT swap the
-// real records for skeleton rows.
-const initialLoading = ref(true)
+// first /api/v1/matches response. Distinct from `parseBusy` because a
+// manual parse should NOT swap the real records for skeleton rows.
+const firstLoadPending = ref(true)
 
 // Onboarding tour: when the tour is active we substitute the live
 // records for the curated DEMO_MATCHES so every tour step has
@@ -449,7 +450,7 @@ async function load() {
   else                                 setTesseractStatus({ path: '', found: false, version: '', supported: false, error: String(tess.reason), default: '', platform: '' })
   newScreenshotCount.value = newCount.status === 'fulfilled' ? newCount.value : null
   dataLocation.value      = loc.status === 'fulfilled' ? loc.value : null
-  initialLoading.value = false
+  firstLoadPending.value = false
 }
 
 async function refreshNewCount() {
@@ -477,7 +478,7 @@ async function checkForUpdates() {
 
 async function runParse() {
   error.value = ''
-  loading.value = true
+  parseBusy.value = true
   parseProgress.value = null
   parseLog.value = []
   parseProgressOpen.value = false
@@ -489,7 +490,7 @@ async function runParse() {
   } catch (e) {
     error.value = String(e)
   } finally {
-    loading.value = false
+    parseBusy.value = false
     parseProgress.value = null
   }
 }
@@ -1336,7 +1337,7 @@ useEventStream({
           v-if="view === 'settings'"
           :screenshots-dir="screenshotsDir"
           :watch-enabled="watchEnabled"
-          :loading="loading"
+          :parse-busy="parseBusy"
           :theme-mode="themeMode"
           :week-start="weekStart"
           :data-location="dataLocation"
@@ -1388,7 +1389,7 @@ useEventStream({
           :tesseract-ready="tesseractReady"
           :screenshots-dir="screenshotsDir"
           :watch-enabled="watchEnabled"
-          :loading="loading"
+          :parse-busy="parseBusy"
           :new-screenshot-count="newScreenshotCount"
           :last-parsed-at="lastParsedAt"
           :parse-progress="parseProgress"
@@ -1420,12 +1421,11 @@ useEventStream({
              /api/v1/matches roundtrip lands. The skeleton mirrors the
              real .leaf-row grid so the page geometry doesn't shift. -->
         <MatchesSkeleton
-          v-if="view === 'matches' && initialLoading && records.length === 0"
+          v-if="view === 'matches' && firstLoadPending && records.length === 0"
         />
         <MatchesView
           v-else-if="view === 'matches'"
           :records="records"
-          :loading="loading"
           :narrow="matchesNarrow"
           :focused-card-index="focusedCardIndex"
           @open-match="(k: string) => selection.open(k)"

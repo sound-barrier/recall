@@ -15,21 +15,21 @@ function progress(over: Partial<ParseProgressEvent> = {}): ParseProgressEvent {
 describe('ParseProgressPanel', () => {
   it('renders nothing when loading=false', () => {
     const wrapper = mount(ParseProgressPanel, {
-      props: { loading: false, parseProgress: null, parseLog: [], isOpen: false },
+      props: { parseBusy: false, parseProgress: null, parseLog: [], isOpen: false },
     })
     expect(wrapper.find('.parse-progress-panel').exists()).toBe(false)
   })
 
   it('renders the panel when loading=true', () => {
     const wrapper = mount(ParseProgressPanel, {
-      props: { loading: true, parseProgress: null, parseLog: [], isOpen: false },
+      props: { parseBusy: true, parseProgress: null, parseLog: [], isOpen: false },
     })
     expect(wrapper.find('.parse-progress-panel').exists()).toBe(true)
   })
 
   it('shows 0/… counter while progress is null', () => {
     const wrapper = mount(ParseProgressPanel, {
-      props: { loading: true, parseProgress: null, parseLog: [], isOpen: false },
+      props: { parseBusy: true, parseProgress: null, parseLog: [], isOpen: false },
     })
     expect(wrapper.find('.pp-done').text()).toBe('0')
     expect(wrapper.find('.pp-total').text()).toBe('…')
@@ -38,7 +38,7 @@ describe('ParseProgressPanel', () => {
   it('renders done/total from parseProgress', () => {
     const wrapper = mount(ParseProgressPanel, {
       props: {
-        loading: true,
+        parseBusy: true,
         parseProgress: progress({ done: 3, total: 7 }),
         parseLog: [],
         isOpen: false,
@@ -51,7 +51,7 @@ describe('ParseProgressPanel', () => {
   it('progress bar width reflects done/total ratio', () => {
     const wrapper = mount(ParseProgressPanel, {
       props: {
-        loading: true,
+        parseBusy: true,
         parseProgress: progress({ done: 2, total: 5 }),
         parseLog: [],
         isOpen: false,
@@ -64,7 +64,7 @@ describe('ParseProgressPanel', () => {
   it('bar collapses to 0% when total is 0', () => {
     const wrapper = mount(ParseProgressPanel, {
       props: {
-        loading: true,
+        parseBusy: true,
         parseProgress: progress({ done: 0, total: 0 }),
         parseLog: [],
         isOpen: false,
@@ -76,7 +76,7 @@ describe('ParseProgressPanel', () => {
   it('does not render the expanded details when isOpen=false', () => {
     const wrapper = mount(ParseProgressPanel, {
       props: {
-        loading: true,
+        parseBusy: true,
         parseProgress: progress(),
         parseLog: [],
         isOpen: false,
@@ -88,7 +88,7 @@ describe('ParseProgressPanel', () => {
   it('renders the current-file detail row when isOpen=true', () => {
     const wrapper = mount(ParseProgressPanel, {
       props: {
-        loading: true,
+        parseBusy: true,
         parseProgress: progress({ filename: 'overwatch.png', screenshot_type: 'summary' }),
         parseLog: [],
         isOpen: true,
@@ -102,7 +102,7 @@ describe('ParseProgressPanel', () => {
   it('summary-type renders map / result / date / length fields when present', () => {
     const wrapper = mount(ParseProgressPanel, {
       props: {
-        loading: true,
+        parseBusy: true,
         parseProgress: progress({
           screenshot_type: 'summary',
           data: { map: 'rialto', result: 'victory', date: '2026-05-10', game_length: '11:25' },
@@ -121,7 +121,7 @@ describe('ParseProgressPanel', () => {
   it('scoreboard-type renders the E/A/D + damage triple', () => {
     const wrapper = mount(ParseProgressPanel, {
       props: {
-        loading: true,
+        parseBusy: true,
         parseProgress: progress({
           screenshot_type: 'scoreboard',
           data: { eliminations: 17, assists: 16, deaths: 11, damage: 7200 },
@@ -139,7 +139,7 @@ describe('ParseProgressPanel', () => {
 
   it('clicking the summary row emits toggle-open', async () => {
     const wrapper = mount(ParseProgressPanel, {
-      props: { loading: true, parseProgress: null, parseLog: [], isOpen: false },
+      props: { parseBusy: true, parseProgress: null, parseLog: [], isOpen: false },
     })
     await wrapper.find('.pp-summary').trigger('click')
     expect(wrapper.emitted('toggle-open')).toBeTruthy()
@@ -147,12 +147,12 @@ describe('ParseProgressPanel', () => {
 
   it('chevron carries the .open class when isOpen=true', () => {
     const open = mount(ParseProgressPanel, {
-      props: { loading: true, parseProgress: null, parseLog: [], isOpen: true },
+      props: { parseBusy: true, parseProgress: null, parseLog: [], isOpen: true },
     })
     expect(open.find('.pp-chev').classes()).toContain('open')
 
     const closed = mount(ParseProgressPanel, {
-      props: { loading: true, parseProgress: null, parseLog: [], isOpen: false },
+      props: { parseBusy: true, parseProgress: null, parseLog: [], isOpen: false },
     })
     expect(closed.find('.pp-chev').classes()).not.toContain('open')
   })

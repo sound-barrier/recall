@@ -11,7 +11,7 @@ import SettingsView from './SettingsView.vue'
 describe('SettingsView', () => {
   it('shows the empty-state hero when no folder is selected', () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '', loading: false, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(wrapper.text()).toContain('Choose a')
     expect(wrapper.text()).toContain('screenshots folder')
@@ -24,7 +24,7 @@ describe('SettingsView', () => {
 
   it('shows the "where Recall reads from" heading once a folder is configured', () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv/owmetrics', loading: false, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '/srv/owmetrics', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(wrapper.text()).toContain('Where Recall reads from')
     expect(wrapper.find('.setting-value').text()).toBe('/srv/owmetrics')
@@ -33,7 +33,7 @@ describe('SettingsView', () => {
 
   it('emits pick-screenshots-dir when the Change… button is clicked', async () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     const btn = wrapper.findAll('button').find(b => b.text().includes('Change'))
     expect(btn).toBeDefined()
@@ -41,9 +41,9 @@ describe('SettingsView', () => {
     expect(wrapper.emitted('pick-screenshots-dir')).toBeTruthy()
   })
 
-  it('disables the Change… button while loading=true', () => {
+  it('disables the Change… button while parseBusy=true', () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: true, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '/srv', parseBusy: true, themeMode: 'dark', weekStart: 0 },
     })
     const btn = wrapper.findAll('button').find(b => b.text().includes('Change'))!
     expect(btn.attributes('disabled')).toBeDefined()
@@ -51,7 +51,7 @@ describe('SettingsView', () => {
 
   it('emits set-theme with the picked mode when a swatch is clicked', async () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     await wrapper.find('.day-swatch').trigger('click')
     expect(wrapper.emitted('set-theme')).toBeTruthy()
@@ -60,7 +60,7 @@ describe('SettingsView', () => {
 
   it('emits set-theme with "high-contrast" when the Contrast swatch is clicked', async () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     await wrapper.find('.contrast-swatch').trigger('click')
     expect(wrapper.emitted('set-theme')![0]).toEqual(['high-contrast'])
@@ -68,13 +68,13 @@ describe('SettingsView', () => {
 
   it('marks the active theme swatch per themeMode prop', () => {
     const dark = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(dark.find('.dark-swatch').classes()).toContain('active')
     expect(dark.find('.day-swatch').classes()).not.toContain('active')
 
     const light = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'day', weekStart: 0 },
+      props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'day', weekStart: 0 },
     })
     expect(light.find('.day-swatch').classes()).toContain('active')
     expect(light.find('.dark-swatch').classes()).not.toContain('active')
@@ -82,7 +82,7 @@ describe('SettingsView', () => {
 
   it('aria-checked mirrors themeMode on each swatch', () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(wrapper.find('.dark-swatch').attributes('aria-checked')).toBe('true')
     expect(wrapper.find('.day-swatch').attributes('aria-checked')).toBe('false')
@@ -90,7 +90,7 @@ describe('SettingsView', () => {
 
   it('emits go-to-view ingest when the "Parse →" link is clicked', async () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     const link = wrapper.findAll('.empty-link').find(el => el.text().includes('Parse'))!
     await link.trigger('click')
@@ -100,7 +100,7 @@ describe('SettingsView', () => {
 
   it('emits go-to-view matches when the "Week of" cross-reference is clicked', async () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     const link = wrapper.findAll('.empty-link').find(el => el.text().includes('Week of'))!
     await link.trigger('click')
@@ -112,7 +112,7 @@ describe('SettingsView', () => {
 
   it('renders the Calendar section with seven day cells', () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(wrapper.text()).toContain('Calendar')
     expect(wrapper.text()).toContain('First Day of Week')
@@ -123,7 +123,7 @@ describe('SettingsView', () => {
   it('marks the active weekstart cell per weekStart prop (any day 0-6)', () => {
     for (let day = 0; day <= 6; day++) {
       const wrapper = mount(SettingsView, {
-        props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: day as 0 | 1 | 2 | 3 | 4 | 5 | 6 },
+        props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: day as 0 | 1 | 2 | 3 | 4 | 5 | 6 },
       })
       const cells = wrapper.findAll('.weekstart-cell')
       cells.forEach((cell, i) => {
@@ -135,7 +135,7 @@ describe('SettingsView', () => {
 
   it('aria-checked mirrors weekStart for assistive tech', () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 3 },
+      props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 3 },
     })
     const cells = wrapper.findAll('.weekstart-cell')
     cells.forEach((cell, i) => {
@@ -145,7 +145,7 @@ describe('SettingsView', () => {
 
   it('emits set-week-start with the numeric day index on cell click', async () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     const cells = wrapper.findAll('.weekstart-cell')
     // Friday (index 5)
@@ -158,7 +158,7 @@ describe('SettingsView', () => {
 
   it('shows the resolved day name in the weekstart caption', () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 3 },
+      props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 3 },
     })
     const cap = wrapper.find('.weekstart-caption')
     expect(cap.text()).toContain('Wednesday')
@@ -166,7 +166,7 @@ describe('SettingsView', () => {
 
   it('renders a help affordance for every setting label', () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     // Screenshots Folder, Data Location, Engine, Theme, First Day
     // of Week, Profiles, Export, Import, Grafana stream, Clear DB.
@@ -196,7 +196,7 @@ function readyTesseract(over: Partial<TesseractStatus> = {}): TesseractStatus {
 describe('SettingsView — Engine section', () => {
   const baseEngineProps = {
     screenshotsDir: '/srv',
-    loading: false,
+    parseBusy: false,
     themeMode: 'dark' as const,
     weekStart: 0 as const,
     tesseractReady: true,
@@ -339,7 +339,7 @@ describe('SettingsView — Engine description per platform', () => {
   // tesseractStatus.platform (sourced from runtime.GOOS server-side).
 
   const baseEngineProps = {
-    screenshotsDir: '/srv', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+    screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark' as const, weekStart: 0 as const,
     tesseractReady: true, tesseractSupported: true, tesseractPickerBusy: false,
   }
 
@@ -393,7 +393,7 @@ describe('SettingsView — Engine description per platform', () => {
 
 describe('SettingsView — Backup & Restore', () => {
   const baseProps = {
-    screenshotsDir: '/srv', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+    screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark' as const, weekStart: 0 as const,
   }
 
   it('renders both JSON and CSV format buttons', () => {
@@ -495,7 +495,7 @@ describe('SettingsView — Backup & Restore', () => {
 
 describe('SettingsView — Advanced section', () => {
   const baseProps = {
-    screenshotsDir: '/srv', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+    screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark' as const, weekStart: 0 as const,
   }
 
   it('renders the Advanced <details> closed by default', () => {
@@ -551,7 +551,7 @@ describe('SettingsView — Advanced section', () => {
 
 describe('SettingsView — Data Location row', () => {
   const baseProps = {
-    screenshotsDir: '/srv', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+    screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark' as const, weekStart: 0 as const,
   }
   const sampleLoc = {
     base_dir: '/data',
@@ -674,7 +674,7 @@ describe('SettingsView — Data Location row', () => {
 
 describe('SettingsView — Detect Overwatch Folder (empty state hero)', () => {
   const emptyProps = {
-    screenshotsDir: '', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+    screenshotsDir: '', parseBusy: false, themeMode: 'dark' as const, weekStart: 0 as const,
   }
 
   it('renders the Auto-Detect Folder primary CTA in the empty-state hero', () => {
@@ -710,7 +710,7 @@ describe('SettingsView — Detect Overwatch Folder (empty state hero)', () => {
 
 describe('SettingsView — steady-state row affordances', () => {
   const setProps = {
-    screenshotsDir: '/srv', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+    screenshotsDir: '/srv', parseBusy: false, themeMode: 'dark' as const, weekStart: 0 as const,
   }
 
   it('renders a Detect button alongside Change… in the steady-state row', () => {
@@ -745,7 +745,7 @@ describe('SettingsView — steady-state row affordances', () => {
 
 describe('SettingsView — Probe chip', () => {
   const emptyProps = {
-    screenshotsDir: '', loading: false, themeMode: 'dark' as const, weekStart: 0 as const,
+    screenshotsDir: '', parseBusy: false, themeMode: 'dark' as const, weekStart: 0 as const,
   }
 
   it('renders the success chip when probeStatus=success', () => {

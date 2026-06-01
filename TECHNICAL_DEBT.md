@@ -229,34 +229,6 @@ actually bites before paying this cost.
 
 ---
 
-## 14. Two distinct loading refs in App.vue (`loading` vs `initialLoading`)
-
-**Where:** `frontend/src/App.vue:125-132`.
-
-```ts
-const loading = ref(false)          // parse-button busy
-const initialLoading = ref(true)    // first /api/v1/matches roundtrip
-```
-
-Added together but distinct enough that the call sites are
-already confusing them. `loading` flips true during `runParse()`
-(manual parse click), `initialLoading` flips false once the first
-`load()` resolves. The Matches skeleton gates on `initialLoading
-&& records.length === 0`; SettingsView still receives `loading`
-as a prop and doesn't get `initialLoading`.
-
-**Plan:**
-
-Rename + document. `loading` → `parseBusy`, `initialLoading` →
-`firstLoadPending`. Audit every consumer to confirm they want
-the right semantics; SettingsView's disabled-during-load buttons
-should probably switch to `parseBusy`.
-
-**Size:** S.
-**Risk:** Low.
-
----
-
 ## 15. Onboarding flag key duplicated in two places to keep tour out of initial chunk
 
 **Where:** `frontend/src/App.vue` inlines the literal

@@ -14,7 +14,7 @@ import type { DataLocation } from '../api'
 
 const props = defineProps<{
   screenshotsDir: string
-  loading: boolean
+  parseBusy: boolean
   watchEnabled?:  boolean
   dataLocation?:  DataLocation | null
   probing?:       boolean
@@ -123,7 +123,7 @@ async function copyPath(path: string, which: 'db' | 'settings') {
           <div class="folder-btn-group">
             <button
               class="btn ghost tiny"
-              :disabled="loading"
+              :disabled="parseBusy"
               :title="'Reveal ' + screenshotsDir + ' in your file manager'"
               @click="emit('reveal-screenshots-dir')"
             >
@@ -145,12 +145,12 @@ async function copyPath(path: string, which: 'db' | 'settings') {
             >
               Detect
             </button>
-            <button class="btn ghost tiny" :disabled="loading" @click="emit('pick-screenshots-dir')">
+            <button class="btn ghost tiny" :disabled="parseBusy" @click="emit('pick-screenshots-dir')">
               Change…
             </button>
             <button
               class="btn ghost tiny reset-btn"
-              :disabled="loading"
+              :disabled="parseBusy"
               :title="'Clear the configured folder'"
               @click="emit('reset-screenshots-dir')"
             >

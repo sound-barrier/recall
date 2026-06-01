@@ -23,7 +23,7 @@ defineProps<{
 
   // Parse state
   watchEnabled:         boolean
-  loading:              boolean
+  parseBusy:              boolean
   newScreenshotCount:   number | null
   lastParsedAt:         number | null
   parseProgress:        ParseProgressEvent | null
@@ -127,11 +127,11 @@ const emit = defineEmits<{
                 Fix in Settings →
               </button>
             </p>
-            <p v-else-if="newScreenshotCount === 0 && !loading" class="setting-meta blocked">
+            <p v-else-if="newScreenshotCount === 0 && !parseBusy" class="setting-meta blocked">
               <span class="block-mark" aria-hidden="true">◎</span>
               All screenshots already parsed — nothing new in the folder.
             </p>
-            <p v-else-if="lastParsedAt && !loading" class="setting-meta">
+            <p v-else-if="lastParsedAt && !parseBusy" class="setting-meta">
               <span class="meta-dot" />
               Last run · {{ formatRelativeTime(lastParsedAt) }} · {{ matchedCount + unknownCount }} record{{ (matchedCount + unknownCount) === 1 ? '' : 's' }} on record
             </p>
@@ -139,21 +139,21 @@ const emit = defineEmits<{
           <div class="setting-control">
             <button
               class="btn primary big"
-              :disabled="loading || !tesseractReady || newScreenshotCount === 0"
+              :disabled="parseBusy || !tesseractReady || newScreenshotCount === 0"
               :title="!tesseractReady ? 'Locate Tesseract in Settings → Engine first.' : newScreenshotCount === 0 ? 'All screenshots in the folder have already been parsed.' : ''"
               @click="emit('parse')"
             >
               <span class="btn-dot" />
-              <span v-if="loading">Parsing…</span>
+              <span v-if="parseBusy">Parsing…</span>
               <span v-else-if="(newScreenshotCount ?? 0) > 0">Run Parse · {{ newScreenshotCount }}</span>
               <span v-else>Run Parse</span>
             </button>
           </div>
         </div>
 
-        <!-- Parse progress panel — visible while loading. -->
+        <!-- Parse progress panel — visible while parseBusy. -->
         <ParseProgressPanel
-          :loading="loading"
+          :parse-busy="parseBusy"
           :parse-progress="parseProgress"
           :parse-log="parseLog"
           :is-open="parseProgressOpen"
