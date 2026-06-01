@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { MatchRecord } from '../api'
+import { GetProfiles } from '../api'
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import { useMatchesGroup } from '../composables/useMatchesGroup'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
@@ -67,6 +68,9 @@ const emit = defineEmits<{
   // Archive bulk "Delete forever" — fans out after the action-bar's
   // two-step confirm.
   'hard-delete-matches': [matchKeys: string[]]
+  // Bulk move to another profile — emitted from either action bar
+  // after the user picks a target profile from the inline picker.
+  'move-matches': [matchKeys: string[], targetProfile: string]
 }>()
 
 // ─── Narrow state via the parent-supplied composable bundle ──
@@ -125,6 +129,51 @@ function hideSelected() {
   if (keys.length === 0) return
   clearSelection()
   emit('hide-matches', keys)
+}
+
+// ─── Move-to-profile picker state ───────────────────────────
+//
+// The picker is a two-step affordance on each action bar: clicking
+// "Move to…" replaces the primary buttons with a row of profile-name
+// chips (one per OTHER profile). Clicking a chip fires move-matches
+// and clears the selection. Cancel reverts to the primary buttons.
+// availableProfiles is fetched on mount from /api/v1/profiles; if
+// there are no other profiles, the Move button is suppressed (a
+// one-profile install has nowhere to move).
+const availableProfiles = ref<{ active: string; profiles: string[] }>({ active: '', profiles: [] })
+const movePickerOpen = ref<'live' | 'archive' | null>(null)
+
+const otherProfiles = computed(() =>
+  availableProfiles.value.profiles.filter((p) => p !== availableProfiles.value.active),
+)
+
+function beginMoveLive() {
+  if (otherProfiles.value.length === 0) return
+  movePickerOpen.value = 'live'
+}
+function beginMoveArchive() {
+  if (otherProfiles.value.length === 0) return
+  movePickerOpen.value = 'archive'
+}
+function cancelMove() {
+  movePickerOpen.value = null
+}
+function commitMove(target: string) {
+  if (movePickerOpen.value === 'live') {
+    const keys = [...selectedKeys.value]
+    if (keys.length === 0) return
+    clearSelection()
+    movePickerOpen.value = null
+    emit('move-matches', keys, target)
+    return
+  }
+  if (movePickerOpen.value === 'archive') {
+    const keys = [...archiveSelectedKeys.value]
+    if (keys.length === 0) return
+    clearArchiveSelection()
+    movePickerOpen.value = null
+    emit('move-matches', keys, target)
+  }
 }
 
 function toggleArchiveSelected(key: string) {
@@ -346,6 +395,11 @@ watch(narrowOpen, (open) => {
 onMounted(() => {
   document.addEventListener('mousedown', onDocumentMousedown)
   document.addEventListener('keydown', onOpenShortcut)
+  // Fetch the profile list once for the Move-to picker. Failures
+  // silently leave availableProfiles empty, which suppresses the
+  // Move-to button — gracefully degrades to the original bulk action
+  // bar instead of surfacing a broken affordance.
+  GetProfiles().then((res) => { availableProfiles.value = res }).catch(() => undefined)
 })
 onBeforeUnmount(() => {
   document.removeEventListener('mousedown', onDocumentMousedown)
@@ -968,21 +1022,46 @@ onBeforeUnmount(() => {
         <span class="bab-glyph" aria-hidden="true">▣</span>
         <span class="bab-count">{{ selectedKeys.size }} selected</span>
         <span class="bab-spacer" aria-hidden="true" />
-        <button
-          v-if="selectedKeys.size < sortedRecords.length"
-          type="button"
-          class="bulk-select-all"
-          @click="selectAllVisible"
-        >
-          Select all ({{ sortedRecords.length }})
-        </button>
-        <button type="button" class="bulk-hide" @click="hideSelected">
-          <span class="bab-btn-glyph" aria-hidden="true">⌀</span>
-          Hide
-        </button>
-        <button type="button" class="bulk-cancel" @click="clearSelection">
-          Clear
-        </button>
+        <template v-if="movePickerOpen !== 'live'">
+          <button
+            v-if="selectedKeys.size < sortedRecords.length"
+            type="button"
+            class="bulk-select-all"
+            @click="selectAllVisible"
+          >
+            Select all ({{ sortedRecords.length }})
+          </button>
+          <button type="button" class="bulk-hide" @click="hideSelected">
+            <span class="bab-btn-glyph" aria-hidden="true">⌀</span>
+            Hide
+          </button>
+          <button
+            v-if="otherProfiles.length > 0"
+            type="button"
+            class="bulk-move"
+            @click="beginMoveLive"
+          >
+            Move to…
+          </button>
+          <button type="button" class="bulk-cancel" @click="clearSelection">
+            Clear
+          </button>
+        </template>
+        <template v-else>
+          <span class="bab-prompt">Move to:</span>
+          <button
+            v-for="p in otherProfiles"
+            :key="p"
+            type="button"
+            class="bulk-move-target"
+            @click="commitMove(p)"
+          >
+            {{ p }}
+          </button>
+          <button type="button" class="bulk-cancel" @click="cancelMove">
+            Cancel
+          </button>
+        </template>
       </div>
 
       <ul v-if="sortedRecords.length" class="leaves-list" role="list">
@@ -1120,7 +1199,7 @@ onBeforeUnmount(() => {
           <span class="bab-glyph" aria-hidden="true">▣</span>
           <span class="bab-count">{{ archiveSelectedKeys.size }} selected</span>
           <span class="bab-spacer" aria-hidden="true" />
-          <template v-if="!archiveBulkConfirm">
+          <template v-if="!archiveBulkConfirm && movePickerOpen !== 'archive'">
             <button
               v-if="archiveSelectedKeys.size < hiddenRecords.length"
               type="button"
@@ -1132,11 +1211,34 @@ onBeforeUnmount(() => {
             <button type="button" class="bulk-unhide" @click="unhideSelectedArchive">
               Unhide
             </button>
+            <button
+              v-if="otherProfiles.length > 0"
+              type="button"
+              class="bulk-move"
+              @click="beginMoveArchive"
+            >
+              Move to…
+            </button>
             <button type="button" class="bulk-delete" @click="requestBulkHardDelete">
               Delete forever
             </button>
             <button type="button" class="bulk-cancel" @click="clearArchiveSelection">
               Clear
+            </button>
+          </template>
+          <template v-else-if="movePickerOpen === 'archive'">
+            <span class="bab-prompt">Move to:</span>
+            <button
+              v-for="p in otherProfiles"
+              :key="p"
+              type="button"
+              class="bulk-move-target"
+              @click="commitMove(p)"
+            >
+              {{ p }}
+            </button>
+            <button type="button" class="bulk-cancel" @click="cancelMove">
+              Cancel
             </button>
           </template>
           <template v-else>
@@ -2543,6 +2645,39 @@ onBeforeUnmount(() => {
 }
 
 .bulk-select-all:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+.bulk-move {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.bulk-move:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.bulk-move-target {
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-style: italic;
+}
+
+.bulk-move-target:hover {
+  background: var(--accent);
+  color: var(--primary-text-on-accent, #111);
+}
+
+.bab-prompt {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-weight: 700;
+}
 
 .bulk-delete {
   border: 1px solid color-mix(in srgb, var(--loss) 70%, var(--border));

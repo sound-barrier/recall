@@ -75,6 +75,73 @@ func (a *App) SwitchProfile(name string) error {
 	return a.activateAndReload(name)
 }
 
+// RenameProfile changes a profile's name. The on-disk directory
+// renames atomically via os.Rename; if the profile being renamed is
+// the active one, the store + watcher + metrics endpoint all get
+// torn down before the rename and re-stood-up afterward so they
+// point at the new path (the SQLite handle's open file is invalid
+// once the directory moves out from under it). Idempotent when
+// new == old.
+func (a *App) RenameProfile(old, newName string) error {
+	if a.profiles == nil {
+		return fmt.Errorf("profiles: not initialized")
+	}
+	if old == newName {
+		return nil
+	}
+	wasActive := a.profiles.Active() == old
+	if wasActive {
+		// Tear down everything that holds the active profile dir open
+		// — the directory rename can't proceed while SQLite has the
+		// .db file mapped.
+		_ = a.saveSettings(a.settings)
+		a.stopWatching()
+		a.stopMetrics()
+		if a.store != nil {
+			if closer, ok := a.store.(interface{ Close() error }); ok {
+				_ = closer.Close()
+			}
+			a.store = nil
+		}
+	}
+
+	if err := a.profiles.Rename(old, newName); err != nil {
+		// Re-open on the original profile so the App doesn't get
+		// stranded with a nil store on a failed active rename.
+		if wasActive {
+			_ = a.reopenActiveStore()
+		}
+		return err
+	}
+
+	if wasActive {
+		return a.reopenActiveStore()
+	}
+	return nil
+}
+
+// reopenActiveStore is shared between RenameProfile's active branch
+// and any future caller that needs to re-init the store at the
+// current active profile's directory.
+func (a *App) reopenActiveStore() error {
+	dbDir := filepath.Join(a.dataDir(), "db")
+	if err := os.MkdirAll(dbDir, 0o700); err != nil {
+		return fmt.Errorf("profiles: ensure db dir: %w", err)
+	}
+	s, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
+	if err != nil {
+		return fmt.Errorf("profiles: open db: %w", err)
+	}
+	a.store = s
+	if a.settings.PrometheusEnabled {
+		a.startMetrics()
+	}
+	if a.settings.WatchEnabled {
+		a.startWatching()
+	}
+	return nil
+}
+
 // DeleteProfile drops a profile from the list AND wipes its dir. The
 // active profile cannot be deleted — callers must SwitchProfile first.
 func (a *App) DeleteProfile(name string) error {

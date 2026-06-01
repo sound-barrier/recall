@@ -717,3 +717,86 @@ func TestProfiles_DeleteActiveReturns409(t *testing.T) {
 		t.Errorf("status %d, want 409; body=%s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestProfiles_PutRenameRoundTrip(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	rec := put(t, mux, "/api/v1/profiles/main", map[string]string{"new_name": "silentstorm"})
+	if rec.Code != 200 {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+	getRec := get(t, mux, "/api/v1/profiles")
+	var got struct {
+		Active   string   `json:"active"`
+		Profiles []string `json:"profiles"`
+	}
+	_ = json.Unmarshal(getRec.Body.Bytes(), &got)
+	if got.Active != "silentstorm" {
+		t.Errorf("active=%q, want silentstorm", got.Active)
+	}
+	if len(got.Profiles) != 1 || got.Profiles[0] != "silentstorm" {
+		t.Errorf("profiles=%v, want [silentstorm]", got.Profiles)
+	}
+}
+
+func TestProfiles_PutRenameInvalidName400(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	rec := put(t, mux, "/api/v1/profiles/main", map[string]string{"new_name": "../traversal"})
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status %d, want 400; body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProfiles_PutRenameUnknownSource404(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	rec := put(t, mux, "/api/v1/profiles/nope", map[string]string{"new_name": "manny"})
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status %d, want 404; body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProfiles_PutRenameCollision409(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	_ = fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "alt"})
+	_ = put(t, mux, "/api/v1/profiles/active", map[string]string{"name": "main"})
+	rec := put(t, mux, "/api/v1/profiles/alt", map[string]string{"new_name": "main"})
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status %d, want 409; body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProfiles_PostMatchTransfers_204AndDelegates(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	// Create alt and switch back to main so main is source, alt is target.
+	_ = fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "alt"})
+	_ = put(t, mux, "/api/v1/profiles/active", map[string]string{"name": "main"})
+
+	rec := fire(t, mux, http.MethodPost, "/api/v1/matches/transfers", map[string]any{
+		"match_keys":     []string{},
+		"target_profile": "alt",
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProfiles_PostMatchTransfers_TargetUnknown404(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	rec := fire(t, mux, http.MethodPost, "/api/v1/matches/transfers", map[string]any{
+		"match_keys":     []string{"k1"},
+		"target_profile": "nope",
+	})
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status %d, want 404; body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProfiles_PostMatchTransfers_TargetActive409(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	rec := fire(t, mux, http.MethodPost, "/api/v1/matches/transfers", map[string]any{
+		"match_keys":     []string{"k1"},
+		"target_profile": "main",
+	})
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status %d, want 409; body=%s", rec.Code, rec.Body.String())
+	}
+}

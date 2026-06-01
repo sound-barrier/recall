@@ -217,6 +217,43 @@ func (p *Profiles) Activate(name string) error {
 	return p.save()
 }
 
+// Rename swaps a profile's name. Renames the on-disk directory
+// (settings + DB carry over via the inode), updates the list, and
+// if `old` was active, updates active to match. Idempotent when
+// new == old. The active profile's case is handled by the manager
+// alone (directory rename + metadata update); App.RenameProfile
+// layers the store close/re-open dance on top so callers don't
+// have to think about it.
+func (p *Profiles) Rename(old, newName string) error {
+	if old == newName {
+		return nil
+	}
+	if err := validateProfileName(old); err != nil {
+		return err
+	}
+	if err := validateProfileName(newName); err != nil {
+		return err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !containsProfile(p.list, old) {
+		return fmt.Errorf("%w: %q", ErrProfileNotFound, old)
+	}
+	if containsProfile(p.list, newName) {
+		return fmt.Errorf("%w: %q", ErrProfileExists, newName)
+	}
+	if err := os.Rename(p.ProfileDir(old), p.ProfileDir(newName)); err != nil {
+		return fmt.Errorf("profiles: rename %q to %q on disk: %w", old, newName, err)
+	}
+	p.list = removeString(p.list, old)
+	p.list = append(p.list, newName)
+	sort.Strings(p.list)
+	if p.active == old {
+		p.active = newName
+	}
+	return p.save()
+}
+
 // Delete drops the profile from the list AND removes its directory
 // tree. The active profile cannot be deleted — callers must Activate
 // a different profile first.

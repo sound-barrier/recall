@@ -116,6 +116,35 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
+	// Bulk move matches to another profile. The endpoint takes a list
+	// of match_keys + the target profile name and transfers every
+	// matching row (across all 5 parent tables) + annotation + hidden
+	// flag into the target's SQLite DB, then hard-deletes the source.
+	// See pkg/app/profile_move.go for the two-phase rationale.
+	apiMux.HandleFunc("POST /api/v1/matches/transfers", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			MatchKeys     []string `json:"match_keys"`
+			TargetProfile string   `json:"target_profile"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if err := a.MoveMatches(body.MatchKeys, body.TargetProfile); err != nil {
+			switch {
+			case errors.Is(err, app.ErrProfileNotFound):
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			case errors.Is(err, app.ErrMoveTargetIsActive):
+				http.Error(w, err.Error(), http.StatusConflict)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	// Hard-delete a single match — every parent row + annotation +
 	// hidden flag for matchKey goes. Surfaced by the Hidden drawer's
 	// "Delete forever" affordance once a user has already moved the
@@ -279,6 +308,36 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 				return
 			case errors.Is(err, app.ErrProfileNotFound):
 				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, a.GetProfiles(), nil)
+	})
+	apiMux.HandleFunc("PUT /api/v1/profiles/{name}", func(w http.ResponseWriter, r *http.Request) {
+		old := r.PathValue("name")
+		if old == "" {
+			http.Error(w, "name required in URL", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			NewName string `json:"new_name"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if err := a.RenameProfile(old, body.NewName); err != nil {
+			switch {
+			case errors.Is(err, app.ErrInvalidProfileName):
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			case errors.Is(err, app.ErrProfileNotFound):
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			case errors.Is(err, app.ErrProfileExists):
+				http.Error(w, err.Error(), http.StatusConflict)
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)

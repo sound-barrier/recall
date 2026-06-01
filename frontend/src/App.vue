@@ -42,6 +42,7 @@ import {
   SetMatchAnnotation,
   SetMatchVisibility,
   HardDeleteMatch,
+  MoveMatches,
 } from './api'
 import type { MatchAnnotationInput } from './api'
 import { tallyWLD, screenshotURL } from './match-helpers'
@@ -616,6 +617,21 @@ async function onHardDeleteMatches(matchKeys: string[]) {
   if (matchKeys.length === 0) return
   try {
     await Promise.all(matchKeys.map((k) => HardDeleteMatch(k)))
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+// Bulk move-to-profile — MatchesView emits this from either action
+// bar after the user picks a target profile. Server handles the
+// two-phase transfer (write target, delete source); we reload the
+// active profile's data after so the moved rows disappear from the
+// current dossier.
+async function onMoveMatches(matchKeys: string[], targetProfile: string) {
+  if (matchKeys.length === 0) return
+  try {
+    await MoveMatches(matchKeys, targetProfile)
     await load()
   } catch (e) {
     error.value = String(e)
@@ -1348,6 +1364,7 @@ useEventStream({
           @hard-delete-match="onHardDeleteMatch"
           @unhide-matches="onUnhideMatches"
           @hard-delete-matches="onHardDeleteMatches"
+          @move-matches="onMoveMatches"
         />
 
         <!-- ─── ANALYSIS VIEW (coaching dashboard sketch) ──────────
