@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import type { MatchRecord } from '../api'
 import { detectScreenshotSlots, screenshotURL, formatParsedAt } from '../match-helpers'
@@ -128,6 +128,42 @@ const showHoverThumb = computed(() => {
   if (!hoveredUnknownSrc.value) return false
   return !props.cardState.isSelected(key)
 })
+
+// Pre-fetch the first source file of every visible Unknown record
+// so the hover thumb shows from cache instantly. Without this a
+// rapid hover-then-leave would set the thumb's src, kick off a
+// fetch, then immediately unmount the element on mouseleave —
+// browsers cancel in-flight requests when an `<img>` leaves the
+// DOM. The user-reported "image only loads after I click the row
+// once" symptom was exactly this race: clicking the row expanded
+// the inline source-preview img which stayed mounted long enough
+// to cache the bytes; subsequent hovers then read from cache.
+//
+// `Image()` requests use the same /_screenshot/<name> endpoint and
+// hit the same browser HTTP cache as the <img> element, so a hit
+// here warms the cache for the hover-time fetch. We track URLs
+// already preloaded so re-renders don't double-fetch.
+const preloadedURLs = new Set<string>()
+function preloadVisibleScreenshots() {
+  if (typeof window === 'undefined') return
+  for (const rec of props.unknownRecords) {
+    const first = rec.source_files?.[0]
+    if (!first) continue
+    const url = screenshotURL(first)
+    if (preloadedURLs.has(url)) continue
+    preloadedURLs.add(url)
+    // `new Image()` issues a GET; the result lives in the browser's
+    // HTTP cache once the response arrives. Errors are silent — we
+    // don't surface them here (the hover thumb falls back to its
+    // empty state and the expanded view's source-preview img owns
+    // the user-visible error path).
+    const probe = new Image()
+    probe.src = url
+  }
+}
+
+onMounted(preloadVisibleScreenshots)
+watch(() => props.unknownRecords, preloadVisibleScreenshots, { deep: false })
 
 // Anchor the thumb just below-right of the cursor. Edge-flip
 // horizontally / vertically so it never gets clipped at the

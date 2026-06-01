@@ -124,6 +124,42 @@ test.describe('Unknown tab — hover preview', () => {
     expect(after).not.toBe(before)
   })
 
+  test('preloads each Unknown record\'s first source file on view mount (warm the browser cache before the user hovers)', async ({ page }) => {
+    // The regression this guards: until the screenshot bytes were in
+    // the browser cache, a quick hover-then-leave would set the
+    // thumb's src, start a fetch, then on mouseleave unmount the
+    // element which cancels the in-flight request. The image never
+    // landed. After the user clicked into the expanded view (whose
+    // inline source-preview img mounts and STAYS mounted), the
+    // screenshot finally cached and only THEN did subsequent hovers
+    // surface the image. Fix preloads on view mount so the cache is
+    // warm before any hover.
+    const fetched: string[] = []
+    await page.route('**/_screenshot/**', async (route) => {
+      fetched.push(new URL(route.request().url()).pathname)
+      await route.fulfill({ status: 200, contentType: 'image/png', body: STUB_PNG })
+    })
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([
+          unknownRecord,
+          { ...unknownRecord, match_key: 'unmatched:other.png', source_files: ['other.png'] },
+        ]),
+      })
+    })
+
+    await page.goto('/')
+    await page.locator('#tab-unknown').click()
+    await expect(page.locator('.unknown-card')).toHaveCount(2)
+
+    // The preload should fire on view mount — both records' first
+    // source files are fetched BEFORE the user has moved the mouse.
+    await expect.poll(() => fetched.sort().join(','), { timeout: 3000 })
+      .toContain('/_screenshot/broken.png')
+    expect(fetched).toContain('/_screenshot/other.png')
+  })
+
   test('records without any source_files do not render a hover thumbnail', async ({ page }) => {
     const noSources = { ...unknownRecord, source_files: [] }
     await stubScreenshotBytes(page)
