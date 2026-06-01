@@ -634,6 +634,14 @@ func TestProfiles_PostCreatesAndActivates(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
 	}
+	// Content-Type contract: the body IS JSON, OpenAPI documents
+	// application/json on the 201 response, schemathesis fuzzes for
+	// it. Easy to drop accidentally because Go's http.ResponseWriter
+	// silently no-ops Header().Set after WriteHeader — the inline
+	// helper has to set Content-Type BEFORE WriteHeader.
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		t.Errorf("Content-Type=%q, want application/json (the body is JSON)", ct)
+	}
 	getRec := get(t, mux, "/api/v1/profiles")
 	var got struct {
 		Active   string   `json:"active"`

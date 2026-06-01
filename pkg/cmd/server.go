@@ -293,8 +293,18 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		// Content-Type MUST be set before WriteHeader — once the
+		// status line is on the wire, header mutations are no-ops
+		// and the body would be served as text/plain (the default
+		// inferred from the response bytes). writeJSON sets the
+		// header on its own but only works when the status is the
+		// implicit 200; for 201 / 202 / etc. we have to thread it
+		// here manually.
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		writeJSON(w, a.GetProfiles(), nil)
+		if encErr := json.NewEncoder(w).Encode(a.GetProfiles()); encErr != nil {
+			log.Printf("server: json encode: %v", encErr)
+		}
 	})
 	apiMux.HandleFunc("PUT /api/v1/profiles/active", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
