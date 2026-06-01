@@ -27,8 +27,14 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
   // that script ALSO runs on subsequent `page.reload()` calls (which
   // would undo the persistence the test is trying to verify); we
   // instead clear once before `goto` runs via a one-shot init script.
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await context.clearCookies()
+    // Pre-ack the first-run "Main account name" modal so the tour
+    // is the only forced gate this spec needs to drive. Same shape
+    // as the onboarding-tour.spec.ts beforeEach.
+    await page.addInitScript(() => {
+      try { localStorage.setItem('recall.firstRunAccountNamed', 'true') } catch (_) { /* ignore */ }
+    })
   })
 
   test('auto-opens on first visit and walks every step end-to-end', async ({ page }) => {

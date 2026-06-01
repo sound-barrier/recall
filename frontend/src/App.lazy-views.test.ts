@@ -26,6 +26,9 @@ describe('App.vue lazy-loaded components', () => {
     { name: 'MatchDetailPanel',       path: './components/MatchDetailPanel.vue' },
     { name: 'MatchScreenshotLightbox', path: './components/MatchScreenshotLightbox.vue' },
     { name: 'KeyboardShortcutsModal', path: './components/KeyboardShortcutsModal.vue' },
+    // First-run modal — only renders on a fresh install, so the cost
+    // of its bytes should only be paid by users who actually see it.
+    { name: 'FirstRunProfileModal',   path: './components/FirstRunProfileModal.vue' },
   ]
 
   for (const { name, path } of views) {

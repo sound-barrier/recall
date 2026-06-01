@@ -172,6 +172,10 @@ export async function mountApp(overrides: MountOverrides = {}) {
   // / modal tests. Tests that want to exercise the tour itself
   // would need to delete this seed before mounting.
   localStorage.setItem('recall.onboardingCompleted', 'true')
+  // Same first-run-suppression shape as the tour key — the modal
+  // traps focus + makes the rest of the app inert. Unit tests that
+  // want to exercise the modal can delete this key before mounting.
+  localStorage.setItem('recall.firstRunAccountNamed', 'true')
   // Reset modules so a stale cached App.vue from a prior test doesn't
   // bypass the freshly-installed mock.
   vi.resetModules()

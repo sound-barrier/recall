@@ -69,6 +69,11 @@ import type { ParseProgressEvent } from './components/ParseProgressPanel.vue'
 import ParseStatusBar from './components/ParseStatusBar.vue'
 import MastheadParseChip from './components/MastheadParseChip.vue'
 import MatchesSkeleton from './components/MatchesSkeleton.vue'
+import { useFirstRunAcknowledged } from './composables/useFirstRunAcknowledged'
+// First-run modal only renders on the very first launch (or after the
+// user clears localStorage). Lazy-loaded so 99 % of session boots
+// don't pay for its bytes in the initial JS chunk.
+const FirstRunProfileModal = defineAsyncComponent(() => import('./components/FirstRunProfileModal.vue'))
 
 // View components are lazy-loaded via defineAsyncComponent so each
 // becomes a separate JS chunk emitted by Vite. The initial bundle
@@ -727,6 +732,26 @@ function onMatchesNarrowOpen(open: boolean) {
   matchesNarrowOpen.value = open
 }
 
+// First-run modal — asks for the user's main account name on a
+// fresh install. Forced gate: every other surface goes inert + aria-
+// hidden while the modal is up so the user can't change any setting
+// before naming their main account. ESC / backdrop intentionally do
+// NOT close it. The composable persists the dismissal in localStorage
+// so the modal never returns once acknowledged.
+const { acknowledged: firstRunAcknowledged, ack: ackFirstRun } = useFirstRunAcknowledged()
+const firstRunModalOpen = computed(() => !firstRunAcknowledged.value)
+
+function onFirstRunDismiss(renamedTo: string | null) {
+  ackFirstRun()
+  // If the user renamed the active profile, refresh so any cached
+  // profile state surfaces the new name. The rename hit the server;
+  // reload the records + dependent state so the masthead chip
+  // re-fetches GetProfiles() the next time it mounts.
+  if (renamedTo !== null) {
+    void load()
+  }
+}
+
 // Search → panel auto-track. When the panel is open AND the user
 // is actively searching (any clauses parsed), the panel selection
 // follows the first hit so the highlighted content is visible
@@ -1051,7 +1076,7 @@ useEventStream({
     <div class="atmos" aria-hidden="true" />
     <div class="grid-lines" aria-hidden="true" />
 
-    <div class="container" :inert="(showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) || undefined" :aria-hidden="(showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) ? 'true' : undefined">
+    <div class="container" :inert="(firstRunModalOpen || showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) || undefined" :aria-hidden="(firstRunModalOpen || showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) ? 'true' : undefined">
       <!-- System Alert: blocks both Matches and Settings flow when the
            OCR engine isn't usable. Renders ABOVE the masthead so it's
            the first thing a user sees on a broken install. -->
@@ -1408,8 +1433,8 @@ useEventStream({
     <ParseStatusBar
       :parse-progress="parseProgress"
       :parse-log="parseLog"
-      :inert="(showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) || undefined"
-      :aria-hidden="(showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) ? 'true' : undefined"
+      :inert="(firstRunModalOpen || showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) || undefined"
+      :aria-hidden="(firstRunModalOpen || showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) ? 'true' : undefined"
       @go-to-view="goToView"
     />
 
@@ -1515,6 +1540,15 @@ useEventStream({
       @close-narrow="onTourCloseNarrow"
       @apply-hero-filter="onTourApplyHeroFilter"
       @clear-filters="onTourClearFilters"
+    />
+
+    <!-- First-run "Main account name" modal. Forced gate — every
+         other surface is inert + aria-hidden while this is up.
+         Dismissed via Save (rename) or "Keep as main" (acknowledge
+         only). ESC + backdrop intentionally do not close it. -->
+    <FirstRunProfileModal
+      v-if="firstRunModalOpen"
+      @dismiss="onFirstRunDismiss"
     />
   </div>
 </template>

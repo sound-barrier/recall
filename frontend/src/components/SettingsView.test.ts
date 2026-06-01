@@ -169,9 +169,10 @@ describe('SettingsView', () => {
       props: { screenshotsDir: '/srv', loading: false, themeMode: 'dark', weekStart: 0 },
     })
     // Screenshots Folder, Data Location, Engine, Theme, First Day
-    // of Week, Export, Import, Grafana stream, Clear DB. The last
-    // four live inside the closed <details> but are still in the DOM.
-    expect(wrapper.findAll('.setting-help')).toHaveLength(9)
+    // of Week, Profiles, Export, Import, Grafana stream, Clear DB.
+    // The last four live inside the closed <details> but are still
+    // in the DOM.
+    expect(wrapper.findAll('.setting-help')).toHaveLength(10)
   })
 })
 

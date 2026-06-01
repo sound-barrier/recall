@@ -32,7 +32,7 @@ const emit = defineEmits<{
 <template>
   <div id="sec-backup" class="settings-section">
     <div class="section-header">
-      <span class="section-num">05</span>
+      <span class="section-num">06</span>
       <span class="section-slash" aria-hidden="true">/</span>
       <h3 class="section-title">
         Backup &amp; Restore
