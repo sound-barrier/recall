@@ -193,6 +193,36 @@ test.describe('keyboard shortcuts — Matches view per-row', () => {
     await expect(page.locator('.leaf-row[data-card-index="0"]')).toHaveAttribute('aria-current', 'true')
   })
 
+  // Regression: j/k previously walked narrowedRecords order, which
+  // only matched the visible list when Sort=Newest. Flipping Sort
+  // to Oldest left the rendered order ascending by date but j still
+  // advanced through data-card-index 0 → 1 → 2 (which is the
+  // chronologically-newest-first sequence). Item 18 swapped to a
+  // DOM-order walk so the FIRST rendered row gets focus regardless
+  // of sort. Pinned here.
+  test('j respects Sort=Oldest (focus follows rendered order, not narrowedRecords order)', async ({ page }) => {
+    await seed(page)
+    await page.goto('/')
+    await page.locator('#tab-matches').click()
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
+
+    // Open the narrow panel and flip Sort=Oldest. The button lives
+    // inside the narrow popover (the rail trigger is the dossier
+    // header chip).
+    await page.locator('.seg-btn').filter({ hasText: /Oldest/i }).click()
+
+    // The first rendered leaf-row is now the oldest match
+    // (data-card-index="2" — narrowedRecords is date-desc, the row
+    // at slot 2 is the earliest). Press j; aria-current MUST land
+    // on the row the user sees as "first".
+    await page.locator('.brand').first().click()
+    await page.keyboard.press('j')
+
+    // First rendered .leaf-row carries aria-current.
+    const firstRendered = page.locator('.leaf-row').first()
+    await expect(firstRendered).toHaveAttribute('aria-current', 'true')
+  })
+
   test('e opens the detail panel for the focused row; e again closes it', async ({ page }) => {
     await seed(page)
     await page.goto('/')
