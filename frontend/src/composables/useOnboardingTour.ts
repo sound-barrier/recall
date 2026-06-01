@@ -25,7 +25,13 @@ import { usePersistedRef, parseBoolish, serializeBoolish } from './usePersistedR
 // dismiss all flip the flag, so a user who closes the tour via ANY
 // affordance never sees it again unless they explicitly `restart()`.
 
-export const ONBOARDING_COMPLETED_KEY = 'recall.onboardingCompleted'
+// Re-export from storageKeys so the literal lives in one place.
+// App.vue imports directly from storageKeys to avoid pulling this
+// whole tour controller into the initial JS chunk; consumers already
+// inside this file (and other lazy-loaded tour code) keep the
+// transitive import.
+export { ONBOARDING_COMPLETED_KEY } from './storageKeys'
+import { ONBOARDING_COMPLETED_KEY } from './storageKeys'
 
 export type OnboardingViewId = 'settings' | 'ingest' | 'matches' | 'unknown'
 export type CalloutPlacement = 'auto' | 'top' | 'bottom' | 'left' | 'right'

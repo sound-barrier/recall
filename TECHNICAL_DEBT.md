@@ -229,28 +229,6 @@ actually bites before paying this cost.
 
 ---
 
-## 15. Onboarding flag key duplicated in two places to keep tour out of initial chunk
-
-**Where:** `frontend/src/App.vue` inlines the literal
-`'recall.onboardingCompleted'` (with a comment explaining why),
-while `frontend/src/composables/useOnboardingTour.ts` exports the
-same constant as `ONBOARDING_COMPLETED_KEY`. Importing the
-constant from App.vue would pull the whole tour controller into
-the initial JS chunk, defeating the lazy-load.
-
-**Plan:**
-
-Extract the key constants into a 5-line
-`frontend/src/composables/storageKeys.ts` module (no dependencies,
-no side effects). Both App.vue and useOnboardingTour import from
-there. Bundler tree-shaking keeps the import cheap.
-
-**Size:** S.
-**Risk:** Low (lazy-views test guards against the bundler
-regression).
-
----
-
 ## 16. Settings/Profiles destructive action is gated by localStorage, not server state
 
 **Where:** `frontend/src/composables/useFirstRunAcknowledged.ts`
