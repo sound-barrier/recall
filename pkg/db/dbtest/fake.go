@@ -390,10 +390,10 @@ func (f *Fake) LoadAmbiguousCandidatesFor(filename string) ([]db.AmbiguousCandid
 func (f *Fake) ResolveAmbiguous(ambiguousMatchKey, newMatchKey string) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if !strings.HasPrefix(ambiguousMatchKey, "ambiguous:") {
+	if !strings.HasPrefix(ambiguousMatchKey, "ambiguous-") {
 		return false, nil
 	}
-	filename := strings.TrimPrefix(ambiguousMatchKey, "ambiguous:")
+	filename := strings.TrimPrefix(ambiguousMatchKey, "ambiguous-")
 	if _, ok := f.Ambiguous[filename]; !ok {
 		return false, nil
 	}

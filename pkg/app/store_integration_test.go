@@ -36,10 +36,10 @@ func TestApp_HardDeleteMatch_DelegatesAndValidates(t *testing.T) {
 	if err := a.HardDeleteMatch(""); err == nil {
 		t.Error("expected error for empty match_key")
 	}
-	if err := a.HardDeleteMatch("match:k1"); err != nil {
+	if err := a.HardDeleteMatch("match-k1"); err != nil {
 		t.Fatalf("HardDeleteMatch: %v", err)
 	}
-	if got := fs.HardDeleteCalls; len(got) != 1 || got[0] != "match:k1" {
+	if got := fs.HardDeleteCalls; len(got) != 1 || got[0] != "match-k1" {
 		t.Errorf("expected one HardDeleteCalls entry for match:k1, got %+v", got)
 	}
 }
@@ -50,7 +50,7 @@ func TestApp_GetMatchResults_DecodesAndFolds(t *testing.T) {
 	// of the data.
 	fs := &fakeStore{
 		Summaries: []db.SummaryRow{{
-			ID: 1, Filename: "s.png", MatchKey: "match:2026-05-10T21:29:28",
+			ID: 1, Filename: "s.png", MatchKey: "match-2026-05-10T21-29-28",
 			Map: "rialto", Mode: "competitive", Hero: "lucio",
 			Result: "victory", Date: "2026-05-10", FinishedAt: "21:29",
 			HeroesPlayed: []db.SummaryHeroPlayed{
@@ -58,7 +58,7 @@ func TestApp_GetMatchResults_DecodesAndFolds(t *testing.T) {
 			},
 		}},
 		Scoreboards: []db.ScoreboardRow{{
-			ID: 1, Filename: "sb.png", MatchKey: "match:2026-05-10T21:29:28",
+			ID: 1, Filename: "sb.png", MatchKey: "match-2026-05-10T21-29-28",
 			Mode: "competitive", Hero: "lucio",
 			Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 		}},
@@ -139,7 +139,7 @@ func TestApp_RoundTripViaSQLStore(t *testing.T) {
 
 	// Insert a SUMMARY + SCOREBOARD for the same match.
 	if err := s.UpsertSummary(db.SummaryRow{
-		Filename: "s.png", MatchKey: "match:2026-05-10T21:29:28",
+		Filename: "s.png", MatchKey: "match-2026-05-10T21-29-28",
 		Map: "rialto", Mode: "competitive", Hero: "lucio",
 		Result: "victory", Date: "2026-05-10", FinishedAt: "21:29",
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100}},
@@ -147,7 +147,7 @@ func TestApp_RoundTripViaSQLStore(t *testing.T) {
 		t.Fatalf("UpsertSummary: %v", err)
 	}
 	if err := s.UpsertScoreboard(db.ScoreboardRow{
-		Filename: "sb.png", MatchKey: "match:2026-05-10T21:29:28",
+		Filename: "sb.png", MatchKey: "match-2026-05-10T21-29-28",
 		Mode: "competitive", Hero: "lucio",
 		Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 	}); err != nil {
@@ -162,7 +162,7 @@ func TestApp_RoundTripViaSQLStore(t *testing.T) {
 		t.Fatalf("expected 1 record, got %d", len(got))
 	}
 	rec := got[0]
-	if rec.MatchKey != "match:2026-05-10T21:29:28" {
+	if rec.MatchKey != "match-2026-05-10T21-29-28" {
 		t.Errorf("match_key lost: %q", rec.MatchKey)
 	}
 	if rec.Data.Map != "rialto" || rec.Data.Eliminations != 17 || rec.Data.Damage != 7200 {

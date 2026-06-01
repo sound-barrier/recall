@@ -38,17 +38,17 @@ func (a *App) aggregateAll() ([]MatchRecord, error) {
 }
 
 // attachAmbiguity flags every MatchRecord whose match_key starts with
-// "ambiguous:" and attaches its candidate match list. The candidates
+// "ambiguous-" and attaches its candidate match list. The candidates
 // map is keyed by the filename embedded in the sentinel — every
 // MatchRecord that adopted the same sentinel (via the timestamp-window
 // pass) shares one candidates entry.
 func attachAmbiguity(recs []MatchRecord, candidates map[string][]db.AmbiguousCandidate) {
 	for i := range recs {
-		if !strings.HasPrefix(recs[i].MatchKey, "ambiguous:") {
+		if !strings.HasPrefix(recs[i].MatchKey, "ambiguous-") {
 			continue
 		}
 		recs[i].Ambiguous = true
-		filename := strings.TrimPrefix(recs[i].MatchKey, "ambiguous:")
+		filename := strings.TrimPrefix(recs[i].MatchKey, "ambiguous-")
 		if cs, ok := candidates[filename]; ok {
 			recs[i].Candidates = make([]AmbiguousAttribution, 0, len(cs))
 			for _, c := range cs {
@@ -166,9 +166,9 @@ func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Anno
 	if hidden[key] {
 		rec.Hidden = true
 	}
-	if strings.HasPrefix(key, "ambiguous:") {
+	if strings.HasPrefix(key, "ambiguous-") {
 		rec.Ambiguous = true
-		filename := strings.TrimPrefix(key, "ambiguous:")
+		filename := strings.TrimPrefix(key, "ambiguous-")
 		if cs, ok := snap.AmbiguousCandidates[filename]; ok {
 			rec.Candidates = make([]AmbiguousAttribution, 0, len(cs))
 			for _, c := range cs {

@@ -62,22 +62,22 @@ describe('UnknownMapsView', () => {
 
   it('renders one card per unknown record with the right match key', () => {
     const records: MatchRecord[] = [
-      { match_key: 'unmatched:scoreboard1.png', source_files: ['scoreboard1.png'], data: {
+      { match_key: 'unmatched-scoreboard1.png', source_files: ['scoreboard1.png'], data: {
         eliminations: 17, assists: 16, deaths: 11, result: 'victory',
       } },
-      { match_key: 'unmatched:broken.png', source_files: ['broken.png'], data: {} },
+      { match_key: 'unmatched-broken.png', source_files: ['broken.png'], data: {} },
     ]
     const { wrapper } = mountWith(records)
     expect(wrapper.findAll('.unknown-card')).toHaveLength(2)
-    expect(wrapper.text()).toContain('unmatched:scoreboard1.png')
-    expect(wrapper.text()).toContain('unmatched:broken.png')
+    expect(wrapper.text()).toContain('unmatched-scoreboard1.png')
+    expect(wrapper.text()).toContain('unmatched-broken.png')
     // The heading reflects the count.
     expect(wrapper.text()).toMatch(/2 records.*need your attention/)
   })
 
   it('emits go-to-view when "run Parse" link is clicked', async () => {
     const records: MatchRecord[] = [
-      { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+      { match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} },
     ]
     const { wrapper } = mountWith(records)
     const link = wrapper.findAll('.empty-link').find(el => el.text().toLowerCase().includes('parse'))
@@ -89,7 +89,7 @@ describe('UnknownMapsView', () => {
 
   it('clicking the card head delegates to cardState.toggleExpand', async () => {
     const records: MatchRecord[] = [
-      { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+      { match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} },
     ]
     const { wrapper, calls } = mountWith(records)
     await wrapper.find('.unknown-card-head').trigger('click')
@@ -98,7 +98,7 @@ describe('UnknownMapsView', () => {
 
   it('shows the field diagnostic strip with vacant cells for missing values', () => {
     const records: MatchRecord[] = [
-      { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+      { match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} },
     ]
     const { wrapper } = mountWith(records)
     const filledCells = wrapper.findAll('.field-cell.filled')
@@ -112,7 +112,7 @@ describe('UnknownMapsView', () => {
   it('renders the "Needs your review" subheading with the ambiguous count', () => {
     const ambig: MatchRecord[] = [
       {
-        match_key: 'ambiguous:scoreboard-2.png',
+        match_key: 'ambiguous-scoreboard-2.png',
         source_files: ['scoreboard-2.png'],
         data: { hero: 'lucio' },
         ambiguous: true,
@@ -127,7 +127,7 @@ describe('UnknownMapsView', () => {
   it('expanding an ambiguous card surfaces the candidate picker', async () => {
     const ambig: MatchRecord[] = [
       {
-        match_key: 'ambiguous:scoreboard-2.png',
+        match_key: 'ambiguous-scoreboard-2.png',
         source_files: ['scoreboard-2.png'],
         data: { hero: 'lucio' },
         ambiguous: true,
@@ -150,7 +150,7 @@ describe('UnknownMapsView', () => {
   it('clicking Attach emits resolve-ambiguous with the candidate key', async () => {
     const ambig: MatchRecord[] = [
       {
-        match_key: 'ambiguous:scoreboard-2.png',
+        match_key: 'ambiguous-scoreboard-2.png',
         source_files: ['scoreboard-2.png'],
         data: { hero: 'lucio' },
         ambiguous: true,
@@ -162,13 +162,13 @@ describe('UnknownMapsView', () => {
     await wrapper.find('.candidate-attach').trigger('click')
     const emitted = wrapper.emitted('resolve-ambiguous')
     expect(emitted).toBeTruthy()
-    expect(emitted![0]).toEqual(['ambiguous:scoreboard-2.png', 'match:foo'])
+    expect(emitted![0]).toEqual(['ambiguous-scoreboard-2.png', 'match:foo'])
   })
 
   it('"Treat as new match" mints a fresh match:<ts> key from the filename', async () => {
     const ambig: MatchRecord[] = [
       {
-        match_key: 'ambiguous:Overwatch 2 Screenshot 2026.05.10 - 21.41.28.00_scoreboard.png',
+        match_key: 'ambiguous-Overwatch 2 Screenshot 2026.05.10 - 21.41.28.00_scoreboard.png',
         source_files: ['Overwatch 2 Screenshot 2026.05.10 - 21.41.28.00_scoreboard.png'],
         data: {},
         ambiguous: true,
@@ -180,7 +180,7 @@ describe('UnknownMapsView', () => {
     await wrapper.find('.candidate-fresh').trigger('click')
     const emitted = wrapper.emitted('resolve-ambiguous')
     expect(emitted).toBeTruthy()
-    expect(emitted![0]![1]).toBe('match:2026-05-10T21:41:28')
+    expect(emitted![0]![1]).toBe('match-2026-05-10T21-41-28')
   })
 
   // ─── Screenshot preview → fullscreen lightbox ──────────────
@@ -196,7 +196,7 @@ describe('UnknownMapsView', () => {
 
   it('clicking a source-preview thumbnail in an Unknown card emits open-lightbox', async () => {
     const records: MatchRecord[] = [
-      { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+      { match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} },
     ]
     const { wrapper } = mountWith(records)
     // Expand the card so the Source Files block renders.
@@ -224,7 +224,7 @@ describe('UnknownMapsView', () => {
   it('ambiguous card surfaces a Source Files preview that emits open-lightbox', async () => {
     const ambig: MatchRecord[] = [
       {
-        match_key: 'ambiguous:ambig-sb.png',
+        match_key: 'ambiguous-ambig-sb.png',
         source_files: ['ambig-sb.png'],
         data: {},
         ambiguous: true,
@@ -276,7 +276,7 @@ describe('UnknownMapsView', () => {
 
     it('renders a floating thumbnail with the first source URL on mouseenter', async () => {
       const records: MatchRecord[] = [
-        { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+        { match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} },
       ]
       const { wrapper } = mountAttached(records)
       try {
@@ -292,7 +292,7 @@ describe('UnknownMapsView', () => {
 
     it('disappears on mouseleave', async () => {
       const records: MatchRecord[] = [
-        { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+        { match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} },
       ]
       const { wrapper } = mountAttached(records)
       try {
@@ -307,7 +307,7 @@ describe('UnknownMapsView', () => {
 
     it('does not render when the card is already expanded', async () => {
       const records: MatchRecord[] = [
-        { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+        { match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} },
       ]
       const { wrapper } = mountAttached(records)
       try {
@@ -321,7 +321,7 @@ describe('UnknownMapsView', () => {
 
     it('does not render when the record has no source_files', async () => {
       const records: MatchRecord[] = [
-        { match_key: 'unmatched:empty', source_files: [], data: {} },
+        { match_key: 'unmatched-empty', source_files: [], data: {} },
       ]
       const { wrapper } = mountAttached(records)
       try {
@@ -334,7 +334,7 @@ describe('UnknownMapsView', () => {
 
     it('uses the first source_file when a record has several', async () => {
       const records: MatchRecord[] = [
-        { match_key: 'unmatched:multi', source_files: ['first.png', 'second.png'], data: {} },
+        { match_key: 'unmatched-multi', source_files: ['first.png', 'second.png'], data: {} },
       ]
       const { wrapper } = mountAttached(records)
       try {
@@ -348,7 +348,7 @@ describe('UnknownMapsView', () => {
 
     it('updates position on mousemove inside the hovered card', async () => {
       const records: MatchRecord[] = [
-        { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+        { match_key: 'unmatched-x.png', source_files: ['x.png'], data: {} },
       ]
       const { wrapper } = mountAttached(records)
       try {
@@ -388,8 +388,8 @@ describe('UnknownMapsView', () => {
 
     it('issues a new Image() for each record\'s first source file on mount', () => {
       const records: MatchRecord[] = [
-        { match_key: 'unmatched:one.png', source_files: ['one.png'], data: {} },
-        { match_key: 'unmatched:two.png', source_files: ['two.png', 'twoB.png'], data: {} },
+        { match_key: 'unmatched-one.png', source_files: ['one.png'], data: {} },
+        { match_key: 'unmatched-two.png', source_files: ['two.png', 'twoB.png'], data: {} },
       ]
       mountWith(records)
       expect(probeSrcs).toContain('/_screenshot/0/one.png')
@@ -402,7 +402,7 @@ describe('UnknownMapsView', () => {
 
     it('skips records with no source_files', () => {
       const records: MatchRecord[] = [
-        { match_key: 'unmatched:empty', source_files: [], data: {} },
+        { match_key: 'unmatched-empty', source_files: [], data: {} },
       ]
       mountWith(records)
       expect(probeSrcs).toHaveLength(0)

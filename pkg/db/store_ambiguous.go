@@ -56,7 +56,7 @@ func (s *SQLStore) LoadAmbiguousCandidatesFor(filename string) ([]AmbiguousCandi
 // Returns (false, nil) when no ambiguous candidates exist for the
 // key, letting the caller respond with 404.
 func (s *SQLStore) ResolveAmbiguous(ambiguousMatchKey, newMatchKey string) (bool, error) {
-	const prefix = "ambiguous:"
+	const prefix = "ambiguous-"
 	if len(ambiguousMatchKey) <= len(prefix) || ambiguousMatchKey[:len(prefix)] != prefix {
 		return false, nil
 	}

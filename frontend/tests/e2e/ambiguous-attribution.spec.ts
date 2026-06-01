@@ -4,7 +4,7 @@
  * When the resolver can't pin a screenshot to a single match (EAD
  * signature match in the 5–30 min ambiguous window, or multiple
  * candidates inside 30 min), the parent row gets a
- * `match_key = "ambiguous:<filename>"` sentinel and the candidate
+ * `match_key = "ambiguous-<filename>"` sentinel and the candidate
  * list ships on the MatchRecord as `candidates: [...]`. The Unknown
  * tab surfaces these in a "Needs your review" subsection with a
  * per-candidate picker.
@@ -22,11 +22,11 @@ import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
 
-const AMBIG_KEY = 'ambiguous:scoreboard-2.png'
+const AMBIG_KEY = 'ambiguous-scoreboard-2.png'
 const AMBIG_KEY_ENCODED = encodeURIComponent(AMBIG_KEY)
 const RESOLUTION_PATH_GLOB = `**/api/v1/matches/${AMBIG_KEY_ENCODED}/resolution`
 
-const CANDIDATE_KEY = 'match:2026-05-10T21:29:28'
+const CANDIDATE_KEY = 'match-2026-05-10T21-29-28'
 
 const candidateMatchRecord = (extraSource?: string) => ({
   match_key: CANDIDATE_KEY,

@@ -32,7 +32,7 @@ func TestInference_ResultFromRank_FiresAtReadTime(t *testing.T) {
 	// fill Result with "victory" when GetMatchResults runs.
 	fs := &fakeStore{
 		Ranks: []db.RankRow{{
-			ID: 1, Filename: "rank.png", MatchKey: "match:2026-05-10T21:29:28",
+			ID: 1, Filename: "rank.png", MatchKey: "match-2026-05-10T21-29-28",
 			Rank: "platinum",
 			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
 		}},
@@ -58,12 +58,12 @@ func TestInference_NeverPersistedToStore(t *testing.T) {
 	// into a write path, this assertion would catch the regression.
 	fs := &fakeStore{
 		Ranks: []db.RankRow{{
-			ID: 1, Filename: "rank.png", MatchKey: "match:2026-05-10T21:29:28",
+			ID: 1, Filename: "rank.png", MatchKey: "match-2026-05-10T21-29-28",
 			Rank: "platinum",
 			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
 		}},
 		Personals: []db.PersonalRow{{
-			ID: 1, Filename: "personal.png", MatchKey: "match:2026-05-10T21:29:28",
+			ID: 1, Filename: "personal.png", MatchKey: "match-2026-05-10T21-29-28",
 			Hero: "juno",
 			HeroStats: []db.HeroStat{
 				{Hero: "juno", StatKey: "weapon_accuracy", StatValue: 24},
@@ -93,11 +93,11 @@ func TestInference_DoesNotOverrideStoredResult(t *testing.T) {
 	// must NOT overwrite an authoritative value.
 	fs := &fakeStore{
 		Summaries: []db.SummaryRow{{
-			ID: 1, Filename: "summary.png", MatchKey: "match:2026-05-10T21:29:28",
+			ID: 1, Filename: "summary.png", MatchKey: "match-2026-05-10T21-29-28",
 			Result: "defeat",
 		}},
 		Ranks: []db.RankRow{{
-			ID: 1, Filename: "rank.png", MatchKey: "match:2026-05-10T21:29:28",
+			ID: 1, Filename: "rank.png", MatchKey: "match-2026-05-10T21-29-28",
 			Rank: "platinum",
 			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
 		}},

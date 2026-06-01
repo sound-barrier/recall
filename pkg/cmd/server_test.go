@@ -66,7 +66,7 @@ func del(t *testing.T, mux *http.ServeMux, path string) *httptest.ResponseRecord
 
 // annotationPath builds the per-match annotation URL with the key
 // properly URL-encoded — match keys normally contain colons (e.g.
-// "match:2026-05-10T22:21:11") which must be percent-encoded.
+// "match-2026-05-10T22-21-11") which must be percent-encoded.
 func annotationPath(matchKey string) string {
 	return "/api/v1/matches/" + url.PathEscape(matchKey) + "/annotation"
 }
@@ -186,7 +186,7 @@ func TestServerMux_DeleteMatches_DelegatesToStore(t *testing.T) {
 func TestServerMux_DeleteSingleMatch_DelegatesToStore(t *testing.T) {
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
-	key := "match:2026-05-10T21:29:28"
+	key := "match-2026-05-10T21-29-28"
 	path := "/api/v1/matches/" + url.PathEscape(key)
 	rec := del(t, mux, path)
 	if rec.Code != http.StatusNoContent {
@@ -407,27 +407,27 @@ func TestMatchVisibility_MethodNotAllowed(t *testing.T) {
 func TestMatchResolution_HappyPath(t *testing.T) {
 	fs := dbtest.New()
 	fs.Scoreboards = []db.ScoreboardRow{
-		{Filename: "sb.png", MatchKey: "ambiguous:sb.png"},
+		{Filename: "sb.png", MatchKey: "ambiguous-sb.png"},
 	}
 	fs.Ambiguous = map[string][]db.AmbiguousCandidate{
-		"sb.png": {{MatchKey: "match:foo", DistanceS: 600}},
+		"sb.png": {{MatchKey: "match-foo", DistanceS: 600}},
 	}
 	_, mux := newTestApp(t, fs)
-	rec := put(t, mux, resolutionPath("ambiguous:sb.png"), map[string]any{
-		"resolved_to": "match:foo",
+	rec := put(t, mux, resolutionPath("ambiguous-sb.png"), map[string]any{
+		"resolved_to": "match-foo",
 	})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("resolution status = %d, body: %s", rec.Code, rec.Body.String())
 	}
-	if fs.Scoreboards[0].MatchKey != "match:foo" {
+	if fs.Scoreboards[0].MatchKey != "match-foo" {
 		t.Errorf("scoreboard not updated: %q", fs.Scoreboards[0].MatchKey)
 	}
 }
 
 func TestMatchResolution_InvalidKey400(t *testing.T) {
 	_, mux := newTestApp(t, dbtest.New())
-	rec := put(t, mux, resolutionPath("match:not-ambiguous"), map[string]any{
-		"resolved_to": "match:foo",
+	rec := put(t, mux, resolutionPath("match-not-ambiguous"), map[string]any{
+		"resolved_to": "match-foo",
 	})
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("non-ambiguous key should 400, got %d (%s)", rec.Code, rec.Body.String())
@@ -436,8 +436,8 @@ func TestMatchResolution_InvalidKey400(t *testing.T) {
 
 func TestMatchResolution_NotFound404(t *testing.T) {
 	_, mux := newTestApp(t, dbtest.New())
-	rec := put(t, mux, resolutionPath("ambiguous:nope.png"), map[string]any{
-		"resolved_to": "match:foo",
+	rec := put(t, mux, resolutionPath("ambiguous-nope.png"), map[string]any{
+		"resolved_to": "match-foo",
 	})
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("missing ambiguous row should 404, got %d (%s)", rec.Code, rec.Body.String())
@@ -447,10 +447,10 @@ func TestMatchResolution_NotFound404(t *testing.T) {
 func TestMatchResolution_BadResolvedTo400(t *testing.T) {
 	fs := dbtest.New()
 	fs.Ambiguous = map[string][]db.AmbiguousCandidate{
-		"sb.png": {{MatchKey: "match:foo", DistanceS: 600}},
+		"sb.png": {{MatchKey: "match-foo", DistanceS: 600}},
 	}
 	_, mux := newTestApp(t, fs)
-	rec := put(t, mux, resolutionPath("ambiguous:sb.png"), map[string]any{
+	rec := put(t, mux, resolutionPath("ambiguous-sb.png"), map[string]any{
 		"resolved_to": "garbage-not-a-match-key",
 	})
 	if rec.Code != http.StatusBadRequest {
@@ -514,7 +514,7 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 	// One summary row so GetMatchResults returns something.
 	if err := store.UpsertSummary(db.SummaryRow{
 		Filename:   "s.png",
-		MatchKey:   "match:e2e",
+		MatchKey:   "match-e2e",
 		Map:        "rialto",
 		Mode:       "competitive",
 		Result:     "victory",
@@ -529,7 +529,7 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 	mux := NewMux(a, fstest.MapFS{})
 
 	// PUT a full annotation.
-	rec := put(t, mux, annotationPath("match:e2e"), map[string]any{
+	rec := put(t, mux, annotationPath("match-e2e"), map[string]any{
 		"leaver":      "team",
 		"note":        "ally rage-quit",
 		"replay_code": "7H1K9P",
@@ -576,7 +576,7 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 
 	// Idempotency contract: a PUT with every field empty deletes the
 	// row; the next GET should drop the annotation field entirely.
-	rec = put(t, mux, annotationPath("match:e2e"), map[string]any{})
+	rec = put(t, mux, annotationPath("match-e2e"), map[string]any{})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("clear PUT status %d, body %s", rec.Code, rec.Body.String())
 	}
@@ -586,7 +586,7 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadAnnotations after clear: %v", err)
 	}
-	if a, present := annos["match:e2e"]; present {
+	if a, present := annos["match-e2e"]; present {
 		t.Errorf("annotation row not deleted from store: %+v", a)
 	}
 	rec = get(t, mux, "/api/v1/matches")

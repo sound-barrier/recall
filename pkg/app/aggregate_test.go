@@ -272,17 +272,17 @@ func TestAggregate_AmbiguousSurfacesCandidates(t *testing.T) {
 	// the sentinel.
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
-			ID: 1, Filename: "sb.png", MatchKey: "ambiguous:sb.png",
+			ID: 1, Filename: "sb.png", MatchKey: "ambiguous-sb.png",
 			Eliminations: 17, Assists: 8, Deaths: 4,
 		}},
 		Summaries: []db.SummaryRow{{
-			ID: 1, Filename: "sum.png", MatchKey: "ambiguous:sb.png",
+			ID: 1, Filename: "sum.png", MatchKey: "ambiguous-sb.png",
 			Map: "rialto",
 		}},
 		AmbiguousCandidates: map[string][]db.AmbiguousCandidate{
 			"sb.png": {
-				{MatchKey: "match:2026-05-10T21:29:28", DistanceS: 600},
-				{MatchKey: "match:2026-05-10T22:00:00", DistanceS: 1800},
+				{MatchKey: "match-2026-05-10T21-29-28", DistanceS: 600},
+				{MatchKey: "match-2026-05-10T22-00-00", DistanceS: 1800},
 			},
 		},
 	}
@@ -298,7 +298,7 @@ func TestAggregate_AmbiguousSurfacesCandidates(t *testing.T) {
 	if len(r.Candidates) != 2 {
 		t.Fatalf("expected 2 candidates, got %d", len(r.Candidates))
 	}
-	if r.Candidates[0].MatchKey != "match:2026-05-10T21:29:28" || r.Candidates[0].DistanceSeconds != 600 {
+	if r.Candidates[0].MatchKey != "match-2026-05-10T21-29-28" || r.Candidates[0].DistanceSeconds != 600 {
 		t.Errorf("first candidate wrong: %+v", r.Candidates[0])
 	}
 }
@@ -307,7 +307,7 @@ func TestAggregate_NonAmbiguousLeavesFieldsZero(t *testing.T) {
 	// Sanity check — a regular record stays clean.
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{{
-			ID: 1, Filename: "s.png", MatchKey: "match:foo",
+			ID: 1, Filename: "s.png", MatchKey: "match-foo",
 			Map: "rialto",
 		}},
 	}

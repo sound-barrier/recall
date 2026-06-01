@@ -117,8 +117,14 @@ export function heroesForHeader(rec: Pick<MatchRecord, 'data'>): HeroPlay[] {
 export function matchTime(rec: Pick<MatchRecord, 'match_key' | 'data'>): string {
   const d = rec.data ?? {}
   if (d.date && d.finished_at) return `${d.date}T${d.finished_at}`
-  const m = (rec.match_key ?? '').match(/^match:(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/)
-  return m ? m[1]! : ''
+  // match_key now uses `-` for both date and time separators
+  // (pre-1.0 break — see TECHNICAL_DEBT.md item 3). The display
+  // timestamp the rest of the app expects is ISO-extended with
+  // colons in the time portion, so rewrite the captured time
+  // group's dashes back to colons on the way out.
+  const m = (rec.match_key ?? '').match(/^match-(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})/)
+  if (!m) return ''
+  return `${m[1]}T${m[2]}:${m[3]}:${m[4]}`
 }
 
 // Lightweight relative-time formatter for the "Last run" hint.

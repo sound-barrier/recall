@@ -362,7 +362,7 @@ func TestCorrelation_Stress_SameHeroBackToBackClean(t *testing.T) {
 // 10 pairs of matches 10 minutes apart. Same hero + same map +
 // IDENTICAL EAD. With PR #104's tight EAD-bridge windows, 10 min
 // lands in the 5–30 min ambiguous zone — the resolver mints the
-// "ambiguous:<filename>" sentinel and records X's match as the
+// "ambiguous-<filename>" sentinel and records X's match as the
 // only candidate. Y's SUMMARY follows 30 s later, has no EAD of
 // its own, and adopts Y's SCOREBOARD's sentinel via the
 // timestamp-window pass. Both rows resolve together when the user
@@ -383,7 +383,7 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 		// built from; both Y rows share that sentinel because the
 		// SUMMARY adopts via timestamp window.
 		yScoreboardFilename := filenameForTS(y, fmt.Sprintf("D%02dyb", i), "scoreboard")
-		yAmbiguousKey := "ambiguous:" + yScoreboardFilename
+		yAmbiguousKey := "ambiguous-" + yScoreboardFilename
 
 		specs = append(specs, matchSpec{
 			startTime:    x,
@@ -461,7 +461,7 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 //
 // PR #106 surfaces this as ambiguous via the new tieToleranceWindow
 // path in matchByTimestampWindow: two distinct match_keys tied
-// within 5 s of each other → mint "ambiguous:<filename>" + a
+// within 5 s of each other → mint "ambiguous-<filename>" + a
 // candidate list. The user resolves via the Unknown tab's
 // "Needs your review" subsection (same UI PR #104 introduced for
 // EAD-bridge ambiguity).
@@ -482,7 +482,7 @@ func TestCorrelation_Stress_TimestampWindowEdge(t *testing.T) {
 
 		// PERSONAL's filename is what the ambiguous sentinel embeds.
 		personalFilename := filenameForTS(midPersonal, fmt.Sprintf("E%02dp", i), "personal")
-		ambiguousKey := "ambiguous:" + personalFilename
+		ambiguousKey := "ambiguous-" + personalFilename
 
 		specs = append(specs, matchSpec{
 			startTime:   x,
@@ -847,7 +847,7 @@ func TestCorrelation_Stress_UnparseableFilenames(t *testing.T) {
 			filename:    name,
 			scrType:     "personal",
 			result:      &parser.MatchResult{Hero: hero},
-			expectedKey: "unmatched:" + name,
+			expectedKey: "unmatched-" + name,
 		})
 	}
 	if got, want := len(fixtures), 15; got != want {

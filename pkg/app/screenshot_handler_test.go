@@ -54,7 +54,7 @@ func seedFakeWithDir(t *testing.T, fake *dbtest.Fake, filename, dir string) int6
 	}
 	if err := fake.UpsertSummary(db.SummaryRow{
 		Filename:         filename,
-		MatchKey:         "match:t",
+		MatchKey:         "match-t",
 		ScreenshotsDirID: id,
 	}); err != nil {
 		t.Fatalf("UpsertSummary: %v", err)

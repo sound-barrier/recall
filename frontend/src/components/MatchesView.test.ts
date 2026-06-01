@@ -18,7 +18,7 @@ import {
 
 function makeRecord(over: Partial<MatchRecord> = {}, dataOver: Partial<MatchRecord['data']> = {}): MatchRecord {
   return {
-    match_key: 'match:2026-05-10T22:00:00',
+    match_key: 'match-2026-05-10T22-00-00',
     source_files: ['a.png'],
     data: {
       map: 'rialto',

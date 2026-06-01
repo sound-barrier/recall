@@ -275,12 +275,12 @@ func mustParseTS(s string) time.Time {
 	return t
 }
 
-// matchKeyFor formats `match:<ISO>` the same way resolveMatchKey
+// matchKeyFor formats `match-<ISO>` the same way resolveMatchKey
 // does for the fresh-key path. Cohorts use this for their expected
 // keys so a clock-skew change in the resolver shows up as a test
 // failure on every cohort at once.
 func matchKeyFor(ts time.Time) string {
-	return "match:" + ts.UTC().Format("2006-01-02T15:04:05")
+	return "match-" + ts.UTC().Format("2006-01-02T15-04-05")
 }
 
 // snapshotState wraps db.Screenshots with Insert helpers. It mirrors

@@ -23,7 +23,7 @@ import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
 
-const NORMAL_KEY = 'match:2026-05-10T22:00:00'
+const NORMAL_KEY = 'match-2026-05-10T22-00-00'
 const NORMAL_KEY_ENCODED = encodeURIComponent(NORMAL_KEY)
 const VISIBILITY_PATH_GLOB = `**/api/v1/matches/${NORMAL_KEY_ENCODED}/visibility`
 

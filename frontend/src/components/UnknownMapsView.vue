@@ -54,17 +54,19 @@ function formatDistance(seconds: number): string {
   return `${mins} min apart`
 }
 
-// "Treat as new match" mints a fresh match:<ts> key from the
+// "Treat as new match" mints a fresh match-<ts> key from the
 // ambiguous screenshot's filename timestamp so the row gets a
 // standalone identity. Filename has the canonical OW format
-// "...YYYY.MM.DD - HH.MM.SS.NN_*.png".
+// "...YYYY.MM.DD - HH.MM.SS.NN_*.png". The minted key uses `-`
+// for every separator so the whole key stays URL-safe (pre-1.0
+// break — see TECHNICAL_DEBT.md item 3).
 function freshKeyFromAmbiguous(rec: MatchRecord): string | null {
-  const filename = rec.match_key.startsWith('ambiguous:')
-    ? rec.match_key.slice('ambiguous:'.length)
+  const filename = rec.match_key.startsWith('ambiguous-')
+    ? rec.match_key.slice('ambiguous-'.length)
     : (rec.source_files?.[0] ?? '')
   const m = /(\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})/.exec(filename)
   if (!m) return null
-  return `match:${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`
+  return `match-${m[1]}-${m[2]}-${m[3]}T${m[4]}-${m[5]}-${m[6]}`
 }
 
 function onPickCandidate(rec: MatchRecord, resolvedTo: string) {

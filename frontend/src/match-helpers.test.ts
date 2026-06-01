@@ -209,19 +209,19 @@ describe('heroesForHeader', () => {
 describe('matchTime', () => {
   it('prefers date + finished_at (SUMMARY)', () => {
     const rec = {
-      match_key: 'match:2026-05-10T21:29:28',
+      match_key: 'match-2026-05-10T21-29-28',
       data: { date: '2026-05-10', finished_at: '21:29' },
     }
     expect(matchTime(rec)).toBe('2026-05-10T21:29')
   })
 
   it('falls back to match_key prefix when SUMMARY missing', () => {
-    const rec = { match_key: 'match:2026-05-10T21:29:28', data: {} }
+    const rec = { match_key: 'match-2026-05-10T21-29-28', data: {} }
     expect(matchTime(rec)).toBe('2026-05-10T21:29:28')
   })
 
   it('returns "" for unmatched: keys (no parseable timestamp)', () => {
-    const rec = { match_key: 'unmatched:foo.png', data: {} }
+    const rec = { match_key: 'unmatched-foo.png', data: {} }
     expect(matchTime(rec)).toBe('')
   })
 
@@ -763,14 +763,14 @@ describe('groupMatchesByMonthWeekDay', () => {
   it('orders dateless records by match_key for a stable bucket order', () => {
     const tree = groupMatchesByMonthWeekDay(
       [
-        { match_key: 'unmatched:zzz.png', data: { result: 'victory' } },
-        { match_key: 'unmatched:aaa.png', data: { result: 'defeat' } },
-        { match_key: 'unmatched:mmm.png', data: { result: 'draw' } },
+        { match_key: 'unmatched-zzz.png', data: { result: 'victory' } },
+        { match_key: 'unmatched-aaa.png', data: { result: 'defeat' } },
+        { match_key: 'unmatched-mmm.png', data: { result: 'draw' } },
       ],
       'desc',
     )
     const keys = tree[0]!.matches!.map(r => r.match_key)
-    expect(keys).toEqual(['unmatched:aaa.png', 'unmatched:mmm.png', 'unmatched:zzz.png'])
+    expect(keys).toEqual(['unmatched-aaa.png', 'unmatched-mmm.png', 'unmatched-zzz.png'])
   })
 
   it('also catches records whose date string is unparseable (not just absent)', () => {
@@ -861,7 +861,7 @@ describe('groupMatchesByMonthWeekDay', () => {
     const recs = [
       { data: { date: '2026-05-10', finished_at: '21:29', result: 'victory' } },
       { data: { date: '2025-12-30', finished_at: '20:00', result: 'defeat' } },
-      { match_key: 'unmatched:x.png', data: { result: 'victory' } },
+      { match_key: 'unmatched-x.png', data: { result: 'victory' } },
     ]
     const tree = groupMatchesByMonthWeekDay(recs, 'desc')
     expect(tree).toHaveLength(3)

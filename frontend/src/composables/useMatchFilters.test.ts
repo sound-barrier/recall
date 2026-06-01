@@ -57,7 +57,7 @@ function setup(
 function rec(overrides: Partial<MatchRecord> & { id?: number } = {}): MatchRecord {
   const { id, ...rest } = overrides
   const match_key =
-    rest.match_key ?? (id != null ? `k${id}` : 'match:2026-05-01T12:00:00')
+    rest.match_key ?? (id != null ? `k${id}` : 'match-2026-05-01T12-00-00')
   return {
     match_key,
     source_files: [],

@@ -144,8 +144,8 @@ test.describe('matches skeleton loaders on first paint', () => {
         contentType: 'application/json',
         body: JSON.stringify([
           {
-            match_key: 'match:2026-05-10T22:00:00',
-            source_files: ['match:2026-05-10T22:00:00.png'],
+            match_key: 'match-2026-05-10T22-00-00',
+            source_files: ['match-2026-05-10T22-00-00.png'],
             data: {
               map: 'rialto', mode: 'competitive', type: 'control', role: 'support',
               hero: 'lucio', result: 'victory', date: '2026-05-10', finished_at: '22:00',

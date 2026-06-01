@@ -20,7 +20,7 @@ import { test, expect } from './_fixtures'
 
 const CORPUS = [
   {
-    match_key: 'match:2026-05-10T21:29:28',
+    match_key: 'match-2026-05-10T21-29-28',
     source_files: ['aatlis-summary.png', 'aatlis-scoreboard.png'],
     source_types: {
       'aatlis-summary.png': 'summary',
@@ -40,7 +40,7 @@ const CORPUS = [
     parsed_at: '2026-05-10T21:30:00Z',
   },
   {
-    match_key: 'match:2026-05-10T21:49:34',
+    match_key: 'match-2026-05-10T21-49-34',
     source_files: ['rialto-summary.png'],
     source_types: { 'rialto-summary.png': 'summary' },
     data: {
@@ -60,7 +60,7 @@ const CORPUS = [
   // Before the fix this row counted in the Record tile but not the
   // masthead. Spec pins both at 2-1-0.
   {
-    match_key: 'match:2026-05-10T22:21:11',
+    match_key: 'match-2026-05-10T22-21-11',
     source_files: ['suravasa-scoreboard.png', 'suravasa-rank.png'],
     source_types: {
       'suravasa-scoreboard.png': 'scoreboard',

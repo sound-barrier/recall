@@ -50,46 +50,21 @@ off first.
 >    looks the path back up via `db.Store.LookupScreenshotsDir`
 >    and falls back to the configured dir when dir-id is 0
 >    (unparsed files in the watched folder). `feat!:` declared.
-> 3. Lift coverage on **App.vue + api.ts + MatchDetailPanel**
+> 3. ~~Fix the **`match_key` colon-string footgun** (item 3)~~ —
+>    **paid down**: replaced `:` with `-` throughout. New format
+>    is `match-YYYY-MM-DDTHH-MM-SS` / `unmatched-<filename>` /
+>    `ambiguous-<filename>`; the whole key is URL-safe without
+>    encoding. One-time SQL migration in `NewSQLStore` rewrites
+>    legacy colon-form rows on startup (idempotent).
+>    `frontend/matchTime()` rewrites the `-` time separators back
+>    to `:` for display. `feat!:` declared.
+> 4. Lift coverage on **App.vue + api.ts + MatchDetailPanel**
 >    (item 6) — the highest-traffic surfaces have the thinnest
 >    safety net.
 >
 > Pre-1.0 there's no backwards-compat constraint, so items 2, 3,
 > and 4 can ship with breaking changes if that's the cleaner path
 > — declare via `feat!:` per CLAUDE.md.
-
----
-
-## 3. `match_key` colon-string footgun in URL paths
-
-**Where:** `match_key` is `match:<ISO>` or `unmatched:<filename>`.
-Every consumer that embeds it in a URL has to remember to
-`encodeURIComponent` it (raw `:` splits in many parsers). CLAUDE.md
-documents the gotcha but it's still an active footgun:
-`frontend/src/api.ts` route builders, every Playwright `page.route()`
-glob, and any future tooling that hits the API directly.
-
-**Plan:**
-
-Pre-1.0 break: promote the integer `id` (already on every parent
-row, currently API-private) to the canonical identifier. Keep the
-`match_key` field as the human-readable trace label, but route
-URLs by id. Three steps:
-
-1. Add an opaque `id` field to every `MatchRecord` in the API.
-2. Add `/api/v2/matches/{id}/…` alongside `/api/v1/matches/{matchKey}/…`,
-   ramp the frontend, then drop v1.
-3. Drop the colon-encoding rule from CLAUDE.md.
-
-(Smaller alternative if v2 is too heavy: keep colons but
-URL-encode them server-side and accept both forms — but that adds
-its own parser-ambiguity surface, so probably worse than the
-status quo.)
-
-**Size:** L.
-**Risk:** Med — versioned migration; old PR scripts / curl
-recipes break; the integration tests + schemathesis matrix
-doubles.
 
 ---
 

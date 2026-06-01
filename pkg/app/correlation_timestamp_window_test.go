@@ -23,13 +23,13 @@ func TestMatchByTimestampWindow_EquidistantBetweenTwoMatches_SurfacesAmbiguous(t
 		Summaries: []db.SummaryRow{
 			{
 				Filename: "2026.07.01 - 14.00.00 _x.png",
-				MatchKey: "match:X",
+				MatchKey: "match-X",
 				Map:      "rialto",
 				Hero:     "lucio",
 			},
 			{
 				Filename: "2026.07.01 - 14.01.30 _y.png",
-				MatchKey: "match:Y",
+				MatchKey: "match-Y",
 				Map:      "aatlis",
 				Hero:     "lucio",
 			},
@@ -55,7 +55,7 @@ func TestMatchByTimestampWindow_EquidistantBetweenTwoMatches_SurfacesAmbiguous(t
 			t.Errorf("expected 45s distance, got %d for %q", c.DistanceS, c.MatchKey)
 		}
 	}
-	if !seen["match:X"] || !seen["match:Y"] {
+	if !seen["match-X"] || !seen["match-Y"] {
 		t.Errorf("expected both X and Y candidates, got %+v", cands)
 	}
 }
@@ -67,13 +67,13 @@ func TestMatchByTimestampWindow_NearTie_WithinTolerance_SurfacesAmbiguous(t *tes
 		Summaries: []db.SummaryRow{
 			{
 				Filename: "2026.07.01 - 14.00.02 _x.png",
-				MatchKey: "match:X",
+				MatchKey: "match-X",
 				Map:      "rialto",
 				Hero:     "lucio",
 			},
 			{
 				Filename: "2026.07.01 - 14.01.32 _y.png",
-				MatchKey: "match:Y",
+				MatchKey: "match-Y",
 				Map:      "aatlis",
 				Hero:     "lucio",
 			},
@@ -94,13 +94,13 @@ func TestMatchByTimestampWindow_ClearlyCloser_AutoAdopts(t *testing.T) {
 		Summaries: []db.SummaryRow{
 			{
 				Filename: "2026.07.01 - 14.00.30 _x.png",
-				MatchKey: "match:X",
+				MatchKey: "match-X",
 				Map:      "rialto",
 				Hero:     "lucio",
 			},
 			{
 				Filename: "2026.07.01 - 14.02.00 _y.png",
-				MatchKey: "match:Y",
+				MatchKey: "match-Y",
 				Map:      "aatlis",
 				Hero:     "lucio",
 			},
@@ -109,7 +109,7 @@ func TestMatchByTimestampWindow_ClearlyCloser_AutoAdopts(t *testing.T) {
 	cand := candidateFromParse("2026.07.01 - 14.00.45 _p.png",
 		&parser.MatchResult{Hero: "lucio"})
 	key, cands, ok := matchByTimestampWindow(cand, snap)
-	if !ok || key != "match:X" || cands != nil {
+	if !ok || key != "match-X" || cands != nil {
 		t.Errorf("expected clean adopt of match:X, got ok=%v key=%q cands=%+v", ok, key, cands)
 	}
 }
@@ -121,13 +121,13 @@ func TestMatchByTimestampWindow_IntraMatchEquidistance_NotAmbiguous(t *testing.T
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{{
 			Filename: "2026.07.01 - 14.00.00 _sum.png",
-			MatchKey: "match:A",
+			MatchKey: "match-A",
 			Map:      "rialto",
 			Hero:     "lucio",
 		}},
 		Scoreboards: []db.ScoreboardRow{{
 			Filename: "2026.07.01 - 14.01.00 _sb.png",
-			MatchKey: "match:A",
+			MatchKey: "match-A",
 			Map:      "rialto",
 			Hero:     "lucio",
 		}},
@@ -135,7 +135,7 @@ func TestMatchByTimestampWindow_IntraMatchEquidistance_NotAmbiguous(t *testing.T
 	cand := candidateFromParse("2026.07.01 - 14.00.30 _p.png",
 		&parser.MatchResult{Hero: "lucio"})
 	key, cands, ok := matchByTimestampWindow(cand, snap)
-	if !ok || key != "match:A" || cands != nil {
+	if !ok || key != "match-A" || cands != nil {
 		t.Errorf("expected clean adopt of match:A, got ok=%v key=%q cands=%+v", ok, key, cands)
 	}
 }
