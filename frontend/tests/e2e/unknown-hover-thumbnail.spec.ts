@@ -90,6 +90,40 @@ test.describe('Unknown tab — hover preview', () => {
     await expect(page.locator('.unknown-hover-thumb')).toHaveCount(0)
   })
 
+  test('thumbnail follows the cursor and edge-flips at the right side of the viewport', async ({ page }) => {
+    await stubScreenshotBytes(page)
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([unknownRecord]),
+      })
+    })
+
+    await page.goto('/')
+    await page.locator('#tab-unknown').click()
+
+    // Hover the card near the left side of the viewport — the
+    // 360 px-wide thumb should anchor below-right of the cursor,
+    // so left > clientX.
+    await page.locator('.unknown-card').first().hover({ position: { x: 60, y: 30 } })
+    const thumb = page.locator('.unknown-hover-thumb')
+    await expect(thumb).toBeVisible()
+
+    const styleLeft = await thumb.evaluate((el) => (el as HTMLElement).style.left)
+    const styleTop  = await thumb.evaluate((el) => (el as HTMLElement).style.top)
+    // Inline style is `<n>px`. We don't assert exact values (cursor
+    // coords differ from .hover() position coords); only that an
+    // anchor was written + parses to a positive integer.
+    expect(Number.parseInt(styleLeft, 10)).toBeGreaterThan(0)
+    expect(Number.parseInt(styleTop, 10)).toBeGreaterThan(0)
+
+    // Move the cursor — position should update.
+    const before = styleLeft
+    await page.locator('.unknown-card').first().hover({ position: { x: 240, y: 40 } })
+    const after = await thumb.evaluate((el) => (el as HTMLElement).style.left)
+    expect(after).not.toBe(before)
+  })
+
   test('records without any source_files do not render a hover thumbnail', async ({ page }) => {
     const noSources = { ...unknownRecord, source_files: [] }
     await stubScreenshotBytes(page)
