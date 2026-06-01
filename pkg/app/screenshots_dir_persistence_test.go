@@ -115,9 +115,7 @@ func TestStartup_PreservesScreenshotsDirWhenExistsButUnreadable(t *testing.T) {
 	// Restore permissions on cleanup so t.TempDir's own cleanup works.
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
 
-	if err := (&App{}).saveSettings(Settings{ScreenshotsDir: dir}); err != nil {
-		t.Fatalf("seed saveSettings: %v", err)
-	}
+	seedSettings(t, Settings{ScreenshotsDir: dir})
 
 	a := NewWithStore(&fakeStore{})
 	a.Startup(context.Background())

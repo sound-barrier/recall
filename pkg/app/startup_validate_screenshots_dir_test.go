@@ -31,9 +31,7 @@ func TestStartup_ClearsScreenshotsDirWhenPathDoesNotExist(t *testing.T) {
 		ScreenshotsDir: stale,
 		TesseractPath:  "/dev/null", // anything; we don't assert on it
 	}
-	if err := (&App{}).saveSettings(seed); err != nil {
-		t.Fatalf("seed saveSettings: %v", err)
-	}
+	seedSettings(t, seed)
 	if _, err := os.Stat(stale); !os.IsNotExist(err) {
 		t.Fatalf("test invariant: stale path %q should not exist", stale)
 	}
@@ -68,9 +66,7 @@ func TestStartup_ClearsScreenshotsDirWhenPathIsAFile(t *testing.T) {
 	if err := os.WriteFile(file, []byte("not a real png"), 0o600); err != nil {
 		t.Fatalf("seed file: %v", err)
 	}
-	if err := (&App{}).saveSettings(Settings{ScreenshotsDir: file}); err != nil {
-		t.Fatalf("seed saveSettings: %v", err)
-	}
+	seedSettings(t, Settings{ScreenshotsDir: file})
 
 	a := NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
@@ -86,9 +82,7 @@ func TestStartup_PreservesValidScreenshotsDir(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	good := t.TempDir() // exists, is a dir, readable
-	if err := (&App{}).saveSettings(Settings{ScreenshotsDir: good}); err != nil {
-		t.Fatalf("seed saveSettings: %v", err)
-	}
+	seedSettings(t, Settings{ScreenshotsDir: good})
 
 	a := NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
@@ -151,9 +145,7 @@ func TestStartup_ClearsLeakedTempDirPathFromAPriorTestRun(t *testing.T) {
 	if err := os.MkdirAll(leaked, 0o700); err != nil {
 		t.Fatalf("seed: create leaked path: %v", err)
 	}
-	if err := (&App{}).saveSettings(Settings{ScreenshotsDir: leaked}); err != nil {
-		t.Fatalf("seed saveSettings: %v", err)
-	}
+	seedSettings(t, Settings{ScreenshotsDir: leaked})
 	// Now delete it to simulate the test-temp dir being cleaned up by
 	// Go's testing infra long after the settings.json was written.
 	if err := os.RemoveAll(leakedBase); err != nil {

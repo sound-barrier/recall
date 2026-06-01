@@ -53,9 +53,7 @@ func TestRevealScreenshotsDir_SpawnsExpectedCommand(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	dir := t.TempDir()
-	if err := (&App{}).saveSettings(Settings{ScreenshotsDir: dir}); err != nil {
-		t.Fatalf("seed saveSettings: %v", err)
-	}
+	seedSettings(t, Settings{ScreenshotsDir: dir})
 
 	a := NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
@@ -97,9 +95,7 @@ func TestResetScreenshotsDir_ClearsInMemoryAndPersistedState(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	dir := t.TempDir()
-	if err := (&App{}).saveSettings(Settings{ScreenshotsDir: dir}); err != nil {
-		t.Fatalf("seed saveSettings: %v", err)
-	}
+	seedSettings(t, Settings{ScreenshotsDir: dir})
 	a := NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 	if a.settings.ScreenshotsDir != dir {
@@ -132,12 +128,10 @@ func TestResetScreenshotsDir_StopsArmedWatcher(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	dir := t.TempDir()
-	if err := (&App{}).saveSettings(Settings{
+	seedSettings(t, Settings{
 		ScreenshotsDir: dir,
 		WatchEnabled:   true,
-	}); err != nil {
-		t.Fatalf("seed saveSettings: %v", err)
-	}
+	})
 
 	a := NewWithStore(&fakeStore{})
 	a.Startup(context.Background())

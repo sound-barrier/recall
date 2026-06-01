@@ -51,56 +51,38 @@ func TestLoadProfiles_IdempotentSecondLoad(t *testing.T) {
 	}
 }
 
-// Pre-profile installations had settings.json + db/recall.db sitting
-// directly at the base dir. LoadProfiles must migrate that layout into
-// profiles/main/ so the dev's local data survives an upgrade. The user
-// said "no users besides myself" — this is for that user.
-func TestLoadProfiles_MigratesPreProfileLayout(t *testing.T) {
+// Pinning the no-migration contract: any pre-existing settings.json
+// or db/ at <base>/ from a hypothetical earlier layout MUST be left
+// untouched. Per the user's request this is a no-migration cut-over —
+// fresh installs only. Loading still succeeds (profiles/main/ stands
+// up beside the stale files) but nothing moves.
+func TestLoadProfiles_DoesNotMigratePreExistingLayout(t *testing.T) {
 	base := t.TempDir()
 
-	settingsAt := filepath.Join(base, "settings.json")
-	if err := os.WriteFile(settingsAt, []byte(`{"prometheus_enabled":true}`), 0o600); err != nil {
+	stalSettings := filepath.Join(base, "settings.json")
+	if err := os.WriteFile(stalSettings, []byte(`{"prometheus_enabled":true}`), 0o600); err != nil {
 		t.Fatalf("seed settings.json: %v", err)
 	}
-	dbDir := filepath.Join(base, "db")
-	if err := os.MkdirAll(dbDir, 0o700); err != nil {
+	staleDBDir := filepath.Join(base, "db")
+	if err := os.MkdirAll(staleDBDir, 0o700); err != nil {
 		t.Fatalf("seed db dir: %v", err)
 	}
-	dbAt := filepath.Join(dbDir, "recall.db")
-	if err := os.WriteFile(dbAt, []byte("fake db bytes"), 0o600); err != nil {
-		t.Fatalf("seed db file: %v", err)
-	}
 
-	p, err := LoadProfiles(base)
-	if err != nil {
+	if _, err := LoadProfiles(base); err != nil {
 		t.Fatalf("LoadProfiles: %v", err)
 	}
-	if got := p.Active(); got != "main" {
-		t.Errorf("Active() = %q, want %q", got, "main")
-	}
 
-	// Old paths gone.
-	if _, err := os.Stat(settingsAt); !os.IsNotExist(err) {
-		t.Errorf("old settings.json should be moved, but %v", err)
+	// Stale files survive at the base — no migration ran.
+	if _, err := os.Stat(stalSettings); err != nil {
+		t.Errorf("base settings.json should be left in place, got %v", err)
 	}
-	if _, err := os.Stat(dbDir); !os.IsNotExist(err) {
-		t.Errorf("old db dir should be moved, but %v", err)
+	if _, err := os.Stat(staleDBDir); err != nil {
+		t.Errorf("base db/ should be left in place, got %v", err)
 	}
-	// New paths present + content preserved.
-	movedSettings := filepath.Join(base, "profiles", "main", "settings.json")
-	got, err := os.ReadFile(movedSettings)
-	if err != nil {
-		t.Fatalf("read migrated settings: %v", err)
-	}
-	if string(got) != `{"prometheus_enabled":true}` {
-		t.Errorf("migrated settings content lost: %q", got)
-	}
-	movedDB, err := os.ReadFile(filepath.Join(base, "profiles", "main", "db", "recall.db"))
-	if err != nil {
-		t.Fatalf("read migrated db: %v", err)
-	}
-	if string(movedDB) != "fake db bytes" {
-		t.Errorf("migrated db content lost: %q", movedDB)
+	// And the active profile's directory exists but is fresh.
+	mainSettings := filepath.Join(base, "profiles", "main", "settings.json")
+	if _, err := os.Stat(mainSettings); !os.IsNotExist(err) {
+		t.Errorf("profiles/main/settings.json should NOT have been copied; got %v", err)
 	}
 }
 
