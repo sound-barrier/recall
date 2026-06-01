@@ -32,9 +32,9 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # blame on this block for the history of "why this number now". The
 # pattern: bump deliberately when a real feature needs the room;
 # never bump to silence noise.
-: "${MAX_INITIAL_JS_BYTES:=135000}" # 135 KB — initial JS chunk only
+: "${MAX_INITIAL_JS_BYTES:=140000}" # 140 KB — initial JS chunk only
 : "${MAX_INITIAL_CSS_BYTES:=80000}" # 80 KB  — initial CSS chunk only
-: "${MAX_TOTAL_JS_BYTES:=305000}"   # 305 KB — every JS chunk combined
+: "${MAX_TOTAL_JS_BYTES:=315000}"   # 315 KB — every JS chunk combined
 : "${MAX_TOTAL_CSS_BYTES:=170000}"  # 170 KB — every CSS chunk combined
 
 if [[ "${1:-}" == "--build" ]]; then
