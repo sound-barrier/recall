@@ -591,6 +591,32 @@ async function onHardDeleteMatch(matchKey: string) {
   }
 }
 
+// Bulk unhide — Archive drawer's bulk-action bar. Fans out
+// SetMatchVisibility(false) in parallel, single reload when all
+// PUTs settle. Same shape as onHideMatches.
+async function onUnhideMatches(matchKeys: string[]) {
+  if (matchKeys.length === 0) return
+  try {
+    await Promise.all(matchKeys.map((k) => SetMatchVisibility(k, false)))
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+// Bulk hard-delete — Archive drawer's bulk "Delete forever" after
+// the action-bar two-step confirm. Fans out HardDeleteMatch in
+// parallel.
+async function onHardDeleteMatches(matchKeys: string[]) {
+  if (matchKeys.length === 0) return
+  try {
+    await Promise.all(matchKeys.map((k) => HardDeleteMatch(k)))
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
 // Ambiguous-attribution resolver. The user picks which candidate
 // match an ambiguous screenshot belongs to from the Unknown tab's
 // "Needs your review" subsection; we PUT the resolution, then
@@ -1314,6 +1340,8 @@ useEventStream({
           @hide-matches="onHideMatches"
           @unhide-match="(k: string) => onSetMatchHidden(k, false)"
           @hard-delete-match="onHardDeleteMatch"
+          @unhide-matches="onUnhideMatches"
+          @hard-delete-matches="onHardDeleteMatches"
         />
 
         <!-- ─── ANALYSIS VIEW (coaching dashboard sketch) ──────────

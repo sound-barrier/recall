@@ -57,11 +57,16 @@ const emit = defineEmits<{
   // the user clicks Hide on the bulk action bar. App.vue does
   // Promise.all of SetMatchVisibility(true) + one reload.
   'hide-matches': [matchKeys: string[]]
-  // Drawer Unhide — flips a single hidden match back to visible.
+  // Drawer single-row Unhide — flips one hidden match back to visible.
   'unhide-match': [matchKey: string]
-  // Drawer "Delete forever" — hard-deletes from the database after
-  // the user confirms the two-step affordance.
+  // Drawer single-row "Delete forever" — hard-deletes one match after
+  // the user confirms the two-step inline affordance.
   'hard-delete-match': [matchKey: string]
+  // Archive bulk Unhide — fans out across ticked archive rows.
+  'unhide-matches': [matchKeys: string[]]
+  // Archive bulk "Delete forever" — fans out after the action-bar's
+  // two-step confirm.
+  'hard-delete-matches': [matchKeys: string[]]
 }>()
 
 // ─── Narrow state via the parent-supplied composable bundle ──
@@ -88,46 +93,88 @@ const narrowOpen = ref(false)
 const sortOrder = ref<'newest' | 'oldest'>('newest')
 const groupBy   = ref<'none' | 'day' | 'week' | 'month' | 'year'>('day')
 
-// ─── Bulk-select state ──────────────────────────────────────
-// `bulkSelect` toggles the mode; while true, .leaf-row clicks
-// toggle membership in `selectedKeys` instead of opening the detail
-// panel. Leaving the mode (Cancel or successful Hide) clears the set.
-const bulkSelect = ref(false)
+// ─── Selection state (Gmail-style, no mode toggle) ──────────
+//
+// Two parallel selection sets — one for live (visible) match rows,
+// one for archived (hidden) rows. Both follow the same affordance
+// pattern: a checkbox at the start of each row that hover-reveals
+// (subtle when idle, bright on row hover or when ticked), with a
+// contextual action bar appearing as soon as the set is non-empty.
+// Row-body clicks NEVER touch selection — they still open the detail
+// panel (live rows) or are inert (archive rows). The checkbox is the
+// only selection affordance.
 const selectedKeys = ref<Set<string>>(new Set())
+const archiveSelectedKeys = ref<Set<string>>(new Set())
+// Two-step confirm for both per-row and bulk hard-delete. `key`
+// targets a single row's inline confirm; `'bulk'` targets the
+// archive action bar's bulk-delete confirm.
+const archiveConfirmKey = ref<string | null>(null)
+const archiveBulkConfirm = ref(false)
 
-function toggleBulkSelect() {
-  bulkSelect.value = !bulkSelect.value
-  if (!bulkSelect.value) selectedKeys.value = new Set()
-}
 function toggleSelected(key: string) {
   const next = new Set(selectedKeys.value)
   if (next.has(key)) next.delete(key)
   else next.add(key)
   selectedKeys.value = next
 }
-function cancelBulk() {
-  bulkSelect.value = false
+function clearSelection() {
   selectedKeys.value = new Set()
 }
 function hideSelected() {
   const keys = [...selectedKeys.value]
   if (keys.length === 0) return
-  cancelBulk()
+  clearSelection()
   emit('hide-matches', keys)
+}
+
+function toggleArchiveSelected(key: string) {
+  const next = new Set(archiveSelectedKeys.value)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
+  archiveSelectedKeys.value = next
+  // Any change to the archive selection aborts an in-progress bulk
+  // confirm — the target set just moved, the prior "Confirm" no
+  // longer means what it meant.
+  archiveBulkConfirm.value = false
+}
+function clearArchiveSelection() {
+  archiveSelectedKeys.value = new Set()
+  archiveBulkConfirm.value = false
+}
+function unhideSelectedArchive() {
+  const keys = [...archiveSelectedKeys.value]
+  if (keys.length === 0) return
+  clearArchiveSelection()
+  emit('unhide-matches', keys)
+}
+function requestBulkHardDelete() {
+  if (archiveSelectedKeys.value.size === 0) return
+  archiveBulkConfirm.value = true
+}
+function cancelBulkHardDelete() {
+  archiveBulkConfirm.value = false
+}
+function commitBulkHardDelete() {
+  const keys = [...archiveSelectedKeys.value]
+  if (keys.length === 0) return
+  clearArchiveSelection()
+  emit('hard-delete-matches', keys)
 }
 
 // ─── Hidden drawer state ────────────────────────────────────
 // `archiveOpen` toggles the drawer's expanded panel. Hidden records
-// come straight off `props.records` (the parent gives the
-// hidden flag on every row); the dossier / narrow / timeline all
-// consume `narrowedRecords` which already drops them.
+// come straight off `props.records` (the parent gives the hidden
+// flag on every row); the dossier / narrow / timeline all consume
+// narrowedRecords which already drops them.
 const archiveOpen = ref(false)
 const hiddenRecords = computed(() => props.records.filter((r) => r.hidden))
 // The visible-only set fed to the campaign log (MatchTimelineHeader)
 // so the heatmap + sparkline both drop hidden matches in lockstep
 // with the dossier.
 const visibleRecords = computed(() => props.records.filter((r) => !r.hidden))
-const archiveConfirmKey = ref<string | null>(null)
+
+// Single-row inline confirm for hard-delete (per-archive-row Delete
+// button → Confirm/Cancel). The bulk variant lives on the action bar.
 function confirmHardDelete(key: string) {
   archiveConfirmKey.value = key
 }
@@ -137,6 +184,21 @@ function cancelHardDelete() {
 function commitHardDelete(key: string) {
   archiveConfirmKey.value = null
   emit('hard-delete-match', key)
+}
+
+// ─── Select-all helpers ─────────────────────────────────────
+// Live: Select all targets the narrowed + sorted set (what the user
+// sees). Archive: targets every hidden record. Both clamp to a no-op
+// when their target set is empty so the keyboard shortcut /
+// programmatic call is safe.
+function selectAllVisible() {
+  const keys = sortedRecords.value.map((r) => r.match_key)
+  selectedKeys.value = new Set(keys)
+}
+function selectAllArchive() {
+  const keys = hiddenRecords.value.map((r) => r.match_key)
+  archiveSelectedKeys.value = new Set(keys)
+  archiveBulkConfirm.value = false
 }
 
 // Combobox open state — which one (if any) currently shows its
@@ -890,25 +952,15 @@ onBeforeUnmount(() => {
               {{ opt === 'none' ? '—' : opt[0]!.toUpperCase() }}
             </button>
           </fieldset>
-          <button
-            class="bulk-select-toggle"
-            :class="{ engaged: bulkSelect }"
-            :aria-pressed="bulkSelect ? 'true' : 'false'"
-            type="button"
-            @click="toggleBulkSelect"
-          >
-            <span class="bst-glyph" aria-hidden="true">{{ bulkSelect ? '▣' : '▢' }}</span>
-            <span class="bst-label">{{ bulkSelect ? 'Selecting' : 'Select' }}</span>
-          </button>
         </div>
       </header>
 
-      <!-- Bulk action bar — appears below the header while at least
-           one row is ticked. Inline (not floating) so the layout
-           stays predictable across themes; sticky-top within the
+      <!-- Bulk action bar — appears as soon as any row is ticked. No
+           mode toggle: the checkbox on each row IS the affordance
+           (Gmail / Linear / GitHub Issues pattern). Sticky within the
            section so it follows the user down the leaves list. -->
       <div
-        v-if="bulkSelect && selectedKeys.size > 0"
+        v-if="selectedKeys.size > 0"
         class="bulk-action-bar"
         role="region"
         aria-label="Bulk action bar"
@@ -916,12 +968,20 @@ onBeforeUnmount(() => {
         <span class="bab-glyph" aria-hidden="true">▣</span>
         <span class="bab-count">{{ selectedKeys.size }} selected</span>
         <span class="bab-spacer" aria-hidden="true" />
+        <button
+          v-if="selectedKeys.size < sortedRecords.length"
+          type="button"
+          class="bulk-select-all"
+          @click="selectAllVisible"
+        >
+          Select all ({{ sortedRecords.length }})
+        </button>
         <button type="button" class="bulk-hide" @click="hideSelected">
           <span class="bab-btn-glyph" aria-hidden="true">⌀</span>
           Hide
         </button>
-        <button type="button" class="bulk-cancel" @click="cancelBulk">
-          Cancel
+        <button type="button" class="bulk-cancel" @click="clearSelection">
+          Clear
         </button>
       </div>
 
@@ -938,21 +998,25 @@ onBeforeUnmount(() => {
             class="leaf-row"
             :class="[
               `result-${rec.data?.result || 'unknown'}`,
-              { 'is-bulk-select': bulkSelect, 'is-ticked': selectedKeys.has(rec.match_key) },
+              { 'has-selection': selectedKeys.size > 0, 'is-ticked': selectedKeys.has(rec.match_key) },
             ]"
-            @click="bulkSelect ? toggleSelected(rec.match_key) : emit('open-match', rec.match_key)"
+            @click="emit('open-match', rec.match_key)"
           >
-            <!-- 0. Checkbox slot — only rendered in bulk-select mode
-                 so the row geometry stays put when the mode is off. -->
-            <span
-              v-if="bulkSelect"
+            <!-- Contextual checkbox — always in the DOM so the row
+                 geometry never jumps. Visually faint when idle, full-
+                 opacity on row hover / focus / when ticked / when ANY
+                 row is ticked. Click stops propagation so the row
+                 still opens the detail panel on body click. -->
+            <button
+              type="button"
               class="leaf-checkbox"
               role="checkbox"
               :aria-checked="selectedKeys.has(rec.match_key) ? 'true' : 'false'"
               :aria-label="`Select match ${rec.match_key}`"
+              @click.stop="toggleSelected(rec.match_key)"
             >
               <span class="leaf-checkbox-glyph" aria-hidden="true">{{ selectedKeys.has(rec.match_key) ? '✓' : '' }}</span>
-            </span>
+            </button>
 
             <!-- 1. Result-tinted color strip — instant scan target. -->
             <span class="leaf-strip" aria-hidden="true" />
@@ -1042,13 +1106,73 @@ onBeforeUnmount(() => {
         <p v-if="hiddenRecords.length === 0" class="archive-empty">
           Archive is empty.
         </p>
-        <ul v-else class="archive-list" role="list">
+
+        <!-- Archive bulk action bar — same contextual pattern as the
+             live leaves list. Appears as soon as any archive row is
+             ticked. Bulk Delete forever uses an inline two-step
+             confirm because it's irreversible. -->
+        <div
+          v-if="archiveSelectedKeys.size > 0"
+          class="archive-action-bar"
+          role="region"
+          aria-label="Archive bulk action bar"
+        >
+          <span class="bab-glyph" aria-hidden="true">▣</span>
+          <span class="bab-count">{{ archiveSelectedKeys.size }} selected</span>
+          <span class="bab-spacer" aria-hidden="true" />
+          <template v-if="!archiveBulkConfirm">
+            <button
+              v-if="archiveSelectedKeys.size < hiddenRecords.length"
+              type="button"
+              class="bulk-select-all"
+              @click="selectAllArchive"
+            >
+              Select all ({{ hiddenRecords.length }})
+            </button>
+            <button type="button" class="bulk-unhide" @click="unhideSelectedArchive">
+              Unhide
+            </button>
+            <button type="button" class="bulk-delete" @click="requestBulkHardDelete">
+              Delete forever
+            </button>
+            <button type="button" class="bulk-cancel" @click="clearArchiveSelection">
+              Clear
+            </button>
+          </template>
+          <template v-else>
+            <span class="bab-warn" aria-hidden="true">⚠</span>
+            <span class="bab-warn-text">
+              Delete {{ archiveSelectedKeys.size }} {{ archiveSelectedKeys.size === 1 ? 'match' : 'matches' }} from the database?
+            </span>
+            <button type="button" class="bulk-confirm" @click="commitBulkHardDelete">
+              Confirm
+            </button>
+            <button type="button" class="bulk-cancel" @click="cancelBulkHardDelete">
+              Cancel
+            </button>
+          </template>
+        </div>
+
+        <ul v-if="hiddenRecords.length > 0" class="archive-list" role="list">
           <li
             v-for="rec in hiddenRecords"
             :key="rec.match_key"
             class="archive-row"
-            :class="`result-${rec.data?.result || 'unknown'}`"
+            :class="[
+              `result-${rec.data?.result || 'unknown'}`,
+              { 'has-selection': archiveSelectedKeys.size > 0, 'is-ticked': archiveSelectedKeys.has(rec.match_key) },
+            ]"
           >
+            <button
+              type="button"
+              class="archive-checkbox"
+              role="checkbox"
+              :aria-checked="archiveSelectedKeys.has(rec.match_key) ? 'true' : 'false'"
+              :aria-label="`Select hidden match ${rec.match_key}`"
+              @click.stop="toggleArchiveSelected(rec.match_key)"
+            >
+              <span class="archive-checkbox-glyph" aria-hidden="true">{{ archiveSelectedKeys.has(rec.match_key) ? '✓' : '' }}</span>
+            </button>
             <span class="archive-row-strip" aria-hidden="true" />
             <div class="archive-row-when">
               <span class="archive-row-date">{{ formatRowDate(rec) }}</span>
@@ -2025,15 +2149,11 @@ onBeforeUnmount(() => {
 .leaf-row {
   display: grid;
 
-  /* All columns to the left of `hero block` must have stable widths
-     across rows or the hero name's left edge drifts when adjacent
-     columns vary (e.g. one row with 50/4/3 stats vs another with
-     9/4/11). The stats column was previously `auto` and that's
-     what was shifting the hero block. Lock it to a 7rem track that
-     fits two-digit E/A/D comfortably; three-digit edge cases still
-     fit because the stat-num spans are `inline-flex` with their own
-     tabular-numeral metrics. */
+  /* Eight columns: contextual checkbox at the head, then the original
+     seven. The checkbox column is fixed-width so its appearance never
+     shifts the rest of the row when its opacity ramps up. */
   grid-template-columns:
+    1.1rem               /* checkbox — always reserved, opacity-driven */
     4px                  /* strip */
     72px                 /* when */
     minmax(0, 1.4fr)     /* map block */
@@ -2286,38 +2406,70 @@ onBeforeUnmount(() => {
 }
 .leaves-empty-btn:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 
-/* ─── Bulk-select mode ─────────────────────────────────────── */
+/* ─── Contextual multi-select ──────────────────────────────────
+   No mode toggle. A faint checkbox always sits at the start of each
+   row; it brightens on row hover, when the row is ticked, or when
+   ANY row in the section is ticked. The Gmail / Linear pattern. */
 
-.bulk-select-toggle {
-  appearance: none;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
+.leaf-checkbox,
+.archive-checkbox {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1.5px solid var(--border);
   border-radius: 2px;
-  padding: 0.35rem 0.7rem 0.32rem;
+  background: var(--surface);
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text);
+  justify-content: center;
   cursor: pointer;
-  font-weight: 700;
-  align-self: end;
+  padding: 0;
+  appearance: none;
+  opacity: 0.32;
+  transition:
+    background-color 80ms ease,
+    border-color 80ms ease,
+    opacity 120ms ease;
+}
+
+.leaf-row:hover .leaf-checkbox,
+.leaf-row.has-selection .leaf-checkbox,
+.leaf-row.is-ticked .leaf-checkbox,
+.leaf-checkbox:focus-visible,
+.archive-row:hover .archive-checkbox,
+.archive-row.has-selection .archive-checkbox,
+.archive-row.is-ticked .archive-checkbox,
+.archive-checkbox:focus-visible {
+  opacity: 1;
+}
+
+.leaf-row.is-ticked .leaf-checkbox,
+.archive-row.is-ticked .archive-checkbox {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.leaf-row.is-ticked {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  outline: 1px solid var(--accent);
+}
+
+.archive-row.is-ticked {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+  outline: 1px solid var(--accent);
+  opacity: 1;
+}
+
+.leaf-checkbox-glyph,
+.archive-checkbox-glyph {
+  font-family: var(--mono);
+  font-weight: 800;
+  font-size: 0.75rem;
+  color: var(--primary-text-on-accent, #111);
   line-height: 1;
 }
-.bulk-select-toggle:hover { border-color: var(--accent); color: var(--accent); }
 
-.bulk-select-toggle.engaged {
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
-}
-.bst-glyph { font-size: 0.85rem; line-height: 1; }
-
-.bulk-action-bar {
+.bulk-action-bar,
+.archive-action-bar {
   display: flex;
   align-items: center;
   gap: 0.55rem;
@@ -2330,6 +2482,9 @@ onBeforeUnmount(() => {
   z-index: 4;
   box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 30%, transparent);
 }
+
+.archive-action-bar { margin: 0 0 0.45rem; }
+
 .bab-glyph { color: var(--accent); font-size: 0.95rem; line-height: 1; }
 
 .bab-count {
@@ -2340,9 +2495,22 @@ onBeforeUnmount(() => {
   font-weight: 700;
   color: var(--text);
 }
+
 .bab-spacer { flex: 1 1 auto; }
 
-.bulk-action-bar button {
+.bab-warn { color: var(--loss); font-size: 0.95rem; line-height: 1; }
+
+.bab-warn-text {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.bulk-action-bar button,
+.archive-action-bar button {
   appearance: none;
   border-radius: 2px;
   padding: 0.32rem 0.7rem;
@@ -2358,68 +2526,52 @@ onBeforeUnmount(() => {
   line-height: 1;
 }
 
-.bulk-action-bar .bulk-hide {
+.bulk-hide,
+.bulk-unhide {
   border: 1px solid var(--accent);
   background: var(--accent);
   color: var(--primary-text-on-accent, #111);
 }
 
-.bulk-action-bar .bulk-hide:hover {
-  filter: brightness(1.08);
+.bulk-hide:hover,
+.bulk-unhide:hover { filter: brightness(1.08); }
+
+.bulk-select-all {
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
 }
 
-.bulk-action-bar .bulk-cancel {
+.bulk-select-all:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+.bulk-delete {
+  border: 1px solid color-mix(in srgb, var(--loss) 70%, var(--border));
+  background: transparent;
+  color: var(--loss);
+}
+
+.bulk-delete:hover { background: color-mix(in srgb, var(--loss) 12%, transparent); }
+
+.bulk-confirm {
+  border: 1px solid var(--loss);
+  background: var(--loss);
+  color: var(--primary-text-on-accent, #111);
+}
+
+.bulk-confirm:hover { filter: brightness(1.06); }
+
+.bulk-cancel {
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-dim);
 }
 
-.bulk-action-bar .bulk-cancel:hover {
+.bulk-cancel:hover {
   color: var(--text);
   border-color: var(--text);
 }
+
 .bab-btn-glyph { font-size: 0.85rem; }
-
-/* Ticked row treatment + checkbox cell. */
-.leaf-row.is-bulk-select { cursor: pointer; }
-
-.leaf-row.is-bulk-select .leaf-when,
-.leaf-row.is-bulk-select .leaf-map-block,
-.leaf-row.is-bulk-select .leaf-hero-block,
-.leaf-row.is-bulk-select .leaf-stats-block,
-.leaf-row.is-bulk-select .leaf-meta-block { pointer-events: none; }
-
-.leaf-row.is-ticked {
-  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
-  outline: 1px solid var(--accent);
-}
-
-.leaf-checkbox {
-  width: 1.1rem;
-  height: 1.1rem;
-  border: 1.5px solid var(--border);
-  border-radius: 2px;
-  background: var(--surface);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  margin-right: 0.1rem;
-  transition: background-color 80ms ease, border-color 80ms ease;
-}
-
-.leaf-row.is-ticked .leaf-checkbox {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.leaf-checkbox-glyph {
-  font-family: var(--mono);
-  font-weight: 800;
-  font-size: 0.75rem;
-  color: var(--primary-text-on-accent, #111);
-  line-height: 1;
-}
 
 /* ─── Hidden drawer (Archive) ──────────────────────────────── */
 
@@ -2515,6 +2667,7 @@ onBeforeUnmount(() => {
 .archive-row {
   display: grid;
   grid-template-columns:
+    1.1rem        /* checkbox — reserved, opacity-driven */
     6px           /* result strip */
     minmax(64px, auto) /* date/time */
     minmax(140px, 1fr) /* map */
