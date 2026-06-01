@@ -1,5 +1,62 @@
 # Changelog
 
+## [0.4.0](https://github.com/sound-barrier/recall/compare/v0.3.2...v0.4.0) (2026-06-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* **profiles:** LoadProfiles no longer migrates a pre-profile <base>/{settings.json,db/} layout into profiles/main/. The earlier feat(profiles)! commit's footer promised auto-migration; this commit retracts that promise. Anyone with pre-profile data needs to either: (1) move <base>/settings.json + <base>/db/ into <base>/profiles/main/ manually before first launch, or (2) start fresh and re-parse from the screenshots folder.
+* **profiles:** On-disk data layout moved from <base>/{settings.json, db/recall.db} to <base>/profiles/<name>/{settings.json,db/recall.db}. Pre-profile installs auto-migrate into profiles/main/ on first launch, so the dev's existing data carries over — but any tool or script that hard-coded the old paths (db-where.sh, ad-hoc `sqlite3 $RECALL_DATA_DIR/db/recall.db`) needs to update. The GetDataLocation endpoint still surfaces the active base, so the UI's Settings → Directories pane reflects the new layout automatically.
+
+### Features
+
+* **api:** add /api/v1/profiles CRUD endpoints ([5af382f](https://github.com/sound-barrier/recall/commit/5af382f5365bb349bc63103895f73fba13a7e55a))
+* **api:** add `unknown` to ScreenshotType enum ([2956099](https://github.com/sound-barrier/recall/commit/2956099b3f7f7218679496f8ddc14aeea27c72ec))
+* **api:** add DELETE /api/v1/matches/{matchKey} for hard-delete ([d714240](https://github.com/sound-barrier/recall/commit/d7142402717dcc06921f3f5c3f025d24fceb1c1c))
+* **masthead:** add ProfileSwitcher chip for multi-profile UX ([7d8863f](https://github.com/sound-barrier/recall/commit/7d8863fb639a001842acfdb2c03f439499baacbf))
+* **matches:** bulk-hide selection + Archive drawer with Delete forever ([f99add7](https://github.com/sound-barrier/recall/commit/f99add7365dc971ef41844c8fe68b4ba7bc84ab5))
+* **matches:** masthead parse-queue chip + first-paint skeleton rows ([6b9be2f](https://github.com/sound-barrier/recall/commit/6b9be2fd0be56f513dd18f846776e86cbdff037f))
+* **metrics:** exclude hidden matches from Prometheus scrape ([ed458a1](https://github.com/sound-barrier/recall/commit/ed458a198c32da49e3ecf219e0acf87d9f099b8f))
+* **profiles:** delete affordance in Settings + first-run name modal ([2b418fb](https://github.com/sound-barrier/recall/commit/2b418fbea343e70a6ffeae90637cd4fa126d4297))
+* **profiles:** introduce per-installation profiles with isolated data dirs ([c7226c2](https://github.com/sound-barrier/recall/commit/c7226c27221dfe63e695b65f5814c7ec224efb81))
+* **profiles:** rename profiles + bulk-move matches between them ([2e3ccb6](https://github.com/sound-barrier/recall/commit/2e3ccb6ea1b1c238f34fe65263a2be31ea65c228))
+* **scripts:** make db-*.sh family profile-aware ([5ac8d49](https://github.com/sound-barrier/recall/commit/5ac8d498558846120d770e531aaea18cd0e9fc55))
+* **unknown:** hover an entry reveals a peek thumbnail ([f717a03](https://github.com/sound-barrier/recall/commit/f717a03a3629ecb0c60080ed9f0ddcb23c872a11))
+
+
+### Bug Fixes
+
+* **api:** reject null in required JSON request bodies ([561a098](https://github.com/sound-barrier/recall/commit/561a0984cfdd84f667250706cabed501c605015a))
+* **api:** set Content-Type before WriteHeader on POST /profiles ([250511a](https://github.com/sound-barrier/recall/commit/250511a2b450e264625cb1f7330db65eb7685c30))
+* **profiles:** gate first-run modal on the onboarding tour ([8ca446f](https://github.com/sound-barrier/recall/commit/8ca446fb01adaf18904e332d17ac2f9a97b22d8e))
+* **profiles:** reload after first-run rename so masthead chip updates ([cdb2595](https://github.com/sound-barrier/recall/commit/cdb2595fdb190366ffb0137941bddb14e09dfb14))
+* **profiles:** sanitise target_profile via regex before path use ([216fcfc](https://github.com/sound-barrier/recall/commit/216fcfc170dcd24af399c15ffa70d612331c4eff))
+* **unknown:** anchor hover thumbnail to cursor + bump size 240→360 ([2cc2750](https://github.com/sound-barrier/recall/commit/2cc2750c81ecaa7fbe5ba7fb9d3b74d4fcb801d3))
+* **unknown:** preload screenshots on view mount so hover thumb shows ([68b52a9](https://github.com/sound-barrier/recall/commit/68b52a91b13021b5e194fd086dedee7e24931f0e))
+
+
+### Refactors
+
+* **matches:** contextual multi-select + Archive bulk ops ([12bde99](https://github.com/sound-barrier/recall/commit/12bde99a400768b077a90a3495d2a67acc0ae21d))
+* **profiles:** drop pre-profile migration; fresh installs only ([50eea10](https://github.com/sound-barrier/recall/commit/50eea105a0361dc6633062448b328007976810bd))
+
+
+### Documentation
+
+* document multi-profile layout across README + docs + CLAUDE.md ([7fb745f](https://github.com/sound-barrier/recall/commit/7fb745f3ea4d60848fdad35a8e842afaeade2277))
+* **readme:** surface ROADMAP.md via badge + TOC ([7220d34](https://github.com/sound-barrier/recall/commit/7220d34e01199e3cce2cb86821632798e54508fd))
+
+
+### CI
+
+* **schemathesis:** extract to shared script + add pre-push lefthook hook ([3d8e5c4](https://github.com/sound-barrier/recall/commit/3d8e5c4b70c0d1445a6c99f52180ab0753b32b16))
+
+
+### Tests
+
+* **matches:** cover the Move-to-profile picker in MatchesView SFC ([13e5d2f](https://github.com/sound-barrier/recall/commit/13e5d2f998b634025adcbfc91274f0f80b4bd0b3))
+* **profiles:** pin &gt;2-profile + per-profile-screenshots invariants ([a45c9fa](https://github.com/sound-barrier/recall/commit/a45c9fadffd83f1f058043a3b74466971468b527))
+
 ## [0.3.2](https://github.com/sound-barrier/recall/compare/v0.3.1...v0.3.2) (2026-05-31)
 
 
