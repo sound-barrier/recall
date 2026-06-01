@@ -80,7 +80,6 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 - **Multi-window support** — open the Matches view in a separate Wails window while parsing continues in the main window. Per-window state (filters, focused card) but shared records.
 - **Quick-edit popover on stat cells** — click any displayed stat on a card → 1-click ± nudge or numeric input without expanding the whole card. Useful for correcting OCR mistakes without opening the journal.
 - **Onboarding skip-ahead** — let the user skip directly to a specific step from the tour, instead of forcing the linear order. Side-rail chips become clickable jump points.
-- **Animated skeleton loaders** — replace the spinner with skeleton cards on first paint when records are still being fetched, so the layout doesn't pop into place a beat after the masthead settles.
 - **Settings export/import** — share configuration with a teammate (folder paths, theme, filter prefs, presets) as a small JSON. Useful for stack-mate parity; lives next to the existing Backup & Restore section.
 - **Match journal writing mode** — dedicated full-viewport markdown editor for the note field, with side-rail preview + word count. Reached via a small "expand" affordance on the journal panel; submission persists back through `SetMatchAnnotation`.
 
@@ -107,7 +106,6 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 
 ### Performance & Robustness
 
-- **Background parse queue visualisation** — explicit "12 / 47 files" progress in the masthead or status bar, replacing the current "parallelism is happening behind the curtain" feel. Drives off the existing `parse-progress` SSE event; doesn't require new server endpoints.
 - **Memory / DB profiler in Advanced** — show on-disk DB size, per-table row counts, aggregator allocation, parse queue depth. Helps the user understand why a 10k-match history feels slow before they file a perf bug.
 - **Schema verifier in Settings** — Advanced tool that walks every parent + child table, compares column shapes against the canonical CREATE TABLE in `pkg/db/db.go`, and reports drift. Catches "I hand-edited the DB and now things look weird" cases.
 - **Resilient parse with retry** — auto-retry failed Tesseract calls (single-screenshot transient I/O failures) with exponential backoff before marking the file unknown. Failures lifted out of the screenshot's exec context so the rest of the parse loop continues.

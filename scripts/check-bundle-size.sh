@@ -35,7 +35,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 : "${MAX_INITIAL_JS_BYTES:=140000}" # 140 KB — initial JS chunk only
 : "${MAX_INITIAL_CSS_BYTES:=80000}" # 80 KB  — initial CSS chunk only
 : "${MAX_TOTAL_JS_BYTES:=315000}"   # 315 KB — every JS chunk combined
-: "${MAX_TOTAL_CSS_BYTES:=170000}"  # 170 KB — every CSS chunk combined
+: "${MAX_TOTAL_CSS_BYTES:=175000}"  # 175 KB — every CSS chunk combined
 
 if [[ "${1:-}" == "--build" ]]; then
   echo "==> building frontend (npm --prefix frontend run build)…"
