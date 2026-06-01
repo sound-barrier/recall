@@ -208,7 +208,7 @@ and the SPA `FileServer` at `/`.
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from the spec. Runs on every commit via lefthook; CI fails if the file is out of sync. |
 | `make lint-openapi` | Spectral lint on `api/openapi.yaml` (`spectral:oas` + `.spectral.yaml`, `--fail-severity=warn`). Bundled into `make lint` and a pre-commit hook. |
 | `make swagger` | Browse the spec locally — Swagger UI v5 in a container (`:8080` default; override via `SWAGGER_PORT`). |
-| schemathesis (CI) | Fuzzes a built `recall-server` against the spec to catch shape drift between YAML and live responses. Runs in `ci.yml`. |
+| `make check-api-drift` | Fuzzes a built `recall-server` against `api/openapi.yaml` via schemathesis to catch shape drift between YAML and live responses. Logic lives in `scripts/check-api-drift.sh` — same script CI's `schemathesis` job calls and the pre-push lefthook hook invokes (glob-scoped to API + server code so docs-only pushes don't pay the ~15s cost). Requires `pipx install 'schemathesis>=3.36,<4'`; the script short-circuits with an actionable error if schemathesis isn't on PATH. Skip the hook with `LEFTHOOK_EXCLUDE=schemathesis git push`. |
 
 Public Swagger UI auto-deploys from `main` on every spec change to
 <https://sound-barrier.github.io/recall/api/>.

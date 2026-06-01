@@ -293,6 +293,10 @@ SPECTRAL ?= npx --yes @stoplight/spectral-cli@$(SPECTRAL_VERSION)
 lint-openapi: ## Lint api/openapi.yaml (Spectral, spectral:oas ruleset)
 	@echo "[ recall ] Linting OpenAPI (spectral)…"
 	$(SPECTRAL) lint api/openapi.yaml --fail-severity=warn
+
+check-api-drift: ## Fuzz live server against api/openapi.yaml (schemathesis)
+	@echo "[ recall ] Checking OpenAPI ↔ server drift (schemathesis)…"
+	@bash scripts/check-api-drift.sh
 	@echo "[ recall ] ✓  OpenAPI lint clean"
 
 # Regenerate frontend/src/api.gen.d.ts from the OpenAPI spec. Run after

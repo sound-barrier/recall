@@ -85,6 +85,11 @@ brew "gosec"
 # exact pin via pipx, dev uses whatever brew has.
 brew "semgrep"
 
+# pipx — Python apps in isolated venvs. Used by initialize.sh to
+# install schemathesis (the OpenAPI ↔ server contract fuzzer that
+# powers `make check-api-drift` + the pre-push lefthook hook).
+brew "pipx"
+
 # --- Not in brew, but required:
 #
 #   Wails CLI itself is a Go binary. Install once after `brew bundle`:
