@@ -126,6 +126,14 @@ Overwatch saves screenshots to `Documents\Overwatch\ScreenShots\Overwatch\` on W
 
 **What if a screenshot type is missing?** Each match row has a *Data Coverage* strip in the detail panel (click any row to open) that flags which of the four screenshot types were captured. Required-but-missing types are highlighted with a warning chip; the optional RANK is shown greyed out when absent. Screenshots Recall couldn't match to a known map collect in the **Unknown** tab for triage.
 
+### Multiple accounts (profiles)
+
+Got more than one Overwatch account? Each profile in Recall is a fully separate workspace — its own screenshots folder, settings, and SQLite database. The chip in the upper right of the masthead lists every profile, switches between them in one click, and supports inline create + rename so you can name them whatever you want (`SilentStorm`, `Jokester`, `Manny`). Switching profiles re-loads every data surface (dossier, heatmap, Archive) against that profile's history.
+
+If you accidentally ingest a smurf game into the wrong profile, the Matches view's bulk-select supports a **Move to…** action that transfers the ticked matches (plus their annotations and hidden flags) into another profile in one shot. No manual SQL needed.
+
+You can also scope a single launch to a specific profile via `--profile=<name>` on either binary — useful for opening an alt account once without changing the persisted default. The full [data layout is documented under *How it works → Where things live on disk*](docs/how-it-works.md#where-things-live-on-disk).
+
 ### What each screenshot type looks like
 
 Real examples from Recall's parser-regression fixture set. The same PNG files live under `testdata/` in this repo and are the inputs `TestParseScreenshot_GoldenFiles` runs against on every change. Click any image for the full-resolution source.

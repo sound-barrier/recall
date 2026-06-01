@@ -81,11 +81,24 @@ Go to **Settings → Directories → Change Folder…** and select that path.
 
 ## Where Recall stores its data
 
-Settings and the match database live at:
+Recall organises everything by **profile** — each profile (your main
+account, alts, anything) gets its own settings + match database.
+The install root is:
 
 ```text
 ~/Library/Application Support/Recall/
 ```
+
+Inside it, the default `main` profile's data lives at:
+
+```text
+~/Library/Application Support/Recall/profiles/main/
+  ├── settings.json
+  └── db/recall.db
+```
+
+The masthead chip lets you create more profiles + switch between
+them; each one gets its own sibling directory under `profiles/`.
 
 ## Verifying your download
 

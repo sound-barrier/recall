@@ -92,7 +92,9 @@ auto-parse new screenshots as Overwatch writes them.
 
 ## Where Recall stores its data
 
-Settings and the match database live at:
+Recall organises everything by **profile** — each profile (your main
+account, alts, anything) gets its own settings + match database.
+The install root is:
 
 ```text
 %AppData%\Recall\
@@ -100,7 +102,20 @@ Settings and the match database live at:
 
 (typically `C:\Users\<you>\AppData\Roaming\Recall\`)
 
-To wipe and start fresh: close Recall, delete the folder, restart.
+Inside it, the default `main` profile's data lives at:
+
+```text
+%AppData%\Recall\profiles\main\
+  ├── settings.json
+  └── db\recall.db
+```
+
+The masthead chip lets you create more profiles + switch between
+them; each one gets its own sibling directory under `profiles\`.
+
+To wipe a single profile: close Recall, delete that profile's
+folder under `profiles\`, restart. To wipe everything, delete the
+whole `Recall\` install root.
 
 ## Verifying your download
 

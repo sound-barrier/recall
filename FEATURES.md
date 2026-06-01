@@ -69,7 +69,8 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 
 ### UX & Settings
 
-- **Multiple profiles** — main + alt accounts, separate DBs per profile. Switcher chip in the masthead; each profile gets its own `RECALL_DATA_DIR` subdir. `--profile=<name>` CLI flag for the server-mode binary to scope a single launch.
+<!-- Multiple profiles — SHIPPED. Each profile has its own settings + SQLite DB under <base>/profiles/<name>/, switchable from a masthead chip. The chip also supports rename + create; matches can be bulk-moved between profiles from the matches view's bulk action bar. --profile=<name> on both binaries scopes a launch. See docs/how-it-works.md → "Where things live on disk". -->
+
 - **Customizable dashboard widgets** — pick which stats appear on the home view. Drag-to-reorder card list of widgets; each widget is a self-contained `<DashboardWidget>` SFC with a fixed grid footprint so the layout stays tractable.
 - **Command palette (⌘K)** — fuzzy-find across views, settings, and individual matches by hero/map/date. Modal overlay with the same scoring engine as the existing match-search parser; live preview surfaces the top 5 results as the user types.
 - **Recent-matches widget on Settings** — small "last 5 matches" strip on the Settings tab so the user always has context while configuring.
