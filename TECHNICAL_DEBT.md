@@ -204,55 +204,6 @@ from `app.css` — those references survive.
 
 ---
 
-## 8. `cardState` shared prop is a bag of refs + callbacks
-
-**Where:** `frontend/src/types/cardState.ts` + every consumer
-(`MatchesView.vue`, `UnknownMapsView.vue`, `MatchDetailPanel.vue`).
-
-The bundle threads eight unrelated pieces of state through one
-prop:
-
-```ts
-interface CardStateApi {
-  isSelected(id): boolean
-  isSourcesOpen(id): boolean
-  previewOpen: Ref<Record<string, boolean>>
-  previewError: Ref<Record<string, boolean>>
-  toggleExpand(id): void
-  toggleSources(id): void
-  togglePreview(filename): void
-  onPreviewError(filename): void
-}
-```
-
-Two of the fields are unwrapped refs (templates can use
-`previewOpen[f]` directly via Vue auto-unwrap) but the other six
-are bound functions. Consumers reach into the bundle with
-`.value` syntax inside scripts and bare `[]` access inside
-templates — a known auto-unwrap gotcha that CLAUDE.md flags. The
-prop-bundle pattern was sensible at two consumers; it's now at
-three and the per-card behaviour fan-out is growing.
-
-**Plan:**
-
-Split into two narrow APIs:
-
-- `useCardExpand({ kind: 'selection' | 'inline' })` — owns
-  isSelected / toggleExpand. The Unknown view uses the inline
-  variant; MatchesView uses the selection variant via
-  `useSelectedMatch`.
-- `useScreenshotPreviews()` — owns previewOpen / previewError /
-  togglePreview / onPreviewError. Module-singleton'd so card
-  state persists across the tab swap (today's behaviour).
-
-Consumers depend on the narrow API they need; cross-coupled
-parameter passing through App.vue goes away.
-
-**Size:** M.
-**Risk:** Low — typed seam, vue-tsc catches any caller miss.
-
----
-
 ## 9. Stale `deadcode-allow.txt` entries
 
 **Where:** `scripts/deadcode-allow.txt:38-46`.

@@ -15,8 +15,12 @@ import type { CardStateApi } from '../types/cardState'
 //   2. UNKNOWN — no map could be parsed (corrupted screenshot, or a
 //      non-OW PNG in the watched folder).
 //
-// Per-card UI state is shared with MatchesView via the CardStateApi
-// bundle, so the user's expand choices for a record carry across tabs.
+// Per-card UI state comes in via the CardStateApi bundle (owned by
+// App.vue). Post item-8 (TECHNICAL_DEBT.md) every field on the
+// bundle is a function — no `.value` indirection in templates, no
+// nested-ref auto-unwrap gotchas. MatchesView used to share this
+// bundle but the new set-workspace doesn't expose per-card expand
+// state, so UnknownMapsView is the only consumer.
 
 const props = defineProps<{
   unknownRecords:   MatchRecord[]
@@ -253,14 +257,14 @@ function updateThumbPosition(e: MouseEvent) {
                   <a
                     class="source-name"
                     :href="screenshotURL(f, rec.source_dir_ids?.[f] ?? 0)"
-                    :title="cardState.previewOpen.value[f] ? 'Hide preview' : 'Show preview'"
+                    :title="cardState.isPreviewOpen(f) ? 'Hide preview' : 'Show preview'"
                     @click.prevent="cardState.togglePreview(f)"
                   >
-                    <span class="chev small" :class="{ open: cardState.previewOpen.value[f] }">›</span>
+                    <span class="chev small" :class="{ open: cardState.isPreviewOpen(f) }">›</span>
                     <span class="source-name-text">{{ f }}</span>
                   </a>
                   <img
-                    v-if="cardState.previewOpen.value[f] && !cardState.previewError.value[f]"
+                    v-if="cardState.isPreviewOpen(f) && !cardState.hasPreviewError(f)"
                     :src="screenshotURL(f, rec.source_dir_ids?.[f] ?? 0)"
                     :alt="f"
                     class="source-preview"
@@ -268,7 +272,7 @@ function updateThumbPosition(e: MouseEvent) {
                     @click="emit('open-lightbox', f, rec.source_files ?? [], rec.source_dir_ids ?? {})"
                     @error="cardState.onPreviewError(f)"
                   >
-                  <div v-if="cardState.previewOpen.value[f] && cardState.previewError.value[f]" class="source-preview-error">
+                  <div v-if="cardState.isPreviewOpen(f) && cardState.hasPreviewError(f)" class="source-preview-error">
                     Could not load image — check screenshots folder in Settings.
                   </div>
                 </div>
@@ -393,10 +397,10 @@ function updateThumbPosition(e: MouseEvent) {
                 <a
                   class="source-name"
                   :href="screenshotURL(f, rec.source_dir_ids?.[f] ?? 0)"
-                  :title="cardState.previewOpen.value[f] ? 'Hide preview' : 'Show preview'"
+                  :title="cardState.isPreviewOpen(f) ? 'Hide preview' : 'Show preview'"
                   @click.prevent="cardState.togglePreview(f)"
                 >
-                  <span class="chev small" :class="{ open: cardState.previewOpen.value[f] }">›</span>
+                  <span class="chev small" :class="{ open: cardState.isPreviewOpen(f) }">›</span>
                   <span class="source-name-text">{{ f }}</span>
                 </a>
                 <span
@@ -405,7 +409,7 @@ function updateThumbPosition(e: MouseEvent) {
                   :title="`Inserted into the database at ${rec.source_parsed_at[f]} (UTC)`"
                 >{{ formatParsedAt(rec.source_parsed_at[f]) }}</span>
                 <img
-                  v-if="cardState.previewOpen.value[f] && !cardState.previewError.value[f]"
+                  v-if="cardState.isPreviewOpen(f) && !cardState.hasPreviewError(f)"
                   :src="screenshotURL(f, rec.source_dir_ids?.[f] ?? 0)"
                   :alt="f"
                   class="source-preview"
@@ -413,7 +417,7 @@ function updateThumbPosition(e: MouseEvent) {
                   @click="emit('open-lightbox', f, rec.source_files ?? [], rec.source_dir_ids ?? {})"
                   @error="cardState.onPreviewError(f)"
                 >
-                <div v-if="cardState.previewOpen.value[f] && cardState.previewError.value[f]" class="source-preview-error">
+                <div v-if="cardState.isPreviewOpen(f) && cardState.hasPreviewError(f)" class="source-preview-error">
                   Could not load image — check screenshots folder in Settings.
                 </div>
               </div>
