@@ -204,35 +204,6 @@ from `app.css` — those references survive.
 
 ---
 
-## 11. Export schema has one version + no migration path
-
-**Where:** `pkg/app/export.go:50` — `const exportSchemaV1 =
-"recall-export/v1"`.
-
-The export format is hand-versioned but the codebase carries
-only the v1 reader. When the schema evolves the reader has to
-either grow a switch on `Schema` (the typical path) or hard-fail
-on legacy versions. Today's import logic does the latter — any
-non-v1 payload is rejected outright.
-
-**Plan:**
-
-1. Refactor `ImportData` to dispatch on `Schema` first, then
-   call a per-version unmarshaller. v1 is the only entry today.
-2. When v2 is needed, add a `migrate_v1_to_v2(v1) (v2, error)`
-   helper. The reader always accepts v1; the migrator hoists it
-   into v2 in-memory before writing.
-3. Add a CI test that loads the canonical v1 fixture (the
-   pre-1.0 exports the maintainer has on disk) and asserts the
-   reader accepts it without modification.
-
-**Size:** M.
-**Risk:** Med — the import path is a destructive replace
-(`store.Clear()` first), so a regression here can wipe a user's
-DB without recovery.
-
----
-
 ## 12. Two parallel "open the lightbox" paths
 
 **Where:**
