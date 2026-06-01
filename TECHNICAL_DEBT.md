@@ -106,44 +106,6 @@ fuzzer reports; no runtime behaviour change).
 
 ---
 
-## 5. Bundle-size budgets keep ratcheting up; no pruning loop
-
-**Where:** `scripts/check-bundle-size.sh:34`.
-
-| | Initial JS | Total JS | Total CSS |
-|---|---|---|---|
-| **Start** | 130 KB | 250 KB | 120 KB |
-| **Today** | **140 KB** | **320 KB** | **180 KB** |
-| **Headroom now** | ~190 B (135 / 140 KB after current PR set) | 4.5 KB | 4.6 KB |
-
-The initial JS chunk sits at 99.86% of its budget after the
-latest features. One more 200-byte addition tips it over. Every
-PR that has had to bump it has done so as a one-line "deliberate
-bump" — but the trend is monotonic; nothing in CI prunes.
-
-**Plan:**
-
-1. Audit the initial chunk with `npx vite-bundle-visualizer` (or
-   any analyser). Big surface candidates in App.vue:
-   - the localStorage-key duplication (workaround for
-     keeping the tour controller out of the initial chunk) —
-     extract a tiny `src/composables/storageKeys.ts` (single
-     literal file) so both readers import the same source of
-     truth without dragging the rest of `useOnboardingTour`.
-   - The five static-imported "small modals" (parse chip,
-     skeleton, etc.) — re-evaluate which actually need to be in
-     the initial chunk; lazy-load anything not visible on first
-     paint.
-2. Reset the budgets to current measurement + 1 KB and require
-   PRs to bump explicitly (the existing rule, but enforced from
-   a lower floor).
-
-**Size:** M.
-**Risk:** Low (lazy-loading bugs are caught by the
-`App.lazy-views.test.ts` regression suite).
-
----
-
 ## 6. Coverage gaps on highest-traffic surfaces
 
 **Frontend (Vitest line coverage, `make cover-frontend`):**
