@@ -116,7 +116,7 @@ jobs:
       # typos binary so the runner doesn't need a separate install
       # step; config lives in _typos.toml at the repo root.
       - name: Spell-check (typos)
-        uses: crate-ci/typos@7b04f660f4ee4f048d18fd341887cf28dfbedfe2  # v1.46.3
+        uses: crate-ci/typos@f8a58b6b53f2279f71eb605f03a4ae4d10608f45  # v1.47.0
 
       # Markdown lint — mirrors `make lint-md`. Config in
       # .markdownlint-cli2.yaml at the repo root; npx pulls the
@@ -520,11 +520,11 @@ jobs:
           echo "Tesseract $installed matches pinned major.minor $expected_mm"
 
       - name: Install schemathesis
-        # Pinned to v3.x — v4 renamed --base-url → --url and changed
-        # several flag/output shapes (e.g. --hypothesis-max-examples →
-        # --max-examples). Bump deliberately when ready to update the
-        # CLI invocation below.
-        run: pipx install 'schemathesis>=3.36,<4'
+        # Pin lives in tool-versions.env (SCHEMATHESIS_VERSION) and is
+        # exposed via $GITHUB_ENV by the "Load tool versions" step at
+        # the top of this job. The CLI shape (--url, --max-examples,
+        # no --experimental flag) lives in scripts/check-api-drift.sh.
+        run: pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
 
       - name: Build + boot + fuzz + teardown via shared script
         # scripts/check-api-drift.sh handles the build-serveronly →

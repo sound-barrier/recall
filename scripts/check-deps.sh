@@ -144,6 +144,10 @@ check "Semgrep" "$SEMGREP_VERSION" "$SEMGREP_LATEST" "tool-versions.env"
 HONKIT_LATEST=$(npm_latest honkit)
 check "Honkit" "$HONKIT_VERSION" "$HONKIT_LATEST" "tool-versions.env"
 
+# schemathesis — Python package; PyPI is the source of truth.
+SCHEMATHESIS_LATEST=$(curl -fsSL https://pypi.org/pypi/schemathesis/json | jq -r .info.version)
+check "schemathesis" "$SCHEMATHESIS_VERSION" "$SCHEMATHESIS_LATEST" "tool-versions.env"
+
 # Verify literal version strings in workflow files match tool-versions.env.
 # GitHub Actions `uses:` refs cannot interpolate expressions, so the
 # crate-ci/typos action ref stays a literal SHA pin. The trailing

@@ -102,11 +102,11 @@ case "$PLATFORM" in
 
         # schemathesis — OpenAPI ↔ server contract fuzzer. Pipx is
         # installed via brew above; ensure pipx's bin dir is on PATH
-        # so the install lands somewhere usable. Pin matches the
-        # debian / devcontainer / CI install paths.
+        # so the install lands somewhere usable. Pin lives in
+        # tool-versions.env (SCHEMATHESIS_VERSION).
         pipx ensurepath >/dev/null
-        log "pipx schemathesis (>=3.36,<4)"
-        pipx install 'schemathesis>=3.36,<4' >/dev/null || true
+        log "pipx schemathesis ${SCHEMATHESIS_VERSION}"
+        pipx install "schemathesis==${SCHEMATHESIS_VERSION}" >/dev/null || true
         ;;
 
     debian)
@@ -201,10 +201,12 @@ PC
 
         # schemathesis — OpenAPI ↔ server contract fuzzer. Powers
         # `make check-api-drift` and the pre-push lefthook hook of
-        # the same name. Pinned to v3.x (v4 renamed --base-url →
-        # --url and changed several flag shapes).
-        log "schemathesis (>=3.36,<4)"
-        pipx install 'schemathesis>=3.36,<4'
+        # the same name. Pin lives in tool-versions.env
+        # (SCHEMATHESIS_VERSION). v4 (4.21.0+) is the floor —
+        # earlier versions used --base-url instead of --url and
+        # required --experimental=openapi-3.1.
+        log "schemathesis ${SCHEMATHESIS_VERSION}"
+        pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
         ;;
 esac
 

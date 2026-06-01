@@ -21,7 +21,7 @@ log() { printf '\033[1;34m[ postCreate ]\033[0m %s\n' "$*"; }
 # value.
 WAILS_VERSION="v2.12.0"
 HADOLINT_VERSION="v2.14.0"
-LEFTHOOK_VERSION="2.1.8"
+LEFTHOOK_VERSION="2.1.9"
 TRIVY_VERSION="0.70.0"
 
 # shellcheck source=../tool-versions.env disable=SC1091
@@ -115,11 +115,12 @@ pipx install "semgrep==${SEMGREP_VERSION}"
 
 # ─── schemathesis (OpenAPI ↔ server fuzzer) ──────────────────────────
 # Powers `make check-api-drift` + the pre-push lefthook hook of the
-# same name. Pinned to v3.x (v4 renamed --base-url → --url and
-# changed several flag shapes); matches the initialize.sh + CI
-# install paths.
-log "schemathesis (>=3.36,<4)"
-pipx install 'schemathesis>=3.36,<4'
+# same name. v4 (4.21.0) is the floor — earlier versions used
+# --base-url instead of --url and didn't support OpenAPI 3.1
+# without --experimental. Pin lives in tool-versions.env
+# (SCHEMATHESIS_VERSION); the value here is sourced from there.
+log "schemathesis ${SCHEMATHESIS_VERSION}"
+pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
 
 # ─── direnv shell hook ────────────────────────────────────────────────
 # The Dev Containers spec gives the `vscode` user a bash login shell.
