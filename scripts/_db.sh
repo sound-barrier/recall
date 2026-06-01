@@ -5,40 +5,82 @@
 # Not executable on its own (leading underscore = "library, not a
 # command"). Provides:
 #
-#   recall_db_path  → echoes the path the Recall app actually uses on this
-#                     OS, honoring the RECALL_DB env override.
-#   require_new_schema → exits 1 with a clear message if the DB still has
-#                     the pre-PR-#45 `match_results` table (i.e. hasn't
-#                     been wiped + recreated against the per-screenshot-
-#                     type schema).
-#   parent_tables   → space-separated list of the five parent tables.
-#   child_tables    → space-separated list of the five child tables (in
-#                     the order their CASCADE deletes should fire).
+#   recall_base_dir       → echoes the install-wide base directory
+#                           (parent of profiles/), honoring
+#                           RECALL_DATA_DIR.
+#   recall_active_profile → echoes the profile name the scripts should
+#                           operate on. Resolves RECALL_PROFILE override,
+#                           then <base>/profiles.json's active_profile,
+#                           then falls back to "main".
+#   recall_db_path        → echoes the SQLite path for the currently-
+#                           active profile, honoring the RECALL_DB env
+#                           override.
+#   require_new_schema    → exits 1 with a clear message if the DB is
+#                           missing or still carries the pre-PR-#45
+#                           `match_results` table.
+#   parent_tables         → space-separated list of the five parent tables.
+#   child_tables          → space-separated list of the five child tables
+#                           (in the order their CASCADE deletes should fire).
 
-# recall_db_path resolves the SQLite path, mirroring
-# pkg/app/settings.go::appDataDir. Resolution order:
-#   1. RECALL_DB        — full path to the .db file (most specific).
-#   2. RECALL_DATA_DIR  — root dir; appends /db/recall.db. The repo's
-#                         .envrc sets this to $PWD/data when direnv is
-#                         active, so `wails dev` + scripts share the
-#                         in-repo dev DB without further config.
-#   3. Platform user-config dir — what the released app uses.
+# recall_base_dir resolves the install-wide base directory — the parent
+# of profiles/. Mirrors pkg/app/settings.go::appBaseDir. Resolution:
+#   1. RECALL_DATA_DIR — full override (the repo's .envrc sets this to
+#                        $PWD/data when direnv is active, so `wails dev`
+#                        and the db-*.sh scripts share the in-repo dev
+#                        data without further config).
+#   2. Platform user-config dir — what the released app uses.
+recall_base_dir() {
+  if [[ -n "${RECALL_DATA_DIR:-}" ]]; then
+    printf '%s\n' "$RECALL_DATA_DIR"
+    return
+  fi
+  case "$(uname -s)" in
+    Darwin) printf '%s\n' "$HOME/Library/Application Support/Recall" ;;
+    Linux) printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/recall" ;;
+    MINGW* | MSYS* | CYGWIN*) printf '%s\n' "$APPDATA/Recall" ;;
+    *) printf '%s\n' "$HOME/.config/recall" ;; # best-effort
+  esac
+}
+
+# recall_active_profile resolves which profile's DB the scripts should
+# act on. Resolution order:
+#   1. RECALL_PROFILE  — explicit override (mirrors the app's
+#                        --profile=<name> CLI flag).
+#   2. profiles.json   — reads active_profile from <base>/profiles.json
+#                        if it exists.
+#   3. "main"          — fresh-install default; works even before the
+#                        app has been launched.
+recall_active_profile() {
+  if [[ -n "${RECALL_PROFILE:-}" ]]; then
+    printf '%s\n' "$RECALL_PROFILE"
+    return
+  fi
+  local meta
+  meta="$(recall_base_dir)/profiles.json"
+  if [[ -f "$meta" ]]; then
+    # No jq dependency — pluck "active_profile":"…" with sed.
+    local name
+    name=$(sed -n 's/.*"active_profile"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$meta" | head -n1)
+    if [[ -n "$name" ]]; then
+      printf '%s\n' "$name"
+      return
+    fi
+  fi
+  printf '%s\n' main
+}
+
+# recall_db_path resolves the SQLite path, mirroring the layout that
+# pkg/app/profile.go computes from <base>/profiles/<active>/db/.
+# Resolution order:
+#   1. RECALL_DB — full path to the .db file (most specific override).
+#   2. <base>/profiles/<active>/db/recall.db
 # Does NOT verify the file exists — callers can `[[ -f … ]]` if needed.
 recall_db_path() {
   if [[ -n "${RECALL_DB:-}" ]]; then
     printf '%s\n' "$RECALL_DB"
     return
   fi
-  if [[ -n "${RECALL_DATA_DIR:-}" ]]; then
-    printf '%s\n' "$RECALL_DATA_DIR/db/recall.db"
-    return
-  fi
-  case "$(uname -s)" in
-    Darwin) printf '%s\n' "$HOME/Library/Application Support/Recall/db/recall.db" ;;
-    Linux) printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/recall/db/recall.db" ;;
-    MINGW* | MSYS* | CYGWIN*) printf '%s\n' "$APPDATA/Recall/db/recall.db" ;;
-    *) printf '%s\n' "$HOME/.config/recall/db/recall.db" ;; # best-effort
-  esac
+  printf '%s/profiles/%s/db/recall.db\n' "$(recall_base_dir)" "$(recall_active_profile)"
 }
 
 parent_tables() {
@@ -59,7 +101,9 @@ require_new_schema() {
   local db=$1
   if ! [[ -f "$db" ]]; then
     echo "no DB at $db" >&2
-    echo "→ launch the Recall app once so it can create the schema, or set RECALL_DB=<path>" >&2
+    echo "→ launch the Recall app once so it can create the schema," >&2
+    echo "  or set RECALL_DB=<path>, RECALL_PROFILE=<name>, or" >&2
+    echo "  RECALL_DATA_DIR=<base> to point at an existing install." >&2
     exit 1
   fi
   local found

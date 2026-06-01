@@ -150,26 +150,51 @@ Grafana stack can scrape it. See
 
 ## Where things live on disk
 
-Recall keeps state in your OS's user-config directory. The paths
-are in the per-platform install guides but for the record:
+Recall keeps state in your OS's user-config directory. The
+install-wide base directory:
 
-| OS | Config + database |
+| OS | Base directory |
 |---|---|
 | macOS | `~/Library/Application Support/Recall/` |
 | Linux | `~/.config/recall/` (or `$XDG_CONFIG_HOME/recall/`) |
 | Windows | `%AppData%\Recall\` |
 
-Inside that folder:
+Inside the base directory, Recall organises everything by
+**profile**. Each profile is a separate OW account (or alt, or
+any logical grouping you want) with its own settings and match
+database — switching profiles via the masthead chip swaps every
+data surface (dossier, heatmap, Archive) to that profile's history.
+
+```text
+<base>/
+├── profiles.json        ← which profile is active + the list
+└── profiles/
+    ├── main/            ← the default profile (created on first launch)
+    │   ├── settings.json
+    │   └── db/recall.db
+    └── alt/             ← any profile you create from the chip
+        ├── settings.json
+        └── db/recall.db
+```
+
+Inside each profile directory:
 
 - `settings.json` — the screenshots folder, Tesseract path, theme,
   toggle states. One JSON object, human-editable if you want.
-- `db/recall.db` — SQLite database of every parsed match.
-  Single-file; back up by copying.
+  Each profile has its own; switching profiles loads a different
+  file.
+- `db/recall.db` — SQLite database of every parsed match for that
+  profile. Single-file; back up by copying.
 
-Wiping `db/recall.db` (or using **Settings → Advanced → Clear Parse
-Database**) deletes match history but leaves screenshots and
+Wiping a profile's `db/recall.db` (or using **Settings → Advanced
+→ Clear Parse Database** while that profile is active) deletes
+match history for that profile but leaves screenshots and
 settings alone. Re-running Parse against the same screenshot
-folder rebuilds the database from scratch.
+folder rebuilds it from scratch.
+
+You can scope a single launch to a specific profile via
+`--profile=<name>` on the binary — useful for opening an alt
+account once without changing the persisted active profile.
 
 ## Next chapter
 

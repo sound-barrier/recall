@@ -99,19 +99,35 @@ Exits with a summary of passed / failed layers.
 ## Database helpers
 
 All `db-*.sh` scripts resolve the SQLite path via `scripts/_db.sh`'s
-`recall_db_path`, which mirrors `pkg/app/settings.go::appDataDir`:
+`recall_db_path`. The app stores each profile's settings + DB under
+`<base>/profiles/<name>/`, so the script chains three lookups: the
+install-wide base directory, the active profile name, then the DB file
+inside that profile's directory.
 
-| OS | Default |
+| OS | Default base directory |
 |---|---|
-| macOS | `~/Library/Application Support/Recall/db/recall.db` |
-| Linux | `~/.config/recall/db/recall.db` (or `$XDG_CONFIG_HOME/recall/db/`) |
-| Windows | `%AppData%\Recall\db\recall.db` |
+| macOS | `~/Library/Application Support/Recall/` |
+| Linux | `~/.config/recall/` (or `$XDG_CONFIG_HOME/recall/`) |
+| Windows | `%AppData%\Recall\` |
 
-Override with `RECALL_DB=<path>` for any script when inspecting a copy
-or a hermetic fixture DB. The scripts also honor `RECALL_DATA_DIR`
-(root dir; the script appends `/db/recall.db`) — the repo's `.envrc`
-sets this to `$PWD/data` so `wails dev` + the `db-*.sh` scripts share
-the in-repo dev DB automatically when direnv is loaded.
+The active profile comes from `<base>/profiles.json`'s
+`active_profile` field, falling back to `main` on a fresh install
+where the app hasn't yet been launched. So the default DB path on
+macOS — with the default `main` profile — resolves to
+`~/Library/Application Support/Recall/profiles/main/db/recall.db`.
+
+Overrides (most-specific wins):
+
+- **`RECALL_DB=<full-path>`** — point at any `.db` file directly. Use
+  this when inspecting a copy, a hermetic fixture, or a peer's
+  exported DB.
+- **`RECALL_PROFILE=<name>`** — operate on a specific profile (mirrors
+  the app's `--profile=<name>` CLI flag). Doesn't switch the app's
+  active profile; just scopes this script invocation.
+- **`RECALL_DATA_DIR=<base>`** — override the install-wide base
+  directory. The repo's `.envrc` sets this to `$PWD/data` so
+  `wails dev` and the `db-*.sh` scripts share the in-repo dev data
+  automatically when direnv is loaded.
 
 Post-PR-#45 the schema is 3NF: five **parent** tables
 (`summary_screenshots`, `scoreboard_screenshots`, `personal_screenshots`,
@@ -277,9 +293,16 @@ script exit via a `trap`.
 Shared helper library for the `db-*.sh` scripts. Not executable on its
 own. Provides:
 
-- `recall_db_path` — echo the platform-canonical DB path (or the
-  `RECALL_DB` override). Mirrors `pkg/app/settings.go::appDataDir`.
+- `recall_base_dir` — echo the install-wide base directory (parent of
+  `profiles/`), honoring `RECALL_DATA_DIR`. Mirrors
+  `pkg/app/settings.go::appBaseDir`.
+- `recall_active_profile` — echo the profile name the scripts should
+  operate on. Resolves `RECALL_PROFILE`, then `profiles.json`'s
+  `active_profile`, then `main`.
+- `recall_db_path` — echo the SQLite path for the currently-active
+  profile (`<base>/profiles/<active>/db/recall.db`), or the `RECALL_DB`
+  override if set.
 - `parent_tables` / `child_tables` — newline-separated table-name lists
   for loops.
 - `require_new_schema "$db"` — exit 1 with a clear message if the DB
-  still carries the pre-PR-#45 `match_results` table.
+  is missing or still carries the pre-PR-#45 `match_results` table.
