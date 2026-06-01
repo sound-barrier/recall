@@ -204,29 +204,6 @@ from `app.css` — those references survive.
 
 ---
 
-## 9. Stale `deadcode-allow.txt` entries
-
-**Where:** `scripts/deadcode-allow.txt:38-46`.
-
-```text
-App\.SetLeaverAnnotation
-App\.ClearLeaverAnnotation
-```
-
-These methods no longer exist on `*App` in `pkg/app/`. The
-allow-list entries were added when the methods were "kept for
-back-compat" but the cleanup that removed them never updated the
-allow file. Current `deadcode` runs ignore them silently because
-nothing in the call graph matches.
-
-**Plan:** delete the two lines. Run `make dead-code-go` to
-confirm no regressions.
-
-**Size:** S.
-**Risk:** Low.
-
----
-
 ## 10. No SQLite migrations framework
 
 **Where:** `pkg/db/db.go::schemaStatements`.
