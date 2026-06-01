@@ -14,7 +14,7 @@ import (
 // Multiple profiles — main + alt accounts each with their own
 // settings + SQLite DB. The profile manager owns the on-disk layout:
 //
-//	<base>/                  ← was the per-install data dir
+//	<base>/                  ← install root
 //	├── profiles.json         {"active_profile":"main","profiles":[…]}
 //	└── profiles/
 //	    ├── main/
@@ -24,10 +24,9 @@ import (
 //	        ├── settings.json
 //	        └── db/recall.db
 //
-// LoadProfiles auto-migrates a pre-profile layout (settings.json and/or
-// db/ directly at <base>/) into profiles/main/ on first call. Fresh
-// installs get an empty profiles/main/ + profiles.json with main as
-// active.
+// LoadProfiles on a fresh install creates an empty profiles/main/
+// directory + a profiles.json declaring main as active. There is no
+// migration from any older layout — this is a no-migration cut-over.
 
 // Sentinel errors — HTTP handlers errors.Is these to map 4xx codes.
 var (
@@ -69,8 +68,7 @@ type profilesFile struct {
 
 // LoadProfiles opens (and if necessary initializes) the profile state
 // under baseDir. Safe to call repeatedly — idempotent on a steady
-// state, migrates exactly once on first call against a pre-profile
-// layout, creates the default profile on fresh installs.
+// state, creates an empty default profile on fresh installs.
 func LoadProfiles(baseDir string) (*Profiles, error) {
 	p := &Profiles{baseDir: baseDir}
 	if err := p.load(); err != nil {
@@ -107,42 +105,25 @@ func (p *Profiles) load() error {
 		}
 		return p.ensureDir(p.active)
 	case errors.Is(err, os.ErrNotExist):
-		// Fresh install OR pre-profile layout. Decide by probing for
-		// pre-profile artifacts.
-		return p.initOrMigrate()
+		// Fresh install — stand up an empty default profile and
+		// write profiles.json. There is no migration from any prior
+		// layout — see the package doc comment.
+		return p.initFresh()
 	default:
 		return fmt.Errorf("profiles: read profiles.json: %w", err)
 	}
 }
 
-// initOrMigrate runs on the no-profiles-json branch. If the base dir
-// already containsProfile a settings.json or db/ from the pre-profile layout,
-// move them into profiles/main/; otherwise just stand up an empty
-// profiles/main/. Either way the default profile becomes active and
-// profiles.json is written.
-func (p *Profiles) initOrMigrate() error {
+// initFresh runs on the no-profiles-json branch. Creates an empty
+// profiles/main/ directory and writes profiles.json declaring main
+// active. Does NOT touch any pre-existing files at the base — this
+// is a no-migration cut-over.
+func (p *Profiles) initFresh() error {
 	p.active = DefaultProfileName
 	p.list = []string{DefaultProfileName}
 	if err := p.ensureDir(p.active); err != nil {
 		return err
 	}
-
-	// Migrate pre-profile artifacts if present.
-	oldSettings := filepath.Join(p.baseDir, "settings.json")
-	if _, statErr := os.Stat(oldSettings); statErr == nil {
-		dst := filepath.Join(p.ProfileDir(p.active), "settings.json")
-		if err := os.Rename(oldSettings, dst); err != nil {
-			return fmt.Errorf("profiles: migrate settings.json: %w", err)
-		}
-	}
-	oldDB := filepath.Join(p.baseDir, "db")
-	if info, statErr := os.Stat(oldDB); statErr == nil && info.IsDir() {
-		dst := filepath.Join(p.ProfileDir(p.active), "db")
-		if err := os.Rename(oldDB, dst); err != nil {
-			return fmt.Errorf("profiles: migrate db dir: %w", err)
-		}
-	}
-
 	return p.save()
 }
 
