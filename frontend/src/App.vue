@@ -253,16 +253,16 @@ const { onTabKeydown, focusMain } = useTabKeyboardNav(view, goToView, visibleTab
 const focusedCardIndex = ref(-1)
 const openCheatsheet = ref(false)
 
-// Programmatically focus the card at the given index in the
-// filteredSorted list. Used by the j/k handlers below; we
-// queryselector by data-card-index because the card lives several
-// levels deep inside MatchGroupSection's recursive render and
-// template refs would be awkward.
+// Programmatically focus the leaf-row at the given index in the
+// narrowedRecords list. Used by the j/k handlers below; we query-
+// select by data-card-index because the row lives inside
+// MatchesView's grouped section list and template refs would be
+// awkward across the section dividers.
 async function focusCardByIndex(idx: number) {
   focusedCardIndex.value = idx
   await nextTick()
   const el = document.querySelector<HTMLElement>(
-    `article.match[data-card-index="${idx}"]`,
+    `.leaf-row[data-card-index="${idx}"]`,
   )
   el?.focus({ preventScroll: false })
   if (el) el.scrollIntoView({ block: 'nearest', behavior: 'auto' })
@@ -936,17 +936,31 @@ const cardState = {
 // predicates gate view-specific shortcuts. See UI_RECOMMENDATIONS.md
 // item 4 for the design + FEATURES.md for the cheatsheet contract.
 useKeyboardShortcuts([
-  // Global: focus the FilterRail's match-search input. Input-gated:
-  // only fires OUTSIDE inputs (so typing `/` in a search field
-  // doesn't recursively re-focus). Suppressed while the detail
-  // panel is open — the panel acts as a modal dialog and every
-  // keyboard action stays inside it.
+  // Global: open the Narrow panel and focus its search input. The
+  // search lives inside the narrow popover (#np-search) — clicking
+  // the dossier trigger surfaces it; we then wait a tick for the
+  // teleported popover to mount before stealing focus. Input-gated
+  // so typing `/` in any input is a literal character, and
+  // suppressed while the detail panel is open (modal contract).
   {
     key: '/',
     when: () => !selection.isOpen.value,
     handler: () => {
-      const el = document.getElementById('match-search')
-      if (el instanceof HTMLInputElement) el.focus()
+      void (async () => {
+        if (view.value !== 'matches') await goToView('matches')
+        await nextTick()
+        // If the narrow popover isn't open, click its dossier
+        // trigger to open it.
+        if (!document.getElementById('narrow-popover')) {
+          const trigger = document.querySelector<HTMLButtonElement>(
+            '.dossier-actions .dossier-btn.primary',
+          )
+          trigger?.click()
+          await nextTick()
+        }
+        const el = document.getElementById('np-search')
+        if (el instanceof HTMLInputElement) el.focus()
+      })()
     },
   },
   // Global: open the cheatsheet. allowInInput so the user can hit
@@ -972,12 +986,14 @@ useKeyboardShortcuts([
   }),
   // Matches view: j/k move card focus, no wrap. Suppressed when the
   // detail panel is open — the panel's own keydown listener takes
-  // over (j/k paginates within the open panel).
+  // over (j/k paginates within the open panel). The list driving the
+  // index is the same narrowedRecords MatchesView renders, so the
+  // index always points at the row the user sees.
   {
     key: 'j',
     when: () => view.value === 'matches' && !selection.isOpen.value,
     handler: () => {
-      const len = filters.filteredSorted.value.length
+      const len = matchesNarrow.narrowedRecords.value.length
       if (len === 0) return
       const next = Math.min(focusedCardIndex.value + 1, len - 1)
       if (next === focusedCardIndex.value && focusedCardIndex.value !== -1) return
@@ -988,7 +1004,7 @@ useKeyboardShortcuts([
     key: 'k',
     when: () => view.value === 'matches' && !selection.isOpen.value,
     handler: () => {
-      const len = filters.filteredSorted.value.length
+      const len = matchesNarrow.narrowedRecords.value.length
       if (len === 0) return
       // First k from "no card focused" lands on card 0; otherwise
       // step back, clamped at 0.
@@ -1004,7 +1020,7 @@ useKeyboardShortcuts([
     key: 'e',
     when: () => view.value === 'matches' && focusedCardIndex.value >= 0,
     handler: () => {
-      const rec = filters.filteredSorted.value[focusedCardIndex.value]
+      const rec = matchesNarrow.narrowedRecords.value[focusedCardIndex.value]
       if (!rec) return
       if (selection.isOpen.value && selection.selectedKey.value === rec.match_key) {
         selection.close()
@@ -1020,7 +1036,7 @@ useKeyboardShortcuts([
     key: 't',
     when: () => view.value === 'matches' && focusedCardIndex.value >= 0,
     handler: async () => {
-      const rec = filters.filteredSorted.value[focusedCardIndex.value]
+      const rec = matchesNarrow.narrowedRecords.value[focusedCardIndex.value]
       if (!rec) return
       if (selection.selectedKey.value !== rec.match_key) {
         await toggleExpand(rec.match_key)
@@ -1432,6 +1448,7 @@ useEventStream({
           :records="records"
           :loading="loading"
           :narrow="matchesNarrow"
+          :focused-card-index="focusedCardIndex"
           @open-match="(k: string) => selection.open(k)"
           @narrow-open="onMatchesNarrowOpen"
           @hide-matches="onHideMatches"

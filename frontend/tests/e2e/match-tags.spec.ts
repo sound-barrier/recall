@@ -1,21 +1,20 @@
 /**
  * Match-tags E2E.
  *
- * Tags are stored as a child of the match annotation (mirroring the
- * existing `members` field). The full flow exercised here is:
+ * Tags are stored as a child of the match annotation. The full flow:
  *
- *   1. user expands a match card
- *   2. clicks the `stack` quick-add toggle in the inline tags editor
- *   3. UI fires PUT /api/v1/matches/{matchKey}/annotation with
+ *   1. user clicks a `.leaf-row` → MatchDetailPanel opens
+ *   2. inside the panel, clicks the `stack` quick-add button
+ *   3. UI fires `PUT /api/v1/matches/{matchKey}/annotation` with
  *      `{ ..., tags: ["stack"] }`
- *   4. App.vue re-fetches /api/v1/matches; the chip renders on the card
- *   5. FilterRail's Tags multi-select shows `stack`; selecting it
- *      narrows the visible match list to the tagged record (OR
- *      semantics across multiple selected tags).
+ *   4. App.vue re-fetches `/api/v1/matches`; the tag chip renders
+ *      on the matching `.leaf-row` (as `.leaf-tag`)
+ *   5. opening the Narrow panel surfaces `#stack` as a tag chip;
+ *      clicking it narrows the leaves list to the tagged record
  *
  * Same `page.route()` mocking pattern as match-deletion.spec.ts —
- * tracks state in closure-captured `tags` so subsequent GETs see the
- * updated annotation.
+ * tracks state in closure-captured `tags` so subsequent GETs see
+ * the updated annotation.
  */
 import type { Route } from '@playwright/test'
 
@@ -49,8 +48,8 @@ function record(matchKey: string, tags: string[] = []) {
   }
 }
 
-test.describe.skip('match tags — inline editor + filter', () => {
-  test('quick-add `stack` tag persists + chip renders on the card', async ({ page }) => {
+test.describe('match tags — inline editor + filter', () => {
+  test('quick-add `stack` tag persists + chip renders on the row', async ({ page }) => {
     let tags: string[] = []
     let captured: Record<string, unknown> | null = null
 
@@ -70,20 +69,23 @@ test.describe.skip('match tags — inline editor + filter', () => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
     await page.locator('.leaf-row').first().click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
 
     // The quick-add buttons are toggle controls — one per named tag.
-    // Data-attribute selectors are cheaper + more durable than aria
-    // labels for tag values that may localise later.
+    // Data-attribute selectors are cheaper + more durable than text.
     await page.locator('button[data-tag-add="stack"]').click()
 
     // The PUT body carries the full annotation row with `tags`.
     await expect.poll(() => (captured?.tags as string[]) ?? []).toEqual(['stack'])
 
-    // After the post-PUT reload, the chip appears on the card.
-    await expect(page.locator('.match-tag').filter({ hasText: /stack/i })).toBeVisible()
+    // After the post-PUT reload, the chip appears on the leaf-row.
+    // The MatchDetailPanel is still open over the row; close it so
+    // the leaf-row is visible to the assertion.
+    await page.keyboard.press('Escape')
+    await expect(page.locator('.leaf-row .leaf-tag')).toContainText('stack')
   })
 
-  test('FilterRail Tags filter — OR-narrows to matching cards', async ({ page }) => {
+  test('Narrow panel Tags chip — picking `#stack` narrows to tagged rows', async ({ page }) => {
     const records = [
       record('match:1', ['stack']),
       record('match:2', ['stream']),
@@ -101,16 +103,18 @@ test.describe.skip('match tags — inline editor + filter', () => {
     await page.locator('#tab-matches').click()
     await expect(page.locator('.leaf-row')).toHaveCount(3)
 
-    // Open the Tags filter and pick `stack`. The filter trigger is the
-    // shared MultiSelectField shape used by Mode/Map/Hero/etc., so
-    // `aria-label="Tags filter, …"` is the stable selector.
-    await page.locator('button[aria-label*="Tags filter"]').click()
-    await page.locator('.mf-row', { hasText: 'stack' }).click()
-    // Close the popover so the card grid is the only foreground.
-    await page.keyboard.press('Escape')
+    // Open the Narrow panel via the dossier trigger. The tag chips
+    // live inside `.np-section` blocks under the "Tags" eyebrow.
+    await page.locator('.dossier-btn.primary', { hasText: /narrow/i }).click()
+    await expect(page.locator('#narrow-popover')).toBeVisible()
+    await page.locator('.np-chip', { hasText: '#stack' }).click()
 
     // Only the `stack`-tagged match remains.
+    await expect(page.locator('#narrow-popover .np-chip.picked', { hasText: '#stack' })).toBeVisible()
+    // Close the popover so the chip + visible leaves are the only
+    // foreground.
+    await page.locator('.np-close').click()
     await expect(page.locator('.leaf-row')).toHaveCount(1)
-    await expect(page.locator('.match .match-tag').filter({ hasText: /stack/i })).toBeVisible()
+    await expect(page.locator('.leaf-row .leaf-tag')).toContainText('stack')
   })
 })
