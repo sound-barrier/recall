@@ -817,6 +817,24 @@ function onFirstRunDismiss(renamedTo: string | null) {
   }
 }
 
+// Bridge the narrow-panel search text into `filters.matchQuery`.
+// `matchQuery` is the source `searchClauses` is parsed from, and
+// `searchClauses` feeds MatchCardExpanded's `<mark class="note-hit">`
+// hit-highlighter inside the detail panel. Without this wire the
+// hit-highlight branch is unreachable — see TECHNICAL_DEBT.md item 19.
+//
+// One-directional: the narrow panel's input is the only writer; the
+// watcher syncs into matchQuery so highlight markup updates as the
+// user types. `useMatchFilters`'s own `reset()` still clears the ref
+// the legacy way; nothing reads matchQuery for filtering anymore
+// (narrowing happens via useMatchesNarrow), so a brief lag in either
+// direction is harmless.
+watch(
+  () => matchesNarrowState.searchText.value,
+  (next) => { filters.matchQuery.value = next },
+  { immediate: true },
+)
+
 // Search → panel auto-track. When the panel is open AND the user
 // is actively searching (any clauses parsed), the panel selection
 // follows the first hit so the highlighted content is visible

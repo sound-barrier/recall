@@ -7,12 +7,11 @@
  * into it. Empty-note records skip the preview swap and surface the
  * textarea directly so the user can type their first character.
  *
- * Pre-redesign this spec also covered hit-highlighting (`<mark
- * class="note-hit">`) for the active search query. The narrow-panel
- * search doesn't currently feed `filters.matchQuery` (the ref the
- * highlighter reads), so the highlight branch is dead-but-wired —
- * tracked in TECHNICAL_DEBT.md. Those tests are intentionally not
- * resurrected here; restore them alongside the wiring fix.
+ * Includes hit-highlighting (`<mark class="note-hit">`) for the
+ * active narrow-panel search query — App.vue wires
+ * `matchesNarrowState.searchText` → `filters.matchQuery`
+ * (TECHNICAL_DEBT.md item 19) so `searchClauses` lights up and
+ * MatchCardExpanded renders `<mark>` around matching note segments.
  */
 import type { Route } from '@playwright/test'
 
@@ -107,6 +106,43 @@ test.describe('match notes — preview / textarea swap', () => {
     const preview = page.locator('.match-notes-preview')
     await expect(preview).toBeVisible()
     await expect(preview).toContainText('absolute clutch finish, MVP nano')
+  })
+
+  test('narrow-panel search highlights matching words inside the note preview', async ({ page }) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([record('match-2026-05-10T22-00-00', 'absolute clutch finish, MVP nano')]),
+      })
+    })
+
+    await page.goto('/')
+    await page.locator('#tab-matches').click()
+
+    // Open the narrow popover via `/` BEFORE opening the detail
+    // panel — the panel's focus trap captures keystrokes once open,
+    // so we have to land the search query first. App.vue's watcher
+    // pipes searchText → matchQuery → searchClauses on every
+    // keystroke, so by the time we click the row the highlighter
+    // is already armed.
+    await page.locator('.brand').first().click()
+    await page.keyboard.press('/')
+    const search = page.locator('#np-search')
+    await expect(search).toBeFocused()
+    await search.fill('clutch')
+
+    // Dismiss the popover (Esc) and open the detail panel.
+    await page.keyboard.press('Escape')
+    await page.locator('.leaf-row').first().click()
+    const preview = page.locator('.match-notes-preview')
+    await expect(preview).toBeVisible()
+
+    // The hit-highlight branch lights up: exactly one mark.note-hit
+    // wraps the literal "clutch" inside the preview.
+    const hit = preview.locator('mark.note-hit')
+    await expect(hit).toHaveCount(1)
+    await expect(hit).toHaveText('clutch')
   })
 
   test('record with no note skips the preview swap — textarea renders directly', async ({ page }) => {

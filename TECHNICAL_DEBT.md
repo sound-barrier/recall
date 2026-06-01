@@ -229,40 +229,6 @@ actually bites before paying this cost.
 
 ---
 
-## 19. `useMatchFilters.matchQuery` is dead but its `searchClauses` still feed the hit-highlighter
-
-**Where:** `frontend/src/composables/useMatchFilters.ts:71`
-exports `matchQuery` and a `searchClauses` computed parsed from
-it. The narrow-panel search lives on `useMatchesNarrow.searchText`
-and writes nowhere else. `matchQuery` is never written outside
-`reset()` — meaning `searchClauses.value.length` is always 0.
-
-`MatchCardExpanded.vue` reads `searchClauses` to build the
-`mark.note-hit` highlight markup. With no clauses ever produced,
-the highlight branch is unreachable: typing a query in the narrow
-panel narrows the list but doesn't highlight hits inside the
-expanded note preview.
-
-This is why the pre-redesign `match-notes-search.spec.ts`
-hit-highlight tests stayed skipped through the item-1 burn-down —
-the feature is wired but dead. The current spec only covers the
-preview / textarea swap.
-
-**Plan:**
-
-Wire `matchesNarrowState.searchText` → `filters.matchQuery` via
-a one-line watcher in App.vue. Or simpler: drop `matchQuery` from
-`useMatchFilters` entirely and have `MatchCardExpanded` accept the
-search term as a prop from MatchesView (which already owns
-`searchText`). Either way, re-arm the hit-highlight tests once
-the wiring lands.
-
-**Size:** S.
-**Risk:** Low — the highlight is a passive render branch; wiring
-it up can't break the existing substring filter.
-
----
-
 ## How to add a new entry
 
 When you find debt, capture it the same week with the same shape:
