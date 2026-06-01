@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 
@@ -360,6 +360,50 @@ describe('UnknownMapsView', () => {
       } finally {
         wrapper.unmount()
       }
+    })
+  })
+
+  // ── Preload on mount (warms the browser HTTP cache so hover-time
+  //    fetches don't race the mouseleave-cancellation window)
+  describe('screenshot preload on view mount', () => {
+    let probeSrcs: string[] = []
+    let originalImage: typeof Image
+
+    beforeEach(() => {
+      probeSrcs = []
+      originalImage = globalThis.Image
+      class ProbeImage {
+        _src = ''
+        get src() { return this._src }
+        set src(v: string) { this._src = v; probeSrcs.push(v) }
+      }
+      globalThis.Image = ProbeImage as unknown as typeof Image
+    })
+    afterEach(() => {
+      globalThis.Image = originalImage
+      vi.clearAllMocks()
+    })
+
+    it('issues a new Image() for each record\'s first source file on mount', () => {
+      const records: MatchRecord[] = [
+        { match_key: 'unmatched:one.png', source_files: ['one.png'], data: {} },
+        { match_key: 'unmatched:two.png', source_files: ['two.png', 'twoB.png'], data: {} },
+      ]
+      mountWith(records)
+      expect(probeSrcs).toContain('/_screenshot/one.png')
+      expect(probeSrcs).toContain('/_screenshot/two.png')
+      // Only the first source per record is preloaded — twoB shouldn't
+      // be touched. The expanded view's per-file thumbnails carry the
+      // rest of the load.
+      expect(probeSrcs).not.toContain('/_screenshot/twoB.png')
+    })
+
+    it('skips records with no source_files', () => {
+      const records: MatchRecord[] = [
+        { match_key: 'unmatched:empty', source_files: [], data: {} },
+      ]
+      mountWith(records)
+      expect(probeSrcs).toHaveLength(0)
     })
   })
 })
