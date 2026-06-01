@@ -127,44 +127,69 @@ fi
 #   --url (was --base-url)          — the live server's base URL.
 #   --max-examples (was --hypothesis-max-examples) — caps wall time.
 #   --checks all                    — every built-in compliance check.
-#   --exclude-checks <list>         — disabled compliance checks. All
-#                                     five are NEW in v4 and surface
-#                                     known spec / server gaps in their
-#                                     own dedicated PRs:
+#   --exclude-checks <list>         — Two checks stay excluded:
 #                                       * positive_data_acceptance —
 #                                         several setters accept lenient
-#                                         JSON the spec tightens.
+#                                         JSON the spec tightens. Real
+#                                         gap but tracked separately
+#                                         (TECHNICAL_DEBT item not yet
+#                                         filed; revisit when the
+#                                         schemathesis warning surfaces
+#                                         high-signal cases).
 #                                       * unsupported_method — the
 #                                         transfers + active path
 #                                         segments collide with the
 #                                         {matchKey} + {name} wildcards
 #                                         on other verbs, so a DELETE
 #                                         routes to the wildcard handler
-#                                         instead of 405.
-#                                       * missing_required_header,
-#                                         use_after_free,
-#                                         ensure_resource_availability —
-#                                         not yet evaluated against this
-#                                         API surface.
-#                                     The v3-equivalent
+#                                         instead of 405. Fixing this
+#                                         needs a Go 1.22 mux
+#                                         disambiguation pass — out of
+#                                         scope for the schemathesis
+#                                         hardening.
+#                                     The previously-excluded
+#                                     missing_required_header,
+#                                     use_after_free, and
+#                                     ensure_resource_availability
+#                                     checks were evaluated against the
+#                                     current API surface and ARE now
+#                                     enabled — they pass cleanly. The
+#                                     v3-equivalent
 #                                     negative_data_rejection (renamed
 #                                     and broadened in v4 to cover null
 #                                     in every typed field) IS enabled.
-#   --exclude-method DELETE         — DELETE on collection routes would
-#                                     wipe the live test server's state;
-#                                     targeted unit tests cover those
-#                                     endpoints instead.
+#   --suppress-health-check all     — covers the seed-quality health
+#                                     checks. Schemathesis v4 promoted
+#                                     filter_too_much to a hard error
+#                                     when an operation can't generate
+#                                     ANY valid examples (regression
+#                                     vs the warning behavior in v3),
+#                                     so the suppress flag alone isn't
+#                                     enough for DELETE / PUT routes
+#                                     whose path params carry tight
+#                                     regex constraints — those paths
+#                                     get explicit `--exclude-path`
+#                                     entries below.
+#   --exclude-path /api/v1/profiles/{name} — `name` carries a tight
+#                                     regex that schemathesis can't
+#                                     satisfy with random input;
+#                                     filter_too_much fires as a hard
+#                                     error in v4. Profile lifecycle
+#                                     ops are tested in pkg/app/*_test.go.
 #   --exclude-path /api/v1/events   — SSE endpoint, never closes; would
 #                                     trip the request-response timeout.
+# DELETE methods are no longer excluded — the test server runs in an
+# isolated HOME so a DB-wiping DELETE only resets the scratch state.
 # OpenAPI 3.1 is first-class in v4 — no more --experimental flag.
 echo "==> running schemathesis…"
 schemathesis run \
   --url "http://127.0.0.1:$PORT" \
   --checks all \
-  --exclude-checks unsupported_method,positive_data_acceptance,missing_required_header,use_after_free,ensure_resource_availability \
+  --exclude-checks unsupported_method,positive_data_acceptance \
   --max-examples 20 \
-  --exclude-method DELETE \
+  --suppress-health-check all \
   --exclude-path /api/v1/events \
+  --exclude-path '/api/v1/profiles/{name}' \
   api/openapi.yaml
 
 echo "[ recall ] ✓  API spec ↔ server in sync"
