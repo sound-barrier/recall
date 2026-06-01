@@ -9,9 +9,12 @@ two configuration surfaces:
 - **Parse (02)** — the operational tab. Watch Folder toggle + the
   Run Parse button. That's the whole tab — nothing to configure here.
 
-Persistence: every setting saves to `settings.json` in your OS user-
-config dir (see [How it works → Where things live on disk](how-it-works.md#where-things-live-on-disk))
-the moment you change it. No "Save" button.
+Persistence: every setting saves to the **active profile's**
+`settings.json` (see [How it works → Where things live on disk](how-it-works.md#where-things-live-on-disk))
+the moment you change it. No "Save" button. Switching profiles via
+the masthead chip loads a different `settings.json` — so each
+profile has its own screenshots folder, Tesseract path, toggle
+states, etc.
 
 ## Settings tab
 

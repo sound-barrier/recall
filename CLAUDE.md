@@ -290,7 +290,8 @@ macOS-only (uses `sips`) and skips elsewhere.
 
 | Var | Default | Effect |
 |---|---|---|
-| `RECALL_DATA_DIR` | platform user-config dir | Root directory for `settings.json` + `db/recall.db`. The repo's `.envrc` sets this to `$PWD/data` so `wails dev` (and `go run`) keep their state under the repo for inspection. Released app launches don't load `.envrc`, so the platform path applies. `scripts/_db.sh::recall_db_path` honors the same env var so the `db-*.sh` scripts see the same DB. |
+| `RECALL_DATA_DIR` | platform user-config dir | Install-wide base directory. Each profile gets its own subdir at `<base>/profiles/<name>/{settings.json,db/recall.db}`. The repo's `.envrc` sets this to `$PWD/data` so `wails dev` (and `go run`) keep their state under the repo for inspection. Released app launches don't load `.envrc`, so the platform path applies. `scripts/_db.sh::recall_base_dir` honors the same env var; `recall_active_profile` then consults `<base>/profiles.json` for the active profile name. |
+| `RECALL_PROFILE` | *(unset — script-only)* | Forces the `scripts/db-*.sh` family to operate on a specific profile, bypassing `profiles.json`'s active. Mirrors the app's `--profile=<name>` CLI flag for shell-level tooling. Not read by the app binaries. |
 | `RECALL_DEBUG_DIR` | system temp | Directory for Tesseract work files; set to a fixed path to inspect them after a parse run. |
 | `OWMETRICS_DEBUG_DIR` | *(off)* | When non-empty, dumps raw Tesseract output `.txt` files into the work dir for each OCR call. |
 | `OWMETRICS_METRICS_ADDR` | `:9091` | Override Prometheus metrics bind address (e.g. `OWMETRICS_METRICS_ADDR=:9292 wails dev`). |
@@ -384,11 +385,11 @@ One bulk SELECT per parent + one per child table — every table is hit exactly 
 
 | OS | Path |
 |---|---|
-| macOS | `~/Library/Application Support/Recall/db/recall.db` |
-| Linux | `~/.config/recall/db/recall.db` (or `$XDG_CONFIG_HOME/recall/db/`) |
-| Windows | `%AppData%\Recall\db\recall.db` |
+| macOS | `~/Library/Application Support/Recall/profiles/<active>/db/recall.db` |
+| Linux | `~/.config/recall/profiles/<active>/db/recall.db` (or `$XDG_CONFIG_HOME/recall/profiles/<active>/db/`) |
+| Windows | `%AppData%\Recall\profiles\<active>\db\recall.db` |
 
-Resolved by `appDataDir()` in `pkg/app/settings.go`. Match identity is `match_key` (string) — **no integer `id`** on the API surface. Per-source-file screenshot type is the parent table the row lives in (no separate `source_types` column); `MatchRecord.SourceTypes` is built at aggregate time from each row's parent table name.
+Resolved by `App.dataDir()` (returns `a.profiles.ActiveDir()`) in `pkg/app/settings.go`. The install root (parent of `profiles/`) comes from `appBaseDir()` honoring `RECALL_DATA_DIR`. Match identity is `match_key` (string) — **no integer `id`** on the API surface. Per-source-file screenshot type is the parent table the row lives in (no separate `source_types` column); `MatchRecord.SourceTypes` is built at aggregate time from each row's parent table name.
 
 ### Adding a field
 
@@ -455,7 +456,8 @@ is the only place modes are filtered for Prometheus.
 
 `App` owns:
 
-- `settings` (`<appDataDir>/settings.json`): screenshots dir, tesseract path, prometheus/watch enabled. Each toggle persists on change. `appDataDir()`: `~/Library/Application Support/Recall/` (macOS), `~/.config/recall/` (Linux), `%AppData%\Recall\` (Windows).
+- `settings` (`<App.dataDir()>/settings.json` = `<appBaseDir>/profiles/<active>/settings.json`): screenshots dir, tesseract path, prometheus/watch enabled. Each toggle persists on change. Per-profile — each profile in the multi-profile layout has its own settings.json. `appBaseDir()` install roots: `~/Library/Application Support/Recall/` (macOS), `~/.config/recall/` (Linux), `%AppData%\Recall\` (Windows).
+- `profiles` (`*Profiles`, `pkg/app/profile.go`): owns the install's profile manager. `<base>/profiles.json` tracks active profile + the list. Each profile gets `<base>/profiles/<name>/{settings.json,db/recall.db}`. Methods: `Create`/`Activate`/`Rename`/`Delete`. App methods: `GetProfiles`/`CreateProfile`/`SwitchProfile`/`RenameProfile`/`DeleteProfile` (each tears down + re-init's store/watcher/metrics for the active swap). Cross-profile match move: `App.MoveMatches(keys, target)` in `pkg/app/profile_move.go` — two-phase (write target, delete source) so a mid-transfer crash leaves the canonical copy on the target. **No migration** from any prior single-profile layout — fresh installs only.
 - `metricsServer` (nil unless Prometheus toggle on).
 - File watcher (`watcher`, `watchedDir`, `watchTimer`, `watchMu`) with `watchDebounce = 60*time.Second`: any new `.png`/`.jpg` resets a timer; expiry runs `ParseScreenshots` + `emitParseComplete()`.
 - `parseMu` serializes `ParseScreenshots` (manual click + watcher can't race).

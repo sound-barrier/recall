@@ -54,6 +54,32 @@ The default port is `7000`. Override it the same way:
 RECALL_SERVER_ADDR=127.0.0.1:8080 ./Recall-server
 ```
 
+## Choosing a profile per launch
+
+Both binaries support `--profile=<name>` to scope a single launch to
+a specific profile. The named profile is auto-created if it doesn't
+exist, and it becomes the active profile from then on (subsequent
+launches without `--profile` resume on the same one).
+
+```sh
+./Recall-server --profile=alt
+./Recall --server --profile=stream
+```
+
+Use this when you want to spin up a one-off session against an alt
+account without going through the masthead chip. You can also drive
+profile management entirely via the API once the server is up:
+
+```sh
+curl http://127.0.0.1:7000/api/v1/profiles
+curl -X POST http://127.0.0.1:7000/api/v1/profiles \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"alt"}'
+curl -X PUT http://127.0.0.1:7000/api/v1/profiles/active \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"main"}'
+```
+
 ## Running it automatically on startup
 
 **macOS** — create a launchd plist at

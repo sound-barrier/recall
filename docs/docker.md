@@ -42,6 +42,20 @@ Then open the UI, go to **Settings → Directories → Change Folder…**, and p
 it at `/screenshots`. The `recall-data` named volume keeps your parsed matches
 and settings across container restarts.
 
+The named volume holds the whole `<base>/profiles/<name>/` tree, so
+profiles you create via the masthead chip persist across container
+restarts the same way. To scope a launch to a specific profile,
+override the binary's entrypoint with `--profile=<name>`:
+
+```sh
+docker run --entrypoint /recall-server \
+  -e RECALL_SERVER_ADDR=0.0.0.0:7000 \
+  -p 7000:7000 \
+  -v ~/Documents/Overwatch/ScreenShots/Overwatch:/screenshots:ro \
+  -v recall-data:/root/.config/recall \
+  ghcr.io/sound-barrier/recall-server:latest --profile=alt
+```
+
 ## Image tags
 
 | Tag | Meaning |

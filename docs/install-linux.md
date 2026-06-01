@@ -63,13 +63,26 @@ Change Folder…** and select the correct path.
 
 ## Where Recall stores its data
 
-Settings and the match database live at:
+Recall organises everything by **profile** — each profile (your main
+account, alts, anything) gets its own settings + match database.
+The install root is:
 
 ```text
 ~/.config/recall/
 ```
 
 (or `$XDG_CONFIG_HOME/recall/` if you have `XDG_CONFIG_HOME` set)
+
+Inside it, the default `main` profile's data lives at:
+
+```text
+~/.config/recall/profiles/main/
+  ├── settings.json
+  └── db/recall.db
+```
+
+The masthead chip lets you create more profiles + switch between
+them; each one gets its own sibling directory under `profiles/`.
 
 ## Verifying your download
 
