@@ -76,7 +76,6 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 - **Recent-matches widget on Settings** — small "last 5 matches" strip on the Settings tab so the user always has context while configuring.
 - **Natural-language date picker** — `last week`, `this season`, `before Mauga buff`, `since Tuesday` parses to date ranges and pre-fills the date filter. Falls back to the existing datetime pickers for ambiguous input.
 - **Live ranked progress tracker** — sticky banner during a session showing W/L count + estimated SR delta + remaining matches needed to hit the next rank tier. Activates when the user has parsed ≥3 matches within a 90-minute window.
-- **Inline image preview on Unknown** — hover an entry in the Unknown Maps view for a small thumbnail without click. Pairs with the existing click-to-expand preview so triage gets faster.
 - **Multi-window support** — open the Matches view in a separate Wails window while parsing continues in the main window. Per-window state (filters, focused card) but shared records.
 - **Quick-edit popover on stat cells** — click any displayed stat on a card → 1-click ± nudge or numeric input without expanding the whole card. Useful for correcting OCR mistakes without opening the journal.
 - **Onboarding skip-ahead** — let the user skip directly to a specific step from the tour, instead of forcing the linear order. Side-rail chips become clickable jump points.
