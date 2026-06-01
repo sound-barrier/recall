@@ -27,6 +27,12 @@ const props = defineProps<{
   ambiguousRecords: MatchRecord[]
   allRecords:       MatchRecord[]
   cardState:        CardStateApi
+  // Cache-warm helper from `useScreenshotPreview` (item 12). The
+  // hover-thumb path warms the same URL the in-card source-preview
+  // <img> later renders, so the bytes are in the browser cache by
+  // the time the thumb mounts. Idempotent inside the composable —
+  // every consumer can call it without dedup logic.
+  preloadScreenshot: (url: string) => void
 }>()
 
 const emit = defineEmits<{
@@ -136,35 +142,15 @@ const showHoverThumb = computed(() => {
 })
 
 // Pre-fetch the first source file of every visible Unknown record
-// so the hover thumb shows from cache instantly. Without this a
-// rapid hover-then-leave would set the thumb's src, kick off a
-// fetch, then immediately unmount the element on mouseleave —
-// browsers cancel in-flight requests when an `<img>` leaves the
-// DOM. The user-reported "image only loads after I click the row
-// once" symptom was exactly this race: clicking the row expanded
-// the inline source-preview img which stayed mounted long enough
-// to cache the bytes; subsequent hovers then read from cache.
-//
-// `Image()` requests use the same /_screenshot/<dir-id>/<name>
-// endpoint and hit the same browser HTTP cache as the <img> element,
-// so a hit here warms the cache for the hover-time fetch. We track
-// URLs already preloaded so re-renders don't double-fetch.
-const preloadedURLs = new Set<string>()
+// via the shared composable's preload registry so the hover thumb
+// shows from cache instantly. Idempotent — the composable dedupes
+// URLs across consumers, so the in-card source-preview <img>'s
+// later request reads from the same cached response.
 function preloadVisibleScreenshots() {
-  if (typeof window === 'undefined') return
   for (const rec of props.unknownRecords) {
     const first = rec.source_files?.[0]
     if (!first) continue
-    const url = screenshotURL(first, rec.source_dir_ids?.[first] ?? 0)
-    if (preloadedURLs.has(url)) continue
-    preloadedURLs.add(url)
-    // `new Image()` issues a GET; the result lives in the browser's
-    // HTTP cache once the response arrives. Errors are silent — we
-    // don't surface them here (the hover thumb falls back to its
-    // empty state and the expanded view's source-preview img owns
-    // the user-visible error path).
-    const probe = new Image()
-    probe.src = url
+    props.preloadScreenshot(screenshotURL(first, rec.source_dir_ids?.[first] ?? 0))
   }
 }
 

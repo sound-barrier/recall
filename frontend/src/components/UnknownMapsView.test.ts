@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 
@@ -46,6 +46,7 @@ function mountWith(records: MatchRecord[], extras: Partial<{ ambiguousRecords: M
       ambiguousRecords: extras.ambiguousRecords ?? [],
       allRecords: extras.allRecords ?? [],
       cardState,
+      preloadScreenshot: () => undefined,
     },
   })
   return { wrapper, calls }
@@ -265,6 +266,7 @@ describe('UnknownMapsView', () => {
           ambiguousRecords: [],
           allRecords: [],
           cardState,
+          preloadScreenshot: () => undefined,
         },
         attachTo: document.body,
       })
@@ -367,46 +369,46 @@ describe('UnknownMapsView', () => {
   })
 
   // ── Preload on mount (warms the browser HTTP cache so hover-time
-  //    fetches don't race the mouseleave-cancellation window)
+  //    fetches don't race the mouseleave-cancellation window). Item 12
+  //    moved the request-issuing to useScreenshotPreview; this view
+  //    just calls the injected `preloadScreenshot` prop for each
+  //    visible record's first source file.
   describe('screenshot preload on view mount', () => {
-    let probeSrcs: string[] = []
-    let originalImage: typeof Image
+    function mountWithPreloadCapture(records: MatchRecord[]) {
+      const { api: cardState } = makeCardState(records)
+      const calls: string[] = []
+      mount(UnknownMapsView, {
+        props: {
+          unknownRecords: records,
+          ambiguousRecords: [],
+          allRecords: [],
+          cardState,
+          preloadScreenshot: (url: string) => { calls.push(url) },
+        },
+      })
+      return calls
+    }
 
-    beforeEach(() => {
-      probeSrcs = []
-      originalImage = globalThis.Image
-      class ProbeImage {
-        _src = ''
-        get src() { return this._src }
-        set src(v: string) { this._src = v; probeSrcs.push(v) }
-      }
-      globalThis.Image = ProbeImage as unknown as typeof Image
-    })
-    afterEach(() => {
-      globalThis.Image = originalImage
-      vi.clearAllMocks()
-    })
-
-    it('issues a new Image() for each record\'s first source file on mount', () => {
+    it('calls preloadScreenshot once per record with its first source file URL', () => {
       const records: MatchRecord[] = [
         { match_key: 'unmatched-one.png', source_files: ['one.png'], data: {} },
         { match_key: 'unmatched-two.png', source_files: ['two.png', 'twoB.png'], data: {} },
       ]
-      mountWith(records)
-      expect(probeSrcs).toContain('/_screenshot/0/one.png')
-      expect(probeSrcs).toContain('/_screenshot/0/two.png')
+      const calls = mountWithPreloadCapture(records)
+      expect(calls).toContain('/_screenshot/0/one.png')
+      expect(calls).toContain('/_screenshot/0/two.png')
       // Only the first source per record is preloaded — twoB shouldn't
       // be touched. The expanded view's per-file thumbnails carry the
       // rest of the load.
-      expect(probeSrcs).not.toContain('/_screenshot/0/twoB.png')
+      expect(calls).not.toContain('/_screenshot/0/twoB.png')
     })
 
     it('skips records with no source_files', () => {
       const records: MatchRecord[] = [
         { match_key: 'unmatched-empty', source_files: [], data: {} },
       ]
-      mountWith(records)
-      expect(probeSrcs).toHaveLength(0)
+      const calls = mountWithPreloadCapture(records)
+      expect(calls).toHaveLength(0)
     })
   })
 })

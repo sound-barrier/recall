@@ -42,8 +42,8 @@ function toggleHeroesExpanded() { heroesExpanded.value = !heroesExpanded.value }
 const props = defineProps<{
   record: MatchRecord
   isSourcesOpen: boolean
-  previewOpen: Record<string, boolean>
-  previewError: Record<string, boolean>
+  isPreviewOpen:   (filename: string) => boolean
+  hasPreviewError: (filename: string) => boolean
   isActive: (field: string, value: string) => boolean
   // Parsed search clauses from the FilterRail. The expanded note
   // preview renders `<mark>` around every hit whose clause either
@@ -720,10 +720,10 @@ function onTagKeydown(e: KeyboardEvent) {
             <a
               class="source-name"
               :href="screenshotURL(f, record.source_dir_ids?.[f] ?? 0)"
-              :title="props.previewOpen[f] ? 'Hide preview' : 'Show preview'"
+              :title="props.isPreviewOpen(f) ? 'Hide preview' : 'Show preview'"
               @click.prevent="emit('toggle-preview', f)"
             >
-              <span class="chev small" :class="{ open: props.previewOpen[f] }">›</span>
+              <span class="chev small" :class="{ open: props.isPreviewOpen(f) }">›</span>
               <span class="source-name-text">{{ f }}</span>
             </a>
             <button
@@ -746,7 +746,7 @@ function onTagKeydown(e: KeyboardEvent) {
             >{{ formatParsedAt(record.source_parsed_at[f]) }}</span>
           </div>
           <img
-            v-if="props.previewOpen[f] && !props.previewError[f]"
+            v-if="props.isPreviewOpen(f) && !props.hasPreviewError(f)"
             :src="screenshotURL(f, record.source_dir_ids?.[f] ?? 0)"
             :alt="f"
             class="source-preview"
@@ -754,7 +754,7 @@ function onTagKeydown(e: KeyboardEvent) {
             @click="emit('open-lightbox', f, record.source_files ?? [], record.source_dir_ids ?? {})"
             @error="emit('preview-error', f)"
           >
-          <div v-if="props.previewOpen[f] && props.previewError[f]" class="source-preview-error">
+          <div v-if="props.isPreviewOpen(f) && props.hasPreviewError(f)" class="source-preview-error">
             Could not load image — check screenshots folder in Settings.
           </div>
         </div>

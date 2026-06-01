@@ -25,8 +25,8 @@ const props = defineProps<{
   record: MatchRecord | null
   isOpen: boolean
   isSourcesOpen: boolean
-  previewOpen: Record<string, boolean>
-  previewError: Record<string, boolean>
+  isPreviewOpen:   (filename: string) => boolean
+  hasPreviewError: (filename: string) => boolean
   isActive: (field: string, value: string) => boolean
   searchClauses?: SearchClause[]
   canPrev: boolean
@@ -340,8 +340,8 @@ function onBackdropClick(e: MouseEvent) {
             :key="record.match_key"
             :record="record"
             :is-sources-open="isSourcesOpen"
-            :preview-open="previewOpen"
-            :preview-error="previewError"
+            :is-preview-open="isPreviewOpen"
+            :has-preview-error="hasPreviewError"
             :is-active="isActive"
             :search-clauses="searchClauses"
             @toggle-sources="emit('toggle-sources')"
