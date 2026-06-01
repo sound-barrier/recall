@@ -11,6 +11,7 @@
 [![Docs](https://img.shields.io/badge/docs-sound--barrier.github.io%2Frecall-7B36ED?logo=gitbook&logoColor=white)](https://sound-barrier.github.io/recall/)
 [![API](https://img.shields.io/badge/API-Swagger%20UI-85EA2D?logo=swagger&logoColor=black)](https://sound-barrier.github.io/recall/api/)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-defined-purple)](CODE_OF_CONDUCT.md)
+[![Roadmap](https://img.shields.io/badge/roadmap-public-orange)](ROADMAP.md)
 
 **Recall** is a desktop app for Overwatch players who want to understand
 their performance trends over time. It watches a folder of OW post-match
@@ -51,6 +52,7 @@ flowchart LR
 
 **Project**
 
+- [Roadmap](ROADMAP.md) — what's shipping next, what's deferred, why
 - [Contributing](#contributing)
 - [License](#license)
 
