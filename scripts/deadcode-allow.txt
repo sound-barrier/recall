@@ -34,6 +34,11 @@ NewWithStore
 # Test code isn't in deadcode's call graph, so this looks unreachable.
 ToGolden
 
+# pkg/db.listMigrationFiles is used only by the
+# TestAllMigrationsHavePairedDown guard. Test code isn't in
+# deadcode's call graph, so the helper looks unreachable.
+listMigrationFiles
+
 # pkg/db/dbtest is a test-only package — its exported `New()` and
 # the *Fake methods that satisfy db.Store are reachable from the
 # pkg/app + pkg/cmd test packages, but not from the production

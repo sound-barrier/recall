@@ -965,10 +965,8 @@ func TestMigrateMatchKeysColonToDash_RewritesEveryShape(t *testing.T) {
 	if _, err := d.Exec(`PRAGMA foreign_keys = ON`); err != nil {
 		t.Fatalf("pragma: %v", err)
 	}
-	for _, stmt := range schemaStatements {
-		if _, err := d.Exec(stmt); err != nil {
-			t.Fatalf("schema: %v", err)
-		}
+	if err := applyMigrations(d); err != nil {
+		t.Fatalf("schema: %v", err)
 	}
 
 	// Plant one of each legacy shape: `match:<ts>` (with colons in
