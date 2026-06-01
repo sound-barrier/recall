@@ -6,6 +6,7 @@ import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import { useMatchesGroup } from '../composables/useMatchesGroup'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
+import { useArchiveSelection } from '../composables/useArchiveSelection'
 import MatchTimelineHeader from './MatchTimelineHeader.vue'
 import FilterCombobox from './FilterCombobox.vue'
 
@@ -113,12 +114,33 @@ const groupBy   = ref<'none' | 'day' | 'week' | 'month' | 'year'>('day')
 // panel (live rows) or are inert (archive rows). The checkbox is the
 // only selection affordance.
 const selectedKeys = ref<Set<string>>(new Set())
-const archiveSelectedKeys = ref<Set<string>>(new Set())
-// Two-step confirm for both per-row and bulk hard-delete. `key`
-// targets a single row's inline confirm; `'bulk'` targets the
-// archive action bar's bulk-delete confirm.
-const archiveConfirmKey = ref<string | null>(null)
-const archiveBulkConfirm = ref(false)
+
+// Archive-drawer state + bulk-action handlers extracted into a
+// composable (TECHNICAL_DEBT.md item 7 — first step toward fully
+// extracting MatchesArchiveDrawer.vue). Destructured to top-level
+// refs so the template auto-unwraps them.
+const archive = useArchiveSelection({
+  records: computed(() => props.records),
+  onUnhideMatches: (keys) => emit('unhide-matches', keys),
+  onHardDeleteMatches: (keys) => emit('hard-delete-matches', keys),
+})
+const {
+  archiveOpen,
+  archiveSelectedKeys,
+  archiveConfirmKey,
+  archiveBulkConfirm,
+  hiddenRecords,
+  visibleRecords,
+  toggleArchiveSelected,
+  clearArchiveSelection,
+  selectAllArchive,
+  unhideSelectedArchive,
+  requestBulkHardDelete,
+  cancelBulkHardDelete,
+  commitBulkHardDelete,
+  confirmHardDelete,
+  cancelHardDelete,
+} = archive
 
 function toggleSelected(key: string) {
   const next = new Set(selectedKeys.value)
@@ -181,78 +203,26 @@ function commitMove(target: string) {
   }
 }
 
-function toggleArchiveSelected(key: string) {
-  const next = new Set(archiveSelectedKeys.value)
-  if (next.has(key)) next.delete(key)
-  else next.add(key)
-  archiveSelectedKeys.value = next
-  // Any change to the archive selection aborts an in-progress bulk
-  // confirm — the target set just moved, the prior "Confirm" no
-  // longer means what it meant.
-  archiveBulkConfirm.value = false
-}
-function clearArchiveSelection() {
-  archiveSelectedKeys.value = new Set()
-  archiveBulkConfirm.value = false
-}
-function unhideSelectedArchive() {
-  const keys = [...archiveSelectedKeys.value]
-  if (keys.length === 0) return
-  clearArchiveSelection()
-  emit('unhide-matches', keys)
-}
-function requestBulkHardDelete() {
-  if (archiveSelectedKeys.value.size === 0) return
-  archiveBulkConfirm.value = true
-}
-function cancelBulkHardDelete() {
-  archiveBulkConfirm.value = false
-}
-function commitBulkHardDelete() {
-  const keys = [...archiveSelectedKeys.value]
-  if (keys.length === 0) return
-  clearArchiveSelection()
-  emit('hard-delete-matches', keys)
-}
+// (archive selection / bulk-action handlers + hiddenRecords /
+// visibleRecords now provided by the useArchiveSelection composable
+// above — see TECHNICAL_DEBT.md item 7 for the staged refactor plan.)
 
-// ─── Hidden drawer state ────────────────────────────────────
-// `archiveOpen` toggles the drawer's expanded panel. Hidden records
-// come straight off `props.records` (the parent gives the hidden
-// flag on every row); the dossier / narrow / timeline all consume
-// narrowedRecords which already drops them.
-const archiveOpen = ref(false)
-const hiddenRecords = computed(() => props.records.filter((r) => r.hidden))
-// The visible-only set fed to the campaign log (MatchTimelineHeader)
-// so the heatmap + sparkline both drop hidden matches in lockstep
-// with the dossier.
-const visibleRecords = computed(() => props.records.filter((r) => !r.hidden))
-
-// Single-row inline confirm for hard-delete (per-archive-row Delete
-// button → Confirm/Cancel). The bulk variant lives on the action bar.
-function confirmHardDelete(key: string) {
-  archiveConfirmKey.value = key
-}
-function cancelHardDelete() {
-  archiveConfirmKey.value = null
-}
+// Single-row inline commit for hard-delete (per-archive-row Delete
+// button → Confirm/Cancel two-step). `confirmHardDelete` and
+// `cancelHardDelete` come from the composable; `commitHardDelete`
+// is the one piece that still emits up to App.vue because it talks
+// to the parent's DELETE handler directly.
 function commitHardDelete(key: string) {
-  archiveConfirmKey.value = null
+  cancelHardDelete()
   emit('hard-delete-match', key)
 }
 
-// ─── Select-all helpers ─────────────────────────────────────
-// Live: Select all targets the narrowed + sorted set (what the user
-// sees). Archive: targets every hidden record. Both clamp to a no-op
-// when their target set is empty so the keyboard shortcut /
-// programmatic call is safe.
+// Select-all for the LIVE leaves list (the archive variant lives on
+// the composable). Targets the narrowed + sorted set the user sees;
+// clamps to a no-op when empty.
 function selectAllVisible() {
   const keys = sortedRecords.value.map((r) => r.match_key)
   selectedKeys.value = new Set(keys)
-}
-function selectAllArchive() {
-  const keys = hiddenRecords.value.map((r) => r.match_key)
-  archiveSelectedKeys.value = new Set(keys)
-  archiveBulkConfirm.value = false
 }
 
 // Combobox open state — which one (if any) currently shows its

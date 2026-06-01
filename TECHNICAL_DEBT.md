@@ -173,6 +173,12 @@ whole file each run.
 
 **Plan:**
 
+0. ~~Extract `useArchiveSelection` composable~~ — **shipped**:
+   archive-drawer selection state + bulk-action handlers moved
+   to a dedicated composable with 11 unit tests. MatchesView lost
+   ~70 lines of inline state; the template + scoped styles
+   still live there. Sets up the seam for step 3 to extract
+   the full SFC without re-shaping the state contract.
 1. Extract `MatchesDossier.vue` (the active-clause chips + W/L/D
    tile + top-3 maps/heroes). Move the dossier-specific styles
    out of MatchesView's scoped block.
@@ -181,6 +187,8 @@ whole file each run.
    `useMatchesNarrow` bundle passed as a prop.
 3. Extract `MatchesArchiveDrawer.vue` (the hidden-matches
    collapsible at the bottom + bulk Unhide / Delete forever).
+   The state contract is already factored out (step 0); this
+   extraction is now just template + scoped CSS.
 4. MatchesView becomes ~800 lines of orchestration: dossier
    header → timeline → members → archive.
 
