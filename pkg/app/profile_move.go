@@ -39,9 +39,9 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 	if a.profiles == nil {
 		return fmt.Errorf("profiles: not initialized")
 	}
-	if len(matchKeys) == 0 {
-		return nil
-	}
+	// Validate targetProfile FIRST, before the empty-keys early-return,
+	// so an empty-but-invalid request (e.g. "" or "../traversal")
+	// surfaces as 400 instead of being swallowed by the no-op branch.
 	// Validate targetProfile against the same regex Create / Rename use
 	// BEFORE membership in the active list. Two reasons:
 	//  1. Defence in depth — the list contents come from a runtime
@@ -66,6 +66,13 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 	}
 	if targetProfile == a.profiles.Active() {
 		return fmt.Errorf("%w: %q", ErrMoveTargetIsActive, targetProfile)
+	}
+	if len(matchKeys) == 0 {
+		// Validated target, nothing to move — idempotent no-op. The
+		// empty-keys check sits HERE (not at the top of the function)
+		// so an empty body with a bad target_profile still reports
+		// the bad target instead of being swallowed.
+		return nil
 	}
 
 	// Load full source state once so we don't make N round-trips per

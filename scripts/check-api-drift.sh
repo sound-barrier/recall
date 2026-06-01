@@ -127,47 +127,29 @@ fi
 #   --url (was --base-url)          — the live server's base URL.
 #   --max-examples (was --hypothesis-max-examples) — caps wall time.
 #   --checks all                    — every built-in compliance check.
-#   --exclude-checks <list>         — disabled compliance checks. Two
-#                                     groups:
-#                                     (a) NEW in v4 — they surface
-#                                         known spec / server gaps that
-#                                         a dedicated PR will address:
-#                                         positive_data_acceptance,
-#                                         unsupported_method,
-#                                         missing_required_header,
-#                                         use_after_free,
-#                                         ensure_resource_availability.
-#                                         The transfers + active path
+#   --exclude-checks <list>         — disabled compliance checks. All
+#                                     five are NEW in v4 and surface
+#                                     known spec / server gaps in their
+#                                     own dedicated PRs:
+#                                       * positive_data_acceptance —
+#                                         several setters accept lenient
+#                                         JSON the spec tightens.
+#                                       * unsupported_method — the
+#                                         transfers + active path
 #                                         segments collide with the
 #                                         {matchKey} + {name} wildcards
 #                                         on other verbs, so a DELETE
 #                                         routes to the wildcard handler
-#                                         instead of 405; and several
-#                                         setters accept lenient JSON
-#                                         the spec tightens.
-#                                     (b) STRICTER in v4 — v4's data
-#                                         generator covers JSON null in
-#                                         every typed field, which our
-#                                         setters silently coerce to
-#                                         the zero value (null bool →
-#                                         false, null in a string array
-#                                         → ""). Listed as TODOs below;
-#                                         excluded for now so the bump
-#                                         itself isn't blocked.
-#                                     TODO(api-spec): tighten null
-#                                       handling on these endpoints so
-#                                       negative_data_rejection can be
-#                                       re-enabled:
-#                                         GET  /api/v1/exports         (empty `format=`)
-#                                         POST /api/v1/imports         (null in unknowns[])
-#                                         POST /api/v1/matches/transfers (null target_profile)
-#                                         PUT  /api/v1/matches/{key}/annotation (null in tags[])
-#                                         PUT  /api/v1/matches/{key}/visibility (null hidden)
-#                                         PUT  /api/v1/settings/prometheus    (null enabled)
-#                                         PUT  /api/v1/settings/watcher       (null enabled)
-#                                       Pattern: switch the request body
-#                                       struct to pointer fields, reject
-#                                       missing/null with 400.
+#                                         instead of 405.
+#                                       * missing_required_header,
+#                                         use_after_free,
+#                                         ensure_resource_availability —
+#                                         not yet evaluated against this
+#                                         API surface.
+#                                     The v3-equivalent
+#                                     negative_data_rejection (renamed
+#                                     and broadened in v4 to cover null
+#                                     in every typed field) IS enabled.
 #   --exclude-method DELETE         — DELETE on collection routes would
 #                                     wipe the live test server's state;
 #                                     targeted unit tests cover those
@@ -179,7 +161,7 @@ echo "==> running schemathesis…"
 schemathesis run \
   --url "http://127.0.0.1:$PORT" \
   --checks all \
-  --exclude-checks unsupported_method,positive_data_acceptance,missing_required_header,use_after_free,ensure_resource_availability,negative_data_rejection \
+  --exclude-checks unsupported_method,positive_data_acceptance,missing_required_header,use_after_free,ensure_resource_availability \
   --max-examples 20 \
   --exclude-method DELETE \
   --exclude-path /api/v1/events \

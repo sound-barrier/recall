@@ -823,3 +823,144 @@ func TestProfiles_PostMatchTransfers_InvalidTargetName400(t *testing.T) {
 		t.Errorf("status %d, want 400; body=%s", rec.Code, rec.Body.String())
 	}
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// Null-in-required-field rejection
+//
+// schemathesis v4's negative_data_rejection check generates JSON null
+// for every typed field declared as required. Go's encoding/json
+// silently decodes null into zero values for plain types (`null bool`
+// → false, `null in []string` → ""), so the server used to accept
+// schema-violating bodies. These tests pin the explicit nil-rejection
+// in each handler.
+// ──────────────────────────────────────────────────────────────────────────
+
+func TestMatchVisibility_RejectsNullHidden(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := putRaw(t, mux, visibilityPath("k1"), `{"hidden": null}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("null hidden must 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchVisibility_RejectsMissingHidden(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := putRaw(t, mux, visibilityPath("k1"), `{}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("missing hidden field must 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestPrometheusEnabled_RejectsNull(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := putRaw(t, mux, "/api/v1/settings/prometheus", `{"enabled": null}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("null enabled must 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestWatchEnabled_RejectsNull(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := putRaw(t, mux, "/api/v1/settings/watcher", `{"enabled": null}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("null enabled must 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchAnnotations_RejectsNullInTags(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := putRaw(t, mux, annotationPath("k1"),
+		`{"leaver":"","note":"","replay_code":"","members":[],"tags":[null]}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("null in tags[] must 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestMatchAnnotations_RejectsNullInMembers(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := putRaw(t, mux, annotationPath("k1"),
+		`{"leaver":"","note":"","replay_code":"","members":[null],"tags":[]}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("null in members[] must 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProfiles_PostMatchTransfers_RejectsNullTargetProfile(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	rec := postRaw(t, mux, "/api/v1/matches/transfers",
+		`{"match_keys": [], "target_profile": null}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("null target_profile must 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestProfiles_PostMatchTransfers_RejectsNullInMatchKeys(t *testing.T) {
+	_, mux := newTestAppWithProfiles(t)
+	// Create alt + switch back to main so target_profile resolves.
+	_ = fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "alt"})
+	_ = put(t, mux, "/api/v1/profiles/active", map[string]string{"name": "main"})
+	rec := postRaw(t, mux, "/api/v1/matches/transfers",
+		`{"match_keys": [null], "target_profile": "alt"}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("null in match_keys[] must 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestExports_RejectsEmptyFormat(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := get(t, mux, "/api/v1/exports?format=")
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("explicit empty format must 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestExports_AbsentFormatDefaultsToJSON(t *testing.T) {
+	// Spec says default: json. ?format absent should still 200 + JSON.
+	_, mux := newTestApp(t, nil)
+	rec := get(t, mux, "/api/v1/exports")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("absent format must 200, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		t.Errorf("absent format must default to application/json, got %q", ct)
+	}
+}
+
+func TestImports_RejectsNullInUnknowns(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	body := `{
+		"schema": "recall-export/v1",
+		"exported_at": "2026-06-01T00:00:00Z",
+		"recall_version": "test",
+		"screenshots_dirs": {},
+		"summaries": [],
+		"scoreboards": [],
+		"personals": [],
+		"ranks": [],
+		"unknowns": [null]
+	}`
+	rec := postRaw(t, mux, "/api/v1/imports", body)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("null in unknowns[] must 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+// putRaw / postRaw bypass fire's JSON marshalling so tests can send
+// raw JSON snippets verbatim (null tokens, malformed shapes, etc.).
+func putRaw(t *testing.T, mux *http.ServeMux, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	return rec
+}
+
+func postRaw(t *testing.T, mux *http.ServeMux, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	return rec
+}

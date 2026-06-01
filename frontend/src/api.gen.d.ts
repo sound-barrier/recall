@@ -930,10 +930,9 @@ export interface components {
              * @example recall-export/v1
              */
             schema: string;
-            /** Format: date-time */
-            exported_at: string;
+            exported_at?: string | null;
             /** @example 0.1.4 */
-            recall_version: string;
+            recall_version?: string | null;
             /**
              * @description source-side `id` (stringified) → screenshots folder path
              * @example {
@@ -942,12 +941,12 @@ export interface components {
              */
             screenshots_dirs?: {
                 [key: string]: string;
-            };
-            summaries?: Record<string, never>[];
-            scoreboards?: Record<string, never>[];
-            personals?: Record<string, never>[];
-            ranks?: Record<string, never>[];
-            unknowns?: Record<string, never>[];
+            } | null;
+            summaries?: Record<string, never>[] | null;
+            scoreboards?: Record<string, never>[] | null;
+            personals?: Record<string, never>[] | null;
+            ranks?: Record<string, never>[] | null;
+            unknowns?: Record<string, never>[] | null;
         };
         /**
          * @description One match — assembled by JOINing the per-screenshot-type rows
@@ -1447,21 +1446,23 @@ export interface operations {
                     /**
                      * @description One of the three leaver scenarios, or `""` to leave
                      *     untagged. Whole-row deletion happens only when *every*
-                     *     field (leaver, note, replay_code, members) is empty.
+                     *     field (leaver, note, replay_code, members, tags) is
+                     *     empty.
                      * @enum {string}
                      */
                     leaver?: "" | "self" | "team" | "enemy";
-                    /** @description Free-text per-match commentary. */
-                    note?: string;
-                    /** @description Overwatch six-character replay ID. No format validation server-side. */
-                    replay_code?: string;
+                    /** @description Free-text per-match commentary. `null` = empty. */
+                    note?: string | null;
+                    /** @description Overwatch six-character replay ID. No format validation server-side. `null` = empty. */
+                    replay_code?: string | null;
                     /**
                      * @description BattleTags of group members for this match. The server
                      *     trims whitespace, drops empty strings, and deduplicates;
                      *     the composite-PK on the child table catches any
-                     *     duplicates that slip through.
+                     *     duplicates that slip through. `null` is treated as an
+                     *     empty list (clear members) — equivalent to `[]`.
                      */
-                    members?: string[];
+                    members?: string[] | null;
                     /**
                      * @description Free-form labels applied to the match. `stack`,
                      *     `stream`, and `placement` are the conventional
@@ -1469,9 +1470,11 @@ export interface operations {
                      *     but any string is accepted. Server lowercases +
                      *     trims + deduplicates before persistence so
                      *     `Stack` and `stack` collapse to one entry. Drives
-                     *     the FilterRail "Tags" multi-select.
+                     *     the FilterRail "Tags" multi-select. `null` is
+                     *     treated as an empty list (clear tags) — equivalent
+                     *     to `[]`.
                      */
-                    tags?: string[];
+                    tags?: string[] | null;
                 };
             };
         };
@@ -1925,7 +1928,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    match_keys: string[];
+                    match_keys: string[] | null;
                     target_profile: string;
                 };
             };
