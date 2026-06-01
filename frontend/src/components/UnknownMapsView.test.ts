@@ -246,57 +246,120 @@ describe('UnknownMapsView', () => {
   })
 
   // ── Hover thumbnail (FEATURES.md: "Inline image preview on Unknown")
+  //
+  // The thumb is <Teleport>'d to <body> so wrapper.find() doesn't see
+  // it — Vue test-utils only walks the wrapper subtree. Query through
+  // document.querySelector for these assertions instead. Tests attach
+  // to document.body so the teleported nodes land in a deterministic
+  // place and clean up on wrapper.unmount() (handled implicitly by
+  // each test ending).
   describe('hover thumbnail on collapsed cards', () => {
+    function mountAttached(records: MatchRecord[]) {
+      const { api: cardState, calls } = makeCardState(records)
+      const wrapper = mount(UnknownMapsView, {
+        props: {
+          unknownRecords: records,
+          ambiguousRecords: [],
+          allRecords: [],
+          cardState,
+        },
+        attachTo: document.body,
+      })
+      return { wrapper, calls }
+    }
+
+    function fireMouseenter(wrapper: ReturnType<typeof mountAttached>['wrapper']) {
+      return wrapper.find('.unknown-card').trigger('mouseenter', { clientX: 200, clientY: 300 })
+    }
+
     it('renders a floating thumbnail with the first source URL on mouseenter', async () => {
       const records: MatchRecord[] = [
         { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
       ]
-      const { wrapper } = mountWith(records)
-      expect(wrapper.find('.unknown-hover-thumb').exists()).toBe(false)
-      await wrapper.find('.unknown-card').trigger('mouseenter')
-      const thumb = wrapper.find('.unknown-hover-thumb')
-      expect(thumb.exists()).toBe(true)
-      expect(thumb.attributes('src')).toMatch(/_screenshot\/x\.png/)
+      const { wrapper } = mountAttached(records)
+      try {
+        expect(document.querySelector('.unknown-hover-thumb')).toBeNull()
+        await fireMouseenter(wrapper)
+        const thumb = document.querySelector<HTMLImageElement>('.unknown-hover-thumb')
+        expect(thumb).not.toBeNull()
+        expect(thumb!.getAttribute('src')).toMatch(/_screenshot\/x\.png/)
+      } finally {
+        wrapper.unmount()
+      }
     })
 
     it('disappears on mouseleave', async () => {
       const records: MatchRecord[] = [
         { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
       ]
-      const { wrapper } = mountWith(records)
-      await wrapper.find('.unknown-card').trigger('mouseenter')
-      expect(wrapper.find('.unknown-hover-thumb').exists()).toBe(true)
-      await wrapper.find('.unknown-card').trigger('mouseleave')
-      expect(wrapper.find('.unknown-hover-thumb').exists()).toBe(false)
+      const { wrapper } = mountAttached(records)
+      try {
+        await fireMouseenter(wrapper)
+        expect(document.querySelector('.unknown-hover-thumb')).not.toBeNull()
+        await wrapper.find('.unknown-card').trigger('mouseleave')
+        expect(document.querySelector('.unknown-hover-thumb')).toBeNull()
+      } finally {
+        wrapper.unmount()
+      }
     })
 
     it('does not render when the card is already expanded', async () => {
       const records: MatchRecord[] = [
         { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
       ]
-      const { wrapper } = mountWith(records)
-      // Expand first, then hover.
-      await wrapper.find('.unknown-card-head').trigger('click')
-      await wrapper.find('.unknown-card').trigger('mouseenter')
-      expect(wrapper.find('.unknown-hover-thumb').exists()).toBe(false)
+      const { wrapper } = mountAttached(records)
+      try {
+        await wrapper.find('.unknown-card-head').trigger('click')
+        await fireMouseenter(wrapper)
+        expect(document.querySelector('.unknown-hover-thumb')).toBeNull()
+      } finally {
+        wrapper.unmount()
+      }
     })
 
     it('does not render when the record has no source_files', async () => {
       const records: MatchRecord[] = [
         { match_key: 'unmatched:empty', source_files: [], data: {} },
       ]
-      const { wrapper } = mountWith(records)
-      await wrapper.find('.unknown-card').trigger('mouseenter')
-      expect(wrapper.find('.unknown-hover-thumb').exists()).toBe(false)
+      const { wrapper } = mountAttached(records)
+      try {
+        await fireMouseenter(wrapper)
+        expect(document.querySelector('.unknown-hover-thumb')).toBeNull()
+      } finally {
+        wrapper.unmount()
+      }
     })
 
     it('uses the first source_file when a record has several', async () => {
       const records: MatchRecord[] = [
         { match_key: 'unmatched:multi', source_files: ['first.png', 'second.png'], data: {} },
       ]
-      const { wrapper } = mountWith(records)
-      await wrapper.find('.unknown-card').trigger('mouseenter')
-      expect(wrapper.find('.unknown-hover-thumb').attributes('src')).toMatch(/first\.png/)
+      const { wrapper } = mountAttached(records)
+      try {
+        await fireMouseenter(wrapper)
+        const thumb = document.querySelector<HTMLImageElement>('.unknown-hover-thumb')
+        expect(thumb!.getAttribute('src')).toMatch(/first\.png/)
+      } finally {
+        wrapper.unmount()
+      }
+    })
+
+    it('updates position on mousemove inside the hovered card', async () => {
+      const records: MatchRecord[] = [
+        { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+      ]
+      const { wrapper } = mountAttached(records)
+      try {
+        await wrapper.find('.unknown-card').trigger('mouseenter', { clientX: 50, clientY: 80 })
+        const thumb = document.querySelector<HTMLElement>('.unknown-hover-thumb')!
+        const firstLeft = thumb.style.left
+        await wrapper.find('.unknown-card').trigger('mousemove', { clientX: 240, clientY: 380 })
+        // Anchored to the cursor — the inline left/top changes between
+        // mouseenter (50,80) and mousemove (240,380).
+        expect(thumb.style.left).not.toBe(firstLeft)
+      } finally {
+        wrapper.unmount()
+      }
     })
   })
 })

@@ -73,21 +73,79 @@ function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
 
 // Hover-preview state for the Unknown card list. Mouseenter on a
 // collapsed card sets the hovered key → the floating thumbnail
-// renders anchored to the bottom-right of the card head; mouseleave
-// clears it. Suppressed when the card is expanded (the per-source-file
+// renders next to the cursor (Teleport'd to body so it sits above
+// every other surface) and follows mousemove until the user leaves
+// the row. Suppressed when the card is expanded (the per-source-file
 // thumbnails in the expanded body already cover that need) and when
 // the record has no source files. Pairs with the existing click-to-
 // expand preview as the lower-friction triage path.
 const hoveredUnknownKey = ref<string | null>(null)
+const hoveredUnknownSrc = ref('')
 
-function onHoverUnknown(rec: MatchRecord) {
+// Cursor-anchored position. Updated on every mousemove inside the
+// hovered card. Stored separately from hoveredUnknownKey so the
+// thumb can re-render position without re-evaluating the gate.
+const thumbX = ref(0)
+const thumbY = ref(0)
+
+// Sizing. The thumb is intentionally larger than the in-card peek
+// it replaced — the user couldn't read the screenshot at 240×135;
+// 360×203 (16:9, OW capture aspect) gives ~225 % more pixels and
+// still fits comfortably even on 1280-wide viewports after the
+// 18 px edge-flip margin.
+const THUMB_W = 360
+const THUMB_H = 203
+const CURSOR_GAP = 18
+
+function onHoverUnknown(rec: MatchRecord, e: MouseEvent) {
   if (props.cardState.isSelected(rec.match_key)) return
-  if (!rec.source_files?.length) return
+  const first = rec.source_files?.[0]
+  if (!first) return
   hoveredUnknownKey.value = rec.match_key
+  hoveredUnknownSrc.value = screenshotURL(first)
+  updateThumbPosition(e)
+}
+
+function onMoveUnknown(rec: MatchRecord, e: MouseEvent) {
+  if (hoveredUnknownKey.value !== rec.match_key) return
+  updateThumbPosition(e)
 }
 
 function onLeaveUnknown() {
   hoveredUnknownKey.value = null
+  hoveredUnknownSrc.value = ''
+}
+
+// Reactive gate the Teleport binds to. mouseenter guards on
+// isSelected once, but if the user expands a card WHILE hovering
+// (the cursor never leaves the element so no fresh mouseenter
+// fires) the stale hover key would keep the thumb on screen. This
+// computed re-evaluates whenever cardState.isSelected flips, so
+// the expand-during-hover path hides the thumb on the same tick.
+const showHoverThumb = computed(() => {
+  const key = hoveredUnknownKey.value
+  if (!key) return false
+  if (!hoveredUnknownSrc.value) return false
+  return !props.cardState.isSelected(key)
+})
+
+// Anchor the thumb just below-right of the cursor. Edge-flip
+// horizontally / vertically so it never gets clipped at the
+// viewport edge — small windows (or a card hovered near the right
+// rail) would otherwise cut off the right half of the screenshot.
+function updateThumbPosition(e: MouseEvent) {
+  let x = e.clientX + CURSOR_GAP
+  let y = e.clientY + CURSOR_GAP
+  if (typeof window !== 'undefined') {
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    if (x + THUMB_W + CURSOR_GAP > vw) x = e.clientX - THUMB_W - CURSOR_GAP
+    if (y + THUMB_H + CURSOR_GAP > vh) y = e.clientY - THUMB_H - CURSOR_GAP
+    if (x < CURSOR_GAP) x = CURSOR_GAP
+    if (y < CURSOR_GAP) y = CURSOR_GAP
+  }
+  thumbX.value = x
+  thumbY.value = y
 }
 </script>
 
@@ -234,7 +292,8 @@ function onLeaveUnknown() {
         :key="rec.match_key"
         class="unknown-card"
         :class="{ expanded: cardState.isSelected(rec.match_key) }"
-        @mouseenter="onHoverUnknown(rec)"
+        @mouseenter="(e) => onHoverUnknown(rec, e)"
+        @mousemove="(e) => onMoveUnknown(rec, e)"
         @mouseleave="onLeaveUnknown"
       >
         <!-- Card header: index + match key + slot chips + chevron -->
@@ -355,23 +414,27 @@ function onLeaveUnknown() {
             </div>
           </div>
         </template>
-
-        <!-- Hover-only floating thumbnail of the first source file.
-             Renders ONLY while the card is collapsed + has at least
-             one source_file + the user is hovering. The expanded
-             view has its own per-file thumbnails in `.unknown-sources`
-             so overlapping floating thumbs would just be noise. -->
-        <img
-          v-if="hoveredUnknownKey === rec.match_key
-            && rec.source_files?.[0]
-            && !cardState.isSelected(rec.match_key)"
-          class="unknown-hover-thumb"
-          :src="screenshotURL(rec.source_files[0])"
-          alt=""
-          aria-hidden="true"
-        >
       </article>
     </div>
+
+    <!-- Hover-only floating thumbnail anchored to the cursor.
+         Teleport'd to body so the fixed-position thumb sits above
+         the masthead, status bar, and every other layer — and so
+         the card's `overflow: hidden` clip never crops it. Renders
+         only while a card is hovered + the card is collapsed + the
+         record has at least one source_file. The expanded view has
+         its own per-file thumbnails in `.unknown-sources` so
+         overlapping floats would just be noise. -->
+    <Teleport to="body">
+      <img
+        v-if="showHoverThumb"
+        class="unknown-hover-thumb"
+        :src="hoveredUnknownSrc"
+        :style="{ left: thumbX + 'px', top: thumbY + 'px' }"
+        alt=""
+        aria-hidden="true"
+      >
+    </Teleport>
   </section>
 </template>
 
@@ -642,39 +705,27 @@ function onLeaveUnknown() {
   margin-top: 0.35rem;
 }
 
-/* Hover-only floating thumbnail. Anchored to the top-right of the
-   card; overflows the card on hover so it doesn't squeeze the head
-   row. 16:9 aspect mirrors the OW screenshot ratio so the peek
-   actually looks like the source file rather than a stretched
-   blob. The pointer-events: none keeps the floating element from
-   intercepting the user's mouseleave when they move toward it. */
-.unknown-card:has(.unknown-hover-thumb) {
-  /* The default `overflow: hidden` on .unknown-card clips the
-     overflowing thumb. Only relax this while a thumb is rendering
-     so the ::before edge-strip clip behaviour stays intact for
-     the steady-state card. */
-  overflow: visible;
-}
-
+/* Hover-only floating thumbnail — cursor-anchored. Teleport'd to
+   <body> so position: fixed + the dynamic left/top inline style
+   anchor the thumb relative to the viewport, not the scoped
+   ancestor chain. 16:9 aspect mirrors the OW screenshot capture
+   ratio so the peek actually looks like the source file. The
+   pointer-events: none keeps the floating element from intercepting
+   the user's mouseleave when the cursor drifts toward it. Vue's
+   <Teleport> retains the scoped data-v hash on the moved node, so
+   this rule still matches against the body-level <img>. */
 .unknown-hover-thumb {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  width: 240px;
-  height: 135px;
+  position: fixed;
+  width: 360px;
+  height: 203px;
   object-fit: cover;
   background: var(--surface-2);
   border: 1px solid var(--accent);
   border-radius: 3px;
   box-shadow:
-    0 8px 22px color-mix(in srgb, var(--bg) 60%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
-  z-index: 6;
+    0 10px 26px color-mix(in srgb, var(--bg) 70%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+  z-index: 100;
   pointer-events: none;
-}
-
-/* Reduced motion: thumb appears without any fade. */
-@media (prefers-reduced-motion: reduce) {
-  .unknown-hover-thumb { transition: none; }
 }
 </style>
