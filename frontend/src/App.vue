@@ -61,6 +61,7 @@ import { useScreenshotsDir } from './composables/useScreenshotsDir'
 import { useFeatureToggle } from './composables/useFeatureToggle'
 import { useEventStream } from './composables/useEventStream'
 import { useScreenshotPreview } from './composables/useScreenshotPreview'
+import { ONBOARDING_COMPLETED_KEY } from './composables/storageKeys'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useMatchFilters } from './composables/useMatchFilters'
@@ -114,15 +115,6 @@ const KeyboardShortcutsModal = defineAsyncComponent(() => import('./components/K
 // imperceptible against the network round-trip the load() itself is
 // already doing for /api/v1/matches.
 const OnboardingTour = defineAsyncComponent(() => import('./components/OnboardingTour.vue'))
-// localStorage key the tour writes when the user finishes / skips.
-// Duplicated as a literal here (not imported from
-// './composables/useOnboardingTour') because a static `import` would
-// pull the whole tour controller into the initial JS chunk, defeating
-// the lazy-load above. The pair is locked at runtime by the
-// `App.lazy-views` + tour e2e tests — a divergence between the two
-// keys breaks the gate and is caught by `does NOT render while the
-// onboarding tour is active` in profile-delete-and-first-run.spec.ts.
-const ONBOARDING_COMPLETED_KEY = 'recall.onboardingCompleted'
 
 // GitHub repository URL — surfaced via the brandmark in the masthead.
 // Centralised here so the markup, hover title, and any future references
