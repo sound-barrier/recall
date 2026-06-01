@@ -18,17 +18,18 @@ function makeCardState(_records: MatchRecord[]) {
   const api: CardStateApi = {
     isSelected: (id: string) => !!expanded.value[id],
     isSourcesOpen: (id: string) => !!sourcesOpen.value[id],
-    previewOpen,
-    previewError,
+    // Post item-8: every preview field is a function. The test
+    // fake closes over the same refs the production wiring would
+    // expose, so togglePreview keeps the realistic toggle that
+    // lets the lightbox click-to-open path render its <img>.
+    isPreviewOpen:   (filename: string) => !!previewOpen.value[filename],
+    hasPreviewError: (filename: string) => !!previewError.value[filename],
     toggleExpand: (id: string) => {
       calls.toggleExpand++
       expanded.value = { ...expanded.value, [id]: !expanded.value[id] }
     },
     toggleSources: () => undefined,
     togglePreview: (filename: string) => {
-      // Realistic toggle so the <img v-if="previewOpen[f]"> actually
-      // renders when the test clicks the source-name affordance.
-      // Click-to-open-lightbox tests need the img in the DOM.
       calls.togglePreview++
       previewOpen.value = { ...previewOpen.value, [filename]: !previewOpen.value[filename] }
     },

@@ -929,11 +929,16 @@ function toggleUnknownExpand(id: string) {
   }
 }
 
+// CardStateApi exposed as all-functions (post item-8). The underlying
+// state (previewOpen, previewError refs) is still owned here at the
+// App.vue scope so the same preview-open state survives a tab swap
+// from Unknown → Matches → Unknown; the getter functions just close
+// over those refs.
 const cardState = {
   isSelected: isUnknownExpanded,
   isSourcesOpen,
-  previewOpen,
-  previewError,
+  isPreviewOpen:   (filename: string) => !!previewOpen.value[filename],
+  hasPreviewError: (filename: string) => !!previewError.value[filename],
   toggleExpand: toggleUnknownExpand,
   toggleSources,
   togglePreview,
