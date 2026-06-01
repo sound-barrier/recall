@@ -244,4 +244,59 @@ describe('UnknownMapsView', () => {
     // Emit signature: (filename, source_files).
     expect(wrapper.emitted('open-lightbox')![0]).toEqual(['ambig-sb.png', ['ambig-sb.png']])
   })
+
+  // ── Hover thumbnail (FEATURES.md: "Inline image preview on Unknown")
+  describe('hover thumbnail on collapsed cards', () => {
+    it('renders a floating thumbnail with the first source URL on mouseenter', async () => {
+      const records: MatchRecord[] = [
+        { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+      ]
+      const { wrapper } = mountWith(records)
+      expect(wrapper.find('.unknown-hover-thumb').exists()).toBe(false)
+      await wrapper.find('.unknown-card').trigger('mouseenter')
+      const thumb = wrapper.find('.unknown-hover-thumb')
+      expect(thumb.exists()).toBe(true)
+      expect(thumb.attributes('src')).toMatch(/_screenshot\/x\.png/)
+    })
+
+    it('disappears on mouseleave', async () => {
+      const records: MatchRecord[] = [
+        { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+      ]
+      const { wrapper } = mountWith(records)
+      await wrapper.find('.unknown-card').trigger('mouseenter')
+      expect(wrapper.find('.unknown-hover-thumb').exists()).toBe(true)
+      await wrapper.find('.unknown-card').trigger('mouseleave')
+      expect(wrapper.find('.unknown-hover-thumb').exists()).toBe(false)
+    })
+
+    it('does not render when the card is already expanded', async () => {
+      const records: MatchRecord[] = [
+        { match_key: 'unmatched:x.png', source_files: ['x.png'], data: {} },
+      ]
+      const { wrapper } = mountWith(records)
+      // Expand first, then hover.
+      await wrapper.find('.unknown-card-head').trigger('click')
+      await wrapper.find('.unknown-card').trigger('mouseenter')
+      expect(wrapper.find('.unknown-hover-thumb').exists()).toBe(false)
+    })
+
+    it('does not render when the record has no source_files', async () => {
+      const records: MatchRecord[] = [
+        { match_key: 'unmatched:empty', source_files: [], data: {} },
+      ]
+      const { wrapper } = mountWith(records)
+      await wrapper.find('.unknown-card').trigger('mouseenter')
+      expect(wrapper.find('.unknown-hover-thumb').exists()).toBe(false)
+    })
+
+    it('uses the first source_file when a record has several', async () => {
+      const records: MatchRecord[] = [
+        { match_key: 'unmatched:multi', source_files: ['first.png', 'second.png'], data: {} },
+      ]
+      const { wrapper } = mountWith(records)
+      await wrapper.find('.unknown-card').trigger('mouseenter')
+      expect(wrapper.find('.unknown-hover-thumb').attributes('src')).toMatch(/first\.png/)
+    })
+  })
 })
