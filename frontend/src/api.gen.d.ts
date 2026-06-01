@@ -1100,9 +1100,14 @@ export interface components {
          *       * `scoreboard` — in-game or post-match TEAMS scoreboard
          *       * `personal` — post-match PERSONAL tab
          *       * `rank` — competitive RANK PROGRESS screen
+         *       * `unknown` — the OCR classifier couldn't pick a type from
+         *         the file. Surfaced in the Unknown tab for triage; the
+         *         row's per-screenshot data lives in `unknown_screenshots`
+         *         until the user resolves it (re-OCR, manual attribution,
+         *         or drop).
          * @enum {string}
          */
-        ScreenshotType: "summary" | "scoreboard" | "personal" | "rank";
+        ScreenshotType: "summary" | "scoreboard" | "personal" | "rank" | "unknown";
         /** @description All parsed data for a match, merged across its source files. */
         MatchResult: {
             /** @description e.g. "rialto" */
