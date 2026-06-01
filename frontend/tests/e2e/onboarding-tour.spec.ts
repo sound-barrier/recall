@@ -13,6 +13,17 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('onboarding tour — first-launch behaviour', () => {
+  // Pre-ack the first-run "Main account name" modal so the tour
+  // overlay is the only thing the tests need to exercise. The tour
+  // requires empty `recall.onboardingCompleted`; leaving the modal
+  // ack flag empty too would stack two forced gates and the modal
+  // would intercept every keystroke before the tour sees it.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try { localStorage.setItem('recall.firstRunAccountNamed', 'true') } catch (_) { /* ignore */ }
+    })
+  })
+
   test('appears on first visit (empty localStorage)', async ({ page }) => {
     await page.goto('/')
     const tour = page.locator('[data-testid="onboarding-tour"]')

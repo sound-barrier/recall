@@ -31,6 +31,11 @@ export const test = base.extend({
     await page.addInitScript(() => {
       try {
         localStorage.setItem('recall.onboardingCompleted', 'true')
+        // First-run "Main account name" modal acks. Without this the
+        // modal traps focus on every spec's first navigation and the
+        // assertions race against a locked UI. The dedicated
+        // first-run spec clears this flag in its own beforeEach.
+        localStorage.setItem('recall.firstRunAccountNamed', 'true')
       } catch (_) {
         // Some sandboxed contexts forbid localStorage. The tour
         // composable's persistence layer also swallows the error,

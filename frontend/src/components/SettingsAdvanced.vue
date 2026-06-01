@@ -29,7 +29,7 @@ const emit = defineEmits<{
 <template>
   <details id="sec-advanced" class="settings-section advanced-section">
     <summary class="advanced-summary">
-      <span class="section-num">06</span>
+      <span class="section-num">07</span>
       <span class="section-slash" aria-hidden="true">/</span>
       <span class="section-title">Advanced</span>
       <span class="advanced-chev" aria-hidden="true">›</span>

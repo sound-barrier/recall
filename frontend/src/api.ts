@@ -450,11 +450,17 @@ export const MoveMatches = _dualVoid<[matchKeys: string[], targetProfile: string
   (matchKeys, targetProfile) => ({ match_keys: matchKeys, target_profile: targetProfile }),
 )
 
-// Profile deletion is server-only for now — the masthead chip's MVP
-// scope is switch + create + rename. The backend route (DELETE
-// /api/v1/profiles/{name}) is reachable via direct API for power
-// users / scripted cleanup; the frontend wrapper will land when the
-// UX for "delete with confirm" is designed.
+// Delete a profile and wipe its directory tree. Cannot target the
+// active profile — the server returns 409 in that case. Resolves to
+// the refreshed list on success; the caller is expected to reload
+// the in-memory profiles snapshot afterwards.
+export function DeleteProfile(name: string): Promise<ProfilesResponse> {
+  if (IS_WAILS) {
+    return _wails<void>('DeleteProfile', name).then(() => GetProfiles())
+  }
+  const path = `/api/v1/profiles/${encodeURIComponent(name)}`
+  return _send<void>('DELETE', path).then(() => GetProfiles())
+}
 
 // ─── Data location + export/import ─────────────────────────────────────────
 

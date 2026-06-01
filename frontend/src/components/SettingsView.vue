@@ -9,6 +9,7 @@ import SettingsBackupRestore from './SettingsBackupRestore.vue'
 import SettingsCalendar from './SettingsCalendar.vue'
 import SettingsEngine from './SettingsEngine.vue'
 import SettingsFolders from './SettingsFolders.vue'
+import SettingsProfiles from './SettingsProfiles.vue'
 
 // SettingsView — every knob a user might want to touch, sorted by
 // frequency of first-time use:
@@ -16,8 +17,9 @@ import SettingsFolders from './SettingsFolders.vue'
 //   02 Engine           — Tesseract Binary (one-time setup)
 //   03 Appearance       — Day/Night swatches
 //   04 Calendar         — First Day of Week
-//   05 Backup & Restore — Export JSON/CSV + Import Backup
-//   06 Advanced         — Stream to Grafana + Clear Database
+//   05 Profiles         — Delete non-active profiles
+//   06 Backup & Restore — Export JSON/CSV + Import Backup
+//   07 Advanced         — Stream to Grafana + Clear Database
 //                          (collapsed behind a <details> by default)
 //
 // Engine, Backup & Restore, and Advanced used to live on the Ingest
@@ -238,6 +240,8 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
       @set-week-start="(v: WeekStart) => emit('set-week-start', v)"
       @go-to-view="(v: 'settings' | 'ingest' | 'matches' | 'unknown') => emit('go-to-view', v)"
     />
+
+    <SettingsProfiles />
 
     <SettingsBackupRestore
       :exporting="exporting"
