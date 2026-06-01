@@ -63,7 +63,9 @@ test.describe('Unknown tab — hover preview', () => {
     await card.hover()
     const thumb = page.locator('.unknown-hover-thumb')
     await expect(thumb).toBeVisible()
-    await expect(thumb).toHaveAttribute('src', /_screenshot\/broken\.png/)
+    // URL shape: /_screenshot/<dir-id>/<filename>. Record has no
+    // source_dir_ids so the frontend sends dir-id 0 (fallback path).
+    await expect(thumb).toHaveAttribute('src', /_screenshot\/0\/broken\.png/)
 
     // Move the mouse away → thumbnail goes away.
     await page.mouse.move(0, 0)
@@ -156,8 +158,8 @@ test.describe('Unknown tab — hover preview', () => {
     // The preload should fire on view mount — both records' first
     // source files are fetched BEFORE the user has moved the mouse.
     await expect.poll(() => fetched.sort().join(','), { timeout: 3000 })
-      .toContain('/_screenshot/broken.png')
-    expect(fetched).toContain('/_screenshot/other.png')
+      .toContain('/_screenshot/0/broken.png')
+    expect(fetched).toContain('/_screenshot/0/other.png')
   })
 
   test('records without any source_files do not render a hover thumbnail', async ({ page }) => {

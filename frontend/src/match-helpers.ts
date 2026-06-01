@@ -253,10 +253,17 @@ export function avgGameLengthMinutes(records: { data?: { game_length?: string | 
 }
 
 // Build the URL for an on-disk screenshot served by the Go
-// ScreenshotHandler at /_screenshot/<encoded filename>. Used by
-// MatchCard's expanded source-file previews.
-export function screenshotURL(filename: string): string {
-  return `/_screenshot/${encodeURIComponent(filename)}`
+// ScreenshotHandler. The URL embeds the screenshots_dirs row id so
+// the handler can serve from the directory the file was INGESTED
+// from, even when the user has since changed their screenshots
+// folder (re-install, manual move, profile switch).
+//
+// `dirID === 0` (or omitted) means "use the currently configured
+// screenshots folder" — the fallback path for files that haven't
+// been parsed yet (parse-progress inline preview). For aggregated
+// records, callers should pass `rec.source_dir_ids?.[filename] ?? 0`.
+export function screenshotURL(filename: string, dirID = 0): string {
+  return `/_screenshot/${dirID}/${encodeURIComponent(filename)}`
 }
 
 // ───────────────────────────────────────────────────────────────────

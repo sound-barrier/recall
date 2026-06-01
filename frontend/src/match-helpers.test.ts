@@ -340,16 +340,20 @@ describe('formatRelativeTime', () => {
 // ─── screenshotURL ───────────────────────────────────────────────────
 
 describe('screenshotURL', () => {
-  it('builds the expected path for a plain filename', () => {
-    expect(screenshotURL('foo.png')).toBe('/_screenshot/foo.png')
+  it('defaults dir-id to 0 when omitted (configured-dir fallback path)', () => {
+    expect(screenshotURL('foo.png')).toBe('/_screenshot/0/foo.png')
   })
 
-  it('percent-encodes spaces', () => {
-    expect(screenshotURL('my file.png')).toBe('/_screenshot/my%20file.png')
+  it('embeds a positive dir-id in the URL', () => {
+    expect(screenshotURL('foo.png', 7)).toBe('/_screenshot/7/foo.png')
+  })
+
+  it('percent-encodes spaces in the filename segment', () => {
+    expect(screenshotURL('my file.png', 3)).toBe('/_screenshot/3/my%20file.png')
   })
 
   it('encodes & and = (common in OW screenshot naming)', () => {
-    expect(screenshotURL('a&b=c.png')).toBe('/_screenshot/a%26b%3Dc.png')
+    expect(screenshotURL('a&b=c.png', 1)).toBe('/_screenshot/1/a%26b%3Dc.png')
   })
 })
 

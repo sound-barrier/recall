@@ -72,15 +72,21 @@ test.describe('match notes — preview / textarea swap', () => {
 
   test('blur after edit fires the PUT and reverts to the preview with the new text', async ({ page }) => {
     let lastBody: Record<string, unknown> | null = null
+    // App.vue triggers a re-fetch of /api/v1/matches after the
+    // annotation PUT lands; the mock has to return the UPDATED note
+    // on that second GET, otherwise the preview re-renders from the
+    // server response with the stale text and the assertion fails.
+    let currentNote = 'huge clutch'
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([record('match:1', 'huge clutch')]),
+        body: JSON.stringify([record('match:1', currentNote)]),
       })
     })
     await page.route('**/api/v1/matches/*/annotation', async (route: Route) => {
       lastBody = JSON.parse(route.request().postData() ?? '{}')
+      currentNote = (lastBody?.note as string) ?? currentNote
       await route.fulfill({ status: 204, body: '' })
     })
 

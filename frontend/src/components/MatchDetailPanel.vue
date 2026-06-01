@@ -50,7 +50,7 @@ const emit = defineEmits<{
   'toggle-sources': []
   'toggle-preview': [filename: string]
   'preview-error':  [filename: string]
-  'open-lightbox':  [filename: string, files: readonly string[]]
+  'open-lightbox':  [filename: string, files: readonly string[], dirIDs: Record<string, number>]
   'filter-toggle':  [field: string, value: string]
   'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
   'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
@@ -347,7 +347,7 @@ function onBackdropClick(e: MouseEvent) {
             @toggle-sources="emit('toggle-sources')"
             @toggle-preview="(f: string) => emit('toggle-preview', f)"
             @preview-error="(f: string) => emit('preview-error', f)"
-            @open-lightbox="(f: string, files: readonly string[]) => emit('open-lightbox', f, files)"
+            @open-lightbox="(f: string, files: readonly string[], dirIDs: Record<string, number>) => emit('open-lightbox', f, files, dirIDs)"
             @filter-toggle="(field: string, value: string) => emit('filter-toggle', field, value)"
             @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
             @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"

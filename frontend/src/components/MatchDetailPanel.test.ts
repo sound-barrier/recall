@@ -162,7 +162,9 @@ describe('MatchDetailPanel — sources panel', () => {
     const imgs = wrapper.findAll('img.source-preview')
     expect(imgs).toHaveLength(1)
     const src = imgs[0]!.attributes('src')
-    expect(src).toContain('/_screenshot/summary.png')
+    // URL shape: /_screenshot/<dir-id>/<filename>. Test record has
+    // no source_dir_ids so dir-id is 0 (configured-folder fallback).
+    expect(src).toContain('/_screenshot/0/summary.png')
   })
 
   it('renders preview error message when previewError[file]=true', () => {

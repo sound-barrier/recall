@@ -42,8 +42,14 @@ off first.
 >    production bugs (heatmap date-format mismatch dropping every
 >    record, `/` shortcut targeting a removed `#match-search`
 >    element).
-> 2. Fix the **ScreenshotHandler dir-ID bug** (item 2) — small,
->    surfaces a real user-visible failure mode.
+> 2. ~~Fix the **ScreenshotHandler dir-ID bug** (item 2)~~ —
+>    **paid down**: took the pre-1.0 break path. URL shape moved
+>    from `/_screenshot/<filename>` to
+>    `/_screenshot/<dir-id>/<filename>`. `MatchRecord.source_dirs`
+>    (paths) replaced by `source_dir_ids` (integers); the handler
+>    looks the path back up via `db.Store.LookupScreenshotsDir`
+>    and falls back to the configured dir when dir-id is 0
+>    (unparsed files in the watched folder). `feat!:` declared.
 > 3. Lift coverage on **App.vue + api.ts + MatchDetailPanel**
 >    (item 6) — the highest-traffic surfaces have the thinnest
 >    safety net.
@@ -51,53 +57,6 @@ off first.
 > Pre-1.0 there's no backwards-compat constraint, so items 2, 3,
 > and 4 can ship with breaking changes if that's the cleaner path
 > — declare via `feat!:` per CLAUDE.md.
-
----
-
-## 2. `ScreenshotHandler` ignores per-record `screenshots_dir_id`
-
-**Where:** `pkg/app/screenshot_handler.go:40` reads
-`a.settings.ScreenshotsDir` — the *current* setting — and joins
-that with the basename from the URL. Every parent table has a
-`screenshots_dir_id` FK to `screenshots_dirs(id)` that records the
-directory the screenshot was *ingested* from. The handler never
-consults it.
-
-**What breaks:** any user who has changed their Overwatch
-screenshots folder (re-installed OW, moved the folder, switched
-profiles to one configured at a different path) gets 404s on
-screenshots ingested from the prior location. The `<img>` falls
-back to the `previewError` empty state with a misleading "check
-screenshots folder in Settings" message. The DB has the right
-information — the handler just doesn't ask.
-
-**Plan:**
-
-1. Add a parameterless `db.ResolveScreenshotsDir(filename string) (string, error)`
-   that walks the five parent tables (`summary_screenshots`,
-   `scoreboard_screenshots`, …) joined to `screenshots_dirs`,
-   returning the first hit (five-way UNION ALL across the parent
-   tables).
-2. In `ScreenshotHandler`, look up the dir for the requested
-   filename first; fall back to `a.settings.ScreenshotsDir` for
-   files not yet committed (e.g. files in the watched dir that
-   haven't been parsed yet — the screenshot exists on disk but no
-   row references it).
-3. Add an e2e case: serve two records from different dirs; assert
-   each `/_screenshot/<name>` resolves correctly.
-4. Sanitiser still applies — the resolved dir goes through the
-   same `filepath.Abs` containment check.
-
-**Pre-1.0 break opportunity:** while the handler is being touched,
-consider making the URL embed the screenshots-dir id explicitly
-(`/_screenshot/<dir-id>/<filename>`). That removes the lookup
-ambiguity entirely. Declare via `feat!:`.
-
-**Size:** M.
-**Risk:** Med — the path-validation regression surface needs the
-full `safePathChars` + `filepath.Abs` re-check on the resolved dir
-(not just the configured one). CodeQL flagged this file before;
-the new code path must clear the same gates.
 
 ---
 

@@ -868,17 +868,29 @@ function onPreviewError(filename: string) {
 // list) — the user keeps walking the set they actually opened.
 const lightboxFilename = ref<string | null>(null)
 const lightboxFiles    = ref<string[]>([])
-const lightboxSrc = computed(() =>
-  lightboxFilename.value ? screenshotURL(lightboxFilename.value) : null,
-)
+// Filename → dir-id map snapshot for the lightbox session. Captured
+// at open time from the owning record's source_dir_ids so the
+// fullscreen URL stays accurate as the user paginates with ←/→
+// even if the underlying record refreshes mid-view.
+const lightboxDirIDs   = ref<Record<string, number>>({})
+const lightboxSrc = computed(() => {
+  const f = lightboxFilename.value
+  if (!f) return null
+  return screenshotURL(f, lightboxDirIDs.value[f] ?? 0)
+})
 const lightboxIndex = computed(() =>
   lightboxFilename.value
     ? lightboxFiles.value.indexOf(lightboxFilename.value)
     : -1,
 )
-function openLightbox(filename: string, files: readonly string[] = [filename]) {
+function openLightbox(
+  filename: string,
+  files: readonly string[] = [filename],
+  dirIDs: Record<string, number> = {},
+) {
   lightboxFilename.value = filename
   lightboxFiles.value = files.length > 0 ? [...files] : [filename]
+  lightboxDirIDs.value = { ...dirIDs }
 }
 function closeLightbox() {
   lightboxFilename.value = null
