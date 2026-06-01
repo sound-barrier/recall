@@ -5,15 +5,17 @@ import { mount, flushPromises } from '@vue/test-utils'
 // the SFC so the live wrapper never fires. vi.mock factories are
 // hoisted; vi.hoisted lets the spies share scope with the factory
 // without hitting "cannot access before initialization."
-const { GetProfiles, SwitchProfile, CreateProfile } = vi.hoisted(() => ({
+const { GetProfiles, SwitchProfile, CreateProfile, RenameProfile } = vi.hoisted(() => ({
   GetProfiles:   vi.fn(),
   SwitchProfile: vi.fn(),
   CreateProfile: vi.fn(),
+  RenameProfile: vi.fn(),
 }))
 vi.mock('../api', () => ({
   GetProfiles,
   SwitchProfile,
   CreateProfile,
+  RenameProfile,
 }))
 
 // window.location.reload is the post-switch sweep — replace it with
@@ -31,6 +33,7 @@ beforeEach(() => {
   GetProfiles.mockReset()
   SwitchProfile.mockReset()
   CreateProfile.mockReset()
+  RenameProfile.mockReset()
   reloadSpy.mockReset()
 })
 
@@ -131,5 +134,70 @@ describe('ProfileSwitcher — masthead chip', () => {
     expect(wrapper.find('.profile-new-form').exists()).toBe(false)
     expect(wrapper.find('.profile-new-trigger').exists()).toBe(true)
     expect(CreateProfile).not.toHaveBeenCalled()
+  })
+})
+
+describe('ProfileSwitcher — rename', () => {
+  it('hovering reveals a rename trigger per profile item', async () => {
+    const wrapper = await mountChip(['alt', 'main'], 'main')
+    await wrapper.find('.profile-chip').trigger('click')
+    expect(wrapper.findAll('.profile-rename-trigger')).toHaveLength(2)
+  })
+
+  it('clicking the rename trigger swaps the row for an inline input pre-filled with the name', async () => {
+    const wrapper = await mountChip(['alt', 'main'], 'main')
+    await wrapper.find('.profile-chip').trigger('click')
+    await wrapper.findAll('.profile-rename-trigger')[0]!.trigger('click')
+
+    const form = wrapper.find('.profile-rename-form')
+    expect(form.exists()).toBe(true)
+    const input = wrapper.find<HTMLInputElement>('.profile-rename-input')
+    expect(input.exists()).toBe(true)
+    expect(input.element.value).toBe('alt')
+  })
+
+  it('submitting a valid new name fires RenameProfile and reloads', async () => {
+    RenameProfile.mockResolvedValue({ active: 'jokester', profiles: ['jokester', 'main'] })
+    const wrapper = await mountChip(['alt', 'main'], 'alt')
+    await wrapper.find('.profile-chip').trigger('click')
+    await wrapper.findAll('.profile-rename-trigger')[0]!.trigger('click')
+
+    await wrapper.find('.profile-rename-input').setValue('jokester')
+    await wrapper.find('.profile-rename-form').trigger('submit')
+    await flushPromises()
+
+    expect(RenameProfile).toHaveBeenCalledWith('alt', 'jokester')
+    expect(reloadSpy).toHaveBeenCalled()
+  })
+
+  it('an unchanged name disables Save (the rename is a no-op)', async () => {
+    const wrapper = await mountChip(['alt', 'main'], 'main')
+    await wrapper.find('.profile-chip').trigger('click')
+    await wrapper.findAll('.profile-rename-trigger')[0]!.trigger('click')
+    expect((wrapper.find('.profile-rename-confirm').element as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('an invalid name disables Save', async () => {
+    const wrapper = await mountChip(['alt', 'main'], 'main')
+    await wrapper.find('.profile-chip').trigger('click')
+    await wrapper.findAll('.profile-rename-trigger')[0]!.trigger('click')
+
+    await wrapper.find('.profile-rename-input').setValue('../traversal')
+    expect((wrapper.find('.profile-rename-confirm').element as HTMLButtonElement).disabled).toBe(true)
+    expect(RenameProfile).not.toHaveBeenCalled()
+  })
+
+  it('Cancel reverts to the row layout without firing Rename', async () => {
+    const wrapper = await mountChip(['alt', 'main'], 'main')
+    await wrapper.find('.profile-chip').trigger('click')
+    await wrapper.findAll('.profile-rename-trigger')[0]!.trigger('click')
+    await wrapper.find('.profile-rename-input').setValue('jokester')
+
+    await wrapper.find('.profile-rename-cancel').trigger('click')
+    expect(wrapper.find('.profile-rename-form').exists()).toBe(false)
+    // Two actual profile rows (the "+ New profile…" button also
+    // carries .profile-item, so scope to row descendants).
+    expect(wrapper.findAll('.profile-item-row .profile-item')).toHaveLength(2)
+    expect(RenameProfile).not.toHaveBeenCalled()
   })
 })

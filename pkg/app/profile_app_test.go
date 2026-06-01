@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -186,6 +187,103 @@ func TestApp_ProfileOverride_ActivatesExistingProfileWithoutDuplicateCreate(t *t
 	}
 	if got := a2.GetProfiles().Profiles; len(got) != 2 {
 		t.Errorf("expected [alt main], got %v", got)
+	}
+}
+
+func TestApp_RenameProfile_NonActive(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+
+	a := New()
+	a.Startup(context.Background())
+	if err := a.CreateProfile("alt"); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	// Switch back to main so we rename a non-active profile.
+	if err := a.SwitchProfile("main"); err != nil {
+		t.Fatalf("SwitchProfile: %v", err)
+	}
+
+	if err := a.RenameProfile("alt", "jokester"); err != nil {
+		t.Fatalf("RenameProfile: %v", err)
+	}
+	got := a.GetProfiles()
+	if got.Active != "main" {
+		t.Errorf("active changed unexpectedly; got %q", got.Active)
+	}
+	if !slices.Contains(got.Profiles, "jokester") {
+		t.Errorf("Profiles should contain jokester; got %v", got.Profiles)
+	}
+	if slices.Contains(got.Profiles, "alt") {
+		t.Errorf("Profiles should NOT contain alt anymore; got %v", got.Profiles)
+	}
+}
+
+func TestApp_RenameProfile_Active_PreservesData(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+
+	a := New()
+	a.Startup(context.Background())
+
+	// Pin a distinctive setting on the active profile so we can
+	// prove its data carried through the rename.
+	mainDir := t.TempDir()
+	if err := a.SetScreenshotsDir(mainDir); err != nil {
+		t.Fatalf("SetScreenshotsDir: %v", err)
+	}
+
+	if err := a.RenameProfile("main", "silentstorm"); err != nil {
+		t.Fatalf("RenameProfile: %v", err)
+	}
+
+	got := a.GetProfiles()
+	if got.Active != "silentstorm" {
+		t.Errorf("active = %q, want silentstorm", got.Active)
+	}
+	// In-memory settings carried through and the store was re-opened.
+	if a.settings.ScreenshotsDir != mainDir {
+		t.Errorf("ScreenshotsDir lost after active rename; got %q want %q", a.settings.ScreenshotsDir, mainDir)
+	}
+	if a.store == nil {
+		t.Error("store should have been re-opened after active rename")
+	}
+	// Re-loading from disk also sees the renamed profile + its dir.
+	persisted := a.loadSettings()
+	if persisted.ScreenshotsDir != mainDir {
+		t.Errorf("on-disk settings.json lost ScreenshotsDir; got %q want %q", persisted.ScreenshotsDir, mainDir)
+	}
+}
+
+func TestApp_RenameProfile_NoOp(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	a := NewWithStore(&fakeStore{})
+	a.Startup(context.Background())
+	if err := a.RenameProfile("main", "main"); err != nil {
+		t.Errorf("rename to same name should be no-op, got %v", err)
+	}
+}
+
+func TestApp_RenameProfile_RejectsCollision(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	a := New()
+	a.Startup(context.Background())
+	if err := a.CreateProfile("alt"); err != nil {
+		t.Fatalf("CreateProfile: %v", err)
+	}
+	if err := a.SwitchProfile("main"); err != nil {
+		t.Fatalf("SwitchProfile: %v", err)
+	}
+
+	err := a.RenameProfile("alt", "main")
+	if !errors.Is(err, ErrProfileExists) {
+		t.Errorf("expected ErrProfileExists, got %v", err)
 	}
 }
 

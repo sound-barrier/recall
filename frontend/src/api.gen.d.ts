@@ -478,7 +478,17 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
+        /**
+         * Rename a profile
+         * @description Renames the on-disk directory + updates `profiles.json`. If
+         *     the renamed profile is the active one, the in-memory store is
+         *     closed before the directory rename and re-opened against the
+         *     new path so settings + DB carry through transparently. Returns
+         *     the updated active + list.
+         *
+         *     Idempotent when `new_name == old`.
+         */
+        put: operations["RenameProfile"];
         post?: never;
         /**
          * Delete a non-active profile and wipe its directory
@@ -488,6 +498,36 @@ export interface paths {
          *     `PUT /api/v1/profiles/active` to a different profile first.
          */
         delete: operations["DeleteProfile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk move matches from the active profile to another profile
+         * @description Transfers every row keyed on `match_keys` (across all 5 parent
+         *     screenshot tables) + annotations + the `hidden_matches` flag
+         *     from the active profile's DB into `target_profile`'s DB, then
+         *     hard-deletes from the source. The target's `screenshots_dirs`
+         *     id space is independent from the source's, so per-row
+         *     `screenshots_dir_id` is re-resolved against the target by path.
+         *
+         *     Two-phase: target writes succeed first; source delete happens
+         *     second. A retry on the same keys after a mid-transfer failure
+         *     re-targets the already-moved rows (idempotent via
+         *     `ON CONFLICT(filename)`) and completes the source delete.
+         */
+        post: operations["MoveMatches"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1793,6 +1833,51 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
+    RenameProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description New profile name. Same regex as creation:
+                     *     `^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$`.
+                     * @example silentstorm
+                     */
+                    new_name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Renamed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfilesResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description A profile with that new name already exists. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
     DeleteProfile: {
         parameters: {
             query?: never;
@@ -1814,6 +1899,43 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
             /** @description Profile is active; switch away first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    MoveMatches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    match_keys: string[];
+                    target_profile: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Move complete. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            /** @description target_profile is the active profile. */
             409: {
                 headers: {
                     [name: string]: unknown;

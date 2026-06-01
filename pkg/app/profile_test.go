@@ -210,6 +210,95 @@ func TestProfiles_Create_AcceptsValidNames(t *testing.T) {
 	}
 }
 
+func TestProfiles_Rename_UpdatesListAndDir(t *testing.T) {
+	base := t.TempDir()
+	p, _ := LoadProfiles(base)
+	_ = p.Create("alt")
+
+	if err := p.Rename("alt", "smurf"); err != nil {
+		t.Fatalf("Rename: %v", err)
+	}
+	want := []string{"main", "smurf"}
+	if got := p.List(); !reflect.DeepEqual(got, want) {
+		t.Errorf("List() = %v, want %v", got, want)
+	}
+	// Old dir gone, new dir present.
+	if _, err := os.Stat(filepath.Join(base, "profiles", "alt")); !os.IsNotExist(err) {
+		t.Errorf("old alt dir should be gone, got %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(base, "profiles", "smurf")); err != nil {
+		t.Errorf("new smurf dir should exist: %v", err)
+	}
+}
+
+func TestProfiles_Rename_ActiveProfile(t *testing.T) {
+	base := t.TempDir()
+	p, _ := LoadProfiles(base)
+	// Default "main" is active.
+
+	if err := p.Rename("main", "silentstorm"); err != nil {
+		t.Fatalf("Rename active: %v", err)
+	}
+	if got := p.Active(); got != "silentstorm" {
+		t.Errorf("Active() = %q, want silentstorm (rename should follow)", got)
+	}
+	if got := p.List(); !reflect.DeepEqual(got, []string{"silentstorm"}) {
+		t.Errorf("List() = %v, want [silentstorm]", got)
+	}
+}
+
+func TestProfiles_Rename_PersistsAcrossReload(t *testing.T) {
+	base := t.TempDir()
+	p, _ := LoadProfiles(base)
+	_ = p.Create("alt")
+	_ = p.Rename("alt", "manny")
+
+	p2, _ := LoadProfiles(base)
+	if got := p2.List(); !reflect.DeepEqual(got, []string{"main", "manny"}) {
+		t.Errorf("after reload: List() = %v, want [main manny]", got)
+	}
+}
+
+func TestProfiles_Rename_RejectsInvalidNewName(t *testing.T) {
+	base := t.TempDir()
+	p, _ := LoadProfiles(base)
+	_ = p.Create("alt")
+	err := p.Rename("alt", "../traversal")
+	if !errors.Is(err, ErrInvalidProfileName) {
+		t.Errorf("expected ErrInvalidProfileName, got %v", err)
+	}
+}
+
+func TestProfiles_Rename_RejectsUnknownSource(t *testing.T) {
+	base := t.TempDir()
+	p, _ := LoadProfiles(base)
+	err := p.Rename("nope", "manny")
+	if !errors.Is(err, ErrProfileNotFound) {
+		t.Errorf("expected ErrProfileNotFound, got %v", err)
+	}
+}
+
+func TestProfiles_Rename_RejectsCollisionWithExisting(t *testing.T) {
+	base := t.TempDir()
+	p, _ := LoadProfiles(base)
+	_ = p.Create("alt")
+	err := p.Rename("alt", "main") // main already exists
+	if !errors.Is(err, ErrProfileExists) {
+		t.Errorf("expected ErrProfileExists, got %v", err)
+	}
+}
+
+func TestProfiles_Rename_NoOpWhenSameName(t *testing.T) {
+	base := t.TempDir()
+	p, _ := LoadProfiles(base)
+	if err := p.Rename("main", "main"); err != nil {
+		t.Errorf("rename to same name should be a no-op, got %v", err)
+	}
+	if got := p.List(); !reflect.DeepEqual(got, []string{"main"}) {
+		t.Errorf("list mutated after no-op rename: %v", got)
+	}
+}
+
 func TestProfiles_Delete_RefusesActive(t *testing.T) {
 	base := t.TempDir()
 	p, _ := LoadProfiles(base)

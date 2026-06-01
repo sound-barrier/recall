@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { GetProfiles, SwitchProfile, CreateProfile } from '../api'
+import { GetProfiles, SwitchProfile, CreateProfile, RenameProfile } from '../api'
 
 // Masthead chip + dropdown for the multi-profile feature.
 //
@@ -96,6 +96,56 @@ function cancelCreate() {
   error.value = null
 }
 
+// ─── Rename ──────────────────────────────────────────────────────
+//
+// Each item carries a hover-revealed ✎ button. Clicking it swaps
+// the item's name span for an inline input pre-filled with the
+// existing name; Enter commits, Escape cancels. Only one row can be
+// in rename mode at a time (renameTarget ref).
+const renameTarget = ref<string | null>(null)
+const renameValue  = ref('')
+
+const renameValueValid = computed(() => NAME_RE.test(renameValue.value))
+const renameUnchanged  = computed(() => renameValue.value === renameTarget.value)
+
+function beginRename(name: string) {
+  renameTarget.value = name
+  renameValue.value  = name
+  error.value = null
+  // The input lives inside a v-for, so a template ref would collect
+  // an array. Query the rendered DOM in nextTick — only one rename
+  // form is ever rendered at a time, so the first match is the right
+  // input.
+  nextTick(() => {
+    const el = dropdownEl.value?.querySelector<HTMLInputElement>('.profile-rename-input')
+    el?.focus()
+    el?.select()
+  })
+}
+
+function cancelRename() {
+  renameTarget.value = null
+  renameValue.value = ''
+  error.value = null
+}
+
+async function confirmRename() {
+  if (busy.value || renameTarget.value === null) return
+  if (renameUnchanged.value) {
+    cancelRename()
+    return
+  }
+  if (!renameValueValid.value) return
+  busy.value = true
+  try {
+    await RenameProfile(renameTarget.value, renameValue.value.trim())
+    window.location.reload()
+  } catch (e) {
+    error.value = String(e)
+    busy.value = false
+  }
+}
+
 function onDocumentMousedown(e: MouseEvent) {
   if (!open.value) return
   const tgt = e.target as Node | null
@@ -104,10 +154,15 @@ function onDocumentMousedown(e: MouseEvent) {
   if (triggerEl.value?.contains(tgt))  return
   open.value = false
   creating.value = false
+  renameTarget.value = null
 }
 
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape' && open.value) {
+    if (renameTarget.value !== null) {
+      cancelRename()
+      return
+    }
     open.value = false
     creating.value = false
   }
@@ -146,19 +201,64 @@ onBeforeUnmount(() => {
       class="profile-menu"
       role="menu"
     >
-      <button
+      <div
         v-for="p in profiles"
         :key="p"
-        type="button"
-        class="profile-item"
-        :class="{ active: p === active }"
-        role="menuitem"
-        :disabled="busy"
-        @click="pickProfile(p)"
+        class="profile-item-row"
+        :class="{ active: p === active, renaming: renameTarget === p }"
       >
-        <span class="profile-item-tick" aria-hidden="true">{{ p === active ? '✓' : '' }}</span>
-        <span class="profile-item-name">{{ p }}</span>
-      </button>
+        <template v-if="renameTarget !== p">
+          <button
+            type="button"
+            class="profile-item"
+            :class="{ active: p === active }"
+            role="menuitem"
+            :disabled="busy"
+            @click="pickProfile(p)"
+          >
+            <span class="profile-item-tick" aria-hidden="true">{{ p === active ? '✓' : '' }}</span>
+            <span class="profile-item-name">{{ p }}</span>
+          </button>
+          <button
+            type="button"
+            class="profile-rename-trigger"
+            :title="`Rename ${p}`"
+            :aria-label="`Rename profile ${p}`"
+            :disabled="busy"
+            @click.stop="beginRename(p)"
+          >
+            <span aria-hidden="true">✎</span>
+          </button>
+        </template>
+        <template v-else>
+          <form class="profile-rename-form" @submit.prevent="confirmRename">
+            <input
+              v-model="renameValue"
+              class="profile-rename-input"
+              type="text"
+              maxlength="40"
+              :aria-label="`New name for profile ${p}`"
+              @keydown.escape.stop="cancelRename"
+            >
+            <button
+              type="submit"
+              class="profile-rename-confirm"
+              :disabled="busy || !renameValueValid || renameUnchanged"
+              :title="renameUnchanged ? 'Type a new name first' : 'Save rename'"
+            >
+              {{ busy ? '…' : 'Save' }}
+            </button>
+            <button
+              type="button"
+              class="profile-rename-cancel"
+              :disabled="busy"
+              @click="cancelRename"
+            >
+              Cancel
+            </button>
+          </form>
+        </template>
+      </div>
 
       <div class="profile-menu-sep" aria-hidden="true" />
 
@@ -424,6 +524,105 @@ onBeforeUnmount(() => {
   letter-spacing: 0.1em;
   color: var(--text-faint);
   line-height: 1.3;
+}
+
+.profile-item-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.profile-item-row.renaming {
+  grid-template-columns: 1fr;
+}
+
+.profile-rename-trigger {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 0.78rem;
+  line-height: 1;
+  padding: 0.3rem 0.4rem;
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 100ms ease, color 100ms ease, background 100ms ease;
+}
+
+.profile-item-row:hover .profile-rename-trigger,
+.profile-rename-trigger:focus-visible {
+  opacity: 1;
+}
+
+.profile-rename-trigger:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.profile-rename-form {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.3rem;
+  align-items: center;
+  padding: 0.25rem;
+}
+
+.profile-rename-input {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 2px;
+  padding: 0.32rem 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  width: 100%;
+}
+
+.profile-rename-input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.profile-rename-confirm,
+.profile-rename-cancel {
+  appearance: none;
+  border-radius: 2px;
+  padding: 0.32rem 0.55rem;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.profile-rename-confirm {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--primary-text-on-accent, #111);
+}
+
+.profile-rename-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.profile-rename-cancel {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.profile-rename-cancel:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text);
 }
 
 .profile-error {

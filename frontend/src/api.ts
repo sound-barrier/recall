@@ -427,8 +427,31 @@ export function SwitchProfile(name: string): Promise<ProfilesResponse> {
   return _send<ProfilesResponse>('PUT', '/api/v1/profiles/active', { name })
 }
 
+// Rename a profile. Server handles the directory rename + the
+// active-store close/re-open dance when the renamed profile is the
+// current active one. The caller reloads after success so every
+// composable refetches with the new name surfaced.
+export function RenameProfile(oldName: string, newName: string): Promise<ProfilesResponse> {
+  if (IS_WAILS) {
+    return _wails<void>('RenameProfile', oldName, newName).then(() => GetProfiles())
+  }
+  const path = `/api/v1/profiles/${encodeURIComponent(oldName)}`
+  return _send<ProfilesResponse>('PUT', path, { new_name: newName })
+}
+
+// Bulk-move matches from the active profile to another profile. The
+// server transfers every row + annotation + hidden flag in two
+// phases (write target, then delete source) so a mid-transfer
+// failure leaves the canonical copy on the target.
+export const MoveMatches = _dualVoid<[matchKeys: string[], targetProfile: string]>(
+  'MoveMatches',
+  'POST',
+  '/api/v1/matches/transfers',
+  (matchKeys, targetProfile) => ({ match_keys: matchKeys, target_profile: targetProfile }),
+)
+
 // Profile deletion is server-only for now — the masthead chip's MVP
-// scope is switch + create. The backend route (DELETE
+// scope is switch + create + rename. The backend route (DELETE
 // /api/v1/profiles/{name}) is reachable via direct API for power
 // users / scripted cleanup; the frontend wrapper will land when the
 // UX for "delete with confirm" is designed.

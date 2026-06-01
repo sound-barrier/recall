@@ -107,6 +107,8 @@ function mockApi(overrides: MountOverrides = {}) {
     GetProfiles:         vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
     CreateProfile:       vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
     SwitchProfile:       vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
+    RenameProfile:       vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
+    MoveMatches:         vi.fn(async () => undefined),
     // Tests don't exercise canonical-name display; return an empty
     // OWData payload so useOWData's lookups fall through to the
     // stored lowercase form (the test fixtures already use the
