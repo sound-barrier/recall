@@ -101,6 +101,13 @@ function mockApi(overrides: MountOverrides = {}) {
     ExportData:          vi.fn(async () => ''),
     ExportDataCSV:       vi.fn(async () => ''),
     ImportData:          vi.fn(async () => ''),
+    // Profiles — single default profile is the natural test state.
+    // Tests that need multi-profile state can override these with
+    // their own vi.doMock before mounting.
+    GetProfiles:         vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
+    CreateProfile:       vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
+    SwitchProfile:       vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
+    DeleteProfile:       vi.fn(async () => undefined),
     // Tests don't exercise canonical-name display; return an empty
     // OWData payload so useOWData's lookups fall through to the
     // stored lowercase form (the test fixtures already use the

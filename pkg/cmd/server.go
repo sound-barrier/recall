@@ -234,6 +234,82 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
+	// ── Profiles ────────────────────────────────────────────────────
+	// Multiple-profile support: main + alt accounts get separate
+	// SQLite DBs + settings under <base>/profiles/<name>/. GET lists
+	// what's known + which is active; POST creates and activates a
+	// new profile in one shot (typical UX flow); PUT switches active;
+	// DELETE drops a non-active profile and wipes its dir.
+	apiMux.HandleFunc("GET /api/v1/profiles", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, a.GetProfiles(), nil)
+	})
+	apiMux.HandleFunc("POST /api/v1/profiles", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Name string `json:"name"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if err := a.CreateProfile(body.Name); err != nil {
+			switch {
+			case errors.Is(err, app.ErrInvalidProfileName),
+				errors.Is(err, app.ErrProfileExists):
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		writeJSON(w, a.GetProfiles(), nil)
+	})
+	apiMux.HandleFunc("PUT /api/v1/profiles/active", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Name string `json:"name"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if err := a.SwitchProfile(body.Name); err != nil {
+			switch {
+			case errors.Is(err, app.ErrInvalidProfileName):
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			case errors.Is(err, app.ErrProfileNotFound):
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, a.GetProfiles(), nil)
+	})
+	apiMux.HandleFunc("DELETE /api/v1/profiles/{name}", func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("name")
+		if name == "" {
+			http.Error(w, "name required in URL", http.StatusBadRequest)
+			return
+		}
+		if err := a.DeleteProfile(name); err != nil {
+			switch {
+			case errors.Is(err, app.ErrInvalidProfileName):
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			case errors.Is(err, app.ErrProfileNotFound):
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			case errors.Is(err, app.ErrProfileActive):
+				http.Error(w, err.Error(), http.StatusConflict)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	// ── Parse pipeline ──────────────────────────────────────────────
 	// Kicks off a synchronous parse run. Returns 202 Accepted because
 	// the meaningful side-effect is the SQLite writes + SSE broadcast,

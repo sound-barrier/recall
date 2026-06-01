@@ -22,10 +22,11 @@ import type { components } from './api.gen'
 
 // Re-exported types — consumers (App.vue) import these instead of
 // reaching into api.gen directly.
-export type MatchRecord     = components['schemas']['MatchRecord']
-export type HeroPlay        = components['schemas']['HeroPlay']
-export type TesseractStatus = components['schemas']['TesseractStatus']
-export type ScreenshotType  = components['schemas']['ScreenshotType']
+export type MatchRecord       = components['schemas']['MatchRecord']
+export type HeroPlay          = components['schemas']['HeroPlay']
+export type TesseractStatus   = components['schemas']['TesseractStatus']
+export type ScreenshotType    = components['schemas']['ScreenshotType']
+export type ProfilesResponse  = components['schemas']['ProfilesResponse']
 
 // Detect whether the Wails IPC bridge has been injected. The bridge is
 // only present when the page is loaded inside the native Wails webview.
@@ -395,6 +396,43 @@ export const ClearDatabase = _dualVoid<[]>(
   'ClearDatabase',
   'DELETE',
   '/api/v1/matches',
+)
+
+// ─── Profiles ─────────────────────────────────────────────────────────────
+//
+// Each profile is its own settings + SQLite DB under
+// <base>/profiles/<name>/. Switching tears down the server's in-memory
+// state and re-initializes — the SPA reloads after each Create/Switch
+// so every composable re-fetches against the new active profile.
+
+export function GetProfiles(): Promise<ProfilesResponse> {
+  if (IS_WAILS) return _wails('GetProfiles')
+  return _get<ProfilesResponse>('/api/v1/profiles')
+}
+
+// Create-and-activate. Server returns the new state; caller reloads.
+export function CreateProfile(name: string): Promise<ProfilesResponse> {
+  if (IS_WAILS) {
+    return _wails<void>('CreateProfile', name).then(() => GetProfiles())
+  }
+  return _send<ProfilesResponse>('POST', '/api/v1/profiles', { name })
+}
+
+// Switch the active profile. Same shape as CreateProfile — returns
+// the new state for callers that want to read it before reloading.
+export function SwitchProfile(name: string): Promise<ProfilesResponse> {
+  if (IS_WAILS) {
+    return _wails<void>('SwitchProfile', name).then(() => GetProfiles())
+  }
+  return _send<ProfilesResponse>('PUT', '/api/v1/profiles/active', { name })
+}
+
+// Hard-delete a non-active profile + wipe its directory. 409 if the
+// profile is active (caller must SwitchProfile first).
+export const DeleteProfile = _dualVoid<[name: string]>(
+  'DeleteProfile',
+  'DELETE',
+  (name) => `/api/v1/profiles/${encodeURIComponent(name)}`,
 )
 
 // ─── Data location + export/import ─────────────────────────────────────────
