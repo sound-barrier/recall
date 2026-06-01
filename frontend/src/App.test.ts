@@ -41,7 +41,7 @@ describe('App.vue', () => {
     await mountApp({
       records: [
         // Minimal valid MatchRecord — only the fields the helpers actually read.
-        { match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
+        { match_key: 'match-2026-05-10T21-29-28', source_files: ['a.png'], data: {
           map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
         } },
       ],
@@ -101,7 +101,7 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
   // it flashes a pulse class on the scoreboard so the user notices.
   it('adds .pulse to the scoreboard when records grow on parse-complete', async () => {
     const initial: MatchRecord[] = [
-      { match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
+      { match_key: 'match-2026-05-10T21-29-28', source_files: ['a.png'], data: {
         map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
       } },
     ]
@@ -112,7 +112,7 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
     const api = await import('./api')
     const grown: MatchRecord[] = [
       ...initial,
-      { match_key: 'match:2026-05-10T22:14:02', source_files: ['b.png'], data: {
+      { match_key: 'match-2026-05-10T22-14-02', source_files: ['b.png'], data: {
         map: 'aatlis', date: '2026-05-10', finished_at: '22:14', result: 'defeat',
       } },
     ]
@@ -128,7 +128,7 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
 
   it('does NOT pulse when records count is unchanged on parse-complete', async () => {
     const seed: MatchRecord[] = [
-      { match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
+      { match_key: 'match-2026-05-10T21-29-28', source_files: ['a.png'], data: {
         map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
       } },
     ]
@@ -153,17 +153,17 @@ describe('App.vue — masthead scoreboard W/L/D consistency', () => {
   it('counts undated rows the same way as the Matches view Record tile', async () => {
     const records: MatchRecord[] = [
       // Dated victory — both pipelines count this.
-      { match_key: 'match:2026-05-10T21:29:28', source_files: ['a.png'], data: {
+      { match_key: 'match-2026-05-10T21-29-28', source_files: ['a.png'], data: {
         map: 'aatlis', hero: 'lucio', date: '2026-05-10', finished_at: '21:29', result: 'victory',
       } },
       // Dated defeat — both pipelines count this.
-      { match_key: 'match:2026-05-10T21:49:34', source_files: ['b.png'], data: {
+      { match_key: 'match-2026-05-10T21-49-34', source_files: ['b.png'], data: {
         map: 'rialto', hero: 'wuyang', date: '2026-05-10', finished_at: '21:49', result: 'defeat',
       } },
       // UNDATED victory (rank-inferred result with no SUMMARY) —
       // the live-DB Suravasa case. Legacy pipeline drops it; the
       // Record tile counts it; masthead now must count it too.
-      { match_key: 'match:2026-05-10T22:21:11', source_files: ['c.png'], data: {
+      { match_key: 'match-2026-05-10T22-21-11', source_files: ['c.png'], data: {
         map: 'suravasa', hero: 'lucio', result: 'victory',
       } },
     ]

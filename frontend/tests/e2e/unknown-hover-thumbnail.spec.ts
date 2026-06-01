@@ -29,7 +29,7 @@ async function stubScreenshotBytes(page: import('@playwright/test').Page) {
 }
 
 const unknownRecord = {
-  match_key: 'unmatched:broken.png',
+  match_key: 'unmatched-broken.png',
   source_files: ['broken.png'],
   source_types: { 'broken.png': 'unknown' },
   data: {},
@@ -146,7 +146,7 @@ test.describe('Unknown tab — hover preview', () => {
         status: 200, contentType: 'application/json',
         body: JSON.stringify([
           unknownRecord,
-          { ...unknownRecord, match_key: 'unmatched:other.png', source_files: ['other.png'] },
+          { ...unknownRecord, match_key: 'unmatched-other.png', source_files: ['other.png'] },
         ]),
       })
     })

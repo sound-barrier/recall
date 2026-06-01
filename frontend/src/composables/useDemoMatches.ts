@@ -183,7 +183,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
   // One AMBIGUOUS record so the Unknown tab's "Needs your review"
   // subsection + the .ambiguous-card / .candidate-picker UI lights
   // up during the tour. Match-key shape mirrors the real
-  // "ambiguous:<filename>" sentinel App.vue's filter classifies as
+  // "ambiguous-<filename>" sentinel App.vue's filter classifies as
   // ambiguous (records.filter(r => r.ambiguous)).
   //
   // The single candidate points at the aatlis demo match (one of
@@ -197,7 +197,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
   // story holds together: "two screenshots with the same E/A/D
   // signature inside the 30-min window — Recall asks you to attach."
   {
-    match_key: 'ambiguous:tour-aatlis-ambig.png',
+    match_key: 'ambiguous-tour-aatlis-ambig.png',
     source_files: ['tour-aatlis-ambig.png'],
     source_types: { 'tour-aatlis-ambig.png': 'scoreboard' },
     source_parsed_at: { 'tour-aatlis-ambig.png': '2026-05-10T22:01:00Z' },
@@ -219,10 +219,10 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
   },
   // One unknown record so the rest of the Unknown tab (below the
   // ambiguous subsection) has something to land on. Match-key shape
-  // mirrors the real "unmatched:<file>" sentinel App.vue's filter
+  // mirrors the real "unmatched-<file>" sentinel App.vue's filter
   // classifies as unknown.
   {
-    match_key: 'unmatched:tour-broken.png',
+    match_key: 'unmatched-tour-broken.png',
     source_files: ['tour-broken.png'],
     // Unknown record carries no source_types — the parser couldn't
     // classify it (mirrors `unknown_screenshots` table semantics).

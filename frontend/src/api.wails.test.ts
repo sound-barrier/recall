@@ -35,14 +35,14 @@ describe('SetMatchAnnotation (Wails mode)', () => {
     const setSpy = vi.fn(async () => undefined)
     installBridge(setSpy)
     const { SetMatchAnnotation } = await import('./api')
-    await SetMatchAnnotation('match:2026-05-10T22:21:11', {
+    await SetMatchAnnotation('match-2026-05-10T22-21-11', {
       leaver: 'team', note: 'ally rage-quit', replay_code: '7H1K9P', members: ['Apollo#1'],
     })
     expect(setSpy).toHaveBeenCalledTimes(1)
     // lastCall is the tuple of args; asserting equality on the whole
     // tuple locks both arity (length 1) and shape in one expect.
     expect(setSpy.mock.lastCall).toEqual([{
-      MatchKey:   'match:2026-05-10T22:21:11',
+      MatchKey:   'match-2026-05-10T22-21-11',
       Leaver:     'team',
       Note:       'ally rage-quit',
       ReplayCode: '7H1K9P',

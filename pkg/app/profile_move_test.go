@@ -40,8 +40,8 @@ func TestApp_MoveMatches_TransfersRowsAndChildren(t *testing.T) {
 
 	// Seed two matches in main with full coverage: a summary +
 	// scoreboard + child rows + an annotation + a hidden flag.
-	const movedKey = "match:2026-05-10T22:00:00"
-	const stayedKey = "match:2026-05-10T23:00:00"
+	const movedKey = "match-2026-05-10T22-00-00"
+	const stayedKey = "match-2026-05-10T23-00-00"
 
 	if err := a.store.UpsertSummary(db.SummaryRow{
 		Filename: "moved-summary.png", MatchKey: movedKey,
@@ -144,7 +144,7 @@ func TestApp_MoveMatches_RemapsScreenshotsDirIDOnTarget(t *testing.T) {
 		t.Fatalf("EnsureScreenshotsDir: %v", err)
 	}
 
-	const key = "match:2026-05-10T22:00:00"
+	const key = "match-2026-05-10T22-00-00"
 	if err := a.store.UpsertSummary(db.SummaryRow{
 		Filename: "with-dir.png", MatchKey: key, ScreenshotsDirID: dirID,
 	}); err != nil {

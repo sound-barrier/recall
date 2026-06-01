@@ -1066,7 +1066,7 @@ useKeyboardShortcuts([
 void TAB_ORDER
 
 // Records that couldn't be resolved to a named match — either the
-// screenshot filename had no parseable OW timestamp ("unmatched:…")
+// screenshot filename had no parseable OW timestamp ("unmatched-…")
 // or OCR failed to determine a map name. These surface in the
 // Unknown Maps view for triage.
 const unknownRecords = computed(() =>

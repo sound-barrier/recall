@@ -38,9 +38,9 @@ function record(matchKey: string, hero: string) {
 }
 
 const RECORDS = [
-  record('match:2026-05-10T22:00:00', 'lucio'),
-  record('match:2026-05-10T22:15:00', 'juno'),
-  record('match:2026-05-10T22:30:00', 'kiriko'),
+  record('match-2026-05-10T22-00-00', 'lucio'),
+  record('match-2026-05-10T22-15-00', 'juno'),
+  record('match-2026-05-10T22-30-00', 'kiriko'),
 ]
 
 async function seed(page: import('@playwright/test').Page) {

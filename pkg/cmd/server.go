@@ -268,7 +268,7 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	// Resolve an ambiguous-attribution screenshot by attaching every
 	// parent row carrying the ambiguous: sentinel to the user's chosen
 	// match. resolved_to must be one of the recorded candidates OR a
-	// freshly-minted "match:<ts>" the user wants to attribute to a
+	// freshly-minted "match-<ts>" the user wants to attribute to a
 	// new standalone match (escape hatch when none of the candidates
 	// is right).
 	apiMux.HandleFunc("PUT /api/v1/matches/{matchKey}/resolution", func(w http.ResponseWriter, r *http.Request) {

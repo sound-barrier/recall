@@ -10,23 +10,23 @@ import (
 func TestResolveAmbiguousMatch_HappyPath(t *testing.T) {
 	fs := &fakeStore{
 		Scoreboards: []db.ScoreboardRow{
-			{Filename: "sb.png", MatchKey: "ambiguous:sb.png"},
+			{Filename: "sb.png", MatchKey: "ambiguous-sb.png"},
 		},
 		Summaries: []db.SummaryRow{
-			{Filename: "sum.png", MatchKey: "ambiguous:sb.png"},
+			{Filename: "sum.png", MatchKey: "ambiguous-sb.png"},
 		},
 		Ambiguous: map[string][]db.AmbiguousCandidate{
-			"sb.png": {{MatchKey: "match:foo", DistanceS: 720}},
+			"sb.png": {{MatchKey: "match-foo", DistanceS: 720}},
 		},
 	}
 	a := NewWithStore(fs)
-	if err := a.ResolveAmbiguousMatch("ambiguous:sb.png", "match:foo"); err != nil {
+	if err := a.ResolveAmbiguousMatch("ambiguous-sb.png", "match-foo"); err != nil {
 		t.Fatalf("ResolveAmbiguousMatch: %v", err)
 	}
-	if fs.Scoreboards[0].MatchKey != "match:foo" {
+	if fs.Scoreboards[0].MatchKey != "match-foo" {
 		t.Errorf("scoreboard not updated: %q", fs.Scoreboards[0].MatchKey)
 	}
-	if fs.Summaries[0].MatchKey != "match:foo" {
+	if fs.Summaries[0].MatchKey != "match-foo" {
 		t.Errorf("summary not updated: %q", fs.Summaries[0].MatchKey)
 	}
 	if _, ok := fs.Ambiguous["sb.png"]; ok {
@@ -36,7 +36,7 @@ func TestResolveAmbiguousMatch_HappyPath(t *testing.T) {
 
 func TestResolveAmbiguousMatch_RejectsKeyMissingPrefix(t *testing.T) {
 	a := NewWithStore(&fakeStore{})
-	err := a.ResolveAmbiguousMatch("match:foo", "match:bar")
+	err := a.ResolveAmbiguousMatch("match-foo", "match-bar")
 	if !errors.Is(err, ErrInvalidAmbiguousKey) {
 		t.Errorf("expected ErrInvalidAmbiguousKey, got %v", err)
 	}
@@ -45,11 +45,11 @@ func TestResolveAmbiguousMatch_RejectsKeyMissingPrefix(t *testing.T) {
 func TestResolveAmbiguousMatch_RejectsResolvedToNotInCandidates(t *testing.T) {
 	fs := &fakeStore{
 		Ambiguous: map[string][]db.AmbiguousCandidate{
-			"sb.png": {{MatchKey: "match:foo", DistanceS: 600}},
+			"sb.png": {{MatchKey: "match-foo", DistanceS: 600}},
 		},
 	}
 	a := NewWithStore(fs)
-	err := a.ResolveAmbiguousMatch("ambiguous:sb.png", "bogus-key")
+	err := a.ResolveAmbiguousMatch("ambiguous-sb.png", "bogus-key")
 	if !errors.Is(err, ErrInvalidResolution) {
 		t.Errorf("expected ErrInvalidResolution, got %v", err)
 	}
@@ -60,24 +60,24 @@ func TestResolveAmbiguousMatch_AcceptsFreshMatchKey(t *testing.T) {
 	// a freshly-minted match:<ts> not in the candidate list.
 	fs := &fakeStore{
 		Scoreboards: []db.ScoreboardRow{
-			{Filename: "sb.png", MatchKey: "ambiguous:sb.png"},
+			{Filename: "sb.png", MatchKey: "ambiguous-sb.png"},
 		},
 		Ambiguous: map[string][]db.AmbiguousCandidate{
-			"sb.png": {{MatchKey: "match:other", DistanceS: 720}},
+			"sb.png": {{MatchKey: "match-other", DistanceS: 720}},
 		},
 	}
 	a := NewWithStore(fs)
-	if err := a.ResolveAmbiguousMatch("ambiguous:sb.png", "match:2026-05-10T21:29:28"); err != nil {
+	if err := a.ResolveAmbiguousMatch("ambiguous-sb.png", "match-2026-05-10T21-29-28"); err != nil {
 		t.Errorf("expected fresh match:<ts> to be accepted, got %v", err)
 	}
-	if fs.Scoreboards[0].MatchKey != "match:2026-05-10T21:29:28" {
+	if fs.Scoreboards[0].MatchKey != "match-2026-05-10T21-29-28" {
 		t.Errorf("scoreboard not rewritten: %q", fs.Scoreboards[0].MatchKey)
 	}
 }
 
 func TestResolveAmbiguousMatch_NotFoundReturnsErr(t *testing.T) {
 	a := NewWithStore(&fakeStore{})
-	err := a.ResolveAmbiguousMatch("ambiguous:nope.png", "match:foo")
+	err := a.ResolveAmbiguousMatch("ambiguous-nope.png", "match-foo")
 	if !errors.Is(err, ErrAmbiguousNotFound) {
 		t.Errorf("expected ErrAmbiguousNotFound, got %v", err)
 	}

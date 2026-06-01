@@ -35,7 +35,7 @@ async function stubScreenshotBytes(page: import('@playwright/test').Page) {
 }
 
 const unknownRecord = {
-  match_key: 'unmatched:broken.png',
+  match_key: 'unmatched-broken.png',
   source_files: ['broken.png'],
   source_types: { 'broken.png': 'unknown' },
   data: {},
@@ -43,14 +43,14 @@ const unknownRecord = {
 }
 
 const ambiguousRecord = {
-  match_key: 'ambiguous:scoreboard-2.png',
+  match_key: 'ambiguous-scoreboard-2.png',
   source_files: ['scoreboard-2.png'],
   source_types: { 'scoreboard-2.png': 'scoreboard' },
   data: { hero: 'lucio' },
   parsed_at: '2026-05-10T21:42:00Z',
   ambiguous: true,
   candidates: [
-    { match_key: 'match:2026-05-10T21:29:28', distance_seconds: 720 },
+    { match_key: 'match-2026-05-10T21-29-28', distance_seconds: 720 },
   ],
 }
 

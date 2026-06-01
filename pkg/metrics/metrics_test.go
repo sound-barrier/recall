@@ -15,7 +15,7 @@ import (
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestParseMatchTimestamp_FromSummary(t *testing.T) {
-	got, ok := parseMatchTimestamp("2026-05-10", "21:29", "match:2020-01-01T00:00:00")
+	got, ok := parseMatchTimestamp("2026-05-10", "21:29", "match-2020-01-01T00-00-00")
 	if !ok {
 		t.Fatalf("expected ok=true")
 	}
@@ -26,7 +26,7 @@ func TestParseMatchTimestamp_FromSummary(t *testing.T) {
 }
 
 func TestParseMatchTimestamp_FallsBackToMatchKey(t *testing.T) {
-	got, ok := parseMatchTimestamp("", "", "match:2026-05-10T21:29:28")
+	got, ok := parseMatchTimestamp("", "", "match-2026-05-10T21-29-28")
 	if !ok {
 		t.Fatalf("expected ok=true via match_key fallback")
 	}
@@ -37,8 +37,8 @@ func TestParseMatchTimestamp_FallsBackToMatchKey(t *testing.T) {
 }
 
 func TestParseMatchTimestamp_RejectsUnmatched(t *testing.T) {
-	if _, ok := parseMatchTimestamp("", "", "unmatched:loner.png"); ok {
-		t.Errorf("unmatched: keys must not yield a timestamp")
+	if _, ok := parseMatchTimestamp("", "", "unmatched-loner.png"); ok {
+		t.Errorf("unmatched- keys must not yield a timestamp")
 	}
 	if _, ok := parseMatchTimestamp("", "", ""); ok {
 		t.Errorf("empty inputs must not yield a timestamp")
@@ -78,7 +78,7 @@ func scrape(t *testing.T, reader Reader) string {
 func TestCollector_SkipsNonCompetitive(t *testing.T) {
 	reader := func() ([]ScrapeRow, error) {
 		return []ScrapeRow{{
-			MatchKey: "match:2026-05-10T21:29:28",
+			MatchKey: "match-2026-05-10T21-29-28",
 			Data: parser.MatchResult{
 				Mode: "quickplay", // must be skipped
 				Map:  "rialto",
@@ -96,7 +96,7 @@ func TestCollector_SkipsNonCompetitive(t *testing.T) {
 func TestCollector_SkipsRowsWithoutTimestamp(t *testing.T) {
 	reader := func() ([]ScrapeRow, error) {
 		return []ScrapeRow{{
-			MatchKey: "unmatched:loner.png", // no date, no match: prefix
+			MatchKey: "unmatched-loner.png", // no date, no match: prefix
 			Data:     parser.MatchResult{Mode: "competitive", Eliminations: 17},
 		}}, nil
 	}
@@ -109,7 +109,7 @@ func TestCollector_SkipsRowsWithoutTimestamp(t *testing.T) {
 func TestCollector_EmitsCoreMetricsWithPrimaryHero(t *testing.T) {
 	reader := func() ([]ScrapeRow, error) {
 		return []ScrapeRow{{
-			MatchKey: "match:2026-05-10T21:29:28",
+			MatchKey: "match-2026-05-10T21-29-28",
 			Data: parser.MatchResult{
 				Mode: "competitive", Map: "rialto", Type: "control", Result: "victory",
 				Date: "2026-05-10", FinishedAt: "21:29",
@@ -140,7 +140,7 @@ func TestCollector_EmitsCoreMetricsWithPrimaryHero(t *testing.T) {
 func TestCollector_EmitsPerHeroStatsAndSR(t *testing.T) {
 	reader := func() ([]ScrapeRow, error) {
 		return []ScrapeRow{{
-			MatchKey: "match:2026-05-10T21:29:28",
+			MatchKey: "match-2026-05-10T21-29-28",
 			Data: parser.MatchResult{
 				Mode: "competitive", Map: "rialto",
 				Date: "2026-05-10", FinishedAt: "21:29",

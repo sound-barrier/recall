@@ -160,27 +160,35 @@ func mergeMatchResult(dst, src *parser.MatchResult) {
 //     filename AND no signature field conflicts — adopt its key,
 //     unless multiple distinct match_keys tie within
 //     tieToleranceWindow of the closest, in which case mint
-//     "ambiguous:<filename>" + the tied candidates.
-//   - Else mint a fresh key: `match:<ts>` from the filename, or
-//     `unmatched:<filename>` for files without a parseable timestamp.
+//     "ambiguous-<filename>" + the tied candidates.
+//   - Else mint a fresh key: `match-<ts>` from the filename, or
+//     `unmatched-<filename>` for files without a parseable timestamp.
+//
+// Pre-1.0 break: separator is `-`, not `:`. Match keys are now
+// URL-safe alphanumerics + `-` (modulo any chars carried over from
+// the embedded filename in unmatched/ambiguous), so callers can drop
+// the encodeURIComponent dance for the match-<ts> form. The
+// timestamp portion uses `-` for both date and time separators
+// (`YYYY-MM-DDTHH-MM-SS`) so the whole key stays parseable by humans
+// + URL parsers.
 func resolveMatchKey(filename string, result *parser.MatchResult, snap db.Screenshots) (string, []db.AmbiguousCandidate) {
 	cand := candidateFromParse(filename, result)
 	if k, cands, ok := matchByEAD(cand, snap); ok {
 		if k != "" {
 			return k, nil
 		}
-		return "ambiguous:" + filename, cands
+		return "ambiguous-" + filename, cands
 	}
 	if k, cands, ok := matchByTimestampWindow(cand, snap); ok {
 		if k != "" {
 			return k, nil
 		}
-		return "ambiguous:" + filename, cands
+		return "ambiguous-" + filename, cands
 	}
 	if cand.hasTS {
-		return "match:" + cand.ts.UTC().Format("2006-01-02T15:04:05"), nil
+		return "match-" + cand.ts.UTC().Format("2006-01-02T15-04-05"), nil
 	}
-	return "unmatched:" + filename, nil
+	return "unmatched-" + filename, nil
 }
 
 // candidate is the comparison shape used by the two match passes.

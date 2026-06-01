@@ -20,7 +20,7 @@ import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
 
-const KEY = 'match:2026-05-10T22:00:00'
+const KEY = 'match-2026-05-10T22-00-00'
 const KEY_ENCODED = encodeURIComponent(KEY)
 const ANNOTATION_PATH_GLOB = `**/api/v1/matches/${KEY_ENCODED}/annotation`
 

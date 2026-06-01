@@ -23,7 +23,7 @@ func TestMatchByEAD_SingleCandidate_WithinAutoWindow_AutoAdopts(t *testing.T) {
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
 			Filename:     "2026.05.10 - 21.29.28 _sb.png",
-			MatchKey:     "match:2026-05-10T21:29:28",
+			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
@@ -34,7 +34,7 @@ func TestMatchByEAD_SingleCandidate_WithinAutoWindow_AutoAdopts(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected ok=true, got false")
 	}
-	if key != "match:2026-05-10T21:29:28" {
+	if key != "match-2026-05-10T21-29-28" {
 		t.Errorf("expected adopted key, got %q", key)
 	}
 	if cands != nil {
@@ -46,7 +46,7 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_SurfacesCandidate(t *testing
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
 			Filename:     "2026.05.10 - 21.29.28 _sb.png",
-			MatchKey:     "match:2026-05-10T21:29:28",
+			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
@@ -63,7 +63,7 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_SurfacesCandidate(t *testing
 	if len(cands) != 1 {
 		t.Fatalf("expected 1 candidate, got %d", len(cands))
 	}
-	if cands[0].MatchKey != "match:2026-05-10T21:29:28" {
+	if cands[0].MatchKey != "match-2026-05-10T21-29-28" {
 		t.Errorf("wrong candidate key: %q", cands[0].MatchKey)
 	}
 	if cands[0].DistanceS != 720 {
@@ -75,7 +75,7 @@ func TestMatchByEAD_OutsideMaxWindow_NoBridge(t *testing.T) {
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
 			Filename:     "2026.05.10 - 21.29.28 _sb.png",
-			MatchKey:     "match:2026-05-10T21:29:28",
+			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
@@ -92,11 +92,11 @@ func TestMatchByEAD_MultipleCandidates_SurfacesAllSortedByDistance(t *testing.T)
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{
 			{
-				Filename: "2026.05.10 - 21.27.28 _a.png", MatchKey: "match:A",
+				Filename: "2026.05.10 - 21.27.28 _a.png", MatchKey: "match-A",
 				Eliminations: 17, Assists: 16, Deaths: 11,
 			},
 			{
-				Filename: "2026.05.10 - 21.33.28 _b.png", MatchKey: "match:B",
+				Filename: "2026.05.10 - 21.33.28 _b.png", MatchKey: "match-B",
 				Eliminations: 17, Assists: 16, Deaths: 11,
 			},
 		},
@@ -113,7 +113,7 @@ func TestMatchByEAD_MultipleCandidates_SurfacesAllSortedByDistance(t *testing.T)
 		t.Fatalf("expected 2 candidates, got %d", len(cands))
 	}
 	// Closer (B at 2min) should sort first.
-	if cands[0].MatchKey != "match:B" {
+	if cands[0].MatchKey != "match-B" {
 		t.Errorf("expected B (closer) first, got %q", cands[0].MatchKey)
 	}
 	if cands[0].DistanceS != 120 || cands[1].DistanceS != 240 {
@@ -125,21 +125,21 @@ func TestResolveMatchKey_AmbiguousMintsSentinelAndReturnsCandidates(t *testing.T
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
 			Filename:     "2026.05.10 - 21.29.28 _sb.png",
-			MatchKey:     "match:2026-05-10T21:29:28",
+			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
 	key, cands := resolveMatchKey("2026.05.10 - 21.41.28 _sb2.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	}, snap)
-	wantKey := "ambiguous:2026.05.10 - 21.41.28 _sb2.png"
+	wantKey := "ambiguous-2026.05.10 - 21.41.28 _sb2.png"
 	if key != wantKey {
 		t.Errorf("expected sentinel %q, got %q", wantKey, key)
 	}
 	if len(cands) != 1 {
 		t.Fatalf("expected 1 candidate, got %d", len(cands))
 	}
-	if cands[0].MatchKey != "match:2026-05-10T21:29:28" {
+	if cands[0].MatchKey != "match-2026-05-10T21-29-28" {
 		t.Errorf("wrong candidate: %+v", cands[0])
 	}
 }
@@ -159,7 +159,7 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_FinishedAtCorroborates_AutoA
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.16.png",
-			MatchKey:     "match:2026-05-10T21:29:28",
+			MatchKey:     "match-2026-05-10T21-29-28",
 			Map:          "aatlis",
 			Hero:         "lucio",
 			Eliminations: 17, Assists: 14, Deaths: 7,
@@ -174,7 +174,7 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_FinishedAtCorroborates_AutoA
 	if !ok {
 		t.Fatalf("expected ok=true, got false")
 	}
-	if key != "match:2026-05-10T21:29:28" {
+	if key != "match-2026-05-10T21-29-28" {
 		t.Errorf("expected auto-adopt via finished_at corroboration, got key=%q", key)
 	}
 	if cands != nil {
@@ -184,12 +184,12 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_FinishedAtCorroborates_AutoA
 
 func TestResolveMatchKey_EADBridge_AmbiguousZone_FinishedAtCorroborates_EndToEnd(t *testing.T) {
 	// End-to-end: resolveMatchKey returns the adopted key (not the
-	// "ambiguous:" sentinel) when finished_at corroborates. Pins the
+	// "ambiguous-" sentinel) when finished_at corroborates. Pins the
 	// live-data scenario all the way through the public surface.
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.16.png",
-			MatchKey:     "match:2026-05-10T21:29:28",
+			MatchKey:     "match-2026-05-10T21-29-28",
 			Map:          "aatlis",
 			Hero:         "lucio",
 			Eliminations: 17, Assists: 14, Deaths: 7,
@@ -203,7 +203,7 @@ func TestResolveMatchKey_EADBridge_AmbiguousZone_FinishedAtCorroborates_EndToEnd
 			Eliminations: 17, Assists: 14, Deaths: 7,
 		}, snap,
 	)
-	if key != "match:2026-05-10T21:29:28" {
+	if key != "match-2026-05-10T21-29-28" {
 		t.Errorf("expected adopted key, got %q", key)
 	}
 	if cands != nil {
@@ -221,12 +221,12 @@ func TestResolveMatchKey_LiveAatlisCascade_EndToEnd(t *testing.T) {
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
 			Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.16.png",
-			MatchKey: "match:2026-05-10T21:29:28",
+			MatchKey: "match-2026-05-10T21-29-28",
 			Map:      "aatlis", Hero: "lucio",
 			Eliminations: 17, Assists: 14, Deaths: 7,
 		}},
 	}
-	expectedKey := "match:2026-05-10T21:29:28"
+	expectedKey := "match-2026-05-10T21-29-28"
 
 	// 1. Post-match SUMMARY arrives at 21:49:53.95 — finished_at=21:29
 	//    matches the existing SCOREBOARD's filename HH:MM.
@@ -292,13 +292,13 @@ func TestMatchByEAD_MultiCandidate_OneCorroborated_AutoAdoptsCorroborated(t *tes
 		Scoreboards: []db.ScoreboardRow{
 			{
 				Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.00.png",
-				MatchKey: "match:A",
+				MatchKey: "match-A",
 				Map:      "aatlis", Hero: "lucio",
 				Eliminations: 17, Assists: 14, Deaths: 7,
 			},
 			{
 				Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.34.00.00.png",
-				MatchKey: "match:B",
+				MatchKey: "match-B",
 				Map:      "kingsrow", Hero: "ana",
 				Eliminations: 17, Assists: 14, Deaths: 7,
 			},
@@ -313,7 +313,7 @@ func TestMatchByEAD_MultiCandidate_OneCorroborated_AutoAdoptsCorroborated(t *tes
 	if !ok {
 		t.Fatalf("expected ok=true, got false")
 	}
-	if key != "match:A" {
+	if key != "match-A" {
 		t.Errorf("expected auto-adopt corroborated A, got key=%q cands=%+v", key, cands)
 	}
 	if cands != nil {
@@ -330,7 +330,7 @@ func TestMatchByEAD_BridgesToExistingSummaryByPerfEAD(t *testing.T) {
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{{
 			Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.49.53.95.png",
-			MatchKey: "match:2026-05-10T21:29:28",
+			MatchKey: "match-2026-05-10T21-29-28",
 			Map:      "aatlis", Hero: "lucio",
 			Date: "2026-05-10", FinishedAt: "21:29",
 			PerfElimTotal: 17, PerfAssistsTotal: 14, PerfDeathsTotal: 7,
@@ -347,7 +347,7 @@ func TestMatchByEAD_BridgesToExistingSummaryByPerfEAD(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected ok=true, got false")
 	}
-	if key != "match:2026-05-10T21:29:28" {
+	if key != "match-2026-05-10T21-29-28" {
 		t.Errorf("expected auto-adopt via SUMMARY EAD proximity, got key=%q cands=%+v", key, cands)
 	}
 }
@@ -359,7 +359,7 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_NoCorroborator_StaysAmbiguou
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
 			Filename:     "2026.05.10 - 21.29.28 _sb.png",
-			MatchKey:     "match:2026-05-10T21:29:28",
+			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 14, Deaths: 7,
 		}},
 	}
@@ -374,7 +374,7 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_NoCorroborator_StaysAmbiguou
 	if key != "" {
 		t.Errorf("expected ambiguous (empty key), got %q", key)
 	}
-	if len(cands) != 1 || cands[0].MatchKey != "match:2026-05-10T21:29:28" {
+	if len(cands) != 1 || cands[0].MatchKey != "match-2026-05-10T21-29-28" {
 		t.Errorf("expected single candidate, got %+v", cands)
 	}
 }
@@ -386,14 +386,14 @@ func TestResolveMatchKey_EADBridge_BeyondMaxWindow_MintsFreshKey(t *testing.T) {
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
 			Filename:     "2026.05.03 - 21.29.28 _sb.png",
-			MatchKey:     "match:2026-05-03T21:29:28",
+			MatchKey:     "match-2026-05-03T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
 	key, cands := resolveMatchKey("2026.05.10 - 21.29.28 _sb2.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	}, snap)
-	if key != "match:2026-05-10T21:29:28" {
+	if key != "match-2026-05-10T21-29-28" {
 		t.Errorf("expected fresh key minted from new filename, got %q", key)
 	}
 	if cands != nil {

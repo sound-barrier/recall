@@ -43,7 +43,7 @@ export interface paths {
                 /**
                  * @description Match identity — same `match_key` exposed in `MatchRecord`.
                  *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 *     (e.g. `match-2026-05-10T22-21-11`).
                  * @example match%3A2026-05-10T22%3A21%3A11
                  */
                 matchKey: components["parameters"]["MatchKey"];
@@ -80,7 +80,7 @@ export interface paths {
                 /**
                  * @description Match identity — same `match_key` exposed in `MatchRecord`.
                  *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 *     (e.g. `match-2026-05-10T22-21-11`).
                  * @example match%3A2026-05-10T22%3A21%3A11
                  */
                 matchKey: components["parameters"]["MatchKey"];
@@ -118,7 +118,7 @@ export interface paths {
                 /**
                  * @description Match identity — same `match_key` exposed in `MatchRecord`.
                  *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 *     (e.g. `match-2026-05-10T22-21-11`).
                  * @example match%3A2026-05-10T22%3A21%3A11
                  */
                 matchKey: components["parameters"]["MatchKey"];
@@ -131,7 +131,7 @@ export interface paths {
          * @description When the resolver can't pin a screenshot to a single match
          *     (identical EAD signature within the 5-30 min ambiguous window,
          *     or multiple candidates within 30 min), the parent row's
-         *     `match_key` is set to `ambiguous:<filename>` and the candidate
+         *     `match_key` is set to `ambiguous-<filename>` and the candidate
          *     list is recorded in `ambiguous_candidates`. Other screenshots
          *     captured within `mergeWindow` of that one adopt the same
          *     sentinel via the timestamp-window pass — so several rows can
@@ -139,9 +139,9 @@ export interface paths {
          *
          *     This endpoint rewrites every parent row carrying the given
          *     ambiguous key to `resolved_to`. `matchKey` must start with
-         *     `ambiguous:` (anything else returns 400). `resolved_to` must
+         *     `ambiguous-` (anything else returns 400). `resolved_to` must
          *     either be one of the recorded candidates OR a freshly-minted
-         *     `match:<...>` key (the "Treat as new match" escape hatch in
+         *     `match-<...>` key (the "Treat as new match" escape hatch in
          *     the Unknown tab).
          *
          *     On success the ambiguous row + its candidates cascade-delete
@@ -163,7 +163,7 @@ export interface paths {
                 /**
                  * @description Match identity — same `match_key` exposed in `MatchRecord`.
                  *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 *     (e.g. `match-2026-05-10T22-21-11`).
                  * @example match%3A2026-05-10T22%3A21%3A11
                  */
                 matchKey: components["parameters"]["MatchKey"];
@@ -956,10 +956,12 @@ export interface components {
          */
         MatchRecord: {
             /**
-             * @description Stable identity. Either `match:<ISO-timestamp>` (from the
-             *     earliest screenshot's filename) or `unmatched:<filename>` for
-             *     files whose names didn't parse as timestamps.
-             * @example match:2026-05-10T22:21:11
+             * @description Stable identity. Either `match-<ISO-timestamp>` (from the
+             *     earliest screenshot's filename, with all date/time
+             *     separators normalised to `-` so the whole key is URL-safe
+             *     without encoding) or `unmatched-<filename>` for files
+             *     whose names didn't parse as timestamps.
+             * @example match-2026-05-10T22-21-11
              */
             match_key: string;
             /**
@@ -1034,7 +1036,7 @@ export interface components {
              * @description True iff the resolver couldn't pin this screenshot to a
              *     single match (EAD signature match in the 5-30 min
              *     ambiguous window, or multiple candidates inside 30 min).
-             *     The `match_key` carries the `ambiguous:<filename>`
+             *     The `match_key` carries the `ambiguous-<filename>`
              *     sentinel and the `candidates` array lists the possible
              *     matches the user can pick from in the Unknown tab.
              */
@@ -1054,7 +1056,7 @@ export interface components {
         AmbiguousCandidate: {
             /**
              * @description The candidate match's `match_key`.
-             * @example match:2026-05-10T21:29:28
+             * @example match-2026-05-10T21-29-28
              */
             match_key: string;
             /**
@@ -1274,7 +1276,7 @@ export interface components {
         /**
          * @description Match identity — same `match_key` exposed in `MatchRecord`.
          *     URL-encoded because the value normally contains a colon
-         *     (e.g. `match:2026-05-10T22:21:11`).
+         *     (e.g. `match-2026-05-10T22-21-11`).
          * @example match%3A2026-05-10T22%3A21%3A11
          */
         MatchKey: string;
@@ -1333,7 +1335,7 @@ export interface operations {
                 /**
                  * @description Match identity — same `match_key` exposed in `MatchRecord`.
                  *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 *     (e.g. `match-2026-05-10T22-21-11`).
                  * @example match%3A2026-05-10T22%3A21%3A11
                  */
                 matchKey: components["parameters"]["MatchKey"];
@@ -1361,7 +1363,7 @@ export interface operations {
                 /**
                  * @description Match identity — same `match_key` exposed in `MatchRecord`.
                  *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 *     (e.g. `match-2026-05-10T22-21-11`).
                  * @example match%3A2026-05-10T22%3A21%3A11
                  */
                 matchKey: components["parameters"]["MatchKey"];
@@ -1396,7 +1398,7 @@ export interface operations {
                 /**
                  * @description Match identity — same `match_key` exposed in `MatchRecord`.
                  *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 *     (e.g. `match-2026-05-10T22-21-11`).
                  * @example match%3A2026-05-10T22%3A21%3A11
                  */
                 matchKey: components["parameters"]["MatchKey"];
@@ -1408,8 +1410,8 @@ export interface operations {
                 "application/json": {
                     /**
                      * @description The match the user picked. Must be one of the
-                     *     recorded candidates or a `match:<...>` key.
-                     * @example match:2026-05-10T21:29:28
+                     *     recorded candidates or a `match-<...>` key.
+                     * @example match-2026-05-10T21-29-28
                      */
                     resolved_to: string;
                 };
@@ -1436,7 +1438,7 @@ export interface operations {
                 /**
                  * @description Match identity — same `match_key` exposed in `MatchRecord`.
                  *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match:2026-05-10T22:21:11`).
+                 *     (e.g. `match-2026-05-10T22-21-11`).
                  * @example match%3A2026-05-10T22%3A21%3A11
                  */
                 matchKey: components["parameters"]["MatchKey"];

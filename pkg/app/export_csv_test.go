@@ -27,27 +27,27 @@ func TestExportImportCSV_RoundTrip(t *testing.T) {
 		}
 	}
 	must(fs.UpsertSummary(db.SummaryRow{
-		Filename: "s.png", MatchKey: "match:1", ScreenshotsDirID: dirID,
+		Filename: "s.png", MatchKey: "match-1", ScreenshotsDirID: dirID,
 		Map: "rialto", Mode: "competitive", Hero: "lucio", Result: "victory",
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100, PlayTime: "09:32"}},
 	}))
 	must(fs.UpsertScoreboard(db.ScoreboardRow{
-		Filename: "sb.png", MatchKey: "match:1", ScreenshotsDirID: dirID,
+		Filename: "sb.png", MatchKey: "match-1", ScreenshotsDirID: dirID,
 		Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 		HeroStats: []db.HeroStat{{Hero: "lucio", StatKey: "weapon_accuracy", StatValue: 35}},
 	}))
 	must(fs.UpsertPersonal(db.PersonalRow{
-		Filename: "p.png", MatchKey: "match:1", ScreenshotsDirID: dirID, Hero: "lucio",
+		Filename: "p.png", MatchKey: "match-1", ScreenshotsDirID: dirID, Hero: "lucio",
 		HeroStats: []db.HeroStat{{Hero: "lucio", StatKey: "weapon_accuracy", StatValue: 35}},
 	}))
 	must(fs.UpsertRank(db.RankRow{
-		Filename: "r.png", MatchKey: "match:1", ScreenshotsDirID: dirID,
+		Filename: "r.png", MatchKey: "match-1", ScreenshotsDirID: dirID,
 		Rank: "platinum", Level: 3,
 		Modifiers: []string{"expected", "victory"},
 		SR:        []db.HeroSR{{Hero: "lucio", SR: 2350, Change: 23}},
 	}))
 	must(fs.UpsertUnknown(db.UnknownRow{
-		Filename: "u.png", MatchKey: "unmatched:u.png", ScreenshotsDirID: dirID,
+		Filename: "u.png", MatchKey: "unmatched-u.png", ScreenshotsDirID: dirID,
 	}))
 
 	payload, err := a.ExportDataCSV()

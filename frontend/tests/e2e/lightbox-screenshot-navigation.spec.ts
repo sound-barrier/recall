@@ -41,7 +41,7 @@ async function stubScreenshotBytes(page: import('@playwright/test').Page) {
 // them (scoreboard → summary → personal — common shape for a fully-
 // captured match). The lightbox should navigate this exact ordering.
 const MULTI = {
-  match_key: 'match:2026-05-10T21:29:28',
+  match_key: 'match-2026-05-10T21-29-28',
   source_files: [
     'scoreboard-2129.png',
     'summary-2149.png',
@@ -63,7 +63,7 @@ const MULTI = {
 }
 
 const SOLO = {
-  match_key: 'match:2026-05-10T22:30:00',
+  match_key: 'match-2026-05-10T22-30-00',
   source_files: ['solo-2230.png'],
   source_types: { 'solo-2230.png': 'summary' },
   data: {

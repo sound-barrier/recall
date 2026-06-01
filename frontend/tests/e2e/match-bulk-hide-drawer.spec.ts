@@ -23,9 +23,9 @@ import type { Route } from '@playwright/test'
 import { test, expect } from './_fixtures'
 
 const KEYS = [
-  'match:2026-05-10T22:00:00',
-  'match:2026-05-10T22:30:00',
-  'match:2026-05-10T23:00:00',
+  'match-2026-05-10T22-00-00',
+  'match-2026-05-10T22-30-00',
+  'match-2026-05-10T23-00-00',
 ] as const
 
 const HEROES = ['lucio', 'ana', 'mercy'] as const

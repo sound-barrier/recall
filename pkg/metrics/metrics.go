@@ -199,7 +199,7 @@ func (c *Collector) emitMatch(ch chan<- prometheus.Metric, row ScrapeRow, ts tim
 // preference:
 //  1. date + finished_at from the SUMMARY screen (the most accurate signal,
 //     since it's what the game itself reported).
-//  2. The match_key, when it carries an ISO-ish "match:YYYY-MM-DDTHH:MM:SS"
+//  2. The match_key, when it carries an ISO-ish "match-YYYY-MM-DDTHH:MM:SS"
 //     prefix derived from the earliest screenshot's filename timestamp.
 //     This covers rows that only had an in-game scoreboard parsed (no SUMMARY,
 //     so date/finished_at are empty) — without this fallback those matches
@@ -212,8 +212,13 @@ func parseMatchTimestamp(date, finishedAt, matchKey string) (time.Time, bool) {
 			return t, true
 		}
 	}
-	if s, ok := strings.CutPrefix(matchKey, "match:"); ok {
-		if t, err := time.ParseInLocation("2006-01-02T15:04:05", s, time.Local); err == nil {
+	if s, ok := strings.CutPrefix(matchKey, "match-"); ok {
+		// match keys mint timestamps as `YYYY-MM-DDTHH-MM-SS` (the
+		// time separator is `-` not `:` so the whole match_key stays
+		// URL-safe without encoding). Pre-1.0 break: any older
+		// `match:` keys are migrated to `match-` + dash-time on
+		// store init, so we only ever see the dash form here.
+		if t, err := time.ParseInLocation("2006-01-02T15-04-05", s, time.Local); err == nil {
 			return t, true
 		}
 	}

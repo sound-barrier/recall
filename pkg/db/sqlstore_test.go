@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"reflect"
 	"sort"
 	"testing"
@@ -26,7 +27,7 @@ func TestSQLStore_Summary_UpsertThenLoadRoundTrip(t *testing.T) {
 	s := openMemory(t)
 	want := SummaryRow{
 		Filename:   "summary.png",
-		MatchKey:   "match:2026-05-10T21:29:28",
+		MatchKey:   "match-2026-05-10T21-29-28",
 		Map:        "rialto",
 		Mode:       "competitive",
 		Hero:       "lucio",
@@ -472,7 +473,7 @@ func TestSQLStore_Annotation_UpsertLoadDelete(t *testing.T) {
 	}
 
 	// Set one — round-trip.
-	want := Annotation{MatchKey: "match:k1", Leaver: "team", Note: "ally dc'd at 3min"}
+	want := Annotation{MatchKey: "match-k1", Leaver: "team", Note: "ally dc'd at 3min"}
 	if err := s.SetAnnotation(want); err != nil {
 		t.Fatalf("SetAnnotation: %v", err)
 	}
@@ -480,7 +481,7 @@ func TestSQLStore_Annotation_UpsertLoadDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadAnnotations: %v", err)
 	}
-	rt, ok := got["match:k1"]
+	rt, ok := got["match-k1"]
 	if !ok {
 		t.Fatal("annotation not present after Set")
 	}
@@ -492,19 +493,19 @@ func TestSQLStore_Annotation_UpsertLoadDelete(t *testing.T) {
 	}
 
 	// Upsert changes leaver in place without inserting a duplicate.
-	if err := s.SetAnnotation(Annotation{MatchKey: "match:k1", Leaver: "enemy"}); err != nil {
+	if err := s.SetAnnotation(Annotation{MatchKey: "match-k1", Leaver: "enemy"}); err != nil {
 		t.Fatalf("Set upsert: %v", err)
 	}
 	got, _ = s.LoadAnnotations()
-	if got["match:k1"].Leaver != "enemy" {
-		t.Errorf("upsert didn't replace: %+v", got["match:k1"])
+	if got["match-k1"].Leaver != "enemy" {
+		t.Errorf("upsert didn't replace: %+v", got["match-k1"])
 	}
 	if len(got) != 1 {
 		t.Errorf("upsert inserted a duplicate row; have %d", len(got))
 	}
 
 	// Delete clears.
-	if err := s.DeleteAnnotation("match:k1"); err != nil {
+	if err := s.DeleteAnnotation("match-k1"); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 	got, _ = s.LoadAnnotations()
@@ -532,7 +533,7 @@ func TestSQLStore_Annotation_LeaverCheckConstraint(t *testing.T) {
 func TestSQLStore_Annotation_RoundTrip_AllFields(t *testing.T) {
 	s := openMemory(t)
 	want := Annotation{
-		MatchKey:   "match:nx",
+		MatchKey:   "match-nx",
 		Leaver:     "team",
 		Note:       "ally rage-quit at 3min",
 		ReplayCode: "7H1K9P",
@@ -545,7 +546,7 @@ func TestSQLStore_Annotation_RoundTrip_AllFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadAnnotations: %v", err)
 	}
-	a, ok := got["match:nx"]
+	a, ok := got["match-nx"]
 	if !ok {
 		t.Fatal("annotation missing after Set")
 	}
@@ -710,7 +711,7 @@ func TestSQLStore_HardDeleteMatch_WipesParentChildrenAnnotationHidden(t *testing
 	// only if the parent rows escape, so an explicit "delete all
 	// then verify zero rows" assertion is the contract test.
 	s := openMemory(t)
-	const key = "match:2026-05-10T21:29:28"
+	const key = "match-2026-05-10T21-29-28"
 
 	if err := s.UpsertSummary(SummaryRow{
 		Filename: "sum.png", MatchKey: key, Map: "rialto",
@@ -780,7 +781,7 @@ func TestSQLStore_HardDeleteMatch_UnknownKeyIsNoOp(t *testing.T) {
 	// race with a parallel re-hide / re-parse without the user
 	// seeing a 500.
 	s := openMemory(t)
-	if err := s.HardDeleteMatch("match:nothing-here"); err != nil {
+	if err := s.HardDeleteMatch("match-nothing-here"); err != nil {
 		t.Errorf("HardDeleteMatch on unknown key should be no-op, got: %v", err)
 	}
 }
@@ -792,8 +793,8 @@ func TestSQLStore_HardDeleteMatch_UnknownKeyIsNoOp(t *testing.T) {
 func TestSQLStore_Ambiguity_RoundTrip(t *testing.T) {
 	s := openMemory(t)
 	cands := []AmbiguousCandidate{
-		{MatchKey: "match:2026-05-10T21:29:28", DistanceS: 720},
-		{MatchKey: "match:2026-05-10T22:11:50", DistanceS: 1200},
+		{MatchKey: "match-2026-05-10T21-29-28", DistanceS: 720},
+		{MatchKey: "match-2026-05-10T22-11-50", DistanceS: 1200},
 	}
 	if err := s.ApplyAmbiguity("scoreboard-2.png", cands); err != nil {
 		t.Fatalf("ApplyAmbiguity: %v", err)
@@ -811,7 +812,7 @@ func TestSQLStore_ApplyAmbiguity_EmptyCandsClearsRow(t *testing.T) {
 	s := openMemory(t)
 	if err := s.ApplyAmbiguity(
 		"a.png",
-		[]AmbiguousCandidate{{MatchKey: "match:foo", DistanceS: 60}},
+		[]AmbiguousCandidate{{MatchKey: "match-foo", DistanceS: 60}},
 	); err != nil {
 		t.Fatalf("first apply: %v", err)
 	}
@@ -829,10 +830,10 @@ func TestSQLStore_ApplyAmbiguity_EmptyCandsClearsRow(t *testing.T) {
 
 func TestSQLStore_ApplyAmbiguity_ReplacesOnReapply(t *testing.T) {
 	s := openMemory(t)
-	first := []AmbiguousCandidate{{MatchKey: "match:a", DistanceS: 60}}
+	first := []AmbiguousCandidate{{MatchKey: "match-a", DistanceS: 60}}
 	second := []AmbiguousCandidate{
-		{MatchKey: "match:b", DistanceS: 120},
-		{MatchKey: "match:c", DistanceS: 240},
+		{MatchKey: "match-b", DistanceS: 120},
+		{MatchKey: "match-c", DistanceS: 240},
 	}
 	if err := s.ApplyAmbiguity("a.png", first); err != nil {
 		t.Fatalf("first: %v", err)
@@ -852,13 +853,13 @@ func TestSQLStore_ApplyAmbiguity_ReplacesOnReapply(t *testing.T) {
 func TestSQLStore_LoadAll_PopulatesAmbiguousCandidates(t *testing.T) {
 	s := openMemory(t)
 	if err := s.ApplyAmbiguity("a.png", []AmbiguousCandidate{
-		{MatchKey: "match:a1", DistanceS: 60},
-		{MatchKey: "match:a2", DistanceS: 360},
+		{MatchKey: "match-a1", DistanceS: 60},
+		{MatchKey: "match-a2", DistanceS: 360},
 	}); err != nil {
 		t.Fatalf("apply a: %v", err)
 	}
 	if err := s.ApplyAmbiguity("b.png", []AmbiguousCandidate{
-		{MatchKey: "match:b1", DistanceS: 720},
+		{MatchKey: "match-b1", DistanceS: 720},
 	}); err != nil {
 		t.Fatalf("apply b: %v", err)
 	}
@@ -872,7 +873,7 @@ func TestSQLStore_LoadAll_PopulatesAmbiguousCandidates(t *testing.T) {
 	if len(got.AmbiguousCandidates["a.png"]) != 2 {
 		t.Errorf("a.png: want 2 cands, got %d", len(got.AmbiguousCandidates["a.png"]))
 	}
-	if got.AmbiguousCandidates["b.png"][0].MatchKey != "match:b1" {
+	if got.AmbiguousCandidates["b.png"][0].MatchKey != "match-b1" {
 		t.Errorf("b.png: wrong candidate: %+v", got.AmbiguousCandidates["b.png"][0])
 	}
 }
@@ -885,24 +886,24 @@ func TestSQLStore_ResolveAmbiguous_UpdatesAllSiblingRows(t *testing.T) {
 	// match stays whole after the user picks the real attribution.
 	s := openMemory(t)
 	if err := s.UpsertScoreboard(ScoreboardRow{
-		Filename: "sb.png", MatchKey: "ambiguous:sb.png",
+		Filename: "sb.png", MatchKey: "ambiguous-sb.png",
 		Map: "rialto", Hero: "lucio",
 		Eliminations: 12, Assists: 8, Deaths: 3,
 	}); err != nil {
 		t.Fatalf("seed scoreboard: %v", err)
 	}
 	if err := s.UpsertSummary(SummaryRow{
-		Filename: "sum.png", MatchKey: "ambiguous:sb.png",
+		Filename: "sum.png", MatchKey: "ambiguous-sb.png",
 		Map: "rialto", Hero: "lucio",
 	}); err != nil {
 		t.Fatalf("seed summary: %v", err)
 	}
 	if err := s.ApplyAmbiguity("sb.png", []AmbiguousCandidate{
-		{MatchKey: "match:foo", DistanceS: 720},
+		{MatchKey: "match-foo", DistanceS: 720},
 	}); err != nil {
 		t.Fatalf("seed ambig: %v", err)
 	}
-	ok, err := s.ResolveAmbiguous("ambiguous:sb.png", "match:foo")
+	ok, err := s.ResolveAmbiguous("ambiguous-sb.png", "match-foo")
 	if err != nil {
 		t.Fatalf("ResolveAmbiguous: %v", err)
 	}
@@ -913,10 +914,10 @@ func TestSQLStore_ResolveAmbiguous_UpdatesAllSiblingRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}
-	if got.Scoreboards[0].MatchKey != "match:foo" {
+	if got.Scoreboards[0].MatchKey != "match-foo" {
 		t.Errorf("scoreboard match_key not updated: %q", got.Scoreboards[0].MatchKey)
 	}
-	if got.Summaries[0].MatchKey != "match:foo" {
+	if got.Summaries[0].MatchKey != "match-foo" {
 		t.Errorf("summary match_key not updated: %q", got.Summaries[0].MatchKey)
 	}
 	if cs, err := s.LoadAmbiguousCandidatesFor("sb.png"); err != nil || len(cs) != 0 {
@@ -929,7 +930,7 @@ func TestSQLStore_ResolveAmbiguous_UpdatesAllSiblingRows(t *testing.T) {
 
 func TestSQLStore_ResolveAmbiguous_MissingReturnsFalse(t *testing.T) {
 	s := openMemory(t)
-	ok, err := s.ResolveAmbiguous("ambiguous:nope.png", "match:foo")
+	ok, err := s.ResolveAmbiguous("ambiguous-nope.png", "match-foo")
 	if err != nil {
 		t.Fatalf("ResolveAmbiguous: %v", err)
 	}
@@ -940,11 +941,105 @@ func TestSQLStore_ResolveAmbiguous_MissingReturnsFalse(t *testing.T) {
 
 func TestSQLStore_ResolveAmbiguous_RejectsNonAmbiguousKey(t *testing.T) {
 	s := openMemory(t)
-	ok, err := s.ResolveAmbiguous("match:foo", "match:bar")
+	ok, err := s.ResolveAmbiguous("match-foo", "match-bar")
 	if err != nil {
 		t.Fatalf("ResolveAmbiguous: %v", err)
 	}
 	if ok {
 		t.Error("expected ok=false for key missing the ambiguous: prefix")
+	}
+}
+
+// ────────────────────────────────────────────────────────────────
+// Pre-1.0 break: migration from colon-form match_keys to the new
+// URL-safe `-` form runs once on every store open. Idempotent —
+// after the first pass, subsequent opens are no-ops.
+// ────────────────────────────────────────────────────────────────
+
+func TestMigrateMatchKeysColonToDash_RewritesEveryShape(t *testing.T) {
+	d, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	if _, err := d.Exec(`PRAGMA foreign_keys = ON`); err != nil {
+		t.Fatalf("pragma: %v", err)
+	}
+	for _, stmt := range schemaStatements {
+		if _, err := d.Exec(stmt); err != nil {
+			t.Fatalf("schema: %v", err)
+		}
+	}
+
+	// Plant one of each legacy shape: `match:<ts>` (with colons in
+	// the time portion), `unmatched:<filename>`, and
+	// `ambiguous:<filename>`. Across two parent tables + the
+	// annotation child to confirm the migration reaches them all.
+	insert := func(table, filename, matchKey string) {
+		t.Helper()
+		q := `INSERT INTO ` + table + ` (filename, match_key) VALUES (?, ?)`
+		if _, err := d.Exec(q, filename, matchKey); err != nil {
+			t.Fatalf("insert %s: %v", table, err)
+		}
+	}
+	insert("summary_screenshots", "s.png", "match:2026-05-10T22:21:11")
+	insert("scoreboard_screenshots", "sb.png", "unmatched:sb.png")
+	insert("personal_screenshots", "p.png", "ambiguous:p.png")
+	if _, err := d.Exec(
+		`INSERT INTO match_annotations (match_key, leaver) VALUES (?, ?)`,
+		"match:2026-05-10T22:21:11", "self",
+	); err != nil {
+		t.Fatalf("insert annotation: %v", err)
+	}
+
+	if err := migrateMatchKeysColonToDash(d); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	cases := []struct {
+		table, filename, want string
+	}{
+		{"summary_screenshots", "s.png", "match-2026-05-10T22-21-11"},
+		{"scoreboard_screenshots", "sb.png", "unmatched-sb.png"},
+		{"personal_screenshots", "p.png", "ambiguous-p.png"},
+	}
+	for _, c := range cases {
+		var got string
+		err := d.QueryRow(
+			`SELECT match_key FROM `+c.table+` WHERE filename = ?`,
+			c.filename,
+		).Scan(&got)
+		if err != nil {
+			t.Errorf("%s/%s: %v", c.table, c.filename, err)
+			continue
+		}
+		if got != c.want {
+			t.Errorf("%s/%s: got %q, want %q", c.table, c.filename, got, c.want)
+		}
+	}
+
+	// Annotation child swept too.
+	var annKey string
+	if err := d.QueryRow(
+		`SELECT match_key FROM match_annotations LIMIT 1`,
+	).Scan(&annKey); err != nil {
+		t.Fatalf("read annotation: %v", err)
+	}
+	if want := "match-2026-05-10T22-21-11"; annKey != want {
+		t.Errorf("annotation: got %q, want %q", annKey, want)
+	}
+
+	// Idempotent — a second pass is a no-op.
+	if err := migrateMatchKeysColonToDash(d); err != nil {
+		t.Fatalf("second migrate: %v", err)
+	}
+	var stillGood string
+	if err := d.QueryRow(
+		`SELECT match_key FROM summary_screenshots WHERE filename = 's.png'`,
+	).Scan(&stillGood); err != nil {
+		t.Fatalf("re-read: %v", err)
+	}
+	if want := "match-2026-05-10T22-21-11"; stillGood != want {
+		t.Errorf("idempotent re-run: got %q, want %q", stillGood, want)
 	}
 }

@@ -39,7 +39,7 @@ type MatchRecord struct {
 	Hidden bool `json:"hidden,omitempty"`
 
 	// Ambiguous + Candidates are populated when match_key starts with
-	// "ambiguous:" — the resolver found multiple plausible matches
+	// "ambiguous-" — the resolver found multiple plausible matches
 	// for the screenshot and is asking the user to pick the right
 	// one. The frontend surfaces these in the Unknown tab's "Needs
 	// your review" subsection.
