@@ -137,18 +137,20 @@ fuzzer reports; no runtime behaviour change).
 
 **Plan:**
 
-1. Stage 1: write SFC tests for the four highest-traffic
+1. ~~Stage 2: Add `pkg/app/sse_test.go`~~ — **shipped**: 6 cases
+   covering subscribe / broadcast / broadcast-with-data /
+   unsubscribe-closes-channel / slow-consumer-drops /
+   concurrency-safe. `pkg/app/sse.go` from 0 % to ~95 %.
+2. Stage 1: write SFC tests for the four highest-traffic
    surfaces (`App.vue`, `MatchDetailPanel`, `MatchScreenshotLightbox`,
    `MatchCardExpanded`). Each gets 10–15 cases driving observable
    contract: open/close, paginate, error states, keyboard.
-2. Stage 2: Add `pkg/app/sse_test.go` covering subscribe/
-   broadcast/unsubscribe + the slow-consumer drop case.
 3. Stage 3: Add a `pkg/cmd/server_smoke_test.go` that boots a
    real `*App` with a temp store, fires the standard route set
    via httptest, asserts the mux wiring + middleware ordering.
-4. Bump the Go threshold from 46 % → 60 % once `sse.go` lands.
+4. Bump the Go threshold from 46 % → 60 % once Stage 3 lands.
 
-**Size:** L (cumulative).
+**Size:** L (cumulative; Stages 1 + 3 still remaining).
 **Risk:** Low (additive; failing tests reveal real gaps).
 
 ---
