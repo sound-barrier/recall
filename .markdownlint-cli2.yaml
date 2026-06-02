@@ -18,6 +18,7 @@ ignores:
   - "dist/**"
   - "build/**"
   - "book/_book/**"
+  - "tmp/**"        # gitignored scratch dir (PR-body drafts, scratch fixtures, etc.)
   - "CHANGELOG.md"  # release-please-generated
 
 config:
