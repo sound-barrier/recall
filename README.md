@@ -32,6 +32,25 @@ flowchart LR
   class G,H opt
 ```
 
+## What it looks like
+
+<table>
+<tr>
+<th align="left">Matches view</th>
+<th align="left">Match detail panel</th>
+</tr>
+<tr>
+<td valign="top" width="50%">
+<a href="docs/screenshots/matches-view.png"><img src="docs/screenshots/matches-view.png" alt="Recall Matches tab — dossier headline with W/L/D + top maps/heroes, Campaign Log heatmap, and the compact leaf-row list below" width="100%"></a>
+<sub>The Matches tab is a *set workspace*: dossier at the top (W/L/D, win rate, top maps/heroes, active-clause chips), Campaign Log heatmap + brushable sparkline in the middle, compact leaf rows below. The left-side Narrow this set panel consolidates every filter dimension into one place.</sub>
+</td>
+<td valign="top" width="50%">
+<a href="docs/screenshots/match-detail-panel.png"><img src="docs/screenshots/match-detail-panel.png" alt="Recall right-side detail panel — Match Journal annotation, Match Stats grid, Heroes Played, source screenshots" width="100%"></a>
+<sub>Click a row (or press <code>e</code>) to slide in the per-match dossier: leaver chooser, Match Stats grid, Rank Update card, Match Journal (notes / replay code / group / tags), Heroes Played, and the source screenshots. <code>←/→</code> paginate; <code>Esc</code> closes.</sub>
+</td>
+</tr>
+</table>
+
 📚 **Full documentation:** [sound-barrier.github.io/recall](https://sound-barrier.github.io/recall/) — installation guides, advanced usage, and the [API reference](https://sound-barrier.github.io/recall/api/). Auto-deployed from `main` on every doc change.
 
 ## Table of Contents

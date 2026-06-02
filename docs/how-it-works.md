@@ -7,6 +7,27 @@ filterable match history. This page walks through the pipeline so the
 [Unknown screenshots](unknown-screenshots.md) chapters make sense in
 context.
 
+## What it looks like
+
+<table>
+<tr>
+<th align="left">Matches view</th>
+<th align="left">Match detail panel</th>
+</tr>
+<tr>
+<td valign="top" width="50%">
+<a href="screenshots/matches-view.png"><img src="screenshots/matches-view.png" alt="Recall Matches tab with a dossier headline, Campaign Log heatmap, and a compact list of parsed matches" width="100%"></a>
+<sub>The Matches tab — dossier headline (W/L/D, win rate, top maps/heroes, active-clause chips), Campaign Log heatmap + brushable sparkline, and the compact leaf-row list below.</sub>
+</td>
+<td valign="top" width="50%">
+<a href="screenshots/match-detail-panel.png"><img src="screenshots/match-detail-panel.png" alt="Recall right-side detail panel — per-match dossier with the Match Journal, stats grid, Heroes Played, and source screenshots" width="100%"></a>
+<sub>Clicking a row (or pressing <code>e</code>) slides in the per-match dossier — annotation, stats, rank update, heroes played, source screenshots.</sub>
+</td>
+</tr>
+</table>
+
+The rest of this chapter is the pipeline that fills those views.
+
 ## The pipeline in one paragraph
 
 You play a comp match. After it ends, you tab through the post-match

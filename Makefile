@@ -632,6 +632,13 @@ pages-build: ## Build the docs book + Swagger UI under dist/pages/ (mirrors CI)
 	@# would 404 on every branch rename.
 	@mkdir -p dist/pages-stage/testdata
 	@cp testdata/*.png dist/pages-stage/testdata/
+	@# Same pattern for the in-app UI screenshots embedded in
+	@# how-it-works.md (and reused at the top of the README). Reference
+	@# as `screenshots/foo.png` from chapters in docs/ — the relative
+	@# path resolves identically in GitHub-rendered docs/ and in the
+	@# staged Honkit book root.
+	@mkdir -p dist/pages-stage/screenshots
+	@cp docs/screenshots/*.png dist/pages-stage/screenshots/
 	@rm -f dist/pages-stage/.gitignore
 	@echo "[ recall ] Running honkit@$(HONKIT_VERSION)…"
 	@cd dist/pages-stage && npx --yes "honkit@$(HONKIT_VERSION)" build . _book >/dev/null
