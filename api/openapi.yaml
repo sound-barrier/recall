@@ -1103,6 +1103,73 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/exports/bundle:
+    post:
+      operationId: ExportBundle
+      tags: [Backup]
+      summary: Build a selection-aware export bundle (ZIP)
+      description: |
+        Builds a `.zip` containing the existing `recall-export/v1`
+        JSON (filtered to the requested matches) at `data.json`, every
+        referenced screenshot under `screenshots/<filename>`, and a
+        root `manifest.json` listing screenshot → match_key mappings
+        for sanity-checking after restore.
+
+        The `match_keys` body field carries the user's explicit
+        selection. `include_unknown` adds every record whose
+        `data.map` is empty (the same "unknown" definition the
+        Matches view uses); `include_hidden` adds every record
+        currently in `hidden_matches`. Toggles UNION onto the
+        explicit selection — a request with `match_keys: []` and
+        `include_hidden: true` exports every hidden match.
+
+        Restore via `POST /api/v1/imports` — the `data.json` shape
+        is the same `recall-export/v1` envelope.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [match_keys]
+              properties:
+                match_keys:
+                  type: array
+                  items:
+                    type: string
+                  description: |
+                    Explicit list of match_keys to include in the
+                    bundle. Empty array combined with
+                    `include_unknown=false` and
+                    `include_hidden=false` produces an empty
+                    bundle (manifest with `match_count: 0`).
+                include_unknown:
+                  type: boolean
+                  default: false
+                  description: |
+                    Add every record whose `data.map` is empty (the
+                    Matches view's "unknown" filter).
+                include_hidden:
+                  type: boolean
+                  default: false
+                  description: |
+                    Add every record currently in `hidden_matches`.
+      responses:
+        "200":
+          description: |
+            ZIP bundle with the same `Content-Disposition: attachment;
+            filename="recall-bundle-<timestamp>.zip"` header pattern
+            as `GET /api/v1/exports`.
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/imports:
     post:
       operationId: ImportData

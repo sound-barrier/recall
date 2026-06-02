@@ -47,6 +47,12 @@ func (a *App) SaveExportToFileCSV() (string, error) {
 	return "", fmt.Errorf("native dialogs unavailable in server mode; use GET /api/v1/exports?format=csv")
 }
 
+// SaveBundleToFile is not available in server mode (no native dialogs).
+// The HTTP API exposes POST /api/v1/exports/bundle for the same payload.
+func (a *App) SaveBundleToFile(_ []string, _, _ bool) (string, error) {
+	return "", fmt.Errorf("native dialogs unavailable in server mode; use POST /api/v1/exports/bundle")
+}
+
 // LoadImportFromFile is not available in server mode (no native dialogs).
 // The HTTP API exposes POST /api/v1/imports which accepts the same payload.
 func (a *App) LoadImportFromFile() (string, error) {

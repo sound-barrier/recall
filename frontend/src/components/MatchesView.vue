@@ -64,6 +64,11 @@ const emit = defineEmits<{
   // the user clicks Hide on the bulk action bar. App.vue does
   // Promise.all of SetMatchVisibility(true) + one reload.
   'hide-matches': [matchKeys: string[]]
+  // Bulk-export pipe — emitted with the ticked-key list when the
+  // user clicks "Export bundle…" on the bulk action bar. App.vue
+  // opens the ExportBundleModal to confirm filename + include
+  // toggles before calling ExportBundle in api.ts.
+  'export-bundle': [matchKeys: string[]]
   // Drawer single-row Unhide — flips one hidden match back to visible.
   'unhide-match': [matchKey: string]
   // Drawer single-row "Delete forever" — hard-deletes one match after
@@ -1021,6 +1026,15 @@ onBeforeUnmount(() => {
           <button type="button" class="bulk-hide" @click="hideSelected">
             <span class="bab-btn-glyph" aria-hidden="true">⌀</span>
             Hide
+          </button>
+          <button
+            type="button"
+            class="bulk-export"
+            data-testid="bulk-export-bundle"
+            @click="emit('export-bundle', [...selectedKeys])"
+          >
+            <span class="bab-btn-glyph" aria-hidden="true">📦</span>
+            Export bundle…
           </button>
           <button
             v-if="otherProfiles.length > 0"

@@ -37,6 +37,7 @@ import {
   GetDataLocation,
   ExportData,
   ExportDataCSV,
+  ExportBundle,
   ImportData,
   ResolveAmbiguousMatch,
   SetMatchAnnotation,
@@ -76,6 +77,10 @@ import { useFirstRunAcknowledged } from './composables/useFirstRunAcknowledged'
 // user clears localStorage). Lazy-loaded so 99 % of session boots
 // don't pay for its bytes in the initial JS chunk.
 const FirstRunProfileModal = defineAsyncComponent(() => import('./components/FirstRunProfileModal.vue'))
+// Export-bundle confirmation modal — only mounted when the user clicks
+// "Export bundle…" on the Matches bulk-action bar. Lazy so its bytes
+// don't land in the initial chunk.
+const ExportBundleModal = defineAsyncComponent(() => import('./components/ExportBundleModal.vue'))
 
 // View components are lazy-loaded via defineAsyncComponent so each
 // becomes a separate JS chunk emitted by Vite. The initial bundle
@@ -707,6 +712,39 @@ async function onMoveMatches(matchKeys: string[], targetProfile: string) {
   }
 }
 
+// ── Export-bundle flow ──────────────────────────────────────────────
+// The Matches bulk-action bar emits `export-bundle` with the ticked
+// match_keys. App.vue captures the keys, opens the
+// ExportBundleModal, and on Export → calls ExportBundle in api.ts
+// which dispatches to Wails' SaveFileDialog or to a browser blob
+// download depending on transport.
+const exportBundleOpen = ref(false)
+const exportBundleSelectedKeys = ref<string[]>([])
+
+function onExportBundleRequest(matchKeys: string[]) {
+  exportBundleSelectedKeys.value = matchKeys
+  exportBundleOpen.value = true
+}
+
+async function onExportBundleConfirm(
+  _filename: string,
+  includeHidden: boolean,
+  includeUnknown: boolean,
+) {
+  try {
+    await ExportBundle({
+      matchKeys: exportBundleSelectedKeys.value,
+      includeHidden,
+      includeUnknown,
+    })
+  } catch (e) {
+    error.value = String(e)
+  } finally {
+    exportBundleOpen.value = false
+    exportBundleSelectedKeys.value = []
+  }
+}
+
 // Ambiguous-attribution resolver. The user picks which candidate
 // match an ambiguous screenshot belongs to from the Unknown tab's
 // "Needs your review" subsection; we PUT the resolution, then
@@ -1076,6 +1114,12 @@ void TAB_ORDER
 // Unknown Maps view for triage.
 const unknownRecords = computed(() =>
   records.value.filter(r => !r.data?.map && !r.ambiguous)
+)
+// Records flagged hidden by the user via the Matches drawer. Used by
+// the export-bundle modal to surface the count + offer the "include
+// hidden" toggle without forcing the user to navigate the archive.
+const hiddenRecords = computed(() =>
+  records.value.filter(r => !!r.hidden),
 )
 // Records the resolver couldn't pin to a single match (EAD-bridge
 // ambiguity). Surface above unknownRecords in the Unknown tab so
@@ -1474,6 +1518,7 @@ useEventStream({
           @unhide-matches="onUnhideMatches"
           @hard-delete-matches="onHardDeleteMatches"
           @move-matches="onMoveMatches"
+          @export-bundle="onExportBundleRequest"
         />
 
         <!-- ─── ANALYSIS VIEW (coaching dashboard sketch) ──────────
@@ -1613,6 +1658,21 @@ useEventStream({
     <FirstRunProfileModal
       v-if="firstRunModalOpen"
       @dismiss="onFirstRunDismiss"
+    />
+
+    <!-- Export bundle modal — opens from the Matches bulk-action
+         bar's "Export bundle…" button. Counts the selected keys
+         (already a `string[]` arg) and shows the user the hidden +
+         unknown totals so they can decide whether to UNION them
+         into the export. Esc / backdrop / Cancel dismiss; Export
+         dispatches to api.ts ExportBundle. -->
+    <ExportBundleModal
+      :open="exportBundleOpen"
+      :selected-count="exportBundleSelectedKeys.length"
+      :hidden-count="hiddenRecords.length"
+      :unknown-count="unknownRecords.length"
+      @close="exportBundleOpen = false"
+      @export="onExportBundleConfirm"
     />
   </div>
 </template>

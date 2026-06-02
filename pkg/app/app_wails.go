@@ -141,6 +141,41 @@ func (a *App) SaveExportToFileCSV() (string, error) {
 	return path, nil
 }
 
+// SaveBundleToFile is the bundle-export sibling of SaveExportToFile.
+// Pops a native SaveFileDialog defaulting to `recall-bundle-<ts>.zip`,
+// then writes the ExportBundle payload to the chosen path. Returns
+// the path on success, empty string + nil on user cancel.
+func (a *App) SaveBundleToFile(matchKeys []string, includeUnknown, includeHidden bool) (string, error) {
+	defaultName := "recall-bundle-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+	path, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{
+		Title:                "Save Recall bundle",
+		DefaultFilename:      defaultName,
+		CanCreateDirectories: true,
+		Filters: []wruntime.FileFilter{
+			{DisplayName: "Recall bundle (ZIP)", Pattern: "*.zip"},
+			{DisplayName: "All files", Pattern: "*"},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if path == "" {
+		return "", nil
+	}
+	data, err := a.ExportBundle(ExportBundleOptions{
+		MatchKeys:      matchKeys,
+		IncludeUnknown: includeUnknown,
+		IncludeHidden:  includeHidden,
+	})
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return "", fmt.Errorf("write bundle: %w", err)
+	}
+	return path, nil
+}
+
 // LoadImportFromFile opens a native open dialog, reads the chosen
 // file, and applies it via ImportData. Returns the path read on
 // success; "" if cancelled. Replaces the current database — caller

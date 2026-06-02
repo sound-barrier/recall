@@ -95,7 +95,6 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 
 ### Data & Export
 
-- **Compressed export bundle** — `.zip` containing the DB + every referenced screenshot, for full-fidelity backups and bug reports. Manifest at the root lists screenshot file ↔ match_key mapping for sanity-checking after restore.
 - **Snapshot diff** — load two export files and report what changed (new matches, hidden matches, annotation edits). Three-pane diff view: added / removed / edited; uses the existing `MatchRecord` equality semantics.
 - **Per-season slice** — export only the matches in a specific competitive season for archival. Season boundaries auto-detected from rank screens; manual override per export.
 - **Shareable read-only view** — emit a static HTML bundle of stats (no DB writes possible) suitable for hosting on GitHub Pages. Re-uses the existing Vite build via a "no-server" entry point that swaps the `fetch`-based api.ts for a static JSON bundle inlined into the HTML.
@@ -113,8 +112,7 @@ history is the audit trail. Don't add `~~strikethrough~~` or
 
 ## Accepted
 
-*Empty.* Move items here from Triaging once they're committed to.
-Add issue / PR links inline: `- Feature — short description ([#123](url))`.
+- **Compressed export bundle** — `.zip` containing the existing v1 JSON export (filtered to the user's selected matches) + every referenced screenshot under `screenshots/<filename>` + a `manifest.json` at the root listing screenshot → `match_key` mappings + export metadata. The Matches bulk-action bar gets an *Export bundle…* affordance that opens a modal: selected-count summary, optional toggles to also include all hidden matches and/or all unknown matches, and a filename input. Wails desktop binds the native SaveFileDialog; server mode falls back to the browser-blob download path. The bundle restores via the existing `POST /api/v1/imports` path because `data.json` is the same `recall-export/v1` shape.
 
 ## Shipped
 

@@ -765,6 +765,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/exports/bundle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build a selection-aware export bundle (ZIP)
+         * @description Builds a `.zip` containing the existing `recall-export/v1`
+         *     JSON (filtered to the requested matches) at `data.json`, every
+         *     referenced screenshot under `screenshots/<filename>`, and a
+         *     root `manifest.json` listing screenshot → match_key mappings
+         *     for sanity-checking after restore.
+         *
+         *     The `match_keys` body field carries the user's explicit
+         *     selection. `include_unknown` adds every record whose
+         *     `data.map` is empty (the same "unknown" definition the
+         *     Matches view uses); `include_hidden` adds every record
+         *     currently in `hidden_matches`. Toggles UNION onto the
+         *     explicit selection — a request with `match_keys: []` and
+         *     `include_hidden: true` exports every hidden match.
+         *
+         *     Restore via `POST /api/v1/imports` — the `data.json` shape
+         *     is the same `recall-export/v1` envelope.
+         */
+        post: operations["ExportBundle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/imports": {
         parameters: {
             query?: never;
@@ -2226,6 +2261,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecallExport"];
+                    "application/zip": string;
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    ExportBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Explicit list of match_keys to include in the
+                     *     bundle. Empty array combined with
+                     *     `include_unknown=false` and
+                     *     `include_hidden=false` produces an empty
+                     *     bundle (manifest with `match_count: 0`).
+                     */
+                    match_keys: string[];
+                    /**
+                     * @description Add every record whose `data.map` is empty (the
+                     *     Matches view's "unknown" filter).
+                     * @default false
+                     */
+                    include_unknown?: boolean;
+                    /**
+                     * @description Add every record currently in `hidden_matches`.
+                     * @default false
+                     */
+                    include_hidden?: boolean;
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description ZIP bundle with the same `Content-Disposition: attachment;
+             *     filename="recall-bundle-<timestamp>.zip"` header pattern
+             *     as `GET /api/v1/exports`.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/zip": string;
                 };
             };
