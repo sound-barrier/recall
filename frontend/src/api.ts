@@ -491,6 +491,56 @@ export function ExportDataCSV(): Promise<string> {
   return downloadExport('csv')
 }
 
+// ExportBundle is the selection-aware variant of ExportData. The
+// caller passes the explicit match_keys the user ticked plus optional
+// `includeUnknown` / `includeHidden` toggles that UNION extra records
+// onto the selection. The Wails build delegates to a native save
+// dialog (`SaveBundleToFile`); the server build POSTs the request and
+// streams the ZIP into a browser download via the same blob+anchor
+// idiom downloadExport uses.
+//
+// Resolves with the filename the bundle was saved as ("" on user
+// cancel in Wails mode). Throws ApiError on a non-2xx HTTP response.
+export async function ExportBundle(opts: {
+  matchKeys:       string[]
+  includeUnknown:  boolean
+  includeHidden:   boolean
+}): Promise<string> {
+  if (IS_WAILS) {
+    return _wails<string>(
+      'SaveBundleToFile',
+      opts.matchKeys,
+      opts.includeUnknown,
+      opts.includeHidden,
+    )
+  }
+  const r = await fetch('/api/v1/exports/bundle', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      match_keys:      opts.matchKeys,
+      include_unknown: opts.includeUnknown,
+      include_hidden:  opts.includeHidden,
+    }),
+  })
+  if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ''))
+  const cd = r.headers.get('Content-Disposition') ?? ''
+  const matched = /filename="([^"]+)"/.exec(cd)
+  const fallback = `recall-bundle-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.zip`
+  const name = matched?.[1] ?? fallback
+  const blob = await r.blob()
+  const blobURL = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = blobURL
+  a.download = name
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(blobURL)
+  return name
+}
+
 async function downloadExport(format: 'json' | 'csv'): Promise<string> {
   if (IS_WAILS) {
     return _wails(format === 'csv' ? 'SaveExportToFileCSV' : 'SaveExportToFile')

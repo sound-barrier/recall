@@ -36,10 +36,10 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # (TECHNICAL_DEBT.md). The previous budgets had drifted high from
 # repeated "just bump it" PRs; this lower floor keeps casual growth
 # honest. A real feature that needs the room should bump deliberately.
-: "${MAX_INITIAL_JS_BYTES:=142000}" # 142 KB — initial JS chunk only
+: "${MAX_INITIAL_JS_BYTES:=146000}" # 146 KB — initial JS chunk only
 : "${MAX_INITIAL_CSS_BYTES:=60000}" # 60 KB  — initial CSS chunk only
-: "${MAX_TOTAL_JS_BYTES:=320000}"   # 320 KB — every JS chunk combined
-: "${MAX_TOTAL_CSS_BYTES:=177000}"  # 177 KB — every CSS chunk combined
+: "${MAX_TOTAL_JS_BYTES:=327000}"   # 327 KB — every JS chunk combined
+: "${MAX_TOTAL_CSS_BYTES:=182000}"  # 182 KB — every CSS chunk combined
 
 if [[ "${1:-}" == "--build" ]]; then
   echo "==> building frontend (npm --prefix frontend run build)…"

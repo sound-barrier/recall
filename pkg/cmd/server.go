@@ -98,6 +98,45 @@ func decodeOptionalString(field string, raw json.RawMessage) (string, error) {
 	return s, nil
 }
 
+// decodeRequiredStringArray decodes a required `type: array` body
+// field whose items are strings. Rejects `null` and `[null, ...]`
+// shapes that Go's default decoder otherwise accepts as nil / "".
+func decodeRequiredStringArray(field string, raw json.RawMessage) ([]string, error) {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 {
+		return nil, fmt.Errorf("%s is required", field)
+	}
+	if bytes.Equal(trimmed, []byte("null")) {
+		return nil, fmt.Errorf("%s must be an array, not null", field)
+	}
+	var in []*string
+	if err := json.Unmarshal(trimmed, &in); err != nil {
+		return nil, fmt.Errorf("%s: %w", field, err)
+	}
+	return derefStringArray(field, in)
+}
+
+// decodeOptionalBool mirrors decodeOptionalString for boolean fields
+// that the OpenAPI spec declares as `type: boolean` with a default.
+// Absent field → default-zero (false) + no error. Explicit `null` is
+// a schema violation (boolean is non-nullable in OpenAPI 3.1 unless
+// the spec says otherwise) — returned as a 400-shaped error so
+// schemathesis's `negative_data_rejection` check stays green.
+func decodeOptionalBool(field string, raw json.RawMessage) (bool, error) {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 {
+		return false, nil
+	}
+	if bytes.Equal(trimmed, []byte("null")) {
+		return false, fmt.Errorf("%s must be a boolean, not null", field)
+	}
+	var b bool
+	if err := json.Unmarshal(trimmed, &b); err != nil {
+		return false, fmt.Errorf("%s: %w", field, err)
+	}
+	return b, nil
+}
+
 // derefStringArray converts a `[]*string` decoded from a JSON array
 // into a plain `[]string`, rejecting any nil pointer (which Go's
 // json package emits when the original element was `null`). Used by
@@ -735,6 +774,55 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		default:
 			http.Error(w, "format must be 'json' or 'csv'", http.StatusBadRequest)
 		}
+	})
+
+	// Compressed bundle export. Body declares the included match keys
+	// plus optional include-unknown / include-hidden toggles; response
+	// is the assembled `.zip` (manifest.json + data.json +
+	// screenshots/<filename>). See pkg/app/export_bundle.go.
+	apiMux.HandleFunc("POST /api/v1/exports/bundle", func(w http.ResponseWriter, r *http.Request) {
+		// json.RawMessage on every field so a literal `null` (which
+		// Go's default decoder silently treats as the zero value)
+		// can be rejected as a schema violation — the spec declares
+		// `match_keys` as `type: array` and the toggles as
+		// `type: boolean`, neither nullable.
+		var body struct {
+			MatchKeys      json.RawMessage `json:"match_keys"`
+			IncludeUnknown json.RawMessage `json:"include_unknown"`
+			IncludeHidden  json.RawMessage `json:"include_hidden"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		matchKeys, mkErr := decodeRequiredStringArray("match_keys", body.MatchKeys)
+		if mkErr != nil {
+			http.Error(w, mkErr.Error(), http.StatusBadRequest)
+			return
+		}
+		includeUnknown, ferr := decodeOptionalBool("include_unknown", body.IncludeUnknown)
+		if ferr != nil {
+			http.Error(w, ferr.Error(), http.StatusBadRequest)
+			return
+		}
+		includeHidden, ferr := decodeOptionalBool("include_hidden", body.IncludeHidden)
+		if ferr != nil {
+			http.Error(w, ferr.Error(), http.StatusBadRequest)
+			return
+		}
+		data, err := a.ExportBundle(app.ExportBundleOptions{
+			MatchKeys:      matchKeys,
+			IncludeUnknown: includeUnknown,
+			IncludeHidden:  includeHidden,
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		fname := "recall-bundle-" + time.Now().UTC().Format("20060102-150405") + ".zip"
+		w.Header().Set("Content-Type", "application/zip")
+		w.Header().Set("Content-Disposition", `attachment; filename="`+fname+`"`)
+		_, _ = w.Write(data)
 	})
 
 	// POST a previously-exported payload to REPLACE the local DB.

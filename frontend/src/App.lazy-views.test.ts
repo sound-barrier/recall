@@ -29,6 +29,9 @@ describe('App.vue lazy-loaded components', () => {
     // First-run modal — only renders on a fresh install, so the cost
     // of its bytes should only be paid by users who actually see it.
     { name: 'FirstRunProfileModal',   path: './components/FirstRunProfileModal.vue' },
+    // Export bundle modal — only renders when the user clicks
+    // "Export bundle…" on the Matches bulk-action bar.
+    { name: 'ExportBundleModal',      path: './components/ExportBundleModal.vue' },
   ]
 
   for (const { name, path } of views) {
