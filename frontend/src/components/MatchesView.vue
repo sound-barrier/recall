@@ -11,6 +11,8 @@ import { useArchiveSelection } from '../composables/useArchiveSelection'
 import MatchTimelineHeader from './MatchTimelineHeader.vue'
 import FilterCombobox from './FilterCombobox.vue'
 import DashboardWidget from './DashboardWidget.vue'
+import DashboardCustomizer from './DashboardCustomizer.vue'
+import { useDashboardVisibility } from '../composables/useDashboardVisibility'
 import { DEFAULT_ROW_LAYOUT, widgetById, type WidgetDef } from '../dashboard/widgets'
 
 // Matches page — "set workspace" layout.
@@ -258,17 +260,29 @@ const {
 // 2 (hide/show) and 3 (drag-reorder, incl. cross-row) thread visibility
 // + ordering composables through the same `dashboardRows` computed
 // without changing the v-for shape in the template.
-const dashboardRows = computed(() =>
-  Object.keys(DEFAULT_ROW_LAYOUT)
+// Hide/show preference owns the only filter applied at this layer
+// in Phase 2; Phase 3 will replace DEFAULT_ROW_LAYOUT with the
+// persisted layout from useDashboardLayout.
+const dashboardVisibility = useDashboardVisibility()
+
+const dashboardRows = computed(() => {
+  const hidden = new Set(dashboardVisibility.hidden.value)
+  return Object.keys(DEFAULT_ROW_LAYOUT)
     .map((k) => Number(k))
     .sort((a, b) => a - b)
     .map((rowIdx) => ({
       index: rowIdx,
       widgets: (DEFAULT_ROW_LAYOUT[rowIdx] ?? [])
+        .filter((id) => !hidden.has(id))
         .map((id) => widgetById(id))
         .filter((def): def is WidgetDef => def !== undefined),
-    })),
-)
+    }))
+})
+
+// Modal open state. Same handler drives mount + unmount; the
+// customizer owns its focus trap, so MatchesView's only job is to
+// pass the flag and hear back on @close.
+const showDashboardCustomizer = ref(false)
 
 // Per-widget prop bag, keyed by widget id. Each entry is the exact
 // set of dossier values that widget's SFC declares as props.
@@ -576,26 +590,62 @@ onBeforeUnmount(() => {
         </ul>
       </header>
 
-      <div
-        v-for="row in dashboardRows"
-        :key="`row-${row.index}`"
-        class="dashboard-row"
-        :data-row="row.index"
-      >
-        <DashboardWidget
-          v-for="def in row.widgets"
-          :id="def.id"
-          :key="def.id"
-          :shape="def.shape"
-          :legacy-data-kpi="LEGACY_DATA_KPI[def.id]"
-          :legacy-data-breakdown="LEGACY_DATA_BREAKDOWN[def.id]"
+      <template v-for="row in dashboardRows" :key="`row-${row.index}`">
+        <div
+          v-if="row.widgets.length > 0"
+          class="dashboard-row"
+          :data-row="row.index"
         >
-          <component :is="def.component" v-bind="widgetProps[def.id]" />
-        </DashboardWidget>
-      </div>
+          <DashboardWidget
+            v-for="def in row.widgets"
+            :id="def.id"
+            :key="def.id"
+            :shape="def.shape"
+            :legacy-data-kpi="LEGACY_DATA_KPI[def.id]"
+            :legacy-data-breakdown="LEGACY_DATA_BREAKDOWN[def.id]"
+          >
+            <component :is="def.component" v-bind="widgetProps[def.id]" />
+          </DashboardWidget>
+        </div>
+        <!-- Empty-state hint when every widget in a row is hidden.
+             We render the placeholder INSTEAD of an empty grid so
+             the dossier doesn't visually collapse — the user sees
+             where the row used to be and the path to bring widgets
+             back. -->
+        <p
+          v-else
+          class="dashboard-row-empty"
+          :data-row="row.index"
+        >
+          Every widget in this row is hidden &mdash;
+          <button
+            type="button"
+            class="dashboard-row-empty-link"
+            @click="showDashboardCustomizer = true"
+          >
+            open Edit dashboard
+          </button>
+          to bring some back.
+        </p>
+      </template>
 
       <!-- Narrow trigger + popover. -->
       <div class="dossier-actions">
+        <!-- Edit-dashboard launcher. Mirrors the narrow trigger's
+             chrome family (.dossier-btn) but stays non-primary so
+             Narrow remains the visual lead. -->
+        <button
+          type="button"
+          class="dossier-btn"
+          aria-haspopup="dialog"
+          :aria-expanded="showDashboardCustomizer ? 'true' : 'false'"
+          aria-controls="dashboard-customizer-title"
+          data-edit-dashboard
+          @click="showDashboardCustomizer = true"
+        >
+          <span aria-hidden="true">▦</span> Edit dashboard
+        </button>
+
         <div class="narrow-anchor">
           <button
             ref="triggerRef"
@@ -933,6 +983,14 @@ onBeforeUnmount(() => {
           </Teleport>
         </div>
       </div>
+
+      <!-- Customizer modal lives at the end of the dossier so its
+           Teleport target (body) lifts it above every dossier-local
+           ancestor stacking context. -->
+      <DashboardCustomizer
+        :open="showDashboardCustomizer"
+        @close="showDashboardCustomizer = false"
+      />
     </section>
 
     <!-- ─── CAMPAIGN LOG (heatmap + sparkline) ──────────────── -->
@@ -1432,6 +1490,45 @@ onBeforeUnmount(() => {
    scoped root. */
 .dashboard-row :deep(.breakdown) {
   min-width: 280px;
+}
+
+/* Empty-state for a row whose widgets are all hidden. Keeps the
+   dossier from visually collapsing and surfaces the path back to
+   the customizer inline. The inline button reuses the dossier's
+   mono eyebrow voice; no chrome so it reads as part of the
+   sentence rather than another control. */
+.dashboard-row-empty {
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px dashed var(--border);
+  border-radius: 2px;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-style: italic;
+  text-align: center;
+  background: var(--surface-2);
+}
+
+.dashboard-row-empty-link {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dashboard-row-empty-link:hover,
+.dashboard-row-empty-link:focus-visible {
+  color: var(--text);
+  outline: none;
 }
 
 .dossier-actions { display: flex; gap: 0.5rem; margin-top: 0.2rem; }
