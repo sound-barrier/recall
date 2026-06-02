@@ -236,7 +236,10 @@ function selectAllVisible() {
 const comboOpen = ref<'map' | 'hero' | null>(null)
 
 // ─── Dossier KPIs / breakdowns via useMatchesDossier ───────
-const { winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero, averageKDA } = useMatchesDossier(narrowedRecords, leaverHandling)
+const {
+  winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero, averageKDA,
+  reviewedCount, daysSinceLastReview,
+} = useMatchesDossier(narrowedRecords, leaverHandling)
 
 const setHeadline = computed(() => {
   if (!anyNarrow.value) return 'All matches on record'
@@ -563,6 +566,40 @@ onBeforeUnmount(() => {
                (winrate=null) — the hero name still shows. -->
           <span v-if="mostPlayedHero?.winrate !== null && mostPlayedHero?.winrate !== undefined" class="kpi-sub">
             {{ mostPlayedHero.winrate }}% in {{ mostPlayedHero.qualifyingMatches }} match<span v-if="mostPlayedHero.qualifyingMatches !== 1">es</span>
+          </span>
+        </div>
+        <div class="kpi-tile" data-kpi="reviewed-count">
+          <span class="kpi-eyebrow">Matches reviewed</span>
+          <!-- Headline is the raw reviewed count; subtitle is the
+               share against the full narrow so the user reads BOTH
+               the absolute volume AND the workflow ratio. We render
+               '—' when the narrow is empty so the value cell never
+               degrades to a bare "0". -->
+          <span class="kpi-value">{{ reviewedCount.total === 0 ? '—' : reviewedCount.reviewed }}</span>
+          <span v-if="reviewedCount.total > 0" class="kpi-sub">
+            {{ reviewedCount.percent }}% of {{ reviewedCount.total }} match<span v-if="reviewedCount.total !== 1">es</span>
+          </span>
+        </div>
+        <div class="kpi-tile" data-kpi="days-since-review">
+          <span class="kpi-eyebrow">Days since last review</span>
+          <!-- 0 days reads as "today" — the units cell would
+               otherwise be misleading (a review three hours ago is
+               not "0 days" colloquially). Tile carries a title
+               attribute with the precise ISO timestamp so power
+               users can hover for exact recency. Em-dash when the
+               narrow has no reviewed matches. -->
+          <span class="kpi-value" :title="daysSinceLastReview.lastReviewedAt ?? undefined">
+            {{ daysSinceLastReview.days === null
+              ? '—'
+              : daysSinceLastReview.days === 0
+                ? 'Today'
+                : daysSinceLastReview.days }}
+          </span>
+          <span
+            v-if="daysSinceLastReview.days !== null && daysSinceLastReview.days >= 1"
+            class="kpi-sub"
+          >
+            day<span v-if="daysSinceLastReview.days !== 1">s</span> ago
           </span>
         </div>
       </div>

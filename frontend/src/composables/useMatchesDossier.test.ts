@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { ref } from 'vue'
 import type { MatchRecord } from '../api'
 import { useMatchesDossier, type LeaverHandling } from './useMatchesDossier'
@@ -9,6 +9,8 @@ function rec(opts: {
   map?: string
   hero?: string
   leaver?: '' | 'self' | 'team' | 'enemy'
+  reviewedBy?: 'self' | 'coach'
+  reviewedAt?: string
 }): MatchRecord {
   return {
     match_key: opts.key ?? `m-${Math.random()}`,
@@ -23,6 +25,8 @@ function rec(opts: {
     },
     annotation: opts.leaver ? { leaver: opts.leaver } : undefined,
     parsed_at: '2026-05-10T14:00:00Z',
+    ...(opts.reviewedBy ? { reviewed_by: opts.reviewedBy } : {}),
+    ...(opts.reviewedAt ? { reviewed_at: opts.reviewedAt } : {}),
   } as unknown as MatchRecord
 }
 
@@ -572,6 +576,96 @@ describe('useMatchesDossier', () => {
       expect(wld.value.total).toBe(2)
       handling.value = 'exclude-tally'
       expect(wld.value.total).toBe(1)
+    })
+  })
+
+  describe('reviewedCount', () => {
+    it('counts records whose reviewed_by is set (self or coach)', () => {
+      const records = ref([
+        rec({ key: 'a', reviewedBy: 'self' }),
+        rec({ key: 'b' }), // unreviewed
+        rec({ key: 'c', reviewedBy: 'coach' }),
+        rec({ key: 'd' }),
+        rec({ key: 'e', reviewedBy: 'self' }),
+      ])
+      const { reviewedCount } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(reviewedCount.value).toEqual({ reviewed: 3, total: 5, percent: 60 })
+    })
+
+    it('returns zeros for an empty corpus without dividing by zero', () => {
+      const records = ref<MatchRecord[]>([])
+      const { reviewedCount } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(reviewedCount.value).toEqual({ reviewed: 0, total: 0, percent: 0 })
+    })
+
+    it('uses the full narrow even when leaverHandling=exclude-tally', () => {
+      // Review coverage is a workflow metric, not a W/L tally — leaver
+      // exclusion shouldn't shrink the denominator.
+      const records = ref([
+        rec({ key: 'a', reviewedBy: 'self' }),
+        rec({ key: 'b', reviewedBy: 'coach', leaver: 'self' }),
+        rec({ key: 'c' }),
+      ])
+      const { reviewedCount } = useMatchesDossier(records, ref<LeaverHandling>('exclude-tally'))
+      expect(reviewedCount.value).toEqual({ reviewed: 2, total: 3, percent: 67 })
+    })
+  })
+
+  describe('daysSinceLastReview', () => {
+    it('floors to whole days since the most-recent reviewed_at', () => {
+      const FIXED_NOW = Date.UTC(2026, 5, 10, 12, 0, 0) // 2026-06-10T12:00Z
+      vi.useFakeTimers()
+      vi.setSystemTime(FIXED_NOW)
+      try {
+        const records = ref([
+          rec({ key: 'old', reviewedBy: 'self',  reviewedAt: '2026-06-01T12:00:00Z' }), // 9d
+          rec({ key: 'newer', reviewedBy: 'coach', reviewedAt: '2026-06-07T12:00:00Z' }), // 3d
+          rec({ key: 'unreviewed' }),
+        ])
+        const { daysSinceLastReview } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+        expect(daysSinceLastReview.value.days).toBe(3)
+        expect(daysSinceLastReview.value.lastReviewedAt).toBe('2026-06-07T12:00:00Z')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('returns null days when no record has been reviewed', () => {
+      const records = ref([rec({}), rec({})])
+      const { daysSinceLastReview } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(daysSinceLastReview.value).toEqual({ days: null, lastReviewedAt: null })
+    })
+
+    it('treats sub-24h-ago timestamps as 0 days (today)', () => {
+      const FIXED_NOW = Date.UTC(2026, 5, 10, 12, 0, 0)
+      vi.useFakeTimers()
+      vi.setSystemTime(FIXED_NOW)
+      try {
+        const records = ref([
+          rec({ reviewedBy: 'self', reviewedAt: '2026-06-10T08:00:00Z' }), // 4h ago
+        ])
+        const { daysSinceLastReview } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+        expect(daysSinceLastReview.value.days).toBe(0)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('ignores malformed reviewed_at strings without crashing', () => {
+      const FIXED_NOW = Date.UTC(2026, 5, 10, 12, 0, 0)
+      vi.useFakeTimers()
+      vi.setSystemTime(FIXED_NOW)
+      try {
+        const records = ref([
+          rec({ reviewedBy: 'self', reviewedAt: 'not-an-iso-date' }),
+          rec({ reviewedBy: 'coach', reviewedAt: '2026-06-05T00:00:00Z' }),
+        ])
+        const { daysSinceLastReview } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+        // Only the valid one contributes; 5d 12h ago floors to 5.
+        expect(daysSinceLastReview.value.days).toBe(5)
+      } finally {
+        vi.useRealTimers()
+      }
     })
   })
 })
