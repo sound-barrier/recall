@@ -34,40 +34,6 @@ The list is ordered by *risk × cost-to-fix-later*, not by size. The
 top items are the ones most likely to bite if left alone. Pay them
 off first.
 
-> **Next release focus** (per the maintainer's working note):
->
-> 1. ~~Burn down the **skipped e2e suites** (item 1)~~ — **paid
->    down**: 10 describe-blocks across 6 specs un-skipped and
->    rewritten against the current UI; surfaced + fixed two
->    production bugs (heatmap date-format mismatch dropping every
->    record, `/` shortcut targeting a removed `#match-search`
->    element).
-> 2. ~~Fix the **ScreenshotHandler dir-ID bug** (item 2)~~ —
->    **paid down**: took the pre-1.0 break path. URL shape moved
->    from `/_screenshot/<filename>` to
->    `/_screenshot/<dir-id>/<filename>`. `MatchRecord.source_dirs`
->    (paths) replaced by `source_dir_ids` (integers); the handler
->    looks the path back up via `db.Store.LookupScreenshotsDir`
->    and falls back to the configured dir when dir-id is 0
->    (unparsed files in the watched folder). `feat!:` declared.
-> 3. ~~Fix the **`match_key` colon-string footgun** (item 3)~~ —
->    **paid down**: replaced `:` with `-` throughout. New format
->    is `match-YYYY-MM-DDTHH-MM-SS` / `unmatched-<filename>` /
->    `ambiguous-<filename>`; the whole key is URL-safe without
->    encoding. One-time SQL migration in `NewSQLStore` rewrites
->    legacy colon-form rows on startup (idempotent).
->    `frontend/matchTime()` rewrites the `-` time separators back
->    to `:` for display. `feat!:` declared.
-> 4. Lift coverage on **App.vue + api.ts + MatchDetailPanel**
->    (item 6) — the highest-traffic surfaces have the thinnest
->    safety net.
->
-> Pre-1.0 there's no backwards-compat constraint, so items 2, 3,
-> and 4 can ship with breaking changes if that's the cleaner path
-> — declare via `feat!:` per CLAUDE.md.
-
----
-
 ## 4. Schemathesis: two excluded checks remain
 
 **Where:** `scripts/check-api-drift.sh`.
