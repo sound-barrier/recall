@@ -5,6 +5,7 @@ import { GetProfiles } from '../api'
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import { useMatchesGroup } from '../composables/useMatchesGroup'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
+import { useOWData } from '../composables/useOWData'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import { useArchiveSelection } from '../composables/useArchiveSelection'
 import MatchTimelineHeader from './MatchTimelineHeader.vue'
@@ -236,10 +237,16 @@ function selectAllVisible() {
 const comboOpen = ref<'map' | 'hero' | null>(null)
 
 // ─── Dossier KPIs / breakdowns via useMatchesDossier ───────
+//
+// The dossier needs a hero→role resolver to drive the open-queue-
+// aware Most-played-roles breakdown. useOWData is a session-level
+// singleton — it lazy-fetches `/api/v1/system/reference-data` and
+// reuses the same reactive store across every consumer.
+const ow = useOWData()
 const {
-  winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero, averageKDA,
+  winrate, topMaps, topHeroes, topRoles, totalTimePlayed, mostPlayedHero, averageKDA,
   reviewedCount, daysSinceLastReview, wldSinceLastReview,
-} = useMatchesDossier(narrowedRecords, leaverHandling)
+} = useMatchesDossier(narrowedRecords, leaverHandling, ow.heroRole)
 
 const setHeadline = computed(() => {
   if (!anyNarrow.value) return 'All matches on record'
@@ -656,6 +663,30 @@ onBeforeUnmount(() => {
                 <span class="bd-time">{{ h.timeLabel }}</span>
               </span>
               <span class="bd-stats">{{ h.share }}%</span>
+            </li>
+          </ul>
+        </article>
+        <article class="breakdown" data-breakdown="roles">
+          <!-- Role-share row. Bars are sized by `count / total
+               matches` so open-queue matches (multiple roles per
+               match) push the row's sum past 100% — that's the
+               desired signal, not a bug. The bar carries the raw
+               match count ("3x") and the right-side column carries
+               the share percentage, mirroring topMaps' layout so
+               the three breakdowns read as one consistent grid.
+               Title-tip on the bar surfaces the per-role winrate
+               for power users. -->
+          <header class="breakdown-head">
+            <span class="breakdown-eyebrow">Most played roles</span>
+          </header>
+          <ul>
+            <li v-for="r in topRoles" :key="r.key">
+              <span class="bd-name">{{ r.key }}</span>
+              <span class="bd-bar" :title="r.total > 0 ? `${r.winrate}% winrate` : undefined">
+                <span class="bd-fill" :style="{ width: Math.min(r.share, 100) + '%' }" />
+                <span class="bd-time">{{ r.total }}x</span>
+              </span>
+              <span class="bd-stats">{{ r.share }}%</span>
             </li>
           </ul>
         </article>
@@ -1535,8 +1566,12 @@ onBeforeUnmount(() => {
 
 .dossier-breakdowns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 0.7rem;
+}
+
+@media (width <= 900px) {
+  .dossier-breakdowns { grid-template-columns: 1fr 1fr; }
 }
 
 @media (width <= 700px) {

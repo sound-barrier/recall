@@ -651,6 +651,165 @@ describe('useMatchesDossier', () => {
     })
   })
 
+  describe('topRoles', () => {
+    // Typed lookup helper — closed-shape object so accesses stay
+    // non-nullable under noUncheckedIndexedAccess (a plain
+    // `Record<Role, T>` would still widen each lookup to `T |
+    // undefined`). The composable's contract guarantees every
+    // canonical role appears in the output.
+    function byKey<T extends { key: string }>(rows: T[]): { tank: T; dps: T; support: T } {
+      const m = Object.fromEntries(rows.map((r) => [r.key, r])) as Record<string, T>
+      return { tank: m.tank as T, dps: m.dps as T, support: m.support as T }
+    }
+    // Tiny canonical hero→role mock — enough heroes to cover every
+    // role plus a "filler" that the resolver returns nothing for, so
+    // we can verify the resolver-undefined branch.
+    const heroRole = (hero: string): string | undefined => {
+      const map: Record<string, string> = {
+        reinhardt: 'tank',
+        roadhog:   'tank',
+        ana:       'support',
+        lucio:     'support',
+        moira:     'support',
+        soldier:   'dps',
+        tracer:    'dps',
+      }
+      return map[hero]
+    }
+
+    function roleRec(opts: {
+      key?: string
+      primary?: string
+      heroes?: string[]
+      result?: 'victory' | 'defeat' | 'draw'
+      leaver?: 'self' | 'team' | 'enemy'
+    }): MatchRecord {
+      return {
+        match_key: opts.key ?? `m-${Math.random()}`,
+        source_files: ['a.png'],
+        source_types: { 'a.png': 'summary' },
+        data: {
+          map: 'rialto', mode: 'competitive',
+          role: opts.primary,
+          hero: (opts.heroes ?? [])[0],
+          result: opts.result ?? 'victory',
+          date: '2026-05-10', finished_at: '14:00',
+          heroes_played: (opts.heroes ?? []).map((h) => ({ hero: h, percent_played: 50, play_time: '05:00' })),
+        },
+        annotation: opts.leaver ? { leaver: opts.leaver } : undefined,
+        parsed_at: '2026-05-10T14:00:00Z',
+      } as unknown as MatchRecord
+    }
+
+    it('counts every match in exactly one role when matches are role-locked', () => {
+      const records = ref([
+        roleRec({ primary: 'tank',    heroes: ['reinhardt'] }),
+        roleRec({ primary: 'tank',    heroes: ['roadhog']   }),
+        roleRec({ primary: 'support', heroes: ['lucio']     }),
+        roleRec({ primary: 'dps',     heroes: ['tracer']    }),
+      ])
+      const { topRoles } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      const by = byKey(topRoles.value)
+      expect(by.tank.total).toBe(2)
+      expect(by.support.total).toBe(1)
+      expect(by.dps.total).toBe(1)
+      // Share is count / total_matches; no overlap → sums to 100%.
+      expect(by.tank.share + by.support.share + by.dps.share).toBe(100)
+    })
+
+    it('open-queue overlap pushes the row sum above 100%', () => {
+      // Spec example, paraphrased: 2 matches. Match 1 swaps support↔tank;
+      // match 2 swaps dps↔tank. Tank shows up in both → 2x; support
+      // and dps each in one → 1x. Denominator is total matches (2), so
+      // tank=100%, support=50%, dps=50%, sum=200%.
+      const records = ref([
+        roleRec({ heroes: ['reinhardt', 'lucio'] }),
+        roleRec({ heroes: ['roadhog',   'tracer'] }),
+      ])
+      const { topRoles } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      const by = byKey(topRoles.value)
+      expect(by.tank).toMatchObject({ total: 2, share: 100 })
+      expect(by.support).toMatchObject({ total: 1, share: 50 })
+      expect(by.dps).toMatchObject({ total: 1, share: 50 })
+      expect(by.tank.share + by.support.share + by.dps.share).toBeGreaterThan(100)
+    })
+
+    it('sorts the row descending by count so the dominant role is first', () => {
+      const records = ref([
+        roleRec({ heroes: ['lucio'] }),
+        roleRec({ heroes: ['lucio'] }),
+        roleRec({ heroes: ['lucio'] }),
+        roleRec({ heroes: ['tracer'] }),
+        roleRec({ heroes: ['roadhog'] }),
+      ])
+      const { topRoles } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      expect(topRoles.value.map((r) => r.key)).toEqual(['support', 'tank', 'dps'])
+    })
+
+    it('falls back to data.role when no heroRole resolver is provided', () => {
+      const records = ref([
+        roleRec({ primary: 'tank', heroes: ['reinhardt'] }),
+        roleRec({ primary: 'dps' }),
+      ])
+      const { topRoles } = useMatchesDossier(records, ref<LeaverHandling>('include')) // no resolver
+      const by = byKey(topRoles.value)
+      expect(by.tank.total).toBe(1)
+      expect(by.dps.total).toBe(1)
+    })
+
+    it('drops heroes the resolver does not recognise', () => {
+      const records = ref([
+        roleRec({ primary: 'support', heroes: ['lucio', 'mystery-hero'] }),
+      ])
+      const { topRoles } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      const by = byKey(topRoles.value)
+      // Only support counted; the unknown hero contributes nothing.
+      expect(by.support.total).toBe(1)
+      expect(by.tank.total).toBe(0)
+      expect(by.dps.total).toBe(0)
+    })
+
+    it('returns zero shares for an empty corpus without dividing by zero', () => {
+      const records = ref<MatchRecord[]>([])
+      const { topRoles } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      for (const r of topRoles.value) {
+        expect(r.total).toBe(0)
+        expect(r.share).toBe(0)
+        expect(r.winrate).toBe(0)
+      }
+    })
+
+    it('uses the full narrow even when leaverHandling=exclude-tally', () => {
+      // Role coverage is a workflow / what-you-played metric, NOT a
+      // tally metric. Same rule as topMaps + topHeroes: drop leaver
+      // exclusion at the breakdown layer.
+      const records = ref([
+        roleRec({ heroes: ['reinhardt'], result: 'victory' }),
+        roleRec({ heroes: ['lucio'],     result: 'defeat',  leaver: 'self' }),
+      ])
+      const { topRoles } = useMatchesDossier(records, ref<LeaverHandling>('exclude-tally'), heroRole)
+      const by = byKey(topRoles.value)
+      expect(by.tank.total).toBe(1)
+      expect(by.support.total).toBe(1)
+    })
+
+    it('computes per-role winrate excluding draws from the denominator', () => {
+      const records = ref([
+        roleRec({ heroes: ['reinhardt'], result: 'victory' }),
+        roleRec({ heroes: ['reinhardt'], result: 'defeat' }),
+        roleRec({ heroes: ['reinhardt'], result: 'victory' }),
+        roleRec({ heroes: ['reinhardt'], result: 'draw' }),
+        roleRec({ heroes: ['tracer'],    result: 'defeat' }),
+      ])
+      const { topRoles } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      const by = byKey(topRoles.value)
+      // 2W / 1L on tank (draw excluded) → 67%
+      expect(by.tank.winrate).toBe(67)
+      // 0W / 1L on dps → 0%
+      expect(by.dps.winrate).toBe(0)
+    })
+  })
+
   describe('reviewedCount', () => {
     it('counts records whose reviewed_by is set (self or coach)', () => {
       const records = ref([
