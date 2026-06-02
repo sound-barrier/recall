@@ -347,7 +347,7 @@ function onTagKeydown(e: KeyboardEvent) {
           @click="!record.reviewed_by || emit('set-match-review', record.match_key, '')"
         >
           <span class="review-chip-glyph" aria-hidden="true">⬡</span>
-          <span class="review-chip-label">Unreviewed</span>
+          <span class="review-chip-label">Not reviewed</span>
         </button>
         <button
           type="button"
@@ -1588,12 +1588,18 @@ function onTagKeydown(e: KeyboardEvent) {
   text-transform: uppercase;
 }
 
-/* "Stamped" active state — each value gets its own accent. */
+/* "Stamped" active state — each value gets its own accent. The
+   `none` (default) chip reads as "the standing baseline" rather
+   than a stamped pick: stronger border + inset shadow so the user
+   sees it as the current state, but no accent colour fill (which
+   would imply an affirmative action). */
 .review-chip[data-state="none"][aria-checked="true"] {
   color: var(--text);
-  border-color: var(--text-faint);
-  background: color-mix(in srgb, var(--surface-2) 80%, var(--bg));
-  box-shadow: inset 0 1px 0 var(--hairline);
+  border-color: var(--text);
+  background: var(--surface-2);
+  box-shadow:
+    inset 0 0 0 1px var(--text-faint),
+    inset 0 1px 0 var(--hairline);
 }
 
 .review-chip[data-state="self"][aria-checked="true"] {
@@ -1621,8 +1627,11 @@ function onTagKeydown(e: KeyboardEvent) {
 
 /* A thin "STAMPED" sticker rendered on the active chip — pure CSS,
    no extra DOM. Sits above the chip, anchored top-right. Stays
-   hidden until the chip is the active radio. */
-.review-chip[aria-checked="true"]::after {
+   hidden until the chip is the active radio. Deliberately scoped
+   AWAY from data-state="none" — stamping "Not reviewed" with a ✓
+   reads contradictorily ("checked Not reviewed" ≈ "yes, reviewed"). */
+.review-chip[data-state="self"][aria-checked="true"]::after,
+.review-chip[data-state="coach"][aria-checked="true"]::after {
   content: "✓";
   position: absolute;
   top: -1px;
