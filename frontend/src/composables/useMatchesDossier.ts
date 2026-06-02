@@ -118,6 +118,25 @@ export interface DaysSinceLastReview {
   lastReviewedAt: string | null
 }
 
+// Role-share breakdown row. `key` is one of the three canonical
+// Overwatch roles; `total` is the count of matches the role appeared
+// in; `share` is `total / total_matches * 100` (NOT normalized over
+// the row sum) so open-queue matches that hit multiple roles
+// contribute to multiple bars — the row's percentages will sum to
+// >100% when overlap exists. `winrate` is the per-role wins / decisive
+// over matches that included the role.
+//
+// Distinct from `BreakdownEntry` because `share` has different
+// semantics (entity-share vs row-share) and the keys are a closed
+// 3-element enum rather than open strings.
+export type Role = 'tank' | 'dps' | 'support'
+export interface RoleBreakdownEntry {
+  key: Role
+  total: number
+  share: number
+  winrate: number
+}
+
 // W/L/D over the matches that came in AFTER the most-recent
 // `reviewed_at` in the narrow. Same tallyRecords gate as the
 // headline `wld` so leaver-handling stays consistent; the anchor
@@ -140,9 +159,20 @@ export interface WLDSinceLastReview {
 // 60/40 ana/baptiste) still attributes win/loss to both.
 const MOST_PLAYED_HERO_THRESHOLD = 20
 
+// Maps a hero name to its canonical role. Production passes
+// `useOWData().heroRole`; tests pass a small mock. Returning
+// undefined / '' / a non-canonical-role value drops the hero from
+// the role-set for that match.
+export type HeroRoleResolver = (hero: string) => string | undefined
+
+function isCanonRole(s: string | undefined | null): s is Role {
+  return s === 'tank' || s === 'dps' || s === 'support'
+}
+
 export function useMatchesDossier(
   records: Readonly<Ref<MatchRecord[]>>,
   leaverHandling: Readonly<Ref<LeaverHandling>>,
+  heroRole?: HeroRoleResolver,
 ) {
   // 'exclude-tally' drops leaver-annotated records from the KPIs
   // (W/L/D + winrate) only. The leaves list still shows them — the
@@ -408,8 +438,61 @@ export function useMatchesDossier(
     return { w, l, d, total: w + l + d, referenceAt: ref }
   })
 
+  // Role-share breakdown — symmetric with topMaps + topHeroes in
+  // the breakdown row, but with overlap-aware percentages.
+  //
+  // Each match's role-set is the union of: (a) the primary
+  // `data.role` if canonical, AND (b) every role inferred from
+  // `data.heroes_played[*].hero` via the resolver. The set is
+  // deduped per match — a match where you played only Lúcio (one
+  // hero, support role) contributes 1 to support, not 1 + 1. Open
+  // queue matches where you swapped from tank to dps contribute 1
+  // to each, so the row's percentages can sum to >100%.
+  //
+  // Percentage denominator is `total_matches`, NOT the sum of
+  // role-counts — so each bar reads as "what fraction of my matches
+  // included this role." Overlap makes the row sum >100%, which is
+  // the desired open-queue signal. Sorted descending by count so the
+  // dominant role surfaces first.
+  const topRoles = computed<RoleBreakdownEntry[]>(() => {
+    const totalMatches = records.value.length
+    const counts: Record<Role, { total: number; w: number; l: number }> = {
+      tank: { total: 0, w: 0, l: 0 },
+      dps: { total: 0, w: 0, l: 0 },
+      support: { total: 0, w: 0, l: 0 },
+    }
+    for (const r of records.value) {
+      const rolesInMatch = new Set<Role>()
+      if (isCanonRole(r.data?.role)) rolesInMatch.add(r.data.role)
+      if (heroRole) {
+        for (const hp of r.data?.heroes_played ?? []) {
+          if (!hp.hero) continue
+          const role = heroRole(hp.hero)
+          if (isCanonRole(role)) rolesInMatch.add(role)
+        }
+      }
+      for (const role of rolesInMatch) {
+        counts[role].total++
+        if (r.data?.result === 'victory') counts[role].w++
+        else if (r.data?.result === 'defeat') counts[role].l++
+      }
+    }
+    const ROLES: Role[] = ['tank', 'dps', 'support']
+    return ROLES
+      .map<RoleBreakdownEntry>((key) => {
+        const c = counts[key]
+        return {
+          key,
+          total: c.total,
+          share: totalMatches === 0 ? 0 : Math.round((c.total / totalMatches) * 100),
+          winrate: c.w + c.l === 0 ? 0 : Math.round((c.w / (c.w + c.l)) * 100),
+        }
+      })
+      .sort((a, b) => b.total - a.total)
+  })
+
   return {
-    wld, winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero, averageKDA,
+    wld, winrate, topMaps, topHeroes, topRoles, totalTimePlayed, mostPlayedHero, averageKDA,
     reviewedCount, daysSinceLastReview, wldSinceLastReview,
   }
 }
