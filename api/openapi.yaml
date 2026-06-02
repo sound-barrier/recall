@@ -217,6 +217,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -333,8 +335,8 @@ paths:
       responses:
         "202":
           description: Parse run complete; subscribe to events for incremental updates.
-        "400":
-          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -401,7 +403,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/FolderPath"
+              type: object
+              required: [path]
+              properties:
+                path:
+                  type: string
+                  minLength: 1
+                  example: /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch
       responses:
         "200":
           description: New path echoed back.
@@ -411,6 +419,8 @@ paths:
                 $ref: "#/components/schemas/FolderPath"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
     delete:
@@ -487,6 +497,7 @@ paths:
               properties:
                 path:
                   type: string
+                  minLength: 1
                   example: /opt/homebrew/bin/tesseract
       responses:
         "200":
@@ -497,6 +508,8 @@ paths:
                 $ref: "#/components/schemas/TesseractStatus"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
     delete:
@@ -632,8 +645,8 @@ paths:
                 name:
                   type: string
                   description: |
-                    Profile name. Must match `^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$`
-                    (filesystem-safe).
+                    Profile name. Filesystem-safe.
+                  pattern: '^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$'
                   example: "alt"
       responses:
         "201":
@@ -644,6 +657,8 @@ paths:
                 $ref: "#/components/schemas/ProfilesResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -1031,6 +1046,8 @@ paths:
           description: Opener spawned.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -1118,10 +1135,13 @@ paths:
       responses:
         "204":
           description: Import applied.
-        "400":
+        "409":
           description: |
-            Malformed or wrong-schema payload. Body is a plain-text
-            error message safe to surface to the user.
+            Payload was syntactically valid JSON / ZIP but failed
+            semantic validation (missing required field on a row,
+            unsupported schema version, null entry in an array,
+            etc.). Body is a plain-text error message safe to
+            surface to the user.
           content:
             text/plain:
               schema:
@@ -1236,6 +1256,10 @@ components:
         path:
           type: string
           example: /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch
+          description: |
+            The configured screenshots folder. The GET response can
+            return an empty string when no folder has been configured;
+            the PUT request body inlines its own minLength: 1 schema.
 
     ProbeResult:
       type: object
@@ -1693,6 +1717,16 @@ components:
             type: string
     NotFound:
       description: The requested resource was not found.
+      content:
+        text/plain:
+          schema:
+            type: string
+    Conflict:
+      description: |
+        The request was syntactically valid, but the resource state or
+        a payload value prevents the action (e.g. duplicate profile
+        name, screenshots directory not configured, invalid Tesseract
+        binary path, non-candidate resolution target).
       content:
         text/plain:
           schema:

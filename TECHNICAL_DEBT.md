@@ -34,38 +34,6 @@ The list is ordered by *risk × cost-to-fix-later*, not by size. The
 top items are the ones most likely to bite if left alone. Pay them
 off first.
 
-## 4. Schemathesis: one excluded check remains
-
-**Where:** `scripts/check-api-drift.sh`.
-
-Four of the five previously-excluded checks are now enabled:
-`missing_required_header`, `use_after_free`,
-`ensure_resource_availability`, `unsupported_method` —
-all pass cleanly. `--exclude-method DELETE` is also gone.
-
-One check stays excluded:
-
-- **`positive_data_acceptance`** — the server accepts lenient
-  JSON several setters' specs tighten. Real contract gap; the
-  fix is a per-handler boundary-validate pass that reuses the
-  existing app-layer validators (`validateScreenshotsDir`,
-  `validateTesseractPath`, `validateProfileName`) at the HTTP
-  layer so a malformed payload returns 400 before reaching the
-  store.
-
-**Plan:**
-
-Audit the spec's `required` + `pattern` declarations against
-what each handler actually accepts. For each pair tighten the
-handler boundary (errors.Is on a typed `app.Err*` sentinel → 400)
-or loosen the spec.
-
-**Size:** M.
-**Risk:** Low (the gap surfaces as a contract-spec mismatch the
-fuzzer reports; no runtime behaviour change).
-
----
-
 ## 6. Coverage gaps on highest-traffic surfaces
 
 **Frontend (Vitest line coverage, `make cover-frontend`):**

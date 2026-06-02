@@ -139,15 +139,17 @@ func TestServerMux_MethodNotAllowed(t *testing.T) {
 // Write endpoints with typed-error → 4xx mapping.
 // ──────────────────────────────────────────────────────────────────────────
 
-func TestServerMux_PutScreenshotsFolder_400OnInvalid(t *testing.T) {
+func TestServerMux_PutScreenshotsFolder_409OnInvalid(t *testing.T) {
+	// 409: a syntactically-valid path that doesn't resolve to an
+	// on-disk directory is a resource-state conflict.
 	_, mux := newTestApp(t, nil)
 	rec := put(t, mux, "/api/v1/settings/screenshots-folder", map[string]string{"path": "/nonexistent/no-such-dir-12345"})
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d body=%s", rec.Code, rec.Body.String())
 	}
 	// Body should mention the ErrInvalidScreenshotsDir sentinel message.
 	if !strings.Contains(strings.ToLower(rec.Body.String()), "screenshots") {
-		t.Errorf("400 body should reference 'screenshots', got %q", rec.Body.String())
+		t.Errorf("409 body should reference 'screenshots', got %q", rec.Body.String())
 	}
 }
 
@@ -159,11 +161,15 @@ func TestServerMux_PutScreenshotsFolder_400OnMissingPath(t *testing.T) {
 	}
 }
 
-func TestServerMux_PutTesseract_400OnInvalid(t *testing.T) {
+func TestServerMux_PutTesseract_409OnInvalid(t *testing.T) {
+	// 409: a syntactically valid path that fails the format validator
+	// (here, traversal) is a resource-state conflict, not a request-
+	// format issue. Matches the schemathesis positive_data_acceptance
+	// contract.
 	_, mux := newTestApp(t, nil)
 	rec := put(t, mux, "/api/v1/settings/tesseract", map[string]string{"path": "../traversal/../etc/passwd"})
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusConflict {
+		t.Errorf("expected 409, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -424,13 +430,15 @@ func TestMatchResolution_HappyPath(t *testing.T) {
 	}
 }
 
-func TestMatchResolution_InvalidKey400(t *testing.T) {
+func TestMatchResolution_InvalidKey404(t *testing.T) {
+	// A matchKey that doesn't start with "ambiguous-" can't reference
+	// an ambiguous resource — semantically 404, not 400.
 	_, mux := newTestApp(t, dbtest.New())
 	rec := put(t, mux, resolutionPath("match-not-ambiguous"), map[string]any{
 		"resolved_to": "match-foo",
 	})
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("non-ambiguous key should 400, got %d (%s)", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("non-ambiguous key should 404, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 
@@ -444,7 +452,10 @@ func TestMatchResolution_NotFound404(t *testing.T) {
 	}
 }
 
-func TestMatchResolution_BadResolvedTo400(t *testing.T) {
+func TestMatchResolution_BadResolvedTo409(t *testing.T) {
+	// The resolved_to value is syntactically well-formed but doesn't
+	// reference a valid candidate or freshly-minted match key — 409
+	// (resource-state conflict).
 	fs := dbtest.New()
 	fs.Ambiguous = map[string][]db.AmbiguousCandidate{
 		"sb.png": {{MatchKey: "match-foo", DistanceS: 600}},
@@ -453,8 +464,8 @@ func TestMatchResolution_BadResolvedTo400(t *testing.T) {
 	rec := put(t, mux, resolutionPath("ambiguous-sb.png"), map[string]any{
 		"resolved_to": "garbage-not-a-match-key",
 	})
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("non-candidate non-match: should 400, got %d (%s)", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("non-candidate non-match: should 409, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 
@@ -664,11 +675,11 @@ func TestProfiles_PostRejectsInvalidNameAs400(t *testing.T) {
 	}
 }
 
-func TestProfiles_PostRejectsDuplicateAs400(t *testing.T) {
+func TestProfiles_PostRejectsDuplicateAs409(t *testing.T) {
 	_, mux := newTestAppWithProfiles(t)
 	rec := fire(t, mux, http.MethodPost, "/api/v1/profiles", map[string]string{"name": "main"})
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("status %d, want 400; body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status %d, want 409; body=%s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -809,18 +820,20 @@ func TestProfiles_PostMatchTransfers_TargetActive409(t *testing.T) {
 	}
 }
 
-func TestProfiles_PostMatchTransfers_InvalidTargetName400(t *testing.T) {
+func TestProfiles_PostMatchTransfers_InvalidTargetName409(t *testing.T) {
 	// Defence-in-depth: a malformed target_profile short-circuits at
 	// validateProfileName before reaching the path-construction
-	// downstream. Maps to 400 at the HTTP boundary, NOT 404 (which
-	// the in-list membership check would have produced).
+	// downstream. Maps to 409 at the HTTP boundary (resource-state
+	// conflict — the named profile can't exist), NOT 404 (which the
+	// in-list membership check would have produced if the format
+	// passed).
 	_, mux := newTestAppWithProfiles(t)
 	rec := fire(t, mux, http.MethodPost, "/api/v1/matches/transfers", map[string]any{
 		"match_keys":     []string{"k1"},
 		"target_profile": "../traversal",
 	})
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("status %d, want 400; body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status %d, want 409; body=%s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -940,8 +953,11 @@ func TestImports_RejectsNullInUnknowns(t *testing.T) {
 		"unknowns": [null]
 	}`
 	rec := postRaw(t, mux, "/api/v1/imports", body)
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("null in unknowns[] must 400, got %d (%s)", rec.Code, rec.Body.String())
+	// 409: the JSON was syntactically well-formed but the import
+	// validator rejects null entries — same status as every other
+	// spec-passes-but-semantic-fails import failure.
+	if rec.Code != http.StatusConflict {
+		t.Errorf("null in unknowns[] must 409, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 

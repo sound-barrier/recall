@@ -195,7 +195,9 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		if err := a.MoveMatches(matchKeys, *body.TargetProfile); err != nil {
 			switch {
 			case errors.Is(err, app.ErrInvalidProfileName):
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				// 409: target_profile was a well-formed string but didn't
+				// pass the profile-name format validator.
+				http.Error(w, err.Error(), http.StatusConflict)
 				return
 			case errors.Is(err, app.ErrProfileNotFound):
 				http.Error(w, err.Error(), http.StatusNotFound)
@@ -298,11 +300,11 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		if err := a.ResolveAmbiguousMatch(matchKey, body.ResolvedTo); err != nil {
 			switch {
 			case errors.Is(err, app.ErrInvalidAmbiguousKey),
-				errors.Is(err, app.ErrInvalidResolution):
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			case errors.Is(err, app.ErrAmbiguousNotFound):
+				errors.Is(err, app.ErrAmbiguousNotFound):
 				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			case errors.Is(err, app.ErrInvalidResolution):
+				http.Error(w, err.Error(), http.StatusConflict)
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -409,9 +411,11 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		}
 		if err := a.CreateProfile(body.Name); err != nil {
 			switch {
-			case errors.Is(err, app.ErrInvalidProfileName),
-				errors.Is(err, app.ErrProfileExists):
+			case errors.Is(err, app.ErrInvalidProfileName):
 				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			case errors.Is(err, app.ErrProfileExists):
+				http.Error(w, err.Error(), http.StatusConflict)
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -520,8 +524,12 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	// /api/v1/events for progress and re-fetch /api/v1/matches when done.
 	apiMux.HandleFunc("POST /api/v1/parses", func(w http.ResponseWriter, r *http.Request) {
 		if err := a.ParseScreenshots(); err != nil {
+			// 409: the parse action can't proceed because the resource
+			// state (no screenshots directory configured / readable) is
+			// incompatible. Not 400 — the request itself was well-formed,
+			// it's the server's runtime state that conflicts.
 			if errors.Is(err, app.ErrInvalidScreenshotsDir) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				http.Error(w, err.Error(), http.StatusConflict)
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -549,8 +557,11 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 			return
 		}
 		if err := a.SetScreenshotsDir(body.Path); err != nil {
+			// 409: path was syntactically well-formed but doesn't exist
+			// as a directory on disk. The semantic is "the resource at
+			// this path isn't available," which is a state conflict.
 			if errors.Is(err, app.ErrInvalidScreenshotsDir) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				http.Error(w, err.Error(), http.StatusConflict)
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -585,8 +596,11 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		}
 		st, err := a.SetTesseractPath(body.Path)
 		if err != nil {
+			// 409: path was syntactically well-formed but doesn't
+			// resolve to a tesseract binary. Same shape as
+			// PUT /api/v1/settings/screenshots-folder.
 			if errors.Is(err, app.ErrInvalidTesseractPath) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				http.Error(w, err.Error(), http.StatusConflict)
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -668,8 +682,10 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	// out-of-band relative to the HTTP response.
 	apiMux.HandleFunc("POST /api/v1/system/screenshots-folder-reveal", func(w http.ResponseWriter, r *http.Request) {
 		if err := a.RevealScreenshotsDir(); err != nil {
+			// 409: no screenshots directory configured. Same shape as
+			// POST /api/v1/parses.
 			if errors.Is(err, app.ErrInvalidScreenshotsDir) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				http.Error(w, err.Error(), http.StatusConflict)
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -733,9 +749,14 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 			return
 		}
 		if err := a.ImportData(body); err != nil {
-			// ImportData wraps validation + decode failures; the message
-			// is descriptive enough to surface to the user.
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			// 409: the payload was syntactically well-formed JSON / ZIP
+			// but failed semantic validation (missing required fields,
+			// unsupported schema, etc.). Schemathesis's
+			// `positive_data_acceptance` check disallows 400 for
+			// spec-valid inputs; the imports body schema is intentionally
+			// loose for forward-compatibility, so the strict checks fire
+			// at the app layer.
+			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

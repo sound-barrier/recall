@@ -869,7 +869,12 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         FolderPath: {
-            /** @example /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch */
+            /**
+             * @description The configured screenshots folder. The GET response can
+             *     return an empty string when no folder has been configured;
+             *     the PUT request body inlines its own minLength: 1 schema.
+             * @example /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch
+             */
             path: string;
         };
         ProbeResult: {
@@ -1262,6 +1267,20 @@ export interface components {
                 "text/plain": string;
             };
         };
+        /**
+         * @description The request was syntactically valid, but the resource state or
+         *     a payload value prevents the action (e.g. duplicate profile
+         *     name, screenshots directory not configured, invalid Tesseract
+         *     binary path, non-candidate resolution target).
+         */
+        Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "text/plain": string;
+            };
+        };
         /** @description Unhandled server-side error. */
         InternalError: {
             headers: {
@@ -1427,6 +1446,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -1511,7 +1531,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -1568,7 +1588,10 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["FolderPath"];
+                "application/json": {
+                    /** @example /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch */
+                    path: string;
+                };
             };
         };
         responses: {
@@ -1582,6 +1605,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -1650,6 +1674,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -1794,8 +1819,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /**
-                     * @description Profile name. Must match `^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$`
-                     *     (filesystem-safe).
+                     * @description Profile name. Filesystem-safe.
                      * @example alt
                      */
                     name: string;
@@ -1813,6 +1837,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -2177,6 +2202,7 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -2229,10 +2255,13 @@ export interface operations {
                 content?: never;
             };
             /**
-             * @description Malformed or wrong-schema payload. Body is a plain-text
-             *     error message safe to surface to the user.
+             * @description Payload was syntactically valid JSON / ZIP but failed
+             *     semantic validation (missing required field on a row,
+             *     unsupported schema version, null entry in an array,
+             *     etc.). Body is a plain-text error message safe to
+             *     surface to the user.
              */
-            400: {
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
