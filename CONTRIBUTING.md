@@ -46,7 +46,7 @@ Two workflows exist depending on your platform:
 | `make dev` — Wails hot-reload | macOS, Debian/Ubuntu | Native WebKit/WebKitGTK window; Vite HMR on `:5173`, Wails IPC on `:34115`, Go rebuilt on save |
 | Server mode — headless HTTP | any (macOS, Linux, container, etc.) | `go run -tags serveronly . --server`; open `http://127.0.0.1:7000` in any browser |
 
-Supported dev platforms are **macOS** and **Debian/Ubuntu** (apt-based). Other Linux distros work via server mode but `make dev` won't have its package list automated. Windows is supported as a *target* (release builds, NSIS installer) but not as a dev OS — use [WSL2 Ubuntu](#windows-via-wsl2) below.
+Supported dev platforms are **macOS**, **Debian/Ubuntu** (apt-based), and **Windows via WSL2 Ubuntu** — see [Windows (via WSL2)](#windows-via-wsl2) below. Other Linux distros work via server mode but `make dev` won't have its package list automated.
 
 ### Quick start (macOS + Debian/Ubuntu)
 
@@ -223,14 +223,40 @@ Container builds work identically to macOS — `make build-linux` / `make build-
 
 ### Windows (via WSL2)
 
-Windows is supported as a *target* (release builds ship a NSIS installer and a server `.exe`) but not as a native dev OS — the maintained dev flow is **WSL2 Ubuntu**, which gives you a full Debian/Ubuntu environment:
+Windows is supported as a *target* (release builds ship a NSIS installer and a server `.exe`) but not as a native dev OS — the toolchain assumes a POSIX shell (`bash` `scripts/*.sh`, `shellcheck`/`shfmt`, GNU `find`/`xargs`, `lefthook` hooks that shell out) and PowerShell/CMD won't carry it. The maintained dev flow is **WSL2 Ubuntu**, which drops you into the same Debian/Ubuntu environment covered above.
+
+**1. Install WSL2 with Ubuntu.**
 
 ```powershell
 # In PowerShell — one-time
-wsl --install   # installs Ubuntu by default; reboot if prompted
+wsl --install   # installs Ubuntu 22.04+ by default; reboot if prompted
 ```
 
-Open the WSL2 terminal and follow the **Debian / Ubuntu** instructions above. `make dev` works inside WSL2 with [WSLg](https://github.com/microsoft/wslg) handling the GTK window forwarding on Windows 11 / Windows 10 22H2+.
+The default distro matches the apt branch in [`initialize.sh`](initialize.sh), so [`make init`](#debian--ubuntu) bootstraps unchanged.
+
+**2. Run `make` from the WSL2 bash prompt, not PowerShell or Git Bash.** The Makefile, lefthook hooks, and every `scripts/*.sh` assume bash with POSIX `find`/`xargs`/`grep` semantics. Open the *Ubuntu* terminal app (or `wsl` from any Windows shell), `cd` into your clone, and run `make` commands there.
+
+**3. Wire up Docker Desktop's WSL2 backend.** `make build-linux` / `make build-windows` / `make build-server-*` all delegate to `Dockerfile.build`. Install [Docker Desktop](https://docs.docker.com/desktop/install/windows-install/) on the Windows host, then in *Settings → General* tick **Use the WSL 2 based engine**, and in *Settings → Resources → WSL Integration* toggle on your Ubuntu distro. Verify from the WSL2 shell:
+
+```sh
+docker info        # should print server details, not "Cannot connect…"
+```
+
+**4. `make dev` and `make test-e2e`.**
+
+- `make dev` works on Windows 11 (and Windows 10 22H2+) via [WSLg](https://github.com/microsoft/wslg), which forwards the GTK window natively — no X server setup needed.
+- Older Windows 10 has no WSLg. Use server mode instead: `go run -tags serveronly . --server` and open `http://127.0.0.1:7000` in a Windows browser.
+- `make test-e2e` runs Playwright headless against a built `serveronly` binary on `127.0.0.1:7099` (per [`e2e.yml`](.github/workflows/e2e.yml)). No X11 or WSLg needed; works on every Windows version that supports WSL2.
+
+**5. Install Tesseract inside WSL2, not on the Windows side.**
+
+```sh
+sudo apt install tesseract-ocr
+```
+
+That puts the binary at `/usr/bin/tesseract`, which Recall auto-detects on first launch. The Windows-side UB-Mannheim MSI from [`docs/install-windows.md`](docs/install-windows.md) is for end-users running the shipped `.exe`; the WSL2 dev binary is a Linux binary and won't see it.
+
+**6. Point Recall at your Overwatch screenshots — they live on the Windows side.** Overwatch on Windows writes to `C:\Users\<you>\Documents\Overwatch\ScreenShots\Overwatch\`. From WSL2 that path is mounted at `/mnt/c/Users/<you>/Documents/Overwatch/ScreenShots/Overwatch/` — use the `/mnt/c/...` form in Recall's *Settings → Screenshots*. The `/mnt/c` reads are slower than the WSL2 native filesystem but fine for the watcher's per-image cadence.
 
 ## Building
 
