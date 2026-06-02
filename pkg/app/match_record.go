@@ -38,6 +38,16 @@ type MatchRecord struct {
 	// FilterRail "Hidden · N" toggle so the user can unhide.
 	Hidden bool `json:"hidden,omitempty"`
 
+	// Review status — "self" (user reviewed the VOD themselves),
+	// "coach" (a coach reviewed it), or "" (not reviewed; field
+	// omitted from JSON). Drives the 3-state toggle at the top of
+	// the detail-panel sidebar.
+	ReviewedBy string `json:"reviewed_by,omitempty"`
+	// Server-stamped timestamp of when the review row was last
+	// upserted. Drives the dossier's "days since last review"
+	// widget. Omitted from JSON when the match is unreviewed.
+	ReviewedAt string `json:"reviewed_at,omitempty"`
+
 	// Ambiguous + Candidates are populated when match_key starts with
 	// "ambiguous-" — the resolver found multiple plausible matches
 	// for the screenshot and is asking the user to pick the right

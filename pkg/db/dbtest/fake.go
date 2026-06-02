@@ -13,6 +13,7 @@ package dbtest
 import (
 	"strings"
 	"sync"
+	"time"
 
 	"recall/pkg/db"
 )
@@ -37,6 +38,9 @@ type Fake struct {
 	DirIDs      map[string]int64
 	Annotations map[string]db.Annotation
 	Hidden      map[string]bool
+	// Reviews maps match_key → ReviewState (reviewer + timestamp).
+	// Absence of an entry means "not reviewed."
+	Reviews map[string]db.ReviewState
 
 	// Ambiguous holds one candidate-list per filename. Tests seed it
 	// directly to verify aggregator behavior for ambiguous screenshots
@@ -353,7 +357,43 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 	f.Unknowns = unks
 	delete(f.Hidden, matchKey)
 	delete(f.Annotations, matchKey)
+	delete(f.Reviews, matchKey)
 	return nil
+}
+
+func (f *Fake) SetReview(matchKey, reviewedBy string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Reviews == nil {
+		f.Reviews = map[string]db.ReviewState{}
+	}
+	// Preserve a previously-seeded ReviewedAt if the test set one;
+	// otherwise stamp "now" so dossier coverage that fans out across
+	// the Fake observes a non-empty timestamp.
+	prev := f.Reviews[matchKey]
+	if prev.ReviewedAt == "" {
+		prev.ReviewedAt = time.Now().UTC().Format(time.RFC3339)
+	}
+	prev.ReviewedBy = reviewedBy
+	f.Reviews[matchKey] = prev
+	return nil
+}
+
+func (f *Fake) ClearReview(matchKey string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.Reviews, matchKey)
+	return nil
+}
+
+func (f *Fake) LoadReviews() (map[string]db.ReviewState, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string]db.ReviewState, len(f.Reviews))
+	for k, v := range f.Reviews {
+		out[k] = v
+	}
+	return out, nil
 }
 
 func (f *Fake) LoadHiddenKeys() (map[string]bool, error) {

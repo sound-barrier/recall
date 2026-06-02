@@ -43,6 +43,9 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 	if _, err := tx.Exec(`DELETE FROM match_annotations WHERE match_key = ?`, matchKey); err != nil {
 		return err
 	}
+	if _, err := tx.Exec(`DELETE FROM match_reviews WHERE match_key = ?`, matchKey); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 

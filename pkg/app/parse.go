@@ -122,7 +122,8 @@ func (a *App) ParseScreenshots() error {
 		if err == nil {
 			annos, _ := a.store.LoadAnnotations()
 			hidden, _ := a.store.LoadHiddenKeys()
-			if rec, ok := aggregateMatchKey(key, snapAfter, annos, hidden); ok {
+			reviews, _ := a.store.LoadReviews()
+			if rec, ok := aggregateMatchKey(key, snapAfter, annos, hidden, reviews); ok {
 				a.emitMatchUpdated(rec)
 			}
 		}

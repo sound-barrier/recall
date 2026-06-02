@@ -67,7 +67,8 @@ func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error 
 	if err == nil {
 		annos, _ := a.store.LoadAnnotations()
 		hidden, _ := a.store.LoadHiddenKeys()
-		if rec, ok := aggregateMatchKey(resolvedTo, snap, annos, hidden); ok {
+		reviews, _ := a.store.LoadReviews()
+		if rec, ok := aggregateMatchKey(resolvedTo, snap, annos, hidden, reviews); ok {
 			a.emitMatchUpdated(rec)
 		}
 	}

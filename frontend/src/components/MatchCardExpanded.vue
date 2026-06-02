@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import type { MatchRecord, MatchAnnotationInput } from '../api'
+import type { MatchRecord, MatchAnnotationInput, ReviewedBy } from '../api'
 import {
   screenshotURL,
   detectScreenshotSlots,
@@ -77,6 +77,11 @@ const emit = defineEmits<{
   // User pressed Hide (after confirming) or Unhide on the expanded
   // danger row.
   'set-match-hidden':      [matchKey: string, hidden: boolean]
+  // User clicked one of the three review-status chips at the top
+  // of the panel. An empty string means "not reviewed" — the wrapper
+  // routes that to a DELETE on the /review sub-resource. Active
+  // chip re-click also emits '' as a toggle-off.
+  'set-match-review':      [matchKey: string, reviewedBy: ReviewedBy]
 }>()
 
 // Local draft state for the free-text annotation fields. Hydrates
@@ -316,6 +321,63 @@ function onTagKeydown(e: KeyboardEvent) {
 
 <template>
   <div class="match-expanded">
+    <!-- Review-status chooser. Three mutually-exclusive states the
+         user can stamp on a match: "Not reviewed" (default — no
+         match_reviews row), "Self-reviewed" (the user reviewed the
+         VOD themselves), "Coach-reviewed" (a coach reviewed it).
+         Implemented as an ARIA radiogroup so screen readers announce
+         the chosen segment + the two alternatives. Sits at the
+         absolute top of the panel body — this is the FIRST thing the
+         user sees because reviewing matches is a core review loop. -->
+    <div
+      class="review-chooser"
+      role="radiogroup"
+      aria-label="Match review status"
+    >
+      <span class="review-chooser-eyebrow" aria-hidden="true">Review status</span>
+      <div class="review-chips">
+        <button
+          type="button"
+          class="review-chip"
+          data-state="none"
+          role="radio"
+          :aria-checked="!record.reviewed_by"
+          :tabindex="!record.reviewed_by ? 0 : -1"
+          title="Not yet reviewed."
+          @click="!record.reviewed_by || emit('set-match-review', record.match_key, '')"
+        >
+          <span class="review-chip-glyph" aria-hidden="true">⬡</span>
+          <span class="review-chip-label">Unreviewed</span>
+        </button>
+        <button
+          type="button"
+          class="review-chip"
+          data-state="self"
+          role="radio"
+          :aria-checked="record.reviewed_by === 'self'"
+          :tabindex="record.reviewed_by === 'self' ? 0 : -1"
+          title="You reviewed the VOD yourself."
+          @click="emit('set-match-review', record.match_key, record.reviewed_by === 'self' ? '' : 'self')"
+        >
+          <span class="review-chip-glyph" aria-hidden="true">◐</span>
+          <span class="review-chip-label">Self</span>
+        </button>
+        <button
+          type="button"
+          class="review-chip"
+          data-state="coach"
+          role="radio"
+          :aria-checked="record.reviewed_by === 'coach'"
+          :tabindex="record.reviewed_by === 'coach' ? 0 : -1"
+          title="A coach reviewed the VOD with you."
+          @click="emit('set-match-review', record.match_key, record.reviewed_by === 'coach' ? '' : 'coach')"
+        >
+          <span class="review-chip-glyph" aria-hidden="true">★</span>
+          <span class="review-chip-label">Coach</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Top meta strip: when the match was played + final score +
          when the screenshot was parsed. Lives at the top of the
          panel body so the user reads "what / when / how it ended"
@@ -1434,6 +1496,149 @@ function onTagKeydown(e: KeyboardEvent) {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+}
+
+/* ─── Review-status chooser (top of panel) ───────────────────
+
+   The FIRST artefact in the panel body — a tri-segmented control
+   that reads as a definitive metadata stamp. Visual vocabulary:
+   tactical eyebrow + a high-contrast button group rendered as
+   three sharp-cornered cells. The active cell carries an accent
+   fill + an inset shadow so it reads as "stamped" rather than
+   "selected". Inactive cells are ghosted, so the eye lands on the
+   chosen state instantly.
+
+   The eyebrow + chips share a thick double-strut border so the
+   block reads as one "review console" — a stack ABOVE the
+   meta-strip with its own architectural identity, not yet
+   another row of chips. */
+
+.review-chooser {
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.6rem 0.5rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-faint);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--surface-3) 60%, transparent) 0%,
+      transparent 100%);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.4rem;
+}
+
+.review-chooser-eyebrow {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border-bottom: 1px dashed var(--hairline);
+  padding-bottom: 0.3rem;
+}
+
+.review-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+
+.review-chip {
+  appearance: none;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.18rem;
+  padding: 0.55rem 0.5rem 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  cursor: pointer;
+  position: relative;
+  isolation: isolate;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.review-chip:hover {
+  color: var(--text);
+  border-color: var(--text-faint);
+  transform: translateY(-1px);
+}
+
+.review-chip:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.review-chip-glyph {
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-faint);
+  transition: color 140ms ease, transform 140ms ease;
+}
+
+.review-chip-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* "Stamped" active state — each value gets its own accent. */
+.review-chip[data-state="none"][aria-checked="true"] {
+  color: var(--text);
+  border-color: var(--text-faint);
+  background: color-mix(in srgb, var(--surface-2) 80%, var(--bg));
+  box-shadow: inset 0 1px 0 var(--hairline);
+}
+
+.review-chip[data-state="self"][aria-checked="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 0 12px -6px var(--accent);
+}
+
+.review-chip[data-state="coach"][aria-checked="true"] {
+  color: var(--win);
+  border-color: var(--win-line);
+  background: var(--win-soft, color-mix(in srgb, var(--win) 12%, transparent));
+  box-shadow:
+    inset 0 0 0 1px var(--win-line),
+    0 0 14px -6px var(--win-line);
+}
+
+.review-chip[aria-checked="true"] .review-chip-glyph {
+  color: currentcolor;
+  transform: scale(1.08);
+}
+
+/* A thin "STAMPED" sticker rendered on the active chip — pure CSS,
+   no extra DOM. Sits above the chip, anchored top-right. Stays
+   hidden until the chip is the active radio. */
+.review-chip[aria-checked="true"]::after {
+  content: "✓";
+  position: absolute;
+  top: -1px;
+  right: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: currentcolor;
+  letter-spacing: 0;
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .review-chip,
+  .review-chip-glyph {
+    transition: none;
+  }
 }
 
 /* ─── Leaver chooser (expanded view) ────────────────────── */
