@@ -110,6 +110,44 @@ body:
       required: false
 
   - type: textarea
+    id: export-bundle
+    attributes:
+      label: Export bundle (highly encouraged)
+      description: |
+        For anything more involved than a one-screenshot parser
+        bug, attaching a Recall **export bundle** lets the
+        maintainer load the exact matches you're reporting on into
+        their own copy of the app and reproduce what you're seeing.
+        Optional, but it usually turns a "hard to repro" bug into a
+        next-day fix.
+
+        **How to create one:**
+
+        1. In Recall, switch to the **Matches** tab.
+        2. Tick the checkboxes on the rows that show the bug —
+           usually one or two matches is enough; pick whichever
+           ones reproduce it.
+        3. The bulk-action bar at the top of the list grows an
+           **Export bundle…** button. Click it.
+        4. In the modal, leave the filename as-is or rename it,
+           optionally tick *Include hidden matches* /
+           *Include unknown matches* if the bug touches those
+           record sets, and click **Export**.
+        5. Save the `.zip` somewhere you can find it, then **drag
+           the file directly into this box** to upload it.
+
+        **What's in it:** each ticked match's parsed data, the
+        post-match screenshots Recall OCRed for those matches, and
+        a manifest file. The bundle does **not** include your
+        screenshots-folder path or any data about matches you
+        didn't tick. It does include the actual screenshot bytes,
+        so if your BattleTag is visible on the scoreboard and you
+        don't want it shared, crop / blur the image before
+        running Export bundle.
+    validations:
+      required: false
+
+  - type: textarea
     id: logs
     attributes:
       label: Relevant logs
