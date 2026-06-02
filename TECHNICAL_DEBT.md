@@ -34,40 +34,34 @@ The list is ordered by *risk × cost-to-fix-later*, not by size. The
 top items are the ones most likely to bite if left alone. Pay them
 off first.
 
-## 4. Schemathesis: two excluded checks remain
+## 4. Schemathesis: one excluded check remains
 
 **Where:** `scripts/check-api-drift.sh`.
 
-Three of the five previously-excluded checks are now enabled:
+Four of the five previously-excluded checks are now enabled:
 `missing_required_header`, `use_after_free`,
-`ensure_resource_availability` — they pass cleanly against the
-current API surface. `--exclude-method DELETE` is also gone (the
-test server runs in an isolated HOME, so a DB-wiping DELETE is
-safe). Two checks stay excluded:
+`ensure_resource_availability`, `unsupported_method` —
+all pass cleanly. `--exclude-method DELETE` is also gone.
 
-1. **`positive_data_acceptance`** — the server accepts lenient
-   JSON several setters' specs tighten. Real contract gap;
-   tracked here in case a future change to either side makes the
-   gap easier to close.
-2. **`unsupported_method`** — `transfers` and `active` path
-   segments collide with the `{matchKey}` / `{name}` wildcards
-   on the same level of the Go 1.22 ServeMux, so a `DELETE
-   /api/v1/profiles/transfers` routes to the wildcard handler
-   instead of returning 405. Closing this needs mux
-   disambiguation across several routes — out of scope for the
-   schemathesis hardening but worth doing standalone.
+One check stays excluded:
+
+- **`positive_data_acceptance`** — the server accepts lenient
+  JSON several setters' specs tighten. Real contract gap; the
+  fix is a per-handler boundary-validate pass that reuses the
+  existing app-layer validators (`validateScreenshotsDir`,
+  `validateTesseractPath`, `validateProfileName`) at the HTTP
+  layer so a malformed payload returns 400 before reaching the
+  store.
 
 **Plan:**
 
-1. For `positive_data_acceptance`, audit the spec's `required`
-   declarations against what each handler actually accepts; for
-   each pair tighten the handler or loosen the spec.
-2. For `unsupported_method`, pull `transfers` and `active` out
-   of the wildcard namespace (e.g. dedicated registrations
-   ordered before the wildcard, or sub-mux groupings).
+Audit the spec's `required` + `pattern` declarations against
+what each handler actually accepts. For each pair tighten the
+handler boundary (errors.Is on a typed `app.Err*` sentinel → 400)
+or loosen the spec.
 
-**Size:** M per check.
-**Risk:** Low (each gap surfaces as a contract-spec mismatch the
+**Size:** M.
+**Risk:** Low (the gap surfaces as a contract-spec mismatch the
 fuzzer reports; no runtime behaviour change).
 
 ---
