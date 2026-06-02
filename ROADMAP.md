@@ -294,3 +294,70 @@ because they pre-shape F:
   promote into the Analysis chart grid as the temporal anchor.
 
 That's enough rules to keep the F overlay coherent later.
+
+---
+
+## Deferred improvements
+
+Items moved here from `TECHNICAL_DEBT.md` as it drained to its
+template. These are intentional deferrals — work we want but won't
+pay for until a concrete bug or contributor pain point makes the
+cost worth it. Each carries its original effort + risk estimate so
+a future contributor can pick it up without re-litigating scope.
+
+### Split `MatchesView.vue` into three SFCs (≈ 800-line target)
+
+**Where:** `frontend/src/components/MatchesView.vue` (~2 956 lines).
+
+The "set workspace" bundles dossier, Campaign Log timeline, Narrow
+panel, members list, bulk action bar, archive drawer, and the
+move-to-profile picker. Each surface is independently
+understandable but they share the `useMatchesNarrow` /
+`useMatchesGroup` / `useMatchesDossier` composables. Nothing breaks
+today — the file is shaped but verbose. The cost is review time +
+scrolling through unrelated markup on every change. Step 0
+(`useArchiveSelection` composable) is already shipped.
+
+**Plan, in order:**
+
+1. Extract `MatchesDossier.vue` (active-clause chips + W/L/D tile +
+   top-3 maps/heroes) at lines ~414–596 + scoped CSS ~1344–2110.
+   Consumes the `useMatchesDossier` composable, takes a
+   `useMatchesNarrow` state bundle as a single typed prop.
+2. Extract `MatchesNarrowPanel.vue` (the left-side filter modal) at
+   lines ~614–935 + scoped CSS ~1681–2108. Self-contained;
+   `useMatchesNarrow` is parent-owned and passed in.
+3. Extract `MatchesArchiveDrawer.vue` (the hidden-matches
+   collapsible + bulk Unhide / Delete forever) at lines ~1161–1333
+   plus scoped CSS ~2708–2953. State contract already factored out
+   into `useArchiveSelection`.
+4. MatchesView shrinks to ~800 lines of orchestration.
+
+**Size:** L (each extraction is M; cumulative is L).
+**Risk:** Med — the scoped CSS hashes change per extraction; any
+cross-component selector that piggybacked on MatchesView's
+`data-v-*` hash needs to follow. The bulk-action-bar +
+move-to-profile flow stays in MatchesView (uses `app.css`).
+
+### Real desktop-runtime e2e for Wails
+
+**Where:** `frontend/tests/e2e/` currently drives the `serveronly`
+binary exclusively. Steps 1 + 2 of the original ladder are shipped
+(`make smoke-wails` compile check + `pkg/cmd/middleware_test.go`
+unit coverage of the AssetServer shim), so the dev-mode SPA-fallback
+class of bug is now lit up by unit tests.
+
+**What's still invisible:** the `EventsOn` / `EventsOff` runtime
+bridge, the native dialog calls (`PickScreenshotsDir` /
+`PickTesseractBinary`), the file-system watcher's interaction with
+the real OS. Bugs in those still surface only on the released
+desktop app.
+
+**Plan:** integrate a Wails runtime driver (e.g. `wails dev` +
+`playwright connect` over CDP to the embedded WebView). Cross-
+platform-fragile and XL effort — wait until one of the EventsOn /
+file-watcher / native-dialog regressions actually bites before
+paying this cost.
+
+**Size:** XL.
+**Risk:** High (cross-platform driver, CI matrix complexity).
