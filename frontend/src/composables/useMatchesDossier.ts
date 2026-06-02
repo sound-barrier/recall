@@ -96,6 +96,28 @@ export interface MostPlayedHero {
   qualifyingMatches: number
 }
 
+// Review-coverage summary for the dossier KPI tile. `reviewed`
+// counts records carrying a `reviewed_by` ('self' or 'coach');
+// `total` is the narrow's full record count; `percent` is the
+// integer share rounded for display. The dossier sub-line surfaces
+// the percentage so the user reads "23 / 47 — 49%" at a glance.
+export interface ReviewedCount {
+  reviewed: number
+  total: number
+  percent: number
+}
+
+// Recency window for the "Days since last review" widget. `days`
+// is the floored count of 24-hour periods between the most-recent
+// `reviewed_at` in the narrow and "now". Null when no record in
+// the narrow has been reviewed — the tile then renders an em-dash.
+// `lastReviewedAt` is the raw ISO string so the tile can title-tip
+// the precise timestamp for hover.
+export interface DaysSinceLastReview {
+  days: number | null
+  lastReviewedAt: string | null
+}
+
 // Minimum heroes_played[].percent_played for a record to count
 // toward the most-played-hero win-rate denom. Picked at 20% so a
 // brief experimental swap doesn't drag the rate around, but the
@@ -296,5 +318,50 @@ export function useMatchesDossier(
     }
   })
 
-  return { wld, winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero, averageKDA }
+  // Review-coverage widget — how many of the narrow's matches the
+  // user (or a coach) has reviewed. Counts every record whose
+  // `reviewed_by` is non-empty; the empty/absent case maps to "not
+  // reviewed." Uses the full narrow (NOT tallyRecords) so flipping
+  // leaver-handling doesn't ghost-bump the percentage — review
+  // coverage is a workflow metric, not a tally metric.
+  const reviewedCount = computed<ReviewedCount>(() => {
+    let reviewed = 0
+    for (const r of records.value) {
+      if (r.reviewed_by) reviewed++
+    }
+    const total = records.value.length
+    const percent = total === 0 ? 0 : Math.round((reviewed / total) * 100)
+    return { reviewed, total, percent }
+  })
+
+  // Days since the most-recent `reviewed_at` in the narrow. We
+  // floor the elapsed milliseconds to whole days; "reviewed 4
+  // hours ago" reads as `0` days (the tile then surfaces "today"
+  // semantics via the caller-side label) and "exactly 24h ago"
+  // reads as `1`. Null when nothing in the narrow has been
+  // reviewed. Date.now() is read at evaluation time — Vue's
+  // reactivity won't ticking re-fire this; callers that need the
+  // value to refresh past midnight should re-invoke (or bind to a
+  // ref that pulses).
+  const daysSinceLastReview = computed<DaysSinceLastReview>(() => {
+    let latestMs: number | null = null
+    let latestIso: string | null = null
+    for (const r of records.value) {
+      if (!r.reviewed_at) continue
+      const ms = Date.parse(r.reviewed_at)
+      if (Number.isNaN(ms)) continue
+      if (latestMs === null || ms > latestMs) {
+        latestMs = ms
+        latestIso = r.reviewed_at
+      }
+    }
+    if (latestMs === null) {
+      return { days: null, lastReviewedAt: null }
+    }
+    const elapsedMs = Date.now() - latestMs
+    const days = Math.max(0, Math.floor(elapsedMs / (24 * 60 * 60 * 1000)))
+    return { days, lastReviewedAt: latestIso }
+  })
+
+  return { wld, winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero, averageKDA, reviewedCount, daysSinceLastReview }
 }
