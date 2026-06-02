@@ -66,7 +66,15 @@ If you don't want to install the toolchain locally, the next section sets you up
 
 ### Dev Container (any host, zero install)
 
-The repo ships a [Dev Container](https://containers.dev/) at `.devcontainer/devcontainer.json` that mirrors the Brewfile tooling on a Debian base. Open the project in VS Code (Command Palette → **Dev Containers: Reopen in Container**) or [GitHub Codespaces](https://github.com/features/codespaces) and the `.devcontainer/postCreate.sh` script installs everything for you:
+The repo ships a [Dev Container](https://containers.dev/) at `.devcontainer/devcontainer.json` that mirrors the Brewfile tooling on a Debian base. Open the project in VS Code (Command Palette → **Dev Containers: Reopen in Container**) or [GitHub Codespaces](https://github.com/features/codespaces) and the `.devcontainer/postCreate.sh` script installs everything for you.
+
+**Host prerequisites by OS** (install on the host where VS Code runs — Codespaces users can skip this entirely):
+
+- **macOS** — [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/) (or [Colima](https://github.com/abiosoft/colima)) + [VS Code](https://code.visualstudio.com/) + the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
+- **Debian / Ubuntu** — `sudo apt install docker.io` then `sudo usermod -aG docker $USER` and re-login (or follow [Docker Engine](https://docs.docker.com/engine/install/)) + VS Code + the Dev Containers extension.
+- **Windows** — [Docker Desktop](https://docs.docker.com/desktop/install/windows-install/) with **Use the WSL 2 based engine** ticked in *Settings → General* + VS Code + the Dev Containers extension. Works whether you open the repo from `C:\…` (Dev Containers handles the WSL2 socket bridge) or from a path inside WSL2 via the [WSL extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) first.
+
+Once the prerequisites are in place, the container installs:
 
 - Go 1.26 + Node 26 (via Dev Container Features)
 - Docker (Docker-in-Docker, for `make build-*` and `make swagger`)
@@ -86,6 +94,8 @@ The forwarded ports (5173, 7000, 8080, 9090, 9091, 34115, 3000) cover Vite, the 
 ### macOS
 
 > **TL;DR:** `./initialize.sh` (or `make init`) runs every step in this section automatically after you've installed Xcode CLT, Homebrew, Go 1.26+, and Node 22+. Read on if you'd rather run them manually or want to understand what the script does.
+>
+> **Container alternative:** the [Dev Container](#dev-container-any-host-zero-install) above runs the full Debian toolchain inside Docker — use it if you don't want to install Go/Node/Tesseract on the Mac itself. Wails GUI won't render inside the container; use server mode there. Native dev below is the only path to the desktop window.
 
 **One-time prerequisites:**
 
@@ -130,6 +140,8 @@ wails doctor    # verify toolchain at any time
 `make dev` runs natively here — the apt path installs WebKitGTK + GTK 3 + appindicator dev libraries and the same Wails CLI macOS gets. Vite HMR + live Go rebuild work the same as on macOS; only the native window chrome differs (GTK vs Cocoa).
 
 > **TL;DR:** `./initialize.sh` (or `make init`) runs every step in this section automatically once Go 1.26+ and Node 22+ are on PATH. Read on if you're on a non-apt distro (the script bails fast on those) or want to understand what it installs.
+>
+> **Container alternative:** the [Dev Container](#dev-container-any-host-zero-install) above gives you the same Debian environment without touching the host — handy on a non-apt distro (Fedora, Arch, NixOS, …), or to keep a workstation toolchain-free. Wails GUI won't render inside the container; use server mode for headless work.
 
 **One-time prerequisites** (Debian/Ubuntu — adapt for other distros):
 
@@ -225,6 +237,8 @@ Container builds work identically to macOS — `make build-linux` / `make build-
 
 Windows is supported as a *target* (release builds ship a NSIS installer and a server `.exe`) but not as a native dev OS — the toolchain assumes a POSIX shell (`bash` `scripts/*.sh`, `shellcheck`/`shfmt`, GNU `find`/`xargs`, `lefthook` hooks that shell out) and PowerShell/CMD won't carry it. The maintained dev flow is **WSL2 Ubuntu**, which drops you into the same Debian/Ubuntu environment covered above.
 
+> **Container alternative:** the [Dev Container](#dev-container-any-host-zero-install) above also works on Windows — VS Code talks to Docker Desktop's WSL2 backend and skips most of this section. Tradeoff: no GUI for `make dev` (use server mode). The WSL2 native flow below is recommended if you want the Wails window via WSLg.
+
 **1. Install WSL2 with Ubuntu.**
 
 ```powershell
@@ -245,6 +259,7 @@ docker info        # should print server details, not "Cannot connect…"
 **4. `make dev` and `make test-e2e`.**
 
 - `make dev` works on Windows 11 (and Windows 10 22H2+) via [WSLg](https://github.com/microsoft/wslg), which forwards the GTK window natively — no X server setup needed.
+- **Edit in VS Code on the Windows host, run `make dev` in the WSL terminal — same directory both sides.** Install the [WSL extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) on Windows, then from your cloned directory inside WSL2 run `code .`. VS Code reopens against the WSL filesystem, the integrated terminal lands inside WSL automatically, and `make dev` from that terminal launches Wails with WSLg forwarding the GTK window to the Windows desktop. **Clone into WSL's native FS (e.g. `~/recall`), not `/mnt/c/…`** — file-watcher latency on the Windows-mount path is bad enough to make Vite HMR feel broken.
 - Older Windows 10 has no WSLg. Use server mode instead: `go run -tags serveronly . --server` and open `http://127.0.0.1:7000` in a Windows browser.
 - `make test-e2e` runs Playwright headless against a built `serveronly` binary on `127.0.0.1:7099` (per [`e2e.yml`](.github/workflows/e2e.yml)). No X11 or WSLg needed; works on every Windows version that supports WSL2.
 
