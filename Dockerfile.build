@@ -54,7 +54,18 @@ RUN npm run build
 
 
 # ─── Stage 2: Go / Wails base ───────────────────────────────
-FROM golang:1.26.4-bookworm AS go-base
+FROM golang:1.26-bookworm AS go-base
+
+# Allow the Go runtime to auto-download a newer toolchain than the
+# base image's. go.mod's `go 1.26.4` directive can be ahead of the
+# `golang:1.26-bookworm` registry tag (Docker Hub's image lags
+# patch releases by hours-to-days). `GOTOOLCHAIN=auto` makes the
+# container fetch the matching toolchain on first invocation; once
+# the registry catches up the resolution becomes a no-op. We
+# intentionally do NOT set this at the workflow level (per
+# .claude/rules/ci-cd.md) — the isolation matters there; inside a
+# disposable container build it's harmless.
+ENV GOTOOLCHAIN=auto
 
 # Pin Wails CLI to the same minor version used in go.mod (v2.12.x).
 # Install into GOPATH/bin which is already on PATH in the official image.
