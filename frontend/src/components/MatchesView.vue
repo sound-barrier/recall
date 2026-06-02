@@ -13,7 +13,9 @@ import FilterCombobox from './FilterCombobox.vue'
 import DashboardWidget from './DashboardWidget.vue'
 import DashboardCustomizer from './DashboardCustomizer.vue'
 import { useDashboardVisibility } from '../composables/useDashboardVisibility'
-import { DEFAULT_ROW_LAYOUT, widgetById, type WidgetDef } from '../dashboard/widgets'
+import { useDashboardLayout } from '../composables/useDashboardLayout'
+import { useDragReorder } from '../composables/useDragReorder'
+import { widgetById, type WidgetDef } from '../dashboard/widgets'
 
 // Matches page — "set workspace" layout.
 //
@@ -260,29 +262,79 @@ const {
 // 2 (hide/show) and 3 (drag-reorder, incl. cross-row) thread visibility
 // + ordering composables through the same `dashboardRows` computed
 // without changing the v-for shape in the template.
-// Hide/show preference owns the only filter applied at this layer
-// in Phase 2; Phase 3 will replace DEFAULT_ROW_LAYOUT with the
-// persisted layout from useDashboardLayout.
+// Hide/show preference + persisted row layout — the two prefs the
+// dossier reads at this layer. Layout is reconciled against the
+// registry on read (drops orphans, dedupes, appends new widgets),
+// so future widget bring-ups surface automatically.
 const dashboardVisibility = useDashboardVisibility()
+const dashboardLayout     = useDashboardLayout()
 
 const dashboardRows = computed(() => {
   const hidden = new Set(dashboardVisibility.hidden.value)
-  return Object.keys(DEFAULT_ROW_LAYOUT)
+  const layout = dashboardLayout.rows.value
+  return Object.keys(layout)
     .map((k) => Number(k))
     .sort((a, b) => a - b)
     .map((rowIdx) => ({
       index: rowIdx,
-      widgets: (DEFAULT_ROW_LAYOUT[rowIdx] ?? [])
+      widgets: (layout[rowIdx] ?? [])
         .filter((id) => !hidden.has(id))
         .map((id) => widgetById(id))
         .filter((def): def is WidgetDef => def !== undefined),
     }))
 })
 
-// Modal open state. Same handler drives mount + unmount; the
-// customizer owns its focus trap, so MatchesView's only job is to
-// pass the flag and hear back on @close.
+// Edit mode flips when the customizer is open. Drag handles only
+// render in edit mode so casual viewers see a clean dossier.
 const showDashboardCustomizer = ref(false)
+const editMode = computed(() => showDashboardCustomizer.value)
+
+// Drag-reorder wiring. The reorder composable knows nothing about
+// the layout itself — it just emits move(id, fromRow, fromIdx,
+// toRow, toIdx) and the layout composable handles the persistence
+// + reconciliation. rowSize reads from the LIVE filtered row so
+// drops past the last cell pick the right append index even when
+// some widgets are hidden.
+const dragReorder = useDragReorder({
+  onMove: (id, fromRow, fromIdx, toRow, toIdx) => {
+    // We translate the visible-row indices the consumer sees into
+    // the absolute indices the layout composable expects. The
+    // hidden widgets still occupy positions in the persisted
+    // layout, so the move math has to account for them.
+    dashboardLayout.move(
+      id,
+      fromRow,
+      absoluteIdx(fromRow, fromIdx),
+      toRow,
+      absoluteIdx(toRow, toIdx, /* insertion */ true),
+    )
+  },
+  rowSize: (row) => {
+    const r = dashboardRows.value.find((x) => x.index === row)
+    return r ? r.widgets.length : 0
+  },
+})
+
+// Walk the persisted row's IDs and return the absolute index of
+// the visible widget at visibleIdx. For insertion targets (drops
+// "before this cell"), we return the absolute index of the cell
+// that's about to be displaced; for past-the-end drops, the row's
+// real length.
+function absoluteIdx(rowIdx: number, visibleIdx: number, insertion = false): number {
+  const hidden = new Set(dashboardVisibility.hidden.value)
+  const row = dashboardLayout.rows.value[rowIdx] ?? []
+  let seen = 0
+  for (let i = 0; i < row.length; i++) {
+    const id = row[i]!
+    if (hidden.has(id)) continue
+    if (seen === visibleIdx) return i
+    seen++
+  }
+  // Either appending past the last visible cell, or the visible
+  // index referenced a widget that just disappeared — either way,
+  // append at the persisted row's end.
+  return insertion ? row.length : Math.max(0, row.length - 1)
+}
 
 // Per-widget prop bag, keyed by widget id. Each entry is the exact
 // set of dossier values that widget's SFC declares as props.
@@ -595,14 +647,27 @@ onBeforeUnmount(() => {
           v-if="row.widgets.length > 0"
           class="dashboard-row"
           :data-row="row.index"
+          @dragover.prevent="editMode ? dragReorder.onRowDragOver(row.index, $event) : null"
+          @drop="editMode ? dragReorder.onRowDrop(row.index, $event) : null"
         >
           <DashboardWidget
-            v-for="def in row.widgets"
+            v-for="(def, idx) in row.widgets"
             :id="def.id"
             :key="def.id"
             :shape="def.shape"
+            :edit-mode="editMode"
+            :row="row.index"
+            :idx="idx"
+            :drop-target="dragReorder.dropHint.value !== null &&
+              dragReorder.dropHint.value.row === row.index &&
+              dragReorder.dropHint.value.idx === idx"
             :legacy-data-kpi="LEGACY_DATA_KPI[def.id]"
             :legacy-data-breakdown="LEGACY_DATA_BREAKDOWN[def.id]"
+            @drag-start="dragReorder.onDragStart"
+            @drag-end="dragReorder.onDragEnd"
+            @drag-over="dragReorder.onDragOver"
+            @drop="dragReorder.onDrop"
+            @handle-keydown="dragReorder.onHandleKeydown"
           >
             <component :is="def.component" v-bind="widgetProps[def.id]" />
           </DashboardWidget>

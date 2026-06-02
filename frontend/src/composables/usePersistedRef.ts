@@ -126,3 +126,32 @@ export function parseStringArray(raw: string): string[] | undefined {
 export function serializeStringArray(v: readonly string[]): string {
   return Array.from(new Set(v.filter((s) => s !== ''))).join(',')
 }
+
+// parseJsonRecord returns a parser that JSON-decodes a stored
+// `Record<K, V>` and validates its shape via a predicate. Anything
+// non-JSON, non-object, or shape-mismatched returns undefined →
+// caller's defaultValue wins. Used for structured prefs (e.g. the
+// row-keyed dashboard layout: { "1": ["a", "b"], "2": ["c"] }).
+//
+// The validator receives the decoded value typed as `unknown` so it
+// can perform whatever depth of check the caller needs without
+// forcing a narrow shape on this helper. Returning true commits the
+// value at the parser's return type; returning false discards it.
+export function parseJsonRecord<T>(validate: (decoded: unknown) => decoded is T): (raw: string) => T | undefined {
+  return (raw: string) => {
+    if (raw === '') return undefined
+    let decoded: unknown
+    try {
+      decoded = JSON.parse(raw)
+    } catch {
+      return undefined
+    }
+    return validate(decoded) ? decoded : undefined
+  }
+}
+
+// JSON-serialize a record. Mirror of parseJsonRecord; explicit so
+// the symmetry reads at call sites.
+export function serializeJsonRecord<T>(v: T): string {
+  return JSON.stringify(v)
+}
