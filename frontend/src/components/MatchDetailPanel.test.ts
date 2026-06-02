@@ -470,3 +470,58 @@ describe('MatchDetailPanel — soft-delete flow', () => {
     expect(e[0]).toEqual([wrapper.props('record')!.match_key, false])
   })
 })
+
+// ── Pagination toolbar (item 6 coverage lift) ────────────────────────
+// The panel's toolbar carries ← / → buttons that emit prev / next.
+// Uses mountPanelWith to share the same default-props shape as
+// mountPanel — passing partial overrides only for pagination state.
+function mountPanelWith(overrides: { canPrev: boolean; canNext: boolean; positionIndex: number; positionTotal: number }) {
+  return mount(MatchDetailPanel, {
+    props: {
+      record: makeRecord(),
+      isOpen: true,
+      isSourcesOpen: false,
+      isPreviewOpen:   () => false,
+      hasPreviewError: () => false,
+      isActive: () => false,
+      hasLightbox: false,
+      ...overrides,
+    },
+  })
+}
+
+describe('MatchDetailPanel — pagination toolbar', () => {
+  // The nav-group is the second `<div role="group">` in the toolbar;
+  // its two `detail-icon-btn` children are ← / →.
+  const navButtonsOf = (w: ReturnType<typeof mountPanelWith>) =>
+    w.find('.detail-toolbar-nav').findAll('.detail-icon-btn')
+
+  it('emits "prev" when the ← button is clicked while canPrev=true', async () => {
+    const wrapper = mountPanelWith({ canPrev: true, canNext: true, positionIndex: 2, positionTotal: 3 })
+    const btns = navButtonsOf(wrapper)
+    await btns[0]!.trigger('click')
+    expect(wrapper.emitted('prev')).toBeTruthy()
+    expect(wrapper.emitted('next')).toBeFalsy()
+  })
+
+  it('emits "next" when the → button is clicked while canNext=true', async () => {
+    const wrapper = mountPanelWith({ canPrev: true, canNext: true, positionIndex: 2, positionTotal: 3 })
+    const btns = navButtonsOf(wrapper)
+    await btns[1]!.trigger('click')
+    expect(wrapper.emitted('next')).toBeTruthy()
+    expect(wrapper.emitted('prev')).toBeFalsy()
+  })
+
+  it('disables the ← / → buttons at the boundaries', () => {
+    const wrapper = mountPanelWith({ canPrev: false, canNext: false, positionIndex: 1, positionTotal: 1 })
+    const btns = navButtonsOf(wrapper)
+    expect(btns[0]!.attributes('disabled')).toBeDefined()
+    expect(btns[1]!.attributes('disabled')).toBeDefined()
+  })
+
+  it('renders the position-of-total indicator', () => {
+    const wrapper = mountPanelWith({ canPrev: true, canNext: false, positionIndex: 47, positionTotal: 47 })
+    expect(wrapper.find('.detail-pos').text()).toContain('47')
+    expect(wrapper.find('.detail-pos-of').text()).toContain('47')
+  })
+})

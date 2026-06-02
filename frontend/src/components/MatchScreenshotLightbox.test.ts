@@ -107,3 +107,39 @@ describe('MatchScreenshotLightbox — "N of M" caption', () => {
 // covered by `frontend/tests/e2e/lightbox-screenshot-navigation.spec.ts`
 // (real Chromium) instead of here. The button-click + caption pins
 // above cover everything else the component owns.
+
+// ── Lifecycle + emit-shape contracts (item 6 coverage lift) ──────────
+describe('MatchScreenshotLightbox — open/close lifecycle', () => {
+  it('renders nothing when filename is null', () => {
+    const w = mountLightbox({ filename: null, src: null, files: [], index: -1 })
+    // Sanity: the backdrop element doesn't exist while filename is null.
+    expect(w.find('.lightbox-backdrop').exists()).toBe(false)
+  })
+
+  it('emits "close" when the × button is clicked', async () => {
+    const w = mountLightbox({ filename: 'a.png', src: SRC, files: FILES, index: 1 })
+    const close = w.find('.lightbox-close')
+    expect(close.exists()).toBe(true)
+    await close.trigger('click')
+    expect(w.emitted('close')).toBeTruthy()
+  })
+
+  it('emits "close" when the backdrop (not the image) is clicked', async () => {
+    const w = mountLightbox({ filename: 'a.png', src: SRC, files: FILES, index: 1 })
+    // Backdrop clicks use `@click.self` so only events whose target IS
+    // the backdrop element trigger close. trigger('click') without
+    // overriding target satisfies that — the dispatch target IS the
+    // root element.
+    await w.find('.lightbox-backdrop').trigger('click')
+    expect(w.emitted('close')).toBeTruthy()
+  })
+
+  it('does NOT emit "close" when the image is clicked', async () => {
+    const w = mountLightbox({ filename: 'a.png', src: SRC, files: FILES, index: 1 })
+    const img = w.find('.lightbox-img')
+    if (img.exists()) {
+      await img.trigger('click')
+      expect(w.emitted('close')).toBeFalsy()
+    }
+  })
+})

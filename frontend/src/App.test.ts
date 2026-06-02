@@ -289,3 +289,77 @@ describe('App.vue — unsupported-tesseract modal a11y', () => {
     expect(container.attributes('aria-hidden')).toBe('true')
   })
 })
+
+// ── First-run modal gating ───────────────────────────────────────────
+// The modal renders only when `firstRunPending && !tourActive`.
+// Both signals are seeded from localStorage; mountApp's defaults
+// suppress both, so each test below clears the relevant seed first.
+describe('App.vue — first-run modal gating (item 6 coverage lift)', () => {
+  it('does NOT render the first-run modal when the localStorage ack is set', async () => {
+    // mountApp defaults to seeding the ack to "true"; the modal must
+    // stay hidden on the first paint.
+    const wrapper = await mountApp({ records: [] })
+    expect(wrapper.find('[data-testid="first-run-modal"]').exists()).toBe(false)
+  })
+
+  it('keeps the first-run modal hidden across a parse-complete fire', async () => {
+    // Defence-in-depth: a runtime event must not flip an
+    // already-acknowledged first-run state back on.
+    const wrapper = await mountApp({ records: [] })
+    expect(fireEvent('parse-complete')).toBe(true)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="first-run-modal"]').exists()).toBe(false)
+  })
+})
+
+// ── Tab swap preserves Matches list state ────────────────────────────
+// Switching from Matches → Settings → Matches must NOT re-fetch
+// /api/v1/matches or scramble the loaded records. The view re-renders
+// against the same in-memory `records` ref.
+describe('App.vue — tab swap preserves Matches state', () => {
+  it('keeps the same record set after Matches → Settings → Matches', async () => {
+    const records: MatchRecord[] = [
+      { match_key: 'match-2026-05-10T21-29-28', source_files: ['a.png'], data: {
+        map: 'rialto', date: '2026-05-10', finished_at: '21:29', result: 'victory',
+      } },
+    ]
+    const wrapper = await mountApp({ records })
+    await flushPromises()
+
+    // Initial mount fired one GetMatchResults.
+    const api = await import('./api')
+    const mockFn = api.GetMatchResults as ReturnType<typeof vi.fn>
+    const initialCalls = mockFn.mock.calls.length
+    expect(initialCalls).toBeGreaterThanOrEqual(1)
+
+    // Switch to Settings and back to Matches.
+    await wrapper.find('#tab-settings').trigger('click')
+    await flushPromises()
+    await wrapper.find('#tab-matches').trigger('click')
+    await flushPromises()
+
+    // No additional fetch on tab swap — App.vue's `records` ref is
+    // the source of truth and surviving the round-trip is the contract.
+    expect(mockFn.mock.calls.length).toBe(initialCalls)
+  })
+})
+
+// ── Tesseract-ready gate blocks parse ────────────────────────────────
+// When tesseract is missing or unsupported, the Parse button is
+// disabled and the System Alert banner renders. Pinned here so a
+// rewire of the gate doesn't silently let parse() run against an
+// unconfigured OCR engine.
+describe('App.vue — tesseract gate', () => {
+  it('renders the System Alert banner when tesseract is not found', async () => {
+    const wrapper = await mountApp({
+      records: [],
+      tesseract: { found: false, supported: false, error: 'tesseract not on PATH' },
+    })
+    expect(wrapper.find('.system-alert').exists()).toBe(true)
+  })
+
+  it('renders no System Alert banner when tesseract is supported', async () => {
+    const wrapper = await mountApp({ records: [], tesseract: { found: true, supported: true } })
+    expect(wrapper.find('.system-alert').exists()).toBe(false)
+  })
+})

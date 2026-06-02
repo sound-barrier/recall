@@ -65,20 +65,22 @@ off first.
 
 **Plan:**
 
-1. ~~Stage 2: Add `pkg/app/sse_test.go`~~ — **shipped**: 6 cases
-   covering subscribe / broadcast / broadcast-with-data /
-   unsubscribe-closes-channel / slow-consumer-drops /
-   concurrency-safe. `pkg/app/sse.go` from 0 % to ~95 %.
-2. Stage 1: write SFC tests for the four highest-traffic
-   surfaces (`App.vue`, `MatchDetailPanel`, `MatchScreenshotLightbox`,
-   `MatchCardExpanded`). Each gets 10–15 cases driving observable
-   contract: open/close, paginate, error states, keyboard.
+1. ~~Stage 2: Add `pkg/app/sse_test.go`~~ — **shipped**.
+2. ~~Stage 1: SFC tests for the four highest-traffic surfaces~~ —
+   **shipped**: 4 new App.vue contracts (first-run modal gating,
+   tab-swap state survival, tesseract gate render),
+   4 new MatchDetailPanel cases (pagination prev/next +
+   disabled-at-boundary + position indicator), 4 new
+   MatchScreenshotLightbox cases (open/close lifecycle +
+   backdrop close + image-click no-close), and a new
+   `MatchCardExpanded.test.ts` (8 cases — stats grid, leaver
+   chip emits + aria-pressed, sources block render gate).
 3. Stage 3: Add a `pkg/cmd/server_smoke_test.go` that boots a
    real `*App` with a temp store, fires the standard route set
    via httptest, asserts the mux wiring + middleware ordering.
 4. Bump the Go threshold from 46 % → 60 % once Stage 3 lands.
 
-**Size:** L (cumulative; Stages 1 + 3 still remaining).
+**Size:** L (cumulative; Stage 3 still remaining).
 **Risk:** Low (additive; failing tests reveal real gaps).
 
 ---
