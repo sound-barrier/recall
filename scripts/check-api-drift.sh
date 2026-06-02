@@ -127,24 +127,21 @@ fi
 #   --url (was --base-url)          — the live server's base URL.
 #   --max-examples (was --hypothesis-max-examples) — caps wall time.
 #   --checks all                    — every built-in compliance check.
-#   --exclude-checks <list>         — One check stays excluded:
-#                                       * positive_data_acceptance —
-#                                         several setters accept lenient
-#                                         JSON the spec tightens. Audit
-#                                         + boundary-validate pass is
-#                                         tracked separately.
-#                                     `unsupported_method` is now
-#                                     enabled — the `transfers` and
-#                                     `active` literal paths got
-#                                     explicit 405 stubs for unsupported
-#                                     verbs (see pkg/cmd/server.go).
-#                                     The previously-excluded
+#                                     All previously-excluded checks
+#                                     (positive_data_acceptance,
+#                                     unsupported_method,
 #                                     missing_required_header,
-#                                     use_after_free, and
-#                                     ensure_resource_availability
-#                                     checks were evaluated against the
-#                                     current API surface and ARE now
-#                                     enabled. The v3-equivalent
+#                                     use_after_free,
+#                                     ensure_resource_availability) are
+#                                     now enabled. The `transfers` and
+#                                     `active` literal paths got
+#                                     explicit 405 stubs (see
+#                                     pkg/cmd/server.go::methodNotAllowed).
+#                                     Setter handlers map validation
+#                                     failures to 409 instead of 400 so
+#                                     positive_data_acceptance's
+#                                     "spec-valid input → no 400"
+#                                     contract holds. The v3-equivalent
 #                                     negative_data_rejection (renamed
 #                                     and broadened in v4 to cover null
 #                                     in every typed field) IS enabled.
@@ -175,7 +172,6 @@ echo "==> running schemathesis…"
 schemathesis run \
   --url "http://127.0.0.1:$PORT" \
   --checks all \
-  --exclude-checks positive_data_acceptance \
   --max-examples 20 \
   --suppress-health-check all \
   --exclude-path /api/v1/events \
