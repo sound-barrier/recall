@@ -2,6 +2,12 @@
 import { computed, ref } from 'vue'
 import type { MatchRecord } from '../api'
 
+// NOTE: this file is a static dev-build sketch of the Analysis tab's
+// future analytics layout. The PRODUCTION dashboard customization
+// surface — registry-driven widgets, hide/show, drag-reorder — lives
+// in `dashboard/widgets.ts` + `components/DashboardWidget.vue` +
+// `components/widgets/*.vue`. Don't wire this sketch into that path.
+//
 // SKETCH — the Analysis tab's analytics-first dashboard layout
 // (Phase E in ROADMAP.md → "Analysis tab"). Charts are placeholder
 // SVG sketches
