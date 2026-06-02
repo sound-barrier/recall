@@ -27,6 +27,10 @@ overview of the architecture and internal conventions, see
   - [Pinning GitHub Actions](#pinning-github-actions)
   - [Tagging and releasing](#tagging-and-releasing)
 - [Releases](RELEASES.md) — separate doc; covers cutting stable releases and prereleases, `make release-beta` / `make release-fire` shortcuts, and recovery procedures.
+- [Bug-report bundles](#bug-report-bundles)
+  - [What's in a bundle](#whats-in-a-bundle)
+  - [Validating a bundle (`recall-bug-finder`)](#validating-a-bundle-recall-bug-finder)
+  - [Importing a bundle into the running app](#importing-a-bundle-into-the-running-app)
 - [API specification](#api-specification)
 
 ## Development setup
@@ -460,6 +464,44 @@ git push origin main
 # Otherwise:
 make release-fire TAG=v0.0.13-beta.0
 ```
+
+## Bug-report bundles
+
+Users send in a `.zip` from the **Export bundle…** affordance on the Matches view's bulk-action bar. The bundle packages the matches the user ticked plus (optionally) every hidden / unknown match into one archive suitable for triaging a regression you can't reproduce. Two maintainer workflows ship alongside it: a validator CLI and an in-app import.
+
+### What's in a bundle
+
+Three pieces at the ZIP root (schema in `pkg/app/export_bundle.go`):
+
+- `manifest.json` — `recall-bundle/v1` envelope: provenance (`exported_at`, `recall_version`), `match_count`, `screenshot_count`, the include-toggle state, and the screenshot ↔ `match_key` map for sanity-checking after extract.
+- `data.json` — the same `recall-export/v1` shape `GET /api/v1/exports` already produces, restricted to the included matches. **Deliberately omits `screenshots_dirs`** — that map carries the user's absolute filesystem path and would leak PII on every bug report. Restored rows land with `ScreenshotsDirID = 0` (use configured dir).
+- `screenshots/<filename>` — the source-file bytes for every included match. Missing-on-disk files are silently skipped at export time (the row still ships in `data.json` so a re-parse can fill the gap).
+
+### Validating a bundle (`recall-bug-finder`)
+
+First move when a bundle lands in your inbox. The CLI cross-validates the three pieces above and reports any drift between them.
+
+```sh
+make bug-finder
+build/bin/recall-bug-finder path/to/user-bundle.zip
+```
+
+A consistent bundle prints `✓ … internally consistent` and exits 0. A bundle with discrepancies prints one `[kind] message` line per issue and exits 1; bad CLI input (missing arg, unreadable file, malformed ZIP) exits 2.
+
+The issue kinds are stable string constants in `pkg/app/bundle_validate.go` so a scripted wrapper can grep on them without re-parsing the message. The 11 kinds today: `missing_manifest`, `missing_data`, `wrong_manifest_schema`, `wrong_data_schema`, `match_count_mismatch`, `screenshot_count_mismatch`, `manifest_missing_screenshot_file`, `orphan_screenshot_file`, `manifest_key_not_in_data`, `data_file_not_in_manifest`, `screenshots_dirs_leak`.
+
+The tool is maintainer-only — it's not in `make build-all`, not published to GitHub releases, and not surfaced from the UI. Built locally on demand. The validator logic lives in `pkg/app/bundle_validate.go`; the CLI in `cmd/bug-finder/main.go` is a thin shell over it.
+
+### Importing a bundle into the running app
+
+Once the validator is happy, load the bundle into a running Recall instance to inspect the user's matches in the real UI:
+
+1. Boot the app — `make dev` (Wails) or the server binary + a browser.
+2. **Settings → Backup & Restore → Import Backup → Choose File…** and pick the bundle `.zip`. `ImportData` (`pkg/app/export.go`) sniffs the magic bytes — bundles look like a ZIP, the ZIP branch resolves `data.json` against the `recall-export/v1` schema, and every row lands in your local SQLite under the active profile.
+
+**Caveat — the `screenshots/` folder is not auto-extracted.** The import flow only reads `data.json`; the bundled screenshot bytes stay in the ZIP. To make the lightbox + per-row previews work for the imported matches, manually copy the bundle's `screenshots/*` files into your configured screenshots folder (Settings → Folders → Screenshots folder, or `<profile>/settings.json::screenshots_dir`). That works because every row imported from a bundle carries `ScreenshotsDirID = 0`, and `pkg/app/screenshot_handler.go` falls back to `a.settings.ScreenshotsDir` whenever the dir-id is 0.
+
+Use a throwaway profile (masthead chip → **+ New profile**) for triage so the user's matches don't pollute your real history; switch back to your normal profile when done.
 
 ## API specification
 
