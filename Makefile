@@ -491,6 +491,19 @@ test-all: test test-e2e ## Run unit tests + E2E (everything)
 smoke-release-scripts: ## Smoke-test scripts/release/*.sh in temp dirs (no real tag needed)
 	@bash scripts/release/smoke/smoke.sh
 
+bug-finder: ## Build recall-bug-finder CLI to build/bin/ (maintainer-only — not released)
+	@echo "[ recall ] Building recall-bug-finder…"
+	@mkdir -p build/bin
+	@# `-tags serveronly` is purely an optimization: the validator
+	@# only touches archive/zip + encoding/json + pkg/db row types,
+	@# none of which depend on the Wails runtime, but the tag keeps
+	@# the binary the same size regardless of which env the user
+	@# builds from. The tool is intentionally not published — it's a
+	@# maintainer aid for triaging user-submitted bundles.
+	@go build -tags serveronly -o build/bin/recall-bug-finder ./cmd/bug-finder
+	@echo "[ recall ] ✓  Built build/bin/recall-bug-finder"
+	@echo "[ recall ]    Usage: build/bin/recall-bug-finder <bundle.zip>"
+
 smoke-wails: ## Compile-check the full Wails desktop binary on the host
 	@echo "[ recall ] Smoke-building Wails desktop binary…"
 	@# Compile-only check. Booting the GUI requires a display surface

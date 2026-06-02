@@ -3,23 +3,61 @@ package app
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
+	"time"
 
 	"recall/pkg/db"
 )
 
-// bundleSchemaV1 is the wire-schema identifier the bundle's
+// BundleSchemaV1 is the wire-schema identifier the bundle's
 // manifest carries. Bumping the constant is a breaking change to
 // the bundle layout; the inner `data.json` keeps `exportSchemaV1`
-// because it IS the existing v1 JSON export — the bundle just
-// wraps it in a ZIP alongside the screenshot bytes.
-const bundleSchemaV1 = "recall-bundle/v1"
+// because it IS the existing v1 JSON export shape — the bundle
+// just wraps a sanitized variant alongside the screenshot bytes.
+// Exported so cmd/bug-finder can validate by-version.
+const BundleSchemaV1 = "recall-bundle/v1"
+
+// BundleManifestV1 is the on-disk shape of the bundle's
+// `manifest.json`. Captures provenance + the screenshot ↔ match_key
+// mapping for sanity-checking after restore. Exported so
+// cmd/bug-finder can deserialize without redefining the schema.
+type BundleManifestV1 struct {
+	Schema          string            `json:"schema"`
+	ExportedAt      string            `json:"exported_at"`
+	RecallVersion   string            `json:"recall_version"`
+	MatchCount      int               `json:"match_count"`
+	ScreenshotCount int               `json:"screenshot_count"`
+	IncludeUnknown  bool              `json:"include_unknown"`
+	IncludeHidden   bool              `json:"include_hidden"`
+	Screenshots     map[string]string `json:"screenshots"`
+}
+
+// BundleDataV1 is the on-disk shape of the bundle's `data.json`.
+// Same row tables as the standalone `recall-export/v1` payload
+// (`exportV1`), but DOES NOT carry the screenshots_dirs map —
+// those paths leak the user's filesystem and aren't needed for the
+// portable-backup / bug-report use cases. On restore via
+// `POST /api/v1/imports`, the rows' `ScreenshotsDirID` references
+// remap to 0 (use configured dir) because no entries in the
+// screenshots_dirs envelope mean an empty remap table.
+//
+// Exported so cmd/bug-finder can deserialize directly.
+type BundleDataV1 struct {
+	Schema        string             `json:"schema"`
+	ExportedAt    string             `json:"exported_at"`
+	RecallVersion string             `json:"recall_version"`
+	Summaries     []db.SummaryRow    `json:"summaries"`
+	Scoreboards   []db.ScoreboardRow `json:"scoreboards"`
+	Personals     []db.PersonalRow   `json:"personals"`
+	Ranks         []db.RankRow       `json:"ranks"`
+	Unknowns      []db.UnknownRow    `json:"unknowns"`
+}
 
 // ExportBundleOptions controls which matches end up in the bundle.
 //
@@ -115,29 +153,30 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 		screenshots[r.Filename] = r.MatchKey
 	}
 
-	// 4. Encode the dirs map the existing v1 JSON envelope wants.
-	dirs := make(map[string]string, len(snap.ScreenshotsDirs))
-	for id, path := range snap.ScreenshotsDirs {
-		dirs[strconv.FormatInt(id, 10)] = path
-	}
-
-	// 5. Build the ZIP in-memory.
+	// 4. Build the ZIP in-memory. Capture one `now` for every embedded
+	//    entry so manifest's `exported_at`, data.json's `exported_at`,
+	//    and every ZIP local-file-header mtime agree to the second.
+	now := time.Now().UTC()
+	exportedAt := now.Format(time.RFC3339)
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 
-	// 5a. data.json — same shape as ExportData but filtered.
-	dataDoc := exportV1{
-		Schema:         exportSchemaV1,
-		ExportedAt:     nowUTC(),
-		RecallVersion:  Version,
-		ScreenshotsDir: dirs,
-		Summaries:      summaries,
-		Scoreboards:    scoreboards,
-		Personals:      personals,
-		Ranks:          ranks,
-		Unknowns:       unknowns,
+	// 4a. data.json — `recall-export/v1` payload restricted to the
+	//     included matches, WITHOUT the screenshots_dirs path map.
+	//     Stripping the map keeps the bundle free of the user's local
+	//     filesystem path; restore via POST /api/v1/imports remaps
+	//     every row's ScreenshotsDirID to 0 (use configured dir).
+	dataDoc := BundleDataV1{
+		Schema:        exportSchemaV1,
+		ExportedAt:    exportedAt,
+		RecallVersion: Version,
+		Summaries:     summaries,
+		Scoreboards:   scoreboards,
+		Personals:     personals,
+		Ranks:         ranks,
+		Unknowns:      unknowns,
 	}
-	if err := zipWriteJSON(zw, "data.json", dataDoc); err != nil {
+	if err := bundleWriteJSON(zw, "data.json", dataDoc, now); err != nil {
 		return nil, fmt.Errorf("export bundle: write data.json: %w", err)
 	}
 
@@ -184,27 +223,17 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 				}
 				return nil, fmt.Errorf("export bundle: read %s: %w", f.Filename, err)
 			}
-			if err := zipWriteRaw(zw, "screenshots/"+f.Filename, body); err != nil {
+			if err := bundleWriteRaw(zw, "screenshots/"+f.Filename, body, now); err != nil {
 				return nil, fmt.Errorf("export bundle: write screenshot: %w", err)
 			}
 		}
 	}
 
-	// 5c. manifest.json — assembled AFTER the screenshots loop so its
+	// 4c. manifest.json — assembled AFTER the screenshots loop so its
 	//     `screenshots` map reflects what actually landed in the ZIP.
-	type manifest struct {
-		Schema          string            `json:"schema"`
-		ExportedAt      string            `json:"exported_at"`
-		RecallVersion   string            `json:"recall_version"`
-		MatchCount      int               `json:"match_count"`
-		ScreenshotCount int               `json:"screenshot_count"`
-		IncludeUnknown  bool              `json:"include_unknown"`
-		IncludeHidden   bool              `json:"include_hidden"`
-		Screenshots     map[string]string `json:"screenshots"`
-	}
-	mf := manifest{
-		Schema:          bundleSchemaV1,
-		ExportedAt:      nowUTC(),
+	mf := BundleManifestV1{
+		Schema:          BundleSchemaV1,
+		ExportedAt:      exportedAt,
 		RecallVersion:   Version,
 		MatchCount:      len(include),
 		ScreenshotCount: len(screenshots),
@@ -212,7 +241,7 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 		IncludeHidden:   opts.IncludeHidden,
 		Screenshots:     screenshots,
 	}
-	if err := zipWriteJSON(zw, "manifest.json", mf); err != nil {
+	if err := bundleWriteJSON(zw, "manifest.json", mf, now); err != nil {
 		return nil, fmt.Errorf("export bundle: write manifest: %w", err)
 	}
 
@@ -262,10 +291,34 @@ func toFilesDirs[T any](rows []T, get func(T) (string, int64)) []struct {
 	return out
 }
 
-// zipWriteRaw writes a single file into the open ZIP writer with
-// its `name` and the byte slice as its contents.
-func zipWriteRaw(zw *zip.Writer, name string, body []byte) error {
-	w, err := zw.Create(name)
+// bundleWriteJSON writes `v` as a deflated ZIP entry with the given
+// name and modification time. Set `mt` to the bundle's captured
+// `now` so every entry agrees on a single timestamp — the existing
+// `zipWriteJSON` helper (used by the CSV export) leaves the entry
+// at the MS-DOS epoch (1980-01-01), which surfaces as confusing
+// "Jan 10 1980" file modification dates after extraction. See the
+// reported bug for context.
+func bundleWriteJSON(zw *zip.Writer, name string, v any, mt time.Time) error {
+	w, err := zw.CreateHeader(&zip.FileHeader{
+		Name:     name,
+		Method:   zip.Deflate,
+		Modified: mt,
+	})
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(v)
+}
+
+// bundleWriteRaw writes a single file (its raw bytes) into the open
+// ZIP writer with the given name + modification time. Same timestamp
+// rationale as bundleWriteJSON.
+func bundleWriteRaw(zw *zip.Writer, name string, body []byte, mt time.Time) error {
+	w, err := zw.CreateHeader(&zip.FileHeader{
+		Name:     name,
+		Method:   zip.Deflate,
+		Modified: mt,
+	})
 	if err != nil {
 		return err
 	}
