@@ -118,6 +118,21 @@ export interface DaysSinceLastReview {
   lastReviewedAt: string | null
 }
 
+// W/L/D over the matches that came in AFTER the most-recent
+// `reviewed_at` in the narrow. Same tallyRecords gate as the
+// headline `wld` so leaver-handling stays consistent; the anchor
+// is the same `lastReviewedAt` the days-since widget already
+// finds. `referenceAt` echoes the anchor (and reads null when no
+// review has happened yet) so the caller can title-tip the exact
+// timestamp without re-computing it.
+export interface WLDSinceLastReview {
+  w: number
+  l: number
+  d: number
+  total: number
+  referenceAt: string | null
+}
+
 // Minimum heroes_played[].percent_played for a record to count
 // toward the most-played-hero win-rate denom. Picked at 20% so a
 // brief experimental swap doesn't drag the rate around, but the
@@ -363,5 +378,38 @@ export function useMatchesDossier(
     return { days, lastReviewedAt: latestIso }
   })
 
-  return { wld, winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero, averageKDA, reviewedCount, daysSinceLastReview }
+  // W/L/D over matches whose parsed_at lands AFTER the most-recent
+  // review pass. "Since last review" reads as a workflow window:
+  // *what's my record on stuff I haven't reviewed yet?* parsed_at
+  // is the canonical server-stamped timestamp on MatchRecord;
+  // comparing it (UTC) against reviewed_at (also server UTC) avoids
+  // the timezone hell that data.date / data.finished_at would
+  // introduce (those mirror the OW client's local-time display).
+  //
+  // Returns null when nothing in the narrow has been reviewed —
+  // there's no anchor to count "since" from, and the tile renders
+  // an em-dash. Once the user records their first review, the next
+  // tick of this widget snaps to the new baseline.
+  const wldSinceLastReview = computed<WLDSinceLastReview | null>(() => {
+    const ref = daysSinceLastReview.value.lastReviewedAt
+    if (!ref) return null
+    let w = 0, l = 0, d = 0
+    for (const r of tallyRecords.value) {
+      if (!r.parsed_at) continue
+      // ISO-8601 strings sort lexicographically when they share a
+      // canonical Z-suffixed shape (which the server emits). A loose
+      // string compare avoids a Date round-trip per record.
+      if (r.parsed_at <= ref) continue
+      const result = r.data?.result
+      if (result === 'victory') w++
+      else if (result === 'defeat') l++
+      else if (result === 'draw') d++
+    }
+    return { w, l, d, total: w + l + d, referenceAt: ref }
+  })
+
+  return {
+    wld, winrate, topMaps, topHeroes, totalTimePlayed, mostPlayedHero, averageKDA,
+    reviewedCount, daysSinceLastReview, wldSinceLastReview,
+  }
 }

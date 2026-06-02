@@ -11,6 +11,7 @@ function rec(opts: {
   leaver?: '' | 'self' | 'team' | 'enemy'
   reviewedBy?: 'self' | 'coach'
   reviewedAt?: string
+  parsedAt?: string
 }): MatchRecord {
   return {
     match_key: opts.key ?? `m-${Math.random()}`,
@@ -24,7 +25,7 @@ function rec(opts: {
       mode: 'competitive',
     },
     annotation: opts.leaver ? { leaver: opts.leaver } : undefined,
-    parsed_at: '2026-05-10T14:00:00Z',
+    parsed_at: opts.parsedAt ?? '2026-05-10T14:00:00Z',
     ...(opts.reviewedBy ? { reviewed_by: opts.reviewedBy } : {}),
     ...(opts.reviewedAt ? { reviewed_at: opts.reviewedAt } : {}),
   } as unknown as MatchRecord
@@ -576,6 +577,77 @@ describe('useMatchesDossier', () => {
       expect(wld.value.total).toBe(2)
       handling.value = 'exclude-tally'
       expect(wld.value.total).toBe(1)
+    })
+  })
+
+  describe('wldSinceLastReview', () => {
+    const ANCHOR = '2026-06-05T12:00:00Z'
+
+    it('counts only records whose parsed_at is strictly after the latest reviewed_at', () => {
+      const records = ref([
+        // Three older matches the anchor IS pinned to — these
+        // should NOT count.
+        rec({ key: 'old-w', result: 'victory', parsedAt: '2026-06-01T10:00:00Z',
+              reviewedBy: 'self', reviewedAt: '2026-06-03T10:00:00Z' }),
+        rec({ key: 'anchor', result: 'defeat', parsedAt: ANCHOR,
+              reviewedBy: 'coach', reviewedAt: ANCHOR }),
+        // Two new matches after the anchor — these count.
+        rec({ key: 'new-w', result: 'victory', parsedAt: '2026-06-06T09:00:00Z' }),
+        rec({ key: 'new-l', result: 'defeat',  parsedAt: '2026-06-07T09:00:00Z' }),
+        rec({ key: 'new-d', result: 'draw',    parsedAt: '2026-06-08T09:00:00Z' }),
+      ])
+      const { wldSinceLastReview } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(wldSinceLastReview.value).toEqual({
+        w: 1, l: 1, d: 1, total: 3, referenceAt: ANCHOR,
+      })
+    })
+
+    it('returns null when nothing in the narrow has been reviewed', () => {
+      const records = ref([
+        rec({ result: 'victory' }),
+        rec({ result: 'defeat' }),
+      ])
+      const { wldSinceLastReview } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(wldSinceLastReview.value).toBeNull()
+    })
+
+    it('respects leaverHandling=exclude-tally (drops leaver-tagged records)', () => {
+      const records = ref([
+        rec({ key: 'anchor', reviewedBy: 'self', reviewedAt: ANCHOR, parsedAt: ANCHOR }),
+        rec({ key: 'new-w', result: 'victory', parsedAt: '2026-06-06T00:00:00Z' }),
+        rec({ key: 'new-l-leaver', result: 'defeat', leaver: 'self',
+              parsedAt: '2026-06-07T00:00:00Z' }),
+      ])
+      const { wldSinceLastReview } = useMatchesDossier(records, ref<LeaverHandling>('exclude-tally'))
+      // Leaver-tagged loss dropped; only the win remains.
+      expect(wldSinceLastReview.value).toEqual({
+        w: 1, l: 0, d: 0, total: 1, referenceAt: ANCHOR,
+      })
+    })
+
+    it('handles records missing parsed_at without crashing', () => {
+      const records = ref([
+        rec({ key: 'anchor', reviewedBy: 'self', reviewedAt: ANCHOR, parsedAt: ANCHOR }),
+        { ...rec({ result: 'victory' }), parsed_at: '' } as unknown as MatchRecord,
+        rec({ result: 'defeat', parsedAt: '2026-06-06T00:00:00Z' }),
+      ])
+      const { wldSinceLastReview } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      // Only the defeat with a valid parsed_at after the anchor counts.
+      expect(wldSinceLastReview.value).toEqual({
+        w: 0, l: 1, d: 0, total: 1, referenceAt: ANCHOR,
+      })
+    })
+
+    it('emits zeros when every match is older than the latest review', () => {
+      const records = ref([
+        rec({ key: 'anchor', reviewedBy: 'self', reviewedAt: ANCHOR, parsedAt: ANCHOR }),
+        rec({ result: 'victory', parsedAt: '2026-06-03T00:00:00Z' }),
+        rec({ result: 'defeat',  parsedAt: '2026-06-04T00:00:00Z' }),
+      ])
+      const { wldSinceLastReview } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(wldSinceLastReview.value).toEqual({
+        w: 0, l: 0, d: 0, total: 0, referenceAt: ANCHOR,
+      })
     })
   })
 
