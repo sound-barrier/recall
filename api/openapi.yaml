@@ -314,6 +314,63 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/matches/{matchKey}/review:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+    put:
+      operationId: SetMatchReview
+      tags: [Matches]
+      summary: Tag a match as reviewed
+      description: |
+        Records who reviewed this match's VOD. Two states:
+
+          - `self`  — the user reviewed the VOD themselves
+          - `coach` — a coach reviewed the VOD with the user
+
+        Absence of a `match_reviews` row is the third logical state
+        ("not reviewed"); use `DELETE` on the same path to revert
+        there. Idempotent — repeated identical calls succeed.
+
+        Returns 204 on success, 400 on validation failure
+        (`reviewed_by` outside the enum), 500 on store error.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reviewed_by]
+              properties:
+                reviewed_by:
+                  type: string
+                  enum: [self, coach]
+                  description: |
+                    Who reviewed this match's VOD. To revert to "not
+                    reviewed", call DELETE on this path instead of
+                    PUTing an empty string.
+      responses:
+        "204":
+          description: Review status updated.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: ClearMatchReview
+      tags: [Matches]
+      summary: Clear the review-status tag
+      description: |
+        Removes the `match_reviews` row for this match, reverting it
+        to the implicit "not reviewed" state. Idempotent — clearing
+        an unreviewed match returns 204.
+      responses:
+        "204":
+          description: Review tag cleared (or already absent).
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/parses:
     post:
       operationId: ParseScreenshots
@@ -1518,6 +1575,22 @@ components:
             `PUT /api/v1/matches/{matchKey}/visibility`. Omitted (or
             false) for normal records. The per-screenshot parent rows
             are untouched — only the aggregator hides the surface.
+        reviewed_by:
+          type: string
+          enum: [self, coach]
+          description: |
+            Who reviewed this match's VOD: `self` (the user) or
+            `coach` (a coach). Omitted entirely when the match has
+            not been reviewed (the implicit third state). Set via
+            `PUT /api/v1/matches/{matchKey}/review`, cleared via
+            `DELETE` on the same path.
+        reviewed_at:
+          type: string
+          format: date-time
+          description: |
+            Server-stamped timestamp of the last review-status
+            upsert. Drives the dossier's "days since last review"
+            widget. Omitted when the match is unreviewed.
         ambiguous:
           type: boolean
           description: |

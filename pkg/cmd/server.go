@@ -431,6 +431,46 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
+	// Per-match review-status tag. PUT sets `'self'` (user reviewed
+	// the VOD themselves) or `'coach'` (a coach reviewed it). DELETE
+	// clears the tag, reverting to the implicit "not reviewed"
+	// state. Both directions are idempotent.
+	apiMux.HandleFunc("PUT /api/v1/matches/{matchKey}/review", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("matchKey")
+		if matchKey == "" {
+			http.Error(w, "match_key required in URL", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			ReviewedBy string `json:"reviewed_by"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if err := a.SetMatchReview(matchKey, body.ReviewedBy); err != nil {
+			if errors.Is(err, app.ErrInvalidReviewedBy) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	apiMux.HandleFunc("DELETE /api/v1/matches/{matchKey}/review", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("matchKey")
+		if matchKey == "" {
+			http.Error(w, "match_key required in URL", http.StatusBadRequest)
+			return
+		}
+		if err := a.ClearMatchReview(matchKey); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	// ── Profiles ────────────────────────────────────────────────────
 	// Multiple-profile support: main + alt accounts get separate
 	// SQLite DBs + settings under <base>/profiles/<name>/. GET lists

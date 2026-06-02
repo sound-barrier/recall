@@ -42,10 +42,11 @@ import {
   ResolveAmbiguousMatch,
   SetMatchAnnotation,
   SetMatchVisibility,
+  SetMatchReview,
   HardDeleteMatch,
   MoveMatches,
 } from './api'
-import type { MatchAnnotationInput } from './api'
+import type { MatchAnnotationInput, ReviewedBy } from './api'
 import { tallyWLD, screenshotURL } from './match-helpers'
 import { useIncludeUndated } from './composables/useIncludeUndated'
 import { useIncludeUnknown } from './composables/useIncludeUnknown'
@@ -636,6 +637,20 @@ async function onSetMatchAnnotation(matchKey: string, input: MatchAnnotationInpu
 async function onSetMatchHidden(matchKey: string, hidden: boolean) {
   try {
     await SetMatchVisibility(matchKey, hidden)
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+// Per-match review-status handler. The empty-string branch clears
+// (DELETE) — a click on the active chip toggles back to "not
+// reviewed". `'self'` / `'coach'` PUT the new value. After the
+// round-trip we reload so the next render reflects reviewed_by
+// on every UI surface that reads it.
+async function onSetMatchReview(matchKey: string, reviewedBy: ReviewedBy) {
+  try {
+    await SetMatchReview(matchKey, reviewedBy)
     await load()
   } catch (e) {
     error.value = String(e)
@@ -1574,6 +1589,7 @@ useEventStream({
       @set-leaver-annotation="onSetLeaverAnnotation"
       @set-match-annotation="onSetMatchAnnotation"
       @set-match-hidden="onSetMatchHidden"
+      @set-match-review="onSetMatchReview"
     />
 
     <!-- Fullscreen screenshot lightbox — stacks above the detail

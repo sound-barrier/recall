@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, toRef, onMounted, onBeforeUnmount } from 'vue'
-import type { MatchRecord, MatchAnnotationInput } from '../api'
+import type { MatchRecord, MatchAnnotationInput, ReviewedBy } from '../api'
 import type { SearchClause } from '../search-query'
 import { useOWData } from '../composables/useOWData'
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
@@ -55,6 +55,7 @@ const emit = defineEmits<{
   'set-leaver-annotation': [matchKey: string, leaver: '' | 'self' | 'team' | 'enemy']
   'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
   'set-match-hidden':       [matchKey: string, hidden: boolean]
+  'set-match-review':      [matchKey: string, reviewedBy: ReviewedBy]
 }>()
 
 const ow = useOWData()
@@ -352,6 +353,7 @@ function onBackdropClick(e: MouseEvent) {
             @set-leaver-annotation="(k: string, l: '' | 'self' | 'team' | 'enemy') => emit('set-leaver-annotation', k, l)"
             @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
             @set-match-hidden="(k: string, h: boolean) => emit('set-match-hidden', k, h)"
+            @set-match-review="(k: string, by: ReviewedBy) => emit('set-match-review', k, by)"
           />
         </div>
       </aside>

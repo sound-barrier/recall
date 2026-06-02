@@ -30,11 +30,31 @@ func (a *App) aggregateAll() ([]MatchRecord, error) {
 	if err != nil {
 		return nil, err
 	}
+	reviews, err := a.store.LoadReviews()
+	if err != nil {
+		return nil, err
+	}
 	recs := aggregateScreenshots(snap)
 	attachAnnotations(recs, annos)
 	attachHidden(recs, hidden)
+	attachReviews(recs, reviews)
 	attachAmbiguity(recs, snap.AmbiguousCandidates)
 	return recs, nil
+}
+
+// attachReviews writes `ReviewedBy` + `ReviewedAt` on every record
+// carrying a review-status row. Pure function, called once per
+// aggregateAll.
+func attachReviews(recs []MatchRecord, reviews map[string]db.ReviewState) {
+	if len(reviews) == 0 {
+		return
+	}
+	for i := range recs {
+		if st, ok := reviews[recs[i].MatchKey]; ok {
+			recs[i].ReviewedBy = st.ReviewedBy
+			recs[i].ReviewedAt = st.ReviewedAt
+		}
+	}
 }
 
 // attachAmbiguity flags every MatchRecord whose match_key starts with
@@ -117,7 +137,7 @@ type screenshotView struct {
 // per-key extract for the live-streaming "match-updated" event.
 // Inference helpers (inferSoleHeroPercent, inferResultFromRank)
 // are applied so the streamed shape matches GetMatchResults output.
-func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool) (MatchRecord, bool) {
+func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState) (MatchRecord, bool) {
 	vs := make([]screenshotView, 0, 8)
 	for _, r := range snap.Summaries {
 		if r.MatchKey == key {
@@ -165,6 +185,10 @@ func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Anno
 	}
 	if hidden[key] {
 		rec.Hidden = true
+	}
+	if st, ok := reviews[key]; ok {
+		rec.ReviewedBy = st.ReviewedBy
+		rec.ReviewedAt = st.ReviewedAt
 	}
 	if strings.HasPrefix(key, "ambiguous-") {
 		rec.Ambiguous = true

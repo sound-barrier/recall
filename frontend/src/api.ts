@@ -294,6 +294,30 @@ export const HardDeleteMatch = _dualVoid<[matchKey: string]>(
   (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}`,
 )
 
+// Per-match review-status tag. `reviewedBy` is `'self'` (user
+// reviewed the VOD themselves), `'coach'` (a coach reviewed it),
+// or `''` (the implicit "not reviewed" third state — clears the
+// tag). An empty value issues a DELETE on the row; `'self'` or
+// `'coach'` issues a PUT. Both directions are idempotent.
+//
+// Wails-side dispatches to two separate App methods
+// (SetMatchReview / ClearMatchReview) so the bridge resolves the
+// right one based on whether reviewedBy is the empty string.
+export type ReviewedBy = '' | 'self' | 'coach'
+
+export function SetMatchReview(matchKey: string, reviewedBy: ReviewedBy): Promise<void> {
+  if (IS_WAILS) {
+    return reviewedBy === ''
+      ? _wails('ClearMatchReview', matchKey)
+      : _wails('SetMatchReview', matchKey, reviewedBy)
+  }
+  const path = `/api/v1/matches/${encodeURIComponent(matchKey)}/review`
+  if (reviewedBy === '') {
+    return _send('DELETE', path).then(() => undefined)
+  }
+  return _send('PUT', path, { reviewed_by: reviewedBy }).then(() => undefined)
+}
+
 // Soft-delete a match. Reversible: pass hidden=false to restore.
 // Both directions are idempotent — repeated identical calls succeed.
 // Wails-side this dispatches to HideMatch / UnhideMatch (two

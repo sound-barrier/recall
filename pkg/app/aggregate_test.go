@@ -200,7 +200,7 @@ func TestAggregateMatchKey_FusesAcrossTypesForOneKey(t *testing.T) {
 			ID: 1, Filename: "p2.png", MatchKey: "m2", Hero: "juno",
 		}},
 	}
-	rec, ok := aggregateMatchKey("m1", snap, nil, nil)
+	rec, ok := aggregateMatchKey("m1", snap, nil, nil, nil)
 	if !ok {
 		t.Fatal("aggregateMatchKey returned ok=false for an existing key")
 	}
@@ -219,7 +219,7 @@ func TestAggregateMatchKey_MissingKeyReturnsFalse(t *testing.T) {
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{{ID: 1, Filename: "s.png", MatchKey: "m1"}},
 	}
-	_, ok := aggregateMatchKey("nonexistent", snap, nil, nil)
+	_, ok := aggregateMatchKey("nonexistent", snap, nil, nil, nil)
 	if ok {
 		t.Error("aggregateMatchKey returned ok=true for an unseen key")
 	}
@@ -232,7 +232,7 @@ func TestAggregateMatchKey_SingleScreenshotMatch(t *testing.T) {
 			Eliminations: 8, Assists: 2, Deaths: 4,
 		}},
 	}
-	rec, ok := aggregateMatchKey("m-lonely", snap, nil, nil)
+	rec, ok := aggregateMatchKey("m-lonely", snap, nil, nil, nil)
 	if !ok {
 		t.Fatal("expected ok=true")
 	}
@@ -255,7 +255,7 @@ func TestAggregateMatchKey_InferenceAppliedAtReadTime(t *testing.T) {
 			SR: []db.HeroSR{{Hero: "lucio", SR: 2350, Change: 23}},
 		}},
 	}
-	rec, ok := aggregateMatchKey("m-rank", snap, nil, nil)
+	rec, ok := aggregateMatchKey("m-rank", snap, nil, nil, nil)
 	if !ok {
 		t.Fatal("expected ok=true")
 	}

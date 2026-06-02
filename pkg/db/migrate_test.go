@@ -29,15 +29,15 @@ func TestApplyMigrations_FreshDB_AppliesBaselineAndRecordsVersion(t *testing.T) 
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if v != 1 {
-		t.Errorf("schema_version = %d, want 1", v)
+	if v != 2 {
+		t.Errorf("schema_version = %d, want 2", v)
 	}
-	// Baseline created every expected table.
+	// Baseline + 0002 created every expected table.
 	for _, tbl := range []string{
 		"summary_screenshots", "scoreboard_screenshots", "personal_screenshots",
 		"rank_screenshots", "unknown_screenshots", "match_annotations",
 		"match_annotation_members", "match_annotation_tags", "hidden_matches",
-		"ambiguous_candidates", "screenshots_dirs",
+		"ambiguous_candidates", "screenshots_dirs", "match_reviews",
 	} {
 		var name string
 		row := d.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, tbl)
@@ -56,8 +56,8 @@ func TestApplyMigrations_Idempotent(t *testing.T) {
 		t.Fatalf("second apply: %v", err)
 	}
 	v, _ := schemaVersion(d)
-	if v != 1 {
-		t.Errorf("schema_version after re-apply = %d, want 1", v)
+	if v != 2 {
+		t.Errorf("schema_version after re-apply = %d, want 2", v)
 	}
 }
 
@@ -80,8 +80,8 @@ func TestApplyMigrations_PreExistingTablesNoSchemaVersion_AdoptsCurrentVersion(t
 		t.Fatalf("applyMigrations on legacy DB: %v", err)
 	}
 	v, _ := schemaVersion(d)
-	if v != 1 {
-		t.Errorf("schema_version = %d, want 1 (legacy DB adopts current version)", v)
+	if v != 2 {
+		t.Errorf("schema_version = %d, want 2 (legacy DB adopts current version)", v)
 	}
 }
 

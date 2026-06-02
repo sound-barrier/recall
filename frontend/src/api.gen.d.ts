@@ -202,6 +202,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/{matchKey}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match-2026-05-10T22-21-11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Tag a match as reviewed
+         * @description Records who reviewed this match's VOD. Two states:
+         *
+         *       - `self`  — the user reviewed the VOD themselves
+         *       - `coach` — a coach reviewed the VOD with the user
+         *
+         *     Absence of a `match_reviews` row is the third logical state
+         *     ("not reviewed"); use `DELETE` on the same path to revert
+         *     there. Idempotent — repeated identical calls succeed.
+         *
+         *     Returns 204 on success, 400 on validation failure
+         *     (`reviewed_by` outside the enum), 500 on store error.
+         */
+        put: operations["SetMatchReview"];
+        post?: never;
+        /**
+         * Clear the review-status tag
+         * @description Removes the `match_reviews` row for this match, reverting it
+         *     to the implicit "not reviewed" state. Idempotent — clearing
+         *     an unreviewed match returns 204.
+         */
+        delete: operations["ClearMatchReview"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/parses": {
         parameters: {
             query?: never;
@@ -1073,6 +1117,22 @@ export interface components {
              */
             hidden?: boolean;
             /**
+             * @description Who reviewed this match's VOD: `self` (the user) or
+             *     `coach` (a coach). Omitted entirely when the match has
+             *     not been reviewed (the implicit third state). Set via
+             *     `PUT /api/v1/matches/{matchKey}/review`, cleared via
+             *     `DELETE` on the same path.
+             * @enum {string}
+             */
+            reviewed_by?: "self" | "coach";
+            /**
+             * Format: date-time
+             * @description Server-stamped timestamp of the last review-status
+             *     upsert. Drives the dossier's "days since last review"
+             *     widget. Omitted when the match is unreviewed.
+             */
+            reviewed_at?: string;
+            /**
              * @description True iff the resolver couldn't pin this screenshot to a
              *     single match (EAD signature match in the 5-30 min
              *     ambiguous window, or multiple candidates inside 30 min).
@@ -1540,6 +1600,74 @@ export interface operations {
         };
         responses: {
             /** @description Annotation persisted or cleared. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    SetMatchReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match-2026-05-10T22-21-11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Who reviewed this match's VOD. To revert to "not
+                     *     reviewed", call DELETE on this path instead of
+                     *     PUTing an empty string.
+                     * @enum {string}
+                     */
+                    reviewed_by: "self" | "coach";
+                };
+            };
+        };
+        responses: {
+            /** @description Review status updated. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    ClearMatchReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match-2026-05-10T22-21-11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Review tag cleared (or already absent). */
             204: {
                 headers: {
                     [name: string]: unknown;

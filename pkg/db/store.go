@@ -84,13 +84,35 @@ type Store interface {
 
 	// HardDeleteMatch removes every trace of matchKey from the DB —
 	// rows across all five parent tables (children CASCADE), the
-	// hidden_matches flag, and the annotation. Surface for the
-	// "Delete forever" affordance on the Hidden drawer. Idempotent.
+	// hidden_matches flag, the annotation, and the review-status
+	// row. Surface for the "Delete forever" affordance on the Hidden
+	// drawer. Idempotent.
 	HardDeleteMatch(matchKey string) error
+
+	// Per-match review-status surface — `'self'` (user reviewed the
+	// VOD themselves) or `'coach'` (a coach reviewed it). Presence
+	// in match_reviews IS the "reviewed" signal; absence means "not
+	// reviewed." SetReview upserts; ClearReview deletes; LoadReviews
+	// returns the full map keyed by match_key for the aggregator to
+	// attach to MatchRecord. Each ReviewState carries `reviewed_at`
+	// (a server-assigned timestamp) so the dossier can compute
+	// activity windows like "days since last review."
+	SetReview(matchKey, reviewedBy string) error
+	ClearReview(matchKey string) error
+	LoadReviews() (map[string]ReviewState, error)
 
 	// Clear deletes every row in every table — children cascade.
 	Clear() error
 	Close() error
+}
+
+// ReviewState is one row of match_reviews. `ReviewedBy` is the
+// CHECK-constrained enum ('self' | 'coach'); `ReviewedAt` is the
+// server-assigned timestamp the dossier uses to compute "days since
+// last review."
+type ReviewState struct {
+	ReviewedBy string
+	ReviewedAt string
 }
 
 // Annotation is one row of match_annotations plus its joined-on child
