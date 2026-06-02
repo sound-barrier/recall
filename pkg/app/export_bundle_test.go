@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"recall/pkg/db"
 )
@@ -271,5 +272,57 @@ func TestExportBundle_MissingScreenshotIsSkippedNotErrored(t *testing.T) {
 	d := unzip(t, payload, "data.json")
 	if !strings.Contains(string(d), `"match-1"`) {
 		t.Errorf("data.json lost match-1 because of a missing file")
+	}
+}
+
+// TestExportBundle_DataJSONOmitsScreenshotsDirs pins the
+// PII-leak fix: data.json must NOT carry the user's local filesystem
+// path map. Restore via POST /api/v1/imports remaps every row's
+// ScreenshotsDirID to 0 (use configured dir) naturally.
+func TestExportBundle_DataJSONOmitsScreenshotsDirs(t *testing.T) {
+	a, _, _ := seedBundleFixture(t)
+	payload, err := a.ExportBundle(ExportBundleOptions{
+		MatchKeys: []string{"match-1"},
+	})
+	if err != nil {
+		t.Fatalf("ExportBundle: %v", err)
+	}
+	d := unzip(t, payload, "data.json")
+	if bytes.Contains(d, []byte(`"screenshots_dirs"`)) {
+		t.Errorf("data.json leaks screenshots_dirs path map:\n%s", string(d))
+	}
+}
+
+// TestExportBundle_ZIPEntriesCarryCurrentTimestamp pins the
+// "Jan 10 1980" file-modtime bug fix. Every entry in the bundle ZIP
+// must carry a Modified value within a few seconds of `time.Now()`,
+// not the MS-DOS epoch the default zip writer falls back to when
+// no Modified field is set.
+func TestExportBundle_ZIPEntriesCarryCurrentTimestamp(t *testing.T) {
+	a, _, _ := seedBundleFixture(t)
+	before := time.Now().Add(-2 * time.Second)
+	payload, err := a.ExportBundle(ExportBundleOptions{
+		MatchKeys: []string{"match-1"},
+	})
+	if err != nil {
+		t.Fatalf("ExportBundle: %v", err)
+	}
+	after := time.Now().Add(2 * time.Second)
+
+	zr, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
+	if err != nil {
+		t.Fatalf("zip parse: %v", err)
+	}
+	if len(zr.File) == 0 {
+		t.Fatal("bundle has no entries")
+	}
+	for _, f := range zr.File {
+		mt := f.Modified
+		// MS-DOS epoch is 1980-01-01 UTC; anything before 2025 is the
+		// bug shape. Bound by `before..after` so the assertion stays
+		// tight without flaking on clock skew.
+		if mt.Before(before) || mt.After(after) {
+			t.Errorf("entry %q has Modified=%v outside [%v, %v]", f.Name, mt, before, after)
+		}
 	}
 }
