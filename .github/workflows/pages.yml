@@ -100,6 +100,13 @@ jobs:
           # `testdata/foo.png` relative path used in the README.
           mkdir -p _stage/book/testdata
           cp testdata/*.png _stage/book/testdata/
+          # Same pattern for the in-app UI screenshots embedded near
+          # the top of how-it-works.md (and reused at the top of the
+          # README). Reference as `screenshots/foo.png` from chapters
+          # in docs/ — the relative path resolves identically in
+          # GitHub-rendered docs/ and in the staged Honkit book root.
+          mkdir -p _stage/book/screenshots
+          cp docs/screenshots/*.png _stage/book/screenshots/
           # The committed .gitignore lists no chapter filenames (the
           # docs are the source of truth), but blow it away inside
           # the staging dir to be defensive against future drift.
