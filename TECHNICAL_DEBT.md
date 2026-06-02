@@ -34,57 +34,6 @@ The list is ordered by *risk × cost-to-fix-later*, not by size. The
 top items are the ones most likely to bite if left alone. Pay them
 off first.
 
-## 6. Coverage gaps on highest-traffic surfaces
-
-**Frontend (Vitest line coverage, `make cover-frontend`):**
-
-| Surface | Lines | Why it matters |
-|---|---|---|
-| `App.vue` | 43 % | Owns every cross-cutting state ref (records, filters, modals, tour, profile, parse). 1585 lines. Most "what broke this regression" answers live here. |
-| `api.ts` | 53 % | Transport layer. The `_fetch` 204/202 short-circuit, the `_dualVoid` helper, the path-builder branches — all undertested. The original `r.json()`-on-204 bug shipped past CI here. |
-| `MatchDetailPanel.vue` | 33 % | The right-side slide-out the user spends most of their time in. Modal contract, focus trap, paginator, screenshot lightbox handoff. |
-| `MatchScreenshotLightbox.vue` | 51 % | Capture-phase Esc handling, multi-source navigation. |
-| `MatchCardExpanded.vue` | 58 % | Source-file list + leaver/tag chips. |
-| `useTesseractStatus.ts` | 57 % | The "Detect" button path is e2e-covered but the composable's failure branches are not. |
-
-**Go (line coverage, `make cover-go`):** 64.2 % total; gates at
-46 %. The headline is fine but specific zero-coverage hotspots:
-
-- `pkg/app/sse.go` — entire SSEHub at 0 %. Server-mode parse
-  events flow through here; no unit test of subscribe / broadcast
-  / unsubscribe.
-- `pkg/app/app_wails.go` — build-tagged so the serveronly test
-  suite can't reach it; the Wails-only methods (`PickScreenshotsDir`,
-  `SaveExportToFile`, etc.) are exercised only by the build
-  itself.
-- `pkg/app/parse.go::ParseScreenshots` — the parse pipeline
-  orchestrator at 0 %. The pieces (per-screenshot-type parsers,
-  Upsert\*) are tested; the dispatcher isn't.
-- `pkg/cmd/server.go::RunServer` — 0 %. Boots an HTTP server +
-  wires SSE + mux. No test asserts the wiring shape.
-
-**Plan:**
-
-1. ~~Stage 2: Add `pkg/app/sse_test.go`~~ — **shipped**.
-2. ~~Stage 1: SFC tests for the four highest-traffic surfaces~~ —
-   **shipped**: 4 new App.vue contracts (first-run modal gating,
-   tab-swap state survival, tesseract gate render),
-   4 new MatchDetailPanel cases (pagination prev/next +
-   disabled-at-boundary + position indicator), 4 new
-   MatchScreenshotLightbox cases (open/close lifecycle +
-   backdrop close + image-click no-close), and a new
-   `MatchCardExpanded.test.ts` (8 cases — stats grid, leaver
-   chip emits + aria-pressed, sources block render gate).
-3. Stage 3: Add a `pkg/cmd/server_smoke_test.go` that boots a
-   real `*App` with a temp store, fires the standard route set
-   via httptest, asserts the mux wiring + middleware ordering.
-4. Bump the Go threshold from 46 % → 60 % once Stage 3 lands.
-
-**Size:** L (cumulative; Stage 3 still remaining).
-**Risk:** Low (additive; failing tests reveal real gaps).
-
----
-
 ## 7. `MatchesView.vue` is 2 956 lines — split candidate
 
 **Where:** `frontend/src/components/MatchesView.vue`.
