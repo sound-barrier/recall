@@ -45,7 +45,7 @@ func TestLoadSettingsFrom_EmptyScreenshotsDirRoundTrips(t *testing.T) {
 
 func TestLoadSettingsFrom_RoundTripPreservesFields(t *testing.T) {
 	in := Settings{
-		ScreenshotsDir:    "/srv/owmetrics",
+		ScreenshotsDir:    "/srv/recall",
 		TesseractPath:     "/usr/bin/tesseract",
 		PrometheusEnabled: true,
 		WatchEnabled:      true,

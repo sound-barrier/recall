@@ -140,7 +140,7 @@ func TestParseScreenshotsDir_ProgressReceivesPerFileErrors(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestParseScreenshotsDir_DirLevelErrorStillReturned(t *testing.T) {
-	_, err := ParseScreenshotsDir("/no/such/directory/owmetrics-test", nil, nil)
+	_, err := ParseScreenshotsDir("/no/such/directory/recall-test", nil, nil)
 	if err == nil {
 		t.Fatal("ReadDir failure must propagate")
 	}

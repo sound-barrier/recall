@@ -85,19 +85,12 @@ with Tesseract pre-installed.
 |---|---|---|
 | `RECALL_DATA_DIR` | platform user-config dir | Install-wide base directory. Each profile gets `<base>/profiles/<name>/{settings.json,db/recall.db}`. The repo's `.envrc` sets this to `$PWD/data`. |
 | `RECALL_PROFILE` | *(unset — script-only)* | Forces `scripts/db-*.sh` to operate on a specific profile. Mirrors the app's `--profile=<name>` CLI flag. Not read by the app binaries. |
-| `RECALL_DEBUG_DIR` | system temp | Directory for Tesseract work files. |
-| `OWMETRICS_DEBUG_DIR` | *(off)* | Dumps raw Tesseract output `.txt` files per OCR call. **⚠ prefix likely stale — see review note below.** |
-| `OWMETRICS_METRICS_ADDR` | `:9091` | Override Prometheus metrics bind address. **⚠ prefix likely stale.** |
+| `RECALL_DEBUG_DIR` | system temp | Directory for Tesseract work files; also dumps raw Tesseract `.txt` output per OCR call when set. |
+| `RECALL_METRICS_ADDR` | `:9091` | Override Prometheus metrics bind address. |
 | `RECALL_SERVER_ADDR` | `127.0.0.1:7000` | Override the HTTP server bind address. Set to `0.0.0.0:7000` inside Docker. |
 | `DOCKER` | `docker` | Container runtime binary for `make build-*`. Set to `podman` for Podman. |
 | `RECALL_PPROF` | *(off)* | Mounts `net/http/pprof` under `/debug/pprof/` in server mode. Never expose publicly. |
 | `RECALL_FIXTURE_DIR` | `../../testdata` (from `pkg/parser/`) | `.png` fixture dir for `TestParseScreenshot_GoldenFiles`. Override with an ABSOLUTE path. |
-
-> **⚠ Review note:** the env-var surface mixes `RECALL_*` and `OWMETRICS_*`
-> prefixes, which strongly suggests an incomplete rename from a previous project
-> name. Confirm against `os.Getenv` call sites which `OWMETRICS_*` vars (if any)
-> the binaries still read, and either rename them to `RECALL_*` or document why
-> they're frozen.
 
 ## Helper scripts (`scripts/`)
 

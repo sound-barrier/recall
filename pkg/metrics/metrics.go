@@ -243,9 +243,9 @@ type Server struct {
 
 // NewServer wires up a Prometheus registry around the custom collector and
 // constructs the HTTP server, but does not yet bind a listener. Call Start
-// to begin serving. OWMETRICS_METRICS_ADDR overrides the supplied addr.
+// to begin serving. RECALL_METRICS_ADDR overrides the supplied addr.
 func NewServer(addr string, read Reader) *Server {
-	if envAddr := os.Getenv("OWMETRICS_METRICS_ADDR"); envAddr != "" {
+	if envAddr := os.Getenv("RECALL_METRICS_ADDR"); envAddr != "" {
 		addr = envAddr
 	}
 	return &Server{

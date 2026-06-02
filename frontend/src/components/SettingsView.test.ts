@@ -24,10 +24,10 @@ describe('SettingsView', () => {
 
   it('shows the "where Recall reads from" heading once a folder is configured', () => {
     const wrapper = mount(SettingsView, {
-      props: { screenshotsDir: '/srv/owmetrics', parseBusy: false, themeMode: 'dark', weekStart: 0 },
+      props: { screenshotsDir: '/srv/recall', parseBusy: false, themeMode: 'dark', weekStart: 0 },
     })
     expect(wrapper.text()).toContain('Where Recall reads from')
-    expect(wrapper.find('.setting-value').text()).toBe('/srv/owmetrics')
+    expect(wrapper.find('.setting-value').text()).toBe('/srv/recall')
     expect(wrapper.find('.empty-hero').exists()).toBe(false)
   })
 

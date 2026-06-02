@@ -97,7 +97,7 @@ func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string
 		return "", fmt.Errorf("tesseract failed: %w (%s)", err, stderr.String())
 	}
 	out := stdout.String()
-	if os.Getenv("OWMETRICS_DEBUG_DIR") != "" {
+	if os.Getenv("RECALL_DEBUG_DIR") != "" {
 		// #nosec G703 -- workDir is from RECALL_DEBUG_DIR when this branch
 		// is reachable (the env var also gates this whole block).
 		_ = os.WriteFile(filepath.Join(workDir, name+".txt"), []byte(out), 0o600)
