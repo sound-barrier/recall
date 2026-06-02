@@ -127,34 +127,24 @@ fi
 #   --url (was --base-url)          — the live server's base URL.
 #   --max-examples (was --hypothesis-max-examples) — caps wall time.
 #   --checks all                    — every built-in compliance check.
-#   --exclude-checks <list>         — Two checks stay excluded:
+#   --exclude-checks <list>         — One check stays excluded:
 #                                       * positive_data_acceptance —
 #                                         several setters accept lenient
-#                                         JSON the spec tightens. Real
-#                                         gap but tracked separately
-#                                         (TECHNICAL_DEBT item not yet
-#                                         filed; revisit when the
-#                                         schemathesis warning surfaces
-#                                         high-signal cases).
-#                                       * unsupported_method — the
-#                                         transfers + active path
-#                                         segments collide with the
-#                                         {matchKey} + {name} wildcards
-#                                         on other verbs, so a DELETE
-#                                         routes to the wildcard handler
-#                                         instead of 405. Fixing this
-#                                         needs a Go 1.22 mux
-#                                         disambiguation pass — out of
-#                                         scope for the schemathesis
-#                                         hardening.
+#                                         JSON the spec tightens. Audit
+#                                         + boundary-validate pass is
+#                                         tracked separately.
+#                                     `unsupported_method` is now
+#                                     enabled — the `transfers` and
+#                                     `active` literal paths got
+#                                     explicit 405 stubs for unsupported
+#                                     verbs (see pkg/cmd/server.go).
 #                                     The previously-excluded
 #                                     missing_required_header,
 #                                     use_after_free, and
 #                                     ensure_resource_availability
 #                                     checks were evaluated against the
 #                                     current API surface and ARE now
-#                                     enabled — they pass cleanly. The
-#                                     v3-equivalent
+#                                     enabled. The v3-equivalent
 #                                     negative_data_rejection (renamed
 #                                     and broadened in v4 to cover null
 #                                     in every typed field) IS enabled.
@@ -185,7 +175,7 @@ echo "==> running schemathesis…"
 schemathesis run \
   --url "http://127.0.0.1:$PORT" \
   --checks all \
-  --exclude-checks unsupported_method,positive_data_acceptance \
+  --exclude-checks positive_data_acceptance \
   --max-examples 20 \
   --suppress-health-check all \
   --exclude-path /api/v1/events \

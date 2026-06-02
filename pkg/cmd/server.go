@@ -210,6 +210,17 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
+	// Explicit 405 stubs for `/matches/transfers`. Without these,
+	// `GET / PUT / DELETE /api/v1/matches/transfers` route to the
+	// {matchKey} wildcard handler (the literal segment only wins on
+	// the methods we register) — DELETE would try to hard-delete a
+	// match keyed "transfers". The schemathesis `unsupported_method`
+	// check exercises this exact collision; see TECHNICAL_DEBT.md
+	// item 4 (paid down via this commit).
+	apiMux.HandleFunc("GET /api/v1/matches/transfers", methodNotAllowed("POST"))
+	apiMux.HandleFunc("PUT /api/v1/matches/transfers", methodNotAllowed("POST"))
+	apiMux.HandleFunc("DELETE /api/v1/matches/transfers", methodNotAllowed("POST"))
+
 	// Hard-delete a single match — every parent row + annotation +
 	// hidden flag for matchKey goes. Surfaced by the Hidden drawer's
 	// "Delete forever" affordance once a user has already moved the
@@ -441,6 +452,13 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		}
 		writeJSON(w, a.GetProfiles(), nil)
 	})
+	// Explicit 405 stubs for `/profiles/active`. Without these,
+	// `GET / POST / DELETE /api/v1/profiles/active` route to
+	// `{name}` and try to operate on a profile literally named
+	// "active". Same collision pattern as `/matches/transfers`.
+	apiMux.HandleFunc("GET /api/v1/profiles/active", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("POST /api/v1/profiles/active", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("DELETE /api/v1/profiles/active", methodNotAllowed("PUT"))
 	apiMux.HandleFunc("PUT /api/v1/profiles/{name}", func(w http.ResponseWriter, r *http.Request) {
 		old := r.PathValue("name")
 		if old == "" {
@@ -787,6 +805,22 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	mux.Handle("/", http.FileServer(http.FS(assets)))
 
 	return mux
+}
+
+// methodNotAllowed returns a handler that responds 405 with an
+// `Allow` header listing the valid methods for the path (required
+// by RFC 9110 and asserted by schemathesis). Registered on the
+// exact verb+path combinations where a literal sub-path
+// (`/matches/transfers`, `/profiles/active`) would otherwise fall
+// through to a wildcard handler (`/matches/{matchKey}`,
+// `/profiles/{name}`) on Go 1.22's ServeMux. Without these stubs, a
+// `DELETE /api/v1/matches/transfers` routes to HardDeleteMatch and
+// tries to operate on a match keyed "transfers".
+func methodNotAllowed(allow string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Allow", allow)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 // writeJSON encodes v as JSON. If err is non-nil it writes a 500 instead.

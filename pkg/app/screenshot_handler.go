@@ -41,6 +41,15 @@ func (a *App) ScreenshotHandler() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
+		// RFC 9110 requires 405 + Allow for unsupported methods on a
+		// known path. The handler only ever serves image bytes, so
+		// any verb other than GET / HEAD returns 405. Pinned by the
+		// schemathesis `unsupported_method` check.
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		rest := r.URL.Path[len(prefix):]
 
 		// Split on the FIRST `/` only — anything after is the
