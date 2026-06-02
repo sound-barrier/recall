@@ -54,7 +54,7 @@ RUN npm run build
 
 
 # ─── Stage 2: Go / Wails base ───────────────────────────────
-FROM golang:1.26-bookworm AS go-base
+FROM golang:1.26.4-bookworm AS go-base
 
 # Pin Wails CLI to the same minor version used in go.mod (v2.12.x).
 # Install into GOPATH/bin which is already on PATH in the official image.
