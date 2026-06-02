@@ -10,6 +10,8 @@ import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import { useArchiveSelection } from '../composables/useArchiveSelection'
 import MatchTimelineHeader from './MatchTimelineHeader.vue'
 import FilterCombobox from './FilterCombobox.vue'
+import DashboardWidget from './DashboardWidget.vue'
+import { DEFAULT_ROW_LAYOUT, widgetById, type WidgetDef } from '../dashboard/widgets'
 
 // Matches page — "set workspace" layout.
 //
@@ -247,6 +249,54 @@ const {
   winrate, topMaps, topHeroes, topRoles, totalTimePlayed, mostPlayedHero, averageKDA,
   reviewedCount, daysSinceLastReview, wldSinceLastReview,
 } = useMatchesDossier(narrowedRecords, leaverHandling, ow.heroRole)
+
+// ─── Dashboard widget layout ────────────────────────────────────
+//
+// Dossier KPIs and breakdowns are rendered through a registry of
+// `<DashboardWidget>` SFCs (see dashboard/widgets.ts). Phase 1 reads
+// directly from DEFAULT_ROW_LAYOUT — no localStorage prefs yet. Phases
+// 2 (hide/show) and 3 (drag-reorder, incl. cross-row) thread visibility
+// + ordering composables through the same `dashboardRows` computed
+// without changing the v-for shape in the template.
+const dashboardRows = computed(() =>
+  Object.keys(DEFAULT_ROW_LAYOUT)
+    .map((k) => Number(k))
+    .sort((a, b) => a - b)
+    .map((rowIdx) => ({
+      index: rowIdx,
+      widgets: (DEFAULT_ROW_LAYOUT[rowIdx] ?? [])
+        .map((id) => widgetById(id))
+        .filter((def): def is WidgetDef => def !== undefined),
+    })),
+)
+
+// Per-widget prop bag, keyed by widget id. Each entry is the exact
+// set of dossier values that widget's SFC declares as props.
+const widgetProps = computed<Record<string, Record<string, unknown>>>(() => ({
+  'winrate':           { winrate: winrate.value },
+  'avg-kda':           { averageKDA: averageKDA.value },
+  'total-time':        { totalTimePlayed: totalTimePlayed.value },
+  'most-played-hero':  { topHeroes: topHeroes.value, mostPlayedHero: mostPlayedHero.value },
+  'reviewed-count':    { reviewedCount: reviewedCount.value },
+  'days-since-review': { daysSinceLastReview: daysSinceLastReview.value },
+  'wld-since-review':  { wldSinceLastReview: wldSinceLastReview.value },
+  'top-maps':          { topMaps: topMaps.value },
+  'top-heroes':        { topHeroes: topHeroes.value },
+  'top-roles':         { topRoles: topRoles.value },
+}))
+
+// Three existing review-widget e2e specs key on data-kpi="..."; the
+// roles breakdown spec keys on data-breakdown="roles". Keep the legacy
+// attrs on the wrapper during Phase 1; a follow-up PR re-points the
+// specs to [data-widget-id="..."] and drops these.
+const LEGACY_DATA_KPI: Record<string, string> = {
+  'reviewed-count':    'reviewed-count',
+  'days-since-review': 'days-since-review',
+  'wld-since-review':  'wld-since-review',
+}
+const LEGACY_DATA_BREAKDOWN: Record<string, string> = {
+  'top-roles': 'roles',
+}
 
 const setHeadline = computed(() => {
   if (!anyNarrow.value) return 'All matches on record'
@@ -526,170 +576,22 @@ onBeforeUnmount(() => {
         </ul>
       </header>
 
-      <div class="dossier-kpis">
-        <div class="kpi-tile">
-          <span class="kpi-eyebrow">Winrate</span>
-          <span class="kpi-value">{{ winrate !== null ? `${winrate}%` : '—' }}</span>
-        </div>
-        <div class="kpi-tile">
-          <span class="kpi-eyebrow">Avg K/D/A per 10min</span>
-          <!-- K/D/A = Kills (eliminations) / Deaths / Assists, the
-               canonical gaming-stat order. Each match's avg_per_10min
-               is straight-averaged across qualifying records so each
-               match counts equally regardless of duration. The W/L/D
-               record stays surfaced in the masthead scoreboard. -->
-          <span class="kpi-value kda-value">{{ averageKDA?.label ?? '—' }}</span>
-          <span
-            v-if="averageKDA && averageKDA.qualifyingMatches < averageKDA.recordsTotal"
-            class="kpi-sub"
-          >
-            {{ averageKDA.qualifyingMatches }} of {{ averageKDA.recordsTotal }} matches
-          </span>
-        </div>
-        <div class="kpi-tile">
-          <span class="kpi-eyebrow">Total time played</span>
-          <span class="kpi-value">{{ totalTimePlayed.label }}</span>
-          <!-- Surface coverage when not every record contributed a
-               game_length — the sum is honest about what data fed it
-               so the user knows whether "20min" is "20 across the
-               whole narrow" or "20 across the 2 of 4 with data." -->
-          <span
-            v-if="totalTimePlayed.recordsWithTime > 0
-              && totalTimePlayed.recordsWithTime < totalTimePlayed.recordsTotal"
-            class="kpi-sub"
-          >
-            {{ totalTimePlayed.recordsWithTime }} of {{ totalTimePlayed.recordsTotal }} matches
-          </span>
-        </div>
-        <div class="kpi-tile">
-          <span class="kpi-eyebrow">Most played hero</span>
-          <span class="kpi-value kpi-text">{{ topHeroes[0]?.key || '—' }}</span>
-          <!-- Win-rate for the time-ranked top hero, computed over
-               matches where their percent_played cleared the 20%
-               threshold (sub-threshold flex picks would otherwise
-               drag the rate around). Surfaces "67% in 3 matches"
-               so the user reads both the number and what fed it.
-               Hidden when no decisive qualifying matches exist
-               (winrate=null) — the hero name still shows. -->
-          <span v-if="mostPlayedHero?.winrate !== null && mostPlayedHero?.winrate !== undefined" class="kpi-sub">
-            {{ mostPlayedHero.winrate }}% in {{ mostPlayedHero.qualifyingMatches }} match<span v-if="mostPlayedHero.qualifyingMatches !== 1">es</span>
-          </span>
-        </div>
-        <div class="kpi-tile" data-kpi="reviewed-count">
-          <span class="kpi-eyebrow">Matches reviewed</span>
-          <!-- Headline is the raw reviewed count; subtitle is the
-               share against the full narrow so the user reads BOTH
-               the absolute volume AND the workflow ratio. We render
-               '—' when the narrow is empty so the value cell never
-               degrades to a bare "0". -->
-          <span class="kpi-value">{{ reviewedCount.total === 0 ? '—' : reviewedCount.reviewed }}</span>
-          <span v-if="reviewedCount.total > 0" class="kpi-sub">
-            {{ reviewedCount.percent }}% of {{ reviewedCount.total }} match<span v-if="reviewedCount.total !== 1">es</span>
-          </span>
-        </div>
-        <div class="kpi-tile" data-kpi="days-since-review">
-          <span class="kpi-eyebrow">Days since last review</span>
-          <!-- 0 days reads as "today" — the units cell would
-               otherwise be misleading (a review three hours ago is
-               not "0 days" colloquially). Tile carries a title
-               attribute with the precise ISO timestamp so power
-               users can hover for exact recency. Em-dash when the
-               narrow has no reviewed matches. -->
-          <span class="kpi-value" :title="daysSinceLastReview.lastReviewedAt ?? undefined">
-            {{ daysSinceLastReview.days === null
-              ? '—'
-              : daysSinceLastReview.days === 0
-                ? 'Today'
-                : daysSinceLastReview.days }}
-          </span>
-          <span
-            v-if="daysSinceLastReview.days !== null && daysSinceLastReview.days >= 1"
-            class="kpi-sub"
-          >
-            day<span v-if="daysSinceLastReview.days !== 1">s</span> ago
-          </span>
-        </div>
-        <div class="kpi-tile" data-kpi="wld-since-review">
-          <span class="kpi-eyebrow">W / L / D since last review</span>
-          <!-- Three slash-separated counts mirror the avg-K/D/A
-               tile's tri-value layout so the eye reads them as one
-               composite stat. Em-dash when nothing has been
-               reviewed yet (no anchor to count "since" from); a
-               zero-zero-zero shape when the anchor exists but no
-               new matches have come in (the subtitle then surfaces
-               "0 new matches" so the user knows it's not stale data
-               but an empty window). Title-tip carries the anchor
-               ISO so power users can hover for the precise pivot
-               point. -->
-          <span
-            class="kpi-value kda-value"
-            :title="wldSinceLastReview?.referenceAt ?? undefined"
-          >
-            {{ wldSinceLastReview === null
-              ? '—'
-              : `${wldSinceLastReview.w} / ${wldSinceLastReview.l} / ${wldSinceLastReview.d}` }}
-          </span>
-          <span v-if="wldSinceLastReview !== null" class="kpi-sub">
-            {{ wldSinceLastReview.total }} new match<span v-if="wldSinceLastReview.total !== 1">es</span>
-          </span>
-        </div>
-      </div>
-
-      <div class="dossier-breakdowns">
-        <article class="breakdown">
-          <header class="breakdown-head">
-            <span class="breakdown-eyebrow">Most played maps</span>
-          </header>
-          <ul>
-            <li v-for="m in topMaps" :key="m.key">
-              <span class="bd-name">{{ m.key }}</span>
-              <span class="bd-bar">
-                <span class="bd-fill" :style="{ width: m.share + '%' }" />
-                <span class="bd-time">{{ m.total }}x</span>
-              </span>
-              <span class="bd-stats">{{ m.share }}%</span>
-            </li>
-          </ul>
-        </article>
-        <article class="breakdown">
-          <header class="breakdown-head">
-            <span class="breakdown-eyebrow">Most played heroes</span>
-          </header>
-          <ul>
-            <li v-for="h in topHeroes" :key="h.key">
-              <span class="bd-name">{{ h.key }}</span>
-              <span class="bd-bar">
-                <span class="bd-fill" :style="{ width: h.share + '%' }" />
-                <span class="bd-time">{{ h.timeLabel }}</span>
-              </span>
-              <span class="bd-stats">{{ h.share }}%</span>
-            </li>
-          </ul>
-        </article>
-        <article class="breakdown" data-breakdown="roles">
-          <!-- Role-share row. Bars are sized by `count / total
-               matches` so open-queue matches (multiple roles per
-               match) push the row's sum past 100% — that's the
-               desired signal, not a bug. The bar carries the raw
-               match count ("3x") and the right-side column carries
-               the share percentage, mirroring topMaps' layout so
-               the three breakdowns read as one consistent grid.
-               Title-tip on the bar surfaces the per-role winrate
-               for power users. -->
-          <header class="breakdown-head">
-            <span class="breakdown-eyebrow">Most played roles</span>
-          </header>
-          <ul>
-            <li v-for="r in topRoles" :key="r.key">
-              <span class="bd-name">{{ r.key }}</span>
-              <span class="bd-bar" :title="r.total > 0 ? `${r.winrate}% winrate` : undefined">
-                <span class="bd-fill" :style="{ width: Math.min(r.share, 100) + '%' }" />
-                <span class="bd-time">{{ r.total }}x</span>
-              </span>
-              <span class="bd-stats">{{ r.share }}%</span>
-            </li>
-          </ul>
-        </article>
+      <div
+        v-for="row in dashboardRows"
+        :key="`row-${row.index}`"
+        class="dashboard-row"
+        :data-row="row.index"
+      >
+        <DashboardWidget
+          v-for="def in row.widgets"
+          :id="def.id"
+          :key="def.id"
+          :shape="def.shape"
+          :legacy-data-kpi="LEGACY_DATA_KPI[def.id]"
+          :legacy-data-breakdown="LEGACY_DATA_BREAKDOWN[def.id]"
+        >
+          <component :is="def.component" v-bind="widgetProps[def.id]" />
+        </DashboardWidget>
       </div>
 
       <!-- Narrow trigger + popover. -->
@@ -1506,181 +1408,31 @@ onBeforeUnmount(() => {
   color: var(--text-dim);
 }
 
-.dossier-kpis {
+/* Shape-agnostic widget row. Each row is a flex grid of
+   `<DashboardWidget>` cells of mixed shapes; auto-fit + a wider
+   min-width on `.breakdown` lets KPI tiles and breakdown articles
+   coexist (breakdown cells claim more width to render their bar
+   visualization legibly). Phase 3 will allow widgets to move
+   between rows, so neither row is shape-specific.
+
+   The tile/breakdown CHROME (border, padding, background) now lives
+   in DashboardWidget.vue's scoped block. Everything else (`.kpi-*` /
+   `.breakdown-*` / `.bd-*`) was promoted to app.css since 10 widget
+   SFCs reference them. */
+.dashboard-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 0.5rem;
+  align-items: start;
 }
 
-.kpi-tile {
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  border-radius: 2px;
-  padding: 0.55rem 0.7rem 0.6rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+/* Breakdown widgets need more room than KPI tiles to render their
+   bar visualization (map/hero labels + bar + share %). Bumping the
+   per-cell min via `:deep()` reaches through DashboardWidget's
+   scoped root. */
+.dashboard-row :deep(.breakdown) {
+  min-width: 280px;
 }
-
-.kpi-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.56rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-.kpi-value {
-  font-family: var(--display);
-  font-style: italic;
-  font-weight: 800;
-  font-size: 1.45rem;
-  letter-spacing: -0.01em;
-  color: var(--text);
-  font-feature-settings: "tnum";
-}
-.kpi-value.kpi-text { font-size: 1.15rem; text-transform: uppercase; }
-
-/* Supporting metadata under a headline kpi-value. Used by two
-   tiles: the Total time played tile discloses partial coverage
-   ("2 of 4 matches" when game_length is missing on some records),
-   and the Most played hero tile surfaces the 20%-threshold win
-   rate ("67% in 3 matches"). Faint mono so the sub-label reads
-   as secondary, never competing with the headline. */
-.kpi-sub {
-  font-family: var(--mono);
-  font-size: 0.58rem;
-  letter-spacing: 0.08em;
-  color: var(--text-faint);
-  font-feature-settings: "tnum";
-}
-
-/* K/D/A label is six glyphs + two delimiters at minimum
-   ("99.99 / 99.99 / 99.99" is the realistic ceiling); the headline
-   display-italic at 1.45rem is too wide for the kpi-tile minmax.
-   Drop a notch so the row reads compactly without truncation. */
-.kpi-value.kda-value {
-  font-size: 1.1rem;
-  letter-spacing: -0.02em;
-}
-
-.dossier-breakdowns {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.7rem;
-}
-
-@media (width <= 900px) {
-  .dossier-breakdowns { grid-template-columns: 1fr 1fr; }
-}
-
-@media (width <= 700px) {
-  .dossier-breakdowns,
-  .dossier-kpis { grid-template-columns: 1fr 1fr; }
-}
-
-.breakdown {
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: var(--surface);
-  padding: 0.55rem 0.7rem 0.65rem;
-}
-.breakdown-head { margin-bottom: 0.3rem; }
-
-.breakdown-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.56rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.breakdown ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.breakdown li {
-  display: grid;
-  grid-template-columns: minmax(80px, 110px) 1fr auto;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.bd-name {
-  font-family: var(--display);
-  font-style: italic;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  color: var(--text);
-}
-
-.bd-bar {
-  background: var(--surface-2);
-  height: 12px;
-  border-radius: 2px;
-  border: 1px solid var(--border);
-  overflow: hidden;
-  position: relative;
-}
-
-.bd-fill {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 50%, var(--win)));
-}
-
-/* In-bar volume label for the Most-played-heroes + Most-played-maps
-   breakdowns. The heroes row carries summed play-time ("7h32min" /
-   "32min"); the maps row carries the play-count ("3x" / "1x"). Both
-   sit centred over the bar so the label reads against either the
-   filled or empty portion depending on share; tabular-nums keeps it
-   from jittering as values change. The bar gets extra height (and
-   slightly tighter monospaced letter-spacing) so a four- or five-
-   glyph label fits without crowding the gradient. The right-side
-   .bd-stats column carries the share-percent for both breakdowns. */
-.breakdown li:has(.bd-time) .bd-bar {
-  height: 18px;
-}
-
-.bd-time {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--text);
-  font-feature-settings: "tnum";
-  letter-spacing: 0.01em;
-
-  /* Multi-offset outline so the label stays legible against either
-     the rust-gradient fill or the surface-2 empty portion. text-
-     shadow's stacked offsets paint a 1px halo in the surface colour
-     without forcing a paint-cost backdrop-filter. */
-  text-shadow:
-    0 0 2px var(--surface-2),
-    1px 0 0 var(--surface-2),
-    -1px 0 0 var(--surface-2),
-    0 1px 0 var(--surface-2),
-    0 -1px 0 var(--surface-2);
-  pointer-events: none;
-}
-
-.bd-stats {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  color: var(--text-dim);
-  font-feature-settings: "tnum";
-}
-.bd-total { color: var(--text-faint); font-size: 0.6rem; }
 
 .dossier-actions { display: flex; gap: 0.5rem; margin-top: 0.2rem; }
 

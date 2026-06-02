@@ -2586,3 +2586,150 @@ main#main-content {
   .unknown-card-head { padding: 0.7rem 1rem; }
   .unknown-expanded { padding: 0.85rem 1rem; }
 }
+
+/* ─── Dashboard widget inner content ──────────────────────────────
+   These rules style the inner DOM of widget SFCs under components/
+   widgets/. They were originally scoped to MatchesView but moved here
+   when the dossier was refactored into a registry-driven set of
+   per-widget SFCs — Vue's scoped CSS would no longer match elements
+   emitted by other components' templates. Class names are
+   widget-specific (`.kpi-eyebrow` not `.eyebrow`) so promoting to
+   global is leak-safe. */
+.kpi-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.kpi-value {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 1.45rem;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  font-feature-settings: "tnum";
+}
+.kpi-value.kpi-text { font-size: 1.15rem; text-transform: uppercase; }
+
+/* Supporting metadata under a headline kpi-value. Used by two
+   tiles: the Total time played tile discloses partial coverage
+   ("2 of 4 matches" when game_length is missing on some records),
+   and the Most played hero tile surfaces the 20%-threshold win
+   rate ("67% in 3 matches"). Faint mono so the sub-label reads
+   as secondary, never competing with the headline. */
+.kpi-sub {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  font-feature-settings: "tnum";
+}
+
+/* K/D/A label is six glyphs + two delimiters at minimum
+   ("99.99 / 99.99 / 99.99" is the realistic ceiling); the headline
+   display-italic at 1.45rem is too wide for the kpi-tile minmax.
+   Drop a notch so the row reads compactly without truncation. */
+.kpi-value.kda-value {
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+
+.breakdown-head { margin-bottom: 0.3rem; }
+
+.breakdown-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.breakdown ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.breakdown li {
+  display: grid;
+  grid-template-columns: minmax(80px, 110px) 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bd-name {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.bd-bar {
+  background: var(--surface-2);
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  position: relative;
+}
+
+.bd-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 50%, var(--win)));
+}
+
+/* In-bar volume label for the Most-played-heroes + Most-played-maps
+   breakdowns. The heroes row carries summed play-time ("7h32min" /
+   "32min"); the maps row carries the play-count ("3x" / "1x"). Both
+   sit centred over the bar so the label reads against either the
+   filled or empty portion depending on share; tabular-nums keeps it
+   from jittering as values change. The bar gets extra height (and
+   slightly tighter monospaced letter-spacing) so a four- or five-
+   glyph label fits without crowding the gradient. The right-side
+   .bd-stats column carries the share-percent for both breakdowns. */
+.breakdown li:has(.bd-time) .bd-bar {
+  height: 18px;
+}
+
+.bd-time {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text);
+  font-feature-settings: "tnum";
+  letter-spacing: 0.01em;
+
+  /* Multi-offset outline so the label stays legible against either
+     the rust-gradient fill or the surface-2 empty portion. text-
+     shadow's stacked offsets paint a 1px halo in the surface colour
+     without forcing a paint-cost backdrop-filter. */
+  text-shadow:
+    0 0 2px var(--surface-2),
+    1px 0 0 var(--surface-2),
+    -1px 0 0 var(--surface-2),
+    0 1px 0 var(--surface-2),
+    0 -1px 0 var(--surface-2);
+  pointer-events: none;
+}
+
+.bd-stats {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-feature-settings: "tnum";
+}
+.bd-total { color: var(--text-faint); font-size: 0.6rem; }
