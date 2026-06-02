@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.5.0](https://github.com/sound-barrier/recall/compare/v0.4.0...v0.5.0) (2026-06-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* OWMETRICS_DEBUG_DIR and OWMETRICS_METRICS_ADDR are no longer read. Use RECALL_DEBUG_DIR and RECALL_METRICS_ADDR.
+* **card-state:** CardStateApi.previewOpen / previewError are gone. Use isPreviewOpen(filename) and hasPreviewError(filename) instead.
+* **match-key:** the match_key format moved from `match:<ISO-with-colons>` / `unmatched:<filename>` / `ambiguous:<filename>` to `match-<ISO-with-dashes>` / `unmatched-<filename>` / `ambiguous-<filename>`. Old clients that hard-coded the colon shape stop working.
+* **screenshots:** the URL shape for serving screenshot bytes changed from `/_screenshot/<filename>` to `/_screenshot/<dir-id>/<filename>`. Old URLs return 404.
+
+### Features
+
+* **db:** introduce SQLite migrations framework ([88ba528](https://github.com/sound-barrier/recall/commit/88ba528aa4323a42b81fe025930ab1160653be2a))
+* **export:** compressed selection-aware bundle for backups + bug reports ([da5411f](https://github.com/sound-barrier/recall/commit/da5411f66937b93c28bf282a3eb4b9f46a938c48))
+* **match-key:** URL-safe format — colon swapped for dash ([67110cf](https://github.com/sound-barrier/recall/commit/67110cf346c4c8bff3e45d2fe72ffbbebf51e288))
+* **screenshots:** embed dir-id in screenshot URLs ([f5ce233](https://github.com/sound-barrier/recall/commit/f5ce23304517fc13f23ac1f4ee2606a8bfbbabb5))
+
+
+### Bug Fixes
+
+* **api:** boundary-validate setters, enable positive_data_acceptance ([8743eac](https://github.com/sound-barrier/recall/commit/8743eac6bf778dc8e62ada1f9ed8a429578a0e30))
+* **api:** explicit 405 stubs for transfers/active path collisions ([ad0fe11](https://github.com/sound-barrier/recall/commit/ad0fe11fcd9e759d99d8935d3ba5c590b6345e12))
+* **export:** non-1980 ZIP timestamps + drop screenshots_dirs leak; add bug-finder ([4e43fdd](https://github.com/sound-barrier/recall/commit/4e43fddbd7e49217c917bc216f433310989e2f2c))
+* **first-run:** gate modal on active profile name, not just localStorage ([05b4bd3](https://github.com/sound-barrier/recall/commit/05b4bd31d65dab65e4ef0d3193f91371d5eebfa4))
+* **matches:** j/k nav walks rendered order, not narrowedRecords ([50e8e92](https://github.com/sound-barrier/recall/commit/50e8e9283e8692481789bd12a49f3540cafcb8a1))
+* **matches:** wire narrow search → matchQuery, re-arm note hit highlight ([9dec35b](https://github.com/sound-barrier/recall/commit/9dec35bb30bf1ad3a27782fd9bb7a987d01d484a))
+
+
+### Refactors
+
+* **card-state:** replace ref-bearing fields with getter functions ([c296b33](https://github.com/sound-barrier/recall/commit/c296b333401dc256f8fde3c0cf976141a07b5a12))
+* **export:** dispatch import on schema version, add v1 fixture ([69ae6ff](https://github.com/sound-barrier/recall/commit/69ae6ff57be5d93ba26bdc1a58f4a58fa80db7df))
+* **frontend:** consolidate preview state behind useScreenshotPreview ([63ec2fb](https://github.com/sound-barrier/recall/commit/63ec2fbb446a883e76f51e5a3038dbaaeb348eb3))
+* **loading:** rename loading→parseBusy, initialLoading→firstLoadPending ([945a658](https://github.com/sound-barrier/recall/commit/945a6584be6ce7e1c245db6e9b61eefebb4ebb35))
+* **matches:** extract useArchiveSelection composable ([945b3e6](https://github.com/sound-barrier/recall/commit/945b3e6131174a5f76a21bd34ad8d9624e94ad03))
+* **onboarding:** extract storage key constant to its own module ([d2966ea](https://github.com/sound-barrier/recall/commit/d2966ea445d176502cd511a98b1f19679aee0cb0))
+* rename OWMETRICS_* env vars to RECALL_* ([7afd4b4](https://github.com/sound-barrier/recall/commit/7afd4b420d55393e1fdc86a4fc6eca129839cb31))
+
+
+### Documentation
+
+* **bug-template:** encourage Export bundle attachments on bug reports ([b488f3b](https://github.com/sound-barrier/recall/commit/b488f3bbf801404915da93d6463852ed64ee03f3))
+* **contributing:** document bug-report bundles + recall-bug-finder ([716d96c](https://github.com/sound-barrier/recall/commit/716d96c9a064331cc2f3520387e5c15c7f5e90ee))
+* **debt:** prune stale Next-release-focus header ([baf6db3](https://github.com/sound-barrier/recall/commit/baf6db3a36d0d3f6c9173d027b0fbf2e184a511b))
+* **debt:** refresh inventory with 17 accrued items + risk dim ([0a1601c](https://github.com/sound-barrier/recall/commit/0a1601c23c6c3b55236910981ab32ae7c6b70ece))
+* drain TECHNICAL_DEBT.md to template; move 7 + 13 to ROADMAP ([534d0bc](https://github.com/sound-barrier/recall/commit/534d0bcf913de3ec4be8a90a0a675512ea18ba7f))
+* embed Matches view + Match detail panel screenshots in README + book ([077a9b0](https://github.com/sound-barrier/recall/commit/077a9b05c5dc7d8e80061b0e33a238e4b61fbf65))
+
+
+### Tests
+
+* **e2e:** unskip all 10 dormant describe blocks + fix 2 prod bugs ([ae0e2da](https://github.com/sound-barrier/recall/commit/ae0e2dac314c5cbea5c80fda0f20593235f2ee74))
+* **frontend:** lift SFC coverage on the four hot surfaces ([8307ac7](https://github.com/sound-barrier/recall/commit/8307ac796ea197bbc5766a8794559ed6eb6185ad))
+* **metrics:** pin competitive-only filter against mixed inputs ([d2a1657](https://github.com/sound-barrier/recall/commit/d2a1657a05fa4be460afb4674660a05e02e7d545))
+* **server:** smoke-test mux wiring + bump Go coverage floor to 60% ([de73b8e](https://github.com/sound-barrier/recall/commit/de73b8e6a3255d76b96310d30797272ce7568c00))
+* **sse:** cover SSEHub from 0 % — 6 cases, race-tested ([01615c7](https://github.com/sound-barrier/recall/commit/01615c7d42d9d40827ba2254fe08a49ca4750b73))
+* **wails:** unit-test AssetServer shim, add smoke-wails target ([75eff75](https://github.com/sound-barrier/recall/commit/75eff75d6233c6a32fbcc076530ebff536c297ef))
+
 ## [0.4.0](https://github.com/sound-barrier/recall/compare/v0.3.2...v0.4.0) (2026-06-01)
 
 
