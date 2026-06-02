@@ -12,7 +12,7 @@ function mountIngest(over: Partial<Record<string, unknown>> = {}) {
   return mount(IngestView, {
     props: {
       tesseractReady: true,
-      screenshotsDir: '/srv/owmetrics',
+      screenshotsDir: '/srv/recall',
       watchEnabled: false,
       parseBusy: false,
       newScreenshotCount: 3,

@@ -71,7 +71,7 @@ docker run --entrypoint /recall-server \
 |---|---|---|
 | `RECALL_SERVER_ADDR` | `127.0.0.1:7000` | Bind address. Set to `0.0.0.0:7000` inside a container so the port is reachable from the host. |
 | `RECALL_PPROF` | *(off)* | When set to any non-empty value, mounts `net/http/pprof` handlers under `/debug/pprof/`. Never expose publicly. |
-| `OWMETRICS_METRICS_ADDR` | `:9091` | Prometheus metrics endpoint address (when the Prometheus toggle is on). |
+| `RECALL_METRICS_ADDR` | `:9091` | Prometheus metrics endpoint address (when the Prometheus toggle is on). |
 | `RECALL_DEBUG_DIR` | system temp | Directory for Tesseract work files. |
 
 ## Verifying the image

@@ -28,7 +28,7 @@ cd "$SCRIPT_DIR/.." || {
 DB=$(recall_db_path)
 
 # Default to :9091; honor the same env var app.go / metrics.ListenAndServe do.
-METRICS_ADDR="${OWMETRICS_METRICS_ADDR:-:9091}"
+METRICS_ADDR="${RECALL_METRICS_ADDR:-:9091}"
 METRICS_HOST="${METRICS_ADDR%:*}"
 METRICS_HOST="${METRICS_HOST:-127.0.0.1}"
 METRICS_PORT="${METRICS_ADDR##*:}"

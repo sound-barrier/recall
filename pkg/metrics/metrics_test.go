@@ -268,11 +268,11 @@ func TestCollector_ReaderErrorIsNonFatal(t *testing.T) {
 
 // ──────────────────────────────────────────────────────────────────────────
 // Server lifecycle — Start, scrape via the real bound port, Stop.
-// Also verifies OWMETRICS_METRICS_ADDR is respected via t.Setenv.
+// Also verifies RECALL_METRICS_ADDR is respected via t.Setenv.
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestServer_StopIsIdempotent(t *testing.T) {
-	t.Setenv("OWMETRICS_METRICS_ADDR", "127.0.0.1:0")
+	t.Setenv("RECALL_METRICS_ADDR", "127.0.0.1:0")
 	s := NewServer("ignored", func() ([]ScrapeRow, error) { return nil, nil })
 	// Calling Stop without Start is safe: http.Server.Shutdown logs but
 	// doesn't panic when the server never started.
@@ -281,7 +281,7 @@ func TestServer_StopIsIdempotent(t *testing.T) {
 }
 
 func TestNewServer_EnvAddrOverride(t *testing.T) {
-	t.Setenv("OWMETRICS_METRICS_ADDR", "127.0.0.1:12345")
+	t.Setenv("RECALL_METRICS_ADDR", "127.0.0.1:12345")
 	s := NewServer("0.0.0.0:9091", func() ([]ScrapeRow, error) { return nil, nil })
 	if s.addr != "127.0.0.1:12345" {
 		t.Errorf("env override ignored: addr=%s", s.addr)
@@ -290,7 +290,7 @@ func TestNewServer_EnvAddrOverride(t *testing.T) {
 
 func TestNewServer_DefaultAddr(t *testing.T) {
 	// Make sure the env var isn't set from the surrounding test invocation.
-	t.Setenv("OWMETRICS_METRICS_ADDR", "")
+	t.Setenv("RECALL_METRICS_ADDR", "")
 	s := NewServer(":9091", func() ([]ScrapeRow, error) { return nil, nil })
 	if s.addr != ":9091" {
 		t.Errorf("default addr lost: addr=%s", s.addr)

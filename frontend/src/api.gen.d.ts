@@ -376,7 +376,7 @@ export interface paths {
         /**
          * Toggle the Prometheus metrics endpoint
          * @description Enabling binds `:9091/metrics` (override via
-         *     `OWMETRICS_METRICS_ADDR`). Disabling shuts the listener down
+         *     `RECALL_METRICS_ADDR`). Disabling shuts the listener down
          *     with a 2s grace period.
          */
         put: operations["SetPrometheusEnabled"];
