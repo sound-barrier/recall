@@ -1523,7 +1523,8 @@ main#main-content {
    variant — used by IngestView's parse CTA but stays in the .btn
    family for consistency. */
 
-.btn.primary.big {
+.btn.primary.big,
+.btn.danger.big {
   padding: 0.85rem 1.4rem;
   font-size: 0.85rem;
   letter-spacing: 0.06em;

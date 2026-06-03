@@ -59,21 +59,53 @@ describe('useEventStream', () => {
 
   afterEach(() => { vi.clearAllMocks() })
 
-  it('subscribes to all three events on mount', () => {
+  it('subscribes to all four lifecycle events on mount', () => {
     const records = ref<MatchRecord[]>([])
     const parseProgress = ref<ParseProgressEvent | null>(null)
     const parseLog = ref<ParseProgressEvent[]>([])
     mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
-    expect(onCalls.map(c => c.name).sort()).toEqual(['match-updated', 'parse-complete', 'parse-progress'])
+    expect(onCalls.map(c => c.name).sort()).toEqual([
+      'match-updated',
+      'parse-cancelled',
+      'parse-complete',
+      'parse-progress',
+    ])
   })
 
-  it('unsubscribes on unmount', () => {
+  it('unsubscribes from all four on unmount', () => {
     const records = ref<MatchRecord[]>([])
     const parseProgress = ref<ParseProgressEvent | null>(null)
     const parseLog = ref<ParseProgressEvent[]>([])
     const { wrapper } = mountComposable({ records, parseProgress, parseLog, onParseComplete: vi.fn() })
     wrapper.unmount()
-    expect(offCalls.map(c => c.name).sort()).toEqual(['match-updated', 'parse-complete', 'parse-progress'])
+    expect(offCalls.map(c => c.name).sort()).toEqual([
+      'match-updated',
+      'parse-cancelled',
+      'parse-complete',
+      'parse-progress',
+    ])
+  })
+
+  it('parse-cancelled fires the caller-supplied onParseCancelled when provided', () => {
+    const records = ref<MatchRecord[]>([])
+    const parseProgress = ref<ParseProgressEvent | null>(null)
+    const parseLog = ref<ParseProgressEvent[]>([])
+    const onParseComplete = vi.fn()
+    const onParseCancelled = vi.fn()
+    mountComposable({ records, parseProgress, parseLog, onParseComplete, onParseCancelled })
+    handlers['parse-cancelled']!(null)
+    expect(onParseCancelled).toHaveBeenCalled()
+    expect(onParseComplete).not.toHaveBeenCalled()
+  })
+
+  it('parse-cancelled falls back to onParseComplete when no cancel hook supplied', () => {
+    const records = ref<MatchRecord[]>([])
+    const parseProgress = ref<ParseProgressEvent | null>(null)
+    const parseLog = ref<ParseProgressEvent[]>([])
+    const onParseComplete = vi.fn()
+    mountComposable({ records, parseProgress, parseLog, onParseComplete })
+    handlers['parse-cancelled']!(null)
+    expect(onParseComplete).toHaveBeenCalled()
   })
 
   it('parse-progress writes to parseProgress and appends to parseLog', () => {

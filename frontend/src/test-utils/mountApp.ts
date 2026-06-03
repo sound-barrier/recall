@@ -78,6 +78,7 @@ function mockApi(overrides: MountOverrides = {}) {
     CheckForUpdate:      vi.fn(async () => defaultUpdate(overrides.update)),
     OpenURL:             vi.fn(),
     ParseScreenshots:    vi.fn(async () => undefined),
+    CancelParse:         vi.fn(async () => undefined),
     GetMatchResults:     vi.fn(async () => records),
     GetScreenshotsDir:   vi.fn(async () => overrides.screenshotsDir ?? ''),
     PickScreenshotsDir:  vi.fn(async () => overrides.screenshotsDir ?? ''),

@@ -361,6 +361,19 @@ export const ParseScreenshots = _dualVoid<[]>(
   '/api/v1/parses',
 )
 
+// Cancel an in-flight parse. The OCR loop checks ctx.Err()
+// between screenshots, so the file in tesseract finishes before
+// the loop unwinds. Caller awaits the SSE `parse-cancelled`
+// event (handled in useEventStream) to flip the Stop button back
+// to Run. 409 surfaces here as a rejected promise — App.vue
+// swallows it because the only way it can hit is a race where
+// the parse finished naturally before the Stop click landed.
+export const CancelParse = _dualVoid<[]>(
+  'CancelParse',
+  'DELETE',
+  '/api/v1/parses/active',
+)
+
 export function GetPrometheusEnabled(): Promise<boolean> {
   if (IS_WAILS) return _wails('GetPrometheusEnabled')
   return _get<{ enabled: boolean }>('/api/v1/settings/prometheus').then(d => d.enabled)

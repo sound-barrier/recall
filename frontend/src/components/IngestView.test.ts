@@ -15,6 +15,7 @@ function mountIngest(over: Partial<Record<string, unknown>> = {}) {
       screenshotsDir: '/srv/recall',
       watchEnabled: false,
       parseBusy: false,
+      cancellingParse: false,
       newScreenshotCount: 3,
       lastParsedAt: null,
       parseProgress: null,
@@ -102,5 +103,36 @@ describe('IngestView (Parse tab)', () => {
     expect(wrapper.text()).not.toContain('Engine')
     expect(wrapper.text()).not.toContain('Export Data')
     expect(wrapper.text()).not.toContain('Clear Database')
+  })
+})
+
+describe('IngestView — Stop Parse button (item 15)', () => {
+  it('renders Run Parse when not busy; no Stop button in the DOM', () => {
+    const wrapper = mountIngest({ parseBusy: false })
+    expect(wrapper.find('[data-testid="cancel-parse-btn"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Run Parse')
+  })
+
+  it('renders Stop Parse when parseBusy and not yet cancelling', () => {
+    const wrapper = mountIngest({ parseBusy: true })
+    const stop = wrapper.find('[data-testid="cancel-parse-btn"]')
+    expect(stop.exists()).toBe(true)
+    expect(stop.text()).toContain('Stop Parse')
+    expect((stop.element as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('renders Cancelling… + disables itself when cancellingParse is true', () => {
+    const wrapper = mountIngest({ parseBusy: true, cancellingParse: true })
+    const stop = wrapper.find('[data-testid="cancel-parse-btn"]')
+    expect(stop.exists()).toBe(true)
+    expect(stop.text()).toContain('Cancelling…')
+    expect((stop.element as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('click on the Stop button emits cancel-parse', async () => {
+    const wrapper = mountIngest({ parseBusy: true })
+    await wrapper.find('[data-testid="cancel-parse-btn"]').trigger('click')
+    expect(wrapper.emitted('cancel-parse')).toBeTruthy()
+    expect(wrapper.emitted('cancel-parse')).toHaveLength(1)
   })
 })
