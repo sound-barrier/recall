@@ -13,6 +13,7 @@ import MatchTimelineHeader from './MatchTimelineHeader.vue'
 import FilterCombobox from './FilterCombobox.vue'
 import DashboardWidget from './DashboardWidget.vue'
 import DashboardCustomizer from './DashboardCustomizer.vue'
+import BulkActionBar from './BulkActionBar.vue'
 import DashboardAddTile from './DashboardAddTile.vue'
 import DashboardEditBanner from './DashboardEditBanner.vue'
 import MatchRowContextMenu from './MatchRowContextMenu.vue'
@@ -1429,65 +1430,20 @@ onBeforeUnmount(() => {
            mode toggle: the checkbox on each row IS the affordance
            (Gmail / Linear / GitHub Issues pattern). Sticky within the
            section so it follows the user down the leaves list. -->
-      <div
+      <BulkActionBar
         v-if="selectedKeys.size > 0"
-        class="bulk-action-bar"
-        role="region"
-        aria-label="Bulk action bar"
-      >
-        <span class="bab-glyph" aria-hidden="true">▣</span>
-        <span class="bab-count">{{ selectedKeys.size }} selected</span>
-        <span class="bab-spacer" aria-hidden="true" />
-        <template v-if="movePickerOpen !== 'live'">
-          <button
-            v-if="selectedKeys.size < sortedRecords.length"
-            type="button"
-            class="bulk-select-all"
-            @click="selectAllVisible"
-          >
-            Select all ({{ sortedRecords.length }})
-          </button>
-          <button type="button" class="bulk-hide" @click="hideSelected">
-            <span class="bab-btn-glyph" aria-hidden="true">⌀</span>
-            Hide
-          </button>
-          <button
-            type="button"
-            class="bulk-export"
-            data-testid="bulk-export-bundle"
-            @click="emit('export-bundle', [...selectedKeys])"
-          >
-            <span class="bab-btn-glyph" aria-hidden="true">📦</span>
-            Export bundle…
-          </button>
-          <button
-            v-if="otherProfiles.length > 0"
-            type="button"
-            class="bulk-move"
-            @click="beginMoveLive"
-          >
-            Move to…
-          </button>
-          <button type="button" class="bulk-cancel" @click="clearSelection">
-            Clear
-          </button>
-        </template>
-        <template v-else>
-          <span class="bab-prompt">Move to:</span>
-          <button
-            v-for="p in otherProfiles"
-            :key="p"
-            type="button"
-            class="bulk-move-target"
-            @click="commitMove(p)"
-          >
-            {{ p }}
-          </button>
-          <button type="button" class="bulk-cancel" @click="cancelMove">
-            Cancel
-          </button>
-        </template>
-      </div>
+        :selected-count="selectedKeys.size"
+        :sorted-count="sortedRecords.length"
+        :other-profiles="otherProfiles"
+        :move-picker-open="movePickerOpen"
+        @select-all="selectAllVisible"
+        @hide="hideSelected"
+        @export-bundle="emit('export-bundle', [...selectedKeys])"
+        @move-begin="beginMoveLive"
+        @move-commit="commitMove"
+        @move-cancel="cancelMove"
+        @clear="clearSelection"
+      />
 
       <ul v-if="sortedRecords.length" class="leaves-list" role="list">
         <template v-for="section in groupedSections" :key="section.key">
@@ -3201,7 +3157,10 @@ onBeforeUnmount(() => {
   line-height: 1;
 }
 
-.bulk-action-bar,
+/* .bulk-action-bar styling moved into BulkActionBar.vue's scoped
+   block (it owns its own markup now). The .archive-action-bar
+   keeps the same base shape because it's the in-place Hidden
+   drawer's sibling bar — separate use case, separate CSS. */
 .archive-action-bar {
   display: flex;
   align-items: center;
@@ -3214,9 +3173,8 @@ onBeforeUnmount(() => {
   top: 0.4rem;
   z-index: 4;
   box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 30%, transparent);
+  margin: 0 0 0.45rem;
 }
-
-.archive-action-bar { margin: 0 0 0.45rem; }
 
 .bab-glyph { color: var(--accent); font-size: 0.95rem; line-height: 1; }
 
@@ -3242,7 +3200,6 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 
-.bulk-action-bar button,
 .archive-action-bar button {
   appearance: none;
   border-radius: 2px;
@@ -3259,56 +3216,13 @@ onBeforeUnmount(() => {
   line-height: 1;
 }
 
-.bulk-hide,
 .bulk-unhide {
   border: 1px solid var(--accent);
   background: var(--accent);
   color: var(--primary-text-on-accent, #111);
 }
 
-.bulk-hide:hover,
 .bulk-unhide:hover { filter: brightness(1.08); }
-
-.bulk-select-all {
-  border: 1px solid var(--accent);
-  background: transparent;
-  color: var(--accent);
-}
-
-.bulk-select-all:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-
-.bulk-move {
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-}
-
-.bulk-move:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-}
-
-.bulk-move-target {
-  border: 1px solid var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
-  font-style: italic;
-}
-
-.bulk-move-target:hover {
-  background: var(--accent);
-  color: var(--primary-text-on-accent, #111);
-}
-
-.bab-prompt {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  font-weight: 700;
-}
 
 .bulk-delete {
   border: 1px solid color-mix(in srgb, var(--loss) 70%, var(--border));
