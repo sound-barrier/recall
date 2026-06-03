@@ -429,6 +429,7 @@ function onJumpToIngest(e: MouseEvent) {
 
 .abort-btn:disabled {
   cursor: not-allowed;
+
   /* Pulse the border while cancelling so the user sees the
      stop signal in flight without us needing a separate
      spinner. */
@@ -438,6 +439,7 @@ function onJumpToIngest(e: MouseEvent) {
 .abort-glyph {
   font-size: 9px;
   line-height: 1;
+
   /* The square ■ glyph reads as "stop" at small sizes. */
 }
 
@@ -452,6 +454,7 @@ function onJumpToIngest(e: MouseEvent) {
     border-color: var(--loss);
     box-shadow: 0 0 0 0 transparent;
   }
+
   50% {
     border-color: var(--loss);
     box-shadow: 0 0 0 3px var(--loss-soft);
