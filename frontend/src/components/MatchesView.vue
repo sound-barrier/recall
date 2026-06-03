@@ -650,7 +650,11 @@ onBeforeUnmount(() => {
       :class="{ 'set-dossier-editing': editMode }"
       aria-label="Set dossier"
     >
-      <DashboardEditBanner :open="editMode" @exit="editMode = false" />
+      <DashboardEditBanner
+        :open="editMode"
+        @exit="editMode = false"
+        @reset="dashboardLayout.reset()"
+      />
       <header class="dossier-head">
         <span class="dossier-eyebrow">{{ anyNarrow ? 'Narrowed set' : 'Set' }}</span>
         <h2 class="dossier-title">

@@ -10,14 +10,59 @@
 // Sticks to the dossier above the row container; uses entrance/
 // exit transitions to feel like a temporary mode rather than
 // permanent chrome.
+//
+// Also hosts the Reset affordance. Reset is destructive (wipes
+// every layout customization back to the install defaults), so
+// it runs through a two-step inline confirm: first click arms
+// the button, second click within RESET_CONFIRM_MS commits. A
+// rogue first click auto-disarms after the window, and closing
+// the banner cancels any pending arm.
 
-defineProps<{
+import { ref, watch, onBeforeUnmount } from 'vue'
+
+const props = defineProps<{
   open: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   exit: []
+  reset: []
 }>()
+
+const RESET_CONFIRM_MS = 3000
+const resetArmed = ref(false)
+let armTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearArmTimer() {
+  if (armTimer !== null) {
+    clearTimeout(armTimer)
+    armTimer = null
+  }
+}
+
+function disarm() {
+  clearArmTimer()
+  resetArmed.value = false
+}
+
+function onResetClick() {
+  if (!resetArmed.value) {
+    resetArmed.value = true
+    clearArmTimer()
+    armTimer = setTimeout(disarm, RESET_CONFIRM_MS)
+    return
+  }
+  disarm()
+  emit('reset')
+}
+
+// Closing the banner cancels any pending arm so the next time the
+// user opens edit mode they start from idle.
+watch(() => props.open, (next) => {
+  if (!next) disarm()
+})
+
+onBeforeUnmount(clearArmTimer)
 </script>
 
 <template>
@@ -29,6 +74,16 @@ defineEmits<{
         Click a widget to focus. Drag any widget to move it. <span aria-hidden="true">×</span> removes;
         <span aria-hidden="true">+</span> adds.
       </span>
+      <button
+        type="button"
+        class="dashboard-edit-banner-reset"
+        :class="{ 'dashboard-edit-banner-reset-armed': resetArmed }"
+        :aria-label="resetArmed ? 'Confirm reset dashboard to defaults' : 'Reset dashboard to defaults'"
+        data-edit-banner-reset
+        @click="onResetClick"
+      >
+        {{ resetArmed ? 'Confirm reset?' : 'Reset' }}
+      </button>
       <button
         type="button"
         class="dashboard-edit-banner-exit"
@@ -94,6 +149,51 @@ defineEmits<{
   text-overflow: ellipsis;
 }
 
+.dashboard-edit-banner-reset {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0.32rem 0.65rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.dashboard-edit-banner-reset:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: var(--accent);
+}
+
+.dashboard-edit-banner-reset:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Armed = "Confirm reset?" state. Switches to a warning palette so
+   the second click reads as the destructive action it is. Uses
+   --loss (the W/L/D loss token) for the danger cue — already
+   contrast-tuned per theme by the a11y rule. */
+.dashboard-edit-banner-reset-armed {
+  border-color: var(--loss);
+  background: color-mix(in srgb, var(--loss) 14%, transparent);
+  color: var(--loss);
+  animation: dashboard-edit-banner-reset-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes dashboard-edit-banner-reset-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--loss) 40%, transparent); }
+  50%      { box-shadow: 0 0 0 4px color-mix(in srgb, var(--loss) 0%, transparent); }
+}
+
 .dashboard-edit-banner-exit {
   appearance: none;
   border: 1px solid var(--accent);
@@ -138,6 +238,7 @@ defineEmits<{
 
 @media (prefers-reduced-motion: reduce) {
   .dashboard-edit-banner-pulse { animation: none; }
+  .dashboard-edit-banner-reset-armed { animation: none; }
 
   .dashboard-edit-banner-enter-active,
   .dashboard-edit-banner-leave-active { transition: none; }
