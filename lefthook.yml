@@ -149,6 +149,17 @@ pre-push:
     coverage:
       run: make cover
 
+    # Cyclomatic complexity sweep — REPORT ONLY. Same script the CI
+    # `complexity` job runs (see .github/workflows/ci.yml). gocyclo
+    # for Go + ESLint's `complexity` rule for frontend, both with a
+    # threshold of 10 (McCabe's 1976 recommendation). The script
+    # always exits 0 so a high number never blocks a push; the goal
+    # is situational awareness, not a gate. When a number warrants
+    # action, raise a TECHNICAL_DEBT.md item.
+    # Skip with: LEFTHOOK_EXCLUDE=complexity git push
+    complexity:
+      run: bash scripts/check-complexity.sh
+
     # Bundle-size budget — same script CI runs in the lint job, with
     # --build so the hook produces fresh frontend/dist/ artifacts to
     # measure (CI builds in an earlier step; locally we need to do
