@@ -57,22 +57,6 @@ Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
 
-## 1. `pkg/cmd/server.go::NewMux` is 60-complexity (was 95)
-
-**Where:** `pkg/cmd/server.go::NewMux`. Matches resource family extracted to `server_matches.go::registerMatchRoutes`; NewMux dropped from 95 → 60. The remaining 60 covers Profiles, Settings, Parse, Screenshots, System routes still inline.
-
-**What breaks:** the Matches family is now isolated; adding a /matches route edits a focused 350-line file. Other families (Profiles, Settings) still live in NewMux, so the route-monolith problem persists for those.
-
-**Plan:**
-
-1. (Done) Extract Matches family. `server_matches.go::registerMatchRoutes` registers GET/DELETE /matches, POST/transfers, /{matchKey} CRUD, visibility, resolution, annotation, review. NewMux 95 → 60.
-2. Extract Profiles family. `server_profiles.go::registerProfileRoutes`.
-3. Extract Settings family. `server_settings.go::registerSettingsRoutes`.
-4. Extract Parse + Screenshots + System families per the same pattern.
-5. Final NewMux should be ~30 lines: instantiate router, fan out.
-
-**Size:** M (remaining). **Risk:** Med — route table is the public API; mistakes silently 404.
-
 ## 2. `useMatchFilters`'s main predicate is 85-complexity — REMAINS PARTIALLY
 
 **Where:** `frontend/src/composables/useMatchFilters.ts:142` — still at 85-complexity. The matching predicate in `useMatchesNarrow.ts` has been refactored down to 12 (was 42) by extracting per-dimension helpers into `narrowPredicates.ts`; `useMatchFilters` still uses its own inline form.
