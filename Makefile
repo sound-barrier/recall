@@ -298,6 +298,14 @@ lint-semgrep: ## JS/TS SAST via Semgrep (frontend/src/, TypeScript only — .vue
 complexity: ## Report functions with McCabe complexity > 10 across Go + frontend (non-blocking)
 	@bash scripts/check-complexity.sh
 
+# ── Bundle audit (on-demand) ──────────────────────────────────────────
+# One-shot snapshot of the top frontend bundle chunks. Run before
+# bumping the JS/CSS budget in scripts/check-bundle-size.sh so the
+# decision is informed by what's actually big. NOT a CI gate — the
+# bundle-size script is the gate; this is for human refactor calls.
+bundle-audit: ## Print the top bundle chunks by size (informs check-bundle-size.sh decisions)
+	@bash scripts/audit-bundle.sh
+
 # Spectral runs the spectral:oas ruleset against api/openapi.yaml; see
 # .spectral.yaml at the project root for rule overrides. npx pulls a
 # pinned version on demand so no global install is required. Version

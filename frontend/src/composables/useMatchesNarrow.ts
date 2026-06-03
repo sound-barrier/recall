@@ -1,6 +1,16 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import type { MatchRecord } from '../api'
 import type { LeaverHandling } from './useMatchesDossier'
+import {
+  matchesDateRange,
+  matchesHero,
+  matchesLeaverHandling,
+  matchesPickedSet,
+  matchesReviewedBy,
+  matchesSearch,
+  matchesSinceAnchor,
+  matchesTags,
+} from './narrowPredicates'
 
 // Owns every filter dimension for the Matches set-workspace narrow
 // panel. Extracted from MatchesView so the filter math is testable
@@ -113,19 +123,6 @@ function toggleTypedSet<T>(set: Set<T>, value: T): Set<T> {
 
 function uniq<T>(arr: T[]): T[] {
   return [...new Set(arr)].filter((v) => v != null && v !== '') as T[]
-}
-
-// "M:SS" or "H:MM:SS" → minutes as a float. Defensive — bad input
-// (non-numeric segments, empty string) reads as 0, which keeps the
-// min-play threshold from accidentally including a record whose
-// play_time can't be parsed.
-function parsePlayTimeMinutes(s: string): number {
-  if (!s) return 0
-  const parts = s.split(':').map((x) => parseInt(x, 10))
-  if (parts.some((n) => isNaN(n))) return 0
-  if (parts.length === 2) return parts[0]! + parts[1]! / 60
-  if (parts.length === 3) return parts[0]! * 60 + parts[1]! + parts[2]! / 60
-  return parts[0] ?? 0
 }
 
 function daysAgoISO(days: number): string {
@@ -266,95 +263,36 @@ export function useMatchesNarrow(
     }
 
     const search = searchText.value.trim().toLowerCase()
+    const heroMin = minPlayMinutes.value
+    const heroPct = minPlayPercent.value
+    const fromBound = customFrom.value
+    const toBound = customTo.value
+    const maps = pickedMaps.value
+    const mapTypes = pickedMapTypes.value
+    const roles = pickedRoles.value
+    const results = pickedResults.value
+    const heroes = pickedHeroes.value
+    const tags = pickedTags.value
+    const reviewed = pickedReviewedBy.value
+    const leaver = leaverHandling.value
 
+    // Each predicate gates its own dimension; `every` short-circuits.
+    // Adding a new dimension is one more line here + one helper in
+    // narrowPredicates.ts — the giant monolithic arrow this replaces
+    // was 85-complexity and impossible to unit-test in isolation.
     return base.filter((r) => {
-      const d = r.data
-      if (!d) return false
-
-      // Free-text search across every lexical surface (map, mode,
-      // hero, role, type, primary hero, all heroes_played names,
-      // annotation note, annotation tags).
-      if (search) {
-        const heroesPlayedNames = (d.heroes_played ?? []).map((h) => h.hero ?? '').filter(Boolean)
-        const blob = [
-          d.map, d.mode, d.hero, d.role, d.type,
-          r.annotation?.note,
-          ...heroesPlayedNames,
-          ...(r.annotation?.tags ?? []),
-        ].filter(Boolean).join(' ').toLowerCase()
-        if (!blob.includes(search)) return false
-      }
-
-      // Date range — applies only to dated rows. Slice the bound
-      // strings to YYYY-MM-DD before comparing: the heatmap cell-
-      // click writes `${date}T00:00` / `${date}T23:59` (because the
-      // selection band needs sub-day resolution), while preset
-      // ranges and the manual datepicker write bare YYYY-MM-DD. A
-      // raw lexicographic compare between the two forms drops every
-      // record on the active day — the longer "T00:00" string sorts
-      // strictly greater than the shorter bare date that matches it.
-      const dateKey = d.date ?? ''
-      if (dateKey) {
-        const fromBound = customFrom.value.slice(0, 10)
-        const toBound   = customTo.value.slice(0, 10)
-        if (fromBound && dateKey < fromBound) return false
-        if (toBound   && dateKey > toBound)   return false
-      }
-
-      if (pickedMaps.value.size     && !pickedMaps.value.has(d.map     ?? '')) return false
-      if (pickedMapTypes.value.size && !pickedMapTypes.value.has(d.type ?? '')) return false
-      if (pickedRoles.value.size    && !pickedRoles.value.has(d.role   ?? '')) return false
-      if (pickedResults.value.size  && !pickedResults.value.has(d.result ?? '')) return false
-
-      // Hero filter — broad match against the primary AND every
-      // heroes_played entry. With min-play thresholds set, the
-      // primary-only match no longer qualifies — the picked hero
-      // must satisfy a heroes_played threshold. OR semantics
-      // between minutes and percent so a user can express "at least
-      // 5 minutes OR 50%" in one query.
-      if (pickedHeroes.value.size) {
-        const minMin = minPlayMinutes.value
-        const minPct = minPlayPercent.value
-        const anyThreshold = minMin > 0 || minPct > 0
-        const matchedAny = [...pickedHeroes.value].some((wanted) => {
-          if (d.hero === wanted && !anyThreshold) return true
-          return (d.heroes_played ?? []).some((hp) => {
-            if (hp.hero !== wanted) return false
-            if (!anyThreshold) return true
-            const minutes = parsePlayTimeMinutes(hp.play_time ?? '')
-            const pct = hp.percent_played ?? 0
-            return (minMin > 0 && minutes >= minMin) || (minPct > 0 && pct >= minPct)
-          })
-        })
-        if (!matchedAny) return false
-      }
-
-      if (pickedTags.value.size) {
-        const tags = new Set(r.annotation?.tags ?? [])
-        const hit = [...pickedTags.value].some((t) => tags.has(t))
-        if (!hit) return false
-      }
-
-      // Reviewed-by — empty picked set means "no filter." Otherwise
-      // the record's bucket must be in the set. The 'unreviewed'
-      // bucket maps to "no reviewed_by field," which is the natural
-      // default for an unreviewed match.
-      if (pickedReviewedBy.value.size) {
-        const bucket: ReviewedByPick = r.reviewed_by ?? 'unreviewed'
-        if (!pickedReviewedBy.value.has(bucket)) return false
-      }
-
-      // Since-anchor — drop records on or before the anchor's
-      // parsed_at. Strict-greater so the anchor itself doesn't show
-      // (it's the user's "what's happened SINCE" reference point).
-      if (anchorFloor !== null) {
-        const parsedAt = r.parsed_at ?? ''
-        if (parsedAt <= anchorFloor) return false
-      }
-
-      if (leaverHandling.value === 'hide' && r.annotation?.leaver) return false
-
-      return true
+      if (!r.data) return false
+      return matchesSearch(r, search)
+        && matchesDateRange(r, fromBound, toBound)
+        && matchesPickedSet(r.data.map, maps)
+        && matchesPickedSet(r.data.type, mapTypes)
+        && matchesPickedSet(r.data.role, roles)
+        && matchesPickedSet(r.data.result, results)
+        && matchesHero(r, heroes, heroMin, heroPct)
+        && matchesTags(r, tags)
+        && matchesReviewedBy(r, reviewed)
+        && matchesSinceAnchor(r, anchorFloor)
+        && matchesLeaverHandling(r, leaver)
     })
   })
 

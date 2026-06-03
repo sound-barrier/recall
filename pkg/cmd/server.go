@@ -26,8 +26,14 @@ func RunServer(a *app.App, assets embed.FS) {
 	a.SSEHub = app.NewSSEHub()
 
 	// Startup loads settings, initializes SQLite, optionally starts
-	// the metrics server and file watcher.
+	// the metrics server and file watcher. Failures are captured on
+	// the App via StartupError() rather than panic-style log.Fatal;
+	// we check + exit cleanly so the user sees a human-readable
+	// message instead of a stack trace.
 	a.Startup(context.Background())
+	if err := a.StartupError(); err != nil {
+		log.Fatalf("Recall server failed to start: %v", err)
+	}
 
 	// Sub into frontend/dist so paths like "/assets/index.js" resolve correctly.
 	sub, err := fs.Sub(assets, "frontend/dist")

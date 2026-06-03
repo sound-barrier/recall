@@ -72,20 +72,19 @@ fine, never renumber. When a section is paid down in full,
 
 **Size:** L. **Risk:** Med — route table is the public API; getting the mount path wrong = silent 404.
 
-## 2. `useMatchFilters`'s main predicate is 85-complexity
+## 2. `useMatchFilters`'s main predicate is 85-complexity — REMAINS PARTIALLY
 
-**Where:** `frontend/src/composables/useMatchFilters.ts:142` — one anonymous arrow inside `filteredSorted` chains every filter dimension (search, date, map, hero, role, result, tags, leaver, min-play, includeUnknown, hidden, …) into a single `return base.filter(r => { … })`. ESLint reports complexity **85**. `useMatchesNarrow.ts:267` runs the same shape at complexity **42**. The total filter math is duplicated across both composables: Matches uses `useMatchesNarrow`, the old archive surface still uses `useMatchFilters`.
+**Where:** `frontend/src/composables/useMatchFilters.ts:142` — still at 85-complexity. The matching predicate in `useMatchesNarrow.ts` has been refactored down to 12 (was 42) by extracting per-dimension helpers into `narrowPredicates.ts`; `useMatchFilters` still uses its own inline form.
 
-**What breaks:** adding a new filter dimension (the "reviewed by" + "since-anchor" pair shipped recently) means editing two giant predicates that are easy to get out of sync. The composables diverge silently — the recent reviewed-by add only landed in `useMatchesNarrow`. Branch coverage in the surviving 85-line predicate isn't honest; tests cover the WHOLE function, not the individual gates.
+**What breaks:** the duplicated filter math now lives in one fully refactored spot (`narrowPredicates.ts`) AND one legacy 85-complexity spot. Adding a dimension touches both, the legacy spot is still a coverage trap, and the original "you can delete `useMatchFilters` if `useMatchesNarrow` covers every consumer" plan can't land until App.vue stops using `useMatchFilters` for the legacy FilterRail UI.
 
 **Plan:**
 
-1. Extract per-dimension predicates into named helpers: `matchesSearch(r, query)`, `matchesDateRange(r, from, to)`, etc. Each ≤ 15 lines, individually unit-testable.
-2. The composables become `base.filter(r => predicates.every(p => p(r, state)))`.
-3. Delete `useMatchFilters` if `useMatchesNarrow` covers every consumer (the archive drawer was the last hold-out — check after extracting).
-4. Keep the existing integration tests as the contract; per-predicate unit tests are an additive write.
+1. (Done) Extracted per-dimension predicates into `narrowPredicates.ts`. `useMatchesNarrow` now composes them via `every`; 42 → 12.
+2. Audit App.vue's `useMatchFilters` consumer. If still load-bearing, refactor it to consume `narrowPredicates` too (the State shape differs — array filters vs Set — so the helpers need an array overload or the call sites need adapter wrappers).
+3. Delete `useMatchFilters` when no consumer remains.
 
-**Size:** M. **Risk:** Low — predicate-by-predicate refactor is straightforward; tests already pin the aggregate behaviour.
+**Size:** S (remaining step). **Risk:** Low.
 
 ## 3. `match_key` is stringly-typed with sentinel prefixes
 
@@ -147,30 +146,30 @@ fine, never renumber. When a section is paid down in full,
 
 **Size:** L. **Risk:** Med — touches the parse pipeline's status reporting; needs SSE channel realignment.
 
-## 8. `log.Fatal` at startup makes the desktop app crash silently
+## 8. `log.Fatal` at startup — REMAINING: Wails native dialog
 
-**Where:** `pkg/app/app.go:138`, `:149`, `:153`, `:205`, `:210` — five `log.Fatal` calls in the Wails startup path. Fail conditions: can't init profiles, can't create `--profile` target, can't activate it, can't create the DB dir, can't init the DB.
+**Where:** `pkg/app/app.go::Startup`. The five `log.Fatal` paths have been replaced with a captured `startupErr` field exposed via `StartupError()`. Server-mode wrapper (`pkg/cmd/server.go::RunServer`) now checks and exits cleanly with a "Recall server failed to start: <reason>" message instead of panic-style termination.
 
-**What breaks:** a misconfigured Recall install (corrupt profile dir, perms issue, full disk) exits with a log line nobody sees — the Wails app window flashes and closes. The user has no visible error. The server-mode binary at least prints to stderr, but the Wails build window swallows it. There's no recovery path.
-
-**Plan:**
-
-1. Replace each `log.Fatal` with a surfaced error: return from `Startup` (so the Wails wrapper can show a modal) or write to a known-location crash log + show a Tk-style native error dialog.
-2. Add a `pkg/app/startup_error.go` with a small `RecoverableStartupError` type carrying user-facing copy + the underlying error.
-3. Keep `log.Fatal` only for genuinely unrecoverable cases — none of the current five qualify.
-
-**Size:** M. **Risk:** Med — startup paths are hard to test end-to-end; cover with table-driven Startup tests that inject failures.
-
-## 12. Bundle-size budgets are bumped per-feature, never paid down
-
-**Where:** `scripts/check-bundle-size.sh`. The JS budget has bumped 362K → 365K → 368K → 372K in the last four PRs. CSS has gone 205K → 208K → 211K. There's no pass that asks "what's actually big?" — every feature gets the bump it needs.
-
-**What breaks:** initial JS is 84K (well under the 146K budget), so users aren't feeling it yet. But the trend is monotonic: total JS doubled in the last six months. Sooner or later the budget bumps will be denied at code review and the offending feature has to refactor under time pressure.
+**What remains:** the Wails wrapper (`pkg/cmd/wails.go::RunWails`) doesn't yet surface the captured error to the user — failures still result in a flash-and-disappear window for desktop users. The frontend needs to poll `App.GetStartupError()` (new Wails-bound method TBD) on mount and render a modal if it returns non-empty.
 
 **Plan:**
 
-1. One-shot audit: `npx vite-bundle-visualizer` and identify the top 5 chunks. Probably the dashboard widget registry, the narrow popover, and the dossier. Each could lazy-load behind their entry point.
-2. Pick one of the three, lazy-load it, measure the win.
-3. Document the audit in `docs/dev-reference.md` so the next bump prompts a re-audit, not another bump.
+1. (Done) `App.startupErr` field + `captureFatal()` helper + `StartupError()` reader. Server-mode wrapper exits cleanly on non-nil.
+2. Add `(a *App) GetStartupError() string` returning `a.startupErr.Error()` or "" — Wails-bound so the frontend can read it.
+3. Wire `App.vue` to call `GetStartupError()` on mount; render a blocking modal when non-empty.
 
-**Size:** M. **Risk:** Low — lazy-loading is well-trod in this codebase already (`App.lazy-views.test.ts` enforces the pattern).
+**Size:** S (remaining step). **Risk:** Low.
+
+## 12. Bundle-size budgets bumped per-feature — observation tool now exists
+
+**Where:** `scripts/check-bundle-size.sh` is still the budget gate; `scripts/audit-bundle.sh` (new) prints the top-N chunks by size. `make bundle-audit` runs it.
+
+**What remains:** no actual lazy-load refactor yet — the audit shows `index-*.js` (84K), `MatchesView-*.js` (83K), `MatchDetailPanel-*.css` (30K) as the top offenders. Cracking either of the JS heavyweights into smaller chunks is the next move, but needs care: `App.lazy-views.test.ts` is the contract that enforces every lazy-load.
+
+**Plan:**
+
+1. (Done) `scripts/audit-bundle.sh` + `make bundle-audit`. Top-20 by size, totals.
+2. Pick a heavyweight (likely `MatchesView` itself — already lazy, but ~82K of bytes). Extract its narrow popover into its own lazy chunk; measure the delta. This step couples with debt item 4 (SFC split).
+3. Document the audit cadence in `docs/dev-reference.md`.
+
+**Size:** S (remaining step). **Risk:** Low.

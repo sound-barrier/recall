@@ -21,6 +21,7 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -78,6 +79,14 @@ type App struct {
 	// are broadcast over SSE instead of (or in addition to) the Wails
 	// runtime event bus.
 	SSEHub *SSEHub
+	// startupErr records a non-recoverable Startup failure (profile
+	// init, --profile override, DB-dir create, DB open) without
+	// crashing the process. Callers can read it via StartupError()
+	// and decide how to surface the message — the Wails wrapper
+	// renders a native dialog, the server-mode wrapper exits with
+	// the message on stderr. Either way the user sees a real
+	// reason instead of a window flash with no log.
+	startupErr error
 }
 
 func New() *App {
@@ -122,20 +131,46 @@ func NewWithStore(s db.Store) *App {
 	return &App{store: s}
 }
 
+// StartupError returns any non-recoverable failure captured during
+// Startup. nil means the app booted cleanly. Surfaces via the Wails
+// wrapper's post-Startup dialog + the server-mode wrapper's exit
+// path so the user sees a real message instead of a window flash.
+func (a *App) StartupError() error { return a.startupErr }
+
+// captureFatal records the FIRST startup failure + logs it. Later
+// calls are noop'd (the first error is the load-bearing one). The
+// caller continues running — degraded state is better than a flash
+// crash, and the wrapper renders the captured error after Startup
+// returns.
+func (a *App) captureFatal(stage string, err error) {
+	if a.startupErr != nil {
+		return
+	}
+	a.startupErr = fmt.Errorf("startup: %s: %w", stage, err)
+	log.Printf("RECALL STARTUP FAILED: %s: %v", stage, err)
+}
+
 // Startup initializes the app: loads settings, checks Tesseract, opens the
 // SQLite database, and starts the metrics/watcher if configured. Called by
 // the Wails runtime via OnStartup, or directly by pkg/cmd/server.go in
 // headless mode.
+//
+// Recoverable failures (no profiles dir, --profile target missing, no
+// DB dir / DB open failure) are captured via `captureFatal` rather than
+// panic-style log.Fatal. The wrapper checks StartupError() after
+// Startup returns and surfaces a user-readable dialog (Wails) or
+// exits with a clean stderr message (server mode). Previously these
+// were silent window-crashes with no log path the user could find.
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 
 	// Load (or initialize) the profile manager FIRST — every subsequent
 	// path (settings.json, db/recall.db, export base dir) hangs off the
-	// active profile's directory. Failures here are fatal: the install
-	// has no usable storage if profiles.json can't be written.
+	// active profile's directory.
 	profiles, err := LoadProfiles(appBaseDir())
 	if err != nil {
-		log.Fatal("could not init profiles: ", err)
+		a.captureFatal("profile manager init", err)
+		return
 	}
 	a.profiles = profiles
 
@@ -146,11 +181,13 @@ func (a *App) Startup(ctx context.Context) {
 	if name := a.profileOverride; name != "" {
 		if !containsProfile(a.profiles.List(), name) {
 			if cerr := a.profiles.Create(name); cerr != nil {
-				log.Fatal("could not create --profile target: ", cerr)
+				a.captureFatal("create --profile target "+name, cerr)
+				return
 			}
 		}
 		if aerr := a.profiles.Activate(name); aerr != nil {
-			log.Fatal("could not activate --profile target: ", aerr)
+			a.captureFatal("activate --profile target "+name, aerr)
+			return
 		}
 	}
 
@@ -202,12 +239,14 @@ func (a *App) Startup(ctx context.Context) {
 
 	dbDir := filepath.Join(a.dataDir(), "db")
 	if err := os.MkdirAll(dbDir, 0o700); err != nil {
-		log.Fatal("could not create db dir:", err)
+		a.captureFatal("create db directory "+dbDir, err)
+		return
 	}
 	if a.store == nil {
 		s, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
 		if err != nil {
-			log.Fatal("could not init db:", err)
+			a.captureFatal("open SQLite "+filepath.Join(dbDir, "recall.db"), err)
+			return
 		}
 		a.store = s
 	}
