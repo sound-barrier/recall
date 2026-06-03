@@ -64,6 +64,21 @@ pre-commit:
       glob: "Dockerfile*"
       run: hadolint {staged_files}
 
+    # shfmt + shellcheck on staged shell scripts. Same flags as
+    # `make lint-shell` (the CI target) so the hook catches what CI
+    # would catch — without this, format-only drift (e.g. `done <
+    # "$F"` vs `done <"$F"`) sails through every push and fails CI
+    # at the lint job. `--write` autofixes formatting; `stage_fixed`
+    # re-stages the diff so the commit includes the canonical form.
+    shfmt:
+      glob: "*.sh"
+      run: shfmt -i 2 -ci -bn -w {staged_files}
+      stage_fixed: true
+
+    shellcheck:
+      glob: "*.sh"
+      run: shellcheck {staged_files}
+
     # ── Spell-check ───────────────────────────────────────────────────
     # typos is a Rust binary, ~50ms on a typical staged-file set. Config
     # lives in _typos.toml at the repo root (excludes auto-generated

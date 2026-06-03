@@ -67,7 +67,7 @@ while IFS= read -r line; do
   score=$(awk '{print $1}' <<<"$line")
   funcname=$(awk '{print $3}' <<<"$line")
   baseline_score["$funcname"]=$score
-done < "$BASELINE"
+done <"$BASELINE"
 
 # Walk current top-N. For each: jumped by JUMP? new entry? Print one line.
 declare -i jumps=0
@@ -82,16 +82,16 @@ while IFS= read -r line; do
   prev="${baseline_score[$funcname]:-}"
   if [[ -z "$prev" ]]; then
     printf "🆕 %3d  %-40s  %s\n" "$score" "$funcname" "$loc"
-    newcomers=$((newcomers+1))
+    newcomers=$((newcomers + 1))
     continue
   fi
   delta=$((score - prev))
-  if (( delta >= JUMP )); then
+  if ((delta >= JUMP)); then
     printf "📈 %3d (+%d)  %-37s  %s\n" "$score" "$delta" "$funcname" "$loc"
-    jumps=$((jumps+1))
-  elif (( delta <= -JUMP )); then
+    jumps=$((jumps + 1))
+  elif ((delta <= -JUMP)); then
     printf "📉 %3d (%d)  %-38s  %s\n" "$score" "$delta" "$funcname" "$loc"
-    unchanged=$((unchanged+1))
+    unchanged=$((unchanged + 1))
   fi
 done < <(current)
 
