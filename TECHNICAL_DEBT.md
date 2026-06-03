@@ -57,19 +57,6 @@ Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
 
-## 4. `App.vue` (1925 lines) and `MatchesView.vue` (~2900 lines) — DEFERRED (multi-PR project)
-
-**Where:** unchanged. The two host SFCs still hold every concern of their respective layers.
-
-**Why deferred:** the audit-and-burn-down PR (the one this entry lives in) is already a 30-file change. The SFC split is a multi-PR project where each extraction needs its own focused review:
-
-1. Extract `<NarrowPopover>` from `MatchesView.vue`. Props: the `matchesNarrow` bundle + open/close. Template self-contained. Couples with debt item 12 (the audit shows MatchesView is 82K of bundle bytes; pulling the popover into its own lazy chunk is the targeted win).
-2. Extract `<BulkActionBar>` similarly.
-3. Extract App.vue's keyboard handler into `useGlobalKeyboard()`.
-4. Each extraction is one PR with a test-equivalence proof (existing e2e suite must keep passing).
-
-**Size:** L (3-4 PRs of M each). **Risk:** Med — Vue's prop / event boundary needs careful typing; existing e2e selectors must keep matching.
-
 ## 6. Pagination on `GET /api/v1/matches` — REMAINING: frontend consumer
 
 **Where:** `pkg/cmd/server_matches.go` adds `?limit=` (1–1000) + `?cursor=` to `GET /api/v1/matches`. OpenAPI spec updated; `api.gen.d.ts` regen'd. 5 unit tests pin the contract (back-compat unbounded, limit-only, cursor-paging, clamp, invalid-limit-disables).
