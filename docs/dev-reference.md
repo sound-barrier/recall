@@ -106,6 +106,18 @@ with Tesseract pre-installed.
 | `check-action-pins.sh` | Validates every `uses:` is SHA-pinned with a `# vX.Y.Z` comment. |
 | `deadcode-check.sh` | Runs `deadcode` against `serveronly`, filters via `scripts/deadcode-allow.txt`, fails on non-empty residual. |
 | `render-pr-report.py` | Renders the markdown PR report from CI artifacts. |
+| `audit-bundle.sh` | Top-N (default 20) Vite chunks by size + JS/CSS totals. Snapshot tool, not a gate — informs lazy-load decisions. Pair with the size gate in `check-bundle-size.sh`. |
+| `check-bundle-size.sh` | Per-chunk + total JS/CSS budgets. Runs on every CI push + lefthook pre-push; fails non-zero when a chunk exceeds its budget. |
+
+## Bundle audit cadence
+
+`make bundle-audit` runs `scripts/audit-bundle.sh`. Use it when:
+
+1. A `check-bundle-size.sh` gate is about to trip — find the offending chunk before bumping the budget.
+2. Adding a new view / modal / heavyweight composable — confirm it landed in its own chunk if you lazy-loaded it via `defineAsyncComponent`.
+3. As a periodic check (~once per release cycle, or when the Matches tab feels noticeably heavier on cold start).
+
+The audit is read-only; it doesn't gate CI. The gate is `check-bundle-size.sh`. If the audit shows a single chunk dominating the budget, treat that as the candidate for extraction — cross-reference `App.lazy-views.test.ts` / `MatchesView.lazy-views.test.ts` so a future refactor can't silently undo the win.
 
 ## Quick local exploration
 
