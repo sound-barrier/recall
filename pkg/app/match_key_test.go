@@ -65,3 +65,62 @@ func TestMatchKey_KindHelpers(t *testing.T) {
 		t.Error("IsUnmatched helper misclassified an unmatched- key")
 	}
 }
+
+func TestMatchKey_Filename(t *testing.T) {
+	a, _ := ParseMatchKey("ambiguous-foo.png")
+	if got := a.Filename(); got != "foo.png" {
+		t.Errorf("ambiguous.Filename() = %q, want %q", got, "foo.png")
+	}
+	u, _ := ParseMatchKey("unmatched-bar.png")
+	if got := u.Filename(); got != "bar.png" {
+		t.Errorf("unmatched.Filename() = %q, want %q", got, "bar.png")
+	}
+	m, _ := ParseMatchKey("match-2026-01-01T00-00-00")
+	if got := m.Filename(); got != "" {
+		t.Errorf("tracked.Filename() = %q, want empty (tracked keys are time-derived)", got)
+	}
+}
+
+// TestMatchKey_RoundTrip is the cross-cutting guard that wire-format
+// match_key strings produced by the three constructors round-trip
+// through ParseMatchKey → String() unchanged. A drift here means a
+// minting site and a parsing site disagree on the wire shape — the
+// exact failure mode the typed identity was introduced to make
+// impossible.
+func TestMatchKey_RoundTrip(t *testing.T) {
+	cases := []MatchKey{
+		NewTrackedMatchKey("2026-05-10T22-21-11"),
+		NewUnmatchedMatchKey("some-screenshot.png"),
+		NewAmbiguousMatchKey("other-screenshot.png"),
+	}
+	for _, c := range cases {
+		t.Run(c.String(), func(t *testing.T) {
+			parsed, err := ParseMatchKey(c.String())
+			if err != nil {
+				t.Fatalf("re-parse %q: %v", c.String(), err)
+			}
+			if parsed.Kind != c.Kind {
+				t.Errorf("Kind drift: got %v, want %v", parsed.Kind, c.Kind)
+			}
+			if parsed.Body != c.Body {
+				t.Errorf("Body drift: got %q, want %q", parsed.Body, c.Body)
+			}
+			if parsed.Raw != c.Raw {
+				t.Errorf("Raw drift: got %q, want %q", parsed.Raw, c.Raw)
+			}
+			if parsed.String() != c.String() {
+				t.Errorf("String() drift: got %q, want %q", parsed.String(), c.String())
+			}
+		})
+	}
+}
+
+func TestNewAmbiguousMatchKey_BuildsParseable(t *testing.T) {
+	k := NewAmbiguousMatchKey("foo bar.png") // space in filename — still safe
+	if !k.IsAmbiguous() {
+		t.Error("NewAmbiguousMatchKey did not produce a Kind=Ambiguous key")
+	}
+	if k.Filename() != "foo bar.png" {
+		t.Errorf("Filename() = %q, want %q", k.Filename(), "foo bar.png")
+	}
+}

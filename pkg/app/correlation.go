@@ -177,18 +177,18 @@ func resolveMatchKey(filename string, result *parser.MatchResult, snap db.Screen
 		if k != "" {
 			return k, nil
 		}
-		return "ambiguous-" + filename, cands
+		return NewAmbiguousMatchKey(filename).String(), cands
 	}
 	if k, cands, ok := matchByTimestampWindow(cand, snap); ok {
 		if k != "" {
 			return k, nil
 		}
-		return "ambiguous-" + filename, cands
+		return NewAmbiguousMatchKey(filename).String(), cands
 	}
 	if cand.hasTS {
-		return "match-" + cand.ts.UTC().Format("2006-01-02T15-04-05"), nil
+		return NewTrackedMatchKey(cand.ts.UTC().Format("2006-01-02T15-04-05")).String(), nil
 	}
-	return "unmatched-" + filename, nil
+	return NewUnmatchedMatchKey(filename).String(), nil
 }
 
 // candidate is the comparison shape used by the two match passes.

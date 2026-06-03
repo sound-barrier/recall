@@ -59,14 +59,13 @@ FromContext
 # has a tested base.
 revertOne
 
-# app.MatchKey type + helpers. New typed form of the stringly-typed
-# match_key identity. Opt-in at consumer call sites (none migrated
-# yet); ParseMatchKey + the IsX helpers + String() exist for the
-# next-PR-per-file rollout. The type tests are the only current
-# consumer.
-ParseMatchKey
-MatchKey\.String
-MatchKey\.Is(Tracked|Ambiguous|Unmatched)
+# app.MatchKey type + helpers. Reachable now from pkg/app/ambiguous.go,
+# pkg/app/aggregate.go, pkg/app/correlation.go. The constructors +
+# IsUnmatched helper exist for future call sites + the round-trip
+# test even though no in-package consumer reaches them yet.
+NewTrackedMatchKey
+NewUnmatchedMatchKey
+MatchKey\.IsUnmatched
 
 # cmd.parseMatchesPagination — lenient pagination parser exercised by
 # TestGetMatches_LimitClampedTo1000 / _InvalidLimit_DisablesPagination.

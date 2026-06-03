@@ -57,21 +57,6 @@ Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
 
-## 3. `match_key` is stringly-typed — REMAINING: migrate consumers to the new type
-
-**Where:** `pkg/app/match_key.go` (new) introduces `MatchKey` + `ParseMatchKey()` + Kind enum + `IsTracked/IsUnmatched/IsAmbiguous()` helpers. Test coverage at `pkg/app/match_key_test.go` pins the three known prefixes + the ErrInvalidMatchKey sentinel.
-
-**What remains:** consumers still call `strings.HasPrefix(s, "ambiguous-")` rather than `ParseMatchKey(s).IsAmbiguous()`. The migration is per-site + low-risk now that the type exists.
-
-**Plan:**
-
-1. (Done) `MatchKey` type + `ParseMatchKey` + Kind enum. Opt-in at call sites; bare-string consumers keep working.
-2. Migrate Go `strings.HasPrefix` sites in `pkg/app` to `ParseMatchKey().IsX()`. One PR per file keeps the diff focused.
-3. Mirror the type on the frontend: `frontend/src/match-key.ts` with a `parseMatchKey(s)` helper. Migrate `MatchesView.vue` + `UnknownMapsView.vue` `startsWith` checks.
-4. Cross-cutting lint-time test that wire-format match_key strings round-trip through `Parse → String`.
-
-**Size:** M (remaining). **Risk:** Low — the type is non-breaking; each migration step is local.
-
 ## 4. `App.vue` (1925 lines) and `MatchesView.vue` (~2900 lines) — DEFERRED (multi-PR project)
 
 **Where:** unchanged. The two host SFCs still hold every concern of their respective layers.

@@ -80,3 +80,37 @@ func (k MatchKey) IsUnmatched() bool { return k.Kind == KindUnmatched }
 
 // IsTracked mirrors IsAmbiguous for normal tracked keys.
 func (k MatchKey) IsTracked() bool { return k.Kind == KindTracked }
+
+// Filename returns the body of an unmatched or ambiguous key.
+// For tracked keys (where Body is the timestamp) the result is
+// the empty string — tracked keys are minted from a timestamp,
+// not a filename. Callers branch on .Kind / .IsX() first when
+// the semantic matters.
+func (k MatchKey) Filename() string {
+	if k.Kind == KindUnmatched || k.Kind == KindAmbiguous {
+		return k.Body
+	}
+	return ""
+}
+
+// NewAmbiguousMatchKey builds an `ambiguous-<filename>` key. The
+// minting sites (correlation.go's tie-breaker fallback) used to
+// concatenate the prefix inline; centralising here keeps the
+// wire format in one place — flip the prefix once instead of
+// hunting every call site.
+func NewAmbiguousMatchKey(filename string) MatchKey {
+	return MatchKey{Kind: KindAmbiguous, Raw: "ambiguous-" + filename, Body: filename}
+}
+
+// NewUnmatchedMatchKey builds an `unmatched-<filename>` key.
+func NewUnmatchedMatchKey(filename string) MatchKey {
+	return MatchKey{Kind: KindUnmatched, Raw: "unmatched-" + filename, Body: filename}
+}
+
+// NewTrackedMatchKey builds a `match-<timestamp>` key. The caller
+// passes the timestamp string already in the project's dash-
+// separated ISO form (`YYYY-MM-DDTHH-MM-SS`) since this constructor
+// is shape-agnostic about what counts as a valid timestamp body.
+func NewTrackedMatchKey(timestamp string) MatchKey {
+	return MatchKey{Kind: KindTracked, Raw: "match-" + timestamp, Body: timestamp}
+}
