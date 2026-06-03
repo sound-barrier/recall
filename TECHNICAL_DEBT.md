@@ -56,3 +56,18 @@ articulate the cost.
 Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
+
+## 15. Cancel-in-flight parse — additive endpoint + Parse-tab Stop button
+
+**Where:** `pkg/app/parse.go` (the OCR loop), `pkg/cmd/server_pipeline.go` (new DELETE route), `frontend/src/components/IngestView.vue` (Stop button + cancelling-state UI), `api/openapi.yaml`.
+
+**What breaks:** A long-running parse (hundreds of screenshots, slow disk, large images) has no user-visible abort today. Users either wait it out or kill the process, losing any in-flight aggregations that haven't been flushed. Surfaced as a fresh item when item #7 closed as intentional design — `POST /api/v1/parses` stays as the noun-shaped invocation, cancellation rides on an additive DELETE so the URL shape doesn't need to move.
+
+**Plan:**
+
+1. `*App` gets a cancellation seam — either a `parseCancelled atomic.Bool` field checked between screenshots, or a `context.CancelFunc` stashed when the parse starts and called by the cancel handler. The OCR loop checks it after each per-file flush and returns early; in-flight writes flush before the return so the partial corpus isn't lost.
+2. `DELETE /api/v1/parses/active` → 202 Accepted. Wails-binds to `(a *App) CancelParse() error`. 409 Conflict when no parse is in flight.
+3. Final SSE event `parse-cancelled` (in addition to `parse-complete`) so the frontend can flip the Stop button back to Run without polling.
+4. Frontend: Stop button on the Parse tab visible whenever `parseBusy === true`. Click fires `CancelParse()`, sets a local "cancelling…" state until the SSE confirms; never blocks the UI thread.
+
+**Size:** M. **Risk:** Low — additive endpoint, no contract change to the existing `POST /api/v1/parses`.
