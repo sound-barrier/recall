@@ -2,25 +2,25 @@
 import { computed, toRef } from 'vue'
 
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
-import { useDashboardVisibility } from '../composables/useDashboardVisibility'
-import { WIDGET_REGISTRY, type WidgetShape } from '../dashboard/widgets'
+import { useDashboardLayout } from '../composables/useDashboardLayout'
+import { WIDGET_REGISTRY, type WidgetDef, type WidgetShape } from '../dashboard/widgets'
 
-// "Edit dashboard" modal — toggles which dossier widgets are
-// rendered. The modal is intentionally settings-dialog-flavoured:
-// no live preview thumbnails (the eyebrow + a short description is
-// enough signal at one-line-per-widget density), no drag handles
-// here (Phase 3 puts those on the rendered widgets, not in the
-// modal). Two categories visible today, a third "Wide widgets —
-// coming soon" row in a disabled state so the user can see the
-// shape we're aiming at without the false promise of an enabled
-// control.
+// "Add to dashboard" modal — surfaces every registered widget that
+// is NOT currently in the user's layout, grouped by shape, with a
+// "+ Add" button per row. Layout membership is the single source of
+// truth: trash on the widget removes it from the layout; add here
+// puts it back.
+//
+// The modal stays open after each add so the user can pile on
+// multiple widgets in one session. "Reset layout" wipes to the
+// install default.
 
 const props = defineProps<{
   open: boolean
 }>()
 const emit = defineEmits<{ close: [] }>()
 
-const visibility = useDashboardVisibility()
+const layout = useDashboardLayout()
 
 const openRef = toRef(props, 'open')
 useModalFocusTrap(openRef, {
@@ -28,35 +28,28 @@ useModalFocusTrap(openRef, {
   onClose: () => emit('close'),
 })
 
-// Per-widget rows, grouped by shape so KPIs and breakdowns render
-// as two sections without per-row sentinel mapping in the template.
-// Shape labels match the dossier copy elsewhere ("KPIs",
-// "Breakdowns") rather than the technical enum (`kpi` /
-// `breakdown`).
 interface CategorySection {
   title: string
   helper: string
   shape: WidgetShape
-  rows: ReadonlyArray<{ id: string; eyebrow: string; visible: boolean }>
+  rows: ReadonlyArray<WidgetDef>
 }
 
+// Widgets the user does NOT currently have on the dashboard. Layout
+// membership is the canonical "is this rendered" predicate, so an
+// addable widget is one whose id doesn't appear in any row.
+const addable = computed<readonly WidgetDef[]>(() => {
+  const inLayout = new Set(Object.values(layout.rows.value).flat())
+  return WIDGET_REGISTRY.filter((def) => !inLayout.has(def.id))
+})
+
 const categories = computed<readonly CategorySection[]>(() => {
-  const byShape: Record<WidgetShape, Array<{ id: string; eyebrow: string; visible: boolean }>> = {
-    kpi: [],
-    breakdown: [],
-  }
-  const hiddenSet = new Set(visibility.hidden.value)
-  for (const def of WIDGET_REGISTRY) {
-    byShape[def.shape].push({
-      id: def.id,
-      eyebrow: def.eyebrow,
-      visible: !hiddenSet.has(def.id),
-    })
-  }
+  const byShape: Record<WidgetShape, WidgetDef[]> = { kpi: [], breakdown: [] }
+  for (const def of addable.value) byShape[def.shape].push(def)
   return [
     {
       title: 'KPIs',
-      helper: 'Compact tiles in the dossier\'s headline row.',
+      helper: 'Compact tiles for the dossier\'s headline row.',
       shape: 'kpi',
       rows: byShape.kpi,
     },
@@ -68,6 +61,14 @@ const categories = computed<readonly CategorySection[]>(() => {
     },
   ]
 })
+
+function onAdd(def: WidgetDef) {
+  layout.appendToRow(def.defaultRow, def.id)
+}
+
+function onReset() {
+  layout.reset()
+}
 
 function onBackdropClick(e: MouseEvent) {
   if (e.target === e.currentTarget) emit('close')
@@ -91,11 +92,11 @@ function onBackdropClick(e: MouseEvent) {
         >
           <header class="dashboard-customizer-head">
             <h2 id="dashboard-customizer-title" class="dashboard-customizer-title">
-              Edit dashboard
+              Add to dashboard
             </h2>
             <p class="dashboard-customizer-sub">
-              Untick a widget to hide it from the dossier. Hidden widgets stay in the
-              registry and can be brought back at any time.
+              Browse widgets you don&rsquo;t have on your dashboard. Click + to add one
+              to its default row.
             </p>
           </header>
 
@@ -112,33 +113,22 @@ function onBackdropClick(e: MouseEvent) {
                 </span>
                 <span class="dashboard-customizer-section-helper">{{ cat.helper }}</span>
               </header>
-              <ul class="dashboard-customizer-list">
-                <li v-for="row in cat.rows" :key="row.id" class="dashboard-customizer-row">
-                  <label class="dashboard-customizer-toggle">
-                    <input
-                      type="checkbox"
-                      :checked="row.visible"
-                      :data-widget-toggle="row.id"
-                      @change="visibility.toggle(row.id)"
-                    >
-                    <span class="dashboard-customizer-row-name">{{ row.eyebrow }}</span>
-                  </label>
+              <p v-if="cat.rows.length === 0" class="dashboard-customizer-empty">
+                All {{ cat.title.toLowerCase() }} are on your dashboard.
+              </p>
+              <ul v-else class="dashboard-customizer-list">
+                <li v-for="def in cat.rows" :key="def.id" class="dashboard-customizer-row">
+                  <span class="dashboard-customizer-row-name">{{ def.eyebrow }}</span>
+                  <button
+                    type="button"
+                    class="dashboard-customizer-add"
+                    :data-widget-add="def.id"
+                    @click="onAdd(def)"
+                  >
+                    + Add
+                  </button>
                 </li>
               </ul>
-            </section>
-
-            <!-- Forward-compat placeholder: Phase 4 will add a 'wide'
-                 shape (Campaign Log + friends). The row is rendered
-                 disabled so users can see the shape of what's coming
-                 without a false-promise control. -->
-            <section
-              class="dashboard-customizer-section dashboard-customizer-section-disabled"
-              aria-disabled="true"
-            >
-              <header class="dashboard-customizer-section-head">
-                <span class="dashboard-customizer-section-title">Wide widgets</span>
-                <span class="dashboard-customizer-section-helper">Coming soon &mdash; Campaign Log + future full-row visualisations.</span>
-              </header>
             </section>
           </div>
 
@@ -146,9 +136,10 @@ function onBackdropClick(e: MouseEvent) {
             <button
               type="button"
               class="dashboard-customizer-btn dashboard-customizer-btn-ghost"
-              @click="visibility.reset()"
+              data-reset-layout
+              @click="onReset"
             >
-              Reset to defaults
+              Reset layout
             </button>
             <button
               type="button"
@@ -255,10 +246,11 @@ function onBackdropClick(e: MouseEvent) {
   color: var(--text-faint);
 }
 
-.dashboard-customizer-section-disabled {
-  opacity: 0.55;
-  border-top: 1px dashed var(--hairline);
-  padding-top: 0.7rem;
+.dashboard-customizer-empty {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  font-style: italic;
 }
 
 .dashboard-customizer-list {
@@ -273,44 +265,50 @@ function onBackdropClick(e: MouseEvent) {
 .dashboard-customizer-row {
   display: flex;
   align-items: center;
-}
-
-.dashboard-customizer-toggle {
-  display: inline-flex;
-  align-items: center;
+  justify-content: space-between;
   gap: 0.6rem;
   padding: 0.32rem 0.45rem;
   border: 1px solid transparent;
   border-radius: 2px;
-  cursor: pointer;
-  flex: 1;
   font-size: 0.85rem;
   color: var(--text);
   transition: background 140ms ease, border-color 140ms ease;
 }
 
-.dashboard-customizer-toggle:hover {
+.dashboard-customizer-row:hover {
   background: var(--surface-2);
   border-color: var(--border);
-}
-
-.dashboard-customizer-toggle input[type="checkbox"] {
-  accent-color: var(--accent);
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-}
-
-.dashboard-customizer-toggle:focus-within {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .dashboard-customizer-row-name {
   font-family: var(--display);
   font-style: italic;
   letter-spacing: 0.02em;
+}
+
+.dashboard-customizer-add {
+  appearance: none;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.65rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.dashboard-customizer-add:hover {
+  background: color-mix(in srgb, var(--accent-soft) 60%, var(--accent));
+  color: var(--text);
+}
+
+.dashboard-customizer-add:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .dashboard-customizer-foot {

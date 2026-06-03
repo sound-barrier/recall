@@ -1,12 +1,11 @@
 /**
- * Phase 3 — drag-to-reorder + cross-row dashboard widgets.
+ * Drag-to-reorder + cross-row dashboard widgets.
  *
- * The drag handle is only visible when the customizer modal is
- * open (editMode flips with the modal). Every reorder path —
- * native HTML5 drag, same-row keyboard, cross-row keyboard — pipes
- * through useDragReorder → useDashboardLayout → `recall.dashboard.layout`
- * localStorage. The persisted JSON is row-keyed so cross-row moves
- * are atomic.
+ * The drag handle is only visible when the Edit checkbox in the
+ * dossier header is ticked. Every reorder path — native HTML5 drag,
+ * same-row keyboard, cross-row keyboard — pipes through useDragReorder
+ * → useDashboardLayout → `recall.dashboard.layout` localStorage. The
+ * persisted JSON is row-keyed so cross-row moves are atomic.
  */
 import { test, expect } from './_fixtures'
 import type { Route } from '@playwright/test'
@@ -50,26 +49,26 @@ test.describe('dashboard drag-reorder — edit mode chrome', () => {
     })
   })
 
-  test('drag handles only appear when the customizer is open', async ({ page }) => {
+  test('drag handles only appear when Edit is ticked', async ({ page }) => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
 
     // Closed → no handles.
     await expect(page.locator('[data-drag-handle]')).toHaveCount(0)
 
-    // Open the customizer → handles appear on every visible widget.
-    await page.locator('[data-edit-dashboard]').click()
+    // Tick Edit → handles appear on every widget.
+    await page.locator('input[data-edit-toggle]').check()
     await expect(page.locator('[data-drag-handle]').first()).toBeVisible()
 
-    // Close → handles gone again.
-    await page.locator('.dashboard-customizer-btn-primary').click()
+    // Untick → handles gone again.
+    await page.locator('input[data-edit-toggle]').uncheck()
     await expect(page.locator('[data-drag-handle]')).toHaveCount(0)
   })
 
   test('keyboard ArrowRight on a focused handle reorders within the row', async ({ page }) => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('[data-edit-dashboard]').click()
+    await page.locator('input[data-edit-toggle]').check()
 
     const initial = await widgetOrder(page, 1)
     expect(initial[0]).toBe('winrate')
@@ -88,7 +87,7 @@ test.describe('dashboard drag-reorder — edit mode chrome', () => {
   test('keyboard ArrowDown moves the widget into the row below', async ({ page }) => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('[data-edit-dashboard]').click()
+    await page.locator('input[data-edit-toggle]').check()
 
     // Winrate starts in row 1; press ArrowDown on its handle.
     await page.locator('[data-drag-handle="winrate"]').focus()
@@ -105,14 +104,11 @@ test.describe('dashboard drag-reorder — edit mode chrome', () => {
   test('reorder persists across reload via recall.dashboard.layout', async ({ page }) => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('[data-edit-dashboard]').click()
+    await page.locator('input[data-edit-toggle]').check()
 
     // Move Winrate one slot to the right.
     await page.locator('[data-drag-handle="winrate"]').focus()
     await page.keyboard.press('ArrowRight')
-
-    // Close customizer.
-    await page.locator('.dashboard-customizer-btn-primary').click()
 
     // Reload + reopen Matches tab.
     await page.reload()
@@ -133,7 +129,7 @@ test.describe('dashboard drag-reorder — edit mode chrome', () => {
   test('drag-handle exposes an aria-label naming the widget + keyboard contract', async ({ page }) => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('[data-edit-dashboard]').click()
+    await page.locator('input[data-edit-toggle]').check()
 
     const handle = page.locator('[data-drag-handle="winrate"]')
     const label = await handle.getAttribute('aria-label')

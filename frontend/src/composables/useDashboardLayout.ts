@@ -7,7 +7,6 @@ import {
 } from './usePersistedRef'
 import {
   DEFAULT_ROW_LAYOUT,
-  WIDGET_REGISTRY,
   widgetById,
 } from '../dashboard/widgets'
 
@@ -16,27 +15,36 @@ import {
 //   recall.dashboard.layout = {"1":["winrate","avg-kda",...],"2":["top-maps",...]}
 //
 // Each entry maps a row index to the ordered list of widget IDs in
-// that row. A single key for the whole layout keeps cross-row
-// moves atomic — a drag that pulls a widget from row 1 into row 2
-// is a single localStorage write, never a transient state where
-// the widget appears in both rows or in neither.
+// that row. The layout is the SINGLE source of truth for "is this
+// widget rendered" — membership = visible, absence = absent. A widget
+// not in any row simply doesn't appear in the dossier; users add
+// missing widgets back through the customizer's "+ Add" gallery.
 //
-// **Reconciliation on read** (so future-shipped widgets surface
-// gracefully + corrupted state degrades to defaults):
+// **First install** seeds the layout from `DEFAULT_ROW_LAYOUT` (via
+// `defaultLayout()`). Once the user has any stored layout — even a
+// pristine copy of the default — that layout is authoritative.
+// Trash-on-widget removes from the layout; a later shipped widget
+// (default or opt-in) only enters the user's dossier via the
+// customizer. Otherwise the trash button would lose to a stale
+// "re-add the missing default" pass on every reload.
 //
-//   1. Drop IDs no longer in WIDGET_REGISTRY.
+// **Reconciliation on read** is therefore minimal:
+//
+//   1. Drop IDs no longer in WIDGET_REGISTRY (silent orphan-drop).
 //   2. Dedupe — if an ID somehow lives in two rows, keep the first
 //      occurrence and drop the rest.
-//   3. For each registry widget NOT present in any stored row,
-//      append it to its `defaultRow`. New widgets shipped after the
-//      user customized their layout surface at the tail of the
-//      registry-assigned row, not silently absent.
-//   4. Any row index in DEFAULT_ROW_LAYOUT missing from storage
-//      seeds from the default. Adding a new row (Phase 4) lights up
-//      with its default widgets without wiping the user's existing
-//      customization.
+//   3. Seed any default-row index that the stored layout omits as
+//      an empty array, so callers iterating `rows.value[1]` /
+//      `rows.value[2]` always find a (possibly empty) row to render.
 
 export const LAYOUT_STORAGE_KEY = 'recall.dashboard.layout'
+
+// Soft-thresholds for `appendToRow`. Adding a widget to a row that
+// already holds this many of its shape kicks the new widget into a
+// fresh row below — keeps the dossier's headline-then-detail
+// rhythm even as the user piles widgets on.
+const KPI_ROW_SOFT_MAX = 5
+const BREAKDOWN_ROW_SOFT_MAX = 4
 
 export type RowLayout = Record<number, string[]>
 
@@ -48,6 +56,15 @@ export interface DashboardLayoutApi {
   // the same row.
   move: (id: string, fromRow: number, fromIdx: number, toRow: number, toIdx: number) => void
   setRow: (row: number, ids: string[]) => void
+  // Append a widget to its default row (or a fresh overflow row if
+  // the default already holds >= the soft-threshold for the
+  // widget's shape). Idempotent — a duplicate add is a no-op.
+  appendToRow: (rowIdx: number, id: string) => void
+  // Remove a widget from whichever row it lives in. If the
+  // resulting row is empty AND its index is past the last default
+  // row, the row is deleted entirely (auto-prune user-created
+  // overflow rows).
+  removeFromRow: (id: string) => void
   reset: () => void
 }
 
@@ -111,11 +128,51 @@ export function useDashboardLayout(): DashboardLayoutApi {
     set(next)
   }
 
+  function appendToRow(rowIdx: number, id: string) {
+    const def = widgetById(id)
+    if (!def) return
+    const current = rows.value
+    // Idempotent: if the widget is already somewhere in the layout,
+    // don't double-add it.
+    for (const r of Object.values(current)) {
+      if (r.includes(id)) return
+    }
+    const next = cloneLayout(current)
+    const targetRow = nextRowForAppend(next, rowIdx, def.shape)
+    const arr = next[targetRow] ?? []
+    arr.push(id)
+    next[targetRow] = arr
+    set(next)
+  }
+
+  function removeFromRow(id: string) {
+    const current = rows.value
+    const next = cloneLayout(current)
+    let found = false
+    for (const key of Object.keys(next)) {
+      const rowIdx = Number(key)
+      const arr = next[rowIdx]!
+      const idx = arr.indexOf(id)
+      if (idx === -1) continue
+      arr.splice(idx, 1)
+      next[rowIdx] = arr
+      found = true
+      // After the splice, if this row is empty AND it's an overflow
+      // row (past the last default row), drop the row entirely so
+      // the customizer's empty user-rows don't haunt the layout.
+      if (arr.length === 0 && rowIdx > maxDefaultRow()) {
+        delete next[rowIdx]
+      }
+      break
+    }
+    if (found) set(next)
+  }
+
   function reset() {
     set(defaultLayout())
   }
 
-  cached = { rows, move, setRow, reset }
+  cached = { rows, move, setRow, appendToRow, removeFromRow, reset }
   return cached
 }
 
@@ -147,7 +204,12 @@ export function isRowLayout(v: unknown): v is RowLayout {
   return true
 }
 
-// Reconciliation: drop orphans, dedupe, append missing widgets.
+// Reconciliation: drop orphans, dedupe, seed missing default rows.
+// First-install seeding happens via `defaultLayout()` (the
+// usePersistedRef default) — once the user has a stored layout, that
+// layout is authoritative and the reconciler does NOT re-add absent
+// widgets. Otherwise trash-on-widget would silently lose to a stale
+// re-add pass on every reload.
 export function reconcile(stored: RowLayout): RowLayout {
   const out: RowLayout = {}
   const seen = new Set<string>()
@@ -170,23 +232,14 @@ export function reconcile(stored: RowLayout): RowLayout {
     out[rowIdx] = cleaned
   }
 
-  // Pass 2: seed any default-row that the stored layout omitted.
+  // Pass 2: seed any default-row that the stored layout omitted as
+  // an empty array. Lets template iteration always find rows 1 / 2
+  // even when the user has emptied them.
   for (const key of Object.keys(DEFAULT_ROW_LAYOUT)) {
     const rowIdx = Number(key)
     if (out[rowIdx] === undefined) {
       out[rowIdx] = []
     }
-  }
-
-  // Pass 3: append every registered widget that didn't appear
-  // anywhere in the stored layout. Append to defaultRow so newly
-  // shipped widgets surface at the row they're declared in.
-  for (const def of WIDGET_REGISTRY) {
-    if (seen.has(def.id)) continue
-    const row = out[def.defaultRow] ?? []
-    row.push(def.id)
-    out[def.defaultRow] = row
-    seen.add(def.id)
   }
 
   return out
@@ -198,4 +251,28 @@ function cloneLayout(src: RowLayout): RowLayout {
     out[Number(k)] = [...v]
   }
   return out
+}
+
+function maxDefaultRow(): number {
+  return Math.max(...Object.keys(DEFAULT_ROW_LAYOUT).map((k) => Number(k)))
+}
+
+// Pick the target row for an append. If the requested row is under
+// the per-shape soft cap, returns it as-is; otherwise allocates a
+// fresh row past the highest existing index and seeds it empty.
+function nextRowForAppend(next: RowLayout, rowIdx: number, shape: 'kpi' | 'breakdown'): number {
+  const row = next[rowIdx] ?? []
+  let shapeCount = 0
+  for (const id of row) {
+    if (widgetById(id)?.shape === shape) shapeCount++
+  }
+  const cap = shape === 'kpi' ? KPI_ROW_SOFT_MAX : BREAKDOWN_ROW_SOFT_MAX
+  if (shapeCount < cap) {
+    next[rowIdx] = row
+    return rowIdx
+  }
+  const maxRow = Math.max(0, ...Object.keys(next).map((k) => Number(k)))
+  const overflow = maxRow + 1
+  next[overflow] = []
+  return overflow
 }

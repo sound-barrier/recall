@@ -29,11 +29,6 @@ export interface MountOverrides {
   // tests that pass dateless records and expect to see the UNKNOWN
   // DATE bucket must set this to true.
   includeUndated?: boolean
-  // Seeds localStorage['recall.dashboard.hidden'] so
-  // useDashboardVisibility picks up a starting hidden-set. Passed
-  // as a JS array (the seeder joins on ','); production default is
-  // [] (every widget visible).
-  dashboardHidden?: string[]
 }
 
 // Mock factory captured at module scope so EventsOn handlers a test
@@ -170,9 +165,6 @@ export async function mountApp(overrides: MountOverrides = {}) {
   // test explicitly opted into so we don't surprise unrelated tests.
   if (overrides.includeUndated !== undefined) {
     localStorage.setItem('recall.includeUndated', overrides.includeUndated ? 'true' : 'false')
-  }
-  if (overrides.dashboardHidden !== undefined) {
-    localStorage.setItem('recall.dashboard.hidden', overrides.dashboardHidden.join(','))
   }
   // Suppress the first-launch onboarding tour by default — the tour
   // installs a document-level capture-phase keydown listener that

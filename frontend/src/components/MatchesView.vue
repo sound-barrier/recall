@@ -12,7 +12,7 @@ import MatchTimelineHeader from './MatchTimelineHeader.vue'
 import FilterCombobox from './FilterCombobox.vue'
 import DashboardWidget from './DashboardWidget.vue'
 import DashboardCustomizer from './DashboardCustomizer.vue'
-import { useDashboardVisibility } from '../composables/useDashboardVisibility'
+import DashboardAddTile from './DashboardAddTile.vue'
 import { useDashboardLayout } from '../composables/useDashboardLayout'
 import { useDragReorder } from '../composables/useDragReorder'
 import { widgetById, type WidgetDef } from '../dashboard/widgets'
@@ -257,20 +257,14 @@ const {
 // ─── Dashboard widget layout ────────────────────────────────────
 //
 // Dossier KPIs and breakdowns are rendered through a registry of
-// `<DashboardWidget>` SFCs (see dashboard/widgets.ts). Phase 1 reads
-// directly from DEFAULT_ROW_LAYOUT — no localStorage prefs yet. Phases
-// 2 (hide/show) and 3 (drag-reorder, incl. cross-row) thread visibility
-// + ordering composables through the same `dashboardRows` computed
-// without changing the v-for shape in the template.
-// Hide/show preference + persisted row layout — the two prefs the
-// dossier reads at this layer. Layout is reconciled against the
-// registry on read (drops orphans, dedupes, appends new widgets),
-// so future widget bring-ups surface automatically.
-const dashboardVisibility = useDashboardVisibility()
-const dashboardLayout     = useDashboardLayout()
+// `<DashboardWidget>` SFCs (see dashboard/widgets.ts). The persisted
+// row layout is the SINGLE source of truth for "is this widget
+// rendered" — membership in `layout.rows.value[*]` means visible,
+// absence means absent. Trash on a widget removes it from the
+// layout; the customizer's "+ Add" puts it back.
+const dashboardLayout = useDashboardLayout()
 
 const dashboardRows = computed(() => {
-  const hidden = new Set(dashboardVisibility.hidden.value)
   const layout = dashboardLayout.rows.value
   return Object.keys(layout)
     .map((k) => Number(k))
@@ -278,63 +272,53 @@ const dashboardRows = computed(() => {
     .map((rowIdx) => ({
       index: rowIdx,
       widgets: (layout[rowIdx] ?? [])
-        .filter((id) => !hidden.has(id))
         .map((id) => widgetById(id))
         .filter((def): def is WidgetDef => def !== undefined),
     }))
 })
 
-// Edit mode flips when the customizer is open. Drag handles only
-// render in edit mode so casual viewers see a clean dossier.
+// Edit mode is a sticky checkbox on the dossier header — separate
+// from the customizer modal so the user can drag / trash without
+// the modal eating the screen, and open the modal as a punctuated
+// "add a widget" gesture.
+const editMode = ref(false)
 const showDashboardCustomizer = ref(false)
-const editMode = computed(() => showDashboardCustomizer.value)
+const selectedWidgetId = ref<string | null>(null)
+
+// Clear the selection when the user leaves edit mode so re-entering
+// doesn't ghost an old selection.
+watch(editMode, (v) => {
+  if (!v) selectedWidgetId.value = null
+})
+
+// Last-row index drives the "+" tile placement — render it inside
+// the final row so it sits flush with the widgets it's siblings of.
+const lastRowIdx = computed<number | null>(() => {
+  const rows = dashboardRows.value
+  return rows.length === 0 ? null : rows[rows.length - 1]!.index
+})
+
+function onWidgetSelect(id: string) {
+  selectedWidgetId.value = id
+}
+
+function onWidgetRemove(id: string) {
+  dashboardLayout.removeFromRow(id)
+  if (selectedWidgetId.value === id) selectedWidgetId.value = null
+}
 
 // Drag-reorder wiring. The reorder composable knows nothing about
 // the layout itself — it just emits move(id, fromRow, fromIdx,
-// toRow, toIdx) and the layout composable handles the persistence
-// + reconciliation. rowSize reads from the LIVE filtered row so
-// drops past the last cell pick the right append index even when
-// some widgets are hidden.
+// toRow, toIdx) and the layout composable handles the persistence.
 const dragReorder = useDragReorder({
   onMove: (id, fromRow, fromIdx, toRow, toIdx) => {
-    // We translate the visible-row indices the consumer sees into
-    // the absolute indices the layout composable expects. The
-    // hidden widgets still occupy positions in the persisted
-    // layout, so the move math has to account for them.
-    dashboardLayout.move(
-      id,
-      fromRow,
-      absoluteIdx(fromRow, fromIdx),
-      toRow,
-      absoluteIdx(toRow, toIdx, /* insertion */ true),
-    )
+    dashboardLayout.move(id, fromRow, fromIdx, toRow, toIdx)
   },
   rowSize: (row) => {
     const r = dashboardRows.value.find((x) => x.index === row)
     return r ? r.widgets.length : 0
   },
 })
-
-// Walk the persisted row's IDs and return the absolute index of
-// the visible widget at visibleIdx. For insertion targets (drops
-// "before this cell"), we return the absolute index of the cell
-// that's about to be displaced; for past-the-end drops, the row's
-// real length.
-function absoluteIdx(rowIdx: number, visibleIdx: number, insertion = false): number {
-  const hidden = new Set(dashboardVisibility.hidden.value)
-  const row = dashboardLayout.rows.value[rowIdx] ?? []
-  let seen = 0
-  for (let i = 0; i < row.length; i++) {
-    const id = row[i]!
-    if (hidden.has(id)) continue
-    if (seen === visibleIdx) return i
-    seen++
-  }
-  // Either appending past the last visible cell, or the visible
-  // index referenced a widget that just disappeared — either way,
-  // append at the persisted row's end.
-  return insertion ? row.length : Math.max(0, row.length - 1)
-}
 
 // Per-widget prop bag, keyed by widget id. Each entry is the exact
 // set of dossier values that widget's SFC declares as props.
@@ -644,7 +628,6 @@ onBeforeUnmount(() => {
 
       <template v-for="row in dashboardRows" :key="`row-${row.index}`">
         <div
-          v-if="row.widgets.length > 0"
           class="dashboard-row"
           :data-row="row.index"
           @dragover.prevent="editMode ? dragReorder.onRowDragOver(row.index, $event) : null"
@@ -658,6 +641,7 @@ onBeforeUnmount(() => {
             :edit-mode="editMode"
             :row="row.index"
             :idx="idx"
+            :selected="editMode && selectedWidgetId === def.id"
             :drop-target="dragReorder.dropHint.value !== null &&
               dragReorder.dropHint.value.row === row.index &&
               dragReorder.dropHint.value.idx === idx"
@@ -668,48 +652,32 @@ onBeforeUnmount(() => {
             @drag-over="dragReorder.onDragOver"
             @drop="dragReorder.onDrop"
             @handle-keydown="dragReorder.onHandleKeydown"
+            @select="onWidgetSelect"
+            @remove="onWidgetRemove"
           >
             <component :is="def.component" v-bind="widgetProps[def.id]" />
           </DashboardWidget>
-        </div>
-        <!-- Empty-state hint when every widget in a row is hidden.
-             We render the placeholder INSTEAD of an empty grid so
-             the dossier doesn't visually collapse — the user sees
-             where the row used to be and the path to bring widgets
-             back. -->
-        <p
-          v-else
-          class="dashboard-row-empty"
-          :data-row="row.index"
-        >
-          Every widget in this row is hidden &mdash;
-          <button
-            type="button"
-            class="dashboard-row-empty-link"
+          <DashboardAddTile
+            v-if="editMode && row.index === lastRowIdx"
             @click="showDashboardCustomizer = true"
-          >
-            open Edit dashboard
-          </button>
-          to bring some back.
-        </p>
+          />
+        </div>
       </template>
 
       <!-- Narrow trigger + popover. -->
       <div class="dossier-actions">
-        <!-- Edit-dashboard launcher. Mirrors the narrow trigger's
-             chrome family (.dossier-btn) but stays non-primary so
-             Narrow remains the visual lead. -->
-        <button
-          type="button"
-          class="dossier-btn"
-          aria-haspopup="dialog"
-          :aria-expanded="showDashboardCustomizer ? 'true' : 'false'"
-          aria-controls="dashboard-customizer-title"
-          data-edit-dashboard
-          @click="showDashboardCustomizer = true"
-        >
-          <span aria-hidden="true">▦</span> Edit dashboard
-        </button>
+        <!-- Edit-dashboard sticky toggle. Lights up direct-manipulation
+             affordances (whole-widget drag, click-to-select, trash on
+             the selected widget, "+" tile at the row tail). -->
+        <label class="dossier-edit-toggle">
+          <input
+            v-model="editMode"
+            type="checkbox"
+            data-edit-toggle
+          >
+          <span aria-hidden="true">▦</span>
+          Edit dashboard
+        </label>
 
         <div class="narrow-anchor">
           <button
@@ -1557,46 +1525,46 @@ onBeforeUnmount(() => {
   min-width: 280px;
 }
 
-/* Empty-state for a row whose widgets are all hidden. Keeps the
-   dossier from visually collapsing and surfaces the path back to
-   the customizer inline. The inline button reuses the dossier's
-   mono eyebrow voice; no chrome so it reads as part of the
-   sentence rather than another control. */
-.dashboard-row-empty {
-  margin: 0;
-  padding: 0.55rem 0.7rem;
-  border: 1px dashed var(--border);
+.dossier-actions { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem; }
+
+/* Edit-dashboard sticky toggle. Same mono eyebrow voice as the
+   dossier buttons so it reads as a sibling control. */
+.dossier-edit-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border);
   border-radius: 2px;
-  color: var(--text-dim);
-  font-size: 0.78rem;
-  font-style: italic;
-  text-align: center;
-  background: var(--surface-2);
-}
-
-.dashboard-row-empty-link {
-  appearance: none;
-  background: none;
-  border: 0;
-  padding: 0;
   font-family: var(--mono);
-  font-style: normal;
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--text-dim);
+  background: transparent;
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  font-weight: 700;
+  user-select: none;
 }
 
-.dashboard-row-empty-link:hover,
-.dashboard-row-empty-link:focus-visible {
-  color: var(--text);
+.dossier-edit-toggle:has(input:checked) {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.dossier-edit-toggle input {
+  accent-color: var(--accent);
+  width: 0.95rem;
+  height: 0.95rem;
+  cursor: pointer;
+}
+
+.dossier-edit-toggle:focus-within {
   outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
-
-.dossier-actions { display: flex; gap: 0.5rem; margin-top: 0.2rem; }
 
 .dossier-btn {
   appearance: none;
