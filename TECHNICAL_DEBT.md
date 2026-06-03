@@ -57,20 +57,21 @@ Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
 
-## 1. `pkg/cmd/server.go::NewMux` is 95-complexity
+## 1. `pkg/cmd/server.go::NewMux` is 60-complexity (was 95)
 
-**Where:** `pkg/cmd/server.go:178` — `NewMux` registers every HTTP route inline (matches CRUD, annotations, reviews, profiles, settings, parses, screenshots, …). gocyclo reports **95**; the next-highest function in the codebase is 43, and McCabe's guidance is 10. The file is 985 lines and `NewMux` accounts for ~700 of them.
+**Where:** `pkg/cmd/server.go::NewMux`. Matches resource family extracted to `server_matches.go::registerMatchRoutes`; NewMux dropped from 95 → 60. The remaining 60 covers Profiles, Settings, Parse, Screenshots, System routes still inline.
 
-**What breaks:** every new route has to land inside one giant function, so route additions look like 100-line diffs and become un-reviewable. Branch coverage is hard to keep honest because dead-branch dropping would require splitting the function — but splitting requires choosing seams, which nobody has. New contributors touching routing have nowhere safe to start, and a route-aware test that mounts a partial mux can't exist because there are no partials.
+**What breaks:** the Matches family is now isolated; adding a /matches route edits a focused 350-line file. Other families (Profiles, Settings) still live in NewMux, so the route-monolith problem persists for those.
 
 **Plan:**
 
-1. Identify natural sub-muxes — matches/, profiles/, settings/, parses/, screenshots/. Each gets its own `registerMatchRoutes(mux, app)`, `registerProfileRoutes(...)`, etc.
-2. Move handlers + helpers per family into `server_matches.go`, `server_profiles.go`, … with the file naming the existing convention (`server_review_test.go` already uses this shape — match it).
-3. `NewMux` becomes ~30 lines: instantiate router, fan out to each registrar.
-4. No behaviour change. Existing schemathesis + e2e tests are the contract.
+1. (Done) Extract Matches family. `server_matches.go::registerMatchRoutes` registers GET/DELETE /matches, POST/transfers, /{matchKey} CRUD, visibility, resolution, annotation, review. NewMux 95 → 60.
+2. Extract Profiles family. `server_profiles.go::registerProfileRoutes`.
+3. Extract Settings family. `server_settings.go::registerSettingsRoutes`.
+4. Extract Parse + Screenshots + System families per the same pattern.
+5. Final NewMux should be ~30 lines: instantiate router, fan out.
 
-**Size:** L. **Risk:** Med — route table is the public API; getting the mount path wrong = silent 404.
+**Size:** M (remaining). **Risk:** Med — route table is the public API; mistakes silently 404.
 
 ## 2. `useMatchFilters`'s main predicate is 85-complexity — REMAINS PARTIALLY
 
