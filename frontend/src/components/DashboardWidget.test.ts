@@ -61,6 +61,16 @@ describe('DashboardWidget', () => {
     expect(w.find('[data-widget-remove="winrate"]').exists()).toBe(false)
   })
 
+  it('applies dashboard-widget-dragging when the dragging prop flips', async () => {
+    const w = mount(DashboardWidget, {
+      props: { id: 'winrate', shape: 'kpi', editMode: true, dragging: false },
+    })
+    const root = w.find('[data-widget-id="winrate"]')
+    expect(root.classes()).not.toContain('dashboard-widget-dragging')
+    await w.setProps({ dragging: true })
+    expect(root.classes()).toContain('dashboard-widget-dragging')
+  })
+
   it('clicking the root in editMode emits select(id)', async () => {
     const w = mount(DashboardWidget, {
       props: { id: 'winrate', shape: 'kpi', editMode: true },

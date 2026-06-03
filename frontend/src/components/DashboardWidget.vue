@@ -38,6 +38,12 @@ const props = defineProps<{
   // True when this widget is the user's current edit-mode selection
   // — wears the strong accent ring + lift.
   selected?: boolean
+  // True when THIS widget is the one being dragged. Renders as a
+  // ghost (dashed accent border, low opacity, slight scale-down) at
+  // the LIVE drop position so the user reads "here's where it will
+  // land" while the browser's native drag-image preview follows
+  // the cursor.
+  dragging?: boolean
   legacyDataKpi?: string
   legacyDataBreakdown?: string
 }>()
@@ -71,6 +77,7 @@ function onRootClick() {
         'dashboard-widget-editable': editMode,
         'dashboard-widget-drop-target': dropTarget,
         'dashboard-widget-selected': editMode && selected,
+        'dashboard-widget-dragging': dragging,
       },
     ]"
     :data-widget-id="id"
@@ -181,6 +188,20 @@ function onRootClick() {
               0 14px 28px -16px color-mix(in srgb, var(--accent) 80%, transparent);
   transform: translateY(-2px) scale(1.015);
   z-index: 2;
+}
+
+/* Ghost — the source widget while it's being dragged. Sits at the
+   live preview position so the user sees exactly where it will
+   land. Lower opacity + dashed accent border + faint accent fill
+   read as "placeholder for the dragged item" without disappearing
+   entirely (which would leave a confusing gap). */
+.dashboard-widget-dragging {
+  opacity: 0.35;
+  border-style: dashed !important;
+  border-color: var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)) !important;
+  transform: scale(0.985);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 /* Controls (drag handle + trash) — quiet by default (low opacity)

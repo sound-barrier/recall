@@ -56,6 +56,13 @@ export interface DashboardLayoutApi {
   // the same row.
   move: (id: string, fromRow: number, fromIdx: number, toRow: number, toIdx: number) => void
   setRow: (row: number, ids: string[]) => void
+  // Atomic whole-layout write. Used by the live-reflow drag's
+  // commit path: the rendered preview IS the destination layout,
+  // so we persist it as-is rather than translating back into a
+  // single move() call with index gymnastics. Filters out IDs the
+  // registry no longer recognises (same orphan-drop policy as
+  // setRow).
+  setLayout: (layout: RowLayout) => void
   // Append a widget to its default row (or a fresh overflow row if
   // the default already holds >= the soft-threshold for the
   // widget's shape). Idempotent — a duplicate add is a no-op.
@@ -128,6 +135,16 @@ export function useDashboardLayout(): DashboardLayoutApi {
     set(next)
   }
 
+  function setLayout(layout: RowLayout) {
+    const next: RowLayout = {}
+    for (const [k, ids] of Object.entries(layout)) {
+      const rowIdx = Number(k)
+      if (!Number.isFinite(rowIdx)) continue
+      next[rowIdx] = ids.filter((id) => widgetById(id) !== undefined)
+    }
+    set(next)
+  }
+
   function appendToRow(rowIdx: number, id: string) {
     const def = widgetById(id)
     if (!def) return
@@ -172,7 +189,7 @@ export function useDashboardLayout(): DashboardLayoutApi {
     set(defaultLayout())
   }
 
-  cached = { rows, move, setRow, appendToRow, removeFromRow, reset }
+  cached = { rows, move, setRow, setLayout, appendToRow, removeFromRow, reset }
   return cached
 }
 

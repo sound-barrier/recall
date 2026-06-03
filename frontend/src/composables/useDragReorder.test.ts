@@ -58,6 +58,34 @@ describe('useDragReorder — drag handlers', () => {
     expect(onMove).toHaveBeenCalledWith('winrate', 1, 0, 2, 1)
   })
 
+  it('onDrop fires onMove BEFORE clearing dragging state (live-preview consumers depend on this)', () => {
+    let snapshot: { id: string; row: number; idx: number } | null = null
+    const onMove = vi.fn(function captureDragging() {
+      // Read api.dragging.value inside onMove — should still hold
+      // the source coords. If onDragEnd had fired first, this would
+      // be null.
+      snapshot = api.dragging.value
+    })
+    const api = useDragReorder({ onMove, rowSize: () => 4 })
+    api.onDragStart('winrate', 1, 0, fakeDragEvent())
+    api.onDrop(2, 1, fakeDragEvent())
+    expect(snapshot).toEqual({ id: 'winrate', row: 1, idx: 0 })
+    // And the state is cleared by the time onDrop returns.
+    expect(api.dragging.value).toBeNull()
+  })
+
+  it('onRowDrop also fires onMove before clearing dragging state', () => {
+    let snapshot: { id: string; row: number; idx: number } | null = null
+    const onMove = vi.fn(function captureDragging() {
+      snapshot = api.dragging.value
+    })
+    const api = useDragReorder({ onMove, rowSize: () => 4 })
+    api.onDragStart('winrate', 1, 0, fakeDragEvent())
+    api.onRowDrop(2, fakeDragEvent())
+    expect(snapshot).toEqual({ id: 'winrate', row: 1, idx: 0 })
+    expect(api.dragging.value).toBeNull()
+  })
+
   it('onDrop on the same coords is a no-op', () => {
     const onMove = vi.fn()
     const api = useDragReorder({ onMove, rowSize: () => 4 })
