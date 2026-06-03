@@ -14,8 +14,9 @@ import MatchSparklineBrush from './MatchSparklineBrush.vue'
 //     volume, hue ∝ W%. Drag across bars to set a date range; click
 //     without drag clears.
 //
-// Both reach the same useMatchFilters refs (filterFrom / filterTo)
-// so flipping one updates the other's selection band.
+// Both reach the same `customFrom` / `customTo` refs on the narrow
+// filter state (wired in MatchesView's template) so flipping one
+// updates the other's selection band.
 
 defineProps<{
   records: MatchRecord[]

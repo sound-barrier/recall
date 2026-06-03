@@ -57,20 +57,6 @@ Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
 
-## 2. `useMatchFilters`'s main predicate is 85-complexity — REMAINS PARTIALLY
-
-**Where:** `frontend/src/composables/useMatchFilters.ts:142` — still at 85-complexity. The matching predicate in `useMatchesNarrow.ts` has been refactored down to 12 (was 42) by extracting per-dimension helpers into `narrowPredicates.ts`; `useMatchFilters` still uses its own inline form.
-
-**What breaks:** the duplicated filter math now lives in one fully refactored spot (`narrowPredicates.ts`) AND one legacy 85-complexity spot. Adding a dimension touches both, the legacy spot is still a coverage trap, and the original "you can delete `useMatchFilters` if `useMatchesNarrow` covers every consumer" plan can't land until App.vue stops using `useMatchFilters` for the legacy FilterRail UI.
-
-**Plan:**
-
-1. (Done) Extracted per-dimension predicates into `narrowPredicates.ts`. `useMatchesNarrow` now composes them via `every`; 42 → 12.
-2. Audit App.vue's `useMatchFilters` consumer. If still load-bearing, refactor it to consume `narrowPredicates` too (the State shape differs — array filters vs Set — so the helpers need an array overload or the call sites need adapter wrappers).
-3. Delete `useMatchFilters` when no consumer remains.
-
-**Size:** S (remaining step). **Risk:** Low.
-
 ## 3. `match_key` is stringly-typed — REMAINING: migrate consumers to the new type
 
 **Where:** `pkg/app/match_key.go` (new) introduces `MatchKey` + `ParseMatchKey()` + Kind enum + `IsTracked/IsUnmatched/IsAmbiguous()` helpers. Test coverage at `pkg/app/match_key_test.go` pins the three known prefixes + the ErrInvalidMatchKey sentinel.

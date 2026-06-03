@@ -48,11 +48,6 @@ import {
 } from './api'
 import type { MatchAnnotationInput, ReviewedBy } from './api'
 import { tallyWLD, screenshotURL } from './match-helpers'
-import { useIncludeUndated } from './composables/useIncludeUndated'
-import { useIncludeUnknown } from './composables/useIncludeUnknown'
-import { useMinPlayThreshold } from './composables/useMinPlayThreshold'
-import { useLeaverHandling } from './composables/useLeaverHandling'
-import { useShowHidden } from './composables/useShowHidden'
 import { useTabKeyboardNav, TAB_ORDER, type TabId } from './composables/useTabKeyboardNav'
 import { useKeyboardShortcuts, type Shortcut } from './composables/useKeyboardShortcuts'
 import { useModalFocusTrap } from './composables/useModalFocusTrap'
@@ -66,7 +61,7 @@ import { useScreenshotPreview } from './composables/useScreenshotPreview'
 import { ONBOARDING_COMPLETED_KEY } from './composables/storageKeys'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
-import { useMatchFilters } from './composables/useMatchFilters'
+import { useSearchClauses } from './composables/useSearchClauses'
 import { useSelectedMatch } from './composables/useSelectedMatch'
 import { useMatchesNarrow, createMatchesNarrowState } from './composables/useMatchesNarrow'
 import { useMatchAnchor } from './composables/useMatchAnchor'
@@ -415,35 +410,11 @@ const {
 // Filter / filter-panel / grouping composables — owned here so the
 // extracted view components (MatchesView, eventually others) receive
 // them as bundled props rather than re-instantiating their own state.
-// activeFilterCount surfaces in the matches-tab nav badge so it lives
-// outside the view component too.
-// "Include undated matches" toggle. Default off — records without
-// data.date are hidden from the matched view until the user opts in
-// via the FilterRail toggle. Persisted in localStorage so the choice
-// survives across launches.
-const { includeUndated } = useIncludeUndated()
-const {
-  minPlayPercent, minPlayMinutes,
-  setMinPlayPercent, setMinPlayMinutes,
-} = useMinPlayThreshold()
-const { leaverHandling } = useLeaverHandling()
-// "Show hidden matches" toggle. Default off — soft-deleted matches
-// stay out of view until the user opts in to see them.
-const { showHidden } = useShowHidden()
-// "Show unknown-map matches" toggle for the Matches narrow panel.
-// Default off — unknown-map records live in the Unknown tab.
-const { includeUnknown } = useIncludeUnknown()
-const filters = useMatchFilters(
-  records,
-  includeUndated,
-  minPlayPercent, minPlayMinutes,
-  setMinPlayPercent, setMinPlayMinutes,
-  leaverHandling,
-  showHidden,
-  includeUnknown,
-)
-const { activeFilterCount } = filters
-// First-day-of-week preference (Settings → Calendar).
+// First-day-of-week preference (Settings → Calendar). The other
+// persisted prefs (leaver-handling, min-play, include-undated /
+// hidden / unknown) used to be wired in here for the deleted
+// `useMatchFilters` consumer; the narrow panel owns its own copies
+// of each dimension now, so App.vue doesn't need to read them.
 const { weekStart, setWeekStart } = useWeekStart()
 
 // (Per-card expand state replaced by the `selection` composable
@@ -836,6 +807,34 @@ const matchAnchor = useMatchAnchor()
 const matchesNarrowState = createMatchesNarrowState({ anchorKey: matchAnchor.anchorKey })
 const matchesNarrow = useMatchesNarrow(records, matchesNarrowState)
 
+// Search-clause parsing for the detail-panel hit highlighter.
+// Sources directly off the narrow panel's `searchText` so there's
+// no bridge ref to keep in sync — exactly the simplification the
+// useMatchFilters teardown enabled. The narrow filter's own
+// `activeClauseCount` is what the masthead badge reads now.
+const { searchClauses } = useSearchClauses(matchesNarrowState.searchText)
+const activeFilterCount = matchesNarrow.activeClauseCount
+
+// Adapter for the detail panel's chip toggle contract. `isActive`
+// reports whether a chip's value is currently picked in the narrow
+// filter; `toggleFilter` flips it. Unknown fields (e.g. legacy
+// 'sshot' — the screenshot-type filter useMatchFilters carried that
+// the narrow panel doesn't) read as inactive and the toggle no-ops.
+const NARROW_FIELDS: Record<string, { picked: () => Set<string>; pick: (v: string) => void }> = {
+  hero:   { picked: () => matchesNarrowState.pickedHeroes.value,   pick: matchesNarrow.pickHero },
+  role:   { picked: () => matchesNarrowState.pickedRoles.value,    pick: matchesNarrow.pickRole },
+  result: { picked: () => matchesNarrowState.pickedResults.value,  pick: matchesNarrow.pickResult },
+  map:    { picked: () => matchesNarrowState.pickedMaps.value,     pick: matchesNarrow.pickMap },
+  type:   { picked: () => matchesNarrowState.pickedMapTypes.value, pick: matchesNarrow.pickMapType },
+  tag:    { picked: () => matchesNarrowState.pickedTags.value,     pick: matchesNarrow.pickTag },
+}
+function isActive(field: string, value: string): boolean {
+  return NARROW_FIELDS[field]?.picked().has(value) ?? false
+}
+function toggleFilter(field: string, value: string) {
+  NARROW_FIELDS[field]?.pick(value)
+}
+
 // Anchor confirmation toast — fires on set + cleared transitions
 // to bridge the cause-effect gap between the detail-panel button
 // and the narrow-panel filter. `token` is the React-style fresh key
@@ -924,37 +923,22 @@ function onFirstRunDismiss(renamedTo: string | null) {
   }
 }
 
-// Bridge the narrow-panel search text into `filters.matchQuery`.
-// `matchQuery` is the source `searchClauses` is parsed from, and
-// `searchClauses` feeds MatchCardExpanded's `<mark class="note-hit">`
-// hit-highlighter inside the detail panel. Without this wire the
-// hit-highlight branch is unreachable — see TECHNICAL_DEBT.md item 19.
-//
-// One-directional: the narrow panel's input is the only writer; the
-// watcher syncs into matchQuery so highlight markup updates as the
-// user types. `useMatchFilters`'s own `reset()` still clears the ref
-// the legacy way; nothing reads matchQuery for filtering anymore
-// (narrowing happens via useMatchesNarrow), so a brief lag in either
-// direction is harmless.
-watch(
-  () => matchesNarrowState.searchText.value,
-  (next) => { filters.matchQuery.value = next },
-  { immediate: true },
-)
-
 // Search → panel auto-track. When the panel is open AND the user
 // is actively searching (any clauses parsed), the panel selection
-// follows the first hit so the highlighted content is visible
-// without an extra click. The watcher fires on every matchQuery
-// change while the panel is open; when the user clears the search,
-// we leave the selection where it last landed (don't snap back to
-// a previous match — that would surprise the user).
+// follows the first narrowed match so the highlighted content is
+// visible without an extra click. The watcher fires on every
+// searchText change while the panel is open; when the user clears
+// the search, we leave the selection where it last landed (don't
+// snap back to a previous match — that would surprise the user).
+// `narrowedRecords` IS the search-aware list now that the legacy
+// `filters.filteredSorted` is gone — same dimensions, no second
+// independent filter pipeline to keep in sync.
 watch(
-  () => filters.matchQuery.value,
+  () => matchesNarrowState.searchText.value,
   () => {
     if (!selection.isOpen.value) return
-    if (filters.searchClauses.value.length === 0) return
-    const first = filters.filteredSorted.value[0]
+    if (searchClauses.value.length === 0) return
+    const first = matchesNarrow.narrowedRecords.value[0]
     if (first && first.match_key !== selection.selectedKey.value) {
       selection.open(first.match_key)
     }
@@ -976,12 +960,9 @@ async function toggleExpand(id: string) {
 // W-L-D summary that reflects the *currently narrowed* set so the user
 // can see, for instance, "support role on Aatlis: 6W 2L 0D" by setting
 // the matching filters. Sources from MatchesView's `narrowedRecords`
-// (NOT the legacy `filters.filteredSorted`) so this stays in sync with
-// the MatchesView dossier's Record KPI tile — the legacy pipeline
-// silently drops undated rows, which would surface the same data as
-// two different W/L/D readings between the masthead and the Record
-// tile when a rank-inferred result has no SUMMARY-supplied date.
-// Honors the same `leaver-exclude-tally` rule the dossier applies.
+// so this stays in sync with the MatchesView dossier's Record KPI
+// tile. Honors the same `leaver-exclude-tally` rule the dossier
+// applies.
 const wld = computed(() => tallyWLD(
   matchesNarrow.narrowedRecords.value,
   matchesNarrow.leaverHandling.value === 'exclude-tally',
@@ -1627,12 +1608,12 @@ useEventStream({
       :is-sources-open="isSourcesOpen(selection.selectedKey.value)"
       :is-preview-open="isPreviewOpen"
       :has-preview-error="hasPreviewError"
-      :is-active="filters.isActive"
-      :search-clauses="filters.searchClauses.value"
+      :is-active="isActive"
+      :search-clauses="searchClauses"
       :can-prev="selection.canPrev.value"
       :can-next="selection.canNext.value"
       :position-index="selection.selectedIndex.value + 1"
-      :position-total="filters.filteredSorted.value.length"
+      :position-total="matchesNarrow.narrowedRecords.value.length"
       :has-lightbox="lightboxFilename !== null"
       @close="selection.close"
       @prev="selection.openPrev"
@@ -1641,7 +1622,7 @@ useEventStream({
       @toggle-preview="togglePreview"
       @preview-error="onPreviewError"
       @open-lightbox="openLightbox"
-      @filter-toggle="filters.toggleFilter"
+      @filter-toggle="toggleFilter"
       @set-leaver-annotation="onSetLeaverAnnotation"
       @set-match-annotation="onSetMatchAnnotation"
       @set-match-hidden="onSetMatchHidden"
