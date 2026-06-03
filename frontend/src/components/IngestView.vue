@@ -24,6 +24,11 @@ defineProps<{
   // Parse state
   watchEnabled:         boolean
   parseBusy:              boolean
+  // True between the Stop click and the SSE `parse-cancelled`
+  // confirmation. Drives the Stop button copy ("Cancelling…") +
+  // disabled state so a second click doesn't fire a redundant
+  // DELETE request.
+  cancellingParse:      boolean
   newScreenshotCount:   number | null
   lastParsedAt:         number | null
   parseProgress:        ParseProgressEvent | null
@@ -39,6 +44,9 @@ defineProps<{
 const emit = defineEmits<{
   'toggle-watch':       []
   'parse':              []
+  // Stop click on the in-flight parse. App.vue owns the actual
+  // CancelParse() call + the cancellingParse state.
+  'cancel-parse':       []
   'toggle-progress':    []
   'go-to-view':         [next: 'settings' | 'ingest' | 'matches' | 'unknown']
 }>()
@@ -137,15 +145,33 @@ const emit = defineEmits<{
             </p>
           </div>
           <div class="setting-control">
+            <!-- While a parse is running we swap the primary
+                 button for a Stop affordance. The cancellation
+                 lands at the next between-files OCR boundary
+                 (tesseract is shelled out per file and not
+                 context-aware), so the button shows
+                 "Cancelling…" between click and the SSE
+                 parse-cancelled confirmation. -->
             <button
+              v-if="parseBusy"
+              class="btn danger big"
+              data-testid="cancel-parse-btn"
+              :disabled="cancellingParse"
+              @click="emit('cancel-parse')"
+            >
+              <span class="btn-dot" />
+              <span v-if="cancellingParse">Cancelling…</span>
+              <span v-else>Stop Parse</span>
+            </button>
+            <button
+              v-else
               class="btn primary big"
-              :disabled="parseBusy || !tesseractReady || newScreenshotCount === 0"
+              :disabled="!tesseractReady || newScreenshotCount === 0"
               :title="!tesseractReady ? 'Locate Tesseract in Settings → Engine first.' : newScreenshotCount === 0 ? 'All screenshots in the folder have already been parsed.' : ''"
               @click="emit('parse')"
             >
               <span class="btn-dot" />
-              <span v-if="parseBusy">Parsing…</span>
-              <span v-else-if="(newScreenshotCount ?? 0) > 0">Run Parse · {{ newScreenshotCount }}</span>
+              <span v-if="(newScreenshotCount ?? 0) > 0">Run Parse · {{ newScreenshotCount }}</span>
               <span v-else>Run Parse</span>
             </button>
           </div>

@@ -20,6 +20,12 @@ export interface EventStreamApi {
   // Called when a parse batch finishes. Should reload records and
   // refresh whatever the caller wants invalidated.
   onParseComplete: () => Promise<void> | void
+  // Called when a parse run was aborted via CancelParse. Distinct
+  // hook so the consumer can flip a "cancelling…" state back to
+  // idle, render different toast copy, etc. Optional — if absent,
+  // parse-cancelled is treated the same as parse-complete (still
+  // safe; the records ref reflects the partial state).
+  onParseCancelled?: () => Promise<void> | void
   // Maximum entries in the rolling log (default 50).
   logCap?: number
 }
@@ -50,6 +56,19 @@ export function useEventStream(api: EventStreamApi) {
       api.parseProgress.value = data
       api.parseLog.value = [...api.parseLog.value, data].slice(-cap)
     })
+    // parse-cancelled is the third terminal lifecycle event (the
+    // other two are parse-complete and the implicit
+    // "no-more-progress-ticks"). The records ref already reflects
+    // any partial state because the per-file inserts ran inside the
+    // OCR callback; the consumer just needs to know to flip the
+    // Stop button + "cancelling…" indicator back to idle.
+    EventsOn('parse-cancelled', () => {
+      if (api.onParseCancelled) {
+        void api.onParseCancelled()
+      } else {
+        void api.onParseComplete()
+      }
+    })
     // Live-stream MatchRecords. Upsert by match_key into the same
     // records ref the static loader populates — every downstream
     // filter/group/render computed recomputes for free. The
@@ -62,6 +81,7 @@ export function useEventStream(api: EventStreamApi) {
   function unsubscribe() {
     EventsOff('parse-complete')
     EventsOff('parse-progress')
+    EventsOff('parse-cancelled')
     EventsOff('match-updated')
   }
 

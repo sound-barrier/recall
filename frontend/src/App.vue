@@ -17,6 +17,7 @@ import {
   OpenURL,
   type UpdateInfo,
   ParseScreenshots,
+  CancelParse,
   GetMatchResults,
   GetScreenshotsDir,
   PickScreenshotsDir,
@@ -133,6 +134,11 @@ const error = ref('')
 // `parseBusy` flips true during runParse(); used to disable the
 // manual Parse button and its peers in IngestView / SettingsView.
 const parseBusy = ref(false)
+// `cancellingParse` flips true between the Stop click and the SSE
+// `parse-cancelled` confirmation. Drives the IngestView button copy
+// ("Cancelling…") + disabled state so a second click doesn't fire a
+// redundant DELETE. Cleared in the onParseCancelled handler below.
+const cancellingParse = ref(false)
 // `firstLoadPending` is true from boot until the first load() resolves
 // (or fails). Drives the Matches skeleton placeholder so the view
 // doesn't render its empty-state for a frame between mount and the
@@ -521,6 +527,32 @@ async function runParse() {
   } finally {
     parseBusy.value = false
     parseProgress.value = null
+    // Race tolerance: if the user clicked Stop AND the parse
+    // happened to finish at the same time, the SSE
+    // parse-cancelled may never fire (the server already
+    // emitted parse-complete). Clearing the flag here keeps the
+    // Stop button from staying stuck on "Cancelling…".
+    cancellingParse.value = false
+  }
+}
+
+// Stop click from IngestView. Sets the local cancelling flag
+// straight away so the button flips to "Cancelling…" without
+// waiting for the SSE round-trip; the actual flag-clear happens
+// in onParseCancelled above. Swallows 409 because the only way
+// to hit it is a race where the parse finished naturally before
+// the Stop click landed — the UI will reconcile via the
+// parse-complete branch instead.
+async function onCancelParse() {
+  if (!parseBusy.value || cancellingParse.value) return
+  cancellingParse.value = true
+  try {
+    await CancelParse()
+  } catch (_) {
+    // Race: parse finished between click and DELETE. The
+    // parse-complete handler already ran (or is about to), and
+    // the cancellingParse flag gets cleared in runParse's
+    // finally block.
   }
 }
 
@@ -1173,6 +1205,15 @@ useEventStream({
     lastParsedAt.value = Date.now()
     try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {}
   },
+  // SSE confirmation of a Stop click. Records ref already reflects
+  // whatever made it into SQLite before the cancellation point —
+  // call load() so the matches list rebinds, then clear the
+  // cancelling flag so IngestView's Stop button flips back to Run.
+  onParseCancelled: async () => {
+    await load()
+    cancellingParse.value = false
+    parseProgress.value = null
+  },
 })
 </script>
 
@@ -1474,6 +1515,7 @@ useEventStream({
           :screenshots-dir="screenshotsDir"
           :watch-enabled="watchEnabled"
           :parse-busy="parseBusy"
+          :cancelling-parse="cancellingParse"
           :new-screenshot-count="newScreenshotCount"
           :last-parsed-at="lastParsedAt"
           :parse-progress="parseProgress"
@@ -1483,6 +1525,7 @@ useEventStream({
           :unknown-count="unknownRecords.length"
           @toggle-watch="toggleWatch"
           @parse="parse"
+          @cancel-parse="onCancelParse"
           @toggle-progress="parseProgressOpen = !parseProgressOpen"
           @go-to-view="goToView"
         />
