@@ -69,7 +69,7 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
     await page.route('**/api/v1/settings/screenshots-folder', async (route: Route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ path: '/srv/recall' }) })
     })
-    await page.route('**/api/v1/system/tesseract', async (route: Route) => {
+    await page.route('**/api/v1/settings/tesseract', async (route: Route) => {
       await route.fulfill({
         status: 200, contentType: 'application/json',
         body: JSON.stringify({ path: '/usr/local/bin/tesseract', found: true, version: '5.5.0', supported: true, error: '', default: '/usr/local/bin/tesseract', platform: 'darwin' }),
