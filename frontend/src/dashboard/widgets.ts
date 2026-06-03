@@ -9,6 +9,17 @@ import WldSinceReviewWidget from '../components/widgets/WldSinceReviewWidget.vue
 import TopMapsWidget from '../components/widgets/TopMapsWidget.vue'
 import TopHeroesWidget from '../components/widgets/TopHeroesWidget.vue'
 import TopRolesWidget from '../components/widgets/TopRolesWidget.vue'
+// PR B opt-in widgets. Registered here but NOT included in
+// DEFAULT_ROW_LAYOUT — they only appear on a user's dossier after
+// the user explicitly adds them via the customizer.
+import CurrentStreakWidget from '../components/widgets/CurrentStreakWidget.vue'
+import LongestWinStreakWidget from '../components/widgets/LongestWinStreakWidget.vue'
+import HeroPoolSizeWidget from '../components/widgets/HeroPoolSizeWidget.vue'
+import BestWinrateHeroWidget from '../components/widgets/BestWinrateHeroWidget.vue'
+import TopMapTypesWidget from '../components/widgets/TopMapTypesWidget.vue'
+import TimeOfDayWidget from '../components/widgets/TimeOfDayWidget.vue'
+import DayOfWeekWidget from '../components/widgets/DayOfWeekWidget.vue'
+import Recent5MatchesWidget from '../components/widgets/Recent5MatchesWidget.vue'
 
 // Central registry for the dossier's customizable dashboard widgets.
 //
@@ -51,6 +62,15 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'top-maps',          eyebrow: 'Most played maps',             shape: 'breakdown', defaultRow: 2, component: TopMapsWidget         },
   { id: 'top-heroes',        eyebrow: 'Most played heroes',           shape: 'breakdown', defaultRow: 2, component: TopHeroesWidget       },
   { id: 'top-roles',         eyebrow: 'Most played roles',            shape: 'breakdown', defaultRow: 2, component: TopRolesWidget        },
+  // PR B opt-in widgets (NOT in DEFAULT_ROW_LAYOUT).
+  { id: 'current-streak',      eyebrow: 'Current streak',         shape: 'kpi',       defaultRow: 1, component: CurrentStreakWidget    },
+  { id: 'longest-win-streak',  eyebrow: 'Longest win streak',     shape: 'kpi',       defaultRow: 1, component: LongestWinStreakWidget },
+  { id: 'hero-pool-size',      eyebrow: 'Hero pool size',         shape: 'kpi',       defaultRow: 1, component: HeroPoolSizeWidget     },
+  { id: 'best-winrate-hero',   eyebrow: 'Best hero by winrate',   shape: 'kpi',       defaultRow: 1, component: BestWinrateHeroWidget  },
+  { id: 'top-map-types',       eyebrow: 'Most played map types',  shape: 'breakdown', defaultRow: 2, component: TopMapTypesWidget      },
+  { id: 'time-of-day',         eyebrow: 'Time of day',            shape: 'breakdown', defaultRow: 2, component: TimeOfDayWidget        },
+  { id: 'day-of-week',         eyebrow: 'Day of week',            shape: 'breakdown', defaultRow: 2, component: DayOfWeekWidget        },
+  { id: 'recent-5-matches',    eyebrow: 'Recent matches',         shape: 'breakdown', defaultRow: 2, component: Recent5MatchesWidget   },
 ]
 
 // Row-keyed install-default layout. Membership here means "auto-add

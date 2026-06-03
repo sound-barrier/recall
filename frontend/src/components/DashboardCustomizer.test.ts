@@ -49,12 +49,12 @@ describe('DashboardCustomizer', () => {
   })
 
   it('renders no add buttons when every widget is already on the layout', async () => {
-    // Seed with the full default layout so every registered widget
-    // sits in the layout — there's nothing addable.
-    seedLayout({
-      1: [...DEFAULT_ROW_LAYOUT[1]!],
-      2: [...DEFAULT_ROW_LAYOUT[2]!],
-    })
+    // Seed with EVERY registered widget on the layout — both the
+    // default-install set AND every PR-B opt-in widget — so there's
+    // nothing addable. The customizer's gallery should then be empty.
+    const allKpis = WIDGET_REGISTRY.filter((w) => w.shape === 'kpi').map((w) => w.id)
+    const allBreakdowns = WIDGET_REGISTRY.filter((w) => w.shape === 'breakdown').map((w) => w.id)
+    seedLayout({ 1: allKpis, 2: allBreakdowns })
     const w = mountCustomizer()
     await nextTick()
     const adds = document.querySelectorAll('button[data-widget-add]')

@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue'
 import type { MatchRecord } from '../api'
-import { formatPlayMinutes, formatToHundredths, parseGameLengthMinutes } from '../match-helpers'
+import { formatPlayMinutes, formatToHundredths, parseGameLengthMinutes, type WeekStart } from '../match-helpers'
 
 // Pure KPI / breakdown computations for the Matches dossier.
 // Extracted from MatchesView so the tally math (winrate excluding
@@ -169,10 +169,61 @@ function isCanonRole(s: string | undefined | null): s is Role {
   return s === 'tank' || s === 'dps' || s === 'support'
 }
 
+// Current-streak summary for the dossier KPI. `result` carries the
+// streak's class so the widget can colour it; `sinceDate` is the
+// `data.date` of the FIRST match in the streak (used in the tile's
+// subtitle). Null result + zero count when the narrow has no
+// decisive matches.
+export interface CurrentStreak {
+  count: number
+  result: 'victory' | 'defeat' | 'draw' | null
+  sinceDate: string | null
+}
+
+// Best-winrate-hero summary for the dossier KPI. Mirrors
+// MostPlayedHero shape but ranks by winrate (gated to ≥ 3 qualifying
+// decisive matches). Null when no hero qualifies.
+export interface BestWinrateHero {
+  key: string
+  winrate: number
+  qualifyingMatches: number
+}
+
+// Fixed-bucket distribution row for the time-of-day + day-of-week
+// breakdowns. Labels are pre-formatted display strings.
+export interface BucketEntry {
+  label: string
+  count: number
+  share: number
+}
+
+// Minimum qualifying matches for the best-winrate-hero KPI to
+// surface a hero — prevents a 1W / 0L spike on a one-off pick from
+// dominating the read.
+const BEST_WINRATE_HERO_MIN_MATCHES = 3
+
+// Time-of-day bucket labels. Six four-hour buckets covering the
+// 24-hour clock; index = Math.floor(hour / 4).
+const TIME_OF_DAY_BUCKET_LABELS = [
+  '00–04', '04–08', '08–12', '12–16', '16–20', '20–24',
+] as const
+
+// Day-of-week labels in Sun-Sat (JS Date.getDay) order. Rotation
+// against useWeekStart happens at consumption time so the dossier
+// row matches the user's calendar setting.
+const DAY_OF_WEEK_LABELS = [
+  'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat',
+] as const
+
+// Recent-N-matches widget caps. 5 fits the dossier breakdown row's
+// width comfortably.
+const RECENT_RESULTS_COUNT = 5
+
 export function useMatchesDossier(
   records: Readonly<Ref<MatchRecord[]>>,
   leaverHandling: Readonly<Ref<LeaverHandling>>,
   heroRole?: HeroRoleResolver,
+  weekStart?: Readonly<Ref<WeekStart>>,
 ) {
   // 'exclude-tally' drops leaver-annotated records from the KPIs
   // (W/L/D + winrate) only. The leaves list still shows them — the
@@ -491,8 +542,186 @@ export function useMatchesDossier(
       .sort((a, b) => b.total - a.total)
   })
 
+  // ─── PR B: opt-in widgets (defaultVisible: false in registry) ──
+
+  // Current streak — the contiguous run of the same decisive result
+  // ending at the most-recent match. Walks `tallyRecords` sorted by
+  // `parsed_at` desc and stops at the first transition. Records
+  // without a decisive result are skipped (a draw next to a
+  // victory doesn't break the streak only if you consider it a
+  // result; we treat W/L/D as their own classes for streaks). The
+  // tile's subtitle pulls from `sinceDate` so the read is "5W since
+  // 2026-05-04" rather than just "5W".
+  const currentStreak = computed<CurrentStreak>(() => {
+    const sorted = tallyRecords.value
+      .filter((r) => r.data?.result === 'victory' || r.data?.result === 'defeat' || r.data?.result === 'draw')
+      .slice()
+      .sort((a, b) => (b.parsed_at ?? '').localeCompare(a.parsed_at ?? ''))
+    if (sorted.length === 0) return { count: 0, result: null, sinceDate: null }
+    const result = sorted[0]!.data!.result as 'victory' | 'defeat' | 'draw'
+    let count = 0
+    let sinceDate: string | null = null
+    for (const r of sorted) {
+      if (r.data?.result !== result) break
+      count++
+      sinceDate = r.data?.date ?? sinceDate
+    }
+    return { count, result, sinceDate }
+  })
+
+  // Longest win streak — single chronological pass over
+  // `tallyRecords`, tracking the largest contiguous `victory` run.
+  // Sorted ascending by parsed_at so the walk reads as "earliest
+  // first" (matching how a streak forms in time).
+  const longestWinStreak = computed<number>(() => {
+    const sorted = tallyRecords.value
+      .slice()
+      .sort((a, b) => (a.parsed_at ?? '').localeCompare(b.parsed_at ?? ''))
+    let best = 0
+    let current = 0
+    for (const r of sorted) {
+      if (r.data?.result === 'victory') {
+        current++
+        if (current > best) best = current
+      } else if (r.data?.result === 'defeat' || r.data?.result === 'draw') {
+        current = 0
+      }
+      // Records without a decisive result don't break the streak —
+      // they're treated as unknown rather than a "no" vote.
+    }
+    return best
+  })
+
+  // Hero-pool size — distinct hero count across every match's
+  // heroes_played[] union. Uses the full narrow, not tallyRecords,
+  // because pool diversity is a workflow metric (the user wants to
+  // see "how many distinct heroes I've touched" regardless of
+  // leaver handling).
+  const heroPoolSize = computed<number>(() => {
+    const set = new Set<string>()
+    for (const r of records.value) {
+      for (const hp of r.data?.heroes_played ?? []) {
+        if (hp.hero) set.add(hp.hero)
+      }
+    }
+    return set.size
+  })
+
+  // Best hero by winrate, gated to ≥ MOST_PLAYED_HERO_THRESHOLD %
+  // play AND ≥ BEST_WINRATE_HERO_MIN_MATCHES decisive qualifying
+  // matches. Ties broken by qualifyingMatches desc (more sample =
+  // better signal). Null when no hero clears both gates.
+  const bestWinrateHero = computed<BestWinrateHero | null>(() => {
+    const buckets = new Map<string, { w: number; l: number }>()
+    for (const r of tallyRecords.value) {
+      const result = r.data?.result
+      if (result !== 'victory' && result !== 'defeat') continue
+      for (const hp of r.data?.heroes_played ?? []) {
+        if (!hp.hero) continue
+        if ((hp.percent_played ?? 0) < MOST_PLAYED_HERO_THRESHOLD) continue
+        const bucket = buckets.get(hp.hero) ?? { w: 0, l: 0 }
+        if (result === 'victory') bucket.w++
+        else bucket.l++
+        buckets.set(hp.hero, bucket)
+      }
+    }
+    let best: BestWinrateHero | null = null
+    for (const [hero, { w, l }] of buckets) {
+      const qualifying = w + l
+      if (qualifying < BEST_WINRATE_HERO_MIN_MATCHES) continue
+      const winrate = Math.round((w / qualifying) * 100)
+      if (best === null
+        || winrate > best.winrate
+        || (winrate === best.winrate && qualifying > best.qualifyingMatches)) {
+        best = { key: hero, winrate, qualifyingMatches: qualifying }
+      }
+    }
+    return best
+  })
+
+  // Map-type breakdown — leans on the parser-stamped `data.type`
+  // value (control / hybrid / push / escort / flashpoint). Reuses
+  // the existing topByCount() helper so the share + winrate math is
+  // identical to topMaps + topHeroes.
+  const topMapTypes = computed(() => topByCount((r) => r.data?.type))
+
+  // Time-of-day distribution — six fixed buckets keyed by
+  // `Math.floor(hour / 4)` over the `data.finished_at` HH:MM
+  // string. Records without a parseable hour skipped; share
+  // denominator = records WITH a parseable hour so the percentages
+  // reflect the workflow-relevant fraction of the narrow.
+  const timeOfDayBuckets = computed<BucketEntry[]>(() => {
+    const counts = [0, 0, 0, 0, 0, 0]
+    let denom = 0
+    for (const r of records.value) {
+      const fa = r.data?.finished_at
+      if (!fa || fa.length < 2) continue
+      const hour = Number.parseInt(fa.slice(0, 2), 10)
+      if (!Number.isFinite(hour) || hour < 0 || hour > 23) continue
+      const bucket = Math.floor(hour / 4)
+      counts[bucket]!++
+      denom++
+    }
+    return TIME_OF_DAY_BUCKET_LABELS.map((label, i) => ({
+      label,
+      count: counts[i]!,
+      share: denom === 0 ? 0 : Math.round((counts[i]! / denom) * 100),
+    }))
+  })
+
+  // Day-of-week distribution — seven buckets rotated to respect the
+  // user's useWeekStart setting (Sun=0 .. Sat=6). Default 0 (Sun)
+  // when the composable isn't given a weekStart ref. Records
+  // without a parseable `data.date` skipped; share denominator =
+  // records WITH a parseable day.
+  const dayOfWeekBuckets = computed<BucketEntry[]>(() => {
+    const counts = [0, 0, 0, 0, 0, 0, 0]
+    let denom = 0
+    for (const r of records.value) {
+      const date = r.data?.date
+      if (!date) continue
+      // Parse with explicit Z so getUTCDay() reads the user-meaningful
+      // date regardless of the local timezone the browser runs in —
+      // otherwise a 2026-05-10 record reads as Saturday in
+      // UTC-negative timezones and Sunday in UTC-leaning ones.
+      const d = new Date(date + 'T00:00:00Z')
+      const day = d.getUTCDay()
+      if (!Number.isFinite(day) || day < 0 || day > 6) continue
+      counts[day]!++
+      denom++
+    }
+    const start = weekStart?.value ?? 0
+    const rotated: BucketEntry[] = []
+    for (let i = 0; i < 7; i++) {
+      const srcIdx = (start + i) % 7
+      rotated.push({
+        label: DAY_OF_WEEK_LABELS[srcIdx]!,
+        count: counts[srcIdx]!,
+        share: denom === 0 ? 0 : Math.round((counts[srcIdx]! / denom) * 100),
+      })
+    }
+    return rotated
+  })
+
+  // Recent results — last N decisive (W / L / D) results in
+  // newest-first order. The widget renders these as small coloured
+  // pills so the user reads "I just won, lost, lost, won, won" at
+  // a glance.
+  const recentResults = computed<('victory' | 'defeat' | 'draw')[]>(() => {
+    return tallyRecords.value
+      .slice()
+      .sort((a, b) => (b.parsed_at ?? '').localeCompare(a.parsed_at ?? ''))
+      .map((r) => r.data?.result)
+      .filter((r): r is 'victory' | 'defeat' | 'draw' =>
+        r === 'victory' || r === 'defeat' || r === 'draw')
+      .slice(0, RECENT_RESULTS_COUNT)
+  })
+
   return {
     wld, winrate, topMaps, topHeroes, topRoles, totalTimePlayed, mostPlayedHero, averageKDA,
     reviewedCount, daysSinceLastReview, wldSinceLastReview,
+    // PR B opt-in widgets
+    currentStreak, longestWinStreak, heroPoolSize, bestWinrateHero,
+    topMapTypes, timeOfDayBuckets, dayOfWeekBuckets, recentResults,
   }
 }
