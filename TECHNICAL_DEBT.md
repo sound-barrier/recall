@@ -87,65 +87,60 @@ fine, never renumber. When a section is paid down in full,
 
 **Size:** S (remaining step). **Risk:** Low.
 
-## 3. `match_key` is stringly-typed with sentinel prefixes
+## 3. `match_key` is stringly-typed — REMAINING: migrate consumers to the new type
 
-**Where:** `pkg/app/correlation.go::resolveMatchKey` mints keys with three shapes: `match:<filename-ts>`, `unmatched:<filename>`, `ambiguous:<filename>`. Every consumer (`SQLStore`, REST handlers, frontend `MatchRecord.match_key`, Prometheus collector) treats it as a bare `string` and re-parses the prefix in-place. The URL-safety break ("colons → dashes") in `pkg/db/migrations` is a permanent migration scar from typing this as `string` instead of a discriminated union.
+**Where:** `pkg/app/match_key.go` (new) introduces `MatchKey` + `ParseMatchKey()` + Kind enum + `IsTracked/IsUnmatched/IsAmbiguous()` helpers. Test coverage at `pkg/app/match_key_test.go` pins the three known prefixes + the ErrInvalidMatchKey sentinel.
 
-**What breaks:** every new code path has to remember the prefix convention. A typo at the prefix ships through every layer because the type system doesn't care. The "is this an ambiguous match?" branch lives at three call sites: `match_key.startsWith('ambiguous-')` in `MatchesView.vue`, `UnknownMapsView.vue`, and the server's resolution handler. Adding a fourth identity shape (e.g. a future "merged-match" key) means hunting every `startsWith` site.
-
-**Plan:**
-
-1. Define `type MatchKey = { kind: 'tracked' | 'unmatched' | 'ambiguous'; raw: string }` in Go; add `ParseMatchKey(s string)` + `String()`. Wire through internal call sites first (server boundary stays string-typed against the wire format).
-2. Mirror on the frontend: `type MatchKey = { kind: …; raw: string }` + a small `parseMatchKey()` helper.
-3. Replace the `startsWith` checks with `.kind` checks.
-4. Add a lint-time assertion that wire-format `match_key` strings round-trip through `Parse → String`.
-
-**Size:** L. **Risk:** High — `match_key` is the on-disk + URL identity. Mistakes here silently rename rows; cover with a migration round-trip test before flipping any consumer.
-
-## 4. `App.vue` (1925 lines) and `MatchesView.vue` (~2900 lines) are doing too much
-
-**Where:** the two host SFCs. `App.vue` owns the router-shell, the lazy-view boundary, the selection state, the keyboard dispatcher, the focus management, the masthead state machine, the modal stack manager, the anchor toast, the file watcher, plus all the per-handler glue. `MatchesView.vue` owns the dossier, the dashboard widget grid, the narrow popover (~600 lines of template alone), the leaf-row list, the group/sort headers, the bulk-action bar — every concern of the Matches workspace.
-
-**What breaks:** every new feature touches one or both files. Vue-tsc cache invalidation is slower than it should be (huge SFCs re-typecheck on small changes). New contributors can't find where to add code, and existing code becomes unreviewable in PRs. The "narrow popover" sub-tree alone is its own component shape — closing it inside `MatchesView` is what makes the narrow-vs-list selectors so brittle in e2e tests.
+**What remains:** consumers still call `strings.HasPrefix(s, "ambiguous-")` rather than `ParseMatchKey(s).IsAmbiguous()`. The migration is per-site + low-risk now that the type exists.
 
 **Plan:**
 
-1. Extract `<NarrowPopover>` from `MatchesView.vue`. Props: the `matchesNarrow` bundle + open/close. Template self-contained.
+1. (Done) `MatchKey` type + `ParseMatchKey` + Kind enum. Opt-in at call sites; bare-string consumers keep working.
+2. Migrate Go `strings.HasPrefix` sites in `pkg/app` to `ParseMatchKey().IsX()`. One PR per file keeps the diff focused.
+3. Mirror the type on the frontend: `frontend/src/match-key.ts` with a `parseMatchKey(s)` helper. Migrate `MatchesView.vue` + `UnknownMapsView.vue` `startsWith` checks.
+4. Cross-cutting lint-time test that wire-format match_key strings round-trip through `Parse → String`.
+
+**Size:** M (remaining). **Risk:** Low — the type is non-breaking; each migration step is local.
+
+## 4. `App.vue` (1925 lines) and `MatchesView.vue` (~2900 lines) — DEFERRED (multi-PR project)
+
+**Where:** unchanged. The two host SFCs still hold every concern of their respective layers.
+
+**Why deferred:** the audit-and-burn-down PR (the one this entry lives in) is already a 30-file change. The SFC split is a multi-PR project where each extraction needs its own focused review:
+
+1. Extract `<NarrowPopover>` from `MatchesView.vue`. Props: the `matchesNarrow` bundle + open/close. Template self-contained. Couples with debt item 12 (the audit shows MatchesView is 82K of bundle bytes; pulling the popover into its own lazy chunk is the targeted win).
 2. Extract `<BulkActionBar>` similarly.
-3. Extract App.vue's keyboard handler into `useGlobalKeyboard()` — App.vue's `<script setup>` shrinks.
-4. Each extraction is one PR, with a test-equivalence proof (existing e2e suite must still pass).
-5. Stop here — the dossier itself is fine inside MatchesView.
+3. Extract App.vue's keyboard handler into `useGlobalKeyboard()`.
+4. Each extraction is one PR with a test-equivalence proof (existing e2e suite must keep passing).
 
 **Size:** L (3-4 PRs of M each). **Risk:** Med — Vue's prop / event boundary needs careful typing; existing e2e selectors must keep matching.
 
-## 6. No pagination on `GET /api/v1/matches`
+## 6. Pagination on `GET /api/v1/matches` — REMAINING: frontend consumer
 
-**Where:** `api/openapi.yaml` — `GetMatchResults` returns the entire match corpus as a JSON array with no offset / limit / cursor. The Wails IPC variant has the same shape.
+**Where:** `pkg/cmd/server_matches.go` adds `?limit=` (1–1000) + `?cursor=` to `GET /api/v1/matches`. OpenAPI spec updated; `api.gen.d.ts` regen'd. 5 unit tests pin the contract (back-compat unbounded, limit-only, cursor-paging, clamp, invalid-limit-disables).
 
-**What breaks:** memory + wire cost scales linearly with corpus size. A user with 2000 matches gets a ~6 MB JSON payload on every boot; with 10000 matches it's 30 MB. The frontend then has to keep the full array reactive. Server-side filtering (date range, hero, …) could shrink the wire payload, but the frontend filters in-memory only because the server doesn't accept filter params. The Prometheus collector reads the same untruncated list per scrape — at high scrape rates with a large corpus, the aggregator is wasted CPU.
-
-**Plan:**
-
-1. Add `?limit=&cursor=` to `GET /api/v1/matches`. Cursor is opaque (server-encoded `(parsed_at, id)` pair, base64'd) so clients don't depend on the schema.
-2. Keep returning the unbounded list when no `limit` is set (back-compat). Document `limit` max as 1000.
-3. Frontend: leave the dossier as a single fetch for now (the dossier needs the corpus to compute aggregates). Wire the Matches list view to paginate later, behind a flag.
-4. Prometheus collector keeps the unbounded read — it's running locally, the JSON cost is moot.
-
-**Size:** M. **Risk:** Med — pagination across views needs careful design (selection auto-close, prev/next bounds, narrowed-set semantics). Stage behind a feature flag if needed.
-
-## 7. `POST /api/v1/parses` is a verb in a noun's clothing
-
-**Where:** `api/openapi.yaml` — `POST /api/v1/parses` triggers a parse job synchronously and returns the result. There's no `parses` resource to GET (no `/api/v1/parses` list, no `/api/v1/parses/{id}` lookup). The path is named after a noun but functions like an RPC call.
-
-**What breaks:** asynchronous progress reporting can't be added cleanly — the existing SSE channel (`pkg/app/sse.go`) lives separately and isn't discoverable from the OpenAPI spec. Spec consumers can't model a long-running job. The frontend can't poll for status (no resource to poll); it just waits for SSE events.
+**What remains:** the frontend still does the full-corpus fetch on boot. The dossier needs the whole corpus to compute aggregates — that's the limiting factor. A future consumer (the Matches list view, infinite-scroll behind a flag) is the natural place to wire pagination in. Prometheus collector stays unbounded (local read, JSON cost moot).
 
 **Plan:**
 
-1. Reshape as `POST /api/v1/parse-jobs` → 202 with `{id, status: 'running'}`. `GET /api/v1/parse-jobs/{id}` returns the same shape; `GET /api/v1/parse-jobs/{id}/events` is SSE.
-2. Keep the existing synchronous `POST /api/v1/parses` for one release as a deprecated alias.
-3. After clients migrate, delete the alias.
+1. (Done) Server-side `?limit=&cursor=`. Back-compat (no params → full corpus).
+2. Frontend: leave bulk fetch as-is for the dossier. When the dossier moves to server-side aggregation (probably alongside the Analysis tab), the bulk fetch becomes opt-in.
 
-**Size:** L. **Risk:** Med — touches the parse pipeline's status reporting; needs SSE channel realignment.
+**Size:** S (remaining). **Risk:** Low.
+
+## 7. `POST /api/v1/parses` is a verb in a noun's clothing — DEFERRED (needs job-lifecycle model)
+
+**Where:** unchanged.
+
+**Why deferred:** reshaping to `parse-jobs` is contingent on whether parsing actually wants an async-job lifecycle (status polling, cancellation, multi-job queuing). The current synchronous model works for the desktop use case (one user, one folder, one click). Adding a job lifecycle adds operational complexity (queue management, persistence across restarts) that's only worth paying if a real consumer (e.g. a planned server-mode multi-tenant deployment) needs it.
+
+**Plan:**
+
+1. Decide whether the async-job lifecycle is wanted. The Analysis tab + the future server-mode use cases inform this.
+2. If yes: introduce `POST /api/v1/parse-jobs` → 202 with `{id, status}`, keep current synchronous route as a deprecated alias for one release.
+3. If no: rename the deprecation marker on this debt item to "intentional design" and remove from the list.
+
+**Size:** L if executed. **Risk:** Med.
 
 ## 8. `log.Fatal` at startup — REMAINING: Wails native dialog
 

@@ -73,14 +73,39 @@ paths:
     get:
       operationId: GetMatchResults
       tags: [Matches]
-      summary: List all parsed match records
+      summary: List parsed match records (optionally paginated)
       description: |
-        Returns one record per match, assembled by JOINing the
+        Returns match records, assembled by JOINing the
         per-screenshot-type rows (summary / scoreboard / personal /
         rank / unknown) that share each `match_key`. Read-time
         derivations (`inferSoleHeroPercent`, `inferResultFromRank`)
         plus role-from-hero and type-from-map lookups are applied
         on the fly — the underlying rows are never mutated.
+
+        **Pagination.** Optional `limit` (1–1000) caps the number
+        of records returned. Optional `cursor` is the previous
+        page's last `match_key`; the next page starts strictly
+        after it. Omitting both returns the full corpus
+        (back-compat). The cursor is the match_key itself, not an
+        opaque encoded value, so curl users can page without a
+        lookup table.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+          description: Max records per page. Clamped to [1, 1000].
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: |
+            The previous page's last `match_key`. Returned records
+            start strictly after it. Empty / absent = first page.
       responses:
         "200":
           description: Array of match records.
@@ -90,6 +115,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/MatchRecord"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
     delete:

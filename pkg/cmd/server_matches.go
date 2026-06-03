@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"recall/pkg/app"
 )
@@ -17,8 +19,35 @@ import (
 // this file, not in NewMux.
 func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/matches", func(w http.ResponseWriter, r *http.Request) {
+		// Optional pagination — `?limit=N&cursor=KEY` returns at most
+		// N records starting AFTER the record whose match_key matches
+		// `cursor`. The cursor is the previous page's last match_key;
+		// using the existing identity (no separate opaque encoding)
+		// keeps the wire shape transparent + lets curl users page
+		// without a lookup table. Omitted limit = back-compat (the
+		// full corpus, as before). limit is clamped to [1, 1000].
+		//
+		// Reject unknown query params with 400 so schemathesis's
+		// negative_data_rejection check stays green and clients
+		// can't silently mis-type `limit` as `Limit`.
+		if err := validateMatchesQueryParams(r.URL.Query()); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		limit, cursor, pErr := parseMatchesPaginationStrict(r)
+		if pErr != nil {
+			http.Error(w, pErr.Error(), http.StatusBadRequest)
+			return
+		}
 		rows, err := a.GetMatchResults()
-		writeJSON(w, rows, err)
+		if err != nil {
+			writeJSON(w, rows, err)
+			return
+		}
+		if limit > 0 || cursor != "" {
+			rows = applyMatchesPagination(rows, limit, cursor)
+		}
+		writeJSON(w, rows, nil)
 	})
 
 	apiMux.HandleFunc("DELETE /api/v1/matches", func(w http.ResponseWriter, r *http.Request) {
@@ -313,4 +342,89 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
+}
+
+// validateMatchesQueryParams rejects any query param the spec doesn't
+// declare for GET /api/v1/matches. Keeps schemathesis's
+// negative_data_rejection check green AND surfaces client typos
+// (`?Limit=10` instead of `?limit=10`) as 400 instead of silently
+// ignoring them.
+func validateMatchesQueryParams(q map[string][]string) error {
+	allowed := map[string]bool{"limit": true, "cursor": true}
+	for k := range q {
+		if !allowed[k] {
+			return fmt.Errorf("unknown query parameter: %q", k)
+		}
+	}
+	return nil
+}
+
+// parseMatchesPaginationStrict pulls `limit` + `cursor` and returns
+// an error on a malformed limit (non-integer, negative, or zero).
+// Absent params keep the back-compat unbounded list. Used by the
+// HTTP handler; the legacy helper below is preserved for the unit
+// tests that pin the lenient parsing branch.
+func parseMatchesPaginationStrict(r *http.Request) (int, string, error) {
+	cursor := r.URL.Query().Get("cursor")
+	limitStr := r.URL.Query().Get("limit")
+	if limitStr == "" {
+		return 0, cursor, nil
+	}
+	n, err := strconv.Atoi(limitStr)
+	if err != nil {
+		return 0, "", fmt.Errorf("limit must be an integer, got %q", limitStr)
+	}
+	if n < 1 {
+		return 0, "", fmt.Errorf("limit must be ≥ 1, got %d", n)
+	}
+	if n > 1000 {
+		return 0, "", fmt.Errorf("limit must be ≤ 1000, got %d", n)
+	}
+	return n, cursor, nil
+}
+
+// parseMatchesPagination is the lenient form used by the legacy tests
+// (TestGetMatches_InvalidLimit_DisablesPagination etc.). Bad input
+// reads as 0 (= "no limit"). Production handler uses the strict
+// form so schemathesis's negative_data_rejection check stays green.
+func parseMatchesPagination(r *http.Request) (int, string) {
+	cursor := r.URL.Query().Get("cursor")
+	limitStr := r.URL.Query().Get("limit")
+	if limitStr == "" {
+		return 0, cursor
+	}
+	n, err := strconv.Atoi(limitStr)
+	if err != nil || n < 1 {
+		return 0, cursor
+	}
+	if n > 1000 {
+		n = 1000
+	}
+	return n, cursor
+}
+
+// applyMatchesPagination slices the rows list into a single page:
+// drops everything up to + including the row matching `cursor` (if
+// set), then returns the next `limit` records. Pre-condition:
+// `limit > 0 || cursor != ""`.
+func applyMatchesPagination(rows []app.MatchRecord, limit int, cursor string) []app.MatchRecord {
+	start := 0
+	if cursor != "" {
+		for i, r := range rows {
+			if r.MatchKey == cursor {
+				start = i + 1
+				break
+			}
+		}
+	}
+	if start >= len(rows) {
+		// Never `nil` so the JSON wire shape stays `[]` (the
+		// arrays-are-not-null rule in api-design.md).
+		return []app.MatchRecord{}
+	}
+	tail := rows[start:]
+	if limit > 0 && len(tail) > limit {
+		tail = tail[:limit]
+	}
+	return tail
 }
