@@ -69,6 +69,7 @@ import { useWeekStart } from './composables/useWeekStart'
 import { useMatchFilters } from './composables/useMatchFilters'
 import { useSelectedMatch } from './composables/useSelectedMatch'
 import { useMatchesNarrow, createMatchesNarrowState } from './composables/useMatchesNarrow'
+import { useMatchAnchor } from './composables/useMatchAnchor'
 import type { ParseProgressEvent } from './components/ParseProgressPanel.vue'
 import ParseStatusBar from './components/ParseStatusBar.vue'
 import MastheadParseChip from './components/MastheadParseChip.vue'
@@ -657,6 +658,17 @@ async function onSetMatchReview(matchKey: string, reviewedBy: ReviewedBy) {
   }
 }
 
+// "Since this match" anchor handler. Empty string clears; any
+// other value sets the anchor to that match. Frontend-only (no
+// API round-trip) since the anchor is persisted in localStorage.
+function onSetAnchor(matchKey: string) {
+  if (matchKey === '') {
+    matchAnchor.clearAnchor()
+  } else {
+    matchAnchor.setAnchor(matchKey)
+  }
+}
+
 // Bulk-hide handler — MatchesView emits this when the user clicks
 // Hide on the bulk action bar after ticking N rows. Fans out
 // SetMatchVisibility(true) in parallel so the request stream
@@ -786,7 +798,11 @@ async function onResolveAmbiguous(ambiguousKey: string, resolvedTo: string) {
 // don't auto-unwrap when passed as a prop bundle, but MatchesView
 // destructures them into top-level setup vars on receipt — same
 // CardStateApi convention as elsewhere in the app.
-const matchesNarrowState = createMatchesNarrowState()
+// "Since this match" anchor — persists across reloads (per-OS-profile
+// in localStorage). The narrow state borrows the same ref so the
+// filter sees mutations from the detail panel without a round-trip.
+const matchAnchor = useMatchAnchor()
+const matchesNarrowState = createMatchesNarrowState({ anchorKey: matchAnchor.anchorKey })
 const matchesNarrow = useMatchesNarrow(records, matchesNarrowState)
 const selection = useSelectedMatch(matchesNarrow.narrowedRecords)
 
@@ -1534,6 +1550,7 @@ useEventStream({
           @hard-delete-matches="onHardDeleteMatches"
           @move-matches="onMoveMatches"
           @export-bundle="onExportBundleRequest"
+          @clear-anchor="onSetAnchor('')"
         />
 
         <!-- ─── ANALYSIS VIEW (coaching dashboard sketch) ──────────
@@ -1590,6 +1607,8 @@ useEventStream({
       @set-match-annotation="onSetMatchAnnotation"
       @set-match-hidden="onSetMatchHidden"
       @set-match-review="onSetMatchReview"
+      @set-anchor="onSetAnchor"
+      :anchor-key="matchAnchor.anchorKey.value"
     />
 
     <!-- Fullscreen screenshot lightbox — stacks above the detail

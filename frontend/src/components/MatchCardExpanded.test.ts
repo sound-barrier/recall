@@ -114,3 +114,48 @@ describe('MatchCardExpanded — sources block', () => {
     expect(wrapper.text()).toContain('a.png')
   })
 })
+
+describe('MatchCardExpanded — since-this-match anchor toggle', () => {
+  function mountAnchor(anchorKey?: string) {
+    return mount(MatchCardExpanded, {
+      props: {
+        record: makeRecord(),
+        isSourcesOpen: false,
+        isPreviewOpen:   () => false,
+        hasPreviewError: () => false,
+        isActive: () => false,
+        anchorKey,
+      },
+    })
+  }
+
+  it('renders the anchor button with the idle copy when this match is NOT the anchor', () => {
+    const w = mountAnchor('some-other-match')
+    const btn = w.find('[data-set-anchor]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.text()).toMatch(/Set as.*anchor/i)
+    expect(btn.classes()).not.toContain('is-anchor')
+  })
+
+  it('renders the anchor button with the active copy + class when this match IS the anchor', () => {
+    const w = mountAnchor('match-2026-05-10T22-21-11')
+    const btn = w.find('[data-set-anchor]')
+    expect(btn.classes()).toContain('is-anchor')
+    expect(btn.text()).toMatch(/click to clear/i)
+    expect(btn.attributes('data-anchor-set')).toBe('true')
+  })
+
+  it('clicking when not the anchor emits set-anchor(matchKey)', async () => {
+    const w = mountAnchor('')
+    await w.find('[data-set-anchor]').trigger('click')
+    const emitted = w.emitted('set-anchor')
+    expect(emitted).toBeTruthy()
+    expect(emitted![0]).toEqual(['match-2026-05-10T22-21-11'])
+  })
+
+  it('clicking when this match IS the anchor emits set-anchor("") to clear', async () => {
+    const w = mountAnchor('match-2026-05-10T22-21-11')
+    await w.find('[data-set-anchor]').trigger('click')
+    expect(w.emitted('set-anchor')![0]).toEqual([''])
+  })
+})

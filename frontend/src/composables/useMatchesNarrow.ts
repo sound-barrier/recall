@@ -26,6 +26,13 @@ import type { LeaverHandling } from './useMatchesDossier'
 
 export type PresetRange = 'all' | '7d' | '30d' | '90d' | 'custom'
 
+// Three "reviewed-by" buckets the narrow panel exposes as a
+// multi-select. Empty set ≡ no filter, every record passes.
+//   - 'self'        → `reviewed_by === 'self'`
+//   - 'coach'       → `reviewed_by === 'coach'`
+//   - 'unreviewed'  → no review row exists (reviewed_by absent)
+export type ReviewedByPick = 'self' | 'coach' | 'unreviewed'
+
 // Parent-owned state bundle. App.vue creates it once via
 // `createMatchesNarrowState()` and passes the same object to both
 // `useMatchesNarrow` (which derives narrowedRecords) and to
@@ -34,42 +41,67 @@ export type PresetRange = 'all' | '7d' | '30d' | '90d' | 'custom'
 // view shows — fixing the prev/next + auto-close-on-hide contract
 // that broke when each consumer owned its own copy.
 export interface MatchesNarrowState {
-  searchText:      Ref<string>
-  pickedMaps:      Ref<Set<string>>
-  pickedMapTypes:  Ref<Set<string>>
-  pickedHeroes:    Ref<Set<string>>
-  pickedRoles:     Ref<Set<string>>
-  pickedResults:   Ref<Set<string>>
-  pickedTags:      Ref<Set<string>>
-  pickedRange:     Ref<PresetRange>
-  customFrom:      Ref<string>
-  customTo:        Ref<string>
-  leaverHandling:  Ref<LeaverHandling>
-  minPlayMinutes:  Ref<number>
-  minPlayPercent:  Ref<number>
-  includeUnknown:  Ref<boolean>
+  searchText:        Ref<string>
+  pickedMaps:        Ref<Set<string>>
+  pickedMapTypes:    Ref<Set<string>>
+  pickedHeroes:      Ref<Set<string>>
+  pickedRoles:       Ref<Set<string>>
+  pickedResults:     Ref<Set<string>>
+  pickedTags:        Ref<Set<string>>
+  pickedReviewedBy:  Ref<Set<ReviewedByPick>>
+  pickedRange:       Ref<PresetRange>
+  customFrom:        Ref<string>
+  customTo:          Ref<string>
+  leaverHandling:    Ref<LeaverHandling>
+  minPlayMinutes:    Ref<number>
+  minPlayPercent:    Ref<number>
+  includeUnknown:    Ref<boolean>
+  // "Since this match" anchor. `anchorKey` is the match_key of the
+  // anchor (empty string ≡ none). The ref is OWNED by
+  // `useMatchAnchor` and threaded in here so the narrow filter can
+  // read it without having to import the persistence layer — same
+  // pattern that lets tests supply a plain `ref('')` instead of a
+  // localStorage round-trip. `sinceAnchorActive` is the panel-local
+  // "apply the anchor filter?" toggle, session-scoped and reset by
+  // resetNarrow.
+  anchorKey:         Ref<string>
+  sinceAnchorActive: Ref<boolean>
 }
 
-export function createMatchesNarrowState(): MatchesNarrowState {
+export interface CreateMatchesNarrowStateOptions {
+  anchorKey?: Ref<string>
+}
+
+export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions = {}): MatchesNarrowState {
   return {
-    searchText:     ref(''),
-    pickedMaps:     ref(new Set<string>()),
-    pickedMapTypes: ref(new Set<string>()),
-    pickedHeroes:   ref(new Set<string>()),
-    pickedRoles:    ref(new Set<string>()),
-    pickedResults:  ref(new Set<string>()),
-    pickedTags:     ref(new Set<string>()),
-    pickedRange:    ref<PresetRange>('all'),
-    customFrom:     ref(''),
-    customTo:       ref(''),
-    leaverHandling: ref<LeaverHandling>('include'),
-    minPlayMinutes: ref(0),
-    minPlayPercent: ref(0),
-    includeUnknown: ref(false),
+    searchText:       ref(''),
+    pickedMaps:       ref(new Set<string>()),
+    pickedMapTypes:   ref(new Set<string>()),
+    pickedHeroes:     ref(new Set<string>()),
+    pickedRoles:      ref(new Set<string>()),
+    pickedResults:    ref(new Set<string>()),
+    pickedTags:       ref(new Set<string>()),
+    pickedReviewedBy: ref(new Set<ReviewedByPick>()),
+    pickedRange:      ref<PresetRange>('all'),
+    customFrom:       ref(''),
+    customTo:         ref(''),
+    leaverHandling:   ref<LeaverHandling>('include'),
+    minPlayMinutes:   ref(0),
+    minPlayPercent:   ref(0),
+    includeUnknown:   ref(false),
+    anchorKey:        opts.anchorKey ?? ref(''),
+    sinceAnchorActive: ref(false),
   }
 }
 
 function toggleSet(set: Set<string>, value: string): Set<string> {
+  const next = new Set(set)
+  if (next.has(value)) next.delete(value)
+  else next.add(value)
+  return next
+}
+
+function toggleTypedSet<T>(set: Set<T>, value: T): Set<T> {
   const next = new Set(set)
   if (next.has(value)) next.delete(value)
   else next.add(value)
@@ -105,18 +137,22 @@ export function useMatchesNarrow(
 ) {
   const {
     searchText, pickedMaps, pickedMapTypes, pickedHeroes,
-    pickedRoles, pickedResults, pickedTags,
+    pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
     pickedRange, customFrom, customTo,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
+    anchorKey, sinceAnchorActive,
   } = state
 
   // ── Pickers ─────────────────────────────────────────────
-  const pickMap     = (v: string) => { pickedMaps.value     = toggleSet(pickedMaps.value,     v) }
-  const pickMapType = (v: string) => { pickedMapTypes.value = toggleSet(pickedMapTypes.value, v) }
-  const pickHero    = (v: string) => { pickedHeroes.value   = toggleSet(pickedHeroes.value,   v) }
-  const pickRole    = (v: string) => { pickedRoles.value    = toggleSet(pickedRoles.value,    v) }
-  const pickResult  = (v: string) => { pickedResults.value  = toggleSet(pickedResults.value,  v) }
-  const pickTag     = (v: string) => { pickedTags.value     = toggleSet(pickedTags.value,     v) }
+  const pickMap        = (v: string) => { pickedMaps.value     = toggleSet(pickedMaps.value,     v) }
+  const pickMapType    = (v: string) => { pickedMapTypes.value = toggleSet(pickedMapTypes.value, v) }
+  const pickHero       = (v: string) => { pickedHeroes.value   = toggleSet(pickedHeroes.value,   v) }
+  const pickRole       = (v: string) => { pickedRoles.value    = toggleSet(pickedRoles.value,    v) }
+  const pickResult     = (v: string) => { pickedResults.value  = toggleSet(pickedResults.value,  v) }
+  const pickTag        = (v: string) => { pickedTags.value     = toggleSet(pickedTags.value,     v) }
+  const pickReviewedBy = (v: ReviewedByPick) => {
+    pickedReviewedBy.value = toggleTypedSet(pickedReviewedBy.value, v)
+  }
 
   function pickRange(v: PresetRange) {
     pickedRange.value = v
@@ -131,20 +167,25 @@ export function useMatchesNarrow(
   }
 
   function resetNarrow() {
-    searchText.value      = ''
-    pickedMaps.value      = new Set()
-    pickedMapTypes.value  = new Set()
-    pickedHeroes.value    = new Set()
-    pickedRoles.value     = new Set()
-    pickedResults.value   = new Set()
-    pickedTags.value      = new Set()
-    pickedRange.value     = 'all'
-    customFrom.value      = ''
-    customTo.value        = ''
-    leaverHandling.value  = 'include'
-    minPlayMinutes.value  = 0
-    minPlayPercent.value  = 0
-    includeUnknown.value  = false
+    searchText.value          = ''
+    pickedMaps.value          = new Set()
+    pickedMapTypes.value      = new Set()
+    pickedHeroes.value        = new Set()
+    pickedRoles.value         = new Set()
+    pickedResults.value       = new Set()
+    pickedTags.value          = new Set()
+    pickedReviewedBy.value    = new Set()
+    pickedRange.value         = 'all'
+    customFrom.value          = ''
+    customTo.value            = ''
+    leaverHandling.value      = 'include'
+    minPlayMinutes.value      = 0
+    minPlayPercent.value      = 0
+    includeUnknown.value      = false
+    sinceAnchorActive.value   = false
+    // anchorKey is owned by useMatchAnchor (persisted across sessions)
+    // — narrow-panel reset toggles the FILTER off but doesn't clear
+    // the anchor itself.
   }
 
   // ── Active-clause introspection ─────────────────────────
@@ -159,10 +200,15 @@ export function useMatchesNarrow(
     n += pickedRoles.value.size
     n += pickedResults.value.size
     n += pickedTags.value.size
+    n += pickedReviewedBy.value.size
     if (leaverHandling.value !== 'include') n++
     if (minPlayMinutes.value > 0) n++
     if (minPlayPercent.value > 0) n++
     if (includeUnknown.value) n++
+    // "Since anchor" only counts when both legs are set — an active
+    // toggle pointing at no anchor (or a stale anchor) is a no-op
+    // anyway, no point inflating the chip count.
+    if (sinceAnchorActive.value && anchorKey.value !== '') n++
     return n
   })
   const anyNarrow = computed(() => activeClauseCount.value > 0)
@@ -200,6 +246,20 @@ export function useMatchesNarrow(
     let base = records.value.filter((r) => !r.hidden)
     if (!includeUnknown.value) {
       base = base.filter((r) => !!r.data?.map)
+    }
+
+    // Resolve the "since this anchor match" floor ONCE — looking up
+    // the anchor record per-row would be O(n²). The floor is an ISO
+    // parsed_at string (lexicographic compare = chronological).
+    // Unset / stale anchor (anchor key not found in the corpus)
+    // disables the filter — same end-state as if the user hadn't
+    // checked it. Tests pin both cases.
+    let anchorFloor: string | null = null
+    if (sinceAnchorActive.value && anchorKey.value !== '') {
+      const anchor = records.value.find((r) => r.match_key === anchorKey.value)
+      if (anchor && anchor.parsed_at) {
+        anchorFloor = anchor.parsed_at
+      }
     }
 
     const search = searchText.value.trim().toLowerCase()
@@ -272,6 +332,23 @@ export function useMatchesNarrow(
         if (!hit) return false
       }
 
+      // Reviewed-by — empty picked set means "no filter." Otherwise
+      // the record's bucket must be in the set. The 'unreviewed'
+      // bucket maps to "no reviewed_by field," which is the natural
+      // default for an unreviewed match.
+      if (pickedReviewedBy.value.size) {
+        const bucket: ReviewedByPick = r.reviewed_by ?? 'unreviewed'
+        if (!pickedReviewedBy.value.has(bucket)) return false
+      }
+
+      // Since-anchor — drop records on or before the anchor's
+      // parsed_at. Strict-greater so the anchor itself doesn't show
+      // (it's the user's "what's happened SINCE" reference point).
+      if (anchorFloor !== null) {
+        const parsedAt = r.parsed_at ?? ''
+        if (parsedAt <= anchorFloor) return false
+      }
+
       if (leaverHandling.value === 'hide' && r.annotation?.leaver) return false
 
       return true
@@ -281,11 +358,12 @@ export function useMatchesNarrow(
   return {
     // State
     searchText,
-    pickedMaps, pickedMapTypes, pickedHeroes, pickedRoles, pickedResults, pickedTags,
+    pickedMaps, pickedMapTypes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
     pickedRange, customFrom, customTo,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
+    anchorKey, sinceAnchorActive,
     // Actions
-    pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickRange,
+    pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickRange,
     resetNarrow,
     // Derived
     activeClauseCount, anyNarrow,

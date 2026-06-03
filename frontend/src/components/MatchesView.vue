@@ -92,6 +92,10 @@ const emit = defineEmits<{
   // Bulk move to another profile — emitted from either action bar
   // after the user picks a target profile from the inline picker.
   'move-matches': [matchKeys: string[], targetProfile: string]
+  // "Since this match" anchor cleared from the narrow panel. App.vue
+  // owns the persisted anchor state via `useMatchAnchor`, so this
+  // bubbles up rather than mutating directly.
+  'clear-anchor': []
 }>()
 
 // ─── Narrow state via the parent-supplied composable bundle ──
@@ -103,10 +107,11 @@ const emit = defineEmits<{
 // templates auto-unwrap.
 const {
   searchText,
-  pickedMaps, pickedMapTypes, pickedHeroes, pickedRoles, pickedResults, pickedTags,
+  pickedMaps, pickedMapTypes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
   pickedRange, customFrom, customTo,
   leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
-  pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickRange,
+  anchorKey, sinceAnchorActive,
+  pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickRange,
   resetNarrow,
   activeClauseCount, anyNarrow,
   availableMaps, availableMapTypes, availableHeroes, availableRoles, availableResults, availableTags,
@@ -504,6 +509,24 @@ const narrowedIndexByKey = computed(() => {
   return m
 })
 
+// "Since anchor" — look up the anchored match from the full corpus
+// (NOT narrowedRecords, which excludes the anchor itself when the
+// filter is active). Returns null when the anchor key is unset OR
+// points at a deleted match. Drives both the active-chip label and
+// the narrow-panel section copy.
+const anchorRecord = computed(() => {
+  if (anchorKey.value === '') return null
+  return props.records.find((r) => r.match_key === anchorKey.value) ?? null
+})
+
+const anchorChipLabel = computed(() => {
+  const r = anchorRecord.value
+  if (!r) return ''
+  const d = r.data?.date ?? ''
+  const map = r.data?.map ?? '—'
+  return d ? `${d} · ${map}` : map
+})
+
 function formatTime(rec: MatchRecord): string {
   return rec.data?.finished_at ?? ''
 }
@@ -747,6 +770,28 @@ onBeforeUnmount(() => {
               ×
             </button>
           </li>
+          <li
+            v-for="b in [...pickedReviewedBy]"
+            :key="`rb-${b}`"
+            class="active-chip"
+          >
+            <span class="chip-key">Reviewed by</span>
+            <span class="chip-val">{{ b }}</span>
+            <button class="chip-x" :aria-label="`Drop ${b}`" @click="pickReviewedBy(b)">
+              ×
+            </button>
+          </li>
+          <li v-if="sinceAnchorActive && anchorRecord" class="active-chip">
+            <span class="chip-key">Since</span>
+            <span class="chip-val">{{ anchorChipLabel }}</span>
+            <button
+              class="chip-x"
+              aria-label="Stop filtering since anchor"
+              @click="sinceAnchorActive = false"
+            >
+              ×
+            </button>
+          </li>
           <li class="active-chip clear">
             <button class="chip-clear" @click="resetNarrow">
               Clear all
@@ -833,6 +878,7 @@ onBeforeUnmount(() => {
             :aria-expanded="narrowOpen ? 'true' : 'false'"
             aria-haspopup="true"
             aria-controls="narrow-popover"
+            data-narrow-trigger
             @click="toggleNarrow"
           >
             <span aria-hidden="true">⌗</span> Narrow this set
@@ -1089,6 +1135,87 @@ onBeforeUnmount(() => {
                       </div>
                     </section>
 
+                    <!-- Reviewed by — multi-select OR across self,
+                         coach, and unreviewed. Empty selection = no
+                         filter (every record passes). Stamp on the
+                         match through the detail panel's review
+                         chooser; this surface only filters. -->
+                    <section class="np-section">
+                      <div class="np-section-head">
+                        <span class="np-section-eyebrow">Reviewed by</span>
+                        <span class="np-section-meta">
+                          {{ pickedReviewedBy.size === 0 ? 'any' : `${pickedReviewedBy.size} selected` }}
+                        </span>
+                      </div>
+                      <div class="np-chips">
+                        <button
+                          class="np-chip"
+                          :class="{ picked: pickedReviewedBy.has('self') }"
+                          data-reviewed-by="self"
+                          @click="pickReviewedBy('self')"
+                        >
+                          Self
+                        </button>
+                        <button
+                          class="np-chip"
+                          :class="{ picked: pickedReviewedBy.has('coach') }"
+                          data-reviewed-by="coach"
+                          @click="pickReviewedBy('coach')"
+                        >
+                          Coach
+                        </button>
+                        <button
+                          class="np-chip"
+                          :class="{ picked: pickedReviewedBy.has('unreviewed') }"
+                          data-reviewed-by="unreviewed"
+                          @click="pickReviewedBy('unreviewed')"
+                        >
+                          Unreviewed
+                        </button>
+                      </div>
+                    </section>
+
+                    <!-- Since this match — anchor checkbox. The
+                         anchor itself is set/cleared from the match
+                         detail panel; this section is the on-off
+                         switch for the filter. Disabled when no
+                         anchor is set so the affordance reads as
+                         "you need to mark a match first" without a
+                         dead toggle. -->
+                    <section class="np-section">
+                      <div class="np-section-head">
+                        <span class="np-section-eyebrow">Since this match</span>
+                        <span class="np-section-meta">
+                          {{ anchorRecord ? 'anchor set' : 'pick a match in the detail panel' }}
+                        </span>
+                      </div>
+                      <div v-if="anchorRecord" class="np-since-anchor">
+                        <label class="np-toggle-label">
+                          <input
+                            type="checkbox"
+                            data-since-anchor-toggle
+                            :checked="sinceAnchorActive"
+                            @change="sinceAnchorActive = ($event.target as HTMLInputElement).checked"
+                          >
+                          <span>Only matches after</span>
+                        </label>
+                        <p class="np-since-anchor-meta" data-since-anchor-label>
+                          <span class="np-since-anchor-date">{{ anchorChipLabel }}</span>
+                          <button
+                            type="button"
+                            class="np-since-anchor-clear"
+                            data-since-anchor-clear
+                            @click="emit('clear-anchor')"
+                          >
+                            Clear anchor
+                          </button>
+                        </p>
+                      </div>
+                      <p v-else class="np-empty">
+                        Open a match → "Set as 'since' anchor" to mark a milestone, then filter from this view.
+                      </p>
+                    </section>
+
                     <!-- Min play threshold (both minutes + percent; OR semantics) + unknown toggle -->
                     <section class="np-section">
                       <div class="np-section-head">
@@ -1316,6 +1443,7 @@ onBeforeUnmount(() => {
             :key="rec.match_key"
             class="leaf-row"
             tabindex="-1"
+            :data-match-key="rec.match_key"
             :data-card-index="narrowedIndexByKey.get(rec.match_key) ?? -1"
             :aria-current="props.focusedCardIndex !== undefined
               && narrowedIndexByKey.get(rec.match_key) === props.focusedCardIndex

@@ -51,6 +51,10 @@ const props = defineProps<{
   // Optional — older mount sites omit it and the preview renders
   // without hits.
   searchClauses?: SearchClause[]
+  // match_key of the current "since this match" anchor. When the
+  // expanded card's record IS the anchor, the chooser shows
+  // "Clear anchor" instead of "Set as anchor."
+  anchorKey?: string
 }>()
 
 const emit = defineEmits<{
@@ -82,7 +86,13 @@ const emit = defineEmits<{
   // routes that to a DELETE on the /review sub-resource. Active
   // chip re-click also emits '' as a toggle-off.
   'set-match-review':      [matchKey: string, reviewedBy: ReviewedBy]
+  // User flipped the "Set as 'since' anchor" toggle. App.vue's
+  // `useMatchAnchor` persists the choice; this card just lifts the
+  // intent. Empty string means "clear the anchor."
+  'set-anchor':            [matchKey: string]
 }>()
+
+const isAnchor = computed(() => props.anchorKey === props.record.match_key)
 
 // Local draft state for the free-text annotation fields. Hydrates
 // from props.record.annotation when the card opens or the underlying
@@ -376,6 +386,31 @@ function onTagKeydown(e: KeyboardEvent) {
           <span class="review-chip-label">Coach</span>
         </button>
       </div>
+    </div>
+
+    <!-- "Since this match" anchor toggle. Marks the match as the
+         reference point for the Matches narrow panel's "Since {match}"
+         filter so the user (or their coach) can ask "how have I done
+         since this checkpoint?" — independent of whether the match
+         itself was reviewed. Only one anchor can be set at a time;
+         clicking on a non-anchor match displaces the previous anchor. -->
+    <div class="since-anchor-row">
+      <button
+        type="button"
+        class="since-anchor-btn"
+        :class="{ 'is-anchor': isAnchor }"
+        :data-anchor-set="isAnchor || undefined"
+        data-set-anchor
+        :title="isAnchor
+          ? 'This match is the current “since” anchor. Click to clear.'
+          : 'Mark as the “since” anchor — the Matches narrow panel can then filter to matches after this one.'"
+        @click="emit('set-anchor', isAnchor ? '' : record.match_key)"
+      >
+        <span class="since-anchor-glyph" aria-hidden="true">{{ isAnchor ? '◆' : '◇' }}</span>
+        <span class="since-anchor-label">
+          {{ isAnchor ? 'Anchor — click to clear' : 'Set as “since” anchor' }}
+        </span>
+      </button>
     </div>
 
     <!-- Top meta strip: when the match was played + final score +
@@ -1525,6 +1560,65 @@ function onTagKeydown(e: KeyboardEvent) {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.4rem;
+}
+
+/* "Since this match" anchor toggle. Sits right below the review
+   chooser so the two timeline-adjacent affordances (mark as
+   reviewed + mark as anchor) read as a unit. The active state uses
+   the accent palette and a filled diamond glyph so the user can
+   tell at a glance which match is the current anchor — useful when
+   scanning a list and reopening the same panel later. */
+.since-anchor-row {
+  margin: -0.5rem 0 1rem;
+  display: flex;
+}
+
+.since-anchor-btn {
+  appearance: none;
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.since-anchor-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.since-anchor-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.since-anchor-btn.is-anchor {
+  border-style: solid;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+.since-anchor-glyph {
+  font-size: 0.85rem;
+  line-height: 1;
 }
 
 .review-chooser-eyebrow {

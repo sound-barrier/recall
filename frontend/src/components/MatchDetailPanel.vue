@@ -41,6 +41,10 @@ const props = defineProps<{
   // can't bleed back into panel controls while the user is looking
   // at the full image.
   hasLightbox: boolean
+  // match_key of the "since this match" anchor, threaded through so
+  // the expanded card can flip its toggle's copy + style. Empty
+  // string ≡ no anchor.
+  anchorKey?: string
 }>()
 
 const emit = defineEmits<{
@@ -56,6 +60,9 @@ const emit = defineEmits<{
   'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
   'set-match-hidden':       [matchKey: string, hidden: boolean]
   'set-match-review':      [matchKey: string, reviewedBy: ReviewedBy]
+  // User flipped the "Set as 'since' anchor" toggle. Empty string
+  // means "clear the anchor."
+  'set-anchor':            [matchKey: string]
 }>()
 
 const ow = useOWData()
@@ -345,6 +352,7 @@ function onBackdropClick(e: MouseEvent) {
             :has-preview-error="hasPreviewError"
             :is-active="isActive"
             :search-clauses="searchClauses"
+            :anchor-key="anchorKey"
             @toggle-sources="emit('toggle-sources')"
             @toggle-preview="(f: string) => emit('toggle-preview', f)"
             @preview-error="(f: string) => emit('preview-error', f)"
@@ -354,6 +362,7 @@ function onBackdropClick(e: MouseEvent) {
             @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
             @set-match-hidden="(k: string, h: boolean) => emit('set-match-hidden', k, h)"
             @set-match-review="(k: string, by: ReviewedBy) => emit('set-match-review', k, by)"
+            @set-anchor="(k: string) => emit('set-anchor', k)"
           />
         </div>
       </aside>
