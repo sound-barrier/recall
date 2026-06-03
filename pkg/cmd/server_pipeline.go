@@ -39,6 +39,25 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 		w.WriteHeader(http.StatusAccepted)
 	})
 
+	// Cancel an in-flight parse. Modelled as a DELETE on the
+	// "active parse" sub-resource so the URL stays a noun
+	// (TECHNICAL_DEBT.md item 15 history). 202 Accepted because the
+	// actual stop lands at the next between-files boundary in the
+	// OCR loop, not synchronously with this response. 409 when no
+	// parse is running — same shape as POST /api/v1/parses for
+	// "the request was fine, the state isn't".
+	apiMux.HandleFunc("DELETE /api/v1/parses/active", func(w http.ResponseWriter, r *http.Request) {
+		if err := a.CancelParse(); err != nil {
+			if errors.Is(err, app.ErrNoParseInFlight) {
+				http.Error(w, err.Error(), http.StatusConflict)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+	})
+
 	apiMux.HandleFunc("GET /api/v1/screenshots/pending-count", func(w http.ResponseWriter, r *http.Request) {
 		count, err := a.GetNewScreenshotCount()
 		writeJSON(w, map[string]int{"count": count}, err)
