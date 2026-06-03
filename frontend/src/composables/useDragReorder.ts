@@ -103,8 +103,10 @@ export function useDragReorder(opts: UseDragReorderOptions): DragReorderApi {
     if (!dragging.value) return
     e.preventDefault()
     const { id, row: fromRow, idx: fromIdx } = dragging.value
-    onDragEnd()
-    if (fromRow === row && fromIdx === idx) return
+    if (fromRow === row && fromIdx === idx) {
+      onDragEnd()
+      return
+    }
     // Drag semantic: "drop on cell at original idx X" = "insert
     // before that cell". Translate to the post-removal idx the
     // layout's move() expects: same-row source-before-target
@@ -113,16 +115,23 @@ export function useDragReorder(opts: UseDragReorderOptions): DragReorderApi {
     // no adjustment.
     let toIdx = idx
     if (fromRow === row && fromIdx < idx) toIdx = idx - 1
+    // Fire onMove BEFORE clearing dragging state so the consumer
+    // can derive a live-preview commit (e.g. MatchesView's
+    // preview-layout drag) from dragging + dropHint.
     opts.onMove(id, fromRow, fromIdx, row, toIdx)
+    onDragEnd()
   }
 
   function onRowDragOver(row: number, e: DragEvent) {
     if (!dragging.value) return
     e.preventDefault()
     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
-    // No drop hint here — the per-cell hint takes precedence when
-    // the user is over a sibling. The row-level handler only fires
-    // when the drop falls past every cell, in which case we append.
+    // Only set the "append at end" hint when the event ORIGINATED on
+    // the row container, not when it bubbled up from a child cell.
+    // Without this guard, the per-cell dropHint set a moment earlier
+    // gets clobbered on the bubble pass and the live-preview lands
+    // every drag at the row tail.
+    if (e.target !== e.currentTarget) return
     const size = opts.rowSize(row)
     dropHint.value = { row, idx: size }
   }
@@ -132,8 +141,9 @@ export function useDragReorder(opts: UseDragReorderOptions): DragReorderApi {
     e.preventDefault()
     const { id, row: fromRow, idx: fromIdx } = dragging.value
     const targetIdx = opts.rowSize(row)
-    onDragEnd()
+    // Fire onMove BEFORE onDragEnd — see onDrop's note for why.
     opts.onMove(id, fromRow, fromIdx, row, targetIdx)
+    onDragEnd()
   }
 
   function onHandleKeydown(id: string, row: number, idx: number, e: KeyboardEvent) {

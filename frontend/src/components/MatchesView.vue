@@ -273,8 +273,43 @@ const {
 // layout; the customizer's "+ Add" puts it back.
 const dashboardLayout = useDashboardLayout()
 
+// Live-reflow drag preview. Held as a plain ref so it can be
+// referenced from `dragReorder.onMove` (declared next) without a
+// TDZ tangle — a watcher below keeps it in sync with the drag
+// state. While a drag is in flight AND the cursor is over a valid
+// drop target, this holds a layout where the dragged widget sits
+// at the prospective drop position. Other widgets reflow around
+// it via the TransitionGroup's FLIP move transition. On drop the
+// preview becomes the persisted layout in one atomic setLayout
+// write; on dragend without drop (cursor released off the
+// dossier) the preview clears and widgets snap back.
+const previewLayout = ref<Record<number, string[]> | null>(null)
+
+// Drag-reorder primitive. Tracks `dragging` (source coords) +
+// `dropHint` (the cell the cursor is currently over) reactive
+// refs and emits onMove on a successful drop. The onMove handler
+// uses previewLayout to choose between "commit the live preview"
+// (drag) and "traditional move" (keyboard reorder).
+const dragReorder = useDragReorder({
+  onMove: (id, fromRow, fromIdx, toRow, toIdx) => {
+    const preview = previewLayout.value
+    if (preview) {
+      // Live-reflow drag: the preview IS the destination. Persist
+      // it atomically rather than re-deriving via move().
+      dashboardLayout.setLayout(preview)
+    } else {
+      // Keyboard reorder (no live preview): traditional move.
+      dashboardLayout.move(id, fromRow, fromIdx, toRow, toIdx)
+    }
+  },
+  rowSize: (row) => {
+    const r = dashboardRows.value.find((x) => x.index === row)
+    return r ? r.widgets.length : 0
+  },
+})
+
 const dashboardRows = computed(() => {
-  const layout = dashboardLayout.rows.value
+  const layout = previewLayout.value ?? dashboardLayout.rows.value
   return Object.keys(layout)
     .map((k) => Number(k))
     .sort((a, b) => a - b)
@@ -285,6 +320,44 @@ const dashboardRows = computed(() => {
         .filter((def): def is WidgetDef => def !== undefined),
     }))
 })
+
+// Recompute the preview whenever the drag state changes. Watcher
+// flush order is sync→pre→post; default `flush: 'pre'` is fine
+// — runs before the next DOM update so dashboardRows sees a
+// fresh preview on the same render tick.
+watch(
+  [dragReorder.dragging, dragReorder.dropHint, dashboardLayout.rows],
+  ([dragState, hint, layout]) => {
+    if (!dragState || !hint) {
+      previewLayout.value = null
+      return
+    }
+    const next: Record<number, string[]> = {}
+    for (const [k, v] of Object.entries(layout)) {
+      next[Number(k)] = [...v]
+    }
+    // Remove the dragged widget from wherever it currently lives.
+    // Walking every row keeps this robust if the source coords on
+    // dragState went stale mid-drag.
+    for (const key of Object.keys(next)) {
+      const rowIdx = Number(key)
+      const arr = next[rowIdx]!
+      const idx = arr.indexOf(dragState.id)
+      if (idx !== -1) {
+        arr.splice(idx, 1)
+        next[rowIdx] = arr
+        break
+      }
+    }
+    // Insert at the hint position in the target row.
+    const targetRow = next[hint.row] ?? []
+    const insertAt = Math.max(0, Math.min(hint.idx, targetRow.length))
+    targetRow.splice(insertAt, 0, dragState.id)
+    next[hint.row] = targetRow
+    previewLayout.value = next
+  },
+  { deep: true },
+)
 
 // Edit mode is a sticky checkbox on the dossier header — separate
 // from the customizer modal so the user can drag / trash without
@@ -364,19 +437,6 @@ function onDismissUndo(token: number) {
     pendingUndo.value = null
   }
 }
-
-// Drag-reorder wiring. The reorder composable knows nothing about
-// the layout itself — it just emits move(id, fromRow, fromIdx,
-// toRow, toIdx) and the layout composable handles the persistence.
-const dragReorder = useDragReorder({
-  onMove: (id, fromRow, fromIdx, toRow, toIdx) => {
-    dashboardLayout.move(id, fromRow, fromIdx, toRow, toIdx)
-  },
-  rowSize: (row) => {
-    const r = dashboardRows.value.find((x) => x.index === row)
-    return r ? r.widgets.length : 0
-  },
-})
 
 // Per-widget prop bag, keyed by widget id. Each entry is the exact
 // set of dossier values that widget's SFC declares as props.
@@ -716,6 +776,8 @@ onBeforeUnmount(() => {
             :row="row.index"
             :idx="idx"
             :selected="editMode && selectedWidgetId === def.id"
+            :dragging="dragReorder.dragging.value !== null
+              && dragReorder.dragging.value.id === def.id"
             :drop-target="dragReorder.dropHint.value !== null &&
               dragReorder.dropHint.value.row === row.index &&
               dragReorder.dropHint.value.idx === idx"
@@ -1607,6 +1669,12 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 0.5rem;
   align-items: start;
+
+  /* Defensive: keep any descendant `position: absolute` (e.g. a
+     mid-transition leave-active widget, mid-drag ghost overlay) confined
+     to the row's box instead of escaping up to .set-dossier and
+     overlapping the header / sibling rows. */
+  position: relative;
 }
 
 /* Breakdown widgets need more room than KPI tiles to render their
@@ -1764,7 +1832,13 @@ onBeforeUnmount(() => {
   transition: opacity 260ms ease;
 }
 
-.set-dossier > * { position: relative; z-index: 1; }
+/* Stack direct children above the workspace dot-grid (::before
+   sits at z-index 0). Scoped to .set-dossier-editing so the rule
+   only fires when the workspace pattern is rendered — outside
+   edit mode there's no dot-grid and no need to bump child
+   stacking. Avoids creating stacking contexts that surprise the
+   teleported customizer modal + undo toast. */
+.set-dossier-editing > * { position: relative; z-index: 1; }
 
 @media (prefers-reduced-motion: reduce) {
   .set-dossier-editing::before { transition: none; }
@@ -1773,18 +1847,28 @@ onBeforeUnmount(() => {
 /* ── Widget enter / exit animation ──────────────────────────
    Wraps every .dashboard-row in <TransitionGroup>; new widgets
    scale-in from 0.94 with a fade, removed widgets scale-out
-   while shrinking their box so siblings reflow smoothly into
-   the gap. Uses CSS grid's own animation hooks; the v-move
-   transition handles same-row sibling shifts during drags. */
+   while shrinking their box. The v-move transition handles
+   same-row sibling shifts during drags + reorders.
+
+   We deliberately do NOT use `position: absolute` on
+   leave-active. That technique made siblings reflow instantly
+   into the gap but escaped the leaving widget from its grid
+   track — without a positioned ancestor it floated up to
+   .set-dossier and overlapped the dossier header. The "shrink
+   in place" alternative keeps the cell width during the 240 ms
+   leave, which reads as a deliberate fade-out rather than a
+   broken layout. */
 .dashboard-widget-enter-active,
 .dashboard-widget-leave-active,
 .dashboard-widget-move {
   transition: opacity 220ms ease,
-              transform 240ms cubic-bezier(0.2, 0.7, 0.3, 1);
+              transform 240ms cubic-bezier(0.2, 0.7, 0.3, 1),
+              max-width 220ms cubic-bezier(0.2, 0.7, 0.3, 1),
+              margin 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 .dashboard-widget-leave-active {
-  position: absolute;
+  pointer-events: none;
 }
 
 .dashboard-widget-enter-from,

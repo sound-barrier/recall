@@ -360,4 +360,45 @@ describe('useDashboardLayout', () => {
     api.removeFromRow(kpi)
     expect(api.rows.value[3]).toBeUndefined()
   })
+
+  // ─── setLayout ──────────────────────────────────────────────
+
+  it('setLayout writes the provided layout atomically and persists', async () => {
+    const { api } = await mountHost()
+    const swap: RowLayout = {
+      1: ['avg-kda', 'winrate'],
+      2: ['top-heroes', 'top-maps', 'top-roles'],
+    }
+    api.setLayout(swap)
+    expect(api.rows.value[1]).toEqual(['avg-kda', 'winrate'])
+    expect(api.rows.value[2]).toEqual(['top-heroes', 'top-maps', 'top-roles'])
+    // Storage round-tripped.
+    const stored = JSON.parse(storage[LAYOUT_STORAGE_KEY] ?? '{}')
+    expect(stored[1]).toEqual(['avg-kda', 'winrate'])
+  })
+
+  it('setLayout drops orphan IDs that no longer exist in the registry', async () => {
+    const { api } = await mountHost()
+    api.setLayout({
+      1: ['winrate', 'definitely-not-a-widget'],
+      2: ['top-maps'],
+    })
+    expect(api.rows.value[1]).not.toContain('definitely-not-a-widget')
+    expect(api.rows.value[1]).toEqual(['winrate'])
+  })
+
+  it('setLayout takes the layout literally — drops install-default widgets the caller omits', async () => {
+    const { api } = await mountHost()
+    // PR A's reconciler intentionally does NOT re-add install-default
+    // widgets that the caller omits — otherwise every trash click
+    // would lose to a ghost re-add on reload. setLayout inherits
+    // that contract: the layout the caller writes is the layout
+    // that gets persisted.
+    api.setLayout({ 1: ['winrate'], 2: ['top-maps'] })
+    expect(api.rows.value[1]).toEqual(['winrate'])
+    expect(api.rows.value[2]).toEqual(['top-maps'])
+    const all = Object.values(api.rows.value).flat()
+    expect(all).not.toContain('avg-kda')
+    expect(all).not.toContain('top-heroes')
+  })
 })
