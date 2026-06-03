@@ -29,6 +29,10 @@ export interface MountOverrides {
   // tests that pass dateless records and expect to see the UNKNOWN
   // DATE bucket must set this to true.
   includeUndated?: boolean
+  // Captured Startup failure surfaced to the user via the blocking
+  // modal in App.vue. Empty default mirrors a clean boot; tests
+  // exercising the modal pass a non-empty string.
+  startupError?: string
 }
 
 // Mock factory captured at module scope so EventsOn handlers a test
@@ -70,6 +74,7 @@ function mockApi(overrides: MountOverrides = {}) {
   const records = overrides.records ?? []
   vi.doMock('../api', () => ({
     GetVersion:          vi.fn(async () => 'dev'),
+    GetStartupError:     vi.fn(async () => overrides.startupError ?? ''),
     CheckForUpdate:      vi.fn(async () => defaultUpdate(overrides.update)),
     OpenURL:             vi.fn(),
     ParseScreenshots:    vi.fn(async () => undefined),

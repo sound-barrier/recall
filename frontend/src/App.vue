@@ -12,6 +12,7 @@ import { ref, computed, watch, onMounted, nextTick, defineAsyncComponent } from 
 import type { MatchRecord, DataLocation } from './api'
 import {
   GetVersion,
+  GetStartupError,
   CheckForUpdate,
   OpenURL,
   type UpdateInfo,
@@ -350,6 +351,22 @@ const showUnsupportedModal = ref(false)
 // the destructive Continue Anyway), traps Tab/Shift+Tab, treats
 // Escape as cancel, restores focus to the trigger on close.
 useModalFocusTrap(showUnsupportedModal, { containerSelector: '.modal-box' })
+
+// Startup-failure modal. `startupErrorMessage` is filled by the
+// onMounted GetStartupError() call below; the modal is open
+// iff the message is non-empty. Unlike showUnsupportedModal it has
+// no Cancel — the only recovery is restart, because Startup
+// failures mean SQLite or profile init didn't happen and the rest
+// of the app can't function. Driven by a computed so the focus
+// trap composable can watch a Ref<boolean>.
+const startupErrorMessage = ref('')
+const showStartupErrorModal = computed(() => startupErrorMessage.value !== '')
+// Non-dismissible: Escape becomes a no-op so the user can't
+// trap-fail into a half-broken app. Restart is the only recovery.
+useModalFocusTrap(showStartupErrorModal, {
+  containerSelector: '.modal-box.startup-error',
+  onClose: () => {},
+})
 
 // Screenshots dir — persisted on the Go side; mirrored here for
 // rendering. The composable also owns the platform-probe state
@@ -909,6 +926,18 @@ const { pending: firstRunPending, ack: ackFirstRun } = useFirstRunAcknowledged()
 // check — see useFirstRunAcknowledged.
 const firstRunModalOpen = computed(() => firstRunPending.value && !tourActive.value)
 
+// Every modal surface that should freeze the background. Used by
+// the masthead container + status bar to flip `inert` + aria-hidden
+// so screen readers + Tab nav don't bleed into the dimmed page.
+// Add to this list whenever you mount a new full-surface modal.
+const backgroundFrozen = computed(() =>
+  firstRunModalOpen.value
+  || showUnsupportedModal.value
+  || showStartupErrorModal.value
+  || selection.isOpen.value
+  || matchesNarrowOpen.value,
+)
+
 function onFirstRunDismiss(renamedTo: string | null) {
   ackFirstRun()
   // If the user renamed the active profile, the server tore down +
@@ -1120,6 +1149,15 @@ onMounted(() => {
   // the "Check for updates" button in the masthead's ver-block. See
   // checkForUpdates() below + the v-if chain on .ver-block.
   load()
+  // Surface any captured Startup failure. The Wails wrapper used to
+  // log.Fatal on profile / DB-init errors, which manifested as a
+  // window flash with no user-visible reason. Startup now records
+  // the failure on the App; we pull it here on mount and flip the
+  // blocking modal so the user sees a real message
+  // (TECHNICAL_DEBT.md item 8).
+  GetStartupError()
+    .then(msg => { if (msg) startupErrorMessage.value = msg })
+    .catch(() => {})
 })
 
 // SSE / Wails event subscriptions for the ingest lifecycle.
@@ -1147,7 +1185,7 @@ useEventStream({
     <div class="atmos" aria-hidden="true" />
     <div class="grid-lines" aria-hidden="true" />
 
-    <div class="container" :inert="(firstRunModalOpen || showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) || undefined" :aria-hidden="(firstRunModalOpen || showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) ? 'true' : undefined">
+    <div class="container" :inert="backgroundFrozen || undefined" :aria-hidden="backgroundFrozen ? 'true' : undefined">
       <!-- System Alert: blocks both Matches and Settings flow when the
            OCR engine isn't usable. Renders ABOVE the masthead so it's
            the first thing a user sees on a broken install. -->
@@ -1508,8 +1546,8 @@ useEventStream({
     <ParseStatusBar
       :parse-progress="parseProgress"
       :parse-log="parseLog"
-      :inert="(firstRunModalOpen || showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) || undefined"
-      :aria-hidden="(firstRunModalOpen || showUnsupportedModal || selection.isOpen.value || matchesNarrowOpen) ? 'true' : undefined"
+      :inert="backgroundFrozen || undefined"
+      :aria-hidden="backgroundFrozen ? 'true' : undefined"
       @go-to-view="goToView"
     />
 
@@ -1569,6 +1607,41 @@ useEventStream({
       @prev="lightboxPrev"
       @next="lightboxNext"
     />
+
+    <!-- Startup-failure modal. Filled by GetStartupError() on
+         mount; non-empty message means the Go layer captured a
+         profile-init / DB-open failure (TECHNICAL_DEBT.md item 8).
+         No close affordance — restart is the only recovery. -->
+    <transition name="modal-fade">
+      <div
+        v-if="showStartupErrorModal"
+        class="modal-overlay"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="startup-error-title"
+        aria-describedby="startup-error-message"
+        data-testid="startup-error-modal"
+      >
+        <div class="modal-box startup-error">
+          <div class="modal-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28">
+              <path d="M12 2.6 L22.4 20.5 L1.6 20.5 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+              <line x1="12" y1="10" x2="12" y2="15.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <circle cx="12" cy="17.8" r="1.2" fill="currentColor" />
+            </svg>
+          </div>
+          <h3 id="startup-error-title" class="modal-title">
+            Recall could not start
+          </h3>
+          <p id="startup-error-message" class="modal-body">
+            {{ startupErrorMessage }}
+          </p>
+          <p class="modal-body modal-caution">
+            Recall captured a failure during boot — restart the app to try again. If the problem persists, check the application data directory for permissions issues and file a report from the Settings tab once you can re-enter the app.
+          </p>
+        </div>
+      </div>
+    </transition>
 
     <!-- Unsupported Tesseract version confirmation modal -->
     <transition name="modal-fade">
