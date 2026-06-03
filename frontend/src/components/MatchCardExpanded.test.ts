@@ -133,7 +133,9 @@ describe('MatchCardExpanded — since-this-match anchor toggle', () => {
     const w = mountAnchor('some-other-match')
     const btn = w.find('[data-set-anchor]')
     expect(btn.exists()).toBe(true)
-    expect(btn.text()).toMatch(/Set as.*anchor/i)
+    expect(btn.text()).toMatch(/Use as.*anchor/i)
+    // Sublabel explains the consequence inline (no tooltip required).
+    expect(btn.text()).toMatch(/filters the matches view to only matches after this one/i)
     expect(btn.classes()).not.toContain('is-anchor')
   })
 
@@ -141,6 +143,7 @@ describe('MatchCardExpanded — since-this-match anchor toggle', () => {
     const w = mountAnchor('match-2026-05-10T22-21-11')
     const btn = w.find('[data-set-anchor]')
     expect(btn.classes()).toContain('is-anchor')
+    expect(btn.text()).toMatch(/anchor set on this match/i)
     expect(btn.text()).toMatch(/click to clear/i)
     expect(btn.attributes('data-anchor-set')).toBe('true')
   })

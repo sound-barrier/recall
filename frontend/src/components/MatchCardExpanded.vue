@@ -393,7 +393,9 @@ function onTagKeydown(e: KeyboardEvent) {
          filter so the user (or their coach) can ask "how have I done
          since this checkpoint?" — independent of whether the match
          itself was reviewed. Only one anchor can be set at a time;
-         clicking on a non-anchor match displaces the previous anchor. -->
+         clicking on a non-anchor match displaces the previous anchor.
+         The sublabel explains the consequence inline because a
+         tooltip-only explanation fails for touch + keyboard users. -->
     <div class="since-anchor-row">
       <button
         type="button"
@@ -407,8 +409,15 @@ function onTagKeydown(e: KeyboardEvent) {
         @click="emit('set-anchor', isAnchor ? '' : record.match_key)"
       >
         <span class="since-anchor-glyph" aria-hidden="true">{{ isAnchor ? '◆' : '◇' }}</span>
-        <span class="since-anchor-label">
-          {{ isAnchor ? 'Anchor — click to clear' : 'Set as “since” anchor' }}
+        <span class="since-anchor-copy">
+          <span class="since-anchor-label">
+            {{ isAnchor ? 'Anchor set on this match' : 'Use as “since” anchor' }}
+          </span>
+          <span class="since-anchor-sublabel">
+            {{ isAnchor
+              ? 'Click to clear. Toggle the filter in Narrow → Since this match.'
+              : 'Filters the Matches view to only matches after this one.' }}
+          </span>
         </span>
       </button>
     </div>
@@ -1578,24 +1587,49 @@ function onTagKeydown(e: KeyboardEvent) {
   flex: 1 1 auto;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
+  justify-content: flex-start;
+  gap: 0.6rem;
   padding: 0.5rem 0.7rem;
   font-family: var(--mono);
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
   color: var(--text-dim);
   background: transparent;
   border: 1px dashed var(--border);
   border-radius: 2px;
   cursor: pointer;
+  text-align: left;
   transition:
     background 140ms ease,
     color 140ms ease,
     border-color 140ms ease,
     box-shadow 140ms ease;
+}
+
+.since-anchor-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.since-anchor-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+/* Inline subtitle that explains the consequence in plain language —
+   tooltips don't reach touch + keyboard users, and "anchor" alone
+   is jargon without context. Color is text-faint at idle, brighter
+   on hover / when active. */
+.since-anchor-sublabel {
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-weight: 500;
+  color: var(--text-faint);
+  line-height: 1.25;
 }
 
 .since-anchor-btn:hover {
@@ -1614,6 +1648,11 @@ function onTagKeydown(e: KeyboardEvent) {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent);
+}
+
+.since-anchor-btn:hover .since-anchor-sublabel,
+.since-anchor-btn.is-anchor .since-anchor-sublabel {
+  color: var(--text-dim);
 }
 
 .since-anchor-glyph {
