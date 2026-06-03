@@ -25,6 +25,16 @@ func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/system/data-location", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.GetDataLocation(), nil)
 	})
+	// Startup-error surface. Always returns 200 with a `message`
+	// string — empty when boot was clean. The frontend polls this
+	// on mount and renders a blocking modal when non-empty. In
+	// server mode this is structurally reachable but practically
+	// unreachable: RunServer log.Fatal's before mounting routes if
+	// StartupError() is non-nil, so a non-empty response is only
+	// possible if someone wires the App differently (e.g. tests).
+	apiMux.HandleFunc("GET /api/v1/system/startup-error", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]string{"message": a.GetStartupError()}, nil)
+	})
 	apiMux.HandleFunc("GET /api/v1/system/reference-data", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.GetOWData(), nil)
 	})

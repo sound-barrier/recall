@@ -137,6 +137,24 @@ func NewWithStore(s db.Store) *App {
 // path so the user sees a real message instead of a window flash.
 func (a *App) StartupError() error { return a.startupErr }
 
+// GetStartupError is the Wails-bound + HTTP-bound view of
+// StartupError. Returns the captured message or "" — the empty
+// string is the load-bearing default the frontend keys off ("no
+// modal needed"). nil-error → "" rather than a sentinel value so
+// the JSON wire shape stays a plain string.
+//
+// Why this exists separately from StartupError(): Wails IPC can't
+// transit `error`, and the HTTP layer wants a JSON-friendly string
+// anyway. The frontend polls this on mount; non-empty surfaces a
+// blocking modal explaining the failure (see App.vue's
+// `showStartupErrorModal` watcher).
+func (a *App) GetStartupError() string {
+	if a.startupErr == nil {
+		return ""
+	}
+	return a.startupErr.Error()
+}
+
 // captureFatal records the FIRST startup failure + logs it. Later
 // calls are noop'd (the first error is the load-bearing one). The
 // caller continues running — degraded state is better than a flash
