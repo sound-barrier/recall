@@ -57,19 +57,6 @@ Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
 
-## 6. Pagination on `GET /api/v1/matches` — REMAINING: frontend consumer
-
-**Where:** `pkg/cmd/server_matches.go` adds `?limit=` (1–1000) + `?cursor=` to `GET /api/v1/matches`. OpenAPI spec updated; `api.gen.d.ts` regen'd. 5 unit tests pin the contract (back-compat unbounded, limit-only, cursor-paging, clamp, invalid-limit-disables).
-
-**What remains:** the frontend still does the full-corpus fetch on boot. The dossier needs the whole corpus to compute aggregates — that's the limiting factor. A future consumer (the Matches list view, infinite-scroll behind a flag) is the natural place to wire pagination in. Prometheus collector stays unbounded (local read, JSON cost moot).
-
-**Plan:**
-
-1. (Done) Server-side `?limit=&cursor=`. Back-compat (no params → full corpus).
-2. Frontend: leave bulk fetch as-is for the dossier. When the dossier moves to server-side aggregation (probably alongside the Analysis tab), the bulk fetch becomes opt-in.
-
-**Size:** S (remaining). **Risk:** Low.
-
 ## 7. `POST /api/v1/parses` is a verb in a noun's clothing — DEFERRED (needs job-lifecycle model)
 
 **Where:** unchanged.
