@@ -56,17 +56,3 @@ articulate the cost.
 Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
-
-## 7. `POST /api/v1/parses` is a verb in a noun's clothing — DEFERRED (needs job-lifecycle model)
-
-**Where:** unchanged.
-
-**Why deferred:** reshaping to `parse-jobs` is contingent on whether parsing actually wants an async-job lifecycle (status polling, cancellation, multi-job queuing). The current synchronous model works for the desktop use case (one user, one folder, one click). Adding a job lifecycle adds operational complexity (queue management, persistence across restarts) that's only worth paying if a real consumer (e.g. a planned server-mode multi-tenant deployment) needs it.
-
-**Plan:**
-
-1. Decide whether the async-job lifecycle is wanted. The Analysis tab + the future server-mode use cases inform this.
-2. If yes: introduce `POST /api/v1/parse-jobs` → 202 with `{id, status}`, keep current synchronous route as a deprecated alias for one release.
-3. If no: rename the deprecation marker on this debt item to "intentional design" and remove from the list.
-
-**Size:** L if executed. **Risk:** Med.
