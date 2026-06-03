@@ -284,6 +284,20 @@ lint-semgrep: ## JS/TS SAST via Semgrep (frontend/src/, TypeScript only — .vue
 		frontend/src/
 	@echo "[ recall ] ✓  semgrep clean"
 
+# ── Complexity (REPORT-ONLY) ──────────────────────────────────────────
+# McCabe cyclomatic complexity sweep — Go (gocyclo) + frontend
+# (ESLint's `complexity` rule). Findings are PRINTED — the build never
+# fails on a high number — so we watch the trend without every push
+# blocking on someone else's gnarly function. When a number climbs
+# into "this needs a refactor" territory, raise a TECHNICAL_DEBT.md
+# item rather than tightening this gate.
+#
+# Threshold (McCabe's 1976 recommendation): 10. Tune in one place:
+# `scripts/check-complexity.sh`. Same script drives the
+# `pre-push.complexity` lefthook hook + the CI `complexity` job.
+complexity: ## Report functions with McCabe complexity > 10 across Go + frontend (non-blocking)
+	@bash scripts/check-complexity.sh
+
 # Spectral runs the spectral:oas ruleset against api/openapi.yaml; see
 # .spectral.yaml at the project root for rule overrides. npx pulls a
 # pinned version on demand so no global install is required. Version

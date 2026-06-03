@@ -367,7 +367,38 @@ jobs:
   # hook — so contributors get fast feedback before push without
   # duplicating coverage with CodeQL.
 
-  # ── Job 8: Dead code analysis ────────────────────────────────────────────
+  # ── Job 8: Cyclomatic complexity (REPORT ONLY) ───────────────────────────
+  # gocyclo (Go) + ESLint's `complexity` rule (frontend) at threshold 10.
+  # `continue-on-error: true` keeps the job NON-BLOCKING — a high number
+  # never fails the build, it just shows up in the job log. We watch the
+  # trend across PRs to know when to refactor; tightening into a hard
+  # gate is its own deliberate decision, not a side-effect of this job.
+  # Threshold + tooling pins both live in scripts/check-complexity.sh +
+  # tool-versions.env (GOCYCLO_VERSION).
+  complexity:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - name: Load tool versions
+        run: grep -E '^[A-Z_][A-Z0-9_]*=' tool-versions.env >> "$GITHUB_ENV"
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      # gocyclo doesn't need real frontend assets — Go source only.
+      - name: Prepare frontend/dist (stub for //go:embed)
+        uses: ./.github/actions/prepare-frontend-dist
+        with:
+          real-assets: "false"
+      - name: Install gocyclo
+        run: go install "github.com/fzipp/gocyclo/cmd/gocyclo@${GOCYCLO_VERSION}"
+      - name: Install frontend deps (for the eslint pass)
+        run: npm --prefix frontend ci
+      - name: Run complexity sweep (Go + frontend, threshold 10)
+        run: bash scripts/check-complexity.sh
+
+  # ── Job 9: Dead code analysis ────────────────────────────────────────────
   # deadcode does whole-program call-graph analysis for Go (serveronly variant
   # only — the Wails variant registers App methods via reflection so deadcode
   # would report false positives; golangci-lint `unused` covers that variant).
@@ -407,7 +438,7 @@ jobs:
       - name: Dead TypeScript code (knip)
         run: cd frontend && npm run dead:ts
 
-  # ── Job 9: Frontend coverage report ─────────────────────────────────────
+  # ── Job 10: Frontend coverage report ─────────────────────────────────────
   # Informational only — no thresholds enforced. The HTML report and lcov
   # file are uploaded as a workflow artifact so they can be downloaded from
   # the Actions run page for any push or PR.
@@ -435,7 +466,7 @@ jobs:
           path: frontend/coverage/
           retention-days: 30
 
-  # ── Job 10: Go coverage report ───────────────────────────────────────────
+  # ── Job 11: Go coverage report ───────────────────────────────────────────
   # Informational only — no thresholds enforced. The HTML report and func
   # summary are uploaded as a workflow artifact so they can be downloaded
   # from the Actions run page for any push or PR.
@@ -477,7 +508,7 @@ jobs:
           path: coverage/go/
           retention-days: 30
 
-  # ── Job 11: OpenAPI ↔ implementation drift check ─────────────────────────
+  # ── Job 12: OpenAPI ↔ implementation drift check ─────────────────────────
   # Spectral checks the spec is well-formed; schemathesis checks the spec
   # matches the running server. Fuzzes spec-derived requests against a
   # freshly-built serveronly binary and verifies every response conforms to
@@ -535,7 +566,7 @@ jobs:
         # frontend/dist are missing.
         run: SKIP_FRONTEND_BUILD=1 bash scripts/check-api-drift.sh
 
-  # ── Job 12: Combined PR report comment ───────────────────────────────────
+  # ── Job 13: Combined PR report comment ───────────────────────────────────
   # Renders one sticky comment per PR that folds unit-test pass/fail +
   # coverage delta (vs. main's last successful CI run) into a single
   # markdown block. Only runs on pull_request events — push-to-main has

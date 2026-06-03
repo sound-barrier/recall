@@ -138,6 +138,9 @@ check "typos" "$TYPOS_VERSION" "$TYPOS_LATEST" "tool-versions.env"
 GOSEC_LATEST=$(gh_latest securego/gosec)
 check "gosec" "$GOSEC_VERSION" "$GOSEC_LATEST" "tool-versions.env"
 
+GOCYCLO_LATEST=$(gh_latest fzipp/gocyclo)
+check "gocyclo" "$GOCYCLO_VERSION" "$GOCYCLO_LATEST" "tool-versions.env"
+
 SEMGREP_LATEST=$(gh_latest semgrep/semgrep)
 check "Semgrep" "$SEMGREP_VERSION" "$SEMGREP_LATEST" "tool-versions.env"
 
