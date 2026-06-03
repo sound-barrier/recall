@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue'
+import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import type { MatchRecord } from '../api'
 import type { LeaverHandling } from './useMatchesDossier'
 
@@ -58,18 +58,18 @@ export interface MatchesNarrowState {
   includeUnknown:    Ref<boolean>
   // "Since this match" anchor. `anchorKey` is the match_key of the
   // anchor (empty string ≡ none). The ref is OWNED by
-  // `useMatchAnchor` and threaded in here so the narrow filter can
-  // read it without having to import the persistence layer — same
-  // pattern that lets tests supply a plain `ref('')` instead of a
-  // localStorage round-trip. `sinceAnchorActive` is the panel-local
+  // `useMatchAnchor` and threaded in here as a `ComputedRef` —
+  // reactive on read, but type-rejected on write so callers can't
+  // bypass the persistence layer. Tests supply a `computed(() => x)`
+  // wrapping a plain ref. `sinceAnchorActive` is the panel-local
   // "apply the anchor filter?" toggle, session-scoped and reset by
   // resetNarrow.
-  anchorKey:         Ref<string>
+  anchorKey:         ComputedRef<string>
   sinceAnchorActive: Ref<boolean>
 }
 
 export interface CreateMatchesNarrowStateOptions {
-  anchorKey?: Ref<string>
+  anchorKey?: ComputedRef<string>
 }
 
 export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions = {}): MatchesNarrowState {
@@ -89,7 +89,10 @@ export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions =
     minPlayMinutes:   ref(0),
     minPlayPercent:   ref(0),
     includeUnknown:   ref(false),
-    anchorKey:        opts.anchorKey ?? ref(''),
+    // Tests not exercising the anchor pass nothing; we synthesise an
+    // always-empty ComputedRef so the filter's `anchorKey.value`
+    // reads still work without lifting the wrapper to optional.
+    anchorKey:        opts.anchorKey ?? computed(() => ''),
     sinceAnchorActive: ref(false),
   }
 }

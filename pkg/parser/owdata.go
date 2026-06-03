@@ -2,7 +2,7 @@ package parser
 
 import (
 	_ "embed"
-	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"unicode"
@@ -99,10 +99,39 @@ func normalize(s string) string {
 	return out
 }
 
+// OWDataLoadError holds the error from any embedded-YAML parse
+// failure. nil means every YAML loaded cleanly. Surfaces in the
+// system-reference-data endpoint so the UI can render a banner
+// instead of pretending heroes/maps don't exist.
+var OWDataLoadError error
+
 func init() {
+	// Embedded YAML failures used to `panic` here, which crashed the
+	// process during the `init` phase — on a desktop build that
+	// shows as a window flash with no error reporting. Switched to
+	// graceful: log the error, store it for the UI to surface, and
+	// leave the affected registry empty (heroes show as "unknown
+	// role" rather than the binary refusing to start). A build-time
+	// test in `owdata_test.go::TestEmbeddedYAML_LoadsCleanly` is the
+	// gate that keeps a bad YAML from shipping in the first place.
+	if err := loadHeroesYAML(); err != nil {
+		log.Printf("parser: heroes.yaml load failed: %v — hero roles will report 'unknown'", err)
+		OWDataLoadError = err
+	}
+	if err := loadMapsYAML(); err != nil {
+		log.Printf("parser: maps.yaml load failed: %v — map types will report 'unknown'", err)
+		OWDataLoadError = err
+	}
+	if err := loadHeroStatsYAML(); err != nil {
+		log.Printf("parser: hero_stats.yaml load failed: %v — stat-key canonicalization disabled", err)
+		OWDataLoadError = err
+	}
+}
+
+func loadHeroesYAML() error {
 	heroesRaw := map[string][]string{}
 	if err := yaml.Unmarshal(heroesYAML, &heroesRaw); err != nil {
-		panic(fmt.Sprintf("parser: heroes.yaml parse: %v", err))
+		return err
 	}
 	for role, list := range heroesRaw {
 		// Stable display order — Blizzard's release-order alphabetisation
@@ -116,10 +145,13 @@ func init() {
 			heroDisplayNames[key] = name
 		}
 	}
+	return nil
+}
 
+func loadMapsYAML() error {
 	mapsRaw := map[string][]string{}
 	if err := yaml.Unmarshal(mapsYAML, &mapsRaw); err != nil {
-		panic(fmt.Sprintf("parser: maps.yaml parse: %v", err))
+		return err
 	}
 	for typ, list := range mapsRaw {
 		sorted := append([]string(nil), list...)
@@ -133,16 +165,20 @@ func init() {
 		}
 	}
 	sort.Strings(knownMaps) // stable iteration in tests + Levenshtein scan
+	return nil
+}
 
+func loadHeroStatsYAML() error {
 	statsRaw := map[string][]string{}
 	if err := yaml.Unmarshal(heroStatsYAML, &statsRaw); err != nil {
-		panic(fmt.Sprintf("parser: hero_stats.yaml parse: %v", err))
+		return err
 	}
 	for hero, keys := range statsRaw {
 		sorted := append([]string(nil), keys...)
 		sort.Strings(sorted)
 		heroStatKeys[normalize(hero)] = sorted
 	}
+	return nil
 }
 
 // SnapHeroStatKey returns the canonical stat-key for `hero` that's

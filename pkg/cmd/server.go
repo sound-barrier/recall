@@ -35,7 +35,11 @@ func RunServer(a *app.App, assets embed.FS) {
 		log.Fatalf("server: could not sub into embedded assets: %v", err)
 	}
 
-	mux := NewMux(a, sub)
+	// Wrap the entire mux in the request-ID middleware so every
+	// inbound request (API + screenshot handler + SPA fallback)
+	// carries an `X-Request-ID` in both the response header and
+	// the request context.
+	mux := withRequestID(NewMux(a, sub))
 
 	addr := os.Getenv("RECALL_SERVER_ADDR")
 	if addr == "" {
@@ -277,6 +281,24 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	})
+
+	// Read a single match by key. Reuses GetMatchResults's aggregator
+	// + read-time inference, then filters to the requested key. 404
+	// via the ErrMatchNotFound sentinel keeps the wire surface clean
+	// (no 500 for an honest "not in the corpus").
+	apiMux.HandleFunc("GET /api/v1/matches/{matchKey}", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("matchKey")
+		if matchKey == "" {
+			http.Error(w, "match_key required in URL", http.StatusBadRequest)
+			return
+		}
+		rec, err := a.GetMatchByKey(matchKey)
+		if errors.Is(err, app.ErrMatchNotFound) {
+			http.Error(w, "match not found", http.StatusNotFound)
+			return
+		}
+		writeJSON(w, rec, err)
 	})
 
 	// Soft-delete (hide / unhide) a match. `hidden: true` adds the

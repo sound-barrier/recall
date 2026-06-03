@@ -109,6 +109,33 @@ paths:
   /api/v1/matches/{matchKey}:
     parameters:
       - $ref: "#/components/parameters/MatchKey"
+    get:
+      operationId: GetMatchByKey
+      tags: [Matches]
+      summary: Read a single match by key
+      description: |
+        Returns the aggregated `MatchRecord` for one match. Identical
+        wire shape to a single entry from `GetMatchResults`, with the
+        same read-time inference + child-table folding semantics —
+        consumers that need just one match can avoid pulling the
+        whole corpus.
+
+        404 on unknown keys (the `ErrMatchNotFound` sentinel routes
+        through `errors.Is` to keep honest "not in corpus" out of
+        the 500 catch-all).
+      responses:
+        "200":
+          description: Match found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchRecord"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          description: Match not found.
+        "500":
+          $ref: "#/components/responses/InternalError"
     delete:
       operationId: HardDeleteMatch
       tags: [Matches]

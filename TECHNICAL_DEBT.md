@@ -118,20 +118,6 @@ fine, never renumber. When a section is paid down in full,
 
 **Size:** L (3-4 PRs of M each). **Risk:** Med — Vue's prop / event boundary needs careful typing; existing e2e selectors must keep matching.
 
-## 5. No `GET /api/v1/matches/{matchKey}` — single-match reads require fetching the full list
-
-**Where:** `api/openapi.yaml` — `/api/v1/matches/{matchKey}` declares only `DELETE` (and `PUT` for visibility/annotation/review sub-resources). There's no path to fetch one match by key.
-
-**What breaks:** the frontend's "open detail panel" path re-uses the bulk `GetMatchResults` payload + a local lookup. A user with 5000 matches transfers 5000 records every time they click any single row. The Prometheus collector has the same shape — scrapes pull the full corpus, then filter. A future external integration ("Grafana single-match annotation overlay") can't reach a single match without fetching all of them.
-
-**Plan:**
-
-1. Add `GET /api/v1/matches/{matchKey}` returning a single `MatchRecord`. 404 on not found. Schema reuses the existing component.
-2. Schemathesis covers the contract on next CI run.
-3. Frontend: add `GetMatch(matchKey)` to `api.ts`; route the detail-panel open through it. Bulk list reads stay where they are (the dossier still needs all records).
-
-**Size:** S. **Risk:** Low — new endpoint, no schema changes to existing endpoints.
-
 ## 6. No pagination on `GET /api/v1/matches`
 
 **Where:** `api/openapi.yaml` — `GetMatchResults` returns the entire match corpus as a JSON array with no offset / limit / cursor. The Wails IPC variant has the same shape.
@@ -175,48 +161,6 @@ fine, never renumber. When a section is paid down in full,
 
 **Size:** M. **Risk:** Med — startup paths are hard to test end-to-end; cover with table-driven Startup tests that inject failures.
 
-## 9. `panic()` on embedded-YAML parse failure prevents boot if the bundled data is malformed
-
-**Where:** `pkg/parser/owdata.go:105` (`heroes.yaml`), `:122` (`maps.yaml`), `:139` (`hero_stats.yaml`) — three `panic()` calls on YAML parse errors. The data is `//go:embed`'d at build time, so in practice a bad YAML means a bad build.
-
-**What breaks:** a malformed YAML escapes CI (lint catches syntax but not schema) and the binary panics on first import. Worse, the panic happens during init when the user has no error reporting yet. For a desktop app this is "window opens, then disappears" with no user-facing message.
-
-**Plan:**
-
-1. Replace `panic` with a build-time validation test that exercises the parse against every shipped YAML. A bad YAML now fails CI, not the binary.
-2. At runtime, on parse failure: log the error + fall back to an empty registry (every hero is "unknown role", every map is "unknown type"). The app keeps booting; the Matches view shows unknowns instead of crashing.
-3. Surface the registry-empty state in the UI as a banner: "OW data failed to load — heroes/maps will show as unknown until the next update."
-
-**Size:** S. **Risk:** Low — the build-time test catches the case the panic was trying to catch.
-
-## 10. No down-migration round-trip test
-
-**Where:** `pkg/db/migrate.go` + `pkg/db/migrations/*.{up,down}.sql`. An existing test asserts every `.up.sql` has a paired `.down.sql`, but no test runs the down then re-applies the up to verify the down actually reverses the up.
-
-**What breaks:** a future migration ships a `.down.sql` that doesn't reverse the `.up.sql`. Production rollback is exercised for the first time in production, where it fails. We don't have a documented rollback procedure today, so the down files are effectively documentation; making them runnable + tested is the cheapest insurance.
-
-**Plan:**
-
-1. Add `TestMigrationsRoundTrip` in `pkg/db/migrate_test.go` that, for each `(N, up, down)`: applies all migrations 0..N, runs `down(N)`, asserts `schema_version` matches N-1, runs `up(N)` again, asserts the schema matches.
-2. Schema-match assertion uses `PRAGMA table_info` per table.
-3. New migration PRs now have a forcing function for correct down files.
-
-**Size:** S. **Risk:** Low.
-
-## 11. No request correlation in server logs
-
-**Where:** `pkg/cmd/server.go` — handler logs (`log.Printf`) are timestamp-only. Multi-step ingest flows (POST `/parses` → parser dispatch → DB upserts → SSE notify) can't be traced through the log without manual time-window grepping.
-
-**What breaks:** debugging a user's failed parse from a downloaded `recall.log` means scrolling through lines that don't co-relate. With concurrent screenshots being parsed, lines from different ingests interleave.
-
-**Plan:**
-
-1. Add a middleware that injects a request ID into context + every log line. Use the existing `X-Request-ID` header if present, else generate.
-2. `pkg/app/parse.go`'s dispatcher receives the request ID via context + threads it into the per-screenshot log lines.
-3. Optional: include the request ID in error responses so a user reporting a bug can paste it.
-
-**Size:** S. **Risk:** Low.
-
 ## 12. Bundle-size budgets are bumped per-feature, never paid down
 
 **Where:** `scripts/check-bundle-size.sh`. The JS budget has bumped 362K → 365K → 368K → 372K in the last four PRs. CSS has gone 205K → 208K → 211K. There's no pass that asks "what's actually big?" — every feature gets the bump it needs.
@@ -230,31 +174,3 @@ fine, never renumber. When a section is paid down in full,
 3. Document the audit in `docs/dev-reference.md` so the next bump prompts a re-audit, not another bump.
 
 **Size:** M. **Risk:** Low — lazy-loading is well-trod in this codebase already (`App.lazy-views.test.ts` enforces the pattern).
-
-## 13. `MatchesNarrowState` borrows a ref from `useMatchAnchor` — shared mutable across a composable seam
-
-**Where:** `frontend/src/composables/useMatchesNarrow.ts` — `MatchesNarrowState.anchorKey` is doc'd as "owned by `useMatchAnchor`, borrowed here." App.vue threads the singleton's ref into `createMatchesNarrowState({ anchorKey })`. The narrow filter reads the ref + the persisted-anchor composable owns it.
-
-**What breaks:** the contract is doc-only — there's no compile-time check that the borrowed ref is in fact `useMatchAnchor`'s. A future contributor sees `Ref<string>` in the State type and threads their own session-scoped ref through, breaking persistence silently. The reset-narrow path explicitly DOESN'T clear `anchorKey` because of the ownership boundary — a pattern that's wrong to read in isolation.
-
-**Plan:**
-
-1. Replace `anchorKey: Ref<string>` in `MatchesNarrowState` with `anchorSource: { read(): string }`. The narrow composable depends on the smaller interface.
-2. `useMatchAnchor()` exposes `.anchorSource` as a getter; tests can satisfy it with a literal `{ read: () => 'm1' }`.
-3. The ownership boundary is now type-checked: nobody can write to `anchorSource`, only `useMatchAnchor` mutates the underlying ref.
-
-**Size:** S. **Risk:** Low — the contract change is internal to the composable.
-
-## 14. Frontend complexity has no trend tracking — hot files grow silently
-
-**Where:** the `complexity` job + `pre-push.complexity` lefthook hook are NEW (added by this PR). They emit findings but don't track history. We know `useMatchFilters` is at 85 today; we don't have a baseline to alarm on "this PR doubled the complexity of `parseSearchQuery`."
-
-**What breaks:** a PR that nudges an already-fat function from 18 → 24 is invisible in review. The hot list trends upward; no individual PR is bad enough to flag.
-
-**Plan:**
-
-1. After a release cycle of the new complexity job, capture a baseline (top-20 functions by score) into a checked-in `docs/baselines/complexity-baseline.txt`.
-2. Add a CI step that diffs the current run against the baseline + adds a PR comment when a function climbs by ≥ 5 OR enters the top-20.
-3. Still report-only; the bar is "we know it happened", not "block the merge."
-
-**Size:** M. **Risk:** Low — adding observability, not enforcement.

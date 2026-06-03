@@ -46,3 +46,15 @@ listMigrationFiles
 # pkg/app + pkg/cmd test packages, but not from the production
 # binary's call graph. Filter the whole package.
 pkg/db/dbtest/
+
+# cmd.FromContext: reader for the X-Request-ID context value the
+# middleware sets. Exported so future handlers (and the parse
+# pipeline) can thread the ID into log lines; no production caller
+# yet but the contract is public.
+FromContext
+
+# db.revertOne: rolls back a single migration. Test-only today —
+# exercised by TestMigrationsRoundTrip — but lives in the migration
+# framework alongside applyOne so a future production rollback path
+# has a tested base.
+revertOne

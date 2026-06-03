@@ -397,6 +397,13 @@ jobs:
         run: npm --prefix frontend ci
       - name: Run complexity sweep (Go + frontend, threshold 10)
         run: bash scripts/check-complexity.sh
+      # Diff the current Go scores against the checked-in top-20
+      # baseline. Same threshold, same exclusions; emits a summary
+      # line + per-jump/newcomer record. continue-on-error keeps the
+      # job non-blocking; a future PR-comment step can hook into
+      # this output once the baseline shape stabilises.
+      - name: Diff against baseline (report-only)
+        run: bash scripts/check-complexity-baseline.sh
 
   # ── Job 9: Dead code analysis ────────────────────────────────────────────
   # deadcode does whole-program call-graph analysis for Go (serveronly variant

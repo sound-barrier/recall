@@ -1,0 +1,34 @@
+# Cyclomatic-complexity baseline — top-20 functions by McCabe score.
+#
+# Captured by `bash scripts/check-complexity-baseline.sh capture` (which
+# this header is documented in). The CI `complexity` job's diff step
+# compares the latest sweep against this file; functions that climb by
+# ≥ 5 or new entries that crack the top-20 surface as a PR comment.
+#
+# Pure observability — never enforced. If a number rises, raise (or
+# update) a TECHNICAL_DEBT.md item; never silently bump the baseline.
+#
+# Format: "<score> <package> <function> <file>:<line>". One per line.
+# Test files (`*_test.go`, `*.test.ts`) are excluded — they wear high
+# scores legitimately (table-driven matrices).
+
+95 cmd NewMux pkg/cmd/server.go
+43 app (*App).MoveMatches pkg/app/profile_move.go
+31 app ValidateBundle pkg/app/bundle_validate.go
+30 app (*App).importJSONv1 pkg/app/export.go
+29 app (*App).importDataCSV pkg/app/export_csv.go
+28 app matchByEAD pkg/app/correlation.go
+26 app (*App).ExportBundle pkg/app/export_bundle.go
+20 parser findStatColumns pkg/parser/parse_scoreboard.go
+19 app (*App).ScreenshotHandler pkg/app/screenshot_handler.go
+18 app aggregateMatchKey pkg/app/aggregate.go
+17 app mergeMatchResult pkg/app/correlation.go
+17 app foldGroup pkg/app/aggregate.go
+16 app matchByTimestampWindow pkg/app/correlation.go
+15 parser parsePersonalStatCell pkg/parser/parse_personal.go
+15 db (*SQLStore).loadRanks pkg/db/store_rank.go
+15 app (*App).ParseScreenshots pkg/app/parse.go
+15 app (*App).ExportDataCSV pkg/app/export_csv.go
+14 db (*SQLStore).LoadAnnotations pkg/db/store_annotation.go
+14 db applyMigrations pkg/db/migrate.go
+14 app (*App).Startup pkg/app/app.go
