@@ -597,6 +597,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/startup-error": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Surface a captured startup failure
+         * @description Returns the captured Startup error message, or empty when boot
+         *     was clean. The frontend polls this on mount and renders a
+         *     blocking modal when non-empty so the user sees a real reason
+         *     instead of a flash-and-disappear window. Replaces an earlier
+         *     round of `log.Fatal` paths in `App.Startup` (see
+         *     `TECHNICAL_DEBT.md` item 8). Always 200 — the empty-string
+         *     case is the load-bearing default the client keys off.
+         */
+        get: operations["GetStartupError"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/version": {
         parameters: {
             query?: never;
@@ -2212,6 +2238,34 @@ export interface operations {
                 };
             };
             500: components["responses"]["InternalError"];
+        };
+    };
+    GetStartupError: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Captured startup error message (empty on clean boot). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Empty when Startup completed without capturing an
+                         *     error; otherwise the wrapped failure string in
+                         *     the format `startup: <stage>: <inner>`.
+                         * @example
+                         */
+                        message: string;
+                    };
+                };
+            };
         };
     };
     GetVersion: {

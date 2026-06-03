@@ -126,6 +126,27 @@ func TestServerMux_GetVersion(t *testing.T) {
 	}
 }
 
+func TestServerMux_GetStartupError_CleanBootReturnsEmpty(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := get(t, mux, "/api/v1/system/startup-error")
+	if rec.Code != 200 {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+	var got map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	// On a clean wiring the field must be the empty string, not
+	// missing — the frontend keys on `message === ""` to gate the
+	// modal, and a missing key would resolve to `undefined` and
+	// open the modal with no body.
+	if v, ok := got["message"]; !ok {
+		t.Errorf(`response missing "message" key: %+v`, got)
+	} else if v != "" {
+		t.Errorf(`message = %q, want "" on clean boot`, v)
+	}
+}
+
 func TestServerMux_MethodNotAllowed(t *testing.T) {
 	_, mux := newTestApp(t, nil)
 	// GET on POST-only endpoint

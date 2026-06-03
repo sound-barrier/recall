@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -55,4 +56,26 @@ func TestStartupError_BadProfilesDirCaptured(t *testing.T) {
 
 func mkRegularFile(path string) error {
 	return os.WriteFile(path, []byte{}, 0o600)
+}
+
+func TestGetStartupError_EmptyWhenNoFailure(t *testing.T) {
+	a := &App{}
+	if got := a.GetStartupError(); got != "" {
+		t.Errorf("GetStartupError = %q, want empty string when startupErr is nil", got)
+	}
+}
+
+func TestGetStartupError_ReturnsCapturedMessage(t *testing.T) {
+	a := &App{}
+	a.captureFatal("stage-x", errors.New("disk full"))
+	got := a.GetStartupError()
+	if got == "" {
+		t.Fatal("GetStartupError = empty, want non-empty after capture")
+	}
+	// The wrapper format is `startup: <stage>: <inner>`; assert on
+	// both so a future format change is caught here AND a future
+	// stage rename is caught here.
+	if !strings.Contains(got, "stage-x") || !strings.Contains(got, "disk full") {
+		t.Errorf("GetStartupError = %q, want to contain stage + inner error", got)
+	}
 }
