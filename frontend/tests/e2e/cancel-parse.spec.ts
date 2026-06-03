@@ -140,5 +140,48 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
 
     // Bare boot: no Stop affordance anywhere.
     await expect(page.getByTestId('cancel-parse-btn')).toHaveCount(0)
+    await expect(page.getByTestId('status-bar-cancel-btn')).toHaveCount(0)
+  })
+
+  test('Status-bar ABORT also drives the cancel chain — from any tab', async ({ page }) => {
+    await installSSEMock(page)
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    })
+    let deleteCount = 0
+    await page.route('**/api/v1/parses/active', async (route: Route) => {
+      deleteCount++
+      await route.fulfill({ status: 202 })
+    })
+
+    await page.goto('/')
+    // Stay on Matches (the default landing) — the whole point of
+    // the bar's button is "kill the parse without navigating."
+    await expect(page.locator('#tab-matches')).toHaveAttribute('aria-selected', 'true')
+
+    // Drive a parse-progress event through the SSE mock — the bar
+    // appears, the ABORT tile mounts with it.
+    await page.evaluate(() => {
+      ;(window as unknown as { __recallSSE: { emit: (n: string, d?: unknown) => void } }).__recallSSE.emit(
+        'parse-progress',
+        { done: 5, total: 20, filename: 'mid.png', screenshot_type: 'summary' },
+      )
+    })
+
+    const abort = page.getByTestId('status-bar-cancel-btn')
+    await expect(abort).toBeVisible()
+    await expect(abort).toContainText('ABORT')
+
+    // Click ABORT — DELETE fires once + the button flips to
+    // ABORTING + disables itself.
+    await abort.click()
+    await expect.poll(() => deleteCount).toBe(1)
+    await expect(abort).toContainText('ABORTING')
+    await expect(abort).toBeDisabled()
+
+    // Confirm the click was NOT also interpreted as a
+    // jump-to-Ingest by the bar's outer handler (regression guard
+    // for data-no-jump + @click.stop).
+    await expect(page.locator('#tab-matches')).toHaveAttribute('aria-selected', 'true')
   })
 })
