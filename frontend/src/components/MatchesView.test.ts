@@ -458,3 +458,46 @@ describe('MatchesView — campaign log hidden filter', () => {
     expect(wrapper.find('.campaign-log').exists()).toBe(false)
   })
 })
+
+describe('MatchesView — infinite-scroll window', () => {
+  function fillCorpus(n: number): MatchRecord[] {
+    return Array.from({ length: n }, (_, i) => {
+      const k = String(i).padStart(3, '0')
+      // Spread across days so groupBy='day' (the default) produces
+      // multiple sections — verifies the windowing logic respects
+      // section boundaries (not just a flat row count).
+      const day = String(10 + (i % 5)).padStart(2, '0')
+      return makeRecord(
+        { match_key: `match-2026-05-${day}T${k}` },
+        { date: `2026-05-${day}`, finished_at: `${String(i % 24).padStart(2, '0')}:${k.slice(-2)}` },
+      )
+    })
+  }
+
+  it('renders exactly DEFAULT_PAGE_SIZE (20) leaf-rows for a 50-row corpus', () => {
+    const wrapper = mountView(fillCorpus(50))
+    expect(wrapper.findAll('.leaf-row')).toHaveLength(20)
+  })
+
+  it('shows the sentinel + "Showing 20 of 50 matches" foot', () => {
+    const wrapper = mountView(fillCorpus(50))
+    expect(wrapper.find('[data-testid="leaves-sentinel"]').exists()).toBe(true)
+    const foot = wrapper.find('[data-testid="leaves-foot"]')
+    expect(foot.exists()).toBe(true)
+    expect(foot.text()).toContain('Showing 20 of 50 matches')
+  })
+
+  it('omits the sentinel + reads "Showing all N matches" when corpus fits', () => {
+    const wrapper = mountView(fillCorpus(7))
+    expect(wrapper.findAll('.leaf-row')).toHaveLength(7)
+    expect(wrapper.find('[data-testid="leaves-sentinel"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="leaves-foot"]').text()).toContain('Showing all 7')
+  })
+
+  it('foot has aria-live=polite + role=status for screen-reader updates', () => {
+    const wrapper = mountView(fillCorpus(50))
+    const foot = wrapper.find('[data-testid="leaves-foot"]')
+    expect(foot.attributes('role')).toBe('status')
+    expect(foot.attributes('aria-live')).toBe('polite')
+  })
+})
