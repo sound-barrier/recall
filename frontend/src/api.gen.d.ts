@@ -297,6 +297,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/parses/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Stop an in-flight parse
+         * @description Cancels the parse run currently in flight. The OCR loop reads
+         *     the cancellation flag between screenshots, so the file
+         *     currently in tesseract finishes before the loop unwinds —
+         *     cancellation lands at the next between-files boundary, not
+         *     synchronously with this response.
+         *
+         *     Any per-screenshot rows already committed to SQLite stay put;
+         *     a follow-up `GET /api/v1/matches` reflects the partial state.
+         *     The frontend learns about completion via the SSE
+         *     `parse-cancelled` event so it can flip the Stop button back
+         *     to Run without polling.
+         *
+         *     `202` on success, `409` when no parse is in flight.
+         */
+        delete: operations["CancelParse"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/screenshots/pending-count": {
         parameters: {
             query?: never;
@@ -1780,6 +1812,26 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Parse run complete; subscribe to events for incremental updates. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    CancelParse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cancellation signalled; SSE `parse-cancelled` follows once the loop unwinds. */
             202: {
                 headers: {
                     [name: string]: unknown;

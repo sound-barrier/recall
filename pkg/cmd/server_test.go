@@ -156,6 +156,21 @@ func TestServerMux_MethodNotAllowed(t *testing.T) {
 	}
 }
 
+func TestServerMux_DeleteParsesActive_409WhenNoParseInFlight(t *testing.T) {
+	// Cleanest test of the route: no parse running, DELETE returns
+	// 409 with the sentinel message. We don't simulate an in-flight
+	// parse because that requires a real OCR loop; the App-level
+	// CancelParse tests cover the success path.
+	_, mux := newTestApp(t, nil)
+	rec := del(t, mux, "/api/v1/parses/active")
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(strings.ToLower(rec.Body.String()), "no parse in flight") {
+		t.Errorf("body should mention sentinel; got %q", rec.Body.String())
+	}
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Write endpoints with typed-error → 4xx mapping.
 // ──────────────────────────────────────────────────────────────────────────
