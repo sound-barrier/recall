@@ -49,7 +49,7 @@ import {
 import type { MatchAnnotationInput, ReviewedBy } from './api'
 import { tallyWLD, screenshotURL } from './match-helpers'
 import { useTabKeyboardNav, TAB_ORDER, type TabId } from './composables/useTabKeyboardNav'
-import { useKeyboardShortcuts, type Shortcut } from './composables/useKeyboardShortcuts'
+import { useGlobalKeyboard } from './composables/useGlobalKeyboard'
 import { useModalFocusTrap } from './composables/useModalFocusTrap'
 import { useBackupRestore } from './composables/useBackupRestore'
 import { useClearDatabase } from './composables/useClearDatabase'
@@ -1047,111 +1047,25 @@ const cardState = {
 }
 
 // ── Keyboard shortcuts — full registry ─────────────────────────
-// Wired here (after filters + toggleExpand + goToView are all in
-// scope) rather than alongside the focusedCardIndex ref above so
-// every handler can capture stable references. The dispatcher
-// installs ONE capture-phase document listener; per-binding `when`
-// predicates gate view-specific shortcuts. See UI_RECOMMENDATIONS.md
-// item 4 for the design + FEATURES.md for the cheatsheet contract.
-useKeyboardShortcuts([
-  // Global: open the Narrow panel and focus its search input. The
-  // search lives inside the narrow popover (#np-search) — clicking
-  // the dossier trigger surfaces it; we then wait a tick for the
-  // teleported popover to mount before stealing focus. Input-gated
-  // so typing `/` in any input is a literal character, and
-  // suppressed while the detail panel is open (modal contract).
-  {
-    key: '/',
-    when: () => !selection.isOpen.value,
-    handler: () => {
-      void (async () => {
-        if (view.value !== 'matches') await goToView('matches')
-        await nextTick()
-        // If the narrow popover isn't open, click its dossier
-        // trigger to open it.
-        if (!document.getElementById('narrow-popover')) {
-          const trigger = document.querySelector<HTMLButtonElement>(
-            '.dossier-actions .dossier-btn.primary',
-          )
-          trigger?.click()
-          await nextTick()
-        }
-        const el = document.getElementById('np-search')
-        if (el instanceof HTMLInputElement) el.focus()
-      })()
-    },
-  },
-  // Global: open the cheatsheet. allowInInput so the user can hit
-  // `?` from anywhere — including while typing in a search box.
-  {
-    key: '?',
-    allowInInput: true,
-    handler: () => { openCheatsheet.value = true },
-  },
-  // Global: vim-style view navigation (`g` then a/m/i/s/u).
-  ...(['m', 'i', 's', 'u', 'a'] as const).map((follow): Shortcut => {
-    const target: TabId = (
-      follow === 'm' ? 'matches'  :
-      follow === 'i' ? 'ingest'   :
-      follow === 's' ? 'settings' :
-      follow === 'a' ? 'analysis' : 'unknown'
-    )
-    return {
-      key: follow,
-      prefix: 'g',
-      handler: () => { void goToView(target) },
-    }
-  }),
-  // Matches view: j/k move card focus, no wrap, in RENDERED order
-  // (so flipping Sort=Oldest still has j advance down the visible
-  // list — TECHNICAL_DEBT.md item 18). Suppressed when the detail
-  // panel is open; the panel's own keydown listener takes over
-  // (j/k paginates within the open panel).
-  {
-    key: 'j',
-    when: () => view.value === 'matches' && !selection.isOpen.value,
-    handler: () => { void focusCardByRenderedDelta(1) },
-  },
-  {
-    key: 'k',
-    when: () => view.value === 'matches' && !selection.isOpen.value,
-    handler: () => { void focusCardByRenderedDelta(-1) },
-  },
-  // Matches view: open / close the detail panel for the focused card.
-  // From the closed state this is the keyboard alternative to clicking
-  // the card. With the panel already open `e` closes it (the panel's
-  // own Esc handler does the same).
-  {
-    key: 'e',
-    when: () => view.value === 'matches' && focusedCardIndex.value >= 0,
-    handler: () => {
-      const rec = matchesNarrow.narrowedRecords.value[focusedCardIndex.value]
-      if (!rec) return
-      if (selection.isOpen.value && selection.selectedKey.value === rec.match_key) {
-        selection.close()
-      } else {
-        void toggleExpand(rec.match_key)
-      }
-    },
-  },
-  // Matches view: open the detail panel for the focused card AND
-  // focus its tags input. Tags input has id="tags-<match_key>" per
-  // MatchCardExpanded.vue.
-  {
-    key: 't',
-    when: () => view.value === 'matches' && focusedCardIndex.value >= 0,
-    handler: async () => {
-      const rec = matchesNarrow.narrowedRecords.value[focusedCardIndex.value]
-      if (!rec) return
-      if (selection.selectedKey.value !== rec.match_key) {
-        await toggleExpand(rec.match_key)
-      }
-      await nextTick()
-      const input = document.getElementById(`tags-${rec.match_key}`)
-      if (input instanceof HTMLInputElement) input.focus()
-    },
-  },
-], { suppressed: openCheatsheet })
+// Hoisted to useGlobalKeyboard so App.vue stops carrying the
+// ~100-line registry inline. The composable still installs a
+// single capture-phase document listener via useKeyboardShortcuts;
+// per-binding `when` predicates gate view-specific shortcuts.
+// `suppressed: openCheatsheet` is wired inside the composable.
+// See UI_RECOMMENDATIONS.md item 4 for the design + FEATURES.md
+// for the cheatsheet contract.
+useGlobalKeyboard({
+  view,
+  openCheatsheet,
+  selectionIsOpen: selection.isOpen,
+  selectedKey: selection.selectedKey,
+  closeSelection: selection.close,
+  focusedCardIndex,
+  narrowedRecords: matchesNarrow.narrowedRecords,
+  goToView,
+  focusCardByRenderedDelta,
+  toggleExpand,
+})
 
 // Keep TAB_ORDER referenced so a future tab addition can lint-check
 // the g-prefix coverage above. (Each entry in TAB_ORDER must have a
