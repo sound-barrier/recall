@@ -12,13 +12,21 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List all parsed match records
-         * @description Returns one record per match, assembled by JOINing the
+         * List parsed match records (optionally paginated)
+         * @description Returns match records, assembled by JOINing the
          *     per-screenshot-type rows (summary / scoreboard / personal /
          *     rank / unknown) that share each `match_key`. Read-time
          *     derivations (`inferSoleHeroPercent`, `inferResultFromRank`)
          *     plus role-from-hero and type-from-map lookups are applied
          *     on the fly — the underlying rows are never mutated.
+         *
+         *     **Pagination.** Optional `limit` (1–1000) caps the number
+         *     of records returned. Optional `cursor` is the previous
+         *     page's last `match_key`; the next page starts strictly
+         *     after it. Omitting both returns the full corpus
+         *     (back-compat). The cursor is the match_key itself, not an
+         *     opaque encoded value, so curl users can page without a
+         *     lookup table.
          */
         get: operations["GetMatchResults"];
         put?: never;
@@ -1415,7 +1423,15 @@ export type $defs = Record<string, never>;
 export interface operations {
     GetMatchResults: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Max records per page. Clamped to [1, 1000]. */
+                limit?: number;
+                /**
+                 * @description The previous page's last `match_key`. Returned records
+                 *     start strictly after it. Empty / absent = first page.
+                 */
+                cursor?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1431,6 +1447,7 @@ export interface operations {
                     "application/json": components["schemas"]["MatchRecord"][];
                 };
             };
+            400: components["responses"]["BadRequest"];
             500: components["responses"]["InternalError"];
         };
     };

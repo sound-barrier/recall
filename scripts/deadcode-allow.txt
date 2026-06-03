@@ -58,3 +58,20 @@ FromContext
 # framework alongside applyOne so a future production rollback path
 # has a tested base.
 revertOne
+
+# app.MatchKey type + helpers. New typed form of the stringly-typed
+# match_key identity. Opt-in at consumer call sites (none migrated
+# yet); ParseMatchKey + the IsX helpers + String() exist for the
+# next-PR-per-file rollout. The type tests are the only current
+# consumer.
+ParseMatchKey
+MatchKey\.String
+MatchKey\.Is(Tracked|Ambiguous|Unmatched)
+
+# cmd.parseMatchesPagination — lenient pagination parser exercised by
+# TestGetMatches_LimitClampedTo1000 / _InvalidLimit_DisablesPagination.
+# The HTTP handler uses parseMatchesPaginationStrict which rejects
+# out-of-bounds limits with 400 (per the OpenAPI spec); the lenient
+# variant survives because its unit tests pin the behaviour the
+# strict form intentionally diverges from. Test-only consumer.
+parseMatchesPagination
