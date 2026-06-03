@@ -13,9 +13,11 @@ function rec(opts: {
   result?: 'victory' | 'defeat' | 'draw'
   date?: string
   finishedAt?: string
+  parsedAt?: string
   tags?: string[]
   leaver?: '' | 'self' | 'team' | 'enemy'
   note?: string
+  reviewedBy?: 'self' | 'coach'
   heroesPlayed?: { hero: string; percent_played?: number; play_time?: string }[]
 } = {}): MatchRecord {
   return {
@@ -36,7 +38,8 @@ function rec(opts: {
     ...(opts.tags || opts.leaver || opts.note
       ? { annotation: { tags: opts.tags ?? [], leaver: opts.leaver ?? '', note: opts.note ?? '' } }
       : {}),
-    parsed_at: `${opts.date ?? '2026-05-10'}T${opts.finishedAt ?? '14:00'}:00Z`,
+    ...(opts.reviewedBy ? { reviewed_by: opts.reviewedBy } : {}),
+    parsed_at: opts.parsedAt ?? `${opts.date ?? '2026-05-10'}T${opts.finishedAt ?? '14:00'}:00Z`,
   } as unknown as MatchRecord
 }
 
@@ -393,6 +396,145 @@ describe('useMatchesNarrow', () => {
       ])
       const { availableHeroes } = useMatchesNarrow(records, createMatchesNarrowState())
       expect([...availableHeroes.value].sort()).toEqual(['kiriko', 'lucio', 'mercy'])
+    })
+  })
+
+  describe('reviewed-by filter', () => {
+    function corpus() {
+      return ref([
+        rec({ key: 'self-1',       reviewedBy: 'self' }),
+        rec({ key: 'self-2',       reviewedBy: 'self' }),
+        rec({ key: 'coach-1',      reviewedBy: 'coach' }),
+        rec({ key: 'unreviewed-1' }),
+        rec({ key: 'unreviewed-2' }),
+      ])
+    }
+
+    it('empty picked set means no filter — every record passes', () => {
+      const records = corpus()
+      const { narrowedRecords } = useMatchesNarrow(records, createMatchesNarrowState())
+      expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(
+        ['coach-1', 'self-1', 'self-2', 'unreviewed-1', 'unreviewed-2'],
+      )
+    })
+
+    it('picking "self" includes only self-reviewed records', () => {
+      const records = corpus()
+      const { narrowedRecords, pickReviewedBy } = useMatchesNarrow(records, createMatchesNarrowState())
+      pickReviewedBy('self')
+      expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['self-1', 'self-2'])
+    })
+
+    it('picking "coach" includes only coach-reviewed records', () => {
+      const records = corpus()
+      const { narrowedRecords, pickReviewedBy } = useMatchesNarrow(records, createMatchesNarrowState())
+      pickReviewedBy('coach')
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['coach-1'])
+    })
+
+    it('picking "unreviewed" includes only records with no reviewed_by', () => {
+      const records = corpus()
+      const { narrowedRecords, pickReviewedBy } = useMatchesNarrow(records, createMatchesNarrowState())
+      pickReviewedBy('unreviewed')
+      expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['unreviewed-1', 'unreviewed-2'])
+    })
+
+    it('picking "self" + "coach" is an OR — surfaces any reviewed record', () => {
+      const records = corpus()
+      const { narrowedRecords, pickReviewedBy } = useMatchesNarrow(records, createMatchesNarrowState())
+      pickReviewedBy('self')
+      pickReviewedBy('coach')
+      expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['coach-1', 'self-1', 'self-2'])
+    })
+
+    it('anyNarrow flips on once a reviewed-by chip is picked', () => {
+      const records = corpus()
+      const { anyNarrow, pickReviewedBy } = useMatchesNarrow(records, createMatchesNarrowState())
+      expect(anyNarrow.value).toBe(false)
+      pickReviewedBy('self')
+      expect(anyNarrow.value).toBe(true)
+    })
+
+    it('resetNarrow clears the reviewed-by picks', () => {
+      const records = corpus()
+      const { pickReviewedBy, pickedReviewedBy, resetNarrow } = useMatchesNarrow(records, createMatchesNarrowState())
+      pickReviewedBy('self')
+      pickReviewedBy('coach')
+      expect(pickedReviewedBy.value.size).toBe(2)
+      resetNarrow()
+      expect(pickedReviewedBy.value.size).toBe(0)
+    })
+  })
+
+  describe('since-anchor filter', () => {
+    function corpus() {
+      // Five matches across five consecutive days. Anchor is the
+      // middle one (day 3); the contract is "strictly after anchor."
+      return ref([
+        rec({ key: 'd1', parsedAt: '2026-05-01T12:00:00Z' }),
+        rec({ key: 'd2', parsedAt: '2026-05-02T12:00:00Z' }),
+        rec({ key: 'd3', parsedAt: '2026-05-03T12:00:00Z' }),
+        rec({ key: 'd4', parsedAt: '2026-05-04T12:00:00Z' }),
+        rec({ key: 'd5', parsedAt: '2026-05-05T12:00:00Z' }),
+      ])
+    }
+
+    it('a set anchor key with sinceAnchorActive=false does not filter', () => {
+      const records = corpus()
+      const anchorKey = ref('d3')
+      const state = createMatchesNarrowState({ anchorKey })
+      const { narrowedRecords } = useMatchesNarrow(records, state)
+      expect(narrowedRecords.value).toHaveLength(5)
+    })
+
+    it('sinceAnchorActive=true with a set anchor drops records on or before the anchor', () => {
+      const records = corpus()
+      const anchorKey = ref('d3')
+      const state = createMatchesNarrowState({ anchorKey })
+      state.sinceAnchorActive.value = true
+      const { narrowedRecords } = useMatchesNarrow(records, state)
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['d4', 'd5'])
+    })
+
+    it('sinceAnchorActive=true with NO anchor key set is a no-op (rendered safely)', () => {
+      const records = corpus()
+      const anchorKey = ref('')
+      const state = createMatchesNarrowState({ anchorKey })
+      state.sinceAnchorActive.value = true
+      const { narrowedRecords } = useMatchesNarrow(records, state)
+      expect(narrowedRecords.value).toHaveLength(5)
+    })
+
+    it('sinceAnchorActive=true with anchor key pointing at a deleted match is a no-op', () => {
+      const records = corpus()
+      const anchorKey = ref('does-not-exist')
+      const state = createMatchesNarrowState({ anchorKey })
+      state.sinceAnchorActive.value = true
+      const { narrowedRecords } = useMatchesNarrow(records, state)
+      expect(narrowedRecords.value).toHaveLength(5)
+    })
+
+    it('anyNarrow flips on when sinceAnchorActive is true AND an anchor is set', () => {
+      const records = corpus()
+      const anchorKey = ref('d3')
+      const state = createMatchesNarrowState({ anchorKey })
+      const { anyNarrow } = useMatchesNarrow(records, state)
+      expect(anyNarrow.value).toBe(false)
+      state.sinceAnchorActive.value = true
+      expect(anyNarrow.value).toBe(true)
+    })
+
+    it('resetNarrow turns sinceAnchorActive off but leaves the anchorKey alone', () => {
+      const records = corpus()
+      const anchorKey = ref('d3')
+      const state = createMatchesNarrowState({ anchorKey })
+      state.sinceAnchorActive.value = true
+      const { resetNarrow } = useMatchesNarrow(records, state)
+      resetNarrow()
+      expect(state.sinceAnchorActive.value).toBe(false)
+      // anchorKey survives — it's owned by the useMatchAnchor singleton,
+      // not by the narrow-panel reset.
+      expect(anchorKey.value).toBe('d3')
     })
   })
 })
