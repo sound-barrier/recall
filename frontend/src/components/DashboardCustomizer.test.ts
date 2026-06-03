@@ -4,12 +4,12 @@ import { mount } from '@vue/test-utils'
 
 import DashboardCustomizer from './DashboardCustomizer.vue'
 import {
-  useDashboardVisibility,
-  _resetDashboardVisibilityForTest,
-} from '../composables/useDashboardVisibility'
-import { WIDGET_REGISTRY } from '../dashboard/widgets'
-
-const FIRST_WIDGET = WIDGET_REGISTRY[0]!.id
+  useDashboardLayout,
+  _resetDashboardLayoutForTest,
+  LAYOUT_STORAGE_KEY,
+  type RowLayout,
+} from '../composables/useDashboardLayout'
+import { WIDGET_REGISTRY, DEFAULT_ROW_LAYOUT } from '../dashboard/widgets'
 
 let storage: Record<string, string> = {}
 function stubLocalStorage() {
@@ -24,6 +24,10 @@ function stubLocalStorage() {
   })
 }
 
+function seedLayout(layout: RowLayout) {
+  storage[LAYOUT_STORAGE_KEY] = JSON.stringify(layout)
+}
+
 function mountCustomizer(open = true) {
   return mount(DashboardCustomizer, {
     props: { open },
@@ -31,63 +35,91 @@ function mountCustomizer(open = true) {
   })
 }
 
+const FIRST_WIDGET = WIDGET_REGISTRY[0]!.id
+
 describe('DashboardCustomizer', () => {
   beforeEach(() => {
-    _resetDashboardVisibilityForTest()
+    _resetDashboardLayoutForTest()
     stubLocalStorage()
   })
   afterEach(() => {
-    _resetDashboardVisibilityForTest()
+    _resetDashboardLayoutForTest()
     vi.unstubAllGlobals()
-    // Safe DOM clear — replaceChildren() with no args removes all
-    // children without going through the innerHTML parser.
     document.body.replaceChildren()
   })
 
-  it('renders one toggle per registered widget', async () => {
+  it('renders no add buttons when every widget is already on the layout', async () => {
+    // Seed with the full default layout so every registered widget
+    // sits in the layout — there's nothing addable.
+    seedLayout({
+      1: [...DEFAULT_ROW_LAYOUT[1]!],
+      2: [...DEFAULT_ROW_LAYOUT[2]!],
+    })
     const w = mountCustomizer()
     await nextTick()
-    const toggles = document.querySelectorAll('input[type="checkbox"][data-widget-toggle]')
-    expect(toggles.length).toBe(WIDGET_REGISTRY.length)
+    const adds = document.querySelectorAll('button[data-widget-add]')
+    expect(adds.length).toBe(0)
     w.unmount()
   })
 
-  it('checkbox change hides the widget through the composable', async () => {
+  it('surfaces widgets missing from the layout as + Add rows', async () => {
+    // Seed with only the first widget removed from row 1. Reconciler
+    // will NOT re-add it because the test seeds the row explicitly
+    // without it — so it's "missing." Wait, the reconciler DOES re-add
+    // it (it's an install-default widget). Use a layout-mutation
+    // approach instead: seed full default, then remove via the
+    // composable AFTER mount so the layout reflects the removal.
+    seedLayout({
+      1: [...DEFAULT_ROW_LAYOUT[1]!],
+      2: [...DEFAULT_ROW_LAYOUT[2]!],
+    })
     const w = mountCustomizer()
     await nextTick()
-    // Access the composable's singleton after mount so the
-    // setup-bound onMounted hydrate has run inside the customizer's
-    // own component context.
-    const visibility = useDashboardVisibility()
-    const toggle = document.querySelector(
-      `input[type="checkbox"][data-widget-toggle="${FIRST_WIDGET}"]`,
-    ) as HTMLInputElement | null
-    expect(toggle).not.toBeNull()
-    expect(toggle!.checked).toBe(true)
-    toggle!.checked = false
-    toggle!.dispatchEvent(new Event('change'))
+    const layout = useDashboardLayout()
+    layout.removeFromRow(FIRST_WIDGET)
     await nextTick()
-    expect(visibility.hidden.value).toContain(FIRST_WIDGET)
+    const addBtn = document.querySelector(`button[data-widget-add="${FIRST_WIDGET}"]`)
+    expect(addBtn).not.toBeNull()
     w.unmount()
   })
 
-  it('Reset to defaults clears the persisted hidden set', async () => {
-    // Seed via storage directly so the composable's onMounted
-    // hydrate picks it up — calling hide() outside a mounted
-    // component fires the onMounted lifecycle warn from
-    // usePersistedRef.
-    storage['recall.dashboard.hidden'] = FIRST_WIDGET
+  it('+ Add button puts the widget back into the layout', async () => {
+    seedLayout({
+      1: [...DEFAULT_ROW_LAYOUT[1]!],
+      2: [...DEFAULT_ROW_LAYOUT[2]!],
+    })
     const w = mountCustomizer()
     await nextTick()
-    const visibility = useDashboardVisibility()
-    expect(visibility.hidden.value).toContain(FIRST_WIDGET)
-    const resetBtn = Array.from(document.querySelectorAll('button')).find((b) =>
-      b.textContent?.toLowerCase().includes('reset'),
-    ) as HTMLButtonElement | undefined
-    expect(resetBtn).not.toBeUndefined()
+    const layout = useDashboardLayout()
+    layout.removeFromRow(FIRST_WIDGET)
+    await nextTick()
+    const addBtn = document.querySelector(
+      `button[data-widget-add="${FIRST_WIDGET}"]`,
+    ) as HTMLButtonElement | null
+    expect(addBtn).not.toBeNull()
+    addBtn!.click()
+    await nextTick()
+    const allInLayout = Object.values(layout.rows.value).flat()
+    expect(allInLayout).toContain(FIRST_WIDGET)
+    w.unmount()
+  })
+
+  it('Reset layout button restores the install default', async () => {
+    seedLayout({
+      1: [...DEFAULT_ROW_LAYOUT[1]!],
+      2: [...DEFAULT_ROW_LAYOUT[2]!],
+    })
+    const w = mountCustomizer()
+    await nextTick()
+    const layout = useDashboardLayout()
+    layout.removeFromRow(FIRST_WIDGET)
+    await nextTick()
+    expect(Object.values(layout.rows.value).flat()).not.toContain(FIRST_WIDGET)
+    const resetBtn = document.querySelector('button[data-reset-layout]') as HTMLButtonElement | null
+    expect(resetBtn).not.toBeNull()
     resetBtn!.click()
     await nextTick()
-    expect(visibility.hidden.value).toEqual([])
+    expect(Object.values(layout.rows.value).flat()).toContain(FIRST_WIDGET)
     w.unmount()
   })
 

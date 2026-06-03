@@ -66,10 +66,10 @@ describe('isRowLayout', () => {
 })
 
 describe('reconcile', () => {
-  it('returns defaultLayout for an empty input', () => {
+  it('returns empty default rows for an empty input (first-install seeding lives in defaultLayout)', () => {
     const result = reconcile({})
-    expect(result[1]).toEqual([...DEFAULT_ROW_LAYOUT[1]!])
-    expect(result[2]).toEqual([...DEFAULT_ROW_LAYOUT[2]!])
+    expect(result[1]).toEqual([])
+    expect(result[2]).toEqual([])
   })
 
   it('drops IDs no longer in the registry', () => {
@@ -87,14 +87,34 @@ describe('reconcile', () => {
     expect(result[1]![0]).toBe('winrate')
   })
 
-  it('appends registry widgets missing from the stored layout to their defaultRow', () => {
-    const stored: RowLayout = { 1: ['winrate'], 2: [] }
+  it('preserves a user layout that omits an install-default widget (no ghost re-add)', () => {
+    // The user has explicitly removed winrate. The reconciler must
+    // honour that — re-adding install defaults would lose to every
+    // trash click.
+    const stored: RowLayout = {
+      1: ['avg-kda', 'total-time'],
+      2: ['top-maps'],
+    }
     const result = reconcile(stored)
-    // Every registered widget should appear exactly once across the
-    // reconciled layout.
+    const all = Object.values(result).flat()
+    expect(all).not.toContain('winrate')
+    expect(all).toContain('avg-kda')
+  })
+
+  it('seeds an omitted default-row index as an empty array', () => {
+    const stored: RowLayout = { 1: ['winrate'] }
+    const result = reconcile(stored)
+    expect(result[2]).toEqual([])
+  })
+
+  it('does NOT auto-add registry widgets that are absent from the stored layout', () => {
+    // Pre-PR-B every registered widget is in DEFAULT_ROW_LAYOUT; the
+    // assertion is still meaningful via a removed install-default.
+    const stored: RowLayout = { 1: [], 2: [] }
+    const result = reconcile(stored)
     const all = Object.values(result).flat()
     for (const def of WIDGET_REGISTRY) {
-      expect(all).toContain(def.id)
+      expect(all).not.toContain(def.id)
     }
   })
 
@@ -239,5 +259,77 @@ describe('useDashboardLayout', () => {
     const someBreakdown = BREAKDOWN_IDS[0]!
     api.move(someBreakdown, 2, 0, 1, 0)
     expect(api.rows.value[1]![0]).toBe(someBreakdown)
+  })
+
+  // ─── appendToRow ─────────────────────────────────────────────
+  // We exercise appendToRow by first removing a default-install
+  // widget (so it's "missing" from the layout) and then adding it
+  // back, possibly with the threshold spill triggered.
+
+  it('appendToRow puts the id at the tail of the requested row when under threshold', async () => {
+    const { api } = await mountHost()
+    const someBreakdown = BREAKDOWN_IDS[0]!
+    api.removeFromRow(someBreakdown)
+    expect(api.rows.value[2]).not.toContain(someBreakdown)
+    api.appendToRow(2, someBreakdown)
+    const row2 = api.rows.value[2]!
+    expect(row2[row2.length - 1]).toBe(someBreakdown)
+  })
+
+  it('appendToRow is a no-op when the id already lives in the layout', async () => {
+    const { api } = await mountHost()
+    const id = KPI_IDS[0]!
+    const before = JSON.stringify(api.rows.value)
+    api.appendToRow(1, id)
+    expect(JSON.stringify(api.rows.value)).toBe(before)
+  })
+
+  it('appendToRow spills to a fresh overflow row when KPIs >= 5', async () => {
+    const { api } = await mountHost()
+    // Default row 1 ships with 7 KPIs (already >= 5). Adding any
+    // KPI now should land on row 3, not row 1.
+    const kpi = KPI_IDS[0]!
+    api.removeFromRow(kpi)
+    expect(api.rows.value[1]).not.toContain(kpi)
+    api.appendToRow(1, kpi)
+    expect(api.rows.value[1]).not.toContain(kpi)
+    expect(api.rows.value[3]).toEqual([kpi])
+  })
+
+  it.skip('appendToRow spills to a fresh overflow row when breakdowns >= 4', async () => {
+    // PR B will add 4 more breakdown widgets, at which point this
+    // case becomes exercisable (today the registry only holds 3, so
+    // the soft cap of 4 can't be reached). The KPI spill case above
+    // covers the same code path with a different shape.
+  })
+
+  // ─── removeFromRow ───────────────────────────────────────────
+
+  it('removeFromRow splices the widget out of its row', async () => {
+    const { api } = await mountHost()
+    const id = KPI_IDS[0]!
+    api.removeFromRow(id)
+    const all = Object.values(api.rows.value).flat()
+    expect(all).not.toContain(id)
+  })
+
+  it('removeFromRow is a no-op for an id not in the layout', async () => {
+    const { api } = await mountHost()
+    const before = JSON.stringify(api.rows.value)
+    api.removeFromRow('definitely-not-a-widget')
+    expect(JSON.stringify(api.rows.value)).toBe(before)
+  })
+
+  it('removeFromRow auto-prunes an emptied overflow row past the last default row', async () => {
+    const { api } = await mountHost()
+    // Default row 1 ships with 7 KPIs (over the 5-KPI cap), so
+    // adding a KPI to row 1 spills into row 3 automatically.
+    const kpi = KPI_IDS[0]!
+    api.removeFromRow(kpi)
+    api.appendToRow(1, kpi)
+    expect(api.rows.value[3]).toEqual([kpi])
+    // Removing the only widget in row 3 should drop the row.
+    api.removeFromRow(kpi)
+    expect(api.rows.value[3]).toBeUndefined()
   })
 })

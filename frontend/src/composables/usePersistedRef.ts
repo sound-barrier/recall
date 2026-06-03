@@ -109,24 +109,6 @@ export function parseClampedNumber(min: number, max: number): (raw: string) => n
   }
 }
 
-// Parses a comma-delimited list of non-empty strings. Empty input
-// returns []; corrupted (non-string somehow) returns undefined →
-// caller's defaultValue wins. Whitespace around each entry is
-// trimmed and empty entries are dropped — so a stale `",,"` from a
-// partial write reads as [] and doesn't break the reader. Use for
-// unbounded ordered string lists (e.g. dashboard hidden-set).
-export function parseStringArray(raw: string): string[] | undefined {
-  if (typeof raw !== 'string') return undefined
-  if (raw === '') return []
-  return raw.split(',').map((s) => s.trim()).filter((s) => s !== '')
-}
-
-// Inverse of parseStringArray. Drops empties + dedupes on write so
-// the persisted form is always canonical.
-export function serializeStringArray(v: readonly string[]): string {
-  return Array.from(new Set(v.filter((s) => s !== ''))).join(',')
-}
-
 // parseJsonRecord returns a parser that JSON-decodes a stored
 // `Record<K, V>` and validates its shape via a predicate. Anything
 // non-JSON, non-object, or shape-mismatched returns undefined →

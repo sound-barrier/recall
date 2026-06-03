@@ -33,6 +33,9 @@ const props = defineProps<{
   // Visual hint when this cell is the active drop target. Driven by
   // the parent's useDragReorder.dropHint comparison.
   dropTarget?: boolean
+  // True when this widget is the user's current edit-mode selection
+  // — wears the accent ring + surfaces the trash button.
+  selected?: boolean
   legacyDataKpi?: string
   legacyDataBreakdown?: string
 }>()
@@ -43,10 +46,18 @@ const emit = defineEmits<{
   'drag-over':    [row: number, idx: number, e: DragEvent]
   'drop':         [row: number, idx: number, e: DragEvent]
   'handle-keydown': [id: string, row: number, idx: number, e: KeyboardEvent]
+  // Edit-mode interactions on the widget body itself.
+  'select':       [id: string]
+  'remove':       [id: string]
 }>()
 
 function rowOr(): number { return props.row ?? 0 }
 function idxOr(): number { return props.idx ?? 0 }
+
+function onRootClick() {
+  if (!props.editMode) return
+  emit('select', props.id)
+}
 </script>
 
 <template>
@@ -54,12 +65,17 @@ function idxOr(): number { return props.idx ?? 0 }
     :is="shape === 'kpi' ? 'div' : 'article'"
     :class="[
       shape === 'kpi' ? 'kpi-tile' : 'breakdown',
-      { 'dashboard-widget-editable': editMode, 'dashboard-widget-drop-target': dropTarget },
+      {
+        'dashboard-widget-editable': editMode,
+        'dashboard-widget-drop-target': dropTarget,
+        'dashboard-widget-selected': editMode && selected,
+      },
     ]"
     :data-widget-id="id"
     :data-kpi="legacyDataKpi || undefined"
     :data-breakdown="legacyDataBreakdown || undefined"
     :draggable="editMode ? 'true' : undefined"
+    @click="onRootClick"
     @dragstart="editMode ? emit('drag-start', id, rowOr(), idxOr(), $event) : null"
     @dragend="editMode ? emit('drag-end') : null"
     @dragover="editMode ? emit('drag-over', rowOr(), idxOr(), $event) : null"
@@ -71,9 +87,20 @@ function idxOr(): number { return props.idx ?? 0 }
       class="dashboard-drag-handle"
       :aria-label="`Reorder widget ${id}. Arrow keys move; Up/Down change row.`"
       :data-drag-handle="id"
+      @click.stop
       @keydown="emit('handle-keydown', id, rowOr(), idxOr(), $event)"
     >
       <span aria-hidden="true">⋮⋮</span>
+    </button>
+    <button
+      v-if="editMode && selected"
+      type="button"
+      class="dashboard-trash"
+      :aria-label="`Remove widget ${id}`"
+      :data-widget-remove="id"
+      @click.stop="emit('remove', id)"
+    >
+      <span aria-hidden="true">×</span>
     </button>
     <slot />
   </component>
@@ -118,6 +145,54 @@ function idxOr(): number { return props.idx ?? 0 }
 .dashboard-widget-drop-target {
   box-shadow: inset 0 0 0 2px var(--accent);
   background: color-mix(in srgb, var(--accent-soft) 80%, var(--surface));
+}
+
+/* Click-to-select ring. Same recipe as the drop-target but solid —
+   the user has parked their attention on this cell to act on it. */
+.dashboard-widget-selected {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Trash button — anchored top-right, mirrors the drag handle on the
+   left. The × glyph reads as "remove" without an icon font. */
+.dashboard-trash {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-faint);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+  user-select: none;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+  z-index: 1;
+}
+
+.dashboard-trash:hover {
+  color: var(--loss);
+  border-color: var(--loss-line);
+  background: var(--surface-2);
+}
+
+.dashboard-trash:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-trash { transition: none; }
 }
 
 /* Drag handle — anchored top-left of the wrapper. Eight-dot grip

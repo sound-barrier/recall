@@ -45,4 +45,49 @@ describe('DashboardWidget', () => {
     })
     expect(w.find('[data-breakdown="roles"]').exists()).toBe(true)
   })
+
+  it('renders the trash button only when editMode && selected', async () => {
+    const w = mount(DashboardWidget, {
+      props: { id: 'winrate', shape: 'kpi', editMode: true, selected: false },
+    })
+    expect(w.find('[data-widget-remove="winrate"]').exists()).toBe(false)
+    await w.setProps({ selected: true })
+    expect(w.find('[data-widget-remove="winrate"]').exists()).toBe(true)
+    await w.setProps({ editMode: false, selected: true })
+    expect(w.find('[data-widget-remove="winrate"]').exists()).toBe(false)
+  })
+
+  it('clicking the root in editMode emits select(id)', async () => {
+    const w = mount(DashboardWidget, {
+      props: { id: 'winrate', shape: 'kpi', editMode: true },
+    })
+    await w.find('[data-widget-id="winrate"]').trigger('click')
+    expect(w.emitted('select')).toBeTruthy()
+    expect(w.emitted('select')![0]).toEqual(['winrate'])
+  })
+
+  it('clicking the root outside editMode does NOT emit select', async () => {
+    const w = mount(DashboardWidget, {
+      props: { id: 'winrate', shape: 'kpi', editMode: false },
+    })
+    await w.find('[data-widget-id="winrate"]').trigger('click')
+    expect(w.emitted('select')).toBeFalsy()
+  })
+
+  it('clicking the trash button emits remove(id) and does not bubble select', async () => {
+    const w = mount(DashboardWidget, {
+      props: { id: 'winrate', shape: 'kpi', editMode: true, selected: true },
+    })
+    await w.find('[data-widget-remove="winrate"]').trigger('click')
+    expect(w.emitted('remove')).toBeTruthy()
+    expect(w.emitted('remove')![0]).toEqual(['winrate'])
+    expect(w.emitted('select')).toBeFalsy()
+  })
+
+  it('selected adds the .dashboard-widget-selected class in editMode', () => {
+    const w = mount(DashboardWidget, {
+      props: { id: 'winrate', shape: 'kpi', editMode: true, selected: true },
+    })
+    expect(w.find('[data-widget-id="winrate"]').classes()).toContain('dashboard-widget-selected')
+  })
 })
