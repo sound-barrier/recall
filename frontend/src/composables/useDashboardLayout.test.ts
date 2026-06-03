@@ -401,4 +401,124 @@ describe('useDashboardLayout', () => {
     expect(all).not.toContain('avg-kda')
     expect(all).not.toContain('top-heroes')
   })
+
+  // ─── appendToRow row-packing (vs each-add-spawns-new-row) ──
+
+  it('appendToRow packs into the FIRST existing same-shape row with capacity', async () => {
+    // Seed: row 1 is at the 5-KPI cap, row 3 already holds a single
+    // KPI (an earlier overflow). Adding another KPI should fill row 3
+    // rather than spawn row 4 — the per-add-spawns-a-new-row bug
+    // was the source of the user's 9-row dossier mess.
+    const kpis = WIDGET_REGISTRY.filter((w) => w.shape === 'kpi').map((w) => w.id)
+    expect(kpis.length).toBeGreaterThanOrEqual(7)
+    const seed: RowLayout = {
+      1: kpis.slice(0, 5),
+      2: [],
+      3: [kpis[5]!],
+    }
+    const { api } = await mountHost(seed)
+    const seventh = kpis[6]!
+    api.removeFromRow(seventh)
+    api.appendToRow(1, seventh)
+    expect(api.rows.value[3]).toEqual([kpis[5], seventh])
+    expect(api.rows.value[4]).toBeUndefined()
+  })
+
+  it('appendToRow does not pollute a row of the opposite shape', async () => {
+    // Row 1 is at cap (5 KPIs); row 2 has empty room but holds
+    // breakdowns. Adding another KPI must NOT land in row 2 —
+    // shape-mixed rows break the dossier's visual rhythm. Spawn a
+    // fresh overflow row instead.
+    const kpis = WIDGET_REGISTRY.filter((w) => w.shape === 'kpi').map((w) => w.id)
+    const seed: RowLayout = {
+      1: kpis.slice(0, 5),
+      2: ['top-maps'],
+    }
+    const { api } = await mountHost(seed)
+    const sixth = kpis[5]!
+    api.removeFromRow(sixth)
+    api.appendToRow(1, sixth)
+    expect(api.rows.value[2]).not.toContain(sixth)
+    expect(api.rows.value[3]).toEqual([sixth])
+  })
+
+  // ─── one-shot consolidation migration ─────────────────────
+
+  it('migrates a buggy "each-add-on-its-own-row" layout into shape-packed rows', async () => {
+    // Reproduces the user's exact broken state from localStorage:
+    // 11 KPIs + 7 breakdowns, the 4 opt-in KPIs and 3 opt-in
+    // breakdowns each stranded in their own single-widget row.
+    const seed: RowLayout = {
+      1: [...DEFAULT_ROW_LAYOUT[1]!],
+      2: [...DEFAULT_ROW_LAYOUT[2]!, 'recent-5-matches'],
+      3: ['current-streak'],
+      4: ['hero-pool-size'],
+      5: ['longest-win-streak'],
+      6: ['best-winrate-hero'],
+      7: ['time-of-day'],
+      8: ['day-of-week'],
+      9: ['top-map-types'],
+    }
+    const { api } = await mountHost(seed)
+    // Default rows untouched — migration only re-packs overflow
+    // rows past the highest default row.
+    expect(api.rows.value[1]).toEqual(DEFAULT_ROW_LAYOUT[1])
+    expect(api.rows.value[2]).toEqual([...DEFAULT_ROW_LAYOUT[2]!, 'recent-5-matches'])
+    // The 4 single-KPI rows pack into row 3.
+    expect(api.rows.value[3]).toEqual([
+      'current-streak', 'hero-pool-size', 'longest-win-streak', 'best-winrate-hero',
+    ])
+    // The 3 single-breakdown rows pack into row 4.
+    expect(api.rows.value[4]).toEqual(['time-of-day', 'day-of-week', 'top-map-types'])
+    // Stale higher-index rows are gone.
+    expect(api.rows.value[5]).toBeUndefined()
+    expect(api.rows.value[9]).toBeUndefined()
+  })
+
+  it('migration respects same-shape soft cap when packing', async () => {
+    // 6 single-KPI rows; with the cap of 5, packing must split into
+    // a 5-and-1 pair rather than smushing all 6 into one row.
+    const kpis = WIDGET_REGISTRY.filter((w) => w.shape === 'kpi').map((w) => w.id)
+    const seed: RowLayout = {
+      1: [],
+      2: [],
+      3: [kpis[0]!],
+      4: [kpis[1]!],
+      5: [kpis[2]!],
+      6: [kpis[3]!],
+      7: [kpis[4]!],
+      8: [kpis[5]!],
+    }
+    const { api } = await mountHost(seed)
+    expect(api.rows.value[3]).toEqual(kpis.slice(0, 5))
+    expect(api.rows.value[4]).toEqual([kpis[5]])
+  })
+
+  it('migration is one-shot — subsequent mounts do not re-pack', async () => {
+    // First mount migrates a broken layout. Second mount, after a
+    // mutation that re-introduces a single-widget overflow row,
+    // leaves it alone — the layoutVersion sentinel records "already
+    // migrated."
+    const seed: RowLayout = {
+      1: [...DEFAULT_ROW_LAYOUT[1]!],
+      2: [...DEFAULT_ROW_LAYOUT[2]!],
+      3: ['current-streak'],
+      4: ['hero-pool-size'],
+    }
+    const { api: first } = await mountHost(seed)
+    expect(first.rows.value[3]).toEqual(['current-streak', 'hero-pool-size'])
+    // User intentionally separates the two via setLayout — recreates
+    // the "single widget in row 4" shape on purpose.
+    first.setLayout({
+      ...first.rows.value,
+      3: ['current-streak'],
+      4: ['hero-pool-size'],
+    })
+    // Second mount of the cached layout — the migration must NOT
+    // run again. Re-import to bust the module cache.
+    _resetDashboardLayoutForTest()
+    const { api: second } = await mountHost()
+    expect(second.rows.value[3]).toEqual(['current-streak'])
+    expect(second.rows.value[4]).toEqual(['hero-pool-size'])
+  })
 })
