@@ -5,6 +5,7 @@ import { GetProfiles } from '../api'
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import { useMatchesGroup } from '../composables/useMatchesGroup'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
+import { useWeekStart } from '../composables/useWeekStart'
 import { useOWData } from '../composables/useOWData'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import { useArchiveSelection } from '../composables/useArchiveSelection'
@@ -249,10 +250,16 @@ const comboOpen = ref<'map' | 'hero' | null>(null)
 // singleton — it lazy-fetches `/api/v1/system/reference-data` and
 // reuses the same reactive store across every consumer.
 const ow = useOWData()
+// PR B: weekStart drives the day-of-week breakdown's rotation so the
+// row matches the user's calendar preference.
+const { weekStart } = useWeekStart()
 const {
   winrate, topMaps, topHeroes, topRoles, totalTimePlayed, mostPlayedHero, averageKDA,
   reviewedCount, daysSinceLastReview, wldSinceLastReview,
-} = useMatchesDossier(narrowedRecords, leaverHandling, ow.heroRole)
+  // PR B opt-in widgets
+  currentStreak, longestWinStreak, heroPoolSize, bestWinrateHero,
+  topMapTypes, timeOfDayBuckets, dayOfWeekBuckets, recentResults,
+} = useMatchesDossier(narrowedRecords, leaverHandling, ow.heroRole, weekStart)
 
 // ─── Dashboard widget layout ────────────────────────────────────
 //
@@ -333,6 +340,15 @@ const widgetProps = computed<Record<string, Record<string, unknown>>>(() => ({
   'top-maps':          { topMaps: topMaps.value },
   'top-heroes':        { topHeroes: topHeroes.value },
   'top-roles':         { topRoles: topRoles.value },
+  // PR B opt-in widgets
+  'current-streak':      { streak: currentStreak.value },
+  'longest-win-streak':  { count: longestWinStreak.value },
+  'hero-pool-size':      { size: heroPoolSize.value },
+  'best-winrate-hero':   { hero: bestWinrateHero.value },
+  'top-map-types':       { topMapTypes: topMapTypes.value },
+  'time-of-day':         { buckets: timeOfDayBuckets.value },
+  'day-of-week':         { buckets: dayOfWeekBuckets.value },
+  'recent-5-matches':    { results: recentResults.value },
 }))
 
 // Three existing review-widget e2e specs key on data-kpi="..."; the

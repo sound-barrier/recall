@@ -899,4 +899,229 @@ describe('useMatchesDossier', () => {
       }
     })
   })
+
+  // ─── PR B opt-in widget computeds ──────────────────────────────
+
+  describe('currentStreak', () => {
+    it('returns zero count + null result for an empty corpus', () => {
+      const records = ref<MatchRecord[]>([])
+      const { currentStreak } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(currentStreak.value).toEqual({ count: 0, result: null, sinceDate: null })
+    })
+
+    it('counts the most-recent run of consecutive same-result matches', () => {
+      // parsed_at desc: m3 (W), m2 (W), m1 (L). The latest streak is 2W.
+      const records = ref([
+        rec({ result: 'defeat',  parsedAt: '2026-05-10T08:00:00Z' }),
+        rec({ result: 'victory', parsedAt: '2026-05-10T09:00:00Z' }),
+        rec({ result: 'victory', parsedAt: '2026-05-10T10:00:00Z' }),
+      ])
+      const { currentStreak } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(currentStreak.value.count).toBe(2)
+      expect(currentStreak.value.result).toBe('victory')
+    })
+  })
+
+  describe('longestWinStreak', () => {
+    it('returns 0 for an empty corpus', () => {
+      const records = ref<MatchRecord[]>([])
+      const { longestWinStreak } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(longestWinStreak.value).toBe(0)
+    })
+
+    it('finds the biggest contiguous victory run', () => {
+      // chronological: W W L W W W L W → biggest run = 3
+      const records = ref([
+        rec({ result: 'victory', parsedAt: '2026-05-10T01:00:00Z' }),
+        rec({ result: 'victory', parsedAt: '2026-05-10T02:00:00Z' }),
+        rec({ result: 'defeat',  parsedAt: '2026-05-10T03:00:00Z' }),
+        rec({ result: 'victory', parsedAt: '2026-05-10T04:00:00Z' }),
+        rec({ result: 'victory', parsedAt: '2026-05-10T05:00:00Z' }),
+        rec({ result: 'victory', parsedAt: '2026-05-10T06:00:00Z' }),
+        rec({ result: 'defeat',  parsedAt: '2026-05-10T07:00:00Z' }),
+        rec({ result: 'victory', parsedAt: '2026-05-10T08:00:00Z' }),
+      ])
+      const { longestWinStreak } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(longestWinStreak.value).toBe(3)
+    })
+  })
+
+  describe('heroPoolSize', () => {
+    it('returns 0 for an empty corpus', () => {
+      const records = ref<MatchRecord[]>([])
+      const { heroPoolSize } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(heroPoolSize.value).toBe(0)
+    })
+
+    it('counts distinct heroes across heroes_played[*]', () => {
+      const records = ref([
+        {
+          ...rec({}),
+          data: { heroes_played: [{ hero: 'lucio' }, { hero: 'ana' }] },
+        } as unknown as MatchRecord,
+        {
+          ...rec({}),
+          data: { heroes_played: [{ hero: 'lucio' }, { hero: 'kiriko' }] },
+        } as unknown as MatchRecord,
+      ])
+      const { heroPoolSize } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(heroPoolSize.value).toBe(3) // lucio + ana + kiriko
+    })
+  })
+
+  describe('bestWinrateHero', () => {
+    it('returns null when no hero qualifies', () => {
+      const records = ref<MatchRecord[]>([])
+      const { bestWinrateHero } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(bestWinrateHero.value).toBeNull()
+    })
+
+    it('picks the hero with the highest winrate gated to >= 3 qualifying decisive matches', () => {
+      // ana: 3 qualifying matches, 3 wins → 100%
+      // lucio: 5 qualifying matches, 3 wins / 2 losses → 60%
+      // sub-threshold flex picks (≤ 20% percent_played) are ignored.
+      function ph(hero: string, pct: number) { return { hero, percent_played: pct } }
+      const win  = (heroes: ReturnType<typeof ph>[]) => ({
+        ...rec({ result: 'victory' }),
+        data: { result: 'victory', heroes_played: heroes },
+      } as unknown as MatchRecord)
+      const loss = (heroes: ReturnType<typeof ph>[]) => ({
+        ...rec({ result: 'defeat' }),
+        data: { result: 'defeat', heroes_played: heroes },
+      } as unknown as MatchRecord)
+      const records = ref([
+        win([ph('ana', 100)]),
+        win([ph('ana', 100)]),
+        win([ph('ana', 100)]),
+        win([ph('lucio', 100)]),
+        win([ph('lucio', 100)]),
+        win([ph('lucio', 100)]),
+        loss([ph('lucio', 100)]),
+        loss([ph('lucio', 100)]),
+      ])
+      const { bestWinrateHero } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(bestWinrateHero.value?.key).toBe('ana')
+      expect(bestWinrateHero.value?.winrate).toBe(100)
+      expect(bestWinrateHero.value?.qualifyingMatches).toBe(3)
+    })
+  })
+
+  describe('topMapTypes', () => {
+    it('returns an empty array for an empty corpus', () => {
+      const records = ref<MatchRecord[]>([])
+      const { topMapTypes } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(topMapTypes.value).toEqual([])
+    })
+
+    it('counts and shares by data.type', () => {
+      const withType = (type: string) => ({
+        ...rec({}),
+        data: { type, result: 'victory' },
+      } as unknown as MatchRecord)
+      const records = ref([
+        withType('control'),
+        withType('control'),
+        withType('hybrid'),
+      ])
+      const { topMapTypes } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const types = topMapTypes.value.map((r) => r.key)
+      expect(types).toContain('control')
+      expect(types).toContain('hybrid')
+      const control = topMapTypes.value.find((r) => r.key === 'control')!
+      expect(control.total).toBe(2)
+      expect(control.share).toBe(67)
+    })
+  })
+
+  describe('timeOfDayBuckets', () => {
+    it('renders six zero-count buckets for an empty corpus', () => {
+      const records = ref<MatchRecord[]>([])
+      const { timeOfDayBuckets } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(timeOfDayBuckets.value).toHaveLength(6)
+      expect(timeOfDayBuckets.value.every((b) => b.count === 0 && b.share === 0)).toBe(true)
+    })
+
+    it('places records into the right four-hour bucket', () => {
+      const at = (fa: string) => ({
+        ...rec({}),
+        data: { finished_at: fa },
+      } as unknown as MatchRecord)
+      const records = ref([
+        at('02:00'), at('03:30'),     // bucket 0 (00–04)
+        at('17:00'),                  // bucket 4 (16–20)
+        at('22:45'), at('23:00'),     // bucket 5 (20–24)
+      ])
+      const { timeOfDayBuckets } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const counts = timeOfDayBuckets.value.map((b) => b.count)
+      expect(counts).toEqual([2, 0, 0, 0, 1, 2])
+    })
+
+    it('skips records without a parseable finished_at hour', () => {
+      const at = (fa: string | undefined) => ({
+        ...rec({}),
+        data: { finished_at: fa },
+      } as unknown as MatchRecord)
+      const records = ref([
+        at(undefined),  // skipped
+        at(''),         // skipped
+        at('not-a-time'), // skipped (NaN)
+        at('12:00'),    // bucket 3
+      ])
+      const { timeOfDayBuckets } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(timeOfDayBuckets.value[3]!.count).toBe(1)
+      expect(timeOfDayBuckets.value[3]!.share).toBe(100)
+    })
+  })
+
+  describe('dayOfWeekBuckets', () => {
+    it('renders seven zero-count buckets for an empty corpus', () => {
+      const records = ref<MatchRecord[]>([])
+      const { dayOfWeekBuckets } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(dayOfWeekBuckets.value).toHaveLength(7)
+    })
+
+    it('counts records by day-of-week and rotates by weekStart', () => {
+      const on = (date: string) => ({
+        ...rec({}),
+        data: { date },
+      } as unknown as MatchRecord)
+      // 2026-05-10 = Sunday, 2026-05-12 = Tuesday, 2026-05-13 = Wednesday.
+      const records = ref([on('2026-05-10'), on('2026-05-12'), on('2026-05-13'), on('2026-05-13')])
+      // weekStart = 0 (Sunday-led)
+      const ws = ref<0 | 1 | 2 | 3 | 4 | 5 | 6>(0)
+      const { dayOfWeekBuckets } = useMatchesDossier(records, ref<LeaverHandling>('include'), undefined, ws)
+      // Sun, Mon, Tue, Wed, Thu, Fri, Sat
+      expect(dayOfWeekBuckets.value.map((b) => b.label)).toEqual(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'])
+      expect(dayOfWeekBuckets.value[0]!.count).toBe(1) // Sun
+      expect(dayOfWeekBuckets.value[3]!.count).toBe(2) // Wed
+      // Flip to Monday-led. Mon (0) — no records; Tue (1) — 1
+      // record; Wed (2) — 2 records; Sun trails with 1 record.
+      ws.value = 1
+      expect(dayOfWeekBuckets.value.map((b) => b.label)).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
+      expect(dayOfWeekBuckets.value[0]!.count).toBe(0) // Mon — no records
+      expect(dayOfWeekBuckets.value[2]!.count).toBe(2) // Wed
+      expect(dayOfWeekBuckets.value[6]!.count).toBe(1) // Sun trails
+    })
+  })
+
+  describe('recentResults', () => {
+    it('returns an empty array for an empty corpus', () => {
+      const records = ref<MatchRecord[]>([])
+      const { recentResults } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(recentResults.value).toEqual([])
+    })
+
+    it('returns up to 5 decisive results newest-first', () => {
+      const records = ref([
+        rec({ result: 'victory', parsedAt: '2026-05-10T01:00:00Z' }),
+        rec({ result: 'defeat',  parsedAt: '2026-05-10T02:00:00Z' }),
+        rec({ result: 'victory', parsedAt: '2026-05-10T03:00:00Z' }),
+        rec({ result: 'draw',    parsedAt: '2026-05-10T04:00:00Z' }),
+        rec({ result: 'victory', parsedAt: '2026-05-10T05:00:00Z' }),
+        rec({ result: 'defeat',  parsedAt: '2026-05-10T06:00:00Z' }),
+      ])
+      const { recentResults } = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(recentResults.value).toEqual(['defeat', 'victory', 'draw', 'victory', 'defeat'])
+    })
+  })
 })

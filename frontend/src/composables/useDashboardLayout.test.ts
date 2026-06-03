@@ -230,15 +230,25 @@ describe('useDashboardLayout', () => {
     expect(api.rows.value[1]).toEqual([...DEFAULT_ROW_LAYOUT[1]!])
   })
 
-  it('exposes the full registry across rows after any sequence of moves', async () => {
+  it('exposes every default-install widget exactly once after any sequence of moves', async () => {
+    // PR B: opt-in widgets sit in WIDGET_REGISTRY but are intentionally
+    // absent from the layout until the user adds them via the
+    // customizer. The invariant for installed widgets is "exactly once
+    // across all rows."
+    const defaultIds = new Set(Object.values(DEFAULT_ROW_LAYOUT).flat())
     const { api } = await mountHost()
     api.move('winrate', 1, 0, 2, 0)
     api.move('top-maps', 2, 0, 1, 0)
-    const all = [...api.rows.value[1]!, ...api.rows.value[2]!]
-    // Every registry widget should appear exactly once.
+    const all = Object.values(api.rows.value).flat()
     for (const def of WIDGET_REGISTRY) {
+      if (!defaultIds.has(def.id)) continue
       const count = all.filter((id) => id === def.id).length
       expect(count, `${def.id} appears ${count} times`).toBe(1)
+    }
+    // And no opt-in widget snuck into the layout.
+    for (const def of WIDGET_REGISTRY) {
+      if (defaultIds.has(def.id)) continue
+      expect(all.includes(def.id), `opt-in widget ${def.id} should not be in the layout`).toBe(false)
     }
   })
 
@@ -296,11 +306,29 @@ describe('useDashboardLayout', () => {
     expect(api.rows.value[3]).toEqual([kpi])
   })
 
-  it.skip('appendToRow spills to a fresh overflow row when breakdowns >= 4', async () => {
-    // PR B will add 4 more breakdown widgets, at which point this
-    // case becomes exercisable (today the registry only holds 3, so
-    // the soft cap of 4 can't be reached). The KPI spill case above
-    // covers the same code path with a different shape.
+  it('appendToRow spills to a fresh overflow row when breakdowns >= 4', async () => {
+    // PR B unblocks this case: the registry now holds 7 breakdowns
+    // (3 default + 4 opt-in), so the soft cap of 4 can be reached.
+    // The test seeds row 2 to 4 default-install breakdowns, then
+    // tries to add a 5th breakdown — it should spill to a fresh
+    // overflow row instead of growing row 2.
+    const breakdowns = WIDGET_REGISTRY
+      .filter((w) => w.shape === 'breakdown')
+      .map((w) => w.id)
+    expect(breakdowns.length).toBeGreaterThanOrEqual(5)
+    const seed: RowLayout = {
+      1: [...DEFAULT_ROW_LAYOUT[1]!],
+      2: breakdowns.slice(0, 4),
+    }
+    const { api } = await mountHost(seed)
+    expect(api.rows.value[2]).toHaveLength(4)
+    const fifth = breakdowns[4]!
+    api.removeFromRow(fifth)
+    api.appendToRow(2, fifth)
+    expect(api.rows.value[2]).not.toContain(fifth)
+    // Spill lands on the next-available row index past every
+    // currently-occupied row (= 3 here).
+    expect(api.rows.value[3]).toEqual([fifth])
   })
 
   // ─── removeFromRow ───────────────────────────────────────────

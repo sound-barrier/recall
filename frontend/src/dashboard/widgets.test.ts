@@ -6,7 +6,12 @@ import {
 } from './widgets'
 
 describe('dashboard widget registry', () => {
-  it('every registry id appears in exactly one default row', () => {
+  it('every default-row id appears at most once across all rows', () => {
+    // PR B: the registry now distinguishes default-install widgets
+    // (in DEFAULT_ROW_LAYOUT) from opt-in widgets (registered but not
+    // in any default row). The invariant for installed widgets is
+    // "no double-listing"; opt-in widgets sit in WIDGET_REGISTRY
+    // without a layout entry until the user explicitly adds them.
     const registryIds = new Set(WIDGET_REGISTRY.map((w) => w.id))
     const layoutCounts = new Map<string, number>()
     for (const row of Object.values(DEFAULT_ROW_LAYOUT)) {
@@ -14,12 +19,10 @@ describe('dashboard widget registry', () => {
         layoutCounts.set(id, (layoutCounts.get(id) ?? 0) + 1)
       }
     }
-    for (const id of registryIds) {
-      expect(layoutCounts.get(id), `${id} should appear in exactly one row`).toBe(1)
-    }
     // No layout entry references a widget the registry doesn't ship.
     for (const id of layoutCounts.keys()) {
       expect(registryIds.has(id), `layout references unknown widget ${id}`).toBe(true)
+      expect(layoutCounts.get(id), `${id} should appear at most once`).toBe(1)
     }
   })
 
@@ -31,11 +34,19 @@ describe('dashboard widget registry', () => {
     }
   })
 
-  it('each widget declares a shape and defaultRow that match its layout placement', () => {
+  it('each widget declares a shape; default-install widgets sit in their declared defaultRow', () => {
+    // Opt-in widgets (registered but absent from DEFAULT_ROW_LAYOUT)
+    // declare a `defaultRow` to govern their FIRST insertion point
+    // via the customizer's "+ Add" — they don't have to actually
+    // live in that row before a user adds them. Default-install
+    // widgets must match.
+    const defaultIds = new Set(Object.values(DEFAULT_ROW_LAYOUT).flat())
     for (const w of WIDGET_REGISTRY) {
       expect(w.shape === 'kpi' || w.shape === 'breakdown', `${w.id} shape`).toBe(true)
-      expect(DEFAULT_ROW_LAYOUT[w.defaultRow], `${w.id} declares defaultRow ${w.defaultRow} but no such row exists`).toBeDefined()
-      expect(DEFAULT_ROW_LAYOUT[w.defaultRow]?.includes(w.id), `${w.id} declares defaultRow ${w.defaultRow} but isn't in it`).toBe(true)
+      if (defaultIds.has(w.id)) {
+        expect(DEFAULT_ROW_LAYOUT[w.defaultRow], `${w.id} declares defaultRow ${w.defaultRow} but no such row exists`).toBeDefined()
+        expect(DEFAULT_ROW_LAYOUT[w.defaultRow]?.includes(w.id), `${w.id} declares defaultRow ${w.defaultRow} but isn't in it`).toBe(true)
+      }
     }
   })
 
