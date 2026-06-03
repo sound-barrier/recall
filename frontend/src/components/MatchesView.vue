@@ -14,6 +14,8 @@ import FilterCombobox from './FilterCombobox.vue'
 import DashboardWidget from './DashboardWidget.vue'
 import DashboardCustomizer from './DashboardCustomizer.vue'
 import DashboardAddTile from './DashboardAddTile.vue'
+import DashboardEditBanner from './DashboardEditBanner.vue'
+import DashboardUndoToast from './DashboardUndoToast.vue'
 import { useDashboardLayout } from '../composables/useDashboardLayout'
 import { useDragReorder } from '../composables/useDragReorder'
 import { widgetById, type WidgetDef } from '../dashboard/widgets'
@@ -309,9 +311,58 @@ function onWidgetSelect(id: string) {
   selectedWidgetId.value = id
 }
 
+// Undo registry — captures the widget that was just trashed so the
+// undo toast can put it back where it was. We snapshot eyebrow + row
+// + idx BEFORE the layout.removeFromRow() call because afterwards
+// the registry lookup still works (registry never loses entries) but
+// the row/idx context is gone. Token bumps on every fresh trash so
+// the toast re-runs its slide-in animation + countdown even for
+// back-to-back removes of the same id.
+const pendingUndo = ref<{ id: string; eyebrow: string; row: number; idx: number; token: number } | null>(null)
+let undoTokenSeq = 0
+
 function onWidgetRemove(id: string) {
+  const def = widgetById(id)
+  if (!def) return
+  // Walk the current layout to find where the widget lives so undo
+  // can re-add it at the right spot.
+  let foundRow = def.defaultRow
+  let foundIdx = 0
+  for (const row of dashboardRows.value) {
+    const idxInRow = row.widgets.findIndex((w) => w.id === id)
+    if (idxInRow !== -1) {
+      foundRow = row.index
+      foundIdx = idxInRow
+      break
+    }
+  }
   dashboardLayout.removeFromRow(id)
   if (selectedWidgetId.value === id) selectedWidgetId.value = null
+  undoTokenSeq++
+  pendingUndo.value = {
+    id,
+    eyebrow: def.eyebrow,
+    row: foundRow,
+    idx: foundIdx,
+    token: undoTokenSeq,
+  }
+}
+
+function onUndoRemove(token: number) {
+  const pending = pendingUndo.value
+  if (!pending || pending.token !== token) return
+  // appendToRow respects the soft-threshold spill so a row that just
+  // shed a widget and is now over-full will spill on undo too. That
+  // matches the new-add behavior so the user gets consistent
+  // mechanics.
+  dashboardLayout.appendToRow(pending.row, pending.id)
+  pendingUndo.value = null
+}
+
+function onDismissUndo(token: number) {
+  if (pendingUndo.value?.token === token) {
+    pendingUndo.value = null
+  }
 }
 
 // Drag-reorder wiring. The reorder composable knows nothing about
@@ -534,7 +585,12 @@ onBeforeUnmount(() => {
     class="matches-set-workspace"
   >
     <!-- ─── SET DOSSIER ─────────────────────────────────────── -->
-    <section class="set-dossier" aria-label="Set dossier">
+    <section
+      class="set-dossier"
+      :class="{ 'set-dossier-editing': editMode }"
+      aria-label="Set dossier"
+    >
+      <DashboardEditBanner :open="editMode" @exit="editMode = false" />
       <header class="dossier-head">
         <span class="dossier-eyebrow">{{ anyNarrow ? 'Narrowed set' : 'Set' }}</span>
         <h2 class="dossier-title">
@@ -643,8 +699,10 @@ onBeforeUnmount(() => {
       </header>
 
       <template v-for="row in dashboardRows" :key="`row-${row.index}`">
-        <div
+        <TransitionGroup
+          tag="div"
           class="dashboard-row"
+          name="dashboard-widget"
           :data-row="row.index"
           @dragover.prevent="editMode ? dragReorder.onRowDragOver(row.index, $event) : null"
           @drop="editMode ? dragReorder.onRowDrop(row.index, $event) : null"
@@ -675,24 +733,34 @@ onBeforeUnmount(() => {
           </DashboardWidget>
           <DashboardAddTile
             v-if="editMode && row.index === lastRowIdx"
+            key="__add-tile__"
             @click="showDashboardCustomizer = true"
           />
-        </div>
+        </TransitionGroup>
       </template>
 
       <!-- Narrow trigger + popover. -->
       <div class="dossier-actions">
-        <!-- Edit-dashboard sticky toggle. Lights up direct-manipulation
-             affordances (whole-widget drag, click-to-select, trash on
-             the selected widget, "+" tile at the row tail). -->
-        <label class="dossier-edit-toggle">
+        <!-- Edit-dashboard sticky toggle, rendered as a pill switch
+             with discrete VIEW / EDIT states. The native checkbox is
+             visually hidden but keyboard- and screen-reader-reachable;
+             the styled track + thumb give the affordance + state
+             readout for sighted users. Lights up direct-manipulation
+             chrome (whole-widget drag, hover-revealed trash + grip,
+             "+" tile at the row tail). -->
+        <label class="dossier-edit-switch" :class="{ 'is-on': editMode }">
           <input
             v-model="editMode"
             type="checkbox"
+            class="dossier-edit-switch-input"
             data-edit-toggle
+            :aria-label="editMode ? 'Exit dashboard edit mode' : 'Enter dashboard edit mode'"
           >
-          <span aria-hidden="true">▦</span>
-          Edit dashboard
+          <span class="dossier-edit-switch-track" aria-hidden="true">
+            <span class="dossier-edit-switch-segment" data-state="view">View</span>
+            <span class="dossier-edit-switch-segment" data-state="edit">Edit</span>
+            <span class="dossier-edit-switch-thumb" />
+          </span>
         </label>
 
         <div class="narrow-anchor">
@@ -1039,6 +1107,14 @@ onBeforeUnmount(() => {
       <DashboardCustomizer
         :open="showDashboardCustomizer"
         @close="showDashboardCustomizer = false"
+      />
+
+      <!-- Undo-after-trash toast. Itself teleports to <body> so it
+           lives outside any inert/aria-hidden ancestors. -->
+      <DashboardUndoToast
+        :trashed="pendingUndo"
+        @undo="onUndoRemove"
+        @dismiss="onDismissUndo"
       />
     </section>
 
@@ -1543,43 +1619,184 @@ onBeforeUnmount(() => {
 
 .dossier-actions { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem; }
 
-/* Edit-dashboard sticky toggle. Same mono eyebrow voice as the
-   dossier buttons so it reads as a sibling control. */
-.dossier-edit-toggle {
+/* Edit-dashboard pill switch. Two equal-width segments (VIEW | EDIT)
+   with a sliding thumb that crosses on toggle. The native checkbox
+   is visually hidden (sr-only) but keeps full focus + keyboard
+   reachability. Active segment's label sits ABOVE the thumb via
+   z-index so the text reads in inverse contrast.
+
+   Vocabulary: monospace caps, the OW orange accent, 2px square
+   corners — keeps it sibling-consistent with .dossier-btn but reads
+   as a STATE control rather than an action button. */
+.dossier-edit-switch {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.9rem;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  background: transparent;
+  position: relative;
+  isolation: isolate;
   cursor: pointer;
-  font-weight: 700;
   user-select: none;
 }
 
-.dossier-edit-toggle:has(input:checked) {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.dossier-edit-toggle input {
-  accent-color: var(--accent);
-  width: 0.95rem;
-  height: 0.95rem;
+/* Visually invisible but pointer-clickable overlay so the native
+   <input type="checkbox"> handles all the platform's checkbox
+   semantics (label clicks, ARIA pressed state, Space/Enter
+   keyboard activation) without the user ever seeing a default
+   checkbox. Sized to fully cover the styled track underneath so
+   any pixel-perfect click lands on the input first. The styled
+   track + segments + thumb get `pointer-events: none` so they're
+   purely decorative — every click + hover hits the input. */
+.dossier-edit-switch-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
   cursor: pointer;
+  z-index: 2;
 }
 
-.dossier-edit-toggle:focus-within {
-  outline: none;
+.dossier-edit-switch-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  pointer-events: none;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.dossier-edit-switch-segment {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.6rem;
+  padding: 0.32rem 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-faint);
+  transition: color 160ms ease;
+}
+
+.dossier-edit-switch.is-on .dossier-edit-switch-segment[data-state="view"],
+.dossier-edit-switch:not(.is-on) .dossier-edit-switch-segment[data-state="edit"] {
+  color: var(--text-faint);
+}
+
+.dossier-edit-switch:not(.is-on) .dossier-edit-switch-segment[data-state="view"] {
+  color: var(--text);
+}
+
+.dossier-edit-switch.is-on .dossier-edit-switch-segment[data-state="edit"] {
+  color: var(--surface);
+}
+
+.dossier-edit-switch-thumb {
+  position: absolute;
+  top: 2px; bottom: 2px; left: 2px;
+  width: calc(50% - 2px);
+  border-radius: 999px;
+  background: var(--text);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+  transition: transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1),
+              background 200ms ease;
+  z-index: 0;
+}
+
+.dossier-edit-switch.is-on .dossier-edit-switch-thumb {
+  transform: translateX(100%);
+  background: var(--accent);
+}
+
+.dossier-edit-switch.is-on .dossier-edit-switch-track {
   border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+}
+
+.dossier-edit-switch:hover .dossier-edit-switch-track {
+  border-color: var(--accent);
+}
+
+.dossier-edit-switch:focus-within .dossier-edit-switch-track {
+  outline: none;
   box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dossier-edit-switch-thumb,
+  .dossier-edit-switch-segment,
+  .dossier-edit-switch-track {
+    transition: none;
+  }
+}
+
+/* ── Edit-mode workspace ─────────────────────────────────────
+   Subtle radial dot pattern fades in when the dossier enters
+   edit mode. Signals "this is a workspace" without making every
+   widget border noisy. Pattern lives on a ::before so the
+   underlying .set-dossier background stays untouched. */
+.set-dossier-editing {
+  position: relative;
+}
+
+.set-dossier-editing::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--accent) 22%, transparent) 1px,
+    transparent 1.6px
+  );
+  background-size: 14px 14px;
+  background-position: 0 0;
+  opacity: 0.55;
+  z-index: 0;
+  transition: opacity 260ms ease;
+}
+
+.set-dossier > * { position: relative; z-index: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .set-dossier-editing::before { transition: none; }
+}
+
+/* ── Widget enter / exit animation ──────────────────────────
+   Wraps every .dashboard-row in <TransitionGroup>; new widgets
+   scale-in from 0.94 with a fade, removed widgets scale-out
+   while shrinking their box so siblings reflow smoothly into
+   the gap. Uses CSS grid's own animation hooks; the v-move
+   transition handles same-row sibling shifts during drags. */
+.dashboard-widget-enter-active,
+.dashboard-widget-leave-active,
+.dashboard-widget-move {
+  transition: opacity 220ms ease,
+              transform 240ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.dashboard-widget-leave-active {
+  position: absolute;
+}
+
+.dashboard-widget-enter-from,
+.dashboard-widget-leave-to {
+  opacity: 0;
+  transform: scale(0.94);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-widget-enter-active,
+  .dashboard-widget-leave-active,
+  .dashboard-widget-move { transition: none; }
 }
 
 .dossier-btn {

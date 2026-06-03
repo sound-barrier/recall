@@ -13,14 +13,16 @@ import type { WidgetShape } from '../dashboard/widgets'
 // shape value adds to one enum, not two.
 //
 // `editMode` flips the wrapper into "draggable" mode: the root is
-// marked `draggable="true"`, a drag handle appears top-left, and DnD
-// + keyboard reorder handlers fire on the consumer's callbacks.
+// marked `draggable="true"`, the drag handle + trash button appear in
+// the corners, and DnD + keyboard reorder handlers fire on the
+// consumer's callbacks. Both controls are hover-revealed (rather than
+// always-on) so the dashboard reads as a dashboard, not a UI
+// scaffold — but they live on EVERY widget in edit mode (not gated
+// to selection) so trash is one click away.
 //
 // `legacyDataKpi` / `legacyDataBreakdown` keep the pre-refactor e2e
 // selectors (`[data-kpi="reviewed-count"]`, `[data-breakdown="roles"]`)
-// matching. Populated from the registry for the three review widgets +
-// the roles breakdown; cleaned up in a follow-up PR that re-points the
-// specs to `[data-widget-id]`.
+// matching.
 
 const props = defineProps<{
   id: string
@@ -34,7 +36,7 @@ const props = defineProps<{
   // the parent's useDragReorder.dropHint comparison.
   dropTarget?: boolean
   // True when this widget is the user's current edit-mode selection
-  // — wears the accent ring + surfaces the trash button.
+  // — wears the strong accent ring + lift.
   selected?: boolean
   legacyDataKpi?: string
   legacyDataBreakdown?: string
@@ -93,10 +95,10 @@ function onRootClick() {
       <span aria-hidden="true">⋮⋮</span>
     </button>
     <button
-      v-if="editMode && selected"
+      v-if="editMode"
       type="button"
       class="dashboard-trash"
-      :aria-label="`Remove widget ${id}`"
+      :aria-label="`Remove widget ${id} from the dashboard`"
       :data-widget-remove="id"
       @click.stop="emit('remove', id)"
     >
@@ -116,6 +118,9 @@ function onRootClick() {
   flex-direction: column;
   gap: 0.15rem;
   position: relative;
+  transition: transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1),
+              box-shadow 180ms ease,
+              border-color 140ms ease;
 }
 
 .breakdown {
@@ -124,15 +129,33 @@ function onRootClick() {
   background: var(--surface);
   padding: 0.55rem 0.7rem 0.65rem;
   position: relative;
+  transition: transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1),
+              box-shadow 180ms ease,
+              border-color 140ms ease;
 }
 
-/* Edit-mode chrome: dashed accent border + grab cursor so the cell
-   reads as "I can be moved" at a glance. The body of the widget
-   stays untouched — only the wrapper takes the affordance. */
+/* Edit-mode chrome — quieter than the previous always-dashed
+   treatment. The dossier-level dot-grid workspace pattern signals
+   edit mode; the widget just shifts its border to dashed-accent on
+   HOVER (or when selected). Avoids the "all widgets shout at me"
+   feeling of always-dashed borders. */
 .dashboard-widget-editable {
+  cursor: grab;
+  border-color: color-mix(in srgb, var(--border) 60%, var(--accent));
+}
+
+.dashboard-widget-editable:hover {
   border-style: dashed;
   border-color: var(--accent);
-  cursor: grab;
+  background: color-mix(in srgb, var(--accent-soft) 25%, transparent), var(--surface-2);
+}
+
+.kpi-tile.dashboard-widget-editable:hover {
+  background: color-mix(in srgb, var(--accent-soft) 25%, var(--surface-2));
+}
+
+.breakdown.dashboard-widget-editable:hover {
+  background: color-mix(in srgb, var(--accent-soft) 25%, var(--surface));
 }
 
 .dashboard-widget-editable:active {
@@ -144,82 +167,73 @@ function onRootClick() {
    peripheral vision. */
 .dashboard-widget-drop-target {
   box-shadow: inset 0 0 0 2px var(--accent);
-  background: color-mix(in srgb, var(--accent-soft) 80%, var(--surface));
+  background: color-mix(in srgb, var(--accent-soft) 80%, var(--surface)) !important;
 }
 
-/* Click-to-select ring. Same recipe as the drop-target but solid —
-   the user has parked their attention on this cell to act on it. */
+/* Confident selection state — strong inset ring, subtle lift, scale,
+   and shadow so the picked widget unambiguously claims the eye. The
+   transform is small (1.5%) so it doesn't push siblings around in
+   the auto-fit grid; the shadow does the heavier visual work. */
 .dashboard-widget-selected {
-  box-shadow: inset 0 0 0 2px var(--accent);
+  border-style: solid !important;
+  border-color: var(--accent) !important;
+  box-shadow: inset 0 0 0 2px var(--accent),
+              0 14px 28px -16px color-mix(in srgb, var(--accent) 80%, transparent);
+  transform: translateY(-2px) scale(1.015);
+  z-index: 2;
 }
 
-/* Trash button — anchored top-right, mirrors the drag handle on the
-   left. The × glyph reads as "remove" without an icon font. */
+/* Controls (drag handle + trash) — quiet by default (low opacity)
+   so the dashboard reads as a dashboard, not a UI scaffold. Full
+   opacity on hover/focus/selection. Staying always-present-in-DOM
+   keeps keyboard reach + focus intact (an opacity:0 default
+   confused programmatic focus dispatch in some browsers). */
+.dashboard-drag-handle,
 .dashboard-trash {
   position: absolute;
   top: 4px;
-  right: 4px;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   font-family: var(--mono);
-  font-size: 0.95rem;
   font-weight: 700;
-  color: var(--text-faint);
+  line-height: 1;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 2px;
   cursor: pointer;
   user-select: none;
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
   z-index: 1;
+  opacity: 0.35;
+  transition: opacity 160ms ease,
+              color 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 
-.dashboard-trash:hover {
-  color: var(--loss);
-  border-color: var(--loss-line);
-  background: var(--surface-2);
-}
-
-.dashboard-trash:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
-  color: var(--accent);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dashboard-trash { transition: none; }
-}
-
-/* Drag handle — anchored top-left of the wrapper. Eight-dot grip
-   glyph (⋮⋮) reads as a handle without an icon font. Stays a true
-   <button> so screen readers + keyboard nav reach it; the
-   aria-label spells out the keyboard contract. */
 .dashboard-drag-handle {
-  position: absolute;
-  top: 4px;
   left: 4px;
-  width: 18px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  font-family: var(--mono);
   font-size: 0.7rem;
-  font-weight: 700;
   color: var(--text-faint);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 2px;
   cursor: grab;
-  user-select: none;
-  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
-  z-index: 1;
+}
+
+.dashboard-trash {
+  right: 4px;
+  font-size: 1rem;
+  color: var(--text-faint);
+}
+
+.dashboard-widget-editable:hover .dashboard-drag-handle,
+.dashboard-widget-editable:hover .dashboard-trash,
+.dashboard-widget-selected .dashboard-drag-handle,
+.dashboard-widget-selected .dashboard-trash,
+.dashboard-drag-handle:focus,
+.dashboard-trash:focus,
+.dashboard-drag-handle:focus-visible,
+.dashboard-trash:focus-visible {
+  opacity: 1;
 }
 
 .dashboard-drag-handle:hover {
@@ -228,18 +242,31 @@ function onRootClick() {
   background: var(--accent-soft);
 }
 
-.dashboard-drag-handle:focus-visible {
+.dashboard-trash:hover {
+  color: var(--loss);
+  border-color: var(--loss-line, var(--loss));
+  background: color-mix(in srgb, var(--loss) 12%, var(--surface));
+}
+
+.dashboard-drag-handle:focus-visible,
+.dashboard-trash:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
-  color: var(--accent);
 }
 
-.dashboard-drag-handle:active {
-  cursor: grabbing;
-}
+.dashboard-drag-handle:active { cursor: grabbing; }
 
 @media (prefers-reduced-motion: reduce) {
-  .dashboard-drag-handle { transition: none; }
+  .kpi-tile,
+  .breakdown,
+  .dashboard-drag-handle,
+  .dashboard-trash {
+    transition: none !important;
+  }
+
+  .dashboard-widget-selected {
+    transform: none;
+  }
 }
 </style>

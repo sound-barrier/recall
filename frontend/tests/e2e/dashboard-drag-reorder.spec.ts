@@ -27,11 +27,24 @@ function singleMatch() {
 }
 
 async function widgetOrder(page: import('@playwright/test').Page, rowIdx: number): Promise<string[]> {
+  // Wait until the TransitionGroup's leave-active class is no
+  // longer present on any widget in the row — otherwise a row
+  // walk done mid-transition will still see the leaving widget.
+  await page.waitForFunction((r) => {
+    const row = document.querySelector(`.dashboard-row[data-row="${r}"]`)
+    if (!row) return true
+    return row.querySelectorAll('.dashboard-widget-leave-active').length === 0
+  }, rowIdx, { timeout: 2000 })
   return await page.evaluate((r) => {
     const row = document.querySelector(`.dashboard-row[data-row="${r}"]`)
     if (!row) return []
     const out: string[] = []
     for (const el of Array.from(row.querySelectorAll('[data-widget-id]'))) {
+      // Belt-and-suspenders: even if the wait above didn't catch it
+      // (e.g. reduced-motion strips transitions and the class never
+      // appears), skip widgets in their leave phase. DOM-present but
+      // no longer logically in the row.
+      if (el.classList.contains('dashboard-widget-leave-active')) continue
       const id = el.getAttribute('data-widget-id')
       if (id) out.push(id)
     }
