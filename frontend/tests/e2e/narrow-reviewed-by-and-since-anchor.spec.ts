@@ -223,6 +223,48 @@ test.describe('narrow panel — reviewed-by + since-anchor', () => {
     await expect(page.locator('.leaf-row[data-match-key="d3-anchor"]')).not.toHaveClass(/is-anchor/)
   })
 
+  test('right-click → Hide match fires SetMatchVisibility(true) and the row vanishes', async ({ page }) => {
+    // Route the matches list so that hiding d4 hides it from the
+    // next reload's response, mirroring the bulk-hide-drawer spec.
+    const hiddenKeys = new Set<string>()
+    const visibilityCalls: { key: string; hidden: boolean }[] = []
+    await page.unrouteAll({ behavior: 'wait' })
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      const records = CORPUS
+        .filter((r) => !hiddenKeys.has(r.match_key))
+        .map((r) => ({ ...r }))
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify(records),
+      })
+    })
+    await page.route('**/api/v1/matches/*/visibility', async (route: Route) => {
+      const url = new URL(route.request().url())
+      const segs = url.pathname.split('/')
+      const matchKey = decodeURIComponent(segs[segs.length - 2] ?? '')
+      const body = JSON.parse(route.request().postData() ?? '{}') as { hidden?: boolean }
+      visibilityCalls.push({ key: matchKey, hidden: !!body.hidden })
+      if (body.hidden) hiddenKeys.add(matchKey)
+      else hiddenKeys.delete(matchKey)
+      await route.fulfill({ status: 204, body: '' })
+    })
+    await page.reload()
+    await page.locator('#tab-matches').click()
+    await expect(page.locator('.leaf-row[data-match-key="d4-unrevwd"]')).toHaveCount(1)
+
+    // Right-click → Hide match.
+    await page.locator('.leaf-row[data-match-key="d4-unrevwd"]').click({ button: 'right' })
+    const menu = page.locator('[data-row-ctx]')
+    await expect(menu).toContainText(/hide match/i)
+    await page.locator('[data-row-ctx-hide]').click()
+
+    // Menu dismissed; the PUT fired with hidden:true; the row is gone.
+    await expect(menu).toHaveCount(0)
+    await expect.poll(() => visibilityCalls.length, { timeout: 2000 }).toBeGreaterThan(0)
+    expect(visibilityCalls[0]).toEqual({ key: 'd4-unrevwd', hidden: true })
+    await expect(page.locator('.leaf-row[data-match-key="d4-unrevwd"]')).toHaveCount(0)
+  })
+
   test('Clear anchor button in the narrow panel persists across reloads', async ({ page }) => {
     // Set the anchor.
     await page.locator('[data-match-key="d3-anchor"]').click()

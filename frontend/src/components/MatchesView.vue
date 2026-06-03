@@ -566,6 +566,14 @@ function onRowContextSetAnchor(matchKey: string) {
   emit('set-anchor', matchKey)
 }
 
+function onRowContextHide(matchKey: string) {
+  // Reuses the bulk hide event with a single-key array — same code
+  // path the bulk-action bar drives, so the existing
+  // SetMatchVisibility(true) + reload + undo-via-detail-panel
+  // works without a new App.vue handler.
+  emit('hide-matches', [matchKey])
+}
+
 function formatTime(rec: MatchRecord): string {
   return rec.data?.finished_at ?? ''
 }
@@ -1787,6 +1795,7 @@ onBeforeUnmount(() => {
       @close="onRowContextClose"
       @open-detail="onRowContextOpenDetail"
       @set-anchor="onRowContextSetAnchor"
+      @hide="onRowContextHide"
     />
   </section>
 </template>

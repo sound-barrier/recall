@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 
-// Right-click context menu for a Matches list row. Lets users
-// stamp the "since" anchor directly from the list without first
-// opening the detail panel — useful for power users who already
-// know which match they want to mark as their reference. The
-// menu offers two actions today (Open detail, Filter from this
-// match / Clear) and is structured so adding a third (e.g.
-// "Hide match") later is a one-line addition.
+// Right-click context menu for a Matches list row. Quick actions
+// without first opening the detail panel:
 //
-// Positioning is fixed-element at (x, y) — usually the raw mouse
+//   1. Open detail (same as a left-click on the row).
+//   2. Filter from this match / Clear since-anchor (anchor toggle).
+//   3. Hide match (soft-delete; same SetMatchVisibility(true) the
+//      bulk-action bar uses, so an Unhide path already exists in
+//      the detail panel + the Bulk Hidden drawer).
+//
+// Positioning is fixed-element at (x, y) — the raw mouse
 // coordinates of the contextmenu event. The viewport-edge clamp
-// is intentionally NOT implemented yet: the menu is small (~ 160
-// × 80 px) and almost never overlaps the viewport edge in real
+// is intentionally NOT implemented yet: the menu is small
+// (~ 180 × 110 px) and almost never overlaps the edge in real
 // use. Add the clamp when a user reports it.
 
 const props = defineProps<{
@@ -25,6 +26,10 @@ const emit = defineEmits<{
   close:        []
   'open-detail': [matchKey: string]
   'set-anchor':  [matchKey: string]
+  // Soft-delete from the row. App.vue routes this through the same
+  // SetMatchVisibility(true) the bulk-action bar uses, so an unhide
+  // path already exists.
+  hide:          [matchKey: string]
 }>()
 
 const menuRef = ref<HTMLDivElement | null>(null)
@@ -74,6 +79,11 @@ function onToggleAnchor() {
   emit('set-anchor', props.isAnchor ? '' : props.matchKey)
   emit('close')
 }
+
+function onHide() {
+  emit('hide', props.matchKey)
+  emit('close')
+}
 </script>
 
 <template>
@@ -107,6 +117,17 @@ function onToggleAnchor() {
         >
           <span class="match-row-ctx-glyph" aria-hidden="true">{{ isAnchor ? '◆' : '◇' }}</span>
           {{ isAnchor ? 'Clear since-anchor' : 'Filter from this match' }}
+        </button>
+        <div class="match-row-ctx-sep" role="separator" aria-hidden="true" />
+        <button
+          type="button"
+          role="menuitem"
+          class="match-row-ctx-item is-danger"
+          data-row-ctx-hide
+          @click="onHide"
+        >
+          <span class="match-row-ctx-glyph" aria-hidden="true">×</span>
+          Hide match
         </button>
       </div>
     </Transition>
@@ -157,6 +178,26 @@ function onToggleAnchor() {
 
 .match-row-ctx-item.is-anchor .match-row-ctx-glyph {
   color: var(--accent);
+}
+
+/* Destructive item — hover ramps the row to a loss-token wash so
+   the click reads as the soft-delete it is. The token is already
+   AA-tuned per theme by the a11y rule. */
+.match-row-ctx-item.is-danger:hover,
+.match-row-ctx-item.is-danger:focus-visible {
+  background: color-mix(in srgb, var(--loss) 14%, transparent);
+  color: var(--loss);
+}
+
+.match-row-ctx-item.is-danger:hover .match-row-ctx-glyph,
+.match-row-ctx-item.is-danger:focus-visible .match-row-ctx-glyph {
+  color: var(--loss);
+}
+
+.match-row-ctx-sep {
+  height: 1px;
+  margin: 0.2rem 0.4rem;
+  background: color-mix(in srgb, var(--border) 70%, transparent);
 }
 
 .match-row-ctx-glyph {

@@ -91,4 +91,20 @@ describe('MatchRowContextMenu', () => {
     expect(w.emitted('close')).toBeTruthy()
     document.body.removeChild(outside)
   })
+
+  it('renders the "Hide match" item', () => {
+    mountMenu({ position: { x: 0, y: 0 } })
+    const menu = document.body.querySelector('[data-row-ctx]')!
+    expect(menu.textContent).toMatch(/hide match/i)
+    expect(document.body.querySelector('[data-row-ctx-hide]')).not.toBeNull()
+  })
+
+  it('clicking "Hide match" emits hide(matchKey) + close', () => {
+    const w = mountMenu({ position: { x: 0, y: 0 }, matchKey: 'match-D' })
+    const btn = document.body.querySelector('[data-row-ctx-hide]') as HTMLButtonElement
+    btn.click()
+    expect(w.emitted('hide')).toBeTruthy()
+    expect(w.emitted('hide')![0]).toEqual(['match-D'])
+    expect(w.emitted('close')).toBeTruthy()
+  })
 })
