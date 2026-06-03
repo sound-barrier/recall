@@ -35,6 +35,7 @@
 package parser
 
 import (
+	"context"
 	"fmt"
 	"image"
 	_ "image/jpeg" // image.Decode JPEG support
@@ -117,7 +118,13 @@ type ProgressFunc func(done, total int, filename string, result *MatchResult, er
 // Per-file parse errors are non-fatal: the loop continues and the failing
 // file is reported through the progress callback. Only a directory-level
 // failure (ReadDir error) propagates as the function's error return.
-func ParseScreenshotsDir(dir string, skip map[string]bool, progress ProgressFunc) (map[string]*MatchResult, error) {
+//
+// Cancellation: ctx is checked between files. When ctx is cancelled the loop
+// returns the partial map gathered so far + ctx.Err() so the caller can
+// distinguish "ran clean" from "user aborted". Tesseract itself is shelled
+// out per file and not context-aware — cancellation lands at the next
+// between-files boundary, not mid-OCR. Pass context.Background() to opt out.
+func ParseScreenshotsDir(ctx context.Context, dir string, skip map[string]bool, progress ProgressFunc) (map[string]*MatchResult, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -138,6 +145,12 @@ func ParseScreenshotsDir(dir string, skip map[string]bool, progress ProgressFunc
 	}
 	out := map[string]*MatchResult{}
 	for i, name := range toProcess {
+		// Honour cancellation BEFORE starting the next (potentially
+		// multi-second) OCR shell-out. Files already completed stay
+		// in `out`; the partial map gets a chance to flush downstream.
+		if err := ctx.Err(); err != nil {
+			return out, err
+		}
 		r, parseErr := parseSingleFunc(filepath.Join(dir, name))
 		if parseErr != nil {
 			// Per-file failure: log a warning, surface it through the

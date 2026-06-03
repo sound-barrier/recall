@@ -51,6 +51,20 @@ func (a *App) emitParseComplete() {
 	}
 }
 
+// emitParseCancelled notifies the frontend that a parse run was
+// aborted via CancelParse. Distinct from parse-complete so the UI
+// can render "stopped" vs "done" copy. Same emission shape as the
+// other terminal lifecycle events — Wails event bus AND the SSE
+// hub when present.
+func (a *App) emitParseCancelled() {
+	if a.ctx != nil {
+		wruntime.EventsEmit(a.ctx, "parse-cancelled")
+	}
+	if a.SSEHub != nil {
+		a.SSEHub.Broadcast("parse-cancelled")
+	}
+}
+
 // PickTesseractBinary opens a native file chooser and applies the selection
 // via SetTesseractPath. Returns the resulting status; on cancel the existing
 // status is returned unchanged.

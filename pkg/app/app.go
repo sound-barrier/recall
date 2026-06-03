@@ -75,6 +75,15 @@ type App struct {
 	// watcher can't overlap with a user-triggered click (or a second
 	// debounce that fires while the first parse is still running).
 	parseMu sync.Mutex
+	// parseCancelMu guards parseCancel — a smaller scope than parseMu,
+	// which the OCR loop holds for the full multi-second run.
+	// CancelParse needs to set/clear parseCancel without waiting on
+	// the loop it's trying to interrupt.
+	parseCancelMu sync.Mutex
+	// parseCancel is non-nil while a parse is in flight; calling it
+	// flips ctx.Done() so the parser library short-circuits at the
+	// next between-files boundary. See ParseScreenshots + CancelParse.
+	parseCancel context.CancelFunc
 	// SSEHub is non-nil in --server mode. When set, parse-complete events
 	// are broadcast over SSE instead of (or in addition to) the Wails
 	// runtime event bus.

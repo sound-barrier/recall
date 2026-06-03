@@ -35,6 +35,15 @@ func (a *App) emitParseComplete() {
 	}
 }
 
+// emitParseCancelled is the SSE-only sibling of emitParseCancelled
+// in app_wails.go. Lets the frontend distinguish "stopped" from
+// "done" without polling.
+func (a *App) emitParseCancelled() {
+	if a.SSEHub != nil {
+		a.SSEHub.Broadcast("parse-cancelled")
+	}
+}
+
 // SaveExportToFile is not available in server mode (no native dialogs).
 // The HTTP API exposes GET /api/v1/exports which streams the same payload.
 func (a *App) SaveExportToFile() (string, error) {
