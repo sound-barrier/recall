@@ -1,5 +1,56 @@
 # Changelog
 
+## [0.6.0](https://github.com/sound-barrier/recall/compare/v0.5.0...v0.6.0) (2026-06-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **dossier:** direct-manipulation edit mode + single-source-of-truth layout
+* **matches:** per-match review-status tag + sidebar toggle
+
+### Features
+
+* **dossier:** "Matches reviewed" + "Days since last review" tiles ([93e0e6f](https://github.com/sound-barrier/recall/commit/93e0e6fb0da0e478cb71f4e4b1f5d238f853eb3a))
+* **dossier:** "Most played roles" bar-graph breakdown ([5eac8ed](https://github.com/sound-barrier/recall/commit/5eac8ed00e026cf6a93be46771813ef6c1dbe265))
+* **dossier:** "W / L / D since last review" KPI tile ([db868d8](https://github.com/sound-barrier/recall/commit/db868d86f0246a4f55b131cb70f5fb6fb197c8e8))
+* **dossier:** 8 opt-in widgets (current/longest streak, hero pool, best winrate hero, map types, time/day of week, recent 5 matches) ([6198658](https://github.com/sound-barrier/recall/commit/619865897c3d30fd3b6a1bb28ddc9025e30dd2ca))
+* **dossier:** drag-to-reorder dashboard widgets, incl. cross-row ([c447cf9](https://github.com/sound-barrier/recall/commit/c447cf9474a67a09402b3c917ad8185022dbfd92))
+* **dossier:** edit-mode UX polish — pill toggle, banner, hover controls, undo toast ([c87e294](https://github.com/sound-barrier/recall/commit/c87e29413feb4a8c8b25972d4f71efcebb289f3a))
+* **dossier:** hide/show dashboard widgets via "Edit dashboard" modal ([07a6ae3](https://github.com/sound-barrier/recall/commit/07a6ae352481826e4f65c9438400d577e5cc3e2a))
+* **dossier:** live-reflow drag with ghost source + off-grid revert ([9b4fd6a](https://github.com/sound-barrier/recall/commit/9b4fd6a6a4f91aeb56aed325efa55348ffb2d777))
+* **dossier:** surface "Reset" in the edit banner with two-step confirm ([2fc1e57](https://github.com/sound-barrier/recall/commit/2fc1e577bebf947066af29ed454e601442295cde))
+* **matches:** anchor workflow — plainer copy, set/clear toast, right-click ([e7f6e24](https://github.com/sound-barrier/recall/commit/e7f6e2416aab45f0fe69578a9b1cc2d2dfea5b95))
+* **matches:** per-match review-status tag + sidebar toggle ([93a9003](https://github.com/sound-barrier/recall/commit/93a90032bad993b9f97d2cf0c992a5eb7e12dbf4))
+* **matches:** polish anchor workflow — clearer copy, list pin, jump-to ([fdaaafd](https://github.com/sound-barrier/recall/commit/fdaaafd995faaedcc8ec93e8c2de347f71069244))
+* **matches:** reviewed-by filter + "since this match" anchor ([34917c9](https://github.com/sound-barrier/recall/commit/34917c9ab511c625590b9038e9198703e0b2be3a))
+* **matches:** right-click "Hide match" — third context menu item ([192da97](https://github.com/sound-barrier/recall/commit/192da97206e616d906dacd575a113711bdf389da))
+
+
+### Bug Fixes
+
+* **dossier:** pack overflow rows, span breakdowns, lift AddTile out of grid ([2dece21](https://github.com/sound-barrier/recall/commit/2dece21c74f5a3fa20fb6c9f5edbd5873a6d67f9))
+* **matches:** rename "Unreviewed" → "Not reviewed", drop ✓ from default ([5633376](https://github.com/sound-barrier/recall/commit/5633376c5bebd671f0e113fba8f5bb0321ef315e))
+
+
+### Refactors
+
+* **dossier:** direct-manipulation edit mode + single-source-of-truth layout ([42b3b41](https://github.com/sound-barrier/recall/commit/42b3b41e6bea60c9574f55a13ca3cbaeb0f34850))
+* **dossier:** registry-driven dashboard widgets (Phase 1 of 3) ([3e4850f](https://github.com/sound-barrier/recall/commit/3e4850f0f7f45a396766574fd9e7d0d0c63b5ca5))
+
+
+### Documentation
+
+* **contributing:** flesh out the Windows-via-WSL2 dev section ([194ac63](https://github.com/sound-barrier/recall/commit/194ac63e8af18bc4f9a7c896f94fa89aa2f24889))
+* **contributing:** per-OS Dev Container notes + VS Code WSL workflow ([3595101](https://github.com/sound-barrier/recall/commit/35951010c19c2b3de1281c6d010cde4779122f85))
+
+
+### CI
+
+* GOTOOLCHAIN=auto in Dockerfile.build go-base stage ([27fed47](https://github.com/sound-barrier/recall/commit/27fed4770fd9c7754dc511cdeed85b204d5076c3))
+* pin Dockerfile.build go-base 1.26 → 1.26.4 ([e5cc602](https://github.com/sound-barrier/recall/commit/e5cc602c6fa60d5cff98ba85d531d7ec0e25ca52))
+* pin go-version 1.26 → 1.26.4 to match go.mod directive ([33cf048](https://github.com/sound-barrier/recall/commit/33cf0487e27ecab10b3d88224fb50ac4b644715a))
+* switch go-base 1.26-bookworm → 1.26.4-trixie ([1068929](https://github.com/sound-barrier/recall/commit/106892932c515fc8cf560c1d12ce10f3403771f5))
+
 ## [0.5.0](https://github.com/sound-barrier/recall/compare/v0.4.0...v0.5.0) (2026-06-02)
 
 
