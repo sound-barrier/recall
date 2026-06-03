@@ -360,15 +360,26 @@ func validateMatchesQueryParams(q map[string][]string) error {
 }
 
 // parseMatchesPaginationStrict pulls `limit` + `cursor` and returns
-// an error on a malformed limit (non-integer, negative, or zero).
-// Absent params keep the back-compat unbounded list. Used by the
-// HTTP handler; the legacy helper below is preserved for the unit
-// tests that pin the lenient parsing branch.
+// an error on a malformed limit (non-integer, negative, zero, or
+// present-but-empty). An ABSENT `limit` key keeps the back-compat
+// unbounded list; a key that's present with an empty or invalid
+// value is treated as a schema violation. Used by the HTTP handler;
+// the legacy helper below is preserved for the unit tests that pin
+// the lenient parsing branch.
+//
+// The Has-vs-Get distinction matters because the OpenAPI spec says
+// `limit: integer, minimum: 1, maximum: 1000`, which rejects empty
+// strings. Pre-fix, `?limit=` (key present, value empty) returned
+// 200 with the full corpus — schemathesis caught it.
 func parseMatchesPaginationStrict(r *http.Request) (int, string, error) {
-	cursor := r.URL.Query().Get("cursor")
-	limitStr := r.URL.Query().Get("limit")
-	if limitStr == "" {
+	q := r.URL.Query()
+	cursor := q.Get("cursor")
+	if !q.Has("limit") {
 		return 0, cursor, nil
+	}
+	limitStr := q.Get("limit")
+	if limitStr == "" {
+		return 0, "", fmt.Errorf("limit must be an integer in [1, 1000], got empty value")
 	}
 	n, err := strconv.Atoi(limitStr)
 	if err != nil {

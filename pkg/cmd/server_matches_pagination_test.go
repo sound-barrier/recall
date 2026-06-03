@@ -112,6 +112,43 @@ func TestGetMatches_InvalidLimit_DisablesPagination(t *testing.T) {
 	}
 }
 
+// The strict parser is what the HTTP handler actually uses. It
+// rejects a present-but-empty `limit` because the OpenAPI spec
+// declares it as a positive integer in [1, 1000]. Schemathesis's
+// negative-data-rejection check caught this exact case when the
+// fuzzer generated `?limit=&cursor=…`.
+func TestParseMatchesPaginationStrict_PresentButEmptyLimit_400(t *testing.T) {
+	_, _, err := parseMatchesPaginationStrict(httpReq("GET", "/api/v1/matches?limit="))
+	if err == nil {
+		t.Fatal("present-but-empty limit must error; got nil")
+	}
+}
+
+func TestParseMatchesPaginationStrict_AbsentLimit_NoError(t *testing.T) {
+	// Sanity guard for the back-compat path: NO `limit=` key (the
+	// query string omits it entirely) keeps the unbounded list.
+	n, cursor, err := parseMatchesPaginationStrict(httpReq("GET", "/api/v1/matches"))
+	if err != nil {
+		t.Errorf("absent limit must not error; got %v", err)
+	}
+	if n != 0 {
+		t.Errorf("absent limit n = %d, want 0", n)
+	}
+	if cursor != "" {
+		t.Errorf("absent cursor = %q, want empty", cursor)
+	}
+}
+
+func TestParseMatchesPaginationStrict_PresentButEmptyLimit_HandlerReturns400(t *testing.T) {
+	// End-to-end through the HTTP handler — verifies the strict
+	// parser's error bubbles up as 400 (not 500 / not silent 200).
+	_, mux := newTestApp(t, nil)
+	rec := get(t, mux, "/api/v1/matches?limit=")
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400 (schema-violating limit must reject)", rec.Code)
+	}
+}
+
 func httpReq(method, url string) *http.Request {
 	r, _ := http.NewRequest(method, url, nil)
 	return r
