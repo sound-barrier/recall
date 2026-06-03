@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { MatchRecord } from '../api'
 import { GetProfiles } from '../api'
-import { useMatchesGroup } from '../composables/useMatchesGroup'
+import { useMatchesGroup, type GroupedSection } from '../composables/useMatchesGroup'
+import { useMatchesWindow } from '../composables/useMatchesWindow'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
 import { useWeekStart } from '../composables/useWeekStart'
 import { useOWData } from '../composables/useOWData'
@@ -507,6 +508,62 @@ const setSubline = computed(() => {
 // ─── Sort + group via useMatchesGroup composable ───────────
 const { sortedRecords, groupedSections } = useMatchesGroup(narrowedRecords, groupBy, sortOrder)
 
+// ─── Infinite-scroll window over the grouped sections ──────
+//
+// Renders only the first `renderedCount` rows; an
+// IntersectionObserver sentinel below the rendered set bumps the
+// window by another page when the user scrolls into it. Reset
+// triggers (narrow change, sort change, group change, parse
+// refresh) snap back to one page + scroll the list to top via
+// the resetCounter watcher below. See TECHNICAL_DEBT.md item 6
+// history for why we window client-side rather than HTTP-page.
+const focusedCardIndexRef = computed(() => props.focusedCardIndex ?? -1)
+const {
+  renderedCount,
+  hasMore,
+  bumpWindow,
+  resetCounter,
+} = useMatchesWindow(narrowedRecords, [sortOrder, groupBy], focusedCardIndexRef)
+
+// Slice groupedSections at renderedCount total rows. Headers are
+// free (they don't count toward the cap); a section that runs
+// over the budget keeps only the first K rows; sections past the
+// cap drop entirely so we don't render a dangling header.
+const windowedSections = computed<GroupedSection[]>(() => {
+  const cap = renderedCount.value
+  const out: GroupedSection[] = []
+  let used = 0
+  for (const s of groupedSections.value) {
+    if (used >= cap) break
+    const remaining = cap - used
+    if (s.records.length <= remaining) {
+      out.push(s)
+      used += s.records.length
+    } else {
+      out.push({ key: s.key, header: s.header, records: s.records.slice(0, remaining) })
+      used = cap
+      break
+    }
+  }
+  return out
+})
+
+// IntersectionObserver wiring lives in onMounted/onBeforeUnmount
+// at the bottom of this script block — keeps the DOM-touching
+// concern co-located with the leavesListRef declaration.
+const leavesListRef = ref<HTMLUListElement | null>(null)
+const sentinelRef   = ref<HTMLLIElement | null>(null)
+let sentinelObserver: IntersectionObserver | null = null
+
+// Reset → scroll the leaves list back to the top. Keeps the
+// scrolling concern in the view (where the ref lives) rather
+// than making useMatchesWindow DOM-aware. Pre-fix UX without
+// this: applying a filter that shrinks the set left the
+// scrollbar at the original position, which was disorienting.
+watch(resetCounter, () => {
+  leavesListRef.value?.scrollTo({ top: 0, behavior: 'auto' })
+})
+
 // Index every visible leaf-row by its position in narrowedRecords so
 // App.vue's j/k keyboard nav (which walks `matchesNarrow.narrowedRecords`)
 // can target the matching .leaf-row via `data-card-index`. The order
@@ -620,6 +677,32 @@ onMounted(() => {
   // Move-to button — gracefully degrades to the original bulk action
   // bar instead of surfacing a broken affordance.
   GetProfiles().then((res) => { availableProfiles.value = res }).catch(() => undefined)
+
+  // IntersectionObserver for the infinite-scroll sentinel. The
+  // sentinel only mounts while `hasMore` is true, so we watch
+  // the ref and re-observe on (re)mount. `rootMargin: 300px`
+  // pre-loads the next page just before the user reaches the
+  // tail, which feels instant on a desktop scroll wheel.
+  watch(sentinelRef, (el, prev) => {
+    if (prev && sentinelObserver) sentinelObserver.unobserve(prev)
+    if (!el) return
+    if (!sentinelObserver) {
+      sentinelObserver = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (e.isIntersecting) bumpWindow()
+          }
+        },
+        { root: leavesListRef.value, rootMargin: '300px' },
+      )
+    }
+    sentinelObserver.observe(el)
+  }, { immediate: true })
+})
+
+onBeforeUnmount(() => {
+  sentinelObserver?.disconnect()
+  sentinelObserver = null
 })
 </script>
 
@@ -964,8 +1047,8 @@ onMounted(() => {
         @clear="clearSelection"
       />
 
-      <ul v-if="sortedRecords.length" class="leaves-list" role="list">
-        <template v-for="section in groupedSections" :key="section.key">
+      <ul v-if="sortedRecords.length" ref="leavesListRef" class="leaves-list" role="list">
+        <template v-for="section in windowedSections" :key="section.key">
           <li v-if="section.header" class="section-divider" :aria-label="`Group: ${section.header}`">
             <span class="sd-label">{{ section.header }}</span>
             <span class="sd-count">{{ section.records.length }}</span>
@@ -1070,6 +1153,35 @@ onMounted(() => {
             </span>
           </li>
         </template>
+        <!-- Infinite-scroll sentinel. Observed by an
+             IntersectionObserver wired in onMounted; entering the
+             viewport bumps the window by another page. Hidden
+             from a11y because the announcement comes through
+             the leaves-foot status line below. -->
+        <li
+          v-if="hasMore"
+          ref="sentinelRef"
+          class="leaves-sentinel"
+          aria-hidden="true"
+          data-testid="leaves-sentinel"
+        />
+        <!-- Honest count for screen readers AND sighted users.
+             role="status" + aria-live="polite" so the running
+             total announces softly as the window grows. -->
+        <li
+          class="leaves-foot"
+          role="status"
+          aria-live="polite"
+          data-testid="leaves-foot"
+        >
+          <span v-if="hasMore">
+            Showing {{ renderedCount }} of {{ sortedRecords.length }} matches
+          </span>
+          <span v-else>
+            Showing all {{ sortedRecords.length }}
+            {{ sortedRecords.length === 1 ? 'match' : 'matches' }}
+          </span>
+        </li>
       </ul>
       <p v-else class="leaves-empty">
         No matches in this set.
@@ -2106,6 +2218,32 @@ onMounted(() => {
   flex-direction: column;
   gap: 0.6rem;
   align-items: center;
+}
+
+/* Infinite-scroll sentinel — zero-height marker observed by the
+   IntersectionObserver. Doesn't render anything visible; the
+   visual "you've reached more rows" affordance is the foot
+   below it. */
+.leaves-sentinel {
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* "Showing N of M" foot. Visually subdued — same tone as the
+   empty-state copy — so it sits below the rows without
+   competing with the result chips above. */
+.leaves-foot {
+  margin: 0;
+  padding: 0.9rem 0 1.1rem;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  list-style: none;
 }
 
 .leaves-empty-btn {
