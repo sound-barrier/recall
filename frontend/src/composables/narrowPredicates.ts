@@ -9,12 +9,13 @@ import type { ReviewedByPick } from './useMatchesNarrow'
 // Extracted from a single 85-complexity arrow function so that:
 //   - branch coverage tracks each dimension individually,
 //   - adding a new dimension only touches its own predicate file,
-//   - the duplicated filter math in the (now-deletable) legacy
-//     `useMatchFilters` composable can share these helpers.
+//   - the legacy `useMatchFilters` composable's duplicated
+//     filter math was deleted entirely — narrowPredicates is the
+//     one place dimension semantics live.
 //
-// Every predicate takes the smallest possible `state` slice
-// (typed via `Pick<>`) so callers can construct test states
-// without satisfying fields the predicate never reads.
+// Every predicate takes the smallest possible `state` slice so
+// callers can construct test states without satisfying fields the
+// predicate never reads.
 
 // "M:SS" or "H:MM:SS" → minutes as a float. Bad input reads as 0
 // so a non-parseable play_time can't accidentally satisfy the
