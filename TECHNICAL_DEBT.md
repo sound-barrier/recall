@@ -97,17 +97,3 @@ fine, never renumber. When a section is paid down in full,
 3. Wire `App.vue` to call `GetStartupError()` on mount; render a blocking modal when non-empty.
 
 **Size:** S (remaining step). **Risk:** Low.
-
-## 12. Bundle-size budgets bumped per-feature — observation tool now exists
-
-**Where:** `scripts/check-bundle-size.sh` is still the budget gate; `scripts/audit-bundle.sh` (new) prints the top-N chunks by size. `make bundle-audit` runs it.
-
-**What remains:** no actual lazy-load refactor yet — the audit shows `index-*.js` (84K), `MatchesView-*.js` (83K), `MatchDetailPanel-*.css` (30K) as the top offenders. Cracking either of the JS heavyweights into smaller chunks is the next move, but needs care: `App.lazy-views.test.ts` is the contract that enforces every lazy-load.
-
-**Plan:**
-
-1. (Done) `scripts/audit-bundle.sh` + `make bundle-audit`. Top-20 by size, totals.
-2. Pick a heavyweight (likely `MatchesView` itself — already lazy, but ~82K of bytes). Extract its narrow popover into its own lazy chunk; measure the delta. This step couples with debt item 4 (SFC split).
-3. Document the audit cadence in `docs/dev-reference.md`.
-
-**Size:** S (remaining step). **Risk:** Low.
