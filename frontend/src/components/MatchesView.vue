@@ -541,7 +541,6 @@ const windowedSections = computed<GroupedSection[]>(() => {
       used += s.records.length
     } else {
       out.push({ key: s.key, header: s.header, records: s.records.slice(0, remaining) })
-      used = cap
       break
     }
   }
