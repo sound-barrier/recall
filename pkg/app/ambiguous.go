@@ -3,7 +3,6 @@ package app
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"recall/pkg/db"
 )
@@ -40,11 +39,11 @@ var ErrAmbiguousNotFound = errors.New("ambiguous screenshot not found")
 // On success, the in-memory aggregate cache (delivered via SSE) is
 // refreshed by re-emitting a match-updated event for resolvedTo.
 func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error {
-	if !strings.HasPrefix(ambiguousMatchKey, "ambiguous-") {
+	mk, err := ParseMatchKey(ambiguousMatchKey)
+	if err != nil || !mk.IsAmbiguous() {
 		return fmt.Errorf("%w: %q", ErrInvalidAmbiguousKey, ambiguousMatchKey)
 	}
-	filename := strings.TrimPrefix(ambiguousMatchKey, "ambiguous-")
-	cands, err := a.store.LoadAmbiguousCandidatesFor(filename)
+	cands, err := a.store.LoadAmbiguousCandidatesFor(mk.Filename())
 	if err != nil {
 		return err
 	}
@@ -84,5 +83,6 @@ func validResolution(resolvedTo string, cands []db.AmbiguousCandidate) bool {
 			return true
 		}
 	}
-	return strings.HasPrefix(resolvedTo, "match-")
+	mk, err := ParseMatchKey(resolvedTo)
+	return err == nil && mk.IsTracked()
 }

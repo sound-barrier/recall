@@ -2,7 +2,6 @@ package app
 
 import (
 	"sort"
-	"strings"
 
 	"recall/pkg/db"
 	"recall/pkg/parser"
@@ -64,12 +63,12 @@ func attachReviews(recs []MatchRecord, reviews map[string]db.ReviewState) {
 // pass) shares one candidates entry.
 func attachAmbiguity(recs []MatchRecord, candidates map[string][]db.AmbiguousCandidate) {
 	for i := range recs {
-		if !strings.HasPrefix(recs[i].MatchKey, "ambiguous-") {
+		mk, err := ParseMatchKey(recs[i].MatchKey)
+		if err != nil || !mk.IsAmbiguous() {
 			continue
 		}
 		recs[i].Ambiguous = true
-		filename := strings.TrimPrefix(recs[i].MatchKey, "ambiguous-")
-		if cs, ok := candidates[filename]; ok {
+		if cs, ok := candidates[mk.Filename()]; ok {
 			recs[i].Candidates = make([]AmbiguousAttribution, 0, len(cs))
 			for _, c := range cs {
 				recs[i].Candidates = append(recs[i].Candidates, AmbiguousAttribution{
@@ -190,10 +189,9 @@ func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Anno
 		rec.ReviewedBy = st.ReviewedBy
 		rec.ReviewedAt = st.ReviewedAt
 	}
-	if strings.HasPrefix(key, "ambiguous-") {
+	if mk, err := ParseMatchKey(key); err == nil && mk.IsAmbiguous() {
 		rec.Ambiguous = true
-		filename := strings.TrimPrefix(key, "ambiguous-")
-		if cs, ok := snap.AmbiguousCandidates[filename]; ok {
+		if cs, ok := snap.AmbiguousCandidates[mk.Filename()]; ok {
 			rec.Candidates = make([]AmbiguousAttribution, 0, len(cs))
 			for _, c := range cs {
 				rec.Candidates = append(rec.Candidates, AmbiguousAttribution{
