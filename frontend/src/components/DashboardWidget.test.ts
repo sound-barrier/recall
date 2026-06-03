@@ -46,11 +46,15 @@ describe('DashboardWidget', () => {
     expect(w.find('[data-breakdown="roles"]').exists()).toBe(true)
   })
 
-  it('renders the trash button only when editMode && selected', async () => {
+  it('renders the trash button whenever editMode is on (hover-revealed via CSS, present in DOM)', async () => {
+    // The edit-UX polish PR moves trash from "selection-gated" to
+    // "always-present-in-edit-mode" so users can one-click-remove
+    // without first having to click-select. CSS hover-reveals it for
+    // mouse users; selection keeps it visible without hover.
     const w = mount(DashboardWidget, {
       props: { id: 'winrate', shape: 'kpi', editMode: true, selected: false },
     })
-    expect(w.find('[data-widget-remove="winrate"]').exists()).toBe(false)
+    expect(w.find('[data-widget-remove="winrate"]').exists()).toBe(true)
     await w.setProps({ selected: true })
     expect(w.find('[data-widget-remove="winrate"]').exists()).toBe(true)
     await w.setProps({ editMode: false, selected: true })
