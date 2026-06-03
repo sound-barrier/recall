@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import type { MatchRecord } from '../api'
 import { GetProfiles } from '../api'
 import { useMatchesGroup } from '../composables/useMatchesGroup'
@@ -12,7 +12,13 @@ import MatchTimelineHeader from './MatchTimelineHeader.vue'
 import DashboardWidget from './DashboardWidget.vue'
 import DashboardCustomizer from './DashboardCustomizer.vue'
 import BulkActionBar from './BulkActionBar.vue'
-import NarrowPopover from './NarrowPopover.vue'
+// NarrowPopover is the heavyweight authoring surface (the search +
+// combobox + range pickers + active-clause range etc.). Lazy-load
+// it so MatchesView's initial chunk doesn't carry its ~30K of
+// bytes. The popover only mounts (v-if inside the child) when the
+// user clicks "Narrow this set", so the deferred fetch is invisible
+// in practice. Regression covered by MatchesView.lazy-views.test.ts.
+const NarrowPopover = defineAsyncComponent(() => import('./NarrowPopover.vue'))
 import DashboardAddTile from './DashboardAddTile.vue'
 import DashboardEditBanner from './DashboardEditBanner.vue'
 import MatchRowContextMenu from './MatchRowContextMenu.vue'
