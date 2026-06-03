@@ -1,11 +1,40 @@
 package app
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
+
+// ErrNoParseInFlight is returned by CancelParse when no parse is
+// running. The HTTP layer maps this to 409 Conflict — the request
+// was well-formed, the server's runtime state just doesn't have
+// anything to cancel.
+var ErrNoParseInFlight = errors.New("no parse in flight")
+
+// CancelParse short-circuits an in-flight ParseScreenshots at the
+// next between-files boundary by cancelling the context the parser
+// loop is checking. Returns ErrNoParseInFlight when no parse is
+// running. Wails-bound so the desktop Stop button drives it via the
+// generated bindings; also reachable via DELETE /api/v1/parses/active
+// for server mode.
+//
+// Cancellation IS NOT immediate — the file currently in OCR
+// completes (tesseract is a shell-out, not context-aware) before
+// the loop unwinds. Empirically OCR is 1-3 s/file so the user
+// notices the difference vs the full batch within seconds.
+func (a *App) CancelParse() error {
+	a.parseCancelMu.Lock()
+	defer a.parseCancelMu.Unlock()
+	if a.parseCancel == nil {
+		return ErrNoParseInFlight
+	}
+	a.parseCancel()
+	return nil
+}
 
 // ParseProgressEvent is emitted on the "parse-progress" channel/event
 // after each screenshot finishes OCR. Error is non-empty when the file
@@ -39,6 +68,22 @@ func (a *App) ParseScreenshots() error {
 	a.parseMu.Lock()
 	defer a.parseMu.Unlock()
 
+	// Cancellation seam — see CancelParse(). The cancel func is
+	// stashed under a tiny mutex so the HTTP DELETE handler can
+	// reach it without blocking on parseMu (which the OCR loop
+	// holds for the full run). Cleared on the way out so a
+	// follow-up CancelParse returns ErrNoParseInFlight.
+	ctx, cancel := context.WithCancel(context.Background())
+	a.parseCancelMu.Lock()
+	a.parseCancel = cancel
+	a.parseCancelMu.Unlock()
+	defer func() {
+		a.parseCancelMu.Lock()
+		a.parseCancel = nil
+		a.parseCancelMu.Unlock()
+		cancel()
+	}()
+
 	parsed, err := a.store.LoadAllFilenames()
 	if err != nil {
 		return err
@@ -68,7 +113,7 @@ func (a *App) ParseScreenshots() error {
 	// E/A/D + timestamp-window rules — but the alphabetical order
 	// keeps the natural case fast.
 	var inserts int
-	_, err = parser.ParseScreenshotsDir(screenshotsDir, parsed, func(done, total int, filename string, result *parser.MatchResult, parseErr error) {
+	_, err = parser.ParseScreenshotsDir(ctx, screenshotsDir, parsed, func(done, total int, filename string, result *parser.MatchResult, parseErr error) {
 		t := parser.ScreenshotType(result)
 
 		// Always fire the progress event so the footer counter
@@ -129,6 +174,16 @@ func (a *App) ParseScreenshots() error {
 		}
 		a.emitParseProgress(ev)
 	})
+	// User pressed Stop mid-batch. The partial state already
+	// committed to SQLite stays put (each per-file insert ran
+	// inside the callback before the next iteration). Emit
+	// parse-cancelled so the frontend can flip the Stop button
+	// back to Run; skip the normal error return because the
+	// user asked for this.
+	if errors.Is(err, context.Canceled) {
+		a.emitParseCancelled()
+		return nil
+	}
 	if err != nil {
 		return err
 	}

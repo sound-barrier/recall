@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -54,7 +55,7 @@ func TestParseScreenshotsDir_ContinuesAfterPerFileFailure(t *testing.T) {
 
 	dir := makeFiles(t, "good1.png", "broken.png", "good2.png")
 
-	results, err := ParseScreenshotsDir(dir, nil, nil)
+	results, err := ParseScreenshotsDir(t.Context(), dir, nil, nil)
 	if err != nil {
 		t.Fatalf("a single bad screenshot must not abort the batch; got err=%v", err)
 	}
@@ -99,7 +100,7 @@ func TestParseScreenshotsDir_ProgressReceivesPerFileErrors(t *testing.T) {
 		calls = append(calls, call{done, total, filename, result != nil, err})
 	}
 
-	if _, err := ParseScreenshotsDir(dir, nil, progress); err != nil {
+	if _, err := ParseScreenshotsDir(t.Context(), dir, nil, progress); err != nil {
 		t.Fatalf("dir-level err must be nil; got %v", err)
 	}
 	if len(calls) != 3 {
@@ -140,7 +141,7 @@ func TestParseScreenshotsDir_ProgressReceivesPerFileErrors(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestParseScreenshotsDir_DirLevelErrorStillReturned(t *testing.T) {
-	_, err := ParseScreenshotsDir("/no/such/directory/recall-test", nil, nil)
+	_, err := ParseScreenshotsDir(t.Context(), "/no/such/directory/recall-test", nil, nil)
 	if err == nil {
 		t.Fatal("ReadDir failure must propagate")
 	}
@@ -156,11 +157,69 @@ func TestParseScreenshotsDir_AllFilesFailing(t *testing.T) {
 		return nil, errors.New("everything is broken")
 	})
 	dir := makeFiles(t, "a.png", "b.png")
-	results, err := ParseScreenshotsDir(dir, nil, nil)
+	results, err := ParseScreenshotsDir(t.Context(), dir, nil, nil)
 	if err != nil {
 		t.Fatalf("all-failing batch must still return err=nil; got %v", err)
 	}
 	if len(results) != 0 {
 		t.Errorf("all-failing batch must produce 0 results; got %d", len(results))
+	}
+}
+
+// Cancellation contract: when ctx is cancelled, the loop returns its
+// partial results + ctx.Err() at the next between-files boundary. Files
+// already completed stay in the returned map; the rest are skipped. The
+// stub's Cancel() call mid-batch lets us assert "stops at the boundary
+// immediately after the file we cancelled in".
+func TestParseScreenshotsDir_CtxCancelStopsBetweenFiles(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	var processed []string
+	stubParseSingle(t, func(path string) (*MatchResult, error) {
+		processed = append(processed, filepath.Base(path))
+		// Cancel mid-batch after the first file completes. The next
+		// iteration's ctx.Err() check should fire and return.
+		if len(processed) == 1 {
+			cancel()
+		}
+		return &MatchResult{}, nil
+	})
+
+	dir := makeFiles(t, "a.png", "b.png", "c.png", "d.png")
+	results, err := ParseScreenshotsDir(ctx, dir, nil, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("err = %v, want context.Canceled", err)
+	}
+	if len(processed) != 1 {
+		t.Errorf("processed %d files, want exactly 1 before cancellation", len(processed))
+	}
+	if len(results) != 1 {
+		t.Errorf("results = %d, want 1 (the completed file)", len(results))
+	}
+}
+
+// Pre-cancelled ctx aborts before the first OCR shell-out — guards the
+// common "user clicked Stop just as Parse fired" race.
+func TestParseScreenshotsDir_PreCancelledCtxStopsImmediately(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	var called int
+	stubParseSingle(t, func(string) (*MatchResult, error) {
+		called++
+		return &MatchResult{}, nil
+	})
+
+	dir := makeFiles(t, "a.png", "b.png")
+	results, err := ParseScreenshotsDir(ctx, dir, nil, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("err = %v, want context.Canceled", err)
+	}
+	if called != 0 {
+		t.Errorf("parseSingleFunc called %d times, want 0 (ctx pre-cancelled)", called)
+	}
+	if len(results) != 0 {
+		t.Errorf("results = %d, want 0", len(results))
 	}
 }
