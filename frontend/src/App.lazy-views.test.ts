@@ -32,6 +32,9 @@ describe('App.vue lazy-loaded components', () => {
     // Export bundle modal — only renders when the user clicks
     // "Export bundle…" on the Matches bulk-action bar.
     { name: 'ExportBundleModal',      path: './components/ExportBundleModal.vue' },
+    // Anchor confirmation toast — small, but lazy so the bytes only
+    // hit users who actually stamp an anchor.
+    { name: 'MatchAnchorToast',       path: './components/MatchAnchorToast.vue' },
   ]
 
   for (const { name, path } of views) {

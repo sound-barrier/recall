@@ -15,6 +15,7 @@ import DashboardWidget from './DashboardWidget.vue'
 import DashboardCustomizer from './DashboardCustomizer.vue'
 import DashboardAddTile from './DashboardAddTile.vue'
 import DashboardEditBanner from './DashboardEditBanner.vue'
+import MatchRowContextMenu from './MatchRowContextMenu.vue'
 import DashboardUndoToast from './DashboardUndoToast.vue'
 import { useDashboardLayout } from '../composables/useDashboardLayout'
 import { useDragReorder } from '../composables/useDragReorder'
@@ -96,6 +97,9 @@ const emit = defineEmits<{
   // owns the persisted anchor state via `useMatchAnchor`, so this
   // bubbles up rather than mutating directly.
   'clear-anchor': []
+  // Anchor stamped from the row's right-click context menu. Empty
+  // string for "clear." Same App.vue handler the detail panel uses.
+  'set-anchor': [matchKey: string]
 }>()
 
 // ─── Narrow state via the parent-supplied composable bundle ──
@@ -537,6 +541,29 @@ function onOpenAnchor() {
   if (key === '') return
   narrowOpen.value = false
   emit('open-match', key)
+}
+
+// Row right-click → context menu with quick actions ("Open detail",
+// "Filter from this match" / "Clear since-anchor"). Coordinates come
+// from the native MouseEvent's clientX / clientY so the menu pops up
+// right under the cursor.
+const rowContextMenu = ref<{ x: number; y: number; matchKey: string } | null>(null)
+
+function onRowContext(e: MouseEvent, matchKey: string) {
+  e.preventDefault()
+  rowContextMenu.value = { x: e.clientX, y: e.clientY, matchKey }
+}
+
+function onRowContextClose() {
+  rowContextMenu.value = null
+}
+
+function onRowContextOpenDetail(matchKey: string) {
+  emit('open-match', matchKey)
+}
+
+function onRowContextSetAnchor(matchKey: string) {
+  emit('set-anchor', matchKey)
 }
 
 function formatTime(rec: MatchRecord): string {
@@ -1235,7 +1262,7 @@ onBeforeUnmount(() => {
                         </p>
                       </div>
                       <p v-else class="np-empty">
-                        Open a match → "Set as 'since' anchor" to mark a milestone, then filter from this view.
+                        Open a match → "Filter from this match" to mark a reference point, then return here to apply.
                       </p>
                     </section>
 
@@ -1482,6 +1509,7 @@ onBeforeUnmount(() => {
               },
             ]"
             @click="emit('open-match', rec.match_key)"
+            @contextmenu="onRowContext($event, rec.match_key)"
           >
             <!-- Anchor indicator — a small filled-diamond glyph that
                  shows when this row is the "since this match" anchor.
@@ -1748,6 +1776,18 @@ onBeforeUnmount(() => {
         </ul>
       </div>
     </section>
+
+    <!-- Right-click context menu on list rows. Teleports to body
+         from inside the component so z-index conflicts with the
+         narrow popover / detail panel don't sneak in. -->
+    <MatchRowContextMenu
+      :position="rowContextMenu ? { x: rowContextMenu.x, y: rowContextMenu.y } : null"
+      :match-key="rowContextMenu?.matchKey ?? ''"
+      :is-anchor="rowContextMenu !== null && rowContextMenu.matchKey === anchorKey"
+      @close="onRowContextClose"
+      @open-detail="onRowContextOpenDetail"
+      @set-anchor="onRowContextSetAnchor"
+    />
   </section>
 </template>
 

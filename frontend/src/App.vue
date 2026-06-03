@@ -100,6 +100,9 @@ const UnknownMapsView = defineAsyncComponent(() => import('./components/UnknownM
 // pattern the views use; the brief load-on-first-open delay is
 // invisible at LAN/local speeds.
 const MatchDetailPanel = defineAsyncComponent(() => import('./components/MatchDetailPanel.vue'))
+// Anchor confirmation toast — small, eagerly loaded so it can fire
+// on the very first anchor-set transition without a chunk fetch.
+const MatchAnchorToast = defineAsyncComponent(() => import('./components/MatchAnchorToast.vue'))
 // Sketch-only preview of the analytics-first dashboard (Phase E in
 // ROADMAP.md → "Analysis tab"). The component is mounted on the
 // dedicated Analysis tab so the shipping Matches view stays
@@ -661,12 +664,40 @@ async function onSetMatchReview(matchKey: string, reviewedBy: ReviewedBy) {
 // "Since this match" anchor handler. Empty string clears; any
 // other value sets the anchor to that match. Frontend-only (no
 // API round-trip) since the anchor is persisted in localStorage.
+// Also fires the confirmation toast — set with the match's
+// date-and-map label so the user can verify they got the right
+// match, cleared with a simpler "filter cleared" note.
 function onSetAnchor(matchKey: string) {
+  anchorToastToken += 1
   if (matchKey === '') {
     matchAnchor.clearAnchor()
-  } else {
-    matchAnchor.setAnchor(matchKey)
+    anchorToast.value = { kind: 'cleared', label: '', token: anchorToastToken }
+    return
   }
+  matchAnchor.setAnchor(matchKey)
+  const rec = records.value.find((r) => r.match_key === matchKey)
+  const date = rec?.data?.date ?? ''
+  const map = rec?.data?.map ?? '—'
+  anchorToast.value = {
+    kind: 'set',
+    label: date ? `${date} · ${map}` : map,
+    token: anchorToastToken,
+  }
+}
+
+// "View filter" tap on the anchor toast → switch to Matches tab if
+// needed, then click the same narrow trigger a user would. Mirrors
+// the tour's openNarrow approach so the panel uses its own state
+// machine end-to-end.
+async function onAnchorToastViewFilter() {
+  if (view.value !== 'matches') await goToView('matches')
+  await nextTick()
+  const trigger = document.querySelector<HTMLButtonElement>('[data-narrow-trigger]')
+  trigger?.click()
+}
+
+function onAnchorToastDismiss(token: number) {
+  if (anchorToast.value?.token === token) anchorToast.value = null
 }
 
 // Bulk-hide handler — MatchesView emits this when the user clicks
@@ -804,6 +835,13 @@ async function onResolveAmbiguous(ambiguousKey: string, resolvedTo: string) {
 const matchAnchor = useMatchAnchor()
 const matchesNarrowState = createMatchesNarrowState({ anchorKey: matchAnchor.anchorKey })
 const matchesNarrow = useMatchesNarrow(records, matchesNarrowState)
+
+// Anchor confirmation toast — fires on set + cleared transitions
+// to bridge the cause-effect gap between the detail-panel button
+// and the narrow-panel filter. `token` is the React-style fresh key
+// so back-to-back changes reset the auto-dismiss window.
+const anchorToast = ref<{ kind: 'set' | 'cleared'; label: string; token: number } | null>(null)
+let anchorToastToken = 0
 const selection = useSelectedMatch(matchesNarrow.narrowedRecords)
 
 // Tour-driven narrow popover + filter handlers. The tour fires
@@ -1551,6 +1589,7 @@ useEventStream({
           @move-matches="onMoveMatches"
           @export-bundle="onExportBundleRequest"
           @clear-anchor="onSetAnchor('')"
+          @set-anchor="onSetAnchor"
         />
 
         <!-- ─── ANALYSIS VIEW (coaching dashboard sketch) ──────────
@@ -1609,6 +1648,17 @@ useEventStream({
       @set-match-review="onSetMatchReview"
       @set-anchor="onSetAnchor"
       :anchor-key="matchAnchor.anchorKey.value"
+    />
+
+    <!-- Anchor confirmation toast — appears bottom-right when the
+         "since" reference is set or cleared. Sits ABOVE the
+         dashboard undo toast (different bottom offset) so both can
+         coexist if the user trashes a widget right after stamping
+         an anchor. -->
+    <MatchAnchorToast
+      :state="anchorToast"
+      @view-filter="onAnchorToastViewFilter"
+      @dismiss="onAnchorToastDismiss"
     />
 
     <!-- Fullscreen screenshot lightbox — stacks above the detail

@@ -404,19 +404,19 @@ function onTagKeydown(e: KeyboardEvent) {
         :data-anchor-set="isAnchor || undefined"
         data-set-anchor
         :title="isAnchor
-          ? 'This match is the current “since” anchor. Click to clear.'
-          : 'Mark as the “since” anchor — the Matches narrow panel can then filter to matches after this one.'"
+          ? 'This match is your reference point. Click to clear.'
+          : 'Mark this match as your reference — the Matches view can then filter to matches after this one.'"
         @click="emit('set-anchor', isAnchor ? '' : record.match_key)"
       >
         <span class="since-anchor-glyph" aria-hidden="true">{{ isAnchor ? '◆' : '◇' }}</span>
         <span class="since-anchor-copy">
           <span class="since-anchor-label">
-            {{ isAnchor ? 'Anchor set on this match' : 'Use as “since” anchor' }}
+            {{ isAnchor ? 'Filtering from this match' : 'Filter from this match' }}
           </span>
           <span class="since-anchor-sublabel">
             {{ isAnchor
-              ? 'Click to clear. Toggle the filter in Narrow → Since this match.'
-              : 'Filters the Matches view to only matches after this one.' }}
+              ? 'Reference set. Click to clear. Toggle the filter in Narrow → Since this match.'
+              : 'Marks this as your reference point. Use Narrow → Since this match to apply.' }}
           </span>
         </span>
       </button>
