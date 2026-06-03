@@ -270,6 +270,28 @@ func applyOne(d *sql.DB, m migration) error {
 	return tx.Commit()
 }
 
+// revertOne runs a single migration's `.down.sql` inside a transaction
+// and removes its row from `schema_version`. Test-only today — the
+// migration runner has no production rollback path, but the
+// round-trip test exercises this so a bad `.down.sql` fails CI
+// instead of failing first in a prod rollback.
+func revertOne(d *sql.DB, m migration) error {
+	tx, err := d.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	for _, stmt := range splitStatements(m.down) {
+		if _, err := tx.Exec(stmt); err != nil {
+			return fmt.Errorf("statement %q: %w", firstLine(stmt), err)
+		}
+	}
+	if _, err := tx.Exec(`DELETE FROM schema_version WHERE version = ?`, m.version); err != nil {
+		return fmt.Errorf("clear version %d: %w", m.version, err)
+	}
+	return tx.Commit()
+}
+
 // looksLikeLegacyDB returns true when the DB has parent tables from
 // the pre-framework era but no schema_version table. Used solely to
 // distinguish "fresh DB, apply everything" from "existing DB on the

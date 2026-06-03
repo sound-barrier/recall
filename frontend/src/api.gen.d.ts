@@ -50,7 +50,19 @@ export interface paths {
             };
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Read a single match by key
+         * @description Returns the aggregated `MatchRecord` for one match. Identical
+         *     wire shape to a single entry from `GetMatchResults`, with the
+         *     same read-time inference + child-table folding semantics —
+         *     consumers that need just one match can avoid pulling the
+         *     whole corpus.
+         *
+         *     404 on unknown keys (the `ErrMatchNotFound` sentinel routes
+         *     through `errors.Is` to keep honest "not in corpus" out of
+         *     the 500 catch-all).
+         */
+        get: operations["GetMatchByKey"];
         put?: never;
         post?: never;
         /**
@@ -1433,6 +1445,43 @@ export interface operations {
         responses: {
             /** @description All matches cleared. */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetMatchByKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match-2026-05-10T22-21-11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Match found. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchRecord"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description Match not found. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

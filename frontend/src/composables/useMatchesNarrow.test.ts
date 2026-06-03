@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { MatchRecord } from '../api'
 import { useMatchesNarrow, createMatchesNarrowState } from './useMatchesNarrow'
 
@@ -481,7 +481,8 @@ describe('useMatchesNarrow', () => {
 
     it('a set anchor key with sinceAnchorActive=false does not filter', () => {
       const records = corpus()
-      const anchorKey = ref('d3')
+      const anchorRef = ref('d3')
+      const anchorKey = computed(() => anchorRef.value)
       const state = createMatchesNarrowState({ anchorKey })
       const { narrowedRecords } = useMatchesNarrow(records, state)
       expect(narrowedRecords.value).toHaveLength(5)
@@ -489,7 +490,8 @@ describe('useMatchesNarrow', () => {
 
     it('sinceAnchorActive=true with a set anchor drops records on or before the anchor', () => {
       const records = corpus()
-      const anchorKey = ref('d3')
+      const anchorRef = ref('d3')
+      const anchorKey = computed(() => anchorRef.value)
       const state = createMatchesNarrowState({ anchorKey })
       state.sinceAnchorActive.value = true
       const { narrowedRecords } = useMatchesNarrow(records, state)
@@ -498,7 +500,8 @@ describe('useMatchesNarrow', () => {
 
     it('sinceAnchorActive=true with NO anchor key set is a no-op (rendered safely)', () => {
       const records = corpus()
-      const anchorKey = ref('')
+      const anchorRef = ref('')
+      const anchorKey = computed(() => anchorRef.value)
       const state = createMatchesNarrowState({ anchorKey })
       state.sinceAnchorActive.value = true
       const { narrowedRecords } = useMatchesNarrow(records, state)
@@ -507,7 +510,8 @@ describe('useMatchesNarrow', () => {
 
     it('sinceAnchorActive=true with anchor key pointing at a deleted match is a no-op', () => {
       const records = corpus()
-      const anchorKey = ref('does-not-exist')
+      const anchorRef = ref('does-not-exist')
+      const anchorKey = computed(() => anchorRef.value)
       const state = createMatchesNarrowState({ anchorKey })
       state.sinceAnchorActive.value = true
       const { narrowedRecords } = useMatchesNarrow(records, state)
@@ -516,7 +520,8 @@ describe('useMatchesNarrow', () => {
 
     it('anyNarrow flips on when sinceAnchorActive is true AND an anchor is set', () => {
       const records = corpus()
-      const anchorKey = ref('d3')
+      const anchorRef = ref('d3')
+      const anchorKey = computed(() => anchorRef.value)
       const state = createMatchesNarrowState({ anchorKey })
       const { anyNarrow } = useMatchesNarrow(records, state)
       expect(anyNarrow.value).toBe(false)
@@ -526,7 +531,8 @@ describe('useMatchesNarrow', () => {
 
     it('resetNarrow turns sinceAnchorActive off but leaves the anchorKey alone', () => {
       const records = corpus()
-      const anchorKey = ref('d3')
+      const anchorRef = ref('d3')
+      const anchorKey = computed(() => anchorRef.value)
       const state = createMatchesNarrowState({ anchorKey })
       state.sinceAnchorActive.value = true
       const { resetNarrow } = useMatchesNarrow(records, state)
@@ -534,7 +540,7 @@ describe('useMatchesNarrow', () => {
       expect(state.sinceAnchorActive.value).toBe(false)
       // anchorKey survives — it's owned by the useMatchAnchor singleton,
       // not by the narrow-panel reset.
-      expect(anchorKey.value).toBe('d3')
+      expect(anchorRef.value).toBe('d3')
     })
   })
 })

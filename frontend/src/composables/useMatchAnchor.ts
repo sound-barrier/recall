@@ -1,4 +1,4 @@
-import { type Ref } from 'vue'
+import { computed, type ComputedRef } from 'vue'
 
 import { usePersistedRef } from './usePersistedRef'
 
@@ -13,11 +13,19 @@ import { usePersistedRef } from './usePersistedRef'
 // string for "no anchor set." Empty-string-as-absence avoids the
 // usePersistedRef null-clearing dance — match_key values are never
 // empty in practice.
+//
+// `anchorKey` is a `ComputedRef<string>`: reactive on read, but the
+// type system rejects `.value = ...` writes. The only mutation
+// surface is `setAnchor` / `clearAnchor`, which is what keeps
+// localStorage and the in-memory value in sync. A previous shape
+// exposed a plain `Ref<string>` and risked consumers writing to it
+// directly, bypassing persistence — surfaced as the "shared
+// mutable across a composable seam" entry in TECHNICAL_DEBT.md.
 
 export const ANCHOR_STORAGE_KEY = 'recall.matches.sinceAnchor'
 
 export interface MatchAnchorApi {
-  anchorKey: Ref<string>
+  anchorKey: ComputedRef<string>
   setAnchor: (key: string) => void
   clearAnchor: () => void
 }
@@ -32,7 +40,7 @@ export function useMatchAnchor(): MatchAnchorApi {
     parse: (raw) => raw,
   })
   cached = {
-    anchorKey: value,
+    anchorKey: computed(() => value.value),
     setAnchor: (key: string) => set(key),
     clearAnchor: () => set(''),
   }

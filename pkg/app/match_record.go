@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -129,6 +130,33 @@ func (a *App) GetMatchResults() ([]MatchRecord, error) {
 		inferResultFromRank(&recs[i].Data)
 	}
 	return recs, nil
+}
+
+// ErrMatchNotFound is returned by GetMatchByKey when no match has the
+// requested key. HTTP handlers route this to 404 via errors.Is.
+var ErrMatchNotFound = errors.New("match not found")
+
+// GetMatchByKey returns a single aggregated MatchRecord. Reuses the
+// same aggregateAll pipeline as GetMatchResults (so the inference
+// + child-table folding semantics are identical), then filters to
+// the requested key. Returns ErrMatchNotFound if no row matches.
+//
+// The implementation aggregates the full corpus today; a future
+// optimization is a per-key aggregator that runs one SELECT per
+// table with a `WHERE match_key = ?` filter. Not done yet because
+// the current corpus sizes are small and the predictable shape (one
+// aggregator) is worth the duplication cost.
+func (a *App) GetMatchByKey(matchKey string) (MatchRecord, error) {
+	recs, err := a.GetMatchResults()
+	if err != nil {
+		return MatchRecord{}, err
+	}
+	for _, r := range recs {
+		if r.MatchKey == matchKey {
+			return r, nil
+		}
+	}
+	return MatchRecord{}, ErrMatchNotFound
 }
 
 // ClearDatabase deletes every row across every per-type table.
