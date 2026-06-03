@@ -103,3 +103,68 @@ describe('ParseStatusBar', () => {
     expect(bar.attributes('inert')).toBe('')
   })
 })
+
+describe('ParseStatusBar — ABORT tile (item 15 extension)', () => {
+  it('renders the ABORT button while a parse is in flight', () => {
+    const w = mount(ParseStatusBar, {
+      props: {
+        parseProgress: evt({ done: 1, total: 5, filename: 'a.png' }),
+        parseLog: [],
+      },
+    })
+    const btn = w.find('[data-testid="status-bar-cancel-btn"]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.text()).toContain('ABORT')
+    expect(btn.attributes('aria-label')).toBe('Abort parse')
+    expect((btn.element as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('does NOT render the ABORT button when no parse is in flight', () => {
+    const w = mount(ParseStatusBar, {
+      props: { parseProgress: null, parseLog: [] },
+    })
+    expect(w.find('[data-testid="status-bar-cancel-btn"]').exists()).toBe(false)
+  })
+
+  it('flips to "ABORTING" + disables itself when cancellingParse is true', () => {
+    const w = mount(ParseStatusBar, {
+      props: {
+        parseProgress: evt({ done: 1, total: 5, filename: 'a.png' }),
+        parseLog: [],
+        cancellingParse: true,
+      },
+    })
+    const btn = w.find('[data-testid="status-bar-cancel-btn"]')
+    expect(btn.text()).toContain('ABORTING')
+    expect(btn.attributes('aria-label')).toBe('Aborting parse')
+    expect((btn.element as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('click on ABORT emits cancel-parse and NOT go-to-view', async () => {
+    const w = mount(ParseStatusBar, {
+      props: {
+        parseProgress: evt({ done: 1, total: 5, filename: 'a.png' }),
+        parseLog: [],
+      },
+    })
+    await w.find('[data-testid="status-bar-cancel-btn"]').trigger('click')
+    expect(w.emitted('cancel-parse')).toBeTruthy()
+    expect(w.emitted('cancel-parse')).toHaveLength(1)
+    // The bar's outer click handler must NOT fire (data-no-jump +
+    // @click.stop) so the user doesn't get yanked to Ingest at the
+    // same moment they hit Abort.
+    expect(w.emitted('go-to-view')).toBeFalsy()
+  })
+
+  it('clicking elsewhere on the bar still emits go-to-view (regression guard)', async () => {
+    const w = mount(ParseStatusBar, {
+      props: {
+        parseProgress: evt({ done: 1, total: 5, filename: 'a.png' }),
+        parseLog: [],
+      },
+    })
+    await w.find('.counter').trigger('click')
+    expect(w.emitted('go-to-view')).toBeTruthy()
+    expect(w.emitted('go-to-view')![0]).toEqual(['ingest'])
+  })
+})

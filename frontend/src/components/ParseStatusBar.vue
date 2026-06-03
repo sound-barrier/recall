@@ -5,10 +5,19 @@ import type { ParseProgressEvent } from './ParseProgressPanel.vue'
 const props = defineProps<{
   parseProgress: ParseProgressEvent | null
   parseLog: ParseProgressEvent[]
+  // True between the Stop click and the SSE parse-cancelled
+  // confirmation. Drives the ABORT tile's "ABORTING…" copy +
+  // disabled state so a second click can't fire a redundant
+  // DELETE. Mirrors IngestView's local Stop button so a user on
+  // any tab can kill the run without navigating.
+  cancellingParse?: boolean
 }>()
 
 const emit = defineEmits<{
   'go-to-view': [next: 'settings' | 'ingest' | 'matches' | 'unknown']
+  // ABORT click. App.vue owns the actual CancelParse() call +
+  // cancellingParse state machine.
+  'cancel-parse': []
 }>()
 
 // Tactical-status-bar gist:
@@ -167,9 +176,33 @@ function onJumpToIngest(e: MouseEvent) {
 
     <span class="rule" aria-hidden="true" />
 
-    <!-- per-shot tick (right-aligned via flex) -->
+    <!-- per-shot tick -->
     <div class="group group-tick">
       <span class="tick-label">{{ lastTickLabel || '—' }}</span>
+    </div>
+
+    <span class="rule" aria-hidden="true" />
+
+    <!-- ABORT tile — kill-switch at the right edge. data-no-jump
+         so the click doesn't get intercepted by the outer
+         jump-to-Ingest handler; @click.stop is belt-and-suspenders
+         in case a future refactor changes that pathway. Visible
+         only while inFlight so the bar's grace-tail (final 1.5 s
+         after parse-complete) doesn't briefly show an unclickable
+         button. -->
+    <div v-if="inFlight" class="group group-abort">
+      <button
+        type="button"
+        class="abort-btn"
+        data-no-jump
+        data-testid="status-bar-cancel-btn"
+        :disabled="cancellingParse"
+        :aria-label="cancellingParse ? 'Aborting parse' : 'Abort parse'"
+        @click.stop="emit('cancel-parse')"
+      >
+        <span class="abort-glyph" aria-hidden="true">■</span>
+        <span class="abort-label">{{ cancellingParse ? 'ABORTING' : 'ABORT' }}</span>
+      </button>
     </div>
   </aside>
 </template>
@@ -343,6 +376,90 @@ function onJumpToIngest(e: MouseEvent) {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.06em;
   color: var(--text-faint);
+}
+
+/* --- group 5: ABORT tile ---
+   The kill-switch at the right edge of the bar. Loss-color
+   border + ghost interior; on hover the interior fills with
+   the loss tint so the affordance reads as "armed" without
+   shouting at idle. Active state slightly inverts. The
+   "ABORTING" cancelling state pulses the border ring so the
+   user sees the cancel signal landing. */
+.group-abort {
+  flex: 0 0 auto;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.abort-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 12px;
+  background: transparent;
+  border: 1px solid var(--loss);
+  border-radius: 1px;
+  color: var(--loss);
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 140ms ease-out, color 140ms ease-out, transform 100ms ease-out;
+}
+
+.abort-btn:hover:not(:disabled) {
+  background: var(--loss-soft);
+  color: var(--loss);
+}
+
+.abort-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  background: var(--loss);
+  color: var(--primary-text-on-accent, #111);
+}
+
+.abort-btn:focus-visible {
+  outline: 2px solid var(--loss);
+  outline-offset: 2px;
+}
+
+.abort-btn:disabled {
+  cursor: not-allowed;
+  /* Pulse the border while cancelling so the user sees the
+     stop signal in flight without us needing a separate
+     spinner. */
+  animation: abort-pulse 1.1s ease-in-out infinite;
+}
+
+.abort-glyph {
+  font-size: 9px;
+  line-height: 1;
+  /* The square ■ glyph reads as "stop" at small sizes. */
+}
+
+.abort-label {
+  /* Tabular alignment so "ABORT" and "ABORTING" don't bounce
+     the bar's right edge when the state flips. */
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes abort-pulse {
+  0%, 100% {
+    border-color: var(--loss);
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    border-color: var(--loss);
+    box-shadow: 0 0 0 3px var(--loss-soft);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .abort-btn:disabled { animation: none; }
 }
 
 /* Light-theme overrides — match the cream/orange palette without

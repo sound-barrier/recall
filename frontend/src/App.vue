@@ -536,15 +536,18 @@ async function runParse() {
   }
 }
 
-// Stop click from IngestView. Sets the local cancelling flag
-// straight away so the button flips to "Cancelling…" without
-// waiting for the SSE round-trip; the actual flag-clear happens
-// in onParseCancelled above. Swallows 409 because the only way
-// to hit it is a race where the parse finished naturally before
-// the Stop click landed — the UI will reconcile via the
-// parse-complete branch instead.
+// Stop click from IngestView's Run Parse button OR the bottom
+// status bar's ABORT tile. Sets the local cancelling flag
+// straight away so the buttons flip to "Cancelling…" / "ABORTING"
+// without waiting for the SSE round-trip; the actual flag-clear
+// happens in onParseCancelled above. Swallows 409 because the
+// only way to hit it is a race where the parse finished
+// naturally before the Stop click landed — the UI reconciles via
+// the parse-complete branch instead. Does NOT gate on parseBusy:
+// watcher-triggered parses don't flip parseBusy (it's owned by
+// runParse), but the user must still be able to abort them.
 async function onCancelParse() {
-  if (!parseBusy.value || cancellingParse.value) return
+  if (cancellingParse.value) return
   cancellingParse.value = true
   try {
     await CancelParse()
@@ -552,7 +555,8 @@ async function onCancelParse() {
     // Race: parse finished between click and DELETE. The
     // parse-complete handler already ran (or is about to), and
     // the cancellingParse flag gets cleared in runParse's
-    // finally block.
+    // finally block or in the parse-complete onComplete handler.
+    cancellingParse.value = false
   }
 }
 
@@ -1204,6 +1208,13 @@ useEventStream({
     await load()
     lastParsedAt.value = Date.now()
     try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {}
+    // Race tolerance: if the user clicked Stop right before the
+    // parse finished naturally, parse-complete may arrive before
+    // (or instead of) parse-cancelled. Clear the cancelling flag
+    // here so the Stop button doesn't stay stuck on "Cancelling…"
+    // for a watcher-triggered parse where runParse's finally
+    // never ran.
+    cancellingParse.value = false
   },
   // SSE confirmation of a Stop click. Records ref already reflects
   // whatever made it into SQLite before the cancellation point —
@@ -1589,9 +1600,11 @@ useEventStream({
     <ParseStatusBar
       :parse-progress="parseProgress"
       :parse-log="parseLog"
+      :cancelling-parse="cancellingParse"
       :inert="backgroundFrozen || undefined"
       :aria-hidden="backgroundFrozen ? 'true' : undefined"
       @go-to-view="goToView"
+      @cancel-parse="onCancelParse"
     />
 
     <!-- Match detail panel — replaces inline expansion. Slides in
