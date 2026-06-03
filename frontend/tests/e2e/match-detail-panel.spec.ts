@@ -165,7 +165,7 @@ test.describe('match detail panel — keyboard ergonomics', () => {
 
     // After open, focus lands on the close button (markup-first
     // focusable inside the panel).
-    let onCloseBtn = await page.evaluate(() => document.activeElement?.classList.contains('detail-close'))
+    const onCloseBtn = await page.evaluate(() => document.activeElement?.classList.contains('detail-close'))
     expect(onCloseBtn).toBe(true)
 
     // Tab forward many times. Every focused element should stay

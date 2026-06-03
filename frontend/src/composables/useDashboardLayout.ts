@@ -39,6 +39,23 @@ import {
 
 export const LAYOUT_STORAGE_KEY = 'recall.dashboard.layout'
 
+const LAYOUT_VERSION_KEY = 'recall.dashboard.layoutVersion'
+
+// Bumped to schedule a one-shot consolidation migration. The runner
+// in `useDashboardLayout()` compares the stored version against this
+// constant; if older (incl. unset), runs the migration pipeline once,
+// persists the result, and stamps the new version. Subsequent reads
+// trust the stored layout verbatim — never re-shape an already-
+// migrated user's dossier on every reload.
+//
+// Bump history:
+//   1 — consolidate single-widget overflow rows of the same shape
+//       into denser rows. Fixes the row-explosion bug from
+//       pre-row-packing `appendToRow`: users who clicked "+ Add" on
+//       every opt-in widget ended up with one widget per row past
+//       the install defaults.
+const CURRENT_LAYOUT_VERSION = 1
+
 // Soft-thresholds for `appendToRow`. Adding a widget to a row that
 // already holds this many of its shape kicks the new widget into a
 // fresh row below — keeps the dossier's headline-then-detail
@@ -79,6 +96,13 @@ let cached: DashboardLayoutApi | null = null
 
 export function useDashboardLayout(): DashboardLayoutApi {
   if (cached) return cached
+
+  // One-shot consolidation migration. Operates directly on
+  // localStorage so it runs BEFORE `usePersistedRef` hydrates —
+  // otherwise the migration would see the empty default and the
+  // user's broken layout would round-trip unchanged. Idempotent:
+  // a re-run after the version stamp is a no-op.
+  runLayoutMigrationsOnce()
 
   const { value: rawLayout, set } = usePersistedRef<RowLayout>({
     key: LAYOUT_STORAGE_KEY,
@@ -274,22 +298,180 @@ function maxDefaultRow(): number {
   return Math.max(...Object.keys(DEFAULT_ROW_LAYOUT).map((k) => Number(k)))
 }
 
-// Pick the target row for an append. If the requested row is under
-// the per-shape soft cap, returns it as-is; otherwise allocates a
-// fresh row past the highest existing index and seeds it empty.
+// Pick the target row for an append.
+//
+//   1. The widget's defaultRow — if its same-shape count is under cap.
+//   2. Any existing OVERFLOW row (past max defaultRow) holding only
+//      same-shape widgets and still under cap.
+//   3. Otherwise spawn a fresh overflow row at maxRow+1.
+//
+// Step 2 is the fix for the row-explosion bug: previously, "default
+// row at cap" → "spawn new row" every time, so a user adding 4 KPIs
+// past the cap ended up with 4 single-widget rows instead of one
+// 4-KPI overflow row. We only repurpose overflow rows (not other
+// shapes' default rows) so a stray KPI never lands in the breakdown
+// default row.
 function nextRowForAppend(next: RowLayout, rowIdx: number, shape: 'kpi' | 'breakdown'): number {
-  const row = next[rowIdx] ?? []
-  let shapeCount = 0
-  for (const id of row) {
-    if (widgetById(id)?.shape === shape) shapeCount++
-  }
   const cap = shape === 'kpi' ? KPI_ROW_SOFT_MAX : BREAKDOWN_ROW_SOFT_MAX
-  if (shapeCount < cap) {
-    next[rowIdx] = row
+
+  // Step 1: defaultRow if it has same-shape capacity.
+  const def = next[rowIdx] ?? []
+  let defShapeCount = 0
+  for (const id of def) {
+    if (widgetById(id)?.shape === shape) defShapeCount++
+  }
+  if (defShapeCount < cap) {
+    next[rowIdx] = def
     return rowIdx
   }
+
+  // Step 2: existing overflow rows past max defaultRow, ascending,
+  // matching shape with room.
+  const defaultMax = maxDefaultRow()
+  const overflowKeys = Object.keys(next)
+    .map((k) => Number(k))
+    .filter((k) => k > defaultMax)
+    .sort((a, b) => a - b)
+  for (const k of overflowKeys) {
+    const row = next[k] ?? []
+    if (row.length >= cap) continue
+    if (row.every((id) => widgetById(id)?.shape === shape)) {
+      next[k] = row
+      return k
+    }
+  }
+
+  // Step 3: spawn a fresh overflow row.
   const maxRow = Math.max(0, ...Object.keys(next).map((k) => Number(k)))
   const overflow = maxRow + 1
   next[overflow] = []
   return overflow
+}
+
+// ─── Migration pipeline ────────────────────────────────────────
+
+function runLayoutMigrationsOnce(): void {
+  const storedVersion = readLayoutVersion()
+  if (storedVersion >= CURRENT_LAYOUT_VERSION) return
+  // Read the persisted layout straight from storage — the
+  // composable's `usePersistedRef` hasn't hydrated yet at this
+  // point. An unset key means "no user layout to migrate"; we
+  // still stamp the version so future migrations don't run twice.
+  let layout: RowLayout | null = null
+  try {
+    const raw = localStorage.getItem(LAYOUT_STORAGE_KEY)
+    if (raw !== null) {
+      const decoded: unknown = JSON.parse(raw)
+      if (isRowLayout(decoded)) {
+        layout = decoded
+      }
+    }
+  } catch {
+    // Unreadable or malformed — leave layout null; nothing to migrate.
+  }
+  if (layout !== null) {
+    let next = layout
+    // Migrations run in order. Adding a future migration: append a
+    // step here that gates on `storedVersion < N`, mutates `next`.
+    if (storedVersion < 1) {
+      next = consolidateOverflowRows(next)
+    }
+    if (!shallowLayoutEqual(layout, next)) {
+      try {
+        localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(next))
+      } catch {
+        // Storage write failed — leave the version unstamped so the
+        // migration is retried next mount.
+        return
+      }
+    }
+  }
+  writeLayoutVersion(CURRENT_LAYOUT_VERSION)
+}
+
+function readLayoutVersion(): number {
+  try {
+    const raw = localStorage.getItem(LAYOUT_VERSION_KEY)
+    if (raw === null) return 0
+    const n = Number(raw)
+    return Number.isFinite(n) ? n : 0
+  } catch {
+    return 0
+  }
+}
+
+function writeLayoutVersion(v: number): void {
+  try {
+    localStorage.setItem(LAYOUT_VERSION_KEY, String(v))
+  } catch {
+    // Storage unavailable — migrations will re-run next mount. That's
+    // fine: they're idempotent given a fresh `current` snapshot.
+  }
+}
+
+// Consolidation re-packs rows PAST the highest default row only.
+// Default rows are user-touched terrain and stay verbatim. Overflow
+// rows get their contents flattened in row-order, then re-distributed
+// into the fewest possible shape-coherent rows respecting the soft
+// caps. The result is a deterministic re-pack: same input → same
+// output, no row-index churn for users whose overflow rows were
+// already correctly packed.
+function consolidateOverflowRows(stored: RowLayout): RowLayout {
+  const defaultMax = maxDefaultRow()
+  const out: RowLayout = {}
+  // Carry default rows verbatim.
+  for (const [k, v] of Object.entries(stored)) {
+    const rowIdx = Number(k)
+    if (rowIdx <= defaultMax) out[rowIdx] = [...v]
+  }
+  // Flatten overflow rows into a single ordered list of (id, shape).
+  const overflow: { id: string; shape: 'kpi' | 'breakdown' }[] = []
+  const overflowKeys = Object.keys(stored)
+    .map((k) => Number(k))
+    .filter((n) => n > defaultMax)
+    .sort((a, b) => a - b)
+  for (const k of overflowKeys) {
+    for (const id of stored[k] ?? []) {
+      const def = widgetById(id)
+      if (!def) continue
+      overflow.push({ id, shape: def.shape })
+    }
+  }
+  // Re-pack: contiguous same-shape runs into a row each, splitting
+  // when the soft cap is reached or the shape changes.
+  let nextIdx = defaultMax + 1
+  let row: string[] = []
+  let shape: 'kpi' | 'breakdown' | null = null
+  function flush() {
+    if (row.length === 0) return
+    out[nextIdx] = row
+    nextIdx++
+    row = []
+    shape = null
+  }
+  for (const { id, shape: s } of overflow) {
+    const cap = s === 'kpi' ? KPI_ROW_SOFT_MAX : BREAKDOWN_ROW_SOFT_MAX
+    if (shape !== s || row.length >= cap) {
+      flush()
+      shape = s
+    }
+    row.push(id)
+  }
+  flush()
+  return out
+}
+
+function shallowLayoutEqual(a: RowLayout, b: RowLayout): boolean {
+  const ak = Object.keys(a)
+  const bk = Object.keys(b)
+  if (ak.length !== bk.length) return false
+  for (const k of ak) {
+    const av = a[Number(k)]
+    const bv = b[Number(k)]
+    if (!av || !bv || av.length !== bv.length) return false
+    for (let i = 0; i < av.length; i++) {
+      if (av[i] !== bv[i]) return false
+    }
+  }
+  return true
 }

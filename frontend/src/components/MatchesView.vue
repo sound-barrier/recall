@@ -373,13 +373,6 @@ watch(editMode, (v) => {
   if (!v) selectedWidgetId.value = null
 })
 
-// Last-row index drives the "+" tile placement — render it inside
-// the final row so it sits flush with the widgets it's siblings of.
-const lastRowIdx = computed<number | null>(() => {
-  const rows = dashboardRows.value
-  return rows.length === 0 ? null : rows[rows.length - 1]!.index
-})
-
 function onWidgetSelect(id: string) {
   selectedWidgetId.value = id
 }
@@ -797,13 +790,16 @@ onBeforeUnmount(() => {
           >
             <component :is="def.component" v-bind="widgetProps[def.id]" />
           </DashboardWidget>
-          <DashboardAddTile
-            v-if="editMode && row.index === lastRowIdx"
-            key="__add-tile__"
-            @click="showDashboardCustomizer = true"
-          />
         </TransitionGroup>
       </template>
+      <!-- "+" tile lives in its own dedicated row below every
+           widget row so it can never collide with widget controls
+           (trash buttons / drag affordances) and stays prominent
+           even when the last widget row is a tightly-packed
+           overflow. Rendered only in edit mode. -->
+      <div v-if="editMode" class="dashboard-add-row">
+        <DashboardAddTile @click="showDashboardCustomizer = true" />
+      </div>
 
       <!-- Narrow trigger + popover. -->
       <div class="dossier-actions">
@@ -1682,11 +1678,34 @@ onBeforeUnmount(() => {
 }
 
 /* Breakdown widgets need more room than KPI tiles to render their
-   bar visualization (map/hero labels + bar + share %). Bumping the
-   per-cell min via `:deep()` reaches through DashboardWidget's
-   scoped root. */
+   bar visualization (map/hero labels + bar + share %). Span 2 grid
+   tracks instead of setting `min-width: 280px` on the cell —
+   `min-width` on a grid child forces the track to grow past the
+   `minmax(180px, 1fr)` calculation, which collides with the
+   auto-fit track count when the row also holds KPIs. The result
+   was visual overlap on dense rows. Spanning 2 tracks keeps the
+   breakdown wide enough for its bars while staying inside the
+   grid's track budget — auto-fit clamps the span to the available
+   track count at narrow widths, so a 320px viewport still renders
+   cleanly. */
 .dashboard-row :deep(.breakdown) {
-  min-width: 280px;
+  grid-column: span 2;
+}
+
+/* "+ Add widget" affordance sits in its own dedicated row, full
+   width, beneath every widget row. Reserves a clear, prominent
+   slot so users find the add path without hunting through a busy
+   last widget row — and ensures the AddTile's pulse animation
+   never crowds an adjacent widget's trash button or drag grip. */
+.dashboard-add-row {
+  display: flex;
+  margin-top: 0.5rem;
+}
+
+.dashboard-add-row :deep(.dashboard-add-tile) {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 3.2rem;
 }
 
 .dossier-actions { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem; }
