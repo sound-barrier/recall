@@ -527,6 +527,18 @@ const anchorChipLabel = computed(() => {
   return d ? `${d} · ${map}` : map
 })
 
+// Jump-to-anchor shortcut from the narrow panel. Closes the
+// panel first so the focus return-target is well-defined, then
+// asks App.vue to open the anchored match. If the anchor record
+// no longer exists in the corpus the affordance is gated upstream
+// (we only render the button inside `v-if="anchorRecord"`).
+function onOpenAnchor() {
+  const key = anchorKey.value
+  if (key === '') return
+  narrowOpen.value = false
+  emit('open-match', key)
+}
+
 function formatTime(rec: MatchRecord): string {
   return rec.data?.finished_at ?? ''
 }
@@ -1201,14 +1213,25 @@ onBeforeUnmount(() => {
                         </label>
                         <p class="np-since-anchor-meta" data-since-anchor-label>
                           <span class="np-since-anchor-date">{{ anchorChipLabel }}</span>
-                          <button
-                            type="button"
-                            class="np-since-anchor-clear"
-                            data-since-anchor-clear
-                            @click="emit('clear-anchor')"
-                          >
-                            Clear anchor
-                          </button>
+                          <span class="np-since-anchor-actions">
+                            <button
+                              type="button"
+                              class="np-since-anchor-open"
+                              data-since-anchor-open
+                              title="Open the anchor's match in the detail panel."
+                              @click="onOpenAnchor"
+                            >
+                              ↗ open
+                            </button>
+                            <button
+                              type="button"
+                              class="np-since-anchor-clear"
+                              data-since-anchor-clear
+                              @click="emit('clear-anchor')"
+                            >
+                              Clear anchor
+                            </button>
+                          </span>
                         </p>
                       </div>
                       <p v-else class="np-empty">
@@ -1455,10 +1478,23 @@ onBeforeUnmount(() => {
                 'is-ticked': selectedKeys.has(rec.match_key),
                 'kbd-focused': props.focusedCardIndex !== undefined
                   && narrowedIndexByKey.get(rec.match_key) === props.focusedCardIndex,
+                'is-anchor': rec.match_key === anchorKey,
               },
             ]"
             @click="emit('open-match', rec.match_key)"
           >
+            <!-- Anchor indicator — a small filled-diamond glyph that
+                 shows when this row is the "since this match" anchor.
+                 Sits in the absolute corner so it doesn't push other
+                 cells. The .is-anchor class on the row also adds a
+                 left-edge accent stripe via app.css. -->
+            <span
+              v-if="rec.match_key === anchorKey"
+              class="leaf-anchor-pin"
+              aria-label="Current “since” anchor"
+              title="This match is the current “since” anchor."
+              data-leaf-anchor-pin
+            >◆</span>
             <!-- Contextual checkbox — always in the DOM so the row
                  geometry never jumps. Visually faint when idle, full-
                  opacity on row hover / focus / when ticked / when ANY
@@ -2518,6 +2554,70 @@ onBeforeUnmount(() => {
 }
 .np-toggle-label input[type="checkbox"] { accent-color: var(--accent); }
 
+/* "Since this match" panel section — meta row holds the anchor's
+   date/map label on the left and a pair of action buttons (open,
+   clear) on the right. Stacking on narrow widths keeps the
+   buttons reachable instead of overflowing the panel. */
+.np-since-anchor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.np-since-anchor-meta {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  flex-wrap: wrap;
+}
+
+.np-since-anchor-date {
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.np-since-anchor-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.np-since-anchor-open,
+.np-since-anchor-clear {
+  appearance: none;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.55rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.np-since-anchor-open:hover,
+.np-since-anchor-clear:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.np-since-anchor-open:focus-visible,
+.np-since-anchor-clear:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
 .np-foot {
   display: flex;
   align-items: center;
@@ -2744,6 +2844,31 @@ onBeforeUnmount(() => {
 .leaf-row.result-victory .leaf-strip { background: var(--win); }
 .leaf-row.result-defeat  .leaf-strip { background: var(--loss); }
 .leaf-row.result-draw    .leaf-strip { background: var(--draw, var(--text-mute)); }
+
+/* Anchor row treatment — a left-edge accent stripe + a faint accent
+   wash so users scanning the list can find their "since" match at a
+   glance. The diamond glyph sits absolute in the row's top-right
+   corner where it never collides with stats / result chips. */
+.leaf-row.is-anchor {
+  position: relative;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: inset 3px 0 0 0 var(--accent);
+}
+
+.leaf-row.is-anchor:hover {
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+
+.leaf-anchor-pin {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.5rem;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--accent);
+  pointer-events: auto;
+  cursor: help;
+}
 
 /* 2. When — date stacked over time. */
 .leaf-when {

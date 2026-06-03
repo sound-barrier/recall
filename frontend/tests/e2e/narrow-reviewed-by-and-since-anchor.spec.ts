@@ -126,6 +126,49 @@ test.describe('narrow panel — reviewed-by + since-anchor', () => {
     await expect(page.locator('.active-chip:not(.clear)').first()).toContainText('2026-05-03')
   })
 
+  test('list view shows a diamond pin + accent stripe on the anchor row', async ({ page }) => {
+    // Stamp the anchor on d3.
+    await page.locator('[data-match-key="d3-anchor"]').click()
+    await page.locator('[data-set-anchor]').click()
+    await page.keyboard.press('Escape')
+
+    // Only the anchor row carries the `.is-anchor` class AND a
+    // visible pin glyph. Other rows have neither — verifies that
+    // the indicator scales with the anchor identity, not all rows.
+    const anchorRow = page.locator('.leaf-row[data-match-key="d3-anchor"]')
+    await expect(anchorRow).toHaveClass(/is-anchor/)
+    await expect(anchorRow.locator('[data-leaf-anchor-pin]')).toBeVisible()
+
+    const otherRow = page.locator('.leaf-row[data-match-key="d1-self"]')
+    await expect(otherRow).not.toHaveClass(/is-anchor/)
+    await expect(otherRow.locator('[data-leaf-anchor-pin]')).toHaveCount(0)
+
+    // After clearing, the indicator disappears.
+    await page.locator('[data-match-key="d3-anchor"]').click()
+    await page.locator('[data-set-anchor]').click()
+    await page.keyboard.press('Escape')
+    await expect(anchorRow).not.toHaveClass(/is-anchor/)
+    await expect(anchorRow.locator('[data-leaf-anchor-pin]')).toHaveCount(0)
+  })
+
+  test('narrow panel "↗ open" shortcut closes the panel + opens the anchor', async ({ page }) => {
+    // Set the anchor.
+    await page.locator('[data-match-key="d3-anchor"]').click()
+    await page.locator('[data-set-anchor]').click()
+    await page.keyboard.press('Escape')
+
+    // Open narrow panel and verify the open shortcut is wired.
+    await openNarrow(page)
+    const openBtn = page.locator('[data-since-anchor-open]')
+    await expect(openBtn).toBeVisible()
+    await openBtn.click()
+
+    // Narrow panel closed, detail panel for the anchor opens.
+    await expect(page.locator('#narrow-popover')).toHaveCount(0)
+    // The detail panel renders the anchor button in the active state.
+    await expect(page.locator('[data-set-anchor]')).toHaveClass(/is-anchor/)
+  })
+
   test('Clear anchor button in the narrow panel persists across reloads', async ({ page }) => {
     // Set the anchor.
     await page.locator('[data-match-key="d3-anchor"]').click()
