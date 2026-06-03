@@ -83,17 +83,3 @@ fine, never renumber. When a section is paid down in full,
 3. If no: rename the deprecation marker on this debt item to "intentional design" and remove from the list.
 
 **Size:** L if executed. **Risk:** Med.
-
-## 8. `log.Fatal` at startup — REMAINING: Wails native dialog
-
-**Where:** `pkg/app/app.go::Startup`. The five `log.Fatal` paths have been replaced with a captured `startupErr` field exposed via `StartupError()`. Server-mode wrapper (`pkg/cmd/server.go::RunServer`) now checks and exits cleanly with a "Recall server failed to start: <reason>" message instead of panic-style termination.
-
-**What remains:** the Wails wrapper (`pkg/cmd/wails.go::RunWails`) doesn't yet surface the captured error to the user — failures still result in a flash-and-disappear window for desktop users. The frontend needs to poll `App.GetStartupError()` (new Wails-bound method TBD) on mount and render a modal if it returns non-empty.
-
-**Plan:**
-
-1. (Done) `App.startupErr` field + `captureFatal()` helper + `StartupError()` reader. Server-mode wrapper exits cleanly on non-nil.
-2. Add `(a *App) GetStartupError() string` returning `a.startupErr.Error()` or "" — Wails-bound so the frontend can read it.
-3. Wire `App.vue` to call `GetStartupError()` on mount; render a blocking modal when non-empty.
-
-**Size:** S (remaining step). **Risk:** Low.
