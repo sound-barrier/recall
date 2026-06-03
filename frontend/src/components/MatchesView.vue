@@ -687,13 +687,21 @@ onMounted(() => {
     if (prev && sentinelObserver) sentinelObserver.unobserve(prev)
     if (!el) return
     if (!sentinelObserver) {
+      // Root = null (document viewport). Using the leaves-list as
+      // the root would always classify the sentinel as
+      // "intersecting" — the list has no overflow boundary, so
+      // its bounding-client-rect always contains the sentinel.
+      // The viewport is the natural scroll container for this
+      // app. rootMargin pre-loads the next page just before the
+      // user reaches the tail so the new rows are already
+      // composited when they swing into view.
       sentinelObserver = new IntersectionObserver(
         (entries) => {
           for (const e of entries) {
             if (e.isIntersecting) bumpWindow()
           }
         },
-        { root: leavesListRef.value, rootMargin: '300px' },
+        { root: null, rootMargin: '200px' },
       )
     }
     sentinelObserver.observe(el)
