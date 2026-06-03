@@ -169,6 +169,60 @@ test.describe('narrow panel — reviewed-by + since-anchor', () => {
     await expect(page.locator('[data-set-anchor]')).toHaveClass(/is-anchor/)
   })
 
+  test('confirmation toast fires on set with the match label + "View filter" action', async ({ page }) => {
+    await page.locator('[data-match-key="d3-anchor"]').click()
+    await page.locator('[data-set-anchor]').click()
+
+    const toast = page.locator('[data-anchor-toast]')
+    await expect(toast).toBeVisible()
+    await expect(toast).toContainText(/reference set/i)
+    await expect(toast).toContainText('2026-05-03')
+    // The "View filter" action opens the narrow panel.
+    await page.keyboard.press('Escape')
+    await page.locator('[data-anchor-toast-view]').click()
+    await expect(page.locator('#narrow-popover')).toBeVisible()
+  })
+
+  test('confirmation toast fires on clear with the cleared-state copy', async ({ page }) => {
+    // Set then immediately clear.
+    await page.locator('[data-match-key="d3-anchor"]').click()
+    await page.locator('[data-set-anchor]').click()
+    await page.locator('[data-set-anchor]').click()
+    const toast = page.locator('[data-anchor-toast]')
+    await expect(toast).toBeVisible()
+    await expect(toast).toContainText(/reference cleared/i)
+    // No "View filter" action when cleared — the affordance only
+    // makes sense when there IS a filter to view.
+    await expect(toast.locator('[data-anchor-toast-view]')).toHaveCount(0)
+  })
+
+  test('right-click a list row → context menu offers Filter from this match', async ({ page }) => {
+    const row = page.locator('.leaf-row[data-match-key="d4-unrevwd"]')
+    await row.click({ button: 'right' })
+    const menu = page.locator('[data-row-ctx]')
+    await expect(menu).toBeVisible()
+    await expect(menu).toContainText(/filter from this match/i)
+    // Clicking the anchor item stamps the anchor + dismisses the menu.
+    await page.locator('[data-row-ctx-anchor]').click()
+    await expect(menu).toHaveCount(0)
+    // The row now wears the anchor class.
+    await expect(row).toHaveClass(/is-anchor/)
+  })
+
+  test('right-clicking the anchor row offers Clear since-anchor', async ({ page }) => {
+    // Set anchor on d3 first via the detail panel.
+    await page.locator('[data-match-key="d3-anchor"]').click()
+    await page.locator('[data-set-anchor]').click()
+    await page.keyboard.press('Escape')
+    // Right-click the anchor row.
+    await page.locator('.leaf-row[data-match-key="d3-anchor"]').click({ button: 'right' })
+    const menu = page.locator('[data-row-ctx]')
+    await expect(menu).toContainText(/clear.*anchor/i)
+    // Click the anchor item → cleared.
+    await page.locator('[data-row-ctx-anchor]').click()
+    await expect(page.locator('.leaf-row[data-match-key="d3-anchor"]')).not.toHaveClass(/is-anchor/)
+  })
+
   test('Clear anchor button in the narrow panel persists across reloads', async ({ page }) => {
     // Set the anchor.
     await page.locator('[data-match-key="d3-anchor"]').click()
