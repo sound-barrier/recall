@@ -290,6 +290,46 @@ describe('App.vue — unsupported-tesseract modal a11y', () => {
   })
 })
 
+describe('App.vue — startup-error modal (item 8)', () => {
+  it('stays hidden when GetStartupError returns an empty string', async () => {
+    const wrapper = await mountApp({ records: [] })
+    expect(wrapper.find('[data-testid="startup-error-modal"]').exists()).toBe(false)
+  })
+
+  it('renders the captured message when GetStartupError returns non-empty', async () => {
+    const wrapper = await mountApp({
+      records: [],
+      startupError: 'startup: profile manager init: permission denied',
+    })
+    const modal = wrapper.find('[data-testid="startup-error-modal"]')
+    expect(modal.exists()).toBe(true)
+    expect(modal.attributes('role')).toBe('alertdialog')
+    expect(modal.text()).toContain('startup: profile manager init: permission denied')
+  })
+
+  it('marks the background container inert + aria-hidden while open', async () => {
+    const wrapper = await mountApp({
+      records: [],
+      startupError: 'startup: open SQLite /home/u/db: read-only filesystem',
+    })
+    const container = wrapper.find('.container')
+    expect(container.attributes('inert')).toBeDefined()
+    expect(container.attributes('aria-hidden')).toBe('true')
+  })
+
+  it('has no Close / Cancel button — restart is the only recovery', async () => {
+    const wrapper = await mountApp({
+      records: [],
+      startupError: 'startup: create db directory /etc/recall: permission denied',
+    })
+    const modal = wrapper.find('[data-testid="startup-error-modal"]')
+    // The unsupported-tesseract modal has Cancel + Continue Anyway; the
+    // startup-error variant intentionally has none. A future PR that
+    // adds a "Quit" or "Retry" button can update this expectation.
+    expect(modal.findAll('button')).toHaveLength(0)
+  })
+})
+
 // ── First-run modal gating ───────────────────────────────────────────
 // The modal renders only when `firstRunPending && !tourActive`.
 // Both signals are seeded from localStorage; mountApp's defaults

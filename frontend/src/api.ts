@@ -142,6 +142,16 @@ export function GetVersion(): Promise<string> {
   return _get<{ version: string }>('/api/v1/system/version').then(d => d.version)
 }
 
+// Captured Startup failure or empty when boot was clean. App.vue
+// calls this on mount and renders a blocking modal when non-empty.
+// In server mode the server exits before mounting routes if Startup
+// captured an error, so this practically always resolves to "" —
+// the route exists for parity + future test harnesses.
+export function GetStartupError(): Promise<string> {
+  if (IS_WAILS) return _wails('GetStartupError')
+  return _get<{ message: string }>('/api/v1/system/startup-error').then(d => d.message)
+}
+
 export type UpdateInfo = { checked: boolean; dev_build: boolean; available: boolean; latest: string; url: string }
 
 export function CheckForUpdate(): Promise<UpdateInfo> {
