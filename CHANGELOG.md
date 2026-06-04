@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.8.0](https://github.com/sound-barrier/recall/compare/v0.7.0...v0.8.0) (2026-06-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* **dashboard:** refactor widgets to inject dossier + populate schemas (PR C)
+* **dossier:** query-layer refactor + useDossier inject helper (PR B)
+* **dashboard:** schema foundation for per-widget config (PR A)
+
+### Features
+
+* **dashboard:** gear icon + WidgetConfigPopover (PR D) ([2c9f52f](https://github.com/sound-barrier/recall/commit/2c9f52fd743154b1899227ffa7c06f0e192c051a))
+* **dashboard:** refactor widgets to inject dossier + populate schemas (PR C) ([de8be92](https://github.com/sound-barrier/recall/commit/de8be9292ded30b316355f42c67eb9307fef431e))
+* **dashboard:** schema foundation for per-widget config (PR A) ([3ba2743](https://github.com/sound-barrier/recall/commit/3ba27431c945519a95e048fff9f18a9afb92dc21))
+* **dashboard:** show the widget gear independent of edit mode ([f420e45](https://github.com/sound-barrier/recall/commit/f420e4527a6d255abcd6f07bb682b897af4ac22b))
+* **dossier:** query-layer refactor + useDossier inject helper (PR B) ([a4c8633](https://github.com/sound-barrier/recall/commit/a4c86339d4a8a56ed2ade5e14943e1d534b57a8a))
+
+
+### Bug Fixes
+
+* **dashboard:** flip widget-config popover above the gear near the viewport bottom ([3400b94](https://github.com/sound-barrier/recall/commit/3400b941f6944fed06f26aeed72152def348b461))
+
+
+### Documentation
+
+* **dashboard:** close out the widget-config refactor (PR E) ([d3bba4c](https://github.com/sound-barrier/recall/commit/d3bba4c3c26d0ce82f83566f3bf9f0af58b8cd70))
+* drop stale TECHNICAL_DEBT.md item references from code comments ([91f84cb](https://github.com/sound-barrier/recall/commit/91f84cb3de4c96ff02f624ba065f5c8c955ac699))
+
+
+### Tests
+
+* **cmd:** handler gap coverage for /matches routes ([37b59c4](https://github.com/sound-barrier/recall/commit/37b59c4d2ad119acb04597567dcb8b84418e73f3))
+
 ## [0.7.0](https://github.com/sound-barrier/recall/compare/v0.6.0...v0.7.0) (2026-06-04)
 
 
