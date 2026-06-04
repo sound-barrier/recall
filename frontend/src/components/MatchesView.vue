@@ -4,6 +4,14 @@ import type { MatchRecord } from '../api'
 import { GetProfiles } from '../api'
 import { useMatchesGroup, type GroupedSection } from '../composables/useMatchesGroup'
 import { useMatchesWindow } from '../composables/useMatchesWindow'
+import {
+  DEFAULT_BEST_WINRATE_HERO_MIN_MATCHES,
+  DEFAULT_MOST_PLAYED_HERO_THRESHOLD,
+  DEFAULT_RECENT_RESULTS_COUNT,
+  DEFAULT_TIME_OF_DAY_BUCKET_COUNT,
+  DEFAULT_TOP_BY_COUNT_LIMIT,
+  DEFAULT_TOP_HEROES_LIMIT,
+} from '../composables/useMatchesDossier'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
 import { useWeekStart } from '../composables/useWeekStart'
 import { useOWData } from '../composables/useOWData'
@@ -271,13 +279,30 @@ const ow = useOWData()
 // PR B: weekStart drives the day-of-week breakdown's rotation so the
 // row matches the user's calendar preference.
 const { weekStart } = useWeekStart()
+const dossier = useMatchesDossier(narrowedRecords, leaverHandling, ow.heroRole, weekStart)
 const {
-  winrate, topMaps, topHeroes, topRoles, totalTimePlayed, mostPlayedHero, averageKDA,
+  // Bedrock — precomputed refs with no per-widget config.
+  winrate, totalTimePlayed, averageKDA,
   reviewedCount, daysSinceLastReview, wldSinceLastReview,
-  // PR B opt-in widgets
-  currentStreak, longestWinStreak, heroPoolSize, bestWinrateHero,
-  topMapTypes, timeOfDayBuckets, dayOfWeekBuckets, recentResults,
-} = useMatchesDossier(narrowedRecords, leaverHandling, ow.heroRole, weekStart)
+  currentStreak, longestWinStreak, heroPoolSize, topRoles,
+} = dossier
+
+// Materialize the dossier query helpers with PR-B defaults — these
+// match the hardcoded constants the precomputed refs used before the
+// query-layer refactor. PR C replaces this block: widgets each call
+// useDossier() + useWidgetConfig() in their own setup and stop
+// receiving these via prop bags.
+const topMaps         = dossier.topByCount({ getter: (r) => r.data?.map,  limit: DEFAULT_TOP_BY_COUNT_LIMIT })
+const topHeroes       = dossier.topHeroesByMinutes({ limit: DEFAULT_TOP_HEROES_LIMIT })
+const mostPlayedHero  = dossier.mostPlayedHero({ minPercentPlayed: DEFAULT_MOST_PLAYED_HERO_THRESHOLD })
+const bestWinrateHero = dossier.bestWinrateHero({
+  minPercentPlayed: DEFAULT_MOST_PLAYED_HERO_THRESHOLD,
+  minMatches:       DEFAULT_BEST_WINRATE_HERO_MIN_MATCHES,
+})
+const topMapTypes      = dossier.topByCount({ getter: (r) => r.data?.type, limit: DEFAULT_TOP_BY_COUNT_LIMIT })
+const timeOfDayBuckets = dossier.timeOfDayBuckets({ bucketCount: DEFAULT_TIME_OF_DAY_BUCKET_COUNT })
+const dayOfWeekBuckets = dossier.dayOfWeekBuckets()
+const recentResults    = dossier.recentResults({ count: DEFAULT_RECENT_RESULTS_COUNT })
 
 // ─── Dashboard widget layout ────────────────────────────────────
 //

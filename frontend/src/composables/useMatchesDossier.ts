@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue'
+import { computed, toValue, type ComputedRef, type MaybeRefOrGetter, type Ref } from 'vue'
 import type { MatchRecord } from '../api'
 import { formatPlayMinutes, formatToHundredths, parseGameLengthMinutes, type WeekStart } from '../match-helpers'
 
@@ -7,6 +7,24 @@ import { formatPlayMinutes, formatToHundredths, parseGameLengthMinutes, type Wee
 // draws from the denominator, top-N breakdowns, leaver-tally
 // exclusion) is testable in isolation. No DOM, no Vue components —
 // just `Ref<MatchRecord[]>` in, `ComputedRef` out.
+//
+// Shape: two-tier surface modeled on Grafana's data-source +
+// panel-options vocabulary. Bedrock values that have no user-tunable
+// knobs (W/L/D, winrate, total time played, etc.) ship as
+// `ComputedRef<T>`. Knob-bearing surfaces (top-N breakdowns,
+// thresholds, bucket counts) ship as parameterized query helpers:
+// each takes a `MaybeRefOrGetter<Opts>` so callers can pass plain
+// values OR a reactive getter that pulls from the widget's
+// useWidgetConfig output. PR B added the surface with hardcoded
+// callers; PR C populates the per-widget config schemas so widgets
+// wire their own knobs through.
+//
+// Each query helper opens its own `computed()` so multiple call sites
+// share Vue's reactive cache when their toValue()-resolved opts are
+// shallowly equal — i.e. two widgets both asking for "top 5 by
+// data.map" don't trigger two scans. The N-walks-vs-1-walk worry of
+// the precomputed-refs design is moot at this corpus size (≤ 50k
+// records is the obsessive case).
 
 export type LeaverHandling = 'include' | 'exclude-tally' | 'hide'
 
@@ -152,12 +170,14 @@ export interface WLDSinceLastReview {
   referenceAt: string | null
 }
 
-// Minimum heroes_played[].percent_played for a record to count
-// toward the most-played-hero win-rate denom. Picked at 20% so a
-// brief experimental swap doesn't drag the rate around, but the
-// canonical "split your time across two heroes" case (e.g.
-// 60/40 ana/baptiste) still attributes win/loss to both.
-const MOST_PLAYED_HERO_THRESHOLD = 20
+// Default minimum heroes_played[].percent_played for a record to
+// count toward the most-played-hero win-rate denom. Picked at 20%
+// so a brief experimental swap doesn't drag the rate around, but
+// the canonical "split your time across two heroes" case (e.g.
+// 60/40 ana/baptiste) still attributes win/loss to both. The
+// dossier query helpers accept this as an explicit `minPercentPlayed`
+// option so widgets can override via useWidgetConfig.
+export const DEFAULT_MOST_PLAYED_HERO_THRESHOLD = 20
 
 // Maps a hero name to its canonical role. Production passes
 // `useOWData().heroRole`; tests pass a small mock. Returning
@@ -197,16 +217,26 @@ export interface BucketEntry {
   share: number
 }
 
-// Minimum qualifying matches for the best-winrate-hero KPI to
-// surface a hero — prevents a 1W / 0L spike on a one-off pick from
-// dominating the read.
-const BEST_WINRATE_HERO_MIN_MATCHES = 3
+// Default minimum qualifying matches for the best-winrate-hero KPI
+// to surface a hero — prevents a 1W / 0L spike on a one-off pick
+// from dominating the read. Widgets override via useWidgetConfig.
+export const DEFAULT_BEST_WINRATE_HERO_MIN_MATCHES = 3
 
-// Time-of-day bucket labels. Six four-hour buckets covering the
-// 24-hour clock; index = Math.floor(hour / 4).
-const TIME_OF_DAY_BUCKET_LABELS = [
-  '00–04', '04–08', '08–12', '12–16', '16–20', '20–24',
-] as const
+// Generates time-of-day labels for a given bucket count (6 → 4-hour
+// windows, 12 → 2-hour, 24 → 1-hour). Endpoints zero-padded to 2
+// digits so the labels read uniformly in the breakdown row. Module-
+// local; the dossier's timeOfDayBuckets query helper is the only
+// caller.
+function makeTimeOfDayLabels(bucketCount: number): string[] {
+  const hoursPerBucket = 24 / bucketCount
+  const out: string[] = []
+  for (let i = 0; i < bucketCount; i++) {
+    const start = i * hoursPerBucket
+    const end = (i + 1) * hoursPerBucket
+    out.push(`${String(start).padStart(2, '0')}–${String(end).padStart(2, '0')}`)
+  }
+  return out
+}
 
 // Day-of-week labels in Sun-Sat (JS Date.getDay) order. Rotation
 // against useWeekStart happens at consumption time so the dossier
@@ -215,9 +245,23 @@ const DAY_OF_WEEK_LABELS = [
   'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat',
 ] as const
 
-// Recent-N-matches widget caps. 5 fits the dossier breakdown row's
-// width comfortably.
-const RECENT_RESULTS_COUNT = 5
+// Default recent-N-matches widget cap. 5 fits the dossier breakdown
+// row's width comfortably. Widgets override via useWidgetConfig.
+export const DEFAULT_RECENT_RESULTS_COUNT = 5
+
+// Default top-maps / top-map-types limit. Five rows is the breakdown
+// grid's natural fit for short-label entries (map names, map types).
+export const DEFAULT_TOP_BY_COUNT_LIMIT = 5
+
+// Default top-heroes-by-minutes limit. Three rows because the
+// time-based row carries a longer label ("7h32min") than the
+// short-label breakdowns above.
+export const DEFAULT_TOP_HEROES_LIMIT = 3
+
+// Default time-of-day bucket count. Six 4-hour windows matches the
+// historical layout. Widgets opt into 12 (2-hour) or 24 (1-hour)
+// via useWidgetConfig.
+export const DEFAULT_TIME_OF_DAY_BUCKET_COUNT = 6 as const
 
 export function useMatchesDossier(
   records: Readonly<Ref<MatchRecord[]>>,
@@ -254,77 +298,91 @@ export function useMatchesDossier(
     return denom === 0 ? null : Math.round((t.w / denom) * 100)
   })
 
-  // Generic top-N-by-count builder. The full record set drives the
+  // Generic top-N-by-count query. The full record set drives the
   // breakdown (NOT tallyRecords) so a user filtering "exclude-tally"
   // for leavers still sees leaver-affected maps in the breakdown —
   // the per-cell winrate then reads pre-tally-exclusion. We can
   // reconsider that if a user reports it as confusing; for now the
   // simpler "everything counts here" rule wins.
-  function topByCount(getter: (r: MatchRecord) => string | undefined, limit = 5): BreakdownEntry[] {
-    const counts = new Map<string, { total: number; w: number; l: number }>()
-    for (const r of records.value) {
-      const key = getter(r)
-      if (!key) continue
-      const entry = counts.get(key) ?? { total: 0, w: 0, l: 0 }
-      entry.total++
-      if (r.data?.result === 'victory') entry.w++
-      else if (r.data?.result === 'defeat') entry.l++
-      counts.set(key, entry)
-    }
-    // Share denominator is "total records that contributed a key" —
-    // records without the field (no map / no hero) don't dilute the
-    // percentages of the ones that did. With 100 matches, 95 of
-    // them on parseable maps, an Atlas count of 30 reports as
-    // 30 / 95 ≈ 32 % share, not 30 / 100.
-    const totalForBreakdown = [...counts.values()].reduce((sum, c) => sum + c.total, 0)
-    return [...counts.entries()]
-      .sort((a, b) => b[1].total - a[1].total)
-      .slice(0, limit)
-      .map(([key, c]) => ({
-        key,
-        total: c.total,
-        winrate: c.w + c.l === 0 ? 0 : Math.round((c.w / (c.w + c.l)) * 100),
-        share: totalForBreakdown === 0 ? 0 : Math.round((c.total / totalForBreakdown) * 100),
-      }))
+  //
+  // Drives the top-maps, top-heroes-by-count, and top-map-types
+  // widgets — each passes its own getter + limit. The widget's
+  // useWidgetConfig output supplies `limit`; PR B callers hardcode
+  // it to match today's behaviour.
+  function topByCount(
+    opts: MaybeRefOrGetter<{ getter: (r: MatchRecord) => string | undefined; limit: number }>,
+  ): ComputedRef<BreakdownEntry[]> {
+    return computed(() => {
+      const { getter, limit } = toValue(opts)
+      const counts = new Map<string, { total: number; w: number; l: number }>()
+      for (const r of records.value) {
+        const key = getter(r)
+        if (!key) continue
+        const entry = counts.get(key) ?? { total: 0, w: 0, l: 0 }
+        entry.total++
+        if (r.data?.result === 'victory') entry.w++
+        else if (r.data?.result === 'defeat') entry.l++
+        counts.set(key, entry)
+      }
+      // Share denominator is "total records that contributed a key" —
+      // records without the field (no map / no hero) don't dilute the
+      // percentages of the ones that did. With 100 matches, 95 of
+      // them on parseable maps, an Atlas count of 30 reports as
+      // 30 / 95 ≈ 32 % share, not 30 / 100.
+      const totalForBreakdown = [...counts.values()].reduce((sum, c) => sum + c.total, 0)
+      return [...counts.entries()]
+        .sort((a, b) => b[1].total - a[1].total)
+        .slice(0, limit)
+        .map(([key, c]) => ({
+          key,
+          total: c.total,
+          winrate: c.w + c.l === 0 ? 0 : Math.round((c.w / (c.w + c.l)) * 100),
+          share: totalForBreakdown === 0 ? 0 : Math.round((c.total / totalForBreakdown) * 100),
+        }))
+    })
   }
-
-  const topMaps   = computed(() => topByCount((r) => r.data?.map))
 
   // Top heroes by SUMMED play time across every heroes_played[]
   // entry — not by primary-hero match count. The dossier's bar
   // visualization then reads "what hero did you spend the most time
   // on" rather than "what hero did you click first most often."
-  // Limit defaults to 3 (vs topMaps' 5) because the time-based row
-  // carries a longer label ("7h32min") that needs room to breathe in
-  // the breakdown grid. Records whose heroes_played[] is missing or
-  // whose entries lack a parseable play_time contribute nothing.
-  const topHeroes = computed<HeroBreakdownEntry[]>(() => {
-    const buckets = new Map<string, { minutes: number; w: number; l: number }>()
-    for (const r of records.value) {
-      const heroes = r.data?.heroes_played ?? []
-      for (const hp of heroes) {
-        if (!hp.hero) continue
-        const m = parseGameLengthMinutes(hp.play_time)
-        if (m === null) continue
-        const bucket = buckets.get(hp.hero) ?? { minutes: 0, w: 0, l: 0 }
-        bucket.minutes += m
-        if (r.data?.result === 'victory') bucket.w++
-        else if (r.data?.result === 'defeat') bucket.l++
-        buckets.set(hp.hero, bucket)
+  // Default limit is 3 (vs topByCount widgets' typical 5) because
+  // the time-based row carries a longer label ("7h32min") that needs
+  // room to breathe in the breakdown grid. Records whose
+  // heroes_played[] is missing or whose entries lack a parseable
+  // play_time contribute nothing.
+  function topHeroesByMinutes(
+    opts: MaybeRefOrGetter<{ limit: number }>,
+  ): ComputedRef<HeroBreakdownEntry[]> {
+    return computed(() => {
+      const { limit } = toValue(opts)
+      const buckets = new Map<string, { minutes: number; w: number; l: number }>()
+      for (const r of records.value) {
+        const heroes = r.data?.heroes_played ?? []
+        for (const hp of heroes) {
+          if (!hp.hero) continue
+          const m = parseGameLengthMinutes(hp.play_time)
+          if (m === null) continue
+          const bucket = buckets.get(hp.hero) ?? { minutes: 0, w: 0, l: 0 }
+          bucket.minutes += m
+          if (r.data?.result === 'victory') bucket.w++
+          else if (r.data?.result === 'defeat') bucket.l++
+          buckets.set(hp.hero, bucket)
+        }
       }
-    }
-    const totalMinutes = [...buckets.values()].reduce((sum, b) => sum + b.minutes, 0)
-    return [...buckets.entries()]
-      .sort((a, b) => b[1].minutes - a[1].minutes)
-      .slice(0, 3)
-      .map(([key, b]) => ({
-        key,
-        totalMinutes: b.minutes,
-        share: totalMinutes === 0 ? 0 : Math.round((b.minutes / totalMinutes) * 100),
-        winrate: b.w + b.l === 0 ? 0 : Math.round((b.w / (b.w + b.l)) * 100),
-        timeLabel: formatPlayMinutes(b.minutes),
-      }))
-  })
+      const totalMinutes = [...buckets.values()].reduce((sum, b) => sum + b.minutes, 0)
+      return [...buckets.entries()]
+        .sort((a, b) => b[1].minutes - a[1].minutes)
+        .slice(0, limit)
+        .map(([key, b]) => ({
+          key,
+          totalMinutes: b.minutes,
+          share: totalMinutes === 0 ? 0 : Math.round((b.minutes / totalMinutes) * 100),
+          winrate: b.w + b.l === 0 ? 0 : Math.round((b.w / (b.w + b.l)) * 100),
+          timeLabel: formatPlayMinutes(b.minutes),
+        }))
+    })
+  }
 
   // Total match time across the tally-eligible records. Sourced
   // from data.game_length (the SUMMARY screen's "match length"
@@ -355,30 +413,44 @@ export function useMatchesDossier(
   })
 
   // Win-rate annotation for the Most-played-hero KPI tile. Sources
-  // the hero name from topHeroes[0] (time-ranked) and the W/L
-  // counts from records where that hero's percent_played cleared
-  // MOST_PLAYED_HERO_THRESHOLD. Draws skip both buckets (same rule
-  // as the headline winrate). Null winrate when no qualifying
+  // the hero name from topHeroesByMinutes[0] (time-ranked) and the
+  // W/L counts from records where that hero's percent_played cleared
+  // the `minPercentPlayed` threshold. Draws skip both buckets (same
+  // rule as the headline winrate). Null winrate when no qualifying
   // decisive matches exist — caller renders the hero name without
   // a percentage in that case.
-  const mostPlayedHero = computed<MostPlayedHero | null>(() => {
-    const top = topHeroes.value[0]
-    if (!top) return null
-    let w = 0, l = 0
-    for (const r of tallyRecords.value) {
-      const played = (r.data?.heroes_played ?? []).find((hp) => hp.hero === top.key)
-      if (!played) continue
-      if ((played.percent_played ?? 0) < MOST_PLAYED_HERO_THRESHOLD) continue
-      if (r.data?.result === 'victory') w++
-      else if (r.data?.result === 'defeat') l++
-    }
-    const qualifyingMatches = w + l
-    return {
-      key: top.key,
-      winrate: qualifyingMatches === 0 ? null : Math.round((w / qualifyingMatches) * 100),
-      qualifyingMatches,
-    }
-  })
+  //
+  // Default threshold matches DEFAULT_MOST_PLAYED_HERO_THRESHOLD
+  // so a 20%+ play attribution counts toward the winrate without
+  // the user having to opt in. The widget's config exposes 10/15/
+  // 20/25/30% choices in PR C.
+  function mostPlayedHero(
+    opts: MaybeRefOrGetter<{ minPercentPlayed: number }>,
+  ): ComputedRef<MostPlayedHero | null> {
+    // Captured top-hero ref so the query is reactive over both the
+    // headline hero pick AND the threshold knob. limit=1 — we only
+    // need the leader.
+    const topRef = topHeroesByMinutes({ limit: 1 })
+    return computed(() => {
+      const { minPercentPlayed } = toValue(opts)
+      const top = topRef.value[0]
+      if (!top) return null
+      let w = 0, l = 0
+      for (const r of tallyRecords.value) {
+        const played = (r.data?.heroes_played ?? []).find((hp) => hp.hero === top.key)
+        if (!played) continue
+        if ((played.percent_played ?? 0) < minPercentPlayed) continue
+        if (r.data?.result === 'victory') w++
+        else if (r.data?.result === 'defeat') l++
+      }
+      const qualifyingMatches = w + l
+      return {
+        key: top.key,
+        winrate: qualifyingMatches === 0 ? null : Math.round((w / qualifyingMatches) * 100),
+        qualifyingMatches,
+      }
+    })
+  }
 
   // Average per-10-min K/D/A across the tally-eligible records.
   // Only records carrying ALL three avg_per_10min fields contribute
@@ -607,121 +679,165 @@ export function useMatchesDossier(
     return set.size
   })
 
-  // Best hero by winrate, gated to ≥ MOST_PLAYED_HERO_THRESHOLD %
-  // play AND ≥ BEST_WINRATE_HERO_MIN_MATCHES decisive qualifying
-  // matches. Ties broken by qualifyingMatches desc (more sample =
-  // better signal). Null when no hero clears both gates.
-  const bestWinrateHero = computed<BestWinrateHero | null>(() => {
-    const buckets = new Map<string, { w: number; l: number }>()
-    for (const r of tallyRecords.value) {
-      const result = r.data?.result
-      if (result !== 'victory' && result !== 'defeat') continue
-      for (const hp of r.data?.heroes_played ?? []) {
-        if (!hp.hero) continue
-        if ((hp.percent_played ?? 0) < MOST_PLAYED_HERO_THRESHOLD) continue
-        const bucket = buckets.get(hp.hero) ?? { w: 0, l: 0 }
-        if (result === 'victory') bucket.w++
-        else bucket.l++
-        buckets.set(hp.hero, bucket)
+  // Best hero by winrate, gated to ≥ `minPercentPlayed` percent
+  // play AND ≥ `minMatches` decisive qualifying matches. Ties
+  // broken by qualifyingMatches desc (more sample = better signal).
+  // Null when no hero clears both gates.
+  //
+  // Two knobs: PR C's widget config lets the user move either gate
+  // independently. The defaults match the long-standing
+  // MOST_PLAYED_HERO_THRESHOLD (20%) + BEST_WINRATE_HERO_MIN_MATCHES
+  // (3) constants exactly so first-hydrate is a no-op.
+  function bestWinrateHero(
+    opts: MaybeRefOrGetter<{ minPercentPlayed: number; minMatches: number }>,
+  ): ComputedRef<BestWinrateHero | null> {
+    return computed(() => {
+      const { minPercentPlayed, minMatches } = toValue(opts)
+      const buckets = new Map<string, { w: number; l: number }>()
+      for (const r of tallyRecords.value) {
+        const result = r.data?.result
+        if (result !== 'victory' && result !== 'defeat') continue
+        for (const hp of r.data?.heroes_played ?? []) {
+          if (!hp.hero) continue
+          if ((hp.percent_played ?? 0) < minPercentPlayed) continue
+          const bucket = buckets.get(hp.hero) ?? { w: 0, l: 0 }
+          if (result === 'victory') bucket.w++
+          else bucket.l++
+          buckets.set(hp.hero, bucket)
+        }
       }
-    }
-    let best: BestWinrateHero | null = null
-    for (const [hero, { w, l }] of buckets) {
-      const qualifying = w + l
-      if (qualifying < BEST_WINRATE_HERO_MIN_MATCHES) continue
-      const winrate = Math.round((w / qualifying) * 100)
-      if (best === null
-        || winrate > best.winrate
-        || (winrate === best.winrate && qualifying > best.qualifyingMatches)) {
-        best = { key: hero, winrate, qualifyingMatches: qualifying }
+      let best: BestWinrateHero | null = null
+      for (const [hero, { w, l }] of buckets) {
+        const qualifying = w + l
+        if (qualifying < minMatches) continue
+        const winrate = Math.round((w / qualifying) * 100)
+        if (best === null
+          || winrate > best.winrate
+          || (winrate === best.winrate && qualifying > best.qualifyingMatches)) {
+          best = { key: hero, winrate, qualifyingMatches: qualifying }
+        }
       }
-    }
-    return best
-  })
+      return best
+    })
+  }
 
-  // Map-type breakdown — leans on the parser-stamped `data.type`
-  // value (control / hybrid / push / escort / flashpoint). Reuses
-  // the existing topByCount() helper so the share + winrate math is
-  // identical to topMaps + topHeroes.
-  const topMapTypes = computed(() => topByCount((r) => r.data?.type))
-
-  // Time-of-day distribution — six fixed buckets keyed by
-  // `Math.floor(hour / 4)` over the `data.finished_at` HH:MM
-  // string. Records without a parseable hour skipped; share
-  // denominator = records WITH a parseable hour so the percentages
-  // reflect the workflow-relevant fraction of the narrow.
-  const timeOfDayBuckets = computed<BucketEntry[]>(() => {
-    const counts = [0, 0, 0, 0, 0, 0]
-    let denom = 0
-    for (const r of records.value) {
-      const fa = r.data?.finished_at
-      if (!fa || fa.length < 2) continue
-      const hour = Number.parseInt(fa.slice(0, 2), 10)
-      if (!Number.isFinite(hour) || hour < 0 || hour > 23) continue
-      const bucket = Math.floor(hour / 4)
-      counts[bucket]!++
-      denom++
-    }
-    return TIME_OF_DAY_BUCKET_LABELS.map((label, i) => ({
-      label,
-      count: counts[i]!,
-      share: denom === 0 ? 0 : Math.round((counts[i]! / denom) * 100),
-    }))
-  })
+  // Time-of-day distribution — parameterizable bucket count over
+  // the `data.finished_at` HH:MM string. 6 buckets (4-hour windows)
+  // is the historical default; PR C exposes 12 (2-hour) and 24
+  // (1-hour) choices. Records without a parseable hour skipped;
+  // share denominator = records WITH a parseable hour so the
+  // percentages reflect the workflow-relevant fraction of the narrow.
+  function timeOfDayBuckets(
+    opts: MaybeRefOrGetter<{ bucketCount: 6 | 12 | 24 }>,
+  ): ComputedRef<BucketEntry[]> {
+    return computed(() => {
+      const { bucketCount } = toValue(opts)
+      const hoursPerBucket = 24 / bucketCount
+      const counts = new Array<number>(bucketCount).fill(0)
+      let denom = 0
+      for (const r of records.value) {
+        const fa = r.data?.finished_at
+        if (!fa || fa.length < 2) continue
+        const hour = Number.parseInt(fa.slice(0, 2), 10)
+        if (!Number.isFinite(hour) || hour < 0 || hour > 23) continue
+        const bucket = Math.floor(hour / hoursPerBucket)
+        counts[bucket]!++
+        denom++
+      }
+      return makeTimeOfDayLabels(bucketCount).map((label, i) => ({
+        label,
+        count: counts[i]!,
+        share: denom === 0 ? 0 : Math.round((counts[i]! / denom) * 100),
+      }))
+    })
+  }
 
   // Day-of-week distribution — seven buckets rotated to respect the
-  // user's useWeekStart setting (Sun=0 .. Sat=6). Default 0 (Sun)
-  // when the composable isn't given a weekStart ref. Records
-  // without a parseable `data.date` skipped; share denominator =
-  // records WITH a parseable day.
-  const dayOfWeekBuckets = computed<BucketEntry[]>(() => {
-    const counts = [0, 0, 0, 0, 0, 0, 0]
-    let denom = 0
-    for (const r of records.value) {
-      const date = r.data?.date
-      if (!date) continue
-      // Parse with explicit Z so getUTCDay() reads the user-meaningful
-      // date regardless of the local timezone the browser runs in —
-      // otherwise a 2026-05-10 record reads as Saturday in
-      // UTC-negative timezones and Sunday in UTC-leaning ones.
-      const d = new Date(date + 'T00:00:00Z')
-      const day = d.getUTCDay()
-      if (!Number.isFinite(day) || day < 0 || day > 6) continue
-      counts[day]!++
-      denom++
-    }
-    const start = weekStart?.value ?? 0
-    const rotated: BucketEntry[] = []
-    for (let i = 0; i < 7; i++) {
-      const srcIdx = (start + i) % 7
-      rotated.push({
-        label: DAY_OF_WEEK_LABELS[srcIdx]!,
-        count: counts[srcIdx]!,
-        share: denom === 0 ? 0 : Math.round((counts[srcIdx]! / denom) * 100),
-      })
-    }
-    return rotated
-  })
+  // user's useWeekStart setting (Sun=0 .. Sat=6) OR a per-widget
+  // override passed via opts.weekStartOverride. The override exists
+  // so power users can pin one widget to a different week start than
+  // the global preference (e.g. comparing a Monday-anchored scrim
+  // week against the rest of the dossier's Sunday calendar).
+  // Records without a parseable `data.date` skipped; share
+  // denominator = records WITH a parseable day.
+  function dayOfWeekBuckets(
+    opts: MaybeRefOrGetter<{ weekStartOverride?: WeekStart }> = { weekStartOverride: undefined },
+  ): ComputedRef<BucketEntry[]> {
+    return computed(() => {
+      const { weekStartOverride } = toValue(opts)
+      const counts = [0, 0, 0, 0, 0, 0, 0]
+      let denom = 0
+      for (const r of records.value) {
+        const date = r.data?.date
+        if (!date) continue
+        // Parse with explicit Z so getUTCDay() reads the user-meaningful
+        // date regardless of the local timezone the browser runs in —
+        // otherwise a 2026-05-10 record reads as Saturday in
+        // UTC-negative timezones and Sunday in UTC-leaning ones.
+        const d = new Date(date + 'T00:00:00Z')
+        const day = d.getUTCDay()
+        if (!Number.isFinite(day) || day < 0 || day > 6) continue
+        counts[day]!++
+        denom++
+      }
+      const start = weekStartOverride ?? weekStart?.value ?? 0
+      const rotated: BucketEntry[] = []
+      for (let i = 0; i < 7; i++) {
+        const srcIdx = (start + i) % 7
+        rotated.push({
+          label: DAY_OF_WEEK_LABELS[srcIdx]!,
+          count: counts[srcIdx]!,
+          share: denom === 0 ? 0 : Math.round((counts[srcIdx]! / denom) * 100),
+        })
+      }
+      return rotated
+    })
+  }
 
   // Recent results — last N decisive (W / L / D) results in
   // newest-first order. The widget renders these as small coloured
   // pills so the user reads "I just won, lost, lost, won, won" at
-  // a glance.
-  const recentResults = computed<('victory' | 'defeat' | 'draw')[]>(() => {
-    return tallyRecords.value
-      .slice()
-      .sort((a, b) => (b.parsed_at ?? '').localeCompare(a.parsed_at ?? ''))
-      .map((r) => r.data?.result)
-      .filter((r): r is 'victory' | 'defeat' | 'draw' =>
-        r === 'victory' || r === 'defeat' || r === 'draw')
-      .slice(0, RECENT_RESULTS_COUNT)
-  })
+  // a glance. PR C's config lets the user pick 3 / 5 / 10.
+  function recentResults(
+    opts: MaybeRefOrGetter<{ count: number }>,
+  ): ComputedRef<('victory' | 'defeat' | 'draw')[]> {
+    return computed(() => {
+      const { count } = toValue(opts)
+      return tallyRecords.value
+        .slice()
+        .sort((a, b) => (b.parsed_at ?? '').localeCompare(a.parsed_at ?? ''))
+        .map((r) => r.data?.result)
+        .filter((r): r is 'victory' | 'defeat' | 'draw' =>
+          r === 'victory' || r === 'defeat' || r === 'draw')
+        .slice(0, count)
+    })
+  }
 
   return {
-    wld, winrate, topMaps, topHeroes, topRoles, totalTimePlayed, mostPlayedHero, averageKDA,
-    reviewedCount, daysSinceLastReview, wldSinceLastReview,
-    // PR B opt-in widgets
-    currentStreak, longestWinStreak, heroPoolSize, bestWinrateHero,
-    topMapTypes, timeOfDayBuckets, dayOfWeekBuckets, recentResults,
+    // ─── Bedrock — no per-widget config, precomputed refs ─────
+    wld,
+    winrate,
+    totalTimePlayed,
+    averageKDA,
+    reviewedCount,
+    daysSinceLastReview,
+    wldSinceLastReview,
+    currentStreak,
+    longestWinStreak,
+    heroPoolSize,
+    topRoles,
+    // ─── Query helpers — config-driven, return reactive results
+    topByCount,
+    topHeroesByMinutes,
+    mostPlayedHero,
+    bestWinrateHero,
+    timeOfDayBuckets,
+    dayOfWeekBuckets,
+    recentResults,
   }
 }
+
+// The structural type widgets `inject` via useDossier. Mirrors
+// useMatchesDossier's return shape so consumers can name a single
+// type for the injected value without re-deriving it on every site.
+export type MatchesDossier = ReturnType<typeof useMatchesDossier>
