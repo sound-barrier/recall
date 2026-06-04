@@ -117,8 +117,13 @@ func main() {
 			exitf("UpsertRank(%s): %v", r.MatchKey, err)
 		}
 	}
+	for _, r := range fx.Reviews {
+		if err := store.SetReview(r.MatchKey, r.ReviewedBy); err != nil {
+			exitf("SetReview(%s, %s): %v", r.MatchKey, r.ReviewedBy, err)
+		}
+	}
 
-	fmt.Printf("seeded %d matches into profile %q at %s\n", *n, target, dbPath)
+	fmt.Printf("seeded %d matches (%d reviewed) into profile %q at %s\n", *n, len(fx.Reviews), target, dbPath)
 }
 
 func exitf(format string, args ...any) {
