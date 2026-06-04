@@ -3,6 +3,7 @@ package app
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"recall/pkg/db/dbtest"
 )
@@ -57,5 +58,38 @@ func TestGenerateMatchFixture_IsDeterministic(t *testing.T) {
 	}
 	if !reflect.DeepEqual(a.Scoreboards[0], b.Scoreboards[0]) {
 		t.Fatal("Scoreboards[0] differ between identical seeds")
+	}
+}
+
+func TestGenerateMatchFixture_DatesWithinRange(t *testing.T) {
+	fx := GenerateMatchFixture(200, 1)
+
+	start, _ := time.Parse("2006-01-02", fixtureDateStart)
+	// Allow a small overflow window past the upper bound — the dedupe
+	// pass bumps colliding timestamps by +1 minute, which can spill a
+	// match past midnight on the last day. A 3-day buffer is more than
+	// enough at our scale.
+	end, _ := time.Parse("2006-01-02", fixtureDateEnd)
+	end = end.AddDate(0, 0, 3)
+
+	for _, s := range fx.Summaries {
+		d, err := time.Parse("2006-01-02", s.Date)
+		if err != nil {
+			t.Fatalf("bad date %q on match_key %s: %v", s.Date, s.MatchKey, err)
+		}
+		if d.Before(start) || d.After(end) {
+			t.Fatalf("date %s on match_key %s outside [%s, %s]", s.Date, s.MatchKey, fixtureDateStart, fixtureDateEnd)
+		}
+	}
+}
+
+func TestGenerateMatchFixture_DifferentSeedsDiffer(t *testing.T) {
+	// Sanity check: two different seeds should produce visibly
+	// different first matches (proves the seed actually influences
+	// every choice, not just one path).
+	a := GenerateMatchFixture(10, 1)
+	b := GenerateMatchFixture(10, 2)
+	if reflect.DeepEqual(a.Summaries[0], b.Summaries[0]) {
+		t.Fatal("Summaries[0] identical across different seeds — seed isn't doing anything")
 	}
 }
