@@ -287,6 +287,20 @@ func TestSQLStore_Clear_WipesEveryTable(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	// Seed the four auxiliary tables that previously survived Clear.
+	if err := s.SetReview("k1", "self"); err != nil {
+		t.Fatalf("SetReview: %v", err)
+	}
+	if err := s.SetAnnotation(Annotation{MatchKey: "k1", Note: "n"}); err != nil {
+		t.Fatalf("SetAnnotation: %v", err)
+	}
+	if err := s.HideMatch("k1"); err != nil {
+		t.Fatalf("HideMatch: %v", err)
+	}
+	if err := s.ApplyAmbiguity("amb.png", []AmbiguousCandidate{{MatchKey: "k1", DistanceS: 5}}); err != nil {
+		t.Fatalf("ApplyAmbiguity: %v", err)
+	}
+
 	if err := s.Clear(); err != nil {
 		t.Fatalf("Clear: %v", err)
 	}
@@ -303,6 +317,15 @@ func TestSQLStore_Clear_WipesEveryTable(t *testing.T) {
 	}
 	if n != 0 {
 		t.Errorf("expected 0 child rows after Clear, got %d", n)
+	}
+	for _, table := range []string{"match_reviews", "match_annotations", "hidden_matches", "ambiguous_candidates"} {
+		// #nosec G202 -- table name from a hard-coded slice, not user input.
+		if err := s.db.QueryRow(`SELECT count(*) FROM ` + table).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		if n != 0 {
+			t.Errorf("expected 0 rows in %s after Clear, got %d", table, n)
+		}
 	}
 }
 

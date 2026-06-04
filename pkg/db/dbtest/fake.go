@@ -226,6 +226,10 @@ func (f *Fake) Clear() error {
 	f.Ranks = nil
 	f.Unknowns = nil
 	f.DirIDs = nil
+	f.Annotations = nil
+	f.Hidden = nil
+	f.Reviews = nil
+	f.Ambiguous = nil
 	return nil
 }
 
