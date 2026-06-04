@@ -206,10 +206,11 @@ test.describe('keyboard shortcuts — Matches view per-row', () => {
     await page.locator('#tab-matches').click()
     await expect(page.locator('.leaf-row')).toHaveCount(3)
 
-    // Open the narrow panel and flip Sort=Oldest. The button lives
-    // inside the narrow popover (the rail trigger is the dossier
-    // header chip).
-    await page.locator('.seg-btn').filter({ hasText: /Oldest/i }).click()
+    // Open the Sort+Group popover and flip Sort=Oldest. (PR 6
+    // replaced the inline Sort/Group fieldsets with a single
+    // trigger + dropdown.)
+    await page.locator('[data-sort-group-trigger]').click()
+    await page.locator('[data-sort-pick="oldest"]').click()
 
     // The first rendered leaf-row is now the oldest match
     // (data-card-index="2" — narrowedRecords is date-desc, the row
