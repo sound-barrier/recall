@@ -56,3 +56,50 @@ articulate the cost.
 Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
+
+## 20. Day-theme color-contrast pass — bring day theme up to AA across matches view
+
+**Where:** `frontend/src/styles/app.css` (the `[data-theme="day"]`
+palette around lines 130–174) plus every consumer of
+`--accent-text` and `--primary-text-on-accent` in day. Loudest
+offenders surfaced by axe so far: `.seg-btn.picked`,
+`.leaves-eyebrow`, `.skip-link` and most modal-button
+text-on-accent fills, every `.hero-name` / `.length-mark` /
+`.source-type-summary` rule. Day's `--accent-text` is `#b8650a`
+on `#f5f3ed` (~3.85:1), `--primary-text-on-accent` is `#fff8ef`
+on `#fa9c1b` (~1.92:1) — both sub-AA.
+
+**What breaks:** running `frontend/tests/e2e/a11y.spec.ts` with
+the day theme pinned currently raises serious `color-contrast`
+violations. PR C added a matches-view × theme axe loop covering
+dark / night / high-contrast and explicitly excluded day with a
+comment pointing at this entry. Day-theme users (and anyone with
+matching OS preferences) see small uppercase callouts and
+text-on-accent fills below the WCAG 2 AA 4.5:1 threshold for
+small bold text.
+
+**Plan:**
+
+1. Darken `--primary-text-on-accent` for day from `#fff8ef` →
+   `#1a0a00` (or another dark brown that clears AA on
+   `--accent` `#fa9c1b`). Verify the skip-link, the picked
+   seg-btn, every modal-button "Save"/"Done" fill, and the
+   active-tab underline label.
+2. Darken `--accent-text` for day to a value that clears 4.5:1
+   on `--surface` (`#f5f3ed`) — likely `#9e4d00` or thereabouts.
+   Audit every `.hero-name`, `.length-mark`,
+   `.source-type-summary`, `.leaves-eyebrow`, the chip border
+   text, and the dossier section eyebrows.
+3. Drop the `'day'` exclusion from the `THEMES` array in
+   `frontend/tests/e2e/a11y.spec.ts` and the corresponding
+   comment; rerun `make test-e2e -g "day theme"` and watch the
+   violation list trend to zero.
+4. Manual visual eyeball — the rust-orange becomes meaningfully
+   darker in day theme. Sanity-check brand identity against the
+   in-game OW post-match summary screen (the cream-on-orange
+   that day theme references).
+
+**Size:** M.
+**Risk:** Low for steps 1–3 (theme-scoped CSS + test config);
+Med for step 4 (subjective brand-feel review against the OW
+identity day theme references).
