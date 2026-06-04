@@ -10,8 +10,8 @@ import (
 )
 
 func TestChaos_ZeroRatioMatchesNoChaos(t *testing.T) {
-	a := GenerateMatchFixture(50, 11)
-	b := GenerateMatchFixtureWithChaos(50, 11, 0)
+	a := GenerateMatchFixture(50, 11, "")
+	b := GenerateMatchFixtureWithChaos(50, 11, "", 0)
 	if !reflect.DeepEqual(a, b) {
 		t.Fatal("chaosRatio=0 should be byte-identical to GenerateMatchFixture")
 	}
@@ -26,7 +26,7 @@ func TestChaos_FullRatioMutatesMostRows(t *testing.T) {
 	// room for small-n variance while still catching "chaos didn't
 	// fire" regressions.
 	const n = 200
-	fx := GenerateMatchFixtureWithChaos(n, 7, 1.0)
+	fx := GenerateMatchFixtureWithChaos(n, 7, "", 1.0)
 
 	mutated := 0
 	for i := 0; i < n; i++ {
@@ -44,7 +44,7 @@ func TestChaos_AggregationConflictAddsRows(t *testing.T) {
 	// N. Over n=200 at ratio=1.0, at least a handful of matches
 	// should have picked the conflict category, so total Summaries
 	// will exceed n.
-	fx := GenerateMatchFixtureWithChaos(200, 7, 1.0)
+	fx := GenerateMatchFixtureWithChaos(200, 7, "", 1.0)
 	if len(fx.Summaries) <= 200 {
 		t.Fatalf("expected aggregation-conflict to add rows past n=200; got %d", len(fx.Summaries))
 	}
@@ -63,8 +63,8 @@ func TestChaos_AggregationConflictAddsRows(t *testing.T) {
 }
 
 func TestChaos_IsDeterministic(t *testing.T) {
-	a := GenerateMatchFixtureWithChaos(50, 3, 0.5)
-	b := GenerateMatchFixtureWithChaos(50, 3, 0.5)
+	a := GenerateMatchFixtureWithChaos(50, 3, "", 0.5)
+	b := GenerateMatchFixtureWithChaos(50, 3, "", 0.5)
 	if !reflect.DeepEqual(a, b) {
 		t.Fatal("same (n, seed, ratio) should produce byte-identical chaos output")
 	}
@@ -75,7 +75,7 @@ func TestChaos_RoundTripsThroughStore(t *testing.T) {
 	// validates the Store-interface contracts). If a future chaos
 	// category adds an invariant violation, this catches it before
 	// the seed-dev CLI does.
-	fx := GenerateMatchFixtureWithChaos(50, 13, 0.5)
+	fx := GenerateMatchFixtureWithChaos(50, 13, "", 0.5)
 	fs := dbtest.New()
 	for _, r := range fx.Summaries {
 		if err := fs.UpsertSummary(r); err != nil {
