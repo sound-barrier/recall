@@ -77,16 +77,31 @@ onMounted(() => {
 })
 
 // Popover position derived from the anchor rect. Anchored RIGHT-
-// aligned to the gear icon, dropped slightly below — same
-// "attached to the affordance" feel as inline menus.
+// aligned to the gear icon, dropped below by default — same
+// "attached to the affordance" feel as inline menus. Flips above
+// the anchor when the anchor sits near the viewport bottom and the
+// popover wouldn't fit underneath; that path matters for both
+// users on short windows AND for Playwright's auto-scroll, which
+// can pin the trigger near the viewport edge before clicking.
+const POPOVER_WIDTH_ESTIMATE  = 240 // CSS clamps min-width 240 / max-width 320
+const POPOVER_HEIGHT_ESTIMATE = 280 // typical filled-schema render; clamped at runtime via max-height
+const VIEWPORT_PADDING        = 8
+
 const popoverStyle = computed(() => {
   const a = props.anchor
   if (!a) return { display: 'none' }
-  const top  = Math.max(8, a.bottom + 6)
-  const left = Math.max(8, a.right - 240) // 240 ≈ popover width
+  const viewportH = typeof window !== 'undefined' ? window.innerHeight : 720
+  const roomBelow = viewportH - (a.bottom + 6)
+  const flipAbove = roomBelow < POPOVER_HEIGHT_ESTIMATE
+  const top = flipAbove
+    ? Math.max(VIEWPORT_PADDING, a.top - 6 - POPOVER_HEIGHT_ESTIMATE)
+    : Math.max(VIEWPORT_PADDING, a.bottom + 6)
+  const left = Math.max(VIEWPORT_PADDING, a.right - POPOVER_WIDTH_ESTIMATE)
   return {
     top:  `${top}px`,
     left: `${left}px`,
+    maxHeight: `${viewportH - top - VIEWPORT_PADDING}px`,
+    overflowY: 'auto' as const,
   }
 })
 
