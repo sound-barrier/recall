@@ -50,6 +50,7 @@ Two binary flavors, selected by the `serveronly` Go build tag:
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml`. |
 | `make typecheck` | `vue-tsc --noEmit`. `allowJs: false` blocks JS introduction. |
 | `make update-goldens` | Regenerate parser golden sidecars (or set `RECALL_FIXTURE_UPDATE=1`). |
+| `make seed-dev N=300 PROFILE=demo [FORCE=1]` | Populate a SQLite profile with N synthetic matches via `cmd/seed-dev`. Refuses non-empty profiles unless `FORCE=1` wipes first. See "Manual testing with a seeded corpus" below. |
 
 > **Drift note:** specific numeric gates (`GO_COVERAGE_MIN`, Vitest thresholds,
 > bundle budgets) and version pins (Wails, Go, Node, tool versions) are
@@ -118,6 +119,70 @@ with Tesseract pre-installed.
 3. As a periodic check (~once per release cycle, or when the Matches tab feels noticeably heavier on cold start).
 
 The audit is read-only; it doesn't gate CI. The gate is `check-bundle-size.sh`. If the audit shows a single chunk dominating the budget, treat that as the candidate for extraction — cross-reference `App.lazy-views.test.ts` / `MatchesView.lazy-views.test.ts` so a future refactor can't silently undo the win.
+
+## Manual testing with a seeded corpus
+
+When eyeballing the UI against a large match set — dossier widgets, Campaign
+Log density, sticky-header behavior at scroll, sort/group with hundreds of
+rows — parsing real screenshots is too slow. Use `make seed-dev` to write
+synthetic rows straight into a profile's SQLite DB.
+
+### One-time setup
+
+`.envrc` already pins `RECALL_DATA_DIR=$PWD/data`. With `direnv allow`'d, every
+`make dev` / `make seed-dev` invocation reads + writes under `<repo>/data/`,
+never under `~/Library/Application Support/Recall/`. Real installs stay
+untouched.
+
+### Workflow
+
+```sh
+# Seed a fresh profile (creates "demo" if missing).
+make seed-dev N=300 PROFILE=demo
+
+# Boot the app, switch to the demo profile via the masthead chip,
+# then scroll Matches / inspect widgets / try sort + group.
+make dev
+```
+
+Subsequent runs against a non-empty profile refuse on purpose:
+
+```sh
+make seed-dev N=300 PROFILE=demo
+# seed-dev: profile "demo" already contains 893 rows; pass --force to wipe and reseed
+
+make seed-dev N=300 PROFILE=demo FORCE=1
+# wiped 893 existing rows from profile "demo"
+# seeded 300 matches into profile "demo" at .../data/profiles/demo/db/recall.db
+```
+
+### Flags + defaults
+
+| Make var | Underlying flag | Default | Purpose |
+|---|---|---|---|
+| `N` | `--n` | `100` | Number of matches. Each match writes 1 Summary + 1 Scoreboard, ~60% also write a Personal, ~40% a Rank — mirrors the mixed-coverage shape real parses produce. |
+| `PROFILE` | `--profile` | `demo` | Target profile name. Created if missing. Pass the active profile name to seed your in-use profile (think twice). |
+| `SEED` | `--seed` | `1` | Deterministic RNG seed — same `(N, SEED)` → byte-identical rows. Bump it to get a different shuffle of maps/heroes/results without changing N. |
+| `FORCE` | `--force` | *(unset)* | Wipes every row in the target profile before seeding. Without it, a non-empty profile is a hard error. |
+
+### Where the fixture lives
+
+`pkg/app/fixtures.go` exports `GenerateMatchFixture(n, seed)` returning four
+slices — `[]db.SummaryRow`, `[]db.ScoreboardRow`, `[]db.PersonalRow`,
+`[]db.RankRow`. `cmd/seed-dev/main.go` loops them into the matching
+`store.Upsert*` calls. The same generator is reusable from tests
+(`pkg/app/fixtures_test.go` round-trips it through `dbtest.Fake`) so the
+fixture shape never needs to be duplicated.
+
+### What's deliberately missing
+
+- **No screenshot files on disk.** The UI shows "no preview" for these rows;
+  fine for layout / aggregation / dossier work, not for testing the screenshot
+  lightbox or source-file UI. Parse a real folder for those.
+- **No ambiguous / unmatched rows.** Every match gets a tracked
+  `match-<timestamp>` key. The Unknown tab will be empty.
+- **No annotations / hidden flags / reviews.** Use the app to set those once
+  you've seeded.
 
 ## Quick local exploration
 

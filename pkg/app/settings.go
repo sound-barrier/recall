@@ -51,6 +51,12 @@ func appBaseDir() string {
 	return filepath.Join(base, name)
 }
 
+// BaseDir exposes the install-wide base directory to out-of-package
+// callers (the dev seed tool at cmd/seed-dev) so they can resolve the
+// same profile tree the App opens. Production callers continue to use
+// the unexported form.
+func BaseDir() string { return appBaseDir() }
+
 // dataDir returns the directory the App reads/writes settings + the
 // SQLite DB from. Once profiles have been loaded (Startup), it's the
 // active profile's directory under <base>/profiles/<name>/. Before

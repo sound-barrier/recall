@@ -40,7 +40,7 @@ WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
         fmt update-deps trivy check-deps \
         cloc cloc-detail \
         pages-build pages-preview \
-        dev clean
+        dev seed-dev clean
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} \
@@ -594,6 +594,16 @@ dev: ## Start hot-reload Wails dev server (macOS or Debian)
 	    Linux)  wails dev -tags webkit2_4_1 ;; \
 	    *) echo "[ recall ] ✗  wails dev needs macOS or a Debian/Ubuntu host (no display surface elsewhere)"; exit 1 ;; \
 	esac
+
+# Manual-testing seed: populate a SQLite profile with N synthetic
+# matches via cmd/seed-dev. Honors .envrc's RECALL_DATA_DIR so the
+# rows land under <repo>/data, never in ~/Library/Application Support.
+N       ?= 100
+PROFILE ?= demo
+SEED    ?= 1
+
+seed-dev: ## Populate a SQLite profile with N synthetic matches (usage: make seed-dev N=300 PROFILE=demo [FORCE=1])
+	@go run ./cmd/seed-dev --n=$(N) --profile=$(PROFILE) --seed=$(SEED) $(if $(FORCE),--force,)
 # webkit2_4_1 build tag matches what Dockerfile.build's linux-builder
 # stage passes: Wails v2.12.0's pkg/assetserver/webview has CGo
 # directives referencing webkit2gtk-4.0, but Debian bookworm+/Ubuntu
