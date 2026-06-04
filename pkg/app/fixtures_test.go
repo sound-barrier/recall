@@ -137,7 +137,12 @@ func TestGenerateMatchFixture_FlexCoversEveryMapAndHero(t *testing.T) {
 	seenHeroes := map[string]bool{}
 	for _, s := range fx.Summaries {
 		seenMaps[s.Map] = true
-		seenHeroes[s.Hero] = true
+		// Scan every hero in HeroesPlayed — primary AND cameos.
+		// The coverage pass patches missing heroes as 5% cameos so
+		// the primary distribution stays believable.
+		for _, hp := range s.HeroesPlayed {
+			seenHeroes[hp.Hero] = true
+		}
 	}
 	for _, m := range fixtureMaps {
 		if !seenMaps[m] {
@@ -151,6 +156,58 @@ func TestGenerateMatchFixture_FlexCoversEveryMapAndHero(t *testing.T) {
 	for _, h := range allHeroes {
 		if !seenHeroes[h] {
 			t.Errorf("hero %q missing from default-flex corpus", h)
+		}
+	}
+}
+
+func TestGenerateMatchFixture_FlexSwapsMostMatches(t *testing.T) {
+	// Real players swap heroes mid-match most games — only ~10% stick
+	// with one hero start-to-finish. At N=500 the binomial spread is
+	// tight enough to assert single-hero matches fall in [5%, 20%].
+	const n = 500
+	fx := GenerateMatchFixture(n, 1, "flex")
+
+	single := 0
+	for _, s := range fx.Summaries {
+		if len(s.HeroesPlayed) == 1 {
+			single++
+		}
+	}
+	if single*100 < n*5 || single*100 > n*20 {
+		t.Errorf("single-hero matches %d/%d (%.1f%%) outside [5%%, 20%%]",
+			single, n, float64(single)*100/float64(n))
+	}
+}
+
+func TestGenerateMatchFixture_OneTrickNeverSwaps(t *testing.T) {
+	// One-tricks by definition never swap mid-match. Every summary's
+	// HeroesPlayed must have exactly one entry.
+	const n = 200
+	fx := GenerateMatchFixture(n, 1, "one-trick")
+
+	for i, s := range fx.Summaries {
+		if len(s.HeroesPlayed) != 1 {
+			t.Fatalf("one-trick summary %d has %d heroes_played entries; expected 1",
+				i, len(s.HeroesPlayed))
+		}
+	}
+}
+
+func TestGenerateMatchFixture_HeroPercentsSumTo100(t *testing.T) {
+	// Every match's percent_played must sum to 100 — coverage cameos
+	// dock the primary by exactly the cameo amount so the invariant
+	// holds even on patched matches. A few percent off is fine
+	// (cameo floor + cap interactions); blow up if we land outside
+	// [95, 105].
+	fx := GenerateMatchFixture(200, 1, "")
+
+	for _, s := range fx.Summaries {
+		sum := 0
+		for _, hp := range s.HeroesPlayed {
+			sum += hp.PercentPlayed
+		}
+		if sum < 95 || sum > 105 {
+			t.Errorf("match %s: percent_played sums to %d, expected ~100", s.MatchKey, sum)
 		}
 	}
 }
