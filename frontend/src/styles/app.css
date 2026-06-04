@@ -364,6 +364,24 @@ body {
 /* Skip-link: first focusable in the DOM, visually hidden until it
    takes focus, then snaps in over the top-left corner. Gives keyboard
    users a one-key bypass past the masthead and tablist on every load. */
+
+/* Visually hidden but still announced by screen readers + reachable
+   via aria-live updates. Standard a11y utility — the !important
+   widths are load-bearing (some user agents try to "respect" the
+   element's intrinsic dimensions otherwise). clip-path replaces the
+   long-deprecated `clip: rect(...)`. */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 .skip-link {
   position: absolute;
   top: 0;

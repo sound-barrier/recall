@@ -1194,6 +1194,20 @@ onMounted(() => {
     .catch(() => {})
 })
 
+// Polite live-region announcement for the parse lifecycle. The
+// ParseStatusBar already lights up an aria-live region during a
+// run (counter + filename), but it goes inert when the bar hides
+// at the end of the run — screen-reader users got no signal for
+// "parse complete." Setting + clearing this ref drives an sr-only
+// status region so the announcement fires once per terminal state.
+const parseAnnouncement = ref('')
+function announceParse(msg: string) {
+  parseAnnouncement.value = msg
+  setTimeout(() => {
+    if (parseAnnouncement.value === msg) parseAnnouncement.value = ''
+  }, 2000)
+}
+
 // SSE / Wails event subscriptions for the ingest lifecycle.
 // parse-progress drives the inline log + counter; parse-complete is
 // the authoritative reload after a batch; match-updated upserts a
@@ -1213,6 +1227,8 @@ useEventStream({
     // for a watcher-triggered parse where runParse's finally
     // never ran.
     cancellingParse.value = false
+    const n = records.value.length
+    announceParse(`Parse complete. ${n} match${n === 1 ? '' : 'es'} loaded.`)
   },
   // SSE confirmation of a Stop click. Records ref already reflects
   // whatever made it into SQLite before the cancellation point —
@@ -1222,6 +1238,7 @@ useEventStream({
     await load()
     cancellingParse.value = false
     parseProgress.value = null
+    announceParse('Parse cancelled.')
   },
 })
 </script>
@@ -1232,6 +1249,13 @@ useEventStream({
          bypass the masthead and nav tabs on every load. Visually hidden
          until focused, then snaps in over the top-left corner. -->
     <a class="skip-link" href="#main-content" @click="focusMain">Skip to main content</a>
+
+    <!-- Polite parse-lifecycle announcer. Sets briefly on
+         parse-complete + parse-cancelled, then clears so the next
+         terminal state re-announces. Invisible to sighted users —
+         the masthead chip + status bar carry the visual signal. -->
+    <div class="sr-only" role="status" aria-live="polite">{{ parseAnnouncement }}</div>
+
     <div class="atmos" aria-hidden="true" />
     <div class="grid-lines" aria-hidden="true" />
 
@@ -1303,6 +1327,7 @@ useEventStream({
               class="nav-tab"
               :class="{ active: view === 'settings' }"
               :aria-selected="view === 'settings'"
+              :aria-current="view === 'settings' ? 'page' : undefined"
               :tabindex="view === 'settings' ? 0 : -1"
               role="tab"
               aria-controls="panel-settings"
@@ -1316,6 +1341,7 @@ useEventStream({
               class="nav-tab"
               :class="{ active: view === 'ingest' }"
               :aria-selected="view === 'ingest'"
+              :aria-current="view === 'ingest' ? 'page' : undefined"
               :tabindex="view === 'ingest' ? 0 : -1"
               role="tab"
               aria-controls="panel-ingest"
@@ -1329,6 +1355,7 @@ useEventStream({
               class="nav-tab"
               :class="{ active: view === 'matches' }"
               :aria-selected="view === 'matches'"
+              :aria-current="view === 'matches' ? 'page' : undefined"
               :tabindex="view === 'matches' ? 0 : -1"
               role="tab"
               aria-controls="panel-matches"
@@ -1350,6 +1377,7 @@ useEventStream({
               class="nav-tab"
               :class="{ active: view === 'unknown' }"
               :aria-selected="view === 'unknown'"
+              :aria-current="view === 'unknown' ? 'page' : undefined"
               :tabindex="view === 'unknown' ? 0 : -1"
               role="tab"
               aria-controls="panel-unknown"
@@ -1375,6 +1403,7 @@ useEventStream({
               class="nav-tab"
               :class="{ active: view === 'analysis' }"
               :aria-selected="view === 'analysis'"
+              :aria-current="view === 'analysis' ? 'page' : undefined"
               :tabindex="view === 'analysis' ? 0 : -1"
               role="tab"
               aria-controls="panel-analysis"
