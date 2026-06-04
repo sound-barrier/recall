@@ -1,4 +1,5 @@
 import type { Component } from 'vue'
+import { EMPTY_SCHEMA, type WidgetConfigSchema } from './widget-config-schema'
 import WinrateWidget from '../components/widgets/WinrateWidget.vue'
 import AvgKdaWidget from '../components/widgets/AvgKdaWidget.vue'
 import TotalTimePlayedWidget from '../components/widgets/TotalTimePlayedWidget.vue'
@@ -43,34 +44,46 @@ import Recent5MatchesWidget from '../components/widgets/Recent5MatchesWidget.vue
 
 export type WidgetShape = 'kpi' | 'breakdown'
 
-export interface WidgetDef {
+export interface WidgetDef<TConfig extends Record<string, unknown> = Record<string, unknown>> {
   id:        string
   eyebrow:   string
   shape:     WidgetShape
   defaultRow: number
   component: Component
+  // Declarative schema for this widget's user-tunable knobs. Empty
+  // schema (`EMPTY_SCHEMA`) means "no configurable properties" —
+  // DashboardWidget hides the gear affordance entirely. Populated
+  // schemas drive the gear-popover's auto-generated form (top-N
+  // selector, display unit, threshold choice, etc.) and the
+  // localStorage round-trip via useWidgetConfig.
+  //
+  // Defaults inside each field MUST match the current behavior so
+  // first hydrate is a no-op for existing users — schema rollout
+  // is invisible until users open the gear popover and pick a
+  // different value.
+  config:    WidgetConfigSchema<TConfig>
 }
 
 export const WIDGET_REGISTRY: readonly WidgetDef[] = [
-  { id: 'winrate',           eyebrow: 'Winrate',                      shape: 'kpi',       defaultRow: 1, component: WinrateWidget         },
-  { id: 'avg-kda',           eyebrow: 'Avg K/D/A per 10min',          shape: 'kpi',       defaultRow: 1, component: AvgKdaWidget          },
-  { id: 'total-time',        eyebrow: 'Total time played',            shape: 'kpi',       defaultRow: 1, component: TotalTimePlayedWidget },
-  { id: 'most-played-hero',  eyebrow: 'Most played hero',             shape: 'kpi',       defaultRow: 1, component: MostPlayedHeroWidget  },
-  { id: 'reviewed-count',    eyebrow: 'Matches reviewed',             shape: 'kpi',       defaultRow: 1, component: MatchesReviewedWidget },
-  { id: 'days-since-review', eyebrow: 'Days since last review',       shape: 'kpi',       defaultRow: 1, component: DaysSinceReviewWidget },
-  { id: 'wld-since-review',  eyebrow: 'W / L / D since last review',  shape: 'kpi',       defaultRow: 1, component: WldSinceReviewWidget  },
-  { id: 'top-maps',          eyebrow: 'Most played maps',             shape: 'breakdown', defaultRow: 2, component: TopMapsWidget         },
-  { id: 'top-heroes',        eyebrow: 'Most played heroes',           shape: 'breakdown', defaultRow: 2, component: TopHeroesWidget       },
-  { id: 'top-roles',         eyebrow: 'Most played roles',            shape: 'breakdown', defaultRow: 2, component: TopRolesWidget        },
+  { id: 'winrate',           eyebrow: 'Winrate',                      shape: 'kpi',       defaultRow: 1, component: WinrateWidget,         config: EMPTY_SCHEMA },
+  { id: 'avg-kda',           eyebrow: 'Avg K/D/A per 10min',          shape: 'kpi',       defaultRow: 1, component: AvgKdaWidget,          config: EMPTY_SCHEMA },
+  { id: 'total-time',        eyebrow: 'Total time played',            shape: 'kpi',       defaultRow: 1, component: TotalTimePlayedWidget, config: EMPTY_SCHEMA },
+  { id: 'most-played-hero',  eyebrow: 'Most played hero',             shape: 'kpi',       defaultRow: 1, component: MostPlayedHeroWidget,  config: EMPTY_SCHEMA },
+  { id: 'reviewed-count',    eyebrow: 'Matches reviewed',             shape: 'kpi',       defaultRow: 1, component: MatchesReviewedWidget, config: EMPTY_SCHEMA },
+  { id: 'days-since-review', eyebrow: 'Days since last review',       shape: 'kpi',       defaultRow: 1, component: DaysSinceReviewWidget, config: EMPTY_SCHEMA },
+  { id: 'wld-since-review',  eyebrow: 'W / L / D since last review',  shape: 'kpi',       defaultRow: 1, component: WldSinceReviewWidget,  config: EMPTY_SCHEMA },
+  { id: 'top-maps',          eyebrow: 'Most played maps',             shape: 'breakdown', defaultRow: 2, component: TopMapsWidget,         config: EMPTY_SCHEMA },
+  { id: 'top-heroes',        eyebrow: 'Most played heroes',           shape: 'breakdown', defaultRow: 2, component: TopHeroesWidget,       config: EMPTY_SCHEMA },
+  { id: 'top-roles',         eyebrow: 'Most played roles',            shape: 'breakdown', defaultRow: 2, component: TopRolesWidget,        config: EMPTY_SCHEMA },
   // PR B opt-in widgets (NOT in DEFAULT_ROW_LAYOUT).
-  { id: 'current-streak',      eyebrow: 'Current streak',         shape: 'kpi',       defaultRow: 1, component: CurrentStreakWidget    },
-  { id: 'longest-win-streak',  eyebrow: 'Longest win streak',     shape: 'kpi',       defaultRow: 1, component: LongestWinStreakWidget },
-  { id: 'hero-pool-size',      eyebrow: 'Hero pool size',         shape: 'kpi',       defaultRow: 1, component: HeroPoolSizeWidget     },
-  { id: 'best-winrate-hero',   eyebrow: 'Best hero by winrate',   shape: 'kpi',       defaultRow: 1, component: BestWinrateHeroWidget  },
-  { id: 'top-map-types',       eyebrow: 'Most played map types',  shape: 'breakdown', defaultRow: 2, component: TopMapTypesWidget      },
-  { id: 'time-of-day',         eyebrow: 'Time of day',            shape: 'breakdown', defaultRow: 2, component: TimeOfDayWidget        },
-  { id: 'day-of-week',         eyebrow: 'Day of week',            shape: 'breakdown', defaultRow: 2, component: DayOfWeekWidget        },
-  { id: 'recent-5-matches',    eyebrow: 'Recent matches',         shape: 'breakdown', defaultRow: 2, component: Recent5MatchesWidget   },
+  { id: 'current-streak',      eyebrow: 'Current streak',         shape: 'kpi',       defaultRow: 1, component: CurrentStreakWidget,    config: EMPTY_SCHEMA },
+  { id: 'longest-win-streak',  eyebrow: 'Longest win streak',     shape: 'kpi',       defaultRow: 1, component: LongestWinStreakWidget, config: EMPTY_SCHEMA },
+  { id: 'hero-pool-size',      eyebrow: 'Hero pool size',         shape: 'kpi',       defaultRow: 1, component: HeroPoolSizeWidget,     config: EMPTY_SCHEMA },
+  { id: 'best-winrate-hero',   eyebrow: 'Best hero by winrate',   shape: 'kpi',       defaultRow: 1, component: BestWinrateHeroWidget,  config: EMPTY_SCHEMA },
+  { id: 'top-map-types',       eyebrow: 'Most played map types',  shape: 'breakdown', defaultRow: 2, component: TopMapTypesWidget,      config: EMPTY_SCHEMA },
+  { id: 'time-of-day',         eyebrow: 'Time of day',            shape: 'breakdown', defaultRow: 2, component: TimeOfDayWidget,        config: EMPTY_SCHEMA },
+  { id: 'day-of-week',         eyebrow: 'Day of week',            shape: 'breakdown', defaultRow: 2, component: DayOfWeekWidget,        config: EMPTY_SCHEMA },
+  { id: 'recent-5-matches',    eyebrow: 'Recent matches',         shape: 'breakdown', defaultRow: 2, component: Recent5MatchesWidget,   config: EMPTY_SCHEMA },
 ]
 
 // Row-keyed install-default layout. Membership here means "auto-add
