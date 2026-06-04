@@ -395,17 +395,18 @@ main#main-content {
   outline: none;
 }
 
-/* Soft atmospheric warmth in the top corners. Anchors the eye and
-   keeps the off-black from feeling flat. */
+/* Single corner radial of accent warmth. Anchors the eye against
+   the off-black ground without the multi-hue ambient lighting that
+   dates dashboards (the prior orange / blue / coral trio read very
+   2019-Vercel). One accent radial keeps the brand warmth without
+   the showroom feel. */
 .atmos {
   position: fixed; inset: 0;
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(60% 50% at 8% -10%, var(--atmos-orange), transparent 60%),
-    radial-gradient(45% 40% at 100% 0%, var(--atmos-blue), transparent 60%),
-    radial-gradient(80% 60% at 50% 110%, var(--atmos-coral), transparent 65%);
-  transition: opacity 320ms ease;
+    radial-gradient(60% 50% at 8% -10%, var(--atmos-orange), transparent 60%);
+  transition: opacity var(--duration-slow) ease;
 }
 
 /* Hairline grid pattern, very faint. Tactical/blueprint texture. */
@@ -497,9 +498,9 @@ main#main-content {
     0 14px 36px -14px rgb(0 0 0 / 55%);
 }
 
-/* Hover the tile → the accent rail leaks slightly past its bounds. */
+/* Hover the tile → the accent rail brightens; no chroma halo. */
 
-.brandmark-link:hover::before { box-shadow: 0 0 22px var(--accent-glow); }
+.brandmark-link:hover::before { background: var(--accent-bright); }
 
 .brand-extlink {
   position: absolute;
@@ -512,9 +513,8 @@ main#main-content {
   letter-spacing: 0;
   opacity: 0;
   transform: translate(-2px, 2px);
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition: opacity var(--duration-med) ease, transform var(--duration-med) ease;
   pointer-events: none;
-  text-shadow: 0 0 10px var(--accent-glow);
 }
 
 .brandmark-link:hover .brand-extlink,
@@ -525,7 +525,6 @@ main#main-content {
 
 [data-theme="day"] .brand-extlink {
   color: var(--accent-text);
-  text-shadow: none;
 }
 
 .brandmark-tile::before {
@@ -534,7 +533,6 @@ main#main-content {
   left: 0; top: 0; bottom: 0;
   width: 3px;
   background: var(--accent-bright);
-  box-shadow: 0 0 14px var(--accent-glow);
 }
 
 /* The left-rail accent glow reads as a hard halo on the cream background.
@@ -577,13 +575,11 @@ main#main-content {
   font-size: 1.05rem;
   line-height: 1;
   transform: translateY(-1px);
-  text-shadow: 0 0 14px var(--accent-glow);
   font-feature-settings: "tnum";
 }
 
 [data-theme="day"] .brand-tick {
   color: var(--accent-text);
-  text-shadow: none;
 }
 
 .brand {
@@ -599,7 +595,6 @@ main#main-content {
 
 .brand-accent {
   color: var(--accent-bright);
-  text-shadow: 0 0 24px var(--accent-glow);
 }
 
 /* HIGH-CONTRAST BRANDMARK
@@ -715,14 +710,13 @@ main#main-content {
    Wrapped in the standard reduced-motion guard at the top of the file
    so it's a no-op for vestibular-sensitive users. */
 @keyframes records-pulse {
-  0%   { box-shadow: 0 0 0 0 var(--accent-glow); transform: scale(1); }
-  35%  { box-shadow: 0 0 0 10px transparent;     transform: scale(1.03); }
-  70%  { box-shadow: 0 0 0 0 var(--accent-glow); transform: scale(1); }
-  100% { box-shadow: 0 0 0 10px transparent;     transform: scale(1); }
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.03); }
+  100% { transform: scale(1); }
 }
 
 .scoreboard.pulse {
-  animation: records-pulse 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: records-pulse var(--duration-slow) var(--easing-emph);
 }
 
 .score-cell {
@@ -781,13 +775,13 @@ main#main-content {
   background: var(--accent);
   color: #1a0a00;
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%) inset, 0 4px 28px -8px var(--accent-glow);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%) inset;
 }
 
 .btn.primary:hover:not(:disabled) {
   background: var(--accent-bright);
   border-color: var(--accent-bright);
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%) inset, 0 4px 36px -6px var(--accent-glow);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%) inset;
   transform: translateY(-1px);
 }
 
@@ -901,7 +895,6 @@ main#main-content {
 .switch input:checked ~ .switch-track .switch-knob {
   transform: translateX(12px);
   background: var(--accent);
-  box-shadow: 0 0 10px var(--accent-glow);
 }
 .switch input:checked ~ .switch-label { color: var(--text); }
 
@@ -1319,9 +1312,8 @@ main#main-content {
   left: 0; right: 0; bottom: 0;
   height: 2px;
   background: var(--accent);
-  box-shadow: 0 0 14px var(--accent-glow);
   border-radius: 1px;
-  animation: nav-underline 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: nav-underline var(--duration-slow) var(--easing-out);
 }
 
 @keyframes nav-underline {
@@ -1337,7 +1329,7 @@ main#main-content {
 }
 
 .settings, .matches-view, .unknown-view {
-  animation: view-fade-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: view-fade-in var(--duration-med) var(--easing-out) both;
 }
 
 /* .settings-sub moved to SettingsView.vue */
@@ -1396,18 +1388,17 @@ main#main-content {
 
 .section-header::after {
   /* Small orange tick at the right end of the section divider — a
-     decorative tactical mark, like a registration cue on a film strip. */
+     decorative tactical mark, like a registration cue on a film
+     strip. Static hairline, no chroma glow. */
   content: '';
   position: absolute;
   right: 0; bottom: -1px;
-  width: 28px; height: 3px;
+  width: 24px; height: 2px;
   background: var(--accent);
-  box-shadow: 0 0 12px var(--accent-glow);
 }
 
 [data-theme="day"] .section-header::after {
   background: var(--accent-text);
-  box-shadow: none;
 }
 
 .section-num {
@@ -1429,7 +1420,6 @@ main#main-content {
   line-height: 0.85;
   margin: 0 -0.15rem;
   transform: translateY(2px) skewX(-8deg);
-  text-shadow: 0 0 14px var(--accent-glow);
 }
 
 .section-title {
@@ -1476,7 +1466,6 @@ main#main-content {
 
 .setting-row:hover::before {
   background: var(--accent);
-  box-shadow: 0 0 10px var(--accent-glow);
 }
 
 .setting-info { min-width: 0; }
@@ -1574,16 +1563,6 @@ main#main-content {
    it from screaming, while the loss-color edge + dot + CTA make it
    clear something is broken. */
 
-@keyframes alert-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 1px var(--loss) inset, 0 14px 36px -14px rgb(0 0 0 / 55%), 0 0 0 0 var(--loss-soft); }
-  50%      { opacity: 1; box-shadow: 0 0 0 1px var(--loss) inset, 0 14px 36px -14px rgb(0 0 0 / 55%), 0 0 0 6px transparent; }
-}
-
-@keyframes alert-icon-pulse {
-  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 var(--loss)); }
-  50%      { transform: scale(1.08); filter: drop-shadow(0 0 8px var(--loss)); }
-}
-
 .system-alert {
   position: relative;
   display: grid;
@@ -1595,10 +1574,9 @@ main#main-content {
   background: linear-gradient(180deg, var(--brand-gray) 0%, #3a3a3a 100%);
   border-radius: 2px;
   border: 1px solid var(--loss);
-  box-shadow: 0 14px 36px -14px rgb(0 0 0 / 55%), 0 0 0 0 var(--loss-soft);
+  box-shadow: 0 14px 36px -14px rgb(0 0 0 / 55%);
   overflow: hidden;
   isolation: isolate;
-  animation: alert-pulse 2.6s ease-in-out infinite;
 }
 
 .system-alert::before {
@@ -1631,7 +1609,6 @@ main#main-content {
 
 .system-alert-icon {
   color: var(--loss);
-  animation: alert-icon-pulse 2.4s ease-in-out infinite;
   width: 26px; height: 26px;
   display: flex;
   align-items: center;
@@ -1807,13 +1784,11 @@ main#main-content {
   border-color: var(--accent);
   color: var(--accent);
   cursor: pointer;
-  box-shadow: 0 0 8px -3px var(--accent-glow);
 }
 
 .ver-btn-update:hover {
   background: var(--accent);
   color: #1a0a00;
-  box-shadow: 0 0 14px -3px var(--accent-glow);
 }
 
 /* Up to date: non-interactive status label */
@@ -2025,8 +2000,8 @@ main#main-content {
 
 [data-theme="day"] .btn.primary {
   /* In light mode the dark text on bright orange still works (OW chip).
-     Make it pop a touch more with a deeper shadow. */
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 20%) inset, 0 6px 22px -10px var(--accent-glow);
+     Solid inset border, no chroma halo. */
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 20%) inset;
 }
 
 [data-theme="day"] .btn.primary:hover:not(:disabled) {
@@ -2173,13 +2148,11 @@ main#main-content {
   margin-left: 0.45rem;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 8px var(--accent-glow);
   vertical-align: middle;
 }
 
 [data-theme="day"] .nav-tab-filter-dot {
   background: var(--accent-text);
-  box-shadow: none;
 }
 
 /* ─── Per-row "?" help affordance ─────────────────────────────
