@@ -200,6 +200,7 @@ onBeforeUnmount(() => {
         class="export-bundle-input"
         autocomplete="off"
         spellcheck="false"
+        required
         :disabled="busy"
         data-testid="filename"
       >
