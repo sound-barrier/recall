@@ -1291,34 +1291,48 @@ main#main-content {
   background: var(--hairline);
 }
 
+/* Tab typesetting commits to the numbered-workflow aesthetic — the
+   numeral is the hero (large display weight 800), the label drops
+   to a mono caption beneath it. The previous treatment ran them
+   inline with the numeral as a tiny prefix to the label; that
+   lived in agency-portfolio territory of 2016–2019 without
+   committing fully. This version reads as editorial / numbered
+   chapter heads — the workflow order (configure → ingest →
+   view → triage) earns the eye real estate it didn't have before. */
 .nav-tab {
   position: relative;
   background: transparent;
   border: none;
-  padding: 0.15rem 0 0.7rem;
+  padding: 0.15rem 0 0.65rem;
   cursor: pointer;
-  font-family: var(--display);
-  font-weight: 800;
-  font-size: 1.05rem;
-  letter-spacing: -0.005em;
-  text-transform: uppercase;
   color: var(--text-faint);
   display: inline-flex;
-  align-items: baseline;
-  gap: 0.55rem;
-  transition: color 200ms ease;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  transition: color var(--duration-med) ease;
 }
 
 .nav-tab-num {
-  font-family: var(--mono);
-  font-size: 0.65rem;
-  font-weight: 500;
-  letter-spacing: 0.16em;
+  font-family: var(--display);
+  font-size: var(--type-display-sm);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 0.9;
   color: var(--text-mute);
-  transition: color 200ms ease;
+  transition: color var(--duration-med) ease;
   font-feature-settings: "tnum";
 }
-.nav-tab-label { line-height: 1; }
+
+.nav-tab-label {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
 .nav-tab:hover { color: var(--text-dim); }
 .nav-tab:hover .nav-tab-num { color: var(--text-faint); }
 .nav-tab.active { color: var(--text); }
