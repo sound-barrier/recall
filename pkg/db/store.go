@@ -124,6 +124,17 @@ type Store interface {
 	ClearMatchPlayMode(matchKey string) error
 	LoadMatchPlayModes() (map[string]PlayModeState, error)
 
+	// Ignored-screenshots surface — per-file suppress list for the
+	// "Delete forever" affordance on the Unknown tab. Presence in
+	// ignored_screenshots means "skip this filename on every future
+	// parse run." Idempotent: adding an already-ignored filename
+	// refreshes the timestamp; removing a non-ignored one is a no-op.
+	// LoadIgnoredFilenames returns the full set for the parse pipeline
+	// to consult before queuing files.
+	AddIgnoredScreenshot(filename string) error
+	RemoveIgnoredScreenshot(filename string) error
+	LoadIgnoredFilenames() (map[string]bool, error)
+
 	// Clear deletes every row in every table — children cascade.
 	Clear() error
 	Close() error

@@ -88,6 +88,16 @@ func (a *App) ParseScreenshots() error {
 	if err != nil {
 		return err
 	}
+	// Union the user-curated suppress-list ("Delete forever" in the
+	// Unknown tab) into the parser's skip-set so the OCR pipeline
+	// never even opens those files. Errors loading the ignored set
+	// don't abort the parse — the set is a UX nicety, not a
+	// correctness invariant; an empty set just means nothing's
+	// suppressed for this run.
+	ignored, _ := a.store.LoadIgnoredFilenames()
+	for f := range ignored {
+		parsed[f] = true
+	}
 
 	// Record the source folder once per batch so every screenshot in
 	// this Parse run is FK'd to the same screenshots_dirs row. Resolved

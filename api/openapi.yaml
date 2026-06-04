@@ -624,6 +624,78 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/screenshots/{filename}/ignore:
+    parameters:
+      - name: filename
+        in: path
+        required: true
+        schema:
+          type: string
+        description: |
+          Screenshot filename to suppress or un-suppress. URL-encoded
+          (the filename can contain spaces and dashes from the
+          Overwatch capture format).
+    post:
+      operationId: IgnoreScreenshot
+      tags: [Pipeline]
+      summary: Permanently ignore a screenshot
+      description: |
+        Adds `filename` to the suppress-list backing the Unknown
+        tab's "Delete forever" affordance. Future parse runs skip
+        this file. Also wipes any `unmatched-<filename>` or
+        `ambiguous-<filename>` match rows so the row disappears from
+        the result set immediately, not just on the next parse. The
+        on-disk file is **not** deleted.
+
+        Idempotent: ignoring an already-ignored filename refreshes
+        the timestamp.
+      responses:
+        "204":
+          description: Filename added to the ignore-list.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: UnignoreScreenshot
+      tags: [Pipeline]
+      summary: Remove a screenshot from the ignore-list
+      description: |
+        Removes `filename` from the suppress-list so the next parse
+        run re-ingests the file. Idempotent on filenames that
+        weren't ignored.
+
+        No production UI surface ships against this verb in PR 4; it
+        exists for completeness and future "Manage ignored" panels.
+      responses:
+        "204":
+          description: Filename removed from the ignore-list.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/screenshots/ignored:
+    get:
+      operationId: GetIgnoredScreenshots
+      tags: [Pipeline]
+      summary: List ignored screenshot filenames
+      description: |
+        Returns the suppress-list contents, sorted by filename.
+        Currently no production UI surface — used by debug / curl
+        consumers and reserved for a future "Manage ignored" panel.
+      responses:
+        "200":
+          description: Sorted list of ignored filenames.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/settings/screenshots-folder:
     get:
       operationId: GetScreenshotsFolder

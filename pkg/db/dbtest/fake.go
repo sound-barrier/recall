@@ -51,6 +51,12 @@ type Fake struct {
 	// falls back to data.mode + rank-row presence.
 	PlayModes map[string]db.PlayModeState
 
+	// Ignored is the suppress-list keyed by filename. Presence means
+	// the parse pipeline should skip that file. Absence is the normal
+	// "fair game" state. Tests seed this map directly or assert on it
+	// after calling AddIgnoredScreenshot.
+	Ignored map[string]bool
+
 	// Ambiguous holds one candidate-list per filename. Tests seed it
 	// directly to verify aggregator behavior for ambiguous screenshots
 	// without going through the resolver / write path.
@@ -480,6 +486,33 @@ func (f *Fake) LoadHiddenKeys() (map[string]bool, error) {
 	defer f.mu.Unlock()
 	out := make(map[string]bool, len(f.Hidden))
 	for k, v := range f.Hidden {
+		out[k] = v
+	}
+	return out, nil
+}
+
+func (f *Fake) AddIgnoredScreenshot(filename string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Ignored == nil {
+		f.Ignored = map[string]bool{}
+	}
+	f.Ignored[filename] = true
+	return nil
+}
+
+func (f *Fake) RemoveIgnoredScreenshot(filename string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.Ignored, filename)
+	return nil
+}
+
+func (f *Fake) LoadIgnoredFilenames() (map[string]bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string]bool, len(f.Ignored))
+	for k, v := range f.Ignored {
 		out[k] = v
 	}
 	return out, nil

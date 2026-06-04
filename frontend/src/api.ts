@@ -304,6 +304,20 @@ export const HardDeleteMatch = _dualVoid<[matchKey: string]>(
   (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}`,
 )
 
+// Permanently ignore a screenshot — backs the Unknown tab's
+// "Delete forever" affordance. Adds the filename to the
+// suppress-list (so future parse runs skip it) AND wipes the
+// matching unmatched- / ambiguous- match rows so the Unknown card
+// disappears immediately. The on-disk file is NOT deleted —
+// "forever" means "forever ignored by Recall", not "wiped from
+// your drive." Idempotent.
+export const IgnoreScreenshot = _dualVoid<[filename: string]>(
+  'IgnoreScreenshot',
+  'POST',
+  (filename) => `/api/v1/screenshots/${encodeURIComponent(filename)}/ignore`,
+)
+
+
 // Per-match review-status tag. `reviewedBy` is `'self'` (user
 // reviewed the VOD themselves), `'coach'` (a coach reviewed it),
 // or `''` (the implicit "not reviewed" third state — clears the

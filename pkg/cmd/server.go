@@ -209,6 +209,13 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	// register in server_pipeline.go.
 	registerPipelineRoutes(apiMux, a)
 
+	// ── Screenshots suppress-list ──────────────────────────────────
+	// POST/DELETE /api/v1/screenshots/{filename}/ignore +
+	// GET /api/v1/screenshots/ignored register in
+	// server_screenshots.go. Mounted after the pipeline so the
+	// /screenshots/ prefix routes resolve consistently.
+	registerScreenshotRoutes(apiMux, a)
+
 	// ── Settings ────────────────────────────────────────────────────
 	// All /api/v1/settings/... routes register in server_settings.go.
 	registerSettingsRoutes(apiMux, a)
