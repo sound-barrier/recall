@@ -4,19 +4,14 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"regexp"
 
 	"recall/pkg/app"
 )
 
-// filenamePattern mirrors the OpenAPI `pattern` constraint on the
-// /api/v1/screenshots/{filename} path parameter. Conservative
-// printable-ASCII set — real OW capture filenames are a subset.
-// Pinned by schemathesis's negative_data_rejection check: every
-// request the spec considers schema-violating must come back as
-// 4xx, not 204.
-var filenamePattern = regexp.MustCompile(`^[A-Za-z0-9 _.\-()\[\]]{1,200}$`)
-
+// validateScreenshotFilename decodes the path parameter and enforces
+// the OpenAPI `minLength: 1 / maxLength: 200` constraint. Pinned by
+// schemathesis's negative_data_rejection check: empty or
+// over-length filenames must come back as 400, not 204.
 func validateScreenshotFilename(raw string) (string, error) {
 	decoded, err := url.PathUnescape(raw)
 	if err != nil {
@@ -25,8 +20,8 @@ func validateScreenshotFilename(raw string) (string, error) {
 	if decoded == "" {
 		return "", errors.New("filename is required")
 	}
-	if !filenamePattern.MatchString(decoded) {
-		return "", errors.New("filename contains characters outside [A-Za-z0-9 _.-()\\[\\]]")
+	if len(decoded) > 200 {
+		return "", errors.New("filename exceeds 200 characters")
 	}
 	return decoded, nil
 }
