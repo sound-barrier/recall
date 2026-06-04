@@ -237,8 +237,8 @@ function onRootClick() {
 .dashboard-gear {
   position: absolute;
   top: 4px;
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -253,35 +253,39 @@ function onRootClick() {
   user-select: none;
   z-index: 1;
   opacity: 0.35;
-  transition: opacity 160ms ease,
-              color 140ms ease, border-color 140ms ease, background 140ms ease;
+  transition: opacity var(--duration-fast) ease,
+              color var(--duration-fast) ease,
+              border-color var(--duration-fast) ease,
+              background var(--duration-fast) ease;
 }
 
 .dashboard-drag-handle {
   left: 4px;
-  font-size: 0.7rem;
+  font-size: 0.85rem;
   color: var(--text-faint);
   cursor: grab;
 }
 
 .dashboard-trash {
   right: 4px;
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: var(--text-faint);
 }
 
 /* Gear is independent of edit mode: visible whenever the widget has
    a non-empty config schema. Default sits at the right edge; in edit
    mode it shifts left to make room for the trash button (which keeps
-   its right-edge anchor as the destructive control). */
+   its right-edge anchor as the destructive control). The 4 px gap
+   between the two boxes matches the corner inset so the chrome
+   reads as one row. */
 .dashboard-gear {
   right: 4px;
-  font-size: 0.85rem;
+  font-size: 1rem;
   color: var(--text-faint);
 }
 
 .dashboard-gear-inset {
-  right: 26px;
+  right: 36px;
 }
 
 .dashboard-widget-editable:hover .dashboard-drag-handle,

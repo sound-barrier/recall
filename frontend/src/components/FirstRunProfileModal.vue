@@ -127,11 +127,14 @@ onBeforeUnmount(() => {
         spellcheck="false"
         placeholder="e.g. SilentStorm"
         :disabled="busy"
+        required
+        :aria-invalid="(inputDirty && !inputValid) || !!error ? 'true' : undefined"
+        :aria-describedby="error ? 'first-run-error' : ((inputDirty && !inputValid) ? 'first-run-hint' : undefined)"
       >
-      <p v-if="inputDirty && !inputValid" class="first-run-hint">
+      <p v-if="inputDirty && !inputValid" id="first-run-hint" class="first-run-hint">
         a–z, 0–9, _ or -, 1–40 chars, start with a letter or digit.
       </p>
-      <p v-if="error" class="first-run-error">
+      <p v-if="error" id="first-run-error" class="first-run-error" role="alert">
         {{ error }}
       </p>
       <div class="first-run-actions">
