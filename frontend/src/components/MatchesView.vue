@@ -7,6 +7,7 @@ import { useMatchesWindow } from '../composables/useMatchesWindow'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
 import { provideDossier } from '../composables/useDossier'
 import WidgetConfigPopover from './WidgetConfigPopover.vue'
+import MatchesSortGroupPopover from './MatchesSortGroupPopover.vue'
 import { useWeekStart } from '../composables/useWeekStart'
 import { useDensity } from '../composables/useDensity'
 import { useOWData } from '../composables/useOWData'
@@ -141,6 +142,41 @@ const {
 const narrowOpen = ref(false)
 const sortOrder = ref<'newest' | 'oldest'>('newest')
 const groupBy   = ref<'none' | 'day' | 'week' | 'month' | 'year'>('day')
+
+// Sort + Group dropdown — a single trigger button replaces the two
+// segmented-button fieldsets that used to live above the leaves
+// list. Captures the trigger rect on open so the popover anchors
+// to it; close on Esc / click-outside / radio-pick. Density stays
+// its own fieldset (toggle, not multi-axis).
+const sortGroupOpen   = ref(false)
+const sortGroupAnchor = ref<DOMRect | null>(null)
+
+function onSortGroupTriggerClick(e: MouseEvent) {
+  const t = e.currentTarget as HTMLElement | null
+  if (!t) return
+  sortGroupAnchor.value = t.getBoundingClientRect()
+  sortGroupOpen.value = !sortGroupOpen.value
+}
+
+function closeSortGroup() {
+  sortGroupOpen.value = false
+  sortGroupAnchor.value = null
+}
+
+const SORT_LABELS: Record<'newest' | 'oldest', string> = {
+  newest: 'Newest',
+  oldest: 'Oldest',
+}
+const GROUP_LABELS: Record<'none' | 'day' | 'week' | 'month' | 'year', string> = {
+  none:  'no group',
+  day:   'by day',
+  week:  'by week',
+  month: 'by month',
+  year:  'by year',
+}
+const sortGroupLabel = computed(() =>
+  `${SORT_LABELS[sortOrder.value]} · ${GROUP_LABELS[groupBy.value]}`,
+)
 
 // ─── Selection state (Gmail-style, no mode toggle) ──────────
 //
@@ -992,6 +1028,20 @@ onBeforeUnmount(() => {
         :anchor="configureAnchor"
         @close="closeWidgetConfigure"
       />
+
+      <!-- Combined Sort + Group dropdown. Mounted at the section
+           level so its z-index sits above the leaves list. The
+           trigger's bounding rect is captured on click; close on
+           Esc / outside-click / radio-pick. -->
+      <MatchesSortGroupPopover
+        :open="sortGroupOpen"
+        :sort="sortOrder"
+        :group="groupBy"
+        :anchor="sortGroupAnchor"
+        @close="closeSortGroup"
+        @update:sort="(v) => { sortOrder = v }"
+        @update:group="(v) => { groupBy = v }"
+      />
     </section>
 
     <!-- ─── CAMPAIGN LOG (heatmap + sparkline) ──────────────── -->
@@ -1018,39 +1068,19 @@ onBeforeUnmount(() => {
           </h3>
         </div>
         <div class="leaves-head-controls">
-          <fieldset class="seg" aria-label="Sort">
-            <legend class="seg-legend">
-              Sort
-            </legend>
-            <button
-              class="seg-btn"
-              :class="{ picked: sortOrder === 'newest' }"
-              @click="sortOrder = 'newest'"
-            >
-              Newest <span aria-hidden="true">↓</span>
-            </button>
-            <button
-              class="seg-btn"
-              :class="{ picked: sortOrder === 'oldest' }"
-              @click="sortOrder = 'oldest'"
-            >
-              Oldest <span aria-hidden="true">↑</span>
-            </button>
-          </fieldset>
-          <fieldset class="seg" aria-label="Group by">
-            <legend class="seg-legend">
-              Group
-            </legend>
-            <button
-              v-for="opt in (['none', 'day', 'week', 'month', 'year'] as const)"
-              :key="opt"
-              class="seg-btn"
-              :class="{ picked: groupBy === opt }"
-              @click="groupBy = opt"
-            >
-              {{ opt === 'none' ? '—' : opt[0]!.toUpperCase() }}
-            </button>
-          </fieldset>
+          <button
+            type="button"
+            class="sort-group-trigger"
+            :class="{ open: sortGroupOpen }"
+            data-sort-group-trigger
+            aria-haspopup="dialog"
+            :aria-expanded="sortGroupOpen ? 'true' : 'false'"
+            :title="`Sort and group — currently ${sortGroupLabel}`"
+            @click="onSortGroupTriggerClick"
+          >
+            <span class="sort-group-label">{{ sortGroupLabel }}</span>
+            <span class="sort-group-caret" aria-hidden="true">▾</span>
+          </button>
           <fieldset class="seg" aria-label="Row density">
             <legend class="seg-legend">
               Density
@@ -1919,6 +1949,49 @@ onBeforeUnmount(() => {
   display: inline-flex;
   gap: 0.5rem;
   align-items: end;
+}
+
+/* Combined Sort + Group trigger — single button replaces the prior
+   two segmented fieldsets so the head controls fit comfortably
+   alongside the Density picker without overflowing the row. */
+.sort-group-trigger {
+  appearance: none;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 0.22rem 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 700;
+  cursor: pointer;
+  transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+
+.sort-group-trigger:hover {
+  color: var(--text);
+}
+
+.sort-group-trigger.open,
+.sort-group-trigger:focus-visible {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+  outline: none;
+}
+
+.sort-group-label {
+  display: inline-block;
+}
+
+.sort-group-caret {
+  font-size: 0.75rem;
+  line-height: 1;
+  transform: translateY(-1px);
 }
 
 .seg {

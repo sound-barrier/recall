@@ -89,35 +89,6 @@ constantly open / close / re-open it.
 **Risk:** Med — MatchesView is the most-touched view and the
 narrow plumbing has many keyboard / focus edges.
 
-## 22. Combined Sort + Group dropdown in the Matches head
-
-**Where:** `frontend/src/components/MatchesView.vue` (the
-`.leaves-head-controls` row).
-
-**What breaks:** Sort + Group are two separate fieldsets,
-together taking ~12 segmented buttons of horizontal real estate
-above the leaves list. The Density picker (PR E) added a third
-fieldset, pushing the row toward overflow on the
-~1280 px viewport. A single combo button with both axes inside a
-dropdown saves horizontal space and reduces cognitive load
-("how am I cutting this list?" = one menu, not three rows of
-chips).
-
-**Plan:**
-
-1. Wrap Sort + Group in a single trigger button labelled e.g.
-   "Newest · By day" reflecting the current state.
-2. The trigger opens a small panel with two radio groups
-   (Sort + Group), preserves keyboard nav, fires changes via the
-   existing `sortOrder` / `groupBy` refs.
-3. Existing per-button e2e selectors (the `.seg-btn.picked` reads)
-   move to scoped selectors inside the menu.
-4. Density picker stays as its own fieldset (it's
-   ergonomically different — toggle, not multi-axis).
-
-**Size:** M.
-**Risk:** Med — multiple e2e specs target the fieldsets directly.
-
 ## 23. Campaign Log sticky-on-scroll with compact-when-sticky
 
 **Where:** `frontend/src/components/MatchTimelineHeader.vue` +

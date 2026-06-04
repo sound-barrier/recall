@@ -132,7 +132,10 @@ test.describe('matches set-workspace', () => {
   test('sort toggle flips chronology', async ({ page }) => {
     // Default sort = newest first. Verify by reading the first row's date.
     const firstDate = await page.locator('.leaf-row').first().locator('.leaf-when-date').textContent()
-    await page.locator('button:has-text("Oldest")').click()
+    // Open the Sort+Group popover and pick Oldest. (PR 6 replaced
+    // the inline Sort/Group fieldsets with a single trigger + dropdown.)
+    await page.locator('[data-sort-group-trigger]').click()
+    await page.locator('[data-sort-pick="oldest"]').click()
     const newFirstDate = await page.locator('.leaf-row').first().locator('.leaf-when-date').textContent()
     expect(firstDate).not.toBe(newFirstDate)
   })
