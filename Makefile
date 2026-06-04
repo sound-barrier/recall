@@ -606,6 +606,7 @@ N       ?= 100
 PROFILE ?= demo
 SEED    ?= 1
 CHAOS   ?= 0
+STYLE   ?= flex
 
 ifeq ($(SEED),time)
 SEED_VALUE := $(shell date +%s)
@@ -613,8 +614,8 @@ else
 SEED_VALUE := $(SEED)
 endif
 
-seed-dev: ## Populate a SQLite profile with N synthetic matches (usage: make seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1] [CHAOS=0.15])
-	@go run ./cmd/seed-dev --n=$(N) --profile=$(PROFILE) --seed=$(SEED_VALUE) --chaos=$(CHAOS) $(if $(FORCE),--force,)
+seed-dev: ## Populate a SQLite profile with N synthetic matches (usage: make seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1] [CHAOS=0.15] [STYLE=one-trick])
+	@go run ./cmd/seed-dev --n=$(N) --profile=$(PROFILE) --seed=$(SEED_VALUE) --chaos=$(CHAOS) --style=$(STYLE) $(if $(FORCE),--force,)
 
 seed-clear: ## Wipe a SQLite profile without re-seeding (usage: make seed-clear PROFILE=demo)
 	@go run ./cmd/seed-dev --clear --profile=$(PROFILE)

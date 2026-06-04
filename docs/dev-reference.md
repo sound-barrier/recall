@@ -50,7 +50,7 @@ Two binary flavors, selected by the `serveronly` Go build tag:
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml`. |
 | `make typecheck` | `vue-tsc --noEmit`. `allowJs: false` blocks JS introduction. |
 | `make update-goldens` | Regenerate parser golden sidecars (or set `RECALL_FIXTURE_UPDATE=1`). |
-| `make seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1] [CHAOS=0.15]` | Populate a SQLite profile with N synthetic matches via `cmd/seed-dev`. Refuses non-empty profiles unless `FORCE=1` wipes first. `SEED=time` is a sentinel that substitutes the current Unix timestamp for a fresh shuffle. `CHAOS=<0..1>` mixes pathological data shapes into that fraction of matches. See "Manual testing with a seeded corpus" below. |
+| `make seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1] [CHAOS=0.15] [STYLE=…]` | Populate a SQLite profile with N synthetic matches via `cmd/seed-dev`. Refuses non-empty profiles unless `FORCE=1` wipes first. `SEED=time` is a sentinel that substitutes the current Unix timestamp for a fresh shuffle. `CHAOS=<0..1>` mixes pathological data shapes into that fraction of matches. `STYLE=` defaults to `flex` (covers every map + hero); also accepts `one-trick`, `one-role`, or `random`. See "Manual testing with a seeded corpus" below. |
 | `make seed-clear PROFILE=demo` | Wipe a SQLite profile without re-seeding. No-op (and exits 0) when the profile is already empty. |
 
 > **Drift note:** specific numeric gates (`GO_COVERAGE_MIN`, Vitest thresholds,
@@ -193,20 +193,38 @@ The distribution is tuned to read as one player's season, not a uniform spray:
 - **Time of day** weights toward evening (peak 19-21h) but rolls morning,
   afternoon, and late-night samples too. Some days are an evening session,
   others a noon session.
-- **Heroes** follow one of three "play styles" picked per seed:
-  - **One-trick** (~20% of seeds): 95% the same hero, occasional
-    experiments in their main role.
-  - **One-role** (~30%): mostly main-role heroes with same-hero streaks,
-    15% off-role experiments.
-  - **Flex** (~50%): 4–6 picked heroes across all roles, light streaks.
+- **Maps** are top-heavy — per-seed shuffled order + exponential decay
+  weights (factor 0.75). The top map carries ~22% of the corpus; the
+  tail tapers off. Every map in the pool is still guaranteed to appear
+  at least once (see coverage pass below) so UI eyeballing sees every
+  map label / icon.
+- **Heroes** follow the `STYLE` flag:
+  - **`flex`** (default): 2–3 main heroes **per role** (6–9 mains
+    total), plus 10% off-main experiments. A flex-only coverage pass
+    forces any missing pool hero into a random match so every hero
+    icon renders. Designed for default eyeball UI testing.
+  - **`one-trick`**: 95% the same hero, occasional experiments in their
+    main role. No coverage forcing.
+  - **`one-role`**: mostly main-role heroes with same-hero streaks,
+    15% off-role experiments. No coverage forcing.
+  - **`random`**: per-seed RNG picks one of the three styles (20% /
+    30% / 50%). Preserved for multi-seed sweeps that want variety.
 - **Results** weight to ~49.5% wins, ~49.5% losses, ~1% draws — a real
   player's W/L split, not the 33/33/33 a uniform pick produces.
 - **Reviews** land on ~1.5% of matches (≈70% `self`, ≈30% `coach`).
   Use this to exercise the dossier's "days since last review" tile +
   the reviewed-by filter without manually clicking through 300 matches.
 
-Different `SEED` values → different styles. Use `SEED=time` to roll through
-all three over a few runs.
+The default `STYLE=flex` is the right pick for "I want one corpus that
+exercises every dossier widget, every map icon, every hero icon."
+Switch styles only when you specifically want to test a one-trick or
+one-role read of the UI:
+
+```sh
+make seed-dev N=300 PROFILE=onetrick FORCE=1 STYLE=one-trick
+```
+
+Use `STYLE=random` + multi-seed sweeps to spread across all three.
 
 ### Where the fixture lives
 

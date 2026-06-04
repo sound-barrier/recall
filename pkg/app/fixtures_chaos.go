@@ -51,9 +51,11 @@ var (
 // generator; chaosRatio >= 1 chaos-mutates every match. A separate RNG
 // stream (seed+1) drives chaos so toggling the ratio doesn't shift
 // the underlying corpus's heroes / maps / dates — same seed, same
-// "season," just with weirdness layered in.
-func GenerateMatchFixtureWithChaos(n int, seed int64, chaosRatio float64) Fixture {
-	fx := GenerateMatchFixture(n, seed)
+// "season," just with weirdness layered in. style is forwarded to
+// GenerateMatchFixture ("" / "flex" / "one-trick" / "one-role" /
+// "random").
+func GenerateMatchFixtureWithChaos(n int, seed int64, style string, chaosRatio float64) Fixture {
+	fx := GenerateMatchFixture(n, seed, style)
 	if chaosRatio <= 0 {
 		return fx
 	}

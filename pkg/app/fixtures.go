@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"sort"
 	"time"
@@ -86,7 +87,37 @@ type playerProfile struct {
 	mainRole     string
 	mainPool     []string
 	favoriteHero string   // for one-tricks
-	flexHeroes   []string // for flex players
+	flexHeroes   []string // for flex players: 2-3 mains per role
+	offMains     []string // for flex players: heroes outside flexHeroes
+}
+
+// parsePlayStyle converts the seed-dev --style flag (and the
+// equivalent Makefile STYLE var) into a playStyle. Empty string and
+// "flex" both produce the flex player — flex is the default because
+// it's the only style whose corpus naturally covers every role +
+// most heroes, which is what edge-case eyeballing wants. "random"
+// preserves the original per-seed style picker so a multi-seed sweep
+// can still hit one-trick and one-role corpuses.
+func parsePlayStyle(rng *rand.Rand, s string) playStyle {
+	switch s {
+	case "", "flex":
+		return styleFlex
+	case "one-trick":
+		return styleOneTrick
+	case "one-role":
+		return styleOneRole
+	case "random":
+		switch r := rng.Float64(); {
+		case r < 0.2:
+			return styleOneTrick
+		case r < 0.5:
+			return styleOneRole
+		default:
+			return styleFlex
+		}
+	default:
+		return styleFlex
+	}
 }
 
 func roleOfHero(hero string) string {
@@ -103,17 +134,7 @@ func roleOfHero(hero string) string {
 	return "dps"
 }
 
-func newPlayerProfile(rng *rand.Rand) playerProfile {
-	var style playStyle
-	switch r := rng.Float64(); {
-	case r < 0.2:
-		style = styleOneTrick
-	case r < 0.5:
-		style = styleOneRole
-	default:
-		style = styleFlex
-	}
-
+func newPlayerProfile(rng *rand.Rand, style playStyle) playerProfile {
 	roles := []string{"tank", "support", "dps"}
 	mainRole := roles[rng.Intn(len(roles))]
 	var mainPool []string
@@ -131,14 +152,25 @@ func newPlayerProfile(rng *rand.Rand) playerProfile {
 	case styleOneTrick:
 		p.favoriteHero = mainPool[rng.Intn(len(mainPool))]
 	case styleFlex:
-		all := append(append(append([]string(nil), fixtureTanks...), fixtureSupports...), fixtureDPS...)
-		perm := rng.Perm(len(all))
-		keep := 4 + rng.Intn(3) // 4-6 heroes across all roles
-		if keep > len(all) {
-			keep = len(all)
+		// 2-3 main heroes per role (6-9 total) — flex players carry
+		// preferences within each role, not "anybody, anywhere."
+		for _, pool := range [][]string{fixtureTanks, fixtureSupports, fixtureDPS} {
+			perRole := 2 + rng.Intn(2) // 2 or 3
+			perm := rng.Perm(len(pool))
+			for i := 0; i < perRole && i < len(pool); i++ {
+				p.flexHeroes = append(p.flexHeroes, pool[perm[i]])
+			}
 		}
-		for i := 0; i < keep; i++ {
-			p.flexHeroes = append(p.flexHeroes, all[perm[i]])
+		// off-mains = pool heroes the player didn't pick. Drives the
+		// 10% experiment path so off-mains get the occasional touch
+		// (and the per-seed-coverage pass has something realistic
+		// to lean on when an off-main never came up naturally).
+		for _, pool := range [][]string{fixtureTanks, fixtureSupports, fixtureDPS} {
+			for _, h := range pool {
+				if !containsHero(p.flexHeroes, h) {
+					p.offMains = append(p.offMains, h)
+				}
+			}
 		}
 	case styleOneRole:
 		// No extra state — the main-pool seam already drives picks.
@@ -177,6 +209,12 @@ func (p playerProfile) pickHero(rng *rand.Rand, prevHero string) (role, hero str
 		// 25% streak on previous hero
 		if prevHero != "" && containsHero(p.flexHeroes, prevHero) && rng.Float64() < 0.25 {
 			return roleOfHero(prevHero), prevHero
+		}
+		// 10% off-main experiment — keeps off-mains in the corpus
+		// without the coverage pass having to do all the work.
+		if len(p.offMains) > 0 && rng.Float64() < 0.10 {
+			h := p.offMains[rng.Intn(len(p.offMains))]
+			return roleOfHero(h), h
 		}
 		h := p.flexHeroes[rng.Intn(len(p.flexHeroes))]
 		return roleOfHero(h), h
@@ -243,9 +281,22 @@ func pickWeightedHour(rng *rand.Rand) int {
 // GenerateMatchFixture builds n synthetic matches and returns them as
 // four slices (one per parent screenshot table). Every choice is
 // driven by a single rand.Source seeded by `seed`, so calling with
-// the same (n, seed) twice produces byte-identical output. Pass
-// time.Now().UnixNano() (or `make seed-dev SEED=time`) to get a
-// different shuffle each invocation.
+// the same (n, seed, style) tuple twice produces byte-identical
+// output. Pass time.Now().UnixNano() (or `make seed-dev SEED=time`)
+// to get a different shuffle each invocation.
+//
+// style controls the synthetic player's hero-pick shape:
+//   - "" / "flex" (default): 2-3 main heroes per role + 10% off-main
+//     experiments, plus a post-pass that ensures every map AND every
+//     hero in the pools appears at least once — edge-case eyeballing
+//     against a corpus that exercises every icon / label / sort key.
+//   - "one-trick": 95% the same hero in the player's main role,
+//     occasional experiments. No coverage forcing — one-trickers by
+//     definition can't cover every hero.
+//   - "one-role": mostly main-role heroes with same-hero streaks,
+//     15% off-role experiments. No coverage forcing.
+//   - "random": per-seed RNG picks one of the three styles (20% /
+//     30% / 50%). Preserved for multi-seed sweeps that want variety.
 //
 // Distribution:
 //   - Dates: random over [fixtureDateStart, fixtureDateEnd] with
@@ -254,10 +305,9 @@ func pickWeightedHour(rng *rand.Rand) int {
 //     naturally because the sample-per-day count varies.
 //   - Time of day: weighted toward evening (18-22h) but with morning,
 //     afternoon, and late-night samples (see fixtureHourWeights).
-//   - Heroes: one playStyle picked per seed — one-trick (95% one hero),
-//     one-role (mostly main role, occasional flex), or flex (heroes
-//     across all roles). Same-day streaks bias toward repeating the
-//     previous hero so a session can look like real play.
+//   - Maps: per-seed shuffled order + exponential decay weights
+//     (top-heavy: a handful dominate, the tail tapers off).
+//   - Heroes: per playStyle (see above) plus same-day streak bias.
 //
 // Every match emits one Summary + one Scoreboard. Personal lands on
 // ~60% of matches, Rank on ~40% — mirrors what the production parser
@@ -266,7 +316,7 @@ func pickWeightedHour(rng *rand.Rand) int {
 //
 // The generator is pure data construction — never touches a Store or
 // filesystem — so tests can exercise it without setup beyond stdlib.
-func GenerateMatchFixture(n int, seed int64) Fixture {
+func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	// #nosec G404 -- deterministic dev fixture, not security-sensitive
 	rng := rand.New(rand.NewSource(seed))
 
@@ -314,7 +364,24 @@ func GenerateMatchFixture(n int, seed int64) Fixture {
 		}
 	}
 
-	profile := newPlayerProfile(rng)
+	profile := newPlayerProfile(rng, parsePlayStyle(rng, style))
+
+	// Per-seed top-heavy map distribution. Shuffle the pool so
+	// different seeds emphasize different maps, then weight by
+	// position via exponential decay — the top ~3 maps carry most
+	// of the corpus while the tail tapers off. The coverage pass
+	// below catches any map the tail missed.
+	shuffledMaps := append([]string(nil), fixtureMaps...)
+	rng.Shuffle(len(shuffledMaps), func(i, j int) {
+		shuffledMaps[i], shuffledMaps[j] = shuffledMaps[j], shuffledMaps[i]
+	})
+	mapWeights := make([]float64, len(shuffledMaps))
+	totalMapW := 0.0
+	for i := range mapWeights {
+		w := math.Pow(0.75, float64(i))
+		mapWeights[i] = w
+		totalMapW += w
+	}
 
 	fx := Fixture{
 		Summaries:   make([]db.SummaryRow, 0, n),
@@ -337,7 +404,7 @@ func GenerateMatchFixture(n int, seed int64) Fixture {
 		finishedAt := t.Format("15:04:05")
 		key := NewTrackedMatchKey(ts).String()
 
-		gameMap := fixtureMaps[rng.Intn(len(fixtureMaps))]
+		gameMap := shuffledMaps[sampleWeightedIndex(rng, mapWeights, totalMapW)]
 		mode := fixtureModes[rng.Intn(len(fixtureModes))]
 		result := pickWeightedResult(rng)
 
@@ -425,6 +492,19 @@ func GenerateMatchFixture(n int, seed int64) Fixture {
 		}
 	}
 
+	// Coverage pass (flex only): ensure every map AND every hero
+	// in the pools appears at least once. Edge-case eyeballing
+	// against the dossier / leaves / Campaign Log wants to see every
+	// icon and label render, but the top-heavy map weights + 6-9
+	// flex mains naturally miss a handful per run. We patch by
+	// overwriting random matches' Map / Hero in lockstep on Summary
+	// + Scoreboard so the read-time fold sees consistent values.
+	// Skipped for one-trick / one-role — they can't cover everything
+	// by definition.
+	if profile.style == styleFlex && len(fx.Summaries) > 0 {
+		ensureCoverage(rng, &fx)
+	}
+
 	// Reviews: ~1.5% of matches get a review row. ~70% of those are
 	// self-reviews (the player's own retrospective), ~30% coach.
 	// Uses a derived seed (seed+2) so changing the review rate
@@ -446,6 +526,97 @@ func GenerateMatchFixture(n int, seed int64) Fixture {
 	}
 
 	return fx
+}
+
+// ensureCoverage patches the fixture so every map in fixtureMaps
+// and every hero across the three role pools appears in at least one
+// summary. Called only for flex corpuses (the other styles can't
+// satisfy this by definition).
+//
+// Strategy: scan once for what's present, build a list of missing
+// values, then pick random summary indices (without replacement) and
+// overwrite their Map / Hero in lockstep on the matching scoreboard.
+// We don't touch personal / rank rows — those are role-stats and a
+// minor inconsistency on the patched matches reads as "the player
+// tried something off-spec" rather than as a bug.
+func ensureCoverage(rng *rand.Rand, fx *Fixture) {
+	mapsSeen := make(map[string]bool, len(fixtureMaps))
+	heroesSeen := make(map[string]bool, len(fixtureTanks)+len(fixtureSupports)+len(fixtureDPS))
+	for _, s := range fx.Summaries {
+		mapsSeen[s.Map] = true
+		heroesSeen[s.Hero] = true
+	}
+
+	var missingMaps []string
+	for _, m := range fixtureMaps {
+		if !mapsSeen[m] {
+			missingMaps = append(missingMaps, m)
+		}
+	}
+	var missingHeroes []string
+	for _, pool := range [][]string{fixtureTanks, fixtureSupports, fixtureDPS} {
+		for _, h := range pool {
+			if !heroesSeen[h] {
+				missingHeroes = append(missingHeroes, h)
+			}
+		}
+	}
+	if len(missingMaps) == 0 && len(missingHeroes) == 0 {
+		return
+	}
+
+	scoreboardByKey := make(map[string]int, len(fx.Scoreboards))
+	for i, sb := range fx.Scoreboards {
+		scoreboardByKey[sb.MatchKey] = i
+	}
+
+	// One permutation, consumed by map patches first then hero
+	// patches, so the two passes don't clobber each other.
+	patchOrder := rng.Perm(len(fx.Summaries))
+	cursor := 0
+
+	apply := func(rewrite func(s *db.SummaryRow, sb *db.ScoreboardRow)) bool {
+		if cursor >= len(patchOrder) {
+			return false
+		}
+		idx := patchOrder[cursor]
+		cursor++
+		s := &fx.Summaries[idx]
+		var sb *db.ScoreboardRow
+		if sbIdx, ok := scoreboardByKey[s.MatchKey]; ok {
+			sb = &fx.Scoreboards[sbIdx]
+		}
+		rewrite(s, sb)
+		return true
+	}
+
+	for _, m := range missingMaps {
+		gameMap := m
+		if !apply(func(s *db.SummaryRow, sb *db.ScoreboardRow) {
+			s.Map = gameMap
+			if sb != nil {
+				sb.Map = gameMap
+			}
+		}) {
+			break
+		}
+	}
+	for _, h := range missingHeroes {
+		hero := h
+		if !apply(func(s *db.SummaryRow, sb *db.ScoreboardRow) {
+			s.Hero = hero
+			if sb != nil {
+				sb.Hero = hero
+			}
+			// Update the primary heroes_played child so the leaves
+			// list's "played as" badge matches the new hero.
+			if len(s.HeroesPlayed) > 0 {
+				s.HeroesPlayed[0].Hero = hero
+			}
+		}) {
+			break
+		}
+	}
 }
 
 // sampleWeightedIndex returns an index into weights drawn proportional
