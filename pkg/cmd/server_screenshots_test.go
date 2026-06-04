@@ -103,3 +103,24 @@ func TestGetScreenshotsIgnored_EmptyIsEmptyArray(t *testing.T) {
 		t.Errorf("got body %q, want []", body)
 	}
 }
+
+// Defense-in-depth: schema-violating filenames must be rejected at
+// the handler boundary, not silently 204'd. The ignored_screenshots
+// row is currently a SQL identifier (no FS access), but future code
+// paths that paste the filename into a path inherit the safe
+// constraint by default.
+func TestPostScreenshotsIgnore_RejectsPathSeparators(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	// "%2F" decodes to "/", "%5C" to "\\". Both must be rejected.
+	for _, encoded := range []string{
+		"foo%2Fbar.png",       // forward slash
+		"foo%5Cbar.png",       // backslash
+		"foo%00bar.png",       // NUL byte
+		"%2E%2E%2Fpasswd.png", // ../passwd via %2E + %2F
+	} {
+		rec := fire(t, mux, http.MethodPost, "/api/v1/screenshots/"+encoded+"/ignore", nil)
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("encoded=%q: status = %d, want 400 (schema-violating filename must reject)", encoded, rec.Code)
+		}
+	}
+}

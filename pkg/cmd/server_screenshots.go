@@ -4,14 +4,19 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"recall/pkg/app"
 )
 
 // validateScreenshotFilename decodes the path parameter and enforces
-// the OpenAPI `minLength: 1 / maxLength: 200` constraint. Pinned by
-// schemathesis's negative_data_rejection check: empty or
-// over-length filenames must come back as 400, not 204.
+// the OpenAPI constraints — minLength/maxLength + the path-separator
+// + NUL exclusion. Today the filename never leaves the SQL layer
+// (ignored_screenshots row + match_key derivation), so traversal
+// characters aren't directly exploitable. But rejecting them at the
+// boundary means a future "delete the file from disk" code path
+// inherits the constraint by default rather than having to remember
+// to re-validate.
 func validateScreenshotFilename(raw string) (string, error) {
 	decoded, err := url.PathUnescape(raw)
 	if err != nil {
@@ -22,6 +27,9 @@ func validateScreenshotFilename(raw string) (string, error) {
 	}
 	if len(decoded) > 200 {
 		return "", errors.New("filename exceeds 200 characters")
+	}
+	if strings.ContainsAny(decoded, "/\\\x00") {
+		return "", errors.New("filename contains path separators or NUL")
 	}
 	return decoded, nil
 }

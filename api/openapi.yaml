@@ -633,6 +633,14 @@ paths:
           type: string
           minLength: 1
           maxLength: 200
+          # Defense-in-depth: forbid path separators (/ \) and NUL so
+          # the filename can never become a traversal-capable path
+          # component in a future code path. The current handler
+          # stores it as a SQL identifier only (no FS access), but
+          # any future "delete the file from disk" feature inherits
+          # this constraint by default. Pattern stays simple so
+          # schemathesis's regex matcher agrees with the handler.
+          pattern: '^[^/\\\x00]{1,200}$'
         example: "broken.png"
         description: |
           Screenshot filename to suppress or un-suppress. URL-encoded
