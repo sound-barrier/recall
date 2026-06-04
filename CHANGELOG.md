@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.7.0](https://github.com/sound-barrier/recall/compare/v0.6.0...v0.7.0) (2026-06-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* **app:** cancel-in-flight parse via ctx seam + parse-cancelled SSE
+
+### Features
+
+* **api:** DELETE /api/v1/parses/active cancels an in-flight parse ([e79e847](https://github.com/sound-barrier/recall/commit/e79e84749818ca3231c0d48967029f5710d09776))
+* **api:** expose GetStartupError on App + GET /api/v1/system/startup-error ([830888e](https://github.com/sound-barrier/recall/commit/830888e3cf234c5b2b4c3c37eea5ca2a3d82c46a))
+* **app:** blocking startup-error modal in App.vue ([cd4e46d](https://github.com/sound-barrier/recall/commit/cd4e46d188935feb125529041ad070e04c1fc52c))
+* **app:** cancel-in-flight parse via ctx seam + parse-cancelled SSE ([f3e16cf](https://github.com/sound-barrier/recall/commit/f3e16cf2e98207eec7c67d85445eceeec8412e7c))
+* **ingest:** Stop button + cancelling state + parse-cancelled wiring ([835de3a](https://github.com/sound-barrier/recall/commit/835de3a7fe4a53dfe373dfba98bb39ee5d894653))
+* **matches:** client-side window + IntersectionObserver infinite-scroll ([d6a73fb](https://github.com/sound-barrier/recall/commit/d6a73fb4d2a993907cf3abbfb1ea81bf376639c5))
+* **status-bar:** ABORT tile — global Stop from any tab ([25804ea](https://github.com/sound-barrier/recall/commit/25804ea25ded9149cf09976bdf28f896518d8ddb))
+
+
+### Bug Fixes
+
+* **api:** reject `?limit=` (present-but-empty) on GET /api/v1/matches ([3ed9935](https://github.com/sound-barrier/recall/commit/3ed9935000f6f63fbfe073d9521d2174d2e9f036))
+* **matches:** drop dead `used = cap` in windowedSections overflow branch ([e6e9f83](https://github.com/sound-barrier/recall/commit/e6e9f832869980eb76eabec9b36ddbea07481be3))
+
+
+### Refactors
+
+* **app:** extract useGlobalKeyboard composable ([6b3210d](https://github.com/sound-barrier/recall/commit/6b3210de7c0c295798c17d0d1e0a7e30f264bec5))
+* **matches:** extract BulkActionBar from MatchesView ([6cf5288](https://github.com/sound-barrier/recall/commit/6cf528854f5c4c4a2ed49eeeb174c40a7587e082))
+* **matches:** extract NarrowPopover from MatchesView ([12c40b3](https://github.com/sound-barrier/recall/commit/12c40b3bb31c8522b6fb9f7739c8012ce32c2ff6))
+* **matches:** lazy-load NarrowPopover into its own chunk ([22594d5](https://github.com/sound-barrier/recall/commit/22594d57a99e07c4408e3898b89935d9f91dcc2a))
+
+
+### Documentation
+
+* **debt:** add [#15](https://github.com/sound-barrier/recall/issues/15) — cancel-in-flight parse ([af355cb](https://github.com/sound-barrier/recall/commit/af355cbc77b95f08e68e811d772fec8f0959981a))
+* **debt:** close [#7](https://github.com/sound-barrier/recall/issues/7) as intentional design — POST /parses stays ([0b9a8d1](https://github.com/sound-barrier/recall/commit/0b9a8d1f75cfb7b8c6af02c3eb3802fa18d45cf0))
+* **debt:** finish [#12](https://github.com/sound-barrier/recall/issues/12) — bundle audit cadence + drop item ([fdd0071](https://github.com/sound-barrier/recall/commit/fdd007160e326949d675c049d026e212a5ff3aec))
+* **debt:** finish [#15](https://github.com/sound-barrier/recall/issues/15) — cancel-in-flight parse ships ([dee51ca](https://github.com/sound-barrier/recall/commit/dee51ca554f01864f9c2f32754cd5a61f41ed682))
+* **debt:** finish [#4](https://github.com/sound-barrier/recall/issues/4) — SFC split paid down across 3 commits ([b7575a4](https://github.com/sound-barrier/recall/commit/b7575a43bf5bb95db8aca2521606e7cea805c1ce))
+* **debt:** finish [#6](https://github.com/sound-barrier/recall/issues/6) — frontend window ships, list view paginates ([b821980](https://github.com/sound-barrier/recall/commit/b8219804d97cb347cadfb1e5f239748332a72e6e))
+* **debt:** finish [#8](https://github.com/sound-barrier/recall/issues/8) — drop item, log.Fatal startup paths fully covered ([49d3bb4](https://github.com/sound-barrier/recall/commit/49d3bb474e6883ed44cae8e625c64eded77ea14c))
+* **debt:** populate TECHNICAL_DEBT.md with 14-item audit ([a725582](https://github.com/sound-barrier/recall/commit/a725582f1d5eb80c8c413fa6833dd99f8fcd3557))
+
+
+### CI
+
+* McCabe complexity sweep (gocyclo + eslint) — report-only ([13508ec](https://github.com/sound-barrier/recall/commit/13508ec69bfe983690e427a87b6f217dc9492849))
+
+
+### Tests
+
+* **cancel-parse:** correct tesseract-status mock URL ([b105254](https://github.com/sound-barrier/recall/commit/b105254b1ab98366a4729ad2bef2e6fbf3fd1608))
+* **ingest:** playwright e2e for cancel-parse flow ([77d758b](https://github.com/sound-barrier/recall/commit/77d758b721566c95698c87ed61a357ad7a367f9f))
+* **matches:** playwright e2e for infinite-scroll window ([91ca1ce](https://github.com/sound-barrier/recall/commit/91ca1ce7283145b17652448445d6bba03d498fb7))
+
 ## [0.6.0](https://github.com/sound-barrier/recall/compare/v0.5.0...v0.6.0) (2026-06-03)
 
 
