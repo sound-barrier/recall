@@ -18,6 +18,17 @@ type Fixture struct {
 	Scoreboards []db.ScoreboardRow
 	Personals   []db.PersonalRow
 	Ranks       []db.RankRow
+	// Reviews names the subset of match_keys that should carry a
+	// review row (`self` or `coach`). Empty for the vast majority of
+	// matches — fed into Store.SetReview by the seed tool.
+	Reviews []ReviewSeed
+}
+
+// ReviewSeed pairs a match_key with the reviewer kind ("self" or
+// "coach") for the seed tool to upsert via Store.SetReview.
+type ReviewSeed struct {
+	MatchKey   string
+	ReviewedBy string
 }
 
 // Date range the synthetic corpus covers. Hardcoded to a year-to-date
@@ -195,6 +206,24 @@ func containsHero(pool []string, h string) bool {
 	return false
 }
 
+// pickWeightedResult biases the match-result distribution toward what
+// a real player's history looks like: ~49.5% wins, ~49.5% losses,
+// ~1% draws. Uniform random across {victory, defeat, draw} would
+// produce a 33/33/33 split that reads as wrong at any N. Consumes one
+// rng.Float64() call — same entropy budget as the previous
+// fixtureResults[rng.Intn(...)] form, so swapping in this helper
+// doesn't shift downstream RNG state.
+func pickWeightedResult(rng *rand.Rand) string {
+	switch r := rng.Float64(); {
+	case r < 0.495:
+		return "victory"
+	case r < 0.99:
+		return "defeat"
+	default:
+		return "draw"
+	}
+}
+
 func pickWeightedHour(rng *rand.Rand) int {
 	total := 0.0
 	for _, w := range fixtureHourWeights {
@@ -310,7 +339,7 @@ func GenerateMatchFixture(n int, seed int64) Fixture {
 
 		gameMap := fixtureMaps[rng.Intn(len(fixtureMaps))]
 		mode := fixtureModes[rng.Intn(len(fixtureModes))]
-		result := fixtureResults[rng.Intn(len(fixtureResults))]
+		result := pickWeightedResult(rng)
 
 		elims := 6 + rng.Intn(20)
 		assists := 4 + rng.Intn(12)
@@ -394,6 +423,26 @@ func GenerateMatchFixture(n int, seed int64) Fixture {
 				}},
 			})
 		}
+	}
+
+	// Reviews: ~1.5% of matches get a review row. ~70% of those are
+	// self-reviews (the player's own retrospective), ~30% coach.
+	// Uses a derived seed (seed+2) so changing the review rate
+	// doesn't shift the main corpus's heroes / maps / dates.
+	// #nosec G404 -- deterministic dev fixture, not security-sensitive
+	reviewRng := rand.New(rand.NewSource(seed + 2))
+	for _, s := range fx.Summaries {
+		if reviewRng.Float64() >= 0.015 {
+			continue
+		}
+		reviewedBy := "self"
+		if reviewRng.Float64() < 0.3 {
+			reviewedBy = "coach"
+		}
+		fx.Reviews = append(fx.Reviews, ReviewSeed{
+			MatchKey:   s.MatchKey,
+			ReviewedBy: reviewedBy,
+		})
 	}
 
 	return fx

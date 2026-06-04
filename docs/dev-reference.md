@@ -199,6 +199,11 @@ The distribution is tuned to read as one player's season, not a uniform spray:
   - **One-role** (~30%): mostly main-role heroes with same-hero streaks,
     15% off-role experiments.
   - **Flex** (~50%): 4–6 picked heroes across all roles, light streaks.
+- **Results** weight to ~49.5% wins, ~49.5% losses, ~1% draws — a real
+  player's W/L split, not the 33/33/33 a uniform pick produces.
+- **Reviews** land on ~1.5% of matches (≈70% `self`, ≈30% `coach`).
+  Use this to exercise the dossier's "days since last review" tile +
+  the reviewed-by filter without manually clicking through 300 matches.
 
 Different `SEED` values → different styles. Use `SEED=time` to roll through
 all three over a few runs.
