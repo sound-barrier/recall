@@ -631,6 +631,12 @@ paths:
         required: true
         schema:
           type: string
+          # Conservative pattern — printable ASCII excluding the path
+          # delimiters / # ? %. Real OW capture filenames are a subset
+          # of this. Listed mostly so schemathesis can generate valid
+          # examples without filtering out every random string.
+          pattern: '^[A-Za-z0-9 _.\-()\[\]]{1,200}$'
+        example: "broken.png"
         description: |
           Screenshot filename to suppress or un-suppress. URL-encoded
           (the filename can contain spaces and dashes from the

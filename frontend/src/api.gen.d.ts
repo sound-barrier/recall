@@ -455,6 +455,7 @@ export interface paths {
                  * @description Screenshot filename to suppress or un-suppress. URL-encoded
                  *     (the filename can contain spaces and dashes from the
                  *     Overwatch capture format).
+                 * @example broken.png
                  */
                 filename: string;
             };
@@ -2210,6 +2211,7 @@ export interface operations {
                  * @description Screenshot filename to suppress or un-suppress. URL-encoded
                  *     (the filename can contain spaces and dashes from the
                  *     Overwatch capture format).
+                 * @example broken.png
                  */
                 filename: string;
             };
@@ -2237,6 +2239,7 @@ export interface operations {
                  * @description Screenshot filename to suppress or un-suppress. URL-encoded
                  *     (the filename can contain spaces and dashes from the
                  *     Overwatch capture format).
+                 * @example broken.png
                  */
                 filename: string;
             };
