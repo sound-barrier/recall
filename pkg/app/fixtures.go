@@ -221,6 +221,103 @@ func (p playerProfile) pickHero(rng *rand.Rand, prevHero string) (role, hero str
 	}
 }
 
+// heroPlay names one hero played in a single match, with the player's
+// per-hero share. Multiple heroPlay per match models the typical
+// "swapped once or twice" shape of real games — one-tricks excepted.
+type heroPlay struct {
+	Hero    string
+	Role    string
+	Percent int
+}
+
+// pickMatchHeroes picks the heroes the player touched in one match
+// plus the percent_played share for each. Distribution by style:
+//
+//   - one-trick: always 1 hero (the favorite). One-trickers don't swap.
+//   - flex / one-role / random: 10% 1 hero, 50% 2, 30% 3, 10% 4. Matches
+//     real play — most games have a swap, occasionally two, rarely more.
+//
+// Heroes are drawn via the existing pickHero pump so the player's pool
+// (mains + 10% off-main for flex) drives the picks. The first hero
+// honors the cross-match streak; subsequent picks within the same
+// match don't streak (the player wouldn't "swap back to the same
+// hero" twice in a row).
+//
+// percent_played always sums to 100, allocated via exponential decay
+// (factor 0.6) so the first hero gets the largest share and the
+// long-tail picks drop off naturally.
+func pickMatchHeroes(rng *rand.Rand, profile playerProfile, prevHero string) []heroPlay {
+	count := 1
+	if profile.style != styleOneTrick {
+		switch r := rng.Float64(); {
+		case r < 0.10:
+			count = 1
+		case r < 0.60:
+			count = 2
+		case r < 0.90:
+			count = 3
+		default:
+			count = 4
+		}
+	}
+
+	plays := make([]heroPlay, 0, count)
+	seen := map[string]bool{}
+	streak := prevHero
+	attempts := 0
+	for len(plays) < count && attempts < 50 {
+		attempts++
+		role, h := profile.pickHero(rng, streak)
+		if seen[h] {
+			streak = "" // dupe — drop the streak bias and retry
+			continue
+		}
+		seen[h] = true
+		plays = append(plays, heroPlay{Hero: h, Role: role})
+		streak = "" // streak only biases the first pick within a match
+	}
+	allocateHeroPercents(plays)
+	return plays
+}
+
+// allocateHeroPercents fills plays[i].Percent with shares summing to
+// 100, decaying exponentially from the first hero. Min 5% per hero so
+// even the long-tail pick is visible in a dossier widget.
+func allocateHeroPercents(plays []heroPlay) {
+	n := len(plays)
+	if n == 0 {
+		return
+	}
+	weights := make([]float64, n)
+	totalW := 0.0
+	for i := range weights {
+		weights[i] = math.Pow(0.6, float64(i))
+		totalW += weights[i]
+	}
+	remaining := 100
+	for i := range plays {
+		if i == n-1 {
+			plays[i].Percent = remaining
+			return
+		}
+		p := int(weights[i] / totalW * 100)
+		if p < 5 {
+			p = 5
+		}
+		plays[i].Percent = p
+		remaining -= p
+	}
+}
+
+// formatPlayTime returns "M:SS" for a fraction of the total match
+// seconds. Used for SummaryHeroPlayed.PlayTime so each hero's row
+// looks like the parser output ("8:30") even when the match has 4
+// heroes splitting the timeline.
+func formatPlayTime(totalSec, percent int) string {
+	s := totalSec * percent / 100
+	return fmt.Sprintf("%d:%02d", s/60, s%60)
+}
+
 func offRolePools(mainRole string) [][]string {
 	out := make([][]string, 0, 2)
 	if mainRole != "tank" {
@@ -397,8 +494,9 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 			prevHero = ""
 			prevDay = day
 		}
-		role, hero := profile.pickHero(rng, prevHero)
-		prevHero = hero
+		plays := pickMatchHeroes(rng, profile, prevHero)
+		primary := plays[0]
+		prevHero = primary.Hero
 
 		ts := t.Format("2006-01-02T15-04-05")
 		finishedAt := t.Format("15:04:05")
@@ -412,14 +510,25 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 		assists := 4 + rng.Intn(12)
 		deaths := 2 + rng.Intn(9)
 		gameMinutes := 8 + rng.Intn(12)
-		gameLength := fmt.Sprintf("%02d:%02d", gameMinutes, rng.Intn(60))
+		gameSeconds := rng.Intn(60)
+		gameLength := fmt.Sprintf("%02d:%02d", gameMinutes, gameSeconds)
+		totalGameSec := gameMinutes*60 + gameSeconds
+
+		heroesPlayed := make([]db.SummaryHeroPlayed, 0, len(plays))
+		for _, p := range plays {
+			heroesPlayed = append(heroesPlayed, db.SummaryHeroPlayed{
+				Hero:          p.Hero,
+				PercentPlayed: p.Percent,
+				PlayTime:      formatPlayTime(totalGameSec, p.Percent),
+			})
+		}
 
 		fx.Summaries = append(fx.Summaries, db.SummaryRow{
 			Filename:               "summary-" + ts + ".png",
 			MatchKey:               key,
 			Map:                    gameMap,
 			Mode:                   mode,
-			Hero:                   hero,
+			Hero:                   primary.Hero,
 			Result:                 result,
 			FinalScore:             fmt.Sprintf("%d-%d", rng.Intn(5), rng.Intn(5)),
 			Date:                   day,
@@ -431,17 +540,13 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 			PerfAssistsAvgPer10Min: float64(assists) * 10.0 / float64(gameMinutes),
 			PerfDeathsTotal:        deaths,
 			PerfDeathsAvgPer10Min:  float64(deaths) * 10.0 / float64(gameMinutes),
-			HeroesPlayed: []db.SummaryHeroPlayed{{
-				Hero:          hero,
-				PercentPlayed: 100,
-				PlayTime:      gameLength,
-			}},
+			HeroesPlayed:           heroesPlayed,
 		})
 
 		damage := 4000 + rng.Intn(12000)
 		healing := 0
 		mitigation := 0
-		switch role {
+		switch primary.Role {
 		case "support":
 			healing = 6000 + rng.Intn(8000)
 		case "tank":
@@ -452,7 +557,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 			MatchKey:     key,
 			Map:          gameMap,
 			Mode:         mode,
-			Hero:         hero,
+			Hero:         primary.Hero,
 			Eliminations: elims,
 			Assists:      assists,
 			Deaths:       deaths,
@@ -465,11 +570,11 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 			fx.Personals = append(fx.Personals, db.PersonalRow{
 				Filename: "personal-" + ts + ".png",
 				MatchKey: key,
-				Hero:     hero,
+				Hero:     primary.Hero,
 				HeroStats: []db.HeroStat{
-					{Hero: hero, StatKey: "eliminations", StatValue: elims},
-					{Hero: hero, StatKey: "deaths", StatValue: deaths},
-					{Hero: hero, StatKey: "damage", StatValue: damage},
+					{Hero: primary.Hero, StatKey: "eliminations", StatValue: elims},
+					{Hero: primary.Hero, StatKey: "deaths", StatValue: deaths},
+					{Hero: primary.Hero, StatKey: "damage", StatValue: damage},
 				},
 			})
 		}
@@ -484,7 +589,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 				ChangePercent: rng.Intn(40) - 20,
 				Result:        result,
 				SR: []db.HeroSR{{
-					Hero:   hero,
+					Hero:   primary.Hero,
 					SR:     2000 + rng.Intn(2000),
 					Change: rng.Intn(40) - 20,
 				}},
@@ -544,7 +649,9 @@ func ensureCoverage(rng *rand.Rand, fx *Fixture) {
 	heroesSeen := make(map[string]bool, len(fixtureTanks)+len(fixtureSupports)+len(fixtureDPS))
 	for _, s := range fx.Summaries {
 		mapsSeen[s.Map] = true
-		heroesSeen[s.Hero] = true
+		for _, hp := range s.HeroesPlayed {
+			heroesSeen[hp.Hero] = true
+		}
 	}
 
 	var missingMaps []string
@@ -603,16 +710,29 @@ func ensureCoverage(rng *rand.Rand, fx *Fixture) {
 	}
 	for _, h := range missingHeroes {
 		hero := h
-		if !apply(func(s *db.SummaryRow, sb *db.ScoreboardRow) {
-			s.Hero = hero
-			if sb != nil {
-				sb.Hero = hero
+		// Append the missing hero as a 5% cameo on a random match
+		// and dock the primary by 5% so percent_played still sums
+		// to 100. We don't touch s.Hero / sb.Hero: the cameo is
+		// "tried this for a minute" — the primary still owns the
+		// match identity.
+		if !apply(func(s *db.SummaryRow, _ *db.ScoreboardRow) {
+			const cameoPct = 5
+			if len(s.HeroesPlayed) == 0 {
+				s.HeroesPlayed = append(s.HeroesPlayed, db.SummaryHeroPlayed{
+					Hero:          hero,
+					PercentPlayed: 100,
+					PlayTime:      "1:00",
+				})
+				return
 			}
-			// Update the primary heroes_played child so the leaves
-			// list's "played as" badge matches the new hero.
-			if len(s.HeroesPlayed) > 0 {
-				s.HeroesPlayed[0].Hero = hero
+			if s.HeroesPlayed[0].PercentPlayed > cameoPct+5 {
+				s.HeroesPlayed[0].PercentPlayed -= cameoPct
 			}
+			s.HeroesPlayed = append(s.HeroesPlayed, db.SummaryHeroPlayed{
+				Hero:          hero,
+				PercentPlayed: cameoPct,
+				PlayTime:      "0:30",
+			})
 		}) {
 			break
 		}
