@@ -48,6 +48,10 @@ const props = defineProps<{
   // config schema. Gates the gear-icon affordance — empty-schema
   // widgets stay knob-less. MatchesView precomputes this so the
   // widget doesn't have to walk the registry.
+  //
+  // The gear is independent of edit mode: edit mode is for moving
+  // widgets, the gear is for tuning what one shows. Settings are a
+  // read-time concern, not a layout concern.
   hasConfig?: boolean
   legacyDataKpi?: string
   legacyDataBreakdown?: string
@@ -111,9 +115,9 @@ function onRootClick() {
       <span aria-hidden="true">⋮⋮</span>
     </button>
     <button
-      v-if="editMode && selected && hasConfig"
+      v-if="hasConfig"
       type="button"
-      class="dashboard-gear"
+      :class="['dashboard-gear', { 'dashboard-gear-inset': editMode }]"
       :aria-label="`Configure widget ${id}`"
       :data-widget-config-trigger="id"
       @click.stop="emit('configure', id, $event)"
@@ -266,20 +270,26 @@ function onRootClick() {
   color: var(--text-faint);
 }
 
-/* Gear sits LEFT of the trash so the destructive button keeps its
-   right-edge anchor. Selected + hasConfig only, so empty-schema
-   widgets stay knob-less. */
+/* Gear is independent of edit mode: visible whenever the widget has
+   a non-empty config schema. Default sits at the right edge; in edit
+   mode it shifts left to make room for the trash button (which keeps
+   its right-edge anchor as the destructive control). */
 .dashboard-gear {
-  right: 26px;
+  right: 4px;
   font-size: 0.85rem;
   color: var(--text-faint);
+}
+
+.dashboard-gear-inset {
+  right: 26px;
 }
 
 .dashboard-widget-editable:hover .dashboard-drag-handle,
 .dashboard-widget-editable:hover .dashboard-trash,
 .dashboard-widget-selected .dashboard-drag-handle,
 .dashboard-widget-selected .dashboard-trash,
-.dashboard-widget-selected .dashboard-gear,
+.kpi-tile:hover .dashboard-gear,
+.breakdown:hover .dashboard-gear,
 .dashboard-drag-handle:focus,
 .dashboard-trash:focus,
 .dashboard-gear:focus,
@@ -321,7 +331,8 @@ function onRootClick() {
   .kpi-tile,
   .breakdown,
   .dashboard-drag-handle,
-  .dashboard-trash {
+  .dashboard-trash,
+  .dashboard-gear {
     transition: none !important;
   }
 

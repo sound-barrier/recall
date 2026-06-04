@@ -1,13 +1,9 @@
 /**
- * Per-widget gear-icon settings popover (PR D of the per-widget
- * config refactor).
+ * Per-widget gear-icon settings popover.
  *
  * End-to-end proof:
  *
- *   user ticks Edit
- *     → clicks a widget with a non-empty schema (top-heroes)
- *     → selected state + gear icon appears (trash + gear visible)
- *     → clicks gear
+ *   user clicks the gear on a widget with a non-empty schema
  *     → popover mounts; segmented integer-choice row reflects the
  *       current limit (default 3)
  *     → clicks limit=10
@@ -16,6 +12,11 @@
  *     → widget re-renders showing 10 rows (or fewer if dataset
  *       can't supply that many)
  *     → reload → settings persist
+ *
+ * Settings live on their own axis from layout edits: the gear is
+ * always visible when the widget has a non-empty schema, regardless
+ * of edit mode. Edit mode is for moving widgets; the gear is for
+ * tuning what one shows.
  *
  * Also verifies: empty-schema widgets (e.g. winrate) don't render
  * the gear button.
@@ -60,27 +61,20 @@ test.describe('widget-config popover — gear → save → persist', () => {
   test('empty-schema widgets do not render the gear icon', async ({ page }) => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('input[data-edit-toggle]').check()
-    // Select winrate (empty schema).
-    await page.locator('[data-widget-id="winrate"]').click({ position: { x: 5, y: 60 } })
-    // Trash visible, gear NOT visible.
-    await expect(page.locator('[data-widget-remove="winrate"]')).toBeVisible()
+    // No edit-mode toggle needed — gear visibility is independent of
+    // layout edits and lives wherever a widget has a config schema.
     await expect(page.locator('[data-widget-config-trigger="winrate"]')).toHaveCount(0)
   })
 
   test('gear opens popover; Save persists; widget re-renders', async ({ page }) => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('input[data-edit-toggle]').check()
 
     // Default top-heroes renders 3 rows.
     const heroList = page.locator('[data-widget-id="top-heroes"] li')
     await expect(heroList).toHaveCount(3)
 
-    // Select top-heroes.
-    await page.locator('[data-widget-id="top-heroes"]').click({ position: { x: 5, y: 30 } })
-
-    // Gear appears + opens the popover.
+    // Gear is always present — no edit mode, no select-click required.
     const gear = page.locator('[data-widget-config-trigger="top-heroes"]')
     await expect(gear).toBeVisible()
     await gear.click()
@@ -104,8 +98,6 @@ test.describe('widget-config popover — gear → save → persist', () => {
   test('Cancel discards the draft', async ({ page }) => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('input[data-edit-toggle]').check()
-    await page.locator('[data-widget-id="top-heroes"]').click({ position: { x: 5, y: 30 } })
     await page.locator('[data-widget-config-trigger="top-heroes"]').click()
     await page.locator('[data-widget-config-choice="limit=10"]').click()
     await page.getByTestId('widget-config-cancel').click()

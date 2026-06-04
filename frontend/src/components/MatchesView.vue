@@ -420,12 +420,6 @@ function closeWidgetConfigure() {
   configureAnchor.value   = null
 }
 
-// Clear the popover state when edit mode flips off so the popover
-// can't outlive its trigger surface.
-watch(editMode, (v) => {
-  if (!v) closeWidgetConfigure()
-})
-
 // Undo registry — captures the widget that was just trashed so the
 // undo toast can put it back where it was. We snapshot eyebrow + row
 // + idx BEFORE the layout.removeFromRow() call because afterwards

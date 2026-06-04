@@ -104,4 +104,50 @@ describe('DashboardWidget', () => {
     })
     expect(w.find('[data-widget-id="winrate"]').classes()).toContain('dashboard-widget-selected')
   })
+
+  // Settings live on their own axis from layout edits: the gear is
+  // visible whenever the widget has a non-empty config schema,
+  // regardless of editMode / selection. Edit mode is for moving
+  // widgets; the gear is for tuning what one shows.
+  it('renders the gear button whenever hasConfig is true, regardless of editMode', async () => {
+    const w = mount(DashboardWidget, {
+      props: { id: 'top-heroes', shape: 'breakdown', hasConfig: true, editMode: false },
+    })
+    expect(w.find('[data-widget-config-trigger="top-heroes"]').exists()).toBe(true)
+    await w.setProps({ editMode: true, selected: false })
+    expect(w.find('[data-widget-config-trigger="top-heroes"]').exists()).toBe(true)
+    await w.setProps({ editMode: true, selected: true })
+    expect(w.find('[data-widget-config-trigger="top-heroes"]').exists()).toBe(true)
+  })
+
+  it('omits the gear button when hasConfig is false', () => {
+    const w = mount(DashboardWidget, {
+      props: { id: 'winrate', shape: 'kpi', hasConfig: false, editMode: true, selected: true },
+    })
+    expect(w.find('[data-widget-config-trigger="winrate"]').exists()).toBe(false)
+  })
+
+  // In edit mode the trash button claims the right edge as the
+  // destructive control, so the gear shifts left via the
+  // .dashboard-gear-inset modifier. Outside edit mode there's no
+  // trash, so the gear sits at the corner.
+  it('shifts the gear inset when editMode is on so the trash keeps the right edge', async () => {
+    const w = mount(DashboardWidget, {
+      props: { id: 'top-heroes', shape: 'breakdown', hasConfig: true, editMode: false },
+    })
+    expect(w.find('[data-widget-config-trigger="top-heroes"]').classes()).not.toContain('dashboard-gear-inset')
+    await w.setProps({ editMode: true })
+    expect(w.find('[data-widget-config-trigger="top-heroes"]').classes()).toContain('dashboard-gear-inset')
+  })
+
+  it('clicking the gear emits configure(id, event) and does not bubble select', async () => {
+    const w = mount(DashboardWidget, {
+      props: { id: 'top-heroes', shape: 'breakdown', hasConfig: true, editMode: true, selected: true },
+    })
+    await w.find('[data-widget-config-trigger="top-heroes"]').trigger('click')
+    const configure = w.emitted('configure')
+    expect(configure).toBeTruthy()
+    expect(configure![0]![0]).toBe('top-heroes')
+    expect(w.emitted('select')).toBeFalsy()
+  })
 })
