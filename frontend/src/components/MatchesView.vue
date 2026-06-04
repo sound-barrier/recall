@@ -31,6 +31,7 @@ import DashboardUndoToast from './DashboardUndoToast.vue'
 import { useDashboardLayout } from '../composables/useDashboardLayout'
 import { useDragReorder } from '../composables/useDragReorder'
 import { widgetById, type WidgetDef } from '../dashboard/widgets'
+import { useNarrowMode } from '../composables/useNarrowMode'
 
 // Matches page — "set workspace" layout.
 //
@@ -140,6 +141,12 @@ const {
 
 // ─── View-side state owned by MatchesView ───────────────────
 const narrowOpen = ref(false)
+// Narrow rail vs popover. At width >= 1400 px the filter panel
+// renders as a peer column on the left of the workspace; below that
+// it stays a modal popover triggered by the dossier-actions button.
+// `useNarrowMode` also exposes a persisted user override so callers
+// can force a mode (no UI surface in this PR).
+const { mode: narrowMode } = useNarrowMode()
 const sortOrder = ref<'newest' | 'oldest'>('newest')
 const groupBy   = ref<'none' | 'day' | 'week' | 'month' | 'year'>('day')
 
@@ -788,7 +795,24 @@ onBeforeUnmount(() => {
     aria-labelledby="tab-matches"
     tabindex="-1"
     class="matches-set-workspace"
+    :class="{ 'matches-set-workspace-rail': narrowMode === 'rail' }"
   >
+    <!-- Rail-mode filter panel — peer column on the left of the
+         workspace at width >= 1400 px. In popover mode this slot is
+         empty and the historical trigger-button + teleported modal
+         render in their original location inside the dossier
+         actions row. -->
+    <NarrowPopover
+      v-if="narrowMode === 'rail'"
+      mode="rail"
+      :open="true"
+      :narrow="props.narrow"
+      :records="props.records"
+      @open-match="(k: string) => emit('open-match', k)"
+      @clear-anchor="emit('clear-anchor')"
+    />
+
+    <div class="matches-content-column">
     <!-- ─── SET DOSSIER ─────────────────────────────────────── -->
     <section
       class="set-dossier"
@@ -1001,7 +1025,9 @@ onBeforeUnmount(() => {
           </span>
         </label>
 
-        <div class="narrow-anchor">
+        <!-- Popover-mode trigger + modal. Hidden when the rail is
+             rendering instead (>= 1400 px viewport). -->
+        <div v-if="narrowMode === 'popover'" class="narrow-anchor">
           <button
             ref="triggerRef"
             class="dossier-btn primary"
@@ -1018,6 +1044,7 @@ onBeforeUnmount(() => {
 
           <NarrowPopover
             v-model:open="narrowOpen"
+            mode="popover"
             :narrow="props.narrow"
             :records="props.records"
             :trigger-el="triggerRef"
@@ -1510,6 +1537,7 @@ onBeforeUnmount(() => {
       @set-anchor="onRowContextSetAnchor"
       @hide="onRowContextHide"
     />
+    </div>
   </section>
 </template>
 
@@ -1548,6 +1576,24 @@ onBeforeUnmount(() => {
   .campaign-log-sticky {
     transition: none;
   }
+}
+
+/* Rail mode — switch to a 2-column grid with the always-visible
+   filter aside in column 1 and everything else in column 2.
+   Activated when `narrowMode === 'rail'` (viewport >= 1400 px or
+   user-forced via useNarrowMode override). */
+.matches-set-workspace-rail {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 1.1rem;
+}
+
+.matches-content-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
 }
 
 /* ─── Dossier ──────────────────────────────────────────────── */

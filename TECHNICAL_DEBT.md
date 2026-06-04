@@ -57,34 +57,3 @@ Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
 
-## 21. Persistent filter rail at ≥1400 px — demodalify NarrowPopover
-
-**Where:** `frontend/src/components/NarrowPopover.vue`,
-`frontend/src/components/MatchesView.vue` (the Matches grid).
-
-**What breaks:** at wide viewports the "Narrow this set" filter
-panel is a modal popover with a focus trap, backdrop, and
-background-`inert` cascade. Modern data tools (Linear, Notion,
-Raycast) treat filters as a peer rail at peer densities; popping
-a modal for every filter touch wastes the screen real estate
-that's available. Mouse users with 1440 + width displays
-constantly open / close / re-open it.
-
-**Plan:**
-
-1. Carve a `NarrowRail` SFC that shares the popover's filter
-   logic but renders as a static aside without focus trap,
-   backdrop, or inert wrappers.
-2. At `width ≥ 1400 px`, MatchesView's grid template becomes
-   `auto 1fr` with the rail filling the auto column.
-3. The popover stays for `< 1400 px` — same trigger button + same
-   transitions.
-4. Persist a `useNarrowMode = 'rail' | 'popover'` override
-   (default = viewport-driven) so users can force one even on
-   the other viewport size.
-5. e2e: extend `match-narrow-search.spec.ts` + sibling specs to
-   set the viewport before running so both modes get coverage.
-
-**Size:** L.
-**Risk:** Med — MatchesView is the most-touched view and the
-narrow plumbing has many keyboard / focus edges.

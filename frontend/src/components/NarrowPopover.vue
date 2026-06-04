@@ -19,6 +19,8 @@ type MatchesNarrowApi = ReturnType<typeof useMatchesNarrow>
 const props = defineProps<{
   // v-model:open. The trigger button lives in MatchesView; the
   // popover is self-contained otherwise. close → emit('update:open', false).
+  // In rail mode `open` is forced true by MatchesView since the
+  // panel is always visible as a column.
   open: boolean
   // The useMatchesNarrow return: every picked Set, every available
   // computed, every pick/reset function. Passing as a single prop
@@ -33,6 +35,12 @@ const props = defineProps<{
   // Trigger button element; the outside-click handler exempts it so
   // clicking the trigger doesn't immediately re-close the popover.
   triggerEl?: HTMLElement | null
+  // Render mode. 'popover' = teleport'd modal aside with focus trap
+  // + backdrop + outside-click close (the historical mode).
+  // 'rail' = always-visible static aside rendered inline, no
+  // teleport, no focus trap, no backdrop, no outside-click. The
+  // parent owns layout placement via its grid template.
+  mode?: 'popover' | 'rail'
 }>()
 
 const emit = defineEmits<{
@@ -71,9 +79,18 @@ const popoverRef     = ref<HTMLElement | null>(null)
 const searchInputRef = ref<HTMLInputElement | null>(null)
 const comboOpen      = ref<'map' | 'hero' | null>(null)
 
+const isRail = computed(() => (props.mode ?? 'popover') === 'rail')
+
+// In rail mode the panel is always visible (it's a peer column, not
+// a modal); the parent doesn't toggle `open`. Setting open=false in
+// rail mode would be a no-op anyway since there's no close
+// affordance.
 const isOpen = computed({
-  get: () => props.open,
-  set: (v: boolean) => emit('update:open', v),
+  get: () => isRail.value || props.open,
+  set: (v: boolean) => {
+    if (isRail.value) return
+    emit('update:open', v)
+  },
 })
 
 // Anchor lookup. `props.records` (full corpus) is the source, NOT
@@ -103,7 +120,11 @@ function onOpenAnchor() {
 
 // Modal focus trap, scoped to the popover itself. The composable
 // auto-installs / removes Esc + Tab cycling when `open` is true.
-useModalFocusTrap(isOpen, {
+// In rail mode the panel is a peer column, not a modal — skip the
+// trap entirely (the composable handles Esc / focus return that
+// don't make sense for an always-visible aside).
+const focusTrapOpen = computed(() => !isRail.value && isOpen.value)
+useModalFocusTrap(focusTrapOpen, {
   containerSelector: '.left-panel',
   onClose: () => { isOpen.value = false },
 })
@@ -118,6 +139,9 @@ function onDocumentMousedown(e: MouseEvent) {
     comboOpen.value = null
   }
 
+  // In rail mode the panel is always visible — no outside-click
+  // close. The combobox close above still runs.
+  if (isRail.value) return
   if (!isOpen.value) return
   if (popoverRef.value?.contains(tgt)) return
   if (props.triggerEl?.contains(tgt))  return
@@ -156,25 +180,30 @@ onUnmounted(() => {
 
 <template>
   <div>
-    <Teleport to="body">
+    <!-- Backdrop: popover mode only. Rail mode is a peer column,
+         no modal scrim. -->
+    <Teleport to="body" :disabled="isRail">
       <Transition name="lp-fade">
         <div
-          v-if="open"
+          v-if="!isRail && open"
           class="lp-backdrop"
           aria-hidden="true"
           @click="isOpen = false"
         />
       </Transition>
     </Teleport>
-    <Teleport to="body">
+    <!-- Panel: teleport in popover mode; render inline in rail mode
+         so MatchesView's grid template places it in column 1. -->
+    <Teleport to="body" :disabled="isRail">
       <Transition name="lp-slide">
         <aside
-          v-if="open"
+          v-if="isRail || open"
           id="narrow-popover"
           ref="popoverRef"
           class="left-panel"
-          role="dialog"
-          aria-modal="true"
+          :class="{ 'left-panel-rail': isRail }"
+          :role="isRail ? 'complementary' : 'dialog'"
+          :aria-modal="isRail ? undefined : 'true'"
           aria-label="Narrow this set"
         >
           <header class="np-head">
@@ -183,7 +212,7 @@ onUnmounted(() => {
               Filter the set
             </h4>
             <span class="np-meta">{{ narrowedRecords.length }} / {{ records.length }} matches</span>
-            <button class="np-close" aria-label="Close narrow panel" @click="isOpen = false">
+            <button v-if="!isRail" class="np-close" aria-label="Close narrow panel" @click="isOpen = false">
               ×
             </button>
           </header>
@@ -649,6 +678,23 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 0.55rem;
   overflow-y: auto;
+}
+
+/* Rail mode — peer column in MatchesView's grid. Drops the modal
+   chrome (fixed position, slide-from-edge shadow) and lives where
+   the grid puts it. The 3 px accent strip on the left edge
+   (`::before`) stays as the brand signal. Sticky inside its column
+   so it pins to the top while the right column scrolls. */
+.left-panel-rail {
+  position: sticky;
+  top: 0;
+  left: auto;
+  z-index: auto;
+  width: 320px;
+  height: calc(100vh - 1rem);
+  border-right: 1px solid var(--border-soft);
+  box-shadow: none;
+  padding: 0.7rem 0.85rem 0;
 }
 
 .left-panel::before {
