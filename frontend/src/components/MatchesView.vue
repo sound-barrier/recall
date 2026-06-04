@@ -8,6 +8,7 @@ import { useMatchesDossier } from '../composables/useMatchesDossier'
 import { provideDossier } from '../composables/useDossier'
 import WidgetConfigPopover from './WidgetConfigPopover.vue'
 import { useWeekStart } from '../composables/useWeekStart'
+import { useDensity } from '../composables/useDensity'
 import { useOWData } from '../composables/useOWData'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import { useArchiveSelection } from '../composables/useArchiveSelection'
@@ -268,6 +269,10 @@ const ow = useOWData()
 // PR B: weekStart drives the day-of-week breakdown's rotation so the
 // row matches the user's calendar preference.
 const { weekStart } = useWeekStart()
+// Row-density preference for the leaves list. Persisted via
+// usePersistedRef so the user's choice survives reloads. Default is
+// `comfortable` (the historical render).
+const { density, setDensity } = useDensity()
 // Single dossier instance per Matches view. provideDossier() makes
 // it reachable from every descendant widget via useDossier() so we
 // don't thread 18 props through DashboardWidget. Each widget pulls
@@ -1046,6 +1051,31 @@ onBeforeUnmount(() => {
               {{ opt === 'none' ? '—' : opt[0]!.toUpperCase() }}
             </button>
           </fieldset>
+          <fieldset class="seg" aria-label="Row density">
+            <legend class="seg-legend">
+              Density
+            </legend>
+            <button
+              class="seg-btn"
+              :class="{ picked: density === 'comfortable' }"
+              :aria-pressed="density === 'comfortable' ? 'true' : 'false'"
+              :data-density-pick="density === 'comfortable' ? 'comfortable' : undefined"
+              title="Roomy row spacing"
+              @click="setDensity('comfortable')"
+            >
+              Cozy
+            </button>
+            <button
+              class="seg-btn"
+              :class="{ picked: density === 'compact' }"
+              :aria-pressed="density === 'compact' ? 'true' : 'false'"
+              :data-density-pick="density === 'compact' ? 'compact' : undefined"
+              title="Tighter row spacing — more rows per screen"
+              @click="setDensity('compact')"
+            >
+              Compact
+            </button>
+          </fieldset>
         </div>
       </header>
 
@@ -1068,7 +1098,13 @@ onBeforeUnmount(() => {
         @clear="clearSelection"
       />
 
-      <ul v-if="sortedRecords.length" ref="leavesListRef" class="leaves-list" role="list">
+      <ul
+        v-if="sortedRecords.length"
+        ref="leavesListRef"
+        class="leaves-list"
+        :class="`density-${density}`"
+        role="list"
+      >
         <template v-for="section in windowedSections" :key="section.key">
           <li v-if="section.header" class="section-divider" :aria-label="`Group: ${section.header}`">
             <span class="sd-label">{{ section.header }}</span>
@@ -2016,6 +2052,16 @@ onBeforeUnmount(() => {
 .leaf-row.result-victory .leaf-strip { background: var(--win); }
 .leaf-row.result-defeat  .leaf-strip { background: var(--loss); }
 .leaf-row.result-draw    .leaf-strip { background: var(--draw, var(--text-mute)); }
+
+/* Compact density — tightens vertical rhythm so more rows fit on
+   screen without going full data-table mode. Only the spacing and
+   strip height change; grid template, fonts, and result-chip
+   geometry stay so the eye reads rows the same way. */
+.leaves-list.density-compact .leaf-row {
+  padding: 0.3rem 0.85rem;
+  gap: 0.65rem;
+}
+.leaves-list.density-compact .leaf-strip { height: 26px; }
 
 /* Anchor row treatment — a left-edge accent stripe + a faint accent
    wash so users scanning the list can find their "since" match at a
