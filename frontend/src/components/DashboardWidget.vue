@@ -44,6 +44,11 @@ const props = defineProps<{
   // land" while the browser's native drag-image preview follows
   // the cursor.
   dragging?: boolean
+  // True when the widget's registry entry carries a non-empty
+  // config schema. Gates the gear-icon affordance — empty-schema
+  // widgets stay knob-less. MatchesView precomputes this so the
+  // widget doesn't have to walk the registry.
+  hasConfig?: boolean
   legacyDataKpi?: string
   legacyDataBreakdown?: string
 }>()
@@ -57,6 +62,10 @@ const emit = defineEmits<{
   // Edit-mode interactions on the widget body itself.
   'select':       [id: string]
   'remove':       [id: string]
+  // Gear-icon click. MatchesView mounts the WidgetConfigPopover
+  // anchored to the rect; carries the click event so the parent
+  // can read currentTarget.getBoundingClientRect().
+  'configure':    [id: string, e: MouseEvent]
 }>()
 
 function rowOr(): number { return props.row ?? 0 }
@@ -100,6 +109,16 @@ function onRootClick() {
       @keydown="emit('handle-keydown', id, rowOr(), idxOr(), $event)"
     >
       <span aria-hidden="true">⋮⋮</span>
+    </button>
+    <button
+      v-if="editMode && selected && hasConfig"
+      type="button"
+      class="dashboard-gear"
+      :aria-label="`Configure widget ${id}`"
+      :data-widget-config-trigger="id"
+      @click.stop="emit('configure', id, $event)"
+    >
+      <span aria-hidden="true">⚙</span>
     </button>
     <button
       v-if="editMode"
@@ -210,7 +229,8 @@ function onRootClick() {
    keeps keyboard reach + focus intact (an opacity:0 default
    confused programmatic focus dispatch in some browsers). */
 .dashboard-drag-handle,
-.dashboard-trash {
+.dashboard-trash,
+.dashboard-gear {
   position: absolute;
   top: 4px;
   width: 20px;
@@ -246,14 +266,26 @@ function onRootClick() {
   color: var(--text-faint);
 }
 
+/* Gear sits LEFT of the trash so the destructive button keeps its
+   right-edge anchor. Selected + hasConfig only, so empty-schema
+   widgets stay knob-less. */
+.dashboard-gear {
+  right: 26px;
+  font-size: 0.85rem;
+  color: var(--text-faint);
+}
+
 .dashboard-widget-editable:hover .dashboard-drag-handle,
 .dashboard-widget-editable:hover .dashboard-trash,
 .dashboard-widget-selected .dashboard-drag-handle,
 .dashboard-widget-selected .dashboard-trash,
+.dashboard-widget-selected .dashboard-gear,
 .dashboard-drag-handle:focus,
 .dashboard-trash:focus,
+.dashboard-gear:focus,
 .dashboard-drag-handle:focus-visible,
-.dashboard-trash:focus-visible {
+.dashboard-trash:focus-visible,
+.dashboard-gear:focus-visible {
   opacity: 1;
 }
 
@@ -269,8 +301,15 @@ function onRootClick() {
   background: color-mix(in srgb, var(--loss) 12%, var(--surface));
 }
 
+.dashboard-gear:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .dashboard-drag-handle:focus-visible,
-.dashboard-trash:focus-visible {
+.dashboard-trash:focus-visible,
+.dashboard-gear:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);

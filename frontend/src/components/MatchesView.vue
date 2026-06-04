@@ -6,6 +6,7 @@ import { useMatchesGroup, type GroupedSection } from '../composables/useMatchesG
 import { useMatchesWindow } from '../composables/useMatchesWindow'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
 import { provideDossier } from '../composables/useDossier'
+import WidgetConfigPopover from './WidgetConfigPopover.vue'
 import { useWeekStart } from '../composables/useWeekStart'
 import { useOWData } from '../composables/useOWData'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
@@ -394,6 +395,36 @@ watch(editMode, (v) => {
 function onWidgetSelect(id: string) {
   selectedWidgetId.value = id
 }
+
+// Gear-popover state. configureWidgetId is the widget whose
+// schema-driven settings popover is mounted; configureAnchor is the
+// gear button's bounding rect at the time of the click so the
+// popover positions next to it. We re-capture the rect on every
+// open so resizes / scrolls between selections produce a fresh
+// anchor.
+const configureWidgetId = ref<string | null>(null)
+const configureAnchor   = ref<DOMRect | null>(null)
+const configureDef = computed(() =>
+  configureWidgetId.value ? widgetById(configureWidgetId.value) ?? null : null,
+)
+
+function onWidgetConfigure(id: string, e: MouseEvent) {
+  const target = e.currentTarget as HTMLElement | null
+  if (!target) return
+  configureWidgetId.value = id
+  configureAnchor.value   = target.getBoundingClientRect()
+}
+
+function closeWidgetConfigure() {
+  configureWidgetId.value = null
+  configureAnchor.value   = null
+}
+
+// Clear the popover state when edit mode flips off so the popover
+// can't outlive its trigger surface.
+watch(editMode, (v) => {
+  if (!v) closeWidgetConfigure()
+})
 
 // Undo registry — captures the widget that was just trashed so the
 // undo toast can put it back where it was. We snapshot eyebrow + row
@@ -862,6 +893,7 @@ onBeforeUnmount(() => {
             :row="row.index"
             :idx="idx"
             :selected="editMode && selectedWidgetId === def.id"
+            :has-config="def.config.fields.length > 0"
             :dragging="dragReorder.dragging.value !== null
               && dragReorder.dragging.value.id === def.id"
             :drop-target="dragReorder.dropHint.value !== null &&
@@ -876,6 +908,7 @@ onBeforeUnmount(() => {
             @handle-keydown="dragReorder.onHandleKeydown"
             @select="onWidgetSelect"
             @remove="onWidgetRemove"
+            @configure="onWidgetConfigure"
           >
             <component :is="def.component" />
           </DashboardWidget>
@@ -955,6 +988,15 @@ onBeforeUnmount(() => {
         :trashed="pendingUndo"
         @undo="onUndoRemove"
         @dismiss="onDismissUndo"
+      />
+
+      <!-- Per-widget settings popover. Teleports to <body>; anchored
+           to the gear-button rect captured on click. -->
+      <WidgetConfigPopover
+        :open="configureWidgetId !== null"
+        :def="configureDef"
+        :anchor="configureAnchor"
+        @close="closeWidgetConfigure"
       />
     </section>
 

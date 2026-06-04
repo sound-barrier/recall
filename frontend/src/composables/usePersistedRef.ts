@@ -1,4 +1,14 @@
-import { ref, onMounted, type Ref } from 'vue'
+import { ref, onMounted, onBeforeUnmount, type Ref } from 'vue'
+
+// Custom event broadcast on every set() so OTHER instances of
+// usePersistedRef sharing the same key re-hydrate in place. Lets
+// the widget-config popover (PR D) save changes that the widget's
+// own useWidgetConfig instance picks up reactively without coupling
+// the two through a parent-level write path. The native 'storage'
+// event would have worked between tabs, but doesn't fire for the
+// originating document — hence the custom event.
+const PREF_CHANGED_EVENT = 'recall-pref-changed'
+interface PrefChangedDetail { key: string }
 
 // usePersistedRef is the shared implementation behind the seven
 // persisted-preference composables (useTheme, useWeekStart,
@@ -63,9 +73,48 @@ export function usePersistedRef<T>(opts: PersistedRefOptions<T>): {
 
   function set(next: T) {
     value.value = next
-    try { localStorage.setItem(opts.key, serialize(next)) } catch (_) {}
+    let persisted = false
+    try {
+      localStorage.setItem(opts.key, serialize(next))
+      persisted = true
+    } catch (_) { /* quota exceeded, security error, non-browser env */ }
     opts.onChange?.(next)
+    // Broadcast so sibling instances of the same key re-hydrate.
+    // Only after a SUCCESSFUL persist — otherwise listeners would
+    // re-read localStorage, miss the value (it never landed), fall
+    // back to the default, and wipe the in-memory write the caller
+    // just made. The originating instance keeps the value either
+    // way because we wrote `value.value = next` first.
+    if (!persisted) return
+    try {
+      window.dispatchEvent(
+        new CustomEvent<PrefChangedDetail>(PREF_CHANGED_EVENT, {
+          detail: { key: opts.key },
+        }),
+      )
+    } catch (_) { /* non-browser env */ }
   }
+
+  // Cross-instance sync: listen for set()s elsewhere with the same
+  // key + re-read localStorage. Registered at setup so the listener
+  // is in place for the very first render; cleaned up in
+  // onBeforeUnmount so unmounted callers stop receiving events.
+  const onPrefChanged = (e: Event) => {
+    const detail = (e as CustomEvent<PrefChangedDetail>).detail
+    if (detail?.key !== opts.key) return
+    const hydrated = readStored()
+    value.value = hydrated
+    opts.onChange?.(hydrated)
+  }
+  try {
+    window.addEventListener(PREF_CHANGED_EVENT, onPrefChanged)
+  } catch (_) { /* non-browser env */ }
+
+  onBeforeUnmount(() => {
+    try {
+      window.removeEventListener(PREF_CHANGED_EVENT, onPrefChanged)
+    } catch (_) { /* non-browser env */ }
+  })
 
   onMounted(() => {
     const hydrated = readStored()
