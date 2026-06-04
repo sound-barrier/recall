@@ -40,7 +40,7 @@ WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
         fmt update-deps trivy check-deps \
         cloc cloc-detail \
         pages-build pages-preview \
-        dev seed-dev clean
+        dev seed-dev seed-clear clean
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} \
@@ -598,12 +598,25 @@ dev: ## Start hot-reload Wails dev server (macOS or Debian)
 # Manual-testing seed: populate a SQLite profile with N synthetic
 # matches via cmd/seed-dev. Honors .envrc's RECALL_DATA_DIR so the
 # rows land under <repo>/data, never in ~/Library/Application Support.
+#
+# SEED=time is a sentinel — substitutes the current Unix timestamp so
+# each invocation produces a different shuffle. Any other value
+# (default 1) is passed through verbatim for reproducible seeds.
 N       ?= 100
 PROFILE ?= demo
 SEED    ?= 1
 
-seed-dev: ## Populate a SQLite profile with N synthetic matches (usage: make seed-dev N=300 PROFILE=demo [FORCE=1])
-	@go run ./cmd/seed-dev --n=$(N) --profile=$(PROFILE) --seed=$(SEED) $(if $(FORCE),--force,)
+ifeq ($(SEED),time)
+SEED_VALUE := $(shell date +%s)
+else
+SEED_VALUE := $(SEED)
+endif
+
+seed-dev: ## Populate a SQLite profile with N synthetic matches (usage: make seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1])
+	@go run ./cmd/seed-dev --n=$(N) --profile=$(PROFILE) --seed=$(SEED_VALUE) $(if $(FORCE),--force,)
+
+seed-clear: ## Wipe a SQLite profile without re-seeding (usage: make seed-clear PROFILE=demo)
+	@go run ./cmd/seed-dev --clear --profile=$(PROFILE)
 # webkit2_4_1 build tag matches what Dockerfile.build's linux-builder
 # stage passes: Wails v2.12.0's pkg/assetserver/webview has CGo
 # directives referencing webkit2gtk-4.0, but Debian bookworm+/Ubuntu

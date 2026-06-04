@@ -50,7 +50,8 @@ Two binary flavors, selected by the `serveronly` Go build tag:
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml`. |
 | `make typecheck` | `vue-tsc --noEmit`. `allowJs: false` blocks JS introduction. |
 | `make update-goldens` | Regenerate parser golden sidecars (or set `RECALL_FIXTURE_UPDATE=1`). |
-| `make seed-dev N=300 PROFILE=demo [FORCE=1]` | Populate a SQLite profile with N synthetic matches via `cmd/seed-dev`. Refuses non-empty profiles unless `FORCE=1` wipes first. See "Manual testing with a seeded corpus" below. |
+| `make seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1]` | Populate a SQLite profile with N synthetic matches via `cmd/seed-dev`. Refuses non-empty profiles unless `FORCE=1` wipes first. `SEED=time` is a sentinel that substitutes the current Unix timestamp for a fresh shuffle. See "Manual testing with a seeded corpus" below. |
+| `make seed-clear PROFILE=demo` | Wipe a SQLite profile without re-seeding. No-op (and exits 0) when the profile is already empty. |
 
 > **Drift note:** specific numeric gates (`GO_COVERAGE_MIN`, Vitest thresholds,
 > bundle budgets) and version pins (Wails, Go, Node, tool versions) are
@@ -134,6 +135,13 @@ synthetic rows straight into a profile's SQLite DB.
 never under `~/Library/Application Support/Recall/`. Real installs stay
 untouched.
 
+### `make dev` does NOT re-seed
+
+`make dev` only starts the Wails dev server (Vite `:5173`, Wails IPC `:34115`).
+It never touches the DB. To change the seeded corpus you must re-run
+`seed-dev` explicitly. Hot-reload covers code changes; the DB is the source
+of truth and persists across dev-server restarts.
+
 ### Workflow
 
 ```sh
@@ -145,15 +153,22 @@ make seed-dev N=300 PROFILE=demo
 make dev
 ```
 
-Subsequent runs against a non-empty profile refuse on purpose:
+### Re-seeding and wiping
 
 ```sh
+# A non-empty profile refuses on purpose:
 make seed-dev N=300 PROFILE=demo
-# seed-dev: profile "demo" already contains 893 rows; pass --force to wipe and reseed
+# seed-dev: profile "demo" already contains 893 rows;
+# pass --force to wipe and reseed (or --clear to wipe without re-seeding)
 
+# Reseed in place (wipes first):
 make seed-dev N=300 PROFILE=demo FORCE=1
-# wiped 893 existing rows from profile "demo"
-# seeded 300 matches into profile "demo" at .../data/profiles/demo/db/recall.db
+
+# Wipe without re-seeding:
+make seed-clear PROFILE=demo
+
+# Fresh shuffle every run (seed = current Unix timestamp):
+make seed-dev N=300 PROFILE=demo FORCE=1 SEED=time
 ```
 
 ### Flags + defaults
@@ -162,8 +177,30 @@ make seed-dev N=300 PROFILE=demo FORCE=1
 |---|---|---|---|
 | `N` | `--n` | `100` | Number of matches. Each match writes 1 Summary + 1 Scoreboard, ~60% also write a Personal, ~40% a Rank — mirrors the mixed-coverage shape real parses produce. |
 | `PROFILE` | `--profile` | `demo` | Target profile name. Created if missing. Pass the active profile name to seed your in-use profile (think twice). |
-| `SEED` | `--seed` | `1` | Deterministic RNG seed — same `(N, SEED)` → byte-identical rows. Bump it to get a different shuffle of maps/heroes/results without changing N. |
+| `SEED` | `--seed` | `1` | Deterministic RNG seed — same `(N, SEED)` → byte-identical rows. Pass `SEED=time` for a different shuffle every run (Makefile substitutes `$(shell date +%s)`). |
 | `FORCE` | `--force` | *(unset)* | Wipes every row in the target profile before seeding. Without it, a non-empty profile is a hard error. |
+| `seed-clear` target | `--clear` | *(target only)* | Wipe-and-exit, no seeding. Idempotent on already-empty profiles. |
+
+### What the corpus looks like
+
+The distribution is tuned to read as one player's season, not a uniform spray:
+
+- **Dates** are sampled over `[2026-01-01, 2026-06-03]` with per-day activity
+  weights — ~40% of days are inactive, the rest get a long tail of small
+  to medium counts, plus the occasional marathon day. Sessions form
+  naturally because the per-day count varies wildly.
+- **Time of day** weights toward evening (peak 19-21h) but rolls morning,
+  afternoon, and late-night samples too. Some days are an evening session,
+  others a noon session.
+- **Heroes** follow one of three "play styles" picked per seed:
+  - **One-trick** (~20% of seeds): 95% the same hero, occasional
+    experiments in their main role.
+  - **One-role** (~30%): mostly main-role heroes with same-hero streaks,
+    15% off-role experiments.
+  - **Flex** (~50%): 4–6 picked heroes across all roles, light streaks.
+
+Different `SEED` values → different styles. Use `SEED=time` to roll through
+all three over a few runs.
 
 ### Where the fixture lives
 
@@ -172,7 +209,9 @@ slices — `[]db.SummaryRow`, `[]db.ScoreboardRow`, `[]db.PersonalRow`,
 `[]db.RankRow`. `cmd/seed-dev/main.go` loops them into the matching
 `store.Upsert*` calls. The same generator is reusable from tests
 (`pkg/app/fixtures_test.go` round-trips it through `dbtest.Fake`) so the
-fixture shape never needs to be duplicated.
+fixture shape never needs to be duplicated. The date range, play-style
+probabilities, and hour weights are package consts at the top of
+`fixtures.go` — adjust there.
 
 ### What's deliberately missing
 

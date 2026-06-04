@@ -30,10 +30,11 @@ func main() {
 	profile := flag.String("profile", "", "target profile name (empty → active)")
 	seed := flag.Int64("seed", 1, "deterministic seed for fixture generation")
 	force := flag.Bool("force", false, "wipe the target profile before seeding")
+	clear := flag.Bool("clear", false, "wipe the target profile and exit (no seeding)")
 	flag.Parse()
 
-	if *n <= 0 {
-		exitf("--n must be positive (got %d)", *n)
+	if !*clear && *n <= 0 {
+		exitf("--n must be positive (got %d); pass --clear to wipe without seeding", *n)
 	}
 
 	profiles, err := app.LoadProfiles(app.BaseDir())
@@ -70,9 +71,22 @@ func main() {
 		exitf("inspect existing rows: %v", err)
 	}
 	existingTotal := len(snap.Summaries) + len(snap.Scoreboards) + len(snap.Personals) + len(snap.Ranks) + len(snap.Unknowns)
+
+	if *clear {
+		if existingTotal == 0 {
+			fmt.Printf("profile %q is already empty at %s\n", target, dbPath)
+			return
+		}
+		if err := store.Clear(); err != nil {
+			exitf("clear existing rows: %v", err)
+		}
+		fmt.Printf("cleared %d rows from profile %q at %s\n", existingTotal, target, dbPath)
+		return
+	}
+
 	if existingTotal > 0 {
 		if !*force {
-			exitf("profile %q already contains %d rows; pass --force to wipe and reseed", target, existingTotal)
+			exitf("profile %q already contains %d rows; pass --force to wipe and reseed (or --clear to wipe without re-seeding)", target, existingTotal)
 		}
 		if err := store.Clear(); err != nil {
 			exitf("clear existing rows: %v", err)
