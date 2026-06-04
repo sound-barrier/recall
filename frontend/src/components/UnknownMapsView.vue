@@ -39,6 +39,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   'go-to-view':         [next: 'settings' | 'ingest' | 'matches' | 'unknown']
   'resolve-ambiguous':  [ambiguousKey: string, resolvedTo: string]
+  // Fired by the "Delete forever" affordance on an unmatched card.
+  // App.vue calls IgnoreScreenshot(filename) → reloads records.
+  // The file stays on disk; the next parse run skips it.
+  'ignore-screenshot':  [filename: string]
   // Forwarded to App.vue's openLightbox handler — fires when the
   // user clicks an inline source-preview thumbnail. Parity with the
   // MatchDetailPanel side-panel sources block: click filename →
@@ -121,6 +125,47 @@ function onAmbiguousHeadClick(rec: MatchRecord) {
   if (!props.cardState.isPreviewOpen(first)) {
     props.cardState.togglePreview(first)
   }
+}
+
+// "Delete forever" arm/disarm — mirrors DashboardEditBanner's
+// destructive-confirm pattern. First click on a card's button
+// flips it to an armed "Confirm delete?" state with a 3 s
+// auto-disarm timer; the second click within that window fires
+// the emit. Keyed by match_key so concurrent arms on multiple
+// cards don't collide.
+const IGNORE_ARM_MS = 3000
+const armedIgnore = ref<Set<string>>(new Set())
+const armTimers: Record<string, ReturnType<typeof setTimeout>> = {}
+
+function disarmIgnore(matchKey: string) {
+  const t = armTimers[matchKey]
+  if (t !== undefined) {
+    clearTimeout(t)
+    delete armTimers[matchKey]
+  }
+  if (armedIgnore.value.has(matchKey)) {
+    const next = new Set(armedIgnore.value)
+    next.delete(matchKey)
+    armedIgnore.value = next
+  }
+}
+
+function onIgnoreClick(rec: MatchRecord) {
+  const filename = rec.source_files?.[0]
+  if (!filename) return
+  if (!armedIgnore.value.has(rec.match_key)) {
+    const next = new Set(armedIgnore.value)
+    next.add(rec.match_key)
+    armedIgnore.value = next
+    armTimers[rec.match_key] = setTimeout(() => disarmIgnore(rec.match_key), IGNORE_ARM_MS)
+    return
+  }
+  disarmIgnore(rec.match_key)
+  emit('ignore-screenshot', filename)
+}
+
+function isIgnoreArmed(matchKey: string): boolean {
+  return armedIgnore.value.has(matchKey)
 }
 
 // Hover-preview state for the Unknown card list. Mouseenter on a
@@ -635,6 +680,32 @@ function updateThumbPosition(e: MouseEvent) {
                 </div>
               </div>
             </div>
+
+            <!-- "Delete forever" — destructive action zone. Two-click
+                 confirm: first click arms (red 3 s timer), second click
+                 fires IgnoreScreenshot(filename). The file stays on
+                 disk; future parse runs skip it via the
+                 ignored_screenshots suppress-list, and the
+                 unmatched-<filename> match row gets wiped in lockstep
+                 so the card disappears immediately. -->
+            <div v-if="rec.source_files?.length" class="unknown-delete-zone">
+              <button
+                type="button"
+                class="unknown-delete-btn"
+                :class="{ armed: isIgnoreArmed(rec.match_key) }"
+                :aria-label="isIgnoreArmed(rec.match_key)
+                  ? `Confirm permanently ignoring ${rec.source_files[0]}`
+                  : `Permanently ignore ${rec.source_files[0]}`"
+                :data-ignore-btn="rec.match_key"
+                @click="onIgnoreClick(rec)"
+              >
+                {{ isIgnoreArmed(rec.match_key) ? 'Confirm delete?' : 'Delete forever' }}
+              </button>
+              <span class="unknown-delete-hint">
+                Recall will skip this file on future parses. The file
+                stays on disk.
+              </span>
+            </div>
           </div>
         </template>
       </article>
@@ -867,6 +938,58 @@ function updateThumbPosition(e: MouseEvent) {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+/* Destructive action zone. Sits at the bottom of the expanded
+   card body so users have already reviewed the screenshot before
+   reaching it. Top border separates it from the diagnostic stats. */
+.unknown-delete-zone {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border-soft);
+}
+
+.unknown-delete-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--loss-line, var(--loss));
+  color: var(--loss);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.85rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+
+.unknown-delete-btn:hover {
+  background: color-mix(in srgb, var(--loss) 10%, transparent);
+}
+
+.unknown-delete-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--loss) 35%, transparent);
+}
+
+.unknown-delete-btn.armed {
+  background: var(--loss);
+  color: var(--surface);
+  border-color: var(--loss);
+}
+
+.unknown-delete-hint {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--text-faint);
+  line-height: 1.4;
 }
 
 .unknown-sources {

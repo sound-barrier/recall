@@ -42,6 +42,7 @@ import {
   ExportBundle,
   ImportData,
   ResolveAmbiguousMatch,
+  IgnoreScreenshot,
   SetMatchAnnotation,
   SetMatchVisibility,
   SetMatchReview,
@@ -860,6 +861,19 @@ async function onResolveAmbiguous(ambiguousKey: string, resolvedTo: string) {
   }
 }
 
+// "Delete forever" from the Unknown tab's unmatched section.
+// Adds the screenshot's filename to the suppress-list and wipes
+// the unmatched- match row in lockstep; reload picks up the new
+// state (the row disappears from Unknown).
+async function onIgnoreScreenshot(filename: string) {
+  try {
+    await IgnoreScreenshot(filename)
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
 // Selected-match panel (replaces the old inline-expansion model).
 // Clicking a card opens the right-side MatchDetailPanel and pins
 // `selection.selectedKey` to that match_key. ← / → inside the panel
@@ -1598,6 +1612,7 @@ useEventStream({
           :preload-screenshot="screenshotPreview.preload"
           @go-to-view="goToView"
           @resolve-ambiguous="onResolveAmbiguous"
+          @ignore-screenshot="onIgnoreScreenshot"
           @open-lightbox="openLightbox"
         />
 

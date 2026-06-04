@@ -38,8 +38,8 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # honest. A real feature that needs the room should bump deliberately.
 : "${MAX_INITIAL_JS_BYTES:=146000}" # 146 KB — initial JS chunk only
 : "${MAX_INITIAL_CSS_BYTES:=60000}" # 60 KB  — initial CSS chunk only
-: "${MAX_TOTAL_JS_BYTES:=398000}"   # 398 KB — every JS chunk combined (PR E added density picker; PR F added Unknown section nav; PR 3 added candidate-thumb buttons; queue-type chooser + Queue filter chip; play-mode chooser + Play mode filter chip; Quickplay-vs-Competitive + Winrate-by-play-mode widgets + playModeBreakdown dossier helper; ambiguous candidate-picker side-by-side preview pane + auto-open source on row click; PR 6 sort + group dropdown; PR 7 narrow-rail composable + dual-mode wiring)
-: "${MAX_TOTAL_CSS_BYTES:=227000}"  # 227 KB — every CSS chunk combined (queue chooser + play-mode chooser radiogroup styles; candidate-picker grid + preview-pane styles; PR 6 sort + group dropdown trigger + menu styles; PR 5 sticky/compact Campaign Log styles; PR 7 rail-mode panel overrides)
+: "${MAX_TOTAL_JS_BYTES:=400000}"   # 400 KB — every JS chunk combined (PR E added density picker; PR F added Unknown section nav; PR 3 added candidate-thumb buttons; queue-type chooser + Queue filter chip; play-mode chooser + Play mode filter chip; Quickplay-vs-Competitive + Winrate-by-play-mode widgets + playModeBreakdown dossier helper; ambiguous candidate-picker side-by-side preview pane + auto-open source on row click; PR 6 sort + group dropdown; PR 7 narrow-rail composable + dual-mode wiring; PR 4 Delete-forever button + arm/disarm state)
+: "${MAX_TOTAL_CSS_BYTES:=228000}"  # 228 KB — every CSS chunk combined (queue chooser + play-mode chooser radiogroup styles; candidate-picker grid + preview-pane styles; PR 6 sort + group dropdown trigger + menu styles; PR 5 sticky/compact Campaign Log styles; PR 7 rail-mode panel overrides; PR 4 Delete-forever destructive-zone styles)
 
 if [[ "${1:-}" == "--build" ]]; then
   echo "==> building frontend (npm --prefix frontend run build)…"

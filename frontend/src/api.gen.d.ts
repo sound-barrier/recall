@@ -446,6 +446,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/screenshots/{filename}/ignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Screenshot filename to suppress or un-suppress. URL-encoded
+                 *     (the filename can contain spaces and dashes from the
+                 *     Overwatch capture format).
+                 */
+                filename: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Permanently ignore a screenshot
+         * @description Adds `filename` to the suppress-list backing the Unknown
+         *     tab's "Delete forever" affordance. Future parse runs skip
+         *     this file. Also wipes any `unmatched-<filename>` or
+         *     `ambiguous-<filename>` match rows so the row disappears from
+         *     the result set immediately, not just on the next parse. The
+         *     on-disk file is **not** deleted.
+         *
+         *     Idempotent: ignoring an already-ignored filename refreshes
+         *     the timestamp.
+         */
+        post: operations["IgnoreScreenshot"];
+        /**
+         * Remove a screenshot from the ignore-list
+         * @description Removes `filename` from the suppress-list so the next parse
+         *     run re-ingests the file. Idempotent on filenames that
+         *     weren't ignored.
+         *
+         *     No production UI surface ships against this verb in PR 4; it
+         *     exists for completeness and future "Manage ignored" panels.
+         */
+        delete: operations["UnignoreScreenshot"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/screenshots/ignored": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List ignored screenshot filenames
+         * @description Returns the suppress-list contents, sorted by filename.
+         *     Currently no production UI surface — used by debug / curl
+         *     consumers and reserved for a future "Manage ignored" panel.
+         */
+        get: operations["GetIgnoredScreenshots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/screenshots-folder": {
         parameters: {
             query?: never;
@@ -2130,6 +2196,81 @@ export interface operations {
                         /** @example 3 */
                         count: number;
                     };
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    IgnoreScreenshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Screenshot filename to suppress or un-suppress. URL-encoded
+                 *     (the filename can contain spaces and dashes from the
+                 *     Overwatch capture format).
+                 */
+                filename: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Filename added to the ignore-list. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    UnignoreScreenshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Screenshot filename to suppress or un-suppress. URL-encoded
+                 *     (the filename can contain spaces and dashes from the
+                 *     Overwatch capture format).
+                 */
+                filename: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Filename removed from the ignore-list. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetIgnoredScreenshots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sorted list of ignored filenames. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
                 };
             };
             500: components["responses"]["InternalError"];
