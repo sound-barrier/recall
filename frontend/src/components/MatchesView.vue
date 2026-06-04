@@ -1896,7 +1896,12 @@ onBeforeUnmount(() => {
   font-size: 0.6rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent);
+
+  /* --accent-text is the theme-aware "accent for text" token: bright
+     orange on dark themes (same as --accent), deep rust on day for
+     AA contrast on cream. Using --accent directly here failed AA in
+     day theme (1.92:1 on cream). */
+  color: var(--accent-text);
   font-weight: 700;
 }
 
