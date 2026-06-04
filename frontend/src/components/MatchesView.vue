@@ -598,6 +598,23 @@ const leavesListRef = ref<HTMLUListElement | null>(null)
 const sentinelRef   = ref<HTMLLIElement | null>(null)
 let sentinelObserver: IntersectionObserver | null = null
 
+// Sticky Campaign Log state. The sentinel sits just above the
+// timeline at its natural position; the scroll listener flips
+// `timelineSticky` true when the sentinel's clientRect.top goes
+// below 0 (i.e. it has scrolled past the viewport top), and the
+// wrapper renders in compact mode. Scroll-driven rather than
+// IntersectionObserver-driven because the sentinel sits BELOW
+// the viewport on initial load (dossier widget grid pushes it
+// down) and `!isIntersecting` alone fires a false-positive
+// sticky in that case.
+const timelineSentinelRef = ref<HTMLDivElement | null>(null)
+const timelineSticky      = ref(false)
+function onTimelineScroll() {
+  const el = timelineSentinelRef.value
+  if (!el) return
+  timelineSticky.value = el.getBoundingClientRect().top < 0
+}
+
 // Reset → scroll the leaves list back to the top. Keeps the
 // scrolling concern in the view (where the ref lives) rather
 // than making useMatchesWindow DOM-aware. Pre-fix UX without
@@ -749,11 +766,18 @@ onMounted(() => {
     }
     sentinelObserver.observe(el)
   }, { immediate: true })
+
+  window.addEventListener('scroll', onTimelineScroll, { passive: true })
+  // Run once at mount + after the sentinel renders so the initial
+  // state is correct even if the user lands mid-scroll (e.g. an
+  // anchor link).
+  watch(timelineSentinelRef, onTimelineScroll, { immediate: true, flush: 'post' })
 })
 
 onBeforeUnmount(() => {
   sentinelObserver?.disconnect()
   sentinelObserver = null
+  window.removeEventListener('scroll', onTimelineScroll)
 })
 </script>
 
@@ -1048,15 +1072,30 @@ onBeforeUnmount(() => {
     <!-- `visibleRecords` strips hidden matches so the heatmap and
          sparkline reconcile with the dossier / scrapeReader — every
          data surface honours the user's "this match doesn't count"
-         signal in lockstep. -->
-    <MatchTimelineHeader
+         signal in lockstep.
+
+         Sticky wrapper: the sentinel below sits at the natural
+         position; once it scrolls out of the viewport the
+         IntersectionObserver flips `timelineSticky` true and the
+         timeline renders in compact mode (heatmap hidden, window
+         buttons hidden, sparkline at compact height). The wrapper
+         itself is position: sticky so the whole bar pins to the
+         scroll container's top edge. -->
+    <div v-if="visibleRecords.length > 0" ref="timelineSentinelRef" class="campaign-log-sentinel" aria-hidden="true" />
+    <div
       v-if="visibleRecords.length > 0"
-      :records="visibleRecords"
-      :filter-from="customFrom"
-      :filter-to="customTo"
-      @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
-      @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
-    />
+      class="campaign-log-sticky"
+      :class="{ 'campaign-log-pinned': timelineSticky }"
+    >
+      <MatchTimelineHeader
+        :records="visibleRecords"
+        :filter-from="customFrom"
+        :filter-to="customTo"
+        :compact="timelineSticky"
+        @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
+        @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
+      />
+    </div>
 
     <!-- ─── MEMBERS ─────────────────────────────────────────── -->
     <section class="leaves" aria-label="Set members">
@@ -1479,6 +1518,36 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+/* Campaign Log sticky wrapper. The sentinel is a 1 px line that
+   sits just above the timeline at its natural position; the
+   wrapper itself is position: sticky so it pins as the user
+   scrolls past. .campaign-log-pinned adds a hairline bottom
+   border so the strip reads as chrome when separated from its
+   normal context. z-index above the leaves list but below
+   modals / popovers. */
+.campaign-log-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+.campaign-log-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--bg);
+  transition: box-shadow var(--duration-fast) ease;
+}
+
+.campaign-log-pinned {
+  box-shadow: 0 1px 0 0 var(--border-soft, var(--border));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campaign-log-sticky {
+    transition: none;
+  }
 }
 
 /* ─── Dossier ──────────────────────────────────────────────── */

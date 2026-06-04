@@ -23,6 +23,13 @@ defineProps<{
   filterFrom: string
   filterTo: string
   weekStartsOn?: 0 | 1
+  // True when the parent has pinned the timeline to the top of the
+  // scroll viewport. Switches to a compact render: heatmap hides,
+  // window-size buttons + legend hide, sparkline stays visible at
+  // a thinner height so the brush remains usable for time-range
+  // navigation while the user scrolls the leaves list. Default
+  // false = the expanded render.
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -60,12 +67,16 @@ const windowLabel = computed(() => `Last ${windowMonths.value} months`)
 </script>
 
 <template>
-  <section class="match-timeline" aria-labelledby="timeline-eyebrow">
+  <section
+    class="match-timeline"
+    :class="{ 'match-timeline-compact': compact }"
+    aria-labelledby="timeline-eyebrow"
+  >
     <header class="timeline-head">
       <span id="timeline-eyebrow" class="timeline-eyebrow">Campaign Log</span>
       <span class="timeline-range">{{ windowLabel }}</span>
 
-      <div class="timeline-window" role="group" aria-label="Heatmap window">
+      <div v-if="!compact" class="timeline-window" role="group" aria-label="Heatmap window">
         <button
           v-for="m in ([3, 6, 12] as const)"
           :key="m"
@@ -80,7 +91,7 @@ const windowLabel = computed(() => `Last ${windowMonths.value} months`)
         </button>
       </div>
 
-      <ul class="timeline-legend" aria-label="Cell-color legend">
+      <ul v-if="!compact" class="timeline-legend" aria-label="Cell-color legend">
         <li><span class="legend-swatch legend-loss" /> Losing</li>
         <li><span class="legend-swatch legend-mixed" /> Mixed</li>
         <li><span class="legend-swatch legend-win" /> Winning</li>
@@ -89,6 +100,7 @@ const windowLabel = computed(() => `Last ${windowMonths.value} months`)
 
     <div class="timeline-body">
       <MatchHeatmapHeader
+        v-if="!compact"
         :records="records"
         :filter-from="filterFrom"
         :filter-to="filterTo"
@@ -111,6 +123,24 @@ const windowLabel = computed(() => `Last ${windowMonths.value} months`)
 </template>
 
 <style scoped>
+/* Compact (sticky) mode — heatmap is hidden via v-if; this rule
+   tightens the chrome so the pinned bar reads as one quiet strip
+   above the leaves list. The sparkline stays interactive at its
+   natural inner height. */
+.match-timeline-compact {
+  padding: 0.35rem 1rem;
+  margin-bottom: 0;
+  background: var(--surface);
+}
+
+.match-timeline-compact .timeline-head {
+  margin-bottom: 0.3rem;
+}
+
+.match-timeline-compact .timeline-body {
+  gap: 0;
+}
+
 .match-timeline {
   padding: 0.7rem 1.1rem 0.65rem;
   border: 1px solid var(--border);
