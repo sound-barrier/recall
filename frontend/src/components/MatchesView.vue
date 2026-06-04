@@ -1920,6 +1920,7 @@ onBeforeUnmount(() => {
 
 .seg-btn.picked {
   background: var(--accent);
+
   /* Use the documented text-on-accent token so the picked label
      clears AA against the orange fill on every theme (day's accent
      is the same OW orange as dark/night, but day's --surface is a
