@@ -12,7 +12,7 @@ import type { MatchRecord } from '../api'
 // pushdown would be the prerequisite for real HTTP paging, and
 // the dossier still needs the full corpus to compute aggregates.
 // Windowing the in-memory narrowed set sidesteps every one of
-// those (see TECHNICAL_DEBT.md item 6 history).
+// those.
 //
 // Reset triggers (filter change, sort change, group change, parse
 // refresh) snap `renderedCount` back to `pageSize` and bump

@@ -21,9 +21,7 @@ import (
 // keep treating match_key as a bare string for back-compat. New code
 // that needs to BRANCH on the kind (e.g. "is this an ambiguous
 // row?") should parse via ParseMatchKey and switch on .Kind rather
-// than `strings.HasPrefix`. The eventual goal is to migrate every
-// startsWith / HasPrefix site to this type — tracked in
-// TECHNICAL_DEBT.md.
+// than `strings.HasPrefix`.
 
 type MatchKeyKind int
 

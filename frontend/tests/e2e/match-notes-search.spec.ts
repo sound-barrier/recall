@@ -9,9 +9,9 @@
  *
  * Includes hit-highlighting (`<mark class="note-hit">`) for the
  * active narrow-panel search query — App.vue wires
- * `matchesNarrowState.searchText` → `filters.matchQuery`
- * (TECHNICAL_DEBT.md item 19) so `searchClauses` lights up and
- * MatchCardExpanded renders `<mark>` around matching note segments.
+ * `matchesNarrowState.searchText` → `filters.matchQuery` so
+ * `searchClauses` lights up and MatchCardExpanded renders `<mark>`
+ * around matching note segments.
  */
 import type { Route } from '@playwright/test'
 

@@ -1,5 +1,5 @@
 /**
- * Startup-failure modal (TECHNICAL_DEBT.md item 8).
+ * Startup-failure modal.
  *
  * On mount, App.vue polls GET /api/v1/system/startup-error and
  * surfaces the captured message in a blocking modal when non-empty.

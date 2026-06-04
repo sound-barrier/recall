@@ -1,5 +1,5 @@
 /**
- * Cancel-in-flight parse (TECHNICAL_DEBT.md item 15).
+ * Cancel-in-flight parse.
  *
  * Real-browser proof of the full chain:
  *

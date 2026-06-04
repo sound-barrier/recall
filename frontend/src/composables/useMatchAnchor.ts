@@ -17,10 +17,9 @@ import { usePersistedRef } from './usePersistedRef'
 // `anchorKey` is a `ComputedRef<string>`: reactive on read, but the
 // type system rejects `.value = ...` writes. The only mutation
 // surface is `setAnchor` / `clearAnchor`, which is what keeps
-// localStorage and the in-memory value in sync. A previous shape
-// exposed a plain `Ref<string>` and risked consumers writing to it
-// directly, bypassing persistence — surfaced as the "shared
-// mutable across a composable seam" entry in TECHNICAL_DEBT.md.
+// localStorage and the in-memory value in sync. Exposing a plain
+// `Ref<string>` instead would let consumers write to it directly
+// and bypass persistence.
 
 export const ANCHOR_STORAGE_KEY = 'recall.matches.sinceAnchor'
 

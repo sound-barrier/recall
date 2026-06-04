@@ -15,9 +15,6 @@ import (
 // together because they share the same underlying state machine
 // (a.ParseScreenshots writes to the tables that
 // a.GetNewScreenshotCount reads from).
-//
-// Extracted from NewMux to pay down the route-monolith debt
-// (TECHNICAL_DEBT.md item 1). Same wire surface.
 func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 	// Kicks off a synchronous parse run. Returns 202 Accepted because
 	// the meaningful side-effect is the SQLite writes + SSE broadcast,
@@ -40,12 +37,12 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 	})
 
 	// Cancel an in-flight parse. Modelled as a DELETE on the
-	// "active parse" sub-resource so the URL stays a noun
-	// (TECHNICAL_DEBT.md item 15 history). 202 Accepted because the
-	// actual stop lands at the next between-files boundary in the
-	// OCR loop, not synchronously with this response. 409 when no
-	// parse is running — same shape as POST /api/v1/parses for
-	// "the request was fine, the state isn't".
+	// "active parse" sub-resource so the URL stays a noun. 202
+	// Accepted because the actual stop lands at the next
+	// between-files boundary in the OCR loop, not synchronously
+	// with this response. 409 when no parse is running — same shape
+	// as POST /api/v1/parses for "the request was fine, the state
+	// isn't".
 	apiMux.HandleFunc("DELETE /api/v1/parses/active", func(w http.ResponseWriter, r *http.Request) {
 		if err := a.CancelParse(); err != nil {
 			if errors.Is(err, app.ErrNoParseInFlight) {

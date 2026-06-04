@@ -10,10 +10,9 @@
  * filter that shrinks the set to ≤ 20 removes the sentinel + snaps
  * the list back to the top.
  *
- * Why the UX behaves this way is in TECHNICAL_DEBT.md item 6 +
- * the useMatchesWindow composable doc comment — the short answer
- * is that the dossier needs the full corpus for aggregates while
- * the rendered DOM stays small.
+ * The useMatchesWindow composable owns the windowing math: the
+ * dossier needs the full corpus for aggregates while the rendered
+ * DOM stays small. See its doc comment for the full rationale.
  */
 import type { Route } from '@playwright/test'
 

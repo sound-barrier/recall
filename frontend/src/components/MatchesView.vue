@@ -153,10 +153,9 @@ const groupBy   = ref<'none' | 'day' | 'week' | 'month' | 'year'>('day')
 // only selection affordance.
 const selectedKeys = ref<Set<string>>(new Set())
 
-// Archive-drawer state + bulk-action handlers extracted into a
-// composable (TECHNICAL_DEBT.md item 7 — first step toward fully
-// extracting MatchesArchiveDrawer.vue). Destructured to top-level
-// refs so the template auto-unwraps them.
+// Archive-drawer state + bulk-action handlers live in
+// useArchiveSelection. Destructured to top-level refs so the
+// template auto-unwraps them.
 const archive = useArchiveSelection({
   records: computed(() => props.records),
   onUnhideMatches: (keys) => emit('unhide-matches', keys),
@@ -240,10 +239,6 @@ function commitMove(target: string) {
     emit('move-matches', keys, target)
   }
 }
-
-// (archive selection / bulk-action handlers + hiddenRecords /
-// visibleRecords now provided by the useArchiveSelection composable
-// above — see TECHNICAL_DEBT.md item 7 for the staged refactor plan.)
 
 // Single-row inline commit for hard-delete (per-archive-row Delete
 // button → Confirm/Cancel two-step). `confirmHardDelete` and
@@ -523,8 +518,8 @@ const { sortedRecords, groupedSections } = useMatchesGroup(narrowedRecords, grou
 // window by another page when the user scrolls into it. Reset
 // triggers (narrow change, sort change, group change, parse
 // refresh) snap back to one page + scroll the list to top via
-// the resetCounter watcher below. See TECHNICAL_DEBT.md item 6
-// history for why we window client-side rather than HTTP-page.
+// the resetCounter watcher below. See the useMatchesWindow doc
+// comment for why we window client-side rather than HTTP-page.
 const focusedCardIndexRef = computed(() => props.focusedCardIndex ?? -1)
 const {
   renderedCount,

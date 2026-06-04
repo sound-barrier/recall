@@ -13,10 +13,8 @@ import (
 )
 
 // registerMatchRoutes attaches every /api/v1/matches/... handler to
-// apiMux. Extracted out of NewMux to pay down the route-monolith
-// debt (TECHNICAL_DEBT.md item 1). Same wire surface as before; no
-// behaviour change. New routes under this resource family go in
-// this file, not in NewMux.
+// apiMux. New routes under this resource family go in this file,
+// not in NewMux.
 func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/matches", func(w http.ResponseWriter, r *http.Request) {
 		// Optional pagination — `?limit=N&cursor=KEY` returns at most
