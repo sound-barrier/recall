@@ -1737,6 +1737,24 @@ components:
             |Δt| between the ambiguous screenshot's filename timestamp
             and the candidate match's anchor timestamp, in seconds.
           example: 720
+        representative_source_file:
+          type: string
+          description: |
+            One source file from the candidate match (its earliest
+            screenshot) so the picker UI can render a thumbnail next
+            to the candidate. Omitted when the candidate match is not
+            present in the current result set (e.g. hidden when
+            show-hidden is off).
+          example: "Overwatch 2026.05.10 - 21.29.28.01_summary.png"
+        representative_dir_id:
+          type: integer
+          format: int64
+          description: |
+            `screenshots_dirs` row id that owns
+            `representative_source_file`. Pairs with the filename to
+            build a `/_screenshot/<id>/<filename>` URL. Omitted when
+            the file is missing or zero.
+          example: 1
 
     MatchAnnotation:
       type: object

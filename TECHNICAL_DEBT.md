@@ -146,32 +146,3 @@ information stays accessible without dominating the viewport.
 **Risk:** Low — the timeline is its own SFC, isolated blast
 radius. Sticky requires checking the matches-view scrolling
 ancestor; do that audit first.
-
-## 24. Visual candidate thumbnails for ambiguous-resolution picker
-
-**Where:** `frontend/src/components/UnknownMapsView.vue` —
-ambiguous section's candidate picker (around line 240).
-
-**What breaks:** when an ambiguous screenshot has 3-5 candidate
-matches, the picker shows text-only metadata (map / hero / date /
-winrate). Users with similar-looking screenshots from the same
-sitting can struggle to pick the right candidate without flipping
-back to the leaves list. A small thumbnail of each candidate's
-own SUMMARY screenshot beside its text label would resolve the
-ambiguity at a glance — which is the whole point of this tab.
-
-**Plan:**
-
-1. Extend the `candidates[]` shape to carry a representative
-   `source_file` per candidate (the candidate match's earliest
-   SUMMARY screenshot is a natural pick).
-2. Render a small thumbnail (`<img>` via `screenshotURL()`)
-   beside each candidate label.
-3. Lazy-load each thumbnail (`loading="eager"` was avoided by
-   prior PR for collapsed cards — thumbs in this picker are
-   never collapsed once the card expands, so eager is fine).
-4. Existing `unknown-tab-screenshot-lightbox.spec.ts` extension
-   covers the click-to-lightbox behaviour for the new thumbs.
-
-**Size:** M.
-**Risk:** Low — picker is isolated UI, no shared selectors.

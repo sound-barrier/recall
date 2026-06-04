@@ -366,6 +366,22 @@ function updateThumbPosition(e: MouseEvent) {
                   :key="cand.match_key"
                   class="candidate-row"
                 >
+                  <button
+                    v-if="cand.representative_source_file"
+                    type="button"
+                    class="candidate-thumb"
+                    :aria-label="`Open ${cand.match_key} screenshot in lightbox`"
+                    :data-candidate-thumb="cand.match_key"
+                    @click="emit('open-lightbox',
+                      cand.representative_source_file!,
+                      [cand.representative_source_file!],
+                      { [cand.representative_source_file!]: cand.representative_dir_id ?? 0 })"
+                  >
+                    <img
+                      :src="screenshotURL(cand.representative_source_file, cand.representative_dir_id ?? 0)"
+                      :alt="`Screenshot from ${cand.match_key}`"
+                    >
+                  </button>
                   <div class="candidate-headline">
                     <span class="candidate-key mono">{{ cand.match_key }}</span>
                     <span class="candidate-distance">{{ formatDistance(cand.distance_seconds) }}</span>
@@ -830,6 +846,39 @@ function updateThumbPosition(e: MouseEvent) {
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 3px;
+}
+
+/* Candidate thumbnail — 96 × 54 (16:9, OW capture aspect) so users
+   resolve ambiguity by sight. Clickable: opens the same
+   MatchScreenshotLightbox the in-card source-preview block uses.
+   Flex layout puts the thumb on the left so the headline + attach
+   button slot in at their natural widths. */
+.candidate-thumb {
+  appearance: none;
+  flex: 0 0 auto;
+  width: 96px;
+  height: 54px;
+  padding: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color var(--duration-fast) ease, transform var(--duration-fast) ease;
+}
+
+.candidate-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.candidate-thumb:hover,
+.candidate-thumb:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+  transform: scale(1.02);
 }
 
 .candidate-headline {
