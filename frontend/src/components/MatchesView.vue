@@ -1920,7 +1920,11 @@ onBeforeUnmount(() => {
 
 .seg-btn.picked {
   background: var(--accent);
-  color: var(--surface);
+  /* Use the documented text-on-accent token so the picked label
+     clears AA against the orange fill on every theme (day's accent
+     is the same OW orange as dark/night, but day's --surface is a
+     light cream — white-on-orange = 1.92:1 → sub-AA). */
+  color: var(--primary-text-on-accent);
 }
 
 /* ─── Section dividers + leaf rows ─────────────────────────── */
