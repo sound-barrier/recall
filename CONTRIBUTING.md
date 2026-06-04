@@ -22,6 +22,7 @@ overview of the architecture and internal conventions, see
   - [Server-only binary](#server-only-binary)
   - [Other build commands](#other-build-commands)
 - [Maintenance](#maintenance)
+  - [npm supply-chain cooldown](#npm-supply-chain-cooldown)
   - [Git hooks (lefthook)](#git-hooks-lefthook)
   - [Preparing frontend/dist in CI jobs](#preparing-frontenddist-in-ci-jobs)
   - [Pinning GitHub Actions](#pinning-github-actions)
@@ -345,6 +346,20 @@ make icon           # resync build/appicon.png from assets/icon.png (macOS only;
 The scan covers Go module dependencies, npm packages, and `Dockerfile.build`.
 
 The repo includes an `.envrc` for [direnv](https://direnv.net/) with all available environment variable overrides documented and commented out. Run `direnv allow` once after cloning, then edit `.envrc` to activate any overrides you need.
+
+### npm supply-chain cooldown
+
+`frontend/.npmrc` sets `min-release-age=7` so every `npm install` from inside `frontend/` rejects npm package versions younger than seven days. This catches the typical hijacked-publish → npm-unpublish window — Shai-Hulud, the 2025 worm wave, and the recent compromises of `@ctrl/tinycolor` et al. were all detected and pulled inside 72 h. Dependabot honours `.npmrc` when it builds the updated tree, so a malicious publish that lands during its weekly window won't generate a PR until the cooldown elapses (by which point npm has usually pulled it).
+
+Requires npm ≥ 11.0; CI (`actions/setup-node` with Node 26) and `Dockerfile.build` (`node:26-slim`) both ship npm 11 already. `npm ci` is unaffected — it installs exact versions from the lockfile without re-resolving — so checkouts and CI builds remain reproducible.
+
+**Emergency CVE override** (when a same-day patch needs to land before the cooldown elapses):
+
+```sh
+npm --prefix frontend install <pkg> --min-release-age=0
+```
+
+Bypasses the cooldown for that one invocation only. Commit the lockfile change with a `fix:` or `chore(security):` prefix and call out the override in the commit body so future readers understand why a fresh version landed inside the window.
 
 ### Git hooks (lefthook)
 
