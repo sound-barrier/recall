@@ -21,8 +21,9 @@ const VIEWS: { name: string; tabId: string }[] = [
 // Force `prefers-reduced-motion: reduce` for every a11y test so the
 // site's @media rule collapses every animation/transition to 0.01ms.
 // Without this, axe-core's color-contrast check samples mid-animation
-// alpha (the view-fade-in keyframes ramp opacity 0→1 over 360ms) and
-// reports false negatives on perfectly legible colors. Setting it via
+// alpha (the view-fade-in keyframes ramp opacity 0→1 across the
+// page-fade duration) and reports false negatives on perfectly
+// legible colors. Setting it via
 // `use.reducedMotion` in playwright.config.ts has no effect — the
 // project-level `use: { ...devices['Desktop Chrome'] }` shadows the
 // top-level, and re-asserting it inside the project still doesn't
