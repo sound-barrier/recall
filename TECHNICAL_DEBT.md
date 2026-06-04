@@ -88,32 +88,3 @@ constantly open / close / re-open it.
 **Size:** L.
 **Risk:** Med — MatchesView is the most-touched view and the
 narrow plumbing has many keyboard / focus edges.
-
-## 23. Campaign Log sticky-on-scroll with compact-when-sticky
-
-**Where:** `frontend/src/components/MatchTimelineHeader.vue` +
-the mounting point in `MatchesView.vue`.
-
-**What breaks:** the Campaign Log (heatmap + sparkline) carries
-the most context-rich visualisation in the view but scrolls away
-the moment the user reads into the leaves list. Sticky at full
-height occupies too much viewport — it's a tall block. The fix
-is a sticky behaviour that compresses the timeline as it pins
-(heatmap row goes single-line, sparkline goes thinner) so the
-information stays accessible without dominating the viewport.
-
-**Plan:**
-
-1. Wrap the timeline in a sticky positioner with two CSS-only
-   render modes: `expanded` (default position) and `sticky`
-   (after the IntersectionObserver fires).
-2. Compact-sticky styles drop the heatmap to ~24 px tall and the
-   sparkline to ~32 px.
-3. Reduce the sticky-mode brush interactivity to keep it
-   read-only (full interactivity returns when scrolled back to
-   top).
-
-**Size:** M.
-**Risk:** Low — the timeline is its own SFC, isolated blast
-radius. Sticky requires checking the matches-view scrolling
-ancestor; do that audit first.

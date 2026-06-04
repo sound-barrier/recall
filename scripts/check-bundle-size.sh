@@ -39,7 +39,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 : "${MAX_INITIAL_JS_BYTES:=146000}" # 146 KB — initial JS chunk only
 : "${MAX_INITIAL_CSS_BYTES:=60000}" # 60 KB  — initial CSS chunk only
 : "${MAX_TOTAL_JS_BYTES:=397000}"   # 397 KB — every JS chunk combined (PR E added density picker; PR F added Unknown section nav; PR 3 added candidate-thumb buttons; queue-type chooser + Queue filter chip; play-mode chooser + Play mode filter chip; Quickplay-vs-Competitive + Winrate-by-play-mode widgets + playModeBreakdown dossier helper; ambiguous candidate-picker side-by-side preview pane + auto-open source on row click; PR 6 sort + group dropdown)
-: "${MAX_TOTAL_CSS_BYTES:=226000}"  # 226 KB — every CSS chunk combined (queue chooser + play-mode chooser radiogroup styles; candidate-picker grid + preview-pane styles; PR 6 sort + group dropdown trigger + menu styles)
+: "${MAX_TOTAL_CSS_BYTES:=226000}"  # 226 KB — every CSS chunk combined (queue chooser + play-mode chooser radiogroup styles; candidate-picker grid + preview-pane styles; PR 6 sort + group dropdown trigger + menu styles; PR 5 sticky/compact Campaign Log styles)
 
 if [[ "${1:-}" == "--build" ]]; then
   echo "==> building frontend (npm --prefix frontend run build)…"
