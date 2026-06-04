@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import type { HeroBreakdownEntry } from '../../composables/useMatchesDossier'
+import { useDossier } from '../../composables/useDossier'
+import { useWidgetConfig } from '../../composables/useWidgetConfig'
+import { topHeroesSchema, type TopByCountConfig } from '../../dashboard/widgets'
 
-defineProps<{
-  topHeroes: readonly HeroBreakdownEntry[]
-}>()
+const dossier = useDossier()
+const { config } = useWidgetConfig<TopByCountConfig>('top-heroes', topHeroesSchema)
+const topHeroes = dossier.topHeroesByMinutes(() => ({ limit: config.value.limit }))
 </script>
 
 <template>

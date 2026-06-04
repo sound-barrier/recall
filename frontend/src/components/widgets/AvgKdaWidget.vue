@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import type { AverageKDA } from '../../composables/useMatchesDossier'
+import { useDossier } from '../../composables/useDossier'
 
-defineProps<{
-  averageKDA: AverageKDA | null
-}>()
+const { averageKDA } = useDossier()
 </script>
 
 <template>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-defineProps<{
-  count: number
-}>()
+import { useDossier } from '../../composables/useDossier'
+
+const { longestWinStreak: count } = useDossier()
 </script>
 
 <template>

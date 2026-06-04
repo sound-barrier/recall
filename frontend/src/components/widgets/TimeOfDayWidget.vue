@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import type { BucketEntry } from '../../composables/useMatchesDossier'
+import { useDossier } from '../../composables/useDossier'
+import { useWidgetConfig } from '../../composables/useWidgetConfig'
+import { timeOfDaySchema, type TimeOfDayConfig } from '../../dashboard/widgets'
 
-defineProps<{
-  buckets: readonly BucketEntry[]
-}>()
+const dossier = useDossier()
+const { config } = useWidgetConfig<TimeOfDayConfig>('time-of-day', timeOfDaySchema)
+const buckets = dossier.timeOfDayBuckets(() => ({ bucketCount: config.value.bucketCount }))
 </script>
 
 <template>

@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import type { BreakdownEntry } from '../../composables/useMatchesDossier'
+import { useDossier } from '../../composables/useDossier'
+import { useWidgetConfig } from '../../composables/useWidgetConfig'
+import { topMapTypesSchema, type TopByCountConfig } from '../../dashboard/widgets'
 
-defineProps<{
-  topMapTypes: readonly BreakdownEntry[]
-}>()
+const dossier = useDossier()
+const { config } = useWidgetConfig<TopByCountConfig>('top-map-types', topMapTypesSchema)
+const topMapTypes = dossier.topByCount(() => ({
+  getter: (r) => r.data?.type,
+  limit:  config.value.limit,
+}))
 </script>
 
 <template>

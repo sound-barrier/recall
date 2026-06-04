@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
 import WldSinceReviewWidget from './WldSinceReviewWidget.vue'
+import { mountWidget } from '../../test-utils/mountWidget'
 
 describe('WldSinceReviewWidget', () => {
   it('renders em-dash when no review anchor exists', () => {
-    const w = mount(WldSinceReviewWidget, { props: { wldSinceLastReview: null } })
+    const w = mountWidget(WldSinceReviewWidget, { dossier: { wldSinceLastReview: null } })
     expect(w.find('.kda-value').text()).toBe('—')
     expect(w.find('.kpi-sub').exists()).toBe(false)
   })
 
   it('renders W / L / D when an anchor exists', () => {
-    const w = mount(WldSinceReviewWidget, {
-      props: {
+    const w = mountWidget(WldSinceReviewWidget, {
+      dossier: {
         wldSinceLastReview: { w: 3, l: 1, d: 0, total: 4, referenceAt: '2026-05-30T10:00:00Z' },
       },
     })
@@ -20,8 +20,8 @@ describe('WldSinceReviewWidget', () => {
   })
 
   it('singular "match" when total is 1', () => {
-    const w = mount(WldSinceReviewWidget, {
-      props: {
+    const w = mountWidget(WldSinceReviewWidget, {
+      dossier: {
         wldSinceLastReview: { w: 1, l: 0, d: 0, total: 1, referenceAt: '2026-05-30T10:00:00Z' },
       },
     })
@@ -29,8 +29,8 @@ describe('WldSinceReviewWidget', () => {
   })
 
   it('zero-zero-zero with "0 new matches" when anchored but no new games', () => {
-    const w = mount(WldSinceReviewWidget, {
-      props: {
+    const w = mountWidget(WldSinceReviewWidget, {
+      dossier: {
         wldSinceLastReview: { w: 0, l: 0, d: 0, total: 0, referenceAt: '2026-05-30T10:00:00Z' },
       },
     })
@@ -39,8 +39,8 @@ describe('WldSinceReviewWidget', () => {
   })
 
   it('puts the anchor ISO in the title attr', () => {
-    const w = mount(WldSinceReviewWidget, {
-      props: {
+    const w = mountWidget(WldSinceReviewWidget, {
+      dossier: {
         wldSinceLastReview: { w: 2, l: 0, d: 0, total: 2, referenceAt: '2026-05-30T10:00:00Z' },
       },
     })

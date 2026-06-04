@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import type { ReviewedCount } from '../../composables/useMatchesDossier'
+import { useDossier } from '../../composables/useDossier'
 
-defineProps<{
-  reviewedCount: ReviewedCount
-}>()
+const { reviewedCount } = useDossier()
 </script>
 
 <template>

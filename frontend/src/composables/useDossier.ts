@@ -8,9 +8,11 @@ import type { MatchesDossier } from './useMatchesDossier'
 // the slice it renders. Mirrors the Grafana panel pattern of
 // "self-contained widgets querying a shared data source."
 //
-// Module-private — useDossier + provideDossier are the only intended
-// consumers. PR B ships the helpers; PR C wires widgets to use them.
-const DOSSIER_KEY: InjectionKey<MatchesDossier> = Symbol('recall.dossier')
+// Exported so widget tests can provide a mock dossier via vue-test-
+// utils' `global.provide: { [DOSSIER_KEY]: mockDossier }`. Outside
+// tests, prefer `provideDossier(d)` and `useDossier()` — they're
+// the typed surface.
+export const DOSSIER_KEY: InjectionKey<MatchesDossier> = Symbol('recall.dossier')
 
 // Convenience wrapper around Vue's inject so widget files don't
 // have to import the InjectionKey symbol AND assert non-null at

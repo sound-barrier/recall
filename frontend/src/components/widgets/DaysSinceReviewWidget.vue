@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import type { DaysSinceLastReview } from '../../composables/useMatchesDossier'
+import { useDossier } from '../../composables/useDossier'
 
-defineProps<{
-  daysSinceLastReview: DaysSinceLastReview
-}>()
+const { daysSinceLastReview } = useDossier()
 </script>
 
 <template>

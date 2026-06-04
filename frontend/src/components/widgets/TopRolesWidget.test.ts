@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
 import TopRolesWidget from './TopRolesWidget.vue'
 import type { Role } from '../../composables/useMatchesDossier'
+import { mountWidget } from '../../test-utils/mountWidget'
 
 const role = (key: Role, total: number, share: number, winrate = 50) => ({ key, total, share, winrate })
 
 describe('TopRolesWidget', () => {
   it('renders one row per role with raw match count and share', () => {
-    const w = mount(TopRolesWidget, {
-      props: {
+    const w = mountWidget(TopRolesWidget, {
+      dossier: {
         topRoles: [
           role('tank', 5, 50, 60),
           role('support', 3, 30, 33),
@@ -24,8 +24,8 @@ describe('TopRolesWidget', () => {
   })
 
   it('clamps the fill width at 100% even when share exceeds 100 (open-queue overlap)', () => {
-    const w = mount(TopRolesWidget, {
-      props: { topRoles: [role('tank', 15, 150, 60)] },
+    const w = mountWidget(TopRolesWidget, {
+      dossier: { topRoles: [role('tank', 15, 150, 60)] },
     })
     const fill = w.find('.bd-fill').element as HTMLElement
     expect(fill.style.width).toBe('100%')
@@ -35,15 +35,15 @@ describe('TopRolesWidget', () => {
   })
 
   it('puts a winrate title on bars that have any matches', () => {
-    const w = mount(TopRolesWidget, {
-      props: { topRoles: [role('tank', 5, 50, 60)] },
+    const w = mountWidget(TopRolesWidget, {
+      dossier: { topRoles: [role('tank', 5, 50, 60)] },
     })
     expect(w.find('.bd-bar').attributes('title')).toBe('60% winrate')
   })
 
   it('omits the winrate title when the role has no matches', () => {
-    const w = mount(TopRolesWidget, {
-      props: { topRoles: [role('dps', 0, 0, 0)] },
+    const w = mountWidget(TopRolesWidget, {
+      dossier: { topRoles: [role('dps', 0, 0, 0)] },
     })
     expect(w.find('.bd-bar').attributes('title')).toBeUndefined()
   })
