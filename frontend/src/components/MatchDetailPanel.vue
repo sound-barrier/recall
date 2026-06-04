@@ -339,7 +339,15 @@ function onBackdropClick(e: MouseEvent) {
           </div>
         </header>
 
-        <div ref="bodyRef" class="detail-body">
+        <!-- role="region" + aria-label inside the dialog so SR users
+             on landmark-nav can jump straight to the match body
+             past the toolbar. -->
+        <div
+          ref="bodyRef"
+          class="detail-body"
+          role="region"
+          aria-label="Match detail"
+        >
           <!-- Keyed by match_key so MatchCardExpanded's local annotation
                drafts reset cleanly when the user paginates. Without the
                key, switching from match A to match B would carry A's
