@@ -61,7 +61,6 @@ onMounted(() => {
 // left edge. Flips above when there isn't enough room below (e.g.
 // short window or Playwright auto-scroll pinning the trigger near
 // the viewport bottom).
-const POPOVER_WIDTH_ESTIMATE  = 220
 const POPOVER_HEIGHT_ESTIMATE = 240
 const VIEWPORT_PADDING        = 8
 
