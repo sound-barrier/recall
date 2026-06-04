@@ -62,7 +62,12 @@ const ambiguousRecord = () => ({
   parsed_at: '2026-05-10T21:42:00Z',
   ambiguous: true,
   candidates: [
-    { match_key: CANDIDATE_KEY, distance_seconds: 720 },
+    {
+      match_key: CANDIDATE_KEY,
+      distance_seconds: 720,
+      representative_source_file: 'scoreboard-1.png',
+      representative_dir_id: 0,
+    },
   ],
 })
 
@@ -158,5 +163,34 @@ test.describe('ambiguous attribution — pick a candidate via Unknown tab', () =
     // Post-resolve refetch removes the ambiguous row.
     await expect(page.locator('.ambiguous-card')).toHaveCount(0)
     await expect(page.locator('.needs-review-heading')).toHaveCount(0)
+  })
+
+  test('each candidate renders a representative-screenshot thumbnail beside its headline', async ({ page }) => {
+    // 1×1 PNG so the <img> actually paints in the headless browser.
+    const STUB_PNG = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    )
+    await page.route('**/_screenshot/**', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'image/png', body: STUB_PNG })
+    })
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([candidateMatchRecord(), ambiguousRecord()]),
+      })
+    })
+
+    await page.goto('/')
+    await page.locator('#tab-unknown').click()
+    await page.locator('.ambiguous-card').first().locator('.unknown-card-head').click()
+
+    // Thumb button appears with the right src + aria-label.
+    const thumb = page.locator(`[data-candidate-thumb="${CANDIDATE_KEY}"]`)
+    await expect(thumb).toBeVisible()
+    const img = thumb.locator('img')
+    await expect(img).toHaveAttribute('src', /_screenshot\/0\/scoreboard-1\.png/)
+    await expect(thumb).toHaveAttribute('aria-label', new RegExp(CANDIDATE_KEY))
   })
 })

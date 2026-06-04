@@ -1242,6 +1242,24 @@ export interface components {
              * @example 720
              */
             distance_seconds: number;
+            /**
+             * @description One source file from the candidate match (its earliest
+             *     screenshot) so the picker UI can render a thumbnail next
+             *     to the candidate. Omitted when the candidate match is not
+             *     present in the current result set (e.g. hidden when
+             *     show-hidden is off).
+             * @example Overwatch 2026.05.10 - 21.29.28.01_summary.png
+             */
+            representative_source_file?: string;
+            /**
+             * Format: int64
+             * @description `screenshots_dirs` row id that owns
+             *     `representative_source_file`. Pairs with the filename to
+             *     build a `/_screenshot/<id>/<filename>` URL. Omitted when
+             *     the file is missing or zero.
+             * @example 1
+             */
+            representative_dir_id?: number;
         };
         /**
          * @description User-curated per-match metadata. Up to five optional fields —

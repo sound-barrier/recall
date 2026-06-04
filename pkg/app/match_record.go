@@ -61,9 +61,20 @@ type MatchRecord struct {
 // AmbiguousAttribution is one candidate match the user can pick to
 // resolve the ambiguity. Mirrors db.AmbiguousCandidate but exposes the
 // JSON wire shape so the App package owns the contract.
+//
+// RepresentativeSourceFile + RepresentativeDirID let the Unknown-tab
+// picker render a small thumbnail beside each candidate. The
+// thumbnail clicks through to the existing screenshot lightbox so
+// the user can resolve ambiguity by sight, not by reading
+// metadata. Both fields are populated on read by `attachAmbiguity`
+// from the candidate match's own SourceFiles[0]; absent when the
+// candidate match isn't in the result set (e.g. hidden when
+// show-hidden is off).
 type AmbiguousAttribution struct {
-	MatchKey        string `json:"match_key"`
-	DistanceSeconds int    `json:"distance_seconds"`
+	MatchKey                 string `json:"match_key"`
+	DistanceSeconds          int    `json:"distance_seconds"`
+	RepresentativeSourceFile string `json:"representative_source_file,omitempty"`
+	RepresentativeDirID      int64  `json:"representative_dir_id,omitempty"`
 }
 
 // MatchAnnotation is the per-match user note returned alongside

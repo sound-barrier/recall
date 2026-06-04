@@ -61,21 +61,50 @@ func attachReviews(recs []MatchRecord, reviews map[string]db.ReviewState) {
 // map is keyed by the filename embedded in the sentinel — every
 // MatchRecord that adopted the same sentinel (via the timestamp-window
 // pass) shares one candidates entry.
+//
+// Each AmbiguousAttribution is enriched with a representative source
+// file (the candidate match's earliest SourceFile + its dir id) so
+// the Unknown-tab picker can render a thumbnail beside each
+// candidate. Built from a one-pass O(N) index over recs.
 func attachAmbiguity(recs []MatchRecord, candidates map[string][]db.AmbiguousCandidate) {
+	// Index recs by match_key for O(1) candidate lookups. Built only
+	// when at least one ambiguous record exists — most aggregate
+	// runs skip this entirely.
+	var byKey map[string]*MatchRecord
+	ensureIndex := func() {
+		if byKey != nil {
+			return
+		}
+		byKey = make(map[string]*MatchRecord, len(recs))
+		for i := range recs {
+			byKey[recs[i].MatchKey] = &recs[i]
+		}
+	}
+
 	for i := range recs {
 		mk, err := ParseMatchKey(recs[i].MatchKey)
 		if err != nil || !mk.IsAmbiguous() {
 			continue
 		}
 		recs[i].Ambiguous = true
-		if cs, ok := candidates[mk.Filename()]; ok {
-			recs[i].Candidates = make([]AmbiguousAttribution, 0, len(cs))
-			for _, c := range cs {
-				recs[i].Candidates = append(recs[i].Candidates, AmbiguousAttribution{
-					MatchKey:        c.MatchKey,
-					DistanceSeconds: c.DistanceS,
-				})
+		cs, ok := candidates[mk.Filename()]
+		if !ok {
+			continue
+		}
+		ensureIndex()
+		recs[i].Candidates = make([]AmbiguousAttribution, 0, len(cs))
+		for _, c := range cs {
+			attr := AmbiguousAttribution{
+				MatchKey:        c.MatchKey,
+				DistanceSeconds: c.DistanceS,
 			}
+			if cand, ok := byKey[c.MatchKey]; ok && len(cand.SourceFiles) > 0 {
+				attr.RepresentativeSourceFile = cand.SourceFiles[0]
+				if cand.SourceDirIDs != nil {
+					attr.RepresentativeDirID = cand.SourceDirIDs[cand.SourceFiles[0]]
+				}
+			}
+			recs[i].Candidates = append(recs[i].Candidates, attr)
 		}
 	}
 }
