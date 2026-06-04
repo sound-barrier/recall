@@ -15,9 +15,6 @@ import (
 // flusher / keepalive shape is structurally different from every
 // other handler in the package + makes the file diffs cleaner when
 // touched.
-//
-// Extracted from NewMux to pay down the route-monolith debt
-// (TECHNICAL_DEBT.md item 1). Same wire surface.
 func registerEventsRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/events", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")

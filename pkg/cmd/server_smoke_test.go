@@ -18,8 +18,6 @@ import (
 // listener and the blocking `ListenAndServe` call, which can't be
 // driven cleanly from a unit test. Everything inside the request-
 // handling path is reachable via this smoke pass.
-//
-// TECHNICAL_DEBT.md item 6 Stage 3.
 
 // smokeMux builds the same mux RunServer builds, against a fake
 // store, but with a stub embedded asset FS so the SPA fallback

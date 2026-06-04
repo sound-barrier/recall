@@ -282,7 +282,6 @@ async function focusCardByIndex(idx: number) {
 // visually next one. DOM order is the cheapest reliable source of
 // the rendered sequence — MatchesView owns the sort + group logic,
 // the rendered list owns the order, and we just walk it.
-// TECHNICAL_DEBT.md item 18.
 async function focusCardByRenderedDelta(delta: 1 | -1) {
   const rows = Array.from(
     document.querySelectorAll<HTMLElement>('.leaf-row[data-card-index]'),
@@ -1189,8 +1188,7 @@ onMounted(() => {
   // log.Fatal on profile / DB-init errors, which manifested as a
   // window flash with no user-visible reason. Startup now records
   // the failure on the App; we pull it here on mount and flip the
-  // blocking modal so the user sees a real message
-  // (TECHNICAL_DEBT.md item 8).
+  // blocking modal so the user sees a real message.
   GetStartupError()
     .then(msg => { if (msg) startupErrorMessage.value = msg })
     .catch(() => {})
@@ -1666,8 +1664,8 @@ useEventStream({
 
     <!-- Startup-failure modal. Filled by GetStartupError() on
          mount; non-empty message means the Go layer captured a
-         profile-init / DB-open failure (TECHNICAL_DEBT.md item 8).
-         No close affordance — restart is the only recovery. -->
+         profile-init / DB-open failure. No close affordance —
+         restart is the only recovery. -->
     <transition name="modal-fade">
       <div
         v-if="showStartupErrorModal"

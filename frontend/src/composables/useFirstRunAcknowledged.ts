@@ -13,8 +13,7 @@ import { GetProfiles } from '../api'
 //      profile away from the default 'main', the modal's purpose is
 //      satisfied even on a device that's never seen the flag. This
 //      covers the cleared-browser-storage / new-machine / server-mode
-//      / different-browser cases the localStorage gate alone misses
-//      (TECHNICAL_DEBT.md item 16).
+//      / different-browser cases the localStorage gate alone misses.
 //
 // The composable starts from the localStorage flag synchronously so
 // the very first paint is correct, then fetches GetProfiles() once

@@ -14,9 +14,6 @@ import (
 // switches), POST /exports/bundle (compressed .zip with manifest +
 // data + screenshots), POST /imports (REPLACE the local DB from a
 // previously-exported payload).
-//
-// Extracted from NewMux to pay down the route-monolith debt
-// (TECHNICAL_DEBT.md item 1). Same wire surface.
 func registerBackupRoutes(apiMux *http.ServeMux, a *app.App) {
 	// `format` query selects the wire format. Default is JSON — CSV
 	// emits a ZIP archive (one CSV per parent/child table + manifest).

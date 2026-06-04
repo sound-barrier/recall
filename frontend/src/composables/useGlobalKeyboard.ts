@@ -112,9 +112,9 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
     }),
     // Matches view: j/k move card focus, no wrap, in RENDERED order
     // (so flipping Sort=Oldest still has j advance down the visible
-    // list — TECHNICAL_DEBT.md item 18). Suppressed when the detail
-    // panel is open; the panel's own keydown listener takes over
-    // (j/k paginates within the open panel).
+    // list). Suppressed when the detail panel is open; the panel's
+    // own keydown listener takes over (j/k paginates within the
+    // open panel).
     {
       key: 'j',
       when: () => view.value === 'matches' && !selectionIsOpen.value,

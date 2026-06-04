@@ -2,9 +2,7 @@ import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import type { MatchRecord } from '../api'
 
 // Archive-drawer selection state and the bulk-action handlers that
-// drive its action bar. Extracted from MatchesView as the first step
-// in the item-7 burn-down (TECHNICAL_DEBT.md) — full template +
-// styles extraction is the larger follow-up.
+// drive its action bar.
 //
 // Shape mirrors the inline live-selection handlers in MatchesView so
 // the two stay legible side-by-side. Two emit channels are exposed

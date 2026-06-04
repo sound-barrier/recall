@@ -15,7 +15,7 @@ import (
 // Wails. Coverage here protects against a regression where dev-mode
 // `wails dev` lets `/_screenshot/...` requests fall through to the
 // Vite proxy (which would resolve them to `index.html` and corrupt
-// the image previews — TECHNICAL_DEBT.md item 13).
+// the image previews).
 
 func TestScreenshotsMiddleware_ShortCircuitsToHandler(t *testing.T) {
 	screenshots := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

@@ -17,9 +17,6 @@ import (
 // require `*bool` body shape so missing / null is distinguishable
 // from `false` (pinned by TestPrometheusEnabled_RejectsNull +
 // TestWatchEnabled_RejectsNull).
-//
-// Extracted from NewMux to pay down the route-monolith debt
-// (TECHNICAL_DEBT.md item 1). Same wire surface.
 func registerSettingsRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/settings/screenshots-folder", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"path": a.GetScreenshotsDir()}, nil)

@@ -17,11 +17,11 @@ import type { CardStateApi } from '../types/cardState'
 //      non-OW PNG in the watched folder).
 //
 // Per-card UI state comes in via the CardStateApi bundle (owned by
-// App.vue). Post item-8 (TECHNICAL_DEBT.md) every field on the
-// bundle is a function — no `.value` indirection in templates, no
-// nested-ref auto-unwrap gotchas. MatchesView used to share this
-// bundle but the new set-workspace doesn't expose per-card expand
-// state, so UnknownMapsView is the only consumer.
+// App.vue). Every field on the bundle is a function — no `.value`
+// indirection in templates, no nested-ref auto-unwrap gotchas.
+// MatchesView used to share this bundle but the new set-workspace
+// doesn't expose per-card expand state, so UnknownMapsView is the
+// only consumer.
 
 const props = defineProps<{
   unknownRecords:   MatchRecord[]

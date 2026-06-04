@@ -4,8 +4,7 @@ import { mount } from '@vue/test-utils'
 import MatchCardExpanded from './MatchCardExpanded.vue'
 import type { MatchRecord } from '../api'
 
-// TECHNICAL_DEBT.md item 6 — net-new coverage on a previously-untested
-// SFC. The component owns annotation draft state, the leaver-chooser
+// MatchCardExpanded owns annotation draft state, the leaver-chooser
 // chips, heroes-played collapse, and the sources block. These tests
 // pin the externally-observable contract: emits + render branches.
 

@@ -2,14 +2,10 @@
 // Left-side "Narrow this set" filter popover for the Matches view.
 // Teleport'd to body so it slides in over every dossier-local
 // stacking context; the trigger button stays in MatchesView's
-// dossier-actions row.
-//
-// Extracted from MatchesView.vue to pay down the SFC-size debt
-// (TECHNICAL_DEBT.md item 4). The popover used to be ~400 lines of
-// inline template + a tangle of refs (popoverRef, searchInputRef,
-// comboOpen) + a focus trap + a document mousedown listener + a
-// '/' shortcut, all wired into MatchesView's giant <script setup>.
-// All of that now lives here, behind the `narrow` prop bundle.
+// dossier-actions row. The whole filter UI — refs (popoverRef,
+// searchInputRef, comboOpen), focus trap, document mousedown
+// listener, '/' shortcut — lives in this SFC behind the `narrow`
+// prop bundle so MatchesView doesn't have to wire any of it.
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 

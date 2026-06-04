@@ -56,10 +56,9 @@ func (a *App) GetScreenshotsDir() string {
 // is true and startWatching has booted an fsnotify watcher), it gets
 // restarted against the new dir. Without this, changing the dir
 // while watching would leave fsnotify pointed at the old path —
-// silent drift between user intent and actual behaviour. The Wails
-// dialog flow used to do the restart inline in PickScreenshotsDir;
-// it now lives here so the server-mode HTTP path inherits the same
-// behaviour (parity audit, TECHNICAL_DEBT.md #14).
+// silent drift between user intent and actual behaviour. Both the
+// Wails dialog flow and the server-mode HTTP path funnel through
+// here so transports stay in parity.
 func (a *App) SetScreenshotsDir(path string) error {
 	cleaned, err := validateScreenshotsDir(path)
 	if err != nil {

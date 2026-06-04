@@ -198,9 +198,6 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 
 	// ── Matches ─────────────────────────────────────────────────────
 	// Every /api/v1/matches/... route registers in server_matches.go.
-	// Pulled out of NewMux to pay down the route-monolith debt
-	// (TECHNICAL_DEBT.md item 1). Same wire surface; adding /
-	// changing a route in this family now edits one focused file.
 	registerMatchRoutes(apiMux, a)
 
 	// ── Profiles ────────────────────────────────────────────────────

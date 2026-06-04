@@ -16,9 +16,6 @@ import (
 // activates a new profile in one shot (typical UX flow); PUT
 // /active switches; PUT /{name} renames; DELETE drops a non-
 // active profile and wipes its dir.
-//
-// Extracted from NewMux to pay down the route-monolith debt
-// (TECHNICAL_DEBT.md item 1). Same wire surface as before.
 func registerProfileRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/profiles", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.GetProfiles(), nil)

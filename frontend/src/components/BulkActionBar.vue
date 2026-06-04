@@ -3,11 +3,6 @@
 // the parent has selected rows; emits one action per button so
 // MatchesView's action handlers (hideSelected, beginMoveLive, etc.)
 // stay where they wire to App.vue's API.
-//
-// Extracted from MatchesView.vue to pay down the SFC-size debt
-// (TECHNICAL_DEBT.md item 4). Behavior contract is unchanged —
-// existing e2e in match-bulk-hide-drawer.spec.ts is the load-bearing
-// test.
 
 defineProps<{
   // Active selection size. Bar only mounts when > 0.

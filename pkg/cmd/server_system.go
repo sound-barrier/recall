@@ -12,9 +12,6 @@ import (
 // reference-data) + two probe endpoints (screenshots-folder and
 // tesseract, which return current resolved state without writing)
 // + the screenshots-folder reveal action.
-//
-// Extracted from NewMux to pay down the route-monolith debt
-// (TECHNICAL_DEBT.md item 1). Same wire surface.
 func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/system/version", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"version": a.GetVersion()}, nil)

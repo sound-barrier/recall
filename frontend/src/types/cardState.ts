@@ -1,12 +1,8 @@
 // Per-card UI state for the Unknown tab's expandable-card layout.
-// Previously bundled refs + callbacks together, which forced
-// consumers into `.value` access inside scripts and bare `[]`
-// indexing in templates — Vue's auto-unwrap doesn't reach refs
-// nested inside object props, so the inconsistency was a steady
-// papercut.
-//
-// Post-item-8 (TECHNICAL_DEBT.md): every field is a function. No
-// `.value` gymnastics in consumers, no mixed-shape ambiguity.
+// Every field is a function so Vue's auto-unwrap (which doesn't
+// reach refs nested inside object props) isn't load-bearing —
+// consumers don't have to mix `.value` access in `<script setup>`
+// with bare `[]` indexing in templates.
 //
 // MatchesView no longer needs this — the new set-workspace
 // renders compact leaf rows that drill into MatchDetailPanel on
