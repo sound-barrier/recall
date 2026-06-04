@@ -195,11 +195,29 @@ function updateThumbPosition(e: MouseEvent) {
         </button>
         again to resolve them.
       </p>
+
+      <!-- In-page jump nav. Only renders when BOTH sections are
+           present so a single-section page doesn't waste vertical
+           space. Anchor links target the section IDs below so
+           keyboard + skim-reading users can jump straight to the
+           triage they're after without scrolling past the other. -->
+      <nav
+        v-if="ambiguousList.length > 0 && unknownRecords.length > 0"
+        class="unknown-section-nav"
+        aria-label="Sections in this view"
+      >
+        <a class="unknown-section-link" href="#section-ambiguous">
+          Needs your review <span class="unknown-section-count">({{ ambiguousList.length }})</span>
+        </a>
+        <a class="unknown-section-link" href="#section-unmatched">
+          Unmatched <span class="unknown-section-count">({{ unknownRecords.length }})</span>
+        </a>
+      </nav>
     </header>
 
     <!-- ─── AMBIGUOUS: needs your review ───────────────────────── -->
 
-    <div v-if="ambiguousList.length > 0" class="ambiguous-section">
+    <div v-if="ambiguousList.length > 0" id="section-ambiguous" class="ambiguous-section">
       <h3 class="needs-review-heading">
         Needs your review — {{ ambiguousList.length }}
       </h3>
@@ -312,7 +330,7 @@ function updateThumbPosition(e: MouseEvent) {
       </p>
     </div>
 
-    <div v-if="unknownRecords.length > 0" class="unknown-list">
+    <div v-if="unknownRecords.length > 0" id="section-unmatched" class="unknown-list">
       <article
         v-for="(rec, idx) in unknownRecords"
         :key="rec.match_key"
@@ -484,6 +502,43 @@ function updateThumbPosition(e: MouseEvent) {
   font-size: 0.875rem;
   line-height: 1.6;
   max-width: 64ch;
+}
+
+/* In-page section nav. Sits below the intro paragraph; only
+   renders when both ambiguous + unmatched sections are present.
+   Reads as a quiet inline menu — small caps mono labels, accent
+   underline on hover/focus, no chrome around the whole strip. */
+.unknown-section-nav {
+  display: flex;
+  gap: 1.4rem;
+  margin-top: 1.1rem;
+  align-items: baseline;
+}
+
+.unknown-section-link {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  padding-bottom: 0.15rem;
+  transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.unknown-section-link:hover,
+.unknown-section-link:focus-visible {
+  color: var(--text);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.unknown-section-count {
+  color: var(--text-faint);
+  font-weight: 500;
+  margin-left: 0.25rem;
 }
 
 /* ─── Unknown-record cards ───────────────────────────────── */
