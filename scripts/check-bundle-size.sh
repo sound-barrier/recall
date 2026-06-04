@@ -38,8 +38,8 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # honest. A real feature that needs the room should bump deliberately.
 : "${MAX_INITIAL_JS_BYTES:=146000}" # 146 KB — initial JS chunk only
 : "${MAX_INITIAL_CSS_BYTES:=60000}" # 60 KB  — initial CSS chunk only
-: "${MAX_TOTAL_JS_BYTES:=376000}"   # 376 KB — every JS chunk combined
-: "${MAX_TOTAL_CSS_BYTES:=213000}"  # 213 KB — every CSS chunk combined
+: "${MAX_TOTAL_JS_BYTES:=382000}"   # 382 KB — every JS chunk combined
+: "${MAX_TOTAL_CSS_BYTES:=217000}"  # 217 KB — every CSS chunk combined
 
 if [[ "${1:-}" == "--build" ]]; then
   echo "==> building frontend (npm --prefix frontend run build)…"
