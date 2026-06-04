@@ -63,8 +63,14 @@ func (s *SQLStore) collectFilenames(table string, out map[string]bool) error {
 	return rows.Err()
 }
 
-// Clear deletes every row in every parent table (children cascade)
-// plus the screenshots_dirs lookup.
+// Clear deletes every row in every table — parent screenshot tables
+// (children cascade), the screenshots_dirs lookup, and the four
+// per-match auxiliary tables (match_reviews, match_annotations with
+// its children cascading, hidden_matches, ambiguous_candidates).
+// Used by App.ClearDatabase, bundle import, and CSV import — all of
+// which expect a "wipe everything" semantic. Previously this method
+// left the auxiliary tables intact, which silently orphaned reviews /
+// annotations / hidden flags / ambiguity records across every reset.
 func (s *SQLStore) Clear() error {
 	for _, t := range parentTables {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
@@ -72,8 +78,17 @@ func (s *SQLStore) Clear() error {
 			return err
 		}
 	}
-	if _, err := s.db.Exec(`DELETE FROM screenshots_dirs`); err != nil {
-		return err
+	for _, t := range []string{
+		"screenshots_dirs",
+		"match_reviews",
+		"match_annotations", // match_annotation_members + _tags cascade
+		"hidden_matches",
+		"ambiguous_candidates",
+	} {
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		if _, err := s.db.Exec(`DELETE FROM ` + t); err != nil {
+			return err
+		}
 	}
 	return nil
 }
