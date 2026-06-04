@@ -1730,6 +1730,13 @@ main#main-content {
 }
 .btn.alert-cta:hover { filter: brightness(1.08); transform: translateY(-1px); }
 
+/* Day theme's --loss is a deeper red (#c0354a) where the dark
+   #1a0608 text falls to ~3.58:1, sub-AA. Light text on the same
+   red lands at ~6.5:1 — flip to a near-white treatment in day. */
+[data-theme="day"] .btn.alert-cta {
+  color: #fff8ef;
+}
+
 .alert-cta-arrow {
   font-family: var(--display);
   font-weight: 900;
