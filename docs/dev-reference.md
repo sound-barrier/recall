@@ -50,7 +50,7 @@ Two binary flavors, selected by the `serveronly` Go build tag:
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml`. |
 | `make typecheck` | `vue-tsc --noEmit`. `allowJs: false` blocks JS introduction. |
 | `make update-goldens` | Regenerate parser golden sidecars (or set `RECALL_FIXTURE_UPDATE=1`). |
-| `make seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1]` | Populate a SQLite profile with N synthetic matches via `cmd/seed-dev`. Refuses non-empty profiles unless `FORCE=1` wipes first. `SEED=time` is a sentinel that substitutes the current Unix timestamp for a fresh shuffle. See "Manual testing with a seeded corpus" below. |
+| `make seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1] [CHAOS=0.15]` | Populate a SQLite profile with N synthetic matches via `cmd/seed-dev`. Refuses non-empty profiles unless `FORCE=1` wipes first. `SEED=time` is a sentinel that substitutes the current Unix timestamp for a fresh shuffle. `CHAOS=<0..1>` mixes pathological data shapes into that fraction of matches. See "Manual testing with a seeded corpus" below. |
 | `make seed-clear PROFILE=demo` | Wipe a SQLite profile without re-seeding. No-op (and exits 0) when the profile is already empty. |
 
 > **Drift note:** specific numeric gates (`GO_COVERAGE_MIN`, Vitest thresholds,
@@ -179,6 +179,7 @@ make seed-dev N=300 PROFILE=demo FORCE=1 SEED=time
 | `PROFILE` | `--profile` | `demo` | Target profile name. Created if missing. Pass the active profile name to seed your in-use profile (think twice). |
 | `SEED` | `--seed` | `1` | Deterministic RNG seed — same `(N, SEED)` → byte-identical rows. Pass `SEED=time` for a different shuffle every run (Makefile substitutes `$(shell date +%s)`). |
 | `FORCE` | `--force` | *(unset)* | Wipes every row in the target profile before seeding. Without it, a non-empty profile is a hard error. |
+| `CHAOS` | `--chaos` | `0` | Fraction of matches (0..1) to receive pathological data shapes. `0` = clean corpus; `0.15` = ~15% of matches carry weirdness. See "Chaos seeding" below. |
 | `seed-clear` target | `--clear` | *(target only)* | Wipe-and-exit, no seeding. Idempotent on already-empty profiles. |
 
 ### What the corpus looks like
@@ -222,6 +223,64 @@ probabilities, and hour weights are package consts at the top of
   `match-<timestamp>` key. The Unknown tab will be empty.
 - **No annotations / hidden flags / reviews.** Use the app to set those once
   you've seeded.
+
+## Chaos seeding (edge-case resilience)
+
+`make seed-dev` accepts a `CHAOS=<0..1>` fraction that mixes pathological
+data shapes into that share of matches. The intent is exploratory: seed
+a corpus with weirdness sprinkled through it, click around the UI, see
+what breaks. `CHAOS=0.15` (~15% of matches) is a good starting point —
+enough to surface bugs without making the whole profile unusable.
+
+```sh
+make seed-dev N=300 PROFILE=chaos FORCE=1 CHAOS=0.15
+make dev    # switch to "chaos" profile, eyeball the UI
+```
+
+### What the chaos categories probe
+
+Each chaotic match picks 1–2 shapes uniformly from these six:
+
+| Category | What it does | What it surfaces |
+|---|---|---|
+| **long-strings** | Hero name = 200 chars, map name = 150 chars | Frontend truncation, sort comparators, dossier widget label space |
+| **unicode** | Emojis + zalgo prefix on map / hero | URL encoding, axe-core a11y readouts, font fallback |
+| **numeric-extreme** | EAD into the millions, negative healing, billion-scale damage | Integer overflow in dossier sums, K/D division-by-zero, chart Y-axis blowout |
+| **cardinality** | 50 `HeroesPlayed` entries, 200 `HeroStat` rows on scoreboard | Frontend list rendering, `aggregateAll` fold cost |
+| **date-extreme** | Date = `1970-01-01`, `2099-12-31`, or malformed (`"yesterday"`) | Date-range filter, Campaign Log scale, calendar boundaries |
+| **aggregation-conflict** | 1–2 extra summary rows sharing the original's `match_key` but with different `map` / `hero` / `result` | `mergeMatchResult` fold under contradictory inputs — which value wins? Is it deterministic? |
+
+The chaos RNG is seeded from `seed + 1` so toggling `CHAOS` doesn't shift
+the underlying corpus's heroes / maps / dates. Same seed → same "season,"
+just with more or less weirdness layered in.
+
+### Querying the seeded chaos
+
+`sqlite3 data/profiles/chaos/db/recall.db`:
+
+```sql
+-- Aggregation-conflict rows (multiple summaries per match_key)
+SELECT match_key, COUNT(*) FROM summary_screenshots
+  GROUP BY match_key HAVING COUNT(*) > 1;
+
+-- Long-string victims
+SELECT match_key, length(hero) FROM summary_screenshots WHERE length(hero) > 100;
+
+-- Date-extreme rows
+SELECT match_key, date FROM summary_screenshots
+  WHERE date IN ('1970-01-01','2099-12-31','yesterday');
+```
+
+### What chaos seeding is NOT
+
+- **Not a regression gate.** Use it to find bugs, not to lock in behavior.
+  The chaos categories are deliberately broad and will evolve.
+- **Not a fuzzer for the parser** — the data goes through `store.Upsert*`
+  directly, bypassing `parser.MatchResult` classification + `resolveMatchKey`.
+  To probe those, hand-craft inputs and feed them through `App.insertParsed`.
+- **Not a HTTP-surface stress** — the chaos lives in the DB. Server-mode
+  resilience (URL encoding, body size, concurrent reads/writes) is a
+  separate concern not covered here.
 
 ## Quick local exploration
 

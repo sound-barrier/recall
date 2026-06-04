@@ -31,6 +31,7 @@ func main() {
 	seed := flag.Int64("seed", 1, "deterministic seed for fixture generation")
 	force := flag.Bool("force", false, "wipe the target profile before seeding")
 	clear := flag.Bool("clear", false, "wipe the target profile and exit (no seeding)")
+	chaos := flag.Float64("chaos", 0, "fraction of matches to receive pathological data shapes (0..1, default 0)")
 	flag.Parse()
 
 	if !*clear && *n <= 0 {
@@ -94,7 +95,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "wiped %d existing rows from profile %q\n", existingTotal, target)
 	}
 
-	fx := app.GenerateMatchFixture(*n, *seed)
+	fx := app.GenerateMatchFixtureWithChaos(*n, *seed, *chaos)
 
 	for _, r := range fx.Summaries {
 		if err := store.UpsertSummary(r); err != nil {
