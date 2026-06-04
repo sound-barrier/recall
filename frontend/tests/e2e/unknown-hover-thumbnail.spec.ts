@@ -177,4 +177,92 @@ test.describe('Unknown tab — hover preview', () => {
     await page.locator('.unknown-card').first().hover()
     await expect(page.locator('.unknown-hover-thumb')).toHaveCount(0)
   })
+
+  // Touch-pointer fallback: long-press on a collapsed card peeks the
+  // thumb the same way mouse hover does (touch devices have no
+  // hover state). Tap (short press) still falls through to the
+  // existing click-to-expand.
+  test('touch long-press on an Unknown card reveals the thumbnail; pointerup hides it', async ({ page }) => {
+    await stubScreenshotBytes(page)
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([unknownRecord]),
+      })
+    })
+
+    await page.goto('/')
+    await page.locator('#tab-unknown').click()
+
+    const card = page.locator('.unknown-card').first()
+    await expect(card).toBeVisible()
+
+    // No thumbnail before the press.
+    await expect(page.locator('.unknown-hover-thumb')).toHaveCount(0)
+
+    // Dispatch a synthetic touch-pointer down + hold > 500 ms.
+    // We script the events directly because Playwright's
+    // touchscreen helper doesn't drive pointer events, and the
+    // long-press timer keys off pointerType === 'touch'.
+    const box = await card.boundingBox()
+    expect(box).not.toBeNull()
+    const cx = box!.x + box!.width / 2
+    const cy = box!.y + box!.height / 2
+
+    await card.evaluate((el, [x, y]) => {
+      const ev = new PointerEvent('pointerdown', {
+        pointerType: 'touch',
+        clientX: x,
+        clientY: y,
+        bubbles: true,
+      })
+      el.dispatchEvent(ev)
+    }, [cx, cy])
+
+    // Wait past the long-press threshold (500 ms in the SFC).
+    await page.waitForTimeout(600)
+    const thumb = page.locator('.unknown-hover-thumb')
+    await expect(thumb).toBeVisible()
+    await expect(thumb).toHaveAttribute('src', /_screenshot\/0\/broken\.png/)
+
+    // Release → thumb hides.
+    await card.evaluate((el, [x, y]) => {
+      const ev = new PointerEvent('pointerup', {
+        pointerType: 'touch',
+        clientX: x,
+        clientY: y,
+        bubbles: true,
+      })
+      el.dispatchEvent(ev)
+    }, [cx, cy])
+    await expect(thumb).toHaveCount(0)
+  })
+
+  test('touch short tap does NOT peek and falls through to click-to-expand', async ({ page }) => {
+    await stubScreenshotBytes(page)
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([unknownRecord]),
+      })
+    })
+
+    await page.goto('/')
+    await page.locator('#tab-unknown').click()
+
+    const card = page.locator('.unknown-card').first()
+    const box = await card.boundingBox()
+    expect(box).not.toBeNull()
+    const cx = box!.x + box!.width / 2
+    const cy = box!.y + box!.height / 2
+
+    // Quick tap — pointerdown then pointerup well under 500 ms.
+    await card.evaluate((el, [x, y]) => {
+      el.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'touch', clientX: x, clientY: y, bubbles: true }))
+      el.dispatchEvent(new PointerEvent('pointerup',   { pointerType: 'touch', clientX: x, clientY: y, bubbles: true }))
+    }, [cx, cy])
+
+    // No peek thumb appeared (it never fired the timer).
+    await expect(page.locator('.unknown-hover-thumb')).toHaveCount(0)
+  })
 })

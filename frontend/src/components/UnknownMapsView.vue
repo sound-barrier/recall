@@ -155,6 +155,84 @@ function preloadVisibleScreenshots() {
 onMounted(preloadVisibleScreenshots)
 watch(() => props.unknownRecords, preloadVisibleScreenshots, { deep: false })
 
+// Touch-pointer long-press fallback for the hover thumbnail. Mouse
+// users get instant peek on hover; touch users have no hover, so a
+// long-press (~500 ms held without movement) shows the same thumb
+// anchored to the touch point. A short tap still falls through to
+// the existing click-to-expand. Skipped on small viewports
+// (< 600 px) where the thumb wouldn't fit usefully; matches the
+// mouse path's behaviour under reduced-motion (the global motion-
+// reduce rule clamps the fade-in to 0.01 ms but the thumb still
+// shows).
+const LONG_PRESS_MS = 500
+const PRESS_MOVE_TOLERANCE = 10
+
+let pressTimer: ReturnType<typeof setTimeout> | null = null
+let pressStartX = 0
+let pressStartY = 0
+let longPressFired = false
+
+function clearPressTimer() {
+  if (pressTimer !== null) {
+    clearTimeout(pressTimer)
+    pressTimer = null
+  }
+}
+
+function shouldEnableTouchPeek(): boolean {
+  if (typeof window === 'undefined') return false
+  if (window.innerWidth < 600) return false
+  return true
+}
+
+function onPointerDownUnknown(rec: MatchRecord, e: PointerEvent) {
+  if (e.pointerType !== 'touch') return
+  if (!shouldEnableTouchPeek()) return
+  if (props.cardState.isSelected(rec.match_key)) return
+  const first = rec.source_files?.[0]
+  if (!first) return
+
+  longPressFired = false
+  pressStartX = e.clientX
+  pressStartY = e.clientY
+  clearPressTimer()
+  pressTimer = setTimeout(() => {
+    longPressFired = true
+    hoveredUnknownKey.value = rec.match_key
+    hoveredUnknownSrc.value = screenshotURL(first, rec.source_dir_ids?.[first] ?? 0)
+    // Anchor the thumb at the touch point and re-clamp into the
+    // viewport via the same helper the mouse path uses.
+    updateThumbPosition({ clientX: pressStartX, clientY: pressStartY } as MouseEvent)
+  }, LONG_PRESS_MS)
+}
+
+function onPointerMoveUnknown(e: PointerEvent) {
+  if (e.pointerType !== 'touch') return
+  if (pressTimer === null) return
+  const dx = Math.abs(e.clientX - pressStartX)
+  const dy = Math.abs(e.clientY - pressStartY)
+  if (dx > PRESS_MOVE_TOLERANCE || dy > PRESS_MOVE_TOLERANCE) clearPressTimer()
+}
+
+function onPointerEndUnknown() {
+  clearPressTimer()
+  if (longPressFired) {
+    hoveredUnknownKey.value = null
+    hoveredUnknownSrc.value = ''
+  }
+}
+
+// Wrap the card-head click so a long-press that fired the peek
+// doesn't ALSO toggle expand on touch release. `longPressFired`
+// resets here so the next tap on the same card behaves normally.
+function onCardHeadClick(rec: MatchRecord) {
+  if (longPressFired) {
+    longPressFired = false
+    return
+  }
+  props.cardState.toggleExpand(rec.match_key)
+}
+
 // Anchor the thumb just below-right of the cursor. Edge-flip
 // horizontally / vertically so it never gets clipped at the
 // viewport edge — small windows (or a card hovered near the right
@@ -339,9 +417,13 @@ function updateThumbPosition(e: MouseEvent) {
         @mouseenter="(e) => onHoverUnknown(rec, e)"
         @mousemove="(e) => onMoveUnknown(rec, e)"
         @mouseleave="onLeaveUnknown"
+        @pointerdown="(e) => onPointerDownUnknown(rec, e)"
+        @pointermove="(e) => onPointerMoveUnknown(e)"
+        @pointerup="onPointerEndUnknown"
+        @pointercancel="onPointerEndUnknown"
       >
         <!-- Card header: index + match key + slot chips + chevron -->
-        <div class="unknown-card-head" @click="cardState.toggleExpand(rec.match_key)">
+        <div class="unknown-card-head" @click="onCardHeadClick(rec)">
           <div class="unknown-head-lhs">
             <span class="unknown-idx">{{ String(idx + 1).padStart(2, '0') }}</span>
             <div class="unknown-key-block">
