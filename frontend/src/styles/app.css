@@ -147,7 +147,12 @@
      across both OW variants — it's the cross-family identity. */
   --accent: #fa9c1b;
   --accent-bright: #fa3;
-  --accent-text: #b8650a;      /* darker rust — AA-safe small text on cream */
+
+  /* Deeper rust — clears WCAG AA (~6.0:1) on the cream --surface so
+     small uppercase callouts (.leaves-eyebrow, .hero-name etc.)
+     stay legible. The prior #b8650a sat at ~3.85:1 — over AA Large
+     but under AA Normal for 14px body text. */
+  --accent-text: #9e4d00;
   --accent-soft: rgb(250 156 27 / 22%);
   --accent-glow: rgb(250 156 27 / 45%);
   --win: #0f7a3a;
@@ -170,7 +175,12 @@
   --atmos-blue:   rgb(31 84 145 / 5%);
   --atmos-coral:  rgb(192 53 74 / 4%);
   --grid-line:    rgb(74 74 74 / 5%);
-  --primary-text-on-accent: #fff8ef;
+
+  /* Dark brown text on the orange accent fill — matches the other
+     themes' "dark text on bright accent" pattern. The historical
+     value here (#fff8ef cream) fell to ~1.92:1 on the orange,
+     well below AA. #1a0a00 on #fa9c1b clears AA + AAA at ~6.3:1. */
+  --primary-text-on-accent: #1a0a00;
 }
 
 /* DARK — sits between Day's cream and Night's near-black. Grounds
