@@ -1,7 +1,7 @@
 <script setup lang="ts">
-defineProps<{
-  size: number
-}>()
+import { useDossier } from '../../composables/useDossier'
+
+const { heroPoolSize: size } = useDossier()
 </script>
 
 <template>

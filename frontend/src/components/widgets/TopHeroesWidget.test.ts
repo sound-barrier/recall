@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
 import TopHeroesWidget from './TopHeroesWidget.vue'
+import { mountWidget } from '../../test-utils/mountWidget'
 
 const hero = (key: string, totalMinutes: number, share: number, timeLabel: string, winrate = 50) => ({
   key, totalMinutes, share, timeLabel, winrate,
@@ -8,9 +8,9 @@ const hero = (key: string, totalMinutes: number, share: number, timeLabel: strin
 
 describe('TopHeroesWidget', () => {
   it('renders one row per hero with the time-label inside the bar', () => {
-    const w = mount(TopHeroesWidget, {
-      props: {
-        topHeroes: [
+    const w = mountWidget(TopHeroesWidget, {
+      dossier: {
+        topHeroesByMinutes: [
           hero('lucio', 452, 60, '7h32min'),
           hero('mercy', 180, 24, '3h0min'),
         ],
@@ -24,7 +24,7 @@ describe('TopHeroesWidget', () => {
   })
 
   it('renders the eyebrow label', () => {
-    const w = mount(TopHeroesWidget, { props: { topHeroes: [] } })
+    const w = mountWidget(TopHeroesWidget, { dossier: { topHeroesByMinutes: [] } })
     expect(w.find('.breakdown-eyebrow').text()).toBe('Most played heroes')
   })
 })

@@ -1,9 +1,17 @@
 <script setup lang="ts">
-import type { BreakdownEntry } from '../../composables/useMatchesDossier'
+import { useDossier } from '../../composables/useDossier'
+import { useWidgetConfig } from '../../composables/useWidgetConfig'
+import { topMapsSchema, type TopByCountConfig } from '../../dashboard/widgets'
 
-defineProps<{
-  topMaps: readonly BreakdownEntry[]
-}>()
+const dossier = useDossier()
+const { config } = useWidgetConfig<TopByCountConfig>('top-maps', topMapsSchema)
+
+// Reactive query — passes a getter so config changes propagate
+// through Vue's reactivity into the dossier's computed cache.
+const topMaps = dossier.topByCount(() => ({
+  getter: (r) => r.data?.map,
+  limit:  config.value.limit,
+}))
 </script>
 
 <template>

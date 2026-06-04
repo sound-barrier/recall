@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import type { RoleBreakdownEntry } from '../../composables/useMatchesDossier'
+import { useDossier } from '../../composables/useDossier'
 
-defineProps<{
-  topRoles: readonly RoleBreakdownEntry[]
-}>()
+const { topRoles } = useDossier()
 </script>
 
 <template>

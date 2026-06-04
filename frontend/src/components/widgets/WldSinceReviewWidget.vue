@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import type { WLDSinceLastReview } from '../../composables/useMatchesDossier'
+import { useDossier } from '../../composables/useDossier'
 
-defineProps<{
-  wldSinceLastReview: WLDSinceLastReview | null
-}>()
+const { wldSinceLastReview } = useDossier()
 </script>
 
 <template>

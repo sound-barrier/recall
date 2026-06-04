@@ -1,9 +1,24 @@
 <script setup lang="ts">
-import type { BucketEntry } from '../../composables/useMatchesDossier'
+import { useDossier } from '../../composables/useDossier'
+import { useWidgetConfig } from '../../composables/useWidgetConfig'
+import { dayOfWeekSchema, type DayOfWeekConfig } from '../../dashboard/widgets'
+import type { WeekStart } from '../../match-helpers'
 
-defineProps<{
-  buckets: readonly BucketEntry[]
-}>()
+const dossier = useDossier()
+const { config } = useWidgetConfig<DayOfWeekConfig>('day-of-week', dayOfWeekSchema)
+
+// 'inherit' lets the dossier-level useWeekStart preference win.
+// Other values pin a per-widget override (e.g. compare a Monday-
+// anchored scrim week against the rest of the dossier's calendar).
+function mapWeekStart(v: DayOfWeekConfig['weekStartOverride']): WeekStart | undefined {
+  if (v === 'monday') return 1
+  if (v === 'sunday') return 0
+  return undefined
+}
+
+const buckets = dossier.dayOfWeekBuckets(() => ({
+  weekStartOverride: mapWeekStart(config.value.weekStartOverride),
+}))
 </script>
 
 <template>

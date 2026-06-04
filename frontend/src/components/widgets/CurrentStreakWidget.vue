@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import type { CurrentStreak } from '../../composables/useMatchesDossier'
+import { useDossier } from '../../composables/useDossier'
 
-defineProps<{
-  streak: CurrentStreak
-}>()
+const { currentStreak: streak } = useDossier()
 </script>
 
 <template>

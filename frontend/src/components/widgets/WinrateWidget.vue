@@ -1,7 +1,7 @@
 <script setup lang="ts">
-defineProps<{
-  winrate: number | null
-}>()
+import { useDossier } from '../../composables/useDossier'
+
+const { winrate } = useDossier()
 </script>
 
 <template>

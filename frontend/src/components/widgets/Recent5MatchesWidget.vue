@@ -1,7 +1,11 @@
 <script setup lang="ts">
-defineProps<{
-  results: readonly ('victory' | 'defeat' | 'draw')[]
-}>()
+import { useDossier } from '../../composables/useDossier'
+import { useWidgetConfig } from '../../composables/useWidgetConfig'
+import { recentMatchesSchema, type RecentMatchesConfig } from '../../dashboard/widgets'
+
+const dossier = useDossier()
+const { config } = useWidgetConfig<RecentMatchesConfig>('recent-5-matches', recentMatchesSchema)
+const results = dossier.recentResults(() => ({ count: config.value.count }))
 </script>
 
 <template>

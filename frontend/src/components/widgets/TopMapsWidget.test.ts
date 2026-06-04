@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
 import TopMapsWidget from './TopMapsWidget.vue'
+import { mountWidget } from '../../test-utils/mountWidget'
 
 const entry = (key: string, total: number, share: number, winrate = 50) => ({ key, total, share, winrate })
 
 describe('TopMapsWidget', () => {
   it('renders one row per map with name, count, share', () => {
-    const w = mount(TopMapsWidget, {
-      props: { topMaps: [entry('hanamura', 3, 38), entry('kings row', 2, 25)] },
+    const w = mountWidget(TopMapsWidget, {
+      dossier: { topByCount: [entry('hanamura', 3, 38), entry('kings row', 2, 25)] },
     })
     const rows = w.findAll('li')
     expect(rows).toHaveLength(2)
@@ -18,12 +18,12 @@ describe('TopMapsWidget', () => {
   })
 
   it('renders an empty list when no maps fed it', () => {
-    const w = mount(TopMapsWidget, { props: { topMaps: [] } })
+    const w = mountWidget(TopMapsWidget, { dossier: { topByCount: [] } })
     expect(w.findAll('li')).toHaveLength(0)
   })
 
   it('renders the eyebrow label', () => {
-    const w = mount(TopMapsWidget, { props: { topMaps: [] } })
+    const w = mountWidget(TopMapsWidget, { dossier: { topByCount: [] } })
     expect(w.find('.breakdown-eyebrow').text()).toBe('Most played maps')
   })
 })

@@ -4,15 +4,8 @@ import type { MatchRecord } from '../api'
 import { GetProfiles } from '../api'
 import { useMatchesGroup, type GroupedSection } from '../composables/useMatchesGroup'
 import { useMatchesWindow } from '../composables/useMatchesWindow'
-import {
-  DEFAULT_BEST_WINRATE_HERO_MIN_MATCHES,
-  DEFAULT_MOST_PLAYED_HERO_THRESHOLD,
-  DEFAULT_RECENT_RESULTS_COUNT,
-  DEFAULT_TIME_OF_DAY_BUCKET_COUNT,
-  DEFAULT_TOP_BY_COUNT_LIMIT,
-  DEFAULT_TOP_HEROES_LIMIT,
-} from '../composables/useMatchesDossier'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
+import { provideDossier } from '../composables/useDossier'
 import { useWeekStart } from '../composables/useWeekStart'
 import { useOWData } from '../composables/useOWData'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
@@ -279,30 +272,14 @@ const ow = useOWData()
 // PR B: weekStart drives the day-of-week breakdown's rotation so the
 // row matches the user's calendar preference.
 const { weekStart } = useWeekStart()
+// Single dossier instance per Matches view. provideDossier() makes
+// it reachable from every descendant widget via useDossier() so we
+// don't thread 18 props through DashboardWidget. Each widget pulls
+// only the bedrock refs or query helpers it needs, parameterized
+// by its own useWidgetConfig output (PR C). MatchesView's previous
+// 18-prop widgetProps bag is gone.
 const dossier = useMatchesDossier(narrowedRecords, leaverHandling, ow.heroRole, weekStart)
-const {
-  // Bedrock — precomputed refs with no per-widget config.
-  winrate, totalTimePlayed, averageKDA,
-  reviewedCount, daysSinceLastReview, wldSinceLastReview,
-  currentStreak, longestWinStreak, heroPoolSize, topRoles,
-} = dossier
-
-// Materialize the dossier query helpers with PR-B defaults — these
-// match the hardcoded constants the precomputed refs used before the
-// query-layer refactor. PR C replaces this block: widgets each call
-// useDossier() + useWidgetConfig() in their own setup and stop
-// receiving these via prop bags.
-const topMaps         = dossier.topByCount({ getter: (r) => r.data?.map,  limit: DEFAULT_TOP_BY_COUNT_LIMIT })
-const topHeroes       = dossier.topHeroesByMinutes({ limit: DEFAULT_TOP_HEROES_LIMIT })
-const mostPlayedHero  = dossier.mostPlayedHero({ minPercentPlayed: DEFAULT_MOST_PLAYED_HERO_THRESHOLD })
-const bestWinrateHero = dossier.bestWinrateHero({
-  minPercentPlayed: DEFAULT_MOST_PLAYED_HERO_THRESHOLD,
-  minMatches:       DEFAULT_BEST_WINRATE_HERO_MIN_MATCHES,
-})
-const topMapTypes      = dossier.topByCount({ getter: (r) => r.data?.type, limit: DEFAULT_TOP_BY_COUNT_LIMIT })
-const timeOfDayBuckets = dossier.timeOfDayBuckets({ bucketCount: DEFAULT_TIME_OF_DAY_BUCKET_COUNT })
-const dayOfWeekBuckets = dossier.dayOfWeekBuckets()
-const recentResults    = dossier.recentResults({ count: DEFAULT_RECENT_RESULTS_COUNT })
+provideDossier(dossier)
 
 // ─── Dashboard widget layout ────────────────────────────────────
 //
@@ -472,29 +449,10 @@ function onDismissUndo(token: number) {
   }
 }
 
-// Per-widget prop bag, keyed by widget id. Each entry is the exact
-// set of dossier values that widget's SFC declares as props.
-const widgetProps = computed<Record<string, Record<string, unknown>>>(() => ({
-  'winrate':           { winrate: winrate.value },
-  'avg-kda':           { averageKDA: averageKDA.value },
-  'total-time':        { totalTimePlayed: totalTimePlayed.value },
-  'most-played-hero':  { topHeroes: topHeroes.value, mostPlayedHero: mostPlayedHero.value },
-  'reviewed-count':    { reviewedCount: reviewedCount.value },
-  'days-since-review': { daysSinceLastReview: daysSinceLastReview.value },
-  'wld-since-review':  { wldSinceLastReview: wldSinceLastReview.value },
-  'top-maps':          { topMaps: topMaps.value },
-  'top-heroes':        { topHeroes: topHeroes.value },
-  'top-roles':         { topRoles: topRoles.value },
-  // PR B opt-in widgets
-  'current-streak':      { streak: currentStreak.value },
-  'longest-win-streak':  { count: longestWinStreak.value },
-  'hero-pool-size':      { size: heroPoolSize.value },
-  'best-winrate-hero':   { hero: bestWinrateHero.value },
-  'top-map-types':       { topMapTypes: topMapTypes.value },
-  'time-of-day':         { buckets: timeOfDayBuckets.value },
-  'day-of-week':         { buckets: dayOfWeekBuckets.value },
-  'recent-5-matches':    { results: recentResults.value },
-}))
+// PR C: the widget prop bag is gone. Each widget pulls its own
+// slice from the provided dossier via useDossier() + its own
+// useWidgetConfig() in setup. DashboardWidget binds
+// <component :is="def.component" /> with no props.
 
 // Three existing review-widget e2e specs key on data-kpi="..."; the
 // roles breakdown spec keys on data-breakdown="roles". Keep the legacy
@@ -919,7 +877,7 @@ onBeforeUnmount(() => {
             @select="onWidgetSelect"
             @remove="onWidgetRemove"
           >
-            <component :is="def.component" v-bind="widgetProps[def.id]" />
+            <component :is="def.component" />
           </DashboardWidget>
         </TransitionGroup>
       </template>

@@ -1,21 +1,21 @@
 import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
 import DayOfWeekWidget from './DayOfWeekWidget.vue'
+import { mountWidget } from '../../test-utils/mountWidget'
 
 describe('DayOfWeekWidget', () => {
   it('renders seven rows for an empty corpus', () => {
     const buckets = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
       .map((label) => ({ label, count: 0, share: 0 }))
-    const w = mount(DayOfWeekWidget, { props: { buckets } })
+    const w = mountWidget(DayOfWeekWidget, { dossier: { dayOfWeekBuckets: buckets } })
     expect(w.findAll('li')).toHaveLength(7)
   })
 
   it('renders the day label, count and share with the input rotation order', () => {
     // Caller (useMatchesDossier) is responsible for the rotation;
     // the widget renders the rows in the order it receives them.
-    const w = mount(DayOfWeekWidget, {
-      props: {
-        buckets: [
+    const w = mountWidget(DayOfWeekWidget, {
+      dossier: {
+        dayOfWeekBuckets: [
           { label: 'Mon', count: 3, share: 30 },
           { label: 'Tue', count: 0, share: 0 },
           { label: 'Wed', count: 7, share: 70 },

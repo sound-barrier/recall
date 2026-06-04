@@ -39,7 +39,6 @@ export function usePersistedRef<T>(opts: PersistedRefOptions<T>): {
   value: Ref<T>
   set: (next: T) => void
 } {
-  const value = ref(opts.defaultValue) as Ref<T>
   const serialize = opts.serialize ?? ((v: T) => String(v))
 
   function readStored(): T {
@@ -52,6 +51,15 @@ export function usePersistedRef<T>(opts: PersistedRefOptions<T>): {
       return opts.defaultValue
     }
   }
+
+  // Eager hydrate at setup time so the first render reflects the
+  // persisted value. SSR / Node where localStorage doesn't exist
+  // surfaces via the try/catch in readStored and falls back to
+  // defaults; the onMounted block below re-runs the hydrate as a
+  // safety net for callers wired before localStorage is available
+  // (rare — vitest + happy-dom + Wails desktop all have localStorage
+  // present at setup), and to fire onChange consistently.
+  const value = ref(readStored()) as Ref<T>
 
   function set(next: T) {
     value.value = next
