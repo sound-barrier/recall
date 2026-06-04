@@ -74,6 +74,44 @@
      RECALL masthead title. Russo One is the free visual fallback. */
   --brand: 'OW Wordmark', 'Russo One', 'Industry Black', 'Impact', sans-serif;
 
+  /* ─── System tokens — spacing / type / motion ──────────────────
+     Theme-independent scale tokens that sit alongside the palette
+     tokens above. New components reach for these instead of
+     inlining raw rem / ms values; existing ad-hoc usage is
+     intentionally NOT swept in this PR — the token values match
+     the historical defaults so introducing them is a no-op at
+     paint time.
+
+     - Spacing scale: 4px → 48px in seven stops, roughly 1.5× per
+       step from --space-3 up.
+     - Type scale: 0.75rem → 1.5rem in five body stops on a
+       ~1.2 (minor-third) ratio; three display stops tuned to the
+       OW Wordmark + Big Noodle pair, NOT on the body ratio.
+       --type-md is the body baseline; consumers inherit.
+     - Motion: four canonical durations + two easings. Most
+       transitions should reach for --duration-med + --easing-out;
+       reserve --duration-hero for the rare page-level reveal. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --type-xs: 0.75rem;
+  --type-sm: 0.875rem;
+  --type-md: 1rem;
+  --type-lg: 1.25rem;
+  --type-xl: 1.5rem;
+  --type-display-sm: 1.85rem;
+  --type-display-md: 2.5rem;
+  --type-display-lg: 3.5rem;
+  --duration-fast: 140ms;
+  --duration-med:  200ms;
+  --duration-slow: 280ms;
+  --duration-hero: 360ms;
+  --easing-out:  cubic-bezier(0.16, 1, 0.3, 1);
+  --easing-emph: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* DAY — light family member, grounded on Overwatch white #EFEDE6
