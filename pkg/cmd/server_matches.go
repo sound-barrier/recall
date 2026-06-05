@@ -381,6 +381,47 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
+
+	// Per-match play-mode override. PUT sets `'quickplay'` or
+	// `'competitive'` — overriding the parser's data.mode. DELETE
+	// clears the override, reverting to the fallback chain
+	// (data.mode → rank presence → empty). Both directions are
+	// idempotent.
+	apiMux.HandleFunc("PUT /api/v1/matches/{matchKey}/play-mode", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("matchKey")
+		if matchKey == "" {
+			http.Error(w, "match_key required in URL", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			PlayMode string `json:"play_mode"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if err := a.SetMatchPlayMode(matchKey, body.PlayMode); err != nil {
+			if errors.Is(err, app.ErrInvalidPlayMode) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	apiMux.HandleFunc("DELETE /api/v1/matches/{matchKey}/play-mode", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("matchKey")
+		if matchKey == "" {
+			http.Error(w, "match_key required in URL", http.StatusBadRequest)
+			return
+		}
+		if err := a.ClearMatchPlayMode(matchKey); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 }
 
 // validateMatchesQueryParams rejects any query param the spec doesn't

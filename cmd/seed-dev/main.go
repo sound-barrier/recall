@@ -128,9 +128,14 @@ func main() {
 			exitf("SetMatchQueue(%s, %s): %v", q.MatchKey, q.QueueType, err)
 		}
 	}
+	for _, p := range fx.PlayModes {
+		if err := store.SetMatchPlayMode(p.MatchKey, p.PlayMode); err != nil {
+			exitf("SetMatchPlayMode(%s, %s): %v", p.MatchKey, p.PlayMode, err)
+		}
+	}
 
-	fmt.Printf("seeded %d matches (%d reviewed, %d queue-tagged) into profile %q at %s\n",
-		*n, len(fx.Reviews), len(fx.Queues), target, dbPath)
+	fmt.Printf("seeded %d matches (%d reviewed, %d queue-tagged, %d play-mode-tagged) into profile %q at %s\n",
+		*n, len(fx.Reviews), len(fx.Queues), len(fx.PlayModes), target, dbPath)
 }
 
 func exitf(format string, args ...any) {

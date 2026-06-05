@@ -1,5 +1,5 @@
 import type { MatchRecord } from '../api'
-import type { QueuePick, ReviewedByPick } from './useMatchesNarrow'
+import type { PlayModePick, QueuePick, ReviewedByPick } from './useMatchesNarrow'
 
 // Per-dimension narrow predicates. Each function is ≤ 15 lines,
 // returns `true` if the record passes that dimension's gate, and is
@@ -110,6 +110,16 @@ export function matchesQueueType(r: MatchRecord, picked: Set<QueuePick>): boolea
   if (!picked.size) return true
   if (!r.queue_type) return false
   return picked.has(r.queue_type as QueuePick)
+}
+
+// matchesPlayMode narrows to matches whose play_mode (after the
+// aggregator's fallback chain: override → data.mode → rank presence)
+// is in the picked set. Same shape as matchesQueueType — matches
+// with empty play_mode drop out when any pick is active.
+export function matchesPlayMode(r: MatchRecord, picked: Set<PlayModePick>): boolean {
+  if (!picked.size) return true
+  if (!r.play_mode) return false
+  return picked.has(r.play_mode as PlayModePick)
 }
 
 // Returns `true` when the record's parsed_at is strictly AFTER the

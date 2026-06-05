@@ -267,6 +267,95 @@ func TestGenerateMatchFixture_MapsAreTopHeavy(t *testing.T) {
 	}
 }
 
+func TestGenerateMatchFixture_PlayModeDistribution(t *testing.T) {
+	// Every match gets a play-mode tag, biased ~90% competitive /
+	// ~10% quickplay. At N=10000 the binomial 95% CI for competitive
+	// is roughly [89.4%, 90.6%]; allow [85%, 95%] to absorb
+	// seed-specific variance.
+	const n = 10000
+	fx := GenerateMatchFixture(n, 1, "")
+
+	if len(fx.PlayModes) != n {
+		t.Fatalf("expected every match to be play-mode-tagged (got %d/%d)", len(fx.PlayModes), n)
+	}
+
+	comp, qp := 0, 0
+	for _, p := range fx.PlayModes {
+		switch p.PlayMode {
+		case "competitive":
+			comp++
+		case "quickplay":
+			qp++
+		default:
+			t.Fatalf("play-mode carries invalid value %q (must be quickplay or competitive)", p.PlayMode)
+		}
+	}
+	if comp*100 < n*85 || comp*100 > n*95 {
+		t.Errorf("competitive rate %.2f%% outside [85%%, 95%%]", float64(comp)*100/float64(n))
+	}
+	if qp*100 < n*5 || qp*100 > n*15 {
+		t.Errorf("quickplay rate %.2f%% outside [5%%, 15%%]", float64(qp)*100/float64(n))
+	}
+
+	// Every play-mode entry must reference a real match_key.
+	keys := make(map[string]bool, len(fx.Summaries))
+	for _, s := range fx.Summaries {
+		keys[s.MatchKey] = true
+	}
+	for _, p := range fx.PlayModes {
+		if !keys[p.MatchKey] {
+			t.Fatalf("play-mode references unknown match_key %s", p.MatchKey)
+		}
+	}
+}
+
+func TestGenerateMatchFixture_QuickplayWidensHeroPool(t *testing.T) {
+	// Aggressive QP widening: in quickplay the player picks heroes
+	// they wouldn't touch in competitive. Compare the number of
+	// DISTINCT heroes that appear in QP matches vs comp matches per
+	// match — QP should be visibly higher. (Absolute counts compare
+	// poorly because comp has ~9x more matches.)
+	const n = 5000
+	fx := GenerateMatchFixture(n, 1, "")
+
+	playModeByKey := make(map[string]string, len(fx.PlayModes))
+	for _, p := range fx.PlayModes {
+		playModeByKey[p.MatchKey] = p.PlayMode
+	}
+
+	compHeroes := map[string]bool{}
+	qpHeroes := map[string]bool{}
+	compMatches, qpMatches := 0, 0
+	for _, s := range fx.Summaries {
+		pm := playModeByKey[s.MatchKey]
+		switch pm {
+		case "competitive":
+			compMatches++
+			for _, hp := range s.HeroesPlayed {
+				compHeroes[hp.Hero] = true
+			}
+		case "quickplay":
+			qpMatches++
+			for _, hp := range s.HeroesPlayed {
+				qpHeroes[hp.Hero] = true
+			}
+		}
+	}
+	if qpMatches == 0 || compMatches == 0 {
+		t.Fatalf("need both QP and comp matches in the sample; got QP=%d comp=%d", qpMatches, compMatches)
+	}
+
+	qpDensity := float64(len(qpHeroes)) / float64(qpMatches)
+	compDensity := float64(len(compHeroes)) / float64(compMatches)
+	// QP should show measurably more distinct heroes per match —
+	// per the aggressive widening spec, QP density is meaningfully
+	// higher than comp density.
+	if qpDensity <= compDensity {
+		t.Errorf("expected QP hero-density (%.3f) > comp hero-density (%.3f); QP widening not firing",
+			qpDensity, compDensity)
+	}
+}
+
 func TestGenerateMatchFixture_QueueDistribution(t *testing.T) {
 	// Every match gets a queue tag, biased 80% role / 20% open.
 	// At N=10000 the binomial 95% CI for role is roughly [78.7%,

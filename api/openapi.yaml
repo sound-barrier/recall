@@ -485,6 +485,68 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/matches/{matchKey}/play-mode:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+    put:
+      operationId: SetMatchPlayMode
+      tags: [Matches]
+      summary: Override the match's play mode
+      description: |
+        Records a user override of the match's play mode. Two states:
+
+          - `quickplay`   — casual game (no SR / rank progress)
+          - `competitive` — ranked game (SR applies)
+
+        Absence of a `match_play_mode` row is the third state
+        ("follow the parser's read of data.mode + rank-row presence");
+        use `DELETE` on the same path to revert there. Idempotent —
+        repeated identical calls succeed.
+
+        Drives the radiogroup directly below the queue chooser in
+        the match-detail panel and the Play mode chip in "Narrow
+        this set."
+
+        Returns 204 on success, 400 on validation failure
+        (`play_mode` outside the enum), 500 on store error.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [play_mode]
+              properties:
+                play_mode:
+                  type: string
+                  enum: [quickplay, competitive]
+                  description: |
+                    Override play mode for this match. To revert to
+                    "follow the parser", call DELETE on this path
+                    instead of PUTing an empty string.
+      responses:
+        "204":
+          description: Play-mode override updated.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: ClearMatchPlayMode
+      tags: [Matches]
+      summary: Clear the play-mode override
+      description: |
+        Removes the `match_play_mode` override row, reverting to the
+        fallback chain (parser data.mode → rank-row presence →
+        empty). Idempotent — clearing an unset match returns 204.
+      responses:
+        "204":
+          description: Play-mode override cleared (or already absent).
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/parses:
     post:
       operationId: ParseScreenshots
@@ -1770,6 +1832,15 @@ components:
             the queue hasn't been set (the implicit third state). Set
             via `PUT /api/v1/matches/{matchKey}/queue`, cleared via
             `DELETE` on the same path.
+        play_mode:
+          type: string
+          enum: [quickplay, competitive]
+          description: |
+            Match's play mode: `quickplay` (casual) or `competitive`
+            (ranked). Derived from a fallback chain: user override
+            (match_play_mode) → parser's data.mode → rank-row
+            presence implies competitive → empty. Omitted from JSON
+            when nothing in the chain produced a value.
         ambiguous:
           type: boolean
           description: |

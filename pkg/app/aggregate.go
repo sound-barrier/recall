@@ -37,11 +37,16 @@ func (a *App) aggregateAll() ([]MatchRecord, error) {
 	if err != nil {
 		return nil, err
 	}
+	playModes, err := a.store.LoadMatchPlayModes()
+	if err != nil {
+		return nil, err
+	}
 	recs := aggregateScreenshots(snap)
 	attachAnnotations(recs, annos)
 	attachHidden(recs, hidden)
 	attachReviews(recs, reviews)
 	attachQueues(recs, queues)
+	attachPlayModes(recs, playModes)
 	attachAmbiguity(recs, snap.AmbiguousCandidates)
 	return recs, nil
 }
@@ -70,6 +75,37 @@ func attachQueues(recs []MatchRecord, queues map[string]db.QueueState) {
 	for i := range recs {
 		if st, ok := queues[recs[i].MatchKey]; ok {
 			recs[i].QueueType = st.QueueType
+		}
+	}
+}
+
+// attachPlayModes writes `PlayMode` on every record via the fallback
+// chain documented on MatchRecord.PlayMode:
+//
+//  1. match_play_mode override row wins.
+//  2. Parser's data.mode wins if it's 'quickplay' or 'competitive'
+//     (the parser also writes 'unranked' / ” which we treat as
+//     "no answer here, try the next link").
+//  3. Presence of a rank screenshot implies 'competitive' — rank
+//     UI only appears in ranked play (pkg/parser/parse_rank.go).
+//  4. Otherwise empty.
+//
+// Pure function, called once per aggregateAll.
+func attachPlayModes(recs []MatchRecord, overrides map[string]db.PlayModeState) {
+	for i := range recs {
+		if st, ok := overrides[recs[i].MatchKey]; ok {
+			recs[i].PlayMode = st.PlayMode
+			continue
+		}
+		if m := recs[i].Data.Mode; m == "quickplay" || m == "competitive" {
+			recs[i].PlayMode = m
+			continue
+		}
+		for _, t := range recs[i].SourceTypes {
+			if t == "rank" {
+				recs[i].PlayMode = "competitive"
+				break
+			}
 		}
 	}
 }
