@@ -21,6 +21,8 @@ import TopMapTypesWidget from '../components/widgets/TopMapTypesWidget.vue'
 import TimeOfDayWidget from '../components/widgets/TimeOfDayWidget.vue'
 import DayOfWeekWidget from '../components/widgets/DayOfWeekWidget.vue'
 import Recent5MatchesWidget from '../components/widgets/Recent5MatchesWidget.vue'
+import QuickplayVsCompetitiveWidget from '../components/widgets/QuickplayVsCompetitiveWidget.vue'
+import WinrateByPlayModeWidget from '../components/widgets/WinrateByPlayModeWidget.vue'
 
 // Central registry for the dossier's customizable dashboard widgets.
 //
@@ -194,6 +196,8 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'time-of-day',         eyebrow: 'Time of day',            shape: 'breakdown', defaultRow: 2, component: TimeOfDayWidget,        config: timeOfDaySchema       },
   { id: 'day-of-week',         eyebrow: 'Day of week',            shape: 'breakdown', defaultRow: 2, component: DayOfWeekWidget,        config: dayOfWeekSchema       },
   { id: 'recent-5-matches',    eyebrow: 'Recent matches',         shape: 'breakdown', defaultRow: 2, component: Recent5MatchesWidget,   config: recentMatchesSchema   },
+  { id: 'play-mode-share',     eyebrow: 'Quickplay vs Competitive', shape: 'breakdown', defaultRow: 2, component: QuickplayVsCompetitiveWidget, config: EMPTY_SCHEMA },
+  { id: 'play-mode-winrate',   eyebrow: 'Winrate by play mode',     shape: 'breakdown', defaultRow: 2, component: WinrateByPlayModeWidget,      config: EMPTY_SCHEMA },
 ]
 
 // Row-keyed install-default layout. Membership here means "auto-add

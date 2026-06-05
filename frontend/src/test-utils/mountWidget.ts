@@ -47,6 +47,7 @@ type DossierOverride = {
   longestWinStreak?:    number
   heroPoolSize?:        number
   topRoles?:            RoleBreakdownEntry[]
+  playModeBreakdown?:   BreakdownEntry[]
   // Query helpers — pass the result and the helper returns a function
   // that yields a computed wrapping that value (ignoring the opts
   // — tests don't usually need to assert opts pass-through here;
@@ -79,6 +80,7 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     longestWinStreak:    wrap(over.longestWinStreak, 0),
     heroPoolSize:        wrap(over.heroPoolSize, 0),
     topRoles:            wrap(over.topRoles, []),
+    playModeBreakdown:   wrap(over.playModeBreakdown, [] as BreakdownEntry[]),
     // Query helpers — return functions matching the dossier's signature.
     topByCount:          wrapQuery(over.topByCount, [] as BreakdownEntry[]),
     topHeroesByMinutes:  wrapQuery(over.topHeroesByMinutes, [] as HeroBreakdownEntry[]),

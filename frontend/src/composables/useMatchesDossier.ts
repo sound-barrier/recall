@@ -342,6 +342,41 @@ export function useMatchesDossier(
     })
   }
 
+  // Play-mode breakdown (Quickplay vs Competitive). Returns exactly
+  // three fixed entries — 'quickplay', 'competitive', '—' (unset) —
+  // so the bar layout doesn't reflow as the narrowed corpus changes.
+  // Drives both the share-of-matches widget and the
+  // winrate-by-play-mode widget; each picks a different field off the
+  // BreakdownEntry as its bar metric.
+  const playModeBreakdown = computed<BreakdownEntry[]>(() => {
+    type Bucket = { total: number; w: number; l: number }
+    const buckets: Record<'quickplay' | 'competitive' | '—', Bucket> = {
+      quickplay:   { total: 0, w: 0, l: 0 },
+      competitive: { total: 0, w: 0, l: 0 },
+      '—':         { total: 0, w: 0, l: 0 },
+    }
+    for (const r of records.value) {
+      const mode = r.play_mode === 'quickplay' || r.play_mode === 'competitive'
+        ? r.play_mode
+        : '—'
+      const b = buckets[mode]
+      b.total++
+      if (r.data?.result === 'victory') b.w++
+      else if (r.data?.result === 'defeat') b.l++
+    }
+    const denom = buckets.quickplay.total + buckets.competitive.total + buckets['—'].total
+    return (['quickplay', 'competitive', '—'] as const).map((key) => {
+      const b = buckets[key]
+      const decided = b.w + b.l
+      return {
+        key,
+        total:   b.total,
+        winrate: decided === 0 ? 0 : Math.round((b.w / decided) * 100),
+        share:   denom === 0 ? 0 : Math.round((b.total / denom) * 100),
+      }
+    })
+  })
+
   // Top heroes by SUMMED play time across every heroes_played[]
   // entry — not by primary-hero match count. The dossier's bar
   // visualization then reads "what hero did you spend the most time
@@ -826,6 +861,7 @@ export function useMatchesDossier(
     longestWinStreak,
     heroPoolSize,
     topRoles,
+    playModeBreakdown,
     // ─── Query helpers — config-driven, return reactive results
     topByCount,
     topHeroesByMinutes,

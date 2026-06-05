@@ -38,7 +38,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # honest. A real feature that needs the room should bump deliberately.
 : "${MAX_INITIAL_JS_BYTES:=146000}" # 146 KB — initial JS chunk only
 : "${MAX_INITIAL_CSS_BYTES:=60000}" # 60 KB  — initial CSS chunk only
-: "${MAX_TOTAL_JS_BYTES:=391000}"   # 391 KB — every JS chunk combined (PR E added density picker; PR F added Unknown section nav; PR 3 added candidate-thumb buttons; queue-type chooser + Queue filter chip; play-mode chooser + Play mode filter chip)
+: "${MAX_TOTAL_JS_BYTES:=393000}"   # 393 KB — every JS chunk combined (PR E added density picker; PR F added Unknown section nav; PR 3 added candidate-thumb buttons; queue-type chooser + Queue filter chip; play-mode chooser + Play mode filter chip; Quickplay-vs-Competitive + Winrate-by-play-mode widgets + playModeBreakdown dossier helper)
 : "${MAX_TOTAL_CSS_BYTES:=222000}"  # 222 KB — every CSS chunk combined (queue chooser + play-mode chooser radiogroup styles)
 
 if [[ "${1:-}" == "--build" ]]; then
