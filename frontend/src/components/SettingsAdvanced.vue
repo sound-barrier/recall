@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+
 // Advanced collapsible at the bottom of Settings — Grafana streaming
-// toggle + destructive Clear Database flow. Native <details> gives
-// free keyboard support; the styled <summary> mirrors a section
-// header for visual continuity.
+// toggle + destructive Clear Database flow + Manage ignored files
+// (the Unknown-tab "Delete forever" recovery surface). Native
+// <details> gives free keyboard support; the styled <summary> mirrors
+// a section header for visual continuity.
 //
 // Extracted from SettingsView so the section-specific styles
 // (.advanced-*, .big-switch) live with the component that owns the
@@ -10,20 +13,37 @@
 // `.clear-confirm-group`) stay in SettingsView because they're
 // shared with the Backup/Restore section's Import-arm flow.
 
-defineProps<{
+const props = defineProps<{
   prometheusEnabled: boolean
-  clearingDB?: boolean
-  clearConfirm?: boolean
-  matchedCount?: number
-  unknownCount?: number
+  clearingDB?:       boolean
+  clearConfirm?:     boolean
+  matchedCount?:     number
+  unknownCount?:     number
+  // Count of files in the Unknown-tab "Delete forever" suppress list.
+  // 0 hides the keep-suppress-list checkbox in the Clear arm step and
+  // disables the Manage button.
+  ignoredCount?:     number
 }>()
 
 const emit = defineEmits<{
-  'toggle-prometheus': []
-  'arm-clear':         []
-  'cancel-clear':      []
-  'clear-database':    []
+  'toggle-prometheus':  []
+  'arm-clear':          []
+  'cancel-clear':       []
+  'clear-database':     [opts: { keepIgnored: boolean }]
+  'open-ignored-panel': []
 }>()
+
+// Opt-out checkbox state. Default false so the Clear arm's "factory
+// reset" semantic wins by default; the user has to actively opt into
+// keeping the suppress list. Resets to false every time the arm
+// re-opens so an old toggle doesn't sneak through.
+const keepIgnoredOnClear = ref(false)
+watch(
+  () => props.clearConfirm,
+  (next, prev) => {
+    if (next && !prev) keepIgnoredOnClear.value = false
+  },
+)
 </script>
 
 <template>
@@ -60,6 +80,38 @@ const emit = defineEmits<{
         </div>
       </div>
 
+      <div class="setting-row">
+        <div class="setting-info">
+          <h4 class="setting-label">
+            Manage ignored screenshots
+            <span class="setting-help" tabindex="0" role="note">
+              <span class="setting-help-mark" aria-hidden="true">?</span>
+              <span class="setting-help-label">About ignored screenshots</span>
+              <span class="setting-help-pop" role="tooltip">
+                "Delete forever" on the Unknown tab adds a file to this list. Files on the list are skipped on every future Parse run. Open the panel to bring them back.
+              </span>
+            </span>
+          </h4>
+          <p class="setting-desc">
+            <template v-if="(ignoredCount ?? 0) === 0">
+              You haven't deleted any screenshots forever yet. Files you mark on the Unknown tab will land here so you can recover them.
+            </template>
+            <template v-else>
+              {{ ignoredCount }} file{{ (ignoredCount ?? 0) === 1 ? '' : 's' }} currently skipped on every Parse run. Open the panel to restore them — the next Parse run will re-discover them from disk.
+            </template>
+          </p>
+        </div>
+        <div class="setting-control">
+          <button
+            class="btn"
+            :disabled="(ignoredCount ?? 0) === 0"
+            @click="emit('open-ignored-panel')"
+          >
+            Manage…
+          </button>
+        </div>
+      </div>
+
       <div class="setting-row" :class="{ 'danger-row': clearConfirm }">
         <div class="setting-info">
           <h4 class="setting-label">
@@ -79,6 +131,16 @@ const emit = defineEmits<{
             <span class="block-mark" aria-hidden="true">⚠</span>
             This cannot be undone.
           </p>
+          <label
+            v-if="clearConfirm && (ignoredCount ?? 0) > 0"
+            class="clear-keep-ignored"
+          >
+            <input
+              v-model="keepIgnoredOnClear"
+              type="checkbox"
+            >
+            Keep the {{ ignoredCount }} ignored screenshot{{ ignoredCount === 1 ? '' : 's' }} so I don't have to re-triage them.
+          </label>
         </div>
         <div class="setting-control">
           <template v-if="!clearConfirm">
@@ -95,7 +157,7 @@ const emit = defineEmits<{
               <button
                 class="btn danger"
                 :disabled="clearingDB"
-                @click="emit('clear-database')"
+                @click="emit('clear-database', { keepIgnored: keepIgnoredOnClear })"
               >
                 <span v-if="clearingDB">Deleting…</span>
                 <span v-else>Delete {{ (matchedCount ?? 0) + (unknownCount ?? 0) }} Record{{ ((matchedCount ?? 0) + (unknownCount ?? 0)) === 1 ? '' : 's' }}</span>
@@ -274,5 +336,26 @@ const emit = defineEmits<{
 .big-switch:focus-within .big-switch-track {
   outline: none;
   box-shadow: 0 0 0 2px var(--accent-soft), 0 0 18px -2px var(--accent-glow);
+}
+
+/* "Keep suppress-list" opt-out checkbox — sits inside the Clear-arm
+   info column. Hidden when the suppress-list is empty so the
+   destructive flow doesn't ask the user about something that doesn't
+   apply. */
+.clear-keep-ignored {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.clear-keep-ignored input[type="checkbox"] {
+  margin-top: 0.18rem;
+  flex-shrink: 0;
+  accent-color: var(--accent);
 }
 </style>

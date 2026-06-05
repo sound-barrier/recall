@@ -215,6 +215,7 @@ func TestServerMux_PutTesseract_409OnInvalid(t *testing.T) {
 
 func TestServerMux_DeleteMatches_DelegatesToStore(t *testing.T) {
 	fs := dbtest.New()
+	_ = fs.AddIgnoredScreenshot("bad.png")
 	_, mux := newTestApp(t, fs)
 	rec := del(t, mux, "/api/v1/matches")
 	if rec.Code != http.StatusNoContent {
@@ -222,6 +223,27 @@ func TestServerMux_DeleteMatches_DelegatesToStore(t *testing.T) {
 	}
 	if fs.ClearCalls != 1 {
 		t.Errorf("expected 1 Clear call, got %d", fs.ClearCalls)
+	}
+	// Default factory-reset: suppress-list goes with everything else.
+	got, _ := fs.LoadIgnoredFilenames()
+	if len(got) != 0 {
+		t.Errorf("expected suppress-list wiped on default DELETE; got %v", got)
+	}
+}
+
+// ?keep_ignored=true preserves the suppress-list across the wipe via
+// the App's snapshot-restore opt-out path.
+func TestServerMux_DeleteMatches_KeepIgnoredPreservesSuppressList(t *testing.T) {
+	fs := dbtest.New()
+	_ = fs.AddIgnoredScreenshot("keep-me.png")
+	_, mux := newTestApp(t, fs)
+	rec := del(t, mux, "/api/v1/matches?keep_ignored=true")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+	got, _ := fs.LoadIgnoredFilenames()
+	if !got["keep-me.png"] {
+		t.Errorf("expected keep-me.png preserved across DELETE with keep_ignored=true; got %v", got)
 	}
 }
 

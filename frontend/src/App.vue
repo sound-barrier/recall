@@ -43,6 +43,9 @@ import {
   ImportData,
   ResolveAmbiguousMatch,
   IgnoreScreenshot,
+  UnignoreScreenshot,
+  ClearIgnoredScreenshots,
+  GetIgnoredScreenshots,
   SetMatchAnnotation,
   SetMatchVisibility,
   SetMatchReview,
@@ -51,7 +54,7 @@ import {
   HardDeleteMatch,
   MoveMatches,
 } from './api'
-import type { MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from './api'
+import type { IgnoredScreenshot, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from './api'
 import { tallyWLD, screenshotURL } from './match-helpers'
 import { useTabKeyboardNav, TAB_ORDER, type TabId } from './composables/useTabKeyboardNav'
 import { useGlobalKeyboard } from './composables/useGlobalKeyboard'
@@ -83,6 +86,10 @@ const FirstRunProfileModal = defineAsyncComponent(() => import('./components/Fir
 // "Export bundle…" on the Matches bulk-action bar. Lazy so its bytes
 // don't land in the initial chunk.
 const ExportBundleModal = defineAsyncComponent(() => import('./components/ExportBundleModal.vue'))
+// "Manage ignored files" panel — only mounted when the user opens
+// Settings → Advanced → Manage. Lazy so the panel + its 16:9
+// thumbnail styles don't land in the initial chunk.
+const IgnoredFilesPanel = defineAsyncComponent(() => import('./components/IgnoredFilesPanel.vue'))
 
 // View components are lazy-loaded via defineAsyncComponent so each
 // becomes a separate JS chunk emitted by Vite. The initial bundle
@@ -585,10 +592,23 @@ async function confirmUnsupportedParse() {
 // Collapsed by default — user sees only the count row until they open it.
 const parseProgressOpen = ref(false)
 
+// Clear-Database opt-out plumbing. SettingsAdvanced fires
+// `clear-database` with `{ keepIgnored: boolean }`; we stash the
+// current opt on this ref so the useClearDatabase api seam below
+// reads the latest value when the composable executes. Declared
+// before useClearDatabase so the closure binding resolves cleanly.
+const pendingClearOpts = ref<{ keepIgnored: boolean }>({ keepIgnored: false })
+
 // Two-step "Clear database" flow: arm → confirm → execute → reload.
+// The api seam reads pendingClearOpts so SettingsAdvanced's
+// "Keep suppress-list" checkbox controls whether the ignore list
+// survives the wipe (see onClearDatabase below).
 const { clearingDB, clearConfirm, clearDatabase, armClear, cancelClear } = useClearDatabase({
-  clearDatabase: ClearDatabase,
-  afterClear: () => load(),
+  clearDatabase: () => ClearDatabase(pendingClearOpts.value.keepIgnored),
+  afterClear: async () => {
+    await load()
+    await loadIgnored()
+  },
   resetLastParsedAt: () => {
     lastParsedAt.value = null
     try { localStorage.removeItem('recall.lastParsedAt') } catch (_) {}
@@ -868,10 +888,80 @@ async function onResolveAmbiguous(ambiguousKey: string, resolvedTo: string) {
 async function onIgnoreScreenshot(filename: string) {
   try {
     await IgnoreScreenshot(filename)
+    await loadIgnored()
     await load()
   } catch (e) {
     error.value = String(e)
   }
+}
+
+// Ignored-screenshot management (Settings → Advanced → Manage panel).
+// `ignoredScreenshots` is the rich list (filename + ignored_at) the
+// panel renders; the count drives the SettingsAdvanced Manage button
+// + the Clear-Database opt-out checkbox visibility. Refreshed on app
+// mount, after every Ignore / Unignore / ClearIgnored / ClearDatabase
+// call so callers don't have to wait for a full record reload to see
+// the count tick.
+const ignoredScreenshots = ref<IgnoredScreenshot[]>([])
+const ignoredCount = computed(() => ignoredScreenshots.value.length)
+const ignoredPanelOpen = ref(false)
+
+async function loadIgnored() {
+  try {
+    ignoredScreenshots.value = await GetIgnoredScreenshots()
+  } catch (e) {
+    // Best-effort — failing to refresh the count shouldn't block the
+    // primary record reload that triggered us.
+    console.warn('GetIgnoredScreenshots failed:', e)
+  }
+}
+
+function openIgnoredPanel() {
+  ignoredPanelOpen.value = true
+}
+
+function closeIgnoredPanel() {
+  ignoredPanelOpen.value = false
+}
+
+// Per-row Restore from the panel. Removes the file from the
+// suppress-list and refreshes the list — the next Parse run will
+// re-discover the file from disk.
+async function onUnignoreScreenshot(filename: string) {
+  try {
+    await UnignoreScreenshot(filename)
+    await loadIgnored()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+// Bulk Re-enable all from the panel — truncates the suppress-list in
+// one call. Same downstream as per-file restore: the panel re-renders
+// empty and the user can Run Parse to re-discover everything.
+async function onClearIgnoredScreenshots() {
+  try {
+    await ClearIgnoredScreenshots()
+    await loadIgnored()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+// "Run Parse now" link inside the panel — close the modal, switch to
+// the Parse tab, and kick the existing manual-parse flow.
+function onRunParseFromIgnored() {
+  closeIgnoredPanel()
+  goToView('ingest')
+  void parse()
+}
+
+// SettingsAdvanced fires `clear-database` with `{ keepIgnored }`;
+// stash the opt and forward to the composable so its in-flight state
+// machine still owns the loading + onError surface.
+function onClearDatabase(opts: { keepIgnored: boolean }) {
+  pendingClearOpts.value = opts
+  return clearDatabase()
 }
 
 // Selected-match panel (replaces the old inline-expansion model).
@@ -1218,6 +1308,7 @@ onMounted(() => {
   // the "Check for updates" button in the masthead's ver-block. See
   // checkForUpdates() below + the v-if chain on .ver-block.
   load()
+  void loadIgnored()
   // Surface any captured Startup failure. The Wails wrapper used to
   // log.Fatal on profile / DB-init errors, which manifested as a
   // window flash with no user-visible reason. Startup now records
@@ -1559,6 +1650,7 @@ useEventStream({
           :prometheus-enabled="prometheusEnabled"
           :clear-confirm="clearConfirm"
           :clearing-d-b="clearingDB"
+          :ignored-count="ignoredCount"
           @pick-screenshots-dir="pickDir"
           @detect-screenshots-dir="detectDir"
           @reveal-screenshots-dir="revealDir"
@@ -1576,8 +1668,9 @@ useEventStream({
           @import-data="importData"
           @toggle-prometheus="togglePrometheus"
           @arm-clear="armClear"
-          @clear-database="clearDatabase"
+          @clear-database="onClearDatabase"
           @cancel-clear="cancelClear"
+          @open-ignored-panel="openIgnoredPanel"
         />
 
         <!-- ─── PARSE VIEW (Watch + Manual Parse + Progress) ─────── -->
@@ -1846,6 +1939,16 @@ useEventStream({
       :unknown-count="unknownRecords.length"
       @close="exportBundleOpen = false"
       @export="onExportBundleConfirm"
+    />
+
+    <IgnoredFilesPanel
+      :is-open="ignoredPanelOpen"
+      :screenshots="ignoredScreenshots"
+      :screenshot-u-r-l="(filename) => screenshotURL(filename, 0)"
+      @close="closeIgnoredPanel"
+      @restore="onUnignoreScreenshot"
+      @restore-all="onClearIgnoredScreenshots"
+      @run-parse="onRunParseFromIgnored"
     />
   </div>
 </template>

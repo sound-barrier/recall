@@ -34,8 +34,17 @@ export interface paths {
         /**
          * Wipe all parsed match records
          * @description Deletes every row from the per-screenshot tables (and their
-         *     child rows via `ON DELETE CASCADE`). Settings and the
-         *     screenshots folder are untouched; you can re-parse to rebuild.
+         *     child rows via `ON DELETE CASCADE`) plus the auxiliary tables
+         *     (reviews, queue, play-mode, annotations, hidden flags,
+         *     ambiguous candidates, and the suppress-list). Settings and
+         *     the screenshots folder are untouched; you can re-parse to
+         *     rebuild.
+         *
+         *     The optional `keep_ignored=true` query param preserves the
+         *     Unknown-tab "Delete forever" suppress list across the wipe
+         *     (Settings → Advanced surfaces this as a "Keep suppress-list"
+         *     checkbox). Default-off matches the historical factory-reset
+         *     semantic.
          */
         delete: operations["ClearMatches"];
         options?: never;
@@ -499,15 +508,24 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List ignored screenshot filenames
-         * @description Returns the suppress-list contents, sorted by filename.
-         *     Currently no production UI surface — used by debug / curl
-         *     consumers and reserved for a future "Manage ignored" panel.
+         * List ignored screenshots with timestamps
+         * @description Returns every ignored row with its `ignored_at` timestamp,
+         *     most-recently-ignored first. Backs the Settings → Advanced →
+         *     Manage ignored files panel and is also useful for support /
+         *     curl consumers.
          */
         get: operations["GetIgnoredScreenshots"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Bulk truncate the suppress list
+         * @description Removes every row from `ignored_screenshots`. The Settings
+         *     panel's "Re-enable all" action calls this. Idempotent — returns
+         *     204 even when the list is already empty. The next Parse run
+         *     re-discovers every previously-ignored file from disk (the
+         *     on-disk files were never moved).
+         */
+        delete: operations["ClearIgnoredScreenshots"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1187,6 +1205,22 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        IgnoredScreenshot: {
+            /**
+             * @description Filename the suppress-list keys on. Same shape as the
+             *     `filename` path parameter on the per-file ignore endpoints.
+             * @example summary-2026-05-10T22-21-11.png
+             */
+            filename: string;
+            /**
+             * @description Server-assigned timestamp captured when the row was added.
+             *     ISO 8601 (RFC 3339); SQLite's `CURRENT_TIMESTAMP` rounds to
+             *     the nearest second so two ignores within the same second
+             *     share an identical value and tie-break on filename ASC.
+             * @example 2026-05-10T22:21:11Z
+             */
+            ignored_at: string;
+        };
         FolderPath: {
             /**
              * @description The configured screenshots folder. The GET response can
@@ -1711,7 +1745,14 @@ export interface operations {
     };
     ClearMatches: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Preserve the `ignored_screenshots` suppress list across
+                 *     the wipe. Strict — anything other than `true` / `false`
+                 *     / absent returns 400.
+                 */
+                keep_ignored?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1725,6 +1766,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            400: components["responses"]["BadRequest"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -2267,14 +2309,33 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Sorted list of ignored filenames. */
+            /** @description List of ignored screenshots. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string[];
+                    "application/json": components["schemas"]["IgnoredScreenshot"][];
                 };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    ClearIgnoredScreenshots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Suppress list cleared. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             500: components["responses"]["InternalError"];
         };

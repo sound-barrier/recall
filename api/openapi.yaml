@@ -125,11 +125,33 @@ paths:
       summary: Wipe all parsed match records
       description: |
         Deletes every row from the per-screenshot tables (and their
-        child rows via `ON DELETE CASCADE`). Settings and the
-        screenshots folder are untouched; you can re-parse to rebuild.
+        child rows via `ON DELETE CASCADE`) plus the auxiliary tables
+        (reviews, queue, play-mode, annotations, hidden flags,
+        ambiguous candidates, and the suppress-list). Settings and
+        the screenshots folder are untouched; you can re-parse to
+        rebuild.
+
+        The optional `keep_ignored=true` query param preserves the
+        Unknown-tab "Delete forever" suppress list across the wipe
+        (Settings → Advanced surfaces this as a "Keep suppress-list"
+        checkbox). Default-off matches the historical factory-reset
+        semantic.
+      parameters:
+        - name: keep_ignored
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: |
+            Preserve the `ignored_screenshots` suppress list across
+            the wipe. Strict — anything other than `true` / `false`
+            / absent returns 400.
       responses:
         "204":
           description: All matches cleared.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -690,20 +712,36 @@ paths:
     get:
       operationId: GetIgnoredScreenshots
       tags: [Pipeline]
-      summary: List ignored screenshot filenames
+      summary: List ignored screenshots with timestamps
       description: |
-        Returns the suppress-list contents, sorted by filename.
-        Currently no production UI surface — used by debug / curl
-        consumers and reserved for a future "Manage ignored" panel.
+        Returns every ignored row with its `ignored_at` timestamp,
+        most-recently-ignored first. Backs the Settings → Advanced →
+        Manage ignored files panel and is also useful for support /
+        curl consumers.
       responses:
         "200":
-          description: Sorted list of ignored filenames.
+          description: List of ignored screenshots.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  type: string
+                  $ref: "#/components/schemas/IgnoredScreenshot"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: ClearIgnoredScreenshots
+      tags: [Pipeline]
+      summary: Bulk truncate the suppress list
+      description: |
+        Removes every row from `ignored_screenshots`. The Settings
+        panel's "Re-enable all" action calls this. Idempotent — returns
+        204 even when the list is already empty. The next Parse run
+        re-discovers every previously-ignored file from disk (the
+        on-disk files were never moved).
+      responses:
+        "204":
+          description: Suppress list cleared.
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -1688,6 +1726,27 @@ components:
       example: "match%3A2026-05-10T22%3A21%3A11"
 
   schemas:
+    IgnoredScreenshot:
+      type: object
+      required: [filename, ignored_at]
+      properties:
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "summary-2026-05-10T22-21-11.png"
+          description: |
+            Filename the suppress-list keys on. Same shape as the
+            `filename` path parameter on the per-file ignore endpoints.
+        ignored_at:
+          type: string
+          example: "2026-05-10T22:21:11Z"
+          description: |
+            Server-assigned timestamp captured when the row was added.
+            ISO 8601 (RFC 3339); SQLite's `CURRENT_TIMESTAMP` rounds to
+            the nearest second so two ignores within the same second
+            share an identical value and tie-break on filename ASC.
+
     FolderPath:
       type: object
       required: [path]

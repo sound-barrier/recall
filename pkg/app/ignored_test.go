@@ -74,7 +74,7 @@ func TestUnignoreScreenshot_RemovesFromSet(t *testing.T) {
 	}
 }
 
-func TestGetIgnoredScreenshots_ReturnsSorted(t *testing.T) {
+func TestGetIgnoredScreenshots_ReturnsRichRowsWithTimestamps(t *testing.T) {
 	fs := &fakeStore{}
 	a := NewWithStore(fs)
 	for _, f := range []string{"zoo.png", "alpha.png", "middle.png"} {
@@ -84,8 +84,38 @@ func TestGetIgnoredScreenshots_ReturnsSorted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetIgnoredScreenshots: %v", err)
 	}
+	if len(out) != 3 {
+		t.Fatalf("expected 3 rows, got %d", len(out))
+	}
+	// Tie-break on IgnoredAt ties (three rapid Adds within one second
+	// land at the same RFC3339 second) is filename ASC.
 	want := []string{"alpha.png", "middle.png", "zoo.png"}
-	if !reflect.DeepEqual(out, want) {
-		t.Errorf("GetIgnoredScreenshots = %v, want %v", out, want)
+	for i, w := range want {
+		if out[i].Filename != w {
+			t.Errorf("row[%d].Filename = %q, want %q", i, out[i].Filename, w)
+		}
+		if out[i].IgnoredAt == "" {
+			t.Errorf("row[%d].IgnoredAt empty; expected timestamp", i)
+		}
+	}
+}
+
+func TestClearIgnoredScreenshots_TruncatesSuppressList(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	for _, f := range []string{"a.png", "b.png"} {
+		if err := a.IgnoreScreenshot(f); err != nil {
+			t.Fatalf("seed %s: %v", f, err)
+		}
+	}
+	if err := a.ClearIgnoredScreenshots(); err != nil {
+		t.Fatalf("ClearIgnoredScreenshots: %v", err)
+	}
+	out, err := a.GetIgnoredScreenshots()
+	if err != nil {
+		t.Fatalf("GetIgnoredScreenshots: %v", err)
+	}
+	if len(out) != 0 {
+		t.Errorf("expected empty list after ClearIgnoredScreenshots; got %v", out)
 	}
 }

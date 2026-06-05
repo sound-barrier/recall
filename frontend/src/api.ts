@@ -317,6 +317,40 @@ export const IgnoreScreenshot = _dualVoid<[filename: string]>(
   (filename) => `/api/v1/screenshots/${encodeURIComponent(filename)}/ignore`,
 )
 
+// Restore an ignored screenshot — backs the Settings → Advanced →
+// Manage ignored files panel's per-row Restore button. Removes the
+// filename from the suppress-list so the next Parse run picks it back
+// up off disk. Idempotent on filenames that aren't ignored.
+export const UnignoreScreenshot = _dualVoid<[filename: string]>(
+  'UnignoreScreenshot',
+  'DELETE',
+  (filename) => `/api/v1/screenshots/${encodeURIComponent(filename)}/ignore`,
+)
+
+// Bulk truncate the suppress-list — Settings panel's "Re-enable all"
+// action. Idempotent; resolves to undefined even when the list was
+// already empty.
+export const ClearIgnoredScreenshots = _dualVoid<[]>(
+  'ClearIgnoredScreenshots',
+  'DELETE',
+  '/api/v1/screenshots/ignored',
+)
+
+// Returned row from GetIgnoredScreenshots. Pre-1.0 the project keeps
+// the wire type narrow — the Settings panel renders `filename` +
+// `ignored_at` and nothing else.
+export type IgnoredScreenshot = {
+  filename:   string
+  ignored_at: string
+}
+
+// List the suppress-list with timestamps. Sorted most-recently-
+// ignored first; tie-break is filename ASC.
+export function GetIgnoredScreenshots(): Promise<IgnoredScreenshot[]> {
+  if (IS_WAILS) return _wails('GetIgnoredScreenshots')
+  return _get<IgnoredScreenshot[]>('/api/v1/screenshots/ignored')
+}
+
 
 // Per-match review-status tag. `reviewedBy` is `'self'` (user
 // reviewed the VOD themselves), `'coach'` (a coach reviewed it),
@@ -491,12 +525,16 @@ export function SetTesseractPath(path: string): Promise<TesseractStatus> {
 }
 
 // Wipe all parsed-match data — DELETE on the matches collection.
-// Settings and the screenshots folder are untouched.
-export const ClearDatabase = _dualVoid<[]>(
-  'ClearDatabase',
-  'DELETE',
-  '/api/v1/matches',
-)
+// Settings and the screenshots folder are untouched. Pass
+// `keepIgnored = true` to preserve the Unknown-tab "Delete forever"
+// suppress list across the wipe; default `false` matches the historic
+// factory-reset semantic. Plumbed as `?keep_ignored=true` over fetch
+// and as a positional bool over the Wails bridge.
+export function ClearDatabase(keepIgnored = false): Promise<void> {
+  if (IS_WAILS) return _wails('ClearDatabase', keepIgnored)
+  const path = keepIgnored ? '/api/v1/matches?keep_ignored=true' : '/api/v1/matches'
+  return _send('DELETE', path).then(() => undefined)
+}
 
 // ─── Profiles ─────────────────────────────────────────────────────────────
 //

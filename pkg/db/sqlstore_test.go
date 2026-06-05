@@ -306,6 +306,9 @@ func TestSQLStore_Clear_WipesEveryTable(t *testing.T) {
 	if err := s.ApplyAmbiguity("amb.png", []AmbiguousCandidate{{MatchKey: "k1", DistanceS: 5}}); err != nil {
 		t.Fatalf("ApplyAmbiguity: %v", err)
 	}
+	if err := s.AddIgnoredScreenshot("ignored.png"); err != nil {
+		t.Fatalf("AddIgnoredScreenshot: %v", err)
+	}
 
 	if err := s.Clear(); err != nil {
 		t.Fatalf("Clear: %v", err)
@@ -324,7 +327,7 @@ func TestSQLStore_Clear_WipesEveryTable(t *testing.T) {
 	if n != 0 {
 		t.Errorf("expected 0 child rows after Clear, got %d", n)
 	}
-	for _, table := range []string{"match_reviews", "match_queue", "match_play_mode", "match_annotations", "hidden_matches", "ambiguous_candidates"} {
+	for _, table := range []string{"match_reviews", "match_queue", "match_play_mode", "match_annotations", "hidden_matches", "ambiguous_candidates", "ignored_screenshots"} {
 		// #nosec G202 -- table name from a hard-coded slice, not user input.
 		if err := s.db.QueryRow(`SELECT count(*) FROM ` + table).Scan(&n); err != nil {
 			t.Fatal(err)
@@ -332,6 +335,75 @@ func TestSQLStore_Clear_WipesEveryTable(t *testing.T) {
 		if n != 0 {
 			t.Errorf("expected 0 rows in %s after Clear, got %d", table, n)
 		}
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Ignored screenshots — list ordering + bulk truncate.
+// ──────────────────────────────────────────────────────────────────
+
+func TestSQLStore_ListIgnoredScreenshots_OrdersByTimestampDesc(t *testing.T) {
+	s := openMemory(t)
+	if err := s.AddIgnoredScreenshot("first.png"); err != nil {
+		t.Fatalf("AddIgnoredScreenshot first: %v", err)
+	}
+	// SQLite's CURRENT_TIMESTAMP rounds to seconds; sleep a second so
+	// the second add lands at a strictly later timestamp.
+	time.Sleep(1100 * time.Millisecond)
+	if err := s.AddIgnoredScreenshot("second.png"); err != nil {
+		t.Fatalf("AddIgnoredScreenshot second: %v", err)
+	}
+	rows, err := s.ListIgnoredScreenshots()
+	if err != nil {
+		t.Fatalf("ListIgnoredScreenshots: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(rows))
+	}
+	if rows[0].Filename != "second.png" || rows[1].Filename != "first.png" {
+		t.Errorf("expected most-recently-ignored first; got %+v", rows)
+	}
+	for _, r := range rows {
+		if r.IgnoredAt == "" {
+			t.Errorf("expected IgnoredAt populated for %s", r.Filename)
+		}
+	}
+}
+
+func TestSQLStore_ListIgnoredScreenshots_EmptyReturnsEmptySlice(t *testing.T) {
+	s := openMemory(t)
+	rows, err := s.ListIgnoredScreenshots()
+	if err != nil {
+		t.Fatalf("ListIgnoredScreenshots: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("expected empty list, got %+v", rows)
+	}
+}
+
+func TestSQLStore_ClearIgnoredScreenshots_Truncates(t *testing.T) {
+	s := openMemory(t)
+	for _, f := range []string{"a.png", "b.png", "c.png"} {
+		if err := s.AddIgnoredScreenshot(f); err != nil {
+			t.Fatalf("seed %s: %v", f, err)
+		}
+	}
+	if err := s.ClearIgnoredScreenshots(); err != nil {
+		t.Fatalf("ClearIgnoredScreenshots: %v", err)
+	}
+	rows, err := s.ListIgnoredScreenshots()
+	if err != nil {
+		t.Fatalf("ListIgnoredScreenshots: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("expected empty after Clear, got %d rows", len(rows))
+	}
+}
+
+func TestSQLStore_ClearIgnoredScreenshots_EmptyIsNoop(t *testing.T) {
+	s := openMemory(t)
+	if err := s.ClearIgnoredScreenshots(); err != nil {
+		t.Errorf("clearing an already-empty list should not error, got %v", err)
 	}
 }
 

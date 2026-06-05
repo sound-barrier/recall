@@ -64,13 +64,15 @@ func (s *SQLStore) collectFilenames(table string, out map[string]bool) error {
 }
 
 // Clear deletes every row in every table — parent screenshot tables
-// (children cascade), the screenshots_dirs lookup, and the four
-// per-match auxiliary tables (match_reviews, match_annotations with
-// its children cascading, hidden_matches, ambiguous_candidates).
-// Used by App.ClearDatabase, bundle import, and CSV import — all of
-// which expect a "wipe everything" semantic. Previously this method
-// left the auxiliary tables intact, which silently orphaned reviews /
-// annotations / hidden flags / ambiguity records across every reset.
+// (children cascade), the screenshots_dirs lookup, the per-match
+// auxiliary tables (match_reviews, match_annotations with its
+// children cascading, hidden_matches, ambiguous_candidates, match_
+// queue, match_play_mode), AND the ignored_screenshots suppress
+// list. Used by App.ClearDatabase, bundle import, and CSV import —
+// all of which expect a "wipe everything" semantic. Callers that
+// want the suppress list to survive (App.ClearDatabase's keep-
+// ignored opt-out path) snapshot the list, call Clear, then re-
+// insert via AddIgnoredScreenshot.
 func (s *SQLStore) Clear() error {
 	for _, t := range parentTables {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
@@ -86,6 +88,7 @@ func (s *SQLStore) Clear() error {
 		"match_annotations", // match_annotation_members + _tags cascade
 		"hidden_matches",
 		"ambiguous_candidates",
+		"ignored_screenshots",
 	} {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 		if _, err := s.db.Exec(`DELETE FROM ` + t); err != nil {

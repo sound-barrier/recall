@@ -11,6 +11,7 @@
 package dbtest
 
 import (
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -56,6 +57,14 @@ type Fake struct {
 	// "fair game" state. Tests seed this map directly or assert on it
 	// after calling AddIgnoredScreenshot.
 	Ignored map[string]bool
+
+	// IgnoredAt maps filename → the timestamp at which it was ignored.
+	// Parallel to Ignored so ListIgnoredScreenshots can return rows in
+	// time order. AddIgnoredScreenshot stamps time.Now().UTC() formatted
+	// the same way SQLite's CURRENT_TIMESTAMP renders ("2026-06-05T...");
+	// tests that need a deterministic timestamp seed this map directly
+	// before reading.
+	IgnoredAt map[string]string
 
 	// Ambiguous holds one candidate-list per filename. Tests seed it
 	// directly to verify aggregator behavior for ambiguous screenshots
@@ -247,6 +256,8 @@ func (f *Fake) Clear() error {
 	f.Queues = nil
 	f.PlayModes = nil
 	f.Ambiguous = nil
+	f.Ignored = nil
+	f.IgnoredAt = nil
 	return nil
 }
 
@@ -497,7 +508,11 @@ func (f *Fake) AddIgnoredScreenshot(filename string) error {
 	if f.Ignored == nil {
 		f.Ignored = map[string]bool{}
 	}
+	if f.IgnoredAt == nil {
+		f.IgnoredAt = map[string]string{}
+	}
 	f.Ignored[filename] = true
+	f.IgnoredAt[filename] = time.Now().UTC().Format(time.RFC3339)
 	return nil
 }
 
@@ -505,6 +520,7 @@ func (f *Fake) RemoveIgnoredScreenshot(filename string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	delete(f.Ignored, filename)
+	delete(f.IgnoredAt, filename)
 	return nil
 }
 
@@ -516,6 +532,34 @@ func (f *Fake) LoadIgnoredFilenames() (map[string]bool, error) {
 		out[k] = v
 	}
 	return out, nil
+}
+
+// ListIgnoredScreenshots returns rows for every filename in Ignored,
+// sorted by IgnoredAt DESC then filename ASC — same ordering the
+// SQLStore implementation uses. Missing IgnoredAt entries fall back
+// to the empty string (still ordered lexically).
+func (f *Fake) ListIgnoredScreenshots() ([]db.IgnoredRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]db.IgnoredRow, 0, len(f.Ignored))
+	for fn := range f.Ignored {
+		out = append(out, db.IgnoredRow{Filename: fn, IgnoredAt: f.IgnoredAt[fn]})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].IgnoredAt != out[j].IgnoredAt {
+			return out[i].IgnoredAt > out[j].IgnoredAt
+		}
+		return out[i].Filename < out[j].Filename
+	})
+	return out, nil
+}
+
+func (f *Fake) ClearIgnoredScreenshots() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.Ignored = nil
+	f.IgnoredAt = nil
+	return nil
 }
 
 func (f *Fake) ApplyAmbiguity(filename string, cands []db.AmbiguousCandidate) error {
