@@ -219,11 +219,34 @@ describe('UnknownMapsView', () => {
 
   // Ambiguous cards historically had no Source Files block — the
   // user picks a candidate without seeing the actual screenshot,
-  // which is unhelpful. Same Source Files block as the Unknown
-  // card now renders inside the expanded ambiguous card so the
-  // user can preview + open-lightbox the screenshot they're
-  // triaging.
-  it('ambiguous card surfaces a Source Files preview that emits open-lightbox', async () => {
+  // which is unhelpful. The Source Files block now auto-opens on
+  // card expand (no extra chevron click) so the user can preview +
+  // open-lightbox the screenshot they're triaging in one gesture.
+  it('expanding an ambiguous card auto-opens the source-screenshot preview', async () => {
+    const ambig: MatchRecord[] = [
+      {
+        match_key: 'ambiguous-ambig-sb.png',
+        source_files: ['ambig-sb.png'],
+        data: {},
+        ambiguous: true,
+        candidates: [{ match_key: 'match:foo', distance_seconds: 720 }],
+      },
+    ]
+    const { wrapper } = mountWith([], { ambiguousRecords: ambig })
+    // ONE click on the card head — no extra source-name click needed.
+    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
+    const img = wrapper.find('.ambiguous-card img.source-preview')
+    expect(img.exists()).toBe(true)
+    // Click the inline preview escalates to the lightbox.
+    await img.trigger('click')
+    expect(wrapper.emitted('open-lightbox')).toBeTruthy()
+    expect(wrapper.emitted('open-lightbox')![0]).toEqual(['ambig-sb.png', ['ambig-sb.png'], {}])
+  })
+
+  // Collapsing the card (second click on the head) must close the
+  // auto-opened preview — otherwise toggling expand→collapse→expand
+  // would have to also toggle the chevron arrow to avoid stuck state.
+  it('collapsing an auto-opened ambiguous card closes the preview', async () => {
     const ambig: MatchRecord[] = [
       {
         match_key: 'ambiguous-ambig-sb.png',
@@ -235,18 +258,61 @@ describe('UnknownMapsView', () => {
     ]
     const { wrapper } = mountWith([], { ambiguousRecords: ambig })
     await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
-    // The Source Files block must render inside the expanded
-    // ambiguous card AND honour the same toggle-preview gesture as
-    // the Unknown card.
-    const sourceName = wrapper.find('.ambiguous-card .source-name')
-    expect(sourceName.exists()).toBe(true)
-    await sourceName.trigger('click')
-    const img = wrapper.find('.ambiguous-card img.source-preview')
-    expect(img.exists()).toBe(true)
-    await img.trigger('click')
-    expect(wrapper.emitted('open-lightbox')).toBeTruthy()
-    // Emit signature: (filename, source_files).
-    expect(wrapper.emitted('open-lightbox')![0]).toEqual(['ambig-sb.png', ['ambig-sb.png'], {}])
+    expect(wrapper.find('.ambiguous-card img.source-preview').exists()).toBe(true)
+    // The card-head click toggles expand, which removes the source
+    // preview from the DOM. The togglePreview state is sticky but
+    // user-invisible while collapsed.
+    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
+    expect(wrapper.find('.ambiguous-card img.source-preview').exists()).toBe(false)
+  })
+
+  // Side-by-side preview pane: the candidate-picker now puts a
+  // larger preview slot next to the candidate list so the user can
+  // compare the source screenshot against the candidate's
+  // representative image without escalating to the lightbox.
+  it('candidate-picker renders a side-by-side preview pane on the first candidate by default', async () => {
+    const ambig: MatchRecord[] = [
+      {
+        match_key: 'ambiguous-ambig-sb.png',
+        source_files: ['ambig-sb.png'],
+        data: {},
+        ambiguous: true,
+        candidates: [
+          { match_key: 'match:a', distance_seconds: 60, representative_source_file: 'a-sum.png' },
+          { match_key: 'match:b', distance_seconds: 120, representative_source_file: 'b-sum.png' },
+        ],
+      },
+    ]
+    const { wrapper } = mountWith([], { ambiguousRecords: ambig })
+    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
+    const pane = wrapper.find('.candidate-preview-pane')
+    expect(pane.exists()).toBe(true)
+    // First candidate is active by default; pane image points at it.
+    const img = pane.find('img')
+    expect(img.attributes('src')).toContain(encodeURIComponent('a-sum.png'))
+    // Active class lit on the first row.
+    expect(wrapper.find('.candidate-row.active').exists()).toBe(true)
+  })
+
+  it('hovering a different candidate updates the preview pane', async () => {
+    const ambig: MatchRecord[] = [
+      {
+        match_key: 'ambiguous-ambig-sb.png',
+        source_files: ['ambig-sb.png'],
+        data: {},
+        ambiguous: true,
+        candidates: [
+          { match_key: 'match:a', distance_seconds: 60, representative_source_file: 'a-sum.png' },
+          { match_key: 'match:b', distance_seconds: 120, representative_source_file: 'b-sum.png' },
+        ],
+      },
+    ]
+    const { wrapper } = mountWith([], { ambiguousRecords: ambig })
+    await wrapper.find('.ambiguous-card .unknown-card-head').trigger('click')
+    const rows = wrapper.findAll('.candidate-row')
+    await rows[1]!.trigger('mouseenter')
+    const img = wrapper.find('.candidate-preview-pane img')
+    expect(img.attributes('src')).toContain(encodeURIComponent('b-sum.png'))
   })
 
   // ── Hover thumbnail (FEATURES.md: "Inline image preview on Unknown")

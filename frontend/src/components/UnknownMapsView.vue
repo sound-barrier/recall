@@ -81,6 +81,48 @@ function onPickCandidate(rec: MatchRecord, resolvedTo: string) {
   emit('resolve-ambiguous', rec.match_key, resolvedTo)
 }
 
+// Active-candidate-per-ambiguous-card state. Drives the side-by-side
+// preview pane in the candidate picker. Defaults to the first
+// candidate that has a representative_source_file (so the pane shows
+// something on first card expand); updates on hover OR keyboard focus
+// of a candidate row, so keyboard-only users still get the preview
+// without needing a pointer.
+const activeCandidateByRec = ref<Record<string, string>>({})
+
+function activeCandidateKey(rec: MatchRecord): string | null {
+  const explicit = activeCandidateByRec.value[rec.match_key]
+  if (explicit) return explicit
+  const first = rec.candidates?.find(c => c.representative_source_file)
+  return first?.match_key ?? null
+}
+
+function activeCandidate(rec: MatchRecord) {
+  const key = activeCandidateKey(rec)
+  if (!key) return undefined
+  return rec.candidates?.find(c => c.match_key === key)
+}
+
+function setActiveCandidate(recKey: string, candKey: string) {
+  if (activeCandidateByRec.value[recKey] === candKey) return
+  activeCandidateByRec.value = { ...activeCandidateByRec.value, [recKey]: candKey }
+}
+
+// Click the ambiguous card head: expand the card AND, if expanding
+// (not collapsing), auto-open the inline source-screenshot preview
+// on the first source file. Saves the user the second chevron click
+// they'd otherwise need before they can compare the source image
+// against the candidate previews.
+function onAmbiguousHeadClick(rec: MatchRecord) {
+  const willOpen = !props.cardState.isSelected(rec.match_key)
+  props.cardState.toggleExpand(rec.match_key)
+  if (!willOpen) return
+  const first = rec.source_files?.[0]
+  if (!first) return
+  if (!props.cardState.isPreviewOpen(first)) {
+    props.cardState.togglePreview(first)
+  }
+}
+
 // Hover-preview state for the Unknown card list. Mouseenter on a
 // collapsed card sets the hovered key → the floating thumbnail
 // renders next to the cursor (Teleport'd to body so it sits above
@@ -309,7 +351,7 @@ function updateThumbPosition(e: MouseEvent) {
           class="unknown-card ambiguous-card"
           :class="{ expanded: cardState.isSelected(rec.match_key) }"
         >
-          <div class="unknown-card-head" @click="cardState.toggleExpand(rec.match_key)">
+          <div class="unknown-card-head" @click="onAmbiguousHeadClick(rec)">
             <div class="unknown-head-lhs">
               <span class="unknown-key-block">
                 <span class="unknown-key mono">{{ rec.source_files?.[0] ?? rec.match_key }}</span>
@@ -361,50 +403,89 @@ function updateThumbPosition(e: MouseEvent) {
                 <div class="block-eyebrow">
                   Pick the match
                 </div>
-                <div
-                  v-for="cand in rec.candidates ?? []"
-                  :key="cand.match_key"
-                  class="candidate-row"
-                >
-                  <button
-                    v-if="cand.representative_source_file"
-                    type="button"
-                    class="candidate-thumb"
-                    :aria-label="`Open ${cand.match_key} screenshot in lightbox`"
-                    :data-candidate-thumb="cand.match_key"
-                    @click="emit('open-lightbox',
-                      cand.representative_source_file!,
-                      [cand.representative_source_file!],
-                      { [cand.representative_source_file!]: cand.representative_dir_id ?? 0 })"
-                  >
-                    <img
-                      :src="screenshotURL(cand.representative_source_file, cand.representative_dir_id ?? 0)"
-                      :alt="`Screenshot from ${cand.match_key}`"
+                <div class="candidate-picker-grid">
+                  <div class="candidate-list">
+                    <div
+                      v-for="cand in rec.candidates ?? []"
+                      :key="cand.match_key"
+                      class="candidate-row"
+                      :class="{ active: activeCandidateKey(rec) === cand.match_key }"
+                      @mouseenter="setActiveCandidate(rec.match_key, cand.match_key)"
+                      @focusin="setActiveCandidate(rec.match_key, cand.match_key)"
                     >
-                  </button>
-                  <div class="candidate-headline">
-                    <span class="candidate-key mono">{{ cand.match_key }}</span>
-                    <span class="candidate-distance">{{ formatDistance(cand.distance_seconds) }}</span>
-                    <span v-if="findRecord(cand.match_key)" class="candidate-summary">
-                      {{ [findRecord(cand.match_key)?.data?.map, findRecord(cand.match_key)?.data?.hero, findRecord(cand.match_key)?.data?.date].filter(Boolean).join(' · ') }}
-                    </span>
+                      <button
+                        v-if="cand.representative_source_file"
+                        type="button"
+                        class="candidate-thumb"
+                        :aria-label="`Open ${cand.match_key} screenshot in lightbox`"
+                        :data-candidate-thumb="cand.match_key"
+                        @click="emit('open-lightbox',
+                          cand.representative_source_file!,
+                          [cand.representative_source_file!],
+                          { [cand.representative_source_file!]: cand.representative_dir_id ?? 0 })"
+                      >
+                        <img
+                          :src="screenshotURL(cand.representative_source_file, cand.representative_dir_id ?? 0)"
+                          :alt="`Screenshot from ${cand.match_key}`"
+                        >
+                      </button>
+                      <div class="candidate-headline">
+                        <span class="candidate-key mono">{{ cand.match_key }}</span>
+                        <span class="candidate-distance">{{ formatDistance(cand.distance_seconds) }}</span>
+                        <span v-if="findRecord(cand.match_key)" class="candidate-summary">
+                          {{ [findRecord(cand.match_key)?.data?.map, findRecord(cand.match_key)?.data?.hero, findRecord(cand.match_key)?.data?.date].filter(Boolean).join(' · ') }}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        class="btn primary candidate-attach"
+                        @click="onPickCandidate(rec, cand.match_key)"
+                      >
+                        Attach to this match
+                      </button>
+                    </div>
+                    <button
+                      v-if="freshKeyFromAmbiguous(rec)"
+                      type="button"
+                      class="btn ghost candidate-fresh"
+                      @click="onPickCandidate(rec, freshKeyFromAmbiguous(rec)!)"
+                    >
+                      Treat as new match
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    class="btn primary candidate-attach"
-                    @click="onPickCandidate(rec, cand.match_key)"
+                  <!-- Side-by-side preview pane. Renders the
+                       currently-active candidate's representative
+                       screenshot at a comfortable comparison size
+                       (vs. the row's 80-ish px thumbnail). Active =
+                       last hovered / focused, defaulting to the first
+                       candidate so the slot is never empty when the
+                       card opens. Click the pane image to escalate to
+                       the fullscreen lightbox — same gesture as the
+                       row thumbnails. -->
+                  <aside
+                    v-if="activeCandidate(rec)?.representative_source_file"
+                    class="candidate-preview-pane"
+                    :aria-label="`Preview of ${activeCandidate(rec)?.match_key}`"
                   >
-                    Attach to this match
-                  </button>
+                    <button
+                      type="button"
+                      class="candidate-preview-image"
+                      :aria-label="`Open ${activeCandidate(rec)?.match_key} screenshot in lightbox`"
+                      @click="emit('open-lightbox',
+                        activeCandidate(rec)!.representative_source_file!,
+                        [activeCandidate(rec)!.representative_source_file!],
+                        { [activeCandidate(rec)!.representative_source_file!]: activeCandidate(rec)!.representative_dir_id ?? 0 })"
+                    >
+                      <img
+                        :src="screenshotURL(activeCandidate(rec)!.representative_source_file!, activeCandidate(rec)!.representative_dir_id ?? 0)"
+                        :alt="`Screenshot from ${activeCandidate(rec)?.match_key}`"
+                      >
+                    </button>
+                    <div class="candidate-preview-caption mono">
+                      {{ activeCandidate(rec)?.match_key }}
+                    </div>
+                  </aside>
                 </div>
-                <button
-                  v-if="freshKeyFromAmbiguous(rec)"
-                  type="button"
-                  class="btn ghost candidate-fresh"
-                  @click="onPickCandidate(rec, freshKeyFromAmbiguous(rec)!)"
-                >
-                  Treat as new match
-                </button>
               </div>
             </div>
           </template>
@@ -837,6 +918,25 @@ function updateThumbPosition(e: MouseEvent) {
   gap: 0.55rem;
 }
 
+/* 2-column layout: candidate list on the left, side-by-side preview
+   pane on the right. The pane uses a fixed-ish width so the list
+   re-flows to fit; on narrow viewports the grid collapses to a single
+   column and the pane stacks under the list (still visible, just no
+   longer side-by-side). */
+.candidate-picker-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(220px, 32%, 360px);
+  gap: 1rem;
+  align-items: start;
+}
+
+.candidate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
 .candidate-row {
   display: flex;
   align-items: center;
@@ -846,6 +946,72 @@ function updateThumbPosition(e: MouseEvent) {
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 3px;
+  transition: border-color var(--duration-fast) ease, background var(--duration-fast) ease;
+}
+
+/* Active = the candidate whose preview the side-by-side pane is
+   currently rendering. Highlighting the row makes the link between
+   "what's in the pane" and "which candidate it is" explicit, so the
+   user can flick down the list and watch the pane update without
+   losing track. */
+.candidate-row.active {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+/* Side-by-side preview pane. Sticky-top so it stays visible while the
+   user scrolls a long candidate list. Fixed aspect (16:9) on the
+   image so the slot doesn't reflow as the user hovers between
+   candidates. */
+.candidate-preview-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  position: sticky;
+  top: 0.5rem;
+}
+
+.candidate-preview-image {
+  appearance: none;
+  padding: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  transition: border-color var(--duration-fast) ease;
+}
+
+.candidate-preview-image:hover,
+.candidate-preview-image:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.candidate-preview-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.candidate-preview-caption {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (width <= 720px) {
+  .candidate-picker-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .candidate-preview-pane {
+    position: static;
+  }
 }
 
 /* Candidate thumbnail — 96 × 54 (16:9, OW capture aspect) so users

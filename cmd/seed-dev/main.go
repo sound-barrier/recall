@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"hash/fnv"
 	"image"
 	"image/color"
 	"image/png"
@@ -149,21 +150,25 @@ func main() {
 		}
 	}
 
-	// Companion images for ambiguous screenshots — without an actual
-	// file on disk under the configured screenshots dir, the Unknown
-	// tab's resolution UI renders a missing-image placeholder. The DB
-	// rows alone don't exercise the preview/selection path. We only
-	// generate images for ambiguous filenames (the user only needs to
-	// eyeball those); unknown rows stay file-less since their UX
-	// doesn't require a preview.
+	// Companion images for the ambiguous resolution UI — without
+	// actual files on disk under the configured screenshots dir, the
+	// Unknown tab's preview slot AND the candidate-picker thumbnails
+	// render missing-image placeholders. The DB rows alone don't
+	// exercise the preview path. Generate images for:
+	//   1. each ambiguous source file (the screenshot being resolved)
+	//   2. every source file of each candidate match the ambiguous
+	//      could be attached to (so the side-by-side preview pane
+	//      shows real bytes when the user hovers a candidate)
+	// Unknown rows stay file-less — their UX doesn't need a preview.
 	if len(fx.Ambiguous) > 0 {
 		ssDir := filepath.Join(profiles.ProfileDir(target), "screenshots")
 		if err := os.MkdirAll(ssDir, 0o700); err != nil {
 			exitf("mkdir %s: %v", ssDir, err)
 		}
-		for i, a := range fx.Ambiguous {
-			path := filepath.Join(ssDir, a.Filename)
-			if err := writeSolidColorPNG(path, i, len(fx.Ambiguous)); err != nil {
+		filenames := previewFilenames(fx)
+		for _, f := range filenames {
+			path := filepath.Join(ssDir, f)
+			if err := writeSolidColorPNG(path, f); err != nil {
 				exitf("write %s: %v", path, err)
 			}
 		}
@@ -175,6 +180,7 @@ func main() {
 		if err := ensureScreenshotsDirConfigured(profiles.ProfileDir(target), ssDir); err != nil {
 			exitf("ensure screenshots_dir configured: %v", err)
 		}
+		fmt.Fprintf(os.Stderr, "wrote %d preview images to %s\n", len(filenames), ssDir)
 	}
 
 	fmt.Printf("seeded %d matches (%d reviewed, %d queue-tagged, %d play-mode-tagged, %d unknown, %d ambiguous) into profile %q at %s\n",
@@ -182,17 +188,14 @@ func main() {
 }
 
 // writeSolidColorPNG writes a small (320x180) single-color PNG at path.
-// The color is derived from idx by walking the HSV hue circle, so every
-// ambiguous screenshot in a single seed batch gets a visually distinct
-// fill — handy for eyeballing which row's preview is which in the
-// resolution UI.
-func writeSolidColorPNG(path string, idx, total int) error {
+// The color is derived from a hash of the filename so the same name
+// always produces the same fill across runs (handy for spotting drift)
+// AND the candidate-thumbnail vs ambiguous-source previews stay
+// visually distinct even when they share an ambiguous card. The full
+// HSV hue circle keeps neighboring filenames clearly different.
+func writeSolidColorPNG(path, filename string) error {
 	const w, h = 320, 180
-	hue := 0.0
-	if total > 0 {
-		hue = float64(idx) / float64(total) * 360.0
-	}
-	r, g, b := hsvToRGB(hue, 0.7, 0.9)
+	r, g, b := hsvToRGB(hueFromName(filename), 0.7, 0.9)
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 	c := color.RGBA{R: r, G: g, B: b, A: 0xFF}
 	for y := 0; y < h; y++ {
@@ -207,6 +210,67 @@ func writeSolidColorPNG(path string, idx, total int) error {
 	}
 	defer func() { _ = f.Close() }()
 	return png.Encode(f, img)
+}
+
+// hueFromName maps a filename to an H value in [0, 360) via FNV-1a.
+// FNV is fast, deterministic, and well-distributed enough for visual
+// distinction at the handful-of-files scale we generate here.
+func hueFromName(name string) float64 {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(name))
+	return float64(h.Sum32()%3600) / 10.0
+}
+
+// previewFilenames collects every screenshot filename that needs a
+// companion PNG for the ambiguous resolution UI to render correctly:
+// the ambiguous source files themselves (so the in-card preview slot
+// shows the file being triaged), plus every source file of every
+// candidate match an ambiguous could be attached to (so the
+// side-by-side candidate preview pane renders real bytes). De-dupes
+// + sorts for stable output across runs.
+func previewFilenames(fx app.Fixture) []string {
+	if len(fx.Ambiguous) == 0 {
+		return nil
+	}
+	// Set of candidate match_keys we need to surface previews for.
+	candidateKeys := make(map[string]bool)
+	seen := make(map[string]bool)
+	for _, a := range fx.Ambiguous {
+		seen[a.Filename] = true // ambiguous source file itself
+		for _, c := range a.Candidates {
+			candidateKeys[c.MatchKey] = true
+		}
+	}
+	// Add every source file of each candidate match. We don't know
+	// which file the aggregator will pick as representative (it's
+	// SourceFiles[0] after alphabetical sort), so generate all of
+	// them — a handful per match, bounded by ambiguous*candidates*4.
+	for _, r := range fx.Summaries {
+		if candidateKeys[r.MatchKey] {
+			seen[r.Filename] = true
+		}
+	}
+	for _, r := range fx.Scoreboards {
+		if candidateKeys[r.MatchKey] {
+			seen[r.Filename] = true
+		}
+	}
+	for _, r := range fx.Personals {
+		if candidateKeys[r.MatchKey] {
+			seen[r.Filename] = true
+		}
+	}
+	for _, r := range fx.Ranks {
+		if candidateKeys[r.MatchKey] {
+			seen[r.Filename] = true
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for f := range seen {
+		out = append(out, f)
+	}
+	slices.Sort(out)
+	return out
 }
 
 // hsvToRGB converts H[0,360) S[0,1] V[0,1] to 8-bit RGB. Standard
