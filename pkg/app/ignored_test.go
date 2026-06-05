@@ -44,6 +44,43 @@ func TestIgnoreScreenshot_AddsToSetAndWipesBothKeyShapes(t *testing.T) {
 	}
 }
 
+// Reproduces the user-reported bug: an Unknown card whose match_key is
+// match-<ts> (a tracked match where the OCR failed to extract a map
+// name, so the aggregator surfaces it on the Unknown tab via
+// `!r.data?.map && !r.ambiguous`) — clicking "Delete forever" should
+// wipe THAT match row too, not just the unmatched- / ambiguous- key
+// shapes. Pre-fix: the card never disappeared because the actual
+// match-<ts> row stayed and the next reload re-rendered it.
+func TestIgnoreScreenshot_WipesTrackedMatchKeyTooNotJustUnmatchedAndAmbiguous(t *testing.T) {
+	fs := &fakeStore{
+		Summaries: []db.SummaryRow{
+			// A tracked match whose summary references "broken.png" but
+			// has no Map (the parser failed to OCR it) — surfaces on the
+			// Unknown tab.
+			{Filename: "broken.png", MatchKey: "match-2026-05-10T22-21-11", Map: ""},
+		},
+	}
+	a := NewWithStore(fs)
+
+	if err := a.IgnoreScreenshot("broken.png"); err != nil {
+		t.Fatalf("IgnoreScreenshot: %v", err)
+	}
+
+	// HardDeleteMatch must be called for the actual match_key too —
+	// not just the two name-shaped fallback keys.
+	wantSubset := "match-2026-05-10T22-21-11"
+	found := false
+	for _, k := range fs.HardDeleteCalls {
+		if k == wantSubset {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("HardDeleteCalls = %v, missing actual match key %q", fs.HardDeleteCalls, wantSubset)
+	}
+}
+
 func TestIgnoreScreenshot_IsIdempotent(t *testing.T) {
 	fs := &fakeStore{}
 	a := NewWithStore(fs)

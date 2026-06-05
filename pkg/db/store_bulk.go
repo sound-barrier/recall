@@ -1,5 +1,7 @@
 package db
 
+import "database/sql"
+
 // Bulk read/write paths — LoadAll fans out across the five parent
 // tables; LoadAllFilenames is the union read used by the parse loop
 // to skip already-parsed files; Clear wipes every parent (children
@@ -44,6 +46,45 @@ func (s *SQLStore) LoadAllFilenames() (map[string]bool, error) {
 		}
 	}
 	return out, nil
+}
+
+// LookupMatchKeysForFilename returns every distinct match_key that
+// has a row referencing `filename` across the five parent tables.
+// Used by App.IgnoreScreenshot to wipe the actual match the user
+// clicked on — which may be keyed `match-<ts>` (a tracked match
+// whose parser failed to extract a map name, surfacing it on the
+// Unknown tab), not just the unmatched- / ambiguous- shapes the
+// earlier wipe handled. Idempotent / safe on absent filenames
+// (returns an empty slice, no error).
+func (s *SQLStore) LookupMatchKeysForFilename(filename string) ([]string, error) {
+	seen := map[string]bool{}
+	for _, t := range parentTables {
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		rows, err := s.db.Query(`SELECT DISTINCT match_key FROM `+t+` WHERE filename = ?`, filename)
+		if err != nil {
+			return nil, err
+		}
+		if err := scanMatchKeys(rows, seen); err != nil {
+			return nil, err
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for k := range seen {
+		out = append(out, k)
+	}
+	return out, nil
+}
+
+func scanMatchKeys(rows *sql.Rows, out map[string]bool) error {
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			return err
+		}
+		out[k] = true
+	}
+	return rows.Err()
 }
 
 func (s *SQLStore) collectFilenames(table string, out map[string]bool) error {

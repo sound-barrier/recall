@@ -115,6 +115,42 @@ func (f *Fake) LoadAllFilenames() (map[string]bool, error) {
 	return out, nil
 }
 
+func (f *Fake) LookupMatchKeysForFilename(filename string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	seen := map[string]bool{}
+	for _, r := range f.Summaries {
+		if r.Filename == filename {
+			seen[r.MatchKey] = true
+		}
+	}
+	for _, r := range f.Scoreboards {
+		if r.Filename == filename {
+			seen[r.MatchKey] = true
+		}
+	}
+	for _, r := range f.Personals {
+		if r.Filename == filename {
+			seen[r.MatchKey] = true
+		}
+	}
+	for _, r := range f.Ranks {
+		if r.Filename == filename {
+			seen[r.MatchKey] = true
+		}
+	}
+	for _, r := range f.Unknowns {
+		if r.Filename == filename {
+			seen[r.MatchKey] = true
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for k := range seen {
+		out = append(out, k)
+	}
+	return out, nil
+}
+
 func (f *Fake) LoadAll() (db.Screenshots, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
