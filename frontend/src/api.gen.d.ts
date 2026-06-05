@@ -1748,7 +1748,8 @@ export interface operations {
             query?: {
                 /**
                  * @description Preserve the `ignored_screenshots` suppress list across
-                 *     the wipe. Strict — anything other than `true` / `false`
+                 *     the wipe. Defaults to false (the historical factory-reset
+                 *     semantic). Strict — anything other than `true` / `false`
                  *     / absent returns 400.
                  */
                 keep_ignored?: boolean;
