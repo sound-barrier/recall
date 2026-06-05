@@ -266,6 +266,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/{matchKey}/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match-2026-05-10T22-21-11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Tag a match's queue type
+         * @description Records the queue format the match was played in. Two states:
+         *
+         *       - `role` — 5v5 role queue (locked 1-2-2 composition)
+         *       - `open` — 6v6 open queue (any composition)
+         *
+         *     Absence of a `match_queue` row is the third logical state
+         *     ("queue not set"); use `DELETE` on the same path to revert
+         *     there. Idempotent — repeated identical calls succeed.
+         *
+         *     Drives the radiogroup at the top of the match-detail panel
+         *     and the Queue chip in "Narrow this set."
+         *
+         *     Returns 204 on success, 400 on validation failure
+         *     (`queue_type` outside the enum), 500 on store error.
+         */
+        put: operations["SetMatchQueue"];
+        post?: never;
+        /**
+         * Clear the queue-type tag
+         * @description Removes the `match_queue` row for this match, reverting it
+         *     to the implicit "queue not set" state. Idempotent — clearing
+         *     an unset match returns 204.
+         */
+        delete: operations["ClearMatchQueue"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/parses": {
         parameters: {
             query?: never;
@@ -1210,6 +1257,15 @@ export interface components {
              */
             reviewed_at?: string;
             /**
+             * @description Queue format the match was played in: `role` (5v5 role
+             *     queue) or `open` (6v6 open queue). Omitted entirely when
+             *     the queue hasn't been set (the implicit third state). Set
+             *     via `PUT /api/v1/matches/{matchKey}/queue`, cleared via
+             *     `DELETE` on the same path.
+             * @enum {string}
+             */
+            queue_type?: "role" | "open";
+            /**
              * @description True iff the resolver couldn't pin this screenshot to a
              *     single match (EAD signature match in the 5-30 min
              *     ambiguous window, or multiple candidates inside 30 min).
@@ -1809,6 +1865,74 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Review tag cleared (or already absent). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    SetMatchQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match-2026-05-10T22-21-11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Queue format the match was played in. To revert to
+                     *     "queue not set", call DELETE on this path instead
+                     *     of PUTing an empty string.
+                     * @enum {string}
+                     */
+                    queue_type: "role" | "open";
+                };
+            };
+        };
+        responses: {
+            /** @description Queue type updated. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    ClearMatchQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match-2026-05-10T22-21-11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queue tag cleared (or already absent). */
             204: {
                 headers: {
                     [name: string]: unknown;

@@ -45,10 +45,11 @@ import {
   SetMatchAnnotation,
   SetMatchVisibility,
   SetMatchReview,
+  SetMatchQueue,
   HardDeleteMatch,
   MoveMatches,
 } from './api'
-import type { MatchAnnotationInput, ReviewedBy } from './api'
+import type { MatchAnnotationInput, QueueType, ReviewedBy } from './api'
 import { tallyWLD, screenshotURL } from './match-helpers'
 import { useTabKeyboardNav, TAB_ORDER, type TabId } from './composables/useTabKeyboardNav'
 import { useGlobalKeyboard } from './composables/useGlobalKeyboard'
@@ -678,6 +679,15 @@ async function onSetMatchHidden(matchKey: string, hidden: boolean) {
 async function onSetMatchReview(matchKey: string, reviewedBy: ReviewedBy) {
   try {
     await SetMatchReview(matchKey, reviewedBy)
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+async function onSetMatchQueue(matchKey: string, queueType: QueueType) {
+  try {
+    await SetMatchQueue(matchKey, queueType)
     await load()
   } catch (e) {
     error.value = String(e)
@@ -1662,6 +1672,7 @@ useEventStream({
       @set-match-annotation="onSetMatchAnnotation"
       @set-match-hidden="onSetMatchHidden"
       @set-match-review="onSetMatchReview"
+      @set-match-queue="onSetMatchQueue"
       @set-anchor="onSetAnchor"
       :anchor-key="matchAnchor.anchorKey.value"
     />

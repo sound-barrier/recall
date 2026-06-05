@@ -340,6 +340,47 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
+
+	// Per-match queue-type tag. PUT sets `'role'` (5v5 role queue) or
+	// `'open'` (6v6 open queue). DELETE clears the tag, reverting to
+	// the implicit "queue not set" state. Both directions are
+	// idempotent. Drives the radiogroup at the top of the
+	// match-detail panel and the Queue chip in "Narrow this set."
+	apiMux.HandleFunc("PUT /api/v1/matches/{matchKey}/queue", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("matchKey")
+		if matchKey == "" {
+			http.Error(w, "match_key required in URL", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			QueueType string `json:"queue_type"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if err := a.SetMatchQueue(matchKey, body.QueueType); err != nil {
+			if errors.Is(err, app.ErrInvalidQueueType) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	apiMux.HandleFunc("DELETE /api/v1/matches/{matchKey}/queue", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("matchKey")
+		if matchKey == "" {
+			http.Error(w, "match_key required in URL", http.StatusBadRequest)
+			return
+		}
+		if err := a.ClearMatchQueue(matchKey); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 }
 
 // validateMatchesQueryParams rejects any query param the spec doesn't

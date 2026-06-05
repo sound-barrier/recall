@@ -42,6 +42,10 @@ type Fake struct {
 	// Absence of an entry means "not reviewed."
 	Reviews map[string]db.ReviewState
 
+	// Queues maps match_key → QueueState (queue_type + timestamp).
+	// Absence of an entry means "queue not set."
+	Queues map[string]db.QueueState
+
 	// Ambiguous holds one candidate-list per filename. Tests seed it
 	// directly to verify aggregator behavior for ambiguous screenshots
 	// without going through the resolver / write path.
@@ -229,6 +233,7 @@ func (f *Fake) Clear() error {
 	f.Annotations = nil
 	f.Hidden = nil
 	f.Reviews = nil
+	f.Queues = nil
 	f.Ambiguous = nil
 	return nil
 }
@@ -395,6 +400,38 @@ func (f *Fake) LoadReviews() (map[string]db.ReviewState, error) {
 	defer f.mu.Unlock()
 	out := make(map[string]db.ReviewState, len(f.Reviews))
 	for k, v := range f.Reviews {
+		out[k] = v
+	}
+	return out, nil
+}
+
+func (f *Fake) SetMatchQueue(matchKey, queueType string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.Queues == nil {
+		f.Queues = map[string]db.QueueState{}
+	}
+	prev := f.Queues[matchKey]
+	if prev.SetAt == "" {
+		prev.SetAt = time.Now().UTC().Format(time.RFC3339)
+	}
+	prev.QueueType = queueType
+	f.Queues[matchKey] = prev
+	return nil
+}
+
+func (f *Fake) ClearMatchQueue(matchKey string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.Queues, matchKey)
+	return nil
+}
+
+func (f *Fake) LoadMatchQueues() (map[string]db.QueueState, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string]db.QueueState, len(f.Queues))
+	for k, v := range f.Queues {
 		out[k] = v
 	}
 	return out, nil

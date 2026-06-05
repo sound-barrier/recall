@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import type { MatchRecord, MatchAnnotationInput, ReviewedBy } from '../api'
+import type { MatchRecord, MatchAnnotationInput, QueueType, ReviewedBy } from '../api'
 import {
   screenshotURL,
   detectScreenshotSlots,
@@ -86,6 +86,11 @@ const emit = defineEmits<{
   // routes that to a DELETE on the /review sub-resource. Active
   // chip re-click also emits '' as a toggle-off.
   'set-match-review':      [matchKey: string, reviewedBy: ReviewedBy]
+  // User clicked one of the three Queue Type radio buttons at the
+  // very top of the panel. Empty string means "not set" — the api.ts
+  // wrapper routes that to a DELETE on the /queue sub-resource.
+  // Active chip re-click also emits '' as a toggle-off.
+  'set-match-queue':       [matchKey: string, queueType: QueueType]
   // User flipped the "Set as 'since' anchor" toggle. App.vue's
   // `useMatchAnchor` persists the choice; this card just lifts the
   // intent. Empty string means "clear the anchor."
@@ -331,6 +336,61 @@ function onTagKeydown(e: KeyboardEvent) {
 
 <template>
   <div class="match-expanded">
+    <!-- Queue-type chooser. Frames every downstream stat (winrate,
+         hero pool, SR delta) — surfaces FIRST so the user makes the
+         5v5/6v6 call before reading anything else. Three
+         mutually-exclusive states: "Not set" (default — no
+         match_queue row), "Role Queue" (5v5), "Open Queue" (6v6).
+         Mirrors the review-status radiogroup pattern below. -->
+    <div
+      class="queue-chooser"
+      role="radiogroup"
+      aria-label="Match queue type"
+    >
+      <span class="queue-chooser-eyebrow" aria-hidden="true">Queue</span>
+      <div class="queue-chips">
+        <button
+          type="button"
+          class="queue-chip"
+          data-state="none"
+          role="radio"
+          :aria-checked="!record.queue_type"
+          :tabindex="!record.queue_type ? 0 : -1"
+          title="Queue type not set."
+          @click="!record.queue_type || emit('set-match-queue', record.match_key, '')"
+        >
+          <span class="queue-chip-glyph" aria-hidden="true">⬡</span>
+          <span class="queue-chip-label">Not set</span>
+        </button>
+        <button
+          type="button"
+          class="queue-chip"
+          data-state="role"
+          role="radio"
+          :aria-checked="record.queue_type === 'role'"
+          :tabindex="record.queue_type === 'role' ? 0 : -1"
+          title="5v5 role queue (locked 1-2-2 composition)."
+          @click="emit('set-match-queue', record.match_key, record.queue_type === 'role' ? '' : 'role')"
+        >
+          <span class="queue-chip-glyph" aria-hidden="true">▣</span>
+          <span class="queue-chip-label">Role Queue</span>
+        </button>
+        <button
+          type="button"
+          class="queue-chip"
+          data-state="open"
+          role="radio"
+          :aria-checked="record.queue_type === 'open'"
+          :tabindex="record.queue_type === 'open' ? 0 : -1"
+          title="6v6 open queue (any composition)."
+          @click="emit('set-match-queue', record.match_key, record.queue_type === 'open' ? '' : 'open')"
+        >
+          <span class="queue-chip-glyph" aria-hidden="true">◇</span>
+          <span class="queue-chip-label">Open Queue</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Review-status chooser. Three mutually-exclusive states the
          user can stamp on a match: "Not reviewed" (default — no
          match_reviews row), "Self-reviewed" (the user reviewed the
@@ -1556,6 +1616,125 @@ function onTagKeydown(e: KeyboardEvent) {
    block reads as one "review console" — a stack ABOVE the
    meta-strip with its own architectural identity, not yet
    another row of chips. */
+
+/* Queue-type chooser sits ABOVE the review chooser — the queue
+   frames every downstream stat (5v5 winrate ≠ 6v6 winrate), so the
+   user picks this first. Visually a sibling block to .review-chooser
+   with the same chip grid; the two active accents distinguish "role"
+   from "open" without implying one is better than the other. */
+.queue-chooser {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.6rem 0.5rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 6%, transparent) 0%,
+      transparent 100%);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.4rem;
+}
+
+.queue-chooser-eyebrow {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border-bottom: 1px dashed var(--hairline);
+  padding-bottom: 0.3rem;
+}
+
+.queue-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+
+.queue-chip {
+  appearance: none;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.18rem;
+  padding: 0.55rem 0.5rem 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1px;
+  font-family: var(--mono);
+  color: var(--text-dim);
+  cursor: pointer;
+  position: relative;
+  isolation: isolate;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.queue-chip:hover {
+  color: var(--text);
+  border-color: var(--text-faint);
+  transform: translateY(-1px);
+}
+
+.queue-chip:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.queue-chip-glyph {
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-faint);
+  transition: color 140ms ease, transform 140ms ease;
+}
+
+.queue-chip-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.queue-chip[data-state="none"][aria-checked="true"] {
+  color: var(--text);
+  border-color: var(--text);
+  background: var(--surface-2);
+  box-shadow:
+    inset 0 0 0 1px var(--text-faint),
+    inset 0 1px 0 var(--hairline);
+}
+
+.queue-chip[data-state="role"][aria-checked="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 0 12px -6px var(--accent);
+}
+
+.queue-chip[data-state="open"][aria-checked="true"] {
+  color: var(--win);
+  border-color: var(--win-line);
+  background: var(--win-soft, color-mix(in srgb, var(--win) 12%, transparent));
+  box-shadow:
+    inset 0 0 0 1px var(--win-line),
+    0 0 14px -6px var(--win-line);
+}
+
+.queue-chip[aria-checked="true"] .queue-chip-glyph {
+  color: currentcolor;
+  transform: scale(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .queue-chip,
+  .queue-chip-glyph {
+    transition: none;
+  }
+}
 
 .review-chooser {
   margin: 0 0 1rem;

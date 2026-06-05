@@ -1,5 +1,5 @@
 import type { MatchRecord } from '../api'
-import type { ReviewedByPick } from './useMatchesNarrow'
+import type { QueuePick, ReviewedByPick } from './useMatchesNarrow'
 
 // Per-dimension narrow predicates. Each function is ≤ 15 lines,
 // returns `true` if the record passes that dimension's gate, and is
@@ -101,6 +101,15 @@ export function matchesReviewedBy(r: MatchRecord, picked: Set<ReviewedByPick>): 
   if (!picked.size) return true
   const bucket: ReviewedByPick = r.reviewed_by ?? 'unreviewed'
   return picked.has(bucket)
+}
+
+// matchesQueueType narrows to matches whose queue_type is in the
+// picked set. Unlike matchesReviewedBy there's no "unset" bucket —
+// matches without a queue_type drop out when any pick is active.
+export function matchesQueueType(r: MatchRecord, picked: Set<QueuePick>): boolean {
+  if (!picked.size) return true
+  if (!r.queue_type) return false
+  return picked.has(r.queue_type as QueuePick)
 }
 
 // Returns `true` when the record's parsed_at is strictly AFTER the

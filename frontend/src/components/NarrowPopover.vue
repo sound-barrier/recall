@@ -55,10 +55,11 @@ const emit = defineEmits<{
 const {
   searchText,
   pickedMaps, pickedMapTypes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
+  pickedQueues,
   pickedRange, customFrom, customTo,
   leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
   anchorKey, sinceAnchorActive,
-  pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickRange,
+  pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickQueue, pickRange,
   resetNarrow,
   activeClauseCount, anyNarrow,
   availableMaps, availableMapTypes, availableHeroes, availableRoles, availableResults, availableTags,
@@ -362,6 +363,36 @@ onUnmounted(() => {
                     @click="pickResult(r)"
                   >
                     {{ r }}
+                  </button>
+                </div>
+              </section>
+
+              <!-- Queue type — multi-select OR across role/open.
+                   Empty selection = no filter; either pick excludes
+                   matches whose queue_type hasn't been set. -->
+              <section class="np-section">
+                <div class="np-section-head">
+                  <span class="np-section-eyebrow">Queue</span>
+                  <span class="np-section-meta">
+                    {{ pickedQueues.size === 0 ? 'any' : `${pickedQueues.size} selected` }}
+                  </span>
+                </div>
+                <div class="np-chips">
+                  <button
+                    class="np-chip"
+                    :class="{ picked: pickedQueues.has('role') }"
+                    data-queue-type="role"
+                    @click="pickQueue('role')"
+                  >
+                    Role Queue
+                  </button>
+                  <button
+                    class="np-chip"
+                    :class="{ picked: pickedQueues.has('open') }"
+                    data-queue-type="open"
+                    @click="pickQueue('open')"
+                  >
+                    Open Queue
                   </button>
                 </div>
               </section>
