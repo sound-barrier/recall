@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"recall/pkg/db"
+	"recall/pkg/parser"
 )
 
 // Fixture is the bundle of synthetic per-screenshot-type rows returned
@@ -68,30 +69,52 @@ const (
 	fixtureDateEnd   = "2026-06-03"
 )
 
-// Variation pools. Lower-case to match parse.go and the e2e stub at
-// frontend/tests/e2e/matches-set-workspace.spec.ts. Short on purpose —
-// the dossier reads meaningfully from even a 5-per-role pool.
+// Variation pools. Hero + map pools are derived from the parser's
+// canonical YAML data at init() time — adding a new OW hero or map
+// to pkg/parser/heroes.yaml / maps.yaml auto-populates the fixture
+// without a duplicate edit here. Names are normalized to lower-case
+// + diacritic-strip + colon-strip to match what the real parser
+// writes to data.hero / data.map (and what the frontend's
+// `useOWData.heroDisplayName(stored)` lookup expects on the input
+// side). Game type is derived from the map name at read time via
+// parser.MapType — no fixture-side game-type list.
 var (
-	fixtureMaps = []string{
-		"lijiang tower", "rialto", "kings row", "hanamura",
-		"dorado", "ilios", "oasis", "numbani",
-		"route 66", "blizzard world", "junkertown", "havana",
-	}
-	// Note: there's no fixture-side game-type list any more. Game type
-	// (control / escort / hybrid / etc.) is derived from the map name
-	// at read time via parser.MapType — a 3NF call-out at
-	// `.claude/rules/database.md`. Before the play_mode work, the
-	// fixture incorrectly stuffed game-type strings into SummaryRow.Mode
-	// — the spec at api/openapi.yaml says Mode is the play-mode
-	// (competitive | quickplay) axis. Bug fixed in the same change as
-	// adding play-mode seeding.
+	fixtureMaps     []string
+	fixtureTanks    []string
+	fixtureSupports []string
+	fixtureDPS      []string
+
 	fixtureResults = []string{"victory", "defeat", "draw"}
 	fixtureRanks   = []string{"bronze", "silver", "gold", "platinum", "diamond"}
-
-	fixtureTanks    = []string{"reinhardt", "winston", "dva", "orisa", "sigma"}
-	fixtureSupports = []string{"lucio", "mercy", "ana", "moira", "kiriko"}
-	fixtureDPS      = []string{"soldier", "tracer", "genji", "ashe", "reaper"}
 )
+
+func init() {
+	fixtureTanks = normalizeAll(parser.HeroesByRole["tank"])
+	fixtureSupports = normalizeAll(parser.HeroesByRole["support"])
+	fixtureDPS = normalizeAll(parser.HeroesByRole["dps"])
+	// Flatten MapsByType into a single pool. The order across game
+	// types is stable per Go's map iteration is not — but we shuffle
+	// per seed downstream anyway, so the source order doesn't matter
+	// for determinism (the shuffle is rng-driven).
+	for _, gameTypeMaps := range parser.MapsByType {
+		fixtureMaps = append(fixtureMaps, normalizeAll(gameTypeMaps)...)
+	}
+	// Sort the map pool so subsequent runs see the same source order
+	// before the per-seed shuffle — keeps GenerateMatchFixture
+	// byte-deterministic across processes.
+	sort.Strings(fixtureMaps)
+}
+
+// normalizeAll converts a slice of canonical OW names (from the
+// parser's embedded YAML) into the normalized keys the real parser
+// stores in data.hero / data.map.
+func normalizeAll(canonical []string) []string {
+	out := make([]string, len(canonical))
+	for i, c := range canonical {
+		out[i] = parser.Normalize(c)
+	}
+	return out
+}
 
 // fixtureHourWeights bias the hour-of-day distribution toward evening
 // without making mornings / afternoons impossible. Index = hour (0-23).
@@ -1006,19 +1029,34 @@ func ensureCoverage(rng *rand.Rand, fx *Fixture, queueTypes []string) {
 	cursor := 0
 
 	// Map patches are queue-agnostic — every match can host any map.
-	applyMap := func(rewrite func(s *db.SummaryRow, sb *db.ScoreboardRow)) bool {
-		if cursor >= len(patchOrder) {
-			return false
+	// To avoid stomping on rare maps that only appear once in the
+	// natural distribution (which would silently move a map from
+	// "present" to "missing"), track per-map counts and skip any
+	// slot whose current map is the unique-instance of itself.
+	mapCounts := make(map[string]int, len(fixtureMaps))
+	for _, s := range fx.Summaries {
+		mapCounts[s.Map]++
+	}
+	applyMap := func(gameMap string) bool {
+		for cursor < len(patchOrder) {
+			idx := patchOrder[cursor]
+			s := &fx.Summaries[idx]
+			if mapCounts[s.Map] <= 1 {
+				// Overwriting this slot would drop the only instance
+				// of s.Map from the corpus — keep looking.
+				cursor++
+				continue
+			}
+			mapCounts[s.Map]--
+			mapCounts[gameMap]++
+			s.Map = gameMap
+			if sbIdx, ok := scoreboardByKey[s.MatchKey]; ok {
+				fx.Scoreboards[sbIdx].Map = gameMap
+			}
+			cursor++
+			return true
 		}
-		idx := patchOrder[cursor]
-		cursor++
-		s := &fx.Summaries[idx]
-		var sb *db.ScoreboardRow
-		if sbIdx, ok := scoreboardByKey[s.MatchKey]; ok {
-			sb = &fx.Scoreboards[sbIdx]
-		}
-		rewrite(s, sb)
-		return true
+		return false
 	}
 
 	// Hero cameos must respect role queue: a 5% cameo of an off-role
@@ -1051,13 +1089,7 @@ func ensureCoverage(rng *rand.Rand, fx *Fixture, queueTypes []string) {
 	}
 
 	for _, m := range missingMaps {
-		gameMap := m
-		if !applyMap(func(s *db.SummaryRow, sb *db.ScoreboardRow) {
-			s.Map = gameMap
-			if sb != nil {
-				sb.Map = gameMap
-			}
-		}) {
+		if !applyMap(m) {
 			break
 		}
 	}
