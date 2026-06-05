@@ -78,50 +78,44 @@ func TestSetMatchPlayMode_RequiresMatchKey(t *testing.T) {
 	}
 }
 
-func TestAttachPlayModes_OverridePrefersAuxTable(t *testing.T) {
-	// User override wins over whatever the parser captured.
+func TestAttachPlayModes_UsesOverrideOnly(t *testing.T) {
+	// Pure-override semantics: only the aux-table value surfaces.
+	// Parser-written data.mode does NOT shadow an absent override.
 	overrides := map[string]db.PlayModeState{
 		"k1": {PlayMode: "quickplay", SetAt: "2026-06-01T10:00:00Z"},
+		"k3": {PlayMode: "competitive", SetAt: "2026-06-02T10:00:00Z"},
 	}
-	recs := []MatchRecord{{
-		MatchKey: "k1",
-		Data:     parser.MatchResult{Mode: "competitive"},
-	}}
-	attachPlayModes(recs, overrides)
-	if recs[0].PlayMode != "quickplay" {
-		t.Errorf("override should win, got %q", recs[0].PlayMode)
-	}
-}
-
-func TestAttachPlayModes_FallsBackToParserDataMode(t *testing.T) {
-	overrides := map[string]db.PlayModeState{}
 	recs := []MatchRecord{
 		{MatchKey: "k1", Data: parser.MatchResult{Mode: "competitive"}},
-		{MatchKey: "k2", Data: parser.MatchResult{Mode: "quickplay"}},
-		{MatchKey: "k3", Data: parser.MatchResult{Mode: "unranked"}}, // not in enum → fall through
+		{MatchKey: "k2", Data: parser.MatchResult{Mode: "competitive"}}, // no override
+		{MatchKey: "k3", Data: parser.MatchResult{Mode: "quickplay"}},
 	}
 	attachPlayModes(recs, overrides)
-	if recs[0].PlayMode != "competitive" {
-		t.Errorf("k1 should fall back to data.mode=competitive, got %q", recs[0].PlayMode)
+	if recs[0].PlayMode != "quickplay" {
+		t.Errorf("k1: override should win over data.mode, got %q", recs[0].PlayMode)
 	}
-	if recs[1].PlayMode != "quickplay" {
-		t.Errorf("k2 should fall back to data.mode=quickplay, got %q", recs[1].PlayMode)
+	if recs[1].PlayMode != "" {
+		t.Errorf("k2: no override → must stay empty even with data.mode=competitive, got %q", recs[1].PlayMode)
 	}
-	if recs[2].PlayMode != "" {
-		t.Errorf("k3's unrecognized data.mode shouldn't surface, got %q", recs[2].PlayMode)
+	if recs[2].PlayMode != "competitive" {
+		t.Errorf("k3: override should win, got %q", recs[2].PlayMode)
 	}
 }
 
-func TestAttachPlayModes_FallsBackToRankPresenceImpliesCompetitive(t *testing.T) {
+func TestAttachPlayModes_NoFallbackFromRankPresence(t *testing.T) {
+	// Pre-fix behavior inferred 'competitive' from rank-row presence,
+	// which made the "Not set" UI chip unreachable on any match with
+	// a rank screenshot. New behavior: rank presence does NOT
+	// surface play_mode unless the user has explicitly set the
+	// override.
 	recs := []MatchRecord{{
-		MatchKey: "k1",
-		// No override, no data.mode — but a rank screenshot is in
-		// SourceTypes, which only happens in ranked play.
+		MatchKey:    "k1",
+		Data:        parser.MatchResult{Mode: "competitive"},
 		SourceTypes: map[string]string{"r.png": "rank"},
 	}}
 	attachPlayModes(recs, nil)
-	if recs[0].PlayMode != "competitive" {
-		t.Errorf("rank presence should imply competitive, got %q", recs[0].PlayMode)
+	if recs[0].PlayMode != "" {
+		t.Errorf("no override → must stay empty regardless of rank presence, got %q", recs[0].PlayMode)
 	}
 }
 

@@ -1316,10 +1316,12 @@ export interface components {
             queue_type?: "role" | "open";
             /**
              * @description Match's play mode: `quickplay` (casual) or `competitive`
-             *     (ranked). Derived from a fallback chain: user override
-             *     (match_play_mode) → parser's data.mode → rank-row
-             *     presence implies competitive → empty. Omitted from JSON
-             *     when nothing in the chain produced a value.
+             *     (ranked). Set ONLY from the `match_play_mode` user-
+             *     override aux table — parser-written `data.mode` and
+             *     rank-row presence do not surface here. New matches
+             *     default to "Not set" until the user explicitly toggles
+             *     via the right-panel radiogroup; omitted from JSON when
+             *     no override row exists.
              * @enum {string}
              */
             play_mode?: "quickplay" | "competitive";

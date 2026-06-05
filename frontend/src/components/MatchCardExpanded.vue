@@ -417,7 +417,7 @@ function onTagKeydown(e: KeyboardEvent) {
           role="radio"
           :aria-checked="!record.play_mode"
           :tabindex="!record.play_mode ? 0 : -1"
-          title="No override; fall back to parser + rank-row inference."
+          title="No play mode set."
           @click="!record.play_mode || emit('set-match-play-mode', record.match_key, '')"
         >
           <span class="play-mode-chip-glyph" aria-hidden="true">⬡</span>
