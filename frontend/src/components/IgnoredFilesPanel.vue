@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue'
 
 import type { IgnoredScreenshot } from '../api'
 
@@ -27,10 +27,18 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  close:         []
-  restore:       [filename: string]
-  'restore-all': []
-  'run-parse':   []
+  close:          []
+  restore:        [filename: string]
+  'restore-all':  []
+  'run-parse':    []
+  // Forwarded to App.vue's openLightbox handler. `files` is the
+  // full ignored-files filename list so the lightbox can ←/→
+  // navigate across every row without leaving the modal; `dirIDs`
+  // is all-zero because the suppress list doesn't track per-file
+  // screenshot dirs (the App falls back to the currently-configured
+  // dir, which is correct for ignored files — they live in
+  // whichever folder Recall is reading from).
+  'open-lightbox': [filename: string, files: readonly string[], dirIDs: Record<string, number>]
 }>()
 
 // "Re-enable all" two-step arm. First click arms (3 s auto-disarm);
@@ -70,9 +78,80 @@ function onRestoreClick(filename: string) {
   emit('restore', filename)
 }
 
-// Focus + Escape, copied in spirit from MatchScreenshotLightbox.
-// Capture-phase listener wins over any panel-level Escape on the
-// Settings view underneath.
+// Click the thumbnail → fullscreen lightbox. App.vue's openLightbox
+// owns the MatchScreenshotLightbox instance; we pass the full
+// filename list so the lightbox's ←/→ arrow nav cycles across
+// every ignored row.
+const filenameList = computed(() => props.screenshots.map(s => s.filename))
+function onThumbClick(filename: string) {
+  emit('open-lightbox', filename, filenameList.value, {})
+}
+
+// Hover thumbnail — cursor-anchored 360×203 floating peek, mirrors
+// the Unknown tab's pattern (UnknownMapsView.vue). Teleport'd to
+// body so its `position: fixed` anchors to the viewport, not the
+// modal's transform-context, and so its z-index can sit above the
+// modal backdrop. mouseenter on a row sets the hovered key + the
+// img src; mousemove tracks the cursor; mouseleave clears.
+const hoveredFilename = ref<string | null>(null)
+const hoveredSrc = ref('')
+const thumbX = ref(0)
+const thumbY = ref(0)
+const THUMB_W = 360
+const THUMB_H = 203
+const CURSOR_GAP = 18
+
+function onHoverRow(filename: string, e: MouseEvent) {
+  hoveredFilename.value = filename
+  hoveredSrc.value = props.screenshotURL(filename)
+  updateThumbPosition(e)
+}
+
+function onMoveRow(filename: string, e: MouseEvent) {
+  if (hoveredFilename.value !== filename) return
+  updateThumbPosition(e)
+}
+
+function onLeaveRow() {
+  hoveredFilename.value = null
+  hoveredSrc.value = ''
+}
+
+// Anchor the thumb below-right of the cursor. Edge-flip horizontally /
+// vertically so it never gets clipped against the viewport edge —
+// matches the UnknownMapsView helper.
+function updateThumbPosition(e: MouseEvent) {
+  let x = e.clientX + CURSOR_GAP
+  let y = e.clientY + CURSOR_GAP
+  if (typeof window !== 'undefined') {
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    if (x + THUMB_W + CURSOR_GAP > vw) x = e.clientX - THUMB_W - CURSOR_GAP
+    if (y + THUMB_H + CURSOR_GAP > vh) y = e.clientY - THUMB_H - CURSOR_GAP
+    if (x < CURSOR_GAP) x = CURSOR_GAP
+    if (y < CURSOR_GAP) y = CURSOR_GAP
+  }
+  thumbX.value = x
+  thumbY.value = y
+}
+
+// Reactive gate the Teleport binds to. Hides the hover thumb when
+// the panel closes mid-hover (mouseleave never fires if the modal
+// unmounts under the cursor).
+const showHoverThumb = computed(() => {
+  if (!props.isOpen) return false
+  if (!hoveredFilename.value) return false
+  if (!hoveredSrc.value) return false
+  return true
+})
+
+// Focus + Escape. Bubble-phase (NOT capture) so that a child modal
+// stacked on top — specifically MatchScreenshotLightbox, opened from
+// the row thumbnails — gets Esc first via its own capture-phase
+// listener and can close itself with stopImmediatePropagation
+// without the panel also reacting. Per the gotcha documented in
+// frontend/CLAUDE.md: stacking two capture-phase Esc handlers makes
+// the inner one unreachable.
 const dialogRef = ref<HTMLElement | null>(null)
 const lastFocus = ref<HTMLElement | null>(null)
 
@@ -80,7 +159,7 @@ function onKeydown(e: KeyboardEvent) {
   if (!props.isOpen) return
   if (e.key === 'Escape') {
     e.preventDefault()
-    e.stopImmediatePropagation()
+    e.stopPropagation()
     emit('close')
   }
 }
@@ -93,13 +172,18 @@ watch(
         document.activeElement instanceof HTMLElement
           ? document.activeElement
           : null
-      document.addEventListener('keydown', onKeydown, true)
+      document.addEventListener('keydown', onKeydown)
       await nextTick()
       dialogRef.value?.focus()
     } else if (!next && prev) {
-      document.removeEventListener('keydown', onKeydown, true)
+      document.removeEventListener('keydown', onKeydown)
       disarm()
       showRestoredFooter.value = false
+      // Clear hover state too — if the user closes the modal mid-
+      // hover the cursor never crosses the row boundary and the
+      // stale thumb would otherwise stay on screen.
+      hoveredFilename.value = null
+      hoveredSrc.value = ''
       await nextTick()
       lastFocus.value?.focus()
       lastFocus.value = null
@@ -197,15 +281,23 @@ function formatIgnoredAt(ts: string): string {
               v-for="s in screenshots"
               :key="s.filename"
               class="ignored-row"
+              @mouseenter="(e) => onHoverRow(s.filename, e)"
+              @mousemove="(e) => onMoveRow(s.filename, e)"
+              @mouseleave="onLeaveRow"
             >
-              <div class="ignored-thumb-wrap">
+              <button
+                type="button"
+                class="ignored-thumb-btn"
+                :aria-label="`Open ${s.filename} in fullscreen lightbox`"
+                @click="onThumbClick(s.filename)"
+              >
                 <img
                   :src="screenshotURL(s.filename)"
                   :alt="s.filename"
                   class="ignored-thumb"
                   loading="lazy"
                 >
-              </div>
+              </button>
               <div class="ignored-meta">
                 <div class="ignored-filename mono">{{ s.filename }}</div>
                 <div class="ignored-timestamp">{{ formatIgnoredAt(s.ignored_at) }}</div>
@@ -235,6 +327,20 @@ function formatIgnoredAt(ts: string): string {
       </div>
     </div>
   </transition>
+
+  <!-- Cursor-anchored floating hover thumb. Teleport to body so its
+       `position: fixed` anchors to the viewport (not the modal's
+       transform context) and so it can stack above the backdrop via
+       its own z-index. Mirrors the UnknownMapsView pattern. -->
+  <Teleport to="body">
+    <img
+      v-if="showHoverThumb"
+      :src="hoveredSrc"
+      :alt="`Preview of ${hoveredFilename}`"
+      class="ignored-hover-thumb"
+      :style="{ left: thumbX + 'px', top: thumbY + 'px' }"
+    >
+  </Teleport>
 </template>
 
 <style scoped>
@@ -362,13 +468,25 @@ function formatIgnoredAt(ts: string): string {
   border-bottom: none;
 }
 
-.ignored-thumb-wrap {
+.ignored-thumb-btn {
+  appearance: none;
   width: 96px;
   height: 54px;
+  padding: 0;
+  flex-shrink: 0;
   overflow: hidden;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 2px;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) ease, transform var(--duration-fast) ease;
+}
+
+.ignored-thumb-btn:hover,
+.ignored-thumb-btn:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+  transform: scale(1.02);
 }
 
 .ignored-thumb {
@@ -376,6 +494,34 @@ function formatIgnoredAt(ts: string): string {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Floating cursor-anchored hover thumb. Position is set inline from
+   the script via `top` / `left`; z-index sits above the modal
+   backdrop (1090). Pointer-events: none so it never blocks the row's
+   mouseenter / mouseleave events even when the cursor briefly skims
+   the thumb's bounding box. */
+.ignored-hover-thumb {
+  position: fixed;
+  z-index: 1200;
+  width: 360px;
+  height: 203px;
+  object-fit: cover;
+  border: 1px solid var(--border-strong, var(--border));
+  border-radius: 4px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 50%);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ignored-thumb-btn {
+    transition: none;
+  }
+
+  .ignored-thumb-btn:hover,
+  .ignored-thumb-btn:focus-visible {
+    transform: none;
+  }
 }
 
 .ignored-meta {

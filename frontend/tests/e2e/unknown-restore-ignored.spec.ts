@@ -227,6 +227,54 @@ test.describe('restore ignored screenshots — Settings → Advanced panel', () 
     expect(clearURL).not.toContain('keep_ignored=true')
   })
 
+  test('Hovering a row pops a floating thumb; clicking the thumbnail opens the lightbox with arrow-nav across all ignored files', async ({ page }) => {
+    await page.route(/\/api\/v1\/matches(\?.*)?$/, async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([seedMatch()]),
+      })
+    })
+    await page.route('**/api/v1/screenshots/ignored', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([
+          { filename: 'first.png',  ignored_at: '2026-06-04T15:00:00Z' },
+          { filename: 'second.png', ignored_at: '2026-06-04T14:00:00Z' },
+        ]),
+      })
+    })
+
+    await page.goto('/')
+    await page.locator('#tab-settings').click()
+    await page.locator('summary.advanced-summary').click()
+    await page.getByRole('button', { name: 'Manage…' }).click()
+
+    // Hover the first row → cursor-anchored floating thumb appears.
+    await page.locator('.ignored-row').first().hover()
+    const hoverThumb = page.locator('.ignored-hover-thumb')
+    await expect(hoverThumb).toBeVisible()
+    await expect(hoverThumb).toHaveAttribute('src', /first\.png/)
+
+    // Click the thumbnail → lightbox opens on that file.
+    await page.locator('.ignored-row').first().locator('.ignored-thumb-btn').click()
+    const lightbox = page.locator('.lightbox-backdrop')
+    await expect(lightbox).toBeVisible()
+    await expect(lightbox.locator('img.lightbox-img')).toHaveAttribute('src', /first\.png/)
+
+    // → arrow advances to the second ignored file (lightbox was
+    // handed the full ignored-files list as its navigation set).
+    await page.keyboard.press('ArrowRight')
+    await expect(lightbox.locator('img.lightbox-img')).toHaveAttribute('src', /second\.png/)
+    // ← goes back.
+    await page.keyboard.press('ArrowLeft')
+    await expect(lightbox.locator('img.lightbox-img')).toHaveAttribute('src', /first\.png/)
+
+    // Esc closes the lightbox; the Manage panel beneath stays open.
+    await page.keyboard.press('Escape')
+    await expect(lightbox).toHaveCount(0)
+    await expect(page.locator('.ignored-backdrop')).toBeVisible()
+  })
+
   test('Ticking the opt-out checkbox routes through keep_ignored=true', async ({ page }) => {
     let clearURL = ''
     // Glob includes the **? suffix so the route matches both the
