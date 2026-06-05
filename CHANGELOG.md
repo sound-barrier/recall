@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.9.0](https://github.com/sound-barrier/recall/compare/v0.8.0...v0.9.0) (2026-06-05)
+
+
+### Features
+
+* **dev:** chaos seeding via CHAOS=&lt;0..1&gt; on make seed-dev ([c988dd5](https://github.com/sound-barrier/recall/commit/c988dd58710315f1d99d3d8dff595fc072551b0b))
+* **dev:** default seed-dev to flex + cover every map and hero ([acfcdc2](https://github.com/sound-barrier/recall/commit/acfcdc2bb7e301f2d5e71567c5aaa830d0a13268))
+* **dev:** realistic seed-dev distribution + make seed-clear / SEED=time ([9e12982](https://github.com/sound-barrier/recall/commit/9e12982c1988142039bb0fd947348ee096d80e1c))
+* **dev:** seed-dev covers the full canonical OW roster ([bb0c7ee](https://github.com/sound-barrier/recall/commit/bb0c7ee84c4c3b558c9b1a5829062f1c1c58e3f4))
+* **dev:** seed-dev draws realistic W/L/D + ~1.5% reviewed matches ([c69f729](https://github.com/sound-barrier/recall/commit/c69f7297844a02f20a324a4dfeb63af0bd310d46))
+* **dev:** seed-dev models 1-4 hero swaps per match ([66d8cac](https://github.com/sound-barrier/recall/commit/66d8cac7df61e2b7831869f81ac103dfeca90d90))
+* **dev:** seed-dev models real screenshot coverage gaps ([49d6f50](https://github.com/sound-barrier/recall/commit/49d6f502a5f547fa6f76aa570275aaf188502a8f))
+* **dev:** seed-dev tool for populating a profile with synthetic matches ([371f96b](https://github.com/sound-barrier/recall/commit/371f96b272e31da3cb10c070c4edb334666ead8d))
+* **dev:** seed-dev writes companion PNGs for ambiguous screenshots ([3e6f88b](https://github.com/sound-barrier/recall/commit/3e6f88b15de1258b113e9209471f93652e81616e))
+* **dossier:** non-default widgets for play-mode share + winrate ([a306866](https://github.com/sound-barrier/recall/commit/a306866a14a7fd0c7cd708a104df25c865bc6b39))
+* **matches:** combined Sort + Group dropdown above the leaves list (PR 6) ([8a777f1](https://github.com/sound-barrier/recall/commit/8a777f1073c5321e5dc2833e3c84bd2affd04b1a))
+* **matches:** density toggle for the leaves list (PR E) ([82a9c7d](https://github.com/sound-barrier/recall/commit/82a9c7d2bcb65ebcac574f9720f7c28c24362c38))
+* **matches:** persistent filter rail at ≥1400 px (PR 7) ([14ec846](https://github.com/sound-barrier/recall/commit/14ec846d8d96201c6303877f85a5115b579fe609))
+* **matches:** quickplay/competitive play-mode toggle + narrow filter ([6219e6b](https://github.com/sound-barrier/recall/commit/6219e6b609babdf3f1abb42868bec9c0b6feec60))
+* **matches:** role/open queue type per match — toggle + narrow filter ([096b8f0](https://github.com/sound-barrier/recall/commit/096b8f0ace10be91d335e63a558a5d6a5ed46c92))
+* **matches:** sticky Campaign Log with compact-when-sticky (PR 5) ([f198de8](https://github.com/sound-barrier/recall/commit/f198de8aa997254e63eeda16ad3ac641fe93d60e))
+* **styles:** tokenize spacing / type / motion (PR A of the design-system pass) ([256a8bd](https://github.com/sound-barrier/recall/commit/256a8bdba9e23999c89ecb293d0a4a294082e1ac))
+* **unknown:** "Delete forever" suppress-list with new screenshots API (PR 4) ([0b1d9f3](https://github.com/sound-barrier/recall/commit/0b1d9f3f79bbdb4b5eb39f3b0cbdad1a9a0541e6))
+* **unknown:** hover thumb + click-to-lightbox on Manage ignored panel ([807a889](https://github.com/sound-barrier/recall/commit/807a889aad0b3fddfd4436770928da612b6c2f81))
+* **unknown:** in-page section nav + record deferred design-pass items (PR F) ([9f1a8f6](https://github.com/sound-barrier/recall/commit/9f1a8f6fdb48e78efd84e6e65522b33e14b58654))
+* **unknown:** long-press touch fallback for the hover thumbnail (PR 2) ([301ae4a](https://github.com/sound-barrier/recall/commit/301ae4a79866c72329229c7a5744db0803041c0e))
+* **unknown:** restore "Delete forever"d screenshots from Settings ([624a771](https://github.com/sound-barrier/recall/commit/624a771ced921470231e9033016cc4832edae345))
+* **unknown:** side-by-side candidate preview + auto-open source on expand ([7560f0a](https://github.com/sound-barrier/recall/commit/7560f0afdaaafd8c76ec7308bdd60312f87baaf7))
+* **unknown:** visual candidate thumbnails in the ambiguous picker (PR 3) ([9512d6b](https://github.com/sound-barrier/recall/commit/9512d6b9655ae4cab1bf4b2680707d115ab815b0))
+
+
+### Bug Fixes
+
+* **a11y:** day-theme color-contrast pass — close TECHNICAL_DEBT.md #20 ([c085321](https://github.com/sound-barrier/recall/commit/c0853214df80caafd1052688f8d24777846ea940))
+* **a11y:** defer day-theme axe to follow-up; route seg-btn through text-on-accent token ([24ea0a1](https://github.com/sound-barrier/recall/commit/24ea0a1df4bdfa0ef716029fb81bea115f762858))
+* **a11y:** light-text override for .alert-cta in day theme ([e730173](https://github.com/sound-barrier/recall/commit/e7301732c5d2fb03d3410d247022cb330db1b610))
+* **a11y:** touch targets / live regions / form polish / themed axe (PR C) ([01e0d69](https://github.com/sound-barrier/recall/commit/01e0d691ef18456c054e95e30f3deda16a3da67b))
+* **api:** drop the strict pattern; rely on minLength/maxLength only ([94f29a1](https://github.com/sound-barrier/recall/commit/94f29a1ed8370fd4e5ffb1eb8cf478a3dde26c56))
+* **api:** drop unused default: false on keep_ignored param ([1ac2094](https://github.com/sound-barrier/recall/commit/1ac20943f347610c488a4229d8730aa29cb5a391))
+* **api:** handler-side filename pattern validation matches the spec ([6319c6e](https://github.com/sound-barrier/recall/commit/6319c6e59c77dae92448de998bd73a2f6aa64a64))
+* **db:** Store.Clear must wipe match_reviews + annotations + hidden + ambiguous ([a1664e8](https://github.com/sound-barrier/recall/commit/a1664e8180f6573537147b8893ba98f424c6101a))
+* **dev:** role-queue matches lock the player to one role ([2d78dbb](https://github.com/sound-barrier/recall/commit/2d78dbb05c25e0de1a921f9eb01b6e6bf17e0282))
+* **lint:** drop the unused POPOVER_WIDTH_ESTIMATE constant ([7787199](https://github.com/sound-barrier/recall/commit/77871994a5b805d8f862afad273622f99bc1c92a))
+* **matches:** MatchDetailPanel re-emits set-match-queue + set-match-play-mode ([8a69fd8](https://github.com/sound-barrier/recall/commit/8a69fd8d71f8c84fb022da9f2692e91080812752))
+* **matches:** play_mode is override-only — "Not set" defaults + sticks ([6e1af69](https://github.com/sound-barrier/recall/commit/6e1af69f9c6730cbb16540a6cf963727e4403d5f))
+* **security:** reject path separators + NUL in screenshot filenames ([30fccc1](https://github.com/sound-barrier/recall/commit/30fccc1bd40539b602fc5974b0bb5b8bb3bfde66))
+* **unknown:** Delete forever wipes the actual match_key, not just unmatched-/ambiguous- ([2588dfb](https://github.com/sound-barrier/recall/commit/2588dfb638600dce4dc50be1232f92059805b773))
+
+
+### Refactors
+
+* **shell:** commit to numbered-tab typesetting + dialog landmark (PR D) ([cddcea4](https://github.com/sound-barrier/recall/commit/cddcea4e32fa0b10252861ad81795d33b3cadf43))
+
+
+### Documentation
+
+* **debt:** record day-theme axe pass as item 20 ([bb693b5](https://github.com/sound-barrier/recall/commit/bb693b5d622df7c930feafc7f845b03805112745))
+
 ## [0.8.0](https://github.com/sound-barrier/recall/compare/v0.7.0...v0.8.0) (2026-06-04)
 
 
