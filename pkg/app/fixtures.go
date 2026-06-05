@@ -36,6 +36,19 @@ type Fixture struct {
 	// rank-presence chain — the seeded corpus uses the override path
 	// exclusively so the aux table populates predictably).
 	PlayModes []PlayModeSeed
+	// Unknowns are screenshots the parser couldn't classify — modeled
+	// as ~2% of N. The seed tool inserts each via Store.UpsertUnknown
+	// so the Unknown tab has something to render for triage-flow
+	// eyeballing. Each gets an `unmatched-<filename>` match key.
+	Unknowns []db.UnknownRow
+	// Ambiguous are scoreboard-class screenshots whose match resolver
+	// landed on multiple candidate matches — modeled as ~1% of N. The
+	// seed tool inserts the scoreboard via UpsertScoreboard with an
+	// `ambiguous-<filename>` match key AND calls Store.ApplyAmbiguity
+	// to populate the candidate list. Each carries 2-3 candidates
+	// pointing at real seeded match_keys so the resolver UI has
+	// realistic ties to disambiguate.
+	Ambiguous []AmbiguousSeed
 }
 
 // ReviewSeed pairs a match_key with the reviewer kind ("self" or
@@ -58,6 +71,16 @@ type QueueSeed struct {
 type PlayModeSeed struct {
 	MatchKey string
 	PlayMode string
+}
+
+// AmbiguousSeed pairs an `ambiguous-<filename>` screenshot's filename
+// with the candidate match list the seed tool should write via
+// Store.ApplyAmbiguity. The accompanying scoreboard row is emitted
+// into Fixture.Scoreboards with match_key = "ambiguous-" + Filename so
+// the read path attaches the candidates to it.
+type AmbiguousSeed struct {
+	Filename   string
+	Candidates []db.AmbiguousCandidate
 }
 
 // Date range the synthetic corpus covers. Hardcoded to a year-to-date
@@ -788,6 +811,15 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 		PlayModes:   make([]PlayModeSeed, 0, n),
 	}
 
+	// Per-summary parallel slices for queue type + play mode. Built
+	// during the main loop so summary index → planned[] index stays
+	// aligned even when the per-match dice rolls drop summaries (the
+	// pre-computed queueTypes/playModes slices are indexed by planned[],
+	// not by fx.Summaries — using them by summary index would
+	// silently miscount once dice rolls land).
+	summaryQueueTypes := make([]string, 0, n)
+	summaryPlayModes := make([]string, 0, n)
+
 	var prevDay, prevHero string
 	for i, t := range planned {
 		day := t.Format("2006-01-02")
@@ -825,25 +857,23 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 			})
 		}
 
-		fx.Summaries = append(fx.Summaries, db.SummaryRow{
-			Filename:               "summary-" + ts + ".png",
-			MatchKey:               key,
-			Map:                    gameMap,
-			Mode:                   playMode,
-			Hero:                   primary.Hero,
-			Result:                 result,
-			FinalScore:             fmt.Sprintf("%d-%d", rng.Intn(5), rng.Intn(5)),
-			Date:                   day,
-			FinishedAt:             finishedAt,
-			GameLength:             gameLength,
-			PerfElimTotal:          elims,
-			PerfElimAvgPer10Min:    float64(elims) * 10.0 / float64(gameMinutes),
-			PerfAssistsTotal:       assists,
-			PerfAssistsAvgPer10Min: float64(assists) * 10.0 / float64(gameMinutes),
-			PerfDeathsTotal:        deaths,
-			PerfDeathsAvgPer10Min:  float64(deaths) * 10.0 / float64(gameMinutes),
-			HeroesPlayed:           heroesPlayed,
-		})
+		// Per-match screenshot-type dice. Models realistic capture
+		// habits: SUMMARY is the most common (~95% — post-match screen
+		// is what the user almost always remembers to grab), TEAMS
+		// ~80% (requires opening the scoreboard), PERSONAL ~70%
+		// (Tab during the game), RANK ~15% (only at end-of-game
+		// rank-up screens). Independent rolls so a match can land
+		// in any combination — including missing-summary and
+		// missing-teams cases the dossier needs to handle.
+		// Floor: if all four roll false, force summary so every
+		// planned match has at least one screenshot row.
+		hasSummary := rng.Float64() < 0.95
+		hasTeams := rng.Float64() < 0.80
+		hasPersonal := rng.Float64() < 0.70
+		hasRank := rng.Float64() < 0.15
+		if !hasSummary && !hasTeams && !hasPersonal && !hasRank {
+			hasSummary = true
+		}
 
 		damage := 4000 + rng.Intn(12000)
 		healing := 0
@@ -854,21 +884,48 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 		case "tank":
 			mitigation = 5000 + rng.Intn(12000)
 		}
-		fx.Scoreboards = append(fx.Scoreboards, db.ScoreboardRow{
-			Filename:     "scoreboard-" + ts + ".png",
-			MatchKey:     key,
-			Map:          gameMap,
-			Mode:         playMode,
-			Hero:         primary.Hero,
-			Eliminations: elims,
-			Assists:      assists,
-			Deaths:       deaths,
-			Damage:       damage,
-			Healing:      healing,
-			Mitigation:   mitigation,
-		})
 
-		if rng.Float64() < 0.6 {
+		if hasSummary {
+			fx.Summaries = append(fx.Summaries, db.SummaryRow{
+				Filename:               "summary-" + ts + ".png",
+				MatchKey:               key,
+				Map:                    gameMap,
+				Mode:                   playMode,
+				Hero:                   primary.Hero,
+				Result:                 result,
+				FinalScore:             fmt.Sprintf("%d-%d", rng.Intn(5), rng.Intn(5)),
+				Date:                   day,
+				FinishedAt:             finishedAt,
+				GameLength:             gameLength,
+				PerfElimTotal:          elims,
+				PerfElimAvgPer10Min:    float64(elims) * 10.0 / float64(gameMinutes),
+				PerfAssistsTotal:       assists,
+				PerfAssistsAvgPer10Min: float64(assists) * 10.0 / float64(gameMinutes),
+				PerfDeathsTotal:        deaths,
+				PerfDeathsAvgPer10Min:  float64(deaths) * 10.0 / float64(gameMinutes),
+				HeroesPlayed:           heroesPlayed,
+			})
+			summaryQueueTypes = append(summaryQueueTypes, queueType)
+			summaryPlayModes = append(summaryPlayModes, playMode)
+		}
+
+		if hasTeams {
+			fx.Scoreboards = append(fx.Scoreboards, db.ScoreboardRow{
+				Filename:     "scoreboard-" + ts + ".png",
+				MatchKey:     key,
+				Map:          gameMap,
+				Mode:         playMode,
+				Hero:         primary.Hero,
+				Eliminations: elims,
+				Assists:      assists,
+				Deaths:       deaths,
+				Damage:       damage,
+				Healing:      healing,
+				Mitigation:   mitigation,
+			})
+		}
+
+		if hasPersonal {
 			fx.Personals = append(fx.Personals, db.PersonalRow{
 				Filename: "personal-" + ts + ".png",
 				MatchKey: key,
@@ -881,7 +938,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 			})
 		}
 
-		if rng.Float64() < 0.4 {
+		if hasRank {
 			fx.Ranks = append(fx.Ranks, db.RankRow{
 				Filename:      "rank-" + ts + ".png",
 				MatchKey:      key,
@@ -909,7 +966,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	// Skipped for one-trick / one-role — they can't cover everything
 	// by definition.
 	if profile.style == styleFlex && len(fx.Summaries) > 0 {
-		ensureCoverage(rng, &fx, queueTypes)
+		ensureCoverage(rng, &fx, summaryQueueTypes)
 	}
 
 	// Reviews: ~1.5% of matches get a review row. ~70% of those are
@@ -932,16 +989,14 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 		})
 	}
 
-	// Queue types: copy the pre-computed per-match queueTypes slice
-	// into QueueSeed entries indexed by summary order. The main loop
-	// emits one summary per planned[i], so summaries[i] aligns with
-	// queueTypes[i]. Aggregation conflict extras share match_keys
-	// with originals; we dedupe so each distinct match_key gets one
-	// queue assignment.
+	// Queue types: each summary captured its queueType at emit time
+	// via the summaryQueueTypes parallel slice, so indices align even
+	// when the dice rolls drop summaries. Dedupe on match_key so
+	// any synthetic aggregation extras don't double-tag.
 	queueSeen := make(map[string]bool, len(fx.Summaries))
 	for i, s := range fx.Summaries {
-		if i >= len(queueTypes) {
-			break // aggregation conflict extras live beyond the pre-pick range
+		if i >= len(summaryQueueTypes) {
+			break // ambiguous scoreboards appended after the main loop
 		}
 		if queueSeen[s.MatchKey] {
 			continue
@@ -949,22 +1004,19 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 		queueSeen[s.MatchKey] = true
 		fx.Queues = append(fx.Queues, QueueSeed{
 			MatchKey:  s.MatchKey,
-			QueueType: queueTypes[i],
+			QueueType: summaryQueueTypes[i],
 		})
 	}
 
-	// Play modes: copy the pre-computed per-match playModes slice
-	// into PlayModeSeed entries indexed by summary order. The main
-	// loop emits one summary per planned[i], so summaries[i] aligns
-	// with playModes[i]. The seed tool's SetMatchPlayMode calls
-	// install the user-override row (which the aggregator prefers
-	// over data.mode — both should match since the main loop wrote
-	// playMode into SummaryRow.Mode too, but the override path is
-	// the canonical one the dev seed exercises).
+	// Play modes: same per-summary alignment via summaryPlayModes. The
+	// seed tool's SetMatchPlayMode calls install the user-override row
+	// (which the aggregator prefers over data.mode — both should match
+	// since the main loop wrote playMode into SummaryRow.Mode too, but
+	// the override path is the canonical one the dev seed exercises).
 	pmSeen := make(map[string]bool, len(fx.Summaries))
 	for i, s := range fx.Summaries {
-		if i >= len(playModes) {
-			break // aggregation conflict extras have no pre-picked mode
+		if i >= len(summaryPlayModes) {
+			break
 		}
 		if pmSeen[s.MatchKey] {
 			continue
@@ -972,8 +1024,90 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 		pmSeen[s.MatchKey] = true
 		fx.PlayModes = append(fx.PlayModes, PlayModeSeed{
 			MatchKey: s.MatchKey,
-			PlayMode: playModes[i],
+			PlayMode: summaryPlayModes[i],
 		})
+	}
+
+	// Unknown screenshots: ~2% of N — captures that Tesseract couldn't
+	// classify (corrupted images, non-OW screenshots, partial captures).
+	// Derived RNG (seed+5) so changing the rate doesn't perturb the
+	// main corpus. Each gets a timestamp-shaped filename so the Unknown
+	// tab has realistic-looking rows to triage — the match_key uses
+	// the unmatched- prefix the parser would mint for a file without
+	// a parseable timestamp.
+	// #nosec G404 -- deterministic dev fixture, not security-sensitive
+	unknownRng := rand.New(rand.NewSource(seed + 5))
+	unknownCount := n * 2 / 100
+	for i := 0; i < unknownCount; i++ {
+		dayIdx := sampleWeightedIndex(unknownRng, dayWeights, totalDayW)
+		day := rangeStart.AddDate(0, 0, dayIdx)
+		h := pickWeightedHour(unknownRng)
+		m := unknownRng.Intn(60)
+		s := unknownRng.Intn(60)
+		t := time.Date(day.Year(), day.Month(), day.Day(), h, m, s, 0, time.UTC)
+		filename := "unknown-" + t.Format("2006-01-02T15-04-05") + ".png"
+		fx.Unknowns = append(fx.Unknowns, db.UnknownRow{
+			Filename: filename,
+			MatchKey: NewUnmatchedMatchKey(filename).String(),
+		})
+	}
+
+	// Ambiguous screenshots: ~1% of N — scoreboard captures whose EAD
+	// signature matched multiple candidates in the resolver's window.
+	// Each is emitted as a scoreboard row with an ambiguous- match key
+	// AND an AmbiguousSeed pointing at 2-3 real tracked match_keys
+	// from the main corpus. Skips entirely if the corpus has fewer
+	// than 3 tracked matches (no candidates to point at).
+	// #nosec G404 -- deterministic dev fixture, not security-sensitive
+	ambigRng := rand.New(rand.NewSource(seed + 6))
+	trackedKeys := make([]string, 0, len(fx.Summaries))
+	for _, s := range fx.Summaries {
+		if mk, err := ParseMatchKey(s.MatchKey); err == nil && mk.IsTracked() {
+			trackedKeys = append(trackedKeys, s.MatchKey)
+		}
+	}
+	if len(trackedKeys) >= 3 {
+		ambiguousCount := n / 100
+		for i := 0; i < ambiguousCount; i++ {
+			dayIdx := sampleWeightedIndex(ambigRng, dayWeights, totalDayW)
+			day := rangeStart.AddDate(0, 0, dayIdx)
+			h := pickWeightedHour(ambigRng)
+			m := ambigRng.Intn(60)
+			sc := ambigRng.Intn(60)
+			t := time.Date(day.Year(), day.Month(), day.Day(), h, m, sc, 0, time.UTC)
+			filename := "scoreboard-" + t.Format("2006-01-02T15-04-05") + ".png"
+			matchKey := NewAmbiguousMatchKey(filename).String()
+			// Pick 2-3 candidate tracked match_keys at random; distances
+			// are illustrative (1-30 min, the EAD bridge window).
+			candCount := 2 + ambigRng.Intn(2)
+			perm := ambigRng.Perm(len(trackedKeys))
+			cands := make([]db.AmbiguousCandidate, 0, candCount)
+			for j := 0; j < candCount && j < len(perm); j++ {
+				cands = append(cands, db.AmbiguousCandidate{
+					MatchKey:  trackedKeys[perm[j]],
+					DistanceS: 60 + ambigRng.Intn(29*60),
+				})
+			}
+			// Emit a scoreboard-shaped row so the read path has
+			// something to attach the candidates to. Stats are
+			// uniformly random — the resolver UI doesn't care about
+			// scoreboard contents, only that the row exists.
+			fx.Scoreboards = append(fx.Scoreboards, db.ScoreboardRow{
+				Filename:     filename,
+				MatchKey:     matchKey,
+				Map:          fixtureMaps[ambigRng.Intn(len(fixtureMaps))],
+				Mode:         "competitive",
+				Hero:         fixtureDPS[ambigRng.Intn(len(fixtureDPS))],
+				Eliminations: 6 + ambigRng.Intn(20),
+				Assists:      4 + ambigRng.Intn(12),
+				Deaths:       2 + ambigRng.Intn(9),
+				Damage:       4000 + ambigRng.Intn(12000),
+			})
+			fx.Ambiguous = append(fx.Ambiguous, AmbiguousSeed{
+				Filename:   filename,
+				Candidates: cands,
+			})
+		}
 	}
 
 	return fx
