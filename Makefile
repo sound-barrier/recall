@@ -602,7 +602,7 @@ dev: ## Start hot-reload Wails dev server (macOS or Debian)
 # SEED=time is a sentinel — substitutes the current Unix timestamp so
 # each invocation produces a different shuffle. Any other value
 # (default 1) is passed through verbatim for reproducible seeds.
-N       ?= 100
+N       ?= 500
 PROFILE ?= demo
 SEED    ?= 1
 CHAOS   ?= 0

@@ -175,7 +175,7 @@ make seed-dev N=300 PROFILE=demo FORCE=1 SEED=time
 
 | Make var | Underlying flag | Default | Purpose |
 |---|---|---|---|
-| `N` | `--n` | `100` | Number of matches. Each match writes 1 Summary + 1 Scoreboard, ~60% also write a Personal, ~40% a Rank — mirrors the mixed-coverage shape real parses produce. |
+| `N` | `--n` | `500` | Number of matches. Each match writes 1 Summary + 1 Scoreboard, ~60% also write a Personal, ~40% a Rank — mirrors the mixed-coverage shape real parses produce. Default sized so the full canonical pool (51 heroes × 31 maps) gets enough natural appearances on top of coverage-pass cameos to read densely in the dossier. |
 | `PROFILE` | `--profile` | `demo` | Target profile name. Created if missing. Pass the active profile name to seed your in-use profile (think twice). |
 | `SEED` | `--seed` | `1` | Deterministic RNG seed — same `(N, SEED)` → byte-identical rows. Pass `SEED=time` for a different shuffle every run (Makefile substitutes `$(shell date +%s)`). |
 | `FORCE` | `--force` | *(unset)* | Wipes every row in the target profile before seeding. Without it, a non-empty profile is a hard error. |
@@ -194,10 +194,14 @@ The distribution is tuned to read as one player's season, not a uniform spray:
   afternoon, and late-night samples too. Some days are an evening session,
   others a noon session.
 - **Maps** are top-heavy — per-seed shuffled order + exponential decay
-  weights (factor 0.75). The top map carries ~22% of the corpus; the
-  tail tapers off. Every map in the pool is still guaranteed to appear
-  at least once (see coverage pass below) so UI eyeballing sees every
-  map label / icon.
+  weights (factor 0.75). With the full 31-map canonical pool the top
+  map carries ~25% of the corpus and the tail tapers to under 1%.
+  Every map is still guaranteed to appear at least once (see coverage
+  pass below) so UI eyeballing sees every map label / icon. The pool
+  itself derives from `pkg/parser/maps.yaml` at `init()` time — adding
+  a new OW map to the YAML auto-populates the fixture without
+  touching `pkg/app/fixtures.go`.
+- **Hero pool** derives from `pkg/parser/heroes.yaml` (51 heroes — 14 tank, 14 support, 23 DPS), normalized to the same lower-case keys the real parser writes to `data.hero`. New patch heroes auto-populate when the YAML is updated.
 - **Heroes** follow the `STYLE` flag:
   - **`flex`** (default): 2–3 main heroes **per role** (6–9 mains
     total), plus 10% off-main experiments. A flex-only coverage pass

@@ -221,3 +221,14 @@ func SnapHeroStatKey(hero, rawKey string) string {
 // names, drop a 1-line wrapper here that delegates to
 // `heroDisplayNames[normalize(input)]` / `mapDisplayNames[…]` /
 // `mapTypes[…]`.
+
+// Normalize exposes the parser's internal hero/map name normalization
+// for downstream callers that need to match the form `data.hero` /
+// `data.map` are stored in (lowercase + diacritic-strip + colon-
+// strip + whitespace-collapse). Dev-seed fixtures use this to
+// convert canonical YAML names ("Lúcio", "Soldier: 76", "D.Va")
+// into the stored keys ("lucio", "soldier 76", "dva") so seeded
+// matches behave identically to real parsed data through the
+// aggregator and the frontend's `useOWData.heroDisplayName(stored)`
+// lookup.
+func Normalize(s string) string { return normalize(s) }
