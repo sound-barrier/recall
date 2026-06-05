@@ -46,6 +46,11 @@ type Fake struct {
 	// Absence of an entry means "queue not set."
 	Queues map[string]db.QueueState
 
+	// PlayModes maps match_key → PlayModeState (play_mode +
+	// timestamp). Absence means "no user override" — the aggregator
+	// falls back to data.mode + rank-row presence.
+	PlayModes map[string]db.PlayModeState
+
 	// Ambiguous holds one candidate-list per filename. Tests seed it
 	// directly to verify aggregator behavior for ambiguous screenshots
 	// without going through the resolver / write path.
@@ -234,6 +239,7 @@ func (f *Fake) Clear() error {
 	f.Hidden = nil
 	f.Reviews = nil
 	f.Queues = nil
+	f.PlayModes = nil
 	f.Ambiguous = nil
 	return nil
 }
@@ -432,6 +438,38 @@ func (f *Fake) LoadMatchQueues() (map[string]db.QueueState, error) {
 	defer f.mu.Unlock()
 	out := make(map[string]db.QueueState, len(f.Queues))
 	for k, v := range f.Queues {
+		out[k] = v
+	}
+	return out, nil
+}
+
+func (f *Fake) SetMatchPlayMode(matchKey, playMode string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.PlayModes == nil {
+		f.PlayModes = map[string]db.PlayModeState{}
+	}
+	prev := f.PlayModes[matchKey]
+	if prev.SetAt == "" {
+		prev.SetAt = time.Now().UTC().Format(time.RFC3339)
+	}
+	prev.PlayMode = playMode
+	f.PlayModes[matchKey] = prev
+	return nil
+}
+
+func (f *Fake) ClearMatchPlayMode(matchKey string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.PlayModes, matchKey)
+	return nil
+}
+
+func (f *Fake) LoadMatchPlayModes() (map[string]db.PlayModeState, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make(map[string]db.PlayModeState, len(f.PlayModes))
+	for k, v := range f.PlayModes {
 		out[k] = v
 	}
 	return out, nil

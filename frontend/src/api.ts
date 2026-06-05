@@ -347,6 +347,26 @@ export function SetMatchQueue(matchKey: string, queueType: QueueType): Promise<v
   return _send('PUT', path, { queue_type: queueType }).then(() => undefined)
 }
 
+// Per-match play-mode override (Quickplay vs Competitive). Empty
+// string clears via DELETE, reverting to the aggregator's fallback
+// chain (parser data.mode → rank presence → empty); 'quickplay' or
+// 'competitive' issues a PUT. Both directions idempotent. Mirrors
+// SetMatchQueue's dual-transport shape.
+export type PlayMode = '' | 'quickplay' | 'competitive'
+
+export function SetMatchPlayMode(matchKey: string, playMode: PlayMode): Promise<void> {
+  if (IS_WAILS) {
+    return playMode === ''
+      ? _wails('ClearMatchPlayMode', matchKey)
+      : _wails('SetMatchPlayMode', matchKey, playMode)
+  }
+  const path = `/api/v1/matches/${encodeURIComponent(matchKey)}/play-mode`
+  if (playMode === '') {
+    return _send('DELETE', path).then(() => undefined)
+  }
+  return _send('PUT', path, { play_mode: playMode }).then(() => undefined)
+}
+
 // Soft-delete a match. Reversible: pass hidden=false to restore.
 // Both directions are idempotent — repeated identical calls succeed.
 // Wails-side this dispatches to HideMatch / UnhideMatch (two

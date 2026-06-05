@@ -113,6 +113,17 @@ type Store interface {
 	ClearMatchQueue(matchKey string) error
 	LoadMatchQueues() (map[string]QueueState, error)
 
+	// Per-match play-mode override — 'quickplay' or 'competitive'.
+	// User-set via the right-panel radiogroup; the aggregator falls
+	// back to data.mode (parser-written) when this is absent, and
+	// then to rank-row presence (rank only appears in ranked play)
+	// before giving up. SetMatchPlayMode upserts; ClearMatchPlayMode
+	// deletes; LoadMatchPlayModes returns the full map keyed by
+	// match_key for the aggregator to attach to MatchRecord.
+	SetMatchPlayMode(matchKey, playMode string) error
+	ClearMatchPlayMode(matchKey string) error
+	LoadMatchPlayModes() (map[string]PlayModeState, error)
+
 	// Clear deletes every row in every table — children cascade.
 	Clear() error
 	Close() error
@@ -134,6 +145,17 @@ type ReviewState struct {
 type QueueState struct {
 	QueueType string
 	SetAt     string
+}
+
+// PlayModeState is one row of match_play_mode. `PlayMode` is the
+// CHECK-constrained enum ('quickplay' | 'competitive'); `SetAt` is
+// the server-assigned timestamp captured when the user toggled the
+// value. Acts as an OVERRIDE — the aggregator prefers this when set,
+// otherwise falls back to summary_screenshots.mode + rank-row
+// presence.
+type PlayModeState struct {
+	PlayMode string
+	SetAt    string
 }
 
 // Annotation is one row of match_annotations plus its joined-on child

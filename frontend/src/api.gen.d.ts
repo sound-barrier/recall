@@ -313,6 +313,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/{matchKey}/play-mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match-2026-05-10T22-21-11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Override the match's play mode
+         * @description Records a user override of the match's play mode. Two states:
+         *
+         *       - `quickplay`   — casual game (no SR / rank progress)
+         *       - `competitive` — ranked game (SR applies)
+         *
+         *     Absence of a `match_play_mode` row is the third state
+         *     ("follow the parser's read of data.mode + rank-row presence");
+         *     use `DELETE` on the same path to revert there. Idempotent —
+         *     repeated identical calls succeed.
+         *
+         *     Drives the radiogroup directly below the queue chooser in
+         *     the match-detail panel and the Play mode chip in "Narrow
+         *     this set."
+         *
+         *     Returns 204 on success, 400 on validation failure
+         *     (`play_mode` outside the enum), 500 on store error.
+         */
+        put: operations["SetMatchPlayMode"];
+        post?: never;
+        /**
+         * Clear the play-mode override
+         * @description Removes the `match_play_mode` override row, reverting to the
+         *     fallback chain (parser data.mode → rank-row presence →
+         *     empty). Idempotent — clearing an unset match returns 204.
+         */
+        delete: operations["ClearMatchPlayMode"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/parses": {
         parameters: {
             query?: never;
@@ -1266,6 +1315,15 @@ export interface components {
              */
             queue_type?: "role" | "open";
             /**
+             * @description Match's play mode: `quickplay` (casual) or `competitive`
+             *     (ranked). Derived from a fallback chain: user override
+             *     (match_play_mode) → parser's data.mode → rank-row
+             *     presence implies competitive → empty. Omitted from JSON
+             *     when nothing in the chain produced a value.
+             * @enum {string}
+             */
+            play_mode?: "quickplay" | "competitive";
+            /**
              * @description True iff the resolver couldn't pin this screenshot to a
              *     single match (EAD signature match in the 5-30 min
              *     ambiguous window, or multiple candidates inside 30 min).
@@ -1933,6 +1991,74 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Queue tag cleared (or already absent). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    SetMatchPlayMode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match-2026-05-10T22-21-11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Override play mode for this match. To revert to
+                     *     "follow the parser", call DELETE on this path
+                     *     instead of PUTing an empty string.
+                     * @enum {string}
+                     */
+                    play_mode: "quickplay" | "competitive";
+                };
+            };
+        };
+        responses: {
+            /** @description Play-mode override updated. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    ClearMatchPlayMode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
+                 *     URL-encoded because the value normally contains a colon
+                 *     (e.g. `match-2026-05-10T22-21-11`).
+                 * @example match%3A2026-05-10T22%3A21%3A11
+                 */
+                matchKey: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Play-mode override cleared (or already absent). */
             204: {
                 headers: {
                     [name: string]: unknown;

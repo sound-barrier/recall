@@ -55,6 +55,13 @@ type MatchRecord struct {
 	// sidebar AND the queue chip in the "Narrow this set" filter.
 	QueueType string `json:"queue_type,omitempty"`
 
+	// Play mode — "quickplay" or "competitive". Derived from a
+	// fallback chain: user override (match_play_mode) → parser
+	// data.mode → rank-row-presence implies "competitive" → empty.
+	// Drives the 3-state radiogroup directly below the queue chooser
+	// AND the play-mode chip in "Narrow this set."
+	PlayMode string `json:"play_mode,omitempty"`
+
 	// Ambiguous + Candidates are populated when match_key starts with
 	// "ambiguous-" — the resolver found multiple plausible matches
 	// for the screenshot and is asking the user to pick the right

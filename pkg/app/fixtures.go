@@ -28,6 +28,13 @@ type Fixture struct {
 	// (matches real OW play distribution) so the new toggle + filter
 	// have meaningful data to eyeball against.
 	Queues []QueueSeed
+	// PlayModes names every match_key whose play_mode the seed tool
+	// should upsert via Store.SetMatchPlayMode. ~90% competitive,
+	// ~10% quickplay — users of this tool skew comp. Set on every
+	// match (no fallback through the aggregator's data.mode →
+	// rank-presence chain — the seeded corpus uses the override path
+	// exclusively so the aux table populates predictably).
+	PlayModes []PlayModeSeed
 }
 
 // ReviewSeed pairs a match_key with the reviewer kind ("self" or
@@ -42,6 +49,14 @@ type ReviewSeed struct {
 type QueueSeed struct {
 	MatchKey  string
 	QueueType string
+}
+
+// PlayModeSeed pairs a match_key with the play-mode kind
+// ("quickplay" or "competitive") for the seed tool to upsert via
+// Store.SetMatchPlayMode.
+type PlayModeSeed struct {
+	MatchKey string
+	PlayMode string
 }
 
 // Date range the synthetic corpus covers. Hardcoded to a year-to-date
@@ -62,7 +77,14 @@ var (
 		"dorado", "ilios", "oasis", "numbani",
 		"route 66", "blizzard world", "junkertown", "havana",
 	}
-	fixtureModes   = []string{"control", "escort", "hybrid", "push", "flashpoint", "clash"}
+	// Note: there's no fixture-side game-type list any more. Game type
+	// (control / escort / hybrid / etc.) is derived from the map name
+	// at read time via parser.MapType — a 3NF call-out at
+	// `.claude/rules/database.md`. Before the play_mode work, the
+	// fixture incorrectly stuffed game-type strings into SummaryRow.Mode
+	// — the spec at api/openapi.yaml says Mode is the play-mode
+	// (competitive | quickplay) axis. Bug fixed in the same change as
+	// adding play-mode seeding.
 	fixtureResults = []string{"victory", "defeat", "draw"}
 	fixtureRanks   = []string{"bronze", "silver", "gold", "platinum", "diamond"}
 
@@ -194,9 +216,25 @@ func newPlayerProfile(rng *rand.Rand, style playStyle) playerProfile {
 // hero from the previous match THIS DAY — reset across day boundaries)
 // drives the streak probability so a session of repeated picks like
 // lucio-lucio-reaper-lucio can form naturally.
-func (p playerProfile) pickHero(rng *rand.Rand, prevHero string) (role, hero string) {
+//
+// playMode shifts the per-style weights — in quickplay the player is
+// far more willing to try heroes outside their usual pool. One-tricks
+// branch out across all roles 70% of the time; one-role flexers leave
+// their role 60% of the time; flex players lean into off-mains. In
+// competitive the weights revert to the strict-pool defaults.
+func (p playerProfile) pickHero(rng *rand.Rand, prevHero, playMode string) (role, hero string) {
 	switch p.style {
 	case styleOneTrick:
+		if playMode == "quickplay" {
+			// 30% favorite, 70% any hero from any role.
+			if rng.Float64() < 0.30 {
+				return p.mainRole, p.favoriteHero
+			}
+			allPools := [][]string{fixtureTanks, fixtureSupports, fixtureDPS}
+			pool := allPools[rng.Intn(len(allPools))]
+			h := pool[rng.Intn(len(pool))]
+			return roleOfHero(h), h
+		}
 		if rng.Float64() < 0.95 {
 			return p.mainRole, p.favoriteHero
 		}
@@ -204,6 +242,17 @@ func (p playerProfile) pickHero(rng *rand.Rand, prevHero string) (role, hero str
 		return p.mainRole, p.mainPool[rng.Intn(len(p.mainPool))]
 
 	case styleOneRole:
+		if playMode == "quickplay" {
+			// 40% main-role, 60% any off-role hero. No streak — QP
+			// is where this player branches out.
+			if rng.Float64() < 0.40 {
+				return p.mainRole, p.mainPool[rng.Intn(len(p.mainPool))]
+			}
+			offPools := offRolePools(p.mainRole)
+			off := offPools[rng.Intn(len(offPools))]
+			h := off[rng.Intn(len(off))]
+			return roleOfHero(h), h
+		}
 		// In-role streak: 40% chance of repeating the previous hero
 		if prevHero != "" && roleOfHero(prevHero) == p.mainRole && rng.Float64() < 0.4 {
 			return p.mainRole, prevHero
@@ -218,6 +267,19 @@ func (p playerProfile) pickHero(rng *rand.Rand, prevHero string) (role, hero str
 		return roleOfHero(h), h
 
 	default: // styleFlex
+		if playMode == "quickplay" {
+			// 10% streak, 60% off-mains, 30% flex mains. Flips the
+			// flex player's normal "stick to your pool" instinct.
+			if prevHero != "" && rng.Float64() < 0.10 {
+				return roleOfHero(prevHero), prevHero
+			}
+			if len(p.offMains) > 0 && rng.Float64() < 0.667 { // 0.60 / 0.90
+				h := p.offMains[rng.Intn(len(p.offMains))]
+				return roleOfHero(h), h
+			}
+			h := p.flexHeroes[rng.Intn(len(p.flexHeroes))]
+			return roleOfHero(h), h
+		}
 		// 25% streak on previous hero
 		if prevHero != "" && containsHero(p.flexHeroes, prevHero) && rng.Float64() < 0.25 {
 			return roleOfHero(prevHero), prevHero
@@ -258,7 +320,7 @@ type heroPlay struct {
 // percent_played always sums to 100, allocated via exponential decay
 // (factor 0.6) so the first hero gets the largest share and the
 // long-tail picks drop off naturally.
-func pickMatchHeroes(rng *rand.Rand, profile playerProfile, prevHero string) []heroPlay {
+func pickMatchHeroes(rng *rand.Rand, profile playerProfile, prevHero, playMode string) []heroPlay {
 	count := 1
 	if profile.style != styleOneTrick {
 		switch r := rng.Float64(); {
@@ -279,7 +341,7 @@ func pickMatchHeroes(rng *rand.Rand, profile playerProfile, prevHero string) []h
 	attempts := 0
 	for len(plays) < count && attempts < 50 {
 		attempts++
-		role, h := profile.pickHero(rng, streak)
+		role, h := profile.pickHero(rng, streak, playMode)
 		if seen[h] {
 			streak = "" // dupe — drop the streak bias and retry
 			continue
@@ -492,21 +554,38 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 		totalMapW += w
 	}
 
+	// Per-match play modes — 10% quickplay, 90% competitive. Uses a
+	// derived RNG (seed+4) so toggling the QP rate doesn't shift the
+	// main corpus. Pre-computed by sorted match order (matches `planned`
+	// post-sort) so hero picks downstream see the right per-match mode.
+	// #nosec G404 -- deterministic dev fixture, not security-sensitive
+	playModeRng := rand.New(rand.NewSource(seed + 4))
+	playModes := make([]string, n)
+	for i := range playModes {
+		if playModeRng.Float64() < 0.10 {
+			playModes[i] = "quickplay"
+		} else {
+			playModes[i] = "competitive"
+		}
+	}
+
 	fx := Fixture{
 		Summaries:   make([]db.SummaryRow, 0, n),
 		Scoreboards: make([]db.ScoreboardRow, 0, n),
 		Personals:   make([]db.PersonalRow, 0, n*6/10),
 		Ranks:       make([]db.RankRow, 0, n*4/10),
+		PlayModes:   make([]PlayModeSeed, 0, n),
 	}
 
 	var prevDay, prevHero string
-	for _, t := range planned {
+	for i, t := range planned {
 		day := t.Format("2006-01-02")
 		if day != prevDay {
 			prevHero = ""
 			prevDay = day
 		}
-		plays := pickMatchHeroes(rng, profile, prevHero)
+		playMode := playModes[i]
+		plays := pickMatchHeroes(rng, profile, prevHero, playMode)
 		primary := plays[0]
 		prevHero = primary.Hero
 
@@ -515,7 +594,6 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 		key := NewTrackedMatchKey(ts).String()
 
 		gameMap := shuffledMaps[sampleWeightedIndex(rng, mapWeights, totalMapW)]
-		mode := fixtureModes[rng.Intn(len(fixtureModes))]
 		result := pickWeightedResult(rng)
 
 		elims := 6 + rng.Intn(20)
@@ -539,7 +617,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 			Filename:               "summary-" + ts + ".png",
 			MatchKey:               key,
 			Map:                    gameMap,
-			Mode:                   mode,
+			Mode:                   playMode,
 			Hero:                   primary.Hero,
 			Result:                 result,
 			FinalScore:             fmt.Sprintf("%d-%d", rng.Intn(5), rng.Intn(5)),
@@ -568,7 +646,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 			Filename:     "scoreboard-" + ts + ".png",
 			MatchKey:     key,
 			Map:          gameMap,
-			Mode:         mode,
+			Mode:         playMode,
 			Hero:         primary.Hero,
 			Eliminations: elims,
 			Assists:      assists,
@@ -664,6 +742,29 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 		fx.Queues = append(fx.Queues, QueueSeed{
 			MatchKey:  s.MatchKey,
 			QueueType: queueType,
+		})
+	}
+
+	// Play modes: copy the pre-computed per-match playModes slice
+	// into PlayModeSeed entries indexed by summary order. The main
+	// loop emits one summary per planned[i], so summaries[i] aligns
+	// with playModes[i]. The seed tool's SetMatchPlayMode calls
+	// install the user-override row (which the aggregator prefers
+	// over data.mode — both should match since the main loop wrote
+	// playMode into SummaryRow.Mode too, but the override path is
+	// the canonical one the dev seed exercises).
+	pmSeen := make(map[string]bool, len(fx.Summaries))
+	for i, s := range fx.Summaries {
+		if i >= len(playModes) {
+			break // aggregation conflict extras have no pre-picked mode
+		}
+		if pmSeen[s.MatchKey] {
+			continue
+		}
+		pmSeen[s.MatchKey] = true
+		fx.PlayModes = append(fx.PlayModes, PlayModeSeed{
+			MatchKey: s.MatchKey,
+			PlayMode: playModes[i],
 		})
 	}
 

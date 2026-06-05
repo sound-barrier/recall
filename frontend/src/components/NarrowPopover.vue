@@ -55,11 +55,11 @@ const emit = defineEmits<{
 const {
   searchText,
   pickedMaps, pickedMapTypes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
-  pickedQueues,
+  pickedQueues, pickedPlayModes,
   pickedRange, customFrom, customTo,
   leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
   anchorKey, sinceAnchorActive,
-  pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickQueue, pickRange,
+  pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickQueue, pickPlayMode, pickRange,
   resetNarrow,
   activeClauseCount, anyNarrow,
   availableMaps, availableMapTypes, availableHeroes, availableRoles, availableResults, availableTags,
@@ -393,6 +393,37 @@ onUnmounted(() => {
                     @click="pickQueue('open')"
                   >
                     Open Queue
+                  </button>
+                </div>
+              </section>
+
+              <!-- Play mode — multi-select OR across quickplay /
+                   competitive. Same semantics as Queue. Matches with
+                   no play_mode (after the aggregator's fallback
+                   chain) drop out when any pick is active. -->
+              <section class="np-section">
+                <div class="np-section-head">
+                  <span class="np-section-eyebrow">Play mode</span>
+                  <span class="np-section-meta">
+                    {{ pickedPlayModes.size === 0 ? 'any' : `${pickedPlayModes.size} selected` }}
+                  </span>
+                </div>
+                <div class="np-chips">
+                  <button
+                    class="np-chip"
+                    :class="{ picked: pickedPlayModes.has('quickplay') }"
+                    data-play-mode="quickplay"
+                    @click="pickPlayMode('quickplay')"
+                  >
+                    Quickplay
+                  </button>
+                  <button
+                    class="np-chip"
+                    :class="{ picked: pickedPlayModes.has('competitive') }"
+                    data-play-mode="competitive"
+                    @click="pickPlayMode('competitive')"
+                  >
+                    Competitive
                   </button>
                 </div>
               </section>
