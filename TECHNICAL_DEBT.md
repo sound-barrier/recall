@@ -56,4 +56,3 @@ articulate the cost.
 Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
-
