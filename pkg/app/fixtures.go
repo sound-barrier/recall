@@ -23,6 +23,11 @@ type Fixture struct {
 	// review row (`self` or `coach`). Empty for the vast majority of
 	// matches — fed into Store.SetReview by the seed tool.
 	Reviews []ReviewSeed
+	// Queues names every match_key whose queue_type the seed tool
+	// should upsert via Store.SetMatchQueue. ~80% role, ~20% open
+	// (matches real OW play distribution) so the new toggle + filter
+	// have meaningful data to eyeball against.
+	Queues []QueueSeed
 }
 
 // ReviewSeed pairs a match_key with the reviewer kind ("self" or
@@ -30,6 +35,13 @@ type Fixture struct {
 type ReviewSeed struct {
 	MatchKey   string
 	ReviewedBy string
+}
+
+// QueueSeed pairs a match_key with the queue kind ("role" or "open")
+// for the seed tool to upsert via Store.SetMatchQueue.
+type QueueSeed struct {
+	MatchKey  string
+	QueueType string
 }
 
 // Date range the synthetic corpus covers. Hardcoded to a year-to-date
@@ -627,6 +639,31 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 		fx.Reviews = append(fx.Reviews, ReviewSeed{
 			MatchKey:   s.MatchKey,
 			ReviewedBy: reviewedBy,
+		})
+	}
+
+	// Queue types: every match (in the deterministic order they were
+	// emitted) gets a queue row. ~80% role queue (5v5) / ~20% open
+	// queue (6v6) — biased toward role since that's the current OW
+	// default ladder. Derived RNG (seed+3) so toggling the split
+	// doesn't disturb heroes / maps / reviews / dates. Aggregation
+	// conflict extras share match_keys with originals; we dedupe to
+	// emit one queue assignment per distinct match_key.
+	// #nosec G404 -- deterministic dev fixture, not security-sensitive
+	queueRng := rand.New(rand.NewSource(seed + 3))
+	queueSeen := make(map[string]bool, len(fx.Summaries))
+	for _, s := range fx.Summaries {
+		if queueSeen[s.MatchKey] {
+			continue
+		}
+		queueSeen[s.MatchKey] = true
+		queueType := "role"
+		if queueRng.Float64() < 0.2 {
+			queueType = "open"
+		}
+		fx.Queues = append(fx.Queues, QueueSeed{
+			MatchKey:  s.MatchKey,
+			QueueType: queueType,
 		})
 	}
 

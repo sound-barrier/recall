@@ -101,6 +101,18 @@ type Store interface {
 	ClearReview(matchKey string) error
 	LoadReviews() (map[string]ReviewState, error)
 
+	// Per-match queue-type surface — 'role' (5v5 role queue) or
+	// 'open' (6v6 open queue). Presence in match_queue IS the "queue
+	// known" signal; absence means "queue not set." Set by the user
+	// via the right-panel radiogroup today; a future parser update
+	// will also write here when it can count team rows on a
+	// scoreboard screenshot. SetMatchQueue upserts; ClearMatchQueue
+	// deletes; LoadMatchQueues returns the full map keyed by
+	// match_key for the aggregator to attach to MatchRecord.
+	SetMatchQueue(matchKey, queueType string) error
+	ClearMatchQueue(matchKey string) error
+	LoadMatchQueues() (map[string]QueueState, error)
+
 	// Clear deletes every row in every table — children cascade.
 	Clear() error
 	Close() error
@@ -113,6 +125,15 @@ type Store interface {
 type ReviewState struct {
 	ReviewedBy string
 	ReviewedAt string
+}
+
+// QueueState is one row of match_queue. `QueueType` is the
+// CHECK-constrained enum ('role' | 'open'); `SetAt` is the server-
+// assigned timestamp captured when the user toggled the value (or
+// when a future parser update wrote it from a scoreboard parse).
+type QueueState struct {
+	QueueType string
+	SetAt     string
 }
 
 // Annotation is one row of match_annotations plus its joined-on child

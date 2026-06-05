@@ -81,6 +81,7 @@ func (s *SQLStore) Clear() error {
 	for _, t := range []string{
 		"screenshots_dirs",
 		"match_reviews",
+		"match_queue",
 		"match_annotations", // match_annotation_members + _tags cascade
 		"hidden_matches",
 		"ambiguous_candidates",

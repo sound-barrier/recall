@@ -425,6 +425,66 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/matches/{matchKey}/queue:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+    put:
+      operationId: SetMatchQueue
+      tags: [Matches]
+      summary: Tag a match's queue type
+      description: |
+        Records the queue format the match was played in. Two states:
+
+          - `role` — 5v5 role queue (locked 1-2-2 composition)
+          - `open` — 6v6 open queue (any composition)
+
+        Absence of a `match_queue` row is the third logical state
+        ("queue not set"); use `DELETE` on the same path to revert
+        there. Idempotent — repeated identical calls succeed.
+
+        Drives the radiogroup at the top of the match-detail panel
+        and the Queue chip in "Narrow this set."
+
+        Returns 204 on success, 400 on validation failure
+        (`queue_type` outside the enum), 500 on store error.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [queue_type]
+              properties:
+                queue_type:
+                  type: string
+                  enum: [role, open]
+                  description: |
+                    Queue format the match was played in. To revert to
+                    "queue not set", call DELETE on this path instead
+                    of PUTing an empty string.
+      responses:
+        "204":
+          description: Queue type updated.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: ClearMatchQueue
+      tags: [Matches]
+      summary: Clear the queue-type tag
+      description: |
+        Removes the `match_queue` row for this match, reverting it
+        to the implicit "queue not set" state. Idempotent — clearing
+        an unset match returns 204.
+      responses:
+        "204":
+          description: Queue tag cleared (or already absent).
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/parses:
     post:
       operationId: ParseScreenshots
@@ -1701,6 +1761,15 @@ components:
             Server-stamped timestamp of the last review-status
             upsert. Drives the dossier's "days since last review"
             widget. Omitted when the match is unreviewed.
+        queue_type:
+          type: string
+          enum: [role, open]
+          description: |
+            Queue format the match was played in: `role` (5v5 role
+            queue) or `open` (6v6 open queue). Omitted entirely when
+            the queue hasn't been set (the implicit third state). Set
+            via `PUT /api/v1/matches/{matchKey}/queue`, cleared via
+            `DELETE` on the same path.
         ambiguous:
           type: boolean
           description: |

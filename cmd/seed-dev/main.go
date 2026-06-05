@@ -123,8 +123,14 @@ func main() {
 			exitf("SetReview(%s, %s): %v", r.MatchKey, r.ReviewedBy, err)
 		}
 	}
+	for _, q := range fx.Queues {
+		if err := store.SetMatchQueue(q.MatchKey, q.QueueType); err != nil {
+			exitf("SetMatchQueue(%s, %s): %v", q.MatchKey, q.QueueType, err)
+		}
+	}
 
-	fmt.Printf("seeded %d matches (%d reviewed) into profile %q at %s\n", *n, len(fx.Reviews), target, dbPath)
+	fmt.Printf("seeded %d matches (%d reviewed, %d queue-tagged) into profile %q at %s\n",
+		*n, len(fx.Reviews), len(fx.Queues), target, dbPath)
 }
 
 func exitf(format string, args ...any) {

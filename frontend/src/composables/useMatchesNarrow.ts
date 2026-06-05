@@ -7,6 +7,7 @@ import {
   matchesLeaverHandling,
   matchesPickedSet,
   matchesReviewedBy,
+  matchesQueueType,
   matchesSearch,
   matchesSinceAnchor,
   matchesTags,
@@ -43,6 +44,12 @@ export type PresetRange = 'all' | '7d' | '30d' | '90d' | 'custom'
 //   - 'unreviewed'  → no review row exists (reviewed_by absent)
 export type ReviewedByPick = 'self' | 'coach' | 'unreviewed'
 
+// QueuePick mirrors the queue_type enum from MatchRecord: 'role'
+// (5v5 role queue) or 'open' (6v6 open queue). Picking neither =
+// "any" (no clause). There's no "unset" pick — matches whose
+// queue_type is missing simply drop out when EITHER pick is active.
+export type QueuePick = 'role' | 'open'
+
 // Parent-owned state bundle. App.vue creates it once via
 // `createMatchesNarrowState()` and passes the same object to both
 // `useMatchesNarrow` (which derives narrowedRecords) and to
@@ -59,6 +66,7 @@ export interface MatchesNarrowState {
   pickedResults:     Ref<Set<string>>
   pickedTags:        Ref<Set<string>>
   pickedReviewedBy:  Ref<Set<ReviewedByPick>>
+  pickedQueues:      Ref<Set<QueuePick>>
   pickedRange:       Ref<PresetRange>
   customFrom:        Ref<string>
   customTo:          Ref<string>
@@ -92,6 +100,7 @@ export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions =
     pickedResults:    ref(new Set<string>()),
     pickedTags:       ref(new Set<string>()),
     pickedReviewedBy: ref(new Set<ReviewedByPick>()),
+    pickedQueues:     ref(new Set<QueuePick>()),
     pickedRange:      ref<PresetRange>('all'),
     customFrom:       ref(''),
     customTo:         ref(''),
@@ -138,6 +147,7 @@ export function useMatchesNarrow(
   const {
     searchText, pickedMaps, pickedMapTypes, pickedHeroes,
     pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
+    pickedQueues,
     pickedRange, customFrom, customTo,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive,
@@ -152,6 +162,9 @@ export function useMatchesNarrow(
   const pickTag        = (v: string) => { pickedTags.value     = toggleSet(pickedTags.value,     v) }
   const pickReviewedBy = (v: ReviewedByPick) => {
     pickedReviewedBy.value = toggleTypedSet(pickedReviewedBy.value, v)
+  }
+  const pickQueue = (v: QueuePick) => {
+    pickedQueues.value = toggleTypedSet(pickedQueues.value, v)
   }
 
   function pickRange(v: PresetRange) {
@@ -175,6 +188,7 @@ export function useMatchesNarrow(
     pickedResults.value       = new Set()
     pickedTags.value          = new Set()
     pickedReviewedBy.value    = new Set()
+    pickedQueues.value        = new Set()
     pickedRange.value         = 'all'
     customFrom.value          = ''
     customTo.value            = ''
@@ -201,6 +215,7 @@ export function useMatchesNarrow(
     n += pickedResults.value.size
     n += pickedTags.value.size
     n += pickedReviewedBy.value.size
+    n += pickedQueues.value.size
     if (leaverHandling.value !== 'include') n++
     if (minPlayMinutes.value > 0) n++
     if (minPlayPercent.value > 0) n++
@@ -274,6 +289,7 @@ export function useMatchesNarrow(
     const heroes = pickedHeroes.value
     const tags = pickedTags.value
     const reviewed = pickedReviewedBy.value
+    const queues = pickedQueues.value
     const leaver = leaverHandling.value
 
     // Each predicate gates its own dimension; `every` short-circuits.
@@ -291,6 +307,7 @@ export function useMatchesNarrow(
         && matchesHero(r, heroes, heroMin, heroPct)
         && matchesTags(r, tags)
         && matchesReviewedBy(r, reviewed)
+        && matchesQueueType(r, queues)
         && matchesSinceAnchor(r, anchorFloor)
         && matchesLeaverHandling(r, leaver)
     })
@@ -300,11 +317,12 @@ export function useMatchesNarrow(
     // State
     searchText,
     pickedMaps, pickedMapTypes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
+    pickedQueues,
     pickedRange, customFrom, customTo,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive,
     // Actions
-    pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickRange,
+    pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickQueue, pickRange,
     resetNarrow,
     // Derived
     activeClauseCount, anyNarrow,

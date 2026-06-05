@@ -33,10 +33,15 @@ func (a *App) aggregateAll() ([]MatchRecord, error) {
 	if err != nil {
 		return nil, err
 	}
+	queues, err := a.store.LoadMatchQueues()
+	if err != nil {
+		return nil, err
+	}
 	recs := aggregateScreenshots(snap)
 	attachAnnotations(recs, annos)
 	attachHidden(recs, hidden)
 	attachReviews(recs, reviews)
+	attachQueues(recs, queues)
 	attachAmbiguity(recs, snap.AmbiguousCandidates)
 	return recs, nil
 }
@@ -52,6 +57,19 @@ func attachReviews(recs []MatchRecord, reviews map[string]db.ReviewState) {
 		if st, ok := reviews[recs[i].MatchKey]; ok {
 			recs[i].ReviewedBy = st.ReviewedBy
 			recs[i].ReviewedAt = st.ReviewedAt
+		}
+	}
+}
+
+// attachQueues writes `QueueType` on every record carrying a
+// match_queue row. Pure function, called once per aggregateAll.
+func attachQueues(recs []MatchRecord, queues map[string]db.QueueState) {
+	if len(queues) == 0 {
+		return
+	}
+	for i := range recs {
+		if st, ok := queues[recs[i].MatchKey]; ok {
+			recs[i].QueueType = st.QueueType
 		}
 	}
 }

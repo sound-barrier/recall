@@ -328,6 +328,25 @@ export function SetMatchReview(matchKey: string, reviewedBy: ReviewedBy): Promis
   return _send('PUT', path, { reviewed_by: reviewedBy }).then(() => undefined)
 }
 
+// Per-match queue-type tag (Role Queue 5v5 vs Open Queue 6v6).
+// Empty string clears via DELETE; 'role' or 'open' issues a PUT.
+// Both directions are idempotent. Mirrors SetMatchReview's
+// dual-transport shape.
+export type QueueType = '' | 'role' | 'open'
+
+export function SetMatchQueue(matchKey: string, queueType: QueueType): Promise<void> {
+  if (IS_WAILS) {
+    return queueType === ''
+      ? _wails('ClearMatchQueue', matchKey)
+      : _wails('SetMatchQueue', matchKey, queueType)
+  }
+  const path = `/api/v1/matches/${encodeURIComponent(matchKey)}/queue`
+  if (queueType === '') {
+    return _send('DELETE', path).then(() => undefined)
+  }
+  return _send('PUT', path, { queue_type: queueType }).then(() => undefined)
+}
+
 // Soft-delete a match. Reversible: pass hidden=false to restore.
 // Both directions are idempotent — repeated identical calls succeed.
 // Wails-side this dispatches to HideMatch / UnhideMatch (two

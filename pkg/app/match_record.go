@@ -49,6 +49,12 @@ type MatchRecord struct {
 	// widget. Omitted from JSON when the match is unreviewed.
 	ReviewedAt string `json:"reviewed_at,omitempty"`
 
+	// Queue type — "role" (5v5 role queue), "open" (6v6 open
+	// queue), or "" (not set; field omitted from JSON). Drives the
+	// 3-state radiogroup at the very top of the detail-panel
+	// sidebar AND the queue chip in the "Narrow this set" filter.
+	QueueType string `json:"queue_type,omitempty"`
+
 	// Ambiguous + Candidates are populated when match_key starts with
 	// "ambiguous-" — the resolver found multiple plausible matches
 	// for the screenshot and is asking the user to pick the right

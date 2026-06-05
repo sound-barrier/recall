@@ -267,6 +267,47 @@ func TestGenerateMatchFixture_MapsAreTopHeavy(t *testing.T) {
 	}
 }
 
+func TestGenerateMatchFixture_QueueDistribution(t *testing.T) {
+	// Every match gets a queue tag, biased 80% role / 20% open.
+	// At N=10000 the binomial 95% CI for role is roughly [78.7%,
+	// 81.3%]; allow [75%, 85%] to absorb seed-specific variance.
+	const n = 10000
+	fx := GenerateMatchFixture(n, 1, "")
+
+	if len(fx.Queues) != n {
+		t.Fatalf("expected every match to be queue-tagged (got %d/%d)", len(fx.Queues), n)
+	}
+
+	role, open := 0, 0
+	for _, q := range fx.Queues {
+		switch q.QueueType {
+		case "role":
+			role++
+		case "open":
+			open++
+		default:
+			t.Fatalf("queue carries invalid QueueType %q (must be role or open)", q.QueueType)
+		}
+	}
+	if role*100 < n*75 || role*100 > n*85 {
+		t.Errorf("role-queue rate %.2f%% outside [75%%, 85%%]", float64(role)*100/float64(n))
+	}
+	if open*100 < n*15 || open*100 > n*25 {
+		t.Errorf("open-queue rate %.2f%% outside [15%%, 25%%]", float64(open)*100/float64(n))
+	}
+
+	// Every queue must reference a real match_key.
+	keys := make(map[string]bool, len(fx.Summaries))
+	for _, s := range fx.Summaries {
+		keys[s.MatchKey] = true
+	}
+	for _, q := range fx.Queues {
+		if !keys[q.MatchKey] {
+			t.Fatalf("queue references unknown match_key %s", q.MatchKey)
+		}
+	}
+}
+
 func TestGenerateMatchFixture_ReviewRate(t *testing.T) {
 	// ~1.5% of matches should carry a review. At N=10000, 4-sigma
 	// bounds are roughly [120, 180]; we use [50, 300] as a loose
