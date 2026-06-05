@@ -41,6 +41,41 @@ describe('IgnoredFilesPanel', () => {
     expect(firstThumb.attributes('loading')).toBe('lazy')
   })
 
+  it('clicking the thumbnail emits open-lightbox with the full filename list', async () => {
+    const wrapper = mountPanel()
+    await wrapper.find('.ignored-row .ignored-thumb-btn').trigger('click')
+    const emits = wrapper.emitted('open-lightbox')
+    expect(emits).toBeTruthy()
+    // Signature: (filename, files, dirIDs).
+    expect(emits![0]![0]).toBe('a.png')
+    expect(emits![0]![1]).toEqual(['a.png', 'b.png'])
+    expect(emits![0]![2]).toEqual({})
+  })
+
+  it('mouseenter on a row pops the cursor-anchored floating thumb (Teleport to body)', async () => {
+    const wrapper = mountPanel()
+    // No hover thumb yet.
+    expect(document.querySelector('.ignored-hover-thumb')).toBeNull()
+    // mouseenter installs the thumb with the row's filename.
+    await wrapper.findAll('.ignored-row')[0]!.trigger('mouseenter', { clientX: 100, clientY: 100 })
+    const thumb = document.querySelector('.ignored-hover-thumb') as HTMLImageElement | null
+    expect(thumb).not.toBeNull()
+    expect(thumb!.src).toContain(encodeURIComponent('a.png'))
+    // mouseleave clears it.
+    await wrapper.findAll('.ignored-row')[0]!.trigger('mouseleave')
+    expect(document.querySelector('.ignored-hover-thumb')).toBeNull()
+  })
+
+  it('closing the panel clears any in-flight hover thumb', async () => {
+    const wrapper = mountPanel()
+    await wrapper.findAll('.ignored-row')[0]!.trigger('mouseenter', { clientX: 100, clientY: 100 })
+    expect(document.querySelector('.ignored-hover-thumb')).not.toBeNull()
+    // Simulate App.vue dropping isOpen to false. The watch on isOpen
+    // must clear hoveredFilename even though no mouseleave fired.
+    await wrapper.setProps({ isOpen: false })
+    expect(document.querySelector('.ignored-hover-thumb')).toBeNull()
+  })
+
   it('shows empty-state copy when the list is empty', () => {
     const wrapper = mountPanel({ screenshots: [] })
     expect(wrapper.find('.ignored-empty').exists()).toBe(true)

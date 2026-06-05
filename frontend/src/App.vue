@@ -1949,6 +1949,7 @@ useEventStream({
       @restore="onUnignoreScreenshot"
       @restore-all="onClearIgnoredScreenshots"
       @run-parse="onRunParseFromIgnored"
+      @open-lightbox="openLightbox"
     />
   </div>
 </template>
