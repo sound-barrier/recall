@@ -79,33 +79,23 @@ func attachQueues(recs []MatchRecord, queues map[string]db.QueueState) {
 	}
 }
 
-// attachPlayModes writes `PlayMode` on every record via the fallback
-// chain documented on MatchRecord.PlayMode:
-//
-//  1. match_play_mode override row wins.
-//  2. Parser's data.mode wins if it's 'quickplay' or 'competitive'
-//     (the parser also writes 'unranked' / ” which we treat as
-//     "no answer here, try the next link").
-//  3. Presence of a rank screenshot implies 'competitive' — rank
-//     UI only appears in ranked play (pkg/parser/parse_rank.go).
-//  4. Otherwise empty.
+// attachPlayModes writes `PlayMode` on every record carrying a
+// match_play_mode row. Pure-override semantics: PlayMode is set ONLY
+// from the aux table — no fallback to data.mode, no inference from
+// rank-row presence. The earlier "override → data.mode → rank →
+// empty" chain made the "Not set" UI chip unreachable on any match
+// the parser had captured (which is every seeded match). New
+// matches default to "Not set" until the user toggles, matching
+// the user's "unless I know otherwise it should be unset" intent.
 //
 // Pure function, called once per aggregateAll.
 func attachPlayModes(recs []MatchRecord, overrides map[string]db.PlayModeState) {
+	if len(overrides) == 0 {
+		return
+	}
 	for i := range recs {
 		if st, ok := overrides[recs[i].MatchKey]; ok {
 			recs[i].PlayMode = st.PlayMode
-			continue
-		}
-		if m := recs[i].Data.Mode; m == "quickplay" || m == "competitive" {
-			recs[i].PlayMode = m
-			continue
-		}
-		for _, t := range recs[i].SourceTypes {
-			if t == "rank" {
-				recs[i].PlayMode = "competitive"
-				break
-			}
 		}
 	}
 }

@@ -55,11 +55,13 @@ type MatchRecord struct {
 	// sidebar AND the queue chip in the "Narrow this set" filter.
 	QueueType string `json:"queue_type,omitempty"`
 
-	// Play mode — "quickplay" or "competitive". Derived from a
-	// fallback chain: user override (match_play_mode) → parser
-	// data.mode → rank-row-presence implies "competitive" → empty.
-	// Drives the 3-state radiogroup directly below the queue chooser
-	// AND the play-mode chip in "Narrow this set."
+	// Play mode — "quickplay" or "competitive". Set ONLY from the
+	// match_play_mode user-override aux table; parser-written
+	// data.mode and rank-row presence do not surface here. New
+	// matches default to "Not set" until the user explicitly
+	// toggles via the right-panel radiogroup. Drives the 3-state
+	// radiogroup directly below the queue chooser AND the
+	// play-mode chip in "Narrow this set."
 	PlayMode string `json:"play_mode,omitempty"`
 
 	// Ambiguous + Candidates are populated when match_key starts with
