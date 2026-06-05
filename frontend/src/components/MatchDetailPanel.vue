@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, toRef, onMounted, onBeforeUnmount } from 'vue'
-import type { MatchRecord, MatchAnnotationInput, ReviewedBy } from '../api'
+import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from '../api'
 import type { SearchClause } from '../search-query'
 import { useOWData } from '../composables/useOWData'
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
@@ -60,6 +60,8 @@ const emit = defineEmits<{
   'set-match-annotation':  [matchKey: string, input: MatchAnnotationInput]
   'set-match-hidden':       [matchKey: string, hidden: boolean]
   'set-match-review':      [matchKey: string, reviewedBy: ReviewedBy]
+  'set-match-queue':       [matchKey: string, queueType: QueueType]
+  'set-match-play-mode':   [matchKey: string, playMode: PlayMode]
   // User flipped the "Set as 'since' anchor" toggle. Empty string
   // means "clear the anchor."
   'set-anchor':            [matchKey: string]
@@ -370,6 +372,8 @@ function onBackdropClick(e: MouseEvent) {
             @set-match-annotation="(k: string, input: MatchAnnotationInput) => emit('set-match-annotation', k, input)"
             @set-match-hidden="(k: string, h: boolean) => emit('set-match-hidden', k, h)"
             @set-match-review="(k: string, by: ReviewedBy) => emit('set-match-review', k, by)"
+            @set-match-queue="(k: string, q: QueueType) => emit('set-match-queue', k, q)"
+            @set-match-play-mode="(k: string, m: PlayMode) => emit('set-match-play-mode', k, m)"
             @set-anchor="(k: string) => emit('set-anchor', k)"
           />
         </div>
