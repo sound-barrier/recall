@@ -267,6 +267,78 @@ func TestGenerateMatchFixture_MapsAreTopHeavy(t *testing.T) {
 	}
 }
 
+func TestGenerateMatchFixture_RoleQueueLocksToOneRolePerMatch(t *testing.T) {
+	// Role queue (5v5) locks the player to ONE role for the entire
+	// match — you can't pick lucio (support) and reaper (DPS) in the
+	// same role-queue game. Open queue (6v6) does allow mixing. This
+	// test pins the rule across every style + play_mode combination
+	// the seeder produces in one run.
+	const n = 500
+	fx := GenerateMatchFixture(n, 1, "")
+
+	queueByKey := make(map[string]string, len(fx.Queues))
+	for _, q := range fx.Queues {
+		queueByKey[q.MatchKey] = q.QueueType
+	}
+
+	roleQueueChecked := 0
+	for _, s := range fx.Summaries {
+		if queueByKey[s.MatchKey] != "role" {
+			continue
+		}
+		roleQueueChecked++
+		primaryRole := roleOfHero(s.Hero)
+		for _, hp := range s.HeroesPlayed {
+			got := roleOfHero(hp.Hero)
+			if got != primaryRole {
+				t.Errorf("role-queue match %s (primary=%s/%s): hero %s/%s violates single-role constraint",
+					s.MatchKey, s.Hero, primaryRole, hp.Hero, got)
+			}
+		}
+	}
+	if roleQueueChecked == 0 {
+		t.Fatal("sampled corpus had no role-queue matches to verify against — distribution drifted?")
+	}
+}
+
+func TestGenerateMatchFixture_OpenQueueCanMixRoles(t *testing.T) {
+	// Sanity check the other side of the bug fix: open-queue matches
+	// MUST still be allowed to mix roles within a single match
+	// (that's the whole point of 6v6 open queue). With a flex player
+	// and ~20% open queue at N=500, at least one open-queue match
+	// should naturally produce a mixed-role HeroesPlayed list.
+	const n = 500
+	fx := GenerateMatchFixture(n, 1, "")
+
+	queueByKey := make(map[string]string, len(fx.Queues))
+	for _, q := range fx.Queues {
+		queueByKey[q.MatchKey] = q.QueueType
+	}
+
+	sawMixedRolesInOpenQueue := false
+	for _, s := range fx.Summaries {
+		if queueByKey[s.MatchKey] != "open" {
+			continue
+		}
+		if len(s.HeroesPlayed) < 2 {
+			continue
+		}
+		first := roleOfHero(s.HeroesPlayed[0].Hero)
+		for _, hp := range s.HeroesPlayed[1:] {
+			if roleOfHero(hp.Hero) != first {
+				sawMixedRolesInOpenQueue = true
+				break
+			}
+		}
+		if sawMixedRolesInOpenQueue {
+			break
+		}
+	}
+	if !sawMixedRolesInOpenQueue {
+		t.Error("expected at least one open-queue match to mix roles; flex+open should produce them naturally")
+	}
+}
+
 func TestGenerateMatchFixture_PlayModeDistribution(t *testing.T) {
 	// Every match gets a play-mode tag, biased ~90% competitive /
 	// ~10% quickplay. At N=10000 the binomial 95% CI for competitive
