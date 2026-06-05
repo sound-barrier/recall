@@ -1201,6 +1201,69 @@ describe('useMatchesDossier — query-helper parameterization', () => {
     })
   })
 
+  describe('playModeBreakdown', () => {
+    it('returns three fixed entries regardless of which modes appear', () => {
+      // Only competitive matches; quickplay and "—" should still
+      // render as zero-bucket rows so the bar layout stays stable.
+      const records = ref([
+        { ...rec({ result: 'victory' }), play_mode: 'competitive' as const },
+        { ...rec({ result: 'defeat'  }), play_mode: 'competitive' as const },
+      ] as unknown as MatchRecord[])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const out = dossier.playModeBreakdown
+      expect(out.value).toHaveLength(3)
+      expect(out.value.map((r) => r.key)).toEqual(['quickplay', 'competitive', '—'])
+      expect(out.value[1]!.total).toBe(2)
+      expect(out.value[0]!.total).toBe(0)
+      expect(out.value[2]!.total).toBe(0)
+    })
+
+    it('buckets matches with no play_mode into the "—" row', () => {
+      const records = ref([
+        { ...rec({ result: 'victory' }), play_mode: 'quickplay'   as const },
+        { ...rec({ result: 'victory' }), play_mode: 'competitive' as const },
+        rec({ result: 'defeat' }), // no play_mode field → "—"
+      ] as unknown as MatchRecord[])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const out = dossier.playModeBreakdown
+      expect(out.value[2]!.key).toBe('—')
+      expect(out.value[2]!.total).toBe(1)
+    })
+
+    it('computes share as % of all matches (including the unset bucket)', () => {
+      const records = ref([
+        { ...rec({}), play_mode: 'quickplay'   as const },
+        { ...rec({}), play_mode: 'competitive' as const },
+        { ...rec({}), play_mode: 'competitive' as const },
+        { ...rec({}), play_mode: 'competitive' as const },
+      ] as unknown as MatchRecord[])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const out = dossier.playModeBreakdown
+      expect(out.value[0]!.share).toBe(25) // quickplay: 1/4
+      expect(out.value[1]!.share).toBe(75) // competitive: 3/4
+      expect(out.value[2]!.share).toBe(0)  // —: 0/4
+    })
+
+    it('computes winrate from decided matches only (draws excluded)', () => {
+      const records = ref([
+        { ...rec({ result: 'victory' }), play_mode: 'quickplay' as const },
+        { ...rec({ result: 'defeat'  }), play_mode: 'quickplay' as const },
+        { ...rec({ result: 'draw'    }), play_mode: 'quickplay' as const },
+      ] as unknown as MatchRecord[])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const out = dossier.playModeBreakdown
+      expect(out.value[0]!.winrate).toBe(50) // 1 win / (1 win + 1 loss); draw ignored
+    })
+
+    it('returns 0 winrate for empty buckets (no division-by-zero)', () => {
+      const records = ref<MatchRecord[]>([])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const out = dossier.playModeBreakdown
+      expect(out.value.every((r) => r.winrate === 0)).toBe(true)
+      expect(out.value.every((r) => r.share === 0)).toBe(true)
+    })
+  })
+
   describe('topHeroesByMinutes', () => {
     it('honours a custom limit', () => {
       const records = ref([
