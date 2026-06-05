@@ -122,6 +122,69 @@ test.describe('ambiguous attribution — pick a candidate via Unknown tab', () =
     await expect(candidateRow.locator('button', { hasText: /Attach/ })).toBeVisible()
   })
 
+  test('expanding auto-opens the source-screenshot preview', async ({ page }) => {
+    // One click on the card head expands AND auto-opens the source
+    // preview — saves the user the extra chevron click before they
+    // can compare the source image against the candidates.
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([candidateMatchRecord(), ambiguousRecord()]),
+      })
+    })
+
+    await page.goto('/')
+    await page.locator('#tab-unknown').click()
+
+    const card = page.locator('.ambiguous-card').first()
+    await card.locator('.unknown-card-head').click()
+
+    // Source preview image must be in the DOM with no second click.
+    const preview = card.locator('img.source-preview')
+    await expect(preview).toBeVisible()
+  })
+
+  test('side-by-side preview pane shows the active candidate and updates on hover', async ({ page }) => {
+    // Two candidates so we can verify the pane swaps on hover.
+    const ambig = {
+      ...ambiguousRecord(),
+      candidates: [
+        {
+          match_key: CANDIDATE_KEY,
+          distance_seconds: 720,
+          representative_source_file: 'scoreboard-1.png',
+          representative_dir_id: 0,
+        },
+        {
+          match_key: 'match-2026-05-10T21-45-00',
+          distance_seconds: 60,
+          representative_source_file: 'scoreboard-3.png',
+          representative_dir_id: 0,
+        },
+      ],
+    }
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([candidateMatchRecord(), ambig]),
+      })
+    })
+
+    await page.goto('/')
+    await page.locator('#tab-unknown').click()
+    await page.locator('.ambiguous-card .unknown-card-head').first().click()
+
+    // Pane defaults to the first candidate.
+    const paneImg = page.locator('.candidate-preview-pane img')
+    await expect(paneImg).toHaveAttribute('src', /scoreboard-1\.png/)
+
+    // Hover the second candidate row → pane swaps.
+    await page.locator('.candidate-row').nth(1).hover()
+    await expect(paneImg).toHaveAttribute('src', /scoreboard-3\.png/)
+  })
+
   test('Attach button PUTs to /resolution with the chosen match_key', async ({ page }) => {
     let putBody: Record<string, unknown> | null = null
     let putCount = 0

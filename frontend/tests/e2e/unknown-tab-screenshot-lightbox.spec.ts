@@ -131,8 +131,9 @@ test.describe('Unknown tab — screenshot preview click → lightbox', () => {
     await expect(page.locator('.ambiguous-card .block-eyebrow', { hasText: 'Source Screenshot' })).toBeVisible()
     await expect(page.locator('.ambiguous-card .block-eyebrow', { hasText: 'Pick the match' })).toBeVisible()
 
-    // Toggle the filename → thumbnail renders → click → lightbox.
-    await page.locator('.ambiguous-card .source-name').click()
+    // Card expand auto-opens the inline source-screenshot preview —
+    // no separate filename-toggle click needed. Click the preview to
+    // escalate to the fullscreen lightbox.
     const preview = page.locator('.ambiguous-card img.source-preview')
     await expect(preview).toBeVisible()
 
