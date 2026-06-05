@@ -133,9 +133,19 @@ func main() {
 			exitf("SetMatchPlayMode(%s, %s): %v", p.MatchKey, p.PlayMode, err)
 		}
 	}
+	for _, u := range fx.Unknowns {
+		if err := store.UpsertUnknown(u); err != nil {
+			exitf("UpsertUnknown(%s): %v", u.Filename, err)
+		}
+	}
+	for _, a := range fx.Ambiguous {
+		if err := store.ApplyAmbiguity(a.Filename, a.Candidates); err != nil {
+			exitf("ApplyAmbiguity(%s): %v", a.Filename, err)
+		}
+	}
 
-	fmt.Printf("seeded %d matches (%d reviewed, %d queue-tagged, %d play-mode-tagged) into profile %q at %s\n",
-		*n, len(fx.Reviews), len(fx.Queues), len(fx.PlayModes), target, dbPath)
+	fmt.Printf("seeded %d matches (%d reviewed, %d queue-tagged, %d play-mode-tagged, %d unknown, %d ambiguous) into profile %q at %s\n",
+		*n, len(fx.Reviews), len(fx.Queues), len(fx.PlayModes), len(fx.Unknowns), len(fx.Ambiguous), target, dbPath)
 }
 
 func exitf(format string, args ...any) {

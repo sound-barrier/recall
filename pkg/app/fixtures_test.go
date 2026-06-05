@@ -11,19 +11,27 @@ import (
 func TestGenerateMatchFixture_RoundTripsThroughStore(t *testing.T) {
 	fx := GenerateMatchFixture(50, 42, "")
 
-	if got := len(fx.Summaries); got != 50 {
-		t.Fatalf("Summaries: got %d, want 50", got)
+	// Per-match screenshot-type dice rolls (~95% summary, ~80% teams)
+	// produce variable counts. The hard floor is "at least one
+	// screenshot per planned match", but individual type-counts swing
+	// match-to-match. Assert each type's count stays in a plausible
+	// band so a regression that always-emits or never-emits a type
+	// gets caught.
+	if got := len(fx.Summaries); got < 40 || got > 50 {
+		t.Errorf("Summaries: got %d, want 40-50 (~95%% of 50)", got)
 	}
-	if got := len(fx.Scoreboards); got != 50 {
-		t.Fatalf("Scoreboards: got %d, want 50", got)
+	if got := len(fx.Scoreboards); got < 30 || got > 55 {
+		// Upper bound includes ~1% ambiguous extras (50/100 = 0 at
+		// this size, but kept for documentation).
+		t.Errorf("Scoreboards: got %d, want 30-55 (~80%% of 50)", got)
 	}
 
 	seen := make(map[string]struct{}, len(fx.Summaries))
 	for _, s := range fx.Summaries {
 		seen[s.MatchKey] = struct{}{}
 	}
-	if len(seen) != 50 {
-		t.Fatalf("expected 50 unique match keys, got %d", len(seen))
+	if len(seen) != len(fx.Summaries) {
+		t.Fatalf("expected unique summary match keys, got %d unique / %d total", len(seen), len(fx.Summaries))
 	}
 
 	fs := dbtest.New()
@@ -45,6 +53,16 @@ func TestGenerateMatchFixture_RoundTripsThroughStore(t *testing.T) {
 	for _, r := range fx.Ranks {
 		if err := fs.UpsertRank(r); err != nil {
 			t.Fatalf("UpsertRank(%s): %v", r.MatchKey, err)
+		}
+	}
+	for _, r := range fx.Unknowns {
+		if err := fs.UpsertUnknown(r); err != nil {
+			t.Fatalf("UpsertUnknown(%s): %v", r.Filename, err)
+		}
+	}
+	for _, a := range fx.Ambiguous {
+		if err := fs.ApplyAmbiguity(a.Filename, a.Candidates); err != nil {
+			t.Fatalf("ApplyAmbiguity(%s): %v", a.Filename, err)
 		}
 	}
 }
@@ -230,8 +248,11 @@ func TestGenerateMatchFixture_OneTrickStaysOneTrick(t *testing.T) {
 			maxCount = c
 		}
 	}
-	if maxCount < n*85/100 {
-		t.Errorf("expected ≥85%% of matches on the one-trick's main hero; got max %d/%d", maxCount, n)
+	// Scale against len(fx.Summaries) — the dice rolls drop ~5% of
+	// matches' summaries, so n isn't the right denominator.
+	total := len(fx.Summaries)
+	if maxCount*100 < total*85 {
+		t.Errorf("expected ≥85%% of summaries on the one-trick's main hero; got max %d/%d", maxCount, total)
 	}
 }
 
@@ -347,8 +368,11 @@ func TestGenerateMatchFixture_PlayModeDistribution(t *testing.T) {
 	const n = 10000
 	fx := GenerateMatchFixture(n, 1, "")
 
-	if len(fx.PlayModes) != n {
-		t.Fatalf("expected every match to be play-mode-tagged (got %d/%d)", len(fx.PlayModes), n)
+	// PlayModes are tagged per-summary; with ~95% summary dice rolls
+	// the tagged count tracks the summary count, not n. Allow a wide
+	// band so per-seed variance doesn't flake.
+	if len(fx.PlayModes) < n*90/100 || len(fx.PlayModes) > n {
+		t.Fatalf("expected ~95%% of matches to be play-mode-tagged (got %d/%d)", len(fx.PlayModes), n)
 	}
 
 	comp, qp := 0, 0
@@ -362,11 +386,14 @@ func TestGenerateMatchFixture_PlayModeDistribution(t *testing.T) {
 			t.Fatalf("play-mode carries invalid value %q (must be quickplay or competitive)", p.PlayMode)
 		}
 	}
-	if comp*100 < n*85 || comp*100 > n*95 {
-		t.Errorf("competitive rate %.2f%% outside [85%%, 95%%]", float64(comp)*100/float64(n))
+	// Rates computed against tagged count (not n) since not every
+	// match gets a summary under the ~95% dice roll.
+	total := len(fx.PlayModes)
+	if comp*100 < total*85 || comp*100 > total*95 {
+		t.Errorf("competitive rate %.2f%% outside [85%%, 95%%]", float64(comp)*100/float64(total))
 	}
-	if qp*100 < n*5 || qp*100 > n*15 {
-		t.Errorf("quickplay rate %.2f%% outside [5%%, 15%%]", float64(qp)*100/float64(n))
+	if qp*100 < total*5 || qp*100 > total*15 {
+		t.Errorf("quickplay rate %.2f%% outside [5%%, 15%%]", float64(qp)*100/float64(total))
 	}
 
 	// Every play-mode entry must reference a real match_key.
@@ -435,8 +462,10 @@ func TestGenerateMatchFixture_QueueDistribution(t *testing.T) {
 	const n = 10000
 	fx := GenerateMatchFixture(n, 1, "")
 
-	if len(fx.Queues) != n {
-		t.Fatalf("expected every match to be queue-tagged (got %d/%d)", len(fx.Queues), n)
+	// Queues are tagged per-summary; with ~95% summary dice rolls
+	// the tagged count tracks the summary count, not n.
+	if len(fx.Queues) < n*90/100 || len(fx.Queues) > n {
+		t.Fatalf("expected ~95%% of matches to be queue-tagged (got %d/%d)", len(fx.Queues), n)
 	}
 
 	role, open := 0, 0
@@ -450,11 +479,12 @@ func TestGenerateMatchFixture_QueueDistribution(t *testing.T) {
 			t.Fatalf("queue carries invalid QueueType %q (must be role or open)", q.QueueType)
 		}
 	}
-	if role*100 < n*75 || role*100 > n*85 {
-		t.Errorf("role-queue rate %.2f%% outside [75%%, 85%%]", float64(role)*100/float64(n))
+	total := len(fx.Queues)
+	if role*100 < total*75 || role*100 > total*85 {
+		t.Errorf("role-queue rate %.2f%% outside [75%%, 85%%]", float64(role)*100/float64(total))
 	}
-	if open*100 < n*15 || open*100 > n*25 {
-		t.Errorf("open-queue rate %.2f%% outside [15%%, 25%%]", float64(open)*100/float64(n))
+	if open*100 < total*15 || open*100 > total*25 {
+		t.Errorf("open-queue rate %.2f%% outside [15%%, 25%%]", float64(open)*100/float64(total))
 	}
 
 	// Every queue must reference a real match_key.
@@ -465,6 +495,88 @@ func TestGenerateMatchFixture_QueueDistribution(t *testing.T) {
 	for _, q := range fx.Queues {
 		if !keys[q.MatchKey] {
 			t.Fatalf("queue references unknown match_key %s", q.MatchKey)
+		}
+	}
+}
+
+func TestGenerateMatchFixture_ScreenshotTypeDistribution(t *testing.T) {
+	// Per-match screenshot-type dice models real capture habits:
+	// ~95% summary, ~80% teams (scoreboard), ~70% personal, ~15% rank.
+	// Independent rolls so each match's combination of types varies.
+	// At N=5000 the binomial bands are tight enough to assert on each
+	// rate directly.
+	const n = 5000
+	fx := GenerateMatchFixture(n, 1, "")
+
+	// Bands include a 5pp tolerance + the ~1% ambiguous scoreboards.
+	if r := float64(len(fx.Summaries)) * 100 / float64(n); r < 92 || r > 98 {
+		t.Errorf("summary rate %.2f%% outside [92%%, 98%%]", r)
+	}
+	if r := float64(len(fx.Scoreboards)) * 100 / float64(n); r < 76 || r > 85 {
+		t.Errorf("scoreboard rate %.2f%% outside [76%%, 85%%]", r)
+	}
+	if r := float64(len(fx.Personals)) * 100 / float64(n); r < 66 || r > 74 {
+		t.Errorf("personal rate %.2f%% outside [66%%, 74%%]", r)
+	}
+	if r := float64(len(fx.Ranks)) * 100 / float64(n); r < 12 || r > 18 {
+		t.Errorf("rank rate %.2f%% outside [12%%, 18%%]", r)
+	}
+}
+
+func TestGenerateMatchFixture_UnknownAndAmbiguousCounts(t *testing.T) {
+	// Unknown screenshots model ~2% of N; ambiguous ~1%. Both are
+	// fixed-share emissions from derived RNGs (seed+5 / seed+6) — no
+	// dice variance — so at any N ≥ 100 the counts are exact.
+	const n = 500
+	fx := GenerateMatchFixture(n, 1, "")
+
+	if got, want := len(fx.Unknowns), n*2/100; got != want {
+		t.Errorf("unknown count: got %d, want %d (~2%% of %d)", got, want, n)
+	}
+	if got, want := len(fx.Ambiguous), n/100; got != want {
+		t.Errorf("ambiguous count: got %d, want %d (~1%% of %d)", got, want, n)
+	}
+
+	// Every unknown row carries an unmatched- match key referencing
+	// its own filename — the parser's convention for files without a
+	// resolvable timestamp.
+	for _, u := range fx.Unknowns {
+		mk, err := ParseMatchKey(u.MatchKey)
+		if err != nil || !mk.IsUnmatched() {
+			t.Errorf("unknown %s has non-unmatched key %q", u.Filename, u.MatchKey)
+		}
+	}
+
+	// Every ambiguous seed pairs with a scoreboard row carrying an
+	// ambiguous- match key for its filename, and points at 2-3 real
+	// tracked match_keys from the main corpus.
+	trackedSet := make(map[string]bool, len(fx.Summaries))
+	for _, s := range fx.Summaries {
+		if mk, err := ParseMatchKey(s.MatchKey); err == nil && mk.IsTracked() {
+			trackedSet[s.MatchKey] = true
+		}
+	}
+	scoreboardByFilename := make(map[string]string, len(fx.Scoreboards))
+	for _, sb := range fx.Scoreboards {
+		scoreboardByFilename[sb.Filename] = sb.MatchKey
+	}
+	for _, a := range fx.Ambiguous {
+		if c := len(a.Candidates); c < 2 || c > 3 {
+			t.Errorf("ambiguous %s has %d candidates, want 2 or 3", a.Filename, c)
+		}
+		gotKey, ok := scoreboardByFilename[a.Filename]
+		if !ok {
+			t.Errorf("ambiguous %s has no companion scoreboard row", a.Filename)
+			continue
+		}
+		mk, err := ParseMatchKey(gotKey)
+		if err != nil || !mk.IsAmbiguous() {
+			t.Errorf("ambiguous %s companion scoreboard key %q isn't ambiguous-shaped", a.Filename, gotKey)
+		}
+		for _, c := range a.Candidates {
+			if !trackedSet[c.MatchKey] {
+				t.Errorf("ambiguous %s candidate %s isn't a real tracked match_key from the corpus", a.Filename, c.MatchKey)
+			}
 		}
 	}
 }
