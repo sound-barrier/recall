@@ -15,8 +15,13 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -144,8 +149,128 @@ func main() {
 		}
 	}
 
+	// Companion images for ambiguous screenshots — without an actual
+	// file on disk under the configured screenshots dir, the Unknown
+	// tab's resolution UI renders a missing-image placeholder. The DB
+	// rows alone don't exercise the preview/selection path. We only
+	// generate images for ambiguous filenames (the user only needs to
+	// eyeball those); unknown rows stay file-less since their UX
+	// doesn't require a preview.
+	if len(fx.Ambiguous) > 0 {
+		ssDir := filepath.Join(profiles.ProfileDir(target), "screenshots")
+		if err := os.MkdirAll(ssDir, 0o700); err != nil {
+			exitf("mkdir %s: %v", ssDir, err)
+		}
+		for i, a := range fx.Ambiguous {
+			path := filepath.Join(ssDir, a.Filename)
+			if err := writeSolidColorPNG(path, i, len(fx.Ambiguous)); err != nil {
+				exitf("write %s: %v", path, err)
+			}
+		}
+		// Convenience: if no screenshots dir is configured for this
+		// profile yet, point settings.json at the seed dir so `make dev`
+		// picks them up without manual configuration. Existing values
+		// are left alone — the user may have wired a real OW captures
+		// dir and we don't want to clobber that.
+		if err := ensureScreenshotsDirConfigured(profiles.ProfileDir(target), ssDir); err != nil {
+			exitf("ensure screenshots_dir configured: %v", err)
+		}
+	}
+
 	fmt.Printf("seeded %d matches (%d reviewed, %d queue-tagged, %d play-mode-tagged, %d unknown, %d ambiguous) into profile %q at %s\n",
 		*n, len(fx.Reviews), len(fx.Queues), len(fx.PlayModes), len(fx.Unknowns), len(fx.Ambiguous), target, dbPath)
+}
+
+// writeSolidColorPNG writes a small (320x180) single-color PNG at path.
+// The color is derived from idx by walking the HSV hue circle, so every
+// ambiguous screenshot in a single seed batch gets a visually distinct
+// fill — handy for eyeballing which row's preview is which in the
+// resolution UI.
+func writeSolidColorPNG(path string, idx, total int) error {
+	const w, h = 320, 180
+	hue := 0.0
+	if total > 0 {
+		hue = float64(idx) / float64(total) * 360.0
+	}
+	r, g, b := hsvToRGB(hue, 0.7, 0.9)
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	c := color.RGBA{R: r, G: g, B: b, A: 0xFF}
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			img.Set(x, y, c)
+		}
+	}
+	// #nosec G304 -- path is filepath.Join(<profile screenshots dir>, <generated fixture filename>); no user input, dev tool only.
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	return png.Encode(f, img)
+}
+
+// hsvToRGB converts H[0,360) S[0,1] V[0,1] to 8-bit RGB. Standard
+// formula; only called for fixture image fills so no need for the
+// extra precision of x/image/colornames or a third-party library.
+func hsvToRGB(h, s, v float64) (uint8, uint8, uint8) {
+	c := v * s
+	x := c * (1 - math.Abs(math.Mod(h/60, 2)-1))
+	m := v - c
+	var rf, gf, bf float64
+	switch {
+	case h < 60:
+		rf, gf, bf = c, x, 0
+	case h < 120:
+		rf, gf, bf = x, c, 0
+	case h < 180:
+		rf, gf, bf = 0, c, x
+	case h < 240:
+		rf, gf, bf = 0, x, c
+	case h < 300:
+		rf, gf, bf = x, 0, c
+	default:
+		rf, gf, bf = c, 0, x
+	}
+	return uint8((rf + m) * 255), uint8((gf + m) * 255), uint8((bf + m) * 255)
+}
+
+// ensureScreenshotsDirConfigured reads the profile's settings.json,
+// and if its screenshots_dir field is empty (first-run state), sets
+// it to seedDir. Leaves any existing value untouched — the user may
+// have a real OW captures dir wired up and we don't want to stomp it.
+// Best-effort: a missing settings.json is created with the field set;
+// a malformed one is left alone (the same forgiving stance the App
+// takes when loading).
+func ensureScreenshotsDirConfigured(profileDir, seedDir string) error {
+	settingsPath := filepath.Join(profileDir, "settings.json")
+	// #nosec G304 -- settingsPath is filepath.Join(<profile dir>, "settings.json"); no user input, dev tool only.
+	raw, err := os.ReadFile(settingsPath)
+	settings := map[string]any{}
+	switch {
+	case err == nil:
+		// Malformed settings.json: leave it alone rather than
+		// overwriting the user's data. The App's loader takes the same
+		// "forgiving fall-through" stance. Surface no error — this is
+		// best-effort convenience, not a hard requirement.
+		if jsonErr := json.Unmarshal(raw, &settings); jsonErr != nil {
+			fmt.Fprintf(os.Stderr, "seed-dev: settings.json at %s is malformed (%v); skipping screenshots_dir auto-config\n", settingsPath, jsonErr)
+			//nolint:nilerr // intentional: convenience step that shouldn't fail the whole seed
+			return nil
+		}
+	case os.IsNotExist(err):
+		// fresh profile — fall through with empty map
+	default:
+		return err
+	}
+	if v, ok := settings["screenshots_dir"].(string); ok && v != "" {
+		return nil // user configured it; don't clobber
+	}
+	settings["screenshots_dir"] = seedDir
+	out, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(settingsPath, out, 0o600)
 }
 
 func exitf(format string, args ...any) {
