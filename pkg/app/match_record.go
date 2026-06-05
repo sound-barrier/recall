@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -185,5 +186,29 @@ func (a *App) GetMatchByKey(matchKey string) (MatchRecord, error) {
 	return MatchRecord{}, ErrMatchNotFound
 }
 
-// ClearDatabase deletes every row across every per-type table.
-func (a *App) ClearDatabase() error { return a.store.Clear() }
+// ClearDatabase deletes every row across every per-type table. The
+// `keepIgnored` opt-out preserves the Unknown-tab "Delete forever"
+// suppress list across the wipe (Store.Clear unconditionally truncates
+// `ignored_screenshots` — this method snapshots the list, calls Clear,
+// then re-inserts so the suppress list survives without threading an
+// option through every Store implementation). Pass `false` for the
+// standard "factory reset" semantic; pass `true` when the user
+// explicitly opts into keeping their curated ignore list.
+func (a *App) ClearDatabase(keepIgnored bool) error {
+	if !keepIgnored {
+		return a.store.Clear()
+	}
+	snapshot, err := a.store.LoadIgnoredFilenames()
+	if err != nil {
+		return fmt.Errorf("snapshot ignored filenames: %w", err)
+	}
+	if err := a.store.Clear(); err != nil {
+		return err
+	}
+	for filename := range snapshot {
+		if err := a.store.AddIgnoredScreenshot(filename); err != nil {
+			return fmt.Errorf("restore ignored %s: %w", filename, err)
+		}
+	}
+	return nil
+}

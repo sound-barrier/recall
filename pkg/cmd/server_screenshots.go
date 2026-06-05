@@ -40,7 +40,8 @@ func validateScreenshotFilename(raw string) (string, error) {
 //
 //   - POST   /api/v1/screenshots/{filename}/ignore   → add to set
 //   - DELETE /api/v1/screenshots/{filename}/ignore   → remove from set
-//   - GET    /api/v1/screenshots/ignored             → list
+//   - GET    /api/v1/screenshots/ignored             → list (filename + ignored_at)
+//   - DELETE /api/v1/screenshots/ignored             → bulk truncate
 //
 // The image-binary handler at `/_screenshot/{filename}` is a separate
 // path (predates the /api/v1 prefix), not part of this resource
@@ -85,9 +86,9 @@ func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	// GET: list ignored filenames, sorted. Currently no UI surface
-	// in the frontend (debug + future "show ignored" panel); useful
-	// for support / curl users.
+	// GET: list ignored filenames + timestamps, most-recently-ignored
+	// first. Backs the Settings → Advanced → Manage ignored files
+	// panel; also useful for support / curl users.
 	apiMux.HandleFunc("GET /api/v1/screenshots/ignored", func(w http.ResponseWriter, r *http.Request) {
 		out, err := a.GetIgnoredScreenshots()
 		if err != nil {
@@ -95,5 +96,17 @@ func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
 			return
 		}
 		writeJSON(w, out, nil)
+	})
+
+	// DELETE: bulk truncate the suppress list — Settings panel's
+	// "Re-enable all" action. Idempotent; 204 even when the list was
+	// already empty. The next Parse run re-discovers every file from
+	// disk (the on-disk files were never moved).
+	apiMux.HandleFunc("DELETE /api/v1/screenshots/ignored", func(w http.ResponseWriter, r *http.Request) {
+		if err := a.ClearIgnoredScreenshots(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	})
 }

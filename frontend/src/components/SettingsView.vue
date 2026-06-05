@@ -73,6 +73,10 @@ const props = defineProps<{
   prometheusEnabled?: boolean
   clearConfirm?:      boolean
   clearingDB?:        boolean
+  // Suppress-list size (Unknown-tab "Delete forever"). Drives the
+  // Manage button's disabled state and the Clear-arm opt-out
+  // checkbox; 0 hides the checkbox.
+  ignoredCount?:      number
 }>()
 
 const emit = defineEmits<{
@@ -96,8 +100,9 @@ const emit = defineEmits<{
   // Advanced
   'toggle-prometheus':      []
   'arm-clear':              []
-  'clear-database':         []
+  'clear-database':         [opts: { keepIgnored: boolean }]
   'cancel-clear':           []
+  'open-ignored-panel':     []
 }>()
 
 function onDetect() {
@@ -263,10 +268,12 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
       :clear-confirm="clearConfirm"
       :matched-count="matchedCount"
       :unknown-count="unknownCount"
+      :ignored-count="ignoredCount"
       @toggle-prometheus="() => emit('toggle-prometheus')"
       @arm-clear="() => emit('arm-clear')"
       @cancel-clear="() => emit('cancel-clear')"
-      @clear-database="() => emit('clear-database')"
+      @clear-database="(opts) => emit('clear-database', opts)"
+      @open-ignored-panel="() => emit('open-ignored-panel')"
     />
   </section>
 </template>

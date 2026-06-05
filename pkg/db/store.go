@@ -129,11 +129,17 @@ type Store interface {
 	// ignored_screenshots means "skip this filename on every future
 	// parse run." Idempotent: adding an already-ignored filename
 	// refreshes the timestamp; removing a non-ignored one is a no-op.
-	// LoadIgnoredFilenames returns the full set for the parse pipeline
-	// to consult before queuing files.
+	//
+	// LoadIgnoredFilenames is the hot path the parse loop consults
+	// (presence-only map). ListIgnoredScreenshots returns the same
+	// rows with their `ignored_at` timestamp for the Settings panel.
+	// ClearIgnoredScreenshots truncates the table in one statement
+	// for the bulk "Re-enable all" action.
 	AddIgnoredScreenshot(filename string) error
 	RemoveIgnoredScreenshot(filename string) error
 	LoadIgnoredFilenames() (map[string]bool, error)
+	ListIgnoredScreenshots() ([]IgnoredRow, error)
+	ClearIgnoredScreenshots() error
 
 	// Clear deletes every row in every table — children cascade.
 	Clear() error
@@ -156,6 +162,15 @@ type ReviewState struct {
 type QueueState struct {
 	QueueType string
 	SetAt     string
+}
+
+// IgnoredRow is one row of ignored_screenshots — a filename the user
+// chose to "Delete forever" on the Unknown tab. `IgnoredAt` is the
+// server-assigned timestamp the Settings panel renders so users can
+// distinguish recent ignores from old ones.
+type IgnoredRow struct {
+	Filename  string
+	IgnoredAt string
 }
 
 // PlayModeState is one row of match_play_mode. `PlayMode` is the

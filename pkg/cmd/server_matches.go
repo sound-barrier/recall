@@ -49,7 +49,36 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	})
 
 	apiMux.HandleFunc("DELETE /api/v1/matches", func(w http.ResponseWriter, r *http.Request) {
-		if err := a.ClearDatabase(); err != nil {
+		// `keep_ignored=true` preserves the Unknown-tab "Delete forever"
+		// suppress list across the wipe (Settings → Advanced exposes
+		// this as a "Keep suppress-list" checkbox on the Clear Database
+		// arm step). Default-off matches the historical "factory reset"
+		// semantic. Strict — anything other than "true"/"false"/absent
+		// or unknown query keys returns 400, so scripted curl callers
+		// can't silently fall through to a different behavior on typo,
+		// and schemathesis's coverage-phase negative tests don't
+		// require a 204 from a malformed URL.
+		for k := range r.URL.Query() {
+			if k != "keep_ignored" {
+				http.Error(w, "unknown query parameter: "+k, http.StatusBadRequest)
+				return
+			}
+		}
+		keepIgnored := false
+		// `Query().Has` distinguishes "key absent" (use default) from
+		// "key present with empty value" (a malformed boolean — 400).
+		if r.URL.Query().Has("keep_ignored") {
+			switch r.URL.Query().Get("keep_ignored") {
+			case "true":
+				keepIgnored = true
+			case "false":
+				keepIgnored = false
+			default:
+				http.Error(w, "keep_ignored must be true or false", http.StatusBadRequest)
+				return
+			}
+		}
+		if err := a.ClearDatabase(keepIgnored); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

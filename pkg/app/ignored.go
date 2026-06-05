@@ -51,34 +51,37 @@ func (a *App) UnignoreScreenshot(filename string) error {
 	return a.store.RemoveIgnoredScreenshot(filename)
 }
 
-// GetIgnoredScreenshots returns the suppress-list sorted by
-// filename. Used by the debug GET endpoint and (eventually) by a
-// "Manage ignored" surface.
-func (a *App) GetIgnoredScreenshots() ([]string, error) {
-	m, err := a.store.LoadIgnoredFilenames()
+// IgnoredScreenshot is the wire shape returned by GetIgnoredScreenshots.
+// `Filename` is the raw filename the suppress-list keys on; `IgnoredAt`
+// is the server-assigned timestamp the Settings panel renders so users
+// can tell recent ignores from old ones.
+type IgnoredScreenshot struct {
+	Filename  string `json:"filename"`
+	IgnoredAt string `json:"ignored_at"`
+}
+
+// GetIgnoredScreenshots returns the suppress-list with timestamps,
+// sorted most-recently-ignored first. Backs the Settings "Manage
+// ignored files" panel.
+func (a *App) GetIgnoredScreenshots() ([]IgnoredScreenshot, error) {
+	rows, err := a.store.ListIgnoredScreenshots()
 	if err != nil {
-		return nil, fmt.Errorf("load ignored filenames: %w", err)
+		return nil, fmt.Errorf("list ignored screenshots: %w", err)
 	}
-	out := make([]string, 0, len(m))
-	for f := range m {
-		out = append(out, f)
+	out := make([]IgnoredScreenshot, len(rows))
+	for i, r := range rows {
+		out[i] = IgnoredScreenshot{Filename: r.Filename, IgnoredAt: r.IgnoredAt}
 	}
-	// Stable order so JSON responses + tests don't flake on map
-	// iteration randomness.
-	sortStrings(out)
 	return out, nil
 }
 
-// sortStrings is a tiny helper to keep this file dependency-light;
-// avoids pulling sort into the import block when only one site uses
-// it.
-func sortStrings(s []string) {
-	// insertion sort — the list is small (typically dozens, not
-	// thousands) so an O(n²) sort is fine and avoids the sort
-	// package import.
-	for i := 1; i < len(s); i++ {
-		for j := i; j > 0 && s[j-1] > s[j]; j-- {
-			s[j-1], s[j] = s[j], s[j-1]
-		}
+// ClearIgnoredScreenshots truncates the suppress-list — the bulk
+// "Re-enable all" action on the Settings panel. After the call, the
+// next Parse run will re-discover every previously-ignored file from
+// disk (the on-disk files never moved). Idempotent on an empty list.
+func (a *App) ClearIgnoredScreenshots() error {
+	if err := a.store.ClearIgnoredScreenshots(); err != nil {
+		return fmt.Errorf("clear ignored screenshots: %w", err)
 	}
+	return nil
 }

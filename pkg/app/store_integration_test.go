@@ -22,11 +22,61 @@ type fakeStore = dbtest.Fake
 func TestApp_ClearDatabase_DelegatesToStore(t *testing.T) {
 	fs := &fakeStore{}
 	a := NewWithStore(fs)
-	if err := a.ClearDatabase(); err != nil {
+	if err := a.ClearDatabase(false); err != nil {
 		t.Fatalf("ClearDatabase: %v", err)
 	}
 	if fs.ClearCalls != 1 {
 		t.Errorf("expected one Clear call, got %d", fs.ClearCalls)
+	}
+}
+
+// TestApp_ClearDatabase_KeepIgnored_SnapshotRestore confirms the opt-out
+// path: ignored filenames survive the wipe via snapshot-and-restore.
+// Settings → Advanced exposes this via a "Keep suppress-list" checkbox
+// on the Clear Database arm step.
+func TestApp_ClearDatabase_KeepIgnored_SnapshotRestore(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	for _, f := range []string{"bad-1.png", "bad-2.png", "bad-3.png"} {
+		if err := fs.AddIgnoredScreenshot(f); err != nil {
+			t.Fatalf("seed %s: %v", f, err)
+		}
+	}
+	if err := a.ClearDatabase(true); err != nil {
+		t.Fatalf("ClearDatabase(keepIgnored=true): %v", err)
+	}
+	got, err := fs.LoadIgnoredFilenames()
+	if err != nil {
+		t.Fatalf("LoadIgnoredFilenames: %v", err)
+	}
+	if len(got) != 3 {
+		t.Errorf("expected 3 ignored filenames restored, got %d: %v", len(got), got)
+	}
+	for _, f := range []string{"bad-1.png", "bad-2.png", "bad-3.png"} {
+		if !got[f] {
+			t.Errorf("expected %s in restored set", f)
+		}
+	}
+}
+
+// TestApp_ClearDatabase_NoOptOut_WipesIgnored confirms the default
+// "factory reset" path also drops the suppress-list (matches the
+// Store.Clear behavior).
+func TestApp_ClearDatabase_NoOptOut_WipesIgnored(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	if err := fs.AddIgnoredScreenshot("bad.png"); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := a.ClearDatabase(false); err != nil {
+		t.Fatalf("ClearDatabase(false): %v", err)
+	}
+	got, err := fs.LoadIgnoredFilenames()
+	if err != nil {
+		t.Fatalf("LoadIgnoredFilenames: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected suppress-list wiped without opt-out; got %v", got)
 	}
 }
 

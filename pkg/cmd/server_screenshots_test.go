@@ -71,7 +71,7 @@ func TestDeleteScreenshotsIgnore_NotPresent_StillReturns204(t *testing.T) {
 	}
 }
 
-func TestGetScreenshotsIgnored_ReturnsSortedList(t *testing.T) {
+func TestGetScreenshotsIgnored_ReturnsRichRows(t *testing.T) {
 	fs := dbtest.New()
 	for _, f := range []string{"zoo.png", "alpha.png", "middle.png"} {
 		_ = fs.AddIgnoredScreenshot(f)
@@ -81,13 +81,27 @@ func TestGetScreenshotsIgnored_ReturnsSortedList(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
-	var got []string
+	type ignoredScreenshot struct {
+		Filename  string `json:"filename"`
+		IgnoredAt string `json:"ignored_at"`
+	}
+	var got []ignoredScreenshot
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
+	// Three rapid Adds share an RFC3339-second timestamp; tie-break
+	// is filename ASC.
 	want := []string{"alpha.png", "middle.png", "zoo.png"}
-	if strings.Join(got, ",") != strings.Join(want, ",") {
-		t.Errorf("got %v, want %v", got, want)
+	if len(got) != len(want) {
+		t.Fatalf("got %d rows, want %d", len(got), len(want))
+	}
+	for i, w := range want {
+		if got[i].Filename != w {
+			t.Errorf("got[%d].Filename = %q, want %q", i, got[i].Filename, w)
+		}
+		if got[i].IgnoredAt == "" {
+			t.Errorf("got[%d].IgnoredAt empty; expected timestamp", i)
+		}
 	}
 }
 
@@ -101,6 +115,32 @@ func TestGetScreenshotsIgnored_EmptyIsEmptyArray(t *testing.T) {
 	// are-not-null rule.
 	if body := strings.TrimSpace(rec.Body.String()); body != "[]" {
 		t.Errorf("got body %q, want []", body)
+	}
+}
+
+// DELETE /api/v1/screenshots/ignored — bulk truncate (Settings →
+// Advanced → Manage ignored files → Re-enable all action).
+func TestDeleteScreenshotsIgnored_BulkTruncate(t *testing.T) {
+	fs := dbtest.New()
+	for _, f := range []string{"a.png", "b.png", "c.png"} {
+		_ = fs.AddIgnoredScreenshot(f)
+	}
+	_, mux := newTestApp(t, fs)
+	rec := del(t, mux, "/api/v1/screenshots/ignored")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rec.Code)
+	}
+	got, _ := fs.LoadIgnoredFilenames()
+	if len(got) != 0 {
+		t.Errorf("expected suppress-list empty after bulk DELETE; got %v", got)
+	}
+}
+
+func TestDeleteScreenshotsIgnored_EmptyStillReturns204(t *testing.T) {
+	_, mux := newTestApp(t, dbtest.New())
+	rec := del(t, mux, "/api/v1/screenshots/ignored")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204 (idempotent)", rec.Code)
 	}
 }
 
