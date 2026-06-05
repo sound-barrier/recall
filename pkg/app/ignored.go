@@ -17,6 +17,20 @@ var ErrIgnoreFilenameRequired = errors.New("filename is required")
 // parse — the user clicked "Delete forever," they expect the row
 // gone now.
 //
+// The wipe targets THREE shapes of match_key:
+//
+//  1. `unmatched-<filename>` — the parser couldn't read a timestamp.
+//  2. `ambiguous-<filename>` — the resolver tied between candidates.
+//  3. `match-<timestamp>` — a tracked match whose OCR failed to extract
+//     a map (so the aggregator surfaces it on the Unknown tab via the
+//     `!data.map` filter). The match_key isn't derivable from the
+//     filename alone, so we look up every match_key that references
+//     `filename` across the five parent tables and wipe those too.
+//
+// Without case 3, an Unknown card whose underlying match_key is
+// `match-<ts>` never disappeared — the suppress-list row went in but
+// the source row stayed, so the next reload re-rendered the card.
+//
 // Idempotent: ignoring an already-ignored filename refreshes the
 // timestamp; wiping a non-existent matchKey is a no-op.
 func (a *App) IgnoreScreenshot(filename string) error {
@@ -26,13 +40,28 @@ func (a *App) IgnoreScreenshot(filename string) error {
 	if err := a.store.AddIgnoredScreenshot(filename); err != nil {
 		return fmt.Errorf("add ignored screenshot: %w", err)
 	}
-	// Wipe both unmatched- and ambiguous- match rows that pointed at
-	// this file. The matchKey shape is canonical (no colons), so we
-	// can derive both candidates and call HardDeleteMatch on each.
-	for _, key := range []string{
+	// Deduplicate so a tracked-match lookup that returns the same key
+	// we already had in the hard-coded fallback list doesn't call
+	// HardDeleteMatch twice (harmless but noisier in tests + audit
+	// logs). Build the set, then iterate it in a stable order so
+	// failure messages stay reproducible.
+	tracked, err := a.store.LookupMatchKeysForFilename(filename)
+	if err != nil {
+		return fmt.Errorf("lookup match keys for %s: %w", filename, err)
+	}
+	seen := map[string]bool{}
+	keys := make([]string, 0, 2+len(tracked))
+	for _, k := range append([]string{
 		"unmatched-" + filename,
 		"ambiguous-" + filename,
-	} {
+	}, tracked...) {
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		keys = append(keys, k)
+	}
+	for _, key := range keys {
 		if err := a.store.HardDeleteMatch(key); err != nil {
 			return fmt.Errorf("hard delete match for %s: %w", key, err)
 		}

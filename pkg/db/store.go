@@ -39,6 +39,14 @@ type Store interface {
 	// tables, so the parse loop can skip OCR for already-parsed files.
 	LoadAllFilenames() (map[string]bool, error)
 
+	// LookupMatchKeysForFilename returns every distinct match_key
+	// referenced by `filename` across the five parent tables. Used by
+	// App.IgnoreScreenshot to wipe the actual match the user clicked
+	// on — match-<ts> when the parser failed to extract a map and the
+	// row surfaces on the Unknown tab. Returns an empty slice for
+	// filenames not in the DB.
+	LookupMatchKeysForFilename(filename string) ([]string, error)
+
 	// LoadAll bulk-reads every row across all 10 tables and returns
 	// them grouped by parent type with children already attached.
 	LoadAll() (Screenshots, error)
