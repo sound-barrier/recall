@@ -1228,6 +1228,7 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="btn ghost jump-to-undated"
+            :class="{ 'has-undated': undatedCount > 0 }"
             :disabled="undatedCount === 0"
             :title="undatedCount === 0
               ? 'No undated matches in this view'
@@ -2146,10 +2147,20 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
+/* ─── Leaves-head controls row ───────────────────────────────────
+   Three peer affordances — Sort + Group trigger, Density segmented
+   control, Jump-to-undated. Each used to ship with its own
+   typographic register and height; they now all live on a shared
+   ~28 px button shape so the row reads as one family. The shared
+   baseline is reproduced under each control's selector rather than
+   extracted into a class because Vue's <style scoped> doesn't let
+   us @extend, and the rules are short enough that DRY-by-mixin
+   isn't worth the indirection. */
+
 .leaves-head-controls {
   display: inline-flex;
   gap: 0.5rem;
-  align-items: end;
+  align-items: center;
 }
 
 /* Combined Sort + Group trigger — single button replaces the prior
@@ -2157,31 +2168,36 @@ onBeforeUnmount(() => {
    alongside the Density picker without overflowing the row. */
 .sort-group-trigger {
   appearance: none;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: 1px solid var(--border-strong);
   border-radius: 2px;
-  padding: 0.22rem 0.65rem;
+  padding: 0.4rem 0.8rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
+  gap: 0.5rem;
+  font-family: var(--body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-faint);
-  font-weight: 700;
+  color: var(--text-dim);
   cursor: pointer;
-  transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
+  transition: color var(--duration-fast) ease,
+              border-color var(--duration-fast) ease,
+              background var(--duration-fast) ease;
 }
 
 .sort-group-trigger:hover {
   color: var(--text);
+  border-color: var(--text-faint);
+  background: rgb(255 255 255 / 2.5%);
 }
 
 .sort-group-trigger.open,
 .sort-group-trigger:focus-visible {
   color: var(--text);
-  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
   outline: none;
 }
 
@@ -2190,20 +2206,31 @@ onBeforeUnmount(() => {
 }
 
 .sort-group-caret {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   line-height: 1;
   transform: translateY(-1px);
+  transition: transform var(--duration-fast) ease;
 }
 
+.sort-group-trigger.open .sort-group-caret {
+  transform: translateY(-1px) rotate(180deg);
+}
+
+/* Density segmented control (`.seg` + `.seg-btn` × 2). Same overall
+   button-row shape as the sort trigger, but two halves joined by a
+   shared 1 px divider so they read as a single connected control.
+   Only used in this row — safe to keep scoped here rather than
+   promoting to app.css. */
 .seg {
   appearance: none;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 0.1rem;
   display: inline-flex;
-  gap: 0.05rem;
-  background: var(--surface-2);
+  align-items: stretch;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  background: transparent;
   margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 .seg-legend {
@@ -2221,25 +2248,49 @@ onBeforeUnmount(() => {
   appearance: none;
   background: transparent;
   border: 0;
-  border-radius: 2px;
-  padding: 0.22rem 0.55rem;
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.14em;
+  border-radius: 0;
+  padding: 0.4rem 0.8rem;
+  font-family: var(--body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text-dim);
   cursor: pointer;
-  font-weight: 700;
+  transition: color var(--duration-fast) ease,
+              background var(--duration-fast) ease;
 }
-.seg-btn:hover { color: var(--text); }
+
+.seg-btn + .seg-btn {
+  border-left: 1px solid var(--border-strong);
+}
+
+.seg-btn:hover {
+  color: var(--text);
+  background: rgb(255 255 255 / 2.5%);
+}
+
+.seg-btn:focus-visible {
+  color: var(--text);
+  outline: none;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
 
 .seg-btn.picked {
   background: var(--accent);
 
-  /* Use the documented text-on-accent token so the picked label
-     clears AA against the orange fill on every theme (day's accent
-     is the same OW orange as dark/night, but day's --surface is a
-     light cream — white-on-orange = 1.92:1 → sub-AA). */
+  /* Documented text-on-accent token so the picked label clears AA
+     against the orange fill on every theme — day's accent is the
+     same OW orange as dark/night, but day's --surface is a light
+     cream that would push white-on-orange to ~1.92:1 (sub-AA). */
+  color: var(--primary-text-on-accent);
+}
+
+.seg-btn.picked:hover,
+.seg-btn.picked:focus-visible {
+  /* Keep the orange fill — don't let the shared hover stack lift it
+     to a translucent tint, which would visually un-pick the label. */
+  background: var(--accent);
   color: var(--primary-text-on-accent);
 }
 
@@ -3080,11 +3131,21 @@ onBeforeUnmount(() => {
    actions use; the jump-glyph keeps the affordance visually distinct
    from the density toggle without leaving the row's flow. */
 
+/* Jump-to-undated lives on the .btn ghost shape (defined in app.css)
+   so it shares height + typography + hover with .sort-group-trigger
+   and .seg-btn above. The local rules only add the
+   inline-flex / gap shape needed for the "↓ N undated" label and the
+   soft-emphasis state via .has-undated. */
 .jump-to-undated {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.5rem;
   white-space: nowrap;
+
+  /* Match the sort/density padding so the three controls share an
+     exact button-row height. The .btn ghost padding (0.55 × 0.95)
+     would push this control a few px taller than its peers. */
+  padding: 0.4rem 0.8rem;
 }
 
 .jump-to-undated[disabled] {
@@ -3096,10 +3157,33 @@ onBeforeUnmount(() => {
   font-family: var(--mono);
   font-weight: 700;
   color: var(--accent);
+  font-size: 0.85rem;
+  line-height: 1;
+  transform: translateY(-1px);
 }
 
 .jump-to-undated[disabled] .jump-glyph {
   color: var(--text-faint);
+}
+
+/* Soft emphasis — applied when undatedCount > 0. Hints at "there's
+   something to triage" without shouting; the accent tint is subtle
+   enough to live alongside the unpicked density button without
+   competing for attention. */
+.jump-to-undated.has-undated {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border-strong));
+  color: var(--text);
+}
+
+.jump-to-undated.has-undated:hover,
+.jump-to-undated.has-undated:focus-visible {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface-2));
+  border-color: var(--accent);
+}
+
+.jump-to-undated.has-undated .jump-glyph {
+  color: var(--accent-bright, var(--accent));
 }
 
 @media (prefers-reduced-motion: reduce) {
