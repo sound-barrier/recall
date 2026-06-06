@@ -112,6 +112,8 @@ test.describe('Matches — scroll affordances', () => {
     await expect(btn).toBeVisible()
     await expect(btn).toContainText('5 undated')
     await expect(btn).toBeEnabled()
+    // Soft-emphasis class is present when count > 0 (orange wash).
+    await expect(btn).toHaveClass(/has-undated/)
 
     const divider = page.locator('[data-section-key="no-date"]')
     await expect(divider).toHaveCount(1)
@@ -182,5 +184,8 @@ test.describe('Matches — scroll affordances', () => {
     await expect(btn).toContainText('0 undated')
     await expect(btn).toBeDisabled()
     await expect(btn).toHaveAttribute('title', 'No undated matches in this view')
+    // Empty state must NOT carry the soft-emphasis class — keeps the
+    // toolbar visually quiet when there's nothing to triage.
+    await expect(btn).not.toHaveClass(/has-undated/)
   })
 })

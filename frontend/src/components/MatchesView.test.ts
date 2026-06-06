@@ -547,6 +547,9 @@ describe('MatchesView — jump-to-undated button', () => {
     expect(btn.text()).toContain('2 undated')
     expect(btn.attributes('disabled')).toBeUndefined()
     expect(btn.attributes('title')).toMatch(/Jump to 2 undated matches/)
+    // Soft-emphasis class lights up when count > 0 — the orange wash
+    // hints "there's something to triage" without shouting.
+    expect(btn.classes()).toContain('has-undated')
   })
 
   it('is disabled with an empty-state tooltip when no undated matches exist', () => {
@@ -557,6 +560,9 @@ describe('MatchesView — jump-to-undated button', () => {
     expect(btn.text()).toContain('0 undated')
     expect(btn.attributes('disabled')).toBeDefined()
     expect(btn.attributes('title')).toBe('No undated matches in this view')
+    // Empty state drops the soft-emphasis class — the button falls
+    // back to the inherited .btn ghost disabled look.
+    expect(btn.classes()).not.toContain('has-undated')
   })
 
   it('singular wording when exactly one undated match', () => {
