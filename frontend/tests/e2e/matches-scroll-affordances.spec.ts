@@ -147,6 +147,24 @@ test.describe('Matches — scroll affordances', () => {
     const divider = page.locator('[data-section-key="no-date"]')
     await expect(divider).toHaveCount(1)
     await expect(divider).toBeInViewport({ ratio: 0.5 })
+
+    // The sticky Campaign Log pins to top:0 once the user is past
+    // its natural position. scrollIntoView would put the section
+    // header at scrollY=0 BEHIND the sticky chrome — leaving the
+    // first undated row obscured and the user seeing the 2nd one
+    // at the top of the visible area. The handler offsets the
+    // scroll target by the sticky's measured height; assert the
+    // divider's top is below the sticky bar's bottom edge.
+    const overlapped = await page.evaluate(() => {
+      const d = document.querySelector('[data-section-key="no-date"]') as HTMLElement | null
+      const s = document.querySelector('.campaign-log-sticky') as HTMLElement | null
+      if (!d) return null
+      const dRect = d.getBoundingClientRect()
+      const sRect = s?.getBoundingClientRect()
+      return { dividerTop: dRect.top, stickyBottom: sRect?.bottom ?? 0 }
+    })
+    expect(overlapped).not.toBeNull()
+    expect(overlapped!.dividerTop).toBeGreaterThanOrEqual(overlapped!.stickyBottom - 2)
   })
 
   test('jump-to-undated: disabled with empty-state tooltip when no undated matches exist', async ({ page }) => {
