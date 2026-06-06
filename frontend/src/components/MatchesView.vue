@@ -10,6 +10,7 @@ import WidgetConfigPopover from './WidgetConfigPopover.vue'
 import MatchesSortGroupPopover from './MatchesSortGroupPopover.vue'
 import { useWeekStart } from '../composables/useWeekStart'
 import { useDensity } from '../composables/useDensity'
+import { useScrollAffordance } from '../composables/useScrollAffordance'
 import { useOWData } from '../composables/useOWData'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import { useArchiveSelection } from '../composables/useArchiveSelection'
@@ -316,6 +317,32 @@ const { weekStart } = useWeekStart()
 // usePersistedRef so the user's choice survives reloads. Default is
 // `comfortable` (the historical render).
 const { density, setDensity } = useDensity()
+
+// Back-to-top affordance — fixed-position button at lower-left of
+// the matches workspace. The composable owns the passive scroll
+// listener + the smooth-scroll callback so MatchesView only deals
+// with rendering the gated button.
+const { isPastThreshold: isPastScrollThreshold, scrollToTop } = useScrollAffordance(400)
+
+// Live count of undated matches in the current narrow. Drives the
+// "↓ N undated" jump button next to the density toggle. Uses
+// narrowedRecords (not records or sortedRecords) so the count
+// automatically respects every active filter — date window, search
+// clauses, picked maps / heroes / roles, etc.
+const undatedCount = computed(() =>
+  narrowedRecords.value.filter(r => !r.data?.date).length,
+)
+
+function onJumpToUndated() {
+  if (undatedCount.value === 0) return
+  // The "No date" group header carries data-section-key="no-date"
+  // (added alongside this button); querying by attribute keeps the
+  // jump robust to future class renames during visual refreshes.
+  const target = document.querySelector('[data-section-key="no-date"]')
+  if (!target) return
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  target.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
+}
 // Single dossier instance per Matches view. provideDossier() makes
 // it reachable from every descendant widget via useDossier() so we
 // don't thread 18 props through DashboardWidget. Each widget pulls
@@ -1172,6 +1199,26 @@ onBeforeUnmount(() => {
               Compact
             </button>
           </fieldset>
+          <!-- Jump to the "No date" section at the bottom of the
+               leaves list. useMatchesGroup always appends the
+               undated bucket last, regardless of sort order; this
+               button gives the user a one-click path to triage
+               those rows without scrolling past the dated corpus.
+               Disabled (predictable layout > collapsed layout) when
+               there are no undated matches in the current narrow. -->
+          <button
+            type="button"
+            class="btn ghost jump-to-undated"
+            :disabled="undatedCount === 0"
+            :title="undatedCount === 0
+              ? 'No undated matches in this view'
+              : `Jump to ${undatedCount} undated match${undatedCount === 1 ? '' : 'es'}`"
+            data-jump-to-undated
+            @click="onJumpToUndated"
+          >
+            <span class="jump-glyph" aria-hidden="true">↓</span>
+            {{ undatedCount }} undated
+          </button>
         </div>
       </header>
 
@@ -1202,7 +1249,7 @@ onBeforeUnmount(() => {
         role="list"
       >
         <template v-for="section in windowedSections" :key="section.key">
-          <li v-if="section.header" class="section-divider" :aria-label="`Group: ${section.header}`">
+          <li v-if="section.header" class="section-divider" :data-section-key="section.key" :aria-label="`Group: ${section.header}`">
             <span class="sd-label">{{ section.header }}</span>
             <span class="sd-count">{{ section.records.length }}</span>
             <span class="sd-line" aria-hidden="true" />
@@ -1538,6 +1585,26 @@ onBeforeUnmount(() => {
       @hide="onRowContextHide"
     />
     </div>
+
+    <!-- Fixed-position back-to-top button. Only mounted while the
+         Matches view is rendered (sits inside the workspace section)
+         so it doesn't bleed onto other tabs. Visibility tracks the
+         useScrollAffordance threshold — appears once the user is
+         clearly inside the leaves list, vanishes when they're back
+         near the dossier. -->
+    <Transition name="scroll-top-fade">
+      <button
+        v-if="isPastScrollThreshold"
+        type="button"
+        class="scroll-to-top"
+        data-scroll-to-top
+        aria-label="Scroll to top of page"
+        title="Scroll to top"
+        @click="scrollToTop"
+      >
+        <span class="scroll-to-top-glyph" aria-hidden="true">↑</span>
+      </button>
+    </Transition>
   </section>
 </template>
 
@@ -2930,4 +2997,102 @@ onBeforeUnmount(() => {
   color: var(--text-dim);
 }
 .archive-cancel:hover { color: var(--text); border-color: var(--text); }
+
+/* ─── Scroll-to-top button ───────────────────────────────────────
+   Fixed at the lower-left of the viewport, fades in once the user is
+   past ~400 px down (useScrollAffordance). Circular, 44x44 so the
+   target meets the a11y minimum. z-index 5 keeps it above the sticky
+   Campaign Log (z-index 4) but below modals (1090+). */
+
+.scroll-to-top {
+  position: fixed;
+  left: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 5;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  appearance: none;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 35%);
+  transition: background var(--duration-fast) ease,
+              border-color var(--duration-fast) ease,
+              color var(--duration-fast) ease,
+              transform var(--duration-fast) ease;
+}
+
+.scroll-to-top:hover,
+.scroll-to-top:focus-visible {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.scroll-to-top-glyph {
+  display: block;
+  font-weight: 700;
+}
+
+.scroll-top-fade-enter-active,
+.scroll-top-fade-leave-active {
+  transition: opacity var(--duration-med) ease,
+              transform var(--duration-med) ease;
+}
+
+.scroll-top-fade-enter-from,
+.scroll-top-fade-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* ─── Jump-to-undated button ─────────────────────────────────────
+   Sits as a third sibling next to the density fieldset in the
+   leaves-head-controls row. Same .btn ghost foundation other ghost
+   actions use; the jump-glyph keeps the affordance visually distinct
+   from the density toggle without leaving the row's flow. */
+
+.jump-to-undated {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.jump-to-undated[disabled] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.jump-glyph {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.jump-to-undated[disabled] .jump-glyph {
+  color: var(--text-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-to-top,
+  .scroll-top-fade-enter-active,
+  .scroll-top-fade-leave-active {
+    transition: none;
+  }
+
+  .scroll-to-top:hover,
+  .scroll-to-top:focus-visible {
+    transform: none;
+  }
+}
 </style>
