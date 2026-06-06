@@ -120,6 +120,35 @@ test.describe('Matches — scroll affordances', () => {
     await expect(divider).toBeInViewport({ ratio: 0.5 })
   })
 
+  test('jump-to-undated: expands the infinite-scroll window so the "No date" section reaches the DOM even past the first page', async ({ page }) => {
+    // Pre-fix: useMatchesWindow rendered only the first 20 rows
+    // on mount; with 60+ records, the trailing "No date" section
+    // was never in the DOM when `document.querySelector` ran, so
+    // the jump silently did nothing. The handler now calls
+    // expandWindowToAll() + awaits a tick before querying.
+    const corpus = [...datedRecords(60), ...undatedRecords(8)]
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify(corpus),
+      })
+    })
+    await page.goto('/')
+    await expect(page.locator('#panel-matches')).toBeVisible()
+
+    // Initially the leaves list is windowed at 20 rows — the
+    // "No date" divider is NOT in the DOM yet.
+    await expect(page.locator('[data-section-key="no-date"]')).toHaveCount(0)
+
+    const btn = page.locator('[data-jump-to-undated]')
+    await expect(btn).toContainText('8 undated')
+    await btn.click()
+
+    const divider = page.locator('[data-section-key="no-date"]')
+    await expect(divider).toHaveCount(1)
+    await expect(divider).toBeInViewport({ ratio: 0.5 })
+  })
+
   test('jump-to-undated: disabled with empty-state tooltip when no undated matches exist', async ({ page }) => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({

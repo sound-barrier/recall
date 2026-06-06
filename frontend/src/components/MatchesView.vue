@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { MatchRecord } from '../api'
 import { GetProfiles } from '../api'
 import { useMatchesGroup, type GroupedSection } from '../composables/useMatchesGroup'
@@ -333,8 +333,16 @@ const undatedCount = computed(() =>
   narrowedRecords.value.filter(r => !r.data?.date).length,
 )
 
-function onJumpToUndated() {
+async function onJumpToUndated() {
   if (undatedCount.value === 0) return
+  // useMatchesWindow caps the rendered list at one page (20 rows)
+  // by default; with a real corpus the "No date" section lives at
+  // the very bottom and isn't in the DOM until the user scrolls
+  // far enough to trigger the infinite-scroll sentinel. Expand the
+  // window all the way first so the section divider exists when we
+  // query for it, then wait one tick for Vue to render the rows.
+  expandWindowToAll()
+  await nextTick()
   // The "No date" group header carries data-section-key="no-date"
   // (added alongside this button); querying by attribute keeps the
   // jump robust to future class renames during visual refreshes.
@@ -600,6 +608,7 @@ const {
   renderedCount,
   hasMore,
   bumpWindow,
+  expandWindowToAll,
   resetCounter,
 } = useMatchesWindow(narrowedRecords, [sortOrder, groupBy], focusedCardIndexRef)
 
