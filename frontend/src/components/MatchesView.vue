@@ -12,6 +12,7 @@ import { useWeekStart } from '../composables/useWeekStart'
 import { useDensity } from '../composables/useDensity'
 import { useScrollAffordance } from '../composables/useScrollAffordance'
 import { useOWData } from '../composables/useOWData'
+import { rolesForHeader } from '../match-helpers'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import { useArchiveSelection } from '../composables/useArchiveSelection'
 import MatchTimelineHeader from './MatchTimelineHeader.vue'
@@ -763,6 +764,16 @@ function formatHeroes(rec: MatchRecord): string {
   return sorted.map((h) => h.hero).filter(Boolean).join(', ')
 }
 
+// Role label for the leaf row. Open-queue matches let a player
+// touch multiple roles; we list every role the heroes_played array
+// resolved to, in percent-played order, deduped. Single-role
+// matches fall through to a single label (no comma). Returns ''
+// when neither heroes_played nor data.role resolve — the caller's
+// v-if drops the chip in that case.
+function formatRoles(rec: MatchRecord): string {
+  return rolesForHeader(rec, ow.heroRole).join(', ')
+}
+
 function formatRowDate(rec: MatchRecord): string {
   const d = rec.data?.date
   if (!d) return '—'
@@ -1342,10 +1353,13 @@ onBeforeUnmount(() => {
               </span>
             </div>
 
-            <!-- 4. Who — hero over role. -->
+            <!-- 4. Who — hero over role. Open-queue matches can mix
+                 support / tank / dps in one game; formatRoles lists
+                 every role the heroes_played array resolved to in
+                 percent-played order, deduped. -->
             <div class="leaf-hero-block">
               <span class="leaf-hero">{{ formatHeroes(rec) }}</span>
-              <span v-if="rec.data?.role" class="leaf-role">{{ rec.data.role }}</span>
+              <span v-if="formatRoles(rec)" class="leaf-role">{{ formatRoles(rec) }}</span>
             </div>
 
             <!-- 5. How — eliminations / assists / deaths, big + bold. -->
@@ -1543,7 +1557,7 @@ onBeforeUnmount(() => {
             </div>
             <div class="archive-row-hero">
               <span class="archive-row-hero-name">{{ formatHeroes(rec) }}</span>
-              <span v-if="rec.data?.role" class="archive-row-role">{{ rec.data.role }}</span>
+              <span v-if="formatRoles(rec)" class="archive-row-role">{{ formatRoles(rec) }}</span>
             </div>
             <div class="archive-row-stats">
               <span class="archive-row-stat">{{ rec.data?.eliminations ?? '—' }}</span>

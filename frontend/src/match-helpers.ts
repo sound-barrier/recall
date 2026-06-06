@@ -110,6 +110,47 @@ export function heroesForHeader(rec: Pick<MatchRecord, 'data'>): HeroPlay[] {
   return []
 }
 
+// rolesForHeader walks the same heroes_played order heroesForHeader
+// produces and resolves each hero's role via the caller-supplied
+// `heroRole` lookup (typically useOWData().heroRole), deduplicating
+// while preserving the first-appearance order. Open-queue matches
+// can mix any combination of {support, tank, dps} so the leaf row's
+// role label needs to list every role the player touched — pre-fix
+// the row only showed `data.role`, which is derived from the
+// PRIMARY hero alone and silently dropped the secondary roles.
+//
+// Returns:
+//
+//   - `[lucio, mercy, dva]`           → `['support', 'tank']`
+//   - `[hazard, winston, zen]`        → `['tank', 'support']`
+//   - `[lucio, zarya, reaper]`        → `['support', 'tank', 'dps']`
+//   - `[]` when neither heroes_played nor `data.role` resolve to
+//     anything; the caller decides what to render in that case.
+//
+// Hero-to-role unknowns (an OCR mangle that doesn't match any
+// canonical roster entry) drop out of the list — they'd render as
+// an empty chip otherwise.
+export function rolesForHeader(
+  rec: Pick<MatchRecord, 'data'>,
+  heroRole: (hero: string | null | undefined) => string,
+): string[] {
+  const heroes = heroesForHeader(rec)
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const h of heroes) {
+    const role = heroRole(h.hero)
+    if (!role) continue
+    if (seen.has(role)) continue
+    seen.add(role)
+    out.push(role)
+  }
+  // Fall back to the aggregator-derived single role when no
+  // heroes_played entry resolved — matches that only have a
+  // scoreboard parsed end up here.
+  if (out.length === 0 && rec.data?.role) return [rec.data.role]
+  return out
+}
+
 // matchTime returns a sortable string for a record. Prefers SUMMARY's
 // date + finished_at (most accurate); falls back to the match_key
 // prefix (set from the earliest screenshot's filename) when SUMMARY

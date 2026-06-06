@@ -7,6 +7,7 @@ import {
   missingRequiredSlots,
   missingOptionalSlots,
   heroesForHeader,
+  rolesForHeader,
   matchTime,
   fmtTime,
   formatRelativeTime,
@@ -201,6 +202,111 @@ describe('heroesForHeader', () => {
     ]
     heroesForHeader({ data: { heroes_played: list } })
     expect(list.map(h => h.hero)).toEqual(['kiriko', 'lucio']) // unchanged
+  })
+})
+
+// ─── rolesForHeader ──────────────────────────────────────────────────
+
+describe('rolesForHeader', () => {
+  // Minimal heroRole stub keyed on the literal name. Mirrors the
+  // useOWData().heroRole shape — anything unrecognised resolves to ''.
+  const ROLE: Record<string, string> = {
+    lucio: 'support', ana: 'support', mercy: 'support',
+    kiriko: 'support', baptiste: 'support', zenyatta: 'support',
+    zarya: 'tank', reinhardt: 'tank', winston: 'tank',
+    hazard: 'tank', dva: 'tank', orisa: 'tank',
+    reaper: 'dps', tracer: 'dps', soldier: 'dps',
+  }
+  const heroRole = (h: string | null | undefined) => h ? ROLE[h] ?? '' : ''
+
+  it('dedupes single-role open queue (all 3 heroes support → ["support"])', () => {
+    const rec = {
+      data: {
+        heroes_played: [
+          { hero: 'lucio',  percent_played: 50 },
+          { hero: 'mercy',  percent_played: 30 },
+          { hero: 'ana',    percent_played: 20 },
+        ],
+      },
+    }
+    expect(rolesForHeader(rec, heroRole)).toEqual(['support'])
+  })
+
+  it('preserves first-appearance order (lucio, mercy, dva → ["support", "tank"])', () => {
+    const rec = {
+      data: {
+        heroes_played: [
+          { hero: 'lucio', percent_played: 50 },
+          { hero: 'mercy', percent_played: 30 },
+          { hero: 'dva',   percent_played: 20 },
+        ],
+      },
+    }
+    expect(rolesForHeader(rec, heroRole)).toEqual(['support', 'tank'])
+  })
+
+  it('preserves first-appearance order (hazard, winston, zenyatta → ["tank", "support"])', () => {
+    const rec = {
+      data: {
+        heroes_played: [
+          { hero: 'hazard',   percent_played: 50 },
+          { hero: 'winston',  percent_played: 30 },
+          { hero: 'zenyatta', percent_played: 20 },
+        ],
+      },
+    }
+    expect(rolesForHeader(rec, heroRole)).toEqual(['tank', 'support'])
+  })
+
+  it('lists every role for a full-spread open-queue match (lucio, zarya, reaper)', () => {
+    const rec = {
+      data: {
+        heroes_played: [
+          { hero: 'lucio',  percent_played: 40 },
+          { hero: 'zarya',  percent_played: 35 },
+          { hero: 'reaper', percent_played: 25 },
+        ],
+      },
+    }
+    expect(rolesForHeader(rec, heroRole)).toEqual(['support', 'tank', 'dps'])
+  })
+
+  it('walks heroes in percent-played order (heroesForHeader contract) not array order', () => {
+    // Stored array is ana, dva, reaper but percent puts reaper at the
+    // top, dva second, ana last. Expected role order: dps, tank, support.
+    const rec = {
+      data: {
+        heroes_played: [
+          { hero: 'ana',    percent_played: 10 },
+          { hero: 'dva',    percent_played: 30 },
+          { hero: 'reaper', percent_played: 60 },
+        ],
+      },
+    }
+    expect(rolesForHeader(rec, heroRole)).toEqual(['dps', 'tank', 'support'])
+  })
+
+  it('falls back to data.role when heroes_played is empty', () => {
+    const rec = { data: { hero: 'lucio', role: 'support' as const } }
+    expect(rolesForHeader(rec, heroRole)).toEqual(['support'])
+  })
+
+  it('drops hero entries whose role cannot be resolved (OCR mangle)', () => {
+    const rec = {
+      data: {
+        heroes_played: [
+          { hero: 'lucio',         percent_played: 50 },
+          { hero: 'garbled-name',  percent_played: 30 },
+          { hero: 'reaper',        percent_played: 20 },
+        ],
+      },
+    }
+    expect(rolesForHeader(rec, heroRole)).toEqual(['support', 'dps'])
+  })
+
+  it('returns [] when no heroes resolve and there is no data.role', () => {
+    const rec = { data: { heroes_played: [{ hero: 'garbled', percent_played: 50 }] } }
+    expect(rolesForHeader(rec, heroRole)).toEqual([])
   })
 })
 
