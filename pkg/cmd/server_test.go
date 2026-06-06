@@ -247,6 +247,45 @@ func TestServerMux_DeleteMatches_KeepIgnoredPreservesSuppressList(t *testing.T) 
 	}
 }
 
+// The DELETE handler rejects malformed query parameters before
+// touching the store — schemathesis's negative_data_rejection
+// check is disabled (intermittent false positive in v4.21 on
+// boolean query params) so these tests are the only place this
+// contract is pinned. Three negative cases:
+//
+//   - unknown query keys (typo defence) → 400
+//   - keep_ignored present with an unrecognised value → 400
+//   - keep_ignored present with an empty value → 400
+//
+// In every case the store must NOT be touched — the wipe is
+// destructive and should never run on a malformed request.
+func TestServerMux_DeleteMatches_RejectsMalformedQuery(t *testing.T) {
+	cases := []struct {
+		name, query string
+	}{
+		{"unknown query key", "?other=1"},
+		{"unknown query key alongside valid", "?keep_ignored=true&other=1"},
+		{"keep_ignored=garbage", "?keep_ignored=garbage"},
+		{"keep_ignored capitalised True", "?keep_ignored=True"},
+		{"keep_ignored=1", "?keep_ignored=1"},
+		{"keep_ignored empty value", "?keep_ignored="},
+		{"keep_ignored no value", "?keep_ignored"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fs := dbtest.New()
+			_, mux := newTestApp(t, fs)
+			rec := del(t, mux, "/api/v1/matches"+tc.query)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status %d body=%s — want 400", rec.Code, rec.Body.String())
+			}
+			if fs.ClearCalls != 0 {
+				t.Errorf("malformed query must not reach the store; got %d Clear calls", fs.ClearCalls)
+			}
+		})
+	}
+}
+
 func TestServerMux_DeleteSingleMatch_DelegatesToStore(t *testing.T) {
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
