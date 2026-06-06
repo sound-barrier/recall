@@ -37,6 +37,14 @@ export interface UseMatchesWindowReturn {
   // Add another page to the window. Clamps at the corpus length so
   // a sentinel-fire-twice race doesn't overshoot.
   bumpWindow: () => void
+  // Expand the window all the way to the corpus end in one step.
+  // Called by the "jump to undated" affordance, where landing on a
+  // section that lives past the current window means bump-by-page
+  // would either need to fire dozens of times or scroll-and-wait
+  // for the sentinel. Skipping straight to renderedCount = total
+  // costs one render but lets the section divider land in the DOM
+  // before the scrollIntoView call.
+  expandWindowToAll: () => void
   // Expand until `idx` is in scope. Called by the focused-card
   // watcher so keyboard nav can land on rows the user can't see.
   ensureIndexVisible: (idx: number) => void
@@ -70,6 +78,10 @@ export function useMatchesWindow(
     renderedCount.value = Math.min(renderedCount.value + pageSize, total)
   }
 
+  function expandWindowToAll(): void {
+    renderedCount.value = narrowedRecords.value.length
+  }
+
   function ensureIndexVisible(idx: number): void {
     if (idx < 0) return
     const total = narrowedRecords.value.length
@@ -94,5 +106,5 @@ export function useMatchesWindow(
 
   const hasMore = computed(() => renderedCount.value < narrowedRecords.value.length)
 
-  return { renderedCount, hasMore, bumpWindow, ensureIndexVisible, reset, resetCounter }
+  return { renderedCount, hasMore, bumpWindow, expandWindowToAll, ensureIndexVisible, reset, resetCounter }
 }

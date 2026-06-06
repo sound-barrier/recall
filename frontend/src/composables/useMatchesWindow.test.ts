@@ -49,6 +49,23 @@ describe('useMatchesWindow', () => {
     expect(renderedCount.value).toBe(15)
   })
 
+  it('expandWindowToAll jumps renderedCount to the corpus length in one step', () => {
+    const records = ref(makeRecords(500))
+    const { renderedCount, hasMore, expandWindowToAll } = useMatchesWindow(records, [], ref(-1))
+    expect(renderedCount.value).toBe(DEFAULT_PAGE_SIZE)
+    expect(hasMore.value).toBe(true)
+    expandWindowToAll()
+    expect(renderedCount.value).toBe(500)
+    expect(hasMore.value).toBe(false)
+  })
+
+  it('expandWindowToAll is a no-op on an empty corpus (does not throw)', () => {
+    const records = ref(makeRecords(0))
+    const { renderedCount, expandWindowToAll } = useMatchesWindow(records, [], ref(-1))
+    expandWindowToAll()
+    expect(renderedCount.value).toBe(0)
+  })
+
   it('reset() snaps back to pageSize and bumps resetCounter', () => {
     const records = ref(makeRecords(50))
     const { renderedCount, bumpWindow, reset, resetCounter } = useMatchesWindow(records, [], ref(-1))
