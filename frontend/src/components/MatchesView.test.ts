@@ -501,3 +501,71 @@ describe('MatchesView — infinite-scroll window', () => {
     expect(foot.attributes('aria-live')).toBe('polite')
   })
 })
+
+// ── Scroll-to-top + Jump-to-undated affordances ──────────────────
+//
+// The scroll-to-top button uses useScrollAffordance under the hood;
+// the composable's own listener + threshold contract is covered in
+// useScrollAffordance.test.ts. Here we just verify the SFC renders
+// the gated button + that the jump button reflects the live undated
+// count, including the disabled-with-tooltip empty-state.
+
+describe('MatchesView — scroll-to-top button', () => {
+  it('is hidden by default (the user mounts the view at the top of the page)', () => {
+    const wrapper = mountView([makeRecord({ match_key: 'k1' })])
+    expect(wrapper.find('[data-scroll-to-top]').exists()).toBe(false)
+  })
+
+  it('appears once window.scrollY crosses the threshold; click resets scrollY to 0', async () => {
+    const wrapper = mountView([makeRecord({ match_key: 'k1' })])
+    // useScrollAffordance reads window.scrollY on every scroll event;
+    // simulate the deep-scroll state by patching the value and
+    // dispatching the listener it installs on mount.
+    Object.defineProperty(window, 'scrollY', { value: 800, writable: true, configurable: true })
+    window.dispatchEvent(new Event('scroll'))
+    // requestAnimationFrame coalesces; flush by waiting a microtask
+    // tick + a frame.
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    await wrapper.vm.$nextTick()
+    const btn = wrapper.find('[data-scroll-to-top]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.attributes('aria-label')).toBe('Scroll to top of page')
+  })
+})
+
+describe('MatchesView — jump-to-undated button', () => {
+  it('renders with the live undated count', () => {
+    const records = [
+      makeRecord({ match_key: 'k1' }, { date: '2026-05-10' }),
+      makeRecord({ match_key: 'k2' }, { date: undefined }),
+      makeRecord({ match_key: 'k3' }, { date: '' }),
+    ]
+    const wrapper = mountView(records)
+    const btn = wrapper.find('[data-jump-to-undated]')
+    expect(btn.exists()).toBe(true)
+    // 2 of the 3 records have no usable date.
+    expect(btn.text()).toContain('2 undated')
+    expect(btn.attributes('disabled')).toBeUndefined()
+    expect(btn.attributes('title')).toMatch(/Jump to 2 undated matches/)
+  })
+
+  it('is disabled with an empty-state tooltip when no undated matches exist', () => {
+    const records = [makeRecord({ match_key: 'k1' }, { date: '2026-05-10' })]
+    const wrapper = mountView(records)
+    const btn = wrapper.find('[data-jump-to-undated]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.text()).toContain('0 undated')
+    expect(btn.attributes('disabled')).toBeDefined()
+    expect(btn.attributes('title')).toBe('No undated matches in this view')
+  })
+
+  it('singular wording when exactly one undated match', () => {
+    const records = [
+      makeRecord({ match_key: 'k1' }, { date: '2026-05-10' }),
+      makeRecord({ match_key: 'k2' }, { date: undefined }),
+    ]
+    const wrapper = mountView(records)
+    const btn = wrapper.find('[data-jump-to-undated]')
+    expect(btn.attributes('title')).toMatch(/Jump to 1 undated match$/)
+  })
+})
