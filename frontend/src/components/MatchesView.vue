@@ -348,8 +348,18 @@ async function onJumpToUndated() {
   // jump robust to future class renames during visual refreshes.
   const target = document.querySelector('[data-section-key="no-date"]')
   if (!target) return
+  // scrollIntoView puts the target's top edge at viewport top — but
+  // the sticky Campaign Log pins to top:0 once the user is below
+  // its natural position, so the section header would land BEHIND
+  // it (user sees the 2nd undated row at the top, header obscured).
+  // Compute the pinned chrome's height at click time and offset the
+  // scroll target by exactly that much. Falls back to 0 when the
+  // sticky element isn't in the DOM (visibleRecords empty edge case).
+  const stickyEl = document.querySelector('.campaign-log-sticky')
+  const stickyOffset = stickyEl ? Math.ceil(stickyEl.getBoundingClientRect().height) : 0
+  const targetTop = target.getBoundingClientRect().top + window.scrollY - stickyOffset
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  target.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
+  window.scrollTo({ top: targetTop, behavior: reduce ? 'auto' : 'smooth' })
 }
 // Single dossier instance per Matches view. provideDossier() makes
 // it reachable from every descendant widget via useDossier() so we
