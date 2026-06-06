@@ -151,6 +151,34 @@ export function rolesForHeader(
   return out
 }
 
+// Leaf-row chip label for the play-mode pivot. Prefers the user
+// override (`record.play_mode` — set via the right-panel chooser)
+// and falls back to the OCR-derived `data.mode` so a freshly-parsed
+// match still surfaces its mode without a manual toggle. Returns
+// "Unknown mode" when neither is set, so every row carries a chip
+// — a glance down the column stays aligned.
+export function formatPlayModeLabel(
+  rec: Pick<MatchRecord, 'play_mode' | 'data'>,
+): string {
+  const m = rec.play_mode ?? rec.data?.mode
+  if (m === 'quickplay')   return 'Quickplay'
+  if (m === 'competitive') return 'Competitive'
+  return 'Unknown mode'
+}
+
+// Leaf-row chip label for the queue-type pivot. Only sourced from
+// the user override (`record.queue_type` — no OCR fallback exists
+// for this dimension). "Unknown mode type" matches the spelling
+// the leaf row uses for the play-mode fallback so a glance down
+// the row reads as one family.
+export function formatQueueTypeLabel(
+  rec: Pick<MatchRecord, 'queue_type'>,
+): string {
+  if (rec.queue_type === 'role') return 'Role Queue'
+  if (rec.queue_type === 'open') return 'Open Queue'
+  return 'Unknown mode type'
+}
+
 // matchTime returns a sortable string for a record. Prefers SUMMARY's
 // date + finished_at (most accurate); falls back to the match_key
 // prefix (set from the earliest screenshot's filename) when SUMMARY

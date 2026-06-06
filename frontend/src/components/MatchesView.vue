@@ -12,7 +12,7 @@ import { useWeekStart } from '../composables/useWeekStart'
 import { useDensity } from '../composables/useDensity'
 import { useScrollAffordance } from '../composables/useScrollAffordance'
 import { useOWData } from '../composables/useOWData'
-import { rolesForHeader } from '../match-helpers'
+import { rolesForHeader, formatPlayModeLabel, formatQueueTypeLabel } from '../match-helpers'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import { useArchiveSelection } from '../composables/useArchiveSelection'
 import MatchTimelineHeader from './MatchTimelineHeader.vue'
@@ -1345,11 +1345,17 @@ onBeforeUnmount(() => {
               <span class="leaf-when-time">{{ formatTime(rec) }}</span>
             </div>
 
-            <!-- 3. Where — map (display font) over mode (small chip). -->
+            <!-- 3. Where — map (display font) over a pair of chips:
+                 play mode (Quickplay / Competitive / Unknown mode) +
+                 queue type (Role Queue / Open Queue / Unknown mode
+                 type). Both chips always render so a glance down the
+                 column stays aligned even when the underlying field
+                 hasn't been set yet. -->
             <div class="leaf-map-block">
               <span class="leaf-map">{{ rec.data?.map || 'unknown' }}</span>
-              <span v-if="rec.data?.mode" class="leaf-mode-row">
-                <span class="leaf-mode-chip">{{ rec.data.mode }}</span>
+              <span class="leaf-mode-row">
+                <span class="leaf-mode-chip">{{ formatPlayModeLabel(rec) }}</span>
+                <span class="leaf-queue-chip">{{ formatQueueTypeLabel(rec) }}</span>
               </span>
             </div>
 
@@ -1553,7 +1559,8 @@ onBeforeUnmount(() => {
             </div>
             <div class="archive-row-map">
               <span class="archive-row-map-name">{{ rec.data?.map || 'unknown' }}</span>
-              <span v-if="rec.data?.mode" class="archive-row-mode">{{ rec.data.mode }}</span>
+              <span class="archive-row-mode">{{ formatPlayModeLabel(rec) }}</span>
+              <span class="archive-row-queue">{{ formatQueueTypeLabel(rec) }}</span>
             </div>
             <div class="archive-row-hero">
               <span class="archive-row-hero-name">{{ formatHeroes(rec) }}</span>
@@ -2479,9 +2486,11 @@ onBeforeUnmount(() => {
 
 .leaf-mode-row {
   display: inline-flex;
+  gap: 0.25rem;
 }
 
-.leaf-mode-chip {
+.leaf-mode-chip,
+.leaf-queue-chip {
   font-family: var(--mono);
   font-size: 0.52rem;
   letter-spacing: 0.18em;
@@ -2985,13 +2994,16 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.archive-row-mode {
+.archive-row-mode,
+.archive-row-queue {
   font-family: var(--mono);
   font-size: 0.55rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
+
+.archive-row-queue { margin-left: 0.4rem; }
 .archive-row-hero { display: flex; flex-direction: column; gap: 0.05rem; min-width: 0; }
 
 .archive-row-hero-name {

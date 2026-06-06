@@ -8,6 +8,8 @@ import {
   missingOptionalSlots,
   heroesForHeader,
   rolesForHeader,
+  formatPlayModeLabel,
+  formatQueueTypeLabel,
   matchTime,
   fmtTime,
   formatRelativeTime,
@@ -307,6 +309,44 @@ describe('rolesForHeader', () => {
   it('returns [] when no heroes resolve and there is no data.role', () => {
     const rec = { data: { heroes_played: [{ hero: 'garbled', percent_played: 50 }] } }
     expect(rolesForHeader(rec, heroRole)).toEqual([])
+  })
+})
+
+// ─── formatPlayModeLabel / formatQueueTypeLabel ──────────────────────
+
+describe('formatPlayModeLabel', () => {
+  it('returns the override label when play_mode is set', () => {
+    expect(formatPlayModeLabel({ play_mode: 'quickplay',   data: {} })).toBe('Quickplay')
+    expect(formatPlayModeLabel({ play_mode: 'competitive', data: {} })).toBe('Competitive')
+  })
+
+  it('falls back to data.mode when no override is set', () => {
+    expect(formatPlayModeLabel({ data: { mode: 'quickplay'   } })).toBe('Quickplay')
+    expect(formatPlayModeLabel({ data: { mode: 'competitive' } })).toBe('Competitive')
+  })
+
+  it('prefers the override over data.mode when both are present', () => {
+    expect(formatPlayModeLabel({
+      play_mode: 'quickplay', data: { mode: 'competitive' },
+    })).toBe('Quickplay')
+  })
+
+  it('returns "Unknown mode" when nothing resolves', () => {
+    expect(formatPlayModeLabel({ data: {} })).toBe('Unknown mode')
+    // Empty-string mode is the closed-union sentinel for "blank" —
+    // covers the case where parser wrote an empty field.
+    expect(formatPlayModeLabel({ data: { mode: '' } })).toBe('Unknown mode')
+  })
+})
+
+describe('formatQueueTypeLabel', () => {
+  it('returns the override label when queue_type is set', () => {
+    expect(formatQueueTypeLabel({ queue_type: 'role' as const })).toBe('Role Queue')
+    expect(formatQueueTypeLabel({ queue_type: 'open' as const })).toBe('Open Queue')
+  })
+
+  it('returns "Unknown mode type" when queue_type is missing', () => {
+    expect(formatQueueTypeLabel({})).toBe('Unknown mode type')
   })
 })
 
