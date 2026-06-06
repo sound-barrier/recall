@@ -49,13 +49,13 @@ export type ReviewedByPick = 'self' | 'coach' | 'unreviewed'
 // (5v5 role queue) or 'open' (6v6 open queue). Picking neither =
 // "any" (no clause). There's no "unset" pick — matches whose
 // queue_type is missing simply drop out when EITHER pick is active.
-export type QueuePick = 'role' | 'open'
+export type QueuePick = 'role' | 'open' | 'unknown'
 
 // PlayModePick mirrors the play_mode enum from MatchRecord:
 // 'quickplay' (casual) or 'competitive' (ranked). Same semantics as
 // QueuePick — multi-select OR, no "unset" pick, matches with empty
 // play_mode drop out when EITHER pick is active.
-export type PlayModePick = 'quickplay' | 'competitive'
+export type PlayModePick = 'quickplay' | 'competitive' | 'unknown'
 
 // Parent-owned state bundle. App.vue creates it once via
 // `createMatchesNarrowState()` and passes the same object to both

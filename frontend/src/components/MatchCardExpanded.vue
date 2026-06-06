@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from '../api'
 import {
   screenshotURL,
@@ -103,6 +103,22 @@ const emit = defineEmits<{
 }>()
 
 const isAnchor = computed(() => props.anchorKey === props.record.match_key)
+
+// Sync the persisted play_mode override with what the leaf chip
+// shows. Pre-fix, a match with data.mode='competitive' and no
+// override rendered as "Competitive" on the leaf (via the OCR
+// fallback in formatPlayModeLabel) but the detail-panel chooser
+// showed "Not set" picked AND the narrow Play-mode filter dropped
+// the row — three surfaces, three answers. Fires once per match
+// because MatchDetailPanel keys MatchCardExpanded by match_key,
+// so a new selection destroys-and-remounts this component. Queue
+// type has no OCR source, so nothing to auto-detect there.
+onMounted(() => {
+  const m = props.record.data?.mode
+  if (!props.record.play_mode && (m === 'quickplay' || m === 'competitive')) {
+    emit('set-match-play-mode', props.record.match_key, m)
+  }
+})
 
 // Local draft state for the free-text annotation fields. Hydrates
 // from props.record.annotation when the card opens or the underlying

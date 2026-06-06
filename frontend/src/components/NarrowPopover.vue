@@ -423,6 +423,14 @@ onUnmounted(() => {
                   >
                     Open Queue
                   </button>
+                  <button
+                    class="np-chip"
+                    :class="{ picked: pickedQueues.has('unknown') }"
+                    data-queue-type="unknown"
+                    @click="pickQueue('unknown')"
+                  >
+                    Unknown mode type
+                  </button>
                 </div>
               </section>
 
@@ -453,6 +461,14 @@ onUnmounted(() => {
                     @click="pickPlayMode('competitive')"
                   >
                     Competitive
+                  </button>
+                  <button
+                    class="np-chip"
+                    :class="{ picked: pickedPlayModes.has('unknown') }"
+                    data-play-mode="unknown"
+                    @click="pickPlayMode('unknown')"
+                  >
+                    Unknown mode
                   </button>
                 </div>
               </section>
