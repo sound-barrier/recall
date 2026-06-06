@@ -1,4 +1,5 @@
 import type { MatchRecord } from '../api'
+import { formatPlayModeLabel, formatQueueTypeLabel } from '../match-helpers'
 import type { PlayModePick, QueuePick, ReviewedByPick } from './useMatchesNarrow'
 
 // Per-dimension narrow predicates. Each function is ≤ 15 lines,
@@ -103,23 +104,39 @@ export function matchesReviewedBy(r: MatchRecord, picked: Set<ReviewedByPick>): 
   return picked.has(bucket)
 }
 
-// matchesQueueType narrows to matches whose queue_type is in the
-// picked set. Unlike matchesReviewedBy there's no "unset" bucket —
-// matches without a queue_type drop out when any pick is active.
+// matchesQueueType narrows to matches whose queue-type BUCKET is in
+// the picked set. Buckets are derived via formatQueueTypeLabel so
+// the filter agrees with the leaf chip exactly — picking "Role
+// Queue" returns rows the leaf reads as "Role Queue", picking
+// "Unknown mode type" returns rows the leaf reads as "Unknown mode
+// type". Includes an explicit "unknown" bucket (no override, no
+// OCR — queue_type has no OCR source today, so equivalent to "no
+// override") so users can narrow to the unset slice and bulk-set
+// it from the toolbar.
 export function matchesQueueType(r: MatchRecord, picked: Set<QueuePick>): boolean {
   if (!picked.size) return true
-  if (!r.queue_type) return false
-  return picked.has(r.queue_type as QueuePick)
+  const label = formatQueueTypeLabel(r)
+  const bucket: QueuePick =
+    label === 'Role Queue' ? 'role' :
+    label === 'Open Queue' ? 'open' :
+    'unknown'
+  return picked.has(bucket)
 }
 
-// matchesPlayMode narrows to matches whose play_mode (after the
-// aggregator's fallback chain: override → data.mode → rank presence)
-// is in the picked set. Same shape as matchesQueueType — matches
-// with empty play_mode drop out when any pick is active.
+// matchesPlayMode narrows to matches whose play-mode BUCKET is in
+// the picked set. Same shape as matchesQueueType — derived via
+// formatPlayModeLabel so the filter agrees with the leaf chip.
+// Pre-fix, this read r.play_mode directly and silently dropped
+// OCR-fallback rows the leaf showed as "Competitive", which broke
+// the principle that what-you-see is what-you-filter.
 export function matchesPlayMode(r: MatchRecord, picked: Set<PlayModePick>): boolean {
   if (!picked.size) return true
-  if (!r.play_mode) return false
-  return picked.has(r.play_mode as PlayModePick)
+  const label = formatPlayModeLabel(r)
+  const bucket: PlayModePick =
+    label === 'Quickplay'   ? 'quickplay' :
+    label === 'Competitive' ? 'competitive' :
+    'unknown'
+  return picked.has(bucket)
 }
 
 // Returns `true` when the record's parsed_at is strictly AFTER the
