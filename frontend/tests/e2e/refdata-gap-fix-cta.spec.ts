@@ -59,7 +59,7 @@ test.describe('unknown tab — reference-data-gap fix CTA', () => {
     // hydrates. The button copy changes after the click — locator by
     // a stable test ID would be cleaner, but the unique title works
     // for this RED test.
-    await page.getByTitle('Check for updates').click()
+    await page.getByRole('button', { name: 'Check for updates' }).click()
     // CTA surfaces on the gap card.
     const cta = page.locator('[data-fix-cta-key="miya"]')
     await expect(cta).toBeVisible()
@@ -88,7 +88,7 @@ test.describe('unknown tab — reference-data-gap fix CTA', () => {
     })
     await page.goto('/')
     await page.locator('#tab-unknown').click()
-    await page.getByTitle('Check for updates').click()
+    await page.getByRole('button', { name: 'Check for updates' }).click()
     // No CTA element for this card.
     await expect(page.locator('[data-fix-cta-key="miya"]')).toHaveCount(0)
     // But the section's existing "wait for the next release" copy is
