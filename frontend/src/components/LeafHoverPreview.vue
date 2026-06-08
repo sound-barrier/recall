@@ -44,6 +44,7 @@ const styleObj = computed(() => ({
   border-radius: 2px;
   padding: 2px;
   box-shadow: 0 18px 36px -18px rgb(0 0 0 / 55%);
+
   /* Compose translate transform from inline style — keeps the GPU
      transform pipeline alive (cheap re-position on mousemove). */
   will-change: transform;

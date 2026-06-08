@@ -73,10 +73,7 @@ test.describe('match tag autocomplete', () => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
     // The blank-tag record is row index 0 (newest by date).
-    await page.locator(`.leaf-row:has-text("${KEY_BLANK.slice(-8)}")`).first().click().catch(async () => {
-      // Fallback: click the first row whose tags chip is absent.
-      await page.locator('.leaf-row').last().click()
-    })
+    await page.locator(`.leaf-row[data-match-key="${KEY_BLANK}"]`).click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 
     const tagInput = page.locator('.match-tag-input').first()
@@ -127,7 +124,7 @@ test.describe('match tag autocomplete', () => {
 
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('.leaf-row').last().click()
+    await page.locator(`.leaf-row[data-match-key="${KEY_BLANK}"]`).click()
     await expect(page.locator('aside.detail-panel')).toBeVisible()
 
     const tagInput = page.locator('.match-tag-input').first()

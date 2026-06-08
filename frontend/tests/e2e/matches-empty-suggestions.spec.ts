@@ -50,25 +50,20 @@ test.describe('smart-empty filter suggestions', () => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
 
-    // Open the narrow panel and pick a hero NOT in the corpus.
-    await page.locator('[data-test="open-narrow"], button.dossier-actions-narrow').first().click()
-      .catch(async () => {
-        // Older selector fallback — keep this loose, the trigger
-        // moves around as the masthead evolves.
-        await page.locator('button:has-text("Narrow")').first().click()
-      })
+    // Open the narrow popover and search for a string that doesn't
+    // appear anywhere — that excludes every record without needing
+    // to coerce a combobox to accept a non-existent option.
+    await page.locator('[data-narrow-trigger]').click()
+    await page.locator('#np-search').fill('zzzz-no-such-text')
+    // Close the popover so the leaves list paints; the empty-state
+    // suggestion only surfaces on the visible list.
+    await page.keyboard.press('Escape')
 
-    // Type into the hero combobox.
-    const heroCombo = page.locator('[data-combo-id="hero"] input.combo-input').first()
-    await heroCombo.fill('ana')
-    await heroCombo.press('Enter') // free-text adopt via TypeaheadDropdown
-
-    // Now the narrow excludes every record. Empty suggestions surface.
     const suggestion = page.locator('.empty-suggestion-btn').first()
     await expect(suggestion).toBeVisible()
-    await expect(suggestion).toContainText(/Remove (hero|3 hero picks)/i)
+    await expect(suggestion).toContainText(/Remove search/i)
 
-    // Clicking removes the clause; the list re-populates.
+    // Clicking removes the search clause; the list re-populates.
     await suggestion.click()
     await expect(page.locator('.leaf-row')).toHaveCount(records.length)
   })
