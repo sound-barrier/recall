@@ -151,23 +151,6 @@ miss.
 
 ## Polish / lower-priority
 
-### 4. Leaf-row hover preview
-
-Hover a row → show a small thumbnail of the SUMMARY screenshot
-in a floating preview, anchored to the cursor. Useful for
-"which match was the Rialto one with the comeback".
-
-- **Source**: prefer the SUMMARY screenshot (most recognisable
-  thumbnail); fall back to TEAMS if SUMMARY is missing.
-- **Constraint**: must not stutter on long lists — preload the
-  hovered row's source img with `prefetch` link tags on
-  visibility, not on hover.
-- **Constraint**: must NOT fire on touch devices (no hover
-  affordance there). Gate via `(hover: hover) and (pointer: fine)`
-  media query.
-- **Effort**: ~3 hours. Mirror `MatchCardExpanded.vue`'s
-  `<img class="source-preview">` chrome.
-
 ### 6. Smart-empty filter messaging
 
 The current empty-state ("No matches in this set.") is correct
