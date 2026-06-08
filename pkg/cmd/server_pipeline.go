@@ -21,7 +21,35 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 	// not the HTTP response body. Clients should subscribe to
 	// /api/v1/events for progress and re-fetch /api/v1/matches when done.
 	apiMux.HandleFunc("POST /api/v1/parses", func(w http.ResponseWriter, r *http.Request) {
-		if err := a.ParseScreenshots(); err != nil {
+		// `?scope=all` switches to ReParseAll — re-runs OCR on every
+		// PNG in the watched folder regardless of whether it's
+		// already in the per-type tables. The user-curated suppress
+		// list is still honoured. Any other value (or absence)
+		// invokes the default "parse only new files" semantic.
+		// Unknown query keys yield 400 to stay schemathesis-clean.
+		force := false
+		for k, vs := range r.URL.Query() {
+			if k != "scope" {
+				http.Error(w, "unknown query parameter: "+k, http.StatusBadRequest)
+				return
+			}
+			switch vs[0] {
+			case "all":
+				force = true
+			case "new", "":
+				// default semantic; force stays false
+			default:
+				http.Error(w, "scope must be 'all' or 'new'", http.StatusBadRequest)
+				return
+			}
+		}
+		var err error
+		if force {
+			err = a.ReParseAll()
+		} else {
+			err = a.ParseScreenshots()
+		}
+		if err != nil {
 			// 409: the parse action can't proceed because the resource
 			// state (no screenshots directory configured / readable) is
 			// incompatible. Not 400 — the request itself was well-formed,

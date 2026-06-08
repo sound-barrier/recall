@@ -75,10 +75,12 @@ func intsConflict(a, b int) bool       { return a != 0 && b != 0 && a != b }
 // and folding happens on read.
 func mergeMatchResult(dst, src *parser.MatchResult) {
 	dst.Map = firstNonEmpty(dst.Map, src.Map)
+	dst.MapRaw = firstNonEmpty(dst.MapRaw, src.MapRaw)
 	dst.Type = firstNonEmpty(dst.Type, src.Type)
 	dst.Mode = firstNonEmpty(dst.Mode, src.Mode)
 	dst.Role = firstNonEmpty(dst.Role, src.Role)
 	dst.Hero = firstNonEmpty(dst.Hero, src.Hero)
+	dst.HeroRaw = firstNonEmpty(dst.HeroRaw, src.HeroRaw)
 	dst.Eliminations = firstNonEmpty(dst.Eliminations, src.Eliminations)
 	dst.Assists = firstNonEmpty(dst.Assists, src.Assists)
 	dst.Deaths = firstNonEmpty(dst.Deaths, src.Deaths)

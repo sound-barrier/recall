@@ -1,9 +1,35 @@
 package parser
 
 import (
+	"regexp"
 	"sort"
 	"strings"
 )
+
+// candidateNameFromOCR returns the longest alphabetic-ish token in the
+// OCR text — used as the `*_raw` fallback when the matchers (extract
+// Heroes / bestKnownMapInText / snapToKnownMap) fail to find a
+// canonical match. The leaf-row chip shows this raw text in
+// parentheses so the user can recognise "Unknown hero (miyazaki?)"
+// and the maintainer can spot what new hero needs adding to
+// heroes.yaml. Returns "" when no plausible token exists.
+//
+// "Plausible token" = a contiguous run of letters / apostrophe /
+// dot / colon / space starting and ending with a letter, length
+// 3–40. OW hero / map names all fit this shape.
+var candidateNameRe = regexp.MustCompile(`[A-Za-z][A-Za-z'.: ]{1,38}[A-Za-z]`)
+
+func candidateNameFromOCR(text string) string {
+	matches := candidateNameRe.FindAllString(text, -1)
+	longest := ""
+	for _, m := range matches {
+		clean := strings.TrimSpace(m)
+		if len(clean) > len(longest) {
+			longest = clean
+		}
+	}
+	return strings.ToLower(longest)
+}
 
 // heroRoles + heroDisplayNames are populated in owdata.go's init() from
 // pkg/parser/heroes.yaml. Edit heroes.yaml to add or rename a hero.
@@ -15,6 +41,21 @@ import (
 // reaching into the unexported lookup map.
 func HeroRole(hero string) string {
 	return heroRoles[normalize(hero)]
+}
+
+// FirstKnownHeroIn is the exported entry point for the boot
+// re-aggregator. Given a raw OCR string previously rejected by
+// extractHeroes, re-runs the matcher against the CURRENT
+// heroes.yaml roster and returns the first canonical match, or ""
+// if still unknown. Mirrors extractHeroes' return contract for
+// single-hero callers (the re-aggregator only updates one canonical
+// column per row).
+func FirstKnownHeroIn(rawHero string) string {
+	hs := extractHeroes(rawHero)
+	if len(hs) == 0 {
+		return ""
+	}
+	return hs[0]
 }
 
 func extractHeroes(text string) []string {
@@ -44,16 +85,31 @@ func extractHeroes(text string) []string {
 	// Pass 2: fuzzy substring match. Tesseract often mistakes one letter
 	// (e.g. "JUNKRAT" → "JUMKRAT"), so slide each hero name across the text
 	// and accept the closest Levenshtein match if it's well below threshold.
+	//
+	// Length-gate the candidates at 5: short hero names (Mei, Ana, Ashe,
+	// Echo, Emre, Juno, D.va) used to participate in Pass 2 with a
+	// threshold-1 floor, which made a sliding 3-char window over an
+	// unknown hero like "miyazaki" accept "aza" → "ana" (one edit) or
+	// "miy" → "mei" (the original bug). For genuinely new heroes the
+	// upstream parser writes hero='' + hero_raw=<ocr> so the leaf chip
+	// can surface "Unknown hero (miyazaki?)" instead of silently
+	// attributing it to a lookalike.
+	//
+	// The /6 ratio is tighter than the historical /4 — len 7 still
+	// admits 1 edit (so JUMKRAT → junkrat keeps working) but len 14
+	// admits only 2 (was 3). Same baseline as snapToKnownMap's
+	// existing percentage gate.
+	const minFuzzyLen = 5
 	bestHero := ""
 	bestDist := -1
 	for _, hero := range heroNamesByLength() {
+		if len(hero) < minFuzzyLen {
+			continue
+		}
 		if len(hero) > len(normText) {
 			continue
 		}
-		threshold := len(hero) / 4
-		if threshold < 1 {
-			threshold = 1
-		}
+		threshold := max(len(hero)/6, 1)
 		for i := 0; i+len(hero) <= len(normText); i++ {
 			d := levenshtein(normText[i:i+len(hero)], hero)
 			if d <= threshold && (bestDist < 0 || d < bestDist) {

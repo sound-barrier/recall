@@ -1,11 +1,25 @@
 package parser
 
 type MatchResult struct {
-	Map          string `json:"map"`
-	Type         string `json:"type"`
-	Mode         string `json:"mode"` // "competitive" or "quickplay"
-	Role         string `json:"role"`
-	Hero         string `json:"hero"`
+	Map string `json:"map"`
+	// MapRaw holds the raw OCR'd text that the parser tried to match
+	// against the canonical map roster (pkg/parser/maps.yaml). Always
+	// populated when the parser saw something map-ish; canonical Map
+	// is empty when the matcher couldn't pin it to a known entry.
+	// The downstream "Unknown map (newmap?)" UI reads this; a future
+	// YAML release can re-aggregate the corpus and promote stored
+	// MapRaw values to canonical Map without re-OCRing the PNG.
+	MapRaw string `json:"map_raw,omitempty"`
+	Type   string `json:"type"`
+	Mode   string `json:"mode"` // "competitive" or "quickplay"
+	Role   string `json:"role"`
+	Hero   string `json:"hero"`
+	// HeroRaw mirrors MapRaw — raw OCR'd hero text. Empty Hero +
+	// non-empty HeroRaw is the "Unknown hero" signal (e.g. a
+	// Miyazaki play parsed before heroes.yaml is updated). Single
+	// hero only — per-hero raw OCR for multi-hero panels lives on
+	// HeroPlay.HeroRaw below.
+	HeroRaw      string `json:"hero_raw,omitempty"`
 	Eliminations int    `json:"eliminations"`
 	Assists      int    `json:"assists"`
 	Deaths       int    `json:"deaths"`
@@ -39,7 +53,11 @@ type HeroSR struct {
 }
 
 type HeroPlay struct {
-	Hero          string `json:"hero"`
+	Hero string `json:"hero"`
+	// HeroRaw — raw OCR'd hero text for this entry. Always set when
+	// the heroes_played panel was OCR'd; Hero is empty when the
+	// matcher rejected the candidate as unknown.
+	HeroRaw       string `json:"hero_raw,omitempty"`
 	PercentPlayed int    `json:"percent_played"`
 	PlayTime      string `json:"play_time,omitempty"`
 	// Stats holds hero-specific stats from the PERSONAL tab. Keys are

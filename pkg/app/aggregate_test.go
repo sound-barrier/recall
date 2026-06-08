@@ -8,6 +8,58 @@ import (
 	"recall/pkg/db"
 )
 
+// Boot re-aggregator pins the "YAML grew, promote previously-Unknown
+// records" contract. Independent of the live heroes.yaml roster —
+// supplies its own matcher closures so the test isn't coupled to the
+// global heroRoles init.
+func TestReAggregateUnknowns_PromotesPreviouslyUnknownRows(t *testing.T) {
+	fs := &fakeStore{}
+	fs.Summaries = []db.SummaryRow{
+		// Row 1: pre-fix Mei-misattribution → hero='mei', hero_raw='mei'.
+		// Matcher leaves it alone because canonical is already set.
+		{ID: 1, Filename: "a.png", MatchKey: "ma", Hero: "mei", HeroRaw: "mei"},
+		// Row 2: Unknown hero captured by the new fix → hero='',
+		// hero_raw='miyazaki'. Matcher promotes it when the YAML grows.
+		{ID: 2, Filename: "b.png", MatchKey: "mb", Hero: "", HeroRaw: "miyazaki"},
+		// Row 3: still genuinely unknown → matcher returns ''.
+		{ID: 3, Filename: "c.png", MatchKey: "mc", Hero: "", HeroRaw: "zhang3000"},
+		// Row 4: map promotion → map='', map_raw='new-map-name'.
+		{ID: 4, Filename: "d.png", MatchKey: "md", Hero: "lucio", HeroRaw: "lucio", Map: "", MapRaw: "new-map-name"},
+	}
+	a := NewWithStore(fs)
+	heroFn := func(raw string) string {
+		if raw == "miyazaki" {
+			return "miyazaki"
+		}
+		return ""
+	}
+	mapFn := func(raw string) string {
+		if raw == "new-map-name" {
+			return "new-map"
+		}
+		return ""
+	}
+	promoted, err := fs.ReAggregateUnknowns(heroFn, mapFn)
+	if err != nil {
+		t.Fatalf("ReAggregateUnknowns: %v", err)
+	}
+	if promoted != 2 {
+		t.Errorf("expected 2 promotions (row 2 hero + row 4 map), got %d", promoted)
+	}
+	if fs.Summaries[1].Hero != "miyazaki" {
+		t.Errorf("row 2 hero = %q, want miyazaki", fs.Summaries[1].Hero)
+	}
+	if fs.Summaries[2].Hero != "" {
+		t.Errorf("row 3 hero should stay '', got %q", fs.Summaries[2].Hero)
+	}
+	if fs.Summaries[3].Map != "new-map" {
+		t.Errorf("row 4 map = %q, want new-map", fs.Summaries[3].Map)
+	}
+	// Confirm the App-level wrapper threads through correctly.
+	_ = a // not exercising the live App.reAggregateUnknowns here; the
+	// store-level fake gets the same code path via NewWithStore.
+}
+
 func TestAggregate_FusesSummaryAndScoreboardByMatchKey(t *testing.T) {
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{{

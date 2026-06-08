@@ -10,6 +10,10 @@ import {
   rolesForHeader,
   formatPlayModeLabel,
   formatQueueTypeLabel,
+  isHeroUnknown,
+  isMapUnknown,
+  formatUnknownHeroLabel,
+  formatUnknownMapLabel,
   matchTime,
   fmtTime,
   formatRelativeTime,
@@ -347,6 +351,42 @@ describe('formatQueueTypeLabel', () => {
 
   it('returns "Unknown mode type" when queue_type is missing', () => {
     expect(formatQueueTypeLabel({})).toBe('Unknown mode type')
+  })
+})
+
+// ─── isHeroUnknown / isMapUnknown + label formatters ─────────────────
+
+describe('isHeroUnknown / formatUnknownHeroLabel', () => {
+  it('hero canonical → not unknown', () => {
+    expect(isHeroUnknown({ data: { hero: 'lucio' } })).toBe(false)
+  })
+
+  it('hero empty AND hero_raw set → unknown', () => {
+    expect(isHeroUnknown({ data: { hero_raw: 'miyazaki' } })).toBe(true)
+    expect(formatUnknownHeroLabel({ data: { hero_raw: 'miyazaki' } })).toBe('Unknown hero (miyazaki?)')
+  })
+
+  it('hero empty AND hero_raw empty → not unknown (the pre-fix case)', () => {
+    expect(isHeroUnknown({ data: {} })).toBe(false)
+  })
+
+  it('hero empty but hero_raw set with no parens hint → bare label', () => {
+    expect(formatUnknownHeroLabel({ data: {} })).toBe('Unknown hero')
+  })
+})
+
+describe('isMapUnknown / formatUnknownMapLabel', () => {
+  it('map canonical → not unknown', () => {
+    expect(isMapUnknown({ data: { map: 'rialto' } })).toBe(false)
+  })
+
+  it('map empty AND map_raw set → unknown', () => {
+    expect(isMapUnknown({ data: { map_raw: 'new-junk-city' } })).toBe(true)
+    expect(formatUnknownMapLabel({ data: { map_raw: 'new-junk-city' } })).toBe('Unknown map (new-junk-city?)')
+  })
+
+  it('map empty AND map_raw empty → not unknown', () => {
+    expect(isMapUnknown({ data: {} })).toBe(false)
   })
 })
 

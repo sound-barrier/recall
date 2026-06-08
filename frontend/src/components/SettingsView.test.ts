@@ -170,9 +170,9 @@ describe('SettingsView', () => {
     })
     // Screenshots Folder, Data Location, Engine, Theme, First Day
     // of Week, Profiles, Export, Import, Grafana stream, Manage
-    // ignored screenshots, Clear DB. The last five live inside the
-    // closed <details> but are still in the DOM.
-    expect(wrapper.findAll('.setting-help')).toHaveLength(11)
+    // ignored screenshots, Re-parse All, Clear DB. The last six
+    // live inside the closed <details> but are still in the DOM.
+    expect(wrapper.findAll('.setting-help')).toHaveLength(12)
   })
 })
 

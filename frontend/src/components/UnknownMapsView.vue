@@ -26,6 +26,15 @@ import type { CardStateApi } from '../types/cardState'
 const props = defineProps<{
   unknownRecords:   MatchRecord[]
   ambiguousRecords: MatchRecord[]
+  // Records whose parser captured an OCR'd hero or map name but
+  // couldn't match it to the canonical YAML rosters (e.g. Miyazaki
+  // before heroes.yaml was updated). Surfaces as a new "Reference
+  // data gaps" section so the user knows what's awaiting the next
+  // YAML release. Cannot be edited; cannot have its hero/map
+  // manually set. Required — the parent ALWAYS knows the
+  // reference-gap subset, and tests need to supply it explicitly
+  // so the assertion shape stays unambiguous.
+  referenceGapRecords: MatchRecord[]
   allRecords:       MatchRecord[]
   cardState:        CardStateApi
   // Cache-warm helper from `useScreenshotPreview` (item 12). The
@@ -708,6 +717,40 @@ function updateThumbPosition(e: MouseEvent) {
             </div>
           </div>
         </template>
+      </article>
+    </div>
+
+    <!-- ─── REFERENCE-DATA GAPS: Unknown heroes / maps ──────────
+         Records the parser captured but couldn't pin to the
+         canonical YAML rosters (e.g. Miyazaki before heroes.yaml
+         was updated). No edit affordance — the only path to fix
+         is a new Recall release with an updated YAML. -->
+    <div v-if="referenceGapRecords.length > 0" id="section-reference-gaps" class="unknown-list reference-gap-section">
+      <h3 class="needs-review-heading">
+        Reference data gaps — {{ referenceGapRecords.length }}
+      </h3>
+      <p class="needs-review-desc">
+        The parser captured an OCR'd hero or map name in these records but couldn't match it to the canonical roster shipped with this Recall release. They'll be picked up automatically on the next launch after a YAML update.
+        <a class="unknown-section-link" href="https://github.com/sound-barrier/recall/releases/latest" target="_blank" rel="noopener noreferrer">View latest release ↗</a>
+      </p>
+      <article
+        v-for="rec in referenceGapRecords"
+        :key="rec.match_key"
+        class="unknown-card reference-gap-card"
+        :data-reference-gap-key="rec.match_key"
+      >
+        <div class="unknown-card-head">
+          <div class="unknown-head-lhs">
+            <span class="unknown-key-block">
+              <span class="unknown-key mono">{{ rec.source_files?.[0] ?? rec.match_key }}</span>
+              <span class="unknown-src-count">
+                <template v-if="rec.data?.hero_raw">Unknown hero: <code>{{ rec.data.hero_raw }}</code></template>
+                <template v-if="rec.data?.hero_raw && rec.data?.map_raw">  ·  </template>
+                <template v-if="rec.data?.map_raw">Unknown map: <code>{{ rec.data.map_raw }}</code></template>
+              </span>
+            </span>
+          </div>
+        </div>
       </article>
     </div>
 

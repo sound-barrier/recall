@@ -29,8 +29,8 @@ func TestApplyMigrations_FreshDB_AppliesBaselineAndRecordsVersion(t *testing.T) 
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if v != 5 {
-		t.Errorf("schema_version = %d, want 5", v)
+	if v != 6 {
+		t.Errorf("schema_version = %d, want 6", v)
 	}
 	// Baseline + 0002 + 0003 + 0004 + 0005 created every expected table.
 	for _, tbl := range []string{
@@ -57,8 +57,8 @@ func TestApplyMigrations_Idempotent(t *testing.T) {
 		t.Fatalf("second apply: %v", err)
 	}
 	v, _ := schemaVersion(d)
-	if v != 5 {
-		t.Errorf("schema_version after re-apply = %d, want 5", v)
+	if v != 6 {
+		t.Errorf("schema_version after re-apply = %d, want 6", v)
 	}
 }
 
@@ -207,8 +207,8 @@ func TestApplyMigrations_PreExistingTablesNoSchemaVersion_AdoptsCurrentVersion(t
 		t.Fatalf("applyMigrations on legacy DB: %v", err)
 	}
 	v, _ := schemaVersion(d)
-	if v != 5 {
-		t.Errorf("schema_version = %d, want 5 (legacy DB adopts current version)", v)
+	if v != 6 {
+		t.Errorf("schema_version = %d, want 6 (legacy DB adopts current version)", v)
 	}
 }
 

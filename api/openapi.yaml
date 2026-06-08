@@ -678,6 +678,16 @@ paths:
         already in the DB, and writes the merged rows. Idempotent —
         re-running won't duplicate matches already on record.
 
+        `?scope=all` switches into "re-parse all": every PNG in the
+        watched folder gets re-OCR'd regardless of whether it's
+        already in the per-type tables. Use after a parser-tightening
+        release (e.g. the hero-fuzzy-match length-gate that stopped
+        Miyazaki being attributed to Mei) to retroactively correct
+        older rows. The Upsert clauses are idempotent on filename so
+        existing rows are rewritten in place; match annotations /
+        queue / play-mode overrides / hidden flags / reviews all key
+        on match_key and survive the re-parse. ~1 s per screenshot.
+
         Returns `202 Accepted` because the meaningful side-effect is
         the SQLite writes and SSE broadcast, not the HTTP response
         body. Subscribe to `GET /api/v1/events` for progress and
@@ -686,9 +696,21 @@ paths:
         The handler is currently synchronous (the response holds until
         parsing finishes), but the 202 contract keeps callers from
         depending on that internal detail.
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [new, all]
+          description: |
+            `new` (default) parses only files not in the DB.
+            `all` re-OCRs every file. Other values return 400.
       responses:
         "202":
           description: Parse run complete; subscribe to events for incremental updates.
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "409":
           $ref: "#/components/responses/Conflict"
         "500":
@@ -2266,10 +2288,27 @@ components:
       description: All parsed data for a match, merged across its source files.
       properties:
         map:        { type: string,  description: 'e.g. "rialto"' }
+        map_raw:
+          type: string
+          description: |
+            Raw OCR'd map-name text preserved when the matcher
+            rejected the candidate as unknown (no canonical match in
+            `pkg/parser/maps.yaml`). `map == "" && map_raw != ""`
+            is the "Unknown map" signal that drives the leaf-row
+            chip and detail-panel banner.
         type:       { type: string,  description: 'e.g. "control"' }
         mode:       { type: string,  enum: [competitive, quickplay, unranked, ""] }
         role:       { type: string,  enum: [tank, dps, support, ""] }
         hero:       { type: string,  description: "Primary (most-played) hero" }
+        hero_raw:
+          type: string
+          description: |
+            Raw OCR'd hero-name text preserved when the matcher
+            rejected the candidate as unknown (no canonical match in
+            `pkg/parser/heroes.yaml`). `hero == "" && hero_raw != ""`
+            is the "Unknown hero" signal. A future YAML release that
+            adds the hero is picked up at the next boot's
+            re-aggregate without re-running Tesseract.
         eliminations: { type: integer, minimum: 0 }
         assists:      { type: integer, minimum: 0 }
         deaths:       { type: integer, minimum: 0 }

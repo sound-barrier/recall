@@ -229,6 +229,27 @@ func TestExtractHeroes(t *testing.T) {
 			text: "WRECKING BALL",
 			want: []string{"wrecking ball"},
 		},
+		{
+			// Regression: pre-fix, the Pass-2 fuzzy match slid "mei"
+			// (len 3, threshold floor = 1) across "miyazaki" and
+			// accepted the 1-edit window "miy" → "mei", silently
+			// attributing every Miyazaki play to Mei. The
+			// short-hero length-gate kills that class — heroes < 5
+			// chars now require exact match. Confirms across the
+			// other 3-/4-char heroes that share the same risk.
+			name: "unknown hero name does not fuzzy-match a short known hero",
+			text: "MIYAZAKI",
+			want: nil,
+		},
+		{
+			// Preserves the legitimate use of Pass 2: a single
+			// Tesseract glyph slip on a long hero (Junkrat: 7 chars,
+			// threshold 1 under both old and new formulas) still
+			// recovers the canonical name.
+			name: "long hero with 1-letter OCR mistake still resolves",
+			text: "JUMKRAT",
+			want: []string{"junkrat"},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -246,6 +267,60 @@ func TestExtractHeroes(t *testing.T) {
 // after it. (Realistic OW has one hero per rank screen but the function
 // generalizes.)
 // ──────────────────────────────────────────────────────────────────────────
+
+// ──────────────────────────────────────────────────────────────────────────
+// snapToKnownMap + bestKnownMapInText — fuzzy match against the known
+// map list. Mirrors the heroes contract: short OOV strings stay OOV,
+// genuine OCR slips on known maps still recover.
+// ──────────────────────────────────────────────────────────────────────────
+
+func TestSnapToKnownMap(t *testing.T) {
+	tests := []struct {
+		name, in, want string
+	}{
+		{"exact-after-normalize", "RIALTO", "rialto"},
+		{"one-letter OCR slip", "JUNKERTQWN", "junkertown"},
+		// An unknown short map-like string must NOT collapse to a
+		// real map. Pre-fix the 40% threshold made many short
+		// strings snap; the 15% gate + length floor blocks it.
+		{"unknown OOV stays OOV", "ZULU", "ZULU"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := snapToKnownMap(tc.in); got != tc.want {
+				t.Errorf("snapToKnownMap(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestBestKnownMapInText(t *testing.T) {
+	tests := []struct {
+		name, in, want string
+	}{
+		{
+			name: "map name embedded in garbled header",
+			in:   "© HYBRID - COMPETITIVE] HOLLYWOOD [/MF'7:/]5",
+			want: "hollywood",
+		},
+		{
+			// A brand-new unknown map name must not be snapped to a
+			// short known map. Pre-fix, a 5-char OOV string could
+			// slide into a 5-char window of e.g. "ilios" with a
+			// 30%/floor-1 threshold and match.
+			name: "unknown map text does not snap to short known map",
+			in:   "BRAND NEW UNKNOWN MAP",
+			want: "",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := bestKnownMapInText(tc.in); got != tc.want {
+				t.Errorf("bestKnownMapInText(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
 
 func TestExtractSR(t *testing.T) {
 	t.Run("single hero with positive change", func(t *testing.T) {

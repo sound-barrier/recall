@@ -179,6 +179,38 @@ export function formatQueueTypeLabel(
   return 'Unknown mode type'
 }
 
+// isHeroUnknown returns true when the parser captured an OCR'd hero
+// name but couldn't pin it to any canonical roster entry (e.g.
+// Miyazaki before heroes.yaml was updated). The leaf-row chip + the
+// detail-panel banner key on this predicate; the upcoming "verify
+// reference data" download surface uses it to count how many records
+// would benefit from updating to the latest heroes.yaml.
+export function isHeroUnknown(rec: Pick<MatchRecord, 'data'>): boolean {
+  return !rec.data?.hero && !!rec.data?.hero_raw
+}
+
+export function isMapUnknown(rec: Pick<MatchRecord, 'data'>): boolean {
+  return !rec.data?.map && !!rec.data?.map_raw
+}
+
+// Leaf-row chip label for an Unknown hero. Renders "Unknown hero
+// (miyazaki?)" when the raw OCR is preserved, plain "Unknown hero"
+// when it isn't (e.g. a pre-fix record where hero_raw was discarded).
+// The parenthesised raw text gives the user something to recognise
+// AND signals to the maintainer what new heroes need adding to the
+// YAML when this surfaces in the Unknown tab.
+export function formatUnknownHeroLabel(rec: Pick<MatchRecord, 'data'>): string {
+  const raw = rec.data?.hero_raw
+  if (raw) return `Unknown hero (${raw}?)`
+  return 'Unknown hero'
+}
+
+export function formatUnknownMapLabel(rec: Pick<MatchRecord, 'data'>): string {
+  const raw = rec.data?.map_raw
+  if (raw) return `Unknown map (${raw}?)`
+  return 'Unknown map'
+}
+
 // matchTime returns a sortable string for a record. Prefers SUMMARY's
 // date + finished_at (most accurate); falls back to the match_key
 // prefix (set from the earliest screenshot's filename) when SUMMARY

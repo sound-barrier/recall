@@ -121,6 +121,10 @@ func parsePersonalHeroCell(text string, res *MatchResult) {
 		if r, ok := heroRoles[res.Hero]; ok {
 			res.Role = r
 		}
+	} else if cand := candidateNameFromOCR(text); cand != "" {
+		// Matcher rejected the cell but OCR found a hero-name-shaped
+		// token — capture it for the "Unknown hero" UI.
+		res.HeroRaw = cand
 	}
 	pct := 0
 	if m := regexp.MustCompile(`(\d{1,3})\s*%`).FindStringSubmatch(text); m != nil {

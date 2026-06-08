@@ -137,6 +137,18 @@ type Store interface {
 	SetMatchPlayMode(matchKey, playMode string) error
 	ClearMatchPlayMode(matchKey string) error
 	LoadMatchPlayModes() (map[string]PlayModeState, error)
+
+	// ReAggregateUnknowns walks every per-screenshot row whose
+	// canonical hero / map is empty but whose raw OCR is preserved,
+	// runs the caller-supplied matchers against the current
+	// roster, and writes back rows that now resolve to canonical. Used
+	// at App.Startup so a YAML release that adds a new hero/map
+	// (e.g. Miyazaki) retroactively promotes previously-unknown
+	// records — no Tesseract re-run required. Returns the number
+	// of rows promoted (hero promotions + map promotions, deduped
+	// per row). One transaction across all three parent tables so
+	// a partial mid-write crash leaves the table consistent.
+	ReAggregateUnknowns(heroFn func(rawHero string) string, mapFn func(rawMap string) string) (int, error)
 	// BulkSetMatchPlayMode upserts the same play_mode onto every key
 	// in the slice inside ONE transaction. playMode="" deletes the
 	// rows (bulk Clear). Same crash-consistency rationale as
@@ -237,13 +249,19 @@ type SummaryRow struct {
 	// was unset at parse time).
 	ScreenshotsDirID int64
 	Map              string
-	Mode             string
-	Hero             string
-	Result           string
-	FinalScore       string
-	Date             string
-	FinishedAt       string
-	GameLength       string
+	// MapRaw / HeroRaw — raw OCR text preserved when the matcher
+	// rejected the candidate as unknown. Empty when the canonical
+	// column resolved cleanly. See pkg/parser/types.go MatchResult
+	// for the full rationale.
+	MapRaw     string
+	Mode       string
+	Hero       string
+	HeroRaw    string
+	Result     string
+	FinalScore string
+	Date       string
+	FinishedAt string
+	GameLength string
 
 	PerfElimTotal          int
 	PerfElimAvgPer10Min    float64
@@ -270,8 +288,10 @@ type ScoreboardRow struct {
 	ParsedAt         string
 	ScreenshotsDirID int64 // 0 = NULL
 	Map              string
+	MapRaw           string
 	Mode             string
 	Hero             string
+	HeroRaw          string
 	Eliminations     int
 	Assists          int
 	Deaths           int
@@ -298,6 +318,7 @@ type PersonalRow struct {
 	ParsedAt         string
 	ScreenshotsDirID int64 // 0 = NULL
 	Hero             string
+	HeroRaw          string
 
 	HeroStats []HeroStat
 }

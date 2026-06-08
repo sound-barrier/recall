@@ -490,6 +490,17 @@ export const ParseScreenshots = _dualVoid<[]>(
   '/api/v1/parses',
 )
 
+// ReParseAll re-runs OCR on every PNG in the watched folder,
+// including files already in the DB. Used by Settings → Advanced →
+// "Re-parse all screenshots" after a parser-tightening release
+// (e.g. the hero-fuzzy-match length-gate) to retroactively correct
+// older rows. The Upsert is idempotent on filename so the user's
+// annotations / queue / play-mode / hidden / review state survive.
+export function ReParseAll(): Promise<void> {
+  if (IS_WAILS) return _wails('ReParseAll')
+  return _send('POST', '/api/v1/parses?scope=all').then(() => undefined)
+}
+
 // Cancel an in-flight parse. The OCR loop checks ctx.Err()
 // between screenshots, so the file in tesseract finishes before
 // the loop unwinds. Caller awaits the SSE `parse-cancelled`
