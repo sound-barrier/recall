@@ -3,35 +3,36 @@ package cmd
 import (
 	"errors"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"recall/pkg/app"
 )
 
-// validateScreenshotFilename decodes the path parameter and enforces
-// the OpenAPI constraints — minLength/maxLength + the path-separator
-// + NUL exclusion. Today the filename never leaves the SQL layer
-// (ignored_screenshots row + match_key derivation), so traversal
+// validateScreenshotFilename enforces the OpenAPI constraints on the
+// `{filename}` path parameter — minLength/maxLength + the path-
+// separator + NUL exclusion. Today the filename never leaves the SQL
+// layer (ignored_screenshots row + match_key derivation), so traversal
 // characters aren't directly exploitable. But rejecting them at the
 // boundary means a future "delete the file from disk" code path
 // inherits the constraint by default rather than having to remember
 // to re-validate.
-func validateScreenshotFilename(raw string) (string, error) {
-	decoded, err := url.PathUnescape(raw)
-	if err != nil {
-		return "", errors.New("filename URL-decode failed")
-	}
-	if decoded == "" {
+//
+// Go 1.22's ServeMux URL-decodes wildcard path values before
+// `r.PathValue` returns them, so callers receive an already-decoded
+// string. We don't decode again — a second PathUnescape would fail
+// on any legitimate filename that contains a literal `%` (e.g. one
+// the URL-encoder produced as `%25` and the mux already restored).
+func validateScreenshotFilename(name string) (string, error) {
+	if name == "" {
 		return "", errors.New("filename is required")
 	}
-	if len(decoded) > 200 {
+	if len(name) > 200 {
 		return "", errors.New("filename exceeds 200 characters")
 	}
-	if strings.ContainsAny(decoded, "/\\\x00") {
+	if strings.ContainsAny(name, "/\\\x00") {
 		return "", errors.New("filename contains path separators or NUL")
 	}
-	return decoded, nil
+	return name, nil
 }
 
 // registerScreenshotRoutes attaches the /api/v1/screenshots/... HTTP
