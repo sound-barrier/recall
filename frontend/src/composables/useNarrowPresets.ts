@@ -1,5 +1,6 @@
 import { ref, onMounted } from 'vue'
-import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, LeaverHandling, PresetRange } from './useMatchesNarrow'
+import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, PresetRange } from './useMatchesNarrow'
+import type { LeaverHandling } from './useMatchesDossier'
 
 // Saved-set / preset feature (UI_RECOMMENDATIONS item 8).
 //

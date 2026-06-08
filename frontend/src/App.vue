@@ -968,9 +968,9 @@ async function onBulkTag(matchKeys: string[], tag: string) {
       if (existingTags.includes(norm)) return // already tagged
       await SetMatchAnnotation(key, {
         leaver:      (existing?.leaver ?? '') as MatchAnnotationInput['leaver'],
-        note:        existing?.note ?? null,
-        replay_code: existing?.replay_code ?? null,
-        members:     existing?.members ?? null,
+        note:        existing?.note ?? undefined,
+        replay_code: existing?.replay_code ?? undefined,
+        members:     existing?.members ?? undefined,
         tags:        [...existingTags, norm],
       })
     }))
