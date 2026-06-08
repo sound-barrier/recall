@@ -199,6 +199,26 @@ export type ProbeResult = {
   tried: string[]
 }
 
+// NamedCandidate is one entry in the Windows screenshot-source
+// picker grid (Settings first-run empty state). Mirrors the Go
+// struct in `pkg/app/probe.go`. `exists` drives the card's status
+// dot + clickability; `name` is the stable id ('nvidia' | 'prntscn'
+// | 'snip' | 'steam') used for keying + telemetry.
+export type NamedCandidate = {
+  name:   'nvidia' | 'prntscn' | 'snip' | 'steam'
+  label:  string
+  path:   string
+  exists: boolean
+}
+
+// GetScreenshotsFolderCandidates returns the per-source picker list
+// (empty on macOS / Linux — auto-detect is Windows-only by design;
+// the frontend hides the grid on those platforms).
+export function GetScreenshotsFolderCandidates(): Promise<NamedCandidate[]> {
+  if (IS_WAILS) return _wails('ProbeScreenshotsCandidates')
+  return _get<NamedCandidate[]>('/api/v1/system/screenshots-folder-candidates')
+}
+
 // ProbeScreenshotsDir walks platform-specific OW default-screenshot
 // locations and returns the first directory that exists. Read-only —
 // the caller decides whether to apply the result via

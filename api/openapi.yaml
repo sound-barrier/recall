@@ -1495,6 +1495,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProbeResult"
 
+  /api/v1/system/screenshots-folder-candidates:
+    get:
+      operationId: GetScreenshotsFolderCandidates
+      tags: [System]
+      summary: List the Windows screenshot-source picker candidates
+      description: |
+        Returns the four canonical Windows capture-source locations
+        (Nvidia Overlay, OW PrntScn default, Win Snip tool, Steam
+        install) so the first-run Settings empty-state can render a
+        2 × 2 picker grid. Each entry carries the resolved first
+        existing path variant for that source plus an `exists` flag
+        so the UI can render missing-path cards as grayed-with-
+        tooltip without a second round-trip.
+
+        Returns an empty array on macOS / Linux — auto-detect is
+        Windows-only by current product decision; the frontend
+        hides the grid on those platforms and falls back to the
+        existing "Pick your screenshots folder…" button.
+      responses:
+        "200":
+          description: |
+            Per-source candidate list. Empty array on non-Windows
+            platforms.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NamedCandidate"
+
   /api/v1/system/tesseract-probe:
     get:
       operationId: ProbeTesseractBinary
@@ -1881,6 +1911,42 @@ components:
           example:
             - /Users/jacob/Documents/Overwatch/ScreenShots/Overwatch
             - /Users/jacob/Documents/Blizzard/Overwatch/ScreenShots/Overwatch
+
+    NamedCandidate:
+      type: object
+      required: [name, label, path, exists]
+      description: |
+        One entry in the Windows screenshot-source picker. Each card
+        the user sees corresponds to one canonical capture method.
+      properties:
+        name:
+          type: string
+          enum: [nvidia, prntscn, snip, steam]
+          description: |
+            Stable identifier — `nvidia` (Nvidia Overlay), `prntscn`
+            (OW PrntScn default), `snip` (Win Snip tool), `steam`
+            (Steam-installed OW). Frontend keys cards off this.
+        label:
+          type: string
+          description: |
+            Human-readable display label rendered as the card title
+            ("Nvidia Overlay", "OW default", etc.).
+        path:
+          type: string
+          description: |
+            Resolved first-existing path variant for this source.
+            When no variant exists, lifts to the canonical first
+            path so the "not found" card still has a path to
+            display.
+          example: C:\Users\Jacob\Videos\Overwatch
+        exists:
+          type: boolean
+          description: |
+            True iff the resolved `path` is a real directory the
+            current process can stat. Drives the card's status dot
+            (green when true, gray when false) and whether clicking
+            it commits the path via PUT
+            /api/v1/settings/screenshots-folder.
 
     DataLocation:
       type: object

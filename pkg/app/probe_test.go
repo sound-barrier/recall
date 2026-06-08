@@ -79,6 +79,57 @@ func TestProbeScreenshotsDir_NoMatchReturnsTriedList(t *testing.T) {
 	}
 }
 
+func TestProbeScreenshotsCandidates_NonWindowsReturnsEmpty(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows has its own assertion below")
+	}
+	a := &App{}
+	got := a.ProbeScreenshotsCandidates()
+	if len(got) != 0 {
+		t.Errorf("non-Windows should return empty slice; got %+v", got)
+	}
+}
+
+func TestProbeScreenshotsCandidates_WindowsReportsAllFour(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows-only behaviour")
+	}
+	home := t.TempDir()
+	setHome(t, home)
+
+	// Materialise three of the four candidate paths so the test
+	// exercises both "exists" and "not found" cards in one pass.
+	// Steam stays absent (no registry shim in unit tests).
+	must := func(p string) {
+		t.Helper()
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", p, err)
+		}
+	}
+	must(filepath.Join(home, "Videos", "Overwatch"))
+	must(filepath.Join(home, "Documents", "Overwatch", "ScreenShots", "Overwatch"))
+	must(filepath.Join(home, "Pictures", "Screenshots"))
+
+	a := &App{}
+	got := a.ProbeScreenshotsCandidates()
+	if len(got) != 4 {
+		t.Fatalf("want 4 cards on Windows; got %d (%+v)", len(got), got)
+	}
+	wantNames := []string{"nvidia", "prntscn", "snip", "steam"}
+	for i, n := range wantNames {
+		if got[i].Name != n {
+			t.Errorf("card[%d].Name = %q; want %q", i, got[i].Name, n)
+		}
+	}
+	if !got[0].Exists || !got[1].Exists || !got[2].Exists {
+		t.Errorf("expected nvidia/prntscn/snip to be found; got exists=%v/%v/%v",
+			got[0].Exists, got[1].Exists, got[2].Exists)
+	}
+	if got[3].Exists {
+		t.Errorf("Steam should be absent in unit tests; got exists=true path=%q", got[3].Path)
+	}
+}
+
 func TestAutoProbeOnFirstRun_AppliesWhenSettingIsEmpty(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)

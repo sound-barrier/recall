@@ -670,41 +670,70 @@ describe('SettingsView — Data Location row', () => {
   })
 })
 
-// ── Detect Overwatch Folder — empty-state hero + steady-state row ──────
+// ── First-run picker (empty-state hero) — the four-source grid +
+//    custom-pick tile replaced the old Auto-Detect / Choose Manually
+//    button pair. See ScreenshotSourcePicker.test.ts for picker-level
+//    coverage; here we only verify the wiring.
 
-describe('SettingsView — Detect Overwatch Folder (empty state hero)', () => {
+describe('SettingsView — First-run picker (empty state hero)', () => {
   const emptyProps = {
     screenshotsDir: '', parseBusy: false, themeMode: 'dark' as const, weekStart: 0 as const,
   }
 
-  it('renders the Auto-Detect Folder primary CTA in the empty-state hero', () => {
+  it('mounts the ScreenshotSourcePicker inside the empty-hero', () => {
     const wrapper = mount(SettingsView, { props: emptyProps })
-    const detect = wrapper.findAll('button').find(b => b.text().includes('Auto-Detect Folder'))
-    expect(detect).toBeDefined()
-    expect(detect!.classes()).toContain('primary')
-    expect(detect!.attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('.empty-hero').exists()).toBe(true)
+    expect(wrapper.find('.src-picker').exists()).toBe(true)
   })
 
-  it('emits detect-screenshots-dir when Auto-Detect is clicked', async () => {
-    const wrapper = mount(SettingsView, { props: emptyProps })
-    const detect = wrapper.findAll('button').find(b => b.text().includes('Auto-Detect Folder'))!
-    await detect.trigger('click')
-    expect(wrapper.emitted('detect-screenshots-dir')).toBeTruthy()
+  it('renders the picker grid when platform=windows and candidates supplied', () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...emptyProps,
+        platform: 'windows',
+        screenshotCandidates: [
+          { name: 'nvidia',  label: 'Nvidia Overlay', path: 'C:\\v\\OW', exists: true  },
+          { name: 'prntscn', label: 'OW default',     path: 'C:\\d\\OW', exists: false },
+          { name: 'snip',    label: 'Snip tool',      path: 'C:\\p\\SS', exists: true  },
+          { name: 'steam',   label: 'Steam install',  path: '',           exists: false },
+        ] as const,
+      },
+    })
+    expect(wrapper.find('[data-src-grid]').exists()).toBe(true)
+    expect(wrapper.findAll('.src-card')).toHaveLength(4)
   })
 
-  it('emits pick-screenshots-dir when "Choose Manually" is clicked', async () => {
-    const wrapper = mount(SettingsView, { props: emptyProps })
-    const manual = wrapper.findAll('button').find(b => b.text().includes('Choose Manually'))!
-    await manual.trigger('click')
+  it('emits pick-detected-source with the path when a found card is clicked', async () => {
+    const wrapper = mount(SettingsView, {
+      props: {
+        ...emptyProps,
+        platform: 'windows',
+        screenshotCandidates: [
+          { name: 'nvidia',  label: 'Nvidia Overlay', path: 'C:\\v\\OW', exists: true  },
+          { name: 'prntscn', label: 'OW default',     path: '',           exists: false },
+          { name: 'snip',    label: 'Snip tool',      path: '',           exists: false },
+          { name: 'steam',   label: 'Steam install',  path: '',           exists: false },
+        ] as const,
+      },
+    })
+    await wrapper.find('[data-src-name="nvidia"]').trigger('click')
+    expect(wrapper.emitted('pick-detected-source')![0]).toEqual(['C:\\v\\OW'])
+  })
+
+  it('emits pick-screenshots-dir when the custom-pick tile is clicked', async () => {
+    const wrapper = mount(SettingsView, {
+      props: { ...emptyProps, platform: 'darwin', screenshotCandidates: [] },
+    })
+    await wrapper.find('[data-src-pick-custom]').trigger('click')
     expect(wrapper.emitted('pick-screenshots-dir')).toBeTruthy()
   })
 
-  it('shows the in-flight label and disables Auto-Detect while probing=true', () => {
+  it('hides the grid on macOS', () => {
     const wrapper = mount(SettingsView, {
-      props: { ...emptyProps, probing: true },
+      props: { ...emptyProps, platform: 'darwin', screenshotCandidates: [] },
     })
-    const detect = wrapper.findAll('button').find(b => b.text().includes('Detecting'))!
-    expect(detect.attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-src-grid]').exists()).toBe(false)
+    expect(wrapper.find('[data-src-platform-note]').exists()).toBe(true)
   })
 })
 

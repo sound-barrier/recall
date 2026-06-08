@@ -1027,6 +1027,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/screenshots-folder-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the Windows screenshot-source picker candidates
+         * @description Returns the four canonical Windows capture-source locations
+         *     (Nvidia Overlay, OW PrntScn default, Win Snip tool, Steam
+         *     install) so the first-run Settings empty-state can render a
+         *     2 × 2 picker grid. Each entry carries the resolved first
+         *     existing path variant for that source plus an `exists` flag
+         *     so the UI can render missing-path cards as grayed-with-
+         *     tooltip without a second round-trip.
+         *
+         *     Returns an empty array on macOS / Linux — auto-detect is
+         *     Windows-only by current product decision; the frontend
+         *     hides the grid on those platforms and falls back to the
+         *     existing "Pick your screenshots folder…" button.
+         */
+        get: operations["GetScreenshotsFolderCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/tesseract-probe": {
         parameters: {
             query?: never;
@@ -1312,6 +1343,40 @@ export interface components {
              *     ]
              */
             tried: string[];
+        };
+        /**
+         * @description One entry in the Windows screenshot-source picker. Each card
+         *     the user sees corresponds to one canonical capture method.
+         */
+        NamedCandidate: {
+            /**
+             * @description Stable identifier — `nvidia` (Nvidia Overlay), `prntscn`
+             *     (OW PrntScn default), `snip` (Win Snip tool), `steam`
+             *     (Steam-installed OW). Frontend keys cards off this.
+             * @enum {string}
+             */
+            name: "nvidia" | "prntscn" | "snip" | "steam";
+            /**
+             * @description Human-readable display label rendered as the card title
+             *     ("Nvidia Overlay", "OW default", etc.).
+             */
+            label: string;
+            /**
+             * @description Resolved first-existing path variant for this source.
+             *     When no variant exists, lifts to the canonical first
+             *     path so the "not found" card still has a path to
+             *     display.
+             * @example C:\Users\Jacob\Videos\Overwatch
+             */
+            path: string;
+            /**
+             * @description True iff the resolved `path` is a real directory the
+             *     current process can stat. Drives the card's status dot
+             *     (green when true, gray when false) and whether clicking
+             *     it commits the path via PUT
+             *     /api/v1/settings/screenshots-folder.
+             */
+            exists: boolean;
         };
         DataLocation: {
             /**
@@ -3106,6 +3171,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProbeResult"];
+                };
+            };
+        };
+    };
+    GetScreenshotsFolderCandidates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /**
+             * @description Per-source candidate list. Empty array on non-Windows
+             *     platforms.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NamedCandidate"][];
                 };
             };
         };

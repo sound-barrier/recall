@@ -9,7 +9,7 @@
 import './styles/app.css'
 
 import { ref, computed, watch, onMounted, nextTick, defineAsyncComponent } from 'vue'
-import type { MatchRecord, DataLocation } from './api'
+import type { MatchRecord, DataLocation, NamedCandidate } from './api'
 import {
   GetVersion,
   GetStartupError,
@@ -22,6 +22,7 @@ import {
   GetScreenshotsDir,
   PickScreenshotsDir,
   ProbeScreenshotsDir,
+  GetScreenshotsFolderCandidates,
   ResetScreenshotsDir,
   RevealScreenshotsDir,
   SetScreenshotsDir,
@@ -415,6 +416,37 @@ const {
 // Directories so the user can see where the DB lives. Null until the
 // first load() completes.
 const dataLocation = ref<DataLocation | null>(null)
+
+// First-run picker candidates — four canonical Windows capture
+// sources (Nvidia Overlay / OW PrntScn / Snip tool / Steam). Empty
+// on macOS / Linux so the picker component hides the grid. Loaded
+// once on mount; the user-initiated "Refresh" affordance lives
+// inside the picker (re-loads via the same endpoint).
+const screenshotCandidates = ref<NamedCandidate[]>([])
+async function loadScreenshotCandidates() {
+  try {
+    screenshotCandidates.value = await GetScreenshotsFolderCandidates()
+  } catch (_) {
+    // Non-fatal — the picker just shows the Pick custom CTA when
+    // candidates is empty.
+    screenshotCandidates.value = []
+  }
+}
+// pickDetectedSource: commits an auto-detected card's path via the
+// SetScreenshotsDir api wrapper + mirrors the new value on the
+// composable's local ref. Separate from `pickDir` (native dialog
+// flow) so error handling can be tighter — the path came from our
+// own probe so failure surfaces as a programming bug, not user
+// input.
+async function pickDetectedSource(path: string) {
+  try {
+    await SetScreenshotsDir(path)
+    setScreenshotsDir(path)
+    await refreshNewCount()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
 
 // Prometheus + Watch feature toggles. Each calls a Go setter that
 // owns the actual side effect (server bind / fsnotify watcher) and
@@ -1336,6 +1368,7 @@ onMounted(() => {
   // checkForUpdates() below + the v-if chain on .ver-block.
   load()
   void loadIgnored()
+  void loadScreenshotCandidates()
   // Surface any captured Startup failure. The Wails wrapper used to
   // log.Fatal on profile / DB-init errors, which manifested as a
   // window flash with no user-visible reason. Startup now records
@@ -1660,6 +1693,8 @@ useEventStream({
           :probe-message="probeMessage"
           :probe-status="probeStatus"
           :probe-tried="probeTried"
+          :screenshot-candidates="screenshotCandidates"
+          :platform="tesseractStatus?.platform ?? ''"
           :tesseract-ready="tesseractReady"
           :tesseract-supported="tesseractSupported"
           :tesseract-status="tesseractStatus"
@@ -1679,6 +1714,7 @@ useEventStream({
           :clearing-d-b="clearingDB"
           :ignored-count="ignoredCount"
           @pick-screenshots-dir="pickDir"
+          @pick-detected-source="pickDetectedSource"
           @detect-screenshots-dir="detectDir"
           @reveal-screenshots-dir="revealDir"
           @reset-screenshots-dir="resetDir"
