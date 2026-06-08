@@ -42,25 +42,21 @@ type NamedCandidate struct {
 	Exists bool   `json:"exists"`
 }
 
-// ProbeScreenshotsDir walks a platform-specific list of likely
+// firstExistingCandidate walks the platform-specific list of likely
 // Overwatch screenshot locations and returns the first one that
-// exists. Probe is read-only — does not write to settings on its
-// own; the caller decides whether to persist.
-//
-// Returned ProbeResult.Tried is the full ordered list of candidates
-// inspected; the frontend's empty state can echo it back so the
-// user understands which paths were looked at when nothing was
-// found. This avoids the "probe didn't find my folder, why?"
-// support-loop where the answer is usually "the user moved
-// Documents to OneDrive on a non-default drive".
-func (a *App) ProbeScreenshotsDir() ProbeResult {
-	tried := probeCandidates()
-	for _, p := range tried {
+// exists on this machine. Used by autoProbeOnFirstRun so a fresh
+// install adopts the OW folder without forcing the user through the
+// picker. The public surface for the same walk is
+// ProbeScreenshotsCandidates (Windows-only, 4-card grid); this
+// helper is the all-platform single-best variant for the
+// startup-quiet code path.
+func firstExistingCandidate() (string, bool) {
+	for _, p := range probeCandidates() {
 		if dirExists(p) {
-			return ProbeResult{Found: true, Path: p, Tried: tried}
+			return p, true
 		}
 	}
-	return ProbeResult{Found: false, Tried: tried}
+	return "", false
 }
 
 // probeCandidates returns the ordered list of paths to try, derived
@@ -240,10 +236,10 @@ func (a *App) autoProbeOnFirstRun() {
 	if a.settings.ScreenshotsDir != "" {
 		return
 	}
-	res := a.ProbeScreenshotsDir()
-	if !res.Found {
+	path, ok := firstExistingCandidate()
+	if !ok {
 		return
 	}
-	a.settings.ScreenshotsDir = res.Path
+	a.settings.ScreenshotsDir = path
 	_ = a.saveSettings(a.settings)
 }

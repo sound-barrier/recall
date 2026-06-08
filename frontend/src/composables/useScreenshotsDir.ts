@@ -2,7 +2,8 @@ import { ref, type Ref } from 'vue'
 
 // Screenshots directory: the persisted path plus the two ways to
 // change it — native folder picker (PickScreenshotsDir) and
-// platform-probe auto-detect (ProbeScreenshotsDir + SetScreenshotsDir).
+// platform-probe auto-detect (GetScreenshotsFolderCandidates +
+// SetScreenshotsDir).
 //
 // Extracted from App.vue so the watch-armed confirm prompt + probe
 // state machine can be tested without mounting. The composable

@@ -22,11 +22,10 @@ func setHome(t *testing.T, home string) {
 	t.Setenv("USERPROFILE", home)
 }
 
-func TestProbeScreenshotsDir_FindsFirstExistingCandidate(t *testing.T) {
+func TestFirstExistingCandidate_FindsFirstMatch(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
 
-	// Materialise whichever first-candidate path applies on this OS.
 	tried := probeCandidates()
 	if len(tried) == 0 {
 		t.Skipf("no probe candidates on %s; nothing to assert", runtime.GOOS)
@@ -36,45 +35,37 @@ func TestProbeScreenshotsDir_FindsFirstExistingCandidate(t *testing.T) {
 		t.Fatalf("mkdir %s: %v", want, err)
 	}
 
-	a := &App{}
-	got := a.ProbeScreenshotsDir()
-	if !got.Found {
-		t.Fatalf("expected Found=true; tried=%v", got.Tried)
+	got, ok := firstExistingCandidate()
+	if !ok {
+		t.Fatalf("expected ok=true; first candidate %q exists on disk", want)
 	}
-	if got.Path != want {
-		t.Fatalf("Path = %q; want %q", got.Path, want)
-	}
-	if len(got.Tried) == 0 {
-		t.Fatalf("expected Tried to be populated even on success")
+	if got != want {
+		t.Fatalf("path = %q; want %q", got, want)
 	}
 }
 
-func TestProbeScreenshotsDir_NoMatchReturnsTriedList(t *testing.T) {
+func TestFirstExistingCandidate_EmptyHomeReturnsNotFound(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
 
-	a := &App{}
-	got := a.ProbeScreenshotsDir()
-	if got.Found {
-		t.Fatalf("expected Found=false on an empty home; got %+v", got)
+	_ = home
+	got, ok := firstExistingCandidate()
+	if ok {
+		t.Fatalf("expected ok=false on an empty home; got path=%q", got)
 	}
-	if got.Path != "" {
-		t.Fatalf("Path = %q; want empty", got.Path)
+	if got != "" {
+		t.Fatalf("path = %q; want empty", got)
 	}
-	if len(got.Tried) == 0 && runtime.GOOS != "freebsd" && runtime.GOOS != "openbsd" {
-		t.Fatalf("expected non-empty Tried list on %s", runtime.GOOS)
-	}
-	// Every tried path must be under the scratch HOME, never the real one.
-	// `filepath.Rel(home, p)` returns ".."-prefixed paths when `p` escapes
-	// `home`. A leading dot alone is fine — Linux candidates legitimately
-	// start with .steam / .wine.
-	for _, p := range got.Tried {
+	// Sanity: probeCandidates produces an under-HOME list — defensive
+	// check kept from the old test so a regression that points the
+	// probe at the real user home still fails loudly.
+	for _, p := range probeCandidates() {
 		if !filepath.IsAbs(p) {
-			t.Errorf("tried path %q is not absolute", p)
+			t.Errorf("candidate %q is not absolute", p)
 		}
 		rel, err := filepath.Rel(home, p)
 		if err != nil || rel == "" || strings.HasPrefix(rel, "..") {
-			t.Errorf("tried path %q is not under HOME=%s (rel=%q err=%v)", p, home, rel, err)
+			t.Errorf("candidate %q is not under HOME=%s (rel=%q err=%v)", p, home, rel, err)
 		}
 	}
 }

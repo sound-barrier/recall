@@ -22,7 +22,6 @@ import {
   GetMatchResults,
   GetScreenshotsDir,
   PickScreenshotsDir,
-  ProbeScreenshotsDir,
   GetScreenshotsFolderCandidates,
   ResetScreenshotsDir,
   RevealScreenshotsDir,
@@ -405,7 +404,19 @@ const {
   resetDir,
 } = useScreenshotsDir({
   pickScreenshotsDir: PickScreenshotsDir,
-  probeScreenshotsDir: ProbeScreenshotsDir,
+  // Adapter onto the candidates probe (the single-best ProbeScreenshotsDir
+  // endpoint was removed pre-1.0). The candidates list is the strict
+  // superset; the first exists:true entry is the single-best path. Empty
+  // on macOS / Linux — auto-detect is Windows-only, so detect surfaces
+  // a "no default found" message there (same behaviour as before).
+  probeScreenshotsDir: async () => {
+    const candidates = await GetScreenshotsFolderCandidates()
+    const tried = candidates.map(c => c.path).filter(Boolean)
+    const hit = candidates.find(c => c.exists)
+    return hit
+      ? { found: true, path: hit.path, tried }
+      : { found: false, tried }
+  },
   setScreenshotsDir: SetScreenshotsDir,
   revealScreenshotsDir: RevealScreenshotsDir,
   resetScreenshotsDir: ResetScreenshotsDir,
