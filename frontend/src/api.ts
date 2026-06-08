@@ -165,8 +165,15 @@ export function GetMatchResults(): Promise<MatchRecord[]> {
 }
 
 export type OWData = {
-  heroes_by_role: Record<string, string[]>
-  maps_by_type:   Record<string, string[]>
+  heroes_by_role:     Record<string, string[]>
+  maps_by_type:       Record<string, string[]>
+  screenshot_sources: Array<{
+    name: string
+    prefix: string
+    regex: string
+    year_offset: number
+    example: string
+  }>
 }
 
 // Static Overwatch reference data baked into the parser at compile

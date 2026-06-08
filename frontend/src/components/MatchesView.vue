@@ -823,9 +823,10 @@ function replayCodeFor(matchKey: string): string | null {
 
 // Wails-detect — duplicated as a one-liner so the menu doesn't have
 // to import api.ts (keeps the leaf component's import surface narrow).
-const IS_WAILS = typeof window !== 'undefined'
-  // @ts-expect-error — window.go is set by the Wails runtime at boot
-  && !!window.go?.app?.App
+// `window.go` is set by the Wails runtime at boot; types come from
+// frontend/wailsjs and are already in tsconfig's `include` so vue-tsc
+// resolves the property without an @ts-expect-error.
+const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
 
 // ─── Leaf-row hover preview ────────────────────────────────────
 //
