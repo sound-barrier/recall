@@ -38,6 +38,16 @@ func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/system/screenshots-folder-probe", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.ProbeScreenshotsDir(), nil)
 	})
+	// Per-source picker — Windows-only auto-detection of the four
+	// canonical capture methods (Nvidia Overlay, OW PrntScn default,
+	// Win Snip tool, Steam install). Returns an empty array on macOS
+	// / Linux so the frontend can hide the grid. Each entry carries
+	// (name, label, path, exists) so the first-run picker grid can
+	// render every option with a found/not-found status dot without
+	// a second round-trip.
+	apiMux.HandleFunc("GET /api/v1/system/screenshots-folder-candidates", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, a.ProbeScreenshotsCandidates(), nil)
+	})
 	apiMux.HandleFunc("GET /api/v1/system/tesseract-probe", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.ProbeTesseractBinary(), nil)
 	})

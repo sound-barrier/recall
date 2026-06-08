@@ -10,6 +10,8 @@ import SettingsCalendar from './SettingsCalendar.vue'
 import SettingsEngine from './SettingsEngine.vue'
 import SettingsFolders from './SettingsFolders.vue'
 import SettingsProfiles from './SettingsProfiles.vue'
+import ScreenshotSourcePicker from './ScreenshotSourcePicker.vue'
+import type { NamedCandidate } from '../api'
 
 // SettingsView — every knob a user might want to touch, sorted by
 // frequency of first-time use:
@@ -48,6 +50,15 @@ const props = defineProps<{
   probeMessage?:  string
   probeStatus?:   '' | 'success' | 'blocked'
   probeTried?:    string[]
+  // Per-source picker data — Windows-only auto-detection of the four
+  // canonical capture methods. App.vue fetches these once on the
+  // first empty-state mount via GetScreenshotsFolderCandidates();
+  // empty array on macOS / Linux hides the grid.
+  screenshotCandidates?: NamedCandidate[]
+  // Platform string from the system reference data
+  // (`'windows' | 'darwin' | 'linux'`). Drives the picker's
+  // grid-vs-CTA branch. Optional so older test mounts still pass.
+  platform?: string
   // Engine section — moved from IngestView. All optional so the
   // existing test cases that mount SettingsView with only the
   // first four props still pass.
@@ -82,6 +93,12 @@ const props = defineProps<{
 const emit = defineEmits<{
   'pick-screenshots-dir':   []
   'detect-screenshots-dir': []
+  // Empty-state picker grid emitted a card click. App.vue calls
+  // SetScreenshotsDir(path) + reloads. Distinct from
+  // `pick-screenshots-dir` (native dialog) so the parent can branch
+  // on "auto-detected source" vs "user manually picked" if it ever
+  // wants to log it.
+  'pick-detected-source':   [path: string]
   'reveal-screenshots-dir': []
   'reset-screenshots-dir':  []
   'set-theme':              [mode: ThemeMode]
@@ -105,9 +122,6 @@ const emit = defineEmits<{
   'open-ignored-panel':     []
 }>()
 
-function onDetect() {
-  emit('detect-screenshots-dir')
-}
 
 // Probe-chip dismissal — local-only transient UI noise. Reset
 // whenever a fresh probeMessage lands so a second Detect click
@@ -162,25 +176,15 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
         Point Recall at your Overwatch screenshots.
       </h3>
       <p class="empty-hero-desc">
-        Recall can auto-detect the default Overwatch screenshots folder on this platform, or you can point it at a custom directory. The folder gets watched for new <code>.png</code> files and parsed on save.
+        Recall can auto-detect the default capture folders on Windows — Nvidia Overlay, OW's PrntScn default, the Win Snip tool, and Steam — or you can point it at a custom directory. The folder gets watched for new <code>.png</code> files and parsed on save.
       </p>
-      <div class="empty-hero-actions">
-        <button
-          class="btn primary"
-          :disabled="parseBusy || probing"
-          @click="onDetect"
-        >
-          <svg viewBox="0 0 24 24" class="btn-icon" aria-hidden="true">
-            <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8" />
-            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-          </svg>
-          <span v-if="probing">Detecting…</span>
-          <span v-else>Auto-Detect Folder</span>
-        </button>
-        <button class="btn ghost" :disabled="parseBusy" @click="emit('pick-screenshots-dir')">
-          Choose Manually
-        </button>
-      </div>
+      <ScreenshotSourcePicker
+        :platform="platform ?? ''"
+        :candidates="screenshotCandidates ?? []"
+        :picking="parseBusy || probing"
+        @pick="(_name, path) => emit('pick-detected-source', path)"
+        @pick-custom="() => emit('pick-screenshots-dir')"
+      />
       <div v-if="showProbeChip" class="probe-chip" :class="probeStatus" role="status">
         <span class="probe-chip-bar" aria-hidden="true" />
         <span class="probe-chip-mark" aria-hidden="true">

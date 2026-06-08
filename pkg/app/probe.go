@@ -17,6 +17,31 @@ type ProbeResult struct {
 	Tried []string `json:"tried"`
 }
 
+// NamedCandidate is one entry in the Windows screenshot-source picker
+// surfaced on the first-run Settings empty state. Each card the user
+// sees corresponds to one canonical capture method:
+//
+//	"nvidia"  — Nvidia Overlay (GeForce Experience instant replay)
+//	"prntscn" — OW's PrntScn default Documents folder
+//	"snip"    — Win+Shift+S Snip tool screenshots
+//	"steam"   — Steam in-game F12 captures
+//
+// Path is the resolved first existing variant per source (each source
+// has 1–2 OneDrive-redirected fallbacks; the resolver returns the
+// first hit). Exists tells the UI whether to render the card as
+// clickable or grayed-with-tooltip. Empty path + Exists=false means
+// the source has no plausible location on this machine — the card
+// still renders so the user sees the option exists.
+//
+// macOS / Linux return an empty slice from ProbeScreenshotsCandidates;
+// the frontend hides the grid entirely on those platforms.
+type NamedCandidate struct {
+	Name   string `json:"name"`
+	Label  string `json:"label"`
+	Path   string `json:"path"`
+	Exists bool   `json:"exists"`
+}
+
 // ProbeScreenshotsDir walks a platform-specific list of likely
 // Overwatch screenshot locations and returns the first one that
 // exists. Probe is read-only — does not write to settings on its
@@ -95,6 +120,115 @@ func dirExists(path string) bool {
 		return false
 	}
 	return fi.IsDir()
+}
+
+// ProbeScreenshotsCandidates returns the per-source list the Windows
+// first-run picker renders. Each entry corresponds to one card in
+// the 2 × 2 grid (Nvidia Overlay / PrntScn / Snip tool / Steam).
+// macOS / Linux get an empty slice — auto-detect is Windows-only by
+// design; the frontend hides the grid on those platforms.
+//
+// Each source has 1–2 known location variants (mostly OneDrive
+// redirections). The probe walks each variant in order and surfaces
+// the first existing one as Path; if none exist the source's
+// canonical first path lifts to Path with Exists=false so the user
+// still sees the card with a "not found" status dot.
+func (a *App) ProbeScreenshotsCandidates() []NamedCandidate {
+	out := make([]NamedCandidate, 0, 4)
+	for _, s := range candidateSources() {
+		first, exists := firstExisting(s.paths)
+		out = append(out, NamedCandidate{
+			Name:   s.name,
+			Label:  s.label,
+			Path:   first,
+			Exists: exists,
+		})
+	}
+	return out
+}
+
+// sourceSpec is one entry in candidateSources(). Each card maps to
+// one spec.
+type sourceSpec struct {
+	name  string
+	label string
+	paths []string
+}
+
+// firstExisting returns the first path in `paths` that resolves to a
+// real directory. If none exist it returns the first path (so the
+// "not found" card still has a path to display) and exists=false.
+// Empty input returns ("", false).
+func firstExisting(paths []string) (string, bool) {
+	for _, p := range paths {
+		if dirExists(p) {
+			return p, true
+		}
+	}
+	if len(paths) == 0 {
+		return "", false
+	}
+	return paths[0], false
+}
+
+// candidateSources is the per-platform source list. Returns nil on
+// non-Windows so ProbeScreenshotsCandidates returns an empty slice
+// and the frontend can hide the grid.
+//
+// Windows paths:
+//
+//	Nvidia:  %USERPROFILE%\Videos\Overwatch
+//	PrntScn: %USERPROFILE%\Documents\Overwatch\ScreenShots\Overwatch
+//	          + OneDrive variant
+//	Snip:    %USERPROFILE%\Pictures\Screenshots
+//	          + OneDrive variant
+//	Steam:   <SteamInstall>\userdata\<id>\760\remote\<OW-appid>\
+//	          screenshots — see resolveSteamScreenshots in
+//	          probe_windows.go for the registry-walk shape.
+func candidateSources() []sourceSpec {
+	if runtime.GOOS != "windows" {
+		return nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return nil
+	}
+	specs := []sourceSpec{
+		{
+			name:  "nvidia",
+			label: "Nvidia Overlay",
+			paths: []string{
+				filepath.Join(home, "Videos", "Overwatch"),
+			},
+		},
+		{
+			name:  "prntscn",
+			label: "OW default",
+			paths: []string{
+				filepath.Join(home, "Documents", "Overwatch", "ScreenShots", "Overwatch"),
+				filepath.Join(home, "OneDrive", "Documents", "Overwatch", "ScreenShots", "Overwatch"),
+			},
+		},
+		{
+			name:  "snip",
+			label: "Snip tool",
+			paths: []string{
+				filepath.Join(home, "Pictures", "Screenshots"),
+				filepath.Join(home, "OneDrive", "Pictures", "Screenshots"),
+			},
+		},
+	}
+	steamPath, _ := resolveSteamScreenshots()
+	steamPaths := []string{}
+	if steamPath != "" {
+		steamPaths = append(steamPaths, steamPath)
+	}
+	specs = append(specs, sourceSpec{
+		name:  "steam",
+		label: "Steam install",
+		paths: steamPaths,
+	})
+	return specs
 }
 
 // autoProbeOnFirstRun is called from Startup when settings carry no

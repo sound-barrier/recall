@@ -70,9 +70,10 @@ test.describe('settings — screenshots folder persists across reloads', () => {
     // Confirm the steady-state row is HIDDEN initially (no folder).
     await expect(page.locator('.setting-value.mono')).toHaveCount(0)
 
-    // Click the Change… button (or Choose Manually in the empty-hero
-    // depending on state). Both emit pick-screenshots-dir.
-    const pickButton = page.locator('button:has-text("Choose Manually"), button:has-text("Change")').first()
+    // Click the steady-state Change… button, or the empty-hero's
+    // "Pick a different folder…" custom-pick tile if the row isn't
+    // visible yet. Both fire pick-screenshots-dir.
+    const pickButton = page.locator('[data-src-pick-custom], button:has-text("Change")').first()
     await pickButton.click()
 
     // After picking, the row should show the path.

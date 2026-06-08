@@ -130,11 +130,13 @@ test.describe('settings — Detect is disabled in the steady-state row', () => {
     await expect(detectInRow).toBeVisible()
     await expect(detectInRow).toBeDisabled()
 
-    // Reset → empty-hero re-renders → Detect in the hero IS enabled.
+    // Reset → empty-hero re-renders with the four-source picker
+    // (the old "Auto-Detect Folder" / "Choose Manually" CTA pair
+    // was replaced by the picker grid + custom-pick tile in the
+    // ScreenshotSourcePicker PR).
     await page.locator('#sec-directories button:has-text("Reset")').click()
 
-    const detectInHero = page.locator('.empty-hero button:has-text("Auto-Detect Folder")')
-    await expect(detectInHero).toBeVisible()
-    await expect(detectInHero).not.toBeDisabled()
+    await expect(page.locator('.empty-hero .src-picker')).toBeVisible()
+    await expect(page.locator('.empty-hero [data-src-pick-custom]')).toBeVisible()
   })
 })

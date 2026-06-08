@@ -147,6 +147,24 @@ func TestServerMux_GetStartupError_CleanBootReturnsEmpty(t *testing.T) {
 	}
 }
 
+func TestServerMux_GetScreenshotsFolderCandidates_ReturnsJSONArray(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := get(t, mux, "/api/v1/system/screenshots-folder-candidates")
+	if rec.Code != 200 {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+	var got []map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v body=%s", err, rec.Body.String())
+	}
+	// On non-Windows the slice is empty; the App-level test in
+	// pkg/app/probe_test.go pins the Windows shape. Here we only
+	// confirm the wire contract: always an array, never null.
+	if got == nil {
+		t.Errorf("response decoded as null; expected [] for the empty case")
+	}
+}
+
 func TestServerMux_MethodNotAllowed(t *testing.T) {
 	_, mux := newTestApp(t, nil)
 	// GET on POST-only endpoint
