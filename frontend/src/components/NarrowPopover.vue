@@ -11,6 +11,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
+import { useNarrowPresets } from '../composables/useNarrowPresets'
 import type { MatchRecord } from '../api'
 import FilterCombobox from './FilterCombobox.vue'
 
@@ -74,6 +75,21 @@ const {
   narrowedRecords,
 } = props.narrow
 void activeClauseCount; void anyNarrow
+
+// Saved-set / preset feature — typed snapshots of MatchesNarrowState
+// persisted in localStorage. `props.narrow` already exposes every
+// state ref by destructure-and-return, so passing it as the state
+// arg works at runtime even though the type is the wider return
+// shape (subtype relationship).
+const { presets, savePreset, applyPreset, deletePreset } = useNarrowPresets(props.narrow)
+const newPresetName = ref('')
+
+function onSavePreset() {
+  const name = newPresetName.value.trim()
+  if (!name) return
+  savePreset(name)
+  newPresetName.value = ''
+}
 
 const popoverRef     = ref<HTMLElement | null>(null)
 const searchInputRef = ref<HTMLInputElement | null>(null)
@@ -652,6 +668,49 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <!-- Saved sets — name + Save + list of recalled presets.
+               Click a preset's name to apply; click × to delete. The
+               input only adopts on Enter / Save click so accidental
+               characters don't churn the list. -->
+          <section class="np-presets" aria-label="Saved sets">
+            <header class="np-presets-head">
+              <span class="np-presets-eyebrow">Saved sets</span>
+            </header>
+            <div class="np-presets-save">
+              <input
+                v-model="newPresetName"
+                type="text"
+                class="np-presets-input"
+                placeholder="Save current narrow as…"
+                data-presets-save-input
+                @keydown.enter.prevent="onSavePreset"
+              >
+              <button
+                class="np-btn ghost"
+                :disabled="!newPresetName.trim()"
+                data-presets-save-btn
+                @click="onSavePreset"
+              >
+                Save
+              </button>
+            </div>
+            <ul v-if="presets.length > 0" class="np-presets-list">
+              <li v-for="p in presets" :key="p.name" class="np-preset">
+                <button
+                  class="np-preset-apply"
+                  :data-preset-name="p.name"
+                  @click="applyPreset(p.name)"
+                >
+                  {{ p.name }}
+                </button>
+                <button
+                  class="np-preset-delete"
+                  :aria-label="`Delete preset ${p.name}`"
+                  @click="deletePreset(p.name)"
+                >×</button>
+              </li>
+            </ul>
+          </section>
           <footer class="np-foot">
             <span class="np-foot-status">
               {{ narrowedRecords.length }} match<span v-if="narrowedRecords.length !== 1">es</span> in this view
@@ -1098,6 +1157,104 @@ onUnmounted(() => {
 .np-since-anchor-clear:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.np-presets {
+  margin: 1rem -0.25rem 0.4rem;
+  padding: 0.6rem 0.6rem 0.7rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.np-presets-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.np-presets-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.np-presets-save {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.np-presets-input {
+  flex: 1;
+  appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 0.32rem 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text);
+  outline: 0;
+}
+
+.np-presets-input:focus { border-color: var(--accent); }
+
+.np-presets-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.np-preset {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.np-preset-apply {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0.25rem 0.55rem;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.np-preset-apply:hover,
+.np-preset-apply:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
+
+.np-preset-delete {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--border);
+  padding: 0.25rem 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+
+.np-preset-delete:hover,
+.np-preset-delete:focus-visible {
+  color: var(--loss);
+  outline: none;
 }
 
 .np-foot {

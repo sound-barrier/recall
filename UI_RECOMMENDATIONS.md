@@ -151,25 +151,6 @@ miss.
 
 ## Polish / lower-priority
 
-### 8. Restore saved-set / preset feature
-
-PR #100 deleted the old `FilterPresetsMenu` + `useFilterPresets`
-composable because it had no UI hook after the FilterRail
-tear-down. Some users (the maintainer included) had non-trivial
-preset collections in localStorage. Re-introducing presets is
-straightforward now that filter state is parent-owned + typed:
-
-- **Storage**: copy the old `useFilterPresets.ts` shape, but
-  serialize `MatchesNarrowState` (the 14-ref bundle), not the
-  legacy `FilterPresetSnapshot`. New JSON key:
-  `recall.narrowPresets.v2` to avoid replaying the dead v1 keys.
-- **UI**: a "Saved sets" affordance in the narrow panel
-  footer — `Save current narrow as…` text-input + list of
-  named presets with apply / delete glyphs.
-- **Effort**: ~4 hours including a `useNarrowPresets.test.ts`
-  - an `e2e` spec that proves Save → Reload → Apply re-
-  applies the same narrow.
-
 ### 9. Per-source diagnostic strip on the picker grid
 
 `ScreenshotSourcePicker.vue` (PR #226) currently shows the four
