@@ -1463,7 +1463,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [heroes_by_role, maps_by_type]
+                required: [heroes_by_role, maps_by_type, screenshot_sources]
                 properties:
                   heroes_by_role:
                     type: object
@@ -1485,6 +1485,24 @@ paths:
                       control: ["Antarctic Peninsula", Busan, Nepal]
                       escort: [Dorado, "Watchpoint Gibraltar"]
                       hybrid: ["King's Row", Midtown]
+                  screenshot_sources:
+                    type: array
+                    description: |
+                      Per-capture-tool filename grammars the parser
+                      recognises. Source-of-truth is
+                      `pkg/parser/screenshot_sources.yaml`. Surfaced
+                      in Settings → Advanced → "Supported capture-
+                      source rules" so the user can verify which
+                      filename shapes work without leaving the app.
+                    items:
+                      type: object
+                      required: [name, prefix, regex, year_offset, example]
+                      properties:
+                        name:        { type: string, description: "Stable id (nvidia / prntscn / snip / …)." }
+                        prefix:      { type: string, description: "Fast strings.HasPrefix gate." }
+                        regex:       { type: string, description: "Anchored Go regex; six capture groups (y, m, d, H, M, S)." }
+                        year_offset: { type: integer, description: "Added to the captured year (2-digit YAML → 2000)." }
+                        example:     { type: string, description: "Canonical example filename." }
 
   /api/v1/system/screenshots-folder-candidates:
     get:

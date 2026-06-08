@@ -28,6 +28,7 @@ sources:
     prefix: "Overwatch 2 Screenshot "
     regex: '^Overwatch 2 Screenshot (\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})'
     year_offset: 0
+    example: "Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png"
 
   # OW default Print Screen: `ScreenShot_26-06-07_22-59-52-000.jpg`
   # 2-digit year (→ 20YY), hyphens within date+time, trailing
@@ -37,6 +38,7 @@ sources:
     prefix: "ScreenShot_"
     regex: '^ScreenShot_(\d{2})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})'
     year_offset: 2000
+    example: "ScreenShot_26-06-07_22-59-52-000.jpg"
 
   # Windows Snip tool: `Screenshot 2026-06-07 224855.png`
   # Note the trailing space in the prefix — without it the match
@@ -47,3 +49,4 @@ sources:
     prefix: "Screenshot "
     regex: '^Screenshot (\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2})(\d{2})'
     year_offset: 0
+    example: "Screenshot 2026-06-07 224855.png"

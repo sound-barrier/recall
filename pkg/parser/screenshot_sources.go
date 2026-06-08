@@ -26,6 +26,7 @@ type ScreenshotSource struct {
 	Prefix     string         // fast strings.HasPrefix gate
 	Regex      *regexp.Regexp // anchored — six capture groups: y, m, d, H, M, S
 	YearOffset int            // added to the captured year (2-digit YAML → 2000)
+	Example    string         // canonical example filename — surfaced in Settings → Advanced
 }
 
 // ScreenshotSources is the in-memory registry the correlation
@@ -45,6 +46,7 @@ type screenshotSourceYAML struct {
 	Prefix     string `yaml:"prefix"`
 	Regex      string `yaml:"regex"`
 	YearOffset int    `yaml:"year_offset"`
+	Example    string `yaml:"example"`
 }
 
 type screenshotSourcesFile struct {
@@ -80,6 +82,9 @@ func loadScreenshotSourcesYAML() error {
 			// alongside the prefix check.
 			return fmt.Errorf("source[%d] %q: regex must start with ^ (got %q)", i, s.Name, s.Regex)
 		}
+		if s.Example == "" {
+			return fmt.Errorf("source[%d] %q: empty example", i, s.Name)
+		}
 		re, err := regexp.Compile(s.Regex)
 		if err != nil {
 			return fmt.Errorf("source[%d] %q: compile regex: %w", i, s.Name, err)
@@ -89,6 +94,7 @@ func loadScreenshotSourcesYAML() error {
 			Prefix:     s.Prefix,
 			Regex:      re,
 			YearOffset: s.YearOffset,
+			Example:    s.Example,
 		})
 	}
 	ScreenshotSources = out
