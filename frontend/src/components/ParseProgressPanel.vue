@@ -7,6 +7,13 @@ export interface ParseProgressEvent {
   filename: string
   screenshot_type?: string
   data?: MatchRecord['data']
+  // Cumulative re-parse counters — surfaced by the Settings →
+  // Advanced re-parse-all progress line as "X of Y matches updated".
+  // Always 0 on a regular Parse run (no diff to count), so consumers
+  // that don't read them silently ignore.
+  matches_updated?: number
+  hero_corrections?: number
+  map_corrections?: number
 }
 </script>
 

@@ -1862,6 +1862,7 @@ useEventStream({
           :clearing-d-b="clearingDB"
           :ignored-count="ignoredCount"
           :reparsing="parseBusy"
+          :parse-progress="parseProgress"
           @pick-screenshots-dir="pickDir"
           @pick-detected-source="pickDetectedSource"
           @detect-screenshots-dir="detectDir"

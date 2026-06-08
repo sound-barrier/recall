@@ -202,24 +202,6 @@ v9.11.0 to recognise `miyazaki`" as a CTA on the card.
   fixture for the "release adds Miyazaki but not Junkertown"
   partial-match case.
 
-### 12. Re-parse progress: "X of Y matches updated"
-
-Settings → Advanced → **Re-parse all screenshots** (PR #224)
-currently shows file-level progress in the masthead Parse
-indicator. A user re-parsing because they want to recover
-miyazaki gap records doesn't care which file is being
-re-OCR'd — they want to know how many of their existing
-matches have been *updated*. A second progress line under the
-button — "12 of 47 matches updated (3 hero/map fields
-corrected)" — tells the actual story.
-
-- **Constraint**: the re-aggregate step already runs after the
-  re-OCR completes; instrument it to emit `matches_updated` +
-  `hero_corrections` + `map_corrections` counters and stream
-  them on the existing Parse SSE channel.
-- **Effort**: ~3 hours including the SSE counter additions +
-  Settings render.
-
 ### 13. OnboardingTour walkthrough for new affordances
 
 `OnboardingTour.vue` + `TourCallout.vue` + `TourSpotlight.vue`
