@@ -1897,6 +1897,7 @@ useEventStream({
       :position-index="selection.selectedIndex.value + 1"
       :position-total="matchesNarrow.narrowedRecords.value.length"
       :has-lightbox="lightboxFilename !== null"
+      :available-tags="matchesNarrow.availableTags.value"
       @close="selection.close"
       @prev="selection.openPrev"
       @next="selection.openNext"

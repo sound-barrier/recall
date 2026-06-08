@@ -2594,6 +2594,53 @@ main#main-content {
   background: var(--surface-2);
 }
 
+/* Inline tag autocomplete — suggestions popover anchored beneath
+   the tag input. The wrap is the positioning context so the
+   absolutely-positioned listbox sits flush under the input. */
+.match-tag-input-wrap {
+  position: relative;
+  flex: 1 1 12ch;
+  min-width: 10ch;
+}
+
+.match-tag-input-wrap .match-tag-input {
+  width: 100%;
+  flex: none;
+  min-width: 0;
+}
+
+.match-tag-suggestions {
+  position: absolute;
+  top: calc(100% + 0.2rem);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  list-style: none;
+  margin: 0;
+  padding: 0.2rem 0;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  max-height: 12rem;
+  overflow-y: auto;
+  box-shadow: 0 10px 22px -14px rgb(0 0 0 / 50%);
+}
+
+.match-tag-suggestions li {
+  padding: 0.3rem 0.55rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.match-tag-suggestions li:hover,
+.match-tag-suggestions li.cursor {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
 .match-tags-editor {
   display: flex;
   flex-wrap: wrap;

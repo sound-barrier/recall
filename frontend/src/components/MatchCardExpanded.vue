@@ -56,6 +56,11 @@ const props = defineProps<{
   // expanded card's record IS the anchor, the chooser shows
   // "Clear anchor" instead of "Set as anchor."
   anchorKey?: string
+  // Tag vocabulary across the narrowed record set — drives the
+  // inline tag-input autocomplete popover. Empty when the parent
+  // hasn't threaded it through; the input still works as a free-
+  // text field. Sorted alphabetically by `useMatchesNarrow`.
+  availableTags?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -352,15 +357,101 @@ function removeTag(t: string) {
   commitAnnotation('tags')
 }
 
-function onTagKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter' || e.key === ',') {
-    e.preventDefault()
-    addCustomTag()
-    return
+// ── Inline tag autocomplete ─────────────────────────────────────
+//
+// Suggestions surface beneath the tag input while it has focus +
+// non-empty content. The vocabulary comes from props.availableTags
+// (sorted across the narrowed set by `useMatchesNarrow`), minus the
+// tags already on this record (so the user can't suggest themselves
+// what they've already picked) and minus the conventional
+// NAMED_TAGS quick-add tokens (shown as toggle buttons inline).
+//
+// Cursor lives at -1 when nothing is keyboard-highlighted. Mouseenter
+// on a suggestion takes the cursor; ArrowDown/Up cycle; Enter on the
+// cursor adopts; Enter without cursor falls to the existing
+// addCustomTag() (free-text adopt). Click — via mousedown.prevent
+// so the input keeps focus — adopts the suggestion.
+
+const tagSuggestionsOpen = ref(false)
+const tagCursor          = ref(-1)
+
+const tagSuggestions = computed<string[]>(() => {
+  const universe = props.availableTags ?? []
+  if (universe.length === 0) return []
+  const q = normalizeTagLabel(tagInput.value)
+  const exclude = new Set<string>([
+    ...tagDraft.value,
+    ...NAMED_TAGS as readonly string[],
+  ])
+  const pool = universe.filter(t => !exclude.has(t))
+  if (!q) return pool
+  return pool.filter(t => t.includes(q))
+})
+
+watch(tagSuggestions, () => {
+  if (tagCursor.value >= tagSuggestions.value.length) tagCursor.value = -1
+})
+
+function onTagFocus() {
+  tagSuggestionsOpen.value = true
+}
+
+function onTagBlur() {
+  // Defer so a mousedown.prevent on a suggestion still fires before
+  // close. addCustomTag already runs on blur via the v-bind handler.
+  setTimeout(() => {
+    tagSuggestionsOpen.value = false
+    tagCursor.value = -1
+  }, 120)
+  addCustomTag()
+}
+
+function adoptSuggestion(t: string) {
+  if (!tagDraft.value.includes(t)) {
+    tagDraft.value = [...tagDraft.value, t]
+    commitAnnotation('tags')
   }
-  if (e.key === 'Backspace' && tagInput.value === '' && tagDraft.value.length > 0) {
-    e.preventDefault()
-    removeTag(tagDraft.value[tagDraft.value.length - 1]!)
+  tagInput.value = ''
+  tagCursor.value = -1
+}
+
+function onTagKeydown(e: KeyboardEvent) {
+  const sugs = tagSuggestions.value
+  const len  = sugs.length
+  const open = tagSuggestionsOpen.value && len > 0
+  switch (e.key) {
+    case 'ArrowDown':
+      if (!open) return
+      e.preventDefault()
+      tagCursor.value = (tagCursor.value + 1) % len
+      return
+    case 'ArrowUp':
+      if (!open) return
+      e.preventDefault()
+      tagCursor.value = (tagCursor.value - 1 + len) % len
+      return
+    case 'Enter':
+    case ',':
+      e.preventDefault()
+      if (open && tagCursor.value >= 0 && tagCursor.value < len) {
+        adoptSuggestion(sugs[tagCursor.value]!)
+        return
+      }
+      addCustomTag()
+      return
+    case 'Escape':
+      if (open) {
+        e.preventDefault()
+        tagSuggestionsOpen.value = false
+        tagCursor.value = -1
+      }
+      return
+    case 'Backspace':
+      if (tagInput.value === '' && tagDraft.value.length > 0) {
+        e.preventDefault()
+        removeTag(tagDraft.value[tagDraft.value.length - 1]!)
+      }
+      return
   }
 }
 </script>
@@ -896,16 +987,45 @@ function onTagKeydown(e: KeyboardEvent) {
                 @click="removeTag(t)"
               >×</button>
             </span>
-            <input
-              :id="`tags-${record.match_key}`"
-              v-model="tagInput"
-              class="match-tag-input"
-              placeholder="add tag"
-              spellcheck="false"
-              autocomplete="off"
-              @keydown="onTagKeydown"
-              @blur="addCustomTag"
-            >
+            <div class="match-tag-input-wrap">
+              <input
+                :id="`tags-${record.match_key}`"
+                v-model="tagInput"
+                class="match-tag-input"
+                placeholder="add tag"
+                spellcheck="false"
+                autocomplete="off"
+                role="combobox"
+                aria-autocomplete="list"
+                :aria-controls="`tags-${record.match_key}-suggestions`"
+                :aria-expanded="tagSuggestionsOpen && tagSuggestions.length > 0 ? 'true' : 'false'"
+                :aria-activedescendant="tagCursor >= 0 && tagCursor < tagSuggestions.length
+                  ? `tags-${record.match_key}-sug-${tagCursor}` : undefined"
+                @keydown="onTagKeydown"
+                @focus="onTagFocus"
+                @blur="onTagBlur"
+              >
+              <ul
+                v-if="tagSuggestionsOpen && tagSuggestions.length > 0"
+                :id="`tags-${record.match_key}-suggestions`"
+                class="match-tag-suggestions"
+                role="listbox"
+                aria-label="Tag suggestions"
+              >
+                <li
+                  v-for="(s, i) in tagSuggestions"
+                  :id="`tags-${record.match_key}-sug-${i}`"
+                  :key="s"
+                  :class="{ cursor: i === tagCursor }"
+                  role="option"
+                  :aria-selected="i === tagCursor ? 'true' : 'false'"
+                  @mousedown.prevent="adoptSuggestion(s)"
+                  @mouseenter="tagCursor = i"
+                >
+                  {{ s }}
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
