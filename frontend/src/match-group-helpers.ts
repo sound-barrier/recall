@@ -22,7 +22,7 @@ import { tallyWLD, type WLDTally } from './match-stats-helpers'
 // placed in the Month → Week → Day tree, but the user still needs to see
 // them — so they get a single pinned-at-bottom group with no children,
 // just the records.
-export type MatchGroupLevel = 'year' | 'month' | 'week' | 'day' | 'unknown'
+type MatchGroupLevel = 'year' | 'month' | 'week' | 'day' | 'unknown'
 
 // GroupableRecord is the minimal shape groupMatchesByMonthWeekDay needs:
 // a date, a finish time, an optional result, and an optional match_key
