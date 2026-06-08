@@ -208,28 +208,6 @@ in a floating preview, anchored to the cursor. Useful for
 - **Effort**: ~3 hours. Mirror `MatchCardExpanded.vue`'s
   `<img class="source-preview">` chrome.
 
-### 5. Inline tag autocomplete
-
-The tag input in the detail panel's Match Journal accepts free
-text but doesn't help the user discover their existing tag
-vocabulary. Typing into the input should drop a small popover
-listing matching tags from `narrow.availableTags` (already
-computed by `useMatchesNarrow`), plus an "add new tag"
-affordance.
-
-- **Pattern**: combobox with arrow-key navigation; Enter on
-  a selection adopts the tag, Enter on free text adds it as
-  new. The new `FilterCombobox.vue` is most of the pattern
-  already — extract the dropdown + a11y bits into a
-  lower-level `TypeaheadDropdown.vue` that both consumers
-  share.
-- **Constraint**: the popover sits inside the Match Journal
-  cell, which is itself inside `MatchDetailPanel` (already
-  the topmost modal). z-index needs to clear the panel's
-  `box-shadow` but stay below the lightbox.
-- **Effort**: ~4 hours. Lower-level extraction first; tag
-  autocomplete second.
-
 ### 6. Smart-empty filter messaging
 
 The current empty-state ("No matches in this set.") is correct

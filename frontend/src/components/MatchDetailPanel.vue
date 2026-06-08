@@ -45,6 +45,11 @@ const props = defineProps<{
   // the expanded card can flip its toggle's copy + style. Empty
   // string ≡ no anchor.
   anchorKey?: string
+  // Tag vocabulary across the narrowed set — forwarded to
+  // MatchCardExpanded for the inline tag-input autocomplete popover.
+  // Optional so older mount sites that don't have the narrow state
+  // don't have to thread an empty array.
+  availableTags?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -363,6 +368,7 @@ function onBackdropClick(e: MouseEvent) {
             :is-active="isActive"
             :search-clauses="searchClauses"
             :anchor-key="anchorKey"
+            :available-tags="availableTags"
             @toggle-sources="emit('toggle-sources')"
             @toggle-preview="(f: string) => emit('toggle-preview', f)"
             @preview-error="(f: string) => emit('preview-error', f)"
