@@ -23,6 +23,7 @@ import DayOfWeekWidget from '../components/widgets/DayOfWeekWidget.vue'
 import Recent5MatchesWidget from '../components/widgets/Recent5MatchesWidget.vue'
 import QuickplayVsCompetitiveWidget from '../components/widgets/QuickplayVsCompetitiveWidget.vue'
 import WinrateByPlayModeWidget from '../components/widgets/WinrateByPlayModeWidget.vue'
+import HeroMapTypeHeatmapWidget from '../components/widgets/HeroMapTypeHeatmapWidget.vue'
 
 // Central registry for the dossier's customizable dashboard widgets.
 //
@@ -163,6 +164,27 @@ export const dayOfWeekSchema = makeSchema<DayOfWeekConfig>([
   },
 ])
 
+export interface HeroMapTypeHeatmapConfig extends Record<string, unknown> {
+  heroLimit:  number
+  minMatches: number
+}
+export const heroMapTypeHeatmapSchema = makeSchema<HeroMapTypeHeatmapConfig>([
+  {
+    kind:    'integer-choice',
+    key:     'heroLimit',
+    label:   'Heroes to show',
+    choices: [5, 8, 12],
+    default: 8,
+  },
+  {
+    kind:    'integer-choice',
+    key:     'minMatches',
+    label:   'Min matches for full grid',
+    choices: [10, 20, 50],
+    default: 20,
+  },
+])
+
 export interface RecentMatchesConfig extends Record<string, unknown> {
   count: number
 }
@@ -198,6 +220,7 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'recent-5-matches',    eyebrow: 'Recent matches',         shape: 'breakdown', defaultRow: 2, component: Recent5MatchesWidget,   config: recentMatchesSchema   },
   { id: 'play-mode-share',     eyebrow: 'Quickplay vs Competitive', shape: 'breakdown', defaultRow: 2, component: QuickplayVsCompetitiveWidget, config: EMPTY_SCHEMA },
   { id: 'play-mode-winrate',   eyebrow: 'Winrate by play mode',     shape: 'breakdown', defaultRow: 2, component: WinrateByPlayModeWidget,      config: EMPTY_SCHEMA },
+  { id: 'hero-map-type-heatmap', eyebrow: 'Hero × map-type heatmap',  shape: 'breakdown', defaultRow: 2, component: HeroMapTypeHeatmapWidget,     config: heroMapTypeHeatmapSchema },
 ]
 
 // Row-keyed install-default layout. Membership here means "auto-add

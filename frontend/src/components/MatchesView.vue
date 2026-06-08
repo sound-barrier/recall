@@ -6,6 +6,7 @@ import { useMatchesGroup, type GroupedSection } from '../composables/useMatchesG
 import { useMatchesWindow } from '../composables/useMatchesWindow'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
 import { provideDossier } from '../composables/useDossier'
+import { provideNarrow } from '../composables/useNarrow'
 import WidgetConfigPopover from './WidgetConfigPopover.vue'
 import MatchesSortGroupPopover from './MatchesSortGroupPopover.vue'
 import { useWeekStart } from '../composables/useWeekStart'
@@ -424,6 +425,10 @@ async function onJumpToUndated() {
 // 18-prop widgetProps bag is gone.
 const dossier = useMatchesDossier(narrowedRecords, leaverHandling, ow.heroRole, weekStart)
 provideDossier(dossier)
+// Same provide/inject shape exposes the narrow handlers (pickHero,
+// pickMapType, etc.) to widgets that need to drill into a slice of
+// the active set — the hero × map-type heatmap is the first consumer.
+provideNarrow(props.narrow)
 
 // ─── Dashboard widget layout ────────────────────────────────────
 //

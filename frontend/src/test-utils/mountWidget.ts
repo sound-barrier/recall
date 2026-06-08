@@ -2,6 +2,7 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { computed, type Component, type ComputedRef } from 'vue'
 import { vi } from 'vitest'
 import { DOSSIER_KEY } from '../composables/useDossier'
+import { NARROW_KEY, type NarrowApi } from '../composables/useNarrow'
 import type {
   AverageKDA,
   BestWinrateHero,
@@ -59,6 +60,7 @@ type DossierOverride = {
   timeOfDayBuckets?:  BucketEntry[]
   dayOfWeekBuckets?:  BucketEntry[]
   recentResults?:     ('victory' | 'defeat' | 'draw')[]
+  heroMapTypeCounts?: Array<{ hero: string; mapType: string; wins: number; losses: number; draws: number; total: number; winrate: number }>
 }
 
 function fakeDossier(over: DossierOverride): MatchesDossier {
@@ -89,6 +91,7 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     timeOfDayBuckets:    wrapQuery(over.timeOfDayBuckets, [] as BucketEntry[]),
     dayOfWeekBuckets:    wrapQuery(over.dayOfWeekBuckets, [] as BucketEntry[]),
     recentResults:       wrapQuery(over.recentResults, [] as ('victory' | 'defeat' | 'draw')[]),
+    heroMapTypeCounts:   wrapQuery(over.heroMapTypeCounts, []),
   } as unknown as MatchesDossier
 }
 
@@ -115,6 +118,11 @@ export interface MountWidgetOptions {
   // on widget id; localStorage is stubbed fresh per mount so the seed
   // hydrates cleanly.
   configSeed?: Record<string, Record<string, unknown>>
+  // Optional narrow stub for widgets that need to call into the
+  // active-filter handlers (heatmap cell clicks → pickHero +
+  // pickMapType). Tests pass plain spies — the helper wraps them
+  // in a minimal NarrowApi shape so useNarrow() resolves.
+  narrow?: Partial<NarrowApi>
 }
 
 // Mounts the widget with a provided mock dossier + optional config
@@ -131,13 +139,17 @@ export function mountWidget(
     }
   }
   const dossier = fakeDossier(options.dossier ?? {})
+  const narrow = options.narrow ?? {}
   // Cast the component reference through `unknown` because mount's
   // typed overloads can't see the SFC instance type without an
   // import-from-vue inference that the test-utils call site never
   // needs. The runtime path is unaffected.
   return mount(Component as unknown as Parameters<typeof mount>[0], {
     global: {
-      provide: { [DOSSIER_KEY as symbol]: dossier },
+      provide: {
+        [DOSSIER_KEY as symbol]: dossier,
+        [NARROW_KEY  as symbol]: narrow,
+      },
     },
   }) as VueWrapper
 }

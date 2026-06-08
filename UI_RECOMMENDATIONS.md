@@ -81,6 +81,19 @@ session can skip the survey step.
   an `AUTO-DETECT · WINDOWS ONLY` eyebrow) and show only the
   custom-pick button. `ScreenshotSourcePicker.vue` +
   `pkg/app/probe_windows.go` (registry resolver).
+- ~~**Hero × map-type heatmap dossier widget**~~ — opt-in widget
+  in the dossier customizer. Rows = top-N most-played heroes in the
+  narrowed set; columns = canonical 6 map types (control / escort /
+  flashpoint / hybrid / push / clash). Cells coloured by winrate
+  bucket (green / amber / red); opacity scales with volume. Clicking
+  a populated cell narrows the active set to that (hero, mapType)
+  pair via `narrow.pickHero` + `narrow.pickMapType`, so the user
+  drills into the matches behind the surface signal without leaving
+  the page. Empty-state banner surfaces when decisive matches are
+  below a configurable floor (default 20). New `provideNarrow` /
+  `useNarrow` injection seam mirrors the dossier seam — the heatmap
+  is the first widget that needs to mutate narrow from inside the
+  registry.
 - ~~**Multi-format screenshot filename support**~~ — PR #227.
   Parser now recognises Nvidia (`Overwatch 2 Screenshot YYYY.MM.DD
   - HH.MM.SS.ff.png`), OW PrntScn default (`ScreenShot_YY-MM-DD_
@@ -122,32 +135,6 @@ is already past the comfortable point.
   before and after.
 - **Tradeoff**: adds a dependency. Discuss before pulling the
   trigger.
-
-## Needs design exploration
-
-### 2. Hero × Map heatmap
-
-For users with hundreds of matches, "which heroes win on which
-maps" is a real question. A small heatmap (rows = heroes,
-columns = map types) over the currently-filtered set would
-surface non-obvious patterns the dossier's top-N breakdowns
-miss.
-
-- **Where**: a fourth dossier section, below the existing
-  top-maps + top-heroes breakdowns. Could also live on the
-  Analysis tab as a wider grid. The set-workspace dossier
-  already commits to "first-class set-as-an-object" framing —
-  a hero×map cell *is* a subset descriptor, so it fits.
-- **Open question**: granularity. Per-map (~25 columns) is
-  noisy but maximally informative; per-map-type (~6 columns)
-  is readable but coarse.
-- **Open question**: cell-click semantics. Most natural:
-  clicking a cell adds the (hero, map) pair as a narrow clause
-  (`narrow.pickMap` + `narrow.pickHero`) — drills the user
-  into the matching subset without leaving the page.
-- **Effort**: ~6 hours including the cell rendering + an
-  empty-state for filter sets too small to be statistically
-  meaningful (<20 matches?).
 
 ## Polish / lower-priority
 
@@ -242,7 +229,7 @@ mapping back to source surfaces:
 | Settings → 05 Backup & Restore | — | Two-step confirm pattern is sound. |
 | Settings → 06 Advanced (Stream/Clear/Re-parse) | 10, 12 | Stream-to-Grafana row is fine; the new Re-parse + format-list surfaces want enrichment. |
 | Parse tab | — | Run Parse + Watch Folder both match the docs intent. |
-| Matches workspace | 1, 2, 3, 4, 5, 6, 7, 8 | Dossier + narrow panel are the redesign; remaining items polish the leaves + tag/selection surfaces. |
+| Matches workspace | 1, 3, 4, 5, 6, 7, 8 | Dossier + narrow panel are the redesign; remaining items polish the leaves + tag/selection surfaces. |
 | Unknown tab | 11 | Three-section split (Needs review / Unknown maps / Reference data gaps) is the surface; gap cards want the "fixed in vX.Y.Z" CTA. |
 | Modals (Detail / Lightbox / Cheatsheet / ExportBundle / IgnoredFiles) | — | The keyboard contract is sound; per-modal items would be premature. |
 | First-Run Profile Modal | 14 | Profile naming itself is fine; the inline-picker step is the open work. |

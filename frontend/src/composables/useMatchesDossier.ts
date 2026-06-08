@@ -343,6 +343,104 @@ export function useMatchesDossier(
     })
   }
 
+  // Mirrors the keys exposed by `pkg/parser/maps.yaml` — the
+  // canonical 6 Overwatch map-type slugs. Hardcoded so the heatmap
+  // renders its column header row deterministically even on first
+  // mount before `useOWData()` resolves; if the parser ever ships a
+  // new map-type, this list updates in lockstep with the YAML.
+  const CANONICAL_MAP_TYPES = ['control', 'escort', 'flashpoint', 'hybrid', 'push', 'clash'] as const
+
+  // Hero × Map-type breakdown. Returns a flat list of
+  // (hero, mapType, wins, losses, draws, total) — the heatmap widget
+  // pivots this into a 2-D grid (rows = heroes, columns = map types).
+  //
+  // The map-type vocabulary is the parser's canonical 6 (control /
+  // escort / flashpoint / hybrid / push / clash). Records whose
+  // type is missing or doesn't map to a canonical entry drop out —
+  // the heatmap deliberately doesn't show an "unknown" column
+  // because it would carry no actionable signal (you can't "play
+  // unknown maps better").
+  //
+  // Records contribute multiple cells when their heroes_played[]
+  // has multiple entries (open-queue match where the user
+  // hero-swapped). Each hero in the list gets credit for the
+  // result on that map type — same model used by topByCount when
+  // the getter pulls from heroes_played. Limit applies to the
+  // hero axis (top-N by total play count); the map-type axis is
+  // always all 6.
+  function heroMapTypeCounts(
+    opts?: MaybeRefOrGetter<{ heroLimit?: number; minMatches?: number }>,
+  ): ComputedRef<Array<{
+    hero: string
+    mapType: string
+    wins: number
+    losses: number
+    draws: number
+    total: number
+    winrate: number
+  }>> {
+    return computed(() => {
+      const { heroLimit = 8, minMatches: _minMatches = 0 } = opts ? toValue(opts) ?? {} : {}
+      void _minMatches // reserved for future per-cell empty-state floor
+      type Bucket = { wins: number; losses: number; draws: number; total: number }
+      const cells = new Map<string, Bucket>()
+      const heroTotals = new Map<string, number>()
+      function cellKey(h: string, t: string) { return `${h} ${t}` }
+      function bumpCell(h: string, t: string, r: MatchRecord) {
+        const k = cellKey(h, t)
+        const b = cells.get(k) ?? { wins: 0, losses: 0, draws: 0, total: 0 }
+        b.total++
+        if      (r.data?.result === 'victory') b.wins++
+        else if (r.data?.result === 'defeat')  b.losses++
+        else if (r.data?.result === 'draw')    b.draws++
+        cells.set(k, b)
+        heroTotals.set(h, (heroTotals.get(h) ?? 0) + 1)
+      }
+      for (const r of records.value) {
+        const mapType = r.data?.type
+        if (!mapType) continue
+        const heroes = r.data?.heroes_played ?? []
+        if (heroes.length > 0) {
+          const seenInRow = new Set<string>()
+          for (const hp of heroes) {
+            if (!hp.hero || seenInRow.has(hp.hero)) continue
+            seenInRow.add(hp.hero)
+            bumpCell(hp.hero, mapType, r)
+          }
+        } else if (r.data?.hero) {
+          bumpCell(r.data.hero, mapType, r)
+        }
+      }
+      // Pick the top heroes by total appearances; the heatmap only
+      // shows that subset to keep the grid scannable on viewport.
+      const topHeroes = [...heroTotals.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, heroLimit)
+        .map(([h]) => h)
+      // Materialise every (top-hero, map-type) cell — including
+      // zeros — so the grid layout is rectangular. The widget
+      // renders the empty cells as a flat surface tone (no border,
+      // no glyph) so the eye reads the populated cells first.
+      const out: Array<{ hero: string; mapType: string; wins: number; losses: number; draws: number; total: number; winrate: number }> = []
+      for (const h of topHeroes) {
+        for (const t of CANONICAL_MAP_TYPES) {
+          const b = cells.get(cellKey(h, t)) ?? { wins: 0, losses: 0, draws: 0, total: 0 }
+          const decided = b.wins + b.losses
+          out.push({
+            hero: h,
+            mapType: t,
+            wins:   b.wins,
+            losses: b.losses,
+            draws:  b.draws,
+            total:  b.total,
+            winrate: decided === 0 ? 0 : Math.round((b.wins / decided) * 100),
+          })
+        }
+      }
+      return out
+    })
+  }
+
   // Play-mode breakdown (Quickplay vs Competitive). Returns exactly
   // three fixed entries — 'quickplay', 'competitive', '—' (unset) —
   // so the bar layout doesn't reflow as the narrowed corpus changes.
@@ -865,6 +963,7 @@ export function useMatchesDossier(
     playModeBreakdown,
     // ─── Query helpers — config-driven, return reactive results
     topByCount,
+    heroMapTypeCounts,
     topHeroesByMinutes,
     mostPlayedHero,
     bestWinrateHero,
