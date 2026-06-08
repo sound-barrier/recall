@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import type { NamedCandidate, NamedCandidateStats } from '../api'
 import { useScreenshotFolderStats } from '../composables/useScreenshotFolderStats'
+import { useContextualCallout } from '../composables/useContextualCallout'
+import ContextualCallout from './ContextualCallout.vue'
 
 // First-run picker for the OW screenshots directory. On Windows,
 // renders a 2 × 2 grid of canonical capture sources (Nvidia Overlay
@@ -52,8 +54,23 @@ const isWindows = computed(() => props.platform === 'windows')
 // the response lands.
 const { statsFor } = useScreenshotFolderStats()
 
+// Contextual callout — fires the first time the 4-card grid
+// surfaces in the wild. The four card labels alone don't make it
+// obvious that each card maps to a SPECIFIC Overwatch capture
+// pipeline; the callout nudges the user with one sentence so they
+// don't have to guess which one their setup writes to. Auto-dismisses
+// once the user picks any card (cleared inline in onCardClick) or
+// on Esc / close-glyph.
+const pickerCallout = useContextualCallout({
+  id:   'source-picker',
+  gate: () => isWindows.value && props.candidates.length > 0,
+})
+
 function onCardClick(c: NamedCandidate) {
   if (!c.exists || props.picking) return
+  // Picking a card retires the hint — the user clearly knows the
+  // grid's contract now.
+  pickerCallout.dismiss()
   emit('pick', c.name, c.path)
 }
 
@@ -165,6 +182,20 @@ void ({} as NamedCandidateStats)
       </span>
       <span class="src-custom-kbd" aria-hidden="true">⌘O · CTRL+O</span>
     </button>
+
+    <!-- Just-in-time hint on the first picker render. Anchored to
+         the first card so the arrow tip points at the grid; copy
+         names the canonical OW capture pipelines so the user knows
+         which card their setup writes to. -->
+    <ContextualCallout
+      v-if="pickerCallout.active()"
+      target=".src-card[data-src-name]:first-child"
+      heading="Each card is one capture tool"
+      body="Recall recognises the four standard Overwatch screenshot pipelines — Nvidia overlay, in-game PrtSc, Snip & Sketch, and Steam. Pick the one your setup writes to; click Pick a different folder below if you use a third-party tool."
+      action-label="Got it"
+      @dismiss="pickerCallout.dismiss()"
+      @action="pickerCallout.dismiss()"
+    />
   </div>
 </template>
 

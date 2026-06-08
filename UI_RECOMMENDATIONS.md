@@ -81,6 +81,15 @@ session can skip the survey step.
   an `AUTO-DETECT · WINDOWS ONLY` eyebrow) and show only the
   custom-pick button. `ScreenshotSourcePicker.vue` +
   `pkg/app/probe_windows.go` (registry resolver).
+- ~~**Source-picker contextual callout**~~ — first time the
+  Windows 4-card screenshot-source grid renders, Recall surfaces
+  a one-shot callout naming the four canonical OW capture
+  pipelines so the user doesn't have to guess which card maps
+  to their setup. Built on the contextual-callout primitive
+  (PR #235). Auto-dismisses on Got-it click, Esc, or picking any
+  card; persists `recall.tour.source-picker.seen=true` so it
+  never re-fires. Respects the global `recall.onboardingCompleted`
+  gate so users who skipped the full tour aren't re-tutorialed.
 - ~~**OnboardingTour set-workspace copy rewrite**~~ — the
   matches-dossier / matches-narrow / matches-list / matches-detail
   step copy now leans into the "set workspace" framing: the
@@ -164,9 +173,6 @@ is already past the comfortable point.
 shipped pre-PR-#218 and don't introduce three large surfaces
 that landed since:
 
-- **Screenshot source picker** — first-run Windows users never
-  see the 4-card grid explained; they figure it out from the
-  card labels alone.
 - **Reference data gaps** — the Unknown tab's third section
   only appears once a record carries the signal, so the tour
   can't point at it on first run. The fix: a *contextual*
