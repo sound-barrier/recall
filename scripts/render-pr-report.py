@@ -77,6 +77,8 @@ def summarize_junit_files(pattern: str) -> list[dict]:
             try:
                 total_time += float(ts.attrib.get("time", "0") or 0)
             except ValueError:
+                # Ignore malformed/non-numeric time values; treat them as 0.
+                # We still want the rest of the report to render.
                 pass
             for tc in ts.iter("testcase"):
                 for fail in list(tc.findall("failure")) + list(tc.findall("error")):
