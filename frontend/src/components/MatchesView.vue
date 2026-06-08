@@ -34,6 +34,7 @@ import DashboardAddTile from './DashboardAddTile.vue'
 import DashboardEditBanner from './DashboardEditBanner.vue'
 import MatchRowContextMenu from './MatchRowContextMenu.vue'
 import LeafHoverPreview from './LeafHoverPreview.vue'
+import MatchesEmptySuggestions from './MatchesEmptySuggestions.vue'
 import { summaryThumbnailURL } from '../composables/useSummaryThumbnail'
 import DashboardUndoToast from './DashboardUndoToast.vue'
 import { useDashboardLayout } from '../composables/useDashboardLayout'
@@ -163,6 +164,7 @@ const {
   resetNarrow,
   activeClauseCount, anyNarrow,
   narrowedRecords,
+  clauseExclusionCounts,
 } = props.narrow
 
 // ─── View-side state owned by MatchesView ───────────────────
@@ -1567,6 +1569,10 @@ onBeforeUnmount(() => {
         <button v-if="anyNarrow" class="leaves-empty-btn" @click="resetNarrow">
           Clear narrowing
         </button>
+        <MatchesEmptySuggestions
+          v-if="anyNarrow"
+          :suggestions="clauseExclusionCounts.slice(0, 2)"
+        />
       </p>
     </section>
 
