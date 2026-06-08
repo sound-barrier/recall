@@ -1948,6 +1948,7 @@ useEventStream({
           :all-records="records"
           :card-state="cardState"
           :preload-screenshot="screenshotPreview.preload"
+          :update-info="updateInfo"
           @go-to-view="goToView"
           @resolve-ambiguous="onResolveAmbiguous"
           @ignore-screenshot="onIgnoreScreenshot"

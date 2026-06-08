@@ -4,7 +4,7 @@ import { mount } from '@vue/test-utils'
 
 import UnknownMapsView from './UnknownMapsView.vue'
 import type { CardStateApi } from '../types/cardState'
-import type { MatchRecord } from '../api'
+import type { MatchRecord, UpdateInfo } from '../api'
 
 // Shared with MatchesView: per-card state owned by the parent so both
 // views can share expand / preview behavior. The fake here just
@@ -38,7 +38,7 @@ function makeCardState(_records: MatchRecord[]) {
   return { api, expanded, calls }
 }
 
-function mountWith(records: MatchRecord[], extras: Partial<{ ambiguousRecords: MatchRecord[]; referenceGapRecords: MatchRecord[]; allRecords: MatchRecord[] }> = {}) {
+function mountWith(records: MatchRecord[], extras: Partial<{ ambiguousRecords: MatchRecord[]; referenceGapRecords: MatchRecord[]; allRecords: MatchRecord[]; updateInfo: UpdateInfo | null }> = {}) {
   const { api: cardState, calls } = makeCardState(records)
   const wrapper = mount(UnknownMapsView, {
     props: {
@@ -48,6 +48,7 @@ function mountWith(records: MatchRecord[], extras: Partial<{ ambiguousRecords: M
       allRecords: extras.allRecords ?? [],
       cardState,
       preloadScreenshot: () => undefined,
+      updateInfo: extras.updateInfo ?? null,
     },
   })
   return { wrapper, calls }
@@ -335,6 +336,7 @@ describe('UnknownMapsView', () => {
           allRecords: [],
           cardState,
           preloadScreenshot: () => undefined,
+          updateInfo: null,
         },
         attachTo: document.body,
       })
@@ -453,6 +455,7 @@ describe('UnknownMapsView', () => {
           allRecords: [],
           cardState,
           preloadScreenshot: (url: string) => { calls.push(url) },
+          updateInfo: null,
         },
       })
       return calls
@@ -478,6 +481,87 @@ describe('UnknownMapsView', () => {
       ]
       const calls = mountWithPreloadCapture(records)
       expect(calls).toHaveLength(0)
+    })
+  })
+
+  describe('reference data gap CTA', () => {
+    // The CTA fires when the upcoming release's hero/map roster
+    // contains the OCR'd raw name on a gap-card. Match is
+    // normalized (lowercase + strip diacritics) so OCR's lowercase
+    // hits a Title Case YAML entry.
+    function gapRecord(opts: { matchKey: string; heroRaw?: string; mapRaw?: string }): MatchRecord {
+      return {
+        match_key:    opts.matchKey,
+        source_files: [`${opts.matchKey}.png`],
+        data: {
+          hero_raw: opts.heroRaw,
+          map_raw:  opts.mapRaw,
+        },
+      } as unknown as MatchRecord
+    }
+    const baseInfo: UpdateInfo = {
+      checked:   true,
+      dev_build: false,
+      available: true,
+      latest:    '1.2.3',
+      url:       'https://github.com/sound-barrier/recall/releases/tag/v1.2.3',
+      latest_heroes: ['Miyazaki', 'Reinhardt'],
+      latest_maps:   ['Hanaoka'],
+    }
+
+    it('surfaces the CTA when a gap record\'s hero_raw is in the latest roster', () => {
+      const { wrapper } = mountWith([], {
+        referenceGapRecords: [gapRecord({ matchKey: 'r1', heroRaw: 'miyazaki' })],
+        updateInfo: baseInfo,
+      })
+      const fix = wrapper.find('[data-fix-cta-key="r1"]')
+      expect(fix.exists()).toBe(true)
+      expect(fix.text()).toContain('Fixed in')
+      expect(fix.text()).toContain('v1.2.3')
+      expect(fix.text()).toContain('Miyazaki')
+      expect(fix.find('.fix-link').attributes('href')).toBe(baseInfo.url)
+    })
+
+    it('surfaces the CTA on a map_raw hit too', () => {
+      const { wrapper } = mountWith([], {
+        referenceGapRecords: [gapRecord({ matchKey: 'r2', mapRaw: 'hanaoka' })],
+        updateInfo: baseInfo,
+      })
+      const fix = wrapper.find('[data-fix-cta-key="r2"]')
+      expect(fix.exists()).toBe(true)
+      expect(fix.text()).toContain('Hanaoka')
+    })
+
+    it('does NOT surface the CTA when updateInfo is null (user hasn\'t pulled yet)', () => {
+      const { wrapper } = mountWith([], {
+        referenceGapRecords: [gapRecord({ matchKey: 'r3', heroRaw: 'miyazaki' })],
+        updateInfo: null,
+      })
+      expect(wrapper.find('[data-fix-cta-key="r3"]').exists()).toBe(false)
+    })
+
+    it('does NOT surface the CTA when the running build is already the latest', () => {
+      const { wrapper } = mountWith([], {
+        referenceGapRecords: [gapRecord({ matchKey: 'r4', heroRaw: 'miyazaki' })],
+        updateInfo: { ...baseInfo, available: false },
+      })
+      expect(wrapper.find('[data-fix-cta-key="r4"]').exists()).toBe(false)
+    })
+
+    it('does NOT surface the CTA when the upcoming release doesn\'t recognise the name', () => {
+      const { wrapper } = mountWith([], {
+        referenceGapRecords: [gapRecord({ matchKey: 'r5', heroRaw: 'unknownhero' })],
+        updateInfo: baseInfo,
+      })
+      expect(wrapper.find('[data-fix-cta-key="r5"]').exists()).toBe(false)
+    })
+
+    it('does NOT surface the CTA when the YAML rosters are empty (sidecar verify failed)', () => {
+      const { wrapper } = mountWith([], {
+        referenceGapRecords: [gapRecord({ matchKey: 'r6', heroRaw: 'miyazaki' })],
+        updateInfo: { ...baseInfo, latest_heroes: [], latest_maps: [] },
+      })
+      expect(wrapper.find('[data-fix-cta-key="r6"]').exists()).toBe(false)
     })
   })
 })

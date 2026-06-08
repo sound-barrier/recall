@@ -1423,6 +1423,26 @@ paths:
                   url:
                     type: string
                     example: https://github.com/sound-barrier/recall/releases/tag/v0.0.15
+                  latest_heroes:
+                    type: array
+                    description: |
+                      Display names from the upcoming release's
+                      `recall-<version>-heroes.yaml` asset, verified
+                      against the published SHA-256 sidecar. Empty
+                      when the YAML fetch fails, the sidecar
+                      mismatches, or the upgrade isn't applicable
+                      (current build is already the latest). The
+                      frontend's Unknown-tab "Reference data gaps"
+                      section pivots this into a per-card "Update to
+                      v<X> to recognise <name>" CTA.
+                    items: { type: string }
+                  latest_maps:
+                    type: array
+                    description: |
+                      Display names from the upcoming release's
+                      `recall-<version>-maps.yaml` asset — same
+                      lifecycle as latest_heroes.
+                    items: { type: string }
 
   /api/v1/system/data-location:
     get:
