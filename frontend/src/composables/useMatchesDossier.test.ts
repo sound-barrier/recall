@@ -1399,4 +1399,123 @@ describe('useMatchesDossier — query-helper parameterization', () => {
       expect(dossier.recentResults({ count: 10 }).value).toHaveLength(6)
     })
   })
+
+  describe('heroMapTypeCounts', () => {
+    // Helper for typed records carrying a map-type — uses the
+    // canonical parser slugs.
+    function tr(opts: {
+      hero?: string
+      type?: 'control' | 'escort' | 'flashpoint' | 'hybrid' | 'push' | 'clash'
+      result?: 'victory' | 'defeat' | 'draw'
+      heroesPlayed?: Array<{ hero: string; play_time?: string }>
+    }): MatchRecord {
+      return {
+        match_key:    `m-${Math.random()}`,
+        source_files: ['a.png'],
+        source_types: { 'a.png': 'summary' },
+        data: {
+          map:    'ilios',
+          hero:   opts.hero ?? 'lucio',
+          type:   opts.type ?? 'control',
+          result: opts.result ?? 'victory',
+          mode:   'competitive',
+          ...(opts.heroesPlayed ? { heroes_played: opts.heroesPlayed } : {}),
+        },
+        parsed_at: '2026-05-10T14:00:00Z',
+      } as unknown as MatchRecord
+    }
+
+    it('returns an empty array when there are no records', () => {
+      const records = ref<MatchRecord[]>([])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(dossier.heroMapTypeCounts().value).toEqual([])
+    })
+
+    it('materialises a full grid (top heroes × 6 map types) including zero cells', () => {
+      const records = ref([
+        tr({ hero: 'lucio',  type: 'control', result: 'victory' }),
+        tr({ hero: 'lucio',  type: 'escort',  result: 'defeat'  }),
+        tr({ hero: 'ana',    type: 'control', result: 'victory' }),
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const cells = dossier.heroMapTypeCounts().value
+      // 2 heroes × 6 canonical map types = 12 cells.
+      expect(cells).toHaveLength(2 * 6)
+      const heroes = [...new Set(cells.map(c => c.hero))]
+      expect(heroes.sort()).toEqual(['ana', 'lucio'])
+      const types = [...new Set(cells.map(c => c.mapType))]
+      expect(types.sort()).toEqual(['clash', 'control', 'escort', 'flashpoint', 'hybrid', 'push'])
+      // Populated cells carry real counts; the rest are zero.
+      const lucioControl = cells.find(c => c.hero === 'lucio' && c.mapType === 'control')!
+      expect(lucioControl).toMatchObject({ wins: 1, losses: 0, draws: 0, total: 1, winrate: 100 })
+      const lucioPush = cells.find(c => c.hero === 'lucio' && c.mapType === 'push')!
+      expect(lucioPush).toMatchObject({ wins: 0, losses: 0, draws: 0, total: 0, winrate: 0 })
+    })
+
+    it('drops records whose map type is missing — no orphan "unknown" column surfaces', () => {
+      const records = ref([
+        tr({ hero: 'lucio', type: 'control', result: 'victory' }),
+        // No type — should be ignored entirely.
+        { match_key: 'm2', source_files: ['b.png'], source_types: { 'b.png': 'summary' },
+          data: { map: 'unknown', hero: 'lucio', result: 'victory', mode: 'competitive' },
+          parsed_at: '2026-05-10T14:01:00Z' } as unknown as MatchRecord,
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const cells = dossier.heroMapTypeCounts().value
+      const lucioControl = cells.find(c => c.hero === 'lucio' && c.mapType === 'control')!
+      expect(lucioControl.total).toBe(1)
+      // Sum of all lucio totals across the 6 map types equals 1 — the
+      // typeless record didn't sneak into any cell.
+      const lucioTotal = cells.filter(c => c.hero === 'lucio').reduce((sum, c) => sum + c.total, 0)
+      expect(lucioTotal).toBe(1)
+    })
+
+    it('credits every hero in heroes_played[] — open-queue hero swaps surface in both cells', () => {
+      const records = ref([
+        tr({
+          type: 'flashpoint',
+          result: 'victory',
+          heroesPlayed: [
+            { hero: 'ana',     play_time: '10min' },
+            { hero: 'kiriko',  play_time: '5min' },
+          ],
+        }),
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const cells = dossier.heroMapTypeCounts().value
+      const ana = cells.find(c => c.hero === 'ana' && c.mapType === 'flashpoint')!
+      const kiriko = cells.find(c => c.hero === 'kiriko' && c.mapType === 'flashpoint')!
+      expect(ana.wins).toBe(1)
+      expect(kiriko.wins).toBe(1)
+    })
+
+    it('excludes draws from the winrate denominator (matches headline winrate convention)', () => {
+      const records = ref([
+        tr({ hero: 'lucio', type: 'control', result: 'victory' }),
+        tr({ hero: 'lucio', type: 'control', result: 'defeat'  }),
+        tr({ hero: 'lucio', type: 'control', result: 'draw'    }),
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const cells = dossier.heroMapTypeCounts().value
+      const cell = cells.find(c => c.hero === 'lucio' && c.mapType === 'control')!
+      expect(cell.total).toBe(3)
+      expect(cell.draws).toBe(1)
+      // 1 win / (1 win + 1 loss) = 50, not 33.
+      expect(cell.winrate).toBe(50)
+    })
+
+    it('honours heroLimit — only the top-N heroes by total appearances surface', () => {
+      const records = ref([
+        // ana: 3 matches; lucio: 2; kiriko: 1
+        tr({ hero: 'ana', type: 'control' }), tr({ hero: 'ana', type: 'escort' }), tr({ hero: 'ana', type: 'hybrid' }),
+        tr({ hero: 'lucio', type: 'control' }), tr({ hero: 'lucio', type: 'escort' }),
+        tr({ hero: 'kiriko', type: 'push' }),
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const cells = dossier.heroMapTypeCounts(() => ({ heroLimit: 2 })).value
+      const heroes = [...new Set(cells.map(c => c.hero))]
+      expect(heroes.sort()).toEqual(['ana', 'lucio'])
+      expect(heroes).not.toContain('kiriko')
+    })
+  })
 })
