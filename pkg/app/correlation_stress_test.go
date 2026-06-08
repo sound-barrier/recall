@@ -94,7 +94,7 @@ func pickAt[T any](slice []T, idx int) T {
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_BaselineClean(t *testing.T) {
-	base := mustParseTS("2026.05.10 - 14.00.00")
+	base := mustParseTS("Overwatch 2 Screenshot 2026.05.10 - 14.00.00")
 	const spacing = 10 * time.Minute
 
 	specs := make([]matchSpec, 0, 25)
@@ -168,7 +168,7 @@ func TestCorrelation_Stress_BaselineClean(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
-	base := mustParseTS("2026.05.10 - 14.00.00")
+	base := mustParseTS("Overwatch 2 Screenshot 2026.05.10 - 14.00.00")
 	specs := make([]matchSpec, 0, 20)
 	for i := 0; i < 10; i++ {
 		x := base.Add(time.Duration(i*15) * time.Minute)
@@ -300,7 +300,7 @@ func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_SameHeroBackToBackClean(t *testing.T) {
-	base := mustParseTS("2026.06.01 - 14.00.00")
+	base := mustParseTS("Overwatch 2 Screenshot 2026.06.01 - 14.00.00")
 	specs := make([]matchSpec, 0, 20)
 	for i := 0; i < 10; i++ {
 		x := base.Add(time.Duration(i*30) * time.Minute)
@@ -370,7 +370,7 @@ func TestCorrelation_Stress_SameHeroBackToBackClean(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
-	base := mustParseTS("2026.06.15 - 14.00.00")
+	base := mustParseTS("Overwatch 2 Screenshot 2026.06.15 - 14.00.00")
 	specs := make([]matchSpec, 0, 20)
 	for i := 0; i < 10; i++ {
 		x := base.Add(time.Duration(i*30) * time.Minute)
@@ -468,7 +468,7 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_TimestampWindowEdge(t *testing.T) {
-	base := mustParseTS("2026.07.01 - 14.00.00")
+	base := mustParseTS("Overwatch 2 Screenshot 2026.07.01 - 14.00.00")
 	specs := make([]matchSpec, 0, 24)
 	for i := 0; i < 8; i++ {
 		x := base.Add(time.Duration(i*30) * time.Minute)
@@ -551,7 +551,7 @@ func TestCorrelation_Stress_TimestampWindowEdge(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_MultiHeroScoreboardSwap(t *testing.T) {
-	base := mustParseTS("2026.07.15 - 14.00.00")
+	base := mustParseTS("Overwatch 2 Screenshot 2026.07.15 - 14.00.00")
 	specs := make([]matchSpec, 0, 10)
 	for i := 0; i < 10; i++ {
 		start := base.Add(time.Duration(i*15) * time.Minute)
@@ -648,7 +648,7 @@ func TestCorrelation_Stress_MultiHeroScoreboardSwap(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
-	base := mustParseTS("2026.07.20 - 14.00.00")
+	base := mustParseTS("Overwatch 2 Screenshot 2026.07.20 - 14.00.00")
 	specs := make([]matchSpec, 0, 5)
 	for i := 0; i < 5; i++ {
 		start := base.Add(time.Duration(i*20) * time.Minute)
@@ -736,7 +736,7 @@ func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_RankAdoption(t *testing.T) {
-	base := mustParseTS("2026.08.01 - 14.00.00")
+	base := mustParseTS("Overwatch 2 Screenshot 2026.08.01 - 14.00.00")
 	specs := make([]matchSpec, 0, 10)
 	for i := 0; i < 10; i++ {
 		start := base.Add(time.Duration(i*15) * time.Minute)
@@ -787,7 +787,7 @@ func TestCorrelation_Stress_RankAdoption(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_ZeroStatScoreboard(t *testing.T) {
-	base := mustParseTS("2026.08.10 - 14.00.00")
+	base := mustParseTS("Overwatch 2 Screenshot 2026.08.10 - 14.00.00")
 	specs := make([]matchSpec, 0, 5)
 	for i := 0; i < 5; i++ {
 		start := base.Add(time.Duration(i*15) * time.Minute)
@@ -874,7 +874,7 @@ func TestCorrelation_Stress_UnparseableFilenames(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────
 
 func TestCorrelation_Stress_IdenticalTimestamps(t *testing.T) {
-	base := mustParseTS("2026.08.20 - 14.00.00")
+	base := mustParseTS("Overwatch 2 Screenshot 2026.08.20 - 14.00.00")
 	specs := make([]matchSpec, 0, 5)
 	for i := 0; i < 5; i++ {
 		start := base.Add(time.Duration(i*15) * time.Minute)
