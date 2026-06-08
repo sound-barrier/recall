@@ -329,6 +329,155 @@ export function useMatchesNarrow(
     })
   })
 
+  // ── Smart-empty suggestions ──────────────────────────────────
+  //
+  // When the user's active narrow excludes every record, surface
+  // the 1-2 single-click "Try removing X" suggestions that would
+  // bring the most records back. For each active clause, count how
+  // many records pass every OTHER predicate; the clause whose
+  // removal surfaces the most records is the most-restrictive.
+  //
+  // Returns an empty array when:
+  //   - the narrow isn't actually empty (no suggestion needed),
+  //   - the user has no active clauses (nothing to suggest), or
+  //   - dropping any one clause STILL leaves zero records (no
+  //     single clause is the culprit; the suggestion would be a lie).
+  type ClauseId = 'search' | 'dateRange' | 'maps' | 'mapTypes' | 'roles'
+                | 'results' | 'heroes' | 'tags' | 'reviewedBy' | 'queues'
+                | 'playModes' | 'leaver' | 'sinceAnchor' | 'minPlay' | 'includeUnknown'
+
+  interface ClauseSuggestion {
+    clauseId: ClauseId
+    label: string         // "search 'clutch'" / "map filter (3 picks)"
+    wouldSurface: number  // records that surface when this clause is dropped
+    clear: () => void     // single-click reset for this clause only
+  }
+
+  function matchesNarrowExcept(r: MatchRecord, omit: ClauseId | null): boolean {
+    if (!r.data) return false
+    const search    = searchText.value.trim().toLowerCase()
+    const fromBound = customFrom.value
+    const toBound   = customTo.value
+    const maps      = pickedMaps.value
+    const mapTypes  = pickedMapTypes.value
+    const roles     = pickedRoles.value
+    const results   = pickedResults.value
+    const heroes    = pickedHeroes.value
+    const heroMin   = minPlayMinutes.value
+    const heroPct   = minPlayPercent.value
+    const tags      = pickedTags.value
+    const reviewed  = pickedReviewedBy.value
+    const queues    = pickedQueues.value
+    const playModes = pickedPlayModes.value
+    const leaver    = leaverHandling.value
+    let anchorFloor: string | null = null
+    if (omit !== 'sinceAnchor' && sinceAnchorActive.value && anchorKey.value !== '') {
+      const anchor = records.value.find((x) => x.match_key === anchorKey.value)
+      if (anchor?.parsed_at) anchorFloor = anchor.parsed_at
+    }
+    if (omit !== 'search'         && !matchesSearch(r, search)) return false
+    if (omit !== 'dateRange'      && !matchesDateRange(r, fromBound, toBound)) return false
+    if (omit !== 'maps'           && !matchesPickedSet(r.data.map, maps)) return false
+    if (omit !== 'mapTypes'       && !matchesPickedSet(r.data.type, mapTypes)) return false
+    if (omit !== 'roles'          && !matchesPickedSet(r.data.role, roles)) return false
+    if (omit !== 'results'        && !matchesPickedSet(r.data.result, results)) return false
+    if (omit !== 'heroes'         && omit !== 'minPlay' && !matchesHero(r, heroes, heroMin, heroPct)) return false
+    if (omit !== 'tags'           && !matchesTags(r, tags)) return false
+    if (omit !== 'reviewedBy'     && !matchesReviewedBy(r, reviewed)) return false
+    if (omit !== 'queues'         && !matchesQueueType(r, queues)) return false
+    if (omit !== 'playModes'      && !matchesPlayMode(r, playModes)) return false
+    if (omit !== 'sinceAnchor'    && !matchesSinceAnchor(r, anchorFloor)) return false
+    if (omit !== 'leaver'         && !matchesLeaverHandling(r, leaver)) return false
+    return true
+  }
+
+  function activeClauses(): ClauseId[] {
+    const out: ClauseId[] = []
+    if (searchText.value.trim())                                    out.push('search')
+    if (customFrom.value || customTo.value || pickedRange.value !== 'all') out.push('dateRange')
+    if (pickedMaps.value.size > 0)                                  out.push('maps')
+    if (pickedMapTypes.value.size > 0)                              out.push('mapTypes')
+    if (pickedRoles.value.size > 0)                                 out.push('roles')
+    if (pickedResults.value.size > 0)                               out.push('results')
+    if (pickedHeroes.value.size > 0)                                out.push('heroes')
+    if (pickedTags.value.size > 0)                                  out.push('tags')
+    if (pickedReviewedBy.value.size > 0)                            out.push('reviewedBy')
+    if (pickedQueues.value.size > 0)                                out.push('queues')
+    if (pickedPlayModes.value.size > 0)                             out.push('playModes')
+    if (leaverHandling.value !== 'include')                         out.push('leaver')
+    if (sinceAnchorActive.value && anchorKey.value !== '')          out.push('sinceAnchor')
+    if (minPlayMinutes.value > 0 || minPlayPercent.value > 0)       out.push('minPlay')
+    return out
+  }
+
+  function clauseLabel(c: ClauseId): string {
+    switch (c) {
+      case 'search':         return `search "${searchText.value.trim()}"`
+      case 'dateRange':      return 'date range'
+      case 'maps':           return pickedMaps.value.size === 1
+        ? `map ${[...pickedMaps.value][0]}`
+        : `${pickedMaps.value.size} map picks`
+      case 'mapTypes':       return pickedMapTypes.value.size === 1
+        ? `map-type ${[...pickedMapTypes.value][0]}`
+        : `${pickedMapTypes.value.size} map-type picks`
+      case 'roles':          return pickedRoles.value.size === 1
+        ? `role ${[...pickedRoles.value][0]}`
+        : `${pickedRoles.value.size} role picks`
+      case 'results':        return pickedResults.value.size === 1
+        ? `result ${[...pickedResults.value][0]}`
+        : `${pickedResults.value.size} result picks`
+      case 'heroes':         return pickedHeroes.value.size === 1
+        ? `hero ${[...pickedHeroes.value][0]}`
+        : `${pickedHeroes.value.size} hero picks`
+      case 'tags':           return pickedTags.value.size === 1
+        ? `tag #${[...pickedTags.value][0]}`
+        : `${pickedTags.value.size} tag picks`
+      case 'reviewedBy':     return 'reviewed-by filter'
+      case 'queues':         return 'queue-type filter'
+      case 'playModes':      return 'play-mode filter'
+      case 'leaver':         return 'leaver handling'
+      case 'sinceAnchor':    return 'since-anchor floor'
+      case 'minPlay':        return 'minimum play threshold'
+      case 'includeUnknown': return 'unknown-map exclusion'
+    }
+  }
+
+  function clearClause(c: ClauseId) {
+    switch (c) {
+      case 'search':         searchText.value = ''; break
+      case 'dateRange':      pickedRange.value = 'all'; customFrom.value = ''; customTo.value = ''; break
+      case 'maps':           pickedMaps.value = new Set(); break
+      case 'mapTypes':       pickedMapTypes.value = new Set(); break
+      case 'roles':          pickedRoles.value = new Set(); break
+      case 'results':        pickedResults.value = new Set(); break
+      case 'heroes':         pickedHeroes.value = new Set(); break
+      case 'tags':           pickedTags.value = new Set(); break
+      case 'reviewedBy':     pickedReviewedBy.value = new Set(); break
+      case 'queues':         pickedQueues.value = new Set(); break
+      case 'playModes':      pickedPlayModes.value = new Set(); break
+      case 'leaver':         leaverHandling.value = 'include'; break
+      case 'sinceAnchor':    sinceAnchorActive.value = false; break
+      case 'minPlay':        minPlayMinutes.value = 0; minPlayPercent.value = 0; break
+      case 'includeUnknown': includeUnknown.value = true; break
+    }
+  }
+
+  const clauseExclusionCounts = computed<ClauseSuggestion[]>(() => {
+    if (narrowedRecords.value.length > 0) return []
+    const clauses = activeClauses()
+    if (clauses.length === 0) return []
+    const base = records.value.filter((r) => !r.hidden)
+    const suggestions: ClauseSuggestion[] = clauses.map((c) => ({
+      clauseId: c,
+      label: clauseLabel(c),
+      wouldSurface: base.filter((r) => matchesNarrowExcept(r, c)).length,
+      clear: () => clearClause(c),
+    }))
+    return suggestions
+      .filter((s) => s.wouldSurface > 0)
+      .sort((a, b) => b.wouldSurface - a.wouldSurface)
+  })
+
   return {
     // State
     searchText,
@@ -344,5 +493,6 @@ export function useMatchesNarrow(
     activeClauseCount, anyNarrow,
     availableMaps, availableMapTypes, availableHeroes, availableRoles, availableResults, availableTags,
     narrowedRecords,
+    clauseExclusionCounts,
   }
 }

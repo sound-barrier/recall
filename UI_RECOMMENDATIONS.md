@@ -151,25 +151,6 @@ miss.
 
 ## Polish / lower-priority
 
-### 6. Smart-empty filter messaging
-
-The current empty-state ("No matches in this set.") is correct
-but unhelpful. When the narrow excludes every record, suggest
-the closest non-empty combination — drop the clause with the
-smallest contribution to the exclusion ("Try removing
-`note:clutch` — 12 matches would surface").
-
-- **Algorithm**: for each active narrow clause, count how many
-  records the rest-of-the-narrow-set would surface without it;
-  rank by the resulting count, show the top 1–2 removals as
-  one-click suggestions.
-- **Constraint**: filter recomputation per-suggestion is
-  O(clauses × records); cache the per-clause exclusions inside
-  `useMatchesNarrow` so the UI suggestion is O(clauses).
-- **Effort**: ~4 hours. Filter-math expansion in
-  `useMatchesNarrow.ts` + a new `MatchesEmptySuggestions.vue`
-  rendered inside the existing `.leaves-empty` block.
-
 ### 8. Restore saved-set / preset feature
 
 PR #100 deleted the old `FilterPresetsMenu` + `useFilterPresets`
