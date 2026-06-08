@@ -56,33 +56,3 @@ articulate the cost.
 Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
-
-## 3. `parseFilenameTimestamp` format list could absorb a fourth source without a code change
-
-**Where:** `pkg/app/correlation.go:39` — the `filenameFormats`
-slice is a hard-coded var with three records (Nvidia / PrntScn /
-Snip). PR #227 leaves a TODO for Steam's F12 capture format which
-hasn't been sampled yet.
-
-**What breaks:** when the user gathers Steam samples, adding a
-fourth entry requires touching Go code + cutting a release. A
-yaml sidecar with the same three records would let the maintainer
-ship "new capture tool support" as a YAML update instead of a
-binary release — same pattern as `heroes.yaml` + `maps.yaml`.
-
-**Plan:**
-
-1. Move `filenameFormats` into a `pkg/parser/screenshot_sources.yaml`
-   keyed by tool name, with `prefix`, `regex`, `year_offset`
-   fields.
-2. Load at init() (mirror `owdata.go`'s yaml-load pattern).
-3. Ship the YAML alongside `heroes.yaml` + `maps.yaml` as an
-   attested release asset so users can verify it.
-4. Add a Settings → Advanced "Reload capture-source rules" button
-   that re-reads the YAML at runtime (optional — lets power users
-   prototype new patterns without a release).
-
-**Size:** M.
-**Risk:** Med — the regex isn't user-input but a bad pattern
-could match unrelated files. Defensive: keep the prefix gate;
-reject patterns without a leading `^`-anchor.

@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,68 +33,21 @@ const (
 	eadBridgeAmbiguousWindow = 30 * time.Minute
 )
 
-// filenameFormat describes one capture tool's screenshot filename
-// shape. The `prefix` field is a fast strings.HasPrefix gate before
-// running the regex so non-OW files (the user dropping a random PNG
-// in the watched folder) don't even cost a regex match. The OW Steam
-// userdata folder writes Steam's own F12 captures which use yet
-// another shape — not yet sampled, add a fourth entry when we have
-// real examples.
-type filenameFormat struct {
-	prefix string
-	re     *regexp.Regexp
-	// yearOffset is added to the captured year value. Nvidia + Snip
-	// use 4-digit years (offset 0); PrntScn writes a 2-digit year
-	// (offset 2000) — hard-coded for the 2000–2099 window per the
-	// product decision (no sliding window).
-	yearOffset int
-}
-
-// filenameFormats is the ordered list of per-tool patterns walked by
-// parseFilenameTimestamp. First match wins; the prefix-gate makes the
-// per-file cost identical to today's single-regex pass when a file
-// matches the first format. Add a new tool by appending one record —
-// no other code needs touching.
-var filenameFormats = []filenameFormat{
-	{
-		// Nvidia Overlay: `Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png`
-		// Dots as date+time separators; trailing `.NN` is hundredths
-		// of a second (we drop it — the timestamp is per-second).
-		prefix:     "Overwatch 2 Screenshot ",
-		re:         regexp.MustCompile(`^Overwatch 2 Screenshot (\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})`),
-		yearOffset: 0,
-	},
-	{
-		// OW default Print Screen: `ScreenShot_26-06-07_22-59-52-000.jpg`
-		// 2-digit year (→ 20YY), hyphens within date+time, trailing
-		// `-NNN` is milliseconds (dropped). JPG extension; the file
-		// extension whitelist already accepts .jpg.
-		prefix:     "ScreenShot_",
-		re:         regexp.MustCompile(`^ScreenShot_(\d{2})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})`),
-		yearOffset: 2000,
-	},
-	{
-		// Windows Snip tool: `Screenshot 2026-06-07 224855.png`
-		// Note the trailing space in the prefix — without it the
-		// match would also fire on Steam's "Screenshot42.png" naming
-		// (if Steam ever uses that shape) and we'd absorb the wrong
-		// files. Time is continuous HHMMSS with no separators.
-		prefix:     "Screenshot ",
-		re:         regexp.MustCompile(`^Screenshot (\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2})(\d{2})`),
-		yearOffset: 0,
-	},
-}
-
 // parseFilenameTimestamp walks the per-tool format list and returns
-// the embedded timestamp for the first match. Returns ok=false for
-// filenames that match no canonical OW capture tool — those land
-// with an `unmatched-<filename>` sentinel via the resolver.
+// the embedded timestamp for the first match. Source-of-truth for
+// the format list is pkg/parser/screenshot_sources.yaml — add a new
+// capture tool by appending an entry to the YAML; this loop reads
+// it without further Go-side edits.
+//
+// Returns ok=false for filenames that match no canonical OW capture
+// tool — those land with an `unmatched-<filename>` sentinel via the
+// resolver.
 func parseFilenameTimestamp(f string) (time.Time, bool) {
-	for _, ff := range filenameFormats {
-		if !strings.HasPrefix(f, ff.prefix) {
+	for _, src := range parser.ScreenshotSources {
+		if !strings.HasPrefix(f, src.Prefix) {
 			continue
 		}
-		m := ff.re.FindStringSubmatch(f)
+		m := src.Regex.FindStringSubmatch(f)
 		if m == nil {
 			continue
 		}
@@ -103,7 +55,7 @@ func parseFilenameTimestamp(f string) (time.Time, bool) {
 		if !ok {
 			return time.Time{}, false
 		}
-		year += ff.yearOffset
+		year += src.YearOffset
 		month, ok1 := atoiCapture(m[2])
 		day, ok2 := atoiCapture(m[3])
 		hour, ok3 := atoiCapture(m[4])
