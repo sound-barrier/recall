@@ -33,6 +33,8 @@ const NarrowPopover = defineAsyncComponent(() => import('./NarrowPopover.vue'))
 import DashboardAddTile from './DashboardAddTile.vue'
 import DashboardEditBanner from './DashboardEditBanner.vue'
 import MatchRowContextMenu from './MatchRowContextMenu.vue'
+import LeafHoverPreview from './LeafHoverPreview.vue'
+import { summaryThumbnailURL } from '../composables/useSummaryThumbnail'
 import DashboardUndoToast from './DashboardUndoToast.vue'
 import { useDashboardLayout } from '../composables/useDashboardLayout'
 import { useDragReorder } from '../composables/useDragReorder'
@@ -821,6 +823,40 @@ const IS_WAILS = typeof window !== 'undefined'
   // @ts-expect-error — window.go is set by the Wails runtime at boot
   && !!window.go?.app?.App
 
+// ─── Leaf-row hover preview ────────────────────────────────────
+//
+// Floats a small thumbnail of the SUMMARY screenshot next to the
+// cursor on hover. CSS media-query gate (hover: hover) + (pointer:
+// fine) hides the preview on touch devices — the host doesn't need
+// a JS subscription.
+//
+// State is intentionally minimal: src + cursor coords. Mouseenter
+// sets src, mousemove updates coords, mouseleave clears src. The
+// preview component is mounted at the top level (Teleport to body)
+// so it doesn't get stacking-context surprises from leaf rows.
+
+const hoverPreviewSrc = ref<string | null>(null)
+const hoverPreviewX   = ref(0)
+const hoverPreviewY   = ref(0)
+
+function onLeafMouseEnter(rec: MatchRecord, e: MouseEvent) {
+  hoverPreviewSrc.value = summaryThumbnailURL(rec)
+  hoverPreviewX.value = e.clientX
+  hoverPreviewY.value = e.clientY
+}
+
+function onLeafMouseMove(e: MouseEvent) {
+  // Only update coords; src is set on enter so the preview tracks
+  // the cursor without re-resolving the thumbnail on every move.
+  if (!hoverPreviewSrc.value) return
+  hoverPreviewX.value = e.clientX
+  hoverPreviewY.value = e.clientY
+}
+
+function onLeafMouseLeave() {
+  hoverPreviewSrc.value = null
+}
+
 function formatTime(rec: MatchRecord): string {
   return rec.data?.finished_at ?? ''
 }
@@ -1393,6 +1429,9 @@ onBeforeUnmount(() => {
             ]"
             @click="emit('open-match', rec.match_key)"
             @contextmenu="onRowContext($event, rec.match_key)"
+            @mouseenter="onLeafMouseEnter(rec, $event)"
+            @mousemove="onLeafMouseMove"
+            @mouseleave="onLeafMouseLeave"
           >
             <!-- Anchor indicator — a small filled-diamond glyph that
                  shows when this row is the "since this match" anchor.
@@ -1716,6 +1755,11 @@ onBeforeUnmount(() => {
     <!-- Right-click context menu on list rows. Teleports to body
          from inside the component so z-index conflicts with the
          narrow popover / detail panel don't sneak in. -->
+    <LeafHoverPreview
+      :src="hoverPreviewSrc"
+      :x="hoverPreviewX"
+      :y="hoverPreviewY"
+    />
     <MatchRowContextMenu
       :position="rowContextMenu ? { x: rowContextMenu.x, y: rowContextMenu.y } : null"
       :match-key="rowContextMenu?.matchKey ?? ''"
