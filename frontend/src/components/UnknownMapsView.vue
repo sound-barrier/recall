@@ -3,6 +3,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 import type { MatchRecord, UpdateInfo } from '../api'
 import { detectScreenshotSlots, screenshotURL } from '../match-helpers'
+import { useContextualCallout } from '../composables/useContextualCallout'
+import ContextualCallout from './ContextualCallout.vue'
 import { formatParsedAt } from '../match-time-helpers'
 import { filenameFromMatchKey } from '../match-key'
 import type { CardStateApi } from '../types/cardState'
@@ -73,6 +75,17 @@ const emit = defineEmits<{
 }>()
 
 const ambiguousList = computed(() => props.ambiguousRecords)
+
+// Contextual callout for the Reference data gaps section. Fires
+// the first time any record carries the gap signal — most users
+// never hit one, so a static tour step would mis-time. The
+// callout explains the "wait for the YAML update" flow + the
+// per-card "Fixed in v<X>" CTA the user just lit up so they map
+// the surface back to its meaning the first time it appears.
+const refdataGapCallout = useContextualCallout({
+  id:   'unknown.refdata',
+  gate: () => props.referenceGapRecords.length > 0,
+})
 
 // Reference-data-gap CTA helper. Returns the upgrade tip for a
 // given gap-card record IF the upcoming release would recognise
@@ -763,7 +776,7 @@ function updateThumbPosition(e: MouseEvent) {
          was updated). No edit affordance — the only path to fix
          is a new Recall release with an updated YAML. -->
     <div v-if="referenceGapRecords.length > 0" id="section-reference-gaps" class="unknown-list reference-gap-section">
-      <h3 class="needs-review-heading">
+      <h3 class="needs-review-heading" data-refgap-heading>
         Reference data gaps — {{ referenceGapRecords.length }}
       </h3>
       <p class="needs-review-desc">
@@ -808,6 +821,21 @@ function updateThumbPosition(e: MouseEvent) {
         </p>
       </article>
     </div>
+
+    <!-- Just-in-time hint on the first appearance of a gap card.
+         Most users never hit one — a static tour step would
+         mis-time. The callout fires when the section materialises;
+         dismisses on Esc / close / Got it. -->
+    <ContextualCallout
+      v-if="refdataGapCallout.active()"
+      target="[data-refgap-heading]"
+      heading="Reference data gaps"
+      body="Recall captured a hero or map name but couldn't match it to the canonical roster shipped with this release. They'll be picked up automatically once you update — every card below tells you if the fix is one release away."
+      action-label="Got it"
+      placement="top"
+      @dismiss="refdataGapCallout.dismiss()"
+      @action="refdataGapCallout.dismiss()"
+    />
 
     <!-- Hover-only floating thumbnail anchored to the cursor.
          Teleport'd to body so the fixed-position thumb sits above
