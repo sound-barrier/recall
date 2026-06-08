@@ -110,14 +110,14 @@ test.describe('dossier — Hero × map-type heatmap', () => {
     const lucioControl = page.locator('.heatmap-cell', { hasText: '60%' }).first()
     await expect(lucioControl).toBeVisible()
     await lucioControl.click()
-    // Narrow chip surfaces the (hero) + (map-type) pick in the
-    // sticky chip row. We don't assert exact chip copy here — the
-    // narrow composable owns chip rendering and has its own tests
-    // — only that BOTH a hero chip and a map-type chip surface.
-    const chips = page.locator('.narrow-chips, .active-narrow-chips').first()
+    // The active-clause chip row (`<ul class="active-chips">`)
+    // surfaces a chip per narrow dimension; clicking a heatmap
+    // cell adds a Hero chip + a Type chip. We assert the row
+    // exists and both chips read the correct values.
+    const chips = page.locator('ul.active-chips')
     await expect(chips).toBeVisible()
-    await expect(chips).toContainText('lucio')
-    await expect(chips).toContainText('control')
+    await expect(chips.locator('.active-chip', { hasText: 'lucio' })).toBeVisible()
+    await expect(chips.locator('.active-chip', { hasText: 'control' })).toBeVisible()
   })
 
   test('the empty-state copy surfaces when decisive matches are below the floor', async ({ page }) => {
