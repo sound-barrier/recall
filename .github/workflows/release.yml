@@ -260,8 +260,48 @@ jobs:
         with:
           merge-multiple: true
 
-      # Per-artifact .sha256 files for every release binary and package.
-      # Each file contains the SHA256 hash of exactly one artifact.
+      # Stage the parser's reference data (heroes.yaml + maps.yaml) as
+      # release-versioned assets. The frontend's "verify reference data"
+      # affordance (next feature) downloads these to compare the local
+      # parser corpus against the canonical version. Renaming with the
+      # tag in the filename keeps each release's data self-describing
+      # and prevents an old asset from being mistaken for a newer one
+      # if a verifier downloads from the wrong release page.
+      - name: Compute artifact version
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Stage reference data YAMLs
+        env:
+          # Route the tag through an env var rather than interpolating
+          # ${{ … }} directly into the run: shell — project convention
+          # (see .claude/rules/ci-cd.md "Fixing CI on a remote-authored
+          # PR" / build-tooling notes). VERSION is bounded by git's
+          # ref-naming rules + the v* push trigger, so there's no
+          # injection vector today, but the env-var shape keeps the
+          # workflow safe against a future change to the trigger.
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          cp pkg/parser/heroes.yaml "recall-${VERSION}-heroes.yaml"
+          cp pkg/parser/maps.yaml   "recall-${VERSION}-maps.yaml"
+
+      # SLSA build provenance on the reference-data YAMLs. The binary
+      # build jobs attested their own outputs in-job; the YAMLs aren't
+      # built by any earlier job (they're checked-in source copied
+      # straight into the workspace), so the attestation has to fire
+      # here in the release job. Verify with:
+      #   gh attestation verify recall-X.Y.Z-heroes.yaml \
+      #     --repo sound-barrier/recall
+      - name: Attest reference data provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4
+        with:
+          subject-path: |
+            recall-*-heroes.yaml
+            recall-*-maps.yaml
+
+      # Per-artifact .sha256 files for every release binary, package,
+      # and reference-data YAML. Each file contains the SHA256 hash of
+      # exactly one artifact.
       # Users verify with: sha256sum --check recall-<version>-linux-amd64.tar.gz.sha256
       # On macOS:         shasum -a 256 --check recall-<version>-darwin-arm64.dmg.sha256
       - name: Generate SHA256 checksums
@@ -279,6 +319,7 @@ jobs:
             recall-*.deb.sha256
             recall-*.exe.sha256
             recall-*.dmg.sha256
+            recall-*.yaml.sha256
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3
@@ -295,6 +336,8 @@ jobs:
             recall-*.exe.sha256
             recall-*.dmg
             recall-*.dmg.sha256
+            recall-*.yaml
+            recall-*.yaml.sha256
             recall-*-sbom.spdx.json
 
   # ── Job 5: Build and push Linux server container image to GHCR ──
