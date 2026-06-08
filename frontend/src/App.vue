@@ -1310,6 +1310,36 @@ function onFirstRunDismiss(renamedTo: string | null) {
   }
 }
 
+// Step 2 of the first-run modal: the user clicked a "found" source
+// card. Commit the path through the existing setScreenshotsDir flow
+// (same writer the Settings picker uses) — the modal emits dismiss
+// in lockstep so the localStorage gate flips on the same turn.
+async function onFirstRunPickSource(path: string) {
+  try {
+    await SetScreenshotsDir(path)
+    setScreenshotsDir(path)
+    await refreshNewCount()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+// Step 2 of the first-run modal: the user clicked the custom-pick
+// tile. Trigger the native folder dialog (or window.prompt in the
+// server-mode fallback) and, on a successful pick, commit + ack the
+// first-run gate so the modal unmounts. Cancel leaves the modal on
+// step 2 so the user can try again.
+async function onFirstRunPickCustomSource() {
+  try {
+    await pickDir()
+    if (screenshotsDir.value) {
+      ackFirstRun()
+    }
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
 // Search → panel auto-track. When the panel is open AND the user
 // is actively searching (any clauses parsed), the panel selection
 // follows the first narrowed match so the highlighted content is
@@ -2148,7 +2178,12 @@ useEventStream({
          only). ESC + backdrop intentionally do not close it. -->
     <FirstRunProfileModal
       v-if="firstRunModalOpen"
+      :platform="tesseractStatus?.platform ?? ''"
+      :candidates="screenshotCandidates"
+      :picking="probing"
       @dismiss="onFirstRunDismiss"
+      @pick-source="onFirstRunPickSource"
+      @pick-custom-source="onFirstRunPickCustomSource"
     />
 
     <!-- Export bundle modal — opens from the Matches bulk-action

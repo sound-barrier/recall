@@ -1,42 +1,86 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { RenameProfile, type ProfilesResponse } from '../api'
+import { computed, nextTick, ref, watch } from 'vue'
+import { RenameProfile, type NamedCandidate, type ProfilesResponse } from '../api'
+import { useModalFocusTrap } from '../composables/useModalFocusTrap'
+import ScreenshotSourcePicker from './ScreenshotSourcePicker.vue'
 
-// First-run "Main account name" modal. Forced gate — ESC and
-// backdrop clicks do NOT dismiss it. The user must either:
-//   1. Type a name + Save → renames the default `main` profile, OR
-//   2. "Keep as main" → records the acknowledgement so the modal
-//      doesn't reappear on next launch.
+// First-run modal. Two steps:
+//   1. Name the main account so the masthead chip + per-profile data
+//      tree have a meaningful label (the user can tell their main from
+//      a future alt or smurf).
+//   2. Point Recall at a screenshots folder so the first parse run can
+//      land somewhere — inlined here instead of dumping the user onto
+//      a blank Settings hero with a Files card.
 //
-// Both paths flip the localStorage flag `recall.firstRunAccountNamed`
-// so subsequent launches skip the modal. The parent (App.vue) gates
-// rendering on that flag's absence.
+// Forced gate. Escape is intercepted but does NOT dismiss. Backdrop
+// clicks fall through to a no-op (the inner box absorbs without a
+// handler).
+//
+// Step 2 is skippable — a user can still configure the folder on
+// Settings later. The modal emits dismiss + the parent reloads when
+// the active profile was renamed (same teardown the masthead chip's
+// switch/create/rename flow does).
+
+const props = defineProps<{
+  // Platform hint forwarded to the picker. 'windows' | 'darwin' |
+  // 'linux' | ''. Optional so a Wails build without the platform
+  // probe still mounts the modal cleanly.
+  platform?: string
+  // Per-source candidates list from
+  // /api/v1/system/screenshots-folder-candidates. Empty on macOS /
+  // Linux — the picker hides the grid there and renders only the
+  // custom-pick button.
+  candidates: NamedCandidate[]
+  // True while the native folder dialog is open. Disables the picker
+  // surface so a double-click can't fire two dialogs.
+  picking?: boolean
+}>()
 
 const emit = defineEmits<{
-  // Fires when the user dismisses the modal (either path). The parent
-  // sets the localStorage flag and unmounts.
+  // Step 1 / Step 2 final emit. `renamedTo` is the new profile name
+  // when the user saved on step 1, null when they kept "main". Parent
+  // sets the localStorage ack flag and (when renamedTo is non-null)
+  // reloads so the masthead chip rebinds.
   'dismiss': [renamedTo: string | null]
+  // Step 2: user clicked a "found" source card. Parent calls
+  // SetScreenshotsDir, then this modal dismisses via `dismiss`.
+  'pick-source': [path: string]
+  // Step 2: user clicked "Pick a different folder…". Parent triggers
+  // PickScreenshotsDir; on success it also calls SetScreenshotsDir
+  // + ackFirstRun(), which unmounts the modal via the gate prop.
+  'pick-custom-source': []
 }>()
 
 const NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,39}$/
 
+// ─── Step state machine ─────────────────────────────────────────
+type Step = 'name' | 'source'
+const step = ref<Step>('name')
+
+// Persisted across the back-button arc — the user can rename, advance
+// to step 2, hit Back, see their name typed-in, edit, advance again.
 const inputValue = ref('')
 const busy       = ref(false)
 const error      = ref<string | null>(null)
+// What we'll emit on the final dismiss. Carries forward across steps.
+const pendingRenamedTo = ref<string | null>(null)
 
 const inputValid = computed(() => NAME_RE.test(inputValue.value))
 const inputDirty = computed(() => inputValue.value.length > 0)
 
 const inputEl = ref<HTMLInputElement | null>(null)
 
+// ─── Step 1: name ───────────────────────────────────────────────
 async function onSave() {
-  if (busy.value || !inputValid.value) return
+  if (busy.value || !inputValid.value || step.value !== 'name') return
   busy.value = true
   error.value = null
   try {
     const next = inputValue.value.trim()
     const _resp: ProfilesResponse = await RenameProfile('main', next)
-    emit('dismiss', next)
+    void _resp
+    pendingRenamedTo.value = next
+    await advanceToSource()
   } catch (e) {
     error.value = String(e)
   } finally {
@@ -45,45 +89,77 @@ async function onSave() {
 }
 
 function onKeepDefault() {
-  if (busy.value) return
-  emit('dismiss', null)
+  if (busy.value || step.value !== 'name') return
+  pendingRenamedTo.value = null
+  void advanceToSource()
 }
 
-// Focus trap — Tab + Shift+Tab cycle inside the modal box. We do NOT
-// install an ESC handler: the modal is a forced gate. Backdrop
-// clicks are absorbed by the modal box (no @click on the backdrop).
-function focusable(): HTMLElement[] {
+async function advanceToSource() {
+  step.value = 'source'
+  // Let the picker mount, then move focus to the first focusable
+  // inside the new step — typically the first source card or the
+  // custom-pick button (when no cards are visible).
+  await nextTick()
   const box = document.querySelector<HTMLElement>('.first-run-modal-box')
-  if (!box) return []
-  const sel = 'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
-  return Array.from(box.querySelectorAll<HTMLElement>(sel))
+  const target = box?.querySelector<HTMLElement>(
+    '.src-card:not(:disabled), [data-src-pick-custom]',
+  )
+  target?.focus({ preventScroll: true })
 }
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.key !== 'Tab') return
-  const items = focusable()
-  if (items.length === 0) return
-  const first = items[0]!
-  const last  = items[items.length - 1]!
-  const active = document.activeElement as HTMLElement | null
-  if (e.shiftKey && active === first) {
-    e.preventDefault()
-    last.focus()
-  } else if (!e.shiftKey && active === last) {
-    e.preventDefault()
-    first.focus()
-  }
+// ─── Step 2: picker ─────────────────────────────────────────────
+function onPickSource(_name: NamedCandidate['name'], path: string) {
+  if (props.picking) return
+  emit('pick-source', path)
+  // Dismiss immediately — parent has the path; SetScreenshotsDir
+  // happens in parallel; reload (when renamedTo !== null) wipes the
+  // tree anyway.
+  emit('dismiss', pendingRenamedTo.value)
 }
 
-onMounted(async () => {
-  document.addEventListener('keydown', onKeydown)
+function onPickCustomSource() {
+  if (props.picking) return
+  emit('pick-custom-source')
+  // Don't auto-dismiss — wait for the parent's PickScreenshotsDir
+  // promise to resolve. If the user cancels the native dialog the
+  // modal stays on step 2 so they can try again.
+}
+
+function onSkipSource() {
+  // User opted to set up the folder later on Settings. Dismiss with
+  // whatever rename state we have.
+  emit('dismiss', pendingRenamedTo.value)
+}
+
+async function onBackToName() {
+  step.value = 'name'
   await nextTick()
   inputEl.value?.focus({ preventScroll: true })
+}
+
+// ─── Focus trap ─────────────────────────────────────────────────
+//
+// Adopt useModalFocusTrap with a no-op onClose so Escape gets
+// preventDefault'd (preserving the forced-gate contract) but doesn't
+// dismiss. Trap is armed for the modal's lifetime — we toggle a
+// local ref that mirrors the always-true mount state because
+// useModalFocusTrap's API expects a Ref<boolean>.
+const trapOpen = ref(true)
+useModalFocusTrap(trapOpen, {
+  containerSelector: '.first-run-modal-box',
+  onClose: () => { /* forced gate — Escape is eaten but doesn't dismiss */ },
 })
 
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', onKeydown)
-})
+// Initial focus into the name input. The composable's auto-focus
+// targets the first focusable, which is the "Keep as main" button by
+// markup order — but we want the name input front-and-centre. Wait
+// for the trap's initial-focus tick to land then override.
+watch(trapOpen, async (open) => {
+  if (open) {
+    await nextTick()
+    inputEl.value?.focus({ preventScroll: true })
+  }
+}, { immediate: true })
 </script>
 
 <template>
@@ -94,66 +170,115 @@ onBeforeUnmount(() => {
     aria-labelledby="first-run-title"
     aria-describedby="first-run-desc"
   >
-    <!-- Backdrop intentionally absorbs clicks without a handler — this
-         is a forced gate, not a soft prompt. -->
     <div class="first-run-modal-backdrop" aria-hidden="true" />
     <form
       class="first-run-modal-box"
-      @submit.prevent="onSave"
+      :data-step="step"
+      @submit.prevent="step === 'name' ? onSave() : undefined"
     >
       <p class="first-run-eyebrow">
-        Welcome to Recall
+        <span>Welcome to Recall</span>
+        <span class="first-run-steps" aria-label="Step indicator">
+          <span class="first-run-step-dot" :class="{ active: step === 'name' }" data-step-dot="name" />
+          <span class="first-run-step-dot" :class="{ active: step === 'source' }" data-step-dot="source" />
+        </span>
       </p>
-      <h2 id="first-run-title" class="first-run-title">
-        Main account name
-      </h2>
-      <p id="first-run-desc" class="first-run-desc">
-        Recall keeps each Overwatch account's match data on its own
-        profile. Name your main account so you can tell it apart from
-        any alt or smurf profiles you might add later. You can rename
-        it any time from the masthead chip.
-      </p>
-      <label class="first-run-label" for="first-run-input">
-        Account name
-      </label>
-      <input
-        id="first-run-input"
-        ref="inputEl"
-        v-model="inputValue"
-        class="first-run-input"
-        type="text"
-        maxlength="40"
-        autocomplete="off"
-        spellcheck="false"
-        placeholder="e.g. SilentStorm"
-        :disabled="busy"
-        required
-        :aria-invalid="(inputDirty && !inputValid) || !!error ? 'true' : undefined"
-        :aria-describedby="error ? 'first-run-error' : ((inputDirty && !inputValid) ? 'first-run-hint' : undefined)"
-      >
-      <p v-if="inputDirty && !inputValid" id="first-run-hint" class="first-run-hint">
-        a–z, 0–9, _ or -, 1–40 chars, start with a letter or digit.
-      </p>
-      <p v-if="error" id="first-run-error" class="first-run-error" role="alert">
-        {{ error }}
-      </p>
-      <div class="first-run-actions">
-        <button
-          type="button"
-          class="first-run-keep"
+
+      <!-- ─── Step 1: name the main profile ─────────────────── -->
+      <template v-if="step === 'name'">
+        <h2 id="first-run-title" class="first-run-title">
+          Main account name
+        </h2>
+        <p id="first-run-desc" class="first-run-desc">
+          Recall keeps each Overwatch account's match data on its own
+          profile. Name your main account so you can tell it apart from
+          any alt or smurf profiles you might add later. You can rename
+          it any time from the masthead chip.
+        </p>
+        <label class="first-run-label" for="first-run-input">
+          Account name
+        </label>
+        <input
+          id="first-run-input"
+          ref="inputEl"
+          v-model="inputValue"
+          class="first-run-input"
+          type="text"
+          maxlength="40"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="e.g. SilentStorm"
           :disabled="busy"
-          @click="onKeepDefault"
+          required
+          :aria-invalid="(inputDirty && !inputValid) || !!error ? 'true' : undefined"
+          :aria-describedby="error ? 'first-run-error' : ((inputDirty && !inputValid) ? 'first-run-hint' : undefined)"
         >
-          Keep as "main"
-        </button>
-        <button
-          type="submit"
-          class="first-run-save"
-          :disabled="busy || !inputValid"
-        >
-          {{ busy ? 'Saving…' : 'Save' }}
-        </button>
-      </div>
+        <p v-if="inputDirty && !inputValid" id="first-run-hint" class="first-run-hint">
+          a–z, 0–9, _ or -, 1–40 chars, start with a letter or digit.
+        </p>
+        <p v-if="error" id="first-run-error" class="first-run-error" role="alert">
+          {{ error }}
+        </p>
+        <div class="first-run-actions">
+          <button
+            type="button"
+            class="first-run-keep"
+            :disabled="busy"
+            data-step-keep
+            @click="onKeepDefault"
+          >
+            Keep as "main"
+          </button>
+          <button
+            type="submit"
+            class="first-run-save"
+            :disabled="busy || !inputValid"
+            data-step-save
+          >
+            {{ busy ? 'Saving…' : 'Next' }}
+          </button>
+        </div>
+      </template>
+
+      <!-- ─── Step 2: pick a screenshots folder ─────────────── -->
+      <template v-else>
+        <h2 id="first-run-title" class="first-run-title">
+          Where do your screenshots live?
+        </h2>
+        <p id="first-run-desc" class="first-run-desc">
+          Recall watches a folder for new <code>.png</code> / <code>.jpg</code>
+          screenshots and parses them on save. Pick the folder your
+          capture tool writes to — you can always change it later in
+          Settings.
+        </p>
+        <ScreenshotSourcePicker
+          :platform="platform"
+          :candidates="candidates"
+          :picking="picking"
+          @pick="onPickSource"
+          @pick-custom="onPickCustomSource"
+        />
+        <div class="first-run-actions">
+          <button
+            type="button"
+            class="first-run-keep"
+            :disabled="picking"
+            data-step-back
+            @click="onBackToName"
+          >
+            ← Back
+          </button>
+          <button
+            type="button"
+            class="first-run-skip"
+            :disabled="picking"
+            data-step-skip
+            @click="onSkipSource"
+          >
+            Skip — set up later
+          </button>
+        </div>
+      </template>
     </form>
   </div>
 </template>
@@ -189,6 +314,11 @@ onBeforeUnmount(() => {
     0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
+/* Step 2 gets a touch more breathing room for the picker grid. */
+.first-run-modal-box[data-step="source"] {
+  width: min(32rem, 100%);
+}
+
 .first-run-eyebrow {
   margin: 0 0 0.3rem;
   font-family: var(--mono);
@@ -197,6 +327,29 @@ onBeforeUnmount(() => {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--accent-text);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.first-run-steps {
+  display: inline-flex;
+  gap: 0.32rem;
+}
+
+.first-run-step-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: background var(--duration-fast), border-color var(--duration-fast);
+}
+
+.first-run-step-dot.active {
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .first-run-title {
@@ -213,6 +366,12 @@ onBeforeUnmount(() => {
   font-size: 0.85rem;
   color: var(--text-faint);
   line-height: 1.5;
+}
+
+.first-run-desc code {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text);
 }
 
 .first-run-label {
@@ -261,8 +420,14 @@ onBeforeUnmount(() => {
   margin-top: 1.1rem;
 }
 
+/* Step 2's back is on the left, skip on the right. */
+.first-run-modal-box[data-step="source"] .first-run-actions {
+  justify-content: space-between;
+}
+
 .first-run-keep,
-.first-run-save {
+.first-run-save,
+.first-run-skip {
   appearance: none;
   font-family: var(--mono);
   font-size: 0.7rem;
@@ -275,13 +440,15 @@ onBeforeUnmount(() => {
   transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
 }
 
-.first-run-keep {
+.first-run-keep,
+.first-run-skip {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-faint);
 }
 
-.first-run-keep:hover:not(:disabled) {
+.first-run-keep:hover:not(:disabled),
+.first-run-skip:hover:not(:disabled) {
   color: var(--text);
   border-color: var(--border-strong, var(--text-faint));
 }
@@ -292,7 +459,9 @@ onBeforeUnmount(() => {
   color: var(--primary-text-on-accent, var(--bg));
 }
 
-.first-run-save:disabled {
+.first-run-save:disabled,
+.first-run-keep:disabled,
+.first-run-skip:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

@@ -165,7 +165,7 @@ v9.11.0 to recognise `miyazaki`" as a CTA on the card.
 - **Constraint**: this is a network read. Cache the latest
   release's `heroes.yaml` + `maps.yaml` SHA + parsed contents
   to disk (TTL ~24h) so the Unknown tab doesn't pin a network
-  call. Honour the existing offline-tolerant pattern in
+  call. Honour the existing oline-tolerant pattern in
   `UpdateBanner.vue` (the masthead version chip) — if the
   fetch fails, the card stays at its current "wait for the
   next release" copy without a visible error.
@@ -212,26 +212,6 @@ that landed since:
 - **Effort**: ~8 hours total — 3h tour copy rewrite for the
   set-workspace surfaces, 2h source-picker callout, 3h
   contextual gap-section callout + persistence.
-
-### 14. First-Run Profile Modal — adopt the new picker surface
-
-`FirstRunProfileModal.vue` is the user's first interaction.
-After they name a profile, it hands off to the empty-state
-hero on Settings. The picker grid (item shipped above) is
-arguably the more impactful "first thing they see" than the
-modal's profile-naming step — but the modal still presents
-profile naming as the lead. Consider:
-
-- **Inlining the picker** into a second modal step so the
-  user picks a screenshot source in the same dialog rather
-  than landing on a blank-looking Settings page with a Files
-  card. Lower friction; same number of clicks.
-- **Constraint**: the modal already has tab-trap + focus
-  return semantics. Adding a second step has to preserve
-  both, plus the back-navigation between the steps must
-  return focus to the field the user was on.
-- **Effort**: ~5 hours including the multi-step state machine
-  inside the modal + an e2e spec covering the two-step path.
 
 ## Out of scope (deliberately not recommending)
 

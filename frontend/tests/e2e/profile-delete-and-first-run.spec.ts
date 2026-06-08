@@ -207,6 +207,11 @@ test.describe('first-run profile-name modal', () => {
     await expect.poll(() => putBody).not.toBeNull()
     expect(renamedTarget).toBe('main')
     expect(putBody).toEqual({ new_name: 'SilentStorm' })
+
+    // After Save, the modal advances to step 2 (pick a screenshots
+    // folder) — it does NOT dismiss until the user finishes step 2.
+    await expect(modal.locator('h2')).toContainText('Where do your screenshots live?')
+    await expect(modal.locator('[data-step-dot="source"]')).toHaveClass(/active/)
   })
 
   test('Save reloads so the masthead chip immediately reflects the new name', async ({ page }) => {
@@ -240,6 +245,9 @@ test.describe('first-run profile-name modal', () => {
     await modal.locator('.first-run-input').fill('dpsmoira')
     await modal.locator('.first-run-save').click()
 
+    // Skip the picker step to actually dismiss + trigger the reload.
+    await modal.locator('[data-step-skip]').click()
+
     // After the post-save reload the chip re-fetches GetProfiles and
     // surfaces the renamed active. The file-level beforeEach clears
     // the ack flag on every navigation so the modal briefly returns
@@ -263,6 +271,11 @@ test.describe('first-run profile-name modal', () => {
     const modal = page.locator('.first-run-modal')
     await expect(modal).toBeVisible()
     await modal.locator('.first-run-keep').click()
+
+    // After Keep, the modal advances to step 2 — it does NOT dismiss
+    // until the user finishes step 2. Skip the picker to finalise.
+    await expect(modal.locator('h2')).toContainText('Where do your screenshots live?')
+    await modal.locator('[data-step-skip]').click()
     await expect(modal).toHaveCount(0)
 
     // Flag persisted.
