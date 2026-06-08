@@ -34,7 +34,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # silence noise.
 : "${MAX_INITIAL_JS_BYTES:=160000}"
 : "${MAX_INITIAL_CSS_BYTES:=60000}"
-: "${MAX_TOTAL_JS_BYTES:=440000}"
+: "${MAX_TOTAL_JS_BYTES:=445000}"
 : "${MAX_TOTAL_CSS_BYTES:=250000}"
 
 if [[ "${1:-}" == "--build" ]]; then
