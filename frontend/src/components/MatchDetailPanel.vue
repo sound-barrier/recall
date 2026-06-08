@@ -50,6 +50,12 @@ const props = defineProps<{
   // Optional so older mount sites that don't have the narrow state
   // don't have to thread an empty array.
   availableTags?: string[]
+  // One-shot focus target — when 'note' or 'tag', the expanded card
+  // focuses the matching input on mount (set via the right-click
+  // menu's Tag / Edit annotation actions). Empty when no focus is
+  // pending. The card emits `focus-consumed` after applying so the
+  // parent can clear and avoid re-focusing on re-render.
+  pendingFocus?: '' | 'note' | 'tag'
 }>()
 
 const emit = defineEmits<{
@@ -67,6 +73,10 @@ const emit = defineEmits<{
   'set-match-review':      [matchKey: string, reviewedBy: ReviewedBy]
   'set-match-queue':       [matchKey: string, queueType: QueueType]
   'set-match-play-mode':   [matchKey: string, playMode: PlayMode]
+  // Fires once the expanded card has applied a pending focus
+  // (note / tag) so App.vue can clear its pendingFocusTarget ref
+  // — preventing a re-focus on every subsequent re-render.
+  'focus-consumed':        []
   // User flipped the "Set as 'since' anchor" toggle. Empty string
   // means "clear the anchor."
   'set-anchor':            [matchKey: string]
@@ -369,6 +379,8 @@ function onBackdropClick(e: MouseEvent) {
             :search-clauses="searchClauses"
             :anchor-key="anchorKey"
             :available-tags="availableTags"
+            :pending-focus="pendingFocus"
+            @focus-consumed="emit('focus-consumed')"
             @toggle-sources="emit('toggle-sources')"
             @toggle-preview="(f: string) => emit('toggle-preview', f)"
             @preview-error="(f: string) => emit('preview-error', f)"

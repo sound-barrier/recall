@@ -187,21 +187,6 @@ smallest contribution to the exclusion ("Try removing
   `useMatchesNarrow.ts` + a new `MatchesEmptySuggestions.vue`
   rendered inside the existing `.leaves-empty` block.
 
-### 7. Right-click context menu on rows
-
-Fast-track per-row actions without forcing the user to open the
-detail panel first: Hide, Tag, Star, Copy replay code, Copy
-match link, Edit annotation, Open source folder. Lives on the
-right-click contextmenu; left-click stays "open detail panel".
-
-- **Constraint**: the native browser context menu must remain
-  accessible via Shift+Right-click; the app's menu only fires
-  on the standard right-click path.
-- **Constraint**: keyboard-accessible — Menu key (`Apps`) on
-  the focused row opens the same menu.
-- **Effort**: ~5 hours. Mirror `KeyboardShortcutsModal`'s
-  modal-but-positioned pattern.
-
 ### 8. Restore saved-set / preset feature
 
 PR #100 deleted the old `FilterPresetsMenu` + `useFilterPresets`

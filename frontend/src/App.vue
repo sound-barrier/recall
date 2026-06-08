@@ -889,6 +889,68 @@ async function onBulkQueue(matchKeys: string[], queueType: QueueType) {
 // once at the end. Idempotent: re-tagging an already-tagged record
 // is a no-op (the API dedupes lowercase server-side, see
 // SetMatchAnnotation).
+// ─── Right-click context menu fast-tracks ───────────────────────
+//
+// Each handler does one job — opens the detail panel + focuses a
+// field, writes to clipboard, or shells the screenshots folder
+// open. Failures surface as a soft error string; the menu itself
+// is already closed by the time we land here (the menu emits
+// close before the action emit, so the user sees the action,
+// not the menu, fail).
+
+// Pending focus target — read by MatchDetailPanel on mount and
+// cleared via clearPendingFocus(). Lives at App.vue scope because
+// the panel might not be mounted at the moment of right-click
+// (closed selection); we set the target, open the selection,
+// then the panel's onMounted picks the target up.
+const pendingFocusTarget = ref<'note' | 'tag' | ''>('')
+function clearPendingFocus() { pendingFocusTarget.value = '' }
+
+function onOpenMatchAndFocus(matchKey: string, target: 'note' | 'tag') {
+  pendingFocusTarget.value = target
+  selection.open(matchKey)
+}
+
+async function onCopyReplayCode(matchKey: string) {
+  const r = records.value.find(x => x.match_key === matchKey)
+  const code = (r?.annotation?.replay_code ?? '').trim()
+  if (!code) {
+    error.value = 'No replay code on this match.'
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(code)
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+async function onCopyMatchLink(matchKey: string) {
+  // The "match link" is just the key today — the desktop app
+  // doesn't have a deep-link URL scheme yet (recall://) so the
+  // pasted text is what the user can drop into a Discord message
+  // for a teammate to grep against their own corpus. Once a
+  // canonical URL exists, swap this body to format it.
+  try {
+    await navigator.clipboard.writeText(matchKey)
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+async function onOpenSourceFolder(_matchKey: string) {
+  // Today we reveal the configured screenshots dir — every match's
+  // source files live there for new users. Per-record dir resolution
+  // (when a match was ingested from a different folder than the
+  // currently-watched one) is a follow-up; we keep _matchKey in
+  // the signature so the API is forward-compatible.
+  try {
+    await RevealScreenshotsDir()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
 async function onBulkTag(matchKeys: string[], tag: string) {
   if (matchKeys.length === 0 || !tag) return
   const norm = tag.trim().toLowerCase()
@@ -1879,6 +1941,10 @@ useEventStream({
           @bulk-play-mode="onBulkPlayMode"
           @bulk-queue="onBulkQueue"
           @bulk-tag="onBulkTag"
+          @open-match-and-focus="onOpenMatchAndFocus"
+          @copy-replay-code="onCopyReplayCode"
+          @copy-match-link="onCopyMatchLink"
+          @open-source-folder="onOpenSourceFolder"
           @unhide-match="(k: string) => onSetMatchHidden(k, false)"
           @hard-delete-match="onHardDeleteMatch"
           @unhide-matches="onUnhideMatches"
@@ -1934,6 +2000,8 @@ useEventStream({
       :position-total="matchesNarrow.narrowedRecords.value.length"
       :has-lightbox="lightboxFilename !== null"
       :available-tags="matchesNarrow.availableTags.value"
+      :pending-focus="pendingFocusTarget"
+      @focus-consumed="clearPendingFocus"
       @close="selection.close"
       @prev="selection.openPrev"
       @next="selection.openNext"
