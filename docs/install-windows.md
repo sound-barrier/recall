@@ -78,17 +78,25 @@ Tesseract somewhere else (or earlier installations dropped it under
 
 ## 5. Point Recall at your screenshots folder
 
-Overwatch on Windows saves screenshots to:
+Recall's first-run Settings hero shows a **2 × 2 picker grid**
+naming each canonical Windows capture source. A green dot on a card
+means that folder exists on your machine; one click sets it as the
+watched directory.
 
-```text
-%USERPROFILE%\Documents\Overwatch\ScreenShots\Overwatch\
-```
+| Card | Path | Filename shape |
+|---|---|---|
+| **Nvidia Overlay** | `%USERPROFILE%\Videos\Overwatch` | `Overwatch 2 Screenshot YYYY.MM.DD - HH.MM.SS.ff.png` |
+| **OW PrntScn default** | `%USERPROFILE%\Documents\Overwatch\ScreenShots\Overwatch` (+ OneDrive variant) | `ScreenShot_YY-MM-DD_HH-MM-SS-fff.jpg` |
+| **Win Snip tool** | `%USERPROFILE%\Pictures\Screenshots` (+ OneDrive variant) | `Screenshot YYYY-MM-DD HHMMSS.png` |
+| **Steam install** | `<SteamInstall>\userdata\<id>\760\remote\<OW-app-id>\screenshots` | (Steam's own F12 captures) |
 
-(typically `C:\Users\<you>\Documents\Overwatch\ScreenShots\Overwatch\`)
+If you use something else (a third-party tool, a synced cloud
+folder, a USB stick), use the **Pick a different folder…** tile
+below the grid — opens the standard Windows folder picker.
 
-Go to **Settings → Directories → Change Folder…** and select that
-path. The **Watch Folder** toggle on the **Parse** tab makes Recall
-auto-parse new screenshots as Overwatch writes them.
+The **Watch Folder** toggle on the **Parse** tab makes Recall
+auto-parse new screenshots as Overwatch (or your capture tool)
+writes them.
 
 ## Where Recall stores its data
 

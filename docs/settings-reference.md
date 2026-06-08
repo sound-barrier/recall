@@ -24,27 +24,39 @@ states, etc.
 
 The folder Recall watches for new Overwatch screenshots.
 
-On first launch, Recall tries to auto-detect the default Overwatch
-screenshots location on your platform. If it lands on the right path,
-you don't need to touch this. Otherwise:
+On Windows, the first-run Settings hero presents a **2 × 2 card
+grid** naming each canonical capture source. Click a card with a
+green "found" dot and that folder becomes the watch directory in one
+step; cards with a gray "not found" dot are read-only and tell you
+which path Recall expected for that source so you can configure your
+capture tool to write there. A **Pick a different folder…** tile
+under the grid opens the native folder picker for everything else.
 
-- **Detect** — re-runs the auto-detect (handy after you move an
-  Overwatch install).
-- **Change Folder…** — opens the system folder picker so you can
-  point at any directory.
+| Card | Path expansion | Filename shape |
+|---|---|---|
+| **Nvidia Overlay** | `%USERPROFILE%\Videos\Overwatch` | `Overwatch 2 Screenshot YYYY.MM.DD - HH.MM.SS.ff.png` |
+| **OW PrntScn default** | `%USERPROFILE%\Documents\Overwatch\ScreenShots\Overwatch` (and the OneDrive variant) | `ScreenShot_YY-MM-DD_HH-MM-SS-fff.jpg` |
+| **Win Snip tool** | `%USERPROFILE%\Pictures\Screenshots` (and the OneDrive variant) | `Screenshot YYYY-MM-DD HHMMSS.png` |
+| **Steam install** | `<SteamInstall>\userdata\<id>\760\remote\<OW-app-id>\screenshots` (resolved via the `HKCU\Software\Valve\Steam` registry) | (Steam's own F12 captures) |
 
-The platform defaults Recall looks for:
+On macOS / Linux the grid is hidden — auto-detect is Windows-only by
+current product decision. The empty-state shows only the **Pick your
+screenshots folder…** button with a small *AUTO-DETECT · WINDOWS
+ONLY* note above it. Common macOS / Linux paths Recall used to probe
+(and still works against if you pick them manually):
 
-- Windows: `%USERPROFILE%\Documents\Overwatch\ScreenShots\Overwatch\`
 - macOS: `~/Documents/Overwatch/ScreenShots/Overwatch/`
 - Linux (Steam Proton): `~/.steam/steam/steamapps/compatdata/2357570/pfx/drive_c/users/steamuser/Documents/Overwatch/ScreenShots/Overwatch/`
 
-You can point Recall at any directory — useful if you keep
+Once a folder is set, the steady-state Settings row exposes
+**Reveal** (opens the folder in your OS file manager), **Detect**
+(re-runs the legacy single-best-path probe), **Change…** (native
+picker), and **Reset** (clears the folder and re-shows the picker
+grid). You can point Recall at any directory — useful if you keep
 screenshots in a synced folder (Dropbox, OneDrive, iCloud Drive) or
-want to feed it screenshots from a friend's matches.
-
-Changing the folder while **Watch Folder** is armed restarts the
-watcher against the new directory; no manual restart needed.
+want to feed it screenshots from a friend's matches. Changing the
+folder while **Watch Folder** is armed restarts the watcher against
+the new directory; no manual restart needed.
 
 #### Data Location
 
@@ -201,6 +213,31 @@ When NOT to use:
 - You think a single match record is wrong. Re-capture the SUMMARY
   and PERSONAL screens for that match into the folder; Recall will
   merge them into the existing record without duplicating it.
+
+#### Re-parse All Screenshots
+
+Re-runs Tesseract OCR on every PNG / JPG in the watched folder,
+including files already in the database. Use after a Recall release
+that tightens hero/map matching — for example the short-name fuzzy
+fix that stopped Miyazaki from being silently attributed to Mei —
+to retroactively correct older records. Two-step confirm (button
+flips to **Confirm re-parse** for 6 seconds; Cancel backs out).
+
+Annotations, queue and play-mode overrides, hidden flags, and
+reviews all key on `match_key` (which is timestamp-derived and
+stable) so they survive the re-parse — only the parsed hero / map /
+mode / stats are rewritten.
+
+Estimated time: ~1 second per screenshot. The masthead Parse
+indicator + status bar mirror the activity in real time; nothing
+else changes while it runs.
+
+When to use:
+
+- After upgrading Recall to a version whose release notes mention a
+  parser tightening or YAML roster update.
+- After the new **Reference data gaps** section on the Unknown tab
+  surfaces records the latest release can now resolve.
 
 ## Parse tab
 

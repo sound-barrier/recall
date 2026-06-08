@@ -205,6 +205,43 @@ because you played the matches. The ambiguity surface is the
 honest answer: a heuristic that picks wrong is worse than a
 prompt that asks.
 
+## Reference data gaps
+
+A third section on the Unknown tab — **Reference data gaps** —
+lists every record whose hero or map text Recall captured but
+couldn't pin to the canonical roster shipped with this release.
+
+The most common cause is a new hero or map released after this
+Recall version cut. Example: a record from a Miyazaki play parsed
+before `heroes.yaml` was updated with that entry surfaces here.
+The card shows the file the record was parsed from + the OCR'd
+text Recall couldn't recognise (e.g. `Unknown hero: miyazaki` /
+`Unknown map: new-junk-city`). Same record shows the warning on
+its leaf row (`Unknown hero (miyazaki?)`) and on the detail
+panel's inline banner — three surfaces, one signal.
+
+**What you can do:**
+
+1. **Wait for the next Recall release.** Each release ships an
+   updated `heroes.yaml` + `maps.yaml` as attested release
+   assets — see [Verifying downloads](../README.md#verifying-downloads).
+   Once the new release lands, the next app boot's re-aggregate
+   pass picks up the newly-recognised entries automatically (~2–5 s
+   on 500 matches) and the record's hero/map flips to canonical
+   without re-OCRing.
+2. **Hit Re-parse all** under Settings → Advanced to recover
+   records parsed by an OLDER Recall version (before this gap-
+   detection feature shipped) — they have no preserved OCR text
+   to consult, so only re-running Tesseract recovers them.
+
+There is **no manual edit affordance** — you can't type a hero or
+map name into a record. The whole point of the gate is that
+guessing leads to silent stats corruption (the Miyazaki → Mei
+bug). Wait for the YAML to catch up, or re-parse.
+
+The section is hidden when no records carry the gap signal —
+common case once the latest release is installed.
+
 ## Next chapter
 
 - **Get help with anything else**: [Bug reports & feature requests](feedback.md)

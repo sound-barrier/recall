@@ -81,8 +81,8 @@ The desktop app is the simplest way to use Recall. Five steps from zero to your 
 
 1. **Install Recall** — grab `recall-{version}-windows-amd64-installer.exe` from [GitHub Releases](https://github.com/sound-barrier/recall/releases) and run it. Full step-by-step in the [Windows install guide](docs/install-windows.md). For macOS or Linux, see the [Installation](#installation) section below.
 2. **Install Tesseract OCR 5.x** — Recall uses it to read your screenshots. Download the **5.x** installer from [UB-Mannheim](https://github.com/UB-Mannheim/tesseract/wiki) and run it with the default options. Older 3.x / 4.x builds are detected and flagged with a warning — parsing may misread. (macOS/Linux instructions are in [docs/install-macos.md](docs/install-macos.md) and [docs/install-linux.md](docs/install-linux.md).)
-3. **Launch Recall and pick a screenshots folder** under **Settings → Directories**. Overwatch's default on Windows is `Documents\Overwatch\ScreenShots\Overwatch\`.
-4. **Capture screenshots in Overwatch** with **F12** after each match — see [Capturing matches](#capturing-matches) for which post-match tabs to screenshot.
+3. **Launch Recall and pick a screenshots folder.** The first-run Settings screen surfaces a four-card picker for the canonical Windows capture sources — **Nvidia Overlay**, **OW PrntScn default**, **Win Snip tool**, and **Steam install** — each with a status dot showing whether the path exists on your machine. One click on a found card sets it as the watched folder. A "Pick a different folder…" tile under the grid covers everything else. On macOS / Linux the grid is hidden; the manual folder picker is the only path.
+4. **Capture screenshots in Overwatch** with **F12** after each match — see [Capturing matches](#capturing-matches) for which post-match tabs to screenshot. Recall recognises Nvidia Overlay (`Overwatch 2 Screenshot YYYY.MM.DD - HH.MM.SS.ff.png`), OW's default PrntScn (`ScreenShot_YY-MM-DD_HH-MM-SS-fff.jpg`), and Windows Snip (`Screenshot YYYY-MM-DD HHMMSS.png`) filename shapes automatically.
 5. **Click *Parse → Run Parse*** to scan the folder, or flip on *Parse → Watch Folder* to auto-parse as new screenshots land. Parsed matches appear under the **Matches** tab.
 
 That's all most users need. The [Advanced](#advanced) sections below cover running Recall headless and streaming matches into a local Grafana dashboard — neither is required for everyday use.
@@ -143,9 +143,13 @@ Recall reads four kinds of post-match screenshots from Overwatch. Three are requ
 
 The in-game screenshot key is **F12** by default (rebindable under *Options → Controls → General → Screenshot*). After a match ends, cycle through the post-match tabs and press F12 on each. Recall stitches the screenshots into a single match record using the filename timestamps Overwatch embeds — taking them within a couple of minutes of each other is enough.
 
-Overwatch saves screenshots to `Documents\Overwatch\ScreenShots\Overwatch\` on Windows by default. Point Recall at that folder under **Settings → Directories**; the watcher (enabled under **Parse → Watch Folder**) auto-parses any new `.png` / `.jpg` that lands in it.
+Overwatch saves screenshots to `Documents\Overwatch\ScreenShots\Overwatch\` on Windows by default — but the Settings first-run picker also supports **Nvidia Overlay** (`~\Videos\Overwatch`), **Win Snip tool** (`~\Pictures\Screenshots`), and **Steam-installed OW** (`<SteamInstall>\userdata\<id>\760\remote\<OW-app-id>\screenshots`). Point Recall at whichever you use; the watcher (enabled under **Parse → Watch Folder**) auto-parses any new `.png` / `.jpg` that lands in it.
 
-**What if a screenshot type is missing?** Each match row has a *Data Coverage* strip in the detail panel (click any row to open) that flags which of the four screenshot types were captured. Required-but-missing types are highlighted with a warning chip; the optional RANK is shown greyed out when absent. Screenshots Recall couldn't match to a known map collect in the **Unknown** tab for triage.
+**What if a screenshot type is missing?** Each match row has a *Data Coverage* strip in the detail panel (click any row to open) that flags which of the four screenshot types were captured. Required-but-missing types are highlighted with a warning chip; the optional RANK is shown greyed out when absent. Screenshots Recall couldn't match to a known map collect in the **Unknown** tab for triage — alongside any record whose hero or map text didn't match the canonical roster shipped with this release (see [Reference data gaps](docs/unknown-screenshots.md#reference-data-gaps) for what to do).
+
+### Bulk-set play mode + queue type
+
+The Matches list has per-row checkboxes (left column). Tick one or more rows and a sticky toolbar appears at the top of the list: **Select all (N)** / **Clear** / **Set play mode ▾** (Quickplay / Competitive / Clear) / **Set queue ▾** (Role Queue / Open Queue / Clear). Each menu pick fires a single bulk write across every selected row — fast even on hundreds of matches at once. Your annotations / hidden flags / reviews all key on `match_key`, so bulk-set never disturbs the user-curated metadata.
 
 ### Multiple accounts (profiles)
 
