@@ -51,11 +51,14 @@ test.describe('saved-set / narrow presets', () => {
     await page.locator('#tab-matches').click()
 
     // Open narrow popover (the trigger button is on the dossier).
-    await page.locator('button:has-text("Narrow")').first().click()
+    await page.locator('[data-narrow-trigger]').click()
 
-    // Pick a hero → narrow to lucio matches.
+    // Pick a hero → narrow to lucio matches. ArrowDown moves the
+    // cursor to the first option, Enter then selects it (TypeaheadDropdown's
+    // free-text emit doesn't route through FilterCombobox).
     const heroCombo = page.locator('[data-combo-id="hero"] input.combo-input').first()
     await heroCombo.fill('lucio')
+    await heroCombo.press('ArrowDown')
     await heroCombo.press('Enter')
 
     // Save the narrow under "comp clutch".
@@ -67,14 +70,14 @@ test.describe('saved-set / narrow presets', () => {
 
     await page.reload()
     await page.locator('#tab-matches').click()
-    await page.locator('button:has-text("Narrow")').first().click()
+    await page.locator('[data-narrow-trigger]').click()
     await expect(page.locator('[data-preset-name="comp clutch"]')).toBeVisible()
 
-    // Reset narrow then click the preset; it re-applies.
-    await page.locator('button:has-text("Reset")').first().click()
+    // Narrow state is fresh after the reload — every record is
+    // visible. Clicking the saved preset re-narrows to the lucio
+    // subset (2 of the 3 records).
     await expect(page.locator('.leaf-row')).toHaveCount(records.length)
     await page.locator('[data-preset-name="comp clutch"]').click()
-    // Two of the three records are lucio.
     await expect(page.locator('.leaf-row')).toHaveCount(2)
   })
 })

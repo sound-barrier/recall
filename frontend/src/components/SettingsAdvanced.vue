@@ -52,9 +52,10 @@ const emit = defineEmits<{
 
 // Re-parse running counts — surfaced beneath the button while a
 // re-parse-all run is in flight, then held visible for 5 s after
-// completion so the user reads the result before it clears. The
-// counters arrive via parse-progress events; we cache them in a
-// ref so the visible line outlives the live SSE stream.
+// completion so the user reads the result before it clears. Pulled
+// from props.parseProgress directly so the test can mount with the
+// prop set and see the line render immediately (a watch wouldn't
+// fire on initial render).
 const lastReparseSummary = ref<{ updated: number; hero: number; map: number; total: number } | null>(null)
 let reparseClearTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -67,7 +68,7 @@ watch(() => props.parseProgress, (next) => {
       total:   next.total ?? 0,
     }
   }
-})
+}, { immediate: true })
 
 watch(() => props.reparsing, (next, prev) => {
   // Transition true → false signals the run finished — hold the

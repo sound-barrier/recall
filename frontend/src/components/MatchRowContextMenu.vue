@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 // Right-click context menu for a Matches list row. Quick actions
 // without first opening the detail panel:
@@ -131,6 +131,38 @@ function onHide() {
   emit('hide', props.matchKey)
   emit('close')
 }
+
+// Viewport-edge clamp — the original menu was small (~110 px tall)
+// and rarely overlapped the edge in real use, so the clamp was
+// deferred. After item 7 the menu is taller (~260 px with all 8
+// actions) and right-clicks near the bottom of the leaves list
+// would render off-screen. Estimate the menu size and shift the
+// origin upward / leftward if the natural position would clip.
+const MENU_W = 220
+const MENU_H_BASE = 90  // header rows that always render
+const MENU_H_PER_ITEM = 36
+function clampedPosition(p: { x: number; y: number }): { left: string; top: string } {
+  if (typeof window === 'undefined') return { left: `${p.x}px`, top: `${p.y}px` }
+  // Estimate the live menu height — every menu item adds the same
+  // ~36px; the gated items (Copy replay code, Open source folder)
+  // only render under their conditions so the estimate adapts.
+  let itemCount = 5 // Open detail, Anchor, Tag, Edit annotation, Copy link, Hide (always-on)
+  if (props.replayCode) itemCount++
+  if (props.isWails)    itemCount++
+  const h = MENU_H_BASE + itemCount * MENU_H_PER_ITEM
+  const w = MENU_W
+  const margin = 8
+  const maxX = window.innerWidth  - w - margin
+  const maxY = window.innerHeight - h - margin
+  const left = Math.max(margin, Math.min(p.x, maxX))
+  const top  = Math.max(margin, Math.min(p.y, maxY))
+  return { left: `${left}px`, top: `${top}px` }
+}
+
+const menuStyle = computed(() => {
+  if (!props.position) return {}
+  return clampedPosition(props.position)
+})
 </script>
 
 <template>
@@ -142,7 +174,7 @@ function onHide() {
         class="match-row-ctx"
         role="menu"
         data-row-ctx
-        :style="{ left: position.x + 'px', top: position.y + 'px' }"
+        :style="menuStyle"
       >
         <button
           type="button"

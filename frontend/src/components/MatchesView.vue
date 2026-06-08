@@ -814,9 +814,11 @@ function onRowContextOpenSourceFolder(matchKey: string) {
 }
 
 // Replay-code lookup for the menu's gating (we hide "Copy replay
-// code" when the active row has no code on file).
+// code" when the active row has no code on file). Looks up against
+// the narrowed set since MatchesView doesn't see the full records
+// array — for right-click on a visible row that's always sufficient.
 function replayCodeFor(matchKey: string): string | null {
-  return records.value.find(r => r.match_key === matchKey)?.annotation?.replay_code ?? null
+  return narrowedRecords.value.find(r => r.match_key === matchKey)?.annotation?.replay_code ?? null
 }
 
 // Wails-detect — duplicated as a one-liner so the menu doesn't have

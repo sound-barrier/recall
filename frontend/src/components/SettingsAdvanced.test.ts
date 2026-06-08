@@ -113,3 +113,56 @@ describe('SettingsAdvanced — Clear Database opt-out checkbox', () => {
     expect((checkbox.element as HTMLInputElement).checked).toBe(false)
   })
 })
+
+describe('SettingsAdvanced — re-parse progress line (item 12)', () => {
+  it('renders nothing when parseProgress carries no re-parse counters', () => {
+    const wrapper = mount(SettingsAdvanced, {
+      props: {
+        prometheusEnabled: false,
+        parseProgress: { done: 5, total: 47, filename: 'x.png' },
+      },
+    })
+    expect(wrapper.find('[data-reparse-progress-line]').exists()).toBe(false)
+  })
+
+  it('renders the cumulative counters when the SSE event carries them', async () => {
+    const wrapper = mount(SettingsAdvanced, {
+      props: {
+        prometheusEnabled: false,
+        reparsing: true,
+        parseProgress: {
+          done: 47,
+          total: 47,
+          filename: 'x.png',
+          matches_updated: 12,
+          hero_corrections: 3,
+          map_corrections: 1,
+        },
+      },
+    })
+    const line = wrapper.find('[data-reparse-progress-line]')
+    expect(line.exists()).toBe(true)
+    expect(line.text()).toContain('12 of 47 matches updated')
+    expect(line.text()).toContain('3 hero / 1 map corrected')
+  })
+
+  it('omits the corrections suffix when neither hero nor map fields changed', () => {
+    const wrapper = mount(SettingsAdvanced, {
+      props: {
+        prometheusEnabled: false,
+        reparsing: true,
+        parseProgress: {
+          done: 47,
+          total: 47,
+          filename: 'x.png',
+          matches_updated: 12,
+          hero_corrections: 0,
+          map_corrections: 0,
+        },
+      },
+    })
+    const line = wrapper.find('[data-reparse-progress-line]')
+    expect(line.text()).toContain('12 of 47 matches updated')
+    expect(line.text()).not.toContain('corrected')
+  })
+})
