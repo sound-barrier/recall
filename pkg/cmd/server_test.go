@@ -304,6 +304,86 @@ func TestServerMux_DeleteSingleMatch_DelegatesToStore(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Bulk queue-type + play-mode collection-level setters. One PUT
+// rewrites N rows in a single transaction instead of N per-match
+// PUTs — feeds the sticky bulk-action toolbar on the Matches view.
+// ──────────────────────────────────────────────────────────────────────────
+
+func TestServerMux_BulkSetMatchQueue_AppliesValueToEveryKey(t *testing.T) {
+	fs := dbtest.New()
+	_, mux := newTestApp(t, fs)
+	rec := put(t, mux, "/api/v1/matches/queue-type", map[string]any{
+		"match_keys": []string{"m1", "m2", "m3"}, "queue_type": "role",
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+	got, _ := fs.LoadMatchQueues()
+	for _, k := range []string{"m1", "m2", "m3"} {
+		if got[k].QueueType != "role" {
+			t.Errorf("%s = %q, want role", k, got[k].QueueType)
+		}
+	}
+}
+
+func TestServerMux_BulkSetMatchQueue_EmptyValueClearsRows(t *testing.T) {
+	fs := dbtest.New()
+	_ = fs.SetMatchQueue("m1", "role")
+	_ = fs.SetMatchQueue("m2", "open")
+	_, mux := newTestApp(t, fs)
+	rec := put(t, mux, "/api/v1/matches/queue-type", map[string]any{
+		"match_keys": []string{"m1"}, "queue_type": "",
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+	got, _ := fs.LoadMatchQueues()
+	if _, ok := got["m1"]; ok {
+		t.Errorf("m1 should have been cleared, got %+v", got["m1"])
+	}
+	if got["m2"].QueueType != "open" {
+		t.Errorf("m2 not in clear list, should still be open; got %q", got["m2"].QueueType)
+	}
+}
+
+func TestServerMux_BulkSetMatchQueue_400OnInvalidValue(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := put(t, mux, "/api/v1/matches/queue-type", map[string]any{
+		"match_keys": []string{"m1"}, "queue_type": "ranked",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestServerMux_BulkSetMatchPlayMode_AppliesValueToEveryKey(t *testing.T) {
+	fs := dbtest.New()
+	_, mux := newTestApp(t, fs)
+	rec := put(t, mux, "/api/v1/matches/play-mode", map[string]any{
+		"match_keys": []string{"m1", "m2"}, "play_mode": "competitive",
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status %d body=%s", rec.Code, rec.Body.String())
+	}
+	got, _ := fs.LoadMatchPlayModes()
+	for _, k := range []string{"m1", "m2"} {
+		if got[k].PlayMode != "competitive" {
+			t.Errorf("%s = %q, want competitive", k, got[k].PlayMode)
+		}
+	}
+}
+
+func TestServerMux_BulkSetMatchPlayMode_400OnInvalidValue(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := put(t, mux, "/api/v1/matches/play-mode", map[string]any{
+		"match_keys": []string{"m1"}, "play_mode": "ranked",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // Toggle endpoints — PUT for setters, GET for read, 204 for writes.
 // ──────────────────────────────────────────────────────────────────────────
 

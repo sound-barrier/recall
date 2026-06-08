@@ -29,6 +29,41 @@ func (s *SQLStore) ClearMatchPlayMode(matchKey string) error {
 	return err
 }
 
+// BulkSetMatchPlayMode upserts the same play_mode onto every key
+// inside one transaction. playMode="" deletes the rows (bulk
+// Clear). See BulkSetMatchQueue for the crash-consistency
+// rationale.
+func (s *SQLStore) BulkSetMatchPlayMode(matchKeys []string, playMode string) error {
+	if len(matchKeys) == 0 {
+		return nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }() // no-op after Commit
+	var stmt string
+	if playMode == "" {
+		stmt = `DELETE FROM match_play_mode WHERE match_key = ?`
+		for _, k := range matchKeys {
+			if _, err := tx.Exec(stmt, k); err != nil {
+				return err
+			}
+		}
+	} else {
+		stmt = `INSERT INTO match_play_mode (match_key, play_mode) VALUES (?, ?)
+			 ON CONFLICT(match_key) DO UPDATE SET
+			   play_mode = excluded.play_mode,
+			   set_at    = CURRENT_TIMESTAMP`
+		for _, k := range matchKeys {
+			if _, err := tx.Exec(stmt, k, playMode); err != nil {
+				return err
+			}
+		}
+	}
+	return tx.Commit()
+}
+
 func (s *SQLStore) LoadMatchPlayModes() (map[string]PlayModeState, error) {
 	rows, err := s.db.Query(`SELECT match_key, play_mode, set_at FROM match_play_mode`)
 	if err != nil {

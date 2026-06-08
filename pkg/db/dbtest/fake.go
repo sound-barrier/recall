@@ -486,6 +486,21 @@ func (f *Fake) ClearMatchQueue(matchKey string) error {
 	return nil
 }
 
+func (f *Fake) BulkSetMatchQueue(matchKeys []string, queueType string) error {
+	for _, k := range matchKeys {
+		if queueType == "" {
+			if err := f.ClearMatchQueue(k); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := f.SetMatchQueue(k, queueType); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (f *Fake) LoadMatchQueues() (map[string]db.QueueState, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -515,6 +530,21 @@ func (f *Fake) ClearMatchPlayMode(matchKey string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	delete(f.PlayModes, matchKey)
+	return nil
+}
+
+func (f *Fake) BulkSetMatchPlayMode(matchKeys []string, playMode string) error {
+	for _, k := range matchKeys {
+		if playMode == "" {
+			if err := f.ClearMatchPlayMode(k); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := f.SetMatchPlayMode(k, playMode); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

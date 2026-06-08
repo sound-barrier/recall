@@ -26,6 +26,42 @@ func (s *SQLStore) ClearMatchQueue(matchKey string) error {
 	return err
 }
 
+// BulkSetMatchQueue upserts the same queue_type onto every key
+// inside one transaction so a partial mid-write crash leaves the
+// table consistent. queueType="" deletes the rows (bulk Clear).
+// Empty key slice is a no-op (the loop runs zero times) — callers
+// don't need to short-circuit on the frontend.
+func (s *SQLStore) BulkSetMatchQueue(matchKeys []string, queueType string) error {
+	if len(matchKeys) == 0 {
+		return nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }() // no-op after Commit
+	var stmt string
+	if queueType == "" {
+		stmt = `DELETE FROM match_queue WHERE match_key = ?`
+		for _, k := range matchKeys {
+			if _, err := tx.Exec(stmt, k); err != nil {
+				return err
+			}
+		}
+	} else {
+		stmt = `INSERT INTO match_queue (match_key, queue_type) VALUES (?, ?)
+			 ON CONFLICT(match_key) DO UPDATE SET
+			   queue_type = excluded.queue_type,
+			   set_at     = CURRENT_TIMESTAMP`
+		for _, k := range matchKeys {
+			if _, err := tx.Exec(stmt, k, queueType); err != nil {
+				return err
+			}
+		}
+	}
+	return tx.Commit()
+}
+
 func (s *SQLStore) LoadMatchQueues() (map[string]QueueState, error) {
 	rows, err := s.db.Query(`SELECT match_key, queue_type, set_at FROM match_queue`)
 	if err != nil {

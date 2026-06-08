@@ -48,6 +48,8 @@ import {
   GetIgnoredScreenshots,
   SetMatchAnnotation,
   SetMatchVisibility,
+  BulkSetMatchPlayMode,
+  BulkSetMatchQueue,
   SetMatchReview,
   SetMatchQueue,
   SetMatchPlayMode,
@@ -775,6 +777,31 @@ async function onHideMatches(matchKeys: string[]) {
   if (matchKeys.length === 0) return
   try {
     await Promise.all(matchKeys.map((k) => SetMatchVisibility(k, true)))
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+// Bulk play-mode / queue-type writers — one PUT to the
+// collection-level endpoint instead of N per-match PUTs. The
+// frontend's bulk wrapper hits PUT /api/v1/matches/play-mode (or
+// /queue-type) which writes in one SQLite transaction; a partial
+// crash leaves the table consistent.
+async function onBulkPlayMode(matchKeys: string[], playMode: PlayMode) {
+  if (matchKeys.length === 0) return
+  try {
+    await BulkSetMatchPlayMode(matchKeys, playMode)
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+async function onBulkQueue(matchKeys: string[], queueType: QueueType) {
+  if (matchKeys.length === 0) return
+  try {
+    await BulkSetMatchQueue(matchKeys, queueType)
     await load()
   } catch (e) {
     error.value = String(e)
@@ -1724,6 +1751,8 @@ useEventStream({
           @open-match="(k: string) => selection.open(k)"
           @narrow-open="onMatchesNarrowOpen"
           @hide-matches="onHideMatches"
+          @bulk-play-mode="onBulkPlayMode"
+          @bulk-queue="onBulkQueue"
           @unhide-match="(k: string) => onSetMatchHidden(k, false)"
           @hard-delete-match="onHardDeleteMatch"
           @unhide-matches="onUnhideMatches"

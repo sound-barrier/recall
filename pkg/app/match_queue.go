@@ -42,3 +42,15 @@ func (a *App) ClearMatchQueue(matchKey string) error {
 	}
 	return a.store.ClearMatchQueue(matchKey)
 }
+
+// BulkSetMatchQueue applies the same queue_type to every key in the
+// slice in one transaction. queueType="" clears the rows (bulk
+// Clear). Validates the value before reaching SQL so an invalid
+// input never starts a partial-write. The slice is allowed to be
+// empty — returns nil without touching the store.
+func (a *App) BulkSetMatchQueue(matchKeys []string, queueType string) error {
+	if queueType != "" && !validQueueTypes[queueType] {
+		return ErrInvalidQueueType
+	}
+	return a.store.BulkSetMatchQueue(matchKeys, queueType)
+}

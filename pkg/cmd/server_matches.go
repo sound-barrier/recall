@@ -143,6 +143,17 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("PUT /api/v1/matches/transfers", methodNotAllowed("POST"))
 	apiMux.HandleFunc("DELETE /api/v1/matches/transfers", methodNotAllowed("POST"))
 
+	// Same 405 stub pattern for the bulk endpoints — without
+	// these, GET /api/v1/matches/play-mode would resolve to the
+	// {matchKey} wildcard with matchKey="play-mode" and return 404.
+	// (Schemathesis's unsupported_method check expects 405.)
+	apiMux.HandleFunc("GET /api/v1/matches/play-mode", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("POST /api/v1/matches/play-mode", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("DELETE /api/v1/matches/play-mode", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("GET /api/v1/matches/queue-type", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("POST /api/v1/matches/queue-type", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("DELETE /api/v1/matches/queue-type", methodNotAllowed("PUT"))
+
 	// Hard-delete a single match — every parent row + annotation +
 	// hidden flag for matchKey goes. Surfaced by the Hidden drawer's
 	// "Delete forever" affordance once a user has already moved the
@@ -446,6 +457,56 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 			return
 		}
 		if err := a.ClearMatchPlayMode(matchKey); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	// Bulk queue-type write. Body: {"match_keys": [...], "queue_type":
+	// "role"|"open"|""}. Empty string clears the rows (bulk Clear).
+	// One SQL transaction so a partial mid-write crash leaves the
+	// table consistent; the per-match PUT/DELETE endpoints are still
+	// the right shape for one-off toggles, this endpoint exists so
+	// the sticky "set 47 selected matches" toolbar doesn't fire 47
+	// PUTs and pay 47 commit round-trips.
+	apiMux.HandleFunc("PUT /api/v1/matches/queue-type", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			MatchKeys []string `json:"match_keys"`
+			QueueType string   `json:"queue_type"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if err := a.BulkSetMatchQueue(body.MatchKeys, body.QueueType); err != nil {
+			if errors.Is(err, app.ErrInvalidQueueType) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	// Bulk play-mode write. Body: {"match_keys": [...], "play_mode":
+	// "quickplay"|"competitive"|""}. Same shape as the bulk queue
+	// endpoint above.
+	apiMux.HandleFunc("PUT /api/v1/matches/play-mode", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			MatchKeys []string `json:"match_keys"`
+			PlayMode  string   `json:"play_mode"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if err := a.BulkSetMatchPlayMode(body.MatchKeys, body.PlayMode); err != nil {
+			if errors.Is(err, app.ErrInvalidPlayMode) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

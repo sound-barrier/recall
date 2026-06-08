@@ -34,6 +34,45 @@ func TestSetMatchPlayMode_RejectsInvalidValue(t *testing.T) {
 	}
 }
 
+func TestBulkSetMatchPlayMode_WritesEveryKey(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	if err := a.BulkSetMatchPlayMode([]string{"m1", "m2", "m3"}, "competitive"); err != nil {
+		t.Fatalf("bulk set: %v", err)
+	}
+	got, _ := fs.LoadMatchPlayModes()
+	for _, k := range []string{"m1", "m2", "m3"} {
+		if got[k].PlayMode != "competitive" {
+			t.Errorf("after bulk set, %s = %q, want competitive", k, got[k].PlayMode)
+		}
+	}
+}
+
+func TestBulkSetMatchPlayMode_EmptyValueClearsRows(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	_ = a.SetMatchPlayMode("m1", "competitive")
+	_ = a.SetMatchPlayMode("m2", "quickplay")
+	if err := a.BulkSetMatchPlayMode([]string{"m1"}, ""); err != nil {
+		t.Fatalf("bulk clear: %v", err)
+	}
+	got, _ := fs.LoadMatchPlayModes()
+	if _, ok := got["m1"]; ok {
+		t.Errorf("m1 should have been cleared, got %+v", got["m1"])
+	}
+	if got["m2"].PlayMode != "quickplay" {
+		t.Errorf("m2 not in clear list, should still be quickplay; got %q", got["m2"].PlayMode)
+	}
+}
+
+func TestBulkSetMatchPlayMode_RejectsInvalidValue(t *testing.T) {
+	a := NewWithStore(&fakeStore{})
+	err := a.BulkSetMatchPlayMode([]string{"m1"}, "unranked")
+	if !errors.Is(err, ErrInvalidPlayMode) {
+		t.Errorf("got %v, want ErrInvalidPlayMode", err)
+	}
+}
+
 func TestSetMatchPlayMode_OverwritesExisting(t *testing.T) {
 	fs := &fakeStore{}
 	a := NewWithStore(fs)
