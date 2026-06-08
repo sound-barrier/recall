@@ -1216,13 +1216,16 @@ export interface paths {
          * Server-Sent Events stream
          * @description Long-lived `text/event-stream` connection. Subscribers receive:
          *       * `parse-progress` — fired per OCR'd file during a parse run,
-         *         carries `{done, total, filename, screenshot_type, match_key?, data?, error?}`.
+         *         carries `{done, total, filename, screenshot_type, match_key?, data?, error?, matches_updated?, hero_corrections?, map_corrections?}`.
          *         `match_key` is the resolved key for the just-inserted row
          *         (present on post-insert events; absent on the mid-OCR
          *         preview event). `error` is set when that single file failed
          *         to parse; the batch continues to the next file regardless,
          *         so the client should render a warning without aborting the
-         *         in-flight UI.
+         *         in-flight UI. `matches_updated` / `hero_corrections` /
+         *         `map_corrections` are cumulative re-parse counters since
+         *         the run began; absent (zero) on a regular parse run, so
+         *         consumers that ignore them are unaffected.
          *       * `match-updated` — fired immediately after each successful
          *         per-screenshot insert, carrying the fully-aggregated
          *         `MatchRecord` for the affected `match_key`. Lets the
