@@ -147,32 +147,33 @@ session can skip the survey step.
 
 ## Ready to implement (clear scope, no design research needed)
 
-### 1. Leaf-row virtualization
+### 1. Leaf-row virtualization (primitive landed; integration deferred)
 
-`MatchesView.vue`'s leaves list (the `<ul class="leaves-list">`
-inside the Members section) renders every visible match's
-`<li class="leaf-row">` to the DOM. Fine through ~200 rows;
-degrades past ~500. With `groupBy: 'none'` the list is flat (~one
-row per match); with `groupBy: 'day'` (default) thin
-`<li class="section-divider">` headers interleave but most of the
-DOM weight is still leaf rows. A mid-tier user (year of matches)
-is already past the comfortable point.
+`MatchesView.vue`'s leaves list renders every visible match's
+`<li class="leaf-row">` to the DOM. Fine through ~200 rows; the
+existing `useMatchesWindow` composable caps the visible slice at
+the pageSize default (~50 rows) until the user clicks "load more"
+or "expand to all," so most users never hit the slow path.
 
-- **Library**: `vue-virtual-scroller` is the closest fit for
-  Vue 3 + Vite; leaf-row height is small + uniform enough that
-  fixed-height virtualization works for `groupBy: 'none'`. For
-  the grouped variants the section dividers need to be in the
-  virtual list too — `<DynamicScroller>` handles mixed-height,
-  but it's heavier.
-- **Constraint**: the row click handler (`@click="emit('open-match', …)"`)
-  needs to survive virtualization. Mirror what
-  `vue-virtual-scroller` recommends for click handlers on
-  recycled items.
-- **Effort**: ~6–8 hours. Performance verification needed —
-  add a test fixture with 1000+ records and check first-paint
-  before and after.
-- **Tradeoff**: adds a dependency. Discuss before pulling the
-  trigger.
+A `useVirtualWindow` composable shipped with thorough unit tests
+as part of the queue close-out, so when a real perf complaint
+surfaces the primitive is ready to wire into the view. Integration
+deferred because the touch-points (IntersectionObserver sentinel
+for load-more, `j`/`k` keyboard nav over off-screen rows, anchor
+scroll, group dividers, click-handler stability across recycled
+items) all need to be re-thought in one pass — a half-integration
+would regress more than the perf bottleneck saves.
+
+When activating, the integration pass should:
+
+- Replace the `<template v-for="section in windowedSections">`
+  body with a `useVirtualWindow`-driven renderer for the
+  `groupBy === 'none'` case first; grouped variants stay on the
+  existing pagination until uniform-height section dividers ship.
+- Preserve the row click handler — bind against the loop variable,
+  not derived state, so recycled items dispatch correctly.
+- Keep the sentinel-based "load more" pattern intact; this
+  composable composes inside it, not as a replacement.
 
 ## Polish / lower-priority
 
