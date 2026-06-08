@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.9.1](https://github.com/sound-barrier/recall/compare/v0.9.0...v0.9.1) (2026-06-08)
+
+
+### Features
+
+* **matches:** bulk-set play-mode + queue-type on the selected rows ([7a0d818](https://github.com/sound-barrier/recall/commit/7a0d81837a2d13ed76d1ff23f6f6694be2929595))
+* **matches:** harmonize sort / density / jump controls onto a shared button-row shape ([fd33a4c](https://github.com/sound-barrier/recall/commit/fd33a4c294ee9a095f46f428b4261f7271314092))
+* **matches:** leaf ↔ chooser ↔ filter all read the same play-mode bucket ([92b09f6](https://github.com/sound-barrier/recall/commit/92b09f63c27dcddad2a79d23b16013c68d5ea56d))
+* **matches:** leaf row carries a queue-type chip next to the play-mode chip ([474829b](https://github.com/sound-barrier/recall/commit/474829b775940818fbf6477aaa08b69f2aa32f19))
+* **matches:** scroll-to-top button + jump-to-undated affordance ([dc7d258](https://github.com/sound-barrier/recall/commit/dc7d258ba88d683adf83de737b38b585dc58cc69))
+
+
+### Bug Fixes
+
+* **ci:** disable schemathesis negative_data_rejection — flaky on DELETE matches ([e063088](https://github.com/sound-barrier/recall/commit/e063088604915ccf18205bd6f3bb8de21c128014))
+* **matches:** jump-to-undated expands the window so the "No date" section reaches the DOM ([2fa704c](https://github.com/sound-barrier/recall/commit/2fa704cdf5a7ee8f2d68eff82b29c7555e12d9eb))
+* **matches:** jump-to-undated lands the section header below the sticky Campaign Log ([05fb04d](https://github.com/sound-barrier/recall/commit/05fb04d32c941480d5c2978dd1fc82826ced3680))
+* **matches:** open-queue leaf row lists every role the player touched, not just primary ([6b982ce](https://github.com/sound-barrier/recall/commit/6b982ce0fc6651eca89bbc1436ae4b01c92de8a9))
+* **release-please:** fail loudly when the label-flip lookup returns empty ([d314308](https://github.com/sound-barrier/recall/commit/d31430819d93356190543431f27177e97c901f6f))
+
 ## [0.9.0](https://github.com/sound-barrier/recall/compare/v0.8.0...v0.9.0) (2026-06-05)
 
 
