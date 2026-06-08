@@ -81,6 +81,15 @@ session can skip the survey step.
   an `AUTO-DETECT · WINDOWS ONLY` eyebrow) and show only the
   custom-pick button. `ScreenshotSourcePicker.vue` +
   `pkg/app/probe_windows.go` (registry resolver).
+- ~~**OnboardingTour set-workspace copy rewrite**~~ — the
+  matches-dossier / matches-narrow / matches-list / matches-detail
+  step copy now leans into the "set workspace" framing: the
+  dossier *describes* the active SET, the narrow panel *composes*
+  the set by intersecting clauses, leaves are members of the
+  set, the detail panel is per-leaf. Targets were already at
+  the redesigned class names (.set-dossier / #narrow-popover /
+  .leaves-list / aside.detail-panel); this PR is content-only.
+  Two more callout surfaces (PRs 7 + 8) wrap up item 13.
 - ~~**Reference data gap card → "Fixed in vX.Y.Z" CTA**~~ — the
   Unknown tab's gap-card now surfaces an upgrade tip when the
   upcoming release's `heroes.yaml` / `maps.yaml` already lists
@@ -155,10 +164,6 @@ is already past the comfortable point.
 shipped pre-PR-#218 and don't introduce three large surfaces
 that landed since:
 
-- **Set workspace** — dossier headline, narrow panel, leaf
-  rows. The current tour predates this redesign and lands
-  users on the old AggregateStats shape; the spotlight is
-  pointing at the wrong region.
 - **Screenshot source picker** — first-run Windows users never
   see the 4-card grid explained; they figure it out from the
   card labels alone.
