@@ -7,6 +7,7 @@ vi.mock('../api', () => ({
 }))
 
 import FirstRunProfileModal from './FirstRunProfileModal.vue'
+import type { NamedCandidate } from '../api'
 
 beforeEach(() => {
   RenameProfileMock.mockReset()
@@ -15,14 +16,14 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-const CANDIDATES = [
+const CANDIDATES: NamedCandidate[] = [
   { name: 'nvidia',  label: 'Nvidia Overlay', path: 'C:\\Users\\J\\Videos\\Overwatch',                 exists: true  },
   { name: 'prntscn', label: 'OW default',     path: 'C:\\Users\\J\\Documents\\Overwatch\\SS\\Overwatch', exists: false },
   { name: 'snip',    label: 'Snip tool',      path: 'C:\\Users\\J\\Pictures\\Screenshots',             exists: true  },
   { name: 'steam',   label: 'Steam install',  path: '',                                                  exists: false },
-] as const
+]
 
-function mountModal(overrides: Partial<{ platform: string; candidates: typeof CANDIDATES; picking: boolean }> = {}) {
+function mountModal(overrides: Partial<{ platform: string; candidates: NamedCandidate[]; picking: boolean }> = {}) {
   return mount(FirstRunProfileModal, {
     attachTo: document.body,
     props: {

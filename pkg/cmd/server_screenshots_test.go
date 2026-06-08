@@ -47,6 +47,28 @@ func TestPostScreenshotsIgnore_URLEncodedFilename(t *testing.T) {
 	}
 }
 
+func TestPostScreenshotsIgnore_FilenameWithLiteralPercent(t *testing.T) {
+	// Go 1.22's ServeMux URL-decodes path wildcards before
+	// `r.PathValue`, so a request URL of `%25` arrives at the
+	// handler as a literal `%`. The handler must NOT decode again
+	// — schemathesis caught a regression where the inner
+	// PathUnescape tried to interpret `%1` (literal percent +
+	// digit) as a percent-escape and 400'd a perfectly valid
+	// filename. Schema regex `^[^/\\\x00]{1,200}$` admits `%`.
+	fs := dbtest.New()
+	_, mux := newTestApp(t, fs)
+	rec := fire(t, mux, http.MethodPost,
+		"/api/v1/screenshots/odd-%251file.png/ignore", nil)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204; body = %q", rec.Code, rec.Body.String())
+	}
+	got, _ := fs.LoadIgnoredFilenames()
+	want := "odd-%1file.png"
+	if !got[want] {
+		t.Errorf("filename not stored; got=%v want key %q", got, want)
+	}
+}
+
 func TestDeleteScreenshotsIgnore_RemovesAndReturns204(t *testing.T) {
 	fs := dbtest.New()
 	_ = fs.AddIgnoredScreenshot("toggle.png")
