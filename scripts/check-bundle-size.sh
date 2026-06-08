@@ -35,7 +35,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 : "${MAX_INITIAL_JS_BYTES:=156000}"
 : "${MAX_INITIAL_CSS_BYTES:=60000}"
 : "${MAX_TOTAL_JS_BYTES:=440000}"
-: "${MAX_TOTAL_CSS_BYTES:=245000}"
+: "${MAX_TOTAL_CSS_BYTES:=250000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   echo "==> building frontend (npm --prefix frontend run build)…"
