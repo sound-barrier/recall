@@ -1,9 +1,6 @@
 import { ref, watch, toValue, onBeforeUnmount, type MaybeRefOrGetter } from 'vue'
 
-import {
-  CONTEXTUAL_CALLOUT_KEY_PREFIX,
-  ONBOARDING_COMPLETED_KEY,
-} from './storageKeys'
+import { CONTEXTUAL_CALLOUT_KEY_PREFIX } from './storageKeys'
 
 // useContextualCallout is the trigger surface for a single
 // just-in-time hint. The full OnboardingTour walks every new user
@@ -27,11 +24,14 @@ import {
 //      queued — the in-flight callout must clear first (caps to
 //      one at a time avoids stacked-popover chaos).
 //
-// The global onboarding gate is respected because a user who
-// dismissed the full tour signaled "I don't want hand-holding."
-// Re-tutorialing them via contextual callouts contradicts that.
-// A user who finished the tour gets the same `recall.onboardingCompleted=true`
-// flag set; the callouts skip then too.
+// Gating is per-callout-id only. The full OnboardingTour and the
+// contextual callouts serve different purposes: the tour is
+// "let me show you around;" each callout is "you just hit this
+// surface — here's the one-sentence read." A user who skipped the
+// full tour might still be encountering a specific surface for the
+// first time — they get the one-line orientation, then dismiss it
+// once, and never see it again. The `seen` flag PER CALLOUT ID is
+// the only durable state.
 
 // Module-level singleton — the id of the currently-visible callout,
 // or null if none. Lives at module scope so two callouts trying to
@@ -67,17 +67,13 @@ function storageKey(id: string): string {
 
 function alreadySeen(id: string): boolean {
   try {
-    if (localStorage.getItem(storageKey(id)) === 'true') return true
-    // Respect the global onboarding gate — a user who dismissed or
-    // finished the full tour gets every contextual callout skipped.
-    if (localStorage.getItem(ONBOARDING_COMPLETED_KEY) === 'true') return true
+    return localStorage.getItem(storageKey(id)) === 'true'
   } catch (_) {
     // localStorage unavailable — treat as "seen" so the callout
     // doesn't fire in degraded environments (server-rendered tests,
     // sandboxed iframes).
     return true
   }
-  return false
 }
 
 export function useContextualCallout(

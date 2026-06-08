@@ -10,8 +10,11 @@
  * Callout fires when:
  *   - platform = windows AND
  *   - candidates.length > 0 AND
- *   - recall.tour.source-picker.seen IS NOT 'true' AND
- *   - recall.onboardingCompleted IS NOT 'true'
+ *   - recall.tour.source-picker.seen IS NOT 'true'
+ *
+ * The global `recall.onboardingCompleted` flag is NOT a gate —
+ * contextual callouts are surface-specific orientations, not a
+ * re-tutorialization of users who already skipped the full tour.
  */
 import type { Route } from '@playwright/test'
 
@@ -59,10 +62,12 @@ async function mockBoot(page: import('@playwright/test').Page) {
 
 test.describe('source picker — contextual callout', () => {
   test('callout surfaces on first picker render + dismisses on the Got it button', async ({ page }) => {
-    // Make sure neither gate flag is set so the callout fires.
+    // Make sure the per-id gate is clear so the callout fires. The
+    // `_fixtures.ts` shared fixture has already set
+    // recall.onboardingCompleted=true to skip the full tour — that's
+    // intentional and does NOT block this callout.
     await page.addInitScript(() => {
       window.localStorage.removeItem('recall.tour.source-picker.seen')
-      window.localStorage.removeItem('recall.onboardingCompleted')
     })
     await mockBoot(page)
     await page.goto('/')
@@ -93,22 +98,9 @@ test.describe('source picker — contextual callout', () => {
     await expect(page.locator('[data-ctx-callout]')).toHaveCount(0)
   })
 
-  test('callout does NOT surface when the global onboarding flag is set', async ({ page }) => {
-    await page.addInitScript(() => {
-      window.localStorage.removeItem('recall.tour.source-picker.seen')
-      window.localStorage.setItem('recall.onboardingCompleted', 'true')
-    })
-    await mockBoot(page)
-    await page.goto('/')
-    await page.locator('button[role="tab"]', { hasText: 'Settings' }).click()
-    await expect(page.locator('[data-src-grid]')).toBeVisible()
-    await expect(page.locator('[data-ctx-callout]')).toHaveCount(0)
-  })
-
   test('clicking any found card auto-dismisses the callout + persists seen', async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.removeItem('recall.tour.source-picker.seen')
-      window.localStorage.removeItem('recall.onboardingCompleted')
     })
     await mockBoot(page)
     await page.goto('/')
