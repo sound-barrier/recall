@@ -12,10 +12,11 @@ import { useWeekStart } from '../composables/useWeekStart'
 import { useDensity } from '../composables/useDensity'
 import { useScrollAffordance } from '../composables/useScrollAffordance'
 import { useOWData } from '../composables/useOWData'
+import { rolesForHeader, isHeroUnknown, isMapUnknown } from '../match-helpers'
 import {
-  rolesForHeader, formatPlayModeLabel, formatQueueTypeLabel,
-  isHeroUnknown, isMapUnknown, formatUnknownHeroLabel, formatUnknownMapLabel,
-} from '../match-helpers'
+  formatPlayModeLabel, formatQueueTypeLabel,
+  formatUnknownHeroLabel, formatUnknownMapLabel,
+} from '../match-label-helpers'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import { useArchiveSelection } from '../composables/useArchiveSelection'
 import MatchTimelineHeader from './MatchTimelineHeader.vue'

@@ -2,7 +2,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 
 import type { MatchRecord } from '../api'
-import { detectScreenshotSlots, screenshotURL, formatParsedAt } from '../match-helpers'
+import { detectScreenshotSlots, screenshotURL } from '../match-helpers'
+import { formatParsedAt } from '../match-time-helpers'
 import { filenameFromMatchKey } from '../match-key'
 import type { CardStateApi } from '../types/cardState'
 

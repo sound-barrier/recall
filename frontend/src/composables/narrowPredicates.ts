@@ -1,5 +1,5 @@
 import type { MatchRecord } from '../api'
-import { formatPlayModeLabel, formatQueueTypeLabel } from '../match-helpers'
+import { formatPlayModeLabel, formatQueueTypeLabel } from '../match-label-helpers'
 import type { PlayModePick, QueuePick, ReviewedByPick } from './useMatchesNarrow'
 
 // Per-dimension narrow predicates. Each function is ≤ 15 lines,

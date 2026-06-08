@@ -13,6 +13,7 @@ no soft-pedalling. Numbers that go down get a row too.
 
 | Date | PR | Init JS | Init CSS | Total JS | Total CSS | Rationale |
 |---|---|---|---|---|---|---|
+| 2026-06-08 | technical-debt-sweep | 156000 | 60000 | 422000 | 242000 | match-helpers.ts split into 5 topic files. Total JS dropped slightly, but Vite's chunking heuristic hoisted the smaller new modules into the initial chunk, lifting initial JS ~10 KB. Tradeoff is intentional — readability of the topic split outweighs the chunk-boundary shift; total stays under cap. |
 | 2026-06-08 | #227 | 146000 | 60000 | 422000 | 242000 | Parser tightening (length-gated fuzzy Pass-2) + the Reference-data-gaps UI on the Unknown tab landed alongside the screenshot-source picker. Combined coverage. |
 | 2026-06-08 | #226 | 146000 | 60000 | 422000 | 242000 | Windows screenshot source picker (4-card grid) — net JS +14 KB across `ScreenshotSourcePicker.vue` + first-run wiring. CSS bumped to absorb the picker grid styles. |
 | 2026-06-05 | #224 | 146000 | 60000 | 408000 | 230000 | Parser fuzzy fix + `hero_raw`/`map_raw` schema + Unknown-hero leaf chip + detail-panel gap banner. |

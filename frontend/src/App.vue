@@ -59,7 +59,8 @@ import {
   MoveMatches,
 } from './api'
 import type { IgnoredScreenshot, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from './api'
-import { tallyWLD, screenshotURL } from './match-helpers'
+import { screenshotURL } from './match-helpers'
+import { tallyWLD } from './match-stats-helpers'
 import { useTabKeyboardNav, TAB_ORDER, type TabId } from './composables/useTabKeyboardNav'
 import { useGlobalKeyboard } from './composables/useGlobalKeyboard'
 import { useModalFocusTrap } from './composables/useModalFocusTrap'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatRelativeTime } from '../match-helpers'
+import { formatRelativeTime } from '../match-time-helpers'
 import ParseProgressPanel, { type ParseProgressEvent } from './ParseProgressPanel.vue'
 
 // IngestView (presented to users as the "Parse" tab) — the
