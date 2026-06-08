@@ -1534,6 +1534,48 @@ paths:
                 items:
                   $ref: "#/components/schemas/NamedCandidate"
 
+  /api/v1/system/screenshots-folder-candidates/stats:
+    get:
+      operationId: GetScreenshotsFolderCandidateStats
+      tags: [System]
+      summary: Per-source diagnostic stats for the picker grid
+      description: |
+        Walks the first-existing path of each candidate source and
+        returns the file count, last-write timestamp, and the count
+        of files whose names match the parser's recognised filename
+        grammars. Surfaced as a second metadata line on each picker
+        card — "47 files · 2h ago" / "0 files" / "12 files · 0
+        recognised" — so the user instantly knows which source their
+        captures are landing in.
+
+        Decoupled from the picker's primary fetch because the dir
+        walk can spin for a few seconds on a synced cloud folder
+        with thousands of unrelated entries. The frontend issues
+        this AFTER the cards mount so the grid renders snappy and
+        the per-card stats line hydrates when the response lands.
+
+        Walk is bounded to 1000 entries per source. Returns an empty
+        array on macOS / Linux (same Windows-only contract as the
+        plain candidates endpoint).
+      responses:
+        "200":
+          description: |
+            Per-source stats list. Empty array on non-Windows
+            platforms. Each entry's `last_modified` is empty when
+            the source folder has no regular files.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [name, file_count, last_modified, recognised_count]
+                  properties:
+                    name:             { type: string, description: "Stable source id — matches the candidates endpoint." }
+                    file_count:       { type: integer, description: "Regular files in the source dir, bounded to 1000." }
+                    last_modified:    { type: string, description: "RFC3339 UTC of the most-recent write. Empty when no files." }
+                    recognised_count: { type: integer, description: "Subset of file_count whose name matches one of the parser's filename grammars." }
+
   /api/v1/system/tesseract-probe:
     get:
       operationId: ProbeTesseractBinary

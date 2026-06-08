@@ -4,6 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
+	"time"
+
+	"recall/pkg/parser"
 )
 
 // ProbeResult is what `GetProbeResult` / the Detect Overwatch Folder
@@ -141,6 +145,115 @@ func (a *App) ProbeScreenshotsCandidates() []NamedCandidate {
 		})
 	}
 	return out
+}
+
+// NamedCandidateStats is the per-source diagnostic blob the picker
+// hydrates after the cards mount. file_count, last_modified, and
+// recognised_count tell the user which source their captures are
+// actually landing in — a card with "0 files" vs "47 files · 2h ago"
+// reads at a glance.
+//
+// The walk is bounded to candidateStatsMaxEntries per source so a
+// synced cloud folder with thousands of unrelated files (Pictures
+// holding a lifetime of phone backups) doesn't block the response.
+//
+// "Recognised" means the filename starts with one of the per-tool
+// prefixes from parser.ScreenshotSources — i.e. would be picked up
+// by the parser. A folder full of Win Snip captures shows
+// "12 files · 0 recognised" so the user immediately knows the
+// folder isn't the right source.
+type NamedCandidateStats struct {
+	Name            string `json:"name"`
+	FileCount       int    `json:"file_count"`
+	LastModified    string `json:"last_modified"` // RFC3339 UTC, empty if no files
+	RecognisedCount int    `json:"recognised_count"`
+}
+
+// candidateStatsMaxEntries is the hard upper bound on the directory
+// walk per source. 1000 is high enough that the count is a useful
+// signal ("a lot of files") without exhausting a synced cloud folder
+// indexer mid-walk.
+const candidateStatsMaxEntries = 1000
+
+// ProbeScreenshotsCandidateStats walks the first-existing path of
+// each candidate source and returns per-source counts + last-write
+// timestamp. Run asynchronously after the picker grid mounts — the
+// dirread is fast on local disks but can spin for a few seconds on
+// a synced cloud folder; we don't want to block the visible UI.
+//
+// Mirrors ProbeScreenshotsCandidates' Windows-only contract: returns
+// nil on macOS / Linux (the frontend hides the grid there).
+func (a *App) ProbeScreenshotsCandidateStats() []NamedCandidateStats {
+	specs := candidateSources()
+	out := make([]NamedCandidateStats, 0, len(specs))
+	for _, s := range specs {
+		path, exists := firstExisting(s.paths)
+		stats := NamedCandidateStats{Name: s.name}
+		if exists {
+			files, latest := walkSourceDir(path)
+			stats.FileCount = len(files)
+			if !latest.IsZero() {
+				stats.LastModified = latest.UTC().Format(time.RFC3339)
+			}
+			stats.RecognisedCount = countRecognised(files)
+		}
+		out = append(out, stats)
+	}
+	return out
+}
+
+// walkSourceDir reads up to candidateStatsMaxEntries names from dir
+// and returns (filenames, latest-mtime). Non-files (subdirectories,
+// symlinks to anywhere) are skipped — the picker is about screenshot
+// captures and the parser doesn't recurse.
+func walkSourceDir(dir string) ([]string, time.Time) {
+	// #nosec G304 -- `dir` comes from candidateSources() which builds
+	// paths from os.UserHomeDir() + a hard-coded per-source suffix
+	// (Videos/Overwatch, Documents/Overwatch/ScreenShots/Overwatch,
+	// etc.) plus the Steam-registry resolver. None of it is user
+	// input; the value is the same shape ProbeScreenshotsCandidates
+	// surfaces and the user already trusted at first-run pick time.
+	f, err := os.Open(dir)
+	if err != nil {
+		return nil, time.Time{}
+	}
+	defer func() { _ = f.Close() }()
+	entries, err := f.Readdir(candidateStatsMaxEntries)
+	if err != nil {
+		return nil, time.Time{}
+	}
+	names := make([]string, 0, len(entries))
+	var latest time.Time
+	for _, e := range entries {
+		if !e.Mode().IsRegular() {
+			continue
+		}
+		names = append(names, e.Name())
+		if mt := e.ModTime(); mt.After(latest) {
+			latest = mt
+		}
+	}
+	return names, latest
+}
+
+// countRecognised tallies how many filenames the parser's filename
+// grammars would accept. A "Win Snip" folder full of generic
+// "Screenshot 2026-06-07 224855.png" reads as fully recognised; a
+// generic Pictures folder reads as zero.
+func countRecognised(names []string) int {
+	if len(parser.ScreenshotSources) == 0 {
+		return 0
+	}
+	n := 0
+	for _, name := range names {
+		for _, src := range parser.ScreenshotSources {
+			if strings.HasPrefix(name, src.Prefix) && src.Regex.MatchString(name) {
+				n++
+				break
+			}
+		}
+	}
+	return n
 }
 
 // sourceSpec is one entry in candidateSources(). Each card maps to

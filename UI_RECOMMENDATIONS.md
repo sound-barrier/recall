@@ -151,30 +151,6 @@ miss.
 
 ## Polish / lower-priority
 
-### 9. Per-source diagnostic strip on the picker grid
-
-`ScreenshotSourcePicker.vue` (PR #226) currently shows the four
-cards with a single green/gray dot + path. Once the user has
-been parsing for a while, the *content* of each candidate
-folder is more useful than its mere existence: "Nvidia Overlay
-— 47 files, last write 2h ago" / "OW PrntScn — 0 files" /
-"Win Snip — 12 files but none look like OW screenshots" tells the
-user which source their captures are actually landing in.
-
-- **Where**: an optional second metadata line under each card,
-  rendered only when the path exists. The probe handler
-  (`ProbeScreenshotsCandidates`) already does the directory
-  walk — extend it to return `{file_count: int, last_modified:
-  string, recognised_filename_count: int}` per candidate, with
-  an upper bound (e.g. count up to 1000 entries) so it stays
-  fast on synced cloud folders.
-- **Constraint**: don't block the picker render on this — the
-  probe has to stay snappy. Stream the metadata in via a
-  separate `/screenshots-folder-candidates/stats` endpoint that
-  the picker queries after the cards mount.
-- **Effort**: ~4 hours. New probe endpoint + per-card
-  `useScreenshotFolderStats` composable.
-
 ### 11. Reference data gap card → "Will be fixed in vX.Y.Z" link
 
 The Unknown tab's **Reference data gaps** section (PR #224)
