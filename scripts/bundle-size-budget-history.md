@@ -13,6 +13,7 @@ no soft-pedalling. Numbers that go down get a row too.
 
 | Date | PR | Init JS | Init CSS | Total JS | Total CSS | Rationale |
 |---|---|---|---|---|---|---|
+| 2026-06-08 | source-picker-callout | 160000 | 60000 | 455000 | 254000 | Item 13 surface B — ContextualCallout + useContextualCallout primitives landed in PR #235 but didn't ship in any chunk until a consumer (ScreenshotSourcePicker) wired them in. Net ~2 KB JS (callout SFC + composable) + ~1.2 KB CSS (callout styles). |
 | 2026-06-08 | hero-maptype-heatmap | 160000 | 60000 | 450000 | 252000 | Item 2 — Hero × map-type heatmap dossier widget + the new provideNarrow/useNarrow injection seam wiring. Net ~3 KB JS (widget SFC + helper + narrow seam) + ~0.5 KB CSS (grid styles). |
 | 2026-06-08 | ui-polish-set | 160000 | 60000 | 445000 | 250000 | UI polish set (items 3 / 4 / 5 / 6 / 7 / 8 / 10 / 12 from UI_RECOMMENDATIONS.md): TypeaheadDropdown + inline tag autocomplete + bulk-tag + extended right-click menu + leaf hover preview + smart-empty suggestions + saved-set presets + supported-formats surface + re-parse progress. Combined ~22 KB JS + ~8 KB CSS — CSS budget bumped during commit 7 (saved-set presets footer surface). |
 | 2026-06-08 | technical-debt-sweep | 156000 | 60000 | 422000 | 242000 | match-helpers.ts split into 5 topic files. Total JS dropped slightly, but Vite's chunking heuristic hoisted the smaller new modules into the initial chunk, lifting initial JS ~10 KB. Tradeoff is intentional — readability of the topic split outweighs the chunk-boundary shift; total stays under cap. |
