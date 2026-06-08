@@ -180,10 +180,15 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     view: 'matches',
   },
   // ── 9. Dossier — the rolled-up summary ─────────────────────
+  // The "set dossier" framing: this isn't a static report of your
+  // whole history, it's a live description of the SET of matches
+  // you've narrowed to. Every aggregate — winrate, K/D/A, time
+  // played, top heroes, top maps — answers a question about THAT
+  // set. The next step shows what makes the set the way it is.
   {
     id: 'matches-dossier',
-    heading: 'The dossier',
-    body: 'Headline KPIs across the current narrow: winrate, K/D/A, total time, most-played hero. Plus the Most-played heroes / maps bar breakdowns.',
+    heading: 'The set dossier',
+    body: 'Everything above the matches list describes the active SET — the subset of your history you currently care about. Winrate, K/D/A, total time played, most-played hero and maps; each KPI recomputes the instant you narrow the set. Default set is "all matches."',
     target: '.set-dossier',
     placement: 'bottom',
     view: 'matches',
@@ -198,7 +203,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   {
     id: 'matches-narrow',
     heading: 'Narrow to one hero',
-    body: 'Recall just opened the Narrow panel and filtered the set to Lucio. Pick any combination of hero, map, role, result, date, or free-text search; the dossier above and the list behind both update as you go.',
+    body: 'The Narrow panel COMPOSES the active set. Recall just opened it and added "hero is lucio" as a clause; watch the dossier above + the list behind recompose. Stack any number of clauses — hero, map, map type, role, queue, play mode, date, free text — and they intersect (AND). Drop a clause anytime by clicking its chip.',
     target: '#narrow-popover',
     placement: 'right',
     view: 'matches',
@@ -214,8 +219,8 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   // ── 11. Match list ─────────────────────────────────────────
   {
     id: 'matches-list',
-    heading: 'Click any match',
-    body: 'Each row is one match. Click to open the detail panel on the right; once open, ←/→/h/l walk between matches and screenshots inside the same match.',
+    heading: 'The leaves',
+    body: 'Each row is one match — a "leaf" of the active set. Click a row to open the detail panel on the right; once open, ←/→/h/l walk between matches and screenshots inside the same match. Sort + Group controls in the toolbar above reorder leaves without changing which set they belong to.',
     target: '.leaves-list',
     placement: 'top',
     view: 'matches',
@@ -228,7 +233,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   {
     id: 'matches-detail',
     heading: 'The detail panel',
-    body: 'Clicking a row opens this panel. Every screenshot tied to the match lives here — scoreboards, summaries, personal cards — plus annotation, hide, and leaver controls. Use h / l to walk through matches without closing.',
+    body: 'Clicking a leaf opens this panel — every screenshot tied to that match (scoreboard / summary / personal / rank) plus annotation, hide, and leaver controls. Use h / l to walk between leaves without closing the panel; j / k cycle screenshots inside the current match.',
     target: 'aside.detail-panel',
     placement: 'left',
     view: 'matches',
