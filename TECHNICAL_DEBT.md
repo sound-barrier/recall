@@ -57,32 +57,6 @@ Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
 
-## 2. `applyMigrations` test version is hard-coded in three places
-
-**Where:** `pkg/db/migrate_test.go:32`, `:60`, `:210` — each test
-asserts `if v != 6 { t.Errorf("schema_version = %d, want 6") }`.
-Every new migration adds a 4th place; `sed -i 's/want 6/want 7/'`
-is fragile (the literal also appears in regular code comments,
-e.g. "see PR #6").
-
-**What breaks:** any migration PR that misses one of these
-locations ships green locally but fails CI on the unrelated
-expectation. We've fixed this in flight twice already across
-recent PRs (migration 5 → 6, 6 → 7).
-
-**Plan:**
-
-1. Replace the hard-coded literal with a derived constant —
-   `latestMigrationVersion` computed once from `loadMigrations()`
-   at test-package init time.
-2. Each assertion compares against the constant instead of the
-   literal.
-3. Adding a migration changes only the migration files +
-   `schema_version` directly; the tests need no edit.
-
-**Size:** S.
-**Risk:** Low — confined to one test file.
-
 ## 3. `parseFilenameTimestamp` format list could absorb a fourth source without a code change
 
 **Where:** `pkg/app/correlation.go:39` — the `filenameFormats`
