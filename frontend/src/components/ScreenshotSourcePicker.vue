@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { NamedCandidate } from '../api'
+import type { NamedCandidate, NamedCandidateStats } from '../api'
+import { useScreenshotFolderStats } from '../composables/useScreenshotFolderStats'
 
 // First-run picker for the OW screenshots directory. On Windows,
 // renders a 2 × 2 grid of canonical capture sources (Nvidia Overlay
@@ -46,10 +47,50 @@ const emit = defineEmits<{
 
 const isWindows = computed(() => props.platform === 'windows')
 
+// Side-fetched per-source diagnostics. Hydrates after mount so the
+// grid renders immediately; the second metadata line appears once
+// the response lands.
+const { statsFor } = useScreenshotFolderStats()
+
 function onCardClick(c: NamedCandidate) {
   if (!c.exists || props.picking) return
   emit('pick', c.name, c.path)
 }
+
+// Compact "47 files · 2h ago" / "0 files" / "12 files · 0 recognised"
+// for the second metadata line. Returns '' when no stats yet so the
+// span stays empty (CSS treats it as not-rendered via :empty).
+function statsLine(c: NamedCandidate): string {
+  const s = statsFor(c.name)
+  if (!s) return ''
+  if (s.file_count === 0) return '0 files'
+  const parts: string[] = [`${s.file_count} files`]
+  const rel = relativeAge(s.last_modified)
+  if (rel) parts.push(rel)
+  // Only surface the "recognised" subset when the user is mismatched
+  // — i.e. files exist but none are OW captures. Hide the noise when
+  // every file is recognised (the common happy case for a correct
+  // source).
+  if (s.recognised_count < s.file_count) {
+    parts.push(`${s.recognised_count} recognised`)
+  }
+  return parts.join(' · ')
+}
+
+function relativeAge(iso: string): string {
+  if (!iso) return ''
+  const t = Date.parse(iso)
+  if (Number.isNaN(t)) return ''
+  const diff = Date.now() - t
+  if (diff < 60_000)         return 'just now'
+  if (diff < 3_600_000)      return `${Math.floor(diff / 60_000)}m ago`
+  if (diff < 86_400_000)     return `${Math.floor(diff / 3_600_000)}h ago`
+  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}d ago`
+  return new Date(t).toISOString().slice(0, 10)
+}
+
+// Expose for tests / consumers that want raw stats.
+void ({} as NamedCandidateStats)
 </script>
 
 <template>
@@ -82,6 +123,11 @@ function onCardClick(c: NamedCandidate) {
         </span>
         <span class="src-title">{{ c.label }}</span>
         <span class="src-path">{{ c.path || '—' }}</span>
+        <span
+          v-if="statsLine(c)"
+          class="src-stats"
+          :data-src-stats="c.name"
+        >{{ statsLine(c) }}</span>
         <span
           class="src-status"
           :class="c.exists ? 'src-status-found' : 'src-status-missing'"
@@ -206,6 +252,14 @@ function onCardClick(c: NamedCandidate) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.src-stats {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-top: 0.05rem;
 }
 
 .src-status {

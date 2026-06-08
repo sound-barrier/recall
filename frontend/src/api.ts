@@ -226,6 +226,26 @@ export function GetScreenshotsFolderCandidates(): Promise<NamedCandidate[]> {
   return _get<NamedCandidate[]>('/api/v1/system/screenshots-folder-candidates')
 }
 
+// NamedCandidateStats is the per-source diagnostic blob the picker
+// grid hydrates AFTER the cards mount. file_count + last_modified +
+// recognised_count compose into the second metadata line on each
+// card. Mirrors the Go struct in `pkg/app/probe.go`.
+export type NamedCandidateStats = {
+  name:             NamedCandidate['name']
+  file_count:       number
+  last_modified:    string  // RFC3339 UTC, empty when no files
+  recognised_count: number
+}
+
+// GetScreenshotsFolderCandidateStats is the deferred per-source
+// diagnostics call. The picker grid fetches this after the cards
+// mount so the directory walk (bounded to 1000 entries per source)
+// doesn't block the visible UI. Empty array on macOS / Linux.
+export function GetScreenshotsFolderCandidateStats(): Promise<NamedCandidateStats[]> {
+  if (IS_WAILS) return _wails('ProbeScreenshotsCandidateStats')
+  return _get<NamedCandidateStats[]>('/api/v1/system/screenshots-folder-candidates/stats')
+}
+
 // SetScreenshotsDir persists `path` as the active screenshots
 // directory. Used by the "Detect Overwatch Folder" button to apply
 // a probe result without going through the native folder picker.

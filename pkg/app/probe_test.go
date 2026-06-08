@@ -169,6 +169,129 @@ func TestAutoProbeOnFirstRun_NoOpWhenAlreadyConfigured(t *testing.T) {
 	}
 }
 
+func TestProbeScreenshotsCandidateStats_NonWindowsReturnsEmpty(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows has its own assertion below")
+	}
+	a := &App{}
+	got := a.ProbeScreenshotsCandidateStats()
+	if len(got) != 0 {
+		t.Errorf("non-Windows should return empty slice; got %+v", got)
+	}
+}
+
+func TestProbeScreenshotsCandidateStats_WindowsCountsFilesAndRecognised(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows-only behaviour")
+	}
+	home := t.TempDir()
+	setHome(t, home)
+
+	// Materialise the Nvidia candidate dir + drop three files: two
+	// canonical Nvidia-format names, one stray PDF that should NOT
+	// count as recognised.
+	nvidiaDir := filepath.Join(home, "Videos", "Overwatch")
+	if err := os.MkdirAll(nvidiaDir, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", nvidiaDir, err)
+	}
+	for _, name := range []string{
+		"Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png",
+		"Overwatch 2 Screenshot 2026.05.11 - 20.13.22.15.png",
+		"random-document.pdf",
+	} {
+		p := filepath.Join(nvidiaDir, name)
+		if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
+			t.Fatalf("write %s: %v", p, err)
+		}
+	}
+
+	a := &App{}
+	got := a.ProbeScreenshotsCandidateStats()
+	if len(got) != 4 {
+		t.Fatalf("want 4 cards on Windows; got %d (%+v)", len(got), got)
+	}
+	// Find the Nvidia entry — order matches candidateSources().
+	var nvidia NamedCandidateStats
+	for _, s := range got {
+		if s.Name == "nvidia" {
+			nvidia = s
+			break
+		}
+	}
+	if nvidia.FileCount != 3 {
+		t.Errorf("nvidia.FileCount = %d; want 3", nvidia.FileCount)
+	}
+	if nvidia.RecognisedCount != 2 {
+		t.Errorf("nvidia.RecognisedCount = %d; want 2", nvidia.RecognisedCount)
+	}
+	if nvidia.LastModified == "" {
+		t.Error("nvidia.LastModified should be populated when files exist")
+	}
+}
+
+func TestProbeScreenshotsCandidateStats_NonExistentSourcesReturnEmpty(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows-only behaviour")
+	}
+	home := t.TempDir()
+	setHome(t, home)
+
+	a := &App{}
+	got := a.ProbeScreenshotsCandidateStats()
+	if len(got) != 4 {
+		t.Fatalf("want 4 cards on Windows; got %d", len(got))
+	}
+	for _, s := range got {
+		if s.FileCount != 0 || s.RecognisedCount != 0 || s.LastModified != "" {
+			t.Errorf("source %q with non-existent path should be zero-valued, got %+v", s.Name, s)
+		}
+	}
+}
+
+func TestWalkSourceDir_BoundedAndSkipsDirs(t *testing.T) {
+	tmp := t.TempDir()
+	// Materialise: 3 files, 1 subdirectory.
+	for _, name := range []string{"a.png", "b.png", "c.png"} {
+		if err := os.WriteFile(filepath.Join(tmp, name), []byte("x"), 0o600); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+	if err := os.Mkdir(filepath.Join(tmp, "subdir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	files, latest := walkSourceDir(tmp)
+	if len(files) != 3 {
+		t.Errorf("expected 3 regular files; got %d (%v)", len(files), files)
+	}
+	if latest.IsZero() {
+		t.Error("latest mtime should be populated when files exist")
+	}
+}
+
+func TestWalkSourceDir_MissingDirReturnsEmpty(t *testing.T) {
+	files, latest := walkSourceDir("/nonexistent/path/please")
+	if len(files) != 0 {
+		t.Errorf("expected empty; got %v", files)
+	}
+	if !latest.IsZero() {
+		t.Error("expected zero mtime for missing dir")
+	}
+}
+
+func TestCountRecognised_MatchesParserGrammar(t *testing.T) {
+	names := []string{
+		"Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png", // nvidia ✓
+		"ScreenShot_26-06-07_22-59-52-000.jpg",                // prntscn ✓
+		"Screenshot 2026-06-07 224855.png",                    // snip ✓
+		"IMG_1234.png",                                        // none
+		"random.pdf",                                          // none
+	}
+	n := countRecognised(names)
+	if n != 3 {
+		t.Errorf("countRecognised = %d; want 3", n)
+	}
+}
+
 func TestDirExists(t *testing.T) {
 	tmp := t.TempDir()
 	if !dirExists(tmp) {

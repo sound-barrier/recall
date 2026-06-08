@@ -1035,6 +1035,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/screenshots-folder-candidates/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Per-source diagnostic stats for the picker grid
+         * @description Walks the first-existing path of each candidate source and
+         *     returns the file count, last-write timestamp, and the count
+         *     of files whose names match the parser's recognised filename
+         *     grammars. Surfaced as a second metadata line on each picker
+         *     card — "47 files · 2h ago" / "0 files" / "12 files · 0
+         *     recognised" — so the user instantly knows which source their
+         *     captures are landing in.
+         *
+         *     Decoupled from the picker's primary fetch because the dir
+         *     walk can spin for a few seconds on a synced cloud folder
+         *     with thousands of unrelated entries. The frontend issues
+         *     this AFTER the cards mount so the grid renders snappy and
+         *     the per-card stats line hydrates when the response lands.
+         *
+         *     Walk is bounded to 1000 entries per source. Returns an empty
+         *     array on macOS / Linux (same Windows-only contract as the
+         *     plain candidates endpoint).
+         */
+        get: operations["GetScreenshotsFolderCandidateStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/tesseract-probe": {
         parameters: {
             query?: never;
@@ -3194,6 +3230,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NamedCandidate"][];
+                };
+            };
+        };
+    };
+    GetScreenshotsFolderCandidateStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /**
+             * @description Per-source stats list. Empty array on non-Windows
+             *     platforms. Each entry's `last_modified` is empty when
+             *     the source folder has no regular files.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable source id — matches the candidates endpoint. */
+                        name: string;
+                        /** @description Regular files in the source dir, bounded to 1000. */
+                        file_count: number;
+                        /** @description RFC3339 UTC of the most-recent write. Empty when no files. */
+                        last_modified: string;
+                        /** @description Subset of file_count whose name matches one of the parser's filename grammars. */
+                        recognised_count: number;
+                    }[];
                 };
             };
         };
