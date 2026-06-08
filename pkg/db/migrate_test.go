@@ -7,6 +7,21 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// latestMigrationVersion is the version number of the newest
+// migration on disk — derived once from loadMigrations() so adding
+// a new migration doesn't require updating every test that asserts
+// "after applyMigrations, schema_version equals the latest".
+var latestMigrationVersion = func() int {
+	migs, err := loadMigrations()
+	if err != nil {
+		panic("loadMigrations: " + err.Error())
+	}
+	if len(migs) == 0 {
+		panic("loadMigrations returned empty slice")
+	}
+	return migs[len(migs)-1].version
+}()
+
 func openMem(t *testing.T) *sql.DB {
 	t.Helper()
 	d, err := sql.Open("sqlite", ":memory:")
@@ -29,8 +44,8 @@ func TestApplyMigrations_FreshDB_AppliesBaselineAndRecordsVersion(t *testing.T) 
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if v != 6 {
-		t.Errorf("schema_version = %d, want 6", v)
+	if v != latestMigrationVersion {
+		t.Errorf("schema_version = %d, want %d", v, latestMigrationVersion)
 	}
 	// Baseline + 0002 + 0003 + 0004 + 0005 created every expected table.
 	for _, tbl := range []string{
@@ -57,8 +72,8 @@ func TestApplyMigrations_Idempotent(t *testing.T) {
 		t.Fatalf("second apply: %v", err)
 	}
 	v, _ := schemaVersion(d)
-	if v != 6 {
-		t.Errorf("schema_version after re-apply = %d, want 6", v)
+	if v != latestMigrationVersion {
+		t.Errorf("schema_version after re-apply = %d, want %d", v, latestMigrationVersion)
 	}
 }
 
@@ -207,8 +222,8 @@ func TestApplyMigrations_PreExistingTablesNoSchemaVersion_AdoptsCurrentVersion(t
 		t.Fatalf("applyMigrations on legacy DB: %v", err)
 	}
 	v, _ := schemaVersion(d)
-	if v != 6 {
-		t.Errorf("schema_version = %d, want 6 (legacy DB adopts current version)", v)
+	if v != latestMigrationVersion {
+		t.Errorf("schema_version = %d, want %d (legacy DB adopts current version)", v, latestMigrationVersion)
 	}
 }
 
