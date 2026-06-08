@@ -151,46 +151,6 @@ miss.
 
 ## Polish / lower-priority
 
-### 3. Extend `BulkActionBar` with Tag / Star
-
-`BulkActionBar.vue` shipped with Hide / Export / Set play mode
-/ Set queue / Move-to-profile menus (PRs #218 / earlier).
-Two adjacent affordances would round it out:
-
-- **Add tag to N matches at once.** Tags are the only
-  user-authored metadata that doesn't have a bulk path; today
-  you have to open each match in the detail panel + type into
-  the journal. With the `Tag ▾` menu mirroring `Set play mode
-  ▾` — typeahead input on existing-tag completions plus an
-  "Add new tag" affordance — the same dropdown pattern carries
-  over.
-- **Star / Un-star.** Star toggling already exists per-row on
-  the leaf via the right-side action well, but bulk-starring a
-  recently-played stomp session is a recognisable workflow.
-
-Shift-click + Cmd/Ctrl-click range / toggle gestures already
-work (shipped with the original BulkActionBar) — the gesture
-surface needs no new work; only the two new dropdowns + their
-`PUT /api/v1/matches/tags` + `/starred` handlers.
-
-- **Constraint**: tag autocomplete shares the typeahead pattern
-  with the inline-tag composable in item 5 below — extract a
-  shared `TagPickerDropdown.vue` rather than maintaining two
-  parallel pickers.
-- **Constraint**: the existing per-row star toggle is an
-  optimistic per-click write; the bulk variant has to fire a
-  single batched write to avoid N round-trips and keep the
-  selection's state consistent if any individual update fails.
-- **Effort**: ~4 hours including the shared dropdown
-  extraction + an e2e spec covering Select N → Tag → reload →
-  tag survives.
-
-### 3a. Right-click context menu on rows (was item 7)
-
-See item 7 below — same surface; intentionally orthogonal to
-bulk-select (single-row contextual ops vs. multi-row sticky
-bar). Both can coexist.
-
 ### 4. Leaf-row hover preview
 
 Hover a row → show a small thumbnail of the SUMMARY screenshot

@@ -100,6 +100,11 @@ const emit = defineEmits<{
   // the "Unknown" bucket).
   'bulk-play-mode': [matchKeys: string[], playMode: import('../api').PlayMode]
   'bulk-queue':     [matchKeys: string[], queueType: import('../api').QueueType]
+  // Bulk-tag pipe — emitted with the ticked-key list + the chosen
+  // tag. App.vue does the read-modify-write per record via
+  // SetMatchAnnotation (preserving existing tags + appending the
+  // new one) and reloads the matches feed.
+  'bulk-tag':       [matchKeys: string[], tag: string]
   // Bulk-export pipe — emitted with the ticked-key list when the
   // user clicks "Export bundle…" on the bulk action bar. App.vue
   // opens the ExportBundleModal to confirm filename + include
@@ -271,6 +276,13 @@ function onBulkQueue(queueType: import('../api').QueueType) {
   if (keys.length === 0) return
   clearSelection()
   emit('bulk-queue', keys, queueType)
+}
+
+function onBulkTag(tag: string) {
+  const keys = [...selectedKeys.value]
+  if (keys.length === 0) return
+  clearSelection()
+  emit('bulk-tag', keys, tag)
 }
 
 // ─── Move-to-profile picker state ───────────────────────────
@@ -1295,9 +1307,11 @@ onBeforeUnmount(() => {
         :sorted-count="sortedRecords.length"
         :other-profiles="otherProfiles"
         :move-picker-open="movePickerOpen"
+        :available-tags="narrow.availableTags.value"
         @select-all="selectAllVisible"
         @hide="hideSelected"
         @export-bundle="emit('export-bundle', [...selectedKeys])"
+        @bulk-tag="onBulkTag"
         @move-begin="beginMoveLive"
         @move-commit="commitMove"
         @move-cancel="cancelMove"

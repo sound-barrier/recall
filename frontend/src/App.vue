@@ -883,6 +883,41 @@ async function onBulkQueue(matchKeys: string[], queueType: QueueType) {
   }
 }
 
+// Bulk-tag — append `tag` to every selected match's annotation,
+// preserving every other annotation field. No bulk endpoint exists
+// (yet); we do one read-modify-write per record in parallel. Reload
+// once at the end. Idempotent: re-tagging an already-tagged record
+// is a no-op (the API dedupes lowercase server-side, see
+// SetMatchAnnotation).
+async function onBulkTag(matchKeys: string[], tag: string) {
+  if (matchKeys.length === 0 || !tag) return
+  const norm = tag.trim().toLowerCase()
+  if (!norm) return
+  try {
+    // Snapshot the records lookup by key so each PUT carries the
+    // existing annotation fields (note / replay_code / members /
+    // leaver) along with the new tag — the PUT replaces the whole
+    // annotation row, so a slim body would clear those fields.
+    const byKey = new Map(records.value.map((r) => [r.match_key, r] as const))
+    await Promise.all(matchKeys.map(async (key) => {
+      const r = byKey.get(key)
+      const existing = r?.annotation
+      const existingTags = existing?.tags ?? []
+      if (existingTags.includes(norm)) return // already tagged
+      await SetMatchAnnotation(key, {
+        leaver:      (existing?.leaver ?? '') as MatchAnnotationInput['leaver'],
+        note:        existing?.note ?? null,
+        replay_code: existing?.replay_code ?? null,
+        members:     existing?.members ?? null,
+        tags:        [...existingTags, norm],
+      })
+    }))
+    await load()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
 // Hard-delete handler — drawer "Delete forever" affordance after
 // the user confirms the two-step. Idempotent on the server so a
 // double-fire from a stale UI is safe.
@@ -1843,6 +1878,7 @@ useEventStream({
           @hide-matches="onHideMatches"
           @bulk-play-mode="onBulkPlayMode"
           @bulk-queue="onBulkQueue"
+          @bulk-tag="onBulkTag"
           @unhide-match="(k: string) => onSetMatchHidden(k, false)"
           @hard-delete-match="onHardDeleteMatch"
           @unhide-matches="onUnhideMatches"
