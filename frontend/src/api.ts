@@ -219,15 +219,6 @@ export function GetScreenshotsFolderCandidates(): Promise<NamedCandidate[]> {
   return _get<NamedCandidate[]>('/api/v1/system/screenshots-folder-candidates')
 }
 
-// ProbeScreenshotsDir walks platform-specific OW default-screenshot
-// locations and returns the first directory that exists. Read-only —
-// the caller decides whether to apply the result via
-// PickScreenshotsDir / SetScreenshotsDir.
-export function ProbeScreenshotsDir(): Promise<ProbeResult> {
-  if (IS_WAILS) return _wails('ProbeScreenshotsDir')
-  return _get<ProbeResult>('/api/v1/system/screenshots-folder-probe')
-}
-
 // SetScreenshotsDir persists `path` as the active screenshots
 // directory. Used by the "Detect Overwatch Folder" button to apply
 // a probe result without going through the native folder picker.

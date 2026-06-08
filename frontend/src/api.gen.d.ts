@@ -1004,39 +1004,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/system/screenshots-folder-probe": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Probe the OS for the default Overwatch screenshots folder
-         * @description Walks an ordered list of platform-specific candidate paths
-         *     (Windows Documents + OneDrive-redirected variant; macOS
-         *     Documents / Library Application Support; Linux Steam-Proton
-         *     compatdata + standalone Wine prefix) and returns the first
-         *     existing directory.
-         *
-         *     Read-only. Does NOT persist anything — the caller decides
-         *     whether to apply the discovered path via
-         *     `PUT /api/v1/settings/screenshots-folder`.
-         *
-         *     On first launch (when no folder is configured) the Wails
-         *     runtime calls this internally and writes the result to
-         *     `settings.json` directly; the HTTP endpoint serves the
-         *     manual re-probe path (UI button "Detect Overwatch Folder").
-         */
-        get: operations["ProbeScreenshotsFolder"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/system/screenshots-folder-candidates": {
         parameters: {
             query?: never;
@@ -3181,30 +3148,6 @@ export interface operations {
                             [key: string]: string[];
                         };
                     };
-                };
-            };
-        };
-    };
-    ProbeScreenshotsFolder: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /**
-             * @description Probe result. `found: true` carries the discovered path;
-             *     `found: false` includes the full `tried` list for the
-             *     user to inspect.
-             */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProbeResult"];
                 };
             };
         };

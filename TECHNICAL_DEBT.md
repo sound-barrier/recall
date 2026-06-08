@@ -86,32 +86,3 @@ binary release — same pattern as `heroes.yaml` + `maps.yaml`.
 **Risk:** Med — the regex isn't user-input but a bad pattern
 could match unrelated files. Defensive: keep the prefix gate;
 reject patterns without a leading `^`-anchor.
-
-## 4. Settings empty-hero auto-detection has two probe endpoints
-
-**Where:** `pkg/app/probe.go` exposes both `ProbeScreenshotsDir`
-(single-best-path, used by the steady-state "Detect" button) and
-`ProbeScreenshotsCandidates` (four-card list, used by the
-first-run picker). The two share `dirExists` + `candidateSources`
-under the hood but expose two separate HTTP endpoints.
-
-**What breaks:** documentation drift (the steady-state Detect
-button still uses the old endpoint shape; the first-run picker
-uses the new). A maintainer touching one path easily forgets the
-other; the new candidate list is the strict superset of the
-single-best probe so the old endpoint is redundant.
-
-**Plan:**
-
-1. Mark `ProbeScreenshotsDir` deprecated in the OpenAPI spec
-   (`deprecated: true`); keep returning the first found
-   candidate's path so existing callers don't break.
-2. Move the steady-state Detect button to consume
-   `screenshots-folder-candidates`, picking the first
-   `exists: true` entry.
-3. Delete the old endpoint in a future pre-1.0 minor bump
-   (`feat!:` with `BREAKING CHANGE:` footer).
-
-**Size:** S.
-**Risk:** Low — both endpoints are internal-only; the frontend is
-the only consumer.

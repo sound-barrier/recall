@@ -35,9 +35,6 @@ func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/system/reference-data", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, a.GetOWData(), nil)
 	})
-	apiMux.HandleFunc("GET /api/v1/system/screenshots-folder-probe", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, a.ProbeScreenshotsDir(), nil)
-	})
 	// Per-source picker — Windows-only auto-detection of the four
 	// canonical capture methods (Nvidia Overlay, OW PrntScn default,
 	// Win Snip tool, Steam install). Returns an empty array on macOS
