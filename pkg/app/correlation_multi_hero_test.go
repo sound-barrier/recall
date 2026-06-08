@@ -31,7 +31,7 @@ func TestResolveMatchKey_MultiHero_ScoreboardSwapAdoptsSummary(t *testing.T) {
 	// allows the bridge.
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{{
-			Filename: "2026.07.15 - 14.00.00 _sum.png",
+			Filename: "Overwatch 2 Screenshot 2026.07.15 - 14.00.00 _sum.png",
 			MatchKey: "match-2026-07-15T14-00-00",
 			Map:      "rialto",
 			Hero:     "lucio",
@@ -45,7 +45,7 @@ func TestResolveMatchKey_MultiHero_ScoreboardSwapAdoptsSummary(t *testing.T) {
 		Map: "rialto", Hero: "kiriko",
 		Eliminations: 18, Assists: 12, Deaths: 6,
 	}
-	key, _ := resolveMatchKey("2026.07.15 - 14.00.30 _sb.png", scoreboard, snap)
+	key, _ := resolveMatchKey("Overwatch 2 Screenshot 2026.07.15 - 14.00.30 _sb.png", scoreboard, snap)
 	if key != "match-2026-07-15T14-00-00" {
 		t.Errorf("expected SCOREBOARD to adopt SUMMARY's key via multi-hero bridge, got %q", key)
 	}
@@ -61,7 +61,7 @@ func TestResolveMatchKey_MultiHero_SecondPersonalAdoptsMatch(t *testing.T) {
 	// bridges into the same match.
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{{
-			Filename: "2026.07.20 - 14.00.00 _sum.png",
+			Filename: "Overwatch 2 Screenshot 2026.07.20 - 14.00.00 _sum.png",
 			MatchKey: "match-2026-07-20T14-00-00",
 			Map:      "rialto",
 			Hero:     "ana",
@@ -71,20 +71,20 @@ func TestResolveMatchKey_MultiHero_SecondPersonalAdoptsMatch(t *testing.T) {
 			},
 		}},
 		Scoreboards: []db.ScoreboardRow{{
-			Filename:     "2026.07.20 - 14.00.30 _sb.png",
+			Filename:     "Overwatch 2 Screenshot 2026.07.20 - 14.00.30 _sb.png",
 			MatchKey:     "match-2026-07-20T14-00-00",
 			Map:          "rialto",
 			Hero:         "ana",
 			Eliminations: 15, Assists: 8, Deaths: 5,
 		}},
 		Personals: []db.PersonalRow{{
-			Filename: "2026.07.20 - 14.00.45 _p1.png",
+			Filename: "Overwatch 2 Screenshot 2026.07.20 - 14.00.45 _p1.png",
 			MatchKey: "match-2026-07-20T14-00-00",
 			Hero:     "ana",
 		}},
 	}
 	personal2 := &parser.MatchResult{Hero: "lucio"}
-	key, _ := resolveMatchKey("2026.07.20 - 14.01.15 _p2.png", personal2, snap)
+	key, _ := resolveMatchKey("Overwatch 2 Screenshot 2026.07.20 - 14.01.15 _p2.png", personal2, snap)
 	if key != "match-2026-07-20T14-00-00" {
 		t.Errorf("expected PERSONAL 2 to bridge to the match via multi-hero, got %q", key)
 	}
@@ -99,7 +99,7 @@ func TestResolveMatchKey_MultiHero_ReverseOrder_SummaryBridgesToScoreboard(t *te
 	// HeroesPlayed.
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
-			Filename:     "2026.07.15 - 14.00.00 _sb.png",
+			Filename:     "Overwatch 2 Screenshot 2026.07.15 - 14.00.00 _sb.png",
 			MatchKey:     "match-2026-07-15T14-00-00",
 			Map:          "rialto",
 			Hero:         "kiriko",
@@ -113,7 +113,7 @@ func TestResolveMatchKey_MultiHero_ReverseOrder_SummaryBridgesToScoreboard(t *te
 			{Hero: "kiriko", PercentPlayed: 30},
 		},
 	}
-	key, _ := resolveMatchKey("2026.07.15 - 14.00.30 _sum.png", summary, snap)
+	key, _ := resolveMatchKey("Overwatch 2 Screenshot 2026.07.15 - 14.00.30 _sum.png", summary, snap)
 	if key != "match-2026-07-15T14-00-00" {
 		t.Errorf("expected SUMMARY to bridge to SCOREBOARD via reverse multi-hero match, got %q", key)
 	}
@@ -125,7 +125,7 @@ func TestResolveMatchKey_MultiHero_UnrelatedHeroStillConflicts(t *testing.T) {
 	// HeroesPlayed), the hero conflict still fires.
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{{
-			Filename: "2026.07.15 - 14.00.00 _sum.png",
+			Filename: "Overwatch 2 Screenshot 2026.07.15 - 14.00.00 _sum.png",
 			MatchKey: "match-2026-07-15T14-00-00",
 			Map:      "rialto",
 			Hero:     "lucio",
@@ -137,7 +137,7 @@ func TestResolveMatchKey_MultiHero_UnrelatedHeroStillConflicts(t *testing.T) {
 	// SCOREBOARD with hero=ana (not in SUMMARY's heroes_played) lands
 	// outside the existing match.
 	scoreboard := &parser.MatchResult{Hero: "ana"}
-	key, _ := resolveMatchKey("2026.07.15 - 14.00.30 _sb.png", scoreboard, snap)
+	key, _ := resolveMatchKey("Overwatch 2 Screenshot 2026.07.15 - 14.00.30 _sb.png", scoreboard, snap)
 	if key == "match-2026-07-15T14-00-00" {
 		t.Errorf("unrelated hero should NOT bridge, but got %q", key)
 	}

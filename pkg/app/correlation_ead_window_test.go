@@ -22,12 +22,12 @@ import (
 func TestMatchByEAD_SingleCandidate_WithinAutoWindow_AutoAdopts(t *testing.T) {
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
-			Filename:     "2026.05.10 - 21.29.28 _sb.png",
+			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
-	cand := candidateFromParse("2026.05.10 - 21.31.28 _sb2.png", &parser.MatchResult{
+	cand := candidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.31.28 _sb2.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	})
 	key, cands, ok := matchByEAD(cand, snap)
@@ -45,12 +45,12 @@ func TestMatchByEAD_SingleCandidate_WithinAutoWindow_AutoAdopts(t *testing.T) {
 func TestMatchByEAD_SingleCandidate_InAmbiguousZone_SurfacesCandidate(t *testing.T) {
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
-			Filename:     "2026.05.10 - 21.29.28 _sb.png",
+			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
-	cand := candidateFromParse("2026.05.10 - 21.41.28 _sb2.png", &parser.MatchResult{
+	cand := candidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.41.28 _sb2.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	})
 	key, cands, ok := matchByEAD(cand, snap)
@@ -74,12 +74,12 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_SurfacesCandidate(t *testing
 func TestMatchByEAD_OutsideMaxWindow_NoBridge(t *testing.T) {
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
-			Filename:     "2026.05.10 - 21.29.28 _sb.png",
+			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
-	cand := candidateFromParse("2026.05.10 - 22.09.28 _sb2.png", &parser.MatchResult{
+	cand := candidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 22.09.28 _sb2.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	})
 	_, _, ok := matchByEAD(cand, snap)
@@ -92,17 +92,17 @@ func TestMatchByEAD_MultipleCandidates_SurfacesAllSortedByDistance(t *testing.T)
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{
 			{
-				Filename: "2026.05.10 - 21.27.28 _a.png", MatchKey: "match-A",
+				Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.27.28 _a.png", MatchKey: "match-A",
 				Eliminations: 17, Assists: 16, Deaths: 11,
 			},
 			{
-				Filename: "2026.05.10 - 21.33.28 _b.png", MatchKey: "match-B",
+				Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.33.28 _b.png", MatchKey: "match-B",
 				Eliminations: 17, Assists: 16, Deaths: 11,
 			},
 		},
 	}
 	// New at 21:31:28 — 4 min after A, 2 min before B.
-	cand := candidateFromParse("2026.05.10 - 21.31.28 _new.png", &parser.MatchResult{
+	cand := candidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.31.28 _new.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	})
 	key, cands, ok := matchByEAD(cand, snap)
@@ -124,15 +124,15 @@ func TestMatchByEAD_MultipleCandidates_SurfacesAllSortedByDistance(t *testing.T)
 func TestResolveMatchKey_AmbiguousMintsSentinelAndReturnsCandidates(t *testing.T) {
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
-			Filename:     "2026.05.10 - 21.29.28 _sb.png",
+			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
-	key, cands := resolveMatchKey("2026.05.10 - 21.41.28 _sb2.png", &parser.MatchResult{
+	key, cands := resolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.41.28 _sb2.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	}, snap)
-	wantKey := "ambiguous-2026.05.10 - 21.41.28 _sb2.png"
+	wantKey := "ambiguous-Overwatch 2 Screenshot 2026.05.10 - 21.41.28 _sb2.png"
 	if key != wantKey {
 		t.Errorf("expected sentinel %q, got %q", wantKey, key)
 	}
@@ -358,12 +358,12 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_NoCorroborator_StaysAmbiguou
 	// candidate inside the 5–30 m window.
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
-			Filename:     "2026.05.10 - 21.29.28 _sb.png",
+			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 14, Deaths: 7,
 		}},
 	}
-	cand := candidateFromParse("2026.05.10 - 21.49.53 _sb2.png", &parser.MatchResult{
+	cand := candidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.49.53 _sb2.png", &parser.MatchResult{
 		// Bare EAD collision: no map / hero / date / finished_at.
 		Eliminations: 17, Assists: 14, Deaths: 7,
 	})
@@ -385,12 +385,12 @@ func TestResolveMatchKey_EADBridge_BeyondMaxWindow_MintsFreshKey(t *testing.T) {
 	// falls through to fresh-key minted from the new filename.
 	snap := db.Screenshots{
 		Scoreboards: []db.ScoreboardRow{{
-			Filename:     "2026.05.03 - 21.29.28 _sb.png",
+			Filename:     "Overwatch 2 Screenshot 2026.05.03 - 21.29.28 _sb.png",
 			MatchKey:     "match-2026-05-03T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
-	key, cands := resolveMatchKey("2026.05.10 - 21.29.28 _sb2.png", &parser.MatchResult{
+	key, cands := resolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb2.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	}, snap)
 	if key != "match-2026-05-10T21-29-28" {

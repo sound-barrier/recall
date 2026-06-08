@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"recall/pkg/db"
@@ -32,22 +34,108 @@ const (
 	eadBridgeAmbiguousWindow = 30 * time.Minute
 )
 
-var filenameTimestampRe = regexp.MustCompile(`(\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})`)
+// filenameFormat describes one capture tool's screenshot filename
+// shape. The `prefix` field is a fast strings.HasPrefix gate before
+// running the regex so non-OW files (the user dropping a random PNG
+// in the watched folder) don't even cost a regex match. The OW Steam
+// userdata folder writes Steam's own F12 captures which use yet
+// another shape — not yet sampled, add a fourth entry when we have
+// real examples.
+type filenameFormat struct {
+	prefix string
+	re     *regexp.Regexp
+	// yearOffset is added to the captured year value. Nvidia + Snip
+	// use 4-digit years (offset 0); PrntScn writes a 2-digit year
+	// (offset 2000) — hard-coded for the 2000–2099 window per the
+	// product decision (no sliding window).
+	yearOffset int
+}
 
-// parseFilenameTimestamp extracts the YYYY.MM.DD - HH.MM.SS portion the OW
-// client embeds in its screenshot filenames. Returns ok=false for filenames
-// that don't carry a timestamp.
+// filenameFormats is the ordered list of per-tool patterns walked by
+// parseFilenameTimestamp. First match wins; the prefix-gate makes the
+// per-file cost identical to today's single-regex pass when a file
+// matches the first format. Add a new tool by appending one record —
+// no other code needs touching.
+var filenameFormats = []filenameFormat{
+	{
+		// Nvidia Overlay: `Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png`
+		// Dots as date+time separators; trailing `.NN` is hundredths
+		// of a second (we drop it — the timestamp is per-second).
+		prefix:     "Overwatch 2 Screenshot ",
+		re:         regexp.MustCompile(`^Overwatch 2 Screenshot (\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})`),
+		yearOffset: 0,
+	},
+	{
+		// OW default Print Screen: `ScreenShot_26-06-07_22-59-52-000.jpg`
+		// 2-digit year (→ 20YY), hyphens within date+time, trailing
+		// `-NNN` is milliseconds (dropped). JPG extension; the file
+		// extension whitelist already accepts .jpg.
+		prefix:     "ScreenShot_",
+		re:         regexp.MustCompile(`^ScreenShot_(\d{2})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})`),
+		yearOffset: 2000,
+	},
+	{
+		// Windows Snip tool: `Screenshot 2026-06-07 224855.png`
+		// Note the trailing space in the prefix — without it the
+		// match would also fire on Steam's "Screenshot42.png" naming
+		// (if Steam ever uses that shape) and we'd absorb the wrong
+		// files. Time is continuous HHMMSS with no separators.
+		prefix:     "Screenshot ",
+		re:         regexp.MustCompile(`^Screenshot (\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2})(\d{2})`),
+		yearOffset: 0,
+	},
+}
+
+// parseFilenameTimestamp walks the per-tool format list and returns
+// the embedded timestamp for the first match. Returns ok=false for
+// filenames that match no canonical OW capture tool — those land
+// with an `unmatched-<filename>` sentinel via the resolver.
 func parseFilenameTimestamp(f string) (time.Time, bool) {
-	m := filenameTimestampRe.FindStringSubmatch(f)
-	if m == nil {
-		return time.Time{}, false
+	for _, ff := range filenameFormats {
+		if !strings.HasPrefix(f, ff.prefix) {
+			continue
+		}
+		m := ff.re.FindStringSubmatch(f)
+		if m == nil {
+			continue
+		}
+		year, ok := atoiCapture(m[1])
+		if !ok {
+			return time.Time{}, false
+		}
+		year += ff.yearOffset
+		month, ok1 := atoiCapture(m[2])
+		day, ok2 := atoiCapture(m[3])
+		hour, ok3 := atoiCapture(m[4])
+		min, ok4 := atoiCapture(m[5])
+		sec, ok5 := atoiCapture(m[6])
+		if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 {
+			return time.Time{}, false
+		}
+		// time.Date normalises out-of-range values silently (month
+		// 13 becomes January next year, day 32 rolls over). We want
+		// strict rejection: build a canonical RFC3339 string and let
+		// time.Parse refuse the invalid date.
+		s := fmt.Sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", year, month, day, hour, min, sec)
+		t, err := time.Parse(time.RFC3339, s)
+		if err != nil {
+			return time.Time{}, false
+		}
+		return t, true
 	}
-	s := fmt.Sprintf("%s-%s-%sT%s:%s:%sZ", m[1], m[2], m[3], m[4], m[5], m[6])
-	t, err := time.Parse(time.RFC3339, s)
+	return time.Time{}, false
+}
+
+// atoiCapture is a minimal regex-capture-to-int helper kept inline so
+// the per-file cost of parseFilenameTimestamp stays in the same
+// allocation budget as the old single-regex implementation. Negative
+// values are impossible (the regex captures `\d{N}` only).
+func atoiCapture(b string) (int, bool) {
+	n, err := strconv.Atoi(b)
 	if err != nil {
-		return time.Time{}, false
+		return 0, false
 	}
-	return t, true
+	return n, true
 }
 
 // firstNonEmpty returns a when a is not its zero value; b otherwise.

@@ -268,7 +268,7 @@ func filenameForTS(ts time.Time, suffix, kind string) string {
 // in test data declarations where a parse failure would be the
 // author's typo, not a runtime condition.
 func mustParseTS(s string) time.Time {
-	t, err := time.Parse("2006.01.02 - 15.04.05", s)
+	t, err := time.Parse("Overwatch 2 Screenshot 2006.01.02 - 15.04.05", s)
 	if err != nil {
 		panic(fmt.Sprintf("mustParseTS(%q): %v", s, err))
 	}

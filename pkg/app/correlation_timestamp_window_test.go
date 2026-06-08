@@ -22,13 +22,13 @@ func TestMatchByTimestampWindow_EquidistantBetweenTwoMatches_SurfacesAmbiguous(t
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{
 			{
-				Filename: "2026.07.01 - 14.00.00 _x.png",
+				Filename: "Overwatch 2 Screenshot 2026.07.01 - 14.00.00 _x.png",
 				MatchKey: "match-X",
 				Map:      "rialto",
 				Hero:     "lucio",
 			},
 			{
-				Filename: "2026.07.01 - 14.01.30 _y.png",
+				Filename: "Overwatch 2 Screenshot 2026.07.01 - 14.01.30 _y.png",
 				MatchKey: "match-Y",
 				Map:      "aatlis",
 				Hero:     "lucio",
@@ -36,7 +36,7 @@ func TestMatchByTimestampWindow_EquidistantBetweenTwoMatches_SurfacesAmbiguous(t
 		},
 	}
 	// PERSONAL at 14:00:45 — exactly 45 s from each SUMMARY.
-	cand := candidateFromParse("2026.07.01 - 14.00.45 _p.png",
+	cand := candidateFromParse("Overwatch 2 Screenshot 2026.07.01 - 14.00.45 _p.png",
 		&parser.MatchResult{Hero: "lucio"})
 	key, cands, ok := matchByTimestampWindow(cand, snap)
 	if !ok {
@@ -66,20 +66,20 @@ func TestMatchByTimestampWindow_NearTie_WithinTolerance_SurfacesAmbiguous(t *tes
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{
 			{
-				Filename: "2026.07.01 - 14.00.02 _x.png",
+				Filename: "Overwatch 2 Screenshot 2026.07.01 - 14.00.02 _x.png",
 				MatchKey: "match-X",
 				Map:      "rialto",
 				Hero:     "lucio",
 			},
 			{
-				Filename: "2026.07.01 - 14.01.32 _y.png",
+				Filename: "Overwatch 2 Screenshot 2026.07.01 - 14.01.32 _y.png",
 				MatchKey: "match-Y",
 				Map:      "aatlis",
 				Hero:     "lucio",
 			},
 		},
 	}
-	cand := candidateFromParse("2026.07.01 - 14.00.45 _p.png",
+	cand := candidateFromParse("Overwatch 2 Screenshot 2026.07.01 - 14.00.45 _p.png",
 		&parser.MatchResult{Hero: "lucio"})
 	_, cands, ok := matchByTimestampWindow(cand, snap)
 	if !ok || len(cands) != 2 {
@@ -93,20 +93,20 @@ func TestMatchByTimestampWindow_ClearlyCloser_AutoAdopts(t *testing.T) {
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{
 			{
-				Filename: "2026.07.01 - 14.00.30 _x.png",
+				Filename: "Overwatch 2 Screenshot 2026.07.01 - 14.00.30 _x.png",
 				MatchKey: "match-X",
 				Map:      "rialto",
 				Hero:     "lucio",
 			},
 			{
-				Filename: "2026.07.01 - 14.02.00 _y.png",
+				Filename: "Overwatch 2 Screenshot 2026.07.01 - 14.02.00 _y.png",
 				MatchKey: "match-Y",
 				Map:      "aatlis",
 				Hero:     "lucio",
 			},
 		},
 	}
-	cand := candidateFromParse("2026.07.01 - 14.00.45 _p.png",
+	cand := candidateFromParse("Overwatch 2 Screenshot 2026.07.01 - 14.00.45 _p.png",
 		&parser.MatchResult{Hero: "lucio"})
 	key, cands, ok := matchByTimestampWindow(cand, snap)
 	if !ok || key != "match-X" || cands != nil {
@@ -120,19 +120,19 @@ func TestMatchByTimestampWindow_IntraMatchEquidistance_NotAmbiguous(t *testing.T
 	// the user which match it belongs to.
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{{
-			Filename: "2026.07.01 - 14.00.00 _sum.png",
+			Filename: "Overwatch 2 Screenshot 2026.07.01 - 14.00.00 _sum.png",
 			MatchKey: "match-A",
 			Map:      "rialto",
 			Hero:     "lucio",
 		}},
 		Scoreboards: []db.ScoreboardRow{{
-			Filename: "2026.07.01 - 14.01.00 _sb.png",
+			Filename: "Overwatch 2 Screenshot 2026.07.01 - 14.01.00 _sb.png",
 			MatchKey: "match-A",
 			Map:      "rialto",
 			Hero:     "lucio",
 		}},
 	}
-	cand := candidateFromParse("2026.07.01 - 14.00.30 _p.png",
+	cand := candidateFromParse("Overwatch 2 Screenshot 2026.07.01 - 14.00.30 _p.png",
 		&parser.MatchResult{Hero: "lucio"})
 	key, cands, ok := matchByTimestampWindow(cand, snap)
 	if !ok || key != "match-A" || cands != nil {
