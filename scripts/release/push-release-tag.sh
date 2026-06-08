@@ -96,17 +96,44 @@ printf 'Triggered release.yml for %s\n' "${TAG}"
 # with the unknown value `release ...` — the call returns empty.
 # Filtering by --state + --label and then jq-matching the title
 # avoids the search parser entirely.
-PR_NUMBER=$(gh pr list \
-  --state merged \
-  --label "autorelease: pending" \
-  --json number,title \
-  --jq "[.[] | select(.title == \"chore(main): release ${VERSION}\") | .number] | first // empty" 2>/dev/null || echo "")
+#
+# Stderr stays attached so a `gh` failure (auth, rate limit, etc.)
+# surfaces in the run log. The previous shape masked errors with
+# `2>/dev/null || echo ""`, which stranded v0.9.0 in `autorelease:
+# pending` after a transient lookup failure — release-please's
+# outstanding-PR check then aborted every subsequent run with
+# "There are untagged, merged release PRs outstanding" until the
+# label was flipped by hand.
+#
+# Empty-result retry covers the indexing race between the merge
+# event and the PR-list API. One retry with a short backoff is
+# enough for steady-state runs; a persistently-empty result aborts
+# loudly so the maintainer can investigate before the next release.
+find_merged_release_pr() {
+  gh pr list \
+    --state merged \
+    --label "autorelease: pending" \
+    --json number,title \
+    --jq "[.[] | select(.title == \"chore(main): release ${VERSION}\") | .number] | first // empty"
+}
 
-if [ -n "$PR_NUMBER" ]; then
-  gh pr edit "$PR_NUMBER" \
-    --remove-label "autorelease: pending" \
-    --add-label "autorelease: tagged"
-  printf 'Flipped PR #%s label: autorelease: pending → tagged\n' "$PR_NUMBER"
-else
-  printf 'warning: could not find merged release PR for %s; label not updated.\n' "${TAG}" >&2
+PR_NUMBER="$(find_merged_release_pr)"
+if [ -z "$PR_NUMBER" ]; then
+  printf 'no merged release PR found for %s on first lookup; retrying after 10s\n' "${TAG}" >&2
+  sleep 10
+  PR_NUMBER="$(find_merged_release_pr)"
 fi
+
+if [ -z "$PR_NUMBER" ]; then
+  printf 'error: could not find merged release PR for %s after retry.\n' "${TAG}" >&2
+  printf '  Flip the label by hand:\n' >&2
+  printf "    gh pr list --state merged --label 'autorelease: pending' --json number,title\n" >&2
+  printf "    gh pr edit <NUMBER> --remove-label 'autorelease: pending' --add-label 'autorelease: tagged'\n" >&2
+  printf '  Until this is done, release-please will refuse to open new release PRs.\n' >&2
+  exit 1
+fi
+
+gh pr edit "$PR_NUMBER" \
+  --remove-label "autorelease: pending" \
+  --add-label "autorelease: tagged"
+printf 'Flipped PR #%s label: autorelease: pending → tagged\n' "$PR_NUMBER"
