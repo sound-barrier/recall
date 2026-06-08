@@ -175,26 +175,6 @@ user which source their captures are actually landing in.
 - **Effort**: ~4 hours. New probe endpoint + per-card
   `useScreenshotFolderStats` composable.
 
-### 10. "Supported filename formats" surface in Settings → Advanced
-
-After PR #227 the parser recognises three filename shapes
-(Nvidia, OW PrntScn, Win Snip). There is no in-app way for a
-user to see *which* shapes work — they have to guess from the
-picker grid's source names + the docs site. A read-only table
-under Settings → Advanced ("Supported capture-source rules")
-that lists the prefix, regex, and an example filename per
-format makes the contract self-documenting.
-
-- **Where**: nested under the Re-parse all screenshots row in
-  Settings → Advanced. Closed by default in a
-  `<details>`/`<summary>` — power-user surface only.
-- **Constraint**: this is the same data that TECHNICAL_DEBT
-  item #3 wants to extract into a YAML. If that lands first,
-  this surface reads from the YAML directly and a future
-  release's added format shows up here automatically.
-- **Effort**: ~2 hours. Pure render; no new endpoint until the
-  YAML extraction lands.
-
 ### 11. Reference data gap card → "Will be fixed in vX.Y.Z" link
 
 The Unknown tab's **Reference data gaps** section (PR #224)

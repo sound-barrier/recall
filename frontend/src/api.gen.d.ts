@@ -3147,6 +3147,26 @@ export interface operations {
                         maps_by_type: {
                             [key: string]: string[];
                         };
+                        /**
+                         * @description Per-capture-tool filename grammars the parser
+                         *     recognises. Source-of-truth is
+                         *     `pkg/parser/screenshot_sources.yaml`. Surfaced
+                         *     in Settings → Advanced → "Supported capture-
+                         *     source rules" so the user can verify which
+                         *     filename shapes work without leaving the app.
+                         */
+                        screenshot_sources: {
+                            /** @description Stable id (nvidia / prntscn / snip / …). */
+                            name: string;
+                            /** @description Fast strings.HasPrefix gate. */
+                            prefix: string;
+                            /** @description Anchored Go regex; six capture groups (y, m, d, H, M, S). */
+                            regex: string;
+                            /** @description Added to the captured year (2-digit YAML → 2000). */
+                            year_offset: number;
+                            /** @description Canonical example filename. */
+                            example: string;
+                        }[];
                     };
                 };
             };
