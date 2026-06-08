@@ -115,35 +115,3 @@ single-best probe so the old endpoint is redundant.
 **Size:** S.
 **Risk:** Low — both endpoints are internal-only; the frontend is
 the only consumer.
-
-## 5. `frontend/src/match-helpers.ts` is becoming a junk drawer
-
-**Where:** the file has grown to ~14 exports across screenshot-
-type lookup, hero/role sorting, time-formatting, mode/queue/role
-label formatters, isHero/isMapUnknown predicates, and the
-`screenshotURL` builder. Tests pass and Vitest groups them well,
-but there's no clear topic boundary and new helpers default here
-out of habit.
-
-**What breaks:** discoverability — a contributor adding "is this
-match competitive" doesn't know if it belongs here, in
-`useMatchesNarrow`, or in a new file. The bundle-size budget
-comment already calls this out implicitly (every new feature
-adds a helper here).
-
-**Plan:**
-
-1. Group helpers by topic and split:
-   - `match-helpers.ts` keeps the screenshot-type slot detection +
-     `screenshotURL` (the two core pure helpers).
-   - `match-label-helpers.ts` — `formatPlayModeLabel` /
-     `formatQueueTypeLabel` / `formatUnknownHeroLabel` /
-     `formatUnknownMapLabel` family.
-   - `match-time-helpers.ts` — `matchTime`, `fmtTime`,
-     `formatRelativeTime`, `formatMinutesAsClock`.
-2. Move tests in lockstep (split `match-helpers.test.ts` the same way).
-3. Update imports across `MatchesView.vue`, `MatchCardExpanded.vue`,
-   `UnknownMapsView.vue`, etc.
-
-**Size:** M.
-**Risk:** Low — pure refactor; tests catch any rename misses.

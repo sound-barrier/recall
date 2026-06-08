@@ -8,12 +8,11 @@ import {
   missingOptionalSlots,
   sshotTypeLabel,
   sourceType,
-  formatParsedAt,
-  fmtTime,
   highlightSubstrings,
   isHeroUnknown,
   isMapUnknown,
 } from '../match-helpers'
+import { formatParsedAt, fmtTime } from '../match-time-helpers'
 import { highlightTermsFor, type SearchClause } from '../search-query'
 import { useOWData } from '../composables/useOWData'
 import MatchCardDanger from './MatchCardDanger.vue'

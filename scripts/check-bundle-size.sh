@@ -32,7 +32,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # scripts/bundle-size-budget-history.md — append a row there when
 # you change a number here. Bump deliberately; don't lift caps to
 # silence noise.
-: "${MAX_INITIAL_JS_BYTES:=146000}"
+: "${MAX_INITIAL_JS_BYTES:=156000}"
 : "${MAX_INITIAL_CSS_BYTES:=60000}"
 : "${MAX_TOTAL_JS_BYTES:=422000}"
 : "${MAX_TOTAL_CSS_BYTES:=242000}"

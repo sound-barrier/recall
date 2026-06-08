@@ -1,6 +1,7 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter, type Ref } from 'vue'
 import type { MatchRecord } from '../api'
-import { formatPlayMinutes, formatToHundredths, parseGameLengthMinutes, type WeekStart } from '../match-helpers'
+import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '../match-time-helpers'
+import { formatToHundredths } from '../match-stats-helpers'
 
 // Pure KPI / breakdown computations for the Matches dossier.
 // Extracted from MatchesView so the tally math (winrate excluding
