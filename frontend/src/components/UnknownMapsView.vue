@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 
-import type { MatchRecord } from '../api'
+import type { MatchRecord, UpdateInfo } from '../api'
 import { detectScreenshotSlots, screenshotURL } from '../match-helpers'
 import { formatParsedAt } from '../match-time-helpers'
 import { filenameFromMatchKey } from '../match-key'
@@ -44,6 +44,15 @@ const props = defineProps<{
   // the time the thumb mounts. Idempotent inside the composable —
   // every consumer can call it without dedup logic.
   preloadScreenshot: (url: string) => void
+  // Latest release info from the masthead "Check for updates"
+  // button. When populated AND the running build is older than
+  // latest, each `.reference-gap-card` checks whether its
+  // hero_raw / map_raw appears in updateInfo.latest_heroes /
+  // latest_maps and surfaces a "Update to v<X> to recognise
+  // <name>" CTA so the user knows the fix is one release away.
+  // Null until the user clicks the button; UpdateInfo arrays are
+  // empty when the SHA-sidecar check rejected the YAML asset.
+  updateInfo: UpdateInfo | null
 }>()
 
 const emit = defineEmits<{
@@ -64,6 +73,33 @@ const emit = defineEmits<{
 }>()
 
 const ambiguousList = computed(() => props.ambiguousRecords)
+
+// Reference-data-gap CTA helper. Returns the upgrade tip for a
+// given gap-card record IF the upcoming release would recognise
+// its OCR'd name; null otherwise. Match is case-insensitive
+// (OCR captures lowercase, YAML lists Title Case) and against
+// the normalized raw token (we mirror the parser's normalize:
+// lowercase + strip diacritics).
+function recognisingRelease(rec: MatchRecord): { version: string; url: string; name: string; kind: 'hero' | 'map' } | null {
+  const info = props.updateInfo
+  if (!info?.checked || !info.available) return null
+  const normalize = (s: string) => s
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .trim()
+  const heroRaw = rec.data?.hero_raw ?? ''
+  if (heroRaw) {
+    const hit = (info.latest_heroes ?? []).find((h) => normalize(h) === normalize(heroRaw))
+    if (hit) return { version: info.latest, url: info.url, name: hit, kind: 'hero' }
+  }
+  const mapRaw = rec.data?.map_raw ?? ''
+  if (mapRaw) {
+    const hit = (info.latest_maps ?? []).find((m) => normalize(m) === normalize(mapRaw))
+    if (hit) return { version: info.latest, url: info.url, name: hit, kind: 'map' }
+  }
+  return null
+}
 
 // Look up a candidate match by key so the picker can show the
 // candidate's hero/map/date headline without round-tripping. Returns
@@ -752,6 +788,24 @@ function updateThumbPosition(e: MouseEvent) {
             </span>
           </div>
         </div>
+        <p
+          v-if="recognisingRelease(rec)"
+          class="reference-gap-fix"
+          :data-fix-cta-key="rec.match_key"
+        >
+          <span class="fix-eyebrow">Fixed in</span>
+          <a
+            class="fix-link"
+            :href="recognisingRelease(rec)!.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            :title="`Open release page for v${recognisingRelease(rec)!.version}`"
+          >v{{ recognisingRelease(rec)!.version }} ↗</a>
+          <span class="fix-copy">
+            — will recognise
+            <code>{{ recognisingRelease(rec)!.name }}</code>
+          </span>
+        </p>
       </article>
     </div>
 
@@ -827,6 +881,58 @@ function updateThumbPosition(e: MouseEvent) {
   color: var(--text);
   border-color: var(--accent);
   outline: none;
+}
+
+/* Per-card "Update to v<X>" CTA inside a .reference-gap-card.
+   Quiet by default — accent-tinted eyebrow + monospace version
+   link + plain copy — so it reads as a hint, not an alarm.
+   The whole row sits below the card head with a thin top
+   border to separate it from the OCR'd-name body. */
+.reference-gap-fix {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin: 0.55rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  flex-wrap: wrap;
+}
+
+.fix-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.fix-link {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+  padding-bottom: 0.05rem;
+  transition: color var(--duration-fast) ease;
+}
+
+.fix-link:hover,
+.fix-link:focus-visible {
+  color: var(--accent-text);
+  outline: none;
+}
+
+.fix-copy code {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  background: var(--surface-2);
+  padding: 0.05rem 0.3rem;
+  border-radius: 1px;
+  color: var(--text);
 }
 
 .unknown-section-count {

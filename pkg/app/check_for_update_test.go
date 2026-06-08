@@ -1,8 +1,12 @@
 package app
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -12,6 +16,14 @@ import (
 // loop. Instead, each test stands up an httptest.NewServer with a
 // canned handler and points `releasesURL` (the package-level seam) at
 // it for the duration of the test.
+
+// isEmptyUpdate returns true when no useful fields landed — equivalent
+// to `got == UpdateInfo{}` before LatestHeroes/LatestMaps moved the
+// struct out of comparable territory.
+func isEmptyUpdate(u UpdateInfo) bool {
+	return !u.Checked && !u.DevBuild && !u.Available && u.Latest == "" && u.URL == "" &&
+		len(u.LatestHeroes) == 0 && len(u.LatestMaps) == 0
+}
 
 // withReleasesURL swaps releasesURL for the duration of the test and
 // restores it after — same shape as parser tests' runTesseractFunc
@@ -137,7 +149,7 @@ func TestCheckForUpdate_NetworkErrorReturnsEmpty(t *testing.T) {
 
 	got := (&App{}).CheckForUpdate()
 
-	if got != (UpdateInfo{}) {
+	if !isEmptyUpdate(got) {
 		t.Errorf("network failure: want empty UpdateInfo, got %+v", got)
 	}
 }
@@ -149,7 +161,7 @@ func TestCheckForUpdate_MalformedJSONReturnsEmpty(t *testing.T) {
 
 	got := (&App{}).CheckForUpdate()
 
-	if got != (UpdateInfo{}) {
+	if !isEmptyUpdate(got) {
 		t.Errorf("malformed body: want empty UpdateInfo, got %+v", got)
 	}
 }
@@ -165,7 +177,7 @@ func TestCheckForUpdate_EmptyTagReturnsEmpty(t *testing.T) {
 
 	got := (&App{}).CheckForUpdate()
 
-	if got != (UpdateInfo{}) {
+	if !isEmptyUpdate(got) {
 		t.Errorf("empty tag: want empty UpdateInfo, got %+v", got)
 	}
 }
@@ -257,5 +269,164 @@ func TestCheckForUpdate_PrereleaseInstallNeverPromptsDowngrade(t *testing.T) {
 
 	if got.Available {
 		t.Errorf("Available: want false — 0.2.5 < 0.3.0-beta.0 by semver, got %+v", got)
+	}
+}
+
+// withReleaseAssetURL swaps releaseAssetURL for the duration of the
+// test and restores it after — needed because the release-roster
+// fetches go through this function. Tests can route the asset URLs
+// at an httptest server.
+func withReleaseAssetURL(t *testing.T, builder func(version, name string) string) {
+	t.Helper()
+	prev := releaseAssetURL
+	releaseAssetURL = builder
+	t.Cleanup(func() { releaseAssetURL = prev })
+}
+
+// sha256hex computes a hex-encoded SHA-256 of the input — convenience
+// for crafting test sidecars.
+func sha256hex(b []byte) string {
+	h := sha256.Sum256(b)
+	return hex.EncodeToString(h[:])
+}
+
+// fakeAssetServer responds with a small static set of routes:
+//   - /heroes.yaml          → heroesBody
+//   - /heroes.yaml.sha256   → "<hash>  recall-1.2.3-heroes.yaml"
+//   - /maps.yaml            → mapsBody
+//   - /maps.yaml.sha256     → "<hash>  recall-1.2.3-maps.yaml"
+//
+// Callers point releaseAssetURL at this server's URL.
+func fakeAssetServer(t *testing.T, heroesBody, mapsBody []byte) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/heroes.yaml", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(heroesBody) })
+	mux.HandleFunc("/heroes.yaml.sha256", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprintf(w, "%s  recall-1.2.3-heroes.yaml\n", sha256hex(heroesBody))
+	})
+	mux.HandleFunc("/maps.yaml", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(mapsBody) })
+	mux.HandleFunc("/maps.yaml.sha256", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprintf(w, "%s  recall-1.2.3-maps.yaml\n", sha256hex(mapsBody))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestCheckForUpdate_AvailableSurfacesLatestRosters(t *testing.T) {
+	releaseSrv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v1.2.3","html_url":"https://example/v1.2.3"}`)
+	withReleasesURL(t, releaseSrv.URL)
+	withVersion(t, "1.0.0")
+
+	heroes := []byte("tank:\n  - Miyazaki\n  - Reinhardt\nsupport:\n  - Lúcio\n")
+	maps := []byte("control:\n  - Ilios\n  - Nepal\nclash:\n  - Hanaoka\n")
+	assetSrv := fakeAssetServer(t, heroes, maps)
+	withReleaseAssetURL(t, func(_, name string) string {
+		return assetSrv.URL + "/" + name
+	})
+
+	got := (&App{}).CheckForUpdate()
+
+	if !got.Available || got.Latest != "1.2.3" {
+		t.Fatalf("Available/Latest: want true / 1.2.3, got %+v", got)
+	}
+	if len(got.LatestHeroes) != 3 {
+		t.Errorf("LatestHeroes: want 3 entries, got %v", got.LatestHeroes)
+	}
+	if !contains(got.LatestHeroes, "Miyazaki") {
+		t.Errorf("LatestHeroes missing 'Miyazaki': %v", got.LatestHeroes)
+	}
+	if len(got.LatestMaps) != 3 {
+		t.Errorf("LatestMaps: want 3 entries, got %v", got.LatestMaps)
+	}
+	if !contains(got.LatestMaps, "Hanaoka") {
+		t.Errorf("LatestMaps missing 'Hanaoka': %v", got.LatestMaps)
+	}
+}
+
+func TestCheckForUpdate_MismatchedSidecarRejectsRosters(t *testing.T) {
+	// Bad sidecar (wrong hash) MUST drop the roster — silently
+	// trusting it would let a tampered YAML reach the UI. The
+	// rest of the UpdateInfo (Available, Latest, URL) still
+	// surfaces — only the roster arrays empty out.
+	releaseSrv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v1.2.3","html_url":"https://example/v1.2.3"}`)
+	withReleasesURL(t, releaseSrv.URL)
+	withVersion(t, "1.0.0")
+
+	heroes := []byte("tank:\n  - Miyazaki\n")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/heroes.yaml", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(heroes) })
+	mux.HandleFunc("/heroes.yaml.sha256", func(w http.ResponseWriter, _ *http.Request) {
+		// Intentional hash mismatch (all-zeros where the real
+		// hash should be) — verifySha256 must reject.
+		_, _ = fmt.Fprintf(w, "%s  recall-1.2.3-heroes.yaml\n", strings.Repeat("0", 64))
+	})
+	mux.HandleFunc("/maps.yaml", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(heroes) })
+	mux.HandleFunc("/maps.yaml.sha256", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprintf(w, "%s  recall-1.2.3-maps.yaml\n", strings.Repeat("0", 64))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	withReleaseAssetURL(t, func(_, name string) string {
+		return srv.URL + "/" + name
+	})
+
+	got := (&App{}).CheckForUpdate()
+
+	if !got.Available || got.Latest != "1.2.3" {
+		t.Fatalf("Available/Latest: want true / 1.2.3, got %+v", got)
+	}
+	if len(got.LatestHeroes) != 0 || len(got.LatestMaps) != 0 {
+		t.Errorf("rosters: want empty (sidecar mismatch), got heroes=%v maps=%v",
+			got.LatestHeroes, got.LatestMaps)
+	}
+}
+
+func TestVerifySha256_RejectsMalformedSidecar(t *testing.T) {
+	payload := []byte("hello")
+	cases := []struct {
+		name    string
+		sidecar []byte
+		want    bool
+	}{
+		{"empty sidecar", []byte(""), false},
+		{"truncated hash (only 10 chars)", []byte("abcdef0123  file.yaml"), false},
+		{"correct hash + filename", []byte(sha256hex(payload) + "  file.yaml"), true},
+		{
+			"upper-case hash (sidecars sometimes ship hex like this)",
+			[]byte(strings.ToUpper(sha256hex(payload)) + "  file.yaml"), true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := verifySha256(payload, tc.sidecar); got != tc.want {
+				t.Errorf("got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestParseRosterNames_DedupsAcrossGroups(t *testing.T) {
+	// If a hero appears under two role-groups (the YAML schema
+	// doesn't forbid it), parseRosterNames must dedup so the FE
+	// doesn't render the same CTA twice.
+	yaml := []byte("tank:\n  - Doomfist\n  - Reinhardt\ndps:\n  - Doomfist\n")
+	names := parseRosterNames(yaml)
+	if len(names) != 2 {
+		t.Errorf("want 2 unique names (Doomfist dedup), got %v", names)
+	}
+}
+
+func TestParseRosterNames_DropsBlankEntries(t *testing.T) {
+	// A blank string in the YAML is filtered — the parser's
+	// reference data never carries one but defending against it
+	// keeps the FE from rendering a CTA with an empty backtick'd
+	// label.
+	yaml := []byte("tank:\n  - \"\"\n  - Reinhardt\n")
+	names := parseRosterNames(yaml)
+	if len(names) != 1 || names[0] != "Reinhardt" {
+		t.Errorf("want [Reinhardt], got %v", names)
 	}
 }

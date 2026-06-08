@@ -152,7 +152,15 @@ export function GetStartupError(): Promise<string> {
   return _get<{ message: string }>('/api/v1/system/startup-error').then(d => d.message)
 }
 
-export type UpdateInfo = { checked: boolean; dev_build: boolean; available: boolean; latest: string; url: string }
+export type UpdateInfo = {
+  checked: boolean
+  dev_build: boolean
+  available: boolean
+  latest: string
+  url: string
+  latest_heroes?: string[]
+  latest_maps?: string[]
+}
 
 export function CheckForUpdate(): Promise<UpdateInfo> {
   if (IS_WAILS) return _wails('CheckForUpdate')

@@ -1,13 +1,18 @@
 package app
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"gopkg.in/yaml.v3"
 )
 
 // Version is injected at build time via -ldflags "-X recall/pkg/app.Version=<tag>".
@@ -20,12 +25,23 @@ var Version = "dev"
 //   - Checked=true, DevBuild=true: show "Latest: vX" link (informational).
 //   - Checked=true, DevBuild=false, Available=true: show "↑ vX available" link.
 //   - Checked=true, DevBuild=false, Available=false: show "✓ most recent".
+//
+// LatestHeroes / LatestMaps carry the canonical display-name lists
+// extracted from the release's `recall-<version>-heroes.yaml` and
+// `recall-<version>-maps.yaml` assets. The frontend pivots these into
+// a "Update to v<X> to recognise <name>" CTA on the Reference data
+// gaps section so the user knows which OCR-captured names are about
+// to be recognised once they update. Empty when the YAML fetch fails
+// or the sidecar SHA-256 check rejects the asset — Recall keeps
+// showing the generic "wait for the next release" copy in that case.
 type UpdateInfo struct {
-	Checked   bool   `json:"checked"`
-	DevBuild  bool   `json:"dev_build"`
-	Available bool   `json:"available"`
-	Latest    string `json:"latest"`
-	URL       string `json:"url"`
+	Checked      bool     `json:"checked"`
+	DevBuild     bool     `json:"dev_build"`
+	Available    bool     `json:"available"`
+	Latest       string   `json:"latest"`
+	URL          string   `json:"url"`
+	LatestHeroes []string `json:"latest_heroes,omitempty"`
+	LatestMaps   []string `json:"latest_maps,omitempty"`
 }
 
 // releasesURL is the GitHub Releases API endpoint CheckForUpdate
@@ -35,6 +51,19 @@ type UpdateInfo struct {
 // CLAUDE.md's function-variable-seam guidance for single-method
 // dependencies.
 var releasesURL = "https://api.github.com/repos/sound-barrier/recall/releases/latest"
+
+// releaseAssetURL builds the public-asset URL for a release file.
+// Exposed as a package var so tests can swap it for an
+// httptest.NewServer-routed builder. The released-asset attestation
+// PR (#220) ships `recall-<version>-heroes.yaml`,
+// `recall-<version>-maps.yaml`, and `<file>.sha256` sidecars for both
+// at this prefix.
+var releaseAssetURL = func(version, name string) string {
+	return fmt.Sprintf(
+		"https://github.com/sound-barrier/recall/releases/download/v%s/recall-%s-%s",
+		version, version, name,
+	)
+}
 
 func (a *App) GetVersion() string {
 	if Version != "dev" {
@@ -119,5 +148,120 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	if !current.LessThan(upstream) {
 		return UpdateInfo{Checked: true}
 	}
-	return UpdateInfo{Checked: true, Available: true, Latest: latest, URL: release.HTMLURL}
+	heroes, maps := fetchReleaseRosters(latest)
+	return UpdateInfo{
+		Checked:      true,
+		Available:    true,
+		Latest:       latest,
+		URL:          release.HTMLURL,
+		LatestHeroes: heroes,
+		LatestMaps:   maps,
+	}
+}
+
+// fetchReleaseRosters downloads the release's `heroes.yaml` +
+// `maps.yaml` assets, verifies each against its published `.sha256`
+// sidecar, parses the YAML, and returns the flat display-name lists.
+//
+// Trust model: TLS protects the HTTPS fetch against MITM. The .sha256
+// sidecar is fetched from the same release; verifying the YAML
+// against it defends against asset corruption on GitHub's side AND
+// against a fetcher that confused itself by mid-stream truncation.
+// Stronger SLSA/in-toto verification could go on top later (the
+// release pipeline already publishes attestations); the sidecar
+// check is the floor.
+//
+// Returns (nil, nil) on any failure — caller treats empty arrays as
+// "no upgrade hint available," falls back to the generic copy.
+func fetchReleaseRosters(version string) (heroes, maps []string) {
+	heroes = fetchRoster(version, "heroes.yaml")
+	maps = fetchRoster(version, "maps.yaml")
+	return heroes, maps
+}
+
+// fetchRoster downloads <release>/recall-<v>-<name> + its .sha256
+// sidecar, verifies the SHA, and returns the flat name list extracted
+// from the YAML's role/type-grouped map. Empty slice on any failure.
+func fetchRoster(version, name string) []string {
+	client := &http.Client{Timeout: 5 * time.Second}
+
+	yamlBytes, err := getBytes(client, releaseAssetURL(version, name))
+	if err != nil {
+		return nil
+	}
+
+	sumBytes, err := getBytes(client, releaseAssetURL(version, name)+".sha256")
+	if err != nil {
+		return nil
+	}
+
+	if !verifySha256(yamlBytes, sumBytes) {
+		return nil
+	}
+
+	return parseRosterNames(yamlBytes)
+}
+
+// getBytes runs a GET and returns the response body, capped at 1 MB
+// to bound memory if a malicious or misconfigured host returns a
+// stream-without-end. The released YAML files are ~10 KB each, so
+// 1 MB is two orders of magnitude of headroom.
+func getBytes(client *http.Client, url string) ([]byte, error) {
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("status %d", resp.StatusCode)
+	}
+	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+}
+
+// verifySha256 compares the SHA-256 of `payload` against the hash
+// claimed in `sidecar`. The sidecar follows the sha256sum format:
+// `<64-char hex hash>  <filename>` — we read the first whitespace-
+// separated token and treat it as the expected hash.
+func verifySha256(payload, sidecar []byte) bool {
+	fields := strings.Fields(string(sidecar))
+	if len(fields) == 0 {
+		return false
+	}
+	want := strings.ToLower(fields[0])
+	if len(want) != 64 {
+		return false
+	}
+	got := sha256.Sum256(payload)
+	return hex.EncodeToString(got[:]) == want
+}
+
+// parseRosterNames reads the role/type-grouped YAML structure the
+// parser uses (see pkg/parser/{heroes,maps}.yaml) and returns the
+// flat list of display names across every group, deduplicated.
+func parseRosterNames(yamlBytes []byte) []string {
+	// The YAML shape is `map[string][]string` (e.g.
+	// `tank: [...]`, `dps: [...]`, `support: [...]` for heroes;
+	// `control: [...]`, etc. for maps). Decoding straight into that
+	// shape rejects unexpected nesting silently — we return an
+	// empty slice rather than partial data so the FE empty-state
+	// gate is binary.
+	var grouped map[string][]string
+	if err := yaml.Unmarshal(yamlBytes, &grouped); err != nil {
+		return nil
+	}
+	seen := make(map[string]struct{})
+	out := make([]string, 0, 64)
+	for _, names := range grouped {
+		for _, n := range names {
+			if n == "" {
+				continue
+			}
+			if _, dup := seen[n]; dup {
+				continue
+			}
+			seen[n] = struct{}{}
+			out = append(out, n)
+		}
+	}
+	return out
 }

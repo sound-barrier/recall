@@ -81,6 +81,17 @@ session can skip the survey step.
   an `AUTO-DETECT · WINDOWS ONLY` eyebrow) and show only the
   custom-pick button. `ScreenshotSourcePicker.vue` +
   `pkg/app/probe_windows.go` (registry resolver).
+- ~~**Reference data gap card → "Fixed in vX.Y.Z" CTA**~~ — the
+  Unknown tab's gap-card now surfaces an upgrade tip when the
+  upcoming release's `heroes.yaml` / `maps.yaml` already lists
+  the OCR'd name. `CheckForUpdate()` extends to fetch both YAML
+  assets + their `.sha256` sidecars, verifies the hash before
+  parsing, and surfaces the flat name lists as
+  `latest_heroes` / `latest_maps`. Tampered or corrupted assets
+  drop silently — the card stays on the generic copy. Network /
+  sidecar trust model: TLS for transport + SHA verify for
+  asset-integrity. SLSA in-toto attestation verification is a
+  follow-up — the floor is the published checksum sidecar.
 - ~~**Hero × map-type heatmap dossier widget**~~ — opt-in widget
   in the dossier customizer. Rows = top-N most-played heroes in the
   narrowed set; columns = canonical 6 map types (control / escort /
@@ -137,33 +148,6 @@ is already past the comfortable point.
   trigger.
 
 ## Polish / lower-priority
-
-### 11. Reference data gap card → "Will be fixed in vX.Y.Z" link
-
-The Unknown tab's **Reference data gaps** section (PR #224)
-explains the wait-for-YAML recovery path generically but
-doesn't tell the user *which* release will add the missing
-entry. A small enrichment: when a record is gap-flagged with
-`Unknown hero (miyazaki?)`, query the GitHub release feed for
-the latest tag and check whether the published `heroes.yaml`
-sidecar already contains the entry — if so, surface "Update to
-v9.11.0 to recognise `miyazaki`" as a CTA on the card.
-
-- **Constraint**: this is a network read. Cache the latest
-  release's `heroes.yaml` + `maps.yaml` SHA + parsed contents
-  to disk (TTL ~24h) so the Unknown tab doesn't pin a network
-  call. Honour the existing oline-tolerant pattern in
-  `UpdateBanner.vue` (the masthead version chip) — if the
-  fetch fails, the card stays at its current "wait for the
-  next release" copy without a visible error.
-- **Constraint**: the fetched YAML sidecars are attested. The
-  client should `gh attestation verify` equivalent (parse the
-  in-toto attestation, verify the cert chain). The Go side
-  already has the verification primitives for the desktop
-  app's own download; reuse them.
-- **Effort**: ~6 hours including the cache layer + a test
-  fixture for the "release adds Miyazaki but not Junkertown"
-  partial-match case.
 
 ### 13. OnboardingTour walkthrough for new affordances
 
@@ -230,7 +214,7 @@ mapping back to source surfaces:
 | Settings → 06 Advanced (Stream/Clear/Re-parse) | 10, 12 | Stream-to-Grafana row is fine; the new Re-parse + format-list surfaces want enrichment. |
 | Parse tab | — | Run Parse + Watch Folder both match the docs intent. |
 | Matches workspace | 1, 3, 4, 5, 6, 7, 8 | Dossier + narrow panel are the redesign; remaining items polish the leaves + tag/selection surfaces. |
-| Unknown tab | 11 | Three-section split (Needs review / Unknown maps / Reference data gaps) is the surface; gap cards want the "fixed in vX.Y.Z" CTA. |
+| Unknown tab | — | Three-section split (Needs review / Unknown maps / Reference data gaps) is the surface; the "fixed in vX.Y.Z" CTA shipped in PR #234. |
 | Modals (Detail / Lightbox / Cheatsheet / ExportBundle / IgnoredFiles) | — | The keyboard contract is sound; per-modal items would be premature. |
 | First-Run Profile Modal | 14 | Profile naming itself is fine; the inline-picker step is the open work. |
 | OnboardingTour + TourCallout + TourSpotlight | 13 | Framework is sound; the *content* is stale and predates the set-workspace redesign + the new picker + the gap section. |
