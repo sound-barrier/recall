@@ -5,6 +5,7 @@
 // stay where they wire to App.vue's API.
 import { ref } from 'vue'
 import type { PlayMode, QueueType } from '../api'
+import TypeaheadDropdown from './TypeaheadDropdown.vue'
 
 defineProps<{
   // Active selection size. Bar only mounts when > 0.
@@ -19,6 +20,11 @@ defineProps<{
   // chooser. The parent flips back to null via @move-commit /
   // @move-cancel.
   movePickerOpen: 'live' | 'archive' | null
+  // Tag vocabulary across the narrowed set — drives the Tag ▾
+  // dropdown's suggestions. Defaults to an empty list when no
+  // vocabulary is threaded in; the free-text Enter path still
+  // works (so a brand-new user can still bulk-tag).
+  availableTags?: readonly string[]
 }>()
 
 const emit = defineEmits<{
@@ -36,12 +42,18 @@ const emit = defineEmits<{
   // BulkSetMatchPlayMode / BulkSetMatchQueue, then reloads.
   bulkPlayMode: [playMode: PlayMode]
   bulkQueue:    [queueType: QueueType]
+  // Bulk-tag every selected match. Parent (MatchesView) does the
+  // read-modify-write per record via api.SetMatchAnnotation —
+  // existing tags survive; the new one is appended (idempotent if
+  // already present). Empty string is currently unused but reserved
+  // for a future "Clear all tags" affordance.
+  bulkTag:      [tag: string]
 }>()
 
-// Mutually-exclusive Set-play-mode / Set-queue menus. Opening one
-// closes the other so the bar never sprouts two open dropdowns.
-const openMenu = ref<'' | 'play-mode' | 'queue'>('')
-function toggleMenu(name: 'play-mode' | 'queue') {
+// Mutually-exclusive Set-play-mode / Set-queue / Tag menus. Opening
+// one closes the others so the bar never sprouts two open dropdowns.
+const openMenu = ref<'' | 'play-mode' | 'queue' | 'tag'>('')
+function toggleMenu(name: 'play-mode' | 'queue' | 'tag') {
   openMenu.value = openMenu.value === name ? '' : name
 }
 
@@ -53,6 +65,13 @@ function pickPlayMode(v: PlayMode) {
 function pickQueue(v: QueueType) {
   openMenu.value = ''
   emit('bulkQueue', v)
+}
+
+function pickTag(v: string) {
+  const tag = v.trim().toLowerCase()
+  if (!tag) return
+  openMenu.value = ''
+  emit('bulkTag', tag)
 }
 </script>
 
@@ -167,6 +186,42 @@ function pickQueue(v: QueueType) {
             </button>
           </li>
         </ul>
+      </div>
+
+      <!-- Tag menu — opens a TypeaheadDropdown over availableTags.
+           Selecting an existing tag adopts it on every selected row;
+           typing a new tag + Enter coins it. -->
+      <div class="bab-menu-wrap">
+        <button
+          type="button"
+          class="bulk-mode"
+          :class="{ open: openMenu === 'tag' }"
+          :aria-expanded="openMenu === 'tag' ? 'true' : 'false'"
+          aria-haspopup="menu"
+          data-bulk-menu="tag"
+          @click="toggleMenu('tag')"
+        >
+          Tag <span class="bab-caret" aria-hidden="true">▾</span>
+        </button>
+        <div
+          v-if="openMenu === 'tag'"
+          class="bab-menu bab-menu-tag"
+          role="menu"
+          aria-label="Tag selected matches"
+        >
+          <TypeaheadDropdown
+            listbox-id="bulk-tag-listbox"
+            label="Tag selected matches"
+            :options="[...(availableTags ?? [])]"
+            :open="true"
+            placeholder="type a tag…"
+            empty-message="no tags yet — type a new one + Enter"
+            :show-checkmark="false"
+            @select="pickTag"
+            @free-text="pickTag"
+            @close="openMenu = ''"
+          />
+        </div>
       </div>
 
       <button
@@ -328,6 +383,15 @@ function pickQueue(v: QueueType) {
 .bab-caret { font-size: 0.7rem; }
 
 .bab-menu-wrap { position: relative; }
+
+/* Tag menu wraps a TypeaheadDropdown rather than a <ul> menu —
+   reset the listbox positioning so the dropdown's own popover
+   sits flush under the trigger. Wider min-width than the play-
+   mode menu to fit the search input + suggestion rows. */
+.bab-menu-tag {
+  min-width: 16rem;
+  padding: 0.4rem;
+}
 
 .bab-menu {
   position: absolute;
