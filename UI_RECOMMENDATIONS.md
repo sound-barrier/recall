@@ -81,6 +81,15 @@ session can skip the survey step.
   an `AUTO-DETECT · WINDOWS ONLY` eyebrow) and show only the
   custom-pick button. `ScreenshotSourcePicker.vue` +
   `pkg/app/probe_windows.go` (registry resolver).
+- ~~**Reference-data-gaps contextual callout**~~ — first time
+  the Unknown tab's Reference data gaps section materialises
+  (a record carries an OCR'd `hero_raw` / `map_raw` the parser
+  couldn't pin to canonical YAML), Recall surfaces a one-shot
+  contextual callout anchored to the section heading explaining
+  the wait-for-YAML recovery path. Built on the same
+  ContextualCallout primitive PR #235 / #237 / this PR consume.
+  Auto-dismisses on Got-it / Esc / close-glyph; persists
+  `recall.tour.unknown.refdata.seen=true`.
 - ~~**Source-picker contextual callout**~~ — first time the
   Windows 4-card screenshot-source grid renders, Recall surfaces
   a one-shot callout naming the four canonical OW capture
@@ -167,34 +176,6 @@ is already past the comfortable point.
 
 ## Polish / lower-priority
 
-### 13. OnboardingTour walkthrough for new affordances
-
-`OnboardingTour.vue` + `TourCallout.vue` + `TourSpotlight.vue`
-shipped pre-PR-#218 and don't introduce three large surfaces
-that landed since:
-
-- **Reference data gaps** — the Unknown tab's third section
-  only appears once a record carries the signal, so the tour
-  can't point at it on first run. The fix: a *contextual*
-  callout that fires the first time the section becomes
-  non-empty, anchored to the section heading and dismissed
-  permanently via a localStorage key (`recall.tour.unknown.refdata.seen`).
-
-- **Constraint**: tour callouts are a strong UI affordance —
-  one badly-timed callout will train the user to dismiss them
-  reflexively. Cap to one in-flight callout at a time; respect
-  a global `tour-dismissed` localStorage gate so power users
-  who already dismissed onboarding don't see new callouts
-  appearing unannounced.
-- **Constraint**: callouts must clear WCAG 2.4.6 (headings &
-  labels are descriptive) and 2.4.11 (focus not obscured) —
-  the spotlight cutout must not visually hide the focused
-  element when keyboard navigation lands on a tour-anchored
-  control.
-- **Effort**: ~8 hours total — 3h tour copy rewrite for the
-  set-workspace surfaces, 2h source-picker callout, 3h
-  contextual gap-section callout + persistence.
-
 ## Out of scope (deliberately not recommending)
 
 - **Drag-to-reorder leaf rows** — matches are immutable
@@ -228,7 +209,7 @@ mapping back to source surfaces:
 | Unknown tab | — | Three-section split (Needs review / Unknown maps / Reference data gaps) is the surface; the "fixed in vX.Y.Z" CTA shipped in PR #234. |
 | Modals (Detail / Lightbox / Cheatsheet / ExportBundle / IgnoredFiles) | — | The keyboard contract is sound; per-modal items would be premature. |
 | First-Run Profile Modal | 14 | Profile naming itself is fine; the inline-picker step is the open work. |
-| OnboardingTour + TourCallout + TourSpotlight | 13 | Framework is sound; the *content* is stale and predates the set-workspace redesign + the new picker + the gap section. |
+| OnboardingTour + TourCallout + TourSpotlight | — | Set-workspace copy rewrite shipped (PR #236); source-picker + reference-data-gaps contextual callouts shipped (PRs #237 / #238) on the ContextualCallout primitive from PR #235. |
 | Masthead (profile chip, theme switcher, update banner) | — | Reasonably mature. |
 
 Re-run this audit before the next round of recommendations
