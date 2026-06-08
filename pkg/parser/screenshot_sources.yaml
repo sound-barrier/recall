@@ -1,0 +1,49 @@
+# Per-tool screenshot filename patterns walked by
+# parseFilenameTimestamp in pkg/app/correlation.go. Order matters —
+# the loop hits the first prefix match, then runs the regex. Add a
+# new capture tool by appending another record; the regex must be
+# anchored with `^` (the loader rejects un-anchored patterns).
+#
+# Each entry MUST have six capture groups in this order:
+#   year, month, day, hour, minute, second
+# The loader extracts each as a decimal and feeds them into
+# time.Date through an RFC3339 round-trip so out-of-range values
+# (month 13, day 32) reject the timestamp instead of silently
+# rolling over.
+#
+# year_offset is added to the captured year value. Tools that
+# write a 4-digit year (Nvidia, Win Snip) use 0; tools that
+# write a 2-digit year (OW PrntScn default) use 2000 — hard-coded
+# for the 2000–2099 window per the product decision (no sliding
+# window).
+#
+# Steam's in-game F12 captures use yet another filename shape;
+# add a fourth entry once we have real samples.
+
+sources:
+  # Nvidia Overlay: `Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png`
+  # Dots as date+time separators; trailing `.NN` is hundredths of a
+  # second (dropped — the timestamp is per-second).
+  - name: nvidia
+    prefix: "Overwatch 2 Screenshot "
+    regex: '^Overwatch 2 Screenshot (\d{4})\.(\d{2})\.(\d{2}) - (\d{2})\.(\d{2})\.(\d{2})'
+    year_offset: 0
+
+  # OW default Print Screen: `ScreenShot_26-06-07_22-59-52-000.jpg`
+  # 2-digit year (→ 20YY), hyphens within date+time, trailing
+  # `-NNN` is milliseconds (dropped). JPG extension; the file
+  # extension whitelist already accepts .jpg.
+  - name: prntscn
+    prefix: "ScreenShot_"
+    regex: '^ScreenShot_(\d{2})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})'
+    year_offset: 2000
+
+  # Windows Snip tool: `Screenshot 2026-06-07 224855.png`
+  # Note the trailing space in the prefix — without it the match
+  # would also fire on Steam's "Screenshot42.png" naming (if Steam
+  # ever uses that shape) and we'd absorb the wrong files. Time is
+  # continuous HHMMSS with no separators.
+  - name: snip
+    prefix: "Screenshot "
+    regex: '^Screenshot (\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2})(\d{2})'
+    year_offset: 0

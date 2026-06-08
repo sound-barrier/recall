@@ -282,8 +282,9 @@ jobs:
           # workflow safe against a future change to the trigger.
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
-          cp pkg/parser/heroes.yaml "recall-${VERSION}-heroes.yaml"
-          cp pkg/parser/maps.yaml   "recall-${VERSION}-maps.yaml"
+          cp pkg/parser/heroes.yaml             "recall-${VERSION}-heroes.yaml"
+          cp pkg/parser/maps.yaml               "recall-${VERSION}-maps.yaml"
+          cp pkg/parser/screenshot_sources.yaml "recall-${VERSION}-screenshot_sources.yaml"
 
       # SLSA build provenance on the reference-data YAMLs. The binary
       # build jobs attested their own outputs in-job; the YAMLs aren't
@@ -298,6 +299,7 @@ jobs:
           subject-path: |
             recall-*-heroes.yaml
             recall-*-maps.yaml
+            recall-*-screenshot_sources.yaml
 
       # Per-artifact .sha256 files for every release binary, package,
       # and reference-data YAML. Each file contains the SHA256 hash of
