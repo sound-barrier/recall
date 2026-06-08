@@ -137,15 +137,21 @@ const calloutStyle = computed(() => {
           type="button"
           aria-label="Dismiss this hint"
           @click="emit('dismiss')"
-        >×</button>
+        >
+          ×
+        </button>
       </header>
-      <p class="ctx-body">{{ body }}</p>
+      <p class="ctx-body">
+        {{ body }}
+      </p>
       <div v-if="actionLabel" class="ctx-actions">
         <button
           type="button"
           class="ctx-action"
           @click="emit('action')"
-        >{{ actionLabel }}</button>
+        >
+          {{ actionLabel }}
+        </button>
       </div>
     </div>
   </Teleport>
