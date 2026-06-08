@@ -6,10 +6,7 @@ import {
   useContextualCallout,
   activeCalloutId,
 } from './useContextualCallout'
-import {
-  CONTEXTUAL_CALLOUT_KEY_PREFIX,
-  ONBOARDING_COMPLETED_KEY,
-} from './storageKeys'
+import { CONTEXTUAL_CALLOUT_KEY_PREFIX } from './storageKeys'
 
 // happy-dom's default localStorage is a no-op stub. The composable's
 // `try { localStorage.... } catch` falls into the catch and short-
@@ -95,14 +92,16 @@ describe('useContextualCallout', () => {
     expect(controller.active()).toBe(false)
   })
 
-  it('respects the global onboarding-completed gate', async () => {
-    // User dismissed/finished the full tour → don't re-tutorial via
-    // contextual callouts.
-    localStorage.setItem(ONBOARDING_COMPLETED_KEY, 'true')
+  it('does NOT respect the global onboarding-completed gate', async () => {
+    // Contextual callouts are surface-specific orientations, not
+    // re-tutorializations. A user who skipped the full tour might
+    // still hit a surface they've never seen — the callout fires
+    // once + dismisses on `seen`, independent of the tour flag.
+    localStorage.setItem('recall.onboardingCompleted', 'true')
     const { gate, controller } = makeHarness('demo')
     gate.value = true
     await nextTick()
-    expect(controller.active()).toBe(false)
+    expect(controller.active()).toBe(true)
   })
 
   it('only one callout can be active at a time', async () => {
