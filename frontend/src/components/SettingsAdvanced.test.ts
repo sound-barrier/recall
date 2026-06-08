@@ -4,7 +4,20 @@
 // below pin behavior the new props/emits introduced.
 
 import { mount } from '@vue/test-utils'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+
+// Mock ../api so the useOWData session-singleton fetch (added when
+// the Supported capture-source rules collapsible landed) doesn't
+// try to reach localhost:3000 at module-load time. Returning a
+// stub matches the real GetOWData shape so useOWData populates
+// data.value with the empty defaults.
+vi.mock('../api', () => ({
+  GetOWData: vi.fn(async () => ({
+    heroes_by_role:     {},
+    maps_by_type:       {},
+    screenshot_sources: [],
+  })),
+}))
 
 import SettingsAdvanced from './SettingsAdvanced.vue'
 
