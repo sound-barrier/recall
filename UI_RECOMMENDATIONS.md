@@ -45,6 +45,54 @@ session can skip the survey step.
   cheatsheet**~~ — shipped with PR #99 (pre-redesign) and the
   set-workspace redesign rebinds `selection` so prev/next +
   auto-close work correctly against the visible filtered set.
+- ~~**Per-match Quickplay / Competitive + Role Queue / Open Queue
+  classification**~~ — three surfaces shipped together
+  (PRs #215 / #217 / #218): leaf-row chip pair, detail-panel
+  chooser, and narrow-filter Queue + Play mode sections. All three
+  read the same canonical bucket via `formatPlayModeLabel` /
+  `formatQueueTypeLabel` in `match-helpers.ts`, so leaf ↔ chooser
+  ↔ filter agree on every match. "Unknown mode" / "Unknown mode
+  type" are first-class filter chips.
+- ~~**Bulk-set play-mode + queue from selected rows**~~ — shipped
+  in PR #218 alongside the existing Hide / Export / Move bulk
+  actions in `BulkActionBar.vue`. Per-row checkboxes tick into
+  `selectedKeys`; the sticky bar exposes Set play mode ▾
+  (Quickplay / Competitive / Clear) and Set queue ▾ (Role / Open /
+  Clear) menus that fire a single `PUT /api/v1/matches/play-mode`
+  / `/queue-type` per click — one transaction per click, not N.
+  The remaining bullet from this list (Tag, Star, contextual
+  surfaces) is now item 3 below.
+- ~~**Unknown hero / map detection + Reference data gaps section**~~ —
+  PR #224. Parser tightening (length-gated fuzzy Pass-2) +
+  `hero_raw` / `map_raw` columns preserve the OCR'd token when a
+  match isn't in the canonical YAML. Leaf row gets
+  `Unknown hero (miyazaki?)` chip, detail panel gets a striped-
+  accent banner above the chooser block linking to the latest
+  release page, and the Unknown tab gets a third
+  **Reference data gaps** section listing every record awaiting a
+  YAML update. Settings → Advanced → **Re-parse all screenshots**
+  re-runs Tesseract on the corpus for the one-shot recovery flow.
+- ~~**Windows screenshot source picker (4 named sources)**~~ —
+  PR #226. Replaces the generic Auto-Detect / Choose Manually CTA
+  pair on the first-run empty-state hero with a 2 × 2 grid naming
+  Nvidia Overlay / OW PrntScn / Win Snip / Steam install, each
+  with a status dot showing path existence. Click a found card →
+  one-step set + watcher start. macOS / Linux hide the grid (with
+  an `AUTO-DETECT · WINDOWS ONLY` eyebrow) and show only the
+  custom-pick button. `ScreenshotSourcePicker.vue` +
+  `pkg/app/probe_windows.go` (registry resolver).
+- ~~**Multi-format screenshot filename support**~~ — PR #227.
+  Parser now recognises Nvidia (`Overwatch 2 Screenshot YYYY.MM.DD
+  - HH.MM.SS.ff.png`), OW PrntScn default (`ScreenShot_YY-MM-DD_
+  HH-MM-SS-fff.jpg`— note: JPG), and Win Snip
+  (`Screenshot YYYY-MM-DD HHMMSS.png`) filename shapes. Per-tool
+  prefix gate means random non-OW files in the watched folder are
+  silently skipped instead of absorbed.
+- ~~**Released-asset attestation for `heroes.yaml` + `maps.yaml`**~~ —
+  PR #220. Every release now ships `recall-X.Y.Z-heroes.yaml` and
+  `recall-X.Y.Z-maps.yaml` with SLSA build provenance + SHA-256
+  sidecars (the sidecars are signed too). Verification:
+  `gh attestation verify recall-X.Y.Z-heroes.yaml --repo sound-barrier/recall`.
 
 ## Ready to implement (clear scope, no design research needed)
 
@@ -103,26 +151,45 @@ miss.
 
 ## Polish / lower-priority
 
-### 3. Multi-select rows for bulk operations
+### 3. Extend `BulkActionBar` with Tag / Star
 
-Today every action is per-row → detail panel → action. Useful
-bulk ops:
+`BulkActionBar.vue` shipped with Hide / Export / Set play mode
+/ Set queue / Move-to-profile menus (PRs #218 / earlier).
+Two adjacent affordances would round it out:
 
-- Add the same tag to N matches at once.
-- Bulk-hide a known-bad parse run.
-- Bulk-export filtered selection (JSON or CSV).
+- **Add tag to N matches at once.** Tags are the only
+  user-authored metadata that doesn't have a bulk path; today
+  you have to open each match in the detail panel + type into
+  the journal. With the `Tag ▾` menu mirroring `Set play mode
+  ▾` — typeahead input on existing-tag completions plus an
+  "Add new tag" affordance — the same dropdown pattern carries
+  over.
+- **Star / Un-star.** Star toggling already exists per-row on
+  the leaf via the right-side action well, but bulk-starring a
+  recently-played stomp session is a recognisable workflow.
 
-Shift-click range select on `.leaf-row` + a contextual action
-bar that anchors to the bottom of the leaves list when the
-selection count > 0.
+Shift-click + Cmd/Ctrl-click range / toggle gestures already
+work (shipped with the original BulkActionBar) — the gesture
+surface needs no new work; only the two new dropdowns + their
+`PUT /api/v1/matches/tags` + `/starred` handlers.
 
-- **Constraint**: row click already opens the detail panel.
-  Shift-click as the multi-select gesture; Cmd/Ctrl-click for
-  toggle. Make the bottom-anchored bar dismissible with Esc and
-  honor `prefers-reduced-motion` on the slide-in.
-- **Effort**: ~5 hours. New `useRowSelection` composable for
-  the selection state + a `MatchesBulkBar.vue` for the action
-  surface.
+- **Constraint**: tag autocomplete shares the typeahead pattern
+  with the inline-tag composable in item 5 below — extract a
+  shared `TagPickerDropdown.vue` rather than maintaining two
+  parallel pickers.
+- **Constraint**: the existing per-row star toggle is an
+  optimistic per-click write; the bulk variant has to fire a
+  single batched write to avoid N round-trips and keep the
+  selection's state consistent if any individual update fails.
+- **Effort**: ~4 hours including the shared dropdown
+  extraction + an e2e spec covering Select N → Tag → reload →
+  tag survives.
+
+### 3a. Right-click context menu on rows (was item 7)
+
+See item 7 below — same surface; intentionally orthogonal to
+bulk-select (single-row contextual ops vs. multi-row sticky
+bar). Both can coexist.
 
 ### 4. Leaf-row hover preview
 
@@ -216,6 +283,150 @@ straightforward now that filter state is parent-owned + typed:
   - an `e2e` spec that proves Save → Reload → Apply re-
   applies the same narrow.
 
+### 9. Per-source diagnostic strip on the picker grid
+
+`ScreenshotSourcePicker.vue` (PR #226) currently shows the four
+cards with a single green/gray dot + path. Once the user has
+been parsing for a while, the *content* of each candidate
+folder is more useful than its mere existence: "Nvidia Overlay
+— 47 files, last write 2h ago" / "OW PrntScn — 0 files" /
+"Win Snip — 12 files but none look like OW screenshots" tells the
+user which source their captures are actually landing in.
+
+- **Where**: an optional second metadata line under each card,
+  rendered only when the path exists. The probe handler
+  (`ProbeScreenshotsCandidates`) already does the directory
+  walk — extend it to return `{file_count: int, last_modified:
+  string, recognised_filename_count: int}` per candidate, with
+  an upper bound (e.g. count up to 1000 entries) so it stays
+  fast on synced cloud folders.
+- **Constraint**: don't block the picker render on this — the
+  probe has to stay snappy. Stream the metadata in via a
+  separate `/screenshots-folder-candidates/stats` endpoint that
+  the picker queries after the cards mount.
+- **Effort**: ~4 hours. New probe endpoint + per-card
+  `useScreenshotFolderStats` composable.
+
+### 10. "Supported filename formats" surface in Settings → Advanced
+
+After PR #227 the parser recognises three filename shapes
+(Nvidia, OW PrntScn, Win Snip). There is no in-app way for a
+user to see *which* shapes work — they have to guess from the
+picker grid's source names + the docs site. A read-only table
+under Settings → Advanced ("Supported capture-source rules")
+that lists the prefix, regex, and an example filename per
+format makes the contract self-documenting.
+
+- **Where**: nested under the Re-parse all screenshots row in
+  Settings → Advanced. Closed by default in a
+  `<details>`/`<summary>` — power-user surface only.
+- **Constraint**: this is the same data that TECHNICAL_DEBT
+  item #3 wants to extract into a YAML. If that lands first,
+  this surface reads from the YAML directly and a future
+  release's added format shows up here automatically.
+- **Effort**: ~2 hours. Pure render; no new endpoint until the
+  YAML extraction lands.
+
+### 11. Reference data gap card → "Will be fixed in vX.Y.Z" link
+
+The Unknown tab's **Reference data gaps** section (PR #224)
+explains the wait-for-YAML recovery path generically but
+doesn't tell the user *which* release will add the missing
+entry. A small enrichment: when a record is gap-flagged with
+`Unknown hero (miyazaki?)`, query the GitHub release feed for
+the latest tag and check whether the published `heroes.yaml`
+sidecar already contains the entry — if so, surface "Update to
+v9.11.0 to recognise `miyazaki`" as a CTA on the card.
+
+- **Constraint**: this is a network read. Cache the latest
+  release's `heroes.yaml` + `maps.yaml` SHA + parsed contents
+  to disk (TTL ~24h) so the Unknown tab doesn't pin a network
+  call. Honour the existing offline-tolerant pattern in
+  `UpdateBanner.vue` (the masthead version chip) — if the
+  fetch fails, the card stays at its current "wait for the
+  next release" copy without a visible error.
+- **Constraint**: the fetched YAML sidecars are attested. The
+  client should `gh attestation verify` equivalent (parse the
+  in-toto attestation, verify the cert chain). The Go side
+  already has the verification primitives for the desktop
+  app's own download; reuse them.
+- **Effort**: ~6 hours including the cache layer + a test
+  fixture for the "release adds Miyazaki but not Junkertown"
+  partial-match case.
+
+### 12. Re-parse progress: "X of Y matches updated"
+
+Settings → Advanced → **Re-parse all screenshots** (PR #224)
+currently shows file-level progress in the masthead Parse
+indicator. A user re-parsing because they want to recover
+miyazaki gap records doesn't care which file is being
+re-OCR'd — they want to know how many of their existing
+matches have been *updated*. A second progress line under the
+button — "12 of 47 matches updated (3 hero/map fields
+corrected)" — tells the actual story.
+
+- **Constraint**: the re-aggregate step already runs after the
+  re-OCR completes; instrument it to emit `matches_updated` +
+  `hero_corrections` + `map_corrections` counters and stream
+  them on the existing Parse SSE channel.
+- **Effort**: ~3 hours including the SSE counter additions +
+  Settings render.
+
+### 13. OnboardingTour walkthrough for new affordances
+
+`OnboardingTour.vue` + `TourCallout.vue` + `TourSpotlight.vue`
+shipped pre-PR-#218 and don't introduce three large surfaces
+that landed since:
+
+- **Set workspace** — dossier headline, narrow panel, leaf
+  rows. The current tour predates this redesign and lands
+  users on the old AggregateStats shape; the spotlight is
+  pointing at the wrong region.
+- **Screenshot source picker** — first-run Windows users never
+  see the 4-card grid explained; they figure it out from the
+  card labels alone.
+- **Reference data gaps** — the Unknown tab's third section
+  only appears once a record carries the signal, so the tour
+  can't point at it on first run. The fix: a *contextual*
+  callout that fires the first time the section becomes
+  non-empty, anchored to the section heading and dismissed
+  permanently via a localStorage key (`recall.tour.unknown.refdata.seen`).
+
+- **Constraint**: tour callouts are a strong UI affordance —
+  one badly-timed callout will train the user to dismiss them
+  reflexively. Cap to one in-flight callout at a time; respect
+  a global `tour-dismissed` localStorage gate so power users
+  who already dismissed onboarding don't see new callouts
+  appearing unannounced.
+- **Constraint**: callouts must clear WCAG 2.4.6 (headings &
+  labels are descriptive) and 2.4.11 (focus not obscured) —
+  the spotlight cutout must not visually hide the focused
+  element when keyboard navigation lands on a tour-anchored
+  control.
+- **Effort**: ~8 hours total — 3h tour copy rewrite for the
+  set-workspace surfaces, 2h source-picker callout, 3h
+  contextual gap-section callout + persistence.
+
+### 14. First-Run Profile Modal — adopt the new picker surface
+
+`FirstRunProfileModal.vue` is the user's first interaction.
+After they name a profile, it hands off to the empty-state
+hero on Settings. The picker grid (item shipped above) is
+arguably the more impactful "first thing they see" than the
+modal's profile-naming step — but the modal still presents
+profile naming as the lead. Consider:
+
+- **Inlining the picker** into a second modal step so the
+  user picks a screenshot source in the same dialog rather
+  than landing on a blank-looking Settings page with a Files
+  card. Lower friction; same number of clicks.
+- **Constraint**: the modal already has tab-trap + focus
+  return semantics. Adding a second step has to preserve
+  both, plus the back-navigation between the steps must
+  return focus to the field the user was on.
+- **Effort**: ~5 hours including the multi-step state machine
+  inside the modal + an e2e spec covering the two-step path.
+
 ## Out of scope (deliberately not recommending)
 
 - **Drag-to-reorder leaf rows** — matches are immutable
@@ -229,6 +440,33 @@ straightforward now that filter state is parent-owned + typed:
   two-click confirm-then-act pattern in `MatchCardDanger.vue`
   (still used by the detail panel) is already correct UX; no
   upgrade needed.
+
+## June 2026 page-by-page audit signal
+
+The 14-item backlog above came out of walking every surface
+end-to-end against the current `main` (post-PR-#227). The
+mapping back to source surfaces:
+
+| Surface | Items raised | Notes |
+|---|---|---|
+| Settings → 01 Directories (picker grid) | 9, 14 | The 4-card grid is new; per-card diagnostics + first-run inlining are the open work. |
+| Settings → 02 Engine (Tesseract) | — | Row UX matches the docs-reference shape; nothing to change. |
+| Settings → 03 Appearance (theme) | — | Two-card chooser is intentionally minimal. |
+| Settings → 04 Calendar (week start) | — | Seven-cell grid + caption already resolves the two-T/two-S ambiguity. |
+| Settings → 05 Backup & Restore | — | Two-step confirm pattern is sound. |
+| Settings → 06 Advanced (Stream/Clear/Re-parse) | 10, 12 | Stream-to-Grafana row is fine; the new Re-parse + format-list surfaces want enrichment. |
+| Parse tab | — | Run Parse + Watch Folder both match the docs intent. |
+| Matches workspace | 1, 2, 3, 4, 5, 6, 7, 8 | Dossier + narrow panel are the redesign; remaining items polish the leaves + tag/selection surfaces. |
+| Unknown tab | 11 | Three-section split (Needs review / Unknown maps / Reference data gaps) is the surface; gap cards want the "fixed in vX.Y.Z" CTA. |
+| Modals (Detail / Lightbox / Cheatsheet / ExportBundle / IgnoredFiles) | — | The keyboard contract is sound; per-modal items would be premature. |
+| First-Run Profile Modal | 14 | Profile naming itself is fine; the inline-picker step is the open work. |
+| OnboardingTour + TourCallout + TourSpotlight | 13 | Framework is sound; the *content* is stale and predates the set-workspace redesign + the new picker + the gap section. |
+| Masthead (profile chip, theme switcher, update banner) | — | Reasonably mature. |
+
+Re-run this audit before the next round of recommendations
+lands — particularly after TECHNICAL_DEBT.md #3 + #4 work,
+which will reshape the Settings probe / capture-source surfaces
+in ways that may obsolete items 9 + 10.
 
 ## Implementation notes for the next session
 
@@ -287,12 +525,13 @@ straightforward now that filter state is parent-owned + typed:
   picks up the marker and cuts the right SemVer bump. Don't
   add backwards-compat shims for "soft landings"; declare and
   break clean (see root CLAUDE.md).
-- **Bundle budgets** are CI-enforced (`ci.yml` "Enforce
-  bundle-size budget"): init JS < 135 KB, init CSS < 80 KB,
-  total JS < 270 KB, total CSS < 160 KB. New features that
-  push these caps should bump deliberately (with a comment
-  explaining why) rather than golf the implementation past
-  readability. Substantial modal surfaces should ride on
+- **Bundle budgets** are CI-enforced
+  (`scripts/check-bundle-size.sh`, invoked from `ci.yml`):
+  total JS < 422 KB, total CSS < 242 KB (and init-bundle
+  guardrails inside the script). Per-PR bumps land deliberately
+  with a one-line rationale — see TECHNICAL_DEBT.md item #1 for
+  the running history's maintainability problem. Substantial
+  modal surfaces should ride on
   `defineAsyncComponent(() => import(...))` so they land in
   their own chunk and stay out of the initial budget — the
   detail panel, screenshot lightbox, and cheatsheet are the
