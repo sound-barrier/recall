@@ -3,6 +3,8 @@
 // the parent has selected rows; emits one action per button so
 // MatchesView's action handlers (hideSelected, beginMoveLive, etc.)
 // stay where they wire to App.vue's API.
+import { ref } from 'vue'
+import type { PlayMode, QueueType } from '../api'
 
 defineProps<{
   // Active selection size. Bar only mounts when > 0.
@@ -27,7 +29,31 @@ const emit = defineEmits<{
   moveCommit:   [target: string]
   moveCancel:   []
   clear:        []
+  // Bulk-write the same play_mode / queue_type to every selected
+  // match. Empty string clears (bulk Clear) — the "Unknown mode
+  // (type)" semantic from the leaf chip + narrow filter, applied
+  // in one transaction. Parent (MatchesView) calls api.ts's
+  // BulkSetMatchPlayMode / BulkSetMatchQueue, then reloads.
+  bulkPlayMode: [playMode: PlayMode]
+  bulkQueue:    [queueType: QueueType]
 }>()
+
+// Mutually-exclusive Set-play-mode / Set-queue menus. Opening one
+// closes the other so the bar never sprouts two open dropdowns.
+const openMenu = ref<'' | 'play-mode' | 'queue'>('')
+function toggleMenu(name: 'play-mode' | 'queue') {
+  openMenu.value = openMenu.value === name ? '' : name
+}
+
+function pickPlayMode(v: PlayMode) {
+  openMenu.value = ''
+  emit('bulkPlayMode', v)
+}
+
+function pickQueue(v: QueueType) {
+  openMenu.value = ''
+  emit('bulkQueue', v)
+}
 </script>
 
 <template>
@@ -65,6 +91,84 @@ const emit = defineEmits<{
         <span class="bab-btn-glyph" aria-hidden="true">📦</span>
         Export bundle…
       </button>
+      <!-- Set play-mode menu — bulk write to the new
+           PUT /api/v1/matches/play-mode collection endpoint. -->
+      <div class="bab-menu-wrap">
+        <button
+          type="button"
+          class="bulk-mode"
+          :class="{ open: openMenu === 'play-mode' }"
+          :aria-expanded="openMenu === 'play-mode' ? 'true' : 'false'"
+          aria-haspopup="menu"
+          data-bulk-menu="play-mode"
+          @click="toggleMenu('play-mode')"
+        >
+          Set play mode <span class="bab-caret" aria-hidden="true">▾</span>
+        </button>
+        <ul
+          v-if="openMenu === 'play-mode'"
+          class="bab-menu"
+          role="menu"
+          aria-label="Set play mode for selected matches"
+        >
+          <li>
+            <button type="button" role="menuitem" class="bab-menu-item" data-bulk-set-play-mode="quickplay" @click="pickPlayMode('quickplay')">
+              Quickplay
+            </button>
+          </li>
+          <li>
+            <button type="button" role="menuitem" class="bab-menu-item" data-bulk-set-play-mode="competitive" @click="pickPlayMode('competitive')">
+              Competitive
+            </button>
+          </li>
+          <li class="bab-menu-divider" role="separator" />
+          <li>
+            <button type="button" role="menuitem" class="bab-menu-item bab-menu-item-clear" data-bulk-set-play-mode="" @click="pickPlayMode('')">
+              Clear (Unknown mode)
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Set queue menu — bulk write to the new
+           PUT /api/v1/matches/queue-type collection endpoint. -->
+      <div class="bab-menu-wrap">
+        <button
+          type="button"
+          class="bulk-mode"
+          :class="{ open: openMenu === 'queue' }"
+          :aria-expanded="openMenu === 'queue' ? 'true' : 'false'"
+          aria-haspopup="menu"
+          data-bulk-menu="queue"
+          @click="toggleMenu('queue')"
+        >
+          Set queue <span class="bab-caret" aria-hidden="true">▾</span>
+        </button>
+        <ul
+          v-if="openMenu === 'queue'"
+          class="bab-menu"
+          role="menu"
+          aria-label="Set queue type for selected matches"
+        >
+          <li>
+            <button type="button" role="menuitem" class="bab-menu-item" data-bulk-set-queue="role" @click="pickQueue('role')">
+              Role Queue
+            </button>
+          </li>
+          <li>
+            <button type="button" role="menuitem" class="bab-menu-item" data-bulk-set-queue="open" @click="pickQueue('open')">
+              Open Queue
+            </button>
+          </li>
+          <li class="bab-menu-divider" role="separator" />
+          <li>
+            <button type="button" role="menuitem" class="bab-menu-item bab-menu-item-clear" data-bulk-set-queue="" @click="pickQueue('')">
+              Clear (Unknown mode type)
+            </button>
+          </li>
+        </ul>
+      </div>
+
       <button
         v-if="otherProfiles.length > 0"
         type="button"
@@ -200,4 +304,77 @@ const emit = defineEmits<{
 }
 
 .bab-btn-glyph { font-size: 0.85rem; }
+
+.bulk-mode {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.bulk-mode:hover,
+.bulk-mode:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  outline: none;
+}
+
+.bulk-mode.open {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+.bab-caret { font-size: 0.7rem; }
+
+.bab-menu-wrap { position: relative; }
+
+.bab-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 6;
+  min-width: 12rem;
+  list-style: none;
+  padding: 0.3rem;
+  margin: 0;
+  background: var(--surface-3, var(--surface-2));
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  box-shadow: 0 8px 18px rgb(0 0 0 / 30%);
+}
+
+.bab-menu-item {
+  appearance: none;
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.55rem;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.bab-menu-item:hover,
+.bab-menu-item:focus-visible {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  outline: none;
+}
+
+.bab-menu-item-clear { color: var(--text-dim); }
+
+.bab-menu-divider {
+  height: 1px;
+  margin: 0.25rem 0;
+  background: var(--border);
+}
 </style>

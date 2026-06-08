@@ -45,3 +45,14 @@ func (a *App) ClearMatchPlayMode(matchKey string) error {
 	}
 	return a.store.ClearMatchPlayMode(matchKey)
 }
+
+// BulkSetMatchPlayMode applies the same play_mode to every key in
+// the slice in one transaction. playMode="" clears the rows (bulk
+// Clear). Validates the value before reaching SQL so an invalid
+// input never starts a partial-write.
+func (a *App) BulkSetMatchPlayMode(matchKeys []string, playMode string) error {
+	if playMode != "" && !validPlayModes[playMode] {
+		return ErrInvalidPlayMode
+	}
+	return a.store.BulkSetMatchPlayMode(matchKeys, playMode)
+}

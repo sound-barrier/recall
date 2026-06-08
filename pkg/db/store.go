@@ -120,6 +120,12 @@ type Store interface {
 	SetMatchQueue(matchKey, queueType string) error
 	ClearMatchQueue(matchKey string) error
 	LoadMatchQueues() (map[string]QueueState, error)
+	// BulkSetMatchQueue upserts the same queue_type onto every key
+	// in the slice inside ONE transaction. queueType="" deletes the
+	// rows (bulk Clear). Single-transaction so a partial mid-write
+	// crash leaves the table in a consistent state. Empty key slice
+	// is a no-op — callers don't need to short-circuit.
+	BulkSetMatchQueue(matchKeys []string, queueType string) error
 
 	// Per-match play-mode override — 'quickplay' or 'competitive'.
 	// User-set via the right-panel radiogroup; the aggregator falls
@@ -131,6 +137,11 @@ type Store interface {
 	SetMatchPlayMode(matchKey, playMode string) error
 	ClearMatchPlayMode(matchKey string) error
 	LoadMatchPlayModes() (map[string]PlayModeState, error)
+	// BulkSetMatchPlayMode upserts the same play_mode onto every key
+	// in the slice inside ONE transaction. playMode="" deletes the
+	// rows (bulk Clear). Same crash-consistency rationale as
+	// BulkSetMatchQueue.
+	BulkSetMatchPlayMode(matchKeys []string, playMode string) error
 
 	// Ignored-screenshots surface — per-file suppress list for the
 	// "Delete forever" affordance on the Unknown tab. Presence in

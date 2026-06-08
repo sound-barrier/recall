@@ -415,6 +415,28 @@ export function SetMatchPlayMode(matchKey: string, playMode: PlayMode): Promise<
   return _send('PUT', path, { play_mode: playMode }).then(() => undefined)
 }
 
+// Bulk write — apply the same queue_type to every match_key in one
+// transaction. '' clears (bulk Clear). Powers the sticky bulk-action
+// toolbar; firing 47 per-match PUTs through the dual-transport shim
+// would pay 47 round-trips on the server side.
+export function BulkSetMatchQueue(matchKeys: string[], queueType: QueueType): Promise<void> {
+  if (IS_WAILS) {
+    return _wails('BulkSetMatchQueue', matchKeys, queueType)
+  }
+  return _send('PUT', '/api/v1/matches/queue-type', {
+    match_keys: matchKeys, queue_type: queueType,
+  }).then(() => undefined)
+}
+
+export function BulkSetMatchPlayMode(matchKeys: string[], playMode: PlayMode): Promise<void> {
+  if (IS_WAILS) {
+    return _wails('BulkSetMatchPlayMode', matchKeys, playMode)
+  }
+  return _send('PUT', '/api/v1/matches/play-mode', {
+    match_keys: matchKeys, play_mode: playMode,
+  }).then(() => undefined)
+}
+
 // Soft-delete a match. Reversible: pass hidden=false to restore.
 // Both directions are idempotent — repeated identical calls succeed.
 // Wails-side this dispatches to HideMatch / UnhideMatch (two

@@ -33,6 +33,64 @@ func TestSetMatchQueue_RejectsInvalidValue(t *testing.T) {
 	}
 }
 
+func TestBulkSetMatchQueue_WritesEveryKey(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	if err := a.BulkSetMatchQueue([]string{"m1", "m2", "m3"}, "role"); err != nil {
+		t.Fatalf("bulk set: %v", err)
+	}
+	got, _ := fs.LoadMatchQueues()
+	for _, k := range []string{"m1", "m2", "m3"} {
+		if got[k].QueueType != "role" {
+			t.Errorf("after bulk set, %s = %q, want role", k, got[k].QueueType)
+		}
+	}
+}
+
+func TestBulkSetMatchQueue_EmptyValueClearsRows(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	_ = a.SetMatchQueue("m1", "role")
+	_ = a.SetMatchQueue("m2", "open")
+	_ = a.SetMatchQueue("m3", "role")
+	if err := a.BulkSetMatchQueue([]string{"m1", "m3"}, ""); err != nil {
+		t.Fatalf("bulk clear: %v", err)
+	}
+	got, _ := fs.LoadMatchQueues()
+	if _, ok := got["m1"]; ok {
+		t.Errorf("m1 should have been cleared, got %+v", got["m1"])
+	}
+	if _, ok := got["m3"]; ok {
+		t.Errorf("m3 should have been cleared, got %+v", got["m3"])
+	}
+	if got["m2"].QueueType != "open" {
+		t.Errorf("m2 not in clear list, should still be open; got %q", got["m2"].QueueType)
+	}
+}
+
+func TestBulkSetMatchQueue_RejectsInvalidValue(t *testing.T) {
+	a := NewWithStore(&fakeStore{})
+	err := a.BulkSetMatchQueue([]string{"m1"}, "ranked")
+	if !errors.Is(err, ErrInvalidQueueType) {
+		t.Errorf("got %v, want ErrInvalidQueueType", err)
+	}
+}
+
+func TestBulkSetMatchQueue_EmptyKeysIsNoOp(t *testing.T) {
+	fs := &fakeStore{}
+	a := NewWithStore(fs)
+	if err := a.BulkSetMatchQueue(nil, "role"); err != nil {
+		t.Errorf("nil keys: %v", err)
+	}
+	if err := a.BulkSetMatchQueue([]string{}, "role"); err != nil {
+		t.Errorf("empty keys: %v", err)
+	}
+	got, _ := fs.LoadMatchQueues()
+	if len(got) != 0 {
+		t.Errorf("expected empty queues map, got %+v", got)
+	}
+}
+
 func TestSetMatchQueue_OverwritesExisting(t *testing.T) {
 	fs := &fakeStore{}
 	a := NewWithStore(fs)

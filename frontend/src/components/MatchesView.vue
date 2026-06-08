@@ -89,6 +89,13 @@ const emit = defineEmits<{
   // the user clicks Hide on the bulk action bar. App.vue does
   // Promise.all of SetMatchVisibility(true) + one reload.
   'hide-matches': [matchKeys: string[]]
+  // Bulk-write pipes — emitted with the ticked-key list + the value
+  // to write. App.vue calls BulkSetMatchPlayMode / BulkSetMatchQueue
+  // (single transaction) then triggers one reload. Empty-string
+  // value is the bulk Clear semantic (resets every listed row to
+  // the "Unknown" bucket).
+  'bulk-play-mode': [matchKeys: string[], playMode: import('../api').PlayMode]
+  'bulk-queue':     [matchKeys: string[], queueType: import('../api').QueueType]
   // Bulk-export pipe — emitted with the ticked-key list when the
   // user clicks "Export bundle…" on the bulk action bar. App.vue
   // opens the ExportBundleModal to confirm filename + include
@@ -239,6 +246,27 @@ function hideSelected() {
   if (keys.length === 0) return
   clearSelection()
   emit('hide-matches', keys)
+}
+
+// Bulk play-mode / queue-type writers. Snapshot the keys (the user
+// could check more rows between the action and the round-trip),
+// clear the selection so the toolbar collapses, then bubble to
+// App.vue which owns the actual api.ts call + the post-write
+// reload. Selection clears optimistically because the alternative
+// — keeping the checkboxes lit while the PUT is in flight — would
+// strand stale state if the reload re-orders the list.
+function onBulkPlayMode(playMode: import('../api').PlayMode) {
+  const keys = [...selectedKeys.value]
+  if (keys.length === 0) return
+  clearSelection()
+  emit('bulk-play-mode', keys, playMode)
+}
+
+function onBulkQueue(queueType: import('../api').QueueType) {
+  const keys = [...selectedKeys.value]
+  if (keys.length === 0) return
+  clearSelection()
+  emit('bulk-queue', keys, queueType)
 }
 
 // ─── Move-to-profile picker state ───────────────────────────
@@ -1270,6 +1298,8 @@ onBeforeUnmount(() => {
         @move-commit="commitMove"
         @move-cancel="cancelMove"
         @clear="clearSelection"
+        @bulk-play-mode="onBulkPlayMode"
+        @bulk-queue="onBulkQueue"
       />
 
       <ul

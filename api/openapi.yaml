@@ -569,6 +569,105 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/matches/queue-type:
+    put:
+      operationId: BulkSetMatchQueue
+      tags: [Matches]
+      summary: Apply one queue type to many matches at once
+      description: |
+        Sets `queue_type` to the same value on every key in
+        `match_keys` inside one SQLite transaction. Powers the sticky
+        bulk-action toolbar on the Matches view — clicking "Set
+        queue: Role Queue" with 47 rows checked fires this once
+        instead of 47 per-match PUTs.
+
+        Empty `queue_type` (string `""`) clears the rows (bulk
+        Clear), reverting every listed match to the implicit "queue
+        not set" state. `match_keys` is allowed to be empty — the
+        endpoint is a no-op in that case.
+
+        Returns 204 on success, 400 on validation failure
+        (`queue_type` outside the enum + non-empty), 500 on store
+        error.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [match_keys, queue_type]
+              properties:
+                match_keys:
+                  type: array
+                  items:
+                    type: string
+                  description: |
+                    The set of match_keys to write. May be empty
+                    (no-op); duplicates within the slice are tolerated
+                    — the per-key upsert is idempotent.
+                queue_type:
+                  type: string
+                  enum: ["role", "open", ""]
+                  description: |
+                    The queue value to write to every listed match.
+                    Empty string clears the rows (bulk Clear). Other
+                    values outside the enum return 400.
+      responses:
+        "204":
+          description: All listed matches' queue type updated.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/matches/play-mode:
+    put:
+      operationId: BulkSetMatchPlayMode
+      tags: [Matches]
+      summary: Apply one play mode to many matches at once
+      description: |
+        Sets `play_mode` to the same value on every key in
+        `match_keys` inside one SQLite transaction. Same shape as
+        `PUT /api/v1/matches/queue-type` — see that endpoint for the
+        bulk-toolbar rationale.
+
+        Empty `play_mode` (string `""`) clears the rows (bulk
+        Clear), reverting every listed match to "follow the
+        parser's data.mode."
+
+        Returns 204 on success, 400 on validation failure
+        (`play_mode` outside the enum + non-empty), 500 on store
+        error.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [match_keys, play_mode]
+              properties:
+                match_keys:
+                  type: array
+                  items:
+                    type: string
+                  description: |
+                    The set of match_keys to write. May be empty
+                    (no-op); duplicates within the slice are
+                    tolerated.
+                play_mode:
+                  type: string
+                  enum: ["quickplay", "competitive", ""]
+                  description: |
+                    The play-mode value to write to every listed
+                    match. Empty string clears the rows (bulk Clear).
+      responses:
+        "204":
+          description: All listed matches' play mode updated.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/parses:
     post:
       operationId: ParseScreenshots

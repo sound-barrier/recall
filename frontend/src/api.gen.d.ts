@@ -371,6 +371,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/matches/queue-type": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Apply one queue type to many matches at once
+         * @description Sets `queue_type` to the same value on every key in
+         *     `match_keys` inside one SQLite transaction. Powers the sticky
+         *     bulk-action toolbar on the Matches view — clicking "Set
+         *     queue: Role Queue" with 47 rows checked fires this once
+         *     instead of 47 per-match PUTs.
+         *
+         *     Empty `queue_type` (string `""`) clears the rows (bulk
+         *     Clear), reverting every listed match to the implicit "queue
+         *     not set" state. `match_keys` is allowed to be empty — the
+         *     endpoint is a no-op in that case.
+         *
+         *     Returns 204 on success, 400 on validation failure
+         *     (`queue_type` outside the enum + non-empty), 500 on store
+         *     error.
+         */
+        put: operations["BulkSetMatchQueue"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/play-mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Apply one play mode to many matches at once
+         * @description Sets `play_mode` to the same value on every key in
+         *     `match_keys` inside one SQLite transaction. Same shape as
+         *     `PUT /api/v1/matches/queue-type` — see that endpoint for the
+         *     bulk-toolbar rationale.
+         *
+         *     Empty `play_mode` (string `""`) clears the rows (bulk
+         *     Clear), reverting every listed match to "follow the
+         *     parser's data.mode."
+         *
+         *     Returns 204 on success, 400 on validation failure
+         *     (`play_mode` outside the enum + non-empty), 500 on store
+         *     error.
+         */
+        put: operations["BulkSetMatchPlayMode"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/parses": {
         parameters: {
             query?: never;
@@ -2171,6 +2235,81 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Play-mode override cleared (or already absent). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    BulkSetMatchQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description The set of match_keys to write. May be empty
+                     *     (no-op); duplicates within the slice are tolerated
+                     *     — the per-key upsert is idempotent.
+                     */
+                    match_keys: string[];
+                    /**
+                     * @description The queue value to write to every listed match.
+                     *     Empty string clears the rows (bulk Clear). Other
+                     *     values outside the enum return 400.
+                     * @enum {string}
+                     */
+                    queue_type: "role" | "open" | "";
+                };
+            };
+        };
+        responses: {
+            /** @description All listed matches' queue type updated. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    BulkSetMatchPlayMode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description The set of match_keys to write. May be empty
+                     *     (no-op); duplicates within the slice are
+                     *     tolerated.
+                     */
+                    match_keys: string[];
+                    /**
+                     * @description The play-mode value to write to every listed
+                     *     match. Empty string clears the rows (bulk Clear).
+                     * @enum {string}
+                     */
+                    play_mode: "quickplay" | "competitive" | "";
+                };
+            };
+        };
+        responses: {
+            /** @description All listed matches' play mode updated. */
             204: {
                 headers: {
                     [name: string]: unknown;
