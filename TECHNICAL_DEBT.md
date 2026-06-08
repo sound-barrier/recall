@@ -57,39 +57,6 @@ Keep the numbering stable across edits — gaps in the sequence are
 fine, never renumber. When a section is paid down in full,
 *delete* it; the git log is the audit trail.
 
-## 1. Bundle-size budget comment is unmaintainable
-
-**Where:** `scripts/check-bundle-size.sh:41` — the `MAX_TOTAL_JS_BYTES`
-inline comment is a single ~2000-character line listing every
-feature ("PR E added density picker; PR F added Unknown section
-nav; PR 3 added candidate-thumb buttons; queue-type chooser + Queue
-filter chip; play-mode chooser + Play mode filter chip; …" — and
-still growing). The CSS sibling is the same shape.
-
-**What breaks:** every new feature PR has to append to a line
-that's already off-screen on most terminals. Three signals it's
-been over-extended: (a) merge conflicts on the comment are the
-most common conflict source across simultaneous feature branches,
-(b) the numbers and the comment have drifted before (a PR bumped
-the budget without updating the comment), (c) nobody can find the
-real history of WHY the budget grew without `git blame`-ing the
-single line. The comment was meant to make `git blame` legible —
-it now does the opposite.
-
-**Plan:**
-
-1. Extract the budget rationale into a separate `docs/bundle-size-budget-history.md`
-   keyed by version + PR number. Each new feature appends a row;
-   the script comment just points there.
-2. Replace the inline comment with a short version: `# 422 KB —
-   see docs/bundle-size-budget-history.md for the per-feature
-   history.`
-3. Backfill the markdown from the existing comment + `git log
-   -p scripts/check-bundle-size.sh` so we don't lose the history.
-
-**Size:** S.
-**Risk:** Low — pure docs move; nothing reads the comment.
-
 ## 2. `applyMigrations` test version is hard-coded in three places
 
 **Where:** `pkg/db/migrate_test.go:32`, `:60`, `:210` — each test

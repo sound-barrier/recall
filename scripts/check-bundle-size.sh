@@ -28,18 +28,14 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 
-# Default budgets. Bumped over time as real features land — see git
-# blame on this block for the history of "why this number now". The
-# pattern: bump deliberately when a real feature needs the room;
-# never bump to silence noise.
-# Reset to current measurement + ~2 KB after the item-5 audit
-# (TECHNICAL_DEBT.md). The previous budgets had drifted high from
-# repeated "just bump it" PRs; this lower floor keeps casual growth
-# honest. A real feature that needs the room should bump deliberately.
-: "${MAX_INITIAL_JS_BYTES:=146000}" # 146 KB — initial JS chunk only
-: "${MAX_INITIAL_CSS_BYTES:=60000}" # 60 KB  — initial CSS chunk only
-: "${MAX_TOTAL_JS_BYTES:=422000}"   # 422 KB — accommodates the screenshot-source picker (PR #226) + the parser tightening + reference-data UI (this PR).
-: "${MAX_TOTAL_CSS_BYTES:=242000}"  # 242 KB — same combined coverage
+# Default budgets. Per-PR bump rationale lives in
+# scripts/bundle-size-budget-history.md — append a row there when
+# you change a number here. Bump deliberately; don't lift caps to
+# silence noise.
+: "${MAX_INITIAL_JS_BYTES:=146000}"
+: "${MAX_INITIAL_CSS_BYTES:=60000}"
+: "${MAX_TOTAL_JS_BYTES:=422000}"
+: "${MAX_TOTAL_CSS_BYTES:=242000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   echo "==> building frontend (npm --prefix frontend run build)…"
