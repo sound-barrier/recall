@@ -61,6 +61,11 @@ const props = defineProps<{
   // hasn't threaded it through; the input still works as a free-
   // text field. Sorted alphabetically by `useMatchesNarrow`.
   availableTags?: string[]
+  // One-shot focus target — when 'note' or 'tag', focus the matching
+  // input on mount. Used by the right-click menu's Tag / Edit
+  // annotation actions. Emits `focus-consumed` after applying so
+  // the parent can clear and avoid re-focusing on re-render.
+  pendingFocus?: '' | 'note' | 'tag'
 }>()
 
 const emit = defineEmits<{
@@ -106,6 +111,9 @@ const emit = defineEmits<{
   // `useMatchAnchor` persists the choice; this card just lifts the
   // intent. Empty string means "clear the anchor."
   'set-anchor':            [matchKey: string]
+  // Tells the parent the one-shot focus target has been applied so
+  // it can clear its pending-focus state.
+  'focus-consumed':        []
 }>()
 
 const isAnchor = computed(() => props.anchorKey === props.record.match_key)
@@ -132,6 +140,20 @@ onMounted(() => {
   const m = props.record.data?.mode
   if (!props.record.play_mode && (m === 'quickplay' || m === 'competitive')) {
     emit('set-match-play-mode', props.record.match_key, m)
+  }
+  // Apply one-shot focus from the right-click menu (Tag / Edit
+  // annotation). Looked up by the canonical id the inputs render
+  // with — match_key-scoped so multiple cards in a stack don't
+  // collide.
+  if (props.pendingFocus === 'note' || props.pendingFocus === 'tag') {
+    void nextTick().then(() => {
+      const id = props.pendingFocus === 'note'
+        ? `note-${props.record.match_key}`
+        : `tags-${props.record.match_key}`
+      const el = document.getElementById(id) as HTMLElement | null
+      el?.focus()
+      emit('focus-consumed')
+    })
   }
 })
 

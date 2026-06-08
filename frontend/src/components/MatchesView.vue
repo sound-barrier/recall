@@ -105,6 +105,12 @@ const emit = defineEmits<{
   // SetMatchAnnotation (preserving existing tags + appending the
   // new one) and reloads the matches feed.
   'bulk-tag':       [matchKeys: string[], tag: string]
+  // Right-click menu fast-tracks — App.vue does the work since the
+  // detail panel + clipboard + OS reveal all live up the tree.
+  'open-match-and-focus': [matchKey: string, target: 'note' | 'tag']
+  'copy-replay-code':     [matchKey: string]
+  'copy-match-link':      [matchKey: string]
+  'open-source-folder':   [matchKey: string]
   // Bulk-export pipe — emitted with the ticked-key list when the
   // user clicks "Export bundle…" on the bulk action bar. App.vue
   // opens the ExportBundleModal to confirm filename + include
@@ -782,6 +788,38 @@ function onRowContextHide(matchKey: string) {
   // works without a new App.vue handler.
   emit('hide-matches', [matchKey])
 }
+
+// New right-click actions added with item 7 — each forwards to App.vue
+// for the heavy lifting (clipboard write, OS reveal, detail-panel
+// focus-on-mount). Keeping the menu thin so feature evolution lives
+// in one place at the top of the tree.
+function onRowContextFocusTag(matchKey: string) {
+  emit('open-match-and-focus', matchKey, 'tag')
+}
+function onRowContextFocusNote(matchKey: string) {
+  emit('open-match-and-focus', matchKey, 'note')
+}
+function onRowContextCopyReplay(matchKey: string) {
+  emit('copy-replay-code', matchKey)
+}
+function onRowContextCopyLink(matchKey: string) {
+  emit('copy-match-link', matchKey)
+}
+function onRowContextOpenSourceFolder(matchKey: string) {
+  emit('open-source-folder', matchKey)
+}
+
+// Replay-code lookup for the menu's gating (we hide "Copy replay
+// code" when the active row has no code on file).
+function replayCodeFor(matchKey: string): string | null {
+  return records.value.find(r => r.match_key === matchKey)?.annotation?.replay_code ?? null
+}
+
+// Wails-detect — duplicated as a one-liner so the menu doesn't have
+// to import api.ts (keeps the leaf component's import surface narrow).
+const IS_WAILS = typeof window !== 'undefined'
+  // @ts-expect-error — window.go is set by the Wails runtime at boot
+  && !!window.go?.app?.App
 
 function formatTime(rec: MatchRecord): string {
   return rec.data?.finished_at ?? ''
@@ -1682,9 +1720,16 @@ onBeforeUnmount(() => {
       :position="rowContextMenu ? { x: rowContextMenu.x, y: rowContextMenu.y } : null"
       :match-key="rowContextMenu?.matchKey ?? ''"
       :is-anchor="rowContextMenu !== null && rowContextMenu.matchKey === anchorKey"
+      :replay-code="rowContextMenu ? replayCodeFor(rowContextMenu.matchKey) : null"
+      :is-wails="IS_WAILS"
       @close="onRowContextClose"
       @open-detail="onRowContextOpenDetail"
       @set-anchor="onRowContextSetAnchor"
+      @open-detail-and-focus-tag="onRowContextFocusTag"
+      @open-detail-and-focus-note="onRowContextFocusNote"
+      @copy-replay-code="onRowContextCopyReplay"
+      @copy-match-link="onRowContextCopyLink"
+      @open-source-folder="onRowContextOpenSourceFolder"
       @hide="onRowContextHide"
     />
     </div>
