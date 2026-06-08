@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useOWData } from '../composables/useOWData'
+import type { ParseProgressEvent } from './ParseProgressPanel.vue'
 
 const { data: owData } = useOWData()
 
@@ -30,6 +31,10 @@ const props = defineProps<{
   // events streaming). Driven by the parent's parseProgress state
   // machine — same source the masthead's parse indicator reads.
   reparsing?:        boolean
+  // Latest parse-progress event — drives the re-parse running-count
+  // line beneath the button ("X of Y matches updated · N hero / M
+  // map corrected"). Null when no parse is in flight.
+  parseProgress?:    ParseProgressEvent | null
 }>()
 
 const emit = defineEmits<{
@@ -44,6 +49,50 @@ const emit = defineEmits<{
   // per-file activity through its existing SSE wiring.
   're-parse-all':       []
 }>()
+
+// Re-parse running counts — surfaced beneath the button while a
+// re-parse-all run is in flight, then held visible for 5 s after
+// completion so the user reads the result before it clears. The
+// counters arrive via parse-progress events; we cache them in a
+// ref so the visible line outlives the live SSE stream.
+const lastReparseSummary = ref<{ updated: number; hero: number; map: number; total: number } | null>(null)
+let reparseClearTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(() => props.parseProgress, (next) => {
+  if (next && (next.matches_updated || next.hero_corrections || next.map_corrections)) {
+    lastReparseSummary.value = {
+      updated: next.matches_updated ?? 0,
+      hero:    next.hero_corrections ?? 0,
+      map:     next.map_corrections ?? 0,
+      total:   next.total ?? 0,
+    }
+  }
+})
+
+watch(() => props.reparsing, (next, prev) => {
+  // Transition true → false signals the run finished — hold the
+  // visible summary for 5 s, then clear so the row's clean.
+  if (prev && !next) {
+    if (reparseClearTimer) clearTimeout(reparseClearTimer)
+    reparseClearTimer = setTimeout(() => {
+      lastReparseSummary.value = null
+      reparseClearTimer = null
+    }, 5000)
+  }
+})
+
+const reparseProgressLine = computed(() => {
+  const s = lastReparseSummary.value
+  if (!s) return ''
+  const parts = [
+    `${s.updated} of ${s.total} matches updated`,
+  ]
+  const fixes: string[] = []
+  if (s.hero > 0) fixes.push(`${s.hero} hero`)
+  if (s.map  > 0) fixes.push(`${s.map} map`)
+  if (fixes.length > 0) parts.push(`${fixes.join(' / ')} corrected`)
+  return parts.join(' · ')
+})
 
 // Local arm/disarm state for the destructive "Re-parse all"
 // affordance — mirrors the Clear DB pattern but lives here because
@@ -191,6 +240,13 @@ watch(
               </button>
             </div>
           </template>
+          <p
+            v-if="reparseProgressLine"
+            class="reparse-progress-line"
+            data-reparse-progress-line
+          >
+            {{ reparseProgressLine }}
+          </p>
         </div>
       </div>
 
@@ -560,5 +616,14 @@ details[open] > .capture-source-summary::before {
 
 .capture-source-regex {
   color: var(--accent);
+}
+
+.reparse-progress-line {
+  margin: 0.55rem 0 0;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  text-align: right;
 }
 </style>

@@ -39,6 +39,11 @@ func (a *App) CancelParse() error {
 // ParseProgressEvent is emitted on the "parse-progress" channel/event
 // after each screenshot finishes OCR. Error is non-empty when the file
 // failed to parse — the loop continues regardless.
+//
+// MatchesUpdated / HeroCorrections / MapCorrections are cumulative
+// across the run. The first non-zero value surfaces the moment a
+// re-aggregate completes with a changed hero/map field; the UI
+// reads the latest value, not per-file deltas.
 type ParseProgressEvent struct {
 	Done     int                 `json:"done"`
 	Total    int                 `json:"total"`
@@ -47,6 +52,14 @@ type ParseProgressEvent struct {
 	MatchKey string              `json:"match_key,omitempty"`
 	Data     *parser.MatchResult `json:"data,omitempty"`
 	Error    string              `json:"error,omitempty"`
+	// Cumulative counters since the run started — useful for the
+	// re-parse-all surface in Settings → Advanced ("X of Y matches
+	// updated · N hero / M map corrected"). Always zero on a
+	// regular ParseScreenshots run that doesn't touch the
+	// counters, so existing consumers ignore them silently.
+	MatchesUpdated  int `json:"matches_updated,omitempty"`
+	HeroCorrections int `json:"hero_corrections,omitempty"`
+	MapCorrections  int `json:"map_corrections,omitempty"`
 }
 
 // ReParseAll re-runs the OCR pipeline against every PNG in the
@@ -152,6 +165,15 @@ func (a *App) parseScreenshotsImpl(force bool) error {
 	// E/A/D + timestamp-window rules — but the alphabetical order
 	// keeps the natural case fast.
 	var inserts int
+	// Cumulative re-parse counters — surfaced via ParseProgressEvent
+	// so the Settings → Advanced re-parse-all surface can render
+	// "X of Y matches updated · N hero / M map corrected" without
+	// any extra round-trip. Only meaningful when `force` is true
+	// (a regular Parse run touches new files only — no "before"
+	// state to diff against), but accumulating in either case
+	// keeps the closure shape one branch lighter.
+	matchesUpdatedSet := map[string]struct{}{}
+	var heroCorrections, mapCorrections int
 	_, err = parser.ParseScreenshotsDir(ctx, screenshotsDir, parsed, func(done, total int, filename string, result *parser.MatchResult, parseErr error) {
 		t := parser.ScreenshotType(result)
 
@@ -207,10 +229,30 @@ func (a *App) parseScreenshotsImpl(force bool) error {
 			annos, _ := a.store.LoadAnnotations()
 			hidden, _ := a.store.LoadHiddenKeys()
 			reviews, _ := a.store.LoadReviews()
+			// Diff the pre-insert snap against snapAfter so the
+			// counter reflects what THIS file actually changed for
+			// THIS match key. New matches (not present in `snap`)
+			// still count as updated — they're records that emerged
+			// from this run. Hero/map corrections only fire when
+			// both snapshots resolve to a record (both `ok`) AND
+			// the resolved field changed.
+			beforeRec, beforeOk := aggregateMatchKey(key, snap, annos, hidden, reviews)
 			if rec, ok := aggregateMatchKey(key, snapAfter, annos, hidden, reviews); ok {
 				a.emitMatchUpdated(rec)
+				matchesUpdatedSet[key] = struct{}{}
+				if beforeOk {
+					if beforeRec.Data.Hero != rec.Data.Hero {
+						heroCorrections++
+					}
+					if beforeRec.Data.Map != rec.Data.Map {
+						mapCorrections++
+					}
+				}
 			}
 		}
+		ev.MatchesUpdated = len(matchesUpdatedSet)
+		ev.HeroCorrections = heroCorrections
+		ev.MapCorrections = mapCorrections
 		a.emitParseProgress(ev)
 	})
 	// User pressed Stop mid-batch. The partial state already
