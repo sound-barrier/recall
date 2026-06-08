@@ -11,3 +11,11 @@
 // has no side effects and no other exports.
 
 export const ONBOARDING_COMPLETED_KEY = 'recall.onboardingCompleted'
+
+// Per-contextual-callout "seen" state lives at this prefix + the
+// callout id (the same id passed to useContextualCallout). The full
+// onboarding tour's completed key (above) gates the WHOLE family:
+// if the user dismissed onboarding, every contextual callout reads
+// it as "seen" so a power user doesn't get re-tutorialed on each
+// surface.
+export const CONTEXTUAL_CALLOUT_KEY_PREFIX = 'recall.tour.'
