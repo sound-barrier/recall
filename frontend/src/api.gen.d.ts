@@ -450,6 +450,16 @@ export interface paths {
          *     already in the DB, and writes the merged rows. Idempotent —
          *     re-running won't duplicate matches already on record.
          *
+         *     `?scope=all` switches into "re-parse all": every PNG in the
+         *     watched folder gets re-OCR'd regardless of whether it's
+         *     already in the per-type tables. Use after a parser-tightening
+         *     release (e.g. the hero-fuzzy-match length-gate that stopped
+         *     Miyazaki being attributed to Mei) to retroactively correct
+         *     older rows. The Upsert clauses are idempotent on filename so
+         *     existing rows are rewritten in place; match annotations /
+         *     queue / play-mode overrides / hidden flags / reviews all key
+         *     on match_key and survive the re-parse. ~1 s per screenshot.
+         *
          *     Returns `202 Accepted` because the meaningful side-effect is
          *     the SQLite writes and SSE broadcast, not the HTTP response
          *     body. Subscribe to `GET /api/v1/events` for progress and
@@ -1657,6 +1667,14 @@ export interface components {
         MatchResult: {
             /** @description e.g. "rialto" */
             map?: string;
+            /**
+             * @description Raw OCR'd map-name text preserved when the matcher
+             *     rejected the candidate as unknown (no canonical match in
+             *     `pkg/parser/maps.yaml`). `map == "" && map_raw != ""`
+             *     is the "Unknown map" signal that drives the leaf-row
+             *     chip and detail-panel banner.
+             */
+            map_raw?: string;
             /** @description e.g. "control" */
             type?: string;
             /** @enum {string} */
@@ -1665,6 +1683,15 @@ export interface components {
             role?: "tank" | "dps" | "support" | "";
             /** @description Primary (most-played) hero */
             hero?: string;
+            /**
+             * @description Raw OCR'd hero-name text preserved when the matcher
+             *     rejected the candidate as unknown (no canonical match in
+             *     `pkg/parser/heroes.yaml`). `hero == "" && hero_raw != ""`
+             *     is the "Unknown hero" signal. A future YAML release that
+             *     adds the hero is picked up at the next boot's
+             *     re-aggregate without re-running Tesseract.
+             */
+            hero_raw?: string;
             eliminations?: number;
             assists?: number;
             deaths?: number;
@@ -2387,7 +2414,13 @@ export interface operations {
     };
     ParseScreenshots: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description `new` (default) parses only files not in the DB.
+                 *     `all` re-OCRs every file. Other values return 400.
+                 */
+                scope?: "new" | "all";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2401,6 +2434,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            400: components["responses"]["BadRequest"];
             409: components["responses"]["Conflict"];
             500: components["responses"]["InternalError"];
         };

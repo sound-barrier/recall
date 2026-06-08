@@ -49,12 +49,36 @@ type ParseProgressEvent struct {
 	Error    string              `json:"error,omitempty"`
 }
 
+// ReParseAll re-runs the OCR pipeline against every PNG in the
+// watched folder, including ones that are already in the per-type
+// tables. The Upsert clauses are idempotent on filename (ON CONFLICT
+// UPDATE) so existing rows are rewritten in place — the user's
+// match annotations, queue overrides, play-mode overrides, hidden
+// flags, and reviews all key on match_key and survive the re-parse.
+//
+// Use case: after a parser-tightening release lands (e.g. the
+// hero-fuzzy-match length-gate that stopped Miyazaki being
+// attributed to Mei), the user clicks Settings → Advanced →
+// Re-parse all screenshots to retroactively correct the older
+// rows. ~1 s per screenshot end-to-end; the progress panel surfaces
+// per-file events through the same SSE stream the watcher uses.
+func (a *App) ReParseAll() error {
+	return a.parseScreenshotsImpl(true)
+}
+
 // ParseScreenshots OCRs every image in screenshots/ and writes each
 // result to its per-type table. Correlation (resolveMatchKey) runs per
 // screenshot in filename-timestamp order so cross-file deps (e.g. a
 // PERSONAL adopting the SUMMARY it shares a match with) see the
 // already-inserted siblings.
 func (a *App) ParseScreenshots() error {
+	return a.parseScreenshotsImpl(false)
+}
+
+// parseScreenshotsImpl is the shared body for ParseScreenshots /
+// ReParseAll. When `force` is true, the already-parsed skip-set is
+// ignored and every file in the directory is re-OCR'd.
+func (a *App) parseScreenshotsImpl(force bool) error {
 	screenshotsDir, err := validateScreenshotsDir(a.settings.ScreenshotsDir)
 	if err != nil {
 		return err
@@ -84,16 +108,21 @@ func (a *App) ParseScreenshots() error {
 		cancel()
 	}()
 
-	parsed, err := a.store.LoadAllFilenames()
-	if err != nil {
-		return err
+	parsed := map[string]bool{}
+	if !force {
+		parsed, err = a.store.LoadAllFilenames()
+		if err != nil {
+			return err
+		}
 	}
 	// Union the user-curated suppress-list ("Delete forever" in the
 	// Unknown tab) into the parser's skip-set so the OCR pipeline
 	// never even opens those files. Errors loading the ignored set
 	// don't abort the parse — the set is a UX nicety, not a
 	// correctness invariant; an empty set just means nothing's
-	// suppressed for this run.
+	// suppressed for this run. Suppress list IS honoured even on
+	// ReParseAll — the user explicitly told us never to look at
+	// those files again.
 	ignored, _ := a.store.LoadIgnoredFilenames()
 	for f := range ignored {
 		parsed[f] = true

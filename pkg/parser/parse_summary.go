@@ -53,6 +53,12 @@ func parseSummary(img image.Image, work string) (*MatchResult, error) {
 		if r, ok := heroRoles[res.Hero]; ok {
 			res.Role = r
 		}
+	} else if cand := candidateNameFromOCR(heroesText); cand != "" {
+		// Matcher rejected everything in the panel but OCR DID
+		// return text — capture the longest hero-name-shaped token
+		// as the "Unknown hero" raw so the leaf chip can surface
+		// it and a future YAML release can re-aggregate.
+		res.HeroRaw = cand
 	}
 
 	perfRect := image.Rect(W*30/100, H/8, W*62/100, H*92/100)
@@ -225,6 +231,12 @@ func parseRightCard(text string, res *MatchResult) {
 	}
 	if m := bestKnownMapInText(text); m != "" {
 		res.Map = m
+	} else if cand := candidateNameFromOCR(text); cand != "" {
+		// No canonical map matched but OCR has alphabetic content
+		// in the right-card region — capture as MapRaw for the
+		// "Unknown map (newmap?)" UI. Sibling rationale to HeroRaw
+		// above.
+		res.MapRaw = cand
 	}
 	if t := extractGameType(text); t != "" {
 		res.Type = t

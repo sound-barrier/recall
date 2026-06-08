@@ -38,12 +38,13 @@ function makeCardState(_records: MatchRecord[]) {
   return { api, expanded, calls }
 }
 
-function mountWith(records: MatchRecord[], extras: Partial<{ ambiguousRecords: MatchRecord[]; allRecords: MatchRecord[] }> = {}) {
+function mountWith(records: MatchRecord[], extras: Partial<{ ambiguousRecords: MatchRecord[]; referenceGapRecords: MatchRecord[]; allRecords: MatchRecord[] }> = {}) {
   const { api: cardState, calls } = makeCardState(records)
   const wrapper = mount(UnknownMapsView, {
     props: {
       unknownRecords: records,
       ambiguousRecords: extras.ambiguousRecords ?? [],
+      referenceGapRecords: extras.referenceGapRecords ?? [],
       allRecords: extras.allRecords ?? [],
       cardState,
       preloadScreenshot: () => undefined,
@@ -330,6 +331,7 @@ describe('UnknownMapsView', () => {
         props: {
           unknownRecords: records,
           ambiguousRecords: [],
+          referenceGapRecords: [],
           allRecords: [],
           cardState,
           preloadScreenshot: () => undefined,
@@ -447,6 +449,7 @@ describe('UnknownMapsView', () => {
         props: {
           unknownRecords: records,
           ambiguousRecords: [],
+          referenceGapRecords: [],
           allRecords: [],
           cardState,
           preloadScreenshot: (url: string) => { calls.push(url) },

@@ -57,6 +57,11 @@ func parseScoreboard(img image.Image, work string) (*MatchResult, error) {
 
 	res := &MatchResult{}
 	res.Map, res.Type, res.Mode = extractHeader(headerText)
+	if res.Map == "" {
+		if cand := candidateNameFromOCR(headerText); cand != "" {
+			res.MapRaw = cand
+		}
+	}
 	res.Eliminations, res.Assists, res.Deaths = stats[0], stats[1], stats[2]
 	res.Damage, res.Healing, res.Mitigation = stats[3], stats[4], stats[5]
 	if heroes := extractHeroes(panelText); len(heroes) > 0 {
@@ -72,6 +77,12 @@ func parseScoreboard(img image.Image, work string) (*MatchResult, error) {
 		if heroStats := parsePanelStats(panelText, res.Hero); len(heroStats) > 0 {
 			res.HeroesPlayed = []HeroPlay{{Hero: res.Hero, Stats: heroStats}}
 		}
+	} else if cand := candidateNameFromOCR(panelText); cand != "" {
+		// Matcher rejected the highlighted player's hero — capture the
+		// raw OCR for the "Unknown hero" UI. parse_scoreboard's panel
+		// is just one hero's column so this is the natural single-hero
+		// fallback.
+		res.HeroRaw = cand
 	}
 	return res, nil
 }

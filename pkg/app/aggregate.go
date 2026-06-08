@@ -16,6 +16,27 @@ import (
 // time over the typed parent rows; raw per-screenshot data stays
 // available for replay (e.g. when a new SUMMARY arrives for an old
 // match that was scoreboard-only).
+// reAggregateUnknowns walks every per-screenshot row whose canonical
+// hero/map is empty but whose raw OCR is preserved, re-runs the
+// parser's matchers against the CURRENT heroes.yaml / maps.yaml
+// rosters, and promotes any newly-recognised rows to canonical.
+//
+// Cheap pure-CPU pass — one in-memory matcher invocation per
+// unknown row, then one UPDATE per hit. ~2–5 s on a 500-match
+// corpus typical. Runs at App.Startup so a YAML release that adds
+// a new hero/map retroactively fixes the user's Unknown bucket
+// without forcing a Tesseract re-run.
+//
+// Forward-only: rows written before this feature shipped have
+// hero_raw=” / map_raw=” and participate in the walk only as
+// no-ops. To recover the older Mei-misattribution backlog,
+// Settings → Advanced → Re-parse all screenshots is the only
+// path (it re-runs Tesseract, which now correctly rejects the
+// short-name fuzzy match).
+func (a *App) reAggregateUnknowns() (int, error) {
+	return a.store.ReAggregateUnknowns(parser.FirstKnownHeroIn, parser.FirstKnownMapIn)
+}
+
 func (a *App) aggregateAll() ([]MatchRecord, error) {
 	snap, err := a.store.LoadAll()
 	if err != nil {
@@ -396,7 +417,7 @@ func summaryToView(r db.SummaryRow) screenshotView {
 		filename: r.Filename, typeName: "summary",
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
-			Map: r.Map, Mode: r.Mode, Hero: r.Hero,
+			Map: r.Map, MapRaw: r.MapRaw, Mode: r.Mode, Hero: r.Hero, HeroRaw: r.HeroRaw,
 			Result: r.Result, FinalScore: r.FinalScore,
 			Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
 		},
@@ -432,7 +453,7 @@ func scoreboardToView(r db.ScoreboardRow) screenshotView {
 		filename: r.Filename, typeName: "scoreboard",
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
-			Map: r.Map, Mode: r.Mode, Hero: r.Hero,
+			Map: r.Map, MapRaw: r.MapRaw, Mode: r.Mode, Hero: r.Hero, HeroRaw: r.HeroRaw,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
 			Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
 		},
@@ -445,7 +466,7 @@ func personalToView(r db.PersonalRow) screenshotView {
 	view := screenshotView{
 		filename: r.Filename, typeName: "personal",
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
-		data: parser.MatchResult{Hero: r.Hero},
+		data: parser.MatchResult{Hero: r.Hero, HeroRaw: r.HeroRaw},
 	}
 	attachHeroStats(&view.data, r.HeroStats)
 	return view

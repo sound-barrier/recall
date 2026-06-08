@@ -13,14 +13,15 @@ func (s *SQLStore) UpsertPersonal(r PersonalRow) error {
 
 	var id int64
 	err = tx.QueryRow(
-		`INSERT INTO personal_screenshots (filename, match_key, screenshots_dir_id, hero)
-		VALUES (?,?,?,?)
+		`INSERT INTO personal_screenshots (filename, match_key, screenshots_dir_id, hero, hero_raw)
+		VALUES (?,?,?,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
-			hero               = excluded.hero
+			hero               = excluded.hero,
+			hero_raw           = excluded.hero_raw
 		RETURNING id`,
-		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID), nullableString(r.Hero),
+		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID), nullableString(r.Hero), r.HeroRaw,
 	).Scan(&id)
 	if err != nil {
 		return err
@@ -43,7 +44,7 @@ func (s *SQLStore) UpsertPersonal(r PersonalRow) error {
 
 func (s *SQLStore) loadPersonals() ([]PersonalRow, error) {
 	rows, err := s.db.Query(
-		`SELECT id, filename, match_key, parsed_at, screenshots_dir_id, hero
+		`SELECT id, filename, match_key, parsed_at, screenshots_dir_id, hero, hero_raw
 		FROM personal_screenshots ORDER BY id`,
 	)
 	if err != nil {
@@ -57,7 +58,7 @@ func (s *SQLStore) loadPersonals() ([]PersonalRow, error) {
 		var r PersonalRow
 		var dirID sql.NullInt64
 		var hero sql.NullString
-		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID, &hero); err != nil {
+		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID, &hero, &r.HeroRaw); err != nil {
 			return nil, err
 		}
 		r.ScreenshotsDirID = dirID.Int64

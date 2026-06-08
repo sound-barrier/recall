@@ -17,6 +17,7 @@ import {
   OpenURL,
   type UpdateInfo,
   ParseScreenshots,
+  ReParseAll,
   CancelParse,
   GetMatchResults,
   GetScreenshotsDir,
@@ -599,6 +600,36 @@ async function onCancelParse() {
     // parse-complete handler already ran (or is about to), and
     // the cancellingParse flag gets cleared in runParse's
     // finally block or in the parse-complete onComplete handler.
+    cancellingParse.value = false
+  }
+}
+
+// "Re-parse all screenshots" — Settings → Advanced fires this after
+// its own two-step confirm. Re-uses the same parseBusy / parseLog /
+// progress wiring runParse does so the masthead status bar and any
+// open progress drawer reflect activity. Different from the normal
+// `parse()` in two ways: (1) calls ReParseAll which forces re-OCR on
+// already-parsed files, (2) skips the Tesseract-supported modal
+// because the user knows they're committing to a multi-minute run.
+async function onReParseAll() {
+  if (!tesseractReady.value) {
+    error.value = 'Tesseract is not configured. Fix it in Settings → Engine.'
+    return
+  }
+  error.value = ''
+  parseBusy.value = true
+  parseProgress.value = null
+  parseLog.value = []
+  try {
+    await ReParseAll()
+    await load()
+    lastParsedAt.value = Date.now()
+    try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {}
+  } catch (e) {
+    error.value = String(e)
+  } finally {
+    parseBusy.value = false
+    parseProgress.value = null
     cancellingParse.value = false
   }
 }
@@ -1326,6 +1357,14 @@ void TAB_ORDER
 const unknownRecords = computed(() =>
   records.value.filter(r => !r.data?.map && !r.ambiguous)
 )
+// Records where the parser captured an OCR'd hero or map name but
+// couldn't pin it to the canonical YAML rosters. Surfaces in a new
+// Unknown-tab section so the user can see what's awaiting a YAML
+// release. Drives the third column on the Unknown tab.
+const referenceGapRecords = computed(() =>
+  records.value.filter(r => (!r.data?.hero && !!r.data?.hero_raw)
+    || (!r.data?.map  && !!r.data?.map_raw)),
+)
 // Records flagged hidden by the user via the Matches drawer. Used by
 // the export-bundle modal to surface the count + offer the "include
 // hidden" toggle without forcing the user to navigate the archive.
@@ -1713,6 +1752,7 @@ useEventStream({
           :clear-confirm="clearConfirm"
           :clearing-d-b="clearingDB"
           :ignored-count="ignoredCount"
+          :reparsing="parseBusy"
           @pick-screenshots-dir="pickDir"
           @pick-detected-source="pickDetectedSource"
           @detect-screenshots-dir="detectDir"
@@ -1734,6 +1774,7 @@ useEventStream({
           @clear-database="onClearDatabase"
           @cancel-clear="cancelClear"
           @open-ignored-panel="openIgnoredPanel"
+          @re-parse-all="onReParseAll"
         />
 
         <!-- ─── PARSE VIEW (Watch + Manual Parse + Progress) ─────── -->
@@ -1763,6 +1804,7 @@ useEventStream({
           v-if="view === 'unknown'"
           :unknown-records="unknownRecords"
           :ambiguous-records="ambiguousRecords"
+          :reference-gap-records="referenceGapRecords"
           :all-records="records"
           :card-state="cardState"
           :preload-screenshot="screenshotPreview.preload"

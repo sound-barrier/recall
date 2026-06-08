@@ -15,15 +15,17 @@ func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
 	err = tx.QueryRow(
 		`INSERT INTO scoreboard_screenshots (
 			filename, match_key, screenshots_dir_id,
-			map, mode, hero,
+			map, map_raw, mode, hero, hero_raw,
 			eliminations, assists, deaths, damage, healing, mitigation
-		) VALUES (?,?,?, ?,?,?, ?,?,?,?,?,?)
+		) VALUES (?,?,?, ?,?,?,?,?, ?,?,?,?,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
 			map          = excluded.map,
+			map_raw      = excluded.map_raw,
 			mode         = excluded.mode,
 			hero         = excluded.hero,
+			hero_raw     = excluded.hero_raw,
 			eliminations = excluded.eliminations,
 			assists      = excluded.assists,
 			deaths       = excluded.deaths,
@@ -32,7 +34,7 @@ func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
 			mitigation   = excluded.mitigation
 		RETURNING id`,
 		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID),
-		nullableString(r.Map), nullableString(r.Mode), nullableString(r.Hero),
+		nullableString(r.Map), r.MapRaw, nullableString(r.Mode), nullableString(r.Hero), r.HeroRaw,
 		r.Eliminations, r.Assists, r.Deaths, r.Damage, r.Healing, r.Mitigation,
 	).Scan(&id)
 	if err != nil {
@@ -57,7 +59,7 @@ func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
 func (s *SQLStore) loadScoreboards() ([]ScoreboardRow, error) {
 	rows, err := s.db.Query(`SELECT
 		id, filename, match_key, parsed_at, screenshots_dir_id,
-		map, mode, hero,
+		map, map_raw, mode, hero, hero_raw,
 		eliminations, assists, deaths, damage, healing, mitigation
 		FROM scoreboard_screenshots ORDER BY id`)
 	if err != nil {
@@ -73,7 +75,7 @@ func (s *SQLStore) loadScoreboards() ([]ScoreboardRow, error) {
 		var mapC, mode, hero sql.NullString
 		if err := rows.Scan(
 			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
-			&mapC, &mode, &hero,
+			&mapC, &r.MapRaw, &mode, &hero, &r.HeroRaw,
 			&r.Eliminations, &r.Assists, &r.Deaths,
 			&r.Damage, &r.Healing, &r.Mitigation,
 		); err != nil {

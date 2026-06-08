@@ -88,6 +88,10 @@ const props = defineProps<{
   // Manage button's disabled state and the Clear-arm opt-out
   // checkbox; 0 hides the checkbox.
   ignoredCount?:      number
+  // True while a Re-parse-all run is in flight — disables the
+  // re-parse button + flips its label so the user sees progress
+  // without losing context.
+  reparsing?:         boolean
 }>()
 
 const emit = defineEmits<{
@@ -120,6 +124,10 @@ const emit = defineEmits<{
   'clear-database':         [opts: { keepIgnored: boolean }]
   'cancel-clear':           []
   'open-ignored-panel':     []
+  // Settings → Advanced → "Re-parse all screenshots" two-step
+  // confirm. App.vue calls ReParseAll() and the masthead progress
+  // panel surfaces per-file events.
+  're-parse-all':           []
 }>()
 
 
@@ -273,11 +281,13 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
       :matched-count="matchedCount"
       :unknown-count="unknownCount"
       :ignored-count="ignoredCount"
+      :reparsing="reparsing"
       @toggle-prometheus="() => emit('toggle-prometheus')"
       @arm-clear="() => emit('arm-clear')"
       @cancel-clear="() => emit('cancel-clear')"
       @clear-database="(opts) => emit('clear-database', opts)"
       @open-ignored-panel="() => emit('open-ignored-panel')"
+      @re-parse-all="() => emit('re-parse-all')"
     />
   </section>
 </template>

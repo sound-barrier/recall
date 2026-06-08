@@ -12,7 +12,10 @@ import { useWeekStart } from '../composables/useWeekStart'
 import { useDensity } from '../composables/useDensity'
 import { useScrollAffordance } from '../composables/useScrollAffordance'
 import { useOWData } from '../composables/useOWData'
-import { rolesForHeader, formatPlayModeLabel, formatQueueTypeLabel } from '../match-helpers'
+import {
+  rolesForHeader, formatPlayModeLabel, formatQueueTypeLabel,
+  isHeroUnknown, isMapUnknown, formatUnknownHeroLabel, formatUnknownMapLabel,
+} from '../match-helpers'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import { useArchiveSelection } from '../composables/useArchiveSelection'
 import MatchTimelineHeader from './MatchTimelineHeader.vue'
@@ -1382,7 +1385,13 @@ onBeforeUnmount(() => {
                  column stays aligned even when the underlying field
                  hasn't been set yet. -->
             <div class="leaf-map-block">
-              <span class="leaf-map">{{ rec.data?.map || 'unknown' }}</span>
+              <span
+                v-if="isMapUnknown(rec)"
+                class="leaf-map leaf-map-unknown"
+                :data-unknown-map="rec.data?.map_raw || true"
+                :title="`The parser couldn't match the OCR'd map text to maps.yaml. Wait for the next release to recognise it. (OCR read: ${rec.data?.map_raw ?? '—'})`"
+              >{{ formatUnknownMapLabel(rec) }}</span>
+              <span v-else class="leaf-map">{{ rec.data?.map || 'unknown' }}</span>
               <span class="leaf-mode-row">
                 <span class="leaf-mode-chip">{{ formatPlayModeLabel(rec) }}</span>
                 <span class="leaf-queue-chip">{{ formatQueueTypeLabel(rec) }}</span>
@@ -1392,9 +1401,17 @@ onBeforeUnmount(() => {
             <!-- 4. Who — hero over role. Open-queue matches can mix
                  support / tank / dps in one game; formatRoles lists
                  every role the heroes_played array resolved to in
-                 percent-played order, deduped. -->
+                 percent-played order, deduped. Unknown heroes (OCR
+                 captured but no canonical match in heroes.yaml) get
+                 a warning-styled chip with the raw OCR in parens. -->
             <div class="leaf-hero-block">
-              <span class="leaf-hero">{{ formatHeroes(rec) }}</span>
+              <span
+                v-if="isHeroUnknown(rec)"
+                class="leaf-hero leaf-hero-unknown"
+                :data-unknown-hero="rec.data?.hero_raw || true"
+                :title="`The parser couldn't match the OCR'd hero text to heroes.yaml. Wait for the next release to recognise it. (OCR read: ${rec.data?.hero_raw ?? '—'})`"
+              >{{ formatUnknownHeroLabel(rec) }}</span>
+              <span v-else class="leaf-hero">{{ formatHeroes(rec) }}</span>
               <span v-if="formatRoles(rec)" class="leaf-role">{{ formatRoles(rec) }}</span>
             </div>
 
@@ -2512,6 +2529,18 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1;
+}
+
+/* Unknown-hero / Unknown-map warning variant. Same shape as the
+   canonical leaf-hero / leaf-map but coloured with the accent —
+   draws the eye to "this matched nothing in the YAML; an update
+   is needed". The :title attribute carries the OCR'd text + the
+   "wait for the next release" copy so a hover gives the full
+   context without crowding the leaf row. */
+.leaf-hero-unknown,
+.leaf-map-unknown {
+  color: var(--accent-bright, var(--accent));
+  cursor: help;
 }
 
 .leaf-mode-row {

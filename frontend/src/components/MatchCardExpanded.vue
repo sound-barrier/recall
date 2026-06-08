@@ -11,6 +11,8 @@ import {
   formatParsedAt,
   fmtTime,
   highlightSubstrings,
+  isHeroUnknown,
+  isMapUnknown,
 } from '../match-helpers'
 import { highlightTermsFor, type SearchClause } from '../search-query'
 import { useOWData } from '../composables/useOWData'
@@ -103,6 +105,15 @@ const emit = defineEmits<{
 }>()
 
 const isAnchor = computed(() => props.anchorKey === props.record.match_key)
+
+// Drives the inline banner above the chooser block. Either is
+// sufficient to show the warning; the banner's body text picks
+// hero or map based on which one tripped. Mirrors the helper-driven
+// pattern used elsewhere (isHeroUnknown / isMapUnknown live in
+// match-helpers so the same predicate can drive leaf rows + the
+// Unknown tab section).
+const unknownHero = computed(() => isHeroUnknown(props.record))
+const unknownMap  = computed(() => isMapUnknown(props.record))
 
 // Sync the persisted play_mode override with what the leaf chip
 // shows. Pre-fix, a match with data.mode='competitive' and no
@@ -357,6 +368,38 @@ function onTagKeydown(e: KeyboardEvent) {
 
 <template>
   <div class="match-expanded">
+    <!-- Unknown-hero / Unknown-map banner. Renders above the chooser
+         block when the parser captured an OCR'd hero or map name
+         that didn't pin to the canonical YAML rosters. Cannot be
+         dismissed; cannot be edited. Mirrors the .system-alert
+         pattern from the Tesseract-missing banner: striped accent
+         visual, eyebrow + title + body, no CTA beyond a download
+         link to the latest reference data on the release page. -->
+    <div
+      v-if="unknownHero || unknownMap"
+      class="unknown-alert"
+      role="alert"
+      data-unknown-alert
+    >
+      <span class="unknown-alert-eyebrow" aria-hidden="true">Reference data · gap</span>
+      <h3 class="unknown-alert-title">
+        {{ unknownHero ? 'Unknown hero detected' : 'Unknown map detected' }}
+      </h3>
+      <p class="unknown-alert-body">
+        The parser couldn't match the OCR'd text to a known
+        {{ unknownHero ? 'hero' : 'map' }}.
+        Wait for the next Recall release to update the canonical roster.
+        <span v-if="unknownHero" class="unknown-alert-ocr">(OCR read: <code>{{ record.data?.hero_raw }}</code>)</span>
+        <span v-if="unknownMap"  class="unknown-alert-ocr">(OCR read: <code>{{ record.data?.map_raw }}</code>)</span>
+      </p>
+      <a
+        class="unknown-alert-link"
+        href="https://github.com/sound-barrier/recall/releases/latest"
+        target="_blank"
+        rel="noopener noreferrer"
+      >View latest release ↗</a>
+    </div>
+
     <!-- Queue-type chooser. Frames every downstream stat (winrate,
          hero pool, SR delta) — surfaces FIRST so the user makes the
          5v5/6v6 call before reading anything else. Three
@@ -1033,6 +1076,92 @@ function onTagKeydown(e: KeyboardEvent) {
 </template>
 
 <style scoped>
+/* Unknown-hero / Unknown-map banner — same striped-accent shape as
+   App.vue's .system-alert (Tesseract-missing surface). Sits above
+   the chooser block; not dismissible. The accent stripe + bold
+   eyebrow make it impossible to miss without crowding the rest of
+   the panel. Cursor: default everywhere except the release-link
+   anchor. */
+.unknown-alert {
+  position: relative;
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.9rem 0.65rem 1.05rem;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-strong));
+  border-radius: 2px;
+  border-left: 4px solid var(--accent);
+  overflow: hidden;
+}
+
+.unknown-alert::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0,
+    transparent 12px,
+    color-mix(in srgb, var(--accent) 7%, transparent) 12px,
+    color-mix(in srgb, var(--accent) 7%, transparent) 24px
+  );
+  pointer-events: none;
+}
+
+.unknown-alert-eyebrow {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent-bright, var(--accent));
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+}
+
+.unknown-alert-title {
+  margin: 0 0 0.25rem;
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 1.0rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.unknown-alert-body {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.unknown-alert-ocr code {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  background: rgb(0 0 0 / 18%);
+  padding: 0.05rem 0.3rem;
+  border-radius: 2px;
+}
+
+.unknown-alert-link {
+  display: inline-block;
+  margin-top: 0.45rem;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-bright, var(--accent));
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.unknown-alert-link:hover,
+.unknown-alert-link:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
 /* Strip browser button chrome on the chip buttons inside the
    expanded view. :where() keeps specificity at 0 so existing
    .hero-name / .source-type-chip / .slot-chip rules continue to

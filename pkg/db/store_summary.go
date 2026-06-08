@@ -18,17 +18,19 @@ func (s *SQLStore) UpsertSummary(r SummaryRow) error {
 	err = tx.QueryRow(
 		`INSERT INTO summary_screenshots (
 			filename, match_key, screenshots_dir_id,
-			map, mode, hero, result, final_score, date, finished_at, game_length,
+			map, map_raw, mode, hero, hero_raw, result, final_score, date, finished_at, game_length,
 			perf_elim_total, perf_elim_avg_per_10min,
 			perf_assists_total, perf_assists_avg_per_10min,
 			perf_deaths_total, perf_deaths_avg_per_10min
-		) VALUES (?,?,?, ?,?,?,?,?,?,?,?, ?,?, ?,?, ?,?)
+		) VALUES (?,?,?, ?,?,?,?,?,?,?,?,?,?, ?,?, ?,?, ?,?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
 			map         = excluded.map,
+			map_raw     = excluded.map_raw,
 			mode        = excluded.mode,
 			hero        = excluded.hero,
+			hero_raw    = excluded.hero_raw,
 			result      = excluded.result,
 			final_score = excluded.final_score,
 			date        = excluded.date,
@@ -42,7 +44,7 @@ func (s *SQLStore) UpsertSummary(r SummaryRow) error {
 			perf_deaths_avg_per_10min  = excluded.perf_deaths_avg_per_10min
 		RETURNING id`,
 		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID),
-		nullableString(r.Map), nullableString(r.Mode), nullableString(r.Hero),
+		nullableString(r.Map), r.MapRaw, nullableString(r.Mode), nullableString(r.Hero), r.HeroRaw,
 		nullableString(r.Result), nullableString(r.FinalScore),
 		nullableString(r.Date), nullableString(r.FinishedAt), nullableString(r.GameLength),
 		r.PerfElimTotal, r.PerfElimAvgPer10Min,
@@ -71,7 +73,7 @@ func (s *SQLStore) UpsertSummary(r SummaryRow) error {
 func (s *SQLStore) loadSummaries() ([]SummaryRow, error) {
 	rows, err := s.db.Query(`SELECT
 		id, filename, match_key, parsed_at, screenshots_dir_id,
-		map, mode, hero, result, final_score, date, finished_at, game_length,
+		map, map_raw, mode, hero, hero_raw, result, final_score, date, finished_at, game_length,
 		perf_elim_total, perf_elim_avg_per_10min,
 		perf_assists_total, perf_assists_avg_per_10min,
 		perf_deaths_total, perf_deaths_avg_per_10min
@@ -89,7 +91,7 @@ func (s *SQLStore) loadSummaries() ([]SummaryRow, error) {
 		var mapC, mode, hero, result, fs, date, fa, gl sql.NullString
 		if err := rows.Scan(
 			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
-			&mapC, &mode, &hero, &result, &fs, &date, &fa, &gl,
+			&mapC, &r.MapRaw, &mode, &hero, &r.HeroRaw, &result, &fs, &date, &fa, &gl,
 			&r.PerfElimTotal, &r.PerfElimAvgPer10Min,
 			&r.PerfAssistsTotal, &r.PerfAssistsAvgPer10Min,
 			&r.PerfDeathsTotal, &r.PerfDeathsAvgPer10Min,

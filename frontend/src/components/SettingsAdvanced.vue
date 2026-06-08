@@ -23,6 +23,10 @@ const props = defineProps<{
   // 0 hides the keep-suppress-list checkbox in the Clear arm step and
   // disables the Manage button.
   ignoredCount?:     number
+  // True while a Re-parse-all run is in flight (parse-progress SSE
+  // events streaming). Driven by the parent's parseProgress state
+  // machine — same source the masthead's parse indicator reads.
+  reparsing?:        boolean
 }>()
 
 const emit = defineEmits<{
@@ -31,7 +35,36 @@ const emit = defineEmits<{
   'cancel-clear':       []
   'clear-database':     [opts: { keepIgnored: boolean }]
   'open-ignored-panel': []
+  // Two-step arm/disarm fires this once on confirm. App.vue calls
+  // api.ts ReParseAll() which POSTs /api/v1/parses?scope=all and
+  // streams parse-progress events. The progress panel surfaces
+  // per-file activity through its existing SSE wiring.
+  're-parse-all':       []
 }>()
+
+// Local arm/disarm state for the destructive "Re-parse all"
+// affordance — mirrors the Clear DB pattern but lives here because
+// the lifecycle is shorter (single-shot, no extra opt-out
+// checkbox). Auto-disarm after 6 s so a stale arm doesn't fire on
+// an accidental click an hour later.
+const reparseConfirm = ref(false)
+let reparseDisarmTimer: ReturnType<typeof setTimeout> | null = null
+function armReparse() {
+  reparseConfirm.value = true
+  if (reparseDisarmTimer) clearTimeout(reparseDisarmTimer)
+  reparseDisarmTimer = setTimeout(() => { reparseConfirm.value = false }, 6000)
+}
+function cancelReparse() {
+  reparseConfirm.value = false
+  if (reparseDisarmTimer) {
+    clearTimeout(reparseDisarmTimer)
+    reparseDisarmTimer = null
+  }
+}
+function confirmReparse() {
+  cancelReparse()
+  emit('re-parse-all')
+}
 
 // Opt-out checkbox state. Default false so the Clear arm's "factory
 // reset" semantic wins by default; the user has to actively opt into
@@ -109,6 +142,52 @@ watch(
           >
             Manage…
           </button>
+        </div>
+      </div>
+
+      <div class="setting-row" :class="{ 'danger-row': reparseConfirm }">
+        <div class="setting-info">
+          <h4 class="setting-label">
+            Re-parse All Screenshots
+            <span class="setting-help" tabindex="0" role="note">
+              <span class="setting-help-mark" aria-hidden="true">?</span>
+              <span class="setting-help-label">About Re-parse All</span>
+              <span class="setting-help-pop" role="tooltip">
+                Re-runs OCR on every screenshot. Use after a release tightens the parser or adds a hero/map to the canonical roster. Your annotations, queue + play-mode overrides, hidden flags, and reviews all survive — they key on match_key.
+              </span>
+            </span>
+          </h4>
+          <p class="setting-desc">
+            Re-runs Tesseract on every PNG in the watched folder. Use after a Recall release that tightens hero/map matching (e.g. the Miyazaki-misattribution fix) to retroactively correct older records. Estimated time: ~1 second per screenshot.
+          </p>
+        </div>
+        <div class="setting-control">
+          <template v-if="!reparseConfirm">
+            <button
+              class="btn"
+              :disabled="reparsing"
+              data-reparse-all-arm
+              @click="armReparse"
+            >
+              <span v-if="reparsing">Re-parsing…</span>
+              <span v-else>Re-parse all…</span>
+            </button>
+          </template>
+          <template v-else>
+            <div class="clear-confirm-group">
+              <button
+                class="btn danger"
+                :disabled="reparsing"
+                data-reparse-all-confirm
+                @click="confirmReparse"
+              >
+                Confirm re-parse
+              </button>
+              <button class="btn ghost" :disabled="reparsing" @click="cancelReparse">
+                Cancel
+              </button>
+            </div>
+          </template>
         </div>
       </div>
 

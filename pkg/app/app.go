@@ -278,6 +278,20 @@ func (a *App) Startup(ctx context.Context) {
 		a.store = s
 	}
 
+	// Boot re-aggregate: walk every screenshot row whose canonical
+	// hero/map is empty but whose raw OCR is preserved, re-run the
+	// matchers against the current heroes.yaml / maps.yaml, and
+	// promote any newly-recognised rows to canonical. Cheap (~2–5 s
+	// on 500 matches; pure-CPU lookups + one UPDATE per hit) so we
+	// run it unconditionally on startup. Forward-only by design:
+	// rows from before this feature shipped have hero_raw='' and
+	// participate in the walk only as no-ops.
+	if n, err := a.reAggregateUnknowns(); err != nil {
+		fmt.Fprintf(os.Stderr, "boot re-aggregate failed: %v\n", err)
+	} else if n > 0 {
+		fmt.Fprintf(os.Stderr, "boot re-aggregate promoted %d previously-unknown hero/map row(s) to canonical\n", n)
+	}
+
 	// Start the Prometheus metrics endpoint only if the user has
 	// explicitly enabled it via the checkbox (default off so the desktop
 	// app doesn't open a network port without consent).

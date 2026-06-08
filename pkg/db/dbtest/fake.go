@@ -533,6 +533,53 @@ func (f *Fake) ClearMatchPlayMode(matchKey string) error {
 	return nil
 }
 
+// ReAggregateUnknowns walks Fake's Summaries / Scoreboards /
+// Personals slices and applies the same hero/map-promotion logic
+// the SQL store does. Used by App-level tests that exercise the
+// boot re-aggregator without needing a real SQLite.
+func (f *Fake) ReAggregateUnknowns(heroFn func(rawHero string) string, mapFn func(rawMap string) string) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	promoted := 0
+	for i := range f.Summaries {
+		if f.Summaries[i].Hero == "" && f.Summaries[i].HeroRaw != "" {
+			if c := heroFn(f.Summaries[i].HeroRaw); c != "" {
+				f.Summaries[i].Hero = c
+				promoted++
+			}
+		}
+		if f.Summaries[i].Map == "" && f.Summaries[i].MapRaw != "" {
+			if c := mapFn(f.Summaries[i].MapRaw); c != "" {
+				f.Summaries[i].Map = c
+				promoted++
+			}
+		}
+	}
+	for i := range f.Scoreboards {
+		if f.Scoreboards[i].Hero == "" && f.Scoreboards[i].HeroRaw != "" {
+			if c := heroFn(f.Scoreboards[i].HeroRaw); c != "" {
+				f.Scoreboards[i].Hero = c
+				promoted++
+			}
+		}
+		if f.Scoreboards[i].Map == "" && f.Scoreboards[i].MapRaw != "" {
+			if c := mapFn(f.Scoreboards[i].MapRaw); c != "" {
+				f.Scoreboards[i].Map = c
+				promoted++
+			}
+		}
+	}
+	for i := range f.Personals {
+		if f.Personals[i].Hero == "" && f.Personals[i].HeroRaw != "" {
+			if c := heroFn(f.Personals[i].HeroRaw); c != "" {
+				f.Personals[i].Hero = c
+				promoted++
+			}
+		}
+	}
+	return promoted, nil
+}
+
 func (f *Fake) BulkSetMatchPlayMode(matchKeys []string, playMode string) error {
 	for _, k := range matchKeys {
 		if playMode == "" {
