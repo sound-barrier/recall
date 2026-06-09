@@ -50,7 +50,7 @@ func parseSummary(img image.Image, work string) (*MatchResult, error) {
 	res.HeroesPlayed = parseHeroesPlayed(heroesText)
 	if len(res.HeroesPlayed) > 0 {
 		res.Hero = res.HeroesPlayed[0].Hero
-		if r, ok := heroRoles[res.Hero]; ok {
+		if r, ok := loadDataset().heroRoles[res.Hero]; ok {
 			res.Role = r
 		}
 	} else if cand := candidateNameFromOCR(heroesText); cand != "" {

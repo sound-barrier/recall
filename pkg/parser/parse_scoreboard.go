@@ -66,7 +66,7 @@ func parseScoreboard(img image.Image, work string) (*MatchResult, error) {
 	res.Damage, res.Healing, res.Mitigation = stats[3], stats[4], stats[5]
 	if heroes := extractHeroes(panelText); len(heroes) > 0 {
 		res.Hero = heroes[0]
-		if r, ok := heroRoles[res.Hero]; ok {
+		if r, ok := loadDataset().heroRoles[res.Hero]; ok {
 			res.Role = r
 		}
 		// The right-side panel on the in-game scoreboard carries the same

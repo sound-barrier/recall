@@ -35,6 +35,8 @@ describe('App.vue lazy-loaded components', () => {
     // Anchor confirmation toast — small, but lazy so the bytes only
     // hit users who actually stamp an anchor.
     { name: 'MatchAnchorToast',       path: './components/MatchAnchorToast.vue' },
+    // Update-check modal — only mounted when the user runs a check.
+    { name: 'UpdateCheckModal',       path: './components/UpdateCheckModal.vue' },
   ]
 
   for (const { name, path } of views) {

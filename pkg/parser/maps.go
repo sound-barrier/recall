@@ -21,7 +21,7 @@ func FirstKnownMapIn(rawMap string) string {
 // so the aggregator can resolve type at read time from the stored map
 // name without persisting a redundant `type` column on every row.
 func MapType(mapName string) string {
-	return mapTypes[normalize(mapName)]
+	return loadDataset().mapTypes[normalize(mapName)]
 }
 
 // snapToKnownMap returns the known OW map whose normalized name is
@@ -45,7 +45,7 @@ func snapToKnownMap(ocr string) string {
 	normOCR := normalize(ocr)
 	best := ocr
 	bestDist := -1
-	for _, m := range knownMaps {
+	for _, m := range loadDataset().knownMaps {
 		if len(m) < minMapFuzzyLen {
 			continue
 		}
@@ -73,7 +73,7 @@ func bestKnownMapInText(text string) string {
 	normText := normalize(text)
 	bestMap := ""
 	bestDist := -1
-	for _, m := range knownMaps {
+	for _, m := range loadDataset().knownMaps {
 		if len(m) < minMapFuzzyLen {
 			continue
 		}

@@ -30,13 +30,14 @@ type ScreenshotSource struct {
 	Example    string `json:"example"`
 }
 
-// GetOWData returns the embedded OW reference data. Stateless +
-// idempotent — callers may invoke it once at app load and cache.
-// The returned maps are the package-level singletons; callers must
-// not mutate them.
+// GetOWData returns the current OW reference data snapshot. Callers
+// must not mutate the returned maps/slices — they are owned by the
+// active parser dataset. After an Apply Update call, subsequent
+// invocations of GetOWData reflect the swapped dataset.
 func (a *App) GetOWData() OWData {
-	sources := make([]ScreenshotSource, 0, len(parser.ScreenshotSources))
-	for _, s := range parser.ScreenshotSources {
+	parserSources := parser.Sources()
+	sources := make([]ScreenshotSource, 0, len(parserSources))
+	for _, s := range parserSources {
 		sources = append(sources, ScreenshotSource{
 			Name:       s.Name,
 			Prefix:     s.Prefix,
@@ -46,8 +47,8 @@ func (a *App) GetOWData() OWData {
 		})
 	}
 	return OWData{
-		HeroesByRole:      parser.HeroesByRole,
-		MapsByType:        parser.MapsByType,
+		HeroesByRole:      parser.HeroesByRole(),
+		MapsByType:        parser.MapsByType(),
 		ScreenshotSources: sources,
 	}
 }

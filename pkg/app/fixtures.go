@@ -112,14 +112,15 @@ var (
 )
 
 func init() {
-	fixtureTanks = normalizeAll(parser.HeroesByRole["tank"])
-	fixtureSupports = normalizeAll(parser.HeroesByRole["support"])
-	fixtureDPS = normalizeAll(parser.HeroesByRole["dps"])
+	heroes := parser.HeroesByRole()
+	fixtureTanks = normalizeAll(heroes["tank"])
+	fixtureSupports = normalizeAll(heroes["support"])
+	fixtureDPS = normalizeAll(heroes["dps"])
 	// Flatten MapsByType into a single pool. The order across game
 	// types is stable per Go's map iteration is not — but we shuffle
 	// per seed downstream anyway, so the source order doesn't matter
 	// for determinism (the shuffle is rng-driven).
-	for _, gameTypeMaps := range parser.MapsByType {
+	for _, gameTypeMaps := range parser.MapsByType() {
 		fixtureMaps = append(fixtureMaps, normalizeAll(gameTypeMaps)...)
 	}
 	// Sort the map pool so subsequent runs see the same source order

@@ -152,19 +152,54 @@ export function GetStartupError(): Promise<string> {
   return _get<{ message: string }>('/api/v1/system/startup-error').then(d => d.message)
 }
 
+export type DataStatus = {
+  applied_tag:      string
+  applied_at?:      string
+  has_update:       boolean
+  added_heroes?:    string[]
+  removed_heroes?:  string[]
+  added_maps?:      string[]
+  removed_maps?:    string[]
+  added_sources?:   string[]
+  removed_sources?: string[]
+}
+
 export type UpdateInfo = {
-  checked: boolean
-  dev_build: boolean
-  available: boolean
-  latest: string
-  url: string
-  latest_heroes?: string[]
-  latest_maps?: string[]
+  checked:          boolean
+  dev_build:        boolean
+  available:        boolean
+  latest:           string
+  url:              string
+  latest_heroes?:   string[]
+  latest_maps?:     string[]
+  latest_sources?:  string[]
+  last_checked_at?: string
+  release_notes?:   string
+  data:             DataStatus
 }
 
 export function CheckForUpdate(): Promise<UpdateInfo> {
   if (IS_WAILS) return _wails('CheckForUpdate')
   return _get<UpdateInfo>('/api/v1/system/update')
+}
+
+export type DataUpdateResult = {
+  applied_tag:      string
+  added_heroes?:    string[]
+  removed_heroes?:  string[]
+  added_maps?:      string[]
+  removed_maps?:    string[]
+  added_sources?:   string[]
+  removed_sources?: string[]
+}
+
+// ApplyDataUpdate downloads + SHA-256-verifies the reference YAMLs from
+// the named release and swaps the running parser dataset. Throws ApiError
+// (status 409) when the release moved since the FE's last check —
+// callers should refetch /system/update and prompt the user again.
+export function ApplyDataUpdate(tag: string): Promise<DataUpdateResult> {
+  if (IS_WAILS) return _wails('ApplyDataUpdate', tag)
+  return _send<DataUpdateResult>('POST', '/api/v1/system/data-update', { tag })
 }
 
 export function GetMatchResults(): Promise<MatchRecord[]> {

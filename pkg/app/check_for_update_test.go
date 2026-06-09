@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 // CheckForUpdate is the one App method that makes an outbound network
@@ -22,7 +23,9 @@ import (
 // struct out of comparable territory.
 func isEmptyUpdate(u UpdateInfo) bool {
 	return !u.Checked && !u.DevBuild && !u.Available && u.Latest == "" && u.URL == "" &&
-		len(u.LatestHeroes) == 0 && len(u.LatestMaps) == 0
+		len(u.LatestHeroes) == 0 && len(u.LatestMaps) == 0 && len(u.LatestSources) == 0 &&
+		u.LastCheckedAt == "" && u.ReleaseNotes == "" &&
+		u.Data.AppliedTag == "" && !u.Data.HasUpdate
 }
 
 // withReleasesURL swaps releasesURL for the duration of the test and
@@ -291,13 +294,15 @@ func sha256hex(b []byte) string {
 }
 
 // fakeAssetServer responds with a small static set of routes:
-//   - /heroes.yaml          → heroesBody
-//   - /heroes.yaml.sha256   → "<hash>  recall-1.2.3-heroes.yaml"
-//   - /maps.yaml            → mapsBody
-//   - /maps.yaml.sha256     → "<hash>  recall-1.2.3-maps.yaml"
+//   - /heroes.yaml                  → heroesBody
+//   - /heroes.yaml.sha256           → "<hash>  recall-1.2.3-heroes.yaml"
+//   - /maps.yaml                    → mapsBody
+//   - /maps.yaml.sha256             → "<hash>  recall-1.2.3-maps.yaml"
+//   - /screenshot_sources.yaml      → sourcesBody (empty body skips route)
+//   - /screenshot_sources.yaml.sha256 → matching sidecar
 //
 // Callers point releaseAssetURL at this server's URL.
-func fakeAssetServer(t *testing.T, heroesBody, mapsBody []byte) *httptest.Server {
+func fakeAssetServer(t *testing.T, heroesBody, mapsBody, sourcesBody []byte) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/heroes.yaml", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(heroesBody) })
@@ -308,6 +313,14 @@ func fakeAssetServer(t *testing.T, heroesBody, mapsBody []byte) *httptest.Server
 	mux.HandleFunc("/maps.yaml.sha256", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprintf(w, "%s  recall-1.2.3-maps.yaml\n", sha256hex(mapsBody))
 	})
+	if len(sourcesBody) > 0 {
+		mux.HandleFunc("/screenshot_sources.yaml", func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write(sourcesBody)
+		})
+		mux.HandleFunc("/screenshot_sources.yaml.sha256", func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = fmt.Fprintf(w, "%s  recall-1.2.3-screenshot_sources.yaml\n", sha256hex(sourcesBody))
+		})
+	}
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv
@@ -321,7 +334,7 @@ func TestCheckForUpdate_AvailableSurfacesLatestRosters(t *testing.T) {
 
 	heroes := []byte("tank:\n  - Miyazaki\n  - Reinhardt\nsupport:\n  - Lúcio\n")
 	maps := []byte("control:\n  - Ilios\n  - Nepal\nclash:\n  - Hanaoka\n")
-	assetSrv := fakeAssetServer(t, heroes, maps)
+	assetSrv := fakeAssetServer(t, heroes, maps, nil)
 	withReleaseAssetURL(t, func(_, name string) string {
 		return assetSrv.URL + "/" + name
 	})
@@ -428,5 +441,156 @@ func TestParseRosterNames_DropsBlankEntries(t *testing.T) {
 	names := parseRosterNames(yaml)
 	if len(names) != 1 || names[0] != "Reinhardt" {
 		t.Errorf("want [Reinhardt], got %v", names)
+	}
+}
+
+// validSourcesYAML returns a minimal screenshot_sources.yaml body
+// suitable for fakeAssetServer. One source, valid regex, the example
+// that snip's prefix-matching test in screenshot_sources_test.go uses.
+func validSourcesYAML() []byte {
+	return []byte(`sources:
+  - name: snip
+    prefix: "Screenshot "
+    regex: '^Screenshot (\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2})(\d{2})\.png$'
+    year_offset: 0
+    example: "Screenshot 2026-06-07 224855.png"
+  - name: testtool
+    prefix: "TestTool_"
+    regex: '^TestTool_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.png$'
+    year_offset: 0
+    example: "TestTool_2026-06-08_14-32-11.png"
+`)
+}
+
+func TestCheckForUpdate_PopulatesLastCheckedAtAndPersists(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	srv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v0.2.0","html_url":"https://example/v0.2.0"}`)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "0.2.0")
+
+	got := (&App{}).CheckForUpdate()
+
+	if got.LastCheckedAt == "" {
+		t.Errorf("LastCheckedAt: want non-empty RFC3339 timestamp, got %q", got.LastCheckedAt)
+	}
+	if _, err := time.Parse(time.RFC3339, got.LastCheckedAt); err != nil {
+		t.Errorf("LastCheckedAt: want RFC3339, got %q (%v)", got.LastCheckedAt, err)
+	}
+
+	// And it must have been persisted — a subsequent LoadCheckState
+	// round-trips the same timestamp so the banner gate survives a
+	// process restart.
+	s, err := LoadCheckState()
+	if err != nil {
+		t.Fatalf("LoadCheckState: %v", err)
+	}
+	if s.LastCheckedAt.IsZero() {
+		t.Error("LoadCheckState: LastCheckedAt is zero (persistence skipped)")
+	}
+}
+
+func TestCheckForUpdate_PopulatesReleaseNotesExcerpt(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	body := "## 1.2.0 — Roster bump\n\n* Added: Sojourn (DPS), Mauga (Tank)\n* Map rotation: Antarctic Peninsula now a Control mode entry.\n* Bugfix: scoreboard panel right-edge OCR\n"
+	tagName := "v1.2.0"
+	releaseJSON := fmt.Sprintf(`{"tag_name":%q,"html_url":"https://example/v1.2.0","body":%q}`, tagName, body)
+	srv := fakeReleasesServer(t, http.StatusOK, releaseJSON)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "1.0.0")
+	assetSrv := fakeAssetServer(t, []byte("tank: []\nsupport: []\ndps: []\n"), []byte("control: []\n"), validSourcesYAML())
+	withReleaseAssetURL(t, func(_, name string) string { return assetSrv.URL + "/" + name })
+
+	got := (&App{}).CheckForUpdate()
+
+	if got.ReleaseNotes == "" {
+		t.Fatal("ReleaseNotes: want excerpt, got empty")
+	}
+	if !strings.Contains(got.ReleaseNotes, "Sojourn") {
+		t.Errorf("ReleaseNotes: want excerpt to include 'Sojourn', got %q", got.ReleaseNotes)
+	}
+	// Excerpt must be size-capped — ~500 chars is the published budget.
+	if len(got.ReleaseNotes) > 600 {
+		t.Errorf("ReleaseNotes: excerpt is %d chars, want <= 600 (size cap)", len(got.ReleaseNotes))
+	}
+}
+
+func TestCheckForUpdate_LatestSourcesFetchedFromRelease(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	srv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v1.2.3","html_url":"https://example/v1.2.3"}`)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "1.0.0")
+	assetSrv := fakeAssetServer(t,
+		[]byte("tank:\n  - Reinhardt\nsupport: []\ndps: []\n"),
+		[]byte("control:\n  - Ilios\n"),
+		validSourcesYAML())
+	withReleaseAssetURL(t, func(_, name string) string { return assetSrv.URL + "/" + name })
+
+	got := (&App{}).CheckForUpdate()
+
+	if !contains(got.LatestSources, "testtool") {
+		t.Errorf("LatestSources: want to contain 'testtool', got %v", got.LatestSources)
+	}
+}
+
+func TestCheckForUpdate_DataDiff_WhenNoManifest_TreatsAsBehind(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	srv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v1.2.3","html_url":"https://example/v1.2.3"}`)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "1.0.0")
+	assetSrv := fakeAssetServer(t,
+		[]byte("tank:\n  - Reinhardt\nsupport: []\ndps: []\n"),
+		[]byte("control:\n  - Ilios\n"),
+		validSourcesYAML())
+	withReleaseAssetURL(t, func(_, name string) string { return assetSrv.URL + "/" + name })
+
+	got := (&App{}).CheckForUpdate()
+
+	if got.Data.AppliedTag != "" {
+		t.Errorf("Data.AppliedTag: want empty (no manifest), got %q", got.Data.AppliedTag)
+	}
+	// HasUpdate must be true even without a manifest — the install
+	// is running on embedded data and the latest release published
+	// a tag, so by definition the data IS behind.
+	if !got.Data.HasUpdate {
+		t.Error("Data.HasUpdate: want true (running embedded data vs published release)")
+	}
+}
+
+func TestCheckForUpdate_DataDiff_AddedHeroesAgainstManifest(t *testing.T) {
+	baseDir := t.TempDir()
+	t.Setenv("RECALL_DATA_DIR", baseDir)
+	// Pre-seed manifest as if the user applied data at 1.2.0.
+	if err := SaveManifest(DataManifest{
+		AppliedReleaseTag: "1.2.0",
+		AppliedAt:         time.Now().UTC().Add(-72 * time.Hour),
+		Files:             map[string]ManifestFile{},
+	}); err != nil {
+		t.Fatalf("SaveManifest: %v", err)
+	}
+
+	srv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v1.2.3","html_url":"https://example/v1.2.3"}`)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "1.0.0")
+	// Release roster contains a fictional new hero that the
+	// currently-loaded (embedded) dataset does not — proves the
+	// diff fires on a real difference, not a name collision.
+	releaseHeroes := []byte("tank:\n  - Reinhardt\nsupport: []\ndps:\n  - Phoenix\n")
+	assetSrv := fakeAssetServer(t,
+		releaseHeroes,
+		[]byte("control:\n  - Ilios\n"),
+		validSourcesYAML())
+	withReleaseAssetURL(t, func(_, name string) string { return assetSrv.URL + "/" + name })
+
+	got := (&App{}).CheckForUpdate()
+
+	if got.Data.AppliedTag != "1.2.0" {
+		t.Errorf("Data.AppliedTag: want 1.2.0, got %q", got.Data.AppliedTag)
+	}
+	if !contains(got.Data.AddedHeroes, "Phoenix") {
+		t.Errorf("Data.AddedHeroes: want to contain 'Phoenix', got %v", got.Data.AddedHeroes)
 	}
 }

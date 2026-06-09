@@ -63,6 +63,7 @@ function defaultUpdate(overrides: Partial<UpdateInfo> = {}): UpdateInfo {
     available:  false,
     latest:     '',
     url:        '',
+    data:       { applied_tag: '', has_update: false },
     ...overrides,
   }
 }

@@ -118,7 +118,7 @@ func parsePersonalHeroCell(text string, res *MatchResult) {
 	heroes := extractHeroes(text)
 	if len(heroes) > 0 {
 		res.Hero = heroes[0]
-		if r, ok := heroRoles[res.Hero]; ok {
+		if r, ok := loadDataset().heroRoles[res.Hero]; ok {
 			res.Role = r
 		}
 	} else if cand := candidateNameFromOCR(text); cand != "" {

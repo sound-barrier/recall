@@ -954,6 +954,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/data-update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Download + apply the latest reference data (no binary update)
+         * @description Downloads `heroes.yaml`, `maps.yaml`, and
+         *     `screenshot_sources.yaml` from the release identified by
+         *     `tag`, verifies each against its published SHA-256 sidecar,
+         *     atomically writes them to `<RECALL_DATA_DIR>/data/`, and
+         *     swaps the parser dataset in-process. No binary update
+         *     required — the user can recognise newly-shipped heroes /
+         *     maps / capture-tool grammars by clicking Apply Update,
+         *     without re-installing Recall.
+         *
+         *     Returns 409 if the latest release tag on GitHub differs from
+         *     the passed `tag` (the frontend should re-fetch
+         *     `/system/update` and ask the user to confirm again). Returns
+         *     422 if any asset's SHA-256 sidecar fails verification; 400
+         *     on a missing / malformed tag; 500 on I/O failure.
+         */
+        post: operations["ApplyDataUpdate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/data-location": {
         parameters: {
             query?: never;
@@ -1393,6 +1426,56 @@ export interface components {
              *     /api/v1/settings/screenshots-folder.
              */
             exists: boolean;
+        };
+        /**
+         * @description Comparison between the user's currently-loaded reference data
+         *     and the latest published release. `applied_tag == ""` plus
+         *     `has_update == true` means the install is running on the
+         *     binary's embedded data only (never applied a data update).
+         *     Added/Removed lists are populated only when the rosters were
+         *     successfully fetched (Available branch); empty for dev-build
+         *     and up-to-date branches.
+         */
+        DataStatus: {
+            /**
+             * @description Tag of the data files currently on disk, per
+             *     `<RECALL_DATA_DIR>/data/manifest.json`. Empty when no
+             *     apply has happened yet.
+             * @example 1.4.2
+             */
+            applied_tag: string;
+            /**
+             * Format: date-time
+             * @description RFC3339 timestamp of the last successful apply.
+             */
+            applied_at?: string;
+            /**
+             * @description True when the applied tag differs from the latest release
+             *     tag (always true when applied_tag is empty).
+             * @example true
+             */
+            has_update: boolean;
+            added_heroes?: string[];
+            removed_heroes?: string[];
+            added_maps?: string[];
+            removed_maps?: string[];
+            added_sources?: string[];
+            removed_sources?: string[];
+        };
+        /**
+         * @description Returned by POST /api/v1/system/data-update on success. Lists
+         *     the actual differences applied — the modal renders these as
+         *     the success-state summary.
+         */
+        DataUpdateResult: {
+            /** @example 1.4.3 */
+            applied_tag: string;
+            added_heroes?: string[];
+            removed_heroes?: string[];
+            added_maps?: string[];
+            removed_maps?: string[];
+            added_sources?: string[];
+            removed_sources?: string[];
         };
         DataLocation: {
             /**
@@ -3119,8 +3202,97 @@ export interface operations {
                          *     lifecycle as latest_heroes.
                          */
                         latest_maps?: string[];
+                        /**
+                         * @description Screenshot-source names extracted from the
+                         *     release's `recall-<version>-screenshot_sources.yaml`
+                         *     asset. Used by the update-check modal to surface
+                         *     newly-supported capture tools.
+                         */
+                        latest_sources?: string[];
+                        /**
+                         * Format: date-time
+                         * @description RFC3339 timestamp recording when this install
+                         *     last received a successful CheckForUpdate
+                         *     response. Drives the "haven't checked in a
+                         *     while" banner. Empty on the very first check.
+                         */
+                        last_checked_at?: string;
+                        /**
+                         * @description First ~500 chars of the GitHub release `body`
+                         *     (Markdown source), surfaced in the update-check
+                         *     modal under a "more on GitHub" link. The frontend
+                         *     interpolates this via Vue's default escaping —
+                         *     never `v-html`.
+                         */
+                        release_notes?: string;
+                        data: components["schemas"]["DataStatus"];
                     };
                 };
+            };
+        };
+    };
+    ApplyDataUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Release tag the FE saw on the prior /system/update
+                     *     call, with or without the leading `v`.
+                     * @example 1.4.3
+                     */
+                    tag: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Update applied; diff of what changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataUpdateResult"];
+                };
+            };
+            /** @description Tag missing / malformed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description Release moved since the last /system/update — the FE
+             *     should re-fetch and re-show the modal.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description SHA-256 sidecar verification failed on at least one asset.
+             *     Nothing was written to disk.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description I/O failure during write / rename. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

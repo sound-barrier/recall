@@ -8,11 +8,14 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"gopkg.in/yaml.v3"
+
+	"recall/pkg/parser"
 )
 
 // Version is injected at build time via -ldflags "-X recall/pkg/app.Version=<tag>".
@@ -42,6 +45,46 @@ type UpdateInfo struct {
 	URL          string   `json:"url"`
 	LatestHeroes []string `json:"latest_heroes,omitempty"`
 	LatestMaps   []string `json:"latest_maps,omitempty"`
+
+	// LatestSources is the screenshot-source name list extracted from
+	// the release's `recall-<version>-screenshot_sources.yaml` asset.
+	// Empty when the fetch fails or the SHA-256 sidecar rejects.
+	LatestSources []string `json:"latest_sources,omitempty"`
+
+	// LastCheckedAt records when this install last received a
+	// successful CheckForUpdate response, persisted to
+	// <RECALL_DATA_DIR>/check_state.json. Drives the "haven't checked
+	// in a while" banner. RFC3339 / UTC.
+	LastCheckedAt string `json:"last_checked_at,omitempty"`
+
+	// ReleaseNotes is the first ~500 chars of the release's `body`
+	// field, surfaced in the update-check modal. Markdown is passed
+	// through unchanged; the FE escapes it via Vue's default
+	// interpolation (never v-html).
+	ReleaseNotes string `json:"release_notes,omitempty"`
+
+	// Data carries the comparison between the user's
+	// currently-applied data (per <RECALL_DATA_DIR>/data/manifest.json,
+	// or "embedded" if missing) and the latest release's data
+	// assets — so the FE can show "Apply update" diffs without
+	// re-fetching.
+	Data DataStatus `json:"data"`
+}
+
+// DataStatus summarises what's different between the user's
+// currently-loaded reference data and the latest published release.
+// AppliedTag == "" + HasUpdate == true means the install is running
+// on embedded data only.
+type DataStatus struct {
+	AppliedTag     string   `json:"applied_tag"`
+	AppliedAt      string   `json:"applied_at,omitempty"`
+	HasUpdate      bool     `json:"has_update"`
+	AddedHeroes    []string `json:"added_heroes,omitempty"`
+	RemovedHeroes  []string `json:"removed_heroes,omitempty"`
+	AddedMaps      []string `json:"added_maps,omitempty"`
+	RemovedMaps    []string `json:"removed_maps,omitempty"`
+	AddedSources   []string `json:"added_sources,omitempty"`
+	RemovedSources []string `json:"removed_sources,omitempty"`
 }
 
 // releasesURL is the GitHub Releases API endpoint CheckForUpdate
@@ -92,6 +135,11 @@ func (a *App) GetVersion() string {
 // Dev builds (version ending in "-dev" or bare "dev") always report the
 // latest release as informational context (DevBuild=true) rather than an
 // upgrade prompt. Network failures return an empty UpdateInfo.
+//
+// On every successful API response (including "up to date" + dev-build
+// branches), the install's last-checked timestamp is persisted via
+// TouchLastChecked so the "haven't checked in a while" banner has a
+// canonical source of truth.
 func (a *App) CheckForUpdate() UpdateInfo {
 	v := a.GetVersion()
 	isDev := v == "dev" || strings.HasSuffix(v, "-dev")
@@ -106,6 +154,7 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	var release struct {
 		TagName string `json:"tag_name"`
 		HTMLURL string `json:"html_url"`
+		Body    string `json:"body"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
 		return UpdateInfo{}
@@ -116,8 +165,21 @@ func (a *App) CheckForUpdate() UpdateInfo {
 		return UpdateInfo{}
 	}
 
+	now := time.Now().UTC()
+	_ = TouchLastChecked(now)
+	lastChecked := now.Format(time.RFC3339)
+	notes := excerptReleaseNotes(release.Body)
+
 	if isDev {
-		return UpdateInfo{Checked: true, DevBuild: true, Latest: latest, URL: release.HTMLURL}
+		return UpdateInfo{
+			Checked:       true,
+			DevBuild:      true,
+			Latest:        latest,
+			URL:           release.HTMLURL,
+			LastCheckedAt: lastChecked,
+			ReleaseNotes:  notes,
+			Data:          computeDataStatus(latest),
+		}
 	}
 
 	// Semver compare instead of raw string equality. Two reasons:
@@ -140,28 +202,159 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	upstream, errUpstream := semver.NewVersion(latest)
 	if errCurrent != nil || errUpstream != nil {
 		if latest == v {
-			return UpdateInfo{Checked: true}
+			return UpdateInfo{
+				Checked:       true,
+				LastCheckedAt: lastChecked,
+				ReleaseNotes:  notes,
+				Data:          computeDataStatus(latest),
+			}
 		}
-		return UpdateInfo{Checked: true, Available: true, Latest: latest, URL: release.HTMLURL}
+		return UpdateInfo{
+			Checked:       true,
+			Available:     true,
+			Latest:        latest,
+			URL:           release.HTMLURL,
+			LastCheckedAt: lastChecked,
+			ReleaseNotes:  notes,
+			Data:          computeDataStatus(latest),
+		}
 	}
 
 	if !current.LessThan(upstream) {
-		return UpdateInfo{Checked: true}
+		return UpdateInfo{
+			Checked:       true,
+			LastCheckedAt: lastChecked,
+			ReleaseNotes:  notes,
+			Data:          computeDataStatus(latest),
+		}
 	}
-	heroes, maps := fetchReleaseRosters(latest)
+	heroes, maps, sources := fetchReleaseRosters(latest)
 	return UpdateInfo{
-		Checked:      true,
-		Available:    true,
-		Latest:       latest,
-		URL:          release.HTMLURL,
-		LatestHeroes: heroes,
-		LatestMaps:   maps,
+		Checked:       true,
+		Available:     true,
+		Latest:        latest,
+		URL:           release.HTMLURL,
+		LatestHeroes:  heroes,
+		LatestMaps:    maps,
+		LatestSources: sources,
+		LastCheckedAt: lastChecked,
+		ReleaseNotes:  notes,
+		Data:          computeDataStatusWithFetched(latest, heroes, maps, sources),
 	}
 }
 
-// fetchReleaseRosters downloads the release's `heroes.yaml` +
-// `maps.yaml` assets, verifies each against its published `.sha256`
-// sidecar, parses the YAML, and returns the flat display-name lists.
+// releaseNotesMaxBytes caps the body excerpt surfaced into the modal.
+// The release-notes section is interpolated into a Vue template
+// (auto-escaped, never v-html) and rendered behind a "more on GitHub"
+// link — 500 chars is enough headroom for one paragraph + a few
+// bullet points without crowding out the diff section.
+const releaseNotesMaxBytes = 500
+
+// excerptReleaseNotes returns up to releaseNotesMaxBytes worth of the
+// release body. Truncation breaks on a rune boundary so a multi-byte
+// glyph can never split mid-codepoint. Trailing whitespace stripped.
+func excerptReleaseNotes(body string) string {
+	body = strings.TrimSpace(body)
+	if len(body) <= releaseNotesMaxBytes {
+		return body
+	}
+	cut := releaseNotesMaxBytes
+	for cut > 0 && (body[cut]&0xC0) == 0x80 {
+		cut-- // walk back into the rune
+	}
+	return strings.TrimRight(body[:cut], " \t\n") + "…"
+}
+
+// computeDataStatus reads the local manifest + currently-loaded
+// rosters and returns a DataStatus showing the user's applied tag
+// (or "" if running on embedded data). HasUpdate is true whenever
+// the applied tag differs from the latest release — including the
+// embedded-only case, since "embedded" is always considered behind.
+//
+// When the release rosters have NOT yet been fetched (up-to-date /
+// dev-build branches), the diff fields stay empty.
+func computeDataStatus(latestTag string) DataStatus {
+	manifest, _ := LoadManifest()
+	return dataStatusFrom(latestTag, manifest, nil, nil, nil)
+}
+
+// computeDataStatusWithFetched is the same shape as computeDataStatus
+// but populates the diff using rosters fetched from the release.
+func computeDataStatusWithFetched(latestTag string, heroes, maps, sources []string) DataStatus {
+	manifest, _ := LoadManifest()
+	return dataStatusFrom(latestTag, manifest, heroes, maps, sources)
+}
+
+func dataStatusFrom(latestTag string, m DataManifest, releaseHeroes, releaseMaps, releaseSources []string) DataStatus {
+	ds := DataStatus{
+		AppliedTag: m.AppliedReleaseTag,
+		HasUpdate:  m.AppliedReleaseTag != latestTag,
+	}
+	if !m.AppliedAt.IsZero() {
+		ds.AppliedAt = m.AppliedAt.UTC().Format(time.RFC3339)
+	}
+	if releaseHeroes != nil {
+		ds.AddedHeroes, ds.RemovedHeroes = diffRosters(flattenRoster(parser.HeroesByRole()), releaseHeroes)
+	}
+	if releaseMaps != nil {
+		ds.AddedMaps, ds.RemovedMaps = diffRosters(flattenRoster(parser.MapsByType()), releaseMaps)
+	}
+	if releaseSources != nil {
+		ds.AddedSources, ds.RemovedSources = diffRosters(sourceNames(parser.Sources()), releaseSources)
+	}
+	return ds
+}
+
+// flattenRoster takes a role/type-grouped map of canonical display
+// names (parser.HeroesByRole / parser.MapsByType output) and returns a
+// flat slice for diffing.
+func flattenRoster(grouped map[string][]string) []string {
+	out := make([]string, 0, 32)
+	for _, names := range grouped {
+		out = append(out, names...)
+	}
+	return out
+}
+
+func sourceNames(sources []parser.ScreenshotSource) []string {
+	out := make([]string, 0, len(sources))
+	for _, s := range sources {
+		out = append(out, s.Name)
+	}
+	return out
+}
+
+// diffRosters returns (added, removed) by comparing `applied` to
+// `latest`. Both sides are deduplicated. Output is sorted for stable
+// UI rendering.
+func diffRosters(applied, latest []string) (added, removed []string) {
+	appliedSet := make(map[string]struct{}, len(applied))
+	for _, a := range applied {
+		appliedSet[a] = struct{}{}
+	}
+	latestSet := make(map[string]struct{}, len(latest))
+	for _, l := range latest {
+		latestSet[l] = struct{}{}
+	}
+	for l := range latestSet {
+		if _, ok := appliedSet[l]; !ok {
+			added = append(added, l)
+		}
+	}
+	for a := range appliedSet {
+		if _, ok := latestSet[a]; !ok {
+			removed = append(removed, a)
+		}
+	}
+	sort.Strings(added)
+	sort.Strings(removed)
+	return
+}
+
+// fetchReleaseRosters downloads the release's `heroes.yaml`,
+// `maps.yaml`, and `screenshot_sources.yaml` assets, verifies each
+// against its published `.sha256` sidecar, parses the YAML, and
+// returns the flat display-name lists.
 //
 // Trust model: TLS protects the HTTPS fetch against MITM. The .sha256
 // sidecar is fetched from the same release; verifying the YAML
@@ -171,18 +364,22 @@ func (a *App) CheckForUpdate() UpdateInfo {
 // release pipeline already publishes attestations); the sidecar
 // check is the floor.
 //
-// Returns (nil, nil) on any failure — caller treats empty arrays as
-// "no upgrade hint available," falls back to the generic copy.
-func fetchReleaseRosters(version string) (heroes, maps []string) {
-	heroes = fetchRoster(version, "heroes.yaml")
-	maps = fetchRoster(version, "maps.yaml")
-	return heroes, maps
+// Returns nil slices for any individual asset that fails — callers
+// treat empty as "no upgrade hint available" + fall back to generic
+// copy. heroes/maps share the parseRosterNames helper; sources uses
+// its own parser since the YAML shape is `{sources: [{name, ...}]}`.
+func fetchReleaseRosters(version string) (heroes, maps, sources []string) {
+	heroes = fetchAsset(version, "heroes.yaml", parseRosterNames)
+	maps = fetchAsset(version, "maps.yaml", parseRosterNames)
+	sources = fetchAsset(version, "screenshot_sources.yaml", parseSourceNames)
+	return heroes, maps, sources
 }
 
-// fetchRoster downloads <release>/recall-<v>-<name> + its .sha256
+// fetchAsset downloads <release>/recall-<v>-<name> + its .sha256
 // sidecar, verifies the SHA, and returns the flat name list extracted
-// from the YAML's role/type-grouped map. Empty slice on any failure.
-func fetchRoster(version, name string) []string {
+// by `decode`. Empty slice on any failure (network / status / SHA
+// mismatch / decode error).
+func fetchAsset(version, name string, decode func([]byte) []string) []string {
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	yamlBytes, err := getBytes(client, releaseAssetURL(version, name))
@@ -199,7 +396,7 @@ func fetchRoster(version, name string) []string {
 		return nil
 	}
 
-	return parseRosterNames(yamlBytes)
+	return decode(yamlBytes)
 }
 
 // getBytes runs a GET and returns the response body, capped at 1 MB
@@ -233,6 +430,33 @@ func verifySha256(payload, sidecar []byte) bool {
 	}
 	got := sha256.Sum256(payload)
 	return hex.EncodeToString(got[:]) == want
+}
+
+// parseSourceNames reads the screenshot_sources.yaml structure
+// (`sources: [{name, prefix, regex, ...}]`) and returns the flat
+// list of source names, deduplicated. Blank entries dropped.
+func parseSourceNames(yamlBytes []byte) []string {
+	var wrapped struct {
+		Sources []struct {
+			Name string `yaml:"name"`
+		} `yaml:"sources"`
+	}
+	if err := yaml.Unmarshal(yamlBytes, &wrapped); err != nil {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(wrapped.Sources))
+	out := make([]string, 0, len(wrapped.Sources))
+	for _, s := range wrapped.Sources {
+		if s.Name == "" {
+			continue
+		}
+		if _, dup := seen[s.Name]; dup {
+			continue
+		}
+		seen[s.Name] = struct{}{}
+		out = append(out, s.Name)
+	}
+	return out
 }
 
 // parseRosterNames reads the role/type-grouped YAML structure the

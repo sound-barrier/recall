@@ -507,6 +507,7 @@ describe('UnknownMapsView', () => {
       url:       'https://github.com/sound-barrier/recall/releases/tag/v1.2.3',
       latest_heroes: ['Miyazaki', 'Reinhardt'],
       latest_maps:   ['Hanaoka'],
+      data:      { applied_tag: '', has_update: true },
     }
 
     it('surfaces the CTA when a gap record\'s hero_raw is in the latest roster', () => {

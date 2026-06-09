@@ -37,19 +37,36 @@ async function mockUpdate(page: import('@playwright/test').Page, payload: {
   available: boolean
   latest: string
   url: string
+  latest_heroes?: string[]
+  latest_maps?: string[]
+  latest_sources?: string[]
+  last_checked_at?: string
+  release_notes?: string
+  data?: {
+    applied_tag: string
+    applied_at?: string
+    has_update: boolean
+    added_heroes?: string[]
+    removed_heroes?: string[]
+    added_maps?: string[]
+    removed_maps?: string[]
+    added_sources?: string[]
+    removed_sources?: string[]
+  }
 }) {
   await page.route('**/api/v1/system/update', async (route: Route) => {
     await route.fulfill({
       status: 200, contentType: 'application/json',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        data: payload.data ?? { applied_tag: '', has_update: false },
+      }),
     })
   })
 }
 
 test.describe('masthead — Check for updates button', () => {
   test('renders "Check for updates" by default and does NOT auto-fire on mount', async ({ page }) => {
-    // Spy on the update endpoint — we want to confirm no mount-time
-    // hit. The route handler counts calls but always succeeds.
     let updateCalls = 0
     await mockVersion(page, '0.3.0')
     await page.route('**/api/v1/system/update', async (route: Route) => {
@@ -59,59 +76,63 @@ test.describe('masthead — Check for updates button', () => {
         body: JSON.stringify({
           checked: true, dev_build: false, available: false,
           latest: '0.3.0', url: 'https://example.test/release/0.3.0',
+          data: { applied_tag: '0.3.0', has_update: false },
         }),
       })
     })
 
     await page.goto('/')
-    await expect(page.locator('.ver-btn-check')).toBeVisible()
-    await expect(page.locator('.ver-btn-check')).toHaveText(/check for updates/i)
-    // Give the boot path a moment to finish before asserting no call.
+    await expect(page.locator('[data-update-check-trigger]')).toBeVisible()
+    await expect(page.locator('[data-update-check-trigger]')).toHaveText(/check for updates/i)
     await page.waitForTimeout(300)
     expect(updateCalls).toBe(0)
   })
 
-  test('clicking the button hits /system/update and renders "✓ Up to date" when no newer release', async ({ page }) => {
+  test('clicking the trigger opens the modal and renders an up-to-date result', async ({ page }) => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       checked: true, dev_build: false, available: false,
       latest: '0.3.0', url: 'https://example.test/release/0.3.0',
+      data: { applied_tag: '0.3.0', has_update: false },
     })
     await page.goto('/')
 
-    await page.locator('.ver-btn-check').click()
-    await expect(page.locator('.ver-btn-current')).toBeVisible()
-    await expect(page.locator('.ver-btn-current')).toHaveText(/up to date/i)
+    await page.locator('[data-update-check-trigger]').click()
+    // Modal opens with the result.
+    await expect(page.locator('[role="dialog"]')).toBeVisible()
+    await expect(page.getByText(/reference data is current/i)).toBeVisible()
   })
 
-  test('renders "↑ New version ready · vX.Y.Z" when a newer release is published', async ({ page }) => {
+  test('renders the diff and an Apply button when an update is available', async ({ page }) => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       checked: true, dev_build: false, available: true,
       latest: '0.4.0', url: 'https://example.test/release/0.4.0',
+      latest_heroes: ['Phoenix'], latest_maps: ['Cascade'],
+      data: { applied_tag: '0.3.0', has_update: true, added_heroes: ['Phoenix'], added_maps: ['Cascade'] },
     })
     await page.goto('/')
 
-    await page.locator('.ver-btn-check').click()
-    const btn = page.locator('.ver-btn-update')
-    await expect(btn).toBeVisible()
-    await expect(btn).toContainText(/new version ready/i)
-    await expect(btn).toContainText('0.4.0')
+    await page.locator('[data-update-check-trigger]').click()
+    await expect(page.locator('[role="dialog"]')).toBeVisible()
+    await expect(page.getByText('+ Hero: Phoenix')).toBeVisible()
+    await expect(page.getByText('+ Map: Cascade')).toBeVisible()
+    await expect(page.locator('[data-update-check-apply]')).toBeEnabled()
   })
 
-  test('renders "↗ view release vX.Y.Z" on dev builds after the check', async ({ page }) => {
+  test('renders dev-build context with release-notes excerpt', async ({ page }) => {
     await mockVersion(page, '0.3.0-dev')
     await mockUpdate(page, {
       checked: true, dev_build: true, available: false,
       latest: '0.3.0', url: 'https://example.test/release/0.3.0',
+      release_notes: 'Test release notes line',
+      data: { applied_tag: '', has_update: true },
     })
     await page.goto('/')
 
-    await page.locator('.ver-btn-check').click()
-    const btn = page.locator('.ver-btn-dev')
-    await expect(btn).toBeVisible()
-    await expect(btn).toContainText(/view release/i)
-    await expect(btn).toContainText('0.3.0')
+    await page.locator('[data-update-check-trigger]').click()
+    await expect(page.locator('[role="dialog"]')).toBeVisible()
+    await expect(page.getByText('Test release notes line')).toBeVisible()
   })
 })
 

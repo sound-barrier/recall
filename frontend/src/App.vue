@@ -81,7 +81,16 @@ import type { ParseProgressEvent } from './components/ParseProgressPanel.vue'
 import ParseStatusBar from './components/ParseStatusBar.vue'
 import MastheadParseChip from './components/MastheadParseChip.vue'
 import MatchesSkeleton from './components/MatchesSkeleton.vue'
+import UpdateReminderBanner from './components/UpdateReminderBanner.vue'
+import { useUpdateReminder } from './composables/useUpdateReminder'
 import { useFirstRunAcknowledged } from './composables/useFirstRunAcknowledged'
+
+// Update-check modal — lazy-loaded since it ships with release-notes
+// rendering + a focus trap + the apply state machine. Only mounted
+// when the user clicks "Check for updates"; the bundle-size guard in
+// App.lazy-views.test.ts checks for this pattern across heavy
+// modals.
+const UpdateCheckModal = defineAsyncComponent(() => import('./components/UpdateCheckModal.vue'))
 // First-run modal only renders on the very first launch (or after the
 // user clears localStorage). Lazy-loaded so 99 % of session boots
 // don't pay for its bytes in the initial JS chunk.
@@ -548,23 +557,46 @@ async function refreshNewCount() {
   try { newScreenshotCount.value = await GetNewScreenshotCount() } catch (_) {}
 }
 
+// 90-day "haven't checked for updates in a while" reminder banner.
+// Gated on updateInfo.last_checked_at (server-side persisted) +
+// recall.updateReminder.dismissedAt (per-cycle dismissal). Hidden
+// while updateInfo is null so we don't flash false-positive content
+// on first paint.
+const {
+  shouldShowBanner: showUpdateReminder,
+  daysSinceLastCheck: updateReminderDays,
+  dismiss: dismissUpdateReminder,
+} = useUpdateReminder(updateInfo)
+
+// Update-check modal open-state. Driven by clicking the masthead's
+// "Check for updates" button (which simultaneously fires
+// checkForUpdates so the modal renders the result the moment the
+// network roundtrip lands). Apply Update runs inside the modal.
+const updateCheckModalOpen = ref(false)
+
 // User-triggered GitHub release check. Idempotent — re-clicks while
 // in flight are no-ops; re-clicks after a result silently replace
-// the cached updateInfo. Network failure leaves the button in its
-// default state so the user can retry without an explicit error
-// surface (the masthead can't carry a banner here).
+// the cached updateInfo. Opens the modal so the result is visible
+// regardless of which branch (dev/available/up-to-date) lands.
 async function checkForUpdates() {
+  updateCheckModalOpen.value = true
   if (updateCheckBusy.value) return
   updateCheckBusy.value = true
   try {
     const u = await CheckForUpdate()
     if (u.checked) updateInfo.value = u
   } catch (_) {
-    // Silent — the button reverts to "Check for updates" so the
-    // user can retry. The error doesn't merit a global banner.
+    // Silent — the modal shows the cached result or a network-failure
+    // message via the !info branch.
   } finally {
     updateCheckBusy.value = false
   }
+}
+
+// Refresh local matches when Apply Data Update swaps the parser —
+// the new dataset can resolve previously-unknown heroes/maps.
+function onDataApplied() {
+  load()
 }
 
 async function runParse() {
@@ -1804,49 +1836,29 @@ useEventStream({
           <ProfileSwitcher />
           <div class="ver-block">
             <span v-if="appVersion" class="app-version">v{{ appVersion }}</span>
-            <!-- Default state — manual update check. Clicking fires
-                 CheckForUpdate (GitHub releases roundtrip); the
-                 result swaps the button for one of the three result
-                 states below. NOT auto-fired on mount: opting in
-                 keeps the boot path off the network. -->
+            <!-- Single trigger — the modal owns all result presentation.
+                 NOT auto-fired on mount; opting in keeps the boot path
+                 off the network. The reminder banner above main content
+                 nudges users who haven't checked in 90+ days. -->
             <button
-              v-if="updateInfo === null"
               class="ver-btn ver-btn-check"
-              :disabled="updateCheckBusy"
+              :disabled="updateCheckBusy && !updateInfo"
               :title="updateCheckBusy ? 'Checking GitHub releases…' : 'Check GitHub for a newer release'"
+              data-update-check-trigger
               @click="checkForUpdates"
             >
-              {{ updateCheckBusy ? 'Checking…' : 'Check for updates' }}
+              {{ updateCheckBusy && !updateInfo ? 'Checking…' : 'Check for updates' }}
             </button>
-            <!-- Result: dev build — link out to the latest release
-                 regardless of whether it's "newer" than this build's
-                 SHA. The server returns dev_build=true when the
-                 local version is "0.0.0-dev" / similar. -->
-            <button
-              v-else-if="updateInfo.dev_build"
-              class="ver-btn ver-btn-dev"
-              :title="`Open release page for v${updateInfo.latest}`"
-              @click="OpenURL(updateInfo.url)"
-            >
-              ↗ view release v{{ updateInfo.latest }}
-            </button>
-            <!-- Result: a newer release is published. -->
-            <button
-              v-else-if="updateInfo.available"
-              class="ver-btn ver-btn-update"
-              :title="`Download v${updateInfo.latest}`"
-              @click="OpenURL(updateInfo.url)"
-            >
-              ↑ New version ready · v{{ updateInfo.latest }}
-            </button>
-            <!-- Result: at the latest release. -->
-            <span
-              v-else
-              class="ver-btn ver-btn-current"
-            >✓ Up to date</span>
           </div>
         </div>
       </header>
+
+      <UpdateReminderBanner
+        :open="showUpdateReminder"
+        :days-since-last-check="updateReminderDays"
+        @check="checkForUpdates"
+        @dismiss="dismissUpdateReminder"
+      />
 
       <p v-if="error" class="error">
         <span class="error-tick">✕</span>{{ error }}
@@ -2211,6 +2223,20 @@ useEventStream({
       @restore-all="onClearIgnoredScreenshots"
       @run-parse="onRunParseFromIgnored"
       @open-lightbox="openLightbox"
+    />
+
+    <!-- Update-check modal — opens from the masthead's "Check for
+         updates" button. Renders the binary vs latest comparison
+         and a per-roster diff with an Apply Data Update CTA that
+         swaps the parser in-place. Lazy so its bundle is only paid
+         for by users who run the check. -->
+    <UpdateCheckModal
+      :open="updateCheckModalOpen"
+      :update-info="updateInfo"
+      :current-version="appVersion"
+      :checking="updateCheckBusy"
+      @close="updateCheckModalOpen = false"
+      @applied="onDataApplied"
     />
   </div>
 </template>

@@ -512,6 +512,18 @@ func TestServerMux_CheckUpdate(t *testing.T) {
 	}
 }
 
+// TestServerMux_DataUpdate_EmptyTagReturns400 proves the tag-mismatch
+// sentinel maps to 400 via the registered handler — belt-and-suspenders
+// over the unit-level sentinel coverage in
+// apply_data_update_test.go::TestApplyDataUpdate_TagMismatchSentinel.
+func TestServerMux_DataUpdate_EmptyTagReturns400(t *testing.T) {
+	_, mux := newTestApp(t, nil)
+	rec := fire(t, mux, http.MethodPost, "/api/v1/system/data-update", map[string]string{"tag": ""})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status %d (want 400), body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Static SPA fallback — anything outside /api/v1/* is served from the assets FS.
 // ──────────────────────────────────────────────────────────────────────────

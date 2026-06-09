@@ -1,9 +1,7 @@
 package parser
 
 import (
-	_ "embed"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 
@@ -15,9 +13,10 @@ import (
 // Adding a new tool is a YAML edit; the loader rejects un-anchored
 // regexes at init so a malformed pattern can't silently absorb
 // unrelated screenshot files from the watched folder.
-
-//go:embed screenshot_sources.yaml
-var screenshotSourcesYAML []byte
+//
+// The embedded bytes + parserDataDirFunc()-based user override are
+// loaded as part of the shared dataset (owdata.go::Reload). Accessor:
+// Sources().
 
 // ScreenshotSource is one capture tool's filename grammar.
 // Consumers (pkg/app/correlation.go) read the fields directly.
@@ -28,18 +27,6 @@ type ScreenshotSource struct {
 	YearOffset int            // added to the captured year (2-digit YAML → 2000)
 	Example    string         // canonical example filename — surfaced in Settings → Advanced
 }
-
-// ScreenshotSources is the in-memory registry the correlation
-// layer iterates. Populated at init() from screenshot_sources.yaml.
-// Order matches the YAML file.
-var ScreenshotSources []ScreenshotSource
-
-// ScreenshotSourcesLoadError holds the error from the YAML parse +
-// validation pass. nil means every entry loaded cleanly; non-nil
-// means parseFilenameTimestamp will fall through every filename it
-// receives, which is the safe failure mode (everything lands as
-// `unmatched-<filename>` instead of being mis-attributed).
-var ScreenshotSourcesLoadError error
 
 type screenshotSourceYAML struct {
 	Name       string `yaml:"name"`
@@ -53,16 +40,9 @@ type screenshotSourcesFile struct {
 	Sources []screenshotSourceYAML `yaml:"sources"`
 }
 
-func init() {
-	if err := loadScreenshotSourcesYAML(); err != nil {
-		log.Printf("parser: screenshot_sources.yaml load failed: %v — every screenshot will fall back to unmatched-<filename>", err)
-		ScreenshotSourcesLoadError = err
-	}
-}
-
-func loadScreenshotSourcesYAML() error {
+func unmarshalScreenshotSources(ds *owDataset, bytes []byte) error {
 	var raw screenshotSourcesFile
-	if err := yaml.Unmarshal(screenshotSourcesYAML, &raw); err != nil {
+	if err := yaml.Unmarshal(bytes, &raw); err != nil {
 		return fmt.Errorf("unmarshal: %w", err)
 	}
 	if len(raw.Sources) == 0 {
@@ -97,6 +77,6 @@ func loadScreenshotSourcesYAML() error {
 			Example:    s.Example,
 		})
 	}
-	ScreenshotSources = out
+	ds.screenshotSources = out
 	return nil
 }

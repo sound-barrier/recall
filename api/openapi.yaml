@@ -1396,7 +1396,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [checked, dev_build, available, latest, url]
+                required: [checked, dev_build, available, latest, url, data]
                 properties:
                   checked:
                     type: boolean
@@ -1443,6 +1443,86 @@ paths:
                       `recall-<version>-maps.yaml` asset — same
                       lifecycle as latest_heroes.
                     items: { type: string }
+                  latest_sources:
+                    type: array
+                    description: |
+                      Screenshot-source names extracted from the
+                      release's `recall-<version>-screenshot_sources.yaml`
+                      asset. Used by the update-check modal to surface
+                      newly-supported capture tools.
+                    items: { type: string }
+                  last_checked_at:
+                    type: string
+                    format: date-time
+                    description: |
+                      RFC3339 timestamp recording when this install
+                      last received a successful CheckForUpdate
+                      response. Drives the "haven't checked in a
+                      while" banner. Empty on the very first check.
+                  release_notes:
+                    type: string
+                    description: |
+                      First ~500 chars of the GitHub release `body`
+                      (Markdown source), surfaced in the update-check
+                      modal under a "more on GitHub" link. The frontend
+                      interpolates this via Vue's default escaping —
+                      never `v-html`.
+                  data:
+                    $ref: "#/components/schemas/DataStatus"
+
+  /api/v1/system/data-update:
+    post:
+      operationId: ApplyDataUpdate
+      tags: [System]
+      summary: Download + apply the latest reference data (no binary update)
+      description: |
+        Downloads `heroes.yaml`, `maps.yaml`, and
+        `screenshot_sources.yaml` from the release identified by
+        `tag`, verifies each against its published SHA-256 sidecar,
+        atomically writes them to `<RECALL_DATA_DIR>/data/`, and
+        swaps the parser dataset in-process. No binary update
+        required — the user can recognise newly-shipped heroes /
+        maps / capture-tool grammars by clicking Apply Update,
+        without re-installing Recall.
+
+        Returns 409 if the latest release tag on GitHub differs from
+        the passed `tag` (the frontend should re-fetch
+        `/system/update` and ask the user to confirm again). Returns
+        422 if any asset's SHA-256 sidecar fails verification; 400
+        on a missing / malformed tag; 500 on I/O failure.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tag]
+              properties:
+                tag:
+                  type: string
+                  description: |
+                    Release tag the FE saw on the prior /system/update
+                    call, with or without the leading `v`.
+                  example: 1.4.3
+      responses:
+        "200":
+          description: Update applied; diff of what changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataUpdateResult"
+        "400":
+          description: Tag missing / malformed.
+        "409":
+          description: |
+            Release moved since the last /system/update — the FE
+            should re-fetch and re-show the modal.
+        "422":
+          description: |
+            SHA-256 sidecar verification failed on at least one asset.
+            Nothing was written to disk.
+        "500":
+          description: I/O failure during write / rename.
 
   /api/v1/system/data-location:
     get:
@@ -2021,6 +2101,60 @@ components:
             (green when true, gray when false) and whether clicking
             it commits the path via PUT
             /api/v1/settings/screenshots-folder.
+
+    DataStatus:
+      type: object
+      required: [applied_tag, has_update]
+      description: |
+        Comparison between the user's currently-loaded reference data
+        and the latest published release. `applied_tag == ""` plus
+        `has_update == true` means the install is running on the
+        binary's embedded data only (never applied a data update).
+        Added/Removed lists are populated only when the rosters were
+        successfully fetched (Available branch); empty for dev-build
+        and up-to-date branches.
+      properties:
+        applied_tag:
+          type: string
+          description: |
+            Tag of the data files currently on disk, per
+            `<RECALL_DATA_DIR>/data/manifest.json`. Empty when no
+            apply has happened yet.
+          example: 1.4.2
+        applied_at:
+          type: string
+          format: date-time
+          description: RFC3339 timestamp of the last successful apply.
+        has_update:
+          type: boolean
+          description: |
+            True when the applied tag differs from the latest release
+            tag (always true when applied_tag is empty).
+          example: true
+        added_heroes: { type: array, items: { type: string } }
+        removed_heroes: { type: array, items: { type: string } }
+        added_maps: { type: array, items: { type: string } }
+        removed_maps: { type: array, items: { type: string } }
+        added_sources: { type: array, items: { type: string } }
+        removed_sources: { type: array, items: { type: string } }
+
+    DataUpdateResult:
+      type: object
+      required: [applied_tag]
+      description: |
+        Returned by POST /api/v1/system/data-update on success. Lists
+        the actual differences applied — the modal renders these as
+        the success-state summary.
+      properties:
+        applied_tag:
+          type: string
+          example: 1.4.3
+        added_heroes: { type: array, items: { type: string } }
+        removed_heroes: { type: array, items: { type: string } }
+        added_maps: { type: array, items: { type: string } }
+        removed_maps: { type: array, items: { type: string } }
+        added_sources: { type: array, items: { type: string } }
+        removed_sources: { type: array, items: { type: string } }
 
     DataLocation:
       type: object

@@ -40,7 +40,7 @@ func candidateNameFromOCR(text string) string {
 // packages (e.g. metrics label resolution) can resolve roles without
 // reaching into the unexported lookup map.
 func HeroRole(hero string) string {
-	return heroRoles[normalize(hero)]
+	return loadDataset().heroRoles[normalize(hero)]
 }
 
 // FirstKnownHeroIn is the exported entry point for the boot
@@ -125,8 +125,9 @@ func extractHeroes(text string) []string {
 }
 
 func heroNamesByLength() []string {
-	names := make([]string, 0, len(heroRoles))
-	for k := range heroRoles {
+	roles := loadDataset().heroRoles
+	names := make([]string, 0, len(roles))
+	for k := range roles {
 		names = append(names, k)
 	}
 	sort.Slice(names, func(i, j int) bool { return len(names[i]) > len(names[j]) })

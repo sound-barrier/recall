@@ -43,7 +43,7 @@ const (
 // tool — those land with an `unmatched-<filename>` sentinel via the
 // resolver.
 func parseFilenameTimestamp(f string) (time.Time, bool) {
-	for _, src := range parser.ScreenshotSources {
+	for _, src := range parser.Sources() {
 		if !strings.HasPrefix(f, src.Prefix) {
 			continue
 		}

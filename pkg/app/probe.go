@@ -241,12 +241,13 @@ func walkSourceDir(dir string) ([]string, time.Time) {
 // "Screenshot 2026-06-07 224855.png" reads as fully recognised; a
 // generic Pictures folder reads as zero.
 func countRecognised(names []string) int {
-	if len(parser.ScreenshotSources) == 0 {
+	sources := parser.Sources()
+	if len(sources) == 0 {
 		return 0
 	}
 	n := 0
 	for _, name := range names {
-		for _, src := range parser.ScreenshotSources {
+		for _, src := range sources {
 			if strings.HasPrefix(name, src.Prefix) && src.Regex.MatchString(name) {
 				n++
 				break

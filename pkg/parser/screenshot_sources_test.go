@@ -3,16 +3,15 @@ package parser
 import "testing"
 
 // TestScreenshotSourcesYAML_LoadsCleanly is the build-time gate
-// against a broken screenshot_sources.yaml shipping. Same shape as
-// TestEmbeddedYAML_LoadsCleanly — init() has already run by test
-// binary start, so non-nil ScreenshotSourcesLoadError fails fast.
+// against a broken screenshot_sources.yaml shipping. init() has
+// already run by test binary start, so LoadError() (which joins the
+// per-file load errors, including screenshot_sources) fails fast.
 func TestScreenshotSourcesYAML_LoadsCleanly(t *testing.T) {
-	t.Parallel()
-	if ScreenshotSourcesLoadError != nil {
-		t.Fatalf("screenshot_sources.yaml failed to load: %v", ScreenshotSourcesLoadError)
+	if err := LoadError(); err != nil {
+		t.Fatalf("dataset load failed (screenshot_sources included): %v", err)
 	}
-	if len(ScreenshotSources) == 0 {
-		t.Fatal("ScreenshotSources is empty — YAML parsed but registered no entries")
+	if len(Sources()) == 0 {
+		t.Fatal("Sources() is empty — YAML parsed but registered no entries")
 	}
 }
 
@@ -33,8 +32,9 @@ func TestScreenshotSourcesYAML_CoversCanonicalFilenames(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.wantName, func(t *testing.T) {
 			var hit *ScreenshotSource
-			for i := range ScreenshotSources {
-				s := &ScreenshotSources[i]
+			sources := Sources()
+			for i := range sources {
+				s := &sources[i]
 				if len(s.Prefix) == 0 || !startsWith(tc.filename, s.Prefix) {
 					continue
 				}
