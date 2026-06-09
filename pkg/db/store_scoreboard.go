@@ -33,7 +33,7 @@ func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
 			healing      = excluded.healing,
 			mitigation   = excluded.mitigation
 		RETURNING id`,
-		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID),
+		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID),
 		nullableString(r.Map), r.MapRaw, nullableString(r.Mode), nullableString(r.Hero), r.HeroRaw,
 		r.Eliminations, r.Assists, r.Deaths, r.Damage, r.Healing, r.Mitigation,
 	).Scan(&id)

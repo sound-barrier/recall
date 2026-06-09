@@ -26,7 +26,7 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 			change_percent = excluded.change_percent,
 			result         = excluded.result
 		RETURNING id`,
-		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID),
+		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID),
 		nullableString(r.Rank), r.Level, r.RankProgress, r.ChangePercent,
 		nullableString(r.Result),
 	).Scan(&id)

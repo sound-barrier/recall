@@ -1484,9 +1484,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/DataUpdateResult"
         "422":
-          description: |
-            SHA-256 sidecar verification failed on at least one asset.
-            Nothing was written to disk.
+          $ref: "#/components/responses/SHAVerificationFailed"
         "500":
           description: I/O failure during write / rename.
         "502":
@@ -1840,8 +1838,12 @@ paths:
       description: |
         Replaces every row in the local database with the contents of
         the uploaded payload. Validates the envelope's `schema` field
-        before touching the store; mismatched versions are rejected
-        with `400` and the existing data is left untouched.
+        before touching the store; payload-level parse failures
+        (not JSON / not ZIP, malformed JSON, ZIP open failure) are
+        rejected with `400`; semantic-validation failures
+        (unsupported schema, missing required field, null array
+        entries) are rejected with `409`. The existing data is left
+        untouched in both rejection paths.
 
         Accepts BOTH container formats — the server sniffs the payload's
         first bytes to detect a JSON envelope (`{` ...) or a ZIP archive
@@ -1864,6 +1866,16 @@ paths:
       responses:
         "204":
           description: Import applied.
+        "400":
+          description: |
+            Payload was not parseable as JSON or ZIP (decode failure,
+            ZIP-open failure, payload neither container format).
+            Body is a plain-text error message safe to surface.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "import: malformed payload: neither JSON nor a ZIP archive"
         "409":
           description: |
             Payload was syntactically valid JSON / ZIP but failed
@@ -2320,7 +2332,7 @@ components:
         filename:        { type: string }
         match_key:       { type: string }
         parsed_at:       { type: string }
-        screenshots_dir_id: { type: integer, description: "0 = NULL (dir unset at parse time)" }
+        screenshots_dir_id: { type: integer, minimum: 1, description: "FK into `screenshots_dirs.id`. Never zero — the sentinel row at id=1 stands in for 'dir unset at parse time' (e.g. a row imported with an orphan FK or a test fixture that didn't supply a path)." }
         map:             { type: string }
         map_raw:         { type: string, description: "Raw OCR text when the canonical map lookup failed." }
         mode:            { type: string }
@@ -2359,7 +2371,7 @@ components:
         filename:        { type: string }
         match_key:       { type: string }
         parsed_at:       { type: string }
-        screenshots_dir_id: { type: integer }
+        screenshots_dir_id: { type: integer, minimum: 1, description: "FK into `screenshots_dirs.id`. Never zero — see SummaryExportRow." }
         map:             { type: string }
         map_raw:         { type: string }
         mode:            { type: string }
@@ -2387,7 +2399,7 @@ components:
         filename:        { type: string }
         match_key:       { type: string }
         parsed_at:       { type: string }
-        screenshots_dir_id: { type: integer }
+        screenshots_dir_id: { type: integer, minimum: 1, description: "FK into `screenshots_dirs.id`. Never zero — see SummaryExportRow." }
         hero:            { type: string }
         hero_raw:        { type: string }
         hero_stats:
@@ -2406,7 +2418,7 @@ components:
         filename:        { type: string }
         match_key:       { type: string }
         parsed_at:       { type: string }
-        screenshots_dir_id: { type: integer }
+        screenshots_dir_id: { type: integer, minimum: 1, description: "FK into `screenshots_dirs.id`. Never zero — see SummaryExportRow." }
         rank:            { type: string }
         level:           { type: integer }
         rank_progress:   { type: integer }
@@ -2437,7 +2449,7 @@ components:
         filename:        { type: string }
         match_key:       { type: string }
         parsed_at:       { type: string }
-        screenshots_dir_id: { type: integer }
+        screenshots_dir_id: { type: integer, minimum: 1, description: "FK into `screenshots_dirs.id`. Never zero — see SummaryExportRow." }
 
     HeroStatExportRow:
       type: object
@@ -2898,3 +2910,15 @@ components:
         text/plain:
           schema:
             type: string
+    SHAVerificationFailed:
+      description: |
+        SHA-256 sidecar verification failed on at least one asset.
+        Nothing was written to disk. Returned by endpoints that
+        atomically apply downloaded reference data (e.g.
+        `POST /api/v1/system/data-update`) when the bytes received
+        don't match the published sidecar.
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: "data update: SHA-256 verification failed"

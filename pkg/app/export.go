@@ -2,12 +2,19 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
 	"recall/pkg/db"
 )
+
+// ErrImportMalformed wraps payload-level parse failures (not JSON or
+// ZIP, JSON decode errors, ZIP-open failures). Handler maps to 400.
+// Semantic-validation failures (unsupported schema, missing required
+// field, write failures) are not wrapped and map to the default 409.
+var ErrImportMalformed = errors.New("import: malformed payload")
 
 // DataLocation surfaces the on-disk paths Recall uses for state.
 // Shown in SettingsView's Directories section and returned by
@@ -114,7 +121,7 @@ func (a *App) ImportData(payload []byte) error {
 		return a.importDataCSV(payload)
 	}
 	if !looksLikeJSON(payload) {
-		return fmt.Errorf("import: payload is neither JSON nor a ZIP archive")
+		return fmt.Errorf("%w: neither JSON nor a ZIP archive", ErrImportMalformed)
 	}
 	// Peek at just the schema field before committing to a full decode
 	// so future versions can route through their own typed unmarshaller
@@ -123,7 +130,7 @@ func (a *App) ImportData(payload []byte) error {
 		Schema string `json:"schema"`
 	}
 	if err := json.Unmarshal(payload, &head); err != nil {
-		return fmt.Errorf("import: decode: %w", err)
+		return fmt.Errorf("%w: decode: %v", ErrImportMalformed, err)
 	}
 	switch head.Schema {
 	case exportSchemaV1:
@@ -140,7 +147,7 @@ func (a *App) ImportData(payload []byte) error {
 func (a *App) importJSONv1(payload []byte) error {
 	var doc exportV1
 	if err := json.Unmarshal(payload, &doc); err != nil {
-		return fmt.Errorf("import: decode: %w", err)
+		return fmt.Errorf("%w: decode: %v", ErrImportMalformed, err)
 	}
 
 	// Validate every row carries a non-empty filename. Filename is the
@@ -214,14 +221,16 @@ func (a *App) importJSONv1(payload []byte) error {
 
 	remapID := func(srcID int64) int64 {
 		if srcID == 0 {
-			return 0
+			return db.SentinelScreenshotsDirID
 		}
 		if dstID, ok := remap[srcID]; ok {
 			return dstID
 		}
-		// Unknown source id (orphan FK in the export) — drop to NULL
-		// rather than fail the whole import.
-		return 0
+		// Unknown source id (orphan FK in the export) — point at the
+		// sentinel row rather than fail the whole import. The
+		// `screenshots_dir_id` column is `NOT NULL` so we can't drop
+		// it; the sentinel is the documented "unset" target.
+		return db.SentinelScreenshotsDirID
 	}
 
 	for _, r := range doc.Summaries {

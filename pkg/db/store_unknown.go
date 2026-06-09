@@ -13,7 +13,7 @@ func (s *SQLStore) UpsertUnknown(r UnknownRow) error {
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id`,
-		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID),
+		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID),
 	)
 	return err
 }

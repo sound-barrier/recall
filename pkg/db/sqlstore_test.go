@@ -61,6 +61,9 @@ func TestSQLStore_Summary_UpsertThenLoadRoundTrip(t *testing.T) {
 	}
 	want.ID = got.Summaries[0].ID
 	want.ParsedAt = got.Summaries[0].ParsedAt
+	// `screenshots_dir_id` defaults to the sentinel when unset on
+	// insert (PR #1 of 1.0 plan).
+	want.ScreenshotsDirID = SentinelScreenshotsDirID
 	sortHP := func(hps []SummaryHeroPlayed) {
 		sort.Slice(hps, func(i, j int) bool { return hps[i].Hero < hps[j].Hero })
 	}
@@ -155,6 +158,9 @@ func TestSQLStore_Scoreboard_UpsertThenLoadRoundTrip(t *testing.T) {
 	}
 	want.ID = got.Scoreboards[0].ID
 	want.ParsedAt = got.Scoreboards[0].ParsedAt
+	// `screenshots_dir_id` defaults to the sentinel when unset on
+	// insert (PR #1 of 1.0 plan).
+	want.ScreenshotsDirID = SentinelScreenshotsDirID
 	sortHS := func(s []HeroStat) {
 		sort.Slice(s, func(i, j int) bool {
 			if s[i].Hero != s[j].Hero {
@@ -195,6 +201,9 @@ func TestSQLStore_Personal_UpsertThenLoadRoundTrip(t *testing.T) {
 	}
 	want.ID = got.Personals[0].ID
 	want.ParsedAt = got.Personals[0].ParsedAt
+	// `screenshots_dir_id` defaults to the sentinel when unset on
+	// insert (PR #1 of 1.0 plan: NOT NULL with sentinel row).
+	want.ScreenshotsDirID = SentinelScreenshotsDirID
 	sort.Slice(want.HeroStats, func(i, j int) bool { return want.HeroStats[i].StatKey < want.HeroStats[j].StatKey })
 	sort.Slice(got.Personals[0].HeroStats, func(i, j int) bool {
 		return got.Personals[0].HeroStats[i].StatKey < got.Personals[0].HeroStats[j].StatKey
@@ -232,6 +241,9 @@ func TestSQLStore_Rank_UpsertThenLoadRoundTrip(t *testing.T) {
 	}
 	want.ID = got.Ranks[0].ID
 	want.ParsedAt = got.Ranks[0].ParsedAt
+	// `screenshots_dir_id` defaults to the sentinel when unset on
+	// insert (PR #1 of 1.0 plan: NOT NULL with sentinel row).
+	want.ScreenshotsDirID = SentinelScreenshotsDirID
 	sort.Strings(want.Modifiers)
 	sort.Strings(got.Ranks[0].Modifiers)
 	sort.Slice(want.SR, func(i, j int) bool { return want.SR[i].Hero < want.SR[j].Hero })
@@ -476,8 +488,11 @@ func TestSQLStore_EnsureScreenshotsDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("empty path: %v", err)
 	}
-	if id != 0 {
-		t.Errorf("empty path: got id %d, want 0", id)
+	// PR #1 of 1.0 plan: empty path returns the sentinel row's id
+	// (not 0). The sentinel is seeded by schema.sql at id=1 so the
+	// parent-row FK is always non-null.
+	if id != SentinelScreenshotsDirID {
+		t.Errorf("empty path: got id %d, want sentinel %d", id, SentinelScreenshotsDirID)
 	}
 
 	// First call creates the row.
@@ -1047,5 +1062,37 @@ func TestSQLStore_ResolveAmbiguous_RejectsNonAmbiguousKey(t *testing.T) {
 	}
 	if ok {
 		t.Error("expected ok=false for key missing the ambiguous: prefix")
+	}
+}
+
+// PR #1 of 1.0 plan: the sentinel row at id=1 is seeded by
+// schema.sql, parent-row FKs are NOT NULL DEFAULT 1, and an explicit
+// `dir_id = 0` violates the FK because no row has id=0.
+func TestSQLStore_SentinelScreenshotsDir_SeededAndFKEnforced(t *testing.T) {
+	s := openMemory(t)
+	// 1. Sentinel row exists at id=1 with empty path.
+	var path string
+	err := s.db.QueryRow(`SELECT path FROM screenshots_dirs WHERE id = ?`, SentinelScreenshotsDirID).Scan(&path)
+	if err != nil {
+		t.Fatalf("sentinel row not found: %v", err)
+	}
+	if path != "" {
+		t.Errorf("sentinel path: got %q, want empty", path)
+	}
+	// 2. Inserting a parent row with dir_id = 0 violates the FK
+	// (no screenshots_dirs row has id=0).
+	_, err = s.db.Exec(
+		`INSERT INTO unknown_screenshots (filename, match_key, screenshots_dir_id) VALUES (?, ?, ?)`,
+		"foo.png", "k1", 0,
+	)
+	if err == nil {
+		t.Fatal("expected FK violation when dir_id=0; got nil")
+	}
+	// 3. Inserting with the sentinel id succeeds.
+	if _, err := s.db.Exec(
+		`INSERT INTO unknown_screenshots (filename, match_key, screenshots_dir_id) VALUES (?, ?, ?)`,
+		"bar.png", "k2", SentinelScreenshotsDirID,
+	); err != nil {
+		t.Fatalf("insert with sentinel id failed: %v", err)
 	}
 }

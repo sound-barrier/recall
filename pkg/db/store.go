@@ -441,11 +441,15 @@ func nullableString(s string) sql.NullString {
 	return sql.NullString{String: s, Valid: true}
 }
 
-// nullableInt64 maps Go 0 to SQL NULL for nullable INTEGER FK columns
-// (specifically screenshots_dir_id, which uses 0 as the unset sentinel).
-func nullableInt64(n int64) sql.NullInt64 {
+// dirIDOrSentinel maps a zero `screenshots_dir_id` to the sentinel
+// row's id (1, seeded by `schema.sql`). Every parent-row insert must
+// supply a valid FK target now that the column is `NOT NULL`; the
+// sentinel exists so callers that don't have a real dir at hand
+// (test fixtures, legacy imports with orphan FKs) can write a row
+// without a constraint violation.
+func dirIDOrSentinel(n int64) int64 {
 	if n == 0 {
-		return sql.NullInt64{}
+		return SentinelScreenshotsDirID
 	}
-	return sql.NullInt64{Int64: n, Valid: true}
+	return n
 }

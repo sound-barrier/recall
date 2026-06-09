@@ -21,7 +21,7 @@ func (s *SQLStore) UpsertPersonal(r PersonalRow) error {
 			hero               = excluded.hero,
 			hero_raw           = excluded.hero_raw
 		RETURNING id`,
-		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID), nullableString(r.Hero), r.HeroRaw,
+		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID), nullableString(r.Hero), r.HeroRaw,
 	).Scan(&id)
 	if err != nil {
 		return err

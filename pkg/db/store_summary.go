@@ -43,7 +43,7 @@ func (s *SQLStore) UpsertSummary(r SummaryRow) error {
 			perf_deaths_total          = excluded.perf_deaths_total,
 			perf_deaths_avg_per_10min  = excluded.perf_deaths_avg_per_10min
 		RETURNING id`,
-		r.Filename, r.MatchKey, nullableInt64(r.ScreenshotsDirID),
+		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID),
 		nullableString(r.Map), r.MapRaw, nullableString(r.Mode), nullableString(r.Hero), r.HeroRaw,
 		nullableString(r.Result), nullableString(r.FinalScore),
 		nullableString(r.Date), nullableString(r.FinishedAt), nullableString(r.GameLength),
