@@ -484,8 +484,8 @@ func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCand
 	cands := make([]db.AmbiguousCandidate, 0, len(sorted))
 	for _, h := range sorted {
 		cands = append(cands, db.AmbiguousCandidate{
-			MatchKey:  h.key,
-			DistanceS: int(h.d / time.Second),
+			MatchKey:        h.key,
+			DistanceSeconds: int(h.d / time.Second),
 		})
 	}
 	return "", cands, true
@@ -597,8 +597,8 @@ func matchByTimestampWindow(cand candidate, snap db.Screenshots) (string, []db.A
 	cands := make([]db.AmbiguousCandidate, 0, len(ties))
 	for _, t := range ties {
 		cands = append(cands, db.AmbiguousCandidate{
-			MatchKey:  t.key,
-			DistanceS: int(t.d / time.Second),
+			MatchKey:        t.key,
+			DistanceSeconds: int(t.d / time.Second),
 		})
 	}
 	return "", cands, true

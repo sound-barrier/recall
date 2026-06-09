@@ -135,7 +135,7 @@ func TestApplyMatchesPagination_UnknownCursorWithLimitSlicesFromStart(t *testing
 // server_test.go::TestServerMux_DeleteSingleMatch_DelegatesToStore
 // already pins HardDeleteMatch's pass-through to the store; this
 // repeats it from the route's vantage so a future change to the
-// {matchKey} pattern (e.g. swapping it for {key}) trips at unit-test
+// {match_key} pattern (e.g. swapping it for {key}) trips at unit-test
 // time rather than waiting for the e2e.
 func TestDeleteSingleMatch_RoutesAndDelegates(t *testing.T) {
 	fs := dbtest.New()

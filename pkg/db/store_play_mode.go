@@ -18,7 +18,7 @@ func (s *SQLStore) SetMatchPlayMode(matchKey, playMode string) error {
 		`INSERT INTO match_play_mode (match_key, play_mode) VALUES (?, ?)
 		 ON CONFLICT(match_key) DO UPDATE SET
 		   play_mode = excluded.play_mode,
-		   set_at    = CURRENT_TIMESTAMP`,
+		   overridden_at = CURRENT_TIMESTAMP`,
 		matchKey, playMode,
 	)
 	return err
@@ -54,7 +54,7 @@ func (s *SQLStore) BulkSetMatchPlayMode(matchKeys []string, playMode string) err
 		stmt = `INSERT INTO match_play_mode (match_key, play_mode) VALUES (?, ?)
 			 ON CONFLICT(match_key) DO UPDATE SET
 			   play_mode = excluded.play_mode,
-			   set_at    = CURRENT_TIMESTAMP`
+			   overridden_at = CURRENT_TIMESTAMP`
 		for _, k := range matchKeys {
 			if _, err := tx.Exec(stmt, k, playMode); err != nil {
 				return err
@@ -65,7 +65,7 @@ func (s *SQLStore) BulkSetMatchPlayMode(matchKeys []string, playMode string) err
 }
 
 func (s *SQLStore) LoadMatchPlayModes() (map[string]PlayModeState, error) {
-	rows, err := s.db.Query(`SELECT match_key, play_mode, set_at FROM match_play_mode`)
+	rows, err := s.db.Query(`SELECT match_key, play_mode, overridden_at FROM match_play_mode`)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (s *SQLStore) LoadMatchPlayModes() (map[string]PlayModeState, error) {
 	for rows.Next() {
 		var k string
 		var st PlayModeState
-		if err := rows.Scan(&k, &st.PlayMode, &st.SetAt); err != nil {
+		if err := rows.Scan(&k, &st.PlayMode, &st.OverriddenAt); err != nil {
 			return nil, err
 		}
 		out[k] = st

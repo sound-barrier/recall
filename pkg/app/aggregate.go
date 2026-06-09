@@ -161,7 +161,7 @@ func attachAmbiguity(recs []MatchRecord, candidates map[string][]db.AmbiguousCan
 		for _, c := range cs {
 			attr := AmbiguousAttribution{
 				MatchKey:        c.MatchKey,
-				DistanceSeconds: c.DistanceS,
+				DistanceSeconds: c.DistanceSeconds,
 			}
 			if cand, ok := byKey[c.MatchKey]; ok && len(cand.SourceFiles) > 0 {
 				attr.RepresentativeSourceFile = cand.SourceFiles[0]
@@ -290,7 +290,7 @@ func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Anno
 			for _, c := range cs {
 				rec.Candidates = append(rec.Candidates, AmbiguousAttribution{
 					MatchKey:        c.MatchKey,
-					DistanceSeconds: c.DistanceS,
+					DistanceSeconds: c.DistanceSeconds,
 				})
 			}
 		}

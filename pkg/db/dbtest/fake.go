@@ -471,8 +471,8 @@ func (f *Fake) SetMatchQueue(matchKey, queueType string) error {
 		f.Queues = map[string]db.QueueState{}
 	}
 	prev := f.Queues[matchKey]
-	if prev.SetAt == "" {
-		prev.SetAt = time.Now().UTC().Format(time.RFC3339)
+	if prev.OverriddenAt == "" {
+		prev.OverriddenAt = time.Now().UTC().Format(time.RFC3339)
 	}
 	prev.QueueType = queueType
 	f.Queues[matchKey] = prev
@@ -518,8 +518,8 @@ func (f *Fake) SetMatchPlayMode(matchKey, playMode string) error {
 		f.PlayModes = map[string]db.PlayModeState{}
 	}
 	prev := f.PlayModes[matchKey]
-	if prev.SetAt == "" {
-		prev.SetAt = time.Now().UTC().Format(time.RFC3339)
+	if prev.OverriddenAt == "" {
+		prev.OverriddenAt = time.Now().UTC().Format(time.RFC3339)
 	}
 	prev.PlayMode = playMode
 	f.PlayModes[matchKey] = prev

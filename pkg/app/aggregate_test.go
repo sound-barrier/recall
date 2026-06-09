@@ -333,8 +333,8 @@ func TestAggregate_AmbiguousSurfacesCandidates(t *testing.T) {
 		}},
 		AmbiguousCandidates: map[string][]db.AmbiguousCandidate{
 			"sb.png": {
-				{MatchKey: "match-2026-05-10T21-29-28", DistanceS: 600},
-				{MatchKey: "match-2026-05-10T22-00-00", DistanceS: 1800},
+				{MatchKey: "match-2026-05-10T21-29-28", DistanceSeconds: 600},
+				{MatchKey: "match-2026-05-10T22-00-00", DistanceSeconds: 1800},
 			},
 		},
 	}

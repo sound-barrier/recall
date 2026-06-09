@@ -137,8 +137,8 @@ func TestSetMatchQueue_RequiresMatchKey(t *testing.T) {
 
 func TestAttachQueues_PopulatesQueueType(t *testing.T) {
 	queues := map[string]db.QueueState{
-		"k1": {QueueType: "role", SetAt: "2026-06-01T10:00:00Z"},
-		"k3": {QueueType: "open", SetAt: "2026-05-30T08:15:00Z"},
+		"k1": {QueueType: "role", OverriddenAt: "2026-06-01T10:00:00Z"},
+		"k3": {QueueType: "open", OverriddenAt: "2026-05-30T08:15:00Z"},
 	}
 	recs := []MatchRecord{
 		{MatchKey: "k1"},

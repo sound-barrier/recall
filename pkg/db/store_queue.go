@@ -15,7 +15,7 @@ func (s *SQLStore) SetMatchQueue(matchKey, queueType string) error {
 		`INSERT INTO match_queue (match_key, queue_type) VALUES (?, ?)
 		 ON CONFLICT(match_key) DO UPDATE SET
 		   queue_type = excluded.queue_type,
-		   set_at     = CURRENT_TIMESTAMP`,
+		   overridden_at = CURRENT_TIMESTAMP`,
 		matchKey, queueType,
 	)
 	return err
@@ -52,7 +52,7 @@ func (s *SQLStore) BulkSetMatchQueue(matchKeys []string, queueType string) error
 		stmt = `INSERT INTO match_queue (match_key, queue_type) VALUES (?, ?)
 			 ON CONFLICT(match_key) DO UPDATE SET
 			   queue_type = excluded.queue_type,
-			   set_at     = CURRENT_TIMESTAMP`
+			   overridden_at = CURRENT_TIMESTAMP`
 		for _, k := range matchKeys {
 			if _, err := tx.Exec(stmt, k, queueType); err != nil {
 				return err
@@ -63,7 +63,7 @@ func (s *SQLStore) BulkSetMatchQueue(matchKeys []string, queueType string) error
 }
 
 func (s *SQLStore) LoadMatchQueues() (map[string]QueueState, error) {
-	rows, err := s.db.Query(`SELECT match_key, queue_type, set_at FROM match_queue`)
+	rows, err := s.db.Query(`SELECT match_key, queue_type, overridden_at FROM match_queue`)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (s *SQLStore) LoadMatchQueues() (map[string]QueueState, error) {
 	for rows.Next() {
 		var k string
 		var st QueueState
-		if err := rows.Scan(&k, &st.QueueType, &st.SetAt); err != nil {
+		if err := rows.Scan(&k, &st.QueueType, &st.OverriddenAt); err != nil {
 			return nil, err
 		}
 		out[k] = st

@@ -3,7 +3,7 @@
  *
  * Two-click confirm pattern (mirrors DashboardEditBanner's Reset):
  *   - first click arms the button to "Confirm delete?" + red fill
- *   - second click within 3 s fires POST /api/v1/screenshots/{file}/ignore
+ *   - second click within 3 s fires PUT /api/v1/screenshots/{file}/ignore
  *     → 204 + records reload
  *   - first-click-only (no second) auto-disarms after 3 s
  *
@@ -32,7 +32,7 @@ test.describe('Unknown tab — Delete forever', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
   })
 
-  test('two-click confirm POSTs to /screenshots/{file}/ignore and the card disappears', async ({ page }) => {
+  test('two-click confirm PUTs to /screenshots/{file}/ignore and the card disappears', async ({ page }) => {
     let ignoreHits = 0
     let ignored = false
 

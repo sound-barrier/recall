@@ -39,7 +39,7 @@ func validateScreenshotFilename(name string) (string, error) {
 // surface. Currently scoped to the suppress-list backing the
 // "Delete forever" affordance:
 //
-//   - POST   /api/v1/screenshots/{filename}/ignore   → add to set
+//   - PUT    /api/v1/screenshots/{filename}/ignore   → add to set
 //   - DELETE /api/v1/screenshots/{filename}/ignore   → remove from set
 //   - GET    /api/v1/screenshots/ignored             → list (filename + ignored_at)
 //   - DELETE /api/v1/screenshots/ignored             → bulk truncate
@@ -48,10 +48,10 @@ func validateScreenshotFilename(name string) (string, error) {
 // path (predates the /api/v1 prefix), not part of this resource
 // family.
 func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
-	// POST: idempotent ignore. Wipes the matching unmatched- /
+	// PUT: idempotent ignore. Wipes the matching unmatched- /
 	// ambiguous- match rows in lockstep so the row disappears from
 	// the result set immediately, not just on the next parse.
-	apiMux.HandleFunc("POST /api/v1/screenshots/{filename}/ignore", func(w http.ResponseWriter, r *http.Request) {
+	apiMux.HandleFunc("PUT /api/v1/screenshots/{filename}/ignore", func(w http.ResponseWriter, r *http.Request) {
 		filename, err := validateScreenshotFilename(r.PathValue("filename"))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)

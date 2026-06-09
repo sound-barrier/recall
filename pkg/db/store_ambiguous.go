@@ -16,8 +16,8 @@ func (s *SQLStore) ApplyAmbiguity(filename string, cands []AmbiguousCandidate) e
 	}
 	for _, c := range cands {
 		if _, err := tx.Exec(
-			`INSERT INTO ambiguous_candidates (filename, match_key, distance_s) VALUES (?,?,?)`,
-			filename, c.MatchKey, c.DistanceS,
+			`INSERT INTO ambiguous_candidates (filename, match_key, distance_seconds) VALUES (?,?,?)`,
+			filename, c.MatchKey, c.DistanceSeconds,
 		); err != nil {
 			return err
 		}
@@ -30,8 +30,8 @@ func (s *SQLStore) ApplyAmbiguity(filename string, cands []AmbiguousCandidate) e
 // screenshot isn't ambiguous (no row in the table).
 func (s *SQLStore) LoadAmbiguousCandidatesFor(filename string) ([]AmbiguousCandidate, error) {
 	rows, err := s.db.Query(
-		`SELECT match_key, distance_s FROM ambiguous_candidates
-		WHERE filename = ? ORDER BY distance_s ASC`,
+		`SELECT match_key, distance_seconds FROM ambiguous_candidates
+		WHERE filename = ? ORDER BY distance_seconds ASC`,
 		filename,
 	)
 	if err != nil {
@@ -41,7 +41,7 @@ func (s *SQLStore) LoadAmbiguousCandidatesFor(filename string) ([]AmbiguousCandi
 	out := make([]AmbiguousCandidate, 0)
 	for rows.Next() {
 		var c AmbiguousCandidate
-		if err := rows.Scan(&c.MatchKey, &c.DistanceS); err != nil {
+		if err := rows.Scan(&c.MatchKey, &c.DistanceSeconds); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
@@ -95,8 +95,8 @@ func (s *SQLStore) ResolveAmbiguous(ambiguousMatchKey, newMatchKey string) (bool
 // per-file lookups.
 func (s *SQLStore) loadAllAmbiguousCandidates() (map[string][]AmbiguousCandidate, error) {
 	rows, err := s.db.Query(
-		`SELECT filename, match_key, distance_s FROM ambiguous_candidates
-		ORDER BY filename, distance_s ASC`,
+		`SELECT filename, match_key, distance_seconds FROM ambiguous_candidates
+		ORDER BY filename, distance_seconds ASC`,
 	)
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func (s *SQLStore) loadAllAmbiguousCandidates() (map[string][]AmbiguousCandidate
 	for rows.Next() {
 		var filename string
 		var c AmbiguousCandidate
-		if err := rows.Scan(&filename, &c.MatchKey, &c.DistanceS); err != nil {
+		if err := rows.Scan(&filename, &c.MatchKey, &c.DistanceSeconds); err != nil {
 			return nil, err
 		}
 		out[filename] = append(out[filename], c)

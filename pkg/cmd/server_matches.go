@@ -136,7 +136,7 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 
 	// Explicit 405 stubs for `/matches/transfers`. Without these,
 	// `GET / PUT / DELETE /api/v1/matches/transfers` route to the
-	// {matchKey} wildcard handler (the literal segment only wins on
+	// {match_key} wildcard handler (the literal segment only wins on
 	// the methods we register) — DELETE would try to hard-delete a
 	// match keyed "transfers".
 	apiMux.HandleFunc("GET /api/v1/matches/transfers", methodNotAllowed("POST"))
@@ -145,7 +145,7 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 
 	// Same 405 stub pattern for the bulk endpoints — without
 	// these, GET /api/v1/matches/play-mode would resolve to the
-	// {matchKey} wildcard with matchKey="play-mode" and return 404.
+	// {match_key} wildcard with matchKey="play-mode" and return 404.
 	// (Schemathesis's unsupported_method check expects 405.)
 	apiMux.HandleFunc("GET /api/v1/matches/play-mode", methodNotAllowed("PUT"))
 	apiMux.HandleFunc("POST /api/v1/matches/play-mode", methodNotAllowed("PUT"))
@@ -158,8 +158,8 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	// hidden flag for matchKey goes. Surfaced by the Hidden drawer's
 	// "Delete forever" affordance once a user has already moved the
 	// match to the archive. Idempotent: unknown keys return 204.
-	apiMux.HandleFunc("DELETE /api/v1/matches/{matchKey}", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("matchKey")
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("match_key")
 		if matchKey == "" {
 			http.Error(w, "match_key required in URL", http.StatusBadRequest)
 			return
@@ -175,8 +175,8 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	// + read-time inference, then filters to the requested key. 404
 	// via the ErrMatchNotFound sentinel keeps the wire surface clean
 	// (no 500 for an honest "not in the corpus").
-	apiMux.HandleFunc("GET /api/v1/matches/{matchKey}", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("matchKey")
+	apiMux.HandleFunc("GET /api/v1/matches/{match_key}", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("match_key")
 		if matchKey == "" {
 			http.Error(w, "match_key required in URL", http.StatusBadRequest)
 			return
@@ -192,8 +192,8 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	// Soft-delete (hide / unhide) a match. `hidden: true` adds the
 	// match to hidden_matches; `hidden: false` removes it. Both are
 	// idempotent — repeated identical calls succeed without error.
-	apiMux.HandleFunc("PUT /api/v1/matches/{matchKey}/visibility", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("matchKey")
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/visibility", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("match_key")
 		if matchKey == "" {
 			http.Error(w, "match_key required in URL", http.StatusBadRequest)
 			return
@@ -233,8 +233,8 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	// freshly-minted "match-<ts>" the user wants to attribute to a
 	// new standalone match (escape hatch when none of the candidates
 	// is right).
-	apiMux.HandleFunc("PUT /api/v1/matches/{matchKey}/resolution", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("matchKey")
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/resolution", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("match_key")
 		if matchKey == "" {
 			http.Error(w, "match_key required in URL", http.StatusBadRequest)
 			return
@@ -253,7 +253,7 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			case errors.Is(err, app.ErrInvalidResolution):
-				http.Error(w, err.Error(), http.StatusConflict)
+				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -264,8 +264,8 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 
 	// Upsert (or clear) the per-match user annotation. When every
 	// field is empty the row is deleted entirely — idempotent.
-	apiMux.HandleFunc("PUT /api/v1/matches/{matchKey}/annotation", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("matchKey")
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/annotation", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("match_key")
 		if matchKey == "" {
 			http.Error(w, "match_key required in URL", http.StatusBadRequest)
 			return
@@ -345,8 +345,8 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	// the VOD themselves) or `'coach'` (a coach reviewed it). DELETE
 	// clears the tag, reverting to the implicit "not reviewed"
 	// state. Both directions are idempotent.
-	apiMux.HandleFunc("PUT /api/v1/matches/{matchKey}/review", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("matchKey")
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/review", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("match_key")
 		if matchKey == "" {
 			http.Error(w, "match_key required in URL", http.StatusBadRequest)
 			return
@@ -368,8 +368,8 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
-	apiMux.HandleFunc("DELETE /api/v1/matches/{matchKey}/review", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("matchKey")
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/review", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("match_key")
 		if matchKey == "" {
 			http.Error(w, "match_key required in URL", http.StatusBadRequest)
 			return
@@ -386,8 +386,8 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	// the implicit "queue not set" state. Both directions are
 	// idempotent. Drives the radiogroup at the top of the
 	// match-detail panel and the Queue chip in "Narrow this set."
-	apiMux.HandleFunc("PUT /api/v1/matches/{matchKey}/queue", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("matchKey")
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/queue", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("match_key")
 		if matchKey == "" {
 			http.Error(w, "match_key required in URL", http.StatusBadRequest)
 			return
@@ -409,8 +409,8 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
-	apiMux.HandleFunc("DELETE /api/v1/matches/{matchKey}/queue", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("matchKey")
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/queue", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("match_key")
 		if matchKey == "" {
 			http.Error(w, "match_key required in URL", http.StatusBadRequest)
 			return
@@ -427,8 +427,8 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	// clears the override, reverting to the fallback chain
 	// (data.mode → rank presence → empty). Both directions are
 	// idempotent.
-	apiMux.HandleFunc("PUT /api/v1/matches/{matchKey}/play-mode", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("matchKey")
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/play-mode", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("match_key")
 		if matchKey == "" {
 			http.Error(w, "match_key required in URL", http.StatusBadRequest)
 			return
@@ -450,8 +450,8 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
-	apiMux.HandleFunc("DELETE /api/v1/matches/{matchKey}/play-mode", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("matchKey")
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/play-mode", func(w http.ResponseWriter, r *http.Request) {
+		matchKey := r.PathValue("match_key")
 		if matchKey == "" {
 			http.Error(w, "match_key required in URL", http.StatusBadRequest)
 			return

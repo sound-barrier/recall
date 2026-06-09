@@ -270,7 +270,7 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 // by RFC 9110 and asserted by schemathesis). Registered on the
 // exact verb+path combinations where a literal sub-path
 // (`/matches/transfers`, `/profiles/active`) would otherwise fall
-// through to a wildcard handler (`/matches/{matchKey}`,
+// through to a wildcard handler (`/matches/{match_key}`,
 // `/profiles/{name}`) on Go 1.22's ServeMux. Without these stubs, a
 // `DELETE /api/v1/matches/transfers` routes to HardDeleteMatch and
 // tries to operate on a match keyed "transfers".

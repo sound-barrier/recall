@@ -1085,8 +1085,8 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 			cands := make([]db.AmbiguousCandidate, 0, candCount)
 			for j := 0; j < candCount && j < len(perm); j++ {
 				cands = append(cands, db.AmbiguousCandidate{
-					MatchKey:  trackedKeys[perm[j]],
-					DistanceS: 60 + ambigRng.Intn(29*60),
+					MatchKey:        trackedKeys[perm[j]],
+					DistanceSeconds: 60 + ambigRng.Intn(29*60),
 				})
 			}
 			// Emit a scoreboard-shaped row so the read path has

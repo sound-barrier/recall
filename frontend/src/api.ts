@@ -422,7 +422,7 @@ export const HardDeleteMatch = _dualVoid<[matchKey: string]>(
 // your drive." Idempotent.
 export const IgnoreScreenshot = _dualVoid<[filename: string]>(
   'IgnoreScreenshot',
-  'POST',
+  'PUT',
   (filename) => `/api/v1/screenshots/${encodeURIComponent(filename)}/ignore`,
 )
 

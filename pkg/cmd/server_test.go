@@ -545,7 +545,7 @@ func TestServerMux_ServesIndexFromAssetsFS(t *testing.T) {
 
 // ──────────────────────────────────────────────────────────────────────────
 // Match annotations — hierarchical sub-resource at
-// PUT /api/v1/matches/{matchKey}/annotation.
+// PUT /api/v1/matches/{match_key}/annotation.
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestMatchAnnotations_Upsert(t *testing.T) {
@@ -623,7 +623,7 @@ func TestMatchResolution_HappyPath(t *testing.T) {
 		{Filename: "sb.png", MatchKey: "ambiguous-sb.png"},
 	}
 	fs.Ambiguous = map[string][]db.AmbiguousCandidate{
-		"sb.png": {{MatchKey: "match-foo", DistanceS: 600}},
+		"sb.png": {{MatchKey: "match-foo", DistanceSeconds: 600}},
 	}
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, resolutionPath("ambiguous-sb.png"), map[string]any{
@@ -665,14 +665,14 @@ func TestMatchResolution_BadResolvedTo409(t *testing.T) {
 	// (resource-state conflict).
 	fs := dbtest.New()
 	fs.Ambiguous = map[string][]db.AmbiguousCandidate{
-		"sb.png": {{MatchKey: "match-foo", DistanceS: 600}},
+		"sb.png": {{MatchKey: "match-foo", DistanceSeconds: 600}},
 	}
 	_, mux := newTestApp(t, fs)
 	rec := put(t, mux, resolutionPath("ambiguous-sb.png"), map[string]any{
 		"resolved_to": "garbage-not-a-match-key",
 	})
-	if rec.Code != http.StatusConflict {
-		t.Fatalf("non-candidate non-match: should 409, got %d (%s)", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("non-candidate non-match: should 400, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 
@@ -717,7 +717,7 @@ func TestMatchAnnotations_NoteOnlyPersists(t *testing.T) {
 func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 	// End-to-end: write a real SQLite store (in-memory), seed a
 	// SUMMARY screenshot so a match exists, PUT an annotation via
-	// /api/v1/matches/{matchKey}/annotation, then GET /api/v1/matches
+	// /api/v1/matches/{match_key}/annotation, then GET /api/v1/matches
 	// and confirm the annotation surfaces on the returned record.
 	//
 	// Catches wiring regressions between the three layers: route →

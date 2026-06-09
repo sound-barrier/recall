@@ -22,8 +22,8 @@ func TestSQLStore_MatchPlayMode_SetLoadClearRoundTrip(t *testing.T) {
 	if got["match-A"].PlayMode != "competitive" || got["match-B"].PlayMode != "quickplay" {
 		t.Errorf("after seed, got %+v", got)
 	}
-	if got["match-A"].SetAt == "" || got["match-B"].SetAt == "" {
-		t.Errorf("set_at should be populated, got %+v", got)
+	if got["match-A"].OverriddenAt == "" || got["match-B"].OverriddenAt == "" {
+		t.Errorf("overridden_at should be populated, got %+v", got)
 	}
 
 	// Idempotent upsert.

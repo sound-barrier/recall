@@ -9,7 +9,7 @@ import (
 
 // TestUnsupportedMethod_OnLiteralPaths pins the explicit 405 stubs
 // for `/matches/transfers` and `/profiles/active`. Without these
-// stubs, the wildcard handlers (`{matchKey}`, `{name}`) catch
+// stubs, the wildcard handlers (`{match_key}`, `{name}`) catch
 // wrong-verb requests and operate on a row literally named
 // "transfers" / "active" — the schemathesis `unsupported_method`
 // check flagged this. Same path → wrong verb → 405 must hold so

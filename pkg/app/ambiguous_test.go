@@ -16,7 +16,7 @@ func TestResolveAmbiguousMatch_HappyPath(t *testing.T) {
 			{Filename: "sum.png", MatchKey: "ambiguous-sb.png"},
 		},
 		Ambiguous: map[string][]db.AmbiguousCandidate{
-			"sb.png": {{MatchKey: "match-foo", DistanceS: 720}},
+			"sb.png": {{MatchKey: "match-foo", DistanceSeconds: 720}},
 		},
 	}
 	a := NewWithStore(fs)
@@ -45,7 +45,7 @@ func TestResolveAmbiguousMatch_RejectsKeyMissingPrefix(t *testing.T) {
 func TestResolveAmbiguousMatch_RejectsResolvedToNotInCandidates(t *testing.T) {
 	fs := &fakeStore{
 		Ambiguous: map[string][]db.AmbiguousCandidate{
-			"sb.png": {{MatchKey: "match-foo", DistanceS: 600}},
+			"sb.png": {{MatchKey: "match-foo", DistanceSeconds: 600}},
 		},
 	}
 	a := NewWithStore(fs)
@@ -63,7 +63,7 @@ func TestResolveAmbiguousMatch_AcceptsFreshMatchKey(t *testing.T) {
 			{Filename: "sb.png", MatchKey: "ambiguous-sb.png"},
 		},
 		Ambiguous: map[string][]db.AmbiguousCandidate{
-			"sb.png": {{MatchKey: "match-other", DistanceS: 720}},
+			"sb.png": {{MatchKey: "match-other", DistanceSeconds: 720}},
 		},
 	}
 	a := NewWithStore(fs)
