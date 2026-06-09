@@ -1,25 +1,34 @@
--- Baseline schema (migration 0001). Statements are separated by
--- `-- statement-end`. The migration runner splits on that token and
--- executes each piece via a single Exec call, so a syntax error
+-- Consolidated schema applied by NewSQLStore. Statements are
+-- separated by `-- statement-end`; the runner splits on that token
+-- and executes each piece via a single Exec so a syntax error
 -- points at exactly one statement.
+--
+-- Pre-1.0 the project is "wipe + relaunch" when the schema changes;
+-- there is no migration framework and no `schema_version` table.
+-- Every CREATE uses `IF NOT EXISTS` so re-opening an existing DB is
+-- safe but a structurally drifted DB is the operator's signal to
+-- wipe (see CONTRIBUTING.md).
 --
 -- Conventions baked into this schema:
 --
---   - Identifiers are snake_case throughout (column names, index
---     names, FK names). The HTTP surface mirrors this — REST path
---     params + JSON keys are snake_case end-to-end; see
---     `.claude/rules/database.md` + `.claude/rules/api-design.md`.
+--   - Identifiers are snake_case throughout. The HTTP surface
+--     mirrors this — REST path params + JSON keys are snake_case
+--     end-to-end; see `.claude/rules/database.md` +
+--     `.claude/rules/api-design.md`.
 --   - `screenshots_dir_id` FKs use `ON DELETE RESTRICT` to forbid
 --     deleting a `screenshots_dirs` row that any screenshot still
---     references. The earlier `SET NULL` policy created
---     orphan rows whose source files couldn't be resolved by
---     `/_screenshot/<filename>`. Drop dependent rows first to free
---     the dir; the app code currently has no code path that does
---     so (the dir lives for the lifetime of the install).
+--     references. Drop dependent rows first to free the dir.
 --   - Parent tables carry a composite `(match_key, parsed_at)`
---     index. The leading `match_key` covers single-column
---     queries; the trailing `parsed_at` removes the sort step in
+--     index. The leading `match_key` covers single-column queries;
+--     the trailing `parsed_at` removes the sort step in
 --     `aggregateAll`'s bulk load + group.
+--   - `hero_raw` / `map_raw` preserve the OCR'd string when the
+--     parser's canonical matcher rejects the candidate. UI surfaces
+--     "Unknown hero (miyazaki?)" / "Unknown map (X?)" chips by
+--     reading data.hero == '' AND data.hero_raw != '' (same for
+--     map). After a YAML release adds a new hero/map, App.Startup's
+--     boot re-aggregate walks WHERE hero='' AND hero_raw != '' and
+--     re-runs the matcher against the current roster.
 
 CREATE TABLE IF NOT EXISTS screenshots_dirs (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,8 +45,10 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
   screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   map           TEXT,
+  map_raw       TEXT NOT NULL DEFAULT '',
   mode          TEXT,
   hero          TEXT,
+  hero_raw      TEXT NOT NULL DEFAULT '',
   result        TEXT,
   final_score   TEXT,
   date          TEXT,
@@ -71,8 +82,10 @@ CREATE TABLE IF NOT EXISTS scoreboard_screenshots (
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
   screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   map           TEXT,
+  map_raw       TEXT NOT NULL DEFAULT '',
   mode          TEXT,
   hero          TEXT,
+  hero_raw      TEXT NOT NULL DEFAULT '',
   eliminations  INTEGER NOT NULL DEFAULT 0,
   assists       INTEGER NOT NULL DEFAULT 0,
   deaths        INTEGER NOT NULL DEFAULT 0,
@@ -102,7 +115,8 @@ CREATE TABLE IF NOT EXISTS personal_screenshots (
   parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
   screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
-  hero          TEXT
+  hero          TEXT,
+  hero_raw      TEXT NOT NULL DEFAULT ''
 );
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_personal_match_key_parsed_at ON personal_screenshots(match_key, parsed_at);
@@ -203,4 +217,31 @@ CREATE TABLE IF NOT EXISTS ambiguous_candidates (
 );
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_ambig_cand_match_key ON ambiguous_candidates(match_key);
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS match_reviews (
+  match_key   TEXT PRIMARY KEY,
+  reviewed_by TEXT NOT NULL CHECK (reviewed_by IN ('self', 'coach')),
+  reviewed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS match_queue (
+  match_key     TEXT PRIMARY KEY,
+  queue_type    TEXT NOT NULL CHECK (queue_type IN ('role', 'open')),
+  overridden_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS match_play_mode (
+  match_key     TEXT PRIMARY KEY,
+  play_mode     TEXT NOT NULL CHECK (play_mode IN ('quickplay', 'competitive')),
+  overridden_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS ignored_screenshots (
+  filename   TEXT PRIMARY KEY,
+  ignored_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 -- statement-end

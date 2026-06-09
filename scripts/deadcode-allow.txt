@@ -53,12 +53,6 @@ pkg/db/dbtest/
 # yet but the contract is public.
 FromContext
 
-# db.revertOne: rolls back a single migration. Test-only today —
-# exercised by TestMigrationsRoundTrip — but lives in the migration
-# framework alongside applyOne so a future production rollback path
-# has a tested base.
-revertOne
-
 # app.MatchKey type + helpers. Reachable now from pkg/app/ambiguous.go,
 # pkg/app/aggregate.go, pkg/app/correlation.go. The constructors +
 # IsUnmatched helper exist for future call sites + the round-trip
