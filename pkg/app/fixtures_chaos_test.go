@@ -28,9 +28,23 @@ func TestChaos_FullRatioMutatesMostRows(t *testing.T) {
 	const n = 200
 	fx := GenerateMatchFixtureWithChaos(n, 7, "", 1.0)
 
+	// Pre-index the seed slices so the per-row check is O(1) — the
+	// missing-play-mode + missing-queue-type categories don't leave a
+	// signature on the SummaryRow itself; they show up as the
+	// match_key being ABSENT from fx.PlayModes / fx.Queues.
+	seenPlayMode := make(map[string]bool, len(fx.PlayModes))
+	for _, p := range fx.PlayModes {
+		seenPlayMode[p.MatchKey] = true
+	}
+	seenQueue := make(map[string]bool, len(fx.Queues))
+	for _, q := range fx.Queues {
+		seenQueue[q.MatchKey] = true
+	}
+
 	mutated := 0
 	for i := 0; i < n; i++ {
-		if hasChaosSignature(fx.Summaries[i]) {
+		s := fx.Summaries[i]
+		if hasChaosSignature(s) || !seenPlayMode[s.MatchKey] || !seenQueue[s.MatchKey] {
 			mutated++
 		}
 	}
@@ -59,6 +73,53 @@ func TestChaos_AggregationConflictAddsRows(t *testing.T) {
 		if !originalKeys[fx.Summaries[i].MatchKey] {
 			t.Fatalf("extra summary %d carries unknown match_key %s", i, fx.Summaries[i].MatchKey)
 		}
+	}
+}
+
+func TestChaos_MissingPlayModeProducesEmptyModeAndDroppedSeed(t *testing.T) {
+	// At ratio=1.0 with 8 categories and 1-2 picks per match,
+	// chaosMissingPlayMode is expected on roughly 3/8 of n. We
+	// assert SOMETHING shows up rather than an exact count so the
+	// test isn't fragile to small RNG nudges.
+	const n = 300
+	fx := GenerateMatchFixtureWithChaos(n, 17, "", 1.0)
+
+	playModeKeys := make(map[string]bool, len(fx.PlayModes))
+	for _, p := range fx.PlayModes {
+		playModeKeys[p.MatchKey] = true
+	}
+
+	emptyModeWithoutSeed := 0
+	for i := 0; i < n; i++ {
+		s := fx.Summaries[i]
+		if s.Mode == "" && !playModeKeys[s.MatchKey] {
+			emptyModeWithoutSeed++
+		}
+	}
+	if emptyModeWithoutSeed < 10 {
+		t.Fatalf("chaosMissingPlayMode should clear data.mode AND drop the PlayModeSeed for >=10 matches at n=%d ratio=1.0; got %d",
+			n, emptyModeWithoutSeed)
+	}
+}
+
+func TestChaos_MissingQueueTypeDropsSeed(t *testing.T) {
+	const n = 300
+	fx := GenerateMatchFixtureWithChaos(n, 23, "", 1.0)
+
+	queueKeys := make(map[string]bool, len(fx.Queues))
+	for _, q := range fx.Queues {
+		queueKeys[q.MatchKey] = true
+	}
+
+	withoutQueueSeed := 0
+	for i := 0; i < n; i++ {
+		if !queueKeys[fx.Summaries[i].MatchKey] {
+			withoutQueueSeed++
+		}
+	}
+	if withoutQueueSeed < 10 {
+		t.Fatalf("chaosMissingQueueType should drop the QueueSeed for >=10 matches at n=%d ratio=1.0; got %d",
+			n, withoutQueueSeed)
 	}
 }
 

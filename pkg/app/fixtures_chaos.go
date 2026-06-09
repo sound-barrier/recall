@@ -25,6 +25,16 @@ const (
 	chaosCardinality
 	chaosDateExtreme
 	chaosAggregationConflict
+	// chaosMissingPlayMode wipes both the OCR-derived data.mode AND
+	// the user-override match_play_mode row so the leaf-row chip
+	// renders "Unknown mode" — exercising the empty-field path the
+	// other categories never trigger.
+	chaosMissingPlayMode
+	// chaosMissingQueueType drops the user-override match_queue row
+	// so the leaf-row chip renders "Unknown mode type." No OCR
+	// source for queue exists, so this is the only path to the
+	// fallback chip.
+	chaosMissingQueueType
 )
 
 var allChaosCategories = []chaosCategory{
@@ -34,6 +44,8 @@ var allChaosCategories = []chaosCategory{
 	chaosCardinality,
 	chaosDateExtreme,
 	chaosAggregationConflict,
+	chaosMissingPlayMode,
+	chaosMissingQueueType,
 }
 
 // chaosEmojis + chaosZalgo are the "weird but storable" unicode shapes
@@ -180,5 +192,52 @@ func applyChaosShape(
 			extra.Result = fixtureResults[rng.Intn(len(fixtureResults))]
 			*extras = append(*extras, extra)
 		}
+
+	case chaosMissingPlayMode:
+		// Wipe the OCR-derived mode on every screenshot row sharing
+		// this match_key AND drop the user-override PlayModeSeed
+		// for the same key. Result: both code paths that hand the
+		// frontend a play-mode value come up empty, so the leaf-row
+		// chip renders the "Unknown mode" fallback — the previously-
+		// untested empty-field rendering path.
+		s.Mode = ""
+		if sb != nil {
+			sb.Mode = ""
+		}
+		fx.PlayModes = dropPlayModeSeed(fx.PlayModes, s.MatchKey)
+
+	case chaosMissingQueueType:
+		// Queue type has no OCR source — it's user-override only,
+		// stored as a QueueSeed by the seed tool. Dropping the seed
+		// is the only path to the "Unknown mode type" chip
+		// rendering.
+		fx.Queues = dropQueueSeed(fx.Queues, s.MatchKey)
 	}
+}
+
+// dropPlayModeSeed returns the seeds slice with every entry for
+// matchKey removed. O(n) — the chaos category fires on a small
+// subset of matches per run, so the cost is negligible against the
+// surrounding generator.
+func dropPlayModeSeed(seeds []PlayModeSeed, matchKey string) []PlayModeSeed {
+	out := seeds[:0:len(seeds)]
+	for _, p := range seeds {
+		if p.MatchKey == matchKey {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
+// dropQueueSeed mirrors dropPlayModeSeed for the QueueSeeds slice.
+func dropQueueSeed(seeds []QueueSeed, matchKey string) []QueueSeed {
+	out := seeds[:0:len(seeds)]
+	for _, q := range seeds {
+		if q.MatchKey == matchKey {
+			continue
+		}
+		out = append(out, q)
+	}
+	return out
 }
