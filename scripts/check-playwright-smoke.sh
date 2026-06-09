@@ -43,6 +43,11 @@ echo "[playwright-smoke] Running smoke subset…"
 # `--grep` matches the test title OR describe-block; specs paired
 # with the user-visible affordance they cover. The list grows when
 # a new spec earns a smoke designation (or carries an `@smoke` tag).
+#
+# E2E_PORT=7098 — the lefthook schemathesis hook runs in parallel
+# (lefthook.yml has parallel: true on pre-push) and binds 7099. Use
+# a sibling port so the two hooks don't collide; playwright.config.ts
+# honors the env override.
 cd frontend
-CI=1 npx playwright test \
+CI=1 E2E_PORT=7098 npx playwright test \
   --grep '@smoke|update-check|unknown-delete|onboarding-tour-spotlight|leaf-virtualization|smoke|a11y'
