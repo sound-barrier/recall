@@ -135,14 +135,16 @@ and only when the **Check for updates** flow runs:
 
 | Host | When | Why |
 |---|---|---|
-| `api.github.com` | User clicks **Check for updates** (in the desktop app's masthead or via `GET /api/v1/system/update`) | Compares the running version to the latest GitHub release, fetches release notes + per-release-tag YAML rosters. |
-| `github.com/sound-barrier/recall/releases/...` | User clicks **Apply update** on the Release sub-row | Downloads `recall-<version>-{heroes,maps,screenshot_sources}.yaml` + `.sha256` sidecars. |
-| `sound-barrier.github.io` | User clicks **Check for updates** OR **Sync from main** | The live-data channel published by Pages on every push to `main` that touches the parser rosters. Fetched paths: `/recall/data/version.json`, `/recall/data/heroes.yaml` (+ `.sha256`), `/recall/data/maps.yaml` (+ `.sha256`), `/recall/data/screenshot_sources.yaml` (+ `.sha256`). |
+| `api.github.com` | User clicks **Check for updates** (in the desktop app's masthead or via `GET /api/v1/system/update`) | Compares the running Recall binary version to the latest GitHub release + fetches release notes. |
+| `github.com/sound-barrier/recall/releases/...` | User clicks **Check for updates** | Downloads the release's `recall-<version>-{heroes,maps,screenshot_sources}.yaml` + `.sha256` sidecars so the Unknown tab's "Update Recall to vX to recognise this hero" hint can surface what's coming. Read-only — no apply path. |
+| `sound-barrier.github.io` | User clicks **Check for updates** OR **Update game data** | The live game-data channel published by Pages on every push to `main` that touches the parser rosters. Fetched paths: `/recall/data/version.json`, `/recall/data/heroes.yaml` (+ `.sha256`), `/recall/data/maps.yaml` (+ `.sha256`), `/recall/data/screenshot_sources.yaml` (+ `.sha256`). |
 
 On a managed-network deployment, allow `api.github.com`, `github.com`,
 and `sound-barrier.github.io` to keep the Update flow functional.
-Blocking `sound-barrier.github.io` is graceful — the Sync from main
-row hides itself; the Release channel keeps working independently.
+Blocking `sound-barrier.github.io` is the only hard break — the
+**Update game data** path is unreachable without it. The modal
+surfaces a "MAIN UNREACHABLE" state in that case; the Recall-binary
+half of the modal (Check for updates → Open release page) still works.
 
 ---
 

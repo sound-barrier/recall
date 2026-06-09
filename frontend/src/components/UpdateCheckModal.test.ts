@@ -4,6 +4,10 @@ import UpdateCheckModal from './UpdateCheckModal.vue'
 import * as api from '../api'
 import type { UpdateInfo } from '../api'
 
+// Default fixture: a recall.app binary update is available AND the
+// main game-data channel has a new commit with three changes (2 new
+// heroes, 1 retired map). The freshness header + counts + manifest
+// all derive from this shape.
 const baseInfo: UpdateInfo = {
   checked: true,
   dev_build: false,
@@ -11,29 +15,30 @@ const baseInfo: UpdateInfo = {
   latest: '1.2.3',
   url: 'https://example/v1.2.3',
   release_notes: '## 1.2.3\n\n- New hero: Phoenix\n- New map: Cascade',
-  data: {
-    applied_tag: '1.0.0',
+  game_data: {
+    commit_sha: 'def5678',
+    committed_at: new Date(Date.now() - 60_000).toISOString(),  // 1 min ago
+    applied_commit: 'abc1234',
+    applied_at: new Date(Date.now() - 14 * 86_400_000).toISOString(),  // 14 days ago
     has_update: true,
-    added_heroes: ['Phoenix'],
-    added_maps: ['Cascade'],
+    added_heroes: ['Phoenix', 'Sojourn'],
+    removed_maps: ['Hollywood'],
   },
-  main: { commit_sha: '', applied_commit: '', has_update: false },
 }
 
 describe('UpdateCheckModal', () => {
   beforeEach(() => {
-    vi.spyOn(api, 'ApplyDataUpdate').mockImplementation(async () => ({
-      source: 'release',
-      applied_tag: '1.2.3',
-      added_heroes: ['Phoenix'],
-      added_maps: ['Cascade'],
+    vi.spyOn(api, 'ApplyGameDataUpdate').mockImplementation(async () => ({
+      applied_commit: 'def5678',
+      added_heroes: ['Phoenix', 'Sojourn'],
+      removed_maps: ['Hollywood'],
     }))
   })
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
-  it('renders both sections with current vs latest', () => {
+  it('renders both sections with current vs latest binary version', () => {
     const wrapper = mount(UpdateCheckModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
@@ -50,27 +55,53 @@ describe('UpdateCheckModal', () => {
     expect(wrapper.text()).toContain('New hero: Phoenix')
   })
 
-  it('lists added heroes/maps in the diff', () => {
+  it('renders the freshness from→to line with applied + incoming commits', () => {
     const wrapper = mount(UpdateCheckModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
-    expect(wrapper.text()).toContain('+ Hero: Phoenix')
-    expect(wrapper.text()).toContain('+ Map: Cascade')
+    const freshness = wrapper.find('[data-update-check-freshness]')
+    expect(freshness.exists()).toBe(true)
+    expect(freshness.text()).toContain('MAIN @ abc1234')
+    expect(freshness.text()).toContain('MAIN @ def5678')
   })
 
-  it('emits applied + shows success summary after the Apply button is clicked', async () => {
+  it('renders the counts headline with added + retired counts', () => {
+    const wrapper = mount(UpdateCheckModal, {
+      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
+    })
+    const counts = wrapper.find('[data-update-check-counts]')
+    expect(counts.exists()).toBe(true)
+    expect(counts.text()).toContain('2 NEW')
+    expect(counts.text()).toContain('1 RETIRED')
+  })
+
+  it('renders the diff manifest with kind chips + signs + names', () => {
+    const wrapper = mount(UpdateCheckModal, {
+      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
+    })
+    const manifest = wrapper.find('[data-update-check-manifest]')
+    expect(manifest.exists()).toBe(true)
+    const rows = manifest.findAll('.update-check-modal-manifest-row')
+    expect(rows).toHaveLength(3)
+    expect(manifest.text()).toContain('Phoenix')
+    expect(manifest.text()).toContain('Sojourn')
+    expect(manifest.text()).toContain('Hollywood')
+    expect(manifest.findAll('.update-check-modal-manifest-row-added')).toHaveLength(2)
+    expect(manifest.findAll('.update-check-modal-manifest-row-removed')).toHaveLength(1)
+  })
+
+  it('emits applied + shows "Applied" button label after clicking Update game data', async () => {
     const wrapper = mount(UpdateCheckModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
     await wrapper.find('[data-update-check-apply]').trigger('click')
     await flushPromises()
     expect(wrapper.emitted('applied')).toHaveLength(1)
-    expect(wrapper.text()).toContain('Applied')
-    expect(wrapper.text()).toContain('v1.2.3')
+    expect(wrapper.find('[data-update-check-apply]').text()).toContain('Applied')
   })
 
-  it('shows an inline error when ApplyDataUpdate throws an ApiError', async () => {
-    vi.spyOn(api, 'ApplyDataUpdate').mockRejectedValueOnce(new api.ApiError(422, 'SHA-256 mismatch'))
+  it('shows an inline error when ApplyGameDataUpdate throws an ApiError', async () => {
+    vi.spyOn(api, 'ApplyGameDataUpdate').mockRejectedValueOnce(new api.ApiError(422, 'SHA-256 mismatch'))
     const wrapper = mount(UpdateCheckModal, {
       props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
     })
@@ -80,98 +111,33 @@ describe('UpdateCheckModal', () => {
     expect(wrapper.find('[role="alert"]').exists()).toBe(true)
   })
 
-  it('shows the release-race hint on 409', async () => {
-    vi.spyOn(api, 'ApplyDataUpdate').mockRejectedValueOnce(new api.ApiError(409, 'release moved'))
-    const wrapper = mount(UpdateCheckModal, {
-      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
-    await wrapper.find('[data-update-check-apply]').trigger('click')
-    await flushPromises()
-    expect(wrapper.text()).toContain('release moved while the modal was open')
-  })
-
-  it('hides the Main row when Pages is unreachable (commit_sha empty)', () => {
-    const wrapper = mount(UpdateCheckModal, {
-      props: { open: true, updateInfo: baseInfo, currentVersion: '1.0.0', checking: false },
-    })
-    expect(wrapper.find('[data-update-check-main-row]').exists()).toBe(false)
-    expect(wrapper.find('[data-update-check-apply-main]').exists()).toBe(false)
-  })
-
-  it('renders the Main row + Sync button when commit_sha is set', () => {
-    const withMain: UpdateInfo = {
+  it('shows the "main unreachable" state when commit_sha is empty', () => {
+    const unreachable: UpdateInfo = {
       ...baseInfo,
-      main: {
-        commit_sha: 'abc1234',
-        applied_commit: '',
-        has_update: true,
-        added_heroes: ['Phoenix'],
-      },
+      game_data: { commit_sha: '', applied_commit: '', has_update: false },
     }
     const wrapper = mount(UpdateCheckModal, {
-      props: { open: true, updateInfo: withMain, currentVersion: '1.0.0', checking: false },
+      props: { open: true, updateInfo: unreachable, currentVersion: '1.0.0', checking: false },
     })
-    expect(wrapper.find('[data-update-check-main-row]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('abc1234')
-    expect(wrapper.find('[data-update-check-apply-main]').exists()).toBe(true)
+    expect(wrapper.find('[data-update-check-main-unreachable]').exists()).toBe(true)
+    expect(wrapper.find('[data-update-check-apply]').exists()).toBe(false)
   })
 
-  it('emits applied + Synced summary after Sync from main is clicked', async () => {
-    vi.spyOn(api, 'ApplyMainDataUpdate').mockImplementation(async () => ({
-      source: 'main',
-      applied_commit: 'abc1234',
-      added_heroes: ['Phoenix'],
-    }))
-    const withMain: UpdateInfo = {
-      ...baseInfo,
-      main: {
-        commit_sha: 'abc1234',
-        applied_commit: '',
-        has_update: true,
-        added_heroes: ['Phoenix'],
-      },
-    }
-    const wrapper = mount(UpdateCheckModal, {
-      props: { open: true, updateInfo: withMain, currentVersion: '1.0.0', checking: false },
-    })
-    await wrapper.find('[data-update-check-apply-main]').trigger('click')
-    await flushPromises()
-    expect(wrapper.emitted('applied')).toHaveLength(1)
-    expect(wrapper.text()).toContain('Synced main')
-    expect(wrapper.text()).toContain('abc1234')
-  })
-
-  it('shows an inline 502 error when ApplyMainDataUpdate fails', async () => {
-    vi.spyOn(api, 'ApplyMainDataUpdate').mockRejectedValueOnce(
-      new api.ApiError(502, 'main fetch failed'),
-    )
-    const withMain: UpdateInfo = {
-      ...baseInfo,
-      main: {
-        commit_sha: 'abc1234',
-        applied_commit: '',
-        has_update: true,
-        added_heroes: ['Phoenix'],
-      },
-    }
-    const wrapper = mount(UpdateCheckModal, {
-      props: { open: true, updateInfo: withMain, currentVersion: '1.0.0', checking: false },
-    })
-    await wrapper.find('[data-update-check-apply-main]').trigger('click')
-    await flushPromises()
-    expect(wrapper.text()).toContain('main fetch failed')
-  })
-
-  it('renders "Release data is current" when release has_update is false', () => {
+  it('renders the "ALL CURRENT" state when has_update is false', () => {
     const upToDate: UpdateInfo = {
       ...baseInfo,
       available: false,
-      data: { applied_tag: '1.2.3', has_update: false },
+      game_data: {
+        commit_sha: 'def5678',
+        applied_commit: 'def5678',
+        has_update: false,
+      },
     }
     const wrapper = mount(UpdateCheckModal, {
       props: { open: true, updateInfo: upToDate, currentVersion: '1.2.3', checking: false },
     })
-    expect(wrapper.text()).toContain('Release data is current')
+    expect(wrapper.text()).toContain('ALL CURRENT')
+    expect(wrapper.find('[data-update-check-apply]').exists()).toBe(false)
   })
 
   it('does not render when open is false', () => {

@@ -152,19 +152,7 @@ export function GetStartupError(): Promise<string> {
   return _get<{ message: string }>('/api/v1/system/startup-error').then(d => d.message)
 }
 
-type DataStatus = {
-  applied_tag:      string
-  applied_at?:      string
-  has_update:       boolean
-  added_heroes?:    string[]
-  removed_heroes?:  string[]
-  added_maps?:      string[]
-  removed_maps?:    string[]
-  added_sources?:   string[]
-  removed_sources?: string[]
-}
-
-type MainStatus = {
+export type GameDataStatus = {
   commit_sha:       string
   committed_at?:    string
   applied_commit:   string
@@ -189,8 +177,7 @@ export type UpdateInfo = {
   latest_sources?:  string[]
   last_checked_at?: string
   release_notes?:   string
-  data:             DataStatus
-  main:             MainStatus
+  game_data:        GameDataStatus
 }
 
 export function CheckForUpdate(): Promise<UpdateInfo> {
@@ -199,9 +186,7 @@ export function CheckForUpdate(): Promise<UpdateInfo> {
 }
 
 export type DataUpdateResult = {
-  source:           'release' | 'main'
-  applied_tag?:     string
-  applied_commit?:  string
+  applied_commit:   string
   added_heroes?:    string[]
   removed_heroes?:  string[]
   added_maps?:      string[]
@@ -210,24 +195,16 @@ export type DataUpdateResult = {
   removed_sources?: string[]
 }
 
-// ApplyDataUpdate downloads + SHA-256-verifies the reference YAMLs from
-// the named release and swaps the running parser dataset. Throws ApiError
-// (status 409) when the release moved since the FE's last check —
-// callers should refetch /system/update and prompt the user again.
-export function ApplyDataUpdate(tag: string): Promise<DataUpdateResult> {
-  if (IS_WAILS) return _wails('ApplyDataUpdate', tag)
-  return _send<DataUpdateResult>('POST', '/api/v1/system/data-update', { source: 'release', tag })
-}
-
-// ApplyMainDataUpdate pulls the live YAMLs from
-// https://sound-barrier.github.io/recall/data/ (the from-main channel
+// ApplyGameDataUpdate pulls the live YAMLs from
+// https://sound-barrier.github.io/recall/data/ (the main channel
 // published by .github/workflows/pages.yml on every push that touches
-// pkg/parser/*.yaml). No release tag — the apply commit SHA is echoed
-// back in DataUpdateResult.applied_commit. Throws ApiError (status 502)
-// when Pages is unreachable.
-export function ApplyMainDataUpdate(): Promise<DataUpdateResult> {
-  if (IS_WAILS) return _wails('ApplyMainDataUpdate')
-  return _send<DataUpdateResult>('POST', '/api/v1/system/data-update', { source: 'main' })
+// pkg/parser/*.yaml), SHA-256-verifies them, and swaps the running
+// parser dataset. The apply commit SHA is echoed back in
+// DataUpdateResult.applied_commit. Throws ApiError (status 502) when
+// Pages is unreachable, 422 on SHA mismatch, 500 on local disk failure.
+export function ApplyGameDataUpdate(): Promise<DataUpdateResult> {
+  if (IS_WAILS) return _wails('ApplyGameDataUpdate')
+  return _send<DataUpdateResult>('POST', '/api/v1/system/data-update')
 }
 
 export function GetMatchResults(): Promise<MatchRecord[]> {

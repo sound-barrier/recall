@@ -994,31 +994,25 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Download + apply the latest reference data (no binary update)
+         * Download + apply the latest game data (no binary update)
          * @description Downloads `heroes.yaml`, `maps.yaml`, and
-         *     `screenshot_sources.yaml` from the release identified by
-         *     `tag`, verifies each against its published SHA-256 sidecar,
+         *     `screenshot_sources.yaml` from the Pages-published `main`
+         *     channel at https://sound-barrier.github.io/recall/data/,
+         *     verifies each against its published SHA-256 sidecar,
          *     atomically writes them to `<RECALL_DATA_DIR>/data/`, and
          *     swaps the parser dataset in-process. No binary update
          *     required — the user can recognise newly-shipped heroes /
-         *     maps / capture-tool grammars by clicking Apply Update,
-         *     without re-installing Recall.
+         *     maps / capture-tool grammars by clicking Apply, without
+         *     re-installing Recall.
          *
-         *     Body discriminator: `source: "release"` (default for backward
-         *     compatibility) pulls from the release's tagged assets;
-         *     `source: "main"` pulls live YAMLs from Pages-published
-         *     https://sound-barrier.github.io/recall/data/ so users on
-         *     stable binaries can pick up new heroes/maps/capture-tool
-         *     grammars without waiting for a Recall release.
+         *     Always pulls from `main` (the freshest data channel). Users
+         *     who want release-tagged YAML just upgrade the Recall binary,
+         *     which re-bundles the same files.
          *
-         *     Returns 409 if the latest release tag on GitHub differs from
-         *     the passed `tag` (release source only — the frontend should
-         *     re-fetch `/system/update` and ask the user to confirm again).
          *     Returns 422 if any asset's SHA-256 sidecar fails verification;
-         *     400 on a missing / malformed tag or unknown source; 502 if
-         *     Pages is unreachable (main source only); 500 on I/O failure.
+         *     500 on I/O failure; 502 if Pages is unreachable.
          */
-        post: operations["ApplyDataUpdate"];
+        post: operations["ApplyGameDataUpdate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1510,12 +1504,11 @@ export interface components {
             exists: boolean;
         };
         /**
-         * @description Shared base for the per-channel data-status types. Carries
-         *     the diff fields (added/removed × heroes/maps/sources) +
-         *     `has_update` so consumers don't have to repeat the same six
-         *     array fields across every channel. Concrete subtypes
-         *     (`DataStatus`, `MainStatus`) extend this with channel-
-         *     specific identifier fields via `allOf`.
+         * @description Shared base for the game-data status type. Carries the diff
+         *     fields (added/removed × heroes/maps/sources) + `has_update`
+         *     so consumers don't repeat the same six array fields.
+         *     `GameDataStatus` extends this with the applied-commit
+         *     identifier via `allOf`.
          */
         RosterDiff: {
             /**
@@ -1533,22 +1526,36 @@ export interface components {
             removed_sources?: string[];
         };
         /**
-         * @description Comparison between the user's currently-loaded reference data
-         *     and the latest published release. `applied_tag == ""` plus
-         *     `has_update == true` means the install is running on the
-         *     binary's embedded data only (never applied a data update).
-         *     Added/Removed lists are populated only when the rosters were
-         *     successfully fetched (Available branch); empty for dev-build
-         *     and up-to-date branches.
+         * @description Comparison between the user's currently-loaded game data
+         *     (heroes / maps / capture-tool sources) and the live main
+         *     channel published at https://sound-barrier.github.io/recall/data/.
+         *     `commit_sha` is the 7-char short SHA from the Pages-published
+         *     `data/version.json`; empty means the Pages fetch failed (the
+         *     FE shows a "main unreachable" state). `applied_commit` is
+         *     empty when the user has never applied an update (the install
+         *     is on the binary's embedded data). `has_update` is true when
+         *     commit_sha != applied_commit.
          */
-        DataStatus: components["schemas"]["RosterDiff"] & {
+        GameDataStatus: components["schemas"]["RosterDiff"] & {
             /**
-             * @description Tag of the data files currently on disk, per
-             *     `<RECALL_DATA_DIR>/data/manifest.json`. Empty when no
-             *     apply has happened yet.
-             * @example 1.4.2
+             * @description 7-char short SHA of the currently-published main
+             *     commit. Empty means the main channel was unreachable.
+             * @example abc1234
              */
-            applied_tag: string;
+            commit_sha: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 committer date from the Pages-published
+             *     version.json — surfaced as "main @ abc1234 · 2 d ago"
+             *     in the modal.
+             */
+            committed_at?: string;
+            /**
+             * @description 7-char short SHA from the manifest's
+             *     applied_main_commit field. Empty when the user has
+             *     never applied an update.
+             */
+            applied_commit: string;
             /**
              * Format: date-time
              * @description RFC3339 timestamp of the last successful apply.
@@ -1556,65 +1563,17 @@ export interface components {
             applied_at?: string;
         };
         /**
-         * @description Comparison between the user's currently-loaded reference data
-         *     and the live from-main channel published at
-         *     https://sound-barrier.github.io/recall/data/. `commit_sha` is
-         *     the 7-char short SHA from Pages-published `data/version.json`;
-         *     empty means the Pages fetch failed (FE hides the Main row).
-         *     `applied_commit` is empty when the user has never synced from
-         *     main (the manifest carries no AppliedMainCommit). has_update
-         *     is true when commit_sha != applied_commit OR the manifest's
-         *     applied_source isn't "main".
-         */
-        MainStatus: components["schemas"]["RosterDiff"] & {
-            /**
-             * @description 7-char short SHA of the currently-published main
-             *     commit. Empty means the from-main channel was
-             *     unreachable.
-             * @example abc1234
-             */
-            commit_sha: string;
-            /**
-             * Format: date-time
-             * @description ISO 8601 committer date from the Pages-published
-             *     version.json — surfaced as "Applied main @ abc1234 ·
-             *     2 days ago" in the modal.
-             */
-            committed_at?: string;
-            /**
-             * @description 7-char short SHA from the manifest's
-             *     applied_main_commit field. Empty when the user has
-             *     never synced from main.
-             */
-            applied_commit: string;
-            /**
-             * Format: date-time
-             * @description RFC3339 timestamp of the last successful main apply.
-             */
-            applied_at?: string;
-        };
-        /**
          * @description Returned by POST /api/v1/system/data-update on success. Lists
          *     the actual differences applied — the modal renders these as
-         *     the success-state summary. `source` discriminates which
-         *     identifier is populated: "release" → applied_tag; "main" →
-         *     applied_commit.
+         *     the success-state summary.
          */
         DataUpdateResult: {
-            /** @enum {string} */
-            source: "release" | "main";
-            /**
-             * @description Release tag the apply pulled from. Populated when
-             *     source = "release".
-             * @example 1.4.3
-             */
-            applied_tag?: string;
             /**
              * @description 7-char short commit SHA from Pages-published
-             *     data/version.json. Populated when source = "main".
+             *     data/version.json that the apply pulled from.
              * @example abc1234
              */
-            applied_commit?: string;
+            applied_commit: string;
             added_heroes?: string[];
             removed_heroes?: string[];
             added_maps?: string[];
@@ -3530,38 +3489,20 @@ export interface operations {
                          *     never `v-html`.
                          */
                         release_notes?: string;
-                        data?: components["schemas"]["DataStatus"];
-                        main?: components["schemas"]["MainStatus"];
+                        game_data?: components["schemas"]["GameDataStatus"];
                     };
                 };
             };
         };
     };
-    ApplyDataUpdate: {
+    ApplyGameDataUpdate: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @enum {string} */
-                    source?: "release";
-                    /**
-                     * @description Release tag the FE saw on the prior
-                     *     /system/update call, with or without the
-                     *     leading `v`.
-                     * @example 1.4.3
-                     */
-                    tag: string;
-                } | {
-                    /** @enum {string} */
-                    source: "main";
-                };
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Update applied; diff of what changed. */
             200: {
@@ -3571,24 +3512,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DataUpdateResult"];
                 };
-            };
-            /** @description Tag missing / malformed, or unknown source. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /**
-             * @description Release moved since the last /system/update — the FE
-             *     should re-fetch and re-show the modal. (release source
-             *     only.)
-             */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /**
              * @description SHA-256 sidecar verification failed on at least one asset.
@@ -3608,9 +3531,8 @@ export interface operations {
                 content?: never;
             };
             /**
-             * @description Pages-published from-main channel is unreachable — the
+             * @description Pages-published main channel is unreachable — the
              *     FE should retry later (no parser state was modified).
-             *     Returned only for `source: "main"` requests.
              */
             502: {
                 headers: {

@@ -2485,7 +2485,7 @@ onBeforeUnmount(() => {
    typographic register and height; they now all live on a shared
    ~28 px button shape so the row reads as one family. The shared
    baseline is reproduced under each control's selector rather than
-   extracted into a class because Vue's <style scoped> doesn't let
+   extracted into a class because Vue's \3c style scoped> doesn't let
    us @extend, and the rules are short enough that DRY-by-mixin
    isn't worth the indirection. */
 

@@ -1,10 +1,10 @@
 /**
- * Update-check modal — driven from the masthead's "Check for updates"
- * trigger. Two sections (Recall app + Game data), Apply Update flow
- * with idle → applying → success / 422 / 409 states.
+ * Update-check modal — single "Update game data" button + diff
+ * preview manifest. Always pulls from the main channel; Release-
+ * channel YAML is gone.
  *
- * Specs mock `/api/v1/system/update` and `/api/v1/system/data-update`
- * via page.route().
+ * Specs mock `/api/v1/system/update` (the check) and
+ * `/api/v1/system/data-update` (the apply) via page.route().
  */
 import type { Route } from '@playwright/test'
 
@@ -22,20 +22,18 @@ async function mockVersion(page: import('@playwright/test').Page, v: string) {
 interface UpdateResponse {
   available: boolean
   latest: string
-  data: {
-    applied_tag: string
-    has_update: boolean
-    added_heroes?: string[]
-    added_maps?: string[]
-    added_sources?: string[]
-  }
-  main?: {
+  game_data?: {
     commit_sha: string
+    committed_at?: string
     applied_commit: string
+    applied_at?: string
     has_update: boolean
     added_heroes?: string[]
+    removed_heroes?: string[]
     added_maps?: string[]
+    removed_maps?: string[]
     added_sources?: string[]
+    removed_sources?: string[]
   }
   release_notes?: string
 }
@@ -49,8 +47,7 @@ async function mockUpdate(page: import('@playwright/test').Page, payload: Update
         available: payload.available, latest: payload.latest,
         url: `https://example.test/release/${payload.latest}`,
         ...(payload.release_notes ? { release_notes: payload.release_notes } : {}),
-        data: payload.data,
-        main: payload.main ?? { commit_sha: '', applied_commit: '', has_update: false },
+        game_data: payload.game_data ?? { commit_sha: '', applied_commit: '', has_update: false },
       }),
     })
   })
@@ -61,7 +58,7 @@ test.describe('update-check modal', () => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       available: false, latest: '0.3.0',
-      data: { applied_tag: '0.3.0', has_update: false },
+      game_data: { commit_sha: 'abc1234', applied_commit: 'abc1234', has_update: false },
     })
     await page.goto('/')
 
@@ -73,21 +70,50 @@ test.describe('update-check modal', () => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       available: true, latest: '0.4.0',
-      data: { applied_tag: '0.3.0', has_update: true, added_heroes: ['Phoenix'] },
+      game_data: {
+        commit_sha: 'def5678',
+        applied_commit: 'abc1234',
+        has_update: true,
+        added_heroes: ['Phoenix'],
+      },
     })
     await page.goto('/')
 
     await page.locator('[data-update-check-trigger]').click()
-    await expect(page.getByText('Recall app')).toBeVisible()
-    await expect(page.getByText('Game data')).toBeVisible()
-    await expect(page.getByText('+ Hero: Phoenix')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Recall app' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Game data' })).toBeVisible()
+    await expect(page.locator('[data-update-check-manifest]')).toContainText(/Phoenix/)
   })
 
-  test('Apply button calls POST /system/data-update and shows success summary', async ({ page }) => {
+  test('renders the from→to freshness header with applied + incoming commits', async ({ page }) => {
+    await mockVersion(page, '0.3.0')
+    await mockUpdate(page, {
+      available: false, latest: '0.3.0',
+      game_data: {
+        commit_sha: 'def5678',
+        applied_commit: 'abc1234',
+        has_update: true,
+        added_heroes: ['Phoenix'],
+      },
+    })
+    await page.goto('/')
+
+    await page.locator('[data-update-check-trigger]').click()
+    const freshness = page.locator('[data-update-check-freshness]')
+    await expect(freshness).toContainText(/MAIN @ abc1234/)
+    await expect(freshness).toContainText(/MAIN @ def5678/)
+  })
+
+  test('Apply button calls POST /system/data-update and shows success state', async ({ page }) => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       available: true, latest: '0.4.0',
-      data: { applied_tag: '0.3.0', has_update: true, added_heroes: ['Phoenix'] },
+      game_data: {
+        commit_sha: 'def5678',
+        applied_commit: 'abc1234',
+        has_update: true,
+        added_heroes: ['Phoenix'],
+      },
     })
     let postFired = false
     await page.route('**/api/v1/system/data-update', async (route: Route) => {
@@ -95,7 +121,7 @@ test.describe('update-check modal', () => {
       await route.fulfill({
         status: 200, contentType: 'application/json',
         body: JSON.stringify({
-          applied_tag: '0.4.0',
+          applied_commit: 'def5678',
           added_heroes: ['Phoenix'],
         }),
       })
@@ -104,12 +130,8 @@ test.describe('update-check modal', () => {
 
     await page.locator('[data-update-check-trigger]').click()
     await page.locator('[data-update-check-apply]').click()
-    // Scope to the success-state headline element. The button label
-    // also flips to "Applied" on success, so `getByText(/Applied/)`
-    // would resolve to 2 elements under strict mode.
-    const headline = page.locator('[role="dialog"] .update-check-modal-diff-headline').first()
-    await expect(headline).toContainText(/Applied/)
-    await expect(headline).toContainText(/v0\.4\.0/)
+    // Button morphs to "Applied" on success.
+    await expect(page.locator('[data-update-check-apply]')).toContainText(/Applied/)
     expect(postFired).toBe(true)
   })
 
@@ -117,7 +139,12 @@ test.describe('update-check modal', () => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       available: true, latest: '0.4.0',
-      data: { applied_tag: '0.3.0', has_update: true, added_heroes: ['Phoenix'] },
+      game_data: {
+        commit_sha: 'def5678',
+        applied_commit: 'abc1234',
+        has_update: true,
+        added_heroes: ['Phoenix'],
+      },
     })
     await page.route('**/api/v1/system/data-update', async (route: Route) => {
       await route.fulfill({ status: 422, contentType: 'text/plain', body: 'SHA-256 verification failed' })
@@ -133,73 +160,30 @@ test.describe('update-check modal', () => {
     await expect(dialog).toBeVisible()
   })
 
-  test('renders the release-race hint on 409', async ({ page }) => {
-    await mockVersion(page, '0.3.0')
-    await mockUpdate(page, {
-      available: true, latest: '0.4.0',
-      data: { applied_tag: '0.3.0', has_update: true, added_heroes: ['Phoenix'] },
-    })
-    await page.route('**/api/v1/system/data-update', async (route: Route) => {
-      await route.fulfill({ status: 409, contentType: 'text/plain', body: 'release moved' })
-    })
-    await page.goto('/')
-
-    await page.locator('[data-update-check-trigger]').click()
-    await page.locator('[data-update-check-apply]').click()
-    await expect(page.getByText(/release moved while the modal was open/i)).toBeVisible()
-  })
-
-  test('Main row hidden when commit_sha is empty (Pages unreachable)', async ({ page }) => {
+  test('shows the "main unreachable" state when game_data.commit_sha is empty', async ({ page }) => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       available: false, latest: '0.3.0',
-      data: { applied_tag: '0.3.0', has_update: false },
-      main: { commit_sha: '', applied_commit: '', has_update: false },
+      game_data: { commit_sha: '', applied_commit: '', has_update: false },
     })
     await page.goto('/')
 
     await page.locator('[data-update-check-trigger]').click()
     await expect(page.locator('[role="dialog"]')).toBeVisible()
-    await expect(page.locator('[data-update-check-main-row]')).toHaveCount(0)
+    await expect(page.locator('[data-update-check-main-unreachable]')).toBeVisible()
+    await expect(page.locator('[data-update-check-apply]')).toHaveCount(0)
   })
 
-  test('Sync from main button calls POST source=main and shows Synced summary', async ({ page }) => {
+  test('502 Pages-unreachable error surfaces inline without closing', async ({ page }) => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       available: false, latest: '0.3.0',
-      data: { applied_tag: '0.3.0', has_update: false },
-      main: { commit_sha: 'abc1234', applied_commit: '', has_update: true, added_heroes: ['Phoenix'] },
-    })
-    let postBody: { source?: string } | null = null
-    await page.route('**/api/v1/system/data-update', async (route: Route) => {
-      postBody = JSON.parse(route.request().postData() ?? '{}')
-      await route.fulfill({
-        status: 200, contentType: 'application/json',
-        body: JSON.stringify({
-          source: 'main', applied_commit: 'abc1234', added_heroes: ['Phoenix'],
-        }),
-      })
-    })
-    await page.goto('/')
-
-    await page.locator('[data-update-check-trigger]').click()
-    await page.locator('[data-update-check-apply-main]').click()
-    // The main-row's idle state already prints the sha in the
-    // "Main" header ("Pending → abc1234"), so scope the success
-    // assertions to the success-state headline element.
-    const mainRow = page.locator('[data-update-check-main-row]')
-    const headline = mainRow.locator('.update-check-modal-diff-headline')
-    await expect(headline).toContainText(/Synced main/i)
-    await expect(headline).toContainText(/abc1234/)
-    expect(postBody?.source).toBe('main')
-  })
-
-  test('Sync from main 502 surfaces inline error without closing', async ({ page }) => {
-    await mockVersion(page, '0.3.0')
-    await mockUpdate(page, {
-      available: false, latest: '0.3.0',
-      data: { applied_tag: '0.3.0', has_update: false },
-      main: { commit_sha: 'abc1234', applied_commit: '', has_update: true, added_heroes: ['Phoenix'] },
+      game_data: {
+        commit_sha: 'def5678',
+        applied_commit: 'abc1234',
+        has_update: true,
+        added_heroes: ['Phoenix'],
+      },
     })
     await page.route('**/api/v1/system/data-update', async (route: Route) => {
       await route.fulfill({ status: 502, contentType: 'text/plain', body: 'main fetch failed' })
@@ -207,7 +191,7 @@ test.describe('update-check modal', () => {
     await page.goto('/')
 
     await page.locator('[data-update-check-trigger]').click()
-    await page.locator('[data-update-check-apply-main]').click()
+    await page.locator('[data-update-check-apply]').click()
     const dialog = page.locator('[role="dialog"]')
     await expect(dialog.locator('[role="alert"]')).toContainText(/main fetch failed/i)
     await expect(dialog).toBeVisible()
@@ -217,13 +201,13 @@ test.describe('update-check modal', () => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       available: false, latest: '0.3.0',
-      data: { applied_tag: '0.3.0', has_update: false },
+      game_data: { commit_sha: 'abc1234', applied_commit: 'abc1234', has_update: false },
     })
     await page.goto('/')
 
     await page.locator('[data-update-check-trigger]').click()
     await expect(page.locator('[role="dialog"]')).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(page.locator('[role="dialog"]')).toHaveCount(0)
+    await expect(page.locator('[role="dialog"]')).toBeHidden()
   })
 })

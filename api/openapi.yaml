@@ -1451,72 +1451,31 @@ paths:
                       modal under a "more on GitHub" link. The frontend
                       interpolates this via Vue's default escaping —
                       never `v-html`.
-                  data:
-                    $ref: "#/components/schemas/DataStatus"
-                  main:
-                    $ref: "#/components/schemas/MainStatus"
+                  game_data:
+                    $ref: "#/components/schemas/GameDataStatus"
 
   /api/v1/system/data-update:
     post:
-      operationId: ApplyDataUpdate
+      operationId: ApplyGameDataUpdate
       tags: [System]
-      summary: Download + apply the latest reference data (no binary update)
+      summary: Download + apply the latest game data (no binary update)
       description: |
         Downloads `heroes.yaml`, `maps.yaml`, and
-        `screenshot_sources.yaml` from the release identified by
-        `tag`, verifies each against its published SHA-256 sidecar,
+        `screenshot_sources.yaml` from the Pages-published `main`
+        channel at https://sound-barrier.github.io/recall/data/,
+        verifies each against its published SHA-256 sidecar,
         atomically writes them to `<RECALL_DATA_DIR>/data/`, and
         swaps the parser dataset in-process. No binary update
         required — the user can recognise newly-shipped heroes /
-        maps / capture-tool grammars by clicking Apply Update,
-        without re-installing Recall.
+        maps / capture-tool grammars by clicking Apply, without
+        re-installing Recall.
 
-        Body discriminator: `source: "release"` (default for backward
-        compatibility) pulls from the release's tagged assets;
-        `source: "main"` pulls live YAMLs from Pages-published
-        https://sound-barrier.github.io/recall/data/ so users on
-        stable binaries can pick up new heroes/maps/capture-tool
-        grammars without waiting for a Recall release.
+        Always pulls from `main` (the freshest data channel). Users
+        who want release-tagged YAML just upgrade the Recall binary,
+        which re-bundles the same files.
 
-        Returns 409 if the latest release tag on GitHub differs from
-        the passed `tag` (release source only — the frontend should
-        re-fetch `/system/update` and ask the user to confirm again).
         Returns 422 if any asset's SHA-256 sidecar fails verification;
-        400 on a missing / malformed tag or unknown source; 502 if
-        Pages is unreachable (main source only); 500 on I/O failure.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              oneOf:
-                - type: object
-                  required: [tag]
-                  description: |
-                    Release-channel apply. `source` defaults to
-                    "release" when omitted for backward compatibility.
-                  properties:
-                    source:
-                      type: string
-                      enum: [release]
-                    tag:
-                      type: string
-                      minLength: 1
-                      description: |
-                        Release tag the FE saw on the prior
-                        /system/update call, with or without the
-                        leading `v`.
-                      example: 1.4.3
-                - type: object
-                  required: [source]
-                  description: |
-                    Main-channel apply. No tag — main is whatever it
-                    is at fetch time. The applied commit SHA is
-                    returned in the response so the FE can display it.
-                  properties:
-                    source:
-                      type: string
-                      enum: [main]
+        500 on I/O failure; 502 if Pages is unreachable.
       responses:
         "200":
           description: Update applied; diff of what changed.
@@ -1524,13 +1483,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DataUpdateResult"
-        "400":
-          description: Tag missing / malformed, or unknown source.
-        "409":
-          description: |
-            Release moved since the last /system/update — the FE
-            should re-fetch and re-show the modal. (release source
-            only.)
         "422":
           description: |
             SHA-256 sidecar verification failed on at least one asset.
@@ -1539,9 +1491,8 @@ paths:
           description: I/O failure during write / rename.
         "502":
           description: |
-            Pages-published from-main channel is unreachable — the
+            Pages-published main channel is unreachable — the
             FE should retry later (no parser state was modified).
-            Returned only for `source: "main"` requests.
 
   /api/v1/system/data-location:
     get:
@@ -2181,12 +2132,11 @@ components:
       type: object
       required: [has_update]
       description: |
-        Shared base for the per-channel data-status types. Carries
-        the diff fields (added/removed × heroes/maps/sources) +
-        `has_update` so consumers don't have to repeat the same six
-        array fields across every channel. Concrete subtypes
-        (`DataStatus`, `MainStatus`) extend this with channel-
-        specific identifier fields via `allOf`.
+        Shared base for the game-data status type. Carries the diff
+        fields (added/removed × heroes/maps/sources) + `has_update`
+        so consumers don't repeat the same six array fields.
+        `GameDataStatus` extends this with the applied-commit
+        identifier via `allOf`.
       properties:
         has_update:
           type: boolean
@@ -2202,43 +2152,17 @@ components:
         added_sources: { type: array, items: { type: string } }
         removed_sources: { type: array, items: { type: string } }
 
-    DataStatus:
+    GameDataStatus:
       description: |
-        Comparison between the user's currently-loaded reference data
-        and the latest published release. `applied_tag == ""` plus
-        `has_update == true` means the install is running on the
-        binary's embedded data only (never applied a data update).
-        Added/Removed lists are populated only when the rosters were
-        successfully fetched (Available branch); empty for dev-build
-        and up-to-date branches.
-      allOf:
-        - $ref: "#/components/schemas/RosterDiff"
-        - type: object
-          required: [applied_tag]
-          properties:
-            applied_tag:
-              type: string
-              description: |
-                Tag of the data files currently on disk, per
-                `<RECALL_DATA_DIR>/data/manifest.json`. Empty when no
-                apply has happened yet.
-              example: 1.4.2
-            applied_at:
-              type: string
-              format: date-time
-              description: RFC3339 timestamp of the last successful apply.
-
-    MainStatus:
-      description: |
-        Comparison between the user's currently-loaded reference data
-        and the live from-main channel published at
-        https://sound-barrier.github.io/recall/data/. `commit_sha` is
-        the 7-char short SHA from Pages-published `data/version.json`;
-        empty means the Pages fetch failed (FE hides the Main row).
-        `applied_commit` is empty when the user has never synced from
-        main (the manifest carries no AppliedMainCommit). has_update
-        is true when commit_sha != applied_commit OR the manifest's
-        applied_source isn't "main".
+        Comparison between the user's currently-loaded game data
+        (heroes / maps / capture-tool sources) and the live main
+        channel published at https://sound-barrier.github.io/recall/data/.
+        `commit_sha` is the 7-char short SHA from the Pages-published
+        `data/version.json`; empty means the Pages fetch failed (the
+        FE shows a "main unreachable" state). `applied_commit` is
+        empty when the user has never applied an update (the install
+        is on the binary's embedded data). `has_update` is true when
+        commit_sha != applied_commit.
       allOf:
         - $ref: "#/components/schemas/RosterDiff"
         - type: object
@@ -2248,51 +2172,39 @@ components:
               type: string
               description: |
                 7-char short SHA of the currently-published main
-                commit. Empty means the from-main channel was
-                unreachable.
+                commit. Empty means the main channel was unreachable.
               example: abc1234
             committed_at:
               type: string
               format: date-time
               description: |
                 ISO 8601 committer date from the Pages-published
-                version.json — surfaced as "Applied main @ abc1234 ·
-                2 days ago" in the modal.
+                version.json — surfaced as "main @ abc1234 · 2 d ago"
+                in the modal.
             applied_commit:
               type: string
               description: |
                 7-char short SHA from the manifest's
                 applied_main_commit field. Empty when the user has
-                never synced from main.
+                never applied an update.
             applied_at:
               type: string
               format: date-time
-              description: RFC3339 timestamp of the last successful main apply.
+              description: RFC3339 timestamp of the last successful apply.
 
     DataUpdateResult:
       type: object
-      required: [source]
+      required: [applied_commit]
       description: |
         Returned by POST /api/v1/system/data-update on success. Lists
         the actual differences applied — the modal renders these as
-        the success-state summary. `source` discriminates which
-        identifier is populated: "release" → applied_tag; "main" →
-        applied_commit.
+        the success-state summary.
       properties:
-        source:
-          type: string
-          enum: [release, main]
-        applied_tag:
-          type: string
-          description: |
-            Release tag the apply pulled from. Populated when
-            source = "release".
-          example: 1.4.3
         applied_commit:
           type: string
           description: |
             7-char short commit SHA from Pages-published
-            data/version.json. Populated when source = "main".
+            data/version.json that the apply pulled from.
           example: abc1234
         added_heroes: { type: array, items: { type: string } }
         removed_heroes: { type: array, items: { type: string } }

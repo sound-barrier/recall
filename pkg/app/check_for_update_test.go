@@ -25,7 +25,7 @@ func isEmptyUpdate(u UpdateInfo) bool {
 	return !u.Checked && !u.DevBuild && !u.Available && u.Latest == "" && u.URL == "" &&
 		len(u.LatestHeroes) == 0 && len(u.LatestMaps) == 0 && len(u.LatestSources) == 0 &&
 		u.LastCheckedAt == "" && u.ReleaseNotes == "" &&
-		u.Data.AppliedTag == "" && !u.Data.HasUpdate
+		u.GameData.AppliedCommit == "" && !u.GameData.HasUpdate
 }
 
 // withReleasesURL swaps releasesURL for the duration of the test and
@@ -297,7 +297,7 @@ func withReleaseAssetURL(t *testing.T, builder func(version, name string) string
 // mainVersionURL) so tests stay hermetic. Tests that don't care
 // about the main channel pass closedServerURL (a pre-closed
 // httptest server) — every main-channel fetch returns a connection
-// error which collapses to MainStatus{} (empty CommitSHA, no diff)
+// error which collapses to GameDataStatus{} (empty CommitSHA, no diff)
 // — exactly the "Pages unreachable" branch.
 //
 // Tests that DO care about the main channel pass a builder routed
@@ -600,70 +600,9 @@ func TestCheckForUpdate_LatestSourcesFetchedFromRelease(t *testing.T) {
 	}
 }
 
-func TestCheckForUpdate_DataDiff_WhenNoManifest_TreatsAsBehind(t *testing.T) {
-	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	srv := fakeReleasesServer(t, http.StatusOK,
-		`{"tag_name":"v1.2.3","html_url":"https://example/v1.2.3"}`)
-	withReleasesURL(t, srv.URL)
-	withVersion(t, "1.0.0")
-	assetSrv := fakeAssetServer(t,
-		[]byte("tank:\n  - Reinhardt\nsupport: []\ndps: []\n"),
-		[]byte("control:\n  - Ilios\n"),
-		validSourcesYAML())
-	withReleaseAssetURL(t, func(_, name string) string { return assetSrv.URL + "/" + name })
-
-	got := (&App{}).CheckForUpdate()
-
-	if got.Data.AppliedTag != "" {
-		t.Errorf("Data.AppliedTag: want empty (no manifest), got %q", got.Data.AppliedTag)
-	}
-	// HasUpdate must be true even without a manifest — the install
-	// is running on embedded data and the latest release published
-	// a tag, so by definition the data IS behind.
-	if !got.Data.HasUpdate {
-		t.Error("Data.HasUpdate: want true (running embedded data vs published release)")
-	}
-}
-
-func TestCheckForUpdate_DataDiff_AddedHeroesAgainstManifest(t *testing.T) {
-	baseDir := t.TempDir()
-	t.Setenv("RECALL_DATA_DIR", baseDir)
-	// Pre-seed manifest as if the user applied data at 1.2.0.
-	if err := SaveManifest(DataManifest{
-		AppliedReleaseTag: "1.2.0",
-		AppliedAt:         time.Now().UTC().Add(-72 * time.Hour),
-		Files:             map[string]ManifestFile{},
-	}); err != nil {
-		t.Fatalf("SaveManifest: %v", err)
-	}
-
-	srv := fakeReleasesServer(t, http.StatusOK,
-		`{"tag_name":"v1.2.3","html_url":"https://example/v1.2.3"}`)
-	withReleasesURL(t, srv.URL)
-	withVersion(t, "1.0.0")
-	// Release roster contains a fictional new hero that the
-	// currently-loaded (embedded) dataset does not — proves the
-	// diff fires on a real difference, not a name collision.
-	releaseHeroes := []byte("tank:\n  - Reinhardt\nsupport: []\ndps:\n  - Phoenix\n")
-	assetSrv := fakeAssetServer(t,
-		releaseHeroes,
-		[]byte("control:\n  - Ilios\n"),
-		validSourcesYAML())
-	withReleaseAssetURL(t, func(_, name string) string { return assetSrv.URL + "/" + name })
-
-	got := (&App{}).CheckForUpdate()
-
-	if got.Data.AppliedTag != "1.2.0" {
-		t.Errorf("Data.AppliedTag: want 1.2.0, got %q", got.Data.AppliedTag)
-	}
-	if !contains(got.Data.AddedHeroes, "Phoenix") {
-		t.Errorf("Data.AddedHeroes: want to contain 'Phoenix', got %v", got.Data.AddedHeroes)
-	}
-}
-
 // ─── Main-channel (Pages live data) ───────────────────────────────
 
-func TestCheckForUpdate_MainStatusEmpty_WhenPagesUnreachable(t *testing.T) {
+func TestCheckForUpdate_GameDataStatusEmpty_WhenPagesUnreachable(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 	srv := fakeReleasesServer(t, http.StatusOK,
 		`{"tag_name":"v0.3.0","html_url":"https://example/v0.3.0"}`)
@@ -674,15 +613,15 @@ func TestCheckForUpdate_MainStatusEmpty_WhenPagesUnreachable(t *testing.T) {
 
 	got := (&App{}).CheckForUpdate()
 
-	if got.Main.CommitSHA != "" {
-		t.Errorf("Main.CommitSHA: want empty (Pages unreachable), got %q", got.Main.CommitSHA)
+	if got.GameData.CommitSHA != "" {
+		t.Errorf("GameData.CommitSHA: want empty (Pages unreachable), got %q", got.GameData.CommitSHA)
 	}
-	if got.Main.HasUpdate {
-		t.Errorf("Main.HasUpdate: want false (Pages unreachable), got true")
+	if got.GameData.HasUpdate {
+		t.Errorf("GameData.HasUpdate: want false (Pages unreachable), got true")
 	}
 }
 
-func TestCheckForUpdate_MainStatusPopulatesCommitSHAAndDiff(t *testing.T) {
+func TestCheckForUpdate_GameDataStatusPopulatesCommitSHAAndDiff(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 	srv := fakeReleasesServer(t, http.StatusOK,
 		`{"tag_name":"v0.3.0","html_url":"https://example/v0.3.0"}`)
@@ -698,18 +637,18 @@ func TestCheckForUpdate_MainStatusPopulatesCommitSHAAndDiff(t *testing.T) {
 
 	got := (&App{}).CheckForUpdate()
 
-	if got.Main.CommitSHA != "abc1234" {
-		t.Errorf("Main.CommitSHA: want 'abc1234' (7-char short), got %q", got.Main.CommitSHA)
+	if got.GameData.CommitSHA != "abc1234" {
+		t.Errorf("GameData.CommitSHA: want 'abc1234' (7-char short), got %q", got.GameData.CommitSHA)
 	}
-	if !got.Main.HasUpdate {
-		t.Error("Main.HasUpdate: want true (no manifest yet, main is ahead by definition)")
+	if !got.GameData.HasUpdate {
+		t.Error("GameData.HasUpdate: want true (no manifest yet, main is ahead by definition)")
 	}
-	if !contains(got.Main.AddedHeroes, "Phoenix") {
-		t.Errorf("Main.AddedHeroes: want to contain 'Phoenix', got %v", got.Main.AddedHeroes)
+	if !contains(got.GameData.AddedHeroes, "Phoenix") {
+		t.Errorf("GameData.AddedHeroes: want to contain 'Phoenix', got %v", got.GameData.AddedHeroes)
 	}
 }
 
-func TestCheckForUpdate_MainStatusReflectsAppliedCommit(t *testing.T) {
+func TestCheckForUpdate_GameDataStatusReflectsAppliedCommit(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 	// Pre-seed the manifest as if the user already synced from main
 	// at the SAME commit we'll publish — HasUpdate should flip false.
@@ -731,10 +670,10 @@ func TestCheckForUpdate_MainStatusReflectsAppliedCommit(t *testing.T) {
 
 	got := (&App{}).CheckForUpdate()
 
-	if got.Main.AppliedCommit != "abc1234" {
-		t.Errorf("Main.AppliedCommit: want 'abc1234', got %q", got.Main.AppliedCommit)
+	if got.GameData.AppliedCommit != "abc1234" {
+		t.Errorf("GameData.AppliedCommit: want 'abc1234', got %q", got.GameData.AppliedCommit)
 	}
-	if got.Main.HasUpdate {
-		t.Error("Main.HasUpdate: want false (applied commit matches published commit)")
+	if got.GameData.HasUpdate {
+		t.Error("GameData.HasUpdate: want false (applied commit matches published commit)")
 	}
 }
