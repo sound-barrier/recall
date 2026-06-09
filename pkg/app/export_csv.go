@@ -119,19 +119,19 @@ func (a *App) ExportDataCSV() ([]byte, error) {
 func (a *App) importDataCSV(payload []byte) error {
 	zr, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
 	if err != nil {
-		return fmt.Errorf("import csv: open zip: %w", err)
+		return fmt.Errorf("%w: open zip: %v", ErrImportMalformed, err)
 	}
 
 	// Validate manifest first so we fail fast on wrong-schema archives.
 	manifestBytes, err := readZipFile(zr, "manifest.json")
 	if err != nil {
-		return fmt.Errorf("import csv: missing manifest.json: %w", err)
+		return fmt.Errorf("%w: missing manifest.json: %v", ErrImportMalformed, err)
 	}
 	var mf struct {
 		Schema string `json:"schema"`
 	}
 	if err := json.Unmarshal(manifestBytes, &mf); err != nil {
-		return fmt.Errorf("import csv: manifest decode: %w", err)
+		return fmt.Errorf("%w: manifest decode: %v", ErrImportMalformed, err)
 	}
 	if mf.Schema != exportSchemaV1 {
 		return fmt.Errorf("import csv: unsupported schema %q (this build expects %q)", mf.Schema, exportSchemaV1)
@@ -187,12 +187,14 @@ func (a *App) importDataCSV(payload []byte) error {
 	}
 	remapID := func(srcID int64) int64 {
 		if srcID == 0 {
-			return 0
+			return db.SentinelScreenshotsDirID
 		}
 		if dst, ok := remap[srcID]; ok {
 			return dst
 		}
-		return 0
+		// Unknown source id — point at the sentinel row. The dir_id
+		// column is `NOT NULL`; we can't drop it.
+		return db.SentinelScreenshotsDirID
 	}
 
 	for _, r := range summaries {

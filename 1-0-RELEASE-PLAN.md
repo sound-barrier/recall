@@ -49,32 +49,32 @@ basis, or make the launch land flat (e.g., no macOS binary).
 
 ### API + DB
 
-- [ ] `[HIGH]` `screenshots_dir_id` nullability is mushy — schema declares
+- [x] `[HIGH]` `screenshots_dir_id` nullability is mushy — schema declares
   it `NULLABLE INTEGER`, OpenAPI describes `0 = NULL`, FK uses
   `ON DELETE RESTRICT`. Decide: `NOT NULL` with a sentinel
   `screenshots_dirs` row, OR document the `0/NULL` distinction
   formally at the spec level. **File:** `pkg/db/schema.sql:46,83,117` +
   `api/openapi.yaml:2323`. **Effort:** M
-- [ ] `[MED]` `match_annotations.leaver` SQL `CHECK` allows `NULL` but
+- [x] `[MED]` `match_annotations.leaver` SQL `CHECK` allows `NULL` but
   the OpenAPI enum includes `""` as the "no leaver tag" sentinel.
   Verify the handler converts `""` → `NULL` before insert, or align
   the schema CHECK to accept `""` (and pick one canonical form).
   **File:** `pkg/db/schema.sql:169` +
   `pkg/cmd/server_matches.go` (annotation PUT). **Effort:** S
-- [ ] `[HIGH]` `writeJSON` must marshal nil slices as `[]`, never `null`,
+- [x] `[HIGH]` `writeJSON` must marshal nil slices as `[]`, never `null`,
   per the API contract. Add a regression test on the `GetMatchResults`
   error path (where `rows` may be nil) and any other handler returning
   a `var x []T` shape. Audit every `writeJSON(w, rows, err)` site.
   **File:** `pkg/cmd/server.go` + handler files. **Effort:** S
-- [ ] `[MED]` `POST /api/v1/system/data-update` `422` response isn't in
+- [x] `[MED]` `POST /api/v1/system/data-update` `422` response isn't in
   the shared `components.responses` block — move it for spec
   consistency. **File:** `api/openapi.yaml:1486`. **Effort:** S
-- [ ] `[HIGH]` `POST /api/v1/imports` returns `409` for shape-validation
+- [x] `[HIGH]` `POST /api/v1/imports` returns `409` for shape-validation
   failures that should be `400` (client sent malformed input).
   Reserve `409` for true conflict states (duplicate profile name,
   etc.). **File:** `api/openapi.yaml:1909` area +
   `pkg/cmd/server_backup.go`. **Effort:** S
-- [ ] `[LOW]` `POST /api/v1/profiles` returns `201`,
+- [x] `[LOW]` `POST /api/v1/profiles` returns `201`,
   `PUT /api/v1/profiles/active` returns `200` — document the
   intentional asymmetry, or unify both to `200`. **File:**
   `api/openapi.yaml:1138 + 1174`. **Effort:** S

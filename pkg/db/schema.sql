@@ -36,6 +36,13 @@ CREATE TABLE IF NOT EXISTS screenshots_dirs (
   first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 -- statement-end
+-- Sentinel row at id=1 for "dir unset" — referenced by every parent
+-- row that lacks a real screenshots dir (test fixtures, legacy
+-- pre-1.0 imports). `EnsureScreenshotsDir("")` returns 1, so the
+-- foreign key always points at a real row and `screenshots_dir_id`
+-- can be `NOT NULL`.
+INSERT OR IGNORE INTO screenshots_dirs (id, path) VALUES (1, '');
+-- statement-end
 
 CREATE TABLE IF NOT EXISTS summary_screenshots (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,7 +50,7 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   match_key     TEXT NOT NULL,
   parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
-  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
+  screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   map           TEXT,
   map_raw       TEXT NOT NULL DEFAULT '',
   mode          TEXT,
@@ -80,7 +87,7 @@ CREATE TABLE IF NOT EXISTS scoreboard_screenshots (
   match_key     TEXT NOT NULL,
   parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
-  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
+  screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   map           TEXT,
   map_raw       TEXT NOT NULL DEFAULT '',
   mode          TEXT,
@@ -114,7 +121,7 @@ CREATE TABLE IF NOT EXISTS personal_screenshots (
   match_key     TEXT NOT NULL,
   parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
-  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
+  screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   hero          TEXT,
   hero_raw      TEXT NOT NULL DEFAULT ''
 );
@@ -137,7 +144,7 @@ CREATE TABLE IF NOT EXISTS rank_screenshots (
   match_key       TEXT NOT NULL,
   parsed_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
-  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
+  screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   rank            TEXT,
   level           INTEGER NOT NULL DEFAULT 0,
   rank_progress   INTEGER NOT NULL DEFAULT 0,
@@ -203,7 +210,7 @@ CREATE TABLE IF NOT EXISTS unknown_screenshots (
   match_key   TEXT NOT NULL,
   parsed_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
-  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE RESTRICT
+  screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT
 );
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_unknown_match_key_parsed_at ON unknown_screenshots(match_key, parsed_at);

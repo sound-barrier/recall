@@ -308,7 +308,9 @@ func (f *Fake) EnsureScreenshotsDir(path string) (int64, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if path == "" {
-		return 0, nil
+		// Mirror SQLStore: empty path returns the sentinel id so
+		// the parent-row FK is always non-null.
+		return db.SentinelScreenshotsDirID, nil
 	}
 	if f.DirIDs == nil {
 		f.DirIDs = map[string]int64{}
@@ -316,7 +318,8 @@ func (f *Fake) EnsureScreenshotsDir(path string) (int64, error) {
 	if id, ok := f.DirIDs[path]; ok {
 		return id, nil
 	}
-	id := int64(len(f.DirIDs) + 1)
+	// New real dirs start at 2 so we never collide with the sentinel.
+	id := int64(len(f.DirIDs) + 2)
 	f.DirIDs[path] = id
 	return id, nil
 }

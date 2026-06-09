@@ -1288,8 +1288,12 @@ export interface paths {
          * Restore the local database from a previously-exported backup
          * @description Replaces every row in the local database with the contents of
          *     the uploaded payload. Validates the envelope's `schema` field
-         *     before touching the store; mismatched versions are rejected
-         *     with `400` and the existing data is left untouched.
+         *     before touching the store; payload-level parse failures
+         *     (not JSON / not ZIP, malformed JSON, ZIP open failure) are
+         *     rejected with `400`; semantic-validation failures
+         *     (unsupported schema, missing required field, null array
+         *     entries) are rejected with `409`. The existing data is left
+         *     untouched in both rejection paths.
          *
          *     Accepts BOTH container formats — the server sniffs the payload's
          *     first bytes to detect a JSON envelope (`{` ...) or a ZIP archive
@@ -1648,7 +1652,7 @@ export interface components {
             filename: string;
             match_key: string;
             parsed_at?: string;
-            /** @description 0 = NULL (dir unset at parse time) */
+            /** @description FK into `screenshots_dirs.id`. Never zero — the sentinel row at id=1 stands in for 'dir unset at parse time' (e.g. a row imported with an orphan FK or a test fixture that didn't supply a path). */
             screenshots_dir_id?: number;
             map?: string;
             /** @description Raw OCR text when the canonical map lookup failed. */
@@ -1686,6 +1690,7 @@ export interface components {
             filename: string;
             match_key: string;
             parsed_at?: string;
+            /** @description FK into `screenshots_dirs.id`. Never zero — see SummaryExportRow. */
             screenshots_dir_id?: number;
             map?: string;
             map_raw?: string;
@@ -1710,6 +1715,7 @@ export interface components {
             filename: string;
             match_key: string;
             parsed_at?: string;
+            /** @description FK into `screenshots_dirs.id`. Never zero — see SummaryExportRow. */
             screenshots_dir_id?: number;
             hero?: string;
             hero_raw?: string;
@@ -1725,6 +1731,7 @@ export interface components {
             filename: string;
             match_key: string;
             parsed_at?: string;
+            /** @description FK into `screenshots_dirs.id`. Never zero — see SummaryExportRow. */
             screenshots_dir_id?: number;
             rank?: string;
             level?: number;
@@ -1751,6 +1758,7 @@ export interface components {
             filename: string;
             match_key: string;
             parsed_at?: string;
+            /** @description FK into `screenshots_dirs.id`. Never zero — see SummaryExportRow. */
             screenshots_dir_id?: number;
         } & {
             [key: string]: unknown;
@@ -2165,6 +2173,21 @@ export interface components {
         };
         /** @description Unhandled server-side error. */
         InternalError: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "text/plain": string;
+            };
+        };
+        /**
+         * @description SHA-256 sidecar verification failed on at least one asset.
+         *     Nothing was written to disk. Returned by endpoints that
+         *     atomically apply downloaded reference data (e.g.
+         *     `POST /api/v1/system/data-update`) when the bytes received
+         *     don't match the published sidecar.
+         */
+        SHAVerificationFailed: {
             headers: {
                 [name: string]: unknown;
             };
@@ -3513,16 +3536,7 @@ export interface operations {
                     "application/json": components["schemas"]["DataUpdateResult"];
                 };
             };
-            /**
-             * @description SHA-256 sidecar verification failed on at least one asset.
-             *     Nothing was written to disk.
-             */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+            422: components["responses"]["SHAVerificationFailed"];
             /** @description I/O failure during write / rename. */
             500: {
                 headers: {
@@ -3845,6 +3859,19 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /**
+             * @description Payload was not parseable as JSON or ZIP (decode failure,
+             *     ZIP-open failure, payload neither container format).
+             *     Body is a plain-text error message safe to surface.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
             };
             /**
              * @description Payload was syntactically valid JSON / ZIP but failed

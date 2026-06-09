@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -118,13 +119,17 @@ func registerBackupRoutes(apiMux *http.ServeMux, a *app.App) {
 			return
 		}
 		if err := a.ImportData(body); err != nil {
-			// 409: the payload was syntactically well-formed JSON / ZIP
-			// but failed semantic validation (missing required fields,
-			// unsupported schema, etc.). Schemathesis's
-			// `positive_data_acceptance` check disallows 400 for
-			// spec-valid inputs; the imports body schema is intentionally
-			// loose for forward-compatibility, so the strict checks fire
-			// at the app layer.
+			// Split sentinel: ErrImportMalformed → 400 (payload not
+			// JSON/ZIP, decode failure, zip-open failure). Anything
+			// else → 409 (semantic validation failure: unsupported
+			// schema, missing required field, write failure).
+			// Schemathesis's `positive_data_acceptance` check disallows
+			// 400 for spec-valid inputs; the malformed branch only
+			// fires on spec-violating payloads.
+			if errors.Is(err, app.ErrImportMalformed) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
