@@ -66,8 +66,8 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_SurfacesCandidate(t *testing
 	if cands[0].MatchKey != "match-2026-05-10T21-29-28" {
 		t.Errorf("wrong candidate key: %q", cands[0].MatchKey)
 	}
-	if cands[0].DistanceS != 720 {
-		t.Errorf("wrong distance: %d (want 720)", cands[0].DistanceS)
+	if cands[0].DistanceSeconds != 720 {
+		t.Errorf("wrong distance: %d (want 720)", cands[0].DistanceSeconds)
 	}
 }
 
@@ -116,7 +116,7 @@ func TestMatchByEAD_MultipleCandidates_SurfacesAllSortedByDistance(t *testing.T)
 	if cands[0].MatchKey != "match-B" {
 		t.Errorf("expected B (closer) first, got %q", cands[0].MatchKey)
 	}
-	if cands[0].DistanceS != 120 || cands[1].DistanceS != 240 {
+	if cands[0].DistanceSeconds != 120 || cands[1].DistanceSeconds != 240 {
 		t.Errorf("wrong distances: %+v", cands)
 	}
 }

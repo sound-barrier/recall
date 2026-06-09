@@ -51,8 +51,8 @@ func TestMatchByTimestampWindow_EquidistantBetweenTwoMatches_SurfacesAmbiguous(t
 	seen := map[string]bool{}
 	for _, c := range cands {
 		seen[c.MatchKey] = true
-		if c.DistanceS != 45 {
-			t.Errorf("expected 45s distance, got %d for %q", c.DistanceS, c.MatchKey)
+		if c.DistanceSeconds != 45 {
+			t.Errorf("expected 45s distance, got %d for %q", c.DistanceSeconds, c.MatchKey)
 		}
 	}
 	if !seen["match-X"] || !seen["match-Y"] {

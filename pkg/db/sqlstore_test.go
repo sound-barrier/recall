@@ -303,7 +303,7 @@ func TestSQLStore_Clear_WipesEveryTable(t *testing.T) {
 	if err := s.HideMatch("k1"); err != nil {
 		t.Fatalf("HideMatch: %v", err)
 	}
-	if err := s.ApplyAmbiguity("amb.png", []AmbiguousCandidate{{MatchKey: "k1", DistanceS: 5}}); err != nil {
+	if err := s.ApplyAmbiguity("amb.png", []AmbiguousCandidate{{MatchKey: "k1", DistanceSeconds: 5}}); err != nil {
 		t.Fatalf("ApplyAmbiguity: %v", err)
 	}
 	if err := s.AddIgnoredScreenshot("ignored.png"); err != nil {
@@ -894,8 +894,8 @@ func TestSQLStore_HardDeleteMatch_UnknownKeyIsNoOp(t *testing.T) {
 func TestSQLStore_Ambiguity_RoundTrip(t *testing.T) {
 	s := openMemory(t)
 	cands := []AmbiguousCandidate{
-		{MatchKey: "match-2026-05-10T21-29-28", DistanceS: 720},
-		{MatchKey: "match-2026-05-10T22-11-50", DistanceS: 1200},
+		{MatchKey: "match-2026-05-10T21-29-28", DistanceSeconds: 720},
+		{MatchKey: "match-2026-05-10T22-11-50", DistanceSeconds: 1200},
 	}
 	if err := s.ApplyAmbiguity("scoreboard-2.png", cands); err != nil {
 		t.Fatalf("ApplyAmbiguity: %v", err)
@@ -913,7 +913,7 @@ func TestSQLStore_ApplyAmbiguity_EmptyCandsClearsRow(t *testing.T) {
 	s := openMemory(t)
 	if err := s.ApplyAmbiguity(
 		"a.png",
-		[]AmbiguousCandidate{{MatchKey: "match-foo", DistanceS: 60}},
+		[]AmbiguousCandidate{{MatchKey: "match-foo", DistanceSeconds: 60}},
 	); err != nil {
 		t.Fatalf("first apply: %v", err)
 	}
@@ -931,10 +931,10 @@ func TestSQLStore_ApplyAmbiguity_EmptyCandsClearsRow(t *testing.T) {
 
 func TestSQLStore_ApplyAmbiguity_ReplacesOnReapply(t *testing.T) {
 	s := openMemory(t)
-	first := []AmbiguousCandidate{{MatchKey: "match-a", DistanceS: 60}}
+	first := []AmbiguousCandidate{{MatchKey: "match-a", DistanceSeconds: 60}}
 	second := []AmbiguousCandidate{
-		{MatchKey: "match-b", DistanceS: 120},
-		{MatchKey: "match-c", DistanceS: 240},
+		{MatchKey: "match-b", DistanceSeconds: 120},
+		{MatchKey: "match-c", DistanceSeconds: 240},
 	}
 	if err := s.ApplyAmbiguity("a.png", first); err != nil {
 		t.Fatalf("first: %v", err)
@@ -954,13 +954,13 @@ func TestSQLStore_ApplyAmbiguity_ReplacesOnReapply(t *testing.T) {
 func TestSQLStore_LoadAll_PopulatesAmbiguousCandidates(t *testing.T) {
 	s := openMemory(t)
 	if err := s.ApplyAmbiguity("a.png", []AmbiguousCandidate{
-		{MatchKey: "match-a1", DistanceS: 60},
-		{MatchKey: "match-a2", DistanceS: 360},
+		{MatchKey: "match-a1", DistanceSeconds: 60},
+		{MatchKey: "match-a2", DistanceSeconds: 360},
 	}); err != nil {
 		t.Fatalf("apply a: %v", err)
 	}
 	if err := s.ApplyAmbiguity("b.png", []AmbiguousCandidate{
-		{MatchKey: "match-b1", DistanceS: 720},
+		{MatchKey: "match-b1", DistanceSeconds: 720},
 	}); err != nil {
 		t.Fatalf("apply b: %v", err)
 	}
@@ -1000,7 +1000,7 @@ func TestSQLStore_ResolveAmbiguous_UpdatesAllSiblingRows(t *testing.T) {
 		t.Fatalf("seed summary: %v", err)
 	}
 	if err := s.ApplyAmbiguity("sb.png", []AmbiguousCandidate{
-		{MatchKey: "match-foo", DistanceS: 720},
+		{MatchKey: "match-foo", DistanceSeconds: 720},
 	}); err != nil {
 		t.Fatalf("seed ambig: %v", err)
 	}

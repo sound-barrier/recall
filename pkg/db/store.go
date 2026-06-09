@@ -187,12 +187,12 @@ type ReviewState struct {
 }
 
 // QueueState is one row of match_queue. `QueueType` is the
-// CHECK-constrained enum ('role' | 'open'); `SetAt` is the server-
-// assigned timestamp captured when the user toggled the value (or
-// when a future parser update wrote it from a scoreboard parse).
+// CHECK-constrained enum ('role' | 'open'); `OverriddenAt` is the
+// server-assigned timestamp captured when the user toggled the value
+// (or when a future parser update wrote it from a scoreboard parse).
 type QueueState struct {
-	QueueType string
-	SetAt     string
+	QueueType    string
+	OverriddenAt string
 }
 
 // IgnoredRow is one row of ignored_screenshots — a filename the user
@@ -205,14 +205,14 @@ type IgnoredRow struct {
 }
 
 // PlayModeState is one row of match_play_mode. `PlayMode` is the
-// CHECK-constrained enum ('quickplay' | 'competitive'); `SetAt` is
-// the server-assigned timestamp captured when the user toggled the
+// CHECK-constrained enum ('quickplay' | 'competitive'); `OverriddenAt`
+// is the server-assigned timestamp captured when the user toggled the
 // value. Acts as an OVERRIDE — the aggregator prefers this when set,
 // otherwise falls back to summary_screenshots.mode + rank-row
 // presence.
 type PlayModeState struct {
-	PlayMode string
-	SetAt    string
+	PlayMode     string
+	OverriddenAt string
 }
 
 // Annotation is one row of match_annotations plus its joined-on child
@@ -383,8 +383,8 @@ type Screenshots struct {
 // `matchByEAD` finds an EAD signature match in the 5-30 min ambiguous
 // zone or multiple matches anywhere in the 0-30 min window.
 type AmbiguousCandidate struct {
-	MatchKey  string
-	DistanceS int
+	MatchKey        string
+	DistanceSeconds int
 }
 
 // SQLStore is the production Store, backed by *sql.DB. Methods are

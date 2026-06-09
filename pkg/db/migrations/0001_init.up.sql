@@ -2,6 +2,24 @@
 -- `-- statement-end`. The migration runner splits on that token and
 -- executes each piece via a single Exec call, so a syntax error
 -- points at exactly one statement.
+--
+-- Conventions baked into this schema:
+--
+--   - Identifiers are snake_case throughout (column names, index
+--     names, FK names). The HTTP surface mirrors this — REST path
+--     params + JSON keys are snake_case end-to-end; see
+--     `.claude/rules/database.md` + `.claude/rules/api-design.md`.
+--   - `screenshots_dir_id` FKs use `ON DELETE RESTRICT` to forbid
+--     deleting a `screenshots_dirs` row that any screenshot still
+--     references. The earlier `SET NULL` policy created
+--     orphan rows whose source files couldn't be resolved by
+--     `/_screenshot/<filename>`. Drop dependent rows first to free
+--     the dir; the app code currently has no code path that does
+--     so (the dir lives for the lifetime of the install).
+--   - Parent tables carry a composite `(match_key, parsed_at)`
+--     index. The leading `match_key` covers single-column
+--     queries; the trailing `parsed_at` removes the sort step in
+--     `aggregateAll`'s bulk load + group.
 
 CREATE TABLE IF NOT EXISTS screenshots_dirs (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -15,7 +33,8 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   filename      TEXT NOT NULL UNIQUE,
   match_key     TEXT NOT NULL,
   parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL,
+  -- references screenshots_dirs(id); RESTRICT prevents orphan rows
+  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   map           TEXT,
   mode          TEXT,
   hero          TEXT,
@@ -32,7 +51,7 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   perf_deaths_avg_per_10min  REAL    NOT NULL DEFAULT 0
 );
 -- statement-end
-CREATE INDEX IF NOT EXISTS idx_summary_match_key ON summary_screenshots(match_key);
+CREATE INDEX IF NOT EXISTS idx_summary_match_key_parsed_at ON summary_screenshots(match_key, parsed_at);
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS summary_heroes_played (
@@ -49,7 +68,8 @@ CREATE TABLE IF NOT EXISTS scoreboard_screenshots (
   filename      TEXT NOT NULL UNIQUE,
   match_key     TEXT NOT NULL,
   parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL,
+  -- references screenshots_dirs(id); RESTRICT prevents orphan rows
+  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   map           TEXT,
   mode          TEXT,
   hero          TEXT,
@@ -61,9 +81,9 @@ CREATE TABLE IF NOT EXISTS scoreboard_screenshots (
   mitigation    INTEGER NOT NULL DEFAULT 0
 );
 -- statement-end
-CREATE INDEX IF NOT EXISTS idx_scoreboard_match_key ON scoreboard_screenshots(match_key);
+CREATE INDEX IF NOT EXISTS idx_scoreboard_match_key_parsed_at ON scoreboard_screenshots(match_key, parsed_at);
 -- statement-end
-CREATE INDEX IF NOT EXISTS idx_scoreboard_ead       ON scoreboard_screenshots(eliminations, assists, deaths);
+CREATE INDEX IF NOT EXISTS idx_scoreboard_ead ON scoreboard_screenshots(eliminations, assists, deaths);
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS scoreboard_hero_stats (
@@ -80,11 +100,12 @@ CREATE TABLE IF NOT EXISTS personal_screenshots (
   filename      TEXT NOT NULL UNIQUE,
   match_key     TEXT NOT NULL,
   parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL,
+  -- references screenshots_dirs(id); RESTRICT prevents orphan rows
+  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   hero          TEXT
 );
 -- statement-end
-CREATE INDEX IF NOT EXISTS idx_personal_match_key ON personal_screenshots(match_key);
+CREATE INDEX IF NOT EXISTS idx_personal_match_key_parsed_at ON personal_screenshots(match_key, parsed_at);
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS personal_hero_stats (
@@ -101,7 +122,8 @@ CREATE TABLE IF NOT EXISTS rank_screenshots (
   filename        TEXT NOT NULL UNIQUE,
   match_key       TEXT NOT NULL,
   parsed_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL,
+  -- references screenshots_dirs(id); RESTRICT prevents orphan rows
+  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
   rank            TEXT,
   level           INTEGER NOT NULL DEFAULT 0,
   rank_progress   INTEGER NOT NULL DEFAULT 0,
@@ -109,7 +131,7 @@ CREATE TABLE IF NOT EXISTS rank_screenshots (
   result          TEXT
 );
 -- statement-end
-CREATE INDEX IF NOT EXISTS idx_rank_match_key ON rank_screenshots(match_key);
+CREATE INDEX IF NOT EXISTS idx_rank_match_key_parsed_at ON rank_screenshots(match_key, parsed_at);
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS rank_modifiers (
@@ -166,16 +188,17 @@ CREATE TABLE IF NOT EXISTS unknown_screenshots (
   filename    TEXT NOT NULL UNIQUE,
   match_key   TEXT NOT NULL,
   parsed_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE SET NULL
+  -- references screenshots_dirs(id); RESTRICT prevents orphan rows
+  screenshots_dir_id INTEGER REFERENCES screenshots_dirs(id) ON DELETE RESTRICT
 );
 -- statement-end
-CREATE INDEX IF NOT EXISTS idx_unknown_match_key ON unknown_screenshots(match_key);
+CREATE INDEX IF NOT EXISTS idx_unknown_match_key_parsed_at ON unknown_screenshots(match_key, parsed_at);
 -- statement-end
 
 CREATE TABLE IF NOT EXISTS ambiguous_candidates (
-  filename     TEXT NOT NULL,
-  match_key    TEXT NOT NULL,
-  distance_s   INTEGER NOT NULL,
+  filename         TEXT NOT NULL,
+  match_key        TEXT NOT NULL,
+  distance_seconds INTEGER NOT NULL,
   PRIMARY KEY (filename, match_key)
 );
 -- statement-end

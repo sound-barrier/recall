@@ -18,7 +18,7 @@ info:
       * Every JSON endpoint is mounted under the `/api/v1/` prefix —
         the version is bumped on breaking changes.
       * Resources are nouns; sub-resources hang off the parent
-        (`/matches/{matchKey}/visibility`, `/settings/tesseract`).
+        (`/matches/{match_key}/visibility`, `/settings/tesseract`).
       * Methods reflect intent: `GET` to read, `PUT` to replace/upsert,
         `DELETE` to clear or wipe, `POST` to start a server-side action
         that doesn't map to a single resource (the parse run).
@@ -155,7 +155,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/matches/{matchKey}:
+  /api/v1/matches/{match_key}:
     parameters:
       - $ref: "#/components/parameters/MatchKey"
     get:
@@ -208,7 +208,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/matches/{matchKey}/visibility:
+  /api/v1/matches/{match_key}/visibility:
     parameters:
       - $ref: "#/components/parameters/MatchKey"
     put:
@@ -246,7 +246,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/matches/{matchKey}/resolution:
+  /api/v1/matches/{match_key}/resolution:
     parameters:
       - $ref: "#/components/parameters/MatchKey"
     put:
@@ -264,8 +264,9 @@ paths:
         share one ambiguous `match_key`.
 
         This endpoint rewrites every parent row carrying the given
-        ambiguous key to `resolved_to`. `matchKey` must start with
-        `ambiguous-` (anything else returns 400). `resolved_to` must
+        ambiguous key to `resolved_to`. The path `match_key` must
+        start with `ambiguous-` (anything else returns 400).
+        `resolved_to` must
         either be one of the recorded candidates OR a freshly-minted
         `match-<...>` key (the "Treat as new match" escape hatch in
         the Unknown tab).
@@ -290,15 +291,17 @@ paths:
         "204":
           description: Resolution applied.
         "400":
-          $ref: "#/components/responses/BadRequest"
+          description: |
+            Invalid input — `match_key` doesn't start with
+            `ambiguous-`, `resolved_to` is not one of the recorded
+            candidates and isn't a freshly-minted `match-<...>` key,
+            or the request body fails JSON validation.
         "404":
           $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/matches/{matchKey}/annotation:
+  /api/v1/matches/{match_key}/annotation:
     parameters:
       - $ref: "#/components/parameters/MatchKey"
     put:
@@ -343,21 +346,20 @@ paths:
                 # value), so leaver: null lands as 204 — same outcome
                 # as leaver: "".
                 leaver:
-                  type: string
-                  enum: ["", self, team, enemy]
+                  $ref: "#/components/schemas/LeaverEnum"
                   description: |
                     One of the three leaver scenarios, or `""` to leave
                     untagged. Whole-row deletion happens only when *every*
                     field (leaver, note, replay_code, members, tags) is
                     empty.
                 note:
-                  type: [string, "null"]
+                  type: string
                   description: Free-text per-match commentary. `null` = empty.
                 replay_code:
-                  type: [string, "null"]
+                  type: string
                   description: Overwatch six-character replay ID. No format validation server-side. `null` = empty.
                 members:
-                  type: [array, "null"]
+                  type: array
                   description: |
                     BattleTags of group members for this match. The server
                     trims whitespace, drops empty strings, and deduplicates;
@@ -368,7 +370,7 @@ paths:
                     type: string
                     example: "Apollo#11234"
                 tags:
-                  type: [array, "null"]
+                  type: array
                   description: |
                     Free-form labels applied to the match. `stack`,
                     `stream`, and `placement` are the conventional
@@ -390,7 +392,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/matches/{matchKey}/review:
+  /api/v1/matches/{match_key}/review:
     parameters:
       - $ref: "#/components/parameters/MatchKey"
     put:
@@ -447,7 +449,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/matches/{matchKey}/queue:
+  /api/v1/matches/{match_key}/queue:
     parameters:
       - $ref: "#/components/parameters/MatchKey"
     put:
@@ -478,12 +480,7 @@ paths:
               required: [queue_type]
               properties:
                 queue_type:
-                  type: string
-                  enum: [role, open]
-                  description: |
-                    Queue format the match was played in. To revert to
-                    "queue not set", call DELETE on this path instead
-                    of PUTing an empty string.
+                  $ref: "#/components/schemas/QueueTypeEnum"
       responses:
         "204":
           description: Queue type updated.
@@ -507,7 +504,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /api/v1/matches/{matchKey}/play-mode:
+  /api/v1/matches/{match_key}/play-mode:
     parameters:
       - $ref: "#/components/parameters/MatchKey"
     put:
@@ -540,12 +537,7 @@ paths:
               required: [play_mode]
               properties:
                 play_mode:
-                  type: string
-                  enum: [quickplay, competitive]
-                  description: |
-                    Override play mode for this match. To revert to
-                    "follow the parser", call DELETE on this path
-                    instead of PUTing an empty string.
+                  $ref: "#/components/schemas/PlayModeEnum"
       responses:
         "204":
           description: Play-mode override updated.
@@ -606,12 +598,7 @@ paths:
                     (no-op); duplicates within the slice are tolerated
                     — the per-key upsert is idempotent.
                 queue_type:
-                  type: string
-                  enum: ["role", "open", ""]
-                  description: |
-                    The queue value to write to every listed match.
-                    Empty string clears the rows (bulk Clear). Other
-                    values outside the enum return 400.
+                  $ref: "#/components/schemas/QueueTypeBulkEnum"
       responses:
         "204":
           description: All listed matches' queue type updated.
@@ -655,11 +642,7 @@ paths:
                     (no-op); duplicates within the slice are
                     tolerated.
                 play_mode:
-                  type: string
-                  enum: ["quickplay", "competitive", ""]
-                  description: |
-                    The play-mode value to write to every listed
-                    match. Empty string clears the rows (bulk Clear).
+                  $ref: "#/components/schemas/PlayModeBulkEnum"
       responses:
         "204":
           description: All listed matches' play mode updated.
@@ -789,7 +772,7 @@ paths:
           Screenshot filename to suppress or un-suppress. URL-encoded
           (the filename can contain spaces and dashes from the
           Overwatch capture format).
-    post:
+    put:
       operationId: IgnoreScreenshot
       tags: [Pipeline]
       summary: Permanently ignore a screenshot
@@ -802,7 +785,8 @@ paths:
         on-disk file is **not** deleted.
 
         Idempotent: ignoring an already-ignored filename refreshes
-        the timestamp.
+        the timestamp. PUT (not POST) — the operation has no body
+        and re-issuing is a no-op past the timestamp refresh.
       responses:
         "204":
           description: Filename added to the ignore-list.
@@ -1307,7 +1291,7 @@ paths:
                   # short-circuits to a no-op (204). Individual `null`
                   # entries inside the array are still rejected (400);
                   # see derefStringArray in pkg/cmd/server.go.
-                  type: [array, "null"]
+                  type: array
                   items:
                     type: string
                 target_profile:
@@ -1396,7 +1380,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [checked, dev_build, available, latest, url, data, main]
+                required: [checked, dev_build, available, latest, url]
                 properties:
                   checked:
                     type: boolean
@@ -1673,6 +1657,7 @@ paths:
     get:
       operationId: GetScreenshotsFolderCandidateStats
       tags: [System]
+      x-internal: true
       summary: Per-source diagnostic stats for the picker grid
       description: |
         Walks the first-existing path of each candidate source and
@@ -1715,6 +1700,7 @@ paths:
     get:
       operationId: ProbeTesseractBinary
       tags: [System]
+      x-internal: true
       summary: Probe the OS for an installed Tesseract binary
       description: |
         Walks an ordered list of per-platform candidate paths
@@ -2033,17 +2019,71 @@ components:
   parameters:
     MatchKey:
       in: path
-      name: matchKey
+      name: match_key
       required: true
       schema:
         type: string
+        minLength: 1
       description: |
-        Match identity — same `match_key` exposed in `MatchRecord`.
-        URL-encoded because the value normally contains a colon
-        (e.g. `match-2026-05-10T22-21-11`).
-      example: "match%3A2026-05-10T22%3A21%3A11"
+        Match identity — same `match_key` value exposed in
+        `MatchRecord`. URL-safe: the canonical form replaces every
+        legacy colon separator with a dash, so no percent-encoding
+        is required for paste-in-URL use
+        (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+        and `ambiguous-<filename>` variants the embedded filename
+        still needs the usual encoding for spaces / unicode.
+      example: "match-2026-05-10T22-21-11"
 
   schemas:
+    LeaverEnum:
+      type: string
+      enum: ["", "self", "team", "enemy"]
+      description: |
+        Per-match leaver tag — who left the match.
+        - `self`: the user left (their data is incomplete).
+        - `team`: an ally left.
+        - `enemy`: an opponent left.
+        - `""` (empty string): no leaver tag set; functionally
+          identical to omitting the field. Sending the empty string
+          to the single-set endpoint is equivalent to a DELETE on
+          the field.
+
+    QueueTypeEnum:
+      type: string
+      enum: ["role", "open"]
+      description: |
+        Queue format the match was played in. The single-set
+        `PUT /matches/{match_key}/queue` endpoint only accepts
+        non-empty values; revert to "queue not set" via the matching
+        DELETE.
+
+    QueueTypeBulkEnum:
+      type: string
+      enum: ["role", "open", ""]
+      description: |
+        Same as `QueueTypeEnum` plus the empty-string sentinel for
+        the bulk endpoint. Empty string clears every listed match's
+        queue row (bulk Clear); the single-set DELETE doesn't apply
+        to multi-match writes, so the same effect rides through the
+        bulk endpoint via this enum value.
+
+    PlayModeEnum:
+      type: string
+      enum: ["quickplay", "competitive"]
+      description: |
+        Play-mode override for one match. The single-set
+        `PUT /matches/{match_key}/play-mode` endpoint only accepts
+        non-empty values; revert to "follow parser" via the matching
+        DELETE.
+
+    PlayModeBulkEnum:
+      type: string
+      enum: ["quickplay", "competitive", ""]
+      description: |
+        Same as `PlayModeEnum` plus the empty-string sentinel for the
+        bulk endpoint. Empty string clears every listed match's
+        play-mode override (bulk Clear).
+
     IgnoredScreenshot:
       type: object
       required: [filename, ignored_at]
@@ -2137,9 +2177,32 @@ components:
             it commits the path via PUT
             /api/v1/settings/screenshots-folder.
 
-    DataStatus:
+    RosterDiff:
       type: object
-      required: [applied_tag, has_update]
+      required: [has_update]
+      description: |
+        Shared base for the per-channel data-status types. Carries
+        the diff fields (added/removed × heroes/maps/sources) +
+        `has_update` so consumers don't have to repeat the same six
+        array fields across every channel. Concrete subtypes
+        (`DataStatus`, `MainStatus`) extend this with channel-
+        specific identifier fields via `allOf`.
+      properties:
+        has_update:
+          type: boolean
+          description: |
+            True when the channel's published version differs from
+            the version applied on disk. Always true when nothing
+            has been applied yet (no manifest entry for this
+            channel).
+        added_heroes: { type: array, items: { type: string } }
+        removed_heroes: { type: array, items: { type: string } }
+        added_maps: { type: array, items: { type: string } }
+        removed_maps: { type: array, items: { type: string } }
+        added_sources: { type: array, items: { type: string } }
+        removed_sources: { type: array, items: { type: string } }
+
+    DataStatus:
       description: |
         Comparison between the user's currently-loaded reference data
         and the latest published release. `applied_tag == ""` plus
@@ -2148,34 +2211,24 @@ components:
         Added/Removed lists are populated only when the rosters were
         successfully fetched (Available branch); empty for dev-build
         and up-to-date branches.
-      properties:
-        applied_tag:
-          type: string
-          description: |
-            Tag of the data files currently on disk, per
-            `<RECALL_DATA_DIR>/data/manifest.json`. Empty when no
-            apply has happened yet.
-          example: 1.4.2
-        applied_at:
-          type: string
-          format: date-time
-          description: RFC3339 timestamp of the last successful apply.
-        has_update:
-          type: boolean
-          description: |
-            True when the applied tag differs from the latest release
-            tag (always true when applied_tag is empty).
-          example: true
-        added_heroes: { type: array, items: { type: string } }
-        removed_heroes: { type: array, items: { type: string } }
-        added_maps: { type: array, items: { type: string } }
-        removed_maps: { type: array, items: { type: string } }
-        added_sources: { type: array, items: { type: string } }
-        removed_sources: { type: array, items: { type: string } }
+      allOf:
+        - $ref: "#/components/schemas/RosterDiff"
+        - type: object
+          required: [applied_tag]
+          properties:
+            applied_tag:
+              type: string
+              description: |
+                Tag of the data files currently on disk, per
+                `<RECALL_DATA_DIR>/data/manifest.json`. Empty when no
+                apply has happened yet.
+              example: 1.4.2
+            applied_at:
+              type: string
+              format: date-time
+              description: RFC3339 timestamp of the last successful apply.
 
     MainStatus:
-      type: object
-      required: [commit_sha, applied_commit, has_update]
       description: |
         Comparison between the user's currently-loaded reference data
         and the live from-main channel published at
@@ -2183,40 +2236,38 @@ components:
         the 7-char short SHA from Pages-published `data/version.json`;
         empty means the Pages fetch failed (FE hides the Main row).
         `applied_commit` is empty when the user has never synced from
-        main (the manifest carries no AppliedMainCommit). HasUpdate is
-        true when commit_sha != applied_commit OR the manifest's
-        AppliedSource isn't "main".
-      properties:
-        commit_sha:
-          type: string
-          description: |
-            7-char short SHA of the currently-published main commit.
-            Empty means the from-main channel was unreachable.
-          example: abc1234
-        committed_at:
-          type: string
-          format: date-time
-          description: |
-            ISO 8601 committer date from the Pages-published
-            version.json — surfaced as "Applied main @ abc1234 ·
-            2 days ago" in the modal.
-        applied_commit:
-          type: string
-          description: |
-            7-char short SHA from the manifest's AppliedMainCommit.
-            Empty when the user has never synced from main.
-        applied_at:
-          type: string
-          format: date-time
-          description: RFC3339 timestamp of the last successful main apply.
-        has_update:
-          type: boolean
-        added_heroes: { type: array, items: { type: string } }
-        removed_heroes: { type: array, items: { type: string } }
-        added_maps: { type: array, items: { type: string } }
-        removed_maps: { type: array, items: { type: string } }
-        added_sources: { type: array, items: { type: string } }
-        removed_sources: { type: array, items: { type: string } }
+        main (the manifest carries no AppliedMainCommit). has_update
+        is true when commit_sha != applied_commit OR the manifest's
+        applied_source isn't "main".
+      allOf:
+        - $ref: "#/components/schemas/RosterDiff"
+        - type: object
+          required: [commit_sha, applied_commit]
+          properties:
+            commit_sha:
+              type: string
+              description: |
+                7-char short SHA of the currently-published main
+                commit. Empty means the from-main channel was
+                unreachable.
+              example: abc1234
+            committed_at:
+              type: string
+              format: date-time
+              description: |
+                ISO 8601 committer date from the Pages-published
+                version.json — surfaced as "Applied main @ abc1234 ·
+                2 days ago" in the modal.
+            applied_commit:
+              type: string
+              description: |
+                7-char short SHA from the manifest's
+                applied_main_commit field. Empty when the user has
+                never synced from main.
+            applied_at:
+              type: string
+              format: date-time
+              description: RFC3339 timestamp of the last successful main apply.
 
     DataUpdateResult:
       type: object
@@ -2303,16 +2354,16 @@ components:
           # build (or a hand-edited payload) imports cleanly even if
           # its timestamp shape isn't strictly RFC 3339. `null` is
           # also accepted (= unknown export time).
-          type: [string, "null"]
+          type: string
         recall_version:
           # Optional metadata — `null` = unknown source version,
           # equivalent to omitting the field.
-          type: [string, "null"]
+          type: string
           example: 0.1.4
         screenshots_dirs:
           # `null` is treated as an empty map — semantically equivalent
           # to `{}`. ImportData iterates a nil map without effect.
-          type: [object, "null"]
+          type: object
           additionalProperties:
             type: string
           description: source-side `id` (stringified) → screenshots folder path
@@ -2323,11 +2374,170 @@ components:
         # individual `null` entries inside the array (each row must
         # carry a non-empty filename); see ImportData's loop in
         # pkg/app/export.go.
-        summaries:    { type: [array, "null"], items: { type: object } }
-        scoreboards:  { type: [array, "null"], items: { type: object } }
-        personals:    { type: [array, "null"], items: { type: object } }
-        ranks:        { type: [array, "null"], items: { type: object } }
-        unknowns:     { type: [array, "null"], items: { type: object } }
+        summaries:
+          type: array
+          items:
+            $ref: "#/components/schemas/SummaryExportRow"
+        scoreboards:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoreboardExportRow"
+        personals:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonalExportRow"
+        ranks:
+          type: array
+          items:
+            $ref: "#/components/schemas/RankExportRow"
+        unknowns:
+          type: array
+          items:
+            $ref: "#/components/schemas/UnknownExportRow"
+
+    SummaryExportRow:
+      type: object
+      additionalProperties: true
+      required: [filename, match_key]
+      description: |
+        One row of `summary_screenshots` plus its `summary_heroes_played`
+        child rows. Mirrors `pkg/db/store.go::SummaryRow`. Import-side
+        is permissive (extra keys ignored); export-side emits every
+        listed field.
+      properties:
+        filename:        { type: string }
+        match_key:       { type: string }
+        parsed_at:       { type: string }
+        screenshots_dir_id: { type: integer, description: "0 = NULL (dir unset at parse time)" }
+        map:             { type: string }
+        map_raw:         { type: string, description: "Raw OCR text when the canonical map lookup failed." }
+        mode:            { type: string }
+        hero:            { type: string }
+        hero_raw:        { type: string }
+        result:          { type: string }
+        final_score:     { type: string }
+        date:            { type: string }
+        finished_at:     { type: string }
+        game_length:     { type: string }
+        perf_elim_total:               { type: integer }
+        perf_elim_avg_per_10min:       { type: number }
+        perf_assists_total:            { type: integer }
+        perf_assists_avg_per_10min:    { type: number }
+        perf_deaths_total:             { type: integer }
+        perf_deaths_avg_per_10min:     { type: number }
+        heroes_played:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            properties:
+              hero:           { type: string }
+              percent_played: { type: integer }
+              play_time:      { type: string }
+
+    ScoreboardExportRow:
+      type: object
+      additionalProperties: true
+      required: [filename, match_key]
+      description: |
+        One row of `scoreboard_screenshots` plus its
+        `scoreboard_hero_stats` child rows. Mirrors
+        `pkg/db/store.go::ScoreboardRow`.
+      properties:
+        filename:        { type: string }
+        match_key:       { type: string }
+        parsed_at:       { type: string }
+        screenshots_dir_id: { type: integer }
+        map:             { type: string }
+        map_raw:         { type: string }
+        mode:            { type: string }
+        hero:            { type: string }
+        hero_raw:        { type: string }
+        eliminations:    { type: integer }
+        assists:         { type: integer }
+        deaths:          { type: integer }
+        damage:          { type: integer }
+        healing:         { type: integer }
+        mitigation:      { type: integer }
+        hero_stats:
+          type: array
+          items:
+            $ref: "#/components/schemas/HeroStatExportRow"
+
+    PersonalExportRow:
+      type: object
+      additionalProperties: true
+      required: [filename, match_key]
+      description: |
+        One row of `personal_screenshots` plus its `personal_hero_stats`
+        child rows. Mirrors `pkg/db/store.go::PersonalRow`.
+      properties:
+        filename:        { type: string }
+        match_key:       { type: string }
+        parsed_at:       { type: string }
+        screenshots_dir_id: { type: integer }
+        hero:            { type: string }
+        hero_raw:        { type: string }
+        hero_stats:
+          type: array
+          items:
+            $ref: "#/components/schemas/HeroStatExportRow"
+
+    RankExportRow:
+      type: object
+      additionalProperties: true
+      required: [filename, match_key]
+      description: |
+        One row of `rank_screenshots` plus its `rank_modifiers` +
+        `rank_sr` child rows. Mirrors `pkg/db/store.go::RankRow`.
+      properties:
+        filename:        { type: string }
+        match_key:       { type: string }
+        parsed_at:       { type: string }
+        screenshots_dir_id: { type: integer }
+        rank:            { type: string }
+        level:           { type: integer }
+        rank_progress:   { type: integer }
+        change_percent:  { type: integer }
+        result:          { type: string }
+        modifiers:
+          type: array
+          items: { type: string }
+        sr:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            properties:
+              hero:   { type: string }
+              sr:     { type: integer }
+              change: { type: integer }
+
+    UnknownExportRow:
+      type: object
+      additionalProperties: true
+      required: [filename, match_key]
+      description: |
+        One row of `unknown_screenshots`. Mirrors
+        `pkg/db/store.go::UnknownRow`. No domain columns — kept so
+        parse runs never drop a screenshot on the floor.
+      properties:
+        filename:        { type: string }
+        match_key:       { type: string }
+        parsed_at:       { type: string }
+        screenshots_dir_id: { type: integer }
+
+    HeroStatExportRow:
+      type: object
+      additionalProperties: true
+      required: [hero, stat_key, stat_value]
+      description: |
+        One `(hero, stat_key, stat_value)` row from
+        `scoreboard_hero_stats` or `personal_hero_stats`.
+      properties:
+        hero:       { type: string }
+        stat_key:   { type: string }
+        stat_value: { type: integer }
 
     MatchRecord:
       type: object
@@ -2413,7 +2623,7 @@ components:
           type: boolean
           description: |
             True iff the user soft-deleted this match via
-            `PUT /api/v1/matches/{matchKey}/visibility`. Omitted (or
+            `PUT /api/v1/matches/{match_key}/visibility`. Omitted (or
             false) for normal records. The per-screenshot parent rows
             are untouched — only the aggregator hides the surface.
         reviewed_by:
@@ -2423,7 +2633,7 @@ components:
             Who reviewed this match's VOD: `self` (the user) or
             `coach` (a coach). Omitted entirely when the match has
             not been reviewed (the implicit third state). Set via
-            `PUT /api/v1/matches/{matchKey}/review`, cleared via
+            `PUT /api/v1/matches/{match_key}/review`, cleared via
             `DELETE` on the same path.
         reviewed_at:
           type: string
@@ -2433,17 +2643,17 @@ components:
             upsert. Drives the dossier's "days since last review"
             widget. Omitted when the match is unreviewed.
         queue_type:
-          type: string
-          enum: [role, open]
+          allOf:
+            - $ref: "#/components/schemas/QueueTypeEnum"
           description: |
             Queue format the match was played in: `role` (5v5 role
             queue) or `open` (6v6 open queue). Omitted entirely when
             the queue hasn't been set (the implicit third state). Set
-            via `PUT /api/v1/matches/{matchKey}/queue`, cleared via
+            via `PUT /api/v1/matches/{match_key}/queue`, cleared via
             `DELETE` on the same path.
         play_mode:
-          type: string
-          enum: [quickplay, competitive]
+          allOf:
+            - $ref: "#/components/schemas/PlayModeEnum"
           description: |
             Match's play mode: `quickplay` (casual) or `competitive`
             (ranked). Set ONLY from the `match_play_mode` user-
@@ -2509,19 +2719,19 @@ components:
 
     MatchAnnotation:
       type: object
+      required: [leaver, note, replay_code, members, tags]
       description: |
-        User-curated per-match metadata. Up to five optional fields —
-        every field is independent, but the row only exists if at
-        least one carries content. Omitted from `MatchRecord` when
+        User-curated per-match metadata. Five always-present fields —
+        each may carry an empty value (empty string, empty array)
+        when the user hasn't set it. The row only exists in the
+        database if at least one field carries content; absence of
+        the row is signalled by a 404 on
+        `GET /api/v1/matches/{match_key}/annotation`, not by missing
+        fields in a 200 response. Omitted from `MatchRecord` when
         the match is unannotated.
       properties:
         leaver:
-          type: string
-          enum: ["", self, team, enemy]
-          description: |
-            Which leaver scenario the user tagged this match with, or
-            `""` if no leaver tag is set. `self` = user left (data
-            incomplete); `team` = ally left; `enemy` = opponent left.
+          $ref: "#/components/schemas/LeaverEnum"
         note:
           type: string
           description: Free-text per-match commentary.
@@ -2702,7 +2912,10 @@ components:
           type: array
           items:
             type: string
-          description: Sorted list of every known profile name.
+          description: |
+            Every known profile name, sorted alphabetically (the
+            order matches `slices.Sort` on the slice the
+            `*Profiles.List` method returns).
           example: ["alt", "main"]
 
     TesseractStatus:

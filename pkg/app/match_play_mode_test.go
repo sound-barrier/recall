@@ -121,8 +121,8 @@ func TestAttachPlayModes_UsesOverrideOnly(t *testing.T) {
 	// Pure-override semantics: only the aux-table value surfaces.
 	// Parser-written data.mode does NOT shadow an absent override.
 	overrides := map[string]db.PlayModeState{
-		"k1": {PlayMode: "quickplay", SetAt: "2026-06-01T10:00:00Z"},
-		"k3": {PlayMode: "competitive", SetAt: "2026-06-02T10:00:00Z"},
+		"k1": {PlayMode: "quickplay", OverriddenAt: "2026-06-01T10:00:00Z"},
+		"k3": {PlayMode: "competitive", OverriddenAt: "2026-06-02T10:00:00Z"},
 	}
 	recs := []MatchRecord{
 		{MatchKey: "k1", Data: parser.MatchResult{Mode: "competitive"}},

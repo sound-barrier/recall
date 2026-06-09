@@ -11,7 +11,7 @@ import (
 
 // Handler-level coverage for the suppress-list routes.
 //
-//   - POST   /api/v1/screenshots/{filename}/ignore  → 204; row in set
+//   - PUT    /api/v1/screenshots/{filename}/ignore  → 204; row in set
 //   - DELETE /api/v1/screenshots/{filename}/ignore  → 204; idempotent
 //   - GET    /api/v1/screenshots/ignored            → 200; sorted list
 //
@@ -20,7 +20,7 @@ import (
 func TestPostScreenshotsIgnore_AddsAndReturns204(t *testing.T) {
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
-	rec := fire(t, mux, http.MethodPost, "/api/v1/screenshots/foo.png/ignore", nil)
+	rec := fire(t, mux, http.MethodPut, "/api/v1/screenshots/foo.png/ignore", nil)
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204", rec.Code)
 	}
@@ -35,7 +35,7 @@ func TestPostScreenshotsIgnore_URLEncodedFilename(t *testing.T) {
 	// path-unescape branch handles them.
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
-	rec := fire(t, mux, http.MethodPost,
+	rec := fire(t, mux, http.MethodPut,
 		"/api/v1/screenshots/Overwatch%202026.05.10%20-%2021.29.28.01_summary.png/ignore", nil)
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204", rec.Code)
@@ -57,7 +57,7 @@ func TestPostScreenshotsIgnore_FilenameWithLiteralPercent(t *testing.T) {
 	// filename. Schema regex `^[^/\\\x00]{1,200}$` admits `%`.
 	fs := dbtest.New()
 	_, mux := newTestApp(t, fs)
-	rec := fire(t, mux, http.MethodPost,
+	rec := fire(t, mux, http.MethodPut,
 		"/api/v1/screenshots/odd-%251file.png/ignore", nil)
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204; body = %q", rec.Code, rec.Body.String())
@@ -180,7 +180,7 @@ func TestPostScreenshotsIgnore_RejectsPathSeparators(t *testing.T) {
 		"foo%00bar.png",       // NUL byte
 		"%2E%2E%2Fpasswd.png", // ../passwd via %2E + %2F
 	} {
-		rec := fire(t, mux, http.MethodPost, "/api/v1/screenshots/"+encoded+"/ignore", nil)
+		rec := fire(t, mux, http.MethodPut, "/api/v1/screenshots/"+encoded+"/ignore", nil)
 		if rec.Code != http.StatusBadRequest {
 			t.Errorf("encoded=%q: status = %d, want 400 (schema-violating filename must reject)", encoded, rec.Code)
 		}

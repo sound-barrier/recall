@@ -52,18 +52,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/matches/{matchKey}": {
+    "/api/v1/matches/{match_key}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -101,18 +105,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/matches/{matchKey}/visibility": {
+    "/api/v1/matches/{match_key}/visibility": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -139,18 +147,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/matches/{matchKey}/resolution": {
+    "/api/v1/matches/{match_key}/resolution": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -167,8 +179,9 @@ export interface paths {
          *     share one ambiguous `match_key`.
          *
          *     This endpoint rewrites every parent row carrying the given
-         *     ambiguous key to `resolved_to`. `matchKey` must start with
-         *     `ambiguous-` (anything else returns 400). `resolved_to` must
+         *     ambiguous key to `resolved_to`. The path `match_key` must
+         *     start with `ambiguous-` (anything else returns 400).
+         *     `resolved_to` must
          *     either be one of the recorded candidates OR a freshly-minted
          *     `match-<...>` key (the "Treat as new match" escape hatch in
          *     the Unknown tab).
@@ -184,18 +197,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/matches/{matchKey}/annotation": {
+    "/api/v1/matches/{match_key}/annotation": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -231,18 +248,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/matches/{matchKey}/review": {
+    "/api/v1/matches/{match_key}/review": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -275,18 +296,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/matches/{matchKey}/queue": {
+    "/api/v1/matches/{match_key}/queue": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -322,18 +347,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/matches/{matchKey}/play-mode": {
+    "/api/v1/matches/{match_key}/play-mode": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -545,7 +574,6 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
         /**
          * Permanently ignore a screenshot
          * @description Adds `filename` to the suppress-list backing the Unknown
@@ -556,9 +584,11 @@ export interface paths {
          *     on-disk file is **not** deleted.
          *
          *     Idempotent: ignoring an already-ignored filename refreshes
-         *     the timestamp.
+         *     the timestamp. PUT (not POST) — the operation has no body
+         *     and re-issuing is a no-op past the timestamp refresh.
          */
-        post: operations["IgnoreScreenshot"];
+        put: operations["IgnoreScreenshot"];
+        post?: never;
         /**
          * Remove a screenshot from the ignore-list
          * @description Removes `filename` from the suppress-list so the next parse
@@ -1357,6 +1387,50 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Per-match leaver tag — who left the match.
+         *     - `self`: the user left (their data is incomplete).
+         *     - `team`: an ally left.
+         *     - `enemy`: an opponent left.
+         *     - `""` (empty string): no leaver tag set; functionally
+         *       identical to omitting the field. Sending the empty string
+         *       to the single-set endpoint is equivalent to a DELETE on
+         *       the field.
+         * @enum {string}
+         */
+        LeaverEnum: "" | "self" | "team" | "enemy";
+        /**
+         * @description Queue format the match was played in. The single-set
+         *     `PUT /matches/{match_key}/queue` endpoint only accepts
+         *     non-empty values; revert to "queue not set" via the matching
+         *     DELETE.
+         * @enum {string}
+         */
+        QueueTypeEnum: "role" | "open";
+        /**
+         * @description Same as `QueueTypeEnum` plus the empty-string sentinel for
+         *     the bulk endpoint. Empty string clears every listed match's
+         *     queue row (bulk Clear); the single-set DELETE doesn't apply
+         *     to multi-match writes, so the same effect rides through the
+         *     bulk endpoint via this enum value.
+         * @enum {string}
+         */
+        QueueTypeBulkEnum: "role" | "open" | "";
+        /**
+         * @description Play-mode override for one match. The single-set
+         *     `PUT /matches/{match_key}/play-mode` endpoint only accepts
+         *     non-empty values; revert to "follow parser" via the matching
+         *     DELETE.
+         * @enum {string}
+         */
+        PlayModeEnum: "quickplay" | "competitive";
+        /**
+         * @description Same as `PlayModeEnum` plus the empty-string sentinel for the
+         *     bulk endpoint. Empty string clears every listed match's
+         *     play-mode override (bulk Clear).
+         * @enum {string}
+         */
+        PlayModeBulkEnum: "quickplay" | "competitive" | "";
         IgnoredScreenshot: {
             /**
              * @description Filename the suppress-list keys on. Same shape as the
@@ -1436,6 +1510,29 @@ export interface components {
             exists: boolean;
         };
         /**
+         * @description Shared base for the per-channel data-status types. Carries
+         *     the diff fields (added/removed × heroes/maps/sources) +
+         *     `has_update` so consumers don't have to repeat the same six
+         *     array fields across every channel. Concrete subtypes
+         *     (`DataStatus`, `MainStatus`) extend this with channel-
+         *     specific identifier fields via `allOf`.
+         */
+        RosterDiff: {
+            /**
+             * @description True when the channel's published version differs from
+             *     the version applied on disk. Always true when nothing
+             *     has been applied yet (no manifest entry for this
+             *     channel).
+             */
+            has_update: boolean;
+            added_heroes?: string[];
+            removed_heroes?: string[];
+            added_maps?: string[];
+            removed_maps?: string[];
+            added_sources?: string[];
+            removed_sources?: string[];
+        };
+        /**
          * @description Comparison between the user's currently-loaded reference data
          *     and the latest published release. `applied_tag == ""` plus
          *     `has_update == true` means the install is running on the
@@ -1444,7 +1541,7 @@ export interface components {
          *     successfully fetched (Available branch); empty for dev-build
          *     and up-to-date branches.
          */
-        DataStatus: {
+        DataStatus: components["schemas"]["RosterDiff"] & {
             /**
              * @description Tag of the data files currently on disk, per
              *     `<RECALL_DATA_DIR>/data/manifest.json`. Empty when no
@@ -1457,18 +1554,6 @@ export interface components {
              * @description RFC3339 timestamp of the last successful apply.
              */
             applied_at?: string;
-            /**
-             * @description True when the applied tag differs from the latest release
-             *     tag (always true when applied_tag is empty).
-             * @example true
-             */
-            has_update: boolean;
-            added_heroes?: string[];
-            removed_heroes?: string[];
-            added_maps?: string[];
-            removed_maps?: string[];
-            added_sources?: string[];
-            removed_sources?: string[];
         };
         /**
          * @description Comparison between the user's currently-loaded reference data
@@ -1477,14 +1562,15 @@ export interface components {
          *     the 7-char short SHA from Pages-published `data/version.json`;
          *     empty means the Pages fetch failed (FE hides the Main row).
          *     `applied_commit` is empty when the user has never synced from
-         *     main (the manifest carries no AppliedMainCommit). HasUpdate is
-         *     true when commit_sha != applied_commit OR the manifest's
-         *     AppliedSource isn't "main".
+         *     main (the manifest carries no AppliedMainCommit). has_update
+         *     is true when commit_sha != applied_commit OR the manifest's
+         *     applied_source isn't "main".
          */
-        MainStatus: {
+        MainStatus: components["schemas"]["RosterDiff"] & {
             /**
-             * @description 7-char short SHA of the currently-published main commit.
-             *     Empty means the from-main channel was unreachable.
+             * @description 7-char short SHA of the currently-published main
+             *     commit. Empty means the from-main channel was
+             *     unreachable.
              * @example abc1234
              */
             commit_sha: string;
@@ -1496,8 +1582,9 @@ export interface components {
              */
             committed_at?: string;
             /**
-             * @description 7-char short SHA from the manifest's AppliedMainCommit.
-             *     Empty when the user has never synced from main.
+             * @description 7-char short SHA from the manifest's
+             *     applied_main_commit field. Empty when the user has
+             *     never synced from main.
              */
             applied_commit: string;
             /**
@@ -1505,13 +1592,6 @@ export interface components {
              * @description RFC3339 timestamp of the last successful main apply.
              */
             applied_at?: string;
-            has_update: boolean;
-            added_heroes?: string[];
-            removed_heroes?: string[];
-            added_maps?: string[];
-            removed_maps?: string[];
-            added_sources?: string[];
-            removed_sources?: string[];
         };
         /**
          * @description Returned by POST /api/v1/system/data-update on success. Lists
@@ -1581,9 +1661,9 @@ export interface components {
              * @example recall-export/v1
              */
             schema: string;
-            exported_at?: string | null;
+            exported_at?: string;
             /** @example 0.1.4 */
-            recall_version?: string | null;
+            recall_version?: string;
             /**
              * @description source-side `id` (stringified) → screenshots folder path
              * @example {
@@ -1592,12 +1672,140 @@ export interface components {
              */
             screenshots_dirs?: {
                 [key: string]: string;
-            } | null;
-            summaries?: Record<string, never>[] | null;
-            scoreboards?: Record<string, never>[] | null;
-            personals?: Record<string, never>[] | null;
-            ranks?: Record<string, never>[] | null;
-            unknowns?: Record<string, never>[] | null;
+            };
+            summaries?: components["schemas"]["SummaryExportRow"][];
+            scoreboards?: components["schemas"]["ScoreboardExportRow"][];
+            personals?: components["schemas"]["PersonalExportRow"][];
+            ranks?: components["schemas"]["RankExportRow"][];
+            unknowns?: components["schemas"]["UnknownExportRow"][];
+        };
+        /**
+         * @description One row of `summary_screenshots` plus its `summary_heroes_played`
+         *     child rows. Mirrors `pkg/db/store.go::SummaryRow`. Import-side
+         *     is permissive (extra keys ignored); export-side emits every
+         *     listed field.
+         */
+        SummaryExportRow: {
+            filename: string;
+            match_key: string;
+            parsed_at?: string;
+            /** @description 0 = NULL (dir unset at parse time) */
+            screenshots_dir_id?: number;
+            map?: string;
+            /** @description Raw OCR text when the canonical map lookup failed. */
+            map_raw?: string;
+            mode?: string;
+            hero?: string;
+            hero_raw?: string;
+            result?: string;
+            final_score?: string;
+            date?: string;
+            finished_at?: string;
+            game_length?: string;
+            perf_elim_total?: number;
+            perf_elim_avg_per_10min?: number;
+            perf_assists_total?: number;
+            perf_assists_avg_per_10min?: number;
+            perf_deaths_total?: number;
+            perf_deaths_avg_per_10min?: number;
+            heroes_played?: ({
+                hero?: string;
+                percent_played?: number;
+                play_time?: string;
+            } & {
+                [key: string]: unknown;
+            })[];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description One row of `scoreboard_screenshots` plus its
+         *     `scoreboard_hero_stats` child rows. Mirrors
+         *     `pkg/db/store.go::ScoreboardRow`.
+         */
+        ScoreboardExportRow: {
+            filename: string;
+            match_key: string;
+            parsed_at?: string;
+            screenshots_dir_id?: number;
+            map?: string;
+            map_raw?: string;
+            mode?: string;
+            hero?: string;
+            hero_raw?: string;
+            eliminations?: number;
+            assists?: number;
+            deaths?: number;
+            damage?: number;
+            healing?: number;
+            mitigation?: number;
+            hero_stats?: components["schemas"]["HeroStatExportRow"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description One row of `personal_screenshots` plus its `personal_hero_stats`
+         *     child rows. Mirrors `pkg/db/store.go::PersonalRow`.
+         */
+        PersonalExportRow: {
+            filename: string;
+            match_key: string;
+            parsed_at?: string;
+            screenshots_dir_id?: number;
+            hero?: string;
+            hero_raw?: string;
+            hero_stats?: components["schemas"]["HeroStatExportRow"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description One row of `rank_screenshots` plus its `rank_modifiers` +
+         *     `rank_sr` child rows. Mirrors `pkg/db/store.go::RankRow`.
+         */
+        RankExportRow: {
+            filename: string;
+            match_key: string;
+            parsed_at?: string;
+            screenshots_dir_id?: number;
+            rank?: string;
+            level?: number;
+            rank_progress?: number;
+            change_percent?: number;
+            result?: string;
+            modifiers?: string[];
+            sr?: ({
+                hero?: string;
+                sr?: number;
+                change?: number;
+            } & {
+                [key: string]: unknown;
+            })[];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description One row of `unknown_screenshots`. Mirrors
+         *     `pkg/db/store.go::UnknownRow`. No domain columns — kept so
+         *     parse runs never drop a screenshot on the floor.
+         */
+        UnknownExportRow: {
+            filename: string;
+            match_key: string;
+            parsed_at?: string;
+            screenshots_dir_id?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * @description One `(hero, stat_key, stat_value)` row from
+         *     `scoreboard_hero_stats` or `personal_hero_stats`.
+         */
+        HeroStatExportRow: {
+            hero: string;
+            stat_key: string;
+            stat_value: number;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * @description One match — assembled by JOINing the per-screenshot-type rows
@@ -1678,7 +1886,7 @@ export interface components {
             annotation?: components["schemas"]["MatchAnnotation"];
             /**
              * @description True iff the user soft-deleted this match via
-             *     `PUT /api/v1/matches/{matchKey}/visibility`. Omitted (or
+             *     `PUT /api/v1/matches/{match_key}/visibility`. Omitted (or
              *     false) for normal records. The per-screenshot parent rows
              *     are untouched — only the aggregator hides the surface.
              */
@@ -1687,7 +1895,7 @@ export interface components {
              * @description Who reviewed this match's VOD: `self` (the user) or
              *     `coach` (a coach). Omitted entirely when the match has
              *     not been reviewed (the implicit third state). Set via
-             *     `PUT /api/v1/matches/{matchKey}/review`, cleared via
+             *     `PUT /api/v1/matches/{match_key}/review`, cleared via
              *     `DELETE` on the same path.
              * @enum {string}
              */
@@ -1703,11 +1911,10 @@ export interface components {
              * @description Queue format the match was played in: `role` (5v5 role
              *     queue) or `open` (6v6 open queue). Omitted entirely when
              *     the queue hasn't been set (the implicit third state). Set
-             *     via `PUT /api/v1/matches/{matchKey}/queue`, cleared via
+             *     via `PUT /api/v1/matches/{match_key}/queue`, cleared via
              *     `DELETE` on the same path.
-             * @enum {string}
              */
-            queue_type?: "role" | "open";
+            queue_type?: components["schemas"]["QueueTypeEnum"];
             /**
              * @description Match's play mode: `quickplay` (casual) or `competitive`
              *     (ranked). Set ONLY from the `match_play_mode` user-
@@ -1716,9 +1923,8 @@ export interface components {
              *     default to "Not set" until the user explicitly toggles
              *     via the right-panel radiogroup; omitted from JSON when
              *     no override row exists.
-             * @enum {string}
              */
-            play_mode?: "quickplay" | "competitive";
+            play_mode?: components["schemas"]["PlayModeEnum"];
             /**
              * @description True iff the resolver couldn't pin this screenshot to a
              *     single match (EAD signature match in the 5-30 min
@@ -1772,31 +1978,29 @@ export interface components {
             representative_dir_id?: number;
         };
         /**
-         * @description User-curated per-match metadata. Up to five optional fields —
-         *     every field is independent, but the row only exists if at
-         *     least one carries content. Omitted from `MatchRecord` when
+         * @description User-curated per-match metadata. Five always-present fields —
+         *     each may carry an empty value (empty string, empty array)
+         *     when the user hasn't set it. The row only exists in the
+         *     database if at least one field carries content; absence of
+         *     the row is signalled by a 404 on
+         *     `GET /api/v1/matches/{match_key}/annotation`, not by missing
+         *     fields in a 200 response. Omitted from `MatchRecord` when
          *     the match is unannotated.
          */
         MatchAnnotation: {
-            /**
-             * @description Which leaver scenario the user tagged this match with, or
-             *     `""` if no leaver tag is set. `self` = user left (data
-             *     incomplete); `team` = ally left; `enemy` = opponent left.
-             * @enum {string}
-             */
-            leaver?: "" | "self" | "team" | "enemy";
+            leaver: components["schemas"]["LeaverEnum"];
             /** @description Free-text per-match commentary. */
-            note?: string;
+            note: string;
             /** @description Overwatch six-character replay ID. Stored verbatim. */
-            replay_code?: string;
+            replay_code: string;
             /** @description BattleTags of group members for this match. */
-            members?: string[];
+            members: string[];
             /**
              * @description Free-form match labels (lowercase, deduped). `stack`,
              *     `stream`, `placement` are the conventional three; users
              *     can add anything. Drives the FilterRail "Tags" filter.
              */
-            tags?: string[];
+            tags: string[];
             /**
              * Format: date-time
              * @description Server-set timestamp of when the annotation was last upserted.
@@ -1928,7 +2132,9 @@ export interface components {
              */
             active: string;
             /**
-             * @description Sorted list of every known profile name.
+             * @description Every known profile name, sorted alphabetically (the
+             *     order matches `slices.Sort` on the slice the
+             *     `*Profiles.List` method returns).
              * @example [
              *       "alt",
              *       "main"
@@ -2010,10 +2216,14 @@ export interface components {
     };
     parameters: {
         /**
-         * @description Match identity — same `match_key` exposed in `MatchRecord`.
-         *     URL-encoded because the value normally contains a colon
-         *     (e.g. `match-2026-05-10T22-21-11`).
-         * @example match%3A2026-05-10T22%3A21%3A11
+         * @description Match identity — same `match_key` value exposed in
+         *     `MatchRecord`. URL-safe: the canonical form replaces every
+         *     legacy colon separator with a dash, so no percent-encoding
+         *     is required for paste-in-URL use
+         *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+         *     and `ambiguous-<filename>` variants the embedded filename
+         *     still needs the usual encoding for spaces / unicode.
+         * @example match-2026-05-10T22-21-11
          */
         MatchKey: string;
     };
@@ -2087,12 +2297,16 @@ export interface operations {
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -2124,12 +2338,16 @@ export interface operations {
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -2152,12 +2370,16 @@ export interface operations {
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -2187,12 +2409,16 @@ export interface operations {
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -2216,9 +2442,19 @@ export interface operations {
                 };
                 content?: never;
             };
-            400: components["responses"]["BadRequest"];
+            /**
+             * @description Invalid input — `match_key` doesn't start with
+             *     `ambiguous-`, `resolved_to` is not one of the recorded
+             *     candidates and isn't a freshly-minted `match-<...>` key,
+             *     or the request body fails JSON validation.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             500: components["responses"]["InternalError"];
         };
     };
@@ -2228,12 +2464,16 @@ export interface operations {
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -2245,13 +2485,12 @@ export interface operations {
                      *     untagged. Whole-row deletion happens only when *every*
                      *     field (leaver, note, replay_code, members, tags) is
                      *     empty.
-                     * @enum {string}
                      */
-                    leaver?: "" | "self" | "team" | "enemy";
+                    leaver?: components["schemas"]["LeaverEnum"];
                     /** @description Free-text per-match commentary. `null` = empty. */
-                    note?: string | null;
+                    note?: string;
                     /** @description Overwatch six-character replay ID. No format validation server-side. `null` = empty. */
-                    replay_code?: string | null;
+                    replay_code?: string;
                     /**
                      * @description BattleTags of group members for this match. The server
                      *     trims whitespace, drops empty strings, and deduplicates;
@@ -2259,7 +2498,7 @@ export interface operations {
                      *     duplicates that slip through. `null` is treated as an
                      *     empty list (clear members) — equivalent to `[]`.
                      */
-                    members?: string[] | null;
+                    members?: string[];
                     /**
                      * @description Free-form labels applied to the match. `stack`,
                      *     `stream`, and `placement` are the conventional
@@ -2271,7 +2510,7 @@ export interface operations {
                      *     treated as an empty list (clear tags) — equivalent
                      *     to `[]`.
                      */
-                    tags?: string[] | null;
+                    tags?: string[];
                 };
             };
         };
@@ -2293,12 +2532,16 @@ export interface operations {
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -2333,12 +2576,16 @@ export interface operations {
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -2361,25 +2608,23 @@ export interface operations {
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
                 "application/json": {
-                    /**
-                     * @description Queue format the match was played in. To revert to
-                     *     "queue not set", call DELETE on this path instead
-                     *     of PUTing an empty string.
-                     * @enum {string}
-                     */
-                    queue_type: "role" | "open";
+                    queue_type: components["schemas"]["QueueTypeEnum"];
                 };
             };
         };
@@ -2401,12 +2646,16 @@ export interface operations {
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -2429,25 +2678,23 @@ export interface operations {
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
         requestBody: {
             content: {
                 "application/json": {
-                    /**
-                     * @description Override play mode for this match. To revert to
-                     *     "follow the parser", call DELETE on this path
-                     *     instead of PUTing an empty string.
-                     * @enum {string}
-                     */
-                    play_mode: "quickplay" | "competitive";
+                    play_mode: components["schemas"]["PlayModeEnum"];
                 };
             };
         };
@@ -2469,12 +2716,16 @@ export interface operations {
             header?: never;
             path: {
                 /**
-                 * @description Match identity — same `match_key` exposed in `MatchRecord`.
-                 *     URL-encoded because the value normally contains a colon
-                 *     (e.g. `match-2026-05-10T22-21-11`).
-                 * @example match%3A2026-05-10T22%3A21%3A11
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
                  */
-                matchKey: components["parameters"]["MatchKey"];
+                match_key: components["parameters"]["MatchKey"];
             };
             cookie?: never;
         };
@@ -2507,13 +2758,7 @@ export interface operations {
                      *     — the per-key upsert is idempotent.
                      */
                     match_keys: string[];
-                    /**
-                     * @description The queue value to write to every listed match.
-                     *     Empty string clears the rows (bulk Clear). Other
-                     *     values outside the enum return 400.
-                     * @enum {string}
-                     */
-                    queue_type: "role" | "open" | "";
+                    queue_type: components["schemas"]["QueueTypeBulkEnum"];
                 };
             };
         };
@@ -2545,12 +2790,7 @@ export interface operations {
                      *     tolerated.
                      */
                     match_keys: string[];
-                    /**
-                     * @description The play-mode value to write to every listed
-                     *     match. Empty string clears the rows (bulk Clear).
-                     * @enum {string}
-                     */
-                    play_mode: "quickplay" | "competitive" | "";
+                    play_mode: components["schemas"]["PlayModeBulkEnum"];
                 };
             };
         };
@@ -3132,7 +3372,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    match_keys: string[] | null;
+                    match_keys: string[];
                     target_profile: string;
                 };
             };
@@ -3290,8 +3530,8 @@ export interface operations {
                          *     never `v-html`.
                          */
                         release_notes?: string;
-                        data: components["schemas"]["DataStatus"];
-                        main: components["schemas"]["MainStatus"];
+                        data?: components["schemas"]["DataStatus"];
+                        main?: components["schemas"]["MainStatus"];
                     };
                 };
             };

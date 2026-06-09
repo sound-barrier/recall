@@ -40,6 +40,18 @@ overview of the architecture and internal conventions, see
 make help       # list all available targets
 ```
 
+> **Wipe your dev DB after pulling a schema-breaking change.** Recall
+> is pre-1.0 with no migration of existing data — when a `pkg/db/migrations/*.sql`
+> file changes in place (rather than via a new migration), startup will
+> fail with a column/constraint mismatch on the old DB. Wipe and start
+> fresh:
+>
+> | OS | Path |
+> |---|---|
+> | macOS | `rm -rf ~/Library/Application\ Support/Recall/profiles/*/db/` |
+> | Linux | `rm -rf ~/.config/recall/profiles/*/db/` |
+> | Windows | `Remove-Item -Recurse "$env:AppData\Recall\profiles\*\db\"` |
+
 Two workflows exist depending on your platform:
 
 | Workflow | Platforms | Entry point |

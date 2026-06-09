@@ -82,13 +82,14 @@ type UpdateInfo struct {
 	Main MainStatus `json:"main"`
 }
 
-// DataStatus summarises what's different between the user's
-// currently-loaded reference data and the latest published release.
-// AppliedTag == "" + HasUpdate == true means the install is running
-// on embedded data only.
-type DataStatus struct {
-	AppliedTag     string   `json:"applied_tag"`
-	AppliedAt      string   `json:"applied_at,omitempty"`
+// RosterDiff is the shared shape both DataStatus and MainStatus
+// embed. Mirrors the OpenAPI `RosterDiff` schema (factored via
+// `allOf` from `DataStatus` and `MainStatus`). Embedding here is the
+// Go-side equivalent of allOf composition: the JSON output of
+// DataStatus / MainStatus is flat (no `roster_diff` wrapper key)
+// because Go's `json` package promotes embedded-struct fields to the
+// outer level by default.
+type RosterDiff struct {
 	HasUpdate      bool     `json:"has_update"`
 	AddedHeroes    []string `json:"added_heroes,omitempty"`
 	RemovedHeroes  []string `json:"removed_heroes,omitempty"`
@@ -98,26 +99,30 @@ type DataStatus struct {
 	RemovedSources []string `json:"removed_sources,omitempty"`
 }
 
-// MainStatus mirrors DataStatus but tracks the from-main channel.
-// CommitSHA / AppliedCommit replace the release-tag identifiers
-// since main doesn't carry a semver. HasUpdate is true whenever the
+// DataStatus summarises what's different between the user's
+// currently-loaded reference data and the latest published release.
+// AppliedTag == "" + HasUpdate == true means the install is running
+// on embedded data only.
+type DataStatus struct {
+	RosterDiff
+	AppliedTag string `json:"applied_tag"`
+	AppliedAt  string `json:"applied_at,omitempty"`
+}
+
+// MainStatus tracks the from-main channel. CommitSHA / AppliedCommit
+// replace the release-tag identifiers since main doesn't carry a
+// semver. HasUpdate (inherited from RosterDiff) is true whenever the
 // user's applied commit (per manifest) differs from the currently-
 // published main commit.
 //
-// All fields are empty when the Pages fetch fails — the FE uses an
+// CommitSHA is empty when the Pages fetch fails — the FE uses an
 // empty CommitSHA as the "main channel unavailable" signal.
 type MainStatus struct {
-	CommitSHA      string   `json:"commit_sha"`
-	CommittedAt    string   `json:"committed_at,omitempty"`
-	AppliedCommit  string   `json:"applied_commit"`
-	AppliedAt      string   `json:"applied_at,omitempty"`
-	HasUpdate      bool     `json:"has_update"`
-	AddedHeroes    []string `json:"added_heroes,omitempty"`
-	RemovedHeroes  []string `json:"removed_heroes,omitempty"`
-	AddedMaps      []string `json:"added_maps,omitempty"`
-	RemovedMaps    []string `json:"removed_maps,omitempty"`
-	AddedSources   []string `json:"added_sources,omitempty"`
-	RemovedSources []string `json:"removed_sources,omitempty"`
+	RosterDiff
+	CommitSHA     string `json:"commit_sha"`
+	CommittedAt   string `json:"committed_at,omitempty"`
+	AppliedCommit string `json:"applied_commit"`
+	AppliedAt     string `json:"applied_at,omitempty"`
 }
 
 // releasesURL is the GitHub Releases API endpoint CheckForUpdate
@@ -358,8 +363,10 @@ func computeDataStatusWithFetched(latestTag string, heroes, maps, sources []stri
 
 func dataStatusFrom(latestTag string, m DataManifest, releaseHeroes, releaseMaps, releaseSources []string) DataStatus {
 	ds := DataStatus{
+		RosterDiff: RosterDiff{
+			HasUpdate: m.AppliedReleaseTag != latestTag,
+		},
 		AppliedTag: m.AppliedReleaseTag,
-		HasUpdate:  m.AppliedReleaseTag != latestTag,
 	}
 	if !m.AppliedAt.IsZero() {
 		ds.AppliedAt = m.AppliedAt.UTC().Format(time.RFC3339)
@@ -536,10 +543,12 @@ func computeMainStatus(ver mainVersion, heroes, maps, sources []string) MainStat
 	}
 	manifest, _ := LoadManifest()
 	ms := MainStatus{
+		RosterDiff: RosterDiff{
+			HasUpdate: manifest.AppliedSource != "main" || manifest.AppliedMainCommit != shortenCommitSHA(ver.CommitSHA),
+		},
 		CommitSHA:     shortenCommitSHA(ver.CommitSHA),
 		CommittedAt:   ver.CommittedAt,
 		AppliedCommit: manifest.AppliedMainCommit,
-		HasUpdate:     manifest.AppliedSource != "main" || manifest.AppliedMainCommit != shortenCommitSHA(ver.CommitSHA),
 	}
 	if manifest.AppliedSource == "main" && !manifest.AppliedAt.IsZero() {
 		ms.AppliedAt = manifest.AppliedAt.UTC().Format(time.RFC3339)
