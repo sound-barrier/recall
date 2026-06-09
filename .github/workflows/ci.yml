@@ -143,6 +143,16 @@ jobs:
       # final pass/fail decision is delegated to the EnricoMi step below
       # via `fail_on: test failures` so a fork PR without comment perms
       # still surfaces failures via the workflow conclusion.
+      # Test-skip inventory gate. Diffs every `t.Skip*` line under
+      # pkg/ against `scripts/test-skips-allow.txt`. A new skip
+      # without an allow-list entry fails CI — flake-suppression
+      # skips are forbidden; the allow-list is for documented
+      # environment gates (OS-conditional probe tests, `-short`-mode
+      # tesseract integration). Mirrors the lefthook pre-push
+      # `test-skips` hook so the gate fires both locally and in CI.
+      - name: Inventory test skips
+        run: bash scripts/check-test-skips.sh
+
       - name: Install go-junit-report
         run: go install github.com/jstemmer/go-junit-report/v2@latest
 
