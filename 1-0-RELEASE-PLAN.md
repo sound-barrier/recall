@@ -81,13 +81,13 @@ basis, or make the launch land flat (e.g., no macOS binary).
 
 ### Server-side helpers + invariants
 
-- [ ] `[MED]` Missing `decodeRequiredString` helper in `server.go`.
+- [x] `[MED]` Missing `decodeRequiredString` helper in `server.go`.
   Handlers hand-roll the "non-empty string field" check
   inconsistently; some return `400` with a friendly message, others
   `500` on a downstream panic. Add the helper, sweep all
   required-string fields. **File:** `pkg/cmd/server.go:84–146`.
   **Effort:** S
-- [ ] `[MED]` `App.Startup()` doesn't assert `a.profiles != nil`. Tests
+- [x] `[MED]` `App.Startup()` doesn't assert `a.profiles != nil`. Tests
   use `NewWithStore` which leaves it nil; production currently has
   no invariant check. Add a startup-time assertion so a wiring
   mistake fails immediately instead of returning a nil-pointer
@@ -96,7 +96,7 @@ basis, or make the launch land flat (e.g., no macOS binary).
 
 ### Release engineering
 
-- [ ] `[HIGH]` License headers missing from source entry points.
+- [x] `[HIGH]` License headers missing from source entry points.
   Apache 2.0 is declared in `LICENSE` and referenced in `README.md`,
   but no SPDX header lines exist on `main.go`,
   `frontend/src/App.vue`, or key package entry points. Add SPDX

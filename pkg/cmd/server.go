@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 package cmd
 
 import (
@@ -12,6 +14,7 @@ import (
 	"net/http/pprof"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -79,6 +82,41 @@ func RunServer(a *app.App, assets embed.FS) {
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("server: %v", err)
 	}
+}
+
+// decodeRequiredString decodes a one-field JSON body of the shape
+// `{"<field>":"<value>"}` and rejects empty / absent / null values
+// uniformly. Used by simple PUT setters that take exactly one
+// non-empty string (`/settings/screenshots-folder`,
+// `/settings/tesseract`). The returned error is the same
+// 400-shaped message regardless of whether the JSON failed to
+// decode or the field was empty — both shapes are spec-violating
+// the same way ("body must be {<field>: \"…\"}").
+//
+// Use `decodeOptionalString` (below) for fields that are part of a
+// larger body and may legitimately be absent.
+func decodeRequiredString(r *http.Request, field string) (string, error) {
+	// Decode into json.RawMessage so unrelated extra fields with
+	// non-string values don't break the decode — `additionalProperties:
+	// true` is the default in OpenAPI 3.1 and schemathesis exercises
+	// it heavily.
+	body := map[string]json.RawMessage{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return "", fmt.Errorf("body must be {%q:\"...\"}", field)
+	}
+	raw, ok := body[field]
+	if !ok {
+		return "", fmt.Errorf("body must be {%q:\"...\"}", field)
+	}
+	var v string
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return "", fmt.Errorf("body must be {%q:\"...\"}", field)
+	}
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return "", fmt.Errorf("body must be {%q:\"...\"}", field)
+	}
+	return v, nil
 }
 
 // decodeOptionalString decodes a json.RawMessage carrying a string

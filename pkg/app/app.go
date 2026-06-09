@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // Package app holds the Recall application core: the App struct that
 // ties together settings, persistence, the parser pipeline, the
 // Prometheus metrics lifecycle, and the screenshot file watcher.
@@ -300,5 +302,21 @@ func (a *App) Startup(ctx context.Context) {
 	}
 	if a.settings.WatchEnabled {
 		a.startWatching()
+	}
+
+	// Invariant: at this point, the profile manager + store are wired
+	// up (`LoadProfiles` succeeded earlier in this function and set
+	// `a.profiles`; the store was opened via the active profile's DB
+	// path). If a future refactor breaks the wiring and leaves one of
+	// these nil, downstream call sites would surface a confusing
+	// nil-pointer panic — fail loudly with a named invariant
+	// violation instead. This is a programming-error guard, not a
+	// user-facing error path; tests that use `NewWithStore` (skipping
+	// Startup entirely) are unaffected.
+	if a.profiles == nil {
+		panic("App.Startup: profile manager wiring is nil after Startup completed; likely a refactor broke LoadProfiles or the captureFatal guard")
+	}
+	if a.store == nil {
+		panic("App.Startup: store is nil after Startup completed; likely a refactor broke openStore or the captureFatal guard")
 	}
 }
