@@ -92,14 +92,26 @@ test.describe('Matches — leaf-row virtualization', () => {
     await expect(page.locator('[data-testid="sort-group-popover"]')).toBeVisible()
     await page.locator('[data-group-pick="none"]').click()
     await expect(page.locator('[data-virt-bottom-spacer]')).toBeVisible()
-    // Initially, the row with match_key m-0500 is not in the DOM.
+    // Initially, a row deep in the corpus isn't in the DOM — the
+    // virtualizer only renders the in-viewport slice.
     await expect(page.locator('.leaf-row[data-match-key="m-0500"]')).toHaveCount(0)
-    // Scroll partway through the corpus. The list is roughly
-    // 1000 × 58 = 58_000 px tall; scrolling 25_000 px lands us
-    // somewhere around index 430.
-    await page.evaluate(() => window.scrollTo({ top: 25_000, behavior: 'auto' }))
-    // The leaf-row at index ~430 should now be in the DOM.
-    await expect(page.locator('.leaf-row[data-match-key="m-0430"]')).toBeVisible({ timeout: 5000 })
+    // Capture the first row before the scroll so the assertion
+    // doesn't hard-code an expected row index (whose value would
+    // depend on the measured row height + viewport size + dossier
+    // chrome height — all environment-specific).
+    const firstBeforeKey = await page.locator('.leaf-row').first().getAttribute('data-match-key')
+    // Scroll the document down by a large delta. The virtualizer
+    // remounts the slice on the next RAF; allow a short wait for
+    // the reactive flush.
+    await page.evaluate(() => window.scrollTo({ top: 30_000, behavior: 'auto' }))
+    await page.waitForTimeout(150)
+    const firstAfterKey = await page.locator('.leaf-row').first().getAttribute('data-match-key')
+    // The visible slice moved — first row's match key changed.
+    expect(firstAfterKey).not.toBe(firstBeforeKey)
+    // And the new first row sits substantially deeper in the
+    // corpus (parsed-int of the `m-NNNN` suffix is past 200).
+    const afterIdx = Number((firstAfterKey ?? 'm-0000').replace('m-', ''))
+    expect(afterIdx).toBeGreaterThan(200)
   })
 
   test('clicking a virtualized row opens the detail panel', async ({ page }) => {
