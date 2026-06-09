@@ -23,7 +23,11 @@ export default defineConfig({
   workers: 1,
   // Fail the build on `.only` slipping into CI.
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // Zero tolerance for flakes. A retry-pass would mask a race
+  // condition or a brittle assertion; fix the underlying test
+  // instead. Locally this also stops a "run it again, it'll work"
+  // habit from forming.
+  retries: 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
 
   use: {

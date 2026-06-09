@@ -186,6 +186,34 @@ pre-push:
       glob: "frontend/**"
       run: bash scripts/check-bundle-size.sh --build
 
+    # Test-skip drift gate. Same `scripts/check-test-skips.sh` the
+    # CI workflow runs — greps every `t.Skip*` in pkg/ and diffs
+    # against `scripts/test-skips-allow.txt`. A new skip without an
+    # allow-list entry fails locally before push. Flake-suppression
+    # skips are not allowed; the allow-list is for documented
+    # environment gates (OS-conditional probe tests, `-short`-mode
+    # tesseract integration). Skip with:
+    #   LEFTHOOK_EXCLUDE=test-skips git push
+    test-skips:
+      glob: "pkg/**/*_test.go"
+      run: bash scripts/check-test-skips.sh
+
+    # Playwright smoke subset. Mirrors `make test-e2e`'s harness
+    # (build frontend/dist + serveronly binary, run on :7099 with
+    # HOME=/tmp/recall-e2e) but `--grep`-filtered to a curated set
+    # of high-value specs. Catches the strict-mode-locator + layout-
+    # tolerance + route-mock-race patterns that have repeatedly
+    # flaked CI in the past day. The full suite still gates in CI;
+    # this is the fast local feedback loop.
+    #
+    # Target: ≤60s on a warm cache. Glob-scoped to the same surface
+    # CI's e2e relevance gate uses, so a docs-only push doesn't pay
+    # the cost. Skip with:
+    #   LEFTHOOK_EXCLUDE=playwright-smoke git push
+    playwright-smoke:
+      glob: "{frontend/**,pkg/**,api/openapi.yaml,*.go}"
+      run: bash scripts/check-playwright-smoke.sh
+
     # OpenAPI ↔ server drift — same `schemathesis` job CI runs (see
     # .github/workflows/ci.yml). The build+boot+fuzz+teardown logic
     # lives in scripts/check-api-drift.sh so the hook and CI stay in

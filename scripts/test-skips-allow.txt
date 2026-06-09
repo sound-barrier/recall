@@ -1,0 +1,36 @@
+# Allow-list of intentional `t.Skip` / `t.Skipf` calls in pkg/.
+#
+# The CI workflow + lefthook pre-push hook diff this file against the
+# live grep output via `scripts/check-test-skips.sh`. Adding a new
+# `t.Skip` requires adding the matching line here with a one-line
+# `why` comment, mirroring the `scripts/deadcode-allow.txt` shape.
+#
+# The goal is to make every skip a deliberate, documented decision —
+# not a quiet way to suppress a flake. Flake-suppression skips are
+# not allowed; fix the underlying race or assertion instead.
+#
+# Format: exact grep output line (path:line: source). Sort blocks by
+# file. Comments above each block explain the gate.
+
+# pkg/app/probe_test.go — Tesseract-probe behaviour is platform-
+# specific. The function returns no candidates on non-Linux/macOS,
+# so the "expect a candidate" tests skip on those OSes; the
+# "Windows-only" tests skip on macOS/Linux and run only on Windows
+# runners.
+pkg/app/probe_test.go:31:		t.Skipf("no probe candidates on %s; nothing to assert", runtime.GOOS)
+pkg/app/probe_test.go:75:		t.Skip("Windows has its own assertion below")
+pkg/app/probe_test.go:86:		t.Skip("Windows-only behaviour")
+pkg/app/probe_test.go:130:		t.Skipf("no probe candidates on %s", runtime.GOOS)
+pkg/app/probe_test.go:174:		t.Skip("Windows has its own assertion below")
+pkg/app/probe_test.go:185:		t.Skip("Windows-only behaviour")
+pkg/app/probe_test.go:234:		t.Skip("Windows-only behaviour")
+
+# pkg/parser/integration_test.go — golden-file OCR tests are gated
+# on a real Tesseract binary + image fixtures + `go test` running
+# without `-short`. CI runs `-short` so these are skipped there;
+# they run locally via `make test-golden` when contributors update
+# parsers.
+pkg/parser/integration_test.go:56:		t.Skip("skipping golden-file parser tests in -short mode")
+pkg/parser/integration_test.go:73:		t.Skipf("tesseract not found at %q — install it or set RECALL_TESSERACT_PATH", tp)
+pkg/parser/integration_test.go:93:		t.Skipf("no .png/.jpg fixtures found in %q", dir)
+pkg/parser/integration_test.go:124:				t.Skipf("no golden file at %s (run with RECALL_FIXTURE_UPDATE=1 to create)", goldenPath)

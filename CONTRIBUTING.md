@@ -355,6 +355,14 @@ make icon           # resync build/appicon.png from assets/icon.png (macOS only;
 **Running `npx vitest` / `npm run *` directly?** Do it from `frontend/`, not the repo root — Vite resolves `vitest.config.ts` from cwd, so running from elsewhere fails with a misleading "Install @vitejs/plugin-vue to handle .vue files" even though the plugin IS installed. Use `cd frontend && …` or `npm --prefix frontend run …`. The `make` targets above handle cwd automatically.
 
 `trivy` requires a one-time install: `brew install trivy` or `brew bundle`.
+
+### Test stability
+
+Zero tolerance for flaky tests. Three rules enforce this:
+
+1. **No retries.** `frontend/playwright.config.ts` sets `retries: 0` everywhere — CI and local — so a flake fails the build immediately. If a test is racy or carries a brittle assertion, fix the test (tighten the wait, scope the locator, widen a pixel tolerance with a documented reason). Retries are not a workaround.
+2. **No flake-suppression skips.** Every `t.Skip` in `pkg/` must appear in `scripts/test-skips-allow.txt` with a one-line "why" comment. `scripts/check-test-skips.sh` (run by both lefthook `pre-push.test-skips` and CI) diffs the live grep against the allow-list and fails on drift. The allow-list is for documented environment gates (OS-conditional probe tests, `-short`-mode tesseract integration) — not for hiding races. No frontend test should use `.skip()` / `.only()` / `.fixme()`.
+3. **Pre-push smoke subset.** `lefthook.yml`'s `pre-push.playwright-smoke` hook rebuilds `frontend/dist` + the serveronly binary, then runs a `--grep`-filtered Playwright subset against the same harness as `make test-e2e`. Target: ≤60s on a warm cache. The full suite still gates in CI. Skip with `LEFTHOOK_EXCLUDE=playwright-smoke git push` or `SKIP_E2E_SMOKE=1 git push` (the latter is the documented opt-out for slow networks / dev VMs).
 The scan covers Go module dependencies, npm packages, and `Dockerfile.build`.
 
 The repo includes an `.envrc` for [direnv](https://direnv.net/) with all available environment variable overrides documented and commented out. Run `direnv allow` once after cloning, then edit `.envrc` to activate any overrides you need.
