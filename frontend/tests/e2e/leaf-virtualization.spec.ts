@@ -63,9 +63,13 @@ test.describe('Matches — leaf-row virtualization', () => {
     // sits inside `.leaves-toolbar` per the existing template; we
     // find it by the label text "Group" which is stable across
     // visual refreshes.
-    const groupTrigger = page.getByRole('button', { name: /group/i }).first()
-    await groupTrigger.click()
-    await page.getByRole('option', { name: /^none$/i }).click()
+    // The sort/group popover trigger is the segmented control in the
+    // toolbar above the leaves list. Open it via its stable
+    // data-attribute selector, then click the "No grouping" pick
+    // (data-group-pick="none").
+    await page.locator('[data-sort-group-trigger]').click()
+    await expect(page.locator('[data-testid="sort-group-popover"]')).toBeVisible()
+    await page.locator('[data-group-pick="none"]').click()
     // Wait for the spacer to surface — that's the virtualization
     // signal (groupBy='day' has no spacers).
     await expect(page.locator('[data-virt-bottom-spacer]')).toBeVisible()
@@ -80,9 +84,13 @@ test.describe('Matches — leaf-row virtualization', () => {
   test('scrolling reveals rows further down the corpus', async ({ page }) => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    const groupTrigger = page.getByRole('button', { name: /group/i }).first()
-    await groupTrigger.click()
-    await page.getByRole('option', { name: /^none$/i }).click()
+    // The sort/group popover trigger is the segmented control in the
+    // toolbar above the leaves list. Open it via its stable
+    // data-attribute selector, then click the "No grouping" pick
+    // (data-group-pick="none").
+    await page.locator('[data-sort-group-trigger]').click()
+    await expect(page.locator('[data-testid="sort-group-popover"]')).toBeVisible()
+    await page.locator('[data-group-pick="none"]').click()
     await expect(page.locator('[data-virt-bottom-spacer]')).toBeVisible()
     // Initially, the row with match_key m-0500 is not in the DOM.
     await expect(page.locator('.leaf-row[data-match-key="m-0500"]')).toHaveCount(0)
@@ -97,9 +105,13 @@ test.describe('Matches — leaf-row virtualization', () => {
   test('clicking a virtualized row opens the detail panel', async ({ page }) => {
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    const groupTrigger = page.getByRole('button', { name: /group/i }).first()
-    await groupTrigger.click()
-    await page.getByRole('option', { name: /^none$/i }).click()
+    // The sort/group popover trigger is the segmented control in the
+    // toolbar above the leaves list. Open it via its stable
+    // data-attribute selector, then click the "No grouping" pick
+    // (data-group-pick="none").
+    await page.locator('[data-sort-group-trigger]').click()
+    await expect(page.locator('[data-testid="sort-group-popover"]')).toBeVisible()
+    await page.locator('[data-group-pick="none"]').click()
     await expect(page.locator('[data-virt-bottom-spacer]')).toBeVisible()
     // Click the first visible row.
     const firstRow = page.locator('.leaf-row').first()
