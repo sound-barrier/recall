@@ -1,5 +1,79 @@
 # Changelog
 
+## [0.10.0](https://github.com/sound-barrier/recall/compare/v0.9.1...v0.10.0) (2026-06-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **updates:** parser.HeroesByRole / parser.MapsByType / parser.ScreenshotSources package vars become parser.HeroesByRole() / .MapsByType() / .Sources() accessor functions so the dataset can swap atomically. /api/v1/system/update grows a required `data` field carrying the diff against the user's applied manifest; /api/v1/system/data-update is the new POST endpoint that applies a release's YAMLs in-place.
+* **api:** GET /api/v1/system/screenshots-folder-probe and the Wails-bound ProbeScreenshotsDir method have been removed. Callers should switch to GET /api/v1/system/screenshots-folder- candidates (or the Wails ProbeScreenshotsCandidates method) and pick the first entry whose `exists` field is true. macOS / Linux return an empty list — auto-detect is Windows-only by design.
+* **parser:** MatchResult JSON shape gains hero_raw + map_raw fields; UnknownMapsView's referenceGapRecords prop is required (no optional default); migration 0006 adds new columns to three parent screenshot tables; POST /api/v1/parses takes a new ?scope=all query branch. No existing user data to migrate (pre-release posture), but any downstream consumer keying off the old wire shape breaks. release-please picks this up for the next minor cut pre-1.0.
+
+### Features
+
+* **api:** remove ProbeScreenshotsDir endpoint ([95eb1a7](https://github.com/sound-barrier/recall/commit/95eb1a7b7a609953a9792ac81f56228b90acd8b1))
+* **matches:** bulk-tag from selected rows (item 3) ([10a51d2](https://github.com/sound-barrier/recall/commit/10a51d283c7ae800f6d13f8e6f17629c25f15241))
+* **matches:** extend right-click menu with 5 actions (item 7) ([da2c3d1](https://github.com/sound-barrier/recall/commit/da2c3d138890fa18f9b122c25437872efc3b4958))
+* **matches:** Hero × map-type heatmap dossier widget (item 2) ([ec54739](https://github.com/sound-barrier/recall/commit/ec54739e98171a15e4083d79a0a72947f818f7eb))
+* **matches:** inline tag autocomplete in Match Journal (item 5) ([e65de95](https://github.com/sound-barrier/recall/commit/e65de9576f0fa6e677d29e8d52a8a4dbef11f670))
+* **matches:** leaf-row hover preview (item 4) ([ce5c29c](https://github.com/sound-barrier/recall/commit/ce5c29c5758b6a7311028c40c647a04067a31ace))
+* **matches:** leaf-row virtualization wired into the flat-mode list (item 1) ([0244487](https://github.com/sound-barrier/recall/commit/0244487aed45dfe8115395f10e71a89e6d89dbbc))
+* **matches:** saved-set / preset feature (item 8) ([a4761b2](https://github.com/sound-barrier/recall/commit/a4761b2f2a687a49cd4bd4be88b3f14a7449ba38))
+* **matches:** smart-empty filter suggestions (item 6) ([fe68db5](https://github.com/sound-barrier/recall/commit/fe68db5c32ddeca009eaeee1e67c866b1ad6915f))
+* **matches:** useVirtualWindow primitive (item 1 partial — integration deferred) ([eed6f06](https://github.com/sound-barrier/recall/commit/eed6f0699d0ced5642b43242a3070399e406d6c1))
+* **onboarding:** contextual callout on reference-data-gaps (item 13 surface C) ([8a1f3ba](https://github.com/sound-barrier/recall/commit/8a1f3ba7f864cce59d005215e873e52e07c96853))
+* **onboarding:** contextual callout on the screenshot-source picker (item 13 surface B) ([ab76030](https://github.com/sound-barrier/recall/commit/ab76030a08d30af1ff5af1c04b7d581fec76ac8c))
+* **onboarding:** contextual-callout primitive (item 13 prep) ([cdd6f75](https://github.com/sound-barrier/recall/commit/cdd6f750a0df7b1de55f8bc3d0c72a2d55c7d4d9))
+* **onboarding:** first-run modal multi-step picker (item 14) ([f50d6c8](https://github.com/sound-barrier/recall/commit/f50d6c8d2d5de87da03d91e9b61f3eb02812c15b))
+* **onboarding:** rewrite set-workspace tour copy (item 13 surface A) ([919c576](https://github.com/sound-barrier/recall/commit/919c57683f909f7182ae4f7f85974cb5e1b48cde))
+* **parse:** re-parse "matches updated" progress (item 12) ([f76f1b5](https://github.com/sound-barrier/recall/commit/f76f1b5495d005c6f4ecc60e4023395ac04c0eed))
+* **parser:** extract filenameFormats to embedded YAML + release asset ([22d678d](https://github.com/sound-barrier/recall/commit/22d678d01e4647726e69b65e4d1a368e7d75d999))
+* **parser:** recognise PrntScn + Win Snip screenshot filename formats ([9a153e2](https://github.com/sound-barrier/recall/commit/9a153e2928c3acfd9880a62f9556fb4bae28f2ac))
+* **parser:** recognise Steam F12 screenshot filenames (4th source) ([03b5291](https://github.com/sound-barrier/recall/commit/03b5291e297053684d4de2dc8827b48921f4c380))
+* **parser:** reject short-name fuzzy matches; surface OCR'd Unknown heroes/maps ([0741322](https://github.com/sound-barrier/recall/commit/074132275c6ca021cc8258dfa3d5d1360849371a))
+* **release:** publish heroes.yaml + maps.yaml as attested release assets ([bfea6ca](https://github.com/sound-barrier/recall/commit/bfea6ca21aacac7a883b45709af631ecc7b0aecc))
+* **settings:** per-source diagnostics on the picker grid (item 9) ([f267825](https://github.com/sound-barrier/recall/commit/f267825b40e5d1cf9dc6228317f142b9720bc742))
+* **settings:** supported filename formats surface (item 10) ([cae86dc](https://github.com/sound-barrier/recall/commit/cae86dcd0b7db009fbf298f474fc561a19dedb4a))
+* **settings:** Windows screenshot source picker with four named sources ([0e01210](https://github.com/sound-barrier/recall/commit/0e01210028d5b7ae8b6358f27b0d5197aebf3f42))
+* **unknown:** "Fixed in vX.Y.Z" CTA on reference-data-gap cards (item 11) ([476b66e](https://github.com/sound-barrier/recall/commit/476b66ef0858fc3316e45da0fe4655d7d9757744))
+* **updates:** publish heroes/maps/sources from main as a live data channel ([4658c55](https://github.com/sound-barrier/recall/commit/4658c55fc4b8941657fe6c2ebfa7a3be5899cecd))
+* **updates:** replace silent roster fetch with explicit modal + reminder ([afb7e24](https://github.com/sound-barrier/recall/commit/afb7e249c51ea315eb4487676419478b080887f5))
+
+
+### Bug Fixes
+
+* **api:** drop double URL-decode on screenshots/{filename}/ignore + close vue-tsc readonly array ([8541132](https://github.com/sound-barrier/recall/commit/8541132c11c8adaad8b1cdcbbefe37825d2cef32))
+* **fixtures:** chaos categories for missing play_mode + queue_type (coverage gap) ([0760867](https://github.com/sound-barrier/recall/commit/0760867675fd8c1386f27b369ad59dd73e575348))
+* **lint:** drop unused vi import + reflow callout buttons for vue-html lint ([595ab3b](https://github.com/sound-barrier/recall/commit/595ab3b51238bec46e2e534fd70e5c602431d1b4))
+* **matches:** restore right-click context menu after broken records ref ([2238960](https://github.com/sound-barrier/recall/commit/223896082b241cb7796191f0650d83f7b85661dc))
+* **onboarding:** drop the global tour-completed gate on contextual callouts ([dd50251](https://github.com/sound-barrier/recall/commit/dd50251d2ae193dfdb01b99f539e68b1ebc2e5de))
+* **types:** close vue-tsc errors uncovered by the lint CI job ([453f4a5](https://github.com/sound-barrier/recall/commit/453f4a57a5febdb1e55258ad1889e9a685c4f247))
+* **updates:** scope modal e2e selectors + stylelint blank-line cleanup ([5ae68b6](https://github.com/sound-barrier/recall/commit/5ae68b676947aee898bdaf1849b3d149b215bb90))
+
+
+### Refactors
+
+* **db:** derive latestMigrationVersion in migrate_test.go ([0016e93](https://github.com/sound-barrier/recall/commit/0016e9326ecb3243c9ddd48e45d0d95b334687e2))
+* **frontend:** extract TypeaheadDropdown primitive ([57699f6](https://github.com/sound-barrier/recall/commit/57699f622dfe0d5c33ebf4961dd480e9e9522248))
+* **frontend:** split match-helpers.ts by topic ([aa1d264](https://github.com/sound-barrier/recall/commit/aa1d264181d7fc5135339867f8e3025acfe1ffda))
+
+
+### Documentation
+
+* feature sweep for recent updates flow + 17 tech-debt items + PR-only rule ([120beb1](https://github.com/sound-barrier/recall/commit/120beb15b584e017a7e6d3b4980e1698cd9d8dbe))
+* post-PR-227 sweep across README + docs + debt + UI backlog ([e93301b](https://github.com/sound-barrier/recall/commit/e93301b72c235cc404c5eb232178e3caf2c76957))
+
+
+### Tests
+
+* **matches:** fix e2e chip-selector to match actual class names ([fb0d365](https://github.com/sound-barrier/recall/commit/fb0d36521c19f82455204d8efc59684a3c4b270b))
+* **matches:** make leaf-virtualization scroll test environment-independent ([ea0419a](https://github.com/sound-barrier/recall/commit/ea0419a7447424d31157f707038774b3534d583e))
+* **matches:** switch leaf-virtualization e2e to the real sort/group popover selectors ([0ee8435](https://github.com/sound-barrier/recall/commit/0ee8435843eb826e099a86f959fd62a2ca9e851e))
+* **matches:** unit tests for useNarrowPresets / useSummaryThumbnail / MatchesEmptySuggestions ([fa2ddaf](https://github.com/sound-barrier/recall/commit/fa2ddaf7cfa5638b72f35781c5ddf93da98b03a5))
+* **settings:** mock api in SettingsAdvanced.test for useOWData fetch ([475ecb5](https://github.com/sound-barrier/recall/commit/475ecb5ca399f1bbcde11b8ffdc6205d5aad9115))
+* **unknown:** e2e clicks the masthead button by role, not title ([1d6bd18](https://github.com/sound-barrier/recall/commit/1d6bd1843e64157a69331e3203ebeabd68290922))
+* **unknown:** mock /_screenshot/** in auto-open preview spec to kill CI flake ([8b8f845](https://github.com/sound-barrier/recall/commit/8b8f84560c88a9e1056695597f6a0dab7731890a))
+
 ## [0.9.1](https://github.com/sound-barrier/recall/compare/v0.9.0...v0.9.1) (2026-06-08)
 
 
