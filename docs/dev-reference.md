@@ -81,6 +81,25 @@ WebView libs). Stages 7–13 are the `serveronly` builds — pure Go,
 arm64. Stage 14 (`server-container`) is a `debian:bookworm-slim` runtime image
 with Tesseract pre-installed.
 
+## Reference-data publishing surface
+
+The parser ships three YAMLs (`heroes.yaml`, `maps.yaml`,
+`screenshot_sources.yaml`) on two parallel channels:
+
+| Channel | Producer | Consumer entry point | URL shape |
+|---|---|---|---|
+| **Release-bundled** | `.github/workflows/release.yml` (`recall-<version>-{file}.yaml` + `.sha256` + SLSA attestation) | `pkg/app/update.go::fetchReleaseRosters` | `https://github.com/sound-barrier/recall/releases/download/v<v>/recall-<v>-<file>` |
+| **Live from main** | `.github/workflows/pages.yml` (re-deploys on every push that touches `pkg/parser/*.yaml`) | `pkg/app/update.go::fetchMainRosters` | `https://sound-barrier.github.io/recall/data/<file>` (+ `<file>.sha256`, + `version.json`) |
+
+Both feed `pkg/app/apply_data_update.go::commitVerifiedAssets` which
+SHA-256-verifies, atomically writes under `<RECALL_DATA_DIR>/data/`,
+triggers `parser.Reload()`, and updates `manifest.json`. Adding a new
+YAML file to the bundle takes a path-filter edit in `pages.yml` + a
+stage step + an entry in `dataYAMLFiles` (`apply_data_update.go`). The
+file shape — same SHA-256 sidecar format the existing `verifySha256`
+reads — stays identical across channels so the consumer code branches
+only on URL.
+
 ## Environment variable overrides (all optional, mainly for debugging)
 
 | Var | Default | Effect |

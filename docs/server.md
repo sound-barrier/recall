@@ -127,6 +127,23 @@ WantedBy=multi-user.target
 sudo systemctl enable --now recall
 ```
 
+## Outbound hosts to allowlist
+
+The server keeps the boot path off the network — no auto-update
+poll, no telemetry. The two hosts it CAN reach are user-triggered
+and only when the **Check for updates** flow runs:
+
+| Host | When | Why |
+|---|---|---|
+| `api.github.com` | User clicks **Check for updates** (in the desktop app's masthead or via `GET /api/v1/system/update`) | Compares the running version to the latest GitHub release, fetches release notes + per-release-tag YAML rosters. |
+| `github.com/sound-barrier/recall/releases/...` | User clicks **Apply update** on the Release sub-row | Downloads `recall-<version>-{heroes,maps,screenshot_sources}.yaml` + `.sha256` sidecars. |
+| `sound-barrier.github.io` | User clicks **Check for updates** OR **Sync from main** | The live-data channel published by Pages on every push to `main` that touches the parser rosters. Fetched paths: `/recall/data/version.json`, `/recall/data/heroes.yaml` (+ `.sha256`), `/recall/data/maps.yaml` (+ `.sha256`), `/recall/data/screenshot_sources.yaml` (+ `.sha256`). |
+
+On a managed-network deployment, allow `api.github.com`, `github.com`,
+and `sound-barrier.github.io` to keep the Update flow functional.
+Blocking `sound-barrier.github.io` is graceful — the Sync from main
+row hides itself; the Release channel keeps working independently.
+
 ---
 
 For running inside a Docker container instead, see [docker.md](docker.md).

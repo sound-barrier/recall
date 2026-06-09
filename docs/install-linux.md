@@ -61,6 +61,21 @@ Overwatch on Linux (via Lutris or Heroic) typically saves screenshots to:
 The exact path varies by launcher. Go to **Settings → Directories →
 Change Folder…** and select the correct path.
 
+If you play via **Steam Proton**, Steam writes its own in-game F12
+captures to a parallel folder:
+
+```text
+~/.steam/steam/steamapps/compatdata/2357570/pfx/drive_c/users/steamuser/Documents/Overwatch/ScreenShots/Overwatch/
+```
+
+You can also point Recall at Steam's *own* screenshot folder if you
+prefer F12 over Overwatch's PrntScreen — the filename shape
+(`YYYYMMDDHHMMSS_N.jpg`) parses end-to-end alongside the other three
+capture sources. After install, the masthead's **Check for updates**
+button surfaces roster patches (new heroes / maps / capture-tool
+grammars) the parser ships separately from the binary; see
+[Updates & game data](settings-reference.md#updates--game-data).
+
 ## Where Recall stores its data
 
 Recall organises everything by **profile** — each profile (your main

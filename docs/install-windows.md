@@ -88,7 +88,7 @@ watched directory.
 | **Nvidia Overlay** | `%USERPROFILE%\Videos\Overwatch` | `Overwatch 2 Screenshot YYYY.MM.DD - HH.MM.SS.ff.png` |
 | **OW PrntScn default** | `%USERPROFILE%\Documents\Overwatch\ScreenShots\Overwatch` (+ OneDrive variant) | `ScreenShot_YY-MM-DD_HH-MM-SS-fff.jpg` |
 | **Win Snip tool** | `%USERPROFILE%\Pictures\Screenshots` (+ OneDrive variant) | `Screenshot YYYY-MM-DD HHMMSS.png` |
-| **Steam install** | `<SteamInstall>\userdata\<id>\760\remote\<OW-app-id>\screenshots` | (Steam's own F12 captures) |
+| **Steam install** | `<SteamInstall>\userdata\<id>\760\remote\<OW-app-id>\screenshots` | `YYYYMMDDHHMMSS_N.jpg` (Steam's in-game F12) |
 
 If you use something else (a third-party tool, a synced cloud
 folder, a USB stick), use the **Pick a different folder…** tile
@@ -97,6 +97,13 @@ below the grid — opens the standard Windows folder picker.
 The **Watch Folder** toggle on the **Parse** tab makes Recall
 auto-parse new screenshots as Overwatch (or your capture tool)
 writes them.
+
+After install, the masthead's **Check for updates** button surfaces
+both Recall releases AND roster patches (new heroes / maps / capture-
+tool grammars) the parser ships separately from the binary. See
+[Updates & game data](settings-reference.md#updates--game-data) for
+the modal flow + the SHA-256 verification path. No silent on-mount
+network calls — the check only fires when you click.
 
 ## Where Recall stores its data
 
