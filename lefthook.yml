@@ -129,6 +129,34 @@ pre-push:
       glob: "*.go"
       run: bash scripts/deadcode-check.sh
 
+    # Whole-project lint sweep. The pre-commit `golangci-lint` hook
+    # uses `--new-from-rev=HEAD~` to scope to the staged diff for
+    # speed, but that scope MISSES cross-file regressions — a delete
+    # in one staged file can break an importer in an unstaged file,
+    # and CI catches it where lefthook didn't. This whole-project
+    # sweep mirrors the CI `lint` job exactly (both build tags) so a
+    # green pre-push guarantees a green CI lint.
+    # Skip: LEFTHOOK_EXCLUDE=lint-go-full git push
+    lint-go-full:
+      glob: "*.go"
+      run: |
+        golangci-lint run ./...
+        golangci-lint run --build-tags serveronly ./...
+
+    # Frontend whole-project sweep. Mirrors CI's `lint` job — eslint
+    # over the full tree (not just staged files), stylelint over the
+    # full tree, then vue-tsc (whole-project type-check). Catches the
+    # same cross-file regressions the Go sweep above does, plus the
+    # "rename a type, miss an importer" class of bug.
+    # Skip: LEFTHOOK_EXCLUDE=lint-frontend-full git push
+    lint-frontend-full:
+      glob: "frontend/**"
+      run: |
+        cd frontend
+        npm run lint:js
+        npm run lint:css
+        npx vue-tsc --noEmit
+
     knip:
       glob: "frontend/src/**/*.{ts,vue}"
       run: cd frontend && npm run dead:ts
