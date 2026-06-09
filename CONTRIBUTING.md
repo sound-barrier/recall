@@ -41,10 +41,10 @@ make help       # list all available targets
 ```
 
 > **Wipe your dev DB after pulling a schema-breaking change.** Recall
-> is pre-1.0 with no migration of existing data — when a `pkg/db/migrations/*.sql`
-> file changes in place (rather than via a new migration), startup will
-> fail with a column/constraint mismatch on the old DB. Wipe and start
-> fresh:
+> is pre-1.0 with no migration framework — `pkg/db/schema.sql` is the
+> single source of truth, applied verbatim on every store open. When
+> the schema changes incompatibly, startup fails with a column /
+> constraint mismatch on the old DB. Wipe and start fresh:
 >
 > | OS | Path |
 > |---|---|

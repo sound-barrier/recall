@@ -8,10 +8,12 @@
 // stats). Each screenshot's parse writes to its own parent + children
 // in one transaction; aggregation is read-time only.
 //
-// Schema evolution lives under `pkg/db/migrations/` as versioned
-// `.up.sql` / `.down.sql` pairs applied by `applyMigrations`. The
-// baseline (`0001_init`) is the schema captured at the moment the
-// migration framework shipped.
+// Schema is a single embedded file at `pkg/db/schema.sql` applied by
+// `applySchema` on every `NewSQLStore`. Pre-1.0 the project uses a
+// "wipe + relaunch" model — no migration framework, no
+// `schema_version` table, no rollback path. When the schema changes
+// incompatibly the operator wipes the DB (CONTRIBUTING.md carries
+// the per-platform path).
 package db
 
 // parentTables enumerates every parent screenshot table. Used by

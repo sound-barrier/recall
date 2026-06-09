@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	"reflect"
 	"sort"
 	"testing"
@@ -1048,97 +1047,5 @@ func TestSQLStore_ResolveAmbiguous_RejectsNonAmbiguousKey(t *testing.T) {
 	}
 	if ok {
 		t.Error("expected ok=false for key missing the ambiguous: prefix")
-	}
-}
-
-// ────────────────────────────────────────────────────────────────
-// Pre-1.0 break: migration from colon-form match_keys to the new
-// URL-safe `-` form runs once on every store open. Idempotent —
-// after the first pass, subsequent opens are no-ops.
-// ────────────────────────────────────────────────────────────────
-
-func TestMigrateMatchKeysColonToDash_RewritesEveryShape(t *testing.T) {
-	d, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	t.Cleanup(func() { _ = d.Close() })
-	if _, err := d.Exec(`PRAGMA foreign_keys = ON`); err != nil {
-		t.Fatalf("pragma: %v", err)
-	}
-	if err := applyMigrations(d); err != nil {
-		t.Fatalf("schema: %v", err)
-	}
-
-	// Plant one of each legacy shape: `match:<ts>` (with colons in
-	// the time portion), `unmatched:<filename>`, and
-	// `ambiguous:<filename>`. Across two parent tables + the
-	// annotation child to confirm the migration reaches them all.
-	insert := func(table, filename, matchKey string) {
-		t.Helper()
-		q := `INSERT INTO ` + table + ` (filename, match_key) VALUES (?, ?)`
-		if _, err := d.Exec(q, filename, matchKey); err != nil {
-			t.Fatalf("insert %s: %v", table, err)
-		}
-	}
-	insert("summary_screenshots", "s.png", "match:2026-05-10T22:21:11")
-	insert("scoreboard_screenshots", "sb.png", "unmatched:sb.png")
-	insert("personal_screenshots", "p.png", "ambiguous:p.png")
-	if _, err := d.Exec(
-		`INSERT INTO match_annotations (match_key, leaver) VALUES (?, ?)`,
-		"match:2026-05-10T22:21:11", "self",
-	); err != nil {
-		t.Fatalf("insert annotation: %v", err)
-	}
-
-	if err := migrateMatchKeysColonToDash(d); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-
-	cases := []struct {
-		table, filename, want string
-	}{
-		{"summary_screenshots", "s.png", "match-2026-05-10T22-21-11"},
-		{"scoreboard_screenshots", "sb.png", "unmatched-sb.png"},
-		{"personal_screenshots", "p.png", "ambiguous-p.png"},
-	}
-	for _, c := range cases {
-		var got string
-		err := d.QueryRow(
-			`SELECT match_key FROM `+c.table+` WHERE filename = ?`,
-			c.filename,
-		).Scan(&got)
-		if err != nil {
-			t.Errorf("%s/%s: %v", c.table, c.filename, err)
-			continue
-		}
-		if got != c.want {
-			t.Errorf("%s/%s: got %q, want %q", c.table, c.filename, got, c.want)
-		}
-	}
-
-	// Annotation child swept too.
-	var annKey string
-	if err := d.QueryRow(
-		`SELECT match_key FROM match_annotations LIMIT 1`,
-	).Scan(&annKey); err != nil {
-		t.Fatalf("read annotation: %v", err)
-	}
-	if want := "match-2026-05-10T22-21-11"; annKey != want {
-		t.Errorf("annotation: got %q, want %q", annKey, want)
-	}
-
-	// Idempotent — a second pass is a no-op.
-	if err := migrateMatchKeysColonToDash(d); err != nil {
-		t.Fatalf("second migrate: %v", err)
-	}
-	var stillGood string
-	if err := d.QueryRow(
-		`SELECT match_key FROM summary_screenshots WHERE filename = 's.png'`,
-	).Scan(&stillGood); err != nil {
-		t.Fatalf("re-read: %v", err)
-	}
-	if want := "match-2026-05-10T22-21-11"; stillGood != want {
-		t.Errorf("idempotent re-run: got %q, want %q", stillGood, want)
 	}
 }
