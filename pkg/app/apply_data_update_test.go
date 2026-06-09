@@ -207,3 +207,101 @@ func TestApplyDataUpdate_PartialRenameFailure_RestoresOriginal(t *testing.T) {
 		t.Errorf("manifest written despite failure: AppliedReleaseTag=%q", m.AppliedReleaseTag)
 	}
 }
+
+// ─── ApplyMainDataUpdate (from-main channel) ──────────────────────
+
+func TestApplyMainDataUpdate_HappyPath_WritesFilesAndManifest(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	t.Cleanup(func() { _ = parser.Reload() })
+
+	heroes := []byte("tank:\n  - Reinhardt\nsupport: []\ndps:\n  - Phoenix\n")
+	maps := []byte("control:\n  - Ilios\n")
+	sources := validSourcesYAML()
+	mainSrv := fakeMainServer(t, "abc1234567890def", heroes, maps, sources)
+	withMainURLs(t, mainSrv.URL)
+
+	got, err := (&App{}).ApplyMainDataUpdate()
+	if err != nil {
+		t.Fatalf("ApplyMainDataUpdate: %v", err)
+	}
+	if got.Source != "main" {
+		t.Errorf("Source: want 'main', got %q", got.Source)
+	}
+	if got.AppliedCommit != "abc1234" {
+		t.Errorf("AppliedCommit: want 'abc1234', got %q", got.AppliedCommit)
+	}
+	if got.AppliedTag != "" {
+		t.Errorf("AppliedTag: want empty for main source, got %q", got.AppliedTag)
+	}
+
+	// Manifest reflects main source + commit.
+	m, err := LoadManifest()
+	if err != nil {
+		t.Fatalf("LoadManifest: %v", err)
+	}
+	if m.AppliedSource != "main" {
+		t.Errorf("manifest.AppliedSource: want 'main', got %q", m.AppliedSource)
+	}
+	if m.AppliedMainCommit != "abc1234" {
+		t.Errorf("manifest.AppliedMainCommit: want 'abc1234', got %q", m.AppliedMainCommit)
+	}
+
+	// Parser swapped — Phoenix is now recognised.
+	if r := parser.HeroRole("Phoenix"); r != "dps" {
+		t.Errorf("after apply, parser.HeroRole(Phoenix) = %q, want dps", r)
+	}
+}
+
+func TestApplyMainDataUpdate_PagesUnreachable_ReturnsSentinel(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	t.Cleanup(func() { _ = parser.Reload() })
+
+	// Pages closed — every fetch fails with a connection error.
+	withMainURLs(t, closedServerURL(t))
+
+	_, err := (&App{}).ApplyMainDataUpdate()
+	if !errors.Is(err, ErrDataUpdateMainFetchFailed) {
+		t.Errorf("got %v, want ErrDataUpdateMainFetchFailed", err)
+	}
+}
+
+func TestApplyMainDataUpdate_SHAMismatch_RejectsWithoutWriting(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	t.Cleanup(func() { _ = parser.Reload() })
+
+	heroes := []byte("tank:\n  - Reinhardt\n")
+	// Hand-craft a server with a deliberately-wrong sidecar for heroes.
+	mux := http.NewServeMux()
+	mux.HandleFunc("/version.json", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"commit_sha":"abc1234567890def","committed_at":"2026-06-09T00:00:00Z"}`))
+	})
+	mux.HandleFunc("/heroes.yaml", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(heroes) })
+	mux.HandleFunc("/heroes.yaml.sha256", func(w http.ResponseWriter, _ *http.Request) {
+		// 64 zeros = guaranteed mismatch
+		_, _ = w.Write([]byte("0000000000000000000000000000000000000000000000000000000000000000  heroes.yaml\n"))
+	})
+	mux.HandleFunc("/maps.yaml", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(heroes) })
+	mux.HandleFunc("/maps.yaml.sha256", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("0000000000000000000000000000000000000000000000000000000000000000  maps.yaml\n"))
+	})
+	mux.HandleFunc("/screenshot_sources.yaml", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(validSourcesYAML()) })
+	mux.HandleFunc("/screenshot_sources.yaml.sha256", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("0000000000000000000000000000000000000000000000000000000000000000  screenshot_sources.yaml\n"))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	withMainURLs(t, srv.URL)
+
+	_, err := (&App{}).ApplyMainDataUpdate()
+	if !errors.Is(err, ErrDataUpdateChecksum) {
+		t.Errorf("got %v, want ErrDataUpdateChecksum", err)
+	}
+
+	// No files written under <data dir>.
+	for _, name := range []string{"heroes.yaml", "maps.yaml", "screenshot_sources.yaml"} {
+		path := filepath.Join(appBaseDir(), "data", name)
+		if _, err := os.Stat(path); err == nil {
+			t.Errorf("expected %s NOT written after SHA mismatch", name)
+		}
+	}
+}

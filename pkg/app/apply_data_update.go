@@ -57,13 +57,26 @@ var (
 	// ErrDataUpdateIO — disk I/O failed (mkdir, write, rename). Maps
 	// to 500.
 	ErrDataUpdateIO = errors.New("data update: I/O failure")
+
+	// ErrDataUpdateMainFetchFailed — Pages-published from-main channel
+	// is unreachable or the response is malformed (e.g. version.json
+	// missing). Handler maps to 502 (Bad Gateway — Pages downstream
+	// issue, distinct from ErrDataUpdateIO which is local disk).
+	ErrDataUpdateMainFetchFailed = errors.New("data update: main fetch failed")
 )
 
 // DataUpdateResult is the success-path payload returned to the FE.
 // Empty Added*/Removed* slices marshal as omitempty so the modal can
 // show "No changes" when the tag bump was a docs/code-only release.
+//
+// Source discriminates the channel that produced this result. For
+// release applies, AppliedTag carries the semver; for main applies,
+// AppliedCommit carries the 7-char short SHA from Pages-published
+// data/version.json.
 type DataUpdateResult struct {
-	AppliedTag     string   `json:"applied_tag"`
+	Source         string   `json:"source"`
+	AppliedTag     string   `json:"applied_tag,omitempty"`
+	AppliedCommit  string   `json:"applied_commit,omitempty"`
 	AddedHeroes    []string `json:"added_heroes,omitempty"`
 	RemovedHeroes  []string `json:"removed_heroes,omitempty"`
 	AddedMaps      []string `json:"added_maps,omitempty"`
@@ -117,43 +130,87 @@ func (a *App) ApplyDataUpdate(tag string) (DataUpdateResult, error) {
 		return DataUpdateResult{}, err
 	}
 
-	// Snapshot existing files for rollback. nil entries are fine —
-	// they mean "no file existed at this path before".
+	manifest := DataManifest{
+		AppliedSource:     "release",
+		AppliedReleaseTag: tag,
+		AppliedAt:         time.Now().UTC(),
+		Files:             map[string]ManifestFile{},
+	}
+	added, err := commitVerifiedAssets(verified, manifest)
+	if err != nil {
+		return DataUpdateResult{}, err
+	}
+	added.Source = "release"
+	added.AppliedTag = tag
+	return added, nil
+}
+
+// ApplyMainDataUpdate downloads + verifies + applies the reference
+// data from the Pages-published from-main channel. No release-race
+// check — main is whatever it is at fetch time. Returns the diff vs
+// the previous dataset on success; ErrDataUpdateMainFetchFailed if
+// Pages is unreachable, ErrDataUpdateChecksum on sidecar mismatch,
+// ErrDataUpdateIO on local disk failures. Safe for concurrent callers
+// via dataUpdateMu.
+func (a *App) ApplyMainDataUpdate() (DataUpdateResult, error) {
+	dataUpdateMu.Lock()
+	defer dataUpdateMu.Unlock()
+
+	ver := fetchMainVersion()
+	if ver.CommitSHA == "" {
+		return DataUpdateResult{}, fmt.Errorf("%w: version.json unreachable", ErrDataUpdateMainFetchFailed)
+	}
+
+	verified, err := fetchAndVerifyMainAssets()
+	if err != nil {
+		return DataUpdateResult{}, err
+	}
+
+	short := shortenCommitSHA(ver.CommitSHA)
+	manifest := DataManifest{
+		AppliedSource:     "main",
+		AppliedMainCommit: short,
+		AppliedAt:         time.Now().UTC(),
+		Files:             map[string]ManifestFile{},
+	}
+	added, err := commitVerifiedAssets(verified, manifest)
+	if err != nil {
+		return DataUpdateResult{}, err
+	}
+	added.Source = "main"
+	added.AppliedCommit = short
+	return added, nil
+}
+
+// commitVerifiedAssets takes pre-fetched + pre-verified asset bytes
+// and applies them: snapshot → write+rename → parser.Reload → write
+// manifest → return diff. Shared between ApplyDataUpdate and
+// ApplyMainDataUpdate so both channels share rollback semantics.
+//
+// Callers populate manifest.AppliedSource + AppliedReleaseTag /
+// AppliedMainCommit + AppliedAt. The manifest's Files map is filled
+// in here from verified.
+func commitVerifiedAssets(verified map[string]verifiedAsset, manifest DataManifest) (DataUpdateResult, error) {
 	dataDir := filepath.Join(appBaseDir(), dataDirName)
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		return DataUpdateResult{}, fmt.Errorf("%w: mkdir data: %v", ErrDataUpdateIO, err)
 	}
 	snapshot := snapshotDataDir(dataDir)
 
-	// Snapshot the parser's current rosters BEFORE the swap so the
-	// returned diff describes what's actually changing for the user.
 	prevHeroes := flattenRoster(parser.HeroesByRole())
 	prevMaps := flattenRoster(parser.MapsByType())
 	prevSources := sourceNames(parser.Sources())
 
-	// Write all .tmp files first, then rename in sequence. Rename
-	// failures roll back by restoring snapshots + removing .tmp.
 	if err := writeAndRename(dataDir, verified); err != nil {
 		restoreSnapshot(dataDir, snapshot)
 		removeTmpFiles(dataDir)
 		return DataUpdateResult{}, err
 	}
 
-	// Atomic-swap the parser's dataset. Reload errors are
-	// non-fatal — embedded fallback still keeps the parser usable —
-	// but we log them so the operator can spot a malformed asset
-	// that survived SHA verification (e.g. valid YAML but a missing
-	// required role). Still write the manifest so the new tag is
-	// reflected; the FE LoadError() surface flags the partial-load.
 	if err := parser.Reload(); err != nil {
 		log.Printf("apply_data_update: parser.Reload returned errors after apply: %v", err)
 	}
 
-	manifest := DataManifest{
-		AppliedReleaseTag: tag,
-		AppliedAt:         time.Now().UTC(),
-		Files:             map[string]ManifestFile{},
-	}
 	for _, name := range dataYAMLFiles {
 		v := verified[name]
 		manifest.Files[name] = ManifestFile{SHA256: v.sha256, Size: int64(len(v.bytes))}
@@ -167,7 +224,6 @@ func (a *App) ApplyDataUpdate(tag string) (DataUpdateResult, error) {
 	addedSources, removedSources := diffRosters(prevSources, sourceNames(parser.Sources()))
 
 	return DataUpdateResult{
-		AppliedTag:     tag,
 		AddedHeroes:    addedHeroes,
 		RemovedHeroes:  removedHeroes,
 		AddedMaps:      addedMaps,
@@ -175,6 +231,29 @@ func (a *App) ApplyDataUpdate(tag string) (DataUpdateResult, error) {
 		AddedSources:   addedSources,
 		RemovedSources: removedSources,
 	}, nil
+}
+
+// fetchAndVerifyMainAssets is the main-channel sibling of
+// fetchAndVerifyAssets — same shape, different URL builder.
+func fetchAndVerifyMainAssets() (map[string]verifiedAsset, error) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	out := make(map[string]verifiedAsset, len(dataYAMLFiles))
+	for _, name := range dataYAMLFiles {
+		b, err := getBytes(client, mainAssetURL(name))
+		if err != nil {
+			return nil, fmt.Errorf("%w: fetch %s: %v", ErrDataUpdateMainFetchFailed, name, err)
+		}
+		sum, err := getBytes(client, mainAssetURL(name)+".sha256")
+		if err != nil {
+			return nil, fmt.Errorf("%w: fetch %s.sha256: %v", ErrDataUpdateMainFetchFailed, name, err)
+		}
+		if !verifySha256(b, sum) {
+			return nil, fmt.Errorf("%w: %s", ErrDataUpdateChecksum, name)
+		}
+		h := sha256.Sum256(b)
+		out[name] = verifiedAsset{bytes: b, sha256: hex.EncodeToString(h[:])}
+	}
+	return out, nil
 }
 
 // confirmReleaseTag re-fetches GitHub /latest and asserts the

@@ -77,20 +77,37 @@ func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
 		w.WriteHeader(http.StatusAccepted)
 	})
 	// Apply data update: download + SHA-256 verify + atomically swap
-	// the parser's reference data (heroes / maps / screenshot sources)
-	// for the latest published release's assets. POST because it
-	// triggers a side-effect that doesn't map to a single resource;
-	// body carries `{tag}` so the server can detect a release race
-	// between the user's last check and this apply.
+	// the parser's reference data (heroes / maps / screenshot sources).
+	// POST because it triggers a side-effect that doesn't map to a
+	// single resource. Body discriminator:
+	//   {"source":"release","tag":"1.2.3"} — pulls from the release's
+	//     published assets; server confirms the tag is still /latest.
+	//   {"source":"main"}                  — pulls the live YAMLs from
+	//     Pages-published https://sound-barrier.github.io/recall/data/.
+	// A missing source field defaults to "release" for backwards-
+	// compatible clients that pre-date the main channel.
 	apiMux.HandleFunc("POST /api/v1/system/data-update", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
-			Tag string `json:"tag"`
+			Source string `json:"source"`
+			Tag    string `json:"tag"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		got, err := a.ApplyDataUpdate(body.Tag)
+		var (
+			got app.DataUpdateResult
+			err error
+		)
+		switch body.Source {
+		case "", "release":
+			got, err = a.ApplyDataUpdate(body.Tag)
+		case "main":
+			got, err = a.ApplyMainDataUpdate()
+		default:
+			http.Error(w, "unknown source: "+body.Source, http.StatusBadRequest)
+			return
+		}
 		if err != nil {
 			switch {
 			case errors.Is(err, app.ErrDataUpdateTagMismatch):
@@ -99,6 +116,8 @@ func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
 				http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 			case errors.Is(err, app.ErrDataUpdateReleaseMoved):
 				http.Error(w, err.Error(), http.StatusConflict)
+			case errors.Is(err, app.ErrDataUpdateMainFetchFailed):
+				http.Error(w, err.Error(), http.StatusBadGateway)
 			default:
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}

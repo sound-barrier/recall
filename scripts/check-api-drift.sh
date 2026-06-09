@@ -186,6 +186,18 @@ fi
 #                                     ops are tested in pkg/app/*_test.go.
 #   --exclude-path /api/v1/events   — SSE endpoint, never closes; would
 #                                     trip the request-response timeout.
+#   --exclude-path /api/v1/system/data-update — POST hits live network
+#                                     (GitHub Releases API for source=
+#                                     release, GitHub Pages for source=
+#                                     main). The fuzz environment has
+#                                     neither reachable so source=main
+#                                     calls reliably return 502 (Pages
+#                                     unreachable) which schemathesis's
+#                                     server_error check correctly flags
+#                                     — the failure is environmental,
+#                                     not a contract bug. Handler's
+#                                     sentinel→status mapping is covered
+#                                     by pkg/app/apply_data_update_test.go.
 # DELETE methods are no longer excluded — the test server runs in an
 # isolated HOME so a DB-wiping DELETE only resets the scratch state.
 # OpenAPI 3.1 is first-class in v4 — no more --experimental flag.
@@ -198,6 +210,7 @@ schemathesis run \
   --suppress-health-check all \
   --exclude-path /api/v1/events \
   --exclude-path '/api/v1/profiles/{name}' \
+  --exclude-path '/api/v1/system/data-update' \
   api/openapi.yaml
 
 echo "[ recall ] ✓  API spec ↔ server in sync"

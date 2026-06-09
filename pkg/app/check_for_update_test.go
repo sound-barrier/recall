@@ -31,11 +31,18 @@ func isEmptyUpdate(u UpdateInfo) bool {
 // withReleasesURL swaps releasesURL for the duration of the test and
 // restores it after — same shape as parser tests' runTesseractFunc
 // swapping.
+//
+// Also wires the main-channel URLs at a pre-closed httptest server
+// so the parallel fetch in CheckForUpdate stays hermetic. Tests that
+// want a LIVE main channel call withMainURLs(t, srv.URL) AFTER this
+// to override — the LIFO Cleanup unwinds the override before this
+// helper's restore fires.
 func withReleasesURL(t *testing.T, url string) {
 	t.Helper()
 	prev := releasesURL
 	releasesURL = url
 	t.Cleanup(func() { releasesURL = prev })
+	withMainURLs(t, closedServerURL(t))
 }
 
 // withVersion swaps the package-level Version (set via ldflags in
@@ -284,6 +291,65 @@ func withReleaseAssetURL(t *testing.T, builder func(version, name string) string
 	prev := releaseAssetURL
 	releaseAssetURL = builder
 	t.Cleanup(func() { releaseAssetURL = prev })
+}
+
+// withMainURLs swaps the main-channel URL seams (mainAssetURL +
+// mainVersionURL) so tests stay hermetic. Tests that don't care
+// about the main channel pass closedServerURL (a pre-closed
+// httptest server) — every main-channel fetch returns a connection
+// error which collapses to MainStatus{} (empty CommitSHA, no diff)
+// — exactly the "Pages unreachable" branch.
+//
+// Tests that DO care about the main channel pass a builder routed
+// at a running httptest server with /heroes.yaml + /version.json +
+// `.sha256` sidecars staged.
+func withMainURLs(t *testing.T, base string) {
+	t.Helper()
+	prevAsset := mainAssetURL
+	prevVersion := mainVersionURL
+	mainAssetURL = func(name string) string { return base + "/" + name }
+	mainVersionURL = base + "/version.json"
+	t.Cleanup(func() {
+		mainAssetURL = prevAsset
+		mainVersionURL = prevVersion
+	})
+}
+
+// closedServerURL stands up an httptest server and closes it
+// immediately so every request fails with a connection error. Use
+// when a test only needs the main-channel fetch path to return
+// quickly without hitting the live Pages URL.
+func closedServerURL(t *testing.T) string {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	srv.Close()
+	return srv.URL
+}
+
+// fakeMainServer mirrors fakeAssetServer for the main channel. The
+// commitSHA is staged into version.json; the three YAMLs + sidecars
+// follow the same pattern as the release flow.
+func fakeMainServer(t *testing.T, commitSHA string, heroesBody, mapsBody, sourcesBody []byte) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/version.json", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprintf(w, `{"commit_sha":"%s","committed_at":"2026-06-09T00:00:00Z"}`, commitSHA)
+	})
+	stage := func(name string, body []byte) {
+		if len(body) == 0 {
+			return
+		}
+		mux.HandleFunc("/"+name, func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(body) })
+		mux.HandleFunc("/"+name+".sha256", func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = fmt.Fprintf(w, "%s  %s\n", sha256hex(body), name)
+		})
+	}
+	stage("heroes.yaml", heroesBody)
+	stage("maps.yaml", mapsBody)
+	stage("screenshot_sources.yaml", sourcesBody)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	return srv
 }
 
 // sha256hex computes a hex-encoded SHA-256 of the input — convenience
@@ -592,5 +658,83 @@ func TestCheckForUpdate_DataDiff_AddedHeroesAgainstManifest(t *testing.T) {
 	}
 	if !contains(got.Data.AddedHeroes, "Phoenix") {
 		t.Errorf("Data.AddedHeroes: want to contain 'Phoenix', got %v", got.Data.AddedHeroes)
+	}
+}
+
+// ─── Main-channel (Pages live data) ───────────────────────────────
+
+func TestCheckForUpdate_MainStatusEmpty_WhenPagesUnreachable(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	srv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v0.3.0","html_url":"https://example/v0.3.0"}`)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "0.3.0")
+	// withReleasesURL already wires main to a closed httptest server,
+	// so this test exercises the unreachable-Pages branch by default.
+
+	got := (&App{}).CheckForUpdate()
+
+	if got.Main.CommitSHA != "" {
+		t.Errorf("Main.CommitSHA: want empty (Pages unreachable), got %q", got.Main.CommitSHA)
+	}
+	if got.Main.HasUpdate {
+		t.Errorf("Main.HasUpdate: want false (Pages unreachable), got true")
+	}
+}
+
+func TestCheckForUpdate_MainStatusPopulatesCommitSHAAndDiff(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	srv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v0.3.0","html_url":"https://example/v0.3.0"}`)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "0.3.0")
+
+	// Main-channel YAMLs contain a hero not in the embedded roster.
+	mainHeroes := []byte("tank:\n  - Reinhardt\nsupport: []\ndps:\n  - Phoenix\n")
+	mainMaps := []byte("control:\n  - Ilios\n")
+	mainSources := validSourcesYAML()
+	mainSrv := fakeMainServer(t, "abc1234567890def", mainHeroes, mainMaps, mainSources)
+	withMainURLs(t, mainSrv.URL)
+
+	got := (&App{}).CheckForUpdate()
+
+	if got.Main.CommitSHA != "abc1234" {
+		t.Errorf("Main.CommitSHA: want 'abc1234' (7-char short), got %q", got.Main.CommitSHA)
+	}
+	if !got.Main.HasUpdate {
+		t.Error("Main.HasUpdate: want true (no manifest yet, main is ahead by definition)")
+	}
+	if !contains(got.Main.AddedHeroes, "Phoenix") {
+		t.Errorf("Main.AddedHeroes: want to contain 'Phoenix', got %v", got.Main.AddedHeroes)
+	}
+}
+
+func TestCheckForUpdate_MainStatusReflectsAppliedCommit(t *testing.T) {
+	t.Setenv("RECALL_DATA_DIR", t.TempDir())
+	// Pre-seed the manifest as if the user already synced from main
+	// at the SAME commit we'll publish — HasUpdate should flip false.
+	if err := SaveManifest(DataManifest{
+		AppliedSource:     "main",
+		AppliedMainCommit: "abc1234",
+		AppliedAt:         time.Now().UTC().Add(-1 * time.Hour),
+		Files:             map[string]ManifestFile{},
+	}); err != nil {
+		t.Fatalf("SaveManifest: %v", err)
+	}
+	srv := fakeReleasesServer(t, http.StatusOK,
+		`{"tag_name":"v0.3.0","html_url":"https://example/v0.3.0"}`)
+	withReleasesURL(t, srv.URL)
+	withVersion(t, "0.3.0")
+	mainSrv := fakeMainServer(t, "abc1234567890def",
+		[]byte("tank:\n  - Reinhardt\n"), []byte("control:\n  - Ilios\n"), validSourcesYAML())
+	withMainURLs(t, mainSrv.URL)
+
+	got := (&App{}).CheckForUpdate()
+
+	if got.Main.AppliedCommit != "abc1234" {
+		t.Errorf("Main.AppliedCommit: want 'abc1234', got %q", got.Main.AppliedCommit)
+	}
+	if got.Main.HasUpdate {
+		t.Error("Main.HasUpdate: want false (applied commit matches published commit)")
 	}
 }

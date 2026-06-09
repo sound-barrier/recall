@@ -67,8 +67,19 @@ type UpdateInfo struct {
 	// currently-applied data (per <RECALL_DATA_DIR>/data/manifest.json,
 	// or "embedded" if missing) and the latest release's data
 	// assets — so the FE can show "Apply update" diffs without
-	// re-fetching.
+	// re-fetching. Indexed by source = "release" in the manifest.
 	Data DataStatus `json:"data"`
+
+	// Main carries the same shape of diff but against the live
+	// from-main channel published at
+	// https://sound-barrier.github.io/recall/data/. Always populated
+	// when the Pages fetch succeeded — independent of the release
+	// fetch, so dev builds + offline-release + up-to-date branches
+	// all surface main-channel updates if the user wants the
+	// bleeding edge. Empty CommitSHA means the Pages fetch failed
+	// (network / Pages outage / invalid version.json); the FE hides
+	// the Main row in that case.
+	Main MainStatus `json:"main"`
 }
 
 // DataStatus summarises what's different between the user's
@@ -77,6 +88,28 @@ type UpdateInfo struct {
 // on embedded data only.
 type DataStatus struct {
 	AppliedTag     string   `json:"applied_tag"`
+	AppliedAt      string   `json:"applied_at,omitempty"`
+	HasUpdate      bool     `json:"has_update"`
+	AddedHeroes    []string `json:"added_heroes,omitempty"`
+	RemovedHeroes  []string `json:"removed_heroes,omitempty"`
+	AddedMaps      []string `json:"added_maps,omitempty"`
+	RemovedMaps    []string `json:"removed_maps,omitempty"`
+	AddedSources   []string `json:"added_sources,omitempty"`
+	RemovedSources []string `json:"removed_sources,omitempty"`
+}
+
+// MainStatus mirrors DataStatus but tracks the from-main channel.
+// CommitSHA / AppliedCommit replace the release-tag identifiers
+// since main doesn't carry a semver. HasUpdate is true whenever the
+// user's applied commit (per manifest) differs from the currently-
+// published main commit.
+//
+// All fields are empty when the Pages fetch fails — the FE uses an
+// empty CommitSHA as the "main channel unavailable" signal.
+type MainStatus struct {
+	CommitSHA      string   `json:"commit_sha"`
+	CommittedAt    string   `json:"committed_at,omitempty"`
+	AppliedCommit  string   `json:"applied_commit"`
 	AppliedAt      string   `json:"applied_at,omitempty"`
 	HasUpdate      bool     `json:"has_update"`
 	AddedHeroes    []string `json:"added_heroes,omitempty"`
@@ -107,6 +140,21 @@ var releaseAssetURL = func(version, name string) string {
 		version, version, name,
 	)
 }
+
+// mainAssetURL builds the from-main asset URL. Var-seam so tests can
+// route at an httptest.NewServer — same pattern as releaseAssetURL.
+// Pages publishes the three YAMLs + per-file `.sha256` sidecars at
+// https://sound-barrier.github.io/recall/data/ on every push to main
+// that touches pkg/parser/*.yaml; see .github/workflows/pages.yml.
+var mainAssetURL = func(name string) string {
+	return "https://sound-barrier.github.io/recall/data/" + name
+}
+
+// mainVersionURL points at the version.json the Pages workflow
+// publishes alongside the YAMLs. The file carries the commit SHA +
+// committer date so the app can label what users applied
+// ("Applied main @ abc1234 · 2 days ago"). Var-seam for tests.
+var mainVersionURL = "https://sound-barrier.github.io/recall/data/version.json"
 
 func (a *App) GetVersion() string {
 	if Version != "dev" {
@@ -144,9 +192,30 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	v := a.GetVersion()
 	isDev := v == "dev" || strings.HasSuffix(v, "-dev")
 
+	// Fire the main-channel fetch in parallel with the release-channel
+	// fetch — they hit independent hosts (api.github.com vs
+	// sound-barrier.github.io) so serial would double the latency for
+	// no benefit. Joined at every return path via mainStatusChan;
+	// failures collapse to MainStatus{} which the FE renders as
+	// "channel unavailable" (no Main row).
+	mainStatusChan := make(chan MainStatus, 1)
+	go func() {
+		ver := fetchMainVersion()
+		mh, mm, ms := fetchMainRosters()
+		mainStatusChan <- computeMainStatus(ver, mh, mm, ms)
+	}()
+	withMain := func(u UpdateInfo) UpdateInfo {
+		u.Main = <-mainStatusChan
+		return u
+	}
+
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get(releasesURL)
 	if err != nil {
+		// Drain the goroutine even on the network-failure path so it
+		// doesn't leak. Empty-UpdateInfo is the contract the FE
+		// already reads; the Main field stays its zero value.
+		<-mainStatusChan
 		return UpdateInfo{}
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -157,11 +226,13 @@ func (a *App) CheckForUpdate() UpdateInfo {
 		Body    string `json:"body"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		<-mainStatusChan
 		return UpdateInfo{}
 	}
 
 	latest := strings.TrimPrefix(release.TagName, "v")
 	if latest == "" {
+		<-mainStatusChan
 		return UpdateInfo{}
 	}
 
@@ -171,7 +242,7 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	notes := excerptReleaseNotes(release.Body)
 
 	if isDev {
-		return UpdateInfo{
+		return withMain(UpdateInfo{
 			Checked:       true,
 			DevBuild:      true,
 			Latest:        latest,
@@ -179,7 +250,7 @@ func (a *App) CheckForUpdate() UpdateInfo {
 			LastCheckedAt: lastChecked,
 			ReleaseNotes:  notes,
 			Data:          computeDataStatus(latest),
-		}
+		})
 	}
 
 	// Semver compare instead of raw string equality. Two reasons:
@@ -202,14 +273,14 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	upstream, errUpstream := semver.NewVersion(latest)
 	if errCurrent != nil || errUpstream != nil {
 		if latest == v {
-			return UpdateInfo{
+			return withMain(UpdateInfo{
 				Checked:       true,
 				LastCheckedAt: lastChecked,
 				ReleaseNotes:  notes,
 				Data:          computeDataStatus(latest),
-			}
+			})
 		}
-		return UpdateInfo{
+		return withMain(UpdateInfo{
 			Checked:       true,
 			Available:     true,
 			Latest:        latest,
@@ -217,19 +288,19 @@ func (a *App) CheckForUpdate() UpdateInfo {
 			LastCheckedAt: lastChecked,
 			ReleaseNotes:  notes,
 			Data:          computeDataStatus(latest),
-		}
+		})
 	}
 
 	if !current.LessThan(upstream) {
-		return UpdateInfo{
+		return withMain(UpdateInfo{
 			Checked:       true,
 			LastCheckedAt: lastChecked,
 			ReleaseNotes:  notes,
 			Data:          computeDataStatus(latest),
-		}
+		})
 	}
 	heroes, maps, sources := fetchReleaseRosters(latest)
-	return UpdateInfo{
+	return withMain(UpdateInfo{
 		Checked:       true,
 		Available:     true,
 		Latest:        latest,
@@ -240,7 +311,7 @@ func (a *App) CheckForUpdate() UpdateInfo {
 		LastCheckedAt: lastChecked,
 		ReleaseNotes:  notes,
 		Data:          computeDataStatusWithFetched(latest, heroes, maps, sources),
-	}
+	})
 }
 
 // releaseNotesMaxBytes caps the body excerpt surfaced into the modal.
@@ -397,6 +468,101 @@ func fetchAsset(version, name string, decode func([]byte) []string) []string {
 	}
 
 	return decode(yamlBytes)
+}
+
+// mainVersion is the shape of data/version.json the Pages workflow
+// publishes alongside the YAMLs. Both fields are always populated by
+// the workflow; we tolerate either being empty for forward-compat.
+type mainVersion struct {
+	CommitSHA   string `json:"commit_sha"`
+	CommittedAt string `json:"committed_at"`
+}
+
+// fetchMainVersion fetches the from-main metadata blob. Returns the
+// zero value on any failure (network, decode, etc.) — callers treat
+// an empty CommitSHA as "Pages channel unavailable" and skip the
+// main-channel diff entirely.
+func fetchMainVersion() mainVersion {
+	client := &http.Client{Timeout: 5 * time.Second}
+	b, err := getBytes(client, mainVersionURL)
+	if err != nil {
+		return mainVersion{}
+	}
+	var v mainVersion
+	if err := json.Unmarshal(b, &v); err != nil {
+		return mainVersion{}
+	}
+	return v
+}
+
+// fetchMainRosters downloads heroes.yaml + maps.yaml +
+// screenshot_sources.yaml + per-file `.sha256` sidecars from the
+// Pages-published live channel and returns the flat name lists. Same
+// SHA-256 verification shape as fetchReleaseRosters; nil returned
+// for any asset whose fetch or verification failed.
+func fetchMainRosters() (heroes, maps, sources []string) {
+	heroes = fetchMainAsset("heroes.yaml", parseRosterNames)
+	maps = fetchMainAsset("maps.yaml", parseRosterNames)
+	sources = fetchMainAsset("screenshot_sources.yaml", parseSourceNames)
+	return heroes, maps, sources
+}
+
+func fetchMainAsset(name string, decode func([]byte) []string) []string {
+	client := &http.Client{Timeout: 5 * time.Second}
+
+	yamlBytes, err := getBytes(client, mainAssetURL(name))
+	if err != nil {
+		return nil
+	}
+	sumBytes, err := getBytes(client, mainAssetURL(name)+".sha256")
+	if err != nil {
+		return nil
+	}
+	if !verifySha256(yamlBytes, sumBytes) {
+		return nil
+	}
+	return decode(yamlBytes)
+}
+
+// computeMainStatus reads the local manifest + currently-loaded
+// rosters and returns a MainStatus showing what's different between
+// the user's applied main commit (per manifest) and the freshly-
+// fetched main rosters. Returns an empty MainStatus (CommitSHA="")
+// when the Pages fetch failed — the FE uses CommitSHA as the "main
+// channel reachable" gate.
+func computeMainStatus(ver mainVersion, heroes, maps, sources []string) MainStatus {
+	if ver.CommitSHA == "" {
+		return MainStatus{}
+	}
+	manifest, _ := LoadManifest()
+	ms := MainStatus{
+		CommitSHA:     shortenCommitSHA(ver.CommitSHA),
+		CommittedAt:   ver.CommittedAt,
+		AppliedCommit: manifest.AppliedMainCommit,
+		HasUpdate:     manifest.AppliedSource != "main" || manifest.AppliedMainCommit != shortenCommitSHA(ver.CommitSHA),
+	}
+	if manifest.AppliedSource == "main" && !manifest.AppliedAt.IsZero() {
+		ms.AppliedAt = manifest.AppliedAt.UTC().Format(time.RFC3339)
+	}
+	if heroes != nil {
+		ms.AddedHeroes, ms.RemovedHeroes = diffRosters(flattenRoster(parser.HeroesByRole()), heroes)
+	}
+	if maps != nil {
+		ms.AddedMaps, ms.RemovedMaps = diffRosters(flattenRoster(parser.MapsByType()), maps)
+	}
+	if sources != nil {
+		ms.AddedSources, ms.RemovedSources = diffRosters(sourceNames(parser.Sources()), sources)
+	}
+	return ms
+}
+
+// shortenCommitSHA trims a full 40-char SHA to the conventional
+// 7-char short form. Tolerates already-short inputs unchanged.
+func shortenCommitSHA(sha string) string {
+	if len(sha) > 7 {
+		return sha[:7]
+	}
+	return sha
 }
 
 // getBytes runs a GET and returns the response body, capped at 1 MB

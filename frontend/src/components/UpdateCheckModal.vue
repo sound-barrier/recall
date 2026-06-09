@@ -16,7 +16,7 @@
 
 import { ref, toRef, watch, computed } from 'vue'
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
-import { ApplyDataUpdate, OpenURL, ApiError, type UpdateInfo, type DataUpdateResult } from '../api'
+import { ApplyDataUpdate, ApplyMainDataUpdate, OpenURL, ApiError, type UpdateInfo, type DataUpdateResult } from '../api'
 
 const props = defineProps<{
   open:           boolean
@@ -36,12 +36,18 @@ type ApplyState =
   | { kind: 'success', result: DataUpdateResult }
   | { kind: 'error',   message: string, releaseRace: boolean }
 
-const applyState = ref<ApplyState>({ kind: 'idle' })
+// Two state machines — one per channel. Both can be in any state
+// independently; clicking Apply on one doesn't affect the other.
+const releaseState = ref<ApplyState>({ kind: 'idle' })
+const mainState = ref<ApplyState>({ kind: 'idle' })
 
-// Re-arm the apply button + clear stale success/error when the modal
-// re-opens.
+// Re-arm both apply buttons + clear stale success/error when the
+// modal re-opens.
 watch(() => props.open, (isOpen) => {
-  if (isOpen) applyState.value = { kind: 'idle' }
+  if (isOpen) {
+    releaseState.value = { kind: 'idle' }
+    mainState.value = { kind: 'idle' }
+  }
 })
 
 useModalFocusTrap(toRef(props, 'open'), {
@@ -51,39 +57,59 @@ useModalFocusTrap(toRef(props, 'open'), {
 
 const info = computed(() => props.updateInfo)
 const data = computed(() => info.value?.data ?? { applied_tag: '', has_update: false })
+const main = computed(() => info.value?.main ?? { commit_sha: '', applied_commit: '', has_update: false })
 
 const appliedTagLabel = computed(() => data.value.applied_tag || 'built-in')
+const mainCommitLabel = computed(() => main.value.applied_commit || 'never')
 
 const dataChangeCount = computed(() => {
   const d = data.value
   return [
-    d.added_heroes,
-    d.removed_heroes,
-    d.added_maps,
-    d.removed_maps,
-    d.added_sources,
-    d.removed_sources,
+    d.added_heroes, d.removed_heroes,
+    d.added_maps, d.removed_maps,
+    d.added_sources, d.removed_sources,
   ].reduce((acc, arr) => acc + (arr?.length ?? 0), 0)
 })
 
-async function onApply() {
-  if (!info.value?.latest) return
-  applyState.value = { kind: 'applying' }
+const mainChangeCount = computed(() => {
+  const m = main.value
+  return [
+    m.added_heroes, m.removed_heroes,
+    m.added_maps, m.removed_maps,
+    m.added_sources, m.removed_sources,
+  ].reduce((acc, arr) => acc + (arr?.length ?? 0), 0)
+})
+
+async function applyChannel(
+  state: typeof releaseState,
+  fn: () => Promise<DataUpdateResult>,
+) {
+  state.value = { kind: 'applying' }
   try {
-    const result = await ApplyDataUpdate(info.value.latest)
-    applyState.value = { kind: 'success', result }
+    const result = await fn()
+    state.value = { kind: 'success', result }
     emit('applied', result)
   } catch (err) {
     const apiErr = err instanceof ApiError ? err : null
     const message = apiErr
       ? apiErr.body || `Apply failed (HTTP ${apiErr.status})`
       : (err instanceof Error ? err.message : String(err))
-    applyState.value = {
+    state.value = {
       kind: 'error',
       message,
       releaseRace: apiErr?.status === 409,
     }
   }
+}
+
+function onApplyRelease() {
+  if (!info.value?.latest) return
+  void applyChannel(releaseState, () => ApplyDataUpdate(info.value!.latest))
+}
+
+function onApplyMain() {
+  if (!main.value.commit_sha) return
+  void applyChannel(mainState, () => ApplyMainDataUpdate())
 }
 
 function openReleasePage() {
@@ -149,78 +175,134 @@ function openReleasePage() {
 
           <hr class="update-check-modal-rule" />
 
-          <!-- Section 2: Game data -->
+          <!-- Section 2: Game data — release-channel + main-channel
+               sub-rows. Each has its own state machine + Apply button. -->
           <section class="update-check-modal-section" aria-labelledby="game-data-heading">
             <h3 id="game-data-heading" class="update-check-modal-section-title">Game data</h3>
-            <div class="update-check-modal-rows">
-              <div class="update-check-modal-row">
-                <span class="update-check-modal-row-label">Applied</span>
-                <span class="update-check-modal-row-value">{{ appliedTagLabel }}</span>
-              </div>
-              <div class="update-check-modal-row">
-                <span class="update-check-modal-row-label">Latest</span>
-                <span class="update-check-modal-row-value">v{{ info.latest }}</span>
-              </div>
-            </div>
 
-            <!-- Diff summary -->
-            <div v-if="applyState.kind === 'success'" class="update-check-modal-diff">
-              <p class="update-check-modal-diff-headline">
-                Applied <strong>v{{ applyState.result.applied_tag }}</strong> ·
-                {{ (applyState.result.added_heroes?.length ?? 0)
-                  + (applyState.result.added_maps?.length ?? 0)
-                  + (applyState.result.added_sources?.length ?? 0) }} added.
+            <!-- Release sub-row -->
+            <div class="update-check-modal-subrow" data-update-check-release-row>
+              <div class="update-check-modal-subrow-head">
+                <span class="update-check-modal-subrow-label">Release</span>
+                <span class="update-check-modal-row-value">{{ appliedTagLabel }} → v{{ info.latest }}</span>
+              </div>
+
+              <div v-if="releaseState.kind === 'success'" class="update-check-modal-diff">
+                <p class="update-check-modal-diff-headline">
+                  Applied <strong>v{{ releaseState.result.applied_tag }}</strong> ·
+                  {{ (releaseState.result.added_heroes?.length ?? 0)
+                    + (releaseState.result.added_maps?.length ?? 0)
+                    + (releaseState.result.added_sources?.length ?? 0) }} added.
+                </p>
+                <ul class="update-check-modal-diff-list">
+                  <li v-for="h in releaseState.result.added_heroes ?? []" :key="`rh-${h}`">+ Hero: {{ h }}</li>
+                  <li v-for="m in releaseState.result.added_maps ?? []" :key="`rm-${m}`">+ Map: {{ m }}</li>
+                  <li v-for="s in releaseState.result.added_sources ?? []" :key="`rs-${s}`">+ Source: {{ s }}</li>
+                </ul>
+              </div>
+              <div v-else-if="dataChangeCount > 0" class="update-check-modal-diff">
+                <ul class="update-check-modal-diff-list">
+                  <li v-for="h in data.added_heroes ?? []" :key="`h-${h}`">+ Hero: {{ h }}</li>
+                  <li v-for="m in data.added_maps ?? []" :key="`m-${m}`">+ Map: {{ m }}</li>
+                  <li v-for="s in data.added_sources ?? []" :key="`s-${s}`">+ Source: {{ s }}</li>
+                  <li v-for="h in data.removed_heroes ?? []" :key="`hr-${h}`">− Hero: {{ h }}</li>
+                  <li v-for="m in data.removed_maps ?? []" :key="`mr-${m}`">− Map: {{ m }}</li>
+                  <li v-for="s in data.removed_sources ?? []" :key="`sr-${s}`">− Source: {{ s }}</li>
+                </ul>
+              </div>
+              <p v-else-if="!data.has_update" class="update-check-modal-empty">
+                Release data is current.
               </p>
-              <ul class="update-check-modal-diff-list">
-                <li v-for="h in applyState.result.added_heroes ?? []" :key="`h-${h}`">+ Hero: {{ h }}</li>
-                <li v-for="m in applyState.result.added_maps ?? []" :key="`m-${m}`">+ Map: {{ m }}</li>
-                <li v-for="s in applyState.result.added_sources ?? []" :key="`s-${s}`">+ Source: {{ s }}</li>
-              </ul>
-            </div>
-            <div v-else-if="dataChangeCount > 0" class="update-check-modal-diff">
-              <ul class="update-check-modal-diff-list">
-                <li v-for="h in data.added_heroes ?? []" :key="`h-${h}`">+ Hero: {{ h }}</li>
-                <li v-for="m in data.added_maps ?? []" :key="`m-${m}`">+ Map: {{ m }}</li>
-                <li v-for="s in data.added_sources ?? []" :key="`s-${s}`">+ Source: {{ s }}</li>
-                <li v-for="h in data.removed_heroes ?? []" :key="`hr-${h}`">− Hero: {{ h }}</li>
-                <li v-for="m in data.removed_maps ?? []" :key="`mr-${m}`">− Map: {{ m }}</li>
-                <li v-for="s in data.removed_sources ?? []" :key="`sr-${s}`">− Source: {{ s }}</li>
-              </ul>
-            </div>
-            <p v-else-if="!data.has_update" class="update-check-modal-empty">
-              Reference data is current.
-            </p>
 
-            <!-- Apply error inline -->
-            <p v-if="applyState.kind === 'error'" class="update-check-modal-error" role="alert">
-              {{ applyState.message }}
-              <template v-if="applyState.releaseRace">
-                <br>The release moved while the modal was open. Close and retry.
-              </template>
-            </p>
+              <p v-if="releaseState.kind === 'error'" class="update-check-modal-error" role="alert">
+                {{ releaseState.message }}
+                <template v-if="releaseState.releaseRace">
+                  <br>The release moved while the modal was open. Close and retry.
+                </template>
+              </p>
 
-            <div v-if="data.has_update || applyState.kind === 'success'" class="update-check-modal-actions">
+              <div v-if="data.has_update || releaseState.kind === 'success'" class="update-check-modal-actions">
+                <button
+                  type="button"
+                  class="update-check-modal-btn update-check-modal-btn-primary"
+                  data-update-check-apply
+                  :disabled="releaseState.kind === 'applying' || (!data.has_update && releaseState.kind !== 'success')"
+                  @click="onApplyRelease"
+                >
+                  <span v-if="releaseState.kind === 'applying'">
+                    <span class="update-check-modal-spinner" aria-hidden="true" />
+                    Verifying SHA-256…
+                  </span>
+                  <span v-else-if="releaseState.kind === 'success'">Applied</span>
+                  <span v-else>Apply update</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Main sub-row — opt-in bleeding-edge channel. Hidden
+                 when Pages is unreachable (main.commit_sha empty). -->
+            <div v-if="main.commit_sha" class="update-check-modal-subrow" data-update-check-main-row>
+              <div class="update-check-modal-subrow-head">
+                <span class="update-check-modal-subrow-label">Main</span>
+                <span class="update-check-modal-row-value">{{ mainCommitLabel }} → {{ main.commit_sha }}</span>
+              </div>
+
+              <div v-if="mainState.kind === 'success'" class="update-check-modal-diff">
+                <p class="update-check-modal-diff-headline">
+                  Synced main @ <strong>{{ mainState.result.applied_commit }}</strong> ·
+                  {{ (mainState.result.added_heroes?.length ?? 0)
+                    + (mainState.result.added_maps?.length ?? 0)
+                    + (mainState.result.added_sources?.length ?? 0) }} added.
+                </p>
+                <ul class="update-check-modal-diff-list">
+                  <li v-for="h in mainState.result.added_heroes ?? []" :key="`mh-${h}`">+ Hero: {{ h }}</li>
+                  <li v-for="m in mainState.result.added_maps ?? []" :key="`mm-${m}`">+ Map: {{ m }}</li>
+                  <li v-for="s in mainState.result.added_sources ?? []" :key="`ms-${s}`">+ Source: {{ s }}</li>
+                </ul>
+              </div>
+              <div v-else-if="mainChangeCount > 0" class="update-check-modal-diff">
+                <ul class="update-check-modal-diff-list">
+                  <li v-for="h in main.added_heroes ?? []" :key="`mh-${h}`">+ Hero: {{ h }}</li>
+                  <li v-for="m in main.added_maps ?? []" :key="`mm-${m}`">+ Map: {{ m }}</li>
+                  <li v-for="s in main.added_sources ?? []" :key="`ms-${s}`">+ Source: {{ s }}</li>
+                  <li v-for="h in main.removed_heroes ?? []" :key="`mhr-${h}`">− Hero: {{ h }}</li>
+                  <li v-for="m in main.removed_maps ?? []" :key="`mmr-${m}`">− Map: {{ m }}</li>
+                  <li v-for="s in main.removed_sources ?? []" :key="`msr-${s}`">− Source: {{ s }}</li>
+                </ul>
+              </div>
+              <p v-else-if="!main.has_update" class="update-check-modal-empty">
+                Main is in sync.
+              </p>
+
+              <p v-if="mainState.kind === 'error'" class="update-check-modal-error" role="alert">
+                {{ mainState.message }}
+              </p>
+
+              <div v-if="main.has_update || mainState.kind === 'success'" class="update-check-modal-actions">
+                <button
+                  type="button"
+                  class="update-check-modal-btn update-check-modal-btn-primary"
+                  data-update-check-apply-main
+                  :disabled="mainState.kind === 'applying' || (!main.has_update && mainState.kind !== 'success')"
+                  @click="onApplyMain"
+                >
+                  <span v-if="mainState.kind === 'applying'">
+                    <span class="update-check-modal-spinner" aria-hidden="true" />
+                    Verifying SHA-256…
+                  </span>
+                  <span v-else-if="mainState.kind === 'success'">Synced</span>
+                  <span v-else>Sync from main</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="update-check-modal-actions update-check-modal-actions-footer">
               <button
-                v-if="applyState.kind !== 'success'"
                 type="button"
-                class="update-check-modal-btn update-check-modal-btn-primary"
-                data-update-check-apply
-                :disabled="applyState.kind === 'applying' || !data.has_update"
-                @click="onApply"
-              >
-                <span v-if="applyState.kind === 'applying'">
-                  <span class="update-check-modal-spinner" aria-hidden="true" />
-                  Verifying SHA-256…
-                </span>
-                <span v-else>Apply update</span>
-              </button>
-              <button
-                v-else
-                type="button"
-                class="update-check-modal-btn update-check-modal-btn-primary"
+                class="update-check-modal-btn update-check-modal-btn-ghost"
                 data-update-check-close
                 @click="$emit('close')"
-              >Done</button>
+              >Close</button>
             </div>
           </section>
         </div>
@@ -394,6 +476,38 @@ function openReleasePage() {
   display: flex;
   justify-content: flex-end;
   margin-top: 0.5rem;
+}
+
+.update-check-modal-actions-footer {
+  border-top: 1px solid var(--border-soft);
+  padding-top: 0.7rem;
+  margin-top: 0.85rem;
+}
+
+.update-check-modal-subrow {
+  padding: 0.65rem 0;
+  border-bottom: 1px dashed var(--border-soft);
+}
+
+.update-check-modal-subrow:last-of-type {
+  border-bottom: none;
+}
+
+.update-check-modal-subrow-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.update-check-modal-subrow-label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 .update-check-modal-btn {

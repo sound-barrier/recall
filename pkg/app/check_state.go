@@ -20,12 +20,21 @@ type CheckState struct {
 	LastCheckedAt time.Time `json:"last_checked_at"`
 }
 
-// DataManifest records the release-tag the user's most recent Apply
-// Data Update call pulled from + the SHA-256 of each file written.
-// Lives at <RECALL_DATA_DIR>/data/manifest.json. A missing manifest
-// means the install is running on embedded data only.
+// DataManifest records the release-tag or main commit the user's
+// most recent Apply Data Update call pulled from + the SHA-256 of
+// each file written. Lives at <RECALL_DATA_DIR>/data/manifest.json.
+// A missing manifest means the install is running on embedded data
+// only.
+//
+// AppliedSource discriminates between the two channels:
+//   - "release" (or "" for manifests written before this field
+//     existed) — AppliedReleaseTag carries the tag.
+//   - "main" — AppliedMainCommit carries the 7-char short commit SHA
+//     pulled from Pages-published data/version.json.
 type DataManifest struct {
-	AppliedReleaseTag string                  `json:"applied_release_tag"`
+	AppliedSource     string                  `json:"applied_source,omitempty"`
+	AppliedReleaseTag string                  `json:"applied_release_tag,omitempty"`
+	AppliedMainCommit string                  `json:"applied_main_commit,omitempty"`
 	AppliedAt         time.Time               `json:"applied_at"`
 	Files             map[string]ManifestFile `json:"files"`
 }

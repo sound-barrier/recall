@@ -64,6 +64,7 @@ function defaultUpdate(overrides: Partial<UpdateInfo> = {}): UpdateInfo {
     latest:     '',
     url:        '',
     data:       { applied_tag: '', has_update: false },
+    main:       { commit_sha: '', applied_commit: '', has_update: false },
     ...overrides,
   }
 }

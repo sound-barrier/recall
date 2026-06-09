@@ -974,11 +974,19 @@ export interface paths {
          *     maps / capture-tool grammars by clicking Apply Update,
          *     without re-installing Recall.
          *
+         *     Body discriminator: `source: "release"` (default for backward
+         *     compatibility) pulls from the release's tagged assets;
+         *     `source: "main"` pulls live YAMLs from Pages-published
+         *     https://sound-barrier.github.io/recall/data/ so users on
+         *     stable binaries can pick up new heroes/maps/capture-tool
+         *     grammars without waiting for a Recall release.
+         *
          *     Returns 409 if the latest release tag on GitHub differs from
-         *     the passed `tag` (the frontend should re-fetch
-         *     `/system/update` and ask the user to confirm again). Returns
-         *     422 if any asset's SHA-256 sidecar fails verification; 400
-         *     on a missing / malformed tag; 500 on I/O failure.
+         *     the passed `tag` (release source only — the frontend should
+         *     re-fetch `/system/update` and ask the user to confirm again).
+         *     Returns 422 if any asset's SHA-256 sidecar fails verification;
+         *     400 on a missing / malformed tag or unknown source; 502 if
+         *     Pages is unreachable (main source only); 500 on I/O failure.
          */
         post: operations["ApplyDataUpdate"];
         delete?: never;
@@ -1463,13 +1471,70 @@ export interface components {
             removed_sources?: string[];
         };
         /**
+         * @description Comparison between the user's currently-loaded reference data
+         *     and the live from-main channel published at
+         *     https://sound-barrier.github.io/recall/data/. `commit_sha` is
+         *     the 7-char short SHA from Pages-published `data/version.json`;
+         *     empty means the Pages fetch failed (FE hides the Main row).
+         *     `applied_commit` is empty when the user has never synced from
+         *     main (the manifest carries no AppliedMainCommit). HasUpdate is
+         *     true when commit_sha != applied_commit OR the manifest's
+         *     AppliedSource isn't "main".
+         */
+        MainStatus: {
+            /**
+             * @description 7-char short SHA of the currently-published main commit.
+             *     Empty means the from-main channel was unreachable.
+             * @example abc1234
+             */
+            commit_sha: string;
+            /**
+             * Format: date-time
+             * @description ISO 8601 committer date from the Pages-published
+             *     version.json — surfaced as "Applied main @ abc1234 ·
+             *     2 days ago" in the modal.
+             */
+            committed_at?: string;
+            /**
+             * @description 7-char short SHA from the manifest's AppliedMainCommit.
+             *     Empty when the user has never synced from main.
+             */
+            applied_commit: string;
+            /**
+             * Format: date-time
+             * @description RFC3339 timestamp of the last successful main apply.
+             */
+            applied_at?: string;
+            has_update: boolean;
+            added_heroes?: string[];
+            removed_heroes?: string[];
+            added_maps?: string[];
+            removed_maps?: string[];
+            added_sources?: string[];
+            removed_sources?: string[];
+        };
+        /**
          * @description Returned by POST /api/v1/system/data-update on success. Lists
          *     the actual differences applied — the modal renders these as
-         *     the success-state summary.
+         *     the success-state summary. `source` discriminates which
+         *     identifier is populated: "release" → applied_tag; "main" →
+         *     applied_commit.
          */
         DataUpdateResult: {
-            /** @example 1.4.3 */
-            applied_tag: string;
+            /** @enum {string} */
+            source: "release" | "main";
+            /**
+             * @description Release tag the apply pulled from. Populated when
+             *     source = "release".
+             * @example 1.4.3
+             */
+            applied_tag?: string;
+            /**
+             * @description 7-char short commit SHA from Pages-published
+             *     data/version.json. Populated when source = "main".
+             * @example abc1234
+             */
+            applied_commit?: string;
             added_heroes?: string[];
             removed_heroes?: string[];
             added_maps?: string[];
@@ -3226,6 +3291,7 @@ export interface operations {
                          */
                         release_notes?: string;
                         data: components["schemas"]["DataStatus"];
+                        main: components["schemas"]["MainStatus"];
                     };
                 };
             };
@@ -3241,13 +3307,18 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    /** @enum {string} */
+                    source?: "release";
                     /**
-                     * @description Release tag the FE saw on the prior /system/update
-                     *     call, with or without the leading `v`. Must be
-                     *     non-empty — the handler returns 400 otherwise.
+                     * @description Release tag the FE saw on the prior
+                     *     /system/update call, with or without the
+                     *     leading `v`.
                      * @example 1.4.3
                      */
                     tag: string;
+                } | {
+                    /** @enum {string} */
+                    source: "main";
                 };
             };
         };
@@ -3261,7 +3332,7 @@ export interface operations {
                     "application/json": components["schemas"]["DataUpdateResult"];
                 };
             };
-            /** @description Tag missing / malformed. */
+            /** @description Tag missing / malformed, or unknown source. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3270,7 +3341,8 @@ export interface operations {
             };
             /**
              * @description Release moved since the last /system/update — the FE
-             *     should re-fetch and re-show the modal.
+             *     should re-fetch and re-show the modal. (release source
+             *     only.)
              */
             409: {
                 headers: {
@@ -3290,6 +3362,17 @@ export interface operations {
             };
             /** @description I/O failure during write / rename. */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description Pages-published from-main channel is unreachable — the
+             *     FE should retry later (no parser state was modified).
+             *     Returned only for `source: "main"` requests.
+             */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };

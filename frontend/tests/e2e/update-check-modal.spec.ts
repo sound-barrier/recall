@@ -29,6 +29,14 @@ interface UpdateResponse {
     added_maps?: string[]
     added_sources?: string[]
   }
+  main?: {
+    commit_sha: string
+    applied_commit: string
+    has_update: boolean
+    added_heroes?: string[]
+    added_maps?: string[]
+    added_sources?: string[]
+  }
   release_notes?: string
 }
 
@@ -42,6 +50,7 @@ async function mockUpdate(page: import('@playwright/test').Page, payload: Update
         url: `https://example.test/release/${payload.latest}`,
         ...(payload.release_notes ? { release_notes: payload.release_notes } : {}),
         data: payload.data,
+        main: payload.main ?? { commit_sha: '', applied_commit: '', has_update: false },
       }),
     })
   })
@@ -138,6 +147,65 @@ test.describe('update-check modal', () => {
     await page.locator('[data-update-check-trigger]').click()
     await page.locator('[data-update-check-apply]').click()
     await expect(page.getByText(/release moved while the modal was open/i)).toBeVisible()
+  })
+
+  test('Main row hidden when commit_sha is empty (Pages unreachable)', async ({ page }) => {
+    await mockVersion(page, '0.3.0')
+    await mockUpdate(page, {
+      available: false, latest: '0.3.0',
+      data: { applied_tag: '0.3.0', has_update: false },
+      main: { commit_sha: '', applied_commit: '', has_update: false },
+    })
+    await page.goto('/')
+
+    await page.locator('[data-update-check-trigger]').click()
+    await expect(page.locator('[role="dialog"]')).toBeVisible()
+    await expect(page.locator('[data-update-check-main-row]')).toHaveCount(0)
+  })
+
+  test('Sync from main button calls POST source=main and shows Synced summary', async ({ page }) => {
+    await mockVersion(page, '0.3.0')
+    await mockUpdate(page, {
+      available: false, latest: '0.3.0',
+      data: { applied_tag: '0.3.0', has_update: false },
+      main: { commit_sha: 'abc1234', applied_commit: '', has_update: true, added_heroes: ['Phoenix'] },
+    })
+    let postBody: { source?: string } | null = null
+    await page.route('**/api/v1/system/data-update', async (route: Route) => {
+      postBody = JSON.parse(route.request().postData() ?? '{}')
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({
+          source: 'main', applied_commit: 'abc1234', added_heroes: ['Phoenix'],
+        }),
+      })
+    })
+    await page.goto('/')
+
+    await page.locator('[data-update-check-trigger]').click()
+    await page.locator('[data-update-check-apply-main]').click()
+    await expect(page.getByText(/Synced main/i)).toBeVisible()
+    await expect(page.getByText(/abc1234/)).toBeVisible()
+    expect(postBody?.source).toBe('main')
+  })
+
+  test('Sync from main 502 surfaces inline error without closing', async ({ page }) => {
+    await mockVersion(page, '0.3.0')
+    await mockUpdate(page, {
+      available: false, latest: '0.3.0',
+      data: { applied_tag: '0.3.0', has_update: false },
+      main: { commit_sha: 'abc1234', applied_commit: '', has_update: true, added_heroes: ['Phoenix'] },
+    })
+    await page.route('**/api/v1/system/data-update', async (route: Route) => {
+      await route.fulfill({ status: 502, contentType: 'text/plain', body: 'main fetch failed' })
+    })
+    await page.goto('/')
+
+    await page.locator('[data-update-check-trigger]').click()
+    await page.locator('[data-update-check-apply-main]').click()
+    const dialog = page.locator('[role="dialog"]')
+    await expect(dialog.locator('[role="alert"]')).toContainText(/main fetch failed/i)
+    await expect(dialog).toBeVisible()
   })
 
   test('Esc closes the modal', async ({ page }) => {

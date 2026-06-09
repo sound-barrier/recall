@@ -18,6 +18,7 @@ function infoWithLastChecked(daysAgo: number | null): UpdateInfo {
     latest: '1.2.3',
     url: 'https://example/v1.2.3',
     data: { applied_tag: '', has_update: false },
+    main: { commit_sha: '', applied_commit: '', has_update: false },
     ...(last_checked_at ? { last_checked_at } : {}),
   }
 }

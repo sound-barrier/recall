@@ -1,4 +1,4 @@
-# Publish two artifacts to GitHub Pages:
+# Publish three artifacts to GitHub Pages:
 #
 #   1. The user-facing documentation book (Honkit) — built from
 #      book/ + the staged-in docs/*.md chapters. Lives at the Pages
@@ -8,8 +8,19 @@
 #      https://sound-barrier.github.io/recall/api/ — same URL the
 #      book's sidebar "API reference" link points at.
 #
+#   3. The live reference-data channel: heroes.yaml + maps.yaml +
+#      screenshot_sources.yaml + per-file .sha256 sidecars +
+#      version.json (commit SHA + ISO timestamp). Lives at
+#      https://sound-barrier.github.io/recall/data/. Consumed by
+#      Recall's "Sync from main" path in the update modal so users
+#      can pick up new heroes/maps/capture-tool grammars between
+#      release tags without a binary upgrade. SHA-256 sidecars use
+#      the same `<64-char hex>  <filename>` format the release flow
+#      publishes (parser-side `verifySha256` checks them).
+#
 # Auto-deploys whenever the book scaffold, the docs/ chapters, the
-# spec, or this workflow itself changes on main.
+# spec, the parser YAML rosters, or this workflow itself changes on
+# main.
 #
 # One-time setup: Repo Settings → Pages → Build and deployment →
 # Source = "GitHub Actions". Without it, deploy-pages fails with
@@ -30,6 +41,9 @@ on:
       - 'docs/**'
       - 'book/**'
       - 'testdata/**'
+      - 'pkg/parser/heroes.yaml'
+      - 'pkg/parser/maps.yaml'
+      - 'pkg/parser/screenshot_sources.yaml'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -123,6 +137,9 @@ jobs:
       #   _site/                — book index.html + per-chapter HTML
       #   _site/api/index.html  — Swagger UI shell
       #   _site/api/openapi.yaml — the spec the shell loads
+      #   _site/data/<name>.yaml + <name>.yaml.sha256 — live reference
+      #                                                 data channel
+      #   _site/data/version.json — commit SHA + ISO timestamp
       - name: Stage site
         run: |
           mkdir -p _site
@@ -130,6 +147,27 @@ jobs:
           mkdir -p _site/api
           cp docs/api/index.html _site/api/index.html
           cp api/openapi.yaml    _site/api/openapi.yaml
+
+      # Live reference-data channel. Each YAML is published with a
+      # SHA-256 sidecar matching the format pkg/app/update.go's
+      # verifySha256 consumes ("<64-char hex>  <filename>\n"). On
+      # ubuntu-24.04 `sha256sum` ships in coreutils; macOS would need
+      # `shasum -a 256` but pages.yml runs Linux only.
+      - name: Stage live reference-data channel
+        run: |
+          mkdir -p _site/data
+          for name in heroes.yaml maps.yaml screenshot_sources.yaml; do
+            cp "pkg/parser/${name}" "_site/data/${name}"
+            ( cd _site/data && sha256sum "${name}" > "${name}.sha256" )
+          done
+          # version.json lets the app surface "Applied main @ abc1234
+          # · 2 days ago" in the update modal. committed_at uses the
+          # current commit's author date (ISO 8601, UTC) so users can
+          # see how stale main's roster is. ${GITHUB_SHA} is the
+          # commit being deployed.
+          committed_at="$(git -C . log -1 --format=%cI HEAD)"
+          printf '{\n  "commit_sha": "%s",\n  "committed_at": "%s"\n}\n' \
+            "${GITHUB_SHA}" "${committed_at}" > _site/data/version.json
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d  # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
