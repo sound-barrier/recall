@@ -10,10 +10,16 @@
 //
 // Schema is a single embedded file at `pkg/db/schema.sql` applied by
 // `applySchema` on every `NewSQLStore`. Pre-1.0 the project uses a
-// "wipe + relaunch" model — no migration framework, no
-// `schema_version` table, no rollback path. When the schema changes
-// incompatibly the operator wipes the DB (CONTRIBUTING.md carries
-// the per-platform path).
+// "wipe + relaunch" model — when the schema changes incompatibly
+// the operator wipes the DB (CONTRIBUTING.md carries the per-platform
+// path).
+//
+// The migration framework in `migrate.go` is scaffolded but
+// intentionally inert: `pkg/db/migrations/` ships with no
+// `.up.sql` / `.down.sql` pairs pre-1.0, so `applyMigrations` is a
+// no-op on every store open. Once 1.0 lands and the schema is
+// stable, schema changes go in as versioned migration pairs and the
+// runner picks them up automatically.
 package db
 
 // parentTables enumerates every parent screenshot table. Used by
