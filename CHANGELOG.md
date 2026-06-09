@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.11.0](https://github.com/sound-barrier/recall/compare/v0.10.0...v0.11.0) (2026-06-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* GET /api/v1/system/update response no longer includes the `data` field; the `main` field is renamed to `game_data` and its schema MainStatus is renamed GameDataStatus. POST /api/v1/system/data-update no longer accepts a body and ignores the `source` discriminator. DataUpdateResult drops `source` and `applied_tag`. The Wails-exposed methods App.ApplyDataUpdate and App.ApplyMainDataUpdate are gone; the single survivor is App.ApplyGameDataUpdate.
+* **db:** SQLite DBs from any prior release will fail to open against the new schema (the `schema_version` table reference is gone; legacy colon-form match_keys won't be rewritten). Pre-1.0 — no migration path. Wipe per CONTRIBUTING.md and relaunch.
+* HTTP path params change from camelCase to snake_case; POST /screenshots/{filename}/ignore replaced by PUT; resolution invalid-target status changes from 409 to 400; DB columns distance_s and set_at renamed; screenshots_dir_id FKs are now RESTRICT not SET NULL (delete dependent rows first). Pre-1.0 — no migration path.
+
+### Features
+
+* **lefthook:** add whole-project lint sweep to pre-push ([9079567](https://github.com/sound-barrier/recall/commit/90795677c26b20b560d225ba3bd15e212713fb01))
+* single "Update game data" button + diff preview manifest ([4ac2421](https://github.com/sound-barrier/recall/commit/4ac2421c8e9d4a346149ee87532fcd6403ea15f5))
+
+
+### Bug Fixes
+
+* **ci:** close two CI gates the prior commit tripped ([b419b71](https://github.com/sound-barrier/recall/commit/b419b71c6a2681ce67116c7541f074b0a216620f))
+* **e2e:** two CI-only layout/transition flakes blocking PR [#248](https://github.com/sound-barrier/recall/issues/248) ([0125d6c](https://github.com/sound-barrier/recall/commit/0125d6c130b4958a8cebd6fe72bd888928056475))
+* **lefthook:** port collision between schemathesis + playwright-smoke ([1b75bfe](https://github.com/sound-barrier/recall/commit/1b75bfeb92ff32ea644baf87278d38a421887cbf))
+
+
+### Refactors
+
+* **db:** drop migration framework for single-file schema ([b8a9cca](https://github.com/sound-barrier/recall/commit/b8a9cca94d06431f41a93b3bb7bf48d1a177c0a4))
+* **db:** keep migration scaffolding, inert until 1.0 ([338ce73](https://github.com/sound-barrier/recall/commit/338ce73d2ff6e745d8bad38e7983e3bbc4c2bd99))
+* pay down all 17 technical-debt items ([7561b71](https://github.com/sound-barrier/recall/commit/7561b711d634ad15c8a3377ba09d424d73334de6))
+
+
+### Documentation
+
+* **lefthook:** explicit "do not LEFTHOOK=0 to fix a blocked push" ([c63d5e2](https://github.com/sound-barrier/recall/commit/c63d5e2ebb75fcb05e7bb307a20ad726ac531afd))
+* refresh UI_RECOMMENDATIONS audit signal post-completion ([c434c9b](https://github.com/sound-barrier/recall/commit/c434c9b92316f26171c20cfc75a44769ac0afef4))
+
+
+### CI
+
+* close the pre-push gap; zero-tolerance flake/skip policy ([95b5dba](https://github.com/sound-barrier/recall/commit/95b5dba465202f56630b33c9ae4ff1c3e0dad07d))
+
+
+### Tests
+
+* **e2e:** scope update-check selectors so success state stops 2-matching ([6f868fc](https://github.com/sound-barrier/recall/commit/6f868fc65433265e91209e5a5d2ea0a6d6e3e34f))
+
 ## [0.10.0](https://github.com/sound-barrier/recall/compare/v0.9.1...v0.10.0) (2026-06-09)
 
 
