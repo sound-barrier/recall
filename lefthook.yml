@@ -4,8 +4,16 @@
 # Skip all hooks for one commit: LEFTHOOK=0 git commit ...
 #
 # Hooks here run on a per-commit basis against ONLY the files in the
-# staged diff (the {staged_files} placeholder). Full project lint lives
-# in `make lint` and CI; lefthook is for fast pre-push feedback.
+# staged diff (the {staged_files} placeholder). Pre-push hooks (further
+# down) run whole-project sweeps to match CI scope, so a green pre-push
+# guarantees a green CI lint + deadcode + coverage + schemathesis.
+#
+# DO NOT use `LEFTHOOK=0` to "fix" a push that lefthook blocked. If a
+# hook fails, that's the hook doing its job — read the output, fix the
+# underlying issue, and push again. Bypassing ships the regression to
+# CI and burns a CI round. The only legitimate `LEFTHOOK=0` use is
+# truly emergent hotfixes (security / outage) where CI failure is
+# acceptable.
 
 pre-commit:
   parallel: true
