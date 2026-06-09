@@ -156,6 +156,43 @@ session can skip the survey step.
   `recall-X.Y.Z-maps.yaml` with SLSA build provenance + SHA-256
   sidecars (the sidecars are signed too). Verification:
   `gh attestation verify recall-X.Y.Z-heroes.yaml --repo sound-barrier/recall`.
+- ~~**Steam in-game F12 screenshot filename support**~~ — commit
+  `03b5291`. Adds the fourth canonical capture source —
+  `YYYYMMDDHHMMSS_N.jpg` (where `_N` is the monitor index on
+  multi-monitor rigs). The Settings → 01 Directories picker grid's
+  Steam tile (PR #226) was already in place; this commit closes
+  the parser side. Same trust shape as the other three:
+  per-source prefix gate + anchored regex + RFC3339 round-trip
+  validation.
+- ~~**Check for updates modal + 90-day reminder banner + Apply Data
+  Update flow**~~ — commit `afb7e24`. Replaces the silent
+  on-mount update poll + masthead in-button state machine with a
+  user-triggered modal. Click **Check for updates** in the
+  masthead → modal opens with two sections: **Recall app** (current
+  vs latest binary version + release-notes excerpt + "Open release
+  page" link) and **Game data** (per-roster diff with an Apply
+  button). Apply downloads the release's
+  `recall-<v>-{heroes,maps,screenshot_sources}.yaml` + SHA-256
+  sidecars, verifies, atomically writes under
+  `<RECALL_DATA_DIR>/data/`, and triggers a parser reload — new
+  heroes/maps/sources land without a binary upgrade. A 90-day
+  "haven't checked in a while" reminder banner sits between the
+  System Alert and the tab nav so a quiet install gets nudged.
+  Modal is focus-trapped (Esc closes, returns focus to trigger);
+  the reminder banner uses `role="status"` + dismiss-for-current-
+  cycle via `usePersistedRef`.
+- ~~**Live-from-main YAML channel + Sync from main button**~~ —
+  commit `4658c55`. Adds a second sub-row to the modal's Game
+  data section: **Main** publishes the three YAMLs + per-file
+  `.sha256` sidecars + `version.json` to
+  `https://sound-barrier.github.io/recall/data/` on every push to
+  `main` that touches `pkg/parser/*.yaml`. Users on stable
+  binaries can opt in to bleeding-edge rosters via **Sync from
+  main**, independent of the Recall release cadence. Row hides
+  itself when Pages is unreachable (the FE reads `main.commit_sha`
+  as the gate). Manifest tracks `applied_source` ("release" |
+  "main") + `applied_main_commit` so subsequent checks can show
+  "Applied main @ abc1234 · 2 days ago".
 
 ## Out of scope (deliberately not recommending)
 
@@ -171,32 +208,57 @@ session can skip the survey step.
   (still used by the detail panel) is already correct UX; no
   upgrade needed.
 
-## June 2026 page-by-page audit signal
+## June 2026 page-by-page audit — closing snapshot
 
-The 14-item backlog above came out of walking every surface
-end-to-end against the current `main` (post-PR-#227). The
-mapping back to source surfaces:
+The 14-item backlog that came out of walking every surface
+end-to-end against `main` (post-PR-#227) has fully shipped — every
+item from the original audit now lives struck-through under
+**Recently shipped** above. Two further user-visible feature waves
+landed after the audit closed (Updates flow, Steam F12 source) and
+get their own rows below so this ledger stays a complete map of the
+current UX surface.
 
-| Surface | Items raised | Notes |
-|---|---|---|
-| Settings → 01 Directories (picker grid) | 9, 14 | The 4-card grid is new; per-card diagnostics + first-run inlining are the open work. |
-| Settings → 02 Engine (Tesseract) | — | Row UX matches the docs-reference shape; nothing to change. |
-| Settings → 03 Appearance (theme) | — | Two-card chooser is intentionally minimal. |
-| Settings → 04 Calendar (week start) | — | Seven-cell grid + caption already resolves the two-T/two-S ambiguity. |
-| Settings → 05 Backup & Restore | — | Two-step confirm pattern is sound. |
-| Settings → 06 Advanced (Stream/Clear/Re-parse) | 10, 12 | Stream-to-Grafana row is fine; the new Re-parse + format-list surfaces want enrichment. |
-| Parse tab | — | Run Parse + Watch Folder both match the docs intent. |
-| Matches workspace | — | Dossier + narrow panel are the redesign; leaf-row virtualization (item 1) shipped for flat mode in PR #240. |
-| Unknown tab | — | Three-section split (Needs review / Unknown maps / Reference data gaps) is the surface; the "fixed in vX.Y.Z" CTA shipped in PR #234. |
-| Modals (Detail / Lightbox / Cheatsheet / ExportBundle / IgnoredFiles) | — | The keyboard contract is sound; per-modal items would be premature. |
-| First-Run Profile Modal | 14 | Profile naming itself is fine; the inline-picker step is the open work. |
-| OnboardingTour + TourCallout + TourSpotlight | — | Set-workspace copy rewrite shipped (PR #236); source-picker + reference-data-gaps contextual callouts shipped (PRs #237 / #238) on the ContextualCallout primitive from PR #235. |
-| Masthead (profile chip, theme switcher, update banner) | — | Reasonably mature. |
+| Surface | Status | PR / commit | Notes |
+|---|---|---|---|
+| Settings → 01 Directories (picker grid) | ✓ shipped | #226 + #237 (callout) | 4-card grid (Nvidia / OW PrntScn / Win Snip / Steam install) with per-card status dots + folder-walk diagnostics + first-run contextual callout. |
+| Settings → 02 Engine (Tesseract) | — | — | No change since June; row UX matches the docs shape. |
+| Settings → 03 Appearance (theme) | — | — | Four-theme set (day / dark / night / high-contrast); chooser is intentionally minimal. |
+| Settings → 04 Calendar (week start) | — | — | Seven-cell grid + caption already resolves the two-T / two-S ambiguity. |
+| Settings → 05 Backup & Restore | — | — | Two-step confirm pattern is sound. |
+| Settings → 06 Advanced (Stream / Clear / Re-parse / Formats) | ✓ shipped | #224 (re-parse) + #227 (multi-format) | Re-parse-all-screenshots + the multi-format support landed; format list reads from `parser.Sources()` so a new yaml entry shows up without code. |
+| Parse tab | — | — | Run Parse + Watch Folder match the docs intent. |
+| Matches workspace | ✓ shipped | #239 (heatmap widget) + #240 (virtualization) | Hero × map-type heatmap dossier widget + leaf-row virtualization for flat mode. Mixed-height grouped modes (Y / M / W / D) keep pagination — virtualization there ships only on a real perf complaint. |
+| Unknown tab | ✓ shipped | #234 (Fixed-in CTA) + #238 (refdata callout) | Three-section split (Needs review / Unknown maps / Reference data gaps) + gap-card "Fixed in vX.Y.Z" CTA + first-materialisation contextual callout. |
+| Modals (Detail / Lightbox / Cheatsheet / ExportBundle / IgnoredFiles) | — | — | Keyboard contract is sound; no per-modal items materialised. |
+| First-Run Profile Modal | ✓ shipped | #228 (inline picker) | Inline source-picker step landed alongside the profile-naming step. |
+| OnboardingTour + TourCallout + TourSpotlight | ✓ shipped | #235 / #236 / #237 / #238 | ContextualCallout primitive (#235) + set-workspace copy rewrite (#236) + two callout surfaces. |
+| Masthead **Updates flow** (modal + reminder banner) | ✓ shipped (post-audit) | `afb7e24` (modal + banner) + `4658c55` (main channel) | Old version-chip in-button state machine → user-triggered modal with two sections (Recall app + Game data). Game data has Release + Main sub-rows; modal's `commit_sha` empty-string is the gate for hiding the Main row when Pages is unreachable. 90-day "haven't checked in a while" reminder banner sits between the System Alert and the tab nav. |
 
-Re-run this audit before the next round of recommendations
-lands — particularly after TECHNICAL_DEBT.md #3 + #4 work,
-which will reshape the Settings probe / capture-source surfaces
-in ways that may obsolete items 9 + 10.
+### Next audit trigger
+
+Re-run the surface walk after any of:
+
+- **`TECHNICAL_DEBT.md` items #1-#5** (REST API spec fixes) —
+  particularly #1 (drop `data` + `main` from
+  `/api/v1/system/update`'s required array) and #2 (factor
+  `DataStatus` + `MainStatus` via `allOf`). The Updates modal's
+  FE binding consumes the response shape directly; UX shouldn't
+  change but the type wiring does.
+- **`TECHNICAL_DEBT.md` item #11** (`screenshots_dirs`
+  `ON DELETE SET NULL` orphan-row fix) — reshapes the picker-grid
+  lifecycle in Settings → 01 Directories. The current row's
+  "shipped" status assumes the directory is pinned for the life of
+  the database; if the fix lands with an explicit "forget this
+  folder" affordance, the picker UX inherits a new surface.
+- **`TECHNICAL_DEBT.md` SQL item #13** (reverse index on
+  `match_annotation_members(member)`). Defer-until-feature-lands —
+  the conditional in the debt entry says so. If "bulk operations
+  by player" lands, the Matches workspace + bulk-action bar get
+  fresh audits.
+
+Snapshot the audit's outcome here when those trigger conditions
+fire — even an empty audit is the contract that says "nothing to
+do, surface-by-surface."
 
 ## Implementation notes for the next session
 
