@@ -3,56 +3,43 @@ package app
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
 	"recall/pkg/parser"
 )
 
-// Apply Data Update flow:
+// Apply Game Data Update flow:
 //
-//  1. Re-fetch GitHub Releases /latest, confirm the FE-passed tag
-//     still matches (otherwise a release landed between check and
-//     apply — return 409).
-//  2. Download <release>/recall-<v>-{heroes,maps,screenshot_sources}.yaml
-//     and their .sha256 sidecars.
-//  3. Verify each YAML against its sidecar (existing verifySha256).
-//  4. Snapshot the existing on-disk files (if any) into memory so a
+//  1. Download {heroes,maps,screenshot_sources}.yaml + their .sha256
+//     sidecars from the Pages-published main channel at
+//     https://sound-barrier.github.io/recall/data/.
+//  2. Verify each YAML against its sidecar (existing verifySha256).
+//  3. Snapshot the existing on-disk files (if any) into memory so a
 //     partial-write failure can revert.
-//  5. Write each YAML as <file>.tmp under <RECALL_DATA_DIR>/data.
-//  6. Rename all .tmp → final.
-//  7. parser.Reload() — the atomic-pointer swap publishes the new
+//  4. Write each YAML as <file>.tmp under <RECALL_DATA_DIR>/data.
+//  5. Rename all .tmp → final.
+//  6. parser.Reload() — the atomic-pointer swap publishes the new
 //     dataset to in-flight readers.
-//  8. SaveManifest() so subsequent CheckForUpdate calls show the
-//     applied tag.
+//  7. SaveManifest() so subsequent CheckForUpdate calls show the
+//     applied commit.
 //
 // Any failure rolls back from the in-memory snapshot, removes any
 // remaining .tmp files, and returns a typed sentinel for the HTTP
-// handler to map to 400 / 409 / 422 / 500.
+// handler to map to 422 / 500 / 502.
 
 // Sentinel errors. Handlers errors.Is each into a status code (see
 // registerSystemRoutes in pkg/cmd/server_system.go).
 var (
-	// ErrDataUpdateTagMismatch — FE passed an empty / malformed tag.
-	// Handler maps to 400.
-	ErrDataUpdateTagMismatch = errors.New("data update: tag missing or malformed")
-
 	// ErrDataUpdateChecksum — SHA-256 sidecar verification failed on
 	// at least one asset. Handler maps to 422.
 	ErrDataUpdateChecksum = errors.New("data update: SHA-256 verification failed")
-
-	// ErrDataUpdateReleaseMoved — GitHub's /latest moved between the
-	// frontend's last check and this apply call. Handler maps to 409
-	// + the FE retries the check.
-	ErrDataUpdateReleaseMoved = errors.New("data update: release moved since check")
 
 	// ErrDataUpdateIO — disk I/O failed (mkdir, write, rename). Maps
 	// to 500.
@@ -67,16 +54,12 @@ var (
 
 // DataUpdateResult is the success-path payload returned to the FE.
 // Empty Added*/Removed* slices marshal as omitempty so the modal can
-// show "No changes" when the tag bump was a docs/code-only release.
+// show "No changes" when the apply was a no-op rebuild.
 //
-// Source discriminates the channel that produced this result. For
-// release applies, AppliedTag carries the semver; for main applies,
-// AppliedCommit carries the 7-char short SHA from Pages-published
-// data/version.json.
+// AppliedCommit carries the 7-char short SHA from the Pages-published
+// data/version.json the apply pulled from.
 type DataUpdateResult struct {
-	Source         string   `json:"source"`
-	AppliedTag     string   `json:"applied_tag,omitempty"`
-	AppliedCommit  string   `json:"applied_commit,omitempty"`
+	AppliedCommit  string   `json:"applied_commit"`
 	AddedHeroes    []string `json:"added_heroes,omitempty"`
 	RemovedHeroes  []string `json:"removed_heroes,omitempty"`
 	AddedMaps      []string `json:"added_maps,omitempty"`
@@ -85,7 +68,7 @@ type DataUpdateResult struct {
 	RemovedSources []string `json:"removed_sources,omitempty"`
 }
 
-// dataUpdateMu serializes ApplyDataUpdate calls so two concurrent
+// dataUpdateMu serializes ApplyGameDataUpdate calls so two concurrent
 // browser tabs can't race on the rename + manifest write. The single
 // mutex is fine because the call is rare (once a month per user).
 var dataUpdateMu sync.Mutex
@@ -104,55 +87,13 @@ var dataYAMLFiles = []string{
 	"screenshot_sources.yaml",
 }
 
-// ApplyDataUpdate downloads + verifies + applies the reference data
-// from release `tag`. Returns the diff vs the previous dataset on
-// success; a typed sentinel error on any failure. Safe for concurrent
-// callers — dataUpdateMu serializes everything.
-func (a *App) ApplyDataUpdate(tag string) (DataUpdateResult, error) {
-	tag = strings.TrimSpace(strings.TrimPrefix(tag, "v"))
-	if tag == "" {
-		return DataUpdateResult{}, ErrDataUpdateTagMismatch
-	}
-
-	dataUpdateMu.Lock()
-	defer dataUpdateMu.Unlock()
-
-	// Release-race check: re-fetch /latest, confirm the FE-shown
-	// tag still matches what's actually published.
-	if err := confirmReleaseTag(tag); err != nil {
-		return DataUpdateResult{}, err
-	}
-
-	// Fetch + verify all three assets up-front. If any fails, bail
-	// before we've touched the filesystem.
-	verified, err := fetchAndVerifyAssets(tag)
-	if err != nil {
-		return DataUpdateResult{}, err
-	}
-
-	manifest := DataManifest{
-		AppliedSource:     "release",
-		AppliedReleaseTag: tag,
-		AppliedAt:         time.Now().UTC(),
-		Files:             map[string]ManifestFile{},
-	}
-	added, err := commitVerifiedAssets(verified, manifest)
-	if err != nil {
-		return DataUpdateResult{}, err
-	}
-	added.Source = "release"
-	added.AppliedTag = tag
-	return added, nil
-}
-
-// ApplyMainDataUpdate downloads + verifies + applies the reference
-// data from the Pages-published from-main channel. No release-race
-// check — main is whatever it is at fetch time. Returns the diff vs
+// ApplyGameDataUpdate downloads + verifies + applies the live game
+// data from the Pages-published main channel. Returns the diff vs
 // the previous dataset on success; ErrDataUpdateMainFetchFailed if
 // Pages is unreachable, ErrDataUpdateChecksum on sidecar mismatch,
 // ErrDataUpdateIO on local disk failures. Safe for concurrent callers
 // via dataUpdateMu.
-func (a *App) ApplyMainDataUpdate() (DataUpdateResult, error) {
+func (a *App) ApplyGameDataUpdate() (DataUpdateResult, error) {
 	dataUpdateMu.Lock()
 	defer dataUpdateMu.Unlock()
 
@@ -177,7 +118,6 @@ func (a *App) ApplyMainDataUpdate() (DataUpdateResult, error) {
 	if err != nil {
 		return DataUpdateResult{}, err
 	}
-	added.Source = "main"
 	added.AppliedCommit = short
 	return added, nil
 }
@@ -256,62 +196,11 @@ func fetchAndVerifyMainAssets() (map[string]verifiedAsset, error) {
 	return out, nil
 }
 
-// confirmReleaseTag re-fetches GitHub /latest and asserts the
-// just-shown tag still matches. Returns ErrDataUpdateReleaseMoved if
-// it doesn't.
-func confirmReleaseTag(want string) error {
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(releasesURL)
-	if err != nil {
-		return fmt.Errorf("%w: releases fetch: %v", ErrDataUpdateIO, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	var release struct {
-		TagName string `json:"tag_name"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return fmt.Errorf("%w: releases decode: %v", ErrDataUpdateIO, err)
-	}
-	got := strings.TrimPrefix(release.TagName, "v")
-	if got == "" {
-		return fmt.Errorf("%w: empty tag in releases response", ErrDataUpdateIO)
-	}
-	if got != want {
-		return fmt.Errorf("%w: latest=%q passed=%q", ErrDataUpdateReleaseMoved, got, want)
-	}
-	return nil
-}
-
 // verifiedAsset bundles the asset bytes + computed SHA-256 so the
 // manifest write doesn't need to re-hash.
 type verifiedAsset struct {
 	bytes  []byte
 	sha256 string
-}
-
-// fetchAndVerifyAssets downloads each of dataYAMLFiles + its .sha256
-// sidecar, verifies, and returns the bytes keyed by filename.
-// Returns ErrDataUpdateChecksum if any sidecar fails to verify, or
-// ErrDataUpdateIO if any fetch errors.
-func fetchAndVerifyAssets(tag string) (map[string]verifiedAsset, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
-	out := make(map[string]verifiedAsset, len(dataYAMLFiles))
-	for _, name := range dataYAMLFiles {
-		b, err := getBytes(client, releaseAssetURL(tag, name))
-		if err != nil {
-			return nil, fmt.Errorf("%w: fetch %s: %v", ErrDataUpdateIO, name, err)
-		}
-		sum, err := getBytes(client, releaseAssetURL(tag, name)+".sha256")
-		if err != nil {
-			return nil, fmt.Errorf("%w: fetch %s.sha256: %v", ErrDataUpdateIO, name, err)
-		}
-		if !verifySha256(b, sum) {
-			return nil, fmt.Errorf("%w: %s", ErrDataUpdateChecksum, name)
-		}
-		h := sha256.Sum256(b)
-		out[name] = verifiedAsset{bytes: b, sha256: hex.EncodeToString(h[:])}
-	}
-	return out, nil
 }
 
 // snapshotDataDir reads any pre-apply file contents into memory so

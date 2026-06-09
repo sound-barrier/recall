@@ -1,14 +1,19 @@
 <script setup lang="ts">
-// Update-check result modal — two sections:
-//   1. Recall app: current vs latest binary version + release notes
-//      excerpt + "Open release page" link.
-//   2. Game data: per-roster diff (added heroes / maps / sources) +
-//      "Apply update" button. Apply runs through a small state
-//      machine (idle → applying → success | error) and lazily mutates
-//      the parser in-place via POST /api/v1/system/data-update.
+// Update-check modal — single "Update game data" button + diff
+// preview manifest.
 //
-// Modal owns ALL result presentation; the masthead's "Check for
-// updates" button is just the trigger now.
+// Two sections:
+//   1. Recall app — current vs latest binary version + release
+//      notes + "Open release page" link. Binary upgrade is the
+//      maintainer's job; we just surface what's published.
+//   2. Game data — the single, always-pulled-from-main channel that
+//      lets users recognise newly-added heroes/maps without waiting
+//      for a binary release. Shows a from→to freshness line, a
+//      count headline, and a diff manifest of every changed name
+//      grouped by kind (Hero / Map / Source).
+//
+// The "Release channel" sub-row this modal used to carry is gone —
+// it was functionally redundant with "upgrade the binary".
 //
 // A11y: role="dialog" + aria-modal + focus trap + Esc-to-close +
 // return-focus baseline mirrors MatchDetailPanel.vue. Reduced-motion
@@ -16,7 +21,10 @@
 
 import { ref, toRef, watch, computed } from 'vue'
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
-import { ApplyDataUpdate, ApplyMainDataUpdate, OpenURL, ApiError, type UpdateInfo, type DataUpdateResult } from '../api'
+import {
+  ApplyGameDataUpdate, OpenURL, ApiError,
+  type UpdateInfo, type DataUpdateResult,
+} from '../api'
 
 const props = defineProps<{
   open:           boolean
@@ -34,20 +42,13 @@ type ApplyState =
   | { kind: 'idle' }
   | { kind: 'applying' }
   | { kind: 'success', result: DataUpdateResult }
-  | { kind: 'error',   message: string, releaseRace: boolean }
+  | { kind: 'error',   message: string }
 
-// Two state machines — one per channel. Both can be in any state
-// independently; clicking Apply on one doesn't affect the other.
-const releaseState = ref<ApplyState>({ kind: 'idle' })
-const mainState = ref<ApplyState>({ kind: 'idle' })
+const applyState = ref<ApplyState>({ kind: 'idle' })
 
-// Re-arm both apply buttons + clear stale success/error when the
-// modal re-opens.
+// Re-arm Apply when the modal re-opens.
 watch(() => props.open, (isOpen) => {
-  if (isOpen) {
-    releaseState.value = { kind: 'idle' }
-    mainState.value = { kind: 'idle' }
-  }
+  if (isOpen) applyState.value = { kind: 'idle' }
 })
 
 useModalFocusTrap(toRef(props, 'open'), {
@@ -56,60 +57,103 @@ useModalFocusTrap(toRef(props, 'open'), {
 })
 
 const info = computed(() => props.updateInfo)
-const data = computed(() => info.value?.data ?? { applied_tag: '', has_update: false })
-const main = computed(() => info.value?.main ?? { commit_sha: '', applied_commit: '', has_update: false })
+const gameData = computed(() =>
+  info.value?.game_data ?? { commit_sha: '', applied_commit: '', has_update: false })
 
-const appliedTagLabel = computed(() => data.value.applied_tag || 'built-in')
-const mainCommitLabel = computed(() => main.value.applied_commit || 'never')
-
-const dataChangeCount = computed(() => {
-  const d = data.value
-  return [
-    d.added_heroes, d.removed_heroes,
-    d.added_maps, d.removed_maps,
-    d.added_sources, d.removed_sources,
-  ].reduce((acc, arr) => acc + (arr?.length ?? 0), 0)
+// Counts headline — added/removed are separate because they read
+// differently in the UI ("3 NEW · 1 RETIRED" splits visually into
+// gain vs loss).
+const addedCount = computed(() => {
+  const g = gameData.value
+  return (g.added_heroes?.length ?? 0) +
+         (g.added_maps?.length ?? 0) +
+         (g.added_sources?.length ?? 0)
 })
 
-const mainChangeCount = computed(() => {
-  const m = main.value
-  return [
-    m.added_heroes, m.removed_heroes,
-    m.added_maps, m.removed_maps,
-    m.added_sources, m.removed_sources,
-  ].reduce((acc, arr) => acc + (arr?.length ?? 0), 0)
+const removedCount = computed(() => {
+  const g = gameData.value
+  return (g.removed_heroes?.length ?? 0) +
+         (g.removed_maps?.length ?? 0) +
+         (g.removed_sources?.length ?? 0)
 })
 
-async function applyChannel(
-  state: typeof releaseState,
-  fn: () => Promise<DataUpdateResult>,
-) {
-  state.value = { kind: 'applying' }
+const changeCount = computed(() => addedCount.value + removedCount.value)
+
+// Diff manifest — every changed name, grouped by kind, in a single
+// flat list the template iterates over. Order: added heroes → maps
+// → sources, then removed heroes → maps → sources, so additions
+// (the common case) sit at the top of the list.
+type DiffRow = { kind: 'Hero' | 'Map' | 'Source', sign: '+' | '−', name: string }
+
+const diffRows = computed<DiffRow[]>(() => {
+  const g = gameData.value
+  const rows: DiffRow[] = []
+  for (const h of g.added_heroes   ?? []) rows.push({ kind: 'Hero',   sign: '+', name: h })
+  for (const m of g.added_maps     ?? []) rows.push({ kind: 'Map',    sign: '+', name: m })
+  for (const s of g.added_sources  ?? []) rows.push({ kind: 'Source', sign: '+', name: s })
+  for (const h of g.removed_heroes ?? []) rows.push({ kind: 'Hero',   sign: '−', name: h })
+  for (const m of g.removed_maps   ?? []) rows.push({ kind: 'Map',    sign: '−', name: m })
+  for (const s of g.removed_sources?? []) rows.push({ kind: 'Source', sign: '−', name: s })
+  return rows
+})
+
+// Freshness line: "MAIN @ abc1234 · 14 d ago" — surfaces the user's
+// currently-applied commit so the diff has context.
+//
+// Returns the short SHA (or "embedded" when no commit applied yet)
+// and a relative-age string. The relative-age helper handles the
+// common "X minutes / hours / days ago" cases inline; for >365 d
+// it falls back to an ISO date.
+function relativeAge(iso?: string): string {
+  if (!iso) return ''
+  const then = Date.parse(iso)
+  if (Number.isNaN(then)) return ''
+  const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000))
+  if (seconds < 60)             return 'just now'
+  if (seconds < 60 * 60)        return `${Math.floor(seconds / 60)} m ago`
+  if (seconds < 60 * 60 * 24)   return `${Math.floor(seconds / 3600)} h ago`
+  if (seconds < 60 * 60 * 24 * 365) return `${Math.floor(seconds / 86400)} d ago`
+  return new Date(then).toISOString().slice(0, 10)
+}
+
+const appliedLabel = computed(() => {
+  const g = gameData.value
+  if (!g.applied_commit) return 'EMBEDDED'
+  return `MAIN @ ${g.applied_commit}`
+})
+
+const appliedAgeLabel = computed(() => relativeAge(gameData.value.applied_at))
+
+const incomingLabel = computed(() => {
+  const g = gameData.value
+  if (!g.commit_sha) return ''
+  return `MAIN @ ${g.commit_sha}`
+})
+
+const incomingAgeLabel = computed(() => {
+  const g = gameData.value
+  return relativeAge(g.committed_at) || 'live'
+})
+
+const canApply = computed(() => {
+  const g = gameData.value
+  return g.has_update && !!g.commit_sha
+})
+
+async function onApply() {
+  if (!canApply.value) return
+  applyState.value = { kind: 'applying' }
   try {
-    const result = await fn()
-    state.value = { kind: 'success', result }
+    const result = await ApplyGameDataUpdate()
+    applyState.value = { kind: 'success', result }
     emit('applied', result)
   } catch (err) {
     const apiErr = err instanceof ApiError ? err : null
     const message = apiErr
       ? apiErr.body || `Apply failed (HTTP ${apiErr.status})`
       : (err instanceof Error ? err.message : String(err))
-    state.value = {
-      kind: 'error',
-      message,
-      releaseRace: apiErr?.status === 409,
-    }
+    applyState.value = { kind: 'error', message }
   }
-}
-
-function onApplyRelease() {
-  if (!info.value?.latest) return
-  void applyChannel(releaseState, () => ApplyDataUpdate(info.value!.latest))
-}
-
-function onApplyMain() {
-  if (!main.value.commit_sha) return
-  void applyChannel(mainState, () => ApplyMainDataUpdate())
 }
 
 function openReleasePage() {
@@ -175,126 +219,96 @@ function openReleasePage() {
 
           <hr class="update-check-modal-rule" />
 
-          <!-- Section 2: Game data — release-channel + main-channel
-               sub-rows. Each has its own state machine + Apply button. -->
-          <section class="update-check-modal-section" aria-labelledby="game-data-heading">
+          <!-- Section 2: Game data — single channel, single button. -->
+          <section class="update-check-modal-section update-check-modal-game-data" aria-labelledby="game-data-heading">
             <h3 id="game-data-heading" class="update-check-modal-section-title">Game data</h3>
 
-            <!-- Release sub-row -->
-            <div class="update-check-modal-subrow" data-update-check-release-row>
-              <div class="update-check-modal-subrow-head">
-                <span class="update-check-modal-subrow-label">Release</span>
-                <span class="update-check-modal-row-value">{{ appliedTagLabel }} → v{{ info.latest }}</span>
-              </div>
+            <!-- Pages-unreachable state — main fetch failed; user
+                 can't apply because we don't have anything to apply.
+                 Surface the cause; don't pretend it's a "no
+                 changes" state. -->
+            <p v-if="!gameData.commit_sha" class="update-check-modal-empty" data-update-check-main-unreachable>
+              MAIN UNREACHABLE · GITHUB PAGES DID NOT RESPOND
+            </p>
 
-              <div v-if="releaseState.kind === 'success'" class="update-check-modal-diff">
-                <p class="update-check-modal-diff-headline">
-                  Applied <strong>v{{ releaseState.result.applied_tag }}</strong> ·
-                  {{ (releaseState.result.added_heroes?.length ?? 0)
-                    + (releaseState.result.added_maps?.length ?? 0)
-                    + (releaseState.result.added_sources?.length ?? 0) }} added.
-                </p>
-                <ul class="update-check-modal-diff-list">
-                  <li v-for="h in releaseState.result.added_heroes ?? []" :key="`rh-${h}`">+ Hero: {{ h }}</li>
-                  <li v-for="m in releaseState.result.added_maps ?? []" :key="`rm-${m}`">+ Map: {{ m }}</li>
-                  <li v-for="s in releaseState.result.added_sources ?? []" :key="`rs-${s}`">+ Source: {{ s }}</li>
-                </ul>
-              </div>
-              <div v-else-if="dataChangeCount > 0" class="update-check-modal-diff">
-                <ul class="update-check-modal-diff-list">
-                  <li v-for="h in data.added_heroes ?? []" :key="`h-${h}`">+ Hero: {{ h }}</li>
-                  <li v-for="m in data.added_maps ?? []" :key="`m-${m}`">+ Map: {{ m }}</li>
-                  <li v-for="s in data.added_sources ?? []" :key="`s-${s}`">+ Source: {{ s }}</li>
-                  <li v-for="h in data.removed_heroes ?? []" :key="`hr-${h}`">− Hero: {{ h }}</li>
-                  <li v-for="m in data.removed_maps ?? []" :key="`mr-${m}`">− Map: {{ m }}</li>
-                  <li v-for="s in data.removed_sources ?? []" :key="`sr-${s}`">− Source: {{ s }}</li>
-                </ul>
-              </div>
-              <p v-else-if="!data.has_update" class="update-check-modal-empty">
-                Release data is current.
+            <template v-else>
+              <!-- Freshness line: where you are → where you'd land. -->
+              <p class="update-check-modal-freshness" data-update-check-freshness>
+                <span class="update-check-modal-freshness-from">
+                  {{ appliedLabel }}<template v-if="appliedAgeLabel"> · {{ appliedAgeLabel }}</template>
+                </span>
+                <span class="update-check-modal-freshness-arrow" aria-hidden="true">→</span>
+                <span class="update-check-modal-freshness-to">
+                  {{ incomingLabel }} · {{ incomingAgeLabel }}
+                </span>
               </p>
 
-              <p v-if="releaseState.kind === 'error'" class="update-check-modal-error" role="alert">
-                {{ releaseState.message }}
-                <template v-if="releaseState.releaseRace">
-                  <br>The release moved while the modal was open. Close and retry.
-                </template>
+              <!-- Counts headline — display font; the modal's hero
+                   element after the redesign. -->
+              <p
+                v-if="changeCount > 0"
+                class="update-check-modal-counts"
+                :class="{ 'update-check-modal-counts-applied': applyState.kind === 'success' }"
+                data-update-check-counts
+              >
+                <span v-if="addedCount > 0" class="update-check-modal-counts-added">
+                  {{ addedCount }} NEW
+                </span>
+                <span v-if="addedCount > 0 && removedCount > 0" class="update-check-modal-counts-sep">·</span>
+                <span v-if="removedCount > 0" class="update-check-modal-counts-removed">
+                  {{ removedCount }} RETIRED
+                </span>
               </p>
 
-              <div v-if="data.has_update || releaseState.kind === 'success'" class="update-check-modal-actions">
+              <!-- Diff manifest. -->
+              <ul
+                v-if="changeCount > 0"
+                class="update-check-modal-manifest"
+                :class="{ 'update-check-modal-manifest-applied': applyState.kind === 'success' }"
+                data-update-check-manifest
+              >
+                <li
+                  v-for="row in diffRows"
+                  :key="`${row.kind}-${row.sign}-${row.name}`"
+                  class="update-check-modal-manifest-row"
+                  :class="{
+                    'update-check-modal-manifest-row-added': row.sign === '+',
+                    'update-check-modal-manifest-row-removed': row.sign === '−',
+                  }"
+                >
+                  <span class="update-check-modal-manifest-kind">{{ row.kind }}</span>
+                  <span class="update-check-modal-manifest-sign" aria-hidden="true">{{ row.sign }}</span>
+                  <span class="update-check-modal-manifest-name">{{ row.name }}</span>
+                </li>
+              </ul>
+
+              <!-- Empty state. -->
+              <p v-if="changeCount === 0 && !gameData.has_update" class="update-check-modal-empty">
+                ALL CURRENT
+              </p>
+
+              <p v-if="applyState.kind === 'error'" class="update-check-modal-error" role="alert">
+                {{ applyState.message }}
+              </p>
+
+              <!-- Apply button — full-width footer of the section. -->
+              <div v-if="canApply || applyState.kind === 'success'" class="update-check-modal-apply-row">
                 <button
                   type="button"
-                  class="update-check-modal-btn update-check-modal-btn-primary"
+                  class="update-check-modal-btn update-check-modal-btn-primary update-check-modal-btn-wide"
                   data-update-check-apply
-                  :disabled="releaseState.kind === 'applying' || (!data.has_update && releaseState.kind !== 'success')"
-                  @click="onApplyRelease"
+                  :disabled="applyState.kind === 'applying' || (!canApply && applyState.kind !== 'success')"
+                  @click="onApply"
                 >
-                  <span v-if="releaseState.kind === 'applying'">
+                  <span v-if="applyState.kind === 'applying'">
                     <span class="update-check-modal-spinner" aria-hidden="true" />
                     Verifying SHA-256…
                   </span>
-                  <span v-else-if="releaseState.kind === 'success'">Applied</span>
-                  <span v-else>Apply update</span>
+                  <span v-else-if="applyState.kind === 'success'">Applied</span>
+                  <span v-else>Update game data</span>
                 </button>
               </div>
-            </div>
-
-            <!-- Main sub-row — opt-in bleeding-edge channel. Hidden
-                 when Pages is unreachable (main.commit_sha empty). -->
-            <div v-if="main.commit_sha" class="update-check-modal-subrow" data-update-check-main-row>
-              <div class="update-check-modal-subrow-head">
-                <span class="update-check-modal-subrow-label">Main</span>
-                <span class="update-check-modal-row-value">{{ mainCommitLabel }} → {{ main.commit_sha }}</span>
-              </div>
-
-              <div v-if="mainState.kind === 'success'" class="update-check-modal-diff">
-                <p class="update-check-modal-diff-headline">
-                  Synced main @ <strong>{{ mainState.result.applied_commit }}</strong> ·
-                  {{ (mainState.result.added_heroes?.length ?? 0)
-                    + (mainState.result.added_maps?.length ?? 0)
-                    + (mainState.result.added_sources?.length ?? 0) }} added.
-                </p>
-                <ul class="update-check-modal-diff-list">
-                  <li v-for="h in mainState.result.added_heroes ?? []" :key="`mh-${h}`">+ Hero: {{ h }}</li>
-                  <li v-for="m in mainState.result.added_maps ?? []" :key="`mm-${m}`">+ Map: {{ m }}</li>
-                  <li v-for="s in mainState.result.added_sources ?? []" :key="`ms-${s}`">+ Source: {{ s }}</li>
-                </ul>
-              </div>
-              <div v-else-if="mainChangeCount > 0" class="update-check-modal-diff">
-                <ul class="update-check-modal-diff-list">
-                  <li v-for="h in main.added_heroes ?? []" :key="`mh-${h}`">+ Hero: {{ h }}</li>
-                  <li v-for="m in main.added_maps ?? []" :key="`mm-${m}`">+ Map: {{ m }}</li>
-                  <li v-for="s in main.added_sources ?? []" :key="`ms-${s}`">+ Source: {{ s }}</li>
-                  <li v-for="h in main.removed_heroes ?? []" :key="`mhr-${h}`">− Hero: {{ h }}</li>
-                  <li v-for="m in main.removed_maps ?? []" :key="`mmr-${m}`">− Map: {{ m }}</li>
-                  <li v-for="s in main.removed_sources ?? []" :key="`msr-${s}`">− Source: {{ s }}</li>
-                </ul>
-              </div>
-              <p v-else-if="!main.has_update" class="update-check-modal-empty">
-                Main is in sync.
-              </p>
-
-              <p v-if="mainState.kind === 'error'" class="update-check-modal-error" role="alert">
-                {{ mainState.message }}
-              </p>
-
-              <div v-if="main.has_update || mainState.kind === 'success'" class="update-check-modal-actions">
-                <button
-                  type="button"
-                  class="update-check-modal-btn update-check-modal-btn-primary"
-                  data-update-check-apply-main
-                  :disabled="mainState.kind === 'applying' || (!main.has_update && mainState.kind !== 'success')"
-                  @click="onApplyMain"
-                >
-                  <span v-if="mainState.kind === 'applying'">
-                    <span class="update-check-modal-spinner" aria-hidden="true" />
-                    Verifying SHA-256…
-                  </span>
-                  <span v-else-if="mainState.kind === 'success'">Synced</span>
-                  <span v-else>Sync from main</span>
-                </button>
-              </div>
-            </div>
+            </template>
 
             <div class="update-check-modal-actions update-check-modal-actions-footer">
               <button
@@ -327,7 +341,7 @@ function openReleasePage() {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 4px;
-  width: min(520px, 100%);
+  width: min(540px, 100%);
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 24px 60px color-mix(in srgb, var(--bg) 50%, transparent);
@@ -429,34 +443,10 @@ function openReleasePage() {
   white-space: pre-line;
 }
 
-.update-check-modal-diff {
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: 2px;
-  padding: 0.55rem 0.7rem;
-  margin: 0.3rem 0 0.5rem;
-}
-
-.update-check-modal-diff-headline {
-  margin: 0 0 0.35rem;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
-  color: var(--text);
-}
-
-.update-check-modal-diff-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  color: var(--text);
-}
-
 .update-check-modal-empty {
   font-family: var(--mono);
   font-size: 0.7rem;
+  letter-spacing: 0.16em;
   color: var(--text-dim);
   margin: 0.3rem 0;
 }
@@ -482,32 +472,6 @@ function openReleasePage() {
   border-top: 1px solid var(--border-soft);
   padding-top: 0.7rem;
   margin-top: 0.85rem;
-}
-
-.update-check-modal-subrow {
-  padding: 0.65rem 0;
-  border-bottom: 1px dashed var(--border-soft);
-}
-
-.update-check-modal-subrow:last-of-type {
-  border-bottom: none;
-}
-
-.update-check-modal-subrow-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.6rem;
-  margin-bottom: 0.35rem;
-}
-
-.update-check-modal-subrow-label {
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--accent);
 }
 
 .update-check-modal-btn {
@@ -549,6 +513,13 @@ function openReleasePage() {
   background: color-mix(in srgb, var(--accent) 80%, var(--text));
 }
 
+.update-check-modal-btn-wide {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+}
+
 .update-check-modal-rule {
   border: none;
   border-top: 1px solid var(--border-soft);
@@ -569,6 +540,136 @@ function openReleasePage() {
 
 @keyframes update-check-modal-spin {
   to { transform: rotate(360deg); }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Game-data section: freshness line + counts headline + manifest
+   ──────────────────────────────────────────────────────────────── */
+
+.update-check-modal-game-data {
+  display: flex;
+  flex-direction: column;
+}
+
+.update-check-modal-freshness {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  margin: 0 0 0.6rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.update-check-modal-freshness-from,
+.update-check-modal-freshness-to {
+  white-space: nowrap;
+}
+
+.update-check-modal-freshness-from {
+  color: var(--text-dim);
+}
+
+.update-check-modal-freshness-arrow {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.update-check-modal-freshness-to {
+  color: var(--text);
+}
+
+.update-check-modal-counts {
+  font-family: var(--display);
+  font-size: 1.85rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  margin: 0.2rem 0 0.65rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  line-height: 1.05;
+  transition: opacity 280ms ease;
+}
+
+.update-check-modal-counts-added {
+  color: var(--win, #4ade80);
+}
+
+.update-check-modal-counts-removed {
+  color: var(--loss);
+}
+
+.update-check-modal-counts-sep {
+  color: var(--text-dim);
+}
+
+.update-check-modal-counts-applied {
+  opacity: 0.55;
+}
+
+.update-check-modal-manifest {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: max-content max-content 1fr;
+  gap: 0.18rem 0.7rem;
+  transition: opacity 280ms ease;
+}
+
+.update-check-modal-manifest-applied {
+  opacity: 0.55;
+}
+
+.update-check-modal-manifest-row {
+  display: contents;
+}
+
+.update-check-modal-manifest-kind {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  align-self: center;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  text-align: center;
+  min-width: 3.6em;
+}
+
+.update-check-modal-manifest-sign {
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  align-self: center;
+  text-align: center;
+  width: 1ch;
+}
+
+.update-check-modal-manifest-row-added .update-check-modal-manifest-sign {
+  color: var(--win, #4ade80);
+}
+
+.update-check-modal-manifest-row-removed .update-check-modal-manifest-sign {
+  color: var(--loss);
+}
+
+.update-check-modal-manifest-name {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--text);
+  align-self: center;
+}
+
+.update-check-modal-apply-row {
+  margin-top: 0.4rem;
 }
 
 .update-check-modal-enter-active,
@@ -599,5 +700,8 @@ function openReleasePage() {
 
   .update-check-modal-enter-active .update-check-modal-box,
   .update-check-modal-leave-active .update-check-modal-box { transition: none; }
+
+  .update-check-modal-counts,
+  .update-check-modal-manifest { transition: none; }
 }
 </style>

@@ -308,30 +308,31 @@ you can download the new installer. (Recall does not auto-update
 itself; this is a deliberate opt-in step.)
 
 **Game data** — shows what's different between the rosters bundled
-into your binary, anything you've previously applied, and what's
-available in two channels:
+into your binary, anything you've previously applied, and the live
+`main` channel published at
+`https://sound-barrier.github.io/recall/data/`. The header line
+spells out the comparison frame ("MAIN @ abc1234 · 14 d ago →
+MAIN @ def5678 · just now"), the headline gives a count
+("3 NEW · 1 RETIRED"), and the diff manifest lists every changed
+hero / map / source name with a `+` (added) or `−` (removed) sign.
 
-- **Release** — the heroes/maps/sources YAMLs published with each
-  tagged Recall release. **Apply update** downloads them, verifies
-  each file's SHA-256 against a published sidecar, atomically writes
-  them under `<RECALL_DATA_DIR>/data/`, and triggers an in-process
-  parser reload so new heroes/maps are recognised immediately. No
-  restart needed.
+**Update game data** downloads the three YAMLs + per-file SHA-256
+sidecars, verifies each, atomically writes them under
+`<RECALL_DATA_DIR>/data/`, and triggers an in-process parser
+reload so new heroes/maps are recognised immediately. No restart
+needed. The button is disabled when game data is already current;
+the modal shows **MAIN UNREACHABLE** when GitHub Pages is blocked
+or down.
 
-- **Main** — the same three YAMLs published from `main` on
-  every roster patch (independent of the Recall release cadence).
-  **Sync from main** pulls them from
-  `https://sound-barrier.github.io/recall/data/` with the same SHA-256
-  verification. This row only appears when GitHub Pages is reachable;
-  if you're on a managed network that doesn't allowlist
-  `sound-barrier.github.io`, the row stays hidden and you can still
-  use the Release channel.
+Applied state writes to `<RECALL_DATA_DIR>/data/manifest.json` so a
+future Check for updates can show "MAIN @ abc1234 · 2 d ago" in the
+freshness header. Embedded YAML stays in the binary as a safety net
+— if a downloaded file is ever corrupted, the parser falls back to
+the embedded version on next launch.
 
-Both channels write to `<RECALL_DATA_DIR>/data/manifest.json` so a
-future Check for updates can show "Applied: v1.4.3" or "Applied main
-@ abc1234 · 2 days ago." Embedded YAML stays in the binary as a
-safety net — if a downloaded file is ever corrupted, the parser
-falls back to the embedded version on next launch.
+> **Note**: Recall does not ship a release-channel YAML apply path.
+> If you want the YAMLs that were bundled with a specific Recall
+> release, upgrade the Recall binary — same bytes, simpler model.
 
 ### "Haven't checked in a while" banner
 

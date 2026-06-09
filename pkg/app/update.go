@@ -63,32 +63,23 @@ type UpdateInfo struct {
 	// interpolation (never v-html).
 	ReleaseNotes string `json:"release_notes,omitempty"`
 
-	// Data carries the comparison between the user's
-	// currently-applied data (per <RECALL_DATA_DIR>/data/manifest.json,
-	// or "embedded" if missing) and the latest release's data
-	// assets — so the FE can show "Apply update" diffs without
-	// re-fetching. Indexed by source = "release" in the manifest.
-	Data DataStatus `json:"data"`
-
-	// Main carries the same shape of diff but against the live
-	// from-main channel published at
+	// GameData carries the comparison between the user's currently-
+	// applied game data (heroes / maps / screenshot sources, per
+	// <RECALL_DATA_DIR>/data/manifest.json — or "embedded" if missing)
+	// and the live main channel published at
 	// https://sound-barrier.github.io/recall/data/. Always populated
-	// when the Pages fetch succeeded — independent of the release
-	// fetch, so dev builds + offline-release + up-to-date branches
-	// all surface main-channel updates if the user wants the
-	// bleeding edge. Empty CommitSHA means the Pages fetch failed
-	// (network / Pages outage / invalid version.json); the FE hides
-	// the Main row in that case.
-	Main MainStatus `json:"main"`
+	// when the Pages fetch succeeded; empty CommitSHA means the Pages
+	// fetch failed (network / Pages outage / invalid version.json) and
+	// the FE shows a "main unreachable" state.
+	GameData GameDataStatus `json:"game_data"`
 }
 
-// RosterDiff is the shared shape both DataStatus and MainStatus
-// embed. Mirrors the OpenAPI `RosterDiff` schema (factored via
-// `allOf` from `DataStatus` and `MainStatus`). Embedding here is the
-// Go-side equivalent of allOf composition: the JSON output of
-// DataStatus / MainStatus is flat (no `roster_diff` wrapper key)
-// because Go's `json` package promotes embedded-struct fields to the
-// outer level by default.
+// RosterDiff is the shared shape GameDataStatus embeds. Mirrors the
+// OpenAPI `RosterDiff` schema (factored via `allOf` from
+// `GameDataStatus`). Embedding here is the Go-side equivalent of
+// allOf composition: the JSON output is flat (no `roster_diff`
+// wrapper key) because Go's `json` package promotes embedded-struct
+// fields to the outer level by default.
 type RosterDiff struct {
 	HasUpdate      bool     `json:"has_update"`
 	AddedHeroes    []string `json:"added_heroes,omitempty"`
@@ -99,25 +90,12 @@ type RosterDiff struct {
 	RemovedSources []string `json:"removed_sources,omitempty"`
 }
 
-// DataStatus summarises what's different between the user's
-// currently-loaded reference data and the latest published release.
-// AppliedTag == "" + HasUpdate == true means the install is running
-// on embedded data only.
-type DataStatus struct {
-	RosterDiff
-	AppliedTag string `json:"applied_tag"`
-	AppliedAt  string `json:"applied_at,omitempty"`
-}
-
-// MainStatus tracks the from-main channel. CommitSHA / AppliedCommit
-// replace the release-tag identifiers since main doesn't carry a
-// semver. HasUpdate (inherited from RosterDiff) is true whenever the
-// user's applied commit (per manifest) differs from the currently-
-// published main commit.
-//
+// GameDataStatus tracks the live main channel. CommitSHA /
+// AppliedCommit identify the published vs applied main commits;
+// HasUpdate (inherited from RosterDiff) is true whenever they differ.
 // CommitSHA is empty when the Pages fetch fails — the FE uses an
 // empty CommitSHA as the "main channel unavailable" signal.
-type MainStatus struct {
+type GameDataStatus struct {
 	RosterDiff
 	CommitSHA     string `json:"commit_sha"`
 	CommittedAt   string `json:"committed_at,omitempty"`
@@ -197,20 +175,20 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	v := a.GetVersion()
 	isDev := v == "dev" || strings.HasSuffix(v, "-dev")
 
-	// Fire the main-channel fetch in parallel with the release-channel
-	// fetch — they hit independent hosts (api.github.com vs
-	// sound-barrier.github.io) so serial would double the latency for
-	// no benefit. Joined at every return path via mainStatusChan;
-	// failures collapse to MainStatus{} which the FE renders as
-	// "channel unavailable" (no Main row).
-	mainStatusChan := make(chan MainStatus, 1)
+	// Fire the game-data (main-channel) fetch in parallel with the
+	// release-channel binary-version fetch — they hit independent
+	// hosts (api.github.com vs sound-barrier.github.io) so serial
+	// would double the latency for no benefit. Joined at every return
+	// path via gameDataChan; failures collapse to GameDataStatus{}
+	// which the FE renders as "main channel unavailable".
+	gameDataChan := make(chan GameDataStatus, 1)
 	go func() {
 		ver := fetchMainVersion()
 		mh, mm, ms := fetchMainRosters()
-		mainStatusChan <- computeMainStatus(ver, mh, mm, ms)
+		gameDataChan <- computeGameDataStatus(ver, mh, mm, ms)
 	}()
-	withMain := func(u UpdateInfo) UpdateInfo {
-		u.Main = <-mainStatusChan
+	withGameData := func(u UpdateInfo) UpdateInfo {
+		u.GameData = <-gameDataChan
 		return u
 	}
 
@@ -220,7 +198,7 @@ func (a *App) CheckForUpdate() UpdateInfo {
 		// Drain the goroutine even on the network-failure path so it
 		// doesn't leak. Empty-UpdateInfo is the contract the FE
 		// already reads; the Main field stays its zero value.
-		<-mainStatusChan
+		<-gameDataChan
 		return UpdateInfo{}
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -231,13 +209,13 @@ func (a *App) CheckForUpdate() UpdateInfo {
 		Body    string `json:"body"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		<-mainStatusChan
+		<-gameDataChan
 		return UpdateInfo{}
 	}
 
 	latest := strings.TrimPrefix(release.TagName, "v")
 	if latest == "" {
-		<-mainStatusChan
+		<-gameDataChan
 		return UpdateInfo{}
 	}
 
@@ -247,14 +225,13 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	notes := excerptReleaseNotes(release.Body)
 
 	if isDev {
-		return withMain(UpdateInfo{
+		return withGameData(UpdateInfo{
 			Checked:       true,
 			DevBuild:      true,
 			Latest:        latest,
 			URL:           release.HTMLURL,
 			LastCheckedAt: lastChecked,
 			ReleaseNotes:  notes,
-			Data:          computeDataStatus(latest),
 		})
 	}
 
@@ -278,34 +255,31 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	upstream, errUpstream := semver.NewVersion(latest)
 	if errCurrent != nil || errUpstream != nil {
 		if latest == v {
-			return withMain(UpdateInfo{
+			return withGameData(UpdateInfo{
 				Checked:       true,
 				LastCheckedAt: lastChecked,
 				ReleaseNotes:  notes,
-				Data:          computeDataStatus(latest),
 			})
 		}
-		return withMain(UpdateInfo{
+		return withGameData(UpdateInfo{
 			Checked:       true,
 			Available:     true,
 			Latest:        latest,
 			URL:           release.HTMLURL,
 			LastCheckedAt: lastChecked,
 			ReleaseNotes:  notes,
-			Data:          computeDataStatus(latest),
 		})
 	}
 
 	if !current.LessThan(upstream) {
-		return withMain(UpdateInfo{
+		return withGameData(UpdateInfo{
 			Checked:       true,
 			LastCheckedAt: lastChecked,
 			ReleaseNotes:  notes,
-			Data:          computeDataStatus(latest),
 		})
 	}
 	heroes, maps, sources := fetchReleaseRosters(latest)
-	return withMain(UpdateInfo{
+	return withGameData(UpdateInfo{
 		Checked:       true,
 		Available:     true,
 		Latest:        latest,
@@ -315,7 +289,6 @@ func (a *App) CheckForUpdate() UpdateInfo {
 		LatestSources: sources,
 		LastCheckedAt: lastChecked,
 		ReleaseNotes:  notes,
-		Data:          computeDataStatusWithFetched(latest, heroes, maps, sources),
 	})
 }
 
@@ -339,48 +312,6 @@ func excerptReleaseNotes(body string) string {
 		cut-- // walk back into the rune
 	}
 	return strings.TrimRight(body[:cut], " \t\n") + "…"
-}
-
-// computeDataStatus reads the local manifest + currently-loaded
-// rosters and returns a DataStatus showing the user's applied tag
-// (or "" if running on embedded data). HasUpdate is true whenever
-// the applied tag differs from the latest release — including the
-// embedded-only case, since "embedded" is always considered behind.
-//
-// When the release rosters have NOT yet been fetched (up-to-date /
-// dev-build branches), the diff fields stay empty.
-func computeDataStatus(latestTag string) DataStatus {
-	manifest, _ := LoadManifest()
-	return dataStatusFrom(latestTag, manifest, nil, nil, nil)
-}
-
-// computeDataStatusWithFetched is the same shape as computeDataStatus
-// but populates the diff using rosters fetched from the release.
-func computeDataStatusWithFetched(latestTag string, heroes, maps, sources []string) DataStatus {
-	manifest, _ := LoadManifest()
-	return dataStatusFrom(latestTag, manifest, heroes, maps, sources)
-}
-
-func dataStatusFrom(latestTag string, m DataManifest, releaseHeroes, releaseMaps, releaseSources []string) DataStatus {
-	ds := DataStatus{
-		RosterDiff: RosterDiff{
-			HasUpdate: m.AppliedReleaseTag != latestTag,
-		},
-		AppliedTag: m.AppliedReleaseTag,
-	}
-	if !m.AppliedAt.IsZero() {
-		ds.AppliedAt = m.AppliedAt.UTC().Format(time.RFC3339)
-	}
-	if releaseHeroes != nil {
-		ds.AddedHeroes, ds.RemovedHeroes = diffRosters(flattenRoster(parser.HeroesByRole()), releaseHeroes)
-	}
-	if releaseMaps != nil {
-		ds.AddedMaps, ds.RemovedMaps = diffRosters(flattenRoster(parser.MapsByType()), releaseMaps)
-	}
-	if releaseSources != nil {
-		ds.AddedSources, ds.RemovedSources = diffRosters(sourceNames(parser.Sources()), releaseSources)
-	}
-	return ds
 }
 
 // flattenRoster takes a role/type-grouped map of canonical display
@@ -531,18 +462,18 @@ func fetchMainAsset(name string, decode func([]byte) []string) []string {
 	return decode(yamlBytes)
 }
 
-// computeMainStatus reads the local manifest + currently-loaded
-// rosters and returns a MainStatus showing what's different between
-// the user's applied main commit (per manifest) and the freshly-
-// fetched main rosters. Returns an empty MainStatus (CommitSHA="")
-// when the Pages fetch failed — the FE uses CommitSHA as the "main
-// channel reachable" gate.
-func computeMainStatus(ver mainVersion, heroes, maps, sources []string) MainStatus {
+// computeGameDataStatus reads the local manifest + currently-loaded
+// rosters and returns a GameDataStatus showing what's different
+// between the user's applied main commit (per manifest) and the
+// freshly-fetched main rosters. Returns an empty GameDataStatus
+// (CommitSHA="") when the Pages fetch failed — the FE uses CommitSHA
+// as the "main channel reachable" gate.
+func computeGameDataStatus(ver mainVersion, heroes, maps, sources []string) GameDataStatus {
 	if ver.CommitSHA == "" {
-		return MainStatus{}
+		return GameDataStatus{}
 	}
 	manifest, _ := LoadManifest()
-	ms := MainStatus{
+	gd := GameDataStatus{
 		RosterDiff: RosterDiff{
 			HasUpdate: manifest.AppliedSource != "main" || manifest.AppliedMainCommit != shortenCommitSHA(ver.CommitSHA),
 		},
@@ -551,18 +482,18 @@ func computeMainStatus(ver mainVersion, heroes, maps, sources []string) MainStat
 		AppliedCommit: manifest.AppliedMainCommit,
 	}
 	if manifest.AppliedSource == "main" && !manifest.AppliedAt.IsZero() {
-		ms.AppliedAt = manifest.AppliedAt.UTC().Format(time.RFC3339)
+		gd.AppliedAt = manifest.AppliedAt.UTC().Format(time.RFC3339)
 	}
 	if heroes != nil {
-		ms.AddedHeroes, ms.RemovedHeroes = diffRosters(flattenRoster(parser.HeroesByRole()), heroes)
+		gd.AddedHeroes, gd.RemovedHeroes = diffRosters(flattenRoster(parser.HeroesByRole()), heroes)
 	}
 	if maps != nil {
-		ms.AddedMaps, ms.RemovedMaps = diffRosters(flattenRoster(parser.MapsByType()), maps)
+		gd.AddedMaps, gd.RemovedMaps = diffRosters(flattenRoster(parser.MapsByType()), maps)
 	}
 	if sources != nil {
-		ms.AddedSources, ms.RemovedSources = diffRosters(sourceNames(parser.Sources()), sources)
+		gd.AddedSources, gd.RemovedSources = diffRosters(sourceNames(parser.Sources()), sources)
 	}
-	return ms
+	return gd
 }
 
 // shortenCommitSHA trims a full 40-char SHA to the conventional

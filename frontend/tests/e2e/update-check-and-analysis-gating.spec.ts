@@ -42,8 +42,10 @@ async function mockUpdate(page: import('@playwright/test').Page, payload: {
   latest_sources?: string[]
   last_checked_at?: string
   release_notes?: string
-  data?: {
-    applied_tag: string
+  game_data?: {
+    commit_sha: string
+    committed_at?: string
+    applied_commit: string
     applied_at?: string
     has_update: boolean
     added_heroes?: string[]
@@ -59,7 +61,7 @@ async function mockUpdate(page: import('@playwright/test').Page, payload: {
       status: 200, contentType: 'application/json',
       body: JSON.stringify({
         ...payload,
-        data: payload.data ?? { applied_tag: '', has_update: false },
+        game_data: payload.game_data ?? { commit_sha: '', applied_commit: '', has_update: false },
       }),
     })
   })
@@ -76,7 +78,7 @@ test.describe('masthead — Check for updates button', () => {
         body: JSON.stringify({
           checked: true, dev_build: false, available: false,
           latest: '0.3.0', url: 'https://example.test/release/0.3.0',
-          data: { applied_tag: '0.3.0', has_update: false },
+          game_data: { commit_sha: 'abc1234', applied_commit: 'abc1234', has_update: false },
         }),
       })
     })
@@ -88,35 +90,42 @@ test.describe('masthead — Check for updates button', () => {
     expect(updateCalls).toBe(0)
   })
 
-  test('clicking the trigger opens the modal and renders an up-to-date result', async ({ page }) => {
+  test('clicking the trigger opens the modal and renders an ALL CURRENT result', async ({ page }) => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       checked: true, dev_build: false, available: false,
       latest: '0.3.0', url: 'https://example.test/release/0.3.0',
-      data: { applied_tag: '0.3.0', has_update: false },
+      game_data: { commit_sha: 'abc1234', applied_commit: 'abc1234', has_update: false },
     })
     await page.goto('/')
 
     await page.locator('[data-update-check-trigger]').click()
     // Modal opens with the result.
     await expect(page.locator('[role="dialog"]')).toBeVisible()
-    await expect(page.getByText(/release data is current/i)).toBeVisible()
+    await expect(page.getByText(/all current/i)).toBeVisible()
   })
 
-  test('renders the diff and an Apply button when an update is available', async ({ page }) => {
+  test('renders the diff manifest and an Apply button when game data is behind', async ({ page }) => {
     await mockVersion(page, '0.3.0')
     await mockUpdate(page, {
       checked: true, dev_build: false, available: true,
       latest: '0.4.0', url: 'https://example.test/release/0.4.0',
       latest_heroes: ['Phoenix'], latest_maps: ['Cascade'],
-      data: { applied_tag: '0.3.0', has_update: true, added_heroes: ['Phoenix'], added_maps: ['Cascade'] },
+      game_data: {
+        commit_sha: 'def5678',
+        applied_commit: 'abc1234',
+        has_update: true,
+        added_heroes: ['Phoenix'],
+        added_maps: ['Cascade'],
+      },
     })
     await page.goto('/')
 
     await page.locator('[data-update-check-trigger]').click()
     await expect(page.locator('[role="dialog"]')).toBeVisible()
-    await expect(page.getByText('+ Hero: Phoenix')).toBeVisible()
-    await expect(page.getByText('+ Map: Cascade')).toBeVisible()
+    const manifest = page.locator('[data-update-check-manifest]')
+    await expect(manifest).toContainText(/Phoenix/)
+    await expect(manifest).toContainText(/Cascade/)
     await expect(page.locator('[data-update-check-apply]')).toBeEnabled()
   })
 
@@ -126,7 +135,7 @@ test.describe('masthead — Check for updates button', () => {
       checked: true, dev_build: true, available: false,
       latest: '0.3.0', url: 'https://example.test/release/0.3.0',
       release_notes: 'Test release notes line',
-      data: { applied_tag: '', has_update: true },
+      game_data: { commit_sha: 'abc1234', applied_commit: '', has_update: true },
     })
     await page.goto('/')
 
