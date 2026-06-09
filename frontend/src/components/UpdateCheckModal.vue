@@ -479,8 +479,10 @@ function openReleasePage() {
 
 @media (prefers-reduced-motion: reduce) {
   .update-check-modal-spinner { animation: none; }
+
   .update-check-modal-enter-active,
   .update-check-modal-leave-active { transition: none; }
+
   .update-check-modal-enter-active .update-check-modal-box,
   .update-check-modal-leave-active .update-check-modal-box { transition: none; }
 }

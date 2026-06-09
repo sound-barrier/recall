@@ -95,8 +95,12 @@ test.describe('update-check modal', () => {
 
     await page.locator('[data-update-check-trigger]').click()
     await page.locator('[data-update-check-apply]').click()
-    await expect(page.getByText(/Applied/)).toBeVisible()
-    await expect(page.getByText(/v0\.4\.0/)).toBeVisible()
+    // Scope to the modal dialog so we don't collide with the System
+    // Alert ("Tesseract not detected") in the e2e harness's empty
+    // HOME — both can carry overlapping text strings.
+    const dialog = page.locator('[role="dialog"]')
+    await expect(dialog.getByText(/Applied/)).toBeVisible()
+    await expect(dialog.getByText(/v0\.4\.0/).first()).toBeVisible()
     expect(postFired).toBe(true)
   })
 
@@ -113,9 +117,11 @@ test.describe('update-check modal', () => {
 
     await page.locator('[data-update-check-trigger]').click()
     await page.locator('[data-update-check-apply]').click()
-    await expect(page.locator('[role="alert"]')).toContainText(/SHA-256/i)
-    // Modal is still open.
-    await expect(page.locator('[role="dialog"]')).toBeVisible()
+    // Modal-scoped role=alert — the page also carries a System Alert
+    // ("Tesseract not detected") with role=alert in the e2e harness.
+    const dialog = page.locator('[role="dialog"]')
+    await expect(dialog.locator('[role="alert"]')).toContainText(/SHA-256/i)
+    await expect(dialog).toBeVisible()
   })
 
   test('renders the release-race hint on 409', async ({ page }) => {
