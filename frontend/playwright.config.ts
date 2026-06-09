@@ -12,7 +12,11 @@
  */
 import { defineConfig, devices } from '@playwright/test'
 
-const E2E_PORT = 7099
+// Port can be overridden via E2E_PORT so a parallel-running tool
+// (e.g. the lefthook schemathesis hook, which also binds 7099) can
+// avoid colliding with this run. Default stays 7099 so make test-e2e
+// + CI's e2e.yml keep working unchanged.
+const E2E_PORT = Number(process.env.E2E_PORT ?? '7099')
 const E2E_HOME = '/tmp/recall-e2e'
 
 export default defineConfig({
