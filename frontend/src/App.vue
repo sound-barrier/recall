@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 <script setup lang="ts">
 // App-wide styles — extracted from this SFC to keep App.vue navigable
 // (~890 lines of template + script vs. ~4 600 lines when the 3 698-line

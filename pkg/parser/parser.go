@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // Package parser turns Overwatch screenshot images into typed MatchResult
 // values via Tesseract OCR.
 //

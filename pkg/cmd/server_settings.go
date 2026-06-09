@@ -22,14 +22,12 @@ func registerSettingsRoutes(apiMux *http.ServeMux, a *app.App) {
 		writeJSON(w, map[string]string{"path": a.GetScreenshotsDir()}, nil)
 	})
 	apiMux.HandleFunc("PUT /api/v1/settings/screenshots-folder", func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Path string `json:"path"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Path == "" {
-			http.Error(w, "body must be {\"path\":\"...\"}", http.StatusBadRequest)
+		path, err := decodeRequiredString(r, "path")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if err := a.SetScreenshotsDir(body.Path); err != nil {
+		if err := a.SetScreenshotsDir(path); err != nil {
 			// 409: path was syntactically well-formed but doesn't exist
 			// as a directory on disk. The semantic is "the resource at
 			// this path isn't available," which is a state conflict.
@@ -40,7 +38,7 @@ func registerSettingsRoutes(apiMux *http.ServeMux, a *app.App) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		writeJSON(w, map[string]string{"path": body.Path}, nil)
+		writeJSON(w, map[string]string{"path": path}, nil)
 	})
 	// DELETE clears the persisted screenshots folder. Symmetric with
 	// DELETE /api/v1/settings/tesseract — "the user-set override is
@@ -60,14 +58,12 @@ func registerSettingsRoutes(apiMux *http.ServeMux, a *app.App) {
 		writeJSON(w, a.GetTesseractStatus(), nil)
 	})
 	apiMux.HandleFunc("PUT /api/v1/settings/tesseract", func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			Path string `json:"path"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Path == "" {
-			http.Error(w, "body must be {\"path\":\"...\"}", http.StatusBadRequest)
+		path, err := decodeRequiredString(r, "path")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		st, err := a.SetTesseractPath(body.Path)
+		st, err := a.SetTesseractPath(path)
 		if err != nil {
 			// 409: path was syntactically well-formed but doesn't
 			// resolve to a tesseract binary. Same shape as

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // Package db owns the SQLite persistence layer for Recall. The Store
 // interface is the boundary the app uses; SQLStore is the production
 // implementation.

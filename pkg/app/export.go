@@ -147,7 +147,12 @@ func (a *App) ImportData(payload []byte) error {
 func (a *App) importJSONv1(payload []byte) error {
 	var doc exportV1
 	if err := json.Unmarshal(payload, &doc); err != nil {
-		return fmt.Errorf("%w: decode: %v", ErrImportMalformed, err)
+		// Per-field type mismatches (out-of-int64 numbers, wrong
+		// type on a struct field) are semantic validation failures
+		// — the envelope decoded but a row didn't fit. Treat as
+		// 409, not 400. Only the top-level schema-peek decode
+		// (above) wraps `ErrImportMalformed`.
+		return fmt.Errorf("import: decode: %w", err)
 	}
 
 	// Validate every row carries a non-empty filename. Filename is the
