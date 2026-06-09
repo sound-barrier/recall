@@ -238,6 +238,10 @@ func tryUserBytes(name string) []byte {
 	if dir == "" {
 		return nil
 	}
+	// #nosec G304 -- `name` comes from Reload's hardcoded constants
+	// ("heroes.yaml", "maps.yaml", "hero_stats.yaml",
+	// "screenshot_sources.yaml"), never from user input. `dir` is the
+	// install-global data dir wired by pkg/app/parser_dir.go.
 	b, err := os.ReadFile(filepath.Join(dir, name))
 	if err != nil {
 		return nil

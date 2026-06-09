@@ -13,6 +13,7 @@ no soft-pedalling. Numbers that go down get a row too.
 
 | Date | PR | Init JS | Init CSS | Total JS | Total CSS | Rationale |
 |---|---|---|---|---|---|---|
+| 2026-06-09 | updates-modal-banner | 160000 | 62000 | 465000 | 263000 | feat(updates)!: replace silent roster fetch with explicit modal + reminder. UpdateCheckModal (lazy ~6.6 KB JS + ~3 KB CSS) + UpdateReminderBanner (~2 KB JS + ~2 KB CSS) + useUpdateReminder + extended UpdateInfo wiring. Net ~6.5 KB total JS / ~8 KB total CSS / ~1.5 KB initial CSS (banner styles in App.vue). |
 | 2026-06-08 | leaf-virtual-integration | 160000 | 60000 | 458000 | 254000 | Item 1 integration — useVirtualWindow wired into MatchesView for the flat (groupBy='none') leaf-row path. Net ~3 KB JS (window-mode geometry + spacer template branch + auto-scroll-into-view + measureLeafHeight). |
 | 2026-06-08 | source-picker-callout | 160000 | 60000 | 455000 | 254000 | Item 13 surface B — ContextualCallout + useContextualCallout primitives landed in PR #235 but didn't ship in any chunk until a consumer (ScreenshotSourcePicker) wired them in. Net ~2 KB JS (callout SFC + composable) + ~1.2 KB CSS (callout styles). |
 | 2026-06-08 | hero-maptype-heatmap | 160000 | 60000 | 450000 | 252000 | Item 2 — Hero × map-type heatmap dossier widget + the new provideNarrow/useNarrow injection seam wiring. Net ~3 KB JS (widget SFC + helper + narrow seam) + ~0.5 KB CSS (grid styles). |

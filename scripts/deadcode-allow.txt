@@ -74,3 +74,19 @@ MatchKey\.IsUnmatched
 # variant survives because its unit tests pin the behaviour the
 # strict form intentionally diverges from. Test-only consumer.
 parseMatchesPagination
+
+# parser.LoadError — composite error from the dataset Reload, surfaced
+# to tests in owdata_test.go + screenshot_sources_test.go as the
+# build-time gate against shipping a malformed embedded YAML. Stays
+# exported as the stable entry point for a future UI banner that
+# flags a corrupt user-override file (per the apply_data_update
+# flow's "LoadError surface flags the partial-load" comment).
+LoadError
+
+# app.LoadCheckState — public read of <RECALL_DATA_DIR>/check_state.json,
+# the per-install last-checked-at timestamp written by
+# TouchLastChecked on every successful CheckForUpdate. The read side
+# is the test surface today (check_state_test.go round-trips the
+# file + TestCheckForUpdate_PopulatesLastCheckedAtAndPersists pins
+# the write). Stays exported for a future banner-config-debug surface.
+LoadCheckState

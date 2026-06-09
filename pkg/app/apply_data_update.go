@@ -241,6 +241,10 @@ func fetchAndVerifyAssets(tag string) (map[string]verifiedAsset, error) {
 func snapshotDataDir(dataDir string) map[string][]byte {
 	out := make(map[string][]byte, len(dataYAMLFiles))
 	for _, name := range dataYAMLFiles {
+		// #nosec G304 -- `name` ranges over dataYAMLFiles, a hardcoded
+		// package-level list of asset basenames. `dataDir` is the
+		// install-global <RECALL_DATA_DIR>/data path. No user input
+		// reaches this filepath.
 		b, err := os.ReadFile(filepath.Join(dataDir, name))
 		if err != nil {
 			out[name] = nil

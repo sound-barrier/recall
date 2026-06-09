@@ -83,4 +83,3 @@ export function useUpdateReminder(
 
 // Exposed for the e2e spec's localStorage seeding.
 export const UPDATE_REMINDER_DISMISSED_KEY = DISMISSED_KEY
-export const UPDATE_REMINDER_THRESHOLD_DAYS = UPDATE_REMINDER_DAYS

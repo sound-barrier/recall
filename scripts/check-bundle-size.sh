@@ -33,9 +33,9 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # you change a number here. Bump deliberately; don't lift caps to
 # silence noise.
 : "${MAX_INITIAL_JS_BYTES:=160000}"
-: "${MAX_INITIAL_CSS_BYTES:=60000}"
-: "${MAX_TOTAL_JS_BYTES:=458000}"
-: "${MAX_TOTAL_CSS_BYTES:=254000}"
+: "${MAX_INITIAL_CSS_BYTES:=62000}"
+: "${MAX_TOTAL_JS_BYTES:=465000}"
+: "${MAX_TOTAL_CSS_BYTES:=263000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   echo "==> building frontend (npm --prefix frontend run build)…"

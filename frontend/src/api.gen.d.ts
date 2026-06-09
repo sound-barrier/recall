@@ -3243,7 +3243,8 @@ export interface operations {
                 "application/json": {
                     /**
                      * @description Release tag the FE saw on the prior /system/update
-                     *     call, with or without the leading `v`.
+                     *     call, with or without the leading `v`. Must be
+                     *     non-empty — the handler returns 400 otherwise.
                      * @example 1.4.3
                      */
                     tag: string;
