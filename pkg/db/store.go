@@ -422,6 +422,12 @@ func NewSQLStore(path string) (*SQLStore, error) {
 		_ = d.Close()
 		return nil, fmt.Errorf("schema: %w", err)
 	}
+	// No-op until the first migration file lands post-1.0; the
+	// framework is wired in so adding one is a drop-in addition.
+	if err := applyMigrations(d); err != nil {
+		_ = d.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
 	return &SQLStore{db: d}, nil
 }
 
