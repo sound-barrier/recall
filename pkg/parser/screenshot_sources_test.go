@@ -28,6 +28,9 @@ func TestScreenshotSourcesYAML_CoversCanonicalFilenames(t *testing.T) {
 		{"Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png", "nvidia"},
 		{"ScreenShot_26-06-07_22-59-52-000.jpg", "prntscn"},
 		{"Screenshot 2026-06-07 224855.png", "snip"},
+		{"20260609000031_1.jpg", "steam"},
+		// Multi-monitor Steam: `_N>1` matches the same source.
+		{"20260609000031_2.jpg", "steam"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.wantName, func(t *testing.T) {

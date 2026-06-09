@@ -12,13 +12,10 @@
 # rolling over.
 #
 # year_offset is added to the captured year value. Tools that
-# write a 4-digit year (Nvidia, Win Snip) use 0; tools that
+# write a 4-digit year (Nvidia, Win Snip, Steam) use 0; tools that
 # write a 2-digit year (OW PrntScn default) use 2000 — hard-coded
 # for the 2000–2099 window per the product decision (no sliding
 # window).
-#
-# Steam's in-game F12 captures use yet another filename shape;
-# add a fourth entry once we have real samples.
 
 sources:
   # Nvidia Overlay: `Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png`
@@ -50,3 +47,19 @@ sources:
     regex: '^Screenshot (\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2})(\d{2})'
     year_offset: 0
     example: "Screenshot 2026-06-07 224855.png"
+
+  # Steam in-game F12: `20260609000031_1.jpg`
+  # Continuous 14-digit YYYYMMDDHHMMSS, then `_N` (monitor index —
+  # always `_1` on a single-monitor rig, `_2`/`_3` for multi-monitor)
+  # + .jpg. Prefix gate `20` covers years 2000-2099 (same century
+  # horizon as prntscn's year_offset=2000); the 14-digit regex
+  # anchor rejects any other filename starting with "20". Steam also
+  # auto-writes a `thumbnails/` subdir alongside the captures —
+  # ParseScreenshotsDir skips directory entries (parser.go:135) and
+  # the fsnotify watcher is non-recursive, so thumbnails never reach
+  # the pipeline.
+  - name: steam
+    prefix: "20"
+    regex: '^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})_\d+\.jpg$'
+    year_offset: 0
+    example: "20260609000031_1.jpg"
