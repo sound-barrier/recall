@@ -100,7 +100,7 @@ test.describe('masthead — Check for updates button', () => {
     await page.locator('[data-update-check-trigger]').click()
     // Modal opens with the result.
     await expect(page.locator('[role="dialog"]')).toBeVisible()
-    await expect(page.getByText(/reference data is current/i)).toBeVisible()
+    await expect(page.getByText(/release data is current/i)).toBeVisible()
   })
 
   test('renders the diff and an Apply button when an update is available', async ({ page }) => {

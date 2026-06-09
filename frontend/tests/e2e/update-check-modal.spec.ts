@@ -104,12 +104,12 @@ test.describe('update-check modal', () => {
 
     await page.locator('[data-update-check-trigger]').click()
     await page.locator('[data-update-check-apply]').click()
-    // Scope to the modal dialog so we don't collide with the System
-    // Alert ("Tesseract not detected") in the e2e harness's empty
-    // HOME — both can carry overlapping text strings.
-    const dialog = page.locator('[role="dialog"]')
-    await expect(dialog.getByText(/Applied/)).toBeVisible()
-    await expect(dialog.getByText(/v0\.4\.0/).first()).toBeVisible()
+    // Scope to the success-state headline element. The button label
+    // also flips to "Applied" on success, so `getByText(/Applied/)`
+    // would resolve to 2 elements under strict mode.
+    const headline = page.locator('[role="dialog"] .update-check-modal-diff-headline').first()
+    await expect(headline).toContainText(/Applied/)
+    await expect(headline).toContainText(/v0\.4\.0/)
     expect(postFired).toBe(true)
   })
 
@@ -184,8 +184,13 @@ test.describe('update-check modal', () => {
 
     await page.locator('[data-update-check-trigger]').click()
     await page.locator('[data-update-check-apply-main]').click()
-    await expect(page.getByText(/Synced main/i)).toBeVisible()
-    await expect(page.getByText(/abc1234/)).toBeVisible()
+    // The main-row's idle state already prints the sha in the
+    // "Main" header ("Pending → abc1234"), so scope the success
+    // assertions to the success-state headline element.
+    const mainRow = page.locator('[data-update-check-main-row]')
+    const headline = mainRow.locator('.update-check-modal-diff-headline')
+    await expect(headline).toContainText(/Synced main/i)
+    await expect(headline).toContainText(/abc1234/)
     expect(postBody?.source).toBe('main')
   })
 
