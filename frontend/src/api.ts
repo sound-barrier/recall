@@ -152,7 +152,7 @@ export function GetStartupError(): Promise<string> {
   return _get<{ message: string }>('/api/v1/system/startup-error').then(d => d.message)
 }
 
-export type GameDataStatus = {
+type GameDataStatus = {
   commit_sha:       string
   committed_at?:    string
   applied_commit:   string
