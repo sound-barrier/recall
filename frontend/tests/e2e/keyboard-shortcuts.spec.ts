@@ -72,7 +72,12 @@ test.describe('keyboard shortcuts — cheatsheet modal', () => {
     await expect(sheet).toContainText(/keyboard shortcuts/i)
 
     await page.keyboard.press('Escape')
-    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toHaveCount(0)
+    // toBeHidden(), not toHaveCount(0): Vue's <transition name="kbd-fade">
+    // keeps the element mounted until the fade-out completes. On CI's
+    // headless Chrome the transition occasionally takes longer than the
+    // 5 s poll window so toHaveCount(0) flakes. Visibility resolves as
+    // soon as opacity hits 0 — same semantic, more robust.
+    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toBeHidden()
   })
 
   // Regression: useModalFocusTrap used to mutate `toRef(props, 'open').value`
@@ -90,14 +95,14 @@ test.describe('keyboard shortcuts — cheatsheet modal', () => {
     await page.keyboard.press('?')
     await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toBeHidden()
 
     // Second cycle — the bug: parent ref stayed true after Esc, so this
     // press was a no-op and the modal never reopened.
     await page.keyboard.press('?')
     await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid="kbd-shortcuts-modal"]')).toBeHidden()
 
     // Third — make sure repeated cycles keep working.
     await page.keyboard.press('?')
