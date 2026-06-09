@@ -126,6 +126,23 @@ test.describe('ambiguous attribution — pick a candidate via Unknown tab', () =
     // One click on the card head expands AND auto-opens the source
     // preview — saves the user the extra chevron click before they
     // can compare the source image against the candidates.
+    //
+    // Mock the `/_screenshot/...` endpoint with a valid 1×1 PNG so
+    // the img element survives Vue's `v-if="!hasPreviewError"` gate.
+    // Without this the e2e server's empty screenshots dir returns a
+    // 404, `@error` fires on the img, and `previewError` flips true
+    // — removing the img from the DOM and racing the assertion. The
+    // race is CI-flaky on Linux chromium and reliably-pass on macOS
+    // chromium; the mock makes the contract under test (auto-open
+    // wires the preview state) independent of the screenshot-fetch
+    // happy/sad path.
+    const STUB_PNG = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    )
+    await page.route('**/_screenshot/**', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'image/png', body: STUB_PNG })
+    })
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200,
