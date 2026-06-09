@@ -4,6 +4,7 @@ import type { MatchRecord } from '../api'
 import { GetProfiles } from '../api'
 import { useMatchesGroup, type GroupedSection } from '../composables/useMatchesGroup'
 import { useMatchesWindow } from '../composables/useMatchesWindow'
+import { useVirtualWindow } from '../composables/useVirtualWindow'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
 import { provideDossier } from '../composables/useDossier'
 import { provideNarrow } from '../composables/useNarrow'
@@ -711,6 +712,103 @@ const leavesListRef = ref<HTMLUListElement | null>(null)
 const sentinelRef   = ref<HTMLLIElement | null>(null)
 let sentinelObserver: IntersectionObserver | null = null
 
+// ─── Flat-mode row virtualization ──────────────────────────────
+//
+// When the user picks groupBy='none', the leaves list is one
+// uniform-height stack of rows. We render only the slice currently
+// in (or near) the viewport via useVirtualWindow; spacer divs
+// above + below the slice hold the scroll height stable so the
+// page scrollbar still represents the full corpus. Grouped modes
+// keep the existing pagination — section-divider mixed-height
+// rows would need a different model.
+//
+// `LEAF_ROW_HEIGHT_DEFAULT` is the typical row height plus the
+// `gap: 2px` between rows in the flex column. The actual height
+// is measured after first render and the ref updates if it
+// differs (density switch, font-size override). A constant
+// fallback lets the first paint compute a reasonable window
+// before measurement lands.
+const LEAF_ROW_HEIGHT_DEFAULT = 58
+const LEAF_ROW_HEIGHT_COMPACT = 38
+const leafRowHeight = ref(LEAF_ROW_HEIGHT_DEFAULT)
+
+const flatVirtualization = computed(() => groupBy.value === 'none')
+
+const flatVirtual = useVirtualWindow({
+  items:        sortedRecords,
+  containerRef: leavesListRef,
+  mode:         'window',
+  itemHeight:   LEAF_ROW_HEIGHT_DEFAULT,
+  overscan:     8,
+})
+
+// Render-time section list. Grouped: existing windowedSections
+// (paginated). Flat: a single synthetic section carrying only the
+// virtualizer's visible slice. The template iterates this shape
+// either way so the leaf-row body stays in one place.
+const renderSections = computed<GroupedSection[]>(() => {
+  if (!flatVirtualization.value) return windowedSections.value
+  return [{
+    key:     'all',
+    header:  null,
+    records: flatVirtual.visibleItems.value as MatchRecord[],
+  }]
+})
+
+// Spacer heights — non-zero only in flat virtualization. The
+// template renders one <li> above + one <li> below the iterated
+// rows whose pixel heights account for every unmounted row, so the
+// scroll bar represents the full corpus.
+const flatTopSpacerHeight    = computed(() => flatVirtualization.value ? flatVirtual.topSpacer.value    : 0)
+const flatBottomSpacerHeight = computed(() => flatVirtualization.value ? flatVirtual.bottomSpacer.value : 0)
+
+// Re-measure the row height after the first virtualized render so
+// the math reflects the actual rendered geometry — density modes
+// (`density-compact` vs default) ship different row heights, and
+// theme-level font-size overrides would otherwise leave us
+// computing windows against a stale constant.
+function measureLeafHeight(): void {
+  if (!flatVirtualization.value) return
+  const el = leavesListRef.value?.querySelector<HTMLElement>('.leaf-row')
+  if (!el) return
+  const measured = Math.round(el.getBoundingClientRect().height) + 2 // +2 for flex gap
+  if (measured > 20 && Math.abs(measured - leafRowHeight.value) > 1) {
+    leafRowHeight.value = measured
+  }
+}
+
+// When the user toggles between virtualization-on and -off, reset
+// the constant to a sensible per-density baseline so the first
+// paint after the toggle uses the right value before the measure
+// catches up.
+watch([flatVirtualization, () => density.value], () => {
+  leafRowHeight.value = density.value === 'compact' ? LEAF_ROW_HEIGHT_COMPACT : LEAF_ROW_HEIGHT_DEFAULT
+})
+
+// Auto-scroll an off-window focused row into view when App.vue's
+// j/k keyboard nav advances focusedCardIndex past the rendered
+// slice. The math is list-relative — listTop + idx * rowHeight
+// gives the row's document-relative y, and we centre it in the
+// viewport. The virtualizer's scroll watcher fires immediately
+// after, re-rendering the slice so App.vue's nextTick DOM query
+// finds the row to focus.
+watch(() => props.focusedCardIndex, async (idx) => {
+  if (!flatVirtualization.value) return
+  if (idx === undefined || idx < 0) return
+  const list = leavesListRef.value
+  if (!list) return
+  const rowHeight = leafRowHeight.value
+  const listTop = list.getBoundingClientRect().top + window.scrollY
+  const rowTop  = listTop + idx * rowHeight
+  const viewTop    = window.scrollY
+  const viewBottom = window.scrollY + window.innerHeight
+  // Generous slack — only scroll when the row would otherwise be
+  // entirely above or below the viewport.
+  if (rowTop >= viewTop + 80 && rowTop + rowHeight <= viewBottom - 80) return
+  const target = rowTop - window.innerHeight / 3
+  window.scrollTo({ top: Math.max(0, target), behavior: 'auto' })
+})
+
 // Sticky Campaign Log state. The sentinel sits just above the
 // timeline at its natural position; the scroll listener flips
 // `timelineSticky` true when the sentinel's clientRect.top goes
@@ -733,7 +831,20 @@ function onTimelineScroll() {
 // than making useMatchesWindow DOM-aware. Pre-fix UX without
 // this: applying a filter that shrinks the set left the
 // scrollbar at the original position, which was disorienting.
+//
+// In flat virtualization the list is in normal document flow, so
+// resetting the list's own scrollTop is a no-op. Scroll the
+// document up to the list's top instead, with a small offset for
+// the campaign-log sticky chrome above.
 watch(resetCounter, () => {
+  if (flatVirtualization.value) {
+    const list = leavesListRef.value
+    if (list) {
+      const top = list.getBoundingClientRect().top + window.scrollY
+      window.scrollTo({ top: Math.max(0, top - 80), behavior: 'auto' })
+    }
+    return
+  }
   leavesListRef.value?.scrollTo({ top: 0, behavior: 'auto' })
 })
 
@@ -960,6 +1071,18 @@ onMounted(() => {
   }, { immediate: true })
 
   window.addEventListener('scroll', onTimelineScroll, { passive: true })
+
+  // Measure leaf-row height after first paint so the virtualizer's
+  // window math reflects the actual rendered geometry. Re-measure
+  // when the rendered slice changes (density swap, narrow apply
+  // shrinking the list to a single row, etc.) so the constant
+  // stays calibrated.
+  void nextTick().then(measureLeafHeight)
+  watch(
+    [() => flatVirtual.visibleItems.value.length, density],
+    () => { void nextTick().then(measureLeafHeight) },
+  )
+
   // Run once at mount + after the sentinel renders so the initial
   // state is correct even if the user lands mid-scroll (e.g. an
   // anchor link).
@@ -1411,7 +1534,19 @@ onBeforeUnmount(() => {
         :class="`density-${density}`"
         role="list"
       >
-        <template v-for="section in windowedSections" :key="section.key">
+        <!-- Virtualization spacers. Non-zero only when groupBy='none';
+             height equals the count of unmounted rows above (or below)
+             the visible slice times the measured row height. Holds the
+             scrollbar in place so the document still scrolls through
+             every row even though most aren't in the DOM. -->
+        <li
+          v-if="flatTopSpacerHeight > 0"
+          class="leaves-virtual-spacer"
+          aria-hidden="true"
+          :style="{ height: flatTopSpacerHeight + 'px' }"
+          data-virt-top-spacer
+        />
+        <template v-for="section in renderSections" :key="section.key">
           <li v-if="section.header" class="section-divider" :data-section-key="section.key" :aria-label="`Group: ${section.header}`">
             <span class="sd-label">{{ section.header }}</span>
             <span class="sd-count">{{ section.records.length }}</span>
@@ -1542,13 +1677,24 @@ onBeforeUnmount(() => {
             </span>
           </li>
         </template>
+        <!-- Bottom virtualization spacer — counterpart to
+             flatTopSpacerHeight above. -->
+        <li
+          v-if="flatBottomSpacerHeight > 0"
+          class="leaves-virtual-spacer"
+          aria-hidden="true"
+          :style="{ height: flatBottomSpacerHeight + 'px' }"
+          data-virt-bottom-spacer
+        />
         <!-- Infinite-scroll sentinel. Observed by an
              IntersectionObserver wired in onMounted; entering the
              viewport bumps the window by another page. Hidden
              from a11y because the announcement comes through
-             the leaves-foot status line below. -->
+             the leaves-foot status line below. Skipped when
+             flat-mode virtualization is active — the spacers
+             already cover the whole corpus, no paging needed. -->
         <li
-          v-if="hasMore"
+          v-if="hasMore && !flatVirtualization"
           ref="sentinelRef"
           class="leaves-sentinel"
           aria-hidden="true"
@@ -1563,7 +1709,7 @@ onBeforeUnmount(() => {
           aria-live="polite"
           data-testid="leaves-foot"
         >
-          <span v-if="hasMore">
+          <span v-if="hasMore && !flatVirtualization">
             Showing {{ renderedCount }} of {{ sortedRecords.length }} matches
           </span>
           <span v-else>
@@ -2489,6 +2635,16 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* Flat-mode virtualization spacers. Pure height — no border,
+   no background, no content. Their job is to make the
+   scroll-bar represent the full corpus while only the in-
+   viewport slice of leaf-rows is in the DOM. */
+.leaves-virtual-spacer {
+  list-style: none;
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .section-divider {

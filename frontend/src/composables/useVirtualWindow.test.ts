@@ -179,4 +179,86 @@ describe('useVirtualWindow', () => {
     const total = api.topSpacer.value + visibleHeight + api.bottomSpacer.value
     expect(total).toBe(1000 * 50)
   })
+
+  describe('mode: window', () => {
+    // In window mode the composable subtracts the list's
+    // getBoundingClientRect().top from window.scrollY to get the
+    // list-relative scroll. We stub getBoundingClientRect + window
+    // dimensions to drive each scenario.
+
+    function withRect(el: HTMLElement, rect: Partial<DOMRect>) {
+      const base = {
+        top: 0, bottom: 0, left: 0, right: 0,
+        width: 0, height: 0, x: 0, y: 0,
+        toJSON: () => ({}),
+      } as DOMRect
+      Object.defineProperty(el, 'getBoundingClientRect', {
+        value: () => ({ ...base, ...rect }),
+        writable: true, configurable: true,
+      })
+    }
+
+    function makeWindowHarness(items: number[], itemHeight = 50) {
+      const itemsRef = ref<readonly number[]>(items)
+      let api: ReturnType<typeof useVirtualWindow<number>> | null = null
+      const Comp = defineComponent({
+        setup() {
+          const containerRef = ref<HTMLElement | null>(null)
+          api = useVirtualWindow<number>({
+            items: itemsRef,
+            itemHeight,
+            containerRef,
+            mode: 'window',
+          })
+          return () => h('div', { ref: containerRef, class: 'vw-container' })
+        },
+      })
+      const wrapper = mount(Comp, { attachTo: document.body })
+      const container = wrapper.element as HTMLElement
+      return { wrapper, api: api!, container, itemsRef }
+    }
+
+    it('renders the top of the list when the list sits at the viewport top', async () => {
+      // List header at y=0, list runs full viewport. With a 600px
+      // viewport and 50px rows, 12 fit + 5 overscan = [0, 17).
+      Object.defineProperty(window, 'innerHeight', { value: 600, writable: true, configurable: true })
+      const { api, container } = makeWindowHarness([...Array(100).keys()])
+      withRect(container, { top: 0, bottom: 5000, height: 100 * 50 })
+      window.dispatchEvent(new Event('scroll'))
+      await nextTick()
+      expect(api.startIndex.value).toBe(0)
+      expect(api.endIndex.value).toBe(17)
+      expect(api.topSpacer.value).toBe(0)
+    })
+
+    it('slides the window as the page scrolls past the list', async () => {
+      // List 5000px tall, starts at y=0 — page scrolls 1000px so
+      // the list's top is now at y=-1000. List-relative scrollTop
+      // = 1000.
+      Object.defineProperty(window, 'innerHeight', { value: 600, writable: true, configurable: true })
+      const { api, container } = makeWindowHarness([...Array(100).keys()])
+      withRect(container, { top: -1000, bottom: 4000, height: 5000 })
+      window.dispatchEvent(new Event('scroll'))
+      await nextTick()
+      // visibleStart = floor(1000 / 50) = 20
+      // visibleEnd   = ceil((1000 + 600) / 50) = 32
+      // With overscan 5: [15, 37).
+      expect(api.startIndex.value).toBe(15)
+      expect(api.endIndex.value).toBe(37)
+    })
+
+    it('clips clientHeight when the list is taller than the viewport but partially visible', async () => {
+      // List runs from y=200 to y=10200 (5000 rows × 50px). Viewport
+      // is 600px tall — so only 600-200=400px of the list is in
+      // view. List-relative scrollTop = 0 (top hasn't scrolled).
+      Object.defineProperty(window, 'innerHeight', { value: 600, writable: true, configurable: true })
+      const { api, container } = makeWindowHarness([...Array(5000).keys()])
+      withRect(container, { top: 200, bottom: 10200, height: 10000 })
+      window.dispatchEvent(new Event('scroll'))
+      await nextTick()
+      // 400px / 50px = 8 visible rows + overscan = 13 rendered.
+      expect(api.startIndex.value).toBe(0)
+      expect(api.endIndex.value).toBe(13)
+    })
+  })
 })

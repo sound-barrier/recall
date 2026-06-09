@@ -81,6 +81,18 @@ session can skip the survey step.
   an `AUTO-DETECT · WINDOWS ONLY` eyebrow) and show only the
   custom-pick button. `ScreenshotSourcePicker.vue` +
   `pkg/app/probe_windows.go` (registry resolver).
+- ~~**Leaf-row virtualization (flat mode)**~~ — when the user
+  switches `groupBy` to `none`, `MatchesView` now renders only
+  the in-viewport slice of the leaves list via the new
+  `useVirtualWindow` composable in `mode: 'window'`. Spacer
+  divs above + below the rendered slice keep the document
+  scrollbar honest; auto-scroll-into-view brings off-screen
+  rows to focus when the j/k keyboard nav advances past the
+  rendered window. Grouped modes (day / week / month / year)
+  keep today's pagination — mixed-height section dividers need
+  a separate model and ship later if a perf complaint
+  materialises. Verified with a 1000-record fixture: < 60
+  `.leaf-row` DOM elements at any scroll position.
 - ~~**Reference-data-gaps contextual callout**~~ — first time
   the Unknown tab's Reference data gaps section materialises
   (a record carries an OCR'd `hero_raw` / `map_raw` the parser
@@ -145,38 +157,6 @@ session can skip the survey step.
   sidecars (the sidecars are signed too). Verification:
   `gh attestation verify recall-X.Y.Z-heroes.yaml --repo sound-barrier/recall`.
 
-## Ready to implement (clear scope, no design research needed)
-
-### 1. Leaf-row virtualization (primitive landed; integration deferred)
-
-`MatchesView.vue`'s leaves list renders every visible match's
-`<li class="leaf-row">` to the DOM. Fine through ~200 rows; the
-existing `useMatchesWindow` composable caps the visible slice at
-the pageSize default (~50 rows) until the user clicks "load more"
-or "expand to all," so most users never hit the slow path.
-
-A `useVirtualWindow` composable shipped with thorough unit tests
-as part of the queue close-out, so when a real perf complaint
-surfaces the primitive is ready to wire into the view. Integration
-deferred because the touch-points (IntersectionObserver sentinel
-for load-more, `j`/`k` keyboard nav over off-screen rows, anchor
-scroll, group dividers, click-handler stability across recycled
-items) all need to be re-thought in one pass — a half-integration
-would regress more than the perf bottleneck saves.
-
-When activating, the integration pass should:
-
-- Replace the `<template v-for="section in windowedSections">`
-  body with a `useVirtualWindow`-driven renderer for the
-  `groupBy === 'none'` case first; grouped variants stay on the
-  existing pagination until uniform-height section dividers ship.
-- Preserve the row click handler — bind against the loop variable,
-  not derived state, so recycled items dispatch correctly.
-- Keep the sentinel-based "load more" pattern intact; this
-  composable composes inside it, not as a replacement.
-
-## Polish / lower-priority
-
 ## Out of scope (deliberately not recommending)
 
 - **Drag-to-reorder leaf rows** — matches are immutable
@@ -206,7 +186,7 @@ mapping back to source surfaces:
 | Settings → 05 Backup & Restore | — | Two-step confirm pattern is sound. |
 | Settings → 06 Advanced (Stream/Clear/Re-parse) | 10, 12 | Stream-to-Grafana row is fine; the new Re-parse + format-list surfaces want enrichment. |
 | Parse tab | — | Run Parse + Watch Folder both match the docs intent. |
-| Matches workspace | 1, 3, 4, 5, 6, 7, 8 | Dossier + narrow panel are the redesign; remaining items polish the leaves + tag/selection surfaces. |
+| Matches workspace | — | Dossier + narrow panel are the redesign; leaf-row virtualization (item 1) shipped for flat mode in PR #240. |
 | Unknown tab | — | Three-section split (Needs review / Unknown maps / Reference data gaps) is the surface; the "fixed in vX.Y.Z" CTA shipped in PR #234. |
 | Modals (Detail / Lightbox / Cheatsheet / ExportBundle / IgnoredFiles) | — | The keyboard contract is sound; per-modal items would be premature. |
 | First-Run Profile Modal | 14 | Profile naming itself is fine; the inline-picker step is the open work. |
