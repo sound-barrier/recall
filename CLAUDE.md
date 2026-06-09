@@ -133,6 +133,24 @@ impossible conditions; over-engineering for hypothetical future requirements.
   release-please reads the prefix for version bumps. Bypass once with
   `LEFTHOOK_EXCLUDE=conventional`. Example in CONTRIBUTING.md.
 
+- **Pull requests only; no direct commits to main.** Every change lands via a
+  branch + PR + green CI. Branch naming mirrors the Conventional Commits prefix
+  the resulting commit will carry: `feat/<slug>`, `fix/<slug>`, `docs/<slug>`,
+  `chore/<slug>`, `refactor/<slug>`, etc. So `git log --branches` reads the same
+  way the commit messages do. Exceptions:
+  - **release-please's own merge commits** — bot-authored, already PR-routed; the
+    merge commit IS the PR landing.
+  - **dependabot bumps** — bot-authored PRs that auto-merge on green CI; the PR
+    exists, the human review is the auto-merge label.
+  - **emergency hotfix path** — still requires a PR but allows
+    `LEFTHOOK_EXCLUDE=<hook> git push` to bypass a specific blocking hook. Tag
+    the PR `emergency` and open a follow-up "fix the hook" PR within 48 hours
+    so the bypass doesn't become the new normal.
+
+  Branch protection on `main` (Settings → Branches → main → "Require pull
+  request before merging" + "Require status checks to pass") is the mechanical
+  enforcement; this rule documents the convention even when the UI flip lags.
+
 - **Breaking changes are fine — just declare them.** Pre-1.0 the project isn't
   contractually stable; any layer can change. Use `feat!:` (exclamation marks
   the whole commit breaking) or a `BREAKING CHANGE: <line>` footer. Both produce

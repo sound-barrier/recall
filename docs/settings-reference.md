@@ -286,15 +286,100 @@ While parsing, the button reads **Parsing…** and a progress panel
 expands under the row showing per-file status. Click the chevron to
 collapse it down to a single progress bar.
 
+## Updates & game data
+
+Recall ships two parallel update channels — the binary itself, and the
+reference data the parser uses (hero roster, map roster, capture-tool
+filename grammars). The data files travel separately from the app so
+a new hero added in a roster patch can land in your install the same
+day, without waiting for a Recall release.
+
+### Check for updates (masthead button)
+
+The masthead's right-hand block shows the running Recall version + a
+**Check for updates** button. Clicking it queries GitHub's releases
+API and the project's GitHub Pages live-data channel in parallel,
+then opens a modal with two sections.
+
+**Recall app** — shows the running version vs the latest release.
+The first ~500 chars of the release notes render inline; the **Open
+release page** button takes you to the full GitHub release page so
+you can download the new installer. (Recall does not auto-update
+itself; this is a deliberate opt-in step.)
+
+**Game data** — shows what's different between the rosters bundled
+into your binary, anything you've previously applied, and what's
+available in two channels:
+
+- **Release** — the heroes/maps/sources YAMLs published with each
+  tagged Recall release. **Apply update** downloads them, verifies
+  each file's SHA-256 against a published sidecar, atomically writes
+  them under `<RECALL_DATA_DIR>/data/`, and triggers an in-process
+  parser reload so new heroes/maps are recognised immediately. No
+  restart needed.
+
+- **Main** — the same three YAMLs published from `main` on
+  every roster patch (independent of the Recall release cadence).
+  **Sync from main** pulls them from
+  `https://sound-barrier.github.io/recall/data/` with the same SHA-256
+  verification. This row only appears when GitHub Pages is reachable;
+  if you're on a managed network that doesn't allowlist
+  `sound-barrier.github.io`, the row stays hidden and you can still
+  use the Release channel.
+
+Both channels write to `<RECALL_DATA_DIR>/data/manifest.json` so a
+future Check for updates can show "Applied: v1.4.3" or "Applied main
+@ abc1234 · 2 days ago." Embedded YAML stays in the binary as a
+safety net — if a downloaded file is ever corrupted, the parser
+falls back to the embedded version on next launch.
+
+### "Haven't checked in a while" banner
+
+If you've never run a check, or your last successful check was more
+than 90 days ago, a slim banner appears above the tab nav saying
+**Update check overdue** with a **Check now** button and a dismiss
+×. Dismissing snoozes the banner until the next 90-day cycle (or
+until you run a check yourself, which resets the timer). The cadence
+is a code constant — not user-tunable — chosen so a quiet install
+gets nudged roughly twice a season.
+
+### Where applied YAMLs live
+
+```text
+<RECALL_DATA_DIR>/
+  data/
+    heroes.yaml                  # applied override (release or main)
+    heroes.yaml.tmp              # only present during an in-flight apply
+    maps.yaml
+    maps.yaml.sha256             # local copy of the verified sidecar
+    screenshot_sources.yaml
+    manifest.json                # applied tag/commit + per-file SHA-256
+  check_state.json               # {"last_checked_at": "RFC3339"}
+```
+
+Delete the `data/` directory or `manifest.json` to revert to the
+binary's embedded roster. Recall reads it back into memory on next
+launch; no restart of the parser pipeline needed.
+
+### Steam install path (auto-correlation works on all supported sources)
+
+The four canonical capture sources Recall auto-detects on Windows —
+Nvidia Overlay, OW PrntScn default, Win Snip tool, and Steam install
+— all parse end-to-end. Steam's in-game F12 captures
+(`YYYYMMDDHHMMSS_N.jpg`) folded in alongside the other three in
+mid-2026; nothing extra to configure. On macOS / Linux you point
+Recall at whichever folder the Steam client writes to and the same
+filename matcher fires.
+
 ## Sidebar version block (masthead, lower-right)
 
 Not strictly a "setting" but worth knowing about:
 
-- The version chip shows the running Recall version.
-- A small dot turns orange when a newer release is available on
-  GitHub — click the chip to open the release page.
-- "Dev" builds (when running from source) get an info-only chip
-  pointing at the latest release for comparison.
+- The version chip shows the running Recall version (or `vX.Y.Z-dev`
+  on builds from source).
+- The **Check for updates** button next to the chip is the entry
+  point to the [Updates & game data](#updates--game-data) flow above
+  — there's no silent on-mount network call.
 
 ## Next chapter
 

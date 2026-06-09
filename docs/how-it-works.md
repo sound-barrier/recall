@@ -147,6 +147,32 @@ That's it for setup. **Settings → Engine** should now show
    to slice the view by any combination of hero, map, role, result,
    date, tag, or minimum play time.
 
+### Supported capture sources
+
+Four capture-tool filename shapes are recognised end-to-end (timestamp
+extraction + correlation by per-second matching), each with auto-
+detected default folders on Windows:
+
+| Source | Example filename | Auto-detect path (Windows) |
+|---|---|---|
+| **Nvidia Overlay** | `Overwatch 2 Screenshot 2026.05.10 - 19.57.14.89.png` | `Videos\Overwatch` |
+| **OW default PrntScn** | `ScreenShot_26-06-07_22-59-52-000.jpg` | `Documents\Overwatch\ScreenShots\Overwatch` |
+| **Windows Snip tool** | `Screenshot 2026-06-07 224855.png` | `Pictures\Screenshots` |
+| **Steam in-game F12** | `20260609000031_1.jpg` | `<SteamInstall>\userdata\<id>\760\remote\<OW-app-id>\screenshots` |
+
+On macOS / Linux the four cards are hidden and you point Recall at
+whichever folder OW (or Steam, or your screenshot manager) writes to.
+The filename shape — not the folder — is what the parser uses to
+correlate the timestamp, so the same matcher fires regardless of
+platform.
+
+A fifth source can be added by editing
+`pkg/parser/screenshot_sources.yaml` (see the file's header
+comments for the regex + capture-group rules); no Go edits required.
+The same YAML rides the live-data channel that pushes new heroes/maps
+between Recall releases — see
+[Updates & game data](settings-reference.md#updates--game-data).
+
 ### Optional: time-series charts
 
 The **Settings → Advanced → Stream to Grafana** toggle exposes match
