@@ -169,10 +169,10 @@ function unhide() {
   50%      { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
 }
 
+/* Brighter base fill compensates for the missing motion cue. */
 @media (prefers-reduced-motion: reduce) {
   .danger-btn.danger-confirm {
     animation: none;
-    /* Brighter base fill compensates for the missing motion cue. */
     background: color-mix(in srgb, var(--accent) 32%, transparent);
   }
 }
