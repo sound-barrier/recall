@@ -152,4 +152,20 @@ test.describe('dossier customize — no edit mode', () => {
     await page.locator('[data-section="geography"]').hover()
     await expect(chrome).toHaveCSS('opacity', '1')
   })
+
+  test('the dossier, Campaign Log and Geography are evenly spaced', async ({ page }) => {
+    const r = await page.evaluate(() => {
+      const box = (sel: string) => {
+        const el = document.querySelector(sel)
+        return el ? { top: el.getBoundingClientRect().top, bottom: el.getBoundingClientRect().bottom } : null
+      }
+      return { dossier: box('.set-dossier'), campaign: box('.campaign-log-sticky'), geo: box('.match-map-role') }
+    })
+    expect(r.dossier && r.campaign && r.geo).toBeTruthy()
+    const dossierToCampaign = r.campaign!.top - r.dossier!.bottom
+    const campaignToGeo = r.geo!.top - r.campaign!.bottom
+    // Uniform rhythm — the dossier→first-band gap must match the
+    // band→band gap (1px tolerance for the sticky sentinel).
+    expect(Math.abs(dossierToCampaign - campaignToGeo)).toBeLessThanOrEqual(2)
+  })
 })
