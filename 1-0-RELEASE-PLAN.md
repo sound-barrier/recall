@@ -113,19 +113,28 @@ basis, or make the launch land flat (e.g., no macOS binary).
 
 ### Tests
 
-- [ ] `[HIGH]` Five missing e2e specs that cover user-visible
-  affordances. Add them before 1.0:
-  - `bulk-delete.spec.ts` — multi-select → bulk delete from
-    Matches view.
-  - `profile-switching-persistence.spec.ts` — switch profiles
-    mid-session, verify state restoration.
-  - `export-bundle-roundtrip.spec.ts` — export → re-import,
-    verify record count + per-row fidelity.
-  - `leaver-match-key-collision.spec.ts` — leaver annotation
-    against a match-key collision resolution flow.
-  - `prometheus-scrape.spec.ts` — Prometheus endpoint validation
-    - Grafana panel refresh shape.
-  Tag with `@smoke` if any belong in the pre-push subset.
+- [x] `[HIGH]` Five missing e2e specs that cover user-visible
+  affordances. PR #3 audit found 3 of 5 already covered; landed
+  the genuinely-missing 2:
+  - **bulk-delete** — already covered by
+    `match-bulk-hide-drawer.spec.ts:58` (bulk hide → unhide →
+    bulk delete forever).
+  - **profile-switching-persistence** — already covered by
+    `multiple-profiles.spec.ts:42` (active-profile PUT fires +
+    masthead chip updates).
+  - **export-bundle-roundtrip** — export side covered by
+    `match-export-bundle.spec.ts`; import side added as
+    `export-bundle-roundtrip.spec.ts` (arm/confirm + filechooser
+    - POST /imports + afterImport reload).
+  - **leaver-match-key-collision** — already covered by
+    `ambiguous-attribution.spec.ts:205` (Attach button PUTs
+    /resolution with the chosen match_key).
+  - **prometheus-scrape** — backend shape pinned by
+    `pkg/cmd/server_test.go` (`TestMetricsHandler_*`); FE
+    opt-in toggle added as `prometheus-scrape.spec.ts`
+    (off→on→off PUTs with `{enabled: <bool>}`).
+  No @smoke tagging — both new specs hit existing route patterns
+  and don't touch pre-push smoke scope.
   **File:** `frontend/tests/e2e/`. **Effort:** M
 
 ### Docs
