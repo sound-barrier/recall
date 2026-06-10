@@ -269,22 +269,39 @@ maintainer's judgment call which of these is worth holding 1.0 for.
   parse lifecycle behind a `ParseState` type or guard the
   broadcast site. **File:** `pkg/app/app.go:75-90` +
   `pkg/app/parse.go`. **Effort:** M
-- [ ] `[MED]` Large Vue components past comfortable maintenance size:
-  - `MatchesView.vue` — 3,560 lines. Split into
-    `MatchesNarrowRail.vue`, `MatchesDossierGrid.vue`, and the
-    leaf-list shell.
-  - `MatchCardExpanded.vue` — 2,858 lines. Extract stats grid +
-    annotation editor + screenshot strip.
-  - `App.vue` — 2,243 lines. Some justified (shell + modal
-    cross-cutting), but extract the onboarding-tour DOM-geometry
-    inline code.
-  Improves both readability AND testability — currently only
-  e2e exercises the full component. **Effort:** L
-- [ ] `[MED]` Extract `useOnboardingSpotlight` composable from
-  `App.vue`. The inline DOM geometry (`ResizeObserver` +
-  `getBoundingClientRect` for the spotlight mask) doesn't belong
-  in the shell router. **File:** `App.vue` →
-  `frontend/src/composables/useOnboardingSpotlight.ts`. **Effort:** M
+- [ ] `[MED]` Large Vue components — `MatchesView.vue` (3,580 lines)
+  - `MatchCardExpanded.vue` (2,858 lines) + `App.vue` (2,293
+  lines). PR #8 audit: **deferred to post-1.0**. Each split is
+  a behavior-preserving pure refactor with no user-visible
+  benefit; the comprehensive e2e suite (~350 specs) is the only
+  contract that verifies the split is non-breaking, and the e2e
+  itself is unchanged by the refactor — so the safety net is
+  there, but the value is "internal readability," which can land
+  any time. Pre-1.0 the risk/reward favors *not* refactoring
+  files that are merge-conflict magnets while polish PRs are
+  landing. Concrete revisit signal: when the maintainer is
+  blocked on a feature *because of* the file size, do the split
+  in a dedicated PR with the e2e suite as the safety net.
+  Mechanical extraction order documented in the audit:
+  1. `MatchesView.vue` → extract `MatchesNarrowRail.vue` (the
+     left-side filter panel surface; its state already lives in
+     `useMatchesNarrow`) + `MatchesDossierGrid.vue` (the dossier
+     widget grid; already partly factored via per-widget SFCs).
+  2. `MatchCardExpanded.vue` → extract `MatchCardStatsGrid.vue`
+     - `MatchCardAnnotationEditor.vue` + `MatchCardScreenshotStrip.vue`.
+  3. `App.vue` stays — it's the shell router + cross-cutting
+     modal state, which is *expected* to be larger.
+  **Effort:** L
+- [x] `[MED]` Extract `useOnboardingSpotlight` composable from
+  `App.vue`. PR #8 audit: **already done in earlier work**.
+  Onboarding-tour DOM geometry lives in
+  `frontend/src/composables/useOnboardingTour.ts` (the state
+  machine + step catalog) and `frontend/src/components/
+  TourCallout.vue` (the `getBoundingClientRect` positioning).
+  `App.vue` only carries the lightweight async-component mount
+  - the `tourActive` ref + the localStorage seed — no
+  `ResizeObserver`, no `getBoundingClientRect`. Plan item
+  references an outdated audit. **Effort:** M
 
 ### Design system + visual polish
 
