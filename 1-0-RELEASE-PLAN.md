@@ -103,11 +103,13 @@ basis, or make the launch land flat (e.g., no macOS binary).
   boilerplate + a `NOTICE` file listing third-party components
   (`modernc.org/sqlite`, `Masterminds/semver`, Vue, Vite, etc.).
   **Effort:** S
-- [ ] `[HIGH]` macOS desktop app not in `release.yml` build matrix.
-  `make build-mac` requires a macOS host and isn't in CI. Either
-  wire an Apple Silicon runner (paid Actions) or document the
-  manual local cut path in `RELEASES.md`. Shipping 1.0 without a
-  macOS binary is the single biggest "embarrass on launch" risk.
+- [x] `[HIGH]` macOS desktop app not in `release.yml` build matrix.
+  PR #4 audit: already addressed. `build-mac` job at
+  `release.yml:154` runs on `macos-latest`, builds the Wails arm64
+  `.app` bundle and DMG via `make build-mac` + `scripts/release/
+  make-dmg.sh` (hdiutil retry loop covers the "Resource busy"
+  CI flake). The `release` job's `needs: [build, build-mac, sbom]`
+  gates DMG into every release. Documented in `RELEASES.md:141`.
   **File:** `.github/workflows/release.yml`,
   `RELEASES.md`. **Effort:** M
 
@@ -139,17 +141,23 @@ basis, or make the launch land flat (e.g., no macOS binary).
 
 ### Docs
 
-- [ ] `[HIGH]` `README.md` missing a Troubleshooting section. First-run
-  failures (Tesseract not found; screenshots-folder permissions
-  denied; DB reset steps per-OS; Wails IPC port conflicts) aren't
-  surfaced where new users look. Cross-reference
-  `docs/install-{macos,linux,windows}.md` + `CONTRIBUTING.md` where
-  detailed steps live. **Effort:** M
-- [ ] `[HIGH]` macOS Gatekeeper first-run experience undocumented in
-  `docs/install-macos.md`. Strangers will see "Recall cannot be
-  opened because the developer cannot be verified" and abandon.
-  Add a paragraph + a screenshot + the right-click → Open
-  workaround. **Effort:** S
+- [x] `[HIGH]` `README.md` missing a Troubleshooting section. Added
+  a four-block <details>/<summary> section between Capturing
+  matches and Advanced: Tesseract not found, screenshots-folder
+  permission denied, per-OS DB reset, port conflicts (`:9091`
+  metrics, `:34115` Wails IPC dev-only, `:7000` server mode).
+  Cross-links to the three install guides + CONTRIBUTING.md's
+  bug-bundle docs. Each block is collapsed by default so the
+  scroll-past surface stays small. **Effort:** M
+- [x] `[HIGH]` macOS Gatekeeper first-run experience undocumented in
+  `docs/install-macos.md`. PR #4 audit: already addressed.
+  `docs/install-macos.md:32-55` covers the **§3 First launch —
+  approve the app** flow (System Settings → Privacy & Security
+  → Open Anyway, the modern post-macOS-13 replacement for the
+  legacy right-click → Open dance) plus a `xattr -d
+  com.apple.quarantine` terminal shortcut. The plan's
+  "right-click → Open" suggestion would have re-documented an
+  obsolete workaround. **Effort:** S
 
 ### Frontend UX (first-run + error states)
 
