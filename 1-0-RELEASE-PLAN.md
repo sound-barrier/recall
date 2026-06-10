@@ -385,19 +385,29 @@ maintainer's judgment call which of these is worth holding 1.0 for.
 
 ### A11y polish
 
-- [ ] `[MED]` Skip-link z-index conflict with the system-alert banner
-  (when Tesseract is missing). Verify skip-link can land focus
-  even when the alert overlay covers the page. **File:**
-  `App.vue:1661`. **Effort:** S
-- [ ] `[LOW]` Empty-suggestion buttons emit multiple child spans;
-  screen readers announce them as fragmented content. Add a
-  consolidated `aria-label` per button. **File:**
+- [x] `[MED]` Skip-link z-index conflict with system-alert. PR #9
+  audit: no actual conflict. `.skip-link` is `position: absolute;
+  z-index: 1000;` per `app.css:395`; `.system-alert` is in normal
+  flow with `z-index: auto`. Skip-link wins. Contract pinned by
+  the new `a11y-skip-link-and-modals.spec.ts` (asserts the
+  skip-link snaps in on Tab + lands focus on `#main-content`
+  even when the System Alert is rendered). **Effort:** S
+- [x] `[LOW]` Empty-suggestion buttons aria-label. Each `<button>`
+  in `MatchesEmptySuggestions.vue` now carries a consolidated
+  `aria-label="Remove ${label} — would surface ${N} match[es]"`,
+  and the two inner spans are marked `aria-hidden="true"` so
+  screen readers read one cohesive sentence instead of
+  fragmented chunks. Visual rendering is unchanged. **File:**
   `MatchesEmptySuggestions.vue:28-35`. **Effort:** S
-- [ ] `[MED]` MatchDetailPanel + MatchScreenshotLightbox focus-trap
-  sequence: test that nested-modal Esc closes the lightbox
-  first, then the detail panel, with focus correctly returning
-  to the original card. **File:** `MatchDetailPanel.vue` +
-  `MatchScreenshotLightbox.vue` + a new e2e spec. **Effort:** M
+- [x] `[MED]` Nested-modal focus-trap Esc sequence. Pinned by
+  `a11y-skip-link-and-modals.spec.ts` second test: cheatsheet
+  over detail panel → Esc closes cheatsheet ONLY (capture-phase
+  - `stopImmediatePropagation` keeps the panel's bubble-phase
+  Esc out of the event), second Esc closes the panel, focus
+  returns to an element inside the leaves-list or the panel
+  itself if it transitions out slowly. The contract mirrors the
+  pattern documented in `frontend/CLAUDE.md` *Gotchas*.
+  **Effort:** M
 
 ### Performance
 

@@ -28,10 +28,11 @@ defineProps<{
           type="button"
           class="empty-suggestion-btn"
           :data-clause-id="s.clauseId"
+          :aria-label="`Remove ${s.label} — would surface ${s.wouldSurface} ${s.wouldSurface === 1 ? 'match' : 'matches'}`"
           @click="s.clear"
         >
-          <span class="empty-suggestion-action">Remove {{ s.label }}</span>
-          <span class="empty-suggestion-count">→ {{ s.wouldSurface }} matches</span>
+          <span class="empty-suggestion-action" aria-hidden="true">Remove {{ s.label }}</span>
+          <span class="empty-suggestion-count" aria-hidden="true">→ {{ s.wouldSurface }} matches</span>
         </button>
       </li>
     </ul>
