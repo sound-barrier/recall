@@ -11,11 +11,12 @@ import type { WidgetShape } from '../dashboard/widgets'
 // widget renders in — users can drag widgets across rows regardless of
 // shape.
 //
-// There is no edit MODE: every widget is always draggable, and its
-// drag handle + trash live on it permanently. Both are quiet by
-// default (low opacity) and reveal on hover/focus, so the dossier
-// reads as a dossier — not a UI scaffold — while keeping reorder +
-// remove one gesture away with no mode to toggle first.
+// There is no edit MODE. The manage controls (reorder grip, settings
+// gear, remove ×) live in a small cluster at the top-right corner —
+// hidden at rest, revealed on hover/focus — so the widget's top-left
+// eyebrow label is never covered and the dossier reads clean. No
+// border / background change on hover; the controls appearing IS the
+// affordance (matching the Campaign Log / Geography section chrome).
 //
 // `legacyDataKpi` / `legacyDataBreakdown` keep the pre-refactor e2e
 // selectors (`[data-kpi="reviewed-count"]`, `[data-breakdown="roles"]`)
@@ -79,35 +80,40 @@ function idxOr(): number { return props.idx ?? 0 }
     @dragover="emit('drag-over', rowOr(), idxOr(), $event)"
     @drop="emit('drop', rowOr(), idxOr(), $event)"
   >
-    <button
-      type="button"
-      class="dashboard-drag-handle"
-      :aria-label="`Reorder widget ${id}. Arrow keys move; Up/Down change row.`"
-      :data-drag-handle="id"
-      @click.stop
-      @keydown="emit('handle-keydown', id, rowOr(), idxOr(), $event)"
-    >
-      <span aria-hidden="true">⋮⋮</span>
-    </button>
-    <button
-      v-if="hasConfig"
-      type="button"
-      class="dashboard-gear"
-      :aria-label="`Configure widget ${id}`"
-      :data-widget-config-trigger="id"
-      @click.stop="emit('configure', id, $event)"
-    >
-      <span aria-hidden="true">⚙</span>
-    </button>
-    <button
-      type="button"
-      class="dashboard-trash"
-      :aria-label="`Remove widget ${id} from the dashboard`"
-      :data-widget-remove="id"
-      @click.stop="emit('remove', id)"
-    >
-      <span aria-hidden="true">×</span>
-    </button>
+    <!-- Manage cluster — grouped at the top-right so the widget's
+         top-left eyebrow is never covered. Hidden at rest, revealed on
+         hover/focus (see CSS). -->
+    <div class="dashboard-widget-controls" data-widget-controls>
+      <button
+        type="button"
+        class="dashboard-ctl dashboard-grip"
+        :aria-label="`Reorder widget ${id}. Arrow keys move; Up/Down change row.`"
+        :data-drag-handle="id"
+        @click.stop
+        @keydown="emit('handle-keydown', id, rowOr(), idxOr(), $event)"
+      >
+        <span aria-hidden="true">⠿</span>
+      </button>
+      <button
+        v-if="hasConfig"
+        type="button"
+        class="dashboard-ctl dashboard-gear"
+        :aria-label="`Configure widget ${id}`"
+        :data-widget-config-trigger="id"
+        @click.stop="emit('configure', id, $event)"
+      >
+        <span aria-hidden="true">⚙</span>
+      </button>
+      <button
+        type="button"
+        class="dashboard-ctl dashboard-trash"
+        :aria-label="`Remove widget ${id} from the dashboard`"
+        :data-widget-remove="id"
+        @click.stop="emit('remove', id)"
+      >
+        <span aria-hidden="true">×</span>
+      </button>
+    </div>
     <slot />
   </component>
 </template>
@@ -138,60 +144,54 @@ function idxOr(): number { return props.idx ?? 0 }
               border-color 140ms ease;
 }
 
-/* Every widget is draggable. The grab cursor + a quiet accent border
-   on HOVER signal "you can move/manage me" without the always-dashed
-   "all widgets shout at me" treatment — the resting state stays a
-   clean dashboard. */
-.dashboard-widget {
-  cursor: grab;
-}
-
-.dashboard-widget:hover {
-  border-style: dashed;
-  border-color: var(--accent);
-}
-
-.kpi-tile.dashboard-widget:hover {
-  background: color-mix(in srgb, var(--accent-soft) 25%, var(--surface-2));
-}
-
-.breakdown.dashboard-widget:hover {
-  background: color-mix(in srgb, var(--accent-soft) 25%, var(--surface));
-}
-
-.dashboard-widget:active {
-  cursor: grabbing;
-}
+/* Every widget is draggable from anywhere; the grip is the explicit
+   affordance + keyboard handle. No resting hover treatment — the
+   widget box stays exactly as-is, only the control cluster reveals. */
+.dashboard-widget:active { cursor: grabbing; }
 
 /* Drop-target highlight — the cell the dragged widget will land in
-   front of. Bold inset ring + accent fill so the hint reads from
-   peripheral vision. */
+   front of. Inset ring + accent fill so the hint reads from peripheral
+   vision (active-drag feedback, not a resting hover). */
 .dashboard-widget-drop-target {
   box-shadow: inset 0 0 0 2px var(--accent);
   background: color-mix(in srgb, var(--accent-soft) 80%, var(--surface)) !important;
 }
 
-/* Ghost — the source widget while it's being dragged. Sits at the
-   live preview position so the user sees exactly where it will land. */
+/* Ghost — the source widget while it's being dragged. Solid (never
+   dashed) faint accent so it reads as "this is moving" without the
+   dashed-box treatment. */
 .dashboard-widget-dragging {
-  opacity: 0.35;
-  border-style: dashed !important;
+  opacity: 0.4;
   border-color: var(--accent) !important;
-  background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)) !important;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2)) !important;
   transform: scale(0.985);
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
-/* Controls (drag handle + gear + trash) — quiet by default (low
-   opacity) so the dossier reads clean, full opacity on hover/focus.
-   Always present in the DOM so keyboard reach + focus stay intact. */
-.dashboard-drag-handle,
-.dashboard-trash,
-.dashboard-gear {
+/* Control cluster — top-right, hidden at rest, revealed on hover/focus.
+   Opacity (not pointer-events) gates the quiet state so a click never
+   needs a prior hover. */
+.dashboard-widget-controls {
   position: absolute;
   top: 4px;
-  width: 28px;
-  height: 28px;
+  right: 4px;
+  z-index: 1;
+  display: inline-flex;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity var(--duration-fast) ease;
+}
+
+.kpi-tile:hover .dashboard-widget-controls,
+.breakdown:hover .dashboard-widget-controls,
+.dashboard-widget:focus-within .dashboard-widget-controls {
+  opacity: 1;
+}
+
+/* Compact, native-dialog-sized buttons. */
+.dashboard-ctl {
+  width: 17px;
+  height: 17px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -202,54 +202,21 @@ function idxOr(): number { return props.idx ?? 0 }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 2px;
+  color: var(--text-faint);
   cursor: pointer;
   user-select: none;
-  z-index: 1;
-  opacity: 0.32;
-  transition: opacity var(--duration-fast) ease,
-              color var(--duration-fast) ease,
+  transition: color var(--duration-fast) ease,
               border-color var(--duration-fast) ease,
               background var(--duration-fast) ease;
 }
 
-.dashboard-drag-handle {
-  left: 4px;
-  font-size: 0.85rem;
-  color: var(--text-faint);
-  cursor: grab;
-}
+.dashboard-grip { cursor: grab; font-size: 0.62rem; }
+.dashboard-grip:active { cursor: grabbing; }
+.dashboard-gear { font-size: 0.62rem; }
+.dashboard-trash { font-size: 0.78rem; }
 
-.dashboard-trash {
-  right: 4px;
-  font-size: 1.1rem;
-  color: var(--text-faint);
-}
-
-/* The gear sits left of the trash (which keeps the right-edge anchor
-   as the destructive control). The 4 px gap matches the corner inset
-   so the chrome reads as one row. */
-.dashboard-gear {
-  right: 36px;
-  font-size: 1rem;
-  color: var(--text-faint);
-}
-
-.kpi-tile:hover .dashboard-drag-handle,
-.kpi-tile:hover .dashboard-trash,
-.kpi-tile:hover .dashboard-gear,
-.breakdown:hover .dashboard-drag-handle,
-.breakdown:hover .dashboard-trash,
-.breakdown:hover .dashboard-gear,
-.dashboard-drag-handle:focus,
-.dashboard-trash:focus,
-.dashboard-gear:focus,
-.dashboard-drag-handle:focus-visible,
-.dashboard-trash:focus-visible,
-.dashboard-gear:focus-visible {
-  opacity: 1;
-}
-
-.dashboard-drag-handle:hover {
+.dashboard-grip:hover,
+.dashboard-gear:hover {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--accent-soft);
@@ -261,28 +228,17 @@ function idxOr(): number { return props.idx ?? 0 }
   background: color-mix(in srgb, var(--loss) 12%, var(--surface));
 }
 
-.dashboard-gear:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.dashboard-drag-handle:focus-visible,
-.dashboard-trash:focus-visible,
-.dashboard-gear:focus-visible {
+.dashboard-ctl:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
-.dashboard-drag-handle:active { cursor: grabbing; }
-
 @media (prefers-reduced-motion: reduce) {
   .kpi-tile,
   .breakdown,
-  .dashboard-drag-handle,
-  .dashboard-trash,
-  .dashboard-gear {
+  .dashboard-widget-controls,
+  .dashboard-ctl {
     transition: none !important;
   }
 }
