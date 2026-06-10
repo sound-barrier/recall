@@ -211,7 +211,7 @@ test.describe('first-run profile-name modal', () => {
     // After Save, the modal advances to step 2 (pick a screenshots
     // folder) — it does NOT dismiss until the user finishes step 2.
     await expect(modal.locator('h2')).toContainText('Where do your screenshots live?')
-    await expect(modal.locator('[data-step-dot="source"]')).toHaveClass(/active/)
+    await expect(modal.locator('[data-testid="first-run-step-label"]')).toHaveText('Step 2 of 2')
   })
 
   test('Save reloads so the masthead chip immediately reflects the new name', async ({ page }) => {
