@@ -640,13 +640,23 @@ post-1.0 backlog when 1.0 ships.
 
 ### Doc conventions
 
-- [ ] `[LOW]` Document the test-only-API convention in
-  `CONTRIBUTING.md` (`app.NewWithStore`, `parser.ToGolden`,
-  `pkg/db/dbtest`, etc.) so future contributors know not to
-  treat them as stable. **Effort:** S
-- [ ] `[LOW]` Document the "no telemetry" choice explicitly in
-  `SECURITY.md`. Privacy-first is a positive; users should know.
-  **Effort:** S
+- [x] `[LOW]` Test-only API convention documented. Added a
+  `Test-only APIs` section to `CONTRIBUTING.md` (between
+  Releases and Bug-report bundles) with a 4-row table covering
+  `app.NewWithStore`, `parser.ToGolden`, `pkg/db/dbtest.Fake`,
+  and `pkg/app/fixtures.go::GenerateMatchFixture`. Documented
+  the "no SemVer cycle, no deprecation cycle" rule and added a
+  bug-flag for any production import of a test-only symbol.
+  TOC updated. **File:** `CONTRIBUTING.md`. **Effort:** S
+- [x] `[LOW]` "No telemetry" choice documented. Added a
+  `No telemetry` section to `SECURITY.md` (between Scope and
+  Past advisories) enumerating the four facts that hold the
+  property: (1) match data lives in local SQLite, (2) watcher
+  reads but doesn't upload, (3) Prometheus is opt-in +
+  loopback-bound, (4) "Check for updates" is the only
+  user-initiated network call. Codified the rule that any
+  off-device send without explicit opt-in is a security bug.
+  **File:** `SECURITY.md`. **Effort:** S
 
 ### Features (post-1.0)
 

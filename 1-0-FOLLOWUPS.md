@@ -52,14 +52,6 @@ this file is **not** a striking-out log.
   start/end, DB schema apply, API handler entry/exit). **File:**
   all. **Effort:** L
 
-### Doc conventions
-
-- `[LOW]` **Document the test-only-API convention** in
-  `CONTRIBUTING.md` (`app.NewWithStore`, `parser.ToGolden`,
-  `pkg/db/dbtest`, etc.). **Effort:** S
-- `[LOW]` **Document the "no telemetry" choice** explicitly in
-  `SECURITY.md`. **Effort:** S
-
 ### Features (post-1.0)
 
 - `[LOW]` **In-app auto-updater.** Wails v2 supports it; today
