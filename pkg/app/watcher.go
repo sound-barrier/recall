@@ -1,12 +1,13 @@
 package app
 
 import (
-	"log"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+
+	"recall/pkg/applog"
 )
 
 // watchDebounce is how long we wait after seeing a new screenshot
@@ -27,30 +28,28 @@ func (a *App) startWatching() {
 		return // already watching
 	}
 	dir := a.settings.ScreenshotsDir
+	logger := applog.Subsystem("watch")
 	if dir == "" {
-		log.Printf("watch: no screenshots directory configured, skipping")
+		logger.Info("no screenshots directory configured, skipping")
 		return
 	}
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Printf("watch: NewWatcher failed: %v", err)
+		logger.Error("NewWatcher failed", "err", err)
 		return
 	}
 	if err := w.Add(dir); err != nil {
-		// `%q` (not `%s`) on `dir` — the screenshots directory is a
-		// user-controlled string from settings.json (validated by
-		// `safePathChars` at the boundary, but belt-and-suspenders
-		// here: %q escapes any control char that ever slipped past
-		// the validator into its literal `\n` / `\t` form, so a
-		// forged path can't forge a log line). Same fix as the
-		// `log.Printf("parse: %q: …")` in parser.go.
-		log.Printf("watch: cannot watch %q: %v", dir, err)
+		// `slog.String("dir", dir)` escapes any control char that
+		// might have slipped past `safePathChars` at the boundary,
+		// so a forged path can't forge a log line — same fix as
+		// the historical `%q` formatting in the log.Printf days.
+		logger.Error("cannot watch directory", "dir", dir, "err", err)
 		_ = w.Close()
 		return
 	}
 	a.watcher = w
 	a.watchedDir = dir
-	log.Printf("watch: watching %q", dir)
+	logger.Info("watching", "dir", dir)
 
 	go a.runWatchLoop(w)
 }
@@ -79,13 +78,15 @@ func runWatchEvents(events <-chan fsnotify.Event, errs <-chan error, onTrigger f
 			if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
 				continue
 			}
-			log.Printf("watch: new file %s — debouncing parse for %s", filepath.Base(ev.Name), watchDebounce)
+			applog.Subsystem("watch").Info("new file — debouncing parse",
+				"file", filepath.Base(ev.Name),
+				"debounce", watchDebounce)
 			onTrigger()
 		case err, ok := <-errs:
 			if !ok {
 				return
 			}
-			log.Printf("watch: error: %v", err)
+			applog.Subsystem("watch").Error("event channel error", "err", err)
 		}
 	}
 }
@@ -100,9 +101,10 @@ func (a *App) scheduleParseDebounced() {
 		a.watchTimer.Stop()
 	}
 	a.watchTimer = time.AfterFunc(watchDebounce, func() {
-		log.Printf("watch: debounce elapsed, running ParseScreenshots")
+		logger := applog.Subsystem("watch")
+		logger.Info("debounce elapsed, running ParseScreenshots")
 		if err := a.ParseScreenshots(); err != nil {
-			log.Printf("watch: parse failed: %v", err)
+			logger.Error("parse failed", "err", err)
 			return
 		}
 		// Tell the frontend to reload its records list. The Vue side
@@ -127,7 +129,7 @@ func (a *App) stopWatching() {
 	_ = a.watcher.Close()
 	a.watcher = nil
 	a.watchedDir = ""
-	log.Printf("watch: stopped watching %s", prev)
+	applog.Subsystem("watch").Info("stopped watching", "dir", prev)
 }
 
 // GetWatchEnabled reports whether the watcher is currently active.

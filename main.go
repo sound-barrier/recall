@@ -8,10 +8,12 @@ import (
 	"os"
 
 	"recall/pkg/app"
+	"recall/pkg/applog"
 	"recall/pkg/cmd"
 )
 
 func main() {
+	applog.Init()
 	a := app.New()
 
 	// Convenience: the Wails binary also supports --server / -s so users
