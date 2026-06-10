@@ -59,6 +59,7 @@ import {
   MoveMatches,
 } from './api'
 import type { IgnoredScreenshot, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from './api'
+import { plainLanguageError } from './error-helpers'
 import { screenshotURL } from './match-helpers'
 import { tallyWLD } from './match-stats-helpers'
 import { useTabKeyboardNav, TAB_ORDER, type TabId } from './composables/useTabKeyboardNav'
@@ -155,6 +156,28 @@ const GITHUB_REPO_URL = 'https://github.com/sound-barrier/recall'
 
 const records = ref<MatchRecord[]>([])
 const error = ref('')
+// When the current error came from a retryable path (currently:
+// the initial load() call), `errorRetry` carries the function the
+// banner's Retry button should invoke. Cleared whenever `error`
+// is cleared or set from a non-retryable path.
+const errorRetry = ref<(() => void) | null>(null)
+// `setError` is the single error-setting seam. Pass the raw Go
+// error (most paths) or a pre-canned message (the typed-string
+// app-level cases like "Tesseract is not configured"). For the
+// raw-Go paths the message is run through `plainLanguageError`
+// before display so first-time users see a CTA instead of a
+// "stat /Users/x: permission denied" diagnostic.
+function setError(message: string, retry: (() => void) | null = null) {
+  error.value = message
+  errorRetry.value = retry
+}
+function setErrorFromRaw(raw: string, retry: (() => void) | null = null) {
+  setError(plainLanguageError(raw), retry)
+}
+function clearError() {
+  error.value = ''
+  errorRetry.value = null
+}
 // `parseBusy` flips true during runParse(); used to disable the
 // manual Parse button and its peers in IngestView / SettingsView.
 const parseBusy = ref(false)
@@ -363,7 +386,7 @@ const {
   resetTesseractPath: ResetTesseractPath,
   probeTesseractBinary: ProbeTesseractBinary,
   setTesseractPath: SetTesseractPath,
-  onError: (m) => { error.value = m },
+  onError: (m) => { setErrorFromRaw(m) },
   navigateToEngine: async () => {
     view.value = 'settings'
     await nextTick()
@@ -432,7 +455,7 @@ const {
   resetScreenshotsDir: ResetScreenshotsDir,
   refreshNewCount: () => refreshNewCount(),
   shouldConfirmPickWhile: () => watchEnabled.value,
-  onError: (m) => { error.value = m },
+  onError: (m) => { setErrorFromRaw(m) },
 })
 
 // Platform-resolved data paths — surfaced read-only in Settings →
@@ -467,7 +490,7 @@ async function pickDetectedSource(path: string) {
     setScreenshotsDir(path)
     await refreshNewCount()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -482,7 +505,7 @@ const {
   toggle: togglePrometheus,
 } = useFeatureToggle({
   set: SetPrometheusEnabled,
-  onError: (m) => { error.value = m },
+  onError: (m) => { setErrorFromRaw(m) },
 })
 const {
   enabled: watchEnabled,
@@ -493,7 +516,7 @@ const {
   canEnable: () => tesseractReady.value
     ? null
     : 'Configure Tesseract in Settings → Engine before enabling Watch.',
-  onError: (m) => { error.value = m },
+  onError: (m) => { setErrorFromRaw(m) },
 })
 
 // Filter / filter-panel / grouping composables — owned here so the
@@ -541,8 +564,15 @@ async function load() {
       records.value = recs.value ?? []
       if (before > 0 && records.value.length > before) flashRecordsPulse()
     }
+    // A successful load clears any stale "Could not load matches"
+    // banner — including the one a previous failed attempt set
+    // through the Retry CTA path.
+    if (errorRetry.value === load) clearError()
   } else {
-    error.value = `Could not load matches: ${String(recs.reason)}`
+    setError(
+      `Could not load matches: ${plainLanguageError(String(recs.reason))}`,
+      load,
+    )
   }
   if (dir.status === 'fulfilled')      setScreenshotsDir(dir.value || '')
   if (promOn.status === 'fulfilled')   setPrometheusEnabled(!!promOn.value)
@@ -601,7 +631,7 @@ function onDataApplied() {
 }
 
 async function runParse() {
-  error.value = ''
+  clearError()
   parseBusy.value = true
   parseProgress.value = null
   parseLog.value = []
@@ -612,7 +642,7 @@ async function runParse() {
     lastParsedAt.value = Date.now()
     try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {}
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   } finally {
     parseBusy.value = false
     parseProgress.value = null
@@ -658,10 +688,10 @@ async function onCancelParse() {
 // because the user knows they're committing to a multi-minute run.
 async function onReParseAll() {
   if (!tesseractReady.value) {
-    error.value = 'Tesseract is not configured. Fix it in Settings → Engine.'
+    setError('Tesseract is not configured. Fix it in Settings → Engine.')
     return
   }
-  error.value = ''
+  clearError()
   parseBusy.value = true
   parseProgress.value = null
   parseLog.value = []
@@ -671,7 +701,7 @@ async function onReParseAll() {
     lastParsedAt.value = Date.now()
     try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {}
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   } finally {
     parseBusy.value = false
     parseProgress.value = null
@@ -681,7 +711,7 @@ async function onReParseAll() {
 
 async function parse() {
   if (!tesseractReady.value) {
-    error.value = 'Tesseract is not configured. Fix it in Settings → Engine.'
+    setError('Tesseract is not configured. Fix it in Settings → Engine.')
     return
   }
   // If the detected version is unsupported, require explicit confirmation
@@ -723,7 +753,7 @@ const { clearingDB, clearConfirm, clearDatabase, armClear, cancelClear } = useCl
     lastParsedAt.value = null
     try { localStorage.removeItem('recall.lastParsedAt') } catch (_) {}
   },
-  onError: (m) => { error.value = m },
+  onError: (m) => { setErrorFromRaw(m) },
 })
 
 // Backup / restore (JSON export + CSV export + JSON import). Inline
@@ -773,7 +803,7 @@ async function onSetLeaverAnnotation(matchKey: string, leaver: '' | 'self' | 'te
     })
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -786,7 +816,7 @@ async function onSetMatchAnnotation(matchKey: string, input: MatchAnnotationInpu
     await SetMatchAnnotation(matchKey, input)
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -799,7 +829,7 @@ async function onSetMatchHidden(matchKey: string, hidden: boolean) {
     await SetMatchVisibility(matchKey, hidden)
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -813,7 +843,7 @@ async function onSetMatchReview(matchKey: string, reviewedBy: ReviewedBy) {
     await SetMatchReview(matchKey, reviewedBy)
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -822,7 +852,7 @@ async function onSetMatchQueue(matchKey: string, queueType: QueueType) {
     await SetMatchQueue(matchKey, queueType)
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -831,7 +861,7 @@ async function onSetMatchPlayMode(matchKey: string, playMode: PlayMode) {
     await SetMatchPlayMode(matchKey, playMode)
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -887,7 +917,7 @@ async function onHideMatches(matchKeys: string[]) {
     await Promise.all(matchKeys.map((k) => SetMatchVisibility(k, true)))
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -902,7 +932,7 @@ async function onBulkPlayMode(matchKeys: string[], playMode: PlayMode) {
     await BulkSetMatchPlayMode(matchKeys, playMode)
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -912,7 +942,7 @@ async function onBulkQueue(matchKeys: string[], queueType: QueueType) {
     await BulkSetMatchQueue(matchKeys, queueType)
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -948,13 +978,13 @@ async function onCopyReplayCode(matchKey: string) {
   const r = records.value.find(x => x.match_key === matchKey)
   const code = (r?.annotation?.replay_code ?? '').trim()
   if (!code) {
-    error.value = 'No replay code on this match.'
+    setError('No replay code on this match.')
     return
   }
   try {
     await navigator.clipboard.writeText(code)
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -967,7 +997,7 @@ async function onCopyMatchLink(matchKey: string) {
   try {
     await navigator.clipboard.writeText(matchKey)
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -980,7 +1010,7 @@ async function onOpenSourceFolder(_matchKey: string) {
   try {
     await RevealScreenshotsDir()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -1009,7 +1039,7 @@ async function onBulkTag(matchKeys: string[], tag: string) {
     }))
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -1021,7 +1051,7 @@ async function onHardDeleteMatch(matchKey: string) {
     await HardDeleteMatch(matchKey)
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -1034,7 +1064,7 @@ async function onUnhideMatches(matchKeys: string[]) {
     await Promise.all(matchKeys.map((k) => SetMatchVisibility(k, false)))
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -1047,7 +1077,7 @@ async function onHardDeleteMatches(matchKeys: string[]) {
     await Promise.all(matchKeys.map((k) => HardDeleteMatch(k)))
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -1062,7 +1092,7 @@ async function onMoveMatches(matchKeys: string[], targetProfile: string) {
     await MoveMatches(matchKeys, targetProfile)
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -1092,7 +1122,7 @@ async function onExportBundleConfirm(
       includeUnknown,
     })
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   } finally {
     exportBundleOpen.value = false
     exportBundleSelectedKeys.value = []
@@ -1109,7 +1139,7 @@ async function onResolveAmbiguous(ambiguousKey: string, resolvedTo: string) {
     await ResolveAmbiguousMatch(ambiguousKey, resolvedTo)
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -1123,7 +1153,7 @@ async function onIgnoreScreenshot(filename: string) {
     await loadIgnored()
     await load()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -1164,7 +1194,7 @@ async function onUnignoreScreenshot(filename: string) {
     await UnignoreScreenshot(filename)
     await loadIgnored()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -1176,7 +1206,7 @@ async function onClearIgnoredScreenshots() {
     await ClearIgnoredScreenshots()
     await loadIgnored()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -1353,7 +1383,7 @@ async function onFirstRunPickSource(path: string) {
     setScreenshotsDir(path)
     await refreshNewCount()
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -1369,7 +1399,7 @@ async function onFirstRunPickCustomSource() {
       ackFirstRun()
     }
   } catch (e) {
-    error.value = String(e)
+    setErrorFromRaw(String(e))
   }
 }
 
@@ -1861,8 +1891,27 @@ useEventStream({
         @dismiss="dismissUpdateReminder"
       />
 
-      <p v-if="error" class="error">
-        <span class="error-tick">✕</span>{{ error }}
+      <p v-if="error" class="error" data-testid="error-banner">
+        <span class="error-tick">✕</span>
+        <span class="error-msg">{{ error }}</span>
+        <button
+          v-if="errorRetry"
+          type="button"
+          class="error-retry"
+          data-testid="error-retry"
+          @click="errorRetry?.()"
+        >
+          Retry
+        </button>
+        <button
+          type="button"
+          class="error-dismiss"
+          aria-label="Dismiss error"
+          data-testid="error-dismiss"
+          @click="clearError"
+        >
+          ✕
+        </button>
       </p>
 
       <!-- <main> is the page's primary landmark. The skip-link at the

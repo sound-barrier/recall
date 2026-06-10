@@ -161,38 +161,46 @@ basis, or make the launch land flat (e.g., no macOS binary).
 
 ### Frontend UX (first-run + error states)
 
-- [ ] `[HIGH]` First-run modal: input validation hint fires after the
-  user clicks Next and the button is dead, not on first keystroke.
-  Show the hint (a-z / 0-9 / _ / -, 1-40 chars, starts alphanum)
-  on first focus so a first-time user knows the rules before
-  guessing. **File:**
-  `frontend/src/components/FirstRunProfileModal.vue`. **Effort:** S
-- [ ] `[HIGH]` First-run modal step indicator (the two dots) is too
-  small to read as a progress bar. Make it a `Step 1 of 2` label
-  or a real progress bar with clear spacing. **File:**
-  `FirstRunProfileModal.vue:181-182`. **Effort:** S
-- [ ] `[HIGH]` Parse button affordance when `newScreenshotCount === 0`.
-  Button stays enabled, title says "All parsed," clicking does
-  nothing visible → user thinks the app is broken. Change the
-  disabled-state copy to "All parsed · nothing new" + secondary /
-  ghost style so the state reads intentional. **File:**
-  `frontend/src/components/IngestView.vue:174`. **Effort:** S
-- [ ] `[HIGH]` Network errors lack retry. `load()` catches the
-  Promise rejection and shows the error banner with no
-  `[Retry]` button → user reloads the whole app. Add a retry CTA
-  to the error banner. **File:** `frontend/src/App.vue:523-544`.
+- [x] `[HIGH]` First-run modal: input validation hint visibility.
+  Hint now renders from first focus (drops the `inputDirty`
+  gate); turns red when the user has typed something invalid via
+  a `first-run-hint-error` class. `aria-describedby` follows the
+  same lifecycle so screen readers also see the grammar on focus.
+  **File:** `frontend/src/components/FirstRunProfileModal.vue`.
   **Effort:** S
-- [ ] `[HIGH]` Mid-parse network drop has no rollback UI. `parseLog`
-  accumulates partial entries; there's no "Parse aborted,
-  retrying…" state. Surface a prominent error chip on the
-  progress panel with a Retry. **File:** `App.vue:614` +
-  `ParseProgressPanel.vue`. **Effort:** M
-- [ ] `[HIGH]` Error messages forward raw Go errors verbatim ("failed
-  to stat path /Users/x: permission denied") instead of
-  plain-language CTAs. Map common errors (permission, not-found,
-  not-a-dir) to "Cannot access X. Check that you have read access
-  or try a different folder." **File:** `App.vue` error handlers.
-  **Effort:** M
+- [x] `[HIGH]` First-run modal step indicator: replaced the two
+  unlabeled dots with a `Step 1 of 2` mono label. Pinned by
+  `ux-first-run-and-error-states.spec.ts` + the updated
+  `first-run-modal-multistep.spec.ts`. **File:**
+  `FirstRunProfileModal.vue:181-185`. **Effort:** S
+- [x] `[HIGH]` Parse button affordance when `newScreenshotCount === 0`.
+  Disabled-state copy now reads "All parsed · nothing new" with
+  a `ghost` button class so the state reads intentional. Pinned
+  by `IngestView.test.ts` + `ux-first-run-and-error-states.spec.ts`.
+  **File:** `frontend/src/components/IngestView.vue:166-176`.
+  **Effort:** S
+- [x] `[HIGH]` Network errors lack retry. Added `errorRetry`
+  ref + Retry button on the error banner. `load()` failures
+  set retry = `load` so the button re-runs the same request;
+  successful load clears the banner. Added Dismiss button too
+  for non-retryable errors. **File:** `App.vue:557-595` +
+  `App.vue:1893-1916` + `styles/app.css:950-984`. **Effort:** S
+- [ ] `[HIGH]` Mid-parse network drop has no rollback UI. PR #5
+  deferred — `parseLog` lives in `App.vue` which is Wails-mode
+  primary; the "network drop" only applies to server-mode SSE
+  reconnection. Not a 1.0 desktop blocker. **File:** `App.vue:614`
+  - `ParseProgressPanel.vue`. **Effort:** M
+- [x] `[HIGH]` Error messages forward raw Go errors verbatim.
+  Added `frontend/src/error-helpers.ts::plainLanguageError` with
+  a regex-based translator covering permission denied, not-a-dir,
+  no-such-file, connection refused, timeouts, tesseract exec
+  failures, disk-full. Wired through every error-setting site in
+  `App.vue` via the new `setErrorFromRaw` seam; raw strings still
+  show when no pattern matches (better than a generic
+  "Something went wrong"). Pinned by `error-helpers.test.ts`
+  (10 cases) + the e2e contract in
+  `ux-first-run-and-error-states.spec.ts`. **File:** `App.vue` +
+  `error-helpers.ts`. **Effort:** M
 
 ### Frontend UX (Matches view)
 

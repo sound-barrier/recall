@@ -66,6 +66,10 @@ const error      = ref<string | null>(null)
 const pendingRenamedTo = ref<string | null>(null)
 
 const inputValid = computed(() => NAME_RE.test(inputValue.value))
+// `inputDirty` no longer gates the hint — the rules are shown from
+// first focus so a first-time user knows the grammar before guessing.
+// Still useful for `aria-invalid` so screen readers only flag the
+// field as invalid after the user has typed something.
 const inputDirty = computed(() => inputValue.value.length > 0)
 
 const inputEl = ref<HTMLInputElement | null>(null)
@@ -178,10 +182,10 @@ watch(trapOpen, async (open) => {
     >
       <p class="first-run-eyebrow">
         <span>Welcome to Recall</span>
-        <span class="first-run-steps" aria-label="Step indicator">
-          <span class="first-run-step-dot" :class="{ active: step === 'name' }" data-step-dot="name" />
-          <span class="first-run-step-dot" :class="{ active: step === 'source' }" data-step-dot="source" />
-        </span>
+        <span
+          class="first-run-steps"
+          data-testid="first-run-step-label"
+        >Step {{ step === 'name' ? 1 : 2 }} of 2</span>
       </p>
 
       <!-- ─── Step 1: name the main profile ─────────────────── -->
@@ -211,9 +215,14 @@ watch(trapOpen, async (open) => {
           :disabled="busy"
           required
           :aria-invalid="(inputDirty && !inputValid) || !!error ? 'true' : undefined"
-          :aria-describedby="error ? 'first-run-error' : ((inputDirty && !inputValid) ? 'first-run-hint' : undefined)"
+          :aria-describedby="error ? 'first-run-error' : (!inputValid ? 'first-run-hint' : undefined)"
         >
-        <p v-if="inputDirty && !inputValid" id="first-run-hint" class="first-run-hint">
+        <p
+          v-if="!inputValid"
+          id="first-run-hint"
+          class="first-run-hint"
+          :class="{ 'first-run-hint-error': inputDirty }"
+        >
           a–z, 0–9, _ or -, 1–40 chars, start with a letter or digit.
         </p>
         <p v-if="error" id="first-run-error" class="first-run-error" role="alert">
@@ -335,21 +344,12 @@ watch(trapOpen, async (open) => {
 
 .first-run-steps {
   display: inline-flex;
-  gap: 0.32rem;
-}
-
-.first-run-step-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  transition: background var(--duration-fast), border-color var(--duration-fast);
-}
-
-.first-run-step-dot.active {
-  background: var(--accent);
-  border-color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
 }
 
 .first-run-title {
@@ -411,6 +411,7 @@ watch(trapOpen, async (open) => {
 }
 
 .first-run-hint  { color: var(--text-faint); }
+.first-run-hint.first-run-hint-error { color: var(--loss, #e74c3c); }
 .first-run-error { color: var(--loss, #e74c3c); }
 
 .first-run-actions {
