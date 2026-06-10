@@ -21,9 +21,12 @@ this file is **not** a striking-out log.
 ### Code quality
 
 - `[MED]` **Split MatchesView.vue + MatchCardExpanded.vue.** Pure
-  behavior-preserving refactors. Defer until the maintainer is
-  blocked on a feature *because of* a file's size. Mechanical
-  extraction order documented in PR #8. **Effort:** L
+  behavior-preserving refactors. PR P1-H round-2 audit confirms
+  both files are dominated by `<style scoped>` blocks (~1,615
+  lines each) and the cohesive parts (narrow state, dossier
+  refs, per-match handlers) don't decompose cleanly along the
+  proposed extraction lines. Defer until the maintainer is
+  blocked on a feature *because of* file size. **Effort:** L
 
 ### Frontend UX (first-run + error states)
 

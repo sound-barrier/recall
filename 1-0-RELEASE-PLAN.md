@@ -287,28 +287,35 @@ maintainer's judgment call which of these is worth holding 1.0 for.
   `pkg/app/app_wails.go` + `pkg/app/sse_test.go`.
   **Effort:** M
 - [ ] `[MED]` Large Vue components — `MatchesView.vue` (3,580 lines)
-  - `MatchCardExpanded.vue` (2,858 lines) + `App.vue` (2,293
-  lines). PR #8 audit: **deferred to post-1.0**. Each split is
-  a behavior-preserving pure refactor with no user-visible
-  benefit; the comprehensive e2e suite (~350 specs) is the only
-  contract that verifies the split is non-breaking, and the e2e
-  itself is unchanged by the refactor — so the safety net is
-  there, but the value is "internal readability," which can land
-  any time. Pre-1.0 the risk/reward favors *not* refactoring
-  files that are merge-conflict magnets while polish PRs are
-  landing. Concrete revisit signal: when the maintainer is
-  blocked on a feature *because of* the file size, do the split
-  in a dedicated PR with the e2e suite as the safety net.
-  Mechanical extraction order documented in the audit:
-  1. `MatchesView.vue` → extract `MatchesNarrowRail.vue` (the
-     left-side filter panel surface; its state already lives in
-     `useMatchesNarrow`) + `MatchesDossierGrid.vue` (the dossier
-     widget grid; already partly factored via per-widget SFCs).
-  2. `MatchCardExpanded.vue` → extract `MatchCardStatsGrid.vue`
-     - `MatchCardAnnotationEditor.vue` + `MatchCardScreenshotStrip.vue`.
-  3. `App.vue` stays — it's the shell router + cross-cutting
-     modal state, which is *expected* to be larger.
-  **Effort:** L
+  and `MatchCardExpanded.vue` (2,858 lines). PR P1-H round-2
+  audit confirms the PR #8 deferral with stronger detail:
+  - Both files are dominated by `<style scoped>` blocks
+    (~1,615 lines each). The script + template chunks are
+    large but cohesive — they share refs, computed properties,
+    and handlers that don't decompose cleanly along the
+    proposed extraction lines.
+  - Extracting `MatchesNarrowRail.vue` from MatchesView would
+    require either passing every narrow-state ref (`narrow`,
+    `narrowOpen`, `triggerRef`, `narrowedRecords`, `records`,
+    `clauseExclusionCounts`, `anyNarrow`, `activeClauseCount`,
+    `resetNarrow`, …) through prop drilling, or moving the
+    state ownership into the new SFC. Both redistribute
+    complexity without reducing it. The narrow surface is
+    already partly extracted as `NarrowPopover.vue`; the
+    leftover MatchesView code is the dossier + leaf-list
+    shell, which IS cohesive.
+  - Extracting `MatchCardStatsGrid.vue` /
+    `MatchCardAnnotationEditor.vue` /
+    `MatchCardScreenshotStrip.vue` from `MatchCardExpanded`
+    would split a single match's display surface into four
+    co-mounted SFCs that share the same `rec` + `cardState`
+    and emit channels. Same prop-drilling concern.
+  - The ~350 e2e specs safety net works just as well
+    post-1.0; nothing about the split unblocks a 1.0 ship.
+  Net: keep deferred. Revisit when the maintainer is blocked
+  on a feature *because of* file size — that's the genuine
+  signal that the readability cost has crossed the
+  refactor's risk threshold. **Effort:** L
 - [x] `[MED]` Extract `useOnboardingSpotlight` composable from
   `App.vue`. PR #8 audit: **already done in earlier work**.
   Onboarding-tour DOM geometry lives in
