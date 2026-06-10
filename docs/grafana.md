@@ -154,6 +154,14 @@ Open Recall and go to **Settings → Advanced → Stream to Grafana** and switch
 This starts the metrics endpoint at `http://localhost:9091/metrics`. Nothing
 is exposed until you enable it.
 
+> **Network exposure.** The endpoint binds `:9091` on **all interfaces** by
+> default — this is required so the bundled Prometheus container can reach the
+> host. `/metrics` has no authentication (standard for Prometheus) and serves
+> your match data, so on a shared network any host that can reach port 9091 can
+> read it. If you scrape from the same machine instead of the bundled Docker
+> stack, set `RECALL_METRICS_ADDR=127.0.0.1:9091` to bind localhost-only. Recall
+> logs a notice at startup whenever it binds to a non-loopback address.
+
 ---
 
 ## Troubleshooting
