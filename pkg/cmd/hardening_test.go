@@ -83,3 +83,39 @@ func TestMaxBodyForPath(t *testing.T) {
 		t.Errorf("default cap = %d, want %d", got, defaultMaxBodyBytes)
 	}
 }
+
+func TestIsLoopbackBind(t *testing.T) {
+	cases := []struct {
+		addr string
+		want bool
+	}{
+		{":7000", false},             // all interfaces
+		{"0.0.0.0:7000", false},      // all interfaces
+		{"[::]:7000", false},         // all interfaces
+		{"127.0.0.1:7000", true},     // loopback
+		{"localhost:7000", true},     // loopback name
+		{"[::1]:7000", true},         // loopback v6
+		{"192.168.1.10:7000", false}, // routable LAN
+		{"garbage", false},           // unparseable → exposed
+	}
+	for _, c := range cases {
+		if got := isLoopbackBind(c.addr); got != c.want {
+			t.Errorf("isLoopbackBind(%q) = %v, want %v", c.addr, got, c.want)
+		}
+	}
+}
+
+func TestPprofEnabled(t *testing.T) {
+	for _, off := range []string{"", "0", "false"} {
+		t.Setenv("RECALL_PPROF", off)
+		if pprofEnabled() {
+			t.Errorf("pprofEnabled() should be false for %q", off)
+		}
+	}
+	for _, on := range []string{"1", "true", "yes"} {
+		t.Setenv("RECALL_PPROF", on)
+		if !pprofEnabled() {
+			t.Errorf("pprofEnabled() should be true for %q", on)
+		}
+	}
+}

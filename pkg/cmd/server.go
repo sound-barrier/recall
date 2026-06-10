@@ -54,6 +54,17 @@ func RunServer(a *app.App, assets embed.FS) {
 		addr = "127.0.0.1:7000"
 	}
 
+	// pprof (RECALL_PPROF) exposes heap / goroutine / profile dumps
+	// with no auth. It's a deliberate opt-in, but combining it with a
+	// non-loopback bind makes those dumps reachable from the LAN —
+	// warn loudly so an operator who set both notices.
+	if pprofEnabled() && !isLoopbackBind(addr) {
+		applog.Subsystem("server").Warn(
+			"pprof is enabled (RECALL_PPROF) on a non-loopback address — heap/goroutine/profile dumps are reachable from the network without auth; bind RECALL_SERVER_ADDR to 127.0.0.1 or unset RECALL_PPROF",
+			"addr", addr,
+		)
+	}
+
 	srv := &http.Server{
 		Addr:    addr,
 		Handler: mux,
@@ -291,7 +302,7 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 	// /debug/pprof/. Use with `go tool pprof http://127.0.0.1:7000/debug/pprof/heap`
 	// (or profile, goroutine, allocs, …). Bind locally only — never expose
 	// pprof on a public address.
-	if v := os.Getenv("RECALL_PPROF"); v != "" && v != "0" && v != "false" {
+	if pprofEnabled() {
 		mux.HandleFunc("/debug/pprof/", pprof.Index)
 		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)

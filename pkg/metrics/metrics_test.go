@@ -177,6 +177,45 @@ func TestCollector_FilterIsCompetitiveOnly(t *testing.T) {
 	}
 }
 
+// TestCollector_LabelNewlineDoesNotBreakExposition pins that an OCR'd
+// hero/map name containing a newline can't break the /metrics text
+// format or inject a fake metric line. Prometheus label values are
+// arbitrary UTF-8 and the exposition format escapes newline / quote /
+// backslash, so the value is either escaped (`\n`) on output or
+// dropped — never emitted as a raw newline that splits the sample
+// across lines. The assertions are robust to either behaviour; the
+// security-critical property is "no raw-newline injection."
+func TestCollector_LabelNewlineDoesNotBreakExposition(t *testing.T) {
+	reader := func() ([]ScrapeRow, error) {
+		return []ScrapeRow{{
+			MatchKey: "match-2026-05-10T20-00-00",
+			Data: parser.MatchResult{
+				Mode: "competitive", Map: "rialto",
+				// Hostile OCR: a newline + a line that, unescaped, would
+				// parse as its own Prometheus metric.
+				Hero:         "lucio\ninjected_metric{x=\"y\"} 999",
+				Date:         "2026-05-10",
+				FinishedAt:   "20:00",
+				Eliminations: 1,
+			},
+		}}, nil
+	}
+	out := scrape(t, reader)
+
+	// The /metrics response must still parse as well-formed exposition
+	// (scrape already asserts 200). No raw newline may sit inside the
+	// label value, splitting the sample across two lines.
+	if strings.Contains(out, "lucio\ninjected_metric") {
+		t.Errorf("raw newline leaked into a label value — exposition format is injectable:\n%s", out)
+	}
+	// No line may parse as the injected pseudo-metric.
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "injected_metric") {
+			t.Errorf("injected pseudo-metric appeared as its own line: %q", line)
+		}
+	}
+}
+
 func TestCollector_SkipsRowsWithoutTimestamp(t *testing.T) {
 	reader := func() ([]ScrapeRow, error) {
 		return []ScrapeRow{{
