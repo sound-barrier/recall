@@ -175,10 +175,22 @@ function setActiveCandidate(recKey: string, candKey: string) {
 // on the first source file. Saves the user the second chevron click
 // they'd otherwise need before they can compare the source image
 // against the candidate previews.
+//
+// On expand, also pre-fetch every candidate's representative
+// screenshot via the shared preload registry. Each candidate's
+// preview pane <img> reads from cache when the user hovers/focuses
+// it — without preload the pane flickered on every candidate switch
+// because the src reloaded per candidate.
 function onAmbiguousHeadClick(rec: MatchRecord) {
   const willOpen = !props.cardState.isSelected(rec.match_key)
   props.cardState.toggleExpand(rec.match_key)
   if (!willOpen) return
+  for (const cand of rec.candidates ?? []) {
+    if (!cand.representative_source_file) continue
+    props.preloadScreenshot(
+      screenshotURL(cand.representative_source_file, cand.representative_dir_id ?? 0),
+    )
+  }
   const first = rec.source_files?.[0]
   if (!first) return
   if (!props.cardState.isPreviewOpen(first)) {
@@ -1161,6 +1173,34 @@ function updateThumbPosition(e: MouseEvent) {
   background: var(--loss);
   color: var(--surface);
   border-color: var(--loss);
+  /* 3s countdown ring — wraps the button while armed and shrinks
+     to nothing as the auto-disarm timer drains. Matches IGNORE_ARM_MS
+     in the script block above. Pure CSS, no JS animation hooks; the
+     browser's compositor handles the redraw. Reduced-motion swaps
+     the animation for a static fill (the .armed background color
+     already carries the "this click commits" signal). */
+  position: relative;
+  isolation: isolate;
+}
+
+.unknown-delete-btn.armed::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 2px solid color-mix(in srgb, var(--loss) 70%, transparent);
+  border-radius: 4px;
+  pointer-events: none;
+  animation: unknown-delete-arm-countdown 3000ms linear forwards;
+  z-index: -1;
+}
+
+@keyframes unknown-delete-arm-countdown {
+  0%   { clip-path: inset(0 0 0 0); opacity: 1; }
+  100% { clip-path: inset(0 100% 0 0); opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unknown-delete-btn.armed::after { animation: none; opacity: 0.6; }
 }
 
 .unknown-delete-hint {
@@ -1209,9 +1249,17 @@ function updateThumbPosition(e: MouseEvent) {
   max-width: 64ch;
 }
 
-/* Ambiguous cards get a violet left bar so they stand apart from
-   the amber map-unknown cards. */
+/* Color-coded left bar per section so the user can tell the
+   three card kinds apart at a glance. The plan called for
+   red/yellow/blue but the project's token system has no blue;
+   --win-line reads as "future fix coming" for the reference-gap
+   case ("the next roster release will recognise this"), which
+   is the right semantic even if the hue differs from the plan.
+   - .ambiguous-card  → --accent (orange · action needed now)
+   - .unknown-card    → --draw-line (amber · corrupted / can't classify)
+   - .reference-gap-card → --win-line (green · upstream fix landed) */
 .ambiguous-card::before { background: var(--accent, var(--draw-line)); }
+.reference-gap-card::before { background: var(--win-line, var(--draw-line)); }
 
 .candidate-picker {
   display: flex;

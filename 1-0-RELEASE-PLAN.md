@@ -394,19 +394,33 @@ maintainer's judgment call which of these is worth holding 1.0 for.
 
 ### Frontend UX — Unknown view polish
 
-- [ ] `[MED]` Ambiguous / Unknown / Reference-gap cards use the same
-  `.unknown-card` styling. At a glance, the user can't tell which
-  section a card belongs to. Add color-coded left border: red
-  (Ambiguous → action), yellow (Unknown → corrupted), blue (Gap
-  → awaiting-YAML). **File:** `UnknownMapsView.vue`. **Effort:** S
-- [ ] `[MED]` Ambiguous-candidate hover flickers because the
-  screenshot `src` reloads per candidate. Preload all candidate
-  screenshots on card expand. **File:**
-  `UnknownMapsView.vue:162-166`. **Effort:** S
-- [ ] `[MED]` "Delete forever" 3-second arm timer is invisible. Add
-  a fading border or mini countdown ring on the button.
-  **File:** `UnknownMapsView.vue:195` (`IGNORE_ARM_MS`).
+- [x] `[MED]` Card color coding. Existing scheme already used
+  `--accent` for `.ambiguous-card::before` (action) and
+  `--draw-line` for `.unknown-card::before` (corrupted); the
+  reference-gap case shared the unknown-card default. Added a
+  `.reference-gap-card::before { background: var(--win-line) }`
+  so the three sections each get a distinct left bar. Plan
+  asked for red/yellow/blue; the project's token system has no
+  blue, so green carries the "upstream fix coming" semantic
+  (next roster release recognises it). **File:**
+  `UnknownMapsView.vue:1214` (CSS). **Effort:** S
+- [x] `[MED]` Ambiguous-candidate preload. `onAmbiguousHeadClick`
+  now walks every candidate's `representative_source_file` on
+  expand and pushes the URL through `props.preloadScreenshot`
+  (the same registry used by the in-card hover preview).
+  Subsequent candidate hovers/focuses read from cache instead
+  of triggering a fresh request → preview pane stops
+  flickering. **File:** `UnknownMapsView.vue:173-200`.
   **Effort:** S
+- [x] `[MED]` "Delete forever" 3-second arm timer visualizer. The
+  `.unknown-delete-btn.armed::after` now renders a 2px ring
+  inset around the button; a `unknown-delete-arm-countdown`
+  keyframe clip-paths the ring from full-width to nothing over
+  the same 3000ms `IGNORE_ARM_MS` window, so the user sees the
+  arm-window literally draining. Reduced-motion swaps the
+  animation for a static 60%-opacity ring so the cue lands
+  without movement. **File:** `UnknownMapsView.vue:1172`
+  (CSS). **Effort:** S
 
 ### A11y polish
 

@@ -52,21 +52,6 @@ this file is **not** a striking-out log.
 - `[MED]` **Spacing rhythm tokens** in the narrow panel — `--space-X`
   tokens require a project-wide spacing audit. **Effort:** S
 
-### Frontend UX — Unknown view polish
-
-- `[MED]` **Ambiguous / Unknown / Reference-gap card color
-  coding** — add a color-coded left border so the user can tell
-  which section a card belongs to at a glance: red (Ambiguous →
-  action), yellow (Unknown → corrupted), blue (Gap → awaiting-YAML).
-  **File:** `UnknownMapsView.vue`. **Effort:** S
-- `[MED]` **Ambiguous-candidate preload** — hover flickers because
-  the screenshot `src` reloads per candidate. Preload all candidate
-  screenshots on card expand. **File:** `UnknownMapsView.vue:162-166`.
-  **Effort:** S
-- `[MED]` **"Delete forever" 3-second arm timer visualizer** —
-  fading border or mini countdown ring on the button. **File:**
-  `UnknownMapsView.vue:195` (`IGNORE_ARM_MS`). **Effort:** S
-
 ### Performance
 
 - `[MED]` **Pre-fetch `/api/v1/matches` on app launch** so the
