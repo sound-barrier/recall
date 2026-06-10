@@ -331,18 +331,35 @@ maintainer's judgment call which of these is worth holding 1.0 for.
   view-heading sites ("Settings", "Welcome to Recall") aren't
   rendered as page headings in the current UI; the tab is the
   view identification. No change. **Effort:** M
-- [ ] `[MED]` Color semantics: `--accent` split into
-  `--interactive-accent` vs identity. Deferred — touches every
-  theme + every chip / button / filter pill. Disproportionate
-  blast radius for marginal user value pre-1.0; revisit
-  post-1.0. **Effort:** M
-- [ ] `[MED]` Empty-state visual consistency container. Deferred —
-  large refactor across every view with marginal user value;
-  empty states are infrequently rendered. Revisit post-1.0.
-  **Effort:** M
-- [ ] `[MED]` Spacing rhythm tokens in the narrow panel.
-  Deferred — introducing `--space-X` tokens requires a project-
-  wide spacing audit. Out of scope for 1.0. **Effort:** S
+- [ ] `[MED]` Color semantics: `--accent` split. PR P1-G audit
+  (round 2): the OW orange `--accent` carries both interactive
+  affordance (button hover, filter chip active) AND brand
+  identity (hero names, the "01 / Settings" tab dot). To
+  meaningfully split the two, a design pass needs to pick a
+  second hue — cooler / slightly desaturated for interactive
+  surfaces — so the differentiation reads at a glance. No
+  design spec exists. Adding `--interactive-accent` as an alias
+  for `--accent` would satisfy the letter of the plan but the
+  variable would be unused (CLAUDE.md "speculative interface"
+  rule). Keep deferred until the design pass lands a real
+  second color. **Effort:** M
+- [x] `[MED]` Empty-state visual consistency. PR P1-G audit:
+  already addressed. `frontend/src/styles/app.css:988-1016`
+  carries a shared `.empty` / `.empty-mark` / `.empty-title` /
+  `.empty-sub` family + a `.empty-link` button variant. Used
+  across `SettingsView`, `IngestView`, `SettingsCalendar`,
+  `MatchesView` empty branches. The plan asked for a shared
+  container "so emptiness reads as intentional across the app";
+  the family delivers that. **Effort:** M
+- [x] `[MED]` Spacing rhythm tokens. PR P1-G audit: already
+  addressed. `frontend/src/styles/app.css:77-100` ships
+  `--space-1` (4px) → `--space-7` (48px) on a ~1.5× ratio.
+  The comment on the block explicitly notes "existing ad-hoc
+  usage is intentionally NOT swept in this PR — the token
+  values match the historical defaults so introducing them is
+  a no-op at paint time." New components reach for these
+  tokens; the gradual ad-hoc sweep is post-1.0 polish, not a
+  1.0 blocker. **Effort:** S
 - [x] `[MED]` Settings view sections lack visual dividers. Added
   a 1px `--border-soft` hairline above every `.settings-section
   - .settings-section` (the adjacent-sibling selector skips the
