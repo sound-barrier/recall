@@ -669,24 +669,27 @@ func zipWriteCSV(zw *zip.Writer, name string, header []string, rows [][]string) 
 	return cw.Error()
 }
 
-func readZipFile(zr *zip.Reader, name string) ([]byte, error) {
-	for _, f := range zr.File {
-		if f.Name == name {
-			rc, err := f.Open()
-			if err != nil {
-				return nil, err
-			}
-			defer func() { _ = rc.Close() }()
-			// #nosec G110 -- file is from a user-chosen export archive,
-			// content size is already capped by the HTTP body limit
-			// on the import endpoint (50 MiB via io.LimitReader).
-			return io.ReadAll(rc)
-		}
-	}
-	return nil, fmt.Errorf("zip: %q not found", name)
-}
+// maxZipEntryBytes caps the DECOMPRESSED size of any single entry
+// read from an imported archive. The /imports endpoint caps the
+// COMPRESSED upload at 50 MiB (server_backup.go), but DEFLATE can
+// expand by ~1000x on repetitive input — so without a decompressed
+// cap a 50 MiB zip-bomb could balloon to tens of GB and OOM the
+// process, and any host on the no-auth LAN can POST to /imports.
+// 64 MiB per entry is generous for the largest real table CSV (years
+// of competitive history) while bounding memory hard. Exceeding it is
+// treated as a malformed import (ErrImportMalformed → HTTP 400).
+//
+// Declared as a var, not a const, so tests can lower it to exercise
+// the bomb path cheaply (the package-var test-seam pattern, same as
+// update.go's URL seams).
+var maxZipEntryBytes int64 = 64 << 20 // 64 MiB
 
-func readCSV(zr *zip.Reader, name string) ([][]string, error) {
+// readZipFile reads one archive entry's decompressed content, bounded
+// at maxZipEntryBytes. An entry larger than the cap is rejected as a
+// likely decompression bomb. The io.LimitReader makes the read
+// resident size at most maxZipEntryBytes+1, so gosec G110 no longer
+// applies — the read is explicitly bounded.
+func readZipFile(zr *zip.Reader, name string) ([]byte, error) {
 	for _, f := range zr.File {
 		if f.Name != name {
 			continue
@@ -696,19 +699,39 @@ func readCSV(zr *zip.Reader, name string) ([][]string, error) {
 			return nil, err
 		}
 		defer func() { _ = rc.Close() }()
-		cr := csv.NewReader(rc)
-		cr.FieldsPerRecord = -1 // header columns + data columns; allow trailing-empty variance
-		all, err := cr.ReadAll()
+		// Read one byte past the cap so an entry sitting exactly at
+		// the cap still succeeds while anything larger is detected.
+		b, err := io.ReadAll(io.LimitReader(rc, maxZipEntryBytes+1))
 		if err != nil {
-			return nil, fmt.Errorf("csv read %s: %w", name, err)
+			return nil, err
 		}
-		// Drop the header row.
-		if len(all) > 0 {
-			return all[1:], nil
+		if int64(len(b)) > maxZipEntryBytes {
+			return nil, fmt.Errorf("%w: entry %q exceeds %d bytes decompressed (possible zip bomb)", ErrImportMalformed, name, maxZipEntryBytes)
 		}
-		return nil, nil
+		return b, nil
 	}
-	return nil, fmt.Errorf("csv: %q not found in archive", name)
+	return nil, fmt.Errorf("zip: %q not found", name)
+}
+
+// readCSV reads + parses one CSV entry from the archive. The entry
+// bytes flow through readZipFile, so the same decompression cap
+// applies before the CSV is parsed.
+func readCSV(zr *zip.Reader, name string) ([][]string, error) {
+	b, err := readZipFile(zr, name)
+	if err != nil {
+		return nil, err
+	}
+	cr := csv.NewReader(bytes.NewReader(b))
+	cr.FieldsPerRecord = -1 // header columns + data columns; allow trailing-empty variance
+	all, err := cr.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("csv read %s: %w", name, err)
+	}
+	// Drop the header row.
+	if len(all) > 0 {
+		return all[1:], nil
+	}
+	return nil, nil
 }
 
 // nowUTC is a tiny seam used by tests that want a deterministic

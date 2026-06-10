@@ -3,6 +3,7 @@ package app
 import (
 	"archive/zip"
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 
@@ -152,5 +153,43 @@ func TestImportDataCSV_RejectsUnknownSchema(t *testing.T) {
 	err := a.ImportData(buf.Bytes())
 	if err == nil || !strings.Contains(err.Error(), "unsupported schema") {
 		t.Errorf("expected schema-version rejection, got: %v", err)
+	}
+}
+
+// TestImportDataCSV_RejectsZipBomb confirms an archive entry whose
+// DECOMPRESSED size exceeds maxZipEntryBytes is rejected as a
+// malformed import (ErrImportMalformed → HTTP 400), rather than read
+// fully into memory. The 50 MiB HTTP body cap bounds the COMPRESSED
+// upload; this cap bounds the decompressed read so a high-ratio bomb
+// can't OOM the process.
+//
+// Lowers the package cap to a tiny value (test-seam pattern) so the
+// fixture stays small and fast under -race instead of generating a
+// real 64 MiB+ entry.
+func TestImportDataCSV_RejectsZipBomb(t *testing.T) {
+	prev := maxZipEntryBytes
+	maxZipEntryBytes = 1 << 10 // 1 KiB
+	t.Cleanup(func() { maxZipEntryBytes = prev })
+
+	// manifest.json is the first entry read (readZipFile), so an
+	// oversized manifest exercises the cap before any schema parsing.
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	mw, _ := zw.Create("manifest.json")
+	// 2 KiB of a single repeated byte — compresses to almost nothing
+	// in the archive but decompresses past the 1 KiB cap.
+	_, _ = mw.Write(bytes.Repeat([]byte("A"), 2<<10))
+	_ = zw.Close()
+
+	a := NewWithStore(&fakeStore{})
+	err := a.ImportData(buf.Bytes())
+	if err == nil {
+		t.Fatal("expected zip-bomb rejection, got nil")
+	}
+	if !errors.Is(err, ErrImportMalformed) {
+		t.Errorf("expected ErrImportMalformed (→ HTTP 400), got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "zip bomb") {
+		t.Errorf("expected a zip-bomb message, got: %v", err)
 	}
 }
