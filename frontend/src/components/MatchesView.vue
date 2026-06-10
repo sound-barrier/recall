@@ -24,7 +24,8 @@ import { useArchiveSelection } from '../composables/useArchiveSelection'
 import MatchTimelineHeader from './MatchTimelineHeader.vue'
 import MatchMapRoleBand from './MatchMapRoleBand.vue'
 import DashboardWidget from './DashboardWidget.vue'
-import DashboardCustomizer from './DashboardCustomizer.vue'
+import DossierManageMenu from './DossierManageMenu.vue'
+import DossierSection from './DossierSection.vue'
 import BulkActionBar from './BulkActionBar.vue'
 // NarrowPopover is the heavyweight authoring surface (the search +
 // combobox + range pickers + active-clause range etc.). Lazy-load
@@ -33,14 +34,13 @@ import BulkActionBar from './BulkActionBar.vue'
 // user clicks "Narrow this set", so the deferred fetch is invisible
 // in practice. Regression covered by MatchesView.lazy-views.test.ts.
 const NarrowPopover = defineAsyncComponent(() => import('./NarrowPopover.vue'))
-import DashboardAddTile from './DashboardAddTile.vue'
-import DashboardEditBanner from './DashboardEditBanner.vue'
 import MatchRowContextMenu from './MatchRowContextMenu.vue'
 import LeafHoverPreview from './LeafHoverPreview.vue'
 import MatchesEmptySuggestions from './MatchesEmptySuggestions.vue'
 import { summaryThumbnailURL } from '../composables/useSummaryThumbnail'
 import DashboardUndoToast from './DashboardUndoToast.vue'
 import { useDashboardLayout } from '../composables/useDashboardLayout'
+import { useSectionLayout } from '../composables/useSectionLayout'
 import { useDragReorder } from '../composables/useDragReorder'
 import { widgetById, type WidgetDef } from '../dashboard/widgets'
 import { useNarrowMode } from '../composables/useNarrowMode'
@@ -439,8 +439,62 @@ provideNarrow(props.narrow)
 // row layout is the SINGLE source of truth for "is this widget
 // rendered" — membership in `layout.rows.value[*]` means visible,
 // absence means absent. Trash on a widget removes it from the
-// layout; the customizer's "+ Add" puts it back.
+// layout; the dossier's Add menu puts it back.
 const dashboardLayout = useDashboardLayout()
+
+// Full-width sections below the dossier (Campaign Log, Geography). A
+// separate persisted layer from the widget grid — they're not part of
+// the dossier rows, just stacked, always below it, and individually
+// hideable / reorderable. Both default visible.
+const sectionLayout = useSectionLayout()
+
+// Top-level binding so the template auto-unwraps it (nested refs on
+// the sectionLayout object don't).
+const visibleSectionIds = computed(() => sectionLayout.visibleIds.value)
+
+// Section drag-reorder (mouse). Only ever 2-3 full-width rows, so a
+// lightweight id-based swap beats the widget grid's index machinery.
+const draggingSectionId = ref<string | null>(null)
+const sectionDropTargetId = ref<string | null>(null)
+
+function onSectionDragStart(id: string, e: DragEvent) {
+  draggingSectionId.value = id
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move'
+    try { e.dataTransfer.setData('text/plain', id) } catch (_) { /* Firefox needs data set */ }
+  }
+}
+function onSectionDragOver(id: string) {
+  if (draggingSectionId.value && draggingSectionId.value !== id) sectionDropTargetId.value = id
+}
+function onSectionDrop(targetId: string) {
+  const dragId = draggingSectionId.value
+  draggingSectionId.value = null
+  sectionDropTargetId.value = null
+  if (!dragId || dragId === targetId) return
+  const list = sectionLayout.sections.value
+  const from = list.findIndex((s) => s.id === dragId)
+  const to = list.findIndex((s) => s.id === targetId)
+  if (from !== -1 && to !== -1) sectionLayout.move(from, to)
+}
+function onSectionDragEnd() {
+  draggingSectionId.value = null
+  sectionDropTargetId.value = null
+}
+
+// Keyboard reorder from a section grip: move it one slot among the
+// VISIBLE sections (Arrow up/down).
+function onSectionMove(id: string, dir: -1 | 1) {
+  const visible = sectionLayout.visibleIds.value
+  const vIdx = visible.indexOf(id)
+  if (vIdx === -1) return
+  const targetId = visible[vIdx + dir]
+  if (!targetId) return
+  const list = sectionLayout.sections.value
+  const from = list.findIndex((s) => s.id === id)
+  const to = list.findIndex((s) => s.id === targetId)
+  if (from !== -1 && to !== -1) sectionLayout.move(from, to)
+}
 
 // Live-reflow drag preview. Held as a plain ref so it can be
 // referenced from `dragReorder.onMove` (declared next) without a
@@ -528,23 +582,11 @@ watch(
   { deep: true },
 )
 
-// Edit mode is a sticky checkbox on the dossier header — separate
-// from the customizer modal so the user can drag / trash without
-// the modal eating the screen, and open the modal as a punctuated
-// "add a widget" gesture.
-const editMode = ref(false)
-const showDashboardCustomizer = ref(false)
-const selectedWidgetId = ref<string | null>(null)
-
-// Clear the selection when the user leaves edit mode so re-entering
-// doesn't ghost an old selection.
-watch(editMode, (v) => {
-  if (!v) selectedWidgetId.value = null
-})
-
-function onWidgetSelect(id: string) {
-  selectedWidgetId.value = id
-}
+// There is no edit MODE. Widgets + sections carry their own always-on
+// (hover-revealed) drag + remove chrome, so the only thing left to
+// surface is re-adding what you've removed — the Add menu, a small
+// dropdown anchored in the dossier header.
+const showManageMenu = ref(false)
 
 // Gear-popover state. configureWidgetId is the widget whose
 // schema-driven settings popover is mounted; configureAnchor is the
@@ -596,7 +638,6 @@ function onWidgetRemove(id: string) {
     }
   }
   dashboardLayout.removeFromRow(id)
-  if (selectedWidgetId.value === id) selectedWidgetId.value = null
   undoTokenSeq++
   pendingUndo.value = {
     id,
@@ -820,6 +861,13 @@ watch(() => props.focusedCardIndex, async (idx) => {
 // down) and `!isIntersecting` alone fires a false-positive
 // sticky in that case.
 const timelineSentinelRef = ref<HTMLDivElement | null>(null)
+// Function ref — the sentinel lives inside the section v-for now (the
+// Campaign Log can be reordered), so a plain string ref would collect
+// into an array. This assigns the single element directly and nulls
+// it on unmount (section hidden / reordered away).
+function setTimelineSentinel(el: Element | { $el?: Element } | null) {
+  timelineSentinelRef.value = (el as HTMLDivElement | null) ?? null
+}
 const timelineSticky      = ref(false)
 // Sticky with hysteresis. The sentinel's document offset is stable
 // even when the Campaign Log compacts (the heatmap that compact hides
@@ -1144,14 +1192,8 @@ onBeforeUnmount(() => {
     <!-- ─── SET DOSSIER ─────────────────────────────────────── -->
     <section
       class="set-dossier"
-      :class="{ 'set-dossier-editing': editMode }"
       aria-label="Set dossier"
     >
-      <DashboardEditBanner
-        :open="editMode"
-        @exit="editMode = false"
-        @reset="dashboardLayout.reset()"
-      />
       <header class="dossier-head">
         <span class="dossier-eyebrow">{{ anyNarrow ? 'Narrowed set' : 'Set' }}</span>
         <h2 class="dossier-title">
@@ -1287,18 +1329,16 @@ onBeforeUnmount(() => {
           class="dashboard-row"
           name="dashboard-widget"
           :data-row="row.index"
-          @dragover.prevent="editMode ? dragReorder.onRowDragOver(row.index, $event) : null"
-          @drop="editMode ? dragReorder.onRowDrop(row.index, $event) : null"
+          @dragover.prevent="dragReorder.onRowDragOver(row.index, $event)"
+          @drop="dragReorder.onRowDrop(row.index, $event)"
         >
           <DashboardWidget
             v-for="(def, idx) in row.widgets"
             :id="def.id"
             :key="def.id"
             :shape="def.shape"
-            :edit-mode="editMode"
             :row="row.index"
             :idx="idx"
-            :selected="editMode && selectedWidgetId === def.id"
             :has-config="def.config.fields.length > 0"
             :dragging="dragReorder.dragging.value !== null
               && dragReorder.dragging.value.id === def.id"
@@ -1312,7 +1352,6 @@ onBeforeUnmount(() => {
             @drag-over="dragReorder.onDragOver"
             @drop="dragReorder.onDrop"
             @handle-keydown="dragReorder.onHandleKeydown"
-            @select="onWidgetSelect"
             @remove="onWidgetRemove"
             @configure="onWidgetConfigure"
           >
@@ -1320,38 +1359,27 @@ onBeforeUnmount(() => {
           </DashboardWidget>
         </TransitionGroup>
       </template>
-      <!-- "+" tile lives in its own dedicated row below every
-           widget row so it can never collide with widget controls
-           (trash buttons / drag affordances) and stays prominent
-           even when the last widget row is a tightly-packed
-           overflow. Rendered only in edit mode. -->
-      <div v-if="editMode" class="dashboard-add-row">
-        <DashboardAddTile @click="showDashboardCustomizer = true" />
-      </div>
 
-      <!-- Narrow trigger + popover. -->
+      <!-- Narrow trigger + Add/Reset menu. -->
       <div class="dossier-actions">
-        <!-- Edit-dashboard sticky toggle, rendered as a pill switch
-             with discrete VIEW / EDIT states. The native checkbox is
-             visually hidden but keyboard- and screen-reader-reachable;
-             the styled track + thumb give the affordance + state
-             readout for sighted users. Lights up direct-manipulation
-             chrome (whole-widget drag, hover-revealed trash + grip,
-             "+" tile at the row tail). -->
-        <label class="dossier-edit-switch" :class="{ 'is-on': editMode }">
-          <input
-            v-model="editMode"
-            type="checkbox"
-            class="dossier-edit-switch-input"
-            data-edit-toggle
-            :aria-label="editMode ? 'Exit dashboard edit mode' : 'Enter dashboard edit mode'"
+        <!-- Add menu — the only customization surface left now that
+             remove + reorder live inline on each widget/section. A
+             small dropdown of removed widgets + sections to re-add,
+             plus Reset. -->
+        <div class="dossier-manage-anchor">
+          <button
+            type="button"
+            class="dossier-btn"
+            :class="{ 'is-open': showManageMenu }"
+            data-dossier-add
+            :aria-expanded="showManageMenu ? 'true' : 'false'"
+            aria-haspopup="dialog"
+            @click="showManageMenu = !showManageMenu"
           >
-          <span class="dossier-edit-switch-track" aria-hidden="true">
-            <span class="dossier-edit-switch-segment" data-state="view">View</span>
-            <span class="dossier-edit-switch-segment" data-state="edit">Edit</span>
-            <span class="dossier-edit-switch-thumb" />
-          </span>
-        </label>
+            <span aria-hidden="true">＋</span> Add
+          </button>
+          <DossierManageMenu :open="showManageMenu" @close="showManageMenu = false" />
+        </div>
 
         <!-- Popover-mode trigger + modal. Hidden when the rail is
              rendering instead (>= 1400 px viewport). -->
@@ -1382,14 +1410,6 @@ onBeforeUnmount(() => {
           />
         </div>
       </div>
-
-      <!-- Customizer modal lives at the end of the dossier so its
-           Teleport target (body) lifts it above every dossier-local
-           ancestor stacking context. -->
-      <DashboardCustomizer
-        :open="showDashboardCustomizer"
-        @close="showDashboardCustomizer = false"
-      />
 
       <!-- Undo-after-trash toast. Itself teleports to <body> so it
            lives outside any inert/aria-hidden ancestors. -->
@@ -1436,24 +1456,45 @@ onBeforeUnmount(() => {
          buttons hidden, sparkline at compact height). The wrapper
          itself is position: sticky so the whole bar pins to the
          scroll container's top edge. -->
-    <div v-if="visibleRecords.length > 0" ref="timelineSentinelRef" class="campaign-log-sentinel" aria-hidden="true" />
-    <div
-      v-if="visibleRecords.length > 0"
-      class="campaign-log-sticky"
-      :class="{ 'campaign-log-pinned': timelineSticky }"
-    >
-      <MatchTimelineHeader
-        :records="visibleRecords"
-        :filter-from="customFrom"
-        :filter-to="customTo"
-        :compact="timelineSticky"
-        @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
-        @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
-      />
-    </div>
-
-    <!-- ─── GEOGRAPHY — Map × Role performance band ──────────── -->
-    <MatchMapRoleBand v-if="visibleRecords.length > 0" />
+    <!-- ─── DOSSIER SECTIONS (Campaign Log, Geography) ──────────
+         Full-width bands below the dossier grid. Order + visibility
+         come from useSectionLayout; each wears an inline grip + ×
+         (DossierSection) for reorder + remove. Re-add from the
+         dossier Add menu. -->
+    <template v-if="visibleRecords.length > 0">
+      <DossierSection
+        v-for="(sectionId, sIdx) in visibleSectionIds"
+        :id="sectionId"
+        :key="sectionId"
+        :label="sectionLayout.labelFor(sectionId)"
+        :index="sIdx"
+        :count="visibleSectionIds.length"
+        :dragging="draggingSectionId === sectionId"
+        :drop-target="sectionDropTargetId === sectionId"
+        @remove="sectionLayout.remove"
+        @move="onSectionMove"
+        @drag-start="onSectionDragStart"
+        @drag-over="onSectionDragOver"
+        @drop="onSectionDrop"
+        @drag-end="onSectionDragEnd"
+      >
+        <!-- Campaign Log keeps its sticky sentinel + pinned wrapper. -->
+        <template v-if="sectionId === 'campaign-log'">
+          <div :ref="setTimelineSentinel" class="campaign-log-sentinel" aria-hidden="true" />
+          <div class="campaign-log-sticky" :class="{ 'campaign-log-pinned': timelineSticky }">
+            <MatchTimelineHeader
+              :records="visibleRecords"
+              :filter-from="customFrom"
+              :filter-to="customTo"
+              :compact="timelineSticky"
+              @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
+              @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
+            />
+          </div>
+        </template>
+        <MatchMapRoleBand v-else-if="sectionId === 'geography'" />
+      </DossierSection>
+    </template>
 
     <!-- ─── MEMBERS ─────────────────────────────────────────── -->
     <section class="leaves" aria-label="Set members">
@@ -2138,180 +2179,10 @@ onBeforeUnmount(() => {
   grid-column: span 2;
 }
 
-/* "+ Add widget" affordance sits in its own dedicated row, full
-   width, beneath every widget row. Reserves a clear, prominent
-   slot so users find the add path without hunting through a busy
-   last widget row — and ensures the AddTile's pulse animation
-   never crowds an adjacent widget's trash button or drag grip. */
-.dashboard-add-row {
-  display: flex;
-  margin-top: 0.5rem;
-}
-
-.dashboard-add-row :deep(.dashboard-add-tile) {
-  flex: 1 1 auto;
-  width: 100%;
-  min-height: 3.2rem;
-}
-
 .dossier-actions { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem; }
 
-/* Edit-dashboard pill switch. Two equal-width segments (VIEW | EDIT)
-   with a sliding thumb that crosses on toggle. The native checkbox
-   is visually hidden (sr-only) but keeps full focus + keyboard
-   reachability. Active segment's label sits ABOVE the thumb via
-   z-index so the text reads in inverse contrast.
-
-   Vocabulary: monospace caps, the OW orange accent, 2px square
-   corners — keeps it sibling-consistent with .dossier-btn but reads
-   as a STATE control rather than an action button. */
-.dossier-edit-switch {
-  display: inline-flex;
-  align-items: center;
-  position: relative;
-  isolation: isolate;
-  cursor: pointer;
-  user-select: none;
-}
-
-/* Visually invisible but pointer-clickable overlay so the native
-   <input type="checkbox"> handles all the platform's checkbox
-   semantics (label clicks, ARIA pressed state, Space/Enter
-   keyboard activation) without the user ever seeing a default
-   checkbox. Sized to fully cover the styled track underneath so
-   any pixel-perfect click lands on the input first. The styled
-   track + segments + thumb get `pointer-events: none` so they're
-   purely decorative — every click + hover hits the input. */
-.dossier-edit-switch-input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  opacity: 0;
-  cursor: pointer;
-  z-index: 2;
-}
-
-.dossier-edit-switch-track {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface-2);
-  pointer-events: none;
-  transition: border-color 140ms ease, background 140ms ease;
-}
-
-.dossier-edit-switch-segment {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 3.6rem;
-  padding: 0.32rem 0.7rem;
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--text-faint);
-  transition: color 160ms ease;
-}
-
-.dossier-edit-switch.is-on .dossier-edit-switch-segment[data-state="view"],
-.dossier-edit-switch:not(.is-on) .dossier-edit-switch-segment[data-state="edit"] {
-  color: var(--text-faint);
-}
-
-.dossier-edit-switch:not(.is-on) .dossier-edit-switch-segment[data-state="view"] {
-  color: var(--text);
-}
-
-.dossier-edit-switch.is-on .dossier-edit-switch-segment[data-state="edit"] {
-  color: var(--surface);
-}
-
-.dossier-edit-switch-thumb {
-  position: absolute;
-  top: 2px; bottom: 2px; left: 2px;
-  width: calc(50% - 2px);
-  border-radius: 999px;
-  background: var(--text);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
-  transition: transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1),
-              background 200ms ease;
-  z-index: 0;
-}
-
-.dossier-edit-switch.is-on .dossier-edit-switch-thumb {
-  transform: translateX(100%);
-  background: var(--accent);
-}
-
-.dossier-edit-switch.is-on .dossier-edit-switch-track {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
-}
-
-.dossier-edit-switch:hover .dossier-edit-switch-track {
-  border-color: var(--accent);
-}
-
-.dossier-edit-switch:focus-within .dossier-edit-switch-track {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dossier-edit-switch-thumb,
-  .dossier-edit-switch-segment,
-  .dossier-edit-switch-track {
-    transition: none;
-  }
-}
-
-/* ── Edit-mode workspace ─────────────────────────────────────
-   Subtle radial dot pattern fades in when the dossier enters
-   edit mode. Signals "this is a workspace" without making every
-   widget border noisy. Pattern lives on a ::before so the
-   underlying .set-dossier background stays untouched. */
-.set-dossier-editing {
-  position: relative;
-}
-
-.set-dossier-editing::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--accent) 22%, transparent) 1px,
-    transparent 1.6px
-  );
-  background-size: 14px 14px;
-  background-position: 0 0;
-  opacity: 0.55;
-  z-index: 0;
-  transition: opacity 260ms ease;
-}
-
-/* Stack direct children above the workspace dot-grid (::before
-   sits at z-index 0). Scoped to .set-dossier-editing so the rule
-   only fires when the workspace pattern is rendered — outside
-   edit mode there's no dot-grid and no need to bump child
-   stacking. Avoids creating stacking contexts that surprise the
-   teleported customizer modal + undo toast. */
-.set-dossier-editing > * { position: relative; z-index: 1; }
-
-@media (prefers-reduced-motion: reduce) {
-  .set-dossier-editing::before { transition: none; }
-}
+/* Anchors the Add dropdown below the Add button. */
+.dossier-manage-anchor { position: relative; }
 
 /* ── Widget enter / exit animation ──────────────────────────
    Wraps every .dashboard-row in <TransitionGroup>; new widgets

@@ -46,24 +46,30 @@ describe('DashboardWidget', () => {
     expect(w.find('[data-breakdown="roles"]').exists()).toBe(true)
   })
 
-  it('renders the trash button whenever editMode is on (hover-revealed via CSS, present in DOM)', async () => {
-    // The edit-UX polish PR moves trash from "selection-gated" to
-    // "always-present-in-edit-mode" so users can one-click-remove
-    // without first having to click-select. CSS hover-reveals it for
-    // mouse users; selection keeps it visible without hover.
-    const w = mount(DashboardWidget, {
-      props: { id: 'winrate', shape: 'kpi', editMode: true, selected: false },
-    })
+  // No edit mode: the drag handle + trash are ALWAYS in the DOM (CSS
+  // hover-reveals them), so manage controls are one gesture away with
+  // no mode to enter first.
+  it('always renders the drag handle and trash button', () => {
+    const w = mount(DashboardWidget, { props: { id: 'winrate', shape: 'kpi' } })
+    expect(w.find('[data-drag-handle="winrate"]').exists()).toBe(true)
     expect(w.find('[data-widget-remove="winrate"]').exists()).toBe(true)
-    await w.setProps({ selected: true })
-    expect(w.find('[data-widget-remove="winrate"]').exists()).toBe(true)
-    await w.setProps({ editMode: false, selected: true })
-    expect(w.find('[data-widget-remove="winrate"]').exists()).toBe(false)
+  })
+
+  it('is draggable so reorder works without a mode', () => {
+    const w = mount(DashboardWidget, { props: { id: 'winrate', shape: 'kpi' } })
+    expect(w.find('[data-widget-id="winrate"]').attributes('draggable')).toBe('true')
+  })
+
+  it('clicking the trash button emits remove(id)', async () => {
+    const w = mount(DashboardWidget, { props: { id: 'winrate', shape: 'kpi' } })
+    await w.find('[data-widget-remove="winrate"]').trigger('click')
+    expect(w.emitted('remove')).toBeTruthy()
+    expect(w.emitted('remove')![0]).toEqual(['winrate'])
   })
 
   it('applies dashboard-widget-dragging when the dragging prop flips', async () => {
     const w = mount(DashboardWidget, {
-      props: { id: 'winrate', shape: 'kpi', editMode: true, dragging: false },
+      props: { id: 'winrate', shape: 'kpi', dragging: false },
     })
     const root = w.find('[data-widget-id="winrate"]')
     expect(root.classes()).not.toContain('dashboard-widget-dragging')
@@ -71,83 +77,43 @@ describe('DashboardWidget', () => {
     expect(root.classes()).toContain('dashboard-widget-dragging')
   })
 
-  it('clicking the root in editMode emits select(id)', async () => {
+  it('applies dashboard-widget-drop-target when dropTarget flips', async () => {
     const w = mount(DashboardWidget, {
-      props: { id: 'winrate', shape: 'kpi', editMode: true },
+      props: { id: 'winrate', shape: 'kpi', dropTarget: false },
     })
-    await w.find('[data-widget-id="winrate"]').trigger('click')
-    expect(w.emitted('select')).toBeTruthy()
-    expect(w.emitted('select')![0]).toEqual(['winrate'])
+    const root = w.find('[data-widget-id="winrate"]')
+    expect(root.classes()).not.toContain('dashboard-widget-drop-target')
+    await w.setProps({ dropTarget: true })
+    expect(root.classes()).toContain('dashboard-widget-drop-target')
   })
 
-  it('clicking the root outside editMode does NOT emit select', async () => {
+  // The gear is gated only by a non-empty config schema (hasConfig) —
+  // settings are a read-time concern, independent of layout edits.
+  it('renders the gear button only when hasConfig is true', async () => {
     const w = mount(DashboardWidget, {
-      props: { id: 'winrate', shape: 'kpi', editMode: false },
-    })
-    await w.find('[data-widget-id="winrate"]').trigger('click')
-    expect(w.emitted('select')).toBeFalsy()
-  })
-
-  it('clicking the trash button emits remove(id) and does not bubble select', async () => {
-    const w = mount(DashboardWidget, {
-      props: { id: 'winrate', shape: 'kpi', editMode: true, selected: true },
-    })
-    await w.find('[data-widget-remove="winrate"]').trigger('click')
-    expect(w.emitted('remove')).toBeTruthy()
-    expect(w.emitted('remove')![0]).toEqual(['winrate'])
-    expect(w.emitted('select')).toBeFalsy()
-  })
-
-  it('selected adds the .dashboard-widget-selected class in editMode', () => {
-    const w = mount(DashboardWidget, {
-      props: { id: 'winrate', shape: 'kpi', editMode: true, selected: true },
-    })
-    expect(w.find('[data-widget-id="winrate"]').classes()).toContain('dashboard-widget-selected')
-  })
-
-  // Settings live on their own axis from layout edits: the gear is
-  // visible whenever the widget has a non-empty config schema,
-  // regardless of editMode / selection. Edit mode is for moving
-  // widgets; the gear is for tuning what one shows.
-  it('renders the gear button whenever hasConfig is true, regardless of editMode', async () => {
-    const w = mount(DashboardWidget, {
-      props: { id: 'top-heroes', shape: 'breakdown', hasConfig: true, editMode: false },
+      props: { id: 'top-heroes', shape: 'breakdown', hasConfig: true },
     })
     expect(w.find('[data-widget-config-trigger="top-heroes"]').exists()).toBe(true)
-    await w.setProps({ editMode: true, selected: false })
-    expect(w.find('[data-widget-config-trigger="top-heroes"]').exists()).toBe(true)
-    await w.setProps({ editMode: true, selected: true })
-    expect(w.find('[data-widget-config-trigger="top-heroes"]').exists()).toBe(true)
+    await w.setProps({ hasConfig: false })
+    expect(w.find('[data-widget-config-trigger="top-heroes"]').exists()).toBe(false)
   })
 
-  it('omits the gear button when hasConfig is false', () => {
+  it('clicking the gear emits configure(id, event)', async () => {
     const w = mount(DashboardWidget, {
-      props: { id: 'winrate', shape: 'kpi', hasConfig: false, editMode: true, selected: true },
-    })
-    expect(w.find('[data-widget-config-trigger="winrate"]').exists()).toBe(false)
-  })
-
-  // In edit mode the trash button claims the right edge as the
-  // destructive control, so the gear shifts left via the
-  // .dashboard-gear-inset modifier. Outside edit mode there's no
-  // trash, so the gear sits at the corner.
-  it('shifts the gear inset when editMode is on so the trash keeps the right edge', async () => {
-    const w = mount(DashboardWidget, {
-      props: { id: 'top-heroes', shape: 'breakdown', hasConfig: true, editMode: false },
-    })
-    expect(w.find('[data-widget-config-trigger="top-heroes"]').classes()).not.toContain('dashboard-gear-inset')
-    await w.setProps({ editMode: true })
-    expect(w.find('[data-widget-config-trigger="top-heroes"]').classes()).toContain('dashboard-gear-inset')
-  })
-
-  it('clicking the gear emits configure(id, event) and does not bubble select', async () => {
-    const w = mount(DashboardWidget, {
-      props: { id: 'top-heroes', shape: 'breakdown', hasConfig: true, editMode: true, selected: true },
+      props: { id: 'top-heroes', shape: 'breakdown', hasConfig: true },
     })
     await w.find('[data-widget-config-trigger="top-heroes"]').trigger('click')
     const configure = w.emitted('configure')
     expect(configure).toBeTruthy()
     expect(configure![0]![0]).toBe('top-heroes')
-    expect(w.emitted('select')).toBeFalsy()
+  })
+
+  it('forwards handle keydown for keyboard reorder', async () => {
+    const w = mount(DashboardWidget, {
+      props: { id: 'winrate', shape: 'kpi', row: 1, idx: 0 },
+    })
+    await w.find('[data-drag-handle="winrate"]').trigger('keydown', { key: 'ArrowRight' })
+    expect(w.emitted('handle-keydown')).toBeTruthy()
+    expect(w.emitted('handle-keydown')![0]![0]).toBe('winrate')
   })
 })
