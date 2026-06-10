@@ -227,7 +227,6 @@ const gridTemplateColumns = computed(
               gridColumn: i + 2,
               gridRow: rIdx + 3,
               background: fill(col.slug, role),
-              '--col': i,
             }"
             :disabled="!cellFor(col.slug, role)"
             :title="cellLabel(col.slug, role)"
@@ -247,7 +246,7 @@ const gridTemplateColumns = computed(
 <style scoped>
 .match-map-role {
   --mr-gutter: 4.6rem;
-  --mr-cell: 17px;
+  --mr-cell: 13px;
   --mr-row: 1.55rem;
 
   padding: 0.7rem 1.1rem 0.75rem;
@@ -354,19 +353,24 @@ const gridTemplateColumns = computed(
 .mr-mixed { background: color-mix(in srgb, var(--win) 50%, var(--loss)); }
 
 .mr-scroll {
-  overflow-x: auto;
   padding-bottom: 0.2rem;
 }
 
 .mr-grid {
   --heatmap-empty: color-mix(in srgb, var(--surface-2) 92%, var(--border));
 
+  /* `1fr` columns fill the container and shrink responsively to the
+     small per-column min — so the grid width tracks the container and
+     never overflows on desktop widths. Deliberately NOT inside an
+     `overflow-x: auto` wrapper: a scroll container whose content width
+     also depends on the container (1fr) oscillates the scrollbar,
+     which jitters every element below the band and breaks click
+     stability. */
   display: grid;
   grid-template-rows: auto 5.4rem repeat(3, var(--mr-row));
   gap: 2px;
   align-items: stretch;
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
 }
 
 .mr-corner {
@@ -431,8 +435,6 @@ const gridTemplateColumns = computed(
   min-height: var(--mr-row);
   cursor: pointer;
   transition: transform 120ms ease, box-shadow 120ms ease;
-  animation: mr-cell-in 320ms ease backwards;
-  animation-delay: calc(var(--col) * 12ms);
 }
 
 .mr-cell.mr-empty {
@@ -462,17 +464,6 @@ const gridTemplateColumns = computed(
   font-family: var(--mono);
   font-size: 0.7rem;
   color: var(--text-faint);
-}
-
-@keyframes mr-cell-in {
-  from { opacity: 0; transform: scale(0.6); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mr-cell {
-    animation: none;
-  }
 }
 
 @media (width <= 720px) {
