@@ -52,21 +52,6 @@ this file is **not** a striking-out log.
 - `[MED]` **Spacing rhythm tokens** in the narrow panel — `--space-X`
   tokens require a project-wide spacing audit. **Effort:** S
 
-### Microcopy
-
-- `[MED]` **Microcopy sweep.** Voice and clarity across:
-  - "Tesseract is not configured. Fix it in Settings → Engine."
-    → "Tesseract isn't set up yet. Open Settings → Engine to
-    configure it."
-  - "Closest non-empty subsets" → "Try removing one filter to
-    see more matches:"
-  - Trailing-slash on watched-folder display ("Watching /path/
-    for new screenshots" → "Watching for new screenshots in
-    /path").
-  - All-caps mode names ("MATCHES", "UNKNOWN") read formal /
-    cold — keep as visual headings, but ensure body copy uses
-    sentence case. **File:** multiple. **Effort:** M
-
 ### Test coverage gaps
 
 - `[MED]` **High-contrast theme e2e at the layout level.**

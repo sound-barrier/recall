@@ -21,7 +21,7 @@ defineProps<{
 
 <template>
   <div v-if="suggestions.length > 0" class="empty-suggestions">
-    <p class="empty-suggestions-eyebrow">Closest non-empty subsets</p>
+    <p class="empty-suggestions-eyebrow">Try removing one filter to see more matches</p>
     <ul class="empty-suggestions-list">
       <li v-for="s in suggestions" :key="s.clauseId" class="empty-suggestion">
         <button

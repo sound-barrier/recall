@@ -703,7 +703,7 @@ async function onCancelParse() {
 // because the user knows they're committing to a multi-minute run.
 async function onReParseAll() {
   if (!tesseractReady.value) {
-    setError('Tesseract is not configured. Fix it in Settings → Engine.')
+    setError("Tesseract isn't set up yet. Open Settings → Engine to configure it.")
     return
   }
   clearError()
@@ -726,7 +726,7 @@ async function onReParseAll() {
 
 async function parse() {
   if (!tesseractReady.value) {
-    setError('Tesseract is not configured. Fix it in Settings → Engine.')
+    setError("Tesseract isn't set up yet. Open Settings → Engine to configure it.")
     return
   }
   // If the detected version is unsupported, require explicit confirmation
