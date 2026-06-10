@@ -69,6 +69,12 @@ export function useModalFocusTrap(
     }
   }
 
+  // `immediate: true` so a modal that's lazy-loaded with `open`
+  // already true (e.g. KeyboardShortcutsModal mounted after `?`
+  // already flipped openCheatsheet=true) gets its Esc handler +
+  // focus trap on first run. Without immediate the watcher tracks
+  // FUTURE changes only and the first open silently lacks both —
+  // pinned by keyboard-shortcuts.spec.ts:90 (CI-only flake).
   watch(open, async (isOpen) => {
     if (isOpen) {
       lastFocusedBeforeModal.value =
@@ -96,7 +102,7 @@ export function useModalFocusTrap(
       await nextTick()
       prev?.focus()
     }
-  })
+  }, { immediate: true })
 
   return { focusable, onKeydown }
 }
