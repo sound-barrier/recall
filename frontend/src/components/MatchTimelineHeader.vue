@@ -37,13 +37,13 @@ const emit = defineEmits<{
   'update:filter-to':   [value: string]
 }>()
 
-type WindowKey = 3 | 6 | 12
+type WindowKey = 1 | 3 | 6 | 12
 const STORAGE_KEY = 'recall.timelineWindowMonths'
 function loadStoredWindow(): WindowKey {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     const n = Number(raw)
-    if (n === 3 || n === 12) return n
+    if (n === 1 || n === 3 || n === 12) return n
   } catch (_) { /* swallow */ }
   return 6
 }
@@ -51,6 +51,7 @@ const windowMonths = ref<WindowKey>(loadStoredWindow())
 
 const windowWeeks = computed((): number => {
   switch (windowMonths.value) {
+    case 1:  return 5
     case 3:  return 13
     case 6:  return 26
     case 12: return 52
@@ -63,7 +64,7 @@ function pickWindow(months: WindowKey) {
   try { localStorage.setItem(STORAGE_KEY, String(months)) } catch (_) { /* swallow */ }
 }
 
-const windowLabel = computed(() => `Last ${windowMonths.value} months`)
+const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMonths.value === 1 ? '' : 's'}`)
 </script>
 
 <template>
@@ -78,7 +79,7 @@ const windowLabel = computed(() => `Last ${windowMonths.value} months`)
 
       <div v-if="!compact" class="timeline-window" role="group" aria-label="Heatmap window">
         <button
-          v-for="m in ([3, 6, 12] as const)"
+          v-for="m in ([1, 3, 6, 12] as const)"
           :key="m"
           type="button"
           class="window-btn"

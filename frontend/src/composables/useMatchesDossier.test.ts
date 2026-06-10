@@ -11,6 +11,7 @@ import {
   DEFAULT_TOP_BY_COUNT_LIMIT,
   DEFAULT_TOP_HEROES_LIMIT,
   type LeaverHandling,
+  type MapRoleCell,
 } from './useMatchesDossier'
 
 // PR B refactored useMatchesDossier from precomputed-refs to a mix
@@ -850,6 +851,115 @@ describe('useMatchesDossier', () => {
       expect(by.tank.winrate).toBe(67)
       // 0W / 1L on dps → 0%
       expect(by.dps.winrate).toBe(0)
+    })
+  })
+
+  describe('mapRoleCounts', () => {
+    const heroRole = (hero: string): string | undefined =>
+      ({ reinhardt: 'tank', lucio: 'support', ana: 'support', tracer: 'dps' } as Record<string, string>)[hero]
+
+    function mrRec(opts: {
+      map?: string
+      role?: 'tank' | 'dps' | 'support'
+      heroes?: string[]
+      result?: 'victory' | 'defeat' | 'draw'
+      date?: string
+    }): MatchRecord {
+      return {
+        match_key: `m-${Math.random()}`,
+        source_files: ['a.png'],
+        source_types: { 'a.png': 'summary' },
+        data: {
+          map: opts.map,
+          mode: 'competitive',
+          role: opts.role,
+          hero: (opts.heroes ?? [])[0],
+          result: opts.result ?? 'victory',
+          date: 'date' in opts ? opts.date : '2026-05-10',
+          finished_at: '14:00',
+          heroes_played: (opts.heroes ?? []).map((h) => ({ hero: h, percent_played: 50, play_time: '05:00' })),
+        },
+        parsed_at: '2026-05-10T14:00:00Z',
+      } as unknown as MatchRecord
+    }
+
+    const find = (cells: MapRoleCell[], map: string, role: string) =>
+      cells.find((c) => c.map === map && c.role === role)
+
+    const isoDaysAgo = (n: number) => {
+      const d = new Date()
+      d.setDate(d.getDate() - n)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    }
+
+    it('buckets W/L/D per (map, role) and excludes draws from winrate', () => {
+      const records = ref([
+        mrRec({ map: 'rialto', role: 'support', heroes: ['lucio'], result: 'victory' }),
+        mrRec({ map: 'rialto', role: 'support', heroes: ['lucio'], result: 'victory' }),
+        mrRec({ map: 'rialto', role: 'support', heroes: ['lucio'], result: 'defeat' }),
+        mrRec({ map: 'rialto', role: 'support', heroes: ['lucio'], result: 'draw' }),
+      ])
+      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      // 2W / 1L / 1D → total 4, winrate 2/3 = 67% (draw excluded).
+      expect(find(mapRoleCounts().value, 'rialto', 'support')).toMatchObject({
+        wins: 2, losses: 1, draws: 1, total: 4, winrate: 67,
+      })
+    })
+
+    it('credits every role an open-queue match touched on that map', () => {
+      const records = ref([
+        mrRec({ map: 'rialto', heroes: ['reinhardt', 'lucio'], result: 'victory' }),
+      ])
+      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      // One match, two roles → two cells on rialto, each total 1.
+      expect(find(mapRoleCounts().value, 'rialto', 'tank')?.total).toBe(1)
+      expect(find(mapRoleCounts().value, 'rialto', 'support')?.total).toBe(1)
+    })
+
+    it('keeps separate maps in separate cells', () => {
+      const records = ref([
+        mrRec({ map: 'rialto', role: 'tank', heroes: ['reinhardt'] }),
+        mrRec({ map: 'ilios', role: 'tank', heroes: ['reinhardt'] }),
+      ])
+      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      expect(find(mapRoleCounts().value, 'rialto', 'tank')?.total).toBe(1)
+      expect(find(mapRoleCounts().value, 'ilios', 'tank')?.total).toBe(1)
+    })
+
+    it('drops records that carry no map', () => {
+      const records = ref([
+        mrRec({ map: undefined, role: 'tank', heroes: ['reinhardt'] }),
+        mrRec({ map: '', role: 'tank', heroes: ['reinhardt'] }),
+      ])
+      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      expect(mapRoleCounts().value).toHaveLength(0)
+    })
+
+    it('recomputes when the narrowed record set changes', () => {
+      const records = ref([mrRec({ map: 'rialto', role: 'tank', heroes: ['reinhardt'] })])
+      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      const mrc = mapRoleCounts()
+      expect(find(mrc.value, 'rialto', 'tank')?.total).toBe(1)
+      records.value = [
+        mrRec({ map: 'rialto', role: 'tank', heroes: ['reinhardt'] }),
+        mrRec({ map: 'rialto', role: 'tank', heroes: ['reinhardt'] }),
+      ]
+      expect(find(mrc.value, 'rialto', 'tank')?.total).toBe(2)
+    })
+
+    it('windowMonths scopes the aggregate to recent matches by date', () => {
+      const records = ref([
+        mrRec({ map: 'rialto', role: 'tank', heroes: ['reinhardt'], date: isoDaysAgo(5) }), // recent
+        mrRec({ map: 'rialto', role: 'tank', heroes: ['reinhardt'], date: isoDaysAgo(400) }), // > 12 months
+        mrRec({ map: 'rialto', role: 'tank', heroes: ['reinhardt'], date: undefined }), // undated
+      ])
+      const { mapRoleCounts } = useMatchesDossier(records, ref<LeaverHandling>('include'), heroRole)
+      // windowMonths 0 (default) = all-time → every record, dated or not.
+      expect(find(mapRoleCounts({ windowMonths: 0 }).value, 'rialto', 'tank')?.total).toBe(3)
+      // 1-month window keeps only the recent one (old + undated drop out).
+      expect(find(mapRoleCounts({ windowMonths: 1 }).value, 'rialto', 'tank')?.total).toBe(1)
+      // 12-month window keeps the recent one but still drops the 400-day-old + undated.
+      expect(find(mapRoleCounts({ windowMonths: 12 }).value, 'rialto', 'tank')?.total).toBe(1)
     })
   })
 
