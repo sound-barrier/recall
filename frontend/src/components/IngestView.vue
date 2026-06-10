@@ -71,7 +71,7 @@ const emit = defineEmits<{
         </button> first.
       </h2>
       <h2 v-else-if="watchEnabled" class="settings-heading">
-        Watching <em>{{ screenshotsDir }}/</em> for new screenshots.
+        Watching for new screenshots in <em>{{ screenshotsDir }}</em>.
       </h2>
       <h2 v-else-if="matchedCount" class="settings-heading">
         <em>{{ matchedCount }} {{ matchedCount === 1 ? 'match' : 'matches' }}</em> parsed from <em>{{ screenshotsDir }}/</em>

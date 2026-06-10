@@ -475,19 +475,25 @@ maintainer's judgment call which of these is worth holding 1.0 for.
 
 ### Microcopy
 
-- [ ] `[MED]` Microcopy sweep — improve voice and clarity across:
-  - "Tesseract is not configured. Fix it in Settings → Engine."
-    → "Tesseract isn't set up yet. Open Settings → Engine to
-    configure it."
-  - "Closest non-empty subsets" → "Try removing one filter to
-    see more matches:"
-  - Trailing-slash on watched-folder display ("Watching /path/
-    for new screenshots" → "Watching for new screenshots in
-    /path").
-  - All-caps mode names ("MATCHES", "UNKNOWN") read formal /
-    cold — keep as visual headings, but ensure body copy uses
-    sentence case.
-  **File:** multiple. **Effort:** M
+- [x] `[MED]` Microcopy sweep. Three copy rewrites landed; the
+  fourth (sentence-case body copy) was audited as already-met.
+  - Tesseract message: "Tesseract is not configured. Fix it in
+    Settings → Engine." → "Tesseract isn't set up yet. Open
+    Settings → Engine to configure it." (Both call sites in
+    `App.vue:706,729`.)
+  - Empty-suggestions eyebrow: "Closest non-empty subsets" →
+    "Try removing one filter to see more matches"
+    (`MatchesEmptySuggestions.vue:24`).
+  - Watching-folder copy: "Watching `/path/` for new
+    screenshots." → "Watching for new screenshots in `/path`."
+    (`IngestView.vue:74`). Drops the trailing slash and re-
+    orders so the path reads as a destination.
+  - Sentence-case body copy: audit confirms body copy already
+    uses sentence case. The all-caps tokens that show up in
+    grep (`MATCHES`, `UNKNOWN`, `SETTINGS`, `PARSE`) are all in
+    HTML comments or the demo-records import — not in user-
+    visible body copy. Visual headings stay UPPERCASE per the
+    plan's own carve-out. **File:** multiple. **Effort:** M
 
 ### Test coverage gaps
 
