@@ -37,14 +37,9 @@ this file is **not** a striking-out log.
 ### Design system + visual polish
 
 - `[MED]` **`--accent` split** into `--interactive-accent` vs
-  identity-accent. Touches every theme + every chip / button /
-  pill. Disproportionate blast radius for marginal user value.
-  **Effort:** M
-- `[MED]` **Empty-state visual consistency container.** Large
-  refactor across every view; empty states are infrequently
-  rendered. **Effort:** M
-- `[MED]` **Spacing rhythm tokens** in the narrow panel — `--space-X`
-  tokens require a project-wide spacing audit. **Effort:** S
+  identity-accent. Needs a design pass to pick a second hue —
+  the rest is mechanical. PR P1-G round-2 audit recorded the
+  deferral; revisit when a design spec lands. **Effort:** M
 
 ## P2 — Nice-to-have
 
