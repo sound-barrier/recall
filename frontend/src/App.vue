@@ -9,7 +9,7 @@
 // per-SFC scoped <style> blocks.
 import './styles/app.css'
 
-import { ref, computed, watch, onMounted, nextTick, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, onMounted, nextTick, defineAsyncComponent, type Component } from 'vue'
 import type { MatchRecord, DataLocation, NamedCandidate } from './api'
 import {
   GetVersion,
@@ -120,9 +120,9 @@ const IgnoredFilesPanel = defineAsyncComponent(() => import('./components/Ignore
 // renders, keeping the snappy-feel intact.
 import ViewLazyFallback from './components/ViewLazyFallback.vue'
 const VIEW_LAZY_DELAY = 220
-function lazyView(loader: () => Promise<unknown>) {
+function lazyView(loader: () => Promise<{ default: Component }>) {
   return defineAsyncComponent({
-    loader: loader as () => Promise<typeof IngestView>,
+    loader,
     loadingComponent: ViewLazyFallback,
     delay: VIEW_LAZY_DELAY,
   })
