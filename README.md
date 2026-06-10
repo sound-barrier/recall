@@ -62,6 +62,7 @@ flowchart LR
   - [Verifying downloads](#verifying-downloads)
   - [Windows](docs/install-windows.md) · [macOS](docs/install-macos.md) · [Linux](docs/install-linux.md)
 - [Capturing matches](#capturing-matches)
+- [Troubleshooting](#troubleshooting)
 
 **Advanced** — most users can skip these
 
@@ -198,6 +199,62 @@ Real examples from Recall's parser-regression fixture set. The same PNG files li
 </table>
 
 > **RANK screen** — no fixture in the test corpus yet (rank screens hadn't been captured at fixture-curation time). The RANK tab shows your current competitive rank tier + per-hero SR values + the recent change — Recall parses it the same way as the others when it's present.
+
+## Troubleshooting
+
+First-run friction tends to land in one of a handful of spots. The deep-links go to the platform install guides where the exact commands live.
+
+<details>
+<summary><strong>Tesseract isn't found / parse fails immediately</strong></summary>
+
+Recall shells out to Tesseract 5.x to read screenshot text. If the Engine row in **Settings → Engine** shows a red "Not found" chip, or the Parse button stays disabled with "Tesseract required":
+
+1. Install Tesseract 5.x from your platform's guide — [Windows](docs/install-windows.md#4-install-tesseract-5x) (UB-Mannheim installer), [macOS](docs/install-macos.md#4-install-tesseract-5x) (`brew install tesseract`), [Linux](docs/install-linux.md#4-install-tesseract-5x) (`apt install tesseract-ocr`).
+2. Click **Settings → Engine → Detect** — Recall walks the per-OS install locations + `PATH` looking for a working 5.x binary.
+3. If Detect comes up empty, click **Locate Tesseract…** and point Recall at the binary directly (`C:\Program Files\Tesseract-OCR\tesseract.exe` on Windows, `/opt/homebrew/bin/tesseract` on Apple Silicon, `/usr/bin/tesseract` on most Linux distros).
+4. Tesseract **3.x / 4.x predate the OW post-match font** and misread reliably — the Engine row flags older versions but the parse-accuracy hit is the real reason to upgrade.
+
+</details>
+
+<details>
+<summary><strong>"Cannot access folder" / screenshots folder permission denied</strong></summary>
+
+The watcher and Parse-run both need read access to the directory you picked in **Settings → Directories**. If you see "Cannot access X. Check that you have read access or try a different folder.":
+
+- **Windows OneDrive sync** — `Documents\Overwatch\…` or `Pictures\Screenshots\…` under OneDrive can flip to *Files On-Demand* (cloud-only placeholders). Right-click the Overwatch screenshots subfolder → **Always keep on this device**, or move your OW screenshot output to a non-synced path.
+- **macOS app sandbox** — first-time access to `~/Documents` or `~/Pictures` may prompt for Recall in **System Settings → Privacy & Security → Files and Folders**. Tick the relevant folder and re-pick it under Settings.
+- **Linux symlinks** — Recall resolves the picked path via `filepath.Clean` and rejects anything containing `..` or symlink-escapes outside the watched tree. Pick the *real* directory, not a symlink to it.
+- The picked folder must be a **directory** (not a file or device); the Settings probe surfaces "Not a directory" when this is wrong.
+
+</details>
+
+<details>
+<summary><strong>Reset Recall's database (per-OS)</strong></summary>
+
+For pre-1.0 schema changes or to start fresh on a single profile. Close Recall first, then:
+
+| OS | Wipe one profile's matches | Wipe everything |
+|---|---|---|
+| **Windows** | `Remove-Item -Recurse "$env:AppData\Recall\profiles\<name>\db\"` | `Remove-Item -Recurse "$env:AppData\Recall"` |
+| **macOS** | `rm -rf ~/Library/Application\ Support/Recall/profiles/<name>/db/` | `rm -rf ~/Library/Application\ Support/Recall/` |
+| **Linux** | `rm -rf ~/.config/recall/profiles/<name>/db/` | `rm -rf ~/.config/recall/` |
+
+A softer in-app option exists too: **Settings → Advanced → Clear Database** wipes the active profile's matches but keeps its settings + the ignored-screenshots suppress list (tick the opt-out checkbox to also clear that list). The two-step arm/confirm prevents accidental wipes.
+</details>
+
+<details>
+<summary><strong>Port conflict / "address already in use"</strong></summary>
+
+Two ports matter, both `localhost`-only:
+
+- **`:9091` (Prometheus metrics)** — only opens when you flip **Settings → Advanced → Stream to Grafana** on. If another process is on `:9091`, the toggle silently fails. Free the port (`lsof -iTCP:9091 -sTCP:LISTEN` / Windows `Get-NetTCPConnection -LocalPort 9091`) and toggle again.
+- **`:34115` (Wails IPC, dev only)** — only used by `make dev`; the production app uses an OS-allocated port. If `make dev` errors with "bind: address already in use", another `wails dev` is already running — kill it.
+- **`:7000` (server mode)** — only when you run `recall-server --server` per [docs/server.md](docs/server.md). Override with `--addr 127.0.0.1:7099` if `:7000` is busy.
+
+The Wails desktop app does NOT open any externally-visible port by default — the IPC bridge is in-process between the Go runtime and the embedded WebKit/WebView window.
+</details>
+
+If none of the above match, the [platform install guides](docs/install-macos.md) carry the long form, and [CONTRIBUTING.md → Bug-report bundles](CONTRIBUTING.md#bug-report-bundles) describes how to ship a reproducible payload to a bug report.
 
 ---
 
