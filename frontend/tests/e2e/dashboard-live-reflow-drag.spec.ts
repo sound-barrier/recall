@@ -99,7 +99,6 @@ test.describe('dashboard live-reflow drag', () => {
     })
     await page.goto('/')
     await page.locator('#tab-matches').click()
-    await page.locator('input[data-edit-toggle]').check()
   })
 
   test('source widget wears the ghost class while a drag is in flight', async ({ page }) => {

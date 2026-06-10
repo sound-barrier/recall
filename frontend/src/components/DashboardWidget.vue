@@ -8,17 +8,14 @@ import type { WidgetShape } from '../dashboard/widgets'
 //
 // `shape` is the widget's intrinsic visual footprint (compact .kpi-tile
 // vs wider .breakdown article). It is NOT the same as which row the
-// widget renders in — Phase 3 lets users drag widgets across rows
-// regardless of shape. The type is sourced from the registry so a new
-// shape value adds to one enum, not two.
+// widget renders in — users can drag widgets across rows regardless of
+// shape.
 //
-// `editMode` flips the wrapper into "draggable" mode: the root is
-// marked `draggable="true"`, the drag handle + trash button appear in
-// the corners, and DnD + keyboard reorder handlers fire on the
-// consumer's callbacks. Both controls are hover-revealed (rather than
-// always-on) so the dashboard reads as a dashboard, not a UI
-// scaffold — but they live on EVERY widget in edit mode (not gated
-// to selection) so trash is one click away.
+// There is no edit MODE: every widget is always draggable, and its
+// drag handle + trash live on it permanently. Both are quiet by
+// default (low opacity) and reveal on hover/focus, so the dossier
+// reads as a dossier — not a UI scaffold — while keeping reorder +
+// remove one gesture away with no mode to toggle first.
 //
 // `legacyDataKpi` / `legacyDataBreakdown` keep the pre-refactor e2e
 // selectors (`[data-kpi="reviewed-count"]`, `[data-breakdown="roles"]`)
@@ -27,31 +24,19 @@ import type { WidgetShape } from '../dashboard/widgets'
 const props = defineProps<{
   id: string
   shape: WidgetShape
-  editMode?: boolean
-  // Position in the layout. Only consulted when editMode=true so
-  // the consumer can pass undefined for static-mode renders.
+  // Position in the layout — passed to the drag/keyboard handlers.
   row?: number
   idx?: number
   // Visual hint when this cell is the active drop target. Driven by
   // the parent's useDragReorder.dropHint comparison.
   dropTarget?: boolean
-  // True when this widget is the user's current edit-mode selection
-  // — wears the strong accent ring + lift.
-  selected?: boolean
   // True when THIS widget is the one being dragged. Renders as a
-  // ghost (dashed accent border, low opacity, slight scale-down) at
-  // the LIVE drop position so the user reads "here's where it will
-  // land" while the browser's native drag-image preview follows
-  // the cursor.
+  // ghost at the LIVE drop position so the user reads "here's where
+  // it will land" while the native drag-image follows the cursor.
   dragging?: boolean
-  // True when the widget's registry entry carries a non-empty
-  // config schema. Gates the gear-icon affordance — empty-schema
-  // widgets stay knob-less. MatchesView precomputes this so the
-  // widget doesn't have to walk the registry.
-  //
-  // The gear is independent of edit mode: edit mode is for moving
-  // widgets, the gear is for tuning what one shows. Settings are a
-  // read-time concern, not a layout concern.
+  // True when the widget's registry entry carries a non-empty config
+  // schema. Gates the gear-icon affordance — knob-less widgets stay
+  // gear-less.
   hasConfig?: boolean
   legacyDataKpi?: string
   legacyDataBreakdown?: string
@@ -63,22 +48,15 @@ const emit = defineEmits<{
   'drag-over':    [row: number, idx: number, e: DragEvent]
   'drop':         [row: number, idx: number, e: DragEvent]
   'handle-keydown': [id: string, row: number, idx: number, e: KeyboardEvent]
-  // Edit-mode interactions on the widget body itself.
-  'select':       [id: string]
   'remove':       [id: string]
   // Gear-icon click. MatchesView mounts the WidgetConfigPopover
-  // anchored to the rect; carries the click event so the parent
-  // can read currentTarget.getBoundingClientRect().
+  // anchored to the rect; carries the click event so the parent can
+  // read currentTarget.getBoundingClientRect().
   'configure':    [id: string, e: MouseEvent]
 }>()
 
 function rowOr(): number { return props.row ?? 0 }
 function idxOr(): number { return props.idx ?? 0 }
-
-function onRootClick() {
-  if (!props.editMode) return
-  emit('select', props.id)
-}
 </script>
 
 <template>
@@ -86,25 +64,22 @@ function onRootClick() {
     :is="shape === 'kpi' ? 'div' : 'article'"
     :class="[
       shape === 'kpi' ? 'kpi-tile' : 'breakdown',
+      'dashboard-widget',
       {
-        'dashboard-widget-editable': editMode,
         'dashboard-widget-drop-target': dropTarget,
-        'dashboard-widget-selected': editMode && selected,
         'dashboard-widget-dragging': dragging,
       },
     ]"
     :data-widget-id="id"
     :data-kpi="legacyDataKpi || undefined"
     :data-breakdown="legacyDataBreakdown || undefined"
-    :draggable="editMode ? 'true' : undefined"
-    @click="onRootClick"
-    @dragstart="editMode ? emit('drag-start', id, rowOr(), idxOr(), $event) : null"
-    @dragend="editMode ? emit('drag-end') : null"
-    @dragover="editMode ? emit('drag-over', rowOr(), idxOr(), $event) : null"
-    @drop="editMode ? emit('drop', rowOr(), idxOr(), $event) : null"
+    draggable="true"
+    @dragstart="emit('drag-start', id, rowOr(), idxOr(), $event)"
+    @dragend="emit('drag-end')"
+    @dragover="emit('drag-over', rowOr(), idxOr(), $event)"
+    @drop="emit('drop', rowOr(), idxOr(), $event)"
   >
     <button
-      v-if="editMode"
       type="button"
       class="dashboard-drag-handle"
       :aria-label="`Reorder widget ${id}. Arrow keys move; Up/Down change row.`"
@@ -117,7 +92,7 @@ function onRootClick() {
     <button
       v-if="hasConfig"
       type="button"
-      :class="['dashboard-gear', { 'dashboard-gear-inset': editMode }]"
+      class="dashboard-gear"
       :aria-label="`Configure widget ${id}`"
       :data-widget-config-trigger="id"
       @click.stop="emit('configure', id, $event)"
@@ -125,7 +100,6 @@ function onRootClick() {
       <span aria-hidden="true">⚙</span>
     </button>
     <button
-      v-if="editMode"
       type="button"
       class="dashboard-trash"
       :aria-label="`Remove widget ${id} from the dashboard`"
@@ -164,31 +138,28 @@ function onRootClick() {
               border-color 140ms ease;
 }
 
-/* Edit-mode chrome — quieter than the previous always-dashed
-   treatment. The dossier-level dot-grid workspace pattern signals
-   edit mode; the widget just shifts its border to dashed-accent on
-   HOVER (or when selected). Avoids the "all widgets shout at me"
-   feeling of always-dashed borders. */
-.dashboard-widget-editable {
+/* Every widget is draggable. The grab cursor + a quiet accent border
+   on HOVER signal "you can move/manage me" without the always-dashed
+   "all widgets shout at me" treatment — the resting state stays a
+   clean dashboard. */
+.dashboard-widget {
   cursor: grab;
-  border-color: color-mix(in srgb, var(--border) 60%, var(--accent));
 }
 
-.dashboard-widget-editable:hover {
+.dashboard-widget:hover {
   border-style: dashed;
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent-soft) 25%, transparent), var(--surface-2);
 }
 
-.kpi-tile.dashboard-widget-editable:hover {
+.kpi-tile.dashboard-widget:hover {
   background: color-mix(in srgb, var(--accent-soft) 25%, var(--surface-2));
 }
 
-.breakdown.dashboard-widget-editable:hover {
+.breakdown.dashboard-widget:hover {
   background: color-mix(in srgb, var(--accent-soft) 25%, var(--surface));
 }
 
-.dashboard-widget-editable:active {
+.dashboard-widget:active {
   cursor: grabbing;
 }
 
@@ -200,24 +171,8 @@ function onRootClick() {
   background: color-mix(in srgb, var(--accent-soft) 80%, var(--surface)) !important;
 }
 
-/* Confident selection state — strong inset ring, subtle lift, scale,
-   and shadow so the picked widget unambiguously claims the eye. The
-   transform is small (1.5%) so it doesn't push siblings around in
-   the auto-fit grid; the shadow does the heavier visual work. */
-.dashboard-widget-selected {
-  border-style: solid !important;
-  border-color: var(--accent) !important;
-  box-shadow: inset 0 0 0 2px var(--accent),
-              0 14px 28px -16px color-mix(in srgb, var(--accent) 80%, transparent);
-  transform: translateY(-2px) scale(1.015);
-  z-index: 2;
-}
-
 /* Ghost — the source widget while it's being dragged. Sits at the
-   live preview position so the user sees exactly where it will
-   land. Lower opacity + dashed accent border + faint accent fill
-   read as "placeholder for the dragged item" without disappearing
-   entirely (which would leave a confusing gap). */
+   live preview position so the user sees exactly where it will land. */
 .dashboard-widget-dragging {
   opacity: 0.35;
   border-style: dashed !important;
@@ -227,11 +182,9 @@ function onRootClick() {
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
-/* Controls (drag handle + trash) — quiet by default (low opacity)
-   so the dashboard reads as a dashboard, not a UI scaffold. Full
-   opacity on hover/focus/selection. Staying always-present-in-DOM
-   keeps keyboard reach + focus intact (an opacity:0 default
-   confused programmatic focus dispatch in some browsers). */
+/* Controls (drag handle + gear + trash) — quiet by default (low
+   opacity) so the dossier reads clean, full opacity on hover/focus.
+   Always present in the DOM so keyboard reach + focus stay intact. */
 .dashboard-drag-handle,
 .dashboard-trash,
 .dashboard-gear {
@@ -252,7 +205,7 @@ function onRootClick() {
   cursor: pointer;
   user-select: none;
   z-index: 1;
-  opacity: 0.35;
+  opacity: 0.32;
   transition: opacity var(--duration-fast) ease,
               color var(--duration-fast) ease,
               border-color var(--duration-fast) ease,
@@ -272,27 +225,20 @@ function onRootClick() {
   color: var(--text-faint);
 }
 
-/* Gear is independent of edit mode: visible whenever the widget has
-   a non-empty config schema. Default sits at the right edge; in edit
-   mode it shifts left to make room for the trash button (which keeps
-   its right-edge anchor as the destructive control). The 4 px gap
-   between the two boxes matches the corner inset so the chrome
-   reads as one row. */
+/* The gear sits left of the trash (which keeps the right-edge anchor
+   as the destructive control). The 4 px gap matches the corner inset
+   so the chrome reads as one row. */
 .dashboard-gear {
-  right: 4px;
+  right: 36px;
   font-size: 1rem;
   color: var(--text-faint);
 }
 
-.dashboard-gear-inset {
-  right: 36px;
-}
-
-.dashboard-widget-editable:hover .dashboard-drag-handle,
-.dashboard-widget-editable:hover .dashboard-trash,
-.dashboard-widget-selected .dashboard-drag-handle,
-.dashboard-widget-selected .dashboard-trash,
+.kpi-tile:hover .dashboard-drag-handle,
+.kpi-tile:hover .dashboard-trash,
 .kpi-tile:hover .dashboard-gear,
+.breakdown:hover .dashboard-drag-handle,
+.breakdown:hover .dashboard-trash,
 .breakdown:hover .dashboard-gear,
 .dashboard-drag-handle:focus,
 .dashboard-trash:focus,
@@ -338,10 +284,6 @@ function onRootClick() {
   .dashboard-trash,
   .dashboard-gear {
     transition: none !important;
-  }
-
-  .dashboard-widget-selected {
-    transform: none;
   }
 }
 </style>
