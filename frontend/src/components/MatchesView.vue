@@ -1346,7 +1346,7 @@ onBeforeUnmount(() => {
             data-narrow-trigger
             @click="toggleNarrow"
           >
-            <span aria-hidden="true">⌗</span> Narrow this set
+            <span aria-hidden="true">⌗</span> Filter matches
             <span v-if="anyNarrow" class="narrow-count">· {{ activeClauseCount }}</span>
           </button>
 
@@ -1712,9 +1712,11 @@ onBeforeUnmount(() => {
           <span v-if="hasMore && !flatVirtualization">
             Showing {{ renderedCount }} of {{ sortedRecords.length }} matches
           </span>
-          <span v-else>
-            Showing all {{ sortedRecords.length }}
+          <span v-else class="leaves-foot-end">
+            <span class="leaves-foot-rule" aria-hidden="true" />
+            End · {{ sortedRecords.length }}
             {{ sortedRecords.length === 1 ? 'match' : 'matches' }}
+            <span class="leaves-foot-rule" aria-hidden="true" />
           </span>
         </li>
       </ul>
@@ -3002,6 +3004,24 @@ onBeforeUnmount(() => {
   text-transform: uppercase;
   color: var(--text-dim);
   list-style: none;
+}
+
+/* End-of-results decoration. Em-dash rules flank the final count
+   so the user gets a clear visual boundary instead of empty space
+   below the last row. Only renders on the "no-more-to-load" state;
+   the progressive "showing X of Y" line stays plain. */
+.leaves-foot-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.leaves-foot-rule {
+  display: inline-block;
+  width: 1.8rem;
+  height: 1px;
+  background: currentcolor;
+  opacity: 0.5;
 }
 
 .leaves-empty-btn {

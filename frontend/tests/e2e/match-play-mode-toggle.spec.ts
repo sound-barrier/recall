@@ -176,7 +176,7 @@ test.describe('narrow this set — Play mode filter', () => {
     await page.locator('#tab-matches').click()
     await expect(page.locator('.leaf-row')).toHaveCount(3)
 
-    await page.locator('button:has-text("Narrow this set")').click()
+    await page.locator('button:has-text("Filter matches")').click()
     await page.locator('.np-chip[data-play-mode="quickplay"]').click()
 
     await expect(page.locator('.leaf-row')).toHaveCount(1)

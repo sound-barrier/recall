@@ -204,33 +204,55 @@ basis, or make the launch land flat (e.g., no macOS binary).
 
 ### Frontend UX (Matches view)
 
-- [ ] `[HIGH]` "End of results" footer missing on the Matches
-  infinite scroll. A user filtering to 3 records scrolls past
-  them into empty space + thinks scroll broke. Add a centered
-  `— End of N matches —` mono footer. **File:**
-  `frontend/src/components/MatchesView.vue`. **Effort:** S
-- [ ] `[HIGH]` "Narrow this set" copy is ambiguous to non-power-users
-  ("narrow" → focus? remove? zoom?). Change to "Filter matches"
-  or "Search & filter". **File:** `MatchesView.vue:267`.
-  **Effort:** S
+- [x] `[HIGH]` "End of results" footer on the Matches list. The
+  existing `.leaves-foot` "Showing all N matches" was visually
+  flat; replaced with a flanked-rule "— End · N matches —" mono
+  decoration on the no-more-to-load state so the boundary reads
+  as final. The progressive "Showing X of Y" state stays plain.
+  Pinned by `matches-infinite-scroll.spec.ts` +
+  `MatchesView.test.ts`. **File:**
+  `frontend/src/components/MatchesView.vue:1715-1721`. **Effort:** S
+- [x] `[HIGH]` "Narrow this set" → "Filter matches" on the popover
+  trigger + the panel's `aria-label` + the Close button's
+  `aria-label`. Four e2e specs updated (button-text-selector
+  sweep). The internal symbol names ("narrow" / "NarrowPopover" /
+  `useMatchesNarrow`) stay — they're code identity, not user
+  copy. **File:** `MatchesView.vue:1349` +
+  `NarrowPopover.vue:223,231`. **Effort:** S
 
 ### Frontend UX (Unknown view)
 
-- [ ] `[HIGH]` Reference-data-gaps section has no persistent callout
-  explaining what it means after the first dismissal. A user
-  returning to the section after a roster update has no context.
-  Add a `.section-callout` that re-appears whenever the section
-  is non-empty. **File:**
-  `frontend/src/components/UnknownMapsView.vue`. **Effort:** S
+- [x] `[HIGH]` Reference-data-gaps section has no persistent
+  callout. PR #6 audit: already covered.
+  `UnknownMapsView.vue:782` carries a persistent
+  `<p class="needs-review-desc">` that always renders below the
+  section heading (gated on `referenceGapRecords.length > 0`)
+  explaining the OCR-vs-roster mismatch + the next-release
+  pickup pattern + a "View latest release ↗" link. The plan's
+  "section-callout that re-appears" goal is already met — the
+  surface is permanent, not dismissible. The transient
+  `ContextualCallout` at line 829 is the additional just-in-time
+  hint on FIRST appearance, which is the orthogonal
+  "discoverability" concern. **File:**
+  `frontend/src/components/UnknownMapsView.vue:782`.
+  **Effort:** S
 
 ### A11y
 
-- [ ] `[HIGH]` `.leaf-row` divs handle `@click` but lack
-  `role="button"` (or — preferred — `<button>` conversion).
-  Screen readers announce them as plain divs; keyboard focus
-  semantics are off. Convert to button or add the role +
-  `tabindex` + keyboard handler. **File:** `MatchesView.vue`
-  around line 400. **Effort:** M
+- [x] `[HIGH]` `.leaf-row` role=button conversion. PR #6 audit:
+  intentionally NOT done per the documented chips-collide
+  convention. `frontend/CLAUDE.md` *Gotchas*: "A clickable
+  container with interactive chips cannot be `role=button`.
+  Nesting interactive elements is invalid HTML/ARIA and the
+  outer role strips keyboard reach from the chips." The
+  `.leaf-row` carries inner chips (.leaf-checkbox button,
+  result-tag chips, queue/play-mode chips) — converting the
+  row to a button would strip keyboard reach from every one of
+  them. Keyboard accessibility is already provided by the `e`
+  shortcut from `useGlobalKeyboard` (open the detail panel for
+  the focused row). Plan item supersedes itself. **File:**
+  `MatchesView.vue:1555-1580` (leaf-row markup) +
+  `frontend/CLAUDE.md` Gotchas. **Effort:** M
 
 ---
 

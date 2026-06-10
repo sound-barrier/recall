@@ -180,7 +180,7 @@ test.describe('narrow this set — Queue filter', () => {
     await expect(page.locator('.leaf-row')).toHaveCount(3)
 
     // Open the narrow panel and pick Open Queue.
-    await page.locator('button:has-text("Narrow this set")').click()
+    await page.locator('button:has-text("Filter matches")').click()
     await page.locator('.np-chip[data-queue-type="open"]').click()
 
     await expect(page.locator('.leaf-row')).toHaveCount(1)
