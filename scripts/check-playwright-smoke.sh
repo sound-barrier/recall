@@ -44,10 +44,23 @@ echo "[playwright-smoke] Running smoke subset…"
 # with the user-visible affordance they cover. The list grows when
 # a new spec earns a smoke designation (or carries an `@smoke` tag).
 #
+# Expansion criteria (post-1.0):
+#   1. Spec earned its slot by FLAKING CI inside the prior month —
+#      catching it pre-push beats catching it on the PR.
+#   2. Spec covers a load-bearing seam that other specs depend on
+#      (first-run, profiles, narrow selector swap) — a regression
+#      here cascades across the whole suite.
+#   3. Spec covers a 1.0 contract added in PRs #249-#268 that
+#      didn't exist when the smoke list was first drawn.
+#
+# The smoke set targets ≤90s on a warm cache (was ≤60s pre-
+# expansion; the trade-off is worth catching the regression class
+# earlier in the workflow).
+#
 # E2E_PORT=7098 — the lefthook schemathesis hook runs in parallel
 # (lefthook.yml has parallel: true on pre-push) and binds 7099. Use
 # a sibling port so the two hooks don't collide; playwright.config.ts
 # honors the env override.
 cd frontend
 CI=1 E2E_PORT=7098 npx playwright test \
-  --grep '@smoke|update-check|unknown-delete|onboarding-tour-spotlight|leaf-virtualization|keyboard-shortcuts|smoke|a11y'
+  --grep '@smoke|update-check|unknown-delete|onboarding-tour-spotlight|leaf-virtualization|keyboard-shortcuts|smoke|a11y|first-run-modal|profile-delete-and-first-run|multiple-profiles|match-search|match-tags|narrow-rail|export-bundle|prometheus-scrape|match-bulk-hide-drawer|ambiguous-attribution|ux-first-run-and-error-states'

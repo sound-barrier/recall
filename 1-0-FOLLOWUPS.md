@@ -46,12 +46,6 @@ this file is **not** a striking-out log.
 
 ## P2 — Nice-to-have
 
-### CI / tooling
-
-- `[LOW]` **Pre-push smoke subset gaps** — expand the filter list
-  once historical flakes have a pre-push gate. **File:**
-  `lefthook.yml` + `scripts/check-playwright-smoke.sh`. **Effort:** S
-
 ### Code-quality cleanup
 
 - `[LOW]` **Magic numbers** — pull the remaining outliers into

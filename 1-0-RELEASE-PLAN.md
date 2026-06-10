@@ -558,9 +558,18 @@ post-1.0 backlog when 1.0 ships.
 
 ### CI / tooling
 
-- [ ] `[LOW]` Pre-push smoke subset gaps — currently filters to a
-  small set. Expand once the P0 e2e specs land so historical
-  flakes get pre-push coverage. **File:** `lefthook.yml` +
+- [x] `[LOW]` Pre-push smoke subset expansion. Expanded the
+  `--grep` filter in `scripts/check-playwright-smoke.sh` to
+  cover the specs that flaked CI during the 1.0 PR sequence
+  (`first-run-modal`, `profile-delete-and-first-run`,
+  `multiple-profiles`, `match-search`, `match-tags`,
+  `narrow-rail`) plus the new 1.0-contract specs
+  (`export-bundle`, `prometheus-scrape`,
+  `match-bulk-hide-drawer`, `ambiguous-attribution`,
+  `ux-first-run-and-error-states`). Documented three explicit
+  expansion criteria in the script comment so future bumps are
+  principled, not ad-hoc. Runtime went from ~60s (47 specs) to
+  ~96s (113 specs); within the new ≤90s target band. **File:**
   `scripts/check-playwright-smoke.sh`. **Effort:** S
 
 ### Code-quality cleanup
