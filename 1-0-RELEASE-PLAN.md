@@ -1,5 +1,13 @@
 # Recall 1.0 Release Plan
 
+> **Historical record (2026-06-10).** All P0 blockers shipped in PRs
+> #249–#259 (commits referenced on each box). P1 / P2 items that
+> didn't make the cut now live in **`1-0-FOLLOWUPS.md`** and shrink
+> from there as they land. Read this file for the audit decisions
+> (every "deferred per-X rationale" box is the single source of
+> truth for *why* an item didn't ship); read `1-0-FOLLOWUPS.md` for
+> the actionable post-1.0 backlog.
+
 A living checklist for the items that need to land before the 1.0 cut.
 Every entry was surfaced by a three-axis audit (API/DB + frontend/UX +
 code/tests/docs/release-eng) on top of the post-PR-#248 codebase.
