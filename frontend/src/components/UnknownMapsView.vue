@@ -1169,16 +1169,16 @@ function updateThumbPosition(e: MouseEvent) {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--loss) 35%, transparent);
 }
 
+/* 3s countdown ring — wraps the button while armed and shrinks
+   to nothing as the auto-disarm timer drains. Matches IGNORE_ARM_MS
+   in the script block above. Pure CSS, no JS animation hooks; the
+   browser's compositor handles the redraw. Reduced-motion swaps
+   the animation for a static fill (the .armed background color
+   already carries the "this click commits" signal). */
 .unknown-delete-btn.armed {
   background: var(--loss);
   color: var(--surface);
   border-color: var(--loss);
-  /* 3s countdown ring — wraps the button while armed and shrinks
-     to nothing as the auto-disarm timer drains. Matches IGNORE_ARM_MS
-     in the script block above. Pure CSS, no JS animation hooks; the
-     browser's compositor handles the redraw. Reduced-motion swaps
-     the animation for a static fill (the .armed background color
-     already carries the "this click commits" signal). */
   position: relative;
   isolation: isolate;
 }
