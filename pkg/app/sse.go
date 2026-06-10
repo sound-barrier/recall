@@ -31,13 +31,28 @@ func (h *SSEHub) Unsubscribe(ch chan sseMsg) {
 	close(ch)
 }
 
-// Broadcast sends a no-payload event to all subscribers.
+// Broadcast sends a no-payload event to all subscribers. Nil-safe:
+// calling on a nil receiver is a no-op, so the parse loop can fire
+// without a TOCTOU check between `if a.SSEHub != nil` and the actual
+// call. The single `*SSEHub` field read at the call site is
+// pointer-atomic on every supported architecture; a nil-safe method
+// makes the racy "is it still non-nil after the check?" window
+// disappear entirely. Same shape as `http.Handler.ServeHTTP` on a
+// nil mux — Go convention is fine with this when the zero-value
+// semantic is "do nothing."
 func (h *SSEHub) Broadcast(event string) {
+	if h == nil {
+		return
+	}
 	h.send(sseMsg{event, "{}"})
 }
 
-// BroadcastData sends an event with a JSON data payload.
+// BroadcastData sends an event with a JSON data payload. Nil-safe;
+// see `Broadcast` for the rationale.
 func (h *SSEHub) BroadcastData(event, data string) {
+	if h == nil {
+		return
+	}
 	h.send(sseMsg{event, data})
 }
 

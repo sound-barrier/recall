@@ -8,10 +8,9 @@ import (
 )
 
 // emitParseProgress broadcasts per-file progress to SSE subscribers.
+// `a.SSEHub` is read once, atomically; `SSEHub.BroadcastData` itself
+// is nil-safe, so the parse loop can fire without a TOCTOU check.
 func (a *App) emitParseProgress(p ParseProgressEvent) {
-	if a.SSEHub == nil {
-		return
-	}
 	data, _ := json.Marshal(p)
 	a.SSEHub.BroadcastData("parse-progress", string(data))
 }
@@ -20,9 +19,6 @@ func (a *App) emitParseProgress(p ParseProgressEvent) {
 // subscribers. Counterpart to the Wails build's variant — same wire
 // shape, server-only emit path.
 func (a *App) emitMatchUpdated(rec MatchRecord) {
-	if a.SSEHub == nil {
-		return
-	}
 	data, _ := json.Marshal(rec)
 	a.SSEHub.BroadcastData("match-updated", string(data))
 }
@@ -30,18 +26,14 @@ func (a *App) emitMatchUpdated(rec MatchRecord) {
 // emitParseComplete is a no-op in server mode — the SSE hub handles
 // parse-complete notifications instead of the Wails event bus.
 func (a *App) emitParseComplete() {
-	if a.SSEHub != nil {
-		a.SSEHub.Broadcast("parse-complete")
-	}
+	a.SSEHub.Broadcast("parse-complete")
 }
 
 // emitParseCancelled is the SSE-only sibling of emitParseCancelled
 // in app_wails.go. Lets the frontend distinguish "stopped" from
 // "done" without polling.
 func (a *App) emitParseCancelled() {
-	if a.SSEHub != nil {
-		a.SSEHub.Broadcast("parse-cancelled")
-	}
+	a.SSEHub.Broadcast("parse-cancelled")
 }
 
 // SaveExportToFile is not available in server mode (no native dialogs).
