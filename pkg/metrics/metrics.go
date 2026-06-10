@@ -10,6 +10,7 @@ package metrics
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -280,12 +281,46 @@ func newMux(read Reader) *http.ServeMux {
 // goroutine. Bind failures are logged but not returned to the caller —
 // the desktop app should keep working even when the port is taken.
 func (s *Server) Start() {
+	// /metrics has no auth (standard for Prometheus) and exposes every
+	// competitive match's stats. The default bind (":9091" = all
+	// interfaces) is required by the bundled docker-compose Grafana
+	// stack — the Prometheus container reaches the host over the
+	// docker-bridge gateway, not loopback, so loopback-only would break
+	// `make stack-up`. We keep the all-interfaces default but warn the
+	// operator about the LAN exposure. Same-host (non-Docker) scrapers
+	// can set RECALL_METRICS_ADDR=127.0.0.1:9091 to bind loopback-only.
+	if !isLoopbackBind(s.addr) {
+		log.Printf("metrics: NOTICE %s is reachable from any host on the network and serves match data without auth. "+
+			"If you don't use the bundled Grafana stack, set RECALL_METRICS_ADDR=127.0.0.1:9091 to restrict it to localhost.", s.addr)
+	}
 	go func() {
 		log.Printf("metrics: listening on %s", s.addr)
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Printf("metrics: server stopped: %v", err)
 		}
 	}()
+}
+
+// isLoopbackBind reports whether addr listens on a loopback-only
+// interface (so /metrics is unreachable from other hosts). A bind
+// with an empty or unspecified host (":9091", "0.0.0.0:9091",
+// "[::]:9091") listens on every interface and returns false.
+func isLoopbackBind(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		// Unparseable — be conservative and treat as exposed so the
+		// operator still gets the warning.
+		return false
+	}
+	switch host {
+	case "":
+		return false // ":9091" → all interfaces
+	case "localhost":
+		return true
+	default:
+		ip := net.ParseIP(host)
+		return ip != nil && ip.IsLoopback()
+	}
 }
 
 // Stop gracefully shuts the server down with a 2-second timeout, then

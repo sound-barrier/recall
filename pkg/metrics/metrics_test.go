@@ -296,3 +296,29 @@ func TestNewServer_DefaultAddr(t *testing.T) {
 		t.Errorf("default addr lost: addr=%s", s.addr)
 	}
 }
+
+func TestIsLoopbackBind(t *testing.T) {
+	cases := []struct {
+		addr string
+		want bool
+	}{
+		// All-interfaces binds → exposed (warn).
+		{":9091", false},
+		{"0.0.0.0:9091", false},
+		{"[::]:9091", false},
+		// Loopback binds → safe (no warn).
+		{"127.0.0.1:9091", true},
+		{"localhost:9091", true},
+		{"[::1]:9091", true},
+		{"127.0.0.5:9091", true}, // whole 127.0.0.0/8 is loopback
+		// A routable LAN address → exposed.
+		{"192.168.1.20:9091", false},
+		// Unparseable → conservatively exposed.
+		{"not-an-addr", false},
+	}
+	for _, c := range cases {
+		if got := isLoopbackBind(c.addr); got != c.want {
+			t.Errorf("isLoopbackBind(%q) = %v, want %v", c.addr, got, c.want)
+		}
+	}
+}
