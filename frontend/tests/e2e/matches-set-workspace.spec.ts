@@ -84,7 +84,7 @@ test.describe('matches set-workspace', () => {
   })
 
   test('narrow panel opens with focus trap and inerts the background', async ({ page }) => {
-    await page.locator('button:has-text("Narrow this set")').click()
+    await page.locator('button:has-text("Filter matches")').click()
     const panel = page.locator('.left-panel')
     await expect(panel).toBeVisible()
     // Background container goes inert while panel is open — same
@@ -99,7 +99,7 @@ test.describe('matches set-workspace', () => {
   })
 
   test('search narrows the dossier + leaves live', async ({ page }) => {
-    await page.locator('button:has-text("Narrow this set")').click()
+    await page.locator('button:has-text("Filter matches")').click()
     const search = page.locator('input[type="search"][placeholder*="map · hero"]')
     await search.fill('rialto')
     await expect(page.locator('.leaf-row')).toHaveCount(2)
@@ -141,14 +141,14 @@ test.describe('matches set-workspace', () => {
   })
 
   test('include-unknown toggle surfaces the unknown-map row', async ({ page }) => {
-    await page.locator('button:has-text("Narrow this set")').click()
+    await page.locator('button:has-text("Filter matches")').click()
     const toggle = page.locator('label:has-text("Show unknown-map matches") input[type="checkbox"]')
     await toggle.check()
     await expect(page.locator('.leaf-row')).toHaveCount(6)
   })
 
   test('combobox picks narrow the set', async ({ page }) => {
-    await page.locator('button:has-text("Narrow this set")').click()
+    await page.locator('button:has-text("Filter matches")').click()
     // Hero combobox — broad-match against heroes_played + primary hero.
     const heroCombo = page.locator('[data-combo-id="hero"]')
     await heroCombo.locator('.combo-input').click()

@@ -220,7 +220,7 @@ onUnmounted(() => {
           :class="{ 'left-panel-rail': isRail }"
           :role="isRail ? 'complementary' : 'dialog'"
           :aria-modal="isRail ? undefined : 'true'"
-          aria-label="Narrow this set"
+          aria-label="Filter matches"
         >
           <header class="np-head">
             <span class="np-eyebrow">Narrow</span>
@@ -228,7 +228,7 @@ onUnmounted(() => {
               Filter the set
             </h4>
             <span class="np-meta">{{ narrowedRecords.length }} / {{ records.length }} matches</span>
-            <button v-if="!isRail" class="np-close" aria-label="Close narrow panel" @click="isOpen = false">
+            <button v-if="!isRail" class="np-close" aria-label="Close filter panel" @click="isOpen = false">
               ×
             </button>
           </header>

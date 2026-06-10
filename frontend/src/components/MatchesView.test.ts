@@ -487,11 +487,12 @@ describe('MatchesView — infinite-scroll window', () => {
     expect(foot.text()).toContain('Showing 20 of 50 matches')
   })
 
-  it('omits the sentinel + reads "Showing all N matches" when corpus fits', () => {
+  it('omits the sentinel + reads "End · N matches" when corpus fits', () => {
     const wrapper = mountView(fillCorpus(7))
     expect(wrapper.findAll('.leaf-row')).toHaveLength(7)
     expect(wrapper.find('[data-testid="leaves-sentinel"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="leaves-foot"]').text()).toContain('Showing all 7')
+    expect(wrapper.find('[data-testid="leaves-foot"]').text()).toContain('End · 7')
+    expect(wrapper.findAll('.leaves-foot-rule')).toHaveLength(2)
   })
 
   it('foot has aria-live=polite + role=status for screen-reader updates', () => {

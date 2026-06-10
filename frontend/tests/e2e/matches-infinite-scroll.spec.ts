@@ -93,15 +93,19 @@ test.describe('matches — client-side window (item 6)', () => {
     await page.getByTestId('leaves-sentinel').scrollIntoViewIfNeeded()
     await expect(page.locator('.leaf-row')).toHaveCount(60)
     await expect(page.getByTestId('leaves-sentinel')).toHaveCount(0)
-    await expect(page.getByTestId('leaves-foot')).toContainText('Showing all 60 matches')
+    // End-of-results footer — em-dash rules flank the count so the
+    // boundary reads as final, not "is more loading?".
+    await expect(page.getByTestId('leaves-foot')).toContainText('End · 60 matches')
+    await expect(page.locator('.leaves-foot-rule')).toHaveCount(2)
   })
 
-  test('foot reads "Showing all N" when the corpus fits in one page', async ({ page }) => {
+  test('foot reads "End · N matches" when the corpus fits in one page', async ({ page }) => {
     await mockCorpus(page, 7)
     await page.goto('/')
     await page.locator('#tab-matches').click()
     await expect(page.locator('.leaf-row')).toHaveCount(7)
     await expect(page.getByTestId('leaves-sentinel')).toHaveCount(0)
-    await expect(page.getByTestId('leaves-foot')).toContainText('Showing all 7 matches')
+    await expect(page.getByTestId('leaves-foot')).toContainText('End · 7 matches')
+    await expect(page.locator('.leaves-foot-rule')).toHaveCount(2)
   })
 })
