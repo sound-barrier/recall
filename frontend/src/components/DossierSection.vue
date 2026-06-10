@@ -82,20 +82,20 @@ function onGripKeydown(e: KeyboardEvent) {
   position: relative;
 }
 
-/* Quiet management cluster floating at the section's top-right, in
-   the gap above the band so it never collides with the band's own
-   header. Faint by default (consistent with the widget chrome), full
-   opacity on hover/focus. Always clickable — opacity, not
-   pointer-events, gates the quiet state, so a click never needs a
-   prior hover. */
+/* Quiet management cluster floating at the section's top-right, in the
+   ~0.65rem gap above the band so it never collides with the band's own
+   header. Hidden at rest, revealed on hover/focus (matches the widget
+   chrome). z-index 6 sits ABOVE the Campaign Log's sticky wrapper
+   (z-index 4, opaque bg) so the first section's controls aren't
+   half-occluded by it the way z-index 3 was. */
 .dossier-section-chrome {
   position: absolute;
-  top: -10px;
+  top: -11px;
   right: 8px;
-  z-index: 3;
+  z-index: 6;
   display: inline-flex;
   gap: 3px;
-  opacity: 0.32;
+  opacity: 0;
   transition: opacity var(--duration-fast) ease;
 }
 
@@ -104,10 +104,12 @@ function onGripKeydown(e: KeyboardEvent) {
   opacity: 1;
 }
 
+/* Compact, native-dialog-sized buttons — same footprint as the widget
+   controls. */
 .dossier-section-grip,
 .dossier-section-remove {
-  width: 26px;
-  height: 24px;
+  width: 17px;
+  height: 17px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -121,7 +123,7 @@ function onGripKeydown(e: KeyboardEvent) {
   color: var(--text-faint);
   cursor: pointer;
   user-select: none;
-  box-shadow: 0 4px 10px -6px rgb(0 0 0 / 45%);
+  box-shadow: 0 3px 8px -5px rgb(0 0 0 / 45%);
   transition: color var(--duration-fast) ease,
               border-color var(--duration-fast) ease,
               background var(--duration-fast) ease;
@@ -129,11 +131,11 @@ function onGripKeydown(e: KeyboardEvent) {
 
 .dossier-section-grip {
   cursor: grab;
-  font-size: 0.8rem;
+  font-size: 0.62rem;
 }
 .dossier-section-grip:active { cursor: grabbing; }
 
-.dossier-section-remove { font-size: 1.05rem; }
+.dossier-section-remove { font-size: 0.78rem; }
 
 .dossier-section-grip:hover {
   color: var(--accent);

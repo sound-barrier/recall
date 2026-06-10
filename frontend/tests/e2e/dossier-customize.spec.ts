@@ -116,4 +116,40 @@ test.describe('dossier customize — no edit mode', () => {
     await page.locator('#tab-matches').click()
     await expect.poll(order).toEqual(['geography', 'campaign-log'])
   })
+
+  test('the Add menu opens fully within the viewport', async ({ page }) => {
+    await page.locator('[data-dossier-add]').click()
+    const panel = page.locator('.dossier-manage-panel')
+    await expect(panel).toBeVisible()
+    const box = await panel.boundingBox()
+    const vp = page.viewportSize()
+    expect(box).not.toBeNull()
+    expect(vp).not.toBeNull()
+    // Fully on-screen: no edge spills past the viewport.
+    expect(box!.x).toBeGreaterThanOrEqual(0)
+    expect(box!.y).toBeGreaterThanOrEqual(0)
+    expect(box!.x + box!.width).toBeLessThanOrEqual(vp!.width + 1)
+  })
+
+  test('widget manage controls are hidden at rest and reveal on hover', async ({ page }) => {
+    const controls = page.locator('[data-widget-id="winrate"] [data-widget-controls]')
+    await expect(controls).toHaveCSS('opacity', '0')
+    await page.locator('[data-widget-id="winrate"]').hover()
+    await expect(controls).toHaveCSS('opacity', '1')
+  })
+
+  test('the Campaign Log removes via its inline control (not occluded by the dossier)', async ({ page }) => {
+    await expect(page.locator('[data-section="campaign-log"]')).toBeVisible()
+    // Would throw "intercepts pointer events" if the control sat behind
+    // the dossier — the regression this guards.
+    await page.locator('[data-section-remove="campaign-log"]').click()
+    await expect(page.locator('[data-section="campaign-log"]')).toHaveCount(0)
+  })
+
+  test('section manage controls are hidden at rest and reveal on hover', async ({ page }) => {
+    const chrome = page.locator('[data-section="geography"] [data-section-chrome]')
+    await expect(chrome).toHaveCSS('opacity', '0')
+    await page.locator('[data-section="geography"]').hover()
+    await expect(chrome).toHaveCSS('opacity', '1')
+  })
 })

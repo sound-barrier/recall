@@ -142,10 +142,13 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown, true))
 </template>
 
 <style scoped>
+/* Anchored to the Add button, which sits at the LEFT of the dossier
+   actions row — open rightward (left: 0) so the panel never spills
+   off the left viewport edge. */
 .dossier-manage {
   position: absolute;
   top: calc(100% + 6px);
-  right: 0;
+  left: 0;
   z-index: 60;
 }
 
