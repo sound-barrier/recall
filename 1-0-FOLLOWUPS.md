@@ -52,12 +52,6 @@ this file is **not** a striking-out log.
   start/end, DB schema apply, API handler entry/exit). **File:**
   all. **Effort:** L
 
-### Property-based testing
-
-- `[LOW]` **Property-based / fuzz tests** on parser entry points
-  (`parser.Parse*`) and URL handlers (`/_screenshot/<filename>`).
-  Use Go's native `testing.F`. **File:** `pkg/parser/`. **Effort:** M
-
 ### Doc conventions
 
 - `[LOW]` **Document the test-only-API convention** in
