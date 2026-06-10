@@ -105,7 +105,7 @@ test.describe('match tags — inline editor + filter', () => {
 
     // Open the Narrow panel via the dossier trigger. The tag chips
     // live inside `.np-section` blocks under the "Tags" eyebrow.
-    await page.locator('.dossier-btn.primary', { hasText: /narrow/i }).click()
+    await page.locator('[data-narrow-trigger]').click()
     await expect(page.locator('#narrow-popover')).toBeVisible()
     await page.locator('.np-chip', { hasText: '#stack' }).click()
 

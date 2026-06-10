@@ -61,7 +61,7 @@ const CORPUS = [
 ]
 
 async function openNarrow(page: import('@playwright/test').Page) {
-  await page.locator('.dossier-btn.primary', { hasText: /narrow/i }).click()
+  await page.locator('[data-narrow-trigger]').click()
   await expect(page.locator('#narrow-popover')).toBeVisible()
 }
 
