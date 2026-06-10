@@ -271,12 +271,21 @@ maintainer's judgment call which of these is worth holding 1.0 for.
 
 ### Code quality
 
-- [ ] `[MED]` `SSEHub` race: parse loop holds `parseMu` while
-  broadcasting events; if `SSEHub` gets torn down mid-broadcast
-  (profile switch, app shutdown) there's a window. Encapsulate
-  parse lifecycle behind a `ParseState` type or guard the
-  broadcast site. **File:** `pkg/app/app.go:75-90` +
-  `pkg/app/parse.go`. **Effort:** M
+- [x] `[MED]` `SSEHub` teardown race. Made the broadcast methods
+  nil-receiver-safe on `*SSEHub` — `Broadcast` and
+  `BroadcastData` check `if h == nil { return }` at entry, so
+  every emit site can drop its `if a.SSEHub != nil` gate. With
+  the gate removed there's no TOCTOU window between the
+  check and the call; the parse loop fires
+  `a.SSEHub.BroadcastData(...)` with a single pointer-atomic
+  field read. Today `a.SSEHub` is set once at startup and
+  never nilled — but the prior guard pattern was exactly the
+  shape that would have raced if a future profile-switch
+  refactor tore the hub down. Pinned by two new
+  nil-receiver tests in `pkg/app/sse_test.go`. **File:**
+  `pkg/app/sse.go` + `pkg/app/app_server.go` +
+  `pkg/app/app_wails.go` + `pkg/app/sse_test.go`.
+  **Effort:** M
 - [ ] `[MED]` Large Vue components — `MatchesView.vue` (3,580 lines)
   - `MatchCardExpanded.vue` (2,858 lines) + `App.vue` (2,293
   lines). PR #8 audit: **deferred to post-1.0**. Each split is

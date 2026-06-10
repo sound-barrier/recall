@@ -60,6 +60,24 @@ func TestSSEHub_BroadcastData_CarriesJSONPayload(t *testing.T) {
 	}
 }
 
+// Nil-safe broadcast / data-broadcast on a nil receiver. Replaces
+// the prior `if a.SSEHub != nil` TOCTOU window at every call site
+// in app_server.go + app_wails.go — the parse loop now fires
+// `a.SSEHub.BroadcastData(...)` without a check, trusting the
+// method to no-op when the hub hasn't been wired (Wails non-server
+// build). Pinned so a future refactor that pulls the nil guard
+// can't silently regress to a nil-pointer panic.
+func TestSSEHub_Broadcast_NilReceiver_IsNoOp(t *testing.T) {
+	var h *SSEHub
+	// Must not panic. No assertion on side effects — there are none.
+	h.Broadcast("parse-complete")
+}
+
+func TestSSEHub_BroadcastData_NilReceiver_IsNoOp(t *testing.T) {
+	var h *SSEHub
+	h.BroadcastData("parse-progress", `{"done":1,"total":2}`)
+}
+
 func TestSSEHub_Unsubscribe_RemovesAndClosesChannel(t *testing.T) {
 	h := NewSSEHub()
 	ch := h.Subscribe()

@@ -20,12 +20,6 @@ this file is **not** a striking-out log.
 
 ### Code quality
 
-- `[MED]` **`SSEHub` race during teardown.** Parse loop holds
-  `parseMu` while broadcasting events; if `SSEHub` gets torn down
-  mid-broadcast (profile switch, app shutdown) there's a window.
-  Encapsulate parse lifecycle behind a `ParseState` type or guard
-  the broadcast site. **File:** `pkg/app/app.go:75-90` +
-  `pkg/app/parse.go`. **Effort:** M
 - `[MED]` **Split MatchesView.vue + MatchCardExpanded.vue.** Pure
   behavior-preserving refactors. Defer until the maintainer is
   blocked on a feature *because of* a file's size. Mechanical

@@ -14,14 +14,15 @@ import (
 
 // emitParseProgress sends per-file progress data to the Wails event bus
 // and (when running in --server mode with the Wails binary) to the SSE hub.
+// `SSEHub.BroadcastData` is nil-safe, so the bare call replaces the prior
+// `if a.SSEHub != nil` check and removes the TOCTOU window between the
+// check and the call.
 func (a *App) emitParseProgress(p ParseProgressEvent) {
 	data, _ := json.Marshal(p)
 	if a.ctx != nil {
 		wruntime.EventsEmit(a.ctx, "parse-progress", p)
 	}
-	if a.SSEHub != nil {
-		a.SSEHub.BroadcastData("parse-progress", string(data))
-	}
+	a.SSEHub.BroadcastData("parse-progress", string(data))
 }
 
 // emitMatchUpdated broadcasts a freshly-aggregated MatchRecord to the
@@ -33,9 +34,7 @@ func (a *App) emitMatchUpdated(rec MatchRecord) {
 	if a.ctx != nil {
 		wruntime.EventsEmit(a.ctx, "match-updated", rec)
 	}
-	if a.SSEHub != nil {
-		a.SSEHub.BroadcastData("match-updated", string(data))
-	}
+	a.SSEHub.BroadcastData("match-updated", string(data))
 }
 
 // emitParseComplete notifies the Wails frontend that a parse run finished.
@@ -46,9 +45,7 @@ func (a *App) emitParseComplete() {
 		wruntime.EventsEmit(a.ctx, "parse-complete")
 	}
 	// Also broadcast via SSE when the Wails binary is run with --server.
-	if a.SSEHub != nil {
-		a.SSEHub.Broadcast("parse-complete")
-	}
+	a.SSEHub.Broadcast("parse-complete")
 }
 
 // emitParseCancelled notifies the frontend that a parse run was
@@ -60,9 +57,7 @@ func (a *App) emitParseCancelled() {
 	if a.ctx != nil {
 		wruntime.EventsEmit(a.ctx, "parse-cancelled")
 	}
-	if a.SSEHub != nil {
-		a.SSEHub.Broadcast("parse-cancelled")
-	}
+	a.SSEHub.Broadcast("parse-cancelled")
 }
 
 // PickTesseractBinary opens a native file chooser and applies the selection
