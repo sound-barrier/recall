@@ -2077,7 +2077,13 @@ onBeforeUnmount(() => {
 .matches-content-column {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+
+  /* Single source of truth for the vertical rhythm between the
+     dossier, the Campaign Log / Geography sections, and the members
+     list. The bands used to carry their own margin-bottom, which left
+     the dossier→first-section gap tighter than the gaps between bands;
+     the gap now owns all of it uniformly. */
+  gap: 1.2rem;
   min-width: 0;
 }
 

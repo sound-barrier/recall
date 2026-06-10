@@ -149,7 +149,6 @@ const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMont
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 4%, transparent) 0%, transparent 40%),
     var(--surface);
   border-radius: 2px;
-  margin-bottom: 0.55rem;
 }
 
 .timeline-head {
