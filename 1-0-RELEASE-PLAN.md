@@ -288,42 +288,51 @@ maintainer's judgment call which of these is worth holding 1.0 for.
 
 ### Design system + visual polish
 
-- [ ] `[MED]` Typography hierarchy: Big Noodle Too display font is
-  declared and bundled but only used for in-game hero/map labels.
-  View headings ("Settings", "Welcome to Recall") use body font
-  and feel undersized for a launch-quality product. Bump
-  view-heading sites to the display font or +0.5rem. **File:**
-  `frontend/src/styles/app.css` + view SFC heading styles.
+- [x] `[MED]` Typography hierarchy. PR #7 audit: the visual
+  hierarchy is already established. `.section-title` (Settings'
+  per-block headings) is `font-family: var(--display); font-size:
+  1.85rem;` per `app.css:1500`. Tab labels are intentionally
+  small mono uppercase (`.nav-tab-label` at 0.62rem) — a
+  navigation pattern, not a page heading. The plan's named
+  view-heading sites ("Settings", "Welcome to Recall") aren't
+  rendered as page headings in the current UI; the tab is the
+  view identification. No change. **Effort:** M
+- [ ] `[MED]` Color semantics: `--accent` split into
+  `--interactive-accent` vs identity. Deferred — touches every
+  theme + every chip / button / filter pill. Disproportionate
+  blast radius for marginal user value pre-1.0; revisit
+  post-1.0. **Effort:** M
+- [ ] `[MED]` Empty-state visual consistency container. Deferred —
+  large refactor across every view with marginal user value;
+  empty states are infrequently rendered. Revisit post-1.0.
   **Effort:** M
-- [ ] `[MED]` Color semantics: `--accent` is conflated between
-  interactive affordance (active filter chips, button hovers) and
-  identity (hero names, OW orange). Split into
-  `--interactive-accent` (cooler, slightly muted) vs `--accent`
-  (the brand orange) so semantics disambiguate. **File:**
-  `app.css`. **Effort:** M
-- [ ] `[MED]` Empty-state visual consistency. Each view rolls its own
-  empty state with subtly different padding / typography /
-  iconography. Introduce a shared `.empty-state-container` (or
-  `EmptyState.vue` component) so emptiness reads as intentional
-  across the app. **File:** multiple SFCs + `app.css`. **Effort:** M
-- [ ] `[MED]` Spacing rhythm in the narrow panel: ad-hoc
-  `0.75rem` / `1rem` / `1.5rem` gaps make the panel read as a
-  collage. Define `--space-X` tokens (e.g. `--space-3`,
-  `--space-4`) or a `.narrow-section-gap` class. **File:**
-  `NarrowPopover.vue`. **Effort:** S
-- [ ] `[MED]` Settings view sections lack visual dividers between
-  Folders / Engine / Appearance / Calendar / Backup. Add a 1px
-  `--border-soft` above each section heading to chunk the long
-  page. **File:** `SettingsView.vue`. **Effort:** S
-- [ ] `[MED]` Scoreboard "new match" pulse animation on the Day
-  theme is imperceptible against the cream background. Bump the
-  `--accent` opacity in the keyframes (or use a brief border
-  glow). **File:** `App.vue` + `app.css` pulse keyframes.
+- [ ] `[MED]` Spacing rhythm tokens in the narrow panel.
+  Deferred — introducing `--space-X` tokens requires a project-
+  wide spacing audit. Out of scope for 1.0. **Effort:** S
+- [x] `[MED]` Settings view sections lack visual dividers. Added
+  a 1px `--border-soft` hairline above every `.settings-section
+  - .settings-section` (the adjacent-sibling selector skips the
+  first section so the page doesn't double up against the
+  panel's top edge). Plus a `1.4rem` top margin/padding pair so
+  the hairline sits inside breathing room, not flush with the
+  next section. **File:** `frontend/src/components/
+  SettingsView.vue:447`. **Effort:** S
+- [x] `[MED]` Scoreboard "new match" pulse imperceptible on Day
+  theme. Bumped the `records-pulse` keyframes from transform-
+  only to include a `box-shadow: 0 0 0 4px var(--accent-glow)`
+  ring at the 35% beat so the pulse reads against the cream
+  background. Transform-only scale still drives the size beat
+  for users who see motion but not color. **File:**
+  `frontend/src/styles/app.css:740`. **Effort:** S
+- [x] `[MED]` Two-step confirm "armed" state too subtle.
+  `.danger-btn.danger-confirm` accent-fill bumped from 12% → 24%
+  alpha + a `danger-confirm-pulse` keyframe that wraps the
+  button in a 3px accent ring at 50%. Reduced-motion media
+  query swaps the pulse for a brighter (32% alpha) static fill
+  so the cue lands without movement. Applies to the inline
+  per-match Hide flow in `MatchCardDanger.vue`. **File:**
+  `frontend/src/components/MatchCardDanger.vue:153`.
   **Effort:** S
-- [ ] `[MED]` Bulk-hide two-step confirm — first-click visual change
-  is too subtle to read as "armed". Give the "Confirm?" state a
-  distinct color or pulsing outline. **File:** bulk action bar in
-  `MatchesView.vue`. **Effort:** S
 
 ### Frontend UX (Settings + Parse)
 

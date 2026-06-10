@@ -738,11 +738,15 @@ main#main-content {
    Wrapped in the standard reduced-motion guard at the top of the file
    so it's a no-op for vestibular-sensitive users. */
 @keyframes records-pulse {
-  0%   { transform: scale(1); }
-  35%  { transform: scale(1.03); }
-  100% { transform: scale(1); }
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+  35%  { transform: scale(1.03); box-shadow: 0 0 0 4px var(--accent-glow, color-mix(in srgb, var(--accent) 35%, transparent)); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
 }
 
+/* Day theme has a cream background where a pure transform-only pulse
+   is imperceptible. The accent ring above carries an alpha-blended
+   accent halo so the pulse reads on every theme; transform handles
+   the scale beat for users who can see it but not the color. */
 .scoreboard.pulse {
   animation: records-pulse var(--duration-slow) var(--easing-emph);
 }

@@ -444,6 +444,16 @@ const showProbeChip = computed(() => !!props.probeMessage && !probeDismissed.val
   position: relative;
 }
 
+/* 1px hairline above each section heading so the long Settings
+   page chunks into clear bands instead of one continuous stream
+   of rows. First section's hairline is suppressed so the page
+   doesn't double up against the top of the panel. */
+.settings-section + .settings-section {
+  margin-top: 1.4rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--border-soft, var(--border));
+}
+
 .settings-section::after {
   content: '';
   position: absolute;

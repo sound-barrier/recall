@@ -150,14 +150,31 @@ function unhide() {
   outline-offset: 2px;
 }
 
+/* Armed state — accent fill + a slow pulse so the user can't miss
+   that this is the destructive step. The previous 12% alpha tint
+   was too subtle on Day theme's cream surface to read as "armed". */
 .danger-btn.danger-confirm {
   color: var(--accent);
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  animation: danger-confirm-pulse 1.6s ease-in-out infinite;
 }
 
 .danger-btn.danger-confirm:hover {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  background: color-mix(in srgb, var(--accent) 36%, transparent);
+}
+
+@keyframes danger-confirm-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50%      { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .danger-btn.danger-confirm {
+    animation: none;
+    /* Brighter base fill compensates for the missing motion cue. */
+    background: color-mix(in srgb, var(--accent) 32%, transparent);
+  }
 }
 
 .danger-btn.danger-unhide {
