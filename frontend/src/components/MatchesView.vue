@@ -821,10 +821,29 @@ watch(() => props.focusedCardIndex, async (idx) => {
 // sticky in that case.
 const timelineSentinelRef = ref<HTMLDivElement | null>(null)
 const timelineSticky      = ref(false)
+// Sticky with hysteresis. The sentinel's document offset is stable
+// even when the Campaign Log compacts (the heatmap that compact hides
+// sits BELOW the sentinel), so it's the reference. Stick once scrolled
+// past it; only UN-stick after scrolling back well above it.
+//
+// The margin matters: compacting shrinks the document, so the browser
+// clamps scrollTop down. With a tall page below the sentinel (e.g. the
+// Geography band) that clamp can drop scrollTop back across a
+// zero-margin threshold, flipping sticky off → expand → grow → clamp
+// → on … a feedback loop that never settles and jitters every element
+// below the band (it breaks Playwright click stability and is janky
+// for real users). A dead zone larger than the compact height delta
+// absorbs the clamp so the toggle can't oscillate.
+const TIMELINE_STICKY_HYSTERESIS = 240
 function onTimelineScroll() {
   const el = timelineSentinelRef.value
   if (!el) return
-  timelineSticky.value = el.getBoundingClientRect().top < 0
+  const docTop = el.getBoundingClientRect().top + window.scrollY
+  if (!timelineSticky.value) {
+    if (window.scrollY > docTop) timelineSticky.value = true
+  } else if (window.scrollY < docTop - TIMELINE_STICKY_HYSTERESIS) {
+    timelineSticky.value = false
+  }
 }
 
 // Reset → scroll the leaves list back to the top. Keeps the
