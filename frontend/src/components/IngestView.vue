@@ -139,7 +139,11 @@ const emit = defineEmits<{
               <span class="block-mark" aria-hidden="true">◎</span>
               All screenshots already parsed — nothing new in the folder.
             </p>
-            <p v-else-if="lastParsedAt && !parseBusy" class="setting-meta">
+            <p
+              v-else-if="lastParsedAt && !parseBusy"
+              class="setting-meta"
+              :title="`Most recent successful parse run on this profile, written to localStorage on parse-complete. Absolute time: ${new Date(lastParsedAt).toLocaleString()}.`"
+            >
               <span class="meta-dot" />
               Last run · {{ formatRelativeTime(lastParsedAt) }} · {{ matchedCount + unknownCount }} record{{ (matchedCount + unknownCount) === 1 ? '' : 's' }} on record
             </p>
