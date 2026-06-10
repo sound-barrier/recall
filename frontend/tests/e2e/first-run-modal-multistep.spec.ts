@@ -69,11 +69,11 @@ test.describe('first-run modal — multi-step (Save / Keep → picker)', () => {
 
     const modal = page.locator('.first-run-modal')
     await expect(modal).toBeVisible()
-    await expect(modal.locator('[data-step-dot="name"]')).toHaveClass(/active/)
+    await expect(modal.locator('[data-testid="first-run-step-label"]')).toHaveText('Step 1 of 2')
     await modal.locator('[data-step-keep]').click()
 
     await expect(modal.locator('h2')).toContainText('Where do your screenshots live?')
-    await expect(modal.locator('[data-step-dot="source"]')).toHaveClass(/active/)
+    await expect(modal.locator('[data-testid="first-run-step-label"]')).toHaveText('Step 2 of 2')
     await expect(modal.locator('.src-card')).toHaveCount(4)
     await expect(modal.locator('[data-step-back]')).toBeVisible()
   })

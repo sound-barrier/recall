@@ -950,6 +950,35 @@ main#main-content {
 .error-tick {
   font-weight: 700;
   opacity: 0.85;
+  flex: 0 0 auto;
+}
+
+.error-msg { flex: 1 1 auto; }
+
+.error-retry,
+.error-dismiss {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.6rem;
+  background: transparent;
+  border: 1px solid currentcolor;
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background var(--duration-fast);
+}
+
+.error-retry:hover,
+.error-dismiss:hover { background: color-mix(in srgb, currentcolor 12%, transparent); }
+
+.error-dismiss {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  letter-spacing: 0;
 }
 
 .empty {

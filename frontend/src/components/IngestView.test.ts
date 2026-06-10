@@ -64,10 +64,12 @@ describe('IngestView (Parse tab)', () => {
     expect(wrapper.emitted('parse')).toBeTruthy()
   })
 
-  it('Run Parse button is disabled when newScreenshotCount is 0', () => {
+  it('Run Parse button is disabled with "All parsed" copy when newScreenshotCount is 0', () => {
     const wrapper = mountIngest({ newScreenshotCount: 0 })
-    const btn = wrapper.findAll('button').find(b => b.text().includes('Run Parse'))!
+    const btn = wrapper.findAll('button').find(b => b.text().includes('All parsed'))!
     expect(btn.attributes('disabled')).toBeDefined()
+    expect(btn.text()).toContain('nothing new')
+    expect(btn.classes()).toContain('ghost')
   })
 
   it('emits toggle-watch on the Watch Folder checkbox change', async () => {

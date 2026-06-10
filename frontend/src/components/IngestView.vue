@@ -166,12 +166,14 @@ const emit = defineEmits<{
             <button
               v-else
               class="btn primary big"
+              :class="{ ghost: tesseractReady && newScreenshotCount === 0 }"
               :disabled="!tesseractReady || newScreenshotCount === 0"
               :title="!tesseractReady ? 'Locate Tesseract in Settings → Engine first.' : newScreenshotCount === 0 ? 'All screenshots in the folder have already been parsed.' : ''"
               @click="emit('parse')"
             >
               <span class="btn-dot" />
               <span v-if="(newScreenshotCount ?? 0) > 0">Run Parse · {{ newScreenshotCount }}</span>
+              <span v-else-if="newScreenshotCount === 0 && tesseractReady">All parsed · nothing new</span>
               <span v-else>Run Parse</span>
             </button>
           </div>
