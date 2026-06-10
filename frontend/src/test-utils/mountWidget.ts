@@ -11,6 +11,7 @@ import type {
   CurrentStreak,
   DaysSinceLastReview,
   HeroBreakdownEntry,
+  MapRoleCell,
   MatchesDossier,
   MostPlayedHero,
   ReviewedCount,
@@ -49,6 +50,9 @@ type DossierOverride = {
   heroPoolSize?:        number
   topRoles?:            RoleBreakdownEntry[]
   playModeBreakdown?:   BreakdownEntry[]
+  // Query helper — pass the result; helper yields a function returning
+  // a computed wrapping it (window opts ignored in tests).
+  mapRoleCounts?:       MapRoleCell[]
   // Query helpers — pass the result and the helper returns a function
   // that yields a computed wrapping that value (ignoring the opts
   // — tests don't usually need to assert opts pass-through here;
@@ -92,6 +96,7 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     dayOfWeekBuckets:    wrapQuery(over.dayOfWeekBuckets, [] as BucketEntry[]),
     recentResults:       wrapQuery(over.recentResults, [] as ('victory' | 'defeat' | 'draw')[]),
     heroMapTypeCounts:   wrapQuery(over.heroMapTypeCounts, []),
+    mapRoleCounts:       wrapQuery(over.mapRoleCounts, [] as MapRoleCell[]),
   } as unknown as MatchesDossier
 }
 

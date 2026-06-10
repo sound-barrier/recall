@@ -99,6 +99,15 @@ test.describe('campaign-log header', () => {
     expect(cells).toBeLessThanOrEqual(98)
   })
 
+  test('window picker flips to 1M and the cell count shrinks accordingly', async ({ page }) => {
+    await page.locator('.window-btn', { hasText: '1M' }).click()
+    await expect(page.locator('.window-btn.active')).toHaveText('1M')
+    const cells = await page.locator('.heatmap-cell').count()
+    // 5 weeks × 7 days = 35 cells with ±1 week slack.
+    expect(cells).toBeGreaterThanOrEqual(28)
+    expect(cells).toBeLessThanOrEqual(42)
+  })
+
   test('window picker flips to 12M and persists across reload', async ({ page, context }) => {
     await page.locator('.window-btn', { hasText: '12M' }).click()
     const cells = await page.locator('.heatmap-cell').count()

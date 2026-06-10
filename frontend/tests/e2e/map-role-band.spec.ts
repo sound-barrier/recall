@@ -1,0 +1,147 @@
+/**
+ * Geography — Map × Role performance band (Matches view).
+ *
+ * An always-shown full-width band rendered after the Campaign Log: 3
+ * role rows (Tank / DPS / Support) × every map as a column, grouped by
+ * map-type and alphabetical within each group. Cells are tinted by
+ * win rate (green→red) and dimmed by volume. Clicking a cell narrows
+ * the active set to that (map, role) pair; clicking a type-group
+ * header narrows to that map-type.
+ *
+ * Unlike the opt-in dossier widgets, the band needs no layout seeding —
+ * it's fixed chrome. We DO mock /api/v1/system/reference-data so the
+ * column roster (maps_by_type) is deterministic instead of depending
+ * on the real compiled-in roster.
+ */
+import type { Route } from '@playwright/test'
+
+import { test, expect } from './_fixtures'
+
+// Three days ago, as YYYY-MM-DD — comfortably inside every window
+// (1M/3M/6M/12M) regardless of the test machine's clock.
+const RECENT = (() => {
+  const d = new Date()
+  d.setDate(d.getDate() - 3)
+  return d.toISOString().slice(0, 10)
+})()
+
+const REFERENCE_DATA = {
+  heroes_by_role: {
+    tank: ['Reinhardt'],
+    dps: ['Tracer'],
+    support: ['Lucio'],
+  },
+  // Two type-groups; Escort has two maps so we can assert alpha order
+  // (Dorado before Rialto).
+  maps_by_type: {
+    control: ['Ilios'],
+    escort: ['Dorado', 'Rialto'],
+  },
+}
+
+const match = (
+  key: string,
+  map: 'ilios' | 'dorado' | 'rialto',
+  type: 'control' | 'escort',
+  role: 'tank' | 'dps' | 'support',
+  hero: string,
+  result: 'victory' | 'defeat',
+  finished: string,
+) => ({
+  match_key: key,
+  source_files: [`${key}.png`],
+  source_types: { [`${key}.png`]: 'summary' },
+  data: {
+    map,
+    type,
+    role,
+    hero,
+    result,
+    // Recent so the band's default 6M window (and the narrowest 1M)
+    // always includes the corpus regardless of the test machine's clock.
+    date: RECENT,
+    finished_at: finished,
+    mode: 'competitive',
+    heroes_played: [{ hero, play_time: '10:00', percent_played: 100 }],
+  },
+  parsed_at: `${RECENT}T${finished}:00Z`,
+})
+
+// Support has a real record on Rialto (2-1 → 67%); Tank wins on Ilios;
+// DPS loses on Rialto. The rest of the 3×3 grid stays empty.
+const CORPUS = [
+  match('m1', 'rialto', 'escort', 'support', 'lucio', 'victory', '10:01'),
+  match('m2', 'rialto', 'escort', 'support', 'lucio', 'victory', '10:02'),
+  match('m3', 'rialto', 'escort', 'support', 'lucio', 'defeat', '10:03'),
+  match('m4', 'ilios', 'control', 'tank', 'reinhardt', 'victory', '10:04'),
+  match('m5', 'rialto', 'escort', 'dps', 'tracer', 'defeat', '10:05'),
+]
+
+test.describe('Geography — Map × Role band', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify(CORPUS),
+      })
+    })
+    await page.route('**/api/v1/system/reference-data', async (route: Route) => {
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify(REFERENCE_DATA),
+      })
+    })
+    await page.goto('/')
+    await page.locator('#tab-matches').click()
+    await expect(page.locator('.set-dossier')).toBeVisible()
+  })
+
+  test('renders a 3-role × all-maps grid grouped by type', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    await expect(band).toBeVisible()
+    // Three role rows.
+    await expect(band.locator('.mr-rowhead')).toHaveCount(3)
+    // Three map columns (1 control + 2 escort) and two type-group heads.
+    await expect(band.locator('.mr-collabel')).toHaveCount(3)
+    await expect(band.locator('.mr-typehead')).toHaveCount(2)
+    // 3 roles × 3 maps = 9 cells.
+    await expect(band.locator('.mr-cell')).toHaveCount(9)
+    // Alphabetical within Escort: Dorado precedes Rialto.
+    const labels = await band.locator('.mr-collabel').allInnerTexts()
+    const dorado = labels.findIndex((t) => /dorado/i.test(t))
+    const rialto = labels.findIndex((t) => /rialto/i.test(t))
+    expect(dorado).toBeGreaterThanOrEqual(0)
+    expect(rialto).toBeGreaterThan(dorado)
+  })
+
+  test('clicking a populated cell narrows to that (map, role)', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    const cell = band.locator('.mr-cell[aria-label*="Support on Rialto"]')
+    await expect(cell).toBeVisible()
+    await cell.click()
+
+    const chips = page.locator('ul.active-chips')
+    await expect(chips).toBeVisible()
+    await expect(chips.locator('.active-chip', { hasText: 'rialto' })).toBeVisible()
+    await expect(chips.locator('.active-chip', { hasText: 'support' })).toBeVisible()
+  })
+
+  test('clicking a type-group header narrows to that map-type', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    await band.locator('.mr-typehead', { hasText: 'Escort' }).click()
+
+    const chips = page.locator('ul.active-chips')
+    await expect(chips.locator('.active-chip', { hasText: 'escort' })).toBeVisible()
+  })
+
+  test('offers a 1M/3M/6M/12M window toggle, defaulting to 6M', async ({ page }) => {
+    const band = page.locator('.match-map-role')
+    await expect(band.locator('.mr-window-btn')).toHaveText(['1M', '3M', '6M', '12M'])
+    await expect(band.locator('.mr-window-btn.active')).toHaveText('6M')
+    // Switching to 1M keeps the (recent) corpus visible — the Rialto
+    // support cell is still populated.
+    await band.locator('.mr-window-btn', { hasText: '1M' }).click()
+    await expect(band.locator('.mr-window-btn.active')).toHaveText('1M')
+    await expect(band.locator('.mr-cell[aria-label*="Support on Rialto"]')).toBeVisible()
+  })
+})

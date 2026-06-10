@@ -190,6 +190,19 @@ function isCanonRole(s: string | undefined | null): s is Role {
   return s === 'tank' || s === 'dps' || s === 'support'
 }
 
+// Trailing-window cutoff as a YYYY-MM-DD string: the local calendar
+// date `months` before today. Compared lexicographically against a
+// record's data.date (also YYYY-MM-DD) to scope a view to recent play
+// — the Map × Role band's 1M/3M/6M/12M toggle.
+function monthsAgoISO(months: number): string {
+  const d = new Date()
+  d.setMonth(d.getMonth() - months)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 // Current-streak summary for the dossier KPI. `result` carries the
 // streak's class so the widget can colour it; `sinceDate` is the
 // `data.date` of the FIRST match in the streak (used in the tile's
@@ -263,6 +276,21 @@ export const DEFAULT_TOP_HEROES_LIMIT = 3
 // historical layout. Widgets opt into 12 (2-hour) or 24 (1-hour)
 // via useWidgetConfig.
 export const DEFAULT_TIME_OF_DAY_BUCKET_COUNT = 6 as const
+
+// One cell of the Map × Role performance band: the W/L/D tally for a
+// (specific map, role) pair across the narrowed set. `winrate`
+// excludes draws from the denominator (same convention as the
+// headline winrate). Only populated pairs are emitted — the band
+// supplies the full map roster and renders absent pairs as empty cells.
+export interface MapRoleCell {
+  map: string
+  role: 'tank' | 'dps' | 'support'
+  wins: number
+  losses: number
+  draws: number
+  total: number
+  winrate: number
+}
 
 export function useMatchesDossier(
   records: Readonly<Ref<MatchRecord[]>>,
@@ -748,6 +776,71 @@ export function useMatchesDossier(
       .sort((a, b) => b.total - a.total)
   })
 
+  // Map × Role performance — the data behind the Geography band.
+  // Symmetric with topRoles' overlap-aware role model, but keyed by
+  // (specific map × role) instead of role alone. Each match credits
+  // every role it touched (primary data.role + each heroes_played
+  // hero's role via the resolver), deduped per match, on that match's
+  // map. Records without a map drop out (no actionable column). Emits
+  // only populated cells; the band joins them against the full map
+  // roster from useOWData and renders the gaps as empty cells.
+  //
+  // `windowMonths` scopes the aggregate to a trailing time window
+  // (the band's 1M/3M/6M/12M toggle, mirroring the Campaign Log) —
+  // records older than the cutoff, OR with no date, drop out. 0 (the
+  // default) means all-time.
+  function mapRoleCounts(
+    opts?: MaybeRefOrGetter<{ windowMonths?: number }>,
+  ): ComputedRef<MapRoleCell[]> {
+    return computed(() => {
+    const { windowMonths = 0 } = opts ? toValue(opts) ?? {} : {}
+    const cutoff = windowMonths > 0 ? monthsAgoISO(windowMonths) : ''
+    type Bucket = { wins: number; losses: number; draws: number; total: number }
+    const cells = new Map<string, Bucket>()
+    for (const r of records.value) {
+      const map = r.data?.map
+      if (!map) continue
+      if (cutoff) {
+        const d = r.data?.date
+        if (!d || d < cutoff) continue
+      }
+      const rolesInMatch = new Set<Role>()
+      if (isCanonRole(r.data?.role)) rolesInMatch.add(r.data.role)
+      if (heroRole) {
+        for (const hp of r.data?.heroes_played ?? []) {
+          if (!hp.hero) continue
+          const role = heroRole(hp.hero)
+          if (isCanonRole(role)) rolesInMatch.add(role)
+        }
+      }
+      for (const role of rolesInMatch) {
+        const key = `${map}|${role}`
+        const b = cells.get(key) ?? { wins: 0, losses: 0, draws: 0, total: 0 }
+        b.total++
+        if      (r.data?.result === 'victory') b.wins++
+        else if (r.data?.result === 'defeat')  b.losses++
+        else if (r.data?.result === 'draw')    b.draws++
+        cells.set(key, b)
+      }
+    }
+    const out: MapRoleCell[] = []
+    for (const [key, b] of cells) {
+      const sep = key.lastIndexOf('|')
+      const decided = b.wins + b.losses
+      out.push({
+        map:   key.slice(0, sep),
+        role:  key.slice(sep + 1) as MapRoleCell['role'],
+        wins:   b.wins,
+        losses: b.losses,
+        draws:  b.draws,
+        total:  b.total,
+        winrate: decided === 0 ? 0 : Math.round((b.wins / decided) * 100),
+      })
+    }
+    return out
+    })
+  }
+
   // ─── PR B: opt-in widgets (defaultVisible: false in registry) ──
 
   // Current streak — the contiguous run of the same decisive result
@@ -964,6 +1057,7 @@ export function useMatchesDossier(
     // ─── Query helpers — config-driven, return reactive results
     topByCount,
     heroMapTypeCounts,
+    mapRoleCounts,
     topHeroesByMinutes,
     mostPlayedHero,
     bestWinrateHero,

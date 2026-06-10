@@ -22,6 +22,7 @@ import {
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import { useArchiveSelection } from '../composables/useArchiveSelection'
 import MatchTimelineHeader from './MatchTimelineHeader.vue'
+import MatchMapRoleBand from './MatchMapRoleBand.vue'
 import DashboardWidget from './DashboardWidget.vue'
 import DashboardCustomizer from './DashboardCustomizer.vue'
 import BulkActionBar from './BulkActionBar.vue'
@@ -1431,6 +1432,9 @@ onBeforeUnmount(() => {
         @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
       />
     </div>
+
+    <!-- ─── GEOGRAPHY — Map × Role performance band ──────────── -->
+    <MatchMapRoleBand v-if="visibleRecords.length > 0" />
 
     <!-- ─── MEMBERS ─────────────────────────────────────────── -->
     <section class="leaves" aria-label="Set members">
