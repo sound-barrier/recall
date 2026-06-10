@@ -43,11 +43,11 @@ func RunServer(a *app.App, assets embed.FS) {
 		log.Fatalf("server: could not sub into embedded assets: %v", err)
 	}
 
-	// Wrap the entire mux in the request-ID middleware so every
-	// inbound request (API + screenshot handler + SPA fallback)
-	// carries an `X-Request-ID` in both the response header and
-	// the request context.
-	mux := withRequestID(NewMux(a, sub))
+	// Wrap the entire mux: request-ID for traceability, then the
+	// security hardening layer (request-body size caps + nosniff
+	// header) so every inbound request (API + screenshot handler +
+	// SPA fallback) is covered.
+	mux := withRequestID(withSecurityHardening(NewMux(a, sub)))
 
 	addr := os.Getenv("RECALL_SERVER_ADDR")
 	if addr == "" {
