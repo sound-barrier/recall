@@ -28,6 +28,7 @@ overview of the architecture and internal conventions, see
   - [Pinning GitHub Actions](#pinning-github-actions)
   - [Tagging and releasing](#tagging-and-releasing)
 - [Releases](RELEASES.md) — separate doc; covers cutting stable releases and prereleases, `make release-beta` / `make release-fire` shortcuts, and recovery procedures.
+- [Test-only APIs](#test-only-apis)
 - [Bug-report bundles](#bug-report-bundles)
   - [What's in a bundle](#whats-in-a-bundle)
   - [Validating a bundle (`recall-bug-finder`)](#validating-a-bundle-recall-bug-finder)
@@ -540,6 +541,27 @@ git push origin main
 # Otherwise:
 make release-fire TAG=v0.0.13-beta.0
 ```
+
+## Test-only APIs
+
+A handful of symbols across `pkg/` exist **only** for the test suite —
+they're exported because the test files live in sibling packages, but
+no production code calls them and the surface is **not stable**. If
+you're writing new tests, you can call them; if you're writing new
+production code, treat them as if they didn't exist.
+
+| Symbol | Why it exists |
+|---|---|
+| `app.NewWithStore(s db.Store) *App` | `app.New()` wires the real SQLite store; tests want a fake. `NewWithStore` swaps in any `db.Store` implementation. Production always uses `New()`. |
+| `parser.ToGolden(r *MatchResult) any` | Maps the parser's untyped `MatchResult` onto the per-type golden-file shapes (`SummaryGolden` etc.) so `integration_test.go`'s diff assertions only see the fields the matching parser actually populates. Not called outside the test corpus. |
+| `pkg/db/dbtest/Fake` | In-memory `db.Store` for handler + app-level tests. Implements every method on the `Store` interface but never touches SQLite. Used by `pkg/cmd/server_*_test.go` and `pkg/app/screenshot_handler_test.go`. |
+| `pkg/app/fixtures.go::GenerateMatchFixture` | Builds synthetic `MatchRecord` rows for e2e route mocks. Production parses real screenshots; the fixture path keeps tests deterministic. |
+
+**Rules of the road.** Adding a new test-only symbol is fine; document
+it in this table. Renaming or removing one of these is also fine — no
+deprecation cycle, no SemVer cycle, no public API contract. If you
+catch a production import of any of these symbols outside the test
+files, that's a bug — refactor it out before merging.
 
 ## Bug-report bundles
 
