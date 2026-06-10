@@ -82,7 +82,14 @@ func (a *App) ScreenshotHandler() http.Handler {
 		// source_files are always basenames produced by the parser.
 		// Runs BEFORE the dir lookup so an attacker can't trigger
 		// a DB query with a poisoned name.
+		//
+		// Also caps filename length at 255 bytes (the POSIX NAME_MAX
+		// floor; ext4/NTFS/HFS+ all enforce ≤255 octets) so an
+		// overlong path doesn't escape the 4xx routing into a
+		// downstream os.Open "file name too long" 5xx. Pinned by
+		// FuzzScreenshotHandler_URL in screenshot_handler_fuzz_test.go.
 		if name == "" ||
+			len(name) > 255 ||
 			strings.ContainsAny(name, "/\\") ||
 			strings.Contains(name, "..") {
 			http.NotFound(w, r)

@@ -607,9 +607,36 @@ post-1.0 backlog when 1.0 ships.
 
 ### Property-based testing
 
-- [ ] `[LOW]` Property-based / fuzz tests on parser entry points
-  (`parser.Parse*`) and URL handlers (`/_screenshot/<filename>`).
-  Use Go's native `testing.F`. **File:** `pkg/parser/`. **Effort:** M
+- [x] `[LOW]` Property-based / fuzz tests. Added two new fuzz
+  files using Go's native `testing.F` harness:
+  - `pkg/parser/parser_fuzz_test.go` — `FuzzDigitize`,
+    `FuzzNormalizeDate`, `FuzzSnapToKnownMap`,
+    `FuzzLevenshtein`. Each carries a seed corpus matching the
+    helper's contract (OCR noise patterns, two-digit years, OW
+    map names + Tesseract-garbled variants, edit-distance edge
+    cases) and asserts the function's invariants (no panic,
+    bounded length, UTF-8 preservation, Levenshtein symmetry +
+    triangle bound).
+  - `pkg/app/screenshot_handler_fuzz_test.go` —
+    `FuzzScreenshotHandler_URL`. Seeds the CodeQL-flagged
+    path-injection vectors the unit tests already pin (legacy
+    URL shape, non-int dir-id, malformed escapes, path-traversal
+    attempts) plus shapes the unit tests miss (overlong
+    filenames, %-encoded slashes). Asserts the handler never
+    panics, never serves bytes from outside the configured
+    dir, and only emits status codes in {200, 301, 400, 404,
+    405}.
+  - Real discoveries during seed runs:
+    - Overlong filenames bypassed the basename guards and
+      landed in `os.Open` with `ENAMETOOLONG` (HTTP 500).
+      Hardened the handler with `len(name) > 255` (POSIX
+      `NAME_MAX` floor) in `screenshot_handler.go`. Fuzz seeds
+      and a fresh `-fuzz=… -fuzztime=20s` run now pass cleanly.
+    - `.` filename resolved to `./` redirect (HTTP 301).
+      Documented as expected behavior in the test (not a
+      security concern; the redirect target fails the
+      containment gate). **File:** `pkg/parser/` +
+      `pkg/app/`. **Effort:** M
 
 ### Doc conventions
 

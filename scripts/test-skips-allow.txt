@@ -25,6 +25,14 @@ pkg/app/probe_test.go:174:		t.Skip("Windows has its own assertion below")
 pkg/app/probe_test.go:185:		t.Skip("Windows-only behaviour")
 pkg/app/probe_test.go:234:		t.Skip("Windows-only behaviour")
 
+# pkg/app/screenshot_handler_fuzz_test.go — the fuzz harness skips
+# inputs httptest.NewRequest can't construct (control bytes that
+# break URL parsing). Not flake suppression; the handler under test
+# wouldn't see those bytes via a real net/http request anyway because
+# the server rejects them at the parse layer.
+pkg/app/screenshot_handler_fuzz_test.go:79:			t.Skip()
+pkg/app/screenshot_handler_fuzz_test.go:98:			t.Skipf("could not construct base request: %v", err)
+
 # pkg/parser/integration_test.go — golden-file OCR tests are gated
 # on a real Tesseract binary + image fixtures + `go test` running
 # without `-short`. CI runs `-short` so these are skipped there;
