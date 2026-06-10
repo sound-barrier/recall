@@ -1,6 +1,10 @@
 package cmd
 
-import "net/http"
+import (
+	"net"
+	"net/http"
+	"os"
+)
 
 // Security hardening middleware: request-body size caps + a
 // content-type-sniffing guard. Wraps the whole mux in RunServer
@@ -56,4 +60,34 @@ func withSecurityHardening(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// pprofEnabled reports whether the RECALL_PPROF opt-in is set to a
+// truthy value. Used both to mount the pprof handlers (NewMux) and to
+// warn when they're mounted on a non-loopback bind (RunServer), so the
+// two stay in lockstep.
+func pprofEnabled() bool {
+	v := os.Getenv("RECALL_PPROF")
+	return v != "" && v != "0" && v != "false"
+}
+
+// isLoopbackBind reports whether addr listens on a loopback-only
+// interface. A bind with an empty or unspecified host (":7000",
+// "0.0.0.0:7000", "[::]:7000") listens on every interface and returns
+// false. (Mirror of metrics.isLoopbackBind — duplicated rather than
+// shared to avoid a pkg/cmd → pkg/metrics dependency for one helper.)
+func isLoopbackBind(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return false // unparseable → treat as exposed
+	}
+	switch host {
+	case "":
+		return false
+	case "localhost":
+		return true
+	default:
+		ip := net.ParseIP(host)
+		return ip != nil && ip.IsLoopback()
+	}
 }
