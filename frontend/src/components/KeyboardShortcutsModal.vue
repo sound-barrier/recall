@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
 
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import type { TabId } from '../composables/useTabKeyboardNav'
@@ -132,18 +132,26 @@ function onCaptureKey(e: KeyboardEvent) {
   e.stopImmediatePropagation()
 }
 
+// Install the capture-phase listener at mount, gated by `props.open`
+// inside the handler. The earlier watch-based install raced the
+// chunk's first evaluation: KeyboardShortcutsModal is a
+// defineAsyncComponent, so when `?` flips `openCheatsheet` true the
+// chunk loads, <script setup> runs with `props.open` already true,
+// and `watch(() => props.open, cb)` (no `immediate: true`) tracks
+// FUTURE changes only — the listener never installed for the first
+// open. Pinned by keyboard-shortcuts.spec.ts:90 (CI-only failure on
+// 2026-06-10's PR #253 run).
+onMounted(() => {
+  document.addEventListener('keydown', onCaptureKey, true)
+})
+
+// Still watch `open` to manage the rAF cleanup on close.
 watch(
   () => props.open,
   (isOpen) => {
-    if (isOpen) document.addEventListener('keydown', onCaptureKey, true)
-    else {
-      document.removeEventListener('keydown', onCaptureKey, true)
-      // Cancel any in-flight scroll animation so an open→close→open
-      // cycle starts fresh.
-      if (scrollRAF !== 0) {
-        cancelAnimationFrame(scrollRAF)
-        scrollRAF = 0
-      }
+    if (!isOpen && scrollRAF !== 0) {
+      cancelAnimationFrame(scrollRAF)
+      scrollRAF = 0
     }
   },
 )
