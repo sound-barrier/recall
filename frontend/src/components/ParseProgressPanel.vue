@@ -46,10 +46,11 @@ defineEmits<{
             : { width: '0%' }"
         />
       </div>
-      <div class="pp-fraction mono">
+      <div class="pp-fraction mono" :title="`${parseProgress?.done ?? 0} of ${parseProgress?.total ?? '…'} screenshot files OCR'd this run. (Each match is typically 3–4 files.)`">
         <span class="pp-done">{{ parseProgress?.done ?? 0 }}</span>
         <span class="pp-sep">&nbsp;/&nbsp;</span>
         <span class="pp-total">{{ parseProgress?.total ?? '…' }}</span>
+        <span class="pp-unit">&nbsp;files</span>
       </div>
       <span class="chev pp-chev" :class="{ open: isOpen }" aria-hidden="true">›</span>
     </div>
@@ -226,6 +227,7 @@ defineEmits<{
 
 .pp-done { color: var(--accent-text); font-weight: 600; }
 .pp-sep  { color: var(--text-faint); }
+.pp-unit { color: var(--text-faint); text-transform: lowercase; letter-spacing: 0.08em; }
 
 .pp-current {
   display: flex;

@@ -361,19 +361,36 @@ maintainer's judgment call which of these is worth holding 1.0 for.
 
 ### Frontend UX (Settings + Parse)
 
-- [ ] `[MED]` "Detect Overwatch Folder" button has no loading state
-  during the probe. Click feels missed. Add "Detecting…" +
-  spinner. **File:** `SettingsView.vue`. **Effort:** S
-- [ ] `[LOW]` "Last run · X ago" timestamp has no tooltip explaining
-  its source. Add `title="Timestamp of the most recent…"`.
-  **File:** `IngestView.vue:142`. **Effort:** S
-- [ ] `[LOW]` Parse progress counter "42 / 187" lacks units. Add
-  "files" so users don't misread it as match count. **File:**
-  `IngestView.vue` progress panel. **Effort:** S
-- [ ] `[MED]` Watch toggle disabled state only explained via
-  `:title` tooltip; touch users can't see it. Surface a
-  `.setting-meta.blocked` paragraph below the label. **File:**
-  `IngestView.vue:110`. **Effort:** S
+- [x] `[MED]` "Detect Overwatch Folder" loading state. PR P1-A
+  audit: already addressed. The Tesseract Detect button at
+  `SettingsEngine.vue:152` already shows "Detecting…" while
+  `tesseractProbing === true`. The screenshots-folder Detect
+  button is intentionally disabled in steady-state (`SettingsFolders.vue:141-147`
+  — the design forces a Reset-first re-detect); first-run uses
+  the `ScreenshotSourcePicker` 4-card grid which already
+  disables cards during `picking`. The "Detect Overwatch
+  Folder" surface the plan references doesn't have a live
+  click target. **Effort:** S
+- [x] `[LOW]` "Last run · X ago" tooltip. Added a
+  `:title="Most recent successful parse run on this profile,
+  written to localStorage on parse-complete. Absolute time:
+  ${new Date(lastParsedAt).toLocaleString()}."` on the
+  `<p class="setting-meta">` at `IngestView.vue:142`.
+  **Effort:** S
+- [x] `[LOW]` Parse progress counter "files" unit. Added a
+  `.pp-unit` span (" files") after `.pp-total` in
+  `ParseProgressPanel.vue:49-54` plus a `:title` on the
+  fraction explaining "Each match is typically 3–4 files."
+  Muted color and lowercase letter-spacing so the unit reads
+  as a label rather than competing with the count. **Effort:**
+  S
+- [x] `[MED]` Watch toggle disabled state paragraph. PR P1-A
+  audit: already addressed. `IngestView.vue:101-107` already
+  renders a `<p class="setting-meta blocked">` paragraph below
+  the Watch Folder description when `!tesseractReady`, with a
+  ⛔ glyph + "Blocked — needs Tesseract." + a "Fix in Settings
+  →" navigation link. Same pattern for Manual Parse at line
+  131. The plan's request is already met. **Effort:** S
 
 ### Frontend UX — Unknown view polish
 

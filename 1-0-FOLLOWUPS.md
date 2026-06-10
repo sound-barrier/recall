@@ -52,20 +52,6 @@ this file is **not** a striking-out log.
 - `[MED]` **Spacing rhythm tokens** in the narrow panel — `--space-X`
   tokens require a project-wide spacing audit. **Effort:** S
 
-### Frontend UX (Settings + Parse)
-
-- `[MED]` **"Detect Overwatch Folder" loading state** — add
-  "Detecting…" + spinner during the probe. **File:**
-  `SettingsView.vue`. **Effort:** S
-- `[LOW]` **"Last run · X ago" tooltip** explaining the timestamp
-  source. **File:** `IngestView.vue:142`. **Effort:** S
-- `[LOW]` **Parse progress counter units** — add "files" to "42 /
-  187" so it doesn't read as a match count. **File:** `IngestView.vue`
-  progress panel. **Effort:** S
-- `[MED]` **Watch toggle disabled state** — surface the gate as a
-  `.setting-meta.blocked` paragraph, not just a `:title` tooltip.
-  **File:** `IngestView.vue:110`. **Effort:** S
-
 ### Frontend UX — Unknown view polish
 
 - `[MED]` **Ambiguous / Unknown / Reference-gap card color
