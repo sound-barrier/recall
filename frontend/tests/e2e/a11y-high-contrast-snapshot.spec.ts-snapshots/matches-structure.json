@@ -1,0 +1,28 @@
+{
+  "htmlAttr": {
+    "dataTheme": "high-contrast"
+  },
+  "activeTab": {
+    "id": "tab-matches",
+    "ariaSelected": "true",
+    "textContent": "03 Matches"
+  },
+  "mainPresent": true,
+  "mastheadPresent": true,
+  "cssTokens": {
+    "--accent": "#ffbf4d",
+    "--accent-text": "#ffbf4d",
+    "--accent-glow": "#ffbf4d99",
+    "--text": "#fff",
+    "--text-dim": "#fff",
+    "--text-faint": "#e6e6e6",
+    "--surface": "#000",
+    "--surface-2": "#0a0a0a",
+    "--surface-3": "#141414",
+    "--bg": "#000",
+    "--border": "#fff",
+    "--border-soft": "#888",
+    "--win": "#0f6",
+    "--loss": "#f35"
+  }
+}

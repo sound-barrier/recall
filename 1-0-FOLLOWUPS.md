@@ -52,14 +52,6 @@ this file is **not** a striking-out log.
 - `[MED]` **Spacing rhythm tokens** in the narrow panel — `--space-X`
   tokens require a project-wide spacing audit. **Effort:** S
 
-### Test coverage gaps
-
-- `[MED]` **High-contrast theme e2e at the layout level.**
-  `a11y.spec.ts` only runs axe-core, not visual snapshots. Add at
-  least a per-view snapshot test under the high-contrast theme.
-  **File:** `frontend/tests/e2e/a11y.spec.ts` + new snapshot spec.
-  **Effort:** M
-
 ## P2 — Nice-to-have
 
 ### CI / tooling
