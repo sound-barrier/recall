@@ -48,14 +48,6 @@ this file is **not** a striking-out log.
 
 ### Code-quality cleanup
 
-- `[LOW]` **Magic numbers** — pull the remaining outliers into
-  named consts: timezone offset in `text.go`, OCR upscale (`2x`)
-  in `imageutil.go`, Levenshtein threshold (`3`) in `maps.go`.
-  **File:** `pkg/parser/`. **Effort:** S
-- `[LOW]` **Public-API doc comments** missing on
-  `pkg/parser/classify.go` and `pkg/parser/golden.go`. Add
-  package-level + per-function comments where exported.
-  **Effort:** S
 - `[LOW]` **Adopt `log/slog`** for production debugging (parse
   start/end, DB schema apply, API handler entry/exit). **File:**
   all. **Effort:** L
