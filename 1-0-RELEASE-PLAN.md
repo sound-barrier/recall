@@ -497,12 +497,24 @@ maintainer's judgment call which of these is worth holding 1.0 for.
 
 ### Test coverage gaps
 
-- [ ] `[MED]` High-contrast theme has no real e2e coverage at the
-  layout level (`a11y.spec.ts` only runs axe-core, not visual).
-  Add at least a per-view snapshot test under the
-  high-contrast theme. **File:**
-  `frontend/tests/e2e/a11y.spec.ts` + new snapshot spec.
-  **Effort:** M
+- [x] `[MED]` High-contrast theme layout-level e2e. New
+  `frontend/tests/e2e/a11y-high-contrast-snapshot.spec.ts`
+  takes a per-view (settings / ingest / matches / unknown)
+  STRUCTURAL snapshot under `data-theme="high-contrast"`:
+  computed CSS tokens (`--accent`, `--text`, `--surface`,
+  `--border`, …), active tab attrs, masthead/main presence.
+  JSON-snapshot pattern (`toMatchSnapshot`) so the baseline
+  travels reproducibly across OSes — pixel snapshots would
+  flake on macOS local ↔ Linux CI rendering drift. Catches
+  "the high-contrast cascade dropped a token" /
+  "Settings rows blurred together because the divider rule
+  evaporated"; not a substitute for design QA on real builds.
+  Also added `snapshotPathTemplate` to `playwright.config.ts`
+  so baselines land at
+  `tests/e2e/<spec>.spec.ts-snapshots/<arg>.json` without the
+  default `-chromium-darwin` suffix. **File:**
+  `frontend/tests/e2e/a11y-high-contrast-snapshot.spec.ts` +
+  `frontend/playwright.config.ts`. **Effort:** M
 
 ---
 

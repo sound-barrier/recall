@@ -34,6 +34,15 @@ export default defineConfig({
   retries: 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
 
+  // Snapshot path: drop the default {projectName}-{platform} suffix
+  // so OS-independent structural snapshots (JSON shape) can be
+  // committed once and shared across macOS local + Linux CI. Pixel
+  // snapshots would still need the suffix, but the suite doesn't
+  // ship any pixel snapshots — `toHaveScreenshot()` would flake on
+  // OS rendering drift. See `a11y-high-contrast-snapshot.spec.ts`
+  // for the JSON-snapshot pattern.
+  snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}{ext}',
+
   use: {
     baseURL: `http://127.0.0.1:${E2E_PORT}`,
     trace: 'on-first-retry',
