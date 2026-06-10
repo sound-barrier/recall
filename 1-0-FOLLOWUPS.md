@@ -52,15 +52,6 @@ this file is **not** a striking-out log.
 - `[MED]` **Spacing rhythm tokens** in the narrow panel — `--space-X`
   tokens require a project-wide spacing audit. **Effort:** S
 
-### Performance
-
-- `[MED]` **Pre-fetch `/api/v1/matches` on app launch** so the
-  first tab switch doesn't flash skeleton → blank → records.
-  **File:** `App.vue` + `MatchesView.vue`. **Effort:** M
-- `[MED]` **Lazy-loaded view chunks need a loading overlay** on
-  tab switch (200-500ms on throttled 3G). **File:** `App.vue` tab
-  switch handler. **Effort:** S
-
 ### Microcopy
 
 - `[MED]` **Microcopy sweep.** Voice and clarity across:

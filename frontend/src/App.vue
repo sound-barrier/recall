@@ -112,10 +112,25 @@ const IgnoredFilesPanel = defineAsyncComponent(() => import('./components/Ignore
 // other three load on first tab click. Keeps initial JS small and
 // makes the cost of adding a new view proportional to "is it
 // visited" rather than "is it imported".
-const IngestView = defineAsyncComponent(() => import('./components/IngestView.vue'))
-const MatchesView = defineAsyncComponent(() => import('./components/MatchesView.vue'))
-const SettingsView = defineAsyncComponent(() => import('./components/SettingsView.vue'))
-const UnknownMapsView = defineAsyncComponent(() => import('./components/UnknownMapsView.vue'))
+//
+// `loadingComponent` + `delay: 220` shows a brief "Loading view…"
+// fallback IF the chunk fetch + Vue mount takes longer than 220ms
+// (the common case on throttled networks). On LAN / local the
+// chunk lands before the delay elapses and the fallback never
+// renders, keeping the snappy-feel intact.
+import ViewLazyFallback from './components/ViewLazyFallback.vue'
+const VIEW_LAZY_DELAY = 220
+function lazyView(loader: () => Promise<unknown>) {
+  return defineAsyncComponent({
+    loader: loader as () => Promise<typeof IngestView>,
+    loadingComponent: ViewLazyFallback,
+    delay: VIEW_LAZY_DELAY,
+  })
+}
+const IngestView = lazyView(() => import('./components/IngestView.vue'))
+const MatchesView = lazyView(() => import('./components/MatchesView.vue'))
+const SettingsView = lazyView(() => import('./components/SettingsView.vue'))
+const UnknownMapsView = lazyView(() => import('./components/UnknownMapsView.vue'))
 // Modal surfaces only mount on demand — keep their (substantial)
 // scoped CSS + JS out of the initial chunk so the router shell
 // stays under the bundle-size budget. Same defineAsyncComponent

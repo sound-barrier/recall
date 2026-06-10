@@ -450,14 +450,28 @@ maintainer's judgment call which of these is worth holding 1.0 for.
 
 ### Performance
 
-- [ ] `[MED]` App boot: skeleton → blank → real-records flash on
-  lazy-loaded view switch. Pre-fetch `/api/v1/matches` once on
-  app launch so the first tab switch is instant. **File:**
-  `App.vue` + `MatchesView.vue`. **Effort:** M
-- [ ] `[MED]` Lazy-loaded view chunks need a loading spinner
-  overlay on tab switch for slow networks (the lazy chunk fetch
-  - Vue mount takes 200-500ms on throttled 3G). **File:**
-  `App.vue` tab switch handler. **Effort:** S
+- [x] `[MED]` Pre-fetch `/api/v1/matches` on app launch. PR P1-C
+  audit: already addressed. `App.vue:1610` calls `load()` from
+  the top-level `onMounted` block, which fires every boot-time
+  fetch in one `Promise.allSettled` (matches, screenshots-dir,
+  prometheus, watcher, tesseract status, new-screenshot count,
+  data location). By the time the user can click the Matches
+  tab, the records ref has data; the lazy MatchesView mounts
+  and renders against it without a second request. **File:**
+  `App.vue:1597-1621`. **Effort:** M
+- [x] `[MED]` Lazy-loaded view chunks loading overlay. Added
+  `ViewLazyFallback.vue` + a `lazyView()` wrapper in
+  `App.vue:115-130` that calls `defineAsyncComponent` with
+  `loadingComponent: ViewLazyFallback` + `delay: 220`. The
+  220ms delay blocks render until the threshold so fast LAN
+  fetches (the common case) never flash the fallback; slow
+  fetches get a mono "Loading view…" + 3-dot pulse instead of
+  the prior blank. Reduced-motion swaps the pulse for a static
+  50%-opacity dot trio. Pinned by the existing
+  `App.lazy-views.test.ts` (updated to accept either the bare
+  `defineAsyncComponent` or the new `lazyView` wrapper — both
+  emit the same chunk-split call from Vite's perspective).
+  **File:** `App.vue` + `ViewLazyFallback.vue`. **Effort:** S
 
 ### Microcopy
 
