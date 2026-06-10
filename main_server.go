@@ -8,10 +8,12 @@ import (
 	"os"
 
 	"recall/pkg/app"
+	"recall/pkg/applog"
 	"recall/pkg/cmd"
 )
 
 func main() {
+	applog.Init()
 	a := app.New()
 
 	// --profile=<name> scopes this launch to a specific profile,

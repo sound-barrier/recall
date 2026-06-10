@@ -600,10 +600,25 @@ post-1.0 backlog when 1.0 ships.
   comments — `grep -B 2 '^func [A-Z]\|^type [A-Z]'`
   shows preceding doc-block lines on every one. The audit
   was outdated; no change needed. **Effort:** S
-- [ ] `[LOW]` Logging: codebase relies on error returns rather than
-  structured logs. Adopt `log/slog` post-1.0 for production
-  debugging capability (parse start/end, DB schema apply, API
-  handler entry/exit). **File:** all. **Effort:** L
+- [x] `[LOW]` Adopt `log/slog`. New `pkg/applog` package wires the
+  seam: `applog.Init()` runs once in `main.go` + `main_server.go`
+  and swaps `slog.Default()` to a handler appropriate for the
+  runtime (text on a TTY, JSON when piped or when
+  `RECALL_LOG_FORMAT=json` forces it). The stdlib `log` package
+  is rerouted to flow through the same handler via a
+  `log.SetOutput(slogWriter{…})` shim, so every legacy
+  `log.Printf("subsystem: …")` call site keeps working without a
+  sweep but appears in JSON output. `applog.Subsystem("name")`
+  returns a logger pre-tagged with `subsystem=name` so new code
+  reaches for structured fields directly. Migrated the
+  highest-volume call sites in `pkg/app/watcher.go` (8 sites)
+  and `pkg/cmd/server.go` (4 sites) to the structured pattern;
+  the remaining ~16 sites in `pkg/app/`, `pkg/metrics/`,
+  `pkg/cmd/server_profiles.go` continue to use stdlib `log` and
+  flow through the same handler. Future PRs can migrate
+  opportunistically as files are touched. **File:**
+  `pkg/applog/` + `main.go` + `main_server.go` +
+  `pkg/app/watcher.go` + `pkg/cmd/server.go`. **Effort:** L
 
 ### Property-based testing
 

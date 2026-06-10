@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"recall/pkg/app"
+	"recall/pkg/applog"
 )
 
 // RunServer initializes the App without the Wails GUI and serves the
@@ -67,9 +68,10 @@ func RunServer(a *app.App, assets embed.FS) {
 	// Graceful shutdown on SIGINT / SIGTERM.
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	logger := applog.Subsystem("server")
 	go func() {
 		<-quit
-		log.Println("server: shutting down…")
+		logger.Info("shutting down")
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(ctx)
@@ -78,9 +80,10 @@ func RunServer(a *app.App, assets embed.FS) {
 	// #nosec G706 -- addr is operator-controlled via RECALL_SERVER_ADDR
 	// (or the compile-time default "127.0.0.1:7000"); never derived
 	// from an inbound HTTP request, so no log-injection surface.
-	log.Printf("Recall server listening on http://%s", addr)
+	logger.Info("listening", "url", "http://"+addr)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("server: %v", err)
+		logger.Error("listen failed", "err", err)
+		os.Exit(1)
 	}
 }
 
@@ -294,7 +297,7 @@ func NewMux(a *app.App, assets fs.FS) *http.ServeMux {
 		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-		log.Printf("server: pprof endpoints enabled at /debug/pprof/")
+		applog.Subsystem("server").Info("pprof endpoints enabled", "prefix", "/debug/pprof/")
 	}
 
 	// ── Static frontend assets ──────────────────────────────────────
@@ -327,6 +330,6 @@ func writeJSON(w http.ResponseWriter, v any, err error) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if encErr := json.NewEncoder(w).Encode(v); encErr != nil {
-		log.Printf("server: json encode: %v", encErr)
+		applog.Subsystem("server").Error("json encode", "err", encErr)
 	}
 }

@@ -48,9 +48,14 @@ this file is **not** a striking-out log.
 
 ### Code-quality cleanup
 
-- `[LOW]` **Adopt `log/slog`** for production debugging (parse
-  start/end, DB schema apply, API handler entry/exit). **File:**
-  all. **Effort:** L
+- `[LOW]` **Finish the `log/slog` migration.** P2-E shipped the
+  `pkg/applog` seam and migrated the highest-volume call sites
+  (`pkg/app/watcher.go` + `pkg/cmd/server.go`). ~16 legacy
+  `log.Printf` sites remain in `pkg/app/`, `pkg/metrics/`, and
+  `pkg/cmd/server_profiles.go`; they flow through the same
+  handler via the `log.SetOutput(slogWriter{…})` shim, so the
+  migration is purely about structured fields, not output.
+  Sweep opportunistically as files are touched. **Effort:** S
 
 ### Features (post-1.0)
 
