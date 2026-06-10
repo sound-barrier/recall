@@ -41,6 +41,14 @@ func MapType(mapName string) string {
 // City" / "Junkertown" class of overlap.
 const minMapFuzzyLen = 5
 
+// mapFuzzyMatchPct caps the Levenshtein edit distance to a percentage
+// of the candidate map's length. 15% is tighter than the historical
+// 40% — a 12-char name now admits 1 edit (was 4), 19 chars admits 2
+// (was 7). Tight enough to kill the "New Junk City" / "Junkertown"
+// overlap class while still tolerating one Tesseract glyph slip per
+// ~7 characters.
+const mapFuzzyMatchPct = 15
+
 func snapToKnownMap(ocr string) string {
 	normOCR := normalize(ocr)
 	best := ocr
@@ -49,7 +57,7 @@ func snapToKnownMap(ocr string) string {
 		if len(m) < minMapFuzzyLen {
 			continue
 		}
-		threshold := len(m) * 15 / 100
+		threshold := len(m) * mapFuzzyMatchPct / 100
 		d := levenshtein(normOCR, m)
 		if d <= threshold && (bestDist < 0 || d < bestDist) {
 			bestDist = d
@@ -80,7 +88,7 @@ func bestKnownMapInText(text string) string {
 		if len(m) > len(normText) {
 			continue
 		}
-		threshold := max(len(m)*15/100, 1)
+		threshold := max(len(m)*mapFuzzyMatchPct/100, 1)
 		for i := 0; i+len(m) <= len(normText); i++ {
 			d := levenshtein(normText[i:i+len(m)], m)
 			if d <= threshold && (bestDist < 0 || d < bestDist) {

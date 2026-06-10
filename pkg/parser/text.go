@@ -98,6 +98,13 @@ func digitize(s string) string {
 	return r.Replace(s)
 }
 
+// twoDigitYearPivot is the century used when normalizing a two-digit
+// year from OW's MM/DD/YY date display. OW1 launched in 2016 and OW2
+// in 2022; a "19/.../69" date would be implausible by ~50 years, so a
+// hard +2000 is correct until ~2099. (At which point Recall is
+// probably not the active concern.)
+const twoDigitYearPivot = 2000
+
 // normalizeDate converts the client's MM/DD/YY display format to ISO YYYY-MM-DD
 // so DB rows sort chronologically. Two-digit years are assumed to be 2000+;
 // OW didn't ship until 2022 so a "19/.../69" date is implausible.
@@ -110,7 +117,7 @@ func normalizeDate(d string) string {
 	dd, _ := strconv.Atoi(m[2])
 	yy, _ := strconv.Atoi(m[3])
 	if yy < 100 {
-		yy += 2000
+		yy += twoDigitYearPivot
 	}
 	return fmt.Sprintf("%04d-%02d-%02d", yy, mm, dd)
 }

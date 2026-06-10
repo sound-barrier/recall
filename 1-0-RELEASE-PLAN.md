@@ -574,14 +574,32 @@ post-1.0 backlog when 1.0 ships.
 
 ### Code-quality cleanup
 
-- [ ] `[LOW]` Magic numbers — pull the remaining outliers into
-  named consts: timezone offset in `text.go`, OCR upscale (`2x`)
-  in `imageutil.go`, Levenshtein threshold (`3`) in `maps.go`.
-  **File:** `pkg/parser/`. **Effort:** S
-- [ ] `[LOW]` Public-API doc comments missing on
-  `pkg/parser/classify.go` and `pkg/parser/golden.go`. Add
-  package-level + per-function comments where exported.
+- [x] `[LOW]` Magic numbers — pulled three named consts into
+  the parser package:
+  - `twoDigitYearPivot = 2000` in `text.go`. The plan called
+    this a "timezone offset" but the literal is actually the
+    century pivot used by `normalizeDate` to lift OW's
+    MM/DD/YY date display into ISO YYYY-MM-DD. (text.go has
+    no timezone math; the audit's name was wrong.)
+  - `rawUpscaleFactor = 2` in `imageutil.go` — the multiplier
+    `ocrRaw` uses for its raw-OCR path (vs the `const scale
+    = 3` already named in `preprocessInverted`). Documented
+    why 2× empirically beats 3× for the right-side panel
+    colour mix.
+  - `mapFuzzyMatchPct = 15` in `maps.go`. The plan called
+    this a "Levenshtein threshold (3)" but the literal is
+    the 15% length-ratio cap, not a fixed-distance 3. Both
+    `snapToKnownMap` and `bestKnownMapInText` use the
+    constant. **File:** `pkg/parser/text.go` +
+    `imageutil.go` + `maps.go` + `tesseract.go`.
   **Effort:** S
+- [x] `[LOW]` Public-API doc comments. Audit-confirmed
+  already-met. Both `pkg/parser/classify.go` (one exported
+  func `ScreenshotType`) and `pkg/parser/golden.go` (five
+  exported types + `ToGolden`) carry full per-symbol
+  comments — `grep -B 2 '^func [A-Z]\|^type [A-Z]'`
+  shows preceding doc-block lines on every one. The audit
+  was outdated; no change needed. **Effort:** S
 - [ ] `[LOW]` Logging: codebase relies on error returns rather than
   structured logs. Adopt `log/slog` post-1.0 for production
   debugging capability (parse start/end, DB schema apply, API

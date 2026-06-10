@@ -62,7 +62,7 @@ func ocrInverted(img image.Image, rect image.Rectangle, workDir, name, psm, whit
 // cyan labels — our custom thresholding tends to drop one or the other.
 func ocrRaw(img image.Image, rect image.Rectangle, workDir, name, psm, whitelist string) (string, error) {
 	sub := crop(img, rect)
-	pre := upscale(sub, 2)
+	pre := upscale(sub, rawUpscaleFactor)
 	return runTesseractFunc(pre, workDir, name, psm, whitelist)
 }
 
