@@ -17,13 +17,13 @@ import CurrentStreakWidget from '../components/widgets/CurrentStreakWidget.vue'
 import LongestWinStreakWidget from '../components/widgets/LongestWinStreakWidget.vue'
 import HeroPoolSizeWidget from '../components/widgets/HeroPoolSizeWidget.vue'
 import BestWinrateHeroWidget from '../components/widgets/BestWinrateHeroWidget.vue'
-import TopMapTypesWidget from '../components/widgets/TopMapTypesWidget.vue'
+import TopGameModesWidget from '../components/widgets/TopGameModesWidget.vue'
 import TimeOfDayWidget from '../components/widgets/TimeOfDayWidget.vue'
 import DayOfWeekWidget from '../components/widgets/DayOfWeekWidget.vue'
 import Recent5MatchesWidget from '../components/widgets/Recent5MatchesWidget.vue'
 import QuickplayVsCompetitiveWidget from '../components/widgets/QuickplayVsCompetitiveWidget.vue'
 import WinrateByPlayModeWidget from '../components/widgets/WinrateByPlayModeWidget.vue'
-import HeroMapTypeHeatmapWidget from '../components/widgets/HeroMapTypeHeatmapWidget.vue'
+import HeroGameModeHeatmapWidget from '../components/widgets/HeroGameModeHeatmapWidget.vue'
 
 // Central registry for the dossier's customizable dashboard widgets.
 //
@@ -116,7 +116,7 @@ export const topHeroesSchema = makeSchema<TopByCountConfig>([
   { kind: 'integer-choice', key: 'limit', label: 'Top N',
     choices: [3, 5, 10], default: 3 },
 ])
-export const topMapTypesSchema = makeSchema<TopByCountConfig>([
+export const topGameModesSchema = makeSchema<TopByCountConfig>([
   { kind: 'integer-choice', key: 'limit', label: 'Top N',
     choices: [3, 5], default: 5 },
 ])
@@ -164,11 +164,11 @@ export const dayOfWeekSchema = makeSchema<DayOfWeekConfig>([
   },
 ])
 
-export interface HeroMapTypeHeatmapConfig extends Record<string, unknown> {
+export interface HeroGameModeHeatmapConfig extends Record<string, unknown> {
   heroLimit:  number
   minMatches: number
 }
-export const heroMapTypeHeatmapSchema = makeSchema<HeroMapTypeHeatmapConfig>([
+export const heroGameModeHeatmapSchema = makeSchema<HeroGameModeHeatmapConfig>([
   {
     kind:    'integer-choice',
     key:     'heroLimit',
@@ -214,13 +214,13 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'longest-win-streak',  eyebrow: 'Longest win streak',     shape: 'kpi',       defaultRow: 1, component: LongestWinStreakWidget, config: EMPTY_SCHEMA          },
   { id: 'hero-pool-size',      eyebrow: 'Hero pool size',         shape: 'kpi',       defaultRow: 1, component: HeroPoolSizeWidget,     config: EMPTY_SCHEMA          },
   { id: 'best-winrate-hero',   eyebrow: 'Best hero by winrate',   shape: 'kpi',       defaultRow: 1, component: BestWinrateHeroWidget,  config: bestWinrateHeroSchema },
-  { id: 'top-map-types',       eyebrow: 'Most played game modes',  shape: 'breakdown', defaultRow: 2, component: TopMapTypesWidget,      config: topMapTypesSchema     },
+  { id: 'top-game-modes',       eyebrow: 'Most played game modes',  shape: 'breakdown', defaultRow: 2, component: TopGameModesWidget,      config: topGameModesSchema     },
   { id: 'time-of-day',         eyebrow: 'Time of day',            shape: 'breakdown', defaultRow: 2, component: TimeOfDayWidget,        config: timeOfDaySchema       },
   { id: 'day-of-week',         eyebrow: 'Day of week',            shape: 'breakdown', defaultRow: 2, component: DayOfWeekWidget,        config: dayOfWeekSchema       },
   { id: 'recent-5-matches',    eyebrow: 'Recent matches',         shape: 'breakdown', defaultRow: 2, component: Recent5MatchesWidget,   config: recentMatchesSchema   },
   { id: 'play-mode-share',     eyebrow: 'Quickplay vs Competitive', shape: 'breakdown', defaultRow: 2, component: QuickplayVsCompetitiveWidget, config: EMPTY_SCHEMA },
   { id: 'play-mode-winrate',   eyebrow: 'Winrate by play mode',     shape: 'breakdown', defaultRow: 2, component: WinrateByPlayModeWidget,      config: EMPTY_SCHEMA },
-  { id: 'hero-map-type-heatmap', eyebrow: 'Hero × game-mode heatmap',  shape: 'breakdown', defaultRow: 2, component: HeroMapTypeHeatmapWidget,     config: heroMapTypeHeatmapSchema },
+  { id: 'hero-game-mode-heatmap', eyebrow: 'Hero × game-mode heatmap',  shape: 'breakdown', defaultRow: 2, component: HeroGameModeHeatmapWidget,     config: heroGameModeHeatmapSchema },
 ]
 
 // Row-keyed install-default layout. Membership here means "auto-add

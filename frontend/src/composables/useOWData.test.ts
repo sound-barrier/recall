@@ -93,13 +93,13 @@ describe('useOWData', () => {
     expect(api.heroRole('reinhardt')).toBe('tank')
   })
 
-  it('mapType resolves from a map name', async () => {
+  it('mapGameMode resolves from a map name', async () => {
     getOWDataMock.mockResolvedValue(SAMPLE_DATA)
     const useOWData = await freshOWData()
     const api = useOWData()
     await new Promise(r => setTimeout(r, 0))
-    expect(api.mapType('ilios')).toBe('control')
-    expect(api.mapType("king's row")).toBe('hybrid')
+    expect(api.mapGameMode('ilios')).toBe('control')
+    expect(api.mapGameMode("king's row")).toBe('hybrid')
   })
 
   it('unknown hero / map returns the input unchanged (graceful degrade)', async () => {
@@ -132,7 +132,7 @@ describe('useOWData', () => {
     expect(api.heroDisplayName('')).toBe('')
     expect(api.mapDisplayName(null)).toBe('')
     expect(api.heroRole(null)).toBe('')
-    expect(api.mapType(null)).toBe('')
+    expect(api.mapGameMode(null)).toBe('')
   })
 
   it('fetch rejection leaves the lookups empty but the API still works', async () => {

@@ -18,7 +18,7 @@ const STORAGE_KEY = 'recall.narrowPresets.v2'
 interface SerializedNarrow {
   searchText:        string
   pickedMaps:        string[]
-  pickedMapTypes:    string[]
+  pickedGameModes:    string[]
   pickedHeroes:      string[]
   pickedRoles:       string[]
   pickedResults:     string[]
@@ -45,7 +45,7 @@ function serialize(state: MatchesNarrowState): SerializedNarrow {
   return {
     searchText:        state.searchText.value,
     pickedMaps:        [...state.pickedMaps.value].sort(),
-    pickedMapTypes:    [...state.pickedMapTypes.value].sort(),
+    pickedGameModes:    [...state.pickedGameModes.value].sort(),
     pickedHeroes:      [...state.pickedHeroes.value].sort(),
     pickedRoles:       [...state.pickedRoles.value].sort(),
     pickedResults:     [...state.pickedResults.value].sort(),
@@ -67,7 +67,7 @@ function serialize(state: MatchesNarrowState): SerializedNarrow {
 function apply(state: MatchesNarrowState, s: SerializedNarrow): void {
   state.searchText.value        = s.searchText
   state.pickedMaps.value        = new Set(s.pickedMaps)
-  state.pickedMapTypes.value    = new Set(s.pickedMapTypes)
+  state.pickedGameModes.value    = new Set(s.pickedGameModes)
   state.pickedHeroes.value      = new Set(s.pickedHeroes)
   state.pickedRoles.value       = new Set(s.pickedRoles)
   state.pickedResults.value     = new Set(s.pickedResults)

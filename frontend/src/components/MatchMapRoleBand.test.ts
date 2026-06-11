@@ -4,13 +4,13 @@ import type { MapRoleCell } from '../composables/useMatchesDossier'
 
 // Stub the reference-data singleton so the column roster is
 // deterministic (no fetch, no cross-test singleton state). Three maps
-// across two type-groups: Ilios (control), Dorado + Rialto (escort).
+// across two game-mode groups: Ilios (control), Dorado + Rialto (escort).
 vi.mock('../composables/useOWData', async () => {
   const { computed } = await import('vue')
-  const idx = new Map<string, { display: string; type: string }>([
-    ['ilios', { display: 'Ilios', type: 'control' }],
-    ['dorado', { display: 'Dorado', type: 'escort' }],
-    ['rialto', { display: 'Rialto', type: 'escort' }],
+  const idx = new Map<string, { display: string; gameMode: string }>([
+    ['ilios', { display: 'Ilios', gameMode: 'control' }],
+    ['dorado', { display: 'Dorado', gameMode: 'escort' }],
+    ['rialto', { display: 'Rialto', gameMode: 'escort' }],
   ])
   return {
     useOWData: () => ({
@@ -20,7 +20,7 @@ vi.mock('../composables/useOWData', async () => {
       mapDisplayName: (s: string | null | undefined) => (s ? idx.get(s)?.display ?? s : ''),
       heroDisplayName: (s: string) => s,
       heroRole: () => '',
-      mapType: (s: string | null | undefined) => (s ? idx.get(s)?.type ?? '' : ''),
+      mapGameMode: (s: string | null | undefined) => (s ? idx.get(s)?.gameMode ?? '' : ''),
     }),
   }
 })
@@ -39,11 +39,11 @@ function mountBand(narrow = {}) {
 }
 
 describe('MatchMapRoleBand', () => {
-  it('renders 3 role rows × all map columns grouped into types', () => {
+  it('renders 3 role rows × all map columns grouped by game mode', () => {
     const w = mountBand()
     expect(w.findAll('.mr-rowhead')).toHaveLength(3)
     expect(w.findAll('.mr-collabel')).toHaveLength(3) // ilios + dorado + rialto
-    expect(w.findAll('.mr-typehead')).toHaveLength(2) // control + escort
+    expect(w.findAll('.mr-modehead')).toHaveLength(2) // control + escort
     expect(w.findAll('.mr-cell')).toHaveLength(3 * 3) // 3 roles × 3 maps
   })
 
@@ -70,12 +70,12 @@ describe('MatchMapRoleBand', () => {
     expect(pickRole).toHaveBeenCalledWith('support')
   })
 
-  it('clicking a type-group header narrows to that map-type', async () => {
-    const pickMapType = vi.fn()
-    const w = mountBand({ pickMapType })
-    const escort = w.findAll('.mr-typehead').find((n) => n.text() === 'Escort')
+  it('clicking a game-mode group header narrows to that game-mode', async () => {
+    const pickGameMode = vi.fn()
+    const w = mountBand({ pickGameMode })
+    const escort = w.findAll('.mr-modehead').find((n) => n.text() === 'Escort')
     await escort?.trigger('click')
-    expect(pickMapType).toHaveBeenCalledWith('escort')
+    expect(pickGameMode).toHaveBeenCalledWith('escort')
   })
 
   it('offers a 1M/3M/6M/12M window toggle defaulting to 6M', () => {

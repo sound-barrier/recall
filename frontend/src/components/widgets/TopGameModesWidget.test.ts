@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import TopMapTypesWidget from './TopMapTypesWidget.vue'
+import TopGameModesWidget from './TopGameModesWidget.vue'
 import { mountWidget } from '../../test-utils/mountWidget'
 
-describe('TopMapTypesWidget', () => {
+describe('TopGameModesWidget', () => {
   it('renders no rows for an empty list', () => {
-    const w = mountWidget(TopMapTypesWidget, { dossier: { topByCount: [] } })
+    const w = mountWidget(TopGameModesWidget, { dossier: { topByCount: [] } })
     expect(w.findAll('li')).toHaveLength(0)
   })
 
-  it('renders each map type with count + share', () => {
-    const w = mountWidget(TopMapTypesWidget, {
+  it('renders each game mode with count + share', () => {
+    const w = mountWidget(TopGameModesWidget, {
       dossier: {
         topByCount: [
           { key: 'control', total: 8, share: 50, winrate: 75 },

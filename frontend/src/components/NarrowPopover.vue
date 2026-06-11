@@ -63,15 +63,15 @@ const emit = defineEmits<{
 // auto-unwraps the refs. Same shape MatchesView used pre-extraction.
 const {
   searchText,
-  pickedMaps, pickedMapTypes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
+  pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
   pickedQueues, pickedPlayModes,
   pickedRange, customFrom, customTo,
   leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
   anchorKey, sinceAnchorActive,
-  pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickQueue, pickPlayMode, pickRange,
+  pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickQueue, pickPlayMode, pickRange,
   resetNarrow,
   activeClauseCount, anyNarrow,
-  availableMaps, availableMapTypes, availableHeroes, availableRoles, availableResults, availableTags,
+  availableMaps, availableGameModes, availableHeroes, availableRoles, availableResults, availableTags,
   narrowedRecords,
 } = props.narrow
 void activeClauseCount; void anyNarrow
@@ -332,19 +332,19 @@ onUnmounted(() => {
               <section class="np-section">
                 <div class="np-section-head">
                   <span class="np-section-eyebrow">Game Mode</span>
-                  <span class="np-section-meta">{{ pickedMapTypes.size ? `${pickedMapTypes.size} picked` : 'any' }}</span>
+                  <span class="np-section-meta">{{ pickedGameModes.size ? `${pickedGameModes.size} picked` : 'any' }}</span>
                 </div>
                 <div class="np-chips">
                   <button
-                    v-for="t in availableMapTypes"
+                    v-for="t in availableGameModes"
                     :key="t"
                     class="np-chip"
-                    :class="{ picked: pickedMapTypes.has(t) }"
-                    @click="pickMapType(t)"
+                    :class="{ picked: pickedGameModes.has(t) }"
+                    @click="pickGameMode(t)"
                   >
                     {{ t }}
                   </button>
-                  <span v-if="!availableMapTypes.length" class="np-empty">none in corpus</span>
+                  <span v-if="!availableGameModes.length" class="np-empty">none in corpus</span>
                 </div>
               </section>
 

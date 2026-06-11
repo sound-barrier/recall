@@ -8,7 +8,7 @@ function buildState(): MatchesNarrowState {
   return {
     searchText:        ref(''),
     pickedMaps:        ref(new Set<string>()),
-    pickedMapTypes:    ref(new Set<string>()),
+    pickedGameModes:    ref(new Set<string>()),
     pickedHeroes:      ref(new Set<string>()),
     pickedRoles:       ref(new Set<string>()),
     pickedResults:     ref(new Set<string>()),
@@ -110,7 +110,7 @@ describe('useNarrowPresets', () => {
     if (typeof globalThis.localStorage === 'undefined') return
     globalThis.localStorage.setItem('recall.narrowPresets.v2', JSON.stringify([
       { name: 'persisted', state: {
-        searchText: 'foo', pickedMaps: [], pickedMapTypes: [], pickedHeroes: [],
+        searchText: 'foo', pickedMaps: [], pickedGameModes: [], pickedHeroes: [],
         pickedRoles: [], pickedResults: [], pickedTags: [], pickedReviewedBy: [],
         pickedQueues: [], pickedPlayModes: [], pickedRange: 'all', customFrom: '',
         customTo: '', leaverHandling: 'include', minPlayMinutes: 0,

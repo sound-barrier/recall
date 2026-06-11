@@ -64,7 +64,7 @@ import { useNarrowMode } from '../composables/useNarrowMode'
 // Filter dimensions exposed via the left "Narrow this set" panel:
 //
 //   text search (/), preset range, custom from/to dates,
-//   map, map type, hero (broad-match against heroes_played[]),
+//   map, game mode, hero (broad-match against heroes_played[]),
 //   role, result, tags, leaver handling, min play time + percent
 //   (OR semantics), include-unknown-map toggle.
 //
@@ -159,11 +159,11 @@ const emit = defineEmits<{
 // bundle and destructures the picker callbacks itself.
 const {
   searchText,
-  pickedMaps, pickedMapTypes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
+  pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
   pickedRange, customFrom, customTo,
   leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
   anchorKey, sinceAnchorActive,
-  pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickRange,
+  pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickRange,
   resetNarrow,
   activeClauseCount, anyNarrow,
   narrowedRecords,
@@ -419,8 +419,8 @@ async function onJumpToUndated() {
 const dossier = useMatchesDossier(narrowedRecords, leaverHandling, ow.heroRole, weekStart)
 provideDossier(dossier)
 // Same provide/inject shape exposes the narrow handlers (pickHero,
-// pickMapType, etc.) to widgets that need to drill into a slice of
-// the active set — the hero × map-type heatmap is the first consumer.
+// pickGameMode, etc.) to widgets that need to drill into a slice of
+// the active set — the hero × game-mode heatmap is the first consumer.
 provideNarrow(props.narrow)
 
 // ─── Dashboard widget layout ────────────────────────────────────
@@ -680,7 +680,7 @@ const setHeadline = computed(() => {
   if (searchText.value.trim()) parts.push(`"${searchText.value.trim()}"`)
   if (customFrom.value || customTo.value) parts.push(`${customFrom.value || '…'} → ${customTo.value || '…'}`)
   else if (pickedRange.value !== 'all') parts.push(`last ${pickedRange.value}`)
-  if (pickedMapTypes.value.size) parts.push([...pickedMapTypes.value].join('/'))
+  if (pickedGameModes.value.size) parts.push([...pickedGameModes.value].join('/'))
   if (pickedMaps.value.size)     parts.push([...pickedMaps.value].join(' · '))
   if (pickedRoles.value.size)    parts.push([...pickedRoles.value].join('/'))
   if (pickedHeroes.value.size)   parts.push([...pickedHeroes.value].join(' · '))
@@ -1171,10 +1171,10 @@ onBeforeUnmount(() => {
                 ×
               </button>
             </li>
-            <li v-for="t in [...pickedMapTypes]" :key="`mt-${t}`" class="active-chip">
+            <li v-for="t in [...pickedGameModes]" :key="`mt-${t}`" class="active-chip">
               <span class="chip-key">Type</span>
               <span class="chip-val">{{ t }}</span>
-              <button class="chip-x" :aria-label="`Drop type ${t}`" @click="pickMapType(t)">
+              <button class="chip-x" :aria-label="`Drop type ${t}`" @click="pickGameMode(t)">
                 ×
               </button>
             </li>

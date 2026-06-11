@@ -37,16 +37,16 @@ async function mountHost(seed?: MapRoleConfig | string) {
 
 describe('isMapRoleConfig / reconcileMapRoleConfig', () => {
   it('accepts a well-formed config and rejects junk', () => {
-    expect(isMapRoleConfig({ roles: [], mapTypes: [], maps: [] })).toBe(true)
+    expect(isMapRoleConfig({ roles: [], gameModes: [], maps: [] })).toBe(true)
     expect(isMapRoleConfig({ roles: ['tank'] })).toBe(false)
     expect(isMapRoleConfig([])).toBe(false)
   })
   it('drops unknown roles/types + de-dupes, keeps map names', () => {
     expect(reconcileMapRoleConfig({
       roles: ['tank', 'tank', 'mystery'] as MapRoleConfig['roles'],
-      mapTypes: ['control', 'bogus'],
+      gameModes: ['control', 'bogus'],
       maps: ['Rialto', 'Rialto'],
-    })).toEqual({ roles: ['tank'], mapTypes: ['control'], maps: ['Rialto'] })
+    })).toEqual({ roles: ['tank'], gameModes: ['control'], maps: ['Rialto'] })
   })
 })
 
@@ -56,16 +56,16 @@ describe('useMapRoleConfig', () => {
 
   it('defaults to everything (empty filters = show all)', async () => {
     const { api } = await mountHost()
-    expect(api.config.value).toEqual({ roles: [], mapTypes: [], maps: [] })
+    expect(api.config.value).toEqual({ roles: [], gameModes: [], maps: [] })
     expect(api.isDefault.value).toBe(true)
   })
 
   it('toggles roles / types / maps on and off + persists', async () => {
     const { api } = await mountHost()
     api.toggleRole('support'); await nextTick()
-    api.toggleType('control'); await nextTick()
+    api.toggleGameMode('control'); await nextTick()
     api.toggleMap('Rialto'); await nextTick()
-    expect(api.config.value).toEqual({ roles: ['support'], mapTypes: ['control'], maps: ['Rialto'] })
+    expect(api.config.value).toEqual({ roles: ['support'], gameModes: ['control'], maps: ['Rialto'] })
     expect(api.isDefault.value).toBe(false)
     expect(JSON.parse(storage[MAP_ROLE_CONFIG_KEY] ?? '{}')).toEqual(api.config.value)
 
@@ -74,20 +74,20 @@ describe('useMapRoleConfig', () => {
   })
 
   it('reset() clears all filters back to default', async () => {
-    const { api } = await mountHost({ roles: ['tank'], mapTypes: ['escort'], maps: ['Dorado'] })
+    const { api } = await mountHost({ roles: ['tank'], gameModes: ['escort'], maps: ['Dorado'] })
     expect(api.isDefault.value).toBe(false)
     api.reset(); await nextTick()
-    expect(api.config.value).toEqual({ roles: [], mapTypes: [], maps: [] })
+    expect(api.config.value).toEqual({ roles: [], gameModes: [], maps: [] })
     expect(api.isDefault.value).toBe(true)
   })
 
   it('reconciles a seeded config on read (drops unknown role)', async () => {
-    const { api } = await mountHost({ roles: ['support', 'mystery'] as MapRoleConfig['roles'], mapTypes: [], maps: [] })
+    const { api } = await mountHost({ roles: ['support', 'mystery'] as MapRoleConfig['roles'], gameModes: [], maps: [] })
     expect(api.config.value.roles).toEqual(['support'])
   })
 
   it('falls back to default on corrupt JSON', async () => {
     const { api } = await mountHost('not json {{{')
-    expect(api.config.value).toEqual({ roles: [], mapTypes: [], maps: [] })
+    expect(api.config.value).toEqual({ roles: [], gameModes: [], maps: [] })
   })
 })

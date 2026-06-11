@@ -16,7 +16,7 @@ import MapRoleConfigPopover from './MapRoleConfigPopover.vue'
 // (green → red) and its saturation reads volume, so faint cells carry
 // little weight — same `cellFill` model as the Campaign Log calendar.
 // Clicking a cell narrows the active set to that (map, role) pair;
-// clicking a type-group header narrows to that game-mode.
+// clicking a game-mode group header narrows to that game-mode.
 //
 // Data comes from the dossier (the narrowed record set, so the band
 // responds to every filter) joined against the full canonical map
@@ -29,8 +29,8 @@ const ROLE_LABEL: Record<Role, string> = { tank: 'Tank', dps: 'DPS', support: 'S
 
 // Canonical game-mode order (mirrors pkg/parser/maps.yaml); unknown
 // types sort last.
-const TYPE_ORDER = ['control', 'escort', 'flashpoint', 'hybrid', 'push', 'clash']
-const TYPE_LABEL: Record<string, string> = {
+const GAME_MODE_ORDER = ['control', 'escort', 'flashpoint', 'hybrid', 'push', 'clash']
+const GAME_MODE_LABEL: Record<string, string> = {
   control: 'Control', escort: 'Escort', flashpoint: 'Flashpoint',
   hybrid: 'Hybrid', push: 'Push', clash: 'Clash',
 }
@@ -75,52 +75,52 @@ function pickWindow(m: WindowKey) {
 
 const cells = dossier.mapRoleCounts(() => ({ windowMonths: windowMonths.value }))
 
-interface Col { slug: string; display: string; type: string; firstInGroup: boolean }
+interface Col { slug: string; display: string; gameMode: string; firstInGroup: boolean }
 
-// Columns = the full canonical roster, grouped by type (canonical
+// Columns = the full canonical roster, grouped by game mode (canonical
 // order) and alphabetised within each group. mapIndex is keyed by the
 // normalised slug — the same form the parser stores in data.map — so
 // the join below is exact.
 const columns = computed<Col[]>(() => {
   // Filter the roster by the gear config BEFORE grouping so the
-  // type-group headers + first-in-group rules read off the visible set.
-  // Empty filter = pass all; non-empty type + map filters AND together.
-  const { mapTypes, maps } = cfg.config.value
-  const typeSet = new Set(mapTypes)
+  // game-mode group headers + first-in-group rules read off the visible set.
+  // Empty filter = pass all; non-empty game-mode + map filters AND together.
+  const { gameModes, maps } = cfg.config.value
+  const gameModeSet = new Set(gameModes)
   const mapSet = new Set(maps)
-  const byType = new Map<string, { slug: string; display: string }[]>()
-  for (const [slug, { display, type }] of ow.mapIndex.value) {
-    if (typeSet.size && !typeSet.has(type)) continue
+  const byGameMode = new Map<string, { slug: string; display: string }[]>()
+  for (const [slug, { display, gameMode }] of ow.mapIndex.value) {
+    if (gameModeSet.size && !gameModeSet.has(gameMode)) continue
     if (mapSet.size && !mapSet.has(display)) continue
-    const arr = byType.get(type) ?? []
+    const arr = byGameMode.get(gameMode) ?? []
     arr.push({ slug, display })
-    byType.set(type, arr)
+    byGameMode.set(gameMode, arr)
   }
   const rank = (t: string) => {
-    const i = TYPE_ORDER.indexOf(t)
-    return i < 0 ? TYPE_ORDER.length : i
+    const i = GAME_MODE_ORDER.indexOf(t)
+    return i < 0 ? GAME_MODE_ORDER.length : i
   }
   const out: Col[] = []
-  for (const type of [...byType.keys()].sort((a, b) => rank(a) - rank(b))) {
-    const maps = (byType.get(type) ?? []).slice().sort((a, b) => a.display.localeCompare(b.display))
-    maps.forEach((m, i) => out.push({ slug: m.slug, display: m.display, type, firstInGroup: i === 0 }))
+  for (const gameMode of [...byGameMode.keys()].sort((a, b) => rank(a) - rank(b))) {
+    const maps = (byGameMode.get(gameMode) ?? []).slice().sort((a, b) => a.display.localeCompare(b.display))
+    maps.forEach((m, i) => out.push({ slug: m.slug, display: m.display, gameMode, firstInGroup: i === 0 }))
   }
   return out
 })
 
-interface Group { type: string; label: string; colStart: number; colSpan: number }
+interface Group { gameMode: string; label: string; colStart: number; colSpan: number }
 
-// Contiguous runs of same-type columns → one clickable header each.
+// Contiguous runs of same-game-mode columns → one clickable header each.
 // colStart is the 1-based grid column (column 1 is the role-label
 // gutter, so the first map column is grid column 2).
 const groups = computed<Group[]>(() => {
   const out: Group[] = []
   columns.value.forEach((col, idx) => {
     const last = out[out.length - 1]
-    if (last && last.type === col.type) {
+    if (last && last.gameMode === col.gameMode) {
       last.colSpan++
     } else {
-      out.push({ type: col.type, label: TYPE_LABEL[col.type] ?? col.type, colStart: idx + 2, colSpan: 1 })
+      out.push({ gameMode: col.gameMode, label: GAME_MODE_LABEL[col.gameMode] ?? col.gameMode, colStart: idx + 2, colSpan: 1 })
     }
   })
   return out
@@ -173,7 +173,7 @@ const gridTemplateColumns = computed(
 )
 
 // Row track follows the configured role count (the role-label gutter
-// rows: type-headers + column-labels + one per visible role).
+// rows: gameMode-headers + column-labels + one per visible role).
 const gridTemplateRows = computed(
   () => `auto 5.4rem repeat(${visibleRoles.value.length}, var(--mr-row))`,
 )
@@ -239,12 +239,12 @@ const filteredEmpty = computed(() => !rosterEmpty.value && (columns.value.length
 
         <button
           v-for="g in groups"
-          :key="`g-${g.type}`"
+          :key="`g-${g.gameMode}`"
           type="button"
-          class="mr-typehead"
+          class="mr-modehead"
           :style="{ gridColumn: `${g.colStart} / span ${g.colSpan}`, gridRow: 1 }"
           :aria-label="`Narrow to ${g.label} maps`"
-          @click="narrow.pickMapType(g.type)"
+          @click="narrow.pickGameMode(g.gameMode)"
         >
           {{ g.label }}
         </button>
@@ -480,7 +480,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && (columns.value.length
   grid-row: 1 / span 2;
 }
 
-.mr-typehead {
+.mr-modehead {
   appearance: none;
   border: 0;
   background: transparent;
@@ -498,9 +498,9 @@ const filteredEmpty = computed(() => !rosterEmpty.value && (columns.value.length
   text-align: left;
   white-space: nowrap;
 }
-.mr-typehead:hover { color: var(--accent); }
+.mr-modehead:hover { color: var(--accent); }
 
-.mr-typehead:focus-visible {
+.mr-modehead:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
@@ -555,7 +555,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && (columns.value.length
   z-index: 1;
 }
 
-/* A hairline before the first column of each type-group so the eye
+/* A hairline before the first column of each game-mode group so the eye
    reads the blocks (Control | Escort | …) without a heavy divider. */
 .mr-group-start {
   margin-left: 5px;

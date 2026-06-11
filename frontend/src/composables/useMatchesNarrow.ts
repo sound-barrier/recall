@@ -67,7 +67,7 @@ export type PlayModePick = 'quickplay' | 'competitive' | 'unknown'
 export interface MatchesNarrowState {
   searchText:        Ref<string>
   pickedMaps:        Ref<Set<string>>
-  pickedMapTypes:    Ref<Set<string>>
+  pickedGameModes:    Ref<Set<string>>
   pickedHeroes:      Ref<Set<string>>
   pickedRoles:       Ref<Set<string>>
   pickedResults:     Ref<Set<string>>
@@ -102,7 +102,7 @@ export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions =
   return {
     searchText:       ref(''),
     pickedMaps:       ref(new Set<string>()),
-    pickedMapTypes:   ref(new Set<string>()),
+    pickedGameModes:   ref(new Set<string>()),
     pickedHeroes:     ref(new Set<string>()),
     pickedRoles:      ref(new Set<string>()),
     pickedResults:    ref(new Set<string>()),
@@ -132,7 +132,7 @@ function toggleSet(set: Set<string>, value: string): Set<string> {
   return next
 }
 
-function toggleTypedSet<T>(set: Set<T>, value: T): Set<T> {
+function toggleGameModedSet<T>(set: Set<T>, value: T): Set<T> {
   const next = new Set(set)
   if (next.has(value)) next.delete(value)
   else next.add(value)
@@ -154,7 +154,7 @@ export function useMatchesNarrow(
   state: MatchesNarrowState,
 ) {
   const {
-    searchText, pickedMaps, pickedMapTypes, pickedHeroes,
+    searchText, pickedMaps, pickedGameModes, pickedHeroes,
     pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
     pickedQueues, pickedPlayModes,
     pickedRange, customFrom, customTo,
@@ -164,19 +164,19 @@ export function useMatchesNarrow(
 
   // ── Pickers ─────────────────────────────────────────────
   const pickMap        = (v: string) => { pickedMaps.value     = toggleSet(pickedMaps.value,     v) }
-  const pickMapType    = (v: string) => { pickedMapTypes.value = toggleSet(pickedMapTypes.value, v) }
+  const pickGameMode    = (v: string) => { pickedGameModes.value = toggleSet(pickedGameModes.value, v) }
   const pickHero       = (v: string) => { pickedHeroes.value   = toggleSet(pickedHeroes.value,   v) }
   const pickRole       = (v: string) => { pickedRoles.value    = toggleSet(pickedRoles.value,    v) }
   const pickResult     = (v: string) => { pickedResults.value  = toggleSet(pickedResults.value,  v) }
   const pickTag        = (v: string) => { pickedTags.value     = toggleSet(pickedTags.value,     v) }
   const pickReviewedBy = (v: ReviewedByPick) => {
-    pickedReviewedBy.value = toggleTypedSet(pickedReviewedBy.value, v)
+    pickedReviewedBy.value = toggleGameModedSet(pickedReviewedBy.value, v)
   }
   const pickQueue = (v: QueuePick) => {
-    pickedQueues.value = toggleTypedSet(pickedQueues.value, v)
+    pickedQueues.value = toggleGameModedSet(pickedQueues.value, v)
   }
   const pickPlayMode = (v: PlayModePick) => {
-    pickedPlayModes.value = toggleTypedSet(pickedPlayModes.value, v)
+    pickedPlayModes.value = toggleGameModedSet(pickedPlayModes.value, v)
   }
 
   function pickRange(v: PresetRange) {
@@ -194,7 +194,7 @@ export function useMatchesNarrow(
   function resetNarrow() {
     searchText.value          = ''
     pickedMaps.value          = new Set()
-    pickedMapTypes.value      = new Set()
+    pickedGameModes.value      = new Set()
     pickedHeroes.value        = new Set()
     pickedRoles.value         = new Set()
     pickedResults.value       = new Set()
@@ -222,7 +222,7 @@ export function useMatchesNarrow(
     if (customFrom.value || customTo.value) n++
     else if (pickedRange.value !== 'all') n++
     n += pickedMaps.value.size
-    n += pickedMapTypes.value.size
+    n += pickedGameModes.value.size
     n += pickedHeroes.value.size
     n += pickedRoles.value.size
     n += pickedResults.value.size
@@ -244,7 +244,7 @@ export function useMatchesNarrow(
 
   // ── Available-option universes (full corpus, NOT narrowed) ──
   const availableMaps     = computed(() => uniq(records.value.map((r) => r.data?.map  ?? '')).sort())
-  const availableMapTypes = computed(() => uniq(records.value.map((r) => r.data?.game_mode ?? '')).sort())
+  const availableGameModes = computed(() => uniq(records.value.map((r) => r.data?.game_mode ?? '')).sort())
   const availableHeroes   = computed(() => {
     const set = new Set<string>()
     for (const r of records.value) {
@@ -297,7 +297,7 @@ export function useMatchesNarrow(
     const fromBound = customFrom.value
     const toBound = customTo.value
     const maps = pickedMaps.value
-    const mapTypes = pickedMapTypes.value
+    const gameModes = pickedGameModes.value
     const roles = pickedRoles.value
     const results = pickedResults.value
     const heroes = pickedHeroes.value
@@ -316,7 +316,7 @@ export function useMatchesNarrow(
       return matchesSearch(r, search)
         && matchesDateRange(r, fromBound, toBound)
         && matchesPickedSet(r.data.map, maps)
-        && matchesPickedSet(r.data.game_mode, mapTypes)
+        && matchesPickedSet(r.data.game_mode, gameModes)
         && matchesPickedSet(r.data.role, roles)
         && matchesPickedSet(r.data.result, results)
         && matchesHero(r, heroes, heroMin, heroPct)
@@ -342,7 +342,7 @@ export function useMatchesNarrow(
   //   - the user has no active clauses (nothing to suggest), or
   //   - dropping any one clause STILL leaves zero records (no
   //     single clause is the culprit; the suggestion would be a lie).
-  type ClauseId = 'search' | 'dateRange' | 'maps' | 'mapTypes' | 'roles'
+  type ClauseId = 'search' | 'dateRange' | 'maps' | 'gameModes' | 'roles'
                 | 'results' | 'heroes' | 'tags' | 'reviewedBy' | 'queues'
                 | 'playModes' | 'leaver' | 'sinceAnchor' | 'minPlay' | 'includeUnknown'
 
@@ -359,7 +359,7 @@ export function useMatchesNarrow(
     const fromBound = customFrom.value
     const toBound   = customTo.value
     const maps      = pickedMaps.value
-    const mapTypes  = pickedMapTypes.value
+    const gameModes  = pickedGameModes.value
     const roles     = pickedRoles.value
     const results   = pickedResults.value
     const heroes    = pickedHeroes.value
@@ -378,7 +378,7 @@ export function useMatchesNarrow(
     if (omit !== 'search'         && !matchesSearch(r, search)) return false
     if (omit !== 'dateRange'      && !matchesDateRange(r, fromBound, toBound)) return false
     if (omit !== 'maps'           && !matchesPickedSet(r.data.map, maps)) return false
-    if (omit !== 'mapTypes'       && !matchesPickedSet(r.data.game_mode, mapTypes)) return false
+    if (omit !== 'gameModes'       && !matchesPickedSet(r.data.game_mode, gameModes)) return false
     if (omit !== 'roles'          && !matchesPickedSet(r.data.role, roles)) return false
     if (omit !== 'results'        && !matchesPickedSet(r.data.result, results)) return false
     if (omit !== 'heroes'         && omit !== 'minPlay' && !matchesHero(r, heroes, heroMin, heroPct)) return false
@@ -396,7 +396,7 @@ export function useMatchesNarrow(
     if (searchText.value.trim())                                    out.push('search')
     if (customFrom.value || customTo.value || pickedRange.value !== 'all') out.push('dateRange')
     if (pickedMaps.value.size > 0)                                  out.push('maps')
-    if (pickedMapTypes.value.size > 0)                              out.push('mapTypes')
+    if (pickedGameModes.value.size > 0)                              out.push('gameModes')
     if (pickedRoles.value.size > 0)                                 out.push('roles')
     if (pickedResults.value.size > 0)                               out.push('results')
     if (pickedHeroes.value.size > 0)                                out.push('heroes')
@@ -417,9 +417,9 @@ export function useMatchesNarrow(
       case 'maps':           return pickedMaps.value.size === 1
         ? `map ${[...pickedMaps.value][0]}`
         : `${pickedMaps.value.size} map picks`
-      case 'mapTypes':       return pickedMapTypes.value.size === 1
-        ? `map-type ${[...pickedMapTypes.value][0]}`
-        : `${pickedMapTypes.value.size} map-type picks`
+      case 'gameModes':       return pickedGameModes.value.size === 1
+        ? `game-mode ${[...pickedGameModes.value][0]}`
+        : `${pickedGameModes.value.size} game-mode picks`
       case 'roles':          return pickedRoles.value.size === 1
         ? `role ${[...pickedRoles.value][0]}`
         : `${pickedRoles.value.size} role picks`
@@ -447,7 +447,7 @@ export function useMatchesNarrow(
       case 'search':         searchText.value = ''; break
       case 'dateRange':      pickedRange.value = 'all'; customFrom.value = ''; customTo.value = ''; break
       case 'maps':           pickedMaps.value = new Set(); break
-      case 'mapTypes':       pickedMapTypes.value = new Set(); break
+      case 'gameModes':       pickedGameModes.value = new Set(); break
       case 'roles':          pickedRoles.value = new Set(); break
       case 'results':        pickedResults.value = new Set(); break
       case 'heroes':         pickedHeroes.value = new Set(); break
@@ -481,17 +481,17 @@ export function useMatchesNarrow(
   return {
     // State
     searchText,
-    pickedMaps, pickedMapTypes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
+    pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
     pickedQueues, pickedPlayModes,
     pickedRange, customFrom, customTo,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive,
     // Actions
-    pickMap, pickMapType, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickQueue, pickPlayMode, pickRange,
+    pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickQueue, pickPlayMode, pickRange,
     resetNarrow,
     // Derived
     activeClauseCount, anyNarrow,
-    availableMaps, availableMapTypes, availableHeroes, availableRoles, availableResults, availableTags,
+    availableMaps, availableGameModes, availableHeroes, availableRoles, availableResults, availableTags,
     narrowedRecords,
     clauseExclusionCounts,
   }
