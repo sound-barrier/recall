@@ -3,8 +3,10 @@ import { computed, ref } from 'vue'
 import { useDossier } from '../composables/useDossier'
 import { useNarrow } from '../composables/useNarrow'
 import { useOWData } from '../composables/useOWData'
+import { useMapRoleConfig } from '../composables/useMapRoleConfig'
 import { winrateVolumeFill } from '../match-heatmap-helpers'
 import type { MapRoleCell } from '../composables/useMatchesDossier'
+import MapRoleConfigPopover from './MapRoleConfigPopover.vue'
 
 // GEOGRAPHY — Map × Role performance band.
 //
@@ -36,6 +38,21 @@ const TYPE_LABEL: Record<string, string> = {
 const dossier = useDossier()
 const narrow = useNarrow()
 const ow = useOWData()
+const cfg = useMapRoleConfig()
+
+// Gear popover — the band's display filter (roles / map types / maps).
+const configOpen = ref(false)
+const configAnchor = ref<DOMRect | null>(null)
+function toggleConfig(e: MouseEvent) {
+  configAnchor.value = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  configOpen.value = !configOpen.value
+}
+
+// Rows = the configured role subset (empty filter = all roles).
+const visibleRoles = computed<Role[]>(() => {
+  const sel = cfg.config.value.roles
+  return sel.length ? ROLES.filter((r) => sel.includes(r)) : ROLES
+})
 
 // Trailing time-window toggle, mirroring the Campaign Log (1M/3M/6M/
 // 12M). Persisted so the choice survives reloads; default 6M to match
@@ -65,8 +82,16 @@ interface Col { slug: string; display: string; type: string; firstInGroup: boole
 // normalised slug — the same form the parser stores in data.map — so
 // the join below is exact.
 const columns = computed<Col[]>(() => {
+  // Filter the roster by the gear config BEFORE grouping so the
+  // type-group headers + first-in-group rules read off the visible set.
+  // Empty filter = pass all; non-empty type + map filters AND together.
+  const { mapTypes, maps } = cfg.config.value
+  const typeSet = new Set(mapTypes)
+  const mapSet = new Set(maps)
   const byType = new Map<string, { slug: string; display: string }[]>()
   for (const [slug, { display, type }] of ow.mapIndex.value) {
+    if (typeSet.size && !typeSet.has(type)) continue
+    if (mapSet.size && !mapSet.has(display)) continue
     const arr = byType.get(type) ?? []
     arr.push({ slug, display })
     byType.set(type, arr)
@@ -146,6 +171,17 @@ function onCell(slug: string, role: Role) {
 const gridTemplateColumns = computed(
   () => `var(--mr-gutter) repeat(${columns.value.length}, minmax(var(--mr-cell), 1fr))`,
 )
+
+// Row track follows the configured role count (the role-label gutter
+// rows: type-headers + column-labels + one per visible role).
+const gridTemplateRows = computed(
+  () => `auto 5.4rem repeat(${visibleRoles.value.length}, var(--mr-row))`,
+)
+
+// Distinguish "no map roster at all" (reference data missing) from
+// "filtered down to nothing" so each gets the right empty message.
+const rosterEmpty = computed(() => ow.mapIndex.value.size === 0)
+const filteredEmpty = computed(() => !rosterEmpty.value && (columns.value.length === 0 || visibleRoles.value.length === 0))
 </script>
 
 <template>
@@ -171,6 +207,19 @@ const gridTemplateColumns = computed(
         </button>
       </div>
 
+      <button
+        type="button"
+        class="mr-gear"
+        :class="{ 'mr-gear-active': !cfg.isDefault.value }"
+        data-mr-config-trigger
+        :aria-label="cfg.isDefault.value ? 'Filter the Geography band' : 'Geography filters are active'"
+        :aria-expanded="configOpen"
+        :title="cfg.isDefault.value ? 'Filter by role, map type, or map' : 'Geography filters active'"
+        @click="toggleConfig"
+      >
+        <span aria-hidden="true">⚙</span>
+      </button>
+
       <ul class="mr-legend" aria-label="Cell-colour legend">
         <li><span class="mr-swatch mr-loss" /> Losing</li>
         <li><span class="mr-swatch mr-mixed" /> Mixed</li>
@@ -180,11 +229,11 @@ const gridTemplateColumns = computed(
 
     <div class="mr-scroll">
       <div
-        v-if="columns.length > 0"
+        v-if="!rosterEmpty && !filteredEmpty"
         class="mr-grid"
         role="group"
         aria-label="Map by role performance heatmap"
-        :style="{ gridTemplateColumns }"
+        :style="{ gridTemplateColumns, gridTemplateRows }"
       >
         <span class="mr-corner" />
 
@@ -211,7 +260,7 @@ const gridTemplateColumns = computed(
           {{ col.display }}
         </span>
 
-        <template v-for="(role, rIdx) in ROLES" :key="`row-${role}`">
+        <template v-for="(role, rIdx) in visibleRoles" :key="`row-${role}`">
           <span
             class="mr-rowhead"
             :style="{ gridColumn: 1, gridRow: rIdx + 3 }"
@@ -236,10 +285,23 @@ const gridTemplateColumns = computed(
         </template>
       </div>
 
+      <p v-else-if="filteredEmpty" class="mr-loading">
+        No maps match your filters.
+        <button type="button" class="mr-clear" data-mr-clear @click="cfg.reset()">
+          Clear filters
+        </button>
+      </p>
+
       <p v-else class="mr-loading">
         Map reference data unavailable.
       </p>
     </div>
+
+    <MapRoleConfigPopover
+      :open="configOpen"
+      :anchor="configAnchor"
+      @close="configOpen = false"
+    />
   </section>
 </template>
 
@@ -320,6 +382,45 @@ const gridTemplateColumns = computed(
   color: var(--accent);
 }
 
+/* Gear — opens the band's display-filter popover. An accent dot in the
+   corner signals when a filter is active. */
+.mr-gear {
+  position: relative;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.4rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--surface-2);
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.mr-gear:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.mr-gear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.mr-gear-active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.mr-gear-active::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1.5px var(--surface);
+}
+
 .mr-legend {
   display: flex;
   align-items: center;
@@ -366,7 +467,9 @@ const gridTemplateColumns = computed(
      which jitters every element below the band and breaks click
      stability. */
   display: grid;
-  grid-template-rows: auto 5.4rem repeat(3, var(--mr-row));
+
+  /* grid-template-rows bound inline — the role-row count follows the
+     gear's role filter. */
   gap: 2px;
   align-items: stretch;
   width: 100%;
@@ -464,6 +567,23 @@ const gridTemplateColumns = computed(
   font-size: 0.7rem;
   color: var(--text-faint);
 }
+
+.mr-clear {
+  appearance: none;
+  margin-left: 0.5rem;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.5rem;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.mr-clear:hover { color: var(--text); background: color-mix(in srgb, var(--accent-soft) 55%, var(--accent)); }
+.mr-clear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 @media (width <= 720px) {
   .mr-legend { display: none; }
