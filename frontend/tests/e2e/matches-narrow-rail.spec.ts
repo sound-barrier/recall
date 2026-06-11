@@ -19,7 +19,7 @@ function makeMatches(): Record<string, unknown>[] {
     data: {
       map: 'rialto',
       playlist: 'competitive',
-      type: 'control',
+      game_mode: 'control',
       role: 'support',
       hero: 'lucio',
       result: 'victory',

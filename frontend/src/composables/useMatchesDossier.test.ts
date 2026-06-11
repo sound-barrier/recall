@@ -38,7 +38,7 @@ function legacy(dossier: ReturnType<typeof useMatchesDossier>) {
       minMatches:       DEFAULT_BEST_WINRATE_HERO_MIN_MATCHES,
     }),
     topMapTypes: dossier.topByCount({
-      getter: (r) => r.data?.type,
+      getter: (r) => r.data?.game_mode,
       limit:  DEFAULT_TOP_BY_COUNT_LIMIT,
     }),
     timeOfDayBuckets: dossier.timeOfDayBuckets({ bucketCount: DEFAULT_TIME_OF_DAY_BUCKET_COUNT }),
@@ -66,7 +66,7 @@ function rec(opts: {
       hero: opts.hero ?? 'lucio',
       result: opts.result ?? 'victory',
       date: '2026-05-10', finished_at: '14:00',
-      mode: 'competitive',
+      playlist: 'competitive',
     },
     annotation: opts.leaver ? { leaver: opts.leaver } : undefined,
     parsed_at: opts.parsedAt ?? '2026-05-10T14:00:00Z',
@@ -247,7 +247,7 @@ describe('useMatchesDossier', () => {
         source_files: ['a.png'],
         source_types: { 'a.png': 'summary' },
         data: {
-          map: 'rialto', hero: heroes[0]?.hero, mode: 'competitive',
+          map: 'rialto', hero: heroes[0]?.hero, playlist: 'competitive',
           result, date: '2026-05-10', finished_at: '14:00',
           heroes_played: heroes.map(h => ({ hero: h.hero, play_time: h.play_time, percent_played: 0 })),
         },
@@ -324,7 +324,7 @@ describe('useMatchesDossier', () => {
         source_files: ['a.png'],
         source_types: { 'a.png': 'summary' },
         data: {
-          map: 'rialto', hero: 'lucio', mode: 'competitive',
+          map: 'rialto', hero: 'lucio', playlist: 'competitive',
           result: 'victory', date: '2026-05-10', finished_at: '14:00',
           ...(gameLength !== undefined ? { game_length: gameLength } : {}),
         },
@@ -404,7 +404,7 @@ describe('useMatchesDossier', () => {
         source_files: ['a.png'],
         source_types: { 'a.png': 'summary' },
         data: {
-          map: 'rialto', hero: heroes[0]?.hero, mode: 'competitive',
+          map: 'rialto', hero: heroes[0]?.hero, playlist: 'competitive',
           result, date: '2026-05-10', finished_at: '14:00',
           heroes_played: heroes.map(h => ({
             hero: h.hero, percent_played: h.percent_played,
@@ -524,7 +524,7 @@ describe('useMatchesDossier', () => {
         source_files: ['a.png'],
         source_types: { 'a.png': 'summary' },
         data: {
-          map: 'rialto', hero: 'lucio', mode: 'competitive',
+          map: 'rialto', hero: 'lucio', playlist: 'competitive',
           result: 'victory', date: '2026-05-10', finished_at: '14:00',
           ...(perf ? { performance: perf } : {}),
         },
@@ -733,7 +733,7 @@ describe('useMatchesDossier', () => {
         source_files: ['a.png'],
         source_types: { 'a.png': 'summary' },
         data: {
-          map: 'rialto', mode: 'competitive',
+          map: 'rialto', playlist: 'competitive',
           role: opts.primary,
           hero: (opts.heroes ?? [])[0],
           result: opts.result ?? 'victory',
@@ -871,7 +871,7 @@ describe('useMatchesDossier', () => {
         source_types: { 'a.png': 'summary' },
         data: {
           map: opts.map,
-          mode: 'competitive',
+          playlist: 'competitive',
           role: opts.role,
           hero: (opts.heroes ?? [])[0],
           result: opts.result ?? 'victory',
@@ -1166,10 +1166,10 @@ describe('useMatchesDossier', () => {
       expect(topMapTypes.value).toEqual([])
     })
 
-    it('counts and shares by data.type', () => {
-      const withType = (type: string) => ({
+    it('counts and shares by data.game_mode', () => {
+      const withType = (gameMode: string) => ({
         ...rec({}),
-        data: { type, result: 'victory' },
+        data: { game_mode: gameMode, result: 'victory' },
       } as unknown as MatchRecord)
       const records = ref([
         withType('control'),
@@ -1300,12 +1300,12 @@ describe('useMatchesDossier — query-helper parameterization', () => {
 
     it('honours a getter that picks a different field', () => {
       const records = ref([
-        { ...rec({ map: 'rialto' }),  data: { ...rec({ map: 'rialto'  }).data!, type: 'control' } },
-        { ...rec({ map: 'numbani' }), data: { ...rec({ map: 'numbani' }).data!, type: 'hybrid'  } },
-        { ...rec({ map: 'lijiang' }), data: { ...rec({ map: 'lijiang' }).data!, type: 'control' } },
+        { ...rec({ map: 'rialto' }),  data: { ...rec({ map: 'rialto'  }).data!, game_mode: 'control' } },
+        { ...rec({ map: 'numbani' }), data: { ...rec({ map: 'numbani' }).data!, game_mode: 'hybrid'  } },
+        { ...rec({ map: 'lijiang' }), data: { ...rec({ map: 'lijiang' }).data!, game_mode: 'control' } },
       ] as unknown as MatchRecord[])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
-      const byType = dossier.topByCount({ getter: (r) => r.data?.type, limit: 5 })
+      const byType = dossier.topByCount({ getter: (r) => r.data?.game_mode, limit: 5 })
       expect(byType.value.find((e) => e.key === 'control')?.total).toBe(2)
       expect(byType.value.find((e) => e.key === 'hybrid')?.total).toBe(1)
     })
@@ -1515,7 +1515,7 @@ describe('useMatchesDossier — query-helper parameterization', () => {
     // canonical parser slugs.
     function tr(opts: {
       hero?: string
-      type?: 'control' | 'escort' | 'flashpoint' | 'hybrid' | 'push' | 'clash'
+      game_mode?: 'control' | 'escort' | 'flashpoint' | 'hybrid' | 'push' | 'clash'
       result?: 'victory' | 'defeat' | 'draw'
       heroesPlayed?: Array<{ hero: string; play_time?: string }>
     }): MatchRecord {
@@ -1524,11 +1524,11 @@ describe('useMatchesDossier — query-helper parameterization', () => {
         source_files: ['a.png'],
         source_types: { 'a.png': 'summary' },
         data: {
-          map:    'ilios',
-          hero:   opts.hero ?? 'lucio',
-          type:   opts.type ?? 'control',
-          result: opts.result ?? 'victory',
-          mode:   'competitive',
+          map:       'ilios',
+          hero:      opts.hero ?? 'lucio',
+          game_mode: opts.game_mode ?? 'control',
+          result:    opts.result ?? 'victory',
+          playlist:  'competitive',
           ...(opts.heroesPlayed ? { heroes_played: opts.heroesPlayed } : {}),
         },
         parsed_at: '2026-05-10T14:00:00Z',
@@ -1543,9 +1543,9 @@ describe('useMatchesDossier — query-helper parameterization', () => {
 
     it('materialises a full grid (top heroes × 6 map types) including zero cells', () => {
       const records = ref([
-        tr({ hero: 'lucio',  type: 'control', result: 'victory' }),
-        tr({ hero: 'lucio',  type: 'escort',  result: 'defeat'  }),
-        tr({ hero: 'ana',    type: 'control', result: 'victory' }),
+        tr({ hero: 'lucio',  game_mode: 'control', result: 'victory' }),
+        tr({ hero: 'lucio',  game_mode: 'escort',  result: 'defeat'  }),
+        tr({ hero: 'ana',    game_mode: 'control', result: 'victory' }),
       ])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
       const cells = dossier.heroMapTypeCounts().value
@@ -1564,10 +1564,10 @@ describe('useMatchesDossier — query-helper parameterization', () => {
 
     it('drops records whose map type is missing — no orphan "unknown" column surfaces', () => {
       const records = ref([
-        tr({ hero: 'lucio', type: 'control', result: 'victory' }),
+        tr({ hero: 'lucio', game_mode: 'control', result: 'victory' }),
         // No type — should be ignored entirely.
         { match_key: 'm2', source_files: ['b.png'], source_types: { 'b.png': 'summary' },
-          data: { map: 'unknown', hero: 'lucio', result: 'victory', mode: 'competitive' },
+          data: { map: 'unknown', hero: 'lucio', result: 'victory', playlist: 'competitive' },
           parsed_at: '2026-05-10T14:01:00Z' } as unknown as MatchRecord,
       ])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
@@ -1583,7 +1583,7 @@ describe('useMatchesDossier — query-helper parameterization', () => {
     it('credits every hero in heroes_played[] — open-queue hero swaps surface in both cells', () => {
       const records = ref([
         tr({
-          type: 'flashpoint',
+          game_mode: 'flashpoint',
           result: 'victory',
           heroesPlayed: [
             { hero: 'ana',     play_time: '10min' },
@@ -1601,9 +1601,9 @@ describe('useMatchesDossier — query-helper parameterization', () => {
 
     it('excludes draws from the winrate denominator (matches headline winrate convention)', () => {
       const records = ref([
-        tr({ hero: 'lucio', type: 'control', result: 'victory' }),
-        tr({ hero: 'lucio', type: 'control', result: 'defeat'  }),
-        tr({ hero: 'lucio', type: 'control', result: 'draw'    }),
+        tr({ hero: 'lucio', game_mode: 'control', result: 'victory' }),
+        tr({ hero: 'lucio', game_mode: 'control', result: 'defeat'  }),
+        tr({ hero: 'lucio', game_mode: 'control', result: 'draw'    }),
       ])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
       const cells = dossier.heroMapTypeCounts().value
@@ -1617,9 +1617,9 @@ describe('useMatchesDossier — query-helper parameterization', () => {
     it('honours heroLimit — only the top-N heroes by total appearances surface', () => {
       const records = ref([
         // ana: 3 matches; lucio: 2; kiriko: 1
-        tr({ hero: 'ana', type: 'control' }), tr({ hero: 'ana', type: 'escort' }), tr({ hero: 'ana', type: 'hybrid' }),
-        tr({ hero: 'lucio', type: 'control' }), tr({ hero: 'lucio', type: 'escort' }),
-        tr({ hero: 'kiriko', type: 'push' }),
+        tr({ hero: 'ana', game_mode: 'control' }), tr({ hero: 'ana', game_mode: 'escort' }), tr({ hero: 'ana', game_mode: 'hybrid' }),
+        tr({ hero: 'lucio', game_mode: 'control' }), tr({ hero: 'lucio', game_mode: 'escort' }),
+        tr({ hero: 'kiriko', game_mode: 'push' }),
       ])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
       const cells = dossier.heroMapTypeCounts(() => ({ heroLimit: 2 })).value

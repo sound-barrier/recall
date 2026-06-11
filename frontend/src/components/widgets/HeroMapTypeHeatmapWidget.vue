@@ -6,8 +6,8 @@ import { useOWData } from '../../composables/useOWData'
 import { useWidgetConfig } from '../../composables/useWidgetConfig'
 import { heroMapTypeHeatmapSchema, type HeroMapTypeHeatmapConfig } from '../../dashboard/widgets'
 
-// Hero × map-type heatmap. Rows are the top-N most-played heroes
-// in the narrowed set; columns are the canonical 6 map types
+// Hero × game-mode heatmap. Rows are the top-N most-played heroes
+// in the narrowed set; columns are the canonical 6 game modes
 // (control / escort / flashpoint / hybrid / push / clash). Each
 // cell's tone reads winrate (green → amber → red); cell opacity
 // reads volume so the eye lands on the cells that carry weight.
@@ -91,7 +91,7 @@ const heroLabel = (h: string) => ow.heroDisplayName(h) || h
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Hero × map-type</span>
+    <span class="breakdown-eyebrow">Hero × game-mode</span>
   </header>
 
   <p v-if="belowFloor" class="heatmap-empty">
@@ -99,7 +99,7 @@ const heroLabel = (h: string) => ow.heroDisplayName(h) || h
     patterns. You have {{ decisiveTotal }}.
   </p>
 
-  <div v-else class="heatmap-grid" role="grid" :aria-label="`Hero by map-type heatmap, ${rows.length} heroes × ${columnHeaders.length} map types`">
+  <div v-else class="heatmap-grid" role="grid" :aria-label="`Hero by game-mode heatmap, ${rows.length} heroes × ${columnHeaders.length} game modes`">
     <div class="heatmap-row heatmap-header" role="row">
       <span class="heatmap-corner" role="columnheader" aria-label="Hero" />
       <span v-for="t in columnHeaders" :key="t" class="heatmap-colhead" role="columnheader">

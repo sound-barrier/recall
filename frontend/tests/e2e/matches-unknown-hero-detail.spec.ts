@@ -18,7 +18,7 @@ test.describe('Matches — Unknown hero / map detail-panel banner', () => {
       source_files: ['k1.png'],
       source_types: { 'k1.png': 'summary' },
       data: {
-        map: 'rialto', playlist: 'competitive', type: 'control',
+        map: 'rialto', playlist: 'competitive', game_mode: 'control',
         hero: '', hero_raw: 'miyazaki',
         result: 'victory',
         date: '2026-05-10', finished_at: '22:00',
@@ -56,7 +56,7 @@ test.describe('Matches — Unknown hero / map detail-panel banner', () => {
       source_files: ['k2.png'],
       source_types: { 'k2.png': 'summary' },
       data: {
-        map: 'rialto', playlist: 'competitive', type: 'control',
+        map: 'rialto', playlist: 'competitive', game_mode: 'control',
         hero: 'lucio',
         result: 'victory',
         date: '2026-05-10', finished_at: '22:00',

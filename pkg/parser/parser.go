@@ -15,7 +15,7 @@
 //   - tesseract.go        — tessPath, SetTesseractPath, runTesseract,
 //     ocrInverted, ocrRaw, runTesseractFunc seam
 //   - imageutil.go        — crop, upscale, preprocessInverted
-//   - text.go             — extractHeader, extractGameType, extractInts,
+//   - text.go             — extractHeader, extractGameMode, extractInts,
 //     digitize, normalizeDate, trimShortBoundaryWords,
 //     labelToKey
 //   - parse_rank.go       — isRankScreenshot + parseRank + extractRank /

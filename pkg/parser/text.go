@@ -15,7 +15,7 @@ import (
 // common OCR substitutions (I/L/1, O/0, etc.). The banner's COMPETITIVE label
 // is deliberately NOT read — only a RANK screenshot reliably proves a match was
 // competitive, so playlist is left to parseRank.
-func extractHeader(text string) (mapName, gameType string) {
+func extractHeader(text string) (mapName, gameMode string) {
 	upper := strings.ToUpper(text)
 
 	// Map: try the segment after "|" first (when Tesseract renders the pipe).
@@ -36,14 +36,14 @@ func extractHeader(text string) (mapName, gameType string) {
 	}
 
 	// Type: shared between the in-game banner and the summary card.
-	gameType = extractGameType(upper)
-	return mapName, gameType
+	gameMode = extractGameMode(upper)
+	return mapName, gameMode
 }
 
-// typePatterns matches OW game types in OCR'd text. Each pattern allows the
+// gameModePatterns matches OW game types in OCR'd text. Each pattern allows the
 // common I/L/1 and O/0 substitutions Tesseract produces on the OW fonts so a
 // single mangled letter doesn't break the match.
-var typePatterns = []struct {
+var gameModePatterns = []struct {
 	name string
 	re   *regexp.Regexp
 }{
@@ -56,9 +56,9 @@ var typePatterns = []struct {
 	{"clash", regexp.MustCompile(`(?i)CL[A4]SH`)},
 }
 
-func extractGameType(text string) string {
+func extractGameMode(text string) string {
 	upper := strings.ToUpper(text)
-	for _, p := range typePatterns {
+	for _, p := range gameModePatterns {
 		if p.re.MatchString(upper) {
 			return p.name
 		}

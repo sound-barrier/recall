@@ -8,7 +8,7 @@ function rec(date: string, finishedAt: string, key: string): MatchRecord {
     match_key: key,
     source_files: [`${key}.png`],
     source_types: { [`${key}.png`]: 'summary' },
-    data: { date, finished_at: finishedAt, map: 'rialto', mode: 'competitive', hero: 'lucio' },
+    data: { date, finished_at: finishedAt, map: 'rialto', playlist: 'competitive', hero: 'lucio' },
     parsed_at: `${date}T${finishedAt}:00Z`,
   } as unknown as MatchRecord
 }

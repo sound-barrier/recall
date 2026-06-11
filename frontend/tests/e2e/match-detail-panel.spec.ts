@@ -19,7 +19,7 @@ function record(matchKey: string, opts: { note?: string; result?: string; finish
     source_files: [`${matchKey}.png`],
     source_types: { [`${matchKey}.png`]: 'summary' },
     data: {
-      map: 'rialto', playlist: 'competitive', type: 'control', role: 'support', hero: 'lucio',
+      map: 'rialto', playlist: 'competitive', game_mode: 'control', role: 'support', hero: 'lucio',
       result: opts.result ?? 'victory',
       date: '2026-05-10', finished_at: opts.finishedAt ?? '22:00',
       eliminations: 17, assists: 16, deaths: 11, damage: 7200,
@@ -488,7 +488,7 @@ test.describe('match detail panel — contract: auto-close + click-outside', () 
         match_key: 'm1',
         source_files: ['m1.png'],
         source_types: { 'm1.png': 'summary' },
-        data: { map: 'rialto', playlist: 'competitive', type: 'control', role: 'support', hero: 'lucio', result: 'victory', date: '2026-05-10', finished_at: '22:00' },
+        data: { map: 'rialto', playlist: 'competitive', game_mode: 'control', role: 'support', hero: 'lucio', result: 'victory', date: '2026-05-10', finished_at: '22:00' },
         parsed_at: '2026-05-10T22:30:00Z',
         hidden,
       }
@@ -526,7 +526,7 @@ test.describe('match detail panel — contract: auto-close + click-outside', () 
           match_key: 'm1',
           source_files: ['m1.png'],
           source_types: { 'm1.png': 'summary' },
-          data: { map: 'rialto', playlist: 'competitive', type: 'control', role: 'support', hero: 'lucio', result: 'victory', date: '2026-05-10', finished_at: '22:00' },
+          data: { map: 'rialto', playlist: 'competitive', game_mode: 'control', role: 'support', hero: 'lucio', result: 'victory', date: '2026-05-10', finished_at: '22:00' },
           parsed_at: '2026-05-10T22:30:00Z',
         }]),
       })
@@ -598,7 +598,7 @@ test.describe('match detail panel — contract: auto-close + click-outside', () 
           match_key: 'm1',
           source_files: ['m1.png'],
           source_types: { 'm1.png': 'summary' },
-          data: { map: 'rialto', playlist: 'competitive', type: 'control', role: 'support', hero: 'lucio', result: 'victory', date: '2026-05-10', finished_at: '22:00' },
+          data: { map: 'rialto', playlist: 'competitive', game_mode: 'control', role: 'support', hero: 'lucio', result: 'victory', date: '2026-05-10', finished_at: '22:00' },
           parsed_at: '2026-05-10T22:30:00Z',
         }]),
       })

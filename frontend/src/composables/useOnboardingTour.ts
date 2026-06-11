@@ -203,7 +203,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   {
     id: 'matches-narrow',
     heading: 'Narrow to one hero',
-    body: 'The Narrow panel COMPOSES the active set. Recall just opened it and added "hero is lucio" as a clause; watch the dossier above + the list behind recompose. Stack any number of clauses — hero, map, map type, role, queue, play mode, date, free text — and they intersect (AND). Drop a clause anytime by clicking its chip.',
+    body: 'The Narrow panel COMPOSES the active set. Recall just opened it and added "hero is lucio" as a clause; watch the dossier above + the list behind recompose. Stack any number of clauses — hero, map, game mode, role, queue, play mode, date, free text — and they intersect (AND). Drop a clause anytime by clicking its chip.',
     target: '#narrow-popover',
     placement: 'right',
     view: 'matches',

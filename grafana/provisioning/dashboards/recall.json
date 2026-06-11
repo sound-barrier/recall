@@ -141,10 +141,10 @@
       "gridPos": {"h": 10, "w": 12, "x": 0, "y": 22},
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (type) (count_over_time(recall_match_result{type!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "Matches"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (type) (count_over_time(recall_match_result{type!=\"\",result=\"victory\"}[365d]))) or (sum by (type) (count_over_time(recall_match_result{type!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Wins"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (type) (count_over_time(recall_match_result{type!=\"\",result=\"defeat\"}[365d]))) or (sum by (type) (count_over_time(recall_match_result{type!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Losses"},
-        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "((sum by (type) (count_over_time(recall_match_result{type!=\"\",result=\"victory\"}[365d]))) or (sum by (type) (count_over_time(recall_match_result{type!=\"\"}[365d])) * 0)) / sum by (type) (count_over_time(recall_match_result{type!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "WinRate"}
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "sum by (game_mode) (count_over_time(recall_match_result{game_mode!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "Matches"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (game_mode) (count_over_time(recall_match_result{game_mode!=\"\",result=\"victory\"}[365d]))) or (sum by (game_mode) (count_over_time(recall_match_result{game_mode!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Wins"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "(sum by (game_mode) (count_over_time(recall_match_result{game_mode!=\"\",result=\"defeat\"}[365d]))) or (sum by (game_mode) (count_over_time(recall_match_result{game_mode!=\"\"}[365d])) * 0)", "format": "table", "instant": true, "refId": "Losses"},
+        {"datasource": {"type": "prometheus", "uid": "prometheus"}, "expr": "((sum by (game_mode) (count_over_time(recall_match_result{game_mode!=\"\",result=\"victory\"}[365d]))) or (sum by (game_mode) (count_over_time(recall_match_result{game_mode!=\"\"}[365d])) * 0)) / sum by (game_mode) (count_over_time(recall_match_result{game_mode!=\"\"}[365d]))", "format": "table", "instant": true, "refId": "WinRate"}
       ],
       "transformations": [
         {"id": "merge", "options": {}},

@@ -98,7 +98,7 @@ test.describe('a11y — nested-modal focus-trap Esc sequence', () => {
             match_key:    'match-2026-05-10T22-00-00',
             source_files: ['match-2026-05-10T22-00-00.png'],
             data: {
-              map: 'rialto', playlist: 'competitive', type: 'control',
+              map: 'rialto', playlist: 'competitive', game_mode: 'control',
               role: 'support', hero: 'lucio', result: 'victory',
               date: '2026-05-10', finished_at: '22:00',
               eliminations: 12, assists: 8, deaths: 3, damage: 5500,

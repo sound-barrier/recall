@@ -2,7 +2,7 @@
   "screenshot_type": "summary",
   "result": {
     "map": "new queen street",
-    "type": "push",
+    "game_mode": "push",
     "playlist": "",
     "role": "support",
     "hero": "lucio",

@@ -120,7 +120,7 @@ function mockApi(overrides: MountOverrides = {}) {
     // OWData payload so useOWData's lookups fall through to the
     // stored lowercase form (the test fixtures already use the
     // lowercase form).
-    GetOWData:           vi.fn(async () => ({ heroes_by_role: {}, maps_by_type: {} })),
+    GetOWData:           vi.fn(async () => ({ heroes_by_role: {}, maps_by_game_mode: {} })),
     EventsOn: vi.fn((name: string, cb: (data: unknown) => void) => {
       eventHandlers.set(name, cb)
     }),

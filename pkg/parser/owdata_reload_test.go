@@ -128,7 +128,7 @@ func TestReload_ConcurrentReadsAndSwaps(t *testing.T) {
 			}()
 			for j := 0; j < 100; j++ {
 				_ = HeroRole("Lúcio")
-				_ = MapType("Hollywood")
+				_ = MapGameMode("Hollywood")
 				_ = Sources()
 			}
 		}()

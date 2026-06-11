@@ -390,7 +390,7 @@ func foldGroup(key string, vs []screenshotView, dirs map[int64]string) MatchReco
 		data.Role = firstNonEmpty(data.Role, parser.HeroRole(data.Hero))
 	}
 	if data.Map != "" {
-		data.Type = firstNonEmpty(data.Type, parser.MapType(data.Map))
+		data.GameMode = firstNonEmpty(data.GameMode, parser.MapGameMode(data.Map))
 	}
 
 	// Surface the parser-detected queue format as the top-level

@@ -12,7 +12,7 @@ function rec(date: string, result: 'victory' | 'defeat' | 'draw', key = date): M
     match_key: key,
     source_files: [`${key}.png`],
     source_types: { [`${key}.png`]: 'summary' },
-    data: { date, finished_at: '22:00', result, map: 'rialto', mode: 'competitive', type: 'control', role: 'support', hero: 'lucio' },
+    data: { date, finished_at: '22:00', result, map: 'rialto', playlist: 'competitive', game_mode: 'control', role: 'support', hero: 'lucio' },
     parsed_at: `${date}T22:30:00Z`,
   } as unknown as MatchRecord
 }

@@ -1,6 +1,6 @@
 package parser
 
-// knownMaps + mapTypes + mapDisplayNames are populated in owdata.go's
+// knownMaps + mapGameModes + mapDisplayNames are populated in owdata.go's
 // init() from pkg/parser/maps.yaml. Edit maps.yaml to add or rename
 // a map.
 
@@ -15,13 +15,13 @@ func FirstKnownMapIn(rawMap string) string {
 	return bestKnownMapInText(rawMap)
 }
 
-// MapType returns the type ("control", "escort", "hybrid", …) for the
+// MapGameMode returns the type ("control", "escort", "hybrid", …) for the
 // given map name, or "" for an unknown map. Accepts any casing — input
-// is normalized to the same key form mapTypes was built with. Exported
+// is normalized to the same key form mapGameModes was built with. Exported
 // so the aggregator can resolve type at read time from the stored map
 // name without persisting a redundant `type` column on every row.
-func MapType(mapName string) string {
-	return loadDataset().mapTypes[normalize(mapName)]
+func MapGameMode(mapName string) string {
+	return loadDataset().mapGameModes[normalize(mapName)]
 }
 
 // snapToKnownMap returns the known OW map whose normalized name is

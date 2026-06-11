@@ -12,7 +12,7 @@ import "recall/pkg/parser"
 // without re-shipping the same lists in TypeScript.
 type OWData struct {
 	HeroesByRole      map[string][]string `json:"heroes_by_role"`
-	MapsByType        map[string][]string `json:"maps_by_type"`
+	MapsByGameMode    map[string][]string `json:"maps_by_game_mode"`
 	ScreenshotSources []ScreenshotSource  `json:"screenshot_sources"`
 }
 
@@ -48,7 +48,7 @@ func (a *App) GetOWData() OWData {
 	}
 	return OWData{
 		HeroesByRole:      parser.HeroesByRole(),
-		MapsByType:        parser.MapsByType(),
+		MapsByGameMode:    parser.MapsByGameMode(),
 		ScreenshotSources: sources,
 	}
 }

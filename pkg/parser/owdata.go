@@ -75,13 +75,13 @@ var embeddedScreenshotSourcesYAML []byte
 type owDataset struct {
 	// Canonical display-name lists (sorted alphabetically per group)
 	// for UI surfaces.
-	heroesByRole map[string][]string // "dps" → ["Anran", "Ashe", …]
-	mapsByType   map[string][]string // "control" → ["Antarctic Peninsula", …]
+	heroesByRole   map[string][]string // "dps" → ["Anran", "Ashe", …]
+	mapsByGameMode map[string][]string // "control" → ["Antarctic Peninsula", …]
 
 	// OCR-matching lookup tables, keyed by the lowercase-ASCII
 	// normalized form (see normalize()).
 	heroRoles        map[string]string   // "lucio" → "support"
-	mapTypes         map[string]string   // "lijiang tower" → "control"
+	mapGameModes     map[string]string   // "lijiang tower" → "control"
 	heroDisplayNames map[string]string   // "lucio" → "Lúcio"
 	mapDisplayNames  map[string]string   // "lijiang tower" → "Lijiang Tower"
 	knownMaps        []string            // sorted-asc normalized map names
@@ -134,10 +134,10 @@ func loadDataset() *owDataset {
 // not be mutated by callers.
 func HeroesByRole() map[string][]string { return loadDataset().heroesByRole }
 
-// MapsByType returns the canonical-display map roster grouped by
+// MapsByGameMode returns the canonical-display map roster grouped by
 // game type. The returned map is owned by the current dataset and
 // must not be mutated by callers.
-func MapsByType() map[string][]string { return loadDataset().mapsByType }
+func MapsByGameMode() map[string][]string { return loadDataset().mapsByGameMode }
 
 // Sources returns the screenshot-source filename grammars. The
 // returned slice is owned by the current dataset and must not be
@@ -181,9 +181,9 @@ func init() {
 func Reload() error {
 	ds := &owDataset{
 		heroesByRole:     map[string][]string{},
-		mapsByType:       map[string][]string{},
+		mapsByGameMode:   map[string][]string{},
 		heroRoles:        map[string]string{},
-		mapTypes:         map[string]string{},
+		mapGameModes:     map[string]string{},
 		heroDisplayNames: map[string]string{},
 		mapDisplayNames:  map[string]string{},
 		heroStatKeys:     map[string][]string{},
@@ -275,10 +275,10 @@ func unmarshalMaps(ds *owDataset, bytes []byte) error {
 	for typ, list := range mapsRaw {
 		sorted := append([]string(nil), list...)
 		sort.Strings(sorted)
-		ds.mapsByType[typ] = sorted
+		ds.mapsByGameMode[typ] = sorted
 		for _, name := range list {
 			key := normalize(name)
-			ds.mapTypes[key] = typ
+			ds.mapGameModes[key] = typ
 			ds.mapDisplayNames[key] = name
 			ds.knownMaps = append(ds.knownMaps, key)
 		}

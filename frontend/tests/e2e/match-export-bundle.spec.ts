@@ -32,7 +32,7 @@ function record(i: number) {
     data: {
       map: 'rialto',
       playlist: 'competitive',
-      type: 'control',
+      game_mode: 'control',
       role: 'support',
       hero: HEROES[i],
       result: 'victory',

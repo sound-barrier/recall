@@ -244,7 +244,7 @@ export function useMatchesNarrow(
 
   // ── Available-option universes (full corpus, NOT narrowed) ──
   const availableMaps     = computed(() => uniq(records.value.map((r) => r.data?.map  ?? '')).sort())
-  const availableMapTypes = computed(() => uniq(records.value.map((r) => r.data?.type ?? '')).sort())
+  const availableMapTypes = computed(() => uniq(records.value.map((r) => r.data?.game_mode ?? '')).sort())
   const availableHeroes   = computed(() => {
     const set = new Set<string>()
     for (const r of records.value) {
@@ -316,7 +316,7 @@ export function useMatchesNarrow(
       return matchesSearch(r, search)
         && matchesDateRange(r, fromBound, toBound)
         && matchesPickedSet(r.data.map, maps)
-        && matchesPickedSet(r.data.type, mapTypes)
+        && matchesPickedSet(r.data.game_mode, mapTypes)
         && matchesPickedSet(r.data.role, roles)
         && matchesPickedSet(r.data.result, results)
         && matchesHero(r, heroes, heroMin, heroPct)
@@ -378,7 +378,7 @@ export function useMatchesNarrow(
     if (omit !== 'search'         && !matchesSearch(r, search)) return false
     if (omit !== 'dateRange'      && !matchesDateRange(r, fromBound, toBound)) return false
     if (omit !== 'maps'           && !matchesPickedSet(r.data.map, maps)) return false
-    if (omit !== 'mapTypes'       && !matchesPickedSet(r.data.type, mapTypes)) return false
+    if (omit !== 'mapTypes'       && !matchesPickedSet(r.data.game_mode, mapTypes)) return false
     if (omit !== 'roles'          && !matchesPickedSet(r.data.role, roles)) return false
     if (omit !== 'results'        && !matchesPickedSet(r.data.result, results)) return false
     if (omit !== 'heroes'         && omit !== 'minPlay' && !matchesHero(r, heroes, heroMin, heroPct)) return false

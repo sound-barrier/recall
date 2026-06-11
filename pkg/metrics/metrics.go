@@ -38,7 +38,7 @@ type Reader func() ([]ScrapeRow, error)
 // `hero`/`role` on core metrics (not just per-hero ones) lets dashboards
 // correlate the played hero with match outcome, damage, healing, etc.
 // hero_stat metrics extend this with an additional `stat` label.
-var matchLabels = []string{"match_key", "map", "type", "playlist", "result", "hero", "role"}
+var matchLabels = []string{"match_key", "map", "game_mode", "playlist", "result", "hero", "role"}
 
 // Collector implements prometheus.Collector. Each Collect() call reads all
 // matches via the Reader and emits one sample per (metric, labels, timestamp)
@@ -153,7 +153,7 @@ func (c *Collector) emitMatch(ch chan<- prometheus.Metric, row ScrapeRow, ts tim
 		return []string{
 			row.MatchKey,
 			row.Data.Map,
-			row.Data.Type,
+			row.Data.GameMode,
 			row.Data.Playlist,
 			row.Data.Result,
 			hero,

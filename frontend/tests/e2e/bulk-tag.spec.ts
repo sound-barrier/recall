@@ -17,7 +17,7 @@ function record(matchKey: string, tags: string[] = []) {
     data: {
       map: 'rialto',
       playlist: 'competitive',
-      type: 'control',
+      game_mode: 'control',
       role: 'support',
       hero: 'lucio',
       result: 'victory',

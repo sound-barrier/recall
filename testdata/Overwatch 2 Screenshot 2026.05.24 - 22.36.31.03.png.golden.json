@@ -2,7 +2,7 @@
   "screenshot_type": "summary",
   "result": {
     "map": "antarctic peninsula",
-    "type": "control",
+    "game_mode": "control",
     "playlist": "",
     "role": "support",
     "hero": "juno",

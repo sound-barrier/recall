@@ -1,5 +1,5 @@
 /**
- * Hero × map-type heatmap widget (UI_RECOMMENDATIONS item 2).
+ * Hero × game-mode heatmap widget (UI_RECOMMENDATIONS item 2).
  *
  * The widget is an opt-in dossier surface that breaks down winrate
  * by (hero, map-type) across the narrowed set. Cells are coloured
@@ -29,7 +29,7 @@ const match = (
   source_types: { [`${key}.png`]: 'summary' },
   data: {
     map:    'rialto',
-    type,
+    game_mode: type,
     hero,
     result,
     date:   '2026-05-10',
@@ -69,7 +69,7 @@ const CORPUS = [
   match('m22', 'kiriko', 'clash',      'defeat',  '10:22'),
 ]
 
-test.describe('dossier — Hero × map-type heatmap', () => {
+test.describe('dossier — Hero × game-mode heatmap', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
@@ -94,7 +94,7 @@ test.describe('dossier — Hero × map-type heatmap', () => {
   })
 
   test('renders a 3-row × 6-column grid of (hero × map-type) cells', async ({ page }) => {
-    const widget = page.locator('.breakdown', { hasText: 'Hero × map-type' })
+    const widget = page.locator('.breakdown', { hasText: 'Hero × game-mode' })
     await expect(widget).toBeVisible()
     await expect(widget.locator('.heatmap-grid')).toBeVisible()
     // 3 heroes × 6 map types = 18 cells, plus an extra row of column
@@ -134,7 +134,7 @@ test.describe('dossier — Hero × map-type heatmap', () => {
     })
     await page.reload()
     await page.locator('#tab-matches').click()
-    const widget = page.locator('.breakdown', { hasText: 'Hero × map-type' })
+    const widget = page.locator('.breakdown', { hasText: 'Hero × game-mode' })
     await expect(widget.locator('.heatmap-empty')).toBeVisible()
     await expect(widget.locator('.heatmap-empty')).toContainText('decisive matches')
     await expect(widget.locator('.heatmap-grid')).toHaveCount(0)

@@ -43,7 +43,7 @@ Time scope    [All] [7d] [30d] [90d]
               From [📅]   To [📅]   (Clear dates)
 
 Map           [pill × pill ×]  + typeahead dropdown
-Map type      [control] [escort] [hybrid] [push] …
+Game Mode      [control] [escort] [hybrid] [push] …
 Hero          [pill × pill ×]  + typeahead dropdown
               · matches any played
 Role          [tank] [support] [dps]
@@ -60,7 +60,7 @@ Refinement    Min play time  [__] min
 ### Search
 
 Free-text substring match across map, hero (primary + every
-heroes-played entry), mode, role, map type, annotation note, and
+heroes-played entry), playlist, role, game mode, annotation note, and
 annotation tags. Case-insensitive. The match shows as you type;
 clear the input to drop the clause.
 
@@ -83,14 +83,14 @@ Date filtering applies only to records that have a parseable
 date) pass through every date filter and appear in the leaves
 list under the **No date** group when grouping is active.
 
-### Map + Map type, Hero + Role
+### Map + Game Mode, Hero + Role
 
 **Map** and **Hero** are typeahead comboboxes — 31 maps and 51
 heroes are too many for a chip cloud. Click the input, type to
 narrow the list, click an option to pick or unpick. Selected
 items appear as removable pills above the input; `×` drops one.
 
-**Map type** and **Role** are small chip rows (5–6 options each).
+**Game Mode** and **Role** are small chip rows (5–6 options each).
 
 The Hero filter is a **broad match** — picking "Lúcio" qualifies
 any match where Lúcio was the primary hero OR appeared in the
@@ -200,19 +200,19 @@ reorder. The whole layout persists per profile across launches.
 
 The **Geography** band (its eyebrow reads *Map × role performance*) is
 a contribution-graph-style heatmap: one row per role (Tank / DPS /
-Support), one column per map grouped by map type, each cell shaded by
+Support), one column per map grouped by game mode, each cell shaded by
 win rate and labelled with its W-L-D on hover.
 
 It drives the global filter directly:
 
 - **Click a cell** to narrow the whole set to that map + role pair —
   the same as picking them in the Filter matches panel.
-- **Click a map-type group header** to narrow to that map type
+- **Click a game-mode group header** to narrow to that game mode
   (control, escort, hybrid, push, flashpoint, clash).
 
 The band's **gear** (top-right) is a *band-local display filter*,
 separate from the global Filter matches panel: it trims which roles,
-map types, or specific maps the heatmap draws, without touching the
+game modes, or specific maps the heatmap draws, without touching the
 dossier KPIs or the leaves list. A window toggle (1M / 3M / 6M / 12M)
 scopes the heatmap to a recent slice. Both the gear picks and the
 window persist per profile.
@@ -256,7 +256,7 @@ A handful of cross-cutting preferences DO persist across launches
   band (1M / 3M / 6M / 12M — each band remembers its own)
 - **Dossier layout** — which widgets + bands you've added, removed,
   or reordered (see [Customizing the dossier](#customizing-the-dossier))
-- **Geography band filter** — the gear's role / map-type / map picks
+- **Geography band filter** — the gear's role / game-mode / map picks
 - **Tesseract path** + the rest of Settings
 
 Saved-filter presets (so a "stack games last weekend" filter

@@ -32,7 +32,7 @@ function record(matchKey: string, hero: string, opts: RecordOpts = {}) {
     data: {
       map: 'rialto',
       playlist: 'competitive',
-      type: 'control',
+      game_mode: 'control',
       role: 'support',
       hero,
       result: 'victory',

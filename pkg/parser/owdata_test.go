@@ -21,8 +21,8 @@ func TestEmbeddedYAML_LoadsCleanly(t *testing.T) {
 	if len(HeroesByRole()) == 0 {
 		t.Error("HeroesByRole() is empty — heroes.yaml parsed but registered no entries")
 	}
-	if len(MapsByType()) == 0 {
-		t.Error("MapsByType() is empty — maps.yaml parsed but registered no entries")
+	if len(MapsByGameMode()) == 0 {
+		t.Error("MapsByGameMode() is empty — maps.yaml parsed but registered no entries")
 	}
 	if len(loadDataset().heroStatKeys) == 0 {
 		t.Error("heroStatKeys is empty — hero_stats.yaml parsed but registered no entries")

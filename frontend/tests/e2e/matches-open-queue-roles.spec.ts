@@ -23,7 +23,7 @@ function rec(matchKey: string, heroesPlayed: { hero: string; percent: number }[]
     data: {
       map:           'rialto',
       playlist:          'competitive',
-      type:          'control',
+      game_mode:          'control',
       hero:          primary,
       result:        'victory',
       date:          '2026-05-10',

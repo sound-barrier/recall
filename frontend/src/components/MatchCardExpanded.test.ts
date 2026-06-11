@@ -13,7 +13,7 @@ function makeRecord(over: Partial<MatchRecord['data']> = {}, top: Partial<MatchR
     match_key: 'match-2026-05-10T22-21-11',
     source_files: ['a.png'],
     data: {
-      map: 'rialto', playlist: 'competitive', type: 'control',
+      map: 'rialto', playlist: 'competitive', game_mode: 'control',
       role: 'support', hero: 'lucio', result: 'victory',
       date: '2026-05-10', finished_at: '22:21',
       eliminations: 17, assists: 12, deaths: 8, damage: 8500,

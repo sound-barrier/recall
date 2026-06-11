@@ -6,14 +6,14 @@ import { topMapTypesSchema, type TopByCountConfig } from '../../dashboard/widget
 const dossier = useDossier()
 const { config } = useWidgetConfig<TopByCountConfig>('top-map-types', topMapTypesSchema)
 const topMapTypes = dossier.topByCount(() => ({
-  getter: (r) => r.data?.type,
+  getter: (r) => r.data?.game_mode,
   limit:  config.value.limit,
 }))
 </script>
 
 <template>
   <header class="breakdown-head">
-    <span class="breakdown-eyebrow">Most played map types</span>
+    <span class="breakdown-eyebrow">Most played game modes</span>
   </header>
   <ul>
     <li v-for="t in topMapTypes" :key="t.key">

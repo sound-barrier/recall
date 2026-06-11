@@ -16,7 +16,7 @@ function record(matchKey: string, hero: string) {
     data: {
       map: 'rialto',
       playlist: 'competitive',
-      type: 'control',
+      game_mode: 'control',
       role: hero === 'lucio' ? 'support' : 'dps',
       hero,
       result: 'victory',

@@ -214,13 +214,13 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'longest-win-streak',  eyebrow: 'Longest win streak',     shape: 'kpi',       defaultRow: 1, component: LongestWinStreakWidget, config: EMPTY_SCHEMA          },
   { id: 'hero-pool-size',      eyebrow: 'Hero pool size',         shape: 'kpi',       defaultRow: 1, component: HeroPoolSizeWidget,     config: EMPTY_SCHEMA          },
   { id: 'best-winrate-hero',   eyebrow: 'Best hero by winrate',   shape: 'kpi',       defaultRow: 1, component: BestWinrateHeroWidget,  config: bestWinrateHeroSchema },
-  { id: 'top-map-types',       eyebrow: 'Most played map types',  shape: 'breakdown', defaultRow: 2, component: TopMapTypesWidget,      config: topMapTypesSchema     },
+  { id: 'top-map-types',       eyebrow: 'Most played game modes',  shape: 'breakdown', defaultRow: 2, component: TopMapTypesWidget,      config: topMapTypesSchema     },
   { id: 'time-of-day',         eyebrow: 'Time of day',            shape: 'breakdown', defaultRow: 2, component: TimeOfDayWidget,        config: timeOfDaySchema       },
   { id: 'day-of-week',         eyebrow: 'Day of week',            shape: 'breakdown', defaultRow: 2, component: DayOfWeekWidget,        config: dayOfWeekSchema       },
   { id: 'recent-5-matches',    eyebrow: 'Recent matches',         shape: 'breakdown', defaultRow: 2, component: Recent5MatchesWidget,   config: recentMatchesSchema   },
   { id: 'play-mode-share',     eyebrow: 'Quickplay vs Competitive', shape: 'breakdown', defaultRow: 2, component: QuickplayVsCompetitiveWidget, config: EMPTY_SCHEMA },
   { id: 'play-mode-winrate',   eyebrow: 'Winrate by play mode',     shape: 'breakdown', defaultRow: 2, component: WinrateByPlayModeWidget,      config: EMPTY_SCHEMA },
-  { id: 'hero-map-type-heatmap', eyebrow: 'Hero × map-type heatmap',  shape: 'breakdown', defaultRow: 2, component: HeroMapTypeHeatmapWidget,     config: heroMapTypeHeatmapSchema },
+  { id: 'hero-map-type-heatmap', eyebrow: 'Hero × game-mode heatmap',  shape: 'breakdown', defaultRow: 2, component: HeroMapTypeHeatmapWidget,     config: heroMapTypeHeatmapSchema },
 ]
 
 // Row-keyed install-default layout. Membership here means "auto-add
