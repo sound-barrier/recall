@@ -35,7 +35,7 @@ releases, etc.).
 | `make lint` | All linters (Go × both build tags, ESLint, Stylelint, shellcheck, Spectral, …). |
 | `make fmt` | Go (`goimports-reviser` → `gofumpt`) + shell (`shfmt`). |
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` after editing `api/openapi.yaml`. |
-| `make coverage` | Generate Go + frontend coverage reports (umbrella). Required before opening a PR. |
+| `make cover` | Generate Go + frontend coverage reports (umbrella). Required before opening a PR. |
 
 Full command catalog, env-var overrides, Dockerfile stages, package layout, and
 helper-script reference: **`docs/dev-reference.md`**.
@@ -160,7 +160,7 @@ exercises it. Tests that are coupled to internal data structures are brittle,
 resist refactoring, and should be rewritten or deleted.
 
 **Coverage floor: 60% line coverage and 60% branch coverage**, measured by
-`make coverage`. This is a minimum, not a target — aim higher where the code is
+`make cover`. This is a minimum, not a target — aim higher where the code is
 consequential (parser logic, aggregation, error paths). PRs that regress either
 metric without explicit justification should not merge.
 
