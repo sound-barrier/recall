@@ -22,7 +22,7 @@ function rec(matchKey: string, heroesPlayed: { hero: string; percent: number }[]
     source_types: { [`${matchKey}.png`]: 'summary' },
     data: {
       map:           'rialto',
-      mode:          'competitive',
+      playlist:          'competitive',
       type:          'control',
       hero:          primary,
       result:        'victory',
