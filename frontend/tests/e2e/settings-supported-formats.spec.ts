@@ -43,7 +43,7 @@ test.describe('supported capture-source rules', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           heroes_by_role: { support: ['Lúcio'] },
-          maps_by_type: { control: ['Ilios'] },
+          maps_by_game_mode: { control: ['Ilios'] },
           screenshot_sources: SOURCES,
         }),
       })

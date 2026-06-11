@@ -10,7 +10,7 @@
  *
  * Unlike the opt-in dossier widgets, the band needs no layout seeding —
  * it's fixed chrome. We DO mock /api/v1/system/reference-data so the
- * column roster (maps_by_type) is deterministic instead of depending
+ * column roster (maps_by_game_mode) is deterministic instead of depending
  * on the real compiled-in roster.
  */
 import type { Route } from '@playwright/test'
@@ -33,7 +33,7 @@ const REFERENCE_DATA = {
   },
   // Two type-groups; Escort has two maps so we can assert alpha order
   // (Dorado before Rialto).
-  maps_by_type: {
+  maps_by_game_mode: {
     control: ['Ilios'],
     escort: ['Dorado', 'Rialto'],
   },

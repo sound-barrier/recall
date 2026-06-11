@@ -18,7 +18,7 @@ const REFERENCE_DATA = {
     dps:     ['Tracer',    'Soldier: 76'],
     support: ['Lúcio',     'Ana'],
   },
-  maps_by_type: {
+  maps_by_game_mode: {
     control: ['Rialto'],
   },
 }
