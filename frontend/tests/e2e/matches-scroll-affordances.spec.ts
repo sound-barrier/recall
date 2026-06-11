@@ -65,7 +65,7 @@ test.describe('Matches — scroll affordances', () => {
     await page.setViewportSize({ width: 1280, height: VIEWPORT_TALLER_THAN_WORKSPACE })
   })
 
-  test('scroll-to-top: hidden at top, visible past ~400 px, click resets to 0', async ({ page }) => {
+  test('scroll-to-top: hidden at top, visible past 400 px, click resets to 0', async ({ page }) => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200, contentType: 'application/json',
