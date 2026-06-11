@@ -16,7 +16,7 @@ import {
 
 describe('sshotTypeLabel', () => {
   it('maps scoreboard → TEAMS (the UI label everywhere else)', () => {
-    expect(sshotTypeLabel('scoreboard')).toBe('TEAMS')
+    expect(sshotTypeLabel('teams')).toBe('TEAMS')
   })
 
   it('upper-cases the rest', () => {
@@ -65,18 +65,18 @@ describe('detectScreenshotSlots', () => {
 
   it('marks only RANK as optional', () => {
     const slots = detectScreenshotSlots({ data: {} })
-    expect(slots.filter(s => s.required).map(s => s.key)).toEqual(['summary', 'scoreboard', 'personal'])
+    expect(slots.filter(s => s.required).map(s => s.key)).toEqual(['summary', 'teams', 'personal'])
     expect(slots.filter(s => !s.required).map(s => s.key)).toEqual(['rank'])
   })
 
   describe('with stored source_types (authoritative)', () => {
     it('marks only the present types — scoreboard + rank', () => {
       const rec = {
-        source_types: { 'a.png': 'scoreboard' as const, 'b.png': 'rank' as const },
+        source_types: { 'a.png': 'teams' as const, 'b.png': 'rank' as const },
         data: { eliminations: 17 },
       }
       const present = detectScreenshotSlots(rec).filter(s => s.present).map(s => s.key)
-      expect(present).toEqual(['scoreboard', 'rank'])
+      expect(present).toEqual(['teams', 'rank'])
     })
 
     it('ignores field-inference fallback when source_types is set', () => {
@@ -95,7 +95,7 @@ describe('detectScreenshotSlots', () => {
       const rec = {
         source_types: {
           'a.png': 'summary' as const,
-          'b.png': 'scoreboard' as const,
+          'b.png': 'teams' as const,
           'c.png': 'personal' as const,
           'd.png': 'rank' as const,
         },
@@ -126,7 +126,7 @@ describe('missingRequiredSlots / missingOptionalSlots', () => {
     }
     const reqMissing = missingRequiredSlots(rec).map(s => s.key)
     const optMissing = missingOptionalSlots(rec).map(s => s.key)
-    expect(reqMissing).toEqual(['summary', 'scoreboard'])
+    expect(reqMissing).toEqual(['summary', 'teams'])
     expect(optMissing).toEqual([])
   })
 
@@ -134,7 +134,7 @@ describe('missingRequiredSlots / missingOptionalSlots', () => {
     const rec = {
       source_types: {
         'a.png': 'summary' as const,
-        'b.png': 'scoreboard' as const,
+        'b.png': 'teams' as const,
         'c.png': 'personal' as const,
         'd.png': 'rank' as const,
       },
@@ -148,7 +148,7 @@ describe('missingRequiredSlots / missingOptionalSlots', () => {
     const rec = {
       source_types: {
         'a.png': 'summary' as const,
-        'b.png': 'scoreboard' as const,
+        'b.png': 'teams' as const,
         'c.png': 'personal' as const,
       },
       data: {},

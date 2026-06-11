@@ -77,12 +77,12 @@ func GenerateMatchFixtureWithChaos(n int, seed int64, style string, chaosRatio f
 	// #nosec G404 -- deterministic dev fixture, not security-sensitive
 	rng := rand.New(rand.NewSource(seed + 1))
 
-	// Index scoreboards by match_key so chaos that touches both rows
+	// Index teams by match_key so chaos that touches both rows
 	// (long strings, unicode, numeric, cardinality) can mutate them
 	// in lockstep without an O(n²) inner scan.
-	scoreboardByKey := make(map[string]int, len(fx.Scoreboards))
-	for i, sb := range fx.Scoreboards {
-		scoreboardByKey[sb.MatchKey] = i
+	teamsByKey := make(map[string]int, len(fx.Teams))
+	for i, sb := range fx.Teams {
+		teamsByKey[sb.MatchKey] = i
 	}
 
 	// aggregation-conflict adds rows to fx.Summaries — collect them
@@ -103,7 +103,7 @@ func GenerateMatchFixtureWithChaos(n int, seed int64, style string, chaosRatio f
 				continue
 			}
 			applied[cat] = true
-			applyChaosShape(rng, &fx, i, scoreboardByKey, &extras, cat)
+			applyChaosShape(rng, &fx, i, teamsByKey, &extras, cat)
 		}
 	}
 	fx.Summaries = append(fx.Summaries, extras...)
@@ -114,14 +114,14 @@ func applyChaosShape(
 	rng *rand.Rand,
 	fx *Fixture,
 	summaryIdx int,
-	scoreboardByKey map[string]int,
+	teamsByKey map[string]int,
 	extras *[]db.SummaryRow,
 	cat chaosCategory,
 ) {
 	s := &fx.Summaries[summaryIdx]
-	var sb *db.ScoreboardRow
-	if idx, ok := scoreboardByKey[s.MatchKey]; ok {
-		sb = &fx.Scoreboards[idx]
+	var sb *db.TeamsRow
+	if idx, ok := teamsByKey[s.MatchKey]; ok {
+		sb = &fx.Teams[idx]
 	}
 
 	switch cat {

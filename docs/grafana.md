@@ -204,7 +204,7 @@ podman-compose down && podman-compose up -d
 
 | Metric | Labels | What it measures |
 |---|---|---|
-| `recall_match_eliminations` (+ `_assists`, `_deaths`, `_damage`, `_healing`, `_mitigation`) | `match_key, map, type, mode, result, hero, role` | Core scoreboard stats per match |
+| `recall_match_eliminations` (+ `_assists`, `_deaths`, `_damage`, `_healing`, `_mitigation`) | `match_key, map, type, mode, result, hero, role` | Core teams stats per match |
 | `recall_match_result` | …, `result` | Always `1`; use `count()` in Grafana to count matches by outcome |
 | `recall_match_rank_level` | … | Competitive rank subdivision (1–5) |
 | `recall_match_sr` / `recall_match_sr_change` | …, `hero`, `role` | Per-hero SR and delta per match |

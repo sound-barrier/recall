@@ -78,7 +78,7 @@ func main() {
 	if err != nil {
 		exitf("inspect existing rows: %v", err)
 	}
-	existingTotal := len(snap.Summaries) + len(snap.Scoreboards) + len(snap.Personals) + len(snap.Ranks) + len(snap.Unknowns)
+	existingTotal := len(snap.Summaries) + len(snap.Teams) + len(snap.Personals) + len(snap.Ranks) + len(snap.Unknowns)
 
 	if *clear {
 		if existingTotal == 0 {
@@ -109,9 +109,9 @@ func main() {
 			exitf("UpsertSummary(%s): %v", r.MatchKey, err)
 		}
 	}
-	for _, r := range fx.Scoreboards {
-		if err := store.UpsertScoreboard(r); err != nil {
-			exitf("UpsertScoreboard(%s): %v", r.MatchKey, err)
+	for _, r := range fx.Teams {
+		if err := store.UpsertTeams(r); err != nil {
+			exitf("UpsertTeams(%s): %v", r.MatchKey, err)
 		}
 	}
 	for _, r := range fx.Personals {
@@ -250,7 +250,7 @@ func previewFilenames(fx app.Fixture) []string {
 			seen[r.Filename] = true
 		}
 	}
-	for _, r := range fx.Scoreboards {
+	for _, r := range fx.Teams {
 		if candidateKeys[r.MatchKey] {
 			seen[r.Filename] = true
 		}

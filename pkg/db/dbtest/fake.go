@@ -30,11 +30,11 @@ import (
 type Fake struct {
 	mu sync.Mutex
 
-	Summaries   []db.SummaryRow
-	Scoreboards []db.ScoreboardRow
-	Personals   []db.PersonalRow
-	Ranks       []db.RankRow
-	Unknowns    []db.UnknownRow
+	Summaries []db.SummaryRow
+	Teams     []db.TeamsRow
+	Personals []db.PersonalRow
+	Ranks     []db.RankRow
+	Unknowns  []db.UnknownRow
 
 	DirIDs      map[string]int64
 	Annotations map[string]db.Annotation
@@ -100,7 +100,7 @@ func (f *Fake) LoadAllFilenames() (map[string]bool, error) {
 	for _, r := range f.Summaries {
 		out[r.Filename] = true
 	}
-	for _, r := range f.Scoreboards {
+	for _, r := range f.Teams {
 		out[r.Filename] = true
 	}
 	for _, r := range f.Personals {
@@ -124,7 +124,7 @@ func (f *Fake) LookupMatchKeysForFilename(filename string) ([]string, error) {
 			seen[r.MatchKey] = true
 		}
 	}
-	for _, r := range f.Scoreboards {
+	for _, r := range f.Teams {
 		if r.Filename == filename {
 			seen[r.MatchKey] = true
 		}
@@ -167,7 +167,7 @@ func (f *Fake) LoadAll() (db.Screenshots, error) {
 	}
 	return db.Screenshots{
 		Summaries:           append([]db.SummaryRow(nil), f.Summaries...),
-		Scoreboards:         append([]db.ScoreboardRow(nil), f.Scoreboards...),
+		Teams:               append([]db.TeamsRow(nil), f.Teams...),
 		Personals:           append([]db.PersonalRow(nil), f.Personals...),
 		Ranks:               append([]db.RankRow(nil), f.Ranks...),
 		Unknowns:            append([]db.UnknownRow(nil), f.Unknowns...),
@@ -196,23 +196,23 @@ func (f *Fake) UpsertSummary(r db.SummaryRow) error {
 	return nil
 }
 
-func (f *Fake) UpsertScoreboard(r db.ScoreboardRow) error {
+func (f *Fake) UpsertTeams(r db.TeamsRow) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.UpsertCalls++
 	if f.UpsertErr != nil {
 		return f.UpsertErr
 	}
-	for i, ex := range f.Scoreboards {
+	for i, ex := range f.Teams {
 		if ex.Filename == r.Filename {
 			r.ID = ex.ID
 			r.ParsedAt = ex.ParsedAt
-			f.Scoreboards[i] = r
+			f.Teams[i] = r
 			return nil
 		}
 	}
-	r.ID = int64(len(f.Scoreboards) + 1)
-	f.Scoreboards = append(f.Scoreboards, r)
+	r.ID = int64(len(f.Teams) + 1)
+	f.Teams = append(f.Teams, r)
 	return nil
 }
 
@@ -281,7 +281,7 @@ func (f *Fake) Clear() error {
 	defer f.mu.Unlock()
 	f.ClearCalls++
 	f.Summaries = nil
-	f.Scoreboards = nil
+	f.Teams = nil
 	f.Personals = nil
 	f.Ranks = nil
 	f.Unknowns = nil
@@ -398,13 +398,13 @@ func (f *Fake) HardDeleteMatch(matchKey string) error {
 		}
 	}
 	f.Summaries = sums
-	sbs := f.Scoreboards[:0]
-	for _, r := range f.Scoreboards {
+	sbs := f.Teams[:0]
+	for _, r := range f.Teams {
 		if r.MatchKey != matchKey {
 			sbs = append(sbs, r)
 		}
 	}
-	f.Scoreboards = sbs
+	f.Teams = sbs
 	pers := f.Personals[:0]
 	for _, r := range f.Personals {
 		if r.MatchKey != matchKey {
@@ -536,7 +536,7 @@ func (f *Fake) ClearMatchPlayMode(matchKey string) error {
 	return nil
 }
 
-// ReAggregateUnknowns walks Fake's Summaries / Scoreboards /
+// ReAggregateUnknowns walks Fake's Summaries / Teams /
 // Personals slices and applies the same hero/map-promotion logic
 // the SQL store does. Used by App-level tests that exercise the
 // boot re-aggregator without needing a real SQLite.
@@ -558,16 +558,16 @@ func (f *Fake) ReAggregateUnknowns(heroFn func(rawHero string) string, mapFn fun
 			}
 		}
 	}
-	for i := range f.Scoreboards {
-		if f.Scoreboards[i].Hero == "" && f.Scoreboards[i].HeroRaw != "" {
-			if c := heroFn(f.Scoreboards[i].HeroRaw); c != "" {
-				f.Scoreboards[i].Hero = c
+	for i := range f.Teams {
+		if f.Teams[i].Hero == "" && f.Teams[i].HeroRaw != "" {
+			if c := heroFn(f.Teams[i].HeroRaw); c != "" {
+				f.Teams[i].Hero = c
 				promoted++
 			}
 		}
-		if f.Scoreboards[i].Map == "" && f.Scoreboards[i].MapRaw != "" {
-			if c := mapFn(f.Scoreboards[i].MapRaw); c != "" {
-				f.Scoreboards[i].Map = c
+		if f.Teams[i].Map == "" && f.Teams[i].MapRaw != "" {
+			if c := mapFn(f.Teams[i].MapRaw); c != "" {
+				f.Teams[i].Map = c
 				promoted++
 			}
 		}
@@ -715,9 +715,9 @@ func (f *Fake) ResolveAmbiguous(ambiguousMatchKey, newMatchKey string) (bool, er
 			f.Summaries[i].MatchKey = newMatchKey
 		}
 	}
-	for i, r := range f.Scoreboards {
+	for i, r := range f.Teams {
 		if r.MatchKey == ambiguousMatchKey {
-			f.Scoreboards[i].MatchKey = newMatchKey
+			f.Teams[i].MatchKey = newMatchKey
 		}
 	}
 	for i, r := range f.Personals {

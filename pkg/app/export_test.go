@@ -32,7 +32,7 @@ func TestExportImport_RoundTrip(t *testing.T) {
 		Map: "rialto", Playlist: "competitive", Hero: "lucio", Result: "victory",
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100, PlayTime: "09:32"}},
 	}))
-	must(fs.UpsertScoreboard(db.ScoreboardRow{
+	must(fs.UpsertTeams(db.TeamsRow{
 		Filename: "sb.png", MatchKey: "match-1", ScreenshotsDirID: dirID,
 		Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 	}))
@@ -73,7 +73,7 @@ func TestExportImport_RoundTrip(t *testing.T) {
 		n    int
 	}{
 		{"summaries", len(got.Summaries)},
-		{"scoreboards", len(got.Scoreboards)},
+		{"teams", len(got.Teams)},
 		{"personals", len(got.Personals)},
 		{"ranks", len(got.Ranks)},
 		{"unknowns", len(got.Unknowns)},
@@ -124,7 +124,7 @@ func TestImport_AcceptsCanonicalV1Fixture(t *testing.T) {
       "heroes_played": [{"hero": "ana", "percent_played": 100}]
     }
   ],
-  "scoreboards": [],
+  "teams": [],
   "personals": [],
   "ranks": [],
   "unknowns": []

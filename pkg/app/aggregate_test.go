@@ -60,14 +60,14 @@ func TestReAggregateUnknowns_PromotesPreviouslyUnknownRows(t *testing.T) {
 	// store-level fake gets the same code path via NewWithStore.
 }
 
-func TestAggregate_FusesSummaryAndScoreboardByMatchKey(t *testing.T) {
+func TestAggregate_FusesSummaryAndTeamsByMatchKey(t *testing.T) {
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{{
 			ID: 1, Filename: "s.png", MatchKey: "m1", ParsedAt: "2026-05-10T21:30:00Z",
 			Map: "rialto", Playlist: "competitive", Hero: "lucio",
 			Result: "victory", Date: "2026-05-10", FinishedAt: "21:29",
 		}},
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "sb.png", MatchKey: "m1", ParsedAt: "2026-05-10T21:30:05Z",
 			Playlist:     "", // intentional: aggregator should pick "competitive" from sibling
 			Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
@@ -104,7 +104,7 @@ func TestAggregate_DerivedFields_RoleFromHero_TypeFromMap(t *testing.T) {
 
 func TestAggregate_DerivedFields_HeroUnknown_LeavesRoleEmpty(t *testing.T) {
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "sb.png", MatchKey: "m1", Hero: "nonexistent_hero",
 		}},
 	}
@@ -119,7 +119,7 @@ func TestAggregate_SourceFilesUnion_AndTypesMap(t *testing.T) {
 		Summaries: []db.SummaryRow{{
 			ID: 1, Filename: "s.png", MatchKey: "m1", Map: "rialto",
 		}},
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "sb.png", MatchKey: "m1", Eliminations: 17,
 		}},
 		Personals: []db.PersonalRow{{
@@ -137,7 +137,7 @@ func TestAggregate_SourceFilesUnion_AndTypesMap(t *testing.T) {
 		t.Errorf("source files union broken: %v", rec.SourceFiles)
 	}
 	wantTypes := map[string]string{
-		"s.png": "summary", "sb.png": "scoreboard",
+		"s.png": "summary", "sb.png": "teams",
 		"p.png": "personal", "r.png": "rank",
 	}
 	if !reflect.DeepEqual(rec.SourceTypes, wantTypes) {
@@ -150,7 +150,7 @@ func TestAggregate_ParsedAt_MinAcrossGroup(t *testing.T) {
 		Summaries: []db.SummaryRow{{
 			ID: 1, Filename: "s.png", MatchKey: "m1", ParsedAt: "2026-05-10T22:00:00Z",
 		}},
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "sb.png", MatchKey: "m1", ParsedAt: "2026-05-10T21:30:05Z",
 		}},
 	}
@@ -164,7 +164,7 @@ func TestAggregate_ParsedAt_MinAcrossGroup(t *testing.T) {
 }
 
 func TestAggregate_PartialCoverage_RankOnly(t *testing.T) {
-	// Only a rank screenshot — no SUMMARY, no SCOREBOARD. Should still
+	// Only a rank screenshot — no SUMMARY, no TEAMS. Should still
 	// produce a MatchRecord with the rank fields populated and
 	// mode=competitive (rank screens are always competitive).
 	snap := db.Screenshots{
@@ -219,7 +219,7 @@ func TestAggregate_PersonalHeroStats_AttachedByHero(t *testing.T) {
 func TestAggregate_OneMatchRecordPerMatchKey(t *testing.T) {
 	// Two distinct match_keys → two MatchRecords.
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{
+		Teams: []db.TeamsRow{
 			{ID: 1, Filename: "a.png", MatchKey: "m1", Eliminations: 17},
 			{ID: 2, Filename: "b.png", MatchKey: "m2", Eliminations: 5},
 		},
@@ -243,7 +243,7 @@ func TestAggregateMatchKey_FusesAcrossTypesForOneKey(t *testing.T) {
 			Map: "rialto", Playlist: "competitive", Hero: "lucio",
 			Result: "victory", Date: "2026-05-10", FinishedAt: "21:29",
 		}},
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "sb.png", MatchKey: "m1",
 			Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 		}},
@@ -279,7 +279,7 @@ func TestAggregateMatchKey_MissingKeyReturnsFalse(t *testing.T) {
 
 func TestAggregateMatchKey_SingleScreenshotMatch(t *testing.T) {
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "lone.png", MatchKey: "m-lonely",
 			Eliminations: 8, Assists: 2, Deaths: 4,
 		}},
@@ -289,10 +289,10 @@ func TestAggregateMatchKey_SingleScreenshotMatch(t *testing.T) {
 		t.Fatal("expected ok=true")
 	}
 	if rec.Data.Eliminations != 8 || rec.Data.Assists != 2 || rec.Data.Deaths != 4 {
-		t.Errorf("single-scoreboard data not propagated: %+v", rec.Data)
+		t.Errorf("single-teams data not propagated: %+v", rec.Data)
 	}
-	if got := rec.SourceTypes["lone.png"]; got != "scoreboard" {
-		t.Errorf("SourceTypes[lone.png] = %q, want scoreboard", got)
+	if got := rec.SourceTypes["lone.png"]; got != "teams" {
+		t.Errorf("SourceTypes[lone.png] = %q, want teams", got)
 	}
 }
 
@@ -317,13 +317,13 @@ func TestAggregateMatchKey_InferenceAppliedAtReadTime(t *testing.T) {
 }
 
 func TestAggregate_AmbiguousSurfacesCandidates(t *testing.T) {
-	// A scoreboard + summary share the ambiguous sentinel. The
+	// A teams + summary share the ambiguous sentinel. The
 	// aggregator should fuse them into one MatchRecord, flag it
 	// Ambiguous=true, and attach the candidate list pulled from
 	// snap.AmbiguousCandidates keyed by the filename embedded in
 	// the sentinel.
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "sb.png", MatchKey: "ambiguous-sb.png",
 			Eliminations: 17, Assists: 8, Deaths: 4,
 		}},

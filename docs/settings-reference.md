@@ -182,7 +182,7 @@ The full Grafana setup — Docker compose stack, dashboards, scrape
 config — is in [Charts & Dashboards](grafana.md).
 
 > **Privacy:** the metrics only contain *your* stats — Recall doesn't
-> extract other players' names or stats from scoreboards. Even so,
+> extract other players' names or stats from teams. Even so,
 > the port is loopback-only and only a process on your machine can
 > reach it. Nothing leaves your computer unless you add a remote
 > Prometheus scrape target yourself.

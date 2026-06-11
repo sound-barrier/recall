@@ -18,7 +18,7 @@ var ErrMoveTargetIsActive = errors.New("move target is the active profile")
 // profile's DB to targetProfile's DB. The transfer is two-phase:
 //
 //  1. Open the target profile's SQLStore, upsert every parent row +
-//     its children (via the same UpsertSummary / UpsertScoreboard /
+//     its children (via the same UpsertSummary / UpsertTeams /
 //     etc. APIs production parse uses) + every annotation + the
 //     hidden_matches flag. Filenames carry over verbatim so a future
 //     re-parse of the same source PNG on the new profile is a no-op.
@@ -149,7 +149,7 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 			return fmt.Errorf("move: upsert summary %q: %w", r.Filename, err)
 		}
 	}
-	for _, r := range src.Scoreboards {
+	for _, r := range src.Teams {
 		if !keep[r.MatchKey] {
 			continue
 		}
@@ -158,8 +158,8 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 			return fmt.Errorf("move: resolve screenshots_dir for %q: %w", r.Filename, derr)
 		}
 		r.ScreenshotsDirID = newID
-		if err := targetStore.UpsertScoreboard(r); err != nil {
-			return fmt.Errorf("move: upsert scoreboard %q: %w", r.Filename, err)
+		if err := targetStore.UpsertTeams(r); err != nil {
+			return fmt.Errorf("move: upsert teams %q: %w", r.Filename, err)
 		}
 	}
 	for _, r := range src.Personals {

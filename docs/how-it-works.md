@@ -31,11 +31,11 @@ The rest of this chapter is the pipeline that fills those views.
 ## The pipeline in one paragraph
 
 You play a comp match. After it ends, you tab through the post-match
-screens (SUMMARY, TEAMS scoreboard, PERSONAL tab) and press the
+screens (SUMMARY, TEAMS screen, PERSONAL tab) and press the
 in-game **Print Screen** binding on each. Overwatch saves the PNG
 files into your screenshots folder. Recall watches that folder, runs each
 new PNG through Tesseract OCR to read the on-screen text, classifies
-it by screenshot type (rank / summary / scoreboard / personal),
+it by screenshot type (rank / summary / teams / personal),
 extracts the fields it can (map, mode, hero, eliminations, deaths,
 SR change, …), and folds 3–5 screenshots from the same match into
 one match record in its local database. The Matches tab then shows
@@ -52,7 +52,7 @@ captures = more fields populated:
 | Screen | What it shows | Fields Recall extracts |
 |---|---|---|
 | **SUMMARY** | Match overview, top heroes, performance summary | Map, playlist, game mode (control/push/escort/…), role, primary hero, victory/defeat, final score, date, finish time, game length, performance per-10-min averages |
-| **TEAMS scoreboard** | Both teams' stats side by side | Eliminations / assists / deaths, damage, healing, mitigation |
+| **TEAMS screen** | Both teams' stats side by side | Eliminations / assists / deaths, damage, healing, mitigation |
 | **PERSONAL** | One hero's detailed stat grid (3×3) | Hero-specific stats (e.g. Juno's `pulsar_torpedoes_damage`, Mizuki's `binding_chain_accuracy`) |
 | **RANK** | Competitive ladder badge + per-hero SR | Current rank tier, per-hero SR, recent change |
 
@@ -71,7 +71,7 @@ any image for the full-resolution source.
 <table>
 <tr>
 <th align="left">SUMMARY</th>
-<th align="left">TEAMS scoreboard</th>
+<th align="left">TEAMS screen</th>
 </tr>
 <tr>
 <td valign="top" width="50%">
@@ -79,7 +79,7 @@ any image for the full-resolution source.
 <sub>Antarctic Peninsula · comp victory 2-1. The map + game mode + heroes-played list + per-10-min averages all come from this tab.</sub>
 </td>
 <td valign="top" width="50%">
-<a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.33.04.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.33.04.png" alt="Post-match TEAMS scoreboard with both teams' stats" width="100%"></a>
+<a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.33.04.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.33.04.png" alt="Post-match TEAMS screen with both teams' stats" width="100%"></a>
 <sub>Same match. Eliminations / assists / deaths / damage / healing / mitigation come from the highlighted row + the right-hand stat panel.</sub>
 </td>
 </tr>
@@ -199,7 +199,7 @@ Grafana stack can scrape it. See
   file under your OS's user-config directory. There is no Recall
   server to phone home to.
 - **No name extraction.** The parser doesn't try to read BattleTags
-  off scoreboards — only your own stats are kept. If you blur or
+  off teams — only your own stats are kept. If you blur or
   crop other players' tags before sharing a screenshot, the parser
   is unaffected.
 - **No real-time stream.** Recall reads PNG files that Overwatch has

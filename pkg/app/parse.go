@@ -161,7 +161,7 @@ func (a *App) parseScreenshotsImpl(force bool) error {
 	// The parser walks files in os.ReadDir order (alphabetical), which
 	// for OW screenshots equals chronological (filenames carry the
 	// capture timestamp). resolveMatchKey is order-tolerant — a later
-	// scoreboard can still correlate to an earlier summary via the
+	// teams can still correlate to an earlier summary via the
 	// E/A/D + timestamp-window rules — but the alphabetical order
 	// keeps the natural case fast.
 	var inserts int
@@ -300,8 +300,8 @@ func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.Match
 		}
 		return a.store.UpsertSummary(row)
 
-	case "scoreboard":
-		row := db.ScoreboardRow{
+	case "teams":
+		row := db.TeamsRow{
 			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
 			Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
@@ -309,7 +309,7 @@ func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.Match
 			QueueType: r.QueueType,
 		}
 		row.HeroStats = flattenHeroStats(r.HeroesPlayed)
-		return a.store.UpsertScoreboard(row)
+		return a.store.UpsertTeams(row)
 
 	case "personal":
 		row := db.PersonalRow{

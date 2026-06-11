@@ -62,7 +62,7 @@ if [[ -f "$DB" ]]; then
     rows=$(sqlite3 "$DB" "
       SELECT COUNT(DISTINCT match_key) FROM (
         SELECT match_key FROM summary_screenshots
-        UNION SELECT match_key FROM scoreboard_screenshots
+        UNION SELECT match_key FROM teams_screenshots
         UNION SELECT match_key FROM personal_screenshots
         UNION SELECT match_key FROM rank_screenshots
         UNION SELECT match_key FROM unknown_screenshots)" 2>/dev/null || echo "?")

@@ -2,9 +2,9 @@ package db
 
 import "database/sql"
 
-// UpsertScoreboard writes a SCOREBOARD parent row + its
-// scoreboard_hero_stats children in one transaction.
-func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
+// UpsertTeams writes a TEAMS parent row + its
+// teams_hero_stats children in one transaction.
+func (s *SQLStore) UpsertTeams(r TeamsRow) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -13,7 +13,7 @@ func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
 
 	var id int64
 	err = tx.QueryRow(
-		`INSERT INTO scoreboard_screenshots (
+		`INSERT INTO teams_screenshots (
 			filename, match_key, screenshots_dir_id,
 			map, map_raw, playlist, hero, hero_raw,
 			eliminations, assists, deaths, damage, healing, mitigation, queue_type
@@ -42,12 +42,12 @@ func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
 		return err
 	}
 
-	if _, err := tx.Exec(`DELETE FROM scoreboard_hero_stats WHERE scoreboard_screenshot_id = ?`, id); err != nil {
+	if _, err := tx.Exec(`DELETE FROM teams_hero_stats WHERE teams_screenshot_id = ?`, id); err != nil {
 		return err
 	}
 	for _, st := range r.HeroStats {
 		if _, err := tx.Exec(
-			`INSERT INTO scoreboard_hero_stats (scoreboard_screenshot_id, hero, stat_key, stat_value)
+			`INSERT INTO teams_hero_stats (teams_screenshot_id, hero, stat_key, stat_value)
 			VALUES (?,?,?,?)`,
 			id, st.Hero, st.StatKey, st.StatValue,
 		); err != nil {
@@ -57,21 +57,21 @@ func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
 	return tx.Commit()
 }
 
-func (s *SQLStore) loadScoreboards() ([]ScoreboardRow, error) {
+func (s *SQLStore) loadTeams() ([]TeamsRow, error) {
 	rows, err := s.db.Query(`SELECT
 		id, filename, match_key, parsed_at, screenshots_dir_id,
 		map, map_raw, playlist, hero, hero_raw,
 		eliminations, assists, deaths, damage, healing, mitigation, queue_type
-		FROM scoreboard_screenshots ORDER BY id`)
+		FROM teams_screenshots ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	byID := map[int64]*ScoreboardRow{}
-	out := make([]ScoreboardRow, 0)
+	byID := map[int64]*TeamsRow{}
+	out := make([]TeamsRow, 0)
 	for rows.Next() {
-		var r ScoreboardRow
+		var r TeamsRow
 		var dirID sql.NullInt64
 		var mapC, playlist, hero sql.NullString
 		if err := rows.Scan(
@@ -96,8 +96,8 @@ func (s *SQLStore) loadScoreboards() ([]ScoreboardRow, error) {
 	}
 
 	hsRows, err := s.db.Query(
-		`SELECT scoreboard_screenshot_id, hero, stat_key, stat_value
-		FROM scoreboard_hero_stats`,
+		`SELECT teams_screenshot_id, hero, stat_key, stat_value
+		FROM teams_hero_stats`,
 	)
 	if err != nil {
 		return nil, err

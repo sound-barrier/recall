@@ -21,7 +21,7 @@ function makeRecord(over: Partial<MatchRecord['data']> = {}, recOver: Partial<Ma
   return {
     match_key: 'match-2026-05-10T21-29-28',
     source_files: ['summary.png', 'scoreboard.png'],
-    source_types: { 'summary.png': 'summary', 'scoreboard.png': 'scoreboard' },
+    source_types: { 'summary.png': 'summary', 'scoreboard.png': 'teams' },
     data: {
       map: 'rialto',
       playlist: 'competitive',
@@ -145,7 +145,7 @@ describe('MatchDetailPanel — sources panel', () => {
   it('source-type chips render from source_types map', () => {
     const wrapper = mountPanel({ isSourcesOpen: true })
     const chips = wrapper.findAll('.source-type-chip').map(c => c.text())
-    // "scoreboard" labels as "TEAMS" everywhere in the UI.
+    // "teams" labels as "TEAMS" everywhere in the UI.
     expect(chips).toEqual(['SUMMARY', 'TEAMS'])
   })
 

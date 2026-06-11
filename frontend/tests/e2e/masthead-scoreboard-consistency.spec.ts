@@ -24,7 +24,7 @@ const CORPUS = [
     source_files: ['aatlis-summary.png', 'aatlis-scoreboard.png'],
     source_types: {
       'aatlis-summary.png': 'summary',
-      'aatlis-scoreboard.png': 'scoreboard',
+      'aatlis-scoreboard.png': 'teams',
     },
     data: {
       map: 'aatlis',
@@ -63,7 +63,7 @@ const CORPUS = [
     match_key: 'match-2026-05-10T22-21-11',
     source_files: ['suravasa-scoreboard.png', 'suravasa-rank.png'],
     source_types: {
-      'suravasa-scoreboard.png': 'scoreboard',
+      'suravasa-scoreboard.png': 'teams',
       'suravasa-rank.png': 'rank',
     },
     data: {

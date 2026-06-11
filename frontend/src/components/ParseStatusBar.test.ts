@@ -30,7 +30,7 @@ describe('ParseStatusBar', () => {
           done: 3,
           total: 12,
           filename: 'Overwatch 2 Screenshot 2026.05.24 - 22.36.31.03.png',
-          screenshot_type: 'scoreboard',
+          screenshot_type: 'teams',
         }),
         parseLog: [],
       },
@@ -40,7 +40,7 @@ describe('ParseStatusBar', () => {
     // Counter is split into done/slash/total spans so font baseline is stable.
     expect(w.find('.counter-done').text()).toBe('03')
     expect(w.find('.counter-total').text()).toBe('12')
-    expect(w.find('.type-tag').text()).toBe('scoreboard')
+    expect(w.find('.type-tag').text()).toBe('teams')
     expect(w.find('.filename').text()).toContain('22.36.31.03.png')
   })
 

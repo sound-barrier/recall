@@ -8,7 +8,7 @@
 #   {
 #     "match_key": "...",
 #     "summary":     [ {...full row...}, ... ],
-#     "scoreboard":  [ {...} ],
+#     "teams":  [ {...} ],
 #     "personal":    [ {...}, ... ],
 #     "rank":        [ {...} ],
 #     "unknown":     [ {...} ]
@@ -38,12 +38,12 @@ WITH parents AS (
     'perf_assists_total', perf_assists_total, 'perf_assists_avg_per_10min', perf_assists_avg_per_10min,
     'perf_deaths_total', perf_deaths_total, 'perf_deaths_avg_per_10min', perf_deaths_avg_per_10min
   ) AS row FROM summary_screenshots
-  UNION ALL SELECT 'scoreboard', match_key, json_object(
+  UNION ALL SELECT 'teams', match_key, json_object(
     'id', id, 'filename', filename, 'parsed_at', parsed_at,
     'map', map, 'mode', mode, 'hero', hero,
     'eliminations', eliminations, 'assists', assists, 'deaths', deaths,
     'damage', damage, 'healing', healing, 'mitigation', mitigation
-  ) FROM scoreboard_screenshots
+  ) FROM teams_screenshots
   UNION ALL SELECT 'personal', match_key, json_object(
     'id', id, 'filename', filename, 'parsed_at', parsed_at, 'hero', hero
   ) FROM personal_screenshots
@@ -63,7 +63,7 @@ grouped AS (
 SELECT json_object(
   'match_key', match_key,
   'summary',    COALESCE(MAX(CASE WHEN t='summary'    THEN json(rows) END), json('[]')),
-  'scoreboard', COALESCE(MAX(CASE WHEN t='scoreboard' THEN json(rows) END), json('[]')),
+  'teams', COALESCE(MAX(CASE WHEN t='teams' THEN json(rows) END), json('[]')),
   'personal',   COALESCE(MAX(CASE WHEN t='personal'   THEN json(rows) END), json('[]')),
   'rank',       COALESCE(MAX(CASE WHEN t='rank'       THEN json(rows) END), json('[]')),
   'unknown',    COALESCE(MAX(CASE WHEN t='unknown'    THEN json(rows) END), json('[]'))

@@ -16,7 +16,7 @@ import (
 // slow tab-cycler but tight enough that two separate matches never collide.
 const mergeWindow = 2 * time.Minute
 
-// EAD-bridge windows. The EAD-bridge bridges in-game scoreboard ↔
+// EAD-bridge windows. The EAD-bridge bridges in-game teams ↔
 // post-match summary which can be minutes apart, so it accepts a
 // longer time gap than the strict mergeWindow. Two thresholds:
 //
@@ -92,7 +92,7 @@ func atoiCapture(b string) (int, bool) {
 
 // firstNonEmpty returns a when a is not its zero value; b otherwise.
 // Used by mergeMatchResult for the "first non-empty wins" rule across
-// the disjoint field sets SUMMARY / SCOREBOARD / PERSONAL / RANK each
+// the disjoint field sets SUMMARY / TEAMS / PERSONAL / RANK each
 // populate.
 func firstNonEmpty[T comparable](a, b T) T {
 	var zero T
@@ -108,7 +108,7 @@ func intsConflict(a, b int) bool       { return a != 0 && b != 0 && a != b }
 // mergeMatchResult fills empty fields on dst from src — each field takes
 // the first non-zero / non-empty value seen across the merge group. This
 // works because the four screenshot types populate disjoint subsets:
-// SUMMARY has map/result/etc., SCOREBOARD has damage/healing/mit, etc.
+// SUMMARY has map/result/etc., TEAMS has damage/healing/mit, etc.
 //
 // Now invoked exclusively by the read-time aggregator (pkg/app/aggregate.go).
 // The write path no longer merges — each parse writes its own typed row
@@ -257,7 +257,7 @@ func candidateFromParse(filename string, r *parser.MatchResult) candidate {
 // slice. Each entry carries its parent type's MatchKey + a candidate
 // view of its scalar fields, plus the per-match-key hero set so the
 // hero-conflict predicate in rowsConflict can recognize multi-hero
-// matches (SUMMARY anchored on one hero with SCOREBOARD / PERSONAL
+// matches (SUMMARY anchored on one hero with TEAMS / PERSONAL
 // captured during a mid-game swap to another).
 type existing struct {
 	key         string
@@ -267,7 +267,7 @@ type existing struct {
 
 // matchHeroSets returns map[matchKey] → set of every hero that appears
 // in any row attributed to that match. SUMMARY contributes its primary
-// Hero plus every HeroesPlayed entry; SCOREBOARD and PERSONAL each
+// Hero plus every HeroesPlayed entry; TEAMS and PERSONAL each
 // contribute their row Hero. The set is what rowsConflict consults
 // when deciding whether a hero mismatch between cand and an existing
 // row is a real conflict or just a swap captured in one of the two
@@ -289,7 +289,7 @@ func matchHeroSets(snap db.Screenshots) map[string]map[string]bool {
 			add(r.MatchKey, h.Hero)
 		}
 	}
-	for _, r := range snap.Scoreboards {
+	for _, r := range snap.Teams {
 		add(r.MatchKey, r.Hero)
 	}
 	for _, r := range snap.Personals {
@@ -311,9 +311,9 @@ func snapshotExisting(snap db.Screenshots) []existing {
 					Date: r.Date, FinishedAt: r.FinishedAt,
 					// Perf totals are the SUMMARY's authoritative
 					// E/A/D — expose them so matchByEAD can bridge a
-					// just-arrived SCOREBOARD to an existing SUMMARY
+					// just-arrived TEAMS to an existing SUMMARY
 					// (closing the cascade after a SUMMARY adopts an
-					// in-game SCOREBOARD's key via finished_at
+					// in-game TEAMS key via finished_at
 					// corroboration).
 					Eliminations: r.PerfElimTotal,
 					Assists:      r.PerfAssistsTotal,
@@ -323,7 +323,7 @@ func snapshotExisting(snap db.Screenshots) []existing {
 			matchHeroes: heroSets[r.MatchKey],
 		})
 	}
-	for _, r := range snap.Scoreboards {
+	for _, r := range snap.Teams {
 		out = append(out, existing{
 			key: r.MatchKey,
 			c: candidate{
@@ -394,7 +394,7 @@ func snapshotExisting(snap db.Screenshots) []existing {
 // matches the existing key's filename HH:MM (see corroborated() for
 // the exact rule). Corroboration overrides the time-threshold rule,
 // so a SUMMARY whose finished_at HH:MM matches an in-game
-// SCOREBOARD's filename HH:MM auto-adopts even when 20 minutes apart.
+// TEAMS filename HH:MM auto-adopts even when 20 minutes apart.
 //
 // Candidates are deduped by match_key (the closest-in-time screenshot
 // per existing match wins) and sorted by distance ascending.
@@ -609,7 +609,7 @@ func matchByTimestampWindow(cand candidate, snap db.Screenshots) (string, []db.A
 // signature field strongly enough to block the bridge. existingMatchHeroes
 // is the per-match-key hero set from snapshotExisting; it lets the
 // predicate recognize multi-hero matches where SUMMARY anchors on one
-// hero and SCOREBOARD / PERSONAL were captured during a mid-game swap
+// hero and TEAMS / PERSONAL were captured during a mid-game swap
 // to another. A hero mismatch is a soft conflict — allowed iff the
 // candidate's hero is already in the existing match's hero set, or the
 // existing row's hero is in the candidate's HeroesPlayed list.

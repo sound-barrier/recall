@@ -461,7 +461,7 @@ ELIMINATIONS`
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// parsePanelStats — extracts (value, label) pairs from the scoreboard's
+// parsePanelStats — extracts (value, label) pairs from the teams
 // right-side panel OCR. Short noise lines between value and label (the
 // orange tick mark Tesseract reads as a 1-3 letter run) are skipped.
 // ──────────────────────────────────────────────────────────────────────────

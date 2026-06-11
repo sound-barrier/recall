@@ -18,7 +18,7 @@ require_new_schema "$DB"
 sqlite3 -header -column "$DB" "
   WITH all_keys AS (
     SELECT match_key FROM summary_screenshots
-    UNION SELECT match_key FROM scoreboard_screenshots
+    UNION SELECT match_key FROM teams_screenshots
     UNION SELECT match_key FROM personal_screenshots
     UNION SELECT match_key FROM rank_screenshots
     UNION SELECT match_key FROM unknown_screenshots
@@ -26,7 +26,7 @@ sqlite3 -header -column "$DB" "
   presence AS (
     SELECT k.match_key,
       (SELECT 'S' FROM summary_screenshots    WHERE match_key=k.match_key LIMIT 1) AS s,
-      (SELECT 'B' FROM scoreboard_screenshots WHERE match_key=k.match_key LIMIT 1) AS b,
+      (SELECT 'B' FROM teams_screenshots WHERE match_key=k.match_key LIMIT 1) AS b,
       (SELECT 'P' FROM personal_screenshots   WHERE match_key=k.match_key LIMIT 1) AS p,
       (SELECT 'R' FROM rank_screenshots       WHERE match_key=k.match_key LIMIT 1) AS r,
       (SELECT 'U' FROM unknown_screenshots    WHERE match_key=k.match_key LIMIT 1) AS u
@@ -44,7 +44,7 @@ sqlite3 -header -column "$DB" "
   files_for_key AS (
     SELECT match_key, group_concat(filename, char(10) || '                                                                ') AS files FROM (
       SELECT match_key, filename FROM summary_screenshots
-      UNION SELECT match_key, filename FROM scoreboard_screenshots
+      UNION SELECT match_key, filename FROM teams_screenshots
       UNION SELECT match_key, filename FROM personal_screenshots
       UNION SELECT match_key, filename FROM rank_screenshots
       UNION SELECT match_key, filename FROM unknown_screenshots

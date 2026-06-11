@@ -48,7 +48,7 @@ const MULTI = {
     'personal-2152.png',
   ],
   source_types: {
-    'scoreboard-2129.png': 'scoreboard',
+    'scoreboard-2129.png': 'teams',
     'summary-2149.png':    'summary',
     'personal-2152.png':   'personal',
   },

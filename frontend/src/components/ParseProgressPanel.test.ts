@@ -123,7 +123,7 @@ describe('ParseProgressPanel', () => {
       props: {
         parseBusy: true,
         parseProgress: progress({
-          screenshot_type: 'scoreboard',
+          screenshot_type: 'teams',
           data: { eliminations: 17, assists: 16, deaths: 11, damage: 7200 },
         }),
         parseLog: [],

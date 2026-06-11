@@ -233,7 +233,7 @@ func dataMatchKeys(d BundleDataV1) map[string]struct{} {
 	for _, r := range d.Summaries {
 		keys[r.MatchKey] = struct{}{}
 	}
-	for _, r := range d.Scoreboards {
+	for _, r := range d.Teams {
 		keys[r.MatchKey] = struct{}{}
 	}
 	for _, r := range d.Personals {
@@ -260,7 +260,7 @@ func dataRowFilenames(d BundleDataV1) []string {
 	for _, r := range d.Summaries {
 		push(r.Filename)
 	}
-	for _, r := range d.Scoreboards {
+	for _, r := range d.Teams {
 		push(r.Filename)
 	}
 	for _, r := range d.Personals {

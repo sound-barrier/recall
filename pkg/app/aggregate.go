@@ -15,7 +15,7 @@ import (
 // the old destructive merge applied at write time now run at read
 // time over the typed parent rows; raw per-screenshot data stays
 // available for replay (e.g. when a new SUMMARY arrives for an old
-// match that was scoreboard-only).
+// match that was teams-only).
 // reAggregateUnknowns walks every per-screenshot row whose canonical
 // hero/map is empty but whose raw OCR is preserved, re-runs the
 // parser's matchers against the CURRENT heroes.yaml / maps.yaml
@@ -237,9 +237,9 @@ func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Anno
 			vs = append(vs, summaryToView(r))
 		}
 	}
-	for _, r := range snap.Scoreboards {
+	for _, r := range snap.Teams {
 		if r.MatchKey == key {
-			vs = append(vs, scoreboardToView(r))
+			vs = append(vs, teamsToView(r))
 		}
 	}
 	for _, r := range snap.Personals {
@@ -300,12 +300,12 @@ func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Anno
 
 func aggregateScreenshots(snap db.Screenshots) []MatchRecord {
 	views := make([]screenshotView, 0,
-		len(snap.Summaries)+len(snap.Scoreboards)+len(snap.Personals)+len(snap.Ranks)+len(snap.Unknowns))
+		len(snap.Summaries)+len(snap.Teams)+len(snap.Personals)+len(snap.Ranks)+len(snap.Unknowns))
 	for _, r := range snap.Summaries {
 		views = append(views, summaryToView(r))
 	}
-	for _, r := range snap.Scoreboards {
-		views = append(views, scoreboardToView(r))
+	for _, r := range snap.Teams {
+		views = append(views, teamsToView(r))
 	}
 	for _, r := range snap.Personals {
 		views = append(views, personalToView(r))
@@ -456,9 +456,9 @@ func summaryToView(r db.SummaryRow) screenshotView {
 	return view
 }
 
-func scoreboardToView(r db.ScoreboardRow) screenshotView {
+func teamsToView(r db.TeamsRow) screenshotView {
 	view := screenshotView{
-		filename: r.Filename, typeName: "scoreboard",
+		filename: r.Filename, typeName: "teams",
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
 			Map: r.Map, MapRaw: r.MapRaw, Playlist: r.Playlist, Hero: r.Hero, HeroRaw: r.HeroRaw,

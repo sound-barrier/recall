@@ -41,10 +41,10 @@ type SummaryGolden struct {
 	Performance  *Performance `json:"performance,omitempty"`
 }
 
-// ScoreboardGolden is the golden JSON shape for a TEAMS/in-game
-// scoreboard parse.
+// TeamsGolden is the golden JSON shape for a TEAMS/in-game
+// teams parse.
 //
-// Populated by `parse_scoreboard.go`: map+type+mode (from the header
+// Populated by `parse_teams.go`: map+type+mode (from the header
 // banner; may fail and leave empty), hero+role (from the highlighted
 // row + right panel), the six combat-stat columns, queue_type (from
 // the players-per-team count; empty when unread), plus heroes_played
@@ -52,7 +52,7 @@ type SummaryGolden struct {
 // extracted:
 // result, final_score, date/finished_at/game_length, performance,
 // rank/sr fields.
-type ScoreboardGolden struct {
+type TeamsGolden struct {
 	Map          string     `json:"map"`
 	GameMode     string     `json:"game_mode"`
 	Playlist     string     `json:"playlist"`
@@ -105,7 +105,7 @@ type RankGolden struct {
 
 // ToGolden projects a parsed MatchResult onto its screenshot-type
 // golden shape. The returned `any` holds one of *SummaryGolden,
-// *ScoreboardGolden, *PersonalGolden, *RankGolden, or — when
+// *TeamsGolden, *PersonalGolden, *RankGolden, or — when
 // ScreenshotType returns "unknown" — the raw *MatchResult so an
 // unclassified fixture still captures every field for diagnosis.
 func ToGolden(r *MatchResult) any {
@@ -131,8 +131,8 @@ func ToGolden(r *MatchResult) any {
 			HeroesPlayed: r.HeroesPlayed,
 			Performance:  r.Performance,
 		}
-	case "scoreboard":
-		return &ScoreboardGolden{
+	case "teams":
+		return &TeamsGolden{
 			Map:          r.Map,
 			GameMode:     r.GameMode,
 			Playlist:     r.Playlist,

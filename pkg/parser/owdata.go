@@ -337,7 +337,7 @@ func Normalize(s string) string { return normalize(s) }
 // seeded in hero_stats.yaml), or no canonical is within ~40% edit
 // distance of the raw key, returns `rawKey` unchanged.
 //
-// Used by parse_personal.go + parse_scoreboard.go to clean up
+// Used by parse_personal.go + parse_teams.go to clean up
 // stat-name OCR mangling (Juno's "ORBITAL RAY ASSISTS" landing as
 // `ooorsitall_ray_assists`, Mizuki's "PLAYERS SAVED" as
 // `player_saved`). Threshold mirrors snapToKnownMap in maps.go.

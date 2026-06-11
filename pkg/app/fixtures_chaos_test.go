@@ -143,9 +143,9 @@ func TestChaos_RoundTripsThroughStore(t *testing.T) {
 			t.Fatalf("UpsertSummary(%s): %v", r.MatchKey, err)
 		}
 	}
-	for _, r := range fx.Scoreboards {
-		if err := fs.UpsertScoreboard(r); err != nil {
-			t.Fatalf("UpsertScoreboard(%s): %v", r.MatchKey, err)
+	for _, r := range fx.Teams {
+		if err := fs.UpsertTeams(r); err != nil {
+			t.Fatalf("UpsertTeams(%s): %v", r.MatchKey, err)
 		}
 	}
 }

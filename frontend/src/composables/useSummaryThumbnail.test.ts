@@ -10,7 +10,7 @@ describe('summaryThumbnailURL', () => {
   it('prefers a SUMMARY-classified file over later sources', () => {
     const rec = {
       source_files: ['a.png', 'b.png', 'c.png'],
-      source_types: { 'a.png': 'scoreboard', 'b.png': 'summary', 'c.png': 'personal' },
+      source_types: { 'a.png': 'teams', 'b.png': 'summary', 'c.png': 'personal' },
       source_dir_ids: { 'a.png': 1, 'b.png': 2, 'c.png': 3 },
     }
     expect(summaryThumbnailURL(rec as never)).toBe('/_screenshot/2/b.png')
@@ -19,7 +19,7 @@ describe('summaryThumbnailURL', () => {
   it('falls back to SCOREBOARD when no SUMMARY exists', () => {
     const rec = {
       source_files: ['a.png', 'b.png'],
-      source_types: { 'a.png': 'personal', 'b.png': 'scoreboard' },
+      source_types: { 'a.png': 'personal', 'b.png': 'teams' },
       source_dir_ids: { 'a.png': 1, 'b.png': 2 },
     }
     expect(summaryThumbnailURL(rec as never)).toBe('/_screenshot/2/b.png')

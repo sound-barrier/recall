@@ -20,7 +20,7 @@ func TestIgnoreScreenshot_AddsToSetAndWipesBothKeyShapes(t *testing.T) {
 	// same filename. IgnoreScreenshot must wipe both via
 	// HardDeleteMatch so the Unknown card disappears immediately.
 	fs := &fakeStore{
-		Scoreboards: []db.ScoreboardRow{
+		Teams: []db.TeamsRow{
 			{Filename: "sb.png", MatchKey: "unmatched-sb.png"},
 			{Filename: "sb2.png", MatchKey: "ambiguous-sb.png"},
 		},

@@ -20,10 +20,10 @@ func TestGenerateMatchFixture_RoundTripsThroughStore(t *testing.T) {
 	if got := len(fx.Summaries); got < 40 || got > 50 {
 		t.Errorf("Summaries: got %d, want 40-50 (~95%% of 50)", got)
 	}
-	if got := len(fx.Scoreboards); got < 30 || got > 55 {
+	if got := len(fx.Teams); got < 30 || got > 55 {
 		// Upper bound includes ~1% ambiguous extras (50/100 = 0 at
 		// this size, but kept for documentation).
-		t.Errorf("Scoreboards: got %d, want 30-55 (~80%% of 50)", got)
+		t.Errorf("Teams: got %d, want 30-55 (~80%% of 50)", got)
 	}
 
 	seen := make(map[string]struct{}, len(fx.Summaries))
@@ -40,9 +40,9 @@ func TestGenerateMatchFixture_RoundTripsThroughStore(t *testing.T) {
 			t.Fatalf("UpsertSummary(%s): %v", r.MatchKey, err)
 		}
 	}
-	for _, r := range fx.Scoreboards {
-		if err := fs.UpsertScoreboard(r); err != nil {
-			t.Fatalf("UpsertScoreboard(%s): %v", r.MatchKey, err)
+	for _, r := range fx.Teams {
+		if err := fs.UpsertTeams(r); err != nil {
+			t.Fatalf("UpsertTeams(%s): %v", r.MatchKey, err)
 		}
 	}
 	for _, r := range fx.Personals {
@@ -74,8 +74,8 @@ func TestGenerateMatchFixture_IsDeterministic(t *testing.T) {
 	if !reflect.DeepEqual(a.Summaries[0], b.Summaries[0]) {
 		t.Fatalf("Summaries[0] differ between identical seeds:\n a=%+v\n b=%+v", a.Summaries[0], b.Summaries[0])
 	}
-	if !reflect.DeepEqual(a.Scoreboards[0], b.Scoreboards[0]) {
-		t.Fatal("Scoreboards[0] differ between identical seeds")
+	if !reflect.DeepEqual(a.Teams[0], b.Teams[0]) {
+		t.Fatal("Teams[0] differ between identical seeds")
 	}
 }
 
@@ -501,19 +501,19 @@ func TestGenerateMatchFixture_QueueDistribution(t *testing.T) {
 
 func TestGenerateMatchFixture_ScreenshotTypeDistribution(t *testing.T) {
 	// Per-match screenshot-type dice models real capture habits:
-	// ~95% summary, ~80% teams (scoreboard), ~70% personal, ~15% rank.
+	// ~95% summary, ~80% teams (teams), ~70% personal, ~15% rank.
 	// Independent rolls so each match's combination of types varies.
 	// At N=5000 the binomial bands are tight enough to assert on each
 	// rate directly.
 	const n = 5000
 	fx := GenerateMatchFixture(n, 1, "")
 
-	// Bands include a 5pp tolerance + the ~1% ambiguous scoreboards.
+	// Bands include a 5pp tolerance + the ~1% ambiguous teams.
 	if r := float64(len(fx.Summaries)) * 100 / float64(n); r < 92 || r > 98 {
 		t.Errorf("summary rate %.2f%% outside [92%%, 98%%]", r)
 	}
-	if r := float64(len(fx.Scoreboards)) * 100 / float64(n); r < 76 || r > 85 {
-		t.Errorf("scoreboard rate %.2f%% outside [76%%, 85%%]", r)
+	if r := float64(len(fx.Teams)) * 100 / float64(n); r < 76 || r > 85 {
+		t.Errorf("teams rate %.2f%% outside [76%%, 85%%]", r)
 	}
 	if r := float64(len(fx.Personals)) * 100 / float64(n); r < 66 || r > 74 {
 		t.Errorf("personal rate %.2f%% outside [66%%, 74%%]", r)
@@ -547,7 +547,7 @@ func TestGenerateMatchFixture_UnknownAndAmbiguousCounts(t *testing.T) {
 		}
 	}
 
-	// Every ambiguous seed pairs with a scoreboard row carrying an
+	// Every ambiguous seed pairs with a teams row carrying an
 	// ambiguous- match key for its filename, and points at 2-3 real
 	// tracked match_keys from the main corpus.
 	trackedSet := make(map[string]bool, len(fx.Summaries))
@@ -556,22 +556,22 @@ func TestGenerateMatchFixture_UnknownAndAmbiguousCounts(t *testing.T) {
 			trackedSet[s.MatchKey] = true
 		}
 	}
-	scoreboardByFilename := make(map[string]string, len(fx.Scoreboards))
-	for _, sb := range fx.Scoreboards {
-		scoreboardByFilename[sb.Filename] = sb.MatchKey
+	teamsByFilename := make(map[string]string, len(fx.Teams))
+	for _, sb := range fx.Teams {
+		teamsByFilename[sb.Filename] = sb.MatchKey
 	}
 	for _, a := range fx.Ambiguous {
 		if c := len(a.Candidates); c < 2 || c > 3 {
 			t.Errorf("ambiguous %s has %d candidates, want 2 or 3", a.Filename, c)
 		}
-		gotKey, ok := scoreboardByFilename[a.Filename]
+		gotKey, ok := teamsByFilename[a.Filename]
 		if !ok {
-			t.Errorf("ambiguous %s has no companion scoreboard row", a.Filename)
+			t.Errorf("ambiguous %s has no companion teams row", a.Filename)
 			continue
 		}
 		mk, err := ParseMatchKey(gotKey)
 		if err != nil || !mk.IsAmbiguous() {
-			t.Errorf("ambiguous %s companion scoreboard key %q isn't ambiguous-shaped", a.Filename, gotKey)
+			t.Errorf("ambiguous %s companion teams key %q isn't ambiguous-shaped", a.Filename, gotKey)
 		}
 		for _, c := range a.Candidates {
 			if !trackedSet[c.MatchKey] {

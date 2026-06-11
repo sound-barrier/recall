@@ -24,8 +24,8 @@ import (
 //   manifest.json
 //   summaries.csv
 //   summary_heroes_played.csv
-//   scoreboards.csv
-//   scoreboard_hero_stats.csv
+//   teams.csv
+//   teams_hero_stats.csv
 //   personals.csv
 //   personal_hero_stats.csv
 //   ranks.csv
@@ -82,10 +82,10 @@ func (a *App) ExportDataCSV() ([]byte, error) {
 	if err := zipWriteCSV(zw, "summary_heroes_played.csv", summaryHeroPlayedHeader, summaryHeroesPlayedToRows(snap.Summaries)); err != nil {
 		return nil, err
 	}
-	if err := zipWriteCSV(zw, "scoreboards.csv", scoreboardHeader, scoreboardsToRows(snap.Scoreboards)); err != nil {
+	if err := zipWriteCSV(zw, "teams.csv", teamsHeader, teamsToRows(snap.Teams)); err != nil {
 		return nil, err
 	}
-	if err := zipWriteCSV(zw, "scoreboard_hero_stats.csv", heroStatHeader, scoreboardStatsToRows(snap.Scoreboards)); err != nil {
+	if err := zipWriteCSV(zw, "teams_hero_stats.csv", heroStatHeader, teamsStatsToRows(snap.Teams)); err != nil {
 		return nil, err
 	}
 	if err := zipWriteCSV(zw, "personals.csv", personalHeader, personalsToRows(snap.Personals)); err != nil {
@@ -145,7 +145,7 @@ func (a *App) importDataCSV(payload []byte) error {
 	if err != nil {
 		return err
 	}
-	scoreboards, err := readScoreboardsCSV(zr)
+	teams, err := readTeamsCSV(zr)
 	if err != nil {
 		return err
 	}
@@ -204,11 +204,11 @@ func (a *App) importDataCSV(payload []byte) error {
 			return fmt.Errorf("import csv: summary %q: %w", r.Filename, err)
 		}
 	}
-	for _, r := range scoreboards {
+	for _, r := range teams {
 		r.ID = 0
 		r.ScreenshotsDirID = remapID(r.ScreenshotsDirID)
-		if err := a.store.UpsertScoreboard(r); err != nil {
-			return fmt.Errorf("import csv: scoreboard %q: %w", r.Filename, err)
+		if err := a.store.UpsertTeams(r); err != nil {
+			return fmt.Errorf("import csv: teams %q: %w", r.Filename, err)
 		}
 	}
 	for _, r := range personals {
@@ -250,7 +250,7 @@ var (
 		"perf_deaths_total", "perf_deaths_avg_per_10min",
 	}
 	summaryHeroPlayedHeader = []string{"summary_screenshot_id", "hero", "percent_played", "play_time"}
-	scoreboardHeader        = []string{
+	teamsHeader             = []string{
 		"id", "filename", "match_key", "parsed_at", "screenshots_dir_id",
 		"map", "playlist", "hero",
 		"eliminations", "assists", "deaths", "damage", "healing", "mitigation",
@@ -312,7 +312,7 @@ func summaryHeroesPlayedToRows(rows []db.SummaryRow) [][]string {
 	return out
 }
 
-func scoreboardsToRows(rows []db.ScoreboardRow) [][]string {
+func teamsToRows(rows []db.TeamsRow) [][]string {
 	out := make([][]string, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, []string{
@@ -328,7 +328,7 @@ func scoreboardsToRows(rows []db.ScoreboardRow) [][]string {
 	return out
 }
 
-func scoreboardStatsToRows(rows []db.ScoreboardRow) [][]string {
+func teamsStatsToRows(rows []db.TeamsRow) [][]string {
 	var out [][]string
 	for _, r := range rows {
 		for _, s := range r.HeroStats {
@@ -489,18 +489,18 @@ func readSummariesCSV(zr *zip.Reader) ([]db.SummaryRow, error) {
 	return out, nil
 }
 
-func readScoreboardsCSV(zr *zip.Reader) ([]db.ScoreboardRow, error) {
-	rows, err := readCSV(zr, "scoreboards.csv")
+func readTeamsCSV(zr *zip.Reader) ([]db.TeamsRow, error) {
+	rows, err := readCSV(zr, "teams.csv")
 	if err != nil {
 		return nil, err
 	}
-	parents := make(map[int64]*db.ScoreboardRow, len(rows))
-	out := make([]db.ScoreboardRow, 0, len(rows))
+	parents := make(map[int64]*db.TeamsRow, len(rows))
+	out := make([]db.TeamsRow, 0, len(rows))
 	for _, rec := range rows {
-		if len(rec) < len(scoreboardHeader) {
+		if len(rec) < len(teamsHeader) {
 			continue
 		}
-		r := db.ScoreboardRow{
+		r := db.TeamsRow{
 			Filename: rec[1], MatchKey: rec[2], ParsedAt: rec[3],
 			Map: rec[5], Playlist: rec[6], Hero: rec[7],
 		}
@@ -516,7 +516,7 @@ func readScoreboardsCSV(zr *zip.Reader) ([]db.ScoreboardRow, error) {
 		out = append(out, r)
 		parents[r.ID] = &out[len(out)-1]
 	}
-	statRows, _ := readCSV(zr, "scoreboard_hero_stats.csv")
+	statRows, _ := readCSV(zr, "teams_hero_stats.csv")
 	for _, rec := range statRows {
 		if len(rec) < 4 {
 			continue

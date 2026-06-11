@@ -16,10 +16,10 @@ import (
 // slice into the matching Store.Upsert* method; tests can do the same
 // against a dbtest.Fake without duplicating fixture-builder code.
 type Fixture struct {
-	Summaries   []db.SummaryRow
-	Scoreboards []db.ScoreboardRow
-	Personals   []db.PersonalRow
-	Ranks       []db.RankRow
+	Summaries []db.SummaryRow
+	Teams     []db.TeamsRow
+	Personals []db.PersonalRow
+	Ranks     []db.RankRow
 	// Reviews names the subset of match_keys that should carry a
 	// review row (`self` or `coach`). Empty for the vast majority of
 	// matches — fed into Store.SetReview by the seed tool.
@@ -41,9 +41,9 @@ type Fixture struct {
 	// so the Unknown tab has something to render for triage-flow
 	// eyeballing. Each gets an `unmatched-<filename>` match key.
 	Unknowns []db.UnknownRow
-	// Ambiguous are scoreboard-class screenshots whose match resolver
+	// Ambiguous are teams-class screenshots whose match resolver
 	// landed on multiple candidate matches — modeled as ~1% of N. The
-	// seed tool inserts the scoreboard via UpsertScoreboard with an
+	// seed tool inserts the teams via UpsertTeams with an
 	// `ambiguous-<filename>` match key AND calls Store.ApplyAmbiguity
 	// to populate the candidate list. Each carries 2-3 candidates
 	// pointing at real seeded match_keys so the resolver UI has
@@ -75,8 +75,8 @@ type PlayModeSeed struct {
 
 // AmbiguousSeed pairs an `ambiguous-<filename>` screenshot's filename
 // with the candidate match list the seed tool should write via
-// Store.ApplyAmbiguity. The accompanying scoreboard row is emitted
-// into Fixture.Scoreboards with match_key = "ambiguous-" + Filename so
+// Store.ApplyAmbiguity. The accompanying teams row is emitted
+// into Fixture.Teams with match_key = "ambiguous-" + Filename so
 // the read path attaches the candidates to it.
 type AmbiguousSeed struct {
 	Filename   string
@@ -701,7 +701,7 @@ func pickWeightedHour(rng *rand.Rand) int {
 //     (top-heavy: a handful dominate, the tail tapers off).
 //   - Heroes: per playStyle (see above) plus same-day streak bias.
 //
-// Every match emits one Summary + one Scoreboard. Personal lands on
+// Every match emits one Summary + one Teams. Personal lands on
 // ~60% of matches, Rank on ~40% — mirrors what the production parser
 // actually persists. All four rows for one match share a single
 // MatchKey minted via NewTrackedMatchKey.
@@ -805,11 +805,11 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	}
 
 	fx := Fixture{
-		Summaries:   make([]db.SummaryRow, 0, n),
-		Scoreboards: make([]db.ScoreboardRow, 0, n),
-		Personals:   make([]db.PersonalRow, 0, n*6/10),
-		Ranks:       make([]db.RankRow, 0, n*4/10),
-		PlayModes:   make([]PlayModeSeed, 0, n),
+		Summaries: make([]db.SummaryRow, 0, n),
+		Teams:     make([]db.TeamsRow, 0, n),
+		Personals: make([]db.PersonalRow, 0, n*6/10),
+		Ranks:     make([]db.RankRow, 0, n*4/10),
+		PlayModes: make([]PlayModeSeed, 0, n),
 	}
 
 	// Per-summary parallel slices for queue type + play mode. Built
@@ -861,7 +861,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 		// Per-match screenshot-type dice. Models realistic capture
 		// habits: SUMMARY is the most common (~95% — post-match screen
 		// is what the user almost always remembers to grab), TEAMS
-		// ~80% (requires opening the scoreboard), PERSONAL ~70%
+		// ~80% (requires opening the teams), PERSONAL ~70%
 		// (Tab during the game), RANK ~15% (only at end-of-game
 		// rank-up screens). Independent rolls so a match can land
 		// in any combination — including missing-summary and
@@ -911,8 +911,8 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 		}
 
 		if hasTeams {
-			fx.Scoreboards = append(fx.Scoreboards, db.ScoreboardRow{
-				Filename:     "scoreboard-" + ts + ".png",
+			fx.Teams = append(fx.Teams, db.TeamsRow{
+				Filename:     "teams-" + ts + ".png",
 				MatchKey:     key,
 				Map:          gameMap,
 				Playlist:     playMode,
@@ -923,7 +923,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 				Damage:       damage,
 				Healing:      healing,
 				Mitigation:   mitigation,
-				// Mirror real parsing: the scoreboard carries the
+				// Mirror real parsing: the teams carries the
 				// detected queue, so a match surfaces a queue even
 				// without a user override (the Queues seed is the
 				// override subset).
@@ -968,7 +968,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	// icon and label render, but the top-heavy map weights + 6-9
 	// flex mains naturally miss a handful per run. We patch by
 	// overwriting random matches' Map / Hero in lockstep on Summary
-	// + Scoreboard so the read-time fold sees consistent values.
+	// + Teams so the read-time fold sees consistent values.
 	// Skipped for one-trick / one-role — they can't cover everything
 	// by definition.
 	if profile.style == styleFlex && len(fx.Summaries) > 0 {
@@ -1002,7 +1002,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	queueSeen := make(map[string]bool, len(fx.Summaries))
 	for i, s := range fx.Summaries {
 		if i >= len(summaryQueueTypes) {
-			break // ambiguous scoreboards appended after the main loop
+			break // ambiguous teams appended after the main loop
 		}
 		if queueSeen[s.MatchKey] {
 			continue
@@ -1058,9 +1058,9 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 		})
 	}
 
-	// Ambiguous screenshots: ~1% of N — scoreboard captures whose EAD
+	// Ambiguous screenshots: ~1% of N — teams captures whose EAD
 	// signature matched multiple candidates in the resolver's window.
-	// Each is emitted as a scoreboard row with an ambiguous- match key
+	// Each is emitted as a teams row with an ambiguous- match key
 	// AND an AmbiguousSeed pointing at 2-3 real tracked match_keys
 	// from the main corpus. Skips entirely if the corpus has fewer
 	// than 3 tracked matches (no candidates to point at).
@@ -1081,7 +1081,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 			m := ambigRng.Intn(60)
 			sc := ambigRng.Intn(60)
 			t := time.Date(day.Year(), day.Month(), day.Day(), h, m, sc, 0, time.UTC)
-			filename := "scoreboard-" + t.Format("2006-01-02T15-04-05") + ".png"
+			filename := "teams-" + t.Format("2006-01-02T15-04-05") + ".png"
 			matchKey := NewAmbiguousMatchKey(filename).String()
 			// Pick 2-3 candidate tracked match_keys at random; distances
 			// are illustrative (1-30 min, the EAD bridge window).
@@ -1094,11 +1094,11 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 					DistanceSeconds: 60 + ambigRng.Intn(29*60),
 				})
 			}
-			// Emit a scoreboard-shaped row so the read path has
+			// Emit a teams-shaped row so the read path has
 			// something to attach the candidates to. Stats are
 			// uniformly random — the resolver UI doesn't care about
-			// scoreboard contents, only that the row exists.
-			fx.Scoreboards = append(fx.Scoreboards, db.ScoreboardRow{
+			// teams contents, only that the row exists.
+			fx.Teams = append(fx.Teams, db.TeamsRow{
 				Filename:     filename,
 				MatchKey:     matchKey,
 				Map:          fixtureMaps[ambigRng.Intn(len(fixtureMaps))],
@@ -1126,7 +1126,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 //
 // Strategy: scan once for what's present, build a list of missing
 // values, then pick random summary indices (without replacement) and
-// overwrite their Map / Hero in lockstep on the matching scoreboard.
+// overwrite their Map / Hero in lockstep on the matching teams.
 // We don't touch personal / rank rows — those are role-stats and a
 // minor inconsistency on the patched matches reads as "the player
 // tried something off-spec" rather than as a bug.
@@ -1158,9 +1158,9 @@ func ensureCoverage(rng *rand.Rand, fx *Fixture, queueTypes []string) {
 		return
 	}
 
-	scoreboardByKey := make(map[string]int, len(fx.Scoreboards))
-	for i, sb := range fx.Scoreboards {
-		scoreboardByKey[sb.MatchKey] = i
+	teamsByKey := make(map[string]int, len(fx.Teams))
+	for i, sb := range fx.Teams {
+		teamsByKey[sb.MatchKey] = i
 	}
 
 	// One permutation, consumed by map patches first then hero
@@ -1190,8 +1190,8 @@ func ensureCoverage(rng *rand.Rand, fx *Fixture, queueTypes []string) {
 			mapCounts[s.Map]--
 			mapCounts[gameMap]++
 			s.Map = gameMap
-			if sbIdx, ok := scoreboardByKey[s.MatchKey]; ok {
-				fx.Scoreboards[sbIdx].Map = gameMap
+			if sbIdx, ok := teamsByKey[s.MatchKey]; ok {
+				fx.Teams[sbIdx].Map = gameMap
 			}
 			cursor++
 			return true
