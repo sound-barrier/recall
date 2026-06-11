@@ -34,7 +34,7 @@ const match = (
     result,
     date:   '2026-05-10',
     finished_at: finished,
-    mode:   'competitive',
+    playlist:   'competitive',
     heroes_played: [{ hero, play_time: '10:00', percent_played: 100 }],
   },
   parsed_at: `2026-05-10T${finished}:00Z`,

@@ -35,7 +35,7 @@ function record(i: number) {
       result: i % 2 === 0 ? 'victory' : 'defeat',
       date:   '2026-05-10',
       finished_at: `12:${String(i % 60).padStart(2, '0')}`,
-      mode:   'competitive',
+      playlist:   'competitive',
       eliminations: 10, assists: 12, deaths: 5,
       heroes_played: [{ hero: 'lucio', play_time: '10:00', percent_played: 100 }],
     },

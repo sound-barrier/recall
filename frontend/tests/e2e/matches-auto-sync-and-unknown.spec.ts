@@ -2,7 +2,7 @@
  * Two consistency contracts pinned by this spec:
  *
  *   1. Sync bug — when the leaf row shows "Competitive" (via the
- *      data.mode OCR fallback) but the play_mode override is empty,
+ *      data.playlist OCR fallback) but the play_mode override is empty,
  *      opening the detail panel auto-writes the override so the
  *      chooser, the leaf chip, and every downstream slice (filters,
  *      bulk-set, widgets) all agree. Fires once per match.
@@ -49,14 +49,14 @@ function rec(
     },
     parsed_at: '2026-05-10T22:30:00Z',
   }
-  if (opts.dataMode) (m.data as Record<string, unknown>).mode = opts.dataMode
+  if (opts.dataMode) (m.data as Record<string, unknown>).playlist = opts.dataMode
   if (opts.playMode) m.play_mode = opts.playMode
   if (opts.queueType) m.queue_type = opts.queueType
   return m
 }
 
 test.describe('Matches — auto-sync + Unknown filter chips', () => {
-  test('opening the detail panel auto-writes play_mode from data.mode', async ({ page }) => {
+  test('opening the detail panel auto-writes play_mode from data.playlist', async ({ page }) => {
     // Match shows "Competitive" on the leaf via the OCR fallback;
     // play_mode override is empty. Opening the detail panel should
     // PUT the override so the chooser shows Competitive picked AND

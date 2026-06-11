@@ -1,7 +1,7 @@
 /**
  * Matches leaf row — queue-type chip next to the play-mode chip.
  *
- * Pre-this-feature the leaf row showed `data.mode` (raw OCR
+ * Pre-this-feature the leaf row showed `data.playlist` (raw OCR
  * quickplay/competitive) as a single chip and silently dropped
  * the chip when the field was empty — the user had no signal that
  * the queue type was unset, even though that's the second pivot
@@ -17,7 +17,7 @@
  *
  * The play-mode chip prefers the user-override `play_mode` (set
  * via the right-panel chooser) and falls back to the OCR-derived
- * `data.mode` when the override is missing — same fallback chain
+ * `data.playlist` when the override is missing — same fallback chain
  * the play-mode filter chip uses.
  */
 import type { Route } from '@playwright/test'
@@ -56,7 +56,7 @@ function rec(
     },
     parsed_at: '2026-05-10T22:30:00Z',
   }
-  if (opts.dataMode) (m.data as Record<string, unknown>).mode = opts.dataMode
+  if (opts.dataMode) (m.data as Record<string, unknown>).playlist = opts.dataMode
   if (opts.playMode) m.play_mode = opts.playMode
   if (opts.queueType) m.queue_type = opts.queueType
   return m
@@ -99,7 +99,7 @@ test.describe('Matches — leaf row queue-type chip', () => {
     ])
   })
 
-  test('mode chip prefers user override over OCR data.mode', async ({ page }) => {
+  test('mode chip prefers user override over OCR data.playlist', async ({ page }) => {
     // Override says quickplay, OCR says competitive — override wins.
     const matches = [rec('only', {
       playMode: 'quickplay', queueType: 'role', dataMode: 'competitive',

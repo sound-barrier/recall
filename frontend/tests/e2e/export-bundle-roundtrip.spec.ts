@@ -32,7 +32,7 @@ const importedPayload = {
       source_files: [`${IMPORTED_KEY}.png`],
       data: {
         map:           'rialto',
-        mode:          'competitive',
+        playlist:          'competitive',
         type:          'control',
         role:          'support',
         hero:          'lucio',
