@@ -42,13 +42,17 @@ export function defaultSections(): SectionState[] {
 export function isSectionStateArray(decoded: unknown): decoded is SectionState[] {
   return (
     Array.isArray(decoded) &&
-    decoded.every(
-      (e) =>
-        e !== null &&
-        typeof e === 'object' &&
+    decoded.every((e) => {
+      if (e === null || typeof e !== 'object' || Array.isArray(e)) return false
+      const keys = Object.keys(e as Record<string, unknown>)
+      return (
+        keys.length === 2 &&
+        keys.includes('id') &&
+        keys.includes('visible') &&
         typeof (e as SectionState).id === 'string' &&
-        typeof (e as SectionState).visible === 'boolean',
-    )
+        typeof (e as SectionState).visible === 'boolean'
+      )
+    })
   )
 }
 
@@ -116,8 +120,7 @@ export function useSectionLayout(): SectionLayoutApi {
   function move(fromIdx: number, toIdx: number) {
     const cur = sections.value.slice()
     if (fromIdx < 0 || fromIdx >= cur.length || toIdx < 0 || toIdx >= cur.length || fromIdx === toIdx) return
-    const [moved] = cur.splice(fromIdx, 1)
-    if (!moved) return
+    const [moved] = cur.splice(fromIdx, 1) // bounds check above guarantees one element
     cur.splice(toIdx, 0, moved)
     set(cur)
   }

@@ -51,6 +51,10 @@ init_js=$(find "${DIST_DIR}" -name 'index-*.js' -exec wc -c {} + | awk 'END{prin
 init_css=$(find "${DIST_DIR}" -name 'index-*.css' -exec wc -c {} + | awk 'END{print $1}')
 total_js=$(find "${DIST_DIR}" -name '*.js' -exec wc -c {} + | awk 'END{print $1}')
 total_css=$(find "${DIST_DIR}" -name '*.css' -exec wc -c {} + | awk 'END{print $1}')
+: "${init_js:=0}"
+: "${init_css:=0}"
+: "${total_js:=0}"
+: "${total_css:=0}"
 
 printf 'Bundle sizes: initial JS=%sB CSS=%sB  total JS=%sB CSS=%sB\n' \
   "${init_js}" "${init_css}" "${total_js}" "${total_css}"

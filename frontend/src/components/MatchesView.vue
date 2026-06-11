@@ -804,6 +804,8 @@ const renderSections = computed<GroupedSection[]>(() => {
 const flatTopSpacerHeight    = computed(() => flatVirtualization.value ? flatVirtual.topSpacer.value    : 0)
 const flatBottomSpacerHeight = computed(() => flatVirtualization.value ? flatVirtual.bottomSpacer.value : 0)
 
+const LEAF_ROW_FLEX_GAP_PX = 2
+
 // Re-measure the row height after the first virtualized render so
 // the math reflects the actual rendered geometry — density modes
 // (`density-compact` vs default) ship different row heights, and
@@ -813,7 +815,7 @@ function measureLeafHeight(): void {
   if (!flatVirtualization.value) return
   const el = leavesListRef.value?.querySelector<HTMLElement>('.leaf-row')
   if (!el) return
-  const measured = Math.round(el.getBoundingClientRect().height) + 2 // +2 for flex gap
+  const measured = Math.round(el.getBoundingClientRect().height) + LEAF_ROW_FLEX_GAP_PX
   if (measured > 20 && Math.abs(measured - leafRowHeight.value) > 1) {
     leafRowHeight.value = measured
   }
@@ -882,6 +884,9 @@ const timelineSticky      = ref(false)
 // below the band (it breaks Playwright click stability and is janky
 // for real users). A dead zone larger than the compact height delta
 // absorbs the clamp so the toggle can't oscillate.
+// 240px was chosen empirically as a safe minimum above the observed
+// compact/expand height delta across supported densities/viewports,
+// so scroll clamping cannot cross the threshold and re-trigger flips.
 const TIMELINE_STICKY_HYSTERESIS = 240
 function onTimelineScroll() {
   const el = timelineSentinelRef.value
