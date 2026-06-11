@@ -2929,3 +2929,15 @@ main#main-content {
   color: var(--primary-text-on-accent, #111);
   line-height: 1;
 }
+
+/* Search-match highlight — HighlightedText.vue wraps matched substrings
+   in <mark class="search-hl"> inside the leaf rows. A faint accent wash
+   + a hairline accent underline; the surface keeps its own text colour
+   (override the <mark> UA black) so map / hero / tag legibility holds. */
+.search-hl {
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 0.06em;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 0 -0.14em 0 color-mix(in srgb, var(--accent) 62%, transparent);
+}

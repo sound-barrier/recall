@@ -163,6 +163,7 @@ const {
   anchorKey,
   resetNarrow,
   activeClauseCount, anyNarrow,
+  searchClauses,
   narrowedRecords,
   clauseExclusionCounts,
 } = props.narrow
@@ -1368,6 +1369,7 @@ onBeforeUnmount(() => {
               :selected="selectedKeys.has(rec.match_key)"
               :has-selection="selectedKeys.size > 0"
               :is-anchor="rec.match_key === anchorKey"
+              :search-clauses="searchClauses"
               @open-match="emit('open-match', $event)"
               @toggle-select="toggleSelected"
               @row-context="onRowContext"

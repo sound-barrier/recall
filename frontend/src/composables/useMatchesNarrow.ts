@@ -13,6 +13,7 @@ import {
   matchesSinceAnchor,
   matchesTags,
 } from './narrowPredicates'
+import { useSearchClauses } from './useSearchClauses'
 
 // Owns every filter dimension for the Matches set-workspace narrow
 // panel. Extracted from MatchesView so the filter math is testable
@@ -162,6 +163,11 @@ export function useMatchesNarrow(
     anchorKey, sinceAnchorActive,
   } = state
 
+  // Parse the raw search box into scoped clauses once. The narrow
+  // filter gates on these, and they're re-exposed so the leaf rows can
+  // highlight the matched substrings on the surfaces they show.
+  const { searchClauses } = useSearchClauses(searchText)
+
   // ── Pickers ─────────────────────────────────────────────
   const pickMap        = (v: string) => { pickedMaps.value     = toggleSet(pickedMaps.value,     v) }
   const pickGameMode    = (v: string) => { pickedGameModes.value = toggleSet(pickedGameModes.value, v) }
@@ -291,7 +297,6 @@ export function useMatchesNarrow(
       }
     }
 
-    const search = searchText.value.trim().toLowerCase()
     const heroMin = minPlayMinutes.value
     const heroPct = minPlayPercent.value
     const fromBound = customFrom.value
@@ -313,7 +318,7 @@ export function useMatchesNarrow(
     // was 85-complexity and impossible to unit-test in isolation.
     return base.filter((r) => {
       if (!r.data) return false
-      return matchesSearch(r, search)
+      return matchesSearch(r, searchClauses.value)
         && matchesDateRange(r, fromBound, toBound)
         && matchesPickedSet(r.data.map, maps)
         && matchesPickedSet(r.data.game_mode, gameModes)
@@ -355,7 +360,6 @@ export function useMatchesNarrow(
 
   function matchesNarrowExcept(r: MatchRecord, omit: ClauseId | null): boolean {
     if (!r.data) return false
-    const search    = searchText.value.trim().toLowerCase()
     const fromBound = customFrom.value
     const toBound   = customTo.value
     const maps      = pickedMaps.value
@@ -375,7 +379,7 @@ export function useMatchesNarrow(
       const anchor = records.value.find((x) => x.match_key === anchorKey.value)
       if (anchor?.parsed_at) anchorFloor = anchor.parsed_at
     }
-    if (omit !== 'search'         && !matchesSearch(r, search)) return false
+    if (omit !== 'search'         && !matchesSearch(r, searchClauses.value)) return false
     if (omit !== 'dateRange'      && !matchesDateRange(r, fromBound, toBound)) return false
     if (omit !== 'maps'           && !matchesPickedSet(r.data.map, maps)) return false
     if (omit !== 'gameModes'       && !matchesPickedSet(r.data.game_mode, gameModes)) return false
@@ -491,6 +495,7 @@ export function useMatchesNarrow(
     resetNarrow,
     // Derived
     activeClauseCount, anyNarrow,
+    searchClauses,
     availableMaps, availableGameModes, availableHeroes, availableRoles, availableResults, availableTags,
     narrowedRecords,
     clauseExclusionCounts,
