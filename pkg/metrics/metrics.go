@@ -38,7 +38,7 @@ type Reader func() ([]ScrapeRow, error)
 // `hero`/`role` on core metrics (not just per-hero ones) lets dashboards
 // correlate the played hero with match outcome, damage, healing, etc.
 // hero_stat metrics extend this with an additional `stat` label.
-var matchLabels = []string{"match_key", "map", "type", "mode", "result", "hero", "role"}
+var matchLabels = []string{"match_key", "map", "type", "playlist", "result", "hero", "role"}
 
 // Collector implements prometheus.Collector. Each Collect() call reads all
 // matches via the Reader and emits one sample per (metric, labels, timestamp)
@@ -118,7 +118,7 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 		// competitive mode) stays in SQLite so the Wails UI can show
 		// it, but the Prometheus side keeps to ranked data — mixing
 		// modes would skew win-rate / KDA / SR series in Grafana.
-		if row.Data.Mode != "competitive" {
+		if row.Data.Playlist != "competitive" {
 			continue
 		}
 		ts, ok := parseMatchTimestamp(row.Data.Date, row.Data.FinishedAt, row.MatchKey)
@@ -154,7 +154,7 @@ func (c *Collector) emitMatch(ch chan<- prometheus.Metric, row ScrapeRow, ts tim
 			row.MatchKey,
 			row.Data.Map,
 			row.Data.Type,
-			row.Data.Mode,
+			row.Data.Playlist,
 			row.Data.Result,
 			hero,
 			role,

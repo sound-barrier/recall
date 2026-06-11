@@ -281,7 +281,7 @@ func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.Match
 	case "summary":
 		row := db.SummaryRow{
 			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
-			Map: r.Map, Mode: r.Mode, Hero: r.Hero,
+			Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 			Result: r.Result, FinalScore: r.FinalScore,
 			Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
 		}
@@ -303,7 +303,7 @@ func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.Match
 	case "scoreboard":
 		row := db.ScoreboardRow{
 			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
-			Map: r.Map, Mode: r.Mode, Hero: r.Hero,
+			Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
 			Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
 			QueueType: r.QueueType,

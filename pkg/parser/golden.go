@@ -26,7 +26,7 @@ package parser
 type SummaryGolden struct {
 	Map          string       `json:"map"`
 	Type         string       `json:"type"`
-	Mode         string       `json:"mode"`
+	Playlist     string       `json:"playlist"`
 	Role         string       `json:"role"`
 	Hero         string       `json:"hero"`
 	Eliminations int          `json:"eliminations"`
@@ -55,7 +55,7 @@ type SummaryGolden struct {
 type ScoreboardGolden struct {
 	Map          string     `json:"map"`
 	Type         string     `json:"type"`
-	Mode         string     `json:"mode"`
+	Playlist     string     `json:"playlist"`
 	Role         string     `json:"role"`
 	Hero         string     `json:"hero"`
 	Eliminations int        `json:"eliminations"`
@@ -76,7 +76,7 @@ type ScoreboardGolden struct {
 // damage/healing/mitigation, result/score/date, performance, rank/sr
 // fields.
 type PersonalGolden struct {
-	Mode         string     `json:"mode"`
+	Playlist     string     `json:"playlist"`
 	Role         string     `json:"role"`
 	Hero         string     `json:"hero"`
 	HeroesPlayed []HeroPlay `json:"heroes_played,omitempty"`
@@ -91,7 +91,7 @@ type PersonalGolden struct {
 // mitigation, score/date/finished_at/game_length, performance,
 // heroes_played.
 type RankGolden struct {
-	Mode          string   `json:"mode"`
+	Playlist      string   `json:"playlist"`
 	Result        string   `json:"result"`
 	Hero          string   `json:"hero"`
 	Role          string   `json:"role"`
@@ -117,7 +117,7 @@ func ToGolden(r *MatchResult) any {
 		return &SummaryGolden{
 			Map:          r.Map,
 			Type:         r.Type,
-			Mode:         r.Mode,
+			Playlist:     r.Playlist,
 			Role:         r.Role,
 			Hero:         r.Hero,
 			Eliminations: r.Eliminations,
@@ -135,7 +135,7 @@ func ToGolden(r *MatchResult) any {
 		return &ScoreboardGolden{
 			Map:          r.Map,
 			Type:         r.Type,
-			Mode:         r.Mode,
+			Playlist:     r.Playlist,
 			Role:         r.Role,
 			Hero:         r.Hero,
 			Eliminations: r.Eliminations,
@@ -149,14 +149,14 @@ func ToGolden(r *MatchResult) any {
 		}
 	case "personal":
 		return &PersonalGolden{
-			Mode:         r.Mode,
+			Playlist:     r.Playlist,
 			Role:         r.Role,
 			Hero:         r.Hero,
 			HeroesPlayed: r.HeroesPlayed,
 		}
 	case "rank":
 		return &RankGolden{
-			Mode:          r.Mode,
+			Playlist:      r.Playlist,
 			Result:        r.Result,
 			Hero:          r.Hero,
 			Role:          r.Role,

@@ -56,7 +56,7 @@ func parseScoreboard(img image.Image, work string) (*MatchResult, error) {
 	panelText := panel6 + "\n" + panel11
 
 	res := &MatchResult{}
-	res.Map, res.Type, res.Mode = extractHeader(headerText)
+	res.Map, res.Type = extractHeader(headerText)
 	if res.Map == "" {
 		if cand := candidateNameFromOCR(headerText); cand != "" {
 			res.MapRaw = cand

@@ -15,14 +15,14 @@ describe('formatPlayModeLabel', () => {
     expect(formatPlayModeLabel({ play_mode: 'competitive', data: {} })).toBe('Competitive')
   })
 
-  it('falls back to data.mode when no override is set', () => {
-    expect(formatPlayModeLabel({ data: { mode: 'quickplay'   } })).toBe('Quickplay')
-    expect(formatPlayModeLabel({ data: { mode: 'competitive' } })).toBe('Competitive')
+  it('falls back to data.playlist when no override is set', () => {
+    expect(formatPlayModeLabel({ data: { playlist: 'quickplay'   } })).toBe('Quickplay')
+    expect(formatPlayModeLabel({ data: { playlist: 'competitive' } })).toBe('Competitive')
   })
 
-  it('prefers the override over data.mode when both are present', () => {
+  it('prefers the override over data.playlist when both are present', () => {
     expect(formatPlayModeLabel({
-      play_mode: 'quickplay', data: { mode: 'competitive' },
+      play_mode: 'quickplay', data: { playlist: 'competitive' },
     })).toBe('Quickplay')
   })
 
@@ -30,7 +30,7 @@ describe('formatPlayModeLabel', () => {
     expect(formatPlayModeLabel({ data: {} })).toBe('Unknown mode')
     // Empty-string mode is the closed-union sentinel for "blank" —
     // covers the case where parser wrote an empty field.
-    expect(formatPlayModeLabel({ data: { mode: '' } })).toBe('Unknown mode')
+    expect(formatPlayModeLabel({ data: { playlist: '' } })).toBe('Unknown mode')
   })
 })
 

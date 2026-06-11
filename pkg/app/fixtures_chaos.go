@@ -200,9 +200,9 @@ func applyChaosShape(
 		// frontend a play-mode value come up empty, so the leaf-row
 		// chip renders the "Unknown mode" fallback — the previously-
 		// untested empty-field rendering path.
-		s.Mode = ""
+		s.Playlist = ""
 		if sb != nil {
-			sb.Mode = ""
+			sb.Playlist = ""
 		}
 		fx.PlayModes = dropPlayModeSeed(fx.PlayModes, s.MatchKey)
 

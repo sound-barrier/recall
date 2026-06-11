@@ -722,7 +722,7 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 		Filename:   "s.png",
 		MatchKey:   "match-e2e",
 		Map:        "rialto",
-		Mode:       "competitive",
+		Playlist:   "competitive",
 		Result:     "victory",
 		Date:       "2026-05-10",
 		FinishedAt: "21:29",

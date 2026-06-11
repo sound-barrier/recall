@@ -425,7 +425,7 @@ func summaryToView(r db.SummaryRow) screenshotView {
 		filename: r.Filename, typeName: "summary",
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
-			Map: r.Map, MapRaw: r.MapRaw, Mode: r.Mode, Hero: r.Hero, HeroRaw: r.HeroRaw,
+			Map: r.Map, MapRaw: r.MapRaw, Playlist: r.Playlist, Hero: r.Hero, HeroRaw: r.HeroRaw,
 			Result: r.Result, FinalScore: r.FinalScore,
 			Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
 		},
@@ -461,7 +461,7 @@ func scoreboardToView(r db.ScoreboardRow) screenshotView {
 		filename: r.Filename, typeName: "scoreboard",
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
-			Map: r.Map, MapRaw: r.MapRaw, Mode: r.Mode, Hero: r.Hero, HeroRaw: r.HeroRaw,
+			Map: r.Map, MapRaw: r.MapRaw, Playlist: r.Playlist, Hero: r.Hero, HeroRaw: r.HeroRaw,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
 			Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
 			QueueType: r.QueueType,
@@ -486,8 +486,8 @@ func rankToView(r db.RankRow) screenshotView {
 		filename: r.Filename, typeName: "rank",
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
-			Mode: "competitive", // rank screens are always competitive
-			Rank: r.Rank, Level: r.Level,
+			Playlist: "competitive", // rank screens are always competitive
+			Rank:     r.Rank, Level: r.Level,
 			RankProgress: r.RankProgress, ChangePercent: r.ChangePercent,
 			Result:    r.Result,
 			Modifiers: append([]string(nil), r.Modifiers...),

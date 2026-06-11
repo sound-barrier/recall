@@ -37,7 +37,7 @@ export function matchesSearch(r: MatchRecord, search: string): boolean {
   if (!d) return false
   const heroesPlayedNames = (d.heroes_played ?? []).map((h) => h.hero ?? '').filter(Boolean)
   const blob = [
-    d.map, d.mode, d.hero, d.role, d.type,
+    d.map, d.playlist, d.hero, d.role, d.type,
     r.annotation?.note,
     ...heroesPlayedNames,
     ...(r.annotation?.tags ?? []),

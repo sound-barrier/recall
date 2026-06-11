@@ -64,12 +64,12 @@ func TestAggregate_FusesSummaryAndScoreboardByMatchKey(t *testing.T) {
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{{
 			ID: 1, Filename: "s.png", MatchKey: "m1", ParsedAt: "2026-05-10T21:30:00Z",
-			Map: "rialto", Mode: "competitive", Hero: "lucio",
+			Map: "rialto", Playlist: "competitive", Hero: "lucio",
 			Result: "victory", Date: "2026-05-10", FinishedAt: "21:29",
 		}},
 		Scoreboards: []db.ScoreboardRow{{
 			ID: 1, Filename: "sb.png", MatchKey: "m1", ParsedAt: "2026-05-10T21:30:05Z",
-			Mode:         "", // intentional: aggregator should pick "competitive" from sibling
+			Playlist:     "", // intentional: aggregator should pick "competitive" from sibling
 			Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 		}},
 	}
@@ -81,8 +81,8 @@ func TestAggregate_FusesSummaryAndScoreboardByMatchKey(t *testing.T) {
 	if rec.Data.Map != "rialto" || rec.Data.Damage != 7200 || rec.Data.Result != "victory" {
 		t.Errorf("scalars not fused: %+v", rec.Data)
 	}
-	if rec.Data.Mode != "competitive" {
-		t.Errorf("expected mode to fold to 'competitive' (from SUMMARY sibling), got %q", rec.Data.Mode)
+	if rec.Data.Playlist != "competitive" {
+		t.Errorf("expected mode to fold to 'competitive' (from SUMMARY sibling), got %q", rec.Data.Playlist)
 	}
 }
 
@@ -182,8 +182,8 @@ func TestAggregate_PartialCoverage_RankOnly(t *testing.T) {
 	if rec.Data.Rank != "platinum" || rec.Data.Level != 3 {
 		t.Errorf("rank fields lost: %+v", rec.Data)
 	}
-	if rec.Data.Mode != "competitive" {
-		t.Errorf("expected rank-derived mode=competitive, got %q", rec.Data.Mode)
+	if rec.Data.Playlist != "competitive" {
+		t.Errorf("expected rank-derived mode=competitive, got %q", rec.Data.Playlist)
 	}
 	if len(rec.Data.SR) != 1 || rec.Data.SR[0].SR != 2867 {
 		t.Errorf("SR not folded from child: %+v", rec.Data.SR)
@@ -240,7 +240,7 @@ func TestAggregateMatchKey_FusesAcrossTypesForOneKey(t *testing.T) {
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{{
 			ID: 1, Filename: "s.png", MatchKey: "m1",
-			Map: "rialto", Mode: "competitive", Hero: "lucio",
+			Map: "rialto", Playlist: "competitive", Hero: "lucio",
 			Result: "victory", Date: "2026-05-10", FinishedAt: "21:29",
 		}},
 		Scoreboards: []db.ScoreboardRow{{

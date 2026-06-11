@@ -8,14 +8,14 @@ import type { MatchRecord } from './api'
 
 // Leaf-row chip label for the play-mode pivot. Prefers the user
 // override (`record.play_mode` — set via the right-panel chooser)
-// and falls back to the OCR-derived `data.mode` so a freshly-parsed
+// and falls back to the OCR-derived `data.playlist` so a freshly-parsed
 // match still surfaces its mode without a manual toggle. Returns
 // "Unknown mode" when neither is set, so every row carries a chip
 // — a glance down the column stays aligned.
 export function formatPlayModeLabel(
   rec: Pick<MatchRecord, 'play_mode' | 'data'>,
 ): string {
-  const m = rec.play_mode ?? rec.data?.mode
+  const m = rec.play_mode ?? rec.data?.playlist
   if (m === 'quickplay')   return 'Quickplay'
   if (m === 'competitive') return 'Competitive'
   return 'Unknown mode'

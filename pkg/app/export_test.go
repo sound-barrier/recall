@@ -29,7 +29,7 @@ func TestExportImport_RoundTrip(t *testing.T) {
 	}
 	must(fs.UpsertSummary(db.SummaryRow{
 		Filename: "s.png", MatchKey: "match-1", ScreenshotsDirID: dirID,
-		Map: "rialto", Mode: "competitive", Hero: "lucio", Result: "victory",
+		Map: "rialto", Playlist: "competitive", Hero: "lucio", Result: "victory",
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100, PlayTime: "09:32"}},
 	}))
 	must(fs.UpsertScoreboard(db.ScoreboardRow{

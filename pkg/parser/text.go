@@ -7,25 +7,16 @@ import (
 	"strings"
 )
 
-// extractHeader pulls (map, type, competitive) out of the OCR'd top banner.
+// extractHeader pulls (map, game type) out of the OCR'd in-game banner.
 // Source format: "PAYLOAD - COMPETITIVE | WATCHPOINT: GIBRALTAR"
 //
 // Tesseract often mangles individual letters, so the patterns are deliberately
 // fuzzy: we look for the most distinctive substring of each keyword and accept
-// common OCR substitutions (I/L/1, O/0, etc.).
-func extractHeader(text string) (mapName, gameType, mode string) {
+// common OCR substitutions (I/L/1, O/0, etc.). The banner's COMPETITIVE label
+// is deliberately NOT read — only a RANK screenshot reliably proves a match was
+// competitive, so playlist is left to parseRank.
+func extractHeader(text string) (mapName, gameType string) {
 	upper := strings.ToUpper(text)
-
-	// Mode: "MPETIT" is the most distinctive substring of "COMPETITIVE";
-	// anything else (no match) leaves mode empty. The aggregator picks
-	// `competitive` from a SUMMARY sibling when one exists — preferable
-	// to guessing "quickplay" and locking in a wrong value at write time.
-	for _, sig := range []string{"MPETIT", "ETITIV", "OMPETI"} {
-		if strings.Contains(upper, sig) {
-			mode = "competitive"
-			break
-		}
-	}
 
 	// Map: try the segment after "|" first (when Tesseract renders the pipe).
 	// If that doesn't snap cleanly, slide every known map name across the full
@@ -46,7 +37,7 @@ func extractHeader(text string) (mapName, gameType, mode string) {
 
 	// Type: shared between the in-game banner and the summary card.
 	gameType = extractGameType(upper)
-	return mapName, gameType, mode
+	return mapName, gameType
 }
 
 // typePatterns matches OW game types in OCR'd text. Each pattern allows the

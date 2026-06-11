@@ -483,7 +483,7 @@ export function SetMatchQueue(matchKey: string, queueType: QueueType): Promise<v
 
 // Per-match play-mode override (Quickplay vs Competitive). Empty
 // string clears via DELETE, reverting to the aggregator's fallback
-// chain (parser data.mode → rank presence → empty); 'quickplay' or
+// chain (parser data.playlist → rank presence → empty); 'quickplay' or
 // 'competitive' issues a PUT. Both directions idempotent. Mirrors
 // SetMatchQueue's dual-transport shape.
 export type PlayMode = '' | 'quickplay' | 'competitive'

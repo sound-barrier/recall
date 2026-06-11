@@ -52,7 +52,7 @@ func seedBundleFixture(t *testing.T) (*App, *fakeStore, string) {
 	// match-1: full SUMMARY + SCOREBOARD on rialto.
 	must(fs.UpsertSummary(db.SummaryRow{
 		Filename: "s1.png", MatchKey: "match-1", ScreenshotsDirID: dirID,
-		Map: "rialto", Mode: "competitive", Result: "victory", Hero: "lucio",
+		Map: "rialto", Playlist: "competitive", Result: "victory", Hero: "lucio",
 	}))
 	must(fs.UpsertScoreboard(db.ScoreboardRow{
 		Filename: "sb1.png", MatchKey: "match-1", ScreenshotsDirID: dirID,
@@ -61,12 +61,12 @@ func seedBundleFixture(t *testing.T) (*App, *fakeStore, string) {
 	// match-2: SUMMARY with no map → aggregator tags as "unknown".
 	must(fs.UpsertSummary(db.SummaryRow{
 		Filename: "s2.png", MatchKey: "match-2", ScreenshotsDirID: dirID,
-		Mode: "competitive", Hero: "ana",
+		Playlist: "competitive", Hero: "ana",
 	}))
 	// match-3: SUMMARY + hidden flag.
 	must(fs.UpsertSummary(db.SummaryRow{
 		Filename: "s3.png", MatchKey: "match-3", ScreenshotsDirID: dirID,
-		Map: "hanamura", Mode: "competitive", Hero: "kiriko",
+		Map: "hanamura", Playlist: "competitive", Hero: "kiriko",
 	}))
 	must(fs.HideMatch("match-3"))
 

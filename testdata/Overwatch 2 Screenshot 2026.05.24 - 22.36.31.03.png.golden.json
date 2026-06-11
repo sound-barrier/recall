@@ -3,10 +3,10 @@
   "result": {
     "map": "antarctic peninsula",
     "type": "control",
-    "mode": "competitive",
+    "playlist": "",
     "role": "support",
     "hero": "juno",
-    "eliminations": 4,
+    "eliminations": 9,
     "assists": 19,
     "deaths": 6,
     "result": "victory",
@@ -28,7 +28,7 @@
     ],
     "performance": {
       "eliminations": {
-        "total": 4,
+        "total": 9,
         "avg_per_10min": 6.64
       },
       "assists": {

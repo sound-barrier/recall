@@ -80,9 +80,9 @@ func TestCollector_SkipsNonCompetitive(t *testing.T) {
 		return []ScrapeRow{{
 			MatchKey: "match-2026-05-10T21-29-28",
 			Data: parser.MatchResult{
-				Mode: "quickplay", // must be skipped
-				Map:  "rialto",
-				Date: "2026-05-10", FinishedAt: "21:29",
+				Playlist: "quickplay", // must be skipped
+				Map:      "rialto",
+				Date:     "2026-05-10", FinishedAt: "21:29",
 				Eliminations: 17,
 			},
 		}}, nil
@@ -104,7 +104,7 @@ func TestCollector_FilterIsCompetitiveOnly(t *testing.T) {
 			{
 				MatchKey: "match-2026-05-10T20-00-00",
 				Data: parser.MatchResult{
-					Mode: "competitive", Map: "rialto", Hero: "ana",
+					Playlist: "competitive", Map: "rialto", Hero: "ana",
 					Date: "2026-05-10", FinishedAt: "20:00",
 					Eliminations: 1,
 				},
@@ -112,7 +112,7 @@ func TestCollector_FilterIsCompetitiveOnly(t *testing.T) {
 			{
 				MatchKey: "match-2026-05-10T20-30-00",
 				Data: parser.MatchResult{
-					Mode: "quickplay", Map: "ilios", Hero: "zarya",
+					Playlist: "quickplay", Map: "ilios", Hero: "zarya",
 					Date: "2026-05-10", FinishedAt: "20:30",
 					Eliminations: 2,
 				},
@@ -120,7 +120,7 @@ func TestCollector_FilterIsCompetitiveOnly(t *testing.T) {
 			{
 				MatchKey: "match-2026-05-10T21-00-00",
 				Data: parser.MatchResult{
-					Mode: "arcade", Map: "kings_row", Hero: "tracer",
+					Playlist: "arcade", Map: "kings_row", Hero: "tracer",
 					Date: "2026-05-10", FinishedAt: "21:00",
 					Eliminations: 3,
 				},
@@ -128,7 +128,7 @@ func TestCollector_FilterIsCompetitiveOnly(t *testing.T) {
 			{
 				MatchKey: "match-2026-05-10T21-30-00",
 				Data: parser.MatchResult{
-					Mode: "competitive", Map: "hanamura", Hero: "lucio",
+					Playlist: "competitive", Map: "hanamura", Hero: "lucio",
 					Date: "2026-05-10", FinishedAt: "21:30",
 					Eliminations: 4,
 				},
@@ -136,7 +136,7 @@ func TestCollector_FilterIsCompetitiveOnly(t *testing.T) {
 			{
 				MatchKey: "match-2026-05-10T22-00-00",
 				Data: parser.MatchResult{
-					Mode: "", Map: "junkertown", Hero: "soldier",
+					Playlist: "", Map: "junkertown", Hero: "soldier",
 					Date: "2026-05-10", FinishedAt: "22:00",
 					Eliminations: 5,
 				},
@@ -164,15 +164,15 @@ func TestCollector_FilterIsCompetitiveOnly(t *testing.T) {
 			t.Errorf("non-competitive match %q leaked into /metrics output", key)
 		}
 	}
-	// Belt-and-suspenders: the labels confirm we're filtering on mode,
+	// Belt-and-suspenders: the labels confirm we're filtering on playlist,
 	// not on something coincidental. Every emitted eliminations sample
-	// carries mode="competitive".
+	// carries playlist="competitive".
 	for _, line := range strings.Split(out, "\n") {
 		if !strings.HasPrefix(line, "recall_match_eliminations{") {
 			continue
 		}
-		if !strings.Contains(line, `mode="competitive"`) {
-			t.Errorf("eliminations sample with non-competitive mode label:\n  %s", line)
+		if !strings.Contains(line, `playlist="competitive"`) {
+			t.Errorf("eliminations sample with non-competitive playlist label:\n  %s", line)
 		}
 	}
 }
@@ -190,7 +190,7 @@ func TestCollector_LabelNewlineDoesNotBreakExposition(t *testing.T) {
 		return []ScrapeRow{{
 			MatchKey: "match-2026-05-10T20-00-00",
 			Data: parser.MatchResult{
-				Mode: "competitive", Map: "rialto",
+				Playlist: "competitive", Map: "rialto",
 				// Hostile OCR: a newline + a line that, unescaped, would
 				// parse as its own Prometheus metric.
 				Hero:         "lucio\ninjected_metric{x=\"y\"} 999",
@@ -220,7 +220,7 @@ func TestCollector_SkipsRowsWithoutTimestamp(t *testing.T) {
 	reader := func() ([]ScrapeRow, error) {
 		return []ScrapeRow{{
 			MatchKey: "unmatched-loner.png", // no date, no match: prefix
-			Data:     parser.MatchResult{Mode: "competitive", Eliminations: 17},
+			Data:     parser.MatchResult{Playlist: "competitive", Eliminations: 17},
 		}}, nil
 	}
 	out := scrape(t, reader)
@@ -234,7 +234,7 @@ func TestCollector_EmitsCoreMetricsWithPrimaryHero(t *testing.T) {
 		return []ScrapeRow{{
 			MatchKey: "match-2026-05-10T21-29-28",
 			Data: parser.MatchResult{
-				Mode: "competitive", Map: "rialto", Type: "control", Result: "victory",
+				Playlist: "competitive", Map: "rialto", Type: "control", Result: "victory",
 				Date: "2026-05-10", FinishedAt: "21:29",
 				Hero:         "lucio",
 				Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
@@ -265,7 +265,7 @@ func TestCollector_EmitsPerHeroStatsAndSR(t *testing.T) {
 		return []ScrapeRow{{
 			MatchKey: "match-2026-05-10T21-29-28",
 			Data: parser.MatchResult{
-				Mode: "competitive", Map: "rialto",
+				Playlist: "competitive", Map: "rialto",
 				Date: "2026-05-10", FinishedAt: "21:29",
 				Hero: "lucio",
 				HeroesPlayed: []parser.HeroPlay{

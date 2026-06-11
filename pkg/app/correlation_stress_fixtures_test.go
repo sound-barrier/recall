@@ -162,7 +162,7 @@ func buildFixtures(spec matchSpec) []fixture {
 			scrType:  "summary",
 			result: &parser.MatchResult{
 				Map:          spec.mapName,
-				Mode:         spec.mode,
+				Playlist:     spec.mode,
 				Type:         spec.matchType,
 				Role:         spec.role,
 				Hero:         spec.primaryHero,
@@ -187,7 +187,7 @@ func buildFixtures(spec matchSpec) []fixture {
 			scrType:  "scoreboard",
 			result: &parser.MatchResult{
 				Map:          spec.mapName,
-				Mode:         spec.mode,
+				Playlist:     spec.mode,
 				Type:         spec.matchType,
 				Role:         spec.role,
 				Hero:         hero,
@@ -305,7 +305,7 @@ func (s *snapshotState) Insert(f fixture) {
 		}
 		s.snap.Summaries = append(s.snap.Summaries, db.SummaryRow{
 			Filename: f.filename, MatchKey: f.expectedKey,
-			Map: r.Map, Mode: r.Mode, Hero: r.Hero,
+			Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 			Result: r.Result, FinalScore: r.FinalScore,
 			Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
 			HeroesPlayed: heroesPlayed,
@@ -314,7 +314,7 @@ func (s *snapshotState) Insert(f fixture) {
 		r := f.result
 		s.snap.Scoreboards = append(s.snap.Scoreboards, db.ScoreboardRow{
 			Filename: f.filename, MatchKey: f.expectedKey,
-			Map: r.Map, Mode: r.Mode, Hero: r.Hero,
+			Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
 			Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
 		})

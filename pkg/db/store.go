@@ -252,7 +252,7 @@ type SummaryRow struct {
 	// column resolved cleanly. See pkg/parser/types.go MatchResult
 	// for the full rationale.
 	MapRaw     string
-	Mode       string
+	Playlist   string
 	Hero       string
 	HeroRaw    string
 	Result     string
@@ -287,7 +287,7 @@ type ScoreboardRow struct {
 	ScreenshotsDirID int64 // 0 = NULL
 	Map              string
 	MapRaw           string
-	Mode             string
+	Playlist         string
 	Hero             string
 	HeroRaw          string
 	Eliminations     int

@@ -1,7 +1,7 @@
 {
   "screenshot_type": "personal",
   "result": {
-    "mode": "competitive",
+    "playlist": "",
     "role": "support",
     "hero": "mizuki",
     "heroes_played": [
@@ -13,9 +13,9 @@
           "average_aura": 26,
           "binding_chain_accuracy": 36,
           "enemies_hindered": 4,
-          "healing_kasa_healing": 367,
+          "healing_kasa_healing": 1367,
           "players_saved": 1,
-          "remedy_aura_healing": 94,
+          "remedy_aura_healing": 1094,
           "ultimates_negated": 0,
           "weapon_accuracy": 25
         }

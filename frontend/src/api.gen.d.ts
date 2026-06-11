@@ -377,7 +377,7 @@ export interface paths {
          *       - `competitive` — ranked game (SR applies)
          *
          *     Absence of a `match_play_mode` row is the third state
-         *     ("follow the parser's read of data.mode + rank-row presence");
+         *     ("follow the parser's read of data.playlist + rank-row presence");
          *     use `DELETE` on the same path to revert there. Idempotent —
          *     repeated identical calls succeed.
          *
@@ -393,7 +393,7 @@ export interface paths {
         /**
          * Clear the play-mode override
          * @description Removes the `match_play_mode` override row, reverting to the
-         *     fallback chain (parser data.mode → rank-row presence →
+         *     fallback chain (parser data.playlist → rank-row presence →
          *     empty). Idempotent — clearing an unset match returns 204.
          */
         delete: operations["ClearMatchPlayMode"];
@@ -452,7 +452,7 @@ export interface paths {
          *
          *     Empty `play_mode` (string `""`) clears the rows (bulk
          *     Clear), reverting every listed match to "follow the
-         *     parser's data.mode."
+         *     parser's data.playlist."
          *
          *     Returns 204 on success, 400 on validation failure
          *     (`play_mode` outside the enum + non-empty), 500 on store
@@ -1659,7 +1659,7 @@ export interface components {
             map?: string;
             /** @description Raw OCR text when the canonical map lookup failed. */
             map_raw?: string;
-            mode?: string;
+            playlist?: string;
             hero?: string;
             hero_raw?: string;
             result?: string;
@@ -1696,7 +1696,7 @@ export interface components {
             screenshots_dir_id?: number;
             map?: string;
             map_raw?: string;
-            mode?: string;
+            playlist?: string;
             hero?: string;
             hero_raw?: string;
             eliminations?: number;
@@ -1889,7 +1889,7 @@ export interface components {
             /**
              * @description Match's play mode: `quickplay` (casual) or `competitive`
              *     (ranked). Set ONLY from the `match_play_mode` user-
-             *     override aux table — parser-written `data.mode` and
+             *     override aux table — parser-written `data.playlist` and
              *     rank-row presence do not surface here. New matches
              *     default to "Not set" until the user explicitly toggles
              *     via the right-panel radiogroup; omitted from JSON when
@@ -2007,7 +2007,7 @@ export interface components {
             /** @description e.g. "control" */
             type?: string;
             /** @enum {string} */
-            mode?: "competitive" | "quickplay" | "unranked" | "";
+            playlist?: "competitive" | "quickplay" | "unranked" | "";
             /** @enum {string} */
             role?: "tank" | "dps" | "support" | "";
             /** @description Primary (most-played) hero */

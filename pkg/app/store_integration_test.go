@@ -101,7 +101,7 @@ func TestApp_GetMatchResults_DecodesAndFolds(t *testing.T) {
 	fs := &fakeStore{
 		Summaries: []db.SummaryRow{{
 			ID: 1, Filename: "s.png", MatchKey: "match-2026-05-10T21-29-28",
-			Map: "rialto", Mode: "competitive", Hero: "lucio",
+			Map: "rialto", Playlist: "competitive", Hero: "lucio",
 			Result: "victory", Date: "2026-05-10", FinishedAt: "21:29",
 			HeroesPlayed: []db.SummaryHeroPlayed{
 				{Hero: "lucio", PercentPlayed: 100},
@@ -109,7 +109,7 @@ func TestApp_GetMatchResults_DecodesAndFolds(t *testing.T) {
 		}},
 		Scoreboards: []db.ScoreboardRow{{
 			ID: 1, Filename: "sb.png", MatchKey: "match-2026-05-10T21-29-28",
-			Mode: "competitive", Hero: "lucio",
+			Playlist: "competitive", Hero: "lucio",
 			Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 		}},
 	}
@@ -139,7 +139,7 @@ func TestApp_GetMatchResults_AppliesReadTimeInference(t *testing.T) {
 	fs := &fakeStore{
 		Scoreboards: []db.ScoreboardRow{{
 			ID: 1, Filename: "a.png", MatchKey: "k1",
-			Mode: "competitive", Hero: "lucio",
+			Playlist: "competitive", Hero: "lucio",
 			Eliminations: 17,
 		}},
 	}
@@ -190,7 +190,7 @@ func TestApp_RoundTripViaSQLStore(t *testing.T) {
 	// Insert a SUMMARY + SCOREBOARD for the same match.
 	if err := s.UpsertSummary(db.SummaryRow{
 		Filename: "s.png", MatchKey: "match-2026-05-10T21-29-28",
-		Map: "rialto", Mode: "competitive", Hero: "lucio",
+		Map: "rialto", Playlist: "competitive", Hero: "lucio",
 		Result: "victory", Date: "2026-05-10", FinishedAt: "21:29",
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100}},
 	}); err != nil {
@@ -198,7 +198,7 @@ func TestApp_RoundTripViaSQLStore(t *testing.T) {
 	}
 	if err := s.UpsertScoreboard(db.ScoreboardRow{
 		Filename: "sb.png", MatchKey: "match-2026-05-10T21-29-28",
-		Mode: "competitive", Hero: "lucio",
+		Playlist: "competitive", Hero: "lucio",
 		Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 	}); err != nil {
 		t.Fatalf("UpsertScoreboard: %v", err)
@@ -242,12 +242,12 @@ func TestApp_GetMatchResults_ExposesParsedAtFields(t *testing.T) {
 		Summaries: []db.SummaryRow{{
 			ID: 1, Filename: "a.png", MatchKey: "k1",
 			ParsedAt: "2026-05-10T21:30:00Z",
-			Mode:     "competitive",
+			Playlist: "competitive",
 		}},
 		Scoreboards: []db.ScoreboardRow{{
 			ID: 1, Filename: "b.png", MatchKey: "k1",
 			ParsedAt: "2026-05-10T21:30:05Z",
-			Mode:     "competitive", Eliminations: 5,
+			Playlist: "competitive", Eliminations: 5,
 		}},
 	}
 	a := NewWithStore(fs)
@@ -271,8 +271,8 @@ func TestApp_ScrapeReader_ReturnsAllRows(t *testing.T) {
 	// the metrics layer's job.
 	fs := &fakeStore{
 		Scoreboards: []db.ScoreboardRow{
-			{Filename: "a.png", MatchKey: "m1", Mode: "competitive", Eliminations: 17, Hero: "lucio"},
-			{Filename: "b.png", MatchKey: "m2", Mode: "quickplay", Eliminations: 5, Hero: "kiriko"},
+			{Filename: "a.png", MatchKey: "m1", Playlist: "competitive", Eliminations: 17, Hero: "lucio"},
+			{Filename: "b.png", MatchKey: "m2", Playlist: "quickplay", Eliminations: 5, Hero: "kiriko"},
 		},
 	}
 	a := NewWithStore(fs)
@@ -411,8 +411,8 @@ func TestApp_ScrapeReader_DropsHiddenMatches(t *testing.T) {
 	// pkg/metrics/metrics.go::Collect.
 	fs := &fakeStore{
 		Scoreboards: []db.ScoreboardRow{
-			{ID: 1, Filename: "a.png", MatchKey: "m1", Mode: "competitive", Eliminations: 1},
-			{ID: 2, Filename: "b.png", MatchKey: "m2", Mode: "competitive", Eliminations: 2},
+			{ID: 1, Filename: "a.png", MatchKey: "m1", Playlist: "competitive", Eliminations: 1},
+			{ID: 2, Filename: "b.png", MatchKey: "m2", Playlist: "competitive", Eliminations: 2},
 		},
 		Hidden: map[string]bool{"m2": true},
 	}

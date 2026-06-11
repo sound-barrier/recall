@@ -92,7 +92,7 @@ func TestChaos_MissingPlayModeProducesEmptyModeAndDroppedSeed(t *testing.T) {
 	emptyModeWithoutSeed := 0
 	for i := 0; i < n; i++ {
 		s := fx.Summaries[i]
-		if s.Mode == "" && !playModeKeys[s.MatchKey] {
+		if s.Playlist == "" && !playModeKeys[s.MatchKey] {
 			emptyModeWithoutSeed++
 		}
 	}
