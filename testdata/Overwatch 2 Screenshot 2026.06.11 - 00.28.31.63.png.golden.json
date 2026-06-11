@@ -1,0 +1,17 @@
+{
+  "screenshot_type": "scoreboard",
+  "result": {
+    "map": "",
+    "type": "",
+    "mode": "",
+    "role": "",
+    "hero": "",
+    "eliminations": 11,
+    "assists": 12,
+    "deaths": 3,
+    "damage": 6091,
+    "healing": 3042,
+    "mitigation": 1975,
+    "queue_type": "open"
+  }
+}
