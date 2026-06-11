@@ -15,7 +15,7 @@ const RECENT = (() => { const d = new Date(); d.setDate(d.getDate() - 3); return
 const REFERENCE_DATA = {
   heroes_by_role: { tank: ['Reinhardt'], dps: ['Tracer'], support: ['Lucio'] },
   // 3 types / 5 maps so the type + map filters are observable.
-  maps_by_type: {
+  maps_by_game_mode: {
     control: ['Ilios', 'Nepal'],
     escort: ['Dorado', 'Rialto'],
     push: ['Esperanca'],

@@ -55,7 +55,7 @@ async function seed(page: import('@playwright/test').Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ heroes_by_role: {}, maps_by_type: {} }),
+      body: JSON.stringify({ heroes_by_role: {}, maps_by_game_mode: {} }),
     })
   })
 }
