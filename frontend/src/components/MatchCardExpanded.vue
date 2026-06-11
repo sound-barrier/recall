@@ -502,7 +502,7 @@ function onTagKeydown(e: KeyboardEvent) {
         {{ unknownHero ? 'hero' : 'map' }}.
         Wait for the next Recall release to update the canonical roster.
         <span v-if="unknownHero" class="unknown-alert-ocr">(OCR read: <code>{{ record.data?.hero_raw }}</code>)</span>
-        <span v-if="unknownMap"  class="unknown-alert-ocr">(OCR read: <code>{{ record.data?.map_raw }}</code>)</span>
+        <span v-if="unknownMap" class="unknown-alert-ocr">(OCR read: <code>{{ record.data?.map_raw }}</code>)</span>
       </p>
       <a
         class="unknown-alert-link"

@@ -1695,7 +1695,9 @@ useEventStream({
          parse-complete + parse-cancelled, then clears so the next
          terminal state re-announces. Invisible to sighted users —
          the masthead chip + status bar carry the visual signal. -->
-    <div class="sr-only" role="status" aria-live="polite">{{ parseAnnouncement }}</div>
+    <div class="sr-only" role="status" aria-live="polite">
+      {{ parseAnnouncement }}
+    </div>
 
     <div class="atmos" aria-hidden="true" />
     <div class="grid-lines" aria-hidden="true" />
@@ -2110,6 +2112,7 @@ useEventStream({
       :has-lightbox="lightboxFilename !== null"
       :available-tags="matchesNarrow.availableTags.value"
       :pending-focus="pendingFocusTarget"
+      :anchor-key="matchAnchor.anchorKey.value"
       @focus-consumed="clearPendingFocus"
       @close="selection.close"
       @prev="selection.openPrev"
@@ -2126,7 +2129,6 @@ useEventStream({
       @set-match-queue="onSetMatchQueue"
       @set-match-play-mode="onSetMatchPlayMode"
       @set-anchor="onSetAnchor"
-      :anchor-key="matchAnchor.anchorKey.value"
     />
 
     <!-- Anchor confirmation toast — appears bottom-right when the

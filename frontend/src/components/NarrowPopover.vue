@@ -707,7 +707,9 @@ onUnmounted(() => {
                   class="np-preset-delete"
                   :aria-label="`Delete preset ${p.name}`"
                   @click="deletePreset(p.name)"
-                >×</button>
+                >
+                  ×
+                </button>
               </li>
             </ul>
           </section>

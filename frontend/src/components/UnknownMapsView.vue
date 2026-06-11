@@ -536,9 +536,9 @@ function updateThumbPosition(e: MouseEvent) {
                         :aria-label="`Open ${cand.match_key} screenshot in lightbox`"
                         :data-candidate-thumb="cand.match_key"
                         @click="emit('open-lightbox',
-                          cand.representative_source_file!,
-                          [cand.representative_source_file!],
-                          { [cand.representative_source_file!]: cand.representative_dir_id ?? 0 })"
+                                     cand.representative_source_file!,
+                                     [cand.representative_source_file!],
+                                     { [cand.representative_source_file!]: cand.representative_dir_id ?? 0 })"
                       >
                         <img
                           :src="screenshotURL(cand.representative_source_file, cand.representative_dir_id ?? 0)"
@@ -588,9 +588,9 @@ function updateThumbPosition(e: MouseEvent) {
                       class="candidate-preview-image"
                       :aria-label="`Open ${activeCandidate(rec)?.match_key} screenshot in lightbox`"
                       @click="emit('open-lightbox',
-                        activeCandidate(rec)!.representative_source_file!,
-                        [activeCandidate(rec)!.representative_source_file!],
-                        { [activeCandidate(rec)!.representative_source_file!]: activeCandidate(rec)!.representative_dir_id ?? 0 })"
+                                   activeCandidate(rec)!.representative_source_file!,
+                                   [activeCandidate(rec)!.representative_source_file!],
+                                   { [activeCandidate(rec)!.representative_source_file!]: activeCandidate(rec)!.representative_dir_id ?? 0 })"
                     >
                       <img
                         :src="screenshotURL(activeCandidate(rec)!.representative_source_file!, activeCandidate(rec)!.representative_dir_id ?? 0)"

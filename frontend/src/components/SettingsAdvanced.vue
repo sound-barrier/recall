@@ -272,10 +272,18 @@ watch(
           <table class="capture-source-table">
             <thead>
               <tr>
-                <th scope="col">Tool</th>
-                <th scope="col">Prefix</th>
-                <th scope="col">Regex</th>
-                <th scope="col">Example filename</th>
+                <th scope="col">
+                  Tool
+                </th>
+                <th scope="col">
+                  Prefix
+                </th>
+                <th scope="col">
+                  Regex
+                </th>
+                <th scope="col">
+                  Example filename
+                </th>
               </tr>
             </thead>
             <tbody>

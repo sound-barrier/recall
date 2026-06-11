@@ -1,15 +1,15 @@
-/* OW2 in-game fonts. local() first — picks up the user's system install if
-   present — then bundled woff2 under src/assets/fonts/. Drop the licensed
-   files at the paths below to use the real cuts; otherwise the cascade in
-   App.vue falls back to Barlow Condensed (≈ Big Noodle) and Jost (≈ Futura). */
+/* OW2 in-game fonts — local() only. The licensed cuts can't be
+   redistributed, so there's no bundled woff2 to ship; local() picks up
+   a user's own system install if they have it, and when it misses the
+   font stacks in App.vue fall back to the free Google-Fonts lookalikes
+   loaded in index.html (Barlow Condensed ≈ Big Noodle, Jost ≈ Futura,
+   Russo One ≈ the wordmark). */
 @font-face {
   font-family: 'Big Noodle Too Oblique';
   src: local('Big Noodle Too Oblique'),
        local('BigNoodleTooOblique'),
        local('Big Noodle Titling Oblique'),
-       local('big_noodle_titling_oblique'),
-       url('./assets/fonts/big-noodle-too-oblique.woff2') format('woff2'),
-       url('./assets/fonts/big-noodle-too-oblique.ttf') format('truetype');
+       local('big_noodle_titling_oblique');
   font-display: swap;
   font-style: italic;
   font-weight: 100 900;
@@ -20,9 +20,7 @@
   src: local('Futura No. 2 Demi'),
        local('Futura No 2 Demi'),
        local('FuturaNo2-Demi'),
-       local('Futura-No2-Demi'),
-       url('./assets/fonts/futura-no2-demi.woff2') format('woff2'),
-       url('./assets/fonts/futura-no2-demi.ttf') format('truetype');
+       local('Futura-No2-Demi');
   font-display: swap;
   font-style: normal;
   font-weight: 600;
@@ -30,9 +28,8 @@
 
 /* Wordmark face — the wide geometric sans the OW logo is built from.
    Multiple local() names so the cascade picks up whichever of Bank Sans
-   Caps Bold EF / Agency FB Extended Black / Zekton is installed; bundled
-   woff2 path lets you commit a licensed cut later. Russo One (loaded from
-   Google Fonts) is the free visual fallback. */
+   Caps Bold EF / Agency FB Extended Black / Zekton is installed; Russo
+   One (loaded from Google Fonts) is the free visual fallback. */
 @font-face {
   font-family: 'OW Wordmark';
   src: local('Bank Sans Caps Bold EF'),
@@ -40,9 +37,7 @@
        local('Agency FB Extended Black'),
        local('AgencyFB-ExtendedBlack'),
        local('Zekton Heavy'),
-       local('Zekton'),
-       url('./assets/fonts/ow-wordmark.woff2') format('woff2'),
-       url('./assets/fonts/ow-wordmark.ttf') format('truetype');
+       local('Zekton');
   font-display: swap;
   font-style: normal;
   font-weight: 700 900;
