@@ -69,7 +69,7 @@ Filled when fixtures land. Unchecked = slot still wanted, the
 maintainer drops in a PNG later via `make update-goldens` and commits.
 
 - [x] post-match SUMMARY tab (×2 — Antarctic Peninsula / Juno + New Queen Street / Lucio)
-- [x] post-match TEAMS scoreboard
+- [x] post-match TEAMS scoreboard — role queue (5v5) AND open queue (6v6, Hollywood); the pair pins `queue_type` detection from the players-per-team count
 - [x] post-match PERSONAL tab — single hero (Juno, hero stats subfield)
 - [x] post-match PERSONAL tab — second hero in a multi-hero match (Mei from same match)
 - [ ] rank screen — competitive ladder badge + per-hero SR card
