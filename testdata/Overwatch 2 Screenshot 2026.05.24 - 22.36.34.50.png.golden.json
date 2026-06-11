@@ -1,7 +1,7 @@
 {
   "screenshot_type": "personal",
   "result": {
-    "mode": "competitive",
+    "playlist": "",
     "role": "support",
     "hero": "juno",
     "heroes_played": [
@@ -15,7 +15,7 @@
           "orbital_ray_healing": 372,
           "players_saved": 5,
           "pulsar_torpedoes_damage": 582,
-          "pulsar_torpedoes_healing": 4496,
+          "pulsar_torpedoes_healing": 1496,
           "weapon_accuracy": 35
         }
       }

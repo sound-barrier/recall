@@ -9,11 +9,11 @@ type MatchResult struct {
 	// The downstream "Unknown map (newmap?)" UI reads this; a future
 	// YAML release can re-aggregate the corpus and promote stored
 	// MapRaw values to canonical Map without re-OCRing the PNG.
-	MapRaw string `json:"map_raw,omitempty"`
-	Type   string `json:"type"`
-	Mode   string `json:"mode"` // "competitive" or "quickplay"
-	Role   string `json:"role"`
-	Hero   string `json:"hero"`
+	MapRaw   string `json:"map_raw,omitempty"`
+	Type     string `json:"type"`
+	Playlist string `json:"playlist"` // "competitive" or "quickplay"
+	Role     string `json:"role"`
+	Hero     string `json:"hero"`
 	// HeroRaw mirrors MapRaw — raw OCR'd hero text. Empty Hero +
 	// non-empty HeroRaw is the "Unknown hero" signal (e.g. a
 	// Miyazaki play parsed before heroes.yaml is updated). Single

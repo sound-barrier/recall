@@ -80,18 +80,6 @@ func parseSummary(img image.Image, work string) (*MatchResult, error) {
 	}
 	parseRightCard(cardText, res)
 
-	// Top-right badge sits below the currency strip at ~9-13% of H — the
-	// strip occupies 0-8% and the badge banner runs underneath it. Raw OCR
-	// works directly on the white-on-magenta text without preprocessing.
-	badgeRect := image.Rect(W*65/100, H*9/100, W*97/100, H*13/100)
-	badgeText, _ := ocrRaw(img, badgeRect, work, "summary_badge", "7", "")
-	upperBadge := strings.ToUpper(badgeText)
-	if strings.Contains(upperBadge, "MPETIT") || strings.Contains(upperBadge, "OMPETI") {
-		res.Mode = "competitive"
-	} else if strings.Contains(upperBadge, "QUICK") {
-		res.Mode = "quickplay"
-	}
-
 	return res, nil
 }
 
@@ -175,18 +163,33 @@ func parsePerformance(text string) *Performance {
 		{"ASSIST", &perf.Assists},
 		{"DEATH", &perf.Deaths},
 	}
+	prevEnd := 0
 	for _, p := range pairs {
 		idx := strings.Index(upper, p.keyword)
 		if idx < 0 {
 			continue
 		}
-		// Total: last pure-digit line before the label.
-		before := text[:idx]
-		ms := perfPureIntLineRe.FindAllStringSubmatch(before, -1)
-		if len(ms) > 0 {
-			n, _ := strconv.Atoi(ms[len(ms)-1][1])
-			p.stat.Total = n
+		// Total: the largest pure-digit line in the segment between the
+		// previous stat's label and this one. Segmenting isolates this
+		// stat's digits (so the assists "19" can't shadow deaths "6"), and
+		// taking the max rejects the small icon glyph Tesseract reads as a
+		// stray digit beside the value — the crossed-swords ELIMINATIONS
+		// icon reads as "4" right before the label, which the old "last
+		// line before the label" pick wrongly grabbed over the real "9".
+		start := prevEnd
+		if start > idx {
+			start = 0
 		}
+		best := -1
+		for _, m := range perfPureIntLineRe.FindAllStringSubmatch(text[start:idx], -1) {
+			if n, _ := strconv.Atoi(m[1]); n > best {
+				best = n
+			}
+		}
+		if best >= 0 {
+			p.stat.Total = best
+		}
+		prevEnd = idx + len(p.keyword)
 		// Avg: first decimal-or-int after "MIN" within ~120 chars of the label.
 		to := idx + 120
 		if to > len(text) {

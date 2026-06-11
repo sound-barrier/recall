@@ -45,21 +45,21 @@ func TestApp_MoveMatches_TransfersRowsAndChildren(t *testing.T) {
 
 	if err := a.store.UpsertSummary(db.SummaryRow{
 		Filename: "moved-summary.png", MatchKey: movedKey,
-		Map: "rialto", Mode: "competitive", Hero: "lucio",
+		Map: "rialto", Playlist: "competitive", Hero: "lucio",
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100}},
 	}); err != nil {
 		t.Fatalf("seed summary: %v", err)
 	}
 	if err := a.store.UpsertScoreboard(db.ScoreboardRow{
 		Filename: "moved-scoreboard.png", MatchKey: movedKey,
-		Mode: "competitive", Eliminations: 17,
+		Playlist: "competitive", Eliminations: 17,
 		HeroStats: []db.HeroStat{{Hero: "lucio", StatKey: "deaths", StatValue: 11}},
 	}); err != nil {
 		t.Fatalf("seed scoreboard: %v", err)
 	}
 	if err := a.store.UpsertSummary(db.SummaryRow{
 		Filename: "stayed-summary.png", MatchKey: stayedKey,
-		Map: "ilios", Mode: "competitive", Hero: "ana",
+		Map: "ilios", Playlist: "competitive", Hero: "ana",
 	}); err != nil {
 		t.Fatalf("seed stayed summary: %v", err)
 	}

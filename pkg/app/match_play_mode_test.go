@@ -125,9 +125,9 @@ func TestAttachPlayModes_UsesOverrideOnly(t *testing.T) {
 		"k3": {PlayMode: "competitive", OverriddenAt: "2026-06-02T10:00:00Z"},
 	}
 	recs := []MatchRecord{
-		{MatchKey: "k1", Data: parser.MatchResult{Mode: "competitive"}},
-		{MatchKey: "k2", Data: parser.MatchResult{Mode: "competitive"}}, // no override
-		{MatchKey: "k3", Data: parser.MatchResult{Mode: "quickplay"}},
+		{MatchKey: "k1", Data: parser.MatchResult{Playlist: "competitive"}},
+		{MatchKey: "k2", Data: parser.MatchResult{Playlist: "competitive"}}, // no override
+		{MatchKey: "k3", Data: parser.MatchResult{Playlist: "quickplay"}},
 	}
 	attachPlayModes(recs, overrides)
 	if recs[0].PlayMode != "quickplay" {
@@ -149,7 +149,7 @@ func TestAttachPlayModes_NoFallbackFromRankPresence(t *testing.T) {
 	// override.
 	recs := []MatchRecord{{
 		MatchKey:    "k1",
-		Data:        parser.MatchResult{Mode: "competitive"},
+		Data:        parser.MatchResult{Playlist: "competitive"},
 		SourceTypes: map[string]string{"r.png": "rank"},
 	}}
 	attachPlayModes(recs, nil)
@@ -161,7 +161,7 @@ func TestAttachPlayModes_NoFallbackFromRankPresence(t *testing.T) {
 func TestAttachPlayModes_NoSignalLeavesEmpty(t *testing.T) {
 	recs := []MatchRecord{{
 		MatchKey:    "k1",
-		Data:        parser.MatchResult{Mode: ""},
+		Data:        parser.MatchResult{Playlist: ""},
 		SourceTypes: map[string]string{"s.png": "summary"},
 	}}
 	attachPlayModes(recs, nil)

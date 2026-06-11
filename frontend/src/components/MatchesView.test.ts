@@ -22,7 +22,7 @@ function makeRecord(over: Partial<MatchRecord> = {}, dataOver: Partial<MatchReco
     source_files: ['a.png'],
     data: {
       map: 'rialto',
-      mode: 'competitive',
+      playlist: 'competitive',
       type: 'control',
       role: 'support',
       hero: 'lucio',

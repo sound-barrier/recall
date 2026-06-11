@@ -666,7 +666,7 @@ function updateThumbPosition(e: MouseEvent) {
           <div
             v-for="fd in [
               { label: 'Map', value: rec.data?.map },
-              { label: 'Mode', value: rec.data?.mode },
+              { label: 'Mode', value: rec.data?.playlist },
               { label: 'Type', value: rec.data?.type },
               { label: 'Result', value: rec.data?.result },
               { label: 'Date', value: rec.data?.date },

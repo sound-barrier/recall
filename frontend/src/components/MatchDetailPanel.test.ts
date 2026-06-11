@@ -24,7 +24,7 @@ function makeRecord(over: Partial<MatchRecord['data']> = {}, recOver: Partial<Ma
     source_types: { 'summary.png': 'summary', 'scoreboard.png': 'scoreboard' },
     data: {
       map: 'rialto',
-      mode: 'competitive',
+      playlist: 'competitive',
       type: 'control',
       role: 'support',
       hero: 'lucio',

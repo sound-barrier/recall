@@ -243,7 +243,7 @@ func (a *App) importDataCSV(payload []byte) error {
 var (
 	summaryHeader = []string{
 		"id", "filename", "match_key", "parsed_at", "screenshots_dir_id",
-		"map", "mode", "hero", "result", "final_score",
+		"map", "playlist", "hero", "result", "final_score",
 		"date", "finished_at", "game_length",
 		"perf_elim_total", "perf_elim_avg_per_10min",
 		"perf_assists_total", "perf_assists_avg_per_10min",
@@ -252,7 +252,7 @@ var (
 	summaryHeroPlayedHeader = []string{"summary_screenshot_id", "hero", "percent_played", "play_time"}
 	scoreboardHeader        = []string{
 		"id", "filename", "match_key", "parsed_at", "screenshots_dir_id",
-		"map", "mode", "hero",
+		"map", "playlist", "hero",
 		"eliminations", "assists", "deaths", "damage", "healing", "mitigation",
 		"queue_type",
 	}
@@ -284,7 +284,7 @@ func summariesToRows(rows []db.SummaryRow) [][]string {
 			strconv.FormatInt(r.ID, 10),
 			r.Filename, r.MatchKey, r.ParsedAt,
 			strconv.FormatInt(r.ScreenshotsDirID, 10),
-			r.Map, r.Mode, r.Hero, r.Result, r.FinalScore,
+			r.Map, r.Playlist, r.Hero, r.Result, r.FinalScore,
 			r.Date, r.FinishedAt, r.GameLength,
 			strconv.Itoa(r.PerfElimTotal),
 			strconv.FormatFloat(r.PerfElimAvgPer10Min, 'f', -1, 64),
@@ -319,7 +319,7 @@ func scoreboardsToRows(rows []db.ScoreboardRow) [][]string {
 			strconv.FormatInt(r.ID, 10),
 			r.Filename, r.MatchKey, r.ParsedAt,
 			strconv.FormatInt(r.ScreenshotsDirID, 10),
-			r.Map, r.Mode, r.Hero,
+			r.Map, r.Playlist, r.Hero,
 			strconv.Itoa(r.Eliminations), strconv.Itoa(r.Assists), strconv.Itoa(r.Deaths),
 			strconv.Itoa(r.Damage), strconv.Itoa(r.Healing), strconv.Itoa(r.Mitigation),
 			r.QueueType,
@@ -454,7 +454,7 @@ func readSummariesCSV(zr *zip.Reader) ([]db.SummaryRow, error) {
 		}
 		r := db.SummaryRow{
 			Filename: rec[1], MatchKey: rec[2], ParsedAt: rec[3],
-			Map: rec[5], Mode: rec[6], Hero: rec[7], Result: rec[8], FinalScore: rec[9],
+			Map: rec[5], Playlist: rec[6], Hero: rec[7], Result: rec[8], FinalScore: rec[9],
 			Date: rec[10], FinishedAt: rec[11], GameLength: rec[12],
 		}
 		srcID, _ := strconv.ParseInt(rec[0], 10, 64)
@@ -502,7 +502,7 @@ func readScoreboardsCSV(zr *zip.Reader) ([]db.ScoreboardRow, error) {
 		}
 		r := db.ScoreboardRow{
 			Filename: rec[1], MatchKey: rec[2], ParsedAt: rec[3],
-			Map: rec[5], Mode: rec[6], Hero: rec[7],
+			Map: rec[5], Playlist: rec[6], Hero: rec[7],
 		}
 		r.ID, _ = strconv.ParseInt(rec[0], 10, 64)
 		r.ScreenshotsDirID, _ = strconv.ParseInt(rec[4], 10, 64)

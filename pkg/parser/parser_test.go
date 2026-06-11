@@ -552,7 +552,7 @@ func TestParsePersonalStatCell(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// extractHeader — pulls (map, gameType, mode) from the in-game banner.
+// extractHeader — pulls (map, gameType) from the in-game banner.
 // Map names are snapped to the knownMaps list via fuzzy match.
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -592,7 +592,7 @@ func TestExtractHeader(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			gotMap, _, _ := extractHeader(tc.text)
+			gotMap, _ := extractHeader(tc.text)
 			if gotMap != tc.wantMap {
 				t.Errorf("map = %q, want %q", gotMap, tc.wantMap)
 			}

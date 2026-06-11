@@ -43,7 +43,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
     },
     data: {
       map: 'rialto',
-      mode: 'competitive',
+      playlist: 'competitive',
       type: 'escort',
       role: 'support',
       hero: 'lucio',
@@ -84,7 +84,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
     },
     data: {
       map: 'aatlis',
-      mode: 'competitive',
+      playlist: 'competitive',
       type: 'flashpoint',
       role: 'dps',
       hero: 'soldier-76',
@@ -116,7 +116,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
     source_parsed_at: { 'tour-suravasa-1.png': '2026-05-10T21:00:00Z' },
     data: {
       map: 'suravasa',
-      mode: 'competitive',
+      playlist: 'competitive',
       type: 'flashpoint',
       role: 'tank',
       hero: 'reinhardt',
@@ -155,7 +155,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
     },
     data: {
       map: 'numbani',
-      mode: 'competitive',
+      playlist: 'competitive',
       type: 'hybrid',
       role: 'dps',
       hero: 'tracer',
@@ -202,7 +202,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
     source_types: { 'tour-aatlis-ambig.png': 'scoreboard' },
     source_parsed_at: { 'tour-aatlis-ambig.png': '2026-05-10T22:01:00Z' },
     data: {
-      mode: 'competitive',
+      playlist: 'competitive',
       hero: 'soldier-76',
       eliminations: 24,
       assists: 9,

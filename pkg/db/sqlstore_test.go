@@ -28,7 +28,7 @@ func TestSQLStore_Summary_UpsertThenLoadRoundTrip(t *testing.T) {
 		Filename:   "summary.png",
 		MatchKey:   "match-2026-05-10T21-29-28",
 		Map:        "rialto",
-		Mode:       "competitive",
+		Playlist:   "competitive",
 		Hero:       "lucio",
 		Result:     "victory",
 		FinalScore: "3-1",
@@ -138,7 +138,7 @@ func TestSQLStore_Scoreboard_UpsertThenLoadRoundTrip(t *testing.T) {
 	s := openMemory(t)
 	want := ScoreboardRow{
 		Filename: "sb.png", MatchKey: "k1",
-		Map: "rialto", Mode: "competitive", Hero: "lucio",
+		Map: "rialto", Playlist: "competitive", Hero: "lucio",
 		Eliminations: 17, Assists: 16, Deaths: 11,
 		Damage: 7200, Healing: 10933, Mitigation: 351,
 		HeroStats: []HeroStat{

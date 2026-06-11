@@ -520,7 +520,7 @@ paths:
           - `competitive` — ranked game (SR applies)
 
         Absence of a `match_play_mode` row is the third state
-        ("follow the parser's read of data.mode + rank-row presence");
+        ("follow the parser's read of data.playlist + rank-row presence");
         use `DELETE` on the same path to revert there. Idempotent —
         repeated identical calls succeed.
 
@@ -553,7 +553,7 @@ paths:
       summary: Clear the play-mode override
       description: |
         Removes the `match_play_mode` override row, reverting to the
-        fallback chain (parser data.mode → rank-row presence →
+        fallback chain (parser data.playlist → rank-row presence →
         empty). Idempotent — clearing an unset match returns 204.
       responses:
         "204":
@@ -622,7 +622,7 @@ paths:
 
         Empty `play_mode` (string `""`) clears the rows (bulk
         Clear), reverting every listed match to "follow the
-        parser's data.mode."
+        parser's data.playlist."
 
         Returns 204 on success, 400 on validation failure
         (`play_mode` outside the enum + non-empty), 500 on store
@@ -2337,7 +2337,7 @@ components:
         screenshots_dir_id: { type: integer, minimum: 1, description: "FK into `screenshots_dirs.id`. Never zero — the sentinel row at id=1 stands in for 'dir unset at parse time' (e.g. a row imported with an orphan FK or a test fixture that didn't supply a path)." }
         map:             { type: string }
         map_raw:         { type: string, description: "Raw OCR text when the canonical map lookup failed." }
-        mode:            { type: string }
+        playlist:            { type: string }
         hero:            { type: string }
         hero_raw:        { type: string }
         result:          { type: string }
@@ -2376,7 +2376,7 @@ components:
         screenshots_dir_id: { type: integer, minimum: 1, description: "FK into `screenshots_dirs.id`. Never zero — see SummaryExportRow." }
         map:             { type: string }
         map_raw:         { type: string }
-        mode:            { type: string }
+        playlist:            { type: string }
         hero:            { type: string }
         hero_raw:        { type: string }
         eliminations:    { type: integer }
@@ -2585,7 +2585,7 @@ components:
           description: |
             Match's play mode: `quickplay` (casual) or `competitive`
             (ranked). Set ONLY from the `match_play_mode` user-
-            override aux table — parser-written `data.mode` and
+            override aux table — parser-written `data.playlist` and
             rank-row presence do not surface here. New matches
             default to "Not set" until the user explicitly toggles
             via the right-panel radiogroup; omitted from JSON when
@@ -2715,7 +2715,7 @@ components:
             is the "Unknown map" signal that drives the leaf-row
             chip and detail-panel banner.
         type:       { type: string,  description: 'e.g. "control"' }
-        mode:       { type: string,  enum: [competitive, quickplay, unranked, ""] }
+        playlist:       { type: string,  enum: [competitive, quickplay, unranked, ""] }
         role:       { type: string,  enum: [tank, dps, support, ""] }
         hero:       { type: string,  description: "Primary (most-played) hero" }
         hero_raw:

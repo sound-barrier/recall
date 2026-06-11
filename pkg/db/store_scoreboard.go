@@ -15,7 +15,7 @@ func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
 	err = tx.QueryRow(
 		`INSERT INTO scoreboard_screenshots (
 			filename, match_key, screenshots_dir_id,
-			map, map_raw, mode, hero, hero_raw,
+			map, map_raw, playlist, hero, hero_raw,
 			eliminations, assists, deaths, damage, healing, mitigation, queue_type
 		) VALUES (?,?,?, ?,?,?,?,?, ?,?,?,?,?,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
@@ -23,7 +23,7 @@ func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
 			screenshots_dir_id = excluded.screenshots_dir_id,
 			map          = excluded.map,
 			map_raw      = excluded.map_raw,
-			mode         = excluded.mode,
+			playlist         = excluded.playlist,
 			hero         = excluded.hero,
 			hero_raw     = excluded.hero_raw,
 			eliminations = excluded.eliminations,
@@ -35,7 +35,7 @@ func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
 			queue_type   = excluded.queue_type
 		RETURNING id`,
 		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID),
-		nullableString(r.Map), r.MapRaw, nullableString(r.Mode), nullableString(r.Hero), r.HeroRaw,
+		nullableString(r.Map), r.MapRaw, nullableString(r.Playlist), nullableString(r.Hero), r.HeroRaw,
 		r.Eliminations, r.Assists, r.Deaths, r.Damage, r.Healing, r.Mitigation, r.QueueType,
 	).Scan(&id)
 	if err != nil {
@@ -60,7 +60,7 @@ func (s *SQLStore) UpsertScoreboard(r ScoreboardRow) error {
 func (s *SQLStore) loadScoreboards() ([]ScoreboardRow, error) {
 	rows, err := s.db.Query(`SELECT
 		id, filename, match_key, parsed_at, screenshots_dir_id,
-		map, map_raw, mode, hero, hero_raw,
+		map, map_raw, playlist, hero, hero_raw,
 		eliminations, assists, deaths, damage, healing, mitigation, queue_type
 		FROM scoreboard_screenshots ORDER BY id`)
 	if err != nil {
@@ -73,10 +73,10 @@ func (s *SQLStore) loadScoreboards() ([]ScoreboardRow, error) {
 	for rows.Next() {
 		var r ScoreboardRow
 		var dirID sql.NullInt64
-		var mapC, mode, hero sql.NullString
+		var mapC, playlist, hero sql.NullString
 		if err := rows.Scan(
 			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
-			&mapC, &r.MapRaw, &mode, &hero, &r.HeroRaw,
+			&mapC, &r.MapRaw, &playlist, &hero, &r.HeroRaw,
 			&r.Eliminations, &r.Assists, &r.Deaths,
 			&r.Damage, &r.Healing, &r.Mitigation, &r.QueueType,
 		); err != nil {
@@ -84,7 +84,7 @@ func (s *SQLStore) loadScoreboards() ([]ScoreboardRow, error) {
 		}
 		r.ScreenshotsDirID = dirID.Int64
 		r.Map = mapC.String
-		r.Mode = mode.String
+		r.Playlist = playlist.String
 		r.Hero = hero.String
 		out = append(out, r)
 	}

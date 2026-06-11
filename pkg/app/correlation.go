@@ -117,7 +117,7 @@ func mergeMatchResult(dst, src *parser.MatchResult) {
 	dst.Map = firstNonEmpty(dst.Map, src.Map)
 	dst.MapRaw = firstNonEmpty(dst.MapRaw, src.MapRaw)
 	dst.Type = firstNonEmpty(dst.Type, src.Type)
-	dst.Mode = firstNonEmpty(dst.Mode, src.Mode)
+	dst.Playlist = firstNonEmpty(dst.Playlist, src.Playlist)
 	dst.Role = firstNonEmpty(dst.Role, src.Role)
 	dst.Hero = firstNonEmpty(dst.Hero, src.Hero)
 	dst.HeroRaw = firstNonEmpty(dst.HeroRaw, src.HeroRaw)
@@ -307,7 +307,7 @@ func snapshotExisting(snap db.Screenshots) []existing {
 			c: candidate{
 				filename: r.Filename,
 				r: &parser.MatchResult{
-					Map: r.Map, Mode: r.Mode, Hero: r.Hero,
+					Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 					Date: r.Date, FinishedAt: r.FinishedAt,
 					// Perf totals are the SUMMARY's authoritative
 					// E/A/D — expose them so matchByEAD can bridge a
@@ -329,7 +329,7 @@ func snapshotExisting(snap db.Screenshots) []existing {
 			c: candidate{
 				filename: r.Filename,
 				r: &parser.MatchResult{
-					Map: r.Map, Mode: r.Mode, Hero: r.Hero,
+					Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 					Eliminations: r.Eliminations,
 					Assists:      r.Assists,
 					Deaths:       r.Deaths,

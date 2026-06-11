@@ -42,7 +42,7 @@ func isRankScreenshot(img image.Image, work string) bool {
 func parseRank(img image.Image, work string) (*MatchResult, error) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
-	res := &MatchResult{Mode: "competitive"}
+	res := &MatchResult{Playlist: "competitive"}
 
 	// Top-left banner: "COMPETITIVE VICTORY!" / "COMPETITIVE DEFEAT!" /
 	// "COMPETITIVE DRAW!". Same prefix-match rule as the SUMMARY card so

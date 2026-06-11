@@ -104,7 +104,7 @@ const emit = defineEmits<{
   'set-match-queue':       [matchKey: string, queueType: QueueType]
   // User clicked one of the three Play Mode radio buttons (below
   // the queue chooser). Empty string clears the user override and
-  // reverts to the aggregator's fallback chain (data.mode → rank
+  // reverts to the aggregator's fallback chain (data.playlist → rank
   // presence → empty). Active chip re-click toggles off.
   'set-match-play-mode':   [matchKey: string, playMode: PlayMode]
   // User flipped the "Set as 'since' anchor" toggle. App.vue's
@@ -128,7 +128,7 @@ const unknownHero = computed(() => isHeroUnknown(props.record))
 const unknownMap  = computed(() => isMapUnknown(props.record))
 
 // Sync the persisted play_mode override with what the leaf chip
-// shows. Pre-fix, a match with data.mode='competitive' and no
+// shows. Pre-fix, a match with data.playlist='competitive' and no
 // override rendered as "Competitive" on the leaf (via the OCR
 // fallback in formatPlayModeLabel) but the detail-panel chooser
 // showed "Not set" picked AND the narrow Play-mode filter dropped
@@ -137,7 +137,7 @@ const unknownMap  = computed(() => isMapUnknown(props.record))
 // so a new selection destroys-and-remounts this component. Queue
 // type has no OCR source, so nothing to auto-detect there.
 onMounted(() => {
-  const m = props.record.data?.mode
+  const m = props.record.data?.playlist
   if (!props.record.play_mode && (m === 'quickplay' || m === 'competitive')) {
     emit('set-match-play-mode', props.record.match_key, m)
   }
@@ -572,7 +572,7 @@ function onTagKeydown(e: KeyboardEvent) {
          (a "Quickplay role queue" winrate has nothing to do with a
          "Competitive open queue" winrate). Three mutually-exclusive
          states: "Not set" (default — no override; aggregator falls
-         back to data.mode + rank-row presence), "Quickplay"
+         back to data.playlist + rank-row presence), "Quickplay"
          (casual), "Competitive" (ranked). -->
     <div
       class="play-mode-chooser"

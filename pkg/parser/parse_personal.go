@@ -37,16 +37,6 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 
 	res := &MatchResult{}
 
-	// Mode badge (same position as the SUMMARY screen).
-	badgeRect := image.Rect(W*65/100, H*9/100, W*97/100, H*13/100)
-	badgeText, _ := ocrRaw(img, badgeRect, work, "personal_badge", "7", "")
-	upperBadge := strings.ToUpper(badgeText)
-	if strings.Contains(upperBadge, "MPETIT") || strings.Contains(upperBadge, "OMPETI") {
-		res.Mode = "competitive"
-	} else if strings.Contains(upperBadge, "QUICK") {
-		res.Mode = "quickplay"
-	}
-
 	// 3×3 stat grid. X boundaries calibrated against the actual card
 	// positions at 2560×1440 by scanning for the dark card background between
 	// the sidebar and the right edge: cards run roughly X=20.5%..96.5% of W,
@@ -150,8 +140,11 @@ func parsePersonalHeroCell(text string, res *MatchResult) {
 // the longest uppercase phrase (label), trimming the icon noise as a side
 // effect.
 var (
-	personalPctRe   = regexp.MustCompile(`(\d{1,4})\s*%`)
-	personalIntRe   = regexp.MustCompile(`\d{1,4}`)
+	personalPctRe = regexp.MustCompile(`(\d{1,4})\s*%`)
+	// Match a whole comma-grouped number ("1,367") as one token. The old
+	// `\d{1,4}` split on the comma, so the longest-run pick in Pass 2 kept
+	// "367" and dropped the leading group.
+	personalIntRe   = regexp.MustCompile(`\d+(?:,\d+)*`)
 	personalLabelRe = regexp.MustCompile(`[A-Z][A-Z\s]{4,}[A-Z]`)
 )
 
@@ -179,9 +172,10 @@ func parsePersonalStatCell(text string) (string, int, bool) {
 				continue
 			}
 			for _, m := range personalIntRe.FindAllString(line, -1) {
-				if len(m) > bestLen {
-					bestLen = len(m)
-					val, _ = strconv.Atoi(m)
+				digits := strings.ReplaceAll(m, ",", "")
+				if len(digits) > bestLen {
+					bestLen = len(digits)
+					val, _ = strconv.Atoi(digits)
 				}
 			}
 		}

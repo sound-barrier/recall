@@ -891,7 +891,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 				Filename:               "summary-" + ts + ".png",
 				MatchKey:               key,
 				Map:                    gameMap,
-				Mode:                   playMode,
+				Playlist:               playMode,
 				Hero:                   primary.Hero,
 				Result:                 result,
 				FinalScore:             fmt.Sprintf("%d-%d", rng.Intn(5), rng.Intn(5)),
@@ -915,7 +915,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 				Filename:     "scoreboard-" + ts + ".png",
 				MatchKey:     key,
 				Map:          gameMap,
-				Mode:         playMode,
+				Playlist:     playMode,
 				Hero:         primary.Hero,
 				Eliminations: elims,
 				Assists:      assists,
@@ -1017,7 +1017,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	// Play modes: same per-summary alignment via summaryPlayModes. The
 	// seed tool's SetMatchPlayMode calls install the user-override row
 	// (which the aggregator prefers over data.mode — both should match
-	// since the main loop wrote playMode into SummaryRow.Mode too, but
+	// since the main loop wrote playMode into SummaryRow.Playlist too, but
 	// the override path is the canonical one the dev seed exercises).
 	pmSeen := make(map[string]bool, len(fx.Summaries))
 	for i, s := range fx.Summaries {
@@ -1102,7 +1102,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 				Filename:     filename,
 				MatchKey:     matchKey,
 				Map:          fixtureMaps[ambigRng.Intn(len(fixtureMaps))],
-				Mode:         "competitive",
+				Playlist:     "competitive",
 				Hero:         fixtureDPS[ambigRng.Intn(len(fixtureDPS))],
 				Eliminations: 6 + ambigRng.Intn(20),
 				Assists:      4 + ambigRng.Intn(12),
