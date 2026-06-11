@@ -21,11 +21,11 @@ export function formatPlayModeLabel(
   return 'Unknown mode'
 }
 
-// Leaf-row chip label for the queue-type pivot. Only sourced from
-// the user override (`record.queue_type` — no OCR fallback exists
-// for this dimension). "Unknown mode type" matches the spelling
-// the leaf row uses for the play-mode fallback so a glance down
-// the row reads as one family.
+// Leaf-row chip label for the queue-type pivot. `record.queue_type`
+// is the effective value — auto-detected from the scoreboard's
+// players-per-team, with a user override winning when set. "Unknown
+// mode type" matches the spelling the leaf row uses for the play-mode
+// fallback so a glance down the row reads as one family.
 export function formatQueueTypeLabel(
   rec: Pick<MatchRecord, 'queue_type'>,
 ): string {

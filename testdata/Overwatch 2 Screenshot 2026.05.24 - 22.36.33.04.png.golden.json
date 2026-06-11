@@ -11,6 +11,7 @@
     "deaths": 6,
     "damage": 3514,
     "healing": 10933,
-    "mitigation": 351
+    "mitigation": 351,
+    "queue_type": "role"
   }
 }

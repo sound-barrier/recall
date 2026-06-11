@@ -127,6 +127,7 @@ func mergeMatchResult(dst, src *parser.MatchResult) {
 	dst.Damage = firstNonEmpty(dst.Damage, src.Damage)
 	dst.Healing = firstNonEmpty(dst.Healing, src.Healing)
 	dst.Mitigation = firstNonEmpty(dst.Mitigation, src.Mitigation)
+	dst.QueueType = firstNonEmpty(dst.QueueType, src.QueueType)
 	dst.Result = firstNonEmpty(dst.Result, src.Result)
 	dst.FinalScore = firstNonEmpty(dst.FinalScore, src.FinalScore)
 	dst.Date = firstNonEmpty(dst.Date, src.Date)

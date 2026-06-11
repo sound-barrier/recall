@@ -296,6 +296,9 @@ type ScoreboardRow struct {
 	Damage           int
 	Healing          int
 	Mitigation       int
+	// QueueType is the parser-detected match format ('role' 5v5 /
+	// 'open' 6v6 / '' unread), inferred from players-per-team.
+	QueueType string
 
 	HeroStats []HeroStat
 }

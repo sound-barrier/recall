@@ -393,6 +393,13 @@ func foldGroup(key string, vs []screenshotView, dirs map[int64]string) MatchReco
 		data.Type = firstNonEmpty(data.Type, parser.MapType(data.Map))
 	}
 
+	// Surface the parser-detected queue format as the top-level
+	// QueueType (a user match_queue annotation overrides it in
+	// attachQueues — "manual wins"). Lift it off the nested Data so the
+	// effective value appears exactly once on the wire.
+	detectedQueue := data.QueueType
+	data.QueueType = ""
+
 	rec := MatchRecord{
 		MatchKey:       key,
 		SourceFiles:    unionSortedStrings(sources, nil),
@@ -400,6 +407,7 @@ func foldGroup(key string, vs []screenshotView, dirs map[int64]string) MatchReco
 		SourceParsedAt: parsedAtPerFile,
 		ParsedAt:       matchParsedAt,
 		Data:           data,
+		QueueType:      detectedQueue,
 	}
 	if len(dirIDsPerFile) > 0 {
 		rec.SourceDirIDs = dirIDsPerFile
@@ -456,6 +464,7 @@ func scoreboardToView(r db.ScoreboardRow) screenshotView {
 			Map: r.Map, MapRaw: r.MapRaw, Mode: r.Mode, Hero: r.Hero, HeroRaw: r.HeroRaw,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
 			Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
+			QueueType: r.QueueType,
 		},
 	}
 	attachHeroStats(&view.data, r.HeroStats)

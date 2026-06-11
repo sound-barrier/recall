@@ -317,15 +317,17 @@ export interface paths {
         };
         get?: never;
         /**
-         * Tag a match's queue type
-         * @description Records the queue format the match was played in. Two states:
+         * Override a match's queue type
+         * @description Overrides the queue format auto-detected from the scoreboard's
+         *     players-per-team count. Two states:
          *
          *       - `role` — 5v5 role queue (locked 1-2-2 composition)
          *       - `open` — 6v6 open queue (any composition)
          *
-         *     Absence of a `match_queue` row is the third logical state
-         *     ("queue not set"); use `DELETE` on the same path to revert
-         *     there. Idempotent — repeated identical calls succeed.
+         *     A stored override always wins over detection. `DELETE` on the
+         *     same path removes it, reverting the match to the detected value
+         *     (or "queue not set" when nothing was detected). Idempotent —
+         *     repeated identical calls succeed.
          *
          *     Drives the radiogroup at the top of the match-detail panel
          *     and the Queue chip in "Narrow this set."
@@ -1876,10 +1878,12 @@ export interface components {
             reviewed_at?: string;
             /**
              * @description Queue format the match was played in: `role` (5v5 role
-             *     queue) or `open` (6v6 open queue). Omitted entirely when
-             *     the queue hasn't been set (the implicit third state). Set
-             *     via `PUT /api/v1/matches/{match_key}/queue`, cleared via
-             *     `DELETE` on the same path.
+             *     queue) or `open` (6v6 open queue). Auto-detected from the
+             *     scoreboard's players-per-team count; a user override set
+             *     via `PUT /api/v1/matches/{match_key}/queue` takes
+             *     precedence, and `DELETE` on the same path reverts to the
+             *     detected value. Omitted entirely when neither a detection
+             *     nor an override exists.
              */
             queue_type?: components["schemas"]["QueueTypeEnum"];
             /**

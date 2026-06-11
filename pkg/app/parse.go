@@ -306,6 +306,7 @@ func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.Match
 			Map: r.Map, Mode: r.Mode, Hero: r.Hero,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
 			Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
+			QueueType: r.QueueType,
 		}
 		row.HeroStats = flattenHeroStats(r.HeroesPlayed)
 		return a.store.UpsertScoreboard(row)

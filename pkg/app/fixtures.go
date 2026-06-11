@@ -923,6 +923,11 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 				Damage:       damage,
 				Healing:      healing,
 				Mitigation:   mitigation,
+				// Mirror real parsing: the scoreboard carries the
+				// detected queue, so a match surfaces a queue even
+				// without a user override (the Queues seed is the
+				// override subset).
+				QueueType: queueType,
 			})
 		}
 
