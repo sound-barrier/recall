@@ -406,16 +406,7 @@ async function onJumpToUndated() {
   // jump robust to future class renames during visual refreshes.
   const target = document.querySelector('[data-section-key="no-date"]')
   if (!target) return
-  // scrollIntoView puts the target's top edge at viewport top — but
-  // the sticky Campaign Log pins to top:0 once the user is below
-  // its natural position, so the section header would land BEHIND
-  // it (user sees the 2nd undated row at the top, header obscured).
-  // Compute the pinned chrome's height at click time and offset the
-  // scroll target by exactly that much. Falls back to 0 when the
-  // sticky element isn't in the DOM (visibleRecords empty edge case).
-  const stickyEl = document.querySelector('.campaign-log-sticky')
-  const stickyOffset = stickyEl ? Math.ceil(stickyEl.getBoundingClientRect().height) : 0
-  const targetTop = target.getBoundingClientRect().top + window.scrollY - stickyOffset
+  const targetTop = target.getBoundingClientRect().top + window.scrollY
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   window.scrollTo({ top: targetTop, behavior: reduce ? 'auto' : 'smooth' })
 }
@@ -851,48 +842,6 @@ watch(() => props.focusedCardIndex, async (idx) => {
   window.scrollTo({ top: Math.max(0, target), behavior: 'auto' })
 })
 
-// Sticky Campaign Log state. The sentinel sits just above the
-// timeline at its natural position; the scroll listener flips
-// `timelineSticky` true when the sentinel's clientRect.top goes
-// below 0 (i.e. it has scrolled past the viewport top), and the
-// wrapper renders in compact mode. Scroll-driven rather than
-// IntersectionObserver-driven because the sentinel sits BELOW
-// the viewport on initial load (dossier widget grid pushes it
-// down) and `!isIntersecting` alone fires a false-positive
-// sticky in that case.
-const timelineSentinelRef = ref<HTMLDivElement | null>(null)
-// Function ref — the sentinel lives inside the section v-for now (the
-// Campaign Log can be reordered), so a plain string ref would collect
-// into an array. This assigns the single element directly and nulls
-// it on unmount (section hidden / reordered away).
-function setTimelineSentinel(el: Element | { $el?: Element } | null) {
-  timelineSentinelRef.value = (el as HTMLDivElement | null) ?? null
-}
-const timelineSticky      = ref(false)
-// Sticky with hysteresis. The sentinel's document offset is stable
-// even when the Campaign Log compacts (the heatmap that compact hides
-// sits BELOW the sentinel), so it's the reference. Stick once scrolled
-// past it; only UN-stick after scrolling back well above it.
-//
-// The margin matters: compacting shrinks the document, so the browser
-// clamps scrollTop down. With a tall page below the sentinel (e.g. the
-// Geography band) that clamp can drop scrollTop back across a
-// zero-margin threshold, flipping sticky off → expand → grow → clamp
-// → on … a feedback loop that never settles and jitters every element
-// below the band (it breaks Playwright click stability and is janky
-// for real users). A dead zone larger than the compact height delta
-// absorbs the clamp so the toggle can't oscillate.
-const TIMELINE_STICKY_HYSTERESIS = 240
-function onTimelineScroll() {
-  const el = timelineSentinelRef.value
-  if (!el) return
-  const docTop = el.getBoundingClientRect().top + window.scrollY
-  if (!timelineSticky.value) {
-    if (window.scrollY > docTop) timelineSticky.value = true
-  } else if (window.scrollY < docTop - TIMELINE_STICKY_HYSTERESIS) {
-    timelineSticky.value = false
-  }
-}
 
 // Reset → scroll the leaves list back to the top. Keeps the
 // scrolling concern in the view (where the ref lives) rather
@@ -1138,8 +1087,6 @@ onMounted(() => {
     sentinelObserver.observe(el)
   }, { immediate: true })
 
-  window.addEventListener('scroll', onTimelineScroll, { passive: true })
-
   // Measure leaf-row height after first paint so the virtualizer's
   // window math reflects the actual rendered geometry. Re-measure
   // when the rendered slice changes (density swap, narrow apply
@@ -1150,17 +1097,11 @@ onMounted(() => {
     [() => flatVirtual.visibleItems.value.length, density],
     () => { void nextTick().then(measureLeafHeight) },
   )
-
-  // Run once at mount + after the sentinel renders so the initial
-  // state is correct even if the user lands mid-scroll (e.g. an
-  // anchor link).
-  watch(timelineSentinelRef, onTimelineScroll, { immediate: true, flush: 'post' })
 })
 
 onBeforeUnmount(() => {
   sentinelObserver?.disconnect()
   sentinelObserver = null
-  window.removeEventListener('scroll', onTimelineScroll)
 })
 </script>
 
@@ -1443,24 +1384,12 @@ onBeforeUnmount(() => {
       />
     </section>
 
-    <!-- ─── CAMPAIGN LOG (heatmap + sparkline) ──────────────── -->
-    <!-- `visibleRecords` strips hidden matches so the heatmap and
-         sparkline reconcile with the dossier / scrapeReader — every
-         data surface honours the user's "this match doesn't count"
-         signal in lockstep.
-
-         Sticky wrapper: the sentinel below sits at the natural
-         position; once it scrolls out of the viewport the
-         IntersectionObserver flips `timelineSticky` true and the
-         timeline renders in compact mode (heatmap hidden, window
-         buttons hidden, sparkline at compact height). The wrapper
-         itself is position: sticky so the whole bar pins to the
-         scroll container's top edge. -->
     <!-- ─── DOSSIER SECTIONS (Campaign Log, Geography) ──────────
          Full-width bands below the dossier grid. Order + visibility
          come from useSectionLayout; each wears an inline grip + ×
          (DossierSection) for reorder + remove. Re-add from the
-         dossier Add menu. -->
+         dossier Add menu. `visibleRecords` strips hidden matches so
+         the Campaign Log reconciles with the dossier. -->
     <template v-if="visibleRecords.length > 0">
       <DossierSection
         v-for="(sectionId, sIdx) in visibleSectionIds"
@@ -1478,20 +1407,14 @@ onBeforeUnmount(() => {
         @drop="onSectionDrop"
         @drag-end="onSectionDragEnd"
       >
-        <!-- Campaign Log keeps its sticky sentinel + pinned wrapper. -->
-        <template v-if="sectionId === 'campaign-log'">
-          <div :ref="setTimelineSentinel" class="campaign-log-sentinel" aria-hidden="true" />
-          <div class="campaign-log-sticky" :class="{ 'campaign-log-pinned': timelineSticky }">
-            <MatchTimelineHeader
-              :records="visibleRecords"
-              :filter-from="customFrom"
-              :filter-to="customTo"
-              :compact="timelineSticky"
-              @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
-              @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
-            />
-          </div>
-        </template>
+        <MatchTimelineHeader
+          v-if="sectionId === 'campaign-log'"
+          :records="visibleRecords"
+          :filter-from="customFrom"
+          :filter-to="customTo"
+          @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
+          @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
+        />
         <MatchMapRoleBand v-else-if="sectionId === 'geography'" />
       </DossierSection>
     </template>
@@ -2031,36 +1954,6 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-}
-
-/* Campaign Log sticky wrapper. The sentinel is a 1 px line that
-   sits just above the timeline at its natural position; the
-   wrapper itself is position: sticky so it pins as the user
-   scrolls past. .campaign-log-pinned adds a hairline bottom
-   border so the strip reads as chrome when separated from its
-   normal context. z-index above the leaves list but below
-   modals / popovers. */
-.campaign-log-sentinel {
-  height: 1px;
-  width: 100%;
-}
-
-.campaign-log-sticky {
-  position: sticky;
-  top: 0;
-  z-index: 4;
-  background: var(--bg);
-  transition: box-shadow var(--duration-fast) ease;
-}
-
-.campaign-log-pinned {
-  box-shadow: 0 1px 0 0 var(--border-soft, var(--border));
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .campaign-log-sticky {
-    transition: none;
-  }
 }
 
 /* Rail mode — switch to a 2-column grid with the always-visible
