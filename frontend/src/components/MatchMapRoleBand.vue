@@ -63,7 +63,7 @@ const WINDOW_STORAGE_KEY = 'recall.mapRoleWindowMonths'
 function loadWindow(): WindowKey {
   try {
     const n = Number(localStorage.getItem(WINDOW_STORAGE_KEY))
-    if (n === 1 || n === 3 || n === 12) return n
+    if ((WINDOWS as readonly number[]).includes(n)) return n as WindowKey
   } catch (_) { /* swallow */ }
   return 6
 }

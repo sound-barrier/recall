@@ -36,7 +36,7 @@ function loadStoredWindow(): WindowKey {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     const n = Number(raw)
-    if (n === 1 || n === 3 || n === 12) return n
+    if (n === 1 || n === 3 || n === 6 || n === 12) return n
   } catch (_) { /* swallow */ }
   return 6
 }
