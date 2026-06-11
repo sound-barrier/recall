@@ -3,17 +3,17 @@
 #
 # Greps every `t.Skip` / `t.Skipf` / `t.SkipNow` line under pkg/ and
 # diffs the set against the checked-in allow-list at
-# scripts/test-skips-allow.txt. A new skip without an allow-list
+# scripts/ci/test-skips-allow.txt. A new skip without an allow-list
 # entry fails — flake-suppression skips are not allowed; document
 # the gate or remove it.
 #
-# Same shape as scripts/deadcode-check.sh. Called from lefthook
+# Same shape as scripts/ci/deadcode-check.sh. Called from lefthook
 # pre-push and the CI workflow so a new skip can't slip through
 # either path.
 
 set -eu
 
-allow=scripts/test-skips-allow.txt
+allow=scripts/ci/test-skips-allow.txt
 found=$(mktemp)
 trap 'rm -f "$found"' EXIT
 

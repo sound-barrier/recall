@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Print the platform-canonical Recall DB path (or the RECALL_DB override
-# if set). Useful for `sqlite3 "$(scripts/db-where.sh)"` shell sessions
+# if set). Useful for `sqlite3 "$(scripts/db/db-where.sh)"` shell sessions
 # and "where is my data?" sanity checks.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=_db.sh
-. "$SCRIPT_DIR/_db.sh"
+# shellcheck source=../lib/_db.sh
+. "$SCRIPT_DIR/../lib/_db.sh"
 
 db=$(recall_db_path)
 echo "$db"

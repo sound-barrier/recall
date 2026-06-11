@@ -16,8 +16,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=_db.sh
-. "$SCRIPT_DIR/_db.sh"
+# shellcheck source=../lib/_db.sh
+. "$SCRIPT_DIR/../lib/_db.sh"
 
 DB=$(recall_db_path)
 require_new_schema "$DB"
@@ -31,7 +31,7 @@ sqlite3 "$DB" <<'SQL'
 WITH parents AS (
   SELECT 'summary'    AS t, match_key, json_object(
     'id', id, 'filename', filename, 'parsed_at', parsed_at,
-    'map', map, 'mode', mode, 'hero', hero,
+    'map', map, 'playlist', playlist, 'hero', hero,
     'result', result, 'final_score', final_score, 'date', date,
     'finished_at', finished_at, 'game_length', game_length,
     'perf_elim_total', perf_elim_total, 'perf_elim_avg_per_10min', perf_elim_avg_per_10min,
@@ -40,7 +40,7 @@ WITH parents AS (
   ) AS row FROM summary_screenshots
   UNION ALL SELECT 'teams', match_key, json_object(
     'id', id, 'filename', filename, 'parsed_at', parsed_at,
-    'map', map, 'mode', mode, 'hero', hero,
+    'map', map, 'playlist', playlist, 'hero', hero,
     'eliminations', eliminations, 'assists', assists, 'deaths', deaths,
     'damage', damage, 'healing', healing, 'mitigation', mitigation
   ) FROM teams_screenshots

@@ -7,8 +7,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
-# shellcheck source=_lib.sh
-. "$SCRIPT_DIR/_lib.sh"
+# shellcheck source=../lib/_lib.sh
+. "$SCRIPT_DIR/../lib/_lib.sh"
 
 # 1. Make sure the Podman VM is up. `podman info` exits non-zero when the
 #    daemon socket isn't reachable, which is the cleanest "is it running?"
@@ -33,7 +33,7 @@ podman machine ssh "sudo date -u -s '$(date -u +%Y-%m-%dT%H:%M:%S)'" >/dev/null 
   || echo "  (couldn't set VM clock — continuing anyway)"
 
 # 2. Work around broken docker-credential-gcloud helpers (shared with
-#    prometheus-clear.sh; see scripts/_lib.sh for the rationale).
+#    prometheus-clear.sh; see scripts/lib/_lib.sh for the rationale).
 docker_config_aside
 
 # 3. Compose up.

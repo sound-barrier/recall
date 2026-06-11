@@ -105,7 +105,7 @@ only on URL.
 | Var | Default | Effect |
 |---|---|---|
 | `RECALL_DATA_DIR` | platform user-config dir | Install-wide base directory. Each profile gets `<base>/profiles/<name>/{settings.json,db/recall.db}`. The repo's `.envrc` sets this to `$PWD/data`. |
-| `RECALL_PROFILE` | *(unset — script-only)* | Forces `scripts/db-*.sh` to operate on a specific profile. Mirrors the app's `--profile=<name>` CLI flag. Not read by the app binaries. |
+| `RECALL_PROFILE` | *(unset — script-only)* | Forces `scripts/db/db-*.sh` to operate on a specific profile. Mirrors the app's `--profile=<name>` CLI flag. Not read by the app binaries. |
 | `RECALL_DEBUG_DIR` | system temp | Directory for Tesseract work files; also dumps raw Tesseract `.txt` output per OCR call when set. |
 | `RECALL_METRICS_ADDR` | `:9091` | Override Prometheus metrics bind address. |
 | `RECALL_SERVER_ADDR` | `127.0.0.1:7000` | Override the HTTP server bind address. Set to `0.0.0.0:7000` inside Docker. |
@@ -125,14 +125,14 @@ only on URL.
 | `_lib.sh` | Shared `docker_config_aside()` helper for the gcloud cred-helper trap. |
 | `check-deps.sh` | Compares pinned tool versions vs latest GitHub releases. |
 | `check-action-pins.sh` | Validates every `uses:` is SHA-pinned with a `# vX.Y.Z` comment. |
-| `deadcode-check.sh` | Runs `deadcode` against `serveronly`, filters via `scripts/deadcode-allow.txt`, fails on non-empty residual. |
+| `deadcode-check.sh` | Runs `deadcode` against `serveronly`, filters via `scripts/ci/deadcode-allow.txt`, fails on non-empty residual. |
 | `render-pr-report.py` | Renders the markdown PR report from CI artifacts. |
 | `audit-bundle.sh` | Top-N (default 20) Vite chunks by size + JS/CSS totals. Snapshot tool, not a gate — informs lazy-load decisions. Pair with the size gate in `check-bundle-size.sh`. |
 | `check-bundle-size.sh` | Per-chunk + total JS/CSS budgets. Runs on every CI push + lefthook pre-push; fails non-zero when a chunk exceeds its budget. |
 
 ## Bundle audit cadence
 
-`make bundle-audit` runs `scripts/audit-bundle.sh`. Use it when:
+`make bundle-audit` runs `scripts/ci/audit-bundle.sh`. Use it when:
 
 1. A `check-bundle-size.sh` gate is about to trip — find the offending chunk before bumping the budget.
 2. Adding a new view / modal / heavyweight composable — confirm it landed in its own chunk if you lazy-loaded it via `defineAsyncComponent`.

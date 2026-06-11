@@ -362,7 +362,7 @@ make icon           # resync build/appicon.png from assets/icon.png (macOS only;
 Zero tolerance for flaky tests. Three rules enforce this:
 
 1. **No retries.** `frontend/playwright.config.ts` sets `retries: 0` everywhere — CI and local — so a flake fails the build immediately. If a test is racy or carries a brittle assertion, fix the test (tighten the wait, scope the locator, widen a pixel tolerance with a documented reason). Retries are not a workaround.
-2. **No flake-suppression skips.** Every `t.Skip` in `pkg/` must appear in `scripts/test-skips-allow.txt` with a one-line "why" comment. `scripts/check-test-skips.sh` (run by both lefthook `pre-push.test-skips` and CI) diffs the live grep against the allow-list and fails on drift. The allow-list is for documented environment gates (OS-conditional probe tests, `-short`-mode tesseract integration) — not for hiding races. No frontend test should use `.skip()` / `.only()` / `.fixme()`.
+2. **No flake-suppression skips.** Every `t.Skip` in `pkg/` must appear in `scripts/ci/test-skips-allow.txt` with a one-line "why" comment. `scripts/ci/check-test-skips.sh` (run by both lefthook `pre-push.test-skips` and CI) diffs the live grep against the allow-list and fails on drift. The allow-list is for documented environment gates (OS-conditional probe tests, `-short`-mode tesseract integration) — not for hiding races. No frontend test should use `.skip()` / `.only()` / `.fixme()`.
 3. **Pre-push smoke subset.** `lefthook.yml`'s `pre-push.playwright-smoke` hook rebuilds `frontend/dist` + the serveronly binary, then runs a `--grep`-filtered Playwright subset against the same harness as `make test-e2e`. Target: ≤60s on a warm cache. The full suite still gates in CI. Skip with `LEFTHOOK_EXCLUDE=playwright-smoke git push` or `SKIP_E2E_SMOKE=1 git push` (the latter is the documented opt-out for slow networks / dev VMs).
 The scan covers Go module dependencies, npm packages, and `Dockerfile.build`.
 
@@ -499,11 +499,11 @@ Hooks bypassed locally will still fail in CI on push — bypass is for in-flight
     real-assets: "false"     # cheap stub; for gosec, deadcode, CodeQL Go
 ```
 
-Don't open-code `mkdir -p frontend/dist && touch frontend/dist/index.html` or `cd frontend && npm ci && npm run build` in new workflow steps — call the composite. It SHA-pins its own `setup-node` dependency and is covered by `scripts/check-action-pins.sh`.
+Don't open-code `mkdir -p frontend/dist && touch frontend/dist/index.html` or `cd frontend && npm ci && npm run build` in new workflow steps — call the composite. It SHA-pins its own `setup-node` dependency and is covered by `scripts/ci/check-action-pins.sh`.
 
 ### Pinning GitHub Actions
 
-Every third-party action referenced from `.github/workflows/` is pinned by **40-character commit SHA** with a trailing `# vX.Y.Z` version comment. Tag-pinned refs (e.g. `actions/checkout@v4`) are rejected by `scripts/check-action-pins.sh`, which runs in the `lint` job + the lefthook `actionlint` pre-push hook + `make lint-actions`.
+Every third-party action referenced from `.github/workflows/` is pinned by **40-character commit SHA** with a trailing `# vX.Y.Z` version comment. Tag-pinned refs (e.g. `actions/checkout@v4`) are rejected by `scripts/ci/check-action-pins.sh`, which runs in the `lint` job + the lefthook `actionlint` pre-push hook + `make lint-actions`.
 
 Format:
 

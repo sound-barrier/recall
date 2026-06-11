@@ -2,7 +2,7 @@
 # One extended-regex fragment per line; lines starting with `#` or
 # blank lines are ignored.
 #
-# Consumed by scripts/deadcode-check.sh, which is invoked from:
+# Consumed by scripts/ci/deadcode-check.sh, which is invoked from:
 #   - Makefile  → make dead-code-go
 #   - lefthook.yml → pre-push.deadcode
 #   - .github/workflows/ci.yml → "Dead Go code" step

@@ -1,6 +1,6 @@
 # Bundle-size budget history
 
-The four byte budgets in `scripts/check-bundle-size.sh` get bumped
+The four byte budgets in `scripts/ci/check-bundle-size.sh` get bumped
 when real features need the room. This is the running record of why
 each bump happened, so a future maintainer doesn't have to
 `git blame` a single overgrown comment.
@@ -30,7 +30,7 @@ no soft-pedalling. Numbers that go down get a row too.
 | 2026-06-08 | #227 | 146000 | 60000 | 422000 | 242000 | Parser tightening (length-gated fuzzy Pass-2) + the Reference-data-gaps UI on the Unknown tab landed alongside the screenshot-source picker. Combined coverage. |
 | 2026-06-08 | #226 | 146000 | 60000 | 422000 | 242000 | Windows screenshot source picker (4-card grid) — net JS +14 KB across `ScreenshotSourcePicker.vue` + first-run wiring. CSS bumped to absorb the picker grid styles. |
 | 2026-06-05 | #224 | 146000 | 60000 | 408000 | 230000 | Parser fuzzy fix + `hero_raw`/`map_raw` schema + Unknown-hero leaf chip + detail-panel gap banner. |
-| pre-2026-06 | — | varies | varies | varies | varies | Prior bumps stacked one-line rationales onto the comment in `scripts/check-bundle-size.sh`. Anyone curious can `git log -p scripts/check-bundle-size.sh` to walk the older bumps; representative ones include `19febaf chore(bundle): bump JS+CSS budgets for the PR 6 sort+group dropdown` and the various PR D/E/F dashboard waves. |
+| pre-2026-06 | — | varies | varies | varies | varies | Prior bumps stacked one-line rationales onto the comment in `scripts/ci/check-bundle-size.sh`. Anyone curious can `git log -p scripts/ci/check-bundle-size.sh` to walk the older bumps; representative ones include `19febaf chore(bundle): bump JS+CSS budgets for the PR 6 sort+group dropdown` and the various PR D/E/F dashboard waves. |
 
 ## When to bump
 
@@ -48,7 +48,7 @@ no soft-pedalling. Numbers that go down get a row too.
 
 ## Where this is checked
 
-- `scripts/check-bundle-size.sh` — the assertion. Run by CI's
+- `scripts/ci/check-bundle-size.sh` — the assertion. Run by CI's
   "Enforce bundle-size budget" step + lefthook's pre-push.
 - `.github/workflows/ci.yml` — the CI invocation.
 - `lefthook.yml` — the pre-push invocation (uses the script's

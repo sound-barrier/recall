@@ -23,7 +23,7 @@
 set -u
 
 THRESHOLD=10
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
 # Resolve gocyclo via tool-versions.env so the pin matches the rest of

@@ -1,6 +1,6 @@
 # Cyclomatic-complexity baseline — top-20 functions by McCabe score.
 #
-# Captured by `bash scripts/check-complexity-baseline.sh capture` (which
+# Captured by `bash scripts/ci/check-complexity-baseline.sh capture` (which
 # this header is documented in). The CI `complexity` job's diff step
 # compares the latest sweep against this file; functions that climb by
 # ≥ 5 or new entries that crack the top-20 surface as a PR comment.

@@ -30,7 +30,7 @@ type DataLocation struct {
 // writes. The base directory is the active profile's data dir
 // (<RECALL_DATA_DIR>/profiles/<active>/); RECALL_DATA_DIR still drives
 // the install root so the value the user sees in Settings matches
-// what `bash scripts/db-where.sh` would inspect.
+// what `bash scripts/db/db-where.sh` would inspect.
 func (a *App) GetDataLocation() DataLocation {
 	base := a.dataDir()
 	return DataLocation{

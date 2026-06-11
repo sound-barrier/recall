@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/audit-bundle.sh — one-shot bundle composition audit.
+# scripts/ci/audit-bundle.sh — one-shot bundle composition audit.
 #
 # Build the frontend, then for each generated asset in
 # frontend/dist/assets/, print:
@@ -12,17 +12,17 @@
 #
 # Why a script + not a Vite plugin: this is a snapshot for
 # REVIEW.md, not a continuous monitor. The size budget
-# gate in scripts/check-bundle-size.sh runs every push; this
+# gate in scripts/ci/check-bundle-size.sh runs every push; this
 # audit informs human refactor decisions and runs on demand.
 #
 # Usage:
-#   bash scripts/audit-bundle.sh            # default: top 20
-#   TOP_N=50 bash scripts/audit-bundle.sh   # show more
+#   bash scripts/ci/audit-bundle.sh            # default: top 20
+#   TOP_N=50 bash scripts/ci/audit-bundle.sh   # show more
 
 set -u
 
 TOP_N="${TOP_N:-20}"
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
 if [[ ! -d frontend/dist/assets ]]; then

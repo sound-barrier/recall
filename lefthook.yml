@@ -127,15 +127,15 @@ pre-push:
       glob: ".github/workflows/*.{yml,yaml}"
       run: |
         actionlint .github/workflows/*.yml
-        bash scripts/check-action-pins.sh
+        bash scripts/ci/check-action-pins.sh
 
-    # Delegates to scripts/deadcode-check.sh; the allow-list of
+    # Delegates to scripts/ci/deadcode-check.sh; the allow-list of
     # intentional unreachables (build-tag stubs, test-only seams) lives
-    # in scripts/deadcode-allow.txt and is shared with Make + CI so all
+    # in scripts/ci/deadcode-allow.txt and is shared with Make + CI so all
     # three call sites stay in sync.
     deadcode:
       glob: "*.go"
-      run: bash scripts/deadcode-check.sh
+      run: bash scripts/ci/deadcode-check.sh
 
     # Whole-project lint sweep. The pre-commit `golangci-lint` hook
     # uses `--new-from-rev=HEAD~` to scope to the staged diff for
@@ -209,7 +209,7 @@ pre-push:
     # action, raise a REVIEW.md item.
     # Skip with: LEFTHOOK_EXCLUDE=complexity git push
     complexity:
-      run: bash scripts/check-complexity.sh
+      run: bash scripts/ci/check-complexity.sh
 
     # Bundle-size budget — same script CI runs in the lint job, with
     # --build so the hook produces fresh frontend/dist/ artifacts to
@@ -220,11 +220,11 @@ pre-push:
     # Skip with: LEFTHOOK_EXCLUDE=bundle-size git push
     bundle-size:
       glob: "frontend/**"
-      run: bash scripts/check-bundle-size.sh --build
+      run: bash scripts/ci/check-bundle-size.sh --build
 
-    # Test-skip drift gate. Same `scripts/check-test-skips.sh` the
+    # Test-skip drift gate. Same `scripts/ci/check-test-skips.sh` the
     # CI workflow runs — greps every `t.Skip*` in pkg/ and diffs
-    # against `scripts/test-skips-allow.txt`. A new skip without an
+    # against `scripts/ci/test-skips-allow.txt`. A new skip without an
     # allow-list entry fails locally before push. Flake-suppression
     # skips are not allowed; the allow-list is for documented
     # environment gates (OS-conditional probe tests, `-short`-mode
@@ -232,7 +232,7 @@ pre-push:
     #   LEFTHOOK_EXCLUDE=test-skips git push
     test-skips:
       glob: "pkg/**/*_test.go"
-      run: bash scripts/check-test-skips.sh
+      run: bash scripts/ci/check-test-skips.sh
 
     # Playwright smoke subset. Mirrors `make test-e2e`'s harness
     # (build frontend/dist + serveronly binary, run on :7099 with
@@ -248,11 +248,11 @@ pre-push:
     #   LEFTHOOK_EXCLUDE=playwright-smoke git push
     playwright-smoke:
       glob: "{frontend/**,pkg/**,api/openapi.yaml,*.go}"
-      run: bash scripts/check-playwright-smoke.sh
+      run: bash scripts/ci/check-playwright-smoke.sh
 
     # OpenAPI ↔ server drift — same `schemathesis` job CI runs (see
     # .github/workflows/ci.yml). The build+boot+fuzz+teardown logic
-    # lives in scripts/check-api-drift.sh so the hook and CI stay in
+    # lives in scripts/ci/check-api-drift.sh so the hook and CI stay in
     # sync. Fuzzes spec-derived requests against a freshly-built
     # serveronly binary on port 7099 with a HOME-isolated tempdir
     # and asserts every response conforms to the declared schema.
@@ -266,7 +266,7 @@ pre-push:
     # on PATH. Skip with: LEFTHOOK_EXCLUDE=schemathesis git push
     schemathesis:
       glob: "{api/openapi.yaml,pkg/cmd/**/*.go,pkg/app/**/*.go,main*.go}"
-      run: bash scripts/check-api-drift.sh
+      run: bash scripts/ci/check-api-drift.sh
 
 # Commit-message format check (optional but pairs with release-please).
 # Enable conventional commits via `commit-msg` hook — see release-please

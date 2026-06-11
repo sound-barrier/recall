@@ -62,13 +62,13 @@ jobs:
       #   - Total assets/: catches the case where lazy-splitting masks a
       #     real regression by smearing it across chunks.
       # Bump deliberately when a real feature needs the room.
-      # Bundle-size budget. Logic lives in scripts/check-bundle-size.sh
+      # Bundle-size budget. Logic lives in scripts/ci/check-bundle-size.sh
       # so the lefthook pre-push hook can reuse the same assertion —
       # contributors fail locally before push instead of finding out
       # from a red CI badge. Per-chunk + total caps live in the script
       # as defaults; override via env var if a one-off needs room.
       - name: Enforce bundle-size budget
-        run: bash scripts/check-bundle-size.sh
+        run: bash scripts/ci/check-bundle-size.sh
 
       - name: Install golangci-lint
         run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
@@ -135,7 +135,7 @@ jobs:
       # re-pointed to a malicious commit; see CONTRIBUTING.md
       # → "Pinning GitHub Actions".
       - name: Enforce SHA-pinned actions
-        run: bash scripts/check-action-pins.sh
+        run: bash scripts/ci/check-action-pins.sh
 
       # Go unit tests (merge logic, inference helpers, screenshotType
       # classification). Parser golden-file tests are skipped by -short.
@@ -144,14 +144,14 @@ jobs:
       # via `fail_on: test failures` so a fork PR without comment perms
       # still surfaces failures via the workflow conclusion.
       # Test-skip inventory gate. Diffs every `t.Skip*` line under
-      # pkg/ against `scripts/test-skips-allow.txt`. A new skip
+      # pkg/ against `scripts/ci/test-skips-allow.txt`. A new skip
       # without an allow-list entry fails CI — flake-suppression
       # skips are forbidden; the allow-list is for documented
       # environment gates (OS-conditional probe tests, `-short`-mode
       # tesseract integration). Mirrors the lefthook pre-push
       # `test-skips` hook so the gate fires both locally and in CI.
       - name: Inventory test skips
-        run: bash scripts/check-test-skips.sh
+        run: bash scripts/ci/check-test-skips.sh
 
       - name: Install go-junit-report
         run: go install github.com/jstemmer/go-junit-report/v2@latest
@@ -383,7 +383,7 @@ jobs:
   # never fails the build, it just shows up in the job log. We watch the
   # trend across PRs to know when to refactor; tightening into a hard
   # gate is its own deliberate decision, not a side-effect of this job.
-  # Threshold + tooling pins both live in scripts/check-complexity.sh +
+  # Threshold + tooling pins both live in scripts/ci/check-complexity.sh +
   # tool-versions.env (GOCYCLO_VERSION).
   complexity:
     runs-on: ubuntu-latest
@@ -406,14 +406,14 @@ jobs:
       - name: Install frontend deps (for the eslint pass)
         run: npm --prefix frontend ci
       - name: Run complexity sweep (Go + frontend, threshold 10)
-        run: bash scripts/check-complexity.sh
+        run: bash scripts/ci/check-complexity.sh
       # Diff the current Go scores against the checked-in top-20
       # baseline. Same threshold, same exclusions; emits a summary
       # line + per-jump/newcomer record. continue-on-error keeps the
       # job non-blocking; a future PR-comment step can hook into
       # this output once the baseline shape stabilises.
       - name: Diff against baseline (report-only)
-        run: bash scripts/check-complexity-baseline.sh
+        run: bash scripts/ci/check-complexity-baseline.sh
 
   # ── Job 9: Dead code analysis ────────────────────────────────────────────
   # deadcode does whole-program call-graph analysis for Go (serveronly variant
@@ -446,11 +446,11 @@ jobs:
         run: go install golang.org/x/tools/cmd/deadcode@latest
 
       - name: Dead Go code (serveronly build tag)
-        # Delegates to scripts/deadcode-check.sh; the allow-list of
-        # intentional unreachables lives in scripts/deadcode-allow.txt
+        # Delegates to scripts/ci/deadcode-check.sh; the allow-list of
+        # intentional unreachables lives in scripts/ci/deadcode-allow.txt
         # and is shared with Make + lefthook so all three call sites
         # stay in sync.
-        run: bash scripts/deadcode-check.sh
+        run: bash scripts/ci/deadcode-check.sh
 
       - name: Dead TypeScript code (knip)
         run: cd frontend && npm run dead:ts
@@ -571,17 +571,17 @@ jobs:
         # Pin lives in tool-versions.env (SCHEMATHESIS_VERSION) and is
         # exposed via $GITHUB_ENV by the "Load tool versions" step at
         # the top of this job. The CLI shape (--url, --max-examples,
-        # no --experimental flag) lives in scripts/check-api-drift.sh.
+        # no --experimental flag) lives in scripts/ci/check-api-drift.sh.
         run: pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
 
       - name: Build + boot + fuzz + teardown via shared script
-        # scripts/check-api-drift.sh handles the build-serveronly →
+        # scripts/ci/check-api-drift.sh handles the build-serveronly →
         # boot-on-isolated-tempdir → schemathesis-run → teardown
         # sequence. Same script lefthook's pre-push schemathesis hook
         # invokes so the local + CI signals stay 1:1. The script
         # short-circuits with an actionable error if schemathesis or
         # frontend/dist are missing.
-        run: SKIP_FRONTEND_BUILD=1 bash scripts/check-api-drift.sh
+        run: SKIP_FRONTEND_BUILD=1 bash scripts/ci/check-api-drift.sh
 
   # ── Job 13: Combined PR report comment ───────────────────────────────────
   # Renders one sticky comment per PR that folds unit-test pass/fail +
@@ -645,7 +645,7 @@ jobs:
           if_no_artifact_found: warn
 
       - name: Render combined PR report
-        run: python3 scripts/render-pr-report.py > pr-report.md
+        run: python3 scripts/ci/render-pr-report.py > pr-report.md
 
       # Single-comment guarantee, part 1 — sweep stale CI-authored
       # comments before posting the new sticky. Two legacy patterns to

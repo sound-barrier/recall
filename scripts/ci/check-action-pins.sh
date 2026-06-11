@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/check-action-pins.sh — enforce SHA pinning on every external
+# scripts/ci/check-action-pins.sh — enforce SHA pinning on every external
 # GitHub Action referenced from .github/workflows/ and the first-party
 # composite actions under .github/actions/.
 #
@@ -17,12 +17,12 @@
 # actions they reference are NOT — scanning both directories keeps the
 # supply-chain perimeter consistent.
 #
-# Usage: bash scripts/check-action-pins.sh
+# Usage: bash scripts/ci/check-action-pins.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 WORKFLOWS_DIR="${ROOT}/.github/workflows"
 COMPOSITE_DIR="${ROOT}/.github/actions"
 

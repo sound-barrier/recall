@@ -178,7 +178,7 @@ for you.
 - **TypeScript 6.x blocked by `openapi-typescript@7.x`** (`peer typescript: "^5.x"`). Hold at `^5.x` until upstream supports TS 6. (Pin lives in `frontend/package.json` — check there for the current constraint.)
 
 - **Bundle-size budget.** The KB thresholds live in
-  `scripts/check-bundle-size.sh` (run by the `ci.yml` "Enforce bundle-size
+  `scripts/ci/check-bundle-size.sh` (run by the `ci.yml` "Enforce bundle-size
   budget" step) — that script is the single source of truth; read the numbers
   there, don't restate them here (they've already drifted between docs once).
   Lazy-load via `defineAsyncComponent(() => import(...))` in App.vue so only the

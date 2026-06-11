@@ -44,7 +44,7 @@ Docker Desktop or Colima also work — the compose file is standard v3.
 **Start the stack:**
 
 ```sh
-./scripts/stack-up.sh
+./scripts/stack/stack-up.sh
 ```
 
 This starts the Podman VM if needed, syncs the clock (prevents timestamp
@@ -58,14 +58,14 @@ drift), and runs `podman-compose up -d`.
 **Stop the stack:**
 
 ```sh
-./scripts/stack-down.sh             # stop containers, keep data
-./scripts/stack-down.sh --machine   # also stop the Podman VM
+./scripts/stack/stack-down.sh             # stop containers, keep data
+./scripts/stack/stack-down.sh --machine   # also stop the Podman VM
 ```
 
 **Wipe Prometheus data** (keeps Grafana settings):
 
 ```sh
-./scripts/prometheus-clear.sh
+./scripts/stack/prometheus-clear.sh
 ```
 
 ---
@@ -171,7 +171,7 @@ is exposed until you enable it.
 Run the layer-by-layer verifier first — it tells you exactly where the chain breaks:
 
 ```sh
-./scripts/verify-stack.sh
+./scripts/stack/verify-stack.sh
 ```
 
 It checks: SQLite → `/metrics` endpoint → containers running → Prometheus

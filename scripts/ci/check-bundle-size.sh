@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/check-bundle-size.sh — assert the Vite-built frontend bundle
+# scripts/ci/check-bundle-size.sh — assert the Vite-built frontend bundle
 # stays under the per-chunk + total byte budgets.
 #
 # Why this script exists: the budgets were previously inlined as a
@@ -17,19 +17,19 @@
 # drifting apart silently.
 #
 # Usage:
-#   bash scripts/check-bundle-size.sh           # assume frontend/dist/ exists
-#   bash scripts/check-bundle-size.sh --build   # run `npm run build` first
+#   bash scripts/ci/check-bundle-size.sh           # assume frontend/dist/ exists
+#   bash scripts/ci/check-bundle-size.sh --build   # run `npm run build` first
 #
 # Override a budget:
-#   MAX_TOTAL_JS_BYTES=300000 bash scripts/check-bundle-size.sh
+#   MAX_TOTAL_JS_BYTES=300000 bash scripts/ci/check-bundle-size.sh
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 
 # Default budgets. Per-PR bump rationale lives in
-# scripts/bundle-size-budget-history.md — append a row there when
+# scripts/ci/bundle-size-budget-history.md — append a row there when
 # you change a number here. Bump deliberately; don't lift caps to
 # silence noise.
 : "${MAX_INITIAL_JS_BYTES:=162000}"

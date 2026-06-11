@@ -61,11 +61,11 @@
 #
 # Usage:
 #
-#   scripts/tour-test.sh                       # wails, fresh WebView
-#   scripts/tour-test.sh --keep-webview-state  # wails, retain WebView
-#   scripts/tour-test.sh --mode=server         # serveronly + browser
-#   scripts/tour-test.sh --mode=server --port=7102
-#   scripts/tour-test.sh --keep                # retain isolated data dir
+#   scripts/stack/tour-test.sh                       # wails, fresh WebView
+#   scripts/stack/tour-test.sh --keep-webview-state  # wails, retain WebView
+#   scripts/stack/tour-test.sh --mode=server         # serveronly + browser
+#   scripts/stack/tour-test.sh --mode=server --port=7102
+#   scripts/stack/tour-test.sh --keep                # retain isolated data dir
 #
 # `set -u` so unset env references fail loudly. Not `-e`; the
 # trap-based cleanup needs the script to keep running through a
