@@ -36,7 +36,7 @@ function record(i: number, hidden: boolean) {
     source_files: [`${KEYS[i]}.png`],
     data: {
       map: 'rialto',
-      mode: 'competitive',
+      playlist: 'competitive',
       type: 'control',
       role: 'support',
       hero: HEROES[i],

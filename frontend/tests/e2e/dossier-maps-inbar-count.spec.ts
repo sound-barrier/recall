@@ -24,7 +24,7 @@ const match = (key: string, map: string) => ({
   source_types: { [`${key}.png`]: 'summary' },
   data: {
     map,
-    mode: 'competitive',
+    playlist: 'competitive',
     hero: 'lucio',
     result: 'victory',
     date: '2026-05-10',

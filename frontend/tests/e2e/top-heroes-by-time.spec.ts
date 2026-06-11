@@ -21,7 +21,7 @@ const matchWith = (key: string, hero: string, played: { hero: string; play_time:
   source_types: { [`${key}.png`]: 'summary' },
   data: {
     map: 'rialto',
-    mode: 'competitive',
+    playlist: 'competitive',
     hero,
     result: 'victory',
     date: '2026-05-10',

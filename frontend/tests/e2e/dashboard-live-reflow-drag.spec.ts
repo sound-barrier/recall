@@ -27,7 +27,7 @@ function singleMatch() {
     source_files: ['m1.png'],
     source_types: { 'm1.png': 'summary' },
     data: {
-      map: 'rialto', mode: 'competitive', type: 'control',
+      map: 'rialto', playlist: 'competitive', type: 'control',
       role: 'support', hero: 'lucio',
       result: 'victory', date: '2026-05-10', finished_at: '22:00',
       eliminations: 17, assists: 16, deaths: 11,

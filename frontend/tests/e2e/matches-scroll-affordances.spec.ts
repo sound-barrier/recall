@@ -32,7 +32,7 @@ function datedRecords(n: number): Record<string, unknown>[] {
     source_files: [`d${i}.png`],
     source_types: { [`d${i}.png`]: 'summary' },
     data: {
-      map: 'rialto', mode: 'competitive', type: 'control',
+      map: 'rialto', playlist: 'competitive', type: 'control',
       role: 'support', hero: 'lucio',
       result: i % 2 === 0 ? 'victory' : 'defeat',
       date: `2026-05-${String((i % 28) + 1).padStart(2, '0')}`,
@@ -50,7 +50,7 @@ function undatedRecords(n: number): Record<string, unknown>[] {
     source_types: { [`u${i}.png`]: 'summary' },
     // No `date` → useMatchesGroup buckets these under "No date".
     data: {
-      map: 'rialto', mode: 'competitive', type: 'control',
+      map: 'rialto', playlist: 'competitive', type: 'control',
       role: 'support', hero: 'lucio',
       result: 'victory', finished_at: '22:00',
       eliminations: 10, assists: 5, deaths: 3,

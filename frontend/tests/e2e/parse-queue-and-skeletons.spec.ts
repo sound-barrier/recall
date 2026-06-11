@@ -147,7 +147,7 @@ test.describe('matches skeleton loaders on first paint', () => {
             match_key: 'match-2026-05-10T22-00-00',
             source_files: ['match-2026-05-10T22-00-00.png'],
             data: {
-              map: 'rialto', mode: 'competitive', type: 'control', role: 'support',
+              map: 'rialto', playlist: 'competitive', type: 'control', role: 'support',
               hero: 'lucio', result: 'victory', date: '2026-05-10', finished_at: '22:00',
               eliminations: 17, assists: 16, deaths: 11, damage: 7200,
               heroes_played: [{ hero: 'lucio', percent_played: 100, play_time: '11:25' }],

@@ -151,8 +151,8 @@ test.describe('matches — Move to profile', () => {
     const KEY1 = 'match-2026-05-10T22-00-00'
     const KEY2 = 'match-2026-05-10T22-30-00'
     const records = [
-      { match_key: KEY1, source_files: [`${KEY1}.png`], data: { map: 'rialto', mode: 'competitive', hero: 'lucio', result: 'victory', date: '2026-05-10', finished_at: '22:00', eliminations: 10, assists: 4, deaths: 3 }, parsed_at: '2026-05-10T23:00:00Z' },
-      { match_key: KEY2, source_files: [`${KEY2}.png`], data: { map: 'ilios', mode: 'competitive', hero: 'ana', result: 'defeat', date: '2026-05-10', finished_at: '22:30', eliminations: 12, assists: 5, deaths: 4 }, parsed_at: '2026-05-10T23:00:00Z' },
+      { match_key: KEY1, source_files: [`${KEY1}.png`], data: { map: 'rialto', playlist: 'competitive', hero: 'lucio', result: 'victory', date: '2026-05-10', finished_at: '22:00', eliminations: 10, assists: 4, deaths: 3 }, parsed_at: '2026-05-10T23:00:00Z' },
+      { match_key: KEY2, source_files: [`${KEY2}.png`], data: { map: 'ilios', playlist: 'competitive', hero: 'ana', result: 'defeat', date: '2026-05-10', finished_at: '22:30', eliminations: 12, assists: 5, deaths: 4 }, parsed_at: '2026-05-10T23:00:00Z' },
     ]
     let transferBody: { match_keys?: string[]; target_profile?: string } | null = null
 

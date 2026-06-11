@@ -32,7 +32,7 @@ const singleRecord = (hidden: boolean) => ({
   source_files: [`${NORMAL_KEY}.png`],
   data: {
     map: 'rialto',
-    mode: 'competitive',
+    playlist: 'competitive',
     type: 'control',
     role: 'support',
     hero: 'lucio',

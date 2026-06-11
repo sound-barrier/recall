@@ -30,7 +30,7 @@ const seedMatch = () => ({
   match_key:    'match-2026-05-01T10-00-00',
   source_files: ['summary-1.png'],
   source_types: { 'summary-1.png': 'summary' },
-  data:         { map: 'rialto', mode: 'competitive', hero: 'lucio', date: '2026-05-01' },
+  data:         { map: 'rialto', playlist: 'competitive', hero: 'lucio', date: '2026-05-01' },
   parsed_at:    '2026-05-01T10:00:00Z',
 })
 

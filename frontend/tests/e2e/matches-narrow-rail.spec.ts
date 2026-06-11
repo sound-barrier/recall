@@ -18,7 +18,7 @@ function makeMatches(): Record<string, unknown>[] {
     source_types: { [`m${i}.png`]: 'summary' },
     data: {
       map: 'rialto',
-      mode: 'competitive',
+      playlist: 'competitive',
       type: 'control',
       role: 'support',
       hero: 'lucio',

@@ -29,7 +29,7 @@ const CORPUS = [
     data: {
       map: 'aatlis',
       hero: 'lucio',
-      mode: 'competitive',
+      playlist: 'competitive',
       result: 'victory',
       date: '2026-05-10',
       finished_at: '21:29',
@@ -46,7 +46,7 @@ const CORPUS = [
     data: {
       map: 'rialto',
       hero: 'wuyang',
-      mode: 'competitive',
+      playlist: 'competitive',
       result: 'defeat',
       date: '2026-05-10',
       finished_at: '21:08',
@@ -69,7 +69,7 @@ const CORPUS = [
     data: {
       map: 'suravasa',
       hero: 'lucio',
-      mode: 'competitive',
+      playlist: 'competitive',
       result: 'victory',
       eliminations: 17,
       assists: 16,

@@ -33,7 +33,7 @@ function record(matchKey: string, opts: {
     source_files: [`${matchKey}.png`],
     source_types: { [`${matchKey}.png`]: 'summary' },
     data: {
-      map: 'rialto', mode: 'competitive', type: 'control',
+      map: 'rialto', playlist: 'competitive', type: 'control',
       role: opts.primary,
       hero: (opts.heroes ?? [])[0],
       result: opts.result ?? 'victory',

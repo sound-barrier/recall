@@ -3,7 +3,7 @@
  *
  * The Narrow panel's `#np-search` input substring-matches
  * (case-insensitive) across every lexical surface of a match:
- * map, mode, hero, role, type, annotation.note, every
+ * map, playlist, hero, role, type, annotation.note, every
  * heroes_played[].hero, and annotation.tags.
  *
  * Pre-redesign this spec covered a vim-style field-scoped clause
@@ -31,7 +31,7 @@ function record(matchKey: string, hero: string, opts: RecordOpts = {}) {
     source_files: [`${matchKey}.png`],
     data: {
       map: 'rialto',
-      mode: 'competitive',
+      playlist: 'competitive',
       type: 'control',
       role: 'support',
       hero,

@@ -23,7 +23,7 @@ function match(key: string, parsedAt: string, reviewedBy?: 'self' | 'coach') {
     source_files: [`${key}.png`],
     source_types: { [`${key}.png`]: 'summary' },
     data: {
-      map: 'rialto', mode: 'competitive', type: 'control',
+      map: 'rialto', playlist: 'competitive', type: 'control',
       role: 'support', hero: 'lucio',
       result: 'victory', date: parsedAt.slice(0, 10), finished_at: '22:00',
       eliminations: 17, assists: 16, deaths: 11,

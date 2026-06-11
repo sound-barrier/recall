@@ -61,7 +61,7 @@ const match = (
     // always includes the corpus regardless of the test machine's clock.
     date: RECENT,
     finished_at: finished,
-    mode: 'competitive',
+    playlist: 'competitive',
     heroes_played: [{ hero, play_time: '10:00', percent_played: 100 }],
   },
   parsed_at: `${RECENT}T${finished}:00Z`,

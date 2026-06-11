@@ -25,7 +25,7 @@ function record(matchKey: string) {
     source_types: { [SUMMARY_FILE]: 'summary' },
     data: {
       map: 'rialto',
-      mode: 'competitive',
+      playlist: 'competitive',
       type: 'control',
       role: 'support',
       hero: 'lucio',

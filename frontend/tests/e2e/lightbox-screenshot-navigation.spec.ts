@@ -53,7 +53,7 @@ const MULTI = {
     'personal-2152.png':   'personal',
   },
   data: {
-    map: 'rialto', mode: 'competitive', type: 'escort',
+    map: 'rialto', playlist: 'competitive', type: 'escort',
     role: 'support', hero: 'lucio', result: 'victory',
     date: '2026-05-10', finished_at: '21:29',
     eliminations: 17, assists: 14, deaths: 7,
@@ -67,7 +67,7 @@ const SOLO = {
   source_files: ['solo-2230.png'],
   source_types: { 'solo-2230.png': 'summary' },
   data: {
-    map: 'numbani', mode: 'competitive', type: 'hybrid',
+    map: 'numbani', playlist: 'competitive', type: 'hybrid',
     role: 'damage', hero: 'soldier-76', result: 'defeat',
     date: '2026-05-10', finished_at: '22:30',
     heroes_played: [{ hero: 'soldier-76', percent_played: 100, play_time: '11:00' }],

@@ -24,7 +24,7 @@ function record(matchKey: string, tags: string[] = []) {
     source_files: [`${matchKey}.png`],
     data: {
       map: 'rialto',
-      mode: 'competitive',
+      playlist: 'competitive',
       type: 'control',
       role: 'support',
       hero: 'lucio',
