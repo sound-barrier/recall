@@ -1,4 +1,4 @@
-import { nextTick, ref, type Ref } from 'vue'
+import { nextTick, type Ref } from 'vue'
 
 // WAI-ARIA tab-pattern keyboard navigation for the masthead tablist.
 //
@@ -15,23 +15,13 @@ import { nextTick, ref, type Ref } from 'vue'
 // in isolation and so adding a new tab doesn't require re-reading
 // 800 lines of script-setup to find the order constant.
 
-// Analysis is positioned LAST so it doesn't slot between Matches and
-// Unknown (where its dev-build-only `v-if` would shift Unknown from
-// position 04 → 05 depending on build flavour). Keeping Analysis at
-// the tail of the order pins Unknown to 04 on every build; on
-// release builds the order is just settings/ingest/matches/unknown.
-export const TAB_ORDER = ['settings', 'ingest', 'matches', 'unknown', 'analysis'] as const
+export const TAB_ORDER = ['settings', 'ingest', 'matches', 'unknown'] as const
 
 export type TabId = typeof TAB_ORDER[number]
 
-// useTabKeyboardNav optionally accepts a `tabs` ref so callers can
-// hide tabs (e.g. dev-only Analysis tab on release builds) without
-// the keyboard nav cycle landing on an invisible tab. Defaults to
-// the full TAB_ORDER so existing call sites stay one-arg.
 export function useTabKeyboardNav(
   view: Readonly<Ref<string>>,
   goToView: (next: TabId) => unknown | Promise<unknown>,
-  tabs: Readonly<Ref<readonly TabId[]>> = ref(TAB_ORDER),
 ) {
   function onTabKeydown(e: KeyboardEvent) {
     const key = e.key
@@ -41,8 +31,7 @@ export function useTabKeyboardNav(
     const isRight = key === 'ArrowRight' || key === 'l'
     if (!isLeft && !isRight && key !== 'Home' && key !== 'End') return
     e.preventDefault()
-    const order = tabs.value
-    if (order.length === 0) return
+    const order = TAB_ORDER
     const current = order.indexOf(view.value as TabId)
     if (current === -1) return
     let next = current

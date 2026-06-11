@@ -96,13 +96,12 @@ export function useGlobalKeyboard(deps: GlobalKeyboardDeps): void {
       allowInInput: true,
       handler: () => { openCheatsheet.value = true },
     },
-    // Global: vim-style view navigation (`g` then a/m/i/s/u).
-    ...(['m', 'i', 's', 'u', 'a'] as const).map((follow): Shortcut => {
+    // Global: vim-style view navigation (`g` then m/i/s/u).
+    ...(['m', 'i', 's', 'u'] as const).map((follow): Shortcut => {
       const target: TabId = (
         follow === 'm' ? 'matches'  :
         follow === 'i' ? 'ingest'   :
-        follow === 's' ? 'settings' :
-        follow === 'a' ? 'analysis' : 'unknown'
+        follow === 's' ? 'settings' : 'unknown'
       )
       return {
         key: follow,
