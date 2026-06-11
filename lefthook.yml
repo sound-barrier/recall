@@ -126,6 +126,7 @@ pre-push:
     actionlint:
       glob: ".github/workflows/*.{yml,yaml}"
       run: |
+        set -e
         actionlint .github/workflows/*.yml
         bash scripts/ci/check-action-pins.sh
 
@@ -148,6 +149,7 @@ pre-push:
     lint-go-full:
       glob: "*.go"
       run: |
+        set -e
         golangci-lint run ./...
         golangci-lint run --build-tags serveronly ./...
 
@@ -160,6 +162,7 @@ pre-push:
     lint-frontend-full:
       glob: "frontend/**"
       run: |
+        set -e
         cd frontend
         npm run lint:js
         npm run lint:css
