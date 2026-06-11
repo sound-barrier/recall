@@ -1359,22 +1359,22 @@ onBeforeUnmount(() => {
               <span class="sd-count">{{ section.records.length }}</span>
               <span class="sd-line" aria-hidden="true" />
             </li>
-              <MatchLeafRow
-                v-for="rec in section.records"
-                :key="rec.match_key"
-                :rec="rec"
-                :card-index="narrowedIndexByKey.get(rec.match_key) ?? -1"
-                :focused-card-index="props.focusedCardIndex"
-                :selected="selectedKeys.has(rec.match_key)"
-                :has-selection="selectedKeys.size > 0"
-                :is-anchor="rec.match_key === anchorKey"
-                @open-match="emit('open-match', $event)"
-                @toggle-select="toggleSelected"
-                @row-context="onRowContext"
-                @hover-enter="onLeafMouseEnter"
-                @hover-move="onLeafMouseMove"
-                @hover-leave="onLeafMouseLeave"
-              />
+            <MatchLeafRow
+              v-for="rec in section.records"
+              :key="rec.match_key"
+              :rec="rec"
+              :card-index="narrowedIndexByKey.get(rec.match_key) ?? -1"
+              :focused-card-index="props.focusedCardIndex"
+              :selected="selectedKeys.has(rec.match_key)"
+              :has-selection="selectedKeys.size > 0"
+              :is-anchor="rec.match_key === anchorKey"
+              @open-match="emit('open-match', $event)"
+              @toggle-select="toggleSelected"
+              @row-context="onRowContext"
+              @hover-enter="onLeafMouseEnter"
+              @hover-move="onLeafMouseMove"
+              @hover-leave="onLeafMouseLeave"
+            />
           </template>
           <!-- Bottom virtualization spacer — counterpart to
              flatTopSpacerHeight above. -->
