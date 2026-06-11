@@ -35,6 +35,7 @@ releases, etc.).
 | `make lint` | All linters (Go × both build tags, ESLint, Stylelint, shellcheck, Spectral, …). |
 | `make fmt` | Go (`goimports-reviser` → `gofumpt`) + shell (`shfmt`). |
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` after editing `api/openapi.yaml`. |
+| `make coverage` | Generate Go + frontend coverage reports (umbrella). Required before opening a PR. |
 
 Full command catalog, env-var overrides, Dockerfile stages, package layout, and
 helper-script reference: **`docs/dev-reference.md`**.
@@ -44,20 +45,63 @@ helper-script reference: **`docs/dev-reference.md`**.
 Prescriptive defaults for how new code should be written and how changes should
 be made. Override only when the user explicitly asks for something different.
 
+For tasks that would touch more than ~3 files or restructure a package, outline
+the approach first and wait for confirmation before writing code. Small changes
+and Boy Scout improvements don't need ceremony; large ones shouldn't start
+without agreement on direction.
+
 ### Code style
 
 - **Go**: follow [Effective Go](https://go.dev/doc/effective_go). Accept
   interfaces, return structs. Small interfaces (1–3 methods). Composition over
   inheritance. Embedding only for behavior delegation, never just to store a
   field. No premature abstraction — three similar lines beat one abstract one.
+  Do not introduce CGo dependencies; the pure-Go build constraint is
+  load-bearing for the release pipeline.
+
+- **Naming**: identifiers must reveal intent without a comment. If you find
+  yourself writing a comment to explain a name, the name is wrong — rename it.
+  Abbreviations only where universally understood (`ctx`, `err`, `buf`). No
+  single-letter names outside loop counters. In Go, exported names are part of
+  the public contract and deserve extra care; unexported names should still be
+  unambiguous in their package.
+
+- **Function size and focus**: functions and methods should do **one thing**.
+  Aim for ~25 lines as a soft ceiling. When a function grows beyond that or
+  handles more than one level of abstraction, extract. The test is: can you
+  describe what it does in a single clause without using "and"?
+
+- **McCabe cyclomatic complexity**: aspire to keep per-function complexity ≤ 10.
+  Anything above 15 is a refactor candidate and should be called out in review.
+  Reaching the ideal isn't always realistic — deeply nested parser logic or
+  generated code may exceed it — but complexity should always be the direction
+  of travel, never an afterthought.
+
 - **TypeScript / Vue**: idiomatic TS — no `any`, narrow types at boundaries
   (`Pick<>` or permissive interfaces so callers aren't forced to satisfy fields
   the function never reads). Composition API; composables for stateful logic.
   Pure helpers in `frontend/src/match-helpers.ts`, never inside an SFC's
-  `<script setup>`.
+  `<script setup>`. Apply the same naming discipline as Go: component props,
+  composable returns, and helper functions should read like documentation.
+  Follow the [Vue 3 Style Guide](https://vuejs.org/style-guide/) for component
+  conventions not covered explicitly here (naming, prop casing, SFC element
+  ordering).
+
+- **Shell scripts**: follow the
+  [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html).
+  shellcheck enforces correctness; the style guide covers naming conventions,
+  function structure, and quoting discipline that the linter doesn't catch.
+
 - **Comments**: default to none. Only when the WHY is non-obvious — a hidden
   constraint, a surprising invariant, a workaround for a specific bug. Never
   re-explain WHAT the code does; well-named identifiers already do that.
+  Exception: doc comments on exported Go symbols and public TypeScript APIs
+  are expected — they document the contract, not the implementation.
+
+- **Error handling — explicit and early.** Return errors; never swallow them
+  silently. Avoid sentinel zero-values as implicit "no result" signals when a
+  typed result or error would be clearer. Surface errors at the boundary where
+  they can be meaningfully handled, not buried in helpers.
 
 ### Design principles
 
@@ -65,20 +109,31 @@ be made. Override only when the user explicitly asks for something different.
   wires the real implementation; tests wire a fake. Examples in the codebase:
   the `db.Store` interface threaded into `*App` via `NewWithStore`; the
   `mountApp` helper's `vi.doMock('./api', …)` boundary for SFC tests.
+
 - **Prefer function-variable seams over interfaces for one-method dependencies**
   (duck typing in Go). When the seam has a single method and a single fake, an
   interface is YAGNI. Examples: `runTesseractFunc` / `parseSingleFunc` in
   `pkg/parser/`.
+
 - **Law of Demeter — accept what you read.** When a composable returns many
   refs/handlers, bundle them as a single typed prop (the `CardStateApi` /
   `FiltersApi` / `GroupingApi` pattern in `MatchesView.vue`) rather than
   threading 30 props through. Treat the bundle as opaque.
+
 - **DRY with the rule of three.** Don't extract on the second occurrence — two
   is coincidence. The `useTheme` / `useWeekStart` / `useIncludeUndated` family
   earned the abstraction at three persisted-preference composables.
+
 - **YAGNI — hard line.** No speculative interfaces, no "just in case" error
   handling for impossible conditions, no backwards-compat shims for undeployed
   code. If a feature is needed, the user will ask.
+
+- **Boy Scout Rule — leave it better than you found it.** Every time you touch a
+  file, improve one thing: rename a cryptic identifier, break up an oversized
+  function, remove dead code, delete a stale comment, reduce a function's
+  complexity by one branch. Constant, small refactors are the primary mechanism
+  for keeping the codebase readable and maintainable long-term. This is not
+  optional on feature or fix commits — it is part of the definition of done.
 
 ### TDD process
 
@@ -96,6 +151,19 @@ valuable artifact in the commit — it documents both the bug and the contract
 that prevents its return. Do **not** write the fix first and add a test "to
 cover it"; ordering matters.
 
+**Test public interfaces, not internals.** Unit tests and e2e tests must exercise
+exported functions, public handler surfaces, and user-visible behavior. Do not
+write tests that reach into unexported helpers, assert on private struct fields,
+or import internal packages from outside their own package. If the behavior of
+an internal component matters, test it through the exported surface that
+exercises it. Tests that are coupled to internal data structures are brittle,
+resist refactoring, and should be rewritten or deleted.
+
+**Coverage floor: 60% line coverage and 60% branch coverage**, measured by
+`make coverage`. This is a minimum, not a target — aim higher where the code is
+consequential (parser logic, aggregation, error paths). PRs that regress either
+metric without explicit justification should not merge.
+
 **Exempt** (no TDD ceremony): typo fixes, doc-only edits, formatter/linter
 passes, dependency bumps, configuration-only changes. Use judgement for
 refactors — extracting a helper rarely needs a new test, but changing observable
@@ -111,13 +179,25 @@ known pattern across layers" is NOT an exemption — the match-deletion feature
 shipped with a latent `r.json()`-on-204 bug because no e2e exercised the
 POST → reload round-trip.
 
+**Before declaring any task done**, run `make lint` and `make test`. If UI was
+touched, also run `make test-e2e`. Never present work as complete while the
+build is red or tests are failing — say what's broken and why instead.
+
 ### What to avoid
 
 Speculative interfaces; abstract layers without a second concrete caller;
 backwards-compat shims for unreleased code; "just in case" error handling for
-impossible conditions; over-engineering for hypothetical future requirements.
+impossible conditions; over-engineering for hypothetical future requirements;
+tests that assert on unexported identifiers or internal data structures rather
+than observable, public behavior.
 
 ## Cross-cutting conventions
+
+- **New dependencies require approval.** Do not add new Go modules (`go get`)
+  or npm packages without first proposing the dependency and getting explicit
+  approval. Prefer the standard library and packages already in `go.mod` /
+  `package.json`. When a new dep is genuinely the right call, name it and
+  explain why before adding it.
 
 - **Use `tmp/` under the repo root for ad-hoc scratch files — never `/tmp/...`
   or any path outside the repo root.** PR-body drafts, intermediate `jq` output,
