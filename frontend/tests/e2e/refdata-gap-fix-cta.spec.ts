@@ -1,5 +1,5 @@
 /**
- * Reference-data-gap "Fixed in v<X>" CTA (UI_RECOMMENDATIONS item 11).
+ * Reference-data-gap "Fixed in v<X>" CTA.
  *
  * When the user clicks "Check for updates" in the masthead and the
  * upcoming release would recognise an OCR'd hero/map name currently

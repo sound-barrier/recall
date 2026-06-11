@@ -1,5 +1,5 @@
 /**
- * Match Journal inline tag autocomplete (UI_RECOMMENDATIONS item 5).
+ * Match Journal inline tag autocomplete.
  *
  * Once a user has tagged any matches, typing into the Match Journal
  * tag input surfaces a small popover listing tags from the narrowed

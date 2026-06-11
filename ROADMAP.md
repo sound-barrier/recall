@@ -299,7 +299,7 @@ That's enough rules to keep the F overlay coherent later.
 
 ## Deferred improvements
 
-Items moved here from `TECHNICAL_DEBT.md` as it drained to its
+Items moved here from the former `TECHNICAL_DEBT.md` (now `REVIEW.md`) as it drained to its
 template. These are intentional deferrals — work we want but won't
 pay for until a concrete bug or contributor pain point makes the
 cost worth it. Each carries its original effort + risk estimate so

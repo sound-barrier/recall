@@ -2,7 +2,7 @@ import { ref, onMounted } from 'vue'
 import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, PresetRange } from './useMatchesNarrow'
 import type { LeaverHandling } from './useMatchesDossier'
 
-// Saved-set / preset feature (UI_RECOMMENDATIONS item 8).
+// Saved-set / preset feature.
 //
 // Stores named snapshots of MatchesNarrowState in localStorage so a
 // user with a recurring "comp clutch" set doesn't have to re-pick

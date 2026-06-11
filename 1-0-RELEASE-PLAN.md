@@ -21,7 +21,7 @@ code/tests/docs/release-eng) on top of the post-PR-#248 codebase.
   finding is (HIGH / MED / LOW). They're independent of the P-band
   — a LOW-severity finding can still be P0 if it would be
   embarrassing to ship locked.
-- **Effort tags** follow the TECHNICAL_DEBT.md convention:
+- **Effort tags** follow the REVIEW.md convention:
   - **S** — < 2 hours
   - **M** — ½–2 days
   - **L** — 2–5 days
@@ -695,7 +695,7 @@ solid:
   status codes mostly correct.
 - `scripts/deadcode-allow.txt` entries are all defensible — no
   false positives to remove.
-- `TECHNICAL_DEBT.md` carries only #13 (deferred per YAGNI).
+- `REVIEW.md` carries the deferred reverse-index item (D1).
 - Dependency audit clean — Go 1.26.4 (modern), no EOL deps in
   `go.mod` or `frontend/package.json`.
 - `lefthook.yml` + `Makefile` + CI in sync post PR #247.
@@ -759,7 +759,7 @@ sequence.
     `release-please` version bump, tag, fire `release.yml`.
 
 P2 items roll into a parallel **`1-0-FOLLOWUPS.md`** when 1.0 ships
-— same shape as `TECHNICAL_DEBT.md`, just scoped to "things we'd
+— same shape as `REVIEW.md`, just scoped to "things we'd
 like for 1.1+."
 
 ---
@@ -777,4 +777,4 @@ like for 1.1+."
    judgment to **P1**, 1.0 is ready to cut.
 4. After the 1.0 tag lands, move remaining P2 items into a new
    `1-0-FOLLOWUPS.md` and delete this file (git history is the
-   audit trail, same convention as `TECHNICAL_DEBT.md`).
+   audit trail, same convention as `REVIEW.md`).

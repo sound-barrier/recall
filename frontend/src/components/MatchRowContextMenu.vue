@@ -140,8 +140,8 @@ function onHide() {
 
 // Viewport-edge clamp — the original menu was small (~110 px tall)
 // and rarely overlapped the edge in real use, so the clamp was
-// deferred. After item 7 the menu is taller (~260 px with all 8
-// actions) and right-clicks near the bottom of the leaves list
+// deferred until the menu grew taller (~260 px with all 8
+// actions); right-clicks near the bottom of the leaves list
 // would render off-screen. Estimate the menu size and shift the
 // origin upward / leftward if the natural position would clip.
 const MENU_W = 220

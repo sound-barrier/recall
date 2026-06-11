@@ -206,7 +206,7 @@ pre-push:
     # threshold of 10 (McCabe's 1976 recommendation). The script
     # always exits 0 so a high number never blocks a push; the goal
     # is situational awareness, not a gate. When a number warrants
-    # action, raise a TECHNICAL_DEBT.md item.
+    # action, raise a REVIEW.md item.
     # Skip with: LEFTHOOK_EXCLUDE=complexity git push
     complexity:
       run: bash scripts/check-complexity.sh

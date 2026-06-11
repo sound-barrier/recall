@@ -1,7 +1,7 @@
 import { ref, computed, watch, type Ref } from 'vue'
 import type { MatchRecord } from '../api'
 
-// Drives the detail-panel pattern from UI_RECOMMENDATIONS item #3.
+// Drives the detail-panel pattern.
 //
 // The Matches view used to expand each card inline; this composable
 // flips the model to "one panel, one selected match key, paginated

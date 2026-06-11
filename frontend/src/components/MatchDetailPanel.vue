@@ -7,7 +7,7 @@ import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import MatchCardExpanded from './MatchCardExpanded.vue'
 
 // Detail panel — slides in from the right when a match is selected.
-// Pattern from UI_RECOMMENDATIONS item #3. Replaces the previous
+// Replaces the previous
 // inline-expansion behavior so the user can:
 //   • inspect a single match deeply without losing scroll position
 //   • paginate j/k through the filtered list while staying in the

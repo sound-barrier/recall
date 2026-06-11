@@ -1547,8 +1547,7 @@ const cardState = {
 // single capture-phase document listener via useKeyboardShortcuts;
 // per-binding `when` predicates gate view-specific shortcuts.
 // `suppressed: openCheatsheet` is wired inside the composable.
-// See UI_RECOMMENDATIONS.md item 4 for the design + FEATURES.md
-// for the cheatsheet contract.
+// See FEATURES.md for the cheatsheet contract.
 useGlobalKeyboard({
   view,
   openCheatsheet,

@@ -67,7 +67,7 @@ clear the input to drop the clause.
 > **Note:** the previous vim-style scoped-clause syntax
 > (`note:clutch`, `tag:stack`, `member:Apollo`, `replay:7H1`)
 > isn't part of the current search — substring match only.
-> See `UI_RECOMMENDATIONS.md` for the plan to restore scoped
+> See `REVIEW.md` (F1) for the plan to restore scoped
 > clauses.
 
 ### Time scope
@@ -260,9 +260,8 @@ A handful of cross-cutting preferences DO persist across launches
 - **Tesseract path** + the rest of Settings
 
 Saved-filter presets (so a "stack games last weekend" filter
-survives a reload) are tracked in `UI_RECOMMENDATIONS.md` —
-the old preset feature was retired with the FilterRail and a
-typed replacement is in the backlog.
+survives a reload) are available from the narrow panel — name the
+current set and recall it later; the snapshot persists across reloads.
 
 ## Next chapter
 
