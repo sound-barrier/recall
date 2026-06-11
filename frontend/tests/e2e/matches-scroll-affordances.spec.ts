@@ -122,7 +122,7 @@ test.describe('Matches — scroll affordances', () => {
     await expect(divider).toBeInViewport({ ratio: 0.5 })
   })
 
-  test('jump-to-undated: expands the infinite-scroll window so the "No date" section reaches the DOM even past the first page', async ({ page }) => {
+  test('jump-to-undated: expands window to render No date section beyond first page', async ({ page }) => {
     // Pre-fix: useMatchesWindow rendered only the first 20 rows
     // on mount; with 60+ records, the trailing "No date" section
     // was never in the DOM when `document.querySelector` ran, so
