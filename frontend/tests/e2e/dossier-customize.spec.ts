@@ -159,13 +159,12 @@ test.describe('dossier customize — no edit mode', () => {
         const el = document.querySelector(sel)
         return el ? { top: el.getBoundingClientRect().top, bottom: el.getBoundingClientRect().bottom } : null
       }
-      return { dossier: box('.set-dossier'), campaign: box('.campaign-log-sticky'), geo: box('.match-map-role') }
+      return { dossier: box('.set-dossier'), campaign: box('.match-timeline'), geo: box('.match-map-role') }
     })
     expect(r.dossier && r.campaign && r.geo).toBeTruthy()
     const dossierToCampaign = r.campaign!.top - r.dossier!.bottom
     const campaignToGeo = r.geo!.top - r.campaign!.bottom
-    // Uniform rhythm — the dossier→first-band gap must match the
-    // band→band gap (1px tolerance for the sticky sentinel).
+    // Uniform rhythm — the dossier→first-band gap matches the band→band gap.
     expect(Math.abs(dossierToCampaign - campaignToGeo)).toBeLessThanOrEqual(2)
   })
 })
