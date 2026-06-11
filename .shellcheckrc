@@ -2,8 +2,8 @@
 #
 # source-path=SCRIPTDIR tells ShellCheck to resolve every
 #   # shellcheck source=<rel-path>
-# directive (e.g. the `_lib.sh` source in scripts/stack-up.sh and
-# scripts/prometheus-clear.sh) relative to the *script being analyzed*
+# directive (e.g. the `_lib.sh` source in scripts/stack/stack-up.sh and
+# scripts/stack/prometheus-clear.sh) relative to the *script being analyzed*
 # rather than ShellCheck's own working directory. Without this, running
 # `shellcheck scripts/*.sh` from the project root reports SC1091 ("Not
 # following: _lib.sh: does not exist") even though the directive is

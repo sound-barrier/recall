@@ -198,7 +198,7 @@ lint-docker: ## Lint Dockerfile.build (hadolint)
 # 2-space / indent-switch / binary-op-at-line-start style we
 # normalized to in commit ___ — `make fmt-shell` rewrites in place,
 # `make lint-shell` runs shfmt in diff mode + shellcheck.
-SHELL_SCRIPTS := $(wildcard scripts/*.sh) $(wildcard scripts/release/*.sh) $(wildcard scripts/release/smoke/*.sh)
+SHELL_SCRIPTS := $(wildcard scripts/lib/*.sh scripts/db/*.sh scripts/ci/*.sh scripts/stack/*.sh) $(wildcard scripts/release/*.sh) $(wildcard scripts/release/smoke/*.sh)
 
 lint-shell: ## Lint shell scripts (shellcheck + shfmt diff)
 	@echo "[ recall ] Linting shell scripts (shellcheck)…"
@@ -242,7 +242,7 @@ lint-actions: ## Lint .github/workflows/*.yml via actionlint + enforce SHA-pinne
 	@echo "[ recall ] Linting GitHub Actions workflows (actionlint)…"
 	actionlint .github/workflows/*.yml
 	@echo "[ recall ] Enforcing SHA-pinned external actions…"
-	@bash scripts/check-action-pins.sh
+	@bash scripts/ci/check-action-pins.sh
 	@echo "[ recall ] ✓  workflows clean + actions SHA-pinned"
 
 # gosec Go-specific SAST. Sweeps both build tags so the Wails and
@@ -293,18 +293,18 @@ lint-semgrep: ## JS/TS SAST via Semgrep (frontend/src/, TypeScript only — .vue
 # item rather than tightening this gate.
 #
 # Threshold (McCabe's 1976 recommendation): 10. Tune in one place:
-# `scripts/check-complexity.sh`. Same script drives the
+# `scripts/ci/check-complexity.sh`. Same script drives the
 # `pre-push.complexity` lefthook hook + the CI `complexity` job.
 complexity: ## Report functions with McCabe complexity > 10 across Go + frontend (non-blocking)
-	@bash scripts/check-complexity.sh
+	@bash scripts/ci/check-complexity.sh
 
 # ── Bundle audit (on-demand) ──────────────────────────────────────────
 # One-shot snapshot of the top frontend bundle chunks. Run before
-# bumping the JS/CSS budget in scripts/check-bundle-size.sh so the
+# bumping the JS/CSS budget in scripts/ci/check-bundle-size.sh so the
 # decision is informed by what's actually big. NOT a CI gate — the
 # bundle-size script is the gate; this is for human refactor calls.
 bundle-audit: ## Print the top bundle chunks by size (informs check-bundle-size.sh decisions)
-	@bash scripts/audit-bundle.sh
+	@bash scripts/ci/audit-bundle.sh
 
 # Spectral runs the spectral:oas ruleset against api/openapi.yaml; see
 # .spectral.yaml at the project root for rule overrides. npx pulls a
@@ -318,7 +318,7 @@ lint-openapi: ## Lint api/openapi.yaml (Spectral, spectral:oas ruleset)
 
 check-api-drift: ## Fuzz live server against api/openapi.yaml (schemathesis)
 	@echo "[ recall ] Checking OpenAPI ↔ server drift (schemathesis)…"
-	@bash scripts/check-api-drift.sh
+	@bash scripts/ci/check-api-drift.sh
 	@echo "[ recall ] ✓  OpenAPI lint clean"
 
 # Regenerate frontend/src/api.gen.d.ts from the OpenAPI spec. Run after
@@ -340,14 +340,14 @@ typecheck: ## TypeScript type-check (frontend api.ts + api.gen.d.ts)
 # variant. The Wails variant registers App methods via reflection so deadcode
 # would report them as unreachable even though they're live; golangci-lint
 # `unused` already covers that variant. The check, including the allow-list
-# of intentional unreachables, lives in scripts/deadcode-check.sh so Make,
+# of intentional unreachables, lives in scripts/ci/deadcode-check.sh so Make,
 # lefthook, and CI all run the same logic.
 # Install once: go install golang.org/x/tools/cmd/deadcode@latest
 dead-code: dead-code-go dead-code-ts ## Find unreachable Go functions and unused TypeScript exports
 
 dead-code-go: ## Unreachable Go functions (deadcode, serveronly build tag)
 	@echo "[ recall ] Scanning for dead Go code (deadcode -tags serveronly)…"
-	@bash scripts/deadcode-check.sh
+	@bash scripts/ci/deadcode-check.sh
 	@echo "[ recall ] ✓  No unexpected dead Go code"
 
 dead-code-ts: ## Unused TypeScript exports and stale deps (knip)
@@ -385,7 +385,7 @@ trivy: ## Trivy vulnerability scan (fails on HIGH/CRITICAL)
 	@echo "[ recall ] ✓  No HIGH/CRITICAL vulnerabilities found"
 
 check-deps: ## Check pinned tool versions against latest releases (read-only)
-	@bash scripts/check-deps.sh
+	@bash scripts/ci/check-deps.sh
 
 ##@ Release
 

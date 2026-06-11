@@ -8,8 +8,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
-# shellcheck source=_lib.sh
-. "$SCRIPT_DIR/_lib.sh"
+# shellcheck source=../lib/_lib.sh
+. "$SCRIPT_DIR/../lib/_lib.sh"
 
 read -r -p "This will erase ALL Prometheus history. Confirm? [y/N] " ans
 [[ "$ans" == "y" || "$ans" == "Y" ]] || {

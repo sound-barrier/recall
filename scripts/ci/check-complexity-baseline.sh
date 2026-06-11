@@ -9,7 +9,7 @@
 #                        functions that climbed by ≥ 5 or newly
 #                        cracked the top-20.
 #
-# Same threshold logic as scripts/check-complexity.sh; we re-use its
+# Same threshold logic as scripts/ci/check-complexity.sh; we re-use its
 # gocyclo invocation but constrain to Go (the frontend numbers churn
 # too much per-PR via lambda churn — Go is the stable target). Test
 # files are excluded so table-driven matrices don't dominate.
@@ -20,7 +20,7 @@ THRESHOLD=10
 JUMP=5
 TOP_N=20
 BASELINE="docs/baselines/complexity-baseline.txt"
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
 # shellcheck disable=SC1091
@@ -55,7 +55,7 @@ if [[ "$mode" == "capture" ]]; then
 fi
 
 if [[ ! -f "$BASELINE" ]]; then
-  echo "[baseline] $BASELINE missing — run 'bash scripts/check-complexity-baseline.sh capture > $BASELINE' first."
+  echo "[baseline] $BASELINE missing — run 'bash scripts/ci/check-complexity-baseline.sh capture > $BASELINE' first."
   exit 0
 fi
 

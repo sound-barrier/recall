@@ -1,8 +1,19 @@
 # scripts/
 
-Helper scripts for running, inspecting, and maintaining Recall locally.
-All scripts are safe to re-run from any working directory — they resolve
-paths relative to their own location.
+Helper scripts for running, inspecting, and maintaining Recall, organised
+by concern:
+
+- **`lib/`** — shared bash libraries (sourced, not run directly).
+- **`db/`** — local SQLite inspection + maintenance.
+- **`ci/`** — quality gates run by Make / lefthook / CI.
+- **`stack/`** — the Prometheus + Grafana observability stack.
+- **`release/`** — release packaging + signing.
+- **`windows/`** — file-ops maintenance for Windows desktop users
+  (PowerShell + double-clickable `.cmd`, no dependencies). See
+  [`windows/README.md`](windows/README.md).
+
+The bash scripts are safe to re-run from any working directory — they
+resolve paths relative to their own location.
 
 | Script | Purpose |
 |---|---|
@@ -36,7 +47,7 @@ These scripts manage the Prometheus + Grafana stack defined in
 Start the Prometheus + Grafana stack.
 
 ```sh
-bash scripts/stack-up.sh
+bash scripts/stack/stack-up.sh
 ```
 
 - Starts the Podman VM if it is not already running
@@ -59,8 +70,8 @@ Stop the stack. Container volumes are preserved so history survives the
 next `stack-up.sh`.
 
 ```sh
-bash scripts/stack-down.sh             # stop containers, leave VM running
-bash scripts/stack-down.sh --machine   # also stop the Podman VM
+bash scripts/stack/stack-down.sh             # stop containers, leave VM running
+bash scripts/stack/stack-down.sh --machine   # also stop the Podman VM
 ```
 
 ### `prometheus-clear.sh`
@@ -69,7 +80,7 @@ Wipe Prometheus's TSDB volume and restart with a clean slate. Grafana
 state (dashboards, datasource config) is untouched.
 
 ```sh
-bash scripts/prometheus-clear.sh
+bash scripts/stack/prometheus-clear.sh
 ```
 
 Prompts for confirmation before deleting. Use this when you have
@@ -81,7 +92,7 @@ Read-only layer-by-layer diagnostic. Run this first whenever Grafana
 shows no data.
 
 ```sh
-bash scripts/verify-stack.sh
+bash scripts/stack/verify-stack.sh
 ```
 
 Checks in order:
@@ -98,7 +109,7 @@ Exits with a summary of passed / failed layers.
 
 ## Database helpers
 
-All `db-*.sh` scripts resolve the SQLite path via `scripts/_db.sh`'s
+All `db-*.sh` scripts resolve the SQLite path via `scripts/lib/_db.sh`'s
 `recall_db_path`. The app stores each profile's settings + DB under
 `<base>/profiles/<name>/`, so the script chains three lookups: the
 install-wide base directory, the active profile name, then the DB file
@@ -147,19 +158,19 @@ Lookups across `db-show.sh` / `db-delete.sh` / `db-reparse.sh` accept:
 ### `db-where.sh`
 
 Print the resolved DB path; also prints whether the file exists + its
-size on stderr. Use in shell sessions: `sqlite3 "$(scripts/db-where.sh)"`.
+size on stderr. Use in shell sessions: `sqlite3 "$(scripts/db/db-where.sh)"`.
 
 ### `db-list.sh`
 
 Print a one-line summary of every match with a five-letter coverage
-chip (`S`/`B`/`P`/`R`/`U` for summary/teams/personal/rank/unknown,
+chip (`S`/`T`/`P`/`R`/`U` for summary/teams/personal/rank/unknown,
 `-` when absent).
 
 ```sh
-bash scripts/db-list.sh
+bash scripts/db/db-list.sh
 ```
 
-Output columns: `match_key`, `types`, `map`, `mode`, `hero`,
+Output columns: `match_key`, `types`, `map`, `playlist`, `hero`,
 `eliminations/assists/deaths`, `damage/healing/mitigation`, `result`,
 `score`, `date`. SUMMARY fields take precedence over TEAMS for
 display when both contribute.
@@ -172,9 +183,9 @@ aggregator surprise — it surfaces the raw truth across all five
 parent tables instead of the folded view.
 
 ```sh
-bash scripts/db-show.sh match:2026-05-10T21:29:28
-bash scripts/db-show.sh 22.36.31.03   # filename substring
-bash scripts/db-show.sh rialto        # map substring
+bash scripts/db/db-show.sh match:2026-05-10T21:29:28
+bash scripts/db/db-show.sh 22.36.31.03   # filename substring
+bash scripts/db/db-show.sh rialto        # map substring
 ```
 
 Pipes through `jq` for formatting when available.
@@ -201,8 +212,8 @@ Delete one match's rows across all 5 parent tables (children CASCADE).
 Prompts before deleting; pass `-y` to skip the prompt for scripted use.
 
 ```sh
-bash scripts/db-delete.sh match:2026-05-10T21:29:28
-bash scripts/db-delete.sh -y 22.36.31.03
+bash scripts/db/db-delete.sh match:2026-05-10T21:29:28
+bash scripts/db/db-delete.sh -y 22.36.31.03
 ```
 
 ### `db-reparse.sh`
@@ -223,8 +234,8 @@ match, each line a JSON object with the per-type row arrays (`summary`,
 `teams`, `personal`, `rank`, `unknown`).
 
 ```sh
-bash scripts/db-export.sh
-bash scripts/db-export.sh > export.ndjson
+bash scripts/db/db-export.sh
+bash scripts/db/db-export.sh > export.ndjson
 jq -s '.[].match_key' export.ndjson    # all keys
 ```
 
@@ -249,7 +260,7 @@ Compare pinned tool versions against the latest GitHub releases.
 Called via `make check-deps`; safe to run directly.
 
 ```sh
-bash scripts/check-deps.sh
+bash scripts/ci/check-deps.sh
 make check-deps
 ```
 

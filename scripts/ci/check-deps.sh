@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# scripts/check-deps.sh — compare pinned tool versions against latest releases.
+# scripts/ci/check-deps.sh — compare pinned tool versions against latest releases.
 # Read-only: prints what is out of date, makes no changes.
-# Usage: make check-deps   OR   bash scripts/check-deps.sh
+# Usage: make check-deps   OR   bash scripts/ci/check-deps.sh
 #
 # Checks binary tool pins in .devcontainer/postCreate.sh plus Go and Node
 # toolchain versions (informational only — does not affect the exit code).
@@ -23,12 +23,12 @@ for cmd in curl jq; do
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Versions shared across Make, lefthook, CI workflows, and the install
 # scripts. Sourced here so the check rows below can reference them
 # without re-parsing each file.
-# shellcheck source=../tool-versions.env disable=SC1091
+# shellcheck source=../../tool-versions.env disable=SC1091
 . "${ROOT}/tool-versions.env"
 
 # Color support — disabled when stdout is not a terminal.

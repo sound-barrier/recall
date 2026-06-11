@@ -113,4 +113,4 @@ brew "pipx"
 #   Swagger UI         — pulled as the swaggerapi/swagger-ui:vX.Y.Z
 #                        container image on first `make swagger`.
 #   sqlite3 / sips     — pre-installed on macOS (/usr/bin/{sqlite3,sips});
-#                        used by scripts/db-*.sh and `make icon`.
+#                        used by scripts/db/db-*.sh and `make icon`.

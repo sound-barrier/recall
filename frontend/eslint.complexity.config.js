@@ -5,7 +5,7 @@
 // without inheriting the project's hundreds of other rules — those
 // would drown out the complexity findings under unrelated noise.
 //
-// Consumed by `scripts/check-complexity.sh` (which is wired into
+// Consumed by `scripts/ci/check-complexity.sh` (which is wired into
 // `make complexity-frontend`, the `pre-push.complexity` lefthook
 // hook, and the CI `complexity` job).
 //

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # List every match with a coverage chip showing which screenshot types
-# contributed (S=summary, B=teams, P=personal, R=rank, U=unknown).
+# contributed (S=summary, T=teams, P=personal, R=rank, U=unknown).
 # Aggregates across the 5 parent tables by match_key, prefers SUMMARY
 # fields for display (since SUMMARY is the only type that carries
 # map/date/result/score reliably).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=_db.sh
-. "$SCRIPT_DIR/_db.sh"
+# shellcheck source=../lib/_db.sh
+. "$SCRIPT_DIR/../lib/_db.sh"
 
 DB=$(recall_db_path)
 require_new_schema "$DB"
@@ -22,7 +22,7 @@ sqlite3 -header -column "$DB" "
     UNION SELECT match_key FROM unknown_screenshots
   ),
   summaries AS (
-    SELECT match_key, MIN(map) AS map, MIN(mode) AS mode, MIN(hero) AS hero,
+    SELECT match_key, MIN(map) AS map, MIN(playlist) AS playlist, MIN(hero) AS hero,
            MIN(result) AS result, MIN(final_score) AS final_score, MIN(date) AS date
     FROM summary_screenshots GROUP BY match_key
   ),
@@ -35,7 +35,7 @@ sqlite3 -header -column "$DB" "
   coverage AS (
     SELECT k.match_key,
       CASE WHEN EXISTS(SELECT 1 FROM summary_screenshots    t WHERE t.match_key=k.match_key) THEN 'S' ELSE '-' END ||
-      CASE WHEN EXISTS(SELECT 1 FROM teams_screenshots t WHERE t.match_key=k.match_key) THEN 'B' ELSE '-' END ||
+      CASE WHEN EXISTS(SELECT 1 FROM teams_screenshots t WHERE t.match_key=k.match_key) THEN 'T' ELSE '-' END ||
       CASE WHEN EXISTS(SELECT 1 FROM personal_screenshots   t WHERE t.match_key=k.match_key) THEN 'P' ELSE '-' END ||
       CASE WHEN EXISTS(SELECT 1 FROM rank_screenshots       t WHERE t.match_key=k.match_key) THEN 'R' ELSE '-' END ||
       CASE WHEN EXISTS(SELECT 1 FROM unknown_screenshots    t WHERE t.match_key=k.match_key) THEN 'U' ELSE '-' END
@@ -46,7 +46,7 @@ sqlite3 -header -column "$DB" "
     k.match_key,
     c.types                                                                      AS types,
     COALESCE(s.map, '')                                                          AS map,
-    COALESCE(s.mode, '')                                                         AS mode,
+    COALESCE(s.playlist, '')                                                         AS playlist,
     COALESCE(s.hero, b.hero, '')                                                 AS hero,
     COALESCE(b.e, 0)   || '/' || COALESCE(b.a, 0)  || '/' || COALESCE(b.d, 0)    AS ead,
     COALESCE(b.dmg, 0) || '/' || COALESCE(b.hl, 0) || '/' || COALESCE(b.mit, 0)  AS dhm,

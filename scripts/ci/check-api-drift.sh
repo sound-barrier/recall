@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/check-api-drift.sh — fuzz the live server against api/openapi.yaml
+# scripts/ci/check-api-drift.sh — fuzz the live server against api/openapi.yaml
 # and fail on any contract drift (status code, content-type, response
 # schema, response headers, server errors).
 #
@@ -10,9 +10,9 @@
 # so CI + lefthook + ad-hoc `make check-api-drift` all stay in sync.
 #
 # Usage:
-#   bash scripts/check-api-drift.sh                          # default
-#   RECALL_SCHEMATHESIS_PORT=7100 bash scripts/check-api-drift.sh
-#   RECALL_SCHEMATHESIS_TIMEOUT=60 bash scripts/check-api-drift.sh
+#   bash scripts/ci/check-api-drift.sh                          # default
+#   RECALL_SCHEMATHESIS_PORT=7100 bash scripts/ci/check-api-drift.sh
+#   RECALL_SCHEMATHESIS_TIMEOUT=60 bash scripts/ci/check-api-drift.sh
 #
 # Prerequisites:
 #   - Go on PATH (for `go build`)
@@ -23,13 +23,13 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
 # Source the central version pin (informational only — script-level
 # behavior matches whatever schemathesis the dev has installed via
 # pipx). CI and initialize.sh pin to this exact version.
-# shellcheck source=../tool-versions.env disable=SC1091
+# shellcheck source=../../tool-versions.env disable=SC1091
 . ./tool-versions.env
 
 PORT=${RECALL_SCHEMATHESIS_PORT:-7099}
@@ -152,7 +152,7 @@ fi
 #                                     path; schemathesis classifies
 #                                     it as a negative case and
 #                                     demands 4xx). Repro: bash
-#                                     scripts/check-api-drift.sh
+#                                     scripts/ci/check-api-drift.sh
 #                                     fails 4/5 runs on main with
 #                                     this check enabled. We get
 #                                     the negative-path coverage

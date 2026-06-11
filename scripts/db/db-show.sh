@@ -9,8 +9,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=_db.sh
-. "$SCRIPT_DIR/_db.sh"
+# shellcheck source=../lib/_db.sh
+. "$SCRIPT_DIR/../lib/_db.sh"
 
 if [[ $# -lt 1 ]]; then
   echo "usage: $0 <match-key|filename-substring|map-substring>" >&2

@@ -1,9 +1,9 @@
 # Allow-list of intentional `t.Skip` / `t.Skipf` calls in pkg/.
 #
 # The CI workflow + lefthook pre-push hook diff this file against the
-# live grep output via `scripts/check-test-skips.sh`. Adding a new
+# live grep output via `scripts/ci/check-test-skips.sh`. Adding a new
 # `t.Skip` requires adding the matching line here with a one-line
-# `why` comment, mirroring the `scripts/deadcode-allow.txt` shape.
+# `why` comment, mirroring the `scripts/ci/deadcode-allow.txt` shape.
 #
 # The goal is to make every skip a deliberate, documented decision —
 # not a quiet way to suppress a flake. Flake-suppression skips are

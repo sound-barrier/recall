@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# scripts/deadcode-check.sh — run `deadcode` against the serveronly build
+# scripts/ci/deadcode-check.sh — run `deadcode` against the serveronly build
 # tag and fail iff the output contains anything not matched by
-# scripts/deadcode-allow.txt.
+# scripts/ci/deadcode-allow.txt.
 #
 # Why this script exists: deadcode itself always exits 0 regardless of
 # findings, and the project has a small fixed set of intentional
@@ -11,7 +11,7 @@
 # previously each carried its own copy of the filter regex and they
 # drifted at least once.
 #
-# Usage: bash scripts/deadcode-check.sh
+# Usage: bash scripts/ci/deadcode-check.sh
 
 set -euo pipefail
 

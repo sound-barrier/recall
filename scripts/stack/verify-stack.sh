@@ -18,8 +18,8 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=_db.sh
-. "$SCRIPT_DIR/_db.sh"
+# shellcheck source=../lib/_db.sh
+. "$SCRIPT_DIR/../lib/_db.sh"
 cd "$SCRIPT_DIR/.." || {
   echo "[verify-stack] could not cd into repo root from $SCRIPT_DIR" >&2
   exit 1
@@ -56,7 +56,7 @@ echo "[1] SQLite (source of truth)"
 if [[ -f "$DB" ]]; then
   pass "db file present at $DB"
   if sqlite3 "$DB" "SELECT name FROM sqlite_master WHERE type='table' AND name='match_results'" 2>/dev/null | grep -q match_results; then
-    fail "DB carries pre-PR-#45 'match_results' schema — wipe with: bash scripts/clear-db.sh"
+    fail "DB carries pre-PR-#45 'match_results' schema — wipe with: bash scripts/db/clear-db.sh"
     rows=0
   else
     rows=$(sqlite3 "$DB" "
@@ -102,7 +102,7 @@ echo "[3] Podman VM + prometheus container"
 if podman info >/dev/null 2>&1; then
   pass "podman daemon reachable"
 else
-  fail "podman daemon not reachable — run ./scripts/stack-up.sh"
+  fail "podman daemon not reachable — run ./scripts/stack/stack-up.sh"
 fi
 
 if state=$(podman inspect -f '{{.State.Status}} {{.RestartCount}}' recall-prometheus 2>/dev/null); then
@@ -117,7 +117,7 @@ if state=$(podman inspect -f '{{.State.Status}} {{.RestartCount}}' recall-promet
     fail "container state: $status"
   fi
 else
-  fail "recall-prometheus container not found — run ./scripts/stack-up.sh"
+  fail "recall-prometheus container not found — run ./scripts/stack/stack-up.sh"
 fi
 
 # ── Layer 4: Prometheus scrape state ───────────────────────────────────────

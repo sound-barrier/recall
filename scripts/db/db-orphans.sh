@@ -5,12 +5,12 @@
 # starts here: re-capture the missing tab in-game, drop it in the
 # screenshots dir, Parse — correlation re-folds it into the existing key.
 #
-# Columns: types_present (single-letter chip — S/B/P/R/U), match_key,
+# Columns: types_present (single-letter chip — S/T/P/R/U), match_key,
 # files (the only screenshot(s) currently on file).
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=_db.sh
-. "$SCRIPT_DIR/_db.sh"
+# shellcheck source=../lib/_db.sh
+. "$SCRIPT_DIR/../lib/_db.sh"
 
 DB=$(recall_db_path)
 require_new_schema "$DB"
@@ -26,17 +26,17 @@ sqlite3 -header -column "$DB" "
   presence AS (
     SELECT k.match_key,
       (SELECT 'S' FROM summary_screenshots    WHERE match_key=k.match_key LIMIT 1) AS s,
-      (SELECT 'B' FROM teams_screenshots WHERE match_key=k.match_key LIMIT 1) AS b,
+      (SELECT 'T' FROM teams_screenshots WHERE match_key=k.match_key LIMIT 1) AS t,
       (SELECT 'P' FROM personal_screenshots   WHERE match_key=k.match_key LIMIT 1) AS p,
       (SELECT 'R' FROM rank_screenshots       WHERE match_key=k.match_key LIMIT 1) AS r,
       (SELECT 'U' FROM unknown_screenshots    WHERE match_key=k.match_key LIMIT 1) AS u
     FROM all_keys k
   ),
   singletons AS (
-    SELECT match_key, COALESCE(s,'') || COALESCE(b,'') || COALESCE(p,'') || COALESCE(r,'') || COALESCE(u,'') AS types
+    SELECT match_key, COALESCE(s,'') || COALESCE(t,'') || COALESCE(p,'') || COALESCE(r,'') || COALESCE(u,'') AS types
     FROM presence
     WHERE (CASE WHEN s IS NULL THEN 0 ELSE 1 END) +
-          (CASE WHEN b IS NULL THEN 0 ELSE 1 END) +
+          (CASE WHEN t IS NULL THEN 0 ELSE 1 END) +
           (CASE WHEN p IS NULL THEN 0 ELSE 1 END) +
           (CASE WHEN r IS NULL THEN 0 ELSE 1 END) +
           (CASE WHEN u IS NULL THEN 0 ELSE 1 END) = 1
