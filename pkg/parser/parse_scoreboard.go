@@ -84,6 +84,7 @@ func parseScoreboard(img image.Image, work string) (*MatchResult, error) {
 		// fallback.
 		res.HeroRaw = cand
 	}
+	res.QueueType = detectQueueType(img, work)
 	return res, nil
 }
 

@@ -254,6 +254,7 @@ var (
 		"id", "filename", "match_key", "parsed_at", "screenshots_dir_id",
 		"map", "mode", "hero",
 		"eliminations", "assists", "deaths", "damage", "healing", "mitigation",
+		"queue_type",
 	}
 	heroStatHeader = []string{"parent_id", "hero", "stat_key", "stat_value"}
 	personalHeader = []string{
@@ -321,6 +322,7 @@ func scoreboardsToRows(rows []db.ScoreboardRow) [][]string {
 			r.Map, r.Mode, r.Hero,
 			strconv.Itoa(r.Eliminations), strconv.Itoa(r.Assists), strconv.Itoa(r.Deaths),
 			strconv.Itoa(r.Damage), strconv.Itoa(r.Healing), strconv.Itoa(r.Mitigation),
+			r.QueueType,
 		})
 	}
 	return out
@@ -510,6 +512,7 @@ func readScoreboardsCSV(zr *zip.Reader) ([]db.ScoreboardRow, error) {
 		r.Damage, _ = strconv.Atoi(rec[11])
 		r.Healing, _ = strconv.Atoi(rec[12])
 		r.Mitigation, _ = strconv.Atoi(rec[13])
+		r.QueueType = rec[14]
 		out = append(out, r)
 		parents[r.ID] = &out[len(out)-1]
 	}

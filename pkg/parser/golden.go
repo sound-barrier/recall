@@ -46,10 +46,12 @@ type SummaryGolden struct {
 //
 // Populated by `parse_scoreboard.go`: map+type+mode (from the header
 // banner; may fail and leave empty), hero+role (from the highlighted
-// row + right panel), the six combat-stat columns, plus
-// heroes_played with the right-panel hero stats on the in-game
-// variant. NOT extracted: result, final_score, date/finished_at/
-// game_length, performance, rank/sr fields.
+// row + right panel), the six combat-stat columns, queue_type (from
+// the players-per-team count; empty when unread), plus heroes_played
+// with the right-panel hero stats on the in-game variant. NOT
+// extracted:
+// result, final_score, date/finished_at/game_length, performance,
+// rank/sr fields.
 type ScoreboardGolden struct {
 	Map          string     `json:"map"`
 	Type         string     `json:"type"`
@@ -62,6 +64,7 @@ type ScoreboardGolden struct {
 	Damage       int        `json:"damage"`
 	Healing      int        `json:"healing"`
 	Mitigation   int        `json:"mitigation"`
+	QueueType    string     `json:"queue_type"`
 	HeroesPlayed []HeroPlay `json:"heroes_played,omitempty"`
 }
 
@@ -141,6 +144,7 @@ func ToGolden(r *MatchResult) any {
 			Damage:       r.Damage,
 			Healing:      r.Healing,
 			Mitigation:   r.Mitigation,
+			QueueType:    r.QueueType,
 			HeroesPlayed: r.HeroesPlayed,
 		}
 	case "personal":

@@ -27,6 +27,12 @@ type MatchResult struct {
 	Healing      int    `json:"healing"`
 	Mitigation   int    `json:"mitigation"`
 
+	// QueueType is the match format inferred from the scoreboard's
+	// players-per-team count: "role" (5v5) or "open" (6v6). Empty when
+	// the screenshot isn't a scoreboard or the count couldn't be read.
+	// A user-set queue annotation overrides this at read time.
+	QueueType string `json:"queue_type,omitempty"`
+
 	// Summary-screen-only fields. Empty on a scoreboard parse.
 	Result       string       `json:"result,omitempty"`      // "victory", "defeat", or "draw"
 	FinalScore   string       `json:"final_score,omitempty"` // e.g. "3-1"

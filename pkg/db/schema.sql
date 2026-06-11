@@ -98,7 +98,11 @@ CREATE TABLE IF NOT EXISTS scoreboard_screenshots (
   deaths        INTEGER NOT NULL DEFAULT 0,
   damage        INTEGER NOT NULL DEFAULT 0,
   healing       INTEGER NOT NULL DEFAULT 0,
-  mitigation    INTEGER NOT NULL DEFAULT 0
+  mitigation    INTEGER NOT NULL DEFAULT 0,
+  -- Queue format inferred from players-per-team on the scoreboard:
+  -- 'role' (5v5) or 'open' (6v6); '' when the count couldn't be read.
+  -- A user-set match_queue annotation overrides this at read time.
+  queue_type    TEXT NOT NULL DEFAULT ''
 );
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_scoreboard_match_key_parsed_at ON scoreboard_screenshots(match_key, parsed_at);
