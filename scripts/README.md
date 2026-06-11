@@ -130,7 +130,7 @@ Overrides (most-specific wins):
   automatically when direnv is loaded.
 
 Post-PR-#45 the schema is 3NF: five **parent** tables
-(`summary_screenshots`, `scoreboard_screenshots`, `personal_screenshots`,
+(`summary_screenshots`, `teams_screenshots`, `personal_screenshots`,
 `rank_screenshots`, `unknown_screenshots`), five **child** tables with
 `ON DELETE CASCADE`. A "match" is any distinct `match_key` seen across
 the parents. The Go aggregator in `pkg/app/aggregate.go` is what folds
@@ -152,7 +152,7 @@ size on stderr. Use in shell sessions: `sqlite3 "$(scripts/db-where.sh)"`.
 ### `db-list.sh`
 
 Print a one-line summary of every match with a five-letter coverage
-chip (`S`/`B`/`P`/`R`/`U` for summary/scoreboard/personal/rank/unknown,
+chip (`S`/`B`/`P`/`R`/`U` for summary/teams/personal/rank/unknown,
 `-` when absent).
 
 ```sh
@@ -161,7 +161,7 @@ bash scripts/db-list.sh
 
 Output columns: `match_key`, `types`, `map`, `mode`, `hero`,
 `eliminations/assists/deaths`, `damage/healing/mitigation`, `result`,
-`score`, `date`. SUMMARY fields take precedence over SCOREBOARD for
+`score`, `date`. SUMMARY fields take precedence over TEAMS for
 display when both contribute.
 
 ### `db-show.sh`
@@ -220,7 +220,7 @@ captures).
 
 Dump every match as newline-delimited JSON to stdout — one line per
 match, each line a JSON object with the per-type row arrays (`summary`,
-`scoreboard`, `personal`, `rank`, `unknown`).
+`teams`, `personal`, `rank`, `unknown`).
 
 ```sh
 bash scripts/db-export.sh

@@ -171,7 +171,7 @@ Real examples from Recall's parser-regression fixture set. The same PNG files li
 <table>
 <tr>
 <th align="left">SUMMARY</th>
-<th align="left">TEAMS scoreboard</th>
+<th align="left">TEAMS screen</th>
 </tr>
 <tr>
 <td valign="top" width="50%">
@@ -179,7 +179,7 @@ Real examples from Recall's parser-regression fixture set. The same PNG files li
 <sub>Antarctic Peninsula · comp victory 2-1. The map name + game type + heroes-played list + per-10-min averages all come from this tab.</sub>
 </td>
 <td valign="top" width="50%">
-<a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.33.04.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.33.04.png" alt="Post-match TEAMS scoreboard with both teams' stats" width="100%"></a>
+<a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.33.04.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.33.04.png" alt="Post-match TEAMS screen with both teams' stats" width="100%"></a>
 <sub>Same match. Eliminations / assists / deaths / damage / healing / mitigation all come from the highlighted row + the right-hand stat panel.</sub>
 </td>
 </tr>

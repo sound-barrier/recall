@@ -28,7 +28,7 @@ the Matches list. The four most common causes:
 
 | Cause | Symptom |
 |---|---|
-| **Captured only the scoreboard** (no SUMMARY) | Eliminations / assists / deaths populated, but map / mode / result / date are blank. Recall has the *what* but not the *where* or *when*. |
+| **Captured only the teams** (no SUMMARY) | Eliminations / assists / deaths populated, but map / mode / result / date are blank. Recall has the *what* but not the *where* or *when*. |
 | **Captured only PERSONAL** (no SUMMARY) | Hero stats populated, but no match context. |
 | **A non-Overwatch PNG in the watched folder** | Most fields blank, parser gave up. |
 | **Genuine OCR failure on a SUMMARY** | Map field came out garbled enough that the map-snap-to-known-list step rejected it. Rare on modern Tesseract but happens on borderline screenshots (heavy compression, weird HDR, ultrawide aspect ratios). |
@@ -61,9 +61,9 @@ or `vacant` (dim italic) status:
 | Type | control / push / escort / flashpoint / clash / hybrid |
 | Mode | competitive / quickplay |
 | Hero | Primary hero from SUMMARY's heroes_played list |
-| E/A/D | Eliminations / assists / deaths from scoreboard |
-| Damage | From scoreboard right-hand panel |
-| Healing | From scoreboard right-hand panel |
+| E/A/D | Eliminations / assists / deaths from teams |
+| Damage | From teams right-hand panel |
+| Healing | From teams right-hand panel |
 | Result | victory / defeat / draw (from SUMMARY) |
 
 A vacant Map column is what landed the record here — the others
@@ -75,7 +75,7 @@ how recoverable the record is.
 - **Source files** — the actual PNG filenames that fed this record,
   with an inline preview chip for each. Click a filename to expand
   the preview inline; useful for confirming "did I actually capture
-  the SUMMARY for this match, or just the scoreboard?".
+  the SUMMARY for this match, or just the teams?".
 - **Stats** — eliminations/assists/deaths/damage/healing/mitigation
   in the same big-card layout as a normal Matches card.
 
@@ -132,7 +132,7 @@ Open the SUMMARY PNG (click its filename) and check:
 
 - Is the map name clearly visible at the top of the screen?
 - Is the screenshot the full Overwatch UI, not cropped?
-- Is it the *post-match* SUMMARY, not the *in-match* scoreboard?
+- Is it the *post-match* SUMMARY, not the *in-match* teams?
   (They look superficially similar but the post-match one has the
   per-hero "Heroes Played" row at the bottom.)
 
@@ -169,7 +169,7 @@ won't extract it, that's a parser bug worth reporting. Open the
    Antarctic Peninsula but Recall left it blank" is a complete bug
    description.
 
-Recall doesn't read BattleTags, so scoreboard tags don't affect
+Recall doesn't read BattleTags, so teams tags don't affect
 repro; crop or blur them before uploading if you'd like.
 
 ## Needs your review (ambiguous attribution)

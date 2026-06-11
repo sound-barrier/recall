@@ -7,12 +7,12 @@ import (
 	"recall/pkg/parser"
 )
 
-// foldGroup lifts a scoreboard's detected queue type onto the
+// foldGroup lifts a teams-detected queue type onto the
 // top-level MatchRecord.QueueType and clears it from the nested Data,
 // so the effective value appears exactly once on the wire.
 func TestFoldGroup_LiftsDetectedQueueType(t *testing.T) {
 	vs := []screenshotView{{
-		filename: "s.png", typeName: "scoreboard", matchKey: "m1",
+		filename: "s.png", typeName: "teams", matchKey: "m1",
 		parsedAt: "2026-01-01T00:00:00Z",
 		data:     parser.MatchResult{Eliminations: 5, QueueType: "open"},
 	}}

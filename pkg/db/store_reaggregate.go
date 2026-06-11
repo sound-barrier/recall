@@ -62,8 +62,8 @@ func (s *SQLStore) ReAggregateUnknowns(heroFn func(rawHero string) string, mapFn
 	// Hard-coded SELECT/UPDATE SQL per table keeps the table name
 	// out of any concatenated query string — gosec G202 then has
 	// nothing to flag. The three parent tables that carry hero_raw
-	// (summary / scoreboard / personal) each get their own pair;
-	// the two that carry map_raw (summary / scoreboard) get the map
+	// (summary / teams / personal) each get their own pair;
+	// the two that carry map_raw (summary / teams) get the map
 	// pair. Personal doesn't have a map column.
 	type tableQueries struct {
 		selectHero string
@@ -79,10 +79,10 @@ func (s *SQLStore) ReAggregateUnknowns(heroFn func(rawHero string) string, mapFn
 			updateMap:  `UPDATE summary_screenshots SET map = ? WHERE id = ?`,
 		},
 		{
-			selectHero: `SELECT id, hero_raw FROM scoreboard_screenshots WHERE hero = '' AND hero_raw != ''`,
-			updateHero: `UPDATE scoreboard_screenshots SET hero = ? WHERE id = ?`,
-			selectMap:  `SELECT id, map_raw FROM scoreboard_screenshots WHERE map = '' AND map_raw != ''`,
-			updateMap:  `UPDATE scoreboard_screenshots SET map = ? WHERE id = ?`,
+			selectHero: `SELECT id, hero_raw FROM teams_screenshots WHERE hero = '' AND hero_raw != ''`,
+			updateHero: `UPDATE teams_screenshots SET hero = ? WHERE id = ?`,
+			selectMap:  `SELECT id, map_raw FROM teams_screenshots WHERE map = '' AND map_raw != ''`,
+			updateMap:  `UPDATE teams_screenshots SET map = ? WHERE id = ?`,
 		},
 		{
 			selectHero: `SELECT id, hero_raw FROM personal_screenshots WHERE hero = '' AND hero_raw != ''`,

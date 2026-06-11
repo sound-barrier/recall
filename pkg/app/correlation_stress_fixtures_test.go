@@ -49,7 +49,7 @@ type matchSpec struct {
 	// Match-level fields used by every emitted screenshot type.
 	// `primaryHero` is the SUMMARY's `hero` (i.e. the most-played
 	// hero in the match's heroes_played array). Mid-match swap is
-	// modeled via `scoreboardHero` / `personalHero` overrides.
+	// modeled via `teamsHero` / `personalHero` overrides.
 	mapName      string
 	mode         string
 	matchType    string
@@ -70,13 +70,13 @@ type matchSpec struct {
 	finishedAt string
 	gameLength string
 
-	// scoreboardHero, personalHero, personal2Hero override the hero on
+	// teamsHero, personalHero, personal2Hero override the hero on
 	// the relevant screenshot. Empty string = inherit primaryHero.
 	// emitPersonal2 turns on a SECOND PERSONAL screenshot at
 	// personal2Offset for mid-match swap modeling (cohort G).
-	scoreboardHero string
-	personalHero   string
-	personal2Hero  string
+	teamsHero     string
+	personalHero  string
+	personal2Hero string
 
 	rankBand     string // "diamond", "master", etc.
 	rankLevel    int
@@ -87,21 +87,21 @@ type matchSpec struct {
 	// Which screenshot types to emit for this spec. Default builder
 	// turns all four on; cohorts that want a subset zero out the
 	// flags they don't want.
-	emitSummary    bool
-	emitScoreboard bool
-	emitPersonal   bool
-	emitPersonal2  bool
-	emitRank       bool
+	emitSummary   bool
+	emitTeams     bool
+	emitPersonal  bool
+	emitPersonal2 bool
+	emitRank      bool
 
 	// Offsets from startTime for each emitted screenshot's filename
 	// timestamp. Zero offsets land at startTime exactly. Standard
-	// builder defaults are summary=+0, scoreboard=+30s, personal=+45s,
+	// builder defaults are summary=+0, teams=+30s, personal=+45s,
 	// personal2=+75s, rank=+90s.
-	summaryOffset    time.Duration
-	scoreboardOffset time.Duration
-	personalOffset   time.Duration
-	personal2Offset  time.Duration
-	rankOffset       time.Duration
+	summaryOffset   time.Duration
+	teamsOffset     time.Duration
+	personalOffset  time.Duration
+	personal2Offset time.Duration
+	rankOffset      time.Duration
 
 	// Filename label tucked into the screenshot filename so an
 	// otherwise-identical pair of matches still has distinct
@@ -118,7 +118,7 @@ type matchSpec struct {
 	bugNote     string
 
 	// useDefaultOffsets fills the *Offset fields with the
-	// conventional cluster (SUMMARY=+0, SCOREBOARD=+30s,
+	// conventional cluster (SUMMARY=+0, TEAMS=+30s,
 	// PERSONAL=+45s, PERSONAL2=+75s, RANK=+90s) when true. Cohorts
 	// that emit one screenshot per spec leave this false so each
 	// screenshot's filename timestamp lands exactly at startTime.
@@ -128,7 +128,7 @@ type matchSpec struct {
 // fixture is one screenshot the resolver will see.
 type fixture struct {
 	filename    string
-	scrType     string // "summary" | "scoreboard" | "personal" | "rank"
+	scrType     string // "summary" | "teams" | "personal" | "rank"
 	result      *parser.MatchResult
 	expectedKey string
 	bugNote     string
@@ -136,12 +136,12 @@ type fixture struct {
 
 // buildFixtures expands one matchSpec into the per-type fixtures the
 // resolver should see. Order in the returned slice — SUMMARY,
-// SCOREBOARD, PERSONAL, PERSONAL2, RANK — is the canonical emission
+// TEAMS, PERSONAL, PERSONAL2, RANK — is the canonical emission
 // order; cohorts that want a different order build separate specs.
 //
 // Offsets are honoured exactly. `defaultOffsets()` returns a
 // matchSpec preset with the conventional offsets (SUMMARY=+0,
-// SCOREBOARD=+30s, PERSONAL=+45s, PERSONAL2=+75s, RANK=+90s);
+// TEAMS=+30s, PERSONAL=+45s, PERSONAL2=+75s, RANK=+90s);
 // cohorts compose it with `spec.startTime = …` etc. Cohorts that
 // model the "one screenshot at this exact instant" case (e.g.
 // COHORT E's lone PERSONAL between two SUMMARY anchors) pass a
@@ -150,7 +150,7 @@ type fixture struct {
 func buildFixtures(spec matchSpec) []fixture {
 	if spec.useDefaultOffsets {
 		spec.summaryOffset = 0
-		spec.scoreboardOffset = 30 * time.Second
+		spec.teamsOffset = 30 * time.Second
 		spec.personalOffset = 45 * time.Second
 		spec.personal2Offset = 75 * time.Second
 		spec.rankOffset = 90 * time.Second
@@ -177,14 +177,14 @@ func buildFixtures(spec matchSpec) []fixture {
 			bugNote:     spec.bugNote,
 		})
 	}
-	if spec.emitScoreboard {
+	if spec.emitTeams {
 		hero := spec.primaryHero
-		if spec.scoreboardHero != "" {
-			hero = spec.scoreboardHero
+		if spec.teamsHero != "" {
+			hero = spec.teamsHero
 		}
 		out = append(out, fixture{
-			filename: filenameForTS(spec.startTime.Add(spec.scoreboardOffset), spec.suffix, "scoreboard"),
-			scrType:  "scoreboard",
+			filename: filenameForTS(spec.startTime.Add(spec.teamsOffset), spec.suffix, "teams"),
+			scrType:  "teams",
 			result: &parser.MatchResult{
 				Map:          spec.mapName,
 				Playlist:     spec.mode,
@@ -310,9 +310,9 @@ func (s *snapshotState) Insert(f fixture) {
 			Date: r.Date, FinishedAt: r.FinishedAt, GameLength: r.GameLength,
 			HeroesPlayed: heroesPlayed,
 		})
-	case "scoreboard":
+	case "teams":
 		r := f.result
-		s.snap.Scoreboards = append(s.snap.Scoreboards, db.ScoreboardRow{
+		s.snap.Teams = append(s.snap.Teams, db.TeamsRow{
 			Filename: f.filename, MatchKey: f.expectedKey,
 			Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,

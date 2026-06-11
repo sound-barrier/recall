@@ -181,12 +181,12 @@ func TestUnionSortedStrings(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────
 
 func TestResolveMatchKey_AdoptsByEADSignature(t *testing.T) {
-	// Existing scoreboard row with E/A/D=17/16/11, no map conflict.
+	// Existing teams row with E/A/D=17/16/11, no map conflict.
 	// New SUMMARY arrives ~3 min later with the same E/A/D — must
 	// adopt the existing match_key via the auto-adopt EAD-bridge
 	// window (<5 min).
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,

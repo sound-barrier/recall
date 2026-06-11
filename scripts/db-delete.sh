@@ -34,7 +34,7 @@ fi
 
 keys=$(sqlite3 "$DB" "
   SELECT match_key FROM summary_screenshots    WHERE $where_keys
-  UNION SELECT match_key FROM scoreboard_screenshots WHERE $where_keys
+  UNION SELECT match_key FROM teams_screenshots WHERE $where_keys
   UNION SELECT match_key FROM personal_screenshots   WHERE $where_keys
   UNION SELECT match_key FROM rank_screenshots       WHERE $where_keys
   UNION SELECT match_key FROM unknown_screenshots    WHERE $where_keys")
@@ -50,7 +50,7 @@ while IFS= read -r key; do
   esc_key=${key//\'/\'\'}
   files=$(sqlite3 "$DB" "
     SELECT filename FROM summary_screenshots    WHERE match_key='$esc_key'
-    UNION SELECT filename FROM scoreboard_screenshots WHERE match_key='$esc_key'
+    UNION SELECT filename FROM teams_screenshots WHERE match_key='$esc_key'
     UNION SELECT filename FROM personal_screenshots   WHERE match_key='$esc_key'
     UNION SELECT filename FROM rank_screenshots       WHERE match_key='$esc_key'
     UNION SELECT filename FROM unknown_screenshots    WHERE match_key='$esc_key'")

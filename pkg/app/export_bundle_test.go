@@ -20,7 +20,7 @@ import (
 //
 // Layout:
 //
-//	match-1 — normal, has a SUMMARY (s1.png) + SCOREBOARD (sb1.png)
+//	match-1 — normal, has a SUMMARY (s1.png) + TEAMS (sb1.png)
 //	match-2 — normal, has a SUMMARY (s2.png) WITH no map (unknown)
 //	match-3 — hidden, has a SUMMARY (s3.png)
 //
@@ -49,12 +49,12 @@ func seedBundleFixture(t *testing.T) (*App, *fakeStore, string) {
 			t.Fatal(e)
 		}
 	}
-	// match-1: full SUMMARY + SCOREBOARD on rialto.
+	// match-1: full SUMMARY + TEAMS on rialto.
 	must(fs.UpsertSummary(db.SummaryRow{
 		Filename: "s1.png", MatchKey: "match-1", ScreenshotsDirID: dirID,
 		Map: "rialto", Playlist: "competitive", Result: "victory", Hero: "lucio",
 	}))
-	must(fs.UpsertScoreboard(db.ScoreboardRow{
+	must(fs.UpsertTeams(db.TeamsRow{
 		Filename: "sb1.png", MatchKey: "match-1", ScreenshotsDirID: dirID,
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	}))

@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS summary_heroes_played (
 );
 -- statement-end
 
-CREATE TABLE IF NOT EXISTS scoreboard_screenshots (
+CREATE TABLE IF NOT EXISTS teams_screenshots (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   filename      TEXT NOT NULL UNIQUE,
   match_key     TEXT NOT NULL,
@@ -99,23 +99,23 @@ CREATE TABLE IF NOT EXISTS scoreboard_screenshots (
   damage        INTEGER NOT NULL DEFAULT 0,
   healing       INTEGER NOT NULL DEFAULT 0,
   mitigation    INTEGER NOT NULL DEFAULT 0,
-  -- Queue format inferred from players-per-team on the scoreboard:
+  -- Queue format inferred from players-per-team on the teams:
   -- 'role' (5v5) or 'open' (6v6); '' when the count couldn't be read.
   -- A user-set match_queue annotation overrides this at read time.
   queue_type    TEXT NOT NULL DEFAULT ''
 );
 -- statement-end
-CREATE INDEX IF NOT EXISTS idx_scoreboard_match_key_parsed_at ON scoreboard_screenshots(match_key, parsed_at);
+CREATE INDEX IF NOT EXISTS idx_teams_match_key_parsed_at ON teams_screenshots(match_key, parsed_at);
 -- statement-end
-CREATE INDEX IF NOT EXISTS idx_scoreboard_ead ON scoreboard_screenshots(eliminations, assists, deaths);
+CREATE INDEX IF NOT EXISTS idx_teams_ead ON teams_screenshots(eliminations, assists, deaths);
 -- statement-end
 
-CREATE TABLE IF NOT EXISTS scoreboard_hero_stats (
-  scoreboard_screenshot_id INTEGER NOT NULL REFERENCES scoreboard_screenshots(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS teams_hero_stats (
+  teams_screenshot_id INTEGER NOT NULL REFERENCES teams_screenshots(id) ON DELETE CASCADE,
   hero        TEXT NOT NULL,
   stat_key    TEXT NOT NULL,
   stat_value  INTEGER NOT NULL,
-  PRIMARY KEY (scoreboard_screenshot_id, hero, stat_key)
+  PRIMARY KEY (teams_screenshot_id, hero, stat_key)
 );
 -- statement-end
 

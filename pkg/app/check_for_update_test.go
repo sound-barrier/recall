@@ -623,7 +623,7 @@ func TestCheckForUpdate_PopulatesLastCheckedAtAndPersists(t *testing.T) {
 
 func TestCheckForUpdate_PopulatesReleaseNotesExcerpt(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	body := "## 1.2.0 — Roster bump\n\n* Added: Sojourn (DPS), Mauga (Tank)\n* Map rotation: Antarctic Peninsula now a Control mode entry.\n* Bugfix: scoreboard panel right-edge OCR\n"
+	body := "## 1.2.0 — Roster bump\n\n* Added: Sojourn (DPS), Mauga (Tank)\n* Map rotation: Antarctic Peninsula now a Control mode entry.\n* Bugfix: teams panel right-edge OCR\n"
 	tagName := "v1.2.0"
 	releaseJSON := fmt.Sprintf(`{"tag_name":%q,"html_url":"https://example/v1.2.0","body":%q}`, tagName, body)
 	srv := fakeReleasesServer(t, http.StatusOK, releaseJSON)

@@ -62,15 +62,15 @@ const exportSchemaV1 = "recall-export/v1"
 // remap auto-increment ids without forcing the source DB's IDs onto
 // the destination.
 type exportV1 struct {
-	Schema         string             `json:"schema"`
-	ExportedAt     string             `json:"exported_at"`
-	RecallVersion  string             `json:"recall_version"`
-	ScreenshotsDir map[string]string  `json:"screenshots_dirs"`
-	Summaries      []db.SummaryRow    `json:"summaries"`
-	Scoreboards    []db.ScoreboardRow `json:"scoreboards"`
-	Personals      []db.PersonalRow   `json:"personals"`
-	Ranks          []db.RankRow       `json:"ranks"`
-	Unknowns       []db.UnknownRow    `json:"unknowns"`
+	Schema         string            `json:"schema"`
+	ExportedAt     string            `json:"exported_at"`
+	RecallVersion  string            `json:"recall_version"`
+	ScreenshotsDir map[string]string `json:"screenshots_dirs"`
+	Summaries      []db.SummaryRow   `json:"summaries"`
+	Teams          []db.TeamsRow     `json:"teams"`
+	Personals      []db.PersonalRow  `json:"personals"`
+	Ranks          []db.RankRow      `json:"ranks"`
+	Unknowns       []db.UnknownRow   `json:"unknowns"`
 }
 
 // ExportData snapshots the current store and returns the export
@@ -91,7 +91,7 @@ func (a *App) ExportData() ([]byte, error) {
 		RecallVersion:  Version,
 		ScreenshotsDir: dirs,
 		Summaries:      snap.Summaries,
-		Scoreboards:    snap.Scoreboards,
+		Teams:          snap.Teams,
 		Personals:      snap.Personals,
 		Ranks:          snap.Ranks,
 		Unknowns:       snap.Unknowns,
@@ -169,9 +169,9 @@ func (a *App) importJSONv1(payload []byte) error {
 			return fmt.Errorf("import: summaries[%d] missing required filename", i)
 		}
 	}
-	for i, r := range doc.Scoreboards {
+	for i, r := range doc.Teams {
 		if r.Filename == "" {
-			return fmt.Errorf("import: scoreboards[%d] missing required filename", i)
+			return fmt.Errorf("import: teams[%d] missing required filename", i)
 		}
 	}
 	for i, r := range doc.Personals {
@@ -245,11 +245,11 @@ func (a *App) importJSONv1(payload []byte) error {
 			return fmt.Errorf("import: summary %q: %w", r.Filename, err)
 		}
 	}
-	for _, r := range doc.Scoreboards {
+	for _, r := range doc.Teams {
 		r.ID = 0
 		r.ScreenshotsDirID = remapID(r.ScreenshotsDirID)
-		if err := a.store.UpsertScoreboard(r); err != nil {
-			return fmt.Errorf("import: scoreboard %q: %w", r.Filename, err)
+		if err := a.store.UpsertTeams(r); err != nil {
+			return fmt.Errorf("import: teams %q: %w", r.Filename, err)
 		}
 	}
 	for _, r := range doc.Personals {

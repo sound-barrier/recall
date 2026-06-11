@@ -95,7 +95,7 @@ func TestApp_HardDeleteMatch_DelegatesAndValidates(t *testing.T) {
 }
 
 func TestApp_GetMatchResults_DecodesAndFolds(t *testing.T) {
-	// Two rows for the same match_key: a SUMMARY + a SCOREBOARD. The
+	// Two rows for the same match_key: a SUMMARY + a TEAMS. The
 	// aggregator must fuse them into one MatchRecord with both halves
 	// of the data.
 	fs := &fakeStore{
@@ -107,7 +107,7 @@ func TestApp_GetMatchResults_DecodesAndFolds(t *testing.T) {
 				{Hero: "lucio", PercentPlayed: 100},
 			},
 		}},
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "sb.png", MatchKey: "match-2026-05-10T21-29-28",
 			Playlist: "competitive", Hero: "lucio",
 			Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
@@ -134,10 +134,10 @@ func TestApp_GetMatchResults_DecodesAndFolds(t *testing.T) {
 }
 
 func TestApp_GetMatchResults_AppliesReadTimeInference(t *testing.T) {
-	// Single-hero scoreboard row (no SUMMARY → no percent_played) must
+	// Single-hero teams row (no SUMMARY → no percent_played) must
 	// come back with percent_played=100 via inferSoleHeroPercent.
 	fs := &fakeStore{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "a.png", MatchKey: "k1",
 			Playlist: "competitive", Hero: "lucio",
 			Eliminations: 17,
@@ -149,7 +149,7 @@ func TestApp_GetMatchResults_AppliesReadTimeInference(t *testing.T) {
 		t.Fatalf("GetMatchResults: %v", err)
 	}
 	if len(got[0].Data.HeroesPlayed) == 0 {
-		// scoreboards now don't auto-populate HeroesPlayed unless they
+		// teams now don't auto-populate HeroesPlayed unless they
 		// have panel stats — so this test verifies the single-hero
 		// fallback isn't triggered when there's no HeroesPlayed entry
 		// at all. The Hero field on the row is what surfaces in the UI.
@@ -187,7 +187,7 @@ func TestApp_RoundTripViaSQLStore(t *testing.T) {
 	t.Cleanup(func() { _ = s.Close() })
 	a := NewWithStore(s)
 
-	// Insert a SUMMARY + SCOREBOARD for the same match.
+	// Insert a SUMMARY + TEAMS for the same match.
 	if err := s.UpsertSummary(db.SummaryRow{
 		Filename: "s.png", MatchKey: "match-2026-05-10T21-29-28",
 		Map: "rialto", Playlist: "competitive", Hero: "lucio",
@@ -196,12 +196,12 @@ func TestApp_RoundTripViaSQLStore(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("UpsertSummary: %v", err)
 	}
-	if err := s.UpsertScoreboard(db.ScoreboardRow{
+	if err := s.UpsertTeams(db.TeamsRow{
 		Filename: "sb.png", MatchKey: "match-2026-05-10T21-29-28",
 		Playlist: "competitive", Hero: "lucio",
 		Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 	}); err != nil {
-		t.Fatalf("UpsertScoreboard: %v", err)
+		t.Fatalf("UpsertTeams: %v", err)
 	}
 
 	got, err := a.GetMatchResults()
@@ -221,7 +221,7 @@ func TestApp_RoundTripViaSQLStore(t *testing.T) {
 	if len(rec.Data.HeroesPlayed) != 1 || rec.Data.HeroesPlayed[0].PercentPlayed != 100 {
 		t.Errorf("HeroesPlayed round-trip broken: %+v", rec.Data.HeroesPlayed)
 	}
-	wantSourceTypes := map[string]string{"s.png": "summary", "sb.png": "scoreboard"}
+	wantSourceTypes := map[string]string{"s.png": "summary", "sb.png": "teams"}
 	if !reflect.DeepEqual(rec.SourceTypes, wantSourceTypes) {
 		t.Errorf("SourceTypes derivation broken:\n  got=%+v\n want=%+v", rec.SourceTypes, wantSourceTypes)
 	}
@@ -244,7 +244,7 @@ func TestApp_GetMatchResults_ExposesParsedAtFields(t *testing.T) {
 			ParsedAt: "2026-05-10T21:30:00Z",
 			Playlist: "competitive",
 		}},
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "b.png", MatchKey: "k1",
 			ParsedAt: "2026-05-10T21:30:05Z",
 			Playlist: "competitive", Eliminations: 5,
@@ -270,7 +270,7 @@ func TestApp_ScrapeReader_ReturnsAllRows(t *testing.T) {
 	// scrapeReader returns every row in the DB — competitive filtering is
 	// the metrics layer's job.
 	fs := &fakeStore{
-		Scoreboards: []db.ScoreboardRow{
+		Teams: []db.TeamsRow{
 			{Filename: "a.png", MatchKey: "m1", Playlist: "competitive", Eliminations: 17, Hero: "lucio"},
 			{Filename: "b.png", MatchKey: "m2", Playlist: "quickplay", Eliminations: 5, Hero: "kiriko"},
 		},
@@ -341,7 +341,7 @@ func TestApp_GetMatchResults_TagsHiddenMatches(t *testing.T) {
 	// When a match_key is in hidden_matches, the aggregator must set
 	// MatchRecord.Hidden = true so the frontend can dim or filter.
 	fs := &fakeStore{
-		Scoreboards: []db.ScoreboardRow{
+		Teams: []db.TeamsRow{
 			{ID: 1, Filename: "a.png", MatchKey: "m1", Eliminations: 1},
 			{ID: 2, Filename: "b.png", MatchKey: "m2", Eliminations: 2},
 		},
@@ -377,8 +377,8 @@ func TestApp_HideMatch_PreservesSourceFilenamesSoReparseSkipsThem(t *testing.T) 
 		Summaries: []db.SummaryRow{
 			{ID: 1, Filename: "a-summary.png", MatchKey: "m1"},
 		},
-		Scoreboards: []db.ScoreboardRow{
-			{ID: 1, Filename: "a-scoreboard.png", MatchKey: "m1"},
+		Teams: []db.TeamsRow{
+			{ID: 1, Filename: "a-teams.png", MatchKey: "m1"},
 		},
 	}
 	a := NewWithStore(fs)
@@ -389,7 +389,7 @@ func TestApp_HideMatch_PreservesSourceFilenamesSoReparseSkipsThem(t *testing.T) 
 	if err != nil {
 		t.Fatalf("LoadAllFilenames: %v", err)
 	}
-	if !got["a-summary.png"] || !got["a-scoreboard.png"] {
+	if !got["a-summary.png"] || !got["a-teams.png"] {
 		t.Errorf(
 			"hidden match's source files should remain in LoadAllFilenames "+
 				"so a re-parse skips them, got %+v",
@@ -410,7 +410,7 @@ func TestApp_ScrapeReader_DropsHiddenMatches(t *testing.T) {
 	// filter for competitive-only still lives in
 	// pkg/metrics/metrics.go::Collect.
 	fs := &fakeStore{
-		Scoreboards: []db.ScoreboardRow{
+		Teams: []db.TeamsRow{
 			{ID: 1, Filename: "a.png", MatchKey: "m1", Playlist: "competitive", Eliminations: 1},
 			{ID: 2, Filename: "b.png", MatchKey: "m2", Playlist: "competitive", Eliminations: 2},
 		},

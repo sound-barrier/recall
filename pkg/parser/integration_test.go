@@ -144,7 +144,7 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 // Two-field wrapper so each fixture asserts both the derived
 // screenshot-type classification AND the parser output. `Result` is
 // `any` because the concrete shape is one of *SummaryGolden /
-// *ScoreboardGolden / *PersonalGolden / *RankGolden (or *MatchResult
+// *TeamsGolden / *PersonalGolden / *RankGolden (or *MatchResult
 // for the unknown fallback) — see ToGolden in pkg/parser/golden.go.
 type goldenSnapshot struct {
 	ScreenshotType string `json:"screenshot_type"`

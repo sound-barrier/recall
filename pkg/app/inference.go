@@ -28,7 +28,7 @@ func (a *App) scrapeReader() ([]metrics.ScrapeRow, error) {
 }
 
 // inferSoleHeroPercent fills percent_played for matches where only one hero
-// is on record. Scoreboard-only rows (no SUMMARY screenshot captured) have a
+// is on record. Teams-only rows (no SUMMARY screenshot captured) have a
 // single HeroesPlayed entry with PercentPlayed=0 because that field only
 // comes from the SUMMARY tab — if there's just one hero, they were played
 // for the whole match.

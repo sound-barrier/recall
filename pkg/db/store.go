@@ -13,7 +13,7 @@ import (
 // across the five tables with children pre-attached.
 type Store interface {
 	UpsertSummary(r SummaryRow) error
-	UpsertScoreboard(r ScoreboardRow) error
+	UpsertTeams(r TeamsRow) error
 	UpsertPersonal(r PersonalRow) error
 	UpsertRank(r RankRow) error
 	UpsertUnknown(r UnknownRow) error
@@ -112,7 +112,7 @@ type Store interface {
 	// known" signal; absence means "queue not set." Set by the user
 	// via the right-panel radiogroup today; a future parser update
 	// will also write here when it can count team rows on a
-	// scoreboard screenshot. SetMatchQueue upserts; ClearMatchQueue
+	// teams screenshot. SetMatchQueue upserts; ClearMatchQueue
 	// deletes; LoadMatchQueues returns the full map keyed by
 	// match_key for the aggregator to attach to MatchRecord.
 	SetMatchQueue(matchKey, queueType string) error
@@ -187,7 +187,7 @@ type ReviewState struct {
 // QueueState is one row of match_queue. `QueueType` is the
 // CHECK-constrained enum ('role' | 'open'); `OverriddenAt` is the
 // server-assigned timestamp captured when the user toggled the value
-// (or when a future parser update wrote it from a scoreboard parse).
+// (or when a future parser update wrote it from a teams parse).
 type QueueState struct {
 	QueueType    string
 	OverriddenAt string
@@ -278,8 +278,8 @@ type SummaryHeroPlayed struct {
 	PlayTime      string
 }
 
-// ScoreboardRow holds one parsed SCOREBOARD screenshot.
-type ScoreboardRow struct {
+// TeamsRow holds one parsed TEAMS screenshot.
+type TeamsRow struct {
 	ID               int64
 	Filename         string
 	MatchKey         string
@@ -304,7 +304,7 @@ type ScoreboardRow struct {
 }
 
 // HeroStat is one (hero, stat_key, stat_value) row. Shared shape used by
-// both scoreboard_hero_stats and personal_hero_stats.
+// both teams_hero_stats and personal_hero_stats.
 type HeroStat struct {
 	Hero      string
 	StatKey   string
@@ -361,11 +361,11 @@ type UnknownRow struct {
 // Screenshots is the bulk-load result — every row in the DB grouped by
 // parent type, with children attached.
 type Screenshots struct {
-	Summaries   []SummaryRow
-	Scoreboards []ScoreboardRow
-	Personals   []PersonalRow
-	Ranks       []RankRow
-	Unknowns    []UnknownRow
+	Summaries []SummaryRow
+	Teams     []TeamsRow
+	Personals []PersonalRow
+	Ranks     []RankRow
+	Unknowns  []UnknownRow
 
 	// ScreenshotsDirs maps screenshots_dirs.id → path so the aggregator
 	// can validate per-row dirIDs before populating SourceDirIDs on

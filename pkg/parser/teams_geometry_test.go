@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// These tests pin the pixel-geometry helpers in parse_scoreboard.go.
+// These tests pin the pixel-geometry helpers in parse_teams.go.
 // They were at 0% unit coverage until now — every regression had to
 // trip through a full Tesseract round-trip via the golden-file
 // integration test (which covers only 5 PNG fixtures). Crafted
@@ -22,7 +22,7 @@ func fillRect(img *image.RGBA, rect image.Rectangle, c color.RGBA) {
 	}
 }
 
-// The scoreboard-blue is the friendly-team table background; the
+// The teams-blue is the friendly-team table background; the
 // brighter shade is the highlighted-row variant. Both match the
 // (r8 < 60, g8 > 60, b8 > 90, b8 > r8+40) predicate in
 // findHighlightedRowY.

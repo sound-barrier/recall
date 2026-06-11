@@ -32,7 +32,7 @@ func TestExportImportCSV_RoundTrip(t *testing.T) {
 		Map: "rialto", Playlist: "competitive", Hero: "lucio", Result: "victory",
 		HeroesPlayed: []db.SummaryHeroPlayed{{Hero: "lucio", PercentPlayed: 100, PlayTime: "09:32"}},
 	}))
-	must(fs.UpsertScoreboard(db.ScoreboardRow{
+	must(fs.UpsertTeams(db.TeamsRow{
 		Filename: "sb.png", MatchKey: "match-1", ScreenshotsDirID: dirID,
 		Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 		HeroStats: []db.HeroStat{{Hero: "lucio", StatKey: "weapon_accuracy", StatValue: 35}},
@@ -67,7 +67,7 @@ func TestExportImportCSV_RoundTrip(t *testing.T) {
 	wantFiles := []string{
 		"manifest.json", "screenshots_dirs.csv",
 		"summaries.csv", "summary_heroes_played.csv",
-		"scoreboards.csv", "scoreboard_hero_stats.csv",
+		"teams.csv", "teams_hero_stats.csv",
 		"personals.csv", "personal_hero_stats.csv",
 		"ranks.csv", "rank_modifiers.csv", "rank_sr.csv",
 		"unknowns.csv",
@@ -95,7 +95,7 @@ func TestExportImportCSV_RoundTrip(t *testing.T) {
 		n    int
 	}{
 		{"summaries", len(got.Summaries)},
-		{"scoreboards", len(got.Scoreboards)},
+		{"teams", len(got.Teams)},
 		{"personals", len(got.Personals)},
 		{"ranks", len(got.Ranks)},
 		{"unknowns", len(got.Unknowns)},

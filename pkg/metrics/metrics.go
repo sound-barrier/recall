@@ -202,7 +202,7 @@ func (c *Collector) emitMatch(ch chan<- prometheus.Metric, row ScrapeRow, ts tim
 //     since it's what the game itself reported).
 //  2. The match_key, when it carries an ISO-ish "match-YYYY-MM-DDTHH:MM:SS"
 //     prefix derived from the earliest screenshot's filename timestamp.
-//     This covers rows that only had an in-game scoreboard parsed (no SUMMARY,
+//     This covers rows that only had an in-game teams parsed (no SUMMARY,
 //     so date/finished_at are empty) — without this fallback those matches
 //     would silently disappear from Prometheus.
 //

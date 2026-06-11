@@ -45,7 +45,7 @@ const unknownRecord = {
 const ambiguousRecord = {
   match_key: 'ambiguous-scoreboard-2.png',
   source_files: ['scoreboard-2.png'],
-  source_types: { 'scoreboard-2.png': 'scoreboard' },
+  source_types: { 'scoreboard-2.png': 'teams' },
   data: { hero: 'lucio' },
   parsed_at: '2026-05-10T21:42:00Z',
   ambiguous: true,

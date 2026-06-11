@@ -80,7 +80,7 @@ defineEmits<{
               <span class="pp-fl">length</span><span class="pp-fv">{{ parseProgress.data.game_length }}</span>
             </span>
           </template>
-          <template v-else-if="parseProgress.screenshot_type === 'scoreboard'">
+          <template v-else-if="parseProgress.screenshot_type === 'teams'">
             <span class="pp-field">
               <span class="pp-fl">elims</span><span class="pp-fv">{{ parseProgress.data?.eliminations ?? '—' }}</span>
             </span>

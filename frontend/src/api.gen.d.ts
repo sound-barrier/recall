@@ -14,7 +14,7 @@ export interface paths {
         /**
          * List parsed match records (optionally paginated)
          * @description Returns match records, assembled by JOINing the
-         *     per-screenshot-type rows (summary / scoreboard / personal /
+         *     per-screenshot-type rows (summary / teams / personal /
          *     rank / unknown) that share each `match_key`. Read-time
          *     derivations (`inferSoleHeroPercent`, `inferResultFromRank`)
          *     plus role-from-hero and type-from-map lookups are applied
@@ -318,7 +318,7 @@ export interface paths {
         get?: never;
         /**
          * Override a match's queue type
-         * @description Overrides the queue format auto-detected from the scoreboard's
+         * @description Overrides the queue format auto-detected from the teams
          *     players-per-team count. Two states:
          *
          *       - `role` — 5v5 role queue (locked 1-2-2 composition)
@@ -1639,7 +1639,7 @@ export interface components {
                 [key: string]: string;
             };
             summaries?: components["schemas"]["SummaryExportRow"][];
-            scoreboards?: components["schemas"]["ScoreboardExportRow"][];
+            teams?: components["schemas"]["TeamsExportRow"][];
             personals?: components["schemas"]["PersonalExportRow"][];
             ranks?: components["schemas"]["RankExportRow"][];
             unknowns?: components["schemas"]["UnknownExportRow"][];
@@ -1684,11 +1684,11 @@ export interface components {
             [key: string]: unknown;
         };
         /**
-         * @description One row of `scoreboard_screenshots` plus its
-         *     `scoreboard_hero_stats` child rows. Mirrors
-         *     `pkg/db/store.go::ScoreboardRow`.
+         * @description One row of `teams_screenshots` plus its
+         *     `teams_hero_stats` child rows. Mirrors
+         *     `pkg/db/store.go::TeamsRow`.
          */
-        ScoreboardExportRow: {
+        TeamsExportRow: {
             filename: string;
             match_key: string;
             parsed_at?: string;
@@ -1767,7 +1767,7 @@ export interface components {
         };
         /**
          * @description One `(hero, stat_key, stat_value)` row from
-         *     `scoreboard_hero_stats` or `personal_hero_stats`.
+         *     `teams_hero_stats` or `personal_hero_stats`.
          */
         HeroStatExportRow: {
             hero: string;
@@ -1805,7 +1805,7 @@ export interface components {
              *     parse time. May be absent on rows parsed before this column
              *     landed.
              * @example {
-             *       "Overwatch Screenshot 2026.05.10 - 22.21.11.79.png": "scoreboard",
+             *       "Overwatch Screenshot 2026.05.10 - 22.21.11.79.png": "teams",
              *       "Overwatch Screenshot 2026.05.10 - 22.21.57.34.png": "rank"
              *     }
              */
@@ -1879,7 +1879,7 @@ export interface components {
             /**
              * @description Queue format the match was played in: `role` (5v5 role
              *     queue) or `open` (6v6 open queue). Auto-detected from the
-             *     scoreboard's players-per-team count; a user override set
+             *     teams players-per-team count; a user override set
              *     via `PUT /api/v1/matches/{match_key}/queue` takes
              *     precedence, and `DELETE` on the same path reverts to the
              *     detected value. Omitted entirely when neither a detection
@@ -1981,7 +1981,7 @@ export interface components {
         /**
          * @description Classification of one screenshot:
          *       * `summary` — post-match SUMMARY tab
-         *       * `scoreboard` — in-game or post-match TEAMS scoreboard
+         *       * `teams` — in-game or post-match TEAMS screen
          *       * `personal` — post-match PERSONAL tab
          *       * `rank` — competitive RANK PROGRESS screen
          *       * `unknown` — the OCR classifier couldn't pick a type from
@@ -1991,7 +1991,7 @@ export interface components {
          *         or drop).
          * @enum {string}
          */
-        ScreenshotType: "summary" | "scoreboard" | "personal" | "rank" | "unknown";
+        ScreenshotType: "summary" | "teams" | "personal" | "rank" | "unknown";
         /** @description All parsed data for a match, merged across its source files. */
         MatchResult: {
             /** @description e.g. "rialto" */

@@ -607,7 +607,7 @@ func TestMatchVisibility_MethodNotAllowed(t *testing.T) {
 
 func TestMatchResolution_HappyPath(t *testing.T) {
 	fs := dbtest.New()
-	fs.Scoreboards = []db.ScoreboardRow{
+	fs.Teams = []db.TeamsRow{
 		{Filename: "sb.png", MatchKey: "ambiguous-sb.png"},
 	}
 	fs.Ambiguous = map[string][]db.AmbiguousCandidate{
@@ -620,8 +620,8 @@ func TestMatchResolution_HappyPath(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("resolution status = %d, body: %s", rec.Code, rec.Body.String())
 	}
-	if fs.Scoreboards[0].MatchKey != "match-foo" {
-		t.Errorf("scoreboard not updated: %q", fs.Scoreboards[0].MatchKey)
+	if fs.Teams[0].MatchKey != "match-foo" {
+		t.Errorf("teams not updated: %q", fs.Teams[0].MatchKey)
 	}
 }
 
@@ -1142,7 +1142,7 @@ func TestImports_RejectsNullInUnknowns(t *testing.T) {
 		"recall_version": "test",
 		"screenshots_dirs": {},
 		"summaries": [],
-		"scoreboards": [],
+		"teams": [],
 		"personals": [],
 		"ranks": [],
 		"unknowns": [null]

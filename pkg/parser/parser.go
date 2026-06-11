@@ -24,7 +24,7 @@
 //     parseHeroesPlayed / parsePerformance / parseRightCard
 //   - parse_personal.go   — isPersonalScreenshot + parsePersonal +
 //     parsePersonalHeroCell / parsePersonalStatCell
-//   - parse_scoreboard.go — parseScoreboard + parsePanelStats +
+//   - parse_teams.go — parseTeams + parsePanelStats +
 //     findHighlightedRowY / ocrRowCells / findRowXExtent /
 //     findStatColumns
 //   - parser.go (this file) — the ParseScreenshot dispatcher,
@@ -93,7 +93,7 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 	if isPersonalScreenshot(img, work) {
 		return parsePersonal(img, work)
 	}
-	return parseScoreboard(img, work)
+	return parseTeams(img, work)
 }
 
 // parseSingleFunc is the indirection ParseScreenshotsDir routes each file

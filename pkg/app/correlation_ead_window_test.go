@@ -21,7 +21,7 @@ import (
 
 func TestMatchByEAD_SingleCandidate_WithinAutoWindow_AutoAdopts(t *testing.T) {
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
@@ -44,7 +44,7 @@ func TestMatchByEAD_SingleCandidate_WithinAutoWindow_AutoAdopts(t *testing.T) {
 
 func TestMatchByEAD_SingleCandidate_InAmbiguousZone_SurfacesCandidate(t *testing.T) {
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
@@ -73,7 +73,7 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_SurfacesCandidate(t *testing
 
 func TestMatchByEAD_OutsideMaxWindow_NoBridge(t *testing.T) {
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
@@ -90,7 +90,7 @@ func TestMatchByEAD_OutsideMaxWindow_NoBridge(t *testing.T) {
 
 func TestMatchByEAD_MultipleCandidates_SurfacesAllSortedByDistance(t *testing.T) {
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{
+		Teams: []db.TeamsRow{
 			{
 				Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.27.28 _a.png", MatchKey: "match-A",
 				Eliminations: 17, Assists: 16, Deaths: 11,
@@ -123,7 +123,7 @@ func TestMatchByEAD_MultipleCandidates_SurfacesAllSortedByDistance(t *testing.T)
 
 func TestResolveMatchKey_AmbiguousMintsSentinelAndReturnsCandidates(t *testing.T) {
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,
@@ -152,12 +152,12 @@ func TestResolveMatchKey_AmbiguousMintsSentinelAndReturnsCandidates(t *testing.T
 
 func TestMatchByEAD_SingleCandidate_InAmbiguousZone_FinishedAtCorroborates_AutoAdopts(t *testing.T) {
 	// Live-data shape: post-match SUMMARY at 21:49:53 with
-	// finished_at="21:29" bridging to an in-game SCOREBOARD at
+	// finished_at="21:29" bridging to an in-game TEAMS at
 	// 21:29:28. 20-min gap is in the 5–30 m ambiguous zone, but
-	// SUMMARY's finished_at HH:MM matches SCOREBOARD's filename HH:MM
+	// SUMMARY's finished_at HH:MM matches TEAMS filename HH:MM
 	// exactly, so the bridge auto-adopts.
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.16.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
 			Map:          "aatlis",
@@ -187,7 +187,7 @@ func TestResolveMatchKey_EADBridge_AmbiguousZone_FinishedAtCorroborates_EndToEnd
 	// "ambiguous-" sentinel) when finished_at corroborates. Pins the
 	// live-data scenario all the way through the public surface.
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.16.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
 			Map:          "aatlis",
@@ -213,13 +213,13 @@ func TestResolveMatchKey_EADBridge_AmbiguousZone_FinishedAtCorroborates_EndToEnd
 
 func TestResolveMatchKey_LiveAatlisCascade_EndToEnd(t *testing.T) {
 	// Exact replay of the live-data bug from data/db/recall.db:
-	// in-game SCOREBOARD at 21:29:28 for aatlis/lucio (EAD=17/14/7);
+	// in-game TEAMS at 21:29:28 for aatlis/lucio (EAD=17/14/7);
 	// 20 minutes later the user captures the post-match SUMMARY +
-	// SCOREBOARD + PERSONAL trio (21:49:53/55/57). All three must
+	// TEAMS + PERSONAL trio (21:49:53/55/57). All three must
 	// adopt match:2026-05-10T21:29:28 instead of cascading into
 	// ambiguous keys.
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.16.png",
 			MatchKey: "match-2026-05-10T21-29-28",
 			Map:      "aatlis", Hero: "lucio",
@@ -229,7 +229,7 @@ func TestResolveMatchKey_LiveAatlisCascade_EndToEnd(t *testing.T) {
 	expectedKey := "match-2026-05-10T21-29-28"
 
 	// 1. Post-match SUMMARY arrives at 21:49:53.95 — finished_at=21:29
-	//    matches the existing SCOREBOARD's filename HH:MM.
+	//    matches the existing TEAMS filename HH:MM.
 	sumFile := "Overwatch 2 Screenshot 2026.05.10 - 21.49.53.95.png"
 	sumResult := &parser.MatchResult{
 		Map: "aatlis", Hero: "lucio", Result: "victory",
@@ -250,10 +250,10 @@ func TestResolveMatchKey_LiveAatlisCascade_EndToEnd(t *testing.T) {
 		PerfDeathsTotal:  sumResult.Deaths,
 	})
 
-	// 2. Post-match SCOREBOARD at 21:49:55.46 — same EAD as the
+	// 2. Post-match TEAMS at 21:49:55.46 — same EAD as the
 	//    SUMMARY adopted in step 1; it's 1.5 s away (well inside the
 	//    auto-window). The bridge now has TWO same-key candidates
-	//    (original SCOREBOARD + just-adopted SUMMARY); the SUMMARY
+	//    (original TEAMS + just-adopted SUMMARY); the SUMMARY
 	//    is closer so the auto-window check fires.
 	sbFile := "Overwatch 2 Screenshot 2026.05.10 - 21.49.55.46.png"
 	sbResult := &parser.MatchResult{
@@ -262,9 +262,9 @@ func TestResolveMatchKey_LiveAatlisCascade_EndToEnd(t *testing.T) {
 	}
 	gotSB, _ := resolveMatchKey(sbFile, sbResult, snap)
 	if gotSB != expectedKey {
-		t.Fatalf("SCOREBOARD: got %q, want %q", gotSB, expectedKey)
+		t.Fatalf("TEAMS: got %q, want %q", gotSB, expectedKey)
 	}
-	snap.Scoreboards = append(snap.Scoreboards, db.ScoreboardRow{
+	snap.Teams = append(snap.Teams, db.TeamsRow{
 		Filename: sbFile, MatchKey: gotSB,
 		Map: sbResult.Map, Hero: sbResult.Hero,
 		Eliminations: sbResult.Eliminations,
@@ -289,7 +289,7 @@ func TestMatchByEAD_MultiCandidate_OneCorroborated_AutoAdoptsCorroborated(t *tes
 	// corroborated → auto-adopt match:A even though both fall inside
 	// the bridge window.
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{
+		Teams: []db.TeamsRow{
 			{
 				Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.00.png",
 				MatchKey: "match-A",
@@ -322,8 +322,8 @@ func TestMatchByEAD_MultiCandidate_OneCorroborated_AutoAdoptsCorroborated(t *tes
 }
 
 func TestMatchByEAD_BridgesToExistingSummaryByPerfEAD(t *testing.T) {
-	// Once a SUMMARY adopts an in-game SCOREBOARD's key via
-	// finished_at corroboration, a downstream SCOREBOARD that arrives
+	// Once a SUMMARY adopts an in-game TEAMS key via
+	// finished_at corroboration, a downstream TEAMS that arrives
 	// within the auto-window of that SUMMARY must see the SUMMARY as
 	// an EAD candidate (via its perf totals). Pins the cascade fix
 	// where snapshotExisting exposes SUMMARY perf totals to matchByEAD.
@@ -336,7 +336,7 @@ func TestMatchByEAD_BridgesToExistingSummaryByPerfEAD(t *testing.T) {
 			PerfElimTotal: 17, PerfAssistsTotal: 14, PerfDeathsTotal: 7,
 		}},
 	}
-	// A SCOREBOARD that arrives 1.5 seconds later with the same EAD —
+	// A TEAMS that arrives 1.5 seconds later with the same EAD —
 	// no finished_at of its own, no triple-agreement signal, just
 	// physical proximity to the SUMMARY.
 	cand := candidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.49.55.46.png", &parser.MatchResult{
@@ -357,7 +357,7 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_NoCorroborator_StaysAmbiguou
 	// corroborating fields stays ambiguous even with a single
 	// candidate inside the 5–30 m window.
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 14, Deaths: 7,
@@ -384,7 +384,7 @@ func TestResolveMatchKey_EADBridge_BeyondMaxWindow_MintsFreshKey(t *testing.T) {
 	// Under the new rules, the EAD bridge refuses to fire; the resolver
 	// falls through to fresh-key minted from the new filename.
 	snap := db.Screenshots{
-		Scoreboards: []db.ScoreboardRow{{
+		Teams: []db.TeamsRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.05.03 - 21.29.28 _sb.png",
 			MatchKey:     "match-2026-05-03T21-29-28",
 			Eliminations: 17, Assists: 16, Deaths: 11,

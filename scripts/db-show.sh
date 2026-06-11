@@ -31,7 +31,7 @@ else
 fi
 keys=$(sqlite3 "$DB" "
   SELECT match_key FROM summary_screenshots    WHERE $where_keys
-  UNION SELECT match_key FROM scoreboard_screenshots WHERE $where_keys
+  UNION SELECT match_key FROM teams_screenshots WHERE $where_keys
   UNION SELECT match_key FROM personal_screenshots   WHERE $where_keys
   UNION SELECT match_key FROM rank_screenshots       WHERE $where_keys
   UNION SELECT match_key FROM unknown_screenshots    WHERE $where_keys")
@@ -50,7 +50,7 @@ pp() {
 # Each parent: (table-name, child-table, FK-column).
 parents=(
   "summary_screenshots    summary_heroes_played  summary_screenshot_id"
-  "scoreboard_screenshots scoreboard_hero_stats  scoreboard_screenshot_id"
+  "teams_screenshots teams_hero_stats  teams_screenshot_id"
   "personal_screenshots   personal_hero_stats    personal_screenshot_id"
   "rank_screenshots       rank_modifiers         rank_screenshot_id"
   "rank_screenshots       rank_sr                rank_screenshot_id"

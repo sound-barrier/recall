@@ -84,11 +84,11 @@ recall_db_path() {
 }
 
 parent_tables() {
-  printf '%s\n' summary_screenshots scoreboard_screenshots personal_screenshots rank_screenshots unknown_screenshots
+  printf '%s\n' summary_screenshots teams_screenshots personal_screenshots rank_screenshots unknown_screenshots
 }
 
 child_tables() {
-  printf '%s\n' summary_heroes_played scoreboard_hero_stats personal_hero_stats rank_modifiers rank_sr
+  printf '%s\n' summary_heroes_played teams_hero_stats personal_hero_stats rank_modifiers rank_sr
 }
 
 # require_new_schema exits 1 if the DB carries the pre-PR-#45 single-

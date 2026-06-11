@@ -34,7 +34,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
     match_key: 'demo:match:2026-05-10T22:21:11',
     source_files: ['tour-rialto-1.png', 'tour-rialto-2.png'],
     source_types: {
-      'tour-rialto-1.png': 'scoreboard',
+      'tour-rialto-1.png': 'teams',
       'tour-rialto-2.png': 'summary',
     },
     source_parsed_at: {
@@ -73,7 +73,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
     match_key: 'demo:match:2026-05-10T21:49:34',
     source_files: ['tour-aatlis-1.png', 'tour-aatlis-2.png', 'tour-aatlis-3.png'],
     source_types: {
-      'tour-aatlis-1.png': 'scoreboard',
+      'tour-aatlis-1.png': 'teams',
       'tour-aatlis-2.png': 'summary',
       'tour-aatlis-3.png': 'personal',
     },
@@ -146,7 +146,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
     match_key: 'demo:match:2026-05-10T19:40:12',
     source_files: ['tour-numbani-1.png', 'tour-numbani-2.png'],
     source_types: {
-      'tour-numbani-1.png': 'scoreboard',
+      'tour-numbani-1.png': 'teams',
       'tour-numbani-2.png': 'summary',
     },
     source_parsed_at: {
@@ -199,7 +199,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
   {
     match_key: 'ambiguous-tour-aatlis-ambig.png',
     source_files: ['tour-aatlis-ambig.png'],
-    source_types: { 'tour-aatlis-ambig.png': 'scoreboard' },
+    source_types: { 'tour-aatlis-ambig.png': 'teams' },
     source_parsed_at: { 'tour-aatlis-ambig.png': '2026-05-10T22:01:00Z' },
     data: {
       playlist: 'competitive',

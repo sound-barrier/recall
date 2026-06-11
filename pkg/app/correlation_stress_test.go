@@ -17,10 +17,10 @@ package app
 //   C. Same-hero back-to-back, different EAD ...... 40   (10 pairs × 2 screenshots × 2)
 //   D. Same-hero back-to-back, identical EAD ...... 40   (10 pairs × 2 screenshots × 2)
 //   E. Timestamp-window 90s edge .................. 40   (8 pairs × 5 screenshots)
-//   F. Multi-hero match — SCOREBOARD swap ......... 40   (10 matches × 4 screenshots)
+//   F. Multi-hero match — TEAMS swap ......... 40   (10 matches × 4 screenshots)
 //   G. Multi-hero match — 2 PERSONALs swap ........ 20   (5 matches × 4 screenshots)
 //   H. RANK adoption (clean) ...................... 30   (10 matches × 3 screenshots)
-//   I. Zero-stat scoreboard ....................... 20   (5 matches × 4 screenshots)
+//   I. Zero-stat teams ....................... 20   (5 matches × 4 screenshots)
 //   J. Unparseable filename timestamps ............ 15   (15 PERSONALs with no ts)
 //   K. Identical filename timestamps (duplicates) . 15   (5 triples)
 //                                                  ──────
@@ -77,14 +77,14 @@ func pickAt[T any](slice []T, idx int) T {
 // COHORT A — baseline clean.
 //
 // 25 matches, well-separated in time, single-hero each. Every match
-// emits SUMMARY → SCOREBOARD → PERSONAL → RANK. Standard offsets
+// emits SUMMARY → TEAMS → PERSONAL → RANK. Standard offsets
 // (0s, 30s, 45s, 90s after the match anchor). EAD signatures are
 // unique per match so EAD-bridge can never collide. Result keys
 // derive directly from each match's startTime.
 //
 // What this cohort proves:
 //   - SUMMARY mints the canonical match_key for its match.
-//   - SCOREBOARD adopts SUMMARY's key via EAD-bridge OR timestamp
+//   - TEAMS adopts SUMMARY's key via EAD-bridge OR timestamp
 //     window (either path qualifies here).
 //   - PERSONAL adopts via timestamp window (PERSONAL has no EAD).
 //   - RANK adopts via timestamp window (RANK has no map).
@@ -124,7 +124,7 @@ func TestCorrelation_Stress_BaselineClean(t *testing.T) {
 			rankChange:        24,
 			rankResult:        "victory",
 			emitSummary:       true,
-			emitScoreboard:    true,
+			emitTeams:         true,
 			emitPersonal:      true,
 			emitRank:          true,
 			useDefaultOffsets: true,
@@ -156,12 +156,12 @@ func TestCorrelation_Stress_BaselineClean(t *testing.T) {
 // the time-blind bridge silently merged Y into X.)
 //
 // Pattern per pair:
-//   Match X (anchor day)         → SUMMARY x:00, SCOREBOARD x:30
-//   Match Y (7–16 days later)    → SCOREBOARD y−10s (first), SUMMARY y
-//     - Y SCOREBOARD: EAD bridge sees X but X is >30m away, refuses.
+//   Match X (anchor day)         → SUMMARY x:00, TEAMS x:30
+//   Match Y (7–16 days later)    → TEAMS y−10s (first), SUMMARY y
+//     - Y TEAMS: EAD bridge sees X but X is >30m away, refuses.
 //       Mints fresh key matchKeyFor(y−10s).
 //     - Y SUMMARY: no EAD on summary side; falls into timestamp window
-//       and adopts the just-inserted Y SCOREBOARD's key (10s away).
+//       and adopts the just-inserted Y TEAMS key (10s away).
 //
 // Per-pair fixture count: 2 screenshots × 2 matches = 4 fixtures.
 // 40 total; 0 buggy pins remaining.
@@ -191,15 +191,15 @@ func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
 			date:              x.Format("01/02/2006"),
 			finishedAt:        x.Add(45 * time.Second).Format("15:04"),
 			emitSummary:       true,
-			emitScoreboard:    true,
+			emitTeams:         true,
 			useDefaultOffsets: true,
 			suffix:            fmt.Sprintf("B%02dx", i),
 			expectedKey:       matchKeyFor(x),
 		})
 
 		// Match Y — no longer adopts X (>30m gap blocks the bridge).
-		// SCOREBOARD is emitted at y−10s; SUMMARY at y. Both adopt the
-		// fresh SCOREBOARD-anchor key.
+		// TEAMS is emitted at y−10s; SUMMARY at y. Both adopt the
+		// fresh TEAMS-anchor key.
 		specs = append(specs, matchSpec{
 			startTime:    y,
 			mapName:      mapName,
@@ -209,56 +209,56 @@ func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
 			primaryHero:  hero,
 			eliminations: e, assists: a, deaths: d,
 			damage: 7000, healing: 2700, mitigation: 1300,
-			result:         "victory",
-			date:           y.Format("01/02/2006"),
-			finishedAt:     y.Add(45 * time.Second).Format("15:04"),
-			emitSummary:    true,
-			emitScoreboard: true,
-			suffix:         fmt.Sprintf("B%02dy", i),
-			expectedKey:    matchKeyFor(y.Add(-10 * time.Second)),
+			result:      "victory",
+			date:        y.Format("01/02/2006"),
+			finishedAt:  y.Add(45 * time.Second).Format("15:04"),
+			emitSummary: true,
+			emitTeams:   true,
+			suffix:      fmt.Sprintf("B%02dy", i),
+			expectedKey: matchKeyFor(y.Add(-10 * time.Second)),
 		})
 	}
 
-	// Match Y's SUMMARY and Match Y's SCOREBOARD both inherit the
+	// Match Y's SUMMARY and Match Y's TEAMS both inherit the
 	// bug. The expected `date` field differs between X and Y, but
 	// rowsConflict() refuses to bridge when BOTH sides have a date
 	// and they differ — so the production resolver actually REJECTS
 	// the bridge once SUMMARY's date populates. Strip date from
-	// SCOREBOARD's MatchResult (it's not parsed from scoreboards) to
-	// model the in-game scenario where SCOREBOARD comes first.
+	// a TEAMS MatchResult (it's not parsed from teams) to
+	// model the in-game scenario where TEAMS comes first.
 	//
-	// For honest pinning we emit SCOREBOARD before SUMMARY for the
-	// Y match — that way the SCOREBOARD has no date, EAD-bridge
+	// For honest pinning we emit TEAMS before SUMMARY for the
+	// Y match — that way the TEAMS has no date, EAD-bridge
 	// fires, and X's key gets adopted.
 	fixtures := make([]fixture, 0, 40)
 	for i, s := range specs {
-		// X specs (even idx): emit SUMMARY first then SCOREBOARD.
-		// Y specs (odd idx): emit SCOREBOARD first (no date) so the
+		// X specs (even idx): emit SUMMARY first then TEAMS.
+		// Y specs (odd idx): emit TEAMS first (no date) so the
 		// EAD-bridge bug actually triggers, then SUMMARY which will
-		// hit the same bridge via the SCOREBOARD it just inserted.
+		// hit the same bridge via the TEAMS it just inserted.
 		if i%2 == 1 {
-			// SCOREBOARD comes first for Y.
+			// TEAMS comes first for Y.
 			fxs := buildFixtures(matchSpec{
-				startTime:        s.startTime,
-				mapName:          s.mapName,
-				mode:             s.mode,
-				matchType:        s.matchType,
-				role:             s.role,
-				primaryHero:      s.primaryHero,
-				eliminations:     s.eliminations,
-				assists:          s.assists,
-				deaths:           s.deaths,
-				damage:           s.damage,
-				healing:          s.healing,
-				mitigation:       s.mitigation,
-				emitScoreboard:   true,
-				scoreboardOffset: -10 * time.Second, // before SUMMARY's anchor
-				suffix:           s.suffix,
-				expectedKey:      s.expectedKey,
-				bugNote:          s.bugNote,
+				startTime:    s.startTime,
+				mapName:      s.mapName,
+				mode:         s.mode,
+				matchType:    s.matchType,
+				role:         s.role,
+				primaryHero:  s.primaryHero,
+				eliminations: s.eliminations,
+				assists:      s.assists,
+				deaths:       s.deaths,
+				damage:       s.damage,
+				healing:      s.healing,
+				mitigation:   s.mitigation,
+				emitTeams:    true,
+				teamsOffset:  -10 * time.Second, // before SUMMARY's anchor
+				suffix:       s.suffix,
+				expectedKey:  s.expectedKey,
+				bugNote:      s.bugNote,
 			})
 			fixtures = append(fixtures, fxs...)
-			// Then SUMMARY (which will adopt the SCOREBOARD we just inserted).
+			// Then SUMMARY (which will adopt the TEAMS we just inserted).
 			fxs = buildFixtures(matchSpec{
 				startTime:    s.startTime,
 				mapName:      s.mapName,
@@ -321,7 +321,7 @@ func TestCorrelation_Stress_SameHeroBackToBackClean(t *testing.T) {
 			date:              x.Format("01/02/2006"),
 			finishedAt:        x.Add(45 * time.Second).Format("15:04"),
 			emitSummary:       true,
-			emitScoreboard:    true,
+			emitTeams:         true,
 			useDefaultOffsets: true,
 			suffix:            fmt.Sprintf("C%02dx", i),
 			expectedKey:       matchKeyFor(x),
@@ -339,7 +339,7 @@ func TestCorrelation_Stress_SameHeroBackToBackClean(t *testing.T) {
 			date:              y.Format("01/02/2006"),
 			finishedAt:        y.Add(45 * time.Second).Format("15:04"),
 			emitSummary:       true,
-			emitScoreboard:    true,
+			emitTeams:         true,
 			useDefaultOffsets: true,
 			suffix:            fmt.Sprintf("C%02dy", i),
 			expectedKey:       matchKeyFor(y),
@@ -364,7 +364,7 @@ func TestCorrelation_Stress_SameHeroBackToBackClean(t *testing.T) {
 // lands in the 5–30 min ambiguous zone — the resolver mints the
 // "ambiguous-<filename>" sentinel and records X's match as the
 // only candidate. Y's SUMMARY follows 30 s later, has no EAD of
-// its own, and adopts Y's SCOREBOARD's sentinel via the
+// its own, and adopts Y's TEAMS sentinel via the
 // timestamp-window pass. Both rows resolve together when the user
 // picks an attribution in the Unknown tab.
 // ─────────────────────────────────────────────────────────────────
@@ -379,11 +379,11 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 		hero := pickAt(owHeroes, i)
 		e, a, d := 15+i, 9, 4
 
-		// Y's SCOREBOARD filename is what the ambiguous sentinel is
+		// Y's TEAMS filename is what the ambiguous sentinel is
 		// built from; both Y rows share that sentinel because the
 		// SUMMARY adopts via timestamp window.
-		yScoreboardFilename := filenameForTS(y, fmt.Sprintf("D%02dyb", i), "scoreboard")
-		yAmbiguousKey := "ambiguous-" + yScoreboardFilename
+		yTeamsFilename := filenameForTS(y, fmt.Sprintf("D%02dyb", i), "teams")
+		yAmbiguousKey := "ambiguous-" + yTeamsFilename
 
 		specs = append(specs, matchSpec{
 			startTime:    x,
@@ -397,13 +397,13 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 			result:      "victory",
 			date:        x.Format("01/02/2006"),
 			finishedAt:  x.Add(45 * time.Second).Format("15:04"),
-			emitSummary: true, emitScoreboard: true,
+			emitSummary: true, emitTeams: true,
 			useDefaultOffsets: true,
 			suffix:            fmt.Sprintf("D%02dx", i),
 			expectedKey:       matchKeyFor(x),
 		})
 
-		// Y emits SCOREBOARD first (no date in MatchResult so the
+		// Y emits TEAMS first (no date in MatchResult so the
 		// rowsConflict predicate can't short-circuit the bridge).
 		// Lands in the 5–30 min ambiguous zone → ambiguous sentinel.
 		specs = append(specs, matchSpec{
@@ -413,13 +413,13 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 			primaryHero:  hero,
 			eliminations: e, assists: a, deaths: d,
 			damage: 5700, healing: 2300, mitigation: 1150,
-			emitScoreboard:   true,
-			scoreboardOffset: 0,
-			suffix:           fmt.Sprintf("D%02dyb", i),
-			expectedKey:      yAmbiguousKey,
+			emitTeams:   true,
+			teamsOffset: 0,
+			suffix:      fmt.Sprintf("D%02dyb", i),
+			expectedKey: yAmbiguousKey,
 		})
 		// Y SUMMARY 30s later — no EAD on summary side; adopts Y's
-		// SCOREBOARD's sentinel via the timestamp-window pass.
+		// TEAMS sentinel via the timestamp-window pass.
 		specs = append(specs, matchSpec{
 			startTime:    y,
 			mapName:      mapName,
@@ -453,7 +453,7 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 // COHORT E — timestamp-window edges.
 //
 // 8 pairs of matches: two SUMMARY anchors 90 seconds apart with a
-// PERSONAL captured exactly between them. No SCOREBOARDs — they'd
+// PERSONAL captured exactly between them. No TEAMS screenshots — they'd
 // pull PERSONAL toward whichever SUMMARY they neighbor and mask the
 // genuine equidistance bug. PERSONAL is 45 s from each SUMMARY,
 // hero matches both via the multi-hero set so neither side hard-
@@ -534,23 +534,23 @@ func TestCorrelation_Stress_TimestampWindowEdge(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// COHORT F — multi-hero match (SCOREBOARD mid-game hero swap).
+// COHORT F — multi-hero match (TEAMS mid-game hero swap).
 //
 // 10 matches. Each match's SUMMARY records hero=Hero1 (the most-
-// played one, e.g. Lúcio 70%). SCOREBOARD + PERSONAL were captured
+// played one, e.g. Lúcio 70%). TEAMS + PERSONAL were captured
 // during the Kiriko portion (the secondary hero).
 //
-// Before PR #105, rowsConflict() refused to bridge a SCOREBOARD
+// Before PR #105, rowsConflict() refused to bridge a TEAMS
 // with hero=Kiriko to a SUMMARY with hero=Lúcio — ONE logical match
 // became THREE match_keys. PR #105 weakens the hero predicate to
 // consult the per-match hero set (SUMMARY's HeroesPlayed union)
 // so the swap hero is recognized and the rows fold together.
 //
-// Per match: 4 fixtures (SUMMARY + SCOREBOARD + PERSONAL + RANK).
+// Per match: 4 fixtures (SUMMARY + TEAMS + PERSONAL + RANK).
 // All four now adopt SUMMARY's anchor cleanly.
 // ─────────────────────────────────────────────────────────────────
 
-func TestCorrelation_Stress_MultiHeroScoreboardSwap(t *testing.T) {
+func TestCorrelation_Stress_MultiHeroTeamsSwap(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.07.15 - 14.00.00")
 	specs := make([]matchSpec, 0, 10)
 	for i := 0; i < 10; i++ {
@@ -573,16 +573,16 @@ func TestCorrelation_Stress_MultiHeroScoreboardSwap(t *testing.T) {
 			},
 			eliminations: 18, assists: 12, deaths: 6,
 			damage: 5800, healing: 3200, mitigation: 800,
-			result:         "victory",
-			date:           start.Format("01/02/2006"),
-			finishedAt:     start.Format("15:04"),
-			scoreboardHero: swap, personalHero: swap,
+			result:     "victory",
+			date:       start.Format("01/02/2006"),
+			finishedAt: start.Format("15:04"),
+			teamsHero:  swap, personalHero: swap,
 			emitSummary: true,
 			suffix:      fmt.Sprintf("F%02ds", i),
 			expectedKey: matchKeyFor(start),
 		})
 
-		// SCOREBOARD with hero=swap adopts SUMMARY's key via the
+		// TEAMS with hero=swap adopts SUMMARY's key via the
 		// timestamp window — rowsConflict consults the per-match
 		// hero set ({primary, swap} from SUMMARY.HeroesPlayed) and
 		// the hero mismatch is no longer a hard reject.
@@ -594,14 +594,14 @@ func TestCorrelation_Stress_MultiHeroScoreboardSwap(t *testing.T) {
 			primaryHero:  swap,
 			eliminations: 18, assists: 12, deaths: 6,
 			damage: 5800, healing: 3200, mitigation: 800,
-			emitScoreboard:   true,
-			scoreboardOffset: 0,
-			suffix:           fmt.Sprintf("F%02db", i),
-			expectedKey:      matchKeyFor(start),
+			emitTeams:   true,
+			teamsOffset: 0,
+			suffix:      fmt.Sprintf("F%02db", i),
+			expectedKey: matchKeyFor(start),
 		})
 
 		// PERSONAL of swap hero — adopts the same SUMMARY anchor
-		// for the same reason; SCOREBOARD's hero is in the match's
+		// for the same reason; TEAMS hero is in the match's
 		// hero set so the rowsConflict short-circuit allows the
 		// timestamp-window bridge to the existing key.
 		pStart := start.Add(45 * time.Second)
@@ -616,7 +616,7 @@ func TestCorrelation_Stress_MultiHeroScoreboardSwap(t *testing.T) {
 
 		// RANK has no hero field; adopts via timestamp window without
 		// needing the hero set. Now points back at SUMMARY since the
-		// SCOREBOARD/PERSONAL chain it used to follow is collapsed
+		// TEAMS/PERSONAL chain it used to follow is collapsed
 		// into the same match_key.
 		rStart := start.Add(90 * time.Second)
 		specs = append(specs, matchSpec{
@@ -634,7 +634,7 @@ func TestCorrelation_Stress_MultiHeroScoreboardSwap(t *testing.T) {
 	if got, want := len(fixtures), 40; got != want {
 		t.Fatalf("cohort F fixture count: got %d, want %d", got, want)
 	}
-	runStressCohort(t, "F-multi-hero-scoreboard-swap", fixtures)
+	runStressCohort(t, "F-multi-hero-teams-swap", fixtures)
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -675,7 +675,7 @@ func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
 			expectedKey: matchKeyFor(start),
 		})
 
-		// SCOREBOARD with heroA stats — clean adoption.
+		// TEAMS with heroA stats — clean adoption.
 		sbStart := start.Add(30 * time.Second)
 		specs = append(specs, matchSpec{
 			startTime:    sbStart,
@@ -684,10 +684,10 @@ func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
 			primaryHero:  heroA,
 			eliminations: 15, assists: 8, deaths: 5,
 			damage: 5000, healing: 2200, mitigation: 800,
-			emitScoreboard:   true,
-			scoreboardOffset: 0,
-			suffix:           fmt.Sprintf("G%02db", i),
-			expectedKey:      matchKeyFor(start),
+			emitTeams:   true,
+			teamsOffset: 0,
+			suffix:      fmt.Sprintf("G%02db", i),
+			expectedKey: matchKeyFor(start),
 		})
 
 		// PERSONAL 1 (heroA) adopts cleanly via timestamp window.
@@ -729,7 +729,7 @@ func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────
 // COHORT H — RANK adoption (clean).
 //
-// 10 matches with SUMMARY + SCOREBOARD + RANK. No PERSONAL. RANK's
+// 10 matches with SUMMARY + TEAMS + RANK. No PERSONAL. RANK's
 // MatchResult has no map, no hero (the resolver materializes it
 // from rank_screenshots with Rank + Result + Level only). Adopts
 // via timestamp window only.
@@ -756,7 +756,7 @@ func TestCorrelation_Stress_RankAdoption(t *testing.T) {
 			rankChange:        12 + i,
 			rankResult:        "victory",
 			emitSummary:       true,
-			emitScoreboard:    true,
+			emitTeams:         true,
 			emitRank:          true,
 			useDefaultOffsets: true,
 			suffix:            fmt.Sprintf("H%02d", i),
@@ -775,18 +775,18 @@ func TestCorrelation_Stress_RankAdoption(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// COHORT I — zero-stat scoreboard.
+// COHORT I — zero-stat teams.
 //
-// 5 matches with EAD = (0, 0, 0) on SCOREBOARD — modeling games
+// 5 matches with EAD = (0, 0, 0) on TEAMS — modeling games
 // that ended in the first minute (rage-quit, server crash). EAD-
 // bridge can't fire (it short-circuits on zero stats), so adoption
 // is timestamp-window only. SUMMARY usually arrives with non-zero
 // `Result + Date + FinishedAt + GameLength` even when stats are
-// zero, so the SUMMARY itself mints the anchor and SCOREBOARD
+// zero, so the SUMMARY itself mints the anchor and TEAMS
 // adopts via the window.
 // ─────────────────────────────────────────────────────────────────
 
-func TestCorrelation_Stress_ZeroStatScoreboard(t *testing.T) {
+func TestCorrelation_Stress_ZeroStatTeams(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.08.10 - 14.00.00")
 	specs := make([]matchSpec, 0, 5)
 	for i := 0; i < 5; i++ {
@@ -803,7 +803,7 @@ func TestCorrelation_Stress_ZeroStatScoreboard(t *testing.T) {
 			finishedAt:        start.Format("15:04"),
 			gameLength:        "00:42",
 			emitSummary:       true,
-			emitScoreboard:    true,
+			emitTeams:         true,
 			emitPersonal:      true,
 			emitRank:          true,
 			useDefaultOffsets: true,
@@ -819,7 +819,7 @@ func TestCorrelation_Stress_ZeroStatScoreboard(t *testing.T) {
 	if got, want := len(fixtures), 20; got != want {
 		t.Fatalf("cohort I fixture count: got %d, want %d", got, want)
 	}
-	runStressCohort(t, "I-zero-stat-scoreboard", fixtures)
+	runStressCohort(t, "I-zero-stat-teams", fixtures)
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -837,7 +837,7 @@ func TestCorrelation_Stress_UnparseableFilenames(t *testing.T) {
 	manualNames := []string{
 		"screenshot-1.png", "screenshot-2.png", "screenshot-3.png",
 		"my-clutch-game.png", "final-rank-up.png", "rialto-juno.png",
-		"final.png", "summary.png", "scoreboard.png",
+		"final.png", "summary.png", "teams.png",
 		"backup_20260801.png", "old_overwatch.png", "saved-3.png",
 		"untitled.png", "img_0042.png", "captures_0017.png",
 	}
@@ -869,7 +869,7 @@ func TestCorrelation_Stress_UnparseableFilenames(t *testing.T) {
 //
 // Each triple uses a different `suffix` to keep filenames distinct
 // (so the cohort actually tests the matcher rather than the DB
-// constraint). The triples are SUMMARY + SCOREBOARD + PERSONAL —
+// constraint). The triples are SUMMARY + TEAMS + PERSONAL —
 // all of which should attribute to the same match.
 // ─────────────────────────────────────────────────────────────────
 
@@ -884,17 +884,17 @@ func TestCorrelation_Stress_IdenticalTimestamps(t *testing.T) {
 			mode:         "competitive",
 			primaryHero:  pickAt(owHeroes, i),
 			eliminations: 10 + i, assists: 5 + i, deaths: 4 + i,
-			result:           "victory",
-			date:             start.Format("01/02/2006"),
-			finishedAt:       start.Format("15:04"),
-			emitSummary:      true,
-			emitScoreboard:   true,
-			emitPersonal:     true,
-			summaryOffset:    0,
-			scoreboardOffset: 0, // identical to SUMMARY
-			personalOffset:   0, // identical to SUMMARY
-			suffix:           fmt.Sprintf("K%02d", i),
-			expectedKey:      matchKeyFor(start),
+			result:         "victory",
+			date:           start.Format("01/02/2006"),
+			finishedAt:     start.Format("15:04"),
+			emitSummary:    true,
+			emitTeams:      true,
+			emitPersonal:   true,
+			summaryOffset:  0,
+			teamsOffset:    0, // identical to SUMMARY
+			personalOffset: 0, // identical to SUMMARY
+			suffix:         fmt.Sprintf("K%02d", i),
+			expectedKey:    matchKeyFor(start),
 		})
 	}
 

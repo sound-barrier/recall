@@ -49,14 +49,14 @@ type BundleManifestV1 struct {
 //
 // Exported so cmd/bug-finder can deserialize directly.
 type BundleDataV1 struct {
-	Schema        string             `json:"schema"`
-	ExportedAt    string             `json:"exported_at"`
-	RecallVersion string             `json:"recall_version"`
-	Summaries     []db.SummaryRow    `json:"summaries"`
-	Scoreboards   []db.ScoreboardRow `json:"scoreboards"`
-	Personals     []db.PersonalRow   `json:"personals"`
-	Ranks         []db.RankRow       `json:"ranks"`
-	Unknowns      []db.UnknownRow    `json:"unknowns"`
+	Schema        string           `json:"schema"`
+	ExportedAt    string           `json:"exported_at"`
+	RecallVersion string           `json:"recall_version"`
+	Summaries     []db.SummaryRow  `json:"summaries"`
+	Teams         []db.TeamsRow    `json:"teams"`
+	Personals     []db.PersonalRow `json:"personals"`
+	Ranks         []db.RankRow     `json:"ranks"`
+	Unknowns      []db.UnknownRow  `json:"unknowns"`
 }
 
 // ExportBundleOptions controls which matches end up in the bundle.
@@ -128,7 +128,7 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 		return ok
 	}
 	summaries := filterRows(snap.Summaries, keep, func(r db.SummaryRow) string { return r.MatchKey })
-	scoreboards := filterRows(snap.Scoreboards, keep, func(r db.ScoreboardRow) string { return r.MatchKey })
+	teams := filterRows(snap.Teams, keep, func(r db.TeamsRow) string { return r.MatchKey })
 	personals := filterRows(snap.Personals, keep, func(r db.PersonalRow) string { return r.MatchKey })
 	ranks := filterRows(snap.Ranks, keep, func(r db.RankRow) string { return r.MatchKey })
 	unknowns := filterRows(snap.Unknowns, keep, func(r db.UnknownRow) string { return r.MatchKey })
@@ -140,7 +140,7 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 	for _, r := range summaries {
 		screenshots[r.Filename] = r.MatchKey
 	}
-	for _, r := range scoreboards {
+	for _, r := range teams {
 		screenshots[r.Filename] = r.MatchKey
 	}
 	for _, r := range personals {
@@ -171,7 +171,7 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 		ExportedAt:    exportedAt,
 		RecallVersion: Version,
 		Summaries:     summaries,
-		Scoreboards:   scoreboards,
+		Teams:         teams,
 		Personals:     personals,
 		Ranks:         ranks,
 		Unknowns:      unknowns,
@@ -199,7 +199,7 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 		DirID    int64
 	}{
 		toFilesDirs(summaries, func(r db.SummaryRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
-		toFilesDirs(scoreboards, func(r db.ScoreboardRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
+		toFilesDirs(teams, func(r db.TeamsRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
 		toFilesDirs(personals, func(r db.PersonalRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
 		toFilesDirs(ranks, func(r db.RankRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
 		toFilesDirs(unknowns, func(r db.UnknownRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),

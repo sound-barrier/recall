@@ -194,7 +194,7 @@ make seed-dev N=300 PROFILE=demo FORCE=1 SEED=time
 
 | Make var | Underlying flag | Default | Purpose |
 |---|---|---|---|
-| `N` | `--n` | `500` | Number of matches. Each match writes 1 Summary + 1 Scoreboard, ~60% also write a Personal, ~40% a Rank — mirrors the mixed-coverage shape real parses produce. Default sized so the full canonical pool (51 heroes × 31 maps) gets enough natural appearances on top of coverage-pass cameos to read densely in the dossier. |
+| `N` | `--n` | `500` | Number of matches. Each match writes 1 Summary + 1 Teams, ~60% also write a Personal, ~40% a Rank — mirrors the mixed-coverage shape real parses produce. Default sized so the full canonical pool (51 heroes × 31 maps) gets enough natural appearances on top of coverage-pass cameos to read densely in the dossier. |
 | `PROFILE` | `--profile` | `demo` | Target profile name. Created if missing. Pass the active profile name to seed your in-use profile (think twice). |
 | `SEED` | `--seed` | `1` | Deterministic RNG seed — same `(N, SEED)` → byte-identical rows. Pass `SEED=time` for a different shuffle every run (Makefile substitutes `$(shell date +%s)`). |
 | `FORCE` | `--force` | *(unset)* | Wipes every row in the target profile before seeding. Without it, a non-empty profile is a hard error. |
@@ -252,7 +252,7 @@ Use `STYLE=random` + multi-seed sweeps to spread across all three.
 ### Where the fixture lives
 
 `pkg/app/fixtures.go` exports `GenerateMatchFixture(n, seed)` returning four
-slices — `[]db.SummaryRow`, `[]db.ScoreboardRow`, `[]db.PersonalRow`,
+slices — `[]db.SummaryRow`, `[]db.TeamsRow`, `[]db.PersonalRow`,
 `[]db.RankRow`. `cmd/seed-dev/main.go` loops them into the matching
 `store.Upsert*` calls. The same generator is reusable from tests
 (`pkg/app/fixtures_test.go` round-trips it through `dbtest.Fake`) so the
@@ -292,7 +292,7 @@ Each chaotic match picks 1–2 shapes uniformly from these six:
 | **long-strings** | Hero name = 200 chars, map name = 150 chars | Frontend truncation, sort comparators, dossier widget label space |
 | **unicode** | Emojis + zalgo prefix on map / hero | URL encoding, axe-core a11y readouts, font fallback |
 | **numeric-extreme** | EAD into the millions, negative healing, billion-scale damage | Integer overflow in dossier sums, K/D division-by-zero, chart Y-axis blowout |
-| **cardinality** | 50 `HeroesPlayed` entries, 200 `HeroStat` rows on scoreboard | Frontend list rendering, `aggregateAll` fold cost |
+| **cardinality** | 50 `HeroesPlayed` entries, 200 `HeroStat` rows on teams | Frontend list rendering, `aggregateAll` fold cost |
 | **date-extreme** | Date = `1970-01-01`, `2099-12-31`, or malformed (`"yesterday"`) | Date-range filter, Campaign Log scale, calendar boundaries |
 | **aggregation-conflict** | 1–2 extra summary rows sharing the original's `match_key` but with different `map` / `hero` / `result` | `mergeMatchResult` fold under contradictory inputs — which value wins? Is it deterministic? |
 

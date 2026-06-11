@@ -39,7 +39,7 @@ func TestApp_MoveMatches_TransfersRowsAndChildren(t *testing.T) {
 	a := moveCtx(t)
 
 	// Seed two matches in main with full coverage: a summary +
-	// scoreboard + child rows + an annotation + a hidden flag.
+	// teams + child rows + an annotation + a hidden flag.
 	const movedKey = "match-2026-05-10T22-00-00"
 	const stayedKey = "match-2026-05-10T23-00-00"
 
@@ -50,12 +50,12 @@ func TestApp_MoveMatches_TransfersRowsAndChildren(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("seed summary: %v", err)
 	}
-	if err := a.store.UpsertScoreboard(db.ScoreboardRow{
-		Filename: "moved-scoreboard.png", MatchKey: movedKey,
+	if err := a.store.UpsertTeams(db.TeamsRow{
+		Filename: "moved-teams.png", MatchKey: movedKey,
 		Playlist: "competitive", Eliminations: 17,
 		HeroStats: []db.HeroStat{{Hero: "lucio", StatKey: "deaths", StatValue: 11}},
 	}); err != nil {
-		t.Fatalf("seed scoreboard: %v", err)
+		t.Fatalf("seed teams: %v", err)
 	}
 	if err := a.store.UpsertSummary(db.SummaryRow{
 		Filename: "stayed-summary.png", MatchKey: stayedKey,
@@ -112,8 +112,8 @@ func TestApp_MoveMatches_TransfersRowsAndChildren(t *testing.T) {
 	if !hasSummaryKey(tgtData.Summaries, movedKey) {
 		t.Errorf("target missing the moved summary")
 	}
-	if !hasScoreboardKey(tgtData.Scoreboards, movedKey) {
-		t.Errorf("target missing the moved scoreboard")
+	if !hasTeamsKey(tgtData.Teams, movedKey) {
+		t.Errorf("target missing the moved teams")
 	}
 	if hasSummaryKey(tgtData.Summaries, stayedKey) {
 		t.Errorf("target picked up rows that weren't asked to move")
@@ -221,7 +221,7 @@ func hasSummaryKey(rows []db.SummaryRow, key string) bool {
 	return false
 }
 
-func hasScoreboardKey(rows []db.ScoreboardRow, key string) bool {
+func hasTeamsKey(rows []db.TeamsRow, key string) bool {
 	for _, r := range rows {
 		if r.MatchKey == key {
 			return true

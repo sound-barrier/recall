@@ -18,7 +18,7 @@ func (s *SQLStore) LoadAll() (Screenshots, error) {
 	if out.Summaries, err = s.loadSummaries(); err != nil {
 		return out, err
 	}
-	if out.Scoreboards, err = s.loadScoreboards(); err != nil {
+	if out.Teams, err = s.loadTeams(); err != nil {
 		return out, err
 	}
 	if out.Personals, err = s.loadPersonals(); err != nil {

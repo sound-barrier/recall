@@ -9,17 +9,17 @@ import (
 	"strings"
 )
 
-// parseScoreboard handles the in-game and post-match TEAMS scoreboards: two
+// parseTeams handles the in-game and post-match TEAMS screens: two
 // team tables stacked vertically with the user's row highlighted in a brighter
 // blue. Pulls per-row stats (E/A/D/DMG/H/MIT) plus, when present, the in-game
 // banner's map/type/mode and the side panel's hero name.
-func parseScoreboard(img image.Image, work string) (*MatchResult, error) {
+func parseTeams(img image.Image, work string) (*MatchResult, error) {
 	bounds := img.Bounds()
 	W, H := bounds.Dx(), bounds.Dy()
 
 	yTop, yBot := findHighlightedRowY(img)
 	if yTop < 0 {
-		return nil, errors.New("could not locate the highlighted (lighter blue) row in the scoreboard")
+		return nil, errors.New("could not locate the highlighted (lighter blue) row in the teams")
 	}
 
 	// Header strip — banner is at top-left in 720p, top-right in 1080p. Use
@@ -69,17 +69,17 @@ func parseScoreboard(img image.Image, work string) (*MatchResult, error) {
 		if r, ok := loadDataset().heroRoles[res.Hero]; ok {
 			res.Role = r
 		}
-		// The right-side panel on the in-game scoreboard carries the same
+		// The right-side panel on the in-game teams carries the same
 		// hero-specific cards the post-match PERSONAL tab does (PLAYERS
 		// SAVED, WEAPON ACCURACY, etc.). Surface them on the HeroPlay entry
-		// so a standalone scoreboard screenshot isn't missing them, and so
+		// so a standalone teams screenshot isn't missing them, and so
 		// they cross-validate against the PERSONAL screen when both exist.
 		if heroStats := parsePanelStats(panelText, res.Hero); len(heroStats) > 0 {
 			res.HeroesPlayed = []HeroPlay{{Hero: res.Hero, Stats: heroStats}}
 		}
 	} else if cand := candidateNameFromOCR(panelText); cand != "" {
 		// Matcher rejected the highlighted player's hero — capture the
-		// raw OCR for the "Unknown hero" UI. parse_scoreboard's panel
+		// raw OCR for the "Unknown hero" UI. parse_teams's panel
 		// is just one hero's column so this is the natural single-hero
 		// fallback.
 		res.HeroRaw = cand
@@ -89,7 +89,7 @@ func parseScoreboard(img image.Image, work string) (*MatchResult, error) {
 }
 
 // parsePanelStats extracts hero-specific (value, label) pairs from the
-// scoreboard's right panel OCR. Values are integers (optionally % -suffixed);
+// TEAMS right panel OCR. Values are integers (optionally % -suffixed);
 // labels are multi-word uppercase phrases that follow the value within a few
 // lines. Short noise lines (e.g. "PP", "A") between value and label are
 // skipped — the panel renders an orange tick mark on the left of each card
@@ -186,7 +186,7 @@ func findHighlightedRowY(img image.Image) (int, int) {
 // white-text clusters horizontally, groups them into columns (digits separated
 // by commas in the same number cluster together), then OCRs each as digits.
 // This is fully dynamic — no hardcoded ratios — so it works at any resolution
-// and any scoreboard layout.
+// and any teams layout.
 func ocrRowCells(img image.Image, yTop, yBot int, workDir string) ([6]int, error) {
 	bounds := img.Bounds()
 	H := bounds.Dy()

@@ -25,12 +25,12 @@ export interface ScreenshotSlot {
 // classifies into. Order is workflow order: SUMMARY (post-match
 // summary tab) → TEAMS (post-match scoreboard / in-game scoreboard) →
 // PERSONAL (per-hero stats tab) → RANK (competitive rank screen).
-export const SCREENSHOT_TYPES: ScreenshotType[] = ['summary', 'scoreboard', 'personal', 'rank']
+export const SCREENSHOT_TYPES: ScreenshotType[] = ['summary', 'teams', 'personal', 'rank']
 
-// Pretty label for a screenshot-type value. "scoreboard" is rendered
+// Pretty label for a screenshot-type value. "teams" is rendered
 // as "TEAMS" everywhere else in the app so its filter chip matches.
 export function sshotTypeLabel(t: string | null | undefined): string {
-  if (t === 'scoreboard') return 'TEAMS'
+  if (t === 'teams') return 'TEAMS'
   return (t || 'unknown').toUpperCase()
 }
 
@@ -68,10 +68,10 @@ export function detectScreenshotSlots(rec: Pick<MatchRecord, 'data' | 'source_ty
       missing: 'match result, final score, date & time, game length',
     },
     {
-      key: 'scoreboard',
+      key: 'teams',
       label: 'TEAMS',
       required: true,
-      present: storedTypes.has('scoreboard'),
+      present: storedTypes.has('teams'),
       hint: 'TEAMS scoreboard (in-game or post-match) — E/A/D, damage, healing, mitigation',
       missing: 'eliminations, assists, deaths, damage, healing, mitigation',
     },

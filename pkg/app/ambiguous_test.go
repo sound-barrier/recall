@@ -9,7 +9,7 @@ import (
 
 func TestResolveAmbiguousMatch_HappyPath(t *testing.T) {
 	fs := &fakeStore{
-		Scoreboards: []db.ScoreboardRow{
+		Teams: []db.TeamsRow{
 			{Filename: "sb.png", MatchKey: "ambiguous-sb.png"},
 		},
 		Summaries: []db.SummaryRow{
@@ -23,8 +23,8 @@ func TestResolveAmbiguousMatch_HappyPath(t *testing.T) {
 	if err := a.ResolveAmbiguousMatch("ambiguous-sb.png", "match-foo"); err != nil {
 		t.Fatalf("ResolveAmbiguousMatch: %v", err)
 	}
-	if fs.Scoreboards[0].MatchKey != "match-foo" {
-		t.Errorf("scoreboard not updated: %q", fs.Scoreboards[0].MatchKey)
+	if fs.Teams[0].MatchKey != "match-foo" {
+		t.Errorf("teams not updated: %q", fs.Teams[0].MatchKey)
 	}
 	if fs.Summaries[0].MatchKey != "match-foo" {
 		t.Errorf("summary not updated: %q", fs.Summaries[0].MatchKey)
@@ -59,7 +59,7 @@ func TestResolveAmbiguousMatch_AcceptsFreshMatchKey(t *testing.T) {
 	// Escape hatch: user clicks "Treat as new match" → resolves to
 	// a freshly-minted match:<ts> not in the candidate list.
 	fs := &fakeStore{
-		Scoreboards: []db.ScoreboardRow{
+		Teams: []db.TeamsRow{
 			{Filename: "sb.png", MatchKey: "ambiguous-sb.png"},
 		},
 		Ambiguous: map[string][]db.AmbiguousCandidate{
@@ -70,8 +70,8 @@ func TestResolveAmbiguousMatch_AcceptsFreshMatchKey(t *testing.T) {
 	if err := a.ResolveAmbiguousMatch("ambiguous-sb.png", "match-2026-05-10T21-29-28"); err != nil {
 		t.Errorf("expected fresh match:<ts> to be accepted, got %v", err)
 	}
-	if fs.Scoreboards[0].MatchKey != "match-2026-05-10T21-29-28" {
-		t.Errorf("scoreboard not rewritten: %q", fs.Scoreboards[0].MatchKey)
+	if fs.Teams[0].MatchKey != "match-2026-05-10T21-29-28" {
+		t.Errorf("teams not rewritten: %q", fs.Teams[0].MatchKey)
 	}
 }
 

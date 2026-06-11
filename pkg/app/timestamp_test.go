@@ -78,7 +78,7 @@ func TestParseFilenameTimestamp_Reject(t *testing.T) {
 		{"random rename", "renamed.png"},
 		{"random non-OW screenshot", "IMG_2026-06-07_22-59-52.png"},
 		{"nvidia format but no prefix (pre-fix behaviour)", "2026.05.10 - 21.29.28 _summary.png"},
-		{"nvidia format embedded mid-filename", "screen_2026.01.02 - 03.04.05 _scoreboard.png"},
+		{"nvidia format embedded mid-filename", "screen_2026.01.02 - 03.04.05 _teams.png"},
 		{"timestamp without extension also requires the prefix", "2026.12.31 - 23.59.59"},
 		{"snip stem but PrntScn separators (no match)", "Screenshot 26-06-07 224855.png"},
 		{"prntscn stem but no underscore after", "ScreenShot 26-06-07_22-59-52-000.jpg"},

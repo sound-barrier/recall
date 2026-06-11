@@ -32,8 +32,8 @@ const candidateMatchRecord = (extraSource?: string) => ({
   match_key: CANDIDATE_KEY,
   source_files: extraSource ? ['scoreboard-1.png', extraSource] : ['scoreboard-1.png'],
   source_types: {
-    'scoreboard-1.png': 'scoreboard',
-    ...(extraSource ? { [extraSource]: 'scoreboard' } : {}),
+    'scoreboard-1.png': 'teams',
+    ...(extraSource ? { [extraSource]: 'teams' } : {}),
   },
   data: {
     map: 'rialto',
@@ -51,7 +51,7 @@ const candidateMatchRecord = (extraSource?: string) => ({
 const ambiguousRecord = () => ({
   match_key: AMBIG_KEY,
   source_files: ['scoreboard-2.png'],
-  source_types: { 'scoreboard-2.png': 'scoreboard' },
+  source_types: { 'scoreboard-2.png': 'teams' },
   data: {
     playlist: 'competitive',
     hero: 'lucio',

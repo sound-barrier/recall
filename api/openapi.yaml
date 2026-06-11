@@ -76,7 +76,7 @@ paths:
       summary: List parsed match records (optionally paginated)
       description: |
         Returns match records, assembled by JOINing the
-        per-screenshot-type rows (summary / scoreboard / personal /
+        per-screenshot-type rows (summary / teams / personal /
         rank / unknown) that share each `match_key`. Read-time
         derivations (`inferSoleHeroPercent`, `inferResultFromRank`)
         plus role-from-hero and type-from-map lookups are applied
@@ -457,7 +457,7 @@ paths:
       tags: [Matches]
       summary: Override a match's queue type
       description: |
-        Overrides the queue format auto-detected from the scoreboard's
+        Overrides the queue format auto-detected from the teams
         players-per-team count. Two states:
 
           - `role` — 5v5 role queue (locked 1-2-2 composition)
@@ -1935,7 +1935,7 @@ paths:
                 type: string
                 example: |
                   event: parse-progress
-                  data: {"done":1,"total":5,"filename":"...png","screenshot_type":"scoreboard"}
+                  data: {"done":1,"total":5,"filename":"...png","screenshot_type":"teams"}
 
                   event: match-updated
                   data: {"match_key":"match-2026-05-10T21-29-28","source_files":["...png"],"data":{...}}
@@ -2304,10 +2304,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SummaryExportRow"
-        scoreboards:
+        teams:
           type: array
           items:
-            $ref: "#/components/schemas/ScoreboardExportRow"
+            $ref: "#/components/schemas/TeamsExportRow"
         personals:
           type: array
           items:
@@ -2361,14 +2361,14 @@ components:
               percent_played: { type: integer }
               play_time:      { type: string }
 
-    ScoreboardExportRow:
+    TeamsExportRow:
       type: object
       additionalProperties: true
       required: [filename, match_key]
       description: |
-        One row of `scoreboard_screenshots` plus its
-        `scoreboard_hero_stats` child rows. Mirrors
-        `pkg/db/store.go::ScoreboardRow`.
+        One row of `teams_screenshots` plus its
+        `teams_hero_stats` child rows. Mirrors
+        `pkg/db/store.go::TeamsRow`.
       properties:
         filename:        { type: string }
         match_key:       { type: string }
@@ -2459,7 +2459,7 @@ components:
       required: [hero, stat_key, stat_value]
       description: |
         One `(hero, stat_key, stat_value)` row from
-        `scoreboard_hero_stats` or `personal_hero_stats`.
+        `teams_hero_stats` or `personal_hero_stats`.
       properties:
         hero:       { type: string }
         stat_key:   { type: string }
@@ -2500,7 +2500,7 @@ components:
             parse time. May be absent on rows parsed before this column
             landed.
           example:
-            "Overwatch Screenshot 2026.05.10 - 22.21.11.79.png": scoreboard
+            "Overwatch Screenshot 2026.05.10 - 22.21.11.79.png": teams
             "Overwatch Screenshot 2026.05.10 - 22.21.57.34.png": rank
         source_parsed_at:
           type: object
@@ -2574,7 +2574,7 @@ components:
           description: |
             Queue format the match was played in: `role` (5v5 role
             queue) or `open` (6v6 open queue). Auto-detected from the
-            scoreboard's players-per-team count; a user override set
+            teams players-per-team count; a user override set
             via `PUT /api/v1/matches/{match_key}/queue` takes
             precedence, and `DELETE` on the same path reverts to the
             detected value. Omitted entirely when neither a detection
@@ -2688,11 +2688,11 @@ components:
 
     ScreenshotType:
       type: string
-      enum: [summary, scoreboard, personal, rank, unknown]
+      enum: [summary, teams, personal, rank, unknown]
       description: |
         Classification of one screenshot:
           * `summary` — post-match SUMMARY tab
-          * `scoreboard` — in-game or post-match TEAMS scoreboard
+          * `teams` — in-game or post-match TEAMS screen
           * `personal` — post-match PERSONAL tab
           * `rank` — competitive RANK PROGRESS screen
           * `unknown` — the OCR classifier couldn't pick a type from

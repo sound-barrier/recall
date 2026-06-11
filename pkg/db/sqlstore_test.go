@@ -131,12 +131,12 @@ func TestSQLStore_Summary_Children_CascadeOnReupsert(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────────────────
-// SCOREBOARD round-trip with panel hero stats.
+// TEAMS round-trip with panel hero stats.
 // ──────────────────────────────────────────────────────────────────
 
-func TestSQLStore_Scoreboard_UpsertThenLoadRoundTrip(t *testing.T) {
+func TestSQLStore_Teams_UpsertThenLoadRoundTrip(t *testing.T) {
 	s := openMemory(t)
-	want := ScoreboardRow{
+	want := TeamsRow{
 		Filename: "sb.png", MatchKey: "k1",
 		Map: "rialto", Playlist: "competitive", Hero: "lucio",
 		Eliminations: 17, Assists: 16, Deaths: 11,
@@ -146,18 +146,18 @@ func TestSQLStore_Scoreboard_UpsertThenLoadRoundTrip(t *testing.T) {
 			{Hero: "lucio", StatKey: "speed_boosts", StatValue: 5},
 		},
 	}
-	if err := s.UpsertScoreboard(want); err != nil {
-		t.Fatalf("UpsertScoreboard: %v", err)
+	if err := s.UpsertTeams(want); err != nil {
+		t.Fatalf("UpsertTeams: %v", err)
 	}
 	got, err := s.LoadAll()
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}
-	if len(got.Scoreboards) != 1 {
-		t.Fatalf("expected 1 scoreboard, got %d", len(got.Scoreboards))
+	if len(got.Teams) != 1 {
+		t.Fatalf("expected 1 teams, got %d", len(got.Teams))
 	}
-	want.ID = got.Scoreboards[0].ID
-	want.ParsedAt = got.Scoreboards[0].ParsedAt
+	want.ID = got.Teams[0].ID
+	want.ParsedAt = got.Teams[0].ParsedAt
 	// `screenshots_dir_id` defaults to the sentinel when unset on
 	// insert (PR #1 of 1.0 plan).
 	want.ScreenshotsDirID = SentinelScreenshotsDirID
@@ -170,9 +170,9 @@ func TestSQLStore_Scoreboard_UpsertThenLoadRoundTrip(t *testing.T) {
 		})
 	}
 	sortHS(want.HeroStats)
-	sortHS(got.Scoreboards[0].HeroStats)
-	if !reflect.DeepEqual(got.Scoreboards[0], want) {
-		t.Fatalf("round-trip mismatch:\n got=%+v\nwant=%+v", got.Scoreboards[0], want)
+	sortHS(got.Teams[0].HeroStats)
+	if !reflect.DeepEqual(got.Teams[0], want) {
+		t.Fatalf("round-trip mismatch:\n got=%+v\nwant=%+v", got.Teams[0], want)
 	}
 }
 
@@ -262,7 +262,7 @@ func TestSQLStore_LoadAllFilenames_UnionAcrossTables(t *testing.T) {
 	if err := s.UpsertSummary(SummaryRow{Filename: "s.png", MatchKey: "k1"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.UpsertScoreboard(ScoreboardRow{Filename: "sb.png", MatchKey: "k1"}); err != nil {
+	if err := s.UpsertTeams(TeamsRow{Filename: "sb.png", MatchKey: "k1"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.UpsertPersonal(PersonalRow{Filename: "p.png", MatchKey: "k1"}); err != nil {
@@ -538,7 +538,7 @@ func TestSQLStore_ScreenshotsDirID_RoundTrip(t *testing.T) {
 	if err := s.UpsertSummary(SummaryRow{Filename: "s.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.UpsertScoreboard(ScoreboardRow{Filename: "sb.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
+	if err := s.UpsertTeams(TeamsRow{Filename: "sb.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.UpsertPersonal(PersonalRow{Filename: "p.png", MatchKey: "k1", ScreenshotsDirID: dirID}); err != nil {
@@ -563,7 +563,7 @@ func TestSQLStore_ScreenshotsDirID_RoundTrip(t *testing.T) {
 		id   int64
 	}{
 		{"summary", got.Summaries[0].ScreenshotsDirID},
-		{"scoreboard", got.Scoreboards[0].ScreenshotsDirID},
+		{"teams", got.Teams[0].ScreenshotsDirID},
 		{"personal", got.Personals[0].ScreenshotsDirID},
 		{"rank", got.Ranks[0].ScreenshotsDirID},
 		{"unknown", got.Unknowns[0].ScreenshotsDirID},
@@ -834,11 +834,11 @@ func TestSQLStore_HardDeleteMatch_WipesParentChildrenAnnotationHidden(t *testing
 	}); err != nil {
 		t.Fatalf("UpsertSummary: %v", err)
 	}
-	if err := s.UpsertScoreboard(ScoreboardRow{
+	if err := s.UpsertTeams(TeamsRow{
 		Filename: "sb.png", MatchKey: key, Eliminations: 17,
 		HeroStats: []HeroStat{{Hero: "lucio", StatKey: "deaths", StatValue: 11}},
 	}); err != nil {
-		t.Fatalf("UpsertScoreboard: %v", err)
+		t.Fatalf("UpsertTeams: %v", err)
 	}
 	if err := s.HideMatch(key); err != nil {
 		t.Fatalf("HideMatch: %v", err)
@@ -858,8 +858,8 @@ func TestSQLStore_HardDeleteMatch_WipesParentChildrenAnnotationHidden(t *testing
 	if len(got.Summaries) != 0 {
 		t.Errorf("summary rows survived: %+v", got.Summaries)
 	}
-	if len(got.Scoreboards) != 0 {
-		t.Errorf("scoreboard rows survived: %+v", got.Scoreboards)
+	if len(got.Teams) != 0 {
+		t.Errorf("teams rows survived: %+v", got.Teams)
 	}
 	// Children cascade — verify the join children are gone too.
 	var n int
@@ -869,11 +869,11 @@ func TestSQLStore_HardDeleteMatch_WipesParentChildrenAnnotationHidden(t *testing
 	if n != 0 {
 		t.Errorf("summary_heroes_played rows survived: %d", n)
 	}
-	if err := s.db.QueryRow(`SELECT COUNT(*) FROM scoreboard_hero_stats`).Scan(&n); err != nil {
-		t.Fatalf("count scoreboard_hero_stats: %v", err)
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM teams_hero_stats`).Scan(&n); err != nil {
+		t.Fatalf("count teams_hero_stats: %v", err)
 	}
 	if n != 0 {
-		t.Errorf("scoreboard_hero_stats rows survived: %d", n)
+		t.Errorf("teams_hero_stats rows survived: %d", n)
 	}
 	hidden, err := s.LoadHiddenKeys()
 	if err != nil {
@@ -911,10 +911,10 @@ func TestSQLStore_Ambiguity_RoundTrip(t *testing.T) {
 		{MatchKey: "match-2026-05-10T21-29-28", DistanceSeconds: 720},
 		{MatchKey: "match-2026-05-10T22-11-50", DistanceSeconds: 1200},
 	}
-	if err := s.ApplyAmbiguity("scoreboard-2.png", cands); err != nil {
+	if err := s.ApplyAmbiguity("teams-2.png", cands); err != nil {
 		t.Fatalf("ApplyAmbiguity: %v", err)
 	}
-	got, err := s.LoadAmbiguousCandidatesFor("scoreboard-2.png")
+	got, err := s.LoadAmbiguousCandidatesFor("teams-2.png")
 	if err != nil {
 		t.Fatalf("LoadAmbiguousCandidatesFor: %v", err)
 	}
@@ -994,18 +994,18 @@ func TestSQLStore_LoadAll_PopulatesAmbiguousCandidates(t *testing.T) {
 }
 
 func TestSQLStore_ResolveAmbiguous_UpdatesAllSiblingRows(t *testing.T) {
-	// Two screenshots share the ambiguous sentinel — the SCOREBOARD
+	// Two screenshots share the ambiguous sentinel — the TEAMS
 	// that originally minted it, and a SUMMARY captured 30s later that
 	// adopted the same sentinel via the timestamp-window pass.
 	// ResolveAmbiguous must rewrite BOTH match_keys in lockstep so the
 	// match stays whole after the user picks the real attribution.
 	s := openMemory(t)
-	if err := s.UpsertScoreboard(ScoreboardRow{
+	if err := s.UpsertTeams(TeamsRow{
 		Filename: "sb.png", MatchKey: "ambiguous-sb.png",
 		Map: "rialto", Hero: "lucio",
 		Eliminations: 12, Assists: 8, Deaths: 3,
 	}); err != nil {
-		t.Fatalf("seed scoreboard: %v", err)
+		t.Fatalf("seed teams: %v", err)
 	}
 	if err := s.UpsertSummary(SummaryRow{
 		Filename: "sum.png", MatchKey: "ambiguous-sb.png",
@@ -1029,8 +1029,8 @@ func TestSQLStore_ResolveAmbiguous_UpdatesAllSiblingRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}
-	if got.Scoreboards[0].MatchKey != "match-foo" {
-		t.Errorf("scoreboard match_key not updated: %q", got.Scoreboards[0].MatchKey)
+	if got.Teams[0].MatchKey != "match-foo" {
+		t.Errorf("teams match_key not updated: %q", got.Teams[0].MatchKey)
 	}
 	if got.Summaries[0].MatchKey != "match-foo" {
 		t.Errorf("summary match_key not updated: %q", got.Summaries[0].MatchKey)

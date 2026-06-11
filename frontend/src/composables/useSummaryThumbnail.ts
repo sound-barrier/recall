@@ -24,7 +24,7 @@ export function summaryThumbnailURL(rec: Pick<MatchRecord, 'source_files' | 'sou
   // next most readable thumbnail since it carries E/A/D and the
   // highlighted player row.
   for (const f of files) {
-    if (types[f] === 'scoreboard') return screenshotURL(f, dirs[f] ?? 0)
+    if (types[f] === 'teams') return screenshotURL(f, dirs[f] ?? 0)
   }
   // Last resort — just take the first source file.
   return screenshotURL(files[0]!, dirs[files[0]!] ?? 0)

@@ -6,15 +6,15 @@ import (
 )
 
 // statColDamage is the DMG column's index within the rightmost six
-// scoreboard stat columns (E, A, D, DMG, H, MIT). DMG is the reliable
+// teams stat columns (E, A, D, DMG, H, MIT). DMG is the reliable
 // per-player row counter: every player deals damage, so the value is
 // always a non-zero multi-digit number that OCRs to exactly one line —
 // unlike E/A/D, where a legitimate "0" is often dropped.
 const statColDamage = 3
 
 // detectQueueType infers the match's queue format from the TEAMS
-// scoreboard by counting players per team — role queue locks 5v5, open
-// queue is 6v6. Returns "role", "open", or "" when the scoreboard can't
+// teams by counting players per team — role queue locks 5v5, open
+// queue is 6v6. Returns "role", "open", or "" when the teams can't
 // be read confidently.
 //
 // The matchmaking-queue banner that can appear top-right ("...: ROLE

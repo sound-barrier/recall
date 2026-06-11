@@ -11,7 +11,7 @@ import (
 
 // isSummaryScreenshot detects the post-match SUMMARY tab by OCRing the upper-
 // middle band and looking for labels that appear only on that screen. The
-// scoreboard's TEAMS tab has the same top-of-page tab strip ("SUMMARY TEAMS
+// TEAMS tab has the same top-of-page tab strip ("SUMMARY TEAMS
 // PERSONAL") so we can't key on tab labels alone — "HEROES PLAYED" / "TOTAL
 // PERFORMANCE" / "PERCENT PLAYED" are unique to the SUMMARY layout.
 func isSummaryScreenshot(img image.Image, work string) bool {
