@@ -33,7 +33,7 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # you change a number here. Bump deliberately; don't lift caps to
 # silence noise.
 : "${MAX_INITIAL_JS_BYTES:=162000}"
-: "${MAX_INITIAL_CSS_BYTES:=63000}"
+: "${MAX_INITIAL_CSS_BYTES:=64000}"
 : "${MAX_TOTAL_JS_BYTES:=484000}"
 : "${MAX_TOTAL_CSS_BYTES:=274000}"
 

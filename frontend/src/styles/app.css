@@ -2874,3 +2874,58 @@ main#main-content {
   font-feature-settings: "tnum";
 }
 .bd-total { color: var(--text-faint); font-size: 0.6rem; }
+
+/* Contextual multi-select checkbox — shared by the live leaf row
+   (MatchesView) and the archive row (MatchesArchiveDrawer), so it
+   lives here rather than in either component's scoped block. */
+
+/* ─── Contextual multi-select ──────────────────────────────────
+   No mode toggle. A faint checkbox always sits at the start of each
+   row; it brightens on row hover, when the row is ticked, or when
+   ANY row in the section is ticked. The Gmail / Linear pattern. */
+
+.leaf-checkbox,
+.archive-checkbox {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1.5px solid var(--border);
+  border-radius: 2px;
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  appearance: none;
+  opacity: 0.32;
+  transition:
+    background-color 80ms ease,
+    border-color 80ms ease,
+    opacity 120ms ease;
+}
+
+.leaf-row:hover .leaf-checkbox,
+.leaf-row.has-selection .leaf-checkbox,
+.leaf-row.is-ticked .leaf-checkbox,
+.leaf-checkbox:focus-visible,
+.archive-row:hover .archive-checkbox,
+.archive-row.has-selection .archive-checkbox,
+.archive-row.is-ticked .archive-checkbox,
+.archive-checkbox:focus-visible {
+  opacity: 1;
+}
+
+.leaf-row.is-ticked .leaf-checkbox,
+.archive-row.is-ticked .archive-checkbox {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.leaf-checkbox-glyph,
+.archive-checkbox-glyph {
+  font-family: var(--mono);
+  font-weight: 800;
+  font-size: 0.75rem;
+  color: var(--primary-text-on-accent, #111);
+  line-height: 1;
+}
