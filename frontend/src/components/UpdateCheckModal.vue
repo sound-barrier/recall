@@ -171,13 +171,17 @@ function openReleasePage() {
         aria-labelledby="update-check-modal-title"
       >
         <header class="update-check-modal-head">
-          <h2 id="update-check-modal-title" class="update-check-modal-title">Check for updates</h2>
+          <h2 id="update-check-modal-title" class="update-check-modal-title">
+            Check for updates
+          </h2>
           <button
             type="button"
             class="update-check-modal-close"
             aria-label="Close update check"
             @click="$emit('close')"
-          >×</button>
+          >
+            ×
+          </button>
         </header>
 
         <!-- Loading state while CheckForUpdate is in flight. -->
@@ -194,7 +198,9 @@ function openReleasePage() {
         <div v-else class="update-check-modal-body">
           <!-- Section 1: Recall binary -->
           <section class="update-check-modal-section" aria-labelledby="recall-app-heading">
-            <h3 id="recall-app-heading" class="update-check-modal-section-title">Recall app</h3>
+            <h3 id="recall-app-heading" class="update-check-modal-section-title">
+              Recall app
+            </h3>
             <div class="update-check-modal-rows">
               <div class="update-check-modal-row">
                 <span class="update-check-modal-row-label">Current</span>
@@ -214,14 +220,18 @@ function openReleasePage() {
               data-update-check-open-release
               :disabled="!info.url"
               @click="openReleasePage"
-            >Open release page</button>
+            >
+              Open release page
+            </button>
           </section>
 
-          <hr class="update-check-modal-rule" />
+          <hr class="update-check-modal-rule">
 
           <!-- Section 2: Game data — single channel, single button. -->
           <section class="update-check-modal-section update-check-modal-game-data" aria-labelledby="game-data-heading">
-            <h3 id="game-data-heading" class="update-check-modal-section-title">Game data</h3>
+            <h3 id="game-data-heading" class="update-check-modal-section-title">
+              Game data
+            </h3>
 
             <!-- Pages-unreachable state — main fetch failed; user
                  can't apply because we don't have anything to apply.
@@ -316,7 +326,9 @@ function openReleasePage() {
                 class="update-check-modal-btn update-check-modal-btn-ghost"
                 data-update-check-close
                 @click="$emit('close')"
-              >Close</button>
+              >
+                Close
+              </button>
             </div>
           </section>
         </div>

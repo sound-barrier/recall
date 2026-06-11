@@ -28,4 +28,14 @@ export default tseslint.config(
       }],
     },
   },
+  {
+    // vue/one-component-per-file enforces one SFC per .vue file — it
+    // misfires on .test.ts files that mount several ad-hoc
+    // `defineComponent` host wrappers, which is the canonical
+    // @vue/test-utils pattern. The rule has no bearing on test helpers.
+    files: ['**/*.test.ts'],
+    rules: {
+      'vue/one-component-per-file': 'off',
+    },
+  },
 )

@@ -212,8 +212,8 @@ function onCancel() {
             <!-- boolean → labeled toggle -->
             <label v-else-if="field.kind === 'boolean'" class="wcp-toggle">
               <input
-                type="checkbox"
                 :id="`wcp-${def.id}-${field.key}`"
+                type="checkbox"
                 :checked="!!draft[field.key]"
                 :data-widget-config-choice="`${field.key}=toggle`"
                 @change="onBooleanToggle(field.key, ($event.target as HTMLInputElement).checked)"

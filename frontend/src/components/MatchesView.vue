@@ -1130,801 +1130,801 @@ onBeforeUnmount(() => {
     />
 
     <div class="matches-content-column">
-    <!-- ─── SET DOSSIER ─────────────────────────────────────── -->
-    <section
-      class="set-dossier"
-      aria-label="Set dossier"
-    >
-      <header class="dossier-head">
-        <span class="dossier-eyebrow">{{ anyNarrow ? 'Narrowed set' : 'Set' }}</span>
-        <h2 class="dossier-title">
-          {{ setHeadline }}
-        </h2>
-        <span class="dossier-meta">{{ setSubline }}</span>
+      <!-- ─── SET DOSSIER ─────────────────────────────────────── -->
+      <section
+        class="set-dossier"
+        aria-label="Set dossier"
+      >
+        <header class="dossier-head">
+          <span class="dossier-eyebrow">{{ anyNarrow ? 'Narrowed set' : 'Set' }}</span>
+          <h2 class="dossier-title">
+            {{ setHeadline }}
+          </h2>
+          <span class="dossier-meta">{{ setSubline }}</span>
 
-        <ul v-if="anyNarrow" class="active-chips" aria-label="Active narrowing clauses">
-          <li v-if="searchText.trim()" class="active-chip search">
-            <span class="chip-key">Search</span>
-            <span class="chip-val">"{{ searchText.trim() }}"</span>
-            <button class="chip-x" aria-label="Clear search" @click="searchText = ''">
-              ×
-            </button>
-          </li>
-          <li v-if="pickedRange !== 'all' && !customFrom && !customTo" class="active-chip range">
-            <span class="chip-key">Range</span>
-            <span class="chip-val">last {{ pickedRange }}</span>
-            <button class="chip-x" aria-label="Drop range" @click="pickRange('all')">
-              ×
-            </button>
-          </li>
-          <li v-if="customFrom || customTo" class="active-chip range">
-            <span class="chip-key">Dates</span>
-            <span class="chip-val">{{ customFrom || '…' }} → {{ customTo || '…' }}</span>
-            <button class="chip-x" aria-label="Clear dates" @click="customFrom = ''; customTo = ''; pickedRange = 'all'">
-              ×
-            </button>
-          </li>
-          <li v-for="m in [...pickedMaps]" :key="`m-${m}`" class="active-chip">
-            <span class="chip-key">Map</span>
-            <span class="chip-val">{{ m }}</span>
-            <button class="chip-x" :aria-label="`Drop map ${m}`" @click="pickMap(m)">
-              ×
-            </button>
-          </li>
-          <li v-for="t in [...pickedMapTypes]" :key="`mt-${t}`" class="active-chip">
-            <span class="chip-key">Type</span>
-            <span class="chip-val">{{ t }}</span>
-            <button class="chip-x" :aria-label="`Drop type ${t}`" @click="pickMapType(t)">
-              ×
-            </button>
-          </li>
-          <li v-for="h in [...pickedHeroes]" :key="`h-${h}`" class="active-chip">
-            <span class="chip-key">Hero</span>
-            <span class="chip-val">{{ h }}</span>
-            <button class="chip-x" :aria-label="`Drop hero ${h}`" @click="pickHero(h)">
-              ×
-            </button>
-          </li>
-          <li v-for="r in [...pickedRoles]" :key="`r-${r}`" class="active-chip">
-            <span class="chip-key">Role</span>
-            <span class="chip-val">{{ r }}</span>
-            <button class="chip-x" :aria-label="`Drop role ${r}`" @click="pickRole(r)">
-              ×
-            </button>
-          </li>
-          <li v-for="r in [...pickedResults]" :key="`res-${r}`" class="active-chip">
-            <span class="chip-key">Result</span>
-            <span class="chip-val">{{ r }}</span>
-            <button class="chip-x" :aria-label="`Drop result ${r}`" @click="pickResult(r)">
-              ×
-            </button>
-          </li>
-          <li v-for="t in [...pickedTags]" :key="`tg-${t}`" class="active-chip">
-            <span class="chip-key">Tag</span>
-            <span class="chip-val">#{{ t }}</span>
-            <button class="chip-x" :aria-label="`Drop tag ${t}`" @click="pickTag(t)">
-              ×
-            </button>
-          </li>
-          <li v-if="leaverHandling !== 'include'" class="active-chip">
-            <span class="chip-key">Leavers</span>
-            <span class="chip-val">{{ leaverHandling === 'hide' ? 'hidden' : 'no tally' }}</span>
-            <button class="chip-x" aria-label="Reset leavers" @click="leaverHandling = 'include'">
-              ×
-            </button>
-          </li>
-          <li v-if="minPlayMinutes > 0" class="active-chip">
-            <span class="chip-key">Min play</span>
-            <span class="chip-val">≥ {{ minPlayMinutes }}m</span>
-            <button class="chip-x" aria-label="Reset min play minutes" @click="minPlayMinutes = 0">
-              ×
-            </button>
-          </li>
-          <li v-if="minPlayPercent > 0" class="active-chip">
-            <span class="chip-key">Min played</span>
-            <span class="chip-val">≥ {{ minPlayPercent }}%</span>
-            <button class="chip-x" aria-label="Reset min play percent" @click="minPlayPercent = 0">
-              ×
-            </button>
-          </li>
-          <li v-if="includeUnknown" class="active-chip">
-            <span class="chip-key">Unknown</span>
-            <span class="chip-val">shown</span>
-            <button class="chip-x" aria-label="Hide unknown" @click="includeUnknown = false">
-              ×
-            </button>
-          </li>
-          <li
-            v-for="b in [...pickedReviewedBy]"
-            :key="`rb-${b}`"
-            class="active-chip"
-          >
-            <span class="chip-key">Reviewed by</span>
-            <span class="chip-val">{{ b }}</span>
-            <button class="chip-x" :aria-label="`Drop ${b}`" @click="pickReviewedBy(b)">
-              ×
-            </button>
-          </li>
-          <li v-if="sinceAnchorActive && anchorRecord" class="active-chip">
-            <span class="chip-key">Since</span>
-            <span class="chip-val">{{ anchorChipLabel }}</span>
-            <button
-              class="chip-x"
-              aria-label="Stop filtering since anchor"
-              @click="sinceAnchorActive = false"
+          <ul v-if="anyNarrow" class="active-chips" aria-label="Active narrowing clauses">
+            <li v-if="searchText.trim()" class="active-chip search">
+              <span class="chip-key">Search</span>
+              <span class="chip-val">"{{ searchText.trim() }}"</span>
+              <button class="chip-x" aria-label="Clear search" @click="searchText = ''">
+                ×
+              </button>
+            </li>
+            <li v-if="pickedRange !== 'all' && !customFrom && !customTo" class="active-chip range">
+              <span class="chip-key">Range</span>
+              <span class="chip-val">last {{ pickedRange }}</span>
+              <button class="chip-x" aria-label="Drop range" @click="pickRange('all')">
+                ×
+              </button>
+            </li>
+            <li v-if="customFrom || customTo" class="active-chip range">
+              <span class="chip-key">Dates</span>
+              <span class="chip-val">{{ customFrom || '…' }} → {{ customTo || '…' }}</span>
+              <button class="chip-x" aria-label="Clear dates" @click="customFrom = ''; customTo = ''; pickedRange = 'all'">
+                ×
+              </button>
+            </li>
+            <li v-for="m in [...pickedMaps]" :key="`m-${m}`" class="active-chip">
+              <span class="chip-key">Map</span>
+              <span class="chip-val">{{ m }}</span>
+              <button class="chip-x" :aria-label="`Drop map ${m}`" @click="pickMap(m)">
+                ×
+              </button>
+            </li>
+            <li v-for="t in [...pickedMapTypes]" :key="`mt-${t}`" class="active-chip">
+              <span class="chip-key">Type</span>
+              <span class="chip-val">{{ t }}</span>
+              <button class="chip-x" :aria-label="`Drop type ${t}`" @click="pickMapType(t)">
+                ×
+              </button>
+            </li>
+            <li v-for="h in [...pickedHeroes]" :key="`h-${h}`" class="active-chip">
+              <span class="chip-key">Hero</span>
+              <span class="chip-val">{{ h }}</span>
+              <button class="chip-x" :aria-label="`Drop hero ${h}`" @click="pickHero(h)">
+                ×
+              </button>
+            </li>
+            <li v-for="r in [...pickedRoles]" :key="`r-${r}`" class="active-chip">
+              <span class="chip-key">Role</span>
+              <span class="chip-val">{{ r }}</span>
+              <button class="chip-x" :aria-label="`Drop role ${r}`" @click="pickRole(r)">
+                ×
+              </button>
+            </li>
+            <li v-for="r in [...pickedResults]" :key="`res-${r}`" class="active-chip">
+              <span class="chip-key">Result</span>
+              <span class="chip-val">{{ r }}</span>
+              <button class="chip-x" :aria-label="`Drop result ${r}`" @click="pickResult(r)">
+                ×
+              </button>
+            </li>
+            <li v-for="t in [...pickedTags]" :key="`tg-${t}`" class="active-chip">
+              <span class="chip-key">Tag</span>
+              <span class="chip-val">#{{ t }}</span>
+              <button class="chip-x" :aria-label="`Drop tag ${t}`" @click="pickTag(t)">
+                ×
+              </button>
+            </li>
+            <li v-if="leaverHandling !== 'include'" class="active-chip">
+              <span class="chip-key">Leavers</span>
+              <span class="chip-val">{{ leaverHandling === 'hide' ? 'hidden' : 'no tally' }}</span>
+              <button class="chip-x" aria-label="Reset leavers" @click="leaverHandling = 'include'">
+                ×
+              </button>
+            </li>
+            <li v-if="minPlayMinutes > 0" class="active-chip">
+              <span class="chip-key">Min play</span>
+              <span class="chip-val">≥ {{ minPlayMinutes }}m</span>
+              <button class="chip-x" aria-label="Reset min play minutes" @click="minPlayMinutes = 0">
+                ×
+              </button>
+            </li>
+            <li v-if="minPlayPercent > 0" class="active-chip">
+              <span class="chip-key">Min played</span>
+              <span class="chip-val">≥ {{ minPlayPercent }}%</span>
+              <button class="chip-x" aria-label="Reset min play percent" @click="minPlayPercent = 0">
+                ×
+              </button>
+            </li>
+            <li v-if="includeUnknown" class="active-chip">
+              <span class="chip-key">Unknown</span>
+              <span class="chip-val">shown</span>
+              <button class="chip-x" aria-label="Hide unknown" @click="includeUnknown = false">
+                ×
+              </button>
+            </li>
+            <li
+              v-for="b in [...pickedReviewedBy]"
+              :key="`rb-${b}`"
+              class="active-chip"
             >
-              ×
-            </button>
-          </li>
-          <li class="active-chip clear">
-            <button class="chip-clear" @click="resetNarrow">
-              Clear all
-            </button>
-          </li>
-        </ul>
-      </header>
+              <span class="chip-key">Reviewed by</span>
+              <span class="chip-val">{{ b }}</span>
+              <button class="chip-x" :aria-label="`Drop ${b}`" @click="pickReviewedBy(b)">
+                ×
+              </button>
+            </li>
+            <li v-if="sinceAnchorActive && anchorRecord" class="active-chip">
+              <span class="chip-key">Since</span>
+              <span class="chip-val">{{ anchorChipLabel }}</span>
+              <button
+                class="chip-x"
+                aria-label="Stop filtering since anchor"
+                @click="sinceAnchorActive = false"
+              >
+                ×
+              </button>
+            </li>
+            <li class="active-chip clear">
+              <button class="chip-clear" @click="resetNarrow">
+                Clear all
+              </button>
+            </li>
+          </ul>
+        </header>
 
-      <template v-for="row in dashboardRows" :key="`row-${row.index}`">
-        <TransitionGroup
-          tag="div"
-          class="dashboard-row"
-          name="dashboard-widget"
-          :data-row="row.index"
-          @dragover.prevent="dragReorder.onRowDragOver(row.index, $event)"
-          @drop="dragReorder.onRowDrop(row.index, $event)"
-        >
-          <DashboardWidget
-            v-for="(def, idx) in row.widgets"
-            :id="def.id"
-            :key="def.id"
-            :shape="def.shape"
-            :row="row.index"
-            :idx="idx"
-            :has-config="def.config.fields.length > 0"
-            :dragging="dragReorder.dragging.value !== null
-              && dragReorder.dragging.value.id === def.id"
-            :drop-target="dragReorder.dropHint.value !== null &&
-              dragReorder.dropHint.value.row === row.index &&
-              dragReorder.dropHint.value.idx === idx"
-            :legacy-data-kpi="LEGACY_DATA_KPI[def.id]"
-            :legacy-data-breakdown="LEGACY_DATA_BREAKDOWN[def.id]"
-            @drag-start="dragReorder.onDragStart"
-            @drag-end="dragReorder.onDragEnd"
-            @drag-over="dragReorder.onDragOver"
-            @drop="dragReorder.onDrop"
-            @handle-keydown="dragReorder.onHandleKeydown"
-            @remove="onWidgetRemove"
-            @configure="onWidgetConfigure"
+        <template v-for="row in dashboardRows" :key="`row-${row.index}`">
+          <TransitionGroup
+            tag="div"
+            class="dashboard-row"
+            name="dashboard-widget"
+            :data-row="row.index"
+            @dragover.prevent="dragReorder.onRowDragOver(row.index, $event)"
+            @drop="dragReorder.onRowDrop(row.index, $event)"
           >
-            <component :is="def.component" />
-          </DashboardWidget>
-        </TransitionGroup>
-      </template>
+            <DashboardWidget
+              v-for="(def, idx) in row.widgets"
+              :id="def.id"
+              :key="def.id"
+              :shape="def.shape"
+              :row="row.index"
+              :idx="idx"
+              :has-config="def.config.fields.length > 0"
+              :dragging="dragReorder.dragging.value !== null
+                && dragReorder.dragging.value.id === def.id"
+              :drop-target="dragReorder.dropHint.value !== null &&
+                dragReorder.dropHint.value.row === row.index &&
+                dragReorder.dropHint.value.idx === idx"
+              :legacy-data-kpi="LEGACY_DATA_KPI[def.id]"
+              :legacy-data-breakdown="LEGACY_DATA_BREAKDOWN[def.id]"
+              @drag-start="dragReorder.onDragStart"
+              @drag-end="dragReorder.onDragEnd"
+              @drag-over="dragReorder.onDragOver"
+              @drop="dragReorder.onDrop"
+              @handle-keydown="dragReorder.onHandleKeydown"
+              @remove="onWidgetRemove"
+              @configure="onWidgetConfigure"
+            >
+              <component :is="def.component" />
+            </DashboardWidget>
+          </TransitionGroup>
+        </template>
 
-      <!-- Narrow trigger + Add/Reset menu. -->
-      <div class="dossier-actions">
-        <!-- Add menu — the only customization surface left now that
+        <!-- Narrow trigger + Add/Reset menu. -->
+        <div class="dossier-actions">
+          <!-- Add menu — the only customization surface left now that
              remove + reorder live inline on each widget/section. A
              small dropdown of removed widgets + sections to re-add,
              plus Reset. -->
-        <div class="dossier-manage-anchor">
-          <button
-            type="button"
-            class="dossier-btn"
-            :class="{ 'is-open': showManageMenu }"
-            data-dossier-add
-            :aria-expanded="showManageMenu ? 'true' : 'false'"
-            aria-haspopup="dialog"
-            @click="showManageMenu = !showManageMenu"
-          >
-            <span aria-hidden="true">＋</span> Add
-          </button>
-          <DossierManageMenu :open="showManageMenu" @close="showManageMenu = false" />
-        </div>
+          <div class="dossier-manage-anchor">
+            <button
+              type="button"
+              class="dossier-btn"
+              :class="{ 'is-open': showManageMenu }"
+              data-dossier-add
+              :aria-expanded="showManageMenu ? 'true' : 'false'"
+              aria-haspopup="dialog"
+              @click="showManageMenu = !showManageMenu"
+            >
+              <span aria-hidden="true">＋</span> Add
+            </button>
+            <DossierManageMenu :open="showManageMenu" @close="showManageMenu = false" />
+          </div>
 
-        <!-- Popover-mode trigger + modal. Hidden when the rail is
+          <!-- Popover-mode trigger + modal. Hidden when the rail is
              rendering instead (>= 1400 px viewport). -->
-        <div v-if="narrowMode === 'popover'" class="narrow-anchor">
-          <button
-            ref="triggerRef"
-            class="dossier-btn primary"
-            :class="{ 'is-open': narrowOpen }"
-            :aria-expanded="narrowOpen ? 'true' : 'false'"
-            aria-haspopup="true"
-            aria-controls="narrow-popover"
-            data-narrow-trigger
-            @click="toggleNarrow"
-          >
-            <span aria-hidden="true">⌗</span> Filter matches
-            <span v-if="anyNarrow" class="narrow-count">· {{ activeClauseCount }}</span>
-          </button>
+          <div v-if="narrowMode === 'popover'" class="narrow-anchor">
+            <button
+              ref="triggerRef"
+              class="dossier-btn primary"
+              :class="{ 'is-open': narrowOpen }"
+              :aria-expanded="narrowOpen ? 'true' : 'false'"
+              aria-haspopup="true"
+              aria-controls="narrow-popover"
+              data-narrow-trigger
+              @click="toggleNarrow"
+            >
+              <span aria-hidden="true">⌗</span> Filter matches
+              <span v-if="anyNarrow" class="narrow-count">· {{ activeClauseCount }}</span>
+            </button>
 
-          <NarrowPopover
-            v-model:open="narrowOpen"
-            mode="popover"
-            :narrow="props.narrow"
-            :records="props.records"
-            :trigger-el="triggerRef"
-            @open-match="(k: string) => emit('open-match', k)"
-            @clear-anchor="emit('clear-anchor')"
-            @narrow-open="(v: boolean) => emit('narrow-open', v)"
-          />
+            <NarrowPopover
+              v-model:open="narrowOpen"
+              mode="popover"
+              :narrow="props.narrow"
+              :records="props.records"
+              :trigger-el="triggerRef"
+              @open-match="(k: string) => emit('open-match', k)"
+              @clear-anchor="emit('clear-anchor')"
+              @narrow-open="(v: boolean) => emit('narrow-open', v)"
+            />
+          </div>
         </div>
-      </div>
 
-      <!-- Undo-after-trash toast. Itself teleports to <body> so it
+        <!-- Undo-after-trash toast. Itself teleports to <body> so it
            lives outside any inert/aria-hidden ancestors. -->
-      <DashboardUndoToast
-        :trashed="pendingUndo"
-        @undo="onUndoRemove"
-        @dismiss="onDismissUndo"
-      />
+        <DashboardUndoToast
+          :trashed="pendingUndo"
+          @undo="onUndoRemove"
+          @dismiss="onDismissUndo"
+        />
 
-      <!-- Per-widget settings popover. Teleports to <body>; anchored
+        <!-- Per-widget settings popover. Teleports to <body>; anchored
            to the gear-button rect captured on click. -->
-      <WidgetConfigPopover
-        :open="configureWidgetId !== null"
-        :def="configureDef"
-        :anchor="configureAnchor"
-        @close="closeWidgetConfigure"
-      />
+        <WidgetConfigPopover
+          :open="configureWidgetId !== null"
+          :def="configureDef"
+          :anchor="configureAnchor"
+          @close="closeWidgetConfigure"
+        />
 
-      <!-- Combined Sort + Group dropdown. Mounted at the section
+        <!-- Combined Sort + Group dropdown. Mounted at the section
            level so its z-index sits above the leaves list. The
            trigger's bounding rect is captured on click; close on
            Esc / outside-click / radio-pick. -->
-      <MatchesSortGroupPopover
-        :open="sortGroupOpen"
-        :sort="sortOrder"
-        :group="groupBy"
-        :anchor="sortGroupAnchor"
-        @close="closeSortGroup"
-        @update:sort="(v) => { sortOrder = v }"
-        @update:group="(v) => { groupBy = v }"
-      />
-    </section>
+        <MatchesSortGroupPopover
+          :open="sortGroupOpen"
+          :sort="sortOrder"
+          :group="groupBy"
+          :anchor="sortGroupAnchor"
+          @close="closeSortGroup"
+          @update:sort="(v) => { sortOrder = v }"
+          @update:group="(v) => { groupBy = v }"
+        />
+      </section>
 
-    <!-- ─── DOSSIER SECTIONS (Campaign Log, Geography) ──────────
+      <!-- ─── DOSSIER SECTIONS (Campaign Log, Geography) ──────────
          Full-width bands below the dossier grid. Order + visibility
          come from useSectionLayout; each wears an inline grip + ×
          (DossierSection) for reorder + remove. Re-add from the
          dossier Add menu. `visibleRecords` strips hidden matches so
          the Campaign Log reconciles with the dossier. -->
-    <template v-if="visibleRecords.length > 0">
-      <DossierSection
-        v-for="(sectionId, sIdx) in visibleSectionIds"
-        :id="sectionId"
-        :key="sectionId"
-        :label="sectionLayout.labelFor(sectionId)"
-        :index="sIdx"
-        :count="visibleSectionIds.length"
-        :dragging="draggingSectionId === sectionId"
-        :drop-target="sectionDropTargetId === sectionId"
-        @remove="sectionLayout.remove"
-        @move="onSectionMove"
-        @drag-start="onSectionDragStart"
-        @drag-over="onSectionDragOver"
-        @drop="onSectionDrop"
-        @drag-end="onSectionDragEnd"
-      >
-        <MatchTimelineHeader
-          v-if="sectionId === 'campaign-log'"
-          :records="visibleRecords"
-          :filter-from="customFrom"
-          :filter-to="customTo"
-          @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
-          @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
-        />
-        <MatchMapRoleBand v-else-if="sectionId === 'geography'" />
-      </DossierSection>
-    </template>
+      <template v-if="visibleRecords.length > 0">
+        <DossierSection
+          v-for="(sectionId, sIdx) in visibleSectionIds"
+          :id="sectionId"
+          :key="sectionId"
+          :label="sectionLayout.labelFor(sectionId)"
+          :index="sIdx"
+          :count="visibleSectionIds.length"
+          :dragging="draggingSectionId === sectionId"
+          :drop-target="sectionDropTargetId === sectionId"
+          @remove="sectionLayout.remove"
+          @move="onSectionMove"
+          @drag-start="onSectionDragStart"
+          @drag-over="onSectionDragOver"
+          @drop="onSectionDrop"
+          @drag-end="onSectionDragEnd"
+        >
+          <MatchTimelineHeader
+            v-if="sectionId === 'campaign-log'"
+            :records="visibleRecords"
+            :filter-from="customFrom"
+            :filter-to="customTo"
+            @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
+            @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
+          />
+          <MatchMapRoleBand v-else-if="sectionId === 'geography'" />
+        </DossierSection>
+      </template>
 
-    <!-- ─── MEMBERS ─────────────────────────────────────────── -->
-    <section class="leaves" aria-label="Set members">
-      <header class="leaves-head">
-        <div class="leaves-head-left">
-          <span class="leaves-eyebrow">Members</span>
-          <h3 class="leaves-title">
-            {{ sortedRecords.length }} matches in this set
-          </h3>
-        </div>
-        <div class="leaves-head-controls">
-          <button
-            type="button"
-            class="sort-group-trigger"
-            :class="{ open: sortGroupOpen }"
-            data-sort-group-trigger
-            aria-haspopup="dialog"
-            :aria-expanded="sortGroupOpen ? 'true' : 'false'"
-            :title="`Sort and group — currently ${sortGroupLabel}`"
-            @click="onSortGroupTriggerClick"
-          >
-            <span class="sort-group-label">{{ sortGroupLabel }}</span>
-            <span class="sort-group-caret" aria-hidden="true">▾</span>
-          </button>
-          <fieldset class="seg" aria-label="Row density">
-            <legend class="seg-legend">
-              Density
-            </legend>
+      <!-- ─── MEMBERS ─────────────────────────────────────────── -->
+      <section class="leaves" aria-label="Set members">
+        <header class="leaves-head">
+          <div class="leaves-head-left">
+            <span class="leaves-eyebrow">Members</span>
+            <h3 class="leaves-title">
+              {{ sortedRecords.length }} matches in this set
+            </h3>
+          </div>
+          <div class="leaves-head-controls">
             <button
-              class="seg-btn"
-              :class="{ picked: density === 'comfortable' }"
-              :aria-pressed="density === 'comfortable' ? 'true' : 'false'"
-              :data-density-pick="density === 'comfortable' ? 'comfortable' : undefined"
-              title="Roomy row spacing"
-              @click="setDensity('comfortable')"
+              type="button"
+              class="sort-group-trigger"
+              :class="{ open: sortGroupOpen }"
+              data-sort-group-trigger
+              aria-haspopup="dialog"
+              :aria-expanded="sortGroupOpen ? 'true' : 'false'"
+              :title="`Sort and group — currently ${sortGroupLabel}`"
+              @click="onSortGroupTriggerClick"
             >
-              Cozy
+              <span class="sort-group-label">{{ sortGroupLabel }}</span>
+              <span class="sort-group-caret" aria-hidden="true">▾</span>
             </button>
-            <button
-              class="seg-btn"
-              :class="{ picked: density === 'compact' }"
-              :aria-pressed="density === 'compact' ? 'true' : 'false'"
-              :data-density-pick="density === 'compact' ? 'compact' : undefined"
-              title="Tighter row spacing — more rows per screen"
-              @click="setDensity('compact')"
-            >
-              Compact
-            </button>
-          </fieldset>
-          <!-- Jump to the "No date" section at the bottom of the
+            <fieldset class="seg" aria-label="Row density">
+              <legend class="seg-legend">
+                Density
+              </legend>
+              <button
+                class="seg-btn"
+                :class="{ picked: density === 'comfortable' }"
+                :aria-pressed="density === 'comfortable' ? 'true' : 'false'"
+                :data-density-pick="density === 'comfortable' ? 'comfortable' : undefined"
+                title="Roomy row spacing"
+                @click="setDensity('comfortable')"
+              >
+                Cozy
+              </button>
+              <button
+                class="seg-btn"
+                :class="{ picked: density === 'compact' }"
+                :aria-pressed="density === 'compact' ? 'true' : 'false'"
+                :data-density-pick="density === 'compact' ? 'compact' : undefined"
+                title="Tighter row spacing — more rows per screen"
+                @click="setDensity('compact')"
+              >
+                Compact
+              </button>
+            </fieldset>
+            <!-- Jump to the "No date" section at the bottom of the
                leaves list. useMatchesGroup always appends the
                undated bucket last, regardless of sort order; this
                button gives the user a one-click path to triage
                those rows without scrolling past the dated corpus.
                Disabled (predictable layout > collapsed layout) when
                there are no undated matches in the current narrow. -->
-          <button
-            type="button"
-            class="btn ghost jump-to-undated"
-            :class="{ 'has-undated': undatedCount > 0 }"
-            :disabled="undatedCount === 0"
-            :title="undatedCount === 0
-              ? 'No undated matches in this view'
-              : `Jump to ${undatedCount} undated match${undatedCount === 1 ? '' : 'es'}`"
-            data-jump-to-undated
-            @click="onJumpToUndated"
-          >
-            <span class="jump-glyph" aria-hidden="true">↓</span>
-            {{ undatedCount }} undated
-          </button>
-        </div>
-      </header>
+            <button
+              type="button"
+              class="btn ghost jump-to-undated"
+              :class="{ 'has-undated': undatedCount > 0 }"
+              :disabled="undatedCount === 0"
+              :title="undatedCount === 0
+                ? 'No undated matches in this view'
+                : `Jump to ${undatedCount} undated match${undatedCount === 1 ? '' : 'es'}`"
+              data-jump-to-undated
+              @click="onJumpToUndated"
+            >
+              <span class="jump-glyph" aria-hidden="true">↓</span>
+              {{ undatedCount }} undated
+            </button>
+          </div>
+        </header>
 
-      <!-- Bulk action bar — appears as soon as any row is ticked. No
+        <!-- Bulk action bar — appears as soon as any row is ticked. No
            mode toggle: the checkbox on each row IS the affordance
            (Gmail / Linear / GitHub Issues pattern). Sticky within the
            section so it follows the user down the leaves list. -->
-      <BulkActionBar
-        v-if="selectedKeys.size > 0"
-        :selected-count="selectedKeys.size"
-        :sorted-count="sortedRecords.length"
-        :other-profiles="otherProfiles"
-        :move-picker-open="movePickerOpen"
-        :available-tags="narrow.availableTags.value"
-        @select-all="selectAllVisible"
-        @hide="hideSelected"
-        @export-bundle="emit('export-bundle', [...selectedKeys])"
-        @bulk-tag="onBulkTag"
-        @move-begin="beginMoveLive"
-        @move-commit="commitMove"
-        @move-cancel="cancelMove"
-        @clear="clearSelection"
-        @bulk-play-mode="onBulkPlayMode"
-        @bulk-queue="onBulkQueue"
-      />
+        <BulkActionBar
+          v-if="selectedKeys.size > 0"
+          :selected-count="selectedKeys.size"
+          :sorted-count="sortedRecords.length"
+          :other-profiles="otherProfiles"
+          :move-picker-open="movePickerOpen"
+          :available-tags="narrow.availableTags.value"
+          @select-all="selectAllVisible"
+          @hide="hideSelected"
+          @export-bundle="emit('export-bundle', [...selectedKeys])"
+          @bulk-tag="onBulkTag"
+          @move-begin="beginMoveLive"
+          @move-commit="commitMove"
+          @move-cancel="cancelMove"
+          @clear="clearSelection"
+          @bulk-play-mode="onBulkPlayMode"
+          @bulk-queue="onBulkQueue"
+        />
 
-      <ul
-        v-if="sortedRecords.length"
-        ref="leavesListRef"
-        class="leaves-list"
-        :class="`density-${density}`"
-        role="list"
-      >
-        <!-- Virtualization spacers. Non-zero only when groupBy='none';
+        <ul
+          v-if="sortedRecords.length"
+          ref="leavesListRef"
+          class="leaves-list"
+          :class="`density-${density}`"
+          role="list"
+        >
+          <!-- Virtualization spacers. Non-zero only when groupBy='none';
              height equals the count of unmounted rows above (or below)
              the visible slice times the measured row height. Holds the
              scrollbar in place so the document still scrolls through
              every row even though most aren't in the DOM. -->
-        <li
-          v-if="flatTopSpacerHeight > 0"
-          class="leaves-virtual-spacer"
-          aria-hidden="true"
-          :style="{ height: flatTopSpacerHeight + 'px' }"
-          data-virt-top-spacer
-        />
-        <template v-for="section in renderSections" :key="section.key">
-          <li v-if="section.header" class="section-divider" :data-section-key="section.key" :aria-label="`Group: ${section.header}`">
-            <span class="sd-label">{{ section.header }}</span>
-            <span class="sd-count">{{ section.records.length }}</span>
-            <span class="sd-line" aria-hidden="true" />
-          </li>
           <li
-            v-for="rec in section.records"
-            :key="rec.match_key"
-            class="leaf-row"
-            tabindex="-1"
-            :data-match-key="rec.match_key"
-            :data-card-index="narrowedIndexByKey.get(rec.match_key) ?? -1"
-            :aria-current="props.focusedCardIndex !== undefined
-              && narrowedIndexByKey.get(rec.match_key) === props.focusedCardIndex
-              ? 'true' : undefined"
-            :class="[
-              `result-${rec.data?.result || 'unknown'}`,
-              {
-                'has-selection': selectedKeys.size > 0,
-                'is-ticked': selectedKeys.has(rec.match_key),
-                'kbd-focused': props.focusedCardIndex !== undefined
-                  && narrowedIndexByKey.get(rec.match_key) === props.focusedCardIndex,
-                'is-anchor': rec.match_key === anchorKey,
-              },
-            ]"
-            @click="emit('open-match', rec.match_key)"
-            @contextmenu="onRowContext($event, rec.match_key)"
-            @mouseenter="onLeafMouseEnter(rec, $event)"
-            @mousemove="onLeafMouseMove"
-            @mouseleave="onLeafMouseLeave"
-          >
-            <!-- Anchor indicator — a small filled-diamond glyph that
+            v-if="flatTopSpacerHeight > 0"
+            class="leaves-virtual-spacer"
+            aria-hidden="true"
+            :style="{ height: flatTopSpacerHeight + 'px' }"
+            data-virt-top-spacer
+          />
+          <template v-for="section in renderSections" :key="section.key">
+            <li v-if="section.header" class="section-divider" :data-section-key="section.key" :aria-label="`Group: ${section.header}`">
+              <span class="sd-label">{{ section.header }}</span>
+              <span class="sd-count">{{ section.records.length }}</span>
+              <span class="sd-line" aria-hidden="true" />
+            </li>
+            <li
+              v-for="rec in section.records"
+              :key="rec.match_key"
+              class="leaf-row"
+              tabindex="-1"
+              :data-match-key="rec.match_key"
+              :data-card-index="narrowedIndexByKey.get(rec.match_key) ?? -1"
+              :aria-current="props.focusedCardIndex !== undefined
+                && narrowedIndexByKey.get(rec.match_key) === props.focusedCardIndex
+                ? 'true' : undefined"
+              :class="[
+                `result-${rec.data?.result || 'unknown'}`,
+                {
+                  'has-selection': selectedKeys.size > 0,
+                  'is-ticked': selectedKeys.has(rec.match_key),
+                  'kbd-focused': props.focusedCardIndex !== undefined
+                    && narrowedIndexByKey.get(rec.match_key) === props.focusedCardIndex,
+                  'is-anchor': rec.match_key === anchorKey,
+                },
+              ]"
+              @click="emit('open-match', rec.match_key)"
+              @contextmenu="onRowContext($event, rec.match_key)"
+              @mouseenter="onLeafMouseEnter(rec, $event)"
+              @mousemove="onLeafMouseMove"
+              @mouseleave="onLeafMouseLeave"
+            >
+              <!-- Anchor indicator — a small filled-diamond glyph that
                  shows when this row is the "since this match" anchor.
                  Sits in the absolute corner so it doesn't push other
                  cells. The .is-anchor class on the row also adds a
                  left-edge accent stripe via app.css. -->
-            <span
-              v-if="rec.match_key === anchorKey"
-              class="leaf-anchor-pin"
-              aria-label="Current “since” anchor"
-              title="This match is the current “since” anchor."
-              data-leaf-anchor-pin
-            >◆</span>
-            <!-- Contextual checkbox — always in the DOM so the row
+              <span
+                v-if="rec.match_key === anchorKey"
+                class="leaf-anchor-pin"
+                aria-label="Current “since” anchor"
+                title="This match is the current “since” anchor."
+                data-leaf-anchor-pin
+              >◆</span>
+              <!-- Contextual checkbox — always in the DOM so the row
                  geometry never jumps. Visually faint when idle, full-
                  opacity on row hover / focus / when ticked / when ANY
                  row is ticked. Click stops propagation so the row
                  still opens the detail panel on body click. -->
-            <button
-              type="button"
-              class="leaf-checkbox"
-              role="checkbox"
-              :aria-checked="selectedKeys.has(rec.match_key) ? 'true' : 'false'"
-              :aria-label="`Select match ${rec.match_key}`"
-              @click.stop="toggleSelected(rec.match_key)"
-            >
-              <span class="leaf-checkbox-glyph" aria-hidden="true">{{ selectedKeys.has(rec.match_key) ? '✓' : '' }}</span>
-            </button>
+              <button
+                type="button"
+                class="leaf-checkbox"
+                role="checkbox"
+                :aria-checked="selectedKeys.has(rec.match_key) ? 'true' : 'false'"
+                :aria-label="`Select match ${rec.match_key}`"
+                @click.stop="toggleSelected(rec.match_key)"
+              >
+                <span class="leaf-checkbox-glyph" aria-hidden="true">{{ selectedKeys.has(rec.match_key) ? '✓' : '' }}</span>
+              </button>
 
-            <!-- 1. Result-tinted color strip — instant scan target. -->
-            <span class="leaf-strip" aria-hidden="true" />
+              <!-- 1. Result-tinted color strip — instant scan target. -->
+              <span class="leaf-strip" aria-hidden="true" />
 
-            <!-- 2. When — date over time. -->
-            <div class="leaf-when">
-              <span class="leaf-when-date">{{ formatRowDate(rec) }}</span>
-              <span class="leaf-when-time">{{ formatTime(rec) }}</span>
-            </div>
+              <!-- 2. When — date over time. -->
+              <div class="leaf-when">
+                <span class="leaf-when-date">{{ formatRowDate(rec) }}</span>
+                <span class="leaf-when-time">{{ formatTime(rec) }}</span>
+              </div>
 
-            <!-- 3. Where — map (display font) over a pair of chips:
+              <!-- 3. Where — map (display font) over a pair of chips:
                  play mode (Quickplay / Competitive / Unknown mode) +
                  queue type (Role Queue / Open Queue / Unknown mode
                  type). Both chips always render so a glance down the
                  column stays aligned even when the underlying field
                  hasn't been set yet. -->
-            <div class="leaf-map-block">
-              <span
-                v-if="isMapUnknown(rec)"
-                class="leaf-map leaf-map-unknown"
-                :data-unknown-map="rec.data?.map_raw || true"
-                :title="`The parser couldn't match the OCR'd map text to maps.yaml. Wait for the next release to recognise it. (OCR read: ${rec.data?.map_raw ?? '—'})`"
-              >{{ formatUnknownMapLabel(rec) }}</span>
-              <span v-else class="leaf-map">{{ rec.data?.map || 'unknown' }}</span>
-              <span class="leaf-mode-row">
-                <span class="leaf-mode-chip">{{ formatPlayModeLabel(rec) }}</span>
-                <span class="leaf-queue-chip">{{ formatQueueTypeLabel(rec) }}</span>
-              </span>
-            </div>
+              <div class="leaf-map-block">
+                <span
+                  v-if="isMapUnknown(rec)"
+                  class="leaf-map leaf-map-unknown"
+                  :data-unknown-map="rec.data?.map_raw || true"
+                  :title="`The parser couldn't match the OCR'd map text to maps.yaml. Wait for the next release to recognise it. (OCR read: ${rec.data?.map_raw ?? '—'})`"
+                >{{ formatUnknownMapLabel(rec) }}</span>
+                <span v-else class="leaf-map">{{ rec.data?.map || 'unknown' }}</span>
+                <span class="leaf-mode-row">
+                  <span class="leaf-mode-chip">{{ formatPlayModeLabel(rec) }}</span>
+                  <span class="leaf-queue-chip">{{ formatQueueTypeLabel(rec) }}</span>
+                </span>
+              </div>
 
-            <!-- 4. Who — hero over role. Open-queue matches can mix
+              <!-- 4. Who — hero over role. Open-queue matches can mix
                  support / tank / dps in one game; formatRoles lists
                  every role the heroes_played array resolved to in
                  percent-played order, deduped. Unknown heroes (OCR
                  captured but no canonical match in heroes.yaml) get
                  a warning-styled chip with the raw OCR in parens. -->
-            <div class="leaf-hero-block">
-              <span
-                v-if="isHeroUnknown(rec)"
-                class="leaf-hero leaf-hero-unknown"
-                :data-unknown-hero="rec.data?.hero_raw || true"
-                :title="`The parser couldn't match the OCR'd hero text to heroes.yaml. Wait for the next release to recognise it. (OCR read: ${rec.data?.hero_raw ?? '—'})`"
-              >{{ formatUnknownHeroLabel(rec) }}</span>
-              <span v-else class="leaf-hero">{{ formatHeroes(rec) }}</span>
-              <span v-if="formatRoles(rec)" class="leaf-role">{{ formatRoles(rec) }}</span>
-            </div>
+              <div class="leaf-hero-block">
+                <span
+                  v-if="isHeroUnknown(rec)"
+                  class="leaf-hero leaf-hero-unknown"
+                  :data-unknown-hero="rec.data?.hero_raw || true"
+                  :title="`The parser couldn't match the OCR'd hero text to heroes.yaml. Wait for the next release to recognise it. (OCR read: ${rec.data?.hero_raw ?? '—'})`"
+                >{{ formatUnknownHeroLabel(rec) }}</span>
+                <span v-else class="leaf-hero">{{ formatHeroes(rec) }}</span>
+                <span v-if="formatRoles(rec)" class="leaf-role">{{ formatRoles(rec) }}</span>
+              </div>
 
-            <!-- 5. How — eliminations / assists / deaths, big + bold. -->
-            <div class="leaf-stats-block" :aria-label="`Eliminations ${rec.data?.eliminations ?? '?'}, assists ${rec.data?.assists ?? '?'}, deaths ${rec.data?.deaths ?? '?'}`">
-              <span class="stat-num">{{ rec.data?.eliminations ?? '—' }}</span>
-              <span class="stat-sep" aria-hidden="true">/</span>
-              <span class="stat-num">{{ rec.data?.assists ?? '—' }}</span>
-              <span class="stat-sep" aria-hidden="true">/</span>
-              <span class="stat-num stat-deaths">{{ rec.data?.deaths ?? '—' }}</span>
-            </div>
+              <!-- 5. How — eliminations / assists / deaths, big + bold. -->
+              <div class="leaf-stats-block" :aria-label="`Eliminations ${rec.data?.eliminations ?? '?'}, assists ${rec.data?.assists ?? '?'}, deaths ${rec.data?.deaths ?? '?'}`">
+                <span class="stat-num">{{ rec.data?.eliminations ?? '—' }}</span>
+                <span class="stat-sep" aria-hidden="true">/</span>
+                <span class="stat-num">{{ rec.data?.assists ?? '—' }}</span>
+                <span class="stat-sep" aria-hidden="true">/</span>
+                <span class="stat-num stat-deaths">{{ rec.data?.deaths ?? '—' }}</span>
+              </div>
 
-            <!-- 6. Annotations — leaver + tags. Empty when none. -->
-            <div class="leaf-meta-block">
-              <span v-if="rec.annotation?.leaver" class="leaf-leaver" :title="`Leaver: ${rec.annotation.leaver}`">L</span>
-              <span
-                v-for="t in rec.annotation?.tags ?? []"
-                :key="t"
-                class="leaf-tag"
-              >#{{ t }}</span>
-            </div>
+              <!-- 6. Annotations — leaver + tags. Empty when none. -->
+              <div class="leaf-meta-block">
+                <span v-if="rec.annotation?.leaver" class="leaf-leaver" :title="`Leaver: ${rec.annotation.leaver}`">L</span>
+                <span
+                  v-for="t in rec.annotation?.tags ?? []"
+                  :key="t"
+                  class="leaf-tag"
+                >#{{ t }}</span>
+              </div>
 
-            <!-- 7. Outcome chip — anchored to the right edge. -->
-            <span class="leaf-result-chip" :class="`result-${rec.data?.result || 'unknown'}`">
-              {{ rec.data?.result || '—' }}
-            </span>
-          </li>
-        </template>
-        <!-- Bottom virtualization spacer — counterpart to
+              <!-- 7. Outcome chip — anchored to the right edge. -->
+              <span class="leaf-result-chip" :class="`result-${rec.data?.result || 'unknown'}`">
+                {{ rec.data?.result || '—' }}
+              </span>
+            </li>
+          </template>
+          <!-- Bottom virtualization spacer — counterpart to
              flatTopSpacerHeight above. -->
-        <li
-          v-if="flatBottomSpacerHeight > 0"
-          class="leaves-virtual-spacer"
-          aria-hidden="true"
-          :style="{ height: flatBottomSpacerHeight + 'px' }"
-          data-virt-bottom-spacer
-        />
-        <!-- Infinite-scroll sentinel. Observed by an
+          <li
+            v-if="flatBottomSpacerHeight > 0"
+            class="leaves-virtual-spacer"
+            aria-hidden="true"
+            :style="{ height: flatBottomSpacerHeight + 'px' }"
+            data-virt-bottom-spacer
+          />
+          <!-- Infinite-scroll sentinel. Observed by an
              IntersectionObserver wired in onMounted; entering the
              viewport bumps the window by another page. Hidden
              from a11y because the announcement comes through
              the leaves-foot status line below. Skipped when
              flat-mode virtualization is active — the spacers
              already cover the whole corpus, no paging needed. -->
-        <li
-          v-if="hasMore && !flatVirtualization"
-          ref="sentinelRef"
-          class="leaves-sentinel"
-          aria-hidden="true"
-          data-testid="leaves-sentinel"
-        />
-        <!-- Honest count for screen readers AND sighted users.
+          <li
+            v-if="hasMore && !flatVirtualization"
+            ref="sentinelRef"
+            class="leaves-sentinel"
+            aria-hidden="true"
+            data-testid="leaves-sentinel"
+          />
+          <!-- Honest count for screen readers AND sighted users.
              role="status" + aria-live="polite" so the running
              total announces softly as the window grows. -->
-        <li
-          class="leaves-foot"
-          role="status"
-          aria-live="polite"
-          data-testid="leaves-foot"
-        >
-          <span v-if="hasMore && !flatVirtualization">
-            Showing {{ renderedCount }} of {{ sortedRecords.length }} matches
-          </span>
-          <span v-else class="leaves-foot-end">
-            <span class="leaves-foot-rule" aria-hidden="true" />
-            End · {{ sortedRecords.length }}
-            {{ sortedRecords.length === 1 ? 'match' : 'matches' }}
-            <span class="leaves-foot-rule" aria-hidden="true" />
-          </span>
-        </li>
-      </ul>
-      <p v-else class="leaves-empty">
-        No matches in this set.
-        <button v-if="anyNarrow" class="leaves-empty-btn" @click="resetNarrow">
-          Clear narrowing
-        </button>
-        <MatchesEmptySuggestions
-          v-if="anyNarrow"
-          :suggestions="clauseExclusionCounts.slice(0, 2)"
-        />
-      </p>
-    </section>
+          <li
+            class="leaves-foot"
+            role="status"
+            aria-live="polite"
+            data-testid="leaves-foot"
+          >
+            <span v-if="hasMore && !flatVirtualization">
+              Showing {{ renderedCount }} of {{ sortedRecords.length }} matches
+            </span>
+            <span v-else class="leaves-foot-end">
+              <span class="leaves-foot-rule" aria-hidden="true" />
+              End · {{ sortedRecords.length }}
+              {{ sortedRecords.length === 1 ? 'match' : 'matches' }}
+              <span class="leaves-foot-rule" aria-hidden="true" />
+            </span>
+          </li>
+        </ul>
+        <p v-else class="leaves-empty">
+          No matches in this set.
+          <button v-if="anyNarrow" class="leaves-empty-btn" @click="resetNarrow">
+            Clear narrowing
+          </button>
+          <MatchesEmptySuggestions
+            v-if="anyNarrow"
+            :suggestions="clauseExclusionCounts.slice(0, 2)"
+          />
+        </p>
+      </section>
 
-    <!-- ─── HIDDEN DRAWER (Archive) ──────────────────────────
+      <!-- ─── HIDDEN DRAWER (Archive) ──────────────────────────
          Collapsed by default. Surfaces a count chip in the header.
          Body lists every record whose `hidden` flag is set on the
          parent props.records (which the dossier / heatmap /
          sparkline / scrapeReader all already drop). Each row offers
          Unhide (returns it to the active set) and Delete forever
          (two-step affordance; second click hard-deletes from DB). -->
-    <section
-      v-if="hiddenRecords.length > 0 || archiveOpen"
-      class="archive"
-      aria-label="Hidden matches archive"
-    >
-      <button
-        type="button"
-        class="archive-toggle"
-        :aria-expanded="archiveOpen ? 'true' : 'false'"
-        aria-controls="archive-panel"
-        @click="archiveOpen = !archiveOpen"
+      <section
+        v-if="hiddenRecords.length > 0 || archiveOpen"
+        class="archive"
+        aria-label="Hidden matches archive"
       >
-        <span class="archive-eyebrow">Archive</span>
-        <span class="archive-title">
-          <span class="archive-count">{{ hiddenRecords.length }}</span>
-          <span class="archive-noun">hidden {{ hiddenRecords.length === 1 ? 'match' : 'matches' }}</span>
-        </span>
-        <span class="archive-chev" :class="{ open: archiveOpen }" aria-hidden="true">▾</span>
-      </button>
+        <button
+          type="button"
+          class="archive-toggle"
+          :aria-expanded="archiveOpen ? 'true' : 'false'"
+          aria-controls="archive-panel"
+          @click="archiveOpen = !archiveOpen"
+        >
+          <span class="archive-eyebrow">Archive</span>
+          <span class="archive-title">
+            <span class="archive-count">{{ hiddenRecords.length }}</span>
+            <span class="archive-noun">hidden {{ hiddenRecords.length === 1 ? 'match' : 'matches' }}</span>
+          </span>
+          <span class="archive-chev" :class="{ open: archiveOpen }" aria-hidden="true">▾</span>
+        </button>
 
-      <div v-if="archiveOpen" id="archive-panel" class="archive-panel">
-        <p v-if="hiddenRecords.length === 0" class="archive-empty">
-          Archive is empty.
-        </p>
+        <div v-if="archiveOpen" id="archive-panel" class="archive-panel">
+          <p v-if="hiddenRecords.length === 0" class="archive-empty">
+            Archive is empty.
+          </p>
 
-        <!-- Archive bulk action bar — same contextual pattern as the
+          <!-- Archive bulk action bar — same contextual pattern as the
              live leaves list. Appears as soon as any archive row is
              ticked. Bulk Delete forever uses an inline two-step
              confirm because it's irreversible. -->
-        <div
-          v-if="archiveSelectedKeys.size > 0"
-          class="archive-action-bar"
-          role="region"
-          aria-label="Archive bulk action bar"
-        >
-          <span class="bab-glyph" aria-hidden="true">▣</span>
-          <span class="bab-count">{{ archiveSelectedKeys.size }} selected</span>
-          <span class="bab-spacer" aria-hidden="true" />
-          <template v-if="!archiveBulkConfirm && movePickerOpen !== 'archive'">
-            <button
-              v-if="archiveSelectedKeys.size < hiddenRecords.length"
-              type="button"
-              class="bulk-select-all"
-              @click="selectAllArchive"
-            >
-              Select all ({{ hiddenRecords.length }})
-            </button>
-            <button type="button" class="bulk-unhide" @click="unhideSelectedArchive">
-              Unhide
-            </button>
-            <button
-              v-if="otherProfiles.length > 0"
-              type="button"
-              class="bulk-move"
-              @click="beginMoveArchive"
-            >
-              Move to…
-            </button>
-            <button type="button" class="bulk-delete" @click="requestBulkHardDelete">
-              Delete forever
-            </button>
-            <button type="button" class="bulk-cancel" @click="clearArchiveSelection">
-              Clear
-            </button>
-          </template>
-          <template v-else-if="movePickerOpen === 'archive'">
-            <span class="bab-prompt">Move to:</span>
-            <button
-              v-for="p in otherProfiles"
-              :key="p"
-              type="button"
-              class="bulk-move-target"
-              @click="commitMove(p)"
-            >
-              {{ p }}
-            </button>
-            <button type="button" class="bulk-cancel" @click="cancelMove">
-              Cancel
-            </button>
-          </template>
-          <template v-else>
-            <span class="bab-warn" aria-hidden="true">⚠</span>
-            <span class="bab-warn-text">
-              Delete {{ archiveSelectedKeys.size }} {{ archiveSelectedKeys.size === 1 ? 'match' : 'matches' }} from the database?
-            </span>
-            <button type="button" class="bulk-confirm" @click="commitBulkHardDelete">
-              Confirm
-            </button>
-            <button type="button" class="bulk-cancel" @click="cancelBulkHardDelete">
-              Cancel
-            </button>
-          </template>
-        </div>
-
-        <ul v-if="hiddenRecords.length > 0" class="archive-list" role="list">
-          <li
-            v-for="rec in hiddenRecords"
-            :key="rec.match_key"
-            class="archive-row"
-            :class="[
-              `result-${rec.data?.result || 'unknown'}`,
-              { 'has-selection': archiveSelectedKeys.size > 0, 'is-ticked': archiveSelectedKeys.has(rec.match_key) },
-            ]"
+          <div
+            v-if="archiveSelectedKeys.size > 0"
+            class="archive-action-bar"
+            role="region"
+            aria-label="Archive bulk action bar"
           >
-            <button
-              type="button"
-              class="archive-checkbox"
-              role="checkbox"
-              :aria-checked="archiveSelectedKeys.has(rec.match_key) ? 'true' : 'false'"
-              :aria-label="`Select hidden match ${rec.match_key}`"
-              @click.stop="toggleArchiveSelected(rec.match_key)"
-            >
-              <span class="archive-checkbox-glyph" aria-hidden="true">{{ archiveSelectedKeys.has(rec.match_key) ? '✓' : '' }}</span>
-            </button>
-            <span class="archive-row-strip" aria-hidden="true" />
-            <div class="archive-row-when">
-              <span class="archive-row-date">{{ formatRowDate(rec) }}</span>
-              <span class="archive-row-time">{{ formatTime(rec) }}</span>
-            </div>
-            <div class="archive-row-map">
-              <span class="archive-row-map-name">{{ rec.data?.map || 'unknown' }}</span>
-              <span class="archive-row-mode">{{ formatPlayModeLabel(rec) }}</span>
-              <span class="archive-row-queue">{{ formatQueueTypeLabel(rec) }}</span>
-            </div>
-            <div class="archive-row-hero">
-              <span class="archive-row-hero-name">{{ formatHeroes(rec) }}</span>
-              <span v-if="formatRoles(rec)" class="archive-row-role">{{ formatRoles(rec) }}</span>
-            </div>
-            <div class="archive-row-stats">
-              <span class="archive-row-stat">{{ rec.data?.eliminations ?? '—' }}</span>
-              <span class="archive-row-sep" aria-hidden="true">/</span>
-              <span class="archive-row-stat">{{ rec.data?.assists ?? '—' }}</span>
-              <span class="archive-row-sep" aria-hidden="true">/</span>
-              <span class="archive-row-stat archive-row-stat-deaths">{{ rec.data?.deaths ?? '—' }}</span>
-            </div>
-            <div class="archive-row-actions">
-              <template v-if="archiveConfirmKey !== rec.match_key">
-                <button
-                  type="button"
-                  class="archive-unhide"
-                  @click="emit('unhide-match', rec.match_key)"
-                >
-                  Unhide
-                </button>
-                <button
-                  type="button"
-                  class="archive-delete"
-                  @click="confirmHardDelete(rec.match_key)"
-                >
-                  Delete forever
-                </button>
-              </template>
-              <template v-else>
-                <span class="archive-confirm-pre" aria-hidden="true">⚠</span>
-                <button
-                  type="button"
-                  class="archive-confirm"
-                  @click="commitHardDelete(rec.match_key)"
-                >
-                  Confirm
-                </button>
-                <button
-                  type="button"
-                  class="archive-cancel"
-                  @click="cancelHardDelete"
-                >
-                  Cancel
-                </button>
-              </template>
-            </div>
-          </li>
-        </ul>
-      </div>
-    </section>
+            <span class="bab-glyph" aria-hidden="true">▣</span>
+            <span class="bab-count">{{ archiveSelectedKeys.size }} selected</span>
+            <span class="bab-spacer" aria-hidden="true" />
+            <template v-if="!archiveBulkConfirm && movePickerOpen !== 'archive'">
+              <button
+                v-if="archiveSelectedKeys.size < hiddenRecords.length"
+                type="button"
+                class="bulk-select-all"
+                @click="selectAllArchive"
+              >
+                Select all ({{ hiddenRecords.length }})
+              </button>
+              <button type="button" class="bulk-unhide" @click="unhideSelectedArchive">
+                Unhide
+              </button>
+              <button
+                v-if="otherProfiles.length > 0"
+                type="button"
+                class="bulk-move"
+                @click="beginMoveArchive"
+              >
+                Move to…
+              </button>
+              <button type="button" class="bulk-delete" @click="requestBulkHardDelete">
+                Delete forever
+              </button>
+              <button type="button" class="bulk-cancel" @click="clearArchiveSelection">
+                Clear
+              </button>
+            </template>
+            <template v-else-if="movePickerOpen === 'archive'">
+              <span class="bab-prompt">Move to:</span>
+              <button
+                v-for="p in otherProfiles"
+                :key="p"
+                type="button"
+                class="bulk-move-target"
+                @click="commitMove(p)"
+              >
+                {{ p }}
+              </button>
+              <button type="button" class="bulk-cancel" @click="cancelMove">
+                Cancel
+              </button>
+            </template>
+            <template v-else>
+              <span class="bab-warn" aria-hidden="true">⚠</span>
+              <span class="bab-warn-text">
+                Delete {{ archiveSelectedKeys.size }} {{ archiveSelectedKeys.size === 1 ? 'match' : 'matches' }} from the database?
+              </span>
+              <button type="button" class="bulk-confirm" @click="commitBulkHardDelete">
+                Confirm
+              </button>
+              <button type="button" class="bulk-cancel" @click="cancelBulkHardDelete">
+                Cancel
+              </button>
+            </template>
+          </div>
 
-    <!-- Right-click context menu on list rows. Teleports to body
+          <ul v-if="hiddenRecords.length > 0" class="archive-list" role="list">
+            <li
+              v-for="rec in hiddenRecords"
+              :key="rec.match_key"
+              class="archive-row"
+              :class="[
+                `result-${rec.data?.result || 'unknown'}`,
+                { 'has-selection': archiveSelectedKeys.size > 0, 'is-ticked': archiveSelectedKeys.has(rec.match_key) },
+              ]"
+            >
+              <button
+                type="button"
+                class="archive-checkbox"
+                role="checkbox"
+                :aria-checked="archiveSelectedKeys.has(rec.match_key) ? 'true' : 'false'"
+                :aria-label="`Select hidden match ${rec.match_key}`"
+                @click.stop="toggleArchiveSelected(rec.match_key)"
+              >
+                <span class="archive-checkbox-glyph" aria-hidden="true">{{ archiveSelectedKeys.has(rec.match_key) ? '✓' : '' }}</span>
+              </button>
+              <span class="archive-row-strip" aria-hidden="true" />
+              <div class="archive-row-when">
+                <span class="archive-row-date">{{ formatRowDate(rec) }}</span>
+                <span class="archive-row-time">{{ formatTime(rec) }}</span>
+              </div>
+              <div class="archive-row-map">
+                <span class="archive-row-map-name">{{ rec.data?.map || 'unknown' }}</span>
+                <span class="archive-row-mode">{{ formatPlayModeLabel(rec) }}</span>
+                <span class="archive-row-queue">{{ formatQueueTypeLabel(rec) }}</span>
+              </div>
+              <div class="archive-row-hero">
+                <span class="archive-row-hero-name">{{ formatHeroes(rec) }}</span>
+                <span v-if="formatRoles(rec)" class="archive-row-role">{{ formatRoles(rec) }}</span>
+              </div>
+              <div class="archive-row-stats">
+                <span class="archive-row-stat">{{ rec.data?.eliminations ?? '—' }}</span>
+                <span class="archive-row-sep" aria-hidden="true">/</span>
+                <span class="archive-row-stat">{{ rec.data?.assists ?? '—' }}</span>
+                <span class="archive-row-sep" aria-hidden="true">/</span>
+                <span class="archive-row-stat archive-row-stat-deaths">{{ rec.data?.deaths ?? '—' }}</span>
+              </div>
+              <div class="archive-row-actions">
+                <template v-if="archiveConfirmKey !== rec.match_key">
+                  <button
+                    type="button"
+                    class="archive-unhide"
+                    @click="emit('unhide-match', rec.match_key)"
+                  >
+                    Unhide
+                  </button>
+                  <button
+                    type="button"
+                    class="archive-delete"
+                    @click="confirmHardDelete(rec.match_key)"
+                  >
+                    Delete forever
+                  </button>
+                </template>
+                <template v-else>
+                  <span class="archive-confirm-pre" aria-hidden="true">⚠</span>
+                  <button
+                    type="button"
+                    class="archive-confirm"
+                    @click="commitHardDelete(rec.match_key)"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    type="button"
+                    class="archive-cancel"
+                    @click="cancelHardDelete"
+                  >
+                    Cancel
+                  </button>
+                </template>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Right-click context menu on list rows. Teleports to body
          from inside the component so z-index conflicts with the
          narrow popover / detail panel don't sneak in. -->
-    <LeafHoverPreview
-      :src="hoverPreviewSrc"
-      :x="hoverPreviewX"
-      :y="hoverPreviewY"
-    />
-    <MatchRowContextMenu
-      :position="rowContextMenu ? { x: rowContextMenu.x, y: rowContextMenu.y } : null"
-      :match-key="rowContextMenu?.matchKey ?? ''"
-      :is-anchor="rowContextMenu !== null && rowContextMenu.matchKey === anchorKey"
-      :replay-code="rowContextMenu ? replayCodeFor(rowContextMenu.matchKey) : null"
-      :is-wails="IS_WAILS"
-      @close="onRowContextClose"
-      @open-detail="onRowContextOpenDetail"
-      @set-anchor="onRowContextSetAnchor"
-      @open-detail-and-focus-tag="onRowContextFocusTag"
-      @open-detail-and-focus-note="onRowContextFocusNote"
-      @copy-replay-code="onRowContextCopyReplay"
-      @copy-match-link="onRowContextCopyLink"
-      @open-source-folder="onRowContextOpenSourceFolder"
-      @hide="onRowContextHide"
-    />
+      <LeafHoverPreview
+        :src="hoverPreviewSrc"
+        :x="hoverPreviewX"
+        :y="hoverPreviewY"
+      />
+      <MatchRowContextMenu
+        :position="rowContextMenu ? { x: rowContextMenu.x, y: rowContextMenu.y } : null"
+        :match-key="rowContextMenu?.matchKey ?? ''"
+        :is-anchor="rowContextMenu !== null && rowContextMenu.matchKey === anchorKey"
+        :replay-code="rowContextMenu ? replayCodeFor(rowContextMenu.matchKey) : null"
+        :is-wails="IS_WAILS"
+        @close="onRowContextClose"
+        @open-detail="onRowContextOpenDetail"
+        @set-anchor="onRowContextSetAnchor"
+        @open-detail-and-focus-tag="onRowContextFocusTag"
+        @open-detail-and-focus-note="onRowContextFocusNote"
+        @copy-replay-code="onRowContextCopyReplay"
+        @copy-match-link="onRowContextCopyLink"
+        @open-source-folder="onRowContextOpenSourceFolder"
+        @hide="onRowContextHide"
+      />
     </div>
 
     <!-- Fixed-position back-to-top button. Only mounted while the

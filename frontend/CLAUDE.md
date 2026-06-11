@@ -99,7 +99,7 @@ migrated by `useTheme.parseTheme` so saved prefs survive; `dark` is
 intentionally NOT migrated (the string is reused by the OW-gray palette).
 Palette + contrast reasoning is in the A11y section below.
 
-**Custom fonts.** `frontend/src/style.css` registers `Big Noodle Too Oblique` (hero/map names + view headings) and `OW Wordmark` (masthead). Fallback chain: licensed `local()` → bundled `./assets/fonts/*.woff2` → Google Fonts lookalikes (Barlow Condensed italic, Russo One). `Futura No. 2 Demi` is declared but unused (previous "editorial Settings" scope removed — read washed-out against Big Noodle on cream). Don't reintroduce per-view typeface overrides without checking glyph density.
+**Custom fonts.** `frontend/src/style.css` registers `Big Noodle Too Oblique` (hero/map names + view headings) and `OW Wordmark` (masthead). Fallback chain: licensed `local()` → Google Fonts lookalikes (Barlow Condensed italic, Russo One). The proprietary cuts aren't redistributable, so there's no bundled `.woff2` (the old `url('./assets/fonts/*')` refs were dead in every shipped build and produced vite "didn't resolve" warnings; removed). `Futura No. 2 Demi` is declared but unused (previous "editorial Settings" scope removed — read washed-out against Big Noodle on cream). Don't reintroduce per-view typeface overrides without checking glyph density.
 
 ## App.vue concerns
 
