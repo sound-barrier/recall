@@ -116,7 +116,7 @@ func intsConflict(a, b int) bool       { return a != 0 && b != 0 && a != b }
 func mergeMatchResult(dst, src *parser.MatchResult) {
 	dst.Map = firstNonEmpty(dst.Map, src.Map)
 	dst.MapRaw = firstNonEmpty(dst.MapRaw, src.MapRaw)
-	dst.Type = firstNonEmpty(dst.Type, src.Type)
+	dst.GameMode = firstNonEmpty(dst.GameMode, src.GameMode)
 	dst.Playlist = firstNonEmpty(dst.Playlist, src.Playlist)
 	dst.Role = firstNonEmpty(dst.Role, src.Role)
 	dst.Hero = firstNonEmpty(dst.Hero, src.Hero)

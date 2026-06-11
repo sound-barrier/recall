@@ -10,7 +10,7 @@ type MatchResult struct {
 	// YAML release can re-aggregate the corpus and promote stored
 	// MapRaw values to canonical Map without re-OCRing the PNG.
 	MapRaw   string `json:"map_raw,omitempty"`
-	Type     string `json:"type"`
+	GameMode string `json:"game_mode"`
 	Playlist string `json:"playlist"` // "competitive" or "quickplay"
 	Role     string `json:"role"`
 	Hero     string `json:"hero"`

@@ -21,7 +21,7 @@ function record(matchKey: string, playMode: '' | 'quickplay' | 'competitive' = '
     source_files: [`${matchKey}.png`],
     source_types: { [`${matchKey}.png`]: 'summary' },
     data: {
-      map: 'rialto', playlist: '', type: 'control',
+      map: 'rialto', playlist: '', game_mode: 'control',
       role: 'support', hero: 'lucio',
       result: 'victory', date: '2026-05-10', finished_at: '22:00',
       eliminations: 17, assists: 16, deaths: 11, damage: 7200,

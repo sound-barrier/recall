@@ -25,7 +25,7 @@ function record(s: Stub, idx: number) {
     source_files: [`${s.match_key}.png`],
     source_types: { [`${s.match_key}.png`]: 'summary' },
     data: {
-      map: 'rialto', playlist: 'competitive', type: 'control', role: 'support', hero: 'lucio',
+      map: 'rialto', playlist: 'competitive', game_mode: 'control', role: 'support', hero: 'lucio',
       result: s.result,
       date: s.date, finished_at: `${String(20 + (idx % 4)).padStart(2, '0')}:${String((idx * 7) % 60).padStart(2, '0')}`,
       heroes_played: [{ hero: 'lucio', percent_played: 100, play_time: '10:00' }],

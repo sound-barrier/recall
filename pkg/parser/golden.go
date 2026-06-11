@@ -25,7 +25,7 @@ package parser
 // NOT extracted: damage, healing, mitigation, rank/sr fields.
 type SummaryGolden struct {
 	Map          string       `json:"map"`
-	Type         string       `json:"type"`
+	GameMode     string       `json:"game_mode"`
 	Playlist     string       `json:"playlist"`
 	Role         string       `json:"role"`
 	Hero         string       `json:"hero"`
@@ -54,7 +54,7 @@ type SummaryGolden struct {
 // rank/sr fields.
 type ScoreboardGolden struct {
 	Map          string     `json:"map"`
-	Type         string     `json:"type"`
+	GameMode     string     `json:"game_mode"`
 	Playlist     string     `json:"playlist"`
 	Role         string     `json:"role"`
 	Hero         string     `json:"hero"`
@@ -116,7 +116,7 @@ func ToGolden(r *MatchResult) any {
 	case "summary":
 		return &SummaryGolden{
 			Map:          r.Map,
-			Type:         r.Type,
+			GameMode:     r.GameMode,
 			Playlist:     r.Playlist,
 			Role:         r.Role,
 			Hero:         r.Hero,
@@ -134,7 +134,7 @@ func ToGolden(r *MatchResult) any {
 	case "scoreboard":
 		return &ScoreboardGolden{
 			Map:          r.Map,
-			Type:         r.Type,
+			GameMode:     r.GameMode,
 			Playlist:     r.Playlist,
 			Role:         r.Role,
 			Hero:         r.Hero,

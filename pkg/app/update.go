@@ -315,7 +315,7 @@ func excerptReleaseNotes(body string) string {
 }
 
 // flattenRoster takes a role/type-grouped map of canonical display
-// names (parser.HeroesByRole / parser.MapsByType output) and returns a
+// names (parser.HeroesByRole / parser.MapsByGameMode output) and returns a
 // flat slice for diffing.
 func flattenRoster(grouped map[string][]string) []string {
 	out := make([]string, 0, 32)
@@ -488,7 +488,7 @@ func computeGameDataStatus(ver mainVersion, heroes, maps, sources []string) Game
 		gd.AddedHeroes, gd.RemovedHeroes = diffRosters(flattenRoster(parser.HeroesByRole()), heroes)
 	}
 	if maps != nil {
-		gd.AddedMaps, gd.RemovedMaps = diffRosters(flattenRoster(parser.MapsByType()), maps)
+		gd.AddedMaps, gd.RemovedMaps = diffRosters(flattenRoster(parser.MapsByGameMode()), maps)
 	}
 	if sources != nil {
 		gd.AddedSources, gd.RemovedSources = diffRosters(sourceNames(parser.Sources()), sources)

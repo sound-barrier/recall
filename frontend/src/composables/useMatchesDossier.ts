@@ -425,7 +425,7 @@ export function useMatchesDossier(
         heroTotals.set(h, (heroTotals.get(h) ?? 0) + 1)
       }
       for (const r of records.value) {
-        const mapType = r.data?.type
+        const mapType = r.data?.game_mode
         if (!mapType) continue
         const heroes = r.data?.heroes_played ?? []
         if (heroes.length > 0) {

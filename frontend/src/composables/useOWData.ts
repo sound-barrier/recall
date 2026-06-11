@@ -61,7 +61,7 @@ const heroIndex = computed(() => {
 const mapIndex = computed(() => {
   const m = new Map<string, { display: string; type: string }>()
   if (!data.value) return m
-  for (const [type, names] of Object.entries(data.value.maps_by_type)) {
+  for (const [type, names] of Object.entries(data.value.maps_by_game_mode)) {
     for (const display of names) {
       m.set(normalize(display), { display, type })
     }

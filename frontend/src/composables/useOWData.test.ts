@@ -15,7 +15,7 @@ const SAMPLE_DATA = {
     damage:  ['Soldier: 76', 'Mei'],
     tank:    ['Reinhardt'],
   },
-  maps_by_type: {
+  maps_by_game_mode: {
     control:    ['Antarctic Peninsula', 'Ilios'],
     push:       ['Esperança'],
     hybrid:     ["King's Row"],

@@ -42,7 +42,7 @@ const REFERENCE_DATA = {
 const match = (
   key: string,
   map: 'ilios' | 'dorado' | 'rialto',
-  type: 'control' | 'escort',
+  game_mode: 'control' | 'escort',
   role: 'tank' | 'dps' | 'support',
   hero: string,
   result: 'victory' | 'defeat',
@@ -53,7 +53,7 @@ const match = (
   source_types: { [`${key}.png`]: 'summary' },
   data: {
     map,
-    type,
+    game_mode,
     role,
     hero,
     result,

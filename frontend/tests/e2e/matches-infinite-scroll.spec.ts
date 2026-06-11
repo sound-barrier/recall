@@ -18,7 +18,7 @@ import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
 
-interface Mode { type: 'control' | 'hybrid' | 'escort' | 'push' | 'flashpoint' }
+interface Mode { game_mode: 'control' | 'hybrid' | 'escort' | 'push' | 'flashpoint' }
 
 function makeMatch(i: number): Record<string, unknown> {
   // Spread across 5 days so groupBy='day' (the default) produces
@@ -35,7 +35,7 @@ function makeMatch(i: number): Record<string, unknown> {
     data: {
       map: 'rialto',
       playlist: 'competitive',
-      type: 'control' as Mode['type'],
+      game_mode: 'control' as Mode['type'],
       role: 'support',
       hero: 'lucio',
       result,

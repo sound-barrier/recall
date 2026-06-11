@@ -552,7 +552,7 @@ func TestParsePersonalStatCell(t *testing.T) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// extractHeader — pulls (map, gameType) from the in-game banner.
+// extractHeader — pulls (map, gameMode) from the in-game banner.
 // Map names are snapped to the knownMaps list via fuzzy match.
 // ──────────────────────────────────────────────────────────────────────────
 

@@ -16,7 +16,7 @@ function record(matchKey: string, hero: string, map: string) {
     data: {
       map,
       playlist: 'competitive',
-      type: 'control',
+      game_mode: 'control',
       role: 'support',
       hero,
       result: 'victory',

@@ -44,7 +44,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
     data: {
       map: 'rialto',
       playlist: 'competitive',
-      type: 'escort',
+      game_mode: 'escort',
       role: 'support',
       hero: 'lucio',
       result: 'victory',
@@ -85,7 +85,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
     data: {
       map: 'aatlis',
       playlist: 'competitive',
-      type: 'flashpoint',
+      game_mode: 'flashpoint',
       role: 'dps',
       hero: 'soldier-76',
       result: 'victory',
@@ -117,7 +117,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
     data: {
       map: 'suravasa',
       playlist: 'competitive',
-      type: 'flashpoint',
+      game_mode: 'flashpoint',
       role: 'tank',
       hero: 'reinhardt',
       result: 'defeat',
@@ -156,7 +156,7 @@ export const DEMO_MATCHES: readonly MatchRecord[] = [
     data: {
       map: 'numbani',
       playlist: 'competitive',
-      type: 'hybrid',
+      game_mode: 'hybrid',
       role: 'dps',
       hero: 'tracer',
       result: 'victory',

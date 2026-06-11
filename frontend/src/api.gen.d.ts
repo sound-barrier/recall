@@ -1060,7 +1060,7 @@ export interface paths {
          *     frontend may fetch once at load and cache. Source-of-truth
          *     for UI surfaces that render canonical Blizzard spelling
          *     (diacritics + capitalization preserved) and group heroes by
-         *     role / maps by game type.
+         *     role / maps by game mode.
          */
         get: operations["GetReferenceData"];
         put?: never;
@@ -2005,7 +2005,7 @@ export interface components {
              */
             map_raw?: string;
             /** @description e.g. "control" */
-            type?: string;
+            game_mode?: string;
             /** @enum {string} */
             playlist?: "competitive" | "quickplay" | "unranked" | "";
             /** @enum {string} */
@@ -3620,7 +3620,7 @@ export interface operations {
                             [key: string]: string[];
                         };
                         /**
-                         * @description Map names grouped by game type, alphabetised within each type.
+                         * @description Map names grouped by game mode, alphabetised within each.
                          * @example {
                          *       "control": [
                          *         "Antarctic Peninsula",
@@ -3637,7 +3637,7 @@ export interface operations {
                          *       ]
                          *     }
                          */
-                        maps_by_type: {
+                        maps_by_game_mode: {
                             [key: string]: string[];
                         };
                         /**

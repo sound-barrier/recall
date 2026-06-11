@@ -328,10 +328,10 @@ onUnmounted(() => {
                 />
               </section>
 
-              <!-- Map type -->
+              <!-- Game Mode -->
               <section class="np-section">
                 <div class="np-section-head">
-                  <span class="np-section-eyebrow">Map type</span>
+                  <span class="np-section-eyebrow">Game Mode</span>
                   <span class="np-section-meta">{{ pickedMapTypes.size ? `${pickedMapTypes.size} picked` : 'any' }}</span>
                 </div>
                 <div class="np-chips">

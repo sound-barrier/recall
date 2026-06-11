@@ -51,7 +51,7 @@ captures = more fields populated:
 
 | Screen | What it shows | Fields Recall extracts |
 |---|---|---|
-| **SUMMARY** | Match overview, top heroes, performance summary | Map, mode, type (control/push/escort/…), role, primary hero, victory/defeat, final score, date, finish time, game length, performance per-10-min averages |
+| **SUMMARY** | Match overview, top heroes, performance summary | Map, playlist, game mode (control/push/escort/…), role, primary hero, victory/defeat, final score, date, finish time, game length, performance per-10-min averages |
 | **TEAMS scoreboard** | Both teams' stats side by side | Eliminations / assists / deaths, damage, healing, mitigation |
 | **PERSONAL** | One hero's detailed stat grid (3×3) | Hero-specific stats (e.g. Juno's `pulsar_torpedoes_damage`, Mizuki's `binding_chain_accuracy`) |
 | **RANK** | Competitive ladder badge + per-hero SR | Current rank tier, per-hero SR, recent change |
@@ -76,7 +76,7 @@ any image for the full-resolution source.
 <tr>
 <td valign="top" width="50%">
 <a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.31.03.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.31.03.png" alt="SUMMARY tab — Antarctic Peninsula, Juno, comp victory" width="100%"></a>
-<sub>Antarctic Peninsula · comp victory 2-1. The map + game type + heroes-played list + per-10-min averages all come from this tab.</sub>
+<sub>Antarctic Peninsula · comp victory 2-1. The map + game mode + heroes-played list + per-10-min averages all come from this tab.</sub>
 </td>
 <td valign="top" width="50%">
 <a href="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.33.04.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.24%20-%2022.36.33.04.png" alt="Post-match TEAMS scoreboard with both teams' stats" width="100%"></a>

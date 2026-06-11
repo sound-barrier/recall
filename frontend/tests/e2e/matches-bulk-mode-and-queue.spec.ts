@@ -39,7 +39,7 @@ function rec(matchKey: string): Match {
     source_types: { [`${matchKey}.png`]: 'summary' },
     data: {
       map:           'rialto',
-      type:          'control',
+      game_mode:          'control',
       hero:          'lucio',
       result:        'victory',
       date:          '2026-05-10',

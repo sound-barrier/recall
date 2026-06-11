@@ -27,7 +27,7 @@ const match = (key: string, map: string, type: string, role: string, hero: strin
   source_files: [`${key}.png`],
   source_types: { [`${key}.png`]: 'summary' },
   data: {
-    map, type, role, hero, result: 'victory',
+    map, game_mode: type, role, hero, result: 'victory',
     date: RECENT, finished_at: '20:00', playlist: 'competitive',
     heroes_played: [{ hero, play_time: '10:00', percent_played: 100 }],
   },

@@ -36,7 +36,7 @@ function record(s: Stub, idx: number) {
     data: {
       map: s.map ?? undefined,
       playlist: 'competitive',
-      type: s.type,
+      game_mode: s.type,
       role: s.role,
       hero: s.hero,
       result: s.result,
@@ -53,12 +53,12 @@ function record(s: Stub, idx: number) {
 
 // 3× lijiang, 2× rialto, 1 unknown-map (hidden by default).
 const STUBS: Stub[] = [
-  { match_key: 'm1', date: '2026-05-10', map: 'lijiang tower', hero: 'lucio',    role: 'support', type: 'control',    result: 'victory' },
-  { match_key: 'm2', date: '2026-05-10', map: 'lijiang tower', hero: 'mercy',    role: 'support', type: 'control',    result: 'defeat' },
-  { match_key: 'm3', date: '2026-05-11', map: 'lijiang tower', hero: 'lucio',    role: 'support', type: 'control',    result: 'victory' },
-  { match_key: 'm4', date: '2026-05-12', map: 'rialto',        hero: 'soldier',  role: 'dps',     type: 'escort',     result: 'victory' },
-  { match_key: 'm5', date: '2026-05-12', map: 'rialto',        hero: 'reinhardt',role: 'tank',    type: 'escort',     result: 'defeat' },
-  { match_key: 'unk',date: '2026-05-12', map: null,            hero: 'lucio',    role: 'support', type: '',           result: 'victory' },
+  { match_key: 'm1', date: '2026-05-10', map: 'lijiang tower', hero: 'lucio',    role: 'support', game_mode: 'control',    result: 'victory' },
+  { match_key: 'm2', date: '2026-05-10', map: 'lijiang tower', hero: 'mercy',    role: 'support', game_mode: 'control',    result: 'defeat' },
+  { match_key: 'm3', date: '2026-05-11', map: 'lijiang tower', hero: 'lucio',    role: 'support', game_mode: 'control',    result: 'victory' },
+  { match_key: 'm4', date: '2026-05-12', map: 'rialto',        hero: 'soldier',  role: 'dps',     game_mode: 'escort',     result: 'victory' },
+  { match_key: 'm5', date: '2026-05-12', map: 'rialto',        hero: 'reinhardt',role: 'tank',    game_mode: 'escort',     result: 'defeat' },
+  { match_key: 'unk',date: '2026-05-12', map: null,            hero: 'lucio',    role: 'support', game_mode: '',           result: 'victory' },
 ]
 const CORPUS = STUBS.map((s, i) => record(s, i))
 

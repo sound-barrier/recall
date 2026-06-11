@@ -241,8 +241,8 @@ func parseRightCard(text string, res *MatchResult) {
 		// above.
 		res.MapRaw = cand
 	}
-	if t := extractGameType(text); t != "" {
-		res.Type = t
+	if t := extractGameMode(text); t != "" {
+		res.GameMode = t
 	}
 	if m := finalScoreRe.FindStringSubmatch(text); m != nil {
 		res.FinalScore = digitize(m[1]) + "-" + digitize(m[2])

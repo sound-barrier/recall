@@ -100,7 +100,7 @@ const (
 // writes to data.hero / data.map (and what the frontend's
 // `useOWData.heroDisplayName(stored)` lookup expects on the input
 // side). Game type is derived from the map name at read time via
-// parser.MapType — no fixture-side game-type list.
+// parser.MapGameMode — no fixture-side game-type list.
 var (
 	fixtureMaps     []string
 	fixtureTanks    []string
@@ -116,12 +116,12 @@ func init() {
 	fixtureTanks = normalizeAll(heroes["tank"])
 	fixtureSupports = normalizeAll(heroes["support"])
 	fixtureDPS = normalizeAll(heroes["dps"])
-	// Flatten MapsByType into a single pool. The order across game
+	// Flatten MapsByGameMode into a single pool. The order across game
 	// types is stable per Go's map iteration is not — but we shuffle
 	// per seed downstream anyway, so the source order doesn't matter
 	// for determinism (the shuffle is rng-driven).
-	for _, gameTypeMaps := range parser.MapsByType() {
-		fixtureMaps = append(fixtureMaps, normalizeAll(gameTypeMaps)...)
+	for _, gameModeMaps := range parser.MapsByGameMode() {
+		fixtureMaps = append(fixtureMaps, normalizeAll(gameModeMaps)...)
 	}
 	// Sort the map pool so subsequent runs see the same source order
 	// before the per-seed shuffle — keeps GenerateMatchFixture

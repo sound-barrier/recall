@@ -214,7 +214,7 @@ export function GetMatchResults(): Promise<MatchRecord[]> {
 
 export type OWData = {
   heroes_by_role:     Record<string, string[]>
-  maps_by_type:       Record<string, string[]>
+  maps_by_game_mode:       Record<string, string[]>
   screenshot_sources: Array<{
     name: string
     prefix: string

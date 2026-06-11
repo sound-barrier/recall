@@ -24,7 +24,7 @@ test.describe('Matches — Unknown hero / map leaf chip', () => {
       data: {
         map: 'rialto',
         playlist: 'competitive',
-        type: 'control',
+        game_mode: 'control',
         hero: '',                  // matcher rejected
         hero_raw: 'miyazaki',      // raw OCR preserved
         result: 'victory',
@@ -61,7 +61,7 @@ test.describe('Matches — Unknown hero / map leaf chip', () => {
         map: '',
         map_raw: 'new-junk-city',
         playlist: 'competitive',
-        type: '',
+        game_mode: '',
         hero: 'lucio',
         result: 'victory',
         date: '2026-05-10', finished_at: '22:00',
@@ -93,7 +93,7 @@ test.describe('Matches — Unknown hero / map leaf chip', () => {
       source_files: ['k3.png'],
       source_types: { 'k3.png': 'summary' },
       data: {
-        map: 'rialto', playlist: 'competitive', type: 'control',
+        map: 'rialto', playlist: 'competitive', game_mode: 'control',
         hero: '',
         // intentionally NO hero_raw
         result: 'victory',

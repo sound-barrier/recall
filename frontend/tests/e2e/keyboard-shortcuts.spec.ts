@@ -27,7 +27,7 @@ function record(matchKey: string, hero: string) {
     match_key:    matchKey,
     source_files: [`${matchKey}.png`],
     data: {
-      map: 'rialto', playlist: 'competitive', type: 'control',
+      map: 'rialto', playlist: 'competitive', game_mode: 'control',
       role: 'support', hero, result: 'victory',
       date: '2026-05-10', finished_at: '22:00',
       eliminations: 17, assists: 16, deaths: 11, damage: 7200,

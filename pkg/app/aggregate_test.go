@@ -97,8 +97,8 @@ func TestAggregate_DerivedFields_RoleFromHero_TypeFromMap(t *testing.T) {
 	if got[0].Data.Role != "support" {
 		t.Errorf("expected role=support (lucio/juno are support heroes); got %q", got[0].Data.Role)
 	}
-	if got[0].Data.Type != "control" {
-		t.Errorf("expected type=control (antarctic peninsula is a control map); got %q", got[0].Data.Type)
+	if got[0].Data.GameMode != "control" {
+		t.Errorf("expected type=control (antarctic peninsula is a control map); got %q", got[0].Data.GameMode)
 	}
 }
 

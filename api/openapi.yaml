@@ -1525,7 +1525,7 @@ paths:
         frontend may fetch once at load and cache. Source-of-truth
         for UI surfaces that render canonical Blizzard spelling
         (diacritics + capitalization preserved) and group heroes by
-        role / maps by game type.
+        role / maps by game mode.
       responses:
         "200":
           description: The embedded OW reference data.
@@ -1533,7 +1533,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [heroes_by_role, maps_by_type, screenshot_sources]
+                required: [heroes_by_role, maps_by_game_mode, screenshot_sources]
                 properties:
                   heroes_by_role:
                     type: object
@@ -1545,9 +1545,9 @@ paths:
                       tank: [Doomfist, "D.va", Reinhardt]
                       dps: [Ashe, Genji, Tracer]
                       support: [Ana, Juno, Mercy]
-                  maps_by_type:
+                  maps_by_game_mode:
                     type: object
-                    description: Map names grouped by game type, alphabetised within each type.
+                    description: Map names grouped by game mode, alphabetised within each.
                     additionalProperties:
                       type: array
                       items: { type: string }
@@ -2714,7 +2714,7 @@ components:
             `pkg/parser/maps.yaml`). `map == "" && map_raw != ""`
             is the "Unknown map" signal that drives the leaf-row
             chip and detail-panel banner.
-        type:       { type: string,  description: 'e.g. "control"' }
+        game_mode:       { type: string,  description: 'e.g. "control"' }
         playlist:       { type: string,  enum: [competitive, quickplay, unranked, ""] }
         role:       { type: string,  enum: [tank, dps, support, ""] }
         hero:       { type: string,  description: "Primary (most-played) hero" }

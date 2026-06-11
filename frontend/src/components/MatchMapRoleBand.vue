@@ -11,12 +11,12 @@ import MapRoleConfigPopover from './MapRoleConfigPopover.vue'
 // GEOGRAPHY — Map × Role performance band.
 //
 // A GitHub-contribution-graph-style heatmap: 3 role rows (Tank / DPS /
-// Support) × every map as a column, grouped by map-type and
+// Support) × every map as a column, grouped by game-mode and
 // alphabetical within each group. Each cell's hue reads win rate
 // (green → red) and its saturation reads volume, so faint cells carry
 // little weight — same `cellFill` model as the Campaign Log calendar.
 // Clicking a cell narrows the active set to that (map, role) pair;
-// clicking a type-group header narrows to that map-type.
+// clicking a type-group header narrows to that game-mode.
 //
 // Data comes from the dossier (the narrowed record set, so the band
 // responds to every filter) joined against the full canonical map
@@ -27,7 +27,7 @@ type Role = 'tank' | 'dps' | 'support'
 const ROLES: Role[] = ['tank', 'dps', 'support']
 const ROLE_LABEL: Record<Role, string> = { tank: 'Tank', dps: 'DPS', support: 'Support' }
 
-// Canonical map-type order (mirrors pkg/parser/maps.yaml); unknown
+// Canonical game-mode order (mirrors pkg/parser/maps.yaml); unknown
 // types sort last.
 const TYPE_ORDER = ['control', 'escort', 'flashpoint', 'hybrid', 'push', 'clash']
 const TYPE_LABEL: Record<string, string> = {
@@ -40,7 +40,7 @@ const narrow = useNarrow()
 const ow = useOWData()
 const cfg = useMapRoleConfig()
 
-// Gear popover — the band's display filter (roles / map types / maps).
+// Gear popover — the band's display filter (roles / game modes / maps).
 const configOpen = ref(false)
 const configAnchor = ref<DOMRect | null>(null)
 function toggleConfig(e: MouseEvent) {
@@ -214,7 +214,7 @@ const filteredEmpty = computed(() => !rosterEmpty.value && (columns.value.length
         data-mr-config-trigger
         :aria-label="cfg.isDefault.value ? 'Filter the Geography band' : 'Geography filters are active'"
         :aria-expanded="configOpen"
-        :title="cfg.isDefault.value ? 'Filter by role, map type, or map' : 'Geography filters active'"
+        :title="cfg.isDefault.value ? 'Filter by role, game mode, or map' : 'Geography filters active'"
         @click="toggleConfig"
       >
         <span aria-hidden="true">⚙</span>

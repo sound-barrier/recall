@@ -163,7 +163,7 @@ func buildFixtures(spec matchSpec) []fixture {
 			result: &parser.MatchResult{
 				Map:          spec.mapName,
 				Playlist:     spec.mode,
-				Type:         spec.matchType,
+				GameMode:     spec.matchType,
 				Role:         spec.role,
 				Hero:         spec.primaryHero,
 				HeroesPlayed: spec.heroesPlayed,
@@ -188,7 +188,7 @@ func buildFixtures(spec matchSpec) []fixture {
 			result: &parser.MatchResult{
 				Map:          spec.mapName,
 				Playlist:     spec.mode,
-				Type:         spec.matchType,
+				GameMode:     spec.matchType,
 				Role:         spec.role,
 				Hero:         hero,
 				Eliminations: spec.eliminations,

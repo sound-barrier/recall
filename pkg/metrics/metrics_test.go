@@ -234,7 +234,7 @@ func TestCollector_EmitsCoreMetricsWithPrimaryHero(t *testing.T) {
 		return []ScrapeRow{{
 			MatchKey: "match-2026-05-10T21-29-28",
 			Data: parser.MatchResult{
-				Playlist: "competitive", Map: "rialto", Type: "control", Result: "victory",
+				Playlist: "competitive", Map: "rialto", GameMode: "control", Result: "victory",
 				Date: "2026-05-10", FinishedAt: "21:29",
 				Hero:         "lucio",
 				Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,

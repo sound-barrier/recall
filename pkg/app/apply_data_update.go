@@ -138,7 +138,7 @@ func commitVerifiedAssets(verified map[string]verifiedAsset, manifest DataManife
 	snapshot := snapshotDataDir(dataDir)
 
 	prevHeroes := flattenRoster(parser.HeroesByRole())
-	prevMaps := flattenRoster(parser.MapsByType())
+	prevMaps := flattenRoster(parser.MapsByGameMode())
 	prevSources := sourceNames(parser.Sources())
 
 	if err := writeAndRename(dataDir, verified); err != nil {
@@ -160,7 +160,7 @@ func commitVerifiedAssets(verified map[string]verifiedAsset, manifest DataManife
 	}
 
 	addedHeroes, removedHeroes := diffRosters(prevHeroes, flattenRoster(parser.HeroesByRole()))
-	addedMaps, removedMaps := diffRosters(prevMaps, flattenRoster(parser.MapsByType()))
+	addedMaps, removedMaps := diffRosters(prevMaps, flattenRoster(parser.MapsByGameMode()))
 	addedSources, removedSources := diffRosters(prevSources, sourceNames(parser.Sources()))
 
 	return DataUpdateResult{
