@@ -100,7 +100,7 @@ test.describe('matches set-workspace', () => {
 
   test('search narrows the dossier + leaves live', async ({ page }) => {
     await page.locator('button:has-text("Filter matches")').click()
-    const search = page.locator('input[type="search"][placeholder*="map · hero"]')
+    const search = page.locator('#np-search')
     await search.fill('rialto')
     await expect(page.locator('.leaf-row')).toHaveCount(2)
     await expect(page.locator('.dossier-meta')).toContainText(/2 of 6/i)
@@ -112,7 +112,7 @@ test.describe('matches set-workspace', () => {
     await page.keyboard.press('/')
     await expect(page.locator('.left-panel')).toBeVisible()
     // Search input owns focus.
-    await expect(page.locator('input[type="search"][placeholder*="map · hero"]')).toBeFocused()
+    await expect(page.locator('#np-search')).toBeFocused()
   })
 
   test('click a row opens the right-side detail panel', async ({ page }) => {
