@@ -42,7 +42,7 @@ flowchart LR
 <tr>
 <td valign="top" width="50%">
 <a href="docs/screenshots/matches-view.png"><img src="docs/screenshots/matches-view.png" alt="Recall Matches tab — dossier headline with W/L/D + top maps/heroes, Campaign Log heatmap, and the compact leaf-row list below" width="100%"></a>
-<sub>The Matches tab is a *set workspace*: dossier at the top (W/L/D, win rate, top maps/heroes, active-clause chips), Campaign Log heatmap + brushable sparkline in the middle, compact leaf rows below. The left-side Narrow this set panel consolidates every filter dimension into one place.</sub>
+<sub>The Matches tab is a *set workspace*: a customizable dossier at the top (W/L/D, win rate, top maps/heroes, active-clause chips — drag to reorder, remove, or re-add any KPI/breakdown widget), the full-width Campaign Log heatmap + Geography (Map × Role) band below it, and the compact leaf-row list at the bottom. The left-side **Filter matches** panel consolidates every filter dimension into one place.</sub>
 </td>
 <td valign="top" width="50%">
 <a href="docs/screenshots/match-detail-panel.png"><img src="docs/screenshots/match-detail-panel.png" alt="Recall right-side detail panel — Match Journal annotation, Match Stats grid, Heroes Played, source screenshots" width="100%"></a>
@@ -231,7 +231,7 @@ The watcher and Parse-run both need read access to the directory you picked in *
 <details>
 <summary><strong>Reset Recall's database (per-OS)</strong></summary>
 
-For pre-1.0 schema changes or to start fresh on a single profile. Close Recall first, then:
+To start fresh on a single profile, or to recover from a corrupted database. Close Recall first, then:
 
 | OS | Wipe one profile's matches | Wipe everything |
 |---|---|---|

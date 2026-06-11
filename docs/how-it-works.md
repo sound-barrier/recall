@@ -17,7 +17,7 @@ context.
 <tr>
 <td valign="top" width="50%">
 <a href="screenshots/matches-view.png"><img src="screenshots/matches-view.png" alt="Recall Matches tab with a dossier headline, Campaign Log heatmap, and a compact list of parsed matches" width="100%"></a>
-<sub>The Matches tab — dossier headline (W/L/D, win rate, top maps/heroes, active-clause chips), Campaign Log heatmap + brushable sparkline, and the compact leaf-row list below.</sub>
+<sub>The Matches tab — a customizable dossier headline (W/L/D, win rate, top maps/heroes, active-clause chips), the Campaign Log heatmap + Geography (Map × Role) band, and the compact leaf-row list below.</sub>
 </td>
 <td valign="top" width="50%">
 <a href="screenshots/match-detail-panel.png"><img src="screenshots/match-detail-panel.png" alt="Recall right-side detail panel — per-match dossier with the Match Journal, stats grid, Heroes Played, and source screenshots" width="100%"></a>
@@ -143,9 +143,20 @@ That's it for setup. **Settings → Engine** should now show
    list without closing the panel; `↑` / `↓` scroll inside the panel.
    Click a source screenshot inline-preview to enlarge it fullscreen
    (× / Esc / backdrop click closes). Press `?` for the full
-   keyboard cheatsheet. Use the [Narrow this set panel](filtering.md)
+   keyboard cheatsheet. Use the [Filter matches panel](filtering.md)
    to slice the view by any combination of hero, map, role, result,
    date, tag, or minimum play time.
+4. **Tune the workspace to taste.** The dossier's KPI + breakdown
+   widgets are customizable — hover any widget for a drag-grip
+   (reorder) and a × (remove), and use the **Add** menu to re-add a
+   removed widget or **Reset** to the install default. The two
+   full-width bands below the dossier — the **Campaign Log** win/loss
+   calendar + brushable sparkline, and the **Geography** Map × Role
+   heatmap — are themselves removable + reorderable sections (both on
+   by default; the dossier always stays on top). The Geography band
+   has its own gear to filter the heatmap down to specific roles, map
+   types, or maps. See [Filtering and grouping](filtering.md) for the
+   details.
 
 ### Supported capture sources
 
