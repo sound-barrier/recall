@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, watch } from 'vue'
+import { computed, onBeforeUnmount, toRef, watch } from 'vue'
 
 import { useDashboardLayout } from '../composables/useDashboardLayout'
+import { useScrollLock } from '../composables/useScrollLock'
 import { useSectionLayout, type SectionDef } from '../composables/useSectionLayout'
 import { WIDGET_REGISTRY, type WidgetDef, type WidgetShape } from '../dashboard/widgets'
 
@@ -22,6 +23,10 @@ const emit = defineEmits<{ close: [] }>()
 
 const layout = useDashboardLayout()
 const sections = useSectionLayout()
+
+// Freeze the page behind the menu so it can't scroll out from under the
+// anchored dropdown (consistent with every other overlay).
+useScrollLock(toRef(props, 'open'))
 
 interface WidgetCategory {
   title: string

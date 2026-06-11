@@ -1,5 +1,7 @@
 import { nextTick, ref, watch, type Ref } from 'vue'
 
+import { useScrollLock } from './useScrollLock'
+
 // WAI-ARIA dialog focus management.
 //
 // When `open.value` flips true the composable:
@@ -35,6 +37,16 @@ export function useModalFocusTrap(
   { containerSelector, onClose }: ModalFocusTrapOptions,
 ) {
   const lastFocusedBeforeModal = ref<HTMLElement | null>(null)
+
+  // Every focus-trapped overlay also freezes the page scroll while open
+  // — `inert` on the background blocks focus/click/keyboard but not the
+  // mouse wheel, so without this the list behind the overlay (and
+  // anchored popovers like the widget-config gear) scrolls out from
+  // under it. Reference-counted, so nested overlays stay locked until
+  // the last closes. Surfaces that don't use this trap (the dropdown
+  // menus, context menu, lightbox, export/ignored panels) call
+  // useScrollLock directly; the onboarding tour keeps its own lock.
+  useScrollLock(open)
 
   function focusable(): HTMLElement[] {
     const box = document.querySelector<HTMLElement>(containerSelector)
@@ -98,9 +110,11 @@ export function useModalFocusTrap(
       lastFocusedBeforeModal.value = null
       // Defer focus restore one tick so the modal's DOM is gone
       // first; restoring before the focused element is removed can
-      // be a no-op in some browsers.
+      // be a no-op in some browsers. `preventScroll` so returning
+      // focus to a trigger that scrolled off-screen doesn't yank the
+      // page to it on close.
       await nextTick()
-      prev?.focus()
+      prev?.focus({ preventScroll: true })
     }
   }, { immediate: true })
 

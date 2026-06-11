@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
+import { useScrollLock } from '../composables/useScrollLock'
+
 // Right-click context menu for a Matches list row. Quick actions
 // without first opening the detail panel:
 //
@@ -37,6 +39,10 @@ const props = defineProps<{
   // mode build doesn't surface a no-op menu item.
   isWails?: boolean
 }>()
+
+// Freeze the page while the menu is up (position non-null = open) so it
+// doesn't scroll away from the row it's anchored to.
+useScrollLock(computed(() => props.position !== null))
 
 const emit = defineEmits<{
   close:        []

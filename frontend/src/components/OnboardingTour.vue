@@ -7,6 +7,7 @@ import {
   type OnboardingViewId,
   type TourActionContext,
 } from '../composables/useOnboardingTour'
+import { useScrollLock } from '../composables/useScrollLock'
 import TourSpotlight from './TourSpotlight.vue'
 import TourCallout from './TourCallout.vue'
 
@@ -113,24 +114,12 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-// Body scroll lock — set on open, restored on close. Prevents the
-// user from scrolling the underlying page out from under the
-// spotlighted target while a step is being talked about. Tour
-// internals still use scrollIntoView() to bring the next target into
-// view; that's a programmatic call and is unaffected by the
-// overflow:hidden lock on body.
-let savedBodyOverflow = ''
-let savedHtmlOverflow = ''
-function lockBodyScroll() {
-  savedBodyOverflow = document.body.style.overflow
-  savedHtmlOverflow = document.documentElement.style.overflow
-  document.body.style.overflow = 'hidden'
-  document.documentElement.style.overflow = 'hidden'
-}
-function unlockBodyScroll() {
-  document.body.style.overflow = savedBodyOverflow
-  document.documentElement.style.overflow = savedHtmlOverflow
-}
+// Body scroll lock — freeze the underlying page so the user can't
+// scroll the spotlighted target out from under the callout. The shared
+// lock blocks the wheel at the event (not just overflow:hidden), so
+// WebKit can't queue a pending scroll that snaps in on close; the tour's
+// own scrollIntoView between steps is programmatic and still works.
+useScrollLock(tour.open)
 
 // Install / remove the document keydown listener on open transitions
 // so a closed tour doesn't intercept site-wide keys. Capture-phase
@@ -139,7 +128,6 @@ function unlockBodyScroll() {
 watch(tour.open, (isOpen, wasOpen) => {
   if (isOpen && !wasOpen) {
     document.addEventListener('keydown', onKeydown, true)
-    lockBodyScroll()
     emit('active-change', true)
     // If the first step has a view associated, drive the underlying
     // app to it. The composable's restart() handles this, but the
@@ -149,17 +137,14 @@ watch(tour.open, (isOpen, wasOpen) => {
   }
   if (!isOpen && wasOpen) {
     document.removeEventListener('keydown', onKeydown, true)
-    unlockBodyScroll()
     emit('active-change', false)
   }
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown, true)
-  // Defensive: if the component unmounts while the tour is still
-  // open (route-level teardown), make sure we leave the page in a
-  // scrollable state.
-  if (tour.open.value) unlockBodyScroll()
+  // useScrollLock self-releases on unmount, so no manual scroll cleanup
+  // is needed here even if the tour is still open at teardown.
 })
 
 function onSkip()   { tour.skip() }

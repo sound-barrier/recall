@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
+
+import { useScrollLock } from '../composables/useScrollLock'
 
 // Selection-aware "Export bundle" modal. Opens from the MatchesView
 // bulk-action bar. Lets the user:
@@ -27,6 +29,10 @@ const emit = defineEmits<{
   // falls back to the timestamp default).
   export: [filename: string, includeHidden: boolean, includeUnknown: boolean]
 }>()
+
+// Freeze the page behind the modal (this one wires its own focus trap
+// rather than useModalFocusTrap, so it locks scroll directly).
+useScrollLock(toRef(props, 'open'))
 
 function defaultFilename(): string {
   // Same shape the server emits via Content-Disposition. Local-time

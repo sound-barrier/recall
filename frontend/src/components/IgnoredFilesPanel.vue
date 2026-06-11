@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, nextTick, onBeforeUnmount, toRef } from 'vue'
 
+import { useScrollLock } from '../composables/useScrollLock'
 import type { IgnoredScreenshot } from '../api'
 
 // IgnoredFilesPanel — Settings → Advanced → "Manage ignored files."
@@ -25,6 +26,10 @@ const props = defineProps<{
   screenshots:   IgnoredScreenshot[]
   screenshotURL: (filename: string) => string
 }>()
+
+// Freeze the page behind the panel (it wires its own capture-phase
+// Escape rather than useModalFocusTrap, so it locks scroll directly).
+useScrollLock(toRef(props, 'isOpen'))
 
 const emit = defineEmits<{
   close:          []
@@ -299,8 +304,12 @@ function formatIgnoredAt(ts: string): string {
                 >
               </button>
               <div class="ignored-meta">
-                <div class="ignored-filename mono">{{ s.filename }}</div>
-                <div class="ignored-timestamp">{{ formatIgnoredAt(s.ignored_at) }}</div>
+                <div class="ignored-filename mono">
+                  {{ s.filename }}
+                </div>
+                <div class="ignored-timestamp">
+                  {{ formatIgnoredAt(s.ignored_at) }}
+                </div>
               </div>
               <button
                 type="button"

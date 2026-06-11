@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 
+import { useScrollLock } from '../composables/useScrollLock'
+
 // Fullscreen screenshot viewer. Opened by clicking an inline preview
 // img (MatchCardExpanded's sources block on the Matches detail panel,
 // or UnknownMapsView's source-screenshot rows on the Unknown tab).
@@ -44,6 +46,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ close: []; prev: []; next: [] }>()
+
+// Freeze the page behind the lightbox. It usually stacks over an
+// already-locked panel (detail / ignored-files), but lock explicitly so
+// it holds regardless of what opened it.
+useScrollLock(computed(() => props.filename !== null))
 
 const closeBtnRef = ref<HTMLButtonElement | null>(null)
 const lastFocus = ref<HTMLElement | null>(null)
