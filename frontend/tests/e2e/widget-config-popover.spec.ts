@@ -37,7 +37,7 @@ function manyHeroMatches() {
     source_files: [`m${i}.png`],
     source_types: { [`m${i}.png`]: 'summary' },
     data: {
-      map: 'rialto', mode: 'competitive', type: 'control',
+      map: 'rialto', playlist: 'competitive', type: 'control',
       role: 'support', hero,
       result: 'victory', date: `2026-05-${String(10 + i).padStart(2, '0')}`,
       finished_at: '22:00',

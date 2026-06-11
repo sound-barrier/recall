@@ -23,7 +23,7 @@ const match = (key: string, gameLength: string | null, map = 'rialto', hero = 'l
   source_types: { [`${key}.png`]: 'summary' },
   data: {
     map,
-    mode: 'competitive',
+    playlist: 'competitive',
     hero,
     result: 'victory',
     date: '2026-05-10',

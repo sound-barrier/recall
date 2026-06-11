@@ -15,7 +15,7 @@ function record(matchKey: string, hero: string, map: string) {
     source_files: [`${matchKey}.png`],
     data: {
       map,
-      mode: 'competitive',
+      playlist: 'competitive',
       type: 'control',
       role: 'support',
       hero,

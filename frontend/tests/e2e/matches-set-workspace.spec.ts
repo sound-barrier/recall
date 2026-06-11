@@ -35,7 +35,7 @@ function record(s: Stub, idx: number) {
     source_types: { [`${s.match_key}.png`]: 'summary' },
     data: {
       map: s.map ?? undefined,
-      mode: 'competitive',
+      playlist: 'competitive',
       type: s.type,
       role: s.role,
       hero: s.hero,

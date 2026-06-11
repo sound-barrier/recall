@@ -18,7 +18,7 @@ function rec(i: number) {
     source_files: [`m${i}.png`],
     source_types: { [`m${i}.png`]: 'summary' },
     data: {
-      map: 'rialto', mode: 'competitive', type: 'control', role: 'support', hero: 'lucio',
+      map: 'rialto', playlist: 'competitive', type: 'control', role: 'support', hero: 'lucio',
       result: i % 2 ? 'victory' : 'defeat',
       date: '2026-05-10', finished_at: `${hh}:${mm}`,
       eliminations: 10, assists: 8, deaths: 6,

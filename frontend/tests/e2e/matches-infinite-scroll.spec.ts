@@ -34,7 +34,7 @@ function makeMatch(i: number): Record<string, unknown> {
     source_types: { [`m${i}.png`]: 'summary' },
     data: {
       map: 'rialto',
-      mode: 'competitive',
+      playlist: 'competitive',
       type: 'control' as Mode['type'],
       role: 'support',
       hero: 'lucio',

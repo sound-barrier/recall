@@ -97,7 +97,7 @@ test.describe('Unknown tab — Delete forever', () => {
       // No `data.map` — surfaces under Unknown via the
       // `!data?.map && !ambiguous` filter even though the key is a
       // tracked match.
-      data:      { mode: 'competitive', hero: 'lucio' },
+      data:      { playlist: 'competitive', hero: 'lucio' },
       parsed_at: '2026-05-10T22:21:11Z',
     })
 

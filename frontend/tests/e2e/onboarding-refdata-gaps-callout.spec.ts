@@ -59,7 +59,7 @@ test.describe('unknown tab — reference-data-gaps contextual callout', () => {
       status: 200, contentType: 'application/json',
       body: JSON.stringify([{
         match_key: 'm1', source_files: ['ok.png'], source_types: { 'ok.png': 'summary' },
-        data: { map: 'ilios', hero: 'lucio', result: 'victory', mode: 'competitive' },
+        data: { map: 'ilios', hero: 'lucio', result: 'victory', playlist: 'competitive' },
         parsed_at: '2026-05-10T14:00:00Z',
       }]),
     }))

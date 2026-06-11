@@ -28,7 +28,7 @@ const match = (key: string, map: string, type: string, role: string, hero: strin
   source_types: { [`${key}.png`]: 'summary' },
   data: {
     map, type, role, hero, result: 'victory',
-    date: RECENT, finished_at: '20:00', mode: 'competitive',
+    date: RECENT, finished_at: '20:00', playlist: 'competitive',
     heroes_played: [{ hero, play_time: '10:00', percent_played: 100 }],
   },
   parsed_at: `${RECENT}T20:30:00Z`,

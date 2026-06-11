@@ -37,7 +37,7 @@ const candidateMatchRecord = (extraSource?: string) => ({
   },
   data: {
     map: 'rialto',
-    mode: 'competitive',
+    playlist: 'competitive',
     hero: 'lucio',
     eliminations: 17,
     assists: 16,
@@ -53,7 +53,7 @@ const ambiguousRecord = () => ({
   source_files: ['scoreboard-2.png'],
   source_types: { 'scoreboard-2.png': 'scoreboard' },
   data: {
-    mode: 'competitive',
+    playlist: 'competitive',
     hero: 'lucio',
     eliminations: 17,
     assists: 16,
