@@ -8,6 +8,10 @@ import {
   missingOptionalSlots,
   heroesForHeader,
   rolesForHeader,
+  formatHeroes,
+  formatRoles,
+  formatRowDate,
+  formatFinishedAt,
   screenshotURL,
   highlightSubstring,
 } from './match-helpers'
@@ -390,5 +394,42 @@ describe('highlightSubstring', () => {
       { text: 'huge ', hit: false },
       { text: 'clutch', hit: true },
     ])
+  })
+})
+
+// ─── row formatters (formatHeroes / formatRoles / formatRowDate / formatFinishedAt) ──
+
+describe('row formatters', () => {
+  it('formatHeroes lists most-played first and appends a missing primary', () => {
+    expect(formatHeroes({ data: { heroes_played: [
+      { hero: 'ana', percent_played: 60 }, { hero: 'lucio', percent_played: 40 },
+    ] } })).toBe('ana, lucio')
+    // primary absent from a non-empty heroes_played → appended last
+    expect(formatHeroes({ data: {
+      hero: 'kiriko', heroes_played: [{ hero: 'ana', percent_played: 60 }],
+    } })).toBe('ana, kiriko')
+    expect(formatHeroes({ data: {} })).toBe('—')
+  })
+
+  it('formatRoles dedups roles in play-order via the heroRole lookup', () => {
+    const heroRole = (h: string | null | undefined) =>
+      ({ ana: 'support', lucio: 'support', dva: 'tank' })[h ?? ''] ?? ''
+    expect(formatRoles({ data: { heroes_played: [
+      { hero: 'lucio', percent_played: 50 },
+      { hero: 'dva', percent_played: 30 },
+      { hero: 'ana', percent_played: 20 },
+    ] } }, heroRole)).toBe('support, tank')
+    expect(formatRoles({ data: {} }, heroRole)).toBe('')
+  })
+
+  it('formatRowDate is short "Mon D", dash when undated, raw when unparseable', () => {
+    expect(formatRowDate({ data: { date: '2026-05-10' } })).toMatch(/May 10/)
+    expect(formatRowDate({ data: {} })).toBe('—')
+    expect(formatRowDate({ data: { date: 'garbage' } })).toBe('garbage')
+  })
+
+  it('formatFinishedAt returns the finish time or empty', () => {
+    expect(formatFinishedAt({ data: { finished_at: '21:29' } })).toBe('21:29')
+    expect(formatFinishedAt({ data: {} })).toBe('')
   })
 })

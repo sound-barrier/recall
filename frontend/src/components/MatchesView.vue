@@ -14,7 +14,7 @@ import { useWeekStart } from '../composables/useWeekStart'
 import { useDensity } from '../composables/useDensity'
 import { useScrollAffordance } from '../composables/useScrollAffordance'
 import { useOWData } from '../composables/useOWData'
-import { rolesForHeader, isHeroUnknown, isMapUnknown } from '../match-helpers'
+import { isHeroUnknown, isMapUnknown, formatHeroes, formatRoles, formatRowDate, formatFinishedAt } from '../match-helpers'
 import {
   formatPlayModeLabel, formatQueueTypeLabel,
   formatUnknownHeroLabel, formatUnknownMapLabel,
@@ -995,49 +995,6 @@ function onLeafMouseLeave() {
   hoverPreviewSrc.value = null
 }
 
-function formatTime(rec: MatchRecord): string {
-  return rec.data?.finished_at ?? ''
-}
-
-// Comma-separated hero list, most-played first. Commas pick over
-// `|` because the row reads as a natural-language label first and
-// a table cell second; `,` matches English list convention. If
-// the primary hero (`data.hero`) isn't represented in
-// `heroes_played` (an OCR edge case), include it at the end of
-// the list so the user always sees the parsed primary. Falls back
-// to `—` only when both `heroes_played` is empty AND there's no
-// primary hero.
-function formatHeroes(rec: MatchRecord): string {
-  const played = [...(rec.data?.heroes_played ?? [])]
-  const primary = rec.data?.hero
-  if (primary && !played.some((h) => h.hero === primary)) {
-    played.push({ hero: primary, percent_played: 0 })
-  }
-  if (played.length === 0) return '—'
-  const sorted = played.sort(
-    (a, b) => (b.percent_played ?? 0) - (a.percent_played ?? 0),
-  )
-  return sorted.map((h) => h.hero).filter(Boolean).join(', ')
-}
-
-// Role label for the leaf row. Open-queue matches let a player
-// touch multiple roles; we list every role the heroes_played array
-// resolved to, in percent-played order, deduped. Single-role
-// matches fall through to a single label (no comma). Returns ''
-// when neither heroes_played nor data.role resolve — the caller's
-// v-if drops the chip in that case.
-function formatRoles(rec: MatchRecord): string {
-  return rolesForHeader(rec, ow.heroRole).join(', ')
-}
-
-function formatRowDate(rec: MatchRecord): string {
-  const d = rec.data?.date
-  if (!d) return '—'
-  const dt = new Date(d + 'T00:00:00')
-  if (isNaN(dt.getTime())) return d
-  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
 // ─── Narrow popover plumbing ─────────────────────────────
 //
 // The popover itself (template + focus trap + outside-click
@@ -1599,7 +1556,7 @@ onBeforeUnmount(() => {
               <!-- 2. When — date over time. -->
               <div class="leaf-when">
                 <span class="leaf-when-date">{{ formatRowDate(rec) }}</span>
-                <span class="leaf-when-time">{{ formatTime(rec) }}</span>
+                <span class="leaf-when-time">{{ formatFinishedAt(rec) }}</span>
               </div>
 
               <!-- 3. Where — map (display font) over a pair of chips:
@@ -1636,7 +1593,7 @@ onBeforeUnmount(() => {
                   :title="`The parser couldn't match the OCR'd hero text to heroes.yaml. Wait for the next release to recognise it. (OCR read: ${rec.data?.hero_raw ?? '—'})`"
                 >{{ formatUnknownHeroLabel(rec) }}</span>
                 <span v-else class="leaf-hero">{{ formatHeroes(rec) }}</span>
-                <span v-if="formatRoles(rec)" class="leaf-role">{{ formatRoles(rec) }}</span>
+                <span v-if="formatRoles(rec, ow.heroRole)" class="leaf-role">{{ formatRoles(rec, ow.heroRole) }}</span>
               </div>
 
               <!-- 5. How — eliminations / assists / deaths, big + bold. -->
@@ -1843,7 +1800,7 @@ onBeforeUnmount(() => {
               <span class="archive-row-strip" aria-hidden="true" />
               <div class="archive-row-when">
                 <span class="archive-row-date">{{ formatRowDate(rec) }}</span>
-                <span class="archive-row-time">{{ formatTime(rec) }}</span>
+                <span class="archive-row-time">{{ formatFinishedAt(rec) }}</span>
               </div>
               <div class="archive-row-map">
                 <span class="archive-row-map-name">{{ rec.data?.map || 'unknown' }}</span>
@@ -1852,7 +1809,7 @@ onBeforeUnmount(() => {
               </div>
               <div class="archive-row-hero">
                 <span class="archive-row-hero-name">{{ formatHeroes(rec) }}</span>
-                <span v-if="formatRoles(rec)" class="archive-row-role">{{ formatRoles(rec) }}</span>
+                <span v-if="formatRoles(rec, ow.heroRole)" class="archive-row-role">{{ formatRoles(rec, ow.heroRole) }}</span>
               </div>
               <div class="archive-row-stats">
                 <span class="archive-row-stat">{{ rec.data?.eliminations ?? '—' }}</span>

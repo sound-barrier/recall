@@ -158,6 +158,54 @@ export function rolesForHeader(
   return out
 }
 
+// ── Leaf / archive row formatters ──────────────────────────────────
+// Shared by the compact match rows (the live leaf row + the archive
+// row). Pure given a record (formatRoles also takes the heroRole
+// lookup, typically useOWData().heroRole).
+
+// Comma-separated hero list, most-played first. Mirrors
+// heroesForHeader's ordering but additionally appends the parsed
+// primary (data.hero) when an OCR mismatch left it out of a non-empty
+// heroes_played, so the row always surfaces the primary. '—' when
+// there's neither a heroes_played entry nor a primary.
+export function formatHeroes(rec: Pick<MatchRecord, 'data'>): string {
+  const played = [...(rec.data?.heroes_played ?? [])]
+  const primary = rec.data?.hero
+  if (primary && !played.some((h) => h.hero === primary)) {
+    played.push({ hero: primary, percent_played: 0 })
+  }
+  if (played.length === 0) return '—'
+  return played
+    .sort((a, b) => (b.percent_played ?? 0) - (a.percent_played ?? 0))
+    .map((h) => h.hero)
+    .filter(Boolean)
+    .join(', ')
+}
+
+// Comma-separated role list, deduped in play-order via rolesForHeader.
+// '' when nothing resolves — the caller's v-if drops the chip.
+export function formatRoles(
+  rec: Pick<MatchRecord, 'data'>,
+  heroRole: (hero: string | null | undefined) => string,
+): string {
+  return rolesForHeader(rec, heroRole).join(', ')
+}
+
+// Short "Mon D" date from data.date (ISO YYYY-MM-DD). '—' when
+// undated; the raw string when unparseable.
+export function formatRowDate(rec: Pick<MatchRecord, 'data'>): string {
+  const d = rec.data?.date
+  if (!d) return '—'
+  const dt = new Date(d + 'T00:00:00')
+  if (isNaN(dt.getTime())) return d
+  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+// Finish time-of-day for a row (data.finished_at), '' when absent.
+export function formatFinishedAt(rec: Pick<MatchRecord, 'data'>): string {
+  return rec.data?.finished_at ?? ''
+}
+
 // isHeroUnknown returns true when the parser captured an OCR'd hero
 // name but couldn't pin it to any canonical roster entry (e.g.
 // Miyazaki before heroes.yaml was updated). The leaf-row chip + the
