@@ -42,13 +42,17 @@ export function defaultSections(): SectionState[] {
 export function isSectionStateArray(decoded: unknown): decoded is SectionState[] {
   return (
     Array.isArray(decoded) &&
-    decoded.every(
-      (e) =>
-        e !== null &&
-        typeof e === 'object' &&
+    decoded.every((e) => {
+      if (e === null || typeof e !== 'object' || Array.isArray(e)) return false
+      const keys = Object.keys(e as Record<string, unknown>)
+      return (
+        keys.length === 2 &&
+        keys.includes('id') &&
+        keys.includes('visible') &&
         typeof (e as SectionState).id === 'string' &&
-        typeof (e as SectionState).visible === 'boolean',
-    )
+        typeof (e as SectionState).visible === 'boolean'
+      )
+    })
   )
 }
 
