@@ -9,7 +9,7 @@
 #
 # Findings are printed; the script ALWAYS exits 0. The goal is
 # situational awareness across PRs, not a gate. When a number climbs
-# into "this needs a refactor" territory, raise a TECHNICAL_DEBT.md
+# into "this needs a refactor" territory, raise a REVIEW.md
 # item — don't tighten the threshold here.
 #
 # Consumed from:

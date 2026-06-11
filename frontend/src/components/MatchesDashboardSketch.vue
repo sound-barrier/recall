@@ -30,9 +30,8 @@ import type { MatchRecord } from '../api'
 //     to open the existing detail panel (chev affordance + emit).
 
 const props = defineProps<{
-  // Full record list — the dashboard reads this directly. Drawer
-  // surfaces the top-N most recent for now; later we'll honor the
-  // chart click that scoped to a specific slice.
+  // Full record list — the dashboard reads this directly. The
+  // drawer surfaces the top-N most recent.
   records: MatchRecord[]
   // Currently-selected match key, if the side panel is open. Lets
   // the drawer row highlight which match the panel is anchored to.

@@ -1,7 +1,7 @@
 # Recall — Feature Backlog
 
 A single triage surface for forward-looking feature ideas. Companion
-to `TECHNICAL_DEBT.md` (which tracks closed-out engineering work) —
+to `REVIEW.md` (the outstanding tech-debt + near-term feature/bug backlog) —
 this file tracks the opposite direction: what *could* be built next.
 
 ## How this file works
@@ -140,10 +140,10 @@ Features that shipped and were subsequently removed in a redesign.
 Listed here so the design rationale stays discoverable from one
 file.
 
-- **UX & Settings — Saved filter presets** (shipped pre-PR-#100; retired in PR #101) — Presets dropdown in the old FilterRail's tools row, backed by `useFilterPresets` + `FilterPresetsMenu.vue`. Deleted alongside the FilterRail itself when the set-workspace redesign moved every filter into the new Narrow this set panel. A typed replacement (serialising `MatchesNarrowState` instead of the legacy snapshot shape) is in `UI_RECOMMENDATIONS.md` as an open item.
+- **UX & Settings — Saved filter presets** (shipped pre-PR-#100; retired in PR #101) — Presets dropdown in the old FilterRail's tools row, backed by `useFilterPresets` + `FilterPresetsMenu.vue`. Deleted alongside the FilterRail itself when the set-workspace redesign moved every filter into the new Narrow this set panel. A typed replacement (serialising `MatchesNarrowState`) shipped as `useNarrowPresets`.
 - **UX & Settings — Group-jump timeline rail** (shipped; retired in PR #100) — sticky right-edge chip column that scrolled + auto-expanded the target month group on click. The set-workspace redesign replaced the nested Month → Week → Day expand tree with a single sort + Y/M/W/D group control above the leaves; the rail's "jump between many groups" affordance lost its target audience when the tree flattened. Component (`MatchGroupTimeline.vue`) + e2e spec deleted.
 - **UX & Settings — Compact / dense view toggle** (shipped; retired in PR #101) — `useDensityMode` composable + a density button in the old group-rail. The new `.leaf-row` design is already as dense as the old compact mode (7-cell grid, monospace numerals, fixed row height) so the toggle had no second mode to flip to.
-- **Match Data & Editing — Global match search (vim-style scoped clauses)** (shipped; partially retired in PR #100) — `note:clutch` / `tag:stack` / `member:Apollo` / `replay:7H1` clause parsing via `search-query.ts` + `useMatchFilters.searchClauses`. The new narrow-panel search box does plain substring match across every lexical surface (map / hero / mode / note / tag / heroes-played). The clause-parsing helper still ships and is unit-tested; the UI hook was removed with the FilterRail. Restoring the scoped-clause UX in the narrow panel is open in `UI_RECOMMENDATIONS.md`.
+- **Match Data & Editing — Global match search (vim-style scoped clauses)** (shipped; partially retired in PR #100) — `note:clutch` / `tag:stack` / `member:Apollo` / `replay:7H1` clause parsing via `search-query.ts` + `useMatchFilters.searchClauses`. The new narrow-panel search box does plain substring match across every lexical surface (map / hero / mode / note / tag / heroes-played). The clause-parsing helper still ships and is unit-tested; the UI hook was removed with the FilterRail. Restoring the scoped-clause UX in the narrow panel is open in `REVIEW.md` (F1).
 
 ## Denied / Won't Do
 

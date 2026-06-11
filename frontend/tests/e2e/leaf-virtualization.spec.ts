@@ -1,5 +1,5 @@
 /**
- * Leaf-row virtualization (UI_RECOMMENDATIONS item 1).
+ * Leaf-row virtualization.
  *
  * When the user picks groupBy='none', the leaves list is one flat
  * stack of uniform-height rows. Recall virtualizes the stack: only

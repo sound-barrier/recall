@@ -1,6 +1,5 @@
 /**
  * Contextual callout on the screenshot source picker
- * (UI_RECOMMENDATIONS item 13 surface B).
  *
  * The first time the Windows 4-card source-picker grid renders,
  * Recall surfaces a one-shot ContextualCallout naming the four

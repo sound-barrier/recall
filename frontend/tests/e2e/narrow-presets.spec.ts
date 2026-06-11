@@ -1,5 +1,5 @@
 /**
- * Saved-set / preset feature (UI_RECOMMENDATIONS item 8).
+ * Saved-set / preset feature.
  *
  * Configure a narrow → save it under a name → reload → click the
  * named preset → narrow re-applies. localStorage round-trip is the

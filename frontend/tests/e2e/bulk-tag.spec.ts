@@ -1,5 +1,5 @@
 /**
- * Bulk-tag from selected rows (UI_RECOMMENDATIONS item 3).
+ * Bulk-tag from selected rows.
  *
  * Select two rows → BulkActionBar surfaces "Tag ▾" menu → typing
  * + Enter (or click on a suggestion) appends the tag to every

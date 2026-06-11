@@ -11,7 +11,7 @@
 # always at the top.
 #
 # Why a script + not a Vite plugin: this is a snapshot for
-# TECHNICAL_DEBT.md, not a continuous monitor. The size budget
+# REVIEW.md, not a continuous monitor. The size budget
 # gate in scripts/check-bundle-size.sh runs every push; this
 # audit informs human refactor decisions and runs on demand.
 #

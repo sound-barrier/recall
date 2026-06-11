@@ -289,7 +289,7 @@ lint-semgrep: ## JS/TS SAST via Semgrep (frontend/src/, TypeScript only — .vue
 # (ESLint's `complexity` rule). Findings are PRINTED — the build never
 # fails on a high number — so we watch the trend without every push
 # blocking on someone else's gnarly function. When a number climbs
-# into "this needs a refactor" territory, raise a TECHNICAL_DEBT.md
+# into "this needs a refactor" territory, raise a REVIEW.md
 # item rather than tightening this gate.
 #
 # Threshold (McCabe's 1976 recommendation): 10. Tune in one place:

@@ -6,7 +6,7 @@
 # ≥ 5 or new entries that crack the top-20 surface as a PR comment.
 #
 # Pure observability — never enforced. If a number rises, raise (or
-# update) a TECHNICAL_DEBT.md item; never silently bump the baseline.
+# update) a REVIEW.md item; never silently bump the baseline.
 #
 # Format: "<score> <package> <function> <file>:<line>". One per line.
 # Test files (`*_test.go`, `*.test.ts`) are excluded — they wear high

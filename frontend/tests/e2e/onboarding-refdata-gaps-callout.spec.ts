@@ -1,6 +1,5 @@
 /**
  * Contextual callout on the Reference data gaps section
- * (UI_RECOMMENDATIONS item 13 surface C).
  *
  * Most users never see a reference-data-gap record — they're the
  * fallout from the parser capturing a new hero/map name that

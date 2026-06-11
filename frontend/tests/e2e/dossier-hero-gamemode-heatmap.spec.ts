@@ -1,5 +1,5 @@
 /**
- * Hero × game-mode heatmap widget (UI_RECOMMENDATIONS item 2).
+ * Hero × game-mode heatmap widget.
  *
  * The widget is an opt-in dossier surface that breaks down winrate
  * by (hero, game-mode) across the narrowed set. Cells are coloured
