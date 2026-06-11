@@ -52,7 +52,7 @@ test.describe('Matches — narrow rail vs popover by viewport', () => {
     // Trigger button is hidden in rail mode.
     await expect(page.locator('[data-narrow-trigger]')).toHaveCount(0)
     // Inputs inside the panel are interactive without a focus trap.
-    const search = page.locator('input[type="search"][placeholder*="map · hero"]').first()
+    const search = page.locator('#np-search').first()
     await expect(search).toBeVisible()
     await search.fill('rialto')
     // Narrowing still drives the leaves list.
