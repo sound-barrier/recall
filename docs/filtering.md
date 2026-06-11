@@ -1,15 +1,15 @@
 # Filtering and grouping
 
-The Matches tab is built around the **dossier + narrow panel + leaves**
+The Matches tab is built around the **dossier + filter panel + leaves**
 shape. The dossier at the top of the page is the headline summary
 of "the set you're currently looking at": its W/L/D, winrate,
 top maps, top heroes, and the active narrowing clauses. The
-**Narrow this set** button on the dossier opens a left-side panel
+**Filter matches** button on the dossier opens a left-side panel
 that consolidates every filter dimension into one place. The
 **leaves list** below the dossier is the match-by-match view of
 the set, with sort + group controls in its header.
 
-Every selection inside the narrow panel is combined with **AND**:
+Every selection inside the filter panel is combined with **AND**:
 pick "Hero: Juno" + "Map: King's Row" + "Result: Victory" and you
 see only Juno wins on King's Row. Within a single field, multiple
 selections are combined with **OR**: pick "Hero: Juno" + "Hero:
@@ -17,11 +17,11 @@ Mercy" and you see matches where either was played. So the mental
 model is "any of these heroes AND any of these maps AND any of
 these results AND …".
 
-## Opening the narrow panel
+## Opening the filter panel
 
 Two ways:
 
-- Click the **⌗ Narrow this set** button on the dossier
+- Click the **⌗ Filter matches** button on the dossier
   (right-hand side, just below the breakdowns).
 - Press `/` from anywhere on the Matches tab — the panel slides
   in and the search box receives focus immediately.
@@ -145,12 +145,12 @@ last 30d — Lijiang Tower — lúcio · mercy
 [Hero: mercy ×]                                  [Clear all]
 ```
 
-Each chip's `×` drops just that single clause from the narrow.
+Each chip's `×` drops just that single clause from the filter.
 **Clear all** drops every clause back to defaults (same as the
 **Reset** button inside the panel's footer).
 
 The panel's **Done** button closes the panel without changing
-state. Reopen with `⌗ Narrow this set` or `/`.
+state. Reopen with `⌗ Filter matches` or `/`.
 
 ## Sort + group controls on the leaves
 
@@ -179,6 +179,44 @@ determines where the week boundary lands — see
 [Settings reference → Calendar](settings-reference.md#first-day-of-week)
 for the regional defaults.
 
+## Customizing the dossier
+
+The dossier isn't fixed — every KPI and breakdown is a **widget** you
+can rearrange or hide, with **no edit mode** to toggle first. Hover
+any widget to reveal its two controls: a drag-grip (⠿) to reorder it
+within the grid, and a × to remove it. The **Add** button (top-right
+of the dossier) opens a compact menu listing every removed widget and
+section, each with a **+** to bring it back, plus **Reset** to return
+to the install default.
+
+Below the dossier grid sit two full-width **bands** — the Campaign Log
+heatmap and the Geography band (next section) — that are themselves
+removable + reorderable sections, both on by default. Remove one with
+the inline × on its header; re-add or reorder it from the same **Add**
+menu. The dossier always stays on top; only the bands below it
+reorder. The whole layout persists per profile across launches.
+
+## The Geography band
+
+The **Geography** band (its eyebrow reads *Map × role performance*) is
+a contribution-graph-style heatmap: one row per role (Tank / DPS /
+Support), one column per map grouped by map type, each cell shaded by
+win rate and labelled with its W-L-D on hover.
+
+It drives the global filter directly:
+
+- **Click a cell** to narrow the whole set to that map + role pair —
+  the same as picking them in the Filter matches panel.
+- **Click a map-type group header** to narrow to that map type
+  (control, escort, hybrid, push, flashpoint, clash).
+
+The band's **gear** (top-right) is a *band-local display filter*,
+separate from the global Filter matches panel: it trims which roles,
+map types, or specific maps the heatmap draws, without touching the
+dossier KPIs or the leaves list. A window toggle (1M / 3M / 6M / 12M)
+scopes the heatmap to a recent slice. Both the gear picks and the
+window persist per profile.
+
 ## Per-row drill-down
 
 Clicking any leaf row opens the **match detail panel** from the
@@ -186,8 +224,8 @@ right edge. Inside the panel you can edit the annotation
 (note, replay code, group members, leaver flag, tags),
 soft-delete the match, and see the full Heroes Played + Match
 Stats + Rank Update + Source Screenshots dossier. The panel
-honors ← / → for prev/next match against the *currently narrowed*
-list, so once you've narrowed down "every Lúcio loss on Rialto"
+honors ← / → for prev/next match against the *currently filtered*
+list, so once you've filtered to "every Lúcio loss on Rialto"
 the arrow keys paginate through that exact set. See
 [How it works → The Matches view](how-it-works.md#the-matches-view)
 for the panel's keyboard contract in detail.
@@ -196,15 +234,15 @@ for the panel's keyboard contract in detail.
 
 The dossier subline reads the current state:
 
-- **No narrow active** — `spans your full history`
-- **Narrow active** — `N of M matches in this view` (N is the
+- **No filter active** — `spans your full history`
+- **Filter active** — `N of M matches in this view` (N is the
   filtered count; M is the total corpus, minus any soft-deleted
   matches you haven't surfaced via the detail panel)
 
 ## Filter state persistence
 
-Narrow-panel selections are **session-scoped** — they don't
-survive a page reload. The reasoning: a narrow is typically a
+Filter selections are **session-scoped** — they don't
+survive a page reload. The reasoning: a filter is typically a
 "right now, I want to see…" question, not a permanent view.
 
 A handful of cross-cutting preferences DO persist across launches
@@ -214,10 +252,14 @@ A handful of cross-cutting preferences DO persist across launches
   OS preference)
 - **First day of week** (Sunday / Monday / …)
 - **Screenshots folder**
-- **Window size** for the Campaign Log heatmap (3M / 6M / 12M)
+- **Window size** for the Campaign Log heatmap and the Geography
+  band (1M / 3M / 6M / 12M — each band remembers its own)
+- **Dossier layout** — which widgets + bands you've added, removed,
+  or reordered (see [Customizing the dossier](#customizing-the-dossier))
+- **Geography band filter** — the gear's role / map-type / map picks
 - **Tesseract path** + the rest of Settings
 
-Saved-narrow presets (so a "stack games last weekend" narrow
+Saved-filter presets (so a "stack games last weekend" filter
 survives a reload) are tracked in `UI_RECOMMENDATIONS.md` —
 the old preset feature was retired with the FilterRail and a
 typed replacement is in the backlog.

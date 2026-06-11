@@ -142,9 +142,9 @@ The audit is read-only; it doesn't gate CI. The gate is `check-bundle-size.sh`. 
 
 ## Manual testing with a seeded corpus
 
-When eyeballing the UI against a large match set — dossier widgets, Campaign
-Log density, sticky-header behavior at scroll, sort/group with hundreds of
-rows — parsing real screenshots is too slow. Use `make seed-dev` to write
+When eyeballing the UI against a large match set — dossier widgets, the
+Campaign Log + Geography bands, infinite-scroll virtualization, sort/group with
+hundreds of rows — parsing real screenshots is too slow. Use `make seed-dev` to write
 synthetic rows straight into a profile's SQLite DB.
 
 ### One-time setup
