@@ -3,10 +3,10 @@
  *
  * An always-shown full-width band rendered after the Campaign Log: 3
  * role rows (Tank / DPS / Support) × every map as a column, grouped by
- * map-type and alphabetical within each group. Cells are tinted by
+ * game-mode and alphabetical within each group. Cells are tinted by
  * win rate (green→red) and dimmed by volume. Clicking a cell narrows
- * the active set to that (map, role) pair; clicking a type-group
- * header narrows to that map-type.
+ * the active set to that (map, role) pair; clicking a game-mode group
+ * header narrows to that game-mode.
  *
  * Unlike the opt-in dossier widgets, the band needs no layout seeding —
  * it's fixed chrome. We DO mock /api/v1/system/reference-data so the
@@ -31,7 +31,7 @@ const REFERENCE_DATA = {
     dps: ['Tracer'],
     support: ['Lucio'],
   },
-  // Two type-groups; Escort has two maps so we can assert alpha order
+  // Two game-mode groups; Escort has two maps so we can assert alpha order
   // (Dorado before Rialto).
   maps_by_game_mode: {
     control: ['Ilios'],
@@ -101,9 +101,9 @@ test.describe('Geography — Map × Role band', () => {
     await expect(band).toBeVisible()
     // Three role rows.
     await expect(band.locator('.mr-rowhead')).toHaveCount(3)
-    // Three map columns (1 control + 2 escort) and two type-group heads.
+    // Three map columns (1 control + 2 escort) and two game-mode group heads.
     await expect(band.locator('.mr-collabel')).toHaveCount(3)
-    await expect(band.locator('.mr-typehead')).toHaveCount(2)
+    await expect(band.locator('.mr-modehead')).toHaveCount(2)
     // 3 roles × 3 maps = 9 cells.
     await expect(band.locator('.mr-cell')).toHaveCount(9)
     // Alphabetical within Escort: Dorado precedes Rialto.
@@ -126,9 +126,9 @@ test.describe('Geography — Map × Role band', () => {
     await expect(chips.locator('.active-chip', { hasText: 'support' })).toBeVisible()
   })
 
-  test('clicking a type-group header narrows to that map-type', async ({ page }) => {
+  test('clicking a game-mode group header narrows to that game-mode', async ({ page }) => {
     const band = page.locator('.match-map-role')
-    await band.locator('.mr-typehead', { hasText: 'Escort' }).click()
+    await band.locator('.mr-modehead', { hasText: 'Escort' }).click()
 
     const chips = page.locator('ul.active-chips')
     await expect(chips.locator('.active-chip', { hasText: 'escort' })).toBeVisible()

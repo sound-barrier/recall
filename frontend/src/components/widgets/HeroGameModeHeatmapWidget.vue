@@ -4,33 +4,33 @@ import { useDossier } from '../../composables/useDossier'
 import { useNarrow } from '../../composables/useNarrow'
 import { useOWData } from '../../composables/useOWData'
 import { useWidgetConfig } from '../../composables/useWidgetConfig'
-import { heroMapTypeHeatmapSchema, type HeroMapTypeHeatmapConfig } from '../../dashboard/widgets'
+import { heroGameModeHeatmapSchema, type HeroGameModeHeatmapConfig } from '../../dashboard/widgets'
 
 // Hero × game-mode heatmap. Rows are the top-N most-played heroes
 // in the narrowed set; columns are the canonical 6 game modes
 // (control / escort / flashpoint / hybrid / push / clash). Each
 // cell's tone reads winrate (green → amber → red); cell opacity
 // reads volume so the eye lands on the cells that carry weight.
-// Clicking a cell narrows the active set to that (hero, mapType)
+// Clicking a cell narrows the active set to that (hero, gameMode)
 // pair so the user can drill into the matches that produced the
 // surface signal without leaving the page.
 
 const dossier = useDossier()
 const narrow  = useNarrow()
 const ow      = useOWData()
-const { config } = useWidgetConfig<HeroMapTypeHeatmapConfig>(
-  'hero-map-type-heatmap',
-  heroMapTypeHeatmapSchema,
+const { config } = useWidgetConfig<HeroGameModeHeatmapConfig>(
+  'hero-game-mode-heatmap',
+  heroGameModeHeatmapSchema,
 )
 
-const cells = dossier.heroMapTypeCounts(() => ({
+const cells = dossier.heroGameModeCounts(() => ({
   heroLimit:  config.value.heroLimit,
   minMatches: config.value.minMatches,
 }))
 
 // Pivot the flat cell list into a 2-D structure keyed by hero so
 // the template can render `<row>` per hero + `<col>` per type. The
-// column order matches the canonical map-type slug order produced
+// column order matches the canonical game-mode slug order produced
 // by the dossier helper.
 const rows = computed(() => {
   const byHero = new Map<string, typeof cells.value>()
@@ -44,8 +44,8 @@ const rows = computed(() => {
 
 const columnHeaders = computed(() => {
   // Read the column headers off the first row — the dossier helper
-  // emits cells in a stable map-type order, so any row suffices.
-  return rows.value[0]?.cells.map((c) => c.mapType) ?? []
+  // emits cells in a stable game-mode order, so any row suffices.
+  return rows.value[0]?.cells.map((c) => c.gameMode) ?? []
 })
 
 // Empty-state gate. When the narrowed set carries fewer total
@@ -78,12 +78,12 @@ function cellOpacity(c: { total: number }) {
   return String(Math.min(0.45 + (c.total / 10) * 0.55, 1))
 }
 
-function onCellClick(hero: string, mapType: string) {
+function onCellClick(hero: string, gameMode: string) {
   // Narrow into the matches that produced this cell. Both pickers
   // toggle, so a second click un-narrows. The dossier re-aggregates
   // on the next computed tick — no manual refresh needed.
   narrow.pickHero(hero)
-  narrow.pickMapType(mapType)
+  narrow.pickGameMode(gameMode)
 }
 
 const heroLabel = (h: string) => ow.heroDisplayName(h) || h
@@ -115,19 +115,19 @@ const heroLabel = (h: string) => ow.heroDisplayName(h) || h
       <span class="heatmap-rowhead" role="rowheader">{{ heroLabel(row.hero) }}</span>
       <button
         v-for="cell in row.cells"
-        :key="cell.mapType"
+        :key="cell.gameMode"
         type="button"
         class="heatmap-cell"
         :class="cellClass(cell)"
         :style="{ opacity: cellOpacity(cell) }"
         :disabled="cell.total === 0"
         :title="cell.total === 0
-          ? `${heroLabel(row.hero)} on ${cell.mapType}: no matches`
-          : `${heroLabel(row.hero)} on ${cell.mapType}: ${cell.wins}-${cell.losses}-${cell.draws} (${cell.winrate}% winrate)`"
+          ? `${heroLabel(row.hero)} on ${cell.gameMode}: no matches`
+          : `${heroLabel(row.hero)} on ${cell.gameMode}: ${cell.wins}-${cell.losses}-${cell.draws} (${cell.winrate}% winrate)`"
         :aria-label="cell.total === 0
-          ? `${heroLabel(row.hero)} on ${cell.mapType}: no matches`
-          : `${heroLabel(row.hero)} on ${cell.mapType}: ${cell.winrate}% winrate over ${cell.total} matches. Click to narrow.`"
-        @click="onCellClick(row.hero, cell.mapType)"
+          ? `${heroLabel(row.hero)} on ${cell.gameMode}: no matches`
+          : `${heroLabel(row.hero)} on ${cell.gameMode}: ${cell.winrate}% winrate over ${cell.total} matches. Click to narrow.`"
+        @click="onCellClick(row.hero, cell.gameMode)"
       >
         <span v-if="cell.total > 0" class="cell-rate">{{ cell.winrate }}%</span>
         <span v-if="cell.total > 0" class="cell-vol">{{ cell.total }}</span>

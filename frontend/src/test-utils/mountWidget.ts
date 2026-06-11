@@ -64,7 +64,7 @@ type DossierOverride = {
   timeOfDayBuckets?:  BucketEntry[]
   dayOfWeekBuckets?:  BucketEntry[]
   recentResults?:     ('victory' | 'defeat' | 'draw')[]
-  heroMapTypeCounts?: Array<{ hero: string; mapType: string; wins: number; losses: number; draws: number; total: number; winrate: number }>
+  heroGameModeCounts?: Array<{ hero: string; gameMode: string; wins: number; losses: number; draws: number; total: number; winrate: number }>
 }
 
 function fakeDossier(over: DossierOverride): MatchesDossier {
@@ -95,7 +95,7 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     timeOfDayBuckets:    wrapQuery(over.timeOfDayBuckets, [] as BucketEntry[]),
     dayOfWeekBuckets:    wrapQuery(over.dayOfWeekBuckets, [] as BucketEntry[]),
     recentResults:       wrapQuery(over.recentResults, [] as ('victory' | 'defeat' | 'draw')[]),
-    heroMapTypeCounts:   wrapQuery(over.heroMapTypeCounts, []),
+    heroGameModeCounts:   wrapQuery(over.heroGameModeCounts, []),
     mapRoleCounts:       wrapQuery(over.mapRoleCounts, [] as MapRoleCell[]),
   } as unknown as MatchesDossier
 }
@@ -125,7 +125,7 @@ export interface MountWidgetOptions {
   configSeed?: Record<string, Record<string, unknown>>
   // Optional narrow stub for widgets that need to call into the
   // active-filter handlers (heatmap cell clicks → pickHero +
-  // pickMapType). Tests pass plain spies — the helper wraps them
+  // pickGameMode). Tests pass plain spies — the helper wraps them
   // in a minimal NarrowApi shape so useNarrow() resolves.
   narrow?: Partial<NarrowApi>
 }

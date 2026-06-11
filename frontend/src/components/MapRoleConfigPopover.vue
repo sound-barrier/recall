@@ -6,7 +6,7 @@ import { useModalFocusTrap } from '../composables/useModalFocusTrap'
 import { useOWData } from '../composables/useOWData'
 
 // Gear popover for the Geography (Map × Role) band. Three live filter
-// groups — roles, map types, specific maps — applied to the band the
+// groups — roles, game modes, specific maps — applied to the band the
 // instant they're toggled (no Save/Cancel; this is a view filter, so
 // immediate feedback beats a commit step). "Empty = show all"; the
 // Reset clears everything.
@@ -29,8 +29,8 @@ const ROLES: { id: MapRole; label: string }[] = [
   { id: 'dps', label: 'DPS' },
   { id: 'support', label: 'Support' },
 ]
-const TYPE_ORDER = ['control', 'escort', 'flashpoint', 'hybrid', 'push', 'clash']
-const TYPE_LABEL: Record<string, string> = {
+const GAME_MODE_ORDER = ['control', 'escort', 'flashpoint', 'hybrid', 'push', 'clash']
+const GAME_MODE_LABEL: Record<string, string> = {
   control: 'Control', escort: 'Escort', flashpoint: 'Flashpoint',
   hybrid: 'Hybrid', push: 'Push', clash: 'Clash',
 }
@@ -38,10 +38,10 @@ const TYPE_LABEL: Record<string, string> = {
 // Map types actually present in the live roster, in canonical order.
 const types = computed(() => {
   const present = new Set<string>()
-  for (const [, { type }] of ow.mapIndex.value) present.add(type)
+  for (const [, { gameMode }] of ow.mapIndex.value) present.add(gameMode)
   return [...present].sort((a, b) => {
-    const ai = TYPE_ORDER.indexOf(a); const bi = TYPE_ORDER.indexOf(b)
-    return (ai < 0 ? TYPE_ORDER.length : ai) - (bi < 0 ? TYPE_ORDER.length : bi)
+    const ai = GAME_MODE_ORDER.indexOf(a); const bi = GAME_MODE_ORDER.indexOf(b)
+    return (ai < 0 ? GAME_MODE_ORDER.length : ai) - (bi < 0 ? GAME_MODE_ORDER.length : bi)
   })
 })
 
@@ -60,7 +60,7 @@ const filteredMaps = computed(() => {
 })
 
 const roleSet = computed(() => new Set(cfg.config.value.roles))
-const typeSet = computed(() => new Set(cfg.config.value.mapTypes))
+const gameModeSet = computed(() => new Set(cfg.config.value.gameModes))
 const mapSet = computed(() => new Set(cfg.config.value.maps))
 
 const openRef = computed(() => props.open)
@@ -155,12 +155,12 @@ const popoverStyle = computed(() => {
               :key="t"
               type="button"
               class="mrc-pill"
-              :class="{ on: typeSet.has(t) }"
-              :data-mr-type="t"
-              :aria-pressed="typeSet.has(t)"
-              @click="cfg.toggleType(t)"
+              :class="{ on: gameModeSet.has(t) }"
+              :data-mr-game-mode="t"
+              :aria-pressed="gameModeSet.has(t)"
+              @click="cfg.toggleGameMode(t)"
             >
-              {{ TYPE_LABEL[t] ?? t }}
+              {{ GAME_MODE_LABEL[t] ?? t }}
             </button>
           </div>
         </section>

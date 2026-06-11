@@ -263,8 +263,8 @@ const DAY_OF_WEEK_LABELS = [
 // row's width comfortably. Widgets override via useWidgetConfig.
 export const DEFAULT_RECENT_RESULTS_COUNT = 5
 
-// Default top-maps / top-map-types limit. Five rows is the breakdown
-// grid's natural fit for short-label entries (map names, map types).
+// Default top-maps / top-game-modes limit. Five rows is the breakdown
+// grid's natural fit for short-label entries (map names, game modes).
 export const DEFAULT_TOP_BY_COUNT_LIMIT = 5
 
 // Default top-heroes-by-minutes limit. Three rows because the
@@ -334,7 +334,7 @@ export function useMatchesDossier(
   // reconsider that if a user reports it as confusing; for now the
   // simpler "everything counts here" rule wins.
   //
-  // Drives the top-maps, top-heroes-by-count, and top-map-types
+  // Drives the top-maps, top-heroes-by-count, and top-game-modes
   // widgets — each passes its own getter + limit. The widget's
   // useWidgetConfig output supplies `limit`; PR B callers hardcode
   // it to match today's behaviour.
@@ -372,17 +372,17 @@ export function useMatchesDossier(
   }
 
   // Mirrors the keys exposed by `pkg/parser/maps.yaml` — the
-  // canonical 6 Overwatch map-type slugs. Hardcoded so the heatmap
+  // canonical 6 Overwatch game-mode slugs. Hardcoded so the heatmap
   // renders its column header row deterministically even on first
   // mount before `useOWData()` resolves; if the parser ever ships a
-  // new map-type, this list updates in lockstep with the YAML.
-  const CANONICAL_MAP_TYPES = ['control', 'escort', 'flashpoint', 'hybrid', 'push', 'clash'] as const
+  // new game-mode, this list updates in lockstep with the YAML.
+  const CANONICAL_GAME_MODES = ['control', 'escort', 'flashpoint', 'hybrid', 'push', 'clash'] as const
 
   // Hero × Map-type breakdown. Returns a flat list of
-  // (hero, mapType, wins, losses, draws, total) — the heatmap widget
-  // pivots this into a 2-D grid (rows = heroes, columns = map types).
+  // (hero, gameMode, wins, losses, draws, total) — the heatmap widget
+  // pivots this into a 2-D grid (rows = heroes, columns = game modes).
   //
-  // The map-type vocabulary is the parser's canonical 6 (control /
+  // The game-mode vocabulary is the parser's canonical 6 (control /
   // escort / flashpoint / hybrid / push / clash). Records whose
   // type is missing or doesn't map to a canonical entry drop out —
   // the heatmap deliberately doesn't show an "unknown" column
@@ -392,15 +392,15 @@ export function useMatchesDossier(
   // Records contribute multiple cells when their heroes_played[]
   // has multiple entries (open-queue match where the user
   // hero-swapped). Each hero in the list gets credit for the
-  // result on that map type — same model used by topByCount when
+  // result on that game mode — same model used by topByCount when
   // the getter pulls from heroes_played. Limit applies to the
-  // hero axis (top-N by total play count); the map-type axis is
+  // hero axis (top-N by total play count); the game-mode axis is
   // always all 6.
-  function heroMapTypeCounts(
+  function heroGameModeCounts(
     opts?: MaybeRefOrGetter<{ heroLimit?: number; minMatches?: number }>,
   ): ComputedRef<Array<{
     hero: string
-    mapType: string
+    gameMode: string
     wins: number
     losses: number
     draws: number
@@ -425,18 +425,18 @@ export function useMatchesDossier(
         heroTotals.set(h, (heroTotals.get(h) ?? 0) + 1)
       }
       for (const r of records.value) {
-        const mapType = r.data?.game_mode
-        if (!mapType) continue
+        const gameMode = r.data?.game_mode
+        if (!gameMode) continue
         const heroes = r.data?.heroes_played ?? []
         if (heroes.length > 0) {
           const seenInRow = new Set<string>()
           for (const hp of heroes) {
             if (!hp.hero || seenInRow.has(hp.hero)) continue
             seenInRow.add(hp.hero)
-            bumpCell(hp.hero, mapType, r)
+            bumpCell(hp.hero, gameMode, r)
           }
         } else if (r.data?.hero) {
-          bumpCell(r.data.hero, mapType, r)
+          bumpCell(r.data.hero, gameMode, r)
         }
       }
       // Pick the top heroes by total appearances; the heatmap only
@@ -445,18 +445,18 @@ export function useMatchesDossier(
         .sort((a, b) => b[1] - a[1])
         .slice(0, heroLimit)
         .map(([h]) => h)
-      // Materialise every (top-hero, map-type) cell — including
+      // Materialise every (top-hero, game-mode) cell — including
       // zeros — so the grid layout is rectangular. The widget
       // renders the empty cells as a flat surface tone (no border,
       // no glyph) so the eye reads the populated cells first.
-      const out: Array<{ hero: string; mapType: string; wins: number; losses: number; draws: number; total: number; winrate: number }> = []
+      const out: Array<{ hero: string; gameMode: string; wins: number; losses: number; draws: number; total: number; winrate: number }> = []
       for (const h of topHeroes) {
-        for (const t of CANONICAL_MAP_TYPES) {
+        for (const t of CANONICAL_GAME_MODES) {
           const b = cells.get(cellKey(h, t)) ?? { wins: 0, losses: 0, draws: 0, total: 0 }
           const decided = b.wins + b.losses
           out.push({
             hero: h,
-            mapType: t,
+            gameMode: t,
             wins:   b.wins,
             losses: b.losses,
             draws:  b.draws,
@@ -1056,7 +1056,7 @@ export function useMatchesDossier(
     playModeBreakdown,
     // ─── Query helpers — config-driven, return reactive results
     topByCount,
-    heroMapTypeCounts,
+    heroGameModeCounts,
     mapRoleCounts,
     topHeroesByMinutes,
     mostPlayedHero,

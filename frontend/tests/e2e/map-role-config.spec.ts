@@ -2,7 +2,7 @@
  * Geography band gear — a display filter for the Map × Role band.
  *
  * Opens from a gear in the band header; lets you narrow which role rows
- * + which map-type / specific-map columns the band renders. Band-only
+ * + which game-mode / specific-map columns the band renders. Band-only
  * (the rest of the app is untouched); multi-select & combinable (empty
  * = show all); persisted. Cells/headers still feed the global narrow.
  */
@@ -55,7 +55,7 @@ test.describe('Geography band — gear filter', () => {
 
   test('default shows everything; the gear opens the filter popover', async ({ page }) => {
     await expect(page.locator(`${band} .mr-rowhead`)).toHaveCount(3)
-    await expect(page.locator(`${band} .mr-typehead`)).toHaveCount(3)
+    await expect(page.locator(`${band} .mr-modehead`)).toHaveCount(3)
     await expect(page.locator(`${band} .mr-collabel`)).toHaveCount(5)
 
     await page.locator('[data-mr-config-trigger]').click()
@@ -72,12 +72,12 @@ test.describe('Geography band — gear filter', () => {
     await expect(page.locator('[data-mr-config-trigger]')).toHaveClass(/mr-gear-active/)
   })
 
-  test('map-type filter narrows the column groups', async ({ page }) => {
+  test('game-mode filter narrows the column groups', async ({ page }) => {
     await page.locator('[data-mr-config-trigger]').click()
-    await page.locator('[data-mr-type="control"]').click()
+    await page.locator('[data-mr-game-mode="control"]').click()
 
-    await expect(page.locator(`${band} .mr-typehead`)).toHaveCount(1)
-    await expect(page.locator(`${band} .mr-typehead`)).toHaveText('Control')
+    await expect(page.locator(`${band} .mr-modehead`)).toHaveCount(1)
+    await expect(page.locator(`${band} .mr-modehead`)).toHaveText('Control')
     // Control has Ilios + Nepal.
     await expect(page.locator(`${band} .mr-collabel`)).toHaveCount(2)
   })
@@ -94,7 +94,7 @@ test.describe('Geography band — gear filter', () => {
   test('contradictory filters show the empty state with a Clear', async ({ page }) => {
     await page.locator('[data-mr-config-trigger]').click()
     // Control type AND an Escort map → nothing matches.
-    await page.locator('[data-mr-type="control"]').click()
+    await page.locator('[data-mr-game-mode="control"]').click()
     await page.locator('[data-mr-map-search]').fill('rialto')
     await page.locator('[data-mr-map="Rialto"]').click()
 

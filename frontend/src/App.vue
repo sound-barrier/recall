@@ -1278,7 +1278,7 @@ const NARROW_FIELDS: Record<string, { picked: () => Set<string>; pick: (v: strin
   role:   { picked: () => matchesNarrowState.pickedRoles.value,    pick: matchesNarrow.pickRole },
   result: { picked: () => matchesNarrowState.pickedResults.value,  pick: matchesNarrow.pickResult },
   map:    { picked: () => matchesNarrowState.pickedMaps.value,     pick: matchesNarrow.pickMap },
-  type:   { picked: () => matchesNarrowState.pickedMapTypes.value, pick: matchesNarrow.pickMapType },
+  type:   { picked: () => matchesNarrowState.pickedGameModes.value, pick: matchesNarrow.pickGameMode },
   tag:    { picked: () => matchesNarrowState.pickedTags.value,     pick: matchesNarrow.pickTag },
 }
 function isActive(field: string, value: string): boolean {
@@ -1325,7 +1325,7 @@ function onTourApplyHeroFilter(hero: string) {
 function onTourClearFilters() {
   matchesNarrowState.searchText.value = ''
   matchesNarrowState.pickedMaps.value = new Set()
-  matchesNarrowState.pickedMapTypes.value = new Set()
+  matchesNarrowState.pickedGameModes.value = new Set()
   matchesNarrowState.pickedHeroes.value = new Set()
   matchesNarrowState.pickedRoles.value = new Set()
   matchesNarrowState.pickedResults.value = new Set()

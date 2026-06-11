@@ -37,7 +37,7 @@ function legacy(dossier: ReturnType<typeof useMatchesDossier>) {
       minPercentPlayed: DEFAULT_MOST_PLAYED_HERO_THRESHOLD,
       minMatches:       DEFAULT_BEST_WINRATE_HERO_MIN_MATCHES,
     }),
-    topMapTypes: dossier.topByCount({
+    topGameModes: dossier.topByCount({
       getter: (r) => r.data?.game_mode,
       limit:  DEFAULT_TOP_BY_COUNT_LIMIT,
     }),
@@ -1159,11 +1159,11 @@ describe('useMatchesDossier', () => {
     })
   })
 
-  describe('topMapTypes', () => {
+  describe('topGameModes', () => {
     it('returns an empty array for an empty corpus', () => {
       const records = ref<MatchRecord[]>([])
-      const { topMapTypes } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include')))
-      expect(topMapTypes.value).toEqual([])
+      const { topGameModes } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include')))
+      expect(topGameModes.value).toEqual([])
     })
 
     it('counts and shares by data.game_mode', () => {
@@ -1176,11 +1176,11 @@ describe('useMatchesDossier', () => {
         withType('control'),
         withType('hybrid'),
       ])
-      const { topMapTypes } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include')))
-      const types = topMapTypes.value.map((r) => r.key)
+      const { topGameModes } = legacy(useMatchesDossier(records, ref<LeaverHandling>('include')))
+      const types = topGameModes.value.map((r) => r.key)
       expect(types).toContain('control')
       expect(types).toContain('hybrid')
-      const control = topMapTypes.value.find((r) => r.key === 'control')!
+      const control = topGameModes.value.find((r) => r.key === 'control')!
       expect(control.total).toBe(2)
       expect(control.share).toBe(67)
     })
@@ -1305,9 +1305,9 @@ describe('useMatchesDossier — query-helper parameterization', () => {
         { ...rec({ map: 'lijiang' }), data: { ...rec({ map: 'lijiang' }).data!, game_mode: 'control' } },
       ] as unknown as MatchRecord[])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
-      const byType = dossier.topByCount({ getter: (r) => r.data?.game_mode, limit: 5 })
-      expect(byType.value.find((e) => e.key === 'control')?.total).toBe(2)
-      expect(byType.value.find((e) => e.key === 'hybrid')?.total).toBe(1)
+      const byGameMode = dossier.topByCount({ getter: (r) => r.data?.game_mode, limit: 5 })
+      expect(byGameMode.value.find((e) => e.key === 'control')?.total).toBe(2)
+      expect(byGameMode.value.find((e) => e.key === 'hybrid')?.total).toBe(1)
     })
   })
 
@@ -1510,8 +1510,8 @@ describe('useMatchesDossier — query-helper parameterization', () => {
     })
   })
 
-  describe('heroMapTypeCounts', () => {
-    // Helper for typed records carrying a map-type — uses the
+  describe('heroGameModeCounts', () => {
+    // Helper for typed records carrying a game-mode — uses the
     // canonical parser slugs.
     function tr(opts: {
       hero?: string
@@ -1538,31 +1538,31 @@ describe('useMatchesDossier — query-helper parameterization', () => {
     it('returns an empty array when there are no records', () => {
       const records = ref<MatchRecord[]>([])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
-      expect(dossier.heroMapTypeCounts().value).toEqual([])
+      expect(dossier.heroGameModeCounts().value).toEqual([])
     })
 
-    it('materialises a full grid (top heroes × 6 map types) including zero cells', () => {
+    it('materialises a full grid (top heroes × 6 game modes) including zero cells', () => {
       const records = ref([
         tr({ hero: 'lucio',  game_mode: 'control', result: 'victory' }),
         tr({ hero: 'lucio',  game_mode: 'escort',  result: 'defeat'  }),
         tr({ hero: 'ana',    game_mode: 'control', result: 'victory' }),
       ])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
-      const cells = dossier.heroMapTypeCounts().value
-      // 2 heroes × 6 canonical map types = 12 cells.
+      const cells = dossier.heroGameModeCounts().value
+      // 2 heroes × 6 canonical game modes = 12 cells.
       expect(cells).toHaveLength(2 * 6)
       const heroes = [...new Set(cells.map(c => c.hero))]
       expect(heroes.sort()).toEqual(['ana', 'lucio'])
-      const types = [...new Set(cells.map(c => c.mapType))]
+      const types = [...new Set(cells.map(c => c.gameMode))]
       expect(types.sort()).toEqual(['clash', 'control', 'escort', 'flashpoint', 'hybrid', 'push'])
       // Populated cells carry real counts; the rest are zero.
-      const lucioControl = cells.find(c => c.hero === 'lucio' && c.mapType === 'control')!
+      const lucioControl = cells.find(c => c.hero === 'lucio' && c.gameMode === 'control')!
       expect(lucioControl).toMatchObject({ wins: 1, losses: 0, draws: 0, total: 1, winrate: 100 })
-      const lucioPush = cells.find(c => c.hero === 'lucio' && c.mapType === 'push')!
+      const lucioPush = cells.find(c => c.hero === 'lucio' && c.gameMode === 'push')!
       expect(lucioPush).toMatchObject({ wins: 0, losses: 0, draws: 0, total: 0, winrate: 0 })
     })
 
-    it('drops records whose map type is missing — no orphan "unknown" column surfaces', () => {
+    it('drops records whose game mode is missing — no orphan "unknown" column surfaces', () => {
       const records = ref([
         tr({ hero: 'lucio', game_mode: 'control', result: 'victory' }),
         // No type — should be ignored entirely.
@@ -1571,10 +1571,10 @@ describe('useMatchesDossier — query-helper parameterization', () => {
           parsed_at: '2026-05-10T14:01:00Z' } as unknown as MatchRecord,
       ])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
-      const cells = dossier.heroMapTypeCounts().value
-      const lucioControl = cells.find(c => c.hero === 'lucio' && c.mapType === 'control')!
+      const cells = dossier.heroGameModeCounts().value
+      const lucioControl = cells.find(c => c.hero === 'lucio' && c.gameMode === 'control')!
       expect(lucioControl.total).toBe(1)
-      // Sum of all lucio totals across the 6 map types equals 1 — the
+      // Sum of all lucio totals across the 6 game modes equals 1 — the
       // typeless record didn't sneak into any cell.
       const lucioTotal = cells.filter(c => c.hero === 'lucio').reduce((sum, c) => sum + c.total, 0)
       expect(lucioTotal).toBe(1)
@@ -1592,9 +1592,9 @@ describe('useMatchesDossier — query-helper parameterization', () => {
         }),
       ])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
-      const cells = dossier.heroMapTypeCounts().value
-      const ana = cells.find(c => c.hero === 'ana' && c.mapType === 'flashpoint')!
-      const kiriko = cells.find(c => c.hero === 'kiriko' && c.mapType === 'flashpoint')!
+      const cells = dossier.heroGameModeCounts().value
+      const ana = cells.find(c => c.hero === 'ana' && c.gameMode === 'flashpoint')!
+      const kiriko = cells.find(c => c.hero === 'kiriko' && c.gameMode === 'flashpoint')!
       expect(ana.wins).toBe(1)
       expect(kiriko.wins).toBe(1)
     })
@@ -1606,8 +1606,8 @@ describe('useMatchesDossier — query-helper parameterization', () => {
         tr({ hero: 'lucio', game_mode: 'control', result: 'draw'    }),
       ])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
-      const cells = dossier.heroMapTypeCounts().value
-      const cell = cells.find(c => c.hero === 'lucio' && c.mapType === 'control')!
+      const cells = dossier.heroGameModeCounts().value
+      const cell = cells.find(c => c.hero === 'lucio' && c.gameMode === 'control')!
       expect(cell.total).toBe(3)
       expect(cell.draws).toBe(1)
       // 1 win / (1 win + 1 loss) = 50, not 33.
@@ -1622,7 +1622,7 @@ describe('useMatchesDossier — query-helper parameterization', () => {
         tr({ hero: 'kiriko', game_mode: 'push' }),
       ])
       const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
-      const cells = dossier.heroMapTypeCounts(() => ({ heroLimit: 2 })).value
+      const cells = dossier.heroGameModeCounts(() => ({ heroLimit: 2 })).value
       const heroes = [...new Set(cells.map(c => c.hero))]
       expect(heroes.sort()).toEqual(['ana', 'lucio'])
       expect(heroes).not.toContain('kiriko')

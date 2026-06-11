@@ -2,9 +2,9 @@
  * Hero × game-mode heatmap widget (UI_RECOMMENDATIONS item 2).
  *
  * The widget is an opt-in dossier surface that breaks down winrate
- * by (hero, map-type) across the narrowed set. Cells are coloured
+ * by (hero, game-mode) across the narrowed set. Cells are coloured
  * by winrate bucket; clicking a populated cell narrows the active
- * Matches set to that (hero, mapType) pair so the user can drill
+ * Matches set to that (hero, gameMode) pair so the user can drill
  * into the matches that produced the surface signal.
  *
  * The widget is NOT in `DEFAULT_ROW_LAYOUT`, so this spec seeds the
@@ -84,7 +84,7 @@ test.describe('dossier — Hero × game-mode heatmap', () => {
         'recall.dashboard.layout',
         JSON.stringify({
           1: ['winrate', 'avg-kda', 'total-time', 'most-played-hero'],
-          2: ['hero-map-type-heatmap'],
+          2: ['hero-game-mode-heatmap'],
         }),
       )
     })
@@ -93,18 +93,18 @@ test.describe('dossier — Hero × game-mode heatmap', () => {
     await expect(page.locator('.set-dossier')).toBeVisible()
   })
 
-  test('renders a 3-row × 6-column grid of (hero × map-type) cells', async ({ page }) => {
+  test('renders a 3-row × 6-column grid of (hero × game-mode) cells', async ({ page }) => {
     const widget = page.locator('.breakdown', { hasText: 'Hero × game-mode' })
     await expect(widget).toBeVisible()
     await expect(widget.locator('.heatmap-grid')).toBeVisible()
-    // 3 heroes × 6 map types = 18 cells, plus an extra row of column
+    // 3 heroes × 6 game modes = 18 cells, plus an extra row of column
     // headers. Each populated row carries one .heatmap-rowhead.
     await expect(widget.locator('.heatmap-rowhead')).toHaveCount(3)
     await expect(widget.locator('.heatmap-colhead')).toHaveCount(6)
     await expect(widget.locator('.heatmap-cell')).toHaveCount(3 * 6)
   })
 
-  test('clicking a populated cell narrows the active set to (hero, mapType)', async ({ page }) => {
+  test('clicking a populated cell narrows the active set to (hero, gameMode)', async ({ page }) => {
     // The lucio/control cell is the only one with 10 decisive matches
     // — its label includes "60%" + "10".
     const lucioControl = page.locator('.heatmap-cell', { hasText: '60%' }).first()

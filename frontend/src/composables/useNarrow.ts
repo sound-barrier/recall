@@ -8,7 +8,7 @@ import type { useMatchesNarrow } from './useMatchesNarrow'
 //
 // Use sparingly: most widgets render a passive view of the dossier
 // and don't touch narrow. The heatmap is the first widget that does
-// — clicking a cell narrows the active set to (hero, mapType) so the
+// — clicking a cell narrows the active set to (hero, gameMode) so the
 // user can drill into the matches that produced the surface signal
 // without leaving the page.
 

@@ -34,7 +34,7 @@ const BROKEN_LAYOUT = {
   '6': ['best-winrate-hero'],
   '7': ['time-of-day'],
   '8': ['day-of-week'],
-  '9': ['top-map-types'],
+  '9': ['top-game-modes'],
 }
 
 test.describe('dashboard pack rows migration', () => {

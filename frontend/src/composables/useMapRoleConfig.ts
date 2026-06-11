@@ -6,7 +6,7 @@ import {
 } from './usePersistedRef'
 
 // Display config for the Geography (Map × Role) band's gear. Lets the
-// user narrow what the band RENDERS — which role rows, which map-type
+// user narrow what the band RENDERS — which role rows, which game-mode
 // column groups, and/or which specific maps — without touching the
 // global narrow or any other widget. Three independent filter sets,
 // each "empty = show all"; non-empty selections AND together (a column
@@ -22,15 +22,15 @@ import {
 export type MapRole = 'tank' | 'dps' | 'support'
 
 const ROLES: readonly string[] = ['tank', 'dps', 'support']
-const MAP_TYPES: readonly string[] = ['control', 'escort', 'flashpoint', 'hybrid', 'push', 'clash']
+const GAME_MODES: readonly string[] = ['control', 'escort', 'flashpoint', 'hybrid', 'push', 'clash']
 
 export interface MapRoleConfig {
   roles: MapRole[]
-  mapTypes: string[]
+  gameModes: string[]
   maps: string[]
 }
 
-const DEFAULT: MapRoleConfig = { roles: [], mapTypes: [], maps: [] }
+const DEFAULT: MapRoleConfig = { roles: [], gameModes: [], maps: [] }
 export const MAP_ROLE_CONFIG_KEY = 'recall.mapRole.config'
 
 function isStringArray(v: unknown): v is string[] {
@@ -42,7 +42,7 @@ export function isMapRoleConfig(d: unknown): d is MapRoleConfig {
     d !== null &&
     typeof d === 'object' &&
     isStringArray((d as MapRoleConfig).roles) &&
-    isStringArray((d as MapRoleConfig).mapTypes) &&
+    isStringArray((d as MapRoleConfig).gameModes) &&
     isStringArray((d as MapRoleConfig).maps)
   )
 }
@@ -53,7 +53,7 @@ export function isMapRoleConfig(d: unknown): d is MapRoleConfig {
 export function reconcileMapRoleConfig(c: MapRoleConfig): MapRoleConfig {
   return {
     roles: [...new Set(c.roles)].filter((r): r is MapRole => ROLES.includes(r)),
-    mapTypes: [...new Set(c.mapTypes)].filter((t) => MAP_TYPES.includes(t)),
+    gameModes: [...new Set(c.gameModes)].filter((t) => GAME_MODES.includes(t)),
     maps: [...new Set(c.maps)],
   }
 }
@@ -63,7 +63,7 @@ export interface MapRoleConfigApi {
   // True when nothing is filtered — the band shows everything.
   isDefault: ComputedRef<boolean>
   toggleRole: (role: MapRole) => void
-  toggleType: (type: string) => void
+  toggleGameMode: (type: string) => void
   toggleMap: (map: string) => void
   reset: () => void
 }
@@ -83,7 +83,7 @@ export function useMapRoleConfig(): MapRoleConfigApi {
   const config = computed(() => reconcileMapRoleConfig(raw.value))
   const isDefault = computed(() => {
     const c = config.value
-    return c.roles.length === 0 && c.mapTypes.length === 0 && c.maps.length === 0
+    return c.roles.length === 0 && c.gameModes.length === 0 && c.maps.length === 0
   })
 
   function toggle(list: readonly string[], value: string): string[] {
@@ -94,7 +94,7 @@ export function useMapRoleConfig(): MapRoleConfigApi {
     config,
     isDefault,
     toggleRole: (role) => set({ ...config.value, roles: toggle(config.value.roles, role) as MapRole[] }),
-    toggleType: (type) => set({ ...config.value, mapTypes: toggle(config.value.mapTypes, type) }),
+    toggleGameMode: (type) => set({ ...config.value, gameModes: toggle(config.value.gameModes, type) }),
     toggleMap: (map) => set({ ...config.value, maps: toggle(config.value.maps, map) }),
     reset: () => set({ ...DEFAULT }),
   }

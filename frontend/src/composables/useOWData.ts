@@ -2,7 +2,7 @@ import { ref, computed, type ComputedRef, type Ref } from 'vue'
 import { GetOWData, type OWData } from '../api'
 
 // useOWData exposes the static Overwatch reference data
-// (heroes-by-role + maps-by-type) fetched once per session from
+// (heroes-by-role + maps-by-game-mode) fetched once per session from
 // /api/owdata and surfaced as canonical-name lookups for the UI.
 // Module-level singleton — the first call kicks off the fetch and
 // every subsequent call (from any component, any depth) shares the
@@ -26,9 +26,9 @@ export type OWDataApi = {
   heroDisplayName: (input: string | null | undefined) => string
   mapDisplayName: (input: string | null | undefined) => string
   heroRole:        (input: string | null | undefined) => string
-  mapType:         (input: string | null | undefined) => string
+  mapGameMode:         (input: string | null | undefined) => string
   heroIndex:       ComputedRef<Map<string, { display: string; role: string }>>
-  mapIndex:        ComputedRef<Map<string, { display: string; type: string }>>
+  mapIndex:        ComputedRef<Map<string, { display: string; gameMode: string }>>
 }
 
 // Module-level singleton state. Set on first call, reused thereafter.
@@ -59,11 +59,11 @@ const heroIndex = computed(() => {
 })
 
 const mapIndex = computed(() => {
-  const m = new Map<string, { display: string; type: string }>()
+  const m = new Map<string, { display: string; gameMode: string }>()
   if (!data.value) return m
-  for (const [type, names] of Object.entries(data.value.maps_by_game_mode)) {
+  for (const [gameMode, names] of Object.entries(data.value.maps_by_game_mode)) {
     for (const display of names) {
-      m.set(normalize(display), { display, type })
+      m.set(normalize(display), { display, gameMode })
     }
   }
   return m
@@ -84,9 +84,9 @@ function heroRole(input: string | null | undefined): string {
   return heroIndex.value.get(normalize(input))?.role ?? ''
 }
 
-function mapType(input: string | null | undefined): string {
+function mapGameMode(input: string | null | undefined): string {
   if (!input) return ''
-  return mapIndex.value.get(normalize(input))?.type ?? ''
+  return mapIndex.value.get(normalize(input))?.gameMode ?? ''
 }
 
 export function useOWData(): OWDataApi {
@@ -96,5 +96,5 @@ export function useOWData(): OWDataApi {
       .then(d => { data.value = d })
       .catch(() => { /* leave lookups empty; UI falls back to lowercase */ })
   }
-  return { data, heroDisplayName, mapDisplayName, heroRole, mapType, heroIndex, mapIndex }
+  return { data, heroDisplayName, mapDisplayName, heroRole, mapGameMode, heroIndex, mapIndex }
 }

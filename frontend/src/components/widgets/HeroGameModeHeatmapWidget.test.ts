@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mountWidget } from '../../test-utils/mountWidget'
-import HeroMapTypeHeatmapWidget from './HeroMapTypeHeatmapWidget.vue'
+import HeroGameModeHeatmapWidget from './HeroGameModeHeatmapWidget.vue'
 
 // Mock useOWData to avoid the singleton's GetOWData() side-effect.
 vi.mock('../../composables/useOWData', () => ({
@@ -8,20 +8,20 @@ vi.mock('../../composables/useOWData', () => ({
     heroDisplayName: (s: string) => s,   // pass-through; tests assert on slugs
     mapDisplayName:  (s: string) => s,
     heroRole:        () => '',
-    mapType:         () => '',
+    mapGameMode:         () => '',
     data:            { value: null },
     heroIndex:       { value: new Map() },
     mapIndex:        { value: new Map() },
   }),
 }))
 
-describe('HeroMapTypeHeatmapWidget', () => {
+describe('HeroGameModeHeatmapWidget', () => {
   it('renders the empty-state copy when decisive matches are below the floor', () => {
-    const wrapper = mountWidget(HeroMapTypeHeatmapWidget, {
+    const wrapper = mountWidget(HeroGameModeHeatmapWidget, {
       dossier: {
         // 4 decisive matches — well under the default 20-match floor.
-        heroMapTypeCounts: [
-          { hero: 'lucio', mapType: 'control', wins: 2, losses: 2, draws: 0, total: 4, winrate: 50 },
+        heroGameModeCounts: [
+          { hero: 'lucio', gameMode: 'control', wins: 2, losses: 2, draws: 0, total: 4, winrate: 50 },
         ],
       },
     })
@@ -30,24 +30,24 @@ describe('HeroMapTypeHeatmapWidget', () => {
   })
 
   it('renders the grid with row + column headers when above the floor', () => {
-    const wrapper = mountWidget(HeroMapTypeHeatmapWidget, {
-      configSeed: { 'hero-map-type-heatmap': { heroLimit: 8, minMatches: 10 } },
+    const wrapper = mountWidget(HeroGameModeHeatmapWidget, {
+      configSeed: { 'hero-game-mode-heatmap': { heroLimit: 8, minMatches: 10 } },
       dossier: {
         // 10 decisive matches on lucio/control alone — clears the
         // configured 10-match floor.
-        heroMapTypeCounts: [
-          { hero: 'lucio', mapType: 'control',    wins: 8, losses: 2, draws: 0, total: 10, winrate: 80 },
-          { hero: 'lucio', mapType: 'escort',     wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
-          { hero: 'lucio', mapType: 'flashpoint', wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
-          { hero: 'lucio', mapType: 'hybrid',     wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
-          { hero: 'lucio', mapType: 'push',       wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
-          { hero: 'lucio', mapType: 'clash',      wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
+        heroGameModeCounts: [
+          { hero: 'lucio', gameMode: 'control',    wins: 8, losses: 2, draws: 0, total: 10, winrate: 80 },
+          { hero: 'lucio', gameMode: 'escort',     wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
+          { hero: 'lucio', gameMode: 'flashpoint', wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
+          { hero: 'lucio', gameMode: 'hybrid',     wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
+          { hero: 'lucio', gameMode: 'push',       wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
+          { hero: 'lucio', gameMode: 'clash',      wins: 0, losses: 0, draws: 0, total: 0,  winrate: 0  },
         ],
       },
     })
     expect(wrapper.find('.heatmap-grid').exists()).toBe(true)
     expect(wrapper.find('.heatmap-rowhead').text()).toContain('lucio')
-    // 6 column headers — one per canonical map type.
+    // 6 column headers — one per canonical game mode.
     expect(wrapper.findAll('.heatmap-colhead')).toHaveLength(6)
     // The populated cell carries the rate + volume labels.
     const populatedCell = wrapper.find('.heatmap-cell.cell-win')
@@ -59,31 +59,31 @@ describe('HeroMapTypeHeatmapWidget', () => {
     expect((emptyCells[0]!.element as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('clicking a populated cell calls pickHero + pickMapType', async () => {
+  it('clicking a populated cell calls pickHero + pickGameMode', async () => {
     const pickHero    = vi.fn()
-    const pickMapType = vi.fn()
-    const wrapper = mountWidget(HeroMapTypeHeatmapWidget, {
-      configSeed: { 'hero-map-type-heatmap': { heroLimit: 8, minMatches: 10 } },
+    const pickGameMode = vi.fn()
+    const wrapper = mountWidget(HeroGameModeHeatmapWidget, {
+      configSeed: { 'hero-game-mode-heatmap': { heroLimit: 8, minMatches: 10 } },
       dossier: {
-        heroMapTypeCounts: [
-          { hero: 'ana', mapType: 'flashpoint', wins: 7, losses: 3, draws: 0, total: 10, winrate: 70 },
+        heroGameModeCounts: [
+          { hero: 'ana', gameMode: 'flashpoint', wins: 7, losses: 3, draws: 0, total: 10, winrate: 70 },
         ],
       },
-      narrow: { pickHero, pickMapType },
+      narrow: { pickHero, pickGameMode },
     })
     const cell = wrapper.find('.heatmap-cell.cell-win')
     expect(cell.exists()).toBe(true)
     await cell.trigger('click')
     expect(pickHero).toHaveBeenCalledWith('ana')
-    expect(pickMapType).toHaveBeenCalledWith('flashpoint')
+    expect(pickGameMode).toHaveBeenCalledWith('flashpoint')
   })
 
-  it('a winrate cell carries an aria-label that names the hero, map-type, rate, and volume', () => {
-    const wrapper = mountWidget(HeroMapTypeHeatmapWidget, {
-      configSeed: { 'hero-map-type-heatmap': { heroLimit: 8, minMatches: 10 } },
+  it('a winrate cell carries an aria-label that names the hero, game-mode, rate, and volume', () => {
+    const wrapper = mountWidget(HeroGameModeHeatmapWidget, {
+      configSeed: { 'hero-game-mode-heatmap': { heroLimit: 8, minMatches: 10 } },
       dossier: {
-        heroMapTypeCounts: [
-          { hero: 'kiriko', mapType: 'push', wins: 4, losses: 6, draws: 0, total: 10, winrate: 40 },
+        heroGameModeCounts: [
+          { hero: 'kiriko', gameMode: 'push', wins: 4, losses: 6, draws: 0, total: 10, winrate: 40 },
         ],
       },
     })

@@ -457,7 +457,7 @@ describe('useDashboardLayout', () => {
       6: ['best-winrate-hero'],
       7: ['time-of-day'],
       8: ['day-of-week'],
-      9: ['top-map-types'],
+      9: ['top-game-modes'],
     }
     const { api } = await mountHost(seed)
     // Default rows untouched — migration only re-packs overflow
@@ -469,7 +469,7 @@ describe('useDashboardLayout', () => {
       'current-streak', 'hero-pool-size', 'longest-win-streak', 'best-winrate-hero',
     ])
     // The 3 single-breakdown rows pack into row 4.
-    expect(api.rows.value[4]).toEqual(['time-of-day', 'day-of-week', 'top-map-types'])
+    expect(api.rows.value[4]).toEqual(['time-of-day', 'day-of-week', 'top-game-modes'])
     // Stale higher-index rows are gone.
     expect(api.rows.value[5]).toBeUndefined()
     expect(api.rows.value[9]).toBeUndefined()
