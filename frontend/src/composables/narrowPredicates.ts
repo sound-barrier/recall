@@ -1,5 +1,6 @@
 import type { MatchRecord } from '../api'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '../match-label-helpers'
+import type { SearchClause } from '../search-query'
 import type { PlayModePick, QueuePick, ReviewedByPick } from './useMatchesNarrow'
 
 // Per-dimension narrow predicates. Each function is ≤ 15 lines,
@@ -31,18 +32,39 @@ function parsePlayTimeMinutes(s: string): number {
   return parts[0] ?? 0
 }
 
-export function matchesSearch(r: MatchRecord, search: string): boolean {
-  if (!search) return true
+// matchesSearch gates a record against the parsed search clauses. A
+// BARE clause (field === null) substring-matches the broad lexical blob
+// (every visible surface); a SCOPED clause matches only its annotation
+// surface (note / tag / member / replay). All clauses AND; an empty
+// clause list is inert. Clause values are already lower-cased by
+// parseSearchQuery, so every surface is lower-cased to compare.
+export function matchesSearch(r: MatchRecord, clauses: SearchClause[]): boolean {
+  if (clauses.length === 0) return true
   const d = r.data
   if (!d) return false
+  const ann = r.annotation
   const heroesPlayedNames = (d.heroes_played ?? []).map((h) => h.hero ?? '').filter(Boolean)
+  const note = (ann?.note ?? '').toLowerCase()
+  const tags = (ann?.tags ?? []).join(' ').toLowerCase()
+  const members = (ann?.members ?? []).join(' ').toLowerCase()
+  const replay = (ann?.replay_code ?? '').toLowerCase()
   const blob = [
     d.map, d.playlist, d.hero, d.role, d.game_mode,
-    r.annotation?.note,
+    ann?.note,
     ...heroesPlayedNames,
-    ...(r.annotation?.tags ?? []),
+    ...(ann?.tags ?? []),
+    ...(ann?.members ?? []),
+    ann?.replay_code,
   ].filter(Boolean).join(' ').toLowerCase()
-  return blob.includes(search)
+  return clauses.every((c) => {
+    switch (c.field) {
+      case 'note':   return note.includes(c.value)
+      case 'tag':    return tags.includes(c.value)
+      case 'member': return members.includes(c.value)
+      case 'replay': return replay.includes(c.value)
+      default:       return blob.includes(c.value)
+    }
+  })
 }
 
 export function matchesDateRange(r: MatchRecord, fromBound: string, toBound: string): boolean {

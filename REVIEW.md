@@ -50,14 +50,6 @@ Each item carries **size** (coding effort + review surface) and **risk**
 
 ## Features
 
-### F1. Scoped-clause search in the narrow panel
-
-**Where:** `frontend/src/search-query.ts` + `frontend/src/composables/useSearchClauses.ts` ship and are unit-tested, but the "Narrow this set" panel's search box (`narrowPredicates.matchesSearch`) only does plain substring matching across every lexical surface.
-
-**What:** restore the `note:` / `tag:` / `member:` / `replay:` scoped-clause UX in the narrow-panel search so power users can target a single surface. The parser helper already exists; this is UI wiring plus a failing Playwright e2e first.
-
-**Size:** M. **Risk:** Low.
-
 ### F2. Table-mode row density
 
 **Where:** `frontend/src/composables/useDensity.ts` — `Density` is `comfortable | compact`.

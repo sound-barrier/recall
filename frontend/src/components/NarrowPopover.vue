@@ -244,7 +244,7 @@ onUnmounted(() => {
                 v-model="searchText"
                 type="search"
                 class="np-search-input"
-                placeholder="map · hero · mode · note · tag"
+                placeholder="text · note: tag: member: replay:"
                 autocomplete="off"
                 spellcheck="false"
               >

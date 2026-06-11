@@ -17,6 +17,8 @@ function rec(opts: {
   tags?: string[]
   leaver?: '' | 'self' | 'team' | 'enemy'
   note?: string
+  members?: string[]
+  replay?: string
   reviewedBy?: 'self' | 'coach'
   heroesPlayed?: { hero: string; percent_played?: number; play_time?: string }[]
 } = {}): MatchRecord {
@@ -35,8 +37,11 @@ function rec(opts: {
       finished_at: opts.finishedAt ?? '14:00',
       heroes_played: opts.heroesPlayed ?? [{ hero: opts.hero ?? 'lucio', percent_played: 100, play_time: '10:00' }],
     },
-    ...(opts.tags || opts.leaver || opts.note
-      ? { annotation: { tags: opts.tags ?? [], leaver: opts.leaver ?? '', note: opts.note ?? '' } }
+    ...(opts.tags || opts.leaver || opts.note || opts.members || opts.replay
+      ? { annotation: {
+        tags: opts.tags ?? [], leaver: opts.leaver ?? '', note: opts.note ?? '',
+        members: opts.members ?? [], replay_code: opts.replay ?? '',
+      } }
       : {}),
     ...(opts.reviewedBy ? { reviewed_by: opts.reviewedBy } : {}),
     parsed_at: opts.parsedAt ?? `${opts.date ?? '2026-05-10'}T${opts.finishedAt ?? '14:00'}:00Z`,
@@ -132,6 +137,60 @@ describe('useMatchesNarrow', () => {
       const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
       searchText.value = '   '
       expect(narrowedRecords.value).toHaveLength(2)
+    })
+  })
+
+  describe('scoped-clause search', () => {
+    it('note: matches only the annotation note, not the broad blob', () => {
+      const records = ref([
+        rec({ key: 'note-hit', note: 'rialto angles were rough' }),
+        rec({ key: 'map-hit', map: 'rialto' }),
+      ])
+      const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
+      searchText.value = 'note:rialto'
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['note-hit'])
+    })
+
+    it('tag: matches only the tag surface', () => {
+      const records = ref([rec({ key: 'a', tags: ['stack'] }), rec({ key: 'b', tags: ['solo'] })])
+      const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
+      searchText.value = 'tag:stack'
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['a'])
+    })
+
+    it('member: matches group members, case-insensitively', () => {
+      const records = ref([rec({ key: 'a', members: ['Apollo#1234'] }), rec({ key: 'b', members: ['Zen#9'] })])
+      const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
+      searchText.value = 'member:apollo'
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['a'])
+    })
+
+    it('replay: matches the replay code, case-insensitively', () => {
+      const records = ref([rec({ key: 'a', replay: '7H1XYZ' }), rec({ key: 'b', replay: 'ABC123' })])
+      const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
+      searchText.value = 'replay:7h1'
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['a'])
+    })
+
+    it('a bare token still spans the broad blob, now incl. members + replay', () => {
+      const records = ref([
+        rec({ key: 'via-member', members: ['Apollo#1'] }),
+        rec({ key: 'via-replay', replay: 'ZZZ9' }),
+        rec({ key: 'neither', hero: 'mercy' }),
+      ])
+      const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
+      searchText.value = 'apollo'
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['via-member'])
+    })
+
+    it('multiple clauses AND together', () => {
+      const records = ref([
+        rec({ key: 'both', note: 'rialto', tags: ['stack'] }),
+        rec({ key: 'note-only', note: 'rialto' }),
+      ])
+      const { narrowedRecords, searchText } = useMatchesNarrow(records, createMatchesNarrowState())
+      searchText.value = 'note:rialto tag:stack'
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['both'])
     })
   })
 

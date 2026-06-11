@@ -16,6 +16,8 @@ import {
   formatUnknownHeroLabel,
   formatUnknownMapLabel,
 } from '../match-label-helpers'
+import { highlightTermsFor, type SearchClause } from '../search-query'
+import HighlightedText from './HighlightedText.vue'
 
 // One compact match row in the set's members list. Click opens the
 // detail panel; the row carries data-match-key / data-card-index /
@@ -35,6 +37,9 @@ const props = defineProps<{
   selected: boolean      // ticked in the contextual multi-select
   hasSelection: boolean  // ANY row in the section is ticked
   isAnchor: boolean      // the current "since this match" anchor
+  // Parsed narrow-search clauses — drives highlighting of matched
+  // substrings in the visible free-text surfaces (map / hero / tags).
+  searchClauses: SearchClause[]
 }>()
 
 const emit = defineEmits<{
@@ -51,6 +56,11 @@ const ow = useOWData()
 const isFocused = computed(
   () => props.focusedCardIndex !== undefined && props.cardIndex === props.focusedCardIndex,
 )
+
+// Bare clauses match (and so highlight) the plain surfaces — map, hero.
+// The tag surface additionally honours `tag:`-scoped clauses.
+const bareTerms = computed(() => props.searchClauses.filter((c) => c.field === null).map((c) => c.value))
+const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 </script>
 
 <template>
@@ -123,7 +133,7 @@ const isFocused = computed(
         :data-unknown-map="rec.data?.map_raw || true"
         :title="`The parser couldn't match the OCR'd map text to maps.yaml. Wait for the next release to recognise it. (OCR read: ${rec.data?.map_raw ?? '—'})`"
       >{{ formatUnknownMapLabel(rec) }}</span>
-      <span v-else class="leaf-map">{{ rec.data?.map || 'unknown' }}</span>
+      <span v-else class="leaf-map"><HighlightedText :text="rec.data?.map || 'unknown'" :terms="bareTerms" /></span>
       <span class="leaf-mode-row">
         <span class="leaf-mode-chip">{{ formatPlayModeLabel(rec) }}</span>
         <span class="leaf-queue-chip">{{ formatQueueTypeLabel(rec) }}</span>
@@ -143,7 +153,7 @@ const isFocused = computed(
         :data-unknown-hero="rec.data?.hero_raw || true"
         :title="`The parser couldn't match the OCR'd hero text to heroes.yaml. Wait for the next release to recognise it. (OCR read: ${rec.data?.hero_raw ?? '—'})`"
       >{{ formatUnknownHeroLabel(rec) }}</span>
-      <span v-else class="leaf-hero">{{ formatHeroes(rec) }}</span>
+      <span v-else class="leaf-hero"><HighlightedText :text="formatHeroes(rec)" :terms="bareTerms" /></span>
       <span v-if="formatRoles(rec, ow.heroRole)" class="leaf-role">{{ formatRoles(rec, ow.heroRole) }}</span>
     </div>
 
@@ -163,7 +173,7 @@ const isFocused = computed(
         v-for="t in rec.annotation?.tags ?? []"
         :key="t"
         class="leaf-tag"
-      >#{{ t }}</span>
+      >#<HighlightedText :text="t" :terms="tagTerms" /></span>
     </div>
 
     <!-- 7. Outcome chip — anchored to the right edge. -->
