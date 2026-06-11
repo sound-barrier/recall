@@ -117,7 +117,6 @@ export function useSectionLayout(): SectionLayoutApi {
     const cur = sections.value.slice()
     if (fromIdx < 0 || fromIdx >= cur.length || toIdx < 0 || toIdx >= cur.length || fromIdx === toIdx) return
     const [moved] = cur.splice(fromIdx, 1)
-    if (!moved) return
     cur.splice(toIdx, 0, moved)
     set(cur)
   }
