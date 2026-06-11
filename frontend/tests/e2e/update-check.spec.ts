@@ -1,18 +1,11 @@
 /**
- * Masthead update-check button + 04 Analysis tab dev-build gating.
+ * Masthead update-check button.
  *
- * Two regressions / scope decisions land here:
- *
- *   1. The "↑ update to vX.Y.Z" pill regressed when the masthead got
- *      rewired — the GitHub releases roundtrip stopped firing on
- *      mount. The replacement is intentional: a user-triggered
- *      "Check for updates" button. Clicking fires
- *      GET /api/v1/system/update and swaps the button for the
- *      appropriate result state.
- *
- *   2. The 04 Analysis tab is a work-in-progress dashboard sketch.
- *      Release users (version without "-dev") shouldn't see it; dev
- *      builds (version ending in "-dev") get the full five-tab nav.
+ * The "↑ update to vX.Y.Z" pill regressed when the masthead got
+ * rewired — the GitHub releases roundtrip stopped firing on mount.
+ * The replacement is intentional: a user-triggered "Check for
+ * updates" button. Clicking fires GET /api/v1/system/update and
+ * swaps the button for the appropriate result state.
  *
  * Spec mocks the server endpoints via page.route() so the network
  * shape stays scripted regardless of what the local server is
@@ -142,47 +135,5 @@ test.describe('masthead — Check for updates button', () => {
     await page.locator('[data-update-check-trigger]').click()
     await expect(page.locator('[role="dialog"]')).toBeVisible()
     await expect(page.getByText('Test release notes line')).toBeVisible()
-  })
-})
-
-test.describe('masthead — 04 Analysis tab dev-build gating', () => {
-  test('hides the Analysis tab on release builds (version without "-dev")', async ({ page }) => {
-    await mockVersion(page, '0.3.0')
-    await mockUpdate(page, {
-      checked: false, dev_build: false, available: false, latest: '', url: '',
-    })
-    await page.goto('/')
-
-    await expect(page.locator('#tab-settings')).toBeVisible()
-    await expect(page.locator('#tab-ingest')).toBeVisible()
-    await expect(page.locator('#tab-matches')).toBeVisible()
-    await expect(page.locator('#tab-unknown')).toBeVisible()
-    await expect(page.locator('#tab-analysis')).toHaveCount(0)
-  })
-
-  test('shows the Analysis tab on dev builds (version ending in "-dev")', async ({ page }) => {
-    await mockVersion(page, '0.3.0-dev')
-    await mockUpdate(page, {
-      checked: false, dev_build: true, available: false, latest: '', url: '',
-    })
-    await page.goto('/')
-
-    await expect(page.locator('#tab-analysis')).toBeVisible()
-  })
-
-  test('keyboard nav skips Analysis on release builds (←/→ wrap stays correct)', async ({ page }) => {
-    // From Matches, ArrowRight should go to Unknown directly when
-    // Analysis is hidden (not to a no-op).
-    await mockVersion(page, '0.3.0')
-    await mockUpdate(page, {
-      checked: false, dev_build: false, available: false, latest: '', url: '',
-    })
-    await page.goto('/')
-    await page.locator('#tab-matches').click()
-    // Press ArrowRight on the now-focused matches tab (press()
-    // focuses the locator first, which matches how a keyboard user
-    // would navigate from a focused tab button).
-    await page.locator('#tab-matches').press('ArrowRight')
-    await expect(page.locator('#tab-unknown')).toHaveAttribute('aria-selected', 'true')
   })
 })

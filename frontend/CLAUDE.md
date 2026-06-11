@@ -58,8 +58,7 @@ them here.
   picked maps/heroes/roles/results/tags/map-types, preset + custom date range,
   leaver handling, dual min-play thresholds, includeUnknown, plus
   `narrowedRecords` / `anyNarrow` / `activeClauseCount`). `useTabKeyboardNav` is
-  the WAI-ARIA exemplar: an Arrow/Home/End cycle over a `tabs` ref (App.vue passes
-  `visibleTabs` so the cycle stays inside rendered tabs; defaults to `TAB_ORDER`).
+  the WAI-ARIA exemplar: an Arrow/Home/End cycle over `TAB_ORDER`.
 - **Session-scoped fetch** — module-singleton that fetches once per session.
   Exemplar: `useOWData` (`/api/v1/system/reference-data` for canonical hero/map
   display names).
@@ -105,7 +104,7 @@ Palette + contrast reasoning is in the A11y section below.
 
 State concerns owned by App.vue and passed down via props/emits:
 
-- **Nav** — 5 tabs (4 on release builds): Settings (01), Parse (02) (internal id still `'ingest'`; `IngestView.vue` only the label changed), Matches (03) default landing, Unknown (04) triage, Analysis (05) — **dev-build only**. Analysis sits LAST so its dev gate falls off the tail — Unknown stays "04" on both dev and release builds. How the gate actually works (`visibleTabs` + the keyboard-nav interaction) lives once, in the "Tab visibility" gotcha below. Settings owns all config (Folders/Engine/Appearance/Calendar/Backup & Restore + collapsible Advanced). Parse is just the operational loop (Watch + Manual Parse + progress panel) — don't add config rows there. Parse heading state-machine deep-links to Settings → Engine/Folders on missing-Tesseract / unset-folder.
+- **Nav** — 4 tabs: Settings (01), Parse (02) (internal id still `'ingest'`; `IngestView.vue` only the label changed), Matches (03) default landing, Unknown (04) triage. Settings owns all config (Folders/Engine/Appearance/Calendar/Backup & Restore + collapsible Advanced). Parse is just the operational loop (Watch + Manual Parse + progress panel) — don't add config rows there. Parse heading state-machine deep-links to Settings → Engine/Folders on missing-Tesseract / unset-folder.
 - **Matches view layout** — `MatchesView.vue` is a *set workspace*: dossier (active-clause chips + W/L/D + customizable widget grid via `useMatchesDossier` + per-widget config) at top, Campaign Log (heatmap + brushable sparkline via `MatchTimelineHeader`) in the middle, compact `.leaf-row` list below with sort + Y/M/W/D grouping via `useMatchesGroup`. The left-side *"Narrow this set"* panel mirrors `MatchDetailPanel`'s modal contract (focus trap, Esc, backdrop, `inert` + `aria-hidden` on the background container while open) and consolidates every filter dimension into one place — search, date range (preset + custom), map/map-type/hero/role/result/tags, leaver handling, dual min-play thresholds, include-unknown toggle. State lives in `useMatchesNarrow`; the Map + Hero pickers reuse the `FilterCombobox` component (typeahead + selected-pill row + dropdown listbox with role="option" + aria-selected). Hero filter is **broad match** against the primary `data.hero` AND every `data.heroes_played[]` entry.
 
 - **Dossier as data source (Grafana panel-options pattern)** — `useMatchesDossier` exposes two tiers: **bedrock refs** (no per-widget config: `wld`, `winrate`, `totalTimePlayed`, `averageKDA`, `reviewedCount`, `daysSinceLastReview`, `wldSinceLastReview`, `currentStreak`, `longestWinStreak`, `heroPoolSize`, `topRoles`) and **parameterized query helpers** (config-driven: `topByCount`, `topHeroesByMinutes`, `mostPlayedHero`, `bestWinrateHero`, `timeOfDayBuckets`, `dayOfWeekBuckets`, `recentResults`). Each helper accepts `MaybeRefOrGetter<Opts>` so widgets can wire reactive config through. `MatchesView` calls `provideDossier(useMatchesDossier(...))` once; widgets `inject` via `useDossier()` and pull only the slice they render. No HTTP per widget — the dossier is one in-memory aggregation over the narrowed records. New aggregate metrics go HERE, not into a separate computed in MatchesView; consumers reach them through the inject seam.
@@ -192,15 +191,6 @@ for you.
 - **Nested modals: inner Esc needs CAPTURE phase + `stopImmediatePropagation`.** `useModalFocusTrap` registers Esc on `document` at bubble phase; a second modal stacked over the first (lightbox over detail panel, cheatsheet over either) can't prevent the outer trap from also firing by adding another bubble-phase listener — both run on the same target. Use `document.addEventListener('keydown', …, true)` (capture) and call `e.stopImmediatePropagation()` so the outer trap's bubble Esc never sees the event. Pattern in `MatchScreenshotLightbox.vue` + `KeyboardShortcutsModal.vue`. Same logic for the outer modal needing to suppress global shortcuts: `useKeyboardShortcuts` also installs its dispatcher at capture phase, registered at App mount before any per-modal listener — so the composable accepts a `suppressed: Ref<boolean>` opt-out (App.vue passes `openCheatsheet`).
 
 - **Playwright `.click()` on a parent with `@click.stop` children.** The default `.click()` lands on the element's geometric centre. If the centre falls on a child that calls `e.stopPropagation()` (slot chips inside `.sources-toggle`, removable filter chips inside `.mf-trigger`, etc.), the parent's click handler never fires and the test waits-then-fails on state that won't change. Click a stable text-only child instead — e.g. `.sources-toggle .sources-label` — or pass `{ position: { x, y } }` to land on a known coordinate.
-
-- **Tab visibility flows through `visibleTabs`, not just `v-if`.** A tab is
-  dev-gated when `appVersion` carries the `-dev` suffix (`isDevBuild`) — the
-  Analysis tab is the current case. Hiding a tab needs both the
-  `<button v-if="…">` *and* the `visibleTabs` computed update — the latter feeds
-  `useTabKeyboardNav` so ←/→ wrap-around skips the hidden tab. The panel `<v-if>`
-  should AND the same gate as defence-in-depth (`view === 'analysis' &&
-  isDevBuild`) even though `view` is in-memory only; the gate keeps the WIP panel
-  out of release renders if `view` ever gets persisted.
 
 - **No network calls on mount unless the user asked.** The masthead update check used to fire `GET /api/v1/system/update` on every boot — replaced with a "Check for updates" button. New chrome that calls GitHub / external services should follow the same user-pulled pattern (button + Checking… state) rather than silently roundtripping at boot.
 

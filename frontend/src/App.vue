@@ -140,11 +140,6 @@ const MatchDetailPanel = defineAsyncComponent(() => import('./components/MatchDe
 // Anchor confirmation toast — small, eagerly loaded so it can fire
 // on the very first anchor-set transition without a chunk fetch.
 const MatchAnchorToast = defineAsyncComponent(() => import('./components/MatchAnchorToast.vue'))
-// Sketch-only preview of the analytics-first dashboard (Phase E in
-// ROADMAP.md → "Analysis tab"). The component is mounted on the
-// dedicated Analysis tab so the shipping Matches view stays
-// untouched while we iterate on the dashboard's data wiring.
-const MatchesDashboardSketch = defineAsyncComponent(() => import('./components/MatchesDashboardSketch.vue'))
 // ProfileSwitcher is part of the always-visible masthead chrome, so
 // it's a static import — lazy-loading it would just buy a tiny
 // initial-bundle saving at the cost of a render-blocking flash on
@@ -272,10 +267,7 @@ const newScreenshotCount = ref<number | null>(null)
 // parse, Grafana export). Switched via the masthead nav tabs.
 const view = ref<TabId>('matches')
 
-// Version + update + dev-build state. appVersion drives the masthead
-// "v0.3.0" / "v0.3.0-dev" label; the -dev suffix gates dev-only
-// chrome via isDevBuild / visibleTabs (the latter feeds
-// useTabKeyboardNav so ←/→ wrap-around stays inside rendered tabs).
+// appVersion drives the masthead "v0.3.0" version label.
 const appVersion = ref('')
 const updateInfo = ref<UpdateInfo | null>(null)
 // updateCheckBusy gates the "Check for updates" button while the
@@ -286,19 +278,6 @@ const updateInfo = ref<UpdateInfo | null>(null)
 // the "↑ update available" pill rendered silently — regressed when
 // the masthead got rewired; this is the deliberate-pull restoration.
 const updateCheckBusy = ref(false)
-// isDevBuild gates dev-only chrome — currently the "05 Analysis"
-// tab + panel. Dev builds carry a "-dev" suffix on the version
-// string (e.g. "0.3.0-dev"); release builds don't. The check is
-// purely string-suffix, no network calls.
-const isDevBuild = computed(() => appVersion.value.endsWith('-dev'))
-// visibleTabs is the subset of TAB_ORDER currently exposed to the
-// user. Analysis is a work-in-progress dashboard sketch only
-// rendered on dev builds; everything else stays. Drives both the
-// rendered <button>s and the keyboard nav cycle (useTabKeyboardNav
-// reads from this so ←/→ wrap correctly when analysis is hidden).
-const visibleTabs = computed<readonly TabId[]>(() =>
-  isDevBuild.value ? TAB_ORDER : TAB_ORDER.filter((t) => t !== 'analysis'),
-)
 
 // goToView switches the active tab AND moves focus into the newly visible
 // panel so keyboard users land in the new content rather than staying on
@@ -311,7 +290,7 @@ async function goToView(next: string) {
   if (panel) panel.focus({ preventScroll: true })
 }
 
-const { onTabKeydown, focusMain } = useTabKeyboardNav(view, goToView, visibleTabs)
+const { onTabKeydown, focusMain } = useTabKeyboardNav(view, goToView)
 
 // ── Keyboard-shortcut state ───────────────────────────────────
 // `focusedCardIndex` is the flat index (across the filteredSorted
@@ -1831,29 +1810,6 @@ useEventStream({
                 <span v-if="unknownRecords.length > 0" class="nav-tab-badge">{{ unknownRecords.length }}</span>
               </span>
             </button>
-            <!-- 05 Analysis is a work-in-progress dashboard sketch.
-                 Only exposed to dev builds so release users don't see
-                 the incomplete chrome. Hidden from both the tablist
-                 and the keyboard nav cycle (via visibleTabs) when the
-                 version string lacks the "-dev" suffix. Positioned
-                 last so Unknown's number stays "04" across dev +
-                 release — dev users see the same Unknown anchor
-                 release users do, just with an extra tab on the end. -->
-            <button
-              v-if="isDevBuild"
-              id="tab-analysis"
-              class="nav-tab"
-              :class="{ active: view === 'analysis' }"
-              :aria-selected="view === 'analysis'"
-              :aria-current="view === 'analysis' ? 'page' : undefined"
-              :tabindex="view === 'analysis' ? 0 : -1"
-              role="tab"
-              aria-controls="panel-analysis"
-              @click="goToView('analysis')"
-            >
-              <span class="nav-tab-num">05</span>
-              <span class="nav-tab-label">Analysis</span>
-            </button>
           </nav>
         </div>
         <div class="masthead-right">
@@ -2063,18 +2019,6 @@ useEventStream({
           @export-bundle="onExportBundleRequest"
           @clear-anchor="onSetAnchor('')"
           @set-anchor="onSetAnchor"
-        />
-
-        <!-- ─── ANALYSIS VIEW (coaching dashboard sketch) ──────────
-             Gated on isDevBuild — keeps the WIP panel out of release
-             builds even if a user somehow ends up with view='analysis'
-             persisted (currently view is in-memory only, but the gate
-             stays defence-in-depth). -->
-        <MatchesDashboardSketch
-          v-if="view === 'analysis' && isDevBuild"
-          :records="records"
-          :selected-match-key="selection.selectedKey.value"
-          @open-match="(matchKey: string) => selection.open(matchKey)"
         />
       </main>
     </div>
