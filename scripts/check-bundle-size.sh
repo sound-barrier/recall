@@ -51,6 +51,14 @@ init_js=$(find "${DIST_DIR}" -name 'index-*.js' -exec wc -c {} + | awk 'END{prin
 init_css=$(find "${DIST_DIR}" -name 'index-*.css' -exec wc -c {} + | awk 'END{print $1}')
 total_js=$(find "${DIST_DIR}" -name '*.js' -exec wc -c {} + | awk 'END{print $1}')
 total_css=$(find "${DIST_DIR}" -name '*.css' -exec wc -c {} + | awk 'END{print $1}')
+# Default to 0 when a glob matches nothing so the integer comparisons
+# below don't choke on an empty string ("[[ '' -gt N ]]" is a fatal
+# bash error). DIST_DIR is always populated post-build in CI; this is a
+# guard against the empty edge, not a silent pass.
+: "${init_js:=0}"
+: "${init_css:=0}"
+: "${total_js:=0}"
+: "${total_css:=0}"
 
 printf 'Bundle sizes: initial JS=%sB CSS=%sB  total JS=%sB CSS=%sB\n' \
   "${init_js}" "${init_css}" "${total_js}" "${total_css}"

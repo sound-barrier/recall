@@ -89,12 +89,13 @@ const popoverStyle = computed(() => {
   const a = props.anchor
   if (!a) return { display: 'none' }
   const viewportH = typeof window !== 'undefined' ? window.innerHeight : 720
+  const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1024
   const roomBelow = viewportH - (a.bottom + 6)
   const flipAbove = roomBelow < POPOVER_HEIGHT_ESTIMATE && a.top - 6 > roomBelow
   const top = flipAbove
     ? Math.max(VIEWPORT_PADDING, a.top - 6 - POPOVER_HEIGHT_ESTIMATE)
     : Math.max(VIEWPORT_PADDING, a.bottom + 6)
-  const left = Math.max(VIEWPORT_PADDING, Math.min(a.right - POPOVER_WIDTH, window.innerWidth - POPOVER_WIDTH - VIEWPORT_PADDING))
+  const left = Math.max(VIEWPORT_PADDING, Math.min(a.right - POPOVER_WIDTH, viewportW - POPOVER_WIDTH - VIEWPORT_PADDING))
   return {
     top: `${top}px`,
     left: `${left}px`,
