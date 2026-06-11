@@ -1,5 +1,81 @@
 # Changelog
 
+## [0.12.0](https://github.com/sound-barrier/recall/compare/v0.11.0...v0.12.0) (2026-06-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* handler-level 400 vs 500 routing for the two settings PUT endpoints is now consistently 400 + the canonical error message. The export-import 400-vs-409 split is tightened — inner struct decode failures land on 409 (was 400 in the PR #1 follow-up; the PR #1 split for the outer schema-peek decode remains 400).
+* `screenshots_dir_id` columns are now `NOT NULL`. Any pre-existing DB with a NULL dir_id won't open; dev DBs must be wiped (CONTRIBUTING.md carries the per-OS wipe path). The OpenAPI `SummaryExportRow.screenshots_dir_id` description loses the "0 = NULL" clause (and gains `minimum: 1`); `POST /api/v1/imports` now returns 400 for malformed payloads (was 409 unconditionally); the import error message prefix changed from "import csv: ..." / "import: ..." to "import: malformed payload: ..." on the 400 branch.
+
+### Features
+
+* **matches:** gear filter for the Geography (Map × Role) band ([aef9c52](https://github.com/sound-barrier/recall/commit/aef9c5250a7adb7823244599b05173c81d0a01f1))
+* **matches:** Geography Map × Role performance band ([72b6499](https://github.com/sound-barrier/recall/commit/72b6499f44f1454c7d1d099889e16149c0b3de48))
+* **matches:** inline dossier management, no edit mode ([4d741e1](https://github.com/sound-barrier/recall/commit/4d741e13a271127d988f4702ea67483fa962248d))
+
+
+### Bug Fixes
+
+* **a11y:** pre-1.0 sweep (1.0 plan §C) ([2720937](https://github.com/sound-barrier/recall/commit/2720937fef2d3dce7c0287abed4b78ad5196d02d))
+* apply 3 of 7 code-quality AI findings (decline 4) ([b03ae95](https://github.com/sound-barrier/recall/commit/b03ae95fcf29dff779aef3a69ca0ce4988db06b3))
+* **cheatsheet:** install Esc handler at mount, not on prop change ([2062834](https://github.com/sound-barrier/recall/commit/20628342f730d521637266ad582d45d174a6dd8b))
+* **import:** bound decompressed ZIP reads against zip bombs ([ba39b66](https://github.com/sound-barrier/recall/commit/ba39b669dc2797af4d2faf26f322ae869e9f2d84))
+* **matches:** even vertical spacing between dossier and the bands ([a75656b](https://github.com/sound-barrier/recall/commit/a75656b03344b1cd5457bb664cf2a9643c0bfeff))
+* **matches:** freeze background scroll under every overlay; no jump ([52d44c6](https://github.com/sound-barrier/recall/commit/52d44c6dd90a0e40a85faeb2b5e7134b96521be2))
+* **matches:** smaller hover-only dossier controls, on-screen Add menu ([61627fb](https://github.com/sound-barrier/recall/commit/61627fbaf6ed5b791e9cb9f1bc0899ae79dee550))
+* **matches:** stabilize sticky Campaign Log below tall content ([21e9426](https://github.com/sound-barrier/recall/commit/21e94266df2461dd9d7913ebfdff3c9b707b73b2))
+* **metrics:** warn on non-loopback metrics bind + document exposure ([4a8fec6](https://github.com/sound-barrier/recall/commit/4a8fec61fdb29c6bdad3d563e9d3e4463a53b3ab))
+* **perf:** boot pre-fetch + lazy-view loading overlay (P1-C) ([bc2eea9](https://github.com/sound-barrier/recall/commit/bc2eea99f95683a9dc1c066811a22a6b7afadf60))
+* **server:** cap request bodies + nosniff header ([b47dd13](https://github.com/sound-barrier/recall/commit/b47dd13cf9de4c70705a2945bc39b58c78b3e265))
+* **server:** warn on exposed pprof + pin metrics label escaping ([7dc015e](https://github.com/sound-barrier/recall/commit/7dc015e655034a20d44f6ef936870f64e2c31326))
+* **stylelint:** empty-line-before-comment in MatchCardDanger ([f9e0832](https://github.com/sound-barrier/recall/commit/f9e08328ff6ac8ddbc4a0dc92b6830e2742f3248))
+* **stylelint:** hoist countdown-ring comment above the rule block ([1f683fd](https://github.com/sound-barrier/recall/commit/1f683fd66008d34ffbc9dc84ab9b7042184016da))
+* **ts:** annotate lazyView loader signature to break circular inference ([412e9d0](https://github.com/sound-barrier/recall/commit/412e9d05d9138e6fa2e76501f16cf730838c5e87))
+* **update:** restrict redirect targets on update fetches ([85778a5](https://github.com/sound-barrier/recall/commit/85778a558dd189840b16080f6e6cddb32d4b62e9))
+* **ux:** first-run + error states (1.0 plan §C — 5 of 6 items) ([0f726e4](https://github.com/sound-barrier/recall/commit/0f726e41471d3e9f5230c1299d39b9cbb7f0230a))
+* **ux:** Matches/Unknown polish (1.0 plan §C — Matches/Unknown) ([03fb1b0](https://github.com/sound-barrier/recall/commit/03fb1b043a6e45127a1578a8a9f1551ec4f5628a))
+* **ux:** microcopy sweep (1.0 plan §C — P1-D) ([53efa06](https://github.com/sound-barrier/recall/commit/53efa064160670173f5a19c600c26236cb736b9c))
+* **ux:** Settings + Parse polish (1.0 plan §C — P1-A) ([3138b9b](https://github.com/sound-barrier/recall/commit/3138b9b0d3c5ef04ff947cd177be13766cf2d1ee))
+* **ux:** Unknown view polish (1.0 plan §C — P1-B) ([d74be18](https://github.com/sound-barrier/recall/commit/d74be181b6b48aee771470867aa5b13406f4a149))
+
+
+### Refactors
+
+* API + DB hardening (1.0 plan section A) ([8471806](https://github.com/sound-barrier/recall/commit/84718060a8d36e46babf8c6b2892aab7b9327e55))
+* **app:** nil-safe SSEHub broadcast removes teardown race ([63a41ab](https://github.com/sound-barrier/recall/commit/63a41ab311d1c8dc58342b38af29b55f3ce983dd))
+* **log:** pkg/applog seam + watcher.go + server.go sweep (P2-E) ([94e8b0e](https://github.com/sound-barrier/recall/commit/94e8b0eb4d920a178b134b6a034ad2844b7a543e))
+* **matches:** remove Campaign Log collapse-on-scroll ([3cac2df](https://github.com/sound-barrier/recall/commit/3cac2dffcdf88f70ac0102bb54a8f16ecce49510))
+* **parser:** name magic numbers + audit-confirm doc comments ([ceaff20](https://github.com/sound-barrier/recall/commit/ceaff20eec1b51cffe468d4b1c5b269c9bb884f3))
+* server-side helpers + invariants (1.0 plan section A) ([195e2e2](https://github.com/sound-barrier/recall/commit/195e2e2d335ef0abff611918257e6ff0f3b8adbd))
+* **ui:** design system tightening (1.0 plan §C subset) ([6028a9b](https://github.com/sound-barrier/recall/commit/6028a9bdbf648ecc6a38a54076b4e1dd8e6c257e))
+
+
+### Documentation
+
+* add 1-0-RELEASE-PLAN.md (comprehensive pre-1.0 audit) ([03ef9b6](https://github.com/sound-barrier/recall/commit/03ef9b61d14d63a7aa75608891f7e329d976b4e4))
+* add README troubleshooting section (1.0 plan §C) ([7a9b7bc](https://github.com/sound-barrier/recall/commit/7a9b7bce0b0efbec6b274843dfa102ca57cf4c23))
+* audit split-large-components items (1.0 plan §C) ([8fd5c41](https://github.com/sound-barrier/recall/commit/8fd5c413ca73fe1a276dff84f1315ff14a1d8d7e))
+* prep README + user docs for 1.0 ([f8a97b7](https://github.com/sound-barrier/recall/commit/f8a97b7f61b287dd29f094dfec5bccc53f34fb74))
+* **release:** audit P1-G design-system items (2 done, 1 deferred) ([0e0fd6a](https://github.com/sound-barrier/recall/commit/0e0fd6ad6e8fb0fb753bf60cb0744693e082a5d4))
+* **release:** P1-H large-Vue-split round-2 audit confirms defer ([cf85d59](https://github.com/sound-barrier/recall/commit/cf85d59a6d2ecea69ed05e18fb6da4a39996a993))
+* **release:** roll P1/P2 follow-ups into 1-0-FOLLOWUPS.md ([adf6dfe](https://github.com/sound-barrier/recall/commit/adf6dfef56ed16313d956ebd110e63d4ce7afe4f))
+* test-only API + no-telemetry sections (P2-D) ([b9dc044](https://github.com/sound-barrier/recall/commit/b9dc044f679b7e482a9c6c988103e25bf0ae7637))
+
+
+### CI
+
+* expand pre-push playwright smoke filter (P2-A) ([b3e0344](https://github.com/sound-barrier/recall/commit/b3e03440bfc2f23f0677553af634b7928505bd51))
+
+
+### Tests
+
+* **e2e:** add import roundtrip + prometheus toggle specs ([0fc58a5](https://github.com/sound-barrier/recall/commit/0fc58a59db86592ae8d11cdf7993a1259cb40702))
+* **e2e:** high-contrast theme structural snapshot (P1-E) ([b3e59a7](https://github.com/sound-barrier/recall/commit/b3e59a7cb7ec7f3ec98049819e9f61ea31100e95))
+* **e2e:** swap remaining narrow-text selectors to data attr ([1d4120b](https://github.com/sound-barrier/recall/commit/1d4120bf5e87618b41d031c5c9150ccebcd8a95c))
+* **e2e:** update profile-delete spec for the new step label ([9372173](https://github.com/sound-barrier/recall/commit/93721736564a47deba86a02932a573be87dd7e52))
+* **fuzz:** parser helpers + screenshot handler (P2-C) ([27e65e8](https://github.com/sound-barrier/recall/commit/27e65e82c7889fb732e1778fbdf183703ecea255))
+
 ## [0.11.0](https://github.com/sound-barrier/recall/compare/v0.10.0...v0.11.0) (2026-06-09)
 
 
