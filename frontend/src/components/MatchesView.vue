@@ -13,11 +13,9 @@ import { useScrollAffordance } from '../composables/useScrollAffordance'
 import { useOWData } from '../composables/useOWData'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
 import { useArchiveSelection } from '../composables/useArchiveSelection'
-import MatchTimelineHeader from './MatchTimelineHeader.vue'
-import MatchMapRoleBand from './MatchMapRoleBand.vue'
 import DashboardWidget from './DashboardWidget.vue'
 import DossierManageMenu from './DossierManageMenu.vue'
-import DossierSection from './DossierSection.vue'
+import MatchesDossierSections from './MatchesDossierSections.vue'
 import BulkActionBar from './BulkActionBar.vue'
 import MatchesArchiveDrawer from './MatchesArchiveDrawer.vue'
 import MatchesMembersList from './MatchesMembersList.vue'
@@ -34,7 +32,6 @@ import LeafHoverPreview from './LeafHoverPreview.vue'
 import { useMatchesRowContext } from '../composables/useMatchesRowContext'
 import DashboardUndoToast from './DashboardUndoToast.vue'
 import { useDashboardLayout } from '../composables/useDashboardLayout'
-import { useSectionLayout } from '../composables/useSectionLayout'
 import { useDragReorder } from '../composables/useDragReorder'
 import { widgetById, type WidgetDef } from '../dashboard/widgets'
 import { useNarrowMode } from '../composables/useNarrowMode'
@@ -418,59 +415,8 @@ provideNarrow(props.narrow)
 // layout; the dossier's Add menu puts it back.
 const dashboardLayout = useDashboardLayout()
 
-// Full-width sections below the dossier (Campaign Log, Geography). A
-// separate persisted layer from the widget grid — they're not part of
-// the dossier rows, just stacked, always below it, and individually
-// hideable / reorderable. Both default visible.
-const sectionLayout = useSectionLayout()
-
-// Top-level binding so the template auto-unwraps it (nested refs on
-// the sectionLayout object don't).
-const visibleSectionIds = computed(() => sectionLayout.visibleIds.value)
-
-// Section drag-reorder (mouse). Only ever 2-3 full-width rows, so a
-// lightweight id-based swap beats the widget grid's index machinery.
-const draggingSectionId = ref<string | null>(null)
-const sectionDropTargetId = ref<string | null>(null)
-
-function onSectionDragStart(id: string, e: DragEvent) {
-  draggingSectionId.value = id
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'move'
-    try { e.dataTransfer.setData('text/plain', id) } catch (_) { /* Firefox needs data set */ }
-  }
-}
-function onSectionDragOver(id: string) {
-  if (draggingSectionId.value && draggingSectionId.value !== id) sectionDropTargetId.value = id
-}
-function onSectionDrop(targetId: string) {
-  const dragId = draggingSectionId.value
-  draggingSectionId.value = null
-  sectionDropTargetId.value = null
-  if (!dragId || dragId === targetId) return
-  const list = sectionLayout.sections.value
-  const from = list.findIndex((s) => s.id === dragId)
-  const to = list.findIndex((s) => s.id === targetId)
-  if (from !== -1 && to !== -1) sectionLayout.move(from, to)
-}
-function onSectionDragEnd() {
-  draggingSectionId.value = null
-  sectionDropTargetId.value = null
-}
-
-// Keyboard reorder from a section grip: move it one slot among the
-// VISIBLE sections (Arrow up/down).
-function onSectionMove(id: string, dir: -1 | 1) {
-  const visible = sectionLayout.visibleIds.value
-  const vIdx = visible.indexOf(id)
-  if (vIdx === -1) return
-  const targetId = visible[vIdx + dir]
-  if (!targetId) return
-  const list = sectionLayout.sections.value
-  const from = list.findIndex((s) => s.id === id)
-  const to = list.findIndex((s) => s.id === targetId)
-  if (from !== -1 && to !== -1) sectionLayout.move(from, to)
-}
+// The Campaign Log / Geography full-width sections (order + visibility +
+// drag-reorder) live in MatchesDossierSections.vue.
 
 // Live-reflow drag preview. Held as a plain ref so it can be
 // referenced from `dragReorder.onMove` (declared next) without a
@@ -938,39 +884,17 @@ onMounted(() => {
       </section>
 
       <!-- ─── DOSSIER SECTIONS (Campaign Log, Geography) ──────────
-         Full-width bands below the dossier grid. Order + visibility
-         come from useSectionLayout; each wears an inline grip + ×
-         (DossierSection) for reorder + remove. Re-add from the
-         dossier Add menu. `visibleRecords` strips hidden matches so
-         the Campaign Log reconciles with the dossier. -->
-      <template v-if="visibleRecords.length > 0">
-        <DossierSection
-          v-for="(sectionId, sIdx) in visibleSectionIds"
-          :id="sectionId"
-          :key="sectionId"
-          :label="sectionLayout.labelFor(sectionId)"
-          :index="sIdx"
-          :count="visibleSectionIds.length"
-          :dragging="draggingSectionId === sectionId"
-          :drop-target="sectionDropTargetId === sectionId"
-          @remove="sectionLayout.remove"
-          @move="onSectionMove"
-          @drag-start="onSectionDragStart"
-          @drag-over="onSectionDragOver"
-          @drop="onSectionDrop"
-          @drag-end="onSectionDragEnd"
-        >
-          <MatchTimelineHeader
-            v-if="sectionId === 'campaign-log'"
-            :records="visibleRecords"
-            :filter-from="customFrom"
-            :filter-to="customTo"
-            @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
-            @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
-          />
-          <MatchMapRoleBand v-else-if="sectionId === 'geography'" />
-        </DossierSection>
-      </template>
+         Full-width bands below the dossier grid. `visibleRecords`
+         strips hidden matches so the Campaign Log reconciles with the
+         dossier; the brush on the Campaign Log drives the custom date
+         range, which lands here as the picked range. -->
+      <MatchesDossierSections
+        :records="visibleRecords"
+        :filter-from="customFrom"
+        :filter-to="customTo"
+        @update:filter-from="(v: string) => { customFrom = v; pickedRange = 'custom' }"
+        @update:filter-to="(v: string) => { customTo = v; pickedRange = 'custom' }"
+      />
 
       <!-- ─── MEMBERS ─────────────────────────────────────────── -->
       <section class="leaves" aria-label="Set members">
