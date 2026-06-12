@@ -198,7 +198,7 @@ lint-docker: ## Lint Dockerfile.build (hadolint)
 # 2-space / indent-switch / binary-op-at-line-start style we
 # normalized to in commit ___ — `make fmt-shell` rewrites in place,
 # `make lint-shell` runs shfmt in diff mode + shellcheck.
-SHELL_SCRIPTS := $(wildcard scripts/lib/*.sh scripts/db/*.sh scripts/ci/*.sh scripts/stack/*.sh) $(wildcard scripts/release/*.sh) $(wildcard scripts/release/smoke/*.sh)
+SHELL_SCRIPTS := $(wildcard scripts/lib/*.sh scripts/db/*.sh scripts/ci/*.sh scripts/stack/*.sh) $(wildcard scripts/release/*.sh) $(wildcard scripts/release/smoke/*.sh) initialize.sh .devcontainer/postCreate.sh
 
 lint-shell: ## Lint shell scripts (shellcheck + shfmt diff)
 	@echo "[ recall ] Linting shell scripts (shellcheck)…"
