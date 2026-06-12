@@ -19,8 +19,11 @@ import { test, expect } from './_fixtures'
 
 async function installSSEMock(page: Page) {
   await page.addInitScript(() => {
-    let instance: { onopen: ((e: Event) => void) | null; onerror: ((e: Event) => void) | null; readyState: number } | null = null
     class MockEventSource {
+      // Most-recently-constructed instance, so the __sse controls below
+      // can drive connection state. Held on the class rather than aliased
+      // from `this` into a closure var (@typescript-eslint/no-this-alias).
+      static current: MockEventSource | null = null
       static readonly CONNECTING = 0
       static readonly OPEN = 1
       static readonly CLOSED = 2
@@ -29,7 +32,7 @@ async function installSSEMock(page: Page) {
       onopen: ((e: Event) => void) | null = null
       onerror: ((e: Event) => void) | null = null
       private handlers: Record<string, ((e: MessageEvent) => void)[]> = {}
-      constructor(url: string) { this.url = url; instance = this }
+      constructor(url: string) { this.url = url; MockEventSource.current = this }
       addEventListener(name: string, fn: (e: MessageEvent) => void) { (this.handlers[name] ??= []).push(fn) }
       removeEventListener(name: string, fn: (e: MessageEvent) => void) {
         const a = this.handlers[name]; if (!a) return
@@ -45,9 +48,9 @@ async function installSSEMock(page: Page) {
     }
     ;(window as unknown as { EventSource: unknown }).EventSource = MockEventSource
     ;(window as unknown as { __sse: unknown }).__sse = {
-      drop() { if (instance) { instance.readyState = 0; instance.onerror?.(new Event('error')) } },
-      reconnect() { if (instance) { instance.readyState = 1; instance.onopen?.(new Event('open')) } },
-      emit(name: string, data?: unknown) { (instance as unknown as { emit?: (n: string, d?: unknown) => void })?.emit?.(name, data) },
+      drop() { const i = MockEventSource.current; if (i) { i.readyState = 0; i.onerror?.(new Event('error')) } },
+      reconnect() { const i = MockEventSource.current; if (i) { i.readyState = 1; i.onopen?.(new Event('open')) } },
+      emit(name: string, data?: unknown) { MockEventSource.current?.emit?.(name, data) },
     }
   })
 }
