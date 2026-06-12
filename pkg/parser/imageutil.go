@@ -16,32 +16,6 @@ func crop(src image.Image, r image.Rectangle) image.Image {
 	return out
 }
 
-// rawUpscaleFactor is the multiplier the raw-OCR path uses when it
-// hands the un-thresholded crop to Tesseract (see tesseract.go's
-// `ocrRaw`). Lower than `preprocessInverted`'s 3× because the raw
-// path keeps the original colour, and a 3× nearest-neighbour blow-up
-// of cyan-on-cream looked over-pixellated to Tesseract's antialiasing
-// expectations. 2× is the empirically-tuned sweet spot for the
-// right-side panel (cyan labels + white digits).
-const rawUpscaleFactor = 2
-
-func upscale(src image.Image, scale int) image.Image {
-	bounds := src.Bounds()
-	w, h := bounds.Dx(), bounds.Dy()
-	out := image.NewRGBA(image.Rect(0, 0, w*scale, h*scale))
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			c := src.At(x, y)
-			for dy := 0; dy < scale; dy++ {
-				for dx := 0; dx < scale; dx++ {
-					out.Set(x*scale+dx, y*scale+dy, c)
-				}
-			}
-		}
-	}
-	return out
-}
-
 // preprocessInverted converts a color image to inverted-luminance grayscale at
 // 3x scale. Game text (white) becomes black and dark backgrounds become light —
 // the orientation Tesseract is trained on. Antialiasing is preserved as a

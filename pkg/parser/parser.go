@@ -13,9 +13,9 @@
 //   - maps.go             — knownMaps, snapToKnownMap, bestKnownMapInText,
 //     levenshtein
 //   - tesseract.go        — tessPath, SetTesseractPath, runTesseract,
-//     ocrInverted, ocrRaw, runTesseractFunc seam
-//   - imageutil.go        — crop, upscale, preprocessInverted
-//   - text.go             — extractHeader, extractGameMode, extractInts,
+//     ocrInverted, runTesseractFunc seam
+//   - imageutil.go        — crop, preprocessInverted
+//   - text.go             — extractGameMode, extractInts,
 //     digitize, normalizeDate, trimShortBoundaryWords,
 //     labelToKey
 //   - parse_rank.go       — isRankScreenshot + parseRank + extractRank /
