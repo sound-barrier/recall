@@ -47,5 +47,9 @@ docker-compose.yml
 prometheus.yml
 grafana/
 
-# Dev helper scripts
-scripts/
+# Dev helper scripts — but keep scripts/windows/ in the build context so
+# the NSIS installer can bundle Reset-Database.bat (build/windows/installer/
+# project.nsi `File`s it). `scripts/*` excludes the contents while leaving
+# `scripts` traversable, so the `!` re-include of the subdir takes effect.
+scripts/*
+!scripts/windows/
