@@ -109,6 +109,7 @@ jobs:
           cp docs/docker.md               _stage/book/docker.md
           cp docs/grafana.md              _stage/book/grafana.md
           cp docs/feedback.md             _stage/book/feedback.md
+          cp docs/faq.md                  _stage/book/faq.md
           # Mirror testdata/ into the staged book so how-it-works.md's
           # example-screenshot images resolve via the same
           # `testdata/foo.png` relative path used in the README.

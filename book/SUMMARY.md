@@ -23,4 +23,5 @@
 
 ## Getting help
 
+* [FAQ](faq.md)
 * [Bug reports & feature requests](feedback.md)
