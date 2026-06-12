@@ -109,6 +109,26 @@ if its path is different there. One caveat: with no migrations, a database only
 reliably loads in the **same** Recall version, so install the matching version
 first — or just copy your screenshots and re-parse on the new machine.
 
+## What are profiles, and how do I delete the sample "test" one?
+
+A **profile** is a self-contained match history with its own settings and
+database — keep one per account (or per role queue, per smurf, however you split
+your play). The active profile shows in the chip at the top-right of the
+masthead; click it to switch between profiles or create a new one.
+
+The guided tour can spin up a sample **"test"** profile — 500 example matches
+across the last eight months — so you can explore Recall's views on a full
+history before you've parsed your own. When you're done looking around, remove
+it:
+
+1. Click the profile chip (top-right) and **switch back to your own account** —
+   you can't delete the profile you're currently in.
+2. Open **Settings → Profiles**, find **test**, and click **Delete** (a two-step
+   confirm). That wipes only that profile's database; your other profiles and
+   your screenshots are untouched.
+
+The same two steps delete any profile you no longer want.
+
 ## A new hero or map shows as "Unknown" — do I need to reinstall?
 
 No. Recall ships its hero/map roster separately from the app, so a new season's
