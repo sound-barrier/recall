@@ -267,6 +267,29 @@ test.describe('dossier — Hero × Game-Mode drill-down', () => {
     expect(['auto', 'scroll']).toContain(overflowY)
   })
 
+  test('drilling from the band does not yank the page (no scroll jump)', async ({ page }) => {
+    // Flat list: its reset-on-narrow explicitly scrolls the document to
+    // the list top. Clicking the band (which sits ABOVE the list) must
+    // not trigger that jump. (This is the cross-browser-reproducible
+    // symptom; the same fix also covers the dossier-head reflow that
+    // WebKit — lacking scroll-anchoring — shows in the grouped list.)
+    await page.locator('[data-sort-group-trigger]').click()
+    await page.locator('[data-group-pick="none"]').click()
+    await page.locator('body').click({ position: { x: 4, y: 4 } }) // close popover
+
+    const band = page.locator('.hero-mode-band')
+    const cell = band.locator('.heatmap-cell', { hasText: '60%' }).first()
+    await cell.scrollIntoViewIfNeeded()
+    await expect(cell).toBeVisible()
+    const before = (await band.boundingBox())!.y
+
+    await cell.click()
+    await expect(band.locator('[data-hero-mode-maps]')).toBeVisible()
+    const after = (await band.boundingBox())!.y
+
+    expect(Math.abs(after - before)).toBeLessThanOrEqual(8)
+  })
+
   test('a sparse drill shows the level, not the floor wall, and keeps Go-back', async ({ page }) => {
     const band = page.locator('.hero-mode-band')
     // ana×hybrid is the only 100% cell — a single match. Drilling it must

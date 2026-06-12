@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from 'vue'
 import type { MatchRecord } from '../api'
 import { GetProfiles } from '../api'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
@@ -165,6 +165,29 @@ const groupBy   = ref<'none' | 'day' | 'week' | 'month' | 'year'>('day')
 // The members list owns the windowing; onJumpToUndated reaches into it
 // to render the whole list before scrolling to the undated bucket.
 const membersListRef = ref<InstanceType<typeof MatchesMembersList> | null>(null)
+
+// Narrowing from a dossier affordance (a heatmap cell in the Hero ×
+// Game-Mode band, a Campaign Log day, a Geography cell, …) makes the
+// active-clause chips appear and the breakdown widgets re-flow in the
+// dossier head ABOVE the sections — and the flat list's reset scrolls
+// the document to the list top. Either way the content the user just
+// clicked gets shoved out from under their cursor. WebKit (the Wails
+// webview) has no scroll-anchoring to absorb it, so we anchor it
+// explicitly: capture the members section's viewport position before the
+// re-render and restore it after, but only when the user is scrolled
+// ABOVE the list (so an in-list reset still scrolls to the top).
+const leavesSectionRef = ref<HTMLElement | null>(null)
+watch(narrowedRecords, () => {
+  const el = leavesSectionRef.value
+  if (!el) return
+  const before = el.getBoundingClientRect().top
+  if (before <= 0) return // user is scrolled into the list — leave it
+  nextTick(() => {
+    const after = el.getBoundingClientRect().top
+    const delta = after - before
+    if (Math.abs(delta) > 1) window.scrollBy(0, delta)
+  })
+}, { flush: 'pre' })
 
 // Sort + Group dropdown — a single trigger button replaces the two
 // segmented-button fieldsets that used to live above the leaves
@@ -519,7 +542,7 @@ onMounted(() => {
       />
 
       <!-- ─── MEMBERS ─────────────────────────────────────────── -->
-      <section class="leaves" aria-label="Set members">
+      <section ref="leavesSectionRef" class="leaves" aria-label="Set members">
         <header class="leaves-head">
           <div class="leaves-head-left">
             <span class="leaves-eyebrow">Members</span>

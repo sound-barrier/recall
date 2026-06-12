@@ -261,7 +261,13 @@ watch(resetCounter, () => {
     const list = leavesListRef.value
     if (list) {
       const top = list.getBoundingClientRect().top + window.scrollY
-      window.scrollTo({ top: Math.max(0, top - 80), behavior: 'auto' })
+      // Only pull the document up to the list when the user is already
+      // scrolled into it. A reset fired while they're ABOVE the list —
+      // drilling the dossier heatmap, clicking a Campaign Log day — must
+      // not yank them down to the list top.
+      if (window.scrollY > top - 80) {
+        window.scrollTo({ top: Math.max(0, top - 80), behavior: 'auto' })
+      }
     }
     return
   }
