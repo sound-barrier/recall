@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 
 import type { MatchRecord } from '../api'
 import { summaryThumbnailURL } from './useSummaryThumbnail'
@@ -27,11 +27,18 @@ export function useMatchesRowContext(records: Ref<MatchRecord[]>) {
   }
 
   // Replay-code lookup for the menu's gating (we hide "Copy replay
-  // code" when the active row has no code on file). Looks up against the
-  // narrowed set — for right-click on a visible row that's always
-  // sufficient.
+  // code" when the active row has no code on file). Build an index from
+  // the narrowed set so lookups are O(1) instead of scanning on each call.
+  const replayCodeByMatchKey = computed(() => {
+    const byKey = new Map<string, string | null>()
+    for (const r of records.value) {
+      byKey.set(r.match_key, r.annotation?.replay_code ?? null)
+    }
+    return byKey
+  })
+
   function replayCodeFor(matchKey: string): string | null {
-    return records.value.find((r) => r.match_key === matchKey)?.annotation?.replay_code ?? null
+    return replayCodeByMatchKey.value.get(matchKey) ?? null
   }
 
   // ─── Leaf-row hover preview ────────────────────────────────────
