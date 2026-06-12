@@ -10,6 +10,6 @@
 
 set -euo pipefail
 
-for f in recall-*.tar.gz recall-*.deb recall-*.exe recall-*.dmg recall-*.yaml; do
+for f in recall-*.tar.gz recall-*.deb recall-*.exe recall-*.dmg recall-*.yaml recall-*.bat; do
   [ -f "$f" ] && sha256sum "$f" >"${f}.sha256"
 done

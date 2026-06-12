@@ -286,6 +286,15 @@ jobs:
           cp pkg/parser/maps.yaml               "recall-${VERSION}-maps.yaml"
           cp pkg/parser/screenshot_sources.yaml "recall-${VERSION}-screenshot_sources.yaml"
 
+      # The Windows DB-reset helper (also bundled in the installer). A
+      # checked-in source file copied straight into the workspace, like
+      # the reference YAMLs — so it's signed + attested the same way.
+      - name: Stage Windows reset-DB helper script
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          cp scripts/windows/Reset-Database.bat "recall-${VERSION}-Reset-Database.bat"
+
       # SLSA build provenance on the reference-data YAMLs. The binary
       # build jobs attested their own outputs in-job; the YAMLs aren't
       # built by any earlier job (they're checked-in source copied
@@ -300,6 +309,7 @@ jobs:
             recall-*-heroes.yaml
             recall-*-maps.yaml
             recall-*-screenshot_sources.yaml
+            recall-*-Reset-Database.bat
 
       # Per-artifact .sha256 files for every release binary, package,
       # and reference-data YAML. Each file contains the SHA256 hash of
@@ -322,6 +332,7 @@ jobs:
             recall-*.exe.sha256
             recall-*.dmg.sha256
             recall-*.yaml.sha256
+            recall-*.bat.sha256
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3
@@ -340,6 +351,8 @@ jobs:
             recall-*.dmg.sha256
             recall-*.yaml
             recall-*.yaml.sha256
+            recall-*.bat
+            recall-*.bat.sha256
             recall-*-sbom.spdx.json
 
   # ── Job 5: Build and push Linux server container image to GHCR ──
