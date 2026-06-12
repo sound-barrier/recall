@@ -3,10 +3,10 @@ package cmd
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 
 	"recall/pkg/app"
+	"recall/pkg/applog"
 )
 
 // registerProfileRoutes attaches every /api/v1/profiles/... handler
@@ -50,7 +50,7 @@ func registerProfileRoutes(apiMux *http.ServeMux, a *app.App) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		if encErr := json.NewEncoder(w).Encode(a.GetProfiles()); encErr != nil {
-			log.Printf("server: json encode: %v", encErr)
+			applog.Subsystem("server").Error("json encode", "err", encErr)
 		}
 	})
 	apiMux.HandleFunc("PUT /api/v1/profiles/active", func(w http.ResponseWriter, r *http.Request) {

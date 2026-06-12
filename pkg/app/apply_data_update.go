@@ -5,13 +5,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
+	"recall/pkg/applog"
 	"recall/pkg/parser"
 )
 
@@ -148,7 +148,7 @@ func commitVerifiedAssets(verified map[string]verifiedAsset, manifest DataManife
 	}
 
 	if err := parser.Reload(); err != nil {
-		log.Printf("apply_data_update: parser.Reload returned errors after apply: %v", err)
+		applog.Subsystem("apply_data_update").Warn("parser.Reload returned errors after apply", "err", err)
 	}
 
 	for _, name := range dataYAMLFiles {

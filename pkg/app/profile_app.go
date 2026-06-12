@@ -2,10 +2,10 @@ package app
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
+	"recall/pkg/applog"
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
@@ -201,7 +201,7 @@ func (a *App) activateAndReload(name string) error {
 	}
 	s, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
 	if err != nil {
-		log.Printf("profiles: open db for %q: %v", name, err)
+		applog.Subsystem("profiles").Error("open db", "name", name, "err", err)
 		return fmt.Errorf("profiles: open db for %q: %w", name, err)
 	}
 	a.store = s

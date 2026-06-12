@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
+
+	"recall/pkg/applog"
 )
 
 // CheckState records when the user last successfully ran the update
@@ -79,7 +80,7 @@ func LoadCheckState() (CheckState, error) {
 		// Corrupt file shouldn't bubble up — same "never checked"
 		// fallback as a missing file. The next successful
 		// TouchLastChecked overwrites it. Log for diagnosability.
-		log.Printf("check_state: corrupt JSON, treating as missing: %v", err)
+		applog.Subsystem("check_state").Warn("corrupt JSON, treating as missing", "err", err)
 		return CheckState{}, nil //nolint:nilerr // intentional fallback to "never checked"
 	}
 	return s, nil
@@ -118,7 +119,7 @@ func LoadManifest() (DataManifest, error) {
 	}
 	var m DataManifest
 	if err := json.Unmarshal(b, &m); err != nil {
-		log.Printf("manifest: corrupt JSON, treating as missing: %v", err)
+		applog.Subsystem("manifest").Warn("corrupt JSON, treating as missing", "err", err)
 		return DataManifest{}, nil //nolint:nilerr // intentional fallback to "running on embedded data"
 	}
 	return m, nil
