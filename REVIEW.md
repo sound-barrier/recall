@@ -72,13 +72,13 @@ Each item carries **size** (coding effort + review surface) and **risk**
 
 **Size:** S. **Risk:** Low.
 
-### D2. Split `MatchesView.vue` into SFCs (~800-line orchestration target)
+### D2. Split `MatchesView.vue` further (optional)
 
-**Where:** `frontend/src/components/MatchesView.vue` (~2,950 lines, dominated by `<style scoped>`).
+**Where:** `frontend/src/components/MatchesView.vue` (~1,710 lines).
 
-**What:** the "set workspace" bundles the dossier, Campaign Log timeline, narrow panel, members list, bulk-action bar, and archive drawer. Nothing breaks today — it's shaped but verbose; the cost is review time. Step 0 (`useArchiveSelection`) already shipped. Plan, in order: extract `MatchesDossier.vue`, then `MatchesNarrowPanel.vue`, then `MatchesArchiveDrawer.vue`; MatchesView shrinks to orchestration. (`MatchCardExpanded.vue` is the sibling candidate.) Defer until the maintainer is blocked on a feature *because of* file size.
+**What:** the heavy extractions have landed — `MatchesDossier`, `MatchLeafRow` / `MatchTableRow`, `MatchesArchiveDrawer`, and now `MatchesMembersList` (the leaf-list + data-density table + flat-mode virtualization + infinite-scroll). MatchesView is now orchestration plus the dossier head, the Campaign Log wiring, and the selection / bulk-bar / context-menu glue. Further splitting (the dossier head into its own SFC, the row-context-menu / hover-preview orchestration) is possible but low-value — defer until file size actually blocks a feature.
 
-**Size:** L. **Risk:** Med — scoped-CSS `data-v-*` hashes change per extraction; any cross-component selector that piggybacked on MatchesView's hash must follow.
+**Size:** M. **Risk:** Med — scoped-CSS `data-v-*` hashes change per extraction.
 
 ### D4. Real desktop-runtime e2e for Wails
 
