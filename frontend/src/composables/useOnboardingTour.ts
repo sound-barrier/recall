@@ -31,7 +31,7 @@ import { usePersistedRef, parseBoolish, serializeBoolish } from './usePersistedR
 // inside this file (and other lazy-loaded tour code) keep the
 // transitive import.
 export { ONBOARDING_COMPLETED_KEY } from './storageKeys'
-import { ONBOARDING_COMPLETED_KEY } from './storageKeys'
+import { ONBOARDING_COMPLETED_KEY, ONBOARDING_RESUME_KEY } from './storageKeys'
 
 export type OnboardingViewId = 'settings' | 'ingest' | 'matches' | 'unknown'
 export type CalloutPlacement = 'auto' | 'top' | 'bottom' | 'left' | 'right'
@@ -56,6 +56,13 @@ export interface TourActionContext {
   // "Lucio filter applied" without animating through the picker.
   applyHeroFilter: (hero: string) => void
   clearFilters:    () => void
+  // "Explore with real data": seed the sample "test" profile, park
+  // `resumeStepIndex` in localStorage, and SwitchProfile into it. The
+  // switch reloads the SPA, so this never returns on success — the tour
+  // reopens at `resumeStepIndex`, now active in the test profile.
+  // Rejects (without reloading) if seeding/switching fails, so the
+  // caller can fall back to a normal advance.
+  seedAndSwitchToTest: (resumeStepIndex: number) => Promise<void>
 }
 
 export interface OnboardingStep {
@@ -274,12 +281,31 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     body: 'Press ? anywhere to open the cheatsheet. h / l navigate left and right; j / k navigate up and down. The lightbox uses the same letters for screenshots.',
     target: null,
   },
-  // ── 16. Done ───────────────────────────────────────────────
+  // ── 16. Profiles — switch / create / DELETE ────────────────
+  {
+    id: 'profiles',
+    heading: 'Profiles',
+    body: 'Track multiple accounts here — each profile is its own match history + settings. Click the chip to switch or create one. To DELETE a profile (like the sample you can load next), switch away from it first, then remove it under Settings → Profiles.',
+    target: '.profile-switcher',
+    placement: 'bottom',
+  },
+  // ── 17. Explore with real data — seeds + switches to "test" ─
+  // Advancing (Next) seeds the sample "test" profile and switches into
+  // it, which reloads the SPA; the tour reopens on the Done step,
+  // already in the test profile. See next()'s special case below.
+  {
+    id: 'explore-sample',
+    tag: 'TRY IT',
+    heading: 'Explore with real data',
+    body: 'Recall is best with a history to dig through. Press Next to spin up a sample "test" profile — 500 matches across the last 8 months — and finish the tour there. Your own account stays put. Or Skip to finish without it.',
+    target: null,
+  },
+  // ── 18. Done ───────────────────────────────────────────────
   {
     id: 'done',
     tag: 'BRIEFING COMPLETE',
-    heading: 'You\'re ready to play',
-    body: 'You can replay this tour anytime from Settings → Advanced → Replay onboarding. The dossier above is mock data — your real matches return the moment you close this tour.',
+    heading: 'Explore, then clean up',
+    body: 'You\'re now in the sample "test" profile — poke around the dossier, narrow the set, open a match. When you\'re done, switch back to your account from the profile chip (top right), then delete "test" under Settings → Profiles. Replay this tour anytime from Settings → Advanced.',
     target: null,
   },
 ]
@@ -317,8 +343,26 @@ export function useOnboardingTour(opts: UseOnboardingTourOptions = {}) {
 
   onMounted(() => {
     if (opts.autoOpenOnMount === false) return
+    // Resume across the seed+switch reload: reopen at the parked step,
+    // now active in the test profile.
+    const resume = takeResumeStep()
+    if (resume !== null) {
+      open.value = true
+      void goToStep(resume)
+      return
+    }
     if (!completed.value) open.value = true
   })
+
+  function takeResumeStep(): number | null {
+    try {
+      const raw = localStorage.getItem(ONBOARDING_RESUME_KEY)
+      if (raw === null) return null
+      localStorage.removeItem(ONBOARDING_RESUME_KEY)
+      const n = Number(raw)
+      return Number.isInteger(n) && n >= 0 && n < totalSteps ? n : null
+    } catch (_) { return null }
+  }
 
   async function applyStepEffects(nextIndex: number, prevIndex: number) {
     const prevStep = ONBOARDING_STEPS[prevIndex]
@@ -339,6 +383,16 @@ export function useOnboardingTour(opts: UseOnboardingTourOptions = {}) {
     if (isLastStep.value) {
       finish()
       return
+    }
+    // The "explore-sample" step seeds + switches into the test profile,
+    // which reloads the SPA; on success this never returns (the tour
+    // reopens at the parked step). On failure, fall through to a plain
+    // advance so the user still reaches Done.
+    if (step.value.id === 'explore-sample' && opts.actions?.seedAndSwitchToTest) {
+      try {
+        await opts.actions.seedAndSwitchToTest(stepIndex.value + 1)
+        return
+      } catch (_) { /* fall through to a plain advance */ }
     }
     const prev = stepIndex.value
     stepIndex.value += 1

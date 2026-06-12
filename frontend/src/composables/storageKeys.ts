@@ -12,6 +12,14 @@
 
 export const ONBOARDING_COMPLETED_KEY = 'recall.onboardingCompleted'
 
+// Step index parked before the tour seeds + switches into the sample
+// "test" profile (which reloads the SPA). On the next mount the tour
+// reopens at this step — now active in the test profile — then clears
+// the key. Lives here (not in useOnboardingTour) so App.vue can read it
+// synchronously without pulling the tour controller into the initial
+// chunk.
+export const ONBOARDING_RESUME_KEY = 'recall.onboarding.resumeStep'
+
 // Per-contextual-callout "seen" state lives at this prefix + the
 // callout id (the same id passed to useContextualCallout). The full
 // onboarding tour's completed key (above) gates the WHOLE family:

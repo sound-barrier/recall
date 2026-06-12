@@ -14,10 +14,24 @@
  * sets `recall.onboardingCompleted=true`, and a reload no longer
  * auto-opens it. Skip and Esc share the same persistence path.
  */
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 // Bypass _fixtures (which pre-dismisses the tour) — the whole point
 // of this spec is to exercise the tour itself.
+
+// Walk the tour forward by pressing Next until the callout heading
+// matches `re`. Heading-driven rather than a fixed click count, so
+// the walk survives step-list edits — it only needs the target step
+// to exist somewhere ahead.
+async function walkToHeading(page: Page, re: RegExp, max = 30) {
+  const heading = page.locator('.tour-callout-heading')
+  for (let i = 0; i < max; i++) {
+    if (re.test((await heading.textContent()) ?? '')) return
+    await page.locator('button:has-text("Next")').click()
+    await page.waitForTimeout(120)
+  }
+  throw new Error(`tour never reached a heading matching ${re}`)
+}
 
 test.describe('onboarding tour — spotlighted walkthrough', () => {
   // The default fixtures pre-set `recall.onboardingCompleted='true'`
@@ -37,7 +51,7 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     })
   })
 
-  test('auto-opens on first visit and walks every step end-to-end', async ({ page }) => {
+  test('auto-opens on first visit and walks every step to "Explore with real data"', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
     await expect(page.locator('.tour-callout-heading')).toContainText(/welcome to recall/i)
@@ -57,15 +71,16 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     await expect(page.locator('.tour-callout-heading')).toContainText(/settings/i)
     await expect(page.locator('#tab-settings')).toHaveAttribute('aria-selected', 'true')
 
-    // Walk through every remaining step. The tour has 16 stops total
-    // (15 forward presses from step 1). Each click moves to the next
-    // step; the last advance flips Next → Done.
-    for (let i = 0; i < 13; i++) {
-      await page.locator('button:has-text("Next")').click()
-      await page.waitForTimeout(150)
-    }
-    await expect(page.locator('button:has-text("Done")')).toBeVisible()
-    await expect(page.locator('.tour-callout-heading')).toContainText(/ready to play/i)
+    // Walk the rest of the way to the second-to-last "Explore with
+    // real data" step. The final Done step lives BEHIND the seed +
+    // profile-switch (which reloads the SPA) — that reload-resume
+    // flow is exercised in onboarding-tour.spec.ts. Walking by
+    // heading keeps this spec robust to step-list edits.
+    await walkToHeading(page, /explore with real data/i)
+    await expect(page.locator('.tour-callout-heading')).toContainText(/explore with real data/i)
+    // It's the second-to-last step, so the button is still Next (the
+    // seed+switch), not Done.
+    await expect(page.locator('button:has-text("Next")')).toBeVisible()
   })
 
   test('Skip dismisses the tour and persists completion', async ({ page }) => {
@@ -229,7 +244,7 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     await page.goto('/')
     await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
     // Welcome is step 1; ambiguous-attribution is step 14 in the
-    // 16-step list (after unknown-tab, before cheatsheet). 13 Next
+    // 18-step list (after unknown-tab, before cheatsheet). 13 Next
     // clicks lands on it.
     for (let i = 0; i < 13; i++) {
       await page.locator('button:has-text("Next")').click()

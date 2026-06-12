@@ -6,8 +6,10 @@ import {
   useOnboardingTour,
   ONBOARDING_COMPLETED_KEY,
   ONBOARDING_STEPS,
+  type TourActionContext,
   type UseOnboardingTourOptions,
 } from './useOnboardingTour'
+import { ONBOARDING_RESUME_KEY } from './storageKeys'
 
 // happy-dom doesn't ship a localStorage stub, so the existing
 // persisted-pref tests in this directory all stub it via
@@ -193,5 +195,66 @@ describe('useOnboardingTour — step content shape', () => {
   it('all step ids are unique (drives DOM keys + e2e selectors)', () => {
     const ids = new Set(ONBOARDING_STEPS.map(s => s.id))
     expect(ids.size).toBe(ONBOARDING_STEPS.length)
+  })
+})
+
+describe('useOnboardingTour — explore-sample seed + switch', () => {
+  function actionsStub(seed: TourActionContext['seedAndSwitchToTest']): TourActionContext {
+    return {
+      goToView: vi.fn(), openMatch: vi.fn(), closeMatch: vi.fn(),
+      openNarrow: vi.fn(), closeNarrow: vi.fn(), applyHeroFilter: vi.fn(),
+      clearFilters: vi.fn(), seedAndSwitchToTest: seed,
+    }
+  }
+  const exploreIdx = ONBOARDING_STEPS.findIndex(s => s.id === 'explore-sample')
+
+  it('exposes the new profiles + explore-sample steps', () => {
+    const ids = ONBOARDING_STEPS.map(s => s.id)
+    expect(ids).toContain('profiles')
+    expect(ids).toContain('explore-sample')
+    expect(ONBOARDING_STEPS.find(s => s.id === 'profiles')!.target).toBe('.profile-switcher')
+    // explore-sample sits second-to-last; Done is last.
+    expect(exploreIdx).toBe(ONBOARDING_STEPS.length - 2)
+  })
+
+  it('next() on explore-sample seeds + switches (parking the next step) instead of advancing', async () => {
+    const seed = vi.fn().mockResolvedValue(undefined)
+    const tour = mountWithTour({ actions: actionsStub(seed) })
+    await nextTick()
+    await tour.goToStep(exploreIdx)
+    expect(tour.step.value.id).toBe('explore-sample')
+    await tour.next()
+    expect(seed).toHaveBeenCalledWith(exploreIdx + 1)
+    // On success the real action reloads the SPA — here it's stubbed, so
+    // the controller stays put rather than double-advancing.
+    expect(tour.stepIndex.value).toBe(exploreIdx)
+  })
+
+  it('falls through to a plain advance when seed + switch rejects', async () => {
+    const seed = vi.fn().mockRejectedValue(new Error('seed failed'))
+    const tour = mountWithTour({ actions: actionsStub(seed) })
+    await nextTick()
+    await tour.goToStep(exploreIdx)
+    await tour.next()
+    expect(seed).toHaveBeenCalled()
+    expect(tour.stepIndex.value).toBe(exploreIdx + 1) // reached Done on demo
+  })
+
+  it('reopens at the parked resume step on mount and clears the key', async () => {
+    const doneIdx = ONBOARDING_STEPS.length - 1
+    localStorage.setItem(ONBOARDING_RESUME_KEY, String(doneIdx))
+    const tour = mountWithTour()
+    await nextTick()
+    expect(tour.open.value).toBe(true)
+    expect(tour.stepIndex.value).toBe(doneIdx)
+    expect(localStorage.getItem(ONBOARDING_RESUME_KEY)).toBeNull()
+  })
+
+  it('ignores an out-of-range resume value', async () => {
+    localStorage.setItem(ONBOARDING_RESUME_KEY, '999')
+    const tour = mountWithTour()
+    await nextTick()
+    // Falls back to the normal first-run auto-open at step 0.
+    expect(tour.stepIndex.value).toBe(0)
   })
 })
