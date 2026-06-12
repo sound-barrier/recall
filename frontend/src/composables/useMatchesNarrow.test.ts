@@ -306,6 +306,32 @@ describe('useMatchesNarrow', () => {
     })
   })
 
+  describe('members filter', () => {
+    it('AND semantics — only games with EVERY picked teammate (the stack)', () => {
+      const records = ref([
+        rec({ key: 'a', members: ['Alice', 'Bob'] }),
+        rec({ key: 'b', members: ['Alice'] }),
+        rec({ key: 'c', members: ['Bob'] }),
+        rec({ key: 'd', members: [] }),
+      ])
+      const { narrowedRecords, pickMember } = useMatchesNarrow(records, createMatchesNarrowState())
+      pickMember('Alice')
+      expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['a', 'b'])
+      pickMember('Bob')
+      // Intersection: only 'a' has BOTH Alice and Bob.
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['a'])
+    })
+
+    it('availableMembers is the sorted union across the corpus', () => {
+      const records = ref([
+        rec({ key: 'a', members: ['Bob', 'Alice'] }),
+        rec({ key: 'b', members: ['Alice', 'Cara'] }),
+      ])
+      const { availableMembers } = useMatchesNarrow(records, createMatchesNarrowState())
+      expect(availableMembers.value).toEqual(['Alice', 'Bob', 'Cara'])
+    })
+  })
+
   describe('leaver handling', () => {
     it("'hide' drops leaver-annotated records", () => {
       const records = ref([

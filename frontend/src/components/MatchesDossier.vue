@@ -27,6 +27,7 @@ const {
   pickedRoles,
   pickedResults,
   pickedTags,
+  pickedMembers,
   pickedReviewedBy,
   leaverHandling,
   minPlayMinutes,
@@ -40,6 +41,7 @@ const {
   pickRole,
   pickResult,
   pickTag,
+  pickMember,
   pickReviewedBy,
   resetNarrow,
 } = props.narrow
@@ -114,6 +116,13 @@ const {
         <span class="chip-key">Tag</span>
         <span class="chip-val">#{{ t }}</span>
         <button class="chip-x" :aria-label="`Drop tag ${t}`" @click="pickTag(t)">
+          ×
+        </button>
+      </li>
+      <li v-for="m in [...pickedMembers]" :key="`mem-${m}`" class="active-chip member">
+        <span class="chip-key">With</span>
+        <span class="chip-val">{{ m }}</span>
+        <button class="chip-x" :aria-label="`Drop teammate ${m}`" @click="pickMember(m)">
           ×
         </button>
       </li>

@@ -44,7 +44,7 @@ const emit = defineEmits<{
 
 const {
   searchText,
-  pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags,
+  pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers,
   pickedRange, customFrom, customTo,
   anchorKey,
   activeClauseCount, anyNarrow,
@@ -253,6 +253,7 @@ const setHeadline = computed(() => {
   if (pickedHeroes.value.size)   parts.push([...pickedHeroes.value].join(' · '))
   if (pickedResults.value.size)  parts.push([...pickedResults.value].join('/'))
   if (pickedTags.value.size)     parts.push([...pickedTags.value].map((t) => `#${t}`).join(' '))
+  if (pickedMembers.value.size)  parts.push('with ' + [...pickedMembers.value].join(' + '))
   return parts.join(' — ') || 'Active narrow'
 })
 

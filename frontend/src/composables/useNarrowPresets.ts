@@ -23,6 +23,7 @@ interface SerializedNarrow {
   pickedRoles:       string[]
   pickedResults:     string[]
   pickedTags:        string[]
+  pickedMembers:     string[]
   pickedReviewedBy:  ReviewedByPick[]
   pickedQueues:      QueuePick[]
   pickedPlayModes:   PlayModePick[]
@@ -50,6 +51,7 @@ function serialize(state: MatchesNarrowState): SerializedNarrow {
     pickedRoles:       [...state.pickedRoles.value].sort(),
     pickedResults:     [...state.pickedResults.value].sort(),
     pickedTags:        [...state.pickedTags.value].sort(),
+    pickedMembers:     [...state.pickedMembers.value].sort(),
     pickedReviewedBy:  [...state.pickedReviewedBy.value],
     pickedQueues:      [...state.pickedQueues.value],
     pickedPlayModes:   [...state.pickedPlayModes.value],
@@ -72,6 +74,7 @@ function apply(state: MatchesNarrowState, s: SerializedNarrow): void {
   state.pickedRoles.value       = new Set(s.pickedRoles)
   state.pickedResults.value     = new Set(s.pickedResults)
   state.pickedTags.value        = new Set(s.pickedTags)
+  state.pickedMembers.value     = new Set(s.pickedMembers ?? [])
   state.pickedReviewedBy.value  = new Set(s.pickedReviewedBy)
   state.pickedQueues.value      = new Set(s.pickedQueues)
   state.pickedPlayModes.value   = new Set(s.pickedPlayModes)

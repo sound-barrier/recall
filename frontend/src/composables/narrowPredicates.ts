@@ -120,6 +120,17 @@ export function matchesTags(r: MatchRecord, pickedTags: Set<string>): boolean {
   return [...pickedTags].some((t) => tags.has(t))
 }
 
+// matchesMembers narrows to matches that include EVERY picked teammate
+// — AND semantics, not OR like tags. Picking {Alice, Bob} isolates the
+// games where both were on the team (the duo/stack), which is the point
+// of the dimension: "how does this exact group do?". A single pick
+// reduces to "games I played with this person".
+export function matchesMembers(r: MatchRecord, pickedMembers: Set<string>): boolean {
+  if (!pickedMembers.size) return true
+  const members = new Set(r.annotation?.members ?? [])
+  return [...pickedMembers].every((m) => members.has(m))
+}
+
 export function matchesReviewedBy(r: MatchRecord, picked: Set<ReviewedByPick>): boolean {
   if (!picked.size) return true
   const bucket: ReviewedByPick = r.reviewed_by ?? 'unreviewed'
