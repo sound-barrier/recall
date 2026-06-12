@@ -5,6 +5,7 @@ import {
   matchesDateRange,
   matchesHero,
   matchesLeaverHandling,
+  matchesMembers,
   matchesPickedSet,
   matchesReviewedBy,
   matchesQueueType,
@@ -73,6 +74,7 @@ export interface MatchesNarrowState {
   pickedRoles:       Ref<Set<string>>
   pickedResults:     Ref<Set<string>>
   pickedTags:        Ref<Set<string>>
+  pickedMembers:     Ref<Set<string>>
   pickedReviewedBy:  Ref<Set<ReviewedByPick>>
   pickedQueues:      Ref<Set<QueuePick>>
   pickedPlayModes:   Ref<Set<PlayModePick>>
@@ -108,6 +110,7 @@ export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions =
     pickedRoles:      ref(new Set<string>()),
     pickedResults:    ref(new Set<string>()),
     pickedTags:       ref(new Set<string>()),
+    pickedMembers:    ref(new Set<string>()),
     pickedReviewedBy: ref(new Set<ReviewedByPick>()),
     pickedQueues:     ref(new Set<QueuePick>()),
     pickedPlayModes:  ref(new Set<PlayModePick>()),
@@ -156,7 +159,7 @@ export function useMatchesNarrow(
 ) {
   const {
     searchText, pickedMaps, pickedGameModes, pickedHeroes,
-    pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
+    pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
     pickedQueues, pickedPlayModes,
     pickedRange, customFrom, customTo,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
@@ -175,6 +178,7 @@ export function useMatchesNarrow(
   const pickRole       = (v: string) => { pickedRoles.value    = toggleSet(pickedRoles.value,    v) }
   const pickResult     = (v: string) => { pickedResults.value  = toggleSet(pickedResults.value,  v) }
   const pickTag        = (v: string) => { pickedTags.value     = toggleSet(pickedTags.value,     v) }
+  const pickMember     = (v: string) => { pickedMembers.value  = toggleSet(pickedMembers.value,  v) }
   const pickReviewedBy = (v: ReviewedByPick) => {
     pickedReviewedBy.value = toggleGameModedSet(pickedReviewedBy.value, v)
   }
@@ -205,6 +209,7 @@ export function useMatchesNarrow(
     pickedRoles.value         = new Set()
     pickedResults.value       = new Set()
     pickedTags.value          = new Set()
+    pickedMembers.value       = new Set()
     pickedReviewedBy.value    = new Set()
     pickedQueues.value        = new Set()
     pickedPlayModes.value     = new Set()
@@ -233,6 +238,7 @@ export function useMatchesNarrow(
     n += pickedRoles.value.size
     n += pickedResults.value.size
     n += pickedTags.value.size
+    n += pickedMembers.value.size
     n += pickedReviewedBy.value.size
     n += pickedQueues.value.size
     n += pickedPlayModes.value.size
@@ -267,6 +273,13 @@ export function useMatchesNarrow(
     const set = new Set<string>()
     for (const r of records.value) {
       for (const t of r.annotation?.tags ?? []) if (t) set.add(t)
+    }
+    return [...set].sort()
+  })
+  const availableMembers  = computed(() => {
+    const set = new Set<string>()
+    for (const r of records.value) {
+      for (const m of r.annotation?.members ?? []) if (m) set.add(m)
     }
     return [...set].sort()
   })
@@ -307,6 +320,7 @@ export function useMatchesNarrow(
     const results = pickedResults.value
     const heroes = pickedHeroes.value
     const tags = pickedTags.value
+    const members = pickedMembers.value
     const reviewed = pickedReviewedBy.value
     const queues = pickedQueues.value
     const playModes = pickedPlayModes.value
@@ -326,6 +340,7 @@ export function useMatchesNarrow(
         && matchesPickedSet(r.data.result, results)
         && matchesHero(r, heroes, heroMin, heroPct)
         && matchesTags(r, tags)
+        && matchesMembers(r, members)
         && matchesReviewedBy(r, reviewed)
         && matchesQueueType(r, queues)
         && matchesPlayMode(r, playModes)
@@ -348,7 +363,7 @@ export function useMatchesNarrow(
   //   - dropping any one clause STILL leaves zero records (no
   //     single clause is the culprit; the suggestion would be a lie).
   type ClauseId = 'search' | 'dateRange' | 'maps' | 'gameModes' | 'roles'
-                | 'results' | 'heroes' | 'tags' | 'reviewedBy' | 'queues'
+                | 'results' | 'heroes' | 'tags' | 'members' | 'reviewedBy' | 'queues'
                 | 'playModes' | 'leaver' | 'sinceAnchor' | 'minPlay' | 'includeUnknown'
 
   interface ClauseSuggestion {
@@ -370,6 +385,7 @@ export function useMatchesNarrow(
     const heroMin   = minPlayMinutes.value
     const heroPct   = minPlayPercent.value
     const tags      = pickedTags.value
+    const members   = pickedMembers.value
     const reviewed  = pickedReviewedBy.value
     const queues    = pickedQueues.value
     const playModes = pickedPlayModes.value
@@ -387,6 +403,7 @@ export function useMatchesNarrow(
     if (omit !== 'results'        && !matchesPickedSet(r.data.result, results)) return false
     if (omit !== 'heroes'         && omit !== 'minPlay' && !matchesHero(r, heroes, heroMin, heroPct)) return false
     if (omit !== 'tags'           && !matchesTags(r, tags)) return false
+    if (omit !== 'members'        && !matchesMembers(r, members)) return false
     if (omit !== 'reviewedBy'     && !matchesReviewedBy(r, reviewed)) return false
     if (omit !== 'queues'         && !matchesQueueType(r, queues)) return false
     if (omit !== 'playModes'      && !matchesPlayMode(r, playModes)) return false
@@ -405,6 +422,7 @@ export function useMatchesNarrow(
     if (pickedResults.value.size > 0)                               out.push('results')
     if (pickedHeroes.value.size > 0)                                out.push('heroes')
     if (pickedTags.value.size > 0)                                  out.push('tags')
+    if (pickedMembers.value.size > 0)                               out.push('members')
     if (pickedReviewedBy.value.size > 0)                            out.push('reviewedBy')
     if (pickedQueues.value.size > 0)                                out.push('queues')
     if (pickedPlayModes.value.size > 0)                             out.push('playModes')
@@ -436,6 +454,9 @@ export function useMatchesNarrow(
       case 'tags':           return pickedTags.value.size === 1
         ? `tag #${[...pickedTags.value][0]}`
         : `${pickedTags.value.size} tag picks`
+      case 'members':        return pickedMembers.value.size === 1
+        ? `with ${[...pickedMembers.value][0]}`
+        : `${pickedMembers.value.size} teammates`
       case 'reviewedBy':     return 'reviewed-by filter'
       case 'queues':         return 'queue-type filter'
       case 'playModes':      return 'play-mode filter'
@@ -456,6 +477,7 @@ export function useMatchesNarrow(
       case 'results':        pickedResults.value = new Set(); break
       case 'heroes':         pickedHeroes.value = new Set(); break
       case 'tags':           pickedTags.value = new Set(); break
+      case 'members':        pickedMembers.value = new Set(); break
       case 'reviewedBy':     pickedReviewedBy.value = new Set(); break
       case 'queues':         pickedQueues.value = new Set(); break
       case 'playModes':      pickedPlayModes.value = new Set(); break
@@ -485,18 +507,18 @@ export function useMatchesNarrow(
   return {
     // State
     searchText,
-    pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
+    pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
     pickedQueues, pickedPlayModes,
     pickedRange, customFrom, customTo,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive,
     // Actions
-    pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickQueue, pickPlayMode, pickRange,
+    pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickRange,
     resetNarrow,
     // Derived
     activeClauseCount, anyNarrow,
     searchClauses,
-    availableMaps, availableGameModes, availableHeroes, availableRoles, availableResults, availableTags,
+    availableMaps, availableGameModes, availableHeroes, availableRoles, availableResults, availableTags, availableMembers,
     narrowedRecords,
     clauseExclusionCounts,
   }

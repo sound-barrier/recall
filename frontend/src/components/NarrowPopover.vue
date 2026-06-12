@@ -63,15 +63,15 @@ const emit = defineEmits<{
 // auto-unwraps the refs. Same shape MatchesView used pre-extraction.
 const {
   searchText,
-  pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedReviewedBy,
+  pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
   pickedQueues, pickedPlayModes,
   pickedRange, customFrom, customTo,
   leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
   anchorKey, sinceAnchorActive,
-  pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickReviewedBy, pickQueue, pickPlayMode, pickRange,
+  pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickRange,
   resetNarrow,
   activeClauseCount, anyNarrow,
-  availableMaps, availableGameModes, availableHeroes, availableRoles, availableResults, availableTags,
+  availableMaps, availableGameModes, availableHeroes, availableRoles, availableResults, availableTags, availableMembers,
   narrowedRecords,
 } = props.narrow
 void activeClauseCount; void anyNarrow
@@ -506,6 +506,27 @@ onUnmounted(() => {
                     #{{ t }}
                   </button>
                   <span v-if="!availableTags.length" class="np-empty">no tags yet — add via match annotation</span>
+                </div>
+              </section>
+
+              <!-- Teammates — picking >1 is AND (the exact stack) -->
+              <section class="np-section">
+                <div class="np-section-head">
+                  <span class="np-section-eyebrow">Teammates</span>
+                  <span class="np-section-meta">{{ pickedMembers.size ? `${pickedMembers.size} picked` : 'any' }}</span>
+                </div>
+                <div class="np-chips">
+                  <button
+                    v-for="m in availableMembers"
+                    :key="m"
+                    class="np-chip"
+                    :class="{ picked: pickedMembers.has(m) }"
+                    :data-member="m"
+                    @click="pickMember(m)"
+                  >
+                    {{ m }}
+                  </button>
+                  <span v-if="!availableMembers.length" class="np-empty">no teammates yet — tag them via match annotation</span>
                 </div>
               </section>
 

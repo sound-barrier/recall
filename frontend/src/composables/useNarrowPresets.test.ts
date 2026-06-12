@@ -13,6 +13,7 @@ function buildState(): MatchesNarrowState {
     pickedRoles:       ref(new Set<string>()),
     pickedResults:     ref(new Set<string>()),
     pickedTags:        ref(new Set<string>()),
+    pickedMembers:     ref(new Set<string>()),
     pickedReviewedBy:  ref(new Set<ReviewedByPick>()),
     pickedQueues:      ref(new Set<QueuePick>()),
     pickedPlayModes:   ref(new Set<PlayModePick>()),
