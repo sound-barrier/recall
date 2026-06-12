@@ -12,6 +12,7 @@ import WidgetConfigPopover from './WidgetConfigPopover.vue'
 import MatchesSortGroupPopover from './MatchesSortGroupPopover.vue'
 import { useWeekStart } from '../composables/useWeekStart'
 import { useDensity } from '../composables/useDensity'
+import { useTableSort, type TableSortCol } from '../composables/useTableSort'
 import { useScrollAffordance } from '../composables/useScrollAffordance'
 import { useOWData } from '../composables/useOWData'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
@@ -24,6 +25,7 @@ import DossierSection from './DossierSection.vue'
 import BulkActionBar from './BulkActionBar.vue'
 import MatchesArchiveDrawer from './MatchesArchiveDrawer.vue'
 import MatchLeafRow from './MatchLeafRow.vue'
+import MatchTableRow from './MatchTableRow.vue'
 import MatchesDossier from './MatchesDossier.vue'
 // NarrowPopover is the heavyweight authoring surface (the search +
 // combobox + range pickers + active-clause range etc.). Lazy-load
@@ -683,6 +685,12 @@ const setSubline = computed(() => {
 // ─── Sort + group via useMatchesGroup composable ───────────
 const { sortedRecords, groupedSections } = useMatchesGroup(narrowedRecords, groupBy, sortOrder)
 
+// ─── Data-density table: per-column sort ──────────────────
+// The Y/M/W/D grouping (above) chooses the buckets + their order; this
+// engine orders rows WITHIN each bucket (and the whole list in the flat
+// path). Only the `data` density reads it.
+const { sortCol, sortDir, cycleSort, ariaSort, sortRows } = useTableSort()
+
 // ─── Infinite-scroll window over the grouped sections ──────
 //
 // Renders only the first `renderedCount` rows; an
@@ -727,7 +735,10 @@ const windowedSections = computed<GroupedSection[]>(() => {
 // at the bottom of this script block — keeps the DOM-touching
 // concern co-located with the leavesListRef declaration.
 const leavesListRef = ref<HTMLUListElement | null>(null)
-const sentinelRef   = ref<HTMLLIElement | null>(null)
+// Either the leaf list's <li> sentinel or the data table's <tr>
+// sentinel binds here — only one renders per density, and the single
+// IntersectionObserver re-observes whichever mounts.
+const sentinelRef   = ref<HTMLElement | null>(null)
 let sentinelObserver: IntersectionObserver | null = null
 
 // ─── Flat-mode row virtualization ──────────────────────────────
@@ -802,6 +813,53 @@ function measureLeafHeight(): void {
 watch([flatVirtualization, () => density.value], () => {
   leafRowHeight.value = density.value === 'compact' ? LEAF_ROW_HEIGHT_COMPACT : LEAF_ROW_HEIGHT_DEFAULT
 })
+
+// ─── Data-density table renderer ───────────────────────────────
+//
+// The `data` density swaps the leaf-row <ul> for a real <table>
+// (sortable column headers + MatchTableRow rows). Two render paths
+// mirror the leaf list exactly:
+//
+//   • grouped (Y/M/W/D) → the same windowedSections, each re-sorted
+//     within itself by the active column; the infinite-scroll
+//     sentinel pages more groups in via the shared renderedCount.
+//   • flat (groupBy='none') → the whole column-sorted list,
+//     virtualized through its own window. Table rows are far shorter
+//     than leaf rows, so this needs a dedicated itemHeight + spacer
+//     <tr>s rather than reusing the leaf virtualizer.
+//
+// The sortable columns, in render order. `col` is the TableSortCol a
+// header sorts by (null = the non-sortable checkbox gutter).
+const TABLE_COLUMNS: ReadonlyArray<{ col: TableSortCol | null; label: string }> = [
+  { col: null,           label: '' },
+  { col: 'date',         label: 'When' },
+  { col: 'map',          label: 'Map' },
+  { col: 'mode',         label: 'Mode' },
+  { col: 'hero',         label: 'Hero' },
+  { col: 'role',         label: 'Role' },
+  { col: 'eliminations', label: 'E / A / D' },
+  { col: 'tags',         label: 'Tags' },
+  { col: 'result',       label: 'Result' },
+]
+
+const TABLE_ROW_HEIGHT = 30
+const tableRef = ref<HTMLTableElement | null>(null)
+
+const tableGroupedSections = computed<GroupedSection[]>(() =>
+  windowedSections.value.map((s) => ({ key: s.key, header: s.header, records: sortRows(s.records) })),
+)
+
+const tableFlatRecords = computed(() => sortRows(sortedRecords.value))
+const tableVirtual = useVirtualWindow({
+  items:        tableFlatRecords,
+  containerRef: tableRef,
+  mode:         'window',
+  itemHeight:   TABLE_ROW_HEIGHT,
+  overscan:     12,
+})
+const tableFlatRows     = computed(() => (flatVirtualization.value ? (tableVirtual.visibleItems.value as MatchRecord[]) : []))
+const tableTopSpacer    = computed(() => (flatVirtualization.value ? tableVirtual.topSpacer.value : 0))
+const tableBottomSpacer = computed(() => (flatVirtualization.value ? tableVirtual.bottomSpacer.value : 0))
 
 // Auto-scroll an off-window focused row into view when App.vue's
 // j/k keyboard nav advances focusedCardIndex past the rendered
@@ -1287,6 +1345,16 @@ onBeforeUnmount(() => {
               >
                 Compact
               </button>
+              <button
+                class="seg-btn"
+                :class="{ picked: density === 'data' }"
+                :aria-pressed="density === 'data' ? 'true' : 'false'"
+                :data-density-pick="density === 'data' ? 'data' : undefined"
+                title="Table view — sortable columns, hairline rows"
+                @click="setDensity('data')"
+              >
+                Data
+              </button>
             </fieldset>
             <!-- Jump to the "No date" section at the bottom of the
                leaves list. useMatchesGroup always appends the
@@ -1336,7 +1404,7 @@ onBeforeUnmount(() => {
         />
 
         <ul
-          v-if="sortedRecords.length"
+          v-if="density !== 'data' && sortedRecords.length"
           ref="leavesListRef"
           class="leaves-list"
           :class="`density-${density}`"
@@ -1421,6 +1489,151 @@ onBeforeUnmount(() => {
             </span>
           </li>
         </ul>
+
+        <!-- Data density — a real <table> with sortable column headers.
+           Mirrors the leaf list's two render paths: grouped (one
+           <tbody> per Y/M/W/D bucket, rows sorted within it) and flat
+           (a single virtualized body with spacer <tr>s). -->
+        <table
+          v-else-if="density === 'data' && sortedRecords.length"
+          ref="tableRef"
+          class="leaves-table"
+        >
+          <thead class="leaves-thead">
+            <tr>
+              <th
+                v-for="column in TABLE_COLUMNS"
+                :key="column.label || 'select'"
+                scope="col"
+                class="th"
+                :class="{ 'th-sortable': !!column.col, 'th-active': !!column.col && sortCol === column.col }"
+                :data-sort-col="column.col || undefined"
+                :aria-sort="column.col ? ariaSort(column.col) : undefined"
+                @click="column.col && cycleSort(column.col)"
+              >
+                <span v-if="column.label" class="th-inner">
+                  {{ column.label }}
+                  <span
+                    v-if="!!column.col && sortCol === column.col"
+                    class="th-caret"
+                    aria-hidden="true"
+                  >{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
+                </span>
+              </th>
+            </tr>
+          </thead>
+
+          <!-- Flat (groupBy='none'): one virtualized body. Spacer <tr>s
+             above + below the rendered slice hold the scroll height
+             stable, exactly like the leaf-list flat path. -->
+          <tbody v-if="flatVirtualization">
+            <tr
+              v-if="tableTopSpacer > 0"
+              class="table-spacer"
+              aria-hidden="true"
+              :style="{ height: tableTopSpacer + 'px' }"
+              data-virt-top-spacer
+            >
+              <td :colspan="TABLE_COLUMNS.length" />
+            </tr>
+            <MatchTableRow
+              v-for="rec in tableFlatRows"
+              :key="rec.match_key"
+              :rec="rec"
+              :card-index="narrowedIndexByKey.get(rec.match_key) ?? -1"
+              :focused-card-index="props.focusedCardIndex"
+              :selected="selectedKeys.has(rec.match_key)"
+              :has-selection="selectedKeys.size > 0"
+              :is-anchor="rec.match_key === anchorKey"
+              :search-clauses="searchClauses"
+              @open-match="emit('open-match', $event)"
+              @toggle-select="toggleSelected"
+              @row-context="onRowContext"
+              @hover-enter="onLeafMouseEnter"
+              @hover-move="onLeafMouseMove"
+              @hover-leave="onLeafMouseLeave"
+            />
+            <tr
+              v-if="tableBottomSpacer > 0"
+              class="table-spacer"
+              aria-hidden="true"
+              :style="{ height: tableBottomSpacer + 'px' }"
+              data-virt-bottom-spacer
+            >
+              <td :colspan="TABLE_COLUMNS.length" />
+            </tr>
+          </tbody>
+
+          <!-- Grouped (Y/M/W/D): one <tbody> per windowed bucket; a
+             spanning header row labels it, rows sorted within. -->
+          <template v-else>
+            <tbody
+              v-for="section in tableGroupedSections"
+              :key="section.key"
+              class="table-group"
+            >
+              <tr
+                v-if="section.header"
+                class="table-group-head"
+                :data-section-key="section.key"
+              >
+                <th :colspan="TABLE_COLUMNS.length" scope="colgroup">
+                  <span class="tg-label">{{ section.header }}</span>
+                  <span class="tg-count">{{ section.records.length }}</span>
+                </th>
+              </tr>
+              <MatchTableRow
+                v-for="rec in section.records"
+                :key="rec.match_key"
+                :rec="rec"
+                :card-index="narrowedIndexByKey.get(rec.match_key) ?? -1"
+                :focused-card-index="props.focusedCardIndex"
+                :selected="selectedKeys.has(rec.match_key)"
+                :has-selection="selectedKeys.size > 0"
+                :is-anchor="rec.match_key === anchorKey"
+                :search-clauses="searchClauses"
+                @open-match="emit('open-match', $event)"
+                @toggle-select="toggleSelected"
+                @row-context="onRowContext"
+                @hover-enter="onLeafMouseEnter"
+                @hover-move="onLeafMouseMove"
+                @hover-leave="onLeafMouseLeave"
+              />
+            </tbody>
+          </template>
+
+          <!-- Shared tail: infinite-scroll sentinel (grouped paging) +
+             honest count. Reuses sentinelRef so the single observer
+             re-binds when density swaps the <ul> for this <table>. -->
+          <tfoot class="leaves-tfoot">
+            <tr
+              v-if="hasMore && !flatVirtualization"
+              ref="sentinelRef"
+              class="leaves-sentinel-row"
+              aria-hidden="true"
+              data-testid="leaves-sentinel"
+            >
+              <td :colspan="TABLE_COLUMNS.length" />
+            </tr>
+            <tr
+              class="leaves-foot-row"
+              role="status"
+              aria-live="polite"
+              data-testid="leaves-foot"
+            >
+              <td :colspan="TABLE_COLUMNS.length">
+                <span v-if="hasMore && !flatVirtualization">
+                  Showing {{ renderedCount }} of {{ sortedRecords.length }} matches
+                </span>
+                <span v-else class="leaves-foot-end">
+                  End · {{ sortedRecords.length }}
+                  {{ sortedRecords.length === 1 ? 'match' : 'matches' }}
+                </span>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+
         <p v-else class="leaves-empty">
           No matches in this set.
           <button v-if="anyNarrow" class="leaves-empty-btn" @click="resetNarrow">
@@ -1931,6 +2144,98 @@ onBeforeUnmount(() => {
   gap: 0.65rem;
 }
 .leaves-list.density-compact :deep(.leaf-strip) { height: 26px; }
+
+
+/* ─── Data density — the sortable match <table> ───────────────────
+   A real semantic table replaces the leaf-row <ul> when density is
+   `data`: hairline rows, a sticky sortable header, monospace cells.
+   Per-row + per-cell styling lives in MatchTableRow.vue (scoped to
+   its own <tr>); these rules own the table frame + header. */
+.leaves-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+}
+
+.leaves-thead .th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-align: left;
+  padding: 0.5rem 0.55rem;
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-faint);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
+}
+.leaves-thead .th[data-sort-col="result"] { text-align: right; }
+.leaves-thead .th[data-sort-col="result"] .th-inner { flex-direction: row-reverse; }
+
+.th-sortable {
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.th-sortable:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+}
+.th-active { color: var(--accent); }
+
+.th-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.th-caret {
+  font-size: 0.5rem;
+  color: var(--accent);
+}
+
+/* Spanning bucket label between Y/M/W/D groups. */
+.table-group-head th {
+  text-align: left;
+  padding: 0.65rem 0.55rem 0.25rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.table-group:first-of-type .table-group-head th { padding-top: 0.25rem; }
+.tg-label { color: var(--accent); }
+
+.tg-count {
+  margin-left: 0.5rem;
+  font-size: 0.54rem;
+  color: var(--text-faint);
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--surface-2);
+}
+
+/* Virtualization spacer rows — pure height, no chrome. */
+.table-spacer { pointer-events: none; }
+.table-spacer td { padding: 0; border: none; }
+
+/* Tail rows (sentinel + foot) echo the leaf-list foot tone. */
+.leaves-sentinel-row td { height: 1px; padding: 0; border: none; }
+
+.leaves-foot-row td {
+  padding: 0.9rem 0 1.1rem;
+  text-align: center;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
 
 
 .leaves-empty {

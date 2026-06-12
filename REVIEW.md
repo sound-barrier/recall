@@ -50,14 +50,6 @@ Each item carries **size** (coding effort + review surface) and **risk**
 
 ## Features
 
-### F2. Table-mode row density
-
-**Where:** `frontend/src/composables/useDensity.ts` — `Density` is `comfortable | compact`.
-
-**What:** the original design pass sketched a third `data` density (table-like: no card border, hairline dividers, tighter rhythm). It should land as its own renderer rather than a density override.
-
-**Size:** M. **Risk:** Low.
-
 ### F3. In-app auto-updater
 
 **Where:** the masthead update flow — today "Check for updates" surfaces the latest version and the user clicks "Open release page".
