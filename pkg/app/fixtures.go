@@ -83,14 +83,23 @@ type AmbiguousSeed struct {
 	Candidates []db.AmbiguousCandidate
 }
 
-// Date range the synthetic corpus covers. Hardcoded to a year-to-date
-// window so the seeded data lands inside the period a manual test
-// session expects to see; bump if the "season" you want to test
-// against shifts.
-const (
-	fixtureDateStart = "2026-01-01"
-	fixtureDateEnd   = "2026-06-03"
-)
+// Date range the synthetic corpus covers: a ROLLING window ending today
+// and reaching back fixtureWindowMonths, so seeded data always lands in
+// the recent period a session (or the in-app sample "test" profile)
+// expects to see — instead of a hardcoded calendar window that goes stale.
+const fixtureWindowMonths = 8
+
+// fixtureNow is a seam so tests can pin "today" deterministically.
+var fixtureNow = time.Now
+
+// fixtureDateRange returns the [start, end] day-boundary window the corpus
+// spans: end = today (UTC date), start = end minus fixtureWindowMonths.
+func fixtureDateRange() (start, end time.Time) {
+	now := fixtureNow().UTC()
+	end = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	start = end.AddDate(0, -fixtureWindowMonths, 0)
+	return start, end
+}
 
 // Variation pools. Hero + map pools are derived from the parser's
 // canonical YAML data at init() time — adding a new OW hero or map
@@ -691,7 +700,7 @@ func pickWeightedHour(rng *rand.Rand) int {
 //     30% / 50%). Preserved for multi-seed sweeps that want variety.
 //
 // Distribution:
-//   - Dates: random over [fixtureDateStart, fixtureDateEnd] with
+//   - Dates: random over the rolling [today-8mo, today] window with
 //     per-day activity weights — ~40% of days inactive, a long tail
 //     of small/medium days, occasional marathon days. Sessions cluster
 //     naturally because the sample-per-day count varies.
@@ -712,8 +721,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	// #nosec G404 -- deterministic dev fixture, not security-sensitive
 	rng := rand.New(rand.NewSource(seed))
 
-	rangeStart, _ := time.Parse("2006-01-02", fixtureDateStart)
-	rangeEnd, _ := time.Parse("2006-01-02", fixtureDateEnd)
+	rangeStart, rangeEnd := fixtureDateRange()
 	totalDays := int(rangeEnd.Sub(rangeStart).Hours()/24) + 1
 
 	// Per-day activity weights. ~40% inactive; rest get a long-tail

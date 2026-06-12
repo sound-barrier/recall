@@ -1,12 +1,23 @@
 package app
 
 import (
+	"os"
 	"reflect"
 	"testing"
 	"time"
 
 	"recall/pkg/db/dbtest"
 )
+
+// TestMain pins the fixture date window so seeded distributions stay
+// deterministic regardless of the wall clock — GenerateMatchFixture's
+// window now rolls off time.Now() (last 8 months), which would otherwise
+// shift the RNG stream day to day. Individual tests may override
+// fixtureNow locally with their own cleanup.
+func TestMain(m *testing.M) {
+	fixtureNow = func() time.Time { return time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC) }
+	os.Exit(m.Run())
+}
 
 func TestGenerateMatchFixture_RoundTripsThroughStore(t *testing.T) {
 	fx := GenerateMatchFixture(50, 42, "")
@@ -82,12 +93,11 @@ func TestGenerateMatchFixture_IsDeterministic(t *testing.T) {
 func TestGenerateMatchFixture_DatesWithinRange(t *testing.T) {
 	fx := GenerateMatchFixture(200, 1, "")
 
-	start, _ := time.Parse("2006-01-02", fixtureDateStart)
+	start, end := fixtureDateRange()
 	// Allow a small overflow window past the upper bound — the dedupe
 	// pass bumps colliding timestamps by +1 minute, which can spill a
 	// match past midnight on the last day. A 3-day buffer is more than
 	// enough at our scale.
-	end, _ := time.Parse("2006-01-02", fixtureDateEnd)
 	end = end.AddDate(0, 0, 3)
 
 	for _, s := range fx.Summaries {
@@ -96,7 +106,34 @@ func TestGenerateMatchFixture_DatesWithinRange(t *testing.T) {
 			t.Fatalf("bad date %q on match_key %s: %v", s.Date, s.MatchKey, err)
 		}
 		if d.Before(start) || d.After(end) {
-			t.Fatalf("date %s on match_key %s outside [%s, %s]", s.Date, s.MatchKey, fixtureDateStart, fixtureDateEnd)
+			t.Fatalf("date %s on match_key %s outside [%s, %s]", s.Date, s.MatchKey,
+				start.Format("2006-01-02"), end.Format("2006-01-02"))
+		}
+	}
+}
+
+// The corpus window is a rolling 8 months ending today — verify the
+// bounds against a pinned "now" and that generated dates land inside it.
+func TestGenerateMatchFixture_RollingEightMonthWindow(t *testing.T) {
+	prev := fixtureNow
+	fixtureNow = func() time.Time { return time.Date(2026, 9, 15, 12, 30, 0, 0, time.UTC) }
+	t.Cleanup(func() { fixtureNow = prev })
+
+	start, end := fixtureDateRange()
+	if want := time.Date(2026, 9, 15, 0, 0, 0, 0, time.UTC); !end.Equal(want) {
+		t.Fatalf("end = %v, want %v (today)", end, want)
+	}
+	if want := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC); !start.Equal(want) {
+		t.Fatalf("start = %v, want %v (8 months before today)", start, want)
+	}
+
+	fx := GenerateMatchFixture(150, 7, "")
+	upper := end.AddDate(0, 0, 3)
+	for _, s := range fx.Summaries {
+		d, _ := time.Parse("2006-01-02", s.Date)
+		if d.Before(start) || d.After(upper) {
+			t.Fatalf("date %s outside rolling window [%s, %s]", s.Date,
+				start.Format("2006-01-02"), upper.Format("2006-01-02"))
 		}
 	}
 }
@@ -128,16 +165,21 @@ func TestGenerateMatchFixture_ResultDistribution(t *testing.T) {
 	w := counts["victory"]
 	l := counts["defeat"]
 	d := counts["draw"]
+	// Denominator is the actual summary count, not n: timestamp dedupe
+	// collapses a small fraction of colliding match keys, so fewer than
+	// n summaries survive — the result PROBABILITY (49.5/49.5/1) is what
+	// we're asserting, independent of how many made it through.
+	total := len(fx.Summaries)
 
 	// Each of W and L should land in [47%, 51%]. Draws in [0.5%, 1.5%].
-	if w < n*47/100 || w > n*51/100 {
-		t.Errorf("victory rate %.2f%% outside [47%%, 51%%]", float64(w)/float64(n)*100)
+	if w < total*47/100 || w > total*51/100 {
+		t.Errorf("victory rate %.2f%% outside [47%%, 51%%]", float64(w)/float64(total)*100)
 	}
-	if l < n*47/100 || l > n*51/100 {
-		t.Errorf("defeat rate %.2f%% outside [47%%, 51%%]", float64(l)/float64(n)*100)
+	if l < total*47/100 || l > total*51/100 {
+		t.Errorf("defeat rate %.2f%% outside [47%%, 51%%]", float64(l)/float64(total)*100)
 	}
-	if d < n*5/1000 || d > n*15/1000 {
-		t.Errorf("draw rate %.2f%% outside [0.5%%, 1.5%%]", float64(d)/float64(n)*100)
+	if d < total*5/1000 || d > total*15/1000 {
+		t.Errorf("draw rate %.2f%% outside [0.5%%, 1.5%%]", float64(d)/float64(total)*100)
 	}
 }
 
