@@ -196,6 +196,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   max-width: 12rem;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--identity-accent);
 }
 
 .tc-hero {
@@ -204,6 +205,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   max-width: 12rem;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--identity-accent);
 }
 .tc-role { color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.58rem; }
 

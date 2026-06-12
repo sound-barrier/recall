@@ -293,7 +293,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   font-size: 1.1rem;
   letter-spacing: 0.01em;
   text-transform: uppercase;
-  color: var(--text);
+  color: var(--identity-accent);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -342,7 +342,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
 .leaf-hero {
   font-family: var(--mono);
   font-size: 0.85rem;
-  color: var(--text);
+  color: var(--identity-accent);
   font-weight: 700;
   text-transform: lowercase;
   white-space: nowrap;

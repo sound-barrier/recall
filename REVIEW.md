@@ -90,18 +90,6 @@ Each item carries **size** (coding effort + review surface) and **risk**
 
 ---
 
-## Design & polish
-
-### P1. Split `--accent` into interactive vs identity hues
-
-**Where:** the CSS custom-property palette in `frontend/src/styles/app.css`.
-
-**What:** `--accent` currently does double duty as both the interactive-affordance colour and the OW-identity accent. Split into `--interactive-accent` vs an identity accent. Needs a design pass to pick the second hue; the rest is mechanical. Revisit when a design spec lands.
-
-**Size:** M. **Risk:** Low.
-
----
-
 ## Out of scope — deliberately not building
 
 - **Analysis / coaching-insight dashboard tab** — the dev-only Analysis tab and its `MatchesDashboardSketch` were removed; the coaching-cards direction is not being pursued. Per-hero/per-session insight ideas, if they ever return, surface inside the Matches dossier, not a separate tab. (Speculative insight ideas remain parked in `FEATURES.md`.)

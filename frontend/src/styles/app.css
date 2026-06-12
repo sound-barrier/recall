@@ -36,6 +36,13 @@
   --accent-bright: #ffbf4d;
   --accent-soft: rgb(245 166 35 / 16%);
   --accent-glow: rgb(245 166 35 / 38%);
+
+  /* OW-identity warmth — a deeper burnt-amber that tints the in-game
+     IDENTITY typography (hero/map display names) distinctly from the
+     brighter --accent used for interactive affordances (buttons, focus,
+     links). Tuned per theme to clear WCAG-AA (4.5:1) on every surface so
+     even the smaller hero/map labels stay legible. */
+  --identity-accent: #c9762e;
   --win: #4dff8e;
   --win-soft: rgb(77 255 142 / 12%);
   --win-line: rgb(77 255 142 / 55%);
@@ -155,6 +162,7 @@
   --accent-text: #9e4d00;
   --accent-soft: rgb(250 156 27 / 22%);
   --accent-glow: rgb(250 156 27 / 45%);
+  --identity-accent: #9c4012; /* redder sienna — clears AA on the cream surfaces */
   --win: #0f7a3a;
   --win-soft: rgb(15 122 58 / 14%);
   --win-line: rgb(15 122 58 / 60%);
@@ -242,6 +250,7 @@
   --accent-text: #fa9c1b;
   --accent-soft: rgb(250 156 27 / 22%);
   --accent-glow: rgb(250 156 27 / 50%);
+  --identity-accent: #e59a45; /* softer tan-amber — clears AA on the #2a2a2a plate */
   --win: #4dff8e;
   --win-soft: rgb(77 255 142 / 14%);
   --win-line: rgb(77 255 142 / 60%);
@@ -315,6 +324,7 @@
   --accent-text: #ffbf4d;
   --accent-soft: rgb(255 191 77 / 30%);
   --accent-glow: rgb(255 191 77 / 60%);
+  --identity-accent: #ffbf4d; /* HC keeps the boosted gold for AAA legibility */
   --win: #0f6;
   --win-soft: rgb(0 255 102 / 25%);
   --win-line: rgb(0 255 102 / 80%);

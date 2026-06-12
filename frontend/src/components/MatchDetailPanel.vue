@@ -528,6 +528,13 @@ function onBackdropClick(e: MouseEvent) {
   white-space: nowrap;
 }
 
+/* The map name is OW-identity typography — warm it to the identity
+   accent, distinct from the interactive --accent. The separator +
+   result keep their own tones. */
+.detail-title-map {
+  color: var(--identity-accent);
+}
+
 .detail-title-sep {
   color: var(--text-faint);
   font-style: normal;
