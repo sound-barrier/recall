@@ -53,6 +53,7 @@ function rec(opts: {
   map?: string
   hero?: string
   leaver?: '' | 'self' | 'team' | 'enemy'
+  members?: string[]
   reviewedBy?: 'self' | 'coach'
   reviewedAt?: string
   parsedAt?: string
@@ -68,7 +69,7 @@ function rec(opts: {
       date: '2026-05-10', finished_at: '14:00',
       playlist: 'competitive',
     },
-    annotation: opts.leaver ? { leaver: opts.leaver } : undefined,
+    annotation: (opts.leaver || opts.members) ? { leaver: opts.leaver ?? '', members: opts.members ?? [] } : undefined,
     parsed_at: opts.parsedAt ?? '2026-05-10T14:00:00Z',
     ...(opts.reviewedBy ? { reviewed_by: opts.reviewedBy } : {}),
     ...(opts.reviewedAt ? { reviewed_at: opts.reviewedAt } : {}),
@@ -1626,6 +1627,36 @@ describe('useMatchesDossier — query-helper parameterization', () => {
       const heroes = [...new Set(cells.map(c => c.hero))]
       expect(heroes.sort()).toEqual(['ana', 'lucio'])
       expect(heroes).not.toContain('kiriko')
+    })
+  })
+
+  describe('withWhomBreakdown', () => {
+    it('buckets by teammate with a Solo baseline, ranked by games together', () => {
+      const records = ref([
+        rec({ key: 'm1', members: ['Alice', 'Bob'], result: 'victory' }),
+        rec({ key: 'm2', members: ['Alice', 'Bob'], result: 'defeat'  }),
+        rec({ key: 'm3', members: ['Alice'],        result: 'victory' }),
+        rec({ key: 'm4', members: [],               result: 'victory' }),
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const rows = dossier.withWhomBreakdown({ limit: 5 })
+      // A match with {Alice, Bob} counts toward BOTH; memberless → Solo.
+      expect(rows.value.map((r) => r.key)).toEqual(['Alice', 'Bob', 'Solo'])
+      const alice = rows.value.find((r) => r.key === 'Alice')!
+      expect(alice.total).toBe(3)
+      expect(alice.winrate).toBe(67) // 2W / 1L, draws excluded
+      const solo = rows.value.find((r) => r.key === 'Solo')!
+      expect(solo).toMatchObject({ total: 1, winrate: 100 })
+    })
+
+    it('honours the limit', () => {
+      const records = ref([
+        rec({ key: 'a', members: ['A'] }),
+        rec({ key: 'b', members: ['B'] }),
+        rec({ key: 'c', members: ['C'] }),
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(dossier.withWhomBreakdown({ limit: 2 }).value).toHaveLength(2)
     })
   })
 })

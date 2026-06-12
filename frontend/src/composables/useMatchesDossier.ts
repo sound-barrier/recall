@@ -371,6 +371,46 @@ export function useMatchesDossier(
     })
   }
 
+  // Win rate by teammate — buckets the set by who you played WITH
+  // (annotation.members), plus a "Solo" bucket for matches with no
+  // teammates recorded. A match with members {A, B} counts toward BOTH
+  // A and B (and never Solo), so the buckets overlap by design: the
+  // question is "how do I do when X is on my team," answered per
+  // teammate. Ranked by games-together so the people you grind with
+  // most lead; `total` doubles as the sample-size guard (a 100% win
+  // rate over one game is noise, over fifty is signal). Drives the
+  // opt-in "Win rate by teammate" widget.
+  function withWhomBreakdown(
+    opts: MaybeRefOrGetter<{ limit: number }>,
+  ): ComputedRef<BreakdownEntry[]> {
+    return computed(() => {
+      const { limit } = toValue(opts)
+      const counts = new Map<string, { total: number; w: number; l: number }>()
+      const bump = (key: string, r: MatchRecord) => {
+        const e = counts.get(key) ?? { total: 0, w: 0, l: 0 }
+        e.total++
+        if (r.data?.result === 'victory') e.w++
+        else if (r.data?.result === 'defeat') e.l++
+        counts.set(key, e)
+      }
+      for (const r of records.value) {
+        const members = (r.annotation?.members ?? []).filter(Boolean)
+        if (members.length === 0) bump('Solo', r)
+        else for (const m of members) bump(m, r)
+      }
+      const totalForBreakdown = [...counts.values()].reduce((sum, c) => sum + c.total, 0)
+      return [...counts.entries()]
+        .sort((a, b) => b[1].total - a[1].total)
+        .slice(0, limit)
+        .map(([key, c]) => ({
+          key,
+          total: c.total,
+          winrate: c.w + c.l === 0 ? 0 : Math.round((c.w / (c.w + c.l)) * 100),
+          share: totalForBreakdown === 0 ? 0 : Math.round((c.total / totalForBreakdown) * 100),
+        }))
+    })
+  }
+
   // Mirrors the keys exposed by `pkg/parser/maps.yaml` — the
   // canonical 6 Overwatch game-mode slugs. Hardcoded so the heatmap
   // renders its column header row deterministically even on first
@@ -1056,6 +1096,7 @@ export function useMatchesDossier(
     playModeBreakdown,
     // ─── Query helpers — config-driven, return reactive results
     topByCount,
+    withWhomBreakdown,
     heroGameModeCounts,
     mapRoleCounts,
     topHeroesByMinutes,
