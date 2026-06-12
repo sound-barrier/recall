@@ -73,7 +73,10 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# This script lives at scripts/stack/, so the repo root is two levels
+# up — not one. Getting this wrong sends `cd "$REPO_ROOT"` into
+# scripts/, where `wails dev` can't find wails.json.
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 MODE="wails"
 PORT=7100
