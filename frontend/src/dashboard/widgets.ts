@@ -24,6 +24,7 @@ import Recent5MatchesWidget from '../components/widgets/Recent5MatchesWidget.vue
 import QuickplayVsCompetitiveWidget from '../components/widgets/QuickplayVsCompetitiveWidget.vue'
 import WinrateByPlayModeWidget from '../components/widgets/WinrateByPlayModeWidget.vue'
 import HeroGameModeHeatmapWidget from '../components/widgets/HeroGameModeHeatmapWidget.vue'
+import WithWhomWidget from '../components/widgets/WithWhomWidget.vue'
 
 // Central registry for the dossier's customizable dashboard widgets.
 //
@@ -119,6 +120,10 @@ export const topHeroesSchema = makeSchema<TopByCountConfig>([
 export const topGameModesSchema = makeSchema<TopByCountConfig>([
   { kind: 'integer-choice', key: 'limit', label: 'Top N',
     choices: [3, 5], default: 5 },
+])
+export const withWhomSchema = makeSchema<TopByCountConfig>([
+  { kind: 'integer-choice', key: 'limit', label: 'Top N',
+    choices: [3, 5, 10], default: 5 },
 ])
 
 export interface BestWinrateHeroConfig extends Record<string, unknown> {
@@ -221,6 +226,7 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'play-mode-share',     eyebrow: 'Quickplay vs Competitive', shape: 'breakdown', defaultRow: 2, component: QuickplayVsCompetitiveWidget, config: EMPTY_SCHEMA },
   { id: 'play-mode-winrate',   eyebrow: 'Winrate by play mode',     shape: 'breakdown', defaultRow: 2, component: WinrateByPlayModeWidget,      config: EMPTY_SCHEMA },
   { id: 'hero-game-mode-heatmap', eyebrow: 'Hero × game-mode heatmap',  shape: 'breakdown', defaultRow: 2, component: HeroGameModeHeatmapWidget,     config: heroGameModeHeatmapSchema },
+  { id: 'with-whom',           eyebrow: 'Win rate by teammate',   shape: 'breakdown', defaultRow: 2, component: WithWhomWidget,        config: withWhomSchema       },
 ]
 
 // Row-keyed install-default layout. Membership here means "auto-add

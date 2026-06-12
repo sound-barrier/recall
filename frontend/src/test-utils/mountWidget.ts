@@ -58,6 +58,7 @@ type DossierOverride = {
   // — tests don't usually need to assert opts pass-through here;
   // that's covered in the dossier suite).
   topByCount?:        BreakdownEntry[]
+  withWhomBreakdown?: BreakdownEntry[]
   topHeroesByMinutes?: HeroBreakdownEntry[]
   mostPlayedHero?:    MostPlayedHero | null
   bestWinrateHero?:   BestWinrateHero | null
@@ -89,6 +90,7 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     playModeBreakdown:   wrap(over.playModeBreakdown, [] as BreakdownEntry[]),
     // Query helpers — return functions matching the dossier's signature.
     topByCount:          wrapQuery(over.topByCount, [] as BreakdownEntry[]),
+    withWhomBreakdown:   wrapQuery(over.withWhomBreakdown, [] as BreakdownEntry[]),
     topHeroesByMinutes:  wrapQuery(over.topHeroesByMinutes, [] as HeroBreakdownEntry[]),
     mostPlayedHero:      wrapQuery(over.mostPlayedHero, null),
     bestWinrateHero:     wrapQuery(over.bestWinrateHero, null),
