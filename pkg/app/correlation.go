@@ -289,9 +289,8 @@ func matchHeroSets(snap db.Screenshots) map[string]map[string]bool {
 			add(r.MatchKey, h.Hero)
 		}
 	}
-	for _, r := range snap.Teams {
-		add(r.MatchKey, r.Hero)
-	}
+	// Teams rows carry no hero — the in-game scoreboard is a combat-stats
+	// source only — so they contribute nothing to the per-match hero set.
 	for _, r := range snap.Personals {
 		add(r.MatchKey, r.Hero)
 	}
@@ -329,7 +328,6 @@ func snapshotExisting(snap db.Screenshots) []existing {
 			c: candidate{
 				filename: r.Filename,
 				r: &parser.MatchResult{
-					Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 					Eliminations: r.Eliminations,
 					Assists:      r.Assists,
 					Deaths:       r.Deaths,

@@ -558,20 +558,8 @@ func (f *Fake) ReAggregateUnknowns(heroFn func(rawHero string) string, mapFn fun
 			}
 		}
 	}
-	for i := range f.Teams {
-		if f.Teams[i].Hero == "" && f.Teams[i].HeroRaw != "" {
-			if c := heroFn(f.Teams[i].HeroRaw); c != "" {
-				f.Teams[i].Hero = c
-				promoted++
-			}
-		}
-		if f.Teams[i].Map == "" && f.Teams[i].MapRaw != "" {
-			if c := mapFn(f.Teams[i].MapRaw); c != "" {
-				f.Teams[i].Map = c
-				promoted++
-			}
-		}
-	}
+	// Teams rows carry no hero/map — the in-game scoreboard is
+	// combat-stats-only, so there's nothing to promote.
 	for i := range f.Personals {
 		if f.Personals[i].Hero == "" && f.Personals[i].HeroRaw != "" {
 			if c := heroFn(f.Personals[i].HeroRaw); c != "" {

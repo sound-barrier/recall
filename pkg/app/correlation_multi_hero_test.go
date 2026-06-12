@@ -73,8 +73,6 @@ func TestResolveMatchKey_MultiHero_SecondPersonalAdoptsMatch(t *testing.T) {
 		Teams: []db.TeamsRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.07.20 - 14.00.30 _sb.png",
 			MatchKey:     "match-2026-07-20T14-00-00",
-			Map:          "rialto",
-			Hero:         "ana",
 			Eliminations: 15, Assists: 8, Deaths: 5,
 		}},
 		Personals: []db.PersonalRow{{
@@ -101,8 +99,6 @@ func TestResolveMatchKey_MultiHero_ReverseOrder_SummaryBridgesToTeams(t *testing
 		Teams: []db.TeamsRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.07.15 - 14.00.00 _sb.png",
 			MatchKey:     "match-2026-07-15T14-00-00",
-			Map:          "rialto",
-			Hero:         "kiriko",
 			Eliminations: 18, Assists: 12, Deaths: 6,
 		}},
 	}

@@ -279,17 +279,16 @@ type SummaryHeroPlayed struct {
 }
 
 // TeamsRow holds one parsed TEAMS screenshot.
+// TeamsRow is the in-game teams scoreboard's contribution: combat stats
+// only. Match identity (map, playlist, hero, role) is NOT stored here —
+// it comes from the SUMMARY / RANK / PERSONAL screenshots and is merged
+// in by correlation.
 type TeamsRow struct {
 	ID               int64
 	Filename         string
 	MatchKey         string
 	ParsedAt         string
 	ScreenshotsDirID int64 // 0 = NULL
-	Map              string
-	MapRaw           string
-	Playlist         string
-	Hero             string
-	HeroRaw          string
 	Eliminations     int
 	Assists          int
 	Deaths           int

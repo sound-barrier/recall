@@ -128,8 +128,6 @@ func TestMatchByTimestampWindow_IntraMatchEquidistance_NotAmbiguous(t *testing.T
 		Teams: []db.TeamsRow{{
 			Filename: "Overwatch 2 Screenshot 2026.07.01 - 14.01.00 _sb.png",
 			MatchKey: "match-A",
-			Map:      "rialto",
-			Hero:     "lucio",
 		}},
 	}
 	cand := candidateFromParse("Overwatch 2 Screenshot 2026.07.01 - 14.00.30 _p.png",

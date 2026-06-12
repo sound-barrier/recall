@@ -88,11 +88,9 @@ CREATE TABLE IF NOT EXISTS teams_screenshots (
   parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
-  map           TEXT,
-  map_raw       TEXT NOT NULL DEFAULT '',
-  playlist          TEXT,
-  hero          TEXT,
-  hero_raw      TEXT NOT NULL DEFAULT '',
+  -- The in-game teams scoreboard is a combat-stats source only; match
+  -- identity (map, playlist, hero, role) comes from the SUMMARY / RANK /
+  -- PERSONAL screenshots and is merged in by correlation.
   eliminations  INTEGER NOT NULL DEFAULT 0,
   assists       INTEGER NOT NULL DEFAULT 0,
   deaths        INTEGER NOT NULL DEFAULT 0,

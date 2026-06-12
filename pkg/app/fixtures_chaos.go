@@ -128,19 +128,11 @@ func applyChaosShape(
 	case chaosLongStrings:
 		s.Hero = strings.Repeat("x", 200)
 		s.Map = strings.Repeat("ABCDEFGHIJ", 15) // 150 chars
-		if sb != nil {
-			sb.Hero = s.Hero
-			sb.Map = s.Map
-		}
 
 	case chaosUnicode:
 		emoji := chaosEmojis[rng.Intn(len(chaosEmojis))]
 		s.Map = emoji + " " + chaosZalgo + " map"
 		s.Hero = emoji + " " + s.Hero
-		if sb != nil {
-			sb.Map = s.Map
-			sb.Hero = s.Hero
-		}
 
 	case chaosNumericExtreme:
 		s.PerfElimTotal = 1 << (20 + rng.Intn(8)) // 1M – 256M
@@ -201,9 +193,6 @@ func applyChaosShape(
 		// chip renders the "Unknown mode" fallback — the previously-
 		// untested empty-field rendering path.
 		s.Playlist = ""
-		if sb != nil {
-			sb.Playlist = ""
-		}
 		fx.PlayModes = dropPlayModeSeed(fx.PlayModes, s.MatchKey)
 
 	case chaosMissingQueueType:

@@ -15,17 +15,11 @@ func (s *SQLStore) UpsertTeams(r TeamsRow) error {
 	err = tx.QueryRow(
 		`INSERT INTO teams_screenshots (
 			filename, match_key, screenshots_dir_id,
-			map, map_raw, playlist, hero, hero_raw,
 			eliminations, assists, deaths, damage, healing, mitigation, queue_type
-		) VALUES (?,?,?, ?,?,?,?,?, ?,?,?,?,?,?,?)
+		) VALUES (?,?,?, ?,?,?,?,?,?,?)
 		ON CONFLICT(filename) DO UPDATE SET
 			match_key          = excluded.match_key,
 			screenshots_dir_id = excluded.screenshots_dir_id,
-			map          = excluded.map,
-			map_raw      = excluded.map_raw,
-			playlist         = excluded.playlist,
-			hero         = excluded.hero,
-			hero_raw     = excluded.hero_raw,
 			eliminations = excluded.eliminations,
 			assists      = excluded.assists,
 			deaths       = excluded.deaths,
@@ -35,7 +29,6 @@ func (s *SQLStore) UpsertTeams(r TeamsRow) error {
 			queue_type   = excluded.queue_type
 		RETURNING id`,
 		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID),
-		nullableString(r.Map), r.MapRaw, nullableString(r.Playlist), nullableString(r.Hero), r.HeroRaw,
 		r.Eliminations, r.Assists, r.Deaths, r.Damage, r.Healing, r.Mitigation, r.QueueType,
 	).Scan(&id)
 	if err != nil {
@@ -60,7 +53,6 @@ func (s *SQLStore) UpsertTeams(r TeamsRow) error {
 func (s *SQLStore) loadTeams() ([]TeamsRow, error) {
 	rows, err := s.db.Query(`SELECT
 		id, filename, match_key, parsed_at, screenshots_dir_id,
-		map, map_raw, playlist, hero, hero_raw,
 		eliminations, assists, deaths, damage, healing, mitigation, queue_type
 		FROM teams_screenshots ORDER BY id`)
 	if err != nil {
@@ -73,19 +65,14 @@ func (s *SQLStore) loadTeams() ([]TeamsRow, error) {
 	for rows.Next() {
 		var r TeamsRow
 		var dirID sql.NullInt64
-		var mapC, playlist, hero sql.NullString
 		if err := rows.Scan(
 			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
-			&mapC, &r.MapRaw, &playlist, &hero, &r.HeroRaw,
 			&r.Eliminations, &r.Assists, &r.Deaths,
 			&r.Damage, &r.Healing, &r.Mitigation, &r.QueueType,
 		); err != nil {
 			return nil, err
 		}
 		r.ScreenshotsDirID = dirID.Int64
-		r.Map = mapC.String
-		r.Playlist = playlist.String
-		r.Hero = hero.String
 		out = append(out, r)
 	}
 	if err := rows.Err(); err != nil {

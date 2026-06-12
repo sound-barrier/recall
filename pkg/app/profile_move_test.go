@@ -52,8 +52,8 @@ func TestApp_MoveMatches_TransfersRowsAndChildren(t *testing.T) {
 	}
 	if err := a.store.UpsertTeams(db.TeamsRow{
 		Filename: "moved-teams.png", MatchKey: movedKey,
-		Playlist: "competitive", Eliminations: 17,
-		HeroStats: []db.HeroStat{{Hero: "lucio", StatKey: "deaths", StatValue: 11}},
+		Eliminations: 17,
+		HeroStats:    []db.HeroStat{{Hero: "lucio", StatKey: "deaths", StatValue: 11}},
 	}); err != nil {
 		t.Fatalf("seed teams: %v", err)
 	}

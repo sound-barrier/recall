@@ -109,7 +109,6 @@ func TestApp_GetMatchResults_DecodesAndFolds(t *testing.T) {
 		}},
 		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "sb.png", MatchKey: "match-2026-05-10T21-29-28",
-			Playlist: "competitive", Hero: "lucio",
 			Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 		}},
 	}
@@ -139,7 +138,6 @@ func TestApp_GetMatchResults_AppliesReadTimeInference(t *testing.T) {
 	fs := &fakeStore{
 		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "a.png", MatchKey: "k1",
-			Playlist: "competitive", Hero: "lucio",
 			Eliminations: 17,
 		}},
 	}
@@ -198,7 +196,6 @@ func TestApp_RoundTripViaSQLStore(t *testing.T) {
 	}
 	if err := s.UpsertTeams(db.TeamsRow{
 		Filename: "sb.png", MatchKey: "match-2026-05-10T21-29-28",
-		Playlist: "competitive", Hero: "lucio",
 		Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 	}); err != nil {
 		t.Fatalf("UpsertTeams: %v", err)
@@ -246,8 +243,8 @@ func TestApp_GetMatchResults_ExposesParsedAtFields(t *testing.T) {
 		}},
 		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "b.png", MatchKey: "k1",
-			ParsedAt: "2026-05-10T21:30:05Z",
-			Playlist: "competitive", Eliminations: 5,
+			ParsedAt:     "2026-05-10T21:30:05Z",
+			Eliminations: 5,
 		}},
 	}
 	a := NewWithStore(fs)
@@ -269,10 +266,13 @@ func TestApp_GetMatchResults_ExposesParsedAtFields(t *testing.T) {
 func TestApp_ScrapeReader_ReturnsAllRows(t *testing.T) {
 	// scrapeReader returns every row in the DB — competitive filtering is
 	// the metrics layer's job.
+	// Hero/playlist live on the post-match SUMMARY now (the in-game teams
+	// scoreboard is combat-stats only); use summary rows so the projected
+	// hero is non-empty.
 	fs := &fakeStore{
-		Teams: []db.TeamsRow{
-			{Filename: "a.png", MatchKey: "m1", Playlist: "competitive", Eliminations: 17, Hero: "lucio"},
-			{Filename: "b.png", MatchKey: "m2", Playlist: "quickplay", Eliminations: 5, Hero: "kiriko"},
+		Summaries: []db.SummaryRow{
+			{Filename: "a.png", MatchKey: "m1", Playlist: "competitive", Hero: "lucio"},
+			{Filename: "b.png", MatchKey: "m2", Playlist: "quickplay", Hero: "kiriko"},
 		},
 	}
 	a := NewWithStore(fs)
@@ -411,8 +411,8 @@ func TestApp_ScrapeReader_DropsHiddenMatches(t *testing.T) {
 	// pkg/metrics/metrics.go::Collect.
 	fs := &fakeStore{
 		Teams: []db.TeamsRow{
-			{ID: 1, Filename: "a.png", MatchKey: "m1", Playlist: "competitive", Eliminations: 1},
-			{ID: 2, Filename: "b.png", MatchKey: "m2", Playlist: "competitive", Eliminations: 2},
+			{ID: 1, Filename: "a.png", MatchKey: "m1", Eliminations: 1},
+			{ID: 2, Filename: "b.png", MatchKey: "m2", Eliminations: 2},
 		},
 		Hidden: map[string]bool{"m2": true},
 	}

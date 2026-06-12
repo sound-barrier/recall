@@ -461,7 +461,6 @@ func teamsToView(r db.TeamsRow) screenshotView {
 		filename: r.Filename, typeName: "teams",
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
-			Map: r.Map, MapRaw: r.MapRaw, Playlist: r.Playlist, Hero: r.Hero, HeroRaw: r.HeroRaw,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
 			Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
 			QueueType: r.QueueType,

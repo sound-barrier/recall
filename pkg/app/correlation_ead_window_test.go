@@ -160,8 +160,6 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_FinishedAtCorroborates_AutoA
 		Teams: []db.TeamsRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.16.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
-			Map:          "aatlis",
-			Hero:         "lucio",
 			Eliminations: 17, Assists: 14, Deaths: 7,
 		}},
 	}
@@ -190,8 +188,6 @@ func TestResolveMatchKey_EADBridge_AmbiguousZone_FinishedAtCorroborates_EndToEnd
 		Teams: []db.TeamsRow{{
 			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.16.png",
 			MatchKey:     "match-2026-05-10T21-29-28",
-			Map:          "aatlis",
-			Hero:         "lucio",
 			Eliminations: 17, Assists: 14, Deaths: 7,
 		}},
 	}
@@ -220,9 +216,8 @@ func TestResolveMatchKey_LiveAatlisCascade_EndToEnd(t *testing.T) {
 	// ambiguous keys.
 	snap := db.Screenshots{
 		Teams: []db.TeamsRow{{
-			Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.16.png",
-			MatchKey: "match-2026-05-10T21-29-28",
-			Map:      "aatlis", Hero: "lucio",
+			Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.16.png",
+			MatchKey:     "match-2026-05-10T21-29-28",
 			Eliminations: 17, Assists: 14, Deaths: 7,
 		}},
 	}
@@ -266,7 +261,6 @@ func TestResolveMatchKey_LiveAatlisCascade_EndToEnd(t *testing.T) {
 	}
 	snap.Teams = append(snap.Teams, db.TeamsRow{
 		Filename: sbFile, MatchKey: gotSB,
-		Map: sbResult.Map, Hero: sbResult.Hero,
 		Eliminations: sbResult.Eliminations,
 		Assists:      sbResult.Assists,
 		Deaths:       sbResult.Deaths,
@@ -291,15 +285,13 @@ func TestMatchByEAD_MultiCandidate_OneCorroborated_AutoAdoptsCorroborated(t *tes
 	snap := db.Screenshots{
 		Teams: []db.TeamsRow{
 			{
-				Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.00.png",
-				MatchKey: "match-A",
-				Map:      "aatlis", Hero: "lucio",
+				Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.29.28.00.png",
+				MatchKey:     "match-A",
 				Eliminations: 17, Assists: 14, Deaths: 7,
 			},
 			{
-				Filename: "Overwatch 2 Screenshot 2026.05.10 - 21.34.00.00.png",
-				MatchKey: "match-B",
-				Map:      "kingsrow", Hero: "ana",
+				Filename:     "Overwatch 2 Screenshot 2026.05.10 - 21.34.00.00.png",
+				MatchKey:     "match-B",
 				Eliminations: 17, Assists: 14, Deaths: 7,
 			},
 		},

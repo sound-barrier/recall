@@ -303,7 +303,6 @@ func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.Match
 	case "teams":
 		row := db.TeamsRow{
 			Filename: filename, MatchKey: key, ScreenshotsDirID: dirID,
-			Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
 			Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
 			QueueType: r.QueueType,

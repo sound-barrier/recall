@@ -914,9 +914,6 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 			fx.Teams = append(fx.Teams, db.TeamsRow{
 				Filename:     "teams-" + ts + ".png",
 				MatchKey:     key,
-				Map:          gameMap,
-				Playlist:     playMode,
-				Hero:         primary.Hero,
 				Eliminations: elims,
 				Assists:      assists,
 				Deaths:       deaths,
@@ -1101,9 +1098,6 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 			fx.Teams = append(fx.Teams, db.TeamsRow{
 				Filename:     filename,
 				MatchKey:     matchKey,
-				Map:          fixtureMaps[ambigRng.Intn(len(fixtureMaps))],
-				Playlist:     "competitive",
-				Hero:         fixtureDPS[ambigRng.Intn(len(fixtureDPS))],
 				Eliminations: 6 + ambigRng.Intn(20),
 				Assists:      4 + ambigRng.Intn(12),
 				Deaths:       2 + ambigRng.Intn(9),
@@ -1158,11 +1152,6 @@ func ensureCoverage(rng *rand.Rand, fx *Fixture, queueTypes []string) {
 		return
 	}
 
-	teamsByKey := make(map[string]int, len(fx.Teams))
-	for i, sb := range fx.Teams {
-		teamsByKey[sb.MatchKey] = i
-	}
-
 	// One permutation, consumed by map patches first then hero
 	// patches, so the two passes don't clobber each other.
 	patchOrder := rng.Perm(len(fx.Summaries))
@@ -1190,9 +1179,6 @@ func ensureCoverage(rng *rand.Rand, fx *Fixture, queueTypes []string) {
 			mapCounts[s.Map]--
 			mapCounts[gameMap]++
 			s.Map = gameMap
-			if sbIdx, ok := teamsByKey[s.MatchKey]; ok {
-				fx.Teams[sbIdx].Map = gameMap
-			}
 			cursor++
 			return true
 		}
