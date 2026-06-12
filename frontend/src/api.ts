@@ -580,6 +580,22 @@ export const CancelParse = _dualVoid<[]>(
   '/api/v1/parses/active',
 )
 
+// Active-parse status snapshot — the resync anchor for the async parse
+// pipeline. A client that reconnects or reloads mid-parse reads this to
+// restore "is a parse running, and how far along" without replaying the
+// SSE backlog (which isn't replayed on connect).
+export interface ActiveParse {
+  running: boolean
+  done: number
+  total: number
+  scope: string
+}
+
+export function GetActiveParse(): Promise<ActiveParse> {
+  if (IS_WAILS) return _wails('ActiveParse')
+  return _get<ActiveParse>('/api/v1/parses/active')
+}
+
 export function GetPrometheusEnabled(): Promise<boolean> {
   if (IS_WAILS) return _wails('GetPrometheusEnabled')
   return _get<{ enabled: boolean }>('/api/v1/settings/prometheus').then(d => d.enabled)
@@ -878,30 +894,58 @@ export function GetNewScreenshotCount(): Promise<number> {
 }
 
 // ─── Events ────────────────────────────────────────────────────────────────
-// In Wails mode: thin pass-through to window.runtime.
-// In server mode: EventSource on /api/v1/events, keyed by event name so
-//   EventsOff can close the matching source.
+// In Wails mode: thin pass-through to window.runtime (no network, so no
+//   drop scenario — the status handler never fires).
+// In server mode: ONE shared EventSource on /api/v1/events for every
+//   event name, with per-name listeners. A single source makes the
+//   connection state unambiguous, so onopen/onerror can drive the
+//   reconnecting indicator the parse-recovery UI needs.
 
-const _sources: Record<string, EventSource> = {}
+export type EventStreamStatus = 'connected' | 'reconnecting'
+
+let _streamStatusHandler: ((status: EventStreamStatus) => void) | null = null
+
+// Register a single observer of the server-mode SSE connection state.
+// Fires 'reconnecting' when the stream drops (EventSource is auto-
+// retrying) and 'connected' when it (re)opens. No-op in Wails mode.
+export function setEventStreamStatusHandler(cb: ((status: EventStreamStatus) => void) | null): void {
+  _streamStatusHandler = cb
+}
+
+let _serverSource: EventSource | null = null
+const _serverListeners: Record<string, (e: Event) => void> = {}
+
+function ensureServerSource(): EventSource {
+  if (_serverSource) return _serverSource
+  const es = new EventSource('/api/v1/events')
+  es.onopen = () => { _streamStatusHandler?.('connected') }
+  es.onerror = () => {
+    // The browser auto-reconnects (readyState CONNECTING) unless the
+    // source was explicitly closed; surface the gap so the UI can show
+    // "reconnecting", and onopen flips it back to 'connected'.
+    if (es.readyState !== EventSource.CLOSED) _streamStatusHandler?.('reconnecting')
+  }
+  _serverSource = es
+  return es
+}
 
 export function EventsOn<T = unknown>(eventName: string, callback: (data: T) => void): void {
   if (IS_WAILS) {
     window.runtime!.EventsOn(eventName, callback as (data: unknown) => void)
     return
   }
-  // Close any previous source for this event before opening a new one
-  // (guards against double-mount in development HMR scenarios).
-  if (_sources[eventName]) {
-    _sources[eventName].close()
-  }
-  const es = new EventSource('/api/v1/events')
-  es.addEventListener(eventName, (e) => {
+  const es = ensureServerSource()
+  // Replace any previous listener for this name (HMR double-mount guard).
+  const prev = _serverListeners[eventName]
+  if (prev) es.removeEventListener(eventName, prev)
+  const listener = (e: Event) => {
     try {
       const raw = (e as MessageEvent).data
       callback((raw ? JSON.parse(raw) : null) as T)
     } catch (_) { callback(null as unknown as T) }
-  })
-  _sources[eventName] = es
+  }
+  _serverListeners[eventName] = listener
+  es.addEventListener(eventName, listener)
 }
 
 export function EventsOff(eventName: string): void {
@@ -909,8 +953,13 @@ export function EventsOff(eventName: string): void {
     window.runtime!.EventsOff(eventName)
     return
   }
-  if (_sources[eventName]) {
-    _sources[eventName].close()
-    delete _sources[eventName]
+  const listener = _serverListeners[eventName]
+  if (listener && _serverSource) _serverSource.removeEventListener(eventName, listener)
+  delete _serverListeners[eventName]
+  // Close the shared source once nothing is listening (mirrors the old
+  // per-source close on the last EventsOff).
+  if (_serverSource && Object.keys(_serverListeners).length === 0) {
+    _serverSource.close()
+    _serverSource = null
   }
 }
