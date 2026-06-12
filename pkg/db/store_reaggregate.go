@@ -36,7 +36,8 @@ func (s *SQLStore) ReAggregateUnknowns(heroFn func(rawHero string) string, mapFn
 		val string
 	}
 	// collectPending opens the SELECT inside its own scope so the
-	// single `defer rows.Close()` covers every return (sqlclosecheck).
+	// single `defer rows.Close()` covers every return; sqlclosecheck
+	// verifies rows.Close() is called on all exit paths.
 	// Returns the list of (id, canonical) pairs that resolved this
 	// pass; the caller batches the UPDATE statements outside this scope.
 	collectPending := func(query string, fn func(string) string) ([]pending, error) {
