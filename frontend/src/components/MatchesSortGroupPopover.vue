@@ -28,6 +28,9 @@ const props = defineProps<{
   // to it. MatchesView re-captures the rect on each open so resizes
   // and scroll between opens produce a fresh anchor.
   anchor:  DOMRect | null
+  // Data density is a flat spreadsheet sorted by column header, so
+  // grouping doesn't apply there — the Group fieldset greys out.
+  groupingDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -133,10 +136,13 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
           </label>
         </fieldset>
 
-        <fieldset class="sgp-group">
+        <fieldset class="sgp-group" :class="{ 'sgp-group-disabled': groupingDisabled }" :disabled="groupingDisabled">
           <legend class="sgp-legend">
             Group
           </legend>
+          <p v-if="groupingDisabled" class="sgp-hint" data-grouping-disabled-hint>
+            Data view sorts by column header
+          </p>
           <label
             v-for="opt in GROUP_OPTIONS"
             :key="opt.value"
@@ -182,6 +188,19 @@ const GROUP_OPTIONS: { value: GroupBy; label: string }[] = [
   margin: 0 0 0.4rem;
 }
 .sgp-group:last-child { margin-bottom: 0; }
+
+.sgp-group-disabled { opacity: 0.42; }
+.sgp-group-disabled .sgp-row { cursor: default; }
+.sgp-group-disabled .sgp-row:hover { background: transparent; }
+
+.sgp-hint {
+  margin: 0 0 0.3rem;
+  padding: 0 0.15rem;
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-style: italic;
+}
 
 .sgp-legend {
   font-size: 0.6rem;

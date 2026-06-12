@@ -1,55 +1,52 @@
 /**
  * Data-density table E2E.
  *
- * The `data` row density renders the matches list as a real <table>:
- * sortable column headers (sorting rows WITHIN each Y/M/W/D group), full
- * leaf-row interaction parity (a row click opens the detail panel), and
- * the scoped-search highlight (F1) inside cells. The default grouping is
- * by day, so a single-day corpus lands in one group where the
- * within-group column sort is observable.
+ * The `data` row density renders the matches list as a flat, sortable
+ * spreadsheet <table> inside a bounded scroll pane: clicking a column
+ * header sorts the WHOLE table (no D/W/M/Y grouping), the When column
+ * sorts by match date, the Hero column by most-played hero, dates show
+ * the year only when it isn't the current year, and the pane scrolls
+ * horizontally when the columns exceed the width.
  */
 import type { Page, Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
 
 interface Opts {
-  map: string
-  hero: string
+  map?: string
+  hero?: string
   result?: 'victory' | 'defeat' | 'draw'
   elims?: number
   tags?: string[]
+  date?: string
+  finishedAt?: string
+  heroesPlayed?: { hero: string; percent_played: number }[]
+  parsedAt?: string
 }
 
-function record(key: string, o: Opts) {
+function record(key: string, o: Opts = {}) {
+  const hero = o.hero ?? 'lucio'
   return {
     match_key: key,
     source_files: [`${key}.png`],
     data: {
-      map: o.map,
+      map: o.map ?? 'rialto',
       playlist: 'competitive',
       game_mode: 'control',
       role: 'support',
-      hero: o.hero,
+      hero,
       result: o.result ?? 'victory',
-      date: '2026-05-10',
-      finished_at: '22:00',
+      date: o.date ?? '2026-05-10',
+      finished_at: o.finishedAt ?? '22:00',
       eliminations: o.elims ?? 15,
       assists: 10,
       deaths: 8,
-      heroes_played: [{ hero: o.hero, percent_played: 100, play_time: '11:00' }],
+      heroes_played: o.heroesPlayed ?? [{ hero, percent_played: 100, play_time: '11:00' }],
     },
-    parsed_at: '2026-05-10T22:30:00Z',
+    parsed_at: o.parsedAt ?? '2026-05-10T22:30:00Z',
     ...(o.tags ? { annotation: { tags: o.tags } } : {}),
   }
 }
-
-// One day → one group, distinct maps/heroes/elims so each column sorts
-// to a distinct order.
-const CORPUS = [
-  record('m-rialto', { map: 'rialto', hero: 'lucio', result: 'victory', elims: 20 }),
-  record('m-busan', { map: 'busan', hero: 'mercy', result: 'defeat', elims: 10 }),
-  record('m-ilios', { map: 'ilios', hero: 'ana', result: 'victory', elims: 30, tags: ['clutch'] }),
-]
 
 async function toDataDensity(page: Page) {
   await page.locator('.seg-btn', { hasText: 'Data' }).click()
@@ -62,25 +59,44 @@ function rowKeys(page: Page) {
     .evaluateAll((rows) => rows.map((r) => r.getAttribute('data-match-key')))
 }
 
-test.describe('data density — sortable grouped table', () => {
+async function mountCorpus(page: Page, corpus: unknown[]) {
+  await page.route('**/api/v1/matches', (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpus) }),
+  )
+  await page.goto('/')
+  await page.locator('#tab-matches').click()
+  await expect(page.locator('.leaf-row')).toHaveCount(corpus.length)
+}
+
+// One-day corpus — column sorts produce a distinct, observable order.
+const ONE_DAY = [
+  record('m-rialto', { map: 'rialto', hero: 'lucio', result: 'victory', elims: 20 }),
+  record('m-busan', { map: 'busan', hero: 'mercy', result: 'defeat', elims: 10 }),
+  record('m-ilios', { map: 'ilios', hero: 'ana', result: 'victory', elims: 30, tags: ['clutch'] }),
+]
+
+test.describe('data density — sortable spreadsheet table', () => {
   test.beforeEach(async ({ page }) => {
-    await page.route('**/api/v1/matches', (route: Route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CORPUS) }),
-    )
-    await page.goto('/')
-    await page.locator('#tab-matches').click()
-    await expect(page.locator('.leaf-row')).toHaveCount(3)
+    await mountCorpus(page, ONE_DAY)
   })
 
-  test('Data density renders a column-header <table>', async ({ page }) => {
+  test('Data density renders a column-header <table> in a scroll pane', async ({ page }) => {
     await toDataDensity(page)
+    await expect(page.locator('.leaves-table-scroll')).toBeVisible()
     await expect(page.locator('table.leaves-table thead')).toBeVisible()
     await expect(page.locator('th[data-sort-col="map"]')).toBeVisible()
-    await expect(page.locator('th[data-sort-col="hero"]')).toBeVisible()
     await expect(page.locator('tr.table-row')).toHaveCount(3)
   })
 
-  test('clicking a column header sorts rows within the group, toggling direction', async ({ page }) => {
+  test('the scroll pane is horizontally scrollable', async ({ page }) => {
+    await toDataDensity(page)
+    const overflowX = await page.locator('.leaves-table-scroll').evaluate(
+      (el) => getComputedStyle(el).overflowX,
+    )
+    expect(['auto', 'scroll']).toContain(overflowX)
+  })
+
+  test('clicking a column header sorts the WHOLE table, toggling direction', async ({ page }) => {
     await toDataDensity(page)
     await page.locator('th[data-sort-col="map"]').click()
     expect(await rowKeys(page)).toEqual(['m-busan', 'm-ilios', 'm-rialto']) // ascending
@@ -108,5 +124,60 @@ test.describe('data density — sortable grouped table', () => {
     await expect(
       page.locator('tr.table-row[data-match-key="m-busan"] mark.search-hl'),
     ).toHaveText('busan')
+  })
+})
+
+test.describe('data density — spreadsheet sort semantics', () => {
+  // Distinct match dates (incl. a non-current year) + a hero whose
+  // most-played differs from the primary.
+  const MULTI = [
+    record('jun10', { date: '2026-06-10', hero: 'lucio', heroesPlayed: [{ hero: 'ana', percent_played: 70 }, { hero: 'lucio', percent_played: 30 }] }),
+    record('jun03', { date: '2026-06-03', hero: 'mercy' }),
+    record('dec31', { date: '2025-12-31', hero: 'zenyatta' }),
+  ]
+
+  test('the When column sorts the whole table by MATCH date (newest first by default)', async ({ page }) => {
+    await mountCorpus(page, MULTI)
+    await toDataDensity(page)
+    // Default is When-descending (newest match first).
+    expect(await rowKeys(page)).toEqual(['jun10', 'jun03', 'dec31'])
+    // Toggle to ascending (oldest match first).
+    await page.locator('th[data-sort-col="date"]').click()
+    expect(await rowKeys(page)).toEqual(['dec31', 'jun03', 'jun10'])
+  })
+
+  test('the Hero column sorts by the MOST-PLAYED hero, not the primary', async ({ page }) => {
+    await mountCorpus(page, MULTI)
+    await toDataDensity(page)
+    await page.locator('th[data-sort-col="hero"]').click() // ascending by most-played
+    // jun10's most-played is Ana (70%) though its primary is Lúcio.
+    expect(await rowKeys(page)).toEqual(['jun10', 'jun03', 'dec31']) // ana < mercy < zenyatta
+  })
+
+  test('a non-current-year date shows the year; a current-year one does not', async ({ page }) => {
+    await mountCorpus(page, MULTI)
+    await toDataDensity(page)
+    await expect(page.locator('tr.table-row[data-match-key="dec31"] .tc-date-d')).toContainText('2025')
+    await expect(page.locator('tr.table-row[data-match-key="jun03"] .tc-date-d')).not.toContainText('20')
+  })
+
+  test('grouping does not apply in Data density — no group-header rows', async ({ page }) => {
+    await mountCorpus(page, MULTI)
+    // Pick "By day" while in a card density (where grouping is enabled).
+    await page.locator('[data-sort-group-trigger]').click()
+    await page.locator('[data-group-pick="day"]').click()
+    await page.locator('body').click({ position: { x: 5, y: 5 } })
+    // Switch to Data density: the table is flat, no group dividers.
+    await toDataDensity(page)
+    await expect(page.locator('tr.table-row')).toHaveCount(3)
+    await expect(page.locator('.table-group-head')).toHaveCount(0)
+  })
+
+  test('the sort popover disables grouping in Data density', async ({ page }) => {
+    await mountCorpus(page, MULTI)
+    await toDataDensity(page)
+    await page.locator('[data-sort-group-trigger]').click()
+    await expect(page.locator('[data-grouping-disabled-hint]')).toBeVisible()
+    await expect(page.locator('[data-group-pick="day"]')).toBeDisabled()
   })
 })

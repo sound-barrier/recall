@@ -197,8 +197,12 @@ const GROUP_LABELS: Record<'none' | 'day' | 'week' | 'month' | 'year', string> =
   month: 'by month',
   year:  'by year',
 }
+// Data density is a flat spreadsheet sorted by column header, so the
+// trigger drops the grouping suffix there (grouping doesn't apply).
 const sortGroupLabel = computed(() =>
-  `${SORT_LABELS[sortOrder.value]} · ${GROUP_LABELS[groupBy.value]}`,
+  density.value === 'data'
+    ? SORT_LABELS[sortOrder.value]
+    : `${SORT_LABELS[sortOrder.value]} · ${GROUP_LABELS[groupBy.value]}`,
 )
 
 // ─── Selection state (Gmail-style, no mode toggle) ──────────
@@ -580,6 +584,7 @@ onMounted(() => {
                Disabled (predictable layout > collapsed layout) when
                there are no undated matches in the current narrow. -->
             <button
+              v-if="density !== 'data'"
               type="button"
               class="btn ghost jump-to-undated"
               :class="{ 'has-undated': undatedCount > 0 }"
@@ -648,6 +653,7 @@ onMounted(() => {
           :sort="sortOrder"
           :group="groupBy"
           :anchor="sortGroupAnchor"
+          :grouping-disabled="density === 'data'"
           @close="closeSortGroup"
           @update:sort="(v) => { sortOrder = v }"
           @update:group="(v) => { groupBy = v }"
