@@ -88,6 +88,11 @@ Section
 
     !insertmacro wails.files
 
+    # Ship the DB-reset helper next to the .exe so users can do a clean
+    # reset (no schema migrations pre-1.0) from C:\Program Files\recall\.
+    # Path is relative to this .nsi, like OutFile above.
+    File "/oname=Reset-Database.bat" "..\..\..\scripts\windows\Reset-Database.bat"
+
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 
