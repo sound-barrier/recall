@@ -157,10 +157,10 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     // that would silently relocate it (auto-fallback covered the
     // popover before this fix).
     //
-    // `.tour-callout-ready` flips after syncPos's second-pass resync
-    // (which absorbs the popover's 240ms slide-in transition before
-    // measuring the final rect). Waiting on the class is the cheap
-    // way to be sure the position has settled before asserting.
+    // `.tour-callout-ready` flips only after syncPos has waited for the
+    // popover's slide-in to settle and measured its final rect, so
+    // waiting on the class is the cheap way to be sure the position is
+    // final before asserting.
     await page.goto('/')
     await expect(page.locator('[data-testid="onboarding-tour"]')).toBeVisible()
     for (let i = 0; i < 9; i++) {
@@ -169,16 +169,12 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     }
     await expect(page.locator('.tour-callout-heading')).toContainText(/narrow to one hero/i)
     await expect(page.locator('.tour-callout')).toHaveClass(/tour-callout-ready/)
-    // The callout's position settles a frame or two after
-    // `tour-callout-ready` flips its class — headless Chrome on CI can
-    // still be mid-paint when the class lands. `toPass` re-reads both
-    // boxes and re-checks the bound until it holds (or times out),
-    // which absorbs that settle deterministically — the previous
-    // fixed-iteration poll broke on exact float equality, so on CI's
-    // continuous subpixel jitter it never settled and measured a
-    // mid-transition frame. The ±10px tolerance still absorbs
-    // steady-state DPI rounding (a 745.085-vs-743 delta) without
-    // masking gross misalignment.
+    // TourCallout waits for the popover's slide-in to settle before
+    // measuring (waitForStableTarget), so the callout anchors to the
+    // popover's final rect rather than its translateX(-100%) start.
+    // `toPass` only rides out the brief paint after the ready-class
+    // flip. The 22px placement GAP sits the callout clear to the right;
+    // -2px absorbs DPI rounding without masking overlap.
     const calloutHandle = page.locator('.tour-callout')
     const popover = page.locator('#narrow-popover')
     await expect(async () => {
@@ -187,7 +183,7 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
       expect(popoverBox).not.toBeNull()
       expect(calloutBox).not.toBeNull()
       if (popoverBox && calloutBox) {
-        expect(calloutBox.x).toBeGreaterThanOrEqual(popoverBox.x + popoverBox.width - 10)
+        expect(calloutBox.x).toBeGreaterThanOrEqual(popoverBox.x + popoverBox.width - 2)
       }
     }).toPass({ timeout: 5000 })
   })
@@ -208,15 +204,14 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     }
     await expect(page.locator('.tour-callout-heading')).toContainText(/the detail panel/i)
     await expect(page.locator('.tour-callout')).toHaveClass(/tour-callout-ready/)
-    // `tour-callout-ready` flips after the position is computed, but
-    // headless Chrome on CI can still be mid-paint when the class
-    // lands. `toPass` re-reads both boxes and re-checks the bound
-    // until it holds (or times out), absorbing that settle
-    // deterministically — the previous fixed-iteration poll broke on
-    // exact float equality, so on CI's continuous subpixel jitter it
-    // never settled and measured a mid-transition frame. The ±10px
-    // tolerance still absorbs steady-state DPI rounding (a 745.085-
-    // vs-743 delta) without masking gross overlap.
+    // The callout anchors to the panel's SETTLED rect — TourCallout
+    // waits for the slide-in to stop moving before it measures (see
+    // waitForStableTarget), so there's no mid-transition frame to catch
+    // and nothing snaps the callout 40px sideways after the class lands.
+    // `toPass` only rides out the brief paint between the ready-class
+    // flip and the final frame. The 22px placement GAP clears the panel
+    // by a wide margin; +2px absorbs DPI rounding on the two boxes
+    // without admitting real overlap.
     const calloutHandle = page.locator('.tour-callout')
     const panel = page.locator('aside.detail-panel')
     await expect(async () => {
@@ -225,7 +220,7 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
       expect(panelBox).not.toBeNull()
       expect(calloutBox).not.toBeNull()
       if (panelBox && calloutBox) {
-        expect(calloutBox.x + calloutBox.width).toBeLessThanOrEqual(panelBox.x + 10)
+        expect(calloutBox.x + calloutBox.width).toBeLessThanOrEqual(panelBox.x + 2)
       }
     }).toPass({ timeout: 5000 })
   })

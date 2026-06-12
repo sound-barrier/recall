@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 import type { CalloutPlacement } from '../composables/useOnboardingTour'
-import { rectsOverlap } from './tour-callout-helpers'
+import { rectsEqual, rectsOverlap } from './tour-callout-helpers'
 
 // Anchored callout panel. Renders the step's tag / number / heading
 // / body plus the Skip / Back / Next controls. Anchors to the
@@ -181,26 +181,60 @@ function computePos(): { left: number; top: number; placement: CalloutPlacement 
   return { left, top, placement: 'auto' }
 }
 
+// Poll the target's rect across animation frames until it stops moving
+// (its enter transition has settled) or a frame cap is hit. This
+// replaces a fixed settle delay that raced the target's slide-in on
+// slower machines: the Narrow popover and the detail panel both
+// translate in over ~240ms, and a measure taken a few px before the
+// slide finished anchored `left`/`right` placement to a mid-transition
+// rect dozens of px off — and nothing re-synced afterwards, so it
+// stayed wrong.
+//
+// Two guards make this timing-independent. A STABILITY check (the rect
+// unchanged for several frames) waits out a transition however long it
+// runs. A minimum-frame FLOOR stops us settling during the brief
+// stillness BEFORE the transition starts — a freshly-mounted target
+// sits at its pre-slide rect for a frame or two while the browser
+// applies the entering class, and without the floor that early window
+// reads as "stable" and we measure the wrong rect (a popover slide
+// caught at x≈226 instead of its final x≈420). Settle only once both
+// hold: past the floor AND stable.
+async function waitForStableTarget(): Promise<void> {
+  if (!props.target) return
+  const MAX_FRAMES = 90 // ~1.5s cap at 60fps — covers a slow mount + slide
+  const MIN_FRAMES = 21 // ~350ms floor past the pre-transition stillness
+  const STABLE_NEEDED = 3
+  let prev = getTargetRect()
+  let stable = 0
+  for (let i = 0; i < MAX_FRAMES; i++) {
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    if (userMoved.value) return
+    const cur = getTargetRect()
+    const measurable = cur !== null && cur.w > 0 && cur.h > 0
+    if (measurable && prev && rectsEqual(cur, prev)) {
+      stable++
+    } else {
+      stable = 0
+    }
+    prev = measurable ? cur : null
+    if (i + 1 >= MIN_FRAMES && stable >= STABLE_NEEDED) return
+  }
+}
+
 async function syncPos() {
   await nextTick()
-  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
   // Once the user has dragged the callout, freeze the position so
   // resize / scroll resyncs don't snap it back. The :key on the
   // parent destroys + remounts the callout per step, so the freeze
   // is automatically reset between steps.
   if (userMoved.value) return
-  // Wait for the target's enter transition to settle BEFORE the
-  // first compute. The Narrow popover (MatchesView's `.left-panel`)
-  // and the detail-panel translate-in over ~240ms; measuring before
-  // they settle would put `right` placement at the popover's
-  // translateX(-100%) edge (x≈22) instead of its final x≈442.
-  //
-  // Skipping the pre-settle pass entirely means the callout has no
-  // wrong-position to flash AT — it stays invisible via opacity:0
-  // until `posReady` flips, then snaps to the final position
-  // (transition: left/top is only declared on `.tour-callout-ready`
-  // so the snap is instant) and fades in over 200ms.
-  await new Promise<void>(resolve => setTimeout(resolve, 320))
+  // Wait for the target's enter transition to settle BEFORE the first
+  // compute. Skipping the pre-settle pass entirely means the callout
+  // has no wrong-position to flash AT — it stays invisible via
+  // opacity:0 until `posReady` flips, then snaps to the final position
+  // (transition: left/top is only declared on `.tour-callout-ready` so
+  // the snap is instant) and fades in over 200ms.
+  await waitForStableTarget()
   if (userMoved.value) return
   pos.value = computePos()
   // Two rAFs between writing the final position and flipping the
