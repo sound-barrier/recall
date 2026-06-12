@@ -62,16 +62,6 @@ Each item carries **size** (coding effort + review surface) and **risk**
 
 ## Tech debt & refactors
 
-### D1. `match_annotation_members` lacks a reverse `(member)` index
-
-**Where:** the `match_annotation_members` table — PK is `(match_key, member)`, with no index on `(member)` alone. The sibling `match_annotation_tags` already carries the parallel `(tag)` index, so the schema is asymmetric.
-
-**What breaks:** conditional — only if/when "find all matches annotated with member X" becomes a feature (bulk operations by player name, or a member-grouped widget). Today the frontend filters in-memory after loading all annotations, which is fine for small corpora; at scale the full-table scan would bite.
-
-**Plan:** deferred per YAGNI. When the feature lands, add `CREATE INDEX idx_match_annotation_members_member ON match_annotation_members (member)` in a migration.
-
-**Size:** S. **Risk:** Low.
-
 ### D4. Real desktop-runtime e2e for Wails
 
 **Where:** `frontend/tests/e2e/` drives the `serveronly` binary exclusively.
