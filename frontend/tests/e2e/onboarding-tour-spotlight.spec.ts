@@ -169,30 +169,27 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     }
     await expect(page.locator('.tour-callout-heading')).toContainText(/narrow to one hero/i)
     await expect(page.locator('.tour-callout')).toHaveClass(/tour-callout-ready/)
-    // Wait for two equal bbox reads before measuring — see the
-    // matching pattern in the sibling test below for the rationale.
+    // The callout's position settles a frame or two after
+    // `tour-callout-ready` flips its class — headless Chrome on CI can
+    // still be mid-paint when the class lands. `toPass` re-reads both
+    // boxes and re-checks the bound until it holds (or times out),
+    // which absorbs that settle deterministically — the previous
+    // fixed-iteration poll broke on exact float equality, so on CI's
+    // continuous subpixel jitter it never settled and measured a
+    // mid-transition frame. The ±10px tolerance still absorbs
+    // steady-state DPI rounding (a 745.085-vs-743 delta) without
+    // masking gross misalignment.
     const calloutHandle = page.locator('.tour-callout')
-    let prev = await calloutHandle.boundingBox()
-    for (let i = 0; i < 20; i++) {
-      await page.waitForTimeout(50)
-      const next = await calloutHandle.boundingBox()
-      if (prev && next && prev.x === next.x && prev.width === next.width) {
-        break
+    const popover = page.locator('#narrow-popover')
+    await expect(async () => {
+      const popoverBox = await popover.boundingBox()
+      const calloutBox = await calloutHandle.boundingBox()
+      expect(popoverBox).not.toBeNull()
+      expect(calloutBox).not.toBeNull()
+      if (popoverBox && calloutBox) {
+        expect(calloutBox.x).toBeGreaterThanOrEqual(popoverBox.x + popoverBox.width - 10)
       }
-      prev = next
-    }
-    const popoverBox = await page.locator('#narrow-popover').boundingBox()
-    const calloutBox = await calloutHandle.boundingBox()
-    expect(popoverBox).not.toBeNull()
-    expect(calloutBox).not.toBeNull()
-    if (popoverBox && calloutBox) {
-      // ±10px tolerance absorbs DPI rounding + headless-Chrome
-      // subpixel layout variance on CI's Ubuntu runner (the
-      // previous ±3 px was tight enough that a 745.085-vs-743
-      // delta still tripped). 10 px is a small fraction of the
-      // popover width; still catches gross misalignment.
-      expect(calloutBox.x).toBeGreaterThanOrEqual(popoverBox.x + popoverBox.width - 10)
-    }
+    }).toPass({ timeout: 5000 })
   })
 
   test('matches-detail callout lands to the left of the detail panel', async ({ page }) => {
@@ -211,35 +208,26 @@ test.describe('onboarding tour — spotlighted walkthrough', () => {
     }
     await expect(page.locator('.tour-callout-heading')).toContainText(/the detail panel/i)
     await expect(page.locator('.tour-callout')).toHaveClass(/tour-callout-ready/)
-    // Wait for two equal bounding-box reads before measuring.
-    // `tour-callout-ready` flips after the position is computed,
-    // but headless Chrome can still be mid-paint when the class
-    // lands — the first bbox read sees an intermediate value.
-    // Polling for stable geometry replaces the previous ±1px
-    // assertion (which flaked on DPI rounding) with a deterministic
-    // wait + the original tight bound.
+    // `tour-callout-ready` flips after the position is computed, but
+    // headless Chrome on CI can still be mid-paint when the class
+    // lands. `toPass` re-reads both boxes and re-checks the bound
+    // until it holds (or times out), absorbing that settle
+    // deterministically — the previous fixed-iteration poll broke on
+    // exact float equality, so on CI's continuous subpixel jitter it
+    // never settled and measured a mid-transition frame. The ±10px
+    // tolerance still absorbs steady-state DPI rounding (a 745.085-
+    // vs-743 delta) without masking gross overlap.
     const calloutHandle = page.locator('.tour-callout')
-    let prev = await calloutHandle.boundingBox()
-    for (let i = 0; i < 20; i++) {
-      await page.waitForTimeout(50)
-      const next = await calloutHandle.boundingBox()
-      if (prev && next && prev.x === next.x && prev.width === next.width) {
-        break
+    const panel = page.locator('aside.detail-panel')
+    await expect(async () => {
+      const panelBox = await panel.boundingBox()
+      const calloutBox = await calloutHandle.boundingBox()
+      expect(panelBox).not.toBeNull()
+      expect(calloutBox).not.toBeNull()
+      if (panelBox && calloutBox) {
+        expect(calloutBox.x + calloutBox.width).toBeLessThanOrEqual(panelBox.x + 10)
       }
-      prev = next
-    }
-    const panelBox = await page.locator('aside.detail-panel').boundingBox()
-    const calloutBox = await calloutHandle.boundingBox()
-    expect(panelBox).not.toBeNull()
-    expect(calloutBox).not.toBeNull()
-    if (panelBox && calloutBox) {
-      // ±10px tolerance absorbs subpixel DPI rounding + headless-
-      // Chrome layout variance on CI's Ubuntu runner. Previous
-      // ±3 px was tight enough that a 745.085-vs-743 delta tripped
-      // the assertion. 10 px is a small fraction of the panel
-      // width — still catches gross overlap.
-      expect(calloutBox.x + calloutBox.width).toBeLessThanOrEqual(panelBox.x + 10)
-    }
+    }).toPass({ timeout: 5000 })
   })
 
   test('ambiguous-attribution step lights up the .ambiguous-card', async ({ page }) => {
