@@ -80,14 +80,6 @@ Each item carries **size** (coding effort + review surface) and **risk**
 
 **Size:** L. **Risk:** Med — scoped-CSS `data-v-*` hashes change per extraction; any cross-component selector that piggybacked on MatchesView's hash must follow.
 
-### D3. Finish the `log/slog` migration
-
-**Where:** ~16 legacy `log.Printf` sites in `pkg/app/`, `pkg/metrics/`, and `pkg/cmd/server_profiles.go`.
-
-**What:** the `pkg/applog` seam shipped and the highest-volume sites (`watcher.go`, `server.go`) migrated; the rest flow through the same handler via the `log.SetOutput(slogWriter{…})` shim, so this is purely about adopting structured fields, not output. Sweep opportunistically as files are touched.
-
-**Size:** S. **Risk:** Low.
-
 ### D4. Real desktop-runtime e2e for Wails
 
 **Where:** `frontend/tests/e2e/` drives the `serveronly` binary exclusively.

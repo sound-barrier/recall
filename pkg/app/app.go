@@ -25,7 +25,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -33,6 +32,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
+	"recall/pkg/applog"
 	"recall/pkg/db"
 	"recall/pkg/metrics"
 	"recall/pkg/parser"
@@ -176,7 +176,7 @@ func (a *App) captureFatal(stage string, err error) {
 		return
 	}
 	a.startupErr = fmt.Errorf("startup: %s: %w", stage, err)
-	log.Printf("RECALL STARTUP FAILED: %s: %v", stage, err)
+	applog.Subsystem("startup").Error("RECALL STARTUP FAILED", "stage", stage, "err", err)
 }
 
 // Startup initializes the app: loads settings, checks Tesseract, opens the

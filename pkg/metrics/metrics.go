@@ -9,7 +9,6 @@ package metrics
 
 import (
 	"context"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"recall/pkg/applog"
 	"recall/pkg/parser"
 )
 
@@ -110,7 +110,7 @@ func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 	rows, err := c.read()
 	if err != nil {
-		log.Printf("metrics: read failed: %v", err)
+		applog.Subsystem("metrics").Error("read failed", "err", err)
 		return
 	}
 	for _, row := range rows {
@@ -143,7 +143,7 @@ func (c *Collector) emitMatch(ch chan<- prometheus.Metric, row ScrapeRow, ts tim
 	emit := func(d *prometheus.Desc, v float64, labels []string) {
 		m, err := prometheus.NewConstMetric(d, prometheus.GaugeValue, v, labels...)
 		if err != nil {
-			log.Printf("metrics: build %s: %v", d, err)
+			applog.Subsystem("metrics").Error("build metric", "metric", d.String(), "err", err)
 			return
 		}
 		ch <- prometheus.NewMetricWithTimestamp(ts, m)
@@ -290,13 +290,16 @@ func (s *Server) Start() {
 	// operator about the LAN exposure. Same-host (non-Docker) scrapers
 	// can set RECALL_METRICS_ADDR=127.0.0.1:9091 to bind loopback-only.
 	if !isLoopbackBind(s.addr) {
-		log.Printf("metrics: NOTICE %s is reachable from any host on the network and serves match data without auth. "+
-			"If you don't use the bundled Grafana stack, set RECALL_METRICS_ADDR=127.0.0.1:9091 to restrict it to localhost.", s.addr)
+		applog.Subsystem("metrics").Warn(
+			"endpoint reachable from any host on the network and serves match data without auth; "+
+				"set RECALL_METRICS_ADDR=127.0.0.1:9091 to restrict to localhost if not using the bundled Grafana stack",
+			"addr", s.addr,
+		)
 	}
 	go func() {
-		log.Printf("metrics: listening on %s", s.addr)
+		applog.Subsystem("metrics").Info("listening", "addr", s.addr)
 		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("metrics: server stopped: %v", err)
+			applog.Subsystem("metrics").Error("server stopped", "err", err)
 		}
 	}()
 }
@@ -329,8 +332,8 @@ func (s *Server) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	if err := s.srv.Shutdown(ctx); err != nil {
-		log.Printf("metrics: shutdown error: %v", err)
+		applog.Subsystem("metrics").Error("shutdown error", "err", err)
 		return
 	}
-	log.Printf("metrics: stopped listening on %s", s.addr)
+	applog.Subsystem("metrics").Info("stopped listening", "addr", s.addr)
 }
