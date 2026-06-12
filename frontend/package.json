@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint:js": "eslint . --max-warnings 0",
     "lint:css": "stylelint 'src/**/*.{css,vue}'",
-    "lint:html": "htmlhint index.html",
+    "lint:html": "htmlhint --config .htmlhintrc index.html ../docs/api/index.html",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
