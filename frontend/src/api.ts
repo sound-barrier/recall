@@ -27,6 +27,7 @@ export type HeroPlay          = components['schemas']['HeroPlay']
 export type TesseractStatus   = components['schemas']['TesseractStatus']
 export type ScreenshotType    = components['schemas']['ScreenshotType']
 export type ProfilesResponse  = components['schemas']['ProfilesResponse']
+export type SeedTestProfileResponse = components['schemas']['SeedTestProfileResponse']
 
 // Detect whether the Wails IPC bridge has been injected. The bridge is
 // only present when the page is loaded inside the native Wails webview.
@@ -689,6 +690,16 @@ export function CreateProfile(name: string): Promise<ProfilesResponse> {
     return _wails<void>('CreateProfile', name).then(() => GetProfiles())
   }
   return _send<ProfilesResponse>('POST', '/api/v1/profiles', { name })
+}
+
+// Onboarding helper: create + seed the sample "test" profile with ~500
+// synthetic matches over the rolling last-8-months window so the
+// walkthrough can run on real data. Idempotent (reuses an already-seeded
+// "test"). Does NOT switch the active profile — the caller does that via
+// SwitchProfile afterwards.
+export function SeedTestProfile(): Promise<SeedTestProfileResponse> {
+  if (IS_WAILS) return _wails<SeedTestProfileResponse>('SeedTestProfile')
+  return _send<SeedTestProfileResponse>('POST', '/api/v1/profiles/test/seed')
 }
 
 // Switch the active profile. Same shape as CreateProfile — returns

@@ -53,6 +53,18 @@ func registerProfileRoutes(apiMux *http.ServeMux, a *app.App) {
 			applog.Subsystem("server").Error("json encode", "err", encErr)
 		}
 	})
+	// Onboarding helper: create + seed the sample "test" profile with
+	// ~500 synthetic matches so the walkthrough can run on real data.
+	// Idempotent (reuses an existing seeded "test"). Does NOT switch the
+	// active profile — the client does that with PUT /profiles/active.
+	apiMux.HandleFunc("POST /api/v1/profiles/test/seed", func(w http.ResponseWriter, _ *http.Request) {
+		res, err := a.SeedTestProfile()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, res, nil)
+	})
 	apiMux.HandleFunc("PUT /api/v1/profiles/active", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Name string `json:"name"`

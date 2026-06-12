@@ -75,6 +75,51 @@ func (a *App) SwitchProfile(name string) error {
 	return a.activateAndReload(name)
 }
 
+// Sample "test" profile constants — the in-app onboarding "explore with
+// real data" action seeds this and then SwitchProfile's into it. A fixed
+// seed gives a stable demo corpus; chaos guarantees a few unknown +
+// ambiguous rows so the Unknown/Ambiguous tour steps have real targets.
+const (
+	TestProfileName    = "test"
+	testProfileSeed    = 8
+	testProfileMatches = 500
+	testProfileChaos   = 0.1
+)
+
+// SeedTestProfileResponse is the wire shape for SeedTestProfile.
+type SeedTestProfileResponse struct {
+	Profile       string `json:"profile"`
+	Matches       int    `json:"matches"`
+	AlreadySeeded bool   `json:"already_seeded"`
+}
+
+// SeedTestProfile creates a sample "test" profile (if absent) and seeds
+// it with ~500 synthetic matches over the rolling last-8-months window so
+// a new user can explore Recall on a real history. It does NOT switch the
+// active profile — the caller (the walkthrough) does that separately.
+// Idempotent: if "test" already holds matches, it's reused untouched and
+// AlreadySeeded is true. Seeds a transient store at the test profile's db
+// path, never the active store.
+func (a *App) SeedTestProfile() (SeedTestProfileResponse, error) {
+	if a.profiles == nil {
+		return SeedTestProfileResponse{}, fmt.Errorf("profiles: not initialized")
+	}
+	res, err := SeedProfile(a.profiles, TestProfileName, SeedOptions{
+		N:     testProfileMatches,
+		Seed:  testProfileSeed,
+		Style: "flex",
+		Chaos: testProfileChaos,
+	})
+	if err != nil {
+		return SeedTestProfileResponse{}, err
+	}
+	return SeedTestProfileResponse{
+		Profile:       res.Profile,
+		Matches:       res.Matches,
+		AlreadySeeded: res.AlreadySeeded,
+	}, nil
+}
+
 // RenameProfile changes a profile's name. The on-disk directory
 // renames atomically via os.Rename; if the profile being renamed is
 // the active one, the store + watcher + metrics endpoint all get
