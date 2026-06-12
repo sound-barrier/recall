@@ -539,7 +539,8 @@
 
 ### ⚠ BREAKING CHANGES
 
-* **profiles:** LoadProfiles no longer migrates a pre-profile <base>/{settings.json,db/} layout into profiles/main/. The earlier feat(profiles)! commit's footer promised auto-migration; this commit retracts that promise. Anyone with pre-profile data needs to either: (1) move <base>/settings.json + <base>/db/ into <base>/profiles/main/ manually before first launch, or (2) start fresh and re-parse from the screenshots folder.
+* **profiles:** LoadProfiles no longer migrates a pre-profile <base>/{settings.json,db/} layout into profiles/main/. The earlier feat(profiles)! commit's footer promised auto-migration; this commit retracts that promise.
+* **profiles (migration):** If you have pre-profile data, either (1) move <base>/settings.json + <base>/db/ into <base>/profiles/main/ before first launch, or (2) start fresh and re-parse from the screenshots folder.
 * **profiles:** On-disk data layout moved from <base>/{settings.json, db/recall.db} to <base>/profiles/<name>/{settings.json,db/recall.db}. Pre-profile installs auto-migrate into profiles/main/ on first launch, so the dev's existing data carries over — but any tool or script that hard-coded the old paths (db-where.sh, ad-hoc `sqlite3 $RECALL_DATA_DIR/db/recall.db`) needs to update. The GetDataLocation endpoint still surfaces the active base, so the UI's Settings → Directories pane reflects the new layout automatically.
 
 ### Features
