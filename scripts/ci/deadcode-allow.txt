@@ -26,6 +26,14 @@ App\.SaveExportToFile
 App\.SaveBundleToFile
 App\.LoadImportFromFile
 
+# App.ReParseAll: the desktop "Re-parse all" button drives this
+# synchronous method over Wails IPC. Server mode's POST
+# /parses?scope=all routes through the async StartParse(true) instead
+# (a background job that returns 202 up-front), so the serveronly
+# build never calls ReParseAll directly. ParseScreenshots stays
+# reachable — the file watcher calls it.
+App\.ReParseAll
+
 # app.NewWithStore: constructor used only by tests (store integration
 # suite). Test code isn't in deadcode's call graph for the production
 # build, so the function looks unreachable.
