@@ -48,32 +48,10 @@ Each item carries **size** (coding effort + review surface) and **risk**
 
 ---
 
-## Features
-
-### F3. In-app auto-updater
-
-**Where:** the masthead update flow — today "Check for updates" surfaces the latest version and the user clicks "Open release page".
-
-**What:** Wails v2 supports an in-app updater (download + apply the new binary). Deferred to 1.1.
-
-**Size:** L. **Risk:** Med.
-
----
-
-## Tech debt & refactors
-
-### D4. Real desktop-runtime e2e for Wails
-
-**Where:** `frontend/tests/e2e/` drives the `serveronly` binary exclusively.
-
-**What:** the `EventsOn`/`EventsOff` runtime bridge, the native dialogs (`PickScreenshotsDir` / `PickTesseractBinary`), and the watcher's real-OS interaction are only exercised on the released desktop app. Steps 1–2 of the ladder shipped (`make smoke-wails` compile check + AssetServer-shim unit coverage). Plan: integrate a Wails runtime driver (`wails dev` + `playwright connect` over CDP to the embedded WebView). Cross-platform-fragile — wait until an EventsOn / file-watcher / native-dialog regression actually bites.
-
-**Size:** XL. **Risk:** Med.
-
----
-
 ## Out of scope — deliberately not building
 
+- **In-app auto-updater** (was F3) — Wails v2 does not support an in-app binary updater, so the masthead flow stays "Check for updates → Open release page." Parked; revisit later if the updater story changes.
+- **Real desktop-runtime e2e for Wails** (was D4) — the `EventsOn`/`EventsOff` bridge, native dialogs, and watcher are only exercised on the released desktop app; a `wails dev` + CDP driver is cross-platform-fragile. Not worth the harness today. Parked; revisit later if an EventsOn / file-watcher / native-dialog regression actually bites.
 - **Analysis / coaching-insight dashboard tab** — the dev-only Analysis tab and its `MatchesDashboardSketch` were removed; the coaching-cards direction is not being pursued. Per-hero/per-session insight ideas, if they ever return, surface inside the Matches dossier, not a separate tab. (Speculative insight ideas remain parked in `FEATURES.md`.)
 - **Drag-to-reorder leaf rows** — matches are immutable history ordered by `parsed_at` / `finished_at`; reordering would lie about when they happened.
 - **Match comparison side-by-side view** — the detail panel is single-match. If comparison ever earns its way back, it's "tabs inside the panel", not dual inline expansion.
