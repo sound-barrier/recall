@@ -31,7 +31,7 @@ import MatchesDossier from './MatchesDossier.vue'
 const NarrowPopover = defineAsyncComponent(() => import('./NarrowPopover.vue'))
 import MatchRowContextMenu from './MatchRowContextMenu.vue'
 import LeafHoverPreview from './LeafHoverPreview.vue'
-import { summaryThumbnailURL } from '../composables/useSummaryThumbnail'
+import { useMatchesRowContext } from '../composables/useMatchesRowContext'
 import DashboardUndoToast from './DashboardUndoToast.vue'
 import { useDashboardLayout } from '../composables/useDashboardLayout'
 import { useSectionLayout } from '../composables/useSectionLayout'
@@ -698,20 +698,21 @@ const anchorChipLabel = computed(() => {
   return d ? `${d} · ${map}` : map
 })
 
-// Row right-click → context menu with quick actions ("Open detail",
-// "Filter from this match" / "Clear since-anchor"). Coordinates come
-// from the native MouseEvent's clientX / clientY so the menu pops up
-// right under the cursor.
-const rowContextMenu = ref<{ x: number; y: number; matchKey: string } | null>(null)
-
-function onRowContext(e: MouseEvent, matchKey: string) {
-  e.preventDefault()
-  rowContextMenu.value = { x: e.clientX, y: e.clientY, matchKey }
-}
-
-function onRowContextClose() {
-  rowContextMenu.value = null
-}
+// Row right-click menu + hover-preview state machine lives in the
+// composable; the menu's *actions* stay here as the emit surface to
+// App.vue ("Open detail", set-anchor, hide, copy replay/link, …).
+const {
+  rowContextMenu,
+  onRowContext,
+  onRowContextClose,
+  replayCodeFor,
+  hoverPreviewSrc,
+  hoverPreviewX,
+  hoverPreviewY,
+  onLeafMouseEnter,
+  onLeafMouseMove,
+  onLeafMouseLeave,
+} = useMatchesRowContext(narrowedRecords)
 
 function onRowContextOpenDetail(matchKey: string) {
   emit('open-match', matchKey)
@@ -749,54 +750,12 @@ function onRowContextOpenSourceFolder(matchKey: string) {
   emit('open-source-folder', matchKey)
 }
 
-// Replay-code lookup for the menu's gating (we hide "Copy replay
-// code" when the active row has no code on file). Looks up against
-// the narrowed set since MatchesView doesn't see the full records
-// array — for right-click on a visible row that's always sufficient.
-function replayCodeFor(matchKey: string): string | null {
-  return narrowedRecords.value.find(r => r.match_key === matchKey)?.annotation?.replay_code ?? null
-}
-
 // Wails-detect — duplicated as a one-liner so the menu doesn't have
 // to import api.ts (keeps the leaf component's import surface narrow).
 // `window.go` is set by the Wails runtime at boot; types come from
 // frontend/wailsjs and are already in tsconfig's `include` so vue-tsc
 // resolves the property without an @ts-expect-error.
 const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
-
-// ─── Leaf-row hover preview ────────────────────────────────────
-//
-// Floats a small thumbnail of the SUMMARY screenshot next to the
-// cursor on hover. CSS media-query gate (hover: hover) + (pointer:
-// fine) hides the preview on touch devices — the host doesn't need
-// a JS subscription.
-//
-// State is intentionally minimal: src + cursor coords. Mouseenter
-// sets src, mousemove updates coords, mouseleave clears src. The
-// preview component is mounted at the top level (Teleport to body)
-// so it doesn't get stacking-context surprises from leaf rows.
-
-const hoverPreviewSrc = ref<string | null>(null)
-const hoverPreviewX   = ref(0)
-const hoverPreviewY   = ref(0)
-
-function onLeafMouseEnter(rec: MatchRecord, e: MouseEvent) {
-  hoverPreviewSrc.value = summaryThumbnailURL(rec)
-  hoverPreviewX.value = e.clientX
-  hoverPreviewY.value = e.clientY
-}
-
-function onLeafMouseMove(e: MouseEvent) {
-  // Only update coords; src is set on enter so the preview tracks
-  // the cursor without re-resolving the thumbnail on every move.
-  if (!hoverPreviewSrc.value) return
-  hoverPreviewX.value = e.clientX
-  hoverPreviewY.value = e.clientY
-}
-
-function onLeafMouseLeave() {
-  hoverPreviewSrc.value = null
-}
 
 // ─── Narrow popover plumbing ─────────────────────────────
 //
