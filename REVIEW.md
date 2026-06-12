@@ -72,14 +72,6 @@ Each item carries **size** (coding effort + review surface) and **risk**
 
 **Size:** S. **Risk:** Low.
 
-### D2. Split `MatchesView.vue` further (optional)
-
-**Where:** `frontend/src/components/MatchesView.vue` (~1,710 lines).
-
-**What:** the heavy extractions have landed — `MatchesDossier`, `MatchLeafRow` / `MatchTableRow`, `MatchesArchiveDrawer`, and now `MatchesMembersList` (the leaf-list + data-density table + flat-mode virtualization + infinite-scroll). MatchesView is now orchestration plus the dossier head, the Campaign Log wiring, and the selection / bulk-bar / context-menu glue. Further splitting (the dossier head into its own SFC, the row-context-menu / hover-preview orchestration) is possible but low-value — defer until file size actually blocks a feature.
-
-**Size:** M. **Risk:** Med — scoped-CSS `data-v-*` hashes change per extraction.
-
 ### D4. Real desktop-runtime e2e for Wails
 
 **Where:** `frontend/tests/e2e/` drives the `serveronly` binary exclusively.
