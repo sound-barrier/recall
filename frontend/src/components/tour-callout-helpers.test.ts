@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { rectsOverlap } from './tour-callout-helpers'
+import { rectsEqual, rectsOverlap } from './tour-callout-helpers'
 
 describe('rectsOverlap', () => {
   it('returns true when one rect is fully inside the other', () => {
@@ -52,5 +52,45 @@ describe('rectsOverlap', () => {
       { x: 0,  y: 0,  w: 100, h: 100 },
     )
     expect(typeof result).toBe('boolean')
+  })
+})
+
+describe('rectsEqual', () => {
+  it('is true for identical rects', () => {
+    expect(rectsEqual(
+      { x: 100, y: 50, w: 360, h: 200 },
+      { x: 100, y: 50, w: 360, h: 200 },
+    )).toBe(true)
+  })
+
+  it('absorbs sub-epsilon jitter on every axis (default 0.5px)', () => {
+    // Steady-state getBoundingClientRect can wobble a fraction of a
+    // pixel between frames; that must still read as "settled".
+    expect(rectsEqual(
+      { x: 740,    y: 120,    w: 520,    h: 600    },
+      { x: 740.3,  y: 119.7,  w: 520.4,  h: 600.2  },
+    )).toBe(true)
+  })
+
+  it('is false while the target is mid-slide (x still moving)', () => {
+    // The bug this guards: a 40px-still-moving target must NOT read as
+    // stable, so placement waits for the slide to finish.
+    expect(rectsEqual(
+      { x: 740,   y: 120, w: 520, h: 600 },
+      { x: 779.7, y: 120, w: 520, h: 600 },
+    )).toBe(false)
+  })
+
+  it('honours a custom epsilon', () => {
+    expect(rectsEqual(
+      { x: 0, y: 0, w: 0, h: 0 },
+      { x: 3, y: 0, w: 0, h: 0 },
+      4,
+    )).toBe(true)
+    expect(rectsEqual(
+      { x: 0, y: 0, w: 0, h: 0 },
+      { x: 5, y: 0, w: 0, h: 0 },
+      4,
+    )).toBe(false)
   })
 })
