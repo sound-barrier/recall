@@ -58,6 +58,8 @@ import {
   SetMatchPlayMode,
   HardDeleteMatch,
   MoveMatches,
+  SeedTestProfile,
+  SwitchProfile,
 } from './api'
 import type { IgnoredScreenshot, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from './api'
 import { plainLanguageError } from './error-helpers'
@@ -74,7 +76,7 @@ import { useFeatureToggle } from './composables/useFeatureToggle'
 import { useEventStream } from './composables/useEventStream'
 import { useParseRecovery } from './composables/useParseRecovery'
 import { useScreenshotPreview } from './composables/useScreenshotPreview'
-import { ONBOARDING_COMPLETED_KEY } from './composables/storageKeys'
+import { ONBOARDING_COMPLETED_KEY, ONBOARDING_RESUME_KEY } from './composables/storageKeys'
 import { useTheme } from './composables/useTheme'
 import { useWeekStart } from './composables/useWeekStart'
 import { useSearchClauses } from './composables/useSearchClauses'
@@ -236,10 +238,29 @@ async function onTourActiveChange(active: boolean) {
     records.value = [...DEMO_MATCHES]
     tourActive.value = true
   } else {
+    // load() routes the real fetched records into savedRecords while the
+    // tour is active — so this restores the user's data (including the
+    // seeded "test" profile after a seed+switch resume).
     records.value = savedRecords.value
     savedRecords.value = []
     tourActive.value = false
   }
+}
+
+// Tour "Explore with real data": seed the sample "test" profile, park
+// the step to resume on, then switch into it. SwitchProfile reloads the
+// SPA, so this resolves only if it throws (the controller then falls
+// through to a plain advance). On success the tour reopens at
+// resumeStepIndex — now in the test profile — via the resume key.
+async function onTourSeedAndSwitch(resumeStepIndex: number): Promise<void> {
+  await SeedTestProfile()
+  try { localStorage.setItem(ONBOARDING_RESUME_KEY, String(resumeStepIndex)) } catch (_) { /* ignore */ }
+  await SwitchProfile('test')
+  // SwitchProfile swaps the backend's active store; reload so every
+  // composable re-fetches against the test profile (same as the
+  // ProfileSwitcher chip). On the next mount the tour resumes at the
+  // parked step, now in the test profile.
+  window.location.reload()
 }
 
 // Brief visual pulse on the scoreboard / records-count surface when
@@ -2197,6 +2218,7 @@ useEventStream({
          (matchesNarrowState picks). @active-change flips the
          records swap so every tour step lands on demo data. -->
     <OnboardingTour
+      :seed-and-switch-to-test="onTourSeedAndSwitch"
       @navigate="goToView"
       @active-change="onTourActiveChange"
       @open-match="(k: string) => selection.open(k)"

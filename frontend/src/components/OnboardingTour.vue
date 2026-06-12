@@ -33,6 +33,14 @@ import TourCallout from './TourCallout.vue'
 // captured here. The Next button is focused on every step change so
 // keyboard-only users move through the tour by pressing Enter.
 
+// The seed+switch action is a prop callback (not an emit) because the
+// controller awaits it: on success App.vue reloads the SPA (so it never
+// resolves); on failure it rejects and the tour falls through to a plain
+// advance. Emits are fire-and-forget and can't carry that signal.
+const props = defineProps<{
+  seedAndSwitchToTest: (resumeStepIndex: number) => Promise<void>
+}>()
+
 const emit = defineEmits<{
   navigate:    [view: OnboardingViewId]
   // Tour-active state — App.vue swaps records.value for the demo
@@ -58,6 +66,7 @@ const actions: TourActionContext = {
   closeNarrow:     () => emit('close-narrow'),
   applyHeroFilter: (h) => emit('apply-hero-filter', h),
   clearFilters:    () => emit('clear-filters'),
+  seedAndSwitchToTest: (idx) => props.seedAndSwitchToTest(idx),
 }
 
 const tour = useOnboardingTour({ actions })
