@@ -11,7 +11,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR/.."
+# podman-compose reads docker-compose.yml from the cwd, which lives at the
+# repo root — two levels up from scripts/stack/, not one.
+cd "$SCRIPT_DIR/../.."
 
 podman-compose down
 
