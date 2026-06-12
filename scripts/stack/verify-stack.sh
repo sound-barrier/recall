@@ -20,7 +20,7 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../lib/_db.sh
 . "$SCRIPT_DIR/../lib/_db.sh"
-cd "$SCRIPT_DIR/.." || {
+cd "$SCRIPT_DIR/../.." || {
   echo "[verify-stack] could not cd into repo root from $SCRIPT_DIR" >&2
   exit 1
 }
