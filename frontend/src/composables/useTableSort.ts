@@ -1,12 +1,13 @@
 import { ref } from 'vue'
 
 import type { MatchRecord } from '../api'
+import { heroesForHeader } from '../match-helpers'
+import { matchTime } from '../match-time-helpers'
 
-// Per-column sort for the `data`-density match table. The Y/M/W/D
-// grouping (useMatchesGroup) decides which group a row lands in and the
-// order of the groups themselves; this sort orders the rows WITHIN each
-// group (and the whole list in the ungrouped/flat path). Default is
-// date-descending — the same newest-first the leaf-row list shows.
+// Per-column sort for the `data`-density match table. Data density is a
+// flat spreadsheet: the active column header sorts the WHOLE table (no
+// grouping). Default is date-descending — newest match first, matching
+// the leaf-row list's default.
 
 export type TableSortCol =
   | 'date'
@@ -28,10 +29,15 @@ function compareCol(col: TableSortCol, a: MatchRecord, b: MatchRecord): number {
   const da = a.data
   const db = b.data
   switch (col) {
-    case 'date':         return (a.parsed_at ?? '').localeCompare(b.parsed_at ?? '')
+    // The match's own date + time (data.date + finished_at), NOT
+    // parsed_at — the user sorts by when they PLAYED, not when the file
+    // was ingested. matchTime() returns a sortable ISO key.
+    case 'date':         return matchTime(a).localeCompare(matchTime(b))
     case 'map':          return (da?.map ?? '').localeCompare(db?.map ?? '')
     case 'mode':         return (da?.playlist ?? '').localeCompare(db?.playlist ?? '')
-    case 'hero':         return (da?.hero ?? '').localeCompare(db?.hero ?? '')
+    // The MOST-PLAYED hero (heroesForHeader sorts by percent_played
+    // desc), not the primary data.hero.
+    case 'hero':         return (heroesForHeader(a)[0]?.hero ?? '').localeCompare(heroesForHeader(b)[0]?.hero ?? '')
     case 'role':         return (da?.role ?? '').localeCompare(db?.role ?? '')
     case 'eliminations': return (da?.eliminations ?? 0) - (db?.eliminations ?? 0)
     case 'result':       return (RESULT_RANK[da?.result ?? ''] ?? 9) - (RESULT_RANK[db?.result ?? ''] ?? 9)

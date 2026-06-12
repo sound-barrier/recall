@@ -191,14 +191,20 @@ export function formatRoles(
   return rolesForHeader(rec, heroRole).join(', ')
 }
 
-// Short "Mon D" date from data.date (ISO YYYY-MM-DD). '—' when
-// undated; the raw string when unparseable.
+// Short "Mon D" date from data.date (ISO YYYY-MM-DD). '—' when undated;
+// the raw string when unparseable. The YEAR is appended only when the
+// date isn't in the current calendar year ("Dec 31, 2025" vs "Jun 3"),
+// so a multi-year corpus reads in correct chronological order instead of
+// looking scrambled when same-month/day labels collide across years.
 export function formatRowDate(rec: Pick<MatchRecord, 'data'>): string {
   const d = rec.data?.date
   if (!d) return '—'
   const dt = new Date(d + 'T00:00:00')
   if (isNaN(dt.getTime())) return d
-  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const sameYear = dt.getFullYear() === new Date().getFullYear()
+  return dt.toLocaleDateString(undefined, sameYear
+    ? { month: 'short', day: 'numeric' }
+    : { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 // Finish time-of-day for a row (data.finished_at), '' when absent.

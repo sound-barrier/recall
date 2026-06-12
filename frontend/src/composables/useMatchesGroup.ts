@@ -29,6 +29,17 @@ function sortKey(r: MatchRecord): string {
   return `${r.data?.date ?? ''}T${r.data?.finished_at ?? ''}` || (r.parsed_at ?? '')
 }
 
+// Append the year to a short date label only when the date isn't in the
+// current calendar year ("Dec 31, 2025" vs "Jun 3"), so a multi-year
+// corpus's day/week headers read in chronological order rather than
+// looking scrambled when same month/day collide across years.
+function shortDateWithYear(d: Date, base: Intl.DateTimeFormatOptions): string {
+  const opts: Intl.DateTimeFormatOptions = d.getFullYear() === new Date().getFullYear()
+    ? base
+    : { ...base, year: 'numeric' }
+  return d.toLocaleDateString(undefined, opts)
+}
+
 function bucketFor(date: string, bucket: GroupBy): { key: string; label: string } {
   if (!date) return { key: 'no-date', label: 'No date' }
   if (bucket === 'none') return { key: date, label: '' }
@@ -51,7 +62,7 @@ function bucketFor(date: string, bucket: GroupBy): { key: string; label: string 
     const monday = new Date(d)
     monday.setDate(d.getDate() - ((day + 6) % 7))
     const key = monday.toISOString().slice(0, 10)
-    const label = `Week of ${monday.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+    const label = `Week of ${shortDateWithYear(monday, { month: 'short', day: 'numeric' })}`
     return { key, label }
   }
   // day
@@ -59,7 +70,7 @@ function bucketFor(date: string, bucket: GroupBy): { key: string; label: string 
   if (isNaN(d.getTime())) return { key: date, label: date }
   return {
     key: date,
-    label: d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }),
+    label: shortDateWithYear(d, { weekday: 'short', month: 'short', day: 'numeric' }),
   }
 }
 

@@ -12,6 +12,9 @@ interface RecOpts {
   elims?: number
   tags?: string[]
   parsedAt?: string
+  date?: string
+  finishedAt?: string
+  heroesPlayed?: { hero: string; percent_played?: number }[]
 }
 
 function rec(key: string, o: RecOpts = {}): MatchRecord {
@@ -25,6 +28,9 @@ function rec(key: string, o: RecOpts = {}): MatchRecord {
       role: o.role ?? 'support',
       result: o.result ?? 'victory',
       eliminations: o.elims ?? 10,
+      ...(o.date ? { date: o.date } : {}),
+      ...(o.finishedAt ? { finished_at: o.finishedAt } : {}),
+      ...(o.heroesPlayed ? { heroes_played: o.heroesPlayed } : {}),
     },
     parsed_at: o.parsedAt ?? '2026-05-10T20:00:00Z',
     ...(o.tags ? { annotation: { tags: o.tags } } : {}),
@@ -47,6 +53,27 @@ describe('useTableSort', () => {
       rec('new', { parsedAt: '2026-05-09T10:00:00Z' }),
     ])
     expect(out.map((r) => r.match_key)).toEqual(['new', 'old'])
+  })
+
+  it('sorts the When column by MATCH time (data.date + finished_at), not parsed_at', () => {
+    // Ingested together (same parsed_at), but played in different
+    // years. The When sort must order by when they were PLAYED.
+    const corpus = [
+      rec('dec', { date: '2025-12-31', finishedAt: '20:00', parsedAt: '2026-06-10T09:00:00Z' }),
+      rec('jun', { date: '2026-06-03', finishedAt: '20:00', parsedAt: '2026-06-10T09:00:00Z' }),
+    ]
+    const { sortRows } = useTableSort() // default: date desc (newest match first)
+    expect(sortRows(corpus).map((r) => r.match_key)).toEqual(['jun', 'dec'])
+  })
+
+  it('sorts the Hero column by the MOST-PLAYED hero, not the primary', () => {
+    const corpus = [
+      // primary data.hero is 'lucio', but Ana was played 70% of the match
+      rec('ana-main', { hero: 'lucio', heroesPlayed: [{ hero: 'ana', percent_played: 70 }, { hero: 'lucio', percent_played: 30 }] }),
+      rec('zen', { hero: 'zenyatta', heroesPlayed: [{ hero: 'zenyatta', percent_played: 100 }] }),
+    ]
+    // Ascending by most-played: 'ana' < 'zenyatta'.
+    expect(keysAfterSort(corpus, 'hero', 1)).toEqual(['ana-main', 'zen'])
   })
 
   it('sorts a text column (map) ascending, then descending on a second click', () => {
