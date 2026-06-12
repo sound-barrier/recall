@@ -20,6 +20,7 @@ import {
   ParseScreenshots,
   ReParseAll,
   CancelParse,
+  GetActiveParse,
   GetMatchResults,
   GetScreenshotsDir,
   PickScreenshotsDir,
@@ -71,6 +72,7 @@ import { useTesseractStatus } from './composables/useTesseractStatus'
 import { useScreenshotsDir } from './composables/useScreenshotsDir'
 import { useFeatureToggle } from './composables/useFeatureToggle'
 import { useEventStream } from './composables/useEventStream'
+import { useParseRecovery } from './composables/useParseRecovery'
 import { useScreenshotPreview } from './composables/useScreenshotPreview'
 import { ONBOARDING_COMPLETED_KEY } from './composables/storageKeys'
 import { useTheme } from './composables/useTheme'
@@ -631,20 +633,19 @@ async function runParse() {
   parseLog.value = []
   parseProgressOpen.value = false
   try {
+    // POST /parses now returns 202 the instant the run is accepted (it
+    // runs as a background job server-side); in Wails the IPC blocks
+    // until done. Either way COMPLETION — load() + parseBusy=false —
+    // arrives via the parse-complete event handler (onParseComplete),
+    // not here, so a mid-parse network drop can't strand the panel.
     await ParseScreenshots()
-    await load()
-    lastParsedAt.value = Date.now()
-    try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {}
   } catch (e) {
+    // The kickoff itself failed (409 already-in-flight / unset folder,
+    // or a pre-202 network error). Clear the busy state here since no
+    // parse-complete will follow.
     setErrorFromRaw(String(e))
-  } finally {
     parseBusy.value = false
     parseProgress.value = null
-    // Race tolerance: if the user clicked Stop AND the parse
-    // happened to finish at the same time, the SSE
-    // parse-cancelled may never fire (the server already
-    // emitted parse-complete). Clearing the flag here keeps the
-    // Stop button from staying stuck on "Cancelling…".
     cancellingParse.value = false
   }
 }
@@ -690,13 +691,11 @@ async function onReParseAll() {
   parseProgress.value = null
   parseLog.value = []
   try {
+    // Same async-job contract as runParse — completion + load() arrive
+    // via the parse-complete handler, not the POST resolving.
     await ReParseAll()
-    await load()
-    lastParsedAt.value = Date.now()
-    try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {}
   } catch (e) {
     setErrorFromRaw(String(e))
-  } finally {
     parseBusy.value = false
     parseProgress.value = null
     cancellingParse.value = false
@@ -1631,30 +1630,41 @@ function announceParse(msg: string) {
 // parse-progress drives the inline log + counter; parse-complete is
 // the authoritative reload after a batch; match-updated upserts a
 // single record by match_key for live streaming during a long parse.
+// Server-mode parse-stream recovery: detect a mid-parse SSE drop, resync
+// against GET /parses/active on reconnect / reload, and surface a manual
+// Refresh when the connection stays down. No-op in Wails mode.
+const { connectionState: parseConnectionState, refresh: refreshParse } = useParseRecovery({
+  parseBusy,
+  parseProgress,
+  reload: load,
+  getActiveParse: GetActiveParse,
+})
+
 useEventStream({
   records,
   parseProgress,
   parseLog,
+  // parse-complete is now the authoritative completion signal for EVERY
+  // parse path (user click, watcher, re-parse) — the server emits it
+  // from the OCR loop, so this handler owns clearing parseBusy + the
+  // reload (runParse no longer waits on the POST to do it).
   onParseComplete: async () => {
     await load()
     lastParsedAt.value = Date.now()
     try { localStorage.setItem('recall.lastParsedAt', String(lastParsedAt.value)) } catch (_) {}
-    // Race tolerance: if the user clicked Stop right before the
-    // parse finished naturally, parse-complete may arrive before
-    // (or instead of) parse-cancelled. Clear the cancelling flag
-    // here so the Stop button doesn't stay stuck on "Cancelling…"
-    // for a watcher-triggered parse where runParse's finally
-    // never ran.
+    parseBusy.value = false
+    parseProgress.value = null
     cancellingParse.value = false
     const n = records.value.length
     announceParse(`Parse complete. ${n} match${n === 1 ? '' : 'es'} loaded.`)
   },
   // SSE confirmation of a Stop click. Records ref already reflects
   // whatever made it into SQLite before the cancellation point —
-  // call load() so the matches list rebinds, then clear the
-  // cancelling flag so IngestView's Stop button flips back to Run.
+  // call load() so the matches list rebinds, then clear the busy +
+  // cancelling flags so IngestView's Stop button flips back to Run.
   onParseCancelled: async () => {
     await load()
+    parseBusy.value = false
     cancellingParse.value = false
     parseProgress.value = null
     announceParse('Parse cancelled.')
@@ -1964,12 +1974,14 @@ useEventStream({
           :parse-progress="parseProgress"
           :parse-log="parseLog"
           :parse-progress-open="parseProgressOpen"
+          :parse-connection-state="parseConnectionState"
           :matched-count="records.length"
           :unknown-count="unknownRecords.length"
           @toggle-watch="toggleWatch"
           @parse="parse"
           @cancel-parse="onCancelParse"
           @toggle-progress="parseProgressOpen = !parseProgressOpen"
+          @refresh-parse="refreshParse"
           @go-to-view="goToView"
         />
 

@@ -18,15 +18,24 @@ export interface ParseProgressEvent {
 </script>
 
 <script setup lang="ts">
-defineProps<{
+withDefaults(defineProps<{
   parseBusy: boolean
   parseProgress: ParseProgressEvent | null
   parseLog: ParseProgressEvent[]
   isOpen: boolean
-}>()
+  // Server-mode SSE connection state. 'reconnecting' shows a transient
+  // indicator; 'lost' surfaces the manual Refresh fallback. Defaults to
+  // 'connected' (no recovery UI) for Wails + callers that don't track
+  // it. Union inlined (not imported from useParseRecovery) to avoid a
+  // type cycle — that composable imports ParseProgressEvent from here.
+  connectionState?: 'connected' | 'reconnecting' | 'lost'
+}>(), {
+  connectionState: 'connected',
+})
 
 defineEmits<{
   'toggle-open': []
+  'refresh': []
 }>()
 </script>
 
@@ -53,6 +62,36 @@ defineEmits<{
         <span class="pp-unit">&nbsp;files</span>
       </div>
       <span class="chev pp-chev" :class="{ open: isOpen }" aria-hidden="true">›</span>
+    </div>
+
+    <!-- SSE recovery (server mode). The parse runs server-side as a
+         background job, so a dropped stream doesn't stop it — we just
+         lose live updates. 'reconnecting' is transient; 'lost' (the
+         stream stayed down) offers a manual resync. -->
+    <div
+      v-if="connectionState === 'reconnecting'"
+      class="pp-stream-status"
+      data-stream-reconnecting
+      role="status"
+    >
+      <span class="pp-stream-dot" aria-hidden="true" />
+      <span>Reconnecting to the server…</span>
+    </div>
+    <div
+      v-else-if="connectionState === 'lost'"
+      class="pp-stream-lost"
+      data-parse-stream-lost
+      role="alert"
+    >
+      <span class="pp-stream-lost-text">Lost connection to the server. The parse may have finished.</span>
+      <button
+        type="button"
+        class="pp-stream-refresh"
+        data-parse-refresh
+        @click="$emit('refresh')"
+      >
+        Refresh
+      </button>
     </div>
 
     <!-- Expanded details: current file + rolling log -->
@@ -228,6 +267,58 @@ defineEmits<{
 .pp-done { color: var(--accent-text); font-weight: 600; }
 .pp-sep  { color: var(--text-faint); }
 .pp-unit { color: var(--text-faint); text-transform: lowercase; letter-spacing: 0.08em; }
+
+/* ── SSE recovery affordances ─────────────────────────────────── */
+.pp-stream-status,
+.pp-stream-lost {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--border-soft);
+  font-size: 0.74rem;
+}
+
+.pp-stream-status {
+  color: var(--text-dim);
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+}
+
+.pp-stream-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--draw, #d8a657);
+  animation: pulse-dot 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.pp-stream-lost {
+  justify-content: space-between;
+  background: var(--loss-soft);
+  color: var(--loss);
+}
+
+.pp-stream-lost-text { font-weight: 500; }
+
+.pp-stream-refresh {
+  appearance: none;
+  border: 1px solid currentcolor;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  padding: 0.3rem 0.85rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.pp-stream-refresh:hover { background: color-mix(in srgb, currentcolor 14%, transparent); }
 
 .pp-current {
   display: flex;
