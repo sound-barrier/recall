@@ -448,7 +448,8 @@ func nullableString(s string) sql.NullString {
 // supply a valid FK target now that the column is `NOT NULL`; the
 // sentinel exists so callers that don't have a real dir at hand
 // (test fixtures, legacy imports with orphan FKs) can write a row
-// without a constraint violation.
+// without a constraint violation. SentinelScreenshotsDirID is defined
+// in schema.go.
 func dirIDOrSentinel(n int64) int64 {
 	if n == 0 {
 		return SentinelScreenshotsDirID
