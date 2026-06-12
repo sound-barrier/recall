@@ -31,17 +31,17 @@ TRIVY_VERSION="0.70.0"
 log "apt packages: tesseract, sqlite3, jq, yamllint, cloc, direnv, …"
 sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    tesseract-ocr \
-    sqlite3 \
-    jq \
-    yamllint \
-    cloc \
-    direnv \
-    ca-certificates \
-    curl \
-    wget \
-    unzip \
-    pipx
+  tesseract-ocr \
+  sqlite3 \
+  jq \
+  yamllint \
+  cloc \
+  direnv \
+  ca-certificates \
+  curl \
+  wget \
+  unzip \
+  pipx
 sudo rm -rf /var/lib/apt/lists/*
 
 # Wire pipx onto PATH for the rest of this script + the user's shell.
@@ -85,25 +85,25 @@ go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
 # ─── hadolint (Dockerfile linter) ─────────────────────────────────────
 log "hadolint ${HADOLINT_VERSION}"
 sudo curl -fsSL "https://github.com/hadolint/hadolint/releases/download/${HADOLINT_VERSION}/hadolint-Linux-x86_64" \
-    -o /usr/local/bin/hadolint
+  -o /usr/local/bin/hadolint
 sudo chmod +x /usr/local/bin/hadolint
 
 # ─── lefthook (pre-commit hooks runner) ───────────────────────────────
 log "lefthook ${LEFTHOOK_VERSION}"
 curl -fsSL "https://github.com/evilmartians/lefthook/releases/download/v${LEFTHOOK_VERSION}/lefthook_${LEFTHOOK_VERSION}_Linux_x86_64.tar.gz" \
-    | sudo tar -xz -C /usr/local/bin lefthook
+  | sudo tar -xz -C /usr/local/bin lefthook
 sudo chmod +x /usr/local/bin/lefthook
 
 # ─── trivy (vulnerability scanner) ────────────────────────────────────
 log "trivy ${TRIVY_VERSION}"
 curl -fsSL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
-    | sudo tar -xz -C /usr/local/bin trivy
+  | sudo tar -xz -C /usr/local/bin trivy
 sudo chmod +x /usr/local/bin/trivy
 
 # ─── typos (spell-checker) ────────────────────────────────────────────
 log "typos ${TYPOS_VERSION}"
 curl -fsSL "https://github.com/crate-ci/typos/releases/download/${TYPOS_VERSION}/typos-${TYPOS_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
-    | sudo tar -xz -C /usr/local/bin ./typos
+  | sudo tar -xz -C /usr/local/bin ./typos
 sudo chmod +x /usr/local/bin/typos
 
 # ─── semgrep (JS/TS SAST) ─────────────────────────────────────────────
@@ -127,40 +127,46 @@ pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
 # Wire direnv into it so cd-ing into the workspace activates .envrc.
 log "direnv: bash hook"
 if ! grep -q 'direnv hook bash' "$HOME/.bashrc" 2>/dev/null; then
-    printf '\n# direnv (post-create)\neval "$(direnv hook bash)"\n' >> "$HOME/.bashrc"
+  # Quoted heredoc — the $(direnv hook bash) must land in .bashrc
+  # literally and expand when the shell sources it, not now.
+  cat >>"$HOME/.bashrc" <<'BASHRC'
+
+# direnv (post-create)
+eval "$(direnv hook bash)"
+BASHRC
 fi
 # direnv refuses to load .envrc until allowed once per machine; do it
 # now so the container is usable out of the box.
 if [ -f /workspaces/recall/.envrc ]; then
-    direnv allow /workspaces/recall || true
+  direnv allow /workspaces/recall || true
 fi
 
 # ─── Frontend deps + git hooks ────────────────────────────────────────
 log "frontend: npm ci"
-( cd /workspaces/recall/frontend && npm ci --no-audit --no-fund )
+(cd /workspaces/recall/frontend && npm ci --no-audit --no-fund)
 
 log "lefthook install (wires .git/hooks/{pre-commit,commit-msg})"
-( cd /workspaces/recall && lefthook install )
+(cd /workspaces/recall && lefthook install)
 
 # ─── Sanity: report installed versions ────────────────────────────────
 log "done — tool versions:"
 {
-    printf '  go             %s\n' "$(go version)"
-    printf '  node           %s\n' "$(node --version)"
-    printf '  tesseract      %s\n' "$(tesseract --version 2>&1 | head -1)"
-    printf '  golangci-lint  %s\n' "$(golangci-lint --version 2>&1 | head -1)"
-    printf '  gofumpt        %s\n' "$(gofumpt --version)"
-    printf '  shfmt          %s\n' "$(shfmt --version)"
-    printf '  wails          %s\n' "$(wails -v 2>&1 | head -1)"
-    printf '  hadolint       %s\n' "$(hadolint --version)"
-    printf '  yamllint       %s\n' "$(yamllint --version)"
-    printf '  lefthook       %s\n' "$(lefthook version)"
-    printf '  trivy          %s\n' "$(trivy --version 2>&1 | head -1)"
-    printf '  typos          %s\n' "$(typos --version 2>&1 | head -1)"
-    printf '  actionlint     %s\n' "$(actionlint -version 2>&1 | head -1)"
-    printf '  gosec          %s\n' "$(gosec -version 2>&1 | head -1)"
-    printf '  jq             %s\n' "$(jq --version)"
-    printf '  direnv         %s\n' "$(direnv --version)"
+  printf '  go             %s\n' "$(go version)"
+  printf '  node           %s\n' "$(node --version)"
+  printf '  tesseract      %s\n' "$(tesseract --version 2>&1 | head -1)"
+  printf '  golangci-lint  %s\n' "$(golangci-lint --version 2>&1 | head -1)"
+  printf '  gofumpt        %s\n' "$(gofumpt --version)"
+  printf '  shfmt          %s\n' "$(shfmt --version)"
+  printf '  wails          %s\n' "$(wails -v 2>&1 | head -1)"
+  printf '  hadolint       %s\n' "$(hadolint --version)"
+  printf '  yamllint       %s\n' "$(yamllint --version)"
+  printf '  lefthook       %s\n' "$(lefthook version)"
+  printf '  trivy          %s\n' "$(trivy --version 2>&1 | head -1)"
+  printf '  typos          %s\n' "$(typos --version 2>&1 | head -1)"
+  printf '  actionlint     %s\n' "$(actionlint -version 2>&1 | head -1)"
+  printf '  gosec          %s\n' "$(gosec -version 2>&1 | head -1)"
+  printf '  jq             %s\n' "$(jq --version)"
+  printf '  direnv         %s\n' "$(direnv --version)"
 } || true
 
 cat <<'EOF'
