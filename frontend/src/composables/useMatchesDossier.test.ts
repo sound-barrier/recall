@@ -1519,6 +1519,7 @@ describe('useMatchesDossier — query-helper parameterization', () => {
       game_mode?: 'control' | 'escort' | 'flashpoint' | 'hybrid' | 'push' | 'clash'
       result?: 'victory' | 'defeat' | 'draw'
       heroesPlayed?: Array<{ hero: string; play_time?: string }>
+      date?: string
     }): MatchRecord {
       return {
         match_key:    `m-${Math.random()}`,
@@ -1530,10 +1531,20 @@ describe('useMatchesDossier — query-helper parameterization', () => {
           game_mode: opts.game_mode ?? 'control',
           result:    opts.result ?? 'victory',
           playlist:  'competitive',
+          ...(opts.date ? { date: opts.date } : {}),
           ...(opts.heroesPlayed ? { heroes_played: opts.heroesPlayed } : {}),
         },
         parsed_at: '2026-05-10T14:00:00Z',
       } as unknown as MatchRecord
+    }
+
+    // Relative ISO date so the windowMonths test isn't pinned to a fixed
+    // "today" — wide margins (1mo inside / 12mo outside a 3mo window)
+    // keep it robust against day-arithmetic at the cutoff boundary.
+    function isoMonthsAgo(n: number): string {
+      const d = new Date()
+      d.setMonth(d.getMonth() - n)
+      return d.toISOString().slice(0, 10)
     }
 
     it('returns an empty array when there are no records', () => {
@@ -1627,6 +1638,23 @@ describe('useMatchesDossier — query-helper parameterization', () => {
       const heroes = [...new Set(cells.map(c => c.hero))]
       expect(heroes.sort()).toEqual(['ana', 'lucio'])
       expect(heroes).not.toContain('kiriko')
+    })
+
+    it('honours windowMonths — drops records older than the cutoff and undated rows', () => {
+      const records = ref([
+        tr({ hero: 'lucio', game_mode: 'control', result: 'victory', date: isoMonthsAgo(1) }),
+        tr({ hero: 'lucio', game_mode: 'control', result: 'defeat',  date: isoMonthsAgo(12) }),
+        tr({ hero: 'lucio', game_mode: 'control', result: 'defeat' }), // undated
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const lucioControl = (windowMonths?: number) =>
+        dossier.heroGameModeCounts(windowMonths ? () => ({ windowMonths }) : undefined)
+          .value.find(c => c.hero === 'lucio' && c.gameMode === 'control')!
+      // All-time (default 0): all three rows count.
+      expect(lucioControl().total).toBe(3)
+      // 3-month window: only the 1-month-ago row survives; the 12-month
+      // row and the undated row drop out.
+      expect(lucioControl(3)).toMatchObject({ total: 1, wins: 1, losses: 0 })
     })
   })
 
