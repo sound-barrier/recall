@@ -3,7 +3,9 @@ package parser
 // Per-screenshot-type projections of MatchResult. Each shape includes
 // only the fields the corresponding `parse_<type>.go` actually
 // populates — no zero-valued "field this type can't see" noise in the
-// golden JSON.
+// golden JSON. `playlist`, for instance, is only ever derived on a RANK
+// parse (always "competitive"), so it lives on RankGolden alone; the
+// other three shapes omit it rather than emit a permanent `""`.
 //
 // Maintenance rule: when a `parse_<type>.go` starts populating a new
 // MatchResult field, add it here, run `make update-goldens`, and
@@ -12,21 +14,20 @@ package parser
 //
 // `omitempty` is used on container fields (HeroesPlayed, Modifiers,
 // SR, Performance) so a screenshot that legitimately captures none of
-// that data renders cleanly. Scalar fields are always emitted because
-// `mode: ""` (failed mode-OCR) is materially different from "mode
-// field unsupported by this screenshot type" — the per-type shape
-// makes the distinction.
+// that data renders cleanly. Scalar fields the type CAN read are
+// always emitted because `map: ""` (failed map-OCR) is materially
+// different from a field this type can never see — the latter is left
+// off the shape entirely, the former stays as an empty string.
 
 // SummaryGolden is the golden JSON shape for a SUMMARY parse.
 //
 // Populated by `parse_summary.go`: map, type, mode, role, hero,
 // E/A/D (lifted from `performance.*.total`), result, final_score,
 // date, finished_at, game_length, heroes_played, performance.
-// NOT extracted: damage, healing, mitigation, rank/sr fields.
+// NOT extracted: playlist, damage, healing, mitigation, rank/sr fields.
 type SummaryGolden struct {
 	Map          string       `json:"map"`
 	GameMode     string       `json:"game_mode"`
-	Playlist     string       `json:"playlist"`
 	Role         string       `json:"role"`
 	Hero         string       `json:"hero"`
 	Eliminations int          `json:"eliminations"`
@@ -50,12 +51,11 @@ type SummaryGolden struct {
 // the players-per-team count; empty when unread), plus heroes_played
 // with the right-panel hero stats on the in-game variant. NOT
 // extracted:
-// result, final_score, date/finished_at/game_length, performance,
-// rank/sr fields.
+// playlist, result, final_score, date/finished_at/game_length,
+// performance, rank/sr fields.
 type TeamsGolden struct {
 	Map          string     `json:"map"`
 	GameMode     string     `json:"game_mode"`
-	Playlist     string     `json:"playlist"`
 	Role         string     `json:"role"`
 	Hero         string     `json:"hero"`
 	Eliminations int        `json:"eliminations"`
@@ -70,13 +70,11 @@ type TeamsGolden struct {
 
 // PersonalGolden is the golden JSON shape for a PERSONAL parse.
 //
-// Populated by `parse_personal.go`: mode (from the badge), hero+role
-// (from the heroes panel + hero-role lookup), heroes_played with
-// percent_played/play_time/stats. NOT extracted: map, type, E/A/D,
-// damage/healing/mitigation, result/score/date, performance, rank/sr
-// fields.
+// Populated by `parse_personal.go`: hero+role (from the heroes panel
+// + hero-role lookup), heroes_played with percent_played/play_time/
+// stats. NOT extracted: map, type, playlist, E/A/D, damage/healing/
+// mitigation, result/score/date, performance, rank/sr fields.
 type PersonalGolden struct {
-	Playlist     string     `json:"playlist"`
 	Role         string     `json:"role"`
 	Hero         string     `json:"hero"`
 	HeroesPlayed []HeroPlay `json:"heroes_played,omitempty"`
@@ -84,8 +82,8 @@ type PersonalGolden struct {
 
 // RankGolden is the golden JSON shape for a competitive RANK parse.
 //
-// Populated by `parse_rank.go`: mode (always "competitive"), result
-// (victory/defeat/draw from the banner), rank tier, level, rank
+// Populated by `parse_rank.go`: playlist (always "competitive"),
+// result (victory/defeat/draw from the banner), rank tier, level, rank
 // progress %, change %, modifiers, per-hero SR, hero+role (lifted
 // from SR[0]). NOT extracted: map, type, E/A/D, damage/healing/
 // mitigation, score/date/finished_at/game_length, performance,
@@ -117,7 +115,6 @@ func ToGolden(r *MatchResult) any {
 		return &SummaryGolden{
 			Map:          r.Map,
 			GameMode:     r.GameMode,
-			Playlist:     r.Playlist,
 			Role:         r.Role,
 			Hero:         r.Hero,
 			Eliminations: r.Eliminations,
@@ -135,7 +132,6 @@ func ToGolden(r *MatchResult) any {
 		return &TeamsGolden{
 			Map:          r.Map,
 			GameMode:     r.GameMode,
-			Playlist:     r.Playlist,
 			Role:         r.Role,
 			Hero:         r.Hero,
 			Eliminations: r.Eliminations,
@@ -149,7 +145,6 @@ func ToGolden(r *MatchResult) any {
 		}
 	case "personal":
 		return &PersonalGolden{
-			Playlist:     r.Playlist,
 			Role:         r.Role,
 			Hero:         r.Hero,
 			HeroesPlayed: r.HeroesPlayed,
