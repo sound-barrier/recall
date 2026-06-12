@@ -190,7 +190,9 @@
 
 ### ⚠ BREAKING CHANGES
 
-* **updates:** parser.HeroesByRole / parser.MapsByType / parser.ScreenshotSources package vars become parser.HeroesByRole() / .MapsByType() / .Sources() accessor functions so the dataset can swap atomically. /api/v1/system/update grows a required `data` field carrying the diff against the user's applied manifest; /api/v1/system/data-update is the new POST endpoint that applies a release's YAMLs in-place.
+* **updates:** parser.HeroesByRole / parser.MapsByType / parser.ScreenshotSources package vars become parser.HeroesByRole() / .MapsByType() / .Sources() accessor functions so the dataset can swap atomically.
+* **updates:** /api/v1/system/update grows a required `data` field carrying the diff against the user's applied manifest.
+* **updates:** /api/v1/system/data-update is the new POST endpoint that applies a release's YAMLs in-place.
 * **api:** GET /api/v1/system/screenshots-folder-probe and the Wails-bound ProbeScreenshotsDir method have been removed. Callers should switch to GET /api/v1/system/screenshots-folder- candidates (or the Wails ProbeScreenshotsCandidates method) and pick the first entry whose `exists` field is true. macOS / Linux return an empty list — auto-detect is Windows-only by design.
 * **parser:** MatchResult JSON shape gains hero_raw + map_raw fields; UnknownMapsView's referenceGapRecords prop is required (no optional default); migration 0006 adds new columns to three parent screenshot tables; POST /api/v1/parses takes a new ?scope=all query branch. No existing user data to migrate (pre-release posture), but any downstream consumer keying off the old wire shape breaks. release-please picks this up for the next minor cut pre-1.0.
 
