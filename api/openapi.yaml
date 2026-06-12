@@ -1170,6 +1170,29 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/profiles/test/seed:
+    post:
+      operationId: SeedTestProfile
+      tags: [Profiles]
+      x-internal: true
+      summary: Create and seed the sample "test" profile
+      description: |
+        Onboarding helper: creates the sample `test` profile (if absent)
+        and seeds it with ~500 synthetic matches over the rolling
+        last-8-months window so the guided walkthrough can run on real
+        data. Idempotent — an already-seeded `test` is reused untouched
+        (`already_seeded: true`). Does NOT switch the active profile; the
+        caller does that with `PUT /api/v1/profiles/active`.
+      responses:
+        "200":
+          description: The sample profile is seeded (or was already).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeedTestProfileResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/profiles/active:
     put:
       operationId: SwitchProfile
@@ -2887,6 +2910,24 @@ components:
             order matches `slices.Sort` on the slice the
             `*Profiles.List` method returns).
           example: ["alt", "main"]
+
+    SeedTestProfileResponse:
+      type: object
+      required: [profile, matches, already_seeded]
+      properties:
+        profile:
+          type: string
+          description: The seeded profile's name (always "test").
+          example: "test"
+        matches:
+          type: integer
+          description: Number of matches now in the sample profile.
+          example: 500
+        already_seeded:
+          type: boolean
+          description: |
+            True when "test" already held matches and was reused untouched
+            (no reseed); false when it was freshly seeded.
 
     TesseractStatus:
       type: object

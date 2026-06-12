@@ -836,6 +836,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/profiles/test/seed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create and seed the sample "test" profile
+         * @description Onboarding helper: creates the sample `test` profile (if absent)
+         *     and seeds it with ~500 synthetic matches over the rolling
+         *     last-8-months window so the guided walkthrough can run on real
+         *     data. Idempotent — an already-seeded `test` is reused untouched
+         *     (`already_seeded: true`). Does NOT switch the active profile; the
+         *     caller does that with `PUT /api/v1/profiles/active`.
+         */
+        post: operations["SeedTestProfile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profiles/active": {
         parameters: {
             query?: never;
@@ -2137,6 +2162,23 @@ export interface components {
              */
             profiles: string[];
         };
+        SeedTestProfileResponse: {
+            /**
+             * @description The seeded profile's name (always "test").
+             * @example test
+             */
+            profile: string;
+            /**
+             * @description Number of matches now in the sample profile.
+             * @example 500
+             */
+            matches: number;
+            /**
+             * @description True when "test" already held matches and was reused untouched
+             *     (no reseed); false when it was freshly seeded.
+             */
+            already_seeded: boolean;
+        };
         TesseractStatus: {
             /**
              * @description The currently-configured path.
@@ -3283,6 +3325,27 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    SeedTestProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sample profile is seeded (or was already). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeedTestProfileResponse"];
+                };
+            };
             500: components["responses"]["InternalError"];
         };
     };
