@@ -437,7 +437,7 @@ export function useMatchesDossier(
   // hero axis (top-N by total play count); the game-mode axis is
   // always all 6.
   function heroGameModeCounts(
-    opts?: MaybeRefOrGetter<{ heroLimit?: number; minMatches?: number }>,
+    opts?: MaybeRefOrGetter<{ heroLimit?: number; minMatches?: number; windowMonths?: number }>,
   ): ComputedRef<Array<{
     hero: string
     gameMode: string
@@ -448,8 +448,12 @@ export function useMatchesDossier(
     winrate: number
   }>> {
     return computed(() => {
-      const { heroLimit = 8, minMatches: _minMatches = 0 } = opts ? toValue(opts) ?? {} : {}
+      const { heroLimit = 8, minMatches: _minMatches = 0, windowMonths = 0 } = opts ? toValue(opts) ?? {} : {}
       void _minMatches // reserved for future per-cell empty-state floor
+      // `windowMonths` scopes the heatmap to a trailing time window (the
+      // band's 1M/3M/6M/12M toggle) — records older than the cutoff, or
+      // with no date, drop out. 0 (the default) means all-time.
+      const cutoff = windowMonths > 0 ? monthsAgoISO(windowMonths) : ''
       type Bucket = { wins: number; losses: number; draws: number; total: number }
       const cells = new Map<string, Bucket>()
       const heroTotals = new Map<string, number>()
@@ -467,6 +471,10 @@ export function useMatchesDossier(
       for (const r of records.value) {
         const gameMode = r.data?.game_mode
         if (!gameMode) continue
+        if (cutoff) {
+          const d = r.data?.date
+          if (!d || d < cutoff) continue
+        }
         const heroes = r.data?.heroes_played ?? []
         if (heroes.length > 0) {
           const seenInRow = new Set<string>()
