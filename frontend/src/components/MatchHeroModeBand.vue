@@ -304,88 +304,93 @@ const levelTitle = computed(() => {
       </ul>
     </header>
 
-    <!-- Level 0 — root hero × game-mode grid (keeps the floor gate). -->
-    <template v-if="depth === 0">
-      <p v-if="belowFloor" class="heatmap-empty">
-        Need {{ config.minMatches }}+ decisive matches in this window to
-        surface patterns. You have {{ decisiveTotal }}.
-      </p>
-      <div
-        v-else
-        class="heatmap-grid"
-        role="grid"
-        :aria-label="`Hero by game-mode heatmap, ${rows.length} heroes × ${columnHeaders.length} game modes`"
-      >
-        <div class="heatmap-row heatmap-header" role="row">
-          <span class="heatmap-corner" role="columnheader" aria-label="Hero" />
-          <span v-for="t in columnHeaders" :key="t" class="heatmap-colhead" role="columnheader">
-            {{ t }}
-          </span>
-        </div>
+    <!-- Fixed-height body: drilling/going-back never resizes the band (so
+       the matches list below never shifts); a level that overflows scrolls
+       inside this pane instead. -->
+    <div class="hm-body">
+      <!-- Level 0 — root hero × game-mode grid (keeps the floor gate). -->
+      <template v-if="depth === 0">
+        <p v-if="belowFloor" class="heatmap-empty">
+          Need {{ config.minMatches }}+ decisive matches in this window to
+          surface patterns. You have {{ decisiveTotal }}.
+        </p>
         <div
-          v-for="row in rows"
-          :key="row.hero"
-          class="heatmap-row"
-          role="row"
+          v-else
+          class="heatmap-grid"
+          role="grid"
+          :aria-label="`Hero by game-mode heatmap, ${rows.length} heroes × ${columnHeaders.length} game modes`"
         >
-          <span class="heatmap-rowhead" role="rowheader">{{ heroLabel(row.hero) }}</span>
-          <button
-            v-for="cell in row.cells"
-            :key="cell.gameMode"
-            type="button"
-            class="heatmap-cell"
-            :class="cellClass(cell)"
-            :style="{ opacity: cellOpacity(cell) }"
-            :disabled="cell.total === 0"
-            :title="cell.total === 0
-              ? `${heroLabel(row.hero)} on ${cell.gameMode}: no matches`
-              : `${heroLabel(row.hero)} on ${cell.gameMode}: ${cell.wins}-${cell.losses}-${cell.draws} (${cell.winrate}% winrate). Click to drill into maps.`"
-            :aria-label="cell.total === 0
-              ? `${heroLabel(row.hero)} on ${cell.gameMode}: no matches`
-              : `${heroLabel(row.hero)} on ${cell.gameMode}: ${cell.winrate}% winrate over ${cell.total} matches. Click to drill into maps.`"
-            @click="onRootCell(row.hero, cell.gameMode)"
+          <div class="heatmap-row heatmap-header" role="row">
+            <span class="heatmap-corner" role="columnheader" aria-label="Hero" />
+            <span v-for="t in columnHeaders" :key="t" class="heatmap-colhead" role="columnheader">
+              {{ t }}
+            </span>
+          </div>
+          <div
+            v-for="row in rows"
+            :key="row.hero"
+            class="heatmap-row"
+            role="row"
           >
-            <span v-if="cell.total > 0" class="cell-rate">{{ cell.winrate }}%</span>
-            <span v-if="cell.total > 0" class="cell-vol">{{ cell.total }}</span>
-          </button>
+            <span class="heatmap-rowhead" role="rowheader">{{ heroLabel(row.hero) }}</span>
+            <button
+              v-for="cell in row.cells"
+              :key="cell.gameMode"
+              type="button"
+              class="heatmap-cell"
+              :class="cellClass(cell)"
+              :style="{ opacity: cellOpacity(cell) }"
+              :disabled="cell.total === 0"
+              :title="cell.total === 0
+                ? `${heroLabel(row.hero)} on ${cell.gameMode}: no matches`
+                : `${heroLabel(row.hero)} on ${cell.gameMode}: ${cell.wins}-${cell.losses}-${cell.draws} (${cell.winrate}% winrate). Click to drill into maps.`"
+              :aria-label="cell.total === 0
+                ? `${heroLabel(row.hero)} on ${cell.gameMode}: no matches`
+                : `${heroLabel(row.hero)} on ${cell.gameMode}: ${cell.winrate}% winrate over ${cell.total} matches. Click to drill into maps.`"
+              @click="onRootCell(row.hero, cell.gameMode)"
+            >
+              <span v-if="cell.total > 0" class="cell-rate">{{ cell.winrate }}%</span>
+              <span v-if="cell.total > 0" class="cell-vol">{{ cell.total }}</span>
+            </button>
+          </div>
         </div>
+      </template>
+
+      <!-- Level 1 — the drilled hero across the game-mode's maps. -->
+      <div v-else-if="depth === 1" class="hm-maps" data-hero-mode-maps>
+        <button
+          v-for="t in mapTiles"
+          :key="t.slug"
+          type="button"
+          class="hm-map-tile"
+          :class="cellClass(t.cell)"
+          :style="{ opacity: cellOpacity(t.cell) }"
+          :title="`${t.display}: ${t.cell.wins}-${t.cell.losses}-${t.cell.draws} (${t.cell.winrate}% winrate). Click for recent matches.`"
+          :aria-label="`${t.display}: ${t.cell.winrate}% winrate over ${t.cell.total} matches. Click for recent matches.`"
+          @click="drillToMatches(t.slug)"
+        >
+          <span class="hm-map-name">{{ t.display }}</span>
+          <span class="hm-map-rate">{{ t.cell.winrate }}%</span>
+          <span class="hm-map-vol">{{ t.cell.wins }}–{{ t.cell.losses }}<template v-if="t.cell.draws">–{{ t.cell.draws }}</template></span>
+        </button>
+        <p v-if="mapTiles.length === 0" class="hm-drill-empty">
+          No maps in this window.
+        </p>
       </div>
-    </template>
 
-    <!-- Level 1 — the drilled hero across the game-mode's maps. -->
-    <div v-else-if="depth === 1" class="hm-maps" data-hero-mode-maps>
-      <button
-        v-for="t in mapTiles"
-        :key="t.slug"
-        type="button"
-        class="hm-map-tile"
-        :class="cellClass(t.cell)"
-        :style="{ opacity: cellOpacity(t.cell) }"
-        :title="`${t.display}: ${t.cell.wins}-${t.cell.losses}-${t.cell.draws} (${t.cell.winrate}% winrate). Click for recent matches.`"
-        :aria-label="`${t.display}: ${t.cell.winrate}% winrate over ${t.cell.total} matches. Click for recent matches.`"
-        @click="drillToMatches(t.slug)"
-      >
-        <span class="hm-map-name">{{ t.display }}</span>
-        <span class="hm-map-rate">{{ t.cell.winrate }}%</span>
-        <span class="hm-map-vol">{{ t.cell.wins }}–{{ t.cell.losses }}<template v-if="t.cell.draws">–{{ t.cell.draws }}</template></span>
-      </button>
-      <p v-if="mapTiles.length === 0" class="hm-drill-empty">
-        No maps in this window.
-      </p>
-    </div>
-
-    <!-- Level 2 — the drilled map's recent matches. -->
-    <div v-else class="hm-matches" data-hero-mode-matches>
-      <ol v-if="matchRows.length > 0" class="hm-match-list">
-        <li v-for="m in matchRows" :key="m.matchKey" class="hm-match-row">
-          <span class="hm-match-date">{{ matchDateLabel(m) }}</span>
-          <span class="hm-match-result" :class="`res-${m.result}`">{{ m.result || '—' }}</span>
-          <span class="hm-match-map">{{ mapLabel(m.map) }}</span>
-        </li>
-      </ol>
-      <p v-else class="hm-drill-empty">
-        No matches in this window.
-      </p>
+      <!-- Level 2 — the drilled map's recent matches. -->
+      <div v-else class="hm-matches" data-hero-mode-matches>
+        <ol v-if="matchRows.length > 0" class="hm-match-list">
+          <li v-for="m in matchRows" :key="m.matchKey" class="hm-match-row">
+            <span class="hm-match-date">{{ matchDateLabel(m) }}</span>
+            <span class="hm-match-result" :class="`res-${m.result}`">{{ m.result || '—' }}</span>
+            <span class="hm-match-map">{{ mapLabel(m.map) }}</span>
+          </li>
+        </ol>
+        <p v-else class="hm-drill-empty">
+          No matches in this window.
+        </p>
+      </div>
     </div>
 
     <WidgetConfigPopover
@@ -594,6 +599,23 @@ const levelTitle = computed(() => {
 .hm-win { background: var(--win); }
 .hm-loss { background: var(--loss); }
 .hm-mixed { background: color-mix(in srgb, var(--win) 50%, var(--loss)); }
+
+/* Fixed-height level body — a constant, comfortable height across every
+   drill level so navigating the stack never resizes the band (and never
+   shifts the matches list below it). A level taller than this scrolls in
+   place; a shorter one (sparse root, recent-match list) simply leaves the
+   reserved space. */
+.hm-body {
+  height: clamp(15rem, 36vh, 19rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.hm-body::-webkit-scrollbar { width: 8px; }
+.hm-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+.hm-body::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+.hm-body::-webkit-scrollbar-track { background: transparent; }
 
 /* ─── Root heatmap grid ─────────────────────────────────────────── */
 .heatmap-empty {

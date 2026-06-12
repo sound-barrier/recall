@@ -245,6 +245,28 @@ test.describe('dossier — Hero × Game-Mode drill-down', () => {
     await expect(chips).toHaveCount(0)
   })
 
+  test('the band keeps a constant height across drill levels (no layout shift)', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    const bandHeight = () => band.evaluate((el) => Math.round(el.getBoundingClientRect().height))
+    const h0 = await bandHeight()
+
+    await band.locator('.heatmap-cell', { hasText: '60%' }).first().click()
+    await expect(band.locator('[data-hero-mode-maps]')).toBeVisible()
+    const h1 = await bandHeight()
+
+    await band.locator('.hm-map-tile').first().click()
+    await expect(band.locator('[data-hero-mode-matches]')).toBeVisible()
+    const h2 = await bandHeight()
+
+    // Drilling/going-back must not resize the band (and thus not shift the
+    // matches list below it). Levels that overflow scroll inside instead.
+    expect(Math.abs(h1 - h0)).toBeLessThanOrEqual(2)
+    expect(Math.abs(h2 - h0)).toBeLessThanOrEqual(2)
+    // The fixed-height level body owns the scroll.
+    const overflowY = await band.locator('.hm-body').evaluate((el) => getComputedStyle(el).overflowY)
+    expect(['auto', 'scroll']).toContain(overflowY)
+  })
+
   test('a sparse drill shows the level, not the floor wall, and keeps Go-back', async ({ page }) => {
     const band = page.locator('.hero-mode-band')
     // ana×hybrid is the only 100% cell — a single match. Drilling it must
