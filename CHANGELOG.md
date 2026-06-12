@@ -5,7 +5,7 @@
 
 ### ⚠ BREAKING CHANGES
 
-* **db:** teams_screenshots drops map/map_raw/playlist/hero/ hero_raw; teams.csv backups from older versions no longer import.
+* **db:** teams_screenshots drops map/map_raw/playlist/hero/hero_raw; teams.csv backups from older versions no longer import.
 * DB tables scoreboard_screenshots/scoreboard_hero_stats renamed to teams_screenshots/teams_hero_stats; the ScreenshotType API value "scoreboard"→"teams"; the export-bundle field scoreboards→teams and ScoreboardExportRow→TeamsExportRow. Pre-1.0, no migration — wipe the dev DB.
 * MatchData.type → game_mode; the OWData reference-data field maps_by_type → maps_by_game_mode; the "type" Prometheus label → "game_mode". Pre-1.0, no migration.
 * summary_screenshots.mode + scoreboard_screenshots.mode columns renamed to playlist; the MatchData.mode JSON field, the "mode" Prometheus label, and the CSV "mode" column are now playlist. Pre-1.0, no migration — wipe the dev DB and relaunch.
