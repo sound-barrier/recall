@@ -25,6 +25,7 @@ frontend/package.json.md5
 /Recall.exe
 /Recall.app/
 /recall
+/seed-dev
 # Server-mode binaries (go build -tags serveronly)
 /Recall-server
 /Recall-server.exe
