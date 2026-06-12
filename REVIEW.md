@@ -36,18 +36,6 @@ Each item carries **size** (coding effort + review surface) and **risk**
 
 ---
 
-## Bugs & UX gaps
-
-### B1. Mid-parse network drop has no rollback UI
-
-**Where:** `frontend/src/App.vue` (the SSE parse stream) + `ParseProgressPanel.vue`. Server-mode only — the Wails desktop build has no network-drop scenario.
-
-**What breaks:** if the server-mode SSE connection drops mid-parse, the progress UI has no rollback/retry affordance; the user is left with a half-finished run and no clear recovery. Deferred at 1.0 as not a desktop blocker — revisit when the headless server gets first-class UX attention. This is the highest-priority open item.
-
-**Size:** M. **Risk:** Med.
-
----
-
 ## Out of scope — deliberately not building
 
 - **In-app auto-updater** (was F3) — Wails v2 does not support an in-app binary updater, so the masthead flow stays "Check for updates → Open release page." Parked; revisit later if the updater story changes.
