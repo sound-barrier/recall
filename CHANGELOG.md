@@ -1,5 +1,58 @@
 # Changelog
 
+## [0.14.0](https://github.com/sound-barrier/recall/compare/v0.13.0...v0.14.0) (2026-06-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **parse:** POST /api/v1/parses returns 202 the instant the run is accepted (not when it finishes) and returns 409 when a parse is already in flight. Clients must treat parse-complete (SSE) + GET /api/v1/parses/active as the completion/resync signal, not the POST resolving. Pre-1.0, no migration.
+
+### Features
+
+* **dossier:** add mapCounts + recentMatches aggregates ([38f5620](https://github.com/sound-barrier/recall/commit/38f5620f77a91e7be105982ed9160507ced3a991))
+* **dossier:** add win-rate-by-teammate widget ([7ec5bf4](https://github.com/sound-barrier/recall/commit/7ec5bf4ec1bfdb0c995edfa39488ca9f06b0dedd))
+* **dossier:** scope heroGameModeCounts to a trailing window ([3295f57](https://github.com/sound-barrier/recall/commit/3295f570fd64f03185878c1916d33256fd0681ae))
+* **matches:** add teammate (member) narrow filter ([18e217d](https://github.com/sound-barrier/recall/commit/18e217d88251a40d1c9c4a45f100411ec8cd06b7))
+* **matches:** data density is a flat sortable spreadsheet in a scroll pane ([33d245b](https://github.com/sound-barrier/recall/commit/33d245b062b8ba2018ce6addf8d1b517670d7e85))
+* **matches:** drill-down stack + Go back for the Hero × Game-Mode band ([b8ef752](https://github.com/sound-barrier/recall/commit/b8ef7529a9fb204f396a34fc7127d1359122bccb))
+* **matches:** Hero × Game-Mode is a movable, configurable dossier row ([f52988c](https://github.com/sound-barrier/recall/commit/f52988cadad6067df62bc0af8c09495abd2d27bb))
+* **parse:** event-driven parseBusy + SSE-drop recovery UI ([b7f02d9](https://github.com/sound-barrier/recall/commit/b7f02d99e89ad98fd12fe00914d391a6bc5f9676))
+* **parse:** run parses as a background job + GET /parses/active ([6550cc5](https://github.com/sound-barrier/recall/commit/6550cc58ff4f856fbfaed8878b4b1e80729cc22f))
+* **windows:** single Reset-Database.bat to wipe the DB (backs up first) ([ca8fd2c](https://github.com/sound-barrier/recall/commit/ca8fd2c4d8f44978de2ca08fddd9f6aa891c4af4))
+
+
+### Bug Fixes
+
+* **matches:** data-table sort by match time + most-played hero; year-aware dates ([b4de44e](https://github.com/sound-barrier/recall/commit/b4de44e6b8d1887a4f5326169c08dca0dfdcfc01))
+* **matches:** keep the Hero × Game-Mode band a constant height when drilling ([10b1784](https://github.com/sound-barrier/recall/commit/10b17848565bdd8566614c69dcf53144b7657b8c))
+* **matches:** stop the page jumping when narrowing from a dossier affordance ([82d38bd](https://github.com/sound-barrier/recall/commit/82d38bdee0f0d713ac64d324f623f8a0ca8f782d))
+* **tour:** settle on the target's final rect, not a timed guess ([75da588](https://github.com/sound-barrier/recall/commit/75da5880bfe840d50236425afb960884bf894037))
+
+
+### Refactors
+
+* **api:** single shared EventSource + connection-status handler ([bcd337f](https://github.com/sound-barrier/recall/commit/bcd337f5bde171313fc92f919579314f4a20b627))
+* **matches:** extract MatchesDossierHead.vue ([16c8fa5](https://github.com/sound-barrier/recall/commit/16c8fa50daa037367d3d10dde5f4e6467d51b59b))
+* **matches:** extract MatchesDossierSections.vue ([0b8de2b](https://github.com/sound-barrier/recall/commit/0b8de2be8478c5a292ba1fccd71d8b5fc508ac5f))
+* **matches:** extract useMatchesRowContext composable ([5d3f7a8](https://github.com/sound-barrier/recall/commit/5d3f7a89cfaadda11be9eb08eaf85c0b2304cc7e))
+
+
+### Documentation
+
+* document resetting the database (no migrations) + FAQ ([1f0d03d](https://github.com/sound-barrier/recall/commit/1f0d03dc75e83c57b7ea193cce4e17680237a929))
+* **review:** drop B1 — parse pipeline is now drop-resilient ([2b64b78](https://github.com/sound-barrier/recall/commit/2b64b78f0a04983c0388dd5208fc0f66281f81bf))
+* **review:** drop D1 — teammate feature supersedes the member index ([9f215c6](https://github.com/sound-barrier/recall/commit/9f215c66b87ba64254b381f69f7ebd98a5bf0941))
+* **review:** drop the paid D2 MatchesView-split item ([c479935](https://github.com/sound-barrier/recall/commit/c479935ee593b959ac1e3802fa8d26d39e81e2f8))
+* **review:** park F3 + D4 in out-of-scope ([37c2afd](https://github.com/sound-barrier/recall/commit/37c2afd433cb4601f14357b23db71e258782050b))
+
+
+### Build & Packaging
+
+* **bundle:** raise total-JS budget to 488000 for teammate analysis ([47dbc58](https://github.com/sound-barrier/recall/commit/47dbc583de1376895393463d1b0f6b0351e3b549))
+* **deadcode:** allow-list ReParseAll as Wails-only ([f6f902c](https://github.com/sound-barrier/recall/commit/f6f902cdb2bc5b1620761de7f0d8fdea56e96519))
+* **release:** publish + bundle the Windows reset-DB script ([59a3bca](https://github.com/sound-barrier/recall/commit/59a3bca853e0fe1cb4842af221a813f09045882f))
+* **windows:** keep scripts/windows in the Docker context for the installer ([3b10f9e](https://github.com/sound-barrier/recall/commit/3b10f9e1b7a29f735fd38af4f42ead645a5b7f79))
+
 ## [0.13.0](https://github.com/sound-barrier/recall/compare/v0.12.0...v0.13.0) (2026-06-12)
 
 
