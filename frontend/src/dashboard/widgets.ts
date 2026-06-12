@@ -23,7 +23,6 @@ import DayOfWeekWidget from '../components/widgets/DayOfWeekWidget.vue'
 import Recent5MatchesWidget from '../components/widgets/Recent5MatchesWidget.vue'
 import QuickplayVsCompetitiveWidget from '../components/widgets/QuickplayVsCompetitiveWidget.vue'
 import WinrateByPlayModeWidget from '../components/widgets/WinrateByPlayModeWidget.vue'
-import HeroGameModeHeatmapWidget from '../components/widgets/HeroGameModeHeatmapWidget.vue'
 import WithWhomWidget from '../components/widgets/WithWhomWidget.vue'
 
 // Central registry for the dossier's customizable dashboard widgets.
@@ -225,7 +224,6 @@ export const WIDGET_REGISTRY: readonly WidgetDef[] = [
   { id: 'recent-5-matches',    eyebrow: 'Recent matches',         shape: 'breakdown', defaultRow: 2, component: Recent5MatchesWidget,   config: recentMatchesSchema   },
   { id: 'play-mode-share',     eyebrow: 'Quickplay vs Competitive', shape: 'breakdown', defaultRow: 2, component: QuickplayVsCompetitiveWidget, config: EMPTY_SCHEMA },
   { id: 'play-mode-winrate',   eyebrow: 'Winrate by play mode',     shape: 'breakdown', defaultRow: 2, component: WinrateByPlayModeWidget,      config: EMPTY_SCHEMA },
-  { id: 'hero-game-mode-heatmap', eyebrow: 'Hero × game-mode heatmap',  shape: 'breakdown', defaultRow: 2, component: HeroGameModeHeatmapWidget,     config: heroGameModeHeatmapSchema },
   { id: 'with-whom',           eyebrow: 'Win rate by teammate',   shape: 'breakdown', defaultRow: 2, component: WithWhomWidget,        config: withWhomSchema       },
 ]
 
