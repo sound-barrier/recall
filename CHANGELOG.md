@@ -146,7 +146,10 @@
 
 ### ⚠ BREAKING CHANGES
 
-* GET /api/v1/system/update response no longer includes the `data` field; the `main` field is renamed to `game_data` and its schema MainStatus is renamed GameDataStatus. POST /api/v1/system/data-update no longer accepts a body and ignores the `source` discriminator. DataUpdateResult drops `source` and `applied_tag`. The Wails-exposed methods App.ApplyDataUpdate and App.ApplyMainDataUpdate are gone; the single survivor is App.ApplyGameDataUpdate.
+* GET /api/v1/system/update response no longer includes the `data` field; the `main` field is renamed to `game_data`; and schema `MainStatus` is renamed `GameDataStatus`.
+* POST /api/v1/system/data-update no longer accepts a body and ignores the `source` discriminator.
+* `DataUpdateResult` drops `source` and `applied_tag`.
+* Wails-exposed methods `App.ApplyDataUpdate` and `App.ApplyMainDataUpdate` are removed; use `App.ApplyGameDataUpdate`.
 * **db:** SQLite DBs from any prior release will fail to open against the new schema (the `schema_version` table reference is gone; legacy colon-form match_keys won't be rewritten). Pre-1.0 — no migration path. Wipe per CONTRIBUTING.md and relaunch.
 * HTTP path params change from camelCase to snake_case; POST /screenshots/{filename}/ignore replaced by PUT; resolution invalid-target status changes from 409 to 400; DB columns distance_s and set_at renamed; screenshots_dir_id FKs are now RESTRICT not SET NULL (delete dependent rows first). Pre-1.0 — no migration path.
 
