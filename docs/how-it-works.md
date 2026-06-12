@@ -125,9 +125,14 @@ That's it for setup. **Settings → Engine** should now show
 
 1. **Play matches and capture post-game screens.** Bind a screenshot
    key in Overwatch (Options → Controls → Take Screenshot — most
-   people use **Print Screen** or **F12**). After every comp match,
-   tab through SUMMARY → TEAMS → PERSONAL × however many heroes you
-   played → optionally RANK, pressing the key on each.
+   people use **Print Screen** or **F12**). **Capture on the post-match
+   screens, not mid-game**: the post-match SUMMARY is the one that
+   carries the map, result, and finish time Recall uses to pin a match
+   and tell two apart, so it's the anchor everything else attaches to
+   (the in-game scoreboard contributes combat stats only). See the
+   [FAQ](faq.md) for why this matters. After every comp match, tab
+   through SUMMARY → TEAMS → PERSONAL × however many heroes you played →
+   optionally RANK, pressing the key on each.
 2. **Recall picks them up.** If you've armed
    **Parse → Watch Folder** (the recommended setting), Recall
    debounces 60 seconds after the last new PNG and auto-parses the

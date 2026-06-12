@@ -672,6 +672,7 @@ pages-build: ## Build the docs book + Swagger UI under dist/pages/ (mirrors CI)
 	@cp docs/docker.md               dist/pages-stage/docker.md
 	@cp docs/grafana.md              dist/pages-stage/grafana.md
 	@cp docs/feedback.md             dist/pages-stage/feedback.md
+	@cp docs/faq.md                  dist/pages-stage/faq.md
 	@# Mirror testdata/ into the staged book so how-it-works.md's
 	@# example-screenshot images resolve via the same `testdata/foo.png`
 	@# relative path used in the README. Cheap (~5 MB total) and avoids
