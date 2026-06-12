@@ -103,13 +103,15 @@ func (a *App) scheduleParseDebounced() {
 	a.watchTimer = time.AfterFunc(watchDebounce, func() {
 		logger := applog.Subsystem("watch")
 		logger.Info("debounce elapsed, running ParseScreenshots")
+		// ParseScreenshots is synchronous + emits parse-complete itself
+		// on success (runClaimedParse owns that emit for every path), so
+		// the watcher no longer signals completion separately. A busy
+		// slot returns ErrParseInFlight — a logged skip; the debounce
+		// re-fires on the next file event.
 		if err := a.ParseScreenshots(); err != nil {
 			logger.Error("parse failed", "err", err)
 			return
 		}
-		// Tell the frontend to reload its records list. The Vue side
-		// subscribes via runtime.EventsOn("parse-complete").
-		a.emitParseComplete()
 	})
 }
 

@@ -491,14 +491,16 @@ export interface paths {
          *     queue / play-mode overrides / hidden flags / reviews all key
          *     on match_key and survive the re-parse. ~1 s per screenshot.
          *
-         *     Returns `202 Accepted` because the meaningful side-effect is
-         *     the SQLite writes and SSE broadcast, not the HTTP response
-         *     body. Subscribe to `GET /api/v1/events` for progress and
-         *     re-fetch `GET /api/v1/matches` when done.
+         *     Runs the parse in a BACKGROUND goroutine and returns
+         *     `202 Accepted` **immediately** — the request is not held open
+         *     for the OCR loop. Subscribe to `GET /api/v1/events` for progress
+         *     + completion (`parse-progress` / `parse-complete`), and poll
+         *     `GET /api/v1/parses/active` to resync after a reconnect or page
+         *     reload (SSE is not replayed). Re-fetch `GET /api/v1/matches` on
+         *     completion.
          *
-         *     The handler is currently synchronous (the response holds until
-         *     parsing finishes), but the 202 contract keeps callers from
-         *     depending on that internal detail.
+         *     `409 Conflict` when a parse is already in flight (single-flight,
+         *     fail-fast) or the screenshots folder is unset/unreadable.
          */
         post: operations["ParseScreenshots"];
         delete?: never;
@@ -514,7 +516,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Active-parse status snapshot
+         * @description The resync anchor for the async parse pipeline. SSE messages are
+         *     not replayed on connect, so a client that reconnects or reloads
+         *     mid-parse reads this to restore "is a parse running, and how far
+         *     along." `running=false` when idle.
+         */
+        get: operations["GetActiveParse"];
         put?: never;
         post?: never;
         /**
@@ -1387,6 +1396,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Snapshot of the in-flight parse run. The resync anchor for the
+         *     async parse pipeline — read after an SSE reconnect or a page
+         *     reload to restore the parse panel without replaying events.
+         */
+        ActiveParse: {
+            /** @description Whether a parse is currently in flight. */
+            running: boolean;
+            /** @description Screenshot files OCR'd so far this run. */
+            done: number;
+            /** @description Total files to process this run (0 when idle). */
+            total: number;
+            /** @description "new" (default parse) or "all" (re-parse); empty when idle. */
+            scope: string;
+        };
         /**
          * @description Per-match leaver tag — who left the match.
          *     - `self`: the user left (their data is incomplete).
@@ -2807,7 +2831,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Parse run complete; subscribe to events for incremental updates. */
+            /** @description Parse accepted and started; subscribe to events for progress + completion. */
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -2816,6 +2840,27 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             409: components["responses"]["Conflict"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    GetActiveParse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current parse run-state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActiveParse"];
+                };
+            };
             500: components["responses"]["InternalError"];
         };
     };
