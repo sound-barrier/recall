@@ -1,5 +1,70 @@
 # Changelog
 
+## [0.13.0](https://github.com/sound-barrier/recall/compare/v0.12.0...v0.13.0) (2026-06-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **db:** teams_screenshots drops map/map_raw/playlist/hero/ hero_raw; teams.csv backups from older versions no longer import.
+* DB tables scoreboard_screenshots/scoreboard_hero_stats renamed to teams_screenshots/teams_hero_stats; the ScreenshotType API value "scoreboard"→"teams"; the export-bundle field scoreboards→teams and ScoreboardExportRow→TeamsExportRow. Pre-1.0, no migration — wipe the dev DB.
+* MatchData.type → game_mode; the OWData reference-data field maps_by_type → maps_by_game_mode; the "type" Prometheus label → "game_mode". Pre-1.0, no migration.
+* summary_screenshots.mode + scoreboard_screenshots.mode columns renamed to playlist; the MatchData.mode JSON field, the "mode" Prometheus label, and the CSV "mode" column are now playlist. Pre-1.0, no migration — wipe the dev DB and relaunch.
+* scoreboard_screenshots gains a queue_type column. Pre-1.0 there is no migration — wipe the dev DB (per-OS paths in CONTRIBUTING.md) and relaunch.
+
+### Features
+
+* auto-detect queue type from scoreboard player count ([54c14c6](https://github.com/sound-barrier/recall/commit/54c14c67323da570c168d7d15563f6a35a9d7912))
+* **matches:** data-density table with sortable columns ([83377b1](https://github.com/sound-barrier/recall/commit/83377b132364e01b6db35fea0c3f4aba4d7d3312))
+* **matches:** scoped-clause search in the narrow panel ([53ff591](https://github.com/sound-barrier/recall/commit/53ff5915da8cc0696fdc261bdeede810d48053ad))
+* **scripts:** Windows desktop-user maintenance scripts ([7308f54](https://github.com/sound-barrier/recall/commit/7308f5418b7c7a348e022eaa750af26f1c196da3))
+* **theme:** add --identity-accent for OW-identity typography ([96d3d66](https://github.com/sound-barrier/recall/commit/96d3d66e319dba8a07094e03155fbfeedb908c25))
+
+
+### Bug Fixes
+
+* rank-only playlist, mode→playlist rename, OCR digit fixes ([b00e83e](https://github.com/sound-barrier/recall/commit/b00e83e5967bfabff179d3c0cff272067aa4bdd5))
+
+
+### Refactors
+
+* **db:** drop unused teams identity columns ([1e6f362](https://github.com/sound-barrier/recall/commit/1e6f362c86a141a1c8eaaf1a35fe4e91acf9f4e8))
+* finish game_mode rename through internal frontend names ([55a8d12](https://github.com/sound-barrier/recall/commit/55a8d129491de4cd1825259ddac279f82b4c9523))
+* **log:** migrate remaining log.Printf sites to slog ([738183d](https://github.com/sound-barrier/recall/commit/738183d1d0e6b0a4e8c97e773d99b403890ec358))
+* **matches:** extract MatchesArchiveDrawer.vue from MatchesView ([d43a50f](https://github.com/sound-barrier/recall/commit/d43a50f9f6a007064d6b794b9de965423162c60b))
+* **matches:** extract MatchesDossier.vue from MatchesView ([53eb4b7](https://github.com/sound-barrier/recall/commit/53eb4b73ff98a159dd89fc65e2b15ee28efdc666))
+* **matches:** extract MatchesMembersList.vue from MatchesView ([c01a982](https://github.com/sound-barrier/recall/commit/c01a982265c5334e2c23acdf525d92c935cf7e43))
+* **matches:** extract MatchLeafRow.vue from MatchesView ([4cd0a8d](https://github.com/sound-barrier/recall/commit/4cd0a8dae029ecd5982a6708ff405e8734b9cae1))
+* **matches:** hoist leaf/archive row formatters to match-helpers ([40526b2](https://github.com/sound-barrier/recall/commit/40526b2abe4873dd571d322fc10ba724b45129e4))
+* **parser:** teams screenshot contributes combat stats only ([5227aef](https://github.com/sound-barrier/recall/commit/5227aefc936ee79a1ec832613a535641f21b0f00))
+* remove the dev-only Analysis tab ([3bab2a3](https://github.com/sound-barrier/recall/commit/3bab2a37cf4ff0f95a288cc480bab85fea3f83b8))
+* rename scoreboard→teams (screenshot type) ([937a364](https://github.com/sound-barrier/recall/commit/937a364ec4932f74bae3fc96602fb682aef172df))
+* rename type→game_mode (control/escort dimension) ([036d33f](https://github.com/sound-barrier/recall/commit/036d33fbe83a7d7dee5005ae6e10a8fe219a49e1))
+* **scripts:** organise into lib/db/ci/stack subdirs ([2e2acbd](https://github.com/sound-barrier/recall/commit/2e2acbddb1cbae04fa10afe789bb819b144ba023))
+
+
+### Documentation
+
+* expand working-style + TDD conventions in CLAUDE.md ([4b09bf9](https://github.com/sound-barrier/recall/commit/4b09bf9cea2c5024a3aaf1b3446e8b50f969d20d))
+* **faq:** advise post-match screenshots + add FAQ chapter ([56da972](https://github.com/sound-barrier/recall/commit/56da972756352173a85ad5beb4015ca6ecea44ef))
+* fix coverage make-target reference (make coverage → make cover) ([50d2efc](https://github.com/sound-barrier/recall/commit/50d2efcd22f81e3a6118d2895f691e7e3e61fbba))
+* fold release-plan/followups/roadmap into REVIEW.md ([56f063b](https://github.com/sound-barrier/recall/commit/56f063b23cd0c13925d67c9fbc0494a1f6fc70fe))
+
+
+### CI
+
+* **lefthook:** fail-fast in multi-command pre-push run blocks ([72e0d28](https://github.com/sound-barrier/recall/commit/72e0d2813ec1ab43e8dac3b0e1de87d79cf9b3f7))
+
+
+### Tests
+
+* **e2e:** de-flake the tour-callout geometry assertions ([ab81cef](https://github.com/sound-barrier/recall/commit/ab81cefbc7ffd86569c9add6c6aa93b67df85361))
+* **e2e:** fix missed mode→playlist mocks ([b777b3e](https://github.com/sound-barrier/recall/commit/b777b3ec1c61207d9b681348daa55e6ae6ab3a94))
+* **e2e:** rename mode→playlist in match mocks ([8e5348f](https://github.com/sound-barrier/recall/commit/8e5348f92ec78881813f5388bd7f7ffa02985e3e))
+* **e2e:** rename reference-data mocks maps_by_type→maps_by_game_mode ([d34f456](https://github.com/sound-barrier/recall/commit/d34f456a9adaf6f05bf7fec4a303f0ce1b8f6af1))
+* **matches:** target #np-search, not the changed placeholder ([917ff90](https://github.com/sound-barrier/recall/commit/917ff90a8c55a2ac147721d53302db7ec3af0bbd))
+* **parser:** drop never-derived playlist from non-rank goldens ([71dee3c](https://github.com/sound-barrier/recall/commit/71dee3c4d726fc5a9672deab98d06fc369d460f0))
+* **parser:** pin open-queue detection with a 6v6 golden ([66c286c](https://github.com/sound-barrier/recall/commit/66c286cf7a2402be8fca0e1b1e13018e251b37e6))
+
 ## [0.12.0](https://github.com/sound-barrier/recall/compare/v0.11.0...v0.12.0) (2026-06-11)
 
 
