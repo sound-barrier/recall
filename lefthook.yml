@@ -37,7 +37,12 @@ pre-commit:
     # ── Frontend ──────────────────────────────────────────────────────
     eslint:
       root: "frontend"
-      glob: "src/**/*.{ts,vue}"
+      # Whole tree, not just src/ — tests, e2e specs, config files and
+      # .cjs build scripts are all linted (see eslint.config.js: only
+      # generated artifacts are ignored). The generated API types are
+      # excluded so the hook doesn't pass an ignored file to eslint.
+      glob: "**/*.{ts,vue,js,cjs}"
+      exclude: "src/api.gen.d.ts"
       run: npx eslint --fix {staged_files}
       stage_fixed: true
 
