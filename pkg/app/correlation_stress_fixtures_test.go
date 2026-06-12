@@ -178,19 +178,13 @@ func buildFixtures(spec matchSpec) []fixture {
 		})
 	}
 	if spec.emitTeams {
-		hero := spec.primaryHero
-		if spec.teamsHero != "" {
-			hero = spec.teamsHero
-		}
+		// The in-game teams scoreboard is combat-stats only — no map /
+		// hero / mode. Match identity comes from the SUMMARY / PERSONAL
+		// fixtures in the same cohort.
 		out = append(out, fixture{
 			filename: filenameForTS(spec.startTime.Add(spec.teamsOffset), spec.suffix, "teams"),
 			scrType:  "teams",
 			result: &parser.MatchResult{
-				Map:          spec.mapName,
-				Playlist:     spec.mode,
-				GameMode:     spec.matchType,
-				Role:         spec.role,
-				Hero:         hero,
 				Eliminations: spec.eliminations,
 				Assists:      spec.assists,
 				Deaths:       spec.deaths,
@@ -314,7 +308,6 @@ func (s *snapshotState) Insert(f fixture) {
 		r := f.result
 		s.snap.Teams = append(s.snap.Teams, db.TeamsRow{
 			Filename: f.filename, MatchKey: f.expectedKey,
-			Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 			Eliminations: r.Eliminations, Assists: r.Assists, Deaths: r.Deaths,
 			Damage: r.Damage, Healing: r.Healing, Mitigation: r.Mitigation,
 		})

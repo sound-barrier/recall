@@ -138,7 +138,6 @@ func TestSQLStore_Teams_UpsertThenLoadRoundTrip(t *testing.T) {
 	s := openMemory(t)
 	want := TeamsRow{
 		Filename: "sb.png", MatchKey: "k1",
-		Map: "rialto", Playlist: "competitive", Hero: "lucio",
 		Eliminations: 17, Assists: 16, Deaths: 11,
 		Damage: 7200, Healing: 10933, Mitigation: 351,
 		HeroStats: []HeroStat{
@@ -1002,7 +1001,6 @@ func TestSQLStore_ResolveAmbiguous_UpdatesAllSiblingRows(t *testing.T) {
 	s := openMemory(t)
 	if err := s.UpsertTeams(TeamsRow{
 		Filename: "sb.png", MatchKey: "ambiguous-sb.png",
-		Map: "rialto", Hero: "lucio",
 		Eliminations: 12, Assists: 8, Deaths: 3,
 	}); err != nil {
 		t.Fatalf("seed teams: %v", err)

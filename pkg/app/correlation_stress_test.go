@@ -582,17 +582,17 @@ func TestCorrelation_Stress_MultiHeroTeamsSwap(t *testing.T) {
 			expectedKey: matchKeyFor(start),
 		})
 
-		// TEAMS with hero=swap adopts SUMMARY's key via the
-		// timestamp window — rowsConflict consults the per-match
-		// hero set ({primary, swap} from SUMMARY.HeroesPlayed) and
-		// the hero mismatch is no longer a hard reject.
+		// TEAMS is combat-stats only (no hero) — it adopts the SUMMARY's
+		// key via its unique E/A/D bridging to the same match + the
+		// timestamp window. Per-match EADs differ (real matches do), so
+		// the teams resolves without needing a disambiguating hero.
 		sbStart := start.Add(30 * time.Second)
 		specs = append(specs, matchSpec{
 			startTime:    sbStart,
 			mapName:      pickAt(owMaps, i),
 			mode:         "competitive",
 			primaryHero:  swap,
-			eliminations: 18, assists: 12, deaths: 6,
+			eliminations: 18 + i, assists: 12, deaths: 6,
 			damage: 5800, healing: 3200, mitigation: 800,
 			emitTeams:   true,
 			teamsOffset: 0,
@@ -675,14 +675,15 @@ func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
 			expectedKey: matchKeyFor(start),
 		})
 
-		// TEAMS with heroA stats — clean adoption.
+		// TEAMS (combat-stats only) adopts via its unique E/A/D + the
+		// timestamp window — per-match EADs differ so no hero is needed.
 		sbStart := start.Add(30 * time.Second)
 		specs = append(specs, matchSpec{
 			startTime:    sbStart,
 			mapName:      pickAt(owMaps, i),
 			mode:         "competitive",
 			primaryHero:  heroA,
-			eliminations: 15, assists: 8, deaths: 5,
+			eliminations: 15 + i, assists: 8, deaths: 5,
 			damage: 5000, healing: 2200, mitigation: 800,
 			emitTeams:   true,
 			teamsOffset: 0,

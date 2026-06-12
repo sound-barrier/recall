@@ -69,7 +69,6 @@ func TestAggregate_FusesSummaryAndTeamsByMatchKey(t *testing.T) {
 		}},
 		Teams: []db.TeamsRow{{
 			ID: 1, Filename: "sb.png", MatchKey: "m1", ParsedAt: "2026-05-10T21:30:05Z",
-			Playlist:     "", // intentional: aggregator should pick "competitive" from sibling
 			Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 		}},
 	}
@@ -104,8 +103,8 @@ func TestAggregate_DerivedFields_RoleFromHero_TypeFromMap(t *testing.T) {
 
 func TestAggregate_DerivedFields_HeroUnknown_LeavesRoleEmpty(t *testing.T) {
 	snap := db.Screenshots{
-		Teams: []db.TeamsRow{{
-			ID: 1, Filename: "sb.png", MatchKey: "m1", Hero: "nonexistent_hero",
+		Personals: []db.PersonalRow{{
+			ID: 1, Filename: "p.png", MatchKey: "m1", Hero: "nonexistent_hero",
 		}},
 	}
 	got := aggregateScreenshots(snap)

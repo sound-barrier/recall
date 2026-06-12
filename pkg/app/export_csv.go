@@ -252,7 +252,6 @@ var (
 	summaryHeroPlayedHeader = []string{"summary_screenshot_id", "hero", "percent_played", "play_time"}
 	teamsHeader             = []string{
 		"id", "filename", "match_key", "parsed_at", "screenshots_dir_id",
-		"map", "playlist", "hero",
 		"eliminations", "assists", "deaths", "damage", "healing", "mitigation",
 		"queue_type",
 	}
@@ -319,7 +318,6 @@ func teamsToRows(rows []db.TeamsRow) [][]string {
 			strconv.FormatInt(r.ID, 10),
 			r.Filename, r.MatchKey, r.ParsedAt,
 			strconv.FormatInt(r.ScreenshotsDirID, 10),
-			r.Map, r.Playlist, r.Hero,
 			strconv.Itoa(r.Eliminations), strconv.Itoa(r.Assists), strconv.Itoa(r.Deaths),
 			strconv.Itoa(r.Damage), strconv.Itoa(r.Healing), strconv.Itoa(r.Mitigation),
 			r.QueueType,
@@ -502,17 +500,16 @@ func readTeamsCSV(zr *zip.Reader) ([]db.TeamsRow, error) {
 		}
 		r := db.TeamsRow{
 			Filename: rec[1], MatchKey: rec[2], ParsedAt: rec[3],
-			Map: rec[5], Playlist: rec[6], Hero: rec[7],
 		}
 		r.ID, _ = strconv.ParseInt(rec[0], 10, 64)
 		r.ScreenshotsDirID, _ = strconv.ParseInt(rec[4], 10, 64)
-		r.Eliminations, _ = strconv.Atoi(rec[8])
-		r.Assists, _ = strconv.Atoi(rec[9])
-		r.Deaths, _ = strconv.Atoi(rec[10])
-		r.Damage, _ = strconv.Atoi(rec[11])
-		r.Healing, _ = strconv.Atoi(rec[12])
-		r.Mitigation, _ = strconv.Atoi(rec[13])
-		r.QueueType = rec[14]
+		r.Eliminations, _ = strconv.Atoi(rec[5])
+		r.Assists, _ = strconv.Atoi(rec[6])
+		r.Deaths, _ = strconv.Atoi(rec[7])
+		r.Damage, _ = strconv.Atoi(rec[8])
+		r.Healing, _ = strconv.Atoi(rec[9])
+		r.Mitigation, _ = strconv.Atoi(rec[10])
+		r.QueueType = rec[11]
 		out = append(out, r)
 		parents[r.ID] = &out[len(out)-1]
 	}
