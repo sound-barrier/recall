@@ -1,10 +1,11 @@
 extends: default
 
 rules:
-  # GitHub Actions run: blocks and long label strings routinely exceed 80 chars.
-  line-length:
-    max: 120
-    level: warning
+  # Line length is intentionally NOT enforced for YAML. GitHub Actions
+  # run: blocks, long label strings, and URLs routinely run long, and
+  # rewrapping them hurts readability more than it helps. yamllint still
+  # validates that every file is well-formed, correctly-indented YAML.
+  line-length: disable
 
   # --- prefix is optional for config files in this repo.
   document-start: disable
