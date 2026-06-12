@@ -44,9 +44,15 @@ export function useMatchesRowContext(records: Ref<MatchRecord[]>) {
   const hoverPreviewSrc = ref<string | null>(null)
   const hoverPreviewX = ref(0)
   const hoverPreviewY = ref(0)
+  const hoverThumbnailCache = new WeakMap<MatchRecord, string | null>()
 
   function onLeafMouseEnter(rec: MatchRecord, e: MouseEvent) {
-    hoverPreviewSrc.value = summaryThumbnailURL(rec)
+    let src = hoverThumbnailCache.get(rec)
+    if (src === undefined) {
+      src = summaryThumbnailURL(rec)
+      hoverThumbnailCache.set(rec, src)
+    }
+    hoverPreviewSrc.value = src
     hoverPreviewX.value = e.clientX
     hoverPreviewY.value = e.clientY
   }
