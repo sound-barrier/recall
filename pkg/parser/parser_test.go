@@ -461,54 +461,6 @@ ELIMINATIONS`
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// parsePanelStats — extracts (value, label) pairs from the teams
-// right-side panel OCR. Short noise lines between value and label (the
-// orange tick mark Tesseract reads as a 1-3 letter run) are skipped.
-// ──────────────────────────────────────────────────────────────────────────
-
-func TestParsePanelStats(t *testing.T) {
-	t.Run("clean two-card panel", func(t *testing.T) {
-		text := `35
-PLAYERS KNOCKED BACK
-24
-WEAPON ACCURACY`
-		got := parsePanelStats(text, "")
-		if got["players_knocked_back"] != 35 {
-			t.Errorf("players_knocked_back: got %d, want 35", got["players_knocked_back"])
-		}
-		if got["weapon_accuracy"] != 24 {
-			t.Errorf("weapon_accuracy: got %d, want 24", got["weapon_accuracy"])
-		}
-	})
-
-	t.Run("short noise line between value and label is tolerated", func(t *testing.T) {
-		text := `35
-PP
-PLAYERS KNOCKED BACK`
-		got := parsePanelStats(text, "")
-		if got["players_knocked_back"] != 35 {
-			t.Errorf("expected 35, got %d", got["players_knocked_back"])
-		}
-	})
-
-	t.Run("trailing %% on percent-suffixed value", func(t *testing.T) {
-		text := `24%
-WEAPON ACCURACY`
-		got := parsePanelStats(text, "")
-		if got["weapon_accuracy"] != 24 {
-			t.Errorf("expected 24, got %d", got["weapon_accuracy"])
-		}
-	})
-
-	t.Run("empty input → empty map", func(t *testing.T) {
-		got := parsePanelStats("", "")
-		if len(got) != 0 {
-			t.Errorf("expected empty, got %v", got)
-		}
-	})
-}
-
-// ──────────────────────────────────────────────────────────────────────────
 // parsePersonalStatCell — extracts (label_key, value) from one stat card
 // on the PERSONAL tab's 3×3 grid. Icon noise like "PP 41%" should leave
 // the value intact ("41") and recover the label.
@@ -549,55 +501,6 @@ func TestParsePersonalStatCell(t *testing.T) {
 			t.Errorf("expected not-ok with no value")
 		}
 	})
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// extractHeader — pulls (map, gameMode) from the in-game banner.
-// Map names are snapped to the knownMaps list via fuzzy match.
-// ──────────────────────────────────────────────────────────────────────────
-
-func TestExtractHeader(t *testing.T) {
-	tests := []struct {
-		name     string
-		text     string
-		wantMap  string
-		wantType string
-		wantMode string
-	}{
-		{
-			name:    "rialto control",
-			text:    "RIALTO ESCORT COMPETITIVE",
-			wantMap: "rialto",
-		},
-		{
-			name:    "fuzzy map snap (RIALT0 with zero → rialto)",
-			text:    "RIALT0",
-			wantMap: "rialto",
-		},
-		{
-			name:    "suravasa",
-			text:    "SURAVASA CLASH COMPETITIVE",
-			wantMap: "suravasa",
-		},
-		{
-			name:    "no map detected",
-			text:    "asdf garbled",
-			wantMap: "",
-		},
-		{
-			name:    "throne of anubis (multi-word)",
-			text:    "THRONE OF ANUBIS",
-			wantMap: "throne of anubis",
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			gotMap, _ := extractHeader(tc.text)
-			if gotMap != tc.wantMap {
-				t.Errorf("map = %q, want %q", gotMap, tc.wantMap)
-			}
-		})
-	}
 }
 
 // ──────────────────────────────────────────────────────────────────────────

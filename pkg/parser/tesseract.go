@@ -42,7 +42,7 @@ func getTesseractPath() string {
 	return tessPath
 }
 
-// runTesseractFunc is the indirection both OCR helpers route through.
+// runTesseractFunc is the indirection ocrInverted routes through.
 // Production points at runTesseract; tests swap it (with t.Cleanup) to
 // return canned strings keyed on the `name` argument — no Tesseract
 // binary, no temp files, no exec.
@@ -54,15 +54,6 @@ var runTesseractFunc = runTesseract
 func ocrInverted(img image.Image, rect image.Rectangle, workDir, name, psm, whitelist string) (string, error) {
 	sub := crop(img, rect)
 	pre := preprocessInverted(sub)
-	return runTesseractFunc(pre, workDir, name, psm, whitelist)
-}
-
-// ocrRaw writes the cropped region untouched (just upscaled) for Tesseract's
-// own thresholding. Best for the right-side panel which mixes white digits and
-// cyan labels — our custom thresholding tends to drop one or the other.
-func ocrRaw(img image.Image, rect image.Rectangle, workDir, name, psm, whitelist string) (string, error) {
-	sub := crop(img, rect)
-	pre := upscale(sub, rawUpscaleFactor)
 	return runTesseractFunc(pre, workDir, name, psm, whitelist)
 }
 

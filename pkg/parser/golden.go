@@ -42,30 +42,23 @@ type SummaryGolden struct {
 	Performance  *Performance `json:"performance,omitempty"`
 }
 
-// TeamsGolden is the golden JSON shape for a TEAMS/in-game
-// teams parse.
+// TeamsGolden is the golden JSON shape for a TEAMS/in-game teams parse.
 //
-// Populated by `parse_teams.go`: map+type+mode (from the header
-// banner; may fail and leave empty), hero+role (from the highlighted
-// row + right panel), the six combat-stat columns, queue_type (from
-// the players-per-team count; empty when unread), plus heroes_played
-// with the right-panel hero stats on the in-game variant. NOT
-// extracted:
-// playlist, result, final_score, date/finished_at/game_length,
-// performance, rank/sr fields.
+// Populated by `parse_teams.go`: the six combat-stat columns
+// (E/A/D + damage/healing/mitigation) from the highlighted row, plus
+// queue_type (from the players-per-team count; empty when unread). The
+// in-game scoreboard is NOT a summary source — map, game_mode, hero,
+// role, playlist, result, and every other summary/rank field come from
+// the post-match screenshots and are merged in by correlation, so they
+// are deliberately off this shape.
 type TeamsGolden struct {
-	Map          string     `json:"map"`
-	GameMode     string     `json:"game_mode"`
-	Role         string     `json:"role"`
-	Hero         string     `json:"hero"`
-	Eliminations int        `json:"eliminations"`
-	Assists      int        `json:"assists"`
-	Deaths       int        `json:"deaths"`
-	Damage       int        `json:"damage"`
-	Healing      int        `json:"healing"`
-	Mitigation   int        `json:"mitigation"`
-	QueueType    string     `json:"queue_type"`
-	HeroesPlayed []HeroPlay `json:"heroes_played,omitempty"`
+	Eliminations int    `json:"eliminations"`
+	Assists      int    `json:"assists"`
+	Deaths       int    `json:"deaths"`
+	Damage       int    `json:"damage"`
+	Healing      int    `json:"healing"`
+	Mitigation   int    `json:"mitigation"`
+	QueueType    string `json:"queue_type"`
 }
 
 // PersonalGolden is the golden JSON shape for a PERSONAL parse.
@@ -130,10 +123,6 @@ func ToGolden(r *MatchResult) any {
 		}
 	case "teams":
 		return &TeamsGolden{
-			Map:          r.Map,
-			GameMode:     r.GameMode,
-			Role:         r.Role,
-			Hero:         r.Hero,
 			Eliminations: r.Eliminations,
 			Assists:      r.Assists,
 			Deaths:       r.Deaths,
@@ -141,7 +130,6 @@ func ToGolden(r *MatchResult) any {
 			Healing:      r.Healing,
 			Mitigation:   r.Mitigation,
 			QueueType:    r.QueueType,
-			HeroesPlayed: r.HeroesPlayed,
 		}
 	case "personal":
 		return &PersonalGolden{

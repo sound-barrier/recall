@@ -4,128 +4,31 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	"regexp"
-	"strconv"
-	"strings"
 )
 
-// parseTeams handles the in-game and post-match TEAMS screens: two
-// team tables stacked vertically with the user's row highlighted in a brighter
-// blue. Pulls per-row stats (E/A/D/DMG/H/MIT) plus, when present, the in-game
-// banner's map/type/mode and the side panel's hero name.
+// parseTeams handles the in-game and post-match TEAMS screens: two team
+// tables stacked vertically with the user's row highlighted in a
+// brighter blue. It extracts ONLY the combat stats the scoreboard
+// uniquely provides — E/A/D + DMG/H/MIT from the highlighted row, plus
+// the queue type from the players-per-team count. Match identity (map,
+// mode, hero, role, result) comes from the post-match SUMMARY / RANK /
+// PERSONAL screens and is merged in by correlation; the in-game teams
+// scoreboard is deliberately NOT treated as a summary source.
 func parseTeams(img image.Image, work string) (*MatchResult, error) {
-	bounds := img.Bounds()
-	W, H := bounds.Dx(), bounds.Dy()
-
 	yTop, yBot := findHighlightedRowY(img)
 	if yTop < 0 {
 		return nil, errors.New("could not locate the highlighted (lighter blue) row in the teams")
-	}
-
-	// Header strip — banner is at top-left in 720p, top-right in 1080p. Use
-	// PSM 7 (single line) so a stray FPS/latency overlay above the banner
-	// doesn't confuse the OCR.
-	var headerRect image.Rectangle
-	if W >= 1600 {
-		headerRect = image.Rect(W*45/100, H/40, W*99/100, H/19)
-	} else {
-		headerRect = image.Rect(0, H/100, W*5/8, H*5/96)
-	}
-	headerText, err := ocrInverted(img, headerRect, work, "header", "7", "")
-	if err != nil {
-		return nil, fmt.Errorf("header OCR: %w", err)
 	}
 	stats, err := ocrRowCells(img, yTop, yBot, work)
 	if err != nil {
 		return nil, fmt.Errorf("row OCR: %w", err)
 	}
-	// Panel: use raw color and run OCR twice — PSM 6 reads the labels and
-	// numeric stats well, while PSM 11 (sparse text) catches cyan hero names
-	// like "REINHARDT" that PSM 6 sometimes drops. Concatenate both outputs.
-	panelRect := image.Rect(W*5/8, H/8, W, H*5/6)
-	panel6, err := ocrRaw(img, panelRect, work, "panel", "6",
-		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ %")
-	if err != nil {
-		return nil, fmt.Errorf("panel OCR: %w", err)
-	}
-	panel11, err := ocrRaw(img, panelRect, work, "panel11", "11",
-		"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ %")
-	if err != nil {
-		return nil, fmt.Errorf("panel sparse OCR: %w", err)
-	}
-	panelText := panel6 + "\n" + panel11
 
 	res := &MatchResult{}
-	res.Map, res.GameMode = extractHeader(headerText)
-	if res.Map == "" {
-		if cand := candidateNameFromOCR(headerText); cand != "" {
-			res.MapRaw = cand
-		}
-	}
 	res.Eliminations, res.Assists, res.Deaths = stats[0], stats[1], stats[2]
 	res.Damage, res.Healing, res.Mitigation = stats[3], stats[4], stats[5]
-	if heroes := extractHeroes(panelText); len(heroes) > 0 {
-		res.Hero = heroes[0]
-		if r, ok := loadDataset().heroRoles[res.Hero]; ok {
-			res.Role = r
-		}
-		// The right-side panel on the in-game teams carries the same
-		// hero-specific cards the post-match PERSONAL tab does (PLAYERS
-		// SAVED, WEAPON ACCURACY, etc.). Surface them on the HeroPlay entry
-		// so a standalone teams screenshot isn't missing them, and so
-		// they cross-validate against the PERSONAL screen when both exist.
-		if heroStats := parsePanelStats(panelText, res.Hero); len(heroStats) > 0 {
-			res.HeroesPlayed = []HeroPlay{{Hero: res.Hero, Stats: heroStats}}
-		}
-	} else if cand := candidateNameFromOCR(panelText); cand != "" {
-		// Matcher rejected the highlighted player's hero — capture the
-		// raw OCR for the "Unknown hero" UI. parse_teams's panel
-		// is just one hero's column so this is the natural single-hero
-		// fallback.
-		res.HeroRaw = cand
-	}
 	res.QueueType = detectQueueType(img, work)
 	return res, nil
-}
-
-// parsePanelStats extracts hero-specific (value, label) pairs from the
-// TEAMS right panel OCR. Values are integers (optionally % -suffixed);
-// labels are multi-word uppercase phrases that follow the value within a few
-// lines. Short noise lines (e.g. "PP", "A") between value and label are
-// skipped — the panel renders an orange tick mark on the left of each card
-// that Tesseract often reads as a 1-3 letter run.
-var (
-	panelValRe   = regexp.MustCompile(`^\s*(\d{1,4})\s*%?\s*$`)
-	panelLabelRe = regexp.MustCompile(`^[A-Z][A-Z\s]{4,}[A-Z]$`)
-)
-
-func parsePanelStats(text, hero string) map[string]int {
-	lines := strings.Split(text, "\n")
-	stats := map[string]int{}
-	for i, line := range lines {
-		m := panelValRe.FindStringSubmatch(strings.TrimSpace(line))
-		if m == nil {
-			continue
-		}
-		val, _ := strconv.Atoi(m[1])
-		for j := i + 1; j < len(lines) && j < i+5; j++ {
-			l := strings.TrimSpace(lines[j])
-			if l == "" || len(l) <= 3 {
-				continue
-			}
-			if panelLabelRe.MatchString(l) {
-				stats[SnapHeroStatKey(hero, labelToKey(l))] = val
-				break
-			}
-			// Hitting another value before a label means the current value
-			// has no label in range — bail rather than pairing it with a
-			// later, unrelated label.
-			if panelValRe.MatchString(l) {
-				break
-			}
-		}
-	}
-	return stats
 }
 
 // findHighlightedRowY locates the highlighted row's Y range by finding the
