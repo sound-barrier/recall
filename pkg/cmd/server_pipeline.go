@@ -16,10 +16,13 @@ import (
 // (a.ParseScreenshots writes to the tables that
 // a.GetNewScreenshotCount reads from).
 func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
-	// Kicks off a synchronous parse run. Returns 202 Accepted because
-	// the meaningful side-effect is the SQLite writes + SSE broadcast,
-	// not the HTTP response body. Clients should subscribe to
-	// /api/v1/events for progress and re-fetch /api/v1/matches when done.
+	// Kicks off a parse run in a BACKGROUND goroutine and returns 202
+	// Accepted immediately — the request is NOT held open for the
+	// multi-minute OCR loop. Progress + completion reach the client over
+	// /api/v1/events (parse-progress / parse-complete); GET
+	// /api/v1/parses/active is the resync anchor for a reconnecting or
+	// reloading client. This is what makes a run survive a client
+	// network drop: there's no long-lived request to lose.
 	apiMux.HandleFunc("POST /api/v1/parses", func(w http.ResponseWriter, r *http.Request) {
 		// `?scope=all` switches to ReParseAll — re-runs OCR on every
 		// PNG in the watched folder regardless of whether it's
@@ -43,18 +46,14 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 				return
 			}
 		}
-		var err error
-		if force {
-			err = a.ReParseAll()
-		} else {
-			err = a.ParseScreenshots()
-		}
-		if err != nil {
-			// 409: the parse action can't proceed because the resource
-			// state (no screenshots directory configured / readable) is
-			// incompatible. Not 400 — the request itself was well-formed,
-			// it's the server's runtime state that conflicts.
-			if errors.Is(err, app.ErrInvalidScreenshotsDir) {
+		// Validates preconditions + single-flight synchronously (so the
+		// caller still gets a 409/500 before the 202), then spawns the
+		// run and returns.
+		if err := a.StartParse(force); err != nil {
+			// 409: the request was well-formed but the server's runtime
+			// state conflicts — no/unreadable screenshots dir, or a parse
+			// is already in flight. Not 400 (the bytes parsed fine).
+			if errors.Is(err, app.ErrInvalidScreenshotsDir) || errors.Is(err, app.ErrParseInFlight) {
 				http.Error(w, err.Error(), http.StatusConflict)
 				return
 			}
@@ -62,6 +61,13 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)
+	})
+
+	// Status snapshot for the active parse — the resync anchor. SSE
+	// doesn't replay, so a client that reconnects (or reloads) mid-parse
+	// reads this to restore "is a parse running, and how far along".
+	apiMux.HandleFunc("GET /api/v1/parses/active", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, a.ActiveParse(), nil)
 	})
 
 	// Cancel an in-flight parse. Modelled as a DELETE on the

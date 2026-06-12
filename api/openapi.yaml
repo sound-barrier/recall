@@ -673,14 +673,16 @@ paths:
         queue / play-mode overrides / hidden flags / reviews all key
         on match_key and survive the re-parse. ~1 s per screenshot.
 
-        Returns `202 Accepted` because the meaningful side-effect is
-        the SQLite writes and SSE broadcast, not the HTTP response
-        body. Subscribe to `GET /api/v1/events` for progress and
-        re-fetch `GET /api/v1/matches` when done.
+        Runs the parse in a BACKGROUND goroutine and returns
+        `202 Accepted` **immediately** — the request is not held open
+        for the OCR loop. Subscribe to `GET /api/v1/events` for progress
+        + completion (`parse-progress` / `parse-complete`), and poll
+        `GET /api/v1/parses/active` to resync after a reconnect or page
+        reload (SSE is not replayed). Re-fetch `GET /api/v1/matches` on
+        completion.
 
-        The handler is currently synchronous (the response holds until
-        parsing finishes), but the 202 contract keeps callers from
-        depending on that internal detail.
+        `409 Conflict` when a parse is already in flight (single-flight,
+        fail-fast) or the screenshots folder is unset/unreadable.
       parameters:
         - name: scope
           in: query
@@ -693,7 +695,7 @@ paths:
             `all` re-OCRs every file. Other values return 400.
       responses:
         "202":
-          description: Parse run complete; subscribe to events for incremental updates.
+          description: Parse accepted and started; subscribe to events for progress + completion.
         "400":
           $ref: "#/components/responses/BadRequest"
         "409":
@@ -702,6 +704,24 @@ paths:
           $ref: "#/components/responses/InternalError"
 
   /api/v1/parses/active:
+    get:
+      operationId: GetActiveParse
+      tags: [Pipeline]
+      summary: Active-parse status snapshot
+      description: |
+        The resync anchor for the async parse pipeline. SSE messages are
+        not replayed on connect, so a client that reconnects or reloads
+        mid-parse reads this to restore "is a parse running, and how far
+        along." `running=false` when idle.
+      responses:
+        "200":
+          description: Current parse run-state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveParse"
+        "500":
+          $ref: "#/components/responses/InternalError"
     delete:
       operationId: CancelParse
       tags: [Pipeline]
@@ -2000,6 +2020,28 @@ components:
       example: "match-2026-05-10T22-21-11"
 
   schemas:
+    ActiveParse:
+      type: object
+      required: [running, done, total, scope]
+      description: |
+        Snapshot of the in-flight parse run. The resync anchor for the
+        async parse pipeline — read after an SSE reconnect or a page
+        reload to restore the parse panel without replaying events.
+      properties:
+        running:
+          type: boolean
+          description: Whether a parse is currently in flight.
+        done:
+          type: integer
+          minimum: 0
+          description: Screenshot files OCR'd so far this run.
+        total:
+          type: integer
+          minimum: 0
+          description: Total files to process this run (0 when idle).
+        scope:
+          type: string
+          description: '"new" (default parse) or "all" (re-parse); empty when idle.'
     LeaverEnum:
       type: string
       enum: ["", "self", "team", "enemy"]

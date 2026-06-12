@@ -73,18 +73,27 @@ type App struct {
 	watchedDir string
 	watchTimer *time.Timer
 	watchMu    sync.Mutex
-	// parseMu serializes ParseScreenshots so an auto-trigger from the
-	// watcher can't overlap with a user-triggered click (or a second
-	// debounce that fires while the first parse is still running).
-	parseMu sync.Mutex
-	// parseCancelMu guards parseCancel — a smaller scope than parseMu,
-	// which the OCR loop holds for the full multi-second run.
-	// CancelParse needs to set/clear parseCancel without waiting on
-	// the loop it's trying to interrupt.
+	// parseCancelMu guards the whole parse run-state below: the
+	// single-flight flag, the progress snapshot, and the cancel func.
+	// One small lock so CancelParse, the GET /parses/active status
+	// read, and the claim/end bracketing never wait on the OCR loop
+	// (which holds NO lock for its multi-second run — parseRunning is
+	// the single-flight gate instead).
 	parseCancelMu sync.Mutex
+	// parseRunning is true between claimParse and endParse — the
+	// single-flight gate. A second parse (user click, watcher debounce,
+	// or a concurrent POST) fails fast with ErrParseInFlight rather
+	// than queueing.
+	parseRunning bool
+	// parseDone / parseTotal / parseScope are the per-file progress
+	// snapshot surfaced by GET /api/v1/parses/active so a reconnecting
+	// or reloading client can resync without replaying the SSE backlog.
+	parseDone  int
+	parseTotal int
+	parseScope string
 	// parseCancel is non-nil while a parse is in flight; calling it
 	// flips ctx.Done() so the parser library short-circuits at the
-	// next between-files boundary. See ParseScreenshots + CancelParse.
+	// next between-files boundary. See StartParse + CancelParse.
 	parseCancel context.CancelFunc
 	// SSEHub is non-nil in --server mode. When set, parse-complete events
 	// are broadcast over SSE instead of (or in addition to) the Wails

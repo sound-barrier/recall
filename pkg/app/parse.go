@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"recall/pkg/applog"
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
@@ -14,6 +15,13 @@ import (
 // was well-formed, the server's runtime state just doesn't have
 // anything to cancel.
 var ErrNoParseInFlight = errors.New("no parse in flight")
+
+// ErrParseInFlight is returned by the parse entry points when a parse
+// is already running. Single-flight is fail-fast (not queued): a second
+// trigger — a user click, a watcher debounce, or a concurrent POST —
+// gets this rather than waiting behind the running loop. The HTTP layer
+// maps it to 409 Conflict.
+var ErrParseInFlight = errors.New("a parse is already in flight")
 
 // CancelParse short-circuits an in-flight ParseScreenshots at the
 // next between-files boundary by cancelling the context the parser
@@ -62,6 +70,17 @@ type ParseProgressEvent struct {
 	MapCorrections  int `json:"map_corrections,omitempty"`
 }
 
+// ActiveParseStatus is the GET /api/v1/parses/active snapshot — enough
+// for a reconnecting / reloading client to decide "is a parse running,
+// and how far along" without the SSE backlog (which isn't replayed on
+// connect). The resync anchor for the async-job pipeline.
+type ActiveParseStatus struct {
+	Running bool   `json:"running"`
+	Done    int    `json:"done"`
+	Total   int    `json:"total"`
+	Scope   string `json:"scope"`
+}
+
 // ReParseAll re-runs the OCR pipeline against every PNG in the
 // watched folder, including ones that are already in the per-type
 // tables. The Upsert clauses are idempotent on filename (ON CONFLICT
@@ -75,53 +94,148 @@ type ParseProgressEvent struct {
 // Re-parse all screenshots to retroactively correct the older
 // rows. ~1 s per screenshot end-to-end; the progress panel surfaces
 // per-file events through the same SSE stream the watcher uses.
+//
+// Synchronous (blocks until the run finishes) — the Wails IPC path +
+// Go tests rely on that. Server mode uses StartParse instead.
 func (a *App) ReParseAll() error {
-	return a.parseScreenshotsImpl(true)
+	return a.parseSync(true)
 }
 
 // ParseScreenshots OCRs every image in screenshots/ and writes each
 // result to its per-type table. Correlation (resolveMatchKey) runs per
 // screenshot in filename-timestamp order so cross-file deps (e.g. a
 // PERSONAL adopting the SUMMARY it shares a match with) see the
-// already-inserted siblings.
+// already-inserted siblings. Synchronous; see ReParseAll / StartParse.
 func (a *App) ParseScreenshots() error {
-	return a.parseScreenshotsImpl(false)
+	return a.parseSync(false)
 }
 
-// parseScreenshotsImpl is the shared body for ParseScreenshots /
-// ReParseAll. When `force` is true, the already-parsed skip-set is
-// ignored and every file in the directory is re-OCR'd.
-func (a *App) parseScreenshotsImpl(force bool) error {
-	screenshotsDir, err := validateScreenshotsDir(a.settings.ScreenshotsDir)
+// StartParse kicks off a parse in a BACKGROUND goroutine and returns
+// immediately — the server's POST /api/v1/parses path. Progress +
+// completion reach the client over SSE (parse-progress / parse-complete
+// / parse-cancelled); GET /api/v1/parses/active is the resync anchor.
+// Preconditions are validated synchronously so the caller still gets a
+// 409/500 before the 202; a parse already in flight returns
+// ErrParseInFlight. This is what makes the run survive a client network
+// drop — there's no held-open request to lose.
+func (a *App) StartParse(force bool) error {
+	dir, err := a.validateParsePreconditions()
 	if err != nil {
 		return err
+	}
+	ctx, ok := a.claimParse(force)
+	if !ok {
+		return ErrParseInFlight
+	}
+	go func() {
+		defer a.endParse()
+		if runErr := a.runClaimedParse(ctx, force, dir); runErr != nil {
+			applog.Subsystem("parse").Error("background parse failed", "err", runErr)
+		}
+	}()
+	return nil
+}
+
+// parseSync runs a parse to completion on the caller's goroutine — the
+// Wails IPC path, the watcher debounce, and Go tests all rely on the
+// call blocking until the OCR loop finishes. Fail-fast single-flight
+// (ErrParseInFlight) instead of queueing behind a held mutex.
+func (a *App) parseSync(force bool) error {
+	dir, err := a.validateParsePreconditions()
+	if err != nil {
+		return err
+	}
+	ctx, ok := a.claimParse(force)
+	if !ok {
+		return ErrParseInFlight
+	}
+	defer a.endParse()
+	return a.runClaimedParse(ctx, force, dir)
+}
+
+// ActiveParse returns the current run-state snapshot.
+func (a *App) ActiveParse() ActiveParseStatus {
+	a.parseCancelMu.Lock()
+	defer a.parseCancelMu.Unlock()
+	return ActiveParseStatus{
+		Running: a.parseRunning,
+		Done:    a.parseDone,
+		Total:   a.parseTotal,
+		Scope:   a.parseScope,
+	}
+}
+
+// validateParsePreconditions runs the cheap up-front checks (dir
+// configured + readable, tesseract present) so both the sync and async
+// entry points fail fast BEFORE claiming the run slot or spawning a
+// goroutine. Returns the cleaned screenshots dir for the loop.
+func (a *App) validateParsePreconditions() (string, error) {
+	screenshotsDir, err := validateScreenshotsDir(a.settings.ScreenshotsDir)
+	if err != nil {
+		return "", err
 	}
 	if !a.tessStatus.Found {
 		a.tessStatus = checkTesseract(a.settings.TesseractPath)
 		if !a.tessStatus.Found {
-			return fmt.Errorf("tesseract is not available: %s", a.tessStatus.Error)
+			return "", fmt.Errorf("tesseract is not available: %s", a.tessStatus.Error)
 		}
 	}
-	a.parseMu.Lock()
-	defer a.parseMu.Unlock()
+	return screenshotsDir, nil
+}
 
-	// Cancellation seam — see CancelParse(). The cancel func is
-	// stashed under a tiny mutex so the HTTP DELETE handler can
-	// reach it without blocking on parseMu (which the OCR loop
-	// holds for the full run). Cleared on the way out so a
-	// follow-up CancelParse returns ErrNoParseInFlight.
-	ctx, cancel := context.WithCancel(context.Background())
+func scopeLabel(force bool) string {
+	if force {
+		return "all"
+	}
+	return "new"
+}
+
+// claimParse takes the single-flight slot: false when a parse is already
+// running. On success it stamps the run-state snapshot + creates the
+// cancel ctx the OCR loop checks between files. Paired with endParse.
+func (a *App) claimParse(force bool) (context.Context, bool) {
 	a.parseCancelMu.Lock()
+	defer a.parseCancelMu.Unlock()
+	if a.parseRunning {
+		return nil, false
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	a.parseRunning = true
 	a.parseCancel = cancel
-	a.parseCancelMu.Unlock()
-	defer func() {
-		a.parseCancelMu.Lock()
-		a.parseCancel = nil
-		a.parseCancelMu.Unlock()
-		cancel()
-	}()
+	a.parseScope = scopeLabel(force)
+	a.parseDone, a.parseTotal = 0, 0
+	return ctx, true
+}
 
+// endParse releases the single-flight slot and cancels the ctx (a no-op
+// after normal completion; the signal that unwinds the loop on cancel).
+func (a *App) endParse() {
+	a.parseCancelMu.Lock()
+	defer a.parseCancelMu.Unlock()
+	if a.parseCancel != nil {
+		a.parseCancel()
+	}
+	a.parseRunning = false
+	a.parseCancel = nil
+}
+
+// noteProgress snapshots the per-file counter so GET /parses/active can
+// report how far along a running parse is to a resyncing client.
+func (a *App) noteProgress(done, total int) {
+	a.parseCancelMu.Lock()
+	a.parseDone, a.parseTotal = done, total
+	a.parseCancelMu.Unlock()
+}
+
+// runClaimedParse is the OCR loop body. Preconditions are already
+// validated and the run slot already claimed (claimParse); this drives
+// the parse and emits the lifecycle events. It emits parse-complete on
+// success so EVERY path (server POST, Wails IPC, watcher) signals
+// completion the same way — the linchpin that lets the server return
+// 202 up-front instead of holding the request open for the whole run.
+func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir string) error {
 	parsed := map[string]bool{}
+	var err error
 	if !force {
 		parsed, err = a.store.LoadAllFilenames()
 		if err != nil {
@@ -157,24 +271,14 @@ func (a *App) parseScreenshotsImpl(force bool) error {
 	// stream cleanly but `match-updated` arrived in a single
 	// last-instant burst, so the Matches tab stayed blank until
 	// parse-complete.
-	//
-	// The parser walks files in os.ReadDir order (alphabetical), which
-	// for OW screenshots equals chronological (filenames carry the
-	// capture timestamp). resolveMatchKey is order-tolerant — a later
-	// teams can still correlate to an earlier summary via the
-	// E/A/D + timestamp-window rules — but the alphabetical order
-	// keeps the natural case fast.
 	var inserts int
-	// Cumulative re-parse counters — surfaced via ParseProgressEvent
-	// so the Settings → Advanced re-parse-all surface can render
-	// "X of Y matches updated · N hero / M map corrected" without
-	// any extra round-trip. Only meaningful when `force` is true
-	// (a regular Parse run touches new files only — no "before"
-	// state to diff against), but accumulating in either case
-	// keeps the closure shape one branch lighter.
 	matchesUpdatedSet := map[string]struct{}{}
 	var heroCorrections, mapCorrections int
 	_, err = parser.ParseScreenshotsDir(ctx, screenshotsDir, parsed, func(done, total int, filename string, result *parser.MatchResult, parseErr error) {
+		// Snapshot progress for the GET /parses/active resync anchor
+		// before any per-file work, so a status read always reflects
+		// the file currently in flight.
+		a.noteProgress(done, total)
 		t := parser.ScreenshotType(result)
 
 		// Always fire the progress event so the footer counter
@@ -269,6 +373,10 @@ func (a *App) parseScreenshotsImpl(force bool) error {
 		return err
 	}
 	_ = inserts // value is reserved for a future debug log; suppress unused
+	// Authoritative completion signal for EVERY parse path. The
+	// frontend drives parseBusy off this (not a held-open request),
+	// and the watcher no longer emits it separately.
+	a.emitParseComplete()
 	return nil
 }
 

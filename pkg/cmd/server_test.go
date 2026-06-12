@@ -189,6 +189,29 @@ func TestServerMux_DeleteParsesActive_409WhenNoParseInFlight(t *testing.T) {
 	}
 }
 
+func TestServerMux_GetParsesActive_IdleReportsNotRunning(t *testing.T) {
+	// The resync anchor: with no parse running, GET returns a 200 JSON
+	// snapshot with running=false. (The running window needs a live OCR
+	// loop; the App-level claimParse tests cover that transition.)
+	_, mux := newTestApp(t, nil)
+	rec := get(t, mux, "/api/v1/parses/active")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Running bool   `json:"running"`
+		Done    int    `json:"done"`
+		Total   int    `json:"total"`
+		Scope   string `json:"scope"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode body %q: %v", rec.Body.String(), err)
+	}
+	if got.Running || got.Done != 0 || got.Total != 0 {
+		t.Errorf("idle snapshot = %+v, want running=false done=0 total=0", got)
+	}
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Write endpoints with typed-error → 4xx mapping.
 // ──────────────────────────────────────────────────────────────────────────
