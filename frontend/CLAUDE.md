@@ -169,7 +169,7 @@ for you.
 
 - **happy-dom `document.activeElement` fails `.toBe(wrapper.find(...).element)`** despite identical serialization. Compare via `.id` or another attribute, not element identity.
 
-- **Lefthook's frontend hooks (eslint/stylelint) routinely skip "no files for inspection"** even with `frontend/src/**` staged. Run `cd frontend && npx eslint 'src/**/*.{ts,vue}'` + `npx stylelint 'src/**/*.{vue,css}'` manually. `make lint` + CI catch it; only the local hook is unreliable.
+- **Lefthook's frontend hooks (eslint/stylelint) routinely skip "no files for inspection"** even with files staged. Run `cd frontend && npm run lint:js` (`eslint .` — the WHOLE tree: src, tests, e2e specs, config files, `.cjs` scripts; only generated artifacts in `eslint.config.js`'s `ignores` are exempt) + `npx stylelint 'src/**/*.{vue,css}'` manually. `make lint` + CI catch it; only the local hook is unreliable.
 
 - **`stylelint-config-standard` rejects BEM `--`.** `selector-class-pattern` only allows kebab-case (`.foo-modifier`, not `.foo--modifier`). Also requires empty line before every rule block (including `:hover` after `}`). Errors not warnings — most are autofixable via `npx stylelint --fix`.
 
