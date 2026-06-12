@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatRelativeTime } from '../match-time-helpers'
+import type { ParseConnectionState } from '../composables/useParseRecovery'
 import ParseProgressPanel, { type ParseProgressEvent } from './ParseProgressPanel.vue'
 
 // IngestView (presented to users as the "Parse" tab) — the
@@ -15,7 +16,7 @@ import ParseProgressPanel, { type ParseProgressEvent } from './ParseProgressPane
 // Owned state stays in App.vue (tesseractReady, watchEnabled,
 // parse-progress stream); this view is a pure presentation layer.
 
-defineProps<{
+withDefaults(defineProps<{
   // Preflight — needed for the heading state machine + Watch
   // disable. Tesseract status itself lives on Settings.
   tesseractReady:       boolean
@@ -34,12 +35,18 @@ defineProps<{
   parseProgress:        ParseProgressEvent | null
   parseLog:             ParseProgressEvent[]
   parseProgressOpen:    boolean
+  // Server-mode SSE connection state for the parse stream — drives the
+  // panel's reconnecting / lost-connection recovery affordances.
+  // Optional (defaults to 'connected') so tests + Wails callers can omit.
+  parseConnectionState?: ParseConnectionState
 
   // Record counts — drive heading copy + the "N records on record"
   // line under Manual Parse.
   matchedCount:         number
   unknownCount:         number
-}>()
+}>(), {
+  parseConnectionState: 'connected',
+})
 
 const emit = defineEmits<{
   'toggle-watch':       []
@@ -48,6 +55,9 @@ const emit = defineEmits<{
   // CancelParse() call + the cancellingParse state.
   'cancel-parse':       []
   'toggle-progress':    []
+  // Manual recovery from the panel's lost-connection state — re-pull the
+  // run-state snapshot + reload. App.vue owns the actual resync.
+  'refresh-parse':      []
   'go-to-view':         [next: 'settings' | 'ingest' | 'matches' | 'unknown']
 }>()
 </script>
@@ -189,7 +199,9 @@ const emit = defineEmits<{
           :parse-progress="parseProgress"
           :parse-log="parseLog"
           :is-open="parseProgressOpen"
+          :connection-state="parseConnectionState"
           @toggle-open="emit('toggle-progress')"
+          @refresh="emit('refresh-parse')"
         />
       </div>
     </div>

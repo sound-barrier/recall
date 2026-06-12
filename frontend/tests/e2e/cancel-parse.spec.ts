@@ -93,8 +93,14 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
     // DELETE /api/v1/parses/active — count the calls + return 202.
     let deleteCount = 0
     await page.route('**/api/v1/parses/active', async (route: Route) => {
-      deleteCount++
-      await route.fulfill({ status: 202 })
+      // DELETE = Stop (counted). GET = the parse-recovery resync poll —
+      // answer idle so it's a no-op and doesn't inflate the count.
+      if (route.request().method() === 'DELETE') {
+        deleteCount++
+        await route.fulfill({ status: 202 })
+      } else {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ running: false, done: 0, total: 0, scope: '' }) })
+      }
     })
 
     await page.goto('/')
@@ -150,8 +156,14 @@ test.describe('cancel-parse — Stop affordance + SSE confirmation', () => {
     })
     let deleteCount = 0
     await page.route('**/api/v1/parses/active', async (route: Route) => {
-      deleteCount++
-      await route.fulfill({ status: 202 })
+      // DELETE = Stop (counted). GET = the parse-recovery resync poll —
+      // answer idle so it's a no-op and doesn't inflate the count.
+      if (route.request().method() === 'DELETE') {
+        deleteCount++
+        await route.fulfill({ status: 202 })
+      } else {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ running: false, done: 0, total: 0, scope: '' }) })
+      }
     })
 
     await page.goto('/')
