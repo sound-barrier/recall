@@ -50,7 +50,7 @@ func (s *SQLStore) UpsertTeams(r TeamsRow) error {
 	return tx.Commit()
 }
 
-func (s *SQLStore) loadTeams() ([]TeamsRow, error) {
+func (s *SQLStore) LoadTeams() ([]TeamsRow, error) {
 	rows, err := s.db.Query(`SELECT
 		id, filename, match_key, parsed_at, screenshots_dir_id,
 		eliminations, assists, deaths, damage, healing, mitigation, queue_type
