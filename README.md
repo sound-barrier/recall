@@ -231,7 +231,7 @@ The watcher and Parse-run both need read access to the directory you picked in *
 <details>
 <summary><strong>Reset Recall's database (per-OS)</strong></summary>
 
-To start fresh on a single profile, or to recover from a corrupted database. Close Recall first, then:
+To start fresh, recover from a corrupted database, or recover after a **schema-changing update** (Recall has no migrations pre-1.0, so an old database can become incompatible — wipe it and Recall rebuilds an empty one and re-parses your screenshots). Close Recall first, then:
 
 | OS | Wipe one profile's matches | Wipe everything |
 |---|---|---|
@@ -239,7 +239,9 @@ To start fresh on a single profile, or to recover from a corrupted database. Clo
 | **macOS** | `rm -rf ~/Library/Application\ Support/Recall/profiles/<name>/db/` | `rm -rf ~/Library/Application\ Support/Recall/` |
 | **Linux** | `rm -rf ~/.config/recall/profiles/<name>/db/` | `rm -rf ~/.config/recall/` |
 
-A softer in-app option exists too: **Settings → Advanced → Clear Database** wipes the active profile's matches but keeps its settings + the ignored-screenshots suppress list (tick the opt-out checkbox to also clear that list). The two-step arm/confirm prevents accidental wipes.
+**Windows — guided script (backs up first):** double-click `C:\Program Files\recall\Reset-Database.bat` (it ships with the installer), or download `recall-{version}-Reset-Database.bat` from [Releases](https://github.com/sound-barrier/recall/releases). It backs the database up before deleting and asks to confirm — handy when a schema-changing update left the app unable to open. Steps + what's lost vs. kept: [Resetting your database](docs/install-windows.md#resetting-your-database-no-migrations-yet).
+
+A softer in-app option exists too (when the app still opens): **Settings → Advanced → Clear Database** wipes the active profile's matches but keeps its settings + the ignored-screenshots suppress list (tick the opt-out checkbox to also clear that list). The two-step arm/confirm prevents accidental wipes.
 </details>
 
 <details>

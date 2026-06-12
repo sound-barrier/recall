@@ -130,7 +130,48 @@ them; each one gets its own sibling directory under `profiles\`.
 
 To wipe a single profile: close Recall, delete that profile's
 folder under `profiles\`, restart. To wipe everything, delete the
-whole `Recall\` install root.
+whole `Recall\` install root. For a guided reset that backs up first,
+use the script below.
+
+## Resetting your database (no migrations yet)
+
+Recall has **no schema migrations** before 1.0. When an update changes
+the database layout your existing data can become incompatible — and the
+fix is to wipe the database. Recall recreates an empty one on next launch
+and **re-parses your screenshots folder**, so your matches come back; only
+data that lives *only* in the database is lost (table below). You might
+also want this for a deliberately clean start or a corrupt database.
+
+A helper script does it safely — it **backs up the database first**, then
+deletes it once you confirm. Two ways to run it:
+
+- **Already installed?** Double-click
+  `C:\Program Files\recall\Reset-Database.bat` — it ships with the app.
+  This is the "clean install" path: no separate download needed.
+- **Prefer to download it?** Grab `recall-{version}-Reset-Database.bat`
+  from the [Releases](https://github.com/sound-barrier/recall/releases)
+  page and double-click it. It's signed + attested like every other
+  release asset — verify it the same way (see
+  [Verifying your download](#verifying-your-download)).
+
+**Close Recall first.** The script warns you if it's still running, backs
+up the database to `…\db\backups\recall-<timestamp>.db`, then asks before
+deleting. No admin rights are needed.
+
+| Permanently lost — lives only in the database | Safe — untouched |
+|---|---|
+| match notes, tags, tagged teammates | your screenshots folder |
+| leaver flags, replay codes | settings (incl. the screenshots path) |
+| review state, queue / play-mode overrides | other profiles |
+| hidden-match flags | |
+
+To restore a backup, copy the `recall-<timestamp>.db` trio from
+`…\db\backups\` back over `recall.db` (and its `-wal` / `-shm`) while
+Recall is closed.
+
+> Run `Reset-Database.bat /force` to skip the prompt, or `/nobackup` to
+> delete without a backup. On macOS / Linux (no `.bat`), close Recall and
+> delete `recall.db` (plus `-wal` / `-shm`) under the app-data dir.
 
 ## Verifying your download
 
@@ -159,6 +200,10 @@ for every Windows artifact. A passing check means the binary was
 produced by a specific commit on `main` by the published GitHub
 Actions workflow — not just "the hash matches the .sha256 file"
 (which says nothing about who produced the file in the first place).
+
+The same two checks work on the reset helper — swap in
+`recall-{version}-Reset-Database.bat` (it ships its own `.sha256` and is
+attested alongside the installer).
 
 ## Server binary (advanced)
 
