@@ -1658,6 +1658,100 @@ describe('useMatchesDossier — query-helper parameterization', () => {
     })
   })
 
+  describe('mapCounts', () => {
+    function mr(map: string, result: 'victory' | 'defeat' | 'draw', date?: string): MatchRecord {
+      return {
+        match_key:    `m-${Math.random()}`,
+        source_files: ['a.png'],
+        source_types: { 'a.png': 'summary' },
+        data: {
+          map, hero: 'lucio', game_mode: 'escort', result, playlist: 'competitive',
+          ...(date ? { date } : {}),
+        },
+        parsed_at: '2026-05-10T14:00:00Z',
+      } as unknown as MatchRecord
+    }
+    function isoDaysAgo(n: number): string {
+      const d = new Date()
+      d.setDate(d.getDate() - n)
+      return d.toISOString().slice(0, 10)
+    }
+
+    it('tallies wins/losses/draws per map with a draw-excluded winrate', () => {
+      const records = ref([
+        mr('route66', 'victory'), mr('route66', 'defeat'), mr('route66', 'draw'),
+        mr('havana', 'victory'),
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const cells = dossier.mapCounts().value
+      const route = cells.find((c) => c.map === 'route66')!
+      expect(route).toMatchObject({ wins: 1, losses: 1, draws: 1, total: 3, winrate: 50 })
+      const havana = cells.find((c) => c.map === 'havana')!
+      expect(havana).toMatchObject({ wins: 1, total: 1, winrate: 100 })
+    })
+
+    it('skips records with no map', () => {
+      const records = ref([
+        mr('route66', 'victory'),
+        { match_key: 'x', source_files: ['b.png'], source_types: { 'b.png': 'summary' },
+          data: { hero: 'lucio', result: 'victory', playlist: 'competitive' },
+          parsed_at: '2026-05-10T14:00:00Z' } as unknown as MatchRecord,
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(dossier.mapCounts().value.map((c) => c.map)).toEqual(['route66'])
+    })
+
+    it('honours windowMonths — drops records older than the cutoff and undated rows', () => {
+      const records = ref([
+        mr('route66', 'victory', isoDaysAgo(20)),
+        mr('route66', 'defeat', isoDaysAgo(400)),
+        mr('route66', 'defeat'), // undated
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(dossier.mapCounts().value.find((c) => c.map === 'route66')!.total).toBe(3)
+      expect(dossier.mapCounts(() => ({ windowMonths: 3 })).value.find((c) => c.map === 'route66')!.total).toBe(1)
+    })
+  })
+
+  describe('recentMatches', () => {
+    function mr(key: string, date: string, finishedAt: string, result: 'victory' | 'defeat' | 'draw', map = 'route66'): MatchRecord {
+      return {
+        match_key:    key,
+        source_files: [`${key}.png`],
+        source_types: { [`${key}.png`]: 'summary' },
+        data: { map, hero: 'lucio', game_mode: 'escort', result, date, finished_at: finishedAt, playlist: 'competitive' },
+        parsed_at: `${date}T${finishedAt}:00Z`,
+      } as unknown as MatchRecord
+    }
+    function isoDaysAgo(n: number): string {
+      const d = new Date()
+      d.setDate(d.getDate() - n)
+      return d.toISOString().slice(0, 10)
+    }
+
+    it('returns rows newest-first by match time, capped to count, with date/result/map', () => {
+      const records = ref([
+        mr('a', '2026-05-01', '20:00', 'victory'),
+        mr('b', '2026-05-03', '21:00', 'defeat'),
+        mr('c', '2026-05-02', '22:00', 'draw'),
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      const rows = dossier.recentMatches(() => ({ count: 2 })).value
+      expect(rows.map((r) => r.matchKey)).toEqual(['b', 'c'])
+      expect(rows[0]).toMatchObject({ matchKey: 'b', date: '2026-05-03', result: 'defeat', map: 'route66' })
+    })
+
+    it('honours windowMonths — drops rows older than the cutoff', () => {
+      const records = ref([
+        mr('recent', isoDaysAgo(10), '20:00', 'victory'),
+        mr('old', isoDaysAgo(400), '20:00', 'defeat'),
+      ])
+      const dossier = useMatchesDossier(records, ref<LeaverHandling>('include'))
+      expect(dossier.recentMatches(() => ({ count: 10 })).value.map((r) => r.matchKey)).toEqual(['recent', 'old'])
+      expect(dossier.recentMatches(() => ({ count: 10, windowMonths: 3 })).value.map((r) => r.matchKey)).toEqual(['recent'])
+    })
+  })
+
   describe('withWhomBreakdown', () => {
     it('buckets by teammate with a Solo baseline, ranked by games together', () => {
       const records = ref([

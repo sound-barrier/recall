@@ -66,6 +66,8 @@ type DossierOverride = {
   dayOfWeekBuckets?:  BucketEntry[]
   recentResults?:     ('victory' | 'defeat' | 'draw')[]
   heroGameModeCounts?: Array<{ hero: string; gameMode: string; wins: number; losses: number; draws: number; total: number; winrate: number }>
+  mapCounts?:          Array<{ map: string; wins: number; losses: number; draws: number; total: number; winrate: number }>
+  recentMatches?:      Array<{ matchKey: string; date: string; finishedAt: string; result: string; map: string }>
 }
 
 function fakeDossier(over: DossierOverride): MatchesDossier {
@@ -99,6 +101,8 @@ function fakeDossier(over: DossierOverride): MatchesDossier {
     recentResults:       wrapQuery(over.recentResults, [] as ('victory' | 'defeat' | 'draw')[]),
     heroGameModeCounts:   wrapQuery(over.heroGameModeCounts, []),
     mapRoleCounts:       wrapQuery(over.mapRoleCounts, [] as MapRoleCell[]),
+    mapCounts:           wrapQuery(over.mapCounts, []),
+    recentMatches:       wrapQuery(over.recentMatches, []),
   } as unknown as MatchesDossier
 }
 

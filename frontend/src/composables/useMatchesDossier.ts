@@ -889,6 +889,80 @@ export function useMatchesDossier(
     })
   }
 
+  // Per-map tally over the (narrowed) set — the Hero × Game-Mode band's
+  // drill-down "maps" level reads this once the active set is already
+  // pinned to a hero + game-mode, so a flat by-map count is all it
+  // needs. `windowMonths` scopes to a trailing window like mapRoleCounts.
+  function mapCounts(
+    opts?: MaybeRefOrGetter<{ windowMonths?: number }>,
+  ): ComputedRef<Array<{ map: string; wins: number; losses: number; draws: number; total: number; winrate: number }>> {
+    return computed(() => {
+      const { windowMonths = 0 } = opts ? toValue(opts) ?? {} : {}
+      const cutoff = windowMonths > 0 ? monthsAgoISO(windowMonths) : ''
+      type Bucket = { wins: number; losses: number; draws: number; total: number }
+      const cells = new Map<string, Bucket>()
+      for (const r of records.value) {
+        const map = r.data?.map
+        if (!map) continue
+        if (cutoff) {
+          const d = r.data?.date
+          if (!d || d < cutoff) continue
+        }
+        const b = cells.get(map) ?? { wins: 0, losses: 0, draws: 0, total: 0 }
+        b.total++
+        if      (r.data?.result === 'victory') b.wins++
+        else if (r.data?.result === 'defeat')  b.losses++
+        else if (r.data?.result === 'draw')    b.draws++
+        cells.set(map, b)
+      }
+      const out: Array<{ map: string; wins: number; losses: number; draws: number; total: number; winrate: number }> = []
+      for (const [map, b] of cells) {
+        const decided = b.wins + b.losses
+        out.push({
+          map,
+          wins:   b.wins,
+          losses: b.losses,
+          draws:  b.draws,
+          total:  b.total,
+          winrate: decided === 0 ? 0 : Math.round((b.wins / decided) * 100),
+        })
+      }
+      return out
+    })
+  }
+
+  // Recent individual matches over the (narrowed) set — the band's
+  // deepest drill level (a specific hero × mode × map) shows the games
+  // that produced it, newest-PLAYED first (date + finished_at, falling
+  // back to parsed_at), capped to `count` (default 8). `windowMonths`
+  // scopes to a trailing window.
+  function recentMatches(
+    opts?: MaybeRefOrGetter<{ count?: number; windowMonths?: number }>,
+  ): ComputedRef<Array<{ matchKey: string; date: string; finishedAt: string; result: string; map: string }>> {
+    return computed(() => {
+      const { count = 8, windowMonths = 0 } = opts ? toValue(opts) ?? {} : {}
+      const cutoff = windowMonths > 0 ? monthsAgoISO(windowMonths) : ''
+      const playedKey = (r: MatchRecord) =>
+        `${r.data?.date ?? ''}T${r.data?.finished_at ?? ''}` || (r.parsed_at ?? '')
+      return records.value
+        .filter((r) => {
+          if (!cutoff) return true
+          const d = r.data?.date
+          return !!d && d >= cutoff
+        })
+        .slice()
+        .sort((a, b) => playedKey(b).localeCompare(playedKey(a)))
+        .slice(0, count)
+        .map((r) => ({
+          matchKey:   r.match_key,
+          date:       r.data?.date ?? '',
+          finishedAt: r.data?.finished_at ?? '',
+          result:     r.data?.result ?? '',
+          map:        r.data?.map ?? '',
+        }))
+    })
+  }
+
   // ─── PR B: opt-in widgets (defaultVisible: false in registry) ──
 
   // Current streak — the contiguous run of the same decisive result
@@ -1107,6 +1181,8 @@ export function useMatchesDossier(
     withWhomBreakdown,
     heroGameModeCounts,
     mapRoleCounts,
+    mapCounts,
+    recentMatches,
     topHeroesByMinutes,
     mostPlayedHero,
     bestWinrateHero,
