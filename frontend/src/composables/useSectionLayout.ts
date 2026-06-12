@@ -26,6 +26,7 @@ export interface SectionDef {
 const SECTION_REGISTRY: readonly SectionDef[] = [
   { id: 'campaign-log', label: 'Campaign Log' },
   { id: 'geography', label: 'Geography' },
+  { id: 'hero-game-mode', label: 'Hero × Game-Mode' },
 ]
 
 export interface SectionState {

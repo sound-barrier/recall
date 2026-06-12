@@ -17,7 +17,10 @@ import type { WidgetDef } from '../dashboard/widgets'
 
 const props = defineProps<{
   open:    boolean
-  def:     WidgetDef | null
+  // Only id / eyebrow / config are read, so callers outside the grid
+  // (the Hero × Game-Mode band) can pass a minimal def without a full
+  // WidgetDef (component / shape / defaultRow).
+  def:     Pick<WidgetDef, 'id' | 'eyebrow' | 'config'> | null
   // Bounding rect of the gear button so the popover anchors next
   // to it. Recomputed on open; the user clicking gear → popover
   // mount happens in a single tick so the rect is fresh.

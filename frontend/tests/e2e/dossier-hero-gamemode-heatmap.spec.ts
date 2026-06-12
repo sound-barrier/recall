@@ -1,21 +1,29 @@
 /**
- * Hero × game-mode heatmap widget.
+ * Hero × Game-Mode — full-width dossier ROW.
  *
- * The widget is an opt-in dossier surface that breaks down winrate
- * by (hero, game-mode) across the narrowed set. Cells are coloured
- * by winrate bucket; clicking a populated cell narrows the active
- * Matches set to that (hero, gameMode) pair so the user can drill
- * into the matches that produced the surface signal.
+ * Promoted from an opt-in grid widget to a section that sits below the
+ * dossier grid alongside Campaign Log + Geography: it ships VISIBLE by
+ * default, can be reordered/removed via the section chrome, carries a
+ * 1M/3M/6M/12M trailing-window picker, and an inline gear that opens the
+ * shared widget-config popover. Cells break winrate down by (hero,
+ * game-mode); clicking one narrows the active set to that pair.
  *
- * The widget is NOT in `DEFAULT_ROW_LAYOUT`, so this spec seeds the
- * persisted layout to include it before the page loads. That way the
- * test exercises the end-to-end render path (api.ts ↔ /api/v1/matches
- * ↔ dossier helper ↔ widget grid) rather than the customizer UI,
- * which has its own coverage.
+ * Corpus dates are clock-relative (≈45 days ago) so the 6M default
+ * window always includes them while the 1M window excludes them — the
+ * spec stays robust against the real wall-clock CI runs under.
  */
 import type { Route } from '@playwright/test'
 
 import { test, expect } from './_fixtures'
+
+function daysAgo(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toISOString().slice(0, 10)
+}
+
+// ≈45 days back: inside the 6M/3M windows, outside the 1M window.
+const RECENT = daysAgo(45)
 
 const match = (
   key:     string,
@@ -23,6 +31,7 @@ const match = (
   type:    'control' | 'escort' | 'flashpoint' | 'hybrid' | 'push' | 'clash',
   result:  'victory' | 'defeat',
   finished: string,
+  date = RECENT,
 ) => ({
   match_key:    key,
   source_files: [`${key}.png`],
@@ -32,17 +41,16 @@ const match = (
     game_mode: type,
     hero,
     result,
-    date:   '2026-05-10',
+    date,
     finished_at: finished,
     playlist:   'competitive',
     heroes_played: [{ hero, play_time: '10:00', percent_played: 100 }],
   },
-  parsed_at: `2026-05-10T${finished}:00Z`,
+  parsed_at: `${date}T${finished}:00Z`,
 })
 
-// Lucio is the heatmap protagonist: 6 wins + 4 losses on `control` = 60%
-// winrate, 10 decisive matches — clears the default 20-match floor when
-// combined with the ana row below.
+// Lucio: 6 wins + 4 losses on `control` = 60% over 10 decisive matches.
+// Plus 12 more across ana/kiriko to clear the default 20-decisive floor.
 const CORPUS = [
   match('m01', 'lucio', 'control', 'victory', '10:01'),
   match('m02', 'lucio', 'control', 'victory', '10:02'),
@@ -54,7 +62,6 @@ const CORPUS = [
   match('m08', 'lucio', 'control', 'defeat',  '10:08'),
   match('m09', 'lucio', 'control', 'defeat',  '10:09'),
   match('m10', 'lucio', 'control', 'defeat',  '10:10'),
-  // 12 more matches across ana/kiriko/maps to clear the 20-decisive floor.
   match('m11', 'ana',    'escort',     'victory', '10:11'),
   match('m12', 'ana',    'escort',     'victory', '10:12'),
   match('m13', 'ana',    'escort',     'defeat',  '10:13'),
@@ -69,7 +76,13 @@ const CORPUS = [
   match('m22', 'kiriko', 'clash',      'defeat',  '10:22'),
 ]
 
-test.describe('dossier — Hero × game-mode heatmap', () => {
+async function sectionOrder(page: import('@playwright/test').Page) {
+  return page.locator('[data-section]').evaluateAll(
+    (els) => els.map((e) => e.getAttribute('data-section')),
+  )
+}
+
+test.describe('dossier — Hero × Game-Mode row', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
@@ -77,66 +90,76 @@ test.describe('dossier — Hero × game-mode heatmap', () => {
         body: JSON.stringify(CORPUS),
       })
     })
-    // Seed the persisted dashboard layout to surface the heatmap in
-    // row 2 — the widget is opt-in and would otherwise be invisible.
-    await page.addInitScript(() => {
-      window.localStorage.setItem(
-        'recall.dashboard.layout',
-        JSON.stringify({
-          1: ['winrate', 'avg-kda', 'total-time', 'most-played-hero'],
-          2: ['hero-game-mode-heatmap'],
-        }),
-      )
-    })
     await page.goto('/')
     await page.locator('#tab-matches').click()
     await expect(page.locator('.set-dossier')).toBeVisible()
   })
 
-  test('renders a 3-row × 6-column grid of (hero × game-mode) cells', async ({ page }) => {
-    const widget = page.locator('.breakdown', { hasText: 'Hero × game-mode' })
-    await expect(widget).toBeVisible()
-    await expect(widget.locator('.heatmap-grid')).toBeVisible()
-    // 3 heroes × 6 game modes = 18 cells, plus an extra row of column
-    // headers. Each populated row carries one .heatmap-rowhead.
-    await expect(widget.locator('.heatmap-rowhead')).toHaveCount(3)
-    await expect(widget.locator('.heatmap-colhead')).toHaveCount(6)
-    await expect(widget.locator('.heatmap-cell')).toHaveCount(3 * 6)
+  test('renders as a visible row by default with a 3×6 grid (no layout seed)', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    await expect(band).toBeVisible()
+    await expect(band.locator('.heatmap-grid')).toBeVisible()
+    await expect(band.locator('.heatmap-rowhead')).toHaveCount(3)
+    await expect(band.locator('.heatmap-colhead')).toHaveCount(6)
+    await expect(band.locator('.heatmap-cell')).toHaveCount(3 * 6)
   })
 
   test('clicking a populated cell narrows the active set to (hero, gameMode)', async ({ page }) => {
-    // The lucio/control cell is the only one with 10 decisive matches
-    // — its label includes "60%" + "10".
-    const lucioControl = page.locator('.heatmap-cell', { hasText: '60%' }).first()
+    const band = page.locator('.hero-mode-band')
+    const lucioControl = band.locator('.heatmap-cell', { hasText: '60%' }).first()
     await expect(lucioControl).toBeVisible()
     await lucioControl.click()
-    // The active-clause chip row (`<ul class="active-chips">`)
-    // surfaces a chip per narrow dimension; clicking a heatmap
-    // cell adds a Hero chip + a Type chip. We assert the row
-    // exists and both chips read the correct values.
     const chips = page.locator('ul.active-chips')
-    await expect(chips).toBeVisible()
     await expect(chips.locator('.active-chip', { hasText: 'lucio' })).toBeVisible()
     await expect(chips.locator('.active-chip', { hasText: 'control' })).toBeVisible()
   })
 
+  test('the trailing-window picker filters — 1M drops the 45-day-old corpus', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    // Default 6M renders the grid.
+    await expect(band.locator('.heatmap-grid')).toBeVisible()
+    // 1M cutoff excludes the ~45-day-old corpus → falls below the floor.
+    await band.locator('.hm-window-btn', { hasText: '1M' }).click()
+    await expect(band.locator('.heatmap-empty')).toBeVisible()
+    await expect(band.locator('.heatmap-grid')).toHaveCount(0)
+  })
+
+  test('the inline gear opens the config popover; raising min-matches re-renders', async ({ page }) => {
+    const band = page.locator('.hero-mode-band')
+    await expect(band.locator('.heatmap-grid')).toBeVisible() // 22 decisive ≥ 20
+    await band.locator('[data-hero-mode-config-trigger]').click()
+    const popover = page.locator('[data-testid="widget-config-popover"]')
+    await expect(popover).toBeVisible()
+    // Raise the floor to 50 → 22 decisive is now below it.
+    await popover.locator('[data-widget-config-choice="minMatches=50"]').click()
+    await popover.locator('[data-testid="widget-config-save"]').click()
+    await expect(band.locator('.heatmap-empty')).toBeVisible()
+  })
+
+  test('the row is reorderable — the section grip moves it above Geography', async ({ page }) => {
+    // Ships last (after campaign-log + geography).
+    expect(await sectionOrder(page)).toEqual(['campaign-log', 'geography', 'hero-game-mode'])
+    await page.locator('[data-section-grip="hero-game-mode"]').focus()
+    await page.keyboard.press('ArrowUp')
+    expect(await sectionOrder(page)).toEqual(['campaign-log', 'hero-game-mode', 'geography'])
+  })
+
   test('the empty-state copy surfaces when decisive matches are below the floor', async ({ page }) => {
-    // Re-route to a tiny corpus that can't clear the 20-match floor.
     await page.unrouteAll({ behavior: 'wait' })
     await page.route('**/api/v1/matches', async (route: Route) => {
       await route.fulfill({
         status: 200, contentType: 'application/json',
         body: JSON.stringify([
-          match('m01', 'lucio', 'control', 'victory', '10:01'),
-          match('m02', 'lucio', 'control', 'defeat',  '10:02'),
+          match('m01', 'lucio', 'control', 'victory', '10:01', daysAgo(10)),
+          match('m02', 'lucio', 'control', 'defeat',  '10:02', daysAgo(10)),
         ]),
       })
     })
     await page.reload()
     await page.locator('#tab-matches').click()
-    const widget = page.locator('.breakdown', { hasText: 'Hero × game-mode' })
-    await expect(widget.locator('.heatmap-empty')).toBeVisible()
-    await expect(widget.locator('.heatmap-empty')).toContainText('decisive matches')
-    await expect(widget.locator('.heatmap-grid')).toHaveCount(0)
+    const band = page.locator('.hero-mode-band')
+    await expect(band.locator('.heatmap-empty')).toBeVisible()
+    await expect(band.locator('.heatmap-empty')).toContainText('decisive matches')
+    await expect(band.locator('.heatmap-grid')).toHaveCount(0)
   })
 })
