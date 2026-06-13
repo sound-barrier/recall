@@ -3,6 +3,7 @@ package app
 import (
 	"path/filepath"
 
+	"recall/pkg/applog"
 	"recall/pkg/parser"
 )
 
@@ -18,5 +19,7 @@ func init() {
 	parser.SetDataDirFunc(func() string {
 		return filepath.Join(appBaseDir(), "data")
 	})
-	_ = parser.Reload()
+	if err := parser.Reload(); err != nil {
+		applog.Subsystem("parser").Warn("initial roster reload failed; using embedded data", "err", err)
+	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"gopkg.in/yaml.v3"
 
+	"recall/pkg/applog"
 	"recall/pkg/parser"
 )
 
@@ -239,7 +240,9 @@ func fetchLatestReleaseMeta() (releaseMeta, bool) {
 	}
 
 	now := time.Now().UTC()
-	_ = TouchLastChecked(now)
+	if err := TouchLastChecked(now); err != nil {
+		applog.Subsystem("update").Warn("persist last-checked timestamp failed", "err", err)
+	}
 	return releaseMeta{
 		latest:      latest,
 		url:         release.HTMLURL,

@@ -139,7 +139,7 @@ func (a *App) RenameProfile(old, newName string) error {
 		// Tear down everything that holds the active profile dir open
 		// — the directory rename can't proceed while SQLite has the
 		// .db file mapped.
-		_ = a.saveSettings(a.settings)
+		a.saveSettingsBestEffort()
 		a.stopWatching()
 		a.stopMetrics()
 		if a.store != nil {
@@ -154,7 +154,9 @@ func (a *App) RenameProfile(old, newName string) error {
 		// Re-open on the original profile so the App doesn't get
 		// stranded with a nil store on a failed active rename.
 		if wasActive {
-			_ = a.reopenActiveStore()
+			if rerr := a.reopenActiveStore(); rerr != nil {
+				applog.Subsystem("profiles").Warn("reopen active store after failed rename", "err", rerr)
+			}
 		}
 		return err
 	}
@@ -210,7 +212,7 @@ func (a *App) activateAndReload(name string) error {
 	// Persist any in-memory settings deltas the user staged but hasn't
 	// triggered a save for. The toggle setters all save inline, so
 	// this is paranoia — but cheap paranoia.
-	_ = a.saveSettings(a.settings)
+	a.saveSettingsBestEffort()
 
 	// Tear down the background services tied to the OLD profile.
 	a.stopWatching()
@@ -230,11 +232,11 @@ func (a *App) activateAndReload(name string) error {
 	a.settings = a.loadSettings()
 	if a.settings.ScreenshotsDir != "" && pathIsMissingOrNotADir(a.settings.ScreenshotsDir) {
 		a.settings.ScreenshotsDir = ""
-		_ = a.saveSettings(a.settings)
+		a.saveSettingsBestEffort()
 	}
 	if a.settings.TesseractPath == "" {
 		a.settings.TesseractPath = defaultTesseractPath()
-		_ = a.saveSettings(a.settings)
+		a.saveSettingsBestEffort()
 	}
 	a.tessStatus = checkTesseract(a.settings.TesseractPath)
 	parser.SetTesseractPath(a.settings.TesseractPath)
