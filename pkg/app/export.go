@@ -161,7 +161,13 @@ func (a *App) importJSONv1(payload []byte) error {
 	if err != nil {
 		return err
 	}
-	return a.importParentTables(doc, remapID)
+	return importAllParentTables(a.store, "import", parentTables{
+		summaries: doc.Summaries,
+		teams:     doc.Teams,
+		personals: doc.Personals,
+		ranks:     doc.Ranks,
+		unknowns:  doc.Unknowns,
+	}, remapID)
 }
 
 // requireFilenames fails if any row has an empty filename — the UNIQUE
@@ -248,46 +254,60 @@ func (a *App) clearAndRemapDirs(doc exportV1) (func(int64) int64, error) {
 }
 
 // importParentRows upserts each row with a fresh primary key (ID=0) and a
-// remapped screenshots_dir id. `table` is the singular name for the error
-// message.
-func importParentRows[T any](rows []T, table string, filename func(T) string, prep func(*T), upsert func(T) error) error {
+// remapped screenshots_dir id. `prefix` ("import" / "import csv") + the
+// singular `table` name form the error message — shared by both the JSON
+// and the CSV import paths.
+func importParentRows[T any](rows []T, prefix, table string, filename func(T) string, prep func(*T), upsert func(T) error) error {
 	for i := range rows {
 		r := rows[i]
 		prep(&r)
 		if err := upsert(r); err != nil {
-			return fmt.Errorf("import: %s %q: %w", table, filename(r), err)
+			return fmt.Errorf("%s: %s %q: %w", prefix, table, filename(r), err)
 		}
 	}
 	return nil
 }
 
-func (a *App) importParentTables(doc exportV1, remapID func(int64) int64) error {
-	if err := importParentRows(doc.Summaries, "summary",
+// importAllParentTables upserts every parent table from the decoded
+// payload, remapping screenshots_dir ids. Shared by importJSONv1 and
+// importDataCSV via the per-table slices; `prefix` keeps each path's error
+// wording.
+func importAllParentTables(store db.Store, prefix string, t parentTables, remapID func(int64) int64) error {
+	if err := importParentRows(t.summaries, prefix, "summary",
 		func(r db.SummaryRow) string { return r.Filename },
 		func(r *db.SummaryRow) { r.ID = 0; r.ScreenshotsDirID = remapID(r.ScreenshotsDirID) },
-		a.store.UpsertSummary); err != nil {
+		store.UpsertSummary); err != nil {
 		return err
 	}
-	if err := importParentRows(doc.Teams, "teams",
+	if err := importParentRows(t.teams, prefix, "teams",
 		func(r db.TeamsRow) string { return r.Filename },
 		func(r *db.TeamsRow) { r.ID = 0; r.ScreenshotsDirID = remapID(r.ScreenshotsDirID) },
-		a.store.UpsertTeams); err != nil {
+		store.UpsertTeams); err != nil {
 		return err
 	}
-	if err := importParentRows(doc.Personals, "personal",
+	if err := importParentRows(t.personals, prefix, "personal",
 		func(r db.PersonalRow) string { return r.Filename },
 		func(r *db.PersonalRow) { r.ID = 0; r.ScreenshotsDirID = remapID(r.ScreenshotsDirID) },
-		a.store.UpsertPersonal); err != nil {
+		store.UpsertPersonal); err != nil {
 		return err
 	}
-	if err := importParentRows(doc.Ranks, "rank",
+	if err := importParentRows(t.ranks, prefix, "rank",
 		func(r db.RankRow) string { return r.Filename },
 		func(r *db.RankRow) { r.ID = 0; r.ScreenshotsDirID = remapID(r.ScreenshotsDirID) },
-		a.store.UpsertRank); err != nil {
+		store.UpsertRank); err != nil {
 		return err
 	}
-	return importParentRows(doc.Unknowns, "unknown",
+	return importParentRows(t.unknowns, prefix, "unknown",
 		func(r db.UnknownRow) string { return r.Filename },
 		func(r *db.UnknownRow) { r.ID = 0; r.ScreenshotsDirID = remapID(r.ScreenshotsDirID) },
-		a.store.UpsertUnknown)
+		store.UpsertUnknown)
+}
+
+// parentTables bundles the five parent-row slices both import paths upsert.
+type parentTables struct {
+	summaries []db.SummaryRow
+	teams     []db.TeamsRow
+	personals []db.PersonalRow
+	ranks     []db.RankRow
+	unknowns  []db.UnknownRow
 }

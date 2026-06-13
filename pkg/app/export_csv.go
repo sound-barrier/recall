@@ -121,8 +121,26 @@ func (a *App) importDataCSV(payload []byte) error {
 	if err != nil {
 		return fmt.Errorf("%w: open zip: %v", ErrImportMalformed, err)
 	}
+	if err := validateCSVManifest(zr); err != nil {
+		return err
+	}
+	dirs, err := readDirsCSV(zr)
+	if err != nil {
+		return err
+	}
+	tables, err := readCSVParentTables(zr)
+	if err != nil {
+		return err
+	}
+	remapID, err := a.clearAndRemapDirsCSV(dirs)
+	if err != nil {
+		return err
+	}
+	return importAllParentTables(a.store, "import csv", tables, remapID)
+}
 
-	// Validate manifest first so we fail fast on wrong-schema archives.
+// validateCSVManifest fails fast on a missing or wrong-schema manifest.json.
+func validateCSVManifest(zr *zip.Reader) error {
 	manifestBytes, err := readZipFile(zr, "manifest.json")
 	if err != nil {
 		return fmt.Errorf("%w: missing manifest.json: %v", ErrImportMalformed, err)
@@ -136,56 +154,59 @@ func (a *App) importDataCSV(payload []byte) error {
 	if mf.Schema != exportSchemaV1 {
 		return fmt.Errorf("import csv: unsupported schema %q (this build expects %q)", mf.Schema, exportSchemaV1)
 	}
+	return nil
+}
 
-	dirs, err := readDirsCSV(zr)
-	if err != nil {
-		return err
-	}
+// readCSVParentTables reads the five parent-table CSVs out of the archive.
+func readCSVParentTables(zr *zip.Reader) (parentTables, error) {
 	summaries, err := readSummariesCSV(zr)
 	if err != nil {
-		return err
+		return parentTables{}, err
 	}
 	teams, err := readTeamsCSV(zr)
 	if err != nil {
-		return err
+		return parentTables{}, err
 	}
 	personals, err := readPersonalsCSV(zr)
 	if err != nil {
-		return err
+		return parentTables{}, err
 	}
 	ranks, err := readRanksCSV(zr)
 	if err != nil {
-		return err
+		return parentTables{}, err
 	}
 	unknowns, err := readUnknownsCSV(zr)
 	if err != nil {
-		return err
+		return parentTables{}, err
 	}
+	return parentTables{summaries: summaries, teams: teams, personals: personals, ranks: ranks, unknowns: unknowns}, nil
+}
 
-	// Re-register dirs to capture old→new id remap, Clear the store,
-	// then re-register again (Clear wipes screenshots_dirs too) — same
-	// double-pass shape as the JSON path.
+// clearAndRemapDirsCSV wipes the store and returns the screenshots_dir
+// source→destination remap — same double-pass shape as the JSON path
+// (clearAndRemapDirs) but with the CSV path's error wording.
+func (a *App) clearAndRemapDirsCSV(dirs map[string]string) (func(int64) int64, error) {
 	for srcIDStr, path := range dirs {
 		if _, err := strconv.ParseInt(srcIDStr, 10, 64); err != nil {
-			return fmt.Errorf("import csv: invalid dir id %q: %w", srcIDStr, err)
+			return nil, fmt.Errorf("import csv: invalid dir id %q: %w", srcIDStr, err)
 		}
 		if _, err := a.store.EnsureScreenshotsDir(path); err != nil {
-			return fmt.Errorf("import csv: register dir %q: %w", path, err)
+			return nil, fmt.Errorf("import csv: register dir %q: %w", path, err)
 		}
 	}
 	if err := a.store.Clear(); err != nil {
-		return fmt.Errorf("import csv: clear: %w", err)
+		return nil, fmt.Errorf("import csv: clear: %w", err)
 	}
 	remap := map[int64]int64{}
 	for srcIDStr, path := range dirs {
 		srcID, _ := strconv.ParseInt(srcIDStr, 10, 64)
 		dstID, err := a.store.EnsureScreenshotsDir(path)
 		if err != nil {
-			return fmt.Errorf("import csv: re-register dir %q: %w", path, err)
+			return nil, fmt.Errorf("import csv: re-register dir %q: %w", path, err)
 		}
 		remap[srcID] = dstID
 	}
-	remapID := func(srcID int64) int64 {
+	return func(srcID int64) int64 {
 		if srcID == 0 {
 			return db.SentinelScreenshotsDirID
 		}
@@ -195,44 +216,7 @@ func (a *App) importDataCSV(payload []byte) error {
 		// Unknown source id — point at the sentinel row. The dir_id
 		// column is `NOT NULL`; we can't drop it.
 		return db.SentinelScreenshotsDirID
-	}
-
-	for _, r := range summaries {
-		r.ID = 0
-		r.ScreenshotsDirID = remapID(r.ScreenshotsDirID)
-		if err := a.store.UpsertSummary(r); err != nil {
-			return fmt.Errorf("import csv: summary %q: %w", r.Filename, err)
-		}
-	}
-	for _, r := range teams {
-		r.ID = 0
-		r.ScreenshotsDirID = remapID(r.ScreenshotsDirID)
-		if err := a.store.UpsertTeams(r); err != nil {
-			return fmt.Errorf("import csv: teams %q: %w", r.Filename, err)
-		}
-	}
-	for _, r := range personals {
-		r.ID = 0
-		r.ScreenshotsDirID = remapID(r.ScreenshotsDirID)
-		if err := a.store.UpsertPersonal(r); err != nil {
-			return fmt.Errorf("import csv: personal %q: %w", r.Filename, err)
-		}
-	}
-	for _, r := range ranks {
-		r.ID = 0
-		r.ScreenshotsDirID = remapID(r.ScreenshotsDirID)
-		if err := a.store.UpsertRank(r); err != nil {
-			return fmt.Errorf("import csv: rank %q: %w", r.Filename, err)
-		}
-	}
-	for _, r := range unknowns {
-		r.ID = 0
-		r.ScreenshotsDirID = remapID(r.ScreenshotsDirID)
-		if err := a.store.UpsertUnknown(r); err != nil {
-			return fmt.Errorf("import csv: unknown %q: %w", r.Filename, err)
-		}
-	}
-	return nil
+	}, nil
 }
 
 // ────────────────────────────────────────────────────────────────────
