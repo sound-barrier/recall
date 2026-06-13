@@ -15,6 +15,9 @@ const CURSOR_GAP = 18
 export function useHoverThumbnail(opts: {
   isVisible: () => boolean
   srcFor: (key: string) => string
+  // Optional per-key gate (e.g. don't peek a row that's selected). When it
+  // returns false for the hovered key, the thumb stays hidden.
+  canShow?: (key: string) => boolean
 }) {
   const hoveredKey = ref<string | null>(null)
   const hoveredSrc = ref('')
@@ -54,9 +57,11 @@ export function useHoverThumbnail(opts: {
     hoveredSrc.value = ''
   }
 
-  const showThumb = computed(
-    () => opts.isVisible() && !!hoveredKey.value && !!hoveredSrc.value,
-  )
+  const showThumb = computed(() => {
+    const key = hoveredKey.value
+    if (!key || !hoveredSrc.value || !opts.isVisible()) return false
+    return opts.canShow ? opts.canShow(key) : true
+  })
 
   return { hoveredKey, hoveredSrc, thumbX, thumbY, showThumb, onHover, onMove, onLeave }
 }
