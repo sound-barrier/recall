@@ -17,10 +17,31 @@ import (
 // /active switches; PUT /{name} renames; DELETE drops a non-
 // active profile and wipes its dir.
 func registerProfileRoutes(apiMux *http.ServeMux, a *app.App) {
-	apiMux.HandleFunc("GET /api/v1/profiles", func(w http.ResponseWriter, r *http.Request) {
+	apiMux.HandleFunc("GET /api/v1/profiles", handleGetProfiles(a))
+	apiMux.HandleFunc("POST /api/v1/profiles", handleCreateProfile(a))
+	apiMux.HandleFunc("POST /api/v1/profiles/test/seed", handleSeedTestProfile(a))
+	apiMux.HandleFunc("PUT /api/v1/profiles/active", handleSwitchProfile(a))
+
+	// Explicit 405 stubs for `/profiles/active`. Without these,
+	// `GET / POST / DELETE /api/v1/profiles/active` route to
+	// `{name}` and try to operate on a profile literally named
+	// "active". Same collision pattern as `/matches/transfers`.
+	apiMux.HandleFunc("GET /api/v1/profiles/active", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("POST /api/v1/profiles/active", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("DELETE /api/v1/profiles/active", methodNotAllowed("PUT"))
+
+	apiMux.HandleFunc("PUT /api/v1/profiles/{name}", handleRenameProfile(a))
+	apiMux.HandleFunc("DELETE /api/v1/profiles/{name}", handleDeleteProfile(a))
+}
+
+func handleGetProfiles(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, a.GetProfiles(), nil)
-	})
-	apiMux.HandleFunc("POST /api/v1/profiles", func(w http.ResponseWriter, r *http.Request) {
+	}
+}
+
+func handleCreateProfile(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Name string `json:"name"`
 		}
@@ -52,20 +73,27 @@ func registerProfileRoutes(apiMux *http.ServeMux, a *app.App) {
 		if encErr := json.NewEncoder(w).Encode(a.GetProfiles()); encErr != nil {
 			applog.Subsystem("server").Error("json encode", "err", encErr)
 		}
-	})
-	// Onboarding helper: create + seed the sample "test" profile with
-	// ~500 synthetic matches so the walkthrough can run on real data.
-	// Idempotent (reuses an existing seeded "test"). Does NOT switch the
-	// active profile — the client does that with PUT /profiles/active.
-	apiMux.HandleFunc("POST /api/v1/profiles/test/seed", func(w http.ResponseWriter, _ *http.Request) {
+	}
+}
+
+// handleSeedTestProfile is the onboarding helper: create + seed the
+// sample "test" profile with ~500 synthetic matches so the walkthrough
+// can run on real data. Idempotent (reuses an existing seeded "test").
+// Does NOT switch the active profile — the client does that with
+// PUT /profiles/active.
+func handleSeedTestProfile(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		res, err := a.SeedTestProfile()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		writeJSON(w, res, nil)
-	})
-	apiMux.HandleFunc("PUT /api/v1/profiles/active", func(w http.ResponseWriter, r *http.Request) {
+	}
+}
+
+func handleSwitchProfile(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Name string `json:"name"`
 		}
@@ -86,15 +114,11 @@ func registerProfileRoutes(apiMux *http.ServeMux, a *app.App) {
 			return
 		}
 		writeJSON(w, a.GetProfiles(), nil)
-	})
-	// Explicit 405 stubs for `/profiles/active`. Without these,
-	// `GET / POST / DELETE /api/v1/profiles/active` route to
-	// `{name}` and try to operate on a profile literally named
-	// "active". Same collision pattern as `/matches/transfers`.
-	apiMux.HandleFunc("GET /api/v1/profiles/active", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("POST /api/v1/profiles/active", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("DELETE /api/v1/profiles/active", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("PUT /api/v1/profiles/{name}", func(w http.ResponseWriter, r *http.Request) {
+	}
+}
+
+func handleRenameProfile(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		old := r.PathValue("name")
 		if old == "" {
 			http.Error(w, "name required in URL", http.StatusBadRequest)
@@ -123,8 +147,11 @@ func registerProfileRoutes(apiMux *http.ServeMux, a *app.App) {
 			return
 		}
 		writeJSON(w, a.GetProfiles(), nil)
-	})
-	apiMux.HandleFunc("DELETE /api/v1/profiles/{name}", func(w http.ResponseWriter, r *http.Request) {
+	}
+}
+
+func handleDeleteProfile(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		name := r.PathValue("name")
 		if name == "" {
 			http.Error(w, "name required in URL", http.StatusBadRequest)
@@ -146,5 +173,5 @@ func registerProfileRoutes(apiMux *http.ServeMux, a *app.App) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
-	})
+	}
 }
