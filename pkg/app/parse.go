@@ -234,25 +234,9 @@ func (a *App) noteProgress(done, total int) {
 // completion the same way — the linchpin that lets the server return
 // 202 up-front instead of holding the request open for the whole run.
 func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir string) error {
-	parsed := map[string]bool{}
-	var err error
-	if !force {
-		parsed, err = a.store.LoadAllFilenames()
-		if err != nil {
-			return err
-		}
-	}
-	// Union the user-curated suppress-list ("Delete forever" in the
-	// Unknown tab) into the parser's skip-set so the OCR pipeline
-	// never even opens those files. Errors loading the ignored set
-	// don't abort the parse — the set is a UX nicety, not a
-	// correctness invariant; an empty set just means nothing's
-	// suppressed for this run. Suppress list IS honoured even on
-	// ReParseAll — the user explicitly told us never to look at
-	// those files again.
-	ignored, _ := a.store.LoadIgnoredFilenames()
-	for f := range ignored {
-		parsed[f] = true
+	parsed, err := a.parsedSkipSet(force)
+	if err != nil {
+		return err
 	}
 
 	// Record the source folder once per batch so every screenshot in
@@ -264,107 +248,19 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 		return err
 	}
 
-	// Per-file work runs INSIDE the parser callback so insert + match-
-	// updated emit fire as each screenshot finishes OCR. Before this
-	// shape, the writes lived in a post-OCR for-loop that only ran
-	// after every file had been OCR'd; the UI saw `parse-progress`
-	// stream cleanly but `match-updated` arrived in a single
-	// last-instant burst, so the Matches tab stayed blank until
-	// parse-complete.
-	var inserts int
-	matchesUpdatedSet := map[string]struct{}{}
-	var heroCorrections, mapCorrections int
-	_, err = parser.ParseScreenshotsDir(ctx, screenshotsDir, parsed, func(done, total int, filename string, result *parser.MatchResult, parseErr error) {
-		// Snapshot progress for the GET /parses/active resync anchor
-		// before any per-file work, so a status read always reflects
-		// the file currently in flight.
-		a.noteProgress(done, total)
-		t := parser.ScreenshotType(result)
-
-		// Always fire the progress event so the footer counter
-		// advances regardless of parse outcome. MatchKey is set
-		// later after correlation resolves.
-		ev := ParseProgressEvent{
-			Done:     done,
-			Total:    total,
-			Filename: filename,
-			Type:     t,
-			Data:     result,
-		}
-		if parseErr != nil {
-			ev.Error = parseErr.Error()
-		}
-
-		// Skip insert/aggregate on per-file parse failure but still
-		// emit the progress event so the user sees the file count
-		// for accurate progress.
-		if parseErr != nil || result == nil {
-			a.emitParseProgress(ev)
-			return
-		}
-
-		snap, err := a.store.LoadAll()
-		if err != nil {
-			ev.Error = "load before correlation: " + err.Error()
-			a.emitParseProgress(ev)
-			return
-		}
-		key, ambigCands := resolveMatchKey(filename, result, snap)
-		ev.MatchKey = key
-
-		if err := a.insertParsed(filename, key, t, dirID, result); err != nil {
-			ev.Error = "insert: " + err.Error()
-			a.emitParseProgress(ev)
-			return
-		}
-		// ApplyAmbiguity wipes any prior ambiguous record for this
-		// filename and re-inserts iff ambigCands is non-empty — a
-		// re-parse that newly resolves (or newly surfaces) ambiguity
-		// updates the candidates table in lockstep.
-		if err := a.store.ApplyAmbiguity(filename, ambigCands); err != nil {
-			ev.Error = "ambiguity: " + err.Error()
-			a.emitParseProgress(ev)
-			return
-		}
-		inserts++
-
-		snapAfter, err := a.store.LoadAll()
-		if err == nil {
-			annos, _ := a.store.LoadAnnotations()
-			hidden, _ := a.store.LoadHiddenKeys()
-			reviews, _ := a.store.LoadReviews()
-			// Diff the pre-insert snap against snapAfter so the
-			// counter reflects what THIS file actually changed for
-			// THIS match key. New matches (not present in `snap`)
-			// still count as updated — they're records that emerged
-			// from this run. Hero/map corrections only fire when
-			// both snapshots resolve to a record (both `ok`) AND
-			// the resolved field changed.
-			beforeRec, beforeOk := aggregateMatchKey(key, snap, annos, hidden, reviews)
-			if rec, ok := aggregateMatchKey(key, snapAfter, annos, hidden, reviews); ok {
-				a.emitMatchUpdated(rec)
-				matchesUpdatedSet[key] = struct{}{}
-				if beforeOk {
-					if beforeRec.Data.Hero != rec.Data.Hero {
-						heroCorrections++
-					}
-					if beforeRec.Data.Map != rec.Data.Map {
-						mapCorrections++
-					}
-				}
-			}
-		}
-		ev.MatchesUpdated = len(matchesUpdatedSet)
-		ev.HeroCorrections = heroCorrections
-		ev.MapCorrections = mapCorrections
-		a.emitParseProgress(ev)
-	})
-	// User pressed Stop mid-batch. The partial state already
-	// committed to SQLite stays put (each per-file insert ran
-	// inside the callback before the next iteration). Emit
-	// parse-cancelled so the frontend can flip the Stop button
-	// back to Run; skip the normal error return because the
-	// user asked for this.
+	// Per-file work runs INSIDE the parser callback (parseRunState.handleFile)
+	// so insert + match-updated emit fire as each screenshot finishes OCR.
+	// Before this shape, the writes lived in a post-OCR for-loop that only ran
+	// after every file had been OCR'd; the UI saw `parse-progress` stream
+	// cleanly but `match-updated` arrived in a single last-instant burst, so
+	// the Matches tab stayed blank until parse-complete.
+	st := &parseRunState{app: a, dirID: dirID, matchesUpdated: map[string]struct{}{}}
+	_, err = parser.ParseScreenshotsDir(ctx, screenshotsDir, parsed, st.handleFile)
+	// User pressed Stop mid-batch. The partial state already committed to
+	// SQLite stays put (each per-file insert ran inside the callback before
+	// the next iteration). Emit parse-cancelled so the frontend can flip the
+	// Stop button back to Run; skip the normal error return because the user
+	// asked for this.
 	if errors.Is(err, context.Canceled) {
 		a.emitParseCancelled()
 		return nil
@@ -372,12 +268,132 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	if err != nil {
 		return err
 	}
-	_ = inserts // value is reserved for a future debug log; suppress unused
-	// Authoritative completion signal for EVERY parse path. The
-	// frontend drives parseBusy off this (not a held-open request),
-	// and the watcher no longer emits it separately.
+	// Authoritative completion signal for EVERY parse path. The frontend
+	// drives parseBusy off this (not a held-open request), and the watcher
+	// no longer emits it separately.
 	a.emitParseComplete()
 	return nil
+}
+
+// parsedSkipSet builds the set of filenames the parser should skip: the
+// already-parsed files (unless force) unioned with the user-curated
+// suppress-list ("Delete forever" in the Unknown tab). Errors loading the
+// ignored set don't abort the parse — it's a UX nicety, not a correctness
+// invariant; an empty set just means nothing's suppressed. The suppress
+// list IS honoured even on ReParseAll (force) — the user explicitly told us
+// never to look at those files again.
+func (a *App) parsedSkipSet(force bool) (map[string]bool, error) {
+	parsed := map[string]bool{}
+	if !force {
+		var err error
+		parsed, err = a.store.LoadAllFilenames()
+		if err != nil {
+			return nil, err
+		}
+	}
+	ignored, _ := a.store.LoadIgnoredFilenames()
+	for f := range ignored {
+		parsed[f] = true
+	}
+	return parsed, nil
+}
+
+// parseRunState accumulates per-file outcomes across one Parse batch so the
+// callback can report cumulative counts (matches updated, hero/map
+// corrections) as each screenshot finishes OCR.
+type parseRunState struct {
+	app             *App
+	dirID           int64
+	matchesUpdated  map[string]struct{}
+	heroCorrections int
+	mapCorrections  int
+}
+
+// handleFile is the per-file parser callback: snapshot progress, insert the
+// parsed row, reconcile ambiguity, then emit match-updated. Every exit path
+// emits a progress event so the footer counter advances regardless of
+// outcome.
+func (st *parseRunState) handleFile(done, total int, filename string, result *parser.MatchResult, parseErr error) {
+	a := st.app
+	// Snapshot progress for the GET /parses/active resync anchor before any
+	// per-file work, so a status read always reflects the file in flight.
+	a.noteProgress(done, total)
+	ev := ParseProgressEvent{
+		Done:     done,
+		Total:    total,
+		Filename: filename,
+		Type:     parser.ScreenshotType(result),
+		Data:     result,
+	}
+	if parseErr != nil {
+		ev.Error = parseErr.Error()
+	}
+	// Skip insert/aggregate on per-file parse failure but still emit the
+	// progress event so the user sees an accurate file count.
+	if parseErr != nil || result == nil {
+		a.emitParseProgress(ev)
+		return
+	}
+
+	snap, err := a.store.LoadAll()
+	if err != nil {
+		ev.Error = "load before correlation: " + err.Error()
+		a.emitParseProgress(ev)
+		return
+	}
+	key, ambigCands := resolveMatchKey(filename, result, snap)
+	ev.MatchKey = key
+
+	if err := a.insertParsed(filename, key, ev.Type, st.dirID, result); err != nil {
+		ev.Error = "insert: " + err.Error()
+		a.emitParseProgress(ev)
+		return
+	}
+	// ApplyAmbiguity wipes any prior ambiguous record for this filename and
+	// re-inserts iff ambigCands is non-empty — a re-parse that newly resolves
+	// (or newly surfaces) ambiguity updates the candidates table in lockstep.
+	if err := a.store.ApplyAmbiguity(filename, ambigCands); err != nil {
+		ev.Error = "ambiguity: " + err.Error()
+		a.emitParseProgress(ev)
+		return
+	}
+
+	st.recordMatchUpdate(key, snap)
+	ev.MatchesUpdated = len(st.matchesUpdated)
+	ev.HeroCorrections = st.heroCorrections
+	ev.MapCorrections = st.mapCorrections
+	a.emitParseProgress(ev)
+}
+
+// recordMatchUpdate diffs the pre-insert snapshot against the current store
+// for `key`, emits match-updated, and tallies hero/map corrections. New
+// matches (absent from `before`) still count as updated — they emerged from
+// this run; corrections only fire when both snapshots resolve a record and
+// the field changed.
+func (st *parseRunState) recordMatchUpdate(key string, before db.Screenshots) {
+	a := st.app
+	snapAfter, err := a.store.LoadAll()
+	if err != nil {
+		return
+	}
+	annos, _ := a.store.LoadAnnotations()
+	hidden, _ := a.store.LoadHiddenKeys()
+	reviews, _ := a.store.LoadReviews()
+	rec, ok := aggregateMatchKey(key, snapAfter, annos, hidden, reviews)
+	if !ok {
+		return
+	}
+	a.emitMatchUpdated(rec)
+	st.matchesUpdated[key] = struct{}{}
+	beforeRec, beforeOk := aggregateMatchKey(key, before, annos, hidden, reviews)
+	if beforeOk {
+		if beforeRec.Data.Hero != rec.Data.Hero {
+			st.heroCorrections++
+		}
+		if beforeRec.Data.Map != rec.Data.Map {
+			st.mapCorrections++
+		}
+	}
 }
 
 // insertParsed dispatches a parsed result to the right Upsert method on

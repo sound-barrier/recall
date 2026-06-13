@@ -51,7 +51,6 @@ re-measure before paying an item down (numbers drift).
 
 | Function | LOC | McCabe | File |
 |---|---:|---:|---|
-| `(*App).runClaimedParse` | 145 | — | `pkg/app/parse.go` |
 | `(*App).Startup` | 129 | — | `pkg/app/app.go` |
 | `(*App).CheckForUpdate` | 119 | — | `pkg/app/update.go` |
 
@@ -177,19 +176,6 @@ rollback/cleanup and are fine — exclude those.)
 
 **Size:** M. **Risk:** Low–Med — surfacing a previously-ignored error can change
 flow; add a test per site.
-
----
-
-### Q8. Speculative dead value kept "for a future debug log"
-
-**Where:** `pkg/app/parse.go:375` — `_ = inserts // value is reserved for a future
-debug log; suppress unused`.
-
-**What:** a computed value discarded for a hypothetical future use — exactly the
-"YAGNI / no just-in-case code" line. Delete `inserts` (and its computation if
-otherwise unused) until the debug log actually exists.
-
-**Size:** S. **Risk:** Low.
 
 ---
 
