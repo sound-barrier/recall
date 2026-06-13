@@ -224,22 +224,6 @@ making the panics redundant. Low priority — listed for completeness.
 
 ---
 
-### Q10. Python is not linted, and `main()` is oversized
-
-**Where:** `scripts/ci/render-pr-report.py` (217 LOC) — the repo's only Python.
-No `ruff`/`flake8`/`black`/`mypy` wired into Make, lefthook, or CI.
-
-**What:** a gap versus the "lint all code" policy just landed (PR #330). The code
-itself is clean (type hints, docstrings, stdlib-only) save `main()` at ~85 lines
-assembling the whole report (extract `build_tests_section` / `build_coverage_section`)
-and the loosely-typed `list[dict]` returns (a `TypedDict`/`dataclass` would
-document the shape). Add `ruff` (lint + format) for `*.py` and slot it into
-`make lint` + the pre-commit hook.
-
-**Size:** S. **Risk:** Low.
-
----
-
 ### Q11. DRY/complexity hotspots to watch (do not over-abstract)
 
 **Where:** the four near-identical `register*Routes` (`pkg/cmd/server_*.go`) and

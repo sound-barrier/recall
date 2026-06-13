@@ -110,6 +110,10 @@ case "$PLATFORM" in
     pipx ensurepath >/dev/null
     log "pipx schemathesis ${SCHEMATHESIS_VERSION}"
     pipx install "schemathesis==${SCHEMATHESIS_VERSION}" >/dev/null || true
+
+    # ruff — Python lint + format. Powers make lint-py/fmt-py + CI.
+    log "pipx ruff ${RUFF_VERSION}"
+    pipx install "ruff==${RUFF_VERSION}" >/dev/null || true
     ;;
 
   debian)
@@ -210,6 +214,10 @@ PC
     # required --experimental=openapi-3.1.
     log "schemathesis ${SCHEMATHESIS_VERSION}"
     pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
+
+    # ruff — Python lint + format. Powers make lint-py/fmt-py + CI.
+    log "ruff ${RUFF_VERSION}"
+    pipx install "ruff==${RUFF_VERSION}"
     ;;
 esac
 

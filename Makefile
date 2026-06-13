@@ -33,11 +33,11 @@ WAILS_FLAGS   := -trimpath -ldflags "$(VERSION_LDFLAG)"
         build-linux build-windows build-mac build-all build-all-docker \
         build-server-linux build-server-windows build-server-mac build-server-all \
         build-server-container \
-        lint lint-go lint-js lint-css lint-html lint-docker lint-typos lint-md lint-actions lint-gosec \
+        lint lint-go lint-js lint-css lint-html lint-py lint-docker lint-typos lint-md lint-actions lint-gosec \
         dead-code dead-code-go dead-code-ts \
         test test-go test-frontend test-e2e test-all update-goldens \
         cover cover-go cover-frontend \
-        fmt update-deps trivy check-deps \
+        fmt fmt-go fmt-shell fmt-py update-deps trivy check-deps \
         cloc cloc-detail \
         pages-build pages-preview \
         dev seed-dev seed-clear clean
@@ -163,7 +163,7 @@ cloc-detail: ## Count lines of source code, per-file breakdown
 	@command -v cloc >/dev/null || { echo "cloc not installed — brew install cloc (or apt install cloc)"; exit 1; }
 	cloc --config .clocrc --by-file-by-lang .
 
-lint: lint-go lint-js lint-css lint-html lint-shell lint-docker lint-yaml lint-openapi lint-typos lint-md lint-actions lint-gosec lint-semgrep ## Run all linters
+lint: lint-go lint-js lint-css lint-html lint-py lint-shell lint-docker lint-yaml lint-openapi lint-typos lint-md lint-actions lint-gosec lint-semgrep ## Run all linters
 
 lint-go: ## Lint Go source (golangci-lint, both build tags)
 	@echo "[ recall ] Linting Go (golangci-lint)…"
@@ -185,6 +185,16 @@ lint-html: ## Lint HTML (htmlhint)
 	@echo "[ recall ] Linting HTML (htmlhint)…"
 	cd frontend && npm run lint:html
 	@echo "[ recall ] ✓  HTML lint clean"
+
+# Every tracked Python file. git ls-files keeps generated/vendored trees out
+# without an explicit ignore list; ruff.toml carries the rule selection.
+PY_FILES := $(shell git ls-files '*.py')
+
+lint-py: ## Lint + format-check Python (ruff)
+	@echo "[ recall ] Linting Python (ruff)…"
+	ruff check $(PY_FILES)
+	ruff format --check $(PY_FILES)
+	@echo "[ recall ] ✓  Python lint clean"
 
 lint-docker: ## Lint Dockerfile.build (hadolint)
 	@echo "[ recall ] Linting Dockerfile (hadolint)…"
@@ -355,7 +365,7 @@ dead-code-ts: ## Unused TypeScript exports and stale deps (knip)
 	cd frontend && npm run dead:ts
 	@echo "[ recall ] ✓  No dead TypeScript code found"
 
-fmt: fmt-go fmt-shell ## Format all source files (Go + shell scripts)
+fmt: fmt-go fmt-shell fmt-py ## Format all source files (Go + shell + Python)
 
 fmt-go: ## Format Go source files (goimports-reviser + gofumpt)
 	@echo "[ recall ] Formatting Go source files…"
@@ -367,6 +377,11 @@ fmt-shell: ## Format shell scripts in scripts/ (shfmt -w)
 	@echo "[ recall ] Formatting shell scripts (shfmt)…"
 	shfmt -w -i 2 -ci -bn $(SHELL_SCRIPTS)
 	@echo "[ recall ] ✓  Shell scripts formatted"
+
+fmt-py: ## Format Python (ruff format)
+	@echo "[ recall ] Formatting Python (ruff)…"
+	ruff format $(PY_FILES)
+	@echo "[ recall ] ✓  Python formatted"
 
 
 ##@ Maintenance

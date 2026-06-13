@@ -89,6 +89,15 @@ jobs:
       - name: Lint HTML (HTMLHint)
         run: cd frontend && npm run lint:html
 
+      # Python -- ruff lint + format-check. Version from tool-versions.env
+      # (loaded into $GITHUB_ENV above); installed via pipx like the other
+      # PyPI tools. Mirrors `make lint-py`.
+      - name: Lint Python (ruff)
+        run: |
+          pipx install "ruff==${RUFF_VERSION}"
+          export PATH="$HOME/.local/bin:$PATH"
+          make lint-py
+
       # Shell scripts in scripts/ -- shellcheck for correctness, shfmt
       # for style. Mirrors `make lint-shell` locally. shellcheck is
       # pre-installed on ubuntu-latest; shfmt is not, so we install it
