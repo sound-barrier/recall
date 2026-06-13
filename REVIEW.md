@@ -53,7 +53,6 @@ re-measure before paying an item down (numbers drift).
 |---|---:|---:|---|
 | `(*App).runClaimedParse` | 145 | — | `pkg/app/parse.go` |
 | `(*App).Startup` | 129 | — | `pkg/app/app.go` |
-| `ensureCoverage` | 126 | 23 | `pkg/app/fixtures.go` |
 | `(*App).CheckForUpdate` | 119 | — | `pkg/app/update.go` |
 
 Additionally over the complexity-15 line but shorter: `pickHero` (23,

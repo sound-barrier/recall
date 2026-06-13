@@ -1158,97 +1158,13 @@ func (fx *Fixture) appendAmbiguousScreenshots(seed int64, n int, rangeStart time
 // minor inconsistency on the patched matches reads as "the player
 // tried something off-spec" rather than as a bug.
 func ensureCoverage(rng *rand.Rand, fx *Fixture, queueTypes []string) {
-	mapsSeen := make(map[string]bool, len(fixtureMaps))
-	heroesSeen := make(map[string]bool, len(fixtureTanks)+len(fixtureSupports)+len(fixtureDPS))
-	for _, s := range fx.Summaries {
-		mapsSeen[s.Map] = true
-		for _, hp := range s.HeroesPlayed {
-			heroesSeen[hp.Hero] = true
-		}
-	}
-
-	var missingMaps []string
-	for _, m := range fixtureMaps {
-		if !mapsSeen[m] {
-			missingMaps = append(missingMaps, m)
-		}
-	}
-	var missingHeroes []string
-	for _, pool := range [][]string{fixtureTanks, fixtureSupports, fixtureDPS} {
-		for _, h := range pool {
-			if !heroesSeen[h] {
-				missingHeroes = append(missingHeroes, h)
-			}
-		}
-	}
+	missingMaps, missingHeroes := coverageGaps(fx)
 	if len(missingMaps) == 0 && len(missingHeroes) == 0 {
 		return
 	}
-
-	// One permutation, consumed by map patches first then hero
-	// patches, so the two passes don't clobber each other.
-	patchOrder := rng.Perm(len(fx.Summaries))
-	cursor := 0
-
-	// Map patches are queue-agnostic — every match can host any map.
-	// To avoid stomping on rare maps that only appear once in the
-	// natural distribution (which would silently move a map from
-	// "present" to "missing"), track per-map counts and skip any
-	// slot whose current map is the unique-instance of itself.
-	mapCounts := make(map[string]int, len(fixtureMaps))
-	for _, s := range fx.Summaries {
-		mapCounts[s.Map]++
-	}
-	applyMap := func(gameMap string) bool {
-		for cursor < len(patchOrder) {
-			idx := patchOrder[cursor]
-			s := &fx.Summaries[idx]
-			if mapCounts[s.Map] <= 1 {
-				// Overwriting this slot would drop the only instance
-				// of s.Map from the corpus — keep looking.
-				cursor++
-				continue
-			}
-			mapCounts[s.Map]--
-			mapCounts[gameMap]++
-			s.Map = gameMap
-			cursor++
-			return true
-		}
-		return false
-	}
-
-	// Hero cameos must respect role queue: a 5% cameo of an off-role
-	// hero on a role-queue match would violate the single-role
-	// constraint. Walk patchOrder seeking a match that can host this
-	// cameo (open queue, OR role queue whose primary already matches
-	// the cameo's role). Index pulled out so the next patch resumes
-	// from the next position.
-	applyHeroCameo := func(heroRole string, rewrite func(s *db.SummaryRow)) bool {
-		for cursor < len(patchOrder) {
-			idx := patchOrder[cursor]
-			s := &fx.Summaries[idx]
-			qt := ""
-			if idx < len(queueTypes) {
-				qt = queueTypes[idx]
-			}
-			// Eligible if: open queue (any role allowed) OR role queue
-			// whose primary hero is already in heroRole.
-			eligible := qt != "role" || roleOfHero(s.Hero) == heroRole
-			if eligible {
-				cursor++
-				rewrite(s)
-				return true
-			}
-			// Skip this match — move the ineligible index to the end so
-			// later cameos with different roles can try it.
-			patchOrder = append(patchOrder[:cursor], patchOrder[cursor+1:]...)
-		}
-		return false
-	}
-
+	p := newCoveragePatcher(rng, fx, queueTypes)
 	for _, m := range missingMaps {
-		if !applyMap(m) {
+		if !p.applyMap(m) {
 			break
 		}
 	}
@@ -1261,7 +1177,7 @@ func ensureCoverage(rng *rand.Rand, fx *Fixture, queueTypes []string) {
 		// sums to 100. We don't touch s.Hero / sb.Hero: the cameo is
 		// "tried this for a minute" — the primary still owns the
 		// match identity.
-		if !applyHeroCameo(heroRole, func(s *db.SummaryRow) {
+		if !p.applyHeroCameo(heroRole, func(s *db.SummaryRow) {
 			const cameoPct = 5
 			if len(s.HeroesPlayed) == 0 {
 				s.HeroesPlayed = append(s.HeroesPlayed, db.SummaryHeroPlayed{
@@ -1283,6 +1199,101 @@ func ensureCoverage(rng *rand.Rand, fx *Fixture, queueTypes []string) {
 			break
 		}
 	}
+}
+
+// coverageGaps returns the maps + heroes from the pools that no summary
+// currently shows.
+func coverageGaps(fx *Fixture) (missingMaps, missingHeroes []string) {
+	mapsSeen := make(map[string]bool, len(fixtureMaps))
+	heroesSeen := make(map[string]bool, len(fixtureTanks)+len(fixtureSupports)+len(fixtureDPS))
+	for _, s := range fx.Summaries {
+		mapsSeen[s.Map] = true
+		for _, hp := range s.HeroesPlayed {
+			heroesSeen[hp.Hero] = true
+		}
+	}
+	for _, m := range fixtureMaps {
+		if !mapsSeen[m] {
+			missingMaps = append(missingMaps, m)
+		}
+	}
+	for _, pool := range [][]string{fixtureTanks, fixtureSupports, fixtureDPS} {
+		for _, h := range pool {
+			if !heroesSeen[h] {
+				missingHeroes = append(missingHeroes, h)
+			}
+		}
+	}
+	return missingMaps, missingHeroes
+}
+
+// coveragePatcher overwrites a few summary rows so every map + hero in the
+// pools appears at least once. It walks ONE shared permutation (cursor)
+// across both the map pass and the hero-cameo pass so they don't clobber
+// each other.
+type coveragePatcher struct {
+	fx         *Fixture
+	queueTypes []string
+	patchOrder []int
+	cursor     int
+	mapCounts  map[string]int
+}
+
+func newCoveragePatcher(rng *rand.Rand, fx *Fixture, queueTypes []string) *coveragePatcher {
+	mapCounts := make(map[string]int, len(fixtureMaps))
+	for _, s := range fx.Summaries {
+		mapCounts[s.Map]++
+	}
+	return &coveragePatcher{
+		fx:         fx,
+		queueTypes: queueTypes,
+		patchOrder: rng.Perm(len(fx.Summaries)),
+		mapCounts:  mapCounts,
+	}
+}
+
+// applyMap overwrites the next slot's Map with gameMap. Map patches are
+// queue-agnostic, but a slot whose current map is its only instance is
+// skipped (overwriting it would move that map from present → missing).
+func (p *coveragePatcher) applyMap(gameMap string) bool {
+	for p.cursor < len(p.patchOrder) {
+		idx := p.patchOrder[p.cursor]
+		s := &p.fx.Summaries[idx]
+		if p.mapCounts[s.Map] <= 1 {
+			p.cursor++
+			continue
+		}
+		p.mapCounts[s.Map]--
+		p.mapCounts[gameMap]++
+		s.Map = gameMap
+		p.cursor++
+		return true
+	}
+	return false
+}
+
+// applyHeroCameo runs rewrite on the next slot that can host an off-role
+// cameo of heroRole (open queue, OR a role queue whose primary already
+// matches heroRole — a 5% off-role cameo on a role-queue match would
+// violate the single-role constraint). Ineligible slots are rotated to the
+// end so later cameos with different roles can use them.
+func (p *coveragePatcher) applyHeroCameo(heroRole string, rewrite func(s *db.SummaryRow)) bool {
+	for p.cursor < len(p.patchOrder) {
+		idx := p.patchOrder[p.cursor]
+		s := &p.fx.Summaries[idx]
+		qt := ""
+		if idx < len(p.queueTypes) {
+			qt = p.queueTypes[idx]
+		}
+		eligible := qt != "role" || roleOfHero(s.Hero) == heroRole
+		if eligible {
+			p.cursor++
+			rewrite(s)
+			return true
+		}
+		p.patchOrder = append(p.patchOrder[:p.cursor], p.patchOrder[p.cursor+1:]...)
+	}
+	return false
 }
 
 // sampleWeightedIndex returns an index into weights drawn proportional
