@@ -55,7 +55,6 @@ re-measure before paying an item down (numbers drift).
 | `(*App).ExportBundle` | 156 | 26 | `pkg/app/export_bundle.go` |
 | `(*App).runClaimedParse` | 145 | — | `pkg/app/parse.go` |
 | `ValidateBundle` | 145 | 31 | `pkg/app/bundle_validate.go` |
-| `(*App).importJSONv1` | 130 | 30 | `pkg/app/export.go` |
 | `(*App).Startup` | 129 | — | `pkg/app/app.go` |
 | `ensureCoverage` | 126 | 23 | `pkg/app/fixtures.go` |
 | `(*App).CheckForUpdate` | 119 | — | `pkg/app/update.go` |
