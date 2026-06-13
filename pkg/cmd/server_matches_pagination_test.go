@@ -1,10 +1,11 @@
-package cmd
+package cmd_test
 
 import (
 	"encoding/json"
 	"net/http"
 	"testing"
 
+	"recall/pkg/cmd"
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 )
@@ -95,19 +96,19 @@ func TestGetMatches_CursorPaging_PageBoundary(t *testing.T) {
 func TestGetMatches_LimitClampedTo1000(t *testing.T) {
 	// Helper-level exercise — the e2e clamp would need 1001 fake
 	// rows; this is the same behaviour at one level lower.
-	if n, _ := parseMatchesPagination(httpReq("GET", "/api/v1/matches?limit=999999")); n != 1000 {
+	if n, _ := cmd.ParseMatchesPagination(httpReq("GET", "/api/v1/matches?limit=999999")); n != 1000 {
 		t.Errorf("limit clamp = %d, want 1000", n)
 	}
 }
 
 func TestGetMatches_InvalidLimit_DisablesPagination(t *testing.T) {
-	if n, _ := parseMatchesPagination(httpReq("GET", "/api/v1/matches?limit=abc")); n != 0 {
+	if n, _ := cmd.ParseMatchesPagination(httpReq("GET", "/api/v1/matches?limit=abc")); n != 0 {
 		t.Errorf("invalid limit = %d, want 0 (back-compat unbounded)", n)
 	}
-	if n, _ := parseMatchesPagination(httpReq("GET", "/api/v1/matches?limit=0")); n != 0 {
+	if n, _ := cmd.ParseMatchesPagination(httpReq("GET", "/api/v1/matches?limit=0")); n != 0 {
 		t.Errorf("limit=0 = %d, want 0", n)
 	}
-	if n, _ := parseMatchesPagination(httpReq("GET", "/api/v1/matches?limit=-5")); n != 0 {
+	if n, _ := cmd.ParseMatchesPagination(httpReq("GET", "/api/v1/matches?limit=-5")); n != 0 {
 		t.Errorf("negative limit = %d, want 0", n)
 	}
 }
@@ -118,7 +119,7 @@ func TestGetMatches_InvalidLimit_DisablesPagination(t *testing.T) {
 // negative-data-rejection check caught this exact case when the
 // fuzzer generated `?limit=&cursor=…`.
 func TestParseMatchesPaginationStrict_PresentButEmptyLimit_400(t *testing.T) {
-	_, _, err := parseMatchesPaginationStrict(httpReq("GET", "/api/v1/matches?limit="))
+	_, _, err := cmd.ParseMatchesPaginationStrict(httpReq("GET", "/api/v1/matches?limit="))
 	if err == nil {
 		t.Fatal("present-but-empty limit must error; got nil")
 	}
@@ -127,7 +128,7 @@ func TestParseMatchesPaginationStrict_PresentButEmptyLimit_400(t *testing.T) {
 func TestParseMatchesPaginationStrict_AbsentLimit_NoError(t *testing.T) {
 	// Sanity guard for the back-compat path: NO `limit=` key (the
 	// query string omits it entirely) keeps the unbounded list.
-	n, cursor, err := parseMatchesPaginationStrict(httpReq("GET", "/api/v1/matches"))
+	n, cursor, err := cmd.ParseMatchesPaginationStrict(httpReq("GET", "/api/v1/matches"))
 	if err != nil {
 		t.Errorf("absent limit must not error; got %v", err)
 	}

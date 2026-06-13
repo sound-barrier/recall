@@ -1,4 +1,4 @@
-package cmd
+package cmd_test
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"testing/fstest"
 
 	"recall/pkg/app"
+	"recall/pkg/cmd"
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 )
@@ -30,7 +31,7 @@ func newTestApp(t *testing.T, fs *dbtest.Fake) (*app.App, *http.ServeMux) {
 	}
 	a := app.NewWithStore(fs)
 	a.SSEHub = app.NewSSEHub()
-	mux := NewMux(a, fstest.MapFS{})
+	mux := cmd.NewMux(a, fstest.MapFS{})
 	return a, mux
 }
 
@@ -91,7 +92,7 @@ func newTestAppWithProfiles(t *testing.T) (*app.App, *http.ServeMux) {
 	a := app.New()
 	a.SSEHub = app.NewSSEHub()
 	a.Startup(context.Background())
-	mux := NewMux(a, fstest.MapFS{})
+	mux := cmd.NewMux(a, fstest.MapFS{})
 	return a, mux
 }
 
@@ -542,7 +543,7 @@ func TestServerMux_CheckUpdate(t *testing.T) {
 func TestServerMux_ServesIndexFromAssetsFS(t *testing.T) {
 	a := app.NewWithStore(dbtest.New())
 	a.SSEHub = app.NewSSEHub()
-	mux := NewMux(a, fstest.MapFS{
+	mux := cmd.NewMux(a, fstest.MapFS{
 		"index.html": &fstest.MapFile{Data: []byte("<!doctype html>")},
 	})
 	rec := get(t, mux, "/")
@@ -755,7 +756,7 @@ func TestMatchAnnotations_E2E_PutThenReadBackOnMatches(t *testing.T) {
 
 	a := app.NewWithStore(store)
 	a.SSEHub = app.NewSSEHub()
-	mux := NewMux(a, fstest.MapFS{})
+	mux := cmd.NewMux(a, fstest.MapFS{})
 
 	// PUT a full annotation.
 	rec := put(t, mux, annotationPath("match-e2e"), map[string]any{

@@ -1,10 +1,11 @@
-package cmd
+package cmd_test
 
 import (
 	"net/http"
 	"testing"
 
 	"recall/pkg/app"
+	"recall/pkg/cmd"
 	"recall/pkg/db/dbtest"
 )
 
@@ -105,7 +106,7 @@ func TestApplyMatchesPagination_UnknownCursorReturnsFromStart(t *testing.T) {
 		{MatchKey: "m2"},
 		{MatchKey: "m3"},
 	}
-	out := applyMatchesPagination(rows, 0, "does-not-exist")
+	out := cmd.ApplyMatchesPagination(rows, 0, "does-not-exist")
 	if len(out) != 3 {
 		t.Errorf("unknown cursor returned %d rows, want 3 (full corpus from start)", len(out))
 	}
@@ -119,7 +120,7 @@ func TestApplyMatchesPagination_UnknownCursorWithLimitSlicesFromStart(t *testing
 		{MatchKey: "m2"},
 		{MatchKey: "m3"},
 	}
-	out := applyMatchesPagination(rows, 2, "does-not-exist")
+	out := cmd.ApplyMatchesPagination(rows, 2, "does-not-exist")
 	if len(out) != 2 {
 		t.Errorf("got %d rows, want 2 (limit applied from start)", len(out))
 	}
