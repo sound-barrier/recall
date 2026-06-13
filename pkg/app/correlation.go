@@ -396,6 +396,21 @@ func snapshotExisting(snap db.Screenshots) []existing {
 //
 // Candidates are deduped by match_key (the closest-in-time screenshot
 // per existing match wins) and sorted by distance ascending.
+// eadKeyInfo accumulates the closest distance + corroboration flag for one
+// existing match_key during the EAD-bridge scan.
+type eadKeyInfo struct {
+	d            time.Duration
+	corroborated bool
+}
+
+// eadKeyDist is one existing match_key with its closest distance to the
+// candidate, used to sort + resolve the EAD bridge.
+type eadKeyDist struct {
+	key          string
+	d            time.Duration
+	corroborated bool
+}
+
 func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCandidate, bool) {
 	if cand.r.Eliminations == 0 && cand.r.Assists == 0 && cand.r.Deaths == 0 {
 		return "", nil, false
@@ -406,11 +421,18 @@ func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCand
 		// apply downstream.
 		return "", nil, false
 	}
-	type keyInfo struct {
-		d            time.Duration
-		corroborated bool
+	byKey := eadCandidateKeys(cand, snap)
+	if len(byKey) == 0 {
+		return "", nil, false
 	}
-	byKey := map[string]keyInfo{}
+	return resolveEADCandidates(sortEADKeys(byKey))
+}
+
+// eadCandidateKeys scans the existing screenshots for rows that share the
+// candidate's exact E/A/D inside the ambiguous window (and don't conflict),
+// keyed by match_key with the closest distance + any corroboration kept.
+func eadCandidateKeys(cand candidate, snap db.Screenshots) map[string]eadKeyInfo {
+	byKey := map[string]eadKeyInfo{}
 	for _, e := range snapshotExisting(snap) {
 		if e.c.r.Eliminations == 0 && e.c.r.Assists == 0 && e.c.r.Deaths == 0 {
 			continue
@@ -441,20 +463,18 @@ func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCand
 			prev.corroborated = prev.corroborated || isCorrob
 			byKey[e.key] = prev
 		} else {
-			byKey[e.key] = keyInfo{d: d, corroborated: isCorrob}
+			byKey[e.key] = eadKeyInfo{d: d, corroborated: isCorrob}
 		}
 	}
-	if len(byKey) == 0 {
-		return "", nil, false
-	}
-	type kd struct {
-		key          string
-		d            time.Duration
-		corroborated bool
-	}
-	sorted := make([]kd, 0, len(byKey))
+	return byKey
+}
+
+// sortEADKeys flattens the by-key map into a slice ordered by ascending
+// distance (match_key breaks ties) for deterministic resolution.
+func sortEADKeys(byKey map[string]eadKeyInfo) []eadKeyDist {
+	sorted := make([]eadKeyDist, 0, len(byKey))
 	for k, info := range byKey {
-		sorted = append(sorted, kd{k, info.d, info.corroborated})
+		sorted = append(sorted, eadKeyDist{k, info.d, info.corroborated})
 	}
 	sort.Slice(sorted, func(i, j int) bool {
 		if sorted[i].d != sorted[j].d {
@@ -462,6 +482,13 @@ func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCand
 		}
 		return sorted[i].key < sorted[j].key
 	})
+	return sorted
+}
+
+// resolveEADCandidates applies the bridge's adoption rules to the sorted
+// candidates: a lone corroborated key wins outright; a single key inside
+// the auto-window is adopted; otherwise everything surfaces as ambiguous.
+func resolveEADCandidates(sorted []eadKeyDist) (string, []db.AmbiguousCandidate, bool) {
 	// Corroboration overrides the time-threshold rule. If exactly one
 	// existing match_key has a strong same-match signal beyond EAD,
 	// adopt it regardless of distance — that's a stronger guarantee
