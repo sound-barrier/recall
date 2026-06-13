@@ -230,7 +230,31 @@ type screenshotView struct {
 // per-key extract for the live-streaming "match-updated" event.
 // Inference helpers (inferSoleHeroPercent, inferResultFromRank)
 // are applied so the streamed shape matches GetMatchResults output.
+// unknownToView builds the screenshotView for an unknown row. The other
+// four row types have their own *ToView helpers; this matches them so the
+// inline literal doesn't get duplicated across the aggregators.
+func unknownToView(r db.UnknownRow) screenshotView {
+	return screenshotView{
+		filename: r.Filename, typeName: "unknown",
+		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
+	}
+}
+
 func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState) (MatchRecord, bool) {
+	vs := collectViewsForKey(snap, key)
+	if len(vs) == 0 {
+		return MatchRecord{}, false
+	}
+	rec := foldGroup(key, vs, snap.ScreenshotsDirs)
+	inferSoleHeroPercent(&rec.Data)
+	inferResultFromRank(&rec.Data)
+	attachMatchSidecars(&rec, key, snap, annos, hidden, reviews)
+	return rec, true
+}
+
+// collectViewsForKey gathers every screenshotView across the five parent
+// tables whose match_key equals key.
+func collectViewsForKey(snap db.Screenshots, key string) []screenshotView {
 	vs := make([]screenshotView, 0, 8)
 	for _, r := range snap.Summaries {
 		if r.MatchKey == key {
@@ -254,18 +278,15 @@ func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Anno
 	}
 	for _, r := range snap.Unknowns {
 		if r.MatchKey == key {
-			vs = append(vs, screenshotView{
-				filename: r.Filename, typeName: "unknown",
-				matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
-			})
+			vs = append(vs, unknownToView(r))
 		}
 	}
-	if len(vs) == 0 {
-		return MatchRecord{}, false
-	}
-	rec := foldGroup(key, vs, snap.ScreenshotsDirs)
-	inferSoleHeroPercent(&rec.Data)
-	inferResultFromRank(&rec.Data)
+	return vs
+}
+
+// attachMatchSidecars decorates rec with the per-key annotation, hidden
+// flag, review state, and ambiguous-attribution candidates.
+func attachMatchSidecars(rec *MatchRecord, key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState) {
 	if a, ok := annos[key]; ok {
 		rec.Annotation = &MatchAnnotation{
 			Leaver:      a.Leaver,
@@ -295,7 +316,6 @@ func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Anno
 			}
 		}
 	}
-	return rec, true
 }
 
 func aggregateScreenshots(snap db.Screenshots) []MatchRecord {
@@ -314,10 +334,7 @@ func aggregateScreenshots(snap db.Screenshots) []MatchRecord {
 		views = append(views, rankToView(r))
 	}
 	for _, r := range snap.Unknowns {
-		views = append(views, screenshotView{
-			filename: r.Filename, typeName: "unknown",
-			matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
-		})
+		views = append(views, unknownToView(r))
 	}
 
 	groups := map[string][]screenshotView{}
