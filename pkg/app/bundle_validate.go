@@ -37,6 +37,9 @@ const (
 	IssueScreenshotsDirsLeak     = "screenshots_dirs_leak"
 )
 
+// issueSink records a single validation finding.
+type issueSink func(kind, msg string)
+
 // ValidateBundle parses a Recall export bundle (the `.zip` produced
 // by ExportBundle) and reports every consistency mismatch between
 // the three pieces:
@@ -76,31 +79,14 @@ func ValidateBundle(zipBytes []byte) ([]BundleIssue, error) {
 		return nil, fmt.Errorf("parse zip: %w", err)
 	}
 
+	manifestBytes, dataBytes, screenshots, err := readBundleEntries(zr)
+	if err != nil {
+		return nil, err
+	}
+
 	var issues []BundleIssue
 	add := func(kind, msg string) {
 		issues = append(issues, BundleIssue{Kind: kind, Message: msg})
-	}
-
-	var (
-		manifestBytes []byte
-		dataBytes     []byte
-		screenshots   = map[string]struct{}{} // basename-only set under screenshots/
-	)
-	for _, f := range zr.File {
-		switch {
-		case f.Name == "manifest.json":
-			manifestBytes, err = readZipEntry(f)
-			if err != nil {
-				return nil, fmt.Errorf("read manifest.json: %w", err)
-			}
-		case f.Name == "data.json":
-			dataBytes, err = readZipEntry(f)
-			if err != nil {
-				return nil, fmt.Errorf("read data.json: %w", err)
-			}
-		case strings.HasPrefix(f.Name, "screenshots/") && !strings.HasSuffix(f.Name, "/"):
-			screenshots[strings.TrimPrefix(f.Name, "screenshots/")] = struct{}{}
-		}
 	}
 
 	if manifestBytes == nil {
@@ -115,22 +101,76 @@ func ValidateBundle(zipBytes []byte) ([]BundleIssue, error) {
 		return issues, nil
 	}
 
+	mf, err := decodeBundleManifest(manifestBytes, add)
+	if err != nil {
+		return nil, err
+	}
+	dataDoc, err := decodeBundleData(dataBytes, add)
+	if err != nil {
+		return nil, err
+	}
+
+	// data.json is the canonical "what's in the bundle" payload; derive
+	// its distinct match_key set so the cross-checks below can validate
+	// the manifest against it.
+	dataKeys := dataMatchKeys(dataDoc)
+	validateBundleCounts(mf, dataKeys, screenshots, add)
+	validateBundleScreenshotRefs(mf, screenshots, dataKeys, add)
+	validateBundleDataFilenames(dataDoc, mf, add)
+
+	// Stable issue order so the CLI output is deterministic.
+	sort.SliceStable(issues, func(i, j int) bool {
+		if issues[i].Kind == issues[j].Kind {
+			return issues[i].Message < issues[j].Message
+		}
+		return issues[i].Kind < issues[j].Kind
+	})
+	return issues, nil
+}
+
+// readBundleEntries pulls manifest.json + data.json bytes and the
+// basename set of files under screenshots/ out of the bundle ZIP.
+func readBundleEntries(zr *zip.Reader) (manifestBytes, dataBytes []byte, screenshots map[string]struct{}, err error) {
+	screenshots = map[string]struct{}{}
+	for _, f := range zr.File {
+		switch {
+		case f.Name == "manifest.json":
+			manifestBytes, err = readZipEntry(f)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("read manifest.json: %w", err)
+			}
+		case f.Name == "data.json":
+			dataBytes, err = readZipEntry(f)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("read data.json: %w", err)
+			}
+		case strings.HasPrefix(f.Name, "screenshots/") && !strings.HasSuffix(f.Name, "/"):
+			screenshots[strings.TrimPrefix(f.Name, "screenshots/")] = struct{}{}
+		}
+	}
+	return manifestBytes, dataBytes, screenshots, nil
+}
+
+func decodeBundleManifest(manifestBytes []byte, add issueSink) (BundleManifestV1, error) {
 	var mf BundleManifestV1
 	if err := json.Unmarshal(manifestBytes, &mf); err != nil {
-		return nil, fmt.Errorf("decode manifest.json: %w", err)
+		return mf, fmt.Errorf("decode manifest.json: %w", err)
 	}
 	if mf.Schema != BundleSchemaV1 {
 		add(IssueWrongManifestSchema,
 			fmt.Sprintf("manifest.schema = %q, want %q", mf.Schema, BundleSchemaV1))
 	}
+	return mf, nil
+}
 
-	// data.json — strict decode + a tolerant decode for the residual
-	// `screenshots_dirs` field. We unmarshal twice (cheap; the file
-	// is small) so we can both populate typed row slices AND probe
-	// for the leak.
+// decodeBundleData strict-decodes data.json AND runs a tolerant second
+// decode for the residual `screenshots_dirs` field. We unmarshal twice
+// (cheap; the file is small) so we can both populate typed row slices AND
+// probe for the path-map leak.
+func decodeBundleData(dataBytes []byte, add issueSink) (BundleDataV1, error) {
 	var dataDoc BundleDataV1
 	if err := json.Unmarshal(dataBytes, &dataDoc); err != nil {
-		return nil, fmt.Errorf("decode data.json: %w", err)
+		return dataDoc, fmt.Errorf("decode data.json: %w", err)
 	}
 	if dataDoc.Schema != exportSchemaV1 {
 		add(IssueWrongDataSchema,
@@ -144,24 +184,18 @@ func ValidateBundle(zipBytes []byte) ([]BundleIssue, error) {
 			fmt.Sprintf("data.json carries screenshots_dirs (%d entries) — bundles must omit the path map",
 				len(dataProbe.ScreenshotsDirs)))
 	}
+	return dataDoc, nil
+}
 
-	// data.json is the canonical "what's in the bundle" payload;
-	// derive its distinct match_key set so we can cross-check
-	// manifest.match_count + validate every manifest entry against
-	// it (validation 8).
-	dataKeys := dataMatchKeys(dataDoc)
-
-	// Validation 4: manifest.match_count vs distinct match_keys
-	// present in data.json's rows. We compare against data.json's
-	// derived set because data.json is the canonical "what's in the
-	// bundle" payload; manifest.match_count is the audit declaration.
+// validateBundleCounts checks manifest.match_count against data.json's
+// distinct keys (validation 4) and the screenshot_count agreement
+// (validation 5).
+func validateBundleCounts(mf BundleManifestV1, dataKeys, screenshots map[string]struct{}, add issueSink) {
 	if len(dataKeys) != mf.MatchCount {
 		add(IssueMatchCountMismatch,
 			fmt.Sprintf("manifest.match_count = %d, data.json has %d distinct match_keys",
 				mf.MatchCount, len(dataKeys)))
 	}
-
-	// Validation 5: screenshot_count agreement.
 	switch {
 	case mf.ScreenshotCount != len(mf.Screenshots):
 		add(IssueScreenshotCountMismatch,
@@ -172,8 +206,12 @@ func ValidateBundle(zipBytes []byte) ([]BundleIssue, error) {
 			fmt.Sprintf("manifest.screenshots has %d entries, screenshots/ has %d files",
 				len(mf.Screenshots), len(screenshots)))
 	}
+}
 
-	// Validations 6 + 7: bidirectional screenshot ↔ file map.
+// validateBundleScreenshotRefs checks the bidirectional screenshot ↔ file
+// map (validations 6 + 7) and that every manifest match_key has a row in
+// data.json (validation 8).
+func validateBundleScreenshotRefs(mf BundleManifestV1, screenshots, dataKeys map[string]struct{}, add issueSink) {
 	for filename := range mf.Screenshots {
 		if _, ok := screenshots[filename]; !ok {
 			add(IssueManifestMissingFile,
@@ -186,9 +224,6 @@ func ValidateBundle(zipBytes []byte) ([]BundleIssue, error) {
 				fmt.Sprintf("screenshots/%s exists but isn't listed in the manifest", filename))
 		}
 	}
-
-	// Validation 8: every manifest match_key must have at least one
-	// row in data.json.
 	for filename, mk := range mf.Screenshots {
 		if _, ok := dataKeys[mk]; !ok {
 			add(IssueManifestKeyNotInData,
@@ -196,9 +231,11 @@ func ValidateBundle(zipBytes []byte) ([]BundleIssue, error) {
 					filename, mk))
 		}
 	}
+}
 
-	// Validation 9: every data.json row with a Filename must appear
-	// in the manifest's screenshots map.
+// validateBundleDataFilenames checks that every data.json row filename
+// appears in the manifest's screenshots map (validation 9).
+func validateBundleDataFilenames(dataDoc BundleDataV1, mf BundleManifestV1, add issueSink) {
 	for _, fn := range dataRowFilenames(dataDoc) {
 		if _, ok := mf.Screenshots[fn]; !ok {
 			add(IssueDataFileNotInManifest,
@@ -206,15 +243,6 @@ func ValidateBundle(zipBytes []byte) ([]BundleIssue, error) {
 					fn))
 		}
 	}
-
-	// Stable issue order so the CLI output is deterministic.
-	sort.SliceStable(issues, func(i, j int) bool {
-		if issues[i].Kind == issues[j].Kind {
-			return issues[i].Message < issues[j].Message
-		}
-		return issues[i].Kind < issues[j].Kind
-	})
-	return issues, nil
 }
 
 func readZipEntry(f *zip.File) ([]byte, error) {
