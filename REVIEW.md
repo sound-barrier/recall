@@ -101,20 +101,6 @@ this was a direction, not a blanket rewrite.
 
 ---
 
-### Q9. Invariant `panic` for post-Startup nil wiring
-
-**Where:** `pkg/app/app.go:326`, `app.go:329` — `panic("App.Startup: … is nil
-after Startup completed …")`.
-
-**What:** borderline against "no error handling for impossible conditions." These
-are fail-fast guards for a refactor breaking internal wiring; defensible, but
-consider whether the `captureFatal`/`StartupError()` path already covers it,
-making the panics redundant. Low priority — listed for completeness.
-
-**Size:** S. **Risk:** Low.
-
----
-
 ### Q11. DRY/complexity hotspots to watch (do not over-abstract)
 
 **Where:** the four near-identical `register*Routes` (`pkg/cmd/server_*.go`) and
