@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useDossier } from '../composables/useDossier'
 import { useNarrow } from '../composables/useNarrow'
 import { useOWData } from '../composables/useOWData'
 import { useWindowMonths } from '../composables/useWindowMonths'
+import { useDrillNav } from '../composables/useDrillNav'
+import { heatmapCellClass, heatmapCellOpacity } from '../match-heatmap-helpers'
+import HeroModeHeatmap from './HeroModeHeatmap.vue'
+import HeroModeMatches from './HeroModeMatches.vue'
 import { useWidgetConfig } from '../composables/useWidgetConfig'
 import { heroGameModeHeatmapSchema, type HeroGameModeHeatmapConfig } from '../dashboard/widgets'
 import WidgetConfigPopover from './WidgetConfigPopover.vue'
@@ -69,74 +73,7 @@ const configIsDefault = computed(() => {
 const { WINDOW_MONTHS: WINDOWS, windowMonths, pickWindow } = useWindowMonths('recall.heroModeWindowMonths')
 
 // ── Drill stack ──
-interface DrillFrame {
-  level: 'maps' | 'matches'
-  hero: string
-  gameMode: string
-  map?: string
-  // Which picks WE applied entering this frame (vs already-present), so
-  // Go-back reverts only ours.
-  added: { hero?: boolean; gameMode?: boolean; map?: boolean }
-}
-const drillStack = ref<DrillFrame[]>([])
-const depth = computed(() => drillStack.value.length)
-const topFrame = computed<DrillFrame | null>(() => drillStack.value[drillStack.value.length - 1] ?? null)
-
-// Guarded add: pick iff absent; report whether WE added it.
-function ensurePicked(set: Set<string>, value: string, pick: (v: string) => void): boolean {
-  if (set.has(value)) return false
-  pick(value)
-  return true
-}
-// Guarded remove: toggle off iff still present.
-function ensureUnpicked(set: Set<string>, value: string, pick: (v: string) => void): void {
-  if (set.has(value)) pick(value)
-}
-
-function drillToMaps(hero: string, gameMode: string) {
-  const added = {
-    hero:     ensurePicked(narrow.pickedHeroes.value, hero, narrow.pickHero),
-    gameMode: ensurePicked(narrow.pickedGameModes.value, gameMode, narrow.pickGameMode),
-  }
-  drillStack.value = [...drillStack.value, { level: 'maps', hero, gameMode, added }]
-}
-function drillToMatches(map: string) {
-  const f = topFrame.value
-  if (!f) return
-  const added = { map: ensurePicked(narrow.pickedMaps.value, map, narrow.pickMap) }
-  drillStack.value = [...drillStack.value, { level: 'matches', hero: f.hero, gameMode: f.gameMode, map, added }]
-}
-function goBack() {
-  const f = topFrame.value
-  if (!f) return
-  if (f.added.map && f.map) ensureUnpicked(narrow.pickedMaps.value, f.map, narrow.pickMap)
-  if (f.added.gameMode)     ensureUnpicked(narrow.pickedGameModes.value, f.gameMode, narrow.pickGameMode)
-  if (f.added.hero)         ensureUnpicked(narrow.pickedHeroes.value, f.hero, narrow.pickHero)
-  drillStack.value = drillStack.value.slice(0, -1)
-}
-function goToDepth(target: number) {
-  while (drillStack.value.length > target) goBack()
-}
-
-// Reconciliation: if the user clears the picks this band rode on (rail
-// reset, chip ×), truncate the stack to the deepest still-consistent
-// frame so the breadcrumb never lies.
-watch(
-  () => [narrow.pickedHeroes.value, narrow.pickedGameModes.value, narrow.pickedMaps.value] as const,
-  () => {
-    const frames = drillStack.value
-    let keep = frames.length
-    for (let i = 0; i < frames.length; i++) {
-      const f = frames[i]!
-      const ok =
-        narrow.pickedHeroes.value.has(f.hero) &&
-        narrow.pickedGameModes.value.has(f.gameMode) &&
-        (f.level !== 'matches' || !f.map || narrow.pickedMaps.value.has(f.map))
-      if (!ok) { keep = i; break }
-    }
-    if (keep < frames.length) drillStack.value = frames.slice(0, keep)
-  },
-)
+const { drillStack, depth, topFrame, drillToMaps, drillToMatches, goBack, goToDepth } = useDrillNav(narrow)
 
 // ── Level 0 (root): hero × game-mode ──
 const cells = dossier.heroGameModeCounts(() => ({
@@ -175,28 +112,8 @@ const mapTiles = computed(() => {
 const matchRows = dossier.recentMatches(() => ({ count: 12, windowMonths: windowMonths.value }))
 
 // ── Shared cell colour/opacity (root grid + map tiles) ──
-function cellClass(c: { total: number; winrate: number; wins: number; losses: number }) {
-  if (c.total === 0)            return 'cell-empty'
-  if (c.wins + c.losses === 0)  return 'cell-draw'
-  if (c.winrate >= 60)          return 'cell-win'
-  if (c.winrate <= 40)          return 'cell-loss'
-  return 'cell-mid'
-}
-function cellOpacity(c: { total: number }) {
-  if (c.total === 0) return undefined
-  return String(Math.min(0.45 + (c.total / 10) * 0.55, 1))
-}
-
 function onRootCell(hero: string, gameMode: string) {
   drillToMaps(hero, gameMode)
-}
-
-function matchDateLabel(m: { date: string; finishedAt: string }): string {
-  if (!m.date) return '—'
-  const d = new Date(m.date + 'T00:00:00')
-  if (isNaN(d.getTime())) return m.date
-  const day = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-  return m.finishedAt ? `${day} · ${m.finishedAt}` : day
 }
 
 // ── Header: breadcrumb + per-level title ──
@@ -296,52 +213,16 @@ const levelTitle = computed(() => {
        inside this pane instead. -->
     <div class="hm-body">
       <!-- Level 0 — root hero × game-mode grid (keeps the floor gate). -->
-      <template v-if="depth === 0">
-        <p v-if="belowFloor" class="heatmap-empty">
-          Need {{ config.minMatches }}+ decisive matches in this window to
-          surface patterns. You have {{ decisiveTotal }}.
-        </p>
-        <div
-          v-else
-          class="heatmap-grid"
-          role="grid"
-          :aria-label="`Hero by game-mode heatmap, ${rows.length} heroes × ${columnHeaders.length} game modes`"
-        >
-          <div class="heatmap-row heatmap-header" role="row">
-            <span class="heatmap-corner" role="columnheader" aria-label="Hero" />
-            <span v-for="t in columnHeaders" :key="t" class="heatmap-colhead" role="columnheader">
-              {{ t }}
-            </span>
-          </div>
-          <div
-            v-for="row in rows"
-            :key="row.hero"
-            class="heatmap-row"
-            role="row"
-          >
-            <span class="heatmap-rowhead" role="rowheader">{{ heroLabel(row.hero) }}</span>
-            <button
-              v-for="cell in row.cells"
-              :key="cell.gameMode"
-              type="button"
-              class="heatmap-cell"
-              :class="cellClass(cell)"
-              :style="{ opacity: cellOpacity(cell) }"
-              :disabled="cell.total === 0"
-              :title="cell.total === 0
-                ? `${heroLabel(row.hero)} on ${cell.gameMode}: no matches`
-                : `${heroLabel(row.hero)} on ${cell.gameMode}: ${cell.wins}-${cell.losses}-${cell.draws} (${cell.winrate}% winrate). Click to drill into maps.`"
-              :aria-label="cell.total === 0
-                ? `${heroLabel(row.hero)} on ${cell.gameMode}: no matches`
-                : `${heroLabel(row.hero)} on ${cell.gameMode}: ${cell.winrate}% winrate over ${cell.total} matches. Click to drill into maps.`"
-              @click="onRootCell(row.hero, cell.gameMode)"
-            >
-              <span v-if="cell.total > 0" class="cell-rate">{{ cell.winrate }}%</span>
-              <span v-if="cell.total > 0" class="cell-vol">{{ cell.total }}</span>
-            </button>
-          </div>
-        </div>
-      </template>
+      <HeroModeHeatmap
+        v-if="depth === 0"
+        :rows="rows"
+        :column-headers="columnHeaders"
+        :below-floor="belowFloor"
+        :min-matches="config.minMatches"
+        :decisive-total="decisiveTotal"
+        :hero-label="heroLabel"
+        @cell="onRootCell"
+      />
 
       <!-- Level 1 — the drilled hero across the game-mode's maps. -->
       <div v-else-if="depth === 1" class="hm-maps" data-hero-mode-maps>
@@ -350,8 +231,8 @@ const levelTitle = computed(() => {
           :key="t.slug"
           type="button"
           class="hm-map-tile"
-          :class="cellClass(t.cell)"
-          :style="{ opacity: cellOpacity(t.cell) }"
+          :class="heatmapCellClass(t.cell)"
+          :style="{ opacity: heatmapCellOpacity(t.cell) }"
           :title="`${t.display}: ${t.cell.wins}-${t.cell.losses}-${t.cell.draws} (${t.cell.winrate}% winrate). Click for recent matches.`"
           :aria-label="`${t.display}: ${t.cell.winrate}% winrate over ${t.cell.total} matches. Click for recent matches.`"
           @click="drillToMatches(t.slug)"
@@ -366,18 +247,7 @@ const levelTitle = computed(() => {
       </div>
 
       <!-- Level 2 — the drilled map's recent matches. -->
-      <div v-else class="hm-matches" data-hero-mode-matches>
-        <ol v-if="matchRows.length > 0" class="hm-match-list">
-          <li v-for="m in matchRows" :key="m.matchKey" class="hm-match-row">
-            <span class="hm-match-date">{{ matchDateLabel(m) }}</span>
-            <span class="hm-match-result" :class="`res-${m.result}`">{{ m.result || '—' }}</span>
-            <span class="hm-match-map">{{ mapLabel(m.map) }}</span>
-          </li>
-        </ol>
-        <p v-else class="hm-drill-empty">
-          No matches in this window.
-        </p>
-      </div>
+      <HeroModeMatches v-else :match-rows="matchRows" :map-label="mapLabel" />
     </div>
 
     <WidgetConfigPopover
@@ -604,109 +474,6 @@ const levelTitle = computed(() => {
 .hm-body::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 .hm-body::-webkit-scrollbar-track { background: transparent; }
 
-/* ─── Root heatmap grid ─────────────────────────────────────────── */
-.heatmap-empty {
-  margin: 0.6rem 0 0.1rem;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  color: var(--text-faint);
-  letter-spacing: 0.04em;
-}
-
-.heatmap-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 0.4rem;
-}
-
-.heatmap-row {
-  display: grid;
-  grid-template-columns: 6rem repeat(6, 1fr);
-  gap: 2px;
-  align-items: stretch;
-}
-
-.heatmap-header {
-  font-family: var(--mono);
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-.heatmap-corner {
-  display: block;
-}
-
-.heatmap-colhead {
-  text-align: center;
-  padding: 0.1rem 0.2rem;
-}
-
-.heatmap-rowhead {
-  font-family: 'Big Noodle Too Oblique', 'Barlow Condensed', sans-serif;
-  font-size: 0.95rem;
-  letter-spacing: 0.03em;
-  color: var(--text);
-  padding-right: 0.4rem;
-  display: flex;
-  align-items: center;
-  text-transform: capitalize;
-}
-
-.heatmap-cell {
-  appearance: none;
-  border: none;
-  border-radius: 2px;
-  padding: 0.25rem 0.2rem;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 0.05rem;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--text);
-  min-height: 2.2rem;
-  transition: transform 120ms ease, box-shadow 120ms ease;
-}
-
-.heatmap-cell:not(:disabled):hover {
-  transform: scale(1.04);
-  box-shadow: 0 0 0 1px var(--accent);
-}
-
-.heatmap-cell:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.heatmap-cell.cell-empty {
-  background: var(--surface-2);
-  cursor: default;
-}
-
-.heatmap-cell.cell-win  { background: var(--win,  #2ecc71); color: var(--bg); }
-.heatmap-cell.cell-mid  { background: var(--neutral, #95a5a6); color: var(--bg); }
-.heatmap-cell.cell-loss { background: var(--loss, #e74c3c); color: var(--bg); }
-.heatmap-cell.cell-draw { background: var(--draw, #b59c30); color: var(--bg); }
-
-.cell-rate {
-  font-size: 0.7rem;
-  line-height: 1;
-}
-
-.cell-vol {
-  font-size: 0.5rem;
-  opacity: 0.8;
-  line-height: 1;
-}
-
 /* ─── Level 1 — map tiles ───────────────────────────────────────── */
 .hm-maps {
   display: grid;
@@ -768,53 +535,6 @@ const levelTitle = computed(() => {
 }
 
 /* ─── Level 2 — recent matches list ─────────────────────────────── */
-.hm-matches { margin-top: 0.4rem; }
-
-.hm-match-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.hm-match-row {
-  display: grid;
-  grid-template-columns: 9rem 5rem 1fr;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.32rem 0.5rem;
-  background: var(--surface-2);
-  border-radius: 2px;
-  font-family: var(--mono);
-  font-size: 0.68rem;
-}
-
-.hm-match-date { color: var(--text); letter-spacing: 0.03em; }
-
-.hm-match-result {
-  justify-self: start;
-  font-size: 0.56rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 0.08rem 0.4rem;
-  border-radius: 2px;
-}
-.res-victory { background: color-mix(in srgb, var(--win) 22%, transparent); color: var(--win); }
-.res-defeat  { background: color-mix(in srgb, var(--loss) 22%, transparent); color: var(--loss); }
-.res-draw    { background: color-mix(in srgb, var(--draw) 22%, transparent); color: var(--draw); }
-
-.hm-match-map {
-  color: var(--text-faint);
-  letter-spacing: 0.03em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-transform: capitalize;
-}
-
 .hm-drill-empty {
   margin: 0.6rem 0 0.1rem;
   font-family: var(--mono);
