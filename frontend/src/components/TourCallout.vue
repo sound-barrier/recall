@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 import type { CalloutPlacement } from '../composables/useOnboardingTour'
-import { rectsEqual, rectsOverlap } from './tour-callout-helpers'
+import { computeCalloutPosition, rectsEqual } from './tour-callout-helpers'
 
 // Anchored callout panel. Renders the step's tag / number / heading
 // / body plus the Skip / Back / Next controls. Anchors to the
@@ -93,92 +93,17 @@ function calloutHeight(): number {
   return calloutEl.value?.offsetHeight ?? CALLOUT_H_INITIAL
 }
 
-// Compute placement geometry. Returns the chosen viewport coords.
+// Compute placement geometry via the pure solver — the SFC just supplies
+// the live DOM measurements + viewport.
 function computePos(): { left: number; top: number; placement: CalloutPlacement } {
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  const t = getTargetRect()
-  const h = calloutHeight()
-
-  // No target → centre.
-  if (!t) {
-    return {
-      left: Math.max(SAFETY, (vw - CALLOUT_W) / 2),
-      top:  Math.max(SAFETY, (vh - h) / 2),
-      placement: 'auto',
-    }
-  }
-  // Capture into a const so the inner closure keeps the narrowed
-  // non-null type — TypeScript can't carry the narrowing through
-  // function boundaries on its own.
-  const tt = t
-
-  // Helper: produce coords for a given side, clamped into the
-  // viewport. When `checkOverlap` is true (auto-placement path),
-  // also reject sides where the clamped rect would still cover any
-  // part of the target. When false (explicit step-level placement),
-  // honor the requested side as long as it fits in the viewport —
-  // the step author already chose where the callout should land and
-  // an overlap rejection here would silently relocate it.
-  function place(
-    side: CalloutPlacement,
-    checkOverlap: boolean,
-  ): { left: number; top: number } | null {
-    let left: number
-    let top: number
-    if (side === 'bottom') {
-      top = tt.y + tt.h + GAP
-      if (top + h + SAFETY > vh) return null
-      left = Math.max(SAFETY, Math.min(vw - CALLOUT_W - SAFETY, tt.x + tt.w / 2 - CALLOUT_W / 2))
-    } else if (side === 'top') {
-      top = tt.y - GAP - h
-      if (top < SAFETY) return null
-      left = Math.max(SAFETY, Math.min(vw - CALLOUT_W - SAFETY, tt.x + tt.w / 2 - CALLOUT_W / 2))
-    } else if (side === 'right') {
-      left = tt.x + tt.w + GAP
-      if (left + CALLOUT_W + SAFETY > vw) return null
-      top = Math.max(SAFETY, Math.min(vh - h - SAFETY, tt.y + tt.h / 2 - h / 2))
-    } else if (side === 'left') {
-      left = tt.x - GAP - CALLOUT_W
-      if (left < SAFETY) return null
-      top = Math.max(SAFETY, Math.min(vh - h - SAFETY, tt.y + tt.h / 2 - h / 2))
-    } else {
-      return null
-    }
-    if (checkOverlap) {
-      const calloutRect = { x: left, y: top, w: CALLOUT_W, h }
-      const targetWithMargin = { x: tt.x - 4, y: tt.y - 4, w: tt.w + 8, h: tt.h + 8 }
-      if (rectsOverlap(calloutRect, targetWithMargin)) return null
-    }
-    return { left, top }
-  }
-
-  const preferred = props.placement ?? 'auto'
-  if (preferred !== 'auto') {
-    // Explicit placement requested — try it first WITHOUT the
-    // overlap check so the step author's choice always wins when it
-    // physically fits. If the preferred side is off-viewport
-    // (clamped negative, etc.), fall through to the auto search.
-    const explicit = place(preferred, false)
-    if (explicit) return { ...explicit, placement: preferred }
-  }
-
-  // Auto-placement search — try every side with overlap rejection so
-  // an unspecified step never lands on top of its target.
-  const trySides: CalloutPlacement[] = ['bottom', 'right', 'left', 'top']
-  for (const side of trySides) {
-    const out = place(side, true)
-    if (out) return { ...out, placement: side }
-  }
-  // No side has room without overlap — fall back to a corner of the
-  // viewport that's farthest from the target's centre so the user
-  // can still read the body and drag the callout if it covers
-  // something. Beats centring on top of the target.
-  const targetCx = tt.x + tt.w / 2
-  const targetCy = tt.y + tt.h / 2
-  const left = targetCx < vw / 2 ? vw - CALLOUT_W - SAFETY : SAFETY
-  const top  = targetCy < vh / 2 ? vh - h - SAFETY        : SAFETY
-  return { left, top, placement: 'auto' }
+  return computeCalloutPosition(
+    getTargetRect(),
+    calloutHeight(),
+    window.innerWidth,
+    window.innerHeight,
+    props.placement ?? 'auto',
+    { calloutW: CALLOUT_W, safety: SAFETY, gap: GAP },
+  )
 }
 
 // Poll the target's rect across animation frames until it stops moving

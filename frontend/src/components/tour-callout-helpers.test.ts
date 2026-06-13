@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 
-import { rectsEqual, rectsOverlap } from './tour-callout-helpers'
+import { computeCalloutPosition, rectsEqual, rectsOverlap } from './tour-callout-helpers'
+
+const LAYOUT = { calloutW: 360, safety: 16, gap: 22 }
 
 describe('rectsOverlap', () => {
   it('returns true when one rect is fully inside the other', () => {
@@ -92,5 +94,43 @@ describe('rectsEqual', () => {
       { x: 5, y: 0, w: 0, h: 0 },
       4,
     )).toBe(false)
+  })
+})
+
+describe('computeCalloutPosition', () => {
+  it('centres in the viewport when there is no target', () => {
+    const out = computeCalloutPosition(null, 200, 1280, 800, 'auto', LAYOUT)
+    expect(out.placement).toBe('auto')
+    expect(out.left).toBe((1280 - 360) / 2)
+    expect(out.top).toBe((800 - 200) / 2)
+  })
+
+  it('honours an explicit placement that physically fits', () => {
+    // Target mid-screen with room above → explicit "top" wins without
+    // the overlap check.
+    const out = computeCalloutPosition(
+      { x: 600, y: 400, w: 80, h: 40 }, 200, 1280, 800, 'top', LAYOUT,
+    )
+    expect(out.placement).toBe('top')
+    expect(out.top).toBe(400 - 22 - 200)
+  })
+
+  it('auto-search picks bottom first when there is room below', () => {
+    const out = computeCalloutPosition(
+      { x: 600, y: 100, w: 80, h: 40 }, 200, 1280, 800, 'auto', LAYOUT,
+    )
+    expect(out.placement).toBe('bottom')
+    expect(out.top).toBe(100 + 40 + 22)
+  })
+
+  it('falls back to the far corner when no side has room', () => {
+    // A target filling the viewport leaves no side clear → corner
+    // fallback, placement reported as auto.
+    const out = computeCalloutPosition(
+      { x: 0, y: 0, w: 1280, h: 800 }, 200, 1280, 800, 'auto', LAYOUT,
+    )
+    expect(out.placement).toBe('auto')
+    expect(out.left).toBeGreaterThanOrEqual(16)
+    expect(out.top).toBeGreaterThanOrEqual(16)
   })
 })
