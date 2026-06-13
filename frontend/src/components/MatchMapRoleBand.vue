@@ -4,6 +4,7 @@ import { useDossier } from '../composables/useDossier'
 import { useNarrow } from '../composables/useNarrow'
 import { useOWData } from '../composables/useOWData'
 import { useMapRoleConfig } from '../composables/useMapRoleConfig'
+import { useWindowMonths } from '../composables/useWindowMonths'
 import { winrateVolumeFill } from '../match-heatmap-helpers'
 import type { MapRoleCell } from '../composables/useMatchesDossier'
 import MapRoleConfigPopover from './MapRoleConfigPopover.vue'
@@ -57,21 +58,7 @@ const visibleRoles = computed<Role[]>(() => {
 // Trailing time-window toggle, mirroring the Campaign Log (1M/3M/6M/
 // 12M). Persisted so the choice survives reloads; default 6M to match
 // the Campaign Log's default.
-const WINDOWS = [1, 3, 6, 12] as const
-type WindowKey = (typeof WINDOWS)[number]
-const WINDOW_STORAGE_KEY = 'recall.mapRoleWindowMonths'
-function loadWindow(): WindowKey {
-  try {
-    const n = Number(localStorage.getItem(WINDOW_STORAGE_KEY))
-    if ((WINDOWS as readonly number[]).includes(n)) return n as WindowKey
-  } catch (_) { /* swallow */ }
-  return 6
-}
-const windowMonths = ref<WindowKey>(loadWindow())
-function pickWindow(m: WindowKey) {
-  windowMonths.value = m
-  try { localStorage.setItem(WINDOW_STORAGE_KEY, String(m)) } catch (_) { /* swallow */ }
-}
+const { WINDOW_MONTHS: WINDOWS, windowMonths, pickWindow } = useWindowMonths('recall.mapRoleWindowMonths')
 
 const cells = dossier.mapRoleCounts(() => ({ windowMonths: windowMonths.value }))
 

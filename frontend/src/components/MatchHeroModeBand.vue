@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useDossier } from '../composables/useDossier'
 import { useNarrow } from '../composables/useNarrow'
 import { useOWData } from '../composables/useOWData'
+import { useWindowMonths } from '../composables/useWindowMonths'
 import { useWidgetConfig } from '../composables/useWidgetConfig'
 import { heroGameModeHeatmapSchema, type HeroGameModeHeatmapConfig } from '../dashboard/widgets'
 import WidgetConfigPopover from './WidgetConfigPopover.vue'
@@ -65,21 +66,7 @@ const configIsDefault = computed(() => {
 })
 
 // ── Trailing-window picker (all levels) ──
-const WINDOWS = [1, 3, 6, 12] as const
-type WindowKey = (typeof WINDOWS)[number]
-const WINDOW_STORAGE_KEY = 'recall.heroModeWindowMonths'
-function loadWindow(): WindowKey {
-  try {
-    const n = Number(localStorage.getItem(WINDOW_STORAGE_KEY))
-    if ((WINDOWS as readonly number[]).includes(n)) return n as WindowKey
-  } catch (_) { /* swallow */ }
-  return 6
-}
-const windowMonths = ref<WindowKey>(loadWindow())
-function pickWindow(m: WindowKey) {
-  windowMonths.value = m
-  try { localStorage.setItem(WINDOW_STORAGE_KEY, String(m)) } catch (_) { /* swallow */ }
-}
+const { WINDOW_MONTHS: WINDOWS, windowMonths, pickWindow } = useWindowMonths('recall.heroModeWindowMonths')
 
 // ── Drill stack ──
 interface DrillFrame {
