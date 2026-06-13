@@ -154,77 +154,85 @@ func (a *App) importJSONv1(payload []byte) error {
 		// (above) wraps `ErrImportMalformed`.
 		return fmt.Errorf("import: decode: %w", err)
 	}
+	if err := validateImportFilenames(doc); err != nil {
+		return err
+	}
+	remapID, err := a.clearAndRemapDirs(doc)
+	if err != nil {
+		return err
+	}
+	return a.importParentTables(doc, remapID)
+}
 
-	// Validate every row carries a non-empty filename. Filename is the
-	// UNIQUE upsert key on every parent table — a row without one would
-	// either collide with a previous null-filename row or store junk.
-	// Catches two real shapes of bad import: a hand-edited payload
-	// where someone deleted a filename, and a JSON `null` entry in an
-	// array (Go's json package silently decodes `[null]` into
-	// `[zero-value struct]` for `[]Row`, which is a schema-violating
-	// shape the spec doesn't allow — schemathesis v4's
-	// negative_data_rejection catches it).
-	for i, r := range doc.Summaries {
-		if r.Filename == "" {
-			return fmt.Errorf("import: summaries[%d] missing required filename", i)
+// requireFilenames fails if any row has an empty filename — the UNIQUE
+// upsert key on every parent table. Catches two real shapes of bad
+// import: a hand-edited payload with a deleted filename, and a JSON
+// `null` array entry (Go decodes `[null]` into `[zero-value struct]` for
+// `[]Row`, a schema-violating shape schemathesis v4's
+// negative_data_rejection catches). `table` is the plural array name for
+// the error message.
+func requireFilenames[T any](rows []T, table string, filename func(T) string) error {
+	for i, r := range rows {
+		if filename(r) == "" {
+			return fmt.Errorf("import: %s[%d] missing required filename", table, i)
 		}
 	}
-	for i, r := range doc.Teams {
-		if r.Filename == "" {
-			return fmt.Errorf("import: teams[%d] missing required filename", i)
-		}
-	}
-	for i, r := range doc.Personals {
-		if r.Filename == "" {
-			return fmt.Errorf("import: personals[%d] missing required filename", i)
-		}
-	}
-	for i, r := range doc.Ranks {
-		if r.Filename == "" {
-			return fmt.Errorf("import: ranks[%d] missing required filename", i)
-		}
-	}
-	for i, r := range doc.Unknowns {
-		if r.Filename == "" {
-			return fmt.Errorf("import: unknowns[%d] missing required filename", i)
-		}
-	}
+	return nil
+}
 
-	// Build the source-id → destination-id remap. EnsureScreenshotsDir
-	// is idempotent on path; calling it for each source path gives us
-	// the destination id whether the path already existed or not.
-	remap := make(map[int64]int64, len(doc.ScreenshotsDir))
+func validateImportFilenames(doc exportV1) error {
+	if err := requireFilenames(doc.Summaries, "summaries", func(r db.SummaryRow) string { return r.Filename }); err != nil {
+		return err
+	}
+	if err := requireFilenames(doc.Teams, "teams", func(r db.TeamsRow) string { return r.Filename }); err != nil {
+		return err
+	}
+	if err := requireFilenames(doc.Personals, "personals", func(r db.PersonalRow) string { return r.Filename }); err != nil {
+		return err
+	}
+	if err := requireFilenames(doc.Ranks, "ranks", func(r db.RankRow) string { return r.Filename }); err != nil {
+		return err
+	}
+	return requireFilenames(doc.Unknowns, "unknowns", func(r db.UnknownRow) string { return r.Filename })
+}
+
+// clearAndRemapDirs wipes the store and returns a source-id →
+// destination-id remap for screenshots_dirs FKs. The pre-Clear pass
+// validates every id string + registers the dirs so a malformed id fails
+// BEFORE the destructive Clear; the post-Clear pass rebuilds the remap
+// against the fresh (auto-increment-reset) destination ids.
+func (a *App) clearAndRemapDirs(doc exportV1) (func(int64) int64, error) {
+	// Pre-Clear validation pass: parse each id + ensure the dir so a bad
+	// id or registration failure aborts without wiping the store. The
+	// ids registered here are wiped by Clear and rebuilt below.
 	for srcIDStr, path := range doc.ScreenshotsDir {
-		srcID, err := strconv.ParseInt(srcIDStr, 10, 64)
-		if err != nil {
-			return fmt.Errorf("import: invalid screenshots_dir id %q: %w", srcIDStr, err)
+		if _, err := strconv.ParseInt(srcIDStr, 10, 64); err != nil {
+			return nil, fmt.Errorf("import: invalid screenshots_dir id %q: %w", srcIDStr, err)
 		}
-		dstID, err := a.store.EnsureScreenshotsDir(path)
-		if err != nil {
-			return fmt.Errorf("import: register dir %q: %w", path, err)
+		if _, err := a.store.EnsureScreenshotsDir(path); err != nil {
+			return nil, fmt.Errorf("import: register dir %q: %w", path, err)
 		}
-		remap[srcID] = dstID
 	}
 
 	if err := a.store.Clear(); err != nil {
-		return fmt.Errorf("import: clear: %w", err)
+		return nil, fmt.Errorf("import: clear: %w", err)
 	}
 
 	// Re-register dirs after Clear (Clear wipes screenshots_dirs too)
 	// and rebuild the remap from the post-clear ids. Source ids might
 	// now map to a different destination set since auto-increment
 	// resets aren't guaranteed.
-	remap = make(map[int64]int64, len(doc.ScreenshotsDir))
+	remap := make(map[int64]int64, len(doc.ScreenshotsDir))
 	for srcIDStr, path := range doc.ScreenshotsDir {
 		srcID, _ := strconv.ParseInt(srcIDStr, 10, 64)
 		dstID, err := a.store.EnsureScreenshotsDir(path)
 		if err != nil {
-			return fmt.Errorf("import: re-register dir %q: %w", path, err)
+			return nil, fmt.Errorf("import: re-register dir %q: %w", path, err)
 		}
 		remap[srcID] = dstID
 	}
 
-	remapID := func(srcID int64) int64 {
+	return func(srcID int64) int64 {
 		if srcID == 0 {
 			return db.SentinelScreenshotsDirID
 		}
@@ -236,42 +244,50 @@ func (a *App) importJSONv1(payload []byte) error {
 		// `screenshots_dir_id` column is `NOT NULL` so we can't drop
 		// it; the sentinel is the documented "unset" target.
 		return db.SentinelScreenshotsDirID
-	}
+	}, nil
+}
 
-	for _, r := range doc.Summaries {
-		r.ID = 0 // let SQLite assign a fresh primary key
-		r.ScreenshotsDirID = remapID(r.ScreenshotsDirID)
-		if err := a.store.UpsertSummary(r); err != nil {
-			return fmt.Errorf("import: summary %q: %w", r.Filename, err)
-		}
-	}
-	for _, r := range doc.Teams {
-		r.ID = 0
-		r.ScreenshotsDirID = remapID(r.ScreenshotsDirID)
-		if err := a.store.UpsertTeams(r); err != nil {
-			return fmt.Errorf("import: teams %q: %w", r.Filename, err)
-		}
-	}
-	for _, r := range doc.Personals {
-		r.ID = 0
-		r.ScreenshotsDirID = remapID(r.ScreenshotsDirID)
-		if err := a.store.UpsertPersonal(r); err != nil {
-			return fmt.Errorf("import: personal %q: %w", r.Filename, err)
-		}
-	}
-	for _, r := range doc.Ranks {
-		r.ID = 0
-		r.ScreenshotsDirID = remapID(r.ScreenshotsDirID)
-		if err := a.store.UpsertRank(r); err != nil {
-			return fmt.Errorf("import: rank %q: %w", r.Filename, err)
-		}
-	}
-	for _, r := range doc.Unknowns {
-		r.ID = 0
-		r.ScreenshotsDirID = remapID(r.ScreenshotsDirID)
-		if err := a.store.UpsertUnknown(r); err != nil {
-			return fmt.Errorf("import: unknown %q: %w", r.Filename, err)
+// importParentRows upserts each row with a fresh primary key (ID=0) and a
+// remapped screenshots_dir id. `table` is the singular name for the error
+// message.
+func importParentRows[T any](rows []T, table string, filename func(T) string, prep func(*T), upsert func(T) error) error {
+	for i := range rows {
+		r := rows[i]
+		prep(&r)
+		if err := upsert(r); err != nil {
+			return fmt.Errorf("import: %s %q: %w", table, filename(r), err)
 		}
 	}
 	return nil
+}
+
+func (a *App) importParentTables(doc exportV1, remapID func(int64) int64) error {
+	if err := importParentRows(doc.Summaries, "summary",
+		func(r db.SummaryRow) string { return r.Filename },
+		func(r *db.SummaryRow) { r.ID = 0; r.ScreenshotsDirID = remapID(r.ScreenshotsDirID) },
+		a.store.UpsertSummary); err != nil {
+		return err
+	}
+	if err := importParentRows(doc.Teams, "teams",
+		func(r db.TeamsRow) string { return r.Filename },
+		func(r *db.TeamsRow) { r.ID = 0; r.ScreenshotsDirID = remapID(r.ScreenshotsDirID) },
+		a.store.UpsertTeams); err != nil {
+		return err
+	}
+	if err := importParentRows(doc.Personals, "personal",
+		func(r db.PersonalRow) string { return r.Filename },
+		func(r *db.PersonalRow) { r.ID = 0; r.ScreenshotsDirID = remapID(r.ScreenshotsDirID) },
+		a.store.UpsertPersonal); err != nil {
+		return err
+	}
+	if err := importParentRows(doc.Ranks, "rank",
+		func(r db.RankRow) string { return r.Filename },
+		func(r *db.RankRow) { r.ID = 0; r.ScreenshotsDirID = remapID(r.ScreenshotsDirID) },
+		a.store.UpsertRank); err != nil {
+		return err
+	}
+	return importParentRows(doc.Unknowns, "unknown",
+		func(r db.UnknownRow) string { return r.Filename },
+		func(r *db.UnknownRow) { r.ID = 0; r.ScreenshotsDirID = remapID(r.ScreenshotsDirID) },
+		a.store.UpsertUnknown)
 }
