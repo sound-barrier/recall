@@ -199,6 +199,16 @@ func (a *App) captureFatal(stage string, err error) {
 // Startup returns and surfaces a user-readable dialog (Wails) or
 // exits with a clean stderr message (server mode). Previously these
 // were silent window-crashes with no log path the user could find.
+// saveSettingsBestEffort persists settings, logging (not returning) any
+// failure. Used on the best-effort persistence paths — startup defaults,
+// profile switches, probe results — where a write failure shouldn't abort
+// the operation but must not pass silently.
+func (a *App) saveSettingsBestEffort() {
+	if err := a.saveSettings(a.settings); err != nil {
+		applog.Subsystem("settings").Warn("persist settings failed", "err", err)
+	}
+}
+
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 	if !a.initProfiles() {
@@ -271,7 +281,7 @@ func (a *App) resolveSettings() {
 	// button no-ops) instead of silently dropping the setting.
 	if a.settings.ScreenshotsDir != "" && pathIsMissingOrNotADir(a.settings.ScreenshotsDir) {
 		a.settings.ScreenshotsDir = ""
-		_ = a.saveSettings(a.settings)
+		a.saveSettingsBestEffort()
 	}
 
 	// Resolve tesseract first — if the user hasn't configured a path,
@@ -281,7 +291,7 @@ func (a *App) resolveSettings() {
 	// if the path doesn't resolve to a working binary.
 	if a.settings.TesseractPath == "" {
 		a.settings.TesseractPath = defaultTesseractPath()
-		_ = a.saveSettings(a.settings)
+		a.saveSettingsBestEffort()
 	}
 	a.tessStatus = checkTesseract(a.settings.TesseractPath)
 	parser.SetTesseractPath(a.settings.TesseractPath)

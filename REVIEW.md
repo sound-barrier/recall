@@ -45,25 +45,6 @@ so items may propose breaking API / SQLite-schema / on-disk changes without
 migrating users. Measured with `gocyclo`, `wc -l`, `make cover`, and grep sweeps;
 re-measure before paying an item down (numbers drift).
 
-### Q1. Go production functions blow past the ~25-line / ≤10-complexity ceiling
-
-**Where:** every non-test function over 60 LOC (McCabe in parens where >15):
-
-| Function | LOC | McCabe | File |
-|---|---:|---:|---|
-| `(*App).CheckForUpdate` | 119 | — | `pkg/app/update.go` |
-
-**What:** each does more than "one thing in a single clause." Two shapes: the
-`register*Routes` group is route wiring with inline handler closures (extract one
-named handler per route, or accept it as flat wiring); the rest — `MoveMatches`,
-`ValidateBundle`, `import*`, `ExportBundle`, `Startup`, `CheckForUpdate` — are
-genuine multi-step logic to decompose. These are the live entries behind
-`docs/baselines/complexity-baseline.txt` (which says to track them here).
-
-**Size:** L. **Risk:** Low — pure refactors with existing test coverage.
-
----
-
 ### Q2. Oversized Vue SFCs (16 components over 500 lines)
 
 **Where:**
@@ -156,25 +137,6 @@ little headroom; CLAUDE.md asks for "higher where consequential" (parser,
 aggregation, error paths). Add targeted tests for the below-floor production units.
 
 **Size:** M. **Risk:** Low.
-
----
-
-### Q7. Swallowed errors on operations that can meaningfully fail
-
-**Where:** `_ = a.saveSettings(a.settings)` at `pkg/app/probe.go:358`,
-`app.go:256`, `app.go:266`, `profile_app.go:142`, `profile_app.go:213`,
-`profile_app.go:233`, `profile_app.go:237`; `_ = a.reopenActiveStore()`
-(`profile_app.go:157`); `_ = parser.Reload()` (`parser_dir.go:21`);
-`_ = TouchLastChecked(now)` (`update.go:223`).
-
-**What:** "never swallow errors silently." A failed `saveSettings` (disk full,
-perms) or `reopenActiveStore` leaves the app in a silently-wrong state. Surface or
-at least `slog.Warn` them. (The `os.Remove`/`os.WriteFile` ignores in
-`restoreSnapshot`/`removeTmpFiles`, `apply_data_update.go`, are best-effort
-rollback/cleanup and are fine — exclude those.)
-
-**Size:** M. **Risk:** Low–Med — surfacing a previously-ignored error can change
-flow; add a test per site.
 
 ---
 
