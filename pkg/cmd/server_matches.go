@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 
@@ -13,10 +11,65 @@ import (
 )
 
 // registerMatchRoutes attaches every /api/v1/matches/... handler to
-// apiMux. New routes under this resource family go in this file,
-// not in NewMux.
+// apiMux. New routes under this resource family go in this file
+// (collection + bulk handlers) or server_matches_item.go (the
+// per-{match_key} sub-resource handlers), not in NewMux.
 func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
-	apiMux.HandleFunc("GET /api/v1/matches", func(w http.ResponseWriter, r *http.Request) {
+	apiMux.HandleFunc("GET /api/v1/matches", handleGetMatches(a))
+	apiMux.HandleFunc("DELETE /api/v1/matches", handleClearMatches(a))
+	apiMux.HandleFunc("POST /api/v1/matches/transfers", handleMoveMatches(a))
+
+	// Explicit 405 stubs for `/matches/transfers`. Without these,
+	// `GET / PUT / DELETE /api/v1/matches/transfers` route to the
+	// {match_key} wildcard handler (the literal segment only wins on
+	// the methods we register) — DELETE would try to hard-delete a
+	// match keyed "transfers".
+	apiMux.HandleFunc("GET /api/v1/matches/transfers", methodNotAllowed("POST"))
+	apiMux.HandleFunc("PUT /api/v1/matches/transfers", methodNotAllowed("POST"))
+	apiMux.HandleFunc("DELETE /api/v1/matches/transfers", methodNotAllowed("POST"))
+
+	// Same 405 stub pattern for the bulk endpoints — without
+	// these, GET /api/v1/matches/play-mode would resolve to the
+	// {match_key} wildcard with matchKey="play-mode" and return 404.
+	// (Schemathesis's unsupported_method check expects 405.)
+	apiMux.HandleFunc("GET /api/v1/matches/play-mode", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("POST /api/v1/matches/play-mode", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("DELETE /api/v1/matches/play-mode", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("GET /api/v1/matches/queue-type", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("POST /api/v1/matches/queue-type", methodNotAllowed("PUT"))
+	apiMux.HandleFunc("DELETE /api/v1/matches/queue-type", methodNotAllowed("PUT"))
+
+	// Per-{match_key} sub-resource handlers live in server_matches_item.go.
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}", handleHardDeleteMatch(a))
+	apiMux.HandleFunc("GET /api/v1/matches/{match_key}", handleGetMatchByKey(a))
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/visibility", handleSetMatchVisibility(a))
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/resolution", handleResolveMatch(a))
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/annotation", handleSetMatchAnnotation(a))
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/review", handleSetMatchReview(a))
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/review", handleClearMatchReview(a))
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/queue", handleSetMatchQueue(a))
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/queue", handleClearMatchQueue(a))
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/play-mode", handleSetMatchPlayMode(a))
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/play-mode", handleClearMatchPlayMode(a))
+
+	apiMux.HandleFunc("PUT /api/v1/matches/queue-type", handleBulkSetMatchQueue(a))
+	apiMux.HandleFunc("PUT /api/v1/matches/play-mode", handleBulkSetMatchPlayMode(a))
+}
+
+// matchKeyFromPath reads the {match_key} path value and 400s when it is
+// empty. On failure the response is already written, so the caller just
+// returns. Shared by every per-{match_key} handler.
+func matchKeyFromPath(w http.ResponseWriter, r *http.Request) (string, bool) {
+	matchKey := r.PathValue("match_key")
+	if matchKey == "" {
+		http.Error(w, "match_key required in URL", http.StatusBadRequest)
+		return "", false
+	}
+	return matchKey, true
+}
+
+func handleGetMatches(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		// Optional pagination — `?limit=N&cursor=KEY` returns at most
 		// N records starting AFTER the record whose match_key matches
 		// `cursor`. The cursor is the previous page's last match_key;
@@ -46,9 +99,11 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 			rows = applyMatchesPagination(rows, limit, cursor)
 		}
 		writeJSON(w, rows, nil)
-	})
+	}
+}
 
-	apiMux.HandleFunc("DELETE /api/v1/matches", func(w http.ResponseWriter, r *http.Request) {
+func handleClearMatches(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		// `keep_ignored=true` preserves the Unknown-tab "Delete forever"
 		// suppress list across the wipe (Settings → Advanced exposes
 		// this as a "Keep suppress-list" checkbox on the Clear Database
@@ -83,14 +138,16 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
-	})
+	}
+}
 
-	// Bulk move matches to another profile. The endpoint takes a list
-	// of match_keys + the target profile name and transfers every
-	// matching row (across all 5 parent tables) + annotation + hidden
-	// flag into the target's SQLite DB, then hard-deletes the source.
-	// See pkg/app/profile_move.go for the two-phase rationale.
-	apiMux.HandleFunc("POST /api/v1/matches/transfers", func(w http.ResponseWriter, r *http.Request) {
+// handleMoveMatches bulk-moves matches to another profile. The endpoint
+// takes a list of match_keys + the target profile name and transfers
+// every matching row (across all 5 parent tables) + annotation + hidden
+// flag into the target's SQLite DB, then hard-deletes the source. See
+// pkg/app/profile_move.go for the two-phase rationale.
+func handleMoveMatches(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		// `*string` for target_profile + `[]*string` for match_keys so
 		// JSON `null` decodes to a nil-shaped value we can reject —
 		// see derefStringArray's doc-comment for the rationale. The
@@ -132,345 +189,18 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
-	})
+	}
+}
 
-	// Explicit 405 stubs for `/matches/transfers`. Without these,
-	// `GET / PUT / DELETE /api/v1/matches/transfers` route to the
-	// {match_key} wildcard handler (the literal segment only wins on
-	// the methods we register) — DELETE would try to hard-delete a
-	// match keyed "transfers".
-	apiMux.HandleFunc("GET /api/v1/matches/transfers", methodNotAllowed("POST"))
-	apiMux.HandleFunc("PUT /api/v1/matches/transfers", methodNotAllowed("POST"))
-	apiMux.HandleFunc("DELETE /api/v1/matches/transfers", methodNotAllowed("POST"))
-
-	// Same 405 stub pattern for the bulk endpoints — without
-	// these, GET /api/v1/matches/play-mode would resolve to the
-	// {match_key} wildcard with matchKey="play-mode" and return 404.
-	// (Schemathesis's unsupported_method check expects 405.)
-	apiMux.HandleFunc("GET /api/v1/matches/play-mode", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("POST /api/v1/matches/play-mode", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("DELETE /api/v1/matches/play-mode", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("GET /api/v1/matches/queue-type", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("POST /api/v1/matches/queue-type", methodNotAllowed("PUT"))
-	apiMux.HandleFunc("DELETE /api/v1/matches/queue-type", methodNotAllowed("PUT"))
-
-	// Hard-delete a single match — every parent row + annotation +
-	// hidden flag for matchKey goes. Surfaced by the Hidden drawer's
-	// "Delete forever" affordance once a user has already moved the
-	// match to the archive. Idempotent: unknown keys return 204.
-	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("match_key")
-		if matchKey == "" {
-			http.Error(w, "match_key required in URL", http.StatusBadRequest)
-			return
-		}
-		if err := a.HardDeleteMatch(matchKey); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	// Read a single match by key. Reuses GetMatchResults's aggregator
-	// + read-time inference, then filters to the requested key. 404
-	// via the ErrMatchNotFound sentinel keeps the wire surface clean
-	// (no 500 for an honest "not in the corpus").
-	apiMux.HandleFunc("GET /api/v1/matches/{match_key}", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("match_key")
-		if matchKey == "" {
-			http.Error(w, "match_key required in URL", http.StatusBadRequest)
-			return
-		}
-		rec, err := a.GetMatchByKey(matchKey)
-		if errors.Is(err, app.ErrMatchNotFound) {
-			http.Error(w, "match not found", http.StatusNotFound)
-			return
-		}
-		writeJSON(w, rec, err)
-	})
-
-	// Soft-delete (hide / unhide) a match. `hidden: true` adds the
-	// match to hidden_matches; `hidden: false` removes it. Both are
-	// idempotent — repeated identical calls succeed without error.
-	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/visibility", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("match_key")
-		if matchKey == "" {
-			http.Error(w, "match_key required in URL", http.StatusBadRequest)
-			return
-		}
-		// `Hidden *bool` so a missing or `null` field decodes to nil
-		// — distinguishable from `false`. Plain `bool` accepts both
-		// `null` and the field being absent as the zero value, which
-		// silently fires an Unhide call. Pinned by
-		// TestMatchVisibility_RejectsNullHidden.
-		var body struct {
-			Hidden *bool `json:"hidden"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
-			return
-		}
-		if body.Hidden == nil {
-			http.Error(w, "body must be {\"hidden\":<bool>}", http.StatusBadRequest)
-			return
-		}
-		var err error
-		if *body.Hidden {
-			err = a.HideMatch(matchKey)
-		} else {
-			err = a.UnhideMatch(matchKey)
-		}
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	// Resolve an ambiguous-attribution screenshot by attaching every
-	// parent row carrying the ambiguous: sentinel to the user's chosen
-	// match. resolved_to must be one of the recorded candidates OR a
-	// freshly-minted "match-<ts>" the user wants to attribute to a
-	// new standalone match (escape hatch when none of the candidates
-	// is right).
-	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/resolution", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("match_key")
-		if matchKey == "" {
-			http.Error(w, "match_key required in URL", http.StatusBadRequest)
-			return
-		}
-		var body struct {
-			ResolvedTo string `json:"resolved_to"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
-			return
-		}
-		if err := a.ResolveAmbiguousMatch(matchKey, body.ResolvedTo); err != nil {
-			switch {
-			case errors.Is(err, app.ErrInvalidAmbiguousKey),
-				errors.Is(err, app.ErrAmbiguousNotFound):
-				http.Error(w, err.Error(), http.StatusNotFound)
-				return
-			case errors.Is(err, app.ErrInvalidResolution):
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	// Upsert (or clear) the per-match user annotation. When every
-	// field is empty the row is deleted entirely — idempotent.
-	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/annotation", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("match_key")
-		if matchKey == "" {
-			http.Error(w, "match_key required in URL", http.StatusBadRequest)
-			return
-		}
-		// `[]*string` so `members: [null]` and `tags: [null]` decode
-		// to a pointer slice with nil entries — distinguishable from
-		// the empty-string "" the plain `[]string` form yields. The
-		// OpenAPI spec declares items: { type: string }; null isn't
-		// a string and must be rejected. Pinned by
-		// TestMatchAnnotations_RejectsNullInTags +
-		// TestMatchAnnotations_RejectsNullInMembers.
-		//
-		// `leaver` is json.RawMessage so we can detect explicit
-		// `leaver: null` (spec disallows it because Spectral can't
-		// parse a null member mixed into an enum). Plain `string`
-		// would silently decode `null` as "" — and "" IS a valid
-		// enum value, so the decoder couldn't differentiate.
-		// Read the raw body first so we can reject `null` (which Go's
-		// json silently decodes into the zero-value struct, then the
-		// SetMatchAnnotation "all-empty → delete" rule kicks in and
-		// the server returns 204 — schema-violating behaviour
-		// schemathesis v4's negative_data_rejection catches).
-		raw, rErr := io.ReadAll(io.LimitReader(r.Body, 1<<20))
-		if rErr != nil {
-			http.Error(w, "read body: "+rErr.Error(), http.StatusBadRequest)
-			return
-		}
-		if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
-			http.Error(w, "body must be a JSON object, not null", http.StatusBadRequest)
-			return
-		}
-		var body struct {
-			Leaver     json.RawMessage `json:"leaver"`
-			Note       string          `json:"note"`
-			ReplayCode string          `json:"replay_code"`
-			Members    []*string       `json:"members"`
-			Tags       []*string       `json:"tags"`
-		}
-		if err := json.Unmarshal(raw, &body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
-			return
-		}
-		leaver, lErr := decodeOptionalString("leaver", body.Leaver)
-		if lErr != nil {
-			http.Error(w, lErr.Error(), http.StatusBadRequest)
-			return
-		}
-		members, mErr := derefStringArray("members", body.Members)
-		if mErr != nil {
-			http.Error(w, mErr.Error(), http.StatusBadRequest)
-			return
-		}
-		tags, tErr := derefStringArray("tags", body.Tags)
-		if tErr != nil {
-			http.Error(w, tErr.Error(), http.StatusBadRequest)
-			return
-		}
-		if err := a.SetMatchAnnotation(app.AnnotationInput{
-			MatchKey:   matchKey,
-			Leaver:     leaver,
-			Note:       body.Note,
-			ReplayCode: body.ReplayCode,
-			Members:    members,
-			Tags:       tags,
-		}); err != nil {
-			if errors.Is(err, app.ErrInvalidLeaver) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	// Per-match review-status tag. PUT sets `'self'` (user reviewed
-	// the VOD themselves) or `'coach'` (a coach reviewed it). DELETE
-	// clears the tag, reverting to the implicit "not reviewed"
-	// state. Both directions are idempotent.
-	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/review", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("match_key")
-		if matchKey == "" {
-			http.Error(w, "match_key required in URL", http.StatusBadRequest)
-			return
-		}
-		var body struct {
-			ReviewedBy string `json:"reviewed_by"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
-			return
-		}
-		if err := a.SetMatchReview(matchKey, body.ReviewedBy); err != nil {
-			if errors.Is(err, app.ErrInvalidReviewedBy) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/review", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("match_key")
-		if matchKey == "" {
-			http.Error(w, "match_key required in URL", http.StatusBadRequest)
-			return
-		}
-		if err := a.ClearMatchReview(matchKey); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	// Per-match queue-type tag. PUT sets `'role'` (5v5 role queue) or
-	// `'open'` (6v6 open queue). DELETE clears the tag, reverting to
-	// the implicit "queue not set" state. Both directions are
-	// idempotent. Drives the radiogroup at the top of the
-	// match-detail panel and the Queue chip in "Narrow this set."
-	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/queue", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("match_key")
-		if matchKey == "" {
-			http.Error(w, "match_key required in URL", http.StatusBadRequest)
-			return
-		}
-		var body struct {
-			QueueType string `json:"queue_type"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
-			return
-		}
-		if err := a.SetMatchQueue(matchKey, body.QueueType); err != nil {
-			if errors.Is(err, app.ErrInvalidQueueType) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/queue", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("match_key")
-		if matchKey == "" {
-			http.Error(w, "match_key required in URL", http.StatusBadRequest)
-			return
-		}
-		if err := a.ClearMatchQueue(matchKey); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	// Per-match play-mode override. PUT sets `'quickplay'` or
-	// `'competitive'` — overriding the parser's data.mode. DELETE
-	// clears the override, reverting to the fallback chain
-	// (data.mode → rank presence → empty). Both directions are
-	// idempotent.
-	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/play-mode", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("match_key")
-		if matchKey == "" {
-			http.Error(w, "match_key required in URL", http.StatusBadRequest)
-			return
-		}
-		var body struct {
-			PlayMode string `json:"play_mode"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			http.Error(w, "invalid JSON body", http.StatusBadRequest)
-			return
-		}
-		if err := a.SetMatchPlayMode(matchKey, body.PlayMode); err != nil {
-			if errors.Is(err, app.ErrInvalidPlayMode) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/play-mode", func(w http.ResponseWriter, r *http.Request) {
-		matchKey := r.PathValue("match_key")
-		if matchKey == "" {
-			http.Error(w, "match_key required in URL", http.StatusBadRequest)
-			return
-		}
-		if err := a.ClearMatchPlayMode(matchKey); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	// Bulk queue-type write. Body: {"match_keys": [...], "queue_type":
-	// "role"|"open"|""}. Empty string clears the rows (bulk Clear).
-	// One SQL transaction so a partial mid-write crash leaves the
-	// table consistent; the per-match PUT/DELETE endpoints are still
-	// the right shape for one-off toggles, this endpoint exists so
-	// the sticky "set 47 selected matches" toolbar doesn't fire 47
-	// PUTs and pay 47 commit round-trips.
-	apiMux.HandleFunc("PUT /api/v1/matches/queue-type", func(w http.ResponseWriter, r *http.Request) {
+// handleBulkSetMatchQueue writes a queue-type to many matches at once.
+// Body: {"match_keys": [...], "queue_type": "role"|"open"|""}. Empty
+// string clears the rows (bulk Clear). One SQL transaction so a partial
+// mid-write crash leaves the table consistent; the per-match PUT/DELETE
+// endpoints are still the right shape for one-off toggles, this endpoint
+// exists so the sticky "set 47 selected matches" toolbar doesn't fire 47
+// PUTs and pay 47 commit round-trips.
+func handleBulkSetMatchQueue(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			MatchKeys []string `json:"match_keys"`
 			QueueType string   `json:"queue_type"`
@@ -488,12 +218,14 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
-	})
+	}
+}
 
-	// Bulk play-mode write. Body: {"match_keys": [...], "play_mode":
-	// "quickplay"|"competitive"|""}. Same shape as the bulk queue
-	// endpoint above.
-	apiMux.HandleFunc("PUT /api/v1/matches/play-mode", func(w http.ResponseWriter, r *http.Request) {
+// handleBulkSetMatchPlayMode is the play-mode counterpart of
+// handleBulkSetMatchQueue. Body: {"match_keys": [...], "play_mode":
+// "quickplay"|"competitive"|""}.
+func handleBulkSetMatchPlayMode(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			MatchKeys []string `json:"match_keys"`
 			PlayMode  string   `json:"play_mode"`
@@ -511,7 +243,7 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
-	})
+	}
 }
 
 // validateMatchesQueryParams rejects any query param the spec doesn't

@@ -51,7 +51,6 @@ re-measure before paying an item down (numbers drift).
 
 | Function | LOC | McCabe | File |
 |---|---:|---:|---|
-| `registerMatchRoutes` | 497 | 43 | `pkg/cmd/server_matches.go` |
 | `GenerateMatchFixture` | 402 | 45 | `pkg/app/fixtures.go` |
 | `(*App).MoveMatches` | 189 | 43 | `pkg/app/profile_move.go` |
 | `(*App).ExportBundle` | 156 | 26 | `pkg/app/export_bundle.go` |
@@ -134,8 +133,7 @@ others are single-concern but dense; lower priority.
 
 **Where:** `pkg/app/fixtures.go` (1277), `pkg/app/export_csv.go` (781),
 `pkg/db/dbtest/fake.go` (727), `pkg/app/correlation.go` (665),
-`pkg/app/update.go` (653), `pkg/cmd/server_matches.go` (611),
-`pkg/app/aggregate.go` (525).
+`pkg/app/update.go` (653), `pkg/app/aggregate.go` (525).
 
 **What:** several hold multiple concerns (e.g. `fixtures.go` = generation +
 coverage-balancing + image writing + colour math). Split per concern.
