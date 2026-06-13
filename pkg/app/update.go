@@ -178,28 +178,50 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	// Fire the game-data (main-channel) fetch in parallel with the
 	// release-channel binary-version fetch — they hit independent
 	// hosts (api.github.com vs sound-barrier.github.io) so serial
-	// would double the latency for no benefit. Joined at every return
-	// path via gameDataChan; failures collapse to GameDataStatus{}
-	// which the FE renders as "main channel unavailable".
-	gameDataChan := make(chan GameDataStatus, 1)
+	// would double the latency for no benefit. Joined at the end on
+	// success, or drained on the failure path so the goroutine never
+	// leaks; failures collapse to GameDataStatus{} which the FE
+	// renders as "main channel unavailable".
+	gameDataChan := startGameDataFetch()
+
+	meta, ok := fetchLatestReleaseMeta()
+	if !ok {
+		<-gameDataChan
+		return UpdateInfo{}
+	}
+	u := updateInfoFor(v, isDev, meta)
+	u.GameData = <-gameDataChan
+	return u
+}
+
+// startGameDataFetch kicks off the main-channel roster/version probe on a
+// background goroutine, returning the channel its single result lands on.
+func startGameDataFetch() chan GameDataStatus {
+	ch := make(chan GameDataStatus, 1)
 	go func() {
 		ver := fetchMainVersion()
 		mh, mm, ms := fetchMainRosters()
-		gameDataChan <- computeGameDataStatus(ver, mh, mm, ms)
+		ch <- computeGameDataStatus(ver, mh, mm, ms)
 	}()
-	withGameData := func(u UpdateInfo) UpdateInfo {
-		u.GameData = <-gameDataChan
-		return u
-	}
+	return ch
+}
 
+// releaseMeta is the slice of the GitHub release the update check needs.
+type releaseMeta struct {
+	latest      string
+	url         string
+	notes       string
+	lastChecked string
+}
+
+// fetchLatestReleaseMeta GETs the latest release, decodes it, and records
+// the last-checked timestamp. ok=false on any network/decode failure or an
+// empty tag — the caller collapses that to an empty UpdateInfo.
+func fetchLatestReleaseMeta() (releaseMeta, bool) {
 	client := newUpdateClient()
 	resp, err := client.Get(releasesURL)
 	if err != nil {
-		// Drain the goroutine even on the network-failure path so it
-		// doesn't leak. Empty-UpdateInfo is the contract the FE
-		// already reads; the Main field stays its zero value.
-		<-gameDataChan
-		return UpdateInfo{}
+		return releaseMeta{}, false
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -209,30 +231,36 @@ func (a *App) CheckForUpdate() UpdateInfo {
 		Body    string `json:"body"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		<-gameDataChan
-		return UpdateInfo{}
+		return releaseMeta{}, false
 	}
-
 	latest := strings.TrimPrefix(release.TagName, "v")
 	if latest == "" {
-		<-gameDataChan
-		return UpdateInfo{}
+		return releaseMeta{}, false
 	}
 
 	now := time.Now().UTC()
 	_ = TouchLastChecked(now)
-	lastChecked := now.Format(time.RFC3339)
-	notes := excerptReleaseNotes(release.Body)
+	return releaseMeta{
+		latest:      latest,
+		url:         release.HTMLURL,
+		notes:       excerptReleaseNotes(release.Body),
+		lastChecked: now.Format(time.RFC3339),
+	}, true
+}
 
+// updateInfoFor turns the current version + fetched release meta into the
+// UpdateInfo (minus GameData, which the caller joins). Dev builds report
+// DevBuild; otherwise a semver compare decides Available.
+func updateInfoFor(v string, isDev bool, m releaseMeta) UpdateInfo {
 	if isDev {
-		return withGameData(UpdateInfo{
+		return UpdateInfo{
 			Checked:       true,
 			DevBuild:      true,
-			Latest:        latest,
-			URL:           release.HTMLURL,
-			LastCheckedAt: lastChecked,
-			ReleaseNotes:  notes,
-		})
+			Latest:        m.latest,
+			URL:           m.url,
+			LastCheckedAt: m.lastChecked,
+			ReleaseNotes:  m.notes,
+		}
 	}
 
 	// Semver compare instead of raw string equality. Two reasons:
@@ -252,44 +280,36 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	// non-semver Version string) doesn't trip the "Available" flag
 	// any more aggressively than the old code did.
 	current, errCurrent := semver.NewVersion(v)
-	upstream, errUpstream := semver.NewVersion(latest)
+	upstream, errUpstream := semver.NewVersion(m.latest)
 	if errCurrent != nil || errUpstream != nil {
-		if latest == v {
-			return withGameData(UpdateInfo{
-				Checked:       true,
-				LastCheckedAt: lastChecked,
-				ReleaseNotes:  notes,
-			})
+		if m.latest == v {
+			return UpdateInfo{Checked: true, LastCheckedAt: m.lastChecked, ReleaseNotes: m.notes}
 		}
-		return withGameData(UpdateInfo{
+		return UpdateInfo{
 			Checked:       true,
 			Available:     true,
-			Latest:        latest,
-			URL:           release.HTMLURL,
-			LastCheckedAt: lastChecked,
-			ReleaseNotes:  notes,
-		})
+			Latest:        m.latest,
+			URL:           m.url,
+			LastCheckedAt: m.lastChecked,
+			ReleaseNotes:  m.notes,
+		}
 	}
 
 	if !current.LessThan(upstream) {
-		return withGameData(UpdateInfo{
-			Checked:       true,
-			LastCheckedAt: lastChecked,
-			ReleaseNotes:  notes,
-		})
+		return UpdateInfo{Checked: true, LastCheckedAt: m.lastChecked, ReleaseNotes: m.notes}
 	}
-	heroes, maps, sources := fetchReleaseRosters(latest)
-	return withGameData(UpdateInfo{
+	heroes, maps, sources := fetchReleaseRosters(m.latest)
+	return UpdateInfo{
 		Checked:       true,
 		Available:     true,
-		Latest:        latest,
-		URL:           release.HTMLURL,
+		Latest:        m.latest,
+		URL:           m.url,
 		LatestHeroes:  heroes,
 		LatestMaps:    maps,
 		LatestSources: sources,
-		LastCheckedAt: lastChecked,
-		ReleaseNotes:  notes,
-	})
+		LastCheckedAt: m.lastChecked,
+		ReleaseNotes:  m.notes,
+	}
 }
 
 // releaseNotesMaxBytes caps the body excerpt surfaced into the modal.
