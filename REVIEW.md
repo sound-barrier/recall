@@ -79,20 +79,6 @@ is local, guarded by the SFC + e2e suites.
 
 ---
 
-### Q3. Large TypeScript composables (>400 lines)
-
-**Where:** `useMatchesDossier.ts` (1198), `useMatchesNarrow.ts` (525),
-`useDashboardLayout.ts` (477), `useOnboardingTour.ts` (461) — all in
-`frontend/src/composables/`.
-
-**What:** `useMatchesDossier` mixes the bedrock-refs tier and the parameterized
-query-helper tier in one file (1198 lines) — split along that existing seam. The
-others are single-concern but dense; lower priority.
-
-**Size:** M. **Risk:** Low.
-
----
-
 ### Q5. Go tests are 100% white-box and reach into unexported internals
 
 **Where:** all 84 `pkg/**/*_test.go` files declare `package <pkg>` (0 use the
