@@ -2,6 +2,7 @@
 import { computed, ref, watch, nextTick, onBeforeUnmount, toRef } from 'vue'
 
 import { useScrollLock } from '../composables/useScrollLock'
+import { useHoverThumbnail } from '../composables/useHoverThumbnail'
 import type { IgnoredScreenshot } from '../api'
 
 // IgnoredFilesPanel — Settings → Advanced → "Manage ignored files."
@@ -92,62 +93,22 @@ function onThumbClick(filename: string) {
   emit('open-lightbox', filename, filenameList.value, {})
 }
 
-// Hover thumbnail — cursor-anchored 360×203 floating peek, mirrors
-// the Unknown tab's pattern (UnknownMapsView.vue). Teleport'd to
-// body so its `position: fixed` anchors to the viewport, not the
-// modal's transform-context, and so its z-index can sit above the
-// modal backdrop. mouseenter on a row sets the hovered key + the
-// img src; mousemove tracks the cursor; mouseleave clears.
-const hoveredFilename = ref<string | null>(null)
-const hoveredSrc = ref('')
-const thumbX = ref(0)
-const thumbY = ref(0)
-const THUMB_W = 360
-const THUMB_H = 203
-const CURSOR_GAP = 18
-
-function onHoverRow(filename: string, e: MouseEvent) {
-  hoveredFilename.value = filename
-  hoveredSrc.value = props.screenshotURL(filename)
-  updateThumbPosition(e)
-}
-
-function onMoveRow(filename: string, e: MouseEvent) {
-  if (hoveredFilename.value !== filename) return
-  updateThumbPosition(e)
-}
-
-function onLeaveRow() {
-  hoveredFilename.value = null
-  hoveredSrc.value = ''
-}
-
-// Anchor the thumb below-right of the cursor. Edge-flip horizontally /
-// vertically so it never gets clipped against the viewport edge —
-// matches the UnknownMapsView helper.
-function updateThumbPosition(e: MouseEvent) {
-  let x = e.clientX + CURSOR_GAP
-  let y = e.clientY + CURSOR_GAP
-  if (typeof window !== 'undefined') {
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    if (x + THUMB_W + CURSOR_GAP > vw) x = e.clientX - THUMB_W - CURSOR_GAP
-    if (y + THUMB_H + CURSOR_GAP > vh) y = e.clientY - THUMB_H - CURSOR_GAP
-    if (x < CURSOR_GAP) x = CURSOR_GAP
-    if (y < CURSOR_GAP) y = CURSOR_GAP
-  }
-  thumbX.value = x
-  thumbY.value = y
-}
-
-// Reactive gate the Teleport binds to. Hides the hover thumb when
-// the panel closes mid-hover (mouseleave never fires if the modal
-// unmounts under the cursor).
-const showHoverThumb = computed(() => {
-  if (!props.isOpen) return false
-  if (!hoveredFilename.value) return false
-  if (!hoveredSrc.value) return false
-  return true
+// Hover thumbnail — cursor-anchored floating peek, Teleport'd to body so
+// its `position: fixed` anchors to the viewport (not the modal's transform
+// context) and its z-index can sit above the backdrop. The state + position
+// math live in useHoverThumbnail, shared with the Unknown tab.
+const {
+  hoveredKey: hoveredFilename,
+  hoveredSrc,
+  thumbX,
+  thumbY,
+  showThumb: showHoverThumb,
+  onHover: onHoverRow,
+  onMove: onMoveRow,
+  onLeave: onLeaveRow,
+} = useHoverThumbnail({
+  isVisible: () => props.isOpen,
+  srcFor: (filename) => props.screenshotURL(filename),
 })
 
 // Focus + Escape. Bubble-phase (NOT capture) so that a child modal
@@ -187,8 +148,7 @@ watch(
       // Clear hover state too — if the user closes the modal mid-
       // hover the cursor never crosses the row boundary and the
       // stale thumb would otherwise stay on screen.
-      hoveredFilename.value = null
-      hoveredSrc.value = ''
+      onLeaveRow()
       await nextTick()
       lastFocus.value?.focus()
       lastFocus.value = null
