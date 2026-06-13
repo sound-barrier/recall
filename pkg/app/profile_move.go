@@ -39,6 +39,47 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 	if a.profiles == nil {
 		return fmt.Errorf("profiles: not initialized")
 	}
+	proceed, err := a.validateMoveRequest(matchKeys, targetProfile)
+	if err != nil || !proceed {
+		return err
+	}
+
+	src, annotations, hidden, err := a.loadMoveSource()
+	if err != nil {
+		return err
+	}
+
+	keep := make(map[string]bool, len(matchKeys))
+	for _, k := range matchKeys {
+		keep[k] = true
+	}
+
+	// Open the target profile's store at <profileDir>/db/recall.db,
+	// creating the db dir if it doesn't exist yet.
+	dbDir := filepath.Join(a.profiles.ProfileDir(targetProfile), "db")
+	if err := os.MkdirAll(dbDir, 0o700); err != nil {
+		return fmt.Errorf("move: ensure target db dir: %w", err)
+	}
+	targetStore, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
+	if err != nil {
+		return fmt.Errorf("move: open target db: %w", err)
+	}
+	defer func() { _ = targetStore.Close() }()
+
+	resolveDirID := dirIDResolver(targetStore, src.ScreenshotsDirs)
+	if err := movePhase1Parents(targetStore, src, keep, resolveDirID); err != nil {
+		return err
+	}
+	if err := movePhase1Sidecars(targetStore, matchKeys, annotations, hidden); err != nil {
+		return err
+	}
+	return a.movePhase2DeleteSource(matchKeys)
+}
+
+// validateMoveRequest validates targetProfile and decides whether the
+// move should proceed. Returns proceed=false (err=nil) for the
+// validated-but-empty-keys idempotent no-op.
+func (a *App) validateMoveRequest(matchKeys []string, targetProfile string) (proceed bool, err error) {
 	// Validate targetProfile FIRST, before the empty-keys early-return,
 	// so an empty-but-invalid request (e.g. "" or "../traversal")
 	// surfaces as 400 instead of being swallowed by the no-op branch.
@@ -59,70 +100,56 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 	//     names return ErrProfileNotFound → 404. The membership
 	//     check below catches the second case.
 	if err := validateProfileName(targetProfile); err != nil {
-		return err
+		return false, err
 	}
 	if !containsProfile(a.profiles.List(), targetProfile) {
-		return fmt.Errorf("%w: %q", ErrProfileNotFound, targetProfile)
+		return false, fmt.Errorf("%w: %q", ErrProfileNotFound, targetProfile)
 	}
 	if targetProfile == a.profiles.Active() {
-		return fmt.Errorf("%w: %q", ErrMoveTargetIsActive, targetProfile)
+		return false, fmt.Errorf("%w: %q", ErrMoveTargetIsActive, targetProfile)
 	}
-	if len(matchKeys) == 0 {
-		// Validated target, nothing to move — idempotent no-op. The
-		// empty-keys check sits HERE (not at the top of the function)
-		// so an empty body with a bad target_profile still reports
-		// the bad target instead of being swallowed.
-		return nil
-	}
+	// Validated target, nothing to move — idempotent no-op. The
+	// empty-keys check sits HERE (not at the top of the function)
+	// so an empty body with a bad target_profile still reports
+	// the bad target instead of being swallowed.
+	return len(matchKeys) > 0, nil
+}
 
-	// Load full source state once so we don't make N round-trips per
-	// match. The aggregator already does the same shape; in-memory
-	// filter is fine until profile sizes get into the 10k+ match
-	// range, at which point a SQL-side LoadForKeys filter is the
-	// natural next step (existing read paths stay unchanged).
+// loadMoveSource loads the active profile's full state once so the move
+// doesn't make N round-trips per match. The aggregator already does the
+// same shape; in-memory filter is fine until profile sizes get into the
+// 10k+ match range, at which point a SQL-side LoadForKeys filter is the
+// natural next step (existing read paths stay unchanged).
+func (a *App) loadMoveSource() (db.Screenshots, map[string]db.Annotation, map[string]bool, error) {
 	src, err := a.store.LoadAll()
 	if err != nil {
-		return fmt.Errorf("move: load source: %w", err)
+		return db.Screenshots{}, nil, nil, fmt.Errorf("move: load source: %w", err)
 	}
 	annotations, err := a.store.LoadAnnotations()
 	if err != nil {
-		return fmt.Errorf("move: load annotations: %w", err)
+		return db.Screenshots{}, nil, nil, fmt.Errorf("move: load annotations: %w", err)
 	}
 	hidden, err := a.store.LoadHiddenKeys()
 	if err != nil {
-		return fmt.Errorf("move: load hidden keys: %w", err)
+		return db.Screenshots{}, nil, nil, fmt.Errorf("move: load hidden keys: %w", err)
 	}
+	return src, annotations, hidden, nil
+}
 
-	keep := make(map[string]bool, len(matchKeys))
-	for _, k := range matchKeys {
-		keep[k] = true
-	}
-
-	// Open the target profile's store at <profileDir>/db/recall.db,
-	// creating the db dir if it doesn't exist yet.
-	targetDir := a.profiles.ProfileDir(targetProfile)
-	dbDir := filepath.Join(targetDir, "db")
-	if err := os.MkdirAll(dbDir, 0o700); err != nil {
-		return fmt.Errorf("move: ensure target db dir: %w", err)
-	}
-	targetStore, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
-	if err != nil {
-		return fmt.Errorf("move: open target db: %w", err)
-	}
-	defer func() { _ = targetStore.Close() }()
-
-	// Re-map screenshots_dir_id by resolving the source dir path on
-	// the target. Cached so we don't EnsureScreenshotsDir-ping per
-	// row when many rows share the same source dir.
-	dirIDCache := make(map[int64]int64)
-	resolveDirID := func(srcID int64) (int64, error) {
+// dirIDResolver re-maps a source screenshots_dir_id onto the target by
+// resolving the source dir's path against the target's screenshots_dirs
+// table. Cached so we don't EnsureScreenshotsDir-ping per row when many
+// rows share the same source dir.
+func dirIDResolver(targetStore db.Store, srcDirs map[int64]string) func(int64) (int64, error) {
+	cache := make(map[int64]int64)
+	return func(srcID int64) (int64, error) {
 		if srcID == 0 {
 			return 0, nil
 		}
-		if id, ok := dirIDCache[srcID]; ok {
+		if id, ok := cache[srcID]; ok {
 			return id, nil
 		}
-		path := src.ScreenshotsDirs[srcID]
+		path := srcDirs[srcID]
 		if path == "" {
 			return 0, nil
 		}
@@ -130,79 +157,89 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 		if err != nil {
 			return 0, err
 		}
-		dirIDCache[srcID] = id
+		cache[srcID] = id
 		return id, nil
 	}
+}
 
-	// Phase 1a: upsert every parent row whose match_key is in the
-	// move set.
-	for _, r := range src.Summaries {
-		if !keep[r.MatchKey] {
+// moveParentRows upserts every row whose match_key is in `keep` into the
+// target, re-resolving its screenshots_dir id first. The accessor
+// closures let one body serve all five parent-row types (struct fields
+// can't be reached generically). kind feeds the error messages.
+func moveParentRows[T any](
+	rows []T,
+	keep map[string]bool,
+	kind string,
+	matchKey func(T) string,
+	filename func(T) string,
+	dirID func(T) int64,
+	remap func(*T, int64),
+	resolve func(int64) (int64, error),
+	upsert func(T) error,
+) error {
+	for i := range rows {
+		r := rows[i]
+		if !keep[matchKey(r)] {
 			continue
 		}
-		newID, derr := resolveDirID(r.ScreenshotsDirID)
+		newID, derr := resolve(dirID(r))
 		if derr != nil {
-			return fmt.Errorf("move: resolve screenshots_dir for %q: %w", r.Filename, derr)
+			return fmt.Errorf("move: resolve screenshots_dir for %q: %w", filename(r), derr)
 		}
-		r.ScreenshotsDirID = newID
-		if err := targetStore.UpsertSummary(r); err != nil {
-			return fmt.Errorf("move: upsert summary %q: %w", r.Filename, err)
+		remap(&r, newID)
+		if err := upsert(r); err != nil {
+			return fmt.Errorf("move: upsert %s %q: %w", kind, filename(r), err)
 		}
 	}
-	for _, r := range src.Teams {
-		if !keep[r.MatchKey] {
-			continue
-		}
-		newID, derr := resolveDirID(r.ScreenshotsDirID)
-		if derr != nil {
-			return fmt.Errorf("move: resolve screenshots_dir for %q: %w", r.Filename, derr)
-		}
-		r.ScreenshotsDirID = newID
-		if err := targetStore.UpsertTeams(r); err != nil {
-			return fmt.Errorf("move: upsert teams %q: %w", r.Filename, err)
-		}
-	}
-	for _, r := range src.Personals {
-		if !keep[r.MatchKey] {
-			continue
-		}
-		newID, derr := resolveDirID(r.ScreenshotsDirID)
-		if derr != nil {
-			return fmt.Errorf("move: resolve screenshots_dir for %q: %w", r.Filename, derr)
-		}
-		r.ScreenshotsDirID = newID
-		if err := targetStore.UpsertPersonal(r); err != nil {
-			return fmt.Errorf("move: upsert personal %q: %w", r.Filename, err)
-		}
-	}
-	for _, r := range src.Ranks {
-		if !keep[r.MatchKey] {
-			continue
-		}
-		newID, derr := resolveDirID(r.ScreenshotsDirID)
-		if derr != nil {
-			return fmt.Errorf("move: resolve screenshots_dir for %q: %w", r.Filename, derr)
-		}
-		r.ScreenshotsDirID = newID
-		if err := targetStore.UpsertRank(r); err != nil {
-			return fmt.Errorf("move: upsert rank %q: %w", r.Filename, err)
-		}
-	}
-	for _, r := range src.Unknowns {
-		if !keep[r.MatchKey] {
-			continue
-		}
-		newID, derr := resolveDirID(r.ScreenshotsDirID)
-		if derr != nil {
-			return fmt.Errorf("move: resolve screenshots_dir for %q: %w", r.Filename, derr)
-		}
-		r.ScreenshotsDirID = newID
-		if err := targetStore.UpsertUnknown(r); err != nil {
-			return fmt.Errorf("move: upsert unknown %q: %w", r.Filename, err)
-		}
-	}
+	return nil
+}
 
-	// Phase 1b: per-key sidecar state (annotations, hidden flag).
+// movePhase1Parents upserts every parent row (across all five tables)
+// whose match_key is in the move set.
+func movePhase1Parents(targetStore db.Store, src db.Screenshots, keep map[string]bool, resolve func(int64) (int64, error)) error {
+	if err := moveParentRows(src.Summaries, keep, "summary",
+		func(r db.SummaryRow) string { return r.MatchKey },
+		func(r db.SummaryRow) string { return r.Filename },
+		func(r db.SummaryRow) int64 { return r.ScreenshotsDirID },
+		func(r *db.SummaryRow, id int64) { r.ScreenshotsDirID = id },
+		resolve, targetStore.UpsertSummary); err != nil {
+		return err
+	}
+	if err := moveParentRows(src.Teams, keep, "teams",
+		func(r db.TeamsRow) string { return r.MatchKey },
+		func(r db.TeamsRow) string { return r.Filename },
+		func(r db.TeamsRow) int64 { return r.ScreenshotsDirID },
+		func(r *db.TeamsRow, id int64) { r.ScreenshotsDirID = id },
+		resolve, targetStore.UpsertTeams); err != nil {
+		return err
+	}
+	if err := moveParentRows(src.Personals, keep, "personal",
+		func(r db.PersonalRow) string { return r.MatchKey },
+		func(r db.PersonalRow) string { return r.Filename },
+		func(r db.PersonalRow) int64 { return r.ScreenshotsDirID },
+		func(r *db.PersonalRow, id int64) { r.ScreenshotsDirID = id },
+		resolve, targetStore.UpsertPersonal); err != nil {
+		return err
+	}
+	if err := moveParentRows(src.Ranks, keep, "rank",
+		func(r db.RankRow) string { return r.MatchKey },
+		func(r db.RankRow) string { return r.Filename },
+		func(r db.RankRow) int64 { return r.ScreenshotsDirID },
+		func(r *db.RankRow, id int64) { r.ScreenshotsDirID = id },
+		resolve, targetStore.UpsertRank); err != nil {
+		return err
+	}
+	return moveParentRows(src.Unknowns, keep, "unknown",
+		func(r db.UnknownRow) string { return r.MatchKey },
+		func(r db.UnknownRow) string { return r.Filename },
+		func(r db.UnknownRow) int64 { return r.ScreenshotsDirID },
+		func(r *db.UnknownRow, id int64) { r.ScreenshotsDirID = id },
+		resolve, targetStore.UpsertUnknown)
+}
+
+// movePhase1Sidecars copies the per-key sidecar state (annotations,
+// hidden flag) into the target.
+func movePhase1Sidecars(targetStore db.Store, matchKeys []string, annotations map[string]db.Annotation, hidden map[string]bool) error {
 	for _, k := range matchKeys {
 		if ann, ok := annotations[k]; ok {
 			if err := targetStore.SetAnnotation(ann); err != nil {
@@ -215,9 +252,13 @@ func (a *App) MoveMatches(matchKeys []string, targetProfile string) error {
 			}
 		}
 	}
+	return nil
+}
 
-	// Phase 2: hard-delete from the source. HardDeleteMatch is
-	// idempotent on its own, so a partial completion + retry is safe.
+// movePhase2DeleteSource hard-deletes the moved rows from the source.
+// HardDeleteMatch is idempotent on its own, so a partial completion +
+// retry is safe.
+func (a *App) movePhase2DeleteSource(matchKeys []string) error {
 	for _, k := range matchKeys {
 		if err := a.store.HardDeleteMatch(k); err != nil {
 			return fmt.Errorf("move: delete source row for %q: %w", k, err)
