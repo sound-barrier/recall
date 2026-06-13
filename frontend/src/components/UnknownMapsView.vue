@@ -4,6 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import type { MatchRecord, UpdateInfo } from '../api'
 import { detectScreenshotSlots, screenshotURL } from '../match-helpers'
 import { useContextualCallout } from '../composables/useContextualCallout'
+import { useHoverThumbnail } from '../composables/useHoverThumbnail'
 import ContextualCallout from './ContextualCallout.vue'
 import { formatParsedAt } from '../match-time-helpers'
 import { filenameFromMatchKey } from '../match-key'
@@ -246,56 +247,30 @@ function isIgnoreArmed(matchKey: string): boolean {
 // the row. Suppressed when the card is expanded (the per-source-file
 // thumbnails in the expanded body already cover that need) and when
 // the record has no source files. Pairs with the existing click-to-
-// expand preview as the lower-friction triage path.
-const hoveredUnknownKey = ref<string | null>(null)
-const hoveredUnknownSrc = ref('')
-
-// Cursor-anchored position. Updated on every mousemove inside the
-// hovered card. Stored separately from hoveredUnknownKey so the
-// thumb can re-render position without re-evaluating the gate.
-const thumbX = ref(0)
-const thumbY = ref(0)
-
-// Sizing. The thumb is intentionally larger than the in-card peek
-// it replaced — the user couldn't read the screenshot at 240×135;
-// 360×203 (16:9, OW capture aspect) gives ~225 % more pixels and
-// still fits comfortably even on 1280-wide viewports after the
-// 18 px edge-flip margin.
-const THUMB_W = 360
-const THUMB_H = 203
-const CURSOR_GAP = 18
-
-function onHoverUnknown(rec: MatchRecord, e: MouseEvent) {
-  if (props.cardState.isSelected(rec.match_key)) return
-  const first = rec.source_files?.[0]
-  if (!first) return
-  hoveredUnknownKey.value = rec.match_key
-  hoveredUnknownSrc.value = screenshotURL(first, rec.source_dir_ids?.[first] ?? 0)
-  updateThumbPosition(e)
-}
-
-function onMoveUnknown(rec: MatchRecord, e: MouseEvent) {
-  if (hoveredUnknownKey.value !== rec.match_key) return
-  updateThumbPosition(e)
-}
-
-function onLeaveUnknown() {
-  hoveredUnknownKey.value = null
-  hoveredUnknownSrc.value = ''
-}
-
-// Reactive gate the Teleport binds to. mouseenter guards on
-// isSelected once, but if the user expands a card WHILE hovering
-// (the cursor never leaves the element so no fresh mouseenter
-// fires) the stale hover key would keep the thumb on screen. This
-// computed re-evaluates whenever cardState.isSelected flips, so
-// the expand-during-hover path hides the thumb on the same tick.
-const showHoverThumb = computed(() => {
-  const key = hoveredUnknownKey.value
-  if (!key) return false
-  if (!hoveredUnknownSrc.value) return false
-  return !props.cardState.isSelected(key)
+// expand preview as the lower-friction triage path. State + position
+// math live in the shared useHoverThumbnail composable.
+const {
+  hoveredSrc: hoveredUnknownSrc,
+  thumbX,
+  thumbY,
+  showThumb: showHoverThumb,
+  onHover,
+  onMove,
+  onLeave: onLeaveUnknown,
+} = useHoverThumbnail({
+  isVisible: () => true,
+  srcFor: (key) => {
+    // Hover lives only on the unmatched cards, so resolve against that list.
+    const rec = props.unknownRecords.find((r) => r.match_key === key)
+    const first = rec?.source_files?.[0]
+    return first ? screenshotURL(first, rec.source_dir_ids?.[first] ?? 0) : ''
+  },
+  // Suppress the peek while the card is expanded (its inline previews
+  // already cover that need).
+  canShow: (key) => !props.cardState.isSelected(key),
 })
+function onHoverUnknown(rec: MatchRecord, e: MouseEvent) { onHover(rec.match_key, e) }
+function onMoveUnknown(rec: MatchRecord, e: MouseEvent) { onMove(rec.match_key, e) }
 
 // Pre-fetch the first source file of every visible Unknown record
 // via the shared composable's preload registry so the hover thumb
@@ -356,11 +331,8 @@ function onPointerDownUnknown(rec: MatchRecord, e: PointerEvent) {
   clearPressTimer()
   pressTimer = setTimeout(() => {
     longPressFired = true
-    hoveredUnknownKey.value = rec.match_key
-    hoveredUnknownSrc.value = screenshotURL(first, rec.source_dir_ids?.[first] ?? 0)
-    // Anchor the thumb at the touch point and re-clamp into the
-    // viewport via the same helper the mouse path uses.
-    updateThumbPosition({ clientX: pressStartX, clientY: pressStartY } as MouseEvent)
+    // Anchor the thumb at the touch point via the shared hover composable.
+    onHover(rec.match_key, { clientX: pressStartX, clientY: pressStartY } as MouseEvent)
   }, LONG_PRESS_MS)
 }
 
@@ -375,8 +347,7 @@ function onPointerMoveUnknown(e: PointerEvent) {
 function onPointerEndUnknown() {
   clearPressTimer()
   if (longPressFired) {
-    hoveredUnknownKey.value = null
-    hoveredUnknownSrc.value = ''
+    onLeaveUnknown()
   }
 }
 
@@ -391,24 +362,6 @@ function onCardHeadClick(rec: MatchRecord) {
   props.cardState.toggleExpand(rec.match_key)
 }
 
-// Anchor the thumb just below-right of the cursor. Edge-flip
-// horizontally / vertically so it never gets clipped at the
-// viewport edge — small windows (or a card hovered near the right
-// rail) would otherwise cut off the right half of the screenshot.
-function updateThumbPosition(e: MouseEvent) {
-  let x = e.clientX + CURSOR_GAP
-  let y = e.clientY + CURSOR_GAP
-  if (typeof window !== 'undefined') {
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    if (x + THUMB_W + CURSOR_GAP > vw) x = e.clientX - THUMB_W - CURSOR_GAP
-    if (y + THUMB_H + CURSOR_GAP > vh) y = e.clientY - THUMB_H - CURSOR_GAP
-    if (x < CURSOR_GAP) x = CURSOR_GAP
-    if (y < CURSOR_GAP) y = CURSOR_GAP
-  }
-  thumbX.value = x
-  thumbY.value = y
-}
 </script>
 
 <template>
