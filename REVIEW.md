@@ -93,19 +93,6 @@ others are single-concern but dense; lower priority.
 
 ---
 
-### Q4. Large Go files (file-per-concern is drifting)
-
-**Where:** `pkg/app/fixtures.go` (1277), `pkg/app/export_csv.go` (781),
-`pkg/db/dbtest/fake.go` (727), `pkg/app/correlation.go` (665),
-`pkg/app/update.go` (653), `pkg/app/aggregate.go` (525).
-
-**What:** several hold multiple concerns (e.g. `fixtures.go` = generation +
-coverage-balancing + image writing + colour math). Split per concern.
-
-**Size:** M. **Risk:** Low.
-
----
-
 ### Q5. Go tests are 100% white-box and reach into unexported internals
 
 **Where:** all 84 `pkg/**/*_test.go` files declare `package <pkg>` (0 use the
