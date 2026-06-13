@@ -52,7 +52,6 @@ re-measure before paying an item down (numbers drift).
 | Function | LOC | McCabe | File |
 |---|---:|---:|---|
 | `GenerateMatchFixture` | 402 | 45 | `pkg/app/fixtures.go` |
-| `(*App).ExportBundle` | 156 | 26 | `pkg/app/export_bundle.go` |
 | `(*App).runClaimedParse` | 145 | — | `pkg/app/parse.go` |
 | `ValidateBundle` | 145 | 31 | `pkg/app/bundle_validate.go` |
 | `(*App).Startup` | 129 | — | `pkg/app/app.go` |
