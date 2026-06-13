@@ -5,7 +5,7 @@ import { usePersistedRef } from './usePersistedRef'
 // passes its own localStorage key; the choice persists across reloads and
 // defaults to 6M. Extracted from the three SFCs that hand-rolled the same
 // load/clamp/persist trio (rule of three) onto the usePersistedRef factory.
-export const WINDOW_MONTHS = [1, 3, 6, 12] as const
+const WINDOW_MONTHS = [1, 3, 6, 12] as const
 export type WindowMonths = (typeof WINDOW_MONTHS)[number]
 
 function isWindowMonths(n: number): n is WindowMonths {
