@@ -123,4 +123,58 @@ describe('useTesseractStatus', () => {
     await expect(resetTesseractPath()).resolves.toBeUndefined()
     await expect(gotoEngineSettings()).resolves.toBeUndefined()
   })
+
+  describe('detectTesseractBinary', () => {
+    it('no-ops when probeTesseractBinary is not wired', async () => {
+      const api = makeApi()
+      const { detectTesseractBinary, tesseractProbing, tesseractProbeStatus } = useTesseractStatus(api)
+      await detectTesseractBinary()
+      expect(tesseractProbing.value).toBe(false)
+      expect(tesseractProbeStatus.value).toBe('')
+    })
+
+    it('a hit applies the discovered path and reports success', async () => {
+      const setTesseractPath = vi.fn().mockResolvedValue(SAMPLE)
+      const api = makeApi({
+        probeTesseractBinary: vi.fn().mockResolvedValue({
+          found: true,
+          path: '/opt/homebrew/bin/tesseract',
+          tried: ['/usr/bin/tesseract', '/opt/homebrew/bin/tesseract'],
+        }),
+        setTesseractPath,
+      })
+      const { detectTesseractBinary, tesseractStatus, tesseractProbing, tesseractProbeStatus, tesseractProbeMessage, tesseractProbeTried } =
+        useTesseractStatus(api)
+      await detectTesseractBinary()
+      expect(setTesseractPath).toHaveBeenCalledWith('/opt/homebrew/bin/tesseract')
+      expect(tesseractStatus.value).toEqual(SAMPLE)
+      expect(tesseractProbeStatus.value).toBe('success')
+      expect(tesseractProbeMessage.value).toContain('/opt/homebrew/bin/tesseract')
+      expect(tesseractProbeTried.value).toHaveLength(2)
+      expect(tesseractProbing.value).toBe(false)
+    })
+
+    it('a miss reports blocked with the use-Change-Binary copy', async () => {
+      const api = makeApi({
+        probeTesseractBinary: vi.fn().mockResolvedValue({ found: false, path: '', tried: ['/usr/bin/tesseract'] }),
+      })
+      const { detectTesseractBinary, tesseractProbeStatus, tesseractProbeMessage, tesseractProbeTried } = useTesseractStatus(api)
+      await detectTesseractBinary()
+      expect(tesseractProbeStatus.value).toBe('blocked')
+      expect(tesseractProbeMessage.value).toContain('No Tesseract install found')
+      expect(tesseractProbeTried.value).toEqual(['/usr/bin/tesseract'])
+    })
+
+    it('a thrown probe is surfaced as a blocked Detect failed message', async () => {
+      const api = makeApi({
+        probeTesseractBinary: vi.fn().mockRejectedValue(new Error('boom')),
+      })
+      const { detectTesseractBinary, tesseractProbeStatus, tesseractProbeMessage, tesseractProbing } = useTesseractStatus(api)
+      await detectTesseractBinary()
+      expect(tesseractProbeStatus.value).toBe('blocked')
+      expect(tesseractProbeMessage.value).toContain('Detect failed')
+      expect(tesseractProbeMessage.value).toContain('boom')
+      expect(tesseractProbing.value).toBe(false)
+    })
+  })
 })
