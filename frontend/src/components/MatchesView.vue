@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import type { MatchRecord } from '../api'
-import { GetProfiles } from '../api'
 import { useMatchesDossier } from '../composables/useMatchesDossier'
 import { provideDossier } from '../composables/useDossier'
 import { provideNarrow } from '../composables/useNarrow'
 import MatchesSortGroupPopover from './MatchesSortGroupPopover.vue'
 import { useWeekStart } from '../composables/useWeekStart'
 import { useDensity } from '../composables/useDensity'
+import { useSortGroupMenu } from '../composables/useSortGroupMenu'
 import { useScrollAffordance } from '../composables/useScrollAffordance'
 import { useOWData } from '../composables/useOWData'
 import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
@@ -17,6 +17,9 @@ import MatchesDossierSections from './MatchesDossierSections.vue'
 import BulkActionBar from './BulkActionBar.vue'
 import MatchesArchiveDrawer from './MatchesArchiveDrawer.vue'
 import MatchesMembersList from './MatchesMembersList.vue'
+import MatchesListToolbar from './MatchesListToolbar.vue'
+import { useMatchesSelection } from '../composables/useMatchesSelection'
+import { useMatchesMovePicker } from '../composables/useMatchesMovePicker'
 // NarrowPopover is the heavyweight authoring surface (the search +
 // combobox + range pickers + active-clause range etc.). Lazy-load
 // it so MatchesView's initial chunk doesn't carry its ~30K of
@@ -159,8 +162,6 @@ const {
 // `useNarrowMode` also exposes a persisted user override so callers
 // can force a mode (no UI surface in this PR).
 const { mode: narrowMode } = useNarrowMode()
-const sortOrder = ref<'newest' | 'oldest'>('newest')
-const groupBy   = ref<'none' | 'day' | 'week' | 'month' | 'year'>('day')
 
 // The members list owns the windowing; onJumpToUndated reaches into it
 // to render the whole list before scrolling to the undated bucket.
@@ -189,44 +190,6 @@ watch(narrowedRecords, () => {
   })
 }, { flush: 'pre' })
 
-// Sort + Group dropdown — a single trigger button replaces the two
-// segmented-button fieldsets that used to live above the leaves
-// list. Captures the trigger rect on open so the popover anchors
-// to it; close on Esc / click-outside / radio-pick. Density stays
-// its own fieldset (toggle, not multi-axis).
-const sortGroupOpen   = ref(false)
-const sortGroupAnchor = ref<DOMRect | null>(null)
-
-function onSortGroupTriggerClick(e: MouseEvent) {
-  const t = e.currentTarget as HTMLElement | null
-  if (!t) return
-  sortGroupAnchor.value = t.getBoundingClientRect()
-  sortGroupOpen.value = !sortGroupOpen.value
-}
-
-function closeSortGroup() {
-  sortGroupOpen.value = false
-  sortGroupAnchor.value = null
-}
-
-const SORT_LABELS: Record<'newest' | 'oldest', string> = {
-  newest: 'Newest',
-  oldest: 'Oldest',
-}
-const GROUP_LABELS: Record<'none' | 'day' | 'week' | 'month' | 'year', string> = {
-  none:  'no group',
-  day:   'by day',
-  week:  'by week',
-  month: 'by month',
-  year:  'by year',
-}
-// Data density is a flat spreadsheet sorted by column header, so the
-// trigger drops the grouping suffix there (grouping doesn't apply).
-const sortGroupLabel = computed(() =>
-  density.value === 'data'
-    ? SORT_LABELS[sortOrder.value]
-    : `${SORT_LABELS[sortOrder.value]} · ${GROUP_LABELS[groupBy.value]}`,
-)
 
 // ─── Selection state (Gmail-style, no mode toggle) ──────────
 //
@@ -238,7 +201,22 @@ const sortGroupLabel = computed(() =>
 // Row-body clicks NEVER touch selection — they still open the detail
 // panel (live rows) or are inert (archive rows). The checkbox is the
 // only selection affordance.
-const selectedKeys = ref<Set<string>>(new Set())
+const {
+  selectedKeys,
+  toggleSelected,
+  clearSelection,
+  hideSelected,
+  selectAllVisible,
+  onBulkPlayMode,
+  onBulkQueue,
+  onBulkTag,
+} = useMatchesSelection({
+  narrowedRecords: () => narrowedRecords.value,
+  onHide: (keys) => emit('hide-matches', keys),
+  onBulkPlayMode: (keys, playMode) => emit('bulk-play-mode', keys, playMode),
+  onBulkQueue: (keys, queueType) => emit('bulk-queue', keys, queueType),
+  onBulkTag: (keys, tag) => emit('bulk-tag', keys, tag),
+})
 
 // Archive-drawer state + bulk-action handlers live in
 // useArchiveSelection. Destructured to top-level refs so the
@@ -253,94 +231,22 @@ const archive = useArchiveSelection({
 // shared move / hard-delete wiring still drives.
 const { archiveSelectedKeys, visibleRecords, clearArchiveSelection, cancelHardDelete } = archive
 
-function toggleSelected(key: string) {
-  const next = new Set(selectedKeys.value)
-  if (next.has(key)) next.delete(key)
-  else next.add(key)
-  selectedKeys.value = next
-}
-function clearSelection() {
-  selectedKeys.value = new Set()
-}
-function hideSelected() {
-  const keys = [...selectedKeys.value]
-  if (keys.length === 0) return
-  clearSelection()
-  emit('hide-matches', keys)
-}
+// ─── Move-to-profile picker (shared by the live bar + archive drawer) ───
+const {
+  movePickerOpen,
+  otherProfiles,
+  beginMoveLive,
+  beginMoveArchive,
+  cancelMove,
+  commitMove,
+} = useMatchesMovePicker({
+  liveKeys: () => [...selectedKeys.value],
+  archiveKeys: () => [...archiveSelectedKeys.value],
+  clearLive: clearSelection,
+  clearArchive: clearArchiveSelection,
+  onMove: (keys, target) => emit('move-matches', keys, target),
+})
 
-// Bulk play-mode / queue-type writers. Snapshot the keys (the user
-// could check more rows between the action and the round-trip),
-// clear the selection so the toolbar collapses, then bubble to
-// App.vue which owns the actual api.ts call + the post-write
-// reload. Selection clears optimistically because the alternative
-// — keeping the checkboxes lit while the PUT is in flight — would
-// strand stale state if the reload re-orders the list.
-function onBulkPlayMode(playMode: import('../api').PlayMode) {
-  const keys = [...selectedKeys.value]
-  if (keys.length === 0) return
-  clearSelection()
-  emit('bulk-play-mode', keys, playMode)
-}
-
-function onBulkQueue(queueType: import('../api').QueueType) {
-  const keys = [...selectedKeys.value]
-  if (keys.length === 0) return
-  clearSelection()
-  emit('bulk-queue', keys, queueType)
-}
-
-function onBulkTag(tag: string) {
-  const keys = [...selectedKeys.value]
-  if (keys.length === 0) return
-  clearSelection()
-  emit('bulk-tag', keys, tag)
-}
-
-// ─── Move-to-profile picker state ───────────────────────────
-//
-// The picker is a two-step affordance on each action bar: clicking
-// "Move to…" replaces the primary buttons with a row of profile-name
-// chips (one per OTHER profile). Clicking a chip fires move-matches
-// and clears the selection. Cancel reverts to the primary buttons.
-// availableProfiles is fetched on mount from /api/v1/profiles; if
-// there are no other profiles, the Move button is suppressed (a
-// one-profile install has nowhere to move).
-const availableProfiles = ref<{ active: string; profiles: string[] }>({ active: '', profiles: [] })
-const movePickerOpen = ref<'live' | 'archive' | null>(null)
-
-const otherProfiles = computed(() =>
-  availableProfiles.value.profiles.filter((p) => p !== availableProfiles.value.active),
-)
-
-function beginMoveLive() {
-  if (otherProfiles.value.length === 0) return
-  movePickerOpen.value = 'live'
-}
-function beginMoveArchive() {
-  if (otherProfiles.value.length === 0) return
-  movePickerOpen.value = 'archive'
-}
-function cancelMove() {
-  movePickerOpen.value = null
-}
-function commitMove(target: string) {
-  if (movePickerOpen.value === 'live') {
-    const keys = [...selectedKeys.value]
-    if (keys.length === 0) return
-    clearSelection()
-    movePickerOpen.value = null
-    emit('move-matches', keys, target)
-    return
-  }
-  if (movePickerOpen.value === 'archive') {
-    const keys = [...archiveSelectedKeys.value]
-    if (keys.length === 0) return
-    clearArchiveSelection()
-    movePickerOpen.value = null
-    emit('move-matches', keys, target)
-  }
-}
 
 // Single-row inline commit for hard-delete (per-archive-row Delete
 // button → Confirm/Cancel two-step). `confirmHardDelete` and
@@ -352,13 +258,6 @@ function commitHardDelete(key: string) {
   emit('hard-delete-match', key)
 }
 
-// Select-all for the LIVE leaves list (the archive variant lives on
-// the composable). Targets the narrowed + sorted set the user sees;
-// clamps to a no-op when empty.
-function selectAllVisible() {
-  const keys = narrowedRecords.value.map((r) => r.match_key)
-  selectedKeys.value = new Set(keys)
-}
 
 // ─── Dossier KPIs / breakdowns via useMatchesDossier ───────
 //
@@ -374,6 +273,17 @@ const { weekStart } = useWeekStart()
 // usePersistedRef so the user's choice survives reloads. Default is
 // `comfortable` (the historical render).
 const { density, setDensity } = useDensity()
+
+// Combined Sort + Group control (order, grouping, trigger-anchored popover).
+const {
+  sortOrder,
+  groupBy,
+  sortGroupOpen,
+  sortGroupAnchor,
+  onSortGroupTriggerClick,
+  closeSortGroup,
+  sortGroupLabel,
+} = useSortGroupMenu(() => density.value)
 
 // Back-to-top affordance — fixed-position button at lower-left of
 // the matches workspace. The composable owns the passive scroll
@@ -480,14 +390,6 @@ function onRowContextOpenSourceFolder(matchKey: string) {
 // frontend/wailsjs and are already in tsconfig's `include` so vue-tsc
 // resolves the property without an @ts-expect-error.
 const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
-
-onMounted(() => {
-  // Fetch the profile list once for the Move-to picker. Failures
-  // silently leave availableProfiles empty, which suppresses the
-  // Move-to button — gracefully degrades to the original bulk action
-  // bar instead of surfacing a broken affordance.
-  GetProfiles().then((res) => { availableProfiles.value = res }).catch(() => undefined)
-})
 </script>
 
 <template>
@@ -543,86 +445,16 @@ onMounted(() => {
 
       <!-- ─── MEMBERS ─────────────────────────────────────────── -->
       <section ref="leavesSectionRef" class="leaves" aria-label="Set members">
-        <header class="leaves-head">
-          <div class="leaves-head-left">
-            <span class="leaves-eyebrow">Members</span>
-            <h3 class="leaves-title">
-              {{ narrowedRecords.length }} matches in this set
-            </h3>
-          </div>
-          <div class="leaves-head-controls">
-            <button
-              type="button"
-              class="sort-group-trigger"
-              :class="{ open: sortGroupOpen }"
-              data-sort-group-trigger
-              aria-haspopup="dialog"
-              :aria-expanded="sortGroupOpen ? 'true' : 'false'"
-              :title="`Sort and group — currently ${sortGroupLabel}`"
-              @click="onSortGroupTriggerClick"
-            >
-              <span class="sort-group-label">{{ sortGroupLabel }}</span>
-              <span class="sort-group-caret" aria-hidden="true">▾</span>
-            </button>
-            <fieldset class="seg" aria-label="Row density">
-              <legend class="seg-legend">
-                Density
-              </legend>
-              <button
-                class="seg-btn"
-                :class="{ picked: density === 'comfortable' }"
-                :aria-pressed="density === 'comfortable' ? 'true' : 'false'"
-                :data-density-pick="density === 'comfortable' ? 'comfortable' : undefined"
-                title="Roomy row spacing"
-                @click="setDensity('comfortable')"
-              >
-                Cozy
-              </button>
-              <button
-                class="seg-btn"
-                :class="{ picked: density === 'compact' }"
-                :aria-pressed="density === 'compact' ? 'true' : 'false'"
-                :data-density-pick="density === 'compact' ? 'compact' : undefined"
-                title="Tighter row spacing — more rows per screen"
-                @click="setDensity('compact')"
-              >
-                Compact
-              </button>
-              <button
-                class="seg-btn"
-                :class="{ picked: density === 'data' }"
-                :aria-pressed="density === 'data' ? 'true' : 'false'"
-                :data-density-pick="density === 'data' ? 'data' : undefined"
-                title="Table view — sortable columns, hairline rows"
-                @click="setDensity('data')"
-              >
-                Data
-              </button>
-            </fieldset>
-            <!-- Jump to the "No date" section at the bottom of the
-               leaves list. useMatchesGroup always appends the
-               undated bucket last, regardless of sort order; this
-               button gives the user a one-click path to triage
-               those rows without scrolling past the dated corpus.
-               Disabled (predictable layout > collapsed layout) when
-               there are no undated matches in the current narrow. -->
-            <button
-              v-if="density !== 'data'"
-              type="button"
-              class="btn ghost jump-to-undated"
-              :class="{ 'has-undated': undatedCount > 0 }"
-              :disabled="undatedCount === 0"
-              :title="undatedCount === 0
-                ? 'No undated matches in this view'
-                : `Jump to ${undatedCount} undated match${undatedCount === 1 ? '' : 'es'}`"
-              data-jump-to-undated
-              @click="onJumpToUndated"
-            >
-              <span class="jump-glyph" aria-hidden="true">↓</span>
-              {{ undatedCount }} undated
-            </button>
-          </div>
-        </header>
+        <MatchesListToolbar
+          :match-count="narrowedRecords.length"
+          :sort-group-open="sortGroupOpen"
+          :sort-group-label="sortGroupLabel"
+          :density="density"
+          :undated-count="undatedCount"
+          @toggle-sort-group="onSortGroupTriggerClick"
+          @set-density="setDensity"
+          @jump-to-undated="onJumpToUndated"
+        />
 
         <!-- Bulk action bar — appears as soon as any row is ticked. No
            mode toggle: the checkbox on each row IS the affordance
@@ -785,187 +617,6 @@ onMounted(() => {
   gap: 0.5rem;
 }
 
-.leaves-head {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 0.85rem;
-  flex-wrap: wrap;
-}
-.leaves-head-left { display: flex; flex-direction: column; gap: 0.1rem; }
-
-.leaves-eyebrow {
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-
-  /* --accent-text is the theme-aware "accent for text" token: bright
-     orange on dark themes (same as --accent), deep rust on day for
-     AA contrast on cream. Using --accent directly here failed AA in
-     day theme (1.92:1 on cream). */
-  color: var(--accent-text);
-  font-weight: 700;
-}
-
-.leaves-title {
-  font-family: var(--display);
-  font-style: italic;
-  font-weight: 700;
-  font-size: 1.1rem;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
-  margin: 0;
-}
-
-/* ─── Leaves-head controls row ───────────────────────────────────
-   Three peer affordances — Sort + Group trigger, Density segmented
-   control, Jump-to-undated. Each used to ship with its own
-   typographic register and height; they now all live on a shared
-   ~28 px button shape so the row reads as one family. The shared
-   baseline is reproduced under each control's selector rather than
-   extracted into a class because Vue's \3c style scoped> doesn't let
-   us @extend, and the rules are short enough that DRY-by-mixin
-   isn't worth the indirection. */
-
-.leaves-head-controls {
-  display: inline-flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-/* Combined Sort + Group trigger — single button replaces the prior
-   two segmented fieldsets so the head controls fit comfortably
-   alongside the Density picker without overflowing the row. */
-.sort-group-trigger {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--border-strong);
-  border-radius: 2px;
-  padding: 0.4rem 0.8rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-family: var(--body);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: color var(--duration-fast) ease,
-              border-color var(--duration-fast) ease,
-              background var(--duration-fast) ease;
-}
-
-.sort-group-trigger:hover {
-  color: var(--text);
-  border-color: var(--text-faint);
-  background: rgb(255 255 255 / 2.5%);
-}
-
-.sort-group-trigger.open,
-.sort-group-trigger:focus-visible {
-  color: var(--text);
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  outline: none;
-}
-
-.sort-group-label {
-  display: inline-block;
-}
-
-.sort-group-caret {
-  font-size: 0.85rem;
-  line-height: 1;
-  transform: translateY(-1px);
-  transition: transform var(--duration-fast) ease;
-}
-
-.sort-group-trigger.open .sort-group-caret {
-  transform: translateY(-1px) rotate(180deg);
-}
-
-/* Density segmented control (`.seg` + `.seg-btn` × 2). Same overall
-   button-row shape as the sort trigger, but two halves joined by a
-   shared 1 px divider so they read as a single connected control.
-   Only used in this row — safe to keep scoped here rather than
-   promoting to app.css. */
-.seg {
-  appearance: none;
-  display: inline-flex;
-  align-items: stretch;
-  border: 1px solid var(--border-strong);
-  border-radius: 2px;
-  background: transparent;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-.seg-legend {
-  position: absolute;
-  width: 1px; height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
-
-.seg-btn {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  padding: 0.4rem 0.8rem;
-  font-family: var(--body);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: color var(--duration-fast) ease,
-              background var(--duration-fast) ease;
-}
-
-.seg-btn + .seg-btn {
-  border-left: 1px solid var(--border-strong);
-}
-
-.seg-btn:hover {
-  color: var(--text);
-  background: rgb(255 255 255 / 2.5%);
-}
-
-.seg-btn:focus-visible {
-  color: var(--text);
-  outline: none;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-}
-
-.seg-btn.picked {
-  background: var(--accent);
-
-  /* Documented text-on-accent token so the picked label clears AA
-     against the orange fill on every theme — day's accent is the
-     same OW orange as dark/night, but day's --surface is a light
-     cream that would push white-on-orange to ~1.92:1 (sub-AA). */
-  color: var(--primary-text-on-accent);
-}
-
-.seg-btn.picked:hover,
-.seg-btn.picked:focus-visible {
-  /* Keep the orange fill — don't let the shared hover stack lift it
-     to a translucent tint, which would visually un-pick the label. */
-  background: var(--accent);
-  color: var(--primary-text-on-accent);
-}
-
-/* ─── Section dividers + leaf rows ─────────────────────────── */
 
 /* ─── Scroll-to-top button ───────────────────────────────────────
    Fixed at the lower-left of the viewport, fades in once the user is
@@ -1029,61 +680,6 @@ onMounted(() => {
    leaves-head-controls row. Same .btn ghost foundation other ghost
    actions use; the jump-glyph keeps the affordance visually distinct
    from the density toggle without leaving the row's flow. */
-
-/* Jump-to-undated lives on the .btn ghost shape (defined in app.css)
-   so it shares height + typography + hover with .sort-group-trigger
-   and .seg-btn above. The local rules only add the
-   inline-flex / gap shape needed for the "↓ N undated" label and the
-   soft-emphasis state via .has-undated. */
-.jump-to-undated {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  white-space: nowrap;
-
-  /* Match the sort/density padding so the three controls share an
-     exact button-row height. The .btn ghost padding (0.55 × 0.95)
-     would push this control a few px taller than its peers. */
-  padding: 0.4rem 0.8rem;
-}
-
-.jump-to-undated[disabled] {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.jump-glyph {
-  font-family: var(--mono);
-  font-weight: 700;
-  color: var(--accent);
-  font-size: 0.85rem;
-  line-height: 1;
-  transform: translateY(-1px);
-}
-
-.jump-to-undated[disabled] .jump-glyph {
-  color: var(--text-faint);
-}
-
-/* Soft emphasis — applied when undatedCount > 0. Hints at "there's
-   something to triage" without shouting; the accent tint is subtle
-   enough to live alongside the unpicked density button without
-   competing for attention. */
-.jump-to-undated.has-undated {
-  background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--border-strong));
-  color: var(--text);
-}
-
-.jump-to-undated.has-undated:hover,
-.jump-to-undated.has-undated:focus-visible {
-  background: color-mix(in srgb, var(--accent) 16%, var(--surface-2));
-  border-color: var(--accent);
-}
-
-.jump-to-undated.has-undated .jump-glyph {
-  color: var(--accent-bright, var(--accent));
-}
 
 @media (prefers-reduced-motion: reduce) {
   .scroll-to-top,

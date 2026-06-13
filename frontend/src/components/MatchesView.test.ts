@@ -1,9 +1,19 @@
-import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
 
 import MatchesView from './MatchesView.vue'
+import { GetProfiles } from '../api'
 import type { MatchRecord } from '../api'
+
+// The move-to-profile picker fetches the profile list on mount (via
+// useMatchesMovePicker → GetProfiles). Mock just that one api call so the
+// picker tests can choose how many other profiles exist; everything else
+// stays the real module.
+vi.mock('../api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../api')>()),
+  GetProfiles: vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
+}))
 import {
   createMatchesNarrowState,
   useMatchesNarrow,
@@ -386,18 +396,10 @@ describe('MatchesView — Move to profile picker', () => {
   })
 
   it('clicking Move to… reveals the target picker (when other profiles exist)', async () => {
+    vi.mocked(GetProfiles).mockResolvedValue({ active: 'main', profiles: ['alt', 'main'] })
     const records = [makeRecord({ match_key: 'k1' })]
     const wrapper = mountView(records)
-
-    // Inject a fixture availableProfiles state directly (skips the
-    // onMount fetch which the unit test isn't trying to exercise).
-    // The component exposes availableProfiles via setup return for
-    // template binding; we reach in via the public-ish `vm` for the
-    // test only.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const vm = wrapper.vm as any
-    vm.availableProfiles = { active: 'main', profiles: ['alt', 'main'] }
-    await wrapper.vm.$nextTick()
+    await flushPromises() // let the picker's onMount GetProfiles resolve
 
     await wrapper.find('.leaf-checkbox').trigger('click')
     await wrapper.find('.bulk-move').trigger('click')
@@ -409,15 +411,13 @@ describe('MatchesView — Move to profile picker', () => {
   })
 
   it('clicking a target chip emits move-matches with the ticked keys + target', async () => {
+    vi.mocked(GetProfiles).mockResolvedValue({ active: 'main', profiles: ['alt', 'main'] })
     const records = [
       makeRecord({ match_key: 'k1' }),
       makeRecord({ match_key: 'k2' }, { finished_at: '22:30' }),
     ]
     const wrapper = mountView(records)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const vm = wrapper.vm as any
-    vm.availableProfiles = { active: 'main', profiles: ['alt', 'main'] }
-    await wrapper.vm.$nextTick()
+    await flushPromises()
 
     await wrapper.findAll('.leaf-checkbox')[0]!.trigger('click')
     await wrapper.findAll('.leaf-checkbox')[1]!.trigger('click')
@@ -434,12 +434,10 @@ describe('MatchesView — Move to profile picker', () => {
   })
 
   it('Cancel reverts the picker without emitting', async () => {
+    vi.mocked(GetProfiles).mockResolvedValue({ active: 'main', profiles: ['alt', 'main'] })
     const records = [makeRecord({ match_key: 'k1' })]
     const wrapper = mountView(records)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const vm = wrapper.vm as any
-    vm.availableProfiles = { active: 'main', profiles: ['alt', 'main'] }
-    await wrapper.vm.$nextTick()
+    await flushPromises()
 
     await wrapper.find('.leaf-checkbox').trigger('click')
     await wrapper.find('.bulk-move').trigger('click')
