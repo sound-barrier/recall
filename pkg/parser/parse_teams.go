@@ -178,17 +178,27 @@ func findRowXExtent(img image.Image, yT, yB int) (xLeft, xRight int) {
 // and groups together clusters that belong to the same number (digits with
 // thin commas between them). xLeft/xRight bound the search to the table area
 // so audio/mic icons and other off-table content don't get included.
+// statCluster is a horizontal run of bright columns — a candidate stat
+// number before merging + filtering.
+type statCluster struct{ minX, maxX int }
+
 func findStatColumns(img image.Image, yT, yB, xLeft, xRight int) []image.Rectangle {
-	bounds := img.Bounds()
-	W := bounds.Dx()
+	W := img.Bounds().Dx()
 	if xLeft < 0 {
 		xLeft = 0
 	}
 	if xRight < 0 || xRight >= W {
 		xRight = W - 1
 	}
+	counts := columnBrightnessCounts(img, yT, yB, xLeft, xRight)
+	raw := findBrightClusters(counts, xLeft, xRight)
+	return mergeStatClusters(raw, yT, yB, W)
+}
 
-	counts := make([]int, W)
+// columnBrightnessCounts counts, per x column in [xLeft, xRight], how many
+// rows in [yT, yB) are brighter than the stat-text luminance threshold.
+func columnBrightnessCounts(img image.Image, yT, yB, xLeft, xRight int) []int {
+	counts := make([]int, img.Bounds().Dx())
 	for x := xLeft; x <= xRight; x++ {
 		for y := yT; y < yB; y++ {
 			r, g, b, _ := img.At(x, y).RGBA()
@@ -198,9 +208,13 @@ func findStatColumns(img image.Image, yT, yB, xLeft, xRight int) []image.Rectang
 			}
 		}
 	}
+	return counts
+}
 
-	type cluster struct{ minX, maxX int }
-	var raw []cluster
+// findBrightClusters groups contiguous columns with >1 bright pixel into
+// runs (each a candidate stat number).
+func findBrightClusters(counts []int, xLeft, xRight int) []statCluster {
+	var raw []statCluster
 	inC := false
 	cs := 0
 	for x := xLeft; x <= xRight; x++ {
@@ -210,16 +224,21 @@ func findStatColumns(img image.Image, yT, yB, xLeft, xRight int) []image.Rectang
 				inC = true
 			}
 		} else if inC {
-			raw = append(raw, cluster{cs, x - 1})
+			raw = append(raw, statCluster{cs, x - 1})
 			inC = false
 		}
 	}
 	if inC {
-		raw = append(raw, cluster{cs, xRight})
+		raw = append(raw, statCluster{cs, xRight})
 	}
+	return raw
+}
 
-	// Merge clusters separated by a small gap (digits inside one number) and
-	// drop clusters that are too wide to be a stat number (player name areas).
+// mergeStatClusters turns raw bright-column runs into stat-column rects:
+// merge runs separated by a small gap (digits inside one number), drop runs
+// too wide to be a stat number (player names/portraits), then drop trailing
+// runs sitting far past the last column (audio/mic icons).
+func mergeStatClusters(raw []statCluster, yT, yB, W int) []image.Rectangle {
 	mergeGap := W / 200    // ~6 px on 1280, ~10 px on 1920
 	maxStatWidth := W / 20 // upper bound for "13,432" style numbers
 	var grouped []image.Rectangle
@@ -236,7 +255,6 @@ func findStatColumns(img image.Image, yT, yB, xLeft, xRight int) []image.Rectang
 		}
 		grouped = append(grouped, image.Rect(c.minX, yT, c.maxX, yB))
 	}
-	// Drop clusters that are too wide to be a stat number (player name/portrait).
 	filtered := grouped[:0]
 	for _, c := range grouped {
 		if c.Dx() <= maxStatWidth {

@@ -55,9 +55,6 @@ re-measure before paying an item down (numbers drift).
 | `(*App).Startup` | 129 | — | `pkg/app/app.go` |
 | `(*App).CheckForUpdate` | 119 | — | `pkg/app/update.go` |
 
-Additionally over the complexity-15 line but shorter: `findStatColumns`
-(20, `pkg/parser/parse_teams.go`).
-
 **What:** each does more than "one thing in a single clause." Two shapes: the
 `register*Routes` group is route wiring with inline handler closures (extract one
 named handler per route, or accept it as flat wiring); the rest — `MoveMatches`,
