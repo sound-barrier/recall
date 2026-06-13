@@ -220,7 +220,6 @@ func (a *App) Startup(ctx context.Context) {
 	}
 	a.bootReAggregate()
 	a.startEnabledServices()
-	a.assertStartupWiring()
 }
 
 // initProfiles loads (or initializes) the profile manager — every
@@ -346,19 +345,5 @@ func (a *App) startEnabledServices() {
 	}
 	if a.settings.WatchEnabled {
 		a.startWatching()
-	}
-}
-
-// assertStartupWiring fails loudly if the profile manager + store aren't
-// wired after a successful Startup. A future refactor breaking the wiring
-// would otherwise surface a confusing nil-pointer panic at a downstream
-// call site; this is a programming-error guard, not a user-facing path
-// (tests using NewWithStore skip Startup entirely and are unaffected).
-func (a *App) assertStartupWiring() {
-	if a.profiles == nil {
-		panic("App.Startup: profile manager wiring is nil after Startup completed; likely a refactor broke LoadProfiles or the captureFatal guard")
-	}
-	if a.store == nil {
-		panic("App.Startup: store is nil after Startup completed; likely a refactor broke openStore or the captureFatal guard")
 	}
 }
