@@ -97,22 +97,6 @@ direction, not a blanket rewrite.)
 
 ---
 
-### Q6. Coverage margins are thin; a few units sit below the 60% floor
-
-**Where:** `make cover` (2026-06-12): Go **65.9%** stmt (floor 60); frontend
-**68.62%** stmt / **71.6%** line / **62.92%** branch / **62.38%** func (floors
-60/60). Below floor individually: `frontend/src/composables/useTesseractStatus.ts`
-(57% line), `frontend/src/test-utils/mountApp.ts` (42% func — test util),
-`pkg/app/app_wails.go` (0% — Wails-tag-gated, see the parked desktop-e2e item).
-
-**What:** the umbrella passes but branch coverage (62.92%) and Go (65.9%) have
-little headroom; CLAUDE.md asks for "higher where consequential" (parser,
-aggregation, error paths). Add targeted tests for the below-floor production units.
-
-**Size:** M. **Risk:** Low.
-
----
-
 ### Q9. Invariant `panic` for post-Startup nil wiring
 
 **Where:** `pkg/app/app.go:326`, `app.go:329` — `panic("App.Startup: … is nil
