@@ -45,37 +45,28 @@ so items may propose breaking API / SQLite-schema / on-disk changes without
 migrating users. Measured with `gocyclo`, `wc -l`, `make cover`, and grep sweeps;
 re-measure before paying an item down (numbers drift).
 
-### Q2. Oversized Vue SFCs (16 components over 500 lines)
+### Q2. Oversized Vue SFCs — best-effort decomposition (two dense shells remain)
 
-**Where:**
+The 16 oversized SFCs were decomposed against the best-effort <600-line bar
+(documented in `CLAUDE.md` → Code style → File length): the flagship
+`MatchCardExpanded.vue` went 2858 → 487 (seven child SFCs + `useMatchAnnotationEditor`),
+and 13 others now sit under 600 via extracted composables / sub-components
+(`MatchHeroModeBand`, `MatchesMembersList`/`MatchesTable`, `UpdateCheckModal`,
+the Settings/Profile/Tour/IgnoredFiles/MatchDetail trims, the dashboard bands,
+etc.). `MatchesView.vue` (workspace shell) landed at ~700.
 
-| Component | Lines | Note |
-|---|---:|---|
-| `MatchCardExpanded.vue` | 2858 | 478 script (25 fns/computeds inline) / 736 template / 1639 scoped CSS |
-| `UnknownMapsView.vue` | 1458 | view |
-| `NarrowPopover.vue` | 1332 | filter rail |
-| `MatchesView.vue` | 1100 | workspace shell (extraction already in progress) |
-| `MatchHeroModeBand.vue` | 842 | dossier band |
-| `MatchesMembersList.vue` | 747 | |
-| `UpdateCheckModal.vue` | 719 | |
-| `MatchDetailPanel.vue` | 655 | |
-| `SettingsAdvanced.vue` | 638 | |
-| `ProfileSwitcher.vue` | 636 | |
-| `TourCallout.vue` | 612 | |
-| `IgnoredFilesPanel.vue` | 606 | |
-| `MatchMapRoleBand.vue` | 591 | |
-| `MatchesArchiveDrawer.vue` | 591 | |
-| `MatchesDossierHead.vue` | 562 | |
-| `SettingsView.vue` | 551 | |
+**Kept (best-effort), with rationale:** `NarrowPopover.vue` (~1177) and
+`UnknownMapsView.vue` (~1411) are orchestration shells that already delegate to
+several child SFCs; their residue is ~580 lines of *uniform* filter-dimension /
+triage-card sections sharing one scoped-CSS base + cross-coupled state. Forcing
+them under 600 would mean fragmenting into many per-section sub-components and
+moving shared scoped CSS global — artificial fragmentation + risk for a
+line-count win, against the YAGNI / "three similar lines beat one abstract one"
+rule. The clean wins were taken (`NarrowPresets` extracted; `useHoverThumbnail`
+shared); further splitting is deliberately deferred.
 
-**What:** violates SRP and "stateful logic goes in a composable, not an SFC's
-`<script setup>`." `MatchCardExpanded.vue` is the standout — its 478-line script
-with 25 functions/computeds belongs in composables, its 736-line template wants
-sub-components, and 1639 lines of scoped CSS is its own smell. Several others are
-mostly markup+CSS (lower priority); triage logic-heavy scripts first.
-
-**Size:** XL (spread across 16). **Risk:** Low — component/composable extraction
-is local, guarded by the SFC + e2e suites.
+**Size:** XL (done). **Risk:** Low — every extraction was a pure move guarded by
+the SFC + e2e suites.
 
 ---
 
