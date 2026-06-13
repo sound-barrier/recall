@@ -94,13 +94,50 @@ type ExportBundleOptions struct {
 // returned. The HTTP server uses the bytes as the response body;
 // Wails mode threads them into a SaveFileDialog → os.WriteFile.
 func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
-	// 1. Build the include set. GetMatchResults() runs the same
-	//    aggregator the Matches view consumes, so the "unknown" and
-	//    "hidden" definitions stay in lockstep with the UI.
+	// GetMatchResults() runs the same aggregator the Matches view
+	// consumes, so the "unknown" and "hidden" definitions stay in
+	// lockstep with the UI.
 	recs, err := a.GetMatchResults()
 	if err != nil {
 		return nil, fmt.Errorf("export bundle: aggregate: %w", err)
 	}
+	include := bundleIncludeSet(opts, recs)
+
+	snap, err := a.store.LoadAll()
+	if err != nil {
+		return nil, fmt.Errorf("export bundle: load: %w", err)
+	}
+	rows := filterBundleRows(snap, include)
+	screenshots := bundleScreenshotMap(rows)
+
+	// Capture one `now` for every embedded entry so manifest's
+	// `exported_at`, data.json's `exported_at`, and every ZIP
+	// local-file-header mtime agree to the second.
+	now := time.Now().UTC()
+	exportedAt := now.Format(time.RFC3339)
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+
+	if err := writeBundleData(zw, rows, exportedAt, now); err != nil {
+		return nil, err
+	}
+	// copyBundleScreenshots prunes the screenshots map to what actually
+	// landed on disk, so the manifest (built next) stays consistent.
+	if err := a.copyBundleScreenshots(zw, rows, snap, screenshots, now); err != nil {
+		return nil, err
+	}
+	if err := writeBundleManifest(zw, opts, include, screenshots, exportedAt, now); err != nil {
+		return nil, err
+	}
+	if err := zw.Close(); err != nil {
+		return nil, fmt.Errorf("export bundle: close zip: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+// bundleIncludeSet builds the set of match_keys the bundle covers: the
+// explicit keys plus (when toggled) every unknown / hidden match.
+func bundleIncludeSet(opts ExportBundleOptions, recs []MatchRecord) map[string]struct{} {
 	include := make(map[string]struct{}, len(opts.MatchKeys))
 	for _, k := range opts.MatchKeys {
 		include[k] = struct{}{}
@@ -113,77 +150,73 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 			include[r.MatchKey] = struct{}{}
 		}
 	}
+	return include
+}
 
-	// 2. Load the per-screenshot rows and filter every parent slice
-	//    by the include set. Children flow with their parents (the
-	//    db.SummaryRow / etc. structs already embed HeroesPlayed and
-	//    friends inline), so we don't have to walk child tables
-	//    separately.
-	snap, err := a.store.LoadAll()
-	if err != nil {
-		return nil, fmt.Errorf("export bundle: load: %w", err)
-	}
+// filterBundleRows keeps every parent row whose match_key is in the
+// include set. Children flow with their parents (the db.SummaryRow / etc.
+// structs embed HeroesPlayed and friends inline), so child tables don't
+// need a separate walk.
+func filterBundleRows(snap db.Screenshots, include map[string]struct{}) parentTables {
 	keep := func(k string) bool {
 		_, ok := include[k]
 		return ok
 	}
-	summaries := filterRows(snap.Summaries, keep, func(r db.SummaryRow) string { return r.MatchKey })
-	teams := filterRows(snap.Teams, keep, func(r db.TeamsRow) string { return r.MatchKey })
-	personals := filterRows(snap.Personals, keep, func(r db.PersonalRow) string { return r.MatchKey })
-	ranks := filterRows(snap.Ranks, keep, func(r db.RankRow) string { return r.MatchKey })
-	unknowns := filterRows(snap.Unknowns, keep, func(r db.UnknownRow) string { return r.MatchKey })
+	return parentTables{
+		summaries: filterRows(snap.Summaries, keep, func(r db.SummaryRow) string { return r.MatchKey }),
+		teams:     filterRows(snap.Teams, keep, func(r db.TeamsRow) string { return r.MatchKey }),
+		personals: filterRows(snap.Personals, keep, func(r db.PersonalRow) string { return r.MatchKey }),
+		ranks:     filterRows(snap.Ranks, keep, func(r db.RankRow) string { return r.MatchKey }),
+		unknowns:  filterRows(snap.Unknowns, keep, func(r db.UnknownRow) string { return r.MatchKey }),
+	}
+}
 
-	// 3. Build the screenshot map (filename → match_key) for the
-	//    manifest. Walking the filtered rows guarantees we only list
-	//    files we actually copy into the bundle.
-	screenshots := map[string]string{}
-	for _, r := range summaries {
-		screenshots[r.Filename] = r.MatchKey
+func addBundleScreenshots[T any](m map[string]string, rows []T, get func(T) (filename, key string)) {
+	for _, r := range rows {
+		f, k := get(r)
+		m[f] = k
 	}
-	for _, r := range teams {
-		screenshots[r.Filename] = r.MatchKey
-	}
-	for _, r := range personals {
-		screenshots[r.Filename] = r.MatchKey
-	}
-	for _, r := range ranks {
-		screenshots[r.Filename] = r.MatchKey
-	}
-	for _, r := range unknowns {
-		screenshots[r.Filename] = r.MatchKey
-	}
+}
 
-	// 4. Build the ZIP in-memory. Capture one `now` for every embedded
-	//    entry so manifest's `exported_at`, data.json's `exported_at`,
-	//    and every ZIP local-file-header mtime agree to the second.
-	now := time.Now().UTC()
-	exportedAt := now.Format(time.RFC3339)
-	var buf bytes.Buffer
-	zw := zip.NewWriter(&buf)
+// bundleScreenshotMap maps every included screenshot's filename to its
+// match_key. Walking the filtered rows guarantees we only list files we
+// actually copy into the bundle.
+func bundleScreenshotMap(t parentTables) map[string]string {
+	m := map[string]string{}
+	addBundleScreenshots(m, t.summaries, func(r db.SummaryRow) (string, string) { return r.Filename, r.MatchKey })
+	addBundleScreenshots(m, t.teams, func(r db.TeamsRow) (string, string) { return r.Filename, r.MatchKey })
+	addBundleScreenshots(m, t.personals, func(r db.PersonalRow) (string, string) { return r.Filename, r.MatchKey })
+	addBundleScreenshots(m, t.ranks, func(r db.RankRow) (string, string) { return r.Filename, r.MatchKey })
+	addBundleScreenshots(m, t.unknowns, func(r db.UnknownRow) (string, string) { return r.Filename, r.MatchKey })
+	return m
+}
 
-	// 4a. data.json — `recall-export/v1` payload restricted to the
-	//     included matches, WITHOUT the screenshots_dirs path map.
-	//     Stripping the map keeps the bundle free of the user's local
-	//     filesystem path; restore via POST /api/v1/imports remaps
-	//     every row's ScreenshotsDirID to 0 (use configured dir).
+// writeBundleData writes data.json — a `recall-export/v1` payload
+// restricted to the included matches, WITHOUT the screenshots_dirs path
+// map. Stripping the map keeps the bundle free of the user's local
+// filesystem path; restore via POST /api/v1/imports remaps every row's
+// ScreenshotsDirID to 0 (use configured dir).
+func writeBundleData(zw *zip.Writer, t parentTables, exportedAt string, now time.Time) error {
 	dataDoc := BundleDataV1{
 		Schema:        exportSchemaV1,
 		ExportedAt:    exportedAt,
 		RecallVersion: Version,
-		Summaries:     summaries,
-		Teams:         teams,
-		Personals:     personals,
-		Ranks:         ranks,
-		Unknowns:      unknowns,
+		Summaries:     t.summaries,
+		Teams:         t.teams,
+		Personals:     t.personals,
+		Ranks:         t.ranks,
+		Unknowns:      t.unknowns,
 	}
 	if err := bundleWriteJSON(zw, "data.json", dataDoc, now); err != nil {
-		return nil, fmt.Errorf("export bundle: write data.json: %w", err)
+		return fmt.Errorf("export bundle: write data.json: %w", err)
 	}
+	return nil
+}
 
-	// 5b. screenshots/<filename> — copy raw bytes off disk. Missing
-	//     files are silently skipped; their entries get pruned from
-	//     the in-memory `screenshots` map so the manifest stays
-	//     consistent with what the ZIP actually contains.
+// copyBundleScreenshots writes screenshots/<filename> raw bytes off disk.
+// Missing files are silently skipped and pruned from the `screenshots`
+// map so the manifest stays consistent with what the ZIP contains.
+func (a *App) copyBundleScreenshots(zw *zip.Writer, t parentTables, snap db.Screenshots, screenshots map[string]string, now time.Time) error {
 	dirByRowFn := func(dirID int64) string {
 		// dir-id 0 falls back to the live screenshots folder (same
 		// rule the screenshot handler uses for unparsed-watch files).
@@ -198,11 +231,11 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 		Filename string
 		DirID    int64
 	}{
-		toFilesDirs(summaries, func(r db.SummaryRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
-		toFilesDirs(teams, func(r db.TeamsRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
-		toFilesDirs(personals, func(r db.PersonalRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
-		toFilesDirs(ranks, func(r db.RankRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
-		toFilesDirs(unknowns, func(r db.UnknownRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
+		toFilesDirs(t.summaries, func(r db.SummaryRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
+		toFilesDirs(t.teams, func(r db.TeamsRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
+		toFilesDirs(t.personals, func(r db.PersonalRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
+		toFilesDirs(t.ranks, func(r db.RankRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
+		toFilesDirs(t.unknowns, func(r db.UnknownRow) (string, int64) { return r.Filename, r.ScreenshotsDirID }),
 	} {
 		for _, f := range batch {
 			dir := dirByRowFn(f.DirID)
@@ -221,16 +254,20 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 					delete(screenshots, f.Filename)
 					continue
 				}
-				return nil, fmt.Errorf("export bundle: read %s: %w", f.Filename, err)
+				return fmt.Errorf("export bundle: read %s: %w", f.Filename, err)
 			}
 			if err := bundleWriteRaw(zw, "screenshots/"+f.Filename, body, now); err != nil {
-				return nil, fmt.Errorf("export bundle: write screenshot: %w", err)
+				return fmt.Errorf("export bundle: write screenshot: %w", err)
 			}
 		}
 	}
+	return nil
+}
 
-	// 4c. manifest.json — assembled AFTER the screenshots loop so its
-	//     `screenshots` map reflects what actually landed in the ZIP.
+// writeBundleManifest writes manifest.json — assembled AFTER the
+// screenshots copy so its `screenshots` map reflects what actually landed
+// in the ZIP.
+func writeBundleManifest(zw *zip.Writer, opts ExportBundleOptions, include map[string]struct{}, screenshots map[string]string, exportedAt string, now time.Time) error {
 	mf := BundleManifestV1{
 		Schema:          BundleSchemaV1,
 		ExportedAt:      exportedAt,
@@ -242,13 +279,9 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 		Screenshots:     screenshots,
 	}
 	if err := bundleWriteJSON(zw, "manifest.json", mf, now); err != nil {
-		return nil, fmt.Errorf("export bundle: write manifest: %w", err)
+		return fmt.Errorf("export bundle: write manifest: %w", err)
 	}
-
-	if err := zw.Close(); err != nil {
-		return nil, fmt.Errorf("export bundle: close zip: %w", err)
-	}
-	return buf.Bytes(), nil
+	return nil
 }
 
 // filterRows keeps every row whose match_key (read via keyOf) is in
