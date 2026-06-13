@@ -1,21 +1,23 @@
-package app
+package app_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"recall/pkg/app"
 )
 
 func TestCheckState_RoundTrip(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	want := time.Date(2026, 6, 8, 14, 32, 11, 0, time.UTC)
-	if err := SaveCheckState(CheckState{LastCheckedAt: want}); err != nil {
+	if err := app.SaveCheckState(app.CheckState{LastCheckedAt: want}); err != nil {
 		t.Fatalf("SaveCheckState: %v", err)
 	}
 
-	got, err := LoadCheckState()
+	got, err := app.LoadCheckState()
 	if err != nil {
 		t.Fatalf("LoadCheckState: %v", err)
 	}
@@ -27,7 +29,7 @@ func TestCheckState_RoundTrip(t *testing.T) {
 func TestCheckState_MissingFileReturnsZero(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
-	s, err := LoadCheckState()
+	s, err := app.LoadCheckState()
 	if err != nil {
 		t.Fatalf("LoadCheckState: want nil err for missing file, got %v", err)
 	}
@@ -43,7 +45,7 @@ func TestCheckState_CorruptFileReturnsZero(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s, err := LoadCheckState()
+	s, err := app.LoadCheckState()
 	if err != nil {
 		t.Fatalf("LoadCheckState: want nil err for corrupt file, got %v", err)
 	}
@@ -55,18 +57,18 @@ func TestCheckState_CorruptFileReturnsZero(t *testing.T) {
 func TestDataManifest_RoundTrip(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
-	want := DataManifest{
+	want := app.DataManifest{
 		AppliedReleaseTag: "1.2.3",
 		AppliedAt:         time.Date(2026, 6, 8, 14, 32, 11, 0, time.UTC),
-		Files: map[string]ManifestFile{
+		Files: map[string]app.ManifestFile{
 			"heroes.yaml": {SHA256: "abcd", Size: 1234},
 		},
 	}
-	if err := SaveManifest(want); err != nil {
+	if err := app.SaveManifest(want); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
 
-	got, err := LoadManifest()
+	got, err := app.LoadManifest()
 	if err != nil {
 		t.Fatalf("LoadManifest: %v", err)
 	}
@@ -84,7 +86,7 @@ func TestDataManifest_RoundTrip(t *testing.T) {
 func TestDataManifest_MissingFileReturnsZero(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
-	m, err := LoadManifest()
+	m, err := app.LoadManifest()
 	if err != nil {
 		t.Fatalf("LoadManifest: %v", err)
 	}
@@ -97,11 +99,11 @@ func TestTouchLastChecked_WritesNow(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	now := time.Date(2026, 6, 8, 14, 0, 0, 0, time.UTC)
-	if err := TouchLastChecked(now); err != nil {
+	if err := app.TouchLastChecked(now); err != nil {
 		t.Fatalf("TouchLastChecked: %v", err)
 	}
 
-	s, _ := LoadCheckState()
+	s, _ := app.LoadCheckState()
 	if !s.LastCheckedAt.Equal(now) {
 		t.Errorf("LastCheckedAt: got %v, want %v", s.LastCheckedAt, now)
 	}
