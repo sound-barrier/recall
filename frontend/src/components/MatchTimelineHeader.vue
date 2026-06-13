@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import type { MatchRecord } from '../api'
+import { useWindowMonths } from '../composables/useWindowMonths'
 import MatchHeatmapHeader from './MatchHeatmapHeader.vue'
 import MatchSparklineBrush from './MatchSparklineBrush.vue'
 
@@ -30,17 +31,7 @@ const emit = defineEmits<{
   'update:filter-to':   [value: string]
 }>()
 
-type WindowKey = 1 | 3 | 6 | 12
-const STORAGE_KEY = 'recall.timelineWindowMonths'
-function loadStoredWindow(): WindowKey {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    const n = Number(raw)
-    if (n === 1 || n === 3 || n === 6 || n === 12) return n
-  } catch (_) { /* swallow */ }
-  return 6
-}
-const windowMonths = ref<WindowKey>(loadStoredWindow())
+const { windowMonths, pickWindow } = useWindowMonths('recall.timelineWindowMonths')
 
 const windowWeeks = computed((): number => {
   switch (windowMonths.value) {
@@ -51,11 +42,6 @@ const windowWeeks = computed((): number => {
     default: return 26
   }
 })
-
-function pickWindow(months: WindowKey) {
-  windowMonths.value = months
-  try { localStorage.setItem(STORAGE_KEY, String(months)) } catch (_) { /* swallow */ }
-}
 
 const windowLabel = computed(() => `Last ${windowMonths.value} month${windowMonths.value === 1 ? '' : 's'}`)
 </script>
