@@ -1,4 +1,4 @@
-package cmd
+package cmd_test
 
 import (
 	"net/http"
@@ -6,6 +6,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"recall/pkg/cmd"
 	"recall/pkg/db/dbtest"
 )
 
@@ -145,5 +146,5 @@ func TestServerSmoke_SPAFallback_StaticAsset_Returns404OnEmptyAssetFS(t *testing
 func smokeMuxWithAssets(t *testing.T, assets fstest.MapFS) *http.ServeMux {
 	t.Helper()
 	a, _ := newTestApp(t, dbtest.New())
-	return NewMux(a, assets)
+	return cmd.NewMux(a, assets)
 }
