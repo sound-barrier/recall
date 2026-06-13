@@ -71,6 +71,15 @@ without agreement on direction.
   handles more than one level of abstraction, extract. The test is: can you
   describe what it does in a single clause without using "and"?
 
+- **File length**: aim to keep source files under ~500 lines. A file past that
+  is usually carrying more than one concern and wants splitting — file-per-concern
+  in Go, sub-components + composables in Vue, pure helpers pulled into their own
+  module. This is **best-effort, not a hard gate**: generated code, dense parser
+  logic, or a single cohesive component whose bulk is irreducible markup/CSS can
+  legitimately exceed it. The goal is clean, single-concern files; we recognize
+  perfection isn't always reachable, so treat 500 as the direction of travel and
+  call out (don't silently grow) files that blow well past it.
+
 - **McCabe cyclomatic complexity**: aspire to keep per-function complexity ≤ 10.
   Anything above 15 is a refactor candidate and should be called out in review.
   Reaching the ideal isn't always realistic — deeply nested parser logic or
