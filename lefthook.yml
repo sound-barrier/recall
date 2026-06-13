@@ -92,6 +92,17 @@ pre-commit:
       glob: "*.sh"
       run: shellcheck {staged_files}
 
+    # ── Python ────────────────────────────────────────────────────────
+    # ruff lint + format on staged .py. Same tool as `make lint-py` / CI.
+    # `check --fix` and `format` autofix; stage_fixed re-stages so the
+    # commit carries the canonical form. Rule selection is in ruff.toml.
+    ruff:
+      glob: "*.py"
+      run: |
+        ruff check --fix {staged_files}
+        ruff format {staged_files}
+      stage_fixed: true
+
     # ── Spell-check ───────────────────────────────────────────────────
     # typos is a Rust binary, ~50ms on a typical staged-file set. Config
     # lives in _typos.toml at the repo root (excludes auto-generated

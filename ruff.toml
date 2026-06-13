@@ -1,0 +1,15 @@
+# Ruff config for the repo's Python (currently scripts/ci/render-pr-report.py).
+# Mirrors the project's house style: lint + format, but line length is NOT
+# enforced (long Markdown/report string literals are intentional — same call
+# we make for YAML in .yamllint). Version pinned in tool-versions.env
+# (RUFF_VERSION); wired into `make lint-py`/`fmt-py`, the ruff lefthook hook,
+# and the CI "Lint Python (ruff)" step.
+
+# Conservative target so pyupgrade (UP) doesn't push 3.10+-only syntax onto a
+# script that runs against whatever Python ubuntu-latest ships.
+target-version = "py39"
+
+[lint]
+# Ruff's default (E4/E7/E9 + F) plus import-sorting, pyupgrade, bugbear, and
+# simplify. E501 (line length) is deliberately omitted.
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM"]

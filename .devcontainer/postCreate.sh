@@ -122,6 +122,12 @@ pipx install "semgrep==${SEMGREP_VERSION}"
 log "schemathesis ${SCHEMATHESIS_VERSION}"
 pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
 
+# ─── ruff (Python lint + format) ──────────────────────────────────────
+# Powers `make lint-py`/`fmt-py`, the ruff pre-commit hook, and the CI
+# "Lint Python (ruff)" step. Pin lives in tool-versions.env (RUFF_VERSION).
+log "ruff ${RUFF_VERSION}"
+pipx install "ruff==${RUFF_VERSION}"
+
 # ─── direnv shell hook ────────────────────────────────────────────────
 # The Dev Containers spec gives the `vscode` user a bash login shell.
 # Wire direnv into it so cd-ing into the workspace activates .envrc.
