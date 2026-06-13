@@ -56,14 +56,11 @@ re-measure before paying an item down (numbers drift).
 | `(*App).ExportBundle` | 156 | 26 | `pkg/app/export_bundle.go` |
 | `(*App).runClaimedParse` | 145 | — | `pkg/app/parse.go` |
 | `ValidateBundle` | 145 | 31 | `pkg/app/bundle_validate.go` |
-| `registerProfileRoutes` | 131 | 21 | `pkg/cmd/server_profiles.go` |
 | `(*App).importJSONv1` | 130 | 30 | `pkg/app/export.go` |
 | `(*App).Startup` | 129 | — | `pkg/app/app.go` |
 | `ensureCoverage` | 126 | 23 | `pkg/app/fixtures.go` |
-| `registerBackupRoutes` | 120 | — | `pkg/cmd/server_backup.go` |
 | `(*App).CheckForUpdate` | 119 | — | `pkg/app/update.go` |
 | `(*App).importDataCSV` | 117 | 29 | `pkg/app/export_csv.go` |
-| `registerSettingsRoutes` | 108 | — | `pkg/cmd/server_settings.go` |
 | `(*App).ScreenshotHandler` | 102 | 19 | `pkg/app/screenshot_handler.go` |
 
 Additionally over the complexity-15 line but shorter: `matchByEAD` (28,

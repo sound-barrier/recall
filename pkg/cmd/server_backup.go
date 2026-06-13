@@ -16,9 +16,16 @@ import (
 // data + screenshots), POST /imports (REPLACE the local DB from a
 // previously-exported payload).
 func registerBackupRoutes(apiMux *http.ServeMux, a *app.App) {
-	// `format` query selects the wire format. Default is JSON — CSV
-	// emits a ZIP archive (one CSV per parent/child table + manifest).
-	apiMux.HandleFunc("GET /api/v1/exports", func(w http.ResponseWriter, r *http.Request) {
+	apiMux.HandleFunc("GET /api/v1/exports", handleExportData(a))
+	apiMux.HandleFunc("POST /api/v1/exports/bundle", handleExportBundle(a))
+	apiMux.HandleFunc("POST /api/v1/imports", handleImportData(a))
+}
+
+// handleExportData streams the full DB export. The `format` query selects
+// the wire format. Default is JSON — CSV emits a ZIP archive (one CSV per
+// parent/child table + manifest).
+func handleExportData(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		// `format` is OpenAPI-declared as enum:[json, csv] with default
 		// json. Honor the spec literally: an absent param defaults to
 		// json, anything outside the enum (including the empty string
@@ -56,13 +63,15 @@ func registerBackupRoutes(apiMux *http.ServeMux, a *app.App) {
 		default:
 			http.Error(w, "format must be 'json' or 'csv'", http.StatusBadRequest)
 		}
-	})
+	}
+}
 
-	// Compressed bundle export. Body declares the included match keys
-	// plus optional include-unknown / include-hidden toggles; response
-	// is the assembled `.zip` (manifest.json + data.json +
-	// screenshots/<filename>). See pkg/app/export_bundle.go.
-	apiMux.HandleFunc("POST /api/v1/exports/bundle", func(w http.ResponseWriter, r *http.Request) {
+// handleExportBundle assembles a compressed bundle export. Body declares
+// the included match keys plus optional include-unknown / include-hidden
+// toggles; response is the assembled `.zip` (manifest.json + data.json +
+// screenshots/<filename>). See pkg/app/export_bundle.go.
+func handleExportBundle(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		// json.RawMessage on every field so a literal `null` (which
 		// Go's default decoder silently treats as the zero value)
 		// can be rejected as a schema violation — the spec declares
@@ -105,12 +114,14 @@ func registerBackupRoutes(apiMux *http.ServeMux, a *app.App) {
 		w.Header().Set("Content-Type", "application/zip")
 		w.Header().Set("Content-Disposition", `attachment; filename="`+fname+`"`)
 		_, _ = w.Write(data)
-	})
+	}
+}
 
-	// POST a previously-exported payload to REPLACE the local DB.
-	// Accepts both the JSON envelope and the CSV ZIP archive — the
-	// app layer sniffs the payload's magic bytes.
-	apiMux.HandleFunc("POST /api/v1/imports", func(w http.ResponseWriter, r *http.Request) {
+// handleImportData POSTs a previously-exported payload to REPLACE the
+// local DB. Accepts both the JSON envelope and the CSV ZIP archive — the
+// app layer sniffs the payload's magic bytes.
+func handleImportData(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		// Cap at 50 MiB — large but generous for years of OW history;
 		// guards against an accidentally-uploaded multi-GB blob.
 		body, err := io.ReadAll(io.LimitReader(r.Body, 50<<20))
@@ -134,5 +145,5 @@ func registerBackupRoutes(apiMux *http.ServeMux, a *app.App) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
-	})
+	}
 }
