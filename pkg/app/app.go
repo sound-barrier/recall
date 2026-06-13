@@ -201,14 +201,27 @@ func (a *App) captureFatal(stage string, err error) {
 // were silent window-crashes with no log path the user could find.
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
+	if !a.initProfiles() {
+		return
+	}
+	a.resolveSettings()
+	if !a.openStore() {
+		return
+	}
+	a.bootReAggregate()
+	a.startEnabledServices()
+	a.assertStartupWiring()
+}
 
-	// Load (or initialize) the profile manager FIRST — every subsequent
-	// path (settings.json, db/recall.db, export base dir) hangs off the
-	// active profile's directory.
+// initProfiles loads (or initializes) the profile manager — every
+// subsequent path (settings.json, db/recall.db, export base dir) hangs off
+// the active profile's directory — and applies the CLI --profile override.
+// On failure it has already captured the fatal and returns false.
+func (a *App) initProfiles() bool {
 	profiles, err := LoadProfiles(appBaseDir())
 	if err != nil {
 		a.captureFatal("profile manager init", err)
-		return
+		return false
 	}
 	a.profiles = profiles
 
@@ -220,15 +233,20 @@ func (a *App) Startup(ctx context.Context) {
 		if !containsProfile(a.profiles.List(), name) {
 			if cerr := a.profiles.Create(name); cerr != nil {
 				a.captureFatal("create --profile target "+name, cerr)
-				return
+				return false
 			}
 		}
 		if aerr := a.profiles.Activate(name); aerr != nil {
 			a.captureFatal("activate --profile target "+name, aerr)
-			return
+			return false
 		}
 	}
+	return true
+}
 
+// resolveSettings loads settings and resolves the screenshots-folder +
+// tesseract paths, persisting platform defaults / clearing stale values.
+func (a *App) resolveSettings() {
 	a.settings = a.loadSettings()
 
 	// Validate ScreenshotsDir against the filesystem and clear it
@@ -274,54 +292,59 @@ func (a *App) Startup(ctx context.Context) {
 	// view has a manual "Detect Overwatch Folder" button for the
 	// "I moved my install" case.
 	a.autoProbeOnFirstRun()
+}
 
+// openStore creates the active profile's db dir and opens the SQLStore (if
+// one wasn't injected via NewWithStore). On failure it has already captured
+// the fatal and returns false.
+func (a *App) openStore() bool {
 	dbDir := filepath.Join(a.dataDir(), "db")
 	if err := os.MkdirAll(dbDir, 0o700); err != nil {
 		a.captureFatal("create db directory "+dbDir, err)
-		return
+		return false
 	}
 	if a.store == nil {
 		s, err := db.NewSQLStore(filepath.Join(dbDir, "recall.db"))
 		if err != nil {
 			a.captureFatal("open SQLite "+filepath.Join(dbDir, "recall.db"), err)
-			return
+			return false
 		}
 		a.store = s
 	}
+	return true
+}
 
-	// Boot re-aggregate: walk every screenshot row whose canonical
-	// hero/map is empty but whose raw OCR is preserved, re-run the
-	// matchers against the current heroes.yaml / maps.yaml, and
-	// promote any newly-recognised rows to canonical. Cheap (~2–5 s
-	// on 500 matches; pure-CPU lookups + one UPDATE per hit) so we
-	// run it unconditionally on startup. Forward-only by design:
-	// rows from before this feature shipped have hero_raw='' and
-	// participate in the walk only as no-ops.
+// bootReAggregate walks every screenshot row whose canonical hero/map is
+// empty but whose raw OCR is preserved, re-runs the matchers against the
+// current heroes.yaml / maps.yaml, and promotes any newly-recognised rows
+// to canonical. Cheap (~2–5 s on 500 matches) so it runs unconditionally;
+// forward-only by design (pre-feature rows have hero_raw=” and no-op).
+func (a *App) bootReAggregate() {
 	if n, err := a.reAggregateUnknowns(); err != nil {
 		fmt.Fprintf(os.Stderr, "boot re-aggregate failed: %v\n", err)
 	} else if n > 0 {
 		fmt.Fprintf(os.Stderr, "boot re-aggregate promoted %d previously-unknown hero/map row(s) to canonical\n", n)
 	}
+}
 
-	// Start the Prometheus metrics endpoint only if the user has
-	// explicitly enabled it via the checkbox (default off so the desktop
-	// app doesn't open a network port without consent).
+// startEnabledServices starts the Prometheus endpoint + file watcher only
+// when the user has explicitly enabled them (both default off so the
+// desktop app doesn't open a network port or watch without consent).
+func (a *App) startEnabledServices() {
 	if a.settings.PrometheusEnabled {
 		a.startMetrics()
 	}
 	if a.settings.WatchEnabled {
 		a.startWatching()
 	}
+}
 
-	// Invariant: at this point, the profile manager + store are wired
-	// up (`LoadProfiles` succeeded earlier in this function and set
-	// `a.profiles`; the store was opened via the active profile's DB
-	// path). If a future refactor breaks the wiring and leaves one of
-	// these nil, downstream call sites would surface a confusing
-	// nil-pointer panic — fail loudly with a named invariant
-	// violation instead. This is a programming-error guard, not a
-	// user-facing error path; tests that use `NewWithStore` (skipping
-	// Startup entirely) are unaffected.
+// assertStartupWiring fails loudly if the profile manager + store aren't
+// wired after a successful Startup. A future refactor breaking the wiring
+// would otherwise surface a confusing nil-pointer panic at a downstream
+// call site; this is a programming-error guard, not a user-facing path
+// (tests using NewWithStore skip Startup entirely and are unaffected).
+func (a *App) assertStartupWiring() {
 	if a.profiles == nil {
 		panic("App.Startup: profile manager wiring is nil after Startup completed; likely a refactor broke LoadProfiles or the captureFatal guard")
 	}

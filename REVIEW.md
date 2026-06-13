@@ -51,7 +51,6 @@ re-measure before paying an item down (numbers drift).
 
 | Function | LOC | McCabe | File |
 |---|---:|---:|---|
-| `(*App).Startup` | 129 | — | `pkg/app/app.go` |
 | `(*App).CheckForUpdate` | 119 | — | `pkg/app/update.go` |
 
 **What:** each does more than "one thing in a single clause." Two shapes: the
