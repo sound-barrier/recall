@@ -56,7 +56,6 @@ re-measure before paying an item down (numbers drift).
 | `(*App).Startup` | 129 | — | `pkg/app/app.go` |
 | `ensureCoverage` | 126 | 23 | `pkg/app/fixtures.go` |
 | `(*App).CheckForUpdate` | 119 | — | `pkg/app/update.go` |
-| `(*App).ScreenshotHandler` | 102 | 19 | `pkg/app/screenshot_handler.go` |
 
 Additionally over the complexity-15 line but shorter: `matchByEAD` (28,
 `pkg/app/correlation.go`), `pickHero` (23, `fixtures.go`), `findStatColumns` (20,
