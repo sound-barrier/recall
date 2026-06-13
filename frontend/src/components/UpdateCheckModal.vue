@@ -19,12 +19,11 @@
 // return-focus baseline mirrors MatchDetailPanel.vue. Reduced-motion
 // collapses the slide-in.
 
-import { ref, toRef, watch, computed } from 'vue'
+import { toRef, computed } from 'vue'
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
-import {
-  ApplyGameDataUpdate, OpenURL, ApiError,
-  type UpdateInfo, type DataUpdateResult,
-} from '../api'
+import { useGameDataUpdate } from '../composables/useGameDataUpdate'
+import UpdateDiffManifest from './UpdateDiffManifest.vue'
+import { OpenURL, type UpdateInfo, type DataUpdateResult } from '../api'
 
 const props = defineProps<{
   open:           boolean
@@ -38,123 +37,32 @@ const emit = defineEmits<{
   applied: [DataUpdateResult]
 }>()
 
-type ApplyState =
-  | { kind: 'idle' }
-  | { kind: 'applying' }
-  | { kind: 'success', result: DataUpdateResult }
-  | { kind: 'error',   message: string }
-
-const applyState = ref<ApplyState>({ kind: 'idle' })
-
-// Re-arm Apply when the modal re-opens.
-watch(() => props.open, (isOpen) => {
-  if (isOpen) applyState.value = { kind: 'idle' }
-})
-
 useModalFocusTrap(toRef(props, 'open'), {
   containerSelector: '.update-check-modal-box',
   onClose: () => emit('close'),
 })
 
 const info = computed(() => props.updateInfo)
-const gameData = computed(() =>
-  info.value?.game_data ?? { commit_sha: '', applied_commit: '', has_update: false })
 
-// Counts headline — added/removed are separate because they read
-// differently in the UI ("3 NEW · 1 RETIRED" splits visually into
-// gain vs loss).
-const addedCount = computed(() => {
-  const g = gameData.value
-  return (g.added_heroes?.length ?? 0) +
-         (g.added_maps?.length ?? 0) +
-         (g.added_sources?.length ?? 0)
-})
-
-const removedCount = computed(() => {
-  const g = gameData.value
-  return (g.removed_heroes?.length ?? 0) +
-         (g.removed_maps?.length ?? 0) +
-         (g.removed_sources?.length ?? 0)
-})
-
-const changeCount = computed(() => addedCount.value + removedCount.value)
-
-// Diff manifest — every changed name, grouped by kind, in a single
-// flat list the template iterates over. Order: added heroes → maps
-// → sources, then removed heroes → maps → sources, so additions
-// (the common case) sit at the top of the list.
-type DiffRow = { kind: 'Hero' | 'Map' | 'Source', sign: '+' | '−', name: string }
-
-const diffRows = computed<DiffRow[]>(() => {
-  const g = gameData.value
-  const rows: DiffRow[] = []
-  for (const h of g.added_heroes   ?? []) rows.push({ kind: 'Hero',   sign: '+', name: h })
-  for (const m of g.added_maps     ?? []) rows.push({ kind: 'Map',    sign: '+', name: m })
-  for (const s of g.added_sources  ?? []) rows.push({ kind: 'Source', sign: '+', name: s })
-  for (const h of g.removed_heroes ?? []) rows.push({ kind: 'Hero',   sign: '−', name: h })
-  for (const m of g.removed_maps   ?? []) rows.push({ kind: 'Map',    sign: '−', name: m })
-  for (const s of g.removed_sources?? []) rows.push({ kind: 'Source', sign: '−', name: s })
-  return rows
-})
-
-// Freshness line: "MAIN @ abc1234 · 14 d ago" — surfaces the user's
-// currently-applied commit so the diff has context.
-//
-// Returns the short SHA (or "embedded" when no commit applied yet)
-// and a relative-age string. The relative-age helper handles the
-// common "X minutes / hours / days ago" cases inline; for >365 d
-// it falls back to an ISO date.
-function relativeAge(iso?: string): string {
-  if (!iso) return ''
-  const then = Date.parse(iso)
-  if (Number.isNaN(then)) return ''
-  const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000))
-  if (seconds < 60)             return 'just now'
-  if (seconds < 60 * 60)        return `${Math.floor(seconds / 60)} m ago`
-  if (seconds < 60 * 60 * 24)   return `${Math.floor(seconds / 3600)} h ago`
-  if (seconds < 60 * 60 * 24 * 365) return `${Math.floor(seconds / 86400)} d ago`
-  return new Date(then).toISOString().slice(0, 10)
-}
-
-const appliedLabel = computed(() => {
-  const g = gameData.value
-  if (!g.applied_commit) return 'EMBEDDED'
-  return `MAIN @ ${g.applied_commit}`
-})
-
-const appliedAgeLabel = computed(() => relativeAge(gameData.value.applied_at))
-
-const incomingLabel = computed(() => {
-  const g = gameData.value
-  if (!g.commit_sha) return ''
-  return `MAIN @ ${g.commit_sha}`
-})
-
-const incomingAgeLabel = computed(() => {
-  const g = gameData.value
-  return relativeAge(g.committed_at) || 'live'
-})
-
-const canApply = computed(() => {
-  const g = gameData.value
-  return g.has_update && !!g.commit_sha
-})
-
-async function onApply() {
-  if (!canApply.value) return
-  applyState.value = { kind: 'applying' }
-  try {
-    const result = await ApplyGameDataUpdate()
-    applyState.value = { kind: 'success', result }
-    emit('applied', result)
-  } catch (err) {
-    const apiErr = err instanceof ApiError ? err : null
-    const message = apiErr
-      ? apiErr.body || `Apply failed (HTTP ${apiErr.status})`
-      : (err instanceof Error ? err.message : String(err))
-    applyState.value = { kind: 'error', message }
-  }
-}
+// Game-data freshness / counts / diff manifest / apply state machine.
+const {
+  applyState,
+  gameData,
+  addedCount,
+  removedCount,
+  changeCount,
+  diffRows,
+  appliedLabel,
+  appliedAgeLabel,
+  incomingLabel,
+  incomingAgeLabel,
+  canApply,
+  onApply,
+} = useGameDataUpdate(
+  () => props.updateInfo,
+  () => props.open,
+  (result) => emit('applied', result),
+)
 
 function openReleasePage() {
   if (info.value?.url) OpenURL(info.value.url)
@@ -253,44 +161,13 @@ function openReleasePage() {
                 </span>
               </p>
 
-              <!-- Counts headline — display font; the modal's hero
-                   element after the redesign. -->
-              <p
-                v-if="changeCount > 0"
-                class="update-check-modal-counts"
-                :class="{ 'update-check-modal-counts-applied': applyState.kind === 'success' }"
-                data-update-check-counts
-              >
-                <span v-if="addedCount > 0" class="update-check-modal-counts-added">
-                  {{ addedCount }} NEW
-                </span>
-                <span v-if="addedCount > 0 && removedCount > 0" class="update-check-modal-counts-sep">·</span>
-                <span v-if="removedCount > 0" class="update-check-modal-counts-removed">
-                  {{ removedCount }} RETIRED
-                </span>
-              </p>
-
-              <!-- Diff manifest. -->
-              <ul
-                v-if="changeCount > 0"
-                class="update-check-modal-manifest"
-                :class="{ 'update-check-modal-manifest-applied': applyState.kind === 'success' }"
-                data-update-check-manifest
-              >
-                <li
-                  v-for="row in diffRows"
-                  :key="`${row.kind}-${row.sign}-${row.name}`"
-                  class="update-check-modal-manifest-row"
-                  :class="{
-                    'update-check-modal-manifest-row-added': row.sign === '+',
-                    'update-check-modal-manifest-row-removed': row.sign === '−',
-                  }"
-                >
-                  <span class="update-check-modal-manifest-kind">{{ row.kind }}</span>
-                  <span class="update-check-modal-manifest-sign" aria-hidden="true">{{ row.sign }}</span>
-                  <span class="update-check-modal-manifest-name">{{ row.name }}</span>
-                </li>
-              </ul>
+              <UpdateDiffManifest
+                :change-count="changeCount"
+                :added-count="addedCount"
+                :removed-count="removedCount"
+                :diff-rows="diffRows"
+                :applied="applyState.kind === 'success'"
+              />
 
               <!-- Empty state. -->
               <p v-if="changeCount === 0 && !gameData.has_update" class="update-check-modal-empty">
@@ -593,92 +470,6 @@ function openReleasePage() {
   color: var(--text);
 }
 
-.update-check-modal-counts {
-  font-family: var(--display);
-  font-size: 1.85rem;
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  margin: 0.2rem 0 0.65rem;
-  display: flex;
-  align-items: baseline;
-  gap: 0.55rem;
-  line-height: 1.05;
-  transition: opacity 280ms ease;
-}
-
-.update-check-modal-counts-added {
-  color: var(--win, #4ade80);
-}
-
-.update-check-modal-counts-removed {
-  color: var(--loss);
-}
-
-.update-check-modal-counts-sep {
-  color: var(--text-dim);
-}
-
-.update-check-modal-counts-applied {
-  opacity: 0.55;
-}
-
-.update-check-modal-manifest {
-  list-style: none;
-  margin: 0 0 0.6rem;
-  padding: 0;
-  display: grid;
-  grid-template-columns: max-content max-content 1fr;
-  gap: 0.18rem 0.7rem;
-  transition: opacity 280ms ease;
-}
-
-.update-check-modal-manifest-applied {
-  opacity: 0.55;
-}
-
-.update-check-modal-manifest-row {
-  display: contents;
-}
-
-.update-check-modal-manifest-kind {
-  font-family: var(--mono);
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--accent);
-  align-self: center;
-  padding: 0.1rem 0.4rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
-  text-align: center;
-  min-width: 3.6em;
-}
-
-.update-check-modal-manifest-sign {
-  font-family: var(--mono);
-  font-size: 0.95rem;
-  font-weight: 700;
-  align-self: center;
-  text-align: center;
-  width: 1ch;
-}
-
-.update-check-modal-manifest-row-added .update-check-modal-manifest-sign {
-  color: var(--win, #4ade80);
-}
-
-.update-check-modal-manifest-row-removed .update-check-modal-manifest-sign {
-  color: var(--loss);
-}
-
-.update-check-modal-manifest-name {
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  color: var(--text);
-  align-self: center;
-}
 
 .update-check-modal-apply-row {
   margin-top: 0.4rem;
@@ -712,8 +503,5 @@ function openReleasePage() {
 
   .update-check-modal-enter-active .update-check-modal-box,
   .update-check-modal-leave-active .update-check-modal-box { transition: none; }
-
-  .update-check-modal-counts,
-  .update-check-modal-manifest { transition: none; }
 }
 </style>
