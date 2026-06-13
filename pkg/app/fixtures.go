@@ -289,74 +289,90 @@ func (p playerProfile) pickHero(rng *rand.Rand, prevHero, playMode, roleConstrai
 	}
 	switch p.style {
 	case styleOneTrick:
-		if playMode == "quickplay" {
-			// 30% favorite, 70% any hero from any role.
-			if rng.Float64() < 0.30 {
-				return p.mainRole, p.favoriteHero
-			}
-			allPools := [][]string{fixtureTanks, fixtureSupports, fixtureDPS}
-			pool := allPools[rng.Intn(len(allPools))]
-			h := pool[rng.Intn(len(pool))]
-			return roleOfHero(h), h
-		}
-		if rng.Float64() < 0.95 {
+		return p.pickHeroOneTrick(rng, playMode)
+	case styleOneRole:
+		return p.pickHeroOneRole(rng, prevHero, playMode)
+	default: // styleFlex
+		return p.pickHeroFlex(rng, prevHero, playMode)
+	}
+}
+
+// pickHeroOneTrick: competitive locks the favorite (95%, 5% same-role
+// experiment); quickplay loosens to 30% favorite / 70% any hero.
+func (p playerProfile) pickHeroOneTrick(rng *rand.Rand, playMode string) (role, hero string) {
+	if playMode == "quickplay" {
+		// 30% favorite, 70% any hero from any role.
+		if rng.Float64() < 0.30 {
 			return p.mainRole, p.favoriteHero
 		}
-		// 5% experiment with another hero in their main role
-		return p.mainRole, p.mainPool[rng.Intn(len(p.mainPool))]
+		allPools := [][]string{fixtureTanks, fixtureSupports, fixtureDPS}
+		pool := allPools[rng.Intn(len(allPools))]
+		h := pool[rng.Intn(len(pool))]
+		return roleOfHero(h), h
+	}
+	if rng.Float64() < 0.95 {
+		return p.mainRole, p.favoriteHero
+	}
+	// 5% experiment with another hero in their main role
+	return p.mainRole, p.mainPool[rng.Intn(len(p.mainPool))]
+}
 
-	case styleOneRole:
-		if playMode == "quickplay" {
-			// 40% main-role, 60% any off-role hero. No streak — QP
-			// is where this player branches out.
-			if rng.Float64() < 0.40 {
-				return p.mainRole, p.mainPool[rng.Intn(len(p.mainPool))]
-			}
-			offPools := offRolePools(p.mainRole)
-			off := offPools[rng.Intn(len(offPools))]
-			h := off[rng.Intn(len(off))]
-			return roleOfHero(h), h
-		}
-		// In-role streak: 40% chance of repeating the previous hero
-		if prevHero != "" && roleOfHero(prevHero) == p.mainRole && rng.Float64() < 0.4 {
-			return p.mainRole, prevHero
-		}
-		// 85% main role, 15% off-role experiment
-		if rng.Float64() < 0.85 {
+// pickHeroOneRole: competitive stays in the main role (with a 40% in-role
+// streak); quickplay is where this player branches off-role.
+func (p playerProfile) pickHeroOneRole(rng *rand.Rand, prevHero, playMode string) (role, hero string) {
+	if playMode == "quickplay" {
+		// 40% main-role, 60% any off-role hero. No streak — QP
+		// is where this player branches out.
+		if rng.Float64() < 0.40 {
 			return p.mainRole, p.mainPool[rng.Intn(len(p.mainPool))]
 		}
 		offPools := offRolePools(p.mainRole)
 		off := offPools[rng.Intn(len(offPools))]
 		h := off[rng.Intn(len(off))]
 		return roleOfHero(h), h
+	}
+	// In-role streak: 40% chance of repeating the previous hero
+	if prevHero != "" && roleOfHero(prevHero) == p.mainRole && rng.Float64() < 0.4 {
+		return p.mainRole, prevHero
+	}
+	// 85% main role, 15% off-role experiment
+	if rng.Float64() < 0.85 {
+		return p.mainRole, p.mainPool[rng.Intn(len(p.mainPool))]
+	}
+	offPools := offRolePools(p.mainRole)
+	off := offPools[rng.Intn(len(offPools))]
+	h := off[rng.Intn(len(off))]
+	return roleOfHero(h), h
+}
 
-	default: // styleFlex
-		if playMode == "quickplay" {
-			// 10% streak, 60% off-mains, 30% flex mains. Flips the
-			// flex player's normal "stick to your pool" instinct.
-			if prevHero != "" && rng.Float64() < 0.10 {
-				return roleOfHero(prevHero), prevHero
-			}
-			if len(p.offMains) > 0 && rng.Float64() < 0.667 { // 0.60 / 0.90
-				h := p.offMains[rng.Intn(len(p.offMains))]
-				return roleOfHero(h), h
-			}
-			h := p.flexHeroes[rng.Intn(len(p.flexHeroes))]
-			return roleOfHero(h), h
-		}
-		// 25% streak on previous hero
-		if prevHero != "" && containsHero(p.flexHeroes, prevHero) && rng.Float64() < 0.25 {
+// pickHeroFlex: competitive spreads across the flex pool (25% streak, 10%
+// off-main); quickplay flips toward off-mains.
+func (p playerProfile) pickHeroFlex(rng *rand.Rand, prevHero, playMode string) (role, hero string) {
+	if playMode == "quickplay" {
+		// 10% streak, 60% off-mains, 30% flex mains. Flips the
+		// flex player's normal "stick to your pool" instinct.
+		if prevHero != "" && rng.Float64() < 0.10 {
 			return roleOfHero(prevHero), prevHero
 		}
-		// 10% off-main experiment — keeps off-mains in the corpus
-		// without the coverage pass having to do all the work.
-		if len(p.offMains) > 0 && rng.Float64() < 0.10 {
+		if len(p.offMains) > 0 && rng.Float64() < 0.667 { // 0.60 / 0.90
 			h := p.offMains[rng.Intn(len(p.offMains))]
 			return roleOfHero(h), h
 		}
 		h := p.flexHeroes[rng.Intn(len(p.flexHeroes))]
 		return roleOfHero(h), h
 	}
+	// 25% streak on previous hero
+	if prevHero != "" && containsHero(p.flexHeroes, prevHero) && rng.Float64() < 0.25 {
+		return roleOfHero(prevHero), prevHero
+	}
+	// 10% off-main experiment — keeps off-mains in the corpus
+	// without the coverage pass having to do all the work.
+	if len(p.offMains) > 0 && rng.Float64() < 0.10 {
+		h := p.offMains[rng.Intn(len(p.offMains))]
+		return roleOfHero(h), h
+	}
+	h := p.flexHeroes[rng.Intn(len(p.flexHeroes))]
+	return roleOfHero(h), h
 }
 
 // heroPlay names one hero played in a single match, with the player's
