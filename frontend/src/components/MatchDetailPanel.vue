@@ -4,6 +4,7 @@ import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy
 import type { SearchClause } from '../search-query'
 import { useOWData } from '../composables/useOWData'
 import { useModalFocusTrap } from '../composables/useModalFocusTrap'
+import { useSmoothScroll } from '../composables/useSmoothScroll'
 import MatchCardExpanded from './MatchCardExpanded.vue'
 
 // Detail panel — slides in from the right when a match is selected.
@@ -93,64 +94,9 @@ const bodyRef = ref<HTMLElement | null>(null)
 // stat rows / one journal cell.
 const SCROLL_STEP_PX = 80
 
-// rAF-driven momentum scroller. Plain `scrollBy({ behavior: 'smooth' })`
-// is the obvious choice, but the browser cancels and restarts the
-// smooth animation on every scrollBy call — at 30Hz OS key-repeat
-// that surfaces as a visible step-and-glide stutter ("skipping").
-//
-// Instead we maintain a single target position. Each keypress nudges
-// the target; a single rAF loop tweens the body's scrollTop toward
-// the target at 18% of the remaining gap per frame (~critically
-// damped). Hold the key → target grows faster than position, the
-// loop never stops, the body glides. Tap once → target jumps 80px,
-// loop runs for ~25 frames (~400ms) until the gap closes.
-//
-// Honours `prefers-reduced-motion: reduce` by snapping instantly.
-const scrollTarget = ref(0)
-let scrollRAF = 0
-
-function tickScroll() {
-  const el = bodyRef.value
-  if (!el) { scrollRAF = 0; return }
-  const delta = scrollTarget.value - el.scrollTop
-  if (Math.abs(delta) < 0.5) {
-    el.scrollTop = scrollTarget.value
-    scrollRAF = 0
-    return
-  }
-  el.scrollTop += delta * 0.18
-  scrollRAF = requestAnimationFrame(tickScroll)
-}
-
-function commitScrollTarget(next: number) {
-  const el = bodyRef.value
-  if (!el) return
-  const max = Math.max(0, el.scrollHeight - el.clientHeight)
-  scrollTarget.value = Math.max(0, Math.min(max, next))
-  // Reduced-motion: skip the tween.
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-    el.scrollTop = scrollTarget.value
-    return
-  }
-  if (scrollRAF === 0) scrollRAF = requestAnimationFrame(tickScroll)
-}
-
-function nudgeScroll(deltaPx: number) {
-  const el = bodyRef.value
-  if (!el) return
-  // First nudge after idle re-seeds target from the body's actual
-  // scrollTop — the user may have scrolled via wheel / drag /
-  // touchpad since the last keypress, and we want the next step
-  // to land relative to where they are now (otherwise the first
-  // arrow press would yank them back to wherever the last anim
-  // ended).
-  if (scrollRAF === 0) scrollTarget.value = el.scrollTop
-  commitScrollTarget(scrollTarget.value + deltaPx)
-}
-
-function setScrollAbsolute(next: number) {
-  commitScrollTarget(next)
-}
+// Keyboard scroll of the panel body via a momentum scroller (see
+// useSmoothScroll). bodyRef is the scroll container.
+const { nudgeScroll, setScrollAbsolute } = useSmoothScroll(bodyRef)
 
 // Modal focus management.
 //
@@ -271,10 +217,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown)
-  if (scrollRAF !== 0) {
-    cancelAnimationFrame(scrollRAF)
-    scrollRAF = 0
-  }
 })
 
 const mapDisplay = computed(() =>
