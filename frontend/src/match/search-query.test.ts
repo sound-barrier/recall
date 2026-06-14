@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseSearchQuery, highlightTermsFor } from '@/search-query'
+import { parseSearchQuery, highlightTermsFor } from '@/match/search-query'
 
 describe('parseSearchQuery', () => {
   it('returns an empty list for empty / whitespace-only input', () => {

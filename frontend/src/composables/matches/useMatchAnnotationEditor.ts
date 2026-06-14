@@ -1,7 +1,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import type { MatchRecord, MatchAnnotationInput } from '@/api'
 import { highlightSubstrings } from '@/match/match-helpers'
-import { highlightTermsFor, type SearchClause } from '@/search-query'
+import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 
 // The expanded match card's annotation editor: the free-text drafts
 // (note / replay / members / tags), the click-to-edit note surface with

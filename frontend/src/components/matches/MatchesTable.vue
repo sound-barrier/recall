@@ -4,7 +4,7 @@ import type { MatchRecord } from '@/api'
 import type { SortOrder } from '@/composables/matches/useMatchesGroup'
 import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
 import { useTableSort, type TableSortCol } from '@/composables/matches/useTableSort'
-import type { SearchClause } from '@/search-query'
+import type { SearchClause } from '@/match/search-query'
 import MatchTableRow from '@/components/matches/MatchTableRow.vue'
 
 // Data-density view of the matches list: a real <table> with sortable
