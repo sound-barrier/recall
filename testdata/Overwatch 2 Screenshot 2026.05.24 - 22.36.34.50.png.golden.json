@@ -17,6 +17,10 @@
           "pulsar_torpedoes_healing": 1496,
           "weapon_accuracy": 35
         }
+      },
+      {
+        "hero": "mizuki",
+        "percent_played": 0
       }
     ]
   }

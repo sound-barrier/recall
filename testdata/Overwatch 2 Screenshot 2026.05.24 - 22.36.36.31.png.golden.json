@@ -18,6 +18,10 @@
           "ultimates_negated": 0,
           "weapon_accuracy": 25
         }
+      },
+      {
+        "hero": "juno",
+        "percent_played": 0
       }
     ]
   }

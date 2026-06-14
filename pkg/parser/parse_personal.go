@@ -5,6 +5,7 @@ import (
 	"image"
 	"math"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -99,6 +100,30 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 				}
 				res.HeroesPlayed[0].Stats[SnapHeroStatKey(res.Hero, key)] = val
 			}
+		}
+	}
+
+	// The left sidebar lists every hero played (the per-hero filter buttons
+	// above "ALL HEROES"). Only the SELECTED hero's stats are on screen, but
+	// capturing the full roster lets one PERSONAL capture correlate by
+	// hero-set with the SUMMARY. Append the heroes the selected-hero card
+	// didn't already carry; they have a name but no per-hero stats.
+	sidebarText, _ := ocrInverted(img, image.Rect(0, H*15/100, W*12/100, H*85/100), work, "personal_sidebar", "11", "")
+	seen := map[string]bool{}
+	for _, hp := range res.HeroesPlayed {
+		seen[hp.Hero] = true
+	}
+	// Keep the sidebar's play order (most-played first); extractHeroes
+	// returns roster order, so sort by first appearance in the OCR text.
+	roster := extractHeroes(sidebarText)
+	lowerSidebar := strings.ToLower(sidebarText)
+	sort.SliceStable(roster, func(i, j int) bool {
+		return strings.Index(lowerSidebar, roster[i]) < strings.Index(lowerSidebar, roster[j])
+	})
+	for _, h := range roster {
+		if !seen[h] {
+			res.HeroesPlayed = append(res.HeroesPlayed, HeroPlay{Hero: h})
+			seen[h] = true
 		}
 	}
 
