@@ -37,9 +37,12 @@ export function useSortGroupMenu(density: MaybeRefOrGetter<Density>) {
     sortGroupAnchor.value = null
   }
 
+  // Data density sorts by column header (the trigger opens the Custom
+  // Sort dialog), so the leaf newest/oldest + grouping summary doesn't
+  // apply — the label is just "Sort".
   const sortGroupLabel = computed(() =>
     toValue(density) === 'data'
-      ? SORT_LABELS[sortOrder.value]
+      ? 'Sort'
       : `${SORT_LABELS[sortOrder.value]} · ${GROUP_LABELS[groupBy.value]}`,
   )
 

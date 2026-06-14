@@ -173,11 +173,13 @@ test.describe('data density — spreadsheet sort semantics', () => {
     await expect(page.locator('.table-group-head')).toHaveCount(0)
   })
 
-  test('the sort popover disables grouping in Data density', async ({ page }) => {
+  test('the members-head sort trigger opens the Custom Sort dialog in Data density', async ({ page }) => {
     await mountCorpus(page, MULTI)
     await toDataDensity(page)
     await page.locator('[data-sort-group-trigger]').click()
-    await expect(page.locator('[data-grouping-disabled-hint]')).toBeVisible()
-    await expect(page.locator('[data-group-pick="day"]')).toBeDisabled()
+    // Data density sorts by column header — the trigger opens the
+    // multi-column Custom Sort dialog, not the leaf sort/group popover.
+    await expect(page.locator('[data-testid="table-sort-popover"]')).toBeVisible()
+    await expect(page.locator('[data-testid="sort-group-popover"]')).toBeHidden()
   })
 })

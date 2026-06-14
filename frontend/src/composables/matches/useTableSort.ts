@@ -151,6 +151,14 @@ export function useTableSort() {
     set(sortKeys.value.map((level) => (level.col === col ? { col, dir } : level)))
   }
 
+  // Repoint a level at a different column, keeping its position and
+  // direction. No-op when the target is already a level (a column sorts
+  // the table at most once); the dialog's per-row picker won't offer one.
+  function setLevelColumn(from: TableSortCol, to: TableSortCol): void {
+    if (from === to || indexOf(to) >= 0) return
+    set(sortKeys.value.map((level) => (level.col === from ? { col: to, dir: level.dir } : level)))
+  }
+
   // Move `col` by `delta` positions (negative = earlier), clamped to the
   // stack bounds.
   function moveLevel(col: TableSortCol, delta: number): void {
@@ -196,6 +204,7 @@ export function useTableSort() {
     addLevel,
     removeLevel,
     setLevelDir,
+    setLevelColumn,
     moveLevel,
     clearSort,
     sortLevelOf,

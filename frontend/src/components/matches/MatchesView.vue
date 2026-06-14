@@ -5,6 +5,7 @@ import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
 import { provideDossier } from '@/composables/dashboard/useDossier'
 import { provideNarrow } from '@/composables/matches/useNarrow'
 import MatchesSortGroupPopover from '@/components/matches/MatchesSortGroupPopover.vue'
+import MatchesTableSortPopover from '@/components/matches/MatchesTableSortPopover.vue'
 import { useWeekStart } from '@/composables/shared/useWeekStart'
 import { useDensity } from '@/composables/matches/useDensity'
 import { useSortGroupMenu } from '@/composables/matches/useSortGroupMenu'
@@ -504,14 +505,22 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
            sits above the leaves list regardless of mount point. Driven
            by the trigger in the members header above. -->
         <MatchesSortGroupPopover
-          :open="sortGroupOpen"
+          :open="density !== 'data' && sortGroupOpen"
           :sort="sortOrder"
           :group="groupBy"
           :anchor="sortGroupAnchor"
-          :grouping-disabled="density === 'data'"
           @close="closeSortGroup"
           @update:sort="(v) => { sortOrder = v }"
           @update:group="(v) => { groupBy = v }"
+        />
+
+        <!-- Data density sorts by column header — the same members-head
+           trigger opens the Excel-style Custom Sort dialog instead of the
+           leaf-list sort/group popover. -->
+        <MatchesTableSortPopover
+          :open="density === 'data' && sortGroupOpen"
+          :anchor="sortGroupAnchor"
+          @close="closeSortGroup"
         />
       </section>
 
