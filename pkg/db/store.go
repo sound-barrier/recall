@@ -435,14 +435,6 @@ func NewSQLStore(path string) (*SQLStore, error) {
 
 func (s *SQLStore) Close() error { return s.db.Close() }
 
-// nullableString maps Go "" to SQL NULL for nullable TEXT columns.
-func nullableString(s string) sql.NullString {
-	if s == "" {
-		return sql.NullString{}
-	}
-	return sql.NullString{String: s, Valid: true}
-}
-
 // dirIDOrSentinel maps a zero `screenshots_dir_id` to the sentinel
 // row's id (1, seeded by `schema.sql`). Every parent-row insert must
 // supply a valid FK target now that the column is `NOT NULL`; the

@@ -51,16 +51,16 @@ CREATE TABLE IF NOT EXISTS summary_screenshots (
   parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
-  map           TEXT,
+  map           TEXT NOT NULL DEFAULT '',
   map_raw       TEXT NOT NULL DEFAULT '',
-  playlist          TEXT,
-  hero          TEXT,
+  playlist          TEXT NOT NULL DEFAULT '',
+  hero          TEXT NOT NULL DEFAULT '',
   hero_raw      TEXT NOT NULL DEFAULT '',
-  result        TEXT,
-  final_score   TEXT,
-  date          TEXT,
-  finished_at   TEXT,
-  game_length   TEXT,
+  result        TEXT NOT NULL DEFAULT '',
+  final_score   TEXT NOT NULL DEFAULT '',
+  date          TEXT NOT NULL DEFAULT '',
+  finished_at   TEXT NOT NULL DEFAULT '',
+  game_length   TEXT NOT NULL DEFAULT '',
   perf_elim_total            INTEGER NOT NULL DEFAULT 0,
   perf_elim_avg_per_10min    REAL    NOT NULL DEFAULT 0,
   perf_assists_total         INTEGER NOT NULL DEFAULT 0,
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS summary_heroes_played (
   summary_screenshot_id INTEGER NOT NULL REFERENCES summary_screenshots(id) ON DELETE CASCADE,
   hero            TEXT NOT NULL,
   percent_played  INTEGER NOT NULL DEFAULT 0,
-  play_time       TEXT,
+  play_time       TEXT NOT NULL DEFAULT '',
   PRIMARY KEY (summary_screenshot_id, hero)
 );
 -- statement-end
@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS personal_screenshots (
   parsed_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
-  hero          TEXT,
+  hero          TEXT NOT NULL DEFAULT '',
   hero_raw      TEXT NOT NULL DEFAULT ''
 );
 -- statement-end
@@ -147,11 +147,11 @@ CREATE TABLE IF NOT EXISTS rank_screenshots (
   parsed_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   -- references screenshots_dirs(id); RESTRICT prevents orphan rows
   screenshots_dir_id INTEGER NOT NULL DEFAULT 1 REFERENCES screenshots_dirs(id) ON DELETE RESTRICT,
-  rank            TEXT,
+  rank            TEXT NOT NULL DEFAULT '',
   level           INTEGER NOT NULL DEFAULT 0,
   rank_progress   INTEGER NOT NULL DEFAULT 0,
   change_percent  INTEGER NOT NULL DEFAULT 0,
-  result          TEXT
+  result          TEXT NOT NULL DEFAULT ''
 );
 -- statement-end
 CREATE INDEX IF NOT EXISTS idx_rank_match_key_parsed_at ON rank_screenshots(match_key, parsed_at);
