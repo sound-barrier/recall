@@ -1,4 +1,4 @@
-package app
+package correlate
 
 import (
 	"fmt"
@@ -12,12 +12,12 @@ import (
 	"recall/pkg/parser"
 )
 
-// mergeWindow is how close two screenshot filenames must be in time to count
+// MergeWindow is how close two screenshot filenames must be in time to count
 // as belonging to the same match. 2 minutes is generous enough to absorb a
 // slow tab-cycler but tight enough that two separate matches never collide.
-const mergeWindow = 2 * time.Minute
+const MergeWindow = 2 * time.Minute
 
-// parseFilenameTimestamp walks the per-tool format list and returns
+// ParseFilenameTimestamp walks the per-tool format list and returns
 // the embedded timestamp for the first match. Source-of-truth for
 // the format list is pkg/parser/screenshot_sources.yaml — add a new
 // capture tool by appending an entry to the YAML; this loop reads
@@ -26,7 +26,7 @@ const mergeWindow = 2 * time.Minute
 // Returns ok=false for filenames that match no canonical OW capture
 // tool — those land with an `unmatched-<filename>` sentinel via the
 // resolver.
-func parseFilenameTimestamp(f string) (time.Time, bool) {
+func ParseFilenameTimestamp(f string) (time.Time, bool) {
 	for _, src := range parser.Sources() {
 		if !strings.HasPrefix(f, src.Prefix) {
 			continue
@@ -63,7 +63,7 @@ func parseFilenameTimestamp(f string) (time.Time, bool) {
 }
 
 // atoiCapture is a minimal regex-capture-to-int helper kept inline so
-// the per-file cost of parseFilenameTimestamp stays in the same
+// the per-file cost of ParseFilenameTimestamp stays in the same
 // allocation budget as the old single-regex implementation. Negative
 // values are impossible (the regex captures `\d{N}` only).
 func atoiCapture(b string) (int, bool) {
@@ -74,7 +74,7 @@ func atoiCapture(b string) (int, bool) {
 	return n, true
 }
 
-// resolveMatchKey returns the match_key the just-parsed file should
+// ResolveMatchKey returns the match_key the just-parsed file should
 // adopt, based on existing screenshots in the store:
 //
 //   - If exactly one existing screenshot has the same non-zero (E, A, D)
@@ -82,13 +82,13 @@ func atoiCapture(b string) (int, bool) {
 //     eadBridgeAutoWindow of this filename — adopt its key.
 //   - Else if EAD candidates exist within eadBridgeAmbiguousWindow
 //     (single in 5–30 min zone, OR multiple anywhere in 0–30 min) —
-//     mint "ambiguous:<filename>" and return the candidate list. The
+//     mint "ambiguous:<filename>" and return the Candidate list. The
 //     caller persists the candidates via store.ApplyAmbiguity so the
 //     user can pick the correct match via the Unknown tab.
-//   - Else if an existing screenshot is within mergeWindow of this
+//   - Else if an existing screenshot is within MergeWindow of this
 //     filename AND no signature field conflicts — adopt its key,
 //     unless multiple distinct match_keys tie within
-//     tieToleranceWindow of the closest, in which case mint
+//     TieToleranceWindow of the closest, in which case mint
 //     "ambiguous-<filename>" + the tied candidates.
 //   - Else mint a fresh key: `match-<ts>` from the filename, or
 //     `unmatched-<filename>` for files without a parseable timestamp.
@@ -100,15 +100,15 @@ func atoiCapture(b string) (int, bool) {
 // timestamp portion uses `-` for both date and time separators
 // (`YYYY-MM-DDTHH-MM-SS`) so the whole key stays parseable by humans
 // + URL parsers.
-func resolveMatchKey(filename string, result *parser.MatchResult, snap db.Screenshots) (string, []db.AmbiguousCandidate) {
-	cand := candidateFromParse(filename, result)
-	if k, cands, ok := matchByEAD(cand, snap); ok {
+func ResolveMatchKey(filename string, result *parser.MatchResult, snap db.Screenshots) (string, []db.AmbiguousCandidate) {
+	cand := CandidateFromParse(filename, result)
+	if k, cands, ok := MatchByEAD(cand, snap); ok {
 		if k != "" {
 			return k, nil
 		}
 		return match.NewAmbiguousMatchKey(filename).String(), cands
 	}
-	if k, cands, ok := matchByTimestampWindow(cand, snap); ok {
+	if k, cands, ok := MatchByTimestampWindow(cand, snap); ok {
 		if k != "" {
 			return k, nil
 		}
@@ -120,19 +120,19 @@ func resolveMatchKey(filename string, result *parser.MatchResult, snap db.Screen
 	return match.NewUnmatchedMatchKey(filename).String(), nil
 }
 
-// candidate is the comparison shape used by the two match passes.
-// Carries the same signature fields rowsConflict checks plus the file's
+// Candidate is the comparison shape used by the two match passes.
+// Carries the same signature fields RowsConflict checks plus the file's
 // timestamp for the window predicate.
-type candidate struct {
+type Candidate struct {
 	filename string
 	ts       time.Time
 	hasTS    bool
 	r        *parser.MatchResult
 }
 
-func candidateFromParse(filename string, r *parser.MatchResult) candidate {
-	c := candidate{filename: filename, r: r}
-	if ts, ok := parseFilenameTimestamp(filename); ok {
+func CandidateFromParse(filename string, r *parser.MatchResult) Candidate {
+	c := Candidate{filename: filename, r: r}
+	if ts, ok := ParseFilenameTimestamp(filename); ok {
 		c.ts = ts
 		c.hasTS = true
 	}
@@ -140,21 +140,21 @@ func candidateFromParse(filename string, r *parser.MatchResult) candidate {
 }
 
 // existing pulls every screenshot in the snapshot into one comparison
-// slice. Each entry carries its parent type's MatchKey + a candidate
+// slice. Each entry carries its parent type's MatchKey + a Candidate
 // view of its scalar fields, plus the per-match-key hero set so the
-// hero-conflict predicate in rowsConflict can recognize multi-hero
+// hero-conflict predicate in RowsConflict can recognize multi-hero
 // matches (SUMMARY anchored on one hero with TEAMS / PERSONAL
 // captured during a mid-game swap to another).
 type existing struct {
 	key         string
-	c           candidate
+	c           Candidate
 	matchHeroes map[string]bool
 }
 
 // matchHeroSets returns map[matchKey] → set of every hero that appears
 // in any row attributed to that match. SUMMARY contributes its primary
 // Hero plus every HeroesPlayed entry; TEAMS and PERSONAL each
-// contribute their row Hero. The set is what rowsConflict consults
+// contribute their row Hero. The set is what RowsConflict consults
 // when deciding whether a hero mismatch between cand and an existing
 // row is a real conflict or just a swap captured in one of the two
 // rows but missing from the other.
@@ -189,13 +189,13 @@ func snapshotExisting(snap db.Screenshots) []existing {
 	for _, r := range snap.Summaries {
 		out = append(out, existing{
 			key: r.MatchKey,
-			c: candidate{
+			c: Candidate{
 				filename: r.Filename,
 				r: &parser.MatchResult{
 					Map: r.Map, Playlist: r.Playlist, Hero: r.Hero,
 					Date: r.Date, FinishedAt: r.FinishedAt,
 					// Perf totals are the SUMMARY's authoritative
-					// E/A/D — expose them so matchByEAD can bridge a
+					// E/A/D — expose them so MatchByEAD can bridge a
 					// just-arrived TEAMS to an existing SUMMARY
 					// (closing the cascade after a SUMMARY adopts an
 					// in-game TEAMS key via finished_at
@@ -211,7 +211,7 @@ func snapshotExisting(snap db.Screenshots) []existing {
 	for _, r := range snap.Teams {
 		out = append(out, existing{
 			key: r.MatchKey,
-			c: candidate{
+			c: Candidate{
 				filename: r.Filename,
 				r: &parser.MatchResult{
 					Eliminations: r.Eliminations,
@@ -228,14 +228,14 @@ func snapshotExisting(snap db.Screenshots) []existing {
 	for _, r := range snap.Personals {
 		out = append(out, existing{
 			key:         r.MatchKey,
-			c:           candidate{filename: r.Filename, r: &parser.MatchResult{Hero: r.Hero}},
+			c:           Candidate{filename: r.Filename, r: &parser.MatchResult{Hero: r.Hero}},
 			matchHeroes: heroSets[r.MatchKey],
 		})
 	}
 	for _, r := range snap.Ranks {
 		out = append(out, existing{
 			key: r.MatchKey,
-			c: candidate{
+			c: Candidate{
 				filename: r.Filename,
 				r: &parser.MatchResult{
 					Rank: r.Rank, Result: r.Result,
@@ -247,12 +247,12 @@ func snapshotExisting(snap db.Screenshots) []existing {
 	for _, r := range snap.Unknowns {
 		out = append(out, existing{
 			key:         r.MatchKey,
-			c:           candidate{filename: r.Filename, r: &parser.MatchResult{}},
+			c:           Candidate{filename: r.Filename, r: &parser.MatchResult{}},
 			matchHeroes: heroSets[r.MatchKey],
 		})
 	}
 	for i := range out {
-		if ts, ok := parseFilenameTimestamp(out[i].c.filename); ok {
+		if ts, ok := ParseFilenameTimestamp(out[i].c.filename); ok {
 			out[i].c.ts = ts
 			out[i].c.hasTS = true
 		}
@@ -271,11 +271,11 @@ func snapshotExisting(snap db.Screenshots) []existing {
 // certainly the same match. (A map+hero+date triple agreement rule
 // was considered but is unreachable: snapshotExisting only exposes
 // Date on SUMMARY rows, and an existing SUMMARY row never carries
-// EAD into matchByEAD's snapshot view — so any candidate that needs
+// EAD into MatchByEAD's snapshot view — so any Candidate that needs
 // Date agreement against an existing EAD-bearing row has no Date to
 // compare against. finished_at via the filename timestamp is the
 // available signal.)
-func corroborated(cand candidate, e existing) bool {
+func corroborated(cand Candidate, e existing) bool {
 	if cand.r.FinishedAt != "" && e.c.hasTS {
 		if cand.r.FinishedAt == e.c.ts.UTC().Format("15:04") {
 			return true
@@ -284,7 +284,7 @@ func corroborated(cand candidate, e existing) bool {
 	return false
 }
 
-// tieToleranceWindow groups timestamp-window candidates from
+// TieToleranceWindow groups timestamp-window candidates from
 // different match_keys whose distances are within this slack of
 // each other. Two minute-scale screenshots a few seconds apart on
 // either side of a tie are functionally equidistant; arbitrarily
@@ -293,23 +293,23 @@ func corroborated(cand candidate, e existing) bool {
 // real-world capture-jitter case while staying well below the
 // 30 s default offset between adjacent screenshots in the same
 // match.
-const tieToleranceWindow = 5 * time.Second
+const TieToleranceWindow = 5 * time.Second
 
-// matchByTimestampWindow looks for an existing screenshot within
-// mergeWindow of cand and with no signature conflicts. Returns:
+// MatchByTimestampWindow looks for an existing screenshot within
+// MergeWindow of cand and with no signature conflicts. Returns:
 //
 //	key, nil, true    — single distinct match_key wins by a clear
-//	                    margin (> tieToleranceWindow ahead of any
+//	                    margin (> TieToleranceWindow ahead of any
 //	                    other match's closest screenshot); auto-adopt.
 //	"",  cands, true  — two or more distinct match_keys tie within
-//	                    tieToleranceWindow; caller mints
+//	                    TieToleranceWindow; caller mints
 //	                    "ambiguous:<filename>".
-//	"",  nil, false   — no candidates within mergeWindow.
+//	"",  nil, false   — no candidates within MergeWindow.
 //
 // Candidates are deduped by match_key (closest screenshot per key
-// wins) and the returned candidate slice is sorted by distance
+// wins) and the returned Candidate slice is sorted by distance
 // ascending.
-func matchByTimestampWindow(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCandidate, bool) {
+func MatchByTimestampWindow(cand Candidate, snap db.Screenshots) (string, []db.AmbiguousCandidate, bool) {
 	if !cand.hasTS {
 		return "", nil, false
 	}
@@ -322,10 +322,10 @@ func matchByTimestampWindow(cand candidate, snap db.Screenshots) (string, []db.A
 		if d < 0 {
 			d = -d
 		}
-		if d > mergeWindow {
+		if d > MergeWindow {
 			continue
 		}
-		if rowsConflict(cand.r, e.c.r, e.matchHeroes) {
+		if RowsConflict(cand.r, e.c.r, e.matchHeroes) {
 			continue
 		}
 		if prev, ok := closestByKey[e.key]; !ok || d < prev {
@@ -350,11 +350,11 @@ func matchByTimestampWindow(cand candidate, snap db.Screenshots) (string, []db.A
 		return sorted[i].key < sorted[j].key
 	})
 	minD := sorted[0].d
-	// Pull every candidate within tieToleranceWindow of the minimum
+	// Pull every Candidate within TieToleranceWindow of the minimum
 	// into the tie set. Any further keys lose by a clear margin.
 	ties := sorted[:0:0]
 	for _, h := range sorted {
-		if h.d-minD <= tieToleranceWindow {
+		if h.d-minD <= TieToleranceWindow {
 			ties = append(ties, h)
 			continue
 		}
@@ -373,26 +373,26 @@ func matchByTimestampWindow(cand candidate, snap db.Screenshots) (string, []db.A
 	return "", cands, true
 }
 
-// rowsConflict reports whether cand and an existing row disagree on a
+// RowsConflict reports whether cand and an existing row disagree on a
 // signature field strongly enough to block the bridge. existingMatchHeroes
 // is the per-match-key hero set from snapshotExisting; it lets the
 // predicate recognize multi-hero matches where SUMMARY anchors on one
 // hero and TEAMS / PERSONAL were captured during a mid-game swap
 // to another. A hero mismatch is a soft conflict — allowed iff the
-// candidate's hero is already in the existing match's hero set, or the
-// existing row's hero is in the candidate's HeroesPlayed list.
-func rowsConflict(cand, existing *parser.MatchResult, existingMatchHeroes map[string]bool) bool {
-	if stringsConflict(cand.Map, existing.Map) ||
-		stringsConflict(cand.Date, existing.Date) ||
-		stringsConflict(cand.FinishedAt, existing.FinishedAt) {
+// Candidate's hero is already in the existing match's hero set, or the
+// existing row's hero is in the Candidate's HeroesPlayed list.
+func RowsConflict(cand, existing *parser.MatchResult, existingMatchHeroes map[string]bool) bool {
+	if StringsConflict(cand.Map, existing.Map) ||
+		StringsConflict(cand.Date, existing.Date) ||
+		StringsConflict(cand.FinishedAt, existing.FinishedAt) {
 		return true
 	}
-	if stringsConflict(cand.Hero, existing.Hero) && !heroesOverlap(cand, existing, existingMatchHeroes) {
+	if StringsConflict(cand.Hero, existing.Hero) && !heroesOverlap(cand, existing, existingMatchHeroes) {
 		return true
 	}
-	if intsConflict(cand.Eliminations, existing.Eliminations) ||
-		intsConflict(cand.Assists, existing.Assists) ||
-		intsConflict(cand.Deaths, existing.Deaths) {
+	if IntsConflict(cand.Eliminations, existing.Eliminations) ||
+		IntsConflict(cand.Assists, existing.Assists) ||
+		IntsConflict(cand.Deaths, existing.Deaths) {
 		return true
 	}
 	return false
@@ -414,8 +414,8 @@ func heroesOverlap(cand, existing *parser.MatchResult, existingMatchHeroes map[s
 	return false
 }
 
-// unionSortedStrings returns the set-union of a and b as a sorted slice.
-func unionSortedStrings(a, b []string) []string {
+// UnionSortedStrings returns the set-union of a and b as a sorted slice.
+func UnionSortedStrings(a, b []string) []string {
 	seen := map[string]struct{}{}
 	out := make([]string, 0, len(a)+len(b))
 	for _, s := range a {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"recall/pkg/applog"
+	"recall/pkg/correlate"
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
@@ -102,7 +103,7 @@ func (a *App) ReParseAll() error {
 }
 
 // ParseScreenshots OCRs every image in screenshots/ and writes each
-// result to its per-type table. Correlation (resolveMatchKey) runs per
+// result to its per-type table. Correlation (correlate.ResolveMatchKey) runs per
 // screenshot in filename-timestamp order so cross-file deps (e.g. a
 // PERSONAL adopting the SUMMARY it shares a match with) see the
 // already-inserted siblings. Synchronous; see ReParseAll / StartParse.
@@ -341,7 +342,7 @@ func (st *parseRunState) handleFile(done, total int, filename string, result *pa
 		a.emitParseProgress(ev)
 		return
 	}
-	key, ambigCands := resolveMatchKey(filename, result, snap)
+	key, ambigCands := correlate.ResolveMatchKey(filename, result, snap)
 	ev.MatchKey = key
 
 	if err := a.insertParsed(filename, key, ev.Type, st.dirID, result); err != nil {

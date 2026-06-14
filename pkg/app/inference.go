@@ -34,7 +34,7 @@ func (a *App) scrapeReader() ([]metrics.ScrapeRow, error) {
 // for the whole match.
 //
 // READ-TIME ONLY (load-bearing). Applied via GetMatchResults / scrapeReader,
-// never inside mergeMatchResult or upsertMergedRow. Storing the inferred
+// never inside correlate.MergeMatchResult or upsertMergedRow. Storing the inferred
 // value would lock it in via the first-non-zero-wins merge rule when a
 // later SUMMARY screenshot arrives with the real percentage. The invariant
 // is locked by TestInference_NeverPersistedToStore in

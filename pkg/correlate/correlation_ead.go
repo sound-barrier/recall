@@ -1,4 +1,4 @@
-package app
+package correlate
 
 import (
 	"sort"
@@ -9,10 +9,10 @@ import (
 
 // EAD-bridge windows. The EAD-bridge bridges in-game teams ↔
 // post-match summary which can be minutes apart, so it accepts a
-// longer time gap than the strict mergeWindow. Two thresholds:
+// longer time gap than the strict MergeWindow. Two thresholds:
 //
 //   - <eadBridgeAutoWindow: high confidence this is the same match.
-//     Auto-adopt iff there's exactly one EAD candidate.
+//     Auto-adopt iff there's exactly one EAD Candidate.
 //   - eadBridgeAutoWindow..eadBridgeAmbiguousWindow: could be the same
 //     match (delayed capture) OR a different match with coincidentally
 //     identical stats. Surface as ambiguous so the user picks.
@@ -24,7 +24,7 @@ const (
 	eadBridgeAmbiguousWindow = 30 * time.Minute
 )
 
-// matchByEAD looks for existing screenshots with the same non-zero
+// MatchByEAD looks for existing screenshots with the same non-zero
 // (E, A, D), no conflicting (map, hero, date), and a parseable
 // filename timestamp within eadBridgeAmbiguousWindow. Returns:
 //
@@ -34,11 +34,11 @@ const (
 //	                    window; caller auto-adopts.
 //	"",  cands, true  — multiple distinct candidates with no single
 //	                    corroborated winner, OR a single uncorroborated
-//	                    candidate in the 5–30 min ambiguous zone;
+//	                    Candidate in the 5–30 min ambiguous zone;
 //	                    caller mints "ambiguous:<filename>".
 //	"",  nil, false   — no candidates within eadBridgeAmbiguousWindow.
 //
-// "Corroborated" means the candidate's SUMMARY.finished_at HH:MM
+// "Corroborated" means the Candidate's SUMMARY.finished_at HH:MM
 // matches the existing key's filename HH:MM (see corroborated() for
 // the exact rule). Corroboration overrides the time-threshold rule,
 // so a SUMMARY whose finished_at HH:MM matches an in-game
@@ -54,14 +54,14 @@ type eadKeyInfo struct {
 }
 
 // eadKeyDist is one existing match_key with its closest distance to the
-// candidate, used to sort + resolve the EAD bridge.
+// Candidate, used to sort + resolve the EAD bridge.
 type eadKeyDist struct {
 	key          string
 	d            time.Duration
 	corroborated bool
 }
 
-func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCandidate, bool) {
+func MatchByEAD(cand Candidate, snap db.Screenshots) (string, []db.AmbiguousCandidate, bool) {
 	if cand.r.Eliminations == 0 && cand.r.Assists == 0 && cand.r.Deaths == 0 {
 		return "", nil, false
 	}
@@ -79,9 +79,9 @@ func matchByEAD(cand candidate, snap db.Screenshots) (string, []db.AmbiguousCand
 }
 
 // eadCandidateKeys scans the existing screenshots for rows that share the
-// candidate's exact E/A/D inside the ambiguous window (and don't conflict),
+// Candidate's exact E/A/D inside the ambiguous window (and don't conflict),
 // keyed by match_key with the closest distance + any corroboration kept.
-func eadCandidateKeys(cand candidate, snap db.Screenshots) map[string]eadKeyInfo {
+func eadCandidateKeys(cand Candidate, snap db.Screenshots) map[string]eadKeyInfo {
 	byKey := map[string]eadKeyInfo{}
 	for _, e := range snapshotExisting(snap) {
 		if e.c.r.Eliminations == 0 && e.c.r.Assists == 0 && e.c.r.Deaths == 0 {
@@ -92,7 +92,7 @@ func eadCandidateKeys(cand candidate, snap db.Screenshots) map[string]eadKeyInfo
 			e.c.r.Deaths != cand.r.Deaths {
 			continue
 		}
-		if rowsConflict(cand.r, e.c.r, e.matchHeroes) {
+		if RowsConflict(cand.r, e.c.r, e.matchHeroes) {
 			continue
 		}
 		if !e.c.hasTS {

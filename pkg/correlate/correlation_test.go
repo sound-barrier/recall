@@ -1,10 +1,10 @@
-package app_test
+package correlate_test
 
 import (
 	"testing"
 	"time"
 
-	"recall/pkg/app"
+	"recall/pkg/correlate"
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
@@ -14,13 +14,13 @@ import (
 // ──────────────────────────────────────────────────────────────────
 
 func TestFirstNonEmpty(t *testing.T) {
-	if got := app.FirstNonEmpty("a", "b"); got != "a" {
+	if got := correlate.FirstNonEmpty("a", "b"); got != "a" {
 		t.Errorf("first non-empty wins: got %q", got)
 	}
-	if got := app.FirstNonEmpty("", "b"); got != "b" {
+	if got := correlate.FirstNonEmpty("", "b"); got != "b" {
 		t.Errorf("zero-value falls through: got %q", got)
 	}
-	if got := app.FirstNonEmpty(0, 7); got != 7 {
+	if got := correlate.FirstNonEmpty(0, 7); got != 7 {
 		t.Errorf("int zero falls through: got %d", got)
 	}
 }
@@ -37,17 +37,17 @@ func TestStringsConflict(t *testing.T) {
 		{"x", "y", true},
 	}
 	for _, tc := range tests {
-		if got := app.StringsConflict(tc.a, tc.b); got != tc.want {
-			t.Errorf("app.StringsConflict(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
+		if got := correlate.StringsConflict(tc.a, tc.b); got != tc.want {
+			t.Errorf("correlate.StringsConflict(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
 		}
 	}
 }
 
 func TestIntsConflict(t *testing.T) {
-	if app.IntsConflict(0, 0) || app.IntsConflict(0, 5) || app.IntsConflict(5, 0) || app.IntsConflict(5, 5) {
+	if correlate.IntsConflict(0, 0) || correlate.IntsConflict(0, 5) || correlate.IntsConflict(5, 0) || correlate.IntsConflict(5, 5) {
 		t.Error("zero or matching ints must not conflict")
 	}
-	if !app.IntsConflict(5, 6) {
+	if !correlate.IntsConflict(5, 6) {
 		t.Error("differing non-zero ints must conflict")
 	}
 }
@@ -57,7 +57,7 @@ func TestIntsConflict(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────
 
 func TestParseFilenameTimestamp(t *testing.T) {
-	ts, ok := app.ParseFilenameTimestamp("Overwatch 2 Screenshot 2026.05.10 - 21.29.28.04.png")
+	ts, ok := correlate.ParseFilenameTimestamp("Overwatch 2 Screenshot 2026.05.10 - 21.29.28.04.png")
 	if !ok {
 		t.Fatal("expected parse to succeed")
 	}
@@ -65,7 +65,7 @@ func TestParseFilenameTimestamp(t *testing.T) {
 		ts.Hour() != 21 || ts.Minute() != 29 || ts.Second() != 28 {
 		t.Errorf("wrong timestamp parsed: %v", ts)
 	}
-	if _, ok := app.ParseFilenameTimestamp("manually_renamed.png"); ok {
+	if _, ok := correlate.ParseFilenameTimestamp("manually_renamed.png"); ok {
 		t.Error("expected non-timestamped filename to return ok=false")
 	}
 }
@@ -77,7 +77,7 @@ func TestParseFilenameTimestamp(t *testing.T) {
 func TestMergeMatchResult_DisjointFields(t *testing.T) {
 	dst := &parser.MatchResult{Map: "rialto", Result: "victory"}
 	src := &parser.MatchResult{Eliminations: 17, Damage: 7200}
-	app.MergeMatchResult(dst, src)
+	correlate.MergeMatchResult(dst, src)
 	if dst.Map != "rialto" || dst.Result != "victory" {
 		t.Error("disjoint dst fields clobbered")
 	}
@@ -89,7 +89,7 @@ func TestMergeMatchResult_DisjointFields(t *testing.T) {
 func TestMergeMatchResult_FirstNonEmptyWins(t *testing.T) {
 	dst := &parser.MatchResult{Map: "rialto", Eliminations: 17, Result: "victory"}
 	src := &parser.MatchResult{Map: "aatlis", Eliminations: 99, Result: "defeat", Date: "2026-05-10"}
-	app.MergeMatchResult(dst, src)
+	correlate.MergeMatchResult(dst, src)
 	if dst.Map != "rialto" || dst.Eliminations != 17 || dst.Result != "victory" {
 		t.Errorf("first-non-empty rule broken: %+v", dst)
 	}
@@ -106,7 +106,7 @@ func TestMergeMatchResult_HeroesPlayed_MergeByHeroName(t *testing.T) {
 	src := &parser.MatchResult{HeroesPlayed: []parser.HeroPlay{
 		{Hero: "lucio", Stats: map[string]int{"weapon_accuracy": 24}},
 	}}
-	app.MergeMatchResult(dst, src)
+	correlate.MergeMatchResult(dst, src)
 	if len(dst.HeroesPlayed) != 2 {
 		t.Fatalf("hero count changed: got %d", len(dst.HeroesPlayed))
 	}
@@ -125,7 +125,7 @@ func TestMergeMatchResult_SR_MergeByHero(t *testing.T) {
 		{Hero: "juno", Change: 22},
 		{Hero: "lucio", SR: 3200, Change: 30},
 	}}
-	app.MergeMatchResult(dst, src)
+	correlate.MergeMatchResult(dst, src)
 	if len(dst.SR) != 2 {
 		t.Fatalf("expected 2 SR rows after merge, got %d", len(dst.SR))
 	}
@@ -153,7 +153,7 @@ func TestRowsConflict(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := app.RowsConflict(base, tc.b, nil); got != tc.want {
+			if got := correlate.RowsConflict(base, tc.b, nil); got != tc.want {
 				t.Fatalf("got %v want %v", got, tc.want)
 			}
 		})
@@ -165,7 +165,7 @@ func TestRowsConflict(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────
 
 func TestUnionSortedStrings(t *testing.T) {
-	got := app.UnionSortedStrings([]string{"b", "a", "c"}, []string{"c", "d"})
+	got := correlate.UnionSortedStrings([]string{"b", "a", "c"}, []string{"c", "d"})
 	want := []string{"a", "b", "c", "d"}
 	if len(got) != len(want) {
 		t.Fatalf("got %v want %v", got, want)
@@ -194,7 +194,7 @@ func TestResolveMatchKey_AdoptsByEADSignature(t *testing.T) {
 		}},
 	}
 	newR := &parser.MatchResult{Eliminations: 17, Assists: 16, Deaths: 11, Map: "rialto"}
-	key, cands := app.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.32.30 _summary.png", newR, snap)
+	key, cands := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.32.30 _summary.png", newR, snap)
 	if key != "match-2026-05-10T21-29-28" {
 		t.Errorf("expected EAD-bridge adoption, got %q", key)
 	}
@@ -214,7 +214,7 @@ func TestResolveMatchKey_AdoptsByTimestampWindow(t *testing.T) {
 		}},
 	}
 	newR := &parser.MatchResult{Hero: "lucio"}
-	key, _ := app.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.29.41 _personal.png", newR, snap)
+	key, _ := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.29.41 _personal.png", newR, snap)
 	if key != "match-2026-05-10T21-29-28" {
 		t.Errorf("expected timestamp-window adoption, got %q", key)
 	}
@@ -230,7 +230,7 @@ func TestResolveMatchKey_RejectsConflictingWindowMatch(t *testing.T) {
 		}},
 	}
 	newR := &parser.MatchResult{Map: "aatlis"}
-	key, _ := app.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.29.41 .png", newR, snap)
+	key, _ := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.29.41 .png", newR, snap)
 	if key == "match-2026-05-10T21-29-28" {
 		t.Errorf("expected conflict to block adoption, got %q", key)
 	}
@@ -250,7 +250,7 @@ func TestResolveMatchKey_TiebreakClosestInTime(t *testing.T) {
 		},
 	}
 	newR := &parser.MatchResult{Hero: "lucio"}
-	key, _ := app.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.29.31 _p.png", newR, snap)
+	key, _ := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.29.31 _p.png", newR, snap)
 	if key != "match-A" {
 		t.Errorf("expected closer match (A) to win tiebreak, got %q", key)
 	}
@@ -258,7 +258,7 @@ func TestResolveMatchKey_TiebreakClosestInTime(t *testing.T) {
 
 func TestResolveMatchKey_FreshKeyForUntimestamped(t *testing.T) {
 	snap := db.Screenshots{}
-	key, _ := app.ResolveMatchKey("manually_renamed.png", &parser.MatchResult{Hero: "lucio"}, snap)
+	key, _ := correlate.ResolveMatchKey("manually_renamed.png", &parser.MatchResult{Hero: "lucio"}, snap)
 	if key != "unmatched-manually_renamed.png" {
 		t.Errorf("expected unmatched: prefix, got %q", key)
 	}
@@ -266,7 +266,7 @@ func TestResolveMatchKey_FreshKeyForUntimestamped(t *testing.T) {
 
 func TestResolveMatchKey_FreshKeyForTimestampedNoCandidates(t *testing.T) {
 	snap := db.Screenshots{}
-	key, _ := app.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.29.28 .png", &parser.MatchResult{Hero: "lucio"}, snap)
+	key, _ := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.29.28 .png", &parser.MatchResult{Hero: "lucio"}, snap)
 	if key != "match-2026-05-10T21-29-28" {
 		t.Errorf("expected match:<ts> from filename, got %q", key)
 	}
