@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"recall/pkg/app"
@@ -49,16 +48,9 @@ func handleCreateProfile(a *app.App) http.HandlerFunc {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		if err := a.CreateProfile(body.Name); err != nil {
-			switch {
-			case errors.Is(err, app.ErrInvalidProfileName):
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			case errors.Is(err, app.ErrProfileExists):
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.CreateProfile(body.Name),
+			errStatus{app.ErrInvalidProfileName, http.StatusBadRequest},
+			errStatus{app.ErrProfileExists, http.StatusConflict}) {
 			return
 		}
 		// Content-Type MUST be set before WriteHeader — once the
@@ -84,11 +76,7 @@ func handleCreateProfile(a *app.App) http.HandlerFunc {
 func handleSeedTestProfile(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		res, err := a.SeedTestProfile()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeJSON(w, res, nil)
+		writeJSON(w, res, err)
 	}
 }
 
@@ -101,16 +89,9 @@ func handleSwitchProfile(a *app.App) http.HandlerFunc {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		if err := a.SwitchProfile(body.Name); err != nil {
-			switch {
-			case errors.Is(err, app.ErrInvalidProfileName):
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			case errors.Is(err, app.ErrProfileNotFound):
-				http.Error(w, err.Error(), http.StatusNotFound)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.SwitchProfile(body.Name),
+			errStatus{app.ErrInvalidProfileName, http.StatusBadRequest},
+			errStatus{app.ErrProfileNotFound, http.StatusNotFound}) {
 			return
 		}
 		writeJSON(w, a.GetProfiles(), nil)
@@ -131,19 +112,10 @@ func handleRenameProfile(a *app.App) http.HandlerFunc {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		if err := a.RenameProfile(old, body.NewName); err != nil {
-			switch {
-			case errors.Is(err, app.ErrInvalidProfileName):
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			case errors.Is(err, app.ErrProfileNotFound):
-				http.Error(w, err.Error(), http.StatusNotFound)
-				return
-			case errors.Is(err, app.ErrProfileExists):
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.RenameProfile(old, body.NewName),
+			errStatus{app.ErrInvalidProfileName, http.StatusBadRequest},
+			errStatus{app.ErrProfileNotFound, http.StatusNotFound},
+			errStatus{app.ErrProfileExists, http.StatusConflict}) {
 			return
 		}
 		writeJSON(w, a.GetProfiles(), nil)
@@ -157,19 +129,10 @@ func handleDeleteProfile(a *app.App) http.HandlerFunc {
 			http.Error(w, "name required in URL", http.StatusBadRequest)
 			return
 		}
-		if err := a.DeleteProfile(name); err != nil {
-			switch {
-			case errors.Is(err, app.ErrInvalidProfileName):
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			case errors.Is(err, app.ErrProfileNotFound):
-				http.Error(w, err.Error(), http.StatusNotFound)
-				return
-			case errors.Is(err, app.ErrProfileActive):
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.DeleteProfile(name),
+			errStatus{app.ErrInvalidProfileName, http.StatusBadRequest},
+			errStatus{app.ErrProfileNotFound, http.StatusNotFound},
+			errStatus{app.ErrProfileActive, http.StatusConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

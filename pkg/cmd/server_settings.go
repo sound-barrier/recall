@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"recall/pkg/app"
@@ -46,15 +45,11 @@ func handleSetScreenshotsFolder(a *app.App) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if err := a.SetScreenshotsDir(path); err != nil {
-			// 409: path was syntactically well-formed but doesn't exist
-			// as a directory on disk. The semantic is "the resource at
-			// this path isn't available," which is a state conflict.
-			if errors.Is(err, app.ErrInvalidScreenshotsDir) {
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		// 409: path was syntactically well-formed but doesn't exist as a
+		// directory on disk — "the resource at this path isn't available,"
+		// a state conflict.
+		if writeError(w, a.SetScreenshotsDir(path),
+			errStatus{app.ErrInvalidScreenshotsDir, http.StatusConflict}) {
 			return
 		}
 		writeJSON(w, map[string]string{"path": path}, nil)
@@ -69,8 +64,7 @@ func handleSetScreenshotsFolder(a *app.App) http.HandlerFunc {
 // frontend's Reset button is the only caller.
 func handleResetScreenshotsFolder(a *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		if err := a.ResetScreenshotsDir(); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.ResetScreenshotsDir()) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -91,15 +85,9 @@ func handleSetTesseract(a *app.App) http.HandlerFunc {
 			return
 		}
 		st, err := a.SetTesseractPath(path)
-		if err != nil {
-			// 409: path was syntactically well-formed but doesn't
-			// resolve to a tesseract binary. Same shape as
-			// PUT /api/v1/settings/screenshots-folder.
-			if errors.Is(err, app.ErrInvalidTesseractPath) {
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		// 409: path was syntactically well-formed but doesn't resolve to a
+		// tesseract binary. Same shape as PUT /settings/screenshots-folder.
+		if writeError(w, err, errStatus{app.ErrInvalidTesseractPath, http.StatusConflict}) {
 			return
 		}
 		writeJSON(w, st, nil)
@@ -134,8 +122,7 @@ func handleSetPrometheus(a *app.App) http.HandlerFunc {
 			http.Error(w, "body must be {\"enabled\":<bool>}", http.StatusBadRequest)
 			return
 		}
-		if err := a.SetPrometheusEnabled(*body.Enabled); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.SetPrometheusEnabled(*body.Enabled)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -159,8 +146,7 @@ func handleSetWatcher(a *app.App) http.HandlerFunc {
 			http.Error(w, "body must be {\"enabled\":<bool>}", http.StatusBadRequest)
 			return
 		}
-		if err := a.SetWatchEnabled(*body.Enabled); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.SetWatchEnabled(*body.Enabled)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

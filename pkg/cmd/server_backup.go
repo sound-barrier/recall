@@ -42,8 +42,7 @@ func handleExportData(a *app.App) http.HandlerFunc {
 		switch format {
 		case "csv":
 			data, err := a.ExportDataCSV()
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+			if writeError(w, err) {
 				return
 			}
 			fname := "recall-export-" + time.Now().UTC().Format("20060102-150405") + ".zip"
@@ -52,8 +51,7 @@ func handleExportData(a *app.App) http.HandlerFunc {
 			_, _ = w.Write(data)
 		case "json":
 			data, err := a.ExportData()
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+			if writeError(w, err) {
 				return
 			}
 			fname := "recall-export-" + time.Now().UTC().Format("20060102-150405") + ".json"
@@ -106,8 +104,7 @@ func handleExportBundle(a *app.App) http.HandlerFunc {
 			IncludeUnknown: includeUnknown,
 			IncludeHidden:  includeHidden,
 		})
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, err) {
 			return
 		}
 		fname := "recall-bundle-" + time.Now().UTC().Format("20060102-150405") + ".zip"

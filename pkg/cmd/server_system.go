@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"net/http"
 
 	"recall/pkg/app"
@@ -63,14 +62,10 @@ func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
 	// effect (a Finder / Explorer / xdg-open window appearing) is
 	// out-of-band relative to the HTTP response.
 	apiMux.HandleFunc("POST /api/v1/system/screenshots-folder-reveal", func(w http.ResponseWriter, r *http.Request) {
-		if err := a.RevealScreenshotsDir(); err != nil {
-			// 409: no screenshots directory configured. Same shape as
-			// POST /api/v1/parses.
-			if errors.Is(err, app.ErrInvalidScreenshotsDir) {
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		// 409: no screenshots directory configured. Same shape as
+		// POST /api/v1/parses.
+		if writeError(w, a.RevealScreenshotsDir(),
+			errStatus{app.ErrInvalidScreenshotsDir, http.StatusConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)
@@ -82,15 +77,9 @@ func registerSystemRoutes(apiMux *http.ServeMux, a *app.App) {
 	// No body — the channel and target are implicit.
 	apiMux.HandleFunc("POST /api/v1/system/data-update", func(w http.ResponseWriter, r *http.Request) {
 		got, err := a.ApplyGameDataUpdate()
-		if err != nil {
-			switch {
-			case errors.Is(err, app.ErrDataUpdateChecksum):
-				http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-			case errors.Is(err, app.ErrDataUpdateMainFetchFailed):
-				http.Error(w, err.Error(), http.StatusBadGateway)
-			default:
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+		if writeError(w, err,
+			errStatus{app.ErrDataUpdateChecksum, http.StatusUnprocessableEntity},
+			errStatus{app.ErrDataUpdateMainFetchFailed, http.StatusBadGateway}) {
 			return
 		}
 		writeJSON(w, got, nil)

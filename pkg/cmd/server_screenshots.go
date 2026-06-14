@@ -57,12 +57,8 @@ func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if err := a.IgnoreScreenshot(filename); err != nil {
-			if errors.Is(err, app.ErrIgnoreFilenameRequired) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.IgnoreScreenshot(filename),
+			errStatus{app.ErrIgnoreFilenameRequired, http.StatusBadRequest}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -76,12 +72,8 @@ func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if err := a.UnignoreScreenshot(filename); err != nil {
-			if errors.Is(err, app.ErrIgnoreFilenameRequired) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.UnignoreScreenshot(filename),
+			errStatus{app.ErrIgnoreFilenameRequired, http.StatusBadRequest}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -92,11 +84,7 @@ func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
 	// panel; also useful for support / curl users.
 	apiMux.HandleFunc("GET /api/v1/screenshots/ignored", func(w http.ResponseWriter, r *http.Request) {
 		out, err := a.GetIgnoredScreenshots()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeJSON(w, out, nil)
+		writeJSON(w, out, err)
 	})
 
 	// DELETE: bulk truncate the suppress list — Settings panel's
@@ -104,8 +92,7 @@ func registerScreenshotRoutes(apiMux *http.ServeMux, a *app.App) {
 	// already empty. The next Parse run re-discovers every file from
 	// disk (the on-disk files were never moved).
 	apiMux.HandleFunc("DELETE /api/v1/screenshots/ignored", func(w http.ResponseWriter, r *http.Request) {
-		if err := a.ClearIgnoredScreenshots(); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.ClearIgnoredScreenshots()) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
