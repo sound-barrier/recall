@@ -212,7 +212,7 @@ pre-push:
     # Coverage gate. Runs the same `make cover` umbrella developers
     # invoke locally; vitest enforces the per-metric thresholds in
     # vitest.config.ts, and the cover-go target enforces the Go floor
-    # (GO_COVERAGE_MIN, default 40). Skip with:
+    # (GO_COVERAGE_MIN, default 67). Skip with:
     #   LEFTHOOK_EXCLUDE=coverage git push
     # The CI workflow runs the same checks via Jobs 9 + 10, so a
     # push that bypasses this still fails in CI before merge.
