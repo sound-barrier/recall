@@ -1,4 +1,4 @@
-package app
+package app_test
 
 import (
 	"errors"
@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 // validateTesseractPath is the boundary guard for the user-supplied path
@@ -32,7 +34,7 @@ func TestValidateTesseractPath_Accepts(t *testing.T) {
 	}
 	for _, in := range cases {
 		t.Run(in, func(t *testing.T) {
-			got, err := validateTesseractPath(in)
+			got, err := app.ValidateTesseract(in)
 			if err != nil {
 				t.Fatalf("expected accept, got error: %v", err)
 			}
@@ -62,9 +64,9 @@ func TestValidateTesseractPath_Rejects(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.why, func(t *testing.T) {
-			if _, err := validateTesseractPath(c.in); err == nil {
+			if _, err := app.ValidateTesseract(c.in); err == nil {
 				t.Fatalf("expected reject (%s), got accept for %q", c.why, c.in)
-			} else if !errors.Is(err, ErrInvalidTesseractPath) {
+			} else if !errors.Is(err, app.ErrInvalidTesseractPath) {
 				t.Errorf("error should wrap ErrInvalidTesseractPath, got %v", err)
 			}
 		})
@@ -77,7 +79,7 @@ func TestValidateTesseractPath_Rejects(t *testing.T) {
 // the rejects cases never reach os.Stat because the format check trips first.
 func TestValidateScreenshotsDir_AcceptsRealDir(t *testing.T) {
 	dir := t.TempDir()
-	got, err := validateScreenshotsDir(dir)
+	got, err := app.ValidateScreenshots(dir)
 	if err != nil {
 		t.Fatalf("expected accept for temp dir %q, got error: %v", dir, err)
 	}
@@ -111,9 +113,9 @@ func TestValidateScreenshotsDir_Rejects(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.why, func(t *testing.T) {
-			if _, err := validateScreenshotsDir(c.in); err == nil {
+			if _, err := app.ValidateScreenshots(c.in); err == nil {
 				t.Fatalf("expected reject (%s), got accept for %q", c.why, c.in)
-			} else if !errors.Is(err, ErrInvalidScreenshotsDir) {
+			} else if !errors.Is(err, app.ErrInvalidScreenshotsDir) {
 				t.Errorf("error should wrap ErrInvalidScreenshotsDir, got %v", err)
 			}
 		})
@@ -129,7 +131,7 @@ func TestValidateScreenshotsDir_RejectsNonCanonical(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		noisy = dir + `\.`
 	}
-	if _, err := validateScreenshotsDir(noisy); err == nil {
+	if _, err := app.ValidateScreenshots(noisy); err == nil {
 		t.Fatalf("expected reject for non-canonical %q", noisy)
 	}
 }

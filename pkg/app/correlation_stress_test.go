@@ -1,4 +1,4 @@
-package app
+package app_test
 
 // Correlation stress dataset — 400 synthesized screenshot fixtures
 // across 11 cohorts that exercise every branch of resolveMatchKey.
@@ -221,7 +221,7 @@ func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
 
 	// Match Y's SUMMARY and Match Y's TEAMS both inherit the
 	// bug. The expected `date` field differs between X and Y, but
-	// rowsConflict() refuses to bridge when BOTH sides have a date
+	// app.RowsConflict() refuses to bridge when BOTH sides have a date
 	// and they differ — so the production resolver actually REJECTS
 	// the bridge once SUMMARY's date populates. Strip date from
 	// a TEAMS MatchResult (it's not parsed from teams) to
@@ -291,7 +291,7 @@ func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
 // COHORT C — same-hero back-to-back, different EAD.
 //
 // 10 pairs of matches, each pair 10 minutes apart (way past the 2-
-// minute mergeWindow). Same map + same hero on both. DIFFERENT EAD
+// minute app.MergeWindow). Same map + same hero on both. DIFFERENT EAD
 // per match — so the EAD-bridge has nothing to bridge against.
 //
 // Expected: both matches attribute to their own anchors. No bugs.
@@ -459,7 +459,7 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 // hero matches both via the multi-hero set so neither side hard-
 // conflicts.
 //
-// PR #106 surfaces this as ambiguous via the new tieToleranceWindow
+// PR #106 surfaces this as ambiguous via the new app.TieToleranceWindow
 // path in matchByTimestampWindow: two distinct match_keys tied
 // within 5 s of each other → mint "ambiguous-<filename>" + a
 // candidate list. The user resolves via the Unknown tab's
@@ -511,7 +511,7 @@ func TestCorrelation_Stress_TimestampWindowEdge(t *testing.T) {
 		})
 
 		// PERSONAL midway — tied 45 s from each SUMMARY, both within
-		// the 5 s tieToleranceWindow → ambiguous sentinel.
+		// the 5 s app.TieToleranceWindow → ambiguous sentinel.
 		specs = append(specs, matchSpec{
 			startTime:      midPersonal,
 			primaryHero:    heroX,
@@ -540,7 +540,7 @@ func TestCorrelation_Stress_TimestampWindowEdge(t *testing.T) {
 // played one, e.g. Lúcio 70%). TEAMS + PERSONAL were captured
 // during the Kiriko portion (the secondary hero).
 //
-// Before PR #105, rowsConflict() refused to bridge a TEAMS
+// Before PR #105, app.RowsConflict() refused to bridge a TEAMS
 // with hero=Kiriko to a SUMMARY with hero=Lúcio — ONE logical match
 // became THREE match_keys. PR #105 weakens the hero predicate to
 // consult the per-match hero set (SUMMARY's HeroesPlayed union)

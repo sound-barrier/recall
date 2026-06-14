@@ -1,8 +1,10 @@
-package app
+package app_test
 
 import (
 	"testing"
 	"time"
+
+	"recall/pkg/app"
 )
 
 // SSEHub is the broadcast layer behind the server-mode SSE endpoint.
@@ -11,7 +13,7 @@ import (
 // failure mode worth pinning (a stuck reader can't block the producer).
 
 func TestSSEHub_SubscribeReturnsBufferedChannel(t *testing.T) {
-	h := NewSSEHub()
+	h := app.NewSSEHub()
 	ch := h.Subscribe()
 	if cap(ch) == 0 {
 		t.Fatal("Subscribe returned an unbuffered channel — slow readers would block the producer")
@@ -19,13 +21,13 @@ func TestSSEHub_SubscribeReturnsBufferedChannel(t *testing.T) {
 }
 
 func TestSSEHub_Broadcast_DeliversToAllSubscribers(t *testing.T) {
-	h := NewSSEHub()
+	h := app.NewSSEHub()
 	a := h.Subscribe()
 	b := h.Subscribe()
 
 	h.Broadcast("parse-complete")
 
-	mustReceive := func(name string, ch chan sseMsg) {
+	mustReceive := func(name string, ch chan app.SseMsg) {
 		t.Helper()
 		select {
 		case m := <-ch:
@@ -44,7 +46,7 @@ func TestSSEHub_Broadcast_DeliversToAllSubscribers(t *testing.T) {
 }
 
 func TestSSEHub_BroadcastData_CarriesJSONPayload(t *testing.T) {
-	h := NewSSEHub()
+	h := app.NewSSEHub()
 	ch := h.Subscribe()
 	h.BroadcastData("parse-progress", `{"done":5,"total":10}`)
 	select {
@@ -68,18 +70,18 @@ func TestSSEHub_BroadcastData_CarriesJSONPayload(t *testing.T) {
 // build). Pinned so a future refactor that pulls the nil guard
 // can't silently regress to a nil-pointer panic.
 func TestSSEHub_Broadcast_NilReceiver_IsNoOp(t *testing.T) {
-	var h *SSEHub
+	var h *app.SSEHub
 	// Must not panic. No assertion on side effects — there are none.
 	h.Broadcast("parse-complete")
 }
 
 func TestSSEHub_BroadcastData_NilReceiver_IsNoOp(t *testing.T) {
-	var h *SSEHub
+	var h *app.SSEHub
 	h.BroadcastData("parse-progress", `{"done":1,"total":2}`)
 }
 
 func TestSSEHub_Unsubscribe_RemovesAndClosesChannel(t *testing.T) {
-	h := NewSSEHub()
+	h := app.NewSSEHub()
 	ch := h.Subscribe()
 	h.Unsubscribe(ch)
 
@@ -96,7 +98,7 @@ func TestSSEHub_Unsubscribe_RemovesAndClosesChannel(t *testing.T) {
 func TestSSEHub_SlowConsumer_DropsRatherThanBlocking(t *testing.T) {
 	// One subscriber that never reads — the producer must keep
 	// flowing for every other subscriber.
-	h := NewSSEHub()
+	h := app.NewSSEHub()
 	slow := h.Subscribe()
 	_ = slow
 	fast := h.Subscribe()
@@ -138,7 +140,7 @@ func TestSSEHub_SlowConsumer_DropsRatherThanBlocking(t *testing.T) {
 func TestSSEHub_Subscribe_IsConcurrencySafe(t *testing.T) {
 	// Subscribe + Broadcast hammered from goroutines must not race.
 	// `go test -race` catches missing locks here.
-	h := NewSSEHub()
+	h := app.NewSSEHub()
 	done := make(chan struct{})
 	for i := 0; i < 8; i++ {
 		go func() {

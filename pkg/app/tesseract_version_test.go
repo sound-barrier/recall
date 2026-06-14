@@ -1,6 +1,10 @@
-package app
+package app_test
 
-import "testing"
+import (
+	"testing"
+
+	"recall/pkg/app"
+)
 
 func TestParseTesseractVersion_5xSupported(t *testing.T) {
 	tests := []struct {
@@ -30,7 +34,7 @@ func TestParseTesseractVersion_5xSupported(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			version, supported, msg := parseTesseractVersion(tc.stdout, tc.stderr)
+			version, supported, msg := app.ParseTesseractVersion(tc.stdout, tc.stderr)
 			if msg != "" {
 				t.Fatalf("unexpected diagnostic: %q", msg)
 			}
@@ -55,7 +59,7 @@ func TestParseTesseractVersion_OlderMajorUnsupported(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			version, supported, msg := parseTesseractVersion(tc.stdout, tc.stderr)
+			version, supported, msg := app.ParseTesseractVersion(tc.stdout, tc.stderr)
 			if msg != "" {
 				t.Fatalf("unexpected diagnostic: %q", msg)
 			}
@@ -81,7 +85,7 @@ func TestParseTesseractVersion_NotTesseractBinary(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			version, supported, msg := parseTesseractVersion(tc.stdout, tc.stderr)
+			version, supported, msg := app.ParseTesseractVersion(tc.stdout, tc.stderr)
 			if msg == "" {
 				t.Errorf("expected a diagnostic message for non-Tesseract output")
 			}

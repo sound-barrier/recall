@@ -1,8 +1,9 @@
-package app
+package app_test
 
 import (
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
@@ -45,7 +46,7 @@ func TestResolveMatchKey_MultiHero_TeamsSwapAdoptsSummary(t *testing.T) {
 		Map: "rialto", Hero: "kiriko",
 		Eliminations: 18, Assists: 12, Deaths: 6,
 	}
-	key, _ := resolveMatchKey("Overwatch 2 Screenshot 2026.07.15 - 14.00.30 _sb.png", teams, snap)
+	key, _ := app.ResolveMatchKey("Overwatch 2 Screenshot 2026.07.15 - 14.00.30 _sb.png", teams, snap)
 	if key != "match-2026-07-15T14-00-00" {
 		t.Errorf("expected TEAMS to adopt SUMMARY's key via multi-hero bridge, got %q", key)
 	}
@@ -82,7 +83,7 @@ func TestResolveMatchKey_MultiHero_SecondPersonalAdoptsMatch(t *testing.T) {
 		}},
 	}
 	personal2 := &parser.MatchResult{Hero: "lucio"}
-	key, _ := resolveMatchKey("Overwatch 2 Screenshot 2026.07.20 - 14.01.15 _p2.png", personal2, snap)
+	key, _ := app.ResolveMatchKey("Overwatch 2 Screenshot 2026.07.20 - 14.01.15 _p2.png", personal2, snap)
 	if key != "match-2026-07-20T14-00-00" {
 		t.Errorf("expected PERSONAL 2 to bridge to the match via multi-hero, got %q", key)
 	}
@@ -109,7 +110,7 @@ func TestResolveMatchKey_MultiHero_ReverseOrder_SummaryBridgesToTeams(t *testing
 			{Hero: "kiriko", PercentPlayed: 30},
 		},
 	}
-	key, _ := resolveMatchKey("Overwatch 2 Screenshot 2026.07.15 - 14.00.30 _sum.png", summary, snap)
+	key, _ := app.ResolveMatchKey("Overwatch 2 Screenshot 2026.07.15 - 14.00.30 _sum.png", summary, snap)
 	if key != "match-2026-07-15T14-00-00" {
 		t.Errorf("expected SUMMARY to bridge to TEAMS via reverse multi-hero match, got %q", key)
 	}
@@ -133,7 +134,7 @@ func TestResolveMatchKey_MultiHero_UnrelatedHeroStillConflicts(t *testing.T) {
 	// TEAMS with hero=ana (not in SUMMARY's heroes_played) lands
 	// outside the existing match.
 	teams := &parser.MatchResult{Hero: "ana"}
-	key, _ := resolveMatchKey("Overwatch 2 Screenshot 2026.07.15 - 14.00.30 _sb.png", teams, snap)
+	key, _ := app.ResolveMatchKey("Overwatch 2 Screenshot 2026.07.15 - 14.00.30 _sb.png", teams, snap)
 	if key == "match-2026-07-15T14-00-00" {
 		t.Errorf("unrelated hero should NOT bridge, but got %q", key)
 	}

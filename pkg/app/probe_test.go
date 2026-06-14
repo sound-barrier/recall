@@ -1,4 +1,4 @@
-package app
+package app_test
 
 import (
 	"os"
@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 // Tests use t.Setenv("HOME", …) to point os.UserHomeDir at a
@@ -26,7 +28,7 @@ func TestFirstExistingCandidate_FindsFirstMatch(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
 
-	tried := probeCandidates()
+	tried := app.ProbeCandidates()
 	if len(tried) == 0 {
 		t.Skipf("no probe candidates on %s; nothing to assert", runtime.GOOS)
 	}
@@ -35,7 +37,7 @@ func TestFirstExistingCandidate_FindsFirstMatch(t *testing.T) {
 		t.Fatalf("mkdir %s: %v", want, err)
 	}
 
-	got, ok := firstExistingCandidate()
+	got, ok := app.FirstExistingCandidate()
 	if !ok {
 		t.Fatalf("expected ok=true; first candidate %q exists on disk", want)
 	}
@@ -49,7 +51,7 @@ func TestFirstExistingCandidate_EmptyHomeReturnsNotFound(t *testing.T) {
 	setHome(t, home)
 
 	_ = home
-	got, ok := firstExistingCandidate()
+	got, ok := app.FirstExistingCandidate()
 	if ok {
 		t.Fatalf("expected ok=false on an empty home; got path=%q", got)
 	}
@@ -59,7 +61,7 @@ func TestFirstExistingCandidate_EmptyHomeReturnsNotFound(t *testing.T) {
 	// Sanity: probeCandidates produces an under-HOME list — defensive
 	// check kept from the old test so a regression that points the
 	// probe at the real user home still fails loudly.
-	for _, p := range probeCandidates() {
+	for _, p := range app.ProbeCandidates() {
 		if !filepath.IsAbs(p) {
 			t.Errorf("candidate %q is not absolute", p)
 		}
@@ -74,7 +76,7 @@ func TestProbeScreenshotsCandidates_NonWindowsReturnsEmpty(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows has its own assertion below")
 	}
-	a := &App{}
+	a := &app.App{}
 	got := a.ProbeScreenshotsCandidates()
 	if len(got) != 0 {
 		t.Errorf("non-Windows should return empty slice; got %+v", got)
@@ -101,7 +103,7 @@ func TestProbeScreenshotsCandidates_WindowsReportsAllFour(t *testing.T) {
 	must(filepath.Join(home, "Documents", "Overwatch", "ScreenShots", "Overwatch"))
 	must(filepath.Join(home, "Pictures", "Screenshots"))
 
-	a := &App{}
+	a := &app.App{}
 	got := a.ProbeScreenshotsCandidates()
 	if len(got) != 4 {
 		t.Fatalf("want 4 cards on Windows; got %d (%+v)", len(got), got)
@@ -125,7 +127,7 @@ func TestAutoProbeOnFirstRun_AppliesWhenSettingIsEmpty(t *testing.T) {
 	home := t.TempDir()
 	setHome(t, home)
 
-	tried := probeCandidates()
+	tried := app.ProbeCandidates()
 	if len(tried) == 0 {
 		t.Skipf("no probe candidates on %s", runtime.GOOS)
 	}
@@ -138,10 +140,10 @@ func TestAutoProbeOnFirstRun_AppliesWhenSettingIsEmpty(t *testing.T) {
 	// doesn't pollute the real ~/Library or ~/.config tree.
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
 
-	a := &App{}
-	a.autoProbeOnFirstRun()
-	if a.settings.ScreenshotsDir != want {
-		t.Fatalf("settings.ScreenshotsDir = %q; want %q", a.settings.ScreenshotsDir, want)
+	a := &app.App{}
+	app.AutoProbeOnFirstRun(a)
+	if app.AppSettings(a).ScreenshotsDir != want {
+		t.Fatalf("settings.ScreenshotsDir = %q; want %q", app.AppSettings(a).ScreenshotsDir, want)
 	}
 }
 
@@ -155,17 +157,18 @@ func TestAutoProbeOnFirstRun_NoOpWhenAlreadyConfigured(t *testing.T) {
 	if err := os.MkdirAll(preset, 0o755); err != nil {
 		t.Fatalf("mkdir %s: %v", preset, err)
 	}
-	tried := probeCandidates()
+	tried := app.ProbeCandidates()
 	if len(tried) > 0 {
 		if err := os.MkdirAll(tried[0], 0o755); err != nil {
 			t.Fatalf("mkdir %s: %v", tried[0], err)
 		}
 	}
 
-	a := &App{settings: Settings{ScreenshotsDir: preset}}
-	a.autoProbeOnFirstRun()
-	if a.settings.ScreenshotsDir != preset {
-		t.Fatalf("settings.ScreenshotsDir overwrote preset: got %q want %q", a.settings.ScreenshotsDir, preset)
+	a := &app.App{}
+	app.AppSettings(a).ScreenshotsDir = preset
+	app.AutoProbeOnFirstRun(a)
+	if app.AppSettings(a).ScreenshotsDir != preset {
+		t.Fatalf("settings.ScreenshotsDir overwrote preset: got %q want %q", app.AppSettings(a).ScreenshotsDir, preset)
 	}
 }
 
@@ -173,7 +176,7 @@ func TestProbeScreenshotsCandidateStats_NonWindowsReturnsEmpty(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows has its own assertion below")
 	}
-	a := &App{}
+	a := &app.App{}
 	got := a.ProbeScreenshotsCandidateStats()
 	if len(got) != 0 {
 		t.Errorf("non-Windows should return empty slice; got %+v", got)
@@ -205,13 +208,13 @@ func TestProbeScreenshotsCandidateStats_WindowsCountsFilesAndRecognised(t *testi
 		}
 	}
 
-	a := &App{}
+	a := &app.App{}
 	got := a.ProbeScreenshotsCandidateStats()
 	if len(got) != 4 {
 		t.Fatalf("want 4 cards on Windows; got %d (%+v)", len(got), got)
 	}
-	// Find the Nvidia entry — order matches candidateSources().
-	var nvidia NamedCandidateStats
+	// Find the Nvidia entry — order matches app.CandidateSources().
+	var nvidia app.NamedCandidateStats
 	for _, s := range got {
 		if s.Name == "nvidia" {
 			nvidia = s
@@ -236,7 +239,7 @@ func TestProbeScreenshotsCandidateStats_NonExistentSourcesReturnEmpty(t *testing
 	home := t.TempDir()
 	setHome(t, home)
 
-	a := &App{}
+	a := &app.App{}
 	got := a.ProbeScreenshotsCandidateStats()
 	if len(got) != 4 {
 		t.Fatalf("want 4 cards on Windows; got %d", len(got))
@@ -259,7 +262,7 @@ func TestWalkSourceDir_BoundedAndSkipsDirs(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(tmp, "subdir"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	files, latest := walkSourceDir(tmp)
+	files, latest := app.WalkSourceDir(tmp)
 	if len(files) != 3 {
 		t.Errorf("expected 3 regular files; got %d (%v)", len(files), files)
 	}
@@ -269,7 +272,7 @@ func TestWalkSourceDir_BoundedAndSkipsDirs(t *testing.T) {
 }
 
 func TestWalkSourceDir_MissingDirReturnsEmpty(t *testing.T) {
-	files, latest := walkSourceDir("/nonexistent/path/please")
+	files, latest := app.WalkSourceDir("/nonexistent/path/please")
 	if len(files) != 0 {
 		t.Errorf("expected empty; got %v", files)
 	}
@@ -286,7 +289,7 @@ func TestCountRecognised_MatchesParserGrammar(t *testing.T) {
 		"IMG_1234.png",                                        // none
 		"random.pdf",                                          // none
 	}
-	n := countRecognised(names)
+	n := app.CountRecognised(names)
 	if n != 3 {
 		t.Errorf("countRecognised = %d; want 3", n)
 	}
@@ -294,10 +297,10 @@ func TestCountRecognised_MatchesParserGrammar(t *testing.T) {
 
 func TestDirExists(t *testing.T) {
 	tmp := t.TempDir()
-	if !dirExists(tmp) {
-		t.Errorf("dirExists(%q) = false; want true", tmp)
+	if !app.DirExists(tmp) {
+		t.Errorf("app.DirExists(%q) = false; want true", tmp)
 	}
-	if dirExists(filepath.Join(tmp, "nope")) {
+	if app.DirExists(filepath.Join(tmp, "nope")) {
 		t.Errorf("dirExists on missing path returned true")
 	}
 	// Files are not directories.
@@ -305,10 +308,10 @@ func TestDirExists(t *testing.T) {
 	if err := os.WriteFile(f, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if dirExists(f) {
+	if app.DirExists(f) {
 		t.Errorf("dirExists on a file returned true")
 	}
-	if dirExists("") {
+	if app.DirExists("") {
 		t.Errorf("dirExists on empty returned true")
 	}
 }

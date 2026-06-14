@@ -1,10 +1,12 @@
-package app
+package app_test
 
 import (
 	"context"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 // Startup validates the loaded settings.ScreenshotsDir against the
@@ -27,7 +29,7 @@ func TestStartup_ClearsScreenshotsDirWhenPathDoesNotExist(t *testing.T) {
 
 	// Persist a non-existent path so Startup's loadSettings() reads it.
 	stale := filepath.Join(t.TempDir(), "deleted-by-the-os-an-hour-ago")
-	seed := Settings{
+	seed := app.Settings{
 		ScreenshotsDir: stale,
 		TesseractPath:  "/dev/null", // anything; we don't assert on it
 	}
@@ -36,18 +38,18 @@ func TestStartup_ClearsScreenshotsDirWhenPathDoesNotExist(t *testing.T) {
 		t.Fatalf("test invariant: stale path %q should not exist", stale)
 	}
 
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
-	if a.settings.ScreenshotsDir != "" {
-		t.Errorf("Startup must clear an invalid ScreenshotsDir; got %q", a.settings.ScreenshotsDir)
+	if app.AppSettings(a).ScreenshotsDir != "" {
+		t.Errorf("Startup must clear an invalid ScreenshotsDir; got %q", app.AppSettings(a).ScreenshotsDir)
 	}
 
 	// Persisted state must match the in-memory clear — otherwise the
 	// next Startup re-loads the stale value and the user sees the bug
 	// again. (Verify via a fresh load through the same code path the
 	// production startup uses.)
-	persisted := a.loadSettings()
+	persisted := app.LoadSettings(a)
 	if persisted.ScreenshotsDir != "" {
 		t.Errorf("saved settings still carry stale ScreenshotsDir; got %q", persisted.ScreenshotsDir)
 	}
@@ -66,13 +68,13 @@ func TestStartup_ClearsScreenshotsDirWhenPathIsAFile(t *testing.T) {
 	if err := os.WriteFile(file, []byte("not a real png"), 0o600); err != nil {
 		t.Fatalf("seed file: %v", err)
 	}
-	seedSettings(t, Settings{ScreenshotsDir: file})
+	seedSettings(t, app.Settings{ScreenshotsDir: file})
 
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
-	if a.settings.ScreenshotsDir != "" {
-		t.Errorf("Startup must clear a ScreenshotsDir that's a file, not a dir; got %q", a.settings.ScreenshotsDir)
+	if app.AppSettings(a).ScreenshotsDir != "" {
+		t.Errorf("Startup must clear a ScreenshotsDir that's a file, not a dir; got %q", app.AppSettings(a).ScreenshotsDir)
 	}
 }
 
@@ -82,19 +84,19 @@ func TestStartup_PreservesValidScreenshotsDir(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	good := t.TempDir() // exists, is a dir, readable
-	seedSettings(t, Settings{ScreenshotsDir: good})
+	seedSettings(t, app.Settings{ScreenshotsDir: good})
 
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
-	if a.settings.ScreenshotsDir != good {
+	if app.AppSettings(a).ScreenshotsDir != good {
 		t.Errorf("Startup must not touch a valid ScreenshotsDir; got %q want %q",
-			a.settings.ScreenshotsDir, good)
+			app.AppSettings(a).ScreenshotsDir, good)
 	}
 }
 
 func TestStartup_ClearsDefaultRelativePathWhenItDoesNotResolve(t *testing.T) {
-	// `defaultSettings()` returns ScreenshotsDir="screenshots" (a
+	// `app.DefaultSettings()` returns ScreenshotsDir="screenshots" (a
 	// relative path) so `wails dev` can ship a working default when
 	// the repo has a sibling `./screenshots/` directory. In the
 	// SHIPPED Recall.app, the cwd is the .app bundle's MacOS folder —
@@ -117,14 +119,14 @@ func TestStartup_ClearsDefaultRelativePathWhenItDoesNotResolve(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chdir(prevCwd) })
 
-	// No settings file → loadSettings returns defaultSettings() →
+	// No settings file → loadSettings returns app.DefaultSettings() →
 	// ScreenshotsDir = "screenshots" (relative).
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
-	if a.settings.ScreenshotsDir != "" {
+	if app.AppSettings(a).ScreenshotsDir != "" {
 		t.Errorf("Startup must clear the relative 'screenshots' default when it doesn't resolve; got %q",
-			a.settings.ScreenshotsDir)
+			app.AppSettings(a).ScreenshotsDir)
 	}
 }
 
@@ -145,17 +147,17 @@ func TestStartup_ClearsLeakedTempDirPathFromAPriorTestRun(t *testing.T) {
 	if err := os.MkdirAll(leaked, 0o700); err != nil {
 		t.Fatalf("seed: create leaked path: %v", err)
 	}
-	seedSettings(t, Settings{ScreenshotsDir: leaked})
+	seedSettings(t, app.Settings{ScreenshotsDir: leaked})
 	// Now delete it to simulate the test-temp dir being cleaned up by
 	// Go's testing infra long after the settings.json was written.
 	if err := os.RemoveAll(leakedBase); err != nil {
 		t.Fatalf("simulate post-test-run cleanup: %v", err)
 	}
 
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
-	if a.settings.ScreenshotsDir != "" {
-		t.Errorf("Startup must clear a leaked deleted-temp path; got %q", a.settings.ScreenshotsDir)
+	if app.AppSettings(a).ScreenshotsDir != "" {
+		t.Errorf("Startup must clear a leaked deleted-temp path; got %q", app.AppSettings(a).ScreenshotsDir)
 	}
 }

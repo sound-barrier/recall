@@ -1,4 +1,4 @@
-package app
+package app_test
 
 import (
 	"errors"
@@ -8,16 +8,17 @@ import (
 	"path/filepath"
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/parser"
 )
 
-// withRenameFunc swaps renameFunc for a deterministic test wrapper
+// withRenameFunc swaps *app.RenameFunc for a deterministic test wrapper
 // and restores the prior func on cleanup.
 func withRenameFunc(t *testing.T, fn func(oldpath, newpath string) error) {
 	t.Helper()
-	prev := renameFunc
-	renameFunc = fn
-	t.Cleanup(func() { renameFunc = prev })
+	prev := *app.RenameFunc
+	*app.RenameFunc = fn
+	t.Cleanup(func() { *app.RenameFunc = prev })
 }
 
 // applyMainTestSetup wires up the Pages-published main channel
@@ -51,7 +52,7 @@ func TestApplyGameDataUpdate_HappyPath_WritesFilesAndManifest(t *testing.T) {
 	sources := validSourcesYAML()
 	applyMainTestSetup(t, "abc1234567890def", heroes, maps, sources)
 
-	got, err := (&App{}).ApplyGameDataUpdate()
+	got, err := (&app.App{}).ApplyGameDataUpdate()
 	if err != nil {
 		t.Fatalf("ApplyGameDataUpdate: %v", err)
 	}
@@ -60,7 +61,7 @@ func TestApplyGameDataUpdate_HappyPath_WritesFilesAndManifest(t *testing.T) {
 	}
 
 	// Files written to <RECALL_DATA_DIR>/data/.
-	dataDir := filepath.Join(appBaseDir(), "data")
+	dataDir := filepath.Join(app.AppBaseDir(), "data")
 	for _, name := range []string{"heroes.yaml", "maps.yaml", "screenshot_sources.yaml"} {
 		if _, err := os.Stat(filepath.Join(dataDir, name)); err != nil {
 			t.Errorf("expected %s to exist after apply: %v", name, err)
@@ -68,7 +69,7 @@ func TestApplyGameDataUpdate_HappyPath_WritesFilesAndManifest(t *testing.T) {
 	}
 
 	// Manifest reflects main source + commit.
-	m, err := LoadManifest()
+	m, err := app.LoadManifest()
 	if err != nil {
 		t.Fatalf("LoadManifest: %v", err)
 	}
@@ -92,8 +93,8 @@ func TestApplyGameDataUpdate_PagesUnreachable_ReturnsSentinel(t *testing.T) {
 	// Pages closed — every fetch fails with a connection error.
 	withMainURLs(t, closedServerURL(t))
 
-	_, err := (&App{}).ApplyGameDataUpdate()
-	if !errors.Is(err, ErrDataUpdateMainFetchFailed) {
+	_, err := (&app.App{}).ApplyGameDataUpdate()
+	if !errors.Is(err, app.ErrDataUpdateMainFetchFailed) {
 		t.Errorf("got %v, want ErrDataUpdateMainFetchFailed", err)
 	}
 }
@@ -125,14 +126,14 @@ func TestApplyGameDataUpdate_SHAMismatch_RejectsWithoutWriting(t *testing.T) {
 	t.Cleanup(srv.Close)
 	withMainURLs(t, srv.URL)
 
-	_, err := (&App{}).ApplyGameDataUpdate()
-	if !errors.Is(err, ErrDataUpdateChecksum) {
+	_, err := (&app.App{}).ApplyGameDataUpdate()
+	if !errors.Is(err, app.ErrDataUpdateChecksum) {
 		t.Errorf("got %v, want ErrDataUpdateChecksum", err)
 	}
 
 	// No files written under <data dir>.
 	for _, name := range []string{"heroes.yaml", "maps.yaml", "screenshot_sources.yaml"} {
-		path := filepath.Join(appBaseDir(), "data", name)
+		path := filepath.Join(app.AppBaseDir(), "data", name)
 		if _, err := os.Stat(path); err == nil {
 			t.Errorf("expected %s NOT written after SHA mismatch", name)
 		}
@@ -178,8 +179,8 @@ func TestApplyGameDataUpdate_PartialRenameFailure_RestoresOriginal(t *testing.T)
 		return os.Rename(oldpath, newpath)
 	})
 
-	_, err := (&App{}).ApplyGameDataUpdate()
-	if !errors.Is(err, ErrDataUpdateIO) {
+	_, err := (&app.App{}).ApplyGameDataUpdate()
+	if !errors.Is(err, app.ErrDataUpdateIO) {
 		t.Fatalf("got %v, want ErrDataUpdateIO", err)
 	}
 
@@ -200,7 +201,7 @@ func TestApplyGameDataUpdate_PartialRenameFailure_RestoresOriginal(t *testing.T)
 	}
 
 	// Manifest must NOT reflect a failed apply.
-	m, _ := LoadManifest()
+	m, _ := app.LoadManifest()
 	if m.AppliedMainCommit == "abc1234" {
 		t.Errorf("manifest written despite failure: AppliedMainCommit=%q", m.AppliedMainCommit)
 	}

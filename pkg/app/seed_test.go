@@ -1,14 +1,15 @@
-package app
+package app_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 )
 
-func loadStore(t *testing.T, p *Profiles, name string) db.Store {
+func loadStore(t *testing.T, p *app.Profiles, name string) db.Store {
 	t.Helper()
 	store, err := db.NewSQLStore(filepath.Join(p.ProfileDir(name), "db", "recall.db"))
 	if err != nil {
@@ -19,12 +20,12 @@ func loadStore(t *testing.T, p *Profiles, name string) db.Store {
 }
 
 func TestSeedProfile_CreatesAndSeeds(t *testing.T) {
-	p, err := LoadProfiles(t.TempDir())
+	p, err := app.LoadProfiles(t.TempDir())
 	if err != nil {
 		t.Fatalf("LoadProfiles: %v", err)
 	}
 
-	res, err := SeedProfile(p, "test", SeedOptions{N: 250, Seed: 8, Style: "flex", Chaos: 0.1})
+	res, err := app.SeedProfile(p, "test", app.SeedOptions{N: 250, Seed: 8, Style: "flex", Chaos: 0.1})
 	if err != nil {
 		t.Fatalf("SeedProfile: %v", err)
 	}
@@ -43,7 +44,7 @@ func TestSeedProfile_CreatesAndSeeds(t *testing.T) {
 	}
 
 	// The profile was created and the rows actually persisted.
-	if !containsProfile(p.List(), "test") {
+	if !app.ContainsProfile(p.List(), "test") {
 		t.Fatalf("profile %q not in list %v", "test", p.List())
 	}
 	snap, err := loadStore(t, p, "test").LoadAll()
@@ -56,17 +57,17 @@ func TestSeedProfile_CreatesAndSeeds(t *testing.T) {
 }
 
 func TestSeedProfile_IdempotentReuse(t *testing.T) {
-	p, err := LoadProfiles(t.TempDir())
+	p, err := app.LoadProfiles(t.TempDir())
 	if err != nil {
 		t.Fatalf("LoadProfiles: %v", err)
 	}
-	first, err := SeedProfile(p, "test", SeedOptions{N: 80, Seed: 8, Style: "flex"})
+	first, err := app.SeedProfile(p, "test", app.SeedOptions{N: 80, Seed: 8, Style: "flex"})
 	if err != nil {
 		t.Fatalf("first SeedProfile: %v", err)
 	}
 
 	// Second call without Force reuses the existing data untouched.
-	second, err := SeedProfile(p, "test", SeedOptions{N: 80, Seed: 8, Style: "flex"})
+	second, err := app.SeedProfile(p, "test", app.SeedOptions{N: 80, Seed: 8, Style: "flex"})
 	if err != nil {
 		t.Fatalf("second SeedProfile: %v", err)
 	}
@@ -79,16 +80,16 @@ func TestSeedProfile_IdempotentReuse(t *testing.T) {
 }
 
 func TestSeedProfile_DoesNotTouchOtherProfiles(t *testing.T) {
-	p, err := LoadProfiles(t.TempDir())
+	p, err := app.LoadProfiles(t.TempDir())
 	if err != nil {
 		t.Fatalf("LoadProfiles: %v", err)
 	}
 	// Fresh install has the default 'main' profile but no DB yet.
-	if _, err := SeedProfile(p, "test", SeedOptions{N: 60, Seed: 8, Style: "flex"}); err != nil {
+	if _, err := app.SeedProfile(p, "test", app.SeedOptions{N: 60, Seed: 8, Style: "flex"}); err != nil {
 		t.Fatalf("SeedProfile: %v", err)
 	}
-	mainDB := filepath.Join(p.ProfileDir(DefaultProfileName), "db", "recall.db")
+	mainDB := filepath.Join(p.ProfileDir(app.DefaultProfileName), "db", "recall.db")
 	if _, statErr := os.Stat(mainDB); !os.IsNotExist(statErr) {
-		t.Fatalf("seeding 'test' created/touched %q's database (%s, stat err=%v)", DefaultProfileName, mainDB, statErr)
+		t.Fatalf("seeding 'test' created/touched %q's database (%s, stat err=%v)", app.DefaultProfileName, mainDB, statErr)
 	}
 }

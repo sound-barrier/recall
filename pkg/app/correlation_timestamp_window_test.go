@@ -1,8 +1,9 @@
-package app
+package app_test
 
 import (
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
@@ -36,9 +37,9 @@ func TestMatchByTimestampWindow_EquidistantBetweenTwoMatches_SurfacesAmbiguous(t
 		},
 	}
 	// PERSONAL at 14:00:45 — exactly 45 s from each SUMMARY.
-	cand := candidateFromParse("Overwatch 2 Screenshot 2026.07.01 - 14.00.45 _p.png",
+	cand := app.CandidateFromParse("Overwatch 2 Screenshot 2026.07.01 - 14.00.45 _p.png",
 		&parser.MatchResult{Hero: "lucio"})
-	key, cands, ok := matchByTimestampWindow(cand, snap)
+	key, cands, ok := app.MatchByTimestampWindow(cand, snap)
 	if !ok {
 		t.Fatalf("expected ok=true for ambiguous tie, got false")
 	}
@@ -79,9 +80,9 @@ func TestMatchByTimestampWindow_NearTie_WithinTolerance_SurfacesAmbiguous(t *tes
 			},
 		},
 	}
-	cand := candidateFromParse("Overwatch 2 Screenshot 2026.07.01 - 14.00.45 _p.png",
+	cand := app.CandidateFromParse("Overwatch 2 Screenshot 2026.07.01 - 14.00.45 _p.png",
 		&parser.MatchResult{Hero: "lucio"})
-	_, cands, ok := matchByTimestampWindow(cand, snap)
+	_, cands, ok := app.MatchByTimestampWindow(cand, snap)
 	if !ok || len(cands) != 2 {
 		t.Errorf("expected ambiguous 2-candidate result, got ok=%v cands=%+v", ok, cands)
 	}
@@ -106,9 +107,9 @@ func TestMatchByTimestampWindow_ClearlyCloser_AutoAdopts(t *testing.T) {
 			},
 		},
 	}
-	cand := candidateFromParse("Overwatch 2 Screenshot 2026.07.01 - 14.00.45 _p.png",
+	cand := app.CandidateFromParse("Overwatch 2 Screenshot 2026.07.01 - 14.00.45 _p.png",
 		&parser.MatchResult{Hero: "lucio"})
-	key, cands, ok := matchByTimestampWindow(cand, snap)
+	key, cands, ok := app.MatchByTimestampWindow(cand, snap)
 	if !ok || key != "match-X" || cands != nil {
 		t.Errorf("expected clean adopt of match:X, got ok=%v key=%q cands=%+v", ok, key, cands)
 	}
@@ -130,9 +131,9 @@ func TestMatchByTimestampWindow_IntraMatchEquidistance_NotAmbiguous(t *testing.T
 			MatchKey: "match-A",
 		}},
 	}
-	cand := candidateFromParse("Overwatch 2 Screenshot 2026.07.01 - 14.00.30 _p.png",
+	cand := app.CandidateFromParse("Overwatch 2 Screenshot 2026.07.01 - 14.00.30 _p.png",
 		&parser.MatchResult{Hero: "lucio"})
-	key, cands, ok := matchByTimestampWindow(cand, snap)
+	key, cands, ok := app.MatchByTimestampWindow(cand, snap)
 	if !ok || key != "match-A" || cands != nil {
 		t.Errorf("expected clean adopt of match:A, got ok=%v key=%q cands=%+v", ok, key, cands)
 	}

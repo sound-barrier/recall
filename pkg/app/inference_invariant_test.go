@@ -1,4 +1,4 @@
-package app
+package app_test
 
 // Tests in this file lock the load-bearing invariant that the read-time
 // inference helpers (inferSoleHeroPercent, inferResultFromRank) run on
@@ -22,6 +22,7 @@ package app
 import (
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
@@ -37,7 +38,7 @@ func TestInference_ResultFromRank_FiresAtReadTime(t *testing.T) {
 			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
 		}},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 
 	got, err := a.GetMatchResults()
 	if err != nil {
@@ -70,7 +71,7 @@ func TestInference_NeverPersistedToStore(t *testing.T) {
 			},
 		}},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 
 	if _, err := a.GetMatchResults(); err != nil {
 		t.Fatalf("GetMatchResults: %v", err)
@@ -102,7 +103,7 @@ func TestInference_DoesNotOverrideStoredResult(t *testing.T) {
 			SR:   []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
 		}},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 
 	got, err := a.GetMatchResults()
 	if err != nil {
@@ -125,7 +126,7 @@ func TestInference_SoleHeroPercent_DoesNotOverrideStored(t *testing.T) {
 			},
 		}},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 
 	got, err := a.GetMatchResults()
 	if err != nil {
@@ -144,9 +145,9 @@ func TestInference_Idempotent(t *testing.T) {
 		Rank: "platinum",
 		SR:   []parser.HeroSR{{Hero: "juno", Change: 22}},
 	}
-	inferResultFromRank(d)
+	app.InferResultFromRank(d)
 	first := d.Result
-	inferResultFromRank(d)
+	app.InferResultFromRank(d)
 	if d.Result != first {
 		t.Errorf("inferResultFromRank not idempotent: first=%q second=%q", first, d.Result)
 	}
@@ -154,9 +155,9 @@ func TestInference_Idempotent(t *testing.T) {
 	hp := &parser.MatchResult{
 		HeroesPlayed: []parser.HeroPlay{{Hero: "lucio"}},
 	}
-	inferSoleHeroPercent(hp)
+	app.InferSoleHeroPercent(hp)
 	firstPct := hp.HeroesPlayed[0].PercentPlayed
-	inferSoleHeroPercent(hp)
+	app.InferSoleHeroPercent(hp)
 	if hp.HeroesPlayed[0].PercentPlayed != firstPct {
 		t.Errorf("inferSoleHeroPercent not idempotent: first=%d second=%d",
 			firstPct, hp.HeroesPlayed[0].PercentPlayed)

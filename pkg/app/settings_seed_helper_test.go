@@ -1,8 +1,10 @@
-package app
+package app_test
 
 import (
 	"context"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 // seedSettings writes `s` to <base>/profiles/<active>/settings.json
@@ -17,15 +19,15 @@ import (
 //
 // `t.Setenv("RECALL_DATA_DIR", t.TempDir())` is the caller's
 // responsibility — the seed honors it via appBaseDir.
-func seedSettings(t *testing.T, s Settings) {
+func seedSettings(t *testing.T, s app.Settings) {
 	t.Helper()
-	a := New()
+	a := app.New()
 	a.Startup(context.Background())
 	// Startup may have stamped defaults (e.g. TesseractPath) into
 	// a.settings — overlay the test-supplied seed on top so the
 	// caller sees exactly what they asked for.
-	a.settings = s
-	if err := a.saveSettings(s); err != nil {
+	*app.AppSettings(a) = s
+	if err := app.SaveSettings(a, s); err != nil {
 		t.Fatalf("seed settings: %v", err)
 	}
 }

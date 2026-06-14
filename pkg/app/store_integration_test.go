@@ -1,10 +1,11 @@
-package app
+package app_test
 
 import (
 	"reflect"
 	"sort"
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 	"recall/pkg/parser"
@@ -21,7 +22,7 @@ type fakeStore = dbtest.Fake
 
 func TestApp_ClearDatabase_DelegatesToStore(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.ClearDatabase(false); err != nil {
 		t.Fatalf("ClearDatabase: %v", err)
 	}
@@ -36,7 +37,7 @@ func TestApp_ClearDatabase_DelegatesToStore(t *testing.T) {
 // on the Clear Database arm step.
 func TestApp_ClearDatabase_KeepIgnored_SnapshotRestore(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	for _, f := range []string{"bad-1.png", "bad-2.png", "bad-3.png"} {
 		if err := fs.AddIgnoredScreenshot(f); err != nil {
 			t.Fatalf("seed %s: %v", f, err)
@@ -64,7 +65,7 @@ func TestApp_ClearDatabase_KeepIgnored_SnapshotRestore(t *testing.T) {
 // Store.Clear behavior).
 func TestApp_ClearDatabase_NoOptOut_WipesIgnored(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := fs.AddIgnoredScreenshot("bad.png"); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -82,7 +83,7 @@ func TestApp_ClearDatabase_NoOptOut_WipesIgnored(t *testing.T) {
 
 func TestApp_HardDeleteMatch_DelegatesAndValidates(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.HardDeleteMatch(""); err == nil {
 		t.Error("expected error for empty match_key")
 	}
@@ -112,7 +113,7 @@ func TestApp_GetMatchResults_DecodesAndFolds(t *testing.T) {
 			Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 		}},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	got, err := a.GetMatchResults()
 	if err != nil {
 		t.Fatalf("GetMatchResults: %v", err)
@@ -141,7 +142,7 @@ func TestApp_GetMatchResults_AppliesReadTimeInference(t *testing.T) {
 			Eliminations: 17,
 		}},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	got, err := a.GetMatchResults()
 	if err != nil {
 		t.Fatalf("GetMatchResults: %v", err)
@@ -159,7 +160,7 @@ func TestApp_GetMatchResults_AppliesReadTimeInference(t *testing.T) {
 }
 
 func TestApp_GetMatchResults_EmptyTableReturnsNonNilSlice(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	got, err := a.GetMatchResults()
 	if err != nil {
 		t.Fatalf("GetMatchResults: %v", err)
@@ -183,7 +184,7 @@ func TestApp_RoundTripViaSQLStore(t *testing.T) {
 		t.Fatalf("NewSQLStore: %v", err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
-	a := NewWithStore(s)
+	a := app.NewWithStore(s)
 
 	// Insert a SUMMARY + TEAMS for the same match.
 	if err := s.UpsertSummary(db.SummaryRow{
@@ -247,7 +248,7 @@ func TestApp_GetMatchResults_ExposesParsedAtFields(t *testing.T) {
 			Eliminations: 5,
 		}},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	got, err := a.GetMatchResults()
 	if err != nil {
 		t.Fatalf("GetMatchResults: %v", err)
@@ -275,8 +276,8 @@ func TestApp_ScrapeReader_ReturnsAllRows(t *testing.T) {
 			{Filename: "b.png", MatchKey: "m2", Playlist: "quickplay", Hero: "kiriko"},
 		},
 	}
-	a := NewWithStore(fs)
-	got, err := a.scrapeReader()
+	a := app.NewWithStore(fs)
+	got, err := app.ScrapeReader(a)
 	if err != nil {
 		t.Fatalf("scrapeReader: %v", err)
 	}
@@ -300,7 +301,7 @@ func TestApp_ScrapeReader_ReturnsAllRows(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestApp_HideMatch_RequiresMatchKey(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	if err := a.HideMatch(""); err == nil {
 		t.Fatal("HideMatch with empty match_key should error")
 	}
@@ -311,7 +312,7 @@ func TestApp_HideMatch_RequiresMatchKey(t *testing.T) {
 
 func TestApp_HideMatch_DelegatesToStore(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.HideMatch("m1"); err != nil {
 		t.Fatalf("HideMatch: %v", err)
 	}
@@ -347,7 +348,7 @@ func TestApp_GetMatchResults_TagsHiddenMatches(t *testing.T) {
 		},
 		Hidden: map[string]bool{"m2": true},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	got, err := a.GetMatchResults()
 	if err != nil {
 		t.Fatalf("GetMatchResults: %v", err)
@@ -381,7 +382,7 @@ func TestApp_HideMatch_PreservesSourceFilenamesSoReparseSkipsThem(t *testing.T) 
 			{ID: 1, Filename: "a-teams.png", MatchKey: "m1"},
 		},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.HideMatch("m1"); err != nil {
 		t.Fatalf("HideMatch: %v", err)
 	}
@@ -416,8 +417,8 @@ func TestApp_ScrapeReader_DropsHiddenMatches(t *testing.T) {
 		},
 		Hidden: map[string]bool{"m2": true},
 	}
-	a := NewWithStore(fs)
-	got, err := a.scrapeReader()
+	a := app.NewWithStore(fs)
+	got, err := app.ScrapeReader(a)
 	if err != nil {
 		t.Fatalf("scrapeReader: %v", err)
 	}

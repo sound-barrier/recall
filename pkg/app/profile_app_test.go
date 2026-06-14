@@ -1,4 +1,4 @@
-package app
+package app_test
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 // App-level profile methods — surface for the Wails IPC + HTTP routes.
@@ -20,7 +22,7 @@ func TestApp_GetProfiles_ReturnsActiveAndList(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
 	got := a.GetProfiles()
@@ -37,7 +39,7 @@ func TestApp_CreateProfile_AddsAndActivates(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
 	if err := a.CreateProfile("alt"); err != nil {
@@ -56,11 +58,11 @@ func TestApp_CreateProfile_RejectsInvalidName(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
 	err := a.CreateProfile("../traversal")
-	if !errors.Is(err, ErrInvalidProfileName) {
+	if !errors.Is(err, app.ErrInvalidProfileName) {
 		t.Errorf("expected ErrInvalidProfileName, got %v", err)
 	}
 }
@@ -69,11 +71,11 @@ func TestApp_CreateProfile_RejectsDuplicate(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
 	err := a.CreateProfile("main")
-	if !errors.Is(err, ErrProfileExists) {
+	if !errors.Is(err, app.ErrProfileExists) {
 		t.Errorf("expected ErrProfileExists, got %v", err)
 	}
 }
@@ -85,7 +87,7 @@ func TestApp_SwitchProfile_ReinitializesStoreAndSettings(t *testing.T) {
 
 	// Use the real SQL store, not the fake — we want to assert the
 	// store is swapped to a new on-disk path after the switch.
-	a := New()
+	a := app.New()
 	a.Startup(context.Background())
 
 	// Set a distinctive screenshots dir on main so we can prove the
@@ -101,13 +103,13 @@ func TestApp_SwitchProfile_ReinitializesStoreAndSettings(t *testing.T) {
 	// CreateProfile already activated; verify settings are fresh
 	// (alt is a brand new profile so its settings should be defaults
 	// with no screenshots dir).
-	if a.settings.ScreenshotsDir != "" {
-		t.Errorf("after switching to alt, ScreenshotsDir = %q; want empty (fresh profile)", a.settings.ScreenshotsDir)
+	if app.AppSettings(a).ScreenshotsDir != "" {
+		t.Errorf("after switching to alt, ScreenshotsDir = %q; want empty (fresh profile)", app.AppSettings(a).ScreenshotsDir)
 	}
 
 	// And the store's underlying DB path moved to alt's dir.
-	wantDB := filepath.Join(a.dataDir(), "db", "recall.db")
-	if got := filepath.Join(a.dataDir(), "db", "recall.db"); got != wantDB {
+	wantDB := filepath.Join(app.DataDir(a), "db", "recall.db")
+	if got := filepath.Join(app.DataDir(a), "db", "recall.db"); got != wantDB {
 		t.Errorf("dataDir didn't move; got %q", got)
 	}
 
@@ -115,8 +117,8 @@ func TestApp_SwitchProfile_ReinitializesStoreAndSettings(t *testing.T) {
 	if err := a.SwitchProfile("main"); err != nil {
 		t.Fatalf("SwitchProfile main: %v", err)
 	}
-	if a.settings.ScreenshotsDir != mainDir {
-		t.Errorf("after switching back to main, ScreenshotsDir = %q; want %q (main's persisted value)", a.settings.ScreenshotsDir, mainDir)
+	if app.AppSettings(a).ScreenshotsDir != mainDir {
+		t.Errorf("after switching back to main, ScreenshotsDir = %q; want %q (main's persisted value)", app.AppSettings(a).ScreenshotsDir, mainDir)
 	}
 }
 
@@ -124,11 +126,11 @@ func TestApp_SwitchProfile_RejectsUnknown(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
 	err := a.SwitchProfile("nope")
-	if !errors.Is(err, ErrProfileNotFound) {
+	if !errors.Is(err, app.ErrProfileNotFound) {
 		t.Errorf("expected ErrProfileNotFound, got %v", err)
 	}
 }
@@ -137,11 +139,11 @@ func TestApp_DeleteProfile_RefusesActive(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
 	err := a.DeleteProfile("main")
-	if !errors.Is(err, ErrProfileActive) {
+	if !errors.Is(err, app.ErrProfileActive) {
 		t.Errorf("expected ErrProfileActive, got %v", err)
 	}
 }
@@ -155,7 +157,7 @@ func TestApp_ProfileOverride_CreatesAndActivatesAtStartup(t *testing.T) {
 	// and switches to it for the rest of Startup. The persisted
 	// profiles.json then records "alt" as active, so a second launch
 	// without the flag resumes there.
-	a := New()
+	a := app.New()
 	a.SetProfileOverride("alt")
 	a.Startup(context.Background())
 
@@ -173,12 +175,12 @@ func TestApp_ProfileOverride_ActivatesExistingProfileWithoutDuplicateCreate(t *t
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	// Seed: first launch creates alt.
-	a1 := New()
+	a1 := app.New()
 	a1.SetProfileOverride("alt")
 	a1.Startup(context.Background())
 	// Second launch: --profile=main switches back; should NOT try to
 	// re-create main (which already exists from the default-init).
-	a2 := New()
+	a2 := app.New()
 	a2.SetProfileOverride("main")
 	a2.Startup(context.Background())
 
@@ -195,7 +197,7 @@ func TestApp_RenameProfile_NonActive(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
-	a := New()
+	a := app.New()
 	a.Startup(context.Background())
 	if err := a.CreateProfile("alt"); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
@@ -225,7 +227,7 @@ func TestApp_RenameProfile_Active_PreservesData(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
-	a := New()
+	a := app.New()
 	a.Startup(context.Background())
 
 	// Pin a distinctive setting on the active profile so we can
@@ -244,14 +246,14 @@ func TestApp_RenameProfile_Active_PreservesData(t *testing.T) {
 		t.Errorf("active = %q, want silentstorm", got.Active)
 	}
 	// In-memory settings carried through and the store was re-opened.
-	if a.settings.ScreenshotsDir != mainDir {
-		t.Errorf("ScreenshotsDir lost after active rename; got %q want %q", a.settings.ScreenshotsDir, mainDir)
+	if app.AppSettings(a).ScreenshotsDir != mainDir {
+		t.Errorf("ScreenshotsDir lost after active rename; got %q want %q", app.AppSettings(a).ScreenshotsDir, mainDir)
 	}
-	if a.store == nil {
+	if app.AppStore(a) == nil {
 		t.Error("store should have been re-opened after active rename")
 	}
 	// Re-loading from disk also sees the renamed profile + its dir.
-	persisted := a.loadSettings()
+	persisted := app.LoadSettings(a)
 	if persisted.ScreenshotsDir != mainDir {
 		t.Errorf("on-disk settings.json lost ScreenshotsDir; got %q want %q", persisted.ScreenshotsDir, mainDir)
 	}
@@ -261,7 +263,7 @@ func TestApp_RenameProfile_NoOp(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 	if err := a.RenameProfile("main", "main"); err != nil {
 		t.Errorf("rename to same name should be no-op, got %v", err)
@@ -272,7 +274,7 @@ func TestApp_RenameProfile_RejectsCollision(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	a := New()
+	a := app.New()
 	a.Startup(context.Background())
 	if err := a.CreateProfile("alt"); err != nil {
 		t.Fatalf("CreateProfile: %v", err)
@@ -282,7 +284,7 @@ func TestApp_RenameProfile_RejectsCollision(t *testing.T) {
 	}
 
 	err := a.RenameProfile("alt", "main")
-	if !errors.Is(err, ErrProfileExists) {
+	if !errors.Is(err, app.ErrProfileExists) {
 		t.Errorf("expected ErrProfileExists, got %v", err)
 	}
 }
@@ -291,7 +293,7 @@ func TestApp_DeleteProfile_RemovesNonActive(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	a := New()
+	a := app.New()
 	a.Startup(context.Background())
 
 	if err := a.CreateProfile("alt"); err != nil {

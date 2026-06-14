@@ -1,10 +1,12 @@
-package app
+package app_test
 
 import (
 	"context"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 // Pinning tests for the multi-profile invariants the FEATURES.md item
@@ -22,7 +24,7 @@ func TestProfiles_AllowsArbitraryProfileCount(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
-	a := New()
+	a := app.New()
 	a.Startup(context.Background())
 
 	// Create five named profiles in a row — matches the FEATURES.md
@@ -48,7 +50,7 @@ func TestProfiles_AllowsArbitraryProfileCount(t *testing.T) {
 	}
 	// Sanity: every directory exists.
 	for _, name := range append([]string{"main"}, names...) {
-		dir := a.profiles.ProfileDir(name)
+		dir := app.AppProfiles(a).ProfileDir(name)
 		if info, err := os.Stat(dir); err != nil || !info.IsDir() {
 			t.Errorf("profile dir for %q missing or not a dir: %v", name, err)
 		}
@@ -60,7 +62,7 @@ func TestProfiles_ScreenshotsDirIsPerProfile(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
-	a := New()
+	a := app.New()
 	a.Startup(context.Background())
 
 	// Distinct on-disk dirs to assign to two profiles, so each
@@ -87,7 +89,7 @@ func TestProfiles_ScreenshotsDirIsPerProfile(t *testing.T) {
 	if err := a.SwitchProfile("main"); err != nil {
 		t.Fatalf("SwitchProfile main: %v", err)
 	}
-	if got := a.settings.ScreenshotsDir; got != mainDir {
+	if got := app.AppSettings(a).ScreenshotsDir; got != mainDir {
 		t.Errorf("main ScreenshotsDir after switch back = %q, want %q", got, mainDir)
 	}
 
@@ -95,14 +97,14 @@ func TestProfiles_ScreenshotsDirIsPerProfile(t *testing.T) {
 	if err := a.SwitchProfile("alt"); err != nil {
 		t.Fatalf("SwitchProfile alt: %v", err)
 	}
-	if got := a.settings.ScreenshotsDir; got != altDir {
+	if got := app.AppSettings(a).ScreenshotsDir; got != altDir {
 		t.Errorf("alt ScreenshotsDir after switch = %q, want %q", got, altDir)
 	}
 
 	// And the on-disk shape matches: each profile's settings.json
 	// is a sibling of the other, not a shared file.
-	mainSettings := filepath.Join(a.profiles.ProfileDir("main"), "settings.json")
-	altSettings := filepath.Join(a.profiles.ProfileDir("alt"), "settings.json")
+	mainSettings := filepath.Join(app.AppProfiles(a).ProfileDir("main"), "settings.json")
+	altSettings := filepath.Join(app.AppProfiles(a).ProfileDir("alt"), "settings.json")
 	if _, err := os.Stat(mainSettings); err != nil {
 		t.Errorf("main settings.json missing: %v", err)
 	}

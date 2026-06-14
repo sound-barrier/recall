@@ -1,10 +1,12 @@
-package app
+package app_test
 
 import (
 	"context"
 	"errors"
 	"os/exec"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 // Reveal + Reset cover three behaviors:
@@ -32,20 +34,20 @@ func TestRevealScreenshotsDir_FailsWhenUnconfigured(t *testing.T) {
 	// ./screenshots, for instance) and turn this from an "empty
 	// config" test into a "valid config" test. We only care about
 	// the empty-string branch.
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 
 	err := a.RevealScreenshotsDir()
 	if err == nil {
 		t.Fatal("RevealScreenshotsDir should fail when no folder is configured")
 	}
-	if !errors.Is(err, ErrInvalidScreenshotsDir) {
+	if !errors.Is(err, app.ErrInvalidScreenshotsDir) {
 		t.Errorf("error must wrap ErrInvalidScreenshotsDir (so HTTP returns 400, not 500); got %v", err)
 	}
 }
 
 // Pin the spawn shape so a future refactor can't silently break the
 // per-platform opener: macOS = `open`, Linux = `xdg-open`, Windows =
-// `explorer`. We swap revealCommand for a recorder before calling, so
+// `explorer`. We swap *app.RevealCommand for a recorder before calling, so
 // no real `open` window pops on the dev machine when the test runs.
 func TestRevealScreenshotsDir_SpawnsExpectedCommand(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
@@ -53,12 +55,12 @@ func TestRevealScreenshotsDir_SpawnsExpectedCommand(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	dir := t.TempDir()
-	seedSettings(t, Settings{ScreenshotsDir: dir})
+	seedSettings(t, app.Settings{ScreenshotsDir: dir})
 
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
-	if a.settings.ScreenshotsDir != dir {
-		t.Fatalf("test invariant: Startup didn't preserve seed dir; got %q want %q", a.settings.ScreenshotsDir, dir)
+	if app.AppSettings(a).ScreenshotsDir != dir {
+		t.Fatalf("test invariant: Startup didn't preserve seed dir; got %q want %q", app.AppSettings(a).ScreenshotsDir, dir)
 	}
 
 	// Swap the package-level spawn seam for a recorder. The recorder
@@ -66,20 +68,20 @@ func TestRevealScreenshotsDir_SpawnsExpectedCommand(t *testing.T) {
 	// no-op equivalent on Windows) — the real binary never runs.
 	var gotName string
 	var gotArgs []string
-	prev := revealCommand
-	revealCommand = func(name string, args ...string) *exec.Cmd {
+	prev := *app.RevealCommand
+	*app.RevealCommand = func(name string, args ...string) *exec.Cmd {
 		gotName = name
 		gotArgs = args
 		return exec.Command("true")
 	}
-	t.Cleanup(func() { revealCommand = prev })
+	t.Cleanup(func() { *app.RevealCommand = prev })
 
 	if err := a.RevealScreenshotsDir(); err != nil {
 		t.Fatalf("RevealScreenshotsDir: %v", err)
 	}
 
 	if gotName == "" {
-		t.Fatal("revealCommand was never invoked — RevealScreenshotsDir didn't reach the spawn seam")
+		t.Fatal("*app.RevealCommand was never invoked — RevealScreenshotsDir didn't reach the spawn seam")
 	}
 	// The opener gets the configured path as its sole argument so the
 	// file manager opens directly inside that folder (rather than
@@ -95,23 +97,23 @@ func TestResetScreenshotsDir_ClearsInMemoryAndPersistedState(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	dir := t.TempDir()
-	seedSettings(t, Settings{ScreenshotsDir: dir})
-	a := NewWithStore(&fakeStore{})
+	seedSettings(t, app.Settings{ScreenshotsDir: dir})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
-	if a.settings.ScreenshotsDir != dir {
-		t.Fatalf("test invariant: seed dir not loaded; got %q want %q", a.settings.ScreenshotsDir, dir)
+	if app.AppSettings(a).ScreenshotsDir != dir {
+		t.Fatalf("test invariant: seed dir not loaded; got %q want %q", app.AppSettings(a).ScreenshotsDir, dir)
 	}
 
 	if err := a.ResetScreenshotsDir(); err != nil {
 		t.Fatalf("ResetScreenshotsDir: %v", err)
 	}
 
-	if a.settings.ScreenshotsDir != "" {
-		t.Errorf("in-memory ScreenshotsDir = %q; want \"\" (Reset must clear)", a.settings.ScreenshotsDir)
+	if app.AppSettings(a).ScreenshotsDir != "" {
+		t.Errorf("in-memory ScreenshotsDir = %q; want \"\" (Reset must clear)", app.AppSettings(a).ScreenshotsDir)
 	}
 	// And the persisted shape must match — otherwise the next Startup
 	// re-loads the old value and Reset is a no-op across restarts.
-	persisted := a.loadSettings()
+	persisted := app.LoadSettings(a)
 	if persisted.ScreenshotsDir != "" {
 		t.Errorf("settings.json ScreenshotsDir = %q; want \"\" (Reset must persist the empty value)", persisted.ScreenshotsDir)
 	}
@@ -128,18 +130,18 @@ func TestResetScreenshotsDir_StopsArmedWatcher(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
 	dir := t.TempDir()
-	seedSettings(t, Settings{
+	seedSettings(t, app.Settings{
 		ScreenshotsDir: dir,
 		WatchEnabled:   true,
 	})
 
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 	// startWatching is gated behind Tesseract being ready in some
 	// startup paths, so arm the watcher explicitly here to be sure
 	// we're exercising the stop path.
-	a.startWatching()
-	if a.watcher == nil {
+	app.StartWatching(a)
+	if app.AppWatcher(a) == nil {
 		t.Fatal("test invariant: watcher should be armed before Reset")
 	}
 
@@ -147,7 +149,7 @@ func TestResetScreenshotsDir_StopsArmedWatcher(t *testing.T) {
 		t.Fatalf("ResetScreenshotsDir: %v", err)
 	}
 
-	if a.watcher != nil {
-		t.Errorf("watcher must be torn down after Reset; got non-nil watcher pointing at %q", a.watchedDir)
+	if app.AppWatcher(a) != nil {
+		t.Errorf("watcher must be torn down after Reset; got non-nil watcher pointing at %q", app.AppWatchedDir(a))
 	}
 }

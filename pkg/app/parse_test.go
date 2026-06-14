@@ -1,12 +1,14 @@
-package app
+package app_test
 
 import (
 	"errors"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 func TestActiveParse_IdleByDefault(t *testing.T) {
-	a := &App{}
+	a := &app.App{}
 	got := a.ActiveParse()
 	if got.Running || got.Done != 0 || got.Total != 0 || got.Scope != "" {
 		t.Errorf("idle ActiveParse = %+v, want zero/false", got)
@@ -17,9 +19,9 @@ func TestActiveParse_IdleByDefault(t *testing.T) {
 // fails fast (the source of the POST's 409 / the watcher's skip), and
 // the slot frees on endParse. ActiveParse reflects each transition.
 func TestClaimParse_SingleFlight(t *testing.T) {
-	a := &App{}
+	a := &app.App{}
 
-	ctx, ok := a.claimParse(true)
+	ctx, ok := app.ClaimParse(a, true)
 	if !ok || ctx == nil {
 		t.Fatalf("first claimParse = (%v, %v), want (ctx, true)", ctx, ok)
 	}
@@ -28,30 +30,30 @@ func TestClaimParse_SingleFlight(t *testing.T) {
 	}
 
 	// A concurrent claim must fail fast — no queueing.
-	if _, ok2 := a.claimParse(false); ok2 {
+	if _, ok2 := app.ClaimParse(a, false); ok2 {
 		t.Errorf("second claimParse succeeded, want fail-fast")
 	}
 
-	a.endParse()
+	app.EndParse(a)
 	if s := a.ActiveParse(); s.Running {
 		t.Errorf("ActiveParse after endParse = %+v, want not running", s)
 	}
 
 	// Slot is reusable after release.
-	if _, ok3 := a.claimParse(false); !ok3 {
+	if _, ok3 := app.ClaimParse(a, false); !ok3 {
 		t.Errorf("claimParse after endParse failed, want reusable slot")
 	}
-	a.endParse()
+	app.EndParse(a)
 }
 
 func TestNoteProgress_SurfacedByActiveParse(t *testing.T) {
-	a := &App{}
-	if _, ok := a.claimParse(false); !ok {
+	a := &app.App{}
+	if _, ok := app.ClaimParse(a, false); !ok {
 		t.Fatal("claimParse failed")
 	}
-	defer a.endParse()
+	defer app.EndParse(a)
 
-	a.noteProgress(7, 40)
+	app.NoteProgress(a, 7, 40)
 	if s := a.ActiveParse(); s.Done != 7 || s.Total != 40 || s.Scope != "new" {
 		t.Errorf("ActiveParse after noteProgress = %+v, want done=7 total=40 scope=new", s)
 	}
@@ -61,15 +63,15 @@ func TestNoteProgress_SurfacedByActiveParse(t *testing.T) {
 // sets the cancel func, so CancelParse finds it; after endParse the slot
 // is empty again.
 func TestCancelParse_AgainstClaimedState(t *testing.T) {
-	a := &App{}
-	if _, ok := a.claimParse(false); !ok {
+	a := &app.App{}
+	if _, ok := app.ClaimParse(a, false); !ok {
 		t.Fatal("claimParse failed")
 	}
 	if err := a.CancelParse(); err != nil {
 		t.Errorf("CancelParse while claimed = %v, want nil", err)
 	}
-	a.endParse()
-	if err := a.CancelParse(); !errors.Is(err, ErrNoParseInFlight) {
+	app.EndParse(a)
+	if err := a.CancelParse(); !errors.Is(err, app.ErrNoParseInFlight) {
 		t.Errorf("CancelParse after endParse = %v, want ErrNoParseInFlight", err)
 	}
 }

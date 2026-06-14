@@ -1,14 +1,16 @@
-package app
+package app_test
 
 import (
 	"errors"
 	"sync"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 func TestCancelParse_NoFlight_ReturnsErrNoParseInFlight(t *testing.T) {
-	a := &App{}
-	if err := a.CancelParse(); !errors.Is(err, ErrNoParseInFlight) {
+	a := &app.App{}
+	if err := a.CancelParse(); !errors.Is(err, app.ErrNoParseInFlight) {
 		t.Errorf("CancelParse with no parse in flight = %v, want ErrNoParseInFlight", err)
 	}
 }
@@ -20,10 +22,10 @@ func TestCancelParse_NoFlight_ReturnsErrNoParseInFlight(t *testing.T) {
 func TestCancelParse_FiresStoredCancel_AndIsRepeatedlyDrainable(t *testing.T) {
 	var fired sync.Mutex
 	fired.Lock()
-	a := &App{}
-	a.parseCancelMu.Lock()
-	a.parseCancel = fired.Unlock // releasing fired signals cancel ran
-	a.parseCancelMu.Unlock()
+	a := &app.App{}
+	app.AppParseCancelMu(a).Lock()
+	*app.AppParseCancel(a) = fired.Unlock // releasing fired signals cancel ran
+	app.AppParseCancelMu(a).Unlock()
 
 	if err := a.CancelParse(); err != nil {
 		t.Fatalf("CancelParse = %v, want nil", err)
@@ -32,10 +34,10 @@ func TestCancelParse_FiresStoredCancel_AndIsRepeatedlyDrainable(t *testing.T) {
 	fired.Lock()
 	// Pretend the OCR loop's deferred cleanup ran: parseCancel slot
 	// goes back to nil. A second CancelParse must reflect that.
-	a.parseCancelMu.Lock()
-	a.parseCancel = nil
-	a.parseCancelMu.Unlock()
-	if err := a.CancelParse(); !errors.Is(err, ErrNoParseInFlight) {
+	app.AppParseCancelMu(a).Lock()
+	*app.AppParseCancel(a) = nil
+	app.AppParseCancelMu(a).Unlock()
+	if err := a.CancelParse(); !errors.Is(err, app.ErrNoParseInFlight) {
 		t.Errorf("CancelParse after slot cleared = %v, want ErrNoParseInFlight", err)
 	}
 }

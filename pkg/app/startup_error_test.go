@@ -1,17 +1,19 @@
-package app
+package app_test
 
 import (
 	"errors"
 	"os"
 	"strings"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 func TestStartupError_NilOnSuccessfulBoot(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
-	a := New()
+	a := app.New()
 	a.Startup(t.Context())
 	if err := a.StartupError(); err != nil {
 		t.Errorf("StartupError = %v, want nil on clean boot", err)
@@ -19,11 +21,11 @@ func TestStartupError_NilOnSuccessfulBoot(t *testing.T) {
 }
 
 func TestCaptureFatal_FirstErrorWins(t *testing.T) {
-	a := &App{}
+	a := &app.App{}
 	first := errors.New("first")
 	second := errors.New("second")
-	a.captureFatal("stage-a", first)
-	a.captureFatal("stage-b", second)
+	app.CaptureFatal(a, "stage-a", first)
+	app.CaptureFatal(a, "stage-b", second)
 	got := a.StartupError()
 	if got == nil {
 		t.Fatal("StartupError = nil, want first error captured")
@@ -45,7 +47,7 @@ func TestStartupError_BadProfilesDirCaptured(t *testing.T) {
 	t.Setenv("HOME", tmp+"/blocker")
 	t.Setenv("XDG_CONFIG_HOME", tmp+"/blocker")
 	t.Setenv("RECALL_DATA_DIR", tmp+"/blocker")
-	a := New()
+	a := app.New()
 	a.Startup(t.Context())
 	// Startup returned without panicking — the previous log.Fatal
 	// implementation would have killed the test process here.
@@ -59,15 +61,15 @@ func mkRegularFile(path string) error {
 }
 
 func TestGetStartupError_EmptyWhenNoFailure(t *testing.T) {
-	a := &App{}
+	a := &app.App{}
 	if got := a.GetStartupError(); got != "" {
 		t.Errorf("GetStartupError = %q, want empty string when startupErr is nil", got)
 	}
 }
 
 func TestGetStartupError_ReturnsCapturedMessage(t *testing.T) {
-	a := &App{}
-	a.captureFatal("stage-x", errors.New("disk full"))
+	a := &app.App{}
+	app.CaptureFatal(a, "stage-x", errors.New("disk full"))
 	got := a.GetStartupError()
 	if got == "" {
 		t.Fatal("GetStartupError = empty, want non-empty after capture")
