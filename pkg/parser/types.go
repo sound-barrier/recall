@@ -63,8 +63,13 @@ type HeroPlay struct {
 	// HeroRaw — raw OCR'd hero text for this entry. Always set when
 	// the heroes_played panel was OCR'd; Hero is empty when the
 	// matcher rejected the candidate as unknown.
-	HeroRaw       string `json:"hero_raw,omitempty"`
-	PercentPlayed int    `json:"percent_played"`
+	HeroRaw string `json:"hero_raw,omitempty"`
+	// PercentPlayed is omitted (not 0) for heroes known only by name — the
+	// PERSONAL sidebar roster lists every hero played but shows no per-hero
+	// %, so 0 would read as "played 0%" and could be filtered as not-played.
+	// A real entry's % is always > 0; read-time merge fills it from the
+	// SUMMARY when a later screenshot of the match supplies it.
+	PercentPlayed int    `json:"percent_played,omitempty"`
 	PlayTime      string `json:"play_time,omitempty"`
 	// Stats holds hero-specific stats from the PERSONAL tab. Keys are
 	// snake_case label-derived (e.g. "WEAPON ACCURACY" → "weapon_accuracy");

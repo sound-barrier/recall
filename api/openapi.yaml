@@ -2846,7 +2846,9 @@ components:
 
     HeroPlay:
       type: object
-      required: [hero, percent_played]
+      # percent_played is optional: the PERSONAL sidebar roster knows a hero
+      # by name but not its %; a real entry's % is always > 0.
+      required: [hero]
       properties:
         hero:
           type: string
