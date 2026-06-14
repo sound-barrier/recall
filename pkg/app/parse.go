@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"recall/pkg/aggregate"
 	"recall/pkg/applog"
 	"recall/pkg/correlate"
 	"recall/pkg/db"
@@ -380,13 +381,13 @@ func (st *parseRunState) recordMatchUpdate(key string, before db.Screenshots) {
 	annos, _ := a.store.LoadAnnotations()
 	hidden, _ := a.store.LoadHiddenKeys()
 	reviews, _ := a.store.LoadReviews()
-	rec, ok := aggregateMatchKey(key, snapAfter, annos, hidden, reviews)
+	rec, ok := aggregate.AggregateMatchKey(key, snapAfter, annos, hidden, reviews)
 	if !ok {
 		return
 	}
 	a.emitMatchUpdated(rec)
 	st.matchesUpdated[key] = struct{}{}
-	beforeRec, beforeOk := aggregateMatchKey(key, before, annos, hidden, reviews)
+	beforeRec, beforeOk := aggregate.AggregateMatchKey(key, before, annos, hidden, reviews)
 	if beforeOk {
 		if beforeRec.Data.Hero != rec.Data.Hero {
 			st.heroCorrections++

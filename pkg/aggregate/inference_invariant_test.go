@@ -1,4 +1,4 @@
-package app_test
+package aggregate_test
 
 // Tests in this file lock the load-bearing invariant that the read-time
 // inference helpers (inferSoleHeroPercent, inferResultFromRank) run on
@@ -22,8 +22,10 @@ package app_test
 import (
 	"testing"
 
+	"recall/pkg/aggregate"
 	"recall/pkg/app"
 	"recall/pkg/db"
+	"recall/pkg/db/dbtest"
 	"recall/pkg/parser"
 )
 
@@ -31,7 +33,7 @@ func TestInference_ResultFromRank_FiresAtReadTime(t *testing.T) {
 	// A rank screen whose VICTORY/DEFEAT banner OCR missed (Result == "")
 	// but whose SR row has a positive Change. inferResultFromRank should
 	// fill Result with "victory" when GetMatchResults runs.
-	fs := &fakeStore{
+	fs := &dbtest.Fake{
 		Ranks: []db.RankRow{{
 			ID: 1, Filename: "rank.png", MatchKey: "match-2026-05-10T21-29-28",
 			Rank: "platinum",
@@ -57,7 +59,7 @@ func TestInference_NeverPersistedToStore(t *testing.T) {
 	// the underlying store rows MUST still have Result="" and unchanged
 	// HeroesPlayed[].PercentPlayed. If a future refactor moved inference
 	// into a write path, this assertion would catch the regression.
-	fs := &fakeStore{
+	fs := &dbtest.Fake{
 		Ranks: []db.RankRow{{
 			ID: 1, Filename: "rank.png", MatchKey: "match-2026-05-10T21-29-28",
 			Rank: "platinum",
@@ -81,7 +83,7 @@ func TestInference_NeverPersistedToStore(t *testing.T) {
 	// Result="" (no leakage from inferResultFromRank).
 	raw, err := fs.LoadAll()
 	if err != nil {
-		t.Fatalf("fakeStore.LoadAll: %v", err)
+		t.Fatalf("dbtest.Fake.LoadAll: %v", err)
 	}
 	if got := raw.Ranks[0].Result; got != "" {
 		t.Errorf("inferResultFromRank leaked into store: raw.Result = %q, want \"\" (raw)", got)
@@ -92,7 +94,7 @@ func TestInference_DoesNotOverrideStoredResult(t *testing.T) {
 	// SR.Change > 0 would normally trigger inferResultFromRank → "victory",
 	// but the SUMMARY screenshot already carries Result="defeat". Inference
 	// must NOT overwrite an authoritative value.
-	fs := &fakeStore{
+	fs := &dbtest.Fake{
 		Summaries: []db.SummaryRow{{
 			ID: 1, Filename: "summary.png", MatchKey: "match-2026-05-10T21-29-28",
 			Result: "defeat",
@@ -117,7 +119,7 @@ func TestInference_DoesNotOverrideStoredResult(t *testing.T) {
 func TestInference_SoleHeroPercent_DoesNotOverrideStored(t *testing.T) {
 	// A summary with PercentPlayed=80 — inferSoleHeroPercent's "one hero
 	// → 100%" rule must NOT clobber it.
-	fs := &fakeStore{
+	fs := &dbtest.Fake{
 		Summaries: []db.SummaryRow{{
 			ID: 1, Filename: "summary.png", MatchKey: "k1",
 			Hero: "lucio",
@@ -145,9 +147,9 @@ func TestInference_Idempotent(t *testing.T) {
 		Rank: "platinum",
 		SR:   []parser.HeroSR{{Hero: "juno", Change: 22}},
 	}
-	app.InferResultFromRank(d)
+	aggregate.InferResultFromRank(d)
 	first := d.Result
-	app.InferResultFromRank(d)
+	aggregate.InferResultFromRank(d)
 	if d.Result != first {
 		t.Errorf("inferResultFromRank not idempotent: first=%q second=%q", first, d.Result)
 	}
@@ -155,9 +157,9 @@ func TestInference_Idempotent(t *testing.T) {
 	hp := &parser.MatchResult{
 		HeroesPlayed: []parser.HeroPlay{{Hero: "lucio"}},
 	}
-	app.InferSoleHeroPercent(hp)
+	aggregate.InferSoleHeroPercent(hp)
 	firstPct := hp.HeroesPlayed[0].PercentPlayed
-	app.InferSoleHeroPercent(hp)
+	aggregate.InferSoleHeroPercent(hp)
 	if hp.HeroesPlayed[0].PercentPlayed != firstPct {
 		t.Errorf("inferSoleHeroPercent not idempotent: first=%d second=%d",
 			firstPct, hp.HeroesPlayed[0].PercentPlayed)

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"recall/pkg/aggregate"
 	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/match"
@@ -131,7 +132,7 @@ func TestAttachPlayModes_UsesOverrideOnly(t *testing.T) {
 		{MatchKey: "k2", Data: parser.MatchResult{Playlist: "competitive"}}, // no override
 		{MatchKey: "k3", Data: parser.MatchResult{Playlist: "quickplay"}},
 	}
-	app.AttachPlayModes(recs, overrides)
+	aggregate.AttachPlayModes(recs, overrides)
 	if recs[0].PlayMode != "quickplay" {
 		t.Errorf("k1: override should win over data.mode, got %q", recs[0].PlayMode)
 	}
@@ -154,7 +155,7 @@ func TestAttachPlayModes_NoFallbackFromRankPresence(t *testing.T) {
 		Data:        parser.MatchResult{Playlist: "competitive"},
 		SourceTypes: map[string]string{"r.png": "rank"},
 	}}
-	app.AttachPlayModes(recs, nil)
+	aggregate.AttachPlayModes(recs, nil)
 	if recs[0].PlayMode != "" {
 		t.Errorf("no override → must stay empty regardless of rank presence, got %q", recs[0].PlayMode)
 	}
@@ -166,7 +167,7 @@ func TestAttachPlayModes_NoSignalLeavesEmpty(t *testing.T) {
 		Data:        parser.MatchResult{Playlist: ""},
 		SourceTypes: map[string]string{"s.png": "summary"},
 	}}
-	app.AttachPlayModes(recs, nil)
+	aggregate.AttachPlayModes(recs, nil)
 	if recs[0].PlayMode != "" {
 		t.Errorf("no signal should leave PlayMode empty, got %q", recs[0].PlayMode)
 	}

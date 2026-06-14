@@ -3,6 +3,7 @@ package app_test
 import (
 	"testing"
 
+	"recall/pkg/aggregate"
 	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/match"
@@ -18,7 +19,7 @@ func TestAttachAnnotations_MergesIntoRecords(t *testing.T) {
 		{MatchKey: "k2"}, // no annotation
 		{MatchKey: "k3"},
 	}
-	app.AttachAnnotations(recs, annos)
+	aggregate.AttachAnnotations(recs, annos)
 	if recs[0].Annotation == nil || recs[0].Annotation.Leaver != "self" {
 		t.Errorf("k1 should have self annotation: %+v", recs[0].Annotation)
 	}

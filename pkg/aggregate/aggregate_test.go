@@ -1,12 +1,14 @@
-package app_test
+package aggregate_test
 
 import (
 	"reflect"
 	"sort"
 	"testing"
 
+	"recall/pkg/aggregate"
 	"recall/pkg/app"
 	"recall/pkg/db"
+	"recall/pkg/db/dbtest"
 )
 
 // Boot re-aggregator pins the "YAML grew, promote previously-Unknown
@@ -14,7 +16,7 @@ import (
 // supplies its own matcher closures so the test isn't coupled to the
 // global heroRoles init.
 func TestReAggregateUnknowns_PromotesPreviouslyUnknownRows(t *testing.T) {
-	fs := &fakeStore{}
+	fs := &dbtest.Fake{}
 	fs.Summaries = []db.SummaryRow{
 		// Row 1: pre-fix Mei-misattribution → hero='mei', hero_raw='mei'.
 		// Matcher leaves it alone because canonical is already set.
@@ -73,7 +75,7 @@ func TestAggregate_FusesSummaryAndTeamsByMatchKey(t *testing.T) {
 			Eliminations: 17, Assists: 16, Deaths: 11, Damage: 7200,
 		}},
 	}
-	got := app.AggregateScreenshots(snap)
+	got := aggregate.AggregateScreenshots(snap)
 	if len(got) != 1 {
 		t.Fatalf("expected 1 fused record, got %d", len(got))
 	}
@@ -93,7 +95,7 @@ func TestAggregate_DerivedFields_RoleFromHero_TypeFromMap(t *testing.T) {
 			Map: "antarctic peninsula", Hero: "juno",
 		}},
 	}
-	got := app.AggregateScreenshots(snap)
+	got := aggregate.AggregateScreenshots(snap)
 	if got[0].Data.Role != "support" {
 		t.Errorf("expected role=support (lucio/juno are support heroes); got %q", got[0].Data.Role)
 	}
@@ -108,7 +110,7 @@ func TestAggregate_DerivedFields_HeroUnknown_LeavesRoleEmpty(t *testing.T) {
 			ID: 1, Filename: "p.png", MatchKey: "m1", Hero: "nonexistent_hero",
 		}},
 	}
-	got := app.AggregateScreenshots(snap)
+	got := aggregate.AggregateScreenshots(snap)
 	if got[0].Data.Role != "" {
 		t.Errorf("unknown hero should leave role empty, got %q", got[0].Data.Role)
 	}
@@ -129,7 +131,7 @@ func TestAggregate_SourceFilesUnion_AndTypesMap(t *testing.T) {
 			ID: 1, Filename: "r.png", MatchKey: "m1", Rank: "platinum",
 		}},
 	}
-	got := app.AggregateScreenshots(snap)
+	got := aggregate.AggregateScreenshots(snap)
 	rec := got[0]
 	sort.Strings(rec.SourceFiles)
 	wantFiles := []string{"p.png", "r.png", "s.png", "sb.png"}
@@ -154,7 +156,7 @@ func TestAggregate_ParsedAt_MinAcrossGroup(t *testing.T) {
 			ID: 1, Filename: "sb.png", MatchKey: "m1", ParsedAt: "2026-05-10T21:30:05Z",
 		}},
 	}
-	got := app.AggregateScreenshots(snap)
+	got := aggregate.AggregateScreenshots(snap)
 	if got[0].ParsedAt != "2026-05-10T21:30:05Z" {
 		t.Errorf("expected MIN(parsed_at) across the group, got %q", got[0].ParsedAt)
 	}
@@ -174,7 +176,7 @@ func TestAggregate_PartialCoverage_RankOnly(t *testing.T) {
 			SR: []db.HeroSR{{Hero: "juno", SR: 2867, Change: 22}},
 		}},
 	}
-	got := app.AggregateScreenshots(snap)
+	got := aggregate.AggregateScreenshots(snap)
 	if len(got) != 1 {
 		t.Fatalf("expected 1 record, got %d", len(got))
 	}
@@ -202,7 +204,7 @@ func TestAggregate_PersonalHeroStats_AttachedByHero(t *testing.T) {
 			},
 		}},
 	}
-	got := app.AggregateScreenshots(snap)
+	got := aggregate.AggregateScreenshots(snap)
 	rec := got[0]
 	if len(rec.Data.HeroesPlayed) != 1 {
 		t.Fatalf("expected 1 HeroesPlayed entry, got %d", len(rec.Data.HeroesPlayed))
@@ -224,7 +226,7 @@ func TestAggregate_OneMatchRecordPerMatchKey(t *testing.T) {
 			{ID: 2, Filename: "b.png", MatchKey: "m2", Eliminations: 5},
 		},
 	}
-	got := app.AggregateScreenshots(snap)
+	got := aggregate.AggregateScreenshots(snap)
 	if len(got) != 2 {
 		t.Fatalf("expected 2 records (one per match_key), got %d", len(got))
 	}
@@ -252,7 +254,7 @@ func TestAggregateMatchKey_FusesAcrossTypesForOneKey(t *testing.T) {
 			ID: 1, Filename: "p2.png", MatchKey: "m2", Hero: "juno",
 		}},
 	}
-	rec, ok := app.AggregateMatchKey("m1", snap, nil, nil, nil)
+	rec, ok := aggregate.AggregateMatchKey("m1", snap, nil, nil, nil)
 	if !ok {
 		t.Fatal("aggregateMatchKey returned ok=false for an existing key")
 	}
@@ -271,7 +273,7 @@ func TestAggregateMatchKey_MissingKeyReturnsFalse(t *testing.T) {
 	snap := db.Screenshots{
 		Summaries: []db.SummaryRow{{ID: 1, Filename: "s.png", MatchKey: "m1"}},
 	}
-	_, ok := app.AggregateMatchKey("nonexistent", snap, nil, nil, nil)
+	_, ok := aggregate.AggregateMatchKey("nonexistent", snap, nil, nil, nil)
 	if ok {
 		t.Error("aggregateMatchKey returned ok=true for an unseen key")
 	}
@@ -284,7 +286,7 @@ func TestAggregateMatchKey_SingleScreenshotMatch(t *testing.T) {
 			Eliminations: 8, Assists: 2, Deaths: 4,
 		}},
 	}
-	rec, ok := app.AggregateMatchKey("m-lonely", snap, nil, nil, nil)
+	rec, ok := aggregate.AggregateMatchKey("m-lonely", snap, nil, nil, nil)
 	if !ok {
 		t.Fatal("expected ok=true")
 	}
@@ -307,7 +309,7 @@ func TestAggregateMatchKey_InferenceAppliedAtReadTime(t *testing.T) {
 			SR: []db.HeroSR{{Hero: "lucio", SR: 2350, Change: 23}},
 		}},
 	}
-	rec, ok := app.AggregateMatchKey("m-rank", snap, nil, nil, nil)
+	rec, ok := aggregate.AggregateMatchKey("m-rank", snap, nil, nil, nil)
 	if !ok {
 		t.Fatal("expected ok=true")
 	}
@@ -338,8 +340,8 @@ func TestAggregate_AmbiguousSurfacesCandidates(t *testing.T) {
 			},
 		},
 	}
-	recs := app.AggregateScreenshots(snap)
-	app.AttachAmbiguity(recs, snap.AmbiguousCandidates)
+	recs := aggregate.AggregateScreenshots(snap)
+	aggregate.AttachAmbiguity(recs, snap.AmbiguousCandidates)
 	if len(recs) != 1 {
 		t.Fatalf("expected 1 fused record, got %d", len(recs))
 	}
@@ -363,8 +365,8 @@ func TestAggregate_NonAmbiguousLeavesFieldsZero(t *testing.T) {
 			Map: "rialto",
 		}},
 	}
-	recs := app.AggregateScreenshots(snap)
-	app.AttachAmbiguity(recs, snap.AmbiguousCandidates)
+	recs := aggregate.AggregateScreenshots(snap)
+	aggregate.AttachAmbiguity(recs, snap.AmbiguousCandidates)
 	if recs[0].Ambiguous {
 		t.Errorf("Ambiguous flipped on a non-ambiguous record")
 	}

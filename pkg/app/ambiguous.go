@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"recall/pkg/aggregate"
 	"recall/pkg/db"
 	"recall/pkg/match"
 )
@@ -68,7 +69,7 @@ func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error 
 		annos, _ := a.store.LoadAnnotations()
 		hidden, _ := a.store.LoadHiddenKeys()
 		reviews, _ := a.store.LoadReviews()
-		if rec, ok := aggregateMatchKey(resolvedTo, snap, annos, hidden, reviews); ok {
+		if rec, ok := aggregate.AggregateMatchKey(resolvedTo, snap, annos, hidden, reviews); ok {
 			a.emitMatchUpdated(rec)
 		}
 	}
