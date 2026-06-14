@@ -3,13 +3,14 @@ package app
 import (
 	"sort"
 
+	"recall/pkg/correlate"
 	"recall/pkg/db"
 	"recall/pkg/match"
 	"recall/pkg/parser"
 )
 
 // aggregateAll bulk-reads every screenshot row, groups by match_key,
-// folds each group into one MatchRecord via mergeMatchResult, and runs
+// folds each group into one MatchRecord via correlate.MergeMatchResult, and runs
 // the read-time inference helpers.
 //
 // Read-time only: never mutates DB rows. The same precedence rules
@@ -193,8 +194,8 @@ func foldGroup(key string, vs []screenshotView, dirs map[int64]string) MatchReco
 	// matches the pre-refactor ordering, where mergeByTimestamp folded
 	// earliest-first inside each window.
 	sort.Slice(vs, func(i, j int) bool {
-		ti, oki := parseFilenameTimestamp(vs[i].filename)
-		tj, okj := parseFilenameTimestamp(vs[j].filename)
+		ti, oki := correlate.ParseFilenameTimestamp(vs[i].filename)
+		tj, okj := correlate.ParseFilenameTimestamp(vs[j].filename)
 		switch {
 		case oki && okj && !ti.Equal(tj):
 			return ti.Before(tj)
@@ -220,7 +221,7 @@ func foldGroup(key string, vs []screenshotView, dirs map[int64]string) MatchReco
 	dirIDsPerFile := map[string]int64{}
 	matchParsedAt := ""
 	for _, v := range vs {
-		mergeMatchResult(&data, &v.data)
+		correlate.MergeMatchResult(&data, &v.data)
 		sources = append(sources, v.filename)
 		types[v.filename] = v.typeName
 		if v.parsedAt != "" {
@@ -237,10 +238,10 @@ func foldGroup(key string, vs []screenshotView, dirs map[int64]string) MatchReco
 	}
 	// Derived fields — never stored in the DB.
 	if data.Hero != "" {
-		data.Role = firstNonEmpty(data.Role, parser.HeroRole(data.Hero))
+		data.Role = correlate.FirstNonEmpty(data.Role, parser.HeroRole(data.Hero))
 	}
 	if data.Map != "" {
-		data.GameMode = firstNonEmpty(data.GameMode, parser.MapGameMode(data.Map))
+		data.GameMode = correlate.FirstNonEmpty(data.GameMode, parser.MapGameMode(data.Map))
 	}
 
 	// Surface the parser-detected queue format as the top-level
@@ -252,7 +253,7 @@ func foldGroup(key string, vs []screenshotView, dirs map[int64]string) MatchReco
 
 	rec := MatchRecord{
 		MatchKey:       key,
-		SourceFiles:    unionSortedStrings(sources, nil),
+		SourceFiles:    correlate.UnionSortedStrings(sources, nil),
 		SourceTypes:    types,
 		SourceParsedAt: parsedAtPerFile,
 		ParsedAt:       matchParsedAt,

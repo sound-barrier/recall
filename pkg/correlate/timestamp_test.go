@@ -1,10 +1,10 @@
-package app_test
+package correlate_test
 
 import (
 	"testing"
 	"time"
 
-	"recall/pkg/app"
+	"recall/pkg/correlate"
 )
 
 // parseFilenameTimestamp recognises the screenshot filename formats
@@ -60,7 +60,7 @@ func TestParseFilenameTimestamp_Valid(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, ok := app.ParseFilenameTimestamp(tc.in)
+			got, ok := correlate.ParseFilenameTimestamp(tc.in)
 			if !ok {
 				t.Fatalf("ok=false; want true for %q", tc.in)
 			}
@@ -91,7 +91,7 @@ func TestParseFilenameTimestamp_Reject(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, ok := app.ParseFilenameTimestamp(tc.in); ok {
+			if _, ok := correlate.ParseFilenameTimestamp(tc.in); ok {
 				t.Fatalf("expected ok=false for %q", tc.in)
 			}
 		})
@@ -107,7 +107,7 @@ func TestParseFilenameTimestamp_InvalidDate(t *testing.T) {
 	}
 	for _, in := range tests {
 		t.Run(in, func(t *testing.T) {
-			if _, ok := app.ParseFilenameTimestamp(in); ok {
+			if _, ok := correlate.ParseFilenameTimestamp(in); ok {
 				t.Fatalf("expected ok=false for impossible date %q", in)
 			}
 		})

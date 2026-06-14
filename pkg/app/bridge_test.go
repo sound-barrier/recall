@@ -17,28 +17,6 @@ import (
 // re-exports/accessors are compiled only under test, so they widen no shipped
 // API. See the campaign note in REVIEW.md (Q5).
 
-// ── Correlation engine ────────────────────────────────────────────────────
-var (
-	ResolveMatchKey        = resolveMatchKey
-	MatchByEAD             = matchByEAD
-	MatchByTimestampWindow = matchByTimestampWindow
-	CandidateFromParse     = candidateFromParse
-	SnapshotExisting       = snapshotExisting
-	Corroborated           = corroborated
-	RowsConflict           = rowsConflict
-	IntsConflict           = intsConflict
-	StringsConflict        = stringsConflict
-	UnionSortedStrings     = unionSortedStrings
-	MergeMatchResult       = mergeMatchResult
-	ParseFilenameTimestamp = parseFilenameTimestamp
-	MergeWindow            = mergeWindow
-	TieToleranceWindow     = tieToleranceWindow
-)
-
-// FirstNonEmpty wraps the generic firstNonEmpty (a var alias can't carry the
-// type parameter).
-func FirstNonEmpty[T comparable](a, b T) T { return firstNonEmpty(a, b) }
-
 // ── Aggregation + inference ───────────────────────────────────────────────
 var (
 	AggregateScreenshots = aggregateScreenshots

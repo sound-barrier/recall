@@ -1,9 +1,9 @@
-package app_test
+package correlate_test
 
 import (
 	"testing"
 
-	"recall/pkg/app"
+	"recall/pkg/correlate"
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
@@ -28,10 +28,10 @@ func TestMatchByEAD_SingleCandidate_WithinAutoWindow_AutoAdopts(t *testing.T) {
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
-	cand := app.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.31.28 _sb2.png", &parser.MatchResult{
+	cand := correlate.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.31.28 _sb2.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	})
-	key, cands, ok := app.MatchByEAD(cand, snap)
+	key, cands, ok := correlate.MatchByEAD(cand, snap)
 	if !ok {
 		t.Fatalf("expected ok=true, got false")
 	}
@@ -51,10 +51,10 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_SurfacesCandidate(t *testing
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
-	cand := app.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.41.28 _sb2.png", &parser.MatchResult{
+	cand := correlate.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.41.28 _sb2.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	})
-	key, cands, ok := app.MatchByEAD(cand, snap)
+	key, cands, ok := correlate.MatchByEAD(cand, snap)
 	if !ok {
 		t.Fatalf("expected ok=true for ambiguous bridge, got false")
 	}
@@ -80,10 +80,10 @@ func TestMatchByEAD_OutsideMaxWindow_NoBridge(t *testing.T) {
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
-	cand := app.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 22.09.28 _sb2.png", &parser.MatchResult{
+	cand := correlate.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 22.09.28 _sb2.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	})
-	_, _, ok := app.MatchByEAD(cand, snap)
+	_, _, ok := correlate.MatchByEAD(cand, snap)
 	if ok {
 		t.Errorf("expected no bridge >30 min apart, got ok=true")
 	}
@@ -103,10 +103,10 @@ func TestMatchByEAD_MultipleCandidates_SurfacesAllSortedByDistance(t *testing.T)
 		},
 	}
 	// New at 21:31:28 — 4 min after A, 2 min before B.
-	cand := app.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.31.28 _new.png", &parser.MatchResult{
+	cand := correlate.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.31.28 _new.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	})
-	key, cands, ok := app.MatchByEAD(cand, snap)
+	key, cands, ok := correlate.MatchByEAD(cand, snap)
 	if !ok || key != "" {
 		t.Fatalf("expected ambiguous multi (ok=true key=''): ok=%v key=%q", ok, key)
 	}
@@ -130,7 +130,7 @@ func TestResolveMatchKey_AmbiguousMintsSentinelAndReturnsCandidates(t *testing.T
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
-	key, cands := app.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.41.28 _sb2.png", &parser.MatchResult{
+	key, cands := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.41.28 _sb2.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	}, snap)
 	wantKey := "ambiguous-Overwatch 2 Screenshot 2026.05.10 - 21.41.28 _sb2.png"
@@ -164,12 +164,12 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_FinishedAtCorroborates_AutoA
 			Eliminations: 17, Assists: 14, Deaths: 7,
 		}},
 	}
-	cand := app.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.49.53.95.png", &parser.MatchResult{
+	cand := correlate.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.49.53.95.png", &parser.MatchResult{
 		Map: "aatlis", Hero: "lucio",
 		Date: "2026-05-10", FinishedAt: "21:29",
 		Eliminations: 17, Assists: 14, Deaths: 7,
 	})
-	key, cands, ok := app.MatchByEAD(cand, snap)
+	key, cands, ok := correlate.MatchByEAD(cand, snap)
 	if !ok {
 		t.Fatalf("expected ok=true, got false")
 	}
@@ -192,7 +192,7 @@ func TestResolveMatchKey_EADBridge_AmbiguousZone_FinishedAtCorroborates_EndToEnd
 			Eliminations: 17, Assists: 14, Deaths: 7,
 		}},
 	}
-	key, cands := app.ResolveMatchKey(
+	key, cands := correlate.ResolveMatchKey(
 		"Overwatch 2 Screenshot 2026.05.10 - 21.49.53.95.png",
 		&parser.MatchResult{
 			Map: "aatlis", Hero: "lucio",
@@ -233,7 +233,7 @@ func TestResolveMatchKey_LiveAatlisCascade_EndToEnd(t *testing.T) {
 		Eliminations: 17, Assists: 14, Deaths: 7,
 		HeroesPlayed: []parser.HeroPlay{{Hero: "lucio", PercentPlayed: 100}},
 	}
-	gotSum, _ := app.ResolveMatchKey(sumFile, sumResult, snap)
+	gotSum, _ := correlate.ResolveMatchKey(sumFile, sumResult, snap)
 	if gotSum != expectedKey {
 		t.Fatalf("SUMMARY: got %q, want %q", gotSum, expectedKey)
 	}
@@ -256,7 +256,7 @@ func TestResolveMatchKey_LiveAatlisCascade_EndToEnd(t *testing.T) {
 		Map: "aatlis", Hero: "lucio",
 		Eliminations: 17, Assists: 14, Deaths: 7,
 	}
-	gotSB, _ := app.ResolveMatchKey(sbFile, sbResult, snap)
+	gotSB, _ := correlate.ResolveMatchKey(sbFile, sbResult, snap)
 	if gotSB != expectedKey {
 		t.Fatalf("TEAMS: got %q, want %q", gotSB, expectedKey)
 	}
@@ -272,7 +272,7 @@ func TestResolveMatchKey_LiveAatlisCascade_EndToEnd(t *testing.T) {
 	//    the same (now-adopted) match_key.
 	persFile := "Overwatch 2 Screenshot 2026.05.10 - 21.49.57.02.png"
 	persResult := &parser.MatchResult{Hero: "lucio"}
-	gotPers, _ := app.ResolveMatchKey(persFile, persResult, snap)
+	gotPers, _ := correlate.ResolveMatchKey(persFile, persResult, snap)
 	if gotPers != expectedKey {
 		t.Fatalf("PERSONAL: got %q, want %q", gotPers, expectedKey)
 	}
@@ -297,12 +297,12 @@ func TestMatchByEAD_MultiCandidate_OneCorroborated_AutoAdoptsCorroborated(t *tes
 			},
 		},
 	}
-	cand := app.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.49.53.00.png", &parser.MatchResult{
+	cand := correlate.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.49.53.00.png", &parser.MatchResult{
 		Map: "aatlis", Hero: "lucio",
 		Date: "2026-05-10", FinishedAt: "21:29", // matches A's filename HH:MM only
 		Eliminations: 17, Assists: 14, Deaths: 7,
 	})
-	key, cands, ok := app.MatchByEAD(cand, snap)
+	key, cands, ok := correlate.MatchByEAD(cand, snap)
 	if !ok {
 		t.Fatalf("expected ok=true, got false")
 	}
@@ -332,11 +332,11 @@ func TestMatchByEAD_BridgesToExistingSummaryByPerfEAD(t *testing.T) {
 	// A TEAMS that arrives 1.5 seconds later with the same EAD —
 	// no finished_at of its own, no triple-agreement signal, just
 	// physical proximity to the SUMMARY.
-	cand := app.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.49.55.46.png", &parser.MatchResult{
+	cand := correlate.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.49.55.46.png", &parser.MatchResult{
 		Map: "aatlis", Hero: "lucio",
 		Eliminations: 17, Assists: 14, Deaths: 7,
 	})
-	key, cands, ok := app.MatchByEAD(cand, snap)
+	key, cands, ok := correlate.MatchByEAD(cand, snap)
 	if !ok {
 		t.Fatalf("expected ok=true, got false")
 	}
@@ -356,11 +356,11 @@ func TestMatchByEAD_SingleCandidate_InAmbiguousZone_NoCorroborator_StaysAmbiguou
 			Eliminations: 17, Assists: 14, Deaths: 7,
 		}},
 	}
-	cand := app.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.49.53 _sb2.png", &parser.MatchResult{
+	cand := correlate.CandidateFromParse("Overwatch 2 Screenshot 2026.05.10 - 21.49.53 _sb2.png", &parser.MatchResult{
 		// Bare EAD collision: no map / hero / date / finished_at.
 		Eliminations: 17, Assists: 14, Deaths: 7,
 	})
-	key, cands, ok := app.MatchByEAD(cand, snap)
+	key, cands, ok := correlate.MatchByEAD(cand, snap)
 	if !ok {
 		t.Fatalf("expected ok=true for ambiguous, got false")
 	}
@@ -383,7 +383,7 @@ func TestResolveMatchKey_EADBridge_BeyondMaxWindow_MintsFreshKey(t *testing.T) {
 			Eliminations: 17, Assists: 16, Deaths: 11,
 		}},
 	}
-	key, cands := app.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb2.png", &parser.MatchResult{
+	key, cands := correlate.ResolveMatchKey("Overwatch 2 Screenshot 2026.05.10 - 21.29.28 _sb2.png", &parser.MatchResult{
 		Eliminations: 17, Assists: 16, Deaths: 11,
 	}, snap)
 	if key != "match-2026-05-10T21-29-28" {
