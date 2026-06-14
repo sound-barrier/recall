@@ -5,10 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
-
-	"recall/pkg/db"
 )
 
 // ExportDataCSV produces a zip-of-CSVs equivalent of ExportData's JSON.
@@ -106,7 +103,7 @@ func (a *App) importDataCSV(payload []byte) error {
 	if err != nil {
 		return err
 	}
-	remapID, err := a.clearAndRemapDirsCSV(dirs)
+	remapID, err := a.clearAndRemapDirs("import csv", dirs)
 	if err != nil {
 		return err
 	}
@@ -154,43 +151,6 @@ func readCSVParentTables(zr *zip.Reader) (parentTables, error) {
 		return parentTables{}, err
 	}
 	return parentTables{summaries: summaries, teams: teams, personals: personals, ranks: ranks, unknowns: unknowns}, nil
-}
-
-// clearAndRemapDirsCSV wipes the store and returns the screenshots_dir
-// source→destination remap — same double-pass shape as the JSON path
-// (clearAndRemapDirs) but with the CSV path's error wording.
-func (a *App) clearAndRemapDirsCSV(dirs map[string]string) (func(int64) int64, error) {
-	for srcIDStr, path := range dirs {
-		if _, err := strconv.ParseInt(srcIDStr, 10, 64); err != nil {
-			return nil, fmt.Errorf("import csv: invalid dir id %q: %w", srcIDStr, err)
-		}
-		if _, err := a.store.EnsureScreenshotsDir(path); err != nil {
-			return nil, fmt.Errorf("import csv: register dir %q: %w", path, err)
-		}
-	}
-	if err := a.store.Clear(); err != nil {
-		return nil, fmt.Errorf("import csv: clear: %w", err)
-	}
-	remap := map[int64]int64{}
-	for srcIDStr, path := range dirs {
-		srcID, _ := strconv.ParseInt(srcIDStr, 10, 64)
-		dstID, err := a.store.EnsureScreenshotsDir(path)
-		if err != nil {
-			return nil, fmt.Errorf("import csv: re-register dir %q: %w", path, err)
-		}
-		remap[srcID] = dstID
-	}
-	return func(srcID int64) int64 {
-		if srcID == 0 {
-			return db.SentinelScreenshotsDirID
-		}
-		if dst, ok := remap[srcID]; ok {
-			return dst
-		}
-		// Unknown source id — point at the sentinel row. The dir_id
-		// column is `NOT NULL`; we can't drop it.
-		return db.SentinelScreenshotsDirID
-	}, nil
 }
 
 // nowUTC is a tiny seam used by tests that want a deterministic
