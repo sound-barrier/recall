@@ -78,7 +78,25 @@ without agreement on direction.
   logic, or a single cohesive component whose bulk is irreducible markup/CSS can
   legitimately exceed it. The goal is clean, single-concern files; we recognize
   perfection isn't always reachable, so treat 500 as the direction of travel and
-  call out (don't silently grow) files that blow well past it.
+  call out (don't silently grow) files that blow well past it. The sibling rule
+  below governs the *grouping* a file lives in.
+
+- **Package & directory size — cohesion over count.** Size a grouping by
+  responsibility, not file count. **Go**: a package is *one* cohesive
+  responsibility behind a small, intentional exported API. Many files in a
+  package is idiomatic and good — keep file-per-concern; `pkg/db`, `pkg/parser`,
+  and `pkg/cmd` are correctly single-responsibility packages with many files and
+  must **not** be split to chase a number. Split a *package* only when it carries
+  more than one reason to change (distinct sub-domains) **and** the extraction
+  won't create an import cycle — typically by pulling pure logic into a leaf
+  package the shell delegates to (`pkg/match`, `pkg/correlate`, `pkg/aggregate`,
+  … carved out of the former `pkg/app` god-package; the `*App` shell keeps the
+  wiring). **Vue/TS**: group by feature/domain, never one giant flat directory. A
+  flat `components/` or `composables/` past ~20–25 files wants feature subfolders
+  (`components/<feature>/`, `composables/<feature>/`, `shared/` for cross-feature
+  pieces); colocate a feature's UI with its state, mirroring `components/widgets/`.
+  Same best-effort spirit as File length — this is the direction of travel, not a
+  gate; call out (don't silently grow) a grouping that sprawls across concerns.
 
 - **McCabe cyclomatic complexity**: aspire to keep per-function complexity ≤ 10.
   Anything above 15 is a refactor candidate and should be called out in review.
