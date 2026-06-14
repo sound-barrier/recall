@@ -2110,7 +2110,7 @@ export interface components {
             /** @example lucio */
             hero: string;
             /** @example 100 */
-            percent_played: number;
+            percent_played?: number;
             /** @example 11:25 */
             play_time?: string;
             /**
