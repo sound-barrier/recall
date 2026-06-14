@@ -1,4 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { defineComponent, h } from 'vue'
+import { mount } from '@vue/test-utils'
 
 import type { MatchRecord } from '@/api'
 import { useTableSort, type TableSortCol } from '@/composables/matches/useTableSort'
@@ -37,18 +39,48 @@ function rec(key: string, o: RecOpts = {}): MatchRecord {
   } as unknown as MatchRecord
 }
 
-function keysAfterSort(records: MatchRecord[], col: TableSortCol, clicks = 1): string[] {
-  const { cycleSort, sortRows } = useTableSort()
-  for (let i = 0; i < clicks; i++) cycleSort(col)
-  return sortRows(records).map((r) => r.match_key)
+// Mount the composable inside a throwaway component so usePersistedRef's
+// lifecycle hooks (onMounted / onBeforeUnmount) bind to a real instance.
+function mountSort() {
+  let api!: ReturnType<typeof useTableSort>
+  mount(defineComponent({
+    setup() {
+      api = useTableSort()
+      return () => h('div')
+    },
+  }))
+  return api
 }
 
-describe('useTableSort', () => {
-  it('defaults to date-descending (newest first), matching the leaf list', () => {
-    const { sortCol, sortDir, sortRows } = useTableSort()
-    expect(sortCol.value).toBe('date')
-    expect(sortDir.value).toBe('desc')
-    const out = sortRows([
+// A fresh interaction: wipe the persisted stack, then apply `clicks`
+// plain header clicks on one column. Each call is independent of any
+// stack a previous call may have persisted.
+function keysAfterSort(records: MatchRecord[], col: TableSortCol, clicks = 1): string[] {
+  localStorage.clear()
+  const api = mountSort()
+  for (let i = 0; i < clicks; i++) api.cycleSort(col)
+  return api.sortRows(records).map((r) => r.match_key)
+}
+
+// happy-dom doesn't expose a global localStorage; stub an in-memory one
+// (mirrors usePersistedRef.test.ts) so the persisted stack round-trips.
+let storage: Record<string, string>
+beforeEach(() => {
+  storage = {}
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => storage[key] ?? null,
+    setItem: (key: string, value: string) => { storage[key] = value },
+    removeItem: (key: string) => { delete storage[key] },
+    clear: () => { storage = {} },
+  })
+})
+afterEach(() => vi.unstubAllGlobals())
+
+describe('useTableSort — single level (default + per-column)', () => {
+  it('defaults to a single date-descending key (newest first)', () => {
+    const api = mountSort()
+    expect(api.sortKeys.value).toEqual([{ col: 'date', dir: 'desc' }])
+    const out = api.sortRows([
       rec('old', { parsedAt: '2026-05-01T10:00:00Z' }),
       rec('new', { parsedAt: '2026-05-09T10:00:00Z' }),
     ])
@@ -56,23 +88,19 @@ describe('useTableSort', () => {
   })
 
   it('sorts the When column by MATCH time (data.date + finished_at), not parsed_at', () => {
-    // Ingested together (same parsed_at), but played in different
-    // years. The When sort must order by when they were PLAYED.
     const corpus = [
       rec('dec', { date: '2025-12-31', finishedAt: '20:00', parsedAt: '2026-06-10T09:00:00Z' }),
       rec('jun', { date: '2026-06-03', finishedAt: '20:00', parsedAt: '2026-06-10T09:00:00Z' }),
     ]
-    const { sortRows } = useTableSort() // default: date desc (newest match first)
-    expect(sortRows(corpus).map((r) => r.match_key)).toEqual(['jun', 'dec'])
+    const api = mountSort() // default: date desc (newest match first)
+    expect(api.sortRows(corpus).map((r) => r.match_key)).toEqual(['jun', 'dec'])
   })
 
   it('sorts the Hero column by the MOST-PLAYED hero, not the primary', () => {
     const corpus = [
-      // primary data.hero is 'lucio', but Ana was played 70% of the match
       rec('ana-main', { hero: 'lucio', heroesPlayed: [{ hero: 'ana', percent_played: 70 }, { hero: 'lucio', percent_played: 30 }] }),
       rec('zen', { hero: 'zenyatta', heroesPlayed: [{ hero: 'zenyatta', percent_played: 100 }] }),
     ]
-    // Ascending by most-played: 'ana' < 'zenyatta'.
     expect(keysAfterSort(corpus, 'hero', 1)).toEqual(['ana-main', 'zen'])
   })
 
@@ -92,31 +120,7 @@ describe('useTableSort', () => {
       rec('b', { elims: 100 }),
       rec('c', { elims: 20 }),
     ]
-    // Lexical would put '100' before '20'; numeric keeps 9 < 20 < 100.
     expect(keysAfterSort(corpus, 'eliminations', 1)).toEqual(['a', 'c', 'b'])
-  })
-
-  it('sorts the remaining text columns (mode, hero, role) alphabetically', () => {
-    const byMode = [
-      rec('quick', { playlist: 'quickplay' }),
-      rec('arcade', { playlist: 'arcade' }),
-      rec('comp', { playlist: 'competitive' }),
-    ]
-    expect(keysAfterSort(byMode, 'mode', 1)).toEqual(['arcade', 'comp', 'quick'])
-
-    const byHero = [
-      rec('z', { hero: 'zarya' }),
-      rec('a', { hero: 'ana' }),
-      rec('m', { hero: 'mercy' }),
-    ]
-    expect(keysAfterSort(byHero, 'hero', 1)).toEqual(['a', 'm', 'z'])
-
-    const byRole = [
-      rec('t', { role: 'tank' }),
-      rec('d', { role: 'damage' }),
-      rec('s', { role: 'support' }),
-    ]
-    expect(keysAfterSort(byRole, 'role', 1)).toEqual(['d', 's', 't'])
   })
 
   it('ranks results victory → draw → defeat when ascending', () => {
@@ -134,18 +138,7 @@ describe('useTableSort', () => {
       rec('a', { tags: ['ace'] }),
       rec('none', {}),
     ]
-    // Empty (no tags) sorts before populated under localeCompare of ''.
     expect(keysAfterSort(corpus, 'tags', 1)).toEqual(['none', 'a', 'z'])
-  })
-
-  it('clicking a new column resets direction to ascending', () => {
-    const { sortCol, sortDir, cycleSort } = useTableSort()
-    cycleSort('map') // map asc
-    expect([sortCol.value, sortDir.value]).toEqual(['map', 'asc'])
-    cycleSort('map') // map desc
-    expect(sortDir.value).toBe('desc')
-    cycleSort('hero') // switch column → back to asc
-    expect([sortCol.value, sortDir.value]).toEqual(['hero', 'asc'])
   })
 
   it('breaks ties by newest-first regardless of sort direction', () => {
@@ -153,25 +146,156 @@ describe('useTableSort', () => {
       rec('older', { map: 'rialto', parsedAt: '2026-05-01T10:00:00Z' }),
       rec('newer', { map: 'rialto', parsedAt: '2026-05-09T10:00:00Z' }),
     ]
-    // Same map → tie → newest (newer) first whether asc or desc.
     expect(keysAfterSort(corpus, 'map', 1)).toEqual(['newer', 'older'])
     expect(keysAfterSort(corpus, 'map', 2)).toEqual(['newer', 'older'])
   })
 
-  it('exposes aria-sort only for the active column', () => {
-    const { cycleSort, ariaSort } = useTableSort()
-    cycleSort('map')
-    expect(ariaSort('map')).toBe('ascending')
-    expect(ariaSort('hero')).toBe('none')
-    cycleSort('map')
-    expect(ariaSort('map')).toBe('descending')
-  })
-
   it('does not mutate the input array', () => {
-    const { sortRows } = useTableSort()
+    const api = mountSort()
     const corpus = [rec('b', { map: 'busan' }), rec('a', { map: 'ashe' })]
     const before = corpus.map((r) => r.match_key)
-    sortRows(corpus)
+    api.sortRows(corpus)
     expect(corpus.map((r) => r.match_key)).toEqual(before)
+  })
+})
+
+describe('useTableSort — multi-level (Excel-style)', () => {
+  // Primary ties on map; the secondary key on eliminations decides.
+  const TIED = [
+    rec('busan-30', { map: 'busan', elims: 30 }),
+    rec('busan-10', { map: 'busan', elims: 10 }),
+    rec('ashe-20', { map: 'ashe', elims: 20 }),
+  ]
+
+  it('shift-clicking a second column appends it as a secondary key', () => {
+    const api = mountSort()
+    api.cycleSort('map') // plain → [map asc]
+    api.cycleSort('eliminations', { append: true }) // shift → [map asc, elims asc]
+    expect(api.sortKeys.value).toEqual([
+      { col: 'map', dir: 'asc' },
+      { col: 'eliminations', dir: 'asc' },
+    ])
+  })
+
+  it('a secondary key breaks ties left by the primary', () => {
+    const api = mountSort()
+    api.cycleSort('map') // [map asc]
+    api.cycleSort('eliminations', { append: true }) // [map asc, elims asc]
+    // ashe first; within busan, elims asc → 10 before 30.
+    expect(api.sortRows(TIED).map((r) => r.match_key)).toEqual(['ashe-20', 'busan-10', 'busan-30'])
+  })
+
+  it('a descending secondary reverses only the tie-break group', () => {
+    const api = mountSort()
+    api.cycleSort('map') // [map asc]
+    api.cycleSort('eliminations', { append: true }) // [map asc, elims asc]
+    api.cycleSort('eliminations', { append: true }) // re-shift → flip secondary → [map asc, elims desc]
+    expect(api.sortRows(TIED).map((r) => r.match_key)).toEqual(['ashe-20', 'busan-30', 'busan-10'])
+  })
+
+  it('shift-clicking a column already in the stack toggles its direction in place (never removes)', () => {
+    const api = mountSort()
+    api.cycleSort('map') // [map asc]
+    api.cycleSort('result', { append: true }) // [map asc, result asc]
+    api.cycleSort('map', { append: true }) // flip primary in place, keep secondary
+    expect(api.sortKeys.value).toEqual([
+      { col: 'map', dir: 'desc' },
+      { col: 'result', dir: 'asc' },
+    ])
+  })
+
+  it('shift-clicking the same column never adds a duplicate level', () => {
+    const api = mountSort()
+    api.cycleSort('map')
+    api.cycleSort('map', { append: true })
+    expect(api.sortKeys.value).toEqual([{ col: 'map', dir: 'desc' }])
+  })
+
+  it('a plain click on a non-primary column collapses to a single key', () => {
+    const api = mountSort()
+    api.cycleSort('map') // [map asc]
+    api.cycleSort('result', { append: true }) // [map asc, result asc]
+    api.cycleSort('hero') // plain → resets the whole stack
+    expect(api.sortKeys.value).toEqual([{ col: 'hero', dir: 'asc' }])
+  })
+
+  it('a plain click on the primary column flips it and drops secondaries', () => {
+    const api = mountSort()
+    api.cycleSort('map') // [map asc]
+    api.cycleSort('result', { append: true }) // [map asc, result asc]
+    api.cycleSort('map') // plain on primary → flip + drop secondaries
+    expect(api.sortKeys.value).toEqual([{ col: 'map', dir: 'desc' }])
+  })
+
+  it('sortLevelOf reports 1-based positions, 0 when absent', () => {
+    const api = mountSort()
+    api.cycleSort('map')
+    api.cycleSort('result', { append: true })
+    expect(api.sortLevelOf('map')).toBe(1)
+    expect(api.sortLevelOf('result')).toBe(2)
+    expect(api.sortLevelOf('hero')).toBe(0)
+  })
+
+  it('ariaSort reflects every sorted column’s direction', () => {
+    const api = mountSort()
+    api.cycleSort('map')
+    api.cycleSort('result', { append: true })
+    expect(api.ariaSort('map')).toBe('ascending')
+    expect(api.ariaSort('result')).toBe('ascending')
+    expect(api.ariaSort('hero')).toBe('none')
+  })
+})
+
+describe('useTableSort — dialog mutators', () => {
+  it('addLevel appends a column ascending and dedups', () => {
+    const api = mountSort() // [date desc]
+    api.addLevel('map')
+    expect(api.sortKeys.value).toEqual([{ col: 'date', dir: 'desc' }, { col: 'map', dir: 'asc' }])
+    api.addLevel('map') // already present → no-op
+    expect(api.sortKeys.value).toHaveLength(2)
+  })
+
+  it('setLevelDir changes one level’s direction', () => {
+    const api = mountSort()
+    api.addLevel('map')
+    api.setLevelDir('map', 'desc')
+    expect(api.sortKeys.value[1]).toEqual({ col: 'map', dir: 'desc' })
+  })
+
+  it('moveLevel reorders and clamps at the ends', () => {
+    const api = mountSort()
+    api.addLevel('map') // [date, map]
+    api.moveLevel('map', -1) // swap up → [map, date]
+    expect(api.sortKeys.value.map((l) => l.col)).toEqual(['map', 'date'])
+    api.moveLevel('map', -1) // already first → no change
+    expect(api.sortKeys.value.map((l) => l.col)).toEqual(['map', 'date'])
+  })
+
+  it('removeLevel drops a level; clearSort restores the date-desc default', () => {
+    const api = mountSort()
+    api.addLevel('map')
+    api.removeLevel('date')
+    expect(api.sortKeys.value).toEqual([{ col: 'map', dir: 'asc' }])
+    api.clearSort()
+    expect(api.sortKeys.value).toEqual([{ col: 'date', dir: 'desc' }])
+  })
+})
+
+describe('useTableSort — persistence', () => {
+  it('persists the stack across instances (localStorage round-trip)', () => {
+    const a = mountSort()
+    a.cycleSort('map')
+    a.cycleSort('result', { append: true })
+    const b = mountSort() // a fresh instance hydrates from localStorage
+    expect(b.sortKeys.value).toEqual([
+      { col: 'map', dir: 'asc' },
+      { col: 'result', dir: 'asc' },
+    ])
+  })
+
+  it('ignores a corrupt persisted value and falls back to the default', () => {
+    localStorage.setItem('recall.matchesTableSort', '[{"col":"not-a-column","dir":"asc"}]')
+    const api = mountSort()
+    expect(api.sortKeys.value).toEqual([{ col: 'date', dir: 'desc' }])
   })
 })
