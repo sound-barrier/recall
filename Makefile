@@ -558,15 +558,15 @@ smoke-wails: ## Compile-check the full Wails desktop binary on the host
 cover: cover-go cover-frontend ## Generate Go + frontend coverage reports (umbrella)
 
 # Floor for `make cover-go`. Tuned a few points below the current
-# state (~65% as of the item-6 burn-down) so genuine regressions
+# state (~70% after the Go test-coverage sweep) so genuine regressions
 # fail while routine refactors that shuffle uncovered lines don't.
 # Override on the CLI for ad-hoc runs (e.g. `make cover-go
 # GO_COVERAGE_MIN=0`). Bumping this floor in a PR is the safest way
 # to lock in new coverage as the project matures — every release is
 # a chance to ratchet upward by `floor(current) - 2`.
-GO_COVERAGE_MIN ?= 60
+GO_COVERAGE_MIN ?= 67
 
-cover-go: ## Generate Go coverage report; fail if total < GO_COVERAGE_MIN (60)
+cover-go: ## Generate Go coverage report; fail if total < GO_COVERAGE_MIN (67)
 	@echo "[ recall ] Generating Go coverage report…"
 	@mkdir -p coverage/go
 	go test -race -short -coverprofile=coverage/go/coverage.out ./...
