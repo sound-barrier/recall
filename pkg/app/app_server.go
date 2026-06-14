@@ -5,6 +5,8 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+
+	"recall/pkg/match"
 )
 
 // emitParseProgress broadcasts per-file progress to SSE subscribers.
@@ -15,10 +17,10 @@ func (a *App) emitParseProgress(p ParseProgressEvent) {
 	a.SSEHub.BroadcastData("parse-progress", string(data))
 }
 
-// emitMatchUpdated broadcasts a freshly-aggregated MatchRecord to SSE
+// emitMatchUpdated broadcasts a freshly-aggregated match.MatchRecord to SSE
 // subscribers. Counterpart to the Wails build's variant — same wire
 // shape, server-only emit path.
-func (a *App) emitMatchUpdated(rec MatchRecord) {
+func (a *App) emitMatchUpdated(rec match.MatchRecord) {
 	data, _ := json.Marshal(rec)
 	a.SSEHub.BroadcastData("match-updated", string(data))
 }

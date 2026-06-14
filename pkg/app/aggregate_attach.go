@@ -8,7 +8,7 @@ import (
 // attachReviews writes `ReviewedBy` + `ReviewedAt` on every record
 // carrying a review-status row. Pure function, called once per
 // aggregateAll.
-func attachReviews(recs []MatchRecord, reviews map[string]db.ReviewState) {
+func attachReviews(recs []match.MatchRecord, reviews map[string]db.ReviewState) {
 	if len(reviews) == 0 {
 		return
 	}
@@ -22,7 +22,7 @@ func attachReviews(recs []MatchRecord, reviews map[string]db.ReviewState) {
 
 // attachQueues writes `QueueType` on every record carrying a
 // match_queue row. Pure function, called once per aggregateAll.
-func attachQueues(recs []MatchRecord, queues map[string]db.QueueState) {
+func attachQueues(recs []match.MatchRecord, queues map[string]db.QueueState) {
 	if len(queues) == 0 {
 		return
 	}
@@ -43,7 +43,7 @@ func attachQueues(recs []MatchRecord, queues map[string]db.QueueState) {
 // the user's "unless I know otherwise it should be unset" intent.
 //
 // Pure function, called once per aggregateAll.
-func attachPlayModes(recs []MatchRecord, overrides map[string]db.PlayModeState) {
+func attachPlayModes(recs []match.MatchRecord, overrides map[string]db.PlayModeState) {
 	if len(overrides) == 0 {
 		return
 	}
@@ -54,26 +54,26 @@ func attachPlayModes(recs []MatchRecord, overrides map[string]db.PlayModeState) 
 	}
 }
 
-// attachAmbiguity flags every MatchRecord whose match_key starts with
+// attachAmbiguity flags every match.MatchRecord whose match_key starts with
 // "ambiguous-" and attaches its candidate match list. The candidates
 // map is keyed by the filename embedded in the sentinel — every
-// MatchRecord that adopted the same sentinel (via the timestamp-window
+// match.MatchRecord that adopted the same sentinel (via the timestamp-window
 // pass) shares one candidates entry.
 //
-// Each AmbiguousAttribution is enriched with a representative source
+// Each match.AmbiguousAttribution is enriched with a representative source
 // file (the candidate match's earliest SourceFile + its dir id) so
 // the Unknown-tab picker can render a thumbnail beside each
 // candidate. Built from a one-pass O(N) index over recs.
-func attachAmbiguity(recs []MatchRecord, candidates map[string][]db.AmbiguousCandidate) {
+func attachAmbiguity(recs []match.MatchRecord, candidates map[string][]db.AmbiguousCandidate) {
 	// Index recs by match_key for O(1) candidate lookups. Built only
 	// when at least one ambiguous record exists — most aggregate
 	// runs skip this entirely.
-	var byKey map[string]*MatchRecord
+	var byKey map[string]*match.MatchRecord
 	ensureIndex := func() {
 		if byKey != nil {
 			return
 		}
-		byKey = make(map[string]*MatchRecord, len(recs))
+		byKey = make(map[string]*match.MatchRecord, len(recs))
 		for i := range recs {
 			byKey[recs[i].MatchKey] = &recs[i]
 		}
@@ -90,9 +90,9 @@ func attachAmbiguity(recs []MatchRecord, candidates map[string][]db.AmbiguousCan
 			continue
 		}
 		ensureIndex()
-		recs[i].Candidates = make([]AmbiguousAttribution, 0, len(cs))
+		recs[i].Candidates = make([]match.AmbiguousAttribution, 0, len(cs))
 		for _, c := range cs {
-			attr := AmbiguousAttribution{
+			attr := match.AmbiguousAttribution{
 				MatchKey:        c.MatchKey,
 				DistanceSeconds: c.DistanceSeconds,
 			}
@@ -109,7 +109,7 @@ func attachAmbiguity(recs []MatchRecord, candidates map[string][]db.AmbiguousCan
 
 // attachHidden flips `Hidden` to true on every record whose match_key
 // is in the soft-delete set. Pure function, called once per aggregateAll.
-func attachHidden(recs []MatchRecord, hidden map[string]bool) {
+func attachHidden(recs []match.MatchRecord, hidden map[string]bool) {
 	if len(hidden) == 0 {
 		return
 	}
@@ -121,16 +121,16 @@ func attachHidden(recs []MatchRecord, hidden map[string]bool) {
 }
 
 // attachAnnotations grafts user-curated leaver/note records onto the
-// aggregated MatchRecord slice. Match-key lookup; missing → nil
+// aggregated match.MatchRecord slice. Match-key lookup; missing → nil
 // (unannotated). Pure function, exported only via aggregateAll +
 // the streaming path in app_wails.go / app_server.go's emit.
-func attachAnnotations(recs []MatchRecord, annos map[string]db.Annotation) {
+func attachAnnotations(recs []match.MatchRecord, annos map[string]db.Annotation) {
 	if len(annos) == 0 {
 		return
 	}
 	for i := range recs {
 		if a, ok := annos[recs[i].MatchKey]; ok {
-			recs[i].Annotation = &MatchAnnotation{
+			recs[i].Annotation = &match.MatchAnnotation{
 				Leaver:      a.Leaver,
 				Note:        a.Note,
 				ReplayCode:  a.ReplayCode,

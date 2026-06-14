@@ -17,7 +17,7 @@ type screenshotView struct {
 	data     parser.MatchResult
 }
 
-// aggregateMatchKey produces a single MatchRecord for the given
+// aggregateMatchKey produces a single match.MatchRecord for the given
 // match_key, reading just its rows out of snap. Returns
 // (record, true) when at least one row matched; (_, false) when
 // nothing in snap references the key.

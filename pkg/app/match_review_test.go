@@ -6,6 +6,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 func TestSetMatchReview_PersistsValidReviewer(t *testing.T) {
@@ -86,7 +87,7 @@ func TestAttachReviews_PopulatesReviewedByAndAt(t *testing.T) {
 		"k1": {ReviewedBy: "self", ReviewedAt: "2026-06-01T10:00:00Z"},
 		"k3": {ReviewedBy: "coach", ReviewedAt: "2026-05-30T08:15:00Z"},
 	}
-	recs := []app.MatchRecord{
+	recs := []match.MatchRecord{
 		{MatchKey: "k1"},
 		{MatchKey: "k2"},
 		{MatchKey: "k3"},

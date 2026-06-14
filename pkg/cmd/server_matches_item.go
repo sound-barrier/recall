@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"recall/pkg/app"
+	"recall/pkg/match"
 )
 
 // Per-{match_key} sub-resource handlers for the /api/v1/matches family.
@@ -43,7 +44,7 @@ func handleGetMatchByKey(a *app.App) http.HandlerFunc {
 			return
 		}
 		rec, err := a.GetMatchByKey(matchKey)
-		if errors.Is(err, app.ErrMatchNotFound) {
+		if errors.Is(err, match.ErrMatchNotFound) {
 			http.Error(w, "match not found", http.StatusNotFound)
 			return
 		}

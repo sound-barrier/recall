@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 // BundleSchemaV1 is the wire-schema identifier the bundle's
@@ -137,7 +138,7 @@ func (a *App) ExportBundle(opts ExportBundleOptions) ([]byte, error) {
 
 // bundleIncludeSet builds the set of match_keys the bundle covers: the
 // explicit keys plus (when toggled) every unknown / hidden match.
-func bundleIncludeSet(opts ExportBundleOptions, recs []MatchRecord) map[string]struct{} {
+func bundleIncludeSet(opts ExportBundleOptions, recs []match.MatchRecord) map[string]struct{} {
 	include := make(map[string]struct{}, len(opts.MatchKeys))
 	for _, k := range opts.MatchKeys {
 		include[k] = struct{}{}

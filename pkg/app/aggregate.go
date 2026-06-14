@@ -10,7 +10,7 @@ import (
 )
 
 // aggregateAll bulk-reads every screenshot row, groups by match_key,
-// folds each group into one MatchRecord via correlate.MergeMatchResult, and runs
+// folds each group into one match.MatchRecord via correlate.MergeMatchResult, and runs
 // the read-time inference helpers.
 //
 // Read-time only: never mutates DB rows. The same precedence rules
@@ -39,7 +39,7 @@ func (a *App) reAggregateUnknowns() (int, error) {
 	return a.store.ReAggregateUnknowns(parser.FirstKnownHeroIn, parser.FirstKnownMapIn)
 }
 
-func (a *App) aggregateAll() ([]MatchRecord, error) {
+func (a *App) aggregateAll() ([]match.MatchRecord, error) {
 	snap, err := a.store.LoadAll()
 	if err != nil {
 		return nil, err
@@ -74,10 +74,10 @@ func (a *App) aggregateAll() ([]MatchRecord, error) {
 	return recs, nil
 }
 
-func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState) (MatchRecord, bool) {
+func aggregateMatchKey(key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState) (match.MatchRecord, bool) {
 	vs := collectViewsForKey(snap, key)
 	if len(vs) == 0 {
-		return MatchRecord{}, false
+		return match.MatchRecord{}, false
 	}
 	rec := foldGroup(key, vs, snap.ScreenshotsDirs)
 	inferSoleHeroPercent(&rec.Data)
@@ -120,9 +120,9 @@ func collectViewsForKey(snap db.Screenshots, key string) []screenshotView {
 
 // attachMatchSidecars decorates rec with the per-key annotation, hidden
 // flag, review state, and ambiguous-attribution candidates.
-func attachMatchSidecars(rec *MatchRecord, key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState) {
+func attachMatchSidecars(rec *match.MatchRecord, key string, snap db.Screenshots, annos map[string]db.Annotation, hidden map[string]bool, reviews map[string]db.ReviewState) {
 	if a, ok := annos[key]; ok {
-		rec.Annotation = &MatchAnnotation{
+		rec.Annotation = &match.MatchAnnotation{
 			Leaver:      a.Leaver,
 			Note:        a.Note,
 			ReplayCode:  a.ReplayCode,
@@ -141,9 +141,9 @@ func attachMatchSidecars(rec *MatchRecord, key string, snap db.Screenshots, anno
 	if mk, err := match.ParseMatchKey(key); err == nil && mk.IsAmbiguous() {
 		rec.Ambiguous = true
 		if cs, ok := snap.AmbiguousCandidates[mk.Filename()]; ok {
-			rec.Candidates = make([]AmbiguousAttribution, 0, len(cs))
+			rec.Candidates = make([]match.AmbiguousAttribution, 0, len(cs))
 			for _, c := range cs {
-				rec.Candidates = append(rec.Candidates, AmbiguousAttribution{
+				rec.Candidates = append(rec.Candidates, match.AmbiguousAttribution{
 					MatchKey:        c.MatchKey,
 					DistanceSeconds: c.DistanceSeconds,
 				})
@@ -152,7 +152,7 @@ func attachMatchSidecars(rec *MatchRecord, key string, snap db.Screenshots, anno
 	}
 }
 
-func aggregateScreenshots(snap db.Screenshots) []MatchRecord {
+func aggregateScreenshots(snap db.Screenshots) []match.MatchRecord {
 	views := make([]screenshotView, 0,
 		len(snap.Summaries)+len(snap.Teams)+len(snap.Personals)+len(snap.Ranks)+len(snap.Unknowns))
 	for _, r := range snap.Summaries {
@@ -182,14 +182,14 @@ func aggregateScreenshots(snap db.Screenshots) []MatchRecord {
 	}
 	sort.Strings(keys)
 
-	out := make([]MatchRecord, 0, len(keys))
+	out := make([]match.MatchRecord, 0, len(keys))
 	for _, k := range keys {
 		out = append(out, foldGroup(k, groups[k], snap.ScreenshotsDirs))
 	}
 	return out
 }
 
-func foldGroup(key string, vs []screenshotView, dirs map[int64]string) MatchRecord {
+func foldGroup(key string, vs []screenshotView, dirs map[int64]string) match.MatchRecord {
 	// Fold order: filename-timestamp asc, then parsed_at asc. This
 	// matches the pre-refactor ordering, where mergeByTimestamp folded
 	// earliest-first inside each window.
@@ -251,7 +251,7 @@ func foldGroup(key string, vs []screenshotView, dirs map[int64]string) MatchReco
 	detectedQueue := data.QueueType
 	data.QueueType = ""
 
-	rec := MatchRecord{
+	rec := match.MatchRecord{
 		MatchKey:       key,
 		SourceFiles:    correlate.UnionSortedStrings(sources, nil),
 		SourceTypes:    types,
