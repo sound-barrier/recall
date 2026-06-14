@@ -262,6 +262,27 @@ describe('useTableSort — dialog mutators', () => {
     expect(api.sortKeys.value[1]).toEqual({ col: 'map', dir: 'desc' })
   })
 
+  it('setLevelColumn swaps a level’s column, keeping its position + direction', () => {
+    const api = mountSort() // [date desc]
+    api.addLevel('map') // [date desc, map asc]
+    api.setLevelDir('map', 'desc') // [date desc, map desc]
+    api.setLevelColumn('map', 'hero') // keep position 2 + desc, just change column
+    expect(api.sortKeys.value).toEqual([
+      { col: 'date', dir: 'desc' },
+      { col: 'hero', dir: 'desc' },
+    ])
+  })
+
+  it('setLevelColumn is a no-op when the target column is already in the stack', () => {
+    const api = mountSort()
+    api.addLevel('map') // [date desc, map asc]
+    api.setLevelColumn('map', 'date') // 'date' already a level → ignored
+    expect(api.sortKeys.value).toEqual([
+      { col: 'date', dir: 'desc' },
+      { col: 'map', dir: 'asc' },
+    ])
+  })
+
   it('moveLevel reorders and clamps at the ends', () => {
     const api = mountSort()
     api.addLevel('map') // [date, map]
