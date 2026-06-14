@@ -68,17 +68,17 @@ PNG files or Tesseract isn't installed.
 Filled when fixtures land. Unchecked = slot still wanted, the
 maintainer drops in a PNG later via `make update-goldens` and commits.
 
-- [x] post-match SUMMARY tab (×2 — Antarctic Peninsula / Juno + New Queen Street / Lucio)
+- [x] post-match SUMMARY tab (×3 — Antarctic Peninsula / Juno + New Queen Street / Lucio + Rialto / Wuyang·Juno·Kiriko 3-hero swap)
 - [x] post-match TEAMS screen — role queue (5v5) AND open queue (6v6, Hollywood); the pair pins `queue_type` detection from the players-per-team count
 - [x] post-match PERSONAL tab — single hero (Juno, hero stats subfield)
 - [x] post-match PERSONAL tab — second hero in a multi-hero match (Mei from same match)
+- [x] post-match PERSONAL tab — Wuyang; pins the AVG-anchored stat fix (Players Saved 5, Tidal Blast Kills 0 — the hero-ability icon OCRs as a spurious leading/trailing single digit)
 - [x] rank screen — competitive ladder badge + per-hero SR card (×2: a Platinum 5 **win** with positive progress + SR gain, AND a Gold 1 **loss** with DEMOTION PROTECTION and a negative −19% progress; the pair pins the digitize-level fix, the raw-pass negative-progress read, the lower-card SR crop, and the demotion-protection modifier)
 - [ ] in-game TAB screenshot (different layout, right panel populated)
-- [ ] match where the player swapped heroes, captured from the SUMMARY
-      side (exercises `parseHeroesPlayed` ordering — the current
-      committed SUMMARY only lists the primary hero because of a
-      known OCR weakness on the second-hero row; revisit if that
-      parser path is tightened)
+- [x] match where the player swapped heroes, captured from the SUMMARY
+      side — the Rialto capture lists all three heroes (Wuyang 47% ·
+      Juno 46% · Kiriko 7%), exercising `parseHeroesPlayed` ordering with
+      no second-hero drop.
 
 ## Privacy / licensing
 

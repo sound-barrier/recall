@@ -196,9 +196,20 @@ Real examples from Recall's parser-regression fixture set. The same PNG files li
 <sub>Mizuki's PERSONAL tab from the same match — the player swapped from Juno (67% played) to Mizuki (33% played). Recall captures one PERSONAL per hero and merges them into the same match record.</sub>
 </td>
 </tr>
+<tr>
+<th align="left" colspan="2">RANK (competitive progress)</th>
+</tr>
+<tr>
+<td valign="top" width="50%">
+<a href="testdata/Overwatch%202%20Screenshot%202026.05.10%20-%2021.30.19.95.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.10%20-%2021.30.19.95.png" alt="RANK screen — Platinum 5 competitive victory" width="100%"></a>
+<sub>A win — Platinum 5, +21% rank progress, Lúcio SR 2697 (+45). Tier, level, progress %, modifiers (expected · victory), and per-hero SR all come from this screen.</sub>
+</td>
+<td valign="top" width="50%">
+<a href="testdata/Overwatch%202%20Screenshot%202026.06.12%20-%2020.16.45.68.png"><img src="testdata/Overwatch%202%20Screenshot%202026.06.12%20-%2020.16.45.68.png" alt="RANK screen — Gold 1 loss with demotion protection" width="100%"></a>
+<sub>A loss under <strong>demotion protection</strong> — Gold 1, -19% rank progress, Lúcio SR 2733. Recall reads the negative progress and the demotion shield.</sub>
+</td>
+</tr>
 </table>
-
-> **RANK screen** — no fixture in the test corpus yet (rank screens hadn't been captured at fixture-curation time). The RANK tab shows your current competitive rank tier + per-hero SR values + the recent change — Recall parses it the same way as the others when it's present.
 
 ## Troubleshooting
 
