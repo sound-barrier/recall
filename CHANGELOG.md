@@ -1,5 +1,113 @@
 # Changelog
 
+## [0.14.1](https://github.com/sound-barrier/recall/compare/v0.14.0...v0.14.1) (2026-06-14)
+
+
+### Features
+
+* **app:** SeedProfile + on-demand SeedTestProfile handler ([f9cf3c2](https://github.com/sound-barrier/recall/commit/f9cf3c2c48b57d40c7f5d86c255a947fd2dcc121))
+* **onboarding:** seed + switch into the sample "test" profile, ending the tour there ([7449036](https://github.com/sound-barrier/recall/commit/74490369ed06fde6d7611f5f31423359bb585c32))
+
+
+### Bug Fixes
+
+* **app:** surface previously-swallowed settings/store/reload errors ([8bfb794](https://github.com/sound-barrier/recall/commit/8bfb7940c5f2e3ba4abd8f27b77ff097c49d4bce))
+* **scripts:** cd the stack helpers to the repo root, not scripts/ ([4e96f32](https://github.com/sound-barrier/recall/commit/4e96f32811072b5f5c4a0cebad3d4d8de19bc25a))
+* **scripts:** let shellcheck follow externally-sourced libs ([f4cd350](https://github.com/sound-barrier/recall/commit/f4cd350e658abec9a9ae7fa11060d69bf63ed8e1))
+* **scripts:** point tour-test.sh at the real repo root ([c9b05e6](https://github.com/sound-barrier/recall/commit/c9b05e607f409d1e3c3bef9c04ce69e3b3fc9dbe))
+
+
+### Refactors
+
+* **app:** decompose CheckForUpdate into fetch/compare helpers ([f59ba92](https://github.com/sound-barrier/recall/commit/f59ba92ba2a71ffbb4aebf020a4d743749d9ed8d))
+* **app:** decompose ExportBundle into phase helpers ([4600ac0](https://github.com/sound-barrier/recall/commit/4600ac0fe1e4c7fdf2d5282f839dec81a8e40d44))
+* **app:** decompose GenerateMatchFixture into phase helpers ([c32f5d1](https://github.com/sound-barrier/recall/commit/c32f5d1763787beb869a194e13bd72be3988f30b))
+* **app:** decompose importDataCSV; share parent-upsert with JSON path ([7d116b0](https://github.com/sound-barrier/recall/commit/7d116b0691b35b903c48bd509776a0baa57765ba))
+* **app:** decompose importJSONv1 into validate/clear/import helpers ([2ad026e](https://github.com/sound-barrier/recall/commit/2ad026e5df698090100a8f7505fbd0b604a35d62))
+* **app:** decompose matchByEAD into scan/sort/resolve helpers ([920cdc8](https://github.com/sound-barrier/recall/commit/920cdc805247760b27c4a99e064452487c2f064a))
+* **app:** decompose MoveMatches into validate/load/phase helpers ([e08d40c](https://github.com/sound-barrier/recall/commit/e08d40ca4f67f051eef1256be7b521681cc36d96))
+* **app:** decompose ValidateBundle into per-check helpers ([a62de31](https://github.com/sound-barrier/recall/commit/a62de314b60d931daa27055e5436852849fbea74))
+* **app:** drop unreachable post-Startup wiring assertion ([49ec3c2](https://github.com/sound-barrier/recall/commit/49ec3c23c192940ad0adadf156cf0d85b82fb1e9))
+* **app:** extract collectViewsForKey + sidecars from aggregateMatchKey ([8aa0ce9](https://github.com/sound-barrier/recall/commit/8aa0ce937418fde82022f1a27502f3d1ef6995cd))
+* **app:** extract parseRunState from runClaimedParse; drop dead value ([4e500a3](https://github.com/sound-barrier/recall/commit/4e500a32fa13ed156b587ad544e433340e89b10c))
+* **app:** extract resolveScreenshotPath from ScreenshotHandler ([23fa11f](https://github.com/sound-barrier/recall/commit/23fa11f956c6c281e7b2ed9f4c92a385fa8611fd))
+* **app:** lift ensureCoverage's shared state into coveragePatcher ([46c1df3](https://github.com/sound-barrier/recall/commit/46c1df3dc3a08db0752074a6ab778d737aca150f))
+* **app:** roll the synthetic-match date window off time.Now ([8faca58](https://github.com/sound-barrier/recall/commit/8faca5827e4d9ad2faedac22713a12b4e577c632))
+* **app:** split aggregate.go by concern ([68eb03a](https://github.com/sound-barrier/recall/commit/68eb03af0cd7e23abd1e2e8c1651779d201c0b05))
+* **app:** split correlation.go by concern ([04f04da](https://github.com/sound-barrier/recall/commit/04f04da89410235aaf9cf6a0c690f9c99f8c16db))
+* **app:** split export_csv.go by concern ([88f3cee](https://github.com/sound-barrier/recall/commit/88f3cee7184d6d9e5ce113047c6166a61b31e413))
+* **app:** split fixtures.go by concern ([cac8f26](https://github.com/sound-barrier/recall/commit/cac8f265c8b61a74677f9432f0f8ab1db4eca747))
+* **app:** split pickHero into per-style methods ([3cd18c2](https://github.com/sound-barrier/recall/commit/3cd18c227189c4a034e5bb3ff64284732cdd5741))
+* **app:** split Startup into phase helpers ([9ccae39](https://github.com/sound-barrier/recall/commit/9ccae399dda3dc99d68ad15f248a1c844262871e))
+* **app:** split update.go by concern ([64e42cb](https://github.com/sound-barrier/recall/commit/64e42cb508335e30b5afad7f5f2c3a2c4daaa65c))
+* **cmd:** extract handlers from the profile/backup/settings routes ([f9b2d87](https://github.com/sound-barrier/recall/commit/f9b2d87d560c5c7acd6f96720012206907c5681e))
+* **cmd:** extract match-route handlers from registerMatchRoutes ([ddb53cd](https://github.com/sound-barrier/recall/commit/ddb53cd19e5b7661b4953d29525bf5cb93985a3d))
+* **dashboard:** decompose MatchHeroModeBand into drill-nav + levels ([ec92310](https://github.com/sound-barrier/recall/commit/ec92310262a6b043064ec4a7172cb378d8821863))
+* **dashboard:** drop unused WINDOW_MONTHS export ([0354dbf](https://github.com/sound-barrier/recall/commit/0354dbfcc9ffe779d0e592940053478eeac340ee))
+* **dashboard:** extract shared useWindowMonths composable ([1a9ecd4](https://github.com/sound-barrier/recall/commit/1a9ecd414f88ba85c64f9a841157e2337554a7d9))
+* **dbtest:** split fake.go by Store-method domain ([da2f51e](https://github.com/sound-barrier/recall/commit/da2f51eb7386df5760e1f4cc8b89506c24e0d577))
+* **detail:** extract useSmoothScroll composable ([9f8c1f7](https://github.com/sound-barrier/recall/commit/9f8c1f71af764776af1bcf7da0457fc82a4b9b6f))
+* **dossier:** extract type contract into its own module ([9427a3d](https://github.com/sound-barrier/recall/commit/9427a3d7a37113f9410bd83658cbfd8eb86cfd7e))
+* **dossier:** split query-helper tier into sibling composable ([ca038e1](https://github.com/sound-barrier/recall/commit/ca038e16c1c8fb195b6d1526f94dc29ef869de52))
+* **ignored:** extract useHoverThumbnail composable ([845a201](https://github.com/sound-barrier/recall/commit/845a2014667b5073a9b0062cfbd41cf3642d5e50))
+* **matchcard:** extract annotation editor into a composable ([4a73849](https://github.com/sound-barrier/recall/commit/4a73849b75838894069699113d160fe07c51b8f5))
+* **matchcard:** extract MatchHeroesPlayed sub-component ([fa187f3](https://github.com/sound-barrier/recall/commit/fa187f37d32dbe5779ca02eb24cba576865205f5))
+* **matchcard:** extract MatchJournal sub-component ([bcb9ffc](https://github.com/sound-barrier/recall/commit/bcb9ffc6763b473086ab7e9fa3f0699334ad0064))
+* **matchcard:** extract MatchLeaverChooser sub-component ([7aea795](https://github.com/sound-barrier/recall/commit/7aea7956e0b183f3d90bc08919bd679f3f33ddcf))
+* **matchcard:** extract MatchRankBlock sub-component ([52a1849](https://github.com/sound-barrier/recall/commit/52a18498bfcc5216da377eac421b4b13532699ba))
+* **matchcard:** extract MatchSources sub-component ([d88f623](https://github.com/sound-barrier/recall/commit/d88f623b79fa74c8636a5f25ce8c80031befa5eb))
+* **matchcard:** extract MatchStatusChoosers sub-component ([c2d0a0c](https://github.com/sound-barrier/recall/commit/c2d0a0c54ddec29a678e3f7fc69f1307a43962ed))
+* **matches:** decompose MatchesView shell into composables + toolbar ([6352cf9](https://github.com/sound-barrier/recall/commit/6352cf98e266ccdd63a826ce503df4f4f335dacf))
+* **matches:** extract MatchesTable from MatchesMembersList ([9296c91](https://github.com/sound-barrier/recall/commit/9296c91e3a1dece5fb8bf16ea159c23742dc859d))
+* **narrow:** extract NarrowPresets from NarrowPopover ([c27a8cc](https://github.com/sound-barrier/recall/commit/c27a8cc58531172fb89d974d437aa680f097430b))
+* **parser:** decompose findStatColumns into scan/cluster/merge ([f085281](https://github.com/sound-barrier/recall/commit/f085281ab4de1f844664418c3824aeeefd27db34))
+* **profiles:** extract useProfileSwitcher composable ([ebf3933](https://github.com/sound-barrier/recall/commit/ebf393366d98fbfd222ca3420cd3267367da59fb))
+* **settings:** extract SupportedSourcesRow sub-component ([d933133](https://github.com/sound-barrier/recall/commit/d933133b53d77fa014b8af88fd0ffa054dd25a11))
+* **tour:** extract computeCalloutPosition placement solver ([8957a02](https://github.com/sound-barrier/recall/commit/8957a02fd4452fc3879039abeadd0b53159e7b30))
+* **unknown:** reuse useHoverThumbnail in UnknownMapsView ([aa0bbbd](https://github.com/sound-barrier/recall/commit/aa0bbbddcb140a1aa3bc11204828a4ba3a938dc6))
+* **update:** split UpdateCheckModal game-data logic + diff manifest ([8ebd94d](https://github.com/sound-barrier/recall/commit/8ebd94d1acce8d265fe93dd78f507062d180fbce))
+
+
+### Documentation
+
+* **claude:** add best-effort file-length guideline (~500 lines) ([d3d8afd](https://github.com/sound-barrier/recall/commit/d3d8afd86baca2ab31922b7a13daed310ae53f83))
+* **faq:** explain profiles and how to delete the sample "test" one ([45ed3bb](https://github.com/sound-barrier/recall/commit/45ed3bb38ca2b48e135a4a8af8149ee2acd6f8f5))
+* **review:** clear Q3 large TS composables ([5e728ff](https://github.com/sound-barrier/recall/commit/5e728ff56d96b547f54884416f025a98f1aae8fa))
+* **review:** clear Q4 and refresh complexity baseline paths ([3ccebae](https://github.com/sound-barrier/recall/commit/3ccebae9da1e924632b879205dc4f100a69ac74c))
+* **review:** clear Q6 coverage floor ([2e2a7e7](https://github.com/sound-barrier/recall/commit/2e2a7e7115e391894fed4fdf285edcb8a9e84347))
+* **review:** record Q2 outcome (decomposed; two dense shells best-effort) ([0e999be](https://github.com/sound-barrier/recall/commit/0e999bed2d1eb36c789d5359ee264dc5b27c0825))
+* **review:** record Q5 done — all Go tests black-box via bridges ([8ead8cd](https://github.com/sound-barrier/recall/commit/8ead8cd6417b55033be6521c413c5a2c80ffd55c))
+* **review:** record Q5 outcome (black-box where exported surface allows) ([ccdccb4](https://github.com/sound-barrier/recall/commit/ccdccb4e8b4055ded59274ddd83462f17c488dee))
+* **review:** record the CLAUDE.md code-quality audit ([7a508de](https://github.com/sound-barrier/recall/commit/7a508debef5c1b1405b87268ccaf7f853e83eac9))
+
+
+### Build & Packaging
+
+* **bundle:** bump total JS budget to 498000 for the Q2 composable split ([ea03286](https://github.com/sound-barrier/recall/commit/ea0328601e4c7ce338d199ba129a3b998ca9d500))
+* **bundle:** bump total JS budget to 500000 for the card decomposition ([8f1548a](https://github.com/sound-barrier/recall/commit/8f1548a62b92e0cd907e086d63a2d15359da1ddc))
+* **bundle:** bump total JS budget to 502000 for the medium SFC trims ([c745e8d](https://github.com/sound-barrier/recall/commit/c745e8db483f4e67c3705f389b3688cd6731786f))
+* **bundle:** bump total JS budget to 506000 for the dense-view split ([d71949f](https://github.com/sound-barrier/recall/commit/d71949f051070d9498c49caaa850d619954b3006))
+* **lint:** add ruff for Python; clean render-pr-report.py ([e656e8b](https://github.com/sound-barrier/recall/commit/e656e8bf19b19d87b450db72efcf867e081cdba0))
+* **lint:** bring initialize.sh + devcontainer under shfmt/shellcheck ([bd60e26](https://github.com/sound-barrier/recall/commit/bd60e2672bf8c9dec32efe98beab6183df1a30e4))
+* **lint:** htmlhint the Swagger UI page too, not just the SPA index ([3d26abb](https://github.com/sound-barrier/recall/commit/3d26abbd7c2c5864f129cab194b3b2639a21cc95))
+* **lint:** run ESLint over the whole frontend, not just src/ ([3b9eb17](https://github.com/sound-barrier/recall/commit/3b9eb173943375b44ea0967bf4569f538e860437))
+* **lint:** stop enforcing YAML line length ([894bc6d](https://github.com/sound-barrier/recall/commit/894bc6d9374b501a22b990402713017c6c64e5e1))
+
+
+### Tests
+
+* **app:** externalize all 47 test files to package app_test ([85ba341](https://github.com/sound-barrier/recall/commit/85ba34197ead965f1c39ed5736bfaeb7baf82cbe))
+* **app:** externalize check-state + match-key tests to package app_test ([1b9b2e9](https://github.com/sound-barrier/recall/commit/1b9b2e9bb7de871736789ec3396b564d98dc0bff))
+* bump test-skips allow-list line numbers after externalizing ([6286c7e](https://github.com/sound-barrier/recall/commit/6286c7e0125294048a0974c3845ba88cc6391663))
+* **cmd:** externalize HTTP route tests to package cmd_test ([9b3d517](https://github.com/sound-barrier/recall/commit/9b3d51760c25dbb351b9d20b96c61bdfe82970dc))
+* **cmd:** externalize middleware + hardening tests to package cmd_test ([8a70a0f](https://github.com/sound-barrier/recall/commit/8a70a0f63068491999a52d7d3cf9845ec7c7baaf))
+* **db:** externalize migrate_test to package db_test ([ad79587](https://github.com/sound-barrier/recall/commit/ad79587552a9b5121bf025f0e39a5791ef744e5e))
+* **db:** externalize store round-trip tests to package db_test ([7eb595c](https://github.com/sound-barrier/recall/commit/7eb595c541735c766d677aa01d47fc8ea7f1780e))
+* **e2e:** hold the SSE mock instance on a static field ([9bc8b47](https://github.com/sound-barrier/recall/commit/9bc8b47604df97f6f1d38db7959c06fb365b5917))
+* externalize metrics + applog tests to package &lt;pkg&gt;_test ([f6e8b8d](https://github.com/sound-barrier/recall/commit/f6e8b8d859f5566762a95a867ca445ea56d9e798))
+* **parser:** externalize all 13 test files to package parser_test ([0ddb598](https://github.com/sound-barrier/recall/commit/0ddb598fcca3df54751bcc43a89fd726aadd1fbc))
+* **tesseract:** cover detectTesseractBinary probe paths ([e33be94](https://github.com/sound-barrier/recall/commit/e33be94e976f5435405524d3da3abff021caef0b))
+
 ## [0.14.0](https://github.com/sound-barrier/recall/compare/v0.13.0...v0.14.0) (2026-06-12)
 
 
