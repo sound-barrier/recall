@@ -2,7 +2,7 @@
 import { onMounted, nextTick } from 'vue'
 import type { MatchRecord, MatchAnnotationInput } from '@/api'
 import { type SearchClause } from '@/search-query'
-import { useMatchAnnotationEditor } from '@/composables/useMatchAnnotationEditor'
+import { useMatchAnnotationEditor } from '@/composables/matches/useMatchAnnotationEditor'
 
 // The expanded match card's MATCH JOURNAL — note / replay / squad / tags
 // editor. Owns useMatchAnnotationEditor (the draft state + commit logic)

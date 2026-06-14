@@ -2,9 +2,9 @@
 import { computed, ref, toRef, onMounted, onBeforeUnmount } from 'vue'
 import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from '@/api'
 import type { SearchClause } from '@/search-query'
-import { useOWData } from '@/composables/useOWData'
-import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
-import { useSmoothScroll } from '@/composables/useSmoothScroll'
+import { useOWData } from '@/composables/shared/useOWData'
+import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useSmoothScroll } from '@/composables/matches/useSmoothScroll'
 import MatchCardExpanded from '@/components/matches/MatchCardExpanded.vue'
 
 // Detail panel — slides in from the right when a match is selected.

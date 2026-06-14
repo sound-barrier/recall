@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
 
-import { useScrollLock } from '@/composables/useScrollLock'
+import { useScrollLock } from '@/composables/shared/useScrollLock'
 
 // Selection-aware "Export bundle" modal. Opens from the MatchesView
 // bulk-action bar. Lets the user:

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { formatRelativeTime } from '@/match-time-helpers'
-import type { ParseConnectionState } from '@/composables/useParseRecovery'
+import type { ParseConnectionState } from '@/composables/ingest/useParseRecovery'
 import ParseProgressPanel, { type ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
 
 // IngestView (presented to users as the "Parse" tab) — the

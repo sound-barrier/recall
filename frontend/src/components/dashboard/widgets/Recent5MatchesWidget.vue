@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useDossier } from '@/composables/useDossier'
-import { useWidgetConfig } from '@/composables/useWidgetConfig'
+import { useDossier } from '@/composables/dashboard/useDossier'
+import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { recentMatchesSchema, type RecentMatchesConfig } from '@/dashboard/widgets'
 
 const dossier = useDossier()

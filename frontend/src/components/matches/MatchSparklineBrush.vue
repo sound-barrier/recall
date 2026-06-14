@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, toRef, onBeforeUnmount } from 'vue'
 import type { MatchRecord } from '@/api'
-import { useMatchHeatmap } from '@/composables/useMatchHeatmap'
+import { useMatchHeatmap } from '@/composables/matches/useMatchHeatmap'
 
 // Brushable bar sparkline — answers "when did I play, and how much?".
 // Sits to the right of the calendar heatmap on the Matches view; they

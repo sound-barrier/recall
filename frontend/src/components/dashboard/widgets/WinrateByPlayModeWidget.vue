@@ -5,7 +5,7 @@
 // the user can read sample size at a glance (100% winrate over 1
 // match is noise; over 50 matches is signal). Non-default; users
 // opt in via the dossier customize gallery.
-import { useDossier } from '@/composables/useDossier'
+import { useDossier } from '@/composables/dashboard/useDossier'
 
 const dossier = useDossier()
 const playModeBreakdown = dossier.playModeBreakdown

@@ -5,8 +5,8 @@
 // with") while the in-bar count reports sample size, since a 100% win
 // rate over one game is noise and over fifty is signal. Opt-in: users
 // add it from the dossier customize gallery.
-import { useDossier } from '@/composables/useDossier'
-import { useWidgetConfig } from '@/composables/useWidgetConfig'
+import { useDossier } from '@/composables/dashboard/useDossier'
+import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { withWhomSchema, type TopByCountConfig } from '@/dashboard/widgets'
 
 const dossier = useDossier()

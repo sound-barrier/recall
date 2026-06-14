@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
+import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 
 // Combined Sort + Group dropdown for the Matches leaves head. Two
 // radio groups inside one anchored popover — saves horizontal real

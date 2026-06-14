@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { MatchRecord } from '@/api'
-import { useOWData } from '@/composables/useOWData'
+import { useOWData } from '@/composables/shared/useOWData'
 
 // The expanded card's collapsible Heroes-Played list — a per-match
 // breakdown of every hero with percent-played + play-time + the

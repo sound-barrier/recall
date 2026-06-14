@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mountWidget } from '@/test-utils/mountWidget'
-import type { MapRoleCell } from '@/composables/useMatchesDossier'
+import type { MapRoleCell } from '@/composables/matches/useMatchesDossier'
 
 // Stub the reference-data singleton so the column roster is
 // deterministic (no fetch, no cross-test singleton state). Three maps
 // across two game-mode groups: Ilios (control), Dorado + Rialto (escort).
-vi.mock('@/composables/useOWData', async () => {
+vi.mock('@/composables/shared/useOWData', async () => {
   const { computed } = await import('vue')
   const idx = new Map<string, { display: string; gameMode: string }>([
     ['ilios', { display: 'Ilios', gameMode: 'control' }],

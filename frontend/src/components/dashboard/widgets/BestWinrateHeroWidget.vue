@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useDossier } from '@/composables/useDossier'
-import { useWidgetConfig } from '@/composables/useWidgetConfig'
+import { useDossier } from '@/composables/dashboard/useDossier'
+import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { bestWinrateHeroSchema, type BestWinrateHeroConfig } from '@/dashboard/widgets'
-import { DEFAULT_MOST_PLAYED_HERO_THRESHOLD } from '@/composables/useMatchesDossier'
+import { DEFAULT_MOST_PLAYED_HERO_THRESHOLD } from '@/composables/matches/useMatchesDossier'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<BestWinrateHeroConfig>('best-winrate-hero', bestWinrateHeroSchema)

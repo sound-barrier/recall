@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { MatchRecord } from '@/api'
-import { useWindowMonths } from '@/composables/useWindowMonths'
+import { useWindowMonths } from '@/composables/matches/useWindowMonths'
 import MatchHeatmapHeader from '@/components/matches/MatchHeatmapHeader.vue'
 import MatchSparklineBrush from '@/components/matches/MatchSparklineBrush.vue'
 

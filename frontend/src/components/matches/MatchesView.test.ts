@@ -17,7 +17,7 @@ vi.mock('@/api', async (importOriginal) => ({
 import {
   createMatchesNarrowState,
   useMatchesNarrow,
-} from '@/composables/useMatchesNarrow'
+} from '@/composables/matches/useMatchesNarrow'
 
 // Unit tests for the contextual multi-select + Hidden drawer surfaces.
 // End-to-end transport chain is covered by

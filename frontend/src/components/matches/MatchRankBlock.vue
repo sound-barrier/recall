@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MatchRecord } from '@/api'
-import { useOWData } from '@/composables/useOWData'
+import { useOWData } from '@/composables/shared/useOWData'
 
 // The expanded card's Rank Update block — the "rare" milestone surface
 // that only renders for matches carrying a rank-screen screenshot

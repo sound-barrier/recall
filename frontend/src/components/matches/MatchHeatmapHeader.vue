@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, toRef } from 'vue'
 import type { MatchRecord } from '@/api'
-import { useMatchHeatmap } from '@/composables/useMatchHeatmap'
+import { useMatchHeatmap } from '@/composables/matches/useMatchHeatmap'
 
 // Calendar heatmap viz — 7 rows × N week columns of one cell per day.
 // Win-rate drives hue (green → red via --win / --loss); volume drives

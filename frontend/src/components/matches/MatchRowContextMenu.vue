@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
-import { useScrollLock } from '@/composables/useScrollLock'
+import { useScrollLock } from '@/composables/shared/useScrollLock'
 
 // Right-click context menu for a Matches list row. Quick actions
 // without first opening the detail panel:

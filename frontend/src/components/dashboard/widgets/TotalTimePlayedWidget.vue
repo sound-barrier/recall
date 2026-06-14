@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useDossier } from '@/composables/useDossier'
-import { useWidgetConfig } from '@/composables/useWidgetConfig'
+import { useDossier } from '@/composables/dashboard/useDossier'
+import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { totalTimeSchema, type TotalTimeConfig } from '@/dashboard/widgets'
 import { formatPlayMinutes } from '@/match-time-helpers'
 

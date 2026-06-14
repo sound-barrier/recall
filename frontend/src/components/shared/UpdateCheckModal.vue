@@ -20,8 +20,8 @@
 // collapses the slide-in.
 
 import { toRef, computed } from 'vue'
-import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
-import { useGameDataUpdate } from '@/composables/useGameDataUpdate'
+import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useGameDataUpdate } from '@/composables/shared/useGameDataUpdate'
 import UpdateDiffManifest from '@/components/shared/UpdateDiffManifest.vue'
 import { OpenURL, type UpdateInfo, type DataUpdateResult } from '@/api'
 

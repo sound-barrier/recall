@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ExportStatus } from '@/composables/useBackupRestore'
+import type { ExportStatus } from '@/composables/settings/useBackupRestore'
 
 // Backup & Restore panel — JSON / CSV export buttons + a two-step
 // arm/confirm Import flow that replaces the live DB. Extracted from

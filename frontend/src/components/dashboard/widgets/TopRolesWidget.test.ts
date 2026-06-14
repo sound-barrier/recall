@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import TopRolesWidget from '@/components/dashboard/widgets/TopRolesWidget.vue'
-import type { Role } from '@/composables/useMatchesDossier'
+import type { Role } from '@/composables/matches/useMatchesDossier'
 import { mountWidget } from '@/test-utils/mountWidget'
 
 const role = (key: Role, total: number, share: number, winrate = 50) => ({ key, total, share, winrate })

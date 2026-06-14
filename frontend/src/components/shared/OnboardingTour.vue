@@ -6,8 +6,8 @@ import {
   ONBOARDING_STEPS,
   type OnboardingViewId,
   type TourActionContext,
-} from '@/composables/useOnboardingTour'
-import { useScrollLock } from '@/composables/useScrollLock'
+} from '@/composables/shared/useOnboardingTour'
+import { useScrollLock } from '@/composables/shared/useScrollLock'
 import TourSpotlight from '@/components/shared/TourSpotlight.vue'
 import TourCallout from '@/components/shared/TourCallout.vue'
 

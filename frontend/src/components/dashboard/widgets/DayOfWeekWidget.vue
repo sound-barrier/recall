@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useDossier } from '@/composables/useDossier'
-import { useWidgetConfig } from '@/composables/useWidgetConfig'
+import { useDossier } from '@/composables/dashboard/useDossier'
+import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { dayOfWeekSchema, type DayOfWeekConfig } from '@/dashboard/widgets'
 import type { WeekStart } from '@/match-time-helpers'
 
