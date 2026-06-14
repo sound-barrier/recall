@@ -118,7 +118,7 @@ without agreement on direction.
 - **TypeScript / Vue**: idiomatic TS — no `any`, narrow types at boundaries
   (`Pick<>` or permissive interfaces so callers aren't forced to satisfy fields
   the function never reads). Composition API; composables for stateful logic.
-  Pure helpers in `frontend/src/match-helpers.ts`, never inside an SFC's
+  Pure helpers in `frontend/src/match/match-helpers.ts`, never inside an SFC's
   `<script setup>`. Apply the same naming discipline as Go: component props,
   composable returns, and helper functions should read like documentation.
   Follow the [Vue 3 Style Guide](https://vuejs.org/style-guide/) for component
