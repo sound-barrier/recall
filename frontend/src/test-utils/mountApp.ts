@@ -199,10 +199,10 @@ export async function mountApp(overrides: MountOverrides = {}) {
   // the test triggers a view render. Pre-warming does not undo the
   // production split — that's verified by App.lazy-views.test.ts.
   await Promise.all([
-    import('@/components/IngestView.vue'),
-    import('@/components/MatchesView.vue'),
-    import('@/components/SettingsView.vue'),
-    import('@/components/UnknownMapsView.vue'),
+    import('@/components/ingest/IngestView.vue'),
+    import('@/components/matches/MatchesView.vue'),
+    import('@/components/settings/SettingsView.vue'),
+    import('@/components/unknown/UnknownMapsView.vue'),
   ])
   const App = (await import('@/App.vue')).default
   const wrapper = mount(App, { attachTo: document.body })

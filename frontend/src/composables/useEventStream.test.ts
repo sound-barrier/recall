@@ -21,7 +21,7 @@ vi.mock('@/api', () => ({
 
 import type { MatchRecord } from '@/api'
 import { useEventStream } from '@/composables/useEventStream'
-import type { ParseProgressEvent } from '@/components/ParseProgressPanel.vue'
+import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
 
 function rec(matchKey: string, extra?: Partial<MatchRecord>): MatchRecord {
   return {

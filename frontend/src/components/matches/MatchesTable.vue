@@ -1,0 +1,266 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import type { MatchRecord } from '@/api'
+import type { SortOrder } from '@/composables/useMatchesGroup'
+import { useVirtualWindow } from '@/composables/useVirtualWindow'
+import { useTableSort, type TableSortCol } from '@/composables/useTableSort'
+import type { SearchClause } from '@/search-query'
+import MatchTableRow from '@/components/matches/MatchTableRow.vue'
+
+// Data-density view of the matches list: a real <table> with sortable
+// column headers over the whole narrowed set (no D/W/M/Y grouping), the
+// body virtualized inside a bounded scroll pane. Extracted from
+// MatchesMembersList — rendered only in 'data' density — so it owns its own
+// sort + virtualization + reset, and the parent threads the shared row
+// props (selection, anchor, search highlight, keyboard focus) through.
+const props = defineProps<{
+  records: MatchRecord[]
+  sortOrder: SortOrder
+  resetCounter: number
+  focusedCardIndex?: number
+  selectedKeys: Set<string>
+  anchorKey: string | null
+  searchClauses: SearchClause[]
+  narrowedIndexByKey: Map<string, number>
+}>()
+
+const emit = defineEmits<{
+  'open-match':    [matchKey: string]
+  'toggle-select': [matchKey: string]
+  'row-context':   [e: MouseEvent, matchKey: string]
+  'hover-enter':   [rec: MatchRecord, e: MouseEvent]
+  'hover-move':    [e: MouseEvent]
+  'hover-leave':   []
+}>()
+
+// The sortable columns, in render order. `col` is the TableSortCol a
+// header sorts by (null = the non-sortable checkbox gutter).
+const TABLE_COLUMNS: ReadonlyArray<{ col: TableSortCol | null; label: string }> = [
+  { col: null,           label: '' },
+  { col: 'date',         label: 'When' },
+  { col: 'map',          label: 'Map' },
+  { col: 'mode',         label: 'Mode' },
+  { col: 'hero',         label: 'Hero' },
+  { col: 'role',         label: 'Role' },
+  { col: 'eliminations', label: 'E / A / D' },
+  { col: 'tags',         label: 'Tags' },
+  { col: 'result',       label: 'Result' },
+]
+const TABLE_ROW_HEIGHT = 30
+
+const { sortCol, sortDir, cycleSort, ariaSort, sortRows } = useTableSort()
+
+const records = computed(() => props.records)
+const tableScrollRef = ref<HTMLElement | null>(null)
+const tableFlatRecords = computed(() => sortRows(records.value))
+const tableVirtual = useVirtualWindow({
+  items:        tableFlatRecords,
+  containerRef: tableScrollRef,
+  mode:         'container',
+  itemHeight:   TABLE_ROW_HEIGHT,
+  overscan:     12,
+})
+const tableFlatRows     = computed(() => tableVirtual.visibleItems.value as MatchRecord[])
+const tableTopSpacer    = computed(() => tableVirtual.topSpacer.value)
+const tableBottomSpacer = computed(() => tableVirtual.bottomSpacer.value)
+
+// The toolbar's Newest/Oldest seeds the When column's direction — Data
+// view has no separate sort control, the column headers ARE the sort.
+watch(() => props.sortOrder, (o) => {
+  sortCol.value = 'date'
+  sortDir.value = o === 'newest' ? 'desc' : 'asc'
+}, { immediate: true })
+
+// Reset → scroll the table pane back to the top (both axes).
+watch(() => props.resetCounter, () => {
+  tableScrollRef.value?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+})
+</script>
+
+<template>
+  <div ref="tableScrollRef" class="leaves-table-scroll">
+    <table class="leaves-table">
+      <thead class="leaves-thead">
+        <tr>
+          <th
+            v-for="column in TABLE_COLUMNS"
+            :key="column.label || 'select'"
+            scope="col"
+            class="th"
+            :class="{ 'th-sortable': !!column.col, 'th-active': !!column.col && sortCol === column.col }"
+            :data-sort-col="column.col || undefined"
+            :aria-sort="column.col ? ariaSort(column.col) : undefined"
+            @click="column.col && cycleSort(column.col)"
+          >
+            <span v-if="column.label" class="th-inner">
+              {{ column.label }}
+              <span
+                v-if="!!column.col && sortCol === column.col"
+                class="th-caret"
+                aria-hidden="true"
+              >{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
+            </span>
+          </th>
+        </tr>
+      </thead>
+
+      <!-- Always flat in Data density: one virtualized body, sorted by the
+       active column header. Spacer <tr>s above + below the rendered
+       slice hold the pane's scroll height stable. -->
+      <tbody>
+        <tr
+          v-if="tableTopSpacer > 0"
+          class="table-spacer"
+          aria-hidden="true"
+          :style="{ height: tableTopSpacer + 'px' }"
+          data-virt-top-spacer
+        >
+          <td :colspan="TABLE_COLUMNS.length" />
+        </tr>
+        <MatchTableRow
+          v-for="rec in tableFlatRows"
+          :key="rec.match_key"
+          :rec="rec"
+          :card-index="narrowedIndexByKey.get(rec.match_key) ?? -1"
+          :focused-card-index="props.focusedCardIndex"
+          :selected="selectedKeys.has(rec.match_key)"
+          :has-selection="selectedKeys.size > 0"
+          :is-anchor="rec.match_key === anchorKey"
+          :search-clauses="searchClauses"
+          @open-match="emit('open-match', $event)"
+          @toggle-select="emit('toggle-select', $event)"
+          @row-context="(e, k) => emit('row-context', e, k)"
+          @hover-enter="(r, e) => emit('hover-enter', r, e)"
+          @hover-move="(e) => emit('hover-move', e)"
+          @hover-leave="emit('hover-leave')"
+        />
+        <tr
+          v-if="tableBottomSpacer > 0"
+          class="table-spacer"
+          aria-hidden="true"
+          :style="{ height: tableBottomSpacer + 'px' }"
+          data-virt-bottom-spacer
+        >
+          <td :colspan="TABLE_COLUMNS.length" />
+        </tr>
+      </tbody>
+
+      <!-- Tail: honest count. Data density is fully virtualized (the whole
+       set is scrollable in the pane), so there's no infinite-scroll
+       paging here — just the end marker. -->
+      <tfoot class="leaves-tfoot">
+        <tr
+          class="leaves-foot-row"
+          role="status"
+          aria-live="polite"
+          data-testid="leaves-foot"
+        >
+          <td :colspan="TABLE_COLUMNS.length">
+            <span class="leaves-foot-end">
+              End · {{ records.length }}
+              {{ records.length === 1 ? 'match' : 'matches' }}
+            </span>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</template>
+
+<style scoped>
+.leaves-table-scroll {
+  position: relative;
+  overflow: auto;
+  max-height: 70vh;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+
+  /* Horizontal scroll-shadow: a faint fade appears at an edge only when
+     there's more table past it. The `local` cover gradients ride with
+     the content (hiding the shadow at the true edge); the `scroll`
+     radial shadows stay pinned to the pane. Rows are transparent, so it
+     reads through the body. */
+  background:
+    linear-gradient(90deg, var(--surface), transparent) 0 0 / 34px 100% no-repeat local,
+    linear-gradient(270deg, var(--surface), transparent) 100% 0 / 34px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 18%), transparent) 0 0 / 14px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 18%), transparent) 100% 0 / 14px 100% no-repeat scroll;
+}
+
+.leaves-table-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.leaves-table-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+.leaves-table-scroll::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+.leaves-table-scroll::-webkit-scrollbar-track { background: transparent; }
+
+.leaves-table {
+  width: 100%;
+
+  /* Below this the pane scrolls horizontally instead of crushing the
+     columns; nowrap cells + the map/hero/tags ellipsis do the rest. */
+  min-width: 46rem;
+  border-collapse: collapse;
+  font-family: var(--mono);
+}
+
+.leaves-thead .th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-align: left;
+  padding: 0.5rem 0.55rem;
+  font-size: 0.56rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-faint);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
+}
+.leaves-thead .th[data-sort-col="result"] { text-align: right; }
+.leaves-thead .th[data-sort-col="result"] .th-inner { flex-direction: row-reverse; }
+
+.th-sortable {
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.th-sortable:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+}
+.th-active { color: var(--accent); }
+
+.th-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.th-caret {
+  font-size: 0.5rem;
+  color: var(--accent);
+}
+
+/* Virtualization spacer rows — pure height, no chrome. */
+.table-spacer { pointer-events: none; }
+.table-spacer td { padding: 0; border: none; }
+
+/* Tail foot row echoes the leaf-list foot tone. */
+.leaves-foot-row td {
+  padding: 0.9rem 0 1.1rem;
+  text-align: center;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Shared with the leaf-list foot tone (kept in both scoped contexts). */
+.leaves-foot-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+</style>
