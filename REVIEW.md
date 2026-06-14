@@ -70,34 +70,33 @@ the SFC + e2e suites.
 
 ---
 
-### Q5. Go tests — black-box where the exported surface allows (direction applied)
+### Q5. Go tests are all black-box (`<pkg>_test`) — done
 
-The white-box-everywhere baseline (0 of 84 files in the `<pkg>_test` form) is
-gone: the suites whose behaviour is observable through the public surface now
-drive it from an external test package, per "test public interfaces, not
-internals."
+Every `pkg/**/*_test.go` file that contains tests now declares `package
+<pkg>_test`; none reaches into unexported identifiers directly. Verified:
+`find pkg -name '*_test.go'` with a `Test`/`Benchmark`/`Fuzz`/`Example` func and a
+non-`_test` package returns nothing.
 
-**Externalized to `<pkg>_test`:**
+Where behaviour is observable through the public surface the tests drive it
+directly (the HTTP routes via `NewMux`, the store CRUD via the `Store` interface,
+aggregation via `GetMatchResults`, the data-dir reload via `SetDataDirFunc` +
+`Reload`, App settings via the public setters). Where it is not — the correlation
+/ aggregation / inference engine, the OCR primitives, the security middleware, the
+update client, the fixture generator, settings IO — a **test-only `export_test.go`
+bridge** (one per package; `bridge_test.go` in `pkg/app`) re-exports exactly the
+internals the suites need: value aliases for funcs, method expressions for
+unexported `*App` methods, pointer accessors for unexported fields, pointer seams
+for swapped vars (`releasesURL`, `renameFunc`, `maxZipEntryBytes`, …), and
+constructors for unexported types (`screenshotView`, the SSE envelope). These
+bridges hold no tests and are compiled only under `go test`, so they widen no
+shipped API.
 
-- `pkg/db` — the store round-trip suites (summary/personal/rank/teams, review,
-  queue, play-mode) via the public `Store`; an `export_test.go` `RawDB` accessor
-  lets them assert child-table cleanup without widening the API.
-- `pkg/cmd` — the whole HTTP route cluster, driving handlers through `NewMux` +
-  the public `App`; an `export_test.go` re-exports the four pagination/validation
-  helpers so their edge-case unit tests survive.
-- `pkg/app` — `check_state` + `match_key`, which use only the public App surface.
+No tests were deleted and no production API changed. Coverage held per package
+(db 62.2 %, cmd 70.7 %, app 76.6 %, parser 60.3 %, metrics/applog unchanged); the
+60 % aggregate floor is unaffected.
 
-**Kept white-box (the audit's sanctioned carve-out for genuinely-pure internal
-primitives):** the correlation / aggregation / inference engine
-(`resolveMatchKey`, `matchByEAD`, `mergeMatchResult`, `aggregateScreenshots`, …),
-the OCR parser primitives (`digitize`, `normalize`, `levenshtein`, …), the
-metrics/applog formatting internals, and the `pkg/app` suites that inspect
-unexported fields/methods (`a.store`, `a.profiles`, `a.settings`,
-`a.captureFatal`) or the unexported `fakeStore`. White-box is idiomatic Go here —
-this was a direction, not a blanket rewrite.
-
-**Size:** L (done). **Risk:** Med — coverage held per-package (db 62.2%, cmd
-70.7%, app 76.6% — unchanged before/after each flip).
+**Size:** L (done). **Risk:** Med — every flip was guarded by the unchanged green
+suite.
 
 ---
 
