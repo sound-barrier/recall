@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { ThemeMode } from '@/composables/useTheme'
-import type { WeekStart } from '@/composables/useWeekStart'
+import type { ThemeMode } from '@/composables/settings/useTheme'
+import type { WeekStart } from '@/composables/shared/useWeekStart'
 import type { DataLocation, TesseractStatus } from '@/api'
 import SettingsAdvanced from '@/components/settings/SettingsAdvanced.vue'
 import SettingsAppearance from '@/components/settings/SettingsAppearance.vue'

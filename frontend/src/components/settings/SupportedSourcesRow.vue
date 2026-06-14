@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useOWData } from '@/composables/useOWData'
+import { useOWData } from '@/composables/shared/useOWData'
 
 // Read-only "Supported capture-source rules" surface in Settings →
 // Advanced: a collapsible table of the filename shapes the parser

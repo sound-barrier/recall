@@ -1,25 +1,25 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import type { MatchRecord } from '@/api'
-import { useMatchesDossier } from '@/composables/useMatchesDossier'
-import { provideDossier } from '@/composables/useDossier'
-import { provideNarrow } from '@/composables/useNarrow'
+import { useMatchesDossier } from '@/composables/matches/useMatchesDossier'
+import { provideDossier } from '@/composables/dashboard/useDossier'
+import { provideNarrow } from '@/composables/matches/useNarrow'
 import MatchesSortGroupPopover from '@/components/matches/MatchesSortGroupPopover.vue'
-import { useWeekStart } from '@/composables/useWeekStart'
-import { useDensity } from '@/composables/useDensity'
-import { useSortGroupMenu } from '@/composables/useSortGroupMenu'
-import { useScrollAffordance } from '@/composables/useScrollAffordance'
-import { useOWData } from '@/composables/useOWData'
-import type { useMatchesNarrow } from '@/composables/useMatchesNarrow'
-import { useArchiveSelection } from '@/composables/useArchiveSelection'
+import { useWeekStart } from '@/composables/shared/useWeekStart'
+import { useDensity } from '@/composables/matches/useDensity'
+import { useSortGroupMenu } from '@/composables/matches/useSortGroupMenu'
+import { useScrollAffordance } from '@/composables/matches/useScrollAffordance'
+import { useOWData } from '@/composables/shared/useOWData'
+import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
+import { useArchiveSelection } from '@/composables/matches/useArchiveSelection'
 import MatchesDossierHead from '@/components/matches/MatchesDossierHead.vue'
 import MatchesDossierSections from '@/components/matches/MatchesDossierSections.vue'
 import BulkActionBar from '@/components/matches/BulkActionBar.vue'
 import MatchesArchiveDrawer from '@/components/matches/MatchesArchiveDrawer.vue'
 import MatchesMembersList from '@/components/matches/MatchesMembersList.vue'
 import MatchesListToolbar from '@/components/matches/MatchesListToolbar.vue'
-import { useMatchesSelection } from '@/composables/useMatchesSelection'
-import { useMatchesMovePicker } from '@/composables/useMatchesMovePicker'
+import { useMatchesSelection } from '@/composables/matches/useMatchesSelection'
+import { useMatchesMovePicker } from '@/composables/matches/useMatchesMovePicker'
 // NarrowPopover is the heavyweight authoring surface (the search +
 // combobox + range pickers + active-clause range etc.). Lazy-load
 // it so MatchesView's initial chunk doesn't carry its ~30K of
@@ -29,8 +29,8 @@ import { useMatchesMovePicker } from '@/composables/useMatchesMovePicker'
 const NarrowPopover = defineAsyncComponent(() => import('@/components/matches/NarrowPopover.vue'))
 import MatchRowContextMenu from '@/components/matches/MatchRowContextMenu.vue'
 import LeafHoverPreview from '@/components/matches/LeafHoverPreview.vue'
-import { useMatchesRowContext } from '@/composables/useMatchesRowContext'
-import { useNarrowMode } from '@/composables/useNarrowMode'
+import { useMatchesRowContext } from '@/composables/matches/useMatchesRowContext'
+import { useNarrowMode } from '@/composables/matches/useNarrowMode'
 
 // Matches page — "set workspace" layout.
 //

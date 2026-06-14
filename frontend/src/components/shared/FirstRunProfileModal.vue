@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { RenameProfile, type NamedCandidate, type ProfilesResponse } from '@/api'
-import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
+import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import ScreenshotSourcePicker from '@/components/settings/ScreenshotSourcePicker.vue'
 
 // First-run modal. Two steps:

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDossier } from '@/composables/useDossier'
+import { useDossier } from '@/composables/dashboard/useDossier'
 
 const { heroPoolSize: size } = useDossier()
 </script>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
-import type { CalloutPlacement } from '@/composables/useOnboardingTour'
+import type { CalloutPlacement } from '@/composables/shared/useOnboardingTour'
 import { computeCalloutPosition, rectsEqual } from '@/components/shared/tour-callout-helpers'
 
 // Anchored callout panel. Renders the step's tag / number / heading

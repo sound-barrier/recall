@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, onBeforeUnmount, toRef } from 'vue'
 
-import { useScrollLock } from '@/composables/useScrollLock'
-import { useHoverThumbnail } from '@/composables/useHoverThumbnail'
+import { useScrollLock } from '@/composables/shared/useScrollLock'
+import { useHoverThumbnail } from '@/composables/shared/useHoverThumbnail'
 import type { IgnoredScreenshot } from '@/api'
 
 // IgnoredFilesPanel — Settings → Advanced → "Manage ignored files."

@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 
 import type { MatchRecord } from '@/api'
-import { useOWData } from '@/composables/useOWData'
+import { useOWData } from '@/composables/shared/useOWData'
 import {
   formatHeroes,
   formatRoles,

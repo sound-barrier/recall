@@ -65,31 +65,31 @@ import type { IgnoredScreenshot, MatchAnnotationInput, PlayMode, QueueType, Revi
 import { plainLanguageError } from '@/error-helpers'
 import { screenshotURL } from '@/match-helpers'
 import { tallyWLD } from '@/match-stats-helpers'
-import { useTabKeyboardNav, TAB_ORDER, type TabId } from '@/composables/useTabKeyboardNav'
-import { useGlobalKeyboard } from '@/composables/useGlobalKeyboard'
-import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
-import { useBackupRestore } from '@/composables/useBackupRestore'
-import { useClearDatabase } from '@/composables/useClearDatabase'
-import { useTesseractStatus } from '@/composables/useTesseractStatus'
-import { useScreenshotsDir } from '@/composables/useScreenshotsDir'
-import { useFeatureToggle } from '@/composables/useFeatureToggle'
-import { useEventStream } from '@/composables/useEventStream'
-import { useParseRecovery } from '@/composables/useParseRecovery'
-import { useScreenshotPreview } from '@/composables/useScreenshotPreview'
-import { ONBOARDING_COMPLETED_KEY, ONBOARDING_RESUME_KEY } from '@/composables/storageKeys'
-import { useTheme } from '@/composables/useTheme'
-import { useWeekStart } from '@/composables/useWeekStart'
-import { useSearchClauses } from '@/composables/useSearchClauses'
-import { useSelectedMatch } from '@/composables/useSelectedMatch'
-import { useMatchesNarrow, createMatchesNarrowState } from '@/composables/useMatchesNarrow'
-import { useMatchAnchor } from '@/composables/useMatchAnchor'
+import { useTabKeyboardNav, TAB_ORDER, type TabId } from '@/composables/shared/useTabKeyboardNav'
+import { useGlobalKeyboard } from '@/composables/shared/useGlobalKeyboard'
+import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import { useBackupRestore } from '@/composables/settings/useBackupRestore'
+import { useClearDatabase } from '@/composables/settings/useClearDatabase'
+import { useTesseractStatus } from '@/composables/settings/useTesseractStatus'
+import { useScreenshotsDir } from '@/composables/settings/useScreenshotsDir'
+import { useFeatureToggle } from '@/composables/shared/useFeatureToggle'
+import { useEventStream } from '@/composables/shared/useEventStream'
+import { useParseRecovery } from '@/composables/ingest/useParseRecovery'
+import { useScreenshotPreview } from '@/composables/shared/useScreenshotPreview'
+import { ONBOARDING_COMPLETED_KEY, ONBOARDING_RESUME_KEY } from '@/composables/shared/storageKeys'
+import { useTheme } from '@/composables/settings/useTheme'
+import { useWeekStart } from '@/composables/shared/useWeekStart'
+import { useSearchClauses } from '@/composables/matches/useSearchClauses'
+import { useSelectedMatch } from '@/composables/matches/useSelectedMatch'
+import { useMatchesNarrow, createMatchesNarrowState } from '@/composables/matches/useMatchesNarrow'
+import { useMatchAnchor } from '@/composables/matches/useMatchAnchor'
 import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
 import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
 import MastheadParseChip from '@/components/shared/MastheadParseChip.vue'
 import MatchesSkeleton from '@/components/matches/MatchesSkeleton.vue'
 import UpdateReminderBanner from '@/components/shared/UpdateReminderBanner.vue'
-import { useUpdateReminder } from '@/composables/useUpdateReminder'
-import { useFirstRunAcknowledged } from '@/composables/useFirstRunAcknowledged'
+import { useUpdateReminder } from '@/composables/shared/useUpdateReminder'
+import { useFirstRunAcknowledged } from '@/composables/shared/useFirstRunAcknowledged'
 
 // Update-check modal — lazy-loaded since it ships with release-notes
 // rendering + a focus trap + the apply state machine. Only mounted
@@ -233,7 +233,7 @@ const tourActive = ref(readTourWillOpen())
 const savedRecords = ref<MatchRecord[]>([])
 async function onTourActiveChange(active: boolean) {
   if (active) {
-    const { DEMO_MATCHES } = await import('@/composables/useDemoMatches')
+    const { DEMO_MATCHES } = await import('@/composables/shared/useDemoMatches')
     savedRecords.value = records.value
     records.value = [...DEMO_MATCHES]
     tourActive.value = true

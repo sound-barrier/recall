@@ -4,7 +4,7 @@ import { mountWidget } from '@/test-utils/mountWidget'
 import MatchHeroModeBand from '@/components/matches/MatchHeroModeBand.vue'
 
 // Mock useOWData to avoid the singleton's GetOWData() side-effect.
-vi.mock('@/composables/useOWData', () => ({
+vi.mock('@/composables/shared/useOWData', () => ({
   useOWData: () => ({
     heroDisplayName: (s: string) => s,   // pass-through; tests assert on slugs
     mapDisplayName:  (s: string) => s,

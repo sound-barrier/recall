@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DiffRow } from '@/composables/useGameDataUpdate'
+import type { DiffRow } from '@/composables/shared/useGameDataUpdate'
 
 // The game-data diff surface in the update-check modal: the NEW/RETIRED
 // counts headline + the flat per-name manifest (Hero/Map/Source × ±).

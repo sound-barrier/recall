@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { MatchRecord } from '@/api'
-import type { SortOrder } from '@/composables/useMatchesGroup'
-import { useVirtualWindow } from '@/composables/useVirtualWindow'
-import { useTableSort, type TableSortCol } from '@/composables/useTableSort'
+import type { SortOrder } from '@/composables/matches/useMatchesGroup'
+import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
+import { useTableSort, type TableSortCol } from '@/composables/matches/useTableSort'
 import type { SearchClause } from '@/search-query'
 import MatchTableRow from '@/components/matches/MatchTableRow.vue'
 

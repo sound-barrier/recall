@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, toRef, watch } from 'vue'
 
-import { useDashboardLayout } from '@/composables/useDashboardLayout'
-import { useScrollLock } from '@/composables/useScrollLock'
-import { useSectionLayout, type SectionDef } from '@/composables/useSectionLayout'
+import { useDashboardLayout } from '@/composables/dashboard/useDashboardLayout'
+import { useScrollLock } from '@/composables/shared/useScrollLock'
+import { useSectionLayout, type SectionDef } from '@/composables/matches/useSectionLayout'
 import { WIDGET_REGISTRY, type WidgetDef, type WidgetShape } from '@/dashboard/widgets'
 
 // Compact "Add / Reset" dropdown for the dossier. Lists everything the

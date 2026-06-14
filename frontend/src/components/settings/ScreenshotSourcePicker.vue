@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NamedCandidate, NamedCandidateStats } from '@/api'
-import { useScreenshotFolderStats } from '@/composables/useScreenshotFolderStats'
-import { useContextualCallout } from '@/composables/useContextualCallout'
+import { useScreenshotFolderStats } from '@/composables/settings/useScreenshotFolderStats'
+import { useContextualCallout } from '@/composables/shared/useContextualCallout'
 import ContextualCallout from '@/components/shared/ContextualCallout.vue'
 
 // First-run picker for the OW screenshots directory. On Windows,

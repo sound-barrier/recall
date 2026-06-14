@@ -8,7 +8,7 @@ import type { SearchClause } from '@/search-query'
 // without firing the once-per-session fetch (which would ECONNREFUSED in
 // the test env). role() returns '' → the row falls back to the stored
 // role, which is all these assertions exercise.
-vi.mock('@/composables/useOWData', async () => {
+vi.mock('@/composables/shared/useOWData', async () => {
   const { computed } = await import('vue')
   return {
     useOWData: () => ({

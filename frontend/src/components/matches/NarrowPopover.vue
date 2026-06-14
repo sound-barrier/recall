@@ -9,8 +9,8 @@
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
-import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
-import type { useMatchesNarrow } from '@/composables/useMatchesNarrow'
+import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import type { useMatchesNarrow } from '@/composables/matches/useMatchesNarrow'
 import NarrowPresets from '@/components/matches/NarrowPresets.vue'
 import type { MatchRecord } from '@/api'
 import FilterCombobox from '@/components/shared/FilterCombobox.vue'

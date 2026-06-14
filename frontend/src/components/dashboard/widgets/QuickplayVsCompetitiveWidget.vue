@@ -4,7 +4,7 @@
 // "—" bar for matches whose play_mode hasn't been pinned (no
 // override, no parser hint, no rank-row inference). Non-default;
 // users opt in via the dossier customize gallery.
-import { useDossier } from '@/composables/useDossier'
+import { useDossier } from '@/composables/dashboard/useDossier'
 
 const dossier = useDossier()
 const playModeBreakdown = dossier.playModeBreakdown

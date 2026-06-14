@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useDossier } from '@/composables/useDossier'
-import { useNarrow } from '@/composables/useNarrow'
-import { useOWData } from '@/composables/useOWData'
-import { useMapRoleConfig } from '@/composables/useMapRoleConfig'
-import { useWindowMonths } from '@/composables/useWindowMonths'
+import { useDossier } from '@/composables/dashboard/useDossier'
+import { useNarrow } from '@/composables/matches/useNarrow'
+import { useOWData } from '@/composables/shared/useOWData'
+import { useMapRoleConfig } from '@/composables/matches/useMapRoleConfig'
+import { useWindowMonths } from '@/composables/matches/useWindowMonths'
 import { winrateVolumeFill } from '@/match-heatmap-helpers'
-import type { MapRoleCell } from '@/composables/useMatchesDossier'
+import type { MapRoleCell } from '@/composables/matches/useMatchesDossier'
 import MapRoleConfigPopover from '@/components/matches/MapRoleConfigPopover.vue'
 
 // GEOGRAPHY — Map × Role performance band.
