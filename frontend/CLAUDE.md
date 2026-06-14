@@ -13,7 +13,7 @@ Vue 3 + composition API. No router, no Vuex/Pinia — `App.vue` is a
 router-shell: masthead + modals + cross-cutting state, then
 `<XxxView v-if="view === '…'" />` mounts one of four view SFCs:
 `SettingsView`, `IngestView`, `MatchesView`, `UnknownMapsView`
-(all in `frontend/src/components/`). Per-card UI state (expand,
+(each in its feature folder under `frontend/src/components/`). Per-card UI state (expand,
 sources, preview) lives in App.vue and is passed to MatchesView +
 UnknownMapsView via the `CardStateApi` bundle exported from
 MatchesView.vue so both views share it without forking.
@@ -21,12 +21,25 @@ MatchesView.vue so both views share it without forking.
 **File layout — group by feature, not flat.** `components/` and `composables/`
 are organized into feature subfolders, not one giant flat directory:
 `components/<feature>/` (`matches/`, `settings/`, `unknown/`, `ingest/`,
-`dashboard/` — owning the widget set —, `shared/`) and the matching
-`composables/<feature>/`, with `shared/` holding cross-feature pieces
-(`FilterCombobox`, generic modals, the masthead). Colocate a feature's UI with
-its state. Per the root `CLAUDE.md` *Package & directory size* rule, a flat dir
-past ~20–25 files wants subdividing; `ls` stays the source of truth — don't
-enumerate files here.
+`dashboard/` — owning the widget set, nested under `dashboard/widgets/` —,
+`shared/`) and the matching `composables/<feature>/`, with `shared/` holding
+cross-feature pieces (`FilterCombobox`, generic modals, the masthead). Colocate
+a feature's UI with its state. Per the root `CLAUDE.md` *Package & directory
+size* rule, a flat dir past ~20–25 files wants subdividing; `ls` stays the source
+of truth — don't enumerate files here. (`components/` is grouped; `composables/`
+grouping is the active follow-up wave — until it lands its files are still flat
+at `composables/*.ts`.)
+
+**Imports use the `@/` alias** (`@/` → `frontend/src/`) — the canonical Vue
+convention, configured in `vite.config.ts` + `vitest.config.ts` (`resolve.alias`)
+and `tsconfig.json` (`paths`). Import intra-`src` modules as
+`@/components/<feature>/Foo.vue`, `@/composables/useFoo`, `@/match-helpers`, … —
+never with relative `../` chains. Location-independent paths are what let a file
+move between feature folders without rewriting its own imports (the whole point
+of the regroup). eslint needs no resolver plugin — its rule set never resolves
+import targets; vue-tsc and knip read the tsconfig `paths` natively. `vi.doMock`
+targets must use the same `@/` id as the code under test (e.g. `@/api`) so the
+mock matches.
 
 **Layering rule:**
 
