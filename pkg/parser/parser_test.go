@@ -472,39 +472,82 @@ ELIMINATIONS`
 
 func TestParsePersonalStatCell(t *testing.T) {
 	t.Run("clean cell", func(t *testing.T) {
-		key, val, ok := parser.ParsePersonalStatCell("41%\nWEAPON ACCURACY")
+		key, val, ok := parser.ParsePersonalStatCell("41%\nWEAPON ACCURACY", 0)
 		if !ok || key != "weapon_accuracy" || val != 41 {
 			t.Errorf("got (%q, %d, %v)", key, val, ok)
 		}
 	})
 
 	t.Run("icon noise prefix is stripped", func(t *testing.T) {
-		key, val, ok := parser.ParsePersonalStatCell("PP 41%\nWEAPON ACCURACY")
+		key, val, ok := parser.ParsePersonalStatCell("PP 41%\nWEAPON ACCURACY", 0)
 		if !ok || key != "weapon_accuracy" || val != 41 {
 			t.Errorf("got (%q, %d, %v)", key, val, ok)
 		}
 	})
 
 	t.Run("multi-word label", func(t *testing.T) {
-		key, val, ok := parser.ParsePersonalStatCell("13\nSOUND BARRIERS PROVIDED")
+		key, val, ok := parser.ParsePersonalStatCell("13\nSOUND BARRIERS PROVIDED", 0)
 		if !ok || key != "sound_barriers_provided" || val != 13 {
 			t.Errorf("got (%q, %d, %v)", key, val, ok)
 		}
 	})
 
 	t.Run("no label → not ok", func(t *testing.T) {
-		_, _, ok := parser.ParsePersonalStatCell("41")
+		_, _, ok := parser.ParsePersonalStatCell("41", 0)
 		if ok {
 			t.Errorf("expected not-ok with no label")
 		}
 	})
 
 	t.Run("no value → not ok", func(t *testing.T) {
-		_, _, ok := parser.ParsePersonalStatCell("WEAPON ACCURACY")
+		_, _, ok := parser.ParsePersonalStatCell("WEAPON ACCURACY", 0)
 		if ok {
 			t.Errorf("expected not-ok with no value")
 		}
 	})
+}
+
+// TestParsePersonalStatCell_AvgAnchorsValue covers icon-noise disambiguation:
+// a hero-ability icon OCRs as a spurious single digit whose position relative
+// to the real value varies (leading OR trailing), so the value is anchored on
+// AVG-per-10-min × play-time. Texts are the real OCR from the Wuyang / Juno /
+// Mizuki PERSONAL fixtures.
+func TestParsePersonalStatCell_AvgAnchorsValue(t *testing.T) {
+	cases := []struct {
+		name    string
+		text    string
+		playMin float64
+		wantVal int
+	}{
+		{ // "5 PLAYERS SAVED" — icon noise "4" LEADS the real "5".
+			name: "leading icon digit", playMin: 3.5, wantVal: 5,
+			text: "® y 4 5\n-@- PLAYERS SAVED\nAVG PER 10 MIN: 14.26",
+		},
+		{ // "2 ORBITAL RAY ASSISTS" — noise "4" TRAILS (NEW CAREER BEST).
+			name: "trailing icon digit", playMin: 9.13, wantVal: 2,
+			text: "2\nORBITAL RAY ASSISTS\nAVG PER 10 MIN: 2.19\n4\nNEW CAREER BEST!",
+		},
+		{ // "1 PLAYER SAVED" — noise "8" sits between the value and label.
+			name: "noise between value and label", playMin: 4.4, wantVal: 1,
+			text: "1\n8\nPLAYER SAVED\nAVG PER 10 MIN: 2.27",
+		},
+		{ // "0 TIDAL BLAST KILLS" — no AVG on a zero card; the clean "0"
+			// wins a cross-pass vote against the icon misread "4".
+			name: "zero value, no avg, cross-pass vote", playMin: 3.5, wantVal: 0,
+			text: "M4 o\nTIDAL BLAST KILLS\nPed 0\nTIDAL BLAST KILLS\n0\nTIDAL BLAST KILLS",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, val, ok := parser.ParsePersonalStatCell(c.text, c.playMin)
+			if !ok {
+				t.Fatalf("expected ok for %q", c.text)
+			}
+			if val != c.wantVal {
+				t.Errorf("val = %d, want %d", val, c.wantVal)
+			}
+		})
+	}
 }
 
 // ──────────────────────────────────────────────────────────────────────────

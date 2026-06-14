@@ -32,7 +32,7 @@ func TestParsePersonalStatCell_CommaGroupedNumber(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		key, val, ok := parser.ParsePersonalStatCell(c.text)
+		key, val, ok := parser.ParsePersonalStatCell(c.text, 0)
 		if !ok || key != c.wantKey || val != c.wantVal {
 			t.Errorf("%s:\n  got  (%q, %d, %v)\n  want (%q, %d, true)",
 				c.name, key, val, ok, c.wantKey, c.wantVal)

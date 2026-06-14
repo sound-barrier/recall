@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"image"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -82,13 +83,17 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 
 			if row == 0 && col == 0 {
 				parsePersonalHeroCell(cellText, res)
-			} else if key, val, ok := parsePersonalStatCell(cellText); ok {
-				if len(res.HeroesPlayed) == 0 {
-					// Stats with no hero card is a parse failure on the
-					// hero-info cell — skip rather than dropping the stat
-					// into a nameless bucket.
-					continue
-				}
+				continue
+			}
+			// Stats with no hero card is a parse failure on the hero-info
+			// cell — skip rather than dropping the stat into a nameless
+			// bucket. The hero card (r0c0) is parsed first, so its play time
+			// is available here to AVG-anchor each stat value.
+			if len(res.HeroesPlayed) == 0 {
+				continue
+			}
+			playMin := playTimeMinutes(res.HeroesPlayed[0].PlayTime)
+			if key, val, ok := parsePersonalStatCell(cellText, playMin); ok {
 				if res.HeroesPlayed[0].Stats == nil {
 					res.HeroesPlayed[0].Stats = map[string]int{}
 				}
@@ -148,7 +153,7 @@ var (
 	personalLabelRe = regexp.MustCompile(`[A-Z][A-Z\s]{4,}[A-Z]`)
 )
 
-func parsePersonalStatCell(text string) (string, int, bool) {
+func parsePersonalStatCell(text string, playMinutes float64) (string, int, bool) {
 	// Pass 1: prefer a %-suffixed digit. Percent stats always have a %, and
 	// the % is a strong disambiguator against icon-misread digits like "a7?".
 	val := -1
@@ -161,24 +166,20 @@ func parsePersonalStatCell(text string) (string, int, bool) {
 			break
 		}
 	}
-	// Pass 2: longest digit run on a non-AVG line. Integer stats (kills,
-	// rescues) don't have %, so we pick the run with the most digits — icon
-	// noise is usually a single random digit, real values are typically 2+
-	// digits or a uniquely-correct single digit.
+	// Pass 2: the integer value. A hero-ability icon OCRs as a spurious
+	// single digit whose position relative to the real value varies —
+	// leading for some stats, trailing for others — so first/last picks are
+	// unreliable. Anchor on the cell's "AVG PER 10 MIN" line instead: a real
+	// value ≈ avg × playMinutes/10, which cleanly separates the true digit
+	// from icon noise.
 	if val < 0 {
-		bestLen := 0
-		for _, line := range strings.Split(text, "\n") {
-			if strings.Contains(strings.ToUpper(line), "AVG") {
-				continue
-			}
-			for _, m := range personalIntRe.FindAllString(line, -1) {
-				digits := strings.ReplaceAll(m, ",", "")
-				if len(digits) > bestLen {
-					bestLen = len(digits)
-					val, _ = strconv.Atoi(digits)
-				}
+		expected := -1.0
+		if m := perfAvgRe.FindStringSubmatch(text); m != nil && playMinutes > 0 {
+			if avg, err := strconv.ParseFloat(m[1], 64); err == nil {
+				expected = avg * playMinutes / 10
 			}
 		}
+		val = pickStatValue(text, expected)
 	}
 	if val < 0 {
 		return "", 0, false
@@ -199,4 +200,72 @@ func parsePersonalStatCell(text string) (string, int, bool) {
 		return "", 0, false
 	}
 	return labelToKey(label), val, true
+}
+
+// pickStatValue chooses the stat's integer from the cell OCR. The longest
+// digit run wins on length (a clean "1,177" beats single-digit icon noise);
+// among equal-longest candidates it prefers the one closest to `expected`
+// (avg × play/10) when known, else the value seen in the most OCR passes,
+// else the first. Returns -1 when the cell has no integer.
+func pickStatValue(text string, expected float64) int {
+	bestLen := 0
+	counts := map[int]int{}
+	var order []int
+	for _, line := range strings.Split(text, "\n") {
+		if strings.Contains(strings.ToUpper(line), "AVG") {
+			continue
+		}
+		for _, m := range personalIntRe.FindAllString(line, -1) {
+			digits := strings.ReplaceAll(m, ",", "")
+			if len(digits) < bestLen {
+				continue
+			}
+			v, _ := strconv.Atoi(digits)
+			if len(digits) > bestLen {
+				bestLen, counts, order = len(digits), map[int]int{}, order[:0]
+			}
+			if counts[v] == 0 {
+				order = append(order, v)
+			}
+			counts[v]++
+		}
+	}
+	if len(order) == 0 {
+		return -1
+	}
+	best := order[0]
+	for _, v := range order[1:] {
+		if statValueBetter(v, best, counts, expected) {
+			best = v
+		}
+	}
+	return best
+}
+
+// statValueBetter reports whether candidate v should displace cur: closer to
+// the avg-derived expectation when one is known, otherwise more frequent
+// across the OCR passes.
+func statValueBetter(v, cur int, counts map[int]int, expected float64) bool {
+	if expected >= 0 {
+		dv, dc := math.Abs(float64(v)-expected), math.Abs(float64(cur)-expected)
+		if dv != dc {
+			return dv < dc
+		}
+	}
+	return counts[v] > counts[cur]
+}
+
+// playTimeMinutes converts a "MM:SS" play-time string to fractional minutes;
+// 0 when unparseable (the caller then skips the AVG anchor).
+func playTimeMinutes(mmss string) float64 {
+	parts := strings.SplitN(mmss, ":", 2)
+	if len(parts) != 2 {
+		return 0
+	}
+	m, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
+	s, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err1 != nil || err2 != nil {
+		return 0
+	}
+	return float64(m) + float64(s)/60
 }
