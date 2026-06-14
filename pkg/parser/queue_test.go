@@ -1,6 +1,10 @@
-package parser
+package parser_test
 
-import "testing"
+import (
+	"testing"
+
+	"recall/pkg/parser"
+)
 
 func TestClassifyQueueByCount(t *testing.T) {
 	cases := []struct {
@@ -23,8 +27,8 @@ func TestClassifyQueueByCount(t *testing.T) {
 		{6, 7, ""},
 	}
 	for _, c := range cases {
-		if got := classifyQueueByCount(c.blue, c.red); got != c.want {
-			t.Errorf("classifyQueueByCount(%d, %d) = %q, want %q", c.blue, c.red, got, c.want)
+		if got := parser.ClassifyQueueByCount(c.blue, c.red); got != c.want {
+			t.Errorf("parser.ClassifyQueueByCount(%d, %d) = %q, want %q", c.blue, c.red, got, c.want)
 		}
 	}
 }
@@ -43,8 +47,8 @@ func TestCountDigitLines(t *testing.T) {
 		{"whitespace around digits", "  24 \n 27 ", 2},
 	}
 	for _, c := range cases {
-		if got := countDigitLines(c.in); got != c.want {
-			t.Errorf("%s: countDigitLines(%q) = %d, want %d", c.name, c.in, got, c.want)
+		if got := parser.CountDigitLines(c.in); got != c.want {
+			t.Errorf("%s: parser.CountDigitLines(%q) = %d, want %d", c.name, c.in, got, c.want)
 		}
 	}
 }

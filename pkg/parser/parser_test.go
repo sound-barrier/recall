@@ -1,8 +1,10 @@
-package parser
+package parser_test
 
 import (
 	"reflect"
 	"testing"
+
+	"recall/pkg/parser"
 )
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -24,7 +26,7 @@ func TestHeroRole(t *testing.T) {
 		{"", ""},
 	}
 	for _, tc := range tests {
-		if got := HeroRole(tc.hero); got != tc.want {
+		if got := parser.HeroRole(tc.hero); got != tc.want {
 			t.Errorf("HeroRole(%q) = %q, want %q", tc.hero, got, tc.want)
 		}
 	}
@@ -53,8 +55,8 @@ func TestDigitize(t *testing.T) {
 		{"PLATINUM 5", "P1AT1NUM 5"}, // both L→1 and I→1 fire
 	}
 	for _, tc := range tests {
-		if got := digitize(tc.in); got != tc.want {
-			t.Errorf("digitize(%q) = %q, want %q", tc.in, got, tc.want)
+		if got := parser.Digitize(tc.in); got != tc.want {
+			t.Errorf("parser.Digitize(%q) = %q, want %q", tc.in, got, tc.want)
 		}
 	}
 }
@@ -74,8 +76,8 @@ func TestNormalizeDate(t *testing.T) {
 		{"", ""},
 	}
 	for _, tc := range tests {
-		if got := normalizeDate(tc.in); got != tc.want {
-			t.Errorf("normalizeDate(%q) = %q, want %q", tc.in, got, tc.want)
+		if got := parser.NormalizeDate(tc.in); got != tc.want {
+			t.Errorf("parser.NormalizeDate(%q) = %q, want %q", tc.in, got, tc.want)
 		}
 	}
 }
@@ -105,7 +107,7 @@ func TestExtractRank(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			gotRank, gotLevel := extractRank(tc.text)
+			gotRank, gotLevel := parser.ExtractRank(tc.text)
 			if gotRank != tc.wantRank {
 				t.Errorf("rank = %q, want %q", gotRank, tc.wantRank)
 			}
@@ -134,7 +136,7 @@ func TestExtractModifiers(t *testing.T) {
 		{
 			// "unexpected" contains "expected" as a substring, and
 			// extractModifiers uses substring search, so both match.
-			// Listed in order of the knownModifiers slice.
+			// Listed in order of the parser.KnownModifiers slice.
 			name: "single unexpected matches both expected + unexpected",
 			text: "UNEXPECTED",
 			want: []string{"expected", "unexpected"},
@@ -157,7 +159,7 @@ func TestExtractModifiers(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := extractModifiers(tc.text)
+			got := parser.ExtractModifiers(tc.text)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("got %v, want %v", got, tc.want)
 			}
@@ -184,7 +186,7 @@ func TestExtractInts(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := extractInts(tc.text)
+			got := parser.ExtractInts(tc.text)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("got %v, want %v", got, tc.want)
 			}
@@ -253,7 +255,7 @@ func TestExtractHeroes(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := extractHeroes(tc.text)
+			got := parser.ExtractHeroes(tc.text)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("got %v, want %v", got, tc.want)
 			}
@@ -287,8 +289,8 @@ func TestSnapToKnownMap(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := snapToKnownMap(tc.in); got != tc.want {
-				t.Errorf("snapToKnownMap(%q) = %q, want %q", tc.in, got, tc.want)
+			if got := parser.SnapToKnownMap(tc.in); got != tc.want {
+				t.Errorf("parser.SnapToKnownMap(%q) = %q, want %q", tc.in, got, tc.want)
 			}
 		})
 	}
@@ -315,8 +317,8 @@ func TestBestKnownMapInText(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := bestKnownMapInText(tc.in); got != tc.want {
-				t.Errorf("bestKnownMapInText(%q) = %q, want %q", tc.in, got, tc.want)
+			if got := parser.BestKnownMapInText(tc.in); got != tc.want {
+				t.Errorf("parser.BestKnownMapInText(%q) = %q, want %q", tc.in, got, tc.want)
 			}
 		})
 	}
@@ -324,23 +326,23 @@ func TestBestKnownMapInText(t *testing.T) {
 
 func TestExtractSR(t *testing.T) {
 	t.Run("single hero with positive change", func(t *testing.T) {
-		got := extractSR("LUCIO HERO SR 2754 +30")
-		want := []HeroSR{{Hero: "lucio", SR: 2754, Change: 30}}
+		got := parser.ExtractSR("LUCIO HERO SR 2754 +30")
+		want := []parser.HeroSR{{Hero: "lucio", SR: 2754, Change: 30}}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("got %v, want %v", got, want)
 		}
 	})
 
 	t.Run("negative change", func(t *testing.T) {
-		got := extractSR("LUCIO HERO SR 2700 -25")
-		want := []HeroSR{{Hero: "lucio", SR: 2700, Change: -25}}
+		got := parser.ExtractSR("LUCIO HERO SR 2700 -25")
+		want := []parser.HeroSR{{Hero: "lucio", SR: 2700, Change: -25}}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("got %v, want %v", got, want)
 		}
 	})
 
 	t.Run("no heroes → nil", func(t *testing.T) {
-		if got := extractSR("2754 +30"); got != nil {
+		if got := parser.ExtractSR("2754 +30"); got != nil {
 			t.Errorf("expected nil for hero-less text, got %v", got)
 		}
 	})
@@ -360,8 +362,8 @@ func TestParseHeroesPlayed(t *testing.T) {
 KIRIKO
 40%
 4:30`
-		got := parseHeroesPlayed(text)
-		want := []HeroPlay{
+		got := parser.ParseHeroesPlayed(text)
+		want := []parser.HeroPlay{
 			{Hero: "lucio", PercentPlayed: 60, PlayTime: "6:30"},
 			{Hero: "kiriko", PercentPlayed: 40, PlayTime: "4:30"},
 		}
@@ -376,8 +378,8 @@ KIRIKO
 11:25
 KIRIKO
 0%`
-		got := parseHeroesPlayed(text)
-		want := []HeroPlay{
+		got := parser.ParseHeroesPlayed(text)
+		want := []parser.HeroPlay{
 			{Hero: "lucio", PercentPlayed: 100, PlayTime: "11:25"},
 		}
 		if !reflect.DeepEqual(got, want) {
@@ -386,7 +388,7 @@ KIRIKO
 	})
 
 	t.Run("no heroes detected → nil", func(t *testing.T) {
-		if got := parseHeroesPlayed("garbage 50% 1:23"); got != nil {
+		if got := parser.ParseHeroesPlayed("garbage 50% 1:23"); got != nil {
 			t.Errorf("got %v, want nil", got)
 		}
 	})
@@ -411,7 +413,7 @@ AVG PER 10 MIN: 13.0
 11
 DEATHS
 AVG PER 10 MIN: 9.1`
-		got := parsePerformance(text)
+		got := parser.ParsePerformance(text)
 		if got == nil {
 			t.Fatal("expected non-nil performance")
 		}
@@ -432,7 +434,7 @@ AVG PER 10 MIN: 9.1`
 		text := `17
 ELIMINATIONS
 AVG PER 10 MIN: 8.2`
-		got := parsePerformance(text)
+		got := parser.ParsePerformance(text)
 		if got == nil || got.Eliminations.AvgPer10Min != 8.2 {
 			t.Errorf("expected 8.2, got %+v", got)
 		}
@@ -445,7 +447,7 @@ AVG PER 10 MIN: 8.2`
 		text := `S 4
 17
 ELIMINATIONS`
-		got := parsePerformance(text)
+		got := parser.ParsePerformance(text)
 		if got == nil || got.Eliminations.Total != 17 {
 			t.Errorf("expected total=17, got %+v", got)
 		}
@@ -454,7 +456,7 @@ ELIMINATIONS`
 	t.Run("missing labels → returns nil performance", func(t *testing.T) {
 		// No ELIMINATIONS/ASSISTS/DEATHS labels detected → all zeros →
 		// parsePerformance returns nil.
-		if got := parsePerformance("just noise"); got != nil {
+		if got := parser.ParsePerformance("just noise"); got != nil {
 			t.Errorf("got %+v, want nil", got)
 		}
 	})
@@ -468,35 +470,35 @@ ELIMINATIONS`
 
 func TestParsePersonalStatCell(t *testing.T) {
 	t.Run("clean cell", func(t *testing.T) {
-		key, val, ok := parsePersonalStatCell("41%\nWEAPON ACCURACY")
+		key, val, ok := parser.ParsePersonalStatCell("41%\nWEAPON ACCURACY")
 		if !ok || key != "weapon_accuracy" || val != 41 {
 			t.Errorf("got (%q, %d, %v)", key, val, ok)
 		}
 	})
 
 	t.Run("icon noise prefix is stripped", func(t *testing.T) {
-		key, val, ok := parsePersonalStatCell("PP 41%\nWEAPON ACCURACY")
+		key, val, ok := parser.ParsePersonalStatCell("PP 41%\nWEAPON ACCURACY")
 		if !ok || key != "weapon_accuracy" || val != 41 {
 			t.Errorf("got (%q, %d, %v)", key, val, ok)
 		}
 	})
 
 	t.Run("multi-word label", func(t *testing.T) {
-		key, val, ok := parsePersonalStatCell("13\nSOUND BARRIERS PROVIDED")
+		key, val, ok := parser.ParsePersonalStatCell("13\nSOUND BARRIERS PROVIDED")
 		if !ok || key != "sound_barriers_provided" || val != 13 {
 			t.Errorf("got (%q, %d, %v)", key, val, ok)
 		}
 	})
 
 	t.Run("no label → not ok", func(t *testing.T) {
-		_, _, ok := parsePersonalStatCell("41")
+		_, _, ok := parser.ParsePersonalStatCell("41")
 		if ok {
 			t.Errorf("expected not-ok with no label")
 		}
 	})
 
 	t.Run("no value → not ok", func(t *testing.T) {
-		_, _, ok := parsePersonalStatCell("WEAPON ACCURACY")
+		_, _, ok := parser.ParsePersonalStatCell("WEAPON ACCURACY")
 		if ok {
 			t.Errorf("expected not-ok with no value")
 		}
@@ -527,7 +529,7 @@ func TestSnapHeroStatKey(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := SnapHeroStatKey(tc.hero, tc.raw); got != tc.want {
+			if got := parser.SnapHeroStatKey(tc.hero, tc.raw); got != tc.want {
 				t.Errorf("SnapHeroStatKey(%q, %q) = %q, want %q", tc.hero, tc.raw, got, tc.want)
 			}
 		})

@@ -1,9 +1,11 @@
-package parser
+package parser_test
 
 import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"recall/pkg/parser"
 )
 
 // Fuzz harness on the parser's pure text-shape helpers. None of
@@ -45,7 +47,7 @@ func FuzzDigitize(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, in string) {
-		out := digitize(in)
+		out := parser.Digitize(in)
 		// Output is valid UTF-8 IFF the input was. digitize is a
 		// rune-by-rune mapping with no sanitization; invalid byte
 		// sequences pass through unchanged (which is fine — the
@@ -76,7 +78,7 @@ func FuzzNormalizeDate(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, in string) {
-		out := normalizeDate(in)
+		out := parser.NormalizeDate(in)
 		if utf8.ValidString(in) && !utf8.ValidString(out) {
 			t.Errorf("normalizeDate emitted invalid UTF-8 for %q → %q", in, out)
 		}
@@ -108,7 +110,7 @@ func FuzzSnapToKnownMap(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, in string) {
-		out := snapToKnownMap(in)
+		out := parser.SnapToKnownMap(in)
 		if utf8.ValidString(in) && !utf8.ValidString(out) {
 			t.Errorf("snapToKnownMap emitted invalid UTF-8 for %q → %q", in, out)
 		}
@@ -130,23 +132,23 @@ func FuzzLevenshtein(f *testing.F) {
 	f.Add(strings.Repeat("a", 100), strings.Repeat("b", 100))
 
 	f.Fuzz(func(t *testing.T, a, b string) {
-		d := levenshtein(a, b)
+		d := parser.Levenshtein(a, b)
 		// Levenshtein invariants:
 		//   d >= 0
 		//   d == 0  iff  a == b
 		//   d <= max(len(a), len(b))
 		//   d(a,b) == d(b,a)   (symmetry)
 		if d < 0 {
-			t.Fatalf("levenshtein(%q,%q) returned negative %d", a, b, d)
+			t.Fatalf("parser.Levenshtein(%q,%q) returned negative %d", a, b, d)
 		}
 		if (d == 0) != (a == b) {
-			t.Errorf("levenshtein(%q,%q)=%d but a==b is %v", a, b, d, a == b)
+			t.Errorf("parser.Levenshtein(%q,%q)=%d but a==b is %v", a, b, d, a == b)
 		}
 		maxLen := max(len(a), len(b))
 		if d > maxLen {
-			t.Errorf("levenshtein(%q,%q)=%d exceeds max length %d", a, b, d, maxLen)
+			t.Errorf("parser.Levenshtein(%q,%q)=%d exceeds max length %d", a, b, d, maxLen)
 		}
-		if rev := levenshtein(b, a); rev != d {
+		if rev := parser.Levenshtein(b, a); rev != d {
 			t.Errorf("levenshtein not symmetric: (%q,%q)=%d but (%q,%q)=%d", a, b, d, b, a, rev)
 		}
 	})

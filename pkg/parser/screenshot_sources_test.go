@@ -1,16 +1,20 @@
-package parser
+package parser_test
 
-import "testing"
+import (
+	"testing"
+
+	"recall/pkg/parser"
+)
 
 // TestScreenshotSourcesYAML_LoadsCleanly is the build-time gate
 // against a broken screenshot_sources.yaml shipping. init() has
 // already run by test binary start, so LoadError() (which joins the
 // per-file load errors, including screenshot_sources) fails fast.
 func TestScreenshotSourcesYAML_LoadsCleanly(t *testing.T) {
-	if err := LoadError(); err != nil {
+	if err := parser.LoadError(); err != nil {
 		t.Fatalf("dataset load failed (screenshot_sources included): %v", err)
 	}
-	if len(Sources()) == 0 {
+	if len(parser.Sources()) == 0 {
 		t.Fatal("Sources() is empty — YAML parsed but registered no entries")
 	}
 }
@@ -34,8 +38,8 @@ func TestScreenshotSourcesYAML_CoversCanonicalFilenames(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.wantName, func(t *testing.T) {
-			var hit *ScreenshotSource
-			sources := Sources()
+			var hit *parser.ScreenshotSource
+			sources := parser.Sources()
 			for i := range sources {
 				s := &sources[i]
 				if len(s.Prefix) == 0 || !startsWith(tc.filename, s.Prefix) {

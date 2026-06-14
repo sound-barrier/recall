@@ -1,9 +1,11 @@
-package parser
+package parser_test
 
 import (
 	"image"
 	"image/color"
 	"testing"
+
+	"recall/pkg/parser"
 )
 
 // These tests pin the pixel-geometry helpers in parse_teams.go.
@@ -47,7 +49,7 @@ func TestFindHighlightedRowY_PicksTheBrightestBlueBand(t *testing.T) {
 	fillRect(img, image.Rect(xMin, 40, xMax, 70), tableBlue)
 	fillRect(img, image.Rect(xMin, 120, xMax, 150), highlightedBlue)
 
-	yTop, yBot := findHighlightedRowY(img)
+	yTop, yBot := parser.FindHighlightedRowY(img)
 	if yTop < 0 || yBot < 0 {
 		t.Fatalf("expected a highlighted row, got yTop=%d yBot=%d", yTop, yBot)
 	}
@@ -63,7 +65,7 @@ func TestFindHighlightedRowY_NoBlueReturnsMinusOne(t *testing.T) {
 	const W, H = 960, 480
 	img := image.NewRGBA(image.Rect(0, 0, W, H))
 	fillRect(img, image.Rect(0, 0, W, H), black)
-	yTop, yBot := findHighlightedRowY(img)
+	yTop, yBot := parser.FindHighlightedRowY(img)
 	if yTop != -1 || yBot != -1 {
 		// An all-black image has no blue pixels; the rowAvg slice
 		// stays zero everywhere. The sliding window picks the first
@@ -93,7 +95,7 @@ func TestFindHighlightedRowY_IgnoresBottomHalfOfImage(t *testing.T) {
 	// Enemy (bottom) — brighter blue.
 	fillRect(img, image.Rect(xMin, 360, xMax, 400), highlightedBlue)
 
-	yTop, _ := findHighlightedRowY(img)
+	yTop, _ := parser.FindHighlightedRowY(img)
 	if yTop >= H/2 {
 		t.Errorf("findHighlightedRowY picked a y past the center divider (%d ≥ %d)", yTop, H/2)
 	}
@@ -107,7 +109,7 @@ func TestFindRowXExtent_ReturnsTheBlueRowSpan(t *testing.T) {
 	fillRect(img, image.Rect(0, 0, W, H), black)
 	fillRect(img, image.Rect(80, 100, 900, 130), tableBlue)
 
-	xLeft, xRight := findRowXExtent(img, 100, 130)
+	xLeft, xRight := parser.FindRowXExtent(img, 100, 130)
 	if xLeft != 80 {
 		t.Errorf("xLeft = %d, want 80", xLeft)
 	}
@@ -122,7 +124,7 @@ func TestFindRowXExtent_NoBlueReturnsMinusOne(t *testing.T) {
 	const W, H = 1000, 300
 	img := image.NewRGBA(image.Rect(0, 0, W, H))
 	fillRect(img, image.Rect(0, 0, W, H), black)
-	xLeft, xRight := findRowXExtent(img, 100, 130)
+	xLeft, xRight := parser.FindRowXExtent(img, 100, 130)
 	if xLeft != -1 || xRight != -1 {
 		t.Errorf("expected (-1, -1) for no-blue image, got (%d, %d)", xLeft, xRight)
 	}
@@ -139,7 +141,7 @@ func TestFindRowXExtent_SamplesThreeYRows(t *testing.T) {
 	// Single-pixel-tall blue stripe at yMid-3 only.
 	fillRect(img, image.Rect(50, yMid-3, 800, yMid-2), tableBlue)
 
-	xLeft, xRight := findRowXExtent(img, yT, yB)
+	xLeft, xRight := parser.FindRowXExtent(img, yT, yB)
 	if xLeft != 50 || xRight != 799 {
 		t.Errorf("expected (50, 799), got (%d, %d)", xLeft, xRight)
 	}
@@ -164,7 +166,7 @@ func TestFindStatColumns_DetectsSixWhiteClusters(t *testing.T) {
 		fillRect(img, image.Rect(x, yT+10, x+16, yB-10), white)
 	}
 
-	cols := findStatColumns(img, yT, yB, xLeft, xRight)
+	cols := parser.FindStatColumns(img, yT, yB, xLeft, xRight)
 	if len(cols) != 6 {
 		t.Fatalf("expected 6 stat columns, got %d (%+v)", len(cols), cols)
 	}
@@ -196,7 +198,7 @@ func TestFindStatColumns_MergesDigitClustersInOneNumber(t *testing.T) {
 		x += 7 // 4 px stroke + 3 px gap
 	}
 
-	cols := findStatColumns(img, yT, yB, xLeft, xRight)
+	cols := parser.FindStatColumns(img, yT, yB, xLeft, xRight)
 	if len(cols) != 1 {
 		t.Fatalf("expected the five digit strokes to merge into 1 cluster, got %d (%+v)", len(cols), cols)
 	}
@@ -217,7 +219,7 @@ func TestFindStatColumns_FiltersOversizedClusters(t *testing.T) {
 	// Narrow stat column (~12 px).
 	fillRect(img, image.Rect(700, yT+10, 712, yB-10), white)
 
-	cols := findStatColumns(img, yT, yB, xLeft, xRight)
+	cols := parser.FindStatColumns(img, yT, yB, xLeft, xRight)
 	if len(cols) != 1 {
 		t.Fatalf("expected oversized cluster dropped, leaving 1; got %d (%+v)", len(cols), cols)
 	}
