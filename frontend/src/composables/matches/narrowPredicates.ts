@@ -1,5 +1,5 @@
 import type { MatchRecord } from '@/api'
-import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match-label-helpers'
+import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import type { SearchClause } from '@/search-query'
 import type { PlayModePick, QueuePick, ReviewedByPick } from '@/composables/matches/useMatchesNarrow'
 

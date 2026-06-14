@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { ref } from 'vue'
 import type { MatchRecord } from '@/api'
-import type { WeekStart } from '@/match-time-helpers'
+import type { WeekStart } from '@/match/match-time-helpers'
 import {
   useMatchesDossier,
   DEFAULT_BEST_WINRATE_HERO_MIN_MATCHES,

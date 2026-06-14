@@ -2,12 +2,12 @@
 import { computed, onMounted, ref, watch } from 'vue'
 
 import type { MatchRecord, UpdateInfo } from '@/api'
-import { detectScreenshotSlots, screenshotURL } from '@/match-helpers'
+import { detectScreenshotSlots, screenshotURL } from '@/match/match-helpers'
 import { useContextualCallout } from '@/composables/shared/useContextualCallout'
 import { useHoverThumbnail } from '@/composables/shared/useHoverThumbnail'
 import ContextualCallout from '@/components/shared/ContextualCallout.vue'
-import { formatParsedAt } from '@/match-time-helpers'
-import { filenameFromMatchKey } from '@/match-key'
+import { formatParsedAt } from '@/match/match-time-helpers'
+import { filenameFromMatchKey } from '@/match/match-key'
 import type { CardStateApi } from '@/types/cardState'
 
 // UnknownMapsView is the triage tab for records the user needs to

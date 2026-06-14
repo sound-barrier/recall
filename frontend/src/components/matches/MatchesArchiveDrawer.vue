@@ -11,8 +11,8 @@
 // move-to-profile / cancel-move) and the per-row unhide / hard-delete.
 import { useOWData } from '@/composables/shared/useOWData'
 import type { UseArchiveSelectionApi } from '@/composables/matches/useArchiveSelection'
-import { formatHeroes, formatRoles, formatRowDate, formatFinishedAt } from '@/match-helpers'
-import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match-label-helpers'
+import { formatHeroes, formatRoles, formatRowDate, formatFinishedAt } from '@/match/match-helpers'
+import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 
 const props = defineProps<{
   archive: UseArchiveSelectionApi

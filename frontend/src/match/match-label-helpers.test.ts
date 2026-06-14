@@ -4,8 +4,8 @@ import {
   formatQueueTypeLabel,
   formatUnknownHeroLabel,
   formatUnknownMapLabel,
-} from '@/match-label-helpers'
-import { isHeroUnknown, isMapUnknown } from '@/match-helpers'
+} from '@/match/match-label-helpers'
+import { isHeroUnknown, isMapUnknown } from '@/match/match-helpers'
 
 // ─── formatPlayModeLabel / formatQueueTypeLabel ──────────────────────
 

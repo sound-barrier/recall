@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from '@/api'
-import { isHeroUnknown, isMapUnknown } from '@/match-helpers'
-import { formatParsedAt, fmtTime } from '@/match-time-helpers'
+import { isHeroUnknown, isMapUnknown } from '@/match/match-helpers'
+import { formatParsedAt, fmtTime } from '@/match/match-time-helpers'
 import { type SearchClause } from '@/search-query'
 import MatchCardDanger from '@/components/matches/MatchCardDanger.vue'
 import MatchHeroesPlayed from '@/components/matches/MatchHeroesPlayed.vue'

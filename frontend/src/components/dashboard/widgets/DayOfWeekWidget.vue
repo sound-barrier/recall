@@ -2,7 +2,7 @@
 import { useDossier } from '@/composables/dashboard/useDossier'
 import { useWidgetConfig } from '@/composables/dashboard/useWidgetConfig'
 import { dayOfWeekSchema, type DayOfWeekConfig } from '@/dashboard/widgets'
-import type { WeekStart } from '@/match-time-helpers'
+import type { WeekStart } from '@/match/match-time-helpers'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<DayOfWeekConfig>('day-of-week', dayOfWeekSchema)

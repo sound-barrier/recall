@@ -4,7 +4,7 @@ import {
   formatToHundredths,
   modeOf,
   avgGameLengthMinutes,
-} from '@/match-stats-helpers'
+} from '@/match/match-stats-helpers'
 
 // ─── tallyWLD ────────────────────────────────────────────────────────
 //

@@ -1,5 +1,5 @@
 import { usePersistedRef } from '@/composables/shared/usePersistedRef'
-import type { WeekStart } from '@/match-time-helpers'
+import type { WeekStart } from '@/match/match-time-helpers'
 
 export type { WeekStart }
 export const WEEK_START_STORAGE_KEY = 'recall.weekStart'
