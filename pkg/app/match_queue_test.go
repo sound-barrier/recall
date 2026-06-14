@@ -1,15 +1,16 @@
-package app
+package app_test
 
 import (
 	"errors"
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 )
 
 func TestSetMatchQueue_PersistsValidValue(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.SetMatchQueue("m1", "role"); err != nil {
 		t.Fatalf("SetMatchQueue role: %v", err)
 	}
@@ -23,11 +24,11 @@ func TestSetMatchQueue_PersistsValidValue(t *testing.T) {
 }
 
 func TestSetMatchQueue_RejectsInvalidValue(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	cases := []string{"", "ranked", "5v5", "ROLE", "role "}
 	for _, c := range cases {
 		err := a.SetMatchQueue("m1", c)
-		if !errors.Is(err, ErrInvalidQueueType) {
+		if !errors.Is(err, app.ErrInvalidQueueType) {
 			t.Errorf("SetMatchQueue(%q): err = %v, want ErrInvalidQueueType", c, err)
 		}
 	}
@@ -35,7 +36,7 @@ func TestSetMatchQueue_RejectsInvalidValue(t *testing.T) {
 
 func TestBulkSetMatchQueue_WritesEveryKey(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.BulkSetMatchQueue([]string{"m1", "m2", "m3"}, "role"); err != nil {
 		t.Fatalf("bulk set: %v", err)
 	}
@@ -49,7 +50,7 @@ func TestBulkSetMatchQueue_WritesEveryKey(t *testing.T) {
 
 func TestBulkSetMatchQueue_EmptyValueClearsRows(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	_ = a.SetMatchQueue("m1", "role")
 	_ = a.SetMatchQueue("m2", "open")
 	_ = a.SetMatchQueue("m3", "role")
@@ -69,16 +70,16 @@ func TestBulkSetMatchQueue_EmptyValueClearsRows(t *testing.T) {
 }
 
 func TestBulkSetMatchQueue_RejectsInvalidValue(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	err := a.BulkSetMatchQueue([]string{"m1"}, "ranked")
-	if !errors.Is(err, ErrInvalidQueueType) {
+	if !errors.Is(err, app.ErrInvalidQueueType) {
 		t.Errorf("got %v, want ErrInvalidQueueType", err)
 	}
 }
 
 func TestBulkSetMatchQueue_EmptyKeysIsNoOp(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.BulkSetMatchQueue(nil, "role"); err != nil {
 		t.Errorf("nil keys: %v", err)
 	}
@@ -93,7 +94,7 @@ func TestBulkSetMatchQueue_EmptyKeysIsNoOp(t *testing.T) {
 
 func TestSetMatchQueue_OverwritesExisting(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.SetMatchQueue("m1", "role"); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -108,7 +109,7 @@ func TestSetMatchQueue_OverwritesExisting(t *testing.T) {
 
 func TestClearMatchQueue_IsIdempotent(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.ClearMatchQueue("never-set"); err != nil {
 		t.Fatalf("clear on empty: %v", err)
 	}
@@ -126,7 +127,7 @@ func TestClearMatchQueue_IsIdempotent(t *testing.T) {
 }
 
 func TestSetMatchQueue_RequiresMatchKey(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	if err := a.SetMatchQueue("", "role"); err == nil {
 		t.Error("expected error for empty match_key")
 	}
@@ -140,12 +141,12 @@ func TestAttachQueues_PopulatesQueueType(t *testing.T) {
 		"k1": {QueueType: "role", OverriddenAt: "2026-06-01T10:00:00Z"},
 		"k3": {QueueType: "open", OverriddenAt: "2026-05-30T08:15:00Z"},
 	}
-	recs := []MatchRecord{
+	recs := []app.MatchRecord{
 		{MatchKey: "k1"},
 		{MatchKey: "k2"},
 		{MatchKey: "k3"},
 	}
-	attachQueues(recs, queues)
+	app.AttachQueues(recs, queues)
 	if recs[0].QueueType != "role" {
 		t.Errorf("k1: %+v", recs[0])
 	}
@@ -159,7 +160,7 @@ func TestAttachQueues_PopulatesQueueType(t *testing.T) {
 
 func TestAggregateAll_AttachesQueue(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := fs.SetMatchQueue("m1", "open"); err != nil {
 		t.Fatalf("seed queue: %v", err)
 	}

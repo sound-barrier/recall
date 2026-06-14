@@ -1,16 +1,17 @@
-package app
+package app_test
 
 import (
 	"errors"
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
 
 func TestSetMatchPlayMode_PersistsValidValue(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.SetMatchPlayMode("m1", "competitive"); err != nil {
 		t.Fatalf("SetMatchPlayMode competitive: %v", err)
 	}
@@ -24,11 +25,11 @@ func TestSetMatchPlayMode_PersistsValidValue(t *testing.T) {
 }
 
 func TestSetMatchPlayMode_RejectsInvalidValue(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	cases := []string{"", "unranked", "QUICKPLAY", "ranked", "comp"}
 	for _, c := range cases {
 		err := a.SetMatchPlayMode("m1", c)
-		if !errors.Is(err, ErrInvalidPlayMode) {
+		if !errors.Is(err, app.ErrInvalidPlayMode) {
 			t.Errorf("SetMatchPlayMode(%q): err = %v, want ErrInvalidPlayMode", c, err)
 		}
 	}
@@ -36,7 +37,7 @@ func TestSetMatchPlayMode_RejectsInvalidValue(t *testing.T) {
 
 func TestBulkSetMatchPlayMode_WritesEveryKey(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.BulkSetMatchPlayMode([]string{"m1", "m2", "m3"}, "competitive"); err != nil {
 		t.Fatalf("bulk set: %v", err)
 	}
@@ -50,7 +51,7 @@ func TestBulkSetMatchPlayMode_WritesEveryKey(t *testing.T) {
 
 func TestBulkSetMatchPlayMode_EmptyValueClearsRows(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	_ = a.SetMatchPlayMode("m1", "competitive")
 	_ = a.SetMatchPlayMode("m2", "quickplay")
 	if err := a.BulkSetMatchPlayMode([]string{"m1"}, ""); err != nil {
@@ -66,16 +67,16 @@ func TestBulkSetMatchPlayMode_EmptyValueClearsRows(t *testing.T) {
 }
 
 func TestBulkSetMatchPlayMode_RejectsInvalidValue(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	err := a.BulkSetMatchPlayMode([]string{"m1"}, "unranked")
-	if !errors.Is(err, ErrInvalidPlayMode) {
+	if !errors.Is(err, app.ErrInvalidPlayMode) {
 		t.Errorf("got %v, want ErrInvalidPlayMode", err)
 	}
 }
 
 func TestSetMatchPlayMode_OverwritesExisting(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.SetMatchPlayMode("m1", "competitive"); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -90,7 +91,7 @@ func TestSetMatchPlayMode_OverwritesExisting(t *testing.T) {
 
 func TestClearMatchPlayMode_IsIdempotent(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.ClearMatchPlayMode("never-set"); err != nil {
 		t.Fatalf("clear on empty: %v", err)
 	}
@@ -108,7 +109,7 @@ func TestClearMatchPlayMode_IsIdempotent(t *testing.T) {
 }
 
 func TestSetMatchPlayMode_RequiresMatchKey(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	if err := a.SetMatchPlayMode("", "competitive"); err == nil {
 		t.Error("expected error for empty match_key")
 	}
@@ -124,12 +125,12 @@ func TestAttachPlayModes_UsesOverrideOnly(t *testing.T) {
 		"k1": {PlayMode: "quickplay", OverriddenAt: "2026-06-01T10:00:00Z"},
 		"k3": {PlayMode: "competitive", OverriddenAt: "2026-06-02T10:00:00Z"},
 	}
-	recs := []MatchRecord{
+	recs := []app.MatchRecord{
 		{MatchKey: "k1", Data: parser.MatchResult{Playlist: "competitive"}},
 		{MatchKey: "k2", Data: parser.MatchResult{Playlist: "competitive"}}, // no override
 		{MatchKey: "k3", Data: parser.MatchResult{Playlist: "quickplay"}},
 	}
-	attachPlayModes(recs, overrides)
+	app.AttachPlayModes(recs, overrides)
 	if recs[0].PlayMode != "quickplay" {
 		t.Errorf("k1: override should win over data.mode, got %q", recs[0].PlayMode)
 	}
@@ -147,24 +148,24 @@ func TestAttachPlayModes_NoFallbackFromRankPresence(t *testing.T) {
 	// a rank screenshot. New behavior: rank presence does NOT
 	// surface play_mode unless the user has explicitly set the
 	// override.
-	recs := []MatchRecord{{
+	recs := []app.MatchRecord{{
 		MatchKey:    "k1",
 		Data:        parser.MatchResult{Playlist: "competitive"},
 		SourceTypes: map[string]string{"r.png": "rank"},
 	}}
-	attachPlayModes(recs, nil)
+	app.AttachPlayModes(recs, nil)
 	if recs[0].PlayMode != "" {
 		t.Errorf("no override → must stay empty regardless of rank presence, got %q", recs[0].PlayMode)
 	}
 }
 
 func TestAttachPlayModes_NoSignalLeavesEmpty(t *testing.T) {
-	recs := []MatchRecord{{
+	recs := []app.MatchRecord{{
 		MatchKey:    "k1",
 		Data:        parser.MatchResult{Playlist: ""},
 		SourceTypes: map[string]string{"s.png": "summary"},
 	}}
-	attachPlayModes(recs, nil)
+	app.AttachPlayModes(recs, nil)
 	if recs[0].PlayMode != "" {
 		t.Errorf("no signal should leave PlayMode empty, got %q", recs[0].PlayMode)
 	}
@@ -172,7 +173,7 @@ func TestAttachPlayModes_NoSignalLeavesEmpty(t *testing.T) {
 
 func TestAggregateAll_AttachesPlayMode(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := fs.SetMatchPlayMode("m1", "quickplay"); err != nil {
 		t.Fatalf("seed play_mode: %v", err)
 	}

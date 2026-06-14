@@ -1,4 +1,4 @@
-package app
+package app_test
 
 import (
 	"encoding/json"
@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 // LoadProfiles on a fresh base dir creates the default profile + writes
@@ -16,7 +18,7 @@ import (
 func TestLoadProfiles_FreshInitCreatesDefaultProfile(t *testing.T) {
 	base := t.TempDir()
 
-	p, err := LoadProfiles(base)
+	p, err := app.LoadProfiles(base)
 	if err != nil {
 		t.Fatalf("LoadProfiles: %v", err)
 	}
@@ -39,10 +41,10 @@ func TestLoadProfiles_FreshInitCreatesDefaultProfile(t *testing.T) {
 // not re-create or re-migrate anything.
 func TestLoadProfiles_IdempotentSecondLoad(t *testing.T) {
 	base := t.TempDir()
-	if _, err := LoadProfiles(base); err != nil {
+	if _, err := app.LoadProfiles(base); err != nil {
 		t.Fatalf("first LoadProfiles: %v", err)
 	}
-	p, err := LoadProfiles(base)
+	p, err := app.LoadProfiles(base)
 	if err != nil {
 		t.Fatalf("second LoadProfiles: %v", err)
 	}
@@ -68,7 +70,7 @@ func TestLoadProfiles_DoesNotMigratePreExistingLayout(t *testing.T) {
 		t.Fatalf("seed db dir: %v", err)
 	}
 
-	if _, err := LoadProfiles(base); err != nil {
+	if _, err := app.LoadProfiles(base); err != nil {
 		t.Fatalf("LoadProfiles: %v", err)
 	}
 
@@ -88,7 +90,7 @@ func TestLoadProfiles_DoesNotMigratePreExistingLayout(t *testing.T) {
 
 func TestProfiles_Create_AddsToListAndCreatesDir(t *testing.T) {
 	base := t.TempDir()
-	p, err := LoadProfiles(base)
+	p, err := app.LoadProfiles(base)
 	if err != nil {
 		t.Fatalf("LoadProfiles: %v", err)
 	}
@@ -108,7 +110,7 @@ func TestProfiles_Create_AddsToListAndCreatesDir(t *testing.T) {
 	}
 
 	// Persistence — a fresh Load reads the new list.
-	p2, err := LoadProfiles(base)
+	p2, err := app.LoadProfiles(base)
 	if err != nil {
 		t.Fatalf("re-LoadProfiles: %v", err)
 	}
@@ -119,7 +121,7 @@ func TestProfiles_Create_AddsToListAndCreatesDir(t *testing.T) {
 
 func TestProfiles_Activate_SwitchesAndPersists(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	_ = p.Create("alt")
 
 	if err := p.Activate("alt"); err != nil {
@@ -130,7 +132,7 @@ func TestProfiles_Activate_SwitchesAndPersists(t *testing.T) {
 	}
 
 	// Persists across re-load.
-	p2, _ := LoadProfiles(base)
+	p2, _ := app.LoadProfiles(base)
 	if got := p2.Active(); got != "alt" {
 		t.Errorf("after re-Load: Active() = %q, want %q", got, "alt")
 	}
@@ -138,24 +140,24 @@ func TestProfiles_Activate_SwitchesAndPersists(t *testing.T) {
 
 func TestProfiles_Activate_UnknownReturnsNotFound(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	err := p.Activate("nope")
-	if !errors.Is(err, ErrProfileNotFound) {
+	if !errors.Is(err, app.ErrProfileNotFound) {
 		t.Errorf("expected ErrProfileNotFound, got %v", err)
 	}
 }
 
 func TestProfiles_Create_RejectsDuplicate(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
-	if err := p.Create("main"); !errors.Is(err, ErrProfileExists) {
+	p, _ := app.LoadProfiles(base)
+	if err := p.Create("main"); !errors.Is(err, app.ErrProfileExists) {
 		t.Errorf("expected ErrProfileExists, got %v", err)
 	}
 }
 
 func TestProfiles_Create_RejectsInvalidNames(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	for _, name := range []string{
 		"",              // empty
 		".",             // traversal
@@ -168,7 +170,7 @@ func TestProfiles_Create_RejectsInvalidNames(t *testing.T) {
 		"___underscore", // must start alphanumeric
 		"this-name-is-way-too-long-to-be-allowed-as-a-profile-name", // > 40
 	} {
-		if err := p.Create(name); !errors.Is(err, ErrInvalidProfileName) {
+		if err := p.Create(name); !errors.Is(err, app.ErrInvalidProfileName) {
 			t.Errorf("Create(%q) = %v, want ErrInvalidProfileName", name, err)
 		}
 	}
@@ -176,7 +178,7 @@ func TestProfiles_Create_RejectsInvalidNames(t *testing.T) {
 
 func TestProfiles_Create_AcceptsValidNames(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	for _, name := range []string{
 		"a",
 		"alt",
@@ -194,7 +196,7 @@ func TestProfiles_Create_AcceptsValidNames(t *testing.T) {
 
 func TestProfiles_Rename_UpdatesListAndDir(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	_ = p.Create("alt")
 
 	if err := p.Rename("alt", "smurf"); err != nil {
@@ -215,7 +217,7 @@ func TestProfiles_Rename_UpdatesListAndDir(t *testing.T) {
 
 func TestProfiles_Rename_ActiveProfile(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	// Default "main" is active.
 
 	if err := p.Rename("main", "silentstorm"); err != nil {
@@ -231,11 +233,11 @@ func TestProfiles_Rename_ActiveProfile(t *testing.T) {
 
 func TestProfiles_Rename_PersistsAcrossReload(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	_ = p.Create("alt")
 	_ = p.Rename("alt", "manny")
 
-	p2, _ := LoadProfiles(base)
+	p2, _ := app.LoadProfiles(base)
 	if got := p2.List(); !reflect.DeepEqual(got, []string{"main", "manny"}) {
 		t.Errorf("after reload: List() = %v, want [main manny]", got)
 	}
@@ -243,36 +245,36 @@ func TestProfiles_Rename_PersistsAcrossReload(t *testing.T) {
 
 func TestProfiles_Rename_RejectsInvalidNewName(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	_ = p.Create("alt")
 	err := p.Rename("alt", "../traversal")
-	if !errors.Is(err, ErrInvalidProfileName) {
+	if !errors.Is(err, app.ErrInvalidProfileName) {
 		t.Errorf("expected ErrInvalidProfileName, got %v", err)
 	}
 }
 
 func TestProfiles_Rename_RejectsUnknownSource(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	err := p.Rename("nope", "manny")
-	if !errors.Is(err, ErrProfileNotFound) {
+	if !errors.Is(err, app.ErrProfileNotFound) {
 		t.Errorf("expected ErrProfileNotFound, got %v", err)
 	}
 }
 
 func TestProfiles_Rename_RejectsCollisionWithExisting(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	_ = p.Create("alt")
 	err := p.Rename("alt", "main") // main already exists
-	if !errors.Is(err, ErrProfileExists) {
+	if !errors.Is(err, app.ErrProfileExists) {
 		t.Errorf("expected ErrProfileExists, got %v", err)
 	}
 }
 
 func TestProfiles_Rename_NoOpWhenSameName(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	if err := p.Rename("main", "main"); err != nil {
 		t.Errorf("rename to same name should be a no-op, got %v", err)
 	}
@@ -283,15 +285,15 @@ func TestProfiles_Rename_NoOpWhenSameName(t *testing.T) {
 
 func TestProfiles_Delete_RefusesActive(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
-	if err := p.Delete("main"); !errors.Is(err, ErrProfileActive) {
+	p, _ := app.LoadProfiles(base)
+	if err := p.Delete("main"); !errors.Is(err, app.ErrProfileActive) {
 		t.Errorf("expected ErrProfileActive, got %v", err)
 	}
 }
 
 func TestProfiles_Delete_RemovesProfileAndDir(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	_ = p.Create("alt")
 	altDir := filepath.Join(base, "profiles", "alt")
 	// Seed a sub-file so we know the dir tree is wiped, not just the leaf.
@@ -312,16 +314,16 @@ func TestProfiles_Delete_RemovesProfileAndDir(t *testing.T) {
 
 func TestProfiles_Delete_UnknownReturnsNotFound(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	err := p.Delete("nope")
-	if !errors.Is(err, ErrProfileNotFound) {
+	if !errors.Is(err, app.ErrProfileNotFound) {
 		t.Errorf("expected ErrProfileNotFound, got %v", err)
 	}
 }
 
 func TestProfiles_ProfileDir_IsNamespacedUnderBase(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	got := p.ProfileDir("alt")
 	want := filepath.Join(base, "profiles", "alt")
 	if got != want {
@@ -334,7 +336,7 @@ func TestProfiles_ProfileDir_IsNamespacedUnderBase(t *testing.T) {
 
 func TestProfiles_OnDiskShape(t *testing.T) {
 	base := t.TempDir()
-	p, _ := LoadProfiles(base)
+	p, _ := app.LoadProfiles(base)
 	_ = p.Create("alt")
 	_ = p.Activate("alt")
 

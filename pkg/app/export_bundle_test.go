@@ -1,4 +1,4 @@
-package app
+package app_test
 
 import (
 	"archive/zip"
@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 )
 
@@ -25,7 +26,7 @@ import (
 //	match-3 — hidden, has a SUMMARY (s3.png)
 //
 // Returns the App, store, and the screenshots tmpdir for cleanup.
-func seedBundleFixture(t *testing.T) (*App, *fakeStore, string) {
+func seedBundleFixture(t *testing.T) (*app.App, *fakeStore, string) {
 	t.Helper()
 	dir := t.TempDir()
 	// Real files so the bundle can copy them.
@@ -40,8 +41,8 @@ func seedBundleFixture(t *testing.T) (*App, *fakeStore, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a := NewWithStore(fs)
-	a.settings.ScreenshotsDir = dir
+	a := app.NewWithStore(fs)
+	app.AppSettings(a).ScreenshotsDir = dir
 
 	must := func(e error) {
 		t.Helper()
@@ -116,7 +117,7 @@ func zipNames(t *testing.T, data []byte) []string {
 // caller named, without picking up the unknown or hidden matches.
 func TestExportBundle_OnlySelectedMatchKeys(t *testing.T) {
 	a, _, _ := seedBundleFixture(t)
-	payload, err := a.ExportBundle(ExportBundleOptions{
+	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys: []string{"match-1"},
 	})
 	if err != nil {
@@ -176,7 +177,7 @@ func TestExportBundle_OnlySelectedMatchKeys(t *testing.T) {
 
 func TestExportBundle_IncludeUnknownAddsUnknownMatches(t *testing.T) {
 	a, _, _ := seedBundleFixture(t)
-	payload, err := a.ExportBundle(ExportBundleOptions{
+	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys:      []string{"match-1"},
 		IncludeUnknown: true,
 	})
@@ -205,7 +206,7 @@ func TestExportBundle_IncludeUnknownAddsUnknownMatches(t *testing.T) {
 
 func TestExportBundle_IncludeHiddenAddsHiddenMatches(t *testing.T) {
 	a, _, _ := seedBundleFixture(t)
-	payload, err := a.ExportBundle(ExportBundleOptions{
+	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys:     []string{"match-1"},
 		IncludeHidden: true,
 	})
@@ -228,7 +229,7 @@ func TestExportBundle_IncludeHiddenAddsHiddenMatches(t *testing.T) {
 
 func TestExportBundle_EmptySelectionAndNoToggles_ProducesEmptyBundle(t *testing.T) {
 	a, _, _ := seedBundleFixture(t)
-	payload, err := a.ExportBundle(ExportBundleOptions{})
+	payload, err := a.ExportBundle(app.ExportBundleOptions{})
 	if err != nil {
 		t.Fatalf("ExportBundle: %v", err)
 	}
@@ -255,7 +256,7 @@ func TestExportBundle_MissingScreenshotIsSkippedNotErrored(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = fs
-	payload, err := a.ExportBundle(ExportBundleOptions{
+	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys: []string{"match-1"},
 	})
 	if err != nil {
@@ -281,7 +282,7 @@ func TestExportBundle_MissingScreenshotIsSkippedNotErrored(t *testing.T) {
 // ScreenshotsDirID to 0 (use configured dir) naturally.
 func TestExportBundle_DataJSONOmitsScreenshotsDirs(t *testing.T) {
 	a, _, _ := seedBundleFixture(t)
-	payload, err := a.ExportBundle(ExportBundleOptions{
+	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys: []string{"match-1"},
 	})
 	if err != nil {
@@ -301,7 +302,7 @@ func TestExportBundle_DataJSONOmitsScreenshotsDirs(t *testing.T) {
 func TestExportBundle_ZIPEntriesCarryCurrentTimestamp(t *testing.T) {
 	a, _, _ := seedBundleFixture(t)
 	before := time.Now().Add(-2 * time.Second)
-	payload, err := a.ExportBundle(ExportBundleOptions{
+	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys: []string{"match-1"},
 	})
 	if err != nil {

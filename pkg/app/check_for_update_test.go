@@ -1,4 +1,4 @@
-package app
+package app_test
 
 import (
 	"crypto/sha256"
@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"recall/pkg/app"
 )
 
 func TestUpdateAllowedHost(t *testing.T) {
@@ -30,14 +32,14 @@ func TestUpdateAllowedHost(t *testing.T) {
 		{"", false},
 	}
 	for _, c := range cases {
-		if got := updateAllowedHost(c.host); got != c.want {
-			t.Errorf("updateAllowedHost(%q) = %v, want %v", c.host, got, c.want)
+		if got := app.UpdateAllowedHost(c.host); got != c.want {
+			t.Errorf("app.UpdateAllowedHost(%q) = %v, want %v", c.host, got, c.want)
 		}
 	}
 }
 
 func TestNewUpdateClient_RedirectGuard(t *testing.T) {
-	c := newUpdateClient()
+	c := app.NewUpdateClient()
 	if c.CheckRedirect == nil {
 		t.Fatal("newUpdateClient must set CheckRedirect")
 	}
@@ -80,20 +82,20 @@ func TestNewUpdateClient_RedirectGuard(t *testing.T) {
 // call (GitHub Releases). Tests must never touch the real API — they'd
 // be slow, fragile, and would exhaust anonymous rate limits in a
 // loop. Instead, each test stands up an httptest.NewServer with a
-// canned handler and points `releasesURL` (the package-level seam) at
+// canned handler and points `*app.ReleasesURL` (the package-level seam) at
 // it for the duration of the test.
 
 // isEmptyUpdate returns true when no useful fields landed — equivalent
 // to `got == UpdateInfo{}` before LatestHeroes/LatestMaps moved the
 // struct out of comparable territory.
-func isEmptyUpdate(u UpdateInfo) bool {
+func isEmptyUpdate(u app.UpdateInfo) bool {
 	return !u.Checked && !u.DevBuild && !u.Available && u.Latest == "" && u.URL == "" &&
 		len(u.LatestHeroes) == 0 && len(u.LatestMaps) == 0 && len(u.LatestSources) == 0 &&
 		u.LastCheckedAt == "" && u.ReleaseNotes == "" &&
 		u.GameData.AppliedCommit == "" && !u.GameData.HasUpdate
 }
 
-// withReleasesURL swaps releasesURL for the duration of the test and
+// withReleasesURL swaps *app.ReleasesURL for the duration of the test and
 // restores it after — same shape as parser tests' runTesseractFunc
 // swapping.
 //
@@ -104,9 +106,9 @@ func isEmptyUpdate(u UpdateInfo) bool {
 // helper's restore fires.
 func withReleasesURL(t *testing.T, url string) {
 	t.Helper()
-	prev := releasesURL
-	releasesURL = url
-	t.Cleanup(func() { releasesURL = prev })
+	prev := *app.ReleasesURL
+	*app.ReleasesURL = url
+	t.Cleanup(func() { *app.ReleasesURL = prev })
 	withMainURLs(t, closedServerURL(t))
 }
 
@@ -115,9 +117,9 @@ func withReleasesURL(t *testing.T, url string) {
 // CheckForUpdate's branches depend on the running version string.
 func withVersion(t *testing.T, v string) {
 	t.Helper()
-	prev := Version
-	Version = v
-	t.Cleanup(func() { Version = prev })
+	prev := app.Version
+	app.Version = v
+	t.Cleanup(func() { app.Version = prev })
 }
 
 // fakeReleasesServer stands up a one-off httptest server whose single
@@ -140,7 +142,7 @@ func TestCheckForUpdate_DevBuildReportsLatestAsInformational(t *testing.T) {
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "dev")
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if !got.Checked {
 		t.Fatal("Checked: want true")
@@ -168,7 +170,7 @@ func TestCheckForUpdate_DevSuffixCountsAsDevBuild(t *testing.T) {
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.1.0-dev")
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if !got.DevBuild {
 		t.Error("DevBuild: want true for '0.1.0-dev'")
@@ -181,7 +183,7 @@ func TestCheckForUpdate_CurrentVersionMatchesLatest(t *testing.T) {
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.2.0")
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if !got.Checked {
 		t.Fatal("Checked: want true")
@@ -200,7 +202,7 @@ func TestCheckForUpdate_NewerReleaseAvailable(t *testing.T) {
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.2.0")
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if !got.Available {
 		t.Error("Available: want true — newer release published")
@@ -222,7 +224,7 @@ func TestCheckForUpdate_NetworkErrorReturnsEmpty(t *testing.T) {
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.2.0")
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if !isEmptyUpdate(got) {
 		t.Errorf("network failure: want empty UpdateInfo, got %+v", got)
@@ -234,7 +236,7 @@ func TestCheckForUpdate_MalformedJSONReturnsEmpty(t *testing.T) {
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.2.0")
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if !isEmptyUpdate(got) {
 		t.Errorf("malformed body: want empty UpdateInfo, got %+v", got)
@@ -250,7 +252,7 @@ func TestCheckForUpdate_EmptyTagReturnsEmpty(t *testing.T) {
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.2.0")
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if !isEmptyUpdate(got) {
 		t.Errorf("empty tag: want empty UpdateInfo, got %+v", got)
@@ -268,7 +270,7 @@ func TestCheckForUpdate_StripsLeadingVFromTag(t *testing.T) {
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "1.0.0")
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if !got.Available {
 		t.Error("Available: want true — 1.0.0 < 1.2.3")
@@ -298,7 +300,7 @@ func TestCheckForUpdate_TaggedReleaseWithVPrefixIsNotAnUpgrade(t *testing.T) {
 	// of how release.yml passes `github.ref_name` to ldflags.
 	withVersion(t, "v0.2.5")
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if !got.Checked {
 		t.Fatal("Checked: want true")
@@ -322,7 +324,7 @@ func TestCheckForUpdate_DoubleDigitPatchIsNotOlderThanSingleDigit(t *testing.T) 
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.2.10")
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if got.Available {
 		t.Errorf("Available: want false — 0.2.10 > 0.2.9 by semver, got %+v", got)
@@ -340,26 +342,26 @@ func TestCheckForUpdate_PrereleaseInstallNeverPromptsDowngrade(t *testing.T) {
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.3.0-beta.0")
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if got.Available {
 		t.Errorf("Available: want false — 0.2.5 < 0.3.0-beta.0 by semver, got %+v", got)
 	}
 }
 
-// withReleaseAssetURL swaps releaseAssetURL for the duration of the
+// withReleaseAssetURL swaps *app.ReleaseAssetURL for the duration of the
 // test and restores it after — needed because the release-roster
 // fetches go through this function. Tests can route the asset URLs
 // at an httptest server.
 func withReleaseAssetURL(t *testing.T, builder func(version, name string) string) {
 	t.Helper()
-	prev := releaseAssetURL
-	releaseAssetURL = builder
-	t.Cleanup(func() { releaseAssetURL = prev })
+	prev := *app.ReleaseAssetURL
+	*app.ReleaseAssetURL = builder
+	t.Cleanup(func() { *app.ReleaseAssetURL = prev })
 }
 
-// withMainURLs swaps the main-channel URL seams (mainAssetURL +
-// mainVersionURL) so tests stay hermetic. Tests that don't care
+// withMainURLs swaps the main-channel URL seams (*app.MainAssetURL +
+// *app.MainVersionURL) so tests stay hermetic. Tests that don't care
 // about the main channel pass closedServerURL (a pre-closed
 // httptest server) — every main-channel fetch returns a connection
 // error which collapses to GameDataStatus{} (empty CommitSHA, no diff)
@@ -370,13 +372,13 @@ func withReleaseAssetURL(t *testing.T, builder func(version, name string) string
 // `.sha256` sidecars staged.
 func withMainURLs(t *testing.T, base string) {
 	t.Helper()
-	prevAsset := mainAssetURL
-	prevVersion := mainVersionURL
-	mainAssetURL = func(name string) string { return base + "/" + name }
-	mainVersionURL = base + "/version.json"
+	prevAsset := *app.MainAssetURL
+	prevVersion := *app.MainVersionURL
+	*app.MainAssetURL = func(name string) string { return base + "/" + name }
+	*app.MainVersionURL = base + "/version.json"
 	t.Cleanup(func() {
-		mainAssetURL = prevAsset
-		mainVersionURL = prevVersion
+		*app.MainAssetURL = prevAsset
+		*app.MainVersionURL = prevVersion
 	})
 }
 
@@ -432,7 +434,7 @@ func sha256hex(b []byte) string {
 //   - /screenshot_sources.yaml      → sourcesBody (empty body skips route)
 //   - /screenshot_sources.yaml.sha256 → matching sidecar
 //
-// Callers point releaseAssetURL at this server's URL.
+// Callers point *app.ReleaseAssetURL at this server's URL.
 func fakeAssetServer(t *testing.T, heroesBody, mapsBody, sourcesBody []byte) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -470,7 +472,7 @@ func TestCheckForUpdate_AvailableSurfacesLatestRosters(t *testing.T) {
 		return assetSrv.URL + "/" + name
 	})
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if !got.Available || got.Latest != "1.2.3" {
 		t.Fatalf("Available/Latest: want true / 1.2.3, got %+v", got)
@@ -517,7 +519,7 @@ func TestCheckForUpdate_MismatchedSidecarRejectsRosters(t *testing.T) {
 		return srv.URL + "/" + name
 	})
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if !got.Available || got.Latest != "1.2.3" {
 		t.Fatalf("Available/Latest: want true / 1.2.3, got %+v", got)
@@ -545,7 +547,7 @@ func TestVerifySha256_RejectsMalformedSidecar(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := verifySha256(payload, tc.sidecar); got != tc.want {
+			if got := app.VerifySha256(payload, tc.sidecar); got != tc.want {
 				t.Errorf("got %v, want %v", got, tc.want)
 			}
 		})
@@ -557,7 +559,7 @@ func TestParseRosterNames_DedupsAcrossGroups(t *testing.T) {
 	// doesn't forbid it), parseRosterNames must dedup so the FE
 	// doesn't render the same CTA twice.
 	yaml := []byte("tank:\n  - Doomfist\n  - Reinhardt\ndps:\n  - Doomfist\n")
-	names := parseRosterNames(yaml)
+	names := app.ParseRosterNames(yaml)
 	if len(names) != 2 {
 		t.Errorf("want 2 unique names (Doomfist dedup), got %v", names)
 	}
@@ -569,7 +571,7 @@ func TestParseRosterNames_DropsBlankEntries(t *testing.T) {
 	// keeps the FE from rendering a CTA with an empty backtick'd
 	// label.
 	yaml := []byte("tank:\n  - \"\"\n  - Reinhardt\n")
-	names := parseRosterNames(yaml)
+	names := app.ParseRosterNames(yaml)
 	if len(names) != 1 || names[0] != "Reinhardt" {
 		t.Errorf("want [Reinhardt], got %v", names)
 	}
@@ -600,7 +602,7 @@ func TestCheckForUpdate_PopulatesLastCheckedAtAndPersists(t *testing.T) {
 	withReleasesURL(t, srv.URL)
 	withVersion(t, "0.2.0")
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if got.LastCheckedAt == "" {
 		t.Errorf("LastCheckedAt: want non-empty RFC3339 timestamp, got %q", got.LastCheckedAt)
@@ -612,7 +614,7 @@ func TestCheckForUpdate_PopulatesLastCheckedAtAndPersists(t *testing.T) {
 	// And it must have been persisted — a subsequent LoadCheckState
 	// round-trips the same timestamp so the banner gate survives a
 	// process restart.
-	s, err := LoadCheckState()
+	s, err := app.LoadCheckState()
 	if err != nil {
 		t.Fatalf("LoadCheckState: %v", err)
 	}
@@ -632,7 +634,7 @@ func TestCheckForUpdate_PopulatesReleaseNotesExcerpt(t *testing.T) {
 	assetSrv := fakeAssetServer(t, []byte("tank: []\nsupport: []\ndps: []\n"), []byte("control: []\n"), validSourcesYAML())
 	withReleaseAssetURL(t, func(_, name string) string { return assetSrv.URL + "/" + name })
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if got.ReleaseNotes == "" {
 		t.Fatal("ReleaseNotes: want excerpt, got empty")
@@ -658,7 +660,7 @@ func TestCheckForUpdate_LatestSourcesFetchedFromRelease(t *testing.T) {
 		validSourcesYAML())
 	withReleaseAssetURL(t, func(_, name string) string { return assetSrv.URL + "/" + name })
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if !contains(got.LatestSources, "testtool") {
 		t.Errorf("LatestSources: want to contain 'testtool', got %v", got.LatestSources)
@@ -676,7 +678,7 @@ func TestCheckForUpdate_GameDataStatusEmpty_WhenPagesUnreachable(t *testing.T) {
 	// withReleasesURL already wires main to a closed httptest server,
 	// so this test exercises the unreachable-Pages branch by default.
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if got.GameData.CommitSHA != "" {
 		t.Errorf("GameData.CommitSHA: want empty (Pages unreachable), got %q", got.GameData.CommitSHA)
@@ -700,7 +702,7 @@ func TestCheckForUpdate_GameDataStatusPopulatesCommitSHAAndDiff(t *testing.T) {
 	mainSrv := fakeMainServer(t, "abc1234567890def", mainHeroes, mainMaps, mainSources)
 	withMainURLs(t, mainSrv.URL)
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if got.GameData.CommitSHA != "abc1234" {
 		t.Errorf("GameData.CommitSHA: want 'abc1234' (7-char short), got %q", got.GameData.CommitSHA)
@@ -717,11 +719,11 @@ func TestCheckForUpdate_GameDataStatusReflectsAppliedCommit(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 	// Pre-seed the manifest as if the user already synced from main
 	// at the SAME commit we'll publish — HasUpdate should flip false.
-	if err := SaveManifest(DataManifest{
+	if err := app.SaveManifest(app.DataManifest{
 		AppliedSource:     "main",
 		AppliedMainCommit: "abc1234",
 		AppliedAt:         time.Now().UTC().Add(-1 * time.Hour),
-		Files:             map[string]ManifestFile{},
+		Files:             map[string]app.ManifestFile{},
 	}); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
@@ -733,7 +735,7 @@ func TestCheckForUpdate_GameDataStatusReflectsAppliedCommit(t *testing.T) {
 		[]byte("tank:\n  - Reinhardt\n"), []byte("control:\n  - Ilios\n"), validSourcesYAML())
 	withMainURLs(t, mainSrv.URL)
 
-	got := (&App{}).CheckForUpdate()
+	got := (&app.App{}).CheckForUpdate()
 
 	if got.GameData.AppliedCommit != "abc1234" {
 		t.Errorf("GameData.AppliedCommit: want 'abc1234', got %q", got.GameData.AppliedCommit)

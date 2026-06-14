@@ -1,17 +1,18 @@
-package app
+package app_test
 
 import (
 	"reflect"
 	"strings"
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/db/dbtest"
 )
 
 func TestChaos_ZeroRatioMatchesNoChaos(t *testing.T) {
-	a := GenerateMatchFixture(50, 11, "")
-	b := GenerateMatchFixtureWithChaos(50, 11, "", 0)
+	a := app.GenerateMatchFixture(50, 11, "")
+	b := app.GenerateMatchFixtureWithChaos(50, 11, "", 0)
 	if !reflect.DeepEqual(a, b) {
 		t.Fatal("chaosRatio=0 should be byte-identical to GenerateMatchFixture")
 	}
@@ -26,7 +27,7 @@ func TestChaos_FullRatioMutatesMostRows(t *testing.T) {
 	// room for small-n variance while still catching "chaos didn't
 	// fire" regressions.
 	const n = 200
-	fx := GenerateMatchFixtureWithChaos(n, 7, "", 1.0)
+	fx := app.GenerateMatchFixtureWithChaos(n, 7, "", 1.0)
 
 	// Pre-index the seed slices so the per-row check is O(1) — the
 	// missing-play-mode + missing-queue-type categories don't leave a
@@ -58,7 +59,7 @@ func TestChaos_AggregationConflictAddsRows(t *testing.T) {
 	// N. Over n=200 at ratio=1.0, at least a handful of matches
 	// should have picked the conflict category, so total Summaries
 	// will exceed n.
-	fx := GenerateMatchFixtureWithChaos(200, 7, "", 1.0)
+	fx := app.GenerateMatchFixtureWithChaos(200, 7, "", 1.0)
 	if len(fx.Summaries) <= 200 {
 		t.Fatalf("expected aggregation-conflict to add rows past n=200; got %d", len(fx.Summaries))
 	}
@@ -82,7 +83,7 @@ func TestChaos_MissingPlayModeProducesEmptyModeAndDroppedSeed(t *testing.T) {
 	// assert SOMETHING shows up rather than an exact count so the
 	// test isn't fragile to small RNG nudges.
 	const n = 300
-	fx := GenerateMatchFixtureWithChaos(n, 17, "", 1.0)
+	fx := app.GenerateMatchFixtureWithChaos(n, 17, "", 1.0)
 
 	playModeKeys := make(map[string]bool, len(fx.PlayModes))
 	for _, p := range fx.PlayModes {
@@ -104,7 +105,7 @@ func TestChaos_MissingPlayModeProducesEmptyModeAndDroppedSeed(t *testing.T) {
 
 func TestChaos_MissingQueueTypeDropsSeed(t *testing.T) {
 	const n = 300
-	fx := GenerateMatchFixtureWithChaos(n, 23, "", 1.0)
+	fx := app.GenerateMatchFixtureWithChaos(n, 23, "", 1.0)
 
 	queueKeys := make(map[string]bool, len(fx.Queues))
 	for _, q := range fx.Queues {
@@ -124,8 +125,8 @@ func TestChaos_MissingQueueTypeDropsSeed(t *testing.T) {
 }
 
 func TestChaos_IsDeterministic(t *testing.T) {
-	a := GenerateMatchFixtureWithChaos(50, 3, "", 0.5)
-	b := GenerateMatchFixtureWithChaos(50, 3, "", 0.5)
+	a := app.GenerateMatchFixtureWithChaos(50, 3, "", 0.5)
+	b := app.GenerateMatchFixtureWithChaos(50, 3, "", 0.5)
 	if !reflect.DeepEqual(a, b) {
 		t.Fatal("same (n, seed, ratio) should produce byte-identical chaos output")
 	}
@@ -136,7 +137,7 @@ func TestChaos_RoundTripsThroughStore(t *testing.T) {
 	// validates the Store-interface contracts). If a future chaos
 	// category adds an invariant violation, this catches it before
 	// the seed-dev CLI does.
-	fx := GenerateMatchFixtureWithChaos(50, 13, "", 0.5)
+	fx := app.GenerateMatchFixtureWithChaos(50, 13, "", 0.5)
 	fs := dbtest.New()
 	for _, r := range fx.Summaries {
 		if err := fs.UpsertSummary(r); err != nil {
@@ -157,7 +158,7 @@ func hasChaosSignature(s db.SummaryRow) bool {
 	switch {
 	case len(s.Hero) > 100, len(s.Map) > 100:
 		return true // long-strings
-	case containsAny(s.Hero, chaosEmojis), containsAny(s.Map, chaosEmojis):
+	case containsAny(s.Hero, app.ChaosEmojis), containsAny(s.Map, app.ChaosEmojis):
 		return true // unicode
 	case s.PerfElimTotal > 100_000 || s.PerfAssistsTotal < 0:
 		return true // numeric-extreme

@@ -1,8 +1,9 @@
-package app
+package app_test
 
 import (
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
@@ -11,12 +12,11 @@ import (
 // top-level MatchRecord.QueueType and clears it from the nested Data,
 // so the effective value appears exactly once on the wire.
 func TestFoldGroup_LiftsDetectedQueueType(t *testing.T) {
-	vs := []screenshotView{{
-		filename: "s.png", typeName: "teams", matchKey: "m1",
-		parsedAt: "2026-01-01T00:00:00Z",
-		data:     parser.MatchResult{Eliminations: 5, QueueType: "open"},
-	}}
-	rec := foldGroup("m1", vs, nil)
+	vs := []app.ScreenshotView{app.NewScreenshotView(
+		"s.png", "teams", "m1", "2026-01-01T00:00:00Z", 0,
+		parser.MatchResult{Eliminations: 5, QueueType: "open"},
+	)}
+	rec := app.FoldGroup("m1", vs, nil)
 	if rec.QueueType != "open" {
 		t.Errorf("rec.QueueType = %q, want %q (detected)", rec.QueueType, "open")
 	}
@@ -28,11 +28,11 @@ func TestFoldGroup_LiftsDetectedQueueType(t *testing.T) {
 // attachQueues is the "manual wins" override: a match_queue annotation
 // replaces the detected value; its absence leaves detection intact.
 func TestAttachQueues_ManualOverridesDetected(t *testing.T) {
-	recs := []MatchRecord{
+	recs := []app.MatchRecord{
 		{MatchKey: "override-me", QueueType: "open"}, // detected open
 		{MatchKey: "leave-me", QueueType: "role"},    // detected role, no annotation
 	}
-	attachQueues(recs, map[string]db.QueueState{
+	app.AttachQueues(recs, map[string]db.QueueState{
 		"override-me": {QueueType: "role"}, // user says role
 	})
 	if recs[0].QueueType != "role" {

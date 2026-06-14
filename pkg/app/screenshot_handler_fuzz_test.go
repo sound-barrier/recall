@@ -1,4 +1,4 @@
-package app
+package app_test
 
 import (
 	"net/http"
@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db/dbtest"
 )
 
@@ -67,9 +68,9 @@ func FuzzScreenshotHandler_URL(f *testing.F) {
 	if err := os.WriteFile(filepath.Join(dir, "canary.png"), []byte(fuzzCanaryContent), 0o600); err != nil {
 		f.Fatalf("seed canary: %v", err)
 	}
-	a := &App{}
-	a.settings.ScreenshotsDir = dir
-	a.store = dbtest.New()
+	a := &app.App{}
+	app.AppSettings(a).ScreenshotsDir = dir
+	app.SetAppStore(a, dbtest.New())
 	h := a.ScreenshotHandler()
 
 	f.Fuzz(func(t *testing.T, path string) {

@@ -1,4 +1,4 @@
-package app
+package app_test
 
 import (
 	"archive/zip"
@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"recall/pkg/app"
 )
 
 // realBundleBytes seeds the standard fixture, runs ExportBundle with
@@ -17,7 +19,7 @@ import (
 func realBundleBytes(t *testing.T) []byte {
 	t.Helper()
 	a, _, _ := seedBundleFixture(t)
-	payload, err := a.ExportBundle(ExportBundleOptions{
+	payload, err := a.ExportBundle(app.ExportBundleOptions{
 		MatchKeys:      []string{"match-1"},
 		IncludeUnknown: true,
 		IncludeHidden:  true,
@@ -30,7 +32,7 @@ func realBundleBytes(t *testing.T) []byte {
 
 func TestValidateBundle_RealBundleHasNoIssues(t *testing.T) {
 	payload := realBundleBytes(t)
-	issues, err := ValidateBundle(payload)
+	issues, err := app.ValidateBundle(payload)
 	if err != nil {
 		t.Fatalf("ValidateBundle: %v", err)
 	}
@@ -89,7 +91,7 @@ func modifyBundle(t *testing.T, in []byte, fn func(name string, body []byte) (ke
 	return buf.Bytes()
 }
 
-func hasIssue(issues []BundleIssue, kind string) bool {
+func hasIssue(issues []app.BundleIssue, kind string) bool {
 	for _, iss := range issues {
 		if iss.Kind == kind {
 			return true
@@ -105,12 +107,12 @@ func TestValidateBundle_MissingManifest(t *testing.T) {
 		}
 		return name, body, false
 	})
-	issues, err := ValidateBundle(tampered)
+	issues, err := app.ValidateBundle(tampered)
 	if err != nil {
 		t.Fatalf("ValidateBundle: %v", err)
 	}
-	if !hasIssue(issues, IssueMissingManifest) {
-		t.Errorf("expected %s issue, got %v", IssueMissingManifest, issues)
+	if !hasIssue(issues, app.IssueMissingManifest) {
+		t.Errorf("expected %s issue, got %v", app.IssueMissingManifest, issues)
 	}
 }
 
@@ -121,12 +123,12 @@ func TestValidateBundle_MissingData(t *testing.T) {
 		}
 		return name, body, false
 	})
-	issues, err := ValidateBundle(tampered)
+	issues, err := app.ValidateBundle(tampered)
 	if err != nil {
 		t.Fatalf("ValidateBundle: %v", err)
 	}
-	if !hasIssue(issues, IssueMissingData) {
-		t.Errorf("expected %s issue, got %v", IssueMissingData, issues)
+	if !hasIssue(issues, app.IssueMissingData) {
+		t.Errorf("expected %s issue, got %v", app.IssueMissingData, issues)
 	}
 }
 
@@ -150,12 +152,12 @@ func TestValidateBundle_OrphanScreenshotFile(t *testing.T) {
 	_, _ = w.Write([]byte("PNG-orphan"))
 	_ = zw.Close()
 
-	issues, err := ValidateBundle(buf.Bytes())
+	issues, err := app.ValidateBundle(buf.Bytes())
 	if err != nil {
 		t.Fatalf("ValidateBundle: %v", err)
 	}
-	if !hasIssue(issues, IssueOrphanScreenshotFile) {
-		t.Errorf("expected %s issue, got %v", IssueOrphanScreenshotFile, issues)
+	if !hasIssue(issues, app.IssueOrphanScreenshotFile) {
+		t.Errorf("expected %s issue, got %v", app.IssueOrphanScreenshotFile, issues)
 	}
 }
 
@@ -167,12 +169,12 @@ func TestValidateBundle_ManifestMissingScreenshotFile(t *testing.T) {
 		}
 		return name, body, false
 	})
-	issues, err := ValidateBundle(tampered)
+	issues, err := app.ValidateBundle(tampered)
 	if err != nil {
 		t.Fatalf("ValidateBundle: %v", err)
 	}
-	if !hasIssue(issues, IssueManifestMissingFile) {
-		t.Errorf("expected %s issue, got %v", IssueManifestMissingFile, issues)
+	if !hasIssue(issues, app.IssueManifestMissingFile) {
+		t.Errorf("expected %s issue, got %v", app.IssueManifestMissingFile, issues)
 	}
 }
 
@@ -189,12 +191,12 @@ func TestValidateBundle_ScreenshotsDirsLeak(t *testing.T) {
 		rewritten, _ := json.MarshalIndent(doc, "", "  ")
 		return name, rewritten, false
 	})
-	issues, err := ValidateBundle(tampered)
+	issues, err := app.ValidateBundle(tampered)
 	if err != nil {
 		t.Fatalf("ValidateBundle: %v", err)
 	}
-	if !hasIssue(issues, IssueScreenshotsDirsLeak) {
-		t.Errorf("expected %s issue, got %v", IssueScreenshotsDirsLeak, issues)
+	if !hasIssue(issues, app.IssueScreenshotsDirsLeak) {
+		t.Errorf("expected %s issue, got %v", app.IssueScreenshotsDirsLeak, issues)
 	}
 }
 
@@ -203,23 +205,23 @@ func TestValidateBundle_WrongManifestSchema(t *testing.T) {
 		if name != "manifest.json" {
 			return name, body, false
 		}
-		var mf BundleManifestV1
+		var mf app.BundleManifestV1
 		_ = json.Unmarshal(body, &mf)
 		mf.Schema = "recall-bundle/v9"
 		rewritten, _ := json.MarshalIndent(mf, "", "  ")
 		return name, rewritten, false
 	})
-	issues, err := ValidateBundle(tampered)
+	issues, err := app.ValidateBundle(tampered)
 	if err != nil {
 		t.Fatalf("ValidateBundle: %v", err)
 	}
-	if !hasIssue(issues, IssueWrongManifestSchema) {
-		t.Errorf("expected %s issue, got %v", IssueWrongManifestSchema, issues)
+	if !hasIssue(issues, app.IssueWrongManifestSchema) {
+		t.Errorf("expected %s issue, got %v", app.IssueWrongManifestSchema, issues)
 	}
 }
 
 func TestValidateBundle_MalformedZIPErrors(t *testing.T) {
-	_, err := ValidateBundle([]byte("not a zip"))
+	_, err := app.ValidateBundle([]byte("not a zip"))
 	if err == nil {
 		t.Fatal("expected error on malformed input, got nil")
 	}
@@ -231,17 +233,17 @@ func TestValidateBundle_MatchCountMismatch(t *testing.T) {
 		if name != "manifest.json" {
 			return name, body, false
 		}
-		var mf BundleManifestV1
+		var mf app.BundleManifestV1
 		_ = json.Unmarshal(body, &mf)
 		mf.MatchCount = 999
 		rewritten, _ := json.MarshalIndent(mf, "", "  ")
 		return name, rewritten, false
 	})
-	issues, err := ValidateBundle(tampered)
+	issues, err := app.ValidateBundle(tampered)
 	if err != nil {
 		t.Fatalf("ValidateBundle: %v", err)
 	}
-	if !hasIssue(issues, IssueMatchCountMismatch) {
-		t.Errorf("expected %s issue, got %v", IssueMatchCountMismatch, issues)
+	if !hasIssue(issues, app.IssueMatchCountMismatch) {
+		t.Errorf("expected %s issue, got %v", app.IssueMatchCountMismatch, issues)
 	}
 }

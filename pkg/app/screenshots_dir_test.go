@@ -1,9 +1,11 @@
-package app
+package app_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 // Phase 4 #14 (server-mode parity audit) landed a behaviour change:
@@ -27,21 +29,21 @@ func TestSetScreenshotsDir_RestartsWatcherWhenEnabled(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
-	a := NewWithStore(&fakeStore{})
-	a.settings.ScreenshotsDir = oldDir
-	a.settings.WatchEnabled = true
-	a.startWatching()
+	a := app.NewWithStore(&fakeStore{})
+	app.AppSettings(a).ScreenshotsDir = oldDir
+	app.AppSettings(a).WatchEnabled = true
+	app.StartWatching(a)
 
-	if a.watchedDir != oldDir {
-		t.Fatalf("watcher should start on the old dir; watchedDir=%q want=%q", a.watchedDir, oldDir)
+	if app.AppWatchedDir(a) != oldDir {
+		t.Fatalf("watcher should start on the old dir; watchedDir=%q want=%q", app.AppWatchedDir(a), oldDir)
 	}
-	t.Cleanup(a.stopWatching)
+	t.Cleanup(func() { app.StopWatching(a) })
 
 	if err := a.SetScreenshotsDir(newDir); err != nil {
 		t.Fatalf("SetScreenshotsDir(newDir): %v", err)
 	}
-	if a.watchedDir != newDir {
-		t.Errorf("watcher did not migrate to the new dir; watchedDir=%q want=%q", a.watchedDir, newDir)
+	if app.AppWatchedDir(a) != newDir {
+		t.Errorf("watcher did not migrate to the new dir; watchedDir=%q want=%q", app.AppWatchedDir(a), newDir)
 	}
 }
 
@@ -53,18 +55,18 @@ func TestSetScreenshotsDir_NoWatcherRestartWhenDisabled(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
-	a := NewWithStore(&fakeStore{})
-	a.settings.ScreenshotsDir = oldDir
-	a.settings.WatchEnabled = false // watcher off — no startWatching call
+	a := app.NewWithStore(&fakeStore{})
+	app.AppSettings(a).ScreenshotsDir = oldDir
+	app.AppSettings(a).WatchEnabled = false // watcher off — no startWatching call
 
 	if err := a.SetScreenshotsDir(newDir); err != nil {
 		t.Fatalf("SetScreenshotsDir(newDir): %v", err)
 	}
-	if a.watcher != nil {
-		t.Errorf("watcher should stay nil when WatchEnabled is false; got %v", a.watcher)
+	if app.AppWatcher(a) != nil {
+		t.Errorf("watcher should stay nil when WatchEnabled is false; got %v", app.AppWatcher(a))
 	}
-	if a.watchedDir != "" {
-		t.Errorf("watchedDir should stay empty when WatchEnabled is false; got %q", a.watchedDir)
+	if app.AppWatchedDir(a) != "" {
+		t.Errorf("watchedDir should stay empty when WatchEnabled is false; got %q", app.AppWatchedDir(a))
 	}
 }
 
@@ -78,21 +80,21 @@ func TestSetScreenshotsDir_InvalidPathLeavesWatcherAlone(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("RECALL_DATA_DIR", t.TempDir())
 
-	a := NewWithStore(&fakeStore{})
-	a.settings.ScreenshotsDir = oldDir
-	a.settings.WatchEnabled = true
-	a.startWatching()
-	t.Cleanup(a.stopWatching)
+	a := app.NewWithStore(&fakeStore{})
+	app.AppSettings(a).ScreenshotsDir = oldDir
+	app.AppSettings(a).WatchEnabled = true
+	app.StartWatching(a)
+	t.Cleanup(func() { app.StopWatching(a) })
 
 	if err := a.SetScreenshotsDir(bogus); err == nil {
 		t.Fatal("expected validation error on non-canonical path, got nil")
 	}
-	if a.watchedDir != oldDir {
-		t.Errorf("watcher should keep the old dir on validation failure; watchedDir=%q want=%q", a.watchedDir, oldDir)
+	if app.AppWatchedDir(a) != oldDir {
+		t.Errorf("watcher should keep the old dir on validation failure; watchedDir=%q want=%q", app.AppWatchedDir(a), oldDir)
 	}
 	// The settings file must NOT have been written on the rejected path.
-	if a.settings.ScreenshotsDir != oldDir {
-		t.Errorf("settings.ScreenshotsDir should keep the old value on validation failure; got %q", a.settings.ScreenshotsDir)
+	if app.AppSettings(a).ScreenshotsDir != oldDir {
+		t.Errorf("settings.ScreenshotsDir should keep the old value on validation failure; got %q", app.AppSettings(a).ScreenshotsDir)
 	}
 	// Sanity: bogus path doesn't exist anyway, but we want the error to
 	// be about canonical form, not file-not-found.

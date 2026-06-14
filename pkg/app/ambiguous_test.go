@@ -1,9 +1,10 @@
-package app
+package app_test
 
 import (
 	"errors"
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 )
 
@@ -19,7 +20,7 @@ func TestResolveAmbiguousMatch_HappyPath(t *testing.T) {
 			"sb.png": {{MatchKey: "match-foo", DistanceSeconds: 720}},
 		},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.ResolveAmbiguousMatch("ambiguous-sb.png", "match-foo"); err != nil {
 		t.Fatalf("ResolveAmbiguousMatch: %v", err)
 	}
@@ -35,9 +36,9 @@ func TestResolveAmbiguousMatch_HappyPath(t *testing.T) {
 }
 
 func TestResolveAmbiguousMatch_RejectsKeyMissingPrefix(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	err := a.ResolveAmbiguousMatch("match-foo", "match-bar")
-	if !errors.Is(err, ErrInvalidAmbiguousKey) {
+	if !errors.Is(err, app.ErrInvalidAmbiguousKey) {
 		t.Errorf("expected ErrInvalidAmbiguousKey, got %v", err)
 	}
 }
@@ -48,9 +49,9 @@ func TestResolveAmbiguousMatch_RejectsResolvedToNotInCandidates(t *testing.T) {
 			"sb.png": {{MatchKey: "match-foo", DistanceSeconds: 600}},
 		},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	err := a.ResolveAmbiguousMatch("ambiguous-sb.png", "bogus-key")
-	if !errors.Is(err, ErrInvalidResolution) {
+	if !errors.Is(err, app.ErrInvalidResolution) {
 		t.Errorf("expected ErrInvalidResolution, got %v", err)
 	}
 }
@@ -66,7 +67,7 @@ func TestResolveAmbiguousMatch_AcceptsFreshMatchKey(t *testing.T) {
 			"sb.png": {{MatchKey: "match-other", DistanceSeconds: 720}},
 		},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.ResolveAmbiguousMatch("ambiguous-sb.png", "match-2026-05-10T21-29-28"); err != nil {
 		t.Errorf("expected fresh match:<ts> to be accepted, got %v", err)
 	}
@@ -76,9 +77,9 @@ func TestResolveAmbiguousMatch_AcceptsFreshMatchKey(t *testing.T) {
 }
 
 func TestResolveAmbiguousMatch_NotFoundReturnsErr(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	err := a.ResolveAmbiguousMatch("ambiguous-nope.png", "match-foo")
-	if !errors.Is(err, ErrAmbiguousNotFound) {
+	if !errors.Is(err, app.ErrAmbiguousNotFound) {
 		t.Errorf("expected ErrAmbiguousNotFound, got %v", err)
 	}
 }

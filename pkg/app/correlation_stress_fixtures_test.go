@@ -1,4 +1,4 @@
-package app
+package app_test
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
@@ -343,7 +344,7 @@ func runStressCohort(t *testing.T, name string, fixtures []fixture) {
 	s := &snapshotState{}
 	bugCount := 0
 	for _, f := range fixtures {
-		got, _ := resolveMatchKey(f.filename, f.result, s.snap)
+		got, _ := app.ResolveMatchKey(f.filename, f.result, s.snap)
 		if got != f.expectedKey {
 			t.Errorf("[%s] %s (%s): got %q, want %q",
 				name, f.filename, f.scrType, got, f.expectedKey)

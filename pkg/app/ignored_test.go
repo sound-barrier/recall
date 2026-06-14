@@ -1,16 +1,17 @@
-package app
+package app_test
 
 import (
 	"errors"
 	"reflect"
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 )
 
 func TestIgnoreScreenshot_RejectsEmptyFilename(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
-	if err := a.IgnoreScreenshot(""); !errors.Is(err, ErrIgnoreFilenameRequired) {
+	a := app.NewWithStore(&fakeStore{})
+	if err := a.IgnoreScreenshot(""); !errors.Is(err, app.ErrIgnoreFilenameRequired) {
 		t.Errorf("got err=%v, want ErrIgnoreFilenameRequired", err)
 	}
 }
@@ -25,7 +26,7 @@ func TestIgnoreScreenshot_AddsToSetAndWipesBothKeyShapes(t *testing.T) {
 			{Filename: "sb2.png", MatchKey: "ambiguous-sb.png"},
 		},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 
 	if err := a.IgnoreScreenshot("sb.png"); err != nil {
 		t.Fatalf("IgnoreScreenshot: %v", err)
@@ -60,7 +61,7 @@ func TestIgnoreScreenshot_WipesTrackedMatchKeyTooNotJustUnmatchedAndAmbiguous(t 
 			{Filename: "broken.png", MatchKey: "match-2026-05-10T22-21-11", Map: ""},
 		},
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 
 	if err := a.IgnoreScreenshot("broken.png"); err != nil {
 		t.Fatalf("IgnoreScreenshot: %v", err)
@@ -83,7 +84,7 @@ func TestIgnoreScreenshot_WipesTrackedMatchKeyTooNotJustUnmatchedAndAmbiguous(t 
 
 func TestIgnoreScreenshot_IsIdempotent(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.IgnoreScreenshot("dup.png"); err != nil {
 		t.Fatalf("first ignore: %v", err)
 	}
@@ -98,7 +99,7 @@ func TestIgnoreScreenshot_IsIdempotent(t *testing.T) {
 
 func TestUnignoreScreenshot_RemovesFromSet(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.IgnoreScreenshot("toggle.png"); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -113,7 +114,7 @@ func TestUnignoreScreenshot_RemovesFromSet(t *testing.T) {
 
 func TestGetIgnoredScreenshots_ReturnsRichRowsWithTimestamps(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	for _, f := range []string{"zoo.png", "alpha.png", "middle.png"} {
 		_ = a.IgnoreScreenshot(f)
 	}
@@ -139,7 +140,7 @@ func TestGetIgnoredScreenshots_ReturnsRichRowsWithTimestamps(t *testing.T) {
 
 func TestClearIgnoredScreenshots_TruncatesSuppressList(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	for _, f := range []string{"a.png", "b.png"} {
 		if err := a.IgnoreScreenshot(f); err != nil {
 			t.Fatalf("seed %s: %v", f, err)

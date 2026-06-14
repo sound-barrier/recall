@@ -1,14 +1,16 @@
-package app
+package app_test
 
 import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 // User report: on Windows the screenshots-folder probe worked but
 // Tesseract had to be picked manually. ProbeTesseractBinary widens
-// the search beyond defaultTesseractPath()'s short list to common
+// the search beyond app.DefaultTesseractPath()'s short list to common
 // per-user / package-manager install locations so the same Detect
 // gesture lands a working binary on more machines.
 //
@@ -19,7 +21,7 @@ import (
 
 func TestTesseractProbeCandidates_CoversCommonInstallLocations(t *testing.T) {
 	// Per-OS coverage: each platform must include both the historical
-	// short-list (the same paths defaultTesseractPath() walks) AND at
+	// short-list (the same paths app.DefaultTesseractPath() walks) AND at
 	// least one extra location that surfaces the Detect button's
 	// added value. If a future refactor accidentally drops the
 	// "extras," the test fails and the regression caller has a
@@ -59,7 +61,7 @@ func TestTesseractProbeCandidates_CoversCommonInstallLocations(t *testing.T) {
 
 	for goos, want := range cases {
 		t.Run(goos, func(t *testing.T) {
-			got := tesseractProbeCandidates(goos, "/home/test")
+			got := app.TesseractProbeCandidates(goos, "/home/test")
 			for _, needed := range want.mustContain {
 				if !contains(got, needed) {
 					t.Errorf("%s candidates missing %q\nfull list: %v", goos, needed, got)
@@ -73,7 +75,7 @@ func TestTesseractProbeCandidates_IncludesPerUserWindowsInstalls(t *testing.T) {
 	// Per-user installer + scoop both land under the user's HOME on
 	// Windows; the candidate list must interpolate $USERPROFILE so
 	// the detect actually hits those binaries.
-	got := tesseractProbeCandidates("windows", `C:\Users\jane`)
+	got := app.TesseractProbeCandidates("windows", `C:\Users\jane`)
 	wantSubs := []string{
 		`C:\Users\jane\AppData\Local\Programs\Tesseract-OCR\tesseract.exe`,
 		`C:\Users\jane\scoop\shims\tesseract.exe`,
@@ -89,7 +91,7 @@ func TestTesseractProbeCandidates_UnknownGOOSReturnsNothing(t *testing.T) {
 	// An unrecognised GOOS (BSD variants, plan9) should return no
 	// candidates so the probe falls straight through to PATH lookup
 	// without claiming "tried X locations" for fictional paths.
-	got := tesseractProbeCandidates("plan9", "/home/test")
+	got := app.TesseractProbeCandidates("plan9", "/home/test")
 	if len(got) != 0 {
 		t.Errorf("plan9 should return no candidates; got %v", got)
 	}
@@ -101,7 +103,7 @@ func TestProbeTesseractBinary_TriedListMatchesHostOSCandidates(t *testing.T) {
 	// OS, plus a PATH-lookup entry on a miss. The frontend renders
 	// Tried in the "looked in" disclosure on failure so the user
 	// sees exactly where the probe walked.
-	a := &App{}
+	a := &app.App{}
 	res := a.ProbeTesseractBinary()
 
 	// On any GOOS, Tried must be a non-empty list when the GOOS is

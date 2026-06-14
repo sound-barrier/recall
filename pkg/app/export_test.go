@@ -1,10 +1,11 @@
-package app
+package app_test
 
 import (
 	"encoding/json"
 	"strings"
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 )
 
@@ -18,7 +19,7 @@ func TestExportImport_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 
 	// Seed one row per parent table, all FK'd to the same dir.
 	must := func(e error) {
@@ -103,7 +104,7 @@ func TestExportImport_RoundTrip(t *testing.T) {
 // downloaded backup. Future versions add their own fixture; this one
 // must keep passing forever as the v1-compat contract.
 func TestImport_AcceptsCanonicalV1Fixture(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	const v1 = `{
   "schema": "recall-export/v1",
   "exported_at": "2026-01-15T12:00:00Z",
@@ -132,7 +133,7 @@ func TestImport_AcceptsCanonicalV1Fixture(t *testing.T) {
 	if err := a.ImportData([]byte(v1)); err != nil {
 		t.Fatalf("v1 fixture rejected by current reader: %v", err)
 	}
-	got, err := a.store.LoadAll()
+	got, err := app.AppStore(a).LoadAll()
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}
@@ -142,7 +143,7 @@ func TestImport_AcceptsCanonicalV1Fixture(t *testing.T) {
 }
 
 func TestImport_RejectsUnknownSchema(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	bad := []byte(`{"schema":"recall-export/v999","data":{}}`)
 	err := a.ImportData(bad)
 	if err == nil {
@@ -154,7 +155,7 @@ func TestImport_RejectsUnknownSchema(t *testing.T) {
 }
 
 func TestImport_RejectsMalformedJSON(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	err := a.ImportData([]byte("{not json"))
 	if err == nil {
 		t.Fatal("expected decode error, got nil")
@@ -165,7 +166,7 @@ func TestImport_RejectsMalformedJSON(t *testing.T) {
 }
 
 func TestGetDataLocation_ReturnsPlatformPaths(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	loc := a.GetDataLocation()
 	if loc.BaseDir == "" {
 		t.Error("BaseDir should never be empty")

@@ -1,13 +1,15 @@
-package app
+package app_test
 
 import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 func TestLoadSettingsFrom_DefaultsWhenEmpty(t *testing.T) {
-	got := loadSettingsFrom(strings.NewReader(""))
+	got := app.LoadSettingsFrom(strings.NewReader(""))
 	// Empty ScreenshotsDir is the correct first-run state: it lets
 	// autoProbeOnFirstRun fire (the probe early-returns on any
 	// non-empty value). Earlier revisions filled this with the
@@ -23,7 +25,7 @@ func TestLoadSettingsFrom_DefaultsWhenEmpty(t *testing.T) {
 }
 
 func TestLoadSettingsFrom_MalformedJSON(t *testing.T) {
-	got := loadSettingsFrom(strings.NewReader("not json at all"))
+	got := app.LoadSettingsFrom(strings.NewReader("not json at all"))
 	// Malformed JSON must fall back to defaults (the empty-Settings
 	// zero value), same first-run-ish state as the file-doesn't-exist
 	// branch.
@@ -35,34 +37,34 @@ func TestLoadSettingsFrom_MalformedJSON(t *testing.T) {
 func TestLoadSettingsFrom_EmptyScreenshotsDirRoundTrips(t *testing.T) {
 	// A persisted "" stays "" on load — the fill-with-"screenshots"
 	// step that previously lived here was removed because it
-	// sabotaged autoProbeOnFirstRun. See `defaultSettings()` doc
+	// sabotaged autoProbeOnFirstRun. See `app.DefaultSettings()` doc
 	// comment for the full rationale.
-	got := loadSettingsFrom(strings.NewReader(`{"screenshots_dir":""}`))
+	got := app.LoadSettingsFrom(strings.NewReader(`{"screenshots_dir":""}`))
 	if got.ScreenshotsDir != "" {
 		t.Errorf(`explicit "" must round-trip as ""; got %q`, got.ScreenshotsDir)
 	}
 }
 
 func TestLoadSettingsFrom_RoundTripPreservesFields(t *testing.T) {
-	in := Settings{
+	in := app.Settings{
 		ScreenshotsDir:    "/srv/recall",
 		TesseractPath:     "/usr/bin/tesseract",
 		PrometheusEnabled: true,
 		WatchEnabled:      true,
 	}
-	raw, err := marshalSettings(in)
+	raw, err := app.MarshalSettings(in)
 	if err != nil {
 		t.Fatalf("marshalSettings: %v", err)
 	}
-	got := loadSettingsFrom(strings.NewReader(string(raw)))
+	got := app.LoadSettingsFrom(strings.NewReader(string(raw)))
 	if got != in {
 		t.Errorf("round-trip mismatch:\n got=%+v\nwant=%+v", got, in)
 	}
 }
 
 func TestMarshalSettings_IndentedShape(t *testing.T) {
-	in := Settings{ScreenshotsDir: "screenshots", PrometheusEnabled: true}
-	raw, err := marshalSettings(in)
+	in := app.Settings{ScreenshotsDir: "screenshots", PrometheusEnabled: true}
+	raw, err := app.MarshalSettings(in)
 	if err != nil {
 		t.Fatalf("marshalSettings: %v", err)
 	}
@@ -86,8 +88,8 @@ func TestMarshalSettings_IndentedShape(t *testing.T) {
 
 func TestAppDataDir_RECALLDATADIROverride(t *testing.T) {
 	t.Setenv("RECALL_DATA_DIR", "/tmp/recall-dev-fixture")
-	if got := appBaseDir(); got != "/tmp/recall-dev-fixture" {
-		t.Errorf("appBaseDir() with RECALL_DATA_DIR set: got %q, want %q",
+	if got := app.AppBaseDir(); got != "/tmp/recall-dev-fixture" {
+		t.Errorf("app.AppBaseDir() with RECALL_DATA_DIR set: got %q, want %q",
 			got, "/tmp/recall-dev-fixture")
 	}
 }
@@ -97,11 +99,11 @@ func TestAppDataDir_FallsThroughWhenOverrideUnset(t *testing.T) {
 	// Don't assert the exact platform path — just that we get something
 	// non-empty containing the platform-canonical name. Avoids hard-
 	// coding macOS-vs-Linux paths into the assertion.
-	got := appBaseDir()
+	got := app.AppBaseDir()
 	if got == "" {
-		t.Fatalf("appBaseDir() returned empty string")
+		t.Fatalf("app.AppBaseDir() returned empty string")
 	}
 	if !strings.Contains(got, "Recall") && !strings.Contains(got, "recall") {
-		t.Errorf("appBaseDir() = %q, expected to contain Recall/recall", got)
+		t.Errorf("app.AppBaseDir() = %q, expected to contain Recall/recall", got)
 	}
 }

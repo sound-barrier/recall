@@ -1,15 +1,16 @@
-package app
+package app_test
 
 import (
 	"errors"
 	"testing"
 
+	"recall/pkg/app"
 	"recall/pkg/db"
 )
 
 func TestSetMatchReview_PersistsValidReviewer(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.SetMatchReview("m1", "self"); err != nil {
 		t.Fatalf("SetMatchReview self: %v", err)
 	}
@@ -23,11 +24,11 @@ func TestSetMatchReview_PersistsValidReviewer(t *testing.T) {
 }
 
 func TestSetMatchReview_RejectsInvalidReviewer(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	cases := []string{"", "user", "other", "SELF", "coach "}
 	for _, c := range cases {
 		err := a.SetMatchReview("m1", c)
-		if !errors.Is(err, ErrInvalidReviewedBy) {
+		if !errors.Is(err, app.ErrInvalidReviewedBy) {
 			t.Errorf("SetMatchReview(%q): err = %v, want ErrInvalidReviewedBy", c, err)
 		}
 	}
@@ -35,7 +36,7 @@ func TestSetMatchReview_RejectsInvalidReviewer(t *testing.T) {
 
 func TestSetMatchReview_OverwritesExisting(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	if err := a.SetMatchReview("m1", "self"); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -50,7 +51,7 @@ func TestSetMatchReview_OverwritesExisting(t *testing.T) {
 
 func TestClearMatchReview_IsIdempotent(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	// Clear on empty state — no error.
 	if err := a.ClearMatchReview("never-reviewed"); err != nil {
 		t.Fatalf("clear on empty: %v", err)
@@ -71,7 +72,7 @@ func TestClearMatchReview_IsIdempotent(t *testing.T) {
 }
 
 func TestSetMatchReview_RequiresMatchKey(t *testing.T) {
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	if err := a.SetMatchReview("", "self"); err == nil {
 		t.Error("expected error for empty match_key")
 	}
@@ -85,12 +86,12 @@ func TestAttachReviews_PopulatesReviewedByAndAt(t *testing.T) {
 		"k1": {ReviewedBy: "self", ReviewedAt: "2026-06-01T10:00:00Z"},
 		"k3": {ReviewedBy: "coach", ReviewedAt: "2026-05-30T08:15:00Z"},
 	}
-	recs := []MatchRecord{
+	recs := []app.MatchRecord{
 		{MatchKey: "k1"},
 		{MatchKey: "k2"},
 		{MatchKey: "k3"},
 	}
-	attachReviews(recs, reviews)
+	app.AttachReviews(recs, reviews)
 	if recs[0].ReviewedBy != "self" || recs[0].ReviewedAt != "2026-06-01T10:00:00Z" {
 		t.Errorf("k1: %+v", recs[0])
 	}
@@ -104,7 +105,7 @@ func TestAttachReviews_PopulatesReviewedByAndAt(t *testing.T) {
 
 func TestAggregateAll_AttachesReviews(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	// Seed one summary row + a review tag.
 	if err := fs.SetReview("m1", "coach"); err != nil {
 		t.Fatalf("seed review: %v", err)
@@ -130,7 +131,7 @@ func TestAggregateAll_AttachesReviews(t *testing.T) {
 
 func TestHardDeleteMatch_CascadesReview(t *testing.T) {
 	fs := &fakeStore{}
-	a := NewWithStore(fs)
+	a := app.NewWithStore(fs)
 	_ = a.SetMatchReview("m1", "self")
 	if err := a.HardDeleteMatch("m1"); err != nil {
 		t.Fatalf("HardDeleteMatch: %v", err)

@@ -1,4 +1,4 @@
-package app
+package app_test
 
 import (
 	"errors"
@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+
+	"recall/pkg/app"
 )
 
 // runWatchEvents pipes fsnotify events into the parse-trigger callback,
@@ -20,7 +22,7 @@ func TestRunWatchEvents_TriggersOnImageCreate(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		runWatchEvents(events, errs, func() { calls.Add(1) })
+		app.RunWatchEvents(events, errs, func() { calls.Add(1) })
 		close(done)
 	}()
 
@@ -45,7 +47,7 @@ func TestRunWatchEvents_IgnoresNonImageExtensions(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		runWatchEvents(events, errs, func() { calls.Add(1) })
+		app.RunWatchEvents(events, errs, func() { calls.Add(1) })
 		close(done)
 	}()
 
@@ -66,7 +68,7 @@ func TestRunWatchEvents_IgnoresNonCreateOps(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		runWatchEvents(events, errs, func() { calls.Add(1) })
+		app.RunWatchEvents(events, errs, func() { calls.Add(1) })
 		close(done)
 	}()
 
@@ -88,7 +90,7 @@ func TestRunWatchEvents_ReturnsOnErrChanClose(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		runWatchEvents(events, errs, func() {})
+		app.RunWatchEvents(events, errs, func() {})
 		close(done)
 	}()
 
@@ -108,7 +110,7 @@ func TestRunWatchEvents_LogsErrorsAndContinues(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		runWatchEvents(events, errs, func() { calls.Add(1) })
+		app.RunWatchEvents(events, errs, func() { calls.Add(1) })
 		close(done)
 	}()
 

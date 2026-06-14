@@ -1,9 +1,11 @@
-package app
+package app_test
 
 import (
 	"context"
 	"os"
 	"testing"
+
+	"recall/pkg/app"
 )
 
 // Round-trip persistence tests for ScreenshotsDir — pin the
@@ -32,16 +34,16 @@ func TestScreenshotsDir_PersistsAcrossAppRestart(t *testing.T) {
 	dir := t.TempDir()
 
 	// ── Session 1: pick the folder ──────────────────────────────
-	a1 := NewWithStore(&fakeStore{})
+	a1 := app.NewWithStore(&fakeStore{})
 	a1.Startup(context.Background())
 	if err := a1.SetScreenshotsDir(dir); err != nil {
 		t.Fatalf("session 1 SetScreenshotsDir: %v", err)
 	}
-	if a1.settings.ScreenshotsDir != dir {
-		t.Fatalf("session 1 in-memory dir = %q; want %q", a1.settings.ScreenshotsDir, dir)
+	if app.AppSettings(a1).ScreenshotsDir != dir {
+		t.Fatalf("session 1 in-memory dir = %q; want %q", app.AppSettings(a1).ScreenshotsDir, dir)
 	}
 	// Sanity: the write reached disk so a fresh loadSettings sees it.
-	persisted := a1.loadSettings()
+	persisted := app.LoadSettings(a1)
 	if persisted.ScreenshotsDir != dir {
 		t.Fatalf("session 1 settings.json ScreenshotsDir = %q; want %q (the write to disk silently dropped)", persisted.ScreenshotsDir, dir)
 	}
@@ -49,11 +51,11 @@ func TestScreenshotsDir_PersistsAcrossAppRestart(t *testing.T) {
 	// ── Session 2: simulate restarting the app ─────────────────
 	// New App instance, same HOME/XDG_CONFIG_HOME, so loadSettings
 	// reads the same settings.json the previous session wrote.
-	a2 := NewWithStore(&fakeStore{})
+	a2 := app.NewWithStore(&fakeStore{})
 	a2.Startup(context.Background())
 
-	if a2.settings.ScreenshotsDir != dir {
-		t.Errorf("session 2 ScreenshotsDir = %q; want %q (the dir did NOT persist across the simulated app restart)", a2.settings.ScreenshotsDir, dir)
+	if app.AppSettings(a2).ScreenshotsDir != dir {
+		t.Errorf("session 2 ScreenshotsDir = %q; want %q (the dir did NOT persist across the simulated app restart)", app.AppSettings(a2).ScreenshotsDir, dir)
 	}
 	if got := a2.GetScreenshotsDir(); got != dir {
 		t.Errorf("session 2 GetScreenshotsDir() = %q; want %q (the public getter sees the cleared value)", got, dir)
@@ -68,7 +70,7 @@ func TestScreenshotsDir_PersistsAcrossMultipleRestarts(t *testing.T) {
 	dir := t.TempDir()
 
 	// Set the dir once via session 1.
-	a1 := NewWithStore(&fakeStore{})
+	a1 := app.NewWithStore(&fakeStore{})
 	a1.Startup(context.Background())
 	if err := a1.SetScreenshotsDir(dir); err != nil {
 		t.Fatalf("session 1 SetScreenshotsDir: %v", err)
@@ -78,10 +80,10 @@ func TestScreenshotsDir_PersistsAcrossMultipleRestarts(t *testing.T) {
 	// The user said "each time I start up my app I have to change my
 	// screenshot folder"; this pins that bug shape across N≥2.
 	for i := 0; i < 5; i++ {
-		a := NewWithStore(&fakeStore{})
+		a := app.NewWithStore(&fakeStore{})
 		a.Startup(context.Background())
-		if a.settings.ScreenshotsDir != dir {
-			t.Errorf("restart #%d: ScreenshotsDir = %q; want %q", i+1, a.settings.ScreenshotsDir, dir)
+		if app.AppSettings(a).ScreenshotsDir != dir {
+			t.Errorf("restart #%d: ScreenshotsDir = %q; want %q", i+1, app.AppSettings(a).ScreenshotsDir, dir)
 		}
 	}
 }
@@ -115,18 +117,18 @@ func TestStartup_PreservesScreenshotsDirWhenExistsButUnreadable(t *testing.T) {
 	// Restore permissions on cleanup so t.TempDir's own cleanup works.
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
 
-	seedSettings(t, Settings{ScreenshotsDir: dir})
+	seedSettings(t, app.Settings{ScreenshotsDir: dir})
 
-	a := NewWithStore(&fakeStore{})
+	a := app.NewWithStore(&fakeStore{})
 	a.Startup(context.Background())
 
-	if a.settings.ScreenshotsDir != dir {
-		t.Errorf("Startup wiped a perfectly-valid path because it was temporarily unreadable; got %q want %q", a.settings.ScreenshotsDir, dir)
+	if app.AppSettings(a).ScreenshotsDir != dir {
+		t.Errorf("Startup wiped a perfectly-valid path because it was temporarily unreadable; got %q want %q", app.AppSettings(a).ScreenshotsDir, dir)
 	}
 	// And the persisted shape must match: if Startup re-saved an
 	// empty value, the next session reads it back as "" and the bug
 	// surfaces on every restart instead of just one.
-	persisted := a.loadSettings()
+	persisted := app.LoadSettings(a)
 	if persisted.ScreenshotsDir != dir {
 		t.Errorf("settings.json ScreenshotsDir got cleared on disk; got %q want %q", persisted.ScreenshotsDir, dir)
 	}
@@ -148,15 +150,15 @@ func TestScreenshotsDir_PersistsWhenDirContainsCommonRealWorldChars(t *testing.T
 		t.Fatalf("mkdir %q: %v", dir, err)
 	}
 
-	a1 := NewWithStore(&fakeStore{})
+	a1 := app.NewWithStore(&fakeStore{})
 	a1.Startup(context.Background())
 	if err := a1.SetScreenshotsDir(dir); err != nil {
 		t.Fatalf("SetScreenshotsDir(%q): %v", dir, err)
 	}
 
-	a2 := NewWithStore(&fakeStore{})
+	a2 := app.NewWithStore(&fakeStore{})
 	a2.Startup(context.Background())
-	if a2.settings.ScreenshotsDir != dir {
-		t.Errorf("ScreenshotsDir = %q; want %q (space-containing path did not survive restart)", a2.settings.ScreenshotsDir, dir)
+	if app.AppSettings(a2).ScreenshotsDir != dir {
+		t.Errorf("ScreenshotsDir = %q; want %q (space-containing path did not survive restart)", app.AppSettings(a2).ScreenshotsDir, dir)
 	}
 }
