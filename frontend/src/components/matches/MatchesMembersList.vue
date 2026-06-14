@@ -354,7 +354,6 @@ defineExpose({ expandWindowToAll })
   <MatchesTable
     v-else-if="density === 'data' && sortedRecords.length"
     :records="sortedRecords"
-    :sort-order="sortOrder"
     :reset-counter="resetCounter"
     :focused-card-index="focusedCardIndex"
     :selected-keys="selectedKeys"

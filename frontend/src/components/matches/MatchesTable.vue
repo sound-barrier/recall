@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { MatchRecord } from '@/api'
-import type { SortOrder } from '@/composables/matches/useMatchesGroup'
 import { useVirtualWindow } from '@/composables/matches/useVirtualWindow'
-import { useTableSort, type TableSortCol } from '@/composables/matches/useTableSort'
+import { useTableSort, type TableSortCol, TABLE_SORT_COLUMNS } from '@/composables/matches/useTableSort'
 import type { SearchClause } from '@/match/search-query'
 import MatchTableRow from '@/components/matches/MatchTableRow.vue'
 
@@ -15,7 +14,6 @@ import MatchTableRow from '@/components/matches/MatchTableRow.vue'
 // props (selection, anchor, search highlight, keyboard focus) through.
 const props = defineProps<{
   records: MatchRecord[]
-  sortOrder: SortOrder
   resetCounter: number
   focusedCardIndex?: number
   selectedKeys: Set<string>
@@ -33,22 +31,26 @@ const emit = defineEmits<{
   'hover-leave':   []
 }>()
 
-// The sortable columns, in render order. `col` is the TableSortCol a
-// header sorts by (null = the non-sortable checkbox gutter).
+// The render columns: the non-sortable checkbox gutter, then the shared
+// sortable columns (TABLE_SORT_COLUMNS — the single source the Custom
+// Sort dialog also reads).
 const TABLE_COLUMNS: ReadonlyArray<{ col: TableSortCol | null; label: string }> = [
-  { col: null,           label: '' },
-  { col: 'date',         label: 'When' },
-  { col: 'map',          label: 'Map' },
-  { col: 'mode',         label: 'Mode' },
-  { col: 'hero',         label: 'Hero' },
-  { col: 'role',         label: 'Role' },
-  { col: 'eliminations', label: 'E / A / D' },
-  { col: 'tags',         label: 'Tags' },
-  { col: 'result',       label: 'Result' },
+  { col: null, label: '' },
+  ...TABLE_SORT_COLUMNS,
 ]
 const TABLE_ROW_HEIGHT = 30
 
-const { sortCol, sortDir, cycleSort, ariaSort, sortRows } = useTableSort()
+const { sortKeys, cycleSort, ariaSort, sortRows, sortLevelOf } = useTableSort()
+
+// Null-safe header-chrome adapters (the checkbox gutter column is col:
+// null): the 1-based sort level for the badge, and the direction caret.
+function headerLevel(col: TableSortCol | null): number {
+  return col ? sortLevelOf(col) : 0
+}
+function headerCaret(col: TableSortCol | null): string {
+  if (!col || sortLevelOf(col) === 0) return ''
+  return ariaSort(col) === 'ascending' ? '▲' : '▼'
+}
 
 const records = computed(() => props.records)
 const tableScrollRef = ref<HTMLElement | null>(null)
@@ -63,13 +65,6 @@ const tableVirtual = useVirtualWindow({
 const tableFlatRows     = computed(() => tableVirtual.visibleItems.value as MatchRecord[])
 const tableTopSpacer    = computed(() => tableVirtual.topSpacer.value)
 const tableBottomSpacer = computed(() => tableVirtual.bottomSpacer.value)
-
-// The toolbar's Newest/Oldest seeds the When column's direction — Data
-// view has no separate sort control, the column headers ARE the sort.
-watch(() => props.sortOrder, (o) => {
-  sortCol.value = 'date'
-  sortDir.value = o === 'newest' ? 'desc' : 'asc'
-}, { immediate: true })
 
 // Reset → scroll the table pane back to the top (both axes).
 watch(() => props.resetCounter, () => {
@@ -87,18 +82,24 @@ watch(() => props.resetCounter, () => {
             :key="column.label || 'select'"
             scope="col"
             class="th"
-            :class="{ 'th-sortable': !!column.col, 'th-active': !!column.col && sortCol === column.col }"
+            :class="{ 'th-sortable': !!column.col, 'th-active': headerLevel(column.col) > 0 }"
             :data-sort-col="column.col || undefined"
             :aria-sort="column.col ? ariaSort(column.col) : undefined"
-            @click="column.col && cycleSort(column.col)"
+            :title="column.col ? 'Click to sort · Shift+click to add a level' : undefined"
+            @click="column.col && cycleSort(column.col, { append: $event.shiftKey })"
           >
             <span v-if="column.label" class="th-inner">
               {{ column.label }}
               <span
-                v-if="!!column.col && sortCol === column.col"
+                v-if="headerLevel(column.col) > 0 && sortKeys.length > 1"
+                class="th-level"
+                aria-hidden="true"
+              >{{ headerLevel(column.col) }}</span>
+              <span
+                v-if="headerCaret(column.col)"
                 class="th-caret"
                 aria-hidden="true"
-              >{{ sortDir === 'asc' ? '▲' : '▼' }}</span>
+              >{{ headerCaret(column.col) }}</span>
             </span>
           </th>
         </tr>
@@ -241,6 +242,23 @@ watch(() => props.resetCounter, () => {
 .th-caret {
   font-size: 0.5rem;
   color: var(--accent);
+}
+
+/* Numbered badge marking a column's position in a multi-key sort stack;
+   only rendered when more than one level is active. */
+.th-level {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0.85rem;
+  height: 0.85rem;
+  padding: 0 0.15rem;
+  font-size: 0.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--primary-text-on-accent);
+  background: var(--accent);
+  border-radius: 2px;
 }
 
 /* Virtualization spacer rows — pure height, no chrome. */
