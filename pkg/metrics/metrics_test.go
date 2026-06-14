@@ -1,4 +1,4 @@
-package metrics
+package metrics_test
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"recall/pkg/metrics"
 	"recall/pkg/parser"
 )
 
@@ -15,7 +16,7 @@ import (
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestParseMatchTimestamp_FromSummary(t *testing.T) {
-	got, ok := parseMatchTimestamp("2026-05-10", "21:29", "match-2020-01-01T00-00-00")
+	got, ok := metrics.ParseMatchTimestamp("2026-05-10", "21:29", "match-2020-01-01T00-00-00")
 	if !ok {
 		t.Fatalf("expected ok=true")
 	}
@@ -26,7 +27,7 @@ func TestParseMatchTimestamp_FromSummary(t *testing.T) {
 }
 
 func TestParseMatchTimestamp_FallsBackToMatchKey(t *testing.T) {
-	got, ok := parseMatchTimestamp("", "", "match-2026-05-10T21-29-28")
+	got, ok := metrics.ParseMatchTimestamp("", "", "match-2026-05-10T21-29-28")
 	if !ok {
 		t.Fatalf("expected ok=true via match_key fallback")
 	}
@@ -37,10 +38,10 @@ func TestParseMatchTimestamp_FallsBackToMatchKey(t *testing.T) {
 }
 
 func TestParseMatchTimestamp_RejectsUnmatched(t *testing.T) {
-	if _, ok := parseMatchTimestamp("", "", "unmatched-loner.png"); ok {
+	if _, ok := metrics.ParseMatchTimestamp("", "", "unmatched-loner.png"); ok {
 		t.Errorf("unmatched- keys must not yield a timestamp")
 	}
-	if _, ok := parseMatchTimestamp("", "", ""); ok {
+	if _, ok := metrics.ParseMatchTimestamp("", "", ""); ok {
 		t.Errorf("empty inputs must not yield a timestamp")
 	}
 }
@@ -51,10 +52,10 @@ func TestParseMatchTimestamp_RejectsUnmatched(t *testing.T) {
 
 func TestRoleOf(t *testing.T) {
 	// Known hero must have a non-empty role.
-	if got := roleOf("lucio"); got == "" {
+	if got := metrics.RoleOf("lucio"); got == "" {
 		t.Errorf("known hero lucio must resolve to a role, got empty")
 	}
-	if got := roleOf("not-a-hero"); got != "" {
+	if got := metrics.RoleOf("not-a-hero"); got != "" {
 		t.Errorf("unknown hero must yield empty role, got %q", got)
 	}
 }
@@ -64,8 +65,8 @@ func TestRoleOf(t *testing.T) {
 // Prometheus text exposition.
 // ──────────────────────────────────────────────────────────────────────────
 
-func scrape(t *testing.T, reader Reader) string {
-	mux := newMux(reader)
+func scrape(t *testing.T, reader metrics.Reader) string {
+	mux := metrics.NewMux(reader)
 	req := httptest.NewRequest("GET", "/metrics", nil)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
@@ -76,8 +77,8 @@ func scrape(t *testing.T, reader Reader) string {
 }
 
 func TestCollector_SkipsNonCompetitive(t *testing.T) {
-	reader := func() ([]ScrapeRow, error) {
-		return []ScrapeRow{{
+	reader := func() ([]metrics.ScrapeRow, error) {
+		return []metrics.ScrapeRow{{
 			MatchKey: "match-2026-05-10T21-29-28",
 			Data: parser.MatchResult{
 				Playlist: "quickplay", // must be skipped
@@ -99,8 +100,8 @@ func TestCollector_SkipsNonCompetitive(t *testing.T) {
 // for Prometheus" — a future "expand which modes count" change has
 // to update this test alongside the filter literal in Collect().
 func TestCollector_FilterIsCompetitiveOnly(t *testing.T) {
-	reader := func() ([]ScrapeRow, error) {
-		return []ScrapeRow{
+	reader := func() ([]metrics.ScrapeRow, error) {
+		return []metrics.ScrapeRow{
 			{
 				MatchKey: "match-2026-05-10T20-00-00",
 				Data: parser.MatchResult{
@@ -186,8 +187,8 @@ func TestCollector_FilterIsCompetitiveOnly(t *testing.T) {
 // across lines. The assertions are robust to either behaviour; the
 // security-critical property is "no raw-newline injection."
 func TestCollector_LabelNewlineDoesNotBreakExposition(t *testing.T) {
-	reader := func() ([]ScrapeRow, error) {
-		return []ScrapeRow{{
+	reader := func() ([]metrics.ScrapeRow, error) {
+		return []metrics.ScrapeRow{{
 			MatchKey: "match-2026-05-10T20-00-00",
 			Data: parser.MatchResult{
 				Playlist: "competitive", Map: "rialto",
@@ -217,8 +218,8 @@ func TestCollector_LabelNewlineDoesNotBreakExposition(t *testing.T) {
 }
 
 func TestCollector_SkipsRowsWithoutTimestamp(t *testing.T) {
-	reader := func() ([]ScrapeRow, error) {
-		return []ScrapeRow{{
+	reader := func() ([]metrics.ScrapeRow, error) {
+		return []metrics.ScrapeRow{{
 			MatchKey: "unmatched-loner.png", // no date, no match: prefix
 			Data:     parser.MatchResult{Playlist: "competitive", Eliminations: 17},
 		}}, nil
@@ -230,8 +231,8 @@ func TestCollector_SkipsRowsWithoutTimestamp(t *testing.T) {
 }
 
 func TestCollector_EmitsCoreMetricsWithPrimaryHero(t *testing.T) {
-	reader := func() ([]ScrapeRow, error) {
-		return []ScrapeRow{{
+	reader := func() ([]metrics.ScrapeRow, error) {
+		return []metrics.ScrapeRow{{
 			MatchKey: "match-2026-05-10T21-29-28",
 			Data: parser.MatchResult{
 				Playlist: "competitive", Map: "rialto", GameMode: "control", Result: "victory",
@@ -261,8 +262,8 @@ func TestCollector_EmitsCoreMetricsWithPrimaryHero(t *testing.T) {
 }
 
 func TestCollector_EmitsPerHeroStatsAndSR(t *testing.T) {
-	reader := func() ([]ScrapeRow, error) {
-		return []ScrapeRow{{
+	reader := func() ([]metrics.ScrapeRow, error) {
+		return []metrics.ScrapeRow{{
 			MatchKey: "match-2026-05-10T21-29-28",
 			Data: parser.MatchResult{
 				Playlist: "competitive", Map: "rialto",
@@ -295,7 +296,7 @@ func TestCollector_EmitsPerHeroStatsAndSR(t *testing.T) {
 }
 
 func TestCollector_ReaderErrorIsNonFatal(t *testing.T) {
-	reader := func() ([]ScrapeRow, error) {
+	reader := func() ([]metrics.ScrapeRow, error) {
 		return nil, errors.New("boom")
 	}
 	// Must not panic; output should just have no samples (only HELP/TYPE lines).
@@ -312,7 +313,7 @@ func TestCollector_ReaderErrorIsNonFatal(t *testing.T) {
 
 func TestServer_StopIsIdempotent(t *testing.T) {
 	t.Setenv("RECALL_METRICS_ADDR", "127.0.0.1:0")
-	s := NewServer("ignored", func() ([]ScrapeRow, error) { return nil, nil })
+	s := metrics.NewServer("ignored", func() ([]metrics.ScrapeRow, error) { return nil, nil })
 	// Calling Stop without Start is safe: http.Server.Shutdown logs but
 	// doesn't panic when the server never started.
 	s.Stop()
@@ -321,18 +322,18 @@ func TestServer_StopIsIdempotent(t *testing.T) {
 
 func TestNewServer_EnvAddrOverride(t *testing.T) {
 	t.Setenv("RECALL_METRICS_ADDR", "127.0.0.1:12345")
-	s := NewServer("0.0.0.0:9091", func() ([]ScrapeRow, error) { return nil, nil })
-	if s.addr != "127.0.0.1:12345" {
-		t.Errorf("env override ignored: addr=%s", s.addr)
+	s := metrics.NewServer("0.0.0.0:9091", func() ([]metrics.ScrapeRow, error) { return nil, nil })
+	if metrics.ServerAddr(s) != "127.0.0.1:12345" {
+		t.Errorf("env override ignored: addr=%s", metrics.ServerAddr(s))
 	}
 }
 
 func TestNewServer_DefaultAddr(t *testing.T) {
 	// Make sure the env var isn't set from the surrounding test invocation.
 	t.Setenv("RECALL_METRICS_ADDR", "")
-	s := NewServer(":9091", func() ([]ScrapeRow, error) { return nil, nil })
-	if s.addr != ":9091" {
-		t.Errorf("default addr lost: addr=%s", s.addr)
+	s := metrics.NewServer(":9091", func() ([]metrics.ScrapeRow, error) { return nil, nil })
+	if metrics.ServerAddr(s) != ":9091" {
+		t.Errorf("default addr lost: addr=%s", metrics.ServerAddr(s))
 	}
 }
 
@@ -356,8 +357,8 @@ func TestIsLoopbackBind(t *testing.T) {
 		{"not-an-addr", false},
 	}
 	for _, c := range cases {
-		if got := isLoopbackBind(c.addr); got != c.want {
-			t.Errorf("isLoopbackBind(%q) = %v, want %v", c.addr, got, c.want)
+		if got := metrics.IsLoopbackBind(c.addr); got != c.want {
+			t.Errorf("metrics.IsLoopbackBind(%q) = %v, want %v", c.addr, got, c.want)
 		}
 	}
 }

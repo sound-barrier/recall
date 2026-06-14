@@ -1,4 +1,4 @@
-package applog
+package applog_test
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+
+	"recall/pkg/applog"
 )
 
 // Init's contract: after calling, both stdlib log.Printf and
@@ -25,7 +27,7 @@ func TestInit_RouteStdlibLogThroughSlog(t *testing.T) {
 		log.SetOutput(nil) // restore the package default
 	})
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
-	log.SetOutput(slogWriter{level: slog.LevelInfo})
+	log.SetOutput(applog.NewSlogWriter(slog.LevelInfo))
 	log.SetFlags(0)
 
 	log.Printf("watch: legacy line: %v", "details")
@@ -41,8 +43,7 @@ func TestSubsystem_TagsLogger(t *testing.T) {
 	prev := slog.Default()
 	t.Cleanup(func() { slog.SetDefault(prev) })
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
-
-	Subsystem("watch").Info("ready", slog.String("dir", "/foo"))
+	applog.Subsystem("watch").Info("ready", slog.String("dir", "/foo"))
 
 	got := buf.String()
 	if !strings.Contains(got, `subsystem=watch`) {
@@ -55,11 +56,11 @@ func TestSubsystem_TagsLogger(t *testing.T) {
 
 func TestFormatFromEnv_HonoursOverride(t *testing.T) {
 	t.Setenv("RECALL_LOG_FORMAT", "json")
-	if got := formatFromEnv(); got != "json" {
+	if got := applog.FormatFromEnv(); got != "json" {
 		t.Errorf("formatFromEnv=%q, want %q", got, "json")
 	}
 	t.Setenv("RECALL_LOG_FORMAT", "TEXT")
-	if got := formatFromEnv(); got != "text" {
+	if got := applog.FormatFromEnv(); got != "text" {
 		t.Errorf("formatFromEnv=%q (case-insensitive), want %q", got, "text")
 	}
 }
