@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { NamedCandidate, NamedCandidateStats } from '../api'
-import { useScreenshotFolderStats } from '../composables/useScreenshotFolderStats'
-import { useContextualCallout } from '../composables/useContextualCallout'
-import ContextualCallout from './ContextualCallout.vue'
+import type { NamedCandidate, NamedCandidateStats } from '@/api'
+import { useScreenshotFolderStats } from '@/composables/useScreenshotFolderStats'
+import { useContextualCallout } from '@/composables/useContextualCallout'
+import ContextualCallout from '@/components/ContextualCallout.vue'
 
 // First-run picker for the OW screenshots directory. On Windows,
 // renders a 2 × 2 grid of canonical capture sources (Nvidia Overlay

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, nextTick } from 'vue'
-import { useTabKeyboardNav, TAB_ORDER, type TabId } from './useTabKeyboardNav'
+import { useTabKeyboardNav, TAB_ORDER, type TabId } from '@/composables/useTabKeyboardNav'
 
 function key(name: string): KeyboardEvent {
   return new KeyboardEvent('keydown', { key: name, cancelable: true })

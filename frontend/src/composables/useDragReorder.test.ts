@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { useDragReorder } from './useDragReorder'
+import { useDragReorder } from '@/composables/useDragReorder'
 
 // Fake DragEvent that captures preventDefault calls.
 function fakeDragEvent(overrides: Partial<DragEvent> = {}): DragEvent {

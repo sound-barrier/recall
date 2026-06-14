@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, toRef, watch } from 'vue'
 
-import { useDashboardLayout } from '../composables/useDashboardLayout'
-import { useScrollLock } from '../composables/useScrollLock'
-import { useSectionLayout, type SectionDef } from '../composables/useSectionLayout'
-import { WIDGET_REGISTRY, type WidgetDef, type WidgetShape } from '../dashboard/widgets'
+import { useDashboardLayout } from '@/composables/useDashboardLayout'
+import { useScrollLock } from '@/composables/useScrollLock'
+import { useSectionLayout, type SectionDef } from '@/composables/useSectionLayout'
+import { WIDGET_REGISTRY, type WidgetDef, type WidgetShape } from '@/dashboard/widgets'
 
 // Compact "Add / Reset" dropdown for the dossier. Lists everything the
 // user has removed — widgets (grouped by shape) and full-width

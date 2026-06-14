@@ -20,10 +20,10 @@
 // collapses the slide-in.
 
 import { toRef, computed } from 'vue'
-import { useModalFocusTrap } from '../composables/useModalFocusTrap'
-import { useGameDataUpdate } from '../composables/useGameDataUpdate'
-import UpdateDiffManifest from './UpdateDiffManifest.vue'
-import { OpenURL, type UpdateInfo, type DataUpdateResult } from '../api'
+import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
+import { useGameDataUpdate } from '@/composables/useGameDataUpdate'
+import UpdateDiffManifest from '@/components/UpdateDiffManifest.vue'
+import { OpenURL, type UpdateInfo, type DataUpdateResult } from '@/api'
 
 const props = defineProps<{
   open:           boolean

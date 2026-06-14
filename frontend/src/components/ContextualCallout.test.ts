@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import ContextualCallout from './ContextualCallout.vue'
+import ContextualCallout from '@/components/ContextualCallout.vue'
 
 beforeEach(() => {
   // Each test runs against a fresh body so the Teleport-target lookups

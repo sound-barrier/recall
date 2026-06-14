@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { useClearDatabase, type ClearDatabaseApi } from './useClearDatabase'
+import { useClearDatabase, type ClearDatabaseApi } from '@/composables/useClearDatabase'
 
 function makeApi(overrides: Partial<ClearDatabaseApi> = {}): ClearDatabaseApi {
   return {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import SettingsView from './SettingsView.vue'
+import SettingsView from '@/components/SettingsView.vue'
 
 // Common probs the test suite reuses. Tests run under happy-dom which
 // has no Wails runtime, so IS_WAILS is false and the Open buttons
@@ -178,7 +178,7 @@ describe('SettingsView', () => {
 
 // ── Engine section (Tesseract) ───────────────────────────────────────────
 
-import type { TesseractStatus } from '../api'
+import type { TesseractStatus } from '@/api'
 
 function readyTesseract(over: Partial<TesseractStatus> = {}): TesseractStatus {
   return {

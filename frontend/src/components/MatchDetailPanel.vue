@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, toRef, onMounted, onBeforeUnmount } from 'vue'
-import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from '../api'
-import type { SearchClause } from '../search-query'
-import { useOWData } from '../composables/useOWData'
-import { useModalFocusTrap } from '../composables/useModalFocusTrap'
-import { useSmoothScroll } from '../composables/useSmoothScroll'
-import MatchCardExpanded from './MatchCardExpanded.vue'
+import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from '@/api'
+import type { SearchClause } from '@/search-query'
+import { useOWData } from '@/composables/useOWData'
+import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
+import { useSmoothScroll } from '@/composables/useSmoothScroll'
+import MatchCardExpanded from '@/components/MatchCardExpanded.vue'
 
 // Detail panel — slides in from the right when a match is selected.
 // Replaces the previous

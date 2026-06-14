@@ -1,6 +1,6 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter, type Ref } from 'vue'
-import type { MatchRecord } from '../api'
-import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '../match-time-helpers'
+import type { MatchRecord } from '@/api'
+import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '@/match-time-helpers'
 import {
   type BreakdownEntry,
   type HeroBreakdownEntry,
@@ -14,7 +14,7 @@ import {
   monthsAgoISO,
   makeTimeOfDayLabels,
   DAY_OF_WEEK_LABELS,
-} from './useMatchesDossier.types'
+} from '@/composables/useMatchesDossier.types'
 
 // The dossier's parameterized query-helper tier (the Grafana
 // panel-options side). Each helper takes a MaybeRefOrGetter<Opts> and

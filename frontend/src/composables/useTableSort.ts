@@ -1,8 +1,8 @@
 import { ref } from 'vue'
 
-import type { MatchRecord } from '../api'
-import { heroesForHeader } from '../match-helpers'
-import { matchTime } from '../match-time-helpers'
+import type { MatchRecord } from '@/api'
+import { heroesForHeader } from '@/match-helpers'
+import { matchTime } from '@/match-time-helpers'
 
 // Per-column sort for the `data`-density match table. Data density is a
 // flat spreadsheet: the active column header sorts the WHOLE table (no

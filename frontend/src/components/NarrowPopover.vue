@@ -9,11 +9,11 @@
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
-import { useModalFocusTrap } from '../composables/useModalFocusTrap'
-import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
-import NarrowPresets from './NarrowPresets.vue'
-import type { MatchRecord } from '../api'
-import FilterCombobox from './FilterCombobox.vue'
+import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
+import type { useMatchesNarrow } from '@/composables/useMatchesNarrow'
+import NarrowPresets from '@/components/NarrowPresets.vue'
+import type { MatchRecord } from '@/api'
+import FilterCombobox from '@/components/FilterCombobox.vue'
 
 type MatchesNarrowApi = ReturnType<typeof useMatchesNarrow>
 

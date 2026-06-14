@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { useFeatureToggle, type FeatureToggleApi } from './useFeatureToggle'
+import { useFeatureToggle, type FeatureToggleApi } from '@/composables/useFeatureToggle'
 
 function makeApi(overrides: Partial<FeatureToggleApi> = {}): FeatureToggleApi {
   return {

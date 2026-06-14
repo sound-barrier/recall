@@ -10,7 +10,7 @@
 //   - match-stats-helpers.ts   — W/L/D tally + modeOf + numeric formats
 //   - match-group-helpers.ts   — Month → Week → Day grouping
 
-import type { MatchRecord, HeroPlay, ScreenshotType } from './api'
+import type { MatchRecord, HeroPlay, ScreenshotType } from '@/api'
 
 export interface ScreenshotSlot {
   key: ScreenshotType

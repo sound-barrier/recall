@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import WidgetConfigPopover from './WidgetConfigPopover.vue'
-import { makeSchema, EMPTY_SCHEMA } from '../dashboard/widget-config-schema'
-import type { WidgetDef } from '../dashboard/widgets'
+import WidgetConfigPopover from '@/components/WidgetConfigPopover.vue'
+import { makeSchema, EMPTY_SCHEMA } from '@/dashboard/widget-config-schema'
+import type { WidgetDef } from '@/dashboard/widgets'
 import { defineComponent, h } from 'vue'
 
 // In-memory localStorage shim — the popover writes to localStorage

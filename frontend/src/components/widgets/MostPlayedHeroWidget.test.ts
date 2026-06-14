@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import MostPlayedHeroWidget from './MostPlayedHeroWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import MostPlayedHeroWidget from '@/components/widgets/MostPlayedHeroWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 const hero = (key: string, share: number, winrate: number, timeLabel = '5h0min', totalMinutes = 300) => ({
   key, share, winrate, timeLabel, totalMinutes,

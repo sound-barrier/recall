@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { computed, ref } from 'vue'
-import type { MatchRecord } from '../api'
-import { useMatchesNarrow, createMatchesNarrowState } from './useMatchesNarrow'
+import type { MatchRecord } from '@/api'
+import { useMatchesNarrow, createMatchesNarrowState } from '@/composables/useMatchesNarrow'
 
 function rec(opts: {
   key?: string

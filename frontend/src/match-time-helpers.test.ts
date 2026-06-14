@@ -7,7 +7,7 @@ import {
   formatParsedAt,
   formatMinutesAsClock,
   formatPlayMinutes,
-} from './match-time-helpers'
+} from '@/match-time-helpers'
 
 // ─── matchTime ───────────────────────────────────────────────────────
 

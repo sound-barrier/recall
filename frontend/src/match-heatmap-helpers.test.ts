@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { winrateVolumeFill } from './match-heatmap-helpers'
+import { winrateVolumeFill } from '@/match-heatmap-helpers'
 
 describe('winrateVolumeFill', () => {
   it('returns the empty tone for a zero-volume cell', () => {

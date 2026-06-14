@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import type { MatchRecord, TesseractStatus, UpdateInfo } from '../api'
+import type { MatchRecord, TesseractStatus, UpdateInfo } from '@/api'
 
 // ─── SFC test setup ──────────────────────────────────────────────────
 //
@@ -73,7 +73,7 @@ function mockApi(overrides: MountOverrides = {}) {
   eventHandlers = new Map()
 
   const records = overrides.records ?? []
-  vi.doMock('../api', () => ({
+  vi.doMock('@/api', () => ({
     GetVersion:          vi.fn(async () => 'dev'),
     GetStartupError:     vi.fn(async () => overrides.startupError ?? ''),
     CheckForUpdate:      vi.fn(async () => defaultUpdate(overrides.update)),
@@ -149,7 +149,7 @@ export function fireEvent(name: string, data: unknown = undefined): boolean {
 }
 
 // mountApp installs the API mock, dynamically imports App.vue (so the
-// mock is in place before App's static `import './api'` resolves), and
+// mock is in place before App's static `import '@/api'` resolves), and
 // runs `flushPromises` to let the onMounted load() / Promise.all settle
 // before tests assert on the rendered DOM.
 export async function mountApp(overrides: MountOverrides = {}) {
@@ -199,12 +199,12 @@ export async function mountApp(overrides: MountOverrides = {}) {
   // the test triggers a view render. Pre-warming does not undo the
   // production split — that's verified by App.lazy-views.test.ts.
   await Promise.all([
-    import('../components/IngestView.vue'),
-    import('../components/MatchesView.vue'),
-    import('../components/SettingsView.vue'),
-    import('../components/UnknownMapsView.vue'),
+    import('@/components/IngestView.vue'),
+    import('@/components/MatchesView.vue'),
+    import('@/components/SettingsView.vue'),
+    import('@/components/UnknownMapsView.vue'),
   ])
-  const App = (await import('../App.vue')).default
+  const App = (await import('@/App.vue')).default
   const wrapper = mount(App, { attachTo: document.body })
   // First flush: App.vue's onMounted load() chain
   // (CheckForUpdate, GetVersion, GetMatchResults). Second: the async

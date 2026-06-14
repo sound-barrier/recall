@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import QuickplayVsCompetitiveWidget from './QuickplayVsCompetitiveWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import QuickplayVsCompetitiveWidget from '@/components/widgets/QuickplayVsCompetitiveWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 const entry = (key: string, total: number, share: number, winrate = 50) => ({ key, total, share, winrate })
 

@@ -3,7 +3,7 @@ import {
   usePersistedRef,
   parseJsonRecord,
   serializeJsonRecord,
-} from './usePersistedRef'
+} from '@/composables/usePersistedRef'
 
 // Display config for the Geography (Map × Role) band's gear. Lets the
 // user narrow what the band RENDERS — which role rows, which game-mode

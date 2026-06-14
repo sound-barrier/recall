@@ -3,7 +3,7 @@ import {
   usePersistedRef,
   parseJsonRecord,
   serializeJsonRecord,
-} from './usePersistedRef'
+} from '@/composables/usePersistedRef'
 
 // Full-width "sections" that render below the dossier widget grid in
 // the Matches view (Campaign Log, Geography). Unlike dossier widgets,

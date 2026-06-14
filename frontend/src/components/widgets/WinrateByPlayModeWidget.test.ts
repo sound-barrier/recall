@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import WinrateByPlayModeWidget from './WinrateByPlayModeWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import WinrateByPlayModeWidget from '@/components/widgets/WinrateByPlayModeWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 const entry = (key: string, total: number, winrate: number, share = 0) => ({ key, total, share, winrate })
 

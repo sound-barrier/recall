@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { MatchRecord } from '../api'
-import type { SortOrder } from '../composables/useMatchesGroup'
-import { useVirtualWindow } from '../composables/useVirtualWindow'
-import { useTableSort, type TableSortCol } from '../composables/useTableSort'
-import type { SearchClause } from '../search-query'
-import MatchTableRow from './MatchTableRow.vue'
+import type { MatchRecord } from '@/api'
+import type { SortOrder } from '@/composables/useMatchesGroup'
+import { useVirtualWindow } from '@/composables/useVirtualWindow'
+import { useTableSort, type TableSortCol } from '@/composables/useTableSort'
+import type { SearchClause } from '@/search-query'
+import MatchTableRow from '@/components/MatchTableRow.vue'
 
 // Data-density view of the matches list: a real <table> with sortable
 // column headers over the whole narrowed set (no D/W/M/Y grouping), the

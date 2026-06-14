@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, nextTick } from 'vue'
-import { useModalFocusTrap } from './useModalFocusTrap'
+import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
 
 function buildModalDOM() {
   while (document.body.firstChild) document.body.removeChild(document.body.firstChild)

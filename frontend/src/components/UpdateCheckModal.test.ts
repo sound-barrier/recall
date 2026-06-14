@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import UpdateCheckModal from './UpdateCheckModal.vue'
-import * as api from '../api'
-import type { UpdateInfo } from '../api'
+import UpdateCheckModal from '@/components/UpdateCheckModal.vue'
+import * as api from '@/api'
+import type { UpdateInfo } from '@/api'
 
 // Default fixture: a recall.app binary update is available AND the
 // main game-data channel has a new commit with three changes (2 new

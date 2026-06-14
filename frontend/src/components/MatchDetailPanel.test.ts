@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import MatchDetailPanel from './MatchDetailPanel.vue'
-import type { MatchRecord } from '../api'
+import MatchDetailPanel from '@/components/MatchDetailPanel.vue'
+import type { MatchRecord } from '@/api'
 
 // Unit tests for MatchDetailPanel's rendered body — the same surfaces
 // that used to live inline inside MatchCard (annotation journal,

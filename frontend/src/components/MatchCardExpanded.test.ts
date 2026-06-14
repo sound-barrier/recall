@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import MatchCardExpanded from './MatchCardExpanded.vue'
-import type { MatchRecord } from '../api'
+import MatchCardExpanded from '@/components/MatchCardExpanded.vue'
+import type { MatchRecord } from '@/api'
 
 // MatchCardExpanded owns annotation draft state, the leaver-chooser
 // chips, heroes-played collapse, and the sources block. These tests

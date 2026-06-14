@@ -6,7 +6,7 @@ import {
   useMatchAnchor,
   _resetMatchAnchorForTest,
   ANCHOR_STORAGE_KEY,
-} from './useMatchAnchor'
+} from '@/composables/useMatchAnchor'
 
 let storage: Record<string, string> = {}
 function stubLocalStorage() {

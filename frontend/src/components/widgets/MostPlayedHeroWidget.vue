@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useDossier } from '../../composables/useDossier'
-import { useWidgetConfig } from '../../composables/useWidgetConfig'
-import { mostPlayedHeroSchema, type MostPlayedHeroConfig } from '../../dashboard/widgets'
+import { useDossier } from '@/composables/useDossier'
+import { useWidgetConfig } from '@/composables/useWidgetConfig'
+import { mostPlayedHeroSchema, type MostPlayedHeroConfig } from '@/dashboard/widgets'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<MostPlayedHeroConfig>('most-played-hero', mostPlayedHeroSchema)

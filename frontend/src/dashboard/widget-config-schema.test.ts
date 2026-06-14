@@ -3,7 +3,7 @@ import {
   EMPTY_SCHEMA,
   makeSchema,
   type WidgetConfigField,
-} from './widget-config-schema'
+} from '@/dashboard/widget-config-schema'
 
 describe('EMPTY_SCHEMA', () => {
   it('has no fields', () => {

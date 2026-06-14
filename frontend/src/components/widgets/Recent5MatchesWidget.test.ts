@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import Recent5MatchesWidget from './Recent5MatchesWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import Recent5MatchesWidget from '@/components/widgets/Recent5MatchesWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 describe('Recent5MatchesWidget', () => {
   it('renders the empty-state message when there are no results', () => {

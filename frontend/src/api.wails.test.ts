@@ -34,7 +34,7 @@ describe('SetMatchAnnotation (Wails mode)', () => {
   it('calls the bridge with exactly one AnnotationInput arg (not matchKey + input)', async () => {
     const setSpy = vi.fn(async () => undefined)
     installBridge(setSpy)
-    const { SetMatchAnnotation } = await import('./api')
+    const { SetMatchAnnotation } = await import('@/api')
     await SetMatchAnnotation('match-2026-05-10T22-21-11', {
       leaver: 'team', note: 'ally rage-quit', replay_code: '7H1K9P', members: ['Apollo#1'],
     })
@@ -58,7 +58,7 @@ describe('SetMatchAnnotation (Wails mode)', () => {
   it('defaults missing input fields to empty so Go sees a complete struct', async () => {
     const setSpy = vi.fn(async () => undefined)
     installBridge(setSpy)
-    const { SetMatchAnnotation } = await import('./api')
+    const { SetMatchAnnotation } = await import('@/api')
     await SetMatchAnnotation('match:x', { note: 'just a note' })
     expect(setSpy.mock.lastCall).toEqual([{
       MatchKey: 'match:x', Leaver: '', Note: 'just a note', ReplayCode: '', Members: [], Tags: [],

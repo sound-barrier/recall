@@ -1,24 +1,24 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
 
-import type { MatchRecord } from '../api'
-import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
-import type { NarrowMode } from '../composables/useNarrowMode'
-import { useDashboardLayout } from '../composables/useDashboardLayout'
-import { useDragReorder } from '../composables/useDragReorder'
-import { widgetById, type WidgetDef } from '../dashboard/widgets'
-import MatchesDossier from './MatchesDossier.vue'
-import DashboardWidget from './DashboardWidget.vue'
-import DossierManageMenu from './DossierManageMenu.vue'
-import DashboardUndoToast from './DashboardUndoToast.vue'
-import WidgetConfigPopover from './WidgetConfigPopover.vue'
+import type { MatchRecord } from '@/api'
+import type { useMatchesNarrow } from '@/composables/useMatchesNarrow'
+import type { NarrowMode } from '@/composables/useNarrowMode'
+import { useDashboardLayout } from '@/composables/useDashboardLayout'
+import { useDragReorder } from '@/composables/useDragReorder'
+import { widgetById, type WidgetDef } from '@/dashboard/widgets'
+import MatchesDossier from '@/components/MatchesDossier.vue'
+import DashboardWidget from '@/components/DashboardWidget.vue'
+import DossierManageMenu from '@/components/DossierManageMenu.vue'
+import DashboardUndoToast from '@/components/DashboardUndoToast.vue'
+import WidgetConfigPopover from '@/components/WidgetConfigPopover.vue'
 // NarrowPopover is the heavyweight authoring surface (search + combobox
 // + range pickers + active-clause range). Lazy-load it so the dossier
 // head's chunk doesn't carry its ~14K of JS / ~12K of CSS; the popover
 // only mounts (v-if inside the child) when the user clicks "Filter
 // matches". MatchesView lazy-loads its own rail-mode instance the same
 // way. Regression covered by MatchesDossierHead.lazy-views.test.ts.
-const NarrowPopover = defineAsyncComponent(() => import('./NarrowPopover.vue'))
+const NarrowPopover = defineAsyncComponent(() => import('@/components/NarrowPopover.vue'))
 
 // The dossier "head" chrome: the set summary (MatchesDossier), the
 // customizable widget grid (drag-reorder + live-reflow preview + undo +

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { ref, nextTick } from 'vue'
-import type { MatchRecord } from '../api'
-import { useSelectedMatch } from './useSelectedMatch'
+import type { MatchRecord } from '@/api'
+import { useSelectedMatch } from '@/composables/useSelectedMatch'
 
 function rec(k: string): MatchRecord {
   return {

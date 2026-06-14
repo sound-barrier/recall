@@ -1,5 +1,5 @@
 import { onMounted, ref, type Ref } from 'vue'
-import { GetScreenshotsFolderCandidateStats, type NamedCandidateStats } from '../api'
+import { GetScreenshotsFolderCandidateStats, type NamedCandidateStats } from '@/api'
 
 // useScreenshotFolderStats fetches the per-source diagnostic blobs
 // for the picker grid AFTER the cards mount. The dir walk can take a

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import HighlightedText from './HighlightedText.vue'
+import HighlightedText from '@/components/HighlightedText.vue'
 
 describe('HighlightedText', () => {
   it('wraps a case-insensitive hit in <mark class="search-hl">, preserving the original case', () => {

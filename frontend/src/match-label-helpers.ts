@@ -4,7 +4,7 @@
 // reads (Law of Demeter) so callers — and tests — can pass terse
 // fixtures.
 
-import type { MatchRecord } from './api'
+import type { MatchRecord } from '@/api'
 
 // Leaf-row chip label for the play-mode pivot. Prefers the user
 // override (`record.play_mode` — set via the right-panel chooser)

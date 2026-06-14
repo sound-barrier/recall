@@ -1,6 +1,6 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
 
-import { parseSearchQuery, type SearchClause } from '../search-query'
+import { parseSearchQuery, type SearchClause } from '@/search-query'
 
 // Tiny wrapper around `parseSearchQuery` that turns a reactive search-
 // text source into a reactive parsed-clauses computed. Extracted from

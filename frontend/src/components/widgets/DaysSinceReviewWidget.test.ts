@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import DaysSinceReviewWidget from './DaysSinceReviewWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import DaysSinceReviewWidget from '@/components/widgets/DaysSinceReviewWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 describe('DaysSinceReviewWidget', () => {
   it('renders em-dash when no review has happened', () => {

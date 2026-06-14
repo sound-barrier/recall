@@ -1,6 +1,6 @@
 import { ref, computed, toValue, type MaybeRefOrGetter } from 'vue'
-import type { GroupBy, SortOrder } from './useMatchesGroup'
-import type { Density } from './useDensity'
+import type { GroupBy, SortOrder } from '@/composables/useMatchesGroup'
+import type { Density } from '@/composables/useDensity'
 
 // The Matches list's combined Sort + Group control: the persisted sort
 // order + grouping, the trigger-anchored popover open/close, and the

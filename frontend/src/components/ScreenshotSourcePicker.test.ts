@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import type { NamedCandidate } from '../api'
-import ScreenshotSourcePicker from './ScreenshotSourcePicker.vue'
+import type { NamedCandidate } from '@/api'
+import ScreenshotSourcePicker from '@/components/ScreenshotSourcePicker.vue'
 
 function mk(over: Partial<NamedCandidate>): NamedCandidate {
   return {

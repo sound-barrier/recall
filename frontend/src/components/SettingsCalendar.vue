@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { WeekStart } from '../match-time-helpers'
-import { WEEKDAYS_FULL } from '../match-time-helpers'
+import type { WeekStart } from '@/match-time-helpers'
+import { WEEKDAYS_FULL } from '@/match-time-helpers'
 
 // Calendar panel of the Settings view — the first-day-of-week
 // preference that anchors the "Week of …" headers on the Matches

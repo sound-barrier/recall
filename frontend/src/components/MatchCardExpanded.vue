@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from '../api'
-import { isHeroUnknown, isMapUnknown } from '../match-helpers'
-import { formatParsedAt, fmtTime } from '../match-time-helpers'
-import { type SearchClause } from '../search-query'
-import MatchCardDanger from './MatchCardDanger.vue'
-import MatchHeroesPlayed from './MatchHeroesPlayed.vue'
-import MatchJournal from './MatchJournal.vue'
-import MatchLeaverChooser from './MatchLeaverChooser.vue'
-import MatchSources from './MatchSources.vue'
-import MatchRankBlock from './MatchRankBlock.vue'
-import MatchStatusChoosers from './MatchStatusChoosers.vue'
+import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from '@/api'
+import { isHeroUnknown, isMapUnknown } from '@/match-helpers'
+import { formatParsedAt, fmtTime } from '@/match-time-helpers'
+import { type SearchClause } from '@/search-query'
+import MatchCardDanger from '@/components/MatchCardDanger.vue'
+import MatchHeroesPlayed from '@/components/MatchHeroesPlayed.vue'
+import MatchJournal from '@/components/MatchJournal.vue'
+import MatchLeaverChooser from '@/components/MatchLeaverChooser.vue'
+import MatchSources from '@/components/MatchSources.vue'
+import MatchRankBlock from '@/components/MatchRankBlock.vue'
+import MatchStatusChoosers from '@/components/MatchStatusChoosers.vue'
 
 // Expanded match-card body: leaver chooser → free-text annotation
 // (Note / Replay / Group members) → stats grid → rank block →

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import WithWhomWidget from './WithWhomWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import WithWhomWidget from '@/components/widgets/WithWhomWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 const entry = (key: string, total: number, winrate: number, share = 50) => ({ key, total, winrate, share })
 

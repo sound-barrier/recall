@@ -8,7 +8,7 @@
 // Vite chunk instead of the dossier head's initial parse cost.
 //
 // A naïve refactor that flips this back to a static
-// `import NarrowPopover from './NarrowPopover.vue'` would silently undo
+// `import NarrowPopover from '@/components/NarrowPopover.vue'` would silently undo
 // the split. This guards the import shape via text inspection (same
 // pattern as MatchesView.lazy-views.test.ts).
 
@@ -20,7 +20,7 @@ describe('MatchesDossierHead.vue lazy-loaded children', () => {
   const source = readFileSync(resolve(__dirname, 'MatchesDossierHead.vue'), 'utf-8')
 
   const lazyChildren: Array<{ name: string; path: string }> = [
-    { name: 'NarrowPopover', path: './NarrowPopover.vue' },
+    { name: 'NarrowPopover', path: '@/components/NarrowPopover.vue' },
   ]
 
   for (const { name, path } of lazyChildren) {

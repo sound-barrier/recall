@@ -1,4 +1,4 @@
-import { usePersistedRef } from './usePersistedRef'
+import { usePersistedRef } from '@/composables/usePersistedRef'
 
 // Persisted preference for the matches-list row density. `comfortable`
 // is the historical render — 0.55rem padding, 36 px result strip,

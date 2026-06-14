@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import WldSinceReviewWidget from './WldSinceReviewWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import WldSinceReviewWidget from '@/components/widgets/WldSinceReviewWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 describe('WldSinceReviewWidget', () => {
   it('renders em-dash when no review anchor exists', () => {

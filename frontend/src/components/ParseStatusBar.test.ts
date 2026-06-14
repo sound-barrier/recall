@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import ParseStatusBar from './ParseStatusBar.vue'
-import type { ParseProgressEvent } from './ParseProgressPanel.vue'
+import ParseStatusBar from '@/components/ParseStatusBar.vue'
+import type { ParseProgressEvent } from '@/components/ParseProgressPanel.vue'
 
 // ParseStatusBar is the persistent footer that shows "ingesting N of M"
 // across every tab. These tests cover the contract — render shape,

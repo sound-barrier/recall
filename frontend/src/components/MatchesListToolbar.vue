@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Density } from '../composables/useDensity'
+import type { Density } from '@/composables/useDensity'
 
 // The Matches members-section header toolbar: the "N matches" title, the
 // Sort+Group trigger, the row-density segmented control, and the

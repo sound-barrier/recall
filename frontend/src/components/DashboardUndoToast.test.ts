@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
-import DashboardUndoToast from './DashboardUndoToast.vue'
+import DashboardUndoToast from '@/components/DashboardUndoToast.vue'
 
 function trashed(opts: Partial<{ id: string; eyebrow: string; row: number; idx: number; token: number }> = {}) {
   return {

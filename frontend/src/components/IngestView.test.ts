@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import IngestView from './IngestView.vue'
+import IngestView from '@/components/IngestView.vue'
 
 // Default props: a fresh install with Tesseract detected and a
 // configured screenshots folder. Tests override only the fields

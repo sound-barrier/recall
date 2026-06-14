@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 
-import type { MatchRecord, UpdateInfo } from '../api'
-import { detectScreenshotSlots, screenshotURL } from '../match-helpers'
-import { useContextualCallout } from '../composables/useContextualCallout'
-import { useHoverThumbnail } from '../composables/useHoverThumbnail'
-import ContextualCallout from './ContextualCallout.vue'
-import { formatParsedAt } from '../match-time-helpers'
-import { filenameFromMatchKey } from '../match-key'
-import type { CardStateApi } from '../types/cardState'
+import type { MatchRecord, UpdateInfo } from '@/api'
+import { detectScreenshotSlots, screenshotURL } from '@/match-helpers'
+import { useContextualCallout } from '@/composables/useContextualCallout'
+import { useHoverThumbnail } from '@/composables/useHoverThumbnail'
+import ContextualCallout from '@/components/ContextualCallout.vue'
+import { formatParsedAt } from '@/match-time-helpers'
+import { filenameFromMatchKey } from '@/match-key'
+import type { CardStateApi } from '@/types/cardState'
 
 // UnknownMapsView is the triage tab for records the user needs to
 // take action on:

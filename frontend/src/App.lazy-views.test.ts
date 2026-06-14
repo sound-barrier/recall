@@ -19,24 +19,24 @@ describe('App.vue lazy-loaded components', () => {
   const source = readFileSync(resolve(__dirname, 'App.vue'), 'utf-8')
 
   const views: Array<{ name: string; path: string }> = [
-    { name: 'IngestView',             path: './components/IngestView.vue' },
-    { name: 'MatchesView',            path: './components/MatchesView.vue' },
-    { name: 'SettingsView',           path: './components/SettingsView.vue' },
-    { name: 'UnknownMapsView',        path: './components/UnknownMapsView.vue' },
-    { name: 'MatchDetailPanel',       path: './components/MatchDetailPanel.vue' },
-    { name: 'MatchScreenshotLightbox', path: './components/MatchScreenshotLightbox.vue' },
-    { name: 'KeyboardShortcutsModal', path: './components/KeyboardShortcutsModal.vue' },
+    { name: 'IngestView',             path: '@/components/IngestView.vue' },
+    { name: 'MatchesView',            path: '@/components/MatchesView.vue' },
+    { name: 'SettingsView',           path: '@/components/SettingsView.vue' },
+    { name: 'UnknownMapsView',        path: '@/components/UnknownMapsView.vue' },
+    { name: 'MatchDetailPanel',       path: '@/components/MatchDetailPanel.vue' },
+    { name: 'MatchScreenshotLightbox', path: '@/components/MatchScreenshotLightbox.vue' },
+    { name: 'KeyboardShortcutsModal', path: '@/components/KeyboardShortcutsModal.vue' },
     // First-run modal — only renders on a fresh install, so the cost
     // of its bytes should only be paid by users who actually see it.
-    { name: 'FirstRunProfileModal',   path: './components/FirstRunProfileModal.vue' },
+    { name: 'FirstRunProfileModal',   path: '@/components/FirstRunProfileModal.vue' },
     // Export bundle modal — only renders when the user clicks
     // "Export bundle…" on the Matches bulk-action bar.
-    { name: 'ExportBundleModal',      path: './components/ExportBundleModal.vue' },
+    { name: 'ExportBundleModal',      path: '@/components/ExportBundleModal.vue' },
     // Anchor confirmation toast — small, but lazy so the bytes only
     // hit users who actually stamp an anchor.
-    { name: 'MatchAnchorToast',       path: './components/MatchAnchorToast.vue' },
+    { name: 'MatchAnchorToast',       path: '@/components/MatchAnchorToast.vue' },
     // Update-check modal — only mounted when the user runs a check.
-    { name: 'UpdateCheckModal',       path: './components/UpdateCheckModal.vue' },
+    { name: 'UpdateCheckModal',       path: '@/components/UpdateCheckModal.vue' },
   ]
 
   for (const { name, path } of views) {

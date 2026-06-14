@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import type { MatchRecord } from '../api'
-import { useSectionLayout } from '../composables/useSectionLayout'
-import DossierSection from './DossierSection.vue'
-import MatchTimelineHeader from './MatchTimelineHeader.vue'
-import MatchMapRoleBand from './MatchMapRoleBand.vue'
-import MatchHeroModeBand from './MatchHeroModeBand.vue'
+import type { MatchRecord } from '@/api'
+import { useSectionLayout } from '@/composables/useSectionLayout'
+import DossierSection from '@/components/DossierSection.vue'
+import MatchTimelineHeader from '@/components/MatchTimelineHeader.vue'
+import MatchMapRoleBand from '@/components/MatchMapRoleBand.vue'
+import MatchHeroModeBand from '@/components/MatchHeroModeBand.vue'
 
 // Full-width sections below the dossier grid (Campaign Log, Geography).
 // Order + visibility come from useSectionLayout (a module singleton, so

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useProfileSwitcher } from '../composables/useProfileSwitcher'
+import { useProfileSwitcher } from '@/composables/useProfileSwitcher'
 
 // Masthead chip + dropdown for the multi-profile feature. Behaviour (the
 // profile list + open/create/rename state + switch/create/rename actions)

@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
-import { mountWidget } from '../test-utils/mountWidget'
-import type { MapRoleCell } from '../composables/useMatchesDossier'
+import { mountWidget } from '@/test-utils/mountWidget'
+import type { MapRoleCell } from '@/composables/useMatchesDossier'
 
 // Stub the reference-data singleton so the column roster is
 // deterministic (no fetch, no cross-test singleton state). Three maps
 // across two game-mode groups: Ilios (control), Dorado + Rialto (escort).
-vi.mock('../composables/useOWData', async () => {
+vi.mock('@/composables/useOWData', async () => {
   const { computed } = await import('vue')
   const idx = new Map<string, { display: string; gameMode: string }>([
     ['ilios', { display: 'Ilios', gameMode: 'control' }],
@@ -26,7 +26,7 @@ vi.mock('../composables/useOWData', async () => {
 })
 
 // Import AFTER the mock so the component picks up the stub.
-const { default: MatchMapRoleBand } = await import('./MatchMapRoleBand.vue')
+const { default: MatchMapRoleBand } = await import('@/components/MatchMapRoleBand.vue')
 
 const CELLS: MapRoleCell[] = [
   // Rialto/support is the volume anchor (maxTotal = 12).

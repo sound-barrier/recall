@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { WidgetShape } from '../dashboard/widgets'
+import type { WidgetShape } from '@/dashboard/widgets'
 
 // Wrapper chrome for a customizable dashboard widget. The wrapper owns
 // the root element + the data-widget-id attribute so MatchesView's

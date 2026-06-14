@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
 
-import type { MatchRecord } from '../api'
-import { useMatchesGroup, type GroupBy, type GroupedSection, type SortOrder } from '../composables/useMatchesGroup'
-import { useMatchesWindow } from '../composables/useMatchesWindow'
-import { useVirtualWindow } from '../composables/useVirtualWindow'
-import type { Density } from '../composables/useDensity'
-import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
-import type { SearchClause } from '../search-query'
-import MatchLeafRow from './MatchLeafRow.vue'
-import MatchesTable from './MatchesTable.vue'
-import MatchesEmptySuggestions from './MatchesEmptySuggestions.vue'
+import type { MatchRecord } from '@/api'
+import { useMatchesGroup, type GroupBy, type GroupedSection, type SortOrder } from '@/composables/useMatchesGroup'
+import { useMatchesWindow } from '@/composables/useMatchesWindow'
+import { useVirtualWindow } from '@/composables/useVirtualWindow'
+import type { Density } from '@/composables/useDensity'
+import type { useMatchesNarrow } from '@/composables/useMatchesNarrow'
+import type { SearchClause } from '@/search-query'
+import MatchLeafRow from '@/components/MatchLeafRow.vue'
+import MatchesTable from '@/components/MatchesTable.vue'
+import MatchesEmptySuggestions from '@/components/MatchesEmptySuggestions.vue'
 
 type NarrowApi = ReturnType<typeof useMatchesNarrow>
 

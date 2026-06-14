@@ -1,6 +1,6 @@
 import { computed, type ComputedRef } from 'vue'
 
-import { usePersistedRef } from './usePersistedRef'
+import { usePersistedRef } from '@/composables/usePersistedRef'
 
 // "Since this match" anchor — the user marks a single match as a
 // reference point (post-review milestone, coaching checkpoint, new

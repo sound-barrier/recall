@@ -1,5 +1,5 @@
 import { ref, computed, watch, type MaybeRefOrGetter, toValue } from 'vue'
-import { ApplyGameDataUpdate, ApiError, type UpdateInfo, type DataUpdateResult } from '../api'
+import { ApplyGameDataUpdate, ApiError, type UpdateInfo, type DataUpdateResult } from '@/api'
 
 // The game-data half of the update-check modal: the from→to freshness
 // labels, the added/removed counts, the flat diff manifest, and the

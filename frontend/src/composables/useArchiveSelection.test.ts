@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { ref } from 'vue'
-import type { MatchRecord } from '../api'
+import type { MatchRecord } from '@/api'
 
-import { useArchiveSelection } from './useArchiveSelection'
+import { useArchiveSelection } from '@/composables/useArchiveSelection'
 
 function rec(matchKey: string, hidden = false): MatchRecord {
   return {

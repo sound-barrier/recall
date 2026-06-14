@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { ref } from 'vue'
-import type { MatchRecord } from '../api'
-import { useMatchesGroup, type GroupBy, type SortOrder } from './useMatchesGroup'
+import type { MatchRecord } from '@/api'
+import { useMatchesGroup, type GroupBy, type SortOrder } from '@/composables/useMatchesGroup'
 
 function rec(date: string, finishedAt: string, key: string): MatchRecord {
   return {

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { defineComponent, h, ref, type Ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
-import { useUpdateReminder, UPDATE_REMINDER_DISMISSED_KEY } from './useUpdateReminder'
-import type { UpdateInfo } from '../api'
+import { useUpdateReminder, UPDATE_REMINDER_DISMISSED_KEY } from '@/composables/useUpdateReminder'
+import type { UpdateInfo } from '@/api'
 
 const NOW = Date.UTC(2026, 5, 8) // 2026-06-08
 const DAYS = 24 * 60 * 60 * 1000

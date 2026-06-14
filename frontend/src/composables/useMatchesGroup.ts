@@ -1,5 +1,5 @@
 import { computed, type Ref } from 'vue'
-import type { MatchRecord } from '../api'
+import type { MatchRecord } from '@/api'
 
 // Sort + group-by state for the Matches workspace leaves list.
 // Extracted from MatchesView so the bucketing logic has its own

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { MatchRecord } from '../api'
-import { useOWData } from '../composables/useOWData'
+import type { MatchRecord } from '@/api'
+import { useOWData } from '@/composables/useOWData'
 import {
   formatHeroes,
   formatRoles,
@@ -10,15 +10,15 @@ import {
   formatFinishedAt,
   isHeroUnknown,
   isMapUnknown,
-} from '../match-helpers'
+} from '@/match-helpers'
 import {
   formatPlayModeLabel,
   formatQueueTypeLabel,
   formatUnknownHeroLabel,
   formatUnknownMapLabel,
-} from '../match-label-helpers'
-import { highlightTermsFor, type SearchClause } from '../search-query'
-import HighlightedText from './HighlightedText.vue'
+} from '@/match-label-helpers'
+import { highlightTermsFor, type SearchClause } from '@/search-query'
+import HighlightedText from '@/components/HighlightedText.vue'
 
 // One <tr> in the data-density match table. Carries the SAME props +
 // emits as MatchLeafRow so MatchesView wires every interaction (click →

@@ -1,5 +1,5 @@
 import { inject, provide, type InjectionKey } from 'vue'
-import type { useMatchesNarrow } from './useMatchesNarrow'
+import type { useMatchesNarrow } from '@/composables/useMatchesNarrow'
 
 // Provide/inject seam for the Matches-view narrow state. Mirrors
 // useDossier exactly so widgets that need to mutate the active

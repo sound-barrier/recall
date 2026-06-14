@@ -3,7 +3,7 @@
 // heavy SFC into happy-dom. The component composes these with
 // getBoundingClientRect() + window.innerWidth/Height.
 
-import type { CalloutPlacement } from '../composables/useOnboardingTour'
+import type { CalloutPlacement } from '@/composables/useOnboardingTour'
 
 export interface Rect {
   x: number

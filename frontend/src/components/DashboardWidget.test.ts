@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import DashboardWidget from './DashboardWidget.vue'
+import DashboardWidget from '@/components/DashboardWidget.vue'
 
 describe('DashboardWidget', () => {
   it('renders a <div class="kpi-tile"> for shape=kpi with data-widget-id', () => {

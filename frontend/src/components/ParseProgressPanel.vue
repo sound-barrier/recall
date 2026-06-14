@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { MatchRecord } from '../api'
+import type { MatchRecord } from '@/api'
 
 export interface ParseProgressEvent {
   done: number

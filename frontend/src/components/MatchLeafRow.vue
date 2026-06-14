@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { MatchRecord } from '../api'
-import { useOWData } from '../composables/useOWData'
+import type { MatchRecord } from '@/api'
+import { useOWData } from '@/composables/useOWData'
 import {
   formatHeroes,
   formatRoles,
@@ -9,15 +9,15 @@ import {
   formatFinishedAt,
   isHeroUnknown,
   isMapUnknown,
-} from '../match-helpers'
+} from '@/match-helpers'
 import {
   formatPlayModeLabel,
   formatQueueTypeLabel,
   formatUnknownHeroLabel,
   formatUnknownMapLabel,
-} from '../match-label-helpers'
-import { highlightTermsFor, type SearchClause } from '../search-query'
-import HighlightedText from './HighlightedText.vue'
+} from '@/match-label-helpers'
+import { highlightTermsFor, type SearchClause } from '@/search-query'
+import HighlightedText from '@/components/HighlightedText.vue'
 
 // One compact match row in the set's members list. Click opens the
 // detail panel; the row carries data-match-key / data-card-index /

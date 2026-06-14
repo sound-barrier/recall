@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import LongestWinStreakWidget from './LongestWinStreakWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import LongestWinStreakWidget from '@/components/widgets/LongestWinStreakWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 describe('LongestWinStreakWidget', () => {
   it('renders an em-dash when no win streak exists', () => {

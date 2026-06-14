@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { ref } from 'vue'
-import type { MatchRecord } from '../api'
-import type { WeekStart } from '../match-time-helpers'
+import type { MatchRecord } from '@/api'
+import type { WeekStart } from '@/match-time-helpers'
 import {
   useMatchesDossier,
   DEFAULT_BEST_WINRATE_HERO_MIN_MATCHES,
@@ -12,7 +12,7 @@ import {
   DEFAULT_TOP_HEROES_LIMIT,
   type LeaverHandling,
   type MapRoleCell,
-} from './useMatchesDossier'
+} from '@/composables/useMatchesDossier'
 
 // PR B refactored useMatchesDossier from precomputed-refs to a mix
 // of bedrock refs + parameterized query helpers. To keep the

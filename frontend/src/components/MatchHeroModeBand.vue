@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useDossier } from '../composables/useDossier'
-import { useNarrow } from '../composables/useNarrow'
-import { useOWData } from '../composables/useOWData'
-import { useWindowMonths } from '../composables/useWindowMonths'
-import { useDrillNav } from '../composables/useDrillNav'
-import { heatmapCellClass, heatmapCellOpacity } from '../match-heatmap-helpers'
-import HeroModeHeatmap from './HeroModeHeatmap.vue'
-import HeroModeMatches from './HeroModeMatches.vue'
-import { useWidgetConfig } from '../composables/useWidgetConfig'
-import { heroGameModeHeatmapSchema, type HeroGameModeHeatmapConfig } from '../dashboard/widgets'
-import WidgetConfigPopover from './WidgetConfigPopover.vue'
+import { useDossier } from '@/composables/useDossier'
+import { useNarrow } from '@/composables/useNarrow'
+import { useOWData } from '@/composables/useOWData'
+import { useWindowMonths } from '@/composables/useWindowMonths'
+import { useDrillNav } from '@/composables/useDrillNav'
+import { heatmapCellClass, heatmapCellOpacity } from '@/match-heatmap-helpers'
+import HeroModeHeatmap from '@/components/HeroModeHeatmap.vue'
+import HeroModeMatches from '@/components/HeroModeMatches.vue'
+import { useWidgetConfig } from '@/composables/useWidgetConfig'
+import { heroGameModeHeatmapSchema, type HeroGameModeHeatmapConfig } from '@/dashboard/widgets'
+import WidgetConfigPopover from '@/components/WidgetConfigPopover.vue'
 
 // HERO × GAME-MODE — a drill-down winrate explorer.
 //

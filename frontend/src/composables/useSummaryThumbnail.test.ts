@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { summaryThumbnailURL } from './useSummaryThumbnail'
+import { summaryThumbnailURL } from '@/composables/useSummaryThumbnail'
 
 describe('summaryThumbnailURL', () => {
   it('returns null when source_files is missing or empty', () => {

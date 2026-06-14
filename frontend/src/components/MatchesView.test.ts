@@ -2,22 +2,22 @@ import { describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
 
-import MatchesView from './MatchesView.vue'
-import { GetProfiles } from '../api'
-import type { MatchRecord } from '../api'
+import MatchesView from '@/components/MatchesView.vue'
+import { GetProfiles } from '@/api'
+import type { MatchRecord } from '@/api'
 
 // The move-to-profile picker fetches the profile list on mount (via
 // useMatchesMovePicker → GetProfiles). Mock just that one api call so the
 // picker tests can choose how many other profiles exist; everything else
 // stays the real module.
-vi.mock('../api', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../api')>()),
+vi.mock('@/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api')>()),
   GetProfiles: vi.fn(async () => ({ active: 'main', profiles: ['main'] })),
 }))
 import {
   createMatchesNarrowState,
   useMatchesNarrow,
-} from '../composables/useMatchesNarrow'
+} from '@/composables/useMatchesNarrow'
 
 // Unit tests for the contextual multi-select + Hidden drawer surfaces.
 // End-to-end transport chain is covered by

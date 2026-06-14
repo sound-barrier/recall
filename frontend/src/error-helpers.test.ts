@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { plainLanguageError } from './error-helpers'
+import { plainLanguageError } from '@/error-helpers'
 
 describe('plainLanguageError', () => {
   it('rewrites "permission denied" to a CTA', () => {

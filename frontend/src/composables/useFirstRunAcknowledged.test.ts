@@ -7,11 +7,11 @@ const KEY = 'recall.firstRunAccountNamed'
 // double lets each case control the response (and timing) without
 // touching the global `fetch` mock.
 const profilesMock = vi.hoisted(() => ({ fn: vi.fn() }))
-vi.mock('../api', () => ({
+vi.mock('@/api', () => ({
   GetProfiles: profilesMock.fn,
 }))
 
-import { useFirstRunAcknowledged } from './useFirstRunAcknowledged'
+import { useFirstRunAcknowledged } from '@/composables/useFirstRunAcknowledged'
 
 describe('useFirstRunAcknowledged', () => {
   let storage: Record<string, string>

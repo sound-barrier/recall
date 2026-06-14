@@ -8,7 +8,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi } from 'vitest'
 
-import IgnoredFilesPanel from './IgnoredFilesPanel.vue'
+import IgnoredFilesPanel from '@/components/IgnoredFilesPanel.vue'
 
 const SAMPLE = [
   { filename: 'a.png', ignored_at: '2026-06-04T15:00:00Z' },
