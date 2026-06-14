@@ -54,7 +54,7 @@ captures = more fields populated:
 | **SUMMARY** | Match overview, top heroes, performance summary | Map, playlist, game mode (control/push/escort/…), role, primary hero, victory/defeat, final score, date, finish time, game length, performance per-10-min averages |
 | **TEAMS screen** | Both teams' stats side by side | Eliminations / assists / deaths, damage, healing, mitigation |
 | **PERSONAL** | One hero's detailed stat grid (3×3) | Hero-specific stats (e.g. Juno's `pulsar_torpedoes_damage`, Mizuki's `binding_chain_accuracy`) |
-| **RANK** | Competitive ladder badge + per-hero SR | Current rank tier, per-hero SR, recent change |
+| **RANK** | Competitive ladder badge + per-hero SR | Rank tier + level, rank progress % (negative on a demotion screen), win/loss, match modifiers (expected / underdog / demotion protection / …), per-hero SR + change |
 
 If you swapped heroes mid-match, Overwatch shows a separate PERSONAL
 tab per hero — Recall captures each one and merges them into the
@@ -96,14 +96,20 @@ any image for the full-resolution source.
 <sub>Mizuki's PERSONAL tab from the same match — the player swapped from Juno (67% played) to Mizuki (33% played). Recall captures one PERSONAL per hero and merges them into the same match record.</sub>
 </td>
 </tr>
+<tr>
+<th align="left" colspan="2">RANK (competitive progress)</th>
+</tr>
+<tr>
+<td valign="top" width="50%">
+<a href="testdata/Overwatch%202%20Screenshot%202026.05.10%20-%2021.30.19.95.png"><img src="testdata/Overwatch%202%20Screenshot%202026.05.10%20-%2021.30.19.95.png" alt="RANK screen — Platinum 5 competitive victory" width="100%"></a>
+<sub>A win — Platinum 5, +21% rank progress, Lúcio SR 2697 (+45). Tier, level, progress %, modifiers (expected · victory), and per-hero SR all come from this screen.</sub>
+</td>
+<td valign="top" width="50%">
+<a href="testdata/Overwatch%202%20Screenshot%202026.06.12%20-%2020.16.45.68.png"><img src="testdata/Overwatch%202%20Screenshot%202026.06.12%20-%2020.16.45.68.png" alt="RANK screen — Gold 1 loss with demotion protection" width="100%"></a>
+<sub>A loss under <strong>demotion protection</strong> — Gold 1, -19% rank progress, Lúcio SR 2733. Recall reads the negative progress and the demotion shield so a rough run still parses correctly.</sub>
+</td>
+</tr>
 </table>
-
-> **RANK screen** — no example in the test corpus yet. The RANK tab
-> shows your current competitive rank tier + per-hero SR + the recent
-> change; Recall parses it the same way as the others when it's
-> present. Capture one and drop it into `testdata/` with a sidecar
-> golden — see [testdata/README.md](https://github.com/sound-barrier/recall/blob/main/testdata/README.md)
-> for the curate-and-commit flow.
 
 ## Expected workflow
 

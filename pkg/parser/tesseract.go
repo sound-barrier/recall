@@ -57,6 +57,15 @@ func ocrInverted(img image.Image, rect image.Rectangle, workDir, name, psm, whit
 	return runTesseractFunc(pre, workDir, name, psm, whitelist)
 }
 
+// ocrRaw is ocrInverted's non-inverted sibling for colored / mid-tone text that
+// inversion flattens. `scale` is the upscale factor — thin glyphs like the rank
+// "-19%" want 6x where the default inverted pass uses 3x.
+func ocrRaw(img image.Image, rect image.Rectangle, workDir, name string, scale int, psm, whitelist string) (string, error) {
+	sub := crop(img, rect)
+	pre := preprocessRaw(sub, scale)
+	return runTesseractFunc(pre, workDir, name, psm, whitelist)
+}
+
 func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string, error) {
 	inPath := filepath.Join(workDir, name+".png")
 	// #nosec G304,G703 -- workDir is always os.MkdirTemp output or
