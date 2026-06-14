@@ -1,4 +1,4 @@
-package cmd
+package cmd_test
 
 import (
 	"net/http"
@@ -8,6 +8,7 @@ import (
 	"testing/fstest"
 
 	"recall/pkg/app"
+	"recall/pkg/cmd"
 	"recall/pkg/db/dbtest"
 )
 
@@ -19,7 +20,7 @@ func hardenedMux(t *testing.T) http.Handler {
 	t.Helper()
 	a := app.NewWithStore(dbtest.New())
 	a.SSEHub = app.NewSSEHub()
-	return withRequestID(withSecurityHardening(NewMux(a, fstest.MapFS{})))
+	return cmd.WithRequestID(cmd.WithSecurityHardening(cmd.NewMux(a, fstest.MapFS{})))
 }
 
 func TestHardening_SetsNosniffHeaderOnEveryResponse(t *testing.T) {
@@ -41,7 +42,7 @@ func TestHardening_OversizeBodyRejected(t *testing.T) {
 	// pad match_keys with one enormous string so the payload is a
 	// single complete JSON value that sails past the cap. Without the
 	// MaxBytesReader the decoder would buffer the whole thing.
-	huge := strings.Repeat("a", int(defaultMaxBodyBytes)+1<<20) // ~9 MiB
+	huge := strings.Repeat("a", int(cmd.DefaultMaxBodyBytes)+1<<20) // ~9 MiB
 	body := `{"match_keys":["` + huge + `"],"queue_type":"role"}`
 
 	rec := httptest.NewRecorder()
@@ -76,11 +77,11 @@ func TestHardening_NormalBodyPassesThrough(t *testing.T) {
 }
 
 func TestMaxBodyForPath(t *testing.T) {
-	if got := maxBodyForPath("/api/v1/imports"); got != importMaxBodyBytes {
-		t.Errorf("imports cap = %d, want %d", got, importMaxBodyBytes)
+	if got := cmd.MaxBodyForPath("/api/v1/imports"); got != cmd.ImportMaxBodyBytes {
+		t.Errorf("imports cap = %d, want %d", got, cmd.ImportMaxBodyBytes)
 	}
-	if got := maxBodyForPath("/api/v1/matches/queue-type"); got != defaultMaxBodyBytes {
-		t.Errorf("default cap = %d, want %d", got, defaultMaxBodyBytes)
+	if got := cmd.MaxBodyForPath("/api/v1/matches/queue-type"); got != cmd.DefaultMaxBodyBytes {
+		t.Errorf("default cap = %d, want %d", got, cmd.DefaultMaxBodyBytes)
 	}
 }
 
@@ -99,8 +100,8 @@ func TestIsLoopbackBind(t *testing.T) {
 		{"garbage", false},           // unparseable → exposed
 	}
 	for _, c := range cases {
-		if got := isLoopbackBind(c.addr); got != c.want {
-			t.Errorf("isLoopbackBind(%q) = %v, want %v", c.addr, got, c.want)
+		if got := cmd.IsLoopbackBind(c.addr); got != c.want {
+			t.Errorf("cmd.IsLoopbackBind(%q) = %v, want %v", c.addr, got, c.want)
 		}
 	}
 }
@@ -108,14 +109,14 @@ func TestIsLoopbackBind(t *testing.T) {
 func TestPprofEnabled(t *testing.T) {
 	for _, off := range []string{"", "0", "false"} {
 		t.Setenv("RECALL_PPROF", off)
-		if pprofEnabled() {
-			t.Errorf("pprofEnabled() should be false for %q", off)
+		if cmd.PprofEnabled() {
+			t.Errorf("cmd.PprofEnabled() should be false for %q", off)
 		}
 	}
 	for _, on := range []string{"1", "true", "yes"} {
 		t.Setenv("RECALL_PPROF", on)
-		if !pprofEnabled() {
-			t.Errorf("pprofEnabled() should be true for %q", on)
+		if !cmd.PprofEnabled() {
+			t.Errorf("cmd.PprofEnabled() should be true for %q", on)
 		}
 	}
 }

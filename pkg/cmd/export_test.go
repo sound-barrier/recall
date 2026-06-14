@@ -11,3 +11,16 @@ var (
 	ParseMatchesPagination       = parseMatchesPagination
 	ApplyMatchesPagination       = applyMatchesPagination
 )
+
+// Middleware + hardening internals. The request-id / security-hardening
+// middleware wrap a caller-supplied handler (NewMux can't inject one), and the
+// body-cap / loopback / pprof predicates are pure helpers with no public seam.
+var (
+	WithRequestID         = withRequestID
+	WithSecurityHardening = withSecurityHardening
+	MaxBodyForPath        = maxBodyForPath
+	IsLoopbackBind        = isLoopbackBind
+	PprofEnabled          = pprofEnabled
+	DefaultMaxBodyBytes   = defaultMaxBodyBytes
+	ImportMaxBodyBytes    = importMaxBodyBytes
+)

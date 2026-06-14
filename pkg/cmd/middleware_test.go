@@ -1,6 +1,6 @@
 //go:build !serveronly
 
-package cmd
+package cmd_test
 
 import (
 	"io"
@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"recall/pkg/cmd"
 )
 
 // screenshotsMiddleware is the only Wails-specific runtime shim that
@@ -28,7 +30,7 @@ func TestScreenshotsMiddleware_ShortCircuitsToHandler(t *testing.T) {
 		_, _ = io.WriteString(w, "<!doctype html>")
 	})
 
-	mw := screenshotsMiddleware(screenshots)
+	mw := cmd.ScreenshotsMiddleware(screenshots)
 	handler := mw(next)
 
 	req := httptest.NewRequest(http.MethodGet, "/_screenshot/match_2026-05-10T22-21-11.png", nil)
@@ -51,7 +53,7 @@ func TestScreenshotsMiddleware_PassesThroughOtherPaths(t *testing.T) {
 		w.Header().Set("X-Source", "vite-fallback")
 	})
 
-	handler := screenshotsMiddleware(screenshots)(next)
+	handler := cmd.ScreenshotsMiddleware(screenshots)(next)
 	for _, path := range []string{
 		"/",
 		"/index.html",
@@ -84,7 +86,7 @@ func TestScreenshotsMiddleware_PrefixMatchesNestedPaths(t *testing.T) {
 	next := http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 		t.Fatalf("dir-scoped screenshot path leaked to next handler")
 	})
-	handler := screenshotsMiddleware(screenshots)(next)
+	handler := cmd.ScreenshotsMiddleware(screenshots)(next)
 	req := httptest.NewRequest(http.MethodGet, "/_screenshot/3/Overwatch_2026-05-10.png", nil)
 	handler.ServeHTTP(httptest.NewRecorder(), req)
 	if !strings.HasSuffix(got, "/3/Overwatch_2026-05-10.png") {
