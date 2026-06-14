@@ -25,6 +25,13 @@ var ErrNoParseInFlight = errors.New("no parse in flight")
 // maps it to 409 Conflict.
 var ErrParseInFlight = errors.New("a parse is already in flight")
 
+// ParseScreenshotsDirFunc is the OCR-loop entry point — a function-variable
+// seam (the codebase's DI convention, cf. RunTesseractFunc / ReleasesURL) so
+// tests can stub the Tesseract-backed parse and drive handleFile with synthetic
+// results instead of running real OCR over real images. Production points at
+// parser.ParseScreenshotsDir.
+var ParseScreenshotsDirFunc = parser.ParseScreenshotsDir
+
 // CancelParse short-circuits an in-flight ParseScreenshots at the
 // next between-files boundary by cancelling the context the parser
 // loop is checking. Returns ErrNoParseInFlight when no parse is
@@ -257,7 +264,7 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 	// cleanly but `match-updated` arrived in a single last-instant burst, so
 	// the Matches tab stayed blank until parse-complete.
 	st := &parseRunState{app: a, dirID: dirID, matchesUpdated: map[string]struct{}{}}
-	_, err = parser.ParseScreenshotsDir(ctx, screenshotsDir, parsed, st.handleFile)
+	_, err = ParseScreenshotsDirFunc(ctx, screenshotsDir, parsed, st.handleFile)
 	// User pressed Stop mid-batch. The partial state already committed to
 	// SQLite stays put (each per-file insert ran inside the callback before
 	// the next iteration). Emit parse-cancelled so the frontend can flip the

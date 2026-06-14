@@ -83,6 +83,10 @@ func AppSettings(a *App) *Settings { return &a.settings }
 func AppStore(a *App) db.Store       { return a.store }
 func SetAppStore(a *App, s db.Store) { a.store = s }
 
+// AppTessStatus exposes the cached Tesseract status so a parse test can mark
+// the engine "found" without shelling out to a real binary.
+func AppTessStatus(a *App) *TesseractStatus { return &a.tessStatus }
+
 func AppProfiles(a *App) *Profiles              { return a.profiles }
 func AppWatcher(a *App) *fsnotify.Watcher       { return a.watcher }
 func AppWatchedDir(a *App) string               { return a.watchedDir }
