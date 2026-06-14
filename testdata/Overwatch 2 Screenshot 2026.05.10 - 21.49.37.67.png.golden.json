@@ -1,0 +1,23 @@
+{
+  "screenshot_type": "personal",
+  "result": {
+    "role": "support",
+    "hero": "wuyang",
+    "heroes_played": [
+      {
+        "hero": "wuyang",
+        "percent_played": 47,
+        "play_time": "03:30",
+        "stats": {
+          "direct_hit_accuracy": 30,
+          "empowered_restorative_stream_healing": 1177,
+          "guardian_wave_kill": 1,
+          "healing_amplified": 177,
+          "players_saved": 5,
+          "tidal_blast_kills": 0,
+          "weapon_accuracy": 32
+        }
+      }
+    ]
+  }
+}
