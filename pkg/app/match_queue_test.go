@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"recall/pkg/aggregate"
 	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/match"
@@ -147,7 +148,7 @@ func TestAttachQueues_PopulatesQueueType(t *testing.T) {
 		{MatchKey: "k2"},
 		{MatchKey: "k3"},
 	}
-	app.AttachQueues(recs, queues)
+	aggregate.AttachQueues(recs, queues)
 	if recs[0].QueueType != "role" {
 		t.Errorf("k1: %+v", recs[0])
 	}

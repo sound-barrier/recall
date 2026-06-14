@@ -1,43 +1,43 @@
-package app
+package aggregate
 
 import (
 	"recall/pkg/db"
 	"recall/pkg/parser"
 )
 
-// screenshotView is the per-screenshot row the aggregator folds. The
+// ScreenshotView is the per-screenshot row the aggregator folds. The
 // five parent row types convert to this shape via toView<X> helpers
 // below.
-type screenshotView struct {
+type ScreenshotView struct {
 	filename string
 	typeName string
 	matchKey string
 	parsedAt string
-	dirID    int64 // 0 = unset; resolved against snap.ScreenshotsDirs in foldGroup
+	dirID    int64 // 0 = unset; resolved against snap.ScreenshotsDirs in FoldGroup
 	data     parser.MatchResult
 }
 
-// aggregateMatchKey produces a single match.MatchRecord for the given
+// AggregateMatchKey produces a single match.MatchRecord for the given
 // match_key, reading just its rows out of snap. Returns
 // (record, true) when at least one row matched; (_, false) when
 // nothing in snap references the key.
 //
-// Same precedence rules as aggregateScreenshots — this is the
+// Same precedence rules as AggregateScreenshots — this is the
 // per-key extract for the live-streaming "match-updated" event.
-// Inference helpers (inferSoleHeroPercent, inferResultFromRank)
+// Inference helpers (InferSoleHeroPercent, InferResultFromRank)
 // are applied so the streamed shape matches GetMatchResults output.
-// unknownToView builds the screenshotView for an unknown row. The other
+// unknownToView builds the ScreenshotView for an unknown row. The other
 // four row types have their own *ToView helpers; this matches them so the
 // inline literal doesn't get duplicated across the aggregators.
-func unknownToView(r db.UnknownRow) screenshotView {
-	return screenshotView{
+func unknownToView(r db.UnknownRow) ScreenshotView {
+	return ScreenshotView{
 		filename: r.Filename, typeName: "unknown",
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 	}
 }
 
-func summaryToView(r db.SummaryRow) screenshotView {
-	view := screenshotView{
+func summaryToView(r db.SummaryRow) ScreenshotView {
+	view := ScreenshotView{
 		filename: r.Filename, typeName: "summary",
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
@@ -72,8 +72,8 @@ func summaryToView(r db.SummaryRow) screenshotView {
 	return view
 }
 
-func teamsToView(r db.TeamsRow) screenshotView {
-	view := screenshotView{
+func teamsToView(r db.TeamsRow) ScreenshotView {
+	view := ScreenshotView{
 		filename: r.Filename, typeName: "teams",
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{
@@ -86,8 +86,8 @@ func teamsToView(r db.TeamsRow) screenshotView {
 	return view
 }
 
-func personalToView(r db.PersonalRow) screenshotView {
-	view := screenshotView{
+func personalToView(r db.PersonalRow) ScreenshotView {
+	view := ScreenshotView{
 		filename: r.Filename, typeName: "personal",
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{Hero: r.Hero, HeroRaw: r.HeroRaw},
@@ -96,8 +96,8 @@ func personalToView(r db.PersonalRow) screenshotView {
 	return view
 }
 
-func rankToView(r db.RankRow) screenshotView {
-	view := screenshotView{
+func rankToView(r db.RankRow) ScreenshotView {
+	view := ScreenshotView{
 		filename: r.Filename, typeName: "rank",
 		matchKey: r.MatchKey, parsedAt: r.ParsedAt, dirID: r.ScreenshotsDirID,
 		data: parser.MatchResult{

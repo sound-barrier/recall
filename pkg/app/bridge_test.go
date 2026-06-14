@@ -7,7 +7,6 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"recall/pkg/db"
-	"recall/pkg/parser"
 )
 
 // Test-only bridges for the external app_test package. pkg/app is the core
@@ -16,20 +15,6 @@ import (
 // (the public surface is the high-level App methods + GetMatchResults). These
 // re-exports/accessors are compiled only under test, so they widen no shipped
 // API. See the campaign note in REVIEW.md (Q5).
-
-// ── Aggregation + inference ───────────────────────────────────────────────
-var (
-	AggregateScreenshots = aggregateScreenshots
-	AggregateMatchKey    = aggregateMatchKey
-	AttachAmbiguity      = attachAmbiguity
-	AttachAnnotations    = attachAnnotations
-	AttachReviews        = attachReviews
-	AttachQueues         = attachQueues
-	AttachPlayModes      = attachPlayModes
-	FoldGroup            = foldGroup
-	InferResultFromRank  = inferResultFromRank
-	InferSoleHeroPercent = inferSoleHeroPercent
-)
 
 // ── Settings IO ───────────────────────────────────────────────────────────
 var (
@@ -58,14 +43,6 @@ var (
 	LooksLikeZIP             = looksLikeZIP
 	ReadZipFile              = readZipFile
 )
-
-// ScreenshotView aliases the unexported aggregation view + a constructor (its
-// fields are unexported) so foldGroup can be driven black-box.
-type ScreenshotView = screenshotView
-
-func NewScreenshotView(filename, typeName, matchKey, parsedAt string, dirID int64, data parser.MatchResult) screenshotView {
-	return screenshotView{filename: filename, typeName: typeName, matchKey: matchKey, parsedAt: parsedAt, dirID: dirID, data: data}
-}
 
 // ── OW-data update client (URL seams are pointers so tests can swap them) ──
 var (

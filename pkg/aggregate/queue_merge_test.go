@@ -1,9 +1,9 @@
-package app_test
+package aggregate_test
 
 import (
 	"testing"
 
-	"recall/pkg/app"
+	"recall/pkg/aggregate"
 	"recall/pkg/db"
 	"recall/pkg/match"
 	"recall/pkg/parser"
@@ -13,11 +13,11 @@ import (
 // top-level MatchRecord.QueueType and clears it from the nested Data,
 // so the effective value appears exactly once on the wire.
 func TestFoldGroup_LiftsDetectedQueueType(t *testing.T) {
-	vs := []app.ScreenshotView{app.NewScreenshotView(
+	vs := []aggregate.ScreenshotView{aggregate.NewScreenshotView(
 		"s.png", "teams", "m1", "2026-01-01T00:00:00Z", 0,
 		parser.MatchResult{Eliminations: 5, QueueType: "open"},
 	)}
-	rec := app.FoldGroup("m1", vs, nil)
+	rec := aggregate.FoldGroup("m1", vs, nil)
 	if rec.QueueType != "open" {
 		t.Errorf("rec.QueueType = %q, want %q (detected)", rec.QueueType, "open")
 	}
@@ -33,7 +33,7 @@ func TestAttachQueues_ManualOverridesDetected(t *testing.T) {
 		{MatchKey: "override-me", QueueType: "open"}, // detected open
 		{MatchKey: "leave-me", QueueType: "role"},    // detected role, no annotation
 	}
-	app.AttachQueues(recs, map[string]db.QueueState{
+	aggregate.AttachQueues(recs, map[string]db.QueueState{
 		"override-me": {QueueType: "role"}, // user says role
 	})
 	if recs[0].QueueType != "role" {

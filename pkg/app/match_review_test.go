@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"recall/pkg/aggregate"
 	"recall/pkg/app"
 	"recall/pkg/db"
 	"recall/pkg/match"
@@ -92,7 +93,7 @@ func TestAttachReviews_PopulatesReviewedByAndAt(t *testing.T) {
 		{MatchKey: "k2"},
 		{MatchKey: "k3"},
 	}
-	app.AttachReviews(recs, reviews)
+	aggregate.AttachReviews(recs, reviews)
 	if recs[0].ReviewedBy != "self" || recs[0].ReviewedAt != "2026-06-01T10:00:00Z" {
 		t.Errorf("k1: %+v", recs[0])
 	}

@@ -1,14 +1,14 @@
-package app
+package aggregate
 
 import (
 	"recall/pkg/db"
 	"recall/pkg/match"
 )
 
-// attachReviews writes `ReviewedBy` + `ReviewedAt` on every record
+// AttachReviews writes `ReviewedBy` + `ReviewedAt` on every record
 // carrying a review-status row. Pure function, called once per
 // aggregateAll.
-func attachReviews(recs []match.MatchRecord, reviews map[string]db.ReviewState) {
+func AttachReviews(recs []match.MatchRecord, reviews map[string]db.ReviewState) {
 	if len(reviews) == 0 {
 		return
 	}
@@ -20,9 +20,9 @@ func attachReviews(recs []match.MatchRecord, reviews map[string]db.ReviewState) 
 	}
 }
 
-// attachQueues writes `QueueType` on every record carrying a
+// AttachQueues writes `QueueType` on every record carrying a
 // match_queue row. Pure function, called once per aggregateAll.
-func attachQueues(recs []match.MatchRecord, queues map[string]db.QueueState) {
+func AttachQueues(recs []match.MatchRecord, queues map[string]db.QueueState) {
 	if len(queues) == 0 {
 		return
 	}
@@ -33,7 +33,7 @@ func attachQueues(recs []match.MatchRecord, queues map[string]db.QueueState) {
 	}
 }
 
-// attachPlayModes writes `PlayMode` on every record carrying a
+// AttachPlayModes writes `PlayMode` on every record carrying a
 // match_play_mode row. Pure-override semantics: PlayMode is set ONLY
 // from the aux table — no fallback to data.mode, no inference from
 // rank-row presence. The earlier "override → data.mode → rank →
@@ -43,7 +43,7 @@ func attachQueues(recs []match.MatchRecord, queues map[string]db.QueueState) {
 // the user's "unless I know otherwise it should be unset" intent.
 //
 // Pure function, called once per aggregateAll.
-func attachPlayModes(recs []match.MatchRecord, overrides map[string]db.PlayModeState) {
+func AttachPlayModes(recs []match.MatchRecord, overrides map[string]db.PlayModeState) {
 	if len(overrides) == 0 {
 		return
 	}
@@ -54,7 +54,7 @@ func attachPlayModes(recs []match.MatchRecord, overrides map[string]db.PlayModeS
 	}
 }
 
-// attachAmbiguity flags every match.MatchRecord whose match_key starts with
+// AttachAmbiguity flags every match.MatchRecord whose match_key starts with
 // "ambiguous-" and attaches its candidate match list. The candidates
 // map is keyed by the filename embedded in the sentinel — every
 // match.MatchRecord that adopted the same sentinel (via the timestamp-window
@@ -64,7 +64,7 @@ func attachPlayModes(recs []match.MatchRecord, overrides map[string]db.PlayModeS
 // file (the candidate match's earliest SourceFile + its dir id) so
 // the Unknown-tab picker can render a thumbnail beside each
 // candidate. Built from a one-pass O(N) index over recs.
-func attachAmbiguity(recs []match.MatchRecord, candidates map[string][]db.AmbiguousCandidate) {
+func AttachAmbiguity(recs []match.MatchRecord, candidates map[string][]db.AmbiguousCandidate) {
 	// Index recs by match_key for O(1) candidate lookups. Built only
 	// when at least one ambiguous record exists — most aggregate
 	// runs skip this entirely.
@@ -107,9 +107,9 @@ func attachAmbiguity(recs []match.MatchRecord, candidates map[string][]db.Ambigu
 	}
 }
 
-// attachHidden flips `Hidden` to true on every record whose match_key
+// AttachHidden flips `Hidden` to true on every record whose match_key
 // is in the soft-delete set. Pure function, called once per aggregateAll.
-func attachHidden(recs []match.MatchRecord, hidden map[string]bool) {
+func AttachHidden(recs []match.MatchRecord, hidden map[string]bool) {
 	if len(hidden) == 0 {
 		return
 	}
@@ -120,11 +120,11 @@ func attachHidden(recs []match.MatchRecord, hidden map[string]bool) {
 	}
 }
 
-// attachAnnotations grafts user-curated leaver/note records onto the
+// AttachAnnotations grafts user-curated leaver/note records onto the
 // aggregated match.MatchRecord slice. Match-key lookup; missing → nil
 // (unannotated). Pure function, exported only via aggregateAll +
 // the streaming path in app_wails.go / app_server.go's emit.
-func attachAnnotations(recs []match.MatchRecord, annos map[string]db.Annotation) {
+func AttachAnnotations(recs []match.MatchRecord, annos map[string]db.Annotation) {
 	if len(annos) == 0 {
 		return
 	}

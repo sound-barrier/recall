@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"recall/pkg/aggregate"
 	"recall/pkg/match"
 )
 
@@ -43,8 +44,8 @@ func (a *App) GetNewScreenshotCount() (int, error) {
 }
 
 // GetMatchResults returns one match.MatchRecord per match, aggregated from
-// the per-screenshot tables. Read-time inference (inferSoleHeroPercent,
-// inferResultFromRank) applies after aggregation; the source DB rows
+// the per-screenshot tables. Read-time inference (aggregate.InferSoleHeroPercent,
+// aggregate.InferResultFromRank) applies after aggregation; the source DB rows
 // are never mutated.
 func (a *App) GetMatchResults() ([]match.MatchRecord, error) {
 	recs, err := a.aggregateAll()
@@ -52,8 +53,8 @@ func (a *App) GetMatchResults() ([]match.MatchRecord, error) {
 		return nil, err
 	}
 	for i := range recs {
-		inferSoleHeroPercent(&recs[i].Data)
-		inferResultFromRank(&recs[i].Data)
+		aggregate.InferSoleHeroPercent(&recs[i].Data)
+		aggregate.InferResultFromRank(&recs[i].Data)
 	}
 	return recs, nil
 }
