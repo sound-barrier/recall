@@ -1,11 +1,13 @@
 //go:build windows
 
-package parser
+package parser_test
 
 import (
 	"os/exec"
 	"syscall"
 	"testing"
+
+	"recall/pkg/parser"
 )
 
 // HideWindow must configure the child process so Windows doesn't
@@ -20,7 +22,7 @@ const expectedCreateNoWindow uint32 = 0x08000000
 
 func TestHideWindow_SetsCreateNoWindowFlag(t *testing.T) {
 	cmd := exec.Command("dummy")
-	HideWindow(cmd)
+	parser.HideWindow(cmd)
 	if cmd.SysProcAttr == nil {
 		t.Fatal("SysProcAttr should be set after HideWindow")
 	}
@@ -34,8 +36,9 @@ func TestHideWindow_SetsCreateNoWindowFlag(t *testing.T) {
 
 func TestHideWindow_PreservesExistingSysProcAttrFields(t *testing.T) {
 	cmd := exec.Command("dummy")
-	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x00000010} // sentinel value
-	HideWindow(cmd)
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x00000010}
+	parser. // sentinel value
+		HideWindow(cmd)
 	if cmd.SysProcAttr.CreationFlags&0x00000010 == 0 {
 		t.Error("HideWindow must OR into existing CreationFlags, not overwrite them")
 	}

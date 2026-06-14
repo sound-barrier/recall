@@ -1,4 +1,4 @@
-package parser
+package parser_test
 
 import (
 	"bytes"
@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"recall/pkg/parser"
 )
 
 // TestParseScreenshot_GoldenFiles drives ParseScreenshot against real PNG
@@ -68,7 +70,7 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 
 	// Resolve Tesseract early — ParseScreenshot will fail with a generic
 	// "not available" error otherwise, which masks the real problem.
-	tp := getTesseractPath()
+	tp := parser.GetTesseractPath()
 	if _, err := exec.LookPath(tp); err != nil {
 		t.Skipf("tesseract not found at %q — install it or set RECALL_TESSERACT_PATH", tp)
 	}
@@ -98,13 +100,13 @@ func TestParseScreenshot_GoldenFiles(t *testing.T) {
 			imgPath := filepath.Join(dir, name)
 			goldenPath := filepath.Join(dir, name+".golden.json")
 
-			got, err := ParseScreenshot(imgPath)
+			got, err := parser.ParseScreenshot(imgPath)
 			if err != nil {
 				t.Fatalf("ParseScreenshot(%s): %v", imgPath, err)
 			}
 			gotJSON, err := json.MarshalIndent(goldenSnapshot{
-				ScreenshotType: ScreenshotType(got),
-				Result:         ToGolden(got),
+				ScreenshotType: parser.ScreenshotType(got),
+				Result:         parser.ToGolden(got),
 			}, "", "  ")
 			if err != nil {
 				t.Fatalf("marshal golden: %v", err)

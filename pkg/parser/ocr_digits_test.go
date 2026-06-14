@@ -1,6 +1,10 @@
-package parser
+package parser_test
 
-import "testing"
+import (
+	"testing"
+
+	"recall/pkg/parser"
+)
 
 // A comma-grouped value ("1,367") must parse as one number — the old
 // `\d{1,4}` regex split it at the comma and the longest-run pick kept "367".
@@ -28,7 +32,7 @@ func TestParsePersonalStatCell_CommaGroupedNumber(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		key, val, ok := parsePersonalStatCell(c.text)
+		key, val, ok := parser.ParsePersonalStatCell(c.text)
 		if !ok || key != c.wantKey || val != c.wantVal {
 			t.Errorf("%s:\n  got  (%q, %d, %v)\n  want (%q, %d, true)",
 				c.name, key, val, ok, c.wantKey, c.wantVal)
@@ -43,7 +47,7 @@ func TestParsePerformance_RejectsIconDigitBesideValue(t *testing.T) {
 	text := "TOTAL PERFORMANCE\n9\n4\nELIMINATIONS\n" +
 		"AVG PER 10 MIN: 6.64\n19\nASSISTS\n" +
 		"AVG PER 10 MIN: 14.02\n6\nDEATHS\nAVG PER 10 MIN: 4.43"
-	perf := parsePerformance(text)
+	perf := parser.ParsePerformance(text)
 	if perf == nil {
 		t.Fatal("parsePerformance returned nil")
 	}

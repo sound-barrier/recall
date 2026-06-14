@@ -1,10 +1,12 @@
-package parser
+package parser_test
 
 import (
 	"errors"
 	"image"
 	"image/color"
 	"testing"
+
+	"recall/pkg/parser"
 )
 
 // stubOCR swaps runTesseractFunc for the duration of the test. The fake
@@ -13,22 +15,22 @@ import (
 // "detect_rank", "detect_personal"). Restoration uses t.Cleanup; do NOT
 // pair these tests with t.Parallel — the var is process-global.
 func stubOCR(t *testing.T, table map[string]string) {
-	original := runTesseractFunc
-	runTesseractFunc = func(_ image.Image, _, name, _, _ string) (string, error) {
+	original := *parser.RunTesseractFunc
+	*parser.RunTesseractFunc = func(_ image.Image, _, name, _, _ string) (string, error) {
 		if s, ok := table[name]; ok {
 			return s, nil
 		}
 		return "", nil
 	}
-	t.Cleanup(func() { runTesseractFunc = original })
+	t.Cleanup(func() { *parser.RunTesseractFunc = original })
 }
 
 func stubOCRError(t *testing.T, err error) {
-	original := runTesseractFunc
-	runTesseractFunc = func(_ image.Image, _, _, _, _ string) (string, error) {
+	original := *parser.RunTesseractFunc
+	*parser.RunTesseractFunc = func(_ image.Image, _, _, _, _ string) (string, error) {
 		return "", err
 	}
-	t.Cleanup(func() { runTesseractFunc = original })
+	t.Cleanup(func() { *parser.RunTesseractFunc = original })
 }
 
 // tinyImage returns a 200×200 black image — large enough that the
@@ -55,7 +57,7 @@ func TestIsSummaryScreenshot_PositiveKeywords(t *testing.T) {
 	for _, text := range positives {
 		t.Run(text, func(t *testing.T) {
 			stubOCR(t, map[string]string{"detect_summary": text})
-			if !isSummaryScreenshot(tinyImage(), t.TempDir()) {
+			if !parser.IsSummaryScreenshot(tinyImage(), t.TempDir()) {
 				t.Errorf("expected SUMMARY detection for OCR text %q", text)
 			}
 		})
@@ -64,46 +66,46 @@ func TestIsSummaryScreenshot_PositiveKeywords(t *testing.T) {
 
 func TestIsSummaryScreenshot_NegativeAndError(t *testing.T) {
 	stubOCR(t, map[string]string{"detect_summary": "RANK PROGRESS\nALL HEROES"})
-	if isSummaryScreenshot(tinyImage(), t.TempDir()) {
+	if parser.IsSummaryScreenshot(tinyImage(), t.TempDir()) {
 		t.Error("non-SUMMARY text must not trigger SUMMARY detection")
 	}
 
 	stubOCRError(t, errors.New("ocr blew up"))
-	if isSummaryScreenshot(tinyImage(), t.TempDir()) {
+	if parser.IsSummaryScreenshot(tinyImage(), t.TempDir()) {
 		t.Error("OCR error must return false (fail-closed)")
 	}
 }
 
 func TestIsRankScreenshot(t *testing.T) {
 	stubOCR(t, map[string]string{"detect_rank": "some banner\nRANK PROGRESS\nfooter"})
-	if !isRankScreenshot(tinyImage(), t.TempDir()) {
+	if !parser.IsRankScreenshot(tinyImage(), t.TempDir()) {
 		t.Error("RANK PROGRESS keyword must trigger detection")
 	}
 
 	stubOCR(t, map[string]string{"detect_rank": "HEROES PLAYED"})
-	if isRankScreenshot(tinyImage(), t.TempDir()) {
+	if parser.IsRankScreenshot(tinyImage(), t.TempDir()) {
 		t.Error("SUMMARY text must not trigger RANK detection")
 	}
 
 	stubOCRError(t, errors.New("boom"))
-	if isRankScreenshot(tinyImage(), t.TempDir()) {
+	if parser.IsRankScreenshot(tinyImage(), t.TempDir()) {
 		t.Error("OCR error must return false (fail-closed)")
 	}
 }
 
 func TestIsPersonalScreenshot(t *testing.T) {
 	stubOCR(t, map[string]string{"detect_personal": "LUCIO\nKIRIKO\nALL HEROES"})
-	if !isPersonalScreenshot(tinyImage(), t.TempDir()) {
+	if !parser.IsPersonalScreenshot(tinyImage(), t.TempDir()) {
 		t.Error("ALL HEROES keyword must trigger PERSONAL detection")
 	}
 
 	stubOCR(t, map[string]string{"detect_personal": "HEROES PLAYED\nTOTAL PERFORMANCE"})
-	if isPersonalScreenshot(tinyImage(), t.TempDir()) {
+	if parser.IsPersonalScreenshot(tinyImage(), t.TempDir()) {
 		t.Error("SUMMARY text must not trigger PERSONAL detection")
 	}
 
 	stubOCRError(t, errors.New("boom"))
-	if isPersonalScreenshot(tinyImage(), t.TempDir()) {
+	if parser.IsPersonalScreenshot(tinyImage(), t.TempDir()) {
 		t.Error("OCR error must return false (fail-closed)")
 	}
 }
@@ -111,7 +113,7 @@ func TestIsPersonalScreenshot(t *testing.T) {
 // Sanity check: the seam is genuinely swappable.
 func TestRunTesseractFunc_Swappable(t *testing.T) {
 	stubOCR(t, map[string]string{"foo": "bar"})
-	got, err := runTesseractFunc(tinyImage(), t.TempDir(), "foo", "6", "")
+	got, err := (*parser.RunTesseractFunc)(tinyImage(), t.TempDir(), "foo", "6", "")
 	if err != nil {
 		t.Fatalf("err=%v", err)
 	}

@@ -1,10 +1,12 @@
 //go:build !windows
 
-package parser
+package parser_test
 
 import (
 	"os/exec"
 	"testing"
+
+	"recall/pkg/parser"
 )
 
 // HideWindow is a no-op on non-Windows platforms — there's no console-
@@ -15,7 +17,7 @@ import (
 
 func TestHideWindow_NoOpOnNonWindows(t *testing.T) {
 	cmd := exec.Command("echo", "hi")
-	HideWindow(cmd)
+	parser.HideWindow(cmd)
 	if cmd.SysProcAttr != nil {
 		t.Errorf("HideWindow on non-Windows must not touch SysProcAttr; got %#v", cmd.SysProcAttr)
 	}

@@ -1,4 +1,4 @@
-package parser
+package parser_test
 
 import (
 	"context"
@@ -8,16 +8,18 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+
+	"recall/pkg/parser"
 )
 
 // stubParseSingle swaps parseSingleFunc for the duration of the test.
 // The fake returns a result/err based on the basename of the path, so
 // tests can mix "good" and "bad" files in one directory without writing
 // real PNG bytes.
-func stubParseSingle(t *testing.T, fn func(path string) (*MatchResult, error)) {
-	original := parseSingleFunc
-	parseSingleFunc = fn
-	t.Cleanup(func() { parseSingleFunc = original })
+func stubParseSingle(t *testing.T, fn func(path string) (*parser.MatchResult, error)) {
+	original := *parser.ParseSingleFunc
+	*parser.ParseSingleFunc = fn
+	t.Cleanup(func() { *parser.ParseSingleFunc = original })
 }
 
 // makeFiles drops zero-byte placeholder files into a temp dir so
@@ -41,21 +43,21 @@ func makeFiles(t *testing.T, names ...string) string {
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestParseScreenshotsDir_ContinuesAfterPerFileFailure(t *testing.T) {
-	stubParseSingle(t, func(path string) (*MatchResult, error) {
+	stubParseSingle(t, func(path string) (*parser.MatchResult, error) {
 		switch filepath.Base(path) {
 		case "good1.png":
-			return &MatchResult{Map: "rialto"}, nil
+			return &parser.MatchResult{Map: "rialto"}, nil
 		case "broken.png":
 			return nil, errors.New("decoding image: invalid PNG signature")
 		case "good2.png":
-			return &MatchResult{Map: "aatlis"}, nil
+			return &parser.MatchResult{Map: "aatlis"}, nil
 		}
 		return nil, nil
 	})
 
 	dir := makeFiles(t, "good1.png", "broken.png", "good2.png")
 
-	results, err := ParseScreenshotsDir(t.Context(), dir, nil, nil)
+	results, err := parser.ParseScreenshotsDir(t.Context(), dir, nil, nil)
 	if err != nil {
 		t.Fatalf("a single bad screenshot must not abort the batch; got err=%v", err)
 	}
@@ -80,11 +82,11 @@ func TestParseScreenshotsDir_ContinuesAfterPerFileFailure(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestParseScreenshotsDir_ProgressReceivesPerFileErrors(t *testing.T) {
-	stubParseSingle(t, func(path string) (*MatchResult, error) {
+	stubParseSingle(t, func(path string) (*parser.MatchResult, error) {
 		if filepath.Base(path) == "broken.png" {
 			return nil, errors.New("boom")
 		}
-		return &MatchResult{}, nil
+		return &parser.MatchResult{}, nil
 	})
 
 	dir := makeFiles(t, "a.png", "broken.png", "c.png")
@@ -96,11 +98,11 @@ func TestParseScreenshotsDir_ProgressReceivesPerFileErrors(t *testing.T) {
 		err         error
 	}
 	var calls []call
-	progress := func(done, total int, filename string, result *MatchResult, err error) {
+	progress := func(done, total int, filename string, result *parser.MatchResult, err error) {
 		calls = append(calls, call{done, total, filename, result != nil, err})
 	}
 
-	if _, err := ParseScreenshotsDir(t.Context(), dir, nil, progress); err != nil {
+	if _, err := parser.ParseScreenshotsDir(t.Context(), dir, nil, progress); err != nil {
 		t.Fatalf("dir-level err must be nil; got %v", err)
 	}
 	if len(calls) != 3 {
@@ -141,7 +143,7 @@ func TestParseScreenshotsDir_ProgressReceivesPerFileErrors(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestParseScreenshotsDir_DirLevelErrorStillReturned(t *testing.T) {
-	_, err := ParseScreenshotsDir(t.Context(), "/no/such/directory/recall-test", nil, nil)
+	_, err := parser.ParseScreenshotsDir(t.Context(), "/no/such/directory/recall-test", nil, nil)
 	if err == nil {
 		t.Fatal("ReadDir failure must propagate")
 	}
@@ -153,11 +155,11 @@ func TestParseScreenshotsDir_DirLevelErrorStillReturned(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────
 
 func TestParseScreenshotsDir_AllFilesFailing(t *testing.T) {
-	stubParseSingle(t, func(string) (*MatchResult, error) {
+	stubParseSingle(t, func(string) (*parser.MatchResult, error) {
 		return nil, errors.New("everything is broken")
 	})
 	dir := makeFiles(t, "a.png", "b.png")
-	results, err := ParseScreenshotsDir(t.Context(), dir, nil, nil)
+	results, err := parser.ParseScreenshotsDir(t.Context(), dir, nil, nil)
 	if err != nil {
 		t.Fatalf("all-failing batch must still return err=nil; got %v", err)
 	}
@@ -176,18 +178,18 @@ func TestParseScreenshotsDir_CtxCancelStopsBetweenFiles(t *testing.T) {
 	defer cancel()
 
 	var processed []string
-	stubParseSingle(t, func(path string) (*MatchResult, error) {
+	stubParseSingle(t, func(path string) (*parser.MatchResult, error) {
 		processed = append(processed, filepath.Base(path))
 		// Cancel mid-batch after the first file completes. The next
 		// iteration's ctx.Err() check should fire and return.
 		if len(processed) == 1 {
 			cancel()
 		}
-		return &MatchResult{}, nil
+		return &parser.MatchResult{}, nil
 	})
 
 	dir := makeFiles(t, "a.png", "b.png", "c.png", "d.png")
-	results, err := ParseScreenshotsDir(ctx, dir, nil, nil)
+	results, err := parser.ParseScreenshotsDir(ctx, dir, nil, nil)
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("err = %v, want context.Canceled", err)
 	}
@@ -206,13 +208,13 @@ func TestParseScreenshotsDir_PreCancelledCtxStopsImmediately(t *testing.T) {
 	cancel()
 
 	var called int
-	stubParseSingle(t, func(string) (*MatchResult, error) {
+	stubParseSingle(t, func(string) (*parser.MatchResult, error) {
 		called++
-		return &MatchResult{}, nil
+		return &parser.MatchResult{}, nil
 	})
 
 	dir := makeFiles(t, "a.png", "b.png")
-	results, err := ParseScreenshotsDir(ctx, dir, nil, nil)
+	results, err := parser.ParseScreenshotsDir(ctx, dir, nil, nil)
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("err = %v, want context.Canceled", err)
 	}

@@ -1,4 +1,4 @@
-package parser
+package parser_test
 
 import (
 	"os"
@@ -6,18 +6,19 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"recall/pkg/parser"
 )
 
-// swapDataDir points parserDataDirFunc at `dir` for the duration of
-// the test, then restores the prior func + reloads back to embedded
-// so other tests see a clean global dataset.
+// swapDataDir points the data-dir resolver at `dir` for the duration of the
+// test via the public SetDataDirFunc seam, then restores the default (empty →
+// embedded) + reloads so other tests see a clean global dataset.
 func swapDataDir(t *testing.T, dir string) {
 	t.Helper()
-	prev := parserDataDirFunc
-	parserDataDirFunc = func() string { return dir }
+	parser.SetDataDirFunc(func() string { return dir })
 	t.Cleanup(func() {
-		parserDataDirFunc = prev
-		_ = Reload()
+		parser.SetDataDirFunc(func() string { return "" })
+		_ = parser.Reload()
 	})
 }
 
@@ -29,16 +30,16 @@ func TestReload_FilePresent_SwapsInUserData(t *testing.T) {
 	}
 	swapDataDir(t, tmp)
 
-	if err := Reload(); err != nil {
+	if err := parser.Reload(); err != nil {
 		t.Fatalf("Reload returned err: %v", err)
 	}
 
-	if got := HeroRole("TestNewTank"); got != "tank" {
+	if got := parser.HeroRole("TestNewTank"); got != "tank" {
 		t.Errorf("HeroRole(TestNewTank) = %q, want tank", got)
 	}
 	// Override fully replaces embedded — Lúcio should NOT be present
 	// after a complete user heroes.yaml is loaded.
-	if got := HeroRole("Lúcio"); got != "" {
+	if got := parser.HeroRole("Lúcio"); got != "" {
 		t.Errorf("HeroRole(Lúcio) = %q, want \"\" (user file replaces embedded)", got)
 	}
 }
@@ -47,12 +48,12 @@ func TestReload_MissingFile_FallsBackToEmbedded(t *testing.T) {
 	tmp := t.TempDir()
 	swapDataDir(t, tmp)
 
-	if err := Reload(); err != nil {
+	if err := parser.Reload(); err != nil {
 		t.Fatalf("Reload returned err: %v", err)
 	}
 
 	// Embedded heroes.yaml has Lúcio listed under "support".
-	if got := HeroRole("Lúcio"); got != "support" {
+	if got := parser.HeroRole("Lúcio"); got != "support" {
 		t.Errorf("HeroRole(Lúcio) = %q, want support (embedded fallback expected)", got)
 	}
 }
@@ -65,12 +66,12 @@ func TestReload_CorruptUserFile_FallsBackToEmbedded(t *testing.T) {
 	}
 	swapDataDir(t, tmp)
 
-	if err := Reload(); err == nil {
+	if err := parser.Reload(); err == nil {
 		t.Fatal("Reload: expected error for corrupt user file, got nil")
 	}
 	// Despite the error, embedded data must still be available — a
 	// corrupt user file MUST NOT brick the parser.
-	if got := HeroRole("Lúcio"); got != "support" {
+	if got := parser.HeroRole("Lúcio"); got != "support" {
 		t.Errorf("HeroRole(Lúcio) = %q, want support (embedded fallback expected)", got)
 	}
 }
@@ -90,12 +91,12 @@ func TestReload_ScreenshotSourcesAlsoSwaps(t *testing.T) {
 	}
 	swapDataDir(t, tmp)
 
-	if err := Reload(); err != nil {
+	if err := parser.Reload(); err != nil {
 		t.Fatalf("Reload returned err: %v", err)
 	}
 
 	found := false
-	for _, s := range Sources() {
+	for _, s := range parser.Sources() {
 		if s.Name == "testtool" {
 			found = true
 			break
@@ -127,9 +128,9 @@ func TestReload_ConcurrentReadsAndSwaps(t *testing.T) {
 				}
 			}()
 			for j := 0; j < 100; j++ {
-				_ = HeroRole("Lúcio")
-				_ = MapGameMode("Hollywood")
-				_ = Sources()
+				_ = parser.HeroRole("Lúcio")
+				_ = parser.MapGameMode("Hollywood")
+				_ = parser.Sources()
 			}
 		}()
 	}
@@ -144,7 +145,7 @@ func TestReload_ConcurrentReadsAndSwaps(t *testing.T) {
 				}
 			}()
 			for j := 0; j < 20; j++ {
-				_ = Reload()
+				_ = parser.Reload()
 			}
 		}()
 	}
