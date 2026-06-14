@@ -17,6 +17,14 @@
           "tidal_blast_kills": 0,
           "weapon_accuracy": 32
         }
+      },
+      {
+        "hero": "juno",
+        "percent_played": 0
+      },
+      {
+        "hero": "kiriko",
+        "percent_played": 0
       }
     ]
   }
