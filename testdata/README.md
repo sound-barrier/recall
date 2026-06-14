@@ -72,7 +72,7 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
 - [x] post-match TEAMS screen — role queue (5v5) AND open queue (6v6, Hollywood); the pair pins `queue_type` detection from the players-per-team count
 - [x] post-match PERSONAL tab — single hero (Juno, hero stats subfield)
 - [x] post-match PERSONAL tab — second hero in a multi-hero match (Mei from same match)
-- [ ] rank screen — competitive ladder badge + per-hero SR card
+- [x] rank screen — competitive ladder badge + per-hero SR card (×2: a Platinum 5 **win** with positive progress + SR gain, AND a Gold 1 **loss** with DEMOTION PROTECTION and a negative −19% progress; the pair pins the digitize-level fix, the raw-pass negative-progress read, the lower-card SR crop, and the demotion-protection modifier)
 - [ ] in-game TAB screenshot (different layout, right panel populated)
 - [ ] match where the player swapped heroes, captured from the SUMMARY
       side (exercises `parseHeroesPlayed` ordering — the current

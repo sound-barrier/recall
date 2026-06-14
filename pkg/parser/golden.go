@@ -76,11 +76,12 @@ type PersonalGolden struct {
 // RankGolden is the golden JSON shape for a competitive RANK parse.
 //
 // Populated by `parse_rank.go`: playlist (always "competitive"),
-// result (victory/defeat/draw from the banner), rank tier, level, rank
-// progress %, change %, modifiers, per-hero SR, hero+role (lifted
-// from SR[0]). NOT extracted: map, type, E/A/D, damage/healing/
-// mitigation, score/date/finished_at/game_length, performance,
-// heroes_played.
+// result (victory/defeat/draw from the banner or modifier fallback),
+// rank tier, level, rank progress % (signed — negative on a demotion
+// screen), change %, modifiers (incl. "demotion protection"), per-hero
+// SR, hero+role (lifted from SR[0]). NOT extracted: map, type, E/A/D,
+// damage/healing/mitigation, score/date/finished_at/game_length,
+// performance, heroes_played.
 type RankGolden struct {
 	Playlist      string   `json:"playlist"`
 	Result        string   `json:"result"`

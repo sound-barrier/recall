@@ -21,9 +21,24 @@ func crop(src image.Image, r image.Rectangle) image.Image {
 // the orientation Tesseract is trained on. Antialiasing is preserved as a
 // gradient, which Tesseract's internal binarisation handles cleanly.
 func preprocessInverted(src image.Image) image.Image {
+	return grayUpscale(src, 3, true)
+}
+
+// preprocessRaw is the non-inverted counterpart: grayscale + upscale with the
+// luminance kept as-is. Mid-tone COLORED text — e.g. the orange "-19%" on the
+// rank demotion screen — reads as dark-on-light raw, where inversion flips it
+// to faint light-on-dark and Tesseract drops it. The caller picks the scale;
+// thin glyphs want a higher factor than the inverted pass's default 3x.
+func preprocessRaw(src image.Image, scale int) image.Image {
+	return grayUpscale(src, scale, false)
+}
+
+// grayUpscale renders src as BT.601-luminance grayscale at scale×, optionally
+// inverted (255-lum). Nearest-neighbour upscale; antialiasing rides through as
+// a gradient for Tesseract's binariser.
+func grayUpscale(src image.Image, scale int, invert bool) image.Image {
 	bounds := src.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
-	const scale = 3
 	out := image.NewGray(image.Rect(0, 0, w*scale, h*scale))
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
@@ -31,7 +46,10 @@ func preprocessInverted(src image.Image) image.Image {
 			// #nosec G115 -- ITU-R BT.601 luminance: weights sum to 1000,
 			// each channel ≤ 255 after >>8, so the result is always ≤ 255.
 			lum := uint8((299*int(r>>8) + 587*int(g>>8) + 114*int(b>>8)) / 1000)
-			v := 255 - lum
+			v := lum
+			if invert {
+				v = 255 - lum
+			}
 			for dy := 0; dy < scale; dy++ {
 				for dx := 0; dx < scale; dx++ {
 					out.SetGray(x*scale+dx, y*scale+dy, color.Gray{Y: v})

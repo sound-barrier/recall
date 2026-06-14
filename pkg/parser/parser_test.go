@@ -100,6 +100,8 @@ func TestExtractRank(t *testing.T) {
 		{"mixed case", "Platinum 3", "platinum", 3},
 		{"OCR adds leading digit (35 → 5)", "PLATINUM 35", "platinum", 5},
 		{"gold 1", "gold 1", "gold", 1},
+		{"italic 1 OCRs as letter I (GOLD I → 1)", "GOLD I", "gold", 1},
+		{"lowercase l as the level (GOLD l → 1)", "GOLD l", "gold", 1},
 		{"diamond 4", "DIAMOND 4", "diamond", 4},
 		{"unknown rank → empty", "WIZARD 7", "", 0},
 		{"empty text", "", "", 0},

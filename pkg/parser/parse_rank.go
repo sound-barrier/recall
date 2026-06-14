@@ -67,13 +67,19 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 
 	// Rank progress bar — "RANK PROGRESS: 21%" caption plus a "+25%" delta
 	// pill inside the bar. OCR both in one wider crop and pull each via its
-	// own regex.
-	progressRect := image.Rect(W*10/100, H*60/100, W*70/100, H*80/100)
-	progressText, _ := ocrInverted(img, progressRect, work, "rank_progress", "11", "")
-	if m := regexp.MustCompile(`(?i)RANK\s*PROGRESS[^0-9]*(\d{1,3})`).FindStringSubmatch(progressText); m != nil {
+	// own regex. The RANK PROGRESS value can be NEGATIVE on a demotion screen
+	// ("-19%"); it's thin, colored text the inverted pass flattens, so OCR it
+	// RAW at 6x over a tight value crop just right of the "RANK PROGRESS:"
+	// label (whose width is fixed, so the value always starts at the same x).
+	progValRect := image.Rect(W*36/100, H*71/100, W*52/100, H*78/100)
+	progValText, _ := ocrRaw(img, progValRect, work, "rank_progress", 6, "7", "-0123456789%")
+	if m := regexp.MustCompile(`(-?\d{1,3})\s*%`).FindStringSubmatch(progValText); m != nil {
 		res.RankProgress, _ = strconv.Atoi(m[1])
 	}
-	if m := regexp.MustCompile(`\+\s*(\d{1,3})\s*%`).FindStringSubmatch(progressText); m != nil {
+	// The "+N%" gain pill (green, inside the bar) reads fine inverted.
+	changeRect := image.Rect(W*10/100, H*60/100, W*70/100, H*80/100)
+	changeText, _ := ocrInverted(img, changeRect, work, "rank_change", "11", "")
+	if m := regexp.MustCompile(`\+\s*(\d{1,3})\s*%`).FindStringSubmatch(changeText); m != nil {
 		res.ChangePercent, _ = strconv.Atoi(m[1])
 	}
 
@@ -84,7 +90,9 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 
 	// Right-side per-hero SR card: hero portrait + "HERO SR" + 4-digit SR +
 	// signed change. The card sits ~85-99% across, mid-height.
-	srRect := image.Rect(W*82/100, H*22/100, W*99/100, H*55/100)
+	// Bottom extends to 66% (not 55%): the demotion screen's extra Drive-Score
+	// row pushes the per-hero SR card lower than the standard layout.
+	srRect := image.Rect(W*82/100, H*22/100, W*99/100, H*66/100)
 	srText, _ := ocrInverted(img, srRect, work, "rank_sr", "11", "")
 	res.SR = extractSR(srText)
 	if len(res.SR) > 0 {
@@ -92,6 +100,21 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 		if r, ok := loadDataset().heroRoles[res.Hero]; ok {
 			res.Role = r
 		}
+	}
+
+	// "DEMOTION PROTECTION" — a shield pill in the modifier row (a loss that
+	// didn't drop the tier). It rides the modifiers list (already persisted via
+	// the rank_modifiers table) rather than a bespoke field. OCR usually drops
+	// the trailing "N", so match on the "DEMOTION" stem.
+	if strings.Contains(strings.ToUpper(modifierText), "DEMOTION") {
+		res.Modifiers = append(res.Modifiers, "demotion protection")
+	}
+
+	// The top-left banner OCR is unreliable (italic ALL-CAPS over a busy
+	// gradient — "COMPETITIVE DEFEAT" reads as "CAMDETITIVE [FFFAT"); fall back
+	// to the win/loss/draw modifier pill when the banner didn't classify.
+	if res.Result == "" {
+		res.Result = resultFromModifiers(res.Modifiers)
 	}
 
 	return res, nil
@@ -114,13 +137,27 @@ func extractRank(text string) (string, int) {
 	// leading digit (so "PLATINUM 5" OCRs as "PLATINUM 35"), and OW levels
 	// are always 1-5 single digits.
 	if rank != "" {
-		re := regexp.MustCompile(`(?i)` + rank + `\s*(\d+)`)
+		// Allow digit-lookalike letters after the tier ("GOLD I" — the italic
+		// "1" OCRs as the letter I) and digitize before reading the level.
+		re := regexp.MustCompile(`(?i)` + rank + `\s*([0-9OoQqIlL]+)`)
 		if m := re.FindStringSubmatch(text); m != nil {
-			lastDigit := m[1][len(m[1])-1:]
-			level, _ = strconv.Atoi(lastDigit)
+			d := digitize(m[1])
+			level, _ = strconv.Atoi(d[len(d)-1:])
 		}
 	}
 	return rank, level
+}
+
+// resultFromModifiers picks the win/loss/draw modifier out of the rank-screen
+// pills — the fallback when the top-left banner OCR is too mangled to classify.
+func resultFromModifiers(mods []string) string {
+	for _, m := range mods {
+		switch m {
+		case "victory", "defeat", "draw":
+			return m
+		}
+	}
+	return ""
 }
 
 func extractModifiers(text string) []string {
