@@ -26,14 +26,13 @@ are organized into feature subfolders, not one giant flat directory:
 cross-feature pieces (`FilterCombobox`, generic modals, the masthead). Colocate
 a feature's UI with its state. Per the root `CLAUDE.md` *Package & directory
 size* rule, a flat dir past ~20–25 files wants subdividing; `ls` stays the source
-of truth — don't enumerate files here. (`components/` is grouped; `composables/`
-grouping is the active follow-up wave — until it lands its files are still flat
-at `composables/*.ts`.)
+of truth — don't enumerate files here. (`composables/` has no `unknown/` — no
+composable is unknown-specific.)
 
 **Imports use the `@/` alias** (`@/` → `frontend/src/`) — the canonical Vue
 convention, configured in `vite.config.ts` + `vitest.config.ts` (`resolve.alias`)
 and `tsconfig.json` (`paths`). Import intra-`src` modules as
-`@/components/<feature>/Foo.vue`, `@/composables/useFoo`, `@/match-helpers`, … —
+`@/components/<feature>/Foo.vue`, `@/composables/<feature>/useFoo`, `@/match-helpers`, … —
 never with relative `../` chains. Location-independent paths are what let a file
 move between feature folders without rewriting its own imports (the whole point
 of the regroup). eslint needs no resolver plugin — its rule set never resolves
@@ -49,7 +48,7 @@ mock matches.
   define either inside an SFC's `<script setup>`.
 
 Composables fall into three groups; mirror the matching exemplar when adding
-one. `ls frontend/src/composables/*.ts` is the source of truth — don't enumerate
+one. `ls frontend/src/composables/**/*.ts` is the source of truth — don't enumerate
 them here.
 
 - **Persisted-preference family** — `ref(default)` + `setX(next)` that writes
