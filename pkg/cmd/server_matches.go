@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -134,8 +133,7 @@ func handleClearMatches(a *app.App) http.HandlerFunc {
 				return
 			}
 		}
-		if err := a.ClearDatabase(keepIgnored); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.ClearDatabase(keepIgnored)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -172,21 +170,12 @@ func handleMoveMatches(a *app.App) http.HandlerFunc {
 			http.Error(w, mkErr.Error(), http.StatusBadRequest)
 			return
 		}
-		if err := a.MoveMatches(matchKeys, *body.TargetProfile); err != nil {
-			switch {
-			case errors.Is(err, app.ErrInvalidProfileName):
-				// 409: target_profile was a well-formed string but didn't
-				// pass the profile-name format validator.
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			case errors.Is(err, app.ErrProfileNotFound):
-				http.Error(w, err.Error(), http.StatusNotFound)
-				return
-			case errors.Is(err, app.ErrMoveTargetIsActive):
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		// ErrInvalidProfileName → 409: target_profile was a well-formed
+		// string but didn't pass the profile-name format validator.
+		if writeError(w, a.MoveMatches(matchKeys, *body.TargetProfile),
+			errStatus{app.ErrInvalidProfileName, http.StatusConflict},
+			errStatus{app.ErrProfileNotFound, http.StatusNotFound},
+			errStatus{app.ErrMoveTargetIsActive, http.StatusConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -210,12 +199,8 @@ func handleBulkSetMatchQueue(a *app.App) http.HandlerFunc {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		if err := a.BulkSetMatchQueue(body.MatchKeys, body.QueueType); err != nil {
-			if errors.Is(err, app.ErrInvalidQueueType) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.BulkSetMatchQueue(body.MatchKeys, body.QueueType),
+			errStatus{app.ErrInvalidQueueType, http.StatusBadRequest}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -235,12 +220,8 @@ func handleBulkSetMatchPlayMode(a *app.App) http.HandlerFunc {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		if err := a.BulkSetMatchPlayMode(body.MatchKeys, body.PlayMode); err != nil {
-			if errors.Is(err, app.ErrInvalidPlayMode) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.BulkSetMatchPlayMode(body.MatchKeys, body.PlayMode),
+			errStatus{app.ErrInvalidPlayMode, http.StatusBadRequest}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

@@ -7,6 +7,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -343,4 +344,32 @@ func writeJSON(w http.ResponseWriter, v any, err error) {
 	if encErr := json.NewEncoder(w).Encode(v); encErr != nil {
 		applog.Subsystem("server").Error("json encode", "err", encErr)
 	}
+}
+
+// errStatus pairs an app-layer sentinel error with the HTTP status that
+// writeError maps it to.
+type errStatus struct {
+	is     error
+	status int
+}
+
+// writeError writes err to w as a plain-text HTTP error and reports whether it
+// wrote anything. A nil err writes nothing and returns false, so a handler can
+// guard its happy path with `if writeError(w, a.Foo(), …) { return }`. For a
+// non-nil err, the first sentinel in cases that err matches (errors.Is) selects
+// the status; an unmatched err falls through to 500. This keeps the "known
+// sentinel → 4xx, everything else → 500" ladder in one place instead of
+// repeating it in every write handler.
+func writeError(w http.ResponseWriter, err error, cases ...errStatus) bool {
+	if err == nil {
+		return false
+	}
+	for _, c := range cases {
+		if errors.Is(err, c.is) {
+			http.Error(w, err.Error(), c.status)
+			return true
+		}
+	}
+	http.Error(w, err.Error(), http.StatusInternalServerError)
+	return true
 }

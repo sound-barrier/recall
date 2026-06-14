@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"net/http"
 
 	"recall/pkg/app"
@@ -49,15 +48,12 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 		// Validates preconditions + single-flight synchronously (so the
 		// caller still gets a 409/500 before the 202), then spawns the
 		// run and returns.
-		if err := a.StartParse(force); err != nil {
-			// 409: the request was well-formed but the server's runtime
-			// state conflicts — no/unreadable screenshots dir, or a parse
-			// is already in flight. Not 400 (the bytes parsed fine).
-			if errors.Is(err, app.ErrInvalidScreenshotsDir) || errors.Is(err, app.ErrParseInFlight) {
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		// 409: the request was well-formed but the server's runtime state
+		// conflicts — no/unreadable screenshots dir, or a parse is already
+		// in flight. Not 400 (the bytes parsed fine).
+		if writeError(w, a.StartParse(force),
+			errStatus{app.ErrInvalidScreenshotsDir, http.StatusConflict},
+			errStatus{app.ErrParseInFlight, http.StatusConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)
@@ -78,12 +74,8 @@ func registerPipelineRoutes(apiMux *http.ServeMux, a *app.App) {
 	// as POST /api/v1/parses for "the request was fine, the state
 	// isn't".
 	apiMux.HandleFunc("DELETE /api/v1/parses/active", func(w http.ResponseWriter, r *http.Request) {
-		if err := a.CancelParse(); err != nil {
-			if errors.Is(err, app.ErrNoParseInFlight) {
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.CancelParse(),
+			errStatus{app.ErrNoParseInFlight, http.StatusConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)

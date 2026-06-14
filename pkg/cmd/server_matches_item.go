@@ -25,8 +25,7 @@ func handleHardDeleteMatch(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if err := a.HardDeleteMatch(matchKey); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.HardDeleteMatch(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -84,8 +83,7 @@ func handleSetMatchVisibility(a *app.App) http.HandlerFunc {
 		} else {
 			err = a.UnhideMatch(matchKey)
 		}
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, err) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -111,17 +109,10 @@ func handleResolveMatch(a *app.App) http.HandlerFunc {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		if err := a.ResolveAmbiguousMatch(matchKey, body.ResolvedTo); err != nil {
-			switch {
-			case errors.Is(err, app.ErrInvalidAmbiguousKey),
-				errors.Is(err, app.ErrAmbiguousNotFound):
-				http.Error(w, err.Error(), http.StatusNotFound)
-				return
-			case errors.Is(err, app.ErrInvalidResolution):
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.ResolveAmbiguousMatch(matchKey, body.ResolvedTo),
+			errStatus{app.ErrInvalidAmbiguousKey, http.StatusNotFound},
+			errStatus{app.ErrAmbiguousNotFound, http.StatusNotFound},
+			errStatus{app.ErrInvalidResolution, http.StatusBadRequest}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -190,19 +181,14 @@ func handleSetMatchAnnotation(a *app.App) http.HandlerFunc {
 			http.Error(w, tErr.Error(), http.StatusBadRequest)
 			return
 		}
-		if err := a.SetMatchAnnotation(app.AnnotationInput{
+		if writeError(w, a.SetMatchAnnotation(app.AnnotationInput{
 			MatchKey:   matchKey,
 			Leaver:     leaver,
 			Note:       body.Note,
 			ReplayCode: body.ReplayCode,
 			Members:    members,
 			Tags:       tags,
-		}); err != nil {
-			if errors.Is(err, app.ErrInvalidLeaver) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}), errStatus{app.ErrInvalidLeaver, http.StatusBadRequest}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -225,12 +211,8 @@ func handleSetMatchReview(a *app.App) http.HandlerFunc {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		if err := a.SetMatchReview(matchKey, body.ReviewedBy); err != nil {
-			if errors.Is(err, app.ErrInvalidReviewedBy) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.SetMatchReview(matchKey, body.ReviewedBy),
+			errStatus{app.ErrInvalidReviewedBy, http.StatusBadRequest}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -245,8 +227,7 @@ func handleClearMatchReview(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if err := a.ClearMatchReview(matchKey); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.ClearMatchReview(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -270,12 +251,8 @@ func handleSetMatchQueue(a *app.App) http.HandlerFunc {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		if err := a.SetMatchQueue(matchKey, body.QueueType); err != nil {
-			if errors.Is(err, app.ErrInvalidQueueType) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.SetMatchQueue(matchKey, body.QueueType),
+			errStatus{app.ErrInvalidQueueType, http.StatusBadRequest}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -290,8 +267,7 @@ func handleClearMatchQueue(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if err := a.ClearMatchQueue(matchKey); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.ClearMatchQueue(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -314,12 +290,8 @@ func handleSetMatchPlayMode(a *app.App) http.HandlerFunc {
 			http.Error(w, "invalid JSON body", http.StatusBadRequest)
 			return
 		}
-		if err := a.SetMatchPlayMode(matchKey, body.PlayMode); err != nil {
-			if errors.Is(err, app.ErrInvalidPlayMode) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.SetMatchPlayMode(matchKey, body.PlayMode),
+			errStatus{app.ErrInvalidPlayMode, http.StatusBadRequest}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -334,8 +306,7 @@ func handleClearMatchPlayMode(a *app.App) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if err := a.ClearMatchPlayMode(matchKey); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if writeError(w, a.ClearMatchPlayMode(matchKey)) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
