@@ -83,11 +83,11 @@ import { useSearchClauses } from '@/composables/useSearchClauses'
 import { useSelectedMatch } from '@/composables/useSelectedMatch'
 import { useMatchesNarrow, createMatchesNarrowState } from '@/composables/useMatchesNarrow'
 import { useMatchAnchor } from '@/composables/useMatchAnchor'
-import type { ParseProgressEvent } from '@/components/ParseProgressPanel.vue'
-import ParseStatusBar from '@/components/ParseStatusBar.vue'
-import MastheadParseChip from '@/components/MastheadParseChip.vue'
-import MatchesSkeleton from '@/components/MatchesSkeleton.vue'
-import UpdateReminderBanner from '@/components/UpdateReminderBanner.vue'
+import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
+import ParseStatusBar from '@/components/ingest/ParseStatusBar.vue'
+import MastheadParseChip from '@/components/shared/MastheadParseChip.vue'
+import MatchesSkeleton from '@/components/matches/MatchesSkeleton.vue'
+import UpdateReminderBanner from '@/components/shared/UpdateReminderBanner.vue'
 import { useUpdateReminder } from '@/composables/useUpdateReminder'
 import { useFirstRunAcknowledged } from '@/composables/useFirstRunAcknowledged'
 
@@ -96,19 +96,19 @@ import { useFirstRunAcknowledged } from '@/composables/useFirstRunAcknowledged'
 // when the user clicks "Check for updates"; the bundle-size guard in
 // App.lazy-views.test.ts checks for this pattern across heavy
 // modals.
-const UpdateCheckModal = defineAsyncComponent(() => import('@/components/UpdateCheckModal.vue'))
+const UpdateCheckModal = defineAsyncComponent(() => import('@/components/shared/UpdateCheckModal.vue'))
 // First-run modal only renders on the very first launch (or after the
 // user clears localStorage). Lazy-loaded so 99 % of session boots
 // don't pay for its bytes in the initial JS chunk.
-const FirstRunProfileModal = defineAsyncComponent(() => import('@/components/FirstRunProfileModal.vue'))
+const FirstRunProfileModal = defineAsyncComponent(() => import('@/components/shared/FirstRunProfileModal.vue'))
 // Export-bundle confirmation modal — only mounted when the user clicks
 // "Export bundle…" on the Matches bulk-action bar. Lazy so its bytes
 // don't land in the initial chunk.
-const ExportBundleModal = defineAsyncComponent(() => import('@/components/ExportBundleModal.vue'))
+const ExportBundleModal = defineAsyncComponent(() => import('@/components/settings/ExportBundleModal.vue'))
 // "Manage ignored files" panel — only mounted when the user opens
 // Settings → Advanced → Manage. Lazy so the panel + its 16:9
 // thumbnail styles don't land in the initial chunk.
-const IgnoredFilesPanel = defineAsyncComponent(() => import('@/components/IgnoredFilesPanel.vue'))
+const IgnoredFilesPanel = defineAsyncComponent(() => import('@/components/settings/IgnoredFilesPanel.vue'))
 
 // View components are lazy-loaded via defineAsyncComponent so each
 // becomes a separate JS chunk emitted by Vite. The initial bundle
@@ -122,7 +122,7 @@ const IgnoredFilesPanel = defineAsyncComponent(() => import('@/components/Ignore
 // (the common case on throttled networks). On LAN / local the
 // chunk lands before the delay elapses and the fallback never
 // renders, keeping the snappy-feel intact.
-import ViewLazyFallback from '@/components/ViewLazyFallback.vue'
+import ViewLazyFallback from '@/components/shared/ViewLazyFallback.vue'
 const VIEW_LAZY_DELAY = 220
 function lazyView(loader: () => Promise<{ default: Component }>) {
   return defineAsyncComponent({
@@ -131,26 +131,26 @@ function lazyView(loader: () => Promise<{ default: Component }>) {
     delay: VIEW_LAZY_DELAY,
   })
 }
-const IngestView = lazyView(() => import('@/components/IngestView.vue'))
-const MatchesView = lazyView(() => import('@/components/MatchesView.vue'))
-const SettingsView = lazyView(() => import('@/components/SettingsView.vue'))
-const UnknownMapsView = lazyView(() => import('@/components/UnknownMapsView.vue'))
+const IngestView = lazyView(() => import('@/components/ingest/IngestView.vue'))
+const MatchesView = lazyView(() => import('@/components/matches/MatchesView.vue'))
+const SettingsView = lazyView(() => import('@/components/settings/SettingsView.vue'))
+const UnknownMapsView = lazyView(() => import('@/components/unknown/UnknownMapsView.vue'))
 // Modal surfaces only mount on demand — keep their (substantial)
 // scoped CSS + JS out of the initial chunk so the router shell
 // stays under the bundle-size budget. Same defineAsyncComponent
 // pattern the views use; the brief load-on-first-open delay is
 // invisible at LAN/local speeds.
-const MatchDetailPanel = defineAsyncComponent(() => import('@/components/MatchDetailPanel.vue'))
+const MatchDetailPanel = defineAsyncComponent(() => import('@/components/matches/MatchDetailPanel.vue'))
 // Anchor confirmation toast — small, eagerly loaded so it can fire
 // on the very first anchor-set transition without a chunk fetch.
-const MatchAnchorToast = defineAsyncComponent(() => import('@/components/MatchAnchorToast.vue'))
+const MatchAnchorToast = defineAsyncComponent(() => import('@/components/matches/MatchAnchorToast.vue'))
 // ProfileSwitcher is part of the always-visible masthead chrome, so
 // it's a static import — lazy-loading it would just buy a tiny
 // initial-bundle saving at the cost of a render-blocking flash on
 // every first paint.
-import ProfileSwitcher from '@/components/ProfileSwitcher.vue'
-const MatchScreenshotLightbox = defineAsyncComponent(() => import('@/components/MatchScreenshotLightbox.vue'))
-const KeyboardShortcutsModal = defineAsyncComponent(() => import('@/components/KeyboardShortcutsModal.vue'))
+import ProfileSwitcher from '@/components/shared/ProfileSwitcher.vue'
+const MatchScreenshotLightbox = defineAsyncComponent(() => import('@/components/matches/MatchScreenshotLightbox.vue'))
+const KeyboardShortcutsModal = defineAsyncComponent(() => import('@/components/shared/KeyboardShortcutsModal.vue'))
 
 // OnboardingTour lives in its own chunk. The redesigned tour pulled
 // in TourSpotlight + TourCallout + demo-match data + the controller
@@ -160,7 +160,7 @@ const KeyboardShortcutsModal = defineAsyncComponent(() => import('@/components/K
 // brief delay between "page paints" and "tour overlay appears" is
 // imperceptible against the network round-trip the load() itself is
 // already doing for /api/v1/matches.
-const OnboardingTour = defineAsyncComponent(() => import('@/components/OnboardingTour.vue'))
+const OnboardingTour = defineAsyncComponent(() => import('@/components/shared/OnboardingTour.vue'))
 
 // GitHub repository URL — surfaced via the brandmark in the masthead.
 // Centralised here so the markup, hover title, and any future references

@@ -1,6 +1,6 @@
 import { onBeforeUnmount, onMounted, type Ref } from 'vue'
 import { EventsOn, EventsOff, type MatchRecord } from '@/api'
-import type { ParseProgressEvent } from '@/components/ParseProgressPanel.vue'
+import type { ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
 
 // Live-stream subscriptions for the three SSE events emitted during
 // ingest: parse-progress (per-file ticks), parse-complete (batch
