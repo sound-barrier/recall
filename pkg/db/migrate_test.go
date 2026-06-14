@@ -1,10 +1,12 @@
-package db
+package db_test
 
 import (
 	"database/sql"
 	"testing"
 
 	_ "modernc.org/sqlite"
+
+	"recall/pkg/db"
 )
 
 func openMem(t *testing.T) *sql.DB {
@@ -26,7 +28,7 @@ func openMem(t *testing.T) *sql.DB {
 // lands this test gets a sibling that asserts the new behaviour.
 func TestApplyMigrations_NoMigrationsIsNoOp(t *testing.T) {
 	d := openMem(t)
-	if err := applyMigrations(d); err != nil {
+	if err := db.ApplyMigrations(d); err != nil {
 		t.Fatalf("applyMigrations: %v", err)
 	}
 	row := d.QueryRow(`SELECT count(*) FROM sqlite_master WHERE type='table' AND name='schema_version'`)
@@ -40,7 +42,7 @@ func TestApplyMigrations_NoMigrationsIsNoOp(t *testing.T) {
 }
 
 func TestLoadMigrations_EmptyDirReturnsEmpty(t *testing.T) {
-	migs, err := loadMigrations()
+	migs, err := db.LoadMigrations()
 	if err != nil {
 		t.Fatalf("loadMigrations: %v", err)
 	}
@@ -63,7 +65,7 @@ func TestSplitVersion(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.key, func(t *testing.T) {
-			n, _, err := splitVersion(c.key)
+			n, _, err := db.SplitVersion(c.key)
 			if c.wantOK && err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -83,29 +85,29 @@ func TestSplitVersion(t *testing.T) {
 // here before the first real migration lands.
 func TestApplyOneAndRevertOne_RoundTripsSyntheticMigration(t *testing.T) {
 	d := openMem(t)
-	if err := ensureSchemaVersionTable(d); err != nil {
+	if err := db.EnsureSchemaVersionTable(d); err != nil {
 		t.Fatalf("ensureSchemaVersionTable: %v", err)
 	}
-	m := migration{
-		version: 9001,
-		name:    "synthetic",
-		up:      `CREATE TABLE synthetic (id INTEGER PRIMARY KEY)`,
-		down:    `DROP TABLE synthetic`,
-	}
-	if err := applyOne(d, m); err != nil {
+	m := db.NewMigration(
+		9001,
+		"synthetic",
+		`CREATE TABLE synthetic (id INTEGER PRIMARY KEY)`,
+		`DROP TABLE synthetic`,
+	)
+	if err := db.ApplyOne(d, m); err != nil {
 		t.Fatalf("applyOne: %v", err)
 	}
-	v, err := schemaVersion(d)
+	v, err := db.SchemaVersion(d)
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
 	if v != 9001 {
 		t.Errorf("schema_version = %d, want 9001", v)
 	}
-	if err := revertOne(d, m); err != nil {
+	if err := db.RevertOne(d, m); err != nil {
 		t.Fatalf("revertOne: %v", err)
 	}
-	v, _ = schemaVersion(d)
+	v, _ = db.SchemaVersion(d)
 	if v != 0 {
 		t.Errorf("schema_version after revert = %d, want 0", v)
 	}
