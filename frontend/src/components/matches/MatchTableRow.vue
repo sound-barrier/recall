@@ -10,13 +10,13 @@ import {
   formatFinishedAt,
   isHeroUnknown,
   isMapUnknown,
-} from '@/match-helpers'
+} from '@/match/match-helpers'
 import {
   formatPlayModeLabel,
   formatQueueTypeLabel,
   formatUnknownHeroLabel,
   formatUnknownMapLabel,
-} from '@/match-label-helpers'
+} from '@/match/match-label-helpers'
 import { highlightTermsFor, type SearchClause } from '@/search-query'
 import HighlightedText from '@/components/matches/HighlightedText.vue'
 

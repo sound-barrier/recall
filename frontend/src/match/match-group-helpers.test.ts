@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { groupMatchesByMonthWeekDay } from '@/match-group-helpers'
+import { groupMatchesByMonthWeekDay } from '@/match/match-group-helpers'
 
 // ─── groupMatchesByMonthWeekDay ──────────────────────────────────────
 //

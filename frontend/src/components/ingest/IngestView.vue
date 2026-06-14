@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatRelativeTime } from '@/match-time-helpers'
+import { formatRelativeTime } from '@/match/match-time-helpers'
 import type { ParseConnectionState } from '@/composables/ingest/useParseRecovery'
 import ParseProgressPanel, { type ParseProgressEvent } from '@/components/ingest/ParseProgressPanel.vue'
 

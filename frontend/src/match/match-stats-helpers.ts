@@ -3,7 +3,7 @@
 // also imported by match-group-helpers.ts — the grouping tree
 // carries a W/L/D tally at every level.
 
-import { parseGameLengthMinutes } from '@/match-time-helpers'
+import { parseGameLengthMinutes } from '@/match/match-time-helpers'
 
 export interface WLDTally {
   w: number

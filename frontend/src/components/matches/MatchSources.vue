@@ -7,8 +7,8 @@ import {
   missingOptionalSlots,
   sshotTypeLabel,
   sourceType,
-} from '@/match-helpers'
-import { formatParsedAt } from '@/match-time-helpers'
+} from '@/match/match-helpers'
+import { formatParsedAt } from '@/match/match-time-helpers'
 
 // The expanded card's Sources block — the collapsible per-match screenshot
 // list (coverage chips on the toggle row, inline previews, lightbox launch)

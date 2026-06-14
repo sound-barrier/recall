@@ -8,7 +8,7 @@ import {
   isUnmatchedMatchKey,
   parseMatchKey,
   tryParseMatchKey,
-} from '@/match-key'
+} from '@/match/match-key'
 
 describe('parseMatchKey', () => {
   it.each([

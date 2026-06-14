@@ -1,6 +1,6 @@
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter, type Ref } from 'vue'
 import type { MatchRecord } from '@/api'
-import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '@/match-time-helpers'
+import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '@/match/match-time-helpers'
 import {
   type BreakdownEntry,
   type HeroBreakdownEntry,

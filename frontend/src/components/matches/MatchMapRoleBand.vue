@@ -5,7 +5,7 @@ import { useNarrow } from '@/composables/matches/useNarrow'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useMapRoleConfig } from '@/composables/matches/useMapRoleConfig'
 import { useWindowMonths } from '@/composables/matches/useWindowMonths'
-import { winrateVolumeFill } from '@/match-heatmap-helpers'
+import { winrateVolumeFill } from '@/match/match-heatmap-helpers'
 import type { MapRoleCell } from '@/composables/matches/useMatchesDossier'
 import MapRoleConfigPopover from '@/components/matches/MapRoleConfigPopover.vue'
 

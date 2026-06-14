@@ -14,7 +14,7 @@ import {
   formatFinishedAt,
   screenshotURL,
   highlightSubstring,
-} from '@/match-helpers'
+} from '@/match/match-helpers'
 
 // ─── sshotTypeLabel ──────────────────────────────────────────────────
 

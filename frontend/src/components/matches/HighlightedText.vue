@@ -1,7 +1,7 @@
 <script lang="ts">
 import { computed, defineComponent, h, type PropType } from 'vue'
 
-import { highlightSubstrings } from '@/match-helpers'
+import { highlightSubstrings } from '@/match/match-helpers'
 
 // Renders `text` with a <mark class="search-hl"> around every
 // case-insensitive occurrence of any `term`. Terms are the already
