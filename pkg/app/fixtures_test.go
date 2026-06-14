@@ -8,6 +8,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/db/dbtest"
+	"recall/pkg/match"
 )
 
 // TestMain pins the fixture date window so seeded distributions stay
@@ -584,7 +585,7 @@ func TestGenerateMatchFixture_UnknownAndAmbiguousCounts(t *testing.T) {
 	// its own filename — the parser's convention for files without a
 	// resolvable timestamp.
 	for _, u := range fx.Unknowns {
-		mk, err := app.ParseMatchKey(u.MatchKey)
+		mk, err := match.ParseMatchKey(u.MatchKey)
 		if err != nil || !mk.IsUnmatched() {
 			t.Errorf("unknown %s has non-unmatched key %q", u.Filename, u.MatchKey)
 		}
@@ -595,7 +596,7 @@ func TestGenerateMatchFixture_UnknownAndAmbiguousCounts(t *testing.T) {
 	// tracked match_keys from the main corpus.
 	trackedSet := make(map[string]bool, len(fx.Summaries))
 	for _, s := range fx.Summaries {
-		if mk, err := app.ParseMatchKey(s.MatchKey); err == nil && mk.IsTracked() {
+		if mk, err := match.ParseMatchKey(s.MatchKey); err == nil && mk.IsTracked() {
 			trackedSet[s.MatchKey] = true
 		}
 	}
@@ -612,7 +613,7 @@ func TestGenerateMatchFixture_UnknownAndAmbiguousCounts(t *testing.T) {
 			t.Errorf("ambiguous %s has no companion teams row", a.Filename)
 			continue
 		}
-		mk, err := app.ParseMatchKey(gotKey)
+		mk, err := match.ParseMatchKey(gotKey)
 		if err != nil || !mk.IsAmbiguous() {
 			t.Errorf("ambiguous %s companion teams key %q isn't ambiguous-shaped", a.Filename, gotKey)
 		}

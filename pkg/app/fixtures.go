@@ -164,7 +164,7 @@ func normalizeAll(canonical []string) []string {
 // Every match emits one Summary + one Teams. Personal lands on
 // ~60% of matches, Rank on ~40% — mirrors what the production parser
 // actually persists. All four rows for one match share a single
-// MatchKey minted via NewTrackedMatchKey.
+// MatchKey minted via match.NewTrackedMatchKey.
 //
 // The generator is pure data construction — never touches a Store or
 // filesystem — so tests can exercise it without setup beyond stdlib.
