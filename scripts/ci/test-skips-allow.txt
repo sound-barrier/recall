@@ -12,18 +12,18 @@
 # Format: exact grep output line (path:line: source). Sort blocks by
 # file. Comments above each block explain the gate.
 
-# pkg/app/probe_test.go — Tesseract-probe behaviour is platform-
-# specific. The function returns no candidates on non-Linux/macOS,
-# so the "expect a candidate" tests skip on those OSes; the
-# "Windows-only" tests skip on macOS/Linux and run only on Windows
-# runners.
-pkg/app/probe_test.go:33:		t.Skipf("no probe candidates on %s; nothing to assert", runtime.GOOS)
-pkg/app/probe_test.go:77:		t.Skip("Windows has its own assertion below")
-pkg/app/probe_test.go:88:		t.Skip("Windows-only behaviour")
-pkg/app/probe_test.go:132:		t.Skipf("no probe candidates on %s", runtime.GOOS)
-pkg/app/probe_test.go:177:		t.Skip("Windows has its own assertion below")
-pkg/app/probe_test.go:188:		t.Skip("Windows-only behaviour")
-pkg/app/probe_test.go:237:		t.Skip("Windows-only behaviour")
+# pkg/probe screenshots-folder probe — platform-specific. The probe
+# returns no candidates on non-Linux/macOS, so the "expect a candidate"
+# tests skip on those OSes; the "Windows-only" tests skip on macOS/Linux
+# and run only on Windows runners. autoProbe's app-level test lives in
+# pkg/app/autoprobe_test.go (needs the app bridge).
+pkg/app/autoprobe_test.go:25:		t.Skipf("no probe candidates on %s", runtime.GOOS)
+pkg/probe/probe_test.go:33:		t.Skipf("no probe candidates on %s; nothing to assert", runtime.GOOS)
+pkg/probe/probe_test.go:77:		t.Skip("Windows has its own assertion below")
+pkg/probe/probe_test.go:87:		t.Skip("Windows-only behaviour")
+pkg/probe/probe_test.go:126:		t.Skip("Windows has its own assertion below")
+pkg/probe/probe_test.go:136:		t.Skip("Windows-only behaviour")
+pkg/probe/probe_test.go:184:		t.Skip("Windows-only behaviour")
 
 # pkg/app/screenshot_handler_fuzz_test.go — the fuzz harness skips
 # inputs httptest.NewRequest can't construct (control bytes that

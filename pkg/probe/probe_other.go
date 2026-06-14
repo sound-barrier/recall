@@ -1,6 +1,6 @@
 //go:build !windows
 
-package app
+package probe
 
 // resolveSteamScreenshots is a Windows-only operation — Steam's userdata
 // path resolution goes through the Windows registry. On macOS / Linux
