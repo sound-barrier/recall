@@ -16,7 +16,7 @@ import {
   formatUnknownHeroLabel,
   formatUnknownMapLabel,
 } from '@/match/match-label-helpers'
-import { highlightTermsFor, type SearchClause } from '@/search-query'
+import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 import HighlightedText from '@/components/matches/HighlightedText.vue'
 
 // One compact match row in the set's members list. Click opens the

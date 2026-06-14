@@ -1,6 +1,6 @@
 import type { MatchRecord } from '@/api'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
-import type { SearchClause } from '@/search-query'
+import type { SearchClause } from '@/match/search-query'
 import type { PlayModePick, QueuePick, ReviewedByPick } from '@/composables/matches/useMatchesNarrow'
 
 // Per-dimension narrow predicates. Each function is ≤ 15 lines,

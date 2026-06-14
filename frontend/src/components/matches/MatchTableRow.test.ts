@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import type { MatchRecord } from '@/api'
-import type { SearchClause } from '@/search-query'
+import type { SearchClause } from '@/match/search-query'
 
 // Stub the reference-data singleton so the row renders deterministically
 // without firing the once-per-session fetch (which would ECONNREFUSED in

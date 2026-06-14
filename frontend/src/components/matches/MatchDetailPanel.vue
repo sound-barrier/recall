@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, toRef, onMounted, onBeforeUnmount } from 'vue'
 import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from '@/api'
-import type { SearchClause } from '@/search-query'
+import type { SearchClause } from '@/match/search-query'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useSmoothScroll } from '@/composables/matches/useSmoothScroll'
