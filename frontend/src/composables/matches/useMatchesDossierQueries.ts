@@ -195,13 +195,19 @@ export function useDossierQueries(
         .sort((a, b) => b[1] - a[1])
         .slice(0, heroLimit)
         .map(([h]) => h)
+        // Pick the most-played for scannability, then display A→Z so the
+        // rows read as a stable alphabetical list (matching the columns).
+        .sort((a, b) => a.localeCompare(b))
       // Materialise every (top-hero, game-mode) cell — including
       // zeros — so the grid layout is rectangular. The widget
       // renders the empty cells as a flat surface tone (no border,
       // no glyph) so the eye reads the populated cells first.
       const out: Array<{ hero: string; gameMode: string; wins: number; losses: number; draws: number; total: number; winrate: number }> = []
+      // Columns A→Z too — sort a copy so the canonical-order constant
+      // stays intact for any other consumer.
+      const orderedModes = [...CANONICAL_GAME_MODES].sort((a, b) => a.localeCompare(b))
       for (const h of topHeroes) {
-        for (const t of CANONICAL_GAME_MODES) {
+        for (const t of orderedModes) {
           const b = cells.get(cellKey(h, t)) ?? { wins: 0, losses: 0, draws: 0, total: 0 }
           const decided = b.wins + b.losses
           out.push({

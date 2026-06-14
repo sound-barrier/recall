@@ -1782,3 +1782,40 @@ describe('useMatchesDossier — query-helper parameterization', () => {
     })
   })
 })
+
+describe('heroGameModeCounts ordering', () => {
+  function modeRec(hero: string, gameMode: string): MatchRecord {
+    return {
+      match_key: `m-${hero}-${gameMode}-${Math.random()}`,
+      source_files: ['a.png'],
+      source_types: { 'a.png': 'summary' },
+      data: { hero, game_mode: gameMode, result: 'victory', date: '2026-05-10' },
+      parsed_at: '2026-05-10T14:00:00Z',
+    } as unknown as MatchRecord
+  }
+
+  it('orders heroes (rows) and game modes (columns) alphabetically', () => {
+    // zenyatta is the most-played (highest volume), then mercy, then ana —
+    // a deliberately non-alphabetical volume order. Game modes span the
+    // canonical (non-alphabetical) set.
+    const records = ref<MatchRecord[]>([
+      modeRec('zenyatta', 'push'),
+      modeRec('zenyatta', 'control'),
+      modeRec('mercy', 'clash'),
+      modeRec('ana', 'escort'),
+    ])
+    const d = useMatchesDossier(records, ref<LeaverHandling>('include'))
+    const cells = d.heroGameModeCounts(() => ({ heroLimit: 8 })).value
+
+    // Vertical: distinct heroes appear A→Z regardless of play volume.
+    const heroes: string[] = []
+    for (const c of cells) if (!heroes.includes(c.hero)) heroes.push(c.hero)
+    expect(heroes).toEqual(['ana', 'mercy', 'zenyatta'])
+
+    // Horizontal: each hero's game-mode columns are A→Z. The canonical
+    // set sorted alphabetically is clash, control, escort, flashpoint,
+    // hybrid, push.
+    const firstHeroModes = cells.filter((c) => c.hero === heroes[0]!).map((c) => c.gameMode)
+    expect(firstHeroModes).toEqual(['clash', 'control', 'escort', 'flashpoint', 'hybrid', 'push'])
+  })
+})
