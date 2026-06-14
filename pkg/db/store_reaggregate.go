@@ -72,6 +72,9 @@ func (s *SQLStore) ReAggregateUnknowns(heroFn func(rawHero string) string, mapFn
 		selectMap  string
 		updateMap  string
 	}
+	// "Unresolved" is `hero = ''`: empty parser scalars are stored as the
+	// literal '' (the columns are NOT NULL DEFAULT '' and the write path no
+	// longer NULL-coalesces empties), so a plain equality match suffices.
 	queries := []tableQueries{
 		{
 			selectHero: `SELECT id, hero_raw FROM summary_screenshots WHERE hero = '' AND hero_raw != ''`,

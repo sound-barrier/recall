@@ -21,7 +21,7 @@ func (s *SQLStore) UpsertPersonal(r PersonalRow) error {
 			hero               = excluded.hero,
 			hero_raw           = excluded.hero_raw
 		RETURNING id`,
-		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID), nullableString(r.Hero), r.HeroRaw,
+		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID), r.Hero, r.HeroRaw,
 	).Scan(&id)
 	if err != nil {
 		return err
@@ -57,12 +57,10 @@ func (s *SQLStore) loadPersonals() ([]PersonalRow, error) {
 	for rows.Next() {
 		var r PersonalRow
 		var dirID sql.NullInt64
-		var hero sql.NullString
-		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID, &hero, &r.HeroRaw); err != nil {
+		if err := rows.Scan(&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID, &r.Hero, &r.HeroRaw); err != nil {
 			return nil, err
 		}
 		r.ScreenshotsDirID = dirID.Int64
-		r.Hero = hero.String
 		out = append(out, r)
 	}
 	if err := rows.Err(); err != nil {

@@ -44,9 +44,9 @@ func (s *SQLStore) UpsertSummary(r SummaryRow) error {
 			perf_deaths_avg_per_10min  = excluded.perf_deaths_avg_per_10min
 		RETURNING id`,
 		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID),
-		nullableString(r.Map), r.MapRaw, nullableString(r.Playlist), nullableString(r.Hero), r.HeroRaw,
-		nullableString(r.Result), nullableString(r.FinalScore),
-		nullableString(r.Date), nullableString(r.FinishedAt), nullableString(r.GameLength),
+		r.Map, r.MapRaw, r.Playlist, r.Hero, r.HeroRaw,
+		r.Result, r.FinalScore,
+		r.Date, r.FinishedAt, r.GameLength,
 		r.PerfElimTotal, r.PerfElimAvgPer10Min,
 		r.PerfAssistsTotal, r.PerfAssistsAvgPer10Min,
 		r.PerfDeathsTotal, r.PerfDeathsAvgPer10Min,
@@ -62,7 +62,7 @@ func (s *SQLStore) UpsertSummary(r SummaryRow) error {
 		if _, err := tx.Exec(
 			`INSERT INTO summary_heroes_played (summary_screenshot_id, hero, percent_played, play_time)
 			VALUES (?,?,?,?)`,
-			id, h.Hero, h.PercentPlayed, nullableString(h.PlayTime),
+			id, h.Hero, h.PercentPlayed, h.PlayTime,
 		); err != nil {
 			return err
 		}
@@ -88,10 +88,9 @@ func (s *SQLStore) loadSummaries() ([]SummaryRow, error) {
 	for rows.Next() {
 		var r SummaryRow
 		var dirID sql.NullInt64
-		var mapC, playlist, hero, result, fs, date, fa, gl sql.NullString
 		if err := rows.Scan(
 			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
-			&mapC, &r.MapRaw, &playlist, &hero, &r.HeroRaw, &result, &fs, &date, &fa, &gl,
+			&r.Map, &r.MapRaw, &r.Playlist, &r.Hero, &r.HeroRaw, &r.Result, &r.FinalScore, &r.Date, &r.FinishedAt, &r.GameLength,
 			&r.PerfElimTotal, &r.PerfElimAvgPer10Min,
 			&r.PerfAssistsTotal, &r.PerfAssistsAvgPer10Min,
 			&r.PerfDeathsTotal, &r.PerfDeathsAvgPer10Min,
@@ -99,14 +98,6 @@ func (s *SQLStore) loadSummaries() ([]SummaryRow, error) {
 			return nil, err
 		}
 		r.ScreenshotsDirID = dirID.Int64
-		r.Map = mapC.String
-		r.Playlist = playlist.String
-		r.Hero = hero.String
-		r.Result = result.String
-		r.FinalScore = fs.String
-		r.Date = date.String
-		r.FinishedAt = fa.String
-		r.GameLength = gl.String
 		out = append(out, r)
 	}
 	if err := rows.Err(); err != nil {
@@ -127,11 +118,9 @@ func (s *SQLStore) loadSummaries() ([]SummaryRow, error) {
 	for hpRows.Next() {
 		var id int64
 		var h SummaryHeroPlayed
-		var pt sql.NullString
-		if err := hpRows.Scan(&id, &h.Hero, &h.PercentPlayed, &pt); err != nil {
+		if err := hpRows.Scan(&id, &h.Hero, &h.PercentPlayed, &h.PlayTime); err != nil {
 			return nil, err
 		}
-		h.PlayTime = pt.String
 		if parent, ok := byID[id]; ok {
 			parent.HeroesPlayed = append(parent.HeroesPlayed, h)
 		}

@@ -27,8 +27,8 @@ func (s *SQLStore) UpsertRank(r RankRow) error {
 			result         = excluded.result
 		RETURNING id`,
 		r.Filename, r.MatchKey, dirIDOrSentinel(r.ScreenshotsDirID),
-		nullableString(r.Rank), r.Level, r.RankProgress, r.ChangePercent,
-		nullableString(r.Result),
+		r.Rank, r.Level, r.RankProgress, r.ChangePercent,
+		r.Result,
 	).Scan(&id)
 	if err != nil {
 		return err
@@ -75,16 +75,13 @@ func (s *SQLStore) loadRanks() ([]RankRow, error) {
 	for rows.Next() {
 		var r RankRow
 		var dirID sql.NullInt64
-		var rank, result sql.NullString
 		if err := rows.Scan(
 			&r.ID, &r.Filename, &r.MatchKey, &r.ParsedAt, &dirID,
-			&rank, &r.Level, &r.RankProgress, &r.ChangePercent, &result,
+			&r.Rank, &r.Level, &r.RankProgress, &r.ChangePercent, &r.Result,
 		); err != nil {
 			return nil, err
 		}
 		r.ScreenshotsDirID = dirID.Int64
-		r.Rank = rank.String
-		r.Result = result.String
 		out = append(out, r)
 	}
 	if err := rows.Err(); err != nil {

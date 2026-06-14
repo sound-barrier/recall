@@ -7,32 +7,30 @@ import (
 	"recall/pkg/db"
 )
 
-// seedRawSummary inserts a summary row with hero/map set to the literal
-// empty string (not NULL) so it matches ReAggregateUnknowns' scan predicate
-// `WHERE hero = ” AND hero_raw != ”`. The Upsert path stores empty values
-// as SQL NULL via nullableString, which is a separate concern from the
-// re-aggregation SQL exercised here.
-func seedRawSummary(t *testing.T, s *db.SQLStore, filename, key, heroRaw, mapRaw string) {
-	t.Helper()
-	if _, err := db.RawDB(s).Exec(
-		`INSERT INTO summary_screenshots (filename, match_key, hero, hero_raw, map, map_raw, screenshots_dir_id)
-		 VALUES (?, ?, '', ?, '', ?, ?)`,
-		filename, key, heroRaw, mapRaw, db.SentinelScreenshotsDirID,
-	); err != nil {
-		t.Fatalf("seed summary %s: %v", filename, err)
-	}
-}
-
 func TestSQLStore_ReAggregateUnknowns_PromotesResolvableRawValues(t *testing.T) {
 	s := openMemory(t)
-	seedRawSummary(t, s, "s.png", "match-a", "lúcio", "rial+o")
-	seedRawSummary(t, s, "s2.png", "match-b", "???", "???") // unresolvable — stays put
-	if _, err := db.RawDB(s).Exec(
-		`INSERT INTO personal_screenshots (filename, match_key, hero, hero_raw, screenshots_dir_id)
-		 VALUES (?, ?, '', ?, ?)`,
-		"p.png", "match-a", "junkr@t", db.SentinelScreenshotsDirID,
-	); err != nil {
-		t.Fatalf("seed personal: %v", err)
+	// Seed through the real write path: an empty canonical hero/map is stored
+	// as '' (NOT NULL DEFAULT ''), with the raw OCR string preserved for a
+	// later matcher pass. This pins the regression where the scan predicate
+	// missed normally-parsed rows (they used to be stored as SQL NULL).
+	if err := s.UpsertSummary(db.SummaryRow{
+		Filename: "s.png", MatchKey: "match-a",
+		Hero: "", HeroRaw: "lúcio", Map: "", MapRaw: "rial+o",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpsertPersonal(db.PersonalRow{
+		Filename: "p.png", MatchKey: "match-a",
+		Hero: "", HeroRaw: "junkr@t",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// A row that still won't resolve (matcher returns "") stays untouched.
+	if err := s.UpsertSummary(db.SummaryRow{
+		Filename: "s2.png", MatchKey: "match-b",
+		Hero: "", HeroRaw: "???", Map: "", MapRaw: "???",
+	}); err != nil {
+		t.Fatal(err)
 	}
 
 	heroFn := func(raw string) string {
@@ -85,7 +83,12 @@ func TestSQLStore_ReAggregateUnknowns_PromotesResolvableRawValues(t *testing.T) 
 
 func TestSQLStore_ReAggregateUnknowns_NothingResolvableReturnsZero(t *testing.T) {
 	s := openMemory(t)
-	seedRawSummary(t, s, "s.png", "k", "unknowable", "unknowable")
+	if err := s.UpsertSummary(db.SummaryRow{
+		Filename: "s.png", MatchKey: "k",
+		Hero: "", HeroRaw: "unknowable", Map: "", MapRaw: "unknowable",
+	}); err != nil {
+		t.Fatal(err)
+	}
 	n, err := s.ReAggregateUnknowns(
 		func(string) string { return "" },
 		func(string) string { return "" },
