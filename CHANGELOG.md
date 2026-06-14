@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.14.2](https://github.com/sound-barrier/recall/compare/v0.14.1...v0.14.2) (2026-06-14)
+
+
+### Refactors
+
+* **aggregate:** extract read-time aggregation into pkg/aggregate ([48af6d1](https://github.com/sound-barrier/recall/commit/48af6d1400dba74ea33979d575898bf626d5c951))
+* **components:** group flat dir into feature subfolders ([8b1d2a7](https://github.com/sound-barrier/recall/commit/8b1d2a7138d80e642a79b1726a8dea84ce428499))
+* **composables:** group flat dir into feature subfolders ([390885a](https://github.com/sound-barrier/recall/commit/390885a70daafb2db18a5a6dfc736d1aeb925b69))
+* **correlate:** extract correlation engine into pkg/correlate ([c6e271d](https://github.com/sound-barrier/recall/commit/c6e271d61292598ca0cfd3d57c911c4a056112d3))
+* **fixtures:** extract dev/seed generator into pkg/fixtures ([3e5e865](https://github.com/sound-barrier/recall/commit/3e5e8653ef91b71a97074b8008b8c4002bfd525b))
+* **frontend:** adopt @/ alias for all intra-src imports ([4a4a379](https://github.com/sound-barrier/recall/commit/4a4a3798a0b0670abe0ddc506be8317c2dbcaff3))
+* **match:** extract match-key identity into pkg/match ([92397de](https://github.com/sound-barrier/recall/commit/92397de25ad94fe721b4b3edd36744bbe15e573a))
+* **match:** fold search-query into src/match/ ([5ee1549](https://github.com/sound-barrier/recall/commit/5ee15496e8ed83dd761479cdad8815ca886fe5f9))
+* **match:** group match-*.ts helpers into src/match/ ([d7a95d8](https://github.com/sound-barrier/recall/commit/d7a95d864a26aaf19bec1907a8765374b10f6b51))
+* **match:** move MatchRecord + domain types into pkg/match ([884bf55](https://github.com/sound-barrier/recall/commit/884bf55d264505122b622bbcb2c0565d03ad3b25))
+* **probe:** extract screenshots-folder detection into pkg/probe ([b43fb97](https://github.com/sound-barrier/recall/commit/b43fb97ad4325f8110531fd3d62f35612bb16d9e))
+
+
+### Documentation
+
+* add package & directory size guidance (cohesion over count) ([56198c3](https://github.com/sound-barrier/recall/commit/56198c339bb6d7caef34c2009709b4305f499834))
+* **frontend:** document @/ alias and bucketed component layout ([0d9700b](https://github.com/sound-barrier/recall/commit/0d9700baf01c3376183c1c2ce869c38b60ae9f4d))
+* **frontend:** mark composables grouped into feature folders ([c38e5b7](https://github.com/sound-barrier/recall/commit/c38e5b746c970ac4825c273d801e9f266cb854fe))
+* point pure-helper references at the src/match/ folder ([d39def6](https://github.com/sound-barrier/recall/commit/d39def6049f51424713c93b7b95d376f561247ca))
+* require compile-time interface-compliance assertions ([b77277e](https://github.com/sound-barrier/recall/commit/b77277e00ca2315e22d8272cc47610b13accb267))
+
+
+### Build & Packaging
+
+* **frontend:** add @/ path alias for src/ imports ([b461684](https://github.com/sound-barrier/recall/commit/b4616845b27fc4cf4961632108aa7e7483a28d9c))
+
 ## [0.14.1](https://github.com/sound-barrier/recall/compare/v0.14.0...v0.14.1) (2026-06-14)
 
 
