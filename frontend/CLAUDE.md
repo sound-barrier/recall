@@ -32,7 +32,7 @@ composable is unknown-specific.)
 **Imports use the `@/` alias** (`@/` → `frontend/src/`) — the canonical Vue
 convention, configured in `vite.config.ts` + `vitest.config.ts` (`resolve.alias`)
 and `tsconfig.json` (`paths`). Import intra-`src` modules as
-`@/components/<feature>/Foo.vue`, `@/composables/<feature>/useFoo`, `@/match-helpers`, … —
+`@/components/<feature>/Foo.vue`, `@/composables/<feature>/useFoo`, `@/match/match-helpers`, … —
 never with relative `../` chains. Location-independent paths are what let a file
 move between feature folders without rewriting its own imports (the whole point
 of the regroup). eslint needs no resolver plugin — its rule set never resolves
@@ -43,7 +43,7 @@ mock matches.
 **Layering rule:**
 
 - **Pure helpers** (date formatting, screenshot-type detection, hero
-  sorting, …) go in `match-helpers.ts` with a Vitest case.
+  sorting, …) go in `@/match/` (e.g. `match-helpers.ts`) with a Vitest case.
 - **Stateful logic** goes in a composable under `composables/`. Don't
   define either inside an SFC's `<script setup>`.
 
