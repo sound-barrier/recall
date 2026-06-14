@@ -1,0 +1,48 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "rialto",
+    "game_mode": "escort",
+    "role": "support",
+    "hero": "wuyang",
+    "eliminations": 7,
+    "assists": 6,
+    "deaths": 3,
+    "result": "defeat",
+    "final_score": "0-1",
+    "date": "2026-05-10",
+    "finished_at": "21:08",
+    "game_length": "8:54",
+    "heroes_played": [
+      {
+        "hero": "wuyang",
+        "percent_played": 47,
+        "play_time": "03:30"
+      },
+      {
+        "hero": "juno",
+        "percent_played": 46,
+        "play_time": "03:26"
+      },
+      {
+        "hero": "kiriko",
+        "percent_played": 7,
+        "play_time": "00:29"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 7,
+        "avg_per_10min": 9.4
+      },
+      "assists": {
+        "total": 6,
+        "avg_per_10min": 8.06
+      },
+      "deaths": {
+        "total": 3,
+        "avg_per_10min": 4.03
+      }
+    }
+  }
+}
