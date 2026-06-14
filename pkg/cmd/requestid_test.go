@@ -1,4 +1,4 @@
-package cmd
+package cmd_test
 
 import (
 	"context"
@@ -6,12 +6,14 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"recall/pkg/cmd"
 )
 
 func TestRequestID_MintsWhenAbsent(t *testing.T) {
 	var seen string
-	h := withRequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		seen = FromContext(r.Context())
+	h := cmd.WithRequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = cmd.FromContext(r.Context())
 	}))
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/v1/matches", nil)
@@ -30,8 +32,8 @@ func TestRequestID_MintsWhenAbsent(t *testing.T) {
 
 func TestRequestID_EchoesSafeClientID(t *testing.T) {
 	var seen string
-	h := withRequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		seen = FromContext(r.Context())
+	h := cmd.WithRequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = cmd.FromContext(r.Context())
 	}))
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/v1/matches", nil)
@@ -51,8 +53,8 @@ func TestRequestID_RejectsUnsafeClientID(t *testing.T) {
 	} {
 		t.Run(bad, func(t *testing.T) {
 			var seen string
-			h := withRequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				seen = FromContext(r.Context())
+			h := cmd.WithRequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				seen = cmd.FromContext(r.Context())
 			}))
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest("GET", "/x", nil)
@@ -70,7 +72,7 @@ func TestRequestID_RejectsUnsafeClientID(t *testing.T) {
 }
 
 func TestRequestID_FromContext_EmptyForBareContext(t *testing.T) {
-	if got := FromContext(context.Background()); got != "" {
+	if got := cmd.FromContext(context.Background()); got != "" {
 		t.Errorf("FromContext(background) = %q, want empty", got)
 	}
 }
