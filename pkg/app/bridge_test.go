@@ -81,17 +81,6 @@ var (
 	ReadZipFile              = readZipFile
 )
 
-// ── Fixture generator internals ───────────────────────────────────────────
-var (
-	RoleOfHero       = roleOfHero
-	FixtureDateRange = fixtureDateRange
-	ChaosEmojis      = chaosEmojis
-	FixtureDPS       = fixtureDPS
-	FixtureMaps      = fixtureMaps
-	FixtureSupports  = fixtureSupports
-	FixtureTanks     = fixtureTanks
-)
-
 // ScreenshotView aliases the unexported aggregation view + a constructor (its
 // fields are unexported) so foldGroup can be driven black-box.
 type ScreenshotView = screenshotView
@@ -116,7 +105,6 @@ var (
 // ── Other function-variable / tunable seams (pointers for save/swap/restore) ──
 var (
 	RevealCommand    = &revealCommand
-	FixtureNow       = &fixtureNow
 	MaxZipEntryBytes = &maxZipEntryBytes
 )
 
