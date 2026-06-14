@@ -10,8 +10,8 @@ import {
   defaultLayout,
   LAYOUT_STORAGE_KEY,
   type RowLayout,
-} from './useDashboardLayout'
-import { WIDGET_REGISTRY, DEFAULT_ROW_LAYOUT } from '../dashboard/widgets'
+} from '@/composables/useDashboardLayout'
+import { WIDGET_REGISTRY, DEFAULT_ROW_LAYOUT } from '@/dashboard/widgets'
 
 let storage: Record<string, string> = {}
 function stubLocalStorage() {

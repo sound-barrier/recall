@@ -1,6 +1,6 @@
 import { ref, computed, onMounted } from 'vue'
 
-import { usePersistedRef, parseBoolish, serializeBoolish } from './usePersistedRef'
+import { usePersistedRef, parseBoolish, serializeBoolish } from '@/composables/usePersistedRef'
 
 // First-launch onboarding tour. Redesigned from a four-step static
 // briefing into a **spotlighted product tour** that walks the user
@@ -30,8 +30,8 @@ import { usePersistedRef, parseBoolish, serializeBoolish } from './usePersistedR
 // whole tour controller into the initial JS chunk; consumers already
 // inside this file (and other lazy-loaded tour code) keep the
 // transitive import.
-export { ONBOARDING_COMPLETED_KEY } from './storageKeys'
-import { ONBOARDING_COMPLETED_KEY, ONBOARDING_RESUME_KEY } from './storageKeys'
+export { ONBOARDING_COMPLETED_KEY } from '@/composables/storageKeys'
+import { ONBOARDING_COMPLETED_KEY, ONBOARDING_RESUME_KEY } from '@/composables/storageKeys'
 
 export type OnboardingViewId = 'settings' | 'ingest' | 'matches' | 'unknown'
 export type CalloutPlacement = 'auto' | 'top' | 'bottom' | 'left' | 'right'

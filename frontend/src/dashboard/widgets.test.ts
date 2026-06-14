@@ -3,7 +3,7 @@ import {
   WIDGET_REGISTRY,
   DEFAULT_ROW_LAYOUT,
   widgetById,
-} from './widgets'
+} from '@/dashboard/widgets'
 
 describe('dashboard widget registry', () => {
   it('every default-row id appears at most once across all rows', () => {

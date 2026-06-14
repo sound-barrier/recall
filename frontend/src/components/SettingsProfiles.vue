@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { GetProfiles, DeleteProfile } from '../api'
+import { GetProfiles, DeleteProfile } from '@/api'
 
 // Profiles management panel of the Settings view. Lists every profile
 // on disk; non-active rows expose a two-step delete affordance that

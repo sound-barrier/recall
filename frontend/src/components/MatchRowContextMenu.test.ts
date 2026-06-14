@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
-import MatchRowContextMenu from './MatchRowContextMenu.vue'
+import MatchRowContextMenu from '@/components/MatchRowContextMenu.vue'
 
 const wrappers: VueWrapper[] = []
 function mountMenu(props: {

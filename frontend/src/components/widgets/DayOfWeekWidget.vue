@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useDossier } from '../../composables/useDossier'
-import { useWidgetConfig } from '../../composables/useWidgetConfig'
-import { dayOfWeekSchema, type DayOfWeekConfig } from '../../dashboard/widgets'
-import type { WeekStart } from '../../match-time-helpers'
+import { useDossier } from '@/composables/useDossier'
+import { useWidgetConfig } from '@/composables/useWidgetConfig'
+import { dayOfWeekSchema, type DayOfWeekConfig } from '@/dashboard/widgets'
+import type { WeekStart } from '@/match-time-helpers'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<DayOfWeekConfig>('day-of-week', dayOfWeekSchema)

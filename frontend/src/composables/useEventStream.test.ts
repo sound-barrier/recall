@@ -8,7 +8,7 @@ const handlers: Record<string, (data: unknown) => void> = {}
 let onCalls: Array<{ name: string }> = []
 let offCalls: Array<{ name: string }> = []
 
-vi.mock('../api', () => ({
+vi.mock('@/api', () => ({
   EventsOn: <T,>(name: string, cb: (data: T) => void) => {
     handlers[name] = cb as (data: unknown) => void
     onCalls.push({ name })
@@ -19,9 +19,9 @@ vi.mock('../api', () => ({
   },
 }))
 
-import type { MatchRecord } from '../api'
-import { useEventStream } from './useEventStream'
-import type { ParseProgressEvent } from '../components/ParseProgressPanel.vue'
+import type { MatchRecord } from '@/api'
+import { useEventStream } from '@/composables/useEventStream'
+import type { ParseProgressEvent } from '@/components/ParseProgressPanel.vue'
 
 function rec(matchKey: string, extra?: Partial<MatchRecord>): MatchRecord {
   return {

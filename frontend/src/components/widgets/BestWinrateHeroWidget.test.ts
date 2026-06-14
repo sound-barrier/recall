@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import BestWinrateHeroWidget from './BestWinrateHeroWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import BestWinrateHeroWidget from '@/components/widgets/BestWinrateHeroWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 describe('BestWinrateHeroWidget', () => {
   it('renders an em-dash when no hero qualifies', () => {

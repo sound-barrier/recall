@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
 
-import { useModalFocusTrap } from '../composables/useModalFocusTrap'
-import type { TabId } from '../composables/useTabKeyboardNav'
+import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
+import type { TabId } from '@/composables/useTabKeyboardNav'
 
 // "?" cheat-sheet modal. Lists keyboard bindings filtered to the
 // user's current context — the binding catalog covers every scope

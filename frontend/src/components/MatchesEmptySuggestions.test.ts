@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import MatchesEmptySuggestions from './MatchesEmptySuggestions.vue'
+import MatchesEmptySuggestions from '@/components/MatchesEmptySuggestions.vue'
 
 describe('MatchesEmptySuggestions', () => {
   it('renders nothing when suggestions is empty', () => {

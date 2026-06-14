@@ -6,10 +6,10 @@ import {
   ONBOARDING_STEPS,
   type OnboardingViewId,
   type TourActionContext,
-} from '../composables/useOnboardingTour'
-import { useScrollLock } from '../composables/useScrollLock'
-import TourSpotlight from './TourSpotlight.vue'
-import TourCallout from './TourCallout.vue'
+} from '@/composables/useOnboardingTour'
+import { useScrollLock } from '@/composables/useScrollLock'
+import TourSpotlight from '@/components/TourSpotlight.vue'
+import TourCallout from '@/components/TourCallout.vue'
 
 // First-launch onboarding tour. Spotlighted, step-by-step product
 // walkthrough — see useOnboardingTour.ts for the step list, the

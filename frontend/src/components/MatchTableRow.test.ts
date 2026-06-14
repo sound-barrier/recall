@@ -1,14 +1,14 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import type { MatchRecord } from '../api'
-import type { SearchClause } from '../search-query'
+import type { MatchRecord } from '@/api'
+import type { SearchClause } from '@/search-query'
 
 // Stub the reference-data singleton so the row renders deterministically
 // without firing the once-per-session fetch (which would ECONNREFUSED in
 // the test env). role() returns '' → the row falls back to the stored
 // role, which is all these assertions exercise.
-vi.mock('../composables/useOWData', async () => {
+vi.mock('@/composables/useOWData', async () => {
   const { computed } = await import('vue')
   return {
     useOWData: () => ({
@@ -23,7 +23,7 @@ vi.mock('../composables/useOWData', async () => {
   }
 })
 
-const { default: MatchTableRow } = await import('./MatchTableRow.vue')
+const { default: MatchTableRow } = await import('@/components/MatchTableRow.vue')
 
 function rec(over: Partial<MatchRecord['data']> = {}, key = 'm-1'): MatchRecord {
   return {

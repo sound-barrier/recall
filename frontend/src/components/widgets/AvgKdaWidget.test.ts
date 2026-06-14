@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import AvgKdaWidget from './AvgKdaWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import AvgKdaWidget from '@/components/widgets/AvgKdaWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 const kda = (
   qualifyingMatches: number,

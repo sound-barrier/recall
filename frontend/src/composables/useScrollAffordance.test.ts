@@ -2,7 +2,7 @@ import { defineComponent, h } from 'vue'
 import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useScrollAffordance } from './useScrollAffordance'
+import { useScrollAffordance } from '@/composables/useScrollAffordance'
 
 // Mount the composable inside a tiny component so the onMounted /
 // onBeforeUnmount lifecycle hooks fire and the listener install +

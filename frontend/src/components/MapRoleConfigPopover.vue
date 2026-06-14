@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
-import { useMapRoleConfig, type MapRole } from '../composables/useMapRoleConfig'
-import { useModalFocusTrap } from '../composables/useModalFocusTrap'
-import { useOWData } from '../composables/useOWData'
+import { useMapRoleConfig, type MapRole } from '@/composables/useMapRoleConfig'
+import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
+import { useOWData } from '@/composables/useOWData'
 
 // Gear popover for the Geography (Map × Role) band. Three live filter
 // groups — roles, game modes, specific maps — applied to the band the

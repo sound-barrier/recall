@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { ref } from 'vue'
-import { useMatchHeatmap } from './useMatchHeatmap'
-import type { MatchRecord } from '../api'
+import { useMatchHeatmap } from '@/composables/useMatchHeatmap'
+import type { MatchRecord } from '@/api'
 
 // Pin "today" so the trailing-52-weeks window doesn't drift on every
 // test run.

@@ -9,7 +9,7 @@ import {
   isMapRoleConfig,
   MAP_ROLE_CONFIG_KEY,
   type MapRoleConfig,
-} from './useMapRoleConfig'
+} from '@/composables/useMapRoleConfig'
 
 let storage: Record<string, string> = {}
 function stubLocalStorage() {

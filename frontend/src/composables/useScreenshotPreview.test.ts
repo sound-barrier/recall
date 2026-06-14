@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 
-import { useScreenshotPreview } from './useScreenshotPreview'
+import { useScreenshotPreview } from '@/composables/useScreenshotPreview'
 
 describe('useScreenshotPreview — inline expand', () => {
   it('togglePreview flips per-filename state and clears any prior error', () => {

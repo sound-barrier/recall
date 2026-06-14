@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { useBackupRestore, type BackupRestoreApi } from './useBackupRestore'
+import { useBackupRestore, type BackupRestoreApi } from '@/composables/useBackupRestore'
 
 function makeApi(overrides: Partial<BackupRestoreApi> = {}): BackupRestoreApi {
   return {

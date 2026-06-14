@@ -1,7 +1,7 @@
 import { onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 
-import { setEventStreamStatusHandler, type ActiveParse } from '../api'
-import type { ParseProgressEvent } from '../components/ParseProgressPanel.vue'
+import { setEventStreamStatusHandler, type ActiveParse } from '@/api'
+import type { ParseProgressEvent } from '@/components/ParseProgressPanel.vue'
 
 // Parse-stream recovery for server mode. The parse runs server-side as a
 // background job (POST /parses returns 202 up-front); progress +

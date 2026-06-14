@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import DayOfWeekWidget from './DayOfWeekWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import DayOfWeekWidget from '@/components/widgets/DayOfWeekWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 describe('DayOfWeekWidget', () => {
   it('renders seven rows for an empty corpus', () => {

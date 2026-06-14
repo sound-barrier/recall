@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ref } from 'vue'
-import { useSearchClauses } from './useSearchClauses'
+import { useSearchClauses } from '@/composables/useSearchClauses'
 
 describe('useSearchClauses', () => {
   it('returns an empty array for empty input', () => {

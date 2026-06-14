@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import UpdateReminderBanner from './UpdateReminderBanner.vue'
+import UpdateReminderBanner from '@/components/UpdateReminderBanner.vue'
 
 describe('UpdateReminderBanner', () => {
   it('renders the "Last checked N days ago" copy when daysSinceLastCheck is set', () => {

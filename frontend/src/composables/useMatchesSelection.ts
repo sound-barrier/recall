@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import type { MatchRecord, PlayMode, QueueType } from '../api'
+import type { MatchRecord, PlayMode, QueueType } from '@/api'
 
 // Gmail-style row selection + bulk writers for the live matches list. The
 // checkbox on each row toggles a key into the set; a contextual action bar

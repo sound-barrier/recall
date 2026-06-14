@@ -11,7 +11,7 @@ const { GetProfiles, SwitchProfile, CreateProfile, RenameProfile } = vi.hoisted(
   CreateProfile: vi.fn(),
   RenameProfile: vi.fn(),
 }))
-vi.mock('../api', () => ({
+vi.mock('@/api', () => ({
   GetProfiles,
   SwitchProfile,
   CreateProfile,
@@ -27,7 +27,7 @@ Object.defineProperty(window, 'location', {
   value: { reload: reloadSpy, href: '/' },
 })
 
-import ProfileSwitcher from './ProfileSwitcher.vue'
+import ProfileSwitcher from '@/components/ProfileSwitcher.vue'
 
 beforeEach(() => {
   GetProfiles.mockReset()

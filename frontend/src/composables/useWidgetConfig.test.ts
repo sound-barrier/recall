@@ -1,8 +1,8 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
-import { makeSchema } from '../dashboard/widget-config-schema'
-import { useWidgetConfig } from './useWidgetConfig'
+import { makeSchema } from '@/dashboard/widget-config-schema'
+import { useWidgetConfig } from '@/composables/useWidgetConfig'
 
 // happy-dom's localStorage is a no-op without --localstorage-file
 // (vitest's default config doesn't pass it). Mirror mountApp's

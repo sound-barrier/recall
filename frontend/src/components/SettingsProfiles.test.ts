@@ -8,12 +8,12 @@ const { GetProfilesMock, DeleteProfileMock } = vi.hoisted(() => ({
   GetProfilesMock:   vi.fn(),
   DeleteProfileMock: vi.fn(),
 }))
-vi.mock('../api', () => ({
+vi.mock('@/api', () => ({
   GetProfiles:   GetProfilesMock,
   DeleteProfile: DeleteProfileMock,
 }))
 
-import SettingsProfiles from './SettingsProfiles.vue'
+import SettingsProfiles from '@/components/SettingsProfiles.vue'
 
 beforeEach(() => {
   GetProfilesMock.mockReset()

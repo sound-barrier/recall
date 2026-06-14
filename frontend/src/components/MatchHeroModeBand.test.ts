@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { ref, type Ref } from 'vue'
-import { mountWidget } from '../test-utils/mountWidget'
-import MatchHeroModeBand from './MatchHeroModeBand.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
+import MatchHeroModeBand from '@/components/MatchHeroModeBand.vue'
 
 // Mock useOWData to avoid the singleton's GetOWData() side-effect.
-vi.mock('../composables/useOWData', () => ({
+vi.mock('@/composables/useOWData', () => ({
   useOWData: () => ({
     heroDisplayName: (s: string) => s,   // pass-through; tests assert on slugs
     mapDisplayName:  (s: string) => s,

@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { readStoredWeekStart, WEEK_START_STORAGE_KEY } from './useWeekStart'
+import { readStoredWeekStart, WEEK_START_STORAGE_KEY } from '@/composables/useWeekStart'
 
 // Mirrors useTheme.test.ts: pure helper tests for the storage read,
 // independent of a mounted component.

@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { readStoredTheme, applyTheme, detectSystemPreference, THEME_STORAGE_KEY } from './useTheme'
+import { readStoredTheme, applyTheme, detectSystemPreference, THEME_STORAGE_KEY } from '@/composables/useTheme'
 
 // Tests for the pure helper functions exported from useTheme.
 // These cover the business logic without needing a mounted Vue component

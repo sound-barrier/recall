@@ -2,7 +2,7 @@ import { defineComponent, h } from 'vue'
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
-import { useKeyboardShortcuts, SEQUENCE_TIMEOUT_MS, type Shortcut } from './useKeyboardShortcuts'
+import { useKeyboardShortcuts, SEQUENCE_TIMEOUT_MS, type Shortcut } from '@/composables/useKeyboardShortcuts'
 
 // Each test mounts a fresh harness so onScopeDispose tears down the
 // document listener between cases. happy-dom provides `document` +

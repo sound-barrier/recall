@@ -8,8 +8,8 @@ import {
   ONBOARDING_STEPS,
   type TourActionContext,
   type UseOnboardingTourOptions,
-} from './useOnboardingTour'
-import { ONBOARDING_RESUME_KEY } from './storageKeys'
+} from '@/composables/useOnboardingTour'
+import { ONBOARDING_RESUME_KEY } from '@/composables/storageKeys'
 
 // happy-dom doesn't ship a localStorage stub, so the existing
 // persisted-pref tests in this directory all stub it via

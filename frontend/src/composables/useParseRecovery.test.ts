@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, ref, type Ref } from 'vue'
 
-import { useParseRecovery, type ParseConnectionState } from './useParseRecovery'
+import { useParseRecovery, type ParseConnectionState } from '@/composables/useParseRecovery'
 
 // Capture the status callback the composable registers so tests can
 // drive 'reconnecting' / 'connected' transitions directly.
 let capturedStatus: ((s: 'connected' | 'reconnecting') => void) | null = null
-vi.mock('../api', () => ({
+vi.mock('@/api', () => ({
   setEventStreamStatusHandler: (cb: ((s: 'connected' | 'reconnecting') => void) | null) => {
     capturedStatus = cb
   },

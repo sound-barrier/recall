@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { formatRelativeTime } from '../match-time-helpers'
-import type { ParseConnectionState } from '../composables/useParseRecovery'
-import ParseProgressPanel, { type ParseProgressEvent } from './ParseProgressPanel.vue'
+import { formatRelativeTime } from '@/match-time-helpers'
+import type { ParseConnectionState } from '@/composables/useParseRecovery'
+import ParseProgressPanel, { type ParseProgressEvent } from '@/components/ParseProgressPanel.vue'
 
 // IngestView (presented to users as the "Parse" tab) — the
 // operational panel. One job: run the parse pipeline. Engine setup,

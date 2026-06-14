@@ -10,7 +10,7 @@ import {
   defaultSections,
   SECTIONS_STORAGE_KEY,
   type SectionState,
-} from './useSectionLayout'
+} from '@/composables/useSectionLayout'
 
 let storage: Record<string, string> = {}
 function stubLocalStorage() {

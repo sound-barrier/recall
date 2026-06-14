@@ -1,6 +1,6 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
-import type { MatchRecord } from '../api'
-import type { LeaverHandling } from './useMatchesDossier'
+import type { MatchRecord } from '@/api'
+import type { LeaverHandling } from '@/composables/useMatchesDossier'
 import {
   matchesDateRange,
   matchesHero,
@@ -13,8 +13,8 @@ import {
   matchesSearch,
   matchesSinceAnchor,
   matchesTags,
-} from './narrowPredicates'
-import { useSearchClauses } from './useSearchClauses'
+} from '@/composables/narrowPredicates'
+import { useSearchClauses } from '@/composables/useSearchClauses'
 
 // Owns every filter dimension for the Matches set-workspace narrow
 // panel. Extracted from MatchesView so the filter math is testable

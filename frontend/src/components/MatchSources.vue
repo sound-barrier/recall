@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MatchRecord } from '../api'
+import type { MatchRecord } from '@/api'
 import {
   screenshotURL,
   detectScreenshotSlots,
@@ -7,8 +7,8 @@ import {
   missingOptionalSlots,
   sshotTypeLabel,
   sourceType,
-} from '../match-helpers'
-import { formatParsedAt } from '../match-time-helpers'
+} from '@/match-helpers'
+import { formatParsedAt } from '@/match-time-helpers'
 
 // The expanded card's Sources block — the collapsible per-match screenshot
 // list (coverage chips on the toggle row, inline previews, lightbox launch)

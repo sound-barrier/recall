@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { heatmapCellClass, heatmapCellOpacity } from '../match-heatmap-helpers'
+import { heatmapCellClass, heatmapCellOpacity } from '@/match-heatmap-helpers'
 
 // The Hero × Game-Mode band's root level: a heroes × game-modes win-rate
 // heatmap (hue by win-rate band, opacity by volume), or a floor-gate empty

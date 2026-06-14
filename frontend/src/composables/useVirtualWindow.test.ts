@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref } from 'vue'
 import { mount } from '@vue/test-utils'
 
-import { useVirtualWindow } from './useVirtualWindow'
+import { useVirtualWindow } from '@/composables/useVirtualWindow'
 
 // happy-dom doesn't expose a real layout engine, so .clientHeight
 // and .scrollTop have to be poked directly on the element after

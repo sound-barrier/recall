@@ -9,10 +9,10 @@
 // pipe to App.vue). The shared move-to-profile picker state stays in
 // MatchesView — this drawer just signals intent (begin-move /
 // move-to-profile / cancel-move) and the per-row unhide / hard-delete.
-import { useOWData } from '../composables/useOWData'
-import type { UseArchiveSelectionApi } from '../composables/useArchiveSelection'
-import { formatHeroes, formatRoles, formatRowDate, formatFinishedAt } from '../match-helpers'
-import { formatPlayModeLabel, formatQueueTypeLabel } from '../match-label-helpers'
+import { useOWData } from '@/composables/useOWData'
+import type { UseArchiveSelectionApi } from '@/composables/useArchiveSelection'
+import { formatHeroes, formatRoles, formatRowDate, formatFinishedAt } from '@/match-helpers'
+import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match-label-helpers'
 
 const props = defineProps<{
   archive: UseArchiveSelectionApi

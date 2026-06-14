@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { nextTick, ref } from 'vue'
-import type { MatchRecord } from '../api'
-import { useMatchesWindow, DEFAULT_PAGE_SIZE } from './useMatchesWindow'
+import type { MatchRecord } from '@/api'
+import { useMatchesWindow, DEFAULT_PAGE_SIZE } from '@/composables/useMatchesWindow'
 
 function makeRecords(n: number): MatchRecord[] {
   return Array.from({ length: n }, (_, i) => ({

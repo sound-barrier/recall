@@ -1,5 +1,5 @@
-import type { MatchRecord } from '../api'
-import { screenshotURL } from '../match-helpers'
+import type { MatchRecord } from '@/api'
+import { screenshotURL } from '@/match-helpers'
 
 // Resolve the URL of a match record's SUMMARY screenshot — the
 // post-match summary tab is the most recognisable thumbnail (it

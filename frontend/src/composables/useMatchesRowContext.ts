@@ -1,7 +1,7 @@
 import { ref, type Ref } from 'vue'
 
-import type { MatchRecord } from '../api'
-import { summaryThumbnailURL } from './useSummaryThumbnail'
+import type { MatchRecord } from '@/api'
+import { summaryThumbnailURL } from '@/composables/useSummaryThumbnail'
 
 // View-local state for the members-list row interactions that aren't
 // the row's own concern: the right-click context menu and the

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import FilterCombobox from './FilterCombobox.vue'
+import FilterCombobox from '@/components/FilterCombobox.vue'
 
 const HEROES = ['ana', 'kiriko', 'lucio', 'mercy', 'soldier', 'zenyatta']
 

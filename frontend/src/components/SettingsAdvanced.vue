@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { ParseProgressEvent } from './ParseProgressPanel.vue'
-import SupportedSourcesRow from './SupportedSourcesRow.vue'
+import type { ParseProgressEvent } from '@/components/ParseProgressPanel.vue'
+import SupportedSourcesRow from '@/components/SupportedSourcesRow.vue'
 
 // Advanced collapsible at the bottom of Settings — Grafana streaming
 // toggle + destructive Clear Database flow + Manage ignored files

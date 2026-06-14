@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TypeaheadDropdown from './TypeaheadDropdown.vue'
+import TypeaheadDropdown from '@/components/TypeaheadDropdown.vue'
 
 // Multi-select typeahead for the Matches narrow panel. Backs the
 // Map (31 options) and Hero (51 options) pickers — chip clouds at

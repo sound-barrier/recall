@@ -1,6 +1,6 @@
 import { onBeforeUnmount, onMounted, ref, type Ref } from 'vue'
 
-import { usePersistedRef } from './usePersistedRef'
+import { usePersistedRef } from '@/composables/usePersistedRef'
 
 // Reactive "rail vs popover" mode for the Matches narrow filter.
 // Two inputs:

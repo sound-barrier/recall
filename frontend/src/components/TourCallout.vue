@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
-import type { CalloutPlacement } from '../composables/useOnboardingTour'
-import { computeCalloutPosition, rectsEqual } from './tour-callout-helpers'
+import type { CalloutPlacement } from '@/composables/useOnboardingTour'
+import { computeCalloutPosition, rectsEqual } from '@/components/tour-callout-helpers'
 
 // Anchored callout panel. Renders the step's tag / number / heading
 // / body plus the Skip / Back / Next controls. Anchors to the

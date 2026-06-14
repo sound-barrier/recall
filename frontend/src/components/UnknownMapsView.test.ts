@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 
-import UnknownMapsView from './UnknownMapsView.vue'
-import type { CardStateApi } from '../types/cardState'
-import type { MatchRecord, UpdateInfo } from '../api'
+import UnknownMapsView from '@/components/UnknownMapsView.vue'
+import type { CardStateApi } from '@/types/cardState'
+import type { MatchRecord, UpdateInfo } from '@/api'
 
 // Shared with MatchesView: per-card state owned by the parent so both
 // views can share expand / preview behavior. The fake here just

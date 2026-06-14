@@ -2,12 +2,12 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 
 const { RenameProfileMock } = vi.hoisted(() => ({ RenameProfileMock: vi.fn() }))
-vi.mock('../api', () => ({
+vi.mock('@/api', () => ({
   RenameProfile: RenameProfileMock,
 }))
 
-import FirstRunProfileModal from './FirstRunProfileModal.vue'
-import type { NamedCandidate } from '../api'
+import FirstRunProfileModal from '@/components/FirstRunProfileModal.vue'
+import type { NamedCandidate } from '@/api'
 
 beforeEach(() => {
   RenameProfileMock.mockReset()

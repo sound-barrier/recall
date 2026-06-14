@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useDossier } from '../../composables/useDossier'
-import { useWidgetConfig } from '../../composables/useWidgetConfig'
-import { recentMatchesSchema, type RecentMatchesConfig } from '../../dashboard/widgets'
+import { useDossier } from '@/composables/useDossier'
+import { useWidgetConfig } from '@/composables/useWidgetConfig'
+import { recentMatchesSchema, type RecentMatchesConfig } from '@/dashboard/widgets'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<RecentMatchesConfig>('recent-5-matches', recentMatchesSchema)

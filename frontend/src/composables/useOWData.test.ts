@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // reset its internal state via `vi.resetModules()` between tests.
 const getOWDataMock = vi.fn()
 
-vi.mock('../api', () => ({
+vi.mock('@/api', () => ({
   GetOWData: () => getOWDataMock(),
 }))
 
@@ -26,7 +26,7 @@ const SAMPLE_DATA = {
 async function freshOWData() {
   // Reset the module so the singleton-fetch flag resets too.
   vi.resetModules()
-  const mod = await import('./useOWData')
+  const mod = await import('@/composables/useOWData')
   return mod.useOWData
 }
 

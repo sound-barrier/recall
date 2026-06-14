@@ -1,4 +1,4 @@
-import type { MatchRecord } from '../api'
+import type { MatchRecord } from '@/api'
 
 // Hand-crafted demo MatchRecords for the onboarding tour. The tour
 // overlay swaps the live records ref for these for the duration of

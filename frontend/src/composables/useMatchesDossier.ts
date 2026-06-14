@@ -1,8 +1,8 @@
 import { computed, type Ref } from 'vue'
-import type { MatchRecord } from '../api'
-import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '../match-time-helpers'
-import { formatToHundredths } from '../match-stats-helpers'
-import { useDossierQueries } from './useMatchesDossierQueries'
+import type { MatchRecord } from '@/api'
+import { formatPlayMinutes, parseGameLengthMinutes, type WeekStart } from '@/match-time-helpers'
+import { formatToHundredths } from '@/match-stats-helpers'
+import { useDossierQueries } from '@/composables/useMatchesDossierQueries'
 import {
   type LeaverHandling,
   type WinLossDraw,
@@ -17,11 +17,11 @@ import {
   type HeroRoleResolver,
   type CurrentStreak,
   isCanonRole,
-} from './useMatchesDossier.types'
+} from '@/composables/useMatchesDossier.types'
 
 // Re-export the dossier's type/const contract so existing call sites
 // that import these names from this module keep working unchanged.
-export * from './useMatchesDossier.types'
+export * from '@/composables/useMatchesDossier.types'
 
 // Pure KPI / breakdown computations for the Matches dossier.
 // Extracted from MatchesView so the tally math (winrate excluding

@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue'
-import { usePersistedRef, parseClampedNumber } from './usePersistedRef'
-import type { UpdateInfo } from '../api'
+import { usePersistedRef, parseClampedNumber } from '@/composables/usePersistedRef'
+import type { UpdateInfo } from '@/api'
 
 // 90-day threshold for the "haven't checked for updates in a while"
 // banner. Roughly six OW seasons — quiet enough that a regularly-

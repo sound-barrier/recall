@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ThemeMode } from '../composables/useTheme'
+import type { ThemeMode } from '@/composables/useTheme'
 
 // Appearance panel of the Settings view — four theme swatches.
 // Each preview card is a miniature of the theme's palette; clicking

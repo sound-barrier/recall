@@ -1,6 +1,6 @@
 import { nextTick, ref, watch, type Ref } from 'vue'
 
-import { useScrollLock } from './useScrollLock'
+import { useScrollLock } from '@/composables/useScrollLock'
 
 // WAI-ARIA dialog focus management.
 //

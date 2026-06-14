@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useDossier } from '../../composables/useDossier'
-import { useWidgetConfig } from '../../composables/useWidgetConfig'
-import { topMapsSchema, type TopByCountConfig } from '../../dashboard/widgets'
+import { useDossier } from '@/composables/useDossier'
+import { useWidgetConfig } from '@/composables/useWidgetConfig'
+import { topMapsSchema, type TopByCountConfig } from '@/dashboard/widgets'
 
 const dossier = useDossier()
 const { config } = useWidgetConfig<TopByCountConfig>('top-maps', topMapsSchema)

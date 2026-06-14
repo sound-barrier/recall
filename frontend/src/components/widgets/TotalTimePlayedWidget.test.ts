@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import TotalTimePlayedWidget from './TotalTimePlayedWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import TotalTimePlayedWidget from '@/components/widgets/TotalTimePlayedWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 const ttp = (minutes: number, label: string, recordsWithTime: number, recordsTotal: number) => ({
   minutes,

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { ref, defineComponent, h, nextTick, type Ref } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
-import { useScrollLock, _resetScrollLockForTest } from './useScrollLock'
+import { useScrollLock, _resetScrollLockForTest } from '@/composables/useScrollLock'
 
 const wrappers: VueWrapper[] = []
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import TopMapsWidget from './TopMapsWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import TopMapsWidget from '@/components/widgets/TopMapsWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 const entry = (key: string, total: number, share: number, winrate = 50) => ({ key, total, share, winrate })
 

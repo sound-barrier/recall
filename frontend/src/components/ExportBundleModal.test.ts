@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import ExportBundleModal from './ExportBundleModal.vue'
+import ExportBundleModal from '@/components/ExportBundleModal.vue'
 
 function mountModal(over: {
   open?:          boolean

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import HeroPoolSizeWidget from './HeroPoolSizeWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import HeroPoolSizeWidget from '@/components/widgets/HeroPoolSizeWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 describe('HeroPoolSizeWidget', () => {
   it('renders an em-dash when no heroes have been played', () => {

@@ -5,8 +5,8 @@ import { mount } from '@vue/test-utils'
 import {
   useContextualCallout,
   activeCalloutId,
-} from './useContextualCallout'
-import { CONTEXTUAL_CALLOUT_KEY_PREFIX } from './storageKeys'
+} from '@/composables/useContextualCallout'
+import { CONTEXTUAL_CALLOUT_KEY_PREFIX } from '@/composables/storageKeys'
 
 // happy-dom's default localStorage is a no-op stub. The composable's
 // `try { localStorage.... } catch` falls into the catch and short-

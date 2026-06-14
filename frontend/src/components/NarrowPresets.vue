@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
-import { useNarrowPresets } from '../composables/useNarrowPresets'
+import type { useMatchesNarrow } from '@/composables/useMatchesNarrow'
+import { useNarrowPresets } from '@/composables/useNarrowPresets'
 
 // "Saved sets" — typed snapshots of the narrow state persisted in
 // localStorage: name + Save + the recallable list (click to apply, × to

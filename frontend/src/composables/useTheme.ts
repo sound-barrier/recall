@@ -1,4 +1,4 @@
-import { usePersistedRef, parseEnum } from './usePersistedRef'
+import { usePersistedRef, parseEnum } from '@/composables/usePersistedRef'
 
 // Four themes share one preference slot:
 //

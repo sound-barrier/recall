@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ApiError, GetMatchResults, GetNewScreenshotCount, ParseScreenshots, SetWatchEnabled } from './api'
+import { ApiError, GetMatchResults, GetNewScreenshotCount, ParseScreenshots, SetWatchEnabled } from '@/api'
 
 // IS_WAILS is evaluated at module load time. In the test environment
 // window.go is absent, so IS_WAILS = false and all calls go through fetch.
@@ -148,7 +148,7 @@ describe('GetDataLocation', () => {
     }
     const spy = mockFetch(200, payload)
     vi.stubGlobal('fetch', spy)
-    const { GetDataLocation } = await import('./api')
+    const { GetDataLocation } = await import('@/api')
     const got = await GetDataLocation()
     // fetch is called as fetch(url, init) — the GET path passes undefined.
     expect(spy).toHaveBeenCalledWith('/api/v1/system/data-location', undefined)
@@ -183,7 +183,7 @@ describe('ExportData (browser mode)', () => {
     })
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
 
-    const { ExportData } = await import('./api')
+    const { ExportData } = await import('@/api')
     const name = await ExportData()
     expect(name).toBe('recall-export-20260526-013000.json')
     expect(clickSpy).toHaveBeenCalledOnce()
@@ -198,7 +198,7 @@ describe('ExportData (browser mode)', () => {
     })
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
 
-    const { ExportData } = await import('./api')
+    const { ExportData } = await import('@/api')
     const name = await ExportData()
     expect(name).toMatch(/^recall-export-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.json$/)
   })
@@ -210,7 +210,7 @@ describe('ExportData (browser mode)', () => {
       headers: { get: () => null },
       text: () => Promise.resolve('server boom'),
     }))
-    const { ExportData } = await import('./api')
+    const { ExportData } = await import('@/api')
     const err = await ExportData().catch(e => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(500)
@@ -250,7 +250,7 @@ describe('ImportData (browser mode)', () => {
 
   it('returns "" when the user cancels the file picker', async () => {
     installFilePicker('cancel')
-    const { ImportData } = await import('./api')
+    const { ImportData } = await import('@/api')
     const result = await ImportData()
     expect(result).toBe('')
   })
@@ -261,7 +261,7 @@ describe('ImportData (browser mode)', () => {
     const fetchSpy = mockFetch(200, { ok: true })
     vi.stubGlobal('fetch', fetchSpy)
 
-    const { ImportData } = await import('./api')
+    const { ImportData } = await import('@/api')
     const result = await ImportData()
     expect(result).toBe('my-backup.json')
     // The shim posts an ArrayBuffer; we assert the type rather than
@@ -284,7 +284,7 @@ describe('ImportData (browser mode)', () => {
     const fetchSpy = mockFetch(200, { ok: true })
     vi.stubGlobal('fetch', fetchSpy)
 
-    const { ImportData } = await import('./api')
+    const { ImportData } = await import('@/api')
     const result = await ImportData()
     expect(result).toBe('backup.zip')
     expect(fetchSpy).toHaveBeenCalledWith(
@@ -302,7 +302,7 @@ describe('ImportData (browser mode)', () => {
     installFilePicker('change', file)
     vi.stubGlobal('fetch', mockFetch(400, 'import: decode: invalid character'))
 
-    const { ImportData } = await import('./api')
+    const { ImportData } = await import('@/api')
     const err = await ImportData().catch(e => e)
     expect(err).toBeInstanceOf(ApiError)
     expect((err as ApiError).status).toBe(400)
@@ -338,7 +338,7 @@ describe('ExportDataCSV (browser mode)', () => {
     })
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
 
-    const { ExportDataCSV } = await import('./api')
+    const { ExportDataCSV } = await import('@/api')
     const name = await ExportDataCSV()
     expect(fetchSpy).toHaveBeenCalledWith('/api/v1/exports?format=csv')
     expect(name).toBe('recall-export-20260526-020000.zip')
@@ -358,7 +358,7 @@ describe('ExportDataCSV (browser mode)', () => {
     })
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
 
-    const { ExportDataCSV } = await import('./api')
+    const { ExportDataCSV } = await import('@/api')
     const name = await ExportDataCSV()
     expect(name).toMatch(/^recall-export-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.zip$/)
   })

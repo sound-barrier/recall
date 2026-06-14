@@ -1,6 +1,6 @@
 import { computed, type ComputedRef } from 'vue'
-import { usePersistedRef, serializeJsonRecord } from './usePersistedRef'
-import type { WidgetConfigSchema } from '../dashboard/widget-config-schema'
+import { usePersistedRef, serializeJsonRecord } from '@/composables/usePersistedRef'
+import type { WidgetConfigSchema } from '@/dashboard/widget-config-schema'
 
 // useWidgetConfig persists a widget's typed config to localStorage
 // under `recall.dashboard.widget-config.<id>` and returns a reactive

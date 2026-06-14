@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import TopGameModesWidget from './TopGameModesWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import TopGameModesWidget from '@/components/widgets/TopGameModesWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 describe('TopGameModesWidget', () => {
   it('renders no rows for an empty list', () => {

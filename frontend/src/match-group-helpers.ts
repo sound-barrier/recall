@@ -2,9 +2,9 @@
 // grouping tree carries a W/L/D tally at every level so the user can
 // scan win-rate per month / week / day at a glance.
 
-import type { MatchRecord } from './api'
-import { MONTHS_FULL, WEEKDAYS_FULL, type WeekStart } from './match-time-helpers'
-import { tallyWLD, type WLDTally } from './match-stats-helpers'
+import type { MatchRecord } from '@/api'
+import { MONTHS_FULL, WEEKDAYS_FULL, type WeekStart } from '@/match-time-helpers'
+import { tallyWLD, type WLDTally } from '@/match-stats-helpers'
 
 // ───────────────────────────────────────────────────────────────────
 // W/L/D tally + Month → Week → Day grouping

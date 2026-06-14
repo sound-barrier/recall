@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { RenameProfile, type NamedCandidate, type ProfilesResponse } from '../api'
-import { useModalFocusTrap } from '../composables/useModalFocusTrap'
-import ScreenshotSourcePicker from './ScreenshotSourcePicker.vue'
+import { RenameProfile, type NamedCandidate, type ProfilesResponse } from '@/api'
+import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
+import ScreenshotSourcePicker from '@/components/ScreenshotSourcePicker.vue'
 
 // First-run modal. Two steps:
 //   1. Name the main account so the masthead chip + per-profile data

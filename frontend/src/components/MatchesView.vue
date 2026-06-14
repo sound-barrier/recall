@@ -1,36 +1,36 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, ref, watch } from 'vue'
-import type { MatchRecord } from '../api'
-import { useMatchesDossier } from '../composables/useMatchesDossier'
-import { provideDossier } from '../composables/useDossier'
-import { provideNarrow } from '../composables/useNarrow'
-import MatchesSortGroupPopover from './MatchesSortGroupPopover.vue'
-import { useWeekStart } from '../composables/useWeekStart'
-import { useDensity } from '../composables/useDensity'
-import { useSortGroupMenu } from '../composables/useSortGroupMenu'
-import { useScrollAffordance } from '../composables/useScrollAffordance'
-import { useOWData } from '../composables/useOWData'
-import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
-import { useArchiveSelection } from '../composables/useArchiveSelection'
-import MatchesDossierHead from './MatchesDossierHead.vue'
-import MatchesDossierSections from './MatchesDossierSections.vue'
-import BulkActionBar from './BulkActionBar.vue'
-import MatchesArchiveDrawer from './MatchesArchiveDrawer.vue'
-import MatchesMembersList from './MatchesMembersList.vue'
-import MatchesListToolbar from './MatchesListToolbar.vue'
-import { useMatchesSelection } from '../composables/useMatchesSelection'
-import { useMatchesMovePicker } from '../composables/useMatchesMovePicker'
+import type { MatchRecord } from '@/api'
+import { useMatchesDossier } from '@/composables/useMatchesDossier'
+import { provideDossier } from '@/composables/useDossier'
+import { provideNarrow } from '@/composables/useNarrow'
+import MatchesSortGroupPopover from '@/components/MatchesSortGroupPopover.vue'
+import { useWeekStart } from '@/composables/useWeekStart'
+import { useDensity } from '@/composables/useDensity'
+import { useSortGroupMenu } from '@/composables/useSortGroupMenu'
+import { useScrollAffordance } from '@/composables/useScrollAffordance'
+import { useOWData } from '@/composables/useOWData'
+import type { useMatchesNarrow } from '@/composables/useMatchesNarrow'
+import { useArchiveSelection } from '@/composables/useArchiveSelection'
+import MatchesDossierHead from '@/components/MatchesDossierHead.vue'
+import MatchesDossierSections from '@/components/MatchesDossierSections.vue'
+import BulkActionBar from '@/components/BulkActionBar.vue'
+import MatchesArchiveDrawer from '@/components/MatchesArchiveDrawer.vue'
+import MatchesMembersList from '@/components/MatchesMembersList.vue'
+import MatchesListToolbar from '@/components/MatchesListToolbar.vue'
+import { useMatchesSelection } from '@/composables/useMatchesSelection'
+import { useMatchesMovePicker } from '@/composables/useMatchesMovePicker'
 // NarrowPopover is the heavyweight authoring surface (the search +
 // combobox + range pickers + active-clause range etc.). Lazy-load
 // it so MatchesView's initial chunk doesn't carry its ~30K of
 // bytes. The popover only mounts (v-if inside the child) when the
 // user clicks "Narrow this set", so the deferred fetch is invisible
 // in practice. Regression covered by MatchesView.lazy-views.test.ts.
-const NarrowPopover = defineAsyncComponent(() => import('./NarrowPopover.vue'))
-import MatchRowContextMenu from './MatchRowContextMenu.vue'
-import LeafHoverPreview from './LeafHoverPreview.vue'
-import { useMatchesRowContext } from '../composables/useMatchesRowContext'
-import { useNarrowMode } from '../composables/useNarrowMode'
+const NarrowPopover = defineAsyncComponent(() => import('@/components/NarrowPopover.vue'))
+import MatchRowContextMenu from '@/components/MatchRowContextMenu.vue'
+import LeafHoverPreview from '@/components/LeafHoverPreview.vue'
+import { useMatchesRowContext } from '@/composables/useMatchesRowContext'
+import { useNarrowMode } from '@/composables/useNarrowMode'
 
 // Matches page — "set workspace" layout.
 //
@@ -91,8 +91,8 @@ const emit = defineEmits<{
   // (single transaction) then triggers one reload. Empty-string
   // value is the bulk Clear semantic (resets every listed row to
   // the "Unknown" bucket).
-  'bulk-play-mode': [matchKeys: string[], playMode: import('../api').PlayMode]
-  'bulk-queue':     [matchKeys: string[], queueType: import('../api').QueueType]
+  'bulk-play-mode': [matchKeys: string[], playMode: import('@/api').PlayMode]
+  'bulk-queue':     [matchKeys: string[], queueType: import('@/api').QueueType]
   // Bulk-tag pipe — emitted with the ticked-key list + the chosen
   // tag. App.vue does the read-modify-write per record via
   // SetMatchAnnotation (preserving existing tags + appending the

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useWidgetConfig } from '../composables/useWidgetConfig'
-import { useModalFocusTrap } from '../composables/useModalFocusTrap'
-import type { WidgetDef } from '../dashboard/widgets'
+import { useWidgetConfig } from '@/composables/useWidgetConfig'
+import { useModalFocusTrap } from '@/composables/useModalFocusTrap'
+import type { WidgetDef } from '@/dashboard/widgets'
 
 // Per-widget gear popover. Renders a form derived from the widget's
 // `config.fields[]` schema, persists changes through

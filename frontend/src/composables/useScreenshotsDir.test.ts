@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { useScreenshotsDir, type ScreenshotsDirApi, type ProbeResult } from './useScreenshotsDir'
+import { useScreenshotsDir, type ScreenshotsDirApi, type ProbeResult } from '@/composables/useScreenshotsDir'
 
 function makeApi(overrides: Partial<ScreenshotsDirApi> = {}): ScreenshotsDirApi {
   return {

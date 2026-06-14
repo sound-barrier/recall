@@ -18,7 +18,7 @@
  *     branch in _fetch.
  */
 
-import type { components } from './api.gen'
+import type { components } from '@/api.gen'
 
 // Re-exported types — consumers (App.vue) import these instead of
 // reaching into api.gen directly.

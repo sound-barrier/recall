@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
-import { useDossier, provideDossier } from './useDossier'
-import type { MatchesDossier } from './useMatchesDossier'
+import { useDossier, provideDossier } from '@/composables/useDossier'
+import type { MatchesDossier } from '@/composables/useMatchesDossier'
 
 // A minimal hand-built mock dossier. The test only needs the
 // useDossier() typed-inject path to work, so most fields can be

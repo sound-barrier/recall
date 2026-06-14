@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { useTesseractStatus, EMPTY_TESSERACT_STATUS, type TesseractStatusApi } from './useTesseractStatus'
-import type { TesseractStatus } from '../api'
+import { useTesseractStatus, EMPTY_TESSERACT_STATUS, type TesseractStatusApi } from '@/composables/useTesseractStatus'
+import type { TesseractStatus } from '@/api'
 
 const SAMPLE: TesseractStatus = {
   path: '/usr/local/bin/tesseract',

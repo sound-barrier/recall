@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import MatchesReviewedWidget from './MatchesReviewedWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import MatchesReviewedWidget from '@/components/widgets/MatchesReviewedWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 describe('MatchesReviewedWidget', () => {
   it('renders em-dash when no matches in the narrow', () => {

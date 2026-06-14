@@ -1,8 +1,8 @@
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { computed, type Component, type ComputedRef } from 'vue'
 import { vi } from 'vitest'
-import { DOSSIER_KEY } from '../composables/useDossier'
-import { NARROW_KEY, type NarrowApi } from '../composables/useNarrow'
+import { DOSSIER_KEY } from '@/composables/useDossier'
+import { NARROW_KEY, type NarrowApi } from '@/composables/useNarrow'
 import type {
   AverageKDA,
   BestWinrateHero,
@@ -19,7 +19,7 @@ import type {
   TotalTimePlayed,
   WinLossDraw,
   WLDSinceLastReview,
-} from '../composables/useMatchesDossier'
+} from '@/composables/useMatchesDossier'
 
 // Per-widget test helper that:
 //   1. Stubs localStorage so useWidgetConfig hydrates cleanly (the

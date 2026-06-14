@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import TypeaheadDropdown from './TypeaheadDropdown.vue'
+import TypeaheadDropdown from '@/components/TypeaheadDropdown.vue'
 
 const HEROES = ['ana', 'kiriko', 'lucio', 'mercy', 'soldier', 'zenyatta']
 

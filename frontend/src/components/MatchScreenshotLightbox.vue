@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 
-import { useScrollLock } from '../composables/useScrollLock'
+import { useScrollLock } from '@/composables/useScrollLock'
 
 // Fullscreen screenshot viewer. Opened by clicking an inline preview
 // img (MatchCardExpanded's sources block on the Matches detail panel,

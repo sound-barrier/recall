@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import WinrateWidget from './WinrateWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import WinrateWidget from '@/components/widgets/WinrateWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 describe('WinrateWidget', () => {
   it('renders the winrate as a percentage when set', () => {

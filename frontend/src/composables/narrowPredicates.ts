@@ -1,7 +1,7 @@
-import type { MatchRecord } from '../api'
-import { formatPlayModeLabel, formatQueueTypeLabel } from '../match-label-helpers'
-import type { SearchClause } from '../search-query'
-import type { PlayModePick, QueuePick, ReviewedByPick } from './useMatchesNarrow'
+import type { MatchRecord } from '@/api'
+import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match-label-helpers'
+import type { SearchClause } from '@/search-query'
+import type { PlayModePick, QueuePick, ReviewedByPick } from '@/composables/useMatchesNarrow'
 
 // Per-dimension narrow predicates. Each function is ≤ 15 lines,
 // returns `true` if the record passes that dimension's gate, and is

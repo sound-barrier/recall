@@ -7,7 +7,7 @@ import {
   serializeBoolish,
   parseEnum,
   parseClampedNumber,
-} from './usePersistedRef'
+} from '@/composables/usePersistedRef'
 
 let storage: Record<string, string>
 

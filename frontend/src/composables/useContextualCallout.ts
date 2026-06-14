@@ -1,6 +1,6 @@
 import { ref, watch, toValue, onBeforeUnmount, type MaybeRefOrGetter } from 'vue'
 
-import { CONTEXTUAL_CALLOUT_KEY_PREFIX } from './storageKeys'
+import { CONTEXTUAL_CALLOUT_KEY_PREFIX } from '@/composables/storageKeys'
 
 // useContextualCallout is the trigger surface for a single
 // just-in-time hint. The full OnboardingTour walks every new user

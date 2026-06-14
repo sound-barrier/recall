@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import CurrentStreakWidget from './CurrentStreakWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import CurrentStreakWidget from '@/components/widgets/CurrentStreakWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 describe('CurrentStreakWidget', () => {
   it('renders an em-dash when there is no decisive streak', () => {

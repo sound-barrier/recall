@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { computeCalloutPosition, rectsEqual, rectsOverlap } from './tour-callout-helpers'
+import { computeCalloutPosition, rectsEqual, rectsOverlap } from '@/components/tour-callout-helpers'
 
 const LAYOUT = { calloutW: 360, safety: 16, gap: 22 }
 

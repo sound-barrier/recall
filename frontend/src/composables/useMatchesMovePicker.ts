@@ -1,5 +1,5 @@
 import { ref, computed, onMounted } from 'vue'
-import { GetProfiles } from '../api'
+import { GetProfiles } from '@/api'
 
 // The cross-profile move picker shared by the live bulk-action bar and the
 // archive drawer: a two-step affordance (Move to… → pick a target profile

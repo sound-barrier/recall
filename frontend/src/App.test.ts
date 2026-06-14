@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
-import type { MatchRecord } from './api'
-import { fireEvent, mountApp } from './test-utils/mountApp'
+import type { MatchRecord } from '@/api'
+import { fireEvent, mountApp } from '@/test-utils/mountApp'
 
 // Smoke + behavior tests for App.vue. These do not try to cover every
 // branch of the ~4500-line SFC — the helpers and composables under it
@@ -46,7 +46,7 @@ describe('App.vue', () => {
         } },
       ],
     })
-    const api = await import('./api')
+    const api = await import('@/api')
     expect(api.GetMatchResults).toHaveBeenCalledTimes(1)
     expect(api.GetTesseractStatus).toHaveBeenCalledTimes(1)
   })
@@ -89,7 +89,7 @@ describe('App.vue', () => {
 
   it('clicking the brandmark routes through OpenURL (so Wails opens the system browser)', async () => {
     const wrapper = await mountApp()
-    const api = await import('./api')
+    const api = await import('@/api')
     await wrapper.find('a.brandmark-link').trigger('click')
     expect(api.OpenURL).toHaveBeenCalledWith('https://github.com/sound-barrier/recall')
   })
@@ -109,7 +109,7 @@ describe('App.vue — scoreboard pulse on watcher refresh', () => {
     expect(wrapper.find('.scoreboard').classes()).not.toContain('pulse')
 
     // Re-mock GetMatchResults so the next load() returns one more record.
-    const api = await import('./api')
+    const api = await import('@/api')
     const grown: MatchRecord[] = [
       ...initial,
       { match_key: 'match-2026-05-10T22-14-02', source_files: ['b.png'], data: {
@@ -367,7 +367,7 @@ describe('App.vue — tab swap preserves Matches state', () => {
     await flushPromises()
 
     // Initial mount fired one GetMatchResults.
-    const api = await import('./api')
+    const api = await import('@/api')
     const mockFn = api.GetMatchResults as ReturnType<typeof vi.fn>
     const initialCalls = mockFn.mock.calls.length
     expect(initialCalls).toBeGreaterThanOrEqual(1)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { DataLocation } from '../api'
+import type { DataLocation } from '@/api'
 
 // Folders panel (steady-state section 01) — Screenshots Folder row
 // + Data Location read-only paths. The first-run empty-hero stays

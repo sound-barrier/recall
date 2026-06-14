@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { MatchRecord } from '../api'
-import type { useMatchesNarrow } from '../composables/useMatchesNarrow'
+import type { MatchRecord } from '@/api'
+import type { useMatchesNarrow } from '@/composables/useMatchesNarrow'
 
 // The set-dossier header: the eyebrow + headline + subline and the
 // active-clause chip row. The chips mutate the narrow bundle's refs

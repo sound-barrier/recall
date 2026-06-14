@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import TimeOfDayWidget from './TimeOfDayWidget.vue'
-import { mountWidget } from '../../test-utils/mountWidget'
+import TimeOfDayWidget from '@/components/widgets/TimeOfDayWidget.vue'
+import { mountWidget } from '@/test-utils/mountWidget'
 
 describe('TimeOfDayWidget', () => {
   it('renders six rows even when every bucket is empty', () => {

@@ -4,11 +4,11 @@ import {
   usePersistedRef,
   parseJsonRecord,
   serializeJsonRecord,
-} from './usePersistedRef'
+} from '@/composables/usePersistedRef'
 import {
   DEFAULT_ROW_LAYOUT,
   widgetById,
-} from '../dashboard/widgets'
+} from '@/dashboard/widgets'
 
 // Persisted row layout for the dossier. Shape on disk:
 //

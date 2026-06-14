@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { MatchRecord, PlayMode, QueueType, ReviewedBy } from '../api'
+import type { MatchRecord, PlayMode, QueueType, ReviewedBy } from '@/api'
 
 // The match-status pickers at the top of the expanded card: queue type,
 // play mode, and review status (three ARIA radiogroups) plus the "since

@@ -1,5 +1,5 @@
 import { ref, computed, watch, type Ref } from 'vue'
-import type { MatchRecord } from '../api'
+import type { MatchRecord } from '@/api'
 
 // Drives the detail-panel pattern.
 //

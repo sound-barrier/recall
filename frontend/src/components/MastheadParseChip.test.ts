@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
-import MastheadParseChip from './MastheadParseChip.vue'
-import type { ParseProgressEvent } from './ParseProgressPanel.vue'
+import MastheadParseChip from '@/components/MastheadParseChip.vue'
+import type { ParseProgressEvent } from '@/components/ParseProgressPanel.vue'
 
 const evt = (over: Partial<ParseProgressEvent> = {}): ParseProgressEvent => ({
   done: 0,

@@ -1,7 +1,7 @@
 import { nextTick, type Ref } from 'vue'
-import type { MatchRecord } from '../api'
-import { useKeyboardShortcuts, type Shortcut } from './useKeyboardShortcuts'
-import { type TabId } from './useTabKeyboardNav'
+import type { MatchRecord } from '@/api'
+import { useKeyboardShortcuts, type Shortcut } from '@/composables/useKeyboardShortcuts'
+import { type TabId } from '@/composables/useTabKeyboardNav'
 
 // Global shortcut registry, hoisted out of App.vue so the keyboard
 // rules can be unit-tested in isolation and App.vue stops carrying

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
-import type { MatchRecord } from '../api'
-import { useTableSort, type TableSortCol } from './useTableSort'
+import type { MatchRecord } from '@/api'
+import { useTableSort, type TableSortCol } from '@/composables/useTableSort'
 
 interface RecOpts {
   map?: string
