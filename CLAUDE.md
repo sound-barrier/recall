@@ -59,6 +59,17 @@ without agreement on direction.
   Do not introduce CGo dependencies; the pure-Go build constraint is
   load-bearing for the release pipeline.
 
+- **Interface compliance — assert it at compile time.** Every concrete type that
+  is meant to satisfy an interface carries a static assertion next to its
+  definition so a drifting method set breaks the build at the type, not at some
+  distant call site (the k8s convention): `var _ Store = (*SQLStore)(nil)`. Use
+  the form that matches the receiver — `(*T)(nil)` for pointer-receiver methods,
+  `T{}` for value-receiver — never both (the wrong one won't compile). Canonical
+  in-repo: `pkg/db/store.go` (`*SQLStore`), `pkg/db/dbtest/fake.go` (`*Fake`),
+  `pkg/metrics/metrics.go` (`*Collector` vs `prometheus.Collector`). New
+  implementations — including any leaf packages carved out of `pkg/app` — add the
+  assertion in the same file as the type.
+
 - **Naming**: identifiers must reveal intent without a comment. If you find
   yourself writing a comment to explain a name, the name is wrong — rename it.
   Abbreviations only where universally understood (`ctx`, `err`, `buf`). No
