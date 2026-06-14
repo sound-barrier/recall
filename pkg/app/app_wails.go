@@ -10,6 +10,8 @@ import (
 	"time"
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"recall/pkg/match"
 )
 
 // emitParseProgress sends per-file progress data to the Wails event bus
@@ -25,11 +27,11 @@ func (a *App) emitParseProgress(p ParseProgressEvent) {
 	a.SSEHub.BroadcastData("parse-progress", string(data))
 }
 
-// emitMatchUpdated broadcasts a freshly-aggregated MatchRecord to the
+// emitMatchUpdated broadcasts a freshly-aggregated match.MatchRecord to the
 // Wails event bus and the SSE hub. Fired after each per-screenshot
 // insert resolves a match_key so the frontend can incrementally
 // render the affected card without waiting for parse-complete.
-func (a *App) emitMatchUpdated(rec MatchRecord) {
+func (a *App) emitMatchUpdated(rec match.MatchRecord) {
 	data, _ := json.Marshal(rec)
 	if a.ctx != nil {
 		wruntime.EventsEmit(a.ctx, "match-updated", rec)

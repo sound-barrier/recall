@@ -5,6 +5,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/db"
+	"recall/pkg/match"
 	"recall/pkg/parser"
 )
 
@@ -28,7 +29,7 @@ func TestFoldGroup_LiftsDetectedQueueType(t *testing.T) {
 // attachQueues is the "manual wins" override: a match_queue annotation
 // replaces the detected value; its absence leaves detection intact.
 func TestAttachQueues_ManualOverridesDetected(t *testing.T) {
-	recs := []app.MatchRecord{
+	recs := []match.MatchRecord{
 		{MatchKey: "override-me", QueueType: "open"}, // detected open
 		{MatchKey: "leave-me", QueueType: "role"},    // detected role, no annotation
 	}

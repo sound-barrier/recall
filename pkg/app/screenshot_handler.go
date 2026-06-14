@@ -20,7 +20,7 @@ import (
 // <img src="/_screenshot/3/foo.png"> directly — no base64 round-trip
 // through the JS↔Go bridge for what's potentially a multi-MB PNG.
 //
-// Why dir-id in the URL: each MatchRecord ships a SourceDirIDs
+// Why dir-id in the URL: each match.MatchRecord ships a SourceDirIDs
 // (filename → dir-id) map populated from the FK on each parent row,
 // so the URL always points at the directory the screenshot was
 // INGESTED from. Files in the watched folder that haven't been

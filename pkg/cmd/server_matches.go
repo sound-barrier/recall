@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"recall/pkg/app"
+	"recall/pkg/match"
 )
 
 // registerMatchRoutes attaches every /api/v1/matches/... handler to
@@ -320,7 +321,7 @@ func parseMatchesPagination(r *http.Request) (int, string) {
 // drops everything up to + including the row matching `cursor` (if
 // set), then returns the next `limit` records. Pre-condition:
 // `limit > 0 || cursor != ""`.
-func applyMatchesPagination(rows []app.MatchRecord, limit int, cursor string) []app.MatchRecord {
+func applyMatchesPagination(rows []match.MatchRecord, limit int, cursor string) []match.MatchRecord {
 	start := 0
 	if cursor != "" {
 		for i, r := range rows {
@@ -333,7 +334,7 @@ func applyMatchesPagination(rows []app.MatchRecord, limit int, cursor string) []
 	if start >= len(rows) {
 		// Never `nil` so the JSON wire shape stays `[]` (the
 		// arrays-are-not-null rule in api-design.md).
-		return []app.MatchRecord{}
+		return []match.MatchRecord{}
 	}
 	tail := rows[start:]
 	if limit > 0 && len(tail) > limit {

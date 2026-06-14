@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"testing"
 
-	"recall/pkg/app"
 	"recall/pkg/cmd"
 	"recall/pkg/db/dbtest"
+	"recall/pkg/match"
 )
 
 // Handler-level gap coverage for the seven /matches/* routes wired
@@ -101,7 +101,7 @@ func TestMatchAnnotations_NullBody_400(t *testing.T) {
 // that has since been deleted shouldn't strand the caller on an
 // empty list.
 func TestApplyMatchesPagination_UnknownCursorReturnsFromStart(t *testing.T) {
-	rows := []app.MatchRecord{
+	rows := []match.MatchRecord{
 		{MatchKey: "m1"},
 		{MatchKey: "m2"},
 		{MatchKey: "m3"},
@@ -115,7 +115,7 @@ func TestApplyMatchesPagination_UnknownCursorReturnsFromStart(t *testing.T) {
 // Belt-and-suspenders: limit alongside an unknown cursor still slices
 // from the start so the caller gets a real page rather than nothing.
 func TestApplyMatchesPagination_UnknownCursorWithLimitSlicesFromStart(t *testing.T) {
-	rows := []app.MatchRecord{
+	rows := []match.MatchRecord{
 		{MatchKey: "m1"},
 		{MatchKey: "m2"},
 		{MatchKey: "m3"},

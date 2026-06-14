@@ -5,6 +5,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 func TestAttachAnnotations_MergesIntoRecords(t *testing.T) {
@@ -12,7 +13,7 @@ func TestAttachAnnotations_MergesIntoRecords(t *testing.T) {
 		"k1": {MatchKey: "k1", Leaver: "self", Note: "left at 2min"},
 		"k3": {MatchKey: "k3", Leaver: "enemy"},
 	}
-	recs := []app.MatchRecord{
+	recs := []match.MatchRecord{
 		{MatchKey: "k1"},
 		{MatchKey: "k2"}, // no annotation
 		{MatchKey: "k3"},

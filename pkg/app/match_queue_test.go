@@ -6,6 +6,7 @@ import (
 
 	"recall/pkg/app"
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 func TestSetMatchQueue_PersistsValidValue(t *testing.T) {
@@ -141,7 +142,7 @@ func TestAttachQueues_PopulatesQueueType(t *testing.T) {
 		"k1": {QueueType: "role", OverriddenAt: "2026-06-01T10:00:00Z"},
 		"k3": {QueueType: "open", OverriddenAt: "2026-05-30T08:15:00Z"},
 	}
-	recs := []app.MatchRecord{
+	recs := []match.MatchRecord{
 		{MatchKey: "k1"},
 		{MatchKey: "k2"},
 		{MatchKey: "k3"},
