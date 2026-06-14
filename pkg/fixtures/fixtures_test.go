@@ -1,4 +1,4 @@
-package app_test
+package fixtures_test
 
 import (
 	"os"
@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"recall/pkg/app"
 	"recall/pkg/db/dbtest"
+	"recall/pkg/fixtures"
 	"recall/pkg/match"
 )
 
@@ -15,14 +15,14 @@ import (
 // deterministic regardless of the wall clock — GenerateMatchFixture's
 // window now rolls off time.Now() (last 8 months), which would otherwise
 // shift the RNG stream day to day. Individual tests may override
-// *app.FixtureNow locally with their own cleanup.
+// *fixtures.FixtureNow locally with their own cleanup.
 func TestMain(m *testing.M) {
-	*app.FixtureNow = func() time.Time { return time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC) }
+	*fixtures.FixtureNow = func() time.Time { return time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC) }
 	os.Exit(m.Run())
 }
 
 func TestGenerateMatchFixture_RoundTripsThroughStore(t *testing.T) {
-	fx := app.GenerateMatchFixture(50, 42, "")
+	fx := fixtures.GenerateMatchFixture(50, 42, "")
 
 	// Per-match screenshot-type dice rolls (~95% summary, ~80% teams)
 	// produce variable counts. The hard floor is "at least one
@@ -81,8 +81,8 @@ func TestGenerateMatchFixture_RoundTripsThroughStore(t *testing.T) {
 }
 
 func TestGenerateMatchFixture_IsDeterministic(t *testing.T) {
-	a := app.GenerateMatchFixture(10, 7, "")
-	b := app.GenerateMatchFixture(10, 7, "")
+	a := fixtures.GenerateMatchFixture(10, 7, "")
+	b := fixtures.GenerateMatchFixture(10, 7, "")
 
 	if !reflect.DeepEqual(a.Summaries[0], b.Summaries[0]) {
 		t.Fatalf("Summaries[0] differ between identical seeds:\n a=%+v\n b=%+v", a.Summaries[0], b.Summaries[0])
@@ -93,9 +93,9 @@ func TestGenerateMatchFixture_IsDeterministic(t *testing.T) {
 }
 
 func TestGenerateMatchFixture_DatesWithinRange(t *testing.T) {
-	fx := app.GenerateMatchFixture(200, 1, "")
+	fx := fixtures.GenerateMatchFixture(200, 1, "")
 
-	start, end := app.FixtureDateRange()
+	start, end := fixtures.FixtureDateRange()
 	// Allow a small overflow window past the upper bound — the dedupe
 	// pass bumps colliding timestamps by +1 minute, which can spill a
 	// match past midnight on the last day. A 3-day buffer is more than
@@ -117,11 +117,11 @@ func TestGenerateMatchFixture_DatesWithinRange(t *testing.T) {
 // The corpus window is a rolling 8 months ending today — verify the
 // bounds against a pinned "now" and that generated dates land inside it.
 func TestGenerateMatchFixture_RollingEightMonthWindow(t *testing.T) {
-	prev := *app.FixtureNow
-	*app.FixtureNow = func() time.Time { return time.Date(2026, 9, 15, 12, 30, 0, 0, time.UTC) }
-	t.Cleanup(func() { *app.FixtureNow = prev })
+	prev := *fixtures.FixtureNow
+	*fixtures.FixtureNow = func() time.Time { return time.Date(2026, 9, 15, 12, 30, 0, 0, time.UTC) }
+	t.Cleanup(func() { *fixtures.FixtureNow = prev })
 
-	start, end := app.FixtureDateRange()
+	start, end := fixtures.FixtureDateRange()
 	if want := time.Date(2026, 9, 15, 0, 0, 0, 0, time.UTC); !end.Equal(want) {
 		t.Fatalf("end = %v, want %v (today)", end, want)
 	}
@@ -129,7 +129,7 @@ func TestGenerateMatchFixture_RollingEightMonthWindow(t *testing.T) {
 		t.Fatalf("start = %v, want %v (8 months before today)", start, want)
 	}
 
-	fx := app.GenerateMatchFixture(150, 7, "")
+	fx := fixtures.GenerateMatchFixture(150, 7, "")
 	upper := end.AddDate(0, 0, 3)
 	for _, s := range fx.Summaries {
 		d, _ := time.Parse("2006-01-02", s.Date)
@@ -144,8 +144,8 @@ func TestGenerateMatchFixture_DifferentSeedsDiffer(t *testing.T) {
 	// Sanity check: two different seeds should produce visibly
 	// different first matches (proves the seed actually influences
 	// every choice, not just one path).
-	a := app.GenerateMatchFixture(10, 1, "")
-	b := app.GenerateMatchFixture(10, 2, "")
+	a := fixtures.GenerateMatchFixture(10, 1, "")
+	b := fixtures.GenerateMatchFixture(10, 2, "")
 	if reflect.DeepEqual(a.Summaries[0], b.Summaries[0]) {
 		t.Fatal("Summaries[0] identical across different seeds — seed isn't doing anything")
 	}
@@ -157,7 +157,7 @@ func TestGenerateMatchFixture_ResultDistribution(t *testing.T) {
 	// large numbers tightens the spread enough that we can assert on
 	// the bands directly without re-running multiple seeds.
 	const n = 10000
-	fx := app.GenerateMatchFixture(n, 1, "")
+	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
 	counts := map[string]int{}
 	for _, s := range fx.Summaries {
@@ -186,14 +186,14 @@ func TestGenerateMatchFixture_ResultDistribution(t *testing.T) {
 }
 
 func TestGenerateMatchFixture_FlexCoversEveryMapAndHero(t *testing.T) {
-	// Default style (flex) must surface every map in app.FixtureMaps AND
+	// Default style (flex) must surface every map in fixtures.FixtureMaps AND
 	// every hero across the three role pools at least once — that's
 	// what the coverage pass exists for. Without it, top-heavy map
 	// weights + 6-9 flex mains miss a handful of tail values per
 	// run, blinding eyeball UI testing to icons / labels for the
 	// missing entries.
 	const n = 100
-	fx := app.GenerateMatchFixture(n, 1, "")
+	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
 	seenMaps := map[string]bool{}
 	seenHeroes := map[string]bool{}
@@ -206,15 +206,15 @@ func TestGenerateMatchFixture_FlexCoversEveryMapAndHero(t *testing.T) {
 			seenHeroes[hp.Hero] = true
 		}
 	}
-	for _, m := range app.FixtureMaps {
+	for _, m := range fixtures.FixtureMaps {
 		if !seenMaps[m] {
 			t.Errorf("map %q missing from default-flex corpus", m)
 		}
 	}
-	allHeroes := make([]string, 0, len(app.FixtureTanks)+len(app.FixtureSupports)+len(app.FixtureDPS))
-	allHeroes = append(allHeroes, app.FixtureTanks...)
-	allHeroes = append(allHeroes, app.FixtureSupports...)
-	allHeroes = append(allHeroes, app.FixtureDPS...)
+	allHeroes := make([]string, 0, len(fixtures.FixtureTanks)+len(fixtures.FixtureSupports)+len(fixtures.FixtureDPS))
+	allHeroes = append(allHeroes, fixtures.FixtureTanks...)
+	allHeroes = append(allHeroes, fixtures.FixtureSupports...)
+	allHeroes = append(allHeroes, fixtures.FixtureDPS...)
 	for _, h := range allHeroes {
 		if !seenHeroes[h] {
 			t.Errorf("hero %q missing from default-flex corpus", h)
@@ -227,7 +227,7 @@ func TestGenerateMatchFixture_FlexSwapsMostMatches(t *testing.T) {
 	// with one hero start-to-finish. At N=500 the binomial spread is
 	// tight enough to assert single-hero matches fall in [5%, 20%].
 	const n = 500
-	fx := app.GenerateMatchFixture(n, 1, "flex")
+	fx := fixtures.GenerateMatchFixture(n, 1, "flex")
 
 	single := 0
 	for _, s := range fx.Summaries {
@@ -245,7 +245,7 @@ func TestGenerateMatchFixture_OneTrickNeverSwaps(t *testing.T) {
 	// One-tricks by definition never swap mid-match. Every summary's
 	// HeroesPlayed must have exactly one entry.
 	const n = 200
-	fx := app.GenerateMatchFixture(n, 1, "one-trick")
+	fx := fixtures.GenerateMatchFixture(n, 1, "one-trick")
 
 	for i, s := range fx.Summaries {
 		if len(s.HeroesPlayed) != 1 {
@@ -261,7 +261,7 @@ func TestGenerateMatchFixture_HeroPercentsSumTo100(t *testing.T) {
 	// holds even on patched matches. A few percent off is fine
 	// (cameo floor + cap interactions); blow up if we land outside
 	// [95, 105].
-	fx := app.GenerateMatchFixture(200, 1, "")
+	fx := fixtures.GenerateMatchFixture(200, 1, "")
 
 	for _, s := range fx.Summaries {
 		sum := 0
@@ -280,7 +280,7 @@ func TestGenerateMatchFixture_OneTrickStaysOneTrick(t *testing.T) {
 	// (95% main, 5% experiments). Catches a regression where the
 	// coverage pass would accidentally fire for non-flex styles.
 	const n = 200
-	fx := app.GenerateMatchFixture(n, 1, "one-trick")
+	fx := fixtures.GenerateMatchFixture(n, 1, "one-trick")
 
 	heroes := map[string]int{}
 	for _, s := range fx.Summaries {
@@ -306,7 +306,7 @@ func TestGenerateMatchFixture_MapsAreTopHeavy(t *testing.T) {
 	// median. At N=500 with weight-decay 0.75, the top map's share
 	// is ~22% of an even split's ~8% — easily 2x the median.
 	const n = 500
-	fx := app.GenerateMatchFixture(n, 1, "")
+	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
 	counts := map[string]int{}
 	for _, s := range fx.Summaries {
@@ -339,7 +339,7 @@ func TestGenerateMatchFixture_RoleQueueLocksToOneRolePerMatch(t *testing.T) {
 	// test pins the rule across every style + play_mode combination
 	// the seeder produces in one run.
 	const n = 500
-	fx := app.GenerateMatchFixture(n, 1, "")
+	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
 	queueByKey := make(map[string]string, len(fx.Queues))
 	for _, q := range fx.Queues {
@@ -352,9 +352,9 @@ func TestGenerateMatchFixture_RoleQueueLocksToOneRolePerMatch(t *testing.T) {
 			continue
 		}
 		roleQueueChecked++
-		primaryRole := app.RoleOfHero(s.Hero)
+		primaryRole := fixtures.RoleOfHero(s.Hero)
 		for _, hp := range s.HeroesPlayed {
-			got := app.RoleOfHero(hp.Hero)
+			got := fixtures.RoleOfHero(hp.Hero)
 			if got != primaryRole {
 				t.Errorf("role-queue match %s (primary=%s/%s): hero %s/%s violates single-role constraint",
 					s.MatchKey, s.Hero, primaryRole, hp.Hero, got)
@@ -373,7 +373,7 @@ func TestGenerateMatchFixture_OpenQueueCanMixRoles(t *testing.T) {
 	// and ~20% open queue at N=500, at least one open-queue match
 	// should naturally produce a mixed-role HeroesPlayed list.
 	const n = 500
-	fx := app.GenerateMatchFixture(n, 1, "")
+	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
 	queueByKey := make(map[string]string, len(fx.Queues))
 	for _, q := range fx.Queues {
@@ -388,9 +388,9 @@ func TestGenerateMatchFixture_OpenQueueCanMixRoles(t *testing.T) {
 		if len(s.HeroesPlayed) < 2 {
 			continue
 		}
-		first := app.RoleOfHero(s.HeroesPlayed[0].Hero)
+		first := fixtures.RoleOfHero(s.HeroesPlayed[0].Hero)
 		for _, hp := range s.HeroesPlayed[1:] {
-			if app.RoleOfHero(hp.Hero) != first {
+			if fixtures.RoleOfHero(hp.Hero) != first {
 				sawMixedRolesInOpenQueue = true
 				break
 			}
@@ -410,7 +410,7 @@ func TestGenerateMatchFixture_PlayModeDistribution(t *testing.T) {
 	// is roughly [89.4%, 90.6%]; allow [85%, 95%] to absorb
 	// seed-specific variance.
 	const n = 10000
-	fx := app.GenerateMatchFixture(n, 1, "")
+	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
 	// PlayModes are tagged per-summary; with ~95% summary dice rolls
 	// the tagged count tracks the summary count, not n. Allow a wide
@@ -459,7 +459,7 @@ func TestGenerateMatchFixture_QuickplayWidensHeroPool(t *testing.T) {
 	// match — QP should be visibly higher. (Absolute counts compare
 	// poorly because comp has ~9x more matches.)
 	const n = 5000
-	fx := app.GenerateMatchFixture(n, 1, "")
+	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
 	playModeByKey := make(map[string]string, len(fx.PlayModes))
 	for _, p := range fx.PlayModes {
@@ -504,7 +504,7 @@ func TestGenerateMatchFixture_QueueDistribution(t *testing.T) {
 	// At N=10000 the binomial 95% CI for role is roughly [78.7%,
 	// 81.3%]; allow [75%, 85%] to absorb seed-specific variance.
 	const n = 10000
-	fx := app.GenerateMatchFixture(n, 1, "")
+	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
 	// Queues are tagged per-summary; with ~95% summary dice rolls
 	// the tagged count tracks the summary count, not n.
@@ -550,7 +550,7 @@ func TestGenerateMatchFixture_ScreenshotTypeDistribution(t *testing.T) {
 	// At N=5000 the binomial bands are tight enough to assert on each
 	// rate directly.
 	const n = 5000
-	fx := app.GenerateMatchFixture(n, 1, "")
+	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
 	// Bands include a 5pp tolerance + the ~1% ambiguous teams.
 	if r := float64(len(fx.Summaries)) * 100 / float64(n); r < 92 || r > 98 {
@@ -572,7 +572,7 @@ func TestGenerateMatchFixture_UnknownAndAmbiguousCounts(t *testing.T) {
 	// fixed-share emissions from derived RNGs (seed+5 / seed+6) — no
 	// dice variance — so at any N ≥ 100 the counts are exact.
 	const n = 500
-	fx := app.GenerateMatchFixture(n, 1, "")
+	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
 	if got, want := len(fx.Unknowns), n*2/100; got != want {
 		t.Errorf("unknown count: got %d, want %d (~2%% of %d)", got, want, n)
@@ -631,7 +631,7 @@ func TestGenerateMatchFixture_ReviewRate(t *testing.T) {
 	// "rate is in the right ballpark" check that catches "0% reviewed"
 	// and "everything reviewed" regressions without flaking.
 	const n = 10000
-	fx := app.GenerateMatchFixture(n, 1, "")
+	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
 	if len(fx.Reviews) < 50 || len(fx.Reviews) > 300 {
 		t.Errorf("expected ~1.5%% of %d matches reviewed (50-300 range); got %d", n, len(fx.Reviews))

@@ -13,11 +13,12 @@ import (
 	"slices"
 
 	"recall/pkg/db"
+	"recall/pkg/fixtures"
 )
 
 // Synthetic-data seeding shared by the `seed-dev` CLI and the in-app
 // "create a sample test profile" handler. The fixture GENERATION lives
-// in fixtures.go; this file is the WRITE side — turn a Fixture into rows
+// in fixtures.go; this file is the WRITE side — turn a fixtures.Fixture into rows
 // in a profile's SQLite store plus the companion preview images the
 // ambiguous-resolution UI needs.
 
@@ -85,7 +86,7 @@ func SeedProfile(p *Profiles, name string, opts SeedOptions) (SeedResult, error)
 		}
 	}
 
-	fx := GenerateMatchFixtureWithChaos(opts.N, opts.Seed, opts.Style, opts.Chaos)
+	fx := fixtures.GenerateMatchFixtureWithChaos(opts.N, opts.Seed, opts.Style, opts.Chaos)
 	if err := writeFixture(store, fx); err != nil {
 		return SeedResult{}, err
 	}
@@ -110,8 +111,8 @@ func SeedProfile(p *Profiles, name string, opts SeedOptions) (SeedResult, error)
 	}, nil
 }
 
-// writeFixture persists every record kind in a Fixture to the store.
-func writeFixture(store db.Store, fx Fixture) error {
+// writeFixture persists every record kind in a fixtures.Fixture to the store.
+func writeFixture(store db.Store, fx fixtures.Fixture) error {
 	for _, r := range fx.Summaries {
 		if err := store.UpsertSummary(r); err != nil {
 			return fmt.Errorf("UpsertSummary(%s): %w", r.MatchKey, err)
@@ -166,7 +167,7 @@ func writeFixture(store db.Store, fx Fixture) error {
 // preview + candidate thumbnails render real bytes instead of missing-
 // image placeholders. Then points the profile's screenshots_dir at the
 // seed dir if it isn't set yet. Returns the image count.
-func writeAmbiguousPreviews(profileDir string, fx Fixture) (int, error) {
+func writeAmbiguousPreviews(profileDir string, fx fixtures.Fixture) (int, error) {
 	ssDir := filepath.Join(profileDir, "screenshots")
 	if err := os.MkdirAll(ssDir, 0o700); err != nil {
 		return 0, fmt.Errorf("mkdir %s: %w", ssDir, err)
@@ -186,7 +187,7 @@ func writeAmbiguousPreviews(profileDir string, fx Fixture) (int, error) {
 // ambiguousPreviewFilenames collects every screenshot filename that needs
 // a companion PNG: the ambiguous source files plus every source file of
 // each candidate match they could attach to. De-duped + sorted.
-func ambiguousPreviewFilenames(fx Fixture) []string {
+func ambiguousPreviewFilenames(fx fixtures.Fixture) []string {
 	if len(fx.Ambiguous) == 0 {
 		return nil
 	}
