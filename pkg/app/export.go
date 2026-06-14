@@ -157,7 +157,7 @@ func (a *App) importJSONv1(payload []byte) error {
 	if err := validateImportFilenames(doc); err != nil {
 		return err
 	}
-	remapID, err := a.clearAndRemapDirs(doc)
+	remapID, err := a.clearAndRemapDirs("import", doc.ScreenshotsDir)
 	if err != nil {
 		return err
 	}
@@ -206,34 +206,36 @@ func validateImportFilenames(doc exportV1) error {
 // destination-id remap for screenshots_dirs FKs. The pre-Clear pass
 // validates every id string + registers the dirs so a malformed id fails
 // BEFORE the destructive Clear; the post-Clear pass rebuilds the remap
-// against the fresh (auto-increment-reset) destination ids.
-func (a *App) clearAndRemapDirs(doc exportV1) (func(int64) int64, error) {
+// against the fresh (auto-increment-reset) destination ids. prefix
+// ("import" / "import csv") namespaces the error messages so the JSON and
+// CSV restore paths share one implementation.
+func (a *App) clearAndRemapDirs(prefix string, dirs map[string]string) (func(int64) int64, error) {
 	// Pre-Clear validation pass: parse each id + ensure the dir so a bad
 	// id or registration failure aborts without wiping the store. The
 	// ids registered here are wiped by Clear and rebuilt below.
-	for srcIDStr, path := range doc.ScreenshotsDir {
+	for srcIDStr, path := range dirs {
 		if _, err := strconv.ParseInt(srcIDStr, 10, 64); err != nil {
-			return nil, fmt.Errorf("import: invalid screenshots_dir id %q: %w", srcIDStr, err)
+			return nil, fmt.Errorf("%s: invalid screenshots_dir id %q: %w", prefix, srcIDStr, err)
 		}
 		if _, err := a.store.EnsureScreenshotsDir(path); err != nil {
-			return nil, fmt.Errorf("import: register dir %q: %w", path, err)
+			return nil, fmt.Errorf("%s: register dir %q: %w", prefix, path, err)
 		}
 	}
 
 	if err := a.store.Clear(); err != nil {
-		return nil, fmt.Errorf("import: clear: %w", err)
+		return nil, fmt.Errorf("%s: clear: %w", prefix, err)
 	}
 
 	// Re-register dirs after Clear (Clear wipes screenshots_dirs too)
 	// and rebuild the remap from the post-clear ids. Source ids might
 	// now map to a different destination set since auto-increment
 	// resets aren't guaranteed.
-	remap := make(map[int64]int64, len(doc.ScreenshotsDir))
-	for srcIDStr, path := range doc.ScreenshotsDir {
+	remap := make(map[int64]int64, len(dirs))
+	for srcIDStr, path := range dirs {
 		srcID, _ := strconv.ParseInt(srcIDStr, 10, 64)
 		dstID, err := a.store.EnsureScreenshotsDir(path)
 		if err != nil {
-			return nil, fmt.Errorf("import: re-register dir %q: %w", path, err)
+			return nil, fmt.Errorf("%s: re-register dir %q: %w", prefix, path, err)
 		}
 		remap[srcID] = dstID
 	}
