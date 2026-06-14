@@ -2,6 +2,7 @@ package app
 
 import (
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 // attachReviews writes `ReviewedBy` + `ReviewedAt` on every record
@@ -79,7 +80,7 @@ func attachAmbiguity(recs []MatchRecord, candidates map[string][]db.AmbiguousCan
 	}
 
 	for i := range recs {
-		mk, err := ParseMatchKey(recs[i].MatchKey)
+		mk, err := match.ParseMatchKey(recs[i].MatchKey)
 		if err != nil || !mk.IsAmbiguous() {
 			continue
 		}

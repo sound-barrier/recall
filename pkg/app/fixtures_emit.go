@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 // appendGeneratedMatch builds one match's screenshot rows (driven by the
@@ -20,7 +21,7 @@ func (fx *Fixture) appendGeneratedMatch(rng *rand.Rand, profile playerProfile, m
 
 	ts := t.Format("2006-01-02T15-04-05")
 	finishedAt := t.Format("15:04:05")
-	key := NewTrackedMatchKey(ts).String()
+	key := match.NewTrackedMatchKey(ts).String()
 
 	gameMap := md.pick(rng)
 	result := pickWeightedResult(rng)
@@ -214,7 +215,7 @@ func (fx *Fixture) appendUnknownScreenshots(seed int64, n int, rangeStart time.T
 		filename := "unknown-" + t.Format("2006-01-02T15-04-05") + ".png"
 		fx.Unknowns = append(fx.Unknowns, db.UnknownRow{
 			Filename: filename,
-			MatchKey: NewUnmatchedMatchKey(filename).String(),
+			MatchKey: match.NewUnmatchedMatchKey(filename).String(),
 		})
 	}
 }
@@ -228,7 +229,7 @@ func (fx *Fixture) appendAmbiguousScreenshots(seed int64, n int, rangeStart time
 	ambigRng := rand.New(rand.NewSource(seed + 6))
 	trackedKeys := make([]string, 0, len(fx.Summaries))
 	for _, s := range fx.Summaries {
-		if mk, err := ParseMatchKey(s.MatchKey); err == nil && mk.IsTracked() {
+		if mk, err := match.ParseMatchKey(s.MatchKey); err == nil && mk.IsTracked() {
 			trackedKeys = append(trackedKeys, s.MatchKey)
 		}
 	}
@@ -244,7 +245,7 @@ func (fx *Fixture) appendAmbiguousScreenshots(seed int64, n int, rangeStart time
 		sc := ambigRng.Intn(60)
 		t := time.Date(day.Year(), day.Month(), day.Day(), h, m, sc, 0, time.UTC)
 		filename := "teams-" + t.Format("2006-01-02T15-04-05") + ".png"
-		matchKey := NewAmbiguousMatchKey(filename).String()
+		matchKey := match.NewAmbiguousMatchKey(filename).String()
 		// Pick 2-3 candidate tracked match_keys at random; distances are
 		// illustrative (1-30 min, the EAD bridge window).
 		candCount := 2 + ambigRng.Intn(2)

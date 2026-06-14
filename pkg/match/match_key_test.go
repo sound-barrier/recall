@@ -1,25 +1,25 @@
-package app_test
+package match_test
 
 import (
 	"errors"
 	"testing"
 
-	"recall/pkg/app"
+	"recall/pkg/match"
 )
 
 func TestParseMatchKey_KnownPrefixes(t *testing.T) {
 	cases := []struct {
 		input    string
-		wantKind app.MatchKeyKind
+		wantKind match.MatchKeyKind
 		wantBody string
 	}{
-		{"match-2026-05-10T22-21-11", app.KindTracked, "2026-05-10T22-21-11"},
-		{"unmatched-some-file.png", app.KindUnmatched, "some-file.png"},
-		{"ambiguous-other-file.png", app.KindAmbiguous, "other-file.png"},
+		{"match-2026-05-10T22-21-11", match.KindTracked, "2026-05-10T22-21-11"},
+		{"unmatched-some-file.png", match.KindUnmatched, "some-file.png"},
+		{"ambiguous-other-file.png", match.KindAmbiguous, "other-file.png"},
 	}
 	for _, c := range cases {
 		t.Run(c.input, func(t *testing.T) {
-			got, err := app.ParseMatchKey(c.input)
+			got, err := match.ParseMatchKey(c.input)
 			if err != nil {
 				t.Fatalf("err = %v, want nil", err)
 			}
@@ -45,8 +45,8 @@ func TestParseMatchKey_UnknownPrefixReturnsSentinel(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c, func(t *testing.T) {
-			_, err := app.ParseMatchKey(c)
-			if !errors.Is(err, app.ErrInvalidMatchKey) {
+			_, err := match.ParseMatchKey(c)
+			if !errors.Is(err, match.ErrInvalidMatchKey) {
 				t.Errorf("err = %v, want ErrInvalidMatchKey", err)
 			}
 		})
@@ -54,30 +54,30 @@ func TestParseMatchKey_UnknownPrefixReturnsSentinel(t *testing.T) {
 }
 
 func TestMatchKey_KindHelpers(t *testing.T) {
-	m, _ := app.ParseMatchKey("match-2026-01-01T00-00-00")
+	m, _ := match.ParseMatchKey("match-2026-01-01T00-00-00")
 	if !m.IsTracked() || m.IsAmbiguous() || m.IsUnmatched() {
 		t.Error("IsTracked helper misclassified a match- key")
 	}
-	a, _ := app.ParseMatchKey("ambiguous-x.png")
+	a, _ := match.ParseMatchKey("ambiguous-x.png")
 	if !a.IsAmbiguous() || a.IsTracked() || a.IsUnmatched() {
 		t.Error("IsAmbiguous helper misclassified an ambiguous- key")
 	}
-	u, _ := app.ParseMatchKey("unmatched-x.png")
+	u, _ := match.ParseMatchKey("unmatched-x.png")
 	if !u.IsUnmatched() || u.IsTracked() || u.IsAmbiguous() {
 		t.Error("IsUnmatched helper misclassified an unmatched- key")
 	}
 }
 
 func TestMatchKey_Filename(t *testing.T) {
-	a, _ := app.ParseMatchKey("ambiguous-foo.png")
+	a, _ := match.ParseMatchKey("ambiguous-foo.png")
 	if got := a.Filename(); got != "foo.png" {
 		t.Errorf("ambiguous.Filename() = %q, want %q", got, "foo.png")
 	}
-	u, _ := app.ParseMatchKey("unmatched-bar.png")
+	u, _ := match.ParseMatchKey("unmatched-bar.png")
 	if got := u.Filename(); got != "bar.png" {
 		t.Errorf("unmatched.Filename() = %q, want %q", got, "bar.png")
 	}
-	m, _ := app.ParseMatchKey("match-2026-01-01T00-00-00")
+	m, _ := match.ParseMatchKey("match-2026-01-01T00-00-00")
 	if got := m.Filename(); got != "" {
 		t.Errorf("tracked.Filename() = %q, want empty (tracked keys are time-derived)", got)
 	}
@@ -90,10 +90,10 @@ func TestMatchKey_Filename(t *testing.T) {
 // exact failure mode the typed identity was introduced to make
 // impossible.
 func TestMatchKey_RoundTrip(t *testing.T) {
-	cases := []app.MatchKey{app.NewTrackedMatchKey("2026-05-10T22-21-11"), app.NewUnmatchedMatchKey("some-screenshot.png"), app.NewAmbiguousMatchKey("other-screenshot.png")}
+	cases := []match.MatchKey{match.NewTrackedMatchKey("2026-05-10T22-21-11"), match.NewUnmatchedMatchKey("some-screenshot.png"), match.NewAmbiguousMatchKey("other-screenshot.png")}
 	for _, c := range cases {
 		t.Run(c.String(), func(t *testing.T) {
-			parsed, err := app.ParseMatchKey(c.String())
+			parsed, err := match.ParseMatchKey(c.String())
 			if err != nil {
 				t.Fatalf("re-parse %q: %v", c.String(), err)
 			}
@@ -114,7 +114,7 @@ func TestMatchKey_RoundTrip(t *testing.T) {
 }
 
 func TestNewAmbiguousMatchKey_BuildsParseable(t *testing.T) {
-	k := app.NewAmbiguousMatchKey("foo bar.png") // space in filename — still safe
+	k := match.NewAmbiguousMatchKey("foo bar.png") // space in filename — still safe
 	if !k.IsAmbiguous() {
 		t.Error("NewAmbiguousMatchKey did not produce a Kind=Ambiguous key")
 	}

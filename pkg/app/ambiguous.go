@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"recall/pkg/db"
+	"recall/pkg/match"
 )
 
 // ErrInvalidAmbiguousKey is returned when an ambiguous-resolution
@@ -39,7 +40,7 @@ var ErrAmbiguousNotFound = errors.New("ambiguous screenshot not found")
 // On success, the in-memory aggregate cache (delivered via SSE) is
 // refreshed by re-emitting a match-updated event for resolvedTo.
 func (a *App) ResolveAmbiguousMatch(ambiguousMatchKey, resolvedTo string) error {
-	mk, err := ParseMatchKey(ambiguousMatchKey)
+	mk, err := match.ParseMatchKey(ambiguousMatchKey)
 	if err != nil || !mk.IsAmbiguous() {
 		return fmt.Errorf("%w: %q", ErrInvalidAmbiguousKey, ambiguousMatchKey)
 	}
@@ -83,6 +84,6 @@ func validResolution(resolvedTo string, cands []db.AmbiguousCandidate) bool {
 			return true
 		}
 	}
-	mk, err := ParseMatchKey(resolvedTo)
+	mk, err := match.ParseMatchKey(resolvedTo)
 	return err == nil && mk.IsTracked()
 }

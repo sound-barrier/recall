@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"recall/pkg/db"
+	"recall/pkg/match"
 	"recall/pkg/parser"
 )
 
@@ -105,18 +106,18 @@ func resolveMatchKey(filename string, result *parser.MatchResult, snap db.Screen
 		if k != "" {
 			return k, nil
 		}
-		return NewAmbiguousMatchKey(filename).String(), cands
+		return match.NewAmbiguousMatchKey(filename).String(), cands
 	}
 	if k, cands, ok := matchByTimestampWindow(cand, snap); ok {
 		if k != "" {
 			return k, nil
 		}
-		return NewAmbiguousMatchKey(filename).String(), cands
+		return match.NewAmbiguousMatchKey(filename).String(), cands
 	}
 	if cand.hasTS {
-		return NewTrackedMatchKey(cand.ts.UTC().Format("2006-01-02T15-04-05")).String(), nil
+		return match.NewTrackedMatchKey(cand.ts.UTC().Format("2006-01-02T15-04-05")).String(), nil
 	}
-	return NewUnmatchedMatchKey(filename).String(), nil
+	return match.NewUnmatchedMatchKey(filename).String(), nil
 }
 
 // candidate is the comparison shape used by the two match passes.

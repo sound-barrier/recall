@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"recall/pkg/db"
+	"recall/pkg/match"
 	"recall/pkg/parser"
 )
 
@@ -136,7 +137,7 @@ func attachMatchSidecars(rec *MatchRecord, key string, snap db.Screenshots, anno
 		rec.ReviewedBy = st.ReviewedBy
 		rec.ReviewedAt = st.ReviewedAt
 	}
-	if mk, err := ParseMatchKey(key); err == nil && mk.IsAmbiguous() {
+	if mk, err := match.ParseMatchKey(key); err == nil && mk.IsAmbiguous() {
 		rec.Ambiguous = true
 		if cs, ok := snap.AmbiguousCandidates[mk.Filename()]; ok {
 			rec.Candidates = make([]AmbiguousAttribution, 0, len(cs))
