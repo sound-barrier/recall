@@ -1,6 +1,6 @@
 //go:build windows
 
-package app
+package probe
 
 import (
 	"os"
@@ -50,7 +50,7 @@ func resolveSteamScreenshots() (string, bool) {
 			continue
 		}
 		candidate := filepath.Join(userdataDir, e.Name(), "760", "remote", owSteamAppID, "screenshots")
-		if dirExists(candidate) {
+		if DirExists(candidate) {
 			return candidate, true
 		}
 	}

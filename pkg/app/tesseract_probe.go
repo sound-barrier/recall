@@ -4,6 +4,8 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+
+	"recall/pkg/probe"
 )
 
 // ProbeTesseractBinary walks a per-OS candidate list looking for a
@@ -22,7 +24,7 @@ import (
 // Each candidate is filtered through checkTesseract — file-exists
 // alone isn't enough since a forgotten 3.x install would otherwise
 // "succeed" while producing wrong OCR output.
-func (a *App) ProbeTesseractBinary() ProbeResult {
+func (a *App) ProbeTesseractBinary() probe.ProbeResult {
 	home, _ := os.UserHomeDir()
 	tried := tesseractProbeCandidates(runtime.GOOS, home)
 
@@ -31,7 +33,7 @@ func (a *App) ProbeTesseractBinary() ProbeResult {
 			continue
 		}
 		if checkTesseract(c).Found {
-			return ProbeResult{Found: true, Path: c, Tried: tried}
+			return probe.ProbeResult{Found: true, Path: c, Tried: tried}
 		}
 	}
 	// PATH lookup as a last resort. Tracked separately in Tried so
@@ -40,10 +42,10 @@ func (a *App) ProbeTesseractBinary() ProbeResult {
 	if p, err := exec.LookPath(tesseractExecName()); err == nil {
 		tried = append(tried, "PATH: "+p)
 		if checkTesseract(p).Found {
-			return ProbeResult{Found: true, Path: p, Tried: tried}
+			return probe.ProbeResult{Found: true, Path: p, Tried: tried}
 		}
 	}
-	return ProbeResult{Found: false, Tried: tried}
+	return probe.ProbeResult{Found: false, Tried: tried}
 }
 
 func tesseractExecName() string {

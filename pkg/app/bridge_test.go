@@ -29,12 +29,6 @@ var (
 
 // ── Probe / watcher / misc ────────────────────────────────────────────────
 var (
-	CountRecognised          = countRecognised
-	CandidateSources         = candidateSources
-	DirExists                = dirExists
-	FirstExistingCandidate   = firstExistingCandidate
-	ProbeCandidates          = probeCandidates
-	WalkSourceDir            = walkSourceDir
 	TesseractProbeCandidates = tesseractProbeCandidates
 	ParseTesseractVersion    = parseTesseractVersion
 	RunWatchEvents           = runWatchEvents
