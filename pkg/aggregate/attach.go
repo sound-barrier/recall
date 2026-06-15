@@ -1,8 +1,12 @@
 package aggregate
 
 import (
+	"cmp"
+	"slices"
+
 	"recall/pkg/db"
 	"recall/pkg/match"
+	"recall/pkg/parser"
 )
 
 // AttachReviews writes `ReviewedBy` + `ReviewedAt` on every record
@@ -140,4 +144,170 @@ func AttachAnnotations(recs []match.MatchRecord, annos map[string]db.Annotation)
 			}
 		}
 	}
+}
+
+// AttachUserData overlays the per-match user override layer onto the aggregated
+// records: non-nil scalars win over the OCR Data, the heroes-played list is
+// replaced when the user supplied one, stat-cell and SR overrides overlay, and
+// Role / GameMode re-derive from any edited hero / map. A screenshot-backed
+// record becomes SourceOCREdited (with EditedFields listing the overridden
+// paths); a synthesized shell stays SourceManual. Pure function, called once
+// per aggregateAll, AFTER SynthesizeManualMatches.
+func AttachUserData(recs []match.MatchRecord, userData map[string]db.UserMatchData) {
+	if len(userData) == 0 {
+		return
+	}
+	for i := range recs {
+		if ud, ok := userData[recs[i].MatchKey]; ok {
+			applyUserData(&recs[i], ud)
+		}
+	}
+}
+
+func applyUserData(rec *match.MatchRecord, ud db.UserMatchData) {
+	manual := len(rec.SourceFiles) == 0
+	var edited []string
+	mark := func(path string) {
+		if !manual {
+			edited = append(edited, path)
+		}
+	}
+
+	d := &rec.Data
+	applyScalarOverrides(d, ud, mark)
+	if len(ud.Heroes) > 0 {
+		d.HeroesPlayed = userHeroesToPlays(ud.Heroes)
+		mark("data.heroes_played")
+	}
+	for _, st := range ud.HeroStats {
+		overlayHeroStat(d, st.Hero, st.StatKey, st.Value)
+		mark("data.heroes_played." + st.Hero + ".stats." + st.StatKey)
+	}
+	if len(ud.SR) > 0 {
+		d.SR = userSRToParser(ud.SR)
+		mark("data.sr")
+	}
+	if len(ud.Modifiers) > 0 {
+		d.Modifiers = ud.Modifiers
+		mark("data.modifiers")
+	}
+
+	// Re-derive AFTER overriding so an edited hero / map drives Role / GameMode
+	// (these are never stored; see .claude/rules/database.md).
+	if ud.Hero != nil && d.Hero != "" {
+		d.Role = parser.HeroRole(d.Hero)
+	}
+	if ud.Map != nil && d.Map != "" {
+		d.GameMode = parser.MapGameMode(d.Map)
+	}
+
+	if manual {
+		rec.Source = match.SourceManual
+		if rec.ParsedAt == "" {
+			rec.ParsedAt = ud.UpdatedAt
+		}
+		return
+	}
+	rec.Source = match.SourceOCREdited
+	rec.EditedFields = edited
+}
+
+// applyScalarOverrides copies every non-nil override scalar onto d (table-driven
+// so the field list stays flat instead of 18 branches). Overriding map / hero
+// also clears the stale raw-OCR text so the "Unknown map / hero" hint retires.
+func applyScalarOverrides(d *parser.MatchResult, ud db.UserMatchData, mark func(string)) {
+	for _, s := range []struct {
+		val  *string
+		dst  *string
+		path string
+	}{
+		{ud.Map, &d.Map, "data.map"},
+		{ud.Hero, &d.Hero, "data.hero"},
+		{ud.Result, &d.Result, "data.result"},
+		{ud.FinalScore, &d.FinalScore, "data.final_score"},
+		{ud.Date, &d.Date, "data.date"},
+		{ud.FinishedAt, &d.FinishedAt, "data.finished_at"},
+		{ud.GameLength, &d.GameLength, "data.game_length"},
+		{ud.Rank, &d.Rank, "data.rank"},
+	} {
+		if s.val != nil {
+			*s.dst = *s.val
+			mark(s.path)
+		}
+	}
+	for _, n := range []struct {
+		val  *int
+		dst  *int
+		path string
+	}{
+		{ud.Eliminations, &d.Eliminations, "data.eliminations"},
+		{ud.Assists, &d.Assists, "data.assists"},
+		{ud.Deaths, &d.Deaths, "data.deaths"},
+		{ud.Damage, &d.Damage, "data.damage"},
+		{ud.Healing, &d.Healing, "data.healing"},
+		{ud.Mitigation, &d.Mitigation, "data.mitigation"},
+		{ud.Level, &d.Level, "data.level"},
+		{ud.RankProgress, &d.RankProgress, "data.rank_progress"},
+		{ud.ChangePercent, &d.ChangePercent, "data.change_percent"},
+	} {
+		if n.val != nil {
+			*n.dst = *n.val
+			mark(n.path)
+		}
+	}
+	if ud.Map != nil {
+		d.MapRaw = ""
+	}
+	if ud.Hero != nil {
+		d.HeroRaw = ""
+	}
+}
+
+// userHeroesToPlays converts the user's heroes-played LIST override into the
+// parser shape, ordered by position so position 0 (primary) leads.
+func userHeroesToPlays(heroes []db.UserMatchHero) []parser.HeroPlay {
+	sorted := slices.Clone(heroes)
+	slices.SortStableFunc(sorted, func(a, b db.UserMatchHero) int {
+		return cmp.Compare(a.Position, b.Position)
+	})
+	out := make([]parser.HeroPlay, 0, len(sorted))
+	for _, h := range sorted {
+		p := parser.HeroPlay{Hero: h.Hero}
+		if h.PercentPlayed != nil {
+			p.PercentPlayed = *h.PercentPlayed
+		}
+		if h.PlayTime != nil {
+			p.PlayTime = *h.PlayTime
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
+// overlayHeroStat sets one stat cell on the matching heroes-played entry,
+// appending a minimal entry if the user overrode a stat for a hero the OCR list
+// doesn't carry. Independent of the list override — a stat edit never implies a
+// roster replacement.
+func overlayHeroStat(d *parser.MatchResult, hero, statKey string, val int) {
+	for i := range d.HeroesPlayed {
+		if d.HeroesPlayed[i].Hero == hero {
+			if d.HeroesPlayed[i].Stats == nil {
+				d.HeroesPlayed[i].Stats = map[string]int{}
+			}
+			d.HeroesPlayed[i].Stats[statKey] = val
+			return
+		}
+	}
+	d.HeroesPlayed = append(d.HeroesPlayed, parser.HeroPlay{
+		Hero:  hero,
+		Stats: map[string]int{statKey: val},
+	})
+}
+
+func userSRToParser(sr []db.HeroSR) []parser.HeroSR {
+	out := make([]parser.HeroSR, len(sr))
+	for i, s := range sr {
+		out[i] = parser.HeroSR{Hero: s.Hero, SR: s.SR, Change: s.Change}
+	}
+	return out
 }
