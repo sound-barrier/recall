@@ -1,5 +1,55 @@
 # Changelog
 
+## [0.15.0](https://github.com/sound-barrier/recall/compare/v0.14.2...v0.15.0) (2026-06-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **db:** parser-scalar columns become NOT NULL DEFAULT ''. Pre-1.0 schema is applied verbatim on store open with no migration — wipe the dev DB and relaunch (single user; no data migration needed).
+
+### Features
+
+* **matches:** Excel-style Custom Sort dialog for the Data table ([c3dde73](https://github.com/sound-barrier/recall/commit/c3dde7365ff20f9c21ba1bb92db2c70283652cd8))
+* **matches:** multi-column sort for the Data-density table ([a6f36d7](https://github.com/sound-barrier/recall/commit/a6f36d7f5d5a37f06160e2da47dfdb7c3c4d842d))
+* **parser:** capture the full hero roster from the PERSONAL sidebar ([d6093cf](https://github.com/sound-barrier/recall/commit/d6093cf2d302f86a9373b6131ea62248bb6aa628))
+* **parser:** recognize the PERSONAL All Heroes view as skip-only ([9033156](https://github.com/sound-barrier/recall/commit/90331568e669b3e55aaaf316b89f60a403704df7))
+
+
+### Bug Fixes
+
+* **db:** store empty parser scalars as '' not NULL ([d54eb30](https://github.com/sound-barrier/recall/commit/d54eb3064c0056cffd7192728f32d78c49119fdf))
+* **matches:** order Hero x Game Mode heatmap alphabetically ([4c9e1d5](https://github.com/sound-barrier/recall/commit/4c9e1d5b6cb97744c98cfc90ba59f4ad562ca548))
+* **parser:** anchor personal stat values on AVG-per-10-min ([37560d7](https://github.com/sound-barrier/recall/commit/37560d76210e7f1505ec62ef9250a7edc254e2a0))
+* **parser:** correctly parse the competitive demotion screen ([2748123](https://github.com/sound-barrier/recall/commit/2748123efc9a24cdd88dcb9420644b0d8b494823))
+* **parser:** keep 3-char abbreviation prefixes in PERSONAL labels ([c219ab6](https://github.com/sound-barrier/recall/commit/c219ab6ccc360925f2363c6c91cab5652cc1c805))
+* **parser:** omit unknown percent_played for name-only PERSONAL heroes ([6e57eaf](https://github.com/sound-barrier/recall/commit/6e57eafced79b20aa6943f97ee5637dead2786f6))
+* **parser:** recover bracket-mangled performance totals ([3347707](https://github.com/sound-barrier/recall/commit/33477077d68a26339f29874a4fb47e0db9539a54))
+* **parser:** recover PERSONAL cells with letter-mangled values ([60eb90f](https://github.com/sound-barrier/recall/commit/60eb90fb2e467f8b0f63e565137d09058bcdef89))
+* **parser:** recover the rank gain pill at 1080p ([347d40d](https://github.com/sound-barrier/recall/commit/347d40de9d5843c40c63223d856645fa1a4cc251))
+* **parser:** snap hero-ability stat labels to canonical keys ([02cf677](https://github.com/sound-barrier/recall/commit/02cf6777749a3d20f8fc0a224055f7fde4e9592b))
+
+
+### Documentation
+
+* rank fixtures in the README gallery + summary/personal coverage ([f99ed38](https://github.com/sound-barrier/recall/commit/f99ed386884569572f81d3f07034f0f0c563e819))
+
+
+### Build & Packaging
+
+* **ci:** raise total-JS bundle budget to 512000 for multi-sort ([a9299a4](https://github.com/sound-barrier/recall/commit/a9299a4a670305bba11f1a7af38b82f1a11f8ddf))
+* **deps-dev:** bump the npm-deps group in /frontend with 7 updates ([478d1e9](https://github.com/sound-barrier/recall/commit/478d1e9a8c531981edec35ba9f2f43e08545474f))
+* **deps:** bump the go-deps group with 2 updates ([dc130c4](https://github.com/sound-barrier/recall/commit/dc130c42fa494dc9d18559450171fe571bba128c))
+
+
+### Tests
+
+* **app:** cover the complete open-queue match correlation ([069a9f7](https://github.com/sound-barrier/recall/commit/069a9f7469c61dd35c699ea8d9d6b8d6085b7e3c))
+* **app:** cover the parse pipeline + match reads (71-&gt;76%) ([e1d9079](https://github.com/sound-barrier/recall/commit/e1d90794d7da8c5af85dcb326352fe4664ad76c8))
+* **db:** cover untested SQLStore methods (62-&gt;75%) ([495f4af](https://github.com/sound-barrier/recall/commit/495f4af6b267e3e2f2004d0faa3c18a3ce6ab7b5))
+* **frontend:** unit-test the narrow filter predicates ([1f08fef](https://github.com/sound-barrier/recall/commit/1f08fefd693b3a18d66a407d986c44ff820cd2e1))
+* **parser:** add 3-hero SUMMARY + Wuyang PERSONAL golden fixtures ([5d27787](https://github.com/sound-barrier/recall/commit/5d27787d17d178c89bbf8fe082033b23de18dc33))
+* **parser:** add gen-goldens tool + cross-tool audit fixtures ([3c42a2a](https://github.com/sound-barrier/recall/commit/3c42a2aedab1cae999a60e0a29f6b041a34e0eb6))
+
 ## [0.14.2](https://github.com/sound-barrier/recall/compare/v0.14.1...v0.14.2) (2026-06-14)
 
 
