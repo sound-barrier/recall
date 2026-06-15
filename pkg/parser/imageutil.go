@@ -33,6 +33,36 @@ func preprocessRaw(src image.Image, scale int) image.Image {
 	return grayUpscale(src, scale, false)
 }
 
+// preprocessHighContrast renders src as a hard two-level threshold at scale×:
+// pixels brighter than `thresh` become black, the rest white. For low-contrast
+// bright-on-color pills — the white-on-green "+N%" rank gain — the
+// gradient-preserving inverted/raw passes leave the text too faint to read once
+// the capture is downscaled to 1080p; thresholding lands the bright text as
+// crisp dark-on-light, the orientation Tesseract wants.
+func preprocessHighContrast(src image.Image, scale int, thresh uint8) image.Image {
+	bounds := src.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+	out := image.NewGray(image.Rect(0, 0, w*scale, h*scale))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			r, g, b, _ := src.At(x, y).RGBA()
+			// #nosec G115 -- BT.601 luminance, weights sum to 1000, each
+			// channel ≤ 255 after >>8, so the result is always ≤ 255.
+			lum := uint8((299*int(r>>8) + 587*int(g>>8) + 114*int(b>>8)) / 1000)
+			v := uint8(255)
+			if lum > thresh {
+				v = 0
+			}
+			for dy := 0; dy < scale; dy++ {
+				for dx := 0; dx < scale; dx++ {
+					out.SetGray(x*scale+dx, y*scale+dy, color.Gray{Y: v})
+				}
+			}
+		}
+	}
+	return out
+}
+
 // grayUpscale renders src as BT.601-luminance grayscale at scale×, optionally
 // inverted (255-lum). Nearest-neighbour upscale; antialiasing rides through as
 // a gradient for Tesseract's binariser.

@@ -104,6 +104,13 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
       SUMMARY performance card **over-reads eliminations as 74** on the noisy
       JPG — capture quality matters (PNG / NVIDIA / Steam parse cleanly; heavy
       JPG compression confuses the perf-card OCR). See `parser.md`.
+- [x] **1080p downscale robustness** — the rank win + loss fixtures resized
+      2560×1440 → 1920×1080 `(1080p)`. The parser's relative crops read the
+      same data at 1080p, including the thin colored "+25%" rank-gain pill: the
+      inverted/raw passes lose it at 1080p, but a thresholded (bright→black)
+      high-contrast fallback recovers it. SUMMARY / TEAMS / PERSONAL are
+      resolution-robust unchanged. Scope is 1080p + 1440p; 4K and sub-1080p are
+      out of scope.
 - [x] match where the player swapped heroes, captured from the SUMMARY
       side — the Rialto capture lists all three heroes (Wuyang 47% ·
       Juno 46% · Kiriko 7%), exercising `parseHeroesPlayed` ordering with

@@ -66,6 +66,16 @@ func ocrRaw(img image.Image, rect image.Rectangle, workDir, name string, scale i
 	return runTesseractFunc(pre, workDir, name, psm, whitelist)
 }
 
+// ocrThreshold binarises a bright-on-color region (pixels brighter than
+// `thresh` → black, the rest → white) before OCR — for low-contrast pills like
+// the rank "+N%" gain that the inverted and raw passes leave too faint to read
+// at 1080p.
+func ocrThreshold(img image.Image, rect image.Rectangle, workDir, name string, scale int, thresh uint8, psm, whitelist string) (string, error) {
+	sub := crop(img, rect)
+	pre := preprocessHighContrast(sub, scale, thresh)
+	return runTesseractFunc(pre, workDir, name, psm, whitelist)
+}
+
 func runTesseract(pre image.Image, workDir, name, psm, whitelist string) (string, error) {
 	inPath := filepath.Join(workDir, name+".png")
 	// #nosec G304,G703 -- workDir is always os.MkdirTemp output or
