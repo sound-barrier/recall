@@ -1636,6 +1636,26 @@ export interface components {
             played_at?: string;
             rank?: components["schemas"]["ManualRankInput"];
             leaver?: components["schemas"]["LeaverEnum"];
+            /**
+             * @description Optional Overwatch replay code; written to the match annotation.
+             * @example A1B2C3
+             */
+            replay_code?: string;
+            /** @description Optional free-form note; written to the match annotation. */
+            note?: string;
+            /**
+             * @description Optional free-form tags; written to the match annotation.
+             * @example [
+             *       "clutch",
+             *       "stream"
+             *     ]
+             */
+            tags?: string[];
+            /**
+             * @description The squad / group the user played with; written to the match
+             *     annotation (stored verbatim, so `Apollo#11234` keeps its case).
+             */
+            members?: string[];
         };
         /** @description Competitive rank the match ended on. Omit for quickplay. */
         ManualRankInput: {

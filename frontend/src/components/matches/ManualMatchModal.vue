@@ -103,6 +103,9 @@ const errorMsg = ref('')
 
 async function submit() {
   if (!f.canSubmit.value || submitting.value) return
+  // Commit any tag / teammate the user typed but didn't press Enter on.
+  f.addTag()
+  f.addMember()
   submitting.value = true
   errorMsg.value = ''
   try {
@@ -253,6 +256,90 @@ async function submit() {
               >
                 {{ opt.label }}
               </button>
+            </div>
+          </section>
+
+          <!-- Replay code (optional) -->
+          <section class="mm-section">
+            <label class="mm-eyebrow-label" for="mm-replay">Replay code <span class="mm-optional">(optional)</span></label>
+            <input
+              id="mm-replay"
+              v-model="f.replayCode.value"
+              class="mm-input mm-input-short"
+              type="text"
+              maxlength="12"
+              autocapitalize="characters"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="e.g. A1B2C3"
+            >
+          </section>
+
+          <!-- Notes (optional) -->
+          <section class="mm-section">
+            <label class="mm-eyebrow-label" for="mm-note">Notes <span class="mm-optional">(optional)</span></label>
+            <textarea
+              id="mm-note"
+              v-model="f.note.value"
+              class="mm-input mm-textarea"
+              rows="2"
+              placeholder="What happened? Anything to review later?"
+            />
+          </section>
+
+          <!-- Tags (optional) — type + Enter to add a chip. -->
+          <section class="mm-section">
+            <span class="mm-eyebrow-label">Tags <span class="mm-optional">(optional)</span></span>
+            <div class="mm-tokens">
+              <button
+                v-for="t in f.tags.value"
+                :key="t"
+                type="button"
+                class="mm-token"
+                :aria-label="`Remove tag ${t}`"
+                data-mm-tag
+                @click="f.removeTag(t)"
+              >
+                #{{ t }}<span class="mm-token-x" aria-hidden="true">×</span>
+              </button>
+              <input
+                v-model="f.tagDraft.value"
+                class="mm-token-input"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="add a tag…"
+                data-mm-tag-input
+                @keydown.enter.prevent="f.addTag()"
+              >
+            </div>
+          </section>
+
+          <!-- Group / teammates (optional) -->
+          <section class="mm-section">
+            <span class="mm-eyebrow-label">Group <span class="mm-optional">(teammates you queued with)</span></span>
+            <div class="mm-tokens">
+              <button
+                v-for="m in f.members.value"
+                :key="m"
+                type="button"
+                class="mm-token"
+                :aria-label="`Remove teammate ${m}`"
+                data-mm-member
+                @click="f.removeMember(m)"
+              >
+                {{ m }}<span class="mm-token-x" aria-hidden="true">×</span>
+              </button>
+              <input
+                v-model="f.memberDraft.value"
+                class="mm-token-input"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="add a teammate…"
+                data-mm-member-input
+                @keydown.enter.prevent="f.addMember()"
+              >
             </div>
           </section>
 
@@ -460,6 +547,69 @@ async function submit() {
 
 .mm-input:focus-visible { outline: 0; border-color: var(--accent); }
 .mm-input-short { width: max-content; }
+
+.mm-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 2.4rem;
+  line-height: 1.4;
+}
+
+/* Tag / teammate chip-input: type + Enter adds a token; click a token to
+   drop it (it reddens on hover to signal removal). */
+.mm-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--surface-2);
+}
+
+.mm-tokens:focus-within { border-color: var(--accent); }
+
+.mm-token {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  padding: 0.12rem 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  color: var(--accent);
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.mm-token:hover {
+  background: color-mix(in srgb, var(--loss) 16%, transparent);
+  border-color: var(--loss);
+  color: var(--loss);
+}
+
+.mm-token:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.mm-token-x { font-weight: 700; }
+
+.mm-token-input {
+  appearance: none;
+  flex: 1;
+  min-width: 7rem;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding: 0.1rem 0.2rem;
+}
+
+.mm-token-input::placeholder { color: var(--text-faint); }
 
 .mm-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; }
 

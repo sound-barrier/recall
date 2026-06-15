@@ -91,4 +91,51 @@ describe('useManualMatchForm', () => {
     f.leaver.value = 'team'
     expect(f.toInput().leaver).toBe('team')
   })
+
+  it('carries optional replay code, note, lowercased tags, and verbatim group members', () => {
+    const f = useManualMatchForm()
+    f.map.value = 'ilios'
+    f.playMode.value = 'quickplay'
+    f.queueType.value = 'open'
+    f.result.value = 'victory'
+    f.addHero('ana')
+    f.replayCode.value = '  A1B2C3  '
+    f.note.value = '  great comeback  '
+    f.addTag('Clutch')
+    f.addTag('clutch') // dedupes case-insensitively
+    f.addTag('stream')
+    f.addMember('Apollo#11234')
+    f.addMember('Apollo#11234') // dedupes verbatim
+
+    const input = f.toInput()
+    expect(input.replay_code).toBe('A1B2C3')
+    expect(input.note).toBe('great comeback')
+    expect(input.tags).toEqual(['clutch', 'stream'])
+    expect(input.members).toEqual(['Apollo#11234'])
+  })
+
+  it('omits the optional annotation fields when left blank', () => {
+    const f = useManualMatchForm()
+    f.map.value = 'ilios'
+    f.playMode.value = 'quickplay'
+    f.queueType.value = 'open'
+    f.result.value = 'victory'
+    f.addHero('ana')
+
+    const input = f.toInput()
+    expect(input.replay_code).toBeUndefined()
+    expect(input.note).toBeUndefined()
+    expect(input.tags).toBeUndefined()
+    expect(input.members).toBeUndefined()
+  })
+
+  it('removeTag / removeMember drop a chip', () => {
+    const f = useManualMatchForm()
+    f.addTag('clutch')
+    f.addMember('Apollo#11234')
+    f.removeTag('clutch')
+    f.removeMember('Apollo#11234')
+    expect(f.tags.value).toEqual([])
+    expect(f.members.value).toEqual([])
+  })
 })

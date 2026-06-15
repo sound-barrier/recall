@@ -91,6 +91,43 @@ func TestCreateManualMatch_CreatesManualRecord(t *testing.T) {
 	}
 }
 
+func TestCreateManualMatch_WritesOptionalAnnotationFields(t *testing.T) {
+	fake := dbtest.New()
+	a := app.NewWithStore(fake)
+
+	rec, err := a.CreateManualMatch(match.ManualMatchInput{
+		Map:        "ilios",
+		PlayMode:   "competitive",
+		QueueType:  "open",
+		Heroes:     []string{"ana"},
+		Result:     "victory",
+		PlayedAt:   "2026-06-15T14:30:00Z",
+		ReplayCode: "ABC123",
+		Note:       "great comeback",
+		Tags:       []string{"clutch", "stream"},
+		Members:    []string{"Apollo#11234"},
+	})
+	if err != nil {
+		t.Fatalf("CreateManualMatch: %v", err)
+	}
+	ann := rec.Annotation
+	if ann == nil {
+		t.Fatal("Annotation is nil, want replay/note/tags/members written")
+	}
+	if ann.ReplayCode != "ABC123" {
+		t.Errorf("ReplayCode = %q, want ABC123", ann.ReplayCode)
+	}
+	if ann.Note != "great comeback" {
+		t.Errorf("Note = %q, want 'great comeback'", ann.Note)
+	}
+	if len(ann.Tags) != 2 {
+		t.Errorf("Tags = %v, want 2 (clutch, stream)", ann.Tags)
+	}
+	if len(ann.Members) != 1 || ann.Members[0] != "Apollo#11234" {
+		t.Errorf("Members = %v, want [Apollo#11234]", ann.Members)
+	}
+}
+
 func TestCreateManualMatch_RejectsCollision(t *testing.T) {
 	const key = "match-2026-06-15T14-30-00"
 	fake := dbtest.New()
