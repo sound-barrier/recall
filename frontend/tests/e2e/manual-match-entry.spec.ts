@@ -2,15 +2,22 @@
  * Hand-entering a match (no OCR) — the no-Tesseract persona.
  *
  * Starting from an EMPTY match list, the toolbar's "Add match" button opens
- * the modal; filling the required fields and saving POSTs ManualMatchInput to
- * /api/v1/matches (201), the app reloads, and the new match appears with the
- * Manual badge (the detail panel opens on it so the user can add review /
- * replay-code details).
+ * the modal; the map + hero pickers are the Filter-matches FilterCombobox
+ * (searchable, lowercase), the rest are chip toggles. Saving POSTs
+ * ManualMatchInput to /api/v1/matches (201), the app reloads, and the new
+ * match appears with the Manual badge.
  *
  * Drives api.ts ↔ POST /api/v1/matches ↔ Go ↔ store ↔ aggregate.
  */
 import { test, expect } from './_fixtures'
 import type { Route } from '@playwright/test'
+
+// The combobox options come from useOWData; the picked VALUES are the
+// normalized lowercase forms (mapIndex / heroIndex keys), so "Ilios" → "ilios".
+const refData = {
+  heroes_by_role: { tank: ['Reinhardt'], damage: ['Tracer'], support: ['Ana'] },
+  maps_by_game_mode: { control: ['Ilios'], hybrid: ["King's Row"] },
+}
 
 function manualRecord(body: { map?: string; heroes?: string[]; result?: string; play_mode?: string; queue_type?: string }) {
   return {
@@ -32,6 +39,9 @@ function manualRecord(body: { map?: string; heroes?: string[]; result?: string; 
 test('Add match → fill → save → the match appears with the Manual badge', async ({ page }) => {
   let postBody: string | null = null
   const created: unknown[] = []
+  await page.route('**/api/v1/system/reference-data', (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(refData) }),
+  )
   await page.route('**/api/v1/matches', async (route: Route) => {
     const req = route.request()
     if (req.method() === 'POST') {
@@ -50,14 +60,28 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   await page.locator('[data-add-match]').click()
   await expect(page.locator('.mm-modal')).toBeVisible()
 
-  await page.locator('#mm-map').fill('Ilios')
+  // Toggles first, while no dropdown is open to overlap them.
   await page.locator('[data-mode="competitive"]').click()
   await page.locator('[data-queue="role"]').click()
-  await page.locator('#mm-hero').fill('ana')
-  await page.locator('#mm-hero').press('Enter')
-  await expect(page.locator('.mm-hero-chip')).toContainText('ana')
   await page.locator('[data-result="victory"]').click()
   await page.locator('[data-leaver="team"]').click()
+
+  // Map — single-select via Tab-to-complete: type, Tab highlights the match,
+  // Enter selects it (the single-select picker then auto-closes). Tab must NOT
+  // leave the field while the dropdown is open.
+  const mapCombo = page.locator('[data-combo-id="mm-map"]')
+  await mapCombo.locator('.combo-input').click()
+  await mapCombo.locator('.combo-input').fill('ili')
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Enter')
+  await expect(mapCombo.locator('.combo-pill')).toContainText('ilios')
+
+  // Hero — same picker; first selected is the primary.
+  const heroCombo = page.locator('[data-combo-id="mm-hero"]')
+  await heroCombo.locator('.combo-input').click()
+  await heroCombo.locator('.combo-list li:has-text("ana")').click()
+  await expect(heroCombo.locator('.combo-pill')).toContainText('ana')
+  await page.locator('#mm-title').click()
 
   await page.locator('[data-mm-submit]').click()
 
@@ -65,7 +89,7 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   const parsed = JSON.parse(postBody as string) as {
     map: string; play_mode: string; queue_type: string; heroes: string[]; result: string; leaver: string
   }
-  expect(parsed.map).toBe('Ilios')
+  expect(parsed.map).toBe('ilios')
   expect(parsed.play_mode).toBe('competitive')
   expect(parsed.queue_type).toBe('role')
   expect(parsed.heroes).toEqual(['ana'])

@@ -43,14 +43,19 @@ export function useManualMatchForm() {
     heroes.value = heroes.value.filter((h) => h !== name)
   }
 
-  const canSubmit = computed(
-    () =>
-      map.value.trim() !== '' &&
-      playMode.value !== '' &&
-      queueType.value !== '' &&
-      result.value !== '' &&
-      heroes.value.length > 0,
-  )
+  // Required fields, in display order — drives both canSubmit and the footer's
+  // "still needed" hint so the user knows why Add is disabled.
+  const missingRequired = computed(() => {
+    const out: string[] = []
+    if (map.value.trim() === '') out.push('map')
+    if (playMode.value === '') out.push('mode')
+    if (queueType.value === '') out.push('queue')
+    if (result.value === '') out.push('result')
+    if (heroes.value.length === 0) out.push('a hero')
+    return out
+  })
+
+  const canSubmit = computed(() => missingRequired.value.length === 0)
 
   // Assemble the wire payload. Pre-condition: canSubmit (the casts below are
   // safe once the required enums are non-empty).
@@ -84,6 +89,6 @@ export function useManualMatchForm() {
     map, playMode, queueType, roleCategory, heroes, heroDraft, result, leaver, playedAt,
     rankTier, rankDivision, rankProgress, rankChange, demotionProtection,
     isCompetitive, isRoleQueue, primaryHero,
-    addHero, removeHero, canSubmit, toInput,
+    addHero, removeHero, canSubmit, missingRequired, toInput,
   }
 }
