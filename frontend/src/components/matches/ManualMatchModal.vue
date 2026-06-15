@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { computed, ref, toRef } from 'vue'
+import { computed, onMounted, onUnmounted, ref, toRef } from 'vue'
 import { ApiError, CreateManualMatch, type MatchRecord } from '@/api'
 import { useManualMatchForm } from '@/composables/matches/useManualMatchForm'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
+import FilterCombobox from '@/components/shared/FilterCombobox.vue'
 
-// Hand-enter a match for users without OCR. A centered modal dressed in the
-// "Filter matches" panel's visual language — eyebrow sections, chip toggles,
-// consistent inputs / dropdowns. Submit POSTs via CreateManualMatch and lifts
-// the created record so the parent reloads; a 409 (a match already exists at
-// that minute) surfaces inline without closing.
+// Hand-enter a match for users without OCR. A centered popup modal (solid
+// surface over a dimmed page) dressed in the Filter-matches panel's visual
+// language: the map + hero pickers are the same FilterCombobox the narrow
+// panel uses (lowercase, searchable), mode / queue / role / result / leaver
+// are chip toggles, and required fields carry a red asterisk. Submit POSTs via
+// CreateManualMatch; a 409 surfaces inline without closing.
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: []; created: [record: MatchRecord] }>()
 
@@ -30,30 +32,48 @@ const LEAVERS = [
   { value: 'enemy', label: 'Enemy left' },
 ] as const
 
-const mapOptions = computed(() =>
-  Object.values(ow.data.value?.maps_by_game_mode ?? {}).flat().sort((a, b) => a.localeCompare(b)),
-)
+// Only one combobox dropdown open at a time (mirrors the narrow panel).
+const comboOpen = ref<'map' | 'hero' | null>(null)
+
+// Normalized (lowercase) roster values — the same stored form OCR matches use,
+// so a hand-entered match groups + displays identically. Heroes narrow to the
+// picked role on role queue.
+const mapOptions = computed(() => [...ow.mapIndex.value.keys()].sort((a, b) => a.localeCompare(b)))
 const heroOptions = computed(() => {
-  const byRole = ow.data.value?.heroes_by_role ?? {}
-  let names: string[]
+  let entries = [...ow.heroIndex.value.entries()]
   if (f.queueType.value === 'role' && f.roleCategory.value) {
-    const key = Object.keys(byRole).find((k) => k.toLowerCase() === f.roleCategory.value)
-    names = key ? (byRole[key] ?? []) : Object.values(byRole).flat()
-  } else {
-    names = Object.values(byRole).flat()
+    entries = entries.filter(([, v]) => v.role.toLowerCase() === f.roleCategory.value)
   }
-  return [...names].sort((a, b) => a.localeCompare(b))
+  return entries.map(([k]) => k).sort((a, b) => a.localeCompare(b))
 })
+
+const mapPicked = computed(() => (f.map.value ? new Set([f.map.value]) : new Set<string>()))
+const heroPicked = computed(() => new Set(f.heroes.value))
+
+function onToggleMap(v: string) {
+  // Single-select: one map per match. Pick replaces; re-picking clears. Close
+  // the dropdown on pick so it reads as a single choice (the hero picker is
+  // multi and stays open).
+  f.map.value = f.map.value === v ? '' : v
+  comboOpen.value = null
+}
+function onToggleHero(v: string) {
+  if (f.heroes.value.includes(v)) f.removeHero(v)
+  else f.addHero(v)
+}
+
+// Click outside the open dropdown closes it (the narrow panel's contract).
+function onDocMousedown(e: MouseEvent) {
+  const t = e.target as HTMLElement | null
+  if (comboOpen.value && t && !t.closest(`[data-combo-id="mm-${comboOpen.value}"]`)) {
+    comboOpen.value = null
+  }
+}
+onMounted(() => document.addEventListener('mousedown', onDocMousedown))
+onUnmounted(() => document.removeEventListener('mousedown', onDocMousedown))
 
 const submitting = ref(false)
 const errorMsg = ref('')
-
-function onHeroKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter') {
-    e.preventDefault()
-    f.addHero()
-  }
-}
 
 async function submit() {
   if (!f.canSubmit.value || submitting.value) return
@@ -90,25 +110,30 @@ async function submit() {
         </header>
 
         <div class="mm-body">
-          <!-- Map -->
+          <p class="mm-legend">
+            <span class="mm-req" aria-hidden="true">*</span> required
+          </p>
+
+          <!-- Map (required) — the narrow panel's searchable, lowercase picker. -->
           <section class="mm-section">
-            <label class="mm-eyebrow-label" for="mm-map">Map</label>
-            <input
-              id="mm-map"
-              v-model="f.map.value"
-              class="mm-input"
-              list="mm-maps"
-              autocomplete="off"
+            <span class="mm-eyebrow-label">Map <span class="mm-req" aria-hidden="true">*</span></span>
+            <FilterCombobox
+              combo-id="mm-map"
+              label="Map"
+              :options="mapOptions"
+              :picked="mapPicked"
+              :open="comboOpen === 'map'"
               placeholder="type to search maps…"
-            >
-            <datalist id="mm-maps">
-              <option v-for="m in mapOptions" :key="m" :value="m" />
-            </datalist>
+              empty-message="no maps match"
+              @toggle="onToggleMap"
+              @open="comboOpen = 'map'"
+              @close="comboOpen = null"
+            />
           </section>
 
-          <!-- Mode -->
+          <!-- Mode (required) -->
           <section class="mm-section">
-            <span class="mm-eyebrow-label">Mode</span>
+            <span class="mm-eyebrow-label">Mode <span class="mm-req" aria-hidden="true">*</span></span>
             <div class="mm-chips">
               <button class="mm-chip" :class="{ picked: f.playMode.value === 'competitive' }" data-mode="competitive" @click="f.playMode.value = 'competitive'">
                 Competitive
@@ -119,9 +144,9 @@ async function submit() {
             </div>
           </section>
 
-          <!-- Queue -->
+          <!-- Queue (required) -->
           <section class="mm-section">
-            <span class="mm-eyebrow-label">Queue</span>
+            <span class="mm-eyebrow-label">Queue <span class="mm-req" aria-hidden="true">*</span></span>
             <div class="mm-chips">
               <button class="mm-chip" :class="{ picked: f.queueType.value === 'role' }" data-queue="role" @click="f.queueType.value = 'role'">
                 Role Queue
@@ -132,7 +157,7 @@ async function submit() {
             </div>
           </section>
 
-          <!-- Role category (role queue only — narrows the hero picker) -->
+          <!-- Role category (optional; role queue only — narrows the hero picker) -->
           <section v-if="f.isRoleQueue.value" class="mm-section">
             <span class="mm-eyebrow-label">Role <span class="mm-optional">(optional)</span></span>
             <div class="mm-chips">
@@ -149,40 +174,30 @@ async function submit() {
             </div>
           </section>
 
-          <!-- Heroes -->
+          <!-- Heroes (required) — same picker as Map; first selected is primary. -->
           <section class="mm-section">
-            <label class="mm-eyebrow-label" for="mm-hero">Heroes played <span class="mm-optional">(first = primary)</span></label>
-            <div class="mm-hero-add">
-              <input
-                id="mm-hero"
-                v-model="f.heroDraft.value"
-                class="mm-input"
-                list="mm-heroes"
-                autocomplete="off"
-                placeholder="type a hero, press Enter"
-                @keydown="onHeroKeydown"
-              >
-              <button class="mm-add-btn" :disabled="!f.heroDraft.value.trim()" @click="f.addHero()">
-                Add
-              </button>
-            </div>
-            <datalist id="mm-heroes">
-              <option v-for="h in heroOptions" :key="h" :value="h" />
-            </datalist>
-            <ul v-if="f.heroes.value.length" class="mm-hero-list">
-              <li v-for="(h, i) in f.heroes.value" :key="h" class="mm-hero-chip" :class="{ 'mm-hero-primary': i === 0 }">
-                <span v-if="i === 0" class="mm-hero-tag">primary</span>
-                {{ h }}
-                <button class="mm-hero-x" :aria-label="`Remove ${h}`" @click="f.removeHero(h)">
-                  ×
-                </button>
-              </li>
-            </ul>
+            <span class="mm-eyebrow-label">
+              Heroes played <span class="mm-req" aria-hidden="true">*</span>
+              <span class="mm-optional">first = primary</span>
+            </span>
+            <FilterCombobox
+              combo-id="mm-hero"
+              label="Heroes"
+              :options="heroOptions"
+              :picked="heroPicked"
+              :open="comboOpen === 'hero'"
+              :first-is-primary="true"
+              placeholder="type to search heroes…"
+              empty-message="no heroes match"
+              @toggle="onToggleHero"
+              @open="comboOpen = 'hero'"
+              @close="comboOpen = null"
+            />
           </section>
 
-          <!-- Result -->
+          <!-- Result (required) -->
           <section class="mm-section">
-            <span class="mm-eyebrow-label">Result</span>
+            <span class="mm-eyebrow-label">Result <span class="mm-req" aria-hidden="true">*</span></span>
             <div class="mm-chips">
               <button
                 v-for="r in (['victory', 'defeat', 'draw'] as const)"
@@ -197,7 +212,7 @@ async function submit() {
             </div>
           </section>
 
-          <!-- Leaver -->
+          <!-- Leaver (optional) -->
           <section class="mm-section">
             <span class="mm-eyebrow-label">Leaver <span class="mm-optional">(optional)</span></span>
             <div class="mm-chips">
@@ -214,14 +229,14 @@ async function submit() {
             </div>
           </section>
 
-          <!-- When -->
+          <!-- When (optional) -->
           <section class="mm-section">
             <label class="mm-eyebrow-label" for="mm-when">When <span class="mm-optional">(defaults to now)</span></label>
             <input id="mm-when" v-model="f.playedAt.value" class="mm-input mm-input-short" type="datetime-local">
           </section>
 
-          <!-- Rank (competitive only) -->
-          <section v-if="f.isCompetitive.value" class="mm-section mm-rank">
+          <!-- Rank (competitive only, optional) -->
+          <section v-if="f.isCompetitive.value" class="mm-section">
             <span class="mm-eyebrow-label">Rank <span class="mm-optional">(optional)</span></span>
             <div class="mm-rank-grid">
               <label class="mm-sublabel">Tier
@@ -257,7 +272,10 @@ async function submit() {
         </div>
 
         <footer class="mm-foot">
-          <span class="mm-foot-status">{{ f.canSubmit.value ? 'ready' : 'map · mode · queue · result · 1 hero' }}</span>
+          <span class="mm-foot-status" :class="{ 'mm-foot-ready': f.canSubmit.value }">
+            <template v-if="f.canSubmit.value">Ready to add</template>
+            <template v-else>Still needed: {{ f.missingRequired.value.join(', ') }}</template>
+          </span>
           <div class="mm-foot-actions">
             <button class="mm-btn ghost" @click="emit('close')">
               Cancel
@@ -273,57 +291,51 @@ async function submit() {
 </template>
 
 <style scoped>
-/* Mirrors the Filter-matches panel (NarrowPopover): left slide-in side panel,
-   eyebrow sections, chip toggles, sticky footer. Self-contained scoped styles
-   rather than sharing NarrowPopover's (decoupled components). */
+/* Centered popup over a dimmed page (the 012d42 background the user liked):
+   a solid --surface card, not a slide-in panel. */
 .mm-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
-  background: color-mix(in srgb, var(--bg) 55%, transparent);
-  backdrop-filter: blur(2px);
-}
-
-.mm-panel {
-  position: fixed;
-  left: 0; top: 0;
-  z-index: 100;
-  width: min(420px, 100vw);
-  height: 100vh;
-  background: var(--surface);
-  border-right: 1px solid var(--accent);
-  box-shadow: 28px 0 60px -24px rgb(0 0 0 / 65%);
-  padding: 0.9rem 1rem 0;
+  z-index: 60;
   display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4vh 1rem;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  backdrop-filter: blur(2px);
   overflow-y: auto;
 }
 
-.mm-panel::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: var(--accent);
+.mm-modal {
+  width: min(560px, 100%);
+  max-height: 92vh;
+  background: var(--surface);
+  border: 1px solid var(--border-strong, var(--border));
+  border-radius: 4px;
+  box-shadow: 0 18px 60px rgb(0 0 0 / 45%);
+  padding: 0.9rem 1rem 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.mm-slide-enter-active,
-.mm-slide-leave-active { transition: transform 240ms ease, opacity 240ms ease; }
-.mm-slide-enter-from   { transform: translateX(-100%); opacity: 0; }
-.mm-slide-leave-to     { transform: translateX(-100%); opacity: 0; }
-
 .mm-fade-enter-active,
-.mm-fade-leave-active { transition: opacity 200ms ease; }
+.mm-fade-leave-active { transition: opacity 180ms ease; }
 
 .mm-fade-enter-from,
 .mm-fade-leave-to { opacity: 0; }
 
+.mm-fade-enter-active .mm-modal,
+.mm-fade-leave-active .mm-modal { transition: transform 180ms ease; }
+
+.mm-fade-enter-from .mm-modal,
+.mm-fade-leave-to .mm-modal { transform: translateY(10px); }
+
 @media (prefers-reduced-motion: reduce) {
-  .mm-slide-enter-active,
-  .mm-slide-leave-active,
   .mm-fade-enter-active,
-  .mm-fade-leave-active { transition: none; }
+  .mm-fade-leave-active,
+  .mm-fade-enter-active .mm-modal,
+  .mm-fade-leave-active .mm-modal { transition: none; }
 }
 
 .mm-head {
@@ -371,7 +383,23 @@ async function submit() {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  padding-bottom: 0.5rem;
+  padding: 0.6rem 0;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.mm-legend {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+.mm-req {
+  color: var(--loss);
+  font-weight: 700;
 }
 
 .mm-section {
@@ -434,64 +462,6 @@ async function submit() {
 
 .mm-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-.mm-hero-add { display: flex; gap: 0.4rem; }
-.mm-hero-add .mm-input { flex: 1; }
-
-.mm-add-btn {
-  appearance: none;
-  font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-weight: 700;
-  padding: 0 0.7rem;
-  border: 1px solid var(--accent-soft);
-  border-radius: 2px;
-  background: transparent;
-  color: var(--accent);
-  cursor: pointer;
-}
-
-.mm-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.mm-hero-list { list-style: none; margin: 0.15rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.3rem; }
-
-.mm-hero-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-family: var(--mono);
-  font-size: 0.74rem;
-  padding: 0.16rem 0.2rem 0.16rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  background: var(--surface-2);
-  text-transform: lowercase;
-}
-
-.mm-hero-primary { border-color: var(--accent-soft); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
-
-.mm-hero-tag {
-  font-size: 0.48rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.mm-hero-x {
-  appearance: none;
-  background: none;
-  border: 0;
-  color: var(--text-faint);
-  cursor: pointer;
-  font-size: 0.95rem;
-  line-height: 1;
-  padding: 0 0.2rem;
-}
-
-.mm-hero-x:hover { color: var(--loss); }
-
 .mm-rank-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
 
 .mm-sublabel {
@@ -532,8 +502,6 @@ async function submit() {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  position: sticky;
-  bottom: 0;
   background: var(--surface);
   margin: 0 -1rem;
   padding: 0.6rem 1rem;
@@ -543,10 +511,12 @@ async function submit() {
 .mm-foot-status {
   font-family: var(--mono);
   font-size: 0.58rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-faint);
 }
+
+.mm-foot-ready { color: var(--win); }
 
 .mm-foot-actions { margin-left: auto; display: inline-flex; gap: 0.4rem; }
 

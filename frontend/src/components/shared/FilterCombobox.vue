@@ -27,6 +27,10 @@ const props = defineProps<{
   open: boolean
   placeholder?: string
   emptyMessage?: string
+  // Opt-in: badge the first selected pill "primary". Used by the Add-match
+  // modal's hero picker, where heroes[0] is the primary; the narrow panel
+  // leaves it off (its picks are an unordered filter set).
+  firstIsPrimary?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -47,7 +51,13 @@ function onSelect(value: string) {
 <template>
   <div :data-combo-id="comboId" class="filter-combobox">
     <div v-if="picked.size" class="combo-selected">
-      <span v-for="v in [...picked]" :key="v" class="combo-pill">
+      <span
+        v-for="(v, i) in [...picked]"
+        :key="v"
+        class="combo-pill"
+        :class="{ 'combo-pill-primary': firstIsPrimary && i === 0 }"
+      >
+        <span v-if="firstIsPrimary && i === 0" class="combo-pill-tag">primary</span>
         {{ v }}
         <button
           type="button"
@@ -94,6 +104,17 @@ function onSelect(value: string) {
   color: var(--accent);
   font-weight: 700;
   text-transform: lowercase;
+}
+
+.combo-pill-primary {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.combo-pill-tag {
+  font-size: 0.48rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
 }
 
 .combo-pill-x {
