@@ -345,6 +345,8 @@ const {
   onRowContextClose,
   replayCodeFor,
   hoverPreviewSrc,
+  hoverPreviewSource,
+  hoverPreviewEditedFields,
   hoverPreviewX,
   hoverPreviewY,
   onLeafMouseEnter,
@@ -544,6 +546,8 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
          narrow popover / detail panel don't sneak in. -->
       <LeafHoverPreview
         :src="hoverPreviewSrc"
+        :source="hoverPreviewSource"
+        :edited-fields="hoverPreviewEditedFields"
         :x="hoverPreviewX"
         :y="hoverPreviewY"
       />
