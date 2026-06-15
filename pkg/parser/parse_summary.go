@@ -140,16 +140,29 @@ func parseHeroesPlayed(text string) []HeroPlay {
 }
 
 // parsePerformance pulls (total, avg-per-10-min) for each labeled card.
-// The total is the last "pure integer line" before the label — meaning a line
-// whose content is just a 1-3 digit number, with no other characters. This
-// filters out icon noise like "S 4" (Tesseract's misread of the skull-X icon
-// next to "17") which would otherwise win the "last integer before label"
-// race. The avg is anchored on "MIN" so we don't match "10" inside
-// "AVG PER 10 MIN".
+// The total is the largest "digit line" in the per-stat segment — a line whose
+// whole content is a 1-3 digit number, allowing the glyphs the OW italic
+// numerals get mis-OCR'd into (O/o/Q/q→0; I/i/l/L and the vertical-stroke
+// brackets |/]/[ →1, normalized by normalizePerfDigits). This filters icon
+// noise like "S 4" (the skull-X / crossed-swords misread) while still
+// recovering a value the font mangled — e.g. "11" scanned as "1]", which the
+// old pure-digit pick dropped in favour of the icon's stray "4". The avg is
+// anchored on "MIN" so we don't match "10" inside "AVG PER 10 MIN".
 var (
-	perfPureIntLineRe = regexp.MustCompile(`(?m)^\s*(\d{1,3})\s*$`)
-	perfAvgRe         = regexp.MustCompile(`(?i)MIN[^0-9]{1,8}(\d+(?:\.\d+)?)`)
+	perfDigitLineRe = regexp.MustCompile(`(?m)^\s*([\dOoQqIilL|\]\[]{1,3})\s*$`)
+	perfAvgRe       = regexp.MustCompile(`(?i)MIN[^0-9]{1,8}(\d+(?:\.\d+)?)`)
 )
+
+// perfDigitReplacer maps the OW font's mis-OCR'd numeral glyphs back to digits.
+// Applied only to perfDigitLineRe matches (already all digit-like), so the
+// bracket→1 substitutions can't corrupt real text elsewhere.
+var perfDigitReplacer = strings.NewReplacer(
+	"O", "0", "o", "0", "Q", "0", "q", "0",
+	"I", "1", "i", "1", "l", "1", "L", "1",
+	"|", "1", "]", "1", "[", "1",
+)
+
+func normalizePerfDigits(s string) string { return perfDigitReplacer.Replace(s) }
 
 func parsePerformance(text string) *Performance {
 	upper := strings.ToUpper(text)
@@ -169,20 +182,20 @@ func parsePerformance(text string) *Performance {
 		if idx < 0 {
 			continue
 		}
-		// Total: the largest pure-digit line in the segment between the
-		// previous stat's label and this one. Segmenting isolates this
-		// stat's digits (so the assists "19" can't shadow deaths "6"), and
-		// taking the max rejects the small icon glyph Tesseract reads as a
-		// stray digit beside the value — the crossed-swords ELIMINATIONS
-		// icon reads as "4" right before the label, which the old "last
-		// line before the label" pick wrongly grabbed over the real "9".
+		// Total: the largest digit line in the segment between the previous
+		// stat's label and this one. Segmenting isolates this stat's digits
+		// (so the assists "19" can't shadow deaths "6"), and taking the max
+		// rejects the small icon glyph Tesseract reads as a stray digit beside
+		// the value — the crossed-swords ELIMINATIONS icon reads as "4" right
+		// before the label, which the old "last line before the label" pick
+		// wrongly grabbed over the real "9".
 		start := prevEnd
 		if start > idx {
 			start = 0
 		}
 		best := -1
-		for _, m := range perfPureIntLineRe.FindAllStringSubmatch(text[start:idx], -1) {
-			if n, _ := strconv.Atoi(m[1]); n > best {
+		for _, m := range perfDigitLineRe.FindAllStringSubmatch(text[start:idx], -1) {
+			if n, err := strconv.Atoi(normalizePerfDigits(m[1])); err == nil && n > best {
 				best = n
 			}
 		}

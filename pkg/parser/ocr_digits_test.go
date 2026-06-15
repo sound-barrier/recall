@@ -56,3 +56,23 @@ func TestParsePerformance_RejectsIconDigitBesideValue(t *testing.T) {
 			perf.Eliminations.Total, perf.Assists.Total, perf.Deaths.Total)
 	}
 }
+
+// "11" in the ELIMINATIONS cell scans as "1]" — the OW italic numeral's
+// trailing stroke degrades into a bracket — inside a cell already noisy with
+// the icon's stray "4" and an "S 4" misread. The old pure-digit pick dropped
+// "1]" and kept the icon's "4" (the merged match then showed 4 vs the TEAMS
+// scoreboard's true 11); normalizing the bracket→1 recovers it. Real OCR text
+// from testdata's Hollywood open-queue SUMMARY (00.28.29.05).
+func TestParsePerformance_RecoversBracketMangledEliminations(t *testing.T) {
+	text := "TOTAL PERFORMANCE\n‘\n4\n1]\nS 4\nELIMINATIONS\nVA\n\\\n" +
+		"AVG PER 10 MIN: 14.38\n12\nW\nASSISTS\n" +
+		"AVG PER 10 MIN: 15.69\n3\nDEATHS\nAVG PER 10 MIN: 3.92"
+	perf := parser.ParsePerformance(text)
+	if perf == nil {
+		t.Fatal("parsePerformance returned nil")
+	}
+	if perf.Eliminations.Total != 11 || perf.Assists.Total != 12 || perf.Deaths.Total != 3 {
+		t.Errorf("E/A/D totals = %d/%d/%d, want 11/12/3",
+			perf.Eliminations.Total, perf.Assists.Total, perf.Deaths.Total)
+	}
+}
