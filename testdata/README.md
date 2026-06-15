@@ -125,12 +125,15 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
       signature), exercising the off-hero PERSONAL bridge and the All
       Heroes skip. Also the cross-check that surfaced the eliminations
       bug — SUMMARY and TEAMS E/A/D must agree, and didn't (4 vs 11) until
-      the bracket-mangled-digit fix. **Known gap** the three PERSONAL
-      goldens document: small-value, long-label hero-ability cells (Charge
+      the bracket-mangled-digit fix. The three PERSONAL goldens also pin
+      hero-ability-cell recovery: small (0/1) values next to the card icon
+      OCR their lone digit as a letter ("1"→"T", "0"→"O"), so the value scan
+      finds nothing — `parsePersonalStatCell` now recovers it from the clean
+      AVG line (value = avg × play/10) instead of dropping the cell (Charge
       Kill, Rip-Tire Kill, Immortality Field Death Prevented, Fire Strike
-      Kills) are intermittently dropped, and some labels OCR with typos
-      (`EARTHSHATTER KILLS` → `earthshatiter_kills`). The captured values
-      are correct; cell coverage isn't complete yet.
+      Kills). A couple of long labels still OCR imperfectly (`RIP-TIRE KILL`
+      → `tire_kill`, `EARTHSHATTER KILLS` → `earthshatiter_kills`) — values
+      correct, label-snapping is a follow-up.
 
 ## Privacy / licensing
 
