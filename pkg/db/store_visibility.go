@@ -20,11 +20,14 @@ func (s *SQLStore) UnhideMatch(matchKey string) error {
 	return err
 }
 
-// HardDeleteMatch wipes every row keyed on matchKey across all
-// parent tables (children CASCADE), plus annotations and the
-// hidden_matches flag. Used by the Hidden drawer's Delete affordance
-// — once a user explicitly asks to forget a match, no trace stays in
-// the DB. Idempotent: unknown keys complete with no error.
+// HardDeleteMatch wipes every row keyed on matchKey across all parent
+// tables (children CASCADE), plus annotations, the hidden_matches flag, the
+// review row, the user override layer (user_match_data + children), and the
+// queue / play-mode aux rows. Used by the Hidden drawer's Delete affordance —
+// once a user explicitly asks to forget a match, no trace stays in the DB.
+// Clearing user_match_data is essential for manual matches: their data lives
+// ONLY there, so leaving it would resurrect the match on the next aggregate.
+// Idempotent: unknown keys complete with no error.
 func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -43,8 +46,15 @@ func (s *SQLStore) HardDeleteMatch(matchKey string) error {
 	if _, err := tx.Exec(`DELETE FROM match_annotations WHERE match_key = ?`, matchKey); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`DELETE FROM match_reviews WHERE match_key = ?`, matchKey); err != nil {
-		return err
+	for _, q := range []string{
+		`DELETE FROM match_reviews WHERE match_key = ?`,
+		`DELETE FROM user_match_data WHERE match_key = ?`, // children CASCADE
+		`DELETE FROM match_queue WHERE match_key = ?`,
+		`DELETE FROM match_play_mode WHERE match_key = ?`,
+	} {
+		if _, err := tx.Exec(q, matchKey); err != nil {
+			return err
+		}
 	}
 	return tx.Commit()
 }

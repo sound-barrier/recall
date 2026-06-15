@@ -265,3 +265,75 @@ CREATE TABLE IF NOT EXISTS all_heroes_screenshots (
   recognized_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 -- statement-end
+
+-- User match-data override layer. The single source for BOTH features:
+--   * editing an OCR match  -> a row with only the changed columns non-NULL
+--   * a hand-entered match  -> a row + children with NO screenshot rows anywhere
+-- Grafted over the OCR Data at read time by AttachUserData (pkg/aggregate),
+-- mirroring the match_annotations / match_queue override pattern. Reset-to-OCR
+-- and manual-delete both = DELETE the row (children cascade).
+--
+-- Every scalar may be NULL on purpose: NULL means "not overridden, use OCR",
+-- so a user-entered damage of 0 (non-NULL) is distinct from "unset" (NULL).
+-- queue_type / play_mode are NOT here — they keep their existing aux tables
+-- (match_queue / match_play_mode); manual entry writes those directly.
+CREATE TABLE IF NOT EXISTS user_match_data (
+  match_key      TEXT PRIMARY KEY,
+  map            TEXT,
+  hero           TEXT,
+  eliminations   INTEGER,
+  assists        INTEGER,
+  deaths         INTEGER,
+  damage         INTEGER,
+  healing        INTEGER,
+  mitigation     INTEGER,
+  result         TEXT CHECK (result IS NULL OR result IN ('victory','defeat','draw')),
+  final_score    TEXT,
+  date           TEXT,
+  finished_at    TEXT,
+  game_length    TEXT,
+  rank           TEXT,
+  level          INTEGER,
+  rank_progress  INTEGER,
+  change_percent INTEGER,
+  updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- statement-end
+
+-- Heroes-played list. position 0 = primary (drives card header + derived role,
+-- matching the OCR "first in heroes_played is primary" rule). percent_played /
+-- play_time may be NULL (manual entry has neither).
+CREATE TABLE IF NOT EXISTS user_match_heroes (
+  match_key      TEXT NOT NULL REFERENCES user_match_data(match_key) ON DELETE CASCADE,
+  hero           TEXT NOT NULL,
+  percent_played INTEGER,
+  play_time      TEXT,
+  position       INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (match_key, hero)
+);
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS user_match_hero_stats (
+  match_key   TEXT NOT NULL REFERENCES user_match_data(match_key) ON DELETE CASCADE,
+  hero        TEXT NOT NULL,
+  stat_key    TEXT NOT NULL,
+  stat_value  INTEGER NOT NULL,
+  PRIMARY KEY (match_key, hero, stat_key)
+);
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS user_match_sr (
+  match_key   TEXT NOT NULL REFERENCES user_match_data(match_key) ON DELETE CASCADE,
+  hero        TEXT NOT NULL,
+  sr          INTEGER NOT NULL DEFAULT 0,
+  change      INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (match_key, hero)
+);
+-- statement-end
+
+CREATE TABLE IF NOT EXISTS user_match_rank_modifiers (
+  match_key   TEXT NOT NULL REFERENCES user_match_data(match_key) ON DELETE CASCADE,
+  modifier    TEXT NOT NULL,
+  PRIMARY KEY (match_key, modifier)
+);
+-- statement-end
