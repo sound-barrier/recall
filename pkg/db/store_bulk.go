@@ -131,6 +131,7 @@ func (s *SQLStore) Clear() error {
 		"ambiguous_candidates",
 		"ignored_screenshots",
 		"all_heroes_screenshots",
+		"user_match_data", // user_match_* children cascade on the match_key FK
 	} {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 		if _, err := s.db.Exec(`DELETE FROM ` + t); err != nil {

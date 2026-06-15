@@ -26,6 +26,11 @@ type Fake struct {
 	DirIDs      map[string]int64
 	Annotations map[string]db.Annotation
 	Hidden      map[string]bool
+
+	// UserMatchData maps match_key → the per-match user override layer
+	// (inline edits + hand-entered matches). Absence = pure OCR / no match.
+	UserMatchData map[string]db.UserMatchData
+
 	// Reviews maps match_key → ReviewState (reviewer + timestamp).
 	// Absence of an entry means "not reviewed."
 	Reviews map[string]db.ReviewState
@@ -280,6 +285,7 @@ func (f *Fake) Clear() error {
 	f.Unknowns = nil
 	f.DirIDs = nil
 	f.Annotations = nil
+	f.UserMatchData = nil
 	f.Hidden = nil
 	f.Reviews = nil
 	f.Queues = nil

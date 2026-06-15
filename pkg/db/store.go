@@ -80,6 +80,17 @@ type Store interface {
 	DeleteAnnotation(matchKey string) error
 	LoadAnnotations() (map[string]Annotation, error)
 
+	// User match-data override layer — the single source for BOTH inline
+	// edits of a parsed match AND hand-entered matches. UpsertUserMatchData
+	// replaces a match's override row + children; DeleteUserMatchData removes
+	// them (reset-to-OCR / manual-delete); LoadAllUserMatchData returns the
+	// full map the aggregator grafts over the OCR Data at read time. A
+	// match_key with a row here but no screenshot row anywhere is a manual
+	// match.
+	UpsertUserMatchData(d UserMatchData) error
+	DeleteUserMatchData(matchKey string) error
+	LoadAllUserMatchData() (map[string]UserMatchData, error)
+
 	// Soft-delete surface — flag a match as hidden so the aggregator
 	// drops it from the default match list (FilterRail "Hidden · N"
 	// toggle opts it back in). Per-screenshot rows stay intact so
@@ -356,6 +367,63 @@ type HeroSR struct {
 	Hero   string
 	SR     int
 	Change int
+}
+
+// UserMatchData is the per-match user override layer (user_match_data + its
+// child tables). Scalar fields are pointers: nil = "not overridden, use OCR";
+// non-nil = the user's value, so a user-entered 0 is distinct from unset. A
+// manual match is a UserMatchData whose key has no screenshot row behind it.
+type UserMatchData struct {
+	MatchKey      string
+	Map           *string
+	Hero          *string
+	Eliminations  *int
+	Assists       *int
+	Deaths        *int
+	Damage        *int
+	Healing       *int
+	Mitigation    *int
+	Result        *string
+	FinalScore    *string
+	Date          *string
+	FinishedAt    *string
+	GameLength    *string
+	Rank          *string
+	Level         *int
+	RankProgress  *int
+	ChangePercent *int
+	UpdatedAt     string
+	// Heroes is the heroes-played LIST override (position 0 = primary). When
+	// non-empty it replaces the OCR roster wholesale — a manual match's picked
+	// heroes, or a deliberate roster correction.
+	Heroes []UserMatchHero
+	// HeroStats is the per-(hero, stat) cell override, applied INDEPENDENTLY of
+	// Heroes: a user can fix one OCR'd stat cell without touching the roster, so
+	// these overlay onto the effective heroes-played stats rather than implying a
+	// list replacement.
+	HeroStats []UserMatchHeroStat
+	SR        []HeroSR // per-hero SR override (OCR-rank edits only)
+	Modifiers []string // rank modifiers, e.g. "demotion protection"
+}
+
+// UserMatchHero is one heroes-played LIST entry in a UserMatchData. PercentPlayed
+// and PlayTime are pointers — nil for hand-entered matches, which have neither.
+// Per-hero stats live in UserMatchData.HeroStats, not here, so a stat-cell edit
+// stays independent of a roster edit.
+type UserMatchHero struct {
+	Hero          string
+	PercentPlayed *int
+	PlayTime      *string
+	Position      int
+}
+
+// UserMatchHeroStat is one overridden stat cell (e.g. junkrat / rip_tire_kill =
+// 4). Keyed by (hero, stat_key); overlaid onto the effective heroes-played stats
+// at read time.
+type UserMatchHeroStat struct {
+	Hero    string
+	StatKey string
+	Value   int
 }
 
 // UnknownRow holds one parsed screenshot that didn't match any
