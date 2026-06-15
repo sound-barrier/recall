@@ -140,6 +140,18 @@ function onKeydown(e: KeyboardEvent) {
       }
       break
     }
+    case 'Tab':
+      // Tab completes the typeahead: highlight the next match (Enter then
+      // selects it) rather than leaving the field. Only while the dropdown is
+      // open with matches — otherwise Tab keeps its normal focus move.
+      // Shift+Tab steps back through the matches.
+      if (len > 0) {
+        e.preventDefault()
+        e.stopPropagation()
+        cursor.value = e.shiftKey ? (cursor.value - 1 + len) % len : (cursor.value + 1) % len
+        void scrollCursorIntoView()
+      }
+      break
     case 'Escape':
       e.preventDefault()
       emit('close')
@@ -174,6 +186,9 @@ defineExpose({
       :aria-activedescendant="cursor >= 0 && cursor < filteredOptions.length
         ? `${listboxId}-opt-${cursor}` : undefined"
       autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
       role="combobox"
       :aria-label="label"
       @focus="onInputFocus"
