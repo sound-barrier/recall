@@ -106,6 +106,25 @@ func (s *SQLStore) DeleteUserMatchData(matchKey string) error {
 	return err
 }
 
+func (s *SQLStore) MatchKeyExists(matchKey string) (bool, error) {
+	tables := make([]string, 0, len(parentTables)+1)
+	tables = append(tables, parentTables...)
+	tables = append(tables, "user_match_data")
+	for _, t := range tables {
+		var exists bool
+		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
+		if err := s.db.QueryRow(
+			`SELECT EXISTS(SELECT 1 FROM `+t+` WHERE match_key = ?)`, matchKey,
+		).Scan(&exists); err != nil {
+			return false, err
+		}
+		if exists {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (s *SQLStore) LoadAllUserMatchData() (map[string]UserMatchData, error) {
 	out := make(map[string]UserMatchData)
 	rows, err := s.db.Query(

@@ -91,6 +91,12 @@ type Store interface {
 	DeleteUserMatchData(matchKey string) error
 	LoadAllUserMatchData() (map[string]UserMatchData, error)
 
+	// MatchKeyExists reports whether matchKey is already used anywhere —
+	// across the five parent tables and the user-data override layer. Used
+	// to reject a manual-match create that would collide with an existing
+	// match so the user picks a different minute.
+	MatchKeyExists(matchKey string) (bool, error)
+
 	// Soft-delete surface — flag a match as hidden so the aggregator
 	// drops it from the default match list (FilterRail "Hidden · N"
 	// toggle opts it back in). Per-screenshot rows stay intact so

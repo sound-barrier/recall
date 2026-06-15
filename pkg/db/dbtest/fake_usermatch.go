@@ -34,3 +34,25 @@ func (f *Fake) LoadAllUserMatchData() (map[string]db.UserMatchData, error) {
 	maps.Copy(out, f.UserMatchData)
 	return out, nil
 }
+
+func (f *Fake) MatchKeyExists(matchKey string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.UserMatchData[matchKey]; ok {
+		return true, nil
+	}
+	return anyMatchKey(f.Summaries, matchKey, func(r db.SummaryRow) string { return r.MatchKey }) ||
+		anyMatchKey(f.Teams, matchKey, func(r db.TeamsRow) string { return r.MatchKey }) ||
+		anyMatchKey(f.Personals, matchKey, func(r db.PersonalRow) string { return r.MatchKey }) ||
+		anyMatchKey(f.Ranks, matchKey, func(r db.RankRow) string { return r.MatchKey }) ||
+		anyMatchKey(f.Unknowns, matchKey, func(r db.UnknownRow) string { return r.MatchKey }), nil
+}
+
+func anyMatchKey[T any](rows []T, key string, matchKeyOf func(T) string) bool {
+	for _, r := range rows {
+		if matchKeyOf(r) == key {
+			return true
+		}
+	}
+	return false
+}
