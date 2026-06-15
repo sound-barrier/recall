@@ -176,6 +176,38 @@ That's it for setup. **Settings → Engine** should now show
    types, or maps. See [Filtering and grouping](filtering.md) for the
    details.
 
+### Editing and hand-entering matches
+
+OCR isn't the only way data gets in, and it isn't always right. Two
+affordances cover the gaps:
+
+- **Edit a parsed field.** OCR occasionally misreads a damage number or
+  mislabels a stat. In the detail panel, click any combat stat (Elims,
+  Assists, Deaths, Damage, Healing, Mitigation) to edit it in place —
+  Enter saves, Esc cancels. Your edits are kept **separate** from the
+  scanned values: an edited field shows a small **✎** you can click to
+  revert just that field, and the panel header gains a **Reset to OCR**
+  button that discards every edit on the match. Nothing overwrites the
+  original parse, so a reset always restores exactly what was scanned.
+- **Add a match by hand.** No Tesseract? Click **Add match** in the
+  Matches toolbar and fill in what you remember: map, competitive or
+  quick play, role or open queue, the heroes you played (the first is
+  your primary), the result, when it was played (defaults to now), and —
+  for comp — your rank and how much it moved. Save, and the match joins
+  your history like any other. The right-side panel (reviewed, replay
+  code, squad, tags) works on it exactly as it does on a scanned match.
+
+**Every match carries a source badge** so you always know where its data
+came from:
+
+- **OCR** — parsed from screenshots, untouched.
+- **Edited** — parsed, then corrected by you (hover to see how many fields).
+- **Manual** — hand-entered, no screenshots.
+
+Most people are one type or the other — all-OCR or all-manual — but you
+can freely mix them: edit a hand-entered match, or hand-correct a scanned
+one.
+
 ### Supported capture sources
 
 Four capture-tool filename shapes are recognised end-to-end (timestamp
