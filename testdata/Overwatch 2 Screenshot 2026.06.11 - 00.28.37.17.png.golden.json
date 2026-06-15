@@ -11,8 +11,8 @@
         "stats": {
           "charge_kill": 1,
           "contest_time": 0,
-          "earthshatiter_kills": 0,
           "earthshatter_direct_hits": 0,
+          "earthshatter_kills": 0,
           "earthshatter_stuns": 0,
           "fire_strike_accuracy": 50,
           "fire_strike_kills": 0,

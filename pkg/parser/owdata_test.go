@@ -30,3 +30,26 @@ func TestEmbeddedYAML_LoadsCleanly(t *testing.T) {
 		t.Error("heroStatKeys is empty — hero_stats.yaml parsed but registered no entries")
 	}
 }
+
+// SnapHeroStatKey corrects OCR-mangled stat keys to the hero's canonical roster
+// (hero_stats.yaml). The PERSONAL parser's short-word trim drops a legit prefix
+// ("RIP-TIRE KILL" → tire_kill) and the italic font inserts a stray letter
+// ("EARTHSHATTER" → earthshatiter); both snap back. Correct keys must stay put
+// — including ones near a same-prefix sibling — via the exact-match shortcut.
+func TestSnapHeroStatKey_CanonicalizesMangledLabels(t *testing.T) {
+	cases := []struct {
+		hero, raw, want string
+	}{
+		{"junkrat", "tire_kill", "rip_tire_kill"},
+		{"reinhardt", "earthshatiter_kills", "earthshatter_kills"},
+		{"reinhardt", "earthshatter_stuns", "earthshatter_stuns"},         // exact, not snapped to a sibling earthshatter_*
+		{"baptiste", "weapon_accuracy", "weapon_accuracy"},                // exact match
+		{"junkrat", "totally_unrelated_label", "totally_unrelated_label"}, // nothing within threshold
+		{"nonexistent_hero", "tire_kill", "tire_kill"},                    // no roster → passthrough
+	}
+	for _, c := range cases {
+		if got := parser.SnapHeroStatKey(c.hero, c.raw); got != c.want {
+			t.Errorf("SnapHeroStatKey(%q, %q) = %q, want %q", c.hero, c.raw, got, c.want)
+		}
+	}
+}

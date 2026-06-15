@@ -15,6 +15,24 @@
 # unchanged — additive maintenance, no global break when a hero is
 # missing.
 
+baptiste:
+  - amplification_matrix_assist
+  - critical_hit_accuracy
+  - damage_amplified
+  - healing_accuracy
+  - immortality_field_death_prevented
+  - player_saved
+  - weapon_accuracy
+
+junkrat:
+  - concussion_mine_kills
+  - direct_hit_accuracy
+  - enemies_trapped
+  - final_blows
+  - rip_tire_kill
+  - solo_kills
+  - weapon_accuracy
+
 juno:
   - damage_amplified
   - orbital_ray_assists
@@ -33,3 +51,13 @@ mizuki:
   - remedy_aura_healing
   - ultimates_negated
   - weapon_accuracy
+
+reinhardt:
+  - charge_kill
+  - contest_time
+  - earthshatter_direct_hits
+  - earthshatter_kills
+  - earthshatter_stuns
+  - fire_strike_accuracy
+  - fire_strike_kills
+  - knockback_kills

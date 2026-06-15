@@ -13,8 +13,8 @@
           "direct_hit_accuracy": 13,
           "enemies_trapped": 0,
           "final_blows": 2,
+          "rip_tire_kill": 1,
           "solo_kills": 0,
-          "tire_kill": 1,
           "weapon_accuracy": 31
         }
       },
