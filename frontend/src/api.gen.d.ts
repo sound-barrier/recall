@@ -30,7 +30,17 @@ export interface paths {
          */
         get: operations["GetMatchResults"];
         put?: never;
-        post?: never;
+        /**
+         * Hand-enter a match (no OCR)
+         * @description Creates a manual match for users without Tesseract. The server
+         *     derives the `match_key` from `played_at` (default now), rejects a
+         *     collision with any existing match (409 — pick a different minute),
+         *     writes the user-data override row plus the queue / play-mode aux
+         *     rows, and returns the aggregated MatchRecord (`source: manual`).
+         *     The right-side detail-panel choosers (review, replay code, …) then
+         *     work unchanged, keyed by the new `match_key`.
+         */
+        post: operations["CreateManualMatch"];
         /**
          * Wipe all parsed match records
          * @description Deletes every row from the per-screenshot tables (and their
@@ -243,6 +253,51 @@ export interface paths {
         put: operations["SetMatchAnnotation"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/matches/{match_key}/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
+                 */
+                match_key: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace a match's user-data override set
+         * @description Upserts the user override layer for a match — the editable copy
+         *     kept separate from the parsed OCR rows. The body is the FULL
+         *     current override set; a per-field revert is the same request with
+         *     that field omitted. Overridden fields surface in the record's
+         *     `edited_fields` and flip `source` to `ocr_edited`. Idempotent.
+         *
+         *     Reset to pure OCR with the matching `DELETE`.
+         */
+        put: operations["UpdateMatchData"];
+        post?: never;
+        /**
+         * Reset a match to pure OCR (clear overrides)
+         * @description Clears the user override set for a match, reverting an edited OCR
+         *     match to its parsed values. (Deleting a hand-entered match is the
+         *     per-match `DELETE /matches/{match_key}` hard-delete instead.)
+         *     Idempotent — clearing an unedited match succeeds.
+         */
+        delete: operations["ResetMatchData"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1480,6 +1535,118 @@ export interface components {
          * @enum {string}
          */
         PlayModeBulkEnum: "quickplay" | "competitive" | "";
+        /**
+         * @description Provenance of a match record.
+         *     - `ocr`: parsed from screenshots, unedited.
+         *     - `ocr_edited`: parsed, then user-corrected via the override
+         *       layer (`PUT /matches/{match_key}/data`). `edited_fields` lists
+         *       the overridden paths.
+         *     - `manual`: hand-entered (`POST /matches`); no screenshot rows.
+         * @enum {string}
+         */
+        MatchSourceEnum: "ocr" | "ocr_edited" | "manual";
+        /**
+         * @description Match outcome.
+         * @enum {string}
+         */
+        ResultEnum: "victory" | "defeat" | "draw";
+        /**
+         * @description Full user override set for `PUT /matches/{match_key}/data`. Inline
+         *     edits send the whole current set; a per-field revert is the same
+         *     request with that field omitted. A scalar present (even `0` / `""`)
+         *     means "override to this value"; omitting it means "use the OCR
+         *     value". Kept separate from the parsed rows, so a `DELETE` on the
+         *     same path restores the original.
+         */
+        UserMatchDataInput: {
+            map?: string;
+            hero?: string;
+            eliminations?: number;
+            assists?: number;
+            deaths?: number;
+            damage?: number;
+            healing?: number;
+            mitigation?: number;
+            result?: components["schemas"]["ResultEnum"];
+            final_score?: string;
+            date?: string;
+            finished_at?: string;
+            game_length?: string;
+            rank?: string;
+            level?: number;
+            rank_progress?: number;
+            change_percent?: number;
+            /**
+             * @description Heroes-played LIST override (position 0 = primary). Replaces
+             *     the OCR roster wholesale when present.
+             */
+            heroes?: components["schemas"]["UserHeroInput"][];
+            /**
+             * @description Per-cell stat overrides, applied INDEPENDENTLY of the heroes
+             *     list — a stat edit never implies a roster swap.
+             */
+            hero_stats?: components["schemas"]["UserHeroStatInput"][];
+            /** @description Per-hero SR overrides (editing an OCR rank screen). */
+            sr?: components["schemas"]["UserHeroSRInput"][];
+            modifiers?: string[];
+        };
+        UserHeroInput: {
+            hero: string;
+            percent_played?: number;
+            play_time?: string;
+            /** @description 0 = primary. */
+            position?: number;
+        };
+        UserHeroStatInput: {
+            hero: string;
+            /** @example rip_tire_kill */
+            stat_key: string;
+            value: number;
+        };
+        UserHeroSRInput: {
+            hero: string;
+            sr: number;
+            change: number;
+        };
+        /**
+         * @description Hand-entered match for users without OCR. The server derives the
+         *     `match_key` from `played_at` (default: now) and returns the created
+         *     MatchRecord. `heroes[0]` is the primary hero.
+         */
+        ManualMatchInput: {
+            /** @example ilios */
+            map: string;
+            play_mode: components["schemas"]["PlayModeEnum"];
+            queue_type: components["schemas"]["QueueTypeEnum"];
+            /**
+             * @description Heroes played; first is the primary (need not be ordered by play time).
+             * @example [
+             *       "ana",
+             *       "kiriko"
+             *     ]
+             */
+            heroes: string[];
+            result: components["schemas"]["ResultEnum"];
+            /**
+             * Format: date-time
+             * @description When the match was played (RFC 3339). Defaults to now; drives
+             *     the `match_key` plus `date` / `finished_at`.
+             * @example 2026-06-15T14:30:00Z
+             */
+            played_at?: string;
+            rank?: components["schemas"]["ManualRankInput"];
+        };
+        /** @description Competitive rank the match ended on. Omit for quickplay. */
+        ManualRankInput: {
+            /** @example platinum */
+            tier?: string;
+            division?: number;
+            /** @description % into the division. */
+            progress?: number;
+            /** @description % gained / lost this match. */
+            change_percent?: number;
+            demotion_protection?: boolean;
+        };
         IgnoredScreenshot: {
             /**
              * @description Filename the suppress-list keys on. Same shape as the
@@ -1901,6 +2068,19 @@ export interface components {
              */
             parsed_at?: string;
             data: components["schemas"]["MatchResult"];
+            source?: components["schemas"]["MatchSourceEnum"];
+            /**
+             * @description Dotted paths of fields the user overrode on an OCR match
+             *     (e.g. `data.damage`,
+             *     `data.heroes_played.junkrat.stats.rip_tire_kill`), so the UI
+             *     can mark each with a revert affordance. Absent for pure OCR
+             *     and for manual matches — the Manual badge conveys provenance.
+             * @example [
+             *       "data.map",
+             *       "data.damage"
+             *     ]
+             */
+            edited_fields?: string[];
             annotation?: components["schemas"]["MatchAnnotation"];
             /**
              * @description True iff the user soft-deleted this match via
@@ -2320,6 +2500,39 @@ export interface operations {
             500: components["responses"]["InternalError"];
         };
     };
+    CreateManualMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualMatchInput"];
+            };
+        };
+        responses: {
+            /** @description The created manual match. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchRecord"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description A match already exists at that time; pick a different minute. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
     ClearMatches: {
         parameters: {
             query?: {
@@ -2580,6 +2793,73 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    UpdateMatchData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
+                 */
+                match_key: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserMatchDataInput"];
+            };
+        };
+        responses: {
+            /** @description Override set persisted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    ResetMatchData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Match identity — same `match_key` value exposed in
+                 *     `MatchRecord`. URL-safe: the canonical form replaces every
+                 *     legacy colon separator with a dash, so no percent-encoding
+                 *     is required for paste-in-URL use
+                 *     (e.g. `match-2026-05-10T22-21-11`). For `unmatched-<filename>`
+                 *     and `ambiguous-<filename>` variants the embedded filename
+                 *     still needs the usual encoding for spaces / unicode.
+                 * @example match-2026-05-10T22-21-11
+                 */
+                match_key: components["parameters"]["MatchKey"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Overrides cleared. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             500: components["responses"]["InternalError"];
         };
     };

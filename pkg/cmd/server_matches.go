@@ -17,6 +17,7 @@ import (
 func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("GET /api/v1/matches", handleGetMatches(a))
 	apiMux.HandleFunc("DELETE /api/v1/matches", handleClearMatches(a))
+	apiMux.HandleFunc("POST /api/v1/matches", handleCreateManualMatch(a))
 	apiMux.HandleFunc("POST /api/v1/matches/transfers", handleMoveMatches(a))
 
 	// Explicit 405 stubs for `/matches/transfers`. Without these,
@@ -45,6 +46,8 @@ func registerMatchRoutes(apiMux *http.ServeMux, a *app.App) {
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/visibility", handleSetMatchVisibility(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/resolution", handleResolveMatch(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/annotation", handleSetMatchAnnotation(a))
+	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/data", handleUpdateMatchData(a))
+	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/data", handleResetMatchData(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/review", handleSetMatchReview(a))
 	apiMux.HandleFunc("DELETE /api/v1/matches/{match_key}/review", handleClearMatchReview(a))
 	apiMux.HandleFunc("PUT /api/v1/matches/{match_key}/queue", handleSetMatchQueue(a))
@@ -137,6 +140,34 @@ func handleClearMatches(a *app.App) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handleCreateManualMatch hand-enters a match for users without OCR. Derives
+// the match_key from played_at (default now), 409s on a collision with any
+// existing match, writes the override + queue / play-mode rows, and returns the
+// created MatchRecord (source: manual).
+func handleCreateManualMatch(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var input match.ManualMatchInput
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		rec, err := a.CreateManualMatch(input)
+		if writeError(w, err,
+			errStatus{app.ErrManualNeedsMap, http.StatusBadRequest},
+			errStatus{app.ErrManualNeedsHero, http.StatusBadRequest},
+			errStatus{app.ErrInvalidResult, http.StatusBadRequest},
+			errStatus{app.ErrInvalidPlayMode, http.StatusBadRequest},
+			errStatus{app.ErrInvalidQueueType, http.StatusBadRequest},
+			errStatus{app.ErrInvalidPlayedAt, http.StatusBadRequest},
+			errStatus{app.ErrMatchKeyExists, http.StatusConflict}) {
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(rec)
 	}
 }
 

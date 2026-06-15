@@ -195,6 +195,55 @@ func handleSetMatchAnnotation(a *app.App) http.HandlerFunc {
 	}
 }
 
+// handleUpdateMatchData replaces a match's user-data override set — the editable
+// copy kept separate from the parsed OCR rows. Body is the FULL override set; a
+// per-field revert is the same request omitting that field. Idempotent.
+func handleUpdateMatchData(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		matchKey, ok := matchKeyFromPath(w, r)
+		if !ok {
+			return
+		}
+		// Reject an explicit `null` body — Go would silently decode it into
+		// the zero struct (all-nil overrides) and 204, violating the
+		// type:object schema (schemathesis negative_data_rejection).
+		raw, rErr := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+		if rErr != nil {
+			http.Error(w, "read body: "+rErr.Error(), http.StatusBadRequest)
+			return
+		}
+		if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+			http.Error(w, "body must be a JSON object, not null", http.StatusBadRequest)
+			return
+		}
+		var input match.UserMatchDataInput
+		if err := json.Unmarshal(raw, &input); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		if writeError(w, a.UpdateMatchData(matchKey, input),
+			errStatus{app.ErrInvalidResult, http.StatusBadRequest}) {
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handleResetMatchData clears a match's user override set, reverting an edited
+// OCR match to its parsed values. Idempotent.
+func handleResetMatchData(a *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		matchKey, ok := matchKeyFromPath(w, r)
+		if !ok {
+			return
+		}
+		if writeError(w, a.ResetMatchData(matchKey)) {
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 // handleSetMatchReview sets the per-match review-status tag: `'self'`
 // (user reviewed the VOD themselves) or `'coach'` (a coach reviewed it).
 // Idempotent.
