@@ -74,13 +74,12 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   await page.locator('[data-result="victory"]').click()
   await page.locator('[data-leaver="team"]').click()
 
-  // Map — single-select via Tab-to-complete: type, Tab highlights the match,
-  // Enter selects it (the single-select picker then auto-closes). Tab must NOT
-  // leave the field while the dropdown is open.
+  // Map — single-select: typing auto-highlights the first match, so Enter
+  // fills it straight away (no Tab needed); the single-select picker then
+  // auto-closes.
   const mapCombo = page.locator('[data-combo-id="mm-map"]')
   await mapCombo.locator('.combo-input').click()
   await mapCombo.locator('.combo-input').fill('ili')
-  await page.keyboard.press('Tab')
   await page.keyboard.press('Enter')
   await expect(mapCombo.locator('.combo-pill')).toContainText('ilios')
 

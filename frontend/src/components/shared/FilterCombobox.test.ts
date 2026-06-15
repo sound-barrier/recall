@@ -195,6 +195,14 @@ describe('FilterCombobox', () => {
       await lucioItem.trigger('mousedown')
       expect(wrapper.emitted('toggle')).toEqual([['lucio']])
     })
+
+    it('auto-highlights the first match so Enter picks it without Tab', async () => {
+      const wrapper = mountCombo({ open: true })
+      const input = wrapper.find('input.combo-input')
+      await input.setValue('luc')
+      await input.trigger('keydown', { key: 'Enter' })
+      expect(wrapper.emitted('toggle')).toEqual([['lucio']])
+    })
   })
 
   describe('data-combo-id', () => {
