@@ -209,6 +209,34 @@ describe('TypeaheadDropdown', () => {
     })
   })
 
+  describe('Tab to complete', () => {
+    it('Tab highlights the next match so Enter selects it (no field exit)', async () => {
+      const wrapper = mountDropdown({ open: true })
+      const input = wrapper.find('input.combo-input')
+      await input.setValue('luc') // filters to lucio
+      await input.trigger('keydown', { key: 'Tab' })
+      const items = wrapper.findAll('ul.combo-list li[role="option"]')
+      expect(items[0]!.classes()).toContain('cursor')
+      await input.trigger('keydown', { key: 'Enter' })
+      expect(wrapper.emitted('select')).toEqual([['lucio']])
+    })
+
+    it('Shift+Tab steps back through the matches', async () => {
+      const wrapper = mountDropdown({ open: true })
+      const input = wrapper.find('input.combo-input')
+      await input.trigger('keydown', { key: 'Tab' })                 // -1 → 0
+      await input.trigger('keydown', { key: 'Tab', shiftKey: true }) // 0 → last (wrap)
+      const items = wrapper.findAll('ul.combo-list li[role="option"]')
+      expect(items[HEROES.length - 1]!.classes()).toContain('cursor')
+    })
+
+    it('Tab keeps its normal focus move when closed (no match to complete)', async () => {
+      const wrapper = mountDropdown({ open: false })
+      await wrapper.find('input.combo-input').trigger('keydown', { key: 'Tab' })
+      expect(wrapper.emitted('select')).toBeUndefined()
+    })
+  })
+
   describe('open / close emits', () => {
     it('focus on input emits open when closed', async () => {
       const wrapper = mountDropdown({ open: false })
