@@ -93,3 +93,26 @@ func TestSQLStore_UserMatchData_RoundTrip(t *testing.T) {
 		t.Errorf("match still present after delete")
 	}
 }
+
+// Clear must keep the default screenshots-dir sentinel (id=1) so a subsequent
+// insert — e.g. a forced re-seed of an existing profile — doesn't FK-fail on
+// the schema's screenshots_dir_id DEFAULT 1.
+func TestSQLStore_Clear_PreservesDefaultScreenshotsDir(t *testing.T) {
+	s, err := db.NewSQLStore(":memory:")
+	if err != nil {
+		t.Fatalf("NewSQLStore: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	if err := s.UpsertSummary(db.SummaryRow{Filename: "a.png", MatchKey: "m1"}); err != nil {
+		t.Fatalf("seed UpsertSummary: %v", err)
+	}
+	if err := s.Clear(); err != nil {
+		t.Fatalf("Clear: %v", err)
+	}
+	// Pre-fix this FK-failed: Clear had dropped screenshots_dirs(1) but the
+	// insert still defaults screenshots_dir_id to 1.
+	if err := s.UpsertSummary(db.SummaryRow{Filename: "b.png", MatchKey: "m2"}); err != nil {
+		t.Fatalf("UpsertSummary after Clear (regression — Clear dropped the default dir): %v", err)
+	}
+}
