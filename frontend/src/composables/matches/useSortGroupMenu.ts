@@ -12,11 +12,12 @@ const SORT_LABELS: Record<SortOrder, string> = {
   oldest: 'Oldest',
 }
 const GROUP_LABELS: Record<GroupBy, string> = {
-  none:  'no group',
-  day:   'by day',
-  week:  'by week',
-  month: 'by month',
-  year:  'by year',
+  none:       'no group',
+  day:        'by day',
+  week:       'by week',
+  month:      'by month',
+  year:       'by year',
+  provenance: 'by provenance',
 }
 
 export function useSortGroupMenu(density: MaybeRefOrGetter<Density>) {
