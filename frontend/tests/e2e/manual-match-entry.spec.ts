@@ -51,24 +51,26 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   await expect(page.locator('.mm-modal')).toBeVisible()
 
   await page.locator('#mm-map').fill('Ilios')
-  await page.locator('.mm-modal input[type="radio"][value="competitive"]').check()
-  await page.locator('.mm-modal input[type="radio"][value="role"]').check()
+  await page.locator('[data-mode="competitive"]').click()
+  await page.locator('[data-queue="role"]').click()
   await page.locator('#mm-hero').fill('ana')
   await page.locator('#mm-hero').press('Enter')
-  await expect(page.locator('.mm-chip')).toContainText('ana')
-  await page.locator('.mm-modal input[type="radio"][value="victory"]').check()
+  await expect(page.locator('.mm-hero-chip')).toContainText('ana')
+  await page.locator('[data-result="victory"]').click()
+  await page.locator('[data-leaver="team"]').click()
 
-  await page.locator('.mm-btn-primary').click()
+  await page.locator('[data-mm-submit]').click()
 
   await expect.poll(() => postBody).not.toBeNull()
   const parsed = JSON.parse(postBody as string) as {
-    map: string; play_mode: string; queue_type: string; heroes: string[]; result: string
+    map: string; play_mode: string; queue_type: string; heroes: string[]; result: string; leaver: string
   }
   expect(parsed.map).toBe('Ilios')
   expect(parsed.play_mode).toBe('competitive')
   expect(parsed.queue_type).toBe('role')
   expect(parsed.heroes).toEqual(['ana'])
   expect(parsed.result).toBe('victory')
+  expect(parsed.leaver).toBe('team')
 
   // The created manual match surfaces with the Manual provenance badge.
   await expect(page.locator('.prov-manual').first()).toBeVisible()

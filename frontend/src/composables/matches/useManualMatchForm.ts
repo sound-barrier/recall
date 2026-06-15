@@ -20,6 +20,7 @@ export function useManualMatchForm() {
   const heroes = ref<string[]>([])
   const heroDraft = ref('')
   const result = ref<'' | 'victory' | 'defeat' | 'draw'>('')
+  const leaver = ref<'' | 'self' | 'team' | 'enemy'>('')
   const playedAt = ref(localNowValue())
 
   const rankTier = ref('')
@@ -73,11 +74,14 @@ export function useManualMatchForm() {
         demotion_protection: demotionProtection.value,
       }
     }
+    if (leaver.value) {
+      input.leaver = leaver.value
+    }
     return input
   }
 
   return {
-    map, playMode, queueType, roleCategory, heroes, heroDraft, result, playedAt,
+    map, playMode, queueType, roleCategory, heroes, heroDraft, result, leaver, playedAt,
     rankTier, rankDivision, rankProgress, rankChange, demotionProtection,
     isCompetitive, isRoleQueue, primaryHero,
     addHero, removeHero, canSubmit, toInput,

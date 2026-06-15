@@ -62,4 +62,11 @@ describe('useManualMatchForm', () => {
       tier: 'platinum', division: 3, progress: 45, change_percent: 22, demotion_protection: true,
     })
   })
+
+  it('includes leaver only when one is picked', () => {
+    const f = useManualMatchForm()
+    expect(f.toInput().leaver).toBeUndefined()
+    f.leaver.value = 'team'
+    expect(f.toInput().leaver).toBe('team')
+  })
 })
