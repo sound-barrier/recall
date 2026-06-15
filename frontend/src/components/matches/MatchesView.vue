@@ -78,6 +78,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'open-match': [matchKey: string]
+  // Open the manual-entry modal (forwarded from the toolbar's Add match
+  // button). App.vue owns the modal + the create round-trip.
+  'add-match': []
   // Lets App.vue mirror MatchDetailPanel's parity: while the narrow
   // panel is open, App.vue should set `inert` + `aria-hidden` on the
   // background container and ParseStatusBar so screen readers + Tab
@@ -455,6 +458,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
           @toggle-sort-group="onSortGroupTriggerClick"
           @set-density="setDensity"
           @jump-to-undated="onJumpToUndated"
+          @add-match="emit('add-match')"
         />
 
         <!-- Bulk action bar — appears as soon as any row is ticked. No

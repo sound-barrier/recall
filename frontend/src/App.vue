@@ -153,6 +153,7 @@ const MatchAnchorToast = defineAsyncComponent(() => import('@/components/matches
 import ProfileSwitcher from '@/components/shared/ProfileSwitcher.vue'
 const MatchScreenshotLightbox = defineAsyncComponent(() => import('@/components/matches/MatchScreenshotLightbox.vue'))
 const KeyboardShortcutsModal = defineAsyncComponent(() => import('@/components/shared/KeyboardShortcutsModal.vue'))
+const ManualMatchModal = defineAsyncComponent(() => import('@/components/matches/ManualMatchModal.vue'))
 
 // OnboardingTour lives in its own chunk. The redesigned tour pulled
 // in TourSpotlight + TourCallout + demo-match data + the controller
@@ -416,6 +417,7 @@ const {
 
 // Confirmation modal for parsing with an unsupported Tesseract version.
 const showUnsupportedModal = ref(false)
+const showManualMatchModal = ref(false)
 
 // Modal focus trap — captures the trigger, focuses the first
 // focusable inside `.modal-box` (markup-first = Cancel button, never
@@ -856,6 +858,15 @@ async function onResetMatchData(matchKey: string) {
   } catch (e) {
     setErrorFromRaw(String(e))
   }
+}
+
+// A manual match was created → close the modal, reload so it appears in the
+// list, and open it so the user can add the right-panel review / replay-code
+// details (the choosers key on match_key and work unchanged).
+async function onManualMatchCreated(rec: MatchRecord) {
+  showManualMatchModal.value = false
+  await load()
+  selection.open(rec.match_key)
 }
 
 // Hide / unhide handler. Soft-delete via SetMatchVisibility — the
@@ -1394,7 +1405,8 @@ const backgroundFrozen = computed(() =>
   || showUnsupportedModal.value
   || showStartupErrorModal.value
   || selection.isOpen.value
-  || matchesNarrowOpen.value,
+  || matchesNarrowOpen.value
+  || showManualMatchModal.value,
 )
 
 function onFirstRunDismiss(renamedTo: string | null) {
@@ -2059,6 +2071,7 @@ useEventStream({
           :narrow="matchesNarrow"
           :focused-card-index="focusedCardIndex"
           @open-match="(k: string) => selection.open(k)"
+          @add-match="showManualMatchModal = true"
           @narrow-open="onMatchesNarrowOpen"
           @hide-matches="onHideMatches"
           @bulk-play-mode="onBulkPlayMode"
@@ -2234,6 +2247,12 @@ useEventStream({
       :view="view"
       :panel-open="selection.isOpen.value"
       @close="openCheatsheet = false"
+    />
+
+    <ManualMatchModal
+      :open="showManualMatchModal"
+      @close="showManualMatchModal = false"
+      @created="onManualMatchCreated"
     />
 
     <!-- First-launch tour overlay. Self-gates via localStorage;
