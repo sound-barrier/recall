@@ -50,6 +50,7 @@ Two binary flavors, selected by the `serveronly` Go build tag:
 | `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml`. |
 | `make typecheck` | `vue-tsc --noEmit`. `allowJs: false` blocks JS introduction. |
 | `make update-goldens` | Regenerate parser golden sidecars (or set `RECALL_FIXTURE_UPDATE=1`). |
+| `make goldens SRC=<file-or-dir>` | Generate parser goldens for any screenshot file or folder (not just `testdata/`) to eyeball what the parser extracts and spot bugs. Wraps `scripts/gen-goldens.sh`; isolates a single file so it doesn't touch siblings. |
 | `make seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1] [CHAOS=0.15] [STYLE=…]` | Populate a SQLite profile with N synthetic matches via `cmd/seed-dev`. Refuses non-empty profiles unless `FORCE=1` wipes first. `SEED=time` is a sentinel that substitutes the current Unix timestamp for a fresh shuffle. `CHAOS=<0..1>` mixes pathological data shapes into that fraction of matches. `STYLE=` defaults to `flex` (covers every map + hero); also accepts `one-trick`, `one-role`, or `random`. See "Manual testing with a seeded corpus" below. |
 | `make seed-clear PROFILE=demo` | Wipe a SQLite profile without re-seeding. No-op (and exits 0) when the profile is already empty. |
 

@@ -66,6 +66,23 @@ PNG files or Tesseract isn't installed.
    match what the screenshot shows.
 4. Commit both the PNG and its `.golden.json`.
 
+## Finding bugs in your own captures
+
+To check whether the parser reads *your* screenshots correctly — without
+copying anything into this directory first — point `gen-goldens` at a file
+or a folder and eyeball the JSON it writes next to each image:
+
+```sh
+make goldens SRC=path/to/screenshot.png   # one file
+make goldens SRC=path/to/folder           # every image in a folder
+scripts/gen-goldens.sh path/to/folder     # same, without make
+```
+
+Compare each `*.golden.json` against what the screenshot shows; anything
+wrong or missing is a parser bug worth reporting. It's the same machinery
+`make update-goldens` uses, so a capture that reads cleanly is ready to be
+dropped in here as a fixture.
+
 ## Coverage targets
 
 Filled when fixtures land. Unchecked = slot still wanted, the
@@ -79,6 +96,14 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
 - [x] PERSONAL "All Heroes" aggregate view — recognized as `all_heroes` but deliberately NOT parsed (its totals duplicate the TEAMS screen; its stat-card icons defeat the OCR). The golden pins detection + the recognized-skip classification that keeps it off the Unknown tab without a garbage row.
 - [x] rank screen — competitive ladder badge + per-hero SR card (×2: a Platinum 5 **win** with positive progress + SR gain, AND a Gold 1 **loss** with DEMOTION PROTECTION and a negative −19% progress; the pair pins the digitize-level fix, the raw-pass negative-progress read, the lower-card SR crop, and the demotion-protection modifier)
 - [ ] in-game TAB screenshot (different layout, right panel populated)
+- [x] non-match screen → `unknown` — the career **HISTORY / Game Reports**
+      browser (a list of past matches). Guards that the classifier leaves
+      non-match screens on the Unknown tab rather than mis-parsing the list.
+- [x] cross-capture-tool robustness — the same Ilios/Lucio match via Windows
+      PrintScreen (low-quality JPG). TEAMS reads cleanly (9/10/5), but the
+      SUMMARY performance card **over-reads eliminations as 74** on the noisy
+      JPG — capture quality matters (PNG / NVIDIA / Steam parse cleanly; heavy
+      JPG compression confuses the perf-card OCR). See `parser.md`.
 - [x] match where the player swapped heroes, captured from the SUMMARY
       side — the Rialto capture lists all three heroes (Wuyang 47% ·
       Juno 46% · Kiriko 7%), exercising `parseHeroesPlayed` ordering with

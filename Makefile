@@ -510,6 +510,9 @@ update-goldens: ## Regenerate parser golden-file fixtures from current parse out
 	    go test -run TestParseScreenshot_GoldenFiles ./pkg/parser/ -v
 	@echo "[ recall ] ✓  Goldens updated — review the diff and commit"
 
+goldens: ## Generate goldens for any screenshot file/dir to find parser bugs (usage: make goldens SRC=screenshots/foo)
+	@bash scripts/gen-goldens.sh "$(SRC)"
+
 test-e2e: ## E2E browser tests via Playwright (boots server in $(E2E_HOME) on :7099)
 	@command -v npx >/dev/null || { echo "[ recall ] ✗  npx not installed — install Node 22+"; exit 1; }
 	@echo "[ recall ] Building frontend (required for Go //go:embed)…"
