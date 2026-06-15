@@ -2331,6 +2331,7 @@ components:
           description: Heroes played; first is the primary (need not be ordered by play time).
           items:
             type: string
+            minLength: 1
           example: [ana, kiriko]
         result:
           $ref: "#/components/schemas/ResultEnum"
@@ -2975,16 +2976,16 @@ components:
 
     MatchAnnotation:
       type: object
-      required: [leaver, note, replay_code, members, tags]
+      required: [leaver]
       description: |
-        User-curated per-match metadata. Five always-present fields —
-        each may carry an empty value (empty string, empty array)
-        when the user hasn't set it. The row only exists in the
-        database if at least one field carries content; absence of
-        the row is signalled by a 404 on
-        `GET /api/v1/matches/{match_key}/annotation`, not by missing
-        fields in a 200 response. Omitted from `MatchRecord` when
-        the match is unannotated.
+        User-curated per-match metadata embedded in a `MatchRecord`.
+        `leaver` is always present; `note` / `replay_code` / `members` /
+        `tags` are omitted when empty (the server marshals them
+        `omitempty`). The row only exists in the database if at least one
+        field carries content; absence of the row is signalled by a 404
+        on `GET /api/v1/matches/{match_key}/annotation`, and the whole
+        annotation object is omitted from `MatchRecord` when the match is
+        unannotated.
       properties:
         leaver:
           $ref: "#/components/schemas/LeaverEnum"

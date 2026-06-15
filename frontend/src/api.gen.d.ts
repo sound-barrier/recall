@@ -2178,29 +2178,29 @@ export interface components {
             representative_dir_id?: number;
         };
         /**
-         * @description User-curated per-match metadata. Five always-present fields —
-         *     each may carry an empty value (empty string, empty array)
-         *     when the user hasn't set it. The row only exists in the
-         *     database if at least one field carries content; absence of
-         *     the row is signalled by a 404 on
-         *     `GET /api/v1/matches/{match_key}/annotation`, not by missing
-         *     fields in a 200 response. Omitted from `MatchRecord` when
-         *     the match is unannotated.
+         * @description User-curated per-match metadata embedded in a `MatchRecord`.
+         *     `leaver` is always present; `note` / `replay_code` / `members` /
+         *     `tags` are omitted when empty (the server marshals them
+         *     `omitempty`). The row only exists in the database if at least one
+         *     field carries content; absence of the row is signalled by a 404
+         *     on `GET /api/v1/matches/{match_key}/annotation`, and the whole
+         *     annotation object is omitted from `MatchRecord` when the match is
+         *     unannotated.
          */
         MatchAnnotation: {
             leaver: components["schemas"]["LeaverEnum"];
             /** @description Free-text per-match commentary. */
-            note: string;
+            note?: string;
             /** @description Overwatch six-character replay ID. Stored verbatim. */
-            replay_code: string;
+            replay_code?: string;
             /** @description BattleTags of group members for this match. */
-            members: string[];
+            members?: string[];
             /**
              * @description Free-form match labels (lowercase, deduped). `stack`,
              *     `stream`, `placement` are the conventional three; users
              *     can add anything. Drives the FilterRail "Tags" filter.
              */
-            tags: string[];
+            tags?: string[];
             /**
              * Format: date-time
              * @description Server-set timestamp of when the annotation was last upserted.
