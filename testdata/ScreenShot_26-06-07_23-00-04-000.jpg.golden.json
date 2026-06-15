@@ -1,0 +1,38 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "ilios",
+    "game_mode": "control",
+    "role": "support",
+    "hero": "lucio",
+    "eliminations": 74,
+    "assists": 10,
+    "deaths": 5,
+    "result": "victory",
+    "final_score": "2-1",
+    "date": "2026-06-07",
+    "finished_at": "22:08",
+    "game_length": "15:45",
+    "heroes_played": [
+      {
+        "hero": "lucio",
+        "percent_played": 100,
+        "play_time": "06:56"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 74,
+        "avg_per_10min": 12.97
+      },
+      "assists": {
+        "total": 10,
+        "avg_per_10min": 14.41
+      },
+      "deaths": {
+        "total": 5,
+        "avg_per_10min": 7.21
+      }
+    }
+  }
+}

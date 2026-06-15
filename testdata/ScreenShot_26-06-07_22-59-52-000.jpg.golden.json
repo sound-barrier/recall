@@ -1,0 +1,16 @@
+{
+  "screenshot_type": "unknown",
+  "result": {
+    "map": "",
+    "game_mode": "",
+    "playlist": "",
+    "role": "",
+    "hero": "",
+    "eliminations": 0,
+    "assists": 0,
+    "deaths": 0,
+    "damage": 0,
+    "healing": 0,
+    "mitigation": 0
+  }
+}
