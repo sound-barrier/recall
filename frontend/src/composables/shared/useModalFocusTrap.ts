@@ -30,11 +30,18 @@ export interface ModalFocusTrapOptions {
   // omitted, the composable falls back to writing `open.value = false`
   // directly (correct for the case where the caller owns the ref).
   onClose?: () => void
+  // When true, Escape pressed inside a text field (input / textarea / select /
+  // contenteditable) deselects that field — closing any open combo dropdown
+  // via the field's own Esc handler — instead of tearing down the modal. A
+  // second Escape, focus no longer in a field, closes it. Off by default so
+  // simple modals keep "Esc anywhere closes". Forms (the Add-match modal, the
+  // Filter-matches panel) opt in so a mid-entry Esc doesn't lose the work.
+  keepOpenOnFieldEscape?: boolean
 }
 
 export function useModalFocusTrap(
   open: Ref<boolean>,
-  { containerSelector, onClose }: ModalFocusTrapOptions,
+  { containerSelector, onClose, keepOpenOnFieldEscape }: ModalFocusTrapOptions,
 ) {
   const lastFocusedBeforeModal = ref<HTMLElement | null>(null)
 
@@ -62,6 +69,14 @@ export function useModalFocusTrap(
 
   function onKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
+      if (keepOpenOnFieldEscape) {
+        const active = document.activeElement as HTMLElement | null
+        const tag = active?.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || active?.isContentEditable) {
+          active?.blur()
+          return
+        }
+      }
       e.preventDefault()
       close()
       return

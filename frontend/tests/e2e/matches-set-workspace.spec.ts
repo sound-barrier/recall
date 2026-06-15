@@ -92,7 +92,10 @@ test.describe('matches set-workspace', () => {
     await expect(page.locator('.container')).toHaveAttribute('inert', /.*/)
     await expect(page.locator('.container')).toHaveAttribute('aria-hidden', 'true')
 
-    // Esc closes via focus trap.
+    // The panel auto-focuses its search input. First Esc deselects
+    // that field (so a mid-filter Esc doesn't tear down the panel); a
+    // second Esc, focus no longer in a field, closes via the focus trap.
+    await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')
     await expect(panel).not.toBeVisible()
     await expect(page.locator('.container')).not.toHaveAttribute('inert', /.*/)

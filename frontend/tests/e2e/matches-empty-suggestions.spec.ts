@@ -56,7 +56,9 @@ test.describe('smart-empty filter suggestions', () => {
     await page.locator('[data-narrow-trigger]').click()
     await page.locator('#np-search').fill('zzzz-no-such-text')
     // Close the popover so the leaves list paints; the empty-state
-    // suggestion only surfaces on the visible list.
+    // suggestion only surfaces on the visible list. First Esc deselects
+    // the focused search field, the second closes the panel.
+    await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')
 
     const suggestion = page.locator('.empty-suggestion-btn').first()

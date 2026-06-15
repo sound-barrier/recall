@@ -132,7 +132,9 @@ test.describe('match notes — preview / textarea swap', () => {
     await expect(search).toBeFocused()
     await search.fill('clutch')
 
-    // Dismiss the popover (Esc) and open the detail panel.
+    // Dismiss the popover and open the detail panel. The search field
+    // is focused, so the first Esc deselects it; the second closes.
+    await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')
     await page.locator('.leaf-row').first().click()
     const preview = page.locator('.match-notes-preview')
