@@ -2220,16 +2220,22 @@ components:
           type: string
         eliminations:
           type: integer
+          minimum: 0
         assists:
           type: integer
+          minimum: 0
         deaths:
           type: integer
+          minimum: 0
         damage:
           type: integer
+          minimum: 0
         healing:
           type: integer
+          minimum: 0
         mitigation:
           type: integer
+          minimum: 0
         result:
           $ref: "#/components/schemas/ResultEnum"
         final_score:
@@ -2242,10 +2248,16 @@ components:
           type: string
         rank:
           type: string
+        # level / rank_progress mirror the bounds MatchResult enforces, so an
+        # override that's valid on the wire stays valid in the response.
         level:
           type: integer
+          minimum: 0
+          maximum: 5
         rank_progress:
           type: integer
+          minimum: 0
+          maximum: 100
         change_percent:
           type: integer
         heroes:
@@ -2360,6 +2372,8 @@ components:
           maximum: 5
         progress:
           type: integer
+          minimum: 0
+          maximum: 100
           description: "% into the division."
         change_percent:
           type: integer
