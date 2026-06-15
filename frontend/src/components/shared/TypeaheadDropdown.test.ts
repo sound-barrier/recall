@@ -14,6 +14,7 @@ function mountDropdown(overrides: Partial<{
   emptyMessage: string
   isSelected: (opt: string) => boolean
   showCheckmark: boolean
+  autoHighlightFirst: boolean
 }> = {}) {
   return mount(TypeaheadDropdown, {
     attachTo: document.body,
@@ -26,6 +27,7 @@ function mountDropdown(overrides: Partial<{
       ...(overrides.emptyMessage !== undefined ? { emptyMessage: overrides.emptyMessage } : {}),
       ...(overrides.isSelected !== undefined ? { isSelected: overrides.isSelected } : {}),
       ...(overrides.showCheckmark !== undefined ? { showCheckmark: overrides.showCheckmark } : {}),
+      ...(overrides.autoHighlightFirst !== undefined ? { autoHighlightFirst: overrides.autoHighlightFirst } : {}),
     },
   })
 }
@@ -156,6 +158,38 @@ describe('TypeaheadDropdown', () => {
       await wrapper.find('input.combo-input').trigger('keydown', { key: 'Enter' })
       expect(wrapper.emitted('select')).toBeUndefined()
       expect(wrapper.emitted('free-text')).toBeUndefined()
+    })
+  })
+
+  describe('autoHighlightFirst', () => {
+    it('pre-highlights the first match while typing so Enter selects it without Tab', async () => {
+      const wrapper = mountDropdown({ open: true, autoHighlightFirst: true })
+      const input = wrapper.find('input.combo-input')
+      await input.setValue('luc')
+      // The first (and here only) match carries the cursor highlight.
+      expect(wrapper.find('ul.combo-list li[role="option"]').classes()).toContain('cursor')
+      // Enter selects it — no Arrow / Tab needed.
+      await input.trigger('keydown', { key: 'Enter' })
+      expect(wrapper.emitted('select')).toEqual([['lucio']])
+    })
+
+    it('highlights the alphabetically-first of several matches', async () => {
+      const wrapper = mountDropdown({ open: true, autoHighlightFirst: true })
+      const input = wrapper.find('input.combo-input')
+      // HEROES are pre-sorted; "a" matches only "ana" by prefix, so use a
+      // shared-prefix set to prove "first match" is option 0 of the filtered list.
+      await input.setValue('a')
+      await input.trigger('keydown', { key: 'Enter' })
+      expect(wrapper.emitted('select')).toEqual([['ana']])
+    })
+
+    it('drops the highlight when the query is cleared (Enter on a blank box selects nothing)', async () => {
+      const wrapper = mountDropdown({ open: true, autoHighlightFirst: true })
+      const input = wrapper.find('input.combo-input')
+      await input.setValue('luc')
+      await input.setValue('')
+      await input.trigger('keydown', { key: 'Enter' })
+      expect(wrapper.emitted('select')).toBeUndefined()
     })
   })
 

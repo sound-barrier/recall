@@ -36,6 +36,11 @@ interface Props {
   // Render the ✓ checkmark column. Defaults true (multi-select).
   // Single-select tag pickers pass false for a cleaner row.
   showCheckmark?: boolean
+  // Pre-highlight the first match as the user types, so Enter fills it
+  // without an extra Tab. Only for FIXED-vocabulary pickers (map / hero)
+  // — free-text tag pickers leave it off so Enter coins the typed value
+  // instead of hijacking it to the first existing suggestion.
+  autoHighlightFirst?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -43,6 +48,7 @@ const props = withDefaults(defineProps<Props>(), {
   emptyMessage: 'no matches',
   isSelected: undefined,
   showCheckmark: true,
+  autoHighlightFirst: false,
 })
 
 function checkSelected(opt: string): boolean {
@@ -81,8 +87,15 @@ const effectivePlaceholder = computed(() => {
 
 const effectiveEmpty = computed(() => props.emptyMessage)
 
-// Reset stale cursor when the filtered list shrinks past it.
+// Reset stale cursor when the filtered list shrinks past it. With
+// autoHighlightFirst on, a non-empty query instead pre-selects the first
+// match (cursor 0) so Enter fills it with no extra Tab; an empty query
+// drops the highlight so Enter on a blank box doesn't grab option 0.
 watch(filteredOptions, () => {
+  if (props.autoHighlightFirst) {
+    cursor.value = search.value.trim() !== '' && filteredOptions.value.length > 0 ? 0 : -1
+    return
+  }
   if (cursor.value >= filteredOptions.value.length) cursor.value = -1
 })
 

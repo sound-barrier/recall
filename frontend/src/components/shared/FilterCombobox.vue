@@ -76,6 +76,7 @@ function onSelect(value: string) {
       :empty-message="emptyMessage"
       :is-selected="isPicked"
       :show-checkmark="true"
+      :auto-highlight-first="true"
       @select="onSelect"
       @open="emit('open')"
       @close="emit('close')"
