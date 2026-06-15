@@ -12,6 +12,7 @@ import {
   matchesPlayMode,
   matchesSearch,
   matchesSinceAnchor,
+  matchesSource,
   matchesTags,
 } from '@/composables/matches/narrowPredicates'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
@@ -59,6 +60,14 @@ export type QueuePick = 'role' | 'open' | 'unknown'
 // play_mode drop out when EITHER pick is active.
 export type PlayModePick = 'quickplay' | 'competitive' | 'unknown'
 
+// SourcePick mirrors the `source` provenance enum on MatchRecord. The
+// narrow panel exposes only the two "I touched this" buckets as chips
+// — 'ocr_edited' (corrected after parsing) and 'manual' (hand-entered,
+// no screenshots). 'ocr' is the fallback bucket for pure parsed
+// matches; it's reachable in matchesSource (so picking either chip
+// drops pure-OCR rows) but has no chip of its own.
+export type SourcePick = 'ocr' | 'ocr_edited' | 'manual'
+
 // Parent-owned state bundle. App.vue creates it once via
 // `createMatchesNarrowState()` and passes the same object to both
 // `useMatchesNarrow` (which derives narrowedRecords) and to
@@ -78,6 +87,7 @@ export interface MatchesNarrowState {
   pickedReviewedBy:  Ref<Set<ReviewedByPick>>
   pickedQueues:      Ref<Set<QueuePick>>
   pickedPlayModes:   Ref<Set<PlayModePick>>
+  pickedSources:     Ref<Set<SourcePick>>
   pickedRange:       Ref<PresetRange>
   customFrom:        Ref<string>
   customTo:          Ref<string>
@@ -114,6 +124,7 @@ export function createMatchesNarrowState(opts: CreateMatchesNarrowStateOptions =
     pickedReviewedBy: ref(new Set<ReviewedByPick>()),
     pickedQueues:     ref(new Set<QueuePick>()),
     pickedPlayModes:  ref(new Set<PlayModePick>()),
+    pickedSources:    ref(new Set<SourcePick>()),
     pickedRange:      ref<PresetRange>('all'),
     customFrom:       ref(''),
     customTo:         ref(''),
@@ -160,7 +171,7 @@ export function useMatchesNarrow(
   const {
     searchText, pickedMaps, pickedGameModes, pickedHeroes,
     pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
-    pickedQueues, pickedPlayModes,
+    pickedQueues, pickedPlayModes, pickedSources,
     pickedRange, customFrom, customTo,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive,
@@ -188,6 +199,9 @@ export function useMatchesNarrow(
   const pickPlayMode = (v: PlayModePick) => {
     pickedPlayModes.value = toggleGameModedSet(pickedPlayModes.value, v)
   }
+  const pickSource = (v: SourcePick) => {
+    pickedSources.value = toggleGameModedSet(pickedSources.value, v)
+  }
 
   function pickRange(v: PresetRange) {
     pickedRange.value = v
@@ -213,6 +227,7 @@ export function useMatchesNarrow(
     pickedReviewedBy.value    = new Set()
     pickedQueues.value        = new Set()
     pickedPlayModes.value     = new Set()
+    pickedSources.value       = new Set()
     pickedRange.value         = 'all'
     customFrom.value          = ''
     customTo.value            = ''
@@ -242,6 +257,7 @@ export function useMatchesNarrow(
     n += pickedReviewedBy.value.size
     n += pickedQueues.value.size
     n += pickedPlayModes.value.size
+    n += pickedSources.value.size
     if (leaverHandling.value !== 'include') n++
     if (minPlayMinutes.value > 0) n++
     if (minPlayPercent.value > 0) n++
@@ -324,6 +340,7 @@ export function useMatchesNarrow(
     const reviewed = pickedReviewedBy.value
     const queues = pickedQueues.value
     const playModes = pickedPlayModes.value
+    const sources = pickedSources.value
     const leaver = leaverHandling.value
 
     // Each predicate gates its own dimension; `every` short-circuits.
@@ -344,6 +361,7 @@ export function useMatchesNarrow(
         && matchesReviewedBy(r, reviewed)
         && matchesQueueType(r, queues)
         && matchesPlayMode(r, playModes)
+        && matchesSource(r, sources)
         && matchesSinceAnchor(r, anchorFloor)
         && matchesLeaverHandling(r, leaver)
     })
@@ -364,7 +382,7 @@ export function useMatchesNarrow(
   //     single clause is the culprit; the suggestion would be a lie).
   type ClauseId = 'search' | 'dateRange' | 'maps' | 'gameModes' | 'roles'
                 | 'results' | 'heroes' | 'tags' | 'members' | 'reviewedBy' | 'queues'
-                | 'playModes' | 'leaver' | 'sinceAnchor' | 'minPlay' | 'includeUnknown'
+                | 'playModes' | 'sources' | 'leaver' | 'sinceAnchor' | 'minPlay' | 'includeUnknown'
 
   interface ClauseSuggestion {
     clauseId: ClauseId
@@ -389,6 +407,7 @@ export function useMatchesNarrow(
     const reviewed  = pickedReviewedBy.value
     const queues    = pickedQueues.value
     const playModes = pickedPlayModes.value
+    const sources   = pickedSources.value
     const leaver    = leaverHandling.value
     let anchorFloor: string | null = null
     if (omit !== 'sinceAnchor' && sinceAnchorActive.value && anchorKey.value !== '') {
@@ -407,6 +426,7 @@ export function useMatchesNarrow(
     if (omit !== 'reviewedBy'     && !matchesReviewedBy(r, reviewed)) return false
     if (omit !== 'queues'         && !matchesQueueType(r, queues)) return false
     if (omit !== 'playModes'      && !matchesPlayMode(r, playModes)) return false
+    if (omit !== 'sources'        && !matchesSource(r, sources)) return false
     if (omit !== 'sinceAnchor'    && !matchesSinceAnchor(r, anchorFloor)) return false
     if (omit !== 'leaver'         && !matchesLeaverHandling(r, leaver)) return false
     return true
@@ -426,6 +446,7 @@ export function useMatchesNarrow(
     if (pickedReviewedBy.value.size > 0)                            out.push('reviewedBy')
     if (pickedQueues.value.size > 0)                                out.push('queues')
     if (pickedPlayModes.value.size > 0)                             out.push('playModes')
+    if (pickedSources.value.size > 0)                               out.push('sources')
     if (leaverHandling.value !== 'include')                         out.push('leaver')
     if (sinceAnchorActive.value && anchorKey.value !== '')          out.push('sinceAnchor')
     if (minPlayMinutes.value > 0 || minPlayPercent.value > 0)       out.push('minPlay')
@@ -460,6 +481,9 @@ export function useMatchesNarrow(
       case 'reviewedBy':     return 'reviewed-by filter'
       case 'queues':         return 'queue-type filter'
       case 'playModes':      return 'play-mode filter'
+      case 'sources':        return pickedSources.value.size === 1
+        ? `${[...pickedSources.value][0] === 'manual' ? 'user-entered' : 'edited'} only`
+        : 'provenance filter'
       case 'leaver':         return 'leaver handling'
       case 'sinceAnchor':    return 'since-anchor floor'
       case 'minPlay':        return 'minimum play threshold'
@@ -481,6 +505,7 @@ export function useMatchesNarrow(
       case 'reviewedBy':     pickedReviewedBy.value = new Set(); break
       case 'queues':         pickedQueues.value = new Set(); break
       case 'playModes':      pickedPlayModes.value = new Set(); break
+      case 'sources':        pickedSources.value = new Set(); break
       case 'leaver':         leaverHandling.value = 'include'; break
       case 'sinceAnchor':    sinceAnchorActive.value = false; break
       case 'minPlay':        minPlayMinutes.value = 0; minPlayPercent.value = 0; break
@@ -508,12 +533,12 @@ export function useMatchesNarrow(
     // State
     searchText,
     pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
-    pickedQueues, pickedPlayModes,
+    pickedQueues, pickedPlayModes, pickedSources,
     pickedRange, customFrom, customTo,
     leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
     anchorKey, sinceAnchorActive,
     // Actions
-    pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickRange,
+    pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickSource, pickRange,
     resetNarrow,
     // Derived
     activeClauseCount, anyNarrow,

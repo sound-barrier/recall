@@ -29,6 +29,7 @@ const {
   pickedTags,
   pickedMembers,
   pickedReviewedBy,
+  pickedSources,
   leaverHandling,
   minPlayMinutes,
   minPlayPercent,
@@ -43,8 +44,15 @@ const {
   pickTag,
   pickMember,
   pickReviewedBy,
+  pickSource,
   resetNarrow,
 } = props.narrow
+
+// Human label for a provenance chip — the picked-set values are the
+// raw enum, the chip shows the user-facing wording.
+function sourceLabel(source: string): string {
+  return source === 'manual' ? 'user entered' : 'edited'
+}
 </script>
 
 <template>
@@ -162,6 +170,18 @@ const {
         <span class="chip-key">Reviewed by</span>
         <span class="chip-val">{{ b }}</span>
         <button class="chip-x" :aria-label="`Drop ${b}`" @click="pickReviewedBy(b)">
+          ×
+        </button>
+      </li>
+      <li
+        v-for="s in [...pickedSources]"
+        :key="`src-${s}`"
+        class="active-chip"
+        :data-source-chip="s"
+      >
+        <span class="chip-key">Provenance</span>
+        <span class="chip-val">{{ sourceLabel(s) }}</span>
+        <button class="chip-x" :aria-label="`Drop ${sourceLabel(s)}`" @click="pickSource(s)">
           ×
         </button>
       </li>
