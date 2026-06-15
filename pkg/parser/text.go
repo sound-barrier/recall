@@ -80,17 +80,19 @@ func normalizeDate(d string) string {
 	return fmt.Sprintf("%04d-%02d-%02d", yy, mm, dd)
 }
 
-// trimShortBoundaryWords drops 1-3 character words from the start and end of
-// the extracted label. Tesseract often glues icon-misread runs ("CS", "PP",
-// "VA") to a real label like "SOUND BARRIERS PROVIDED" via a space; the real
-// labels are always multi-word and each word is 5+ characters, so stripping
-// short boundary words cheaply removes the noise without an icon allowlist.
+// trimShortBoundaryWords drops 1-2 character words from the start and end of
+// the extracted label. Tesseract glues icon-misread runs ("CS", "PP", "VA") to
+// a real label like "SOUND BARRIERS PROVIDED" via a space. The cutoff is 2, not
+// 3: legit abbreviation words are exactly 3 characters — "OBJ" (OBJ CONTEST
+// TIME), "RIP" (RIP-TIRE KILL) — and must survive, while the icon noise is 1-2
+// characters, so 2 removes the noise without an icon allowlist or clipping a
+// real prefix.
 func trimShortBoundaryWords(s string) string {
 	words := strings.Fields(s)
-	for len(words) > 1 && len(words[0]) <= 3 {
+	for len(words) > 1 && len(words[0]) <= 2 {
 		words = words[1:]
 	}
-	for len(words) > 1 && len(words[len(words)-1]) <= 3 {
+	for len(words) > 1 && len(words[len(words)-1]) <= 2 {
 		words = words[:len(words)-1]
 	}
 	return strings.Join(words, " ")

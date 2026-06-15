@@ -54,10 +54,10 @@ mizuki:
 
 reinhardt:
   - charge_kill
-  - contest_time
   - earthshatter_direct_hits
   - earthshatter_kills
   - earthshatter_stuns
   - fire_strike_accuracy
   - fire_strike_kills
   - knockback_kills
+  - obj_contest_time
