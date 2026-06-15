@@ -1,0 +1,48 @@
+{
+  "screenshot_type": "summary",
+  "result": {
+    "map": "hollywood",
+    "game_mode": "hybrid",
+    "role": "support",
+    "hero": "baptiste",
+    "eliminations": 11,
+    "assists": 12,
+    "deaths": 3,
+    "result": "victory",
+    "final_score": "3-0",
+    "date": "2026-06-11",
+    "finished_at": "00:27",
+    "game_length": "7:39",
+    "heroes_played": [
+      {
+        "hero": "baptiste",
+        "percent_played": 51,
+        "play_time": "03:54"
+      },
+      {
+        "hero": "junkrat",
+        "percent_played": 29,
+        "play_time": "02:11"
+      },
+      {
+        "hero": "reinhardt",
+        "percent_played": 20,
+        "play_time": "01:32"
+      }
+    ],
+    "performance": {
+      "eliminations": {
+        "total": 11,
+        "avg_per_10min": 14.38
+      },
+      "assists": {
+        "total": 12,
+        "avg_per_10min": 15.69
+      },
+      "deaths": {
+        "total": 3,
+        "avg_per_10min": 3.92
+      }
+    }
+  }
+}

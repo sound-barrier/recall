@@ -1,0 +1,27 @@
+{
+  "screenshot_type": "personal",
+  "result": {
+    "role": "support",
+    "hero": "baptiste",
+    "heroes_played": [
+      {
+        "hero": "baptiste",
+        "percent_played": 51,
+        "play_time": "03:54",
+        "stats": {
+          "critical_hit_accuracy": 11,
+          "damage_amplified": 98,
+          "healing_accuracy": 66,
+          "player_saved": 1,
+          "weapon_accuracy": 24
+        }
+      },
+      {
+        "hero": "junkrat"
+      },
+      {
+        "hero": "reinhardt"
+      }
+    ]
+  }
+}

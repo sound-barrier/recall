@@ -1,0 +1,28 @@
+{
+  "screenshot_type": "personal",
+  "result": {
+    "role": "tank",
+    "hero": "reinhardt",
+    "heroes_played": [
+      {
+        "hero": "reinhardt",
+        "percent_played": 20,
+        "play_time": "01:32",
+        "stats": {
+          "contest_time": 0,
+          "earthshatiter_kills": 0,
+          "earthshatter_direct_hits": 0,
+          "earthshatter_stuns": 0,
+          "fire_strike_accuracy": 50,
+          "knockback_kills": 0
+        }
+      },
+      {
+        "hero": "baptiste"
+      },
+      {
+        "hero": "junkrat"
+      }
+    ]
+  }
+}

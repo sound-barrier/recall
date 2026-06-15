@@ -71,7 +71,7 @@ PNG files or Tesseract isn't installed.
 Filled when fixtures land. Unchecked = slot still wanted, the
 maintainer drops in a PNG later via `make update-goldens` and commits.
 
-- [x] post-match SUMMARY tab (×3 — Antarctic Peninsula / Juno + New Queen Street / Lucio + Rialto / Wuyang·Juno·Kiriko 3-hero swap)
+- [x] post-match SUMMARY tab (×4 — Antarctic Peninsula / Juno + New Queen Street / Lucio + Rialto / Wuyang·Juno·Kiriko 3-hero swap + Hollywood / Baptiste·Junkrat·Reinhardt tri-role swap, the last pinning the bracket-mangled eliminations fix: the performance card OCRs "11" as "1]", recovered to the true 11)
 - [x] post-match TEAMS screen — role queue (5v5) AND open queue (6v6, Hollywood); the pair pins `queue_type` detection from the players-per-team count
 - [x] post-match PERSONAL tab — single hero (Juno, hero stats subfield)
 - [x] post-match PERSONAL tab — second hero in a multi-hero match (Mei from same match)
@@ -83,6 +83,22 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
       side — the Rialto capture lists all three heroes (Wuyang 47% ·
       Juno 46% · Kiriko 7%), exercising `parseHeroesPlayed` ordering with
       no second-hero drop.
+- [x] **complete match, end to end** — the Hollywood open-queue (6v6)
+      competitive victory captured across all six screenshots
+      (00.28.29–39): SUMMARY + post-match TEAMS + three PERSONAL tabs
+      (the baptiste→junkrat→reinhardt tri-role swap) + the All Heroes
+      aggregate. The corpus's full-correlation case:
+      `TestApp_ParseScreenshots_CompleteOpenQueueMatchFolds` folds the six
+      into one match (2-min window + the now-matching 11/12/3 EAD
+      signature), exercising the off-hero PERSONAL bridge and the All
+      Heroes skip. Also the cross-check that surfaced the eliminations
+      bug — SUMMARY and TEAMS E/A/D must agree, and didn't (4 vs 11) until
+      the bracket-mangled-digit fix. **Known gap** the three PERSONAL
+      goldens document: small-value, long-label hero-ability cells (Charge
+      Kill, Rip-Tire Kill, Immortality Field Death Prevented, Fire Strike
+      Kills) are intermittently dropped, and some labels OCR with typos
+      (`EARTHSHATTER KILLS` → `earthshatiter_kills`). The captured values
+      are correct; cell coverage isn't complete yet.
 
 ## Privacy / licensing
 
