@@ -21,6 +21,7 @@ const ow = useOWData()
 useModalFocusTrap(toRef(props, 'open'), {
   containerSelector: '.mm-modal',
   onClose: () => emit('close'),
+  keepOpenOnFieldEscape: true,
 })
 
 const TIERS = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Master', 'Grandmaster', 'Champion']

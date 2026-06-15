@@ -80,6 +80,10 @@ test.describe('modal scroll-lock', () => {
     await page.waitForTimeout(150)
     expect(await scrollY(page)).toBeLessThanOrEqual(before + 1)
 
+    // The panel auto-focuses its search input, so the first Esc just
+    // deselects that field (mid-filter Esc no longer nukes the panel);
+    // a second Esc, focus no longer in a field, closes it.
+    await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')
     await expect(page.locator('#narrow-popover')).toHaveCount(0)
     await page.mouse.wheel(0, 600)

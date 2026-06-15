@@ -177,4 +177,45 @@ describe('useModalFocusTrap', () => {
     document.dispatchEvent(ev)
     expect(prevented).not.toHaveBeenCalled()
   })
+
+  describe('keepOpenOnFieldEscape', () => {
+    it('Escape in a text field deselects it without closing when opted in', async () => {
+      const open = ref(false)
+      const onClose = vi.fn()
+      useModalFocusTrap(open, { containerSelector: '.modal-box', onClose, keepOpenOnFieldEscape: true })
+      const input = document.createElement('input')
+      document.querySelector('.modal-box')!.appendChild(input)
+      open.value = true
+      await nextTick()
+      input.focus()
+      const blurSpy = vi.spyOn(input, 'blur')
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }))
+      expect(onClose).not.toHaveBeenCalled()
+      expect(blurSpy).toHaveBeenCalled()
+    })
+
+    it('Escape outside a field still closes when opted in', async () => {
+      const open = ref(false)
+      const onClose = vi.fn()
+      useModalFocusTrap(open, { containerSelector: '.modal-box', onClose, keepOpenOnFieldEscape: true })
+      open.value = true
+      await nextTick()
+      ;(document.querySelector('#cancel') as HTMLElement).focus()
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }))
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('Escape in a field still closes when NOT opted in (default)', async () => {
+      const open = ref(false)
+      const onClose = vi.fn()
+      useModalFocusTrap(open, { containerSelector: '.modal-box', onClose })
+      const input = document.createElement('input')
+      document.querySelector('.modal-box')!.appendChild(input)
+      open.value = true
+      await nextTick()
+      input.focus()
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }))
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+  })
 })

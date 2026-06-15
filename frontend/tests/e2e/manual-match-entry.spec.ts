@@ -60,6 +60,11 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   await page.locator('[data-add-match]').click()
   await expect(page.locator('.mm-modal')).toBeVisible()
 
+  // Esc inside a text field deselects it — it must NOT tear down the modal.
+  await page.locator('[data-combo-id="mm-map"] .combo-input').click()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.mm-modal')).toBeVisible()
+
   // Toggles first, while no dropdown is open to overlap them.
   await page.locator('[data-mode="competitive"]').click()
   await page.locator('[data-queue="role"]').click()
