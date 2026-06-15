@@ -18,6 +18,10 @@ const emit = defineEmits<{
   'toggle-sort-group': [e: MouseEvent]
   'set-density': [density: Density]
   'jump-to-undated': []
+  // Open the manual-entry modal (hand-enter a match — no OCR needed). The
+  // primary entry point for the no-Tesseract persona; always reachable since
+  // the toolbar renders even with an empty set.
+  'add-match': []
 }>()
 </script>
 
@@ -30,6 +34,16 @@ const emit = defineEmits<{
       </h3>
     </div>
     <div class="leaves-head-controls">
+      <button
+        type="button"
+        class="add-match-btn"
+        data-add-match
+        title="Hand-enter a match — no screenshots needed"
+        @click="emit('add-match')"
+      >
+        <span class="add-match-plus" aria-hidden="true">+</span>
+        Add match
+      </button>
       <button
         type="button"
         class="sort-group-trigger"
@@ -153,6 +167,31 @@ const emit = defineEmits<{
   gap: 0.5rem;
   align-items: center;
 }
+
+/* Primary "create" affordance — accent fill so it reads as the one action
+   that adds data, distinct from the neutral sort / density controls. */
+.add-match-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: var(--accent);
+  color: var(--primary-text-on-accent);
+  padding: 0.4rem 0.8rem;
+  font-family: var(--body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background var(--duration-fast) ease;
+}
+
+.add-match-btn:hover { background: var(--accent-bright, var(--accent)); }
+.add-match-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.add-match-plus { font-size: 1rem; line-height: 1; }
 
 /* Combined Sort + Group trigger — single button replaces the prior
    two segmented fieldsets so the head controls fit comfortably
