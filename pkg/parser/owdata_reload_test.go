@@ -118,36 +118,32 @@ func TestReload_ConcurrentReadsAndSwaps(t *testing.T) {
 	var wg sync.WaitGroup
 	var panicked atomic.Bool
 
-	for i := 0; i < 50; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 50 {
+		wg.Go(func() {
 			defer func() {
 				if r := recover(); r != nil {
 					panicked.Store(true)
 				}
 			}()
-			for j := 0; j < 100; j++ {
+			for range 100 {
 				_ = parser.HeroRole("Lúcio")
 				_ = parser.MapGameMode("Hollywood")
 				_ = parser.Sources()
 			}
-		}()
+		})
 	}
 
-	for i := 0; i < 5; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 5 {
+		wg.Go(func() {
 			defer func() {
 				if r := recover(); r != nil {
 					panicked.Store(true)
 				}
 			}()
-			for j := 0; j < 20; j++ {
+			for range 20 {
 				_ = parser.Reload()
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

@@ -43,8 +43,8 @@ func preprocessHighContrast(src image.Image, scale int, thresh uint8) image.Imag
 	bounds := src.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
 	out := image.NewGray(image.Rect(0, 0, w*scale, h*scale))
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
+	for y := range h {
+		for x := range w {
 			r, g, b, _ := src.At(x, y).RGBA()
 			// #nosec G115 -- BT.601 luminance, weights sum to 1000, each
 			// channel ≤ 255 after >>8, so the result is always ≤ 255.
@@ -53,8 +53,8 @@ func preprocessHighContrast(src image.Image, scale int, thresh uint8) image.Imag
 			if lum > thresh {
 				v = 0
 			}
-			for dy := 0; dy < scale; dy++ {
-				for dx := 0; dx < scale; dx++ {
+			for dy := range scale {
+				for dx := range scale {
 					out.SetGray(x*scale+dx, y*scale+dy, color.Gray{Y: v})
 				}
 			}
@@ -70,8 +70,8 @@ func grayUpscale(src image.Image, scale int, invert bool) image.Image {
 	bounds := src.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
 	out := image.NewGray(image.Rect(0, 0, w*scale, h*scale))
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
+	for y := range h {
+		for x := range w {
 			r, g, b, _ := src.At(x, y).RGBA()
 			// #nosec G115 -- ITU-R BT.601 luminance: weights sum to 1000,
 			// each channel ≤ 255 after >>8, so the result is always ≤ 255.
@@ -80,8 +80,8 @@ func grayUpscale(src image.Image, scale int, invert bool) image.Image {
 			if invert {
 				v = 255 - lum
 			}
-			for dy := 0; dy < scale; dy++ {
-				for dx := 0; dx < scale; dx++ {
+			for dy := range scale {
+				for dx := range scale {
 					out.SetGray(x*scale+dx, y*scale+dy, color.Gray{Y: v})
 				}
 			}

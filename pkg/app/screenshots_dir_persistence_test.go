@@ -79,7 +79,7 @@ func TestScreenshotsDir_PersistsAcrossMultipleRestarts(t *testing.T) {
 	// Five sequential restarts — each must see the dir survive.
 	// The user said "each time I start up my app I have to change my
 	// screenshot folder"; this pins that bug shape across N≥2.
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		a := app.NewWithStore(&fakeStore{})
 		a.Startup(context.Background())
 		if app.AppSettings(a).ScreenshotsDir != dir {

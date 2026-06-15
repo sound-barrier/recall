@@ -158,10 +158,3 @@ func readCSVParentTables(zr *zip.Reader) (parentTables, error) {
 var nowUTC = func() string {
 	return time.Now().UTC().Format(time.RFC3339)
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

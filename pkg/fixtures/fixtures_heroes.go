@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"slices"
 )
 
 // playStyle is the seeded player's hero-pick shape. Picked once per
@@ -58,15 +59,11 @@ func parsePlayStyle(rng *rand.Rand, s string) playStyle {
 }
 
 func roleOfHero(hero string) string {
-	for _, h := range fixtureTanks {
-		if h == hero {
-			return "tank"
-		}
+	if slices.Contains(fixtureTanks, hero) {
+		return "tank"
 	}
-	for _, h := range fixtureSupports {
-		if h == hero {
-			return "support"
-		}
+	if slices.Contains(fixtureSupports, hero) {
+		return "support"
 	}
 	return "dps"
 }
@@ -310,10 +307,7 @@ func allocateHeroPercents(plays []heroPlay) {
 			plays[i].Percent = remaining
 			return
 		}
-		p := int(weights[i] / totalW * 100)
-		if p < 5 {
-			p = 5
-		}
+		p := max(int(weights[i]/totalW*100), 5)
 		plays[i].Percent = p
 		remaining -= p
 	}
@@ -329,10 +323,5 @@ func formatPlayTime(totalSec, percent int) string {
 }
 
 func containsHero(pool []string, h string) bool {
-	for _, x := range pool {
-		if x == h {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(pool, h)
 }

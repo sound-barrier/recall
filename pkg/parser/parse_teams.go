@@ -43,7 +43,7 @@ func findHighlightedRowY(img image.Image) (int, int) {
 	// For each Y, average (G+B) over blue-background pixels in the table area.
 	xMin, xMax := W/8, W*9/16
 	rowAvg := make([]int, H)
-	for y := 0; y < H; y++ {
+	for y := range H {
 		var sum, count int
 		for x := xMin; x < xMax; x++ {
 			r, g, b, _ := img.At(x, y).RGBA()
@@ -64,14 +64,11 @@ func findHighlightedRowY(img image.Image) (int, int) {
 	// average brightness. Row height is roughly H/24 — covers a single row but
 	// not multiple stacked rows. We only consider the top half of the image
 	// since the friendly team always sits above the center VS divider.
-	rowHeight := H / 24
-	if rowHeight < 20 {
-		rowHeight = 20
-	}
+	rowHeight := max(H/24, 20)
 	bestSum, bestY := -1, -1
 	for y := 0; y+rowHeight < H/2; y++ {
 		sum := 0
-		for k := 0; k < rowHeight; k++ {
+		for k := range rowHeight {
 			sum += rowAvg[y+k]
 		}
 		if sum > bestSum {
@@ -113,10 +110,7 @@ func ocrRowCells(img image.Image, yTop, yBot int, workDir string) ([6]int, error
 	// breathing room (it tends to drop thin leading digits like "1" without it).
 	cellNames := [6]string{"col_e", "col_a", "col_d", "col_dmg", "col_h", "col_mit"}
 	var out [6]int
-	margin := H / 80
-	if margin < 8 {
-		margin = 8
-	}
+	margin := max(H/80, 8)
 	for i, col := range cols {
 		rect := image.Rect(col.Min.X-margin, yTop+1, col.Max.X+margin, yBot-1)
 		var nums []int
@@ -159,7 +153,7 @@ func findRowXExtent(img image.Image, yT, yB int) (xLeft, xRight int) {
 	}
 
 	xLeft, xRight = -1, -1
-	for x := 0; x < W; x++ {
+	for x := range W {
 		if isBlue(x, yMid) || isBlue(x, yMid-3) || isBlue(x, yMid+3) {
 			xLeft = x
 			break

@@ -1,6 +1,7 @@
 package dbtest
 
 import (
+	"maps"
 	"sort"
 	"strings"
 	"time"
@@ -34,9 +35,7 @@ func (f *Fake) LoadIgnoredFilenames() (map[string]bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := make(map[string]bool, len(f.Ignored))
-	for k, v := range f.Ignored {
-		out[k] = v
-	}
+	maps.Copy(out, f.Ignored)
 	return out, nil
 }
 

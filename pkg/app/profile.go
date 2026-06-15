@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"sync"
 )
@@ -283,12 +284,7 @@ func validateProfileName(name string) error {
 }
 
 func containsProfile(s []string, v string) bool {
-	for _, x := range s {
-		if x == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(s, v)
 }
 
 func removeString(s []string, v string) []string {

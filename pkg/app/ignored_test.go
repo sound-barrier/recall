@@ -3,6 +3,7 @@ package app_test
 import (
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 
 	"recall/pkg/app"
@@ -70,13 +71,7 @@ func TestIgnoreScreenshot_WipesTrackedMatchKeyTooNotJustUnmatchedAndAmbiguous(t 
 	// HardDeleteMatch must be called for the actual match_key too —
 	// not just the two name-shaped fallback keys.
 	wantSubset := "match-2026-05-10T22-21-11"
-	found := false
-	for _, k := range fs.HardDeleteCalls {
-		if k == wantSubset {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(fs.HardDeleteCalls, wantSubset)
 	if !found {
 		t.Errorf("HardDeleteCalls = %v, missing actual match key %q", fs.HardDeleteCalls, wantSubset)
 	}

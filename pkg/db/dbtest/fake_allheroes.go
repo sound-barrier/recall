@@ -6,6 +6,8 @@ package dbtest
 // write path recorded it so the next parse run skips it (no re-OCR) — the same
 // role Ignored plays for the "Delete forever" suppress list.
 
+import "maps"
+
 func (f *Fake) UpsertAllHeroesScreenshot(filename string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -20,8 +22,6 @@ func (f *Fake) LoadAllHeroesFilenames() (map[string]bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := make(map[string]bool, len(f.AllHeroes))
-	for k, v := range f.AllHeroes {
-		out[k] = v
-	}
+	maps.Copy(out, f.AllHeroes)
 	return out, nil
 }

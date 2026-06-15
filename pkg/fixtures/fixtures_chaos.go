@@ -91,13 +91,13 @@ func GenerateMatchFixtureWithChaos(n int, seed int64, style string, chaosRatio f
 	var extras []db.SummaryRow
 
 	originalLen := len(fx.Summaries)
-	for i := 0; i < originalLen; i++ {
+	for i := range originalLen {
 		if rng.Float64() >= chaosRatio {
 			continue
 		}
 		numCats := 1 + rng.Intn(2) // 1 or 2 shapes per chaotic match
 		applied := make(map[chaosCategory]bool, numCats)
-		for k := 0; k < numCats; k++ {
+		for range numCats {
 			cat := allChaosCategories[rng.Intn(len(allChaosCategories))]
 			if applied[cat] {
 				continue
@@ -145,7 +145,7 @@ func applyChaosShape(
 
 	case chaosCardinality:
 		s.HeroesPlayed = make([]db.SummaryHeroPlayed, 0, 50)
-		for i := 0; i < 50; i++ {
+		for i := range 50 {
 			s.HeroesPlayed = append(s.HeroesPlayed, db.SummaryHeroPlayed{
 				Hero:          fmt.Sprintf("synthetic-hero-%02d", i),
 				PercentPlayed: rng.Intn(200) - 50, // some out of [0,100]
@@ -154,7 +154,7 @@ func applyChaosShape(
 		}
 		if sb != nil {
 			sb.HeroStats = make([]db.HeroStat, 0, 200)
-			for i := 0; i < 200; i++ {
+			for i := range 200 {
 				sb.HeroStats = append(sb.HeroStats, db.HeroStat{
 					Hero:      fmt.Sprintf("synthetic-hero-%02d", i%50),
 					StatKey:   fmt.Sprintf("stat-%d", i),

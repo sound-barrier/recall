@@ -98,7 +98,7 @@ func TestCorrelation_Stress_BaselineClean(t *testing.T) {
 	const spacing = 10 * time.Minute
 
 	specs := make([]matchSpec, 0, 25)
-	for i := 0; i < 25; i++ {
+	for i := range 25 {
 		start := base.Add(time.Duration(i) * spacing)
 		specs = append(specs, matchSpec{
 			startTime:         start,
@@ -170,7 +170,7 @@ func TestCorrelation_Stress_BaselineClean(t *testing.T) {
 func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.05.10 - 14.00.00")
 	specs := make([]matchSpec, 0, 20)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		x := base.Add(time.Duration(i*15) * time.Minute)
 		y := x.Add(time.Duration(7+i) * 24 * time.Hour) // 7-16 days later
 		mapName := pickAt(owMaps, i)
@@ -302,7 +302,7 @@ func TestCorrelation_Stress_EADBridgeDistantTime(t *testing.T) {
 func TestCorrelation_Stress_SameHeroBackToBackClean(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.06.01 - 14.00.00")
 	specs := make([]matchSpec, 0, 20)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		x := base.Add(time.Duration(i*30) * time.Minute)
 		y := x.Add(10 * time.Minute)
 		mapName := pickAt(owMaps, i)
@@ -372,7 +372,7 @@ func TestCorrelation_Stress_SameHeroBackToBackClean(t *testing.T) {
 func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.06.15 - 14.00.00")
 	specs := make([]matchSpec, 0, 20)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		x := base.Add(time.Duration(i*30) * time.Minute)
 		y := x.Add(10 * time.Minute)
 		mapName := pickAt(owMaps, i)
@@ -470,7 +470,7 @@ func TestCorrelation_Stress_SameHeroIdenticalEAD(t *testing.T) {
 func TestCorrelation_Stress_TimestampWindowEdge(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.07.01 - 14.00.00")
 	specs := make([]matchSpec, 0, 24)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		x := base.Add(time.Duration(i*30) * time.Minute)
 		y := x.Add(90 * time.Second) // tight window
 		midPersonal := x.Add(45 * time.Second)
@@ -553,7 +553,7 @@ func TestCorrelation_Stress_TimestampWindowEdge(t *testing.T) {
 func TestCorrelation_Stress_MultiHeroTeamsSwap(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.07.15 - 14.00.00")
 	specs := make([]matchSpec, 0, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		start := base.Add(time.Duration(i*15) * time.Minute)
 		primary := "lucio"
 		swap := "kiriko"
@@ -650,7 +650,7 @@ func TestCorrelation_Stress_MultiHeroTeamsSwap(t *testing.T) {
 func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.07.20 - 14.00.00")
 	specs := make([]matchSpec, 0, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		start := base.Add(time.Duration(i*20) * time.Minute)
 		heroA := pickAt(owHeroes, i*2)
 		heroB := pickAt(owHeroes, i*2+1)
@@ -739,7 +739,7 @@ func TestCorrelation_Stress_MultiHeroTwoPersonals(t *testing.T) {
 func TestCorrelation_Stress_RankAdoption(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.08.01 - 14.00.00")
 	specs := make([]matchSpec, 0, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		start := base.Add(time.Duration(i*15) * time.Minute)
 		specs = append(specs, matchSpec{
 			startTime:    start,
@@ -790,7 +790,7 @@ func TestCorrelation_Stress_RankAdoption(t *testing.T) {
 func TestCorrelation_Stress_ZeroStatTeams(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.08.10 - 14.00.00")
 	specs := make([]matchSpec, 0, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		start := base.Add(time.Duration(i*15) * time.Minute)
 		specs = append(specs, matchSpec{
 			startTime:    start,
@@ -877,7 +877,7 @@ func TestCorrelation_Stress_UnparseableFilenames(t *testing.T) {
 func TestCorrelation_Stress_IdenticalTimestamps(t *testing.T) {
 	base := mustParseTS("Overwatch 2 Screenshot 2026.08.20 - 14.00.00")
 	specs := make([]matchSpec, 0, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		start := base.Add(time.Duration(i*15) * time.Minute)
 		specs = append(specs, matchSpec{
 			startTime:    start,

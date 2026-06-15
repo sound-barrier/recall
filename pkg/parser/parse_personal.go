@@ -51,8 +51,8 @@ func parsePersonal(img image.Image, work string) (*MatchResult, error) {
 	cellW := (gridRight - gridLeft) / 3
 	cellH := (gridBot - gridTop) / 3
 
-	for row := 0; row < 3; row++ {
-		for col := 0; col < 3; col++ {
+	for row := range 3 {
+		for col := range 3 {
 			name := fmt.Sprintf("personal_r%dc%d", row, col)
 
 			// Primary pass: full cell, dual-PSM. PSM 11 (sparse) gets large
@@ -182,7 +182,7 @@ func parsePersonalStatCell(text string, playMinutes float64) (string, int, bool)
 	// Pass 1: prefer a %-suffixed digit. Percent stats always have a %, and
 	// the % is a strong disambiguator against icon-misread digits like "a7?".
 	val := -1
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if strings.Contains(strings.ToUpper(line), "AVG") {
 			continue
 		}
@@ -210,7 +210,7 @@ func parsePersonalStatCell(text string, playMinutes float64) (string, int, bool)
 		return "", 0, false
 	}
 	var label string
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if strings.Contains(strings.ToUpper(line), "AVG") {
 			continue
 		}
@@ -236,7 +236,7 @@ func pickStatValue(text string, expected float64) int {
 	bestLen := 0
 	counts := map[int]int{}
 	var order []int
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if strings.Contains(strings.ToUpper(line), "AVG") {
 			continue
 		}

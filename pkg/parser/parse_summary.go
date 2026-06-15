@@ -204,10 +204,7 @@ func parsePerformance(text string) *Performance {
 		}
 		prevEnd = idx + len(p.keyword)
 		// Avg: first decimal-or-int after "MIN" within ~120 chars of the label.
-		to := idx + 120
-		if to > len(text) {
-			to = len(text)
-		}
+		to := min(idx+120, len(text))
 		if m := perfAvgRe.FindStringSubmatch(text[idx:to]); m != nil {
 			v, _ := strconv.ParseFloat(m[1], 64)
 			p.stat.AvgPer10Min = v
