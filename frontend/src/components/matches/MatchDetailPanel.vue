@@ -228,6 +228,15 @@ const mapDisplay = computed(() =>
   props.record?.data?.map ? ow.mapDisplayName(props.record.data.map) : '—',
 )
 
+// One-line descriptor shown beside the provenance badge in the banner.
+// Only meaningful for the two non-OCR states the banner renders for.
+const provenanceSummary = computed(() => {
+  if (props.record?.source === 'manual') return 'Logged by hand — no screenshots to parse.'
+  const n = props.record?.edited_fields?.length ?? 0
+  if (n === 0) return 'Corrected after the OCR scan.'
+  return `${n} ${n === 1 ? 'field' : 'fields'} changed from the OCR scan.`
+})
+
 const resultClass = computed(() => {
   const r = props.record?.data?.result
   return r ? `result-${r}` : 'result-unknown'
@@ -273,16 +282,6 @@ function onBackdropClick(e: MouseEvent) {
             <span id="detail-panel-title" class="detail-title-map">{{ mapDisplay }}</span>
             <span class="detail-title-sep" aria-hidden="true">·</span>
             <span class="detail-title-result">{{ record.data?.result || 'unknown' }}</span>
-            <MatchProvenanceBadge :source="record.source" :edited-fields="record.edited_fields" />
-            <button
-              v-if="record.source === 'ocr_edited'"
-              type="button"
-              class="detail-reset-btn"
-              title="Discard every edit and restore the scanned (OCR) values"
-              @click="emit('reset-match-data', record.match_key)"
-            >
-              Reset to OCR
-            </button>
           </div>
 
           <div class="detail-toolbar-nav" role="group" aria-label="Match navigation">
@@ -312,6 +311,31 @@ function onBackdropClick(e: MouseEvent) {
             </button>
           </div>
         </header>
+
+        <!-- Provenance banner — a prominent strip pinned directly under
+             the toolbar so the user can't miss that a match was edited
+             or hand-entered. Both non-OCR states get equal visual
+             weight here; the Reset-to-OCR action lives in the edited
+             variant. Pure-OCR matches show nothing — the Source
+             Screenshots block already conveys "parsed from screenshots". -->
+        <div
+          v-if="record.source === 'ocr_edited' || record.source === 'manual'"
+          class="detail-prov-banner"
+          :class="record.source === 'manual' ? 'is-manual' : 'is-edited'"
+          data-prov-banner
+        >
+          <MatchProvenanceBadge :source="record.source" :edited-fields="record.edited_fields" />
+          <span class="detail-prov-sub">{{ provenanceSummary }}</span>
+          <button
+            v-if="record.source === 'ocr_edited'"
+            type="button"
+            class="detail-reset-btn"
+            title="Discard every edit and restore the scanned (OCR) values"
+            @click="emit('reset-match-data', record.match_key)"
+          >
+            Reset to OCR
+          </button>
+        </div>
 
         <!-- role="region" + aria-label inside the dialog so SR users
              on landmark-nav can jump straight to the match body
@@ -537,6 +561,35 @@ function onBackdropClick(e: MouseEvent) {
 .detail-reset-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* Provenance banner — a full-width strip under the toolbar with a left
+   accent rule, so both "Edited" and "User entered" read at a glance the
+   moment the panel opens. The Reset-to-OCR action (edited only) is
+   pushed to the trailing edge. */
+.detail-prov-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 1rem;
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.detail-prov-banner.is-manual {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
+.detail-prov-sub {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.detail-prov-banner .detail-reset-btn {
+  margin-left: auto;
 }
 
 .detail-toolbar-nav {
