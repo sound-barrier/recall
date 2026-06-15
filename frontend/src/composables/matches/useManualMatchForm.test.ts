@@ -7,10 +7,32 @@ describe('useManualMatchForm', () => {
     expect(f.canSubmit.value).toBe(false)
     f.map.value = 'ilios'
     f.playMode.value = 'competitive'
-    f.queueType.value = 'role'
+    f.queueType.value = 'open' // open queue needs no role category
     f.result.value = 'victory'
     expect(f.canSubmit.value).toBe(false) // no hero yet
     f.addHero('ana')
+    expect(f.canSubmit.value).toBe(true)
+  })
+
+  it('requires a role category in role queue, but not in open queue', () => {
+    const f = useManualMatchForm()
+    f.map.value = 'ilios'
+    f.playMode.value = 'competitive'
+    f.result.value = 'victory'
+    f.addHero('ana')
+
+    // Role queue: a single role is mandatory (it constrains the hero list).
+    f.queueType.value = 'role'
+    expect(f.missingRequired.value).toContain('role')
+    expect(f.canSubmit.value).toBe(false)
+    f.roleCategory.value = 'support'
+    expect(f.missingRequired.value).not.toContain('role')
+    expect(f.canSubmit.value).toBe(true)
+
+    // Open queue: any role mix is allowed, so role isn't required.
+    f.queueType.value = 'open'
+    f.roleCategory.value = ''
+    expect(f.missingRequired.value).not.toContain('role')
     expect(f.canSubmit.value).toBe(true)
   })
 

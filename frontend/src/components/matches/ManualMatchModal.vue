@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, toRef } from 'vue'
+import { computed, onMounted, onUnmounted, ref, toRef, watch } from 'vue'
 import { ApiError, CreateManualMatch, type MatchRecord } from '@/api'
 import { useManualMatchForm } from '@/composables/matches/useManualMatchForm'
 import { useOWData } from '@/composables/shared/useOWData'
@@ -41,11 +41,36 @@ const comboOpen = ref<'map' | 'hero' | null>(null)
 // picked role on role queue.
 const mapOptions = computed(() => [...ow.mapIndex.value.keys()].sort((a, b) => a.localeCompare(b)))
 const heroOptions = computed(() => {
-  let entries = [...ow.heroIndex.value.entries()]
-  if (f.queueType.value === 'role' && f.roleCategory.value) {
-    entries = entries.filter(([, v]) => v.role.toLowerCase() === f.roleCategory.value)
+  const entries = [...ow.heroIndex.value.entries()]
+  // Role queue is single-role: a match is played entirely as tank, damage, OR
+  // support — never a mix. Force the role pick first (empty list until then),
+  // then offer only that role's heroes. Open queue lets you swap freely, so
+  // every hero is offered.
+  if (f.queueType.value === 'role') {
+    if (!f.roleCategory.value) return []
+    return entries
+      .filter(([, v]) => v.role.toLowerCase() === f.roleCategory.value)
+      .map(([k]) => k)
+      .sort((a, b) => a.localeCompare(b))
   }
   return entries.map(([k]) => k).sort((a, b) => a.localeCompare(b))
+})
+
+// The hero picker's copy nudges the user to choose a role first on role queue.
+const heroPlaceholder = computed(() =>
+  f.queueType.value === 'role' && !f.roleCategory.value ? 'pick a role first' : 'type to search heroes…',
+)
+const heroEmptyMessage = computed(() =>
+  f.queueType.value === 'role' && !f.roleCategory.value ? 'pick a role above first' : 'no heroes match',
+)
+
+// Keep the hero selection legal as the rules change: when the queue type or
+// role category changes, drop any picked hero that's no longer allowed
+// (switching open→role clears until a role is chosen; tank→support drops the
+// tank picks). Heroes aren't watched, so this can't loop.
+watch([() => f.queueType.value, () => f.roleCategory.value], () => {
+  const allowed = new Set(heroOptions.value)
+  f.heroes.value = f.heroes.value.filter((h) => allowed.has(h))
 })
 
 const mapPicked = computed(() => (f.map.value ? new Set([f.map.value]) : new Set<string>()))
@@ -158,9 +183,10 @@ async function submit() {
             </div>
           </section>
 
-          <!-- Role category (optional; role queue only — narrows the hero picker) -->
+          <!-- Role category (required on role queue — a single-role queue, so
+               it constrains the hero list to that one role) -->
           <section v-if="f.isRoleQueue.value" class="mm-section">
-            <span class="mm-eyebrow-label">Role <span class="mm-optional">(optional)</span></span>
+            <span class="mm-eyebrow-label">Role <span class="mm-req" aria-hidden="true">*</span></span>
             <div class="mm-chips">
               <button
                 v-for="r in (['tank', 'damage', 'support'] as const)"
@@ -188,8 +214,8 @@ async function submit() {
               :picked="heroPicked"
               :open="comboOpen === 'hero'"
               :first-is-primary="true"
-              placeholder="type to search heroes…"
-              empty-message="no heroes match"
+              :placeholder="heroPlaceholder"
+              :empty-message="heroEmptyMessage"
               @toggle="onToggleHero"
               @open="comboOpen = 'hero'"
               @close="comboOpen = null"
