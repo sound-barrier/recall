@@ -57,6 +57,38 @@ const sortOrder = toRef(props, 'sortOrder')
 // ─── Sort + group via useMatchesGroup composable ───────────
 const { sortedRecords, groupedSections } = useMatchesGroup(records, groupBy, sortOrder)
 
+// ─── Collapsible group sections ────────────────────────────
+//
+// Only meaningful in grouped modes (flat 'none' has no dividers). A
+// collapsed section keeps its header but renders zero rows and frees
+// its share of the render budget so the rest of the list flows up.
+// Keys are namespaced by the grouping value (a date key never collides
+// with 'ocr_edited'), so the collapse memory survives a round-trip
+// through other groupings. Session-scoped — a fresh load starts fully
+// expanded.
+const collapsedKeys = ref<Set<string>>(new Set())
+function isCollapsed(key: string): boolean {
+  return collapsedKeys.value.has(key)
+}
+function toggleSection(key: string): void {
+  const next = new Set(collapsedKeys.value)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
+  collapsedKeys.value = next
+}
+
+// True (pre-window) record count per section, so a collapsed divider —
+// whose rendered `records` is empty — can still report how many rows it
+// hides, and an expanded-but-paginated divider shows its real total.
+const sectionTotals = computed(() => {
+  const totals = new Map<string, number>()
+  for (const s of groupedSections.value) totals.set(s.key, s.records.length)
+  return totals
+})
+function sectionTotal(key: string): number {
+  return sectionTotals.value.get(key) ?? 0
+}
+
 // ─── Data-density table: per-column sort ──────────────────
 // Data density is a flat spreadsheet — the active column header sorts the
 
@@ -85,15 +117,23 @@ const windowedSections = computed<GroupedSection[]>(() => {
   const cap = renderedCount.value
   const out: GroupedSection[] = []
   let used = 0
+  let capReached = false
   for (const s of groupedSections.value) {
-    if (used >= cap) break
+    // A collapsed section always shows its divider but renders no rows
+    // and spends no budget, so collapsing a big group surfaces the
+    // groups below it instead of paginating through hidden rows.
+    if (collapsedKeys.value.has(s.key)) {
+      out.push({ key: s.key, header: s.header, records: [] })
+      continue
+    }
+    if (capReached) continue
     const remaining = cap - used
     if (s.records.length <= remaining) {
       out.push(s)
       used += s.records.length
     } else {
       out.push({ key: s.key, header: s.header, records: s.records.slice(0, remaining) })
-      break
+      capReached = true
     }
   }
   return out
@@ -290,28 +330,40 @@ defineExpose({ expandWindowToAll })
       data-virt-top-spacer
     />
     <template v-for="section in renderSections" :key="section.key">
-      <li v-if="section.header" class="section-divider" :data-section-key="section.key" :aria-label="`Group: ${section.header}`">
-        <span class="sd-label">{{ section.header }}</span>
-        <span class="sd-count">{{ section.records.length }}</span>
+      <li v-if="section.header" class="section-divider" :data-section-key="section.key">
+        <button
+          type="button"
+          class="sd-toggle"
+          :aria-expanded="!isCollapsed(section.key)"
+          :aria-label="`${isCollapsed(section.key) ? 'Expand' : 'Collapse'} ${section.header} group`"
+          :data-section-toggle="section.key"
+          @click="toggleSection(section.key)"
+        >
+          <span class="sd-chevron" :class="{ 'sd-chevron-collapsed': isCollapsed(section.key) }" aria-hidden="true">▾</span>
+          <span class="sd-label">{{ section.header }}</span>
+          <span class="sd-count">{{ sectionTotal(section.key) }}</span>
+        </button>
         <span class="sd-line" aria-hidden="true" />
       </li>
-      <MatchLeafRow
-        v-for="rec in section.records"
-        :key="rec.match_key"
-        :rec="rec"
-        :card-index="narrowedIndexByKey.get(rec.match_key) ?? -1"
-        :focused-card-index="props.focusedCardIndex"
-        :selected="selectedKeys.has(rec.match_key)"
-        :has-selection="selectedKeys.size > 0"
-        :is-anchor="rec.match_key === anchorKey"
-        :search-clauses="searchClauses"
-        @open-match="emit('open-match', $event)"
-        @toggle-select="emit('toggle-select', $event)"
-        @row-context="(e, k) => emit('row-context', e, k)"
-        @hover-enter="(r, e) => emit('hover-enter', r, e)"
-        @hover-move="(e) => emit('hover-move', e)"
-        @hover-leave="emit('hover-leave')"
-      />
+      <template v-if="!isCollapsed(section.key)">
+        <MatchLeafRow
+          v-for="rec in section.records"
+          :key="rec.match_key"
+          :rec="rec"
+          :card-index="narrowedIndexByKey.get(rec.match_key) ?? -1"
+          :focused-card-index="props.focusedCardIndex"
+          :selected="selectedKeys.has(rec.match_key)"
+          :has-selection="selectedKeys.size > 0"
+          :is-anchor="rec.match_key === anchorKey"
+          :search-clauses="searchClauses"
+          @open-match="emit('open-match', $event)"
+          @toggle-select="emit('toggle-select', $event)"
+          @row-context="(e, k) => emit('row-context', e, k)"
+          @hover-enter="(r, e) => emit('hover-enter', r, e)"
+          @hover-move="(e) => emit('hover-move', e)"
+          @hover-leave="emit('hover-leave')"
+        />
+      </template>
     </template>
     <!-- Bottom virtualization spacer — counterpart to flatTopSpacerHeight. -->
     <li
@@ -402,18 +454,59 @@ defineExpose({ expandWindowToAll })
 
 .section-divider {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: auto 1fr;
   align-items: center;
   gap: 0.5rem;
   padding: 0.45rem 0 0.15rem;
+}
+.section-divider:first-child { padding-top: 0.1rem; }
+
+/* The header doubles as a disclosure toggle — click (or Enter/Space)
+   collapses the group to just this row, click again re-expands. */
+.sd-toggle {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.12rem 0.45rem 0.12rem 0.25rem;
+  margin: 0;
+  cursor: pointer;
   font-family: var(--mono);
   font-size: 0.62rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--text-faint);
   font-weight: 700;
+  color: var(--text-faint);
+  border-radius: 3px;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
 }
-.section-divider:first-child { padding-top: 0.1rem; }
+
+.sd-toggle:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: var(--accent-soft, var(--border));
+  color: var(--text);
+}
+
+.sd-toggle:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.sd-chevron {
+  display: inline-block;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--accent);
+  transition: transform 160ms ease;
+}
+.sd-chevron-collapsed { transform: rotate(-90deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sd-chevron { transition: none; }
+}
 
 .sd-line {
   height: 1px;
