@@ -108,12 +108,13 @@ describe('TypeaheadDropdown', () => {
       expect(items[0]!.text()).toContain('lucio')
     })
 
-    it('substring + case-insensitive', async () => {
-      const wrapper = mountDropdown({ open: true })
-      await wrapper.find('input.combo-input').setValue('NY')
+    it('matches by prefix (case-insensitive), not substring', async () => {
+      const wrapper = mountDropdown({ open: true, options: ['ana', 'busan', 'zenyatta'] })
+      await wrapper.find('input.combo-input').setValue('AN')
       const items = wrapper.findAll('ul.combo-list li[role="option"]')
+      // "ana" starts with "an"; "busan" only contains it, so it's excluded.
       expect(items).toHaveLength(1)
-      expect(items[0]!.text()).toContain('zenyatta')
+      expect(items[0]!.text()).toContain('ana')
     })
 
     it('renders empty-message row when nothing matches', async () => {

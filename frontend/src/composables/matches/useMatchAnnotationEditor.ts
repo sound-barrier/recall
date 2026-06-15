@@ -256,7 +256,9 @@ const tagSuggestions = computed<string[]>(() => {
   ])
   const pool = universe.filter(t => !exclude.has(t))
   if (!q) return pool
-  return pool.filter(t => t.includes(q))
+  // Prefix match (consistent with the map/hero pickers): "sto" surfaces
+  // "stomp", "tom" doesn't.
+  return pool.filter(t => t.startsWith(q))
 })
 
 watch(tagSuggestions, () => {

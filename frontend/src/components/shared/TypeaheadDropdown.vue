@@ -68,7 +68,10 @@ const listEl  = ref<HTMLUListElement | null>(null)
 const filteredOptions = computed(() => {
   const q = search.value.trim().toLowerCase()
   if (!q) return props.options
-  return props.options.filter((opt) => opt.toLowerCase().includes(q))
+  // Prefix match, not substring: typing "an" surfaces "ana", not "busan".
+  // Users scan these pickers alphabetically, so first-letter matching is what
+  // they expect (and what the tag autocomplete does too).
+  return props.options.filter((opt) => opt.toLowerCase().startsWith(q))
 })
 
 const effectivePlaceholder = computed(() => {
