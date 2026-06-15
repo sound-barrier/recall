@@ -48,6 +48,13 @@ type Fixture struct {
 	// pointing at real seeded match_keys so the resolver UI has
 	// realistic ties to disambiguate.
 	Ambiguous []AmbiguousSeed
+	// UserData seeds the user-override layer so a seeded profile exercises
+	// all three provenance states: an edited OCR match (override row over an
+	// existing screenshot-backed key → ocr_edited) and hand-entered matches
+	// (override row whose key has no screenshot row → manual). The seed tool
+	// inserts each via Store.UpsertUserMatchData; manual keys also get
+	// Queue / PlayMode seeds so they read like real matches.
+	UserData []db.UserMatchData
 }
 
 // ReviewSeed pairs a match_key with the reviewer kind ("self" or
@@ -222,6 +229,7 @@ func GenerateMatchFixture(n int, seed int64, style string) Fixture {
 	fx.appendQueueAndPlayModeSeeds(summaryQueueTypes, summaryPlayModes)
 	fx.appendUnknownScreenshots(seed, n, rangeStart, dayWeights, totalDayW)
 	fx.appendAmbiguousScreenshots(seed, n, rangeStart, dayWeights, totalDayW)
+	fx.appendUserMatchVariants(seed)
 
 	return fx
 }

@@ -415,8 +415,20 @@ func TestGenerateMatchFixture_PlayModeDistribution(t *testing.T) {
 	// PlayModes are tagged per-summary; with ~95% summary dice rolls
 	// the tagged count tracks the summary count, not n. Allow a wide
 	// band so per-seed variance doesn't flake.
-	if len(fx.PlayModes) < n*90/100 || len(fx.PlayModes) > n {
-		t.Fatalf("expected ~95%% of matches to be play-mode-tagged (got %d/%d)", len(fx.PlayModes), n)
+	// Manual matches add play-mode seeds on fresh (non-summary) keys; count
+	// only the OCR-backed ones against the summary rate.
+	ocrKeys := make(map[string]bool, len(fx.Summaries))
+	for _, s := range fx.Summaries {
+		ocrKeys[s.MatchKey] = true
+	}
+	ocrPlayModes := 0
+	for _, pm := range fx.PlayModes {
+		if ocrKeys[pm.MatchKey] {
+			ocrPlayModes++
+		}
+	}
+	if ocrPlayModes < n*90/100 || ocrPlayModes > n {
+		t.Fatalf("expected ~95%% of OCR matches to be play-mode-tagged (got %d/%d)", ocrPlayModes, n)
 	}
 
 	comp, qp := 0, 0
@@ -440,10 +452,14 @@ func TestGenerateMatchFixture_PlayModeDistribution(t *testing.T) {
 		t.Errorf("quickplay rate %.2f%% outside [5%%, 15%%]", float64(qp)*100/float64(total))
 	}
 
-	// Every play-mode entry must reference a real match_key.
-	keys := make(map[string]bool, len(fx.Summaries))
+	// Every play-mode entry must reference a real match_key — an OCR summary
+	// OR a hand-entered (manual) match in the user-data layer.
+	keys := make(map[string]bool, len(fx.Summaries)+len(fx.UserData))
 	for _, s := range fx.Summaries {
 		keys[s.MatchKey] = true
+	}
+	for _, ud := range fx.UserData {
+		keys[ud.MatchKey] = true
 	}
 	for _, p := range fx.PlayModes {
 		if !keys[p.MatchKey] {
@@ -506,10 +522,22 @@ func TestGenerateMatchFixture_QueueDistribution(t *testing.T) {
 	const n = 10000
 	fx := fixtures.GenerateMatchFixture(n, 1, "")
 
-	// Queues are tagged per-summary; with ~95% summary dice rolls
-	// the tagged count tracks the summary count, not n.
-	if len(fx.Queues) < n*90/100 || len(fx.Queues) > n {
-		t.Fatalf("expected ~95%% of matches to be queue-tagged (got %d/%d)", len(fx.Queues), n)
+	// Queues are tagged per-summary; with ~95% summary dice rolls the tagged
+	// count tracks the summary count, not n. Manual matches add their own
+	// queue seeds on fresh (non-summary) keys, so count only the OCR-backed
+	// ones here.
+	ocrKeys := make(map[string]bool, len(fx.Summaries))
+	for _, s := range fx.Summaries {
+		ocrKeys[s.MatchKey] = true
+	}
+	ocrQueues := 0
+	for _, q := range fx.Queues {
+		if ocrKeys[q.MatchKey] {
+			ocrQueues++
+		}
+	}
+	if ocrQueues < n*90/100 || ocrQueues > n {
+		t.Fatalf("expected ~95%% of OCR matches to be queue-tagged (got %d/%d)", ocrQueues, n)
 	}
 
 	role, open := 0, 0
@@ -531,10 +559,14 @@ func TestGenerateMatchFixture_QueueDistribution(t *testing.T) {
 		t.Errorf("open-queue rate %.2f%% outside [15%%, 25%%]", float64(open)*100/float64(total))
 	}
 
-	// Every queue must reference a real match_key.
-	keys := make(map[string]bool, len(fx.Summaries))
+	// Every queue must reference a real match_key — an OCR summary OR a
+	// hand-entered (manual) match in the user-data layer.
+	keys := make(map[string]bool, len(fx.Summaries)+len(fx.UserData))
 	for _, s := range fx.Summaries {
 		keys[s.MatchKey] = true
+	}
+	for _, ud := range fx.UserData {
+		keys[ud.MatchKey] = true
 	}
 	for _, q := range fx.Queues {
 		if !keys[q.MatchKey] {

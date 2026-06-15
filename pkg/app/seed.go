@@ -158,6 +158,11 @@ func writeFixture(store db.Store, fx fixtures.Fixture) error {
 			return fmt.Errorf("ApplyAmbiguity(%s): %w", a.Filename, err)
 		}
 	}
+	for _, ud := range fx.UserData {
+		if err := store.UpsertUserMatchData(ud); err != nil {
+			return fmt.Errorf("UpsertUserMatchData(%s): %w", ud.MatchKey, err)
+		}
+	}
 	return nil
 }
 
