@@ -131,10 +131,13 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
       finds nothing — `parsePersonalStatCell` now recovers it from the clean
       AVG line (value = avg × play/10) instead of dropping the cell (Charge
       Kill, Rip-Tire Kill, Immortality Field Death Prevented, Fire Strike
-      Kills). The two long labels the OCR mangled (`RIP-TIRE KILL` →
-      `tire_kill`, `EARTHSHATTER KILLS` → `earthshatiter_kills`) snap back to
-      canonical via `SnapHeroStatKey` against the seeded `hero_stats.yaml`
-      rosters for baptiste / junkrat / reinhardt.
+      Kills). Label cleanup: the boundary trim cuts only 1-2 char icon noise
+      (the long "NEW CAREER BEST!" badge is skipped separately), so 3-char
+      abbreviation prefixes survive — `OBJ CONTEST TIME` → `obj_contest_time`,
+      `RIP-TIRE KILL` → `rip_tire_kill`. Font-mangled labels still snap to
+      canonical via `SnapHeroStatKey` (`earthshatiter_kills` →
+      `earthshatter_kills`) against the seeded `hero_stats.yaml` rosters for
+      baptiste / junkrat / reinhardt.
 
 ## Privacy / licensing
 

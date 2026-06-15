@@ -72,6 +72,35 @@ func TestParsePersonalStatCell_RecoversLetterMangledValueFromAvg(t *testing.T) {
 	}
 }
 
+// Two PERSONAL label-scan fixes: the boundary trim keeps 3-char abbreviation
+// prefixes (cutting only 1-2 char icon noise) so "OBJ CONTEST TIME" keeps its
+// OBJ, and the long "NEW CAREER BEST!" badge is skipped so it can't outscore a
+// shorter real label like "CHARGE KILL".
+func TestParsePersonalStatCell_KeepsAbbrevPrefixAndSkipsCareerBestBadge(t *testing.T) {
+	cases := []struct {
+		name, text string
+		playMin    float64
+		wantKey    string
+	}{
+		{
+			"OBJ prefix survives the boundary trim",
+			"00:00\nOBJ CONTEST TIME\nAVG PER 10 MIN: 0.00",
+			1.53, "obj_contest_time",
+		},
+		{
+			"NEW CAREER BEST badge doesn't outscore a shorter real label",
+			"T\nCHARGE KILL\nAVG PER 10 MIN: 6.46\nNEW CAREER BEST!",
+			1.53, "charge_kill",
+		},
+	}
+	for _, c := range cases {
+		key, _, ok := parser.ParsePersonalStatCell(c.text, c.playMin)
+		if !ok || key != c.wantKey {
+			t.Errorf("%s: got key=%q ok=%v, want %q", c.name, key, ok, c.wantKey)
+		}
+	}
+}
+
 // The crossed-swords ELIMINATIONS icon OCRs as a stray "4" right before the
 // label; the real "9" sits just before it. Segmenting per stat + taking the
 // max picks 9 without letting the assists "19" shadow the deaths "6".

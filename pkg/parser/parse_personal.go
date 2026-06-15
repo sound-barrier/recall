@@ -219,7 +219,14 @@ func parsePersonalStatCell(text string, playMinutes float64) (string, int, bool)
 	}
 	var label string
 	for line := range strings.SplitSeq(text, "\n") {
-		if strings.Contains(strings.ToUpper(line), "AVG") {
+		upper := strings.ToUpper(line)
+		// Skip the AVG line and the green "NEW CAREER BEST!" badge. The badge
+		// is a long uppercase phrase that otherwise outscores the real stat
+		// label in the longest-wins pick — it's the reason trimShortBoundaryWords
+		// had to clip 3-char prefixes (its "NEW"), which also clipped legit ones
+		// (OBJ CONTEST TIME, RIP-TIRE KILL). Dropping it here lets that trim keep
+		// 3-char words. No stat label contains "CAREER".
+		if strings.Contains(upper, "AVG") || strings.Contains(upper, "CAREER") {
 			continue
 		}
 		for _, m := range personalLabelRe.FindAllString(line, -1) {
