@@ -9,9 +9,11 @@
         "percent_played": 51,
         "play_time": "03:54",
         "stats": {
+          "amplification_matrix_assist": 1,
           "critical_hit_accuracy": 11,
           "damage_amplified": 98,
           "healing_accuracy": 66,
+          "immortality_field_death_prevented": 1,
           "player_saved": 1,
           "weapon_accuracy": 24
         }

@@ -205,6 +205,14 @@ func parsePersonalStatCell(text string, playMinutes float64) (string, int, bool)
 			}
 		}
 		val = pickStatValue(text, expected)
+		// Last resort: a small value (0/1) sitting next to the card icon often
+		// OCRs as a letter ("0"→"O", "1"→"T"), leaving no digit for
+		// pickStatValue. When the cell still has a clean AVG line, recover the
+		// value from it — value = avg × play/10, rounded — rather than dropping
+		// the whole stat cell. The label is read fine; only the lone digit isn't.
+		if val < 0 && expected >= 0 {
+			val = int(math.Round(expected))
+		}
 	}
 	if val < 0 {
 		return "", 0, false

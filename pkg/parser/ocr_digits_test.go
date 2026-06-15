@@ -40,6 +40,38 @@ func TestParsePersonalStatCell_CommaGroupedNumber(t *testing.T) {
 	}
 }
 
+// A small stat value (0/1) next to the card icon OCRs as a letter ("1"→"T",
+// "0"→"O"), so no digit survives the value scan and the whole cell used to be
+// dropped. With a clean "AVG PER 10 MIN" line the value is recovered from
+// avg × play/10 (rounded). Real OCR text from the openqueue reinhardt PERSONAL.
+func TestParsePersonalStatCell_RecoversLetterMangledValueFromAvg(t *testing.T) {
+	cases := []struct {
+		name    string
+		text    string
+		playMin float64
+		wantKey string
+		wantVal int
+	}{
+		{
+			"value 1 mis-read as T, recovered from avg 6.46",
+			"T\nCHARGE KILL\nAVG PER 10 MIN: 6.46",
+			1.53, "charge_kill", 1,
+		},
+		{
+			"value 0 (no digit survives) recovered from avg 0.00",
+			"FIRE STRIKE KILLS\nAVG PER 10 MIN: 0.00",
+			1.53, "fire_strike_kills", 0,
+		},
+	}
+	for _, c := range cases {
+		key, val, ok := parser.ParsePersonalStatCell(c.text, c.playMin)
+		if !ok || key != c.wantKey || val != c.wantVal {
+			t.Errorf("%s:\n  got  (%q, %d, %v)\n  want (%q, %d, true)",
+				c.name, key, val, ok, c.wantKey, c.wantVal)
+		}
+	}
+}
+
 // The crossed-swords ELIMINATIONS icon OCRs as a stray "4" right before the
 // label; the real "9" sits just before it. Segmenting per stat + taking the
 // max picks 9 without letting the assists "19" shadow the deaths "6".
