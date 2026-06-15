@@ -19,6 +19,7 @@ import {
 } from '@/match/match-label-helpers'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 import HighlightedText from '@/components/matches/HighlightedText.vue'
+import MatchProvenanceBadge from '@/components/matches/MatchProvenanceBadge.vue'
 
 // One <tr> in the data-density match table. Carries the SAME props +
 // emits as MatchLeafRow so MatchesView wires every interaction (click →
@@ -123,6 +124,7 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
       <span class="tc-stat tc-deaths">{{ rec.data?.deaths ?? '—' }}</span>
     </td>
     <td class="tc tc-tags">
+      <MatchProvenanceBadge :source="rec.source" :edited-fields="rec.edited_fields" compact />
       <span
         v-if="rec.annotation?.leaver"
         class="tc-leaver"

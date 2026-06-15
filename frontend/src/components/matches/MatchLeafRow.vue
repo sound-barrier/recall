@@ -18,6 +18,7 @@ import {
 } from '@/match/match-label-helpers'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 import HighlightedText from '@/components/matches/HighlightedText.vue'
+import MatchProvenanceBadge from '@/components/matches/MatchProvenanceBadge.vue'
 
 // One compact match row in the set's members list. Click opens the
 // detail panel; the row carries data-match-key / data-card-index /
@@ -166,8 +167,9 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
       <span class="stat-num stat-deaths">{{ rec.data?.deaths ?? '—' }}</span>
     </div>
 
-    <!-- 6. Annotations — leaver + tags. Empty when none. -->
+    <!-- 6. Annotations — provenance + leaver + tags. Empty when none. -->
     <div class="leaf-meta-block">
+      <MatchProvenanceBadge :source="rec.source" :edited-fields="rec.edited_fields" compact />
       <span v-if="rec.annotation?.leaver" class="leaf-leaver" :title="`Leaver: ${rec.annotation.leaver}`">L</span>
       <span
         v-for="t in rec.annotation?.tags ?? []"

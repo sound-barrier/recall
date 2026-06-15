@@ -6,6 +6,7 @@ import { useOWData } from '@/composables/shared/useOWData'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useSmoothScroll } from '@/composables/matches/useSmoothScroll'
 import MatchCardExpanded from '@/components/matches/MatchCardExpanded.vue'
+import MatchProvenanceBadge from '@/components/matches/MatchProvenanceBadge.vue'
 
 // Detail panel — slides in from the right when a match is selected.
 // Replaces the previous
@@ -268,6 +269,7 @@ function onBackdropClick(e: MouseEvent) {
             <span id="detail-panel-title" class="detail-title-map">{{ mapDisplay }}</span>
             <span class="detail-title-sep" aria-hidden="true">·</span>
             <span class="detail-title-result">{{ record.data?.result || 'unknown' }}</span>
+            <MatchProvenanceBadge :source="record.source" :edited-fields="record.edited_fields" />
           </div>
 
           <div class="detail-toolbar-nav" role="group" aria-label="Match navigation">
