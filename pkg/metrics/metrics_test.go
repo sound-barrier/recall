@@ -168,7 +168,7 @@ func TestCollector_FilterIsCompetitiveOnly(t *testing.T) {
 	// Belt-and-suspenders: the labels confirm we're filtering on playlist,
 	// not on something coincidental. Every emitted eliminations sample
 	// carries playlist="competitive".
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if !strings.HasPrefix(line, "recall_match_eliminations{") {
 			continue
 		}
@@ -210,7 +210,7 @@ func TestCollector_LabelNewlineDoesNotBreakExposition(t *testing.T) {
 		t.Errorf("raw newline leaked into a label value — exposition format is injectable:\n%s", out)
 	}
 	// No line may parse as the injected pseudo-metric.
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if strings.HasPrefix(strings.TrimSpace(line), "injected_metric") {
 			t.Errorf("injected pseudo-metric appeared as its own line: %q", line)
 		}

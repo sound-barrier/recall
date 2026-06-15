@@ -256,7 +256,7 @@ func fixtureDayWeights(rng *rand.Rand, totalDays int) ([]float64, float64) {
 // unique (collisions are vanishingly rare at the scale we use).
 func planMatchTimestamps(rng *rand.Rand, rangeStart time.Time, dayWeights []float64, totalDayW float64, n int) []time.Time {
 	planned := make([]time.Time, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		dayIdx := sampleWeightedIndex(rng, dayWeights, totalDayW)
 		day := rangeStart.AddDate(0, 0, dayIdx)
 		h := pickWeightedHour(rng)

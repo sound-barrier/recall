@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -191,13 +192,7 @@ func TestExportBundle_IncludeUnknownAddsUnknownMatches(t *testing.T) {
 		"screenshots/s2.png", // unknown match included via the toggle
 	}
 	for _, w := range wantContains {
-		found := false
-		for _, n := range names {
-			if n == w {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(names, w)
 		if !found {
 			t.Errorf("bundle missing %q; have %v", w, names)
 		}

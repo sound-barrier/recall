@@ -21,6 +21,7 @@ linters:
     - revive
     - exhaustive
     - dupword
+    - modernize
   settings:
     errcheck:
       exclude-functions:
@@ -46,6 +47,15 @@ linters:
         - name: unused-parameter
           disabled: true
   exclusions:
+    rules:
+      # staticcheck SA5011 doesn't treat testing.T.Fatal as terminal, so the
+      # idiomatic `if x == nil { t.Fatal() }; x.Field` guard reads as a possible
+      # nil deref. The guard is the norm in tests (a real nil there panics the
+      # test immediately), so exclude SA5011 in *_test.go only.
+      - linters:
+          - staticcheck
+        path: _test\.go
+        text: SA5011
     paths:
       - frontend/node_modules
 

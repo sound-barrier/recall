@@ -109,7 +109,7 @@ func TestSSEHub_SlowConsumer_DropsRatherThanBlocking(t *testing.T) {
 	const N = 100
 	done := make(chan struct{})
 	go func() {
-		for i := 0; i < N; i++ {
+		for range N {
 			h.Broadcast("tick")
 		}
 		close(done)
@@ -142,11 +142,11 @@ func TestSSEHub_Subscribe_IsConcurrencySafe(t *testing.T) {
 	// `go test -race` catches missing locks here.
 	h := app.NewSSEHub()
 	done := make(chan struct{})
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		go func() {
 			ch := h.Subscribe()
 			defer h.Unsubscribe(ch)
-			for j := 0; j < 50; j++ {
+			for range 50 {
 				h.Broadcast("concurrent-event")
 				// Drain to keep the slow-consumer branch quiet.
 				select {
@@ -157,7 +157,7 @@ func TestSSEHub_Subscribe_IsConcurrencySafe(t *testing.T) {
 			done <- struct{}{}
 		}()
 	}
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		select {
 		case <-done:
 		case <-time.After(3 * time.Second):

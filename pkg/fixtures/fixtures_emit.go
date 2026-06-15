@@ -205,7 +205,7 @@ func (fx *Fixture) appendUnknownScreenshots(seed int64, n int, rangeStart time.T
 	// #nosec G404 -- deterministic dev fixture, not security-sensitive
 	unknownRng := rand.New(rand.NewSource(seed + 5))
 	unknownCount := n * 2 / 100
-	for i := 0; i < unknownCount; i++ {
+	for range unknownCount {
 		dayIdx := sampleWeightedIndex(unknownRng, dayWeights, totalDayW)
 		day := rangeStart.AddDate(0, 0, dayIdx)
 		h := pickWeightedHour(unknownRng)
@@ -237,7 +237,7 @@ func (fx *Fixture) appendAmbiguousScreenshots(seed int64, n int, rangeStart time
 		return
 	}
 	ambiguousCount := n / 100
-	for i := 0; i < ambiguousCount; i++ {
+	for range ambiguousCount {
 		dayIdx := sampleWeightedIndex(ambigRng, dayWeights, totalDayW)
 		day := rangeStart.AddDate(0, 0, dayIdx)
 		h := pickWeightedHour(ambigRng)

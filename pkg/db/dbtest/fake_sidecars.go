@@ -1,6 +1,7 @@
 package dbtest
 
 import (
+	"maps"
 	"time"
 
 	"recall/pkg/db"
@@ -27,9 +28,7 @@ func (f *Fake) LoadAnnotations() (map[string]db.Annotation, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := make(map[string]db.Annotation, len(f.Annotations))
-	for k, v := range f.Annotations {
-		out[k] = v
-	}
+	maps.Copy(out, f.Annotations)
 	return out, nil
 }
 
@@ -81,9 +80,7 @@ func (f *Fake) LoadReviews() (map[string]db.ReviewState, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := make(map[string]db.ReviewState, len(f.Reviews))
-	for k, v := range f.Reviews {
-		out[k] = v
-	}
+	maps.Copy(out, f.Reviews)
 	return out, nil
 }
 
@@ -128,9 +125,7 @@ func (f *Fake) LoadMatchQueues() (map[string]db.QueueState, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := make(map[string]db.QueueState, len(f.Queues))
-	for k, v := range f.Queues {
-		out[k] = v
-	}
+	maps.Copy(out, f.Queues)
 	return out, nil
 }
 
@@ -175,9 +170,7 @@ func (f *Fake) LoadMatchPlayModes() (map[string]db.PlayModeState, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := make(map[string]db.PlayModeState, len(f.PlayModes))
-	for k, v := range f.PlayModes {
-		out[k] = v
-	}
+	maps.Copy(out, f.PlayModes)
 	return out, nil
 }
 
@@ -185,8 +178,6 @@ func (f *Fake) LoadHiddenKeys() (map[string]bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := make(map[string]bool, len(f.Hidden))
-	for k, v := range f.Hidden {
-		out[k] = v
-	}
+	maps.Copy(out, f.Hidden)
 	return out, nil
 }

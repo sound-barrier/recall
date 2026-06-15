@@ -43,7 +43,7 @@ func TestChaos_FullRatioMutatesMostRows(t *testing.T) {
 	}
 
 	mutated := 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		s := fx.Summaries[i]
 		if hasChaosSignature(s) || !seenPlayMode[s.MatchKey] || !seenQueue[s.MatchKey] {
 			mutated++
@@ -67,7 +67,7 @@ func TestChaos_AggregationConflictAddsRows(t *testing.T) {
 	// Every appended extra must share its match_key with an original
 	// summary (that's the whole point — same key, different content).
 	originalKeys := make(map[string]bool, 200)
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		originalKeys[fx.Summaries[i].MatchKey] = true
 	}
 	for i := 200; i < len(fx.Summaries); i++ {
@@ -91,7 +91,7 @@ func TestChaos_MissingPlayModeProducesEmptyModeAndDroppedSeed(t *testing.T) {
 	}
 
 	emptyModeWithoutSeed := 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		s := fx.Summaries[i]
 		if s.Playlist == "" && !playModeKeys[s.MatchKey] {
 			emptyModeWithoutSeed++
@@ -113,7 +113,7 @@ func TestChaos_MissingQueueTypeDropsSeed(t *testing.T) {
 	}
 
 	withoutQueueSeed := 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if !queueKeys[fx.Summaries[i].MatchKey] {
 			withoutQueueSeed++
 		}
