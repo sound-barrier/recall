@@ -50,6 +50,8 @@ import {
   ClearIgnoredScreenshots,
   GetIgnoredScreenshots,
   SetMatchAnnotation,
+  UpdateMatchData,
+  ResetMatchData,
   SetMatchVisibility,
   BulkSetMatchPlayMode,
   BulkSetMatchQueue,
@@ -61,7 +63,7 @@ import {
   SeedTestProfile,
   SwitchProfile,
 } from '@/api'
-import type { IgnoredScreenshot, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from '@/api'
+import type { IgnoredScreenshot, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api'
 import { plainLanguageError } from '@/error-helpers'
 import { screenshotURL } from '@/match/match-helpers'
 import { tallyWLD } from '@/match/match-stats-helpers'
@@ -828,6 +830,28 @@ async function onSetLeaverAnnotation(matchKey: string, leaver: '' | 'self' | 'te
 async function onSetMatchAnnotation(matchKey: string, input: MatchAnnotationInput) {
   try {
     await SetMatchAnnotation(matchKey, input)
+    await load()
+  } catch (e) {
+    setErrorFromRaw(String(e))
+  }
+}
+
+// Inline match-data edit: persist the full override set, then reload so the
+// re-aggregated record (with edited_fields + the ocr_edited badge) renders.
+async function onUpdateMatchData(matchKey: string, overrides: UserMatchDataInput) {
+  try {
+    await UpdateMatchData(matchKey, overrides)
+    await load()
+  } catch (e) {
+    setErrorFromRaw(String(e))
+  }
+}
+
+// Reset a match to pure OCR — clears every override, reverting to the scanned
+// values.
+async function onResetMatchData(matchKey: string) {
+  try {
+    await ResetMatchData(matchKey)
     await load()
   } catch (e) {
     setErrorFromRaw(String(e))
@@ -2100,6 +2124,8 @@ useEventStream({
       @filter-toggle="toggleFilter"
       @set-leaver-annotation="onSetLeaverAnnotation"
       @set-match-annotation="onSetMatchAnnotation"
+      @update-match-data="onUpdateMatchData"
+      @reset-match-data="onResetMatchData"
       @set-match-hidden="onSetMatchHidden"
       @set-match-review="onSetMatchReview"
       @set-match-queue="onSetMatchQueue"
