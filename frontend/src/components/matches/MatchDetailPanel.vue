@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, toRef, onMounted, onBeforeUnmount } from 'vue'
-import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from '@/api'
+import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api'
 import type { SearchClause } from '@/match/search-query'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
@@ -82,6 +82,10 @@ const emit = defineEmits<{
   // User flipped the "Set as 'since' anchor" toggle. Empty string
   // means "clear the anchor."
   'set-anchor':            [matchKey: string]
+  // User edited a match-data field inline; carries the full override set.
+  'update-match-data':     [matchKey: string, overrides: UserMatchDataInput]
+  // User clicked "Reset to OCR" to discard every edit on this match.
+  'reset-match-data':      [matchKey: string]
 }>()
 
 const ow = useOWData()
@@ -270,6 +274,15 @@ function onBackdropClick(e: MouseEvent) {
             <span class="detail-title-sep" aria-hidden="true">·</span>
             <span class="detail-title-result">{{ record.data?.result || 'unknown' }}</span>
             <MatchProvenanceBadge :source="record.source" :edited-fields="record.edited_fields" />
+            <button
+              v-if="record.source === 'ocr_edited'"
+              type="button"
+              class="detail-reset-btn"
+              title="Discard every edit and restore the scanned (OCR) values"
+              @click="emit('reset-match-data', record.match_key)"
+            >
+              Reset to OCR
+            </button>
           </div>
 
           <div class="detail-toolbar-nav" role="group" aria-label="Match navigation">
@@ -337,6 +350,8 @@ function onBackdropClick(e: MouseEvent) {
             @set-match-queue="(k: string, q: QueueType) => emit('set-match-queue', k, q)"
             @set-match-play-mode="(k: string, m: PlayMode) => emit('set-match-play-mode', k, m)"
             @set-anchor="(k: string) => emit('set-anchor', k)"
+            @update-match-data="(k: string, o: UserMatchDataInput) => emit('update-match-data', k, o)"
+            @reset-match-data="(k: string) => emit('reset-match-data', k)"
           />
         </div>
       </aside>
@@ -497,6 +512,32 @@ function onBackdropClick(e: MouseEvent) {
 .detail-panel.result-victory .detail-title-result { color: var(--win); }
 .detail-panel.result-defeat  .detail-title-result { color: var(--loss); }
 .detail-panel.result-draw    .detail-title-result { color: var(--draw); }
+
+/* "Reset to OCR" — only shown on an edited match. Small accent-outlined
+   text button beside the provenance badge. */
+.detail-reset-btn {
+  appearance: none;
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent-soft);
+  border-radius: 2px;
+  padding: 0.16rem 0.4rem;
+  cursor: pointer;
+}
+
+.detail-reset-btn:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.detail-reset-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 .detail-toolbar-nav {
   display: inline-flex;

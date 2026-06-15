@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy } from '@/api'
+import type { MatchRecord, MatchAnnotationInput, PlayMode, QueueType, ReviewedBy, UserMatchDataInput } from '@/api'
 import { isHeroUnknown, isMapUnknown } from '@/match/match-helpers'
 import { formatParsedAt, fmtTime } from '@/match/match-time-helpers'
 import { type SearchClause } from '@/match/search-query'
@@ -11,6 +11,8 @@ import MatchLeaverChooser from '@/components/matches/MatchLeaverChooser.vue'
 import MatchSources from '@/components/matches/MatchSources.vue'
 import MatchRankBlock from '@/components/matches/MatchRankBlock.vue'
 import MatchStatusChoosers from '@/components/matches/MatchStatusChoosers.vue'
+import EditableStat from '@/components/matches/EditableStat.vue'
+import { withScalarEdit, withoutField, isEmptyOverrideSet, isFieldEdited, scalarPath, type ScalarField } from '@/match/match-overrides'
 
 // Expanded match-card body: leaver chooser → free-text annotation
 // (Note / Replay / Group members) → stats grid → rank block →
@@ -98,6 +100,12 @@ const emit = defineEmits<{
   // Tells the parent the one-shot focus target has been applied so
   // it can clear its pending-focus state.
   'focus-consumed':        []
+  // User edited a match-data field inline (combat stat, etc.). Carries the
+  // FULL override set to PUT (UpdateMatchData replaces the set wholesale).
+  // App.vue calls UpdateMatchData + reloads.
+  'update-match-data':     [matchKey: string, overrides: UserMatchDataInput]
+  // User reset the whole match back to OCR (clears every override).
+  'reset-match-data':      [matchKey: string]
 }>()
 
 // Drives the inline banner above the chooser block. Either is
@@ -125,6 +133,22 @@ onMounted(() => {
   }
 })
 
+// Inline-edit a combat scalar: resend the full override set (with this field
+// added/replaced), or drop it on revert. The parent persists + reloads.
+function editScalar(field: ScalarField, value: number | string) {
+  emit('update-match-data', props.record.match_key, withScalarEdit(props.record, field, value))
+}
+function revertScalar(field: ScalarField) {
+  const set = withoutField(props.record, scalarPath(field))
+  // Reverting the last override empties the set — reset to OCR rather than
+  // persisting an empty row that would still read as "edited".
+  if (isEmptyOverrideSet(set)) {
+    emit('reset-match-data', props.record.match_key)
+  } else {
+    emit('update-match-data', props.record.match_key, set)
+  }
+}
+const thousands = (v: number | string) => Number(v).toLocaleString()
 </script>
 
 <template>
@@ -203,30 +227,51 @@ onMounted(() => {
         Match Stats
       </div>
       <div class="stats">
-        <div class="stat">
-          <span class="stat-value">{{ record.data?.eliminations ?? '—' }}</span>
-          <span class="stat-label">Elims</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value">{{ record.data?.assists ?? '—' }}</span>
-          <span class="stat-label">Assists</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value">{{ record.data?.deaths ?? '—' }}</span>
-          <span class="stat-label">Deaths</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value">{{ record.data?.damage != null ? record.data.damage.toLocaleString() : '—' }}</span>
-          <span class="stat-label">Damage</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value">{{ record.data?.healing != null ? record.data.healing.toLocaleString() : '—' }}</span>
-          <span class="stat-label">Healing</span>
-        </div>
-        <div class="stat">
-          <span class="stat-value">{{ record.data?.mitigation != null ? record.data.mitigation.toLocaleString() : '—' }}</span>
-          <span class="stat-label">Mitigation</span>
-        </div>
+        <EditableStat
+          label="Elims"
+          :value="record.data?.eliminations ?? null"
+          :edited="isFieldEdited(record, scalarPath('eliminations'))"
+          @commit="(v) => editScalar('eliminations', v)"
+          @revert="() => revertScalar('eliminations')"
+        />
+        <EditableStat
+          label="Assists"
+          :value="record.data?.assists ?? null"
+          :edited="isFieldEdited(record, scalarPath('assists'))"
+          @commit="(v) => editScalar('assists', v)"
+          @revert="() => revertScalar('assists')"
+        />
+        <EditableStat
+          label="Deaths"
+          :value="record.data?.deaths ?? null"
+          :edited="isFieldEdited(record, scalarPath('deaths'))"
+          @commit="(v) => editScalar('deaths', v)"
+          @revert="() => revertScalar('deaths')"
+        />
+        <EditableStat
+          label="Damage"
+          :value="record.data?.damage ?? null"
+          :format="thousands"
+          :edited="isFieldEdited(record, scalarPath('damage'))"
+          @commit="(v) => editScalar('damage', v)"
+          @revert="() => revertScalar('damage')"
+        />
+        <EditableStat
+          label="Healing"
+          :value="record.data?.healing ?? null"
+          :format="thousands"
+          :edited="isFieldEdited(record, scalarPath('healing'))"
+          @commit="(v) => editScalar('healing', v)"
+          @revert="() => revertScalar('healing')"
+        />
+        <EditableStat
+          label="Mitigation"
+          :value="record.data?.mitigation ?? null"
+          :format="thousands"
+          :edited="isFieldEdited(record, scalarPath('mitigation'))"
+          @commit="(v) => editScalar('mitigation', v)"
+          @revert="() => revertScalar('mitigation')"
+        />
       </div>
     </section>
 
