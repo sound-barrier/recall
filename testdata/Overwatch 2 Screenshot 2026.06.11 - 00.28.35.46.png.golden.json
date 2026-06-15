@@ -1,0 +1,28 @@
+{
+  "screenshot_type": "personal",
+  "result": {
+    "role": "dps",
+    "hero": "junkrat",
+    "heroes_played": [
+      {
+        "hero": "junkrat",
+        "percent_played": 29,
+        "play_time": "02:11",
+        "stats": {
+          "concussion_mine_kills": 2,
+          "direct_hit_accuracy": 13,
+          "enemies_trapped": 0,
+          "final_blows": 2,
+          "solo_kills": 0,
+          "weapon_accuracy": 31
+        }
+      },
+      {
+        "hero": "baptiste"
+      },
+      {
+        "hero": "reinhardt"
+      }
+    ]
+  }
+}
