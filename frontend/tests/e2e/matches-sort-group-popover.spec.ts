@@ -120,4 +120,43 @@ test.describe('Matches — Sort + Group dropdown', () => {
     // The trigger label reflects the new grouping.
     await expect(page.locator('[data-sort-group-trigger]')).toContainText(/by provenance/i)
   })
+
+  test('a grouped section collapses to its header and re-expands', async ({ page }) => {
+    function provRecord(key: string, source?: string) {
+      return {
+        match_key: key,
+        source_files: [`${key}.png`],
+        source_types: { [`${key}.png`]: 'summary' },
+        data: { map: 'rialto', playlist: 'competitive', game_mode: 'control', role: 'support', hero: 'lucio', result: 'victory', date: '2026-05-10', finished_at: '22:00', eliminations: 10, assists: 5, deaths: 3 },
+        parsed_at: '2026-05-10T22:30:00Z',
+        ...(source ? { source } : {}),
+      }
+    }
+    const mixed = [provRecord('man-1', 'manual'), provRecord('man-2', 'manual'), provRecord('ocr-1')]
+    await page.route('**/api/v1/matches', (route: Route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mixed) }),
+    )
+
+    await page.goto('/')
+    await page.locator('#tab-matches').click()
+    await page.locator('[data-sort-group-trigger]').click()
+    await page.locator('[data-group-pick="provenance"]').click()
+    await page.keyboard.press('Escape') // dismiss the popover to reach the list
+
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
+    const userToggle = page.locator('[data-section-toggle="manual"]')
+    await expect(userToggle).toHaveAttribute('aria-expanded', 'true')
+
+    // Collapse "User entered" → its two rows hide, the header stays, the
+    // OCR row is untouched.
+    await userToggle.click()
+    await expect(userToggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(userToggle.locator('.sd-label')).toHaveText('User entered')
+    await expect(page.locator('.leaf-row')).toHaveCount(1)
+
+    // Re-expand restores them.
+    await userToggle.click()
+    await expect(userToggle).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.locator('.leaf-row')).toHaveCount(3)
+  })
 })
