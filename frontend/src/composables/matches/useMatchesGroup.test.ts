@@ -3,13 +3,14 @@ import { ref } from 'vue'
 import type { MatchRecord } from '@/api'
 import { useMatchesGroup, type GroupBy, type SortOrder } from '@/composables/matches/useMatchesGroup'
 
-function rec(date: string, finishedAt: string, key: string): MatchRecord {
+function rec(date: string, finishedAt: string, key: string, source?: MatchRecord['source']): MatchRecord {
   return {
     match_key: key,
     source_files: [`${key}.png`],
     source_types: { [`${key}.png`]: 'summary' },
     data: { date, finished_at: finishedAt, map: 'rialto', playlist: 'competitive', hero: 'lucio' },
     parsed_at: `${date}T${finishedAt}:00Z`,
+    ...(source ? { source } : {}),
   } as unknown as MatchRecord
 }
 
@@ -189,6 +190,37 @@ describe('useMatchesGroup', () => {
       ])
       const { groupedSections } = useMatchesGroup(records, ref<GroupBy>('day'), ref<SortOrder>('oldest'))
       expect(groupedSections.value[groupedSections.value.length - 1]!.key).toBe('no-date')
+    })
+  })
+
+  describe('group by provenance', () => {
+    const mixed = [
+      rec('2026-05-10', '14:00', 'ocr-a'),
+      rec('2026-05-11', '14:00', 'edited-a', 'ocr_edited'),
+      rec('2026-05-12', '14:00', 'manual-a', 'manual'),
+      rec('2026-05-13', '14:00', 'ocr-b'),
+      rec('2026-05-14', '14:00', 'manual-b', 'manual'),
+    ]
+
+    it('buckets records into Edited, User entered, and OCR sections in that order', () => {
+      const records = ref(mixed)
+      const { groupedSections } = useMatchesGroup(records, ref<GroupBy>('provenance'), ref<SortOrder>('newest'))
+      expect(groupedSections.value.map((s) => s.header)).toEqual(['Edited', 'User entered', 'OCR generated'])
+      expect(groupedSections.value.map((s) => s.records.length)).toEqual([1, 2, 2])
+    })
+
+    it('keeps the records date-sorted within each provenance section', () => {
+      const records = ref(mixed)
+      const { groupedSections } = useMatchesGroup(records, ref<GroupBy>('provenance'), ref<SortOrder>('newest'))
+      const userEntered = groupedSections.value.find((s) => s.header === 'User entered')!
+      // newest first: manual-b (05-14) before manual-a (05-12).
+      expect(userEntered.records.map((r) => r.match_key)).toEqual(['manual-b', 'manual-a'])
+    })
+
+    it('drops empty provenance sections (no edited matches ⇒ no Edited divider)', () => {
+      const records = ref([rec('2026-05-10', '14:00', 'ocr-only')])
+      const { groupedSections } = useMatchesGroup(records, ref<GroupBy>('provenance'), ref<SortOrder>('newest'))
+      expect(groupedSections.value.map((s) => s.header)).toEqual(['OCR generated'])
     })
   })
 })

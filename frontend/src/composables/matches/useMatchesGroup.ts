@@ -1,5 +1,6 @@
 import { computed, type Ref } from 'vue'
 import type { MatchRecord } from '@/api'
+import { isEditedMatch, isManualMatch } from '@/match/match-helpers'
 
 // Sort + group-by state for the Matches workspace leaves list.
 // Extracted from MatchesView so the bucketing logic has its own
@@ -8,8 +9,18 @@ import type { MatchRecord } from '@/api'
 // that's much easier to verify in isolation than through the
 // integrated UI.
 
-export type GroupBy   = 'none' | 'day' | 'week' | 'month' | 'year'
+export type GroupBy   = 'none' | 'day' | 'week' | 'month' | 'year' | 'provenance'
 export type SortOrder = 'newest' | 'oldest'
+
+// Provenance grouping buckets in surfacing order — the user-touched
+// matches (the ones worth hunting for) lead, pure OCR trails. Mirrors
+// the data table's Edited / User-entered columns for the cozy/compact
+// list, which has no room for them.
+const PROVENANCE_SECTIONS: { key: string; header: string; match: (r: MatchRecord) => boolean }[] = [
+  { key: 'ocr_edited', header: 'Edited',        match: isEditedMatch },
+  { key: 'manual',     header: 'User entered',  match: isManualMatch },
+  { key: 'ocr',        header: 'OCR generated',  match: (r) => !isEditedMatch(r) && !isManualMatch(r) },
+]
 
 export interface GroupedSection {
   // Stable key for keyed v-for. "all" when groupBy === 'none'; the
@@ -90,6 +101,15 @@ export function useMatchesGroup(
   const groupedSections = computed<GroupedSection[]>(() => {
     if (groupBy.value === 'none') {
       return [{ key: 'all', header: null, records: sortedRecords.value }]
+    }
+    // Provenance is a categorical grouping (not date-bucketed): each
+    // section holds that source's records, still date-sorted within.
+    // Empty buckets drop out so a corpus with no edited matches doesn't
+    // show an empty "Edited" divider.
+    if (groupBy.value === 'provenance') {
+      return PROVENANCE_SECTIONS
+        .map((s) => ({ key: s.key, header: s.header, records: sortedRecords.value.filter(s.match) }))
+        .filter((s) => s.records.length > 0)
     }
     const sections: GroupedSection[] = []
     let cur: GroupedSection | null = null

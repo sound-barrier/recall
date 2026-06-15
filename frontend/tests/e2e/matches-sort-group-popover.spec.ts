@@ -93,4 +93,31 @@ test.describe('Matches — Sort + Group dropdown', () => {
     await page.mouse.click(20, 20)
     await expect(page.getByTestId('sort-group-popover')).toHaveCount(0)
   })
+
+  test('grouping by provenance buckets the list into Edited / User entered / OCR', async ({ page }) => {
+    function provRecord(key: string, source?: string) {
+      return {
+        match_key: key,
+        source_files: [`${key}.png`],
+        source_types: { [`${key}.png`]: 'summary' },
+        data: { map: 'rialto', playlist: 'competitive', game_mode: 'control', role: 'support', hero: 'lucio', result: 'victory', date: '2026-05-10', finished_at: '22:00', eliminations: 10, assists: 5, deaths: 3 },
+        parsed_at: '2026-05-10T22:30:00Z',
+        ...(source ? { source, ...(source === 'ocr_edited' ? { edited_fields: ['data.map'] } : {}) } : {}),
+      }
+    }
+    const mixed = [provRecord('p-ocr'), provRecord('p-edited', 'ocr_edited'), provRecord('p-manual', 'manual')]
+    await page.route('**/api/v1/matches', (route: Route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mixed) }),
+    )
+
+    await page.goto('/')
+    await page.locator('#tab-matches').click()
+    await page.locator('[data-sort-group-trigger]').click()
+    await page.locator('[data-group-pick="provenance"]').click()
+
+    // Three dividers, user-touched first, in the surfacing order.
+    await expect(page.locator('.section-divider .sd-label')).toHaveText(['Edited', 'User entered', 'OCR generated'])
+    // The trigger label reflects the new grouping.
+    await expect(page.locator('[data-sort-group-trigger]')).toContainText(/by provenance/i)
+  })
 })
