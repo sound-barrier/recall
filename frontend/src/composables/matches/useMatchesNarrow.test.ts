@@ -20,6 +20,7 @@ function rec(opts: {
   members?: string[]
   replay?: string
   reviewedBy?: 'self' | 'coach'
+  source?: 'ocr' | 'ocr_edited' | 'manual'
   heroesPlayed?: { hero: string; percent_played?: number; play_time?: string }[]
 } = {}): MatchRecord {
   return {
@@ -44,6 +45,7 @@ function rec(opts: {
       } }
       : {}),
     ...(opts.reviewedBy ? { reviewed_by: opts.reviewedBy } : {}),
+    ...(opts.source ? { source: opts.source } : {}),
     parsed_at: opts.parsedAt ?? `${opts.date ?? '2026-05-10'}T${opts.finishedAt ?? '14:00'}:00Z`,
   } as unknown as MatchRecord
 }
@@ -548,6 +550,73 @@ describe('useMatchesNarrow', () => {
       expect(pickedReviewedBy.value.size).toBe(2)
       resetNarrow()
       expect(pickedReviewedBy.value.size).toBe(0)
+    })
+  })
+
+  describe('provenance filter', () => {
+    function corpus() {
+      return ref([
+        rec({ key: 'ocr-1' }),
+        rec({ key: 'ocr-2' }),
+        rec({ key: 'edited-1', source: 'ocr_edited' }),
+        rec({ key: 'manual-1', source: 'manual' }),
+        rec({ key: 'manual-2', source: 'manual' }),
+      ])
+    }
+
+    it('empty picked set means no filter — every record passes', () => {
+      const records = corpus()
+      const { narrowedRecords } = useMatchesNarrow(records, createMatchesNarrowState())
+      expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(
+        ['edited-1', 'manual-1', 'manual-2', 'ocr-1', 'ocr-2'],
+      )
+    })
+
+    it('picking "ocr_edited" includes only edited records and drops pure OCR', () => {
+      const records = corpus()
+      const { narrowedRecords, pickSource } = useMatchesNarrow(records, createMatchesNarrowState())
+      pickSource('ocr_edited')
+      expect(narrowedRecords.value.map((r) => r.match_key)).toEqual(['edited-1'])
+    })
+
+    it('picking "manual" includes only hand-entered records', () => {
+      const records = corpus()
+      const { narrowedRecords, pickSource } = useMatchesNarrow(records, createMatchesNarrowState())
+      pickSource('manual')
+      expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['manual-1', 'manual-2'])
+    })
+
+    it('picking "ocr_edited" + "manual" is an OR — every touched record, no pure OCR', () => {
+      const records = corpus()
+      const { narrowedRecords, pickSource } = useMatchesNarrow(records, createMatchesNarrowState())
+      pickSource('ocr_edited')
+      pickSource('manual')
+      expect(narrowedRecords.value.map((r) => r.match_key).sort()).toEqual(['edited-1', 'manual-1', 'manual-2'])
+    })
+
+    it('a record with no source field falls back to the OCR bucket and drops out', () => {
+      const records = corpus()
+      const { narrowedRecords, pickSource } = useMatchesNarrow(records, createMatchesNarrowState())
+      pickSource('manual')
+      expect(narrowedRecords.value.some((r) => r.match_key === 'ocr-1')).toBe(false)
+    })
+
+    it('anyNarrow flips on once a provenance chip is picked', () => {
+      const records = corpus()
+      const { anyNarrow, pickSource } = useMatchesNarrow(records, createMatchesNarrowState())
+      expect(anyNarrow.value).toBe(false)
+      pickSource('manual')
+      expect(anyNarrow.value).toBe(true)
+    })
+
+    it('resetNarrow clears the provenance picks', () => {
+      const records = corpus()
+      const { pickSource, pickedSources, resetNarrow } = useMatchesNarrow(records, createMatchesNarrowState())
+      pickSource('ocr_edited')
+      pickSource('manual')
+      expect(pickedSources.value.size).toBe(2)
+      resetNarrow()
+      expect(pickedSources.value.size).toBe(0)
     })
   })
 

@@ -1,7 +1,7 @@
 import type { MatchRecord } from '@/api'
 import { formatPlayModeLabel, formatQueueTypeLabel } from '@/match/match-label-helpers'
 import type { SearchClause } from '@/match/search-query'
-import type { PlayModePick, QueuePick, ReviewedByPick } from '@/composables/matches/useMatchesNarrow'
+import type { PlayModePick, QueuePick, ReviewedByPick, SourcePick } from '@/composables/matches/useMatchesNarrow'
 
 // Per-dimension narrow predicates. Each function is ≤ 15 lines,
 // returns `true` if the record passes that dimension's gate, and is
@@ -169,6 +169,18 @@ export function matchesPlayMode(r: MatchRecord, picked: Set<PlayModePick>): bool
     label === 'Quickplay'   ? 'quickplay' :
     label === 'Competitive' ? 'competitive' :
     'unknown'
+  return picked.has(bucket)
+}
+
+// matchesSource narrows to matches whose PROVENANCE bucket is in the
+// picked set. The bucket is `r.source` falling back to 'ocr' (a pure
+// parsed match omits the field). The narrow panel exposes only the
+// 'ocr_edited' and 'manual' chips ("Edited" / "User entered"), so a
+// non-empty pick set never contains 'ocr' and pure-OCR rows drop out —
+// exactly the "show me only the matches I touched" intent.
+export function matchesSource(r: MatchRecord, picked: Set<SourcePick>): boolean {
+  if (!picked.size) return true
+  const bucket: SourcePick = r.source ?? 'ocr'
   return picked.has(bucket)
 }
 

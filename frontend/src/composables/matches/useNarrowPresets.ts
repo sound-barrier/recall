@@ -1,5 +1,5 @@
 import { ref, onMounted } from 'vue'
-import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, PresetRange } from '@/composables/matches/useMatchesNarrow'
+import type { MatchesNarrowState, ReviewedByPick, QueuePick, PlayModePick, SourcePick, PresetRange } from '@/composables/matches/useMatchesNarrow'
 import type { LeaverHandling } from '@/composables/matches/useMatchesDossier'
 
 // Saved-set / preset feature.
@@ -27,6 +27,7 @@ interface SerializedNarrow {
   pickedReviewedBy:  ReviewedByPick[]
   pickedQueues:      QueuePick[]
   pickedPlayModes:   PlayModePick[]
+  pickedSources:     SourcePick[]
   pickedRange:       PresetRange
   customFrom:        string
   customTo:          string
@@ -55,6 +56,7 @@ function serialize(state: MatchesNarrowState): SerializedNarrow {
     pickedReviewedBy:  [...state.pickedReviewedBy.value],
     pickedQueues:      [...state.pickedQueues.value],
     pickedPlayModes:   [...state.pickedPlayModes.value],
+    pickedSources:     [...state.pickedSources.value],
     pickedRange:       state.pickedRange.value,
     customFrom:        state.customFrom.value,
     customTo:          state.customTo.value,
@@ -78,6 +80,7 @@ function apply(state: MatchesNarrowState, s: SerializedNarrow): void {
   state.pickedReviewedBy.value  = new Set(s.pickedReviewedBy)
   state.pickedQueues.value      = new Set(s.pickedQueues)
   state.pickedPlayModes.value   = new Set(s.pickedPlayModes)
+  state.pickedSources.value     = new Set(s.pickedSources ?? [])
   state.pickedRange.value       = s.pickedRange
   state.customFrom.value        = s.customFrom
   state.customTo.value          = s.customTo

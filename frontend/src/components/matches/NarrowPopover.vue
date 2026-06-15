@@ -64,11 +64,11 @@ const emit = defineEmits<{
 const {
   searchText,
   pickedMaps, pickedGameModes, pickedHeroes, pickedRoles, pickedResults, pickedTags, pickedMembers, pickedReviewedBy,
-  pickedQueues, pickedPlayModes,
+  pickedQueues, pickedPlayModes, pickedSources,
   pickedRange, customFrom, customTo,
   leaverHandling, minPlayMinutes, minPlayPercent, includeUnknown,
   anchorKey, sinceAnchorActive,
-  pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickRange,
+  pickMap, pickGameMode, pickHero, pickRole, pickResult, pickTag, pickMember, pickReviewedBy, pickQueue, pickPlayMode, pickSource, pickRange,
   resetNarrow,
   activeClauseCount, anyNarrow,
   availableMaps, availableGameModes, availableHeroes, availableRoles, availableResults, availableTags, availableMembers,
@@ -129,6 +129,7 @@ const focusTrapOpen = computed(() => !isRail.value && isOpen.value)
 useModalFocusTrap(focusTrapOpen, {
   containerSelector: '.left-panel',
   onClose: () => { isOpen.value = false },
+  keepOpenOnFieldEscape: true,
 })
 
 function onDocumentMousedown(e: MouseEvent) {
@@ -568,6 +569,37 @@ onUnmounted(() => {
                     @click="pickReviewedBy('unreviewed')"
                   >
                     Unreviewed
+                  </button>
+                </div>
+              </section>
+
+              <!-- Provenance — narrow to records the user touched.
+                   Empty = any source. "Edited" = parsed then
+                   corrected; "User entered" = hand-logged, no
+                   screenshots. Picking either drops pure-OCR rows. -->
+              <section class="np-section">
+                <div class="np-section-head">
+                  <span class="np-section-eyebrow">Provenance</span>
+                  <span class="np-section-meta">
+                    {{ pickedSources.size === 0 ? 'any' : `${pickedSources.size} selected` }}
+                  </span>
+                </div>
+                <div class="np-chips">
+                  <button
+                    class="np-chip"
+                    :class="{ picked: pickedSources.has('ocr_edited') }"
+                    data-source="ocr_edited"
+                    @click="pickSource('ocr_edited')"
+                  >
+                    Edited
+                  </button>
+                  <button
+                    class="np-chip"
+                    :class="{ picked: pickedSources.has('manual') }"
+                    data-source="manual"
+                    @click="pickSource('manual')"
+                  >
+                    User entered
                   </button>
                 </div>
               </section>
