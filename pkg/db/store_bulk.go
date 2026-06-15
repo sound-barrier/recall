@@ -138,5 +138,14 @@ func (s *SQLStore) Clear() error {
 			return err
 		}
 	}
+	// Re-seed the default screenshots-dir sentinel (id=1) that schema.sql
+	// creates. Every parent table defaults screenshots_dir_id to 1, so wiping
+	// the row above would FK-fail the very next insert — e.g. a forced
+	// re-seed (`make seed-dev FORCE=1`) onto a profile that already exists, or
+	// any insert that relies on the default rather than EnsureScreenshotsDir.
+	// It's a config sentinel ("use the active screenshots folder"), not data.
+	if _, err := s.db.Exec(`INSERT OR IGNORE INTO screenshots_dirs (id, path) VALUES (1, '')`); err != nil {
+		return err
+	}
 	return nil
 }
