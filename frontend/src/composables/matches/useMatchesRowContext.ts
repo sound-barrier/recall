@@ -36,31 +36,48 @@ export function useMatchesRowContext(records: Ref<MatchRecord[]>) {
 
   // ─── Leaf-row hover preview ────────────────────────────────────
   //
-  // Floats a small thumbnail of the SUMMARY screenshot next to the
-  // cursor on hover. State is intentionally minimal: src + cursor
-  // coords. Mouseenter sets src, mousemove updates coords, mouseleave
-  // clears src. The preview component is mounted at the top level
-  // (Teleport to body) so it doesn't get stacking-context surprises.
+  // Floats a small card next to the cursor on hover: the SUMMARY
+  // screenshot thumbnail (when there is one) plus, for an edited or
+  // hand-entered match, a provenance badge — the dense cozy/compact rows
+  // have no room for the Edited / User-entered columns the data table
+  // carries, so the hover card is where they surface. A manual match has
+  // no screenshot, so the card then shows the badge alone. Mouseenter
+  // sets the state, mousemove tracks coords, mouseleave clears it. The
+  // preview is mounted at the top level (Teleport to body) so it dodges
+  // stacking-context surprises.
   const hoverPreviewSrc = ref<string | null>(null)
+  const hoverPreviewSource = ref<MatchRecord['source']>(undefined)
+  const hoverPreviewEditedFields = ref<string[]>([])
   const hoverPreviewX = ref(0)
   const hoverPreviewY = ref(0)
 
+  // A hover card is worth floating when there's a thumbnail OR the match
+  // carries provenance worth calling out (edited / hand-entered).
+  function hasHoverContent(): boolean {
+    const s = hoverPreviewSource.value
+    return hoverPreviewSrc.value !== null || s === 'manual' || s === 'ocr_edited'
+  }
+
   function onLeafMouseEnter(rec: MatchRecord, e: MouseEvent) {
     hoverPreviewSrc.value = summaryThumbnailURL(rec)
+    hoverPreviewSource.value = rec.source
+    hoverPreviewEditedFields.value = rec.edited_fields ?? []
     hoverPreviewX.value = e.clientX
     hoverPreviewY.value = e.clientY
   }
 
   function onLeafMouseMove(e: MouseEvent) {
-    // Only update coords; src is set on enter so the preview tracks the
-    // cursor without re-resolving the thumbnail on every move.
-    if (!hoverPreviewSrc.value) return
+    // Only update coords; the content is resolved on enter so the card
+    // tracks the cursor without re-resolving on every move.
+    if (!hasHoverContent()) return
     hoverPreviewX.value = e.clientX
     hoverPreviewY.value = e.clientY
   }
 
   function onLeafMouseLeave() {
     hoverPreviewSrc.value = null
+    hoverPreviewSource.value = undefined
+    hoverPreviewEditedFields.value = []
   }
 
   return {
@@ -69,6 +86,8 @@ export function useMatchesRowContext(records: Ref<MatchRecord[]>) {
     onRowContextClose,
     replayCodeFor,
     hoverPreviewSrc,
+    hoverPreviewSource,
+    hoverPreviewEditedFields,
     hoverPreviewX,
     hoverPreviewY,
     onLeafMouseEnter,

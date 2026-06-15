@@ -7,9 +7,7 @@ import {
   formatRoles,
   formatRowDate,
   formatFinishedAt,
-  isEditedMatch,
   isHeroUnknown,
-  isManualMatch,
   isMapUnknown,
 } from '@/match/match-helpers'
 import {
@@ -64,22 +62,6 @@ const isFocused = computed(
 // The tag surface additionally honours `tag:`-scoped clauses.
 const bareTerms = computed(() => props.searchClauses.filter((c) => c.field === null).map((c) => c.value))
 const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
-
-// Row-level provenance tooltip. The data-density table shows Edited /
-// User-entered as dedicated checkbox columns; the cozy + compact leaf
-// densities don't have room for them, so the row carries a native
-// title that surfaces the same fact on hover. Empty for pure-OCR rows
-// (the attribute is then dropped) — the tooltip only speaks up when the
-// user touched the match.
-const provenanceTip = computed(() => {
-  if (isManualMatch(props.rec)) return 'User entered — logged by hand (no screenshots).'
-  if (isEditedMatch(props.rec)) {
-    const n = props.rec.edited_fields?.length ?? 0
-    if (n > 0) return `Edited — ${n} ${n === 1 ? 'field' : 'fields'} changed after the OCR scan.`
-    return 'Edited after the OCR scan.'
-  }
-  return ''
-})
 </script>
 
 <template>
@@ -88,7 +70,6 @@ const provenanceTip = computed(() => {
     tabindex="-1"
     :data-match-key="rec.match_key"
     :data-card-index="cardIndex"
-    :title="provenanceTip || undefined"
     :aria-current="isFocused ? 'true' : undefined"
     :class="[
       `result-${rec.data?.result || 'unknown'}`,

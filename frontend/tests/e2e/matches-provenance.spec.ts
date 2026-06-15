@@ -109,13 +109,20 @@ test.describe('Matches — provenance surfacing', () => {
     await expect(enteredBox('manual-1')).toBeChecked()
   })
 
-  test('cozy/compact leaf rows carry a hover title naming edited / user-entered', async ({ page }) => {
-    // Default density is a leaf list. The non-OCR rows expose a native
-    // title; the pure-OCR row has none.
-    await expect(page.locator('.leaf-row[data-match-key="manual-1"]')).toHaveAttribute('title', /user entered/i)
-    await expect(page.locator('.leaf-row[data-match-key="edited-1"]')).toHaveAttribute('title', /edited/i)
-    const ocrTitle = await page.locator('.leaf-row[data-match-key="ocr-1"]').getAttribute('title')
-    expect(ocrTitle).toBeNull()
+  test('cozy/compact leaf rows surface provenance in the hover preview', async ({ page }) => {
+    // Default density is a leaf list. Hovering a non-OCR row floats the
+    // preview card carrying the provenance badge; pure OCR shows no badge.
+    const preview = page.locator('.leaf-hover-preview')
+
+    await page.locator('.leaf-row[data-match-key="manual-1"]').hover()
+    await expect(preview.locator('[data-hover-prov]')).toContainText('User entered')
+
+    await page.locator('.leaf-row[data-match-key="edited-1"]').hover()
+    await expect(preview.locator('[data-hover-prov]')).toContainText('Edited')
+
+    // Pure OCR — the preview has no provenance caption.
+    await page.locator('.leaf-row[data-match-key="ocr-1"]').hover()
+    await expect(preview.locator('[data-hover-prov]')).toHaveCount(0)
   })
 
   test('detail panel shows a prominent banner — edited (with Reset) and user-entered', async ({ page }) => {
