@@ -95,6 +95,15 @@ type RankGolden struct {
 	SR            []HeroSR `json:"sr,omitempty"`
 }
 
+// AllHeroesGolden is the golden projection of the recognized-but-unparsed
+// PERSONAL "All Heroes" aggregate view. It carries only the recognition
+// marker: the stats it shows are deliberately not parsed (redundant with
+// TEAMS; the cards' icons defeat the OCR), and the write path skips storing
+// it — classifying it is what keeps the screen out of the Unknown tab.
+type AllHeroesGolden struct {
+	AllHeroes bool `json:"all_heroes"`
+}
+
 // ToGolden projects a parsed MatchResult onto its screenshot-type
 // golden shape. The returned `any` holds one of *SummaryGolden,
 // *TeamsGolden, *PersonalGolden, *RankGolden, or — when
@@ -138,6 +147,8 @@ func ToGolden(r *MatchResult) any {
 			Hero:         r.Hero,
 			HeroesPlayed: r.HeroesPlayed,
 		}
+	case "all_heroes":
+		return &AllHeroesGolden{AllHeroes: true}
 	case "rank":
 		return &RankGolden{
 			Playlist:      r.Playlist,

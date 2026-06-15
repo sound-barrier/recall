@@ -53,6 +53,12 @@ type Fake struct {
 	// before reading.
 	IgnoredAt map[string]string
 
+	// AllHeroes is the recognized-skip set keyed by filename — the Fake
+	// analog of the all_heroes_screenshots table. Presence means the parser
+	// recognized the PERSONAL "All Heroes" aggregate view and the write path
+	// recorded it so the next parse run skips it. Mirrors Ignored's role.
+	AllHeroes map[string]bool
+
 	// Ambiguous holds one candidate-list per filename. Tests seed it
 	// directly to verify aggregator behavior for ambiguous screenshots
 	// without going through the resolver / write path.
@@ -281,6 +287,7 @@ func (f *Fake) Clear() error {
 	f.Ambiguous = nil
 	f.Ignored = nil
 	f.IgnoredAt = nil
+	f.AllHeroes = nil
 	return nil
 }
 

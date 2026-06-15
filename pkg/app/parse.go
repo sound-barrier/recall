@@ -285,12 +285,14 @@ func (a *App) runClaimedParse(ctx context.Context, force bool, screenshotsDir st
 }
 
 // parsedSkipSet builds the set of filenames the parser should skip: the
-// already-parsed files (unless force) unioned with the user-curated
-// suppress-list ("Delete forever" in the Unknown tab). Errors loading the
-// ignored set don't abort the parse — it's a UX nicety, not a correctness
-// invariant; an empty set just means nothing's suppressed. The suppress
-// list IS honoured even on ReParseAll (force) — the user explicitly told us
-// never to look at those files again.
+// already-parsed files (unless force) — plus the recognized-but-unstored
+// All-Heroes screens, which skip on a normal run but are re-examined on a
+// force ReParseAll exactly like already-parsed files — unioned with the
+// user-curated suppress-list ("Delete forever" in the Unknown tab). Errors
+// loading the ignored / recognized sets don't abort the parse — it's a UX
+// nicety, not a correctness invariant; an empty set just means nothing's
+// suppressed. The suppress list IS honoured even on ReParseAll (force) — the
+// user explicitly told us never to look at those files again.
 func (a *App) parsedSkipSet(force bool) (map[string]bool, error) {
 	parsed := map[string]bool{}
 	if !force {
@@ -298,6 +300,15 @@ func (a *App) parsedSkipSet(force bool) (map[string]bool, error) {
 		parsed, err = a.store.LoadAllFilenames()
 		if err != nil {
 			return nil, err
+		}
+		// All-Heroes screens carry no stored parent row, so LoadAllFilenames
+		// misses them; union their recognized-skip list here so a normal
+		// re-parse doesn't re-OCR them. Skipped only on a normal run (not
+		// force): the recognition is automatic, so a full ReParseAll should
+		// reconsider it.
+		recognized, _ := a.store.LoadAllHeroesFilenames()
+		for f := range recognized {
+			parsed[f] = true
 		}
 	}
 	ignored, _ := a.store.LoadIgnoredFilenames()
@@ -462,6 +473,13 @@ func (a *App) insertParsed(filename, key, t string, dirID int64, r *parser.Match
 			row.SR = append(row.SR, db.HeroSR{Hero: sr.Hero, SR: sr.SR, Change: sr.Change})
 		}
 		return a.store.UpsertRank(row)
+
+	case "all_heroes":
+		// Recognized but intentionally not stored as match data: its combat
+		// totals duplicate the TEAMS screen and its card icons defeat the OCR.
+		// Record only the filename so the next parse run skips it (no re-OCR),
+		// without a garbage match row or an Unknown-tab entry.
+		return a.store.UpsertAllHeroesScreenshot(filename)
 
 	default: // unknown
 		return a.store.UpsertUnknown(db.UnknownRow{

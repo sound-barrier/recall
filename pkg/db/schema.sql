@@ -254,3 +254,14 @@ CREATE TABLE IF NOT EXISTS ignored_screenshots (
   ignored_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 -- statement-end
+
+-- Recognized-but-unstored skip list for the PERSONAL "All Heroes" aggregate
+-- view. The parser classifies it ("all_heroes") but extracts nothing — its
+-- combat totals duplicate the TEAMS screen and its card icons defeat the OCR.
+-- Recording only the filename keeps the screen out of the next OCR run (like
+-- ignored_screenshots) without a garbage match row or an Unknown-tab entry.
+CREATE TABLE IF NOT EXISTS all_heroes_screenshots (
+  filename      TEXT PRIMARY KEY,
+  recognized_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- statement-end
