@@ -23,6 +23,15 @@ export function useManualMatchForm() {
   const leaver = ref<'' | 'self' | 'team' | 'enemy'>('')
   const playedAt = ref(localNowValue())
 
+  // Optional annotation fields — replay code, a note, free-form tags, and the
+  // group (teammates) the user queued with. All ride the match annotation.
+  const replayCode = ref('')
+  const note = ref('')
+  const tags = ref<string[]>([])
+  const tagDraft = ref('')
+  const members = ref<string[]>([])
+  const memberDraft = ref('')
+
   const rankTier = ref('')
   const rankDivision = ref(1)
   const rankProgress = ref(0)
@@ -41,6 +50,25 @@ export function useManualMatchForm() {
 
   function removeHero(name: string) {
     heroes.value = heroes.value.filter((h) => h !== name)
+  }
+
+  // Tags are lowercased (the app's tag convention); members are kept verbatim
+  // so `Apollo#11234` and `apollo#11234` stay distinct. Both dedupe.
+  function addTag(name?: string) {
+    const t = (name ?? tagDraft.value).trim().toLowerCase()
+    if (t && !tags.value.includes(t)) tags.value.push(t)
+    tagDraft.value = ''
+  }
+  function removeTag(name: string) {
+    tags.value = tags.value.filter((t) => t !== name)
+  }
+  function addMember(name?: string) {
+    const m = (name ?? memberDraft.value).trim()
+    if (m && !members.value.includes(m)) members.value.push(m)
+    memberDraft.value = ''
+  }
+  function removeMember(name: string) {
+    members.value = members.value.filter((m) => m !== name)
   }
 
   // Required fields, in display order — drives both canSubmit and the footer's
@@ -86,13 +114,20 @@ export function useManualMatchForm() {
     if (leaver.value) {
       input.leaver = leaver.value
     }
+    // Optional annotation fields — only sent when the user filled them in.
+    if (replayCode.value.trim()) input.replay_code = replayCode.value.trim()
+    if (note.value.trim()) input.note = note.value.trim()
+    if (tags.value.length) input.tags = [...tags.value]
+    if (members.value.length) input.members = [...members.value]
     return input
   }
 
   return {
     map, playMode, queueType, roleCategory, heroes, heroDraft, result, leaver, playedAt,
+    replayCode, note, tags, tagDraft, members, memberDraft,
     rankTier, rankDivision, rankProgress, rankChange, demotionProtection,
     isCompetitive, isRoleQueue, primaryHero,
-    addHero, removeHero, canSubmit, missingRequired, toInput,
+    addHero, removeHero, addTag, removeTag, addMember, removeMember,
+    canSubmit, missingRequired, toInput,
   }
 }

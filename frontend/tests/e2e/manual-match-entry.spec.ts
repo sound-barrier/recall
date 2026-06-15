@@ -91,11 +91,23 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   await expect(heroCombo.locator('.combo-pill')).toContainText('ana')
   await page.locator('#mm-title').click()
 
+  // Optional annotation fields — replay code, a note, a tag chip, and a group
+  // member chip (type + Enter adds each chip).
+  await page.locator('#mm-replay').fill('A1B2C3')
+  await page.locator('#mm-note').fill('great comeback')
+  await page.locator('[data-mm-tag-input]').fill('clutch')
+  await page.locator('[data-mm-tag-input]').press('Enter')
+  await expect(page.locator('[data-mm-tag]')).toContainText('clutch')
+  await page.locator('[data-mm-member-input]').fill('Apollo#11234')
+  await page.locator('[data-mm-member-input]').press('Enter')
+  await expect(page.locator('[data-mm-member]')).toContainText('Apollo#11234')
+
   await page.locator('[data-mm-submit]').click()
 
   await expect.poll(() => postBody).not.toBeNull()
   const parsed = JSON.parse(postBody as string) as {
     map: string; play_mode: string; queue_type: string; heroes: string[]; result: string; leaver: string
+    replay_code: string; note: string; tags: string[]; members: string[]
   }
   expect(parsed.map).toBe('ilios')
   expect(parsed.play_mode).toBe('competitive')
@@ -103,6 +115,10 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   expect(parsed.heroes).toEqual(['ana'])
   expect(parsed.result).toBe('victory')
   expect(parsed.leaver).toBe('team')
+  expect(parsed.replay_code).toBe('A1B2C3')
+  expect(parsed.note).toBe('great comeback')
+  expect(parsed.tags).toEqual(['clutch'])
+  expect(parsed.members).toEqual(['Apollo#11234'])
 
   // The created manual match surfaces with the Manual provenance badge.
   await expect(page.locator('.prov-manual').first()).toBeVisible()

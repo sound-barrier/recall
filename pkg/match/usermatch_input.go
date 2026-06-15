@@ -70,6 +70,13 @@ type ManualMatchInput struct {
 	// "enemy", or "" for none. Written to the match annotation, not the
 	// user-data row (it shares the existing leaver-annotation surface).
 	Leaver string `json:"leaver,omitempty"`
+	// Optional annotation fields, written to the match-annotation surface
+	// alongside Leaver (the same one the detail-panel choosers edit after
+	// creation). Empty values are dropped by SetMatchAnnotation.
+	ReplayCode string   `json:"replay_code,omitempty"`
+	Note       string   `json:"note,omitempty"`
+	Tags       []string `json:"tags,omitempty"`
+	Members    []string `json:"members,omitempty"` // the squad / group the user played with
 }
 
 // ManualRankInput captures the competitive rank a manual match ended on.

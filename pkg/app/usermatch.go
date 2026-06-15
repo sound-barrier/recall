@@ -86,10 +86,18 @@ func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.MatchRecord
 	if err := a.store.SetMatchQueue(key, input.QueueType); err != nil {
 		return match.MatchRecord{}, err
 	}
-	// Leaver rides the existing annotation surface (validated upfront in
-	// buildManualMatch), not the user-data row.
-	if input.Leaver != "" {
-		if err := a.SetMatchAnnotation(AnnotationInput{MatchKey: key, Leaver: input.Leaver}); err != nil {
+	// Leaver + the optional annotation fields (replay code / note / tags /
+	// the squad they grouped with) all ride the existing annotation surface
+	// in one upsert — the same row the detail-panel choosers edit later.
+	if input.Leaver != "" || input.ReplayCode != "" || input.Note != "" || len(input.Tags) > 0 || len(input.Members) > 0 {
+		if err := a.SetMatchAnnotation(AnnotationInput{
+			MatchKey:   key,
+			Leaver:     input.Leaver,
+			ReplayCode: input.ReplayCode,
+			Note:       input.Note,
+			Tags:       input.Tags,
+			Members:    input.Members,
+		}); err != nil {
 			return match.MatchRecord{}, err
 		}
 	}

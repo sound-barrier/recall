@@ -2218,24 +2218,32 @@ components:
           type: string
         hero:
           type: string
+        # Combat scalars carry a generous maximum so a spec-valid override can't
+        # exceed Go's int range and 400 on decode (no real match approaches it).
         eliminations:
           type: integer
           minimum: 0
+          maximum: 1000000
         assists:
           type: integer
           minimum: 0
+          maximum: 1000000
         deaths:
           type: integer
           minimum: 0
+          maximum: 1000000
         damage:
           type: integer
           minimum: 0
+          maximum: 1000000
         healing:
           type: integer
           minimum: 0
+          maximum: 1000000
         mitigation:
           type: integer
           minimum: 0
+          maximum: 1000000
         result:
           $ref: "#/components/schemas/ResultEnum"
         final_score:
@@ -2260,6 +2268,8 @@ components:
           maximum: 100
         change_percent:
           type: integer
+          minimum: -1000000
+          maximum: 1000000
         heroes:
           type: array
           description: |
@@ -2292,10 +2302,14 @@ components:
           type: string
         percent_played:
           type: integer
+          minimum: 0
+          maximum: 100
         play_time:
           type: string
         position:
           type: integer
+          minimum: 0
+          maximum: 100
           description: 0 = primary.
 
     UserHeroStatInput:
@@ -2307,8 +2321,11 @@ components:
         stat_key:
           type: string
           example: rip_tire_kill
+        # Bounded so a spec-valid stat can't overflow Go's int on decode.
         value:
           type: integer
+          minimum: 0
+          maximum: 1000000
 
     UserHeroSRInput:
       type: object
@@ -2318,8 +2335,12 @@ components:
           type: string
         sr:
           type: integer
+          minimum: 0
+          maximum: 1000000
         change:
           type: integer
+          minimum: -1000000
+          maximum: 1000000
 
     ManualMatchInput:
       type: object
@@ -2358,6 +2379,26 @@ components:
           $ref: "#/components/schemas/ManualRankInput"
         leaver:
           $ref: "#/components/schemas/LeaverEnum"
+        replay_code:
+          type: string
+          description: Optional Overwatch replay code; written to the match annotation.
+          example: A1B2C3
+        note:
+          type: string
+          description: Optional free-form note; written to the match annotation.
+        tags:
+          type: array
+          description: Optional free-form tags; written to the match annotation.
+          items:
+            type: string
+          example: [clutch, stream]
+        members:
+          type: array
+          description: |
+            The squad / group the user played with; written to the match
+            annotation (stored verbatim, so `Apollo#11234` keeps its case).
+          items:
+            type: string
 
     ManualRankInput:
       type: object
@@ -2377,6 +2418,8 @@ components:
           description: "% into the division."
         change_percent:
           type: integer
+          minimum: -1000000
+          maximum: 1000000
           description: "% gained / lost this match."
         demotion_protection:
           type: boolean
