@@ -16,6 +16,7 @@ interface RecOpts {
   parsedAt?: string
   date?: string
   finishedAt?: string
+  source?: 'ocr' | 'ocr_edited' | 'manual'
   heroesPlayed?: { hero: string; percent_played?: number }[]
 }
 
@@ -36,6 +37,7 @@ function rec(key: string, o: RecOpts = {}): MatchRecord {
     },
     parsed_at: o.parsedAt ?? '2026-05-10T20:00:00Z',
     ...(o.tags ? { annotation: { tags: o.tags } } : {}),
+    ...(o.source ? { source: o.source } : {}),
   } as unknown as MatchRecord
 }
 
@@ -139,6 +141,28 @@ describe('useTableSort — single level (default + per-column)', () => {
       rec('none', {}),
     ]
     expect(keysAfterSort(corpus, 'tags', 1)).toEqual(['none', 'a', 'z'])
+  })
+
+  it('sorts the edited column with untouched rows first ascending', () => {
+    const corpus = [
+      rec('edited', { source: 'ocr_edited' }),
+      rec('ocr', {}),
+      rec('manual', { source: 'manual' }),
+    ]
+    // Only the ocr_edited row ticks the Edited box; OCR + manual are
+    // both "not edited" (false) and sort ahead of it ascending. The
+    // two false rows tie on the column, so newest-first breaks it —
+    // here both share the default parsed_at, so insertion order holds.
+    expect(keysAfterSort(corpus, 'edited', 1)).toEqual(['ocr', 'manual', 'edited'])
+  })
+
+  it('sorts the manual column with non-manual rows first ascending', () => {
+    const corpus = [
+      rec('manual', { source: 'manual' }),
+      rec('ocr', {}),
+      rec('edited', { source: 'ocr_edited' }),
+    ]
+    expect(keysAfterSort(corpus, 'manual', 1)).toEqual(['ocr', 'edited', 'manual'])
   })
 
   it('breaks ties by newest-first regardless of sort direction', () => {

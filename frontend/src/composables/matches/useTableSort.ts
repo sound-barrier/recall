@@ -4,7 +4,7 @@ import {
   parseJsonRecord,
   serializeJsonRecord,
 } from '@/composables/shared/usePersistedRef'
-import { heroesForHeader } from '@/match/match-helpers'
+import { heroesForHeader, isEditedMatch, isManualMatch } from '@/match/match-helpers'
 import { matchTime } from '@/match/match-time-helpers'
 
 // Multi-column ("Excel-style") sort for the `data`-density match table.
@@ -23,6 +23,8 @@ export type TableSortCol =
   | 'eliminations'
   | 'result'
   | 'tags'
+  | 'edited'
+  | 'manual'
 
 export type SortDir = 'asc' | 'desc'
 
@@ -42,6 +44,8 @@ export const TABLE_SORT_COLUMNS: ReadonlyArray<{ col: TableSortCol; label: strin
   { col: 'role', label: 'Role' },
   { col: 'eliminations', label: 'E / A / D' },
   { col: 'tags', label: 'Tags' },
+  { col: 'edited', label: 'Edited' },
+  { col: 'manual', label: 'User entered' },
   { col: 'result', label: 'Result' },
 ]
 
@@ -70,6 +74,12 @@ function compareCol(col: TableSortCol, a: MatchRecord, b: MatchRecord): number {
     case 'eliminations': return (da?.eliminations ?? 0) - (db?.eliminations ?? 0)
     case 'result':       return (RESULT_RANK[da?.result ?? ''] ?? 9) - (RESULT_RANK[db?.result ?? ''] ?? 9)
     case 'tags':         return (a.annotation?.tags?.[0] ?? '').localeCompare(b.annotation?.tags?.[0] ?? '')
+    // Boolean provenance columns: unticked (false→0) sorts before
+    // ticked (true→1) ascending, so one header click clusters the
+    // untouched rows and a second flips to surface the edited /
+    // hand-entered ones at the top.
+    case 'edited':       return Number(isEditedMatch(a)) - Number(isEditedMatch(b))
+    case 'manual':       return Number(isManualMatch(a)) - Number(isManualMatch(b))
   }
 }
 

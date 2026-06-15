@@ -123,4 +123,41 @@ describe('MatchTableRow', () => {
     expect(w.find('.tc-tags').text()).toContain('#clutch')
     expect(w.find('.tc-tags mark.search-hl').text()).toBe('clutch')
   })
+
+  describe('provenance columns', () => {
+    // The two read-only checkbox columns that replaced the in-row
+    // provenance badge: [0] = Edited, [1] = User entered.
+    function boxes(w: ReturnType<typeof mountRow>) {
+      const found = w.findAll('.tc-prov-box')
+      return found.map((b) => b.element as HTMLInputElement)
+    }
+
+    it('ticks the Edited box (only) for an OCR-then-edited match', () => {
+      const w = mountRow({ rec: { ...rec(), source: 'ocr_edited', edited_fields: ['data.damage'] } as MatchRecord })
+      const [edited, entered] = boxes(w)
+      expect(edited!.checked).toBe(true)
+      expect(entered!.checked).toBe(false)
+    })
+
+    it('ticks the User-entered box (only) for a manual match', () => {
+      const w = mountRow({ rec: { ...rec(), source: 'manual' } as MatchRecord })
+      const [edited, entered] = boxes(w)
+      expect(edited!.checked).toBe(false)
+      expect(entered!.checked).toBe(true)
+    })
+
+    it('leaves both boxes unticked and disabled for a pure-OCR match', () => {
+      const [edited, entered] = boxes(mountRow())
+      expect(edited!.checked).toBe(false)
+      expect(entered!.checked).toBe(false)
+      // Read-only indicators — clicks fall through to the row.
+      expect(edited!.disabled).toBe(true)
+      expect(entered!.disabled).toBe(true)
+    })
+
+    it('no longer renders the provenance badge inline (moved to the columns)', () => {
+      const w = mountRow({ rec: { ...rec(), source: 'manual' } as MatchRecord })
+      expect(w.find('.prov-badge').exists()).toBe(false)
+    })
+  })
 })

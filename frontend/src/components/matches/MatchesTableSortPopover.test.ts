@@ -56,12 +56,14 @@ describe('MatchesTableSortPopover', () => {
 
   it('disables Add level once every column is a sort level', async () => {
     const w = mountPopover(true)
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 14; i++) {
       const add = w.find('[data-add-level]')
       if (isDisabled(add.element)) break
       await add.trigger('click')
     }
-    expect(w.findAll('[data-sort-level]')).toHaveLength(8)
+    // One sort level per sortable column (TABLE_SORT_COLUMNS): When,
+    // Map, Mode, Hero, Role, E/A/D, Tags, Edited, User entered, Result.
+    expect(w.findAll('[data-sort-level]')).toHaveLength(10)
     expect(isDisabled(w.find('[data-add-level]').element)).toBe(true)
   })
 

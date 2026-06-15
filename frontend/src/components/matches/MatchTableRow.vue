@@ -8,7 +8,9 @@ import {
   formatRoles,
   formatRowDate,
   formatFinishedAt,
+  isEditedMatch,
   isHeroUnknown,
+  isManualMatch,
   isMapUnknown,
 } from '@/match/match-helpers'
 import {
@@ -19,7 +21,6 @@ import {
 } from '@/match/match-label-helpers'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
 import HighlightedText from '@/components/matches/HighlightedText.vue'
-import MatchProvenanceBadge from '@/components/matches/MatchProvenanceBadge.vue'
 
 // One <tr> in the data-density match table. Carries the SAME props +
 // emits as MatchLeafRow so MatchesView wires every interaction (click →
@@ -124,7 +125,6 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
       <span class="tc-stat tc-deaths">{{ rec.data?.deaths ?? '—' }}</span>
     </td>
     <td class="tc tc-tags">
-      <MatchProvenanceBadge :source="rec.source" :edited-fields="rec.edited_fields" compact />
       <span
         v-if="rec.annotation?.leaver"
         class="tc-leaver"
@@ -135,6 +135,24 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
         :key="t"
         class="tc-tag"
       >#<HighlightedText :text="t" :terms="tagTerms" /></span>
+    </td>
+    <td class="tc tc-prov">
+      <input
+        type="checkbox"
+        class="tc-prov-box"
+        disabled
+        :checked="isEditedMatch(rec)"
+        :aria-label="isEditedMatch(rec) ? 'Edited after parsing' : 'Not edited'"
+      >
+    </td>
+    <td class="tc tc-prov">
+      <input
+        type="checkbox"
+        class="tc-prov-box"
+        disabled
+        :checked="isManualMatch(rec)"
+        :aria-label="isManualMatch(rec) ? 'Hand-entered match' : 'Not hand-entered'"
+      >
     </td>
     <td class="tc tc-result">
       <span class="tc-result-chip" :class="`result-${rec.data?.result || 'unknown'}`">{{ rec.data?.result || '—' }}</span>
@@ -241,6 +259,20 @@ const tagTerms = computed(() => highlightTermsFor('tag', props.searchClauses))
   color: var(--loss);
   margin-right: 0.3rem;
   font-size: 0.6rem;
+}
+
+/* Provenance columns (Edited · User entered): a read-only checkbox per
+   row. `disabled` makes it a non-interactive indicator — the click
+   falls through to the row's open-match handler — while still reading
+   as a checkbox to assistive tech. `opacity: 1` overrides the UA's
+   greyed-disabled wash so a ticked box stays clearly visible. */
+.tc-prov { text-align: center; }
+
+.tc-prov-box {
+  margin: 0;
+  accent-color: var(--accent);
+  opacity: 1;
+  cursor: default;
 }
 
 .tc-unknown { color: var(--accent-bright, var(--accent)); cursor: help; }

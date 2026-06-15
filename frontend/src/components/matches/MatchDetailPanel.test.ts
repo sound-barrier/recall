@@ -525,3 +525,40 @@ describe('MatchDetailPanel — pagination toolbar', () => {
     expect(wrapper.find('.detail-pos-of').text()).toContain('47')
   })
 })
+
+describe('MatchDetailPanel — provenance banner', () => {
+  it('shows no banner for a pure-OCR match', () => {
+    const wrapper = mountPanel({ record: makeRecord({}, { source: 'ocr' }) })
+    expect(wrapper.find('[data-prov-banner]').exists()).toBe(false)
+  })
+
+  it('shows an "Edited" banner with the field count + a Reset-to-OCR button', () => {
+    const wrapper = mountPanel({
+      record: makeRecord({}, { source: 'ocr_edited', edited_fields: ['data.map', 'data.damage'] }),
+    })
+    const banner = wrapper.find('[data-prov-banner]')
+    expect(banner.exists()).toBe(true)
+    expect(banner.classes()).toContain('is-edited')
+    expect(banner.text()).toContain('Edited')
+    expect(banner.find('.detail-prov-sub').text()).toContain('2 fields')
+    expect(banner.find('.detail-reset-btn').exists()).toBe(true)
+  })
+
+  it('shows a "User entered" banner with NO reset button for a manual match', () => {
+    const wrapper = mountPanel({ record: makeRecord({}, { source: 'manual' }) })
+    const banner = wrapper.find('[data-prov-banner]')
+    expect(banner.exists()).toBe(true)
+    expect(banner.classes()).toContain('is-manual')
+    expect(banner.text()).toContain('User entered')
+    // Nothing to reset to — a manual match has no OCR baseline.
+    expect(banner.find('.detail-reset-btn').exists()).toBe(false)
+  })
+
+  it('emits reset-match-data with the key when Reset to OCR is clicked', async () => {
+    const wrapper = mountPanel({
+      record: makeRecord({}, { match_key: 'match-x', source: 'ocr_edited', edited_fields: ['data.map'] }),
+    })
+    await wrapper.find('[data-prov-banner] .detail-reset-btn').trigger('click')
+    expect(wrapper.emitted('reset-match-data')?.[0]).toEqual(['match-x'])
+  })
+})

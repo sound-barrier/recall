@@ -198,7 +198,7 @@ watch(() => props.resetCounter, () => {
 
   /* Below this the pane scrolls horizontally instead of crushing the
      columns; nowrap cells + the map/hero/tags ellipsis do the rest. */
-  min-width: 46rem;
+  min-width: 54rem;
   border-collapse: collapse;
   font-family: var(--mono);
 }

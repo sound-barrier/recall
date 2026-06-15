@@ -27,7 +27,7 @@ const badgeClass = computed(() =>
 )
 
 const label = computed(() =>
-  variant.value === 'manual' ? 'Manual' : variant.value === 'ocr_edited' ? 'Edited' : 'OCR',
+  variant.value === 'manual' ? 'User entered' : variant.value === 'ocr_edited' ? 'Edited' : 'OCR',
 )
 
 const tip = computed(() => {

@@ -25,15 +25,15 @@ describe('MatchProvenanceBadge', () => {
     expect(w.attributes('title')).not.toContain('1 fields')
   })
 
-  it('shows Manual for a hand-entered match', () => {
+  it('shows "User entered" for a hand-entered match', () => {
     const w = mount(MatchProvenanceBadge, { props: { source: 'manual' } })
-    expect(w.text()).toContain('Manual')
+    expect(w.text()).toContain('User entered')
     expect(w.attributes('aria-label')).toContain('Hand-entered')
   })
 
   it('hides the text label in compact mode but keeps the aria-label', () => {
     const w = mount(MatchProvenanceBadge, { props: { source: 'manual', compact: true } })
-    expect(w.text()).not.toContain('Manual')
-    expect(w.attributes('aria-label')).toContain('Manual')
+    expect(w.text()).not.toContain('User entered')
+    expect(w.attributes('aria-label')).toContain('User entered')
   })
 })

@@ -226,6 +226,19 @@ export function isMapUnknown(rec: Pick<MatchRecord, 'data'>): boolean {
   return !rec.data?.map && !!rec.data?.map_raw
 }
 
+// Provenance predicates — the single source of truth for what the
+// "Edited" / "User entered" table columns tick and what the narrow
+// panel's provenance chips filter on. A match is exactly one of OCR
+// (parsed, untouched), edited (parsed then corrected), or manual
+// (hand-entered, no screenshots); these two cover the latter pair.
+export function isEditedMatch(rec: Pick<MatchRecord, 'source'>): boolean {
+  return rec.source === 'ocr_edited'
+}
+
+export function isManualMatch(rec: Pick<MatchRecord, 'source'>): boolean {
+  return rec.source === 'manual'
+}
+
 // Build the URL for an on-disk screenshot served by the Go
 // ScreenshotHandler. The URL embeds the screenshots_dirs row id so
 // the handler can serve from the directory the file was INGESTED
