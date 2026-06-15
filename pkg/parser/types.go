@@ -50,6 +50,12 @@ type MatchResult struct {
 	RankProgress  int      `json:"rank_progress,omitempty"`  // % into current level
 	ChangePercent int      `json:"change_percent,omitempty"` // % the rank moved this match
 	SR            []HeroSR `json:"sr,omitempty"`             // per-hero SR + change
+
+	// AllHeroes marks the PERSONAL "All Heroes" aggregate view — recognized
+	// so it stays out of the Unknown tab, but its stats are deliberately not
+	// parsed (redundant with TEAMS; the cards' icons defeat the OCR). The
+	// write path skips storing it.
+	AllHeroes bool `json:"all_heroes,omitempty"`
 }
 
 type HeroSR struct {

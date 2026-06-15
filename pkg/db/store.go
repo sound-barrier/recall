@@ -170,6 +170,17 @@ type Store interface {
 	ListIgnoredScreenshots() ([]IgnoredRow, error)
 	ClearIgnoredScreenshots() error
 
+	// All-Heroes-screenshots surface — recognized-but-unstored skip list.
+	// The PERSONAL "All Heroes" aggregate view carries no data worth
+	// extracting (its combat totals duplicate the TEAMS screen, and its card
+	// icons defeat the OCR), so the parser classifies it "all_heroes" and the
+	// write path records only the filename here. Presence means "recognized,
+	// skip on every future parse run" — the same hot-path role
+	// LoadIgnoredFilenames plays — which keeps the screen out of both the
+	// match aggregation and the Unknown tab without re-OCRing it each run.
+	UpsertAllHeroesScreenshot(filename string) error
+	LoadAllHeroesFilenames() (map[string]bool, error)
+
 	// Clear deletes every row in every table — children cascade.
 	Clear() error
 	Close() error

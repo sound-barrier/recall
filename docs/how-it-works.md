@@ -61,6 +61,13 @@ tab per hero — Recall captures each one and merges them into the
 same match record. The first hero in the SUMMARY's "Heroes Played"
 list becomes the match's primary hero in filters and card headers.
 
+The PERSONAL tab also has an **"All Heroes"** sub-tab showing your
+combined totals across every hero. You don't need to capture it —
+those totals duplicate the TEAMS screen, and the sub-tab's stat-card
+icons confuse the OCR. If you do screenshot it, Recall recognises and
+quietly skips it (no re-OCR on later runs) rather than dropping it on
+the Unknown tab.
+
 ### What each type looks like
 
 Real examples from Recall's parser-regression fixture set — the same

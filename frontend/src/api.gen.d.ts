@@ -2033,6 +2033,11 @@ export interface components {
          *       * `teams` — in-game or post-match TEAMS screen
          *       * `personal` — post-match PERSONAL tab
          *       * `rank` — competitive RANK PROGRESS screen
+         *       * `all_heroes` — the PERSONAL "All Heroes" aggregate view.
+         *         Recognized but deliberately not stored (its totals duplicate
+         *         the TEAMS screen and its stat-card icons defeat the OCR), so
+         *         it appears in the live parse-progress event but never in a
+         *         match's `source_types`.
          *       * `unknown` — the OCR classifier couldn't pick a type from
          *         the file. Surfaced in the Unknown tab for triage; the
          *         row's per-screenshot data lives in `unknown_screenshots`
@@ -2040,7 +2045,7 @@ export interface components {
          *         or drop).
          * @enum {string}
          */
-        ScreenshotType: "summary" | "teams" | "personal" | "rank" | "unknown";
+        ScreenshotType: "summary" | "teams" | "personal" | "rank" | "all_heroes" | "unknown";
         /** @description All parsed data for a match, merged across its source files. */
         MatchResult: {
             /** @description e.g. "rialto" */

@@ -29,7 +29,10 @@ The `result` is the **per-screenshot-type projection** of
 no `damage` / `healing` / `mitigation` (SUMMARY doesn't extract
 them); a PERSONAL golden has no `map` / `type` / `E/A/D`; a
 TEAMS has no `result` / `date` / `game_length`; a RANK has
-no `map` / combat stats. Showing only the fields a screenshot type
+no `map` / combat stats; an `all_heroes` golden carries only the
+recognition marker (`all_heroes: true`), since the PERSONAL "All
+Heroes" aggregate is detected but its stats are deliberately not
+parsed. Showing only the fields a screenshot type
 *can* populate keeps `0` / `""` from looking like "the parser saw
 0 deaths" when it actually means "this screen has no deaths to
 parse".
@@ -73,6 +76,7 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
 - [x] post-match PERSONAL tab — single hero (Juno, hero stats subfield)
 - [x] post-match PERSONAL tab — second hero in a multi-hero match (Mei from same match)
 - [x] post-match PERSONAL tab — Wuyang; pins the AVG-anchored stat fix (Players Saved 5, Tidal Blast Kills 0 — the hero-ability icon OCRs as a spurious leading/trailing single digit)
+- [x] PERSONAL "All Heroes" aggregate view — recognized as `all_heroes` but deliberately NOT parsed (its totals duplicate the TEAMS screen; its stat-card icons defeat the OCR). The golden pins detection + the recognized-skip classification that keeps it off the Unknown tab without a garbage row.
 - [x] rank screen — competitive ladder badge + per-hero SR card (×2: a Platinum 5 **win** with positive progress + SR gain, AND a Gold 1 **loss** with DEMOTION PROTECTION and a negative −19% progress; the pair pins the digitize-level fix, the raw-pass negative-progress read, the lower-card SR crop, and the demotion-protection modifier)
 - [ ] in-game TAB screenshot (different layout, right panel populated)
 - [x] match where the player swapped heroes, captured from the SUMMARY

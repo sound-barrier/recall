@@ -130,6 +130,7 @@ func (s *SQLStore) Clear() error {
 		"hidden_matches",
 		"ambiguous_candidates",
 		"ignored_screenshots",
+		"all_heroes_screenshots",
 	} {
 		// #nosec G202 -- table name comes from a hard-coded slice, not user input.
 		if _, err := s.db.Exec(`DELETE FROM ` + t); err != nil {

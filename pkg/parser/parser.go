@@ -90,6 +90,9 @@ func ParseScreenshot(imagePath string) (*MatchResult, error) {
 	if isSummaryScreenshot(img, work) {
 		return parseSummary(img, work)
 	}
+	if isAllHeroesScreenshot(img, work) {
+		return parseAllHeroes(img, work)
+	}
 	if isPersonalScreenshot(img, work) {
 		return parsePersonal(img, work)
 	}

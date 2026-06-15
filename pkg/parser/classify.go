@@ -19,6 +19,9 @@ func ScreenshotType(r *MatchResult) string {
 	if r == nil {
 		return "unknown"
 	}
+	if r.AllHeroes {
+		return "all_heroes"
+	}
 	if r.Rank != "" {
 		return "rank"
 	}
