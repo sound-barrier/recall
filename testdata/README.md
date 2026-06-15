@@ -131,9 +131,10 @@ maintainer drops in a PNG later via `make update-goldens` and commits.
       finds nothing — `parsePersonalStatCell` now recovers it from the clean
       AVG line (value = avg × play/10) instead of dropping the cell (Charge
       Kill, Rip-Tire Kill, Immortality Field Death Prevented, Fire Strike
-      Kills). A couple of long labels still OCR imperfectly (`RIP-TIRE KILL`
-      → `tire_kill`, `EARTHSHATTER KILLS` → `earthshatiter_kills`) — values
-      correct, label-snapping is a follow-up.
+      Kills). The two long labels the OCR mangled (`RIP-TIRE KILL` →
+      `tire_kill`, `EARTHSHATTER KILLS` → `earthshatiter_kills`) snap back to
+      canonical via `SnapHeroStatKey` against the seeded `hero_stats.yaml`
+      rosters for baptiste / junkrat / reinhardt.
 
 ## Privacy / licensing
 
