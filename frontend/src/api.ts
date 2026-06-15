@@ -28,6 +28,8 @@ export type TesseractStatus   = components['schemas']['TesseractStatus']
 export type ScreenshotType    = components['schemas']['ScreenshotType']
 export type ProfilesResponse  = components['schemas']['ProfilesResponse']
 export type SeedTestProfileResponse = components['schemas']['SeedTestProfileResponse']
+export type UserMatchDataInput = components['schemas']['UserMatchDataInput']
+export type ManualMatchInput   = components['schemas']['ManualMatchInput']
 
 // Detect whether the Wails IPC bridge has been injected. The bridge is
 // only present when the page is loaded inside the native Wails webview.
@@ -389,6 +391,34 @@ export const HardDeleteMatch = _dualVoid<[matchKey: string]>(
   'HardDeleteMatch',
   'DELETE',
   (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}`,
+)
+
+// Hand-enter a match (no OCR). The server derives the match_key from
+// played_at (default now), 409s on a collision, and returns the created
+// MatchRecord (source: "manual"). The detail-panel choosers then work
+// unchanged, keyed by the new match_key.
+export function CreateManualMatch(input: ManualMatchInput): Promise<MatchRecord> {
+  if (IS_WAILS) return _wails<MatchRecord>('CreateManualMatch', input)
+  return _send<MatchRecord>('POST', '/api/v1/matches', input)
+}
+
+// Replace a match's user-data override set — the editable copy kept
+// separate from the parsed OCR rows. The body is the FULL override set; a
+// per-field revert is the same call omitting that field. Idempotent.
+export const UpdateMatchData = _dualVoid<[matchKey: string, input: UserMatchDataInput]>(
+  'UpdateMatchData',
+  'PUT',
+  (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}/data`,
+  (_matchKey, input) => input,
+)
+
+// Reset a match to pure OCR by clearing its override set, reverting an
+// edited OCR match to its parsed values. Idempotent. (Deleting a manual
+// match is HardDeleteMatch instead.)
+export const ResetMatchData = _dualVoid<[matchKey: string]>(
+  'ResetMatchData',
+  'DELETE',
+  (matchKey) => `/api/v1/matches/${encodeURIComponent(matchKey)}/data`,
 )
 
 // Permanently ignore a screenshot — backs the Unknown tab's

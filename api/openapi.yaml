@@ -154,6 +154,37 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+    post:
+      operationId: CreateManualMatch
+      tags: [Matches]
+      summary: Hand-enter a match (no OCR)
+      description: |
+        Creates a manual match for users without Tesseract. The server
+        derives the `match_key` from `played_at` (default now), rejects a
+        collision with any existing match (409 — pick a different minute),
+        writes the user-data override row plus the queue / play-mode aux
+        rows, and returns the aggregated MatchRecord (`source: manual`).
+        The right-side detail-panel choosers (review, replay code, …) then
+        work unchanged, keyed by the new `match_key`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualMatchInput"
+      responses:
+        "201":
+          description: The created manual match.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchRecord"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: A match already exists at that time; pick a different minute.
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /api/v1/matches/{match_key}:
     parameters:
@@ -389,6 +420,49 @@ paths:
           description: Annotation persisted or cleared.
         "400":
           $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/matches/{match_key}/data:
+    parameters:
+      - $ref: "#/components/parameters/MatchKey"
+    put:
+      operationId: UpdateMatchData
+      tags: [Matches]
+      summary: Replace a match's user-data override set
+      description: |
+        Upserts the user override layer for a match — the editable copy
+        kept separate from the parsed OCR rows. The body is the FULL
+        current override set; a per-field revert is the same request with
+        that field omitted. Overridden fields surface in the record's
+        `edited_fields` and flip `source` to `ocr_edited`. Idempotent.
+
+        Reset to pure OCR with the matching `DELETE`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserMatchDataInput"
+      responses:
+        "204":
+          description: Override set persisted.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: ResetMatchData
+      tags: [Matches]
+      summary: Reset a match to pure OCR (clear overrides)
+      description: |
+        Clears the user override set for a match, reverting an edited OCR
+        match to its parsed values. (Deleting a hand-entered match is the
+        per-match `DELETE /matches/{match_key}` hard-delete instead.)
+        Idempotent — clearing an unedited match succeeds.
+      responses:
+        "204":
+          description: Overrides cleared.
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -2114,6 +2188,182 @@ components:
         bulk endpoint. Empty string clears every listed match's
         play-mode override (bulk Clear).
 
+    MatchSourceEnum:
+      type: string
+      enum: ["ocr", "ocr_edited", "manual"]
+      description: |
+        Provenance of a match record.
+        - `ocr`: parsed from screenshots, unedited.
+        - `ocr_edited`: parsed, then user-corrected via the override
+          layer (`PUT /matches/{match_key}/data`). `edited_fields` lists
+          the overridden paths.
+        - `manual`: hand-entered (`POST /matches`); no screenshot rows.
+
+    ResultEnum:
+      type: string
+      enum: ["victory", "defeat", "draw"]
+      description: Match outcome.
+
+    UserMatchDataInput:
+      type: object
+      description: |
+        Full user override set for `PUT /matches/{match_key}/data`. Inline
+        edits send the whole current set; a per-field revert is the same
+        request with that field omitted. A scalar present (even `0` / `""`)
+        means "override to this value"; omitting it means "use the OCR
+        value". Kept separate from the parsed rows, so a `DELETE` on the
+        same path restores the original.
+      properties:
+        map:
+          type: string
+        hero:
+          type: string
+        eliminations:
+          type: integer
+        assists:
+          type: integer
+        deaths:
+          type: integer
+        damage:
+          type: integer
+        healing:
+          type: integer
+        mitigation:
+          type: integer
+        result:
+          $ref: "#/components/schemas/ResultEnum"
+        final_score:
+          type: string
+        date:
+          type: string
+        finished_at:
+          type: string
+        game_length:
+          type: string
+        rank:
+          type: string
+        level:
+          type: integer
+        rank_progress:
+          type: integer
+        change_percent:
+          type: integer
+        heroes:
+          type: array
+          description: |
+            Heroes-played LIST override (position 0 = primary). Replaces
+            the OCR roster wholesale when present.
+          items:
+            $ref: "#/components/schemas/UserHeroInput"
+        hero_stats:
+          type: array
+          description: |
+            Per-cell stat overrides, applied INDEPENDENTLY of the heroes
+            list — a stat edit never implies a roster swap.
+          items:
+            $ref: "#/components/schemas/UserHeroStatInput"
+        sr:
+          type: array
+          description: Per-hero SR overrides (editing an OCR rank screen).
+          items:
+            $ref: "#/components/schemas/UserHeroSRInput"
+        modifiers:
+          type: array
+          items:
+            type: string
+
+    UserHeroInput:
+      type: object
+      required: [hero]
+      properties:
+        hero:
+          type: string
+        percent_played:
+          type: integer
+        play_time:
+          type: string
+        position:
+          type: integer
+          description: 0 = primary.
+
+    UserHeroStatInput:
+      type: object
+      required: [hero, stat_key, value]
+      properties:
+        hero:
+          type: string
+        stat_key:
+          type: string
+          example: rip_tire_kill
+        value:
+          type: integer
+
+    UserHeroSRInput:
+      type: object
+      required: [hero, sr, change]
+      properties:
+        hero:
+          type: string
+        sr:
+          type: integer
+        change:
+          type: integer
+
+    ManualMatchInput:
+      type: object
+      required: [map, play_mode, queue_type, heroes, result]
+      description: |
+        Hand-entered match for users without OCR. The server derives the
+        `match_key` from `played_at` (default: now) and returns the created
+        MatchRecord. `heroes[0]` is the primary hero.
+      properties:
+        map:
+          type: string
+          minLength: 1
+          example: ilios
+        play_mode:
+          $ref: "#/components/schemas/PlayModeEnum"
+        queue_type:
+          $ref: "#/components/schemas/QueueTypeEnum"
+        heroes:
+          type: array
+          minItems: 1
+          description: Heroes played; first is the primary (need not be ordered by play time).
+          items:
+            type: string
+          example: [ana, kiriko]
+        result:
+          $ref: "#/components/schemas/ResultEnum"
+        played_at:
+          type: string
+          format: date-time
+          description: |
+            When the match was played (RFC 3339). Defaults to now; drives
+            the `match_key` plus `date` / `finished_at`.
+          example: "2026-06-15T14:30:00Z"
+        rank:
+          $ref: "#/components/schemas/ManualRankInput"
+
+    ManualRankInput:
+      type: object
+      description: Competitive rank the match ended on. Omit for quickplay.
+      properties:
+        tier:
+          type: string
+          example: platinum
+        division:
+          type: integer
+          minimum: 1
+          maximum: 5
+        progress:
+          type: integer
+          description: "% into the division."
+        change_percent:
+          type: integer
+          description: "% gained / lost this match."
+        demotion_protection:
+          type: boolean
+
     IgnoredScreenshot:
       type: object
       required: [filename, ignored_at]
@@ -2608,6 +2858,19 @@ components:
           example: "2026-05-10T22:30:00Z"
         data:
           $ref: "#/components/schemas/MatchResult"
+        source:
+          $ref: "#/components/schemas/MatchSourceEnum"
+        edited_fields:
+          type: array
+          description: |
+            Dotted paths of fields the user overrode on an OCR match
+            (e.g. `data.damage`,
+            `data.heroes_played.junkrat.stats.rip_tire_kill`), so the UI
+            can mark each with a revert affordance. Absent for pure OCR
+            and for manual matches — the Manual badge conveys provenance.
+          items:
+            type: string
+          example: ["data.map", "data.damage"]
         annotation:
           $ref: "#/components/schemas/MatchAnnotation"
         hidden:

@@ -24,6 +24,8 @@ var (
 	ErrManualNeedsHero = errors.New("at least one hero is required")
 	// ErrMatchKeyExists maps to 409 — a match already exists at that time.
 	ErrMatchKeyExists = errors.New("a match already exists for that time; pick a different minute")
+	// ErrInvalidPlayedAt maps to 400 — played_at wasn't valid RFC 3339.
+	ErrInvalidPlayedAt = errors.New("invalid played_at: must be RFC 3339")
 )
 
 // UpdateMatchData replaces the user override set for a match (inline edits send
@@ -113,7 +115,7 @@ func buildManualMatch(input match.ManualMatchInput) (string, db.UserMatchData, e
 	if input.PlayedAt != "" {
 		parsed, err := time.Parse(time.RFC3339, input.PlayedAt)
 		if err != nil {
-			return "", db.UserMatchData{}, fmt.Errorf("invalid played_at: %w", err)
+			return "", db.UserMatchData{}, fmt.Errorf("%w (%v)", ErrInvalidPlayedAt, err)
 		}
 		played = parsed.UTC()
 	}
