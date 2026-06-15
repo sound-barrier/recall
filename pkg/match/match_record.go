@@ -26,6 +26,17 @@ type MatchRecord struct {
 	SourceDirIDs map[string]int64   `json:"source_dir_ids,omitempty"`
 	ParsedAt     string             `json:"parsed_at,omitempty"`
 	Data         parser.MatchResult `json:"data"`
+	// Source is this record's provenance: SourceOCR (parsed from
+	// screenshots only), SourceOCREdited (parsed, then user-corrected via
+	// the override layer), or SourceManual (hand-entered; no screenshot
+	// rows). Always set by the read path.
+	Source string `json:"source"`
+	// EditedFields lists the dotted paths the user overrode on an OCR
+	// match (e.g. "data.damage",
+	// "data.heroes_played.junkrat.stats.rip_tire_kill") so the UI can mark
+	// each with a revert affordance. Empty for pure OCR and for manual
+	// matches — the Manual badge already conveys their provenance.
+	EditedFields []string `json:"edited_fields,omitempty"`
 	// User-curated annotation. Currently only `leaver` is surfaced in
 	// the UI ("self" | "team" | "enemy"); empty string means no
 	// annotation. Note is reserved for future per-match commentary.
@@ -69,6 +80,13 @@ type MatchRecord struct {
 	Ambiguous  bool                   `json:"ambiguous,omitempty"`
 	Candidates []AmbiguousAttribution `json:"candidates,omitempty"`
 }
+
+// Match provenance values for MatchRecord.Source.
+const (
+	SourceOCR       = "ocr"        // parsed from screenshots, unedited
+	SourceOCREdited = "ocr_edited" // parsed, then user-corrected
+	SourceManual    = "manual"     // hand-entered; no screenshot rows
+)
 
 // AmbiguousAttribution is one candidate match the user can pick to
 // resolve the ambiguity. Mirrors db.AmbiguousCandidate but exposes the

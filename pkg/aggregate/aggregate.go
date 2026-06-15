@@ -220,9 +220,41 @@ func FoldGroup(key string, vs []ScreenshotView, dirs map[int64]string) match.Mat
 		ParsedAt:       matchParsedAt,
 		Data:           data,
 		QueueType:      detectedQueue,
+		Source:         match.SourceOCR,
 	}
 	if len(dirIDsPerFile) > 0 {
 		rec.SourceDirIDs = dirIDsPerFile
 	}
 	return rec
+}
+
+// SynthesizeManualMatches appends an empty MatchRecord for every user-data key
+// with no screenshot-backed record — a hand-entered match, which lives entirely
+// in the override layer. AttachUserData fills each shell's Data from the row.
+// The result is re-sorted by match_key so manual and OCR matches interleave in
+// the same order AggregateScreenshots produces.
+func SynthesizeManualMatches(recs []match.MatchRecord, userData map[string]db.UserMatchData) []match.MatchRecord {
+	if len(userData) == 0 {
+		return recs
+	}
+	have := make(map[string]bool, len(recs))
+	for i := range recs {
+		have[recs[i].MatchKey] = true
+	}
+	added := false
+	for k := range userData {
+		if have[k] {
+			continue
+		}
+		recs = append(recs, match.MatchRecord{
+			MatchKey:    k,
+			Source:      match.SourceManual,
+			SourceFiles: []string{},
+		})
+		added = true
+	}
+	if added {
+		sort.Slice(recs, func(i, j int) bool { return recs[i].MatchKey < recs[j].MatchKey })
+	}
+	return recs
 }

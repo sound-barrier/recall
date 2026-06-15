@@ -61,7 +61,13 @@ func (a *App) aggregateAll() ([]match.MatchRecord, error) {
 	if err != nil {
 		return nil, err
 	}
+	userData, err := a.store.LoadAllUserMatchData()
+	if err != nil {
+		return nil, err
+	}
 	recs := aggregate.AggregateScreenshots(snap)
+	recs = aggregate.SynthesizeManualMatches(recs, userData)
+	aggregate.AttachUserData(recs, userData)
 	aggregate.AttachAnnotations(recs, annos)
 	aggregate.AttachHidden(recs, hidden)
 	aggregate.AttachReviews(recs, reviews)
