@@ -145,13 +145,13 @@ describe('FilterCombobox', () => {
       expect(items).toHaveLength(1)
     })
 
-    it('substring matches (not just prefix)', async () => {
-      const wrapper = mountCombo({ open: true })
-      await wrapper.find('input.combo-input').setValue('era') // matches "zenyatta"? no — let's use real substring
-      await wrapper.find('input.combo-input').setValue('ny')
+    it('matches by prefix only (not substring)', async () => {
+      const wrapper = mountCombo({ open: true, options: ['ana', 'busan', 'zenyatta'] })
+      await wrapper.find('input.combo-input').setValue('an')
       const items = wrapper.findAll('ul.combo-list li[role="option"]')
+      // "ana" starts with "an"; "busan" contains it but isn't a prefix.
       expect(items).toHaveLength(1)
-      expect(items[0]!.text()).toContain('zenyatta')
+      expect(items[0]!.text()).toContain('ana')
     })
 
     it('renders the empty-message row when no options match', async () => {

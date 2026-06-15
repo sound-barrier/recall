@@ -135,4 +135,31 @@ test.describe('match tag autocomplete', () => {
 
     await expect.poll(() => (captured?.tags as string[]) ?? []).toEqual(['brand-new'])
   })
+
+  test('suggestions match by prefix, not substring', async ({ page }) => {
+    const records = [
+      record('match-2026-05-10T22-00-00', ['stomp']),
+      record(KEY_BLANK, []),
+    ]
+    await page.route('**/api/v1/matches', async (route: Route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(records) })
+    })
+
+    await page.goto('/')
+    await page.locator('#tab-matches').click()
+    await page.locator(`.leaf-row[data-match-key="${KEY_BLANK}"]`).click()
+    await expect(page.locator('aside.detail-panel')).toBeVisible()
+
+    const tagInput = page.locator('.match-tag-input').first()
+    const suggestions = page.locator('ul.match-tag-suggestions li[role="option"]')
+    await tagInput.focus()
+
+    // "tom" is a substring of "stomp" but not a prefix → no suggestion.
+    await tagInput.fill('tom')
+    await expect(suggestions).toHaveCount(0)
+
+    // "sto" is a prefix → surfaces "stomp".
+    await tagInput.fill('sto')
+    await expect(suggestions.first()).toContainText('stomp')
+  })
 })
