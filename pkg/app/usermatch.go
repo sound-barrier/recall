@@ -86,6 +86,13 @@ func (a *App) CreateManualMatch(input match.ManualMatchInput) (match.MatchRecord
 	if err := a.store.SetMatchQueue(key, input.QueueType); err != nil {
 		return match.MatchRecord{}, err
 	}
+	// Leaver rides the existing annotation surface (validated upfront in
+	// buildManualMatch), not the user-data row.
+	if input.Leaver != "" {
+		if err := a.SetMatchAnnotation(AnnotationInput{MatchKey: key, Leaver: input.Leaver}); err != nil {
+			return match.MatchRecord{}, err
+		}
+	}
 	rec, err := a.GetMatchByKey(key)
 	if err != nil {
 		return match.MatchRecord{}, err
@@ -109,6 +116,8 @@ func buildManualMatch(input match.ManualMatchInput) (string, db.UserMatchData, e
 		return "", db.UserMatchData{}, ErrInvalidPlayMode
 	case !validQueueTypes[input.QueueType]:
 		return "", db.UserMatchData{}, ErrInvalidQueueType
+	case input.Leaver != "" && !validLeavers[input.Leaver]:
+		return "", db.UserMatchData{}, ErrInvalidLeaver
 	}
 
 	played := time.Now().UTC()

@@ -59,6 +59,7 @@ func TestCreateManualMatch_CreatesManualRecord(t *testing.T) {
 		Heroes:    []string{"ana", "kiriko"},
 		Result:    "victory",
 		PlayedAt:  "2026-06-15T14:30:00Z",
+		Leaver:    "team",
 	})
 	if err != nil {
 		t.Fatalf("CreateManualMatch: %v", err)
@@ -83,6 +84,10 @@ func TestCreateManualMatch_CreatesManualRecord(t *testing.T) {
 	}
 	if _, ok := fake.UserMatchData[wantKey]; !ok {
 		t.Errorf("UserMatchData row not written for %q", wantKey)
+	}
+	// Leaver rides the annotation surface, surfaced back on the record.
+	if rec.Annotation == nil || rec.Annotation.Leaver != "team" {
+		t.Errorf("Annotation leaver = %+v, want team", rec.Annotation)
 	}
 }
 
@@ -115,6 +120,7 @@ func TestCreateManualMatch_Validates(t *testing.T) {
 		{"no map", func(m *match.ManualMatchInput) { m.Map = "" }, app.ErrManualNeedsMap},
 		{"no heroes", func(m *match.ManualMatchInput) { m.Heroes = nil }, app.ErrManualNeedsHero},
 		{"bad result", func(m *match.ManualMatchInput) { m.Result = "win" }, app.ErrInvalidResult},
+		{"bad leaver", func(m *match.ManualMatchInput) { m.Leaver = "afk" }, app.ErrInvalidLeaver},
 		{"bad play_mode", func(m *match.ManualMatchInput) { m.PlayMode = "ranked" }, app.ErrInvalidPlayMode},
 		{"bad queue", func(m *match.ManualMatchInput) { m.QueueType = "5v5" }, app.ErrInvalidQueueType},
 	}

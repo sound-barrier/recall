@@ -162,6 +162,7 @@ func handleCreateManualMatch(a *app.App) http.HandlerFunc {
 			errStatus{app.ErrInvalidPlayMode, http.StatusBadRequest},
 			errStatus{app.ErrInvalidQueueType, http.StatusBadRequest},
 			errStatus{app.ErrInvalidPlayedAt, http.StatusBadRequest},
+			errStatus{app.ErrInvalidLeaver, http.StatusBadRequest},
 			errStatus{app.ErrMatchKeyExists, http.StatusConflict}) {
 			return
 		}

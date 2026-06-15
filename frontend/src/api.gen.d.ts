@@ -1635,6 +1635,7 @@ export interface components {
              */
             played_at?: string;
             rank?: components["schemas"]["ManualRankInput"];
+            leaver?: components["schemas"]["LeaverEnum"];
         };
         /** @description Competitive rank the match ended on. Omit for quickplay. */
         ManualRankInput: {

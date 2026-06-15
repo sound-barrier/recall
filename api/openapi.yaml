@@ -2344,6 +2344,8 @@ components:
           example: "2026-06-15T14:30:00Z"
         rank:
           $ref: "#/components/schemas/ManualRankInput"
+        leaver:
+          $ref: "#/components/schemas/LeaverEnum"
 
     ManualRankInput:
       type: object
