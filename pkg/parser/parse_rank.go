@@ -76,10 +76,24 @@ func parseRank(img image.Image, work string) (*MatchResult, error) {
 	if m := regexp.MustCompile(`(-?\d{1,3})\s*%`).FindStringSubmatch(progValText); m != nil {
 		res.RankProgress, _ = strconv.Atoi(m[1])
 	}
-	// The "+N%" gain pill (green, inside the bar) reads fine inverted.
+	// The "+N%" gain pill (green, inside the bar). The inverted pass reads it at
+	// 1440p but flattens the thin colored pill at 1080p (it returns 0); fall
+	// back to the same raw-at-6x treatment the (also thin, also colored) RANK
+	// PROGRESS value needs, so the gain survives a downscaled capture.
 	changeRect := image.Rect(W*10/100, H*60/100, W*70/100, H*80/100)
+	changeRe := regexp.MustCompile(`\+\s*(\d{1,3})\s*%`)
 	changeText, _ := ocrInverted(img, changeRect, work, "rank_change", "11", "")
-	if m := regexp.MustCompile(`\+\s*(\d{1,3})\s*%`).FindStringSubmatch(changeText); m != nil {
+	m := changeRe.FindStringSubmatch(changeText)
+	if m == nil {
+		// 1080p: the pill text is too small for the inverted pass, and over the
+		// wide crop the larger "RANK PROGRESS:" caption dominates OCR. Isolate
+		// just the pill band (below the caption, on the bar) and read it raw at
+		// 6x so the thin colored pill survives the downscale.
+		pillRect := image.Rect(W*30/100, H*76/100, W*52/100, H*83/100)
+		rawText, _ := ocrThreshold(img, pillRect, work, "rank_change_raw", 6, 200, "6", "+0123456789%")
+		m = changeRe.FindStringSubmatch(rawText)
+	}
+	if m != nil {
 		res.ChangePercent, _ = strconv.Atoi(m[1])
 	}
 
