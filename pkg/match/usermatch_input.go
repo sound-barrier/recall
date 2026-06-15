@@ -66,6 +66,10 @@ type ManualMatchInput struct {
 	Result    string           `json:"result"`     // "victory" | "defeat" | "draw"
 	PlayedAt  string           `json:"played_at,omitempty"`
 	Rank      *ManualRankInput `json:"rank,omitempty"`
+	// Leaver records who (if anyone) abandoned the match — "self" / "team" /
+	// "enemy", or "" for none. Written to the match annotation, not the
+	// user-data row (it shares the existing leaver-annotation surface).
+	Leaver string `json:"leaver,omitempty"`
 }
 
 // ManualRankInput captures the competitive rank a manual match ended on.
