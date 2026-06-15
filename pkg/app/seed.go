@@ -42,6 +42,8 @@ type SeedResult struct {
 	Unknowns      int
 	Ambiguous     int
 	Images        int
+	Edited        int // OCR matches carrying a user override (→ ocr_edited)
+	Manual        int // hand-entered matches with no screenshot rows (→ manual)
 }
 
 // SeedProfile creates the named profile if absent, opens a TRANSIENT
@@ -99,6 +101,19 @@ func SeedProfile(p *Profiles, name string, opts SeedOptions) (SeedResult, error)
 		}
 	}
 
+	ocrKeys := make(map[string]bool, len(fx.Summaries))
+	for _, r := range fx.Summaries {
+		ocrKeys[r.MatchKey] = true
+	}
+	edited, manual := 0, 0
+	for _, ud := range fx.UserData {
+		if ocrKeys[ud.MatchKey] {
+			edited++
+		} else {
+			manual++
+		}
+	}
+
 	return SeedResult{
 		Profile:   name,
 		Matches:   len(fx.Summaries),
@@ -108,6 +123,8 @@ func SeedProfile(p *Profiles, name string, opts SeedOptions) (SeedResult, error)
 		Unknowns:  len(fx.Unknowns),
 		Ambiguous: len(fx.Ambiguous),
 		Images:    images,
+		Edited:    edited,
+		Manual:    manual,
 	}, nil
 }
 

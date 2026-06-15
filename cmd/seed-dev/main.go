@@ -67,8 +67,8 @@ func main() {
 	}
 
 	dbPath := filepath.Join(profiles.ProfileDir(target), "db", "recall.db")
-	fmt.Printf("seeded %d matches (%d reviewed, %d queue-tagged, %d play-mode-tagged, %d unknown, %d ambiguous, %d preview images) into profile %q at %s\n",
-		res.Matches, res.Reviewed, res.Queues, res.PlayModes, res.Unknowns, res.Ambiguous, res.Images, target, dbPath)
+	fmt.Printf("seeded %d OCR matches (%d edited, %d hand-entered manual, %d reviewed, %d queue-tagged, %d play-mode-tagged, %d unknown, %d ambiguous, %d preview images) into profile %q at %s\n",
+		res.Matches, res.Edited, res.Manual, res.Reviewed, res.Queues, res.PlayModes, res.Unknowns, res.Ambiguous, res.Images, target, dbPath)
 }
 
 // clearProfile wipes a profile's database without reseeding.
