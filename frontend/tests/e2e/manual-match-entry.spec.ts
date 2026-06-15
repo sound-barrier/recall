@@ -68,6 +68,9 @@ test('Add match → fill → save → the match appears with the Manual badge', 
   // Toggles first, while no dropdown is open to overlap them.
   await page.locator('[data-mode="competitive"]').click()
   await page.locator('[data-queue="role"]').click()
+  // Role queue is single-role: a role is required and constrains the hero
+  // list. Ana is a support, so pick support to surface her.
+  await page.locator('[data-role="support"]').click()
   await page.locator('[data-result="victory"]').click()
   await page.locator('[data-leaver="team"]').click()
 
@@ -103,4 +106,44 @@ test('Add match → fill → save → the match appears with the Manual badge', 
 
   // The created manual match surfaces with the Manual provenance badge.
   await expect(page.locator('.prov-manual').first()).toBeVisible()
+})
+
+test('role queue requires a single role and constrains the hero list', async ({ page }) => {
+  await page.route('**/api/v1/system/reference-data', (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(refData) }),
+  )
+  await page.route('**/api/v1/matches', (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) }),
+  )
+
+  await page.goto('/')
+  await page.locator('#tab-matches').click()
+  await page.locator('[data-add-match]').click()
+  await expect(page.locator('.mm-modal')).toBeVisible()
+
+  // Role queue → role is now a required field, surfaced in the footer hint.
+  await page.locator('[data-mode="competitive"]').click()
+  await page.locator('[data-queue="role"]').click()
+  await expect(page.locator('.mm-foot-status')).toContainText('role')
+
+  // Before a role is picked there are no selectable heroes — no cross-role
+  // mixing — and the picker nudges the user to choose a role first.
+  const heroCombo = page.locator('[data-combo-id="mm-hero"]')
+  await heroCombo.locator('.combo-input').click()
+  await expect(heroCombo.locator('.combo-list li[role="option"]')).toHaveCount(0)
+  await expect(heroCombo.locator('.combo-empty')).toContainText(/pick a role/i)
+
+  // Pick the tank role → only the tank (Reinhardt) is offered; the support
+  // (Ana) and damage (Tracer) heroes are filtered out entirely.
+  await page.locator('[data-role="tank"]').click()
+  await heroCombo.locator('.combo-input').click()
+  await expect(heroCombo.locator('.combo-list li[role="option"]')).toHaveCount(1)
+  await expect(heroCombo.locator('.combo-list li[role="option"]')).toContainText('reinhardt')
+
+  // Selecting reinhardt, then switching the role to support, drops the
+  // now-illegal tank pick — the selection can never span two roles.
+  await heroCombo.locator('.combo-list li:has-text("reinhardt")').click()
+  await expect(heroCombo.locator('.combo-pill')).toContainText('reinhardt')
+  await page.locator('[data-role="support"]').click()
+  await expect(heroCombo.locator('.combo-pill')).toHaveCount(0)
 })

@@ -50,6 +50,10 @@ export function useManualMatchForm() {
     if (map.value.trim() === '') out.push('map')
     if (playMode.value === '') out.push('mode')
     if (queueType.value === '') out.push('queue')
+    // Role queue is a single-role queue: you play one role the whole match, so
+    // the category is mandatory and constrains the hero list. Open queue lets
+    // you swap across roles freely, so it's not required there.
+    if (queueType.value === 'role' && roleCategory.value === '') out.push('role')
     if (result.value === '') out.push('result')
     if (heroes.value.length === 0) out.push('a hero')
     return out
