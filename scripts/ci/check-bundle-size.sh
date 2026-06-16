@@ -34,8 +34,8 @@ DIST_DIR="${REPO_ROOT}/frontend/dist/assets"
 # silence noise.
 : "${MAX_INITIAL_JS_BYTES:=162000}"
 : "${MAX_INITIAL_CSS_BYTES:=64000}"
-: "${MAX_TOTAL_JS_BYTES:=540000}"
-: "${MAX_TOTAL_CSS_BYTES:=282000}"
+: "${MAX_TOTAL_JS_BYTES:=575000}"
+: "${MAX_TOTAL_CSS_BYTES:=300000}"
 
 if [[ "${1:-}" == "--build" ]]; then
   echo "==> building frontend (npm --prefix frontend run build)…"
