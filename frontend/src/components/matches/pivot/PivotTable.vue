@@ -10,13 +10,13 @@ import {
 } from '@/composables/matches/useMatchPivot'
 import type { PivotField } from '@/match/pivot-fields'
 import { aggLabelOf } from '@/match/pivot-aggregate'
-import PivotShelf from '@/components/matches/PivotShelf.vue'
-import PivotCrosstab from '@/components/matches/PivotCrosstab.vue'
+import PivotShelf from '@/components/matches/pivot/PivotShelf.vue'
+import PivotCrosstab from '@/components/matches/pivot/PivotCrosstab.vue'
 import PivotFieldChip, {
   type ChipAction,
   type ChipActPayload,
   type FilterOption,
-} from '@/components/matches/PivotFieldChip.vue'
+} from '@/components/matches/pivot/PivotFieldChip.vue'
 
 // The pivot builder + crosstab. Owns one useMatchPivot over the SAME
 // narrowed records the flat data table reads, so flipping Flat↔Pivot never

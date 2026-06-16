@@ -6,7 +6,7 @@ import { useTableSort, type TableSortCol, TABLE_SORT_COLUMNS } from '@/composabl
 import { useTableMode } from '@/composables/matches/useTableMode'
 import type { SearchClause } from '@/match/search-query'
 import MatchTableRow from '@/components/matches/MatchTableRow.vue'
-import PivotTable from '@/components/matches/PivotTable.vue'
+import PivotTable from '@/components/matches/pivot/PivotTable.vue'
 
 // Data-density view of the matches list: a real <table> with sortable
 // column headers over the whole narrowed set (no D/W/M/Y grouping), the
