@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import MatchCardExpanded from '@/components/matches/MatchCardExpanded.vue'
+import MatchCardExpanded from '@/components/matches/detail/MatchCardExpanded.vue'
 import type { MatchRecord } from '@/api'
 
 // MatchCardExpanded owns annotation draft state, the leaver-chooser

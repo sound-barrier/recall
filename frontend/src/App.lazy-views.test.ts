@@ -23,8 +23,8 @@ describe('App.vue lazy-loaded components', () => {
     { name: 'MatchesView',            path: '@/components/matches/MatchesView.vue' },
     { name: 'SettingsView',           path: '@/components/settings/SettingsView.vue' },
     { name: 'UnknownMapsView',        path: '@/components/unknown/UnknownMapsView.vue' },
-    { name: 'MatchDetailPanel',       path: '@/components/matches/MatchDetailPanel.vue' },
-    { name: 'MatchScreenshotLightbox', path: '@/components/matches/MatchScreenshotLightbox.vue' },
+    { name: 'MatchDetailPanel',       path: '@/components/matches/detail/MatchDetailPanel.vue' },
+    { name: 'MatchScreenshotLightbox', path: '@/components/matches/detail/MatchScreenshotLightbox.vue' },
     { name: 'KeyboardShortcutsModal', path: '@/components/shared/KeyboardShortcutsModal.vue' },
     // First-run modal — only renders on a fresh install, so the cost
     // of its bytes should only be paid by users who actually see it.

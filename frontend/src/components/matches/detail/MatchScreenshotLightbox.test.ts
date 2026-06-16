@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import MatchScreenshotLightbox from '@/components/matches/MatchScreenshotLightbox.vue'
+import MatchScreenshotLightbox from '@/components/matches/detail/MatchScreenshotLightbox.vue'
 
 // Lightbox prev/next contract.
 //

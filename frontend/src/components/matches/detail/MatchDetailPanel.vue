@@ -5,7 +5,7 @@ import type { SearchClause } from '@/match/search-query'
 import { useOWData } from '@/composables/shared/useOWData'
 import { useModalFocusTrap } from '@/composables/shared/useModalFocusTrap'
 import { useSmoothScroll } from '@/composables/matches/useSmoothScroll'
-import MatchCardExpanded from '@/components/matches/MatchCardExpanded.vue'
+import MatchCardExpanded from '@/components/matches/detail/MatchCardExpanded.vue'
 import MatchProvenanceBadge from '@/components/matches/MatchProvenanceBadge.vue'
 
 // Detail panel — slides in from the right when a match is selected.
