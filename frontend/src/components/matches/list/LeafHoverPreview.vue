@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { MatchRecord } from '@/api'
-import MatchProvenanceBadge from '@/components/matches/MatchProvenanceBadge.vue'
+import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
 
 // Cursor-anchored hover preview for a leaf row. Floats above the
 // cursor on hover; the host (MatchesView) toggles `visible` based

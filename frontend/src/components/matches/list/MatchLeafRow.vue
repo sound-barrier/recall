@@ -17,8 +17,8 @@ import {
   formatUnknownMapLabel,
 } from '@/match/match-label-helpers'
 import { highlightTermsFor, type SearchClause } from '@/match/search-query'
-import HighlightedText from '@/components/matches/HighlightedText.vue'
-import MatchProvenanceBadge from '@/components/matches/MatchProvenanceBadge.vue'
+import HighlightedText from '@/components/matches/shared/HighlightedText.vue'
+import MatchProvenanceBadge from '@/components/matches/shared/MatchProvenanceBadge.vue'
 
 // One compact match row in the set's members list. Click opens the
 // detail panel; the row carries data-match-key / data-card-index /

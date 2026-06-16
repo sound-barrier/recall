@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import MatchesSkeleton from '@/components/matches/MatchesSkeleton.vue'
+import MatchesSkeleton from '@/components/matches/shared/MatchesSkeleton.vue'
 
 describe('MatchesSkeleton', () => {
   it('renders the default six skeleton rows', () => {
