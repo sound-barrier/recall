@@ -1,8 +1,6 @@
 <!--
   Thanks for sending a PR. Fill out the sections below — empty or
-  unchecked items will hold up the review. The PR Compliance CI job
-  re-checks the two attestations at the bottom on every push, so
-  ticking them later is fine.
+  unchecked items will hold up the review.
 -->
 
 ## Summary
@@ -33,5 +31,3 @@
 - [ ] **Tests added or updated where appropriate.** TDD is the expectation for new features and bug fixes (see [CLAUDE.md → Working style → TDD process](CLAUDE.md#tdd-process)).
 - [ ] **Documentation updated where appropriate** — CLAUDE.md if you changed an architectural pattern, README/docs if you changed user-visible behavior, CODE_OF_CONDUCT.md if you changed how the project is governed.
 - [ ] **CI is green** — lint, tests, typecheck, coverage thresholds, schemathesis. The repo's [CI workflows](.github/workflows/) gate merges.
-- [ ] **I have read and agree to the [Code of Conduct](CODE_OF_CONDUCT.md).**
-- [ ] **I license my contribution to this project under the [Apache License, Version 2.0](LICENSE)** (the project's license). My contribution is my own work, or I have the right to submit it under this license.
