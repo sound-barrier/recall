@@ -164,6 +164,8 @@ func handleCreateManualMatch(a *app.App) http.HandlerFunc {
 			errStatus{app.ErrInvalidPlayedAt, http.StatusBadRequest},
 			errStatus{app.ErrInvalidLeaver, http.StatusBadRequest},
 			errStatus{app.ErrInvalidRank, http.StatusBadRequest},
+			errStatus{app.ErrUnknownMap, http.StatusConflict},
+			errStatus{app.ErrUnknownHero, http.StatusConflict},
 			errStatus{app.ErrMatchKeyExists, http.StatusConflict}) {
 			return
 		}

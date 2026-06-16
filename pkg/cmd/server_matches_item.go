@@ -222,7 +222,10 @@ func handleUpdateMatchData(a *app.App) http.HandlerFunc {
 			return
 		}
 		if writeError(w, a.UpdateMatchData(matchKey, input),
-			errStatus{app.ErrInvalidResult, http.StatusBadRequest}) {
+			errStatus{app.ErrInvalidResult, http.StatusBadRequest},
+			errStatus{app.ErrStatOutOfRange, http.StatusBadRequest},
+			errStatus{app.ErrUnknownMap, http.StatusConflict},
+			errStatus{app.ErrUnknownHero, http.StatusConflict}) {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
