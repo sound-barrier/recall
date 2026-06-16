@@ -158,41 +158,37 @@ extracted helpers over a speculative framework. Tracking note, not a mandate.
 
 ---
 
-### Q13. `App.vue` is a 2413-line shell — extract cross-cutting state
+### Q13. App.vue shell — partial extraction done; remaining wiring noted
 
-**Where:** `frontend/src/App.vue` (2413 lines — the largest hand-written file in
-the tree after the generated `api.gen.d.ts`).
+Three cohesive state clusters were pulled out of `App.vue` into composables
+(2413 → **2221**): `useCardFocus` (the j/k/gg/G/n/N card-focus walk),
+`useIgnoredScreenshots` (the suppress-list panel + restore/clear/re-parse), and
+`useExportBundle` (bundle + flat-CSV export). Tesseract status + the
+update-reminder were already composables.
 
-**What:** it's the documented router-shell (masthead + four lazy views + modals +
-cross-cutting state), and the keyboard registry already moved out to
-`useGlobalKeyboard`. But it still carries several independent state concerns
-inline — parse run-state, Tesseract status + pickers, the System-Alert gate,
-settings wiring, card-focus + selection, the update-check flow — each of which is
-a composable-shaped unit. Past the ~500-line ceiling by ~5×; the cleanest wins
-are pulling the Tesseract/settings and parse-status clusters into
-`useTesseractStatus` / `useParseRunState`-style composables and letting App.vue
-stay pure wiring. **Fix:** extract 2–3 cohesive state composables (mirroring the
-existing `useGlobalKeyboard` extraction); each move is guarded by the App + e2e
-suites.
+App.vue still carries parse run-state, profile/tour/first-run wiring, and the
+right-click + resolve/ignore flows — each a candidate for the same treatment, but
+they're more entangled with the shell's load/error/nav functions. Continued
+direction, not a blocker; the shell shrinks one composable per commit.
 
-**Size:** L. **Risk:** Med — App.vue owns a lot of shared state; stage one
-composable per commit.
+**Size:** L (partial). **Risk:** Med — App.vue owns a lot of shared state; stage
+one composable per commit.
 
-### Q14. `components/matches/` is a 65-file flat feature dir
+### Q14. components/matches/ — pivot/ sub-grouped; rest is continued direction
 
-**Where:** `frontend/src/components/matches/` — 65 files (`ls`), far past the
-~20–25 the `CLAUDE.md` *Package & directory size* rule flags for sub-grouping.
+The 65-file flat `components/matches/` is past the ~20–25 the `CLAUDE.md`
+*Package & directory size* rule flags. The **pivot cluster** (`PivotTable` +
+`PivotShelf`/`PivotCrosstab`/`PivotFieldChip`) moved into `matches/pivot/`,
+demonstrating the feature-subfolder pattern (pure `@/`-alias move — only the entry
+import + the three intra-cluster imports changed).
 
-**What:** the feature-folder regroup (Q-era #375–378) put every match component
-in one folder; the pivot, dossier, detail-panel, status-chooser, list, and
-archive clusters have since grown it to 65. It's one *feature* but several
-*sub-domains*. **Fix:** sub-group into `matches/{list,detail,dossier,pivot,status,archive}/`
-(+ a `matches/shared/` for the cross-cluster pieces), mirroring the
-`dashboard/widgets/` nesting. Pure moves — the `@/` alias means no import in the
-moved files changes; only the importers' paths update.
+The remaining clusters — `detail/` (`MatchDetailPanel` → `MatchCardExpanded` + its
+seven children), `list/`, `dossier/`, `status/`, `archive/` — are the same
+mechanical move, but `detail/`/`list/` share components with the leaf-row, so they
+want a `matches/shared/` carve-out first. Continued direction.
 
-**Size:** M. **Risk:** Low — location-independent `@/` imports + green SFC/e2e
-suites make this a mechanical move.
+**Size:** M (pivot/ done). **Risk:** Low — location-independent `@/` imports make
+the rest mechanical.
 
 ### Q15. Go complexity — engine hot paths done; dev-support residual acceptable
 
