@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import MatchesTableSortPopover from '@/components/matches/MatchesTableSortPopover.vue'
+import MatchesTableSortPopover from '@/components/matches/list/MatchesTableSortPopover.vue'
 
 // happy-dom has no global localStorage; stub an in-memory one so the
 // dialog's own useTableSort instance can read + persist the stack.

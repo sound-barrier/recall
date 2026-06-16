@@ -34,7 +34,7 @@ describe('App.vue lazy-loaded components', () => {
     { name: 'ExportBundleModal',      path: '@/components/settings/ExportBundleModal.vue' },
     // Anchor confirmation toast — small, but lazy so the bytes only
     // hit users who actually stamp an anchor.
-    { name: 'MatchAnchorToast',       path: '@/components/matches/MatchAnchorToast.vue' },
+    { name: 'MatchAnchorToast',       path: '@/components/matches/list/MatchAnchorToast.vue' },
     // Update-check modal — only mounted when the user runs a check.
     { name: 'UpdateCheckModal',       path: '@/components/shared/UpdateCheckModal.vue' },
     // Manual-entry modal — only mounted when the user clicks "Add match".

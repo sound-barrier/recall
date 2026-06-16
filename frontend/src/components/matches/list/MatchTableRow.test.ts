@@ -23,7 +23,7 @@ vi.mock('@/composables/shared/useOWData', async () => {
   }
 })
 
-const { default: MatchTableRow } = await import('@/components/matches/MatchTableRow.vue')
+const { default: MatchTableRow } = await import('@/components/matches/list/MatchTableRow.vue')
 
 function rec(over: Partial<MatchRecord['data']> = {}, key = 'm-1'): MatchRecord {
   return {

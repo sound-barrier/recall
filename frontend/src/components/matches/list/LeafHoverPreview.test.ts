@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
 import type { MatchRecord } from '@/api'
-import LeafHoverPreview from '@/components/matches/LeafHoverPreview.vue'
+import LeafHoverPreview from '@/components/matches/list/LeafHoverPreview.vue'
 
 // The preview teleports to document.body, so assertions query the body.
 let wrapper: VueWrapper | null = null

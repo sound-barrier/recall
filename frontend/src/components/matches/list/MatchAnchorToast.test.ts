@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
-import MatchAnchorToast from '@/components/matches/MatchAnchorToast.vue'
+import MatchAnchorToast from '@/components/matches/list/MatchAnchorToast.vue'
 
 type ToastState = { kind: 'set' | 'cleared'; label: string; token: number } | null
 

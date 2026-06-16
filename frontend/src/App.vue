@@ -144,7 +144,7 @@ const UnknownMapsView = lazyView(() => import('@/components/unknown/UnknownMapsV
 const MatchDetailPanel = defineAsyncComponent(() => import('@/components/matches/detail/MatchDetailPanel.vue'))
 // Anchor confirmation toast — small, eagerly loaded so it can fire
 // on the very first anchor-set transition without a chunk fetch.
-const MatchAnchorToast = defineAsyncComponent(() => import('@/components/matches/MatchAnchorToast.vue'))
+const MatchAnchorToast = defineAsyncComponent(() => import('@/components/matches/list/MatchAnchorToast.vue'))
 // ProfileSwitcher is part of the always-visible masthead chrome, so
 // it's a static import — lazy-loading it would just buy a tiny
 // initial-bundle saving at the cost of a render-blocking flash on
