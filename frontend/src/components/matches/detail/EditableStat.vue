@@ -13,10 +13,15 @@ const props = withDefaults(
     label: string
     edited?: boolean
     kind?: 'number' | 'text'
+    // Inclusive numeric bounds enforced on commit (kind === 'number' only).
+    // Default to the MatchResult stat range so a negative or absurd value is
+    // rejected before it reaches the server. Override per stat as needed.
+    min?: number
+    max?: number
     // Optional display formatter (e.g. thousands separators for damage).
     format?: (v: number | string) => string
   }>(),
-  { edited: false, kind: 'number', format: (v: number | string) => String(v) },
+  { edited: false, kind: 'number', min: 0, max: 1_000_000, format: (v: number | string) => String(v) },
 )
 
 const emit = defineEmits<{
@@ -26,6 +31,7 @@ const emit = defineEmits<{
 
 const editing = ref(false)
 const draft = ref('')
+const error = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
 
 const displayValue = computed(() => {
@@ -35,6 +41,7 @@ const displayValue = computed(() => {
 
 async function startEdit() {
   draft.value = props.value === null || props.value === undefined ? '' : String(props.value)
+  error.value = ''
   editing.value = true
   await nextTick()
   inputRef.value?.focus()
@@ -43,21 +50,36 @@ async function startEdit() {
 
 function commit() {
   if (!editing.value) return
-  editing.value = false
   // v-model on <input type="number"> hands back a number, so coerce before
   // trimming (draft is typed string but the runtime value can be numeric).
   const raw = String(draft.value).trim()
-  if (raw === '') return
-  if (props.kind === 'number') {
-    const n = Number(raw)
-    if (Number.isNaN(n)) return
-    emit('commit', n)
-  } else {
-    emit('commit', raw)
+  if (raw === '') {
+    editing.value = false
+    return
   }
+  if (props.kind !== 'number') {
+    editing.value = false
+    emit('commit', raw)
+    return
+  }
+  const n = Number(raw)
+  if (Number.isNaN(n)) {
+    editing.value = false
+    return
+  }
+  if (n < props.min || n > props.max) {
+    // Reject out of range: surface an inline error and keep the field open so
+    // the user can correct it rather than silently dropping the edit.
+    error.value = `Enter a number from ${props.min} to ${props.max.toLocaleString()}.`
+    return
+  }
+  error.value = ''
+  editing.value = false
+  emit('commit', n)
 }
 
 function cancel() {
+  error.value = ''
   editing.value = false
 }
 </script>
@@ -70,7 +92,10 @@ function cancel() {
       v-model="draft"
       class="stat-input"
       :type="kind === 'number' ? 'number' : 'text'"
+      :min="kind === 'number' ? min : undefined"
+      :max="kind === 'number' ? max : undefined"
       :aria-label="`Edit ${label}`"
+      :aria-invalid="error ? 'true' : undefined"
       @keydown.enter.prevent="commit"
       @keydown.esc.prevent="cancel"
       @blur="commit"
@@ -84,6 +109,8 @@ function cancel() {
     >
       {{ displayValue }}
     </button>
+
+    <span v-if="error" class="stat-error" role="alert">{{ error }}</span>
 
     <span class="stat-label">
       {{ label }}
@@ -141,6 +168,21 @@ function cancel() {
   border: 1px solid var(--accent);
   border-radius: 2px;
   padding: 0.05rem 0.1rem;
+}
+
+.stat-input[aria-invalid='true'] {
+  border-color: var(--loss);
+}
+
+/* Out-of-range message under the input; small + loss-coloured so it reads as a
+   correction prompt without shoving the stats grid around. */
+.stat-error {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.6rem;
+  line-height: 1.1;
+  color: var(--loss);
+  max-width: 14ch;
 }
 
 /* The ✎ revert affordance sits inline after the label. Accent-coloured so an

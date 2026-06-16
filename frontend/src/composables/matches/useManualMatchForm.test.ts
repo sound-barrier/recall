@@ -85,6 +85,43 @@ describe('useManualMatchForm', () => {
     })
   })
 
+  it('blocks submit on an out-of-range rank and clears once valid', () => {
+    const f = useManualMatchForm()
+    f.map.value = 'ilios'
+    f.queueType.value = 'open'
+    f.result.value = 'victory'
+    f.addHero('ana')
+    f.playMode.value = 'competitive'
+    f.rankTier.value = 'platinum'
+    expect(f.canSubmit.value).toBe(true) // progress 0 / change 0 are valid
+
+    f.rankProgress.value = 150
+    expect(f.rankValid.value).toBe(false)
+    expect(f.rankError.value).toMatch(/0 and 100/)
+    expect(f.canSubmit.value).toBe(false)
+
+    f.rankProgress.value = 50
+    f.rankChange.value = 2_000_000
+    expect(f.rankValid.value).toBe(false)
+    expect(f.canSubmit.value).toBe(false)
+
+    f.rankChange.value = 25
+    expect(f.rankValid.value).toBe(true)
+    expect(f.canSubmit.value).toBe(true)
+  })
+
+  it('does not validate rank when no tier is set', () => {
+    const f = useManualMatchForm()
+    f.map.value = 'ilios'
+    f.queueType.value = 'open'
+    f.result.value = 'victory'
+    f.addHero('ana')
+    f.playMode.value = 'competitive'
+    f.rankProgress.value = 999 // ignored: no tier, so no rank is sent
+    expect(f.rankActive.value).toBe(false)
+    expect(f.canSubmit.value).toBe(true)
+  })
+
   it('includes leaver only when one is picked', () => {
     const f = useManualMatchForm()
     expect(f.toInput().leaver).toBeUndefined()
