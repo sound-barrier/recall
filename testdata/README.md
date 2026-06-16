@@ -152,7 +152,7 @@ content and warrant a sanity check.
 ## Tesseract version
 
 Goldens are baselined against the Tesseract version pinned in
-`tool-versions.env` (`TESSERACT_VERSION`, major.minor). CI's
+`mise.toml` `[env]` (`TESSERACT_VERSION`, major.minor). CI's
 schemathesis job and `.devcontainer/postCreate.sh` both install
 whatever apt has and assert the installed major.minor matches the
 pin — a mismatch hard-fails CI with an explicit "re-baseline and

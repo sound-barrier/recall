@@ -8,7 +8,7 @@ on:
   # using the default GITHUB_TOKEN -- GitHub deliberately does not
   # fire workflows on refs authored by GITHUB_TOKEN (loop guard), so
   # the push:tags trigger above never runs for those tags. From the
-  # command line: `make release-fire TAG=vX.Y.Z` (wraps the gh CLI),
+  # command line: `task release-fire TAG=vX.Y.Z` (wraps the gh CLI),
   # or from the UI: Release -> Run workflow -> pick the tag in the
   # "Use workflow from" dropdown. Every job in this file already
   # keys off github.ref_name, which is the tag name for both
@@ -94,10 +94,10 @@ jobs:
       - uses: ./.github/actions/docker-build-env
 
       # docker/build-push-action handles `--cache-from` / `--cache-to`
-      # natively (the Makefile's `docker build` invocation does not),
-      # which is why this step bypasses `make ${{ matrix.target }}`
+      # natively (the Taskfile's `docker build` invocation does not),
+      # which is why this step bypasses `task ${{ matrix.target }}`
       # and calls the Dockerfile target directly. Same outputs, same
-      # build-args — local `make build-*` remains the un-changed
+      # build-args — local `task build-*` remains the un-changed
       # canonical local-build entry point.
       - name: Build ${{ matrix.target }}
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf  # v7
@@ -163,7 +163,7 @@ jobs:
       - uses: ./.github/actions/wails-build-env
 
       - name: Build macOS Wails app
-        run: make build-mac
+        run: task build-mac
 
       # DMG staging + hdiutil call lives in scripts/release/make-dmg.sh.
       # The in-DMG README.txt is sourced from docs/dmg/README.txt

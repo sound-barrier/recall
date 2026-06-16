@@ -7,7 +7,7 @@
 # RECALL_DATA_DIR (so it doesn't trample the dev's real install),
 # runs schemathesis, tears the server down. Same invocation as CI's
 # `schemathesis` job — see .github/workflows/ci.yml. Centralised here
-# so CI + lefthook + ad-hoc `make check-api-drift` all stay in sync.
+# so CI + lefthook + ad-hoc `task check-api-drift` all stay in sync.
 #
 # Usage:
 #   bash scripts/ci/check-api-drift.sh                          # default
@@ -16,8 +16,7 @@
 #
 # Prerequisites:
 #   - Go on PATH (for `go build`)
-#   - schemathesis 4.x on PATH. Pin in tool-versions.env (SCHEMATHESIS_VERSION).
-#       . ./tool-versions.env && pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
+#   - schemathesis 4.x on PATH. Pinned in mise.toml; `mise install` provides it.
 #   - frontend/dist/ present (for //go:embed in main.go). The script
 #     builds it if missing; pass SKIP_FRONTEND_BUILD=1 to bypass.
 
@@ -25,12 +24,6 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
-
-# Source the central version pin (informational only — script-level
-# behavior matches whatever schemathesis the dev has installed via
-# pipx). CI and initialize.sh pin to this exact version.
-# shellcheck source=../../tool-versions.env disable=SC1091
-. ./tool-versions.env
 
 PORT=${RECALL_SCHEMATHESIS_PORT:-7099}
 WAIT_TIMEOUT=${RECALL_SCHEMATHESIS_TIMEOUT:-30}
@@ -40,7 +33,7 @@ WAIT_TIMEOUT=${RECALL_SCHEMATHESIS_TIMEOUT:-30}
 # pick that up via `pipx ensurepath` writing into .bashrc/.zshrc, but
 # the lefthook pre-push hook spawns a non-interactive shell that
 # doesn't load profile rc files. Add ~/.local/bin to PATH defensively
-# so the hook finds the same binary `make check-api-drift` does.
+# so the hook finds the same binary `task check-api-drift` does.
 if [[ -d "$HOME/.local/bin" ]] && [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
   export PATH="$HOME/.local/bin:$PATH"
 fi
@@ -50,8 +43,8 @@ if ! command -v schemathesis >/dev/null 2>&1; then
   cat >&2 <<EOF
 ::error::schemathesis not on PATH.
 
-Install (pin from tool-versions.env):
-  pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
+Install it (pinned in mise.toml):
+  mise install
 
 Or skip this check for one push:
   LEFTHOOK_EXCLUDE=schemathesis git push

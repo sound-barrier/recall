@@ -1,5 +1,5 @@
 # markdownlint-cli2 config — covers everything matched by the `globs`
-# below. Run via `make lint-md`, the pre-commit hook, or
+# below. Run via `task lint-md`, the pre-commit hook, or
 # `npx markdownlint-cli2 --fix` to auto-fix the safe rules.
 #
 # Rule reference: https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md

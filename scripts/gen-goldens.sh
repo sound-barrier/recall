@@ -4,7 +4,7 @@
 # extracts (the screenshot_type + every field it populated) and spot bugs to
 # report.
 #
-# Why this script exists: `make update-goldens` regenerates the committed
+# Why this script exists: `task update-goldens` regenerates the committed
 # testdata/ fixtures, but to *find* bugs you want to point the parser at an
 # arbitrary capture — a single PNG, or a whole folder you just dropped
 # screenshots into — without copying it into testdata/ first. This wraps the
@@ -14,7 +14,7 @@
 #
 # Usage:
 #   scripts/gen-goldens.sh <file-or-directory>
-#   make goldens SRC=<file-or-directory>
+#   task goldens SRC=<file-or-directory>
 #
 # Output: writes "<image>.golden.json" next to each .png/.jpg/.jpeg. Open it,
 # compare against what the screenshot shows, and report any field that's wrong

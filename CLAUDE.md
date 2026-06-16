@@ -27,16 +27,20 @@ releases, etc.).
 
 ## Common commands
 
+The build runner is [go-task](https://taskz.dev) (`Taskfile.yml`, run inside the
+[mise](https://mise.jdx.dev)-managed environment — `mise install` provisions the
+pinned toolchain from `mise.toml`). `task --list` shows the full catalog.
+
 | Command | Purpose |
 |---|---|
-| `make dev` | Hot-reload dev server (Vite `:5173`, Wails IPC `:34115`). |
-| `make test` | Go unit (`-race`) + Vitest. |
-| `make test-e2e` | Playwright e2e. Required for any UI feature (TDD rule below). |
-| `make lint` | All linters (Go × both build tags, ESLint, Stylelint, shellcheck, Spectral, …). |
-| `make fmt` | Go (`goimports-reviser` → `gofumpt`) + shell (`shfmt`). |
-| `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` after editing `api/openapi.yaml`. |
-| `make cover` | Generate Go + frontend **unit** coverage reports (umbrella). Required before opening a PR. |
-| `make cover-e2e` | **Integration** coverage from the Playwright suite (Go `-cover` + monocart V8 frontend) → `coverage/e2e/`. Informational, not gated. |
+| `task dev` | Hot-reload dev server (Vite `:5173`, Wails IPC `:34115`). |
+| `task test` | Go unit (`-race`) + Vitest. |
+| `task test-e2e` | Playwright e2e. Required for any UI feature (TDD rule below). |
+| `task lint` | All linters (Go × both build tags, ESLint, Stylelint, shellcheck, Spectral, …). |
+| `task fmt` | Go (`goimports-reviser` → `gofumpt`) + shell (`shfmt`). |
+| `task gen-types` | Regenerate `frontend/src/api.gen.d.ts` after editing `api/openapi.yaml`. |
+| `task cover` | Generate Go + frontend **unit** coverage reports (umbrella). Required before opening a PR. |
+| `task cover-e2e` | **Integration** coverage from the Playwright suite (Go `-cover` + monocart V8 frontend) → `coverage/e2e/`. Informational, not gated. |
 
 Full command catalog, env-var overrides, Dockerfile stages, package layout, and
 helper-script reference: **`docs/dev-reference.md`**.
@@ -199,7 +203,7 @@ exercises it. Tests that are coupled to internal data structures are brittle,
 resist refactoring, and should be rewritten or deleted.
 
 **Coverage floor: 60% line coverage and 60% branch coverage**, measured by
-`make cover`. This is a minimum, not a target — aim higher where the code is
+`task cover`. This is a minimum, not a target — aim higher where the code is
 consequential (parser logic, aggregation, error paths). PRs that regress either
 metric without explicit justification should not merge.
 
@@ -218,8 +222,8 @@ known pattern across layers" is NOT an exemption — the match-deletion feature
 shipped with a latent `r.json()`-on-204 bug because no e2e exercised the
 POST → reload round-trip.
 
-**Before declaring any task done**, run `make lint` and `make test`. If UI was
-touched, also run `make test-e2e`. Never present work as complete while the
+**Before declaring any task done**, run `task lint` and `task test`. If UI was
+touched, also run `task test-e2e`. Never present work as complete while the
 build is red or tests are failing — say what's broken and why instead.
 
 ### What to avoid
@@ -243,7 +247,7 @@ than observable, public behavior.
   scratch scripts, log dumps — use `tmp/foo.md` (gitignored). **Carve-out**:
   existing infra paths (`/tmp/recall-e2e/...`, `HOME=/tmp/recall-smoke`,
   `/private/tmp/...` for the macOS Tesseract symlink) are baked into
-  Makefile/CI/scripts and stay as-is — but don't add new ad-hoc `/tmp` paths.
+  Taskfile/CI/scripts and stay as-is — but don't add new ad-hoc `/tmp` paths.
 
 - **Commits**: Conventional Commits prefix (`feat` `fix` `chore` `docs`
   `refactor` `test` `perf` `build` `ci` `revert` `style`) enforced by lefthook's
@@ -299,7 +303,7 @@ These load automatically when you open a matching file:
 | Frontend (Vue) | `frontend/CLAUDE.md` (nested; auto-loads when you read files in `frontend/`) | `frontend/**` |
 | Accessibility | `.claude/rules/a11y.md` | `frontend/src/App.vue`, `frontend/src/components/**`, `frontend/src/styles/**`, `frontend/tests/**` |
 | CI/CD workflows | `.claude/rules/ci-cd.md` | `.github/**` |
-| Build / tooling / scripts | `.claude/rules/build-tooling.md` | `Makefile`, `Dockerfile*`, `scripts/**`, `tool-versions.env`, `lefthook.yml` |
+| Build / tooling / scripts | `.claude/rules/build-tooling.md` | `Taskfile.yml`, `mise.toml`, `Dockerfile*`, `scripts/**`, `lefthook.yml` |
 | Documentation site | `.claude/rules/docs-site.md` | `docs/**`, `book/**`, root `*.md` |
 
 Read on demand (never auto-loaded): **`docs/dev-reference.md`** — full make-target

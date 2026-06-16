@@ -27,7 +27,7 @@ overview of the architecture and internal conventions, see
   - [Preparing frontend/dist in CI jobs](#preparing-frontenddist-in-ci-jobs)
   - [Pinning GitHub Actions](#pinning-github-actions)
   - [Tagging and releasing](#tagging-and-releasing)
-- [Releases](RELEASES.md) — separate doc; covers cutting stable releases and prereleases, `make release-beta` / `make release-fire` shortcuts, and recovery procedures.
+- [Releases](RELEASES.md) — separate doc; covers cutting stable releases and prereleases, `task release-beta` / `task release-fire` shortcuts, and recovery procedures.
 - [Test-only APIs](#test-only-apis)
 - [Bug-report bundles](#bug-report-bundles)
   - [What's in a bundle](#whats-in-a-bundle)
@@ -38,7 +38,7 @@ overview of the architecture and internal conventions, see
 ## Development setup
 
 ```sh
-make help       # list all available targets
+task help       # list all available targets
 ```
 
 > **Wipe your dev DB after pulling a schema-breaking change.** Recall
@@ -57,20 +57,22 @@ Two workflows exist depending on your platform:
 
 | Workflow | Platforms | Entry point |
 |---|---|---|
-| `make dev` — Wails hot-reload | macOS, Debian/Ubuntu | Native WebKit/WebKitGTK window; Vite HMR on `:5173`, Wails IPC on `:34115`, Go rebuilt on save |
+| `task dev` — Wails hot-reload | macOS, Debian/Ubuntu | Native WebKit/WebKitGTK window; Vite HMR on `:5173`, Wails IPC on `:34115`, Go rebuilt on save |
 | Server mode — headless HTTP | any (macOS, Linux, container, etc.) | `go run -tags serveronly . --server`; open `http://127.0.0.1:7000` in any browser |
 
-Supported dev platforms are **macOS**, **Debian/Ubuntu** (apt-based), and **Windows via WSL2 Ubuntu** — see [Windows (via WSL2)](#windows-via-wsl2) below. Other Linux distros work via server mode but `make dev` won't have its package list automated.
+Supported dev platforms are **macOS**, **Debian/Ubuntu** (apt-based), and **Windows via WSL2 Ubuntu** — see [Windows (via WSL2)](#windows-via-wsl2) below. Other Linux distros work via server mode but `task dev` won't have its package list automated.
 
 ### Quick start (macOS + Debian/Ubuntu)
 
-If you've installed [Go 1.26+](https://go.dev/dl/) and [Node 22+](https://nodejs.org/) yourself (use `asdf`/`gvm`/`nvm`, or the official tarball — Debian's `apt golang` is usually too old), one command takes care of the rest:
+The toolchain is managed by [mise](https://mise.jdx.dev): Go, Node, the Wails CLI, `task` itself, and every linter are pinned in `mise.toml`, so you don't install them by hand. You only need Homebrew (macOS) or `curl` (Debian) for the bootstrap, then one command takes care of the rest:
 
 ```sh
-make init        # or:  ./initialize.sh
+./initialize.sh        # then:  task init  (once task is on PATH)
 ```
 
-The script is idempotent and detects the platform: on macOS it runs `brew bundle` and the `go install` lines that aren't covered by brew; on Debian it apt-installs the equivalents, downloads pinned `hadolint`/`lefthook`/`trivy` releases, then `go install`s the rest. Both paths finish with `cd frontend && npm ci` and `lefthook install` to wire the git hooks.
+The script is idempotent and detects the platform: on macOS it runs `brew bundle` (mise + the system-only packages — Tesseract, Podman, pipx, cloc); on Debian it apt-installs those plus the WebKitGTK dev headers and installs mise via its one-line installer. Both paths then run `mise install` (provisioning the whole pinned toolchain from `mise.toml`), `cd frontend && npm ci`, and `lefthook install` to wire the git hooks.
+
+After setup, activate mise in your shell so the toolchain + project env (`RECALL_DATA_DIR`, the version pins) load automatically on `cd` — add `eval "$(mise activate zsh)"` (or `bash`) to your shell rc. This replaces the old direnv/`.envrc` setup.
 
 Macs need `xcode-select --install` first (interactive accept; the script can't do this for you).
 
@@ -90,11 +92,9 @@ The repo ships a [Dev Container](https://containers.dev/) at `.devcontainer/devc
 
 Once the prerequisites are in place, the container installs:
 
-- Go 1.26 + Node 26 (via Dev Container Features)
-- Docker (Docker-in-Docker, for `make build-*` and `make swagger`)
-- `tesseract`, `sqlite3`, `jq`, `yamllint`, `cloc`, `direnv`
-- `gofumpt`, `goimports-reviser`, `govulncheck`, `golangci-lint`, `wails`
-- `hadolint`, `lefthook`, `trivy`
+- Docker (Docker-in-Docker, for `task build-*` and `task swagger`)
+- System packages via apt: `tesseract`, `sqlite3`, `cloc`, `pipx`
+- [mise](https://mise.jdx.dev), then `mise install` — Go, Node, the Wails CLI, `task`, and every linter (`gofumpt`, `goimports-reviser`, `govulncheck`, `golangci-lint`, `gocyclo`, `deadcode`, `hadolint`, `lefthook`, `trivy`, `typos`, `ruff`, `semgrep`, `schemathesis`, …) from `mise.toml`
 - `cd frontend && npm ci` for the Vue/Vite toolchain
 - `lefthook install` to wire the pre-commit hooks
 
@@ -103,74 +103,62 @@ The forwarded ports (5173, 7000, 8080, 9090, 9091, 34115, 3000) cover Vite, the 
 **Caveats:**
 
 - **The Wails desktop UI does not render inside the container** (no GUI surface). Use **server mode** there: `go run -tags serveronly . --server`, then open the forwarded port `7000` in your host browser. For the native window, fall through to the [macOS](#macos) or [Debian / Ubuntu](#debian--ubuntu) host instructions below.
-- `make icon` is macOS-only (uses `sips`). The Linux container will skip it.
+- `task icon` is macOS-only (uses `sips`). The Linux container will skip it.
 
 ### macOS
 
-> **TL;DR:** `./initialize.sh` (or `make init`) runs every step in this section automatically after you've installed Xcode CLT, Homebrew, Go 1.26+, and Node 22+. Read on if you'd rather run them manually or want to understand what the script does.
+> **TL;DR:** `./initialize.sh` (or `task init`) runs every step in this section automatically after you've installed Xcode CLT and Homebrew. mise handles Go/Node/the linters — you don't install those yourself. Read on if you'd rather run them manually or want to understand what the script does.
 >
-> **Container alternative:** the [Dev Container](#dev-container-any-host-zero-install) above runs the full Debian toolchain inside Docker — use it if you don't want to install Go/Node/Tesseract on the Mac itself. Wails GUI won't render inside the container; use server mode there. Native dev below is the only path to the desktop window.
+> **Container alternative:** the [Dev Container](#dev-container-any-host-zero-install) above runs the full Debian toolchain inside Docker — use it if you don't want to install Tesseract on the Mac itself. Wails GUI won't render inside the container; use server mode there. Native dev below is the only path to the desktop window.
 
 **One-time prerequisites:**
 
 ```sh
 xcode-select --install          # Xcode Command Line Tools (required for Wails CGo builds)
-brew bundle                     # Go, Node, Tesseract, Podman, golangci-lint, yamllint, direnv, etc.
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
-go install mvdan.cc/gofumpt@latest
-go install github.com/incu6us/goimports-reviser/v3@latest
-go install golang.org/x/tools/cmd/deadcode@latest
-direnv allow                    # activate the repo's .envrc (edit it to set any env overrides)
+brew bundle                     # mise, go-task, Tesseract, Podman, pipx, cloc (from Brewfile)
+mise trust && mise install      # Go, Node, Wails CLI + every linter (pinned in mise.toml)
 ```
 
-Add the direnv hook to your shell if you haven't already (`~/.zshrc` for zsh, `~/.bash_profile` for bash):
+Activate mise in your shell so the toolchain + `RECALL_DATA_DIR` load on `cd`
+(`~/.zshrc` for zsh, `~/.bash_profile` for bash):
 
 ```sh
-echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc && source ~/.zshrc
+echo 'eval "$(mise activate zsh)"' >> ~/.zshrc && source ~/.zshrc
 # or for bash:
-echo 'eval "$(direnv hook bash)"' >> ~/.bash_profile && source ~/.bash_profile
+echo 'eval "$(mise activate bash)"' >> ~/.bash_profile && source ~/.bash_profile
 ```
 
 **First clone setup:**
 
 ```sh
 cd frontend && npm ci && cd ..
-make dev                            # generates fresh Wails bindings on first run
+task dev                            # generates fresh Wails bindings on first run
 ```
 
-`frontend/wailsjs/` is gitignored — `wails build` / `wails dev` regenerates it from Go sources on every invocation. Adding a new exported `App` method? Just add it; the next `make dev` (or any desktop build) picks it up. Frontend code consumes the OpenAPI-generated `api.gen.d.ts` instead of reaching into `wailsjs/`, so devs who only run server mode (devcontainer, CI, remote box) stay in sync without ever booting the GUI.
+`frontend/wailsjs/` is gitignored — `wails build` / `wails dev` regenerates it from Go sources on every invocation. Adding a new exported `App` method? Just add it; the next `task dev` (or any desktop build) picks it up. Frontend code consumes the OpenAPI-generated `api.gen.d.ts` instead of reaching into `wailsjs/`, so devs who only run server mode (devcontainer, CI, remote box) stay in sync without ever booting the GUI.
 
 **Day-to-day:**
 
 ```sh
-make dev        # hot-reload Wails desktop app
-make lint       # all linters before pushing
-make fmt        # format Go source
+task dev        # hot-reload Wails desktop app
+task lint       # all linters before pushing
+task fmt        # format Go source
 wails doctor    # verify toolchain at any time
 ```
 
 ### Debian / Ubuntu
 
-`make dev` runs natively here — the apt path installs WebKitGTK + GTK 3 + appindicator dev libraries and the same Wails CLI macOS gets. Vite HMR + live Go rebuild work the same as on macOS; only the native window chrome differs (GTK vs Cocoa).
+`task dev` runs natively here — the apt path installs WebKitGTK + GTK 3 + appindicator dev libraries and the same Wails CLI macOS gets. Vite HMR + live Go rebuild work the same as on macOS; only the native window chrome differs (GTK vs Cocoa).
 
-> **TL;DR:** `./initialize.sh` (or `make init`) runs every step in this section automatically once Go 1.26+ and Node 22+ are on PATH. Read on if you're on a non-apt distro (the script bails fast on those) or want to understand what it installs.
+> **TL;DR:** `./initialize.sh` (or `task init`) runs every step in this section automatically once Go 1.26+ and Node 22+ are on PATH. Read on if you're on a non-apt distro (the script bails fast on those) or want to understand what it installs.
 >
 > **Container alternative:** the [Dev Container](#dev-container-any-host-zero-install) above gives you the same Debian environment without touching the host — handy on a non-apt distro (Fedora, Arch, NixOS, …), or to keep a workstation toolchain-free. Wails GUI won't render inside the container; use server mode for headless work.
 
 **One-time prerequisites** (Debian/Ubuntu — adapt for other distros):
 
 ```sh
-# Go 1.26+ (distro packages are often older; official tarball is safest)
-wget https://go.dev/dl/go1.26.3.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.26.3.linux-amd64.tar.gz
-echo 'export PATH=$PATH:/usr/local/go/bin:$(go env GOPATH)/bin' >> ~/.profile
-source ~/.profile
-
-# Node 26+
-curl -fsSL https://deb.nodesource.com/setup_26.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Wails native build deps (WebKitGTK 4.1, GTK 3, appindicator)
+# Wails native build deps (WebKitGTK 4.1, GTK 3, appindicator). These are
+# system libraries mise can't manage; Go + Node themselves come from mise below.
 sudo apt install -y \
   libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
   pkg-config build-essential
@@ -178,7 +166,7 @@ sudo apt install -y \
 # pkg-config shims: Wails v2.12.0's webview CGo references webkit2gtk-4.0
 # but Debian bookworm+/Ubuntu 24.04+ only ship 4.1. The shims point the
 # 4.0 names at the installed 4.1 libs. Belt-and-suspenders with
-# `wails dev -tags webkit2_4_1`, which the Makefile passes automatically.
+# `wails dev -tags webkit2_4_1`, which the Taskfile passes automatically.
 sudo tee /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc <<'EOF'
 Name: webkit2gtk-4.0
 Description: compat shim
@@ -196,46 +184,33 @@ Cflags:
 Libs:
 EOF
 
-# System tools
-sudo apt install -y tesseract-ocr jq sqlite3 docker.io  # or podman
+# System tools mise can't manage
+sudo apt install -y tesseract-ocr sqlite3 cloc pipx docker.io  # or podman
 
-# Go-based tools (Wails CLI included)
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-go install mvdan.cc/gofumpt@latest
-go install github.com/incu6us/goimports-reviser/v3@latest
+# mise — provisions Go, Node, the Wails CLI, task, and every linter
+# (golangci-lint, gofumpt, goimports-reviser, hadolint, yamllint, trivy,
+# typos, ruff, gosec, semgrep, schemathesis, …) from mise.toml.
+curl -fsSL https://mise.run | sh
+export PATH="$HOME/.local/bin:$PATH"
+mise trust && mise install
 
-# hadolint (Dockerfile linter)
-curl -L https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 \
-  | sudo tee /usr/local/bin/hadolint > /dev/null && sudo chmod +x /usr/local/bin/hadolint
-
-# yamllint (YAML linter)
-pip3 install yamllint  # or: sudo apt install yamllint
-
-# direnv (per-project env vars)
-sudo apt install direnv  # or: curl -sfL https://direnv.net/install.sh | bash
-echo 'eval "$(direnv hook bash)"' >> ~/.bashrc && source ~/.bashrc
-
-# trivy (vulnerability scanner)
-curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-  | sudo sh -s -- -b /usr/local/bin
+# Activate mise in your shell so the toolchain + RECALL_DATA_DIR load on cd.
+echo 'eval "$(mise activate bash)"' >> ~/.bashrc && source ~/.bashrc
 ```
-
-After cloning, run `direnv allow` to activate the repo's `.envrc`.
 
 **First clone setup:**
 
 ```sh
 cd frontend && npm ci && cd ..
-make dev                            # generates Wails bindings + opens GTK window
+task dev                            # generates Wails bindings + opens GTK window
 ```
 
 **Day-to-day:**
 
 ```sh
-make dev                         # hot-reload Wails desktop app
-make lint                        # all linters before pushing
-make fmt                         # format Go source
+task dev                         # hot-reload Wails desktop app
+task lint                        # all linters before pushing
+task fmt                         # format Go source
 wails doctor                     # verify toolchain at any time
 ```
 
@@ -245,13 +220,13 @@ For headless work (CI, container shell, remote box without a display) use server
 go run -tags serveronly . --server   # browse http://127.0.0.1:7000
 ```
 
-Container builds work identically to macOS — `make build-linux` / `make build-windows` / `make build-server-*` all delegate to `Dockerfile.build` and need Docker (or Podman via `DOCKER=podman make ...`) running.
+Container builds work identically to macOS — `task build-linux` / `task build-windows` / `task build-server-*` all delegate to `Dockerfile.build` and need Docker (or Podman via `DOCKER=podman make ...`) running.
 
 ### Windows (via WSL2)
 
 Windows is supported as a *target* (release builds ship a NSIS installer and a server `.exe`) but not as a native dev OS — the toolchain assumes a POSIX shell (`bash` `scripts/*.sh`, `shellcheck`/`shfmt`, GNU `find`/`xargs`, `lefthook` hooks that shell out) and PowerShell/CMD won't carry it. The maintained dev flow is **WSL2 Ubuntu**, which drops you into the same Debian/Ubuntu environment covered above.
 
-> **Container alternative:** the [Dev Container](#dev-container-any-host-zero-install) above also works on Windows — VS Code talks to Docker Desktop's WSL2 backend and skips most of this section. Tradeoff: no GUI for `make dev` (use server mode). The WSL2 native flow below is recommended if you want the Wails window via WSLg.
+> **Container alternative:** the [Dev Container](#dev-container-any-host-zero-install) above also works on Windows — VS Code talks to Docker Desktop's WSL2 backend and skips most of this section. Tradeoff: no GUI for `task dev` (use server mode). The WSL2 native flow below is recommended if you want the Wails window via WSLg.
 
 **1. Install WSL2 with Ubuntu.**
 
@@ -260,22 +235,22 @@ Windows is supported as a *target* (release builds ship a NSIS installer and a s
 wsl --install   # installs Ubuntu 22.04+ by default; reboot if prompted
 ```
 
-The default distro matches the apt branch in [`initialize.sh`](initialize.sh), so [`make init`](#debian--ubuntu) bootstraps unchanged.
+The default distro matches the apt branch in [`initialize.sh`](initialize.sh), so [`task init`](#debian--ubuntu) bootstraps unchanged.
 
-**2. Run `make` from the WSL2 bash prompt, not PowerShell or Git Bash.** The Makefile, lefthook hooks, and every `scripts/*.sh` assume bash with POSIX `find`/`xargs`/`grep` semantics. Open the *Ubuntu* terminal app (or `wsl` from any Windows shell), `cd` into your clone, and run `make` commands there.
+**2. Run `task` from the WSL2 bash prompt, not PowerShell or Git Bash.** The Taskfile, lefthook hooks, and every `scripts/*.sh` assume bash with POSIX `find`/`xargs`/`grep` semantics. Open the *Ubuntu* terminal app (or `wsl` from any Windows shell), `cd` into your clone, and run `task` commands there.
 
-**3. Wire up Docker Desktop's WSL2 backend.** `make build-linux` / `make build-windows` / `make build-server-*` all delegate to `Dockerfile.build`. Install [Docker Desktop](https://docs.docker.com/desktop/install/windows-install/) on the Windows host, then in *Settings → General* tick **Use the WSL 2 based engine**, and in *Settings → Resources → WSL Integration* toggle on your Ubuntu distro. Verify from the WSL2 shell:
+**3. Wire up Docker Desktop's WSL2 backend.** `task build-linux` / `task build-windows` / `task build-server-*` all delegate to `Dockerfile.build`. Install [Docker Desktop](https://docs.docker.com/desktop/install/windows-install/) on the Windows host, then in *Settings → General* tick **Use the WSL 2 based engine**, and in *Settings → Resources → WSL Integration* toggle on your Ubuntu distro. Verify from the WSL2 shell:
 
 ```sh
 docker info        # should print server details, not "Cannot connect…"
 ```
 
-**4. `make dev` and `make test-e2e`.**
+**4. `task dev` and `task test-e2e`.**
 
-- `make dev` works on Windows 11 (and Windows 10 22H2+) via [WSLg](https://github.com/microsoft/wslg), which forwards the GTK window natively — no X server setup needed.
-- **Edit in VS Code on the Windows host, run `make dev` in the WSL terminal — same directory both sides.** Install the [WSL extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) on Windows, then from your cloned directory inside WSL2 run `code .`. VS Code reopens against the WSL filesystem, the integrated terminal lands inside WSL automatically, and `make dev` from that terminal launches Wails with WSLg forwarding the GTK window to the Windows desktop. **Clone into WSL's native FS (e.g. `~/recall`), not `/mnt/c/…`** — file-watcher latency on the Windows-mount path is bad enough to make Vite HMR feel broken.
+- `task dev` works on Windows 11 (and Windows 10 22H2+) via [WSLg](https://github.com/microsoft/wslg), which forwards the GTK window natively — no X server setup needed.
+- **Edit in VS Code on the Windows host, run `task dev` in the WSL terminal — same directory both sides.** Install the [WSL extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) on Windows, then from your cloned directory inside WSL2 run `code .`. VS Code reopens against the WSL filesystem, the integrated terminal lands inside WSL automatically, and `task dev` from that terminal launches Wails with WSLg forwarding the GTK window to the Windows desktop. **Clone into WSL's native FS (e.g. `~/recall`), not `/mnt/c/…`** — file-watcher latency on the Windows-mount path is bad enough to make Vite HMR feel broken.
 - Older Windows 10 has no WSLg. Use server mode instead: `go run -tags serveronly . --server` and open `http://127.0.0.1:7000` in a Windows browser.
-- `make test-e2e` runs Playwright headless against a built `serveronly` binary on `127.0.0.1:7099` (per [`e2e.yml`](.github/workflows/e2e.yml)). No X11 or WSLg needed; works on every Windows version that supports WSL2.
+- `task test-e2e` runs Playwright headless against a built `serveronly` binary on `127.0.0.1:7099` (per [`e2e.yml`](.github/workflows/e2e.yml)). No X11 or WSLg needed; works on every Windows version that supports WSL2.
 
 **5. Install Tesseract inside WSL2, not on the Windows side.**
 
@@ -299,15 +274,15 @@ Recall ships two binary flavors:
 ### Wails desktop app
 
 ```sh
-make build-linux        # Linux/amd64   → dist/linux/Recall
-make build-windows      # Windows/amd64 → dist/windows/Recall.exe
-make build-mac          # macOS arm64 .app → dist/mac/  (macOS host required)
-make build-all-docker   # Linux + Windows via Docker (no Apple SDK needed)
-make build-all          # all three (macOS host required)
+task build-linux        # Linux/amd64   → dist/linux/Recall
+task build-windows      # Windows/amd64 → dist/windows/Recall.exe
+task build-mac          # macOS arm64 .app → dist/mac/  (macOS host required)
+task build-all-docker   # Linux + Windows via Docker (no Apple SDK needed)
+task build-all          # all three (macOS host required)
 ```
 
 Linux and Windows builds run in Docker (`Dockerfile.build`). macOS `.app` bundles
-require Apple's SDK and must be built on a Mac — `make build-mac` exits on non-Darwin hosts.
+require Apple's SDK and must be built on a Mac — `task build-mac` exits on non-Darwin hosts.
 
 ### Server-only binary
 
@@ -315,17 +290,17 @@ The server binary (`-tags serveronly`) has no Wails or WebView dependency — it
 All three OS targets can be produced from Docker on any host, including macOS.
 
 ```sh
-make build-server-linux      # Linux/amd64     → dist/server-linux/Recall-server
-make build-server-windows    # Windows/amd64   → dist/server-windows/Recall-server.exe
-make build-server-mac        # macOS arm64     → dist/server-mac/  (Docker, no Apple SDK!)
-make build-server-all        # all three server builds
-make build-server-container  # Linux container image with Tesseract → recall-server:local
+task build-server-linux      # Linux/amd64     → dist/server-linux/Recall-server
+task build-server-windows    # Windows/amd64   → dist/server-windows/Recall-server.exe
+task build-server-mac        # macOS arm64     → dist/server-mac/  (Docker, no Apple SDK!)
+task build-server-all        # all three server builds
+task build-server-container  # Linux container image with Tesseract → recall-server:local
 ```
 
 ### Other build commands
 
 ```sh
-make clean              # remove dist/, build/bin/, frontend/dist, frontend/node_modules
+task clean              # remove dist/, build/bin/, frontend/dist, frontend/node_modules
 DOCKER=podman make ...  # use Podman instead of Docker
 go build ./...          # compile-check Wails variant
 go build -tags serveronly ./...  # compile-check server variant
@@ -334,28 +309,28 @@ go build -tags serveronly ./...  # compile-check server variant
 ## Maintenance
 
 ```sh
-make fmt            # format all Go source files (goimports-reviser for import groups, then gofumpt)
-make lint           # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral
-make lint-yaml      # yamllint only
-make lint-openapi   # Spectral only (api/openapi.yaml)
-make test           # Go unit tests (-race) + Vitest frontend tests (parser golden-file tests skip unless RECALL_FIXTURE_DIR is set)
-make cover          # Go + frontend coverage reports (umbrella; both gate on thresholds)
-make cover-go       # Go coverage; fails when total < GO_COVERAGE_MIN (default 46%)
-make cover-frontend # JS/TS coverage; fails when below the thresholds in vitest.config.ts
-make typecheck      # vue-tsc --noEmit — covers .ts files and <script lang="ts"> Vue SFCs; allowJs: false enforces no JS
-make gen-types      # regenerate frontend/src/api.gen.d.ts from api/openapi.yaml (run after every spec edit)
-make update-deps    # update Go modules (go get -u + mod tidy) and npm packages
-make trivy          # vulnerability scan — fails on HIGH/CRITICAL findings
-make dead-code      # whole-program dead Go code (serveronly) + unused TS exports (knip)
-make dead-code-go   # Go only: deadcode -tags serveronly ./...
-make dead-code-ts   # TypeScript only: knip (unused exports, files, deps)
-make cloc           # count lines of source code (excludes deps, build artifacts, generated files)
-make icon           # resync build/appicon.png from assets/icon.png (macOS only; run after updating the icon)
+task fmt            # format all Go source files (goimports-reviser for import groups, then gofumpt)
+task lint           # all linters: golangci-lint (both build tags), ESLint, Stylelint, HTMLHint, Hadolint, yamllint, Spectral
+task lint-yaml      # yamllint only
+task lint-openapi   # Spectral only (api/openapi.yaml)
+task test           # Go unit tests (-race) + Vitest frontend tests (parser golden-file tests skip unless RECALL_FIXTURE_DIR is set)
+task cover          # Go + frontend coverage reports (umbrella; both gate on thresholds)
+task cover-go       # Go coverage; fails when total < GO_COVERAGE_MIN (default 46%)
+task cover-frontend # JS/TS coverage; fails when below the thresholds in vitest.config.ts
+task typecheck      # vue-tsc --noEmit — covers .ts files and <script lang="ts"> Vue SFCs; allowJs: false enforces no JS
+task gen-types      # regenerate frontend/src/api.gen.d.ts from api/openapi.yaml (run after every spec edit)
+task update-deps    # update Go modules (go get -u + mod tidy) and npm packages
+task trivy          # vulnerability scan — fails on HIGH/CRITICAL findings
+task dead-code      # whole-program dead Go code (serveronly) + unused TS exports (knip)
+task dead-code-go   # Go only: deadcode -tags serveronly ./...
+task dead-code-ts   # TypeScript only: knip (unused exports, files, deps)
+task cloc           # count lines of source code (excludes deps, build artifacts, generated files)
+task icon           # resync build/appicon.png from assets/icon.png (macOS only; run after updating the icon)
 ```
 
-**Running `npx vitest` / `npm run *` directly?** Do it from `frontend/`, not the repo root — Vite resolves `vitest.config.ts` from cwd, so running from elsewhere fails with a misleading "Install @vitejs/plugin-vue to handle .vue files" even though the plugin IS installed. Use `cd frontend && …` or `npm --prefix frontend run …`. The `make` targets above handle cwd automatically.
+**Running `npx vitest` / `npm run *` directly?** Do it from `frontend/`, not the repo root — Vite resolves `vitest.config.ts` from cwd, so running from elsewhere fails with a misleading "Install @vitejs/plugin-vue to handle .vue files" even though the plugin IS installed. Use `cd frontend && …` or `npm --prefix frontend run …`. The `task` targets above handle cwd automatically.
 
-`trivy` requires a one-time install: `brew install trivy` or `brew bundle`.
+`trivy` is pinned in `mise.toml`, so `mise install` provides it.
 
 ### Test stability
 
@@ -363,10 +338,10 @@ Zero tolerance for flaky tests. Three rules enforce this:
 
 1. **No retries.** `frontend/playwright.config.ts` sets `retries: 0` everywhere — CI and local — so a flake fails the build immediately. If a test is racy or carries a brittle assertion, fix the test (tighten the wait, scope the locator, widen a pixel tolerance with a documented reason). Retries are not a workaround.
 2. **No flake-suppression skips.** Every `t.Skip` in `pkg/` must appear in `scripts/ci/test-skips-allow.txt` with a one-line "why" comment. `scripts/ci/check-test-skips.sh` (run by both lefthook `pre-push.test-skips` and CI) diffs the live grep against the allow-list and fails on drift. The allow-list is for documented environment gates (OS-conditional probe tests, `-short`-mode tesseract integration) — not for hiding races. No frontend test should use `.skip()` / `.only()` / `.fixme()`.
-3. **Pre-push smoke subset.** `lefthook.yml`'s `pre-push.playwright-smoke` hook rebuilds `frontend/dist` + the serveronly binary, then runs a `--grep`-filtered Playwright subset against the same harness as `make test-e2e`. Target: ≤60s on a warm cache. The full suite still gates in CI. Skip with `LEFTHOOK_EXCLUDE=playwright-smoke git push` or `SKIP_E2E_SMOKE=1 git push` (the latter is the documented opt-out for slow networks / dev VMs).
+3. **Pre-push smoke subset.** `lefthook.yml`'s `pre-push.playwright-smoke` hook rebuilds `frontend/dist` + the serveronly binary, then runs a `--grep`-filtered Playwright subset against the same harness as `task test-e2e`. Target: ≤60s on a warm cache. The full suite still gates in CI. Skip with `LEFTHOOK_EXCLUDE=playwright-smoke git push` or `SKIP_E2E_SMOKE=1 git push` (the latter is the documented opt-out for slow networks / dev VMs).
 The scan covers Go module dependencies, npm packages, and `Dockerfile.build`.
 
-The repo includes an `.envrc` for [direnv](https://direnv.net/) with all available environment variable overrides documented and commented out. Run `direnv allow` once after cloning, then edit `.envrc` to activate any overrides you need.
+Project environment variables (`RECALL_DATA_DIR` + the tool-version pins) live in `mise.toml`'s `[env]` table and load automatically once mise is activated (`eval "$(mise activate zsh)"`). To set an additional override, add it to `[env]` in `mise.toml` (or export it in your shell). This replaces the old direnv/`.envrc` flow.
 
 ### npm supply-chain cooldown
 
@@ -389,7 +364,7 @@ Bypasses the cooldown for that one invocation only. Commit the lockfile change w
 **One-time install:**
 
 ```sh
-brew bundle             # installs lefthook itself
+mise install            # installs lefthook itself (pinned in mise.toml)
 lefthook install        # wires the hooks into .git/hooks/{pre-commit,pre-push,commit-msg}
 ```
 
@@ -397,23 +372,23 @@ lefthook install        # wires the hooks into .git/hooks/{pre-commit,pre-push,c
 
 | Hook | Glob | Tool(s) it invokes |
 |---|---|---|
-| `gofumpt`           | `*.go`                          | `gofumpt`            (Go formatter — `go install mvdan.cc/gofumpt@latest`) |
-| `goimports-reviser` | `*.go`                          | `goimports-reviser`  (`go install github.com/incu6us/goimports-reviser/v3@latest`) |
-| `golangci-lint`     | `*.go`                          | `golangci-lint`      (`brew install golangci-lint` or `go install`) |
+| `gofumpt`           | `*.go`                          | `gofumpt`            (Go formatter — from `mise install`) |
+| `goimports-reviser` | `*.go`                          | `goimports-reviser`  (from `mise install`) |
+| `golangci-lint`     | `*.go`                          | `golangci-lint`      (from `mise install`) |
 | `eslint`            | `frontend/src/**/*.{ts,vue}`    | `eslint` + `typescript-eslint` (auto-installed by `cd frontend && npm ci`) |
 | `stylelint`         | `frontend/src/**/*.{css,vue}`   | `stylelint`          (auto-installed by `cd frontend && npm ci`) |
-| `spectral`          | `api/openapi.yaml`              | `npx @stoplight/spectral-cli` (auto-pulled on demand by `npx`) |
-| `gen-types`         | `api/openapi.yaml`              | `make gen-types` — regenerates `frontend/src/api.gen.d.ts` and auto-stages it so the generated file is never out of sync with the spec. |
-| `yamllint`          | `*.{yml,yaml}` (excl. openapi)  | `yamllint`           (`brew install yamllint` or `pip install yamllint`) |
-| `hadolint`          | `Dockerfile*`                   | `hadolint`           (`brew install hadolint`) |
+| `spectral`          | `api/openapi.yaml`              | `task lint-openapi` → `npx @stoplight/spectral-cli` (auto-pulled on demand by `npx`) |
+| `gen-types`         | `api/openapi.yaml`              | `task gen-types` — regenerates `frontend/src/api.gen.d.ts` and auto-stages it so the generated file is never out of sync with the spec. |
+| `yamllint`          | `*.{yml,yaml}` (excl. openapi)  | `yamllint`           (from `mise install`) |
+| `hadolint`          | `Dockerfile*`                   | `hadolint`           (from `mise install`) |
 
 **`pre-push`** — runs on `git push`. These hooks all do whole-project scans (dead code, unused exports, coverage roll-up) that can't be meaningfully scoped to staged files, so this stage keeps WIP commits fast while catching cross-cutting regressions before they reach origin.
 
 | Hook | Glob | Tool(s) it invokes |
 |---|---|---|
-| `deadcode` | `*.go`                       | `deadcode` (`go install golang.org/x/tools/cmd/deadcode@latest`) — whole-program call-graph analysis for the `serveronly` build tag |
+| `deadcode` | `*.go`                       | `deadcode` (from `mise install`) — whole-program call-graph analysis for the `serveronly` build tag |
 | `knip`     | `frontend/src/**/*.{ts,vue}` | `knip` (auto-installed by `cd frontend && npm ci`) — unused TypeScript exports and stale devDependencies |
-| `coverage` | *(always)*                   | `make cover` — runs Go + Vitest coverage, fails when below the thresholds (Go `GO_COVERAGE_MIN` 46%, frontend `vitest.config.ts` 70/70/60/55). Skip with `LEFTHOOK_EXCLUDE=coverage git push` — CI re-runs the same checks so an override on push still fails the PR. **Ratchet policy:** every release is a chance to bump `GO_COVERAGE_MIN` upward by `floor(current) - 2` to lock in new coverage. |
+| `coverage` | *(always)*                   | `task cover` — runs Go + Vitest coverage, fails when below the thresholds (Go `GO_COVERAGE_MIN` 46%, frontend `vitest.config.ts` 70/70/60/55). Skip with `LEFTHOOK_EXCLUDE=coverage git push` — CI re-runs the same checks so an override on push still fails the PR. **Ratchet policy:** every release is a chance to bump `GO_COVERAGE_MIN` upward by `floor(current) - 2` to lock in new coverage. |
 
 If a tool isn't installed, the corresponding hook fails — install it (or skip the hook for one push/commit, see below).
 
@@ -503,7 +478,7 @@ Don't open-code `mkdir -p frontend/dist && touch frontend/dist/index.html` or `c
 
 ### Pinning GitHub Actions
 
-Every third-party action referenced from `.github/workflows/` is pinned by **40-character commit SHA** with a trailing `# vX.Y.Z` version comment. Tag-pinned refs (e.g. `actions/checkout@v4`) are rejected by `scripts/ci/check-action-pins.sh`, which runs in the `lint` job + the lefthook `actionlint` pre-push hook + `make lint-actions`.
+Every third-party action referenced from `.github/workflows/` is pinned by **40-character commit SHA** with a trailing `# vX.Y.Z` version comment. Tag-pinned refs (e.g. `actions/checkout@v4`) are rejected by `scripts/ci/check-action-pins.sh`, which runs in the `lint` job + the lefthook `actionlint` pre-push hook + `task lint-actions`.
 
 Format:
 
@@ -526,20 +501,20 @@ The SHA is the source of truth; the comment is for humans. **Two spaces before t
 Moved to its own doc — see [RELEASES.md](RELEASES.md). It covers:
 
 - the release-please → `v*` tag → `release.yml` flow (with a `mermaid` diagram and a stable-vs-prerelease comparison table),
-- the `make release-beta VERSION=…` shortcut for cutting prereleases,
-- `make release-fire TAG=…` for the rare case where `release.yml` doesn't auto-fire,
+- the `task release-beta VERSION=…` shortcut for cutting prereleases,
+- `task release-fire TAG=…` for the rare case where `release.yml` doesn't auto-fire,
 - one-time repo setup (`RELEASE_PLEASE_TOKEN` PAT, workflow permissions),
 - recovery procedures (emergency manual tag, skipping/pausing release-please).
 
 The 30-second version for prereleases:
 
 ```sh
-make release-beta VERSION=0.0.13-beta.0
+task release-beta VERSION=0.0.13-beta.0
 git push origin main
 # … merge the Release PR release-please opens …
 # If RELEASE_PLEASE_TOKEN is configured, release.yml fires on its own.
 # Otherwise:
-make release-fire TAG=v0.0.13-beta.0
+task release-fire TAG=v0.0.13-beta.0
 ```
 
 ## Test-only APIs
@@ -580,7 +555,7 @@ Three pieces at the ZIP root (schema in `pkg/app/export_bundle.go`):
 First move when a bundle lands in your inbox. The CLI cross-validates the three pieces above and reports any drift between them.
 
 ```sh
-make bug-finder
+task bug-finder
 build/bin/recall-bug-finder path/to/user-bundle.zip
 ```
 
@@ -588,13 +563,13 @@ A consistent bundle prints `✓ … internally consistent` and exits 0. A bundle
 
 The issue kinds are stable string constants in `pkg/app/bundle_validate.go` so a scripted wrapper can grep on them without re-parsing the message. The 11 kinds today: `missing_manifest`, `missing_data`, `wrong_manifest_schema`, `wrong_data_schema`, `match_count_mismatch`, `screenshot_count_mismatch`, `manifest_missing_screenshot_file`, `orphan_screenshot_file`, `manifest_key_not_in_data`, `data_file_not_in_manifest`, `screenshots_dirs_leak`.
 
-The tool is maintainer-only — it's not in `make build-all`, not published to GitHub releases, and not surfaced from the UI. Built locally on demand. The validator logic lives in `pkg/app/bundle_validate.go`; the CLI in `cmd/bug-finder/main.go` is a thin shell over it.
+The tool is maintainer-only — it's not in `task build-all`, not published to GitHub releases, and not surfaced from the UI. Built locally on demand. The validator logic lives in `pkg/app/bundle_validate.go`; the CLI in `cmd/bug-finder/main.go` is a thin shell over it.
 
 ### Importing a bundle into the running app
 
 Once the validator is happy, load the bundle into a running Recall instance to inspect the user's matches in the real UI:
 
-1. Boot the app — `make dev` (Wails) or the server binary + a browser.
+1. Boot the app — `task dev` (Wails) or the server binary + a browser.
 2. **Settings → Backup & Restore → Import Backup → Choose File…** and pick the bundle `.zip`. `ImportData` (`pkg/app/export.go`) sniffs the magic bytes — bundles look like a ZIP, the ZIP branch resolves `data.json` against the `recall-export/v1` schema, and every row lands in your local SQLite under the active profile.
 
 **Caveat — the `screenshots/` folder is not auto-extracted.** The import flow only reads `data.json`; the bundled screenshot bytes stay in the ZIP. To make the lightbox + per-row previews work for the imported matches, manually copy the bundle's `screenshots/*` files into your configured screenshots folder (Settings → Folders → Screenshots folder, or `<profile>/settings.json::screenshots_dir`). That works because every row imported from a bundle carries `ScreenshotsDirID = 0`, and `pkg/app/screenshot_handler.go` falls back to `a.settings.ScreenshotsDir` whenever the dir-id is 0.
@@ -609,22 +584,22 @@ Treat the spec as the published contract:
 
 - When you **add or remove a route** in `pkg/cmd/server.go`, mirror the change in the spec.
 - When you **change a response shape** in `pkg/app/app.go` or `pkg/parser/parser.go`, update the relevant `components.schemas.*` entry.
-- When you **add a field to an existing Go struct** (not a new method), the update is a 2-step follow-up: (1) update the struct + OpenAPI schema, (2) `make gen-types` to refresh `api.gen.d.ts`. `frontend/wailsjs/` is a gitignored build artifact regenerated by `wails build`; `api.ts` consumes `api.gen.d.ts` for both Wails and server transports, so there's no second file to keep in sync.
+- When you **add a field to an existing Go struct** (not a new method), the update is a 2-step follow-up: (1) update the struct + OpenAPI schema, (2) `task gen-types` to refresh `api.gen.d.ts`. `frontend/wailsjs/` is a gitignored build artifact regenerated by `wails build`; `api.ts` consumes `api.gen.d.ts` for both Wails and server transports, so there's no second file to keep in sync.
 
 ```sh
-make swagger        # serve the spec via Swagger UI in a container (default :8080)
-make lint-openapi   # lint the spec with Spectral (spectral:oas + .spectral.yaml)
+task swagger        # serve the spec via Swagger UI in a container (default :8080)
+task lint-openapi   # lint the spec with Spectral (spectral:oas + .spectral.yaml)
 ```
 
-`make lint-openapi` runs Spectral with `--fail-severity=warn`. The `spectral:oas` ruleset emits most useful issues (missing descriptions, inconsistent naming, undocumented responses) as warnings rather than errors, so promoting warnings to CI-blocking is deliberate. Override individual rule severities in `.spectral.yaml` if a rule turns out to be too strict.
+`task lint-openapi` runs Spectral with `--fail-severity=warn`. The `spectral:oas` ruleset emits most useful issues (missing descriptions, inconsistent naming, undocumented responses) as warnings rather than errors, so promoting warnings to CI-blocking is deliberate. Override individual rule severities in `.spectral.yaml` if a rule turns out to be too strict.
 
-`make swagger` honors the `DOCKER` env var (`DOCKER=podman make swagger` works). Override the port with `SWAGGER_PORT=9090 make swagger`.
+`task swagger` honors the `DOCKER` env var (`DOCKER=podman task swagger` works). Override the port with `SWAGGER_PORT=9090 task swagger`.
 
 The spec also feeds the frontend's typed API client (`frontend/src/api.ts`). After editing `api/openapi.yaml`:
 
 ```sh
-make gen-types     # regenerate frontend/src/api.gen.d.ts
-make typecheck     # confirm api.ts still type-checks against the new shape
+task gen-types     # regenerate frontend/src/api.gen.d.ts
+task typecheck     # confirm api.ts still type-checks against the new shape
 ```
 
 CI runs both and additionally fails if `api.gen.d.ts` is out of sync with the spec — so commit the regenerated `.d.ts` alongside any spec change.

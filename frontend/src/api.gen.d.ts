@@ -1122,8 +1122,8 @@ export interface paths {
          * @description Surface the SQLite database path, settings file path, base
          *     data directory, and the currently-configured screenshots
          *     folder. Honors the `RECALL_DATA_DIR` env override (set in
-         *     `.envrc` for `wails dev`), so the response matches what the
-         *     running app actually reads/writes.
+         *     mise.toml `[env]` for `wails dev`), so the response matches what
+         *     the running app actually reads/writes.
          */
         get: operations["GetDataLocation"];
         put?: never;

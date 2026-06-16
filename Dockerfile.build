@@ -16,11 +16,11 @@
 #   server-linux-export / server-windows-export / server-mac-export — scratch exports
 #
 # macOS Wails .app requires a native build (Apple SDK not redistributable).
-# See `make build-mac` in the Makefile. macOS server binary CAN be built here
+# See `task build-mac` in the Taskfile. macOS server binary CAN be built here
 # because it is pure Go (no Apple SDK needed).
 
 # Build version injected via -ldflags. Defaults to "dev" for local/CI builds
-# not invoked through `make build-*` (which reads .release-please-manifest.json).
+# not invoked through `task build-*` (which reads .release-please-manifest.json).
 ARG VERSION=dev
 
 # ─── Stage 1: Frontend ──────────────────────────────────────

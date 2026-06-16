@@ -1,5 +1,5 @@
 # Lefthook pre-commit hooks.
-# Install:  brew install lefthook && lefthook install
+# Install:  mise install && lefthook install   (lefthook is pinned in mise.toml)
 # Skip a hook for one commit: LEFTHOOK_EXCLUDE=name-of-hook git commit ...
 # Skip all hooks for one commit: LEFTHOOK=0 git commit ...
 #
@@ -53,18 +53,17 @@ pre-commit:
       stage_fixed: true
 
     # ── OpenAPI ───────────────────────────────────────────────────────
-    # Spectral pin lives in tool-versions.env (SPECTRAL_VERSION) and is
-    # shared with Make and CI. Sourced inline so a version bump in the
-    # env file flows through here without a hook edit.
+    # Defer to the task; its glob already scopes this to api/openapi.yaml,
+    # which is the only spec, so linting the staged file == `task
+    # lint-openapi`. The Spectral pin lives in mise.toml [env]
+    # (SPECTRAL_VERSION) and is injected by mise activation.
     spectral:
       glob: "api/openapi.yaml"
-      run: |
-        . ./tool-versions.env
-        npx --yes "@stoplight/spectral-cli@${SPECTRAL_VERSION}" lint --fail-severity=warn {staged_files}
+      run: task lint-openapi
 
     gen-types:
       glob: "api/openapi.yaml"
-      run: make gen-types
+      run: task gen-types
       stage_fixed: true
 
     # ── YAML / Dockerfile / Shell ─────────────────────────────────────
@@ -78,7 +77,7 @@ pre-commit:
       run: hadolint {staged_files}
 
     # shfmt + shellcheck on staged shell scripts. Same flags as
-    # `make lint-shell` (the CI target) so the hook catches what CI
+    # `task lint-shell` (the CI target) so the hook catches what CI
     # would catch — without this, format-only drift (e.g. `done <
     # "$F"` vs `done <"$F"`) sails through every push and fails CI
     # at the lint job. `--write` autofixes formatting; `stage_fixed`
@@ -93,7 +92,7 @@ pre-commit:
       run: shellcheck {staged_files}
 
     # ── Python ────────────────────────────────────────────────────────
-    # ruff lint + format on staged .py. Same tool as `make lint-py` / CI.
+    # ruff lint + format on staged .py. Same tool as `task lint-py` / CI.
     # `check --fix` and `format` autofix; stage_fixed re-stages so the
     # commit carries the canonical form. Rule selection is in ruff.toml.
     ruff:
@@ -191,12 +190,12 @@ pre-push:
     # gosec — Go SAST. Whole-program; can't be scoped to staged files
     # like the pre-commit Go hooks above. Both build tags swept so
     # Wails-only and serveronly code paths both get covered. Same tool
-    # invocation as `make lint-gosec` and the CI security job — bypass
+    # invocation as `task lint-gosec` and the CI security job — bypass
     # is `LEFTHOOK_EXCLUDE=gosec git push`. The repo's CI runs gosec on
     # every push, so skipping locally just shifts the failure point.
     gosec:
       glob: "*.go"
-      run: make lint-gosec
+      run: task lint-gosec
 
     # Semgrep — JS/TS SAST counterpart to gosec. Sweeps frontend/src/
     # via the community rulesets (p/javascript + p/typescript +
@@ -207,9 +206,9 @@ pre-push:
     # are fetched at scan time — needs internet.
     semgrep:
       glob: "frontend/src/**/*.{ts,js}"
-      run: make lint-semgrep
+      run: task lint-semgrep
 
-    # Coverage gate. Runs the same `make cover` umbrella developers
+    # Coverage gate. Runs the same `task cover` umbrella developers
     # invoke locally; vitest enforces the per-metric thresholds in
     # vitest.config.ts, and the cover-go target enforces the Go floor
     # (GO_COVERAGE_MIN, default 67). Skip with:
@@ -217,7 +216,7 @@ pre-push:
     # The CI workflow runs the same checks via Jobs 9 + 10, so a
     # push that bypasses this still fails in CI before merge.
     coverage:
-      run: make cover
+      run: task cover
 
     # Cyclomatic complexity sweep — REPORT ONLY. Same script the CI
     # `complexity` job runs (see .github/workflows/ci.yml). gocyclo
@@ -253,7 +252,7 @@ pre-push:
       glob: "pkg/**/*_test.go"
       run: bash scripts/ci/check-test-skips.sh
 
-    # Playwright smoke subset. Mirrors `make test-e2e`'s harness
+    # Playwright smoke subset. Mirrors `task test-e2e`'s harness
     # (build frontend/dist + serveronly binary, run on :7099 with
     # HOME=/tmp/recall-e2e) but `--grep`-filtered to a curated set
     # of high-value specs. Catches the strict-mode-locator + layout-

@@ -36,7 +36,7 @@ pkg/app/screenshot_handler_fuzz_test.go:99:			t.Skipf("could not construct base 
 # pkg/parser/integration_test.go — golden-file OCR tests are gated
 # on a real Tesseract binary + image fixtures + `go test` running
 # without `-short`. CI runs `-short` so these are skipped there;
-# they run locally via `make test-golden` when contributors update
+# they run locally via `task test-golden` when contributors update
 # parsers.
 pkg/parser/integration_test.go:58:		t.Skip("skipping golden-file parser tests in -short mode")
 pkg/parser/integration_test.go:75:		t.Skipf("tesseract not found at %q — install it or set RECALL_TESSERACT_PATH", tp)

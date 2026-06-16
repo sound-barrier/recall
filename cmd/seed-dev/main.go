@@ -13,7 +13,7 @@
 // seed.go) so this tool and the in-app "create a sample test profile"
 // handler share one source of truth. This dev binary never ships in a
 // release: it's a separate main package compiled via `go run` from the
-// Makefile target `make seed-dev`.
+// `task seed-dev` Taskfile task.
 package main
 
 import (

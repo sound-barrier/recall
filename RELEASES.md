@@ -64,11 +64,11 @@ Two settings unlock the full automation. Skip either and you'll fall back to the
 release-please respects a [`Release-As:` commit footer](https://github.com/googleapis/release-please/blob/main/docs/customizing.md#release-as) that overrides the version it would otherwise compute. The shortcut:
 
 ```sh
-make release-beta VERSION=0.0.13-beta.0
+task release-beta VERSION=0.0.13-beta.0
 git push origin main
 ```
 
-`make release-beta` creates a signed empty commit with the `Release-As:` footer formatted correctly and reminds you of the push-and-fire steps. The expansion of what it does:
+`task release-beta` creates a signed empty commit with the `Release-As:` footer formatted correctly and reminds you of the push-and-fire steps. The expansion of what it does:
 
 ```sh
 git commit -s --allow-empty -m "chore: cut v0.0.13-beta.0" -m "Release-As: 0.0.13-beta.0"
@@ -81,9 +81,9 @@ What happens next:
 3. Merge the PR. `release-please.yml`'s `push-release-tag.sh` step detects the `chore(main): release X.Y.Z` merge commit, pushes the `v0.0.13-beta.0` tag, and calls `gh workflow run release.yml --ref v0.0.13-beta.0` to fire the release workflow. (The explicit `gh workflow run` is required because tag pushes from `github-actions[bot]` don't fire `release.yml`'s `push: tags` trigger on their own — see the [auto-fire section](#when-releaseyml-doesnt-auto-fire) for the why.)
 4. `release.yml` builds artifacts and creates the Release page. GitHub marks the resulting Release as a **prerelease** automatically because the tag has a hyphenated suffix — no separate workflow or flag needed. The published container is tagged `:0.0.13-beta.0` only; the rolling `:latest` and `:0.0` tags don't move, so production pulls of `:latest` continue to land on the most recent stable build.
 
-The next beta in the same line: `make release-beta VERSION=0.0.13-beta.1`. The next *official* release: don't use `release-beta` — let release-please bump normally from the most recent tag (e.g. `v0.0.13` from `fix:` commits, `v0.1.0` from `feat:`). The absence of a hyphenated suffix in the tag is what makes a release "official"; the same `release.yml` builds artifacts either way.
+The next beta in the same line: `task release-beta VERSION=0.0.13-beta.1`. The next *official* release: don't use `release-beta` — let release-please bump normally from the most recent tag (e.g. `v0.0.13` from `fix:` commits, `v0.1.0` from `feat:`). The absence of a hyphenated suffix in the tag is what makes a release "official"; the same `release.yml` builds artifacts either way.
 
-**Force a specific stable version** (e.g. jumping from `v0.1.5` straight to `v1.0.0`): `make release-beta VERSION=1.0.0` works too — the target checks for the hyphen but lets you opt out with `ALLOW_STABLE=1`.
+**Force a specific stable version** (e.g. jumping from `v0.1.5` straight to `v1.0.0`): `task release-beta VERSION=1.0.0` works too — the target checks for the hyphen but lets you opt out with `ALLOW_STABLE=1`.
 
 ## Version-bump rules
 
@@ -106,7 +106,7 @@ Both stable releases and prereleases go through the same release-please → `v*`
 | Stage | Stable `v0.1.0` | Prerelease `v0.1.0-beta.0` |
 |---|---|---|
 | Version source | computed from `feat:` / `fix:` commits since the last tag | `Release-As:` commit-message footer overrides |
-| Maintainer command | merge release-please PR | `make release-beta VERSION=0.1.0-beta.0 && git push` |
+| Maintainer command | merge release-please PR | `task release-beta VERSION=0.1.0-beta.0 && git push` |
 | Release PR title | `chore(main): release v0.1.0` | `chore(main): release v0.1.0-beta.0` |
 | `.release-please-manifest.json` value | `0.1.0` | `0.1.0-beta.0` |
 | Git tag created on PR merge | `v0.1.0` | `v0.1.0-beta.0` (hyphenated suffix) |
@@ -166,7 +166,7 @@ You merged a Release PR, the `vX.Y.Z` tag exists on origin (`git ls-remote --tag
 **Immediate unblock** — fire `release.yml` manually for the existing tag:
 
 ```sh
-make release-fire TAG=v0.0.13-beta.0
+task release-fire TAG=v0.0.13-beta.0
 ```
 
 Equivalent without `make`: `gh workflow run release.yml --ref v0.0.13-beta.0`, or from the Actions UI: Release → Run workflow → pick the tag in the "Use workflow from" dropdown.
@@ -230,7 +230,7 @@ git push origin "$TAG"
 # 5. Re-fire release.yml. softprops creates the release fresh,
 #    uploads all assets in the same call.
 gh workflow run release.yml --ref "$TAG"
-# or: make release-fire TAG="$TAG"
+# or: task release-fire TAG="$TAG"
 ```
 
 **Do not** push a new tag (`vX.Y.Z` → `vX.Y.Z+1`) just to recover. The tag stays valid; you only need to re-emit the release page for it.

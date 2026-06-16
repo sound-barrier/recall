@@ -4,7 +4,7 @@
 #
 # Invoke as either `cloc .` (auto-detects this file in cwd) or
 # `cloc --config .clocrc .` if cloc's auto-discovery is disabled.
-# `make cloc` uses the equivalent flags inline; keep the two in sync
+# `task cloc` uses the equivalent flags inline; keep the two in sync
 # when you edit either.
 
 # ── Dependency / vendor directories ──────────────────────────────────
@@ -34,7 +34,7 @@
 #   go.sum                         Go module checksum DB
 #   package-lock.json              npm dep lockfile
 #   package.json                   skipped — counted upstream, not source
-#   api.gen.d.ts                   openapi-typescript output (make gen-types)
+#   api.gen.d.ts                   openapi-typescript output (task gen-types)
 #   App.js / models.ts (wailsjs)   already covered by --exclude-dir
 #   CHANGELOG.md                   release-please autogen
 #   .release-please-manifest.json  release-please state
@@ -49,5 +49,5 @@
 --no-symlinks
 
 # Output format is deliberately NOT pinned here so `cloc .` produces
-# the compact per-language summary. Use `make cloc-detail` (or pass
+# the compact per-language summary. Use `task cloc-detail` (or pass
 # `--by-file-by-lang` yourself) when you want the per-file breakdown.

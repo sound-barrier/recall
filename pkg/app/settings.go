@@ -23,7 +23,7 @@ type Settings struct {
 // appBaseDir returns the install-wide base directory. Used by the
 // profile manager to root the <base>/profiles/<name>/ tree and by
 // pre-Startup tests that haven't loaded profiles. Honors the
-// `RECALL_DATA_DIR` env override (set in `.envrc` to `<repo>/data` so
+// `RECALL_DATA_DIR` env override (set in mise.toml `[env]` to `<repo>/data` so
 // `wails dev` keeps its data under the repo for easy inspection);
 // falls through to the platform-appropriate user-config directory
 // for shipped builds:

@@ -33,8 +33,9 @@ Recall-server.exe
 .gitattributes
 Brewfile
 
-# Dev tooling (Docker stages run commands directly, not via make)
-Makefile
+# Dev tooling (Docker stages run commands directly, not via task/mise)
+Taskfile.yml
+mise.toml
 
 # Documentation
 README.md

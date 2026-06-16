@@ -40,7 +40,8 @@ resolve paths relative to their own location.
 
 These scripts manage the Prometheus + Grafana stack defined in
 `docker-compose.yml`. They use `podman-compose` by default; set
-`DOCKER=docker` in `.envrc` to swap the runtime.
+`DOCKER=docker` in your environment (e.g. via mise.toml `[env]`) to swap
+the runtime.
 
 ### `stack-up.sh`
 
@@ -136,9 +137,9 @@ Overrides (most-specific wins):
   the app's `--profile=<name>` CLI flag). Doesn't switch the app's
   active profile; just scopes this script invocation.
 - **`RECALL_DATA_DIR=<base>`** — override the install-wide base
-  directory. The repo's `.envrc` sets this to `$PWD/data` so
+  directory. mise.toml `[env]` sets this to `<repo>/data` so
   `wails dev` and the `db-*.sh` scripts share the in-repo dev data
-  automatically when direnv is loaded.
+  automatically when mise is active.
 
 Post-PR-#45 the schema is 3NF: five **parent** tables
 (`summary_screenshots`, `teams_screenshots`, `personal_screenshots`,
@@ -257,11 +258,11 @@ present (lets you cut over a dev DB without manual schema repair).
 ### `check-deps.sh`
 
 Compare pinned tool versions against the latest GitHub releases.
-Called via `make check-deps`; safe to run directly.
+Called via `task check-deps`; safe to run directly.
 
 ```sh
 bash scripts/ci/check-deps.sh
-make check-deps
+task check-deps
 ```
 
 Checks:
