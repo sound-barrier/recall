@@ -41,6 +41,8 @@ def cobertura_line_rate(path: str) -> str:
         if rate is not None:
             return f"{float(rate) * 100:.1f}%"
     except (OSError, ET.ParseError, ValueError):
+        # Coverage artifacts are optional/informational; on missing or invalid
+        # XML we intentionally fall back to the placeholder "—".
         pass
     return "—"
 
