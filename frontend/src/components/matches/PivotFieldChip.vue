@@ -119,14 +119,24 @@ watch(menuOpen, async (open) => {
         <p class="pivot-chip-menu-head">
           Show values · uncheck to hide
         </p>
-        <label v-for="opt in filterOptions" :key="opt.value" class="pivot-chip-check">
-          <input
-            type="checkbox"
-            :checked="opt.checked"
-            @change="emit('act', { type: 'toggleFilter', value: opt.value })"
-          >
+        <!-- Rendered as menuitemcheckbox buttons rather than native
+             <input> so the tick is driven entirely by our model
+             (opt.checked) — a native checkbox toggles its own DOM state on
+             click, which desynced from Vue's one-way :checked bind and left
+             the box visually stuck. Clicking toggles inclusion without
+             closing the menu, so several values can be flipped in a row. -->
+        <button
+          v-for="opt in filterOptions"
+          :key="opt.value"
+          type="button"
+          role="menuitemcheckbox"
+          :aria-checked="opt.checked"
+          class="pivot-chip-check"
+          @click="emit('act', { type: 'toggleFilter', value: opt.value })"
+        >
+          <span class="pivot-chip-tick" aria-hidden="true">{{ opt.checked ? '☑' : '☐' }}</span>
           <span>{{ opt.value }}</span>
-        </label>
+        </button>
         <hr v-if="actions.length" class="pivot-chip-rule">
       </template>
       <button
@@ -261,6 +271,17 @@ watch(menuOpen, async (open) => {
   outline: none;
 }
 
+/* :where() keeps specificity at 0 so the UA button reset doesn't beat the
+   shared menu styles (the promote-span-to-button gotcha). */
+:where(button.pivot-chip-check) {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+}
+
 .pivot-chip-check {
   display: flex;
   align-items: center;
@@ -272,8 +293,20 @@ watch(menuOpen, async (open) => {
   cursor: pointer;
 }
 
-.pivot-chip-check input {
-  accent-color: var(--accent);
+.pivot-chip-check:hover,
+.pivot-chip-check:focus-visible {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  outline: none;
+}
+
+.pivot-chip-tick {
+  color: var(--accent);
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.pivot-chip-check[aria-checked="false"] .pivot-chip-tick {
+  color: var(--text-dim);
 }
 
 .pivot-chip-rule {
