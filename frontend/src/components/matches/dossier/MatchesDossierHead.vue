@@ -18,7 +18,7 @@ import WidgetConfigPopover from '@/components/dashboard/WidgetConfigPopover.vue'
 // only mounts (v-if inside the child) when the user clicks "Filter
 // matches". MatchesView lazy-loads its own rail-mode instance the same
 // way. Regression covered by MatchesDossierHead.lazy-views.test.ts.
-const NarrowPopover = defineAsyncComponent(() => import('@/components/matches/NarrowPopover.vue'))
+const NarrowPopover = defineAsyncComponent(() => import('@/components/matches/narrow/NarrowPopover.vue'))
 
 // The dossier "head" chrome: the set summary (MatchesDossier), the
 // customizable widget grid (drag-reorder + live-reflow preview + undo +

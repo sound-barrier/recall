@@ -28,7 +28,7 @@ import { matchesToCSV } from '@/match/match-csv'
 // bytes. The popover only mounts (v-if inside the child) when the
 // user clicks "Narrow this set", so the deferred fetch is invisible
 // in practice. Regression covered by MatchesView.lazy-views.test.ts.
-const NarrowPopover = defineAsyncComponent(() => import('@/components/matches/NarrowPopover.vue'))
+const NarrowPopover = defineAsyncComponent(() => import('@/components/matches/narrow/NarrowPopover.vue'))
 import MatchRowContextMenu from '@/components/matches/list/MatchRowContextMenu.vue'
 import LeafHoverPreview from '@/components/matches/list/LeafHoverPreview.vue'
 import { useMatchesRowContext } from '@/composables/matches/useMatchesRowContext'

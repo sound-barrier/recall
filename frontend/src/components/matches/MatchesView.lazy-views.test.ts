@@ -9,7 +9,7 @@
 // initial parse cost on every visit to the Matches tab.
 //
 // A naïve refactor that flips this back to `import NarrowPopover
-// from '@/components/matches/NarrowPopover.vue'` would silently undo the split. This
+// from '@/components/matches/narrow/NarrowPopover.vue'` would silently undo the split. This
 // test guards the import shape via text inspection (same pattern as
 // App.lazy-views.test.ts).
 
@@ -21,7 +21,7 @@ describe('MatchesView.vue lazy-loaded children', () => {
   const source = readFileSync(resolve(__dirname, 'MatchesView.vue'), 'utf-8')
 
   const lazyChildren: Array<{ name: string; path: string }> = [
-    { name: 'NarrowPopover', path: '@/components/matches/NarrowPopover.vue' },
+    { name: 'NarrowPopover', path: '@/components/matches/narrow/NarrowPopover.vue' },
   ]
 
   for (const { name, path } of lazyChildren) {
