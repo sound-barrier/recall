@@ -138,6 +138,28 @@ jobs:
           path: pr-cov-e2e/frontend/
           if_no_artifact_found: warn
 
+      # main's most-recent e2e coverage as the Integration Δ baseline (latest
+      # e2e.yml run on main). Mirrors the unit baseline above.
+      - name: Download main's e2e coverage baseline (Go)
+        if: steps.pr.outputs.number != ''
+        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        with:
+          workflow: e2e.yml
+          branch: main
+          name: go-e2e-coverage
+          path: main-cov-e2e/go/
+          if_no_artifact_found: warn
+
+      - name: Download main's e2e coverage baseline (frontend)
+        if: steps.pr.outputs.number != ''
+        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151  # v21
+        with:
+          workflow: e2e.yml
+          branch: main
+          name: frontend-e2e-coverage
+          path: main-cov-e2e/frontend/
+          if_no_artifact_found: warn
+
       - name: Render combined PR report
         if: steps.pr.outputs.number != ''
         run: python3 scripts/ci/render-pr-report.py > pr-report.md
