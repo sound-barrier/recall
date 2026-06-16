@@ -204,21 +204,32 @@ def build_coverage_section(
     main_go: float | None,
     pr_fe: float | None,
     main_fe: float | None,
+    e2e_go: float | None,
+    e2e_fe: float | None,
 ) -> list[str]:
-    """The "Coverage" heading + this-PR-vs-main table + baseline-missing note."""
+    """The "Coverage" heading + Unit (this-PR-vs-main) + Integration table.
+
+    Unit columns carry the main-baseline Δ. The Integration (e2e) column is
+    informational and baseline-free — it comes from the separate E2E workflow,
+    whose artifacts may not be ready when this renders (then "—")."""
     out: list[str] = ["### 📊 Coverage", ""]
-    out.append("| Component | This PR | main | Δ |")
-    out.append("|---|---:|---:|---:|")
+    out.append("| Component | Unit | main | Δ | Integration (e2e) |")
+    out.append("|---|---:|---:|---:|---:|")
     out.append(
-        f"| Go       | {fmt_pct(pr_go)} | {fmt_pct(main_go)} | {fmt_delta(pr_go, main_go)}{delta_emoji(pr_go, main_go)} |"
+        f"| Go       | {fmt_pct(pr_go)} | {fmt_pct(main_go)} | {fmt_delta(pr_go, main_go)}{delta_emoji(pr_go, main_go)} | {fmt_pct(e2e_go)} |"
     )
     out.append(
-        f"| Frontend | {fmt_pct(pr_fe)} | {fmt_pct(main_fe)} | {fmt_delta(pr_fe, main_fe)}{delta_emoji(pr_fe, main_fe)} |"
+        f"| Frontend | {fmt_pct(pr_fe)} | {fmt_pct(main_fe)} | {fmt_delta(pr_fe, main_fe)}{delta_emoji(pr_fe, main_fe)} | {fmt_pct(e2e_fe)} |"
     )
     out.append("")
     if main_go is None or main_fe is None:
         out.append(
-            "_Baseline missing for at least one component — main has no recent successful CI run yet, or the baseline artifact has aged out. The Δ will populate after the next push to main._"
+            "_Unit baseline missing for at least one component — main has no recent successful CI run yet, or the baseline artifact has aged out. The Δ will populate after the next push to main._"
+        )
+        out.append("")
+    if e2e_go is None and e2e_fe is None:
+        out.append(
+            "_Integration (e2e) coverage pending — the E2E workflow runs in parallel and may not have finished for this commit yet. It populates from the latest E2E run on the branch._"
         )
         out.append("")
     return out
@@ -240,9 +251,19 @@ def main() -> int:
             "main-cov/frontend/**/cobertura-coverage.xml",
         )
     )
+    # Integration (e2e) coverage from the separate E2E workflow's artifacts
+    # (downloaded cross-workflow by the pr-report job). Optional — renders as
+    # "—" when the E2E run hasn't produced them yet.
+    e2e_go = parse_cobertura_line_rate("pr-cov-e2e/go/cobertura.xml")
+    e2e_fe = parse_cobertura_line_rate(
+        find_one(
+            "pr-cov-e2e/frontend/cobertura-coverage.xml",
+            "pr-cov-e2e/frontend/**/cobertura-coverage.xml",
+        )
+    )
 
     out = build_tests_section(pr_tests)
-    out += build_coverage_section(pr_go, main_go, pr_fe, main_fe)
+    out += build_coverage_section(pr_go, main_go, pr_fe, main_fe, e2e_go, e2e_fe)
 
     ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
     out.append(f"<sub>Updated {ts} · sticky comment</sub>")

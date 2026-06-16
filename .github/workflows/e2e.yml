@@ -90,16 +90,24 @@ jobs:
         working-directory: frontend
         run: npm ci --no-audit --no-fund
 
-      - name: Build frontend (required for Go //go:embed)
+      - name: Build frontend (instrumented for e2e coverage)
         if: steps.changes.outputs.relevant == 'true'
         working-directory: frontend
+        # E2E_COVERAGE=1 emits inline source maps so monocart can remap the
+        # browser's V8 coverage back to .ts/.vue source. Behaviour-neutral —
+        # the suite still validates correctness exactly as before.
+        env:
+          E2E_COVERAGE: '1'
         run: npm run build
 
-      - name: Build serveronly binary
+      - name: Build serveronly binary (coverage-instrumented)
         if: steps.changes.outputs.relevant == 'true'
+        # `go build -cover` instruments the server so Playwright's HTTP traffic
+        # produces Go integration coverage; counters flush to GOCOVERDIR on the
+        # graceful SIGTERM shutdown Playwright's webServer sends on teardown.
         run: |
-          mkdir -p /tmp/recall-e2e
-          go build -tags serveronly -o /tmp/recall-e2e/recall-server .
+          mkdir -p /tmp/recall-e2e "${GITHUB_WORKSPACE}/coverage/e2e/go-covdata"
+          go build -cover -coverpkg=./... -tags serveronly -o /tmp/recall-e2e/recall-server .
 
       - name: Install Playwright chromium + webkit (with system deps)
         if: steps.changes.outputs.relevant == 'true'
@@ -112,7 +120,55 @@ jobs:
       - name: Run Playwright E2E suite
         if: steps.changes.outputs.relevant == 'true'
         working-directory: frontend
+        # E2E_COVERAGE + GOCOVERDIR turn on best-effort coverage collection
+        # (V8 frontend coverage via monocart + Go binary coverage). Collection
+        # is wrapped so it can never fail a test — the suite gates correctness,
+        # not coverage. GOCOVERDIR must be absolute (the server's cwd differs).
+        env:
+          E2E_COVERAGE: '1'
+          GOCOVERDIR: ${{ github.workspace }}/coverage/e2e/go-covdata
         run: npx playwright test
+
+      # ── Integration coverage (informational; never gates merge) ──────────
+      # Go: covdata → coverprofile → func/cobertura. Frontend lcov/cobertura
+      # are produced by the Playwright globalTeardown (monocart). Both steps
+      # continue-on-error so a coverage hiccup never reds the e2e job.
+      - name: Build Go integration coverage report
+        if: ${{ always() && steps.changes.outputs.relevant == 'true' }}
+        continue-on-error: true
+        run: |
+          set -eu
+          mkdir -p coverage/e2e/go
+          go tool covdata textfmt -i="${GITHUB_WORKSPACE}/coverage/e2e/go-covdata" -o coverage/e2e/go/coverage.out
+          go tool cover -func=coverage/e2e/go/coverage.out > coverage/e2e/go/coverage.txt
+          go install github.com/boumenot/gocover-cobertura@latest
+          # GOFLAGS=-tags=serveronly so gocover-cobertura's internal `go list`
+          # sees the serveronly build-tag files (app_server.go, main_server.go)
+          # that the instrumented binary — and thus the profile — include.
+          GOFLAGS=-tags=serveronly gocover-cobertura < coverage/e2e/go/coverage.out > coverage/e2e/go/cobertura.xml
+
+      - name: Write integration-coverage job summary
+        if: ${{ always() && steps.changes.outputs.relevant == 'true' }}
+        continue-on-error: true
+        run: python3 scripts/ci/e2e-coverage-summary.py >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Go integration coverage
+        if: ${{ always() && steps.changes.outputs.relevant == 'true' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: go-e2e-coverage
+          path: coverage/e2e/go/
+          retention-days: 30
+
+      - name: Upload frontend integration coverage
+        if: ${{ always() && steps.changes.outputs.relevant == 'true' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: frontend-e2e-coverage
+          path: coverage/e2e/frontend/
+          retention-days: 30
 
       - name: Upload Playwright report on failure
         if: ${{ failure() && steps.changes.outputs.relevant == 'true' }}
