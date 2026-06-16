@@ -43,6 +43,7 @@ import {
   ExportData,
   ExportDataCSV,
   ExportBundle,
+  ExportMatchesCSV,
   ImportData,
   ResolveAmbiguousMatch,
   IgnoreScreenshot,
@@ -1159,6 +1160,18 @@ function onExportBundleRequest(matchKeys: string[]) {
   exportBundleOpen.value = true
 }
 
+// Flat CSV export — MatchesView assembles the sheet from its narrowed +
+// ticked records and hands up the ready-to-save string. We just dispatch
+// it to ExportMatchesCSV, which writes it via the Wails save dialog or a
+// browser blob download depending on transport.
+async function onExportMatchesCSV(csv: string, defaultName: string) {
+  try {
+    await ExportMatchesCSV(csv, defaultName)
+  } catch (e) {
+    setErrorFromRaw(String(e))
+  }
+}
+
 async function onExportBundleConfirm(
   _filename: string,
   includeHidden: boolean,
@@ -2087,6 +2100,7 @@ useEventStream({
           @hard-delete-matches="onHardDeleteMatches"
           @move-matches="onMoveMatches"
           @export-bundle="onExportBundleRequest"
+          @export-csv="onExportMatchesCSV"
           @clear-anchor="onSetAnchor('')"
           @set-anchor="onSetAnchor"
         />

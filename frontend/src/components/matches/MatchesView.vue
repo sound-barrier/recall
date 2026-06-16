@@ -21,6 +21,7 @@ import MatchesMembersList from '@/components/matches/MatchesMembersList.vue'
 import MatchesListToolbar from '@/components/matches/MatchesListToolbar.vue'
 import { useMatchesSelection } from '@/composables/matches/useMatchesSelection'
 import { useMatchesMovePicker } from '@/composables/matches/useMatchesMovePicker'
+import { matchesToCSV } from '@/match/match-csv'
 // NarrowPopover is the heavyweight authoring surface (the search +
 // combobox + range pickers + active-clause range etc.). Lazy-load
 // it so MatchesView's initial chunk doesn't carry its ~30K of
@@ -133,6 +134,11 @@ const emit = defineEmits<{
   // Anchor stamped from the row's right-click context menu. Empty
   // string for "clear." Same App.vue handler the detail panel uses.
   'set-anchor': [matchKey: string]
+  // Flat CSV export — emitted with the ready-to-save CSV string + a
+  // default filename. App.vue dispatches it to ExportMatchesCSV (Wails
+  // save dialog or browser blob download); the string is assembled here
+  // because the narrowed set + heroRole live in this view.
+  'export-csv': [csv: string, defaultName: string]
 }>()
 
 // ─── Narrow state via the parent-supplied composable bundle ──
@@ -270,6 +276,18 @@ function commitHardDelete(key: string) {
 // singleton — it lazy-fetches `/api/v1/system/reference-data` and
 // reuses the same reactive store across every consumer.
 const ow = useOWData()
+
+// Build the flat CSV for the data view's "Export CSV" affordances and
+// hand it up to App.vue to save. Exports the ticked subset when any rows
+// are selected, otherwise the whole narrowed set; the CSV is assembled
+// here because the narrowed records + heroRole resolver live in this view.
+function requestCsvExport(keys: string[]) {
+  const wanted = keys.length > 0 ? new Set(keys) : null
+  const rows = wanted ? narrowedRecords.value.filter((r) => wanted.has(r.match_key)) : narrowedRecords.value
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+  emit('export-csv', matchesToCSV(rows, ow.heroRole), `recall-matches-${stamp}.csv`)
+}
+
 // PR B: weekStart drives the day-of-week breakdown's rotation so the
 // row matches the user's calendar preference.
 const { weekStart } = useWeekStart()
@@ -477,6 +495,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
           @select-all="selectAllVisible"
           @hide="hideSelected"
           @export-bundle="emit('export-bundle', [...selectedKeys])"
+          @export-csv="requestCsvExport([...selectedKeys])"
           @bulk-tag="onBulkTag"
           @move-begin="beginMoveLive"
           @move-commit="commitMove"
@@ -505,6 +524,7 @@ const IS_WAILS = typeof window !== 'undefined' && !!window.go?.app?.App
           @hover-move="onLeafMouseMove"
           @hover-leave="onLeafMouseLeave"
           @reset-narrow="resetNarrow"
+          @export-csv="requestCsvExport([...selectedKeys])"
         />
 
         <!-- Combined Sort + Group dropdown — teleports to <body>, so it
