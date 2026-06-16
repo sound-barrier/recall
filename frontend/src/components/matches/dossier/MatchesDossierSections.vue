@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import type { MatchRecord } from '@/api'
 import { useSectionLayout } from '@/composables/matches/useSectionLayout'
 import DossierSection from '@/components/matches/dossier/DossierSection.vue'
-import MatchTimelineHeader from '@/components/matches/MatchTimelineHeader.vue'
+import MatchTimelineHeader from '@/components/matches/timeline/MatchTimelineHeader.vue'
 import MatchMapRoleBand from '@/components/matches/dossier/MatchMapRoleBand.vue'
 import MatchHeroModeBand from '@/components/matches/dossier/MatchHeroModeBand.vue'
 
