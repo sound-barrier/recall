@@ -42,8 +42,6 @@ import {
   GetDataLocation,
   ExportData,
   ExportDataCSV,
-  ExportBundle,
-  ExportMatchesCSV,
   ImportData,
   ResolveAmbiguousMatch,
   IgnoreScreenshot,
@@ -80,6 +78,7 @@ import { ONBOARDING_COMPLETED_KEY, ONBOARDING_RESUME_KEY } from '@/composables/s
 import { useTheme } from '@/composables/settings/useTheme'
 import { useWeekStart } from '@/composables/shared/useWeekStart'
 import { useCardFocus } from '@/composables/matches/useCardFocus'
+import { useExportBundle } from '@/composables/matches/useExportBundle'
 import { useIgnoredScreenshots } from '@/composables/ingest/useIgnoredScreenshots'
 import { useSearchClauses } from '@/composables/matches/useSearchClauses'
 import { useSelectedMatch } from '@/composables/matches/useSelectedMatch'
@@ -1097,50 +1096,17 @@ async function onMoveMatches(matchKeys: string[], targetProfile: string) {
   }
 }
 
-// ── Export-bundle flow ──────────────────────────────────────────────
-// The Matches bulk-action bar emits `export-bundle` with the ticked
-// match_keys. App.vue captures the keys, opens the
-// ExportBundleModal, and on Export → calls ExportBundle in api.ts
-// which dispatches to Wails' SaveFileDialog or to a browser blob
-// download depending on transport.
-const exportBundleOpen = ref(false)
-const exportBundleSelectedKeys = ref<string[]>([])
-
-function onExportBundleRequest(matchKeys: string[]) {
-  exportBundleSelectedKeys.value = matchKeys
-  exportBundleOpen.value = true
-}
-
-// Flat CSV export — MatchesView assembles the sheet from its narrowed +
-// ticked records and hands up the ready-to-save string. We just dispatch
-// it to ExportMatchesCSV, which writes it via the Wails save dialog or a
-// browser blob download depending on transport.
-async function onExportMatchesCSV(csv: string, defaultName: string) {
-  try {
-    await ExportMatchesCSV(csv, defaultName)
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  }
-}
-
-async function onExportBundleConfirm(
-  _filename: string,
-  includeHidden: boolean,
-  includeUnknown: boolean,
-) {
-  try {
-    await ExportBundle({
-      matchKeys: exportBundleSelectedKeys.value,
-      includeHidden,
-      includeUnknown,
-    })
-  } catch (e) {
-    setErrorFromRaw(String(e))
-  } finally {
-    exportBundleOpen.value = false
-    exportBundleSelectedKeys.value = []
-  }
-}
+// ── Export-bundle + CSV flow ─────────────────────────────────────────
+// The Matches bulk-action bar emits `export-bundle` / `export-csv` with the
+// ticked keys (or a ready-to-save CSV string); useExportBundle owns the modal
+// state + the ExportBundle / ExportMatchesCSV dispatch.
+const {
+  exportBundleOpen,
+  exportBundleSelectedKeys,
+  onExportBundleRequest,
+  onExportMatchesCSV,
+  onExportBundleConfirm,
+} = useExportBundle({ onError: setErrorFromRaw })
 
 // Ambiguous-attribution resolver. The user picks which candidate
 // match an ambiguous screenshot belongs to from the Unknown tab's
