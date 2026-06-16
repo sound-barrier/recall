@@ -86,6 +86,11 @@ export default defineConfig({
       // the tests and breaking the "fresh empty server" assumption
       // the a11y + match-* specs depend on.
       RECALL_DATA_DIR: `${E2E_HOME}/data`,
+      // Register the test-harness-only routes (POST /api/v1/system/test-reset)
+      // so the real-server specs can reset to a clean single-"main" profile in
+      // beforeEach. Absent in production + the schemathesis run (neither sets
+      // it), so the reset route never ships. See pkg/cmd/server_test_reset.go.
+      RECALL_E2E: '1',
       // Go binary-coverage output dir (e2e-coverage run only). The
       // `-cover` server flushes its counters here on graceful shutdown;
       // an uninstrumented binary ignores it. Absent → not forwarded.
