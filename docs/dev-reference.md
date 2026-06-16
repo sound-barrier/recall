@@ -15,50 +15,58 @@ Two binary flavors, selected by the `serveronly` Go build tag:
 | `serveronly` | `main_server.go` + `pkg/app/app_server.go` | No | Headless HTTP server (addr from `RECALL_SERVER_ADDR`, default `127.0.0.1:7000`) |
 | *(none — both)* | `assets.go` | No | `//go:embed all:frontend/dist` — embedded FS shared by both variants |
 
-## Full make-target catalog
+## Full task catalog
+
+The build runner is [go-task](https://taskz.dev) (`Taskfile.yml`); run
+`task --list` for the live catalog. The toolchain itself (Go, Node, the Wails
+CLI, every linter) is pinned in `mise.toml` and provisioned by
+[mise](https://mise.jdx.dev) — `mise install`. mise also exports the project
+env (`RECALL_DATA_DIR`, the version pins) when activated, replacing the old
+`.envrc`/direnv + `tool-versions.env`.
 
 | Command | Purpose |
 |---|---|
-| `make init` | Fresh-clone setup via `initialize.sh`: brew/apt deps, `go install` for tools not in Brewfile (Wails CLI, gofumpt, goimports-reviser, deadcode, govulncheck), Debian `webkit2gtk-4.0` → `4.1` shims, `npm ci`, `lefthook install`, `direnv allow`. Idempotent. Needs Go 1.26+ / Node 22+ on PATH first. |
-| `make dev` | Hot-reload dev server (macOS / Debian / Ubuntu). Vite `:5173`, Wails IPC `:34115`. Linux auto-passes `-tags webkit2_4_1`. |
-| `make build-linux` / `build-windows` | Wails app → `dist/<os>/Recall[.exe]` via Docker (mingw-w64 for Windows). |
-| `make build-mac` | macOS Wails app → `dist/mac/Recall.app` (macOS host). Release workflow wraps it in a DMG. |
-| `make build-all-docker` | Linux + Windows Wails apps — no macOS SDK needed. |
-| `make build-server-{linux,windows,mac}` | Server binary → `dist/server-<os>/Recall-server` via Docker. |
-| `make build-server-all` / `build-server-container` | All three server builds / Linux server container image with Tesseract → `recall-server:local`. |
-| `make build-all` | All three Wails platforms (macOS host required). |
+| `task init` | Fresh-clone setup via `initialize.sh`: installs mise + system packages (Tesseract, container runtime, pipx, cloc), then `mise install` (Go, Node, Wails CLI, every linter), Debian `webkit2gtk-4.0` → `4.1` shims, `npm ci`, `lefthook install`. Idempotent. |
+| `task dev` | Hot-reload dev server (macOS / Debian / Ubuntu). Vite `:5173`, Wails IPC `:34115`. Linux auto-passes `-tags webkit2_4_1`. |
+| `task build-linux` / `build-windows` | Wails app → `dist/<os>/Recall[.exe]` via Docker (mingw-w64 for Windows). |
+| `task build-mac` | macOS Wails app → `dist/mac/Recall.app` (macOS host). Release workflow wraps it in a DMG. |
+| `task build-all-docker` | Linux + Windows Wails apps — no macOS SDK needed. |
+| `task build-server-{linux,windows,mac}` | Server binary → `dist/server-<os>/Recall-server` via Docker. |
+| `task build-server-all` / `build-server-container` | All three server builds / Linux server container image with Tesseract → `recall-server:local`. |
+| `task build-all` | All three Wails platforms (macOS host required). |
 | `go build ./...` / `-tags serveronly ./...` | Compile-check Wails / server variant. |
 | `bash -n scripts/X.sh` | Syntax-check a shell script. |
-| `brew bundle` | Tesseract, Go toolchain, Podman, etc. from `Brewfile`. **Wails CLI separate**: `go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0`. |
-| `direnv allow` | Activate `.envrc`. |
-| `cd frontend && npm ci` | Install frontend deps (required after clone / `make clean`). |
-| `make fmt` | Go (`goimports-reviser` → `gofumpt`) + shell (`shfmt -w -i 2 -ci -bn`). Sub-targets `fmt-go`, `fmt-shell`. |
-| `make lint` | golangci-lint (both tags), ESLint, Stylelint, HTMLHint, shellcheck + shfmt diff, Hadolint, yamllint, Spectral. |
-| `make clean` | Remove `dist/`, `build/bin/`, `frontend/{dist,node_modules}`. |
-| `make update-deps` | `go get -u ./...` + `go mod tidy` + `npm update`. |
-| `make check-deps` | Compare pinned tools vs latest. |
-| `make trivy` | Trivy scan (Go + npm + Dockerfile); fails on HIGH/CRITICAL. |
-| `make cloc` / `cloc-detail` | LOC summary. |
-| `make icon` | Resync `build/appicon.png` from `assets/icon.png` (macOS-only `sips`). |
-| `make swagger` | Swagger UI v5 in a container (default `:8080`, `SWAGGER_PORT` override). |
-| `make pages-build` / `pages-preview` | Build docs book + Swagger UI under `dist/pages/`. |
-| `make lint-openapi` | Spectral (`spectral:oas` + `.spectral.yaml`, `--fail-severity=warn`). |
-| `make test` | Go unit (`-race`; `pkg/{app,db,parser}/*_test.go`) + Vitest. CI uses `-short` to skip the golden test. |
-| `make cover` / `cover-go` / `cover-frontend` | **Unit** coverage → `coverage/go/` + `frontend/coverage/`. Go fails below `GO_COVERAGE_MIN`; frontend below `vitest.config.ts` `coverage.thresholds`. |
-| `make cover-e2e` | **Integration** coverage from one Playwright run → `coverage/e2e/` (`go/` + `frontend/`). Builds an instrumented frontend (`E2E_COVERAGE=1` inline maps) + server (`go build -cover`); Go counters flush on the server's graceful SIGTERM shutdown, frontend V8 coverage is remapped to source by monocart (Chromium only). Informational — no floor gate; kept out of the `cover` umbrella so pre-push stays fast. |
-| `make test-e2e` | Playwright. Builds frontend + `serveronly` into `/tmp/recall-e2e/recall-server`, installs Chromium + WebKit, runs with `HOME=/tmp/recall-e2e` on `127.0.0.1:7099`. |
-| `make test-all` | `make test` + `make test-e2e`. |
-| `make gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml`. |
-| `make typecheck` | `vue-tsc --noEmit`. `allowJs: false` blocks JS introduction. |
-| `make update-goldens` | Regenerate parser golden sidecars (or set `RECALL_FIXTURE_UPDATE=1`). |
-| `make goldens SRC=<file-or-dir>` | Generate parser goldens for any screenshot file or folder (not just `testdata/`) to eyeball what the parser extracts and spot bugs. Wraps `scripts/gen-goldens.sh`; isolates a single file so it doesn't touch siblings. |
-| `make seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1] [CHAOS=0.15] [STYLE=…]` | Populate a SQLite profile with N synthetic matches via `cmd/seed-dev`. Refuses non-empty profiles unless `FORCE=1` wipes first. `SEED=time` is a sentinel that substitutes the current Unix timestamp for a fresh shuffle. `CHAOS=<0..1>` mixes pathological data shapes into that fraction of matches. `STYLE=` defaults to `flex` (covers every map + hero); also accepts `one-trick`, `one-role`, or `random`. See "Manual testing with a seeded corpus" below. |
-| `make seed-clear PROFILE=demo` | Wipe a SQLite profile without re-seeding. No-op (and exits 0) when the profile is already empty. |
+| `brew bundle` | macOS bootstrap from `Brewfile`: mise, go-task, Tesseract, Podman, pipx, cloc. Everything else (Go/Node toolchains + all linters + Wails CLI) comes from `mise install`. |
+| `mise install` | Provision the pinned toolchain from `mise.toml` ([tools] + [env]). |
+| `eval "$(mise activate zsh)"` | One-time shell hook (or `bash`) so the toolchain + `RECALL_DATA_DIR` load automatically on `cd`. |
+| `cd frontend && npm ci` | Install frontend deps (required after clone / `task clean`). |
+| `task fmt` | Go (`goimports-reviser` → `gofumpt`) + shell (`shfmt -w -i 2 -ci -bn`). Sub-targets `fmt-go`, `fmt-shell`. |
+| `task lint` | golangci-lint (both tags), ESLint, Stylelint, HTMLHint, shellcheck + shfmt diff, Hadolint, yamllint, Spectral. |
+| `task clean` | Remove `dist/`, `build/bin/`, `frontend/{dist,node_modules}`. |
+| `task update-deps` | `go get -u ./...` + `go mod tidy` + `npm update`. |
+| `task check-deps` | Compare pinned tools vs latest. |
+| `task trivy` | Trivy scan (Go + npm + Dockerfile); fails on HIGH/CRITICAL. |
+| `task cloc` / `cloc-detail` | LOC summary. |
+| `task icon` | Resync `build/appicon.png` from `assets/icon.png` (macOS-only `sips`). |
+| `task swagger` | Swagger UI v5 in a container (default `:8080`, `SWAGGER_PORT` override). |
+| `task pages-build` / `pages-preview` | Build docs book + Swagger UI under `dist/pages/`. |
+| `task lint-openapi` | Spectral (`spectral:oas` + `.spectral.yaml`, `--fail-severity=warn`). |
+| `task test` | Go unit (`-race`; `pkg/{app,db,parser}/*_test.go`) + Vitest. CI uses `-short` to skip the golden test. |
+| `task cover` / `cover-go` / `cover-frontend` | **Unit** coverage → `coverage/go/` + `frontend/coverage/`. Go fails below `GO_COVERAGE_MIN`; frontend below `vitest.config.ts` `coverage.thresholds`. |
+| `task cover-e2e` | **Integration** coverage from one Playwright run → `coverage/e2e/` (`go/` + `frontend/`). Builds an instrumented frontend (`E2E_COVERAGE=1` inline maps) + server (`go build -cover`); Go counters flush on the server's graceful SIGTERM shutdown, frontend V8 coverage is remapped to source by monocart (Chromium only). Informational — no floor gate; kept out of the `cover` umbrella so pre-push stays fast. |
+| `task test-e2e` | Playwright. Builds frontend + `serveronly` into `/tmp/recall-e2e/recall-server`, installs Chromium + WebKit, runs with `HOME=/tmp/recall-e2e` on `127.0.0.1:7099`. |
+| `task test-all` | `task test` + `task test-e2e`. |
+| `task gen-types` | Regenerate `frontend/src/api.gen.d.ts` from `api/openapi.yaml`. |
+| `task typecheck` | `vue-tsc --noEmit`. `allowJs: false` blocks JS introduction. |
+| `task update-goldens` | Regenerate parser golden sidecars (or set `RECALL_FIXTURE_UPDATE=1`). |
+| `task goldens SRC=<file-or-dir>` | Generate parser goldens for any screenshot file or folder (not just `testdata/`) to eyeball what the parser extracts and spot bugs. Wraps `scripts/gen-goldens.sh`; isolates a single file so it doesn't touch siblings. |
+| `task seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1] [CHAOS=0.15] [STYLE=…]` | Populate a SQLite profile with N synthetic matches via `cmd/seed-dev`. Refuses non-empty profiles unless `FORCE=1` wipes first. `SEED=time` is a sentinel that substitutes the current Unix timestamp for a fresh shuffle. `CHAOS=<0..1>` mixes pathological data shapes into that fraction of matches. `STYLE=` defaults to `flex` (covers every map + hero); also accepts `one-trick`, `one-role`, or `random`. See "Manual testing with a seeded corpus" below. |
+| `task seed-clear PROFILE=demo` | Wipe a SQLite profile without re-seeding. No-op (and exits 0) when the profile is already empty. |
 
 > **Drift note:** specific numeric gates (`GO_COVERAGE_MIN`, Vitest thresholds,
 > bundle budgets) and version pins (Wails, Go, Node, tool versions) are
 > intentionally NOT duplicated here — read them from `vitest.config.ts`,
-> `tool-versions.env`, `go.mod`, and `Brewfile` so this doc can't go stale.
+> `mise.toml`, `go.mod`, and `Brewfile` so this doc can't go stale.
 
 ## Package layout (`pkg/`)
 
@@ -75,7 +83,7 @@ Debian + Docker-in-Docker base for VS Code Dev Containers / Codespaces. The Wail
 GUI can't render inside the container; contributors there use
 `go run -tags serveronly . --server` and access port 7000 via the forwarded host
 port. Native-window dev hosts: **macOS** and **Debian/Ubuntu** (both run
-`make dev`); Windows is a release target only (dev via WSL2 Ubuntu).
+`task dev`); Windows is a release target only (dev via WSL2 Ubuntu).
 
 `Dockerfile.build` has 14 named stages. Stages 1–6 are the Wails builds (CGo +
 WebView libs). Stages 7–13 are the `serveronly` builds — pure Go,
@@ -106,12 +114,12 @@ only on URL.
 
 | Var | Default | Effect |
 |---|---|---|
-| `RECALL_DATA_DIR` | platform user-config dir | Install-wide base directory. Each profile gets `<base>/profiles/<name>/{settings.json,db/recall.db}`. The repo's `.envrc` sets this to `$PWD/data`. |
+| `RECALL_DATA_DIR` | platform user-config dir | Install-wide base directory. Each profile gets `<base>/profiles/<name>/{settings.json,db/recall.db}`. mise.toml `[env]` sets this to `<repo>/data` when mise is active. |
 | `RECALL_PROFILE` | *(unset — script-only)* | Forces `scripts/db/db-*.sh` to operate on a specific profile. Mirrors the app's `--profile=<name>` CLI flag. Not read by the app binaries. |
 | `RECALL_DEBUG_DIR` | system temp | Directory for Tesseract work files; also dumps raw Tesseract `.txt` output per OCR call when set. |
 | `RECALL_METRICS_ADDR` | `:9091` | Override Prometheus metrics bind address. |
 | `RECALL_SERVER_ADDR` | `127.0.0.1:7000` | Override the HTTP server bind address. Set to `0.0.0.0:7000` inside Docker. |
-| `DOCKER` | `docker` | Container runtime binary for `make build-*`. Set to `podman` for Podman. |
+| `DOCKER` | `docker` | Container runtime binary for `task build-*`. Set to `podman` for Podman. |
 | `RECALL_PPROF` | *(off)* | Mounts `net/http/pprof` under `/debug/pprof/` in server mode. Never expose publicly. |
 | `RECALL_FIXTURE_DIR` | `../../testdata` (from `pkg/parser/`) | `.png` fixture dir for `TestParseScreenshot_GoldenFiles`. Override with an ABSOLUTE path. |
 
@@ -134,7 +142,7 @@ only on URL.
 
 ## Bundle audit cadence
 
-`make bundle-audit` runs `scripts/ci/audit-bundle.sh`. Use it when:
+`task bundle-audit` runs `scripts/ci/audit-bundle.sh`. Use it when:
 
 1. A `check-bundle-size.sh` gate is about to trip — find the offending chunk before bumping the budget.
 2. Adding a new view / modal / heavyweight composable — confirm it landed in its own chunk if you lazy-loaded it via `defineAsyncComponent`.
@@ -146,19 +154,19 @@ The audit is read-only; it doesn't gate CI. The gate is `check-bundle-size.sh`. 
 
 When eyeballing the UI against a large match set — dossier widgets, the
 Campaign Log + Geography bands, infinite-scroll virtualization, sort/group with
-hundreds of rows — parsing real screenshots is too slow. Use `make seed-dev` to write
+hundreds of rows — parsing real screenshots is too slow. Use `task seed-dev` to write
 synthetic rows straight into a profile's SQLite DB.
 
 ### One-time setup
 
-`.envrc` already pins `RECALL_DATA_DIR=$PWD/data`. With `direnv allow`'d, every
-`make dev` / `make seed-dev` invocation reads + writes under `<repo>/data/`,
-never under `~/Library/Application Support/Recall/`. Real installs stay
-untouched.
+mise.toml `[env]` already pins `RECALL_DATA_DIR=<repo>/data`. With mise activated
+(`eval "$(mise activate zsh)"`), every `task dev` / `task seed-dev` invocation
+reads + writes under `<repo>/data/`, never under
+`~/Library/Application Support/Recall/`. Real installs stay untouched.
 
-### `make dev` does NOT re-seed
+### `task dev` does NOT re-seed
 
-`make dev` only starts the Wails dev server (Vite `:5173`, Wails IPC `:34115`).
+`task dev` only starts the Wails dev server (Vite `:5173`, Wails IPC `:34115`).
 It never touches the DB. To change the seeded corpus you must re-run
 `seed-dev` explicitly. Hot-reload covers code changes; the DB is the source
 of truth and persists across dev-server restarts.
@@ -167,29 +175,29 @@ of truth and persists across dev-server restarts.
 
 ```sh
 # Seed a fresh profile (creates "demo" if missing).
-make seed-dev N=300 PROFILE=demo
+task seed-dev N=300 PROFILE=demo
 
 # Boot the app, switch to the demo profile via the masthead chip,
 # then scroll Matches / inspect widgets / try sort + group.
-make dev
+task dev
 ```
 
 ### Re-seeding and wiping
 
 ```sh
 # A non-empty profile refuses on purpose:
-make seed-dev N=300 PROFILE=demo
+task seed-dev N=300 PROFILE=demo
 # seed-dev: profile "demo" already contains 893 rows;
 # pass --force to wipe and reseed (or --clear to wipe without re-seeding)
 
 # Reseed in place (wipes first):
-make seed-dev N=300 PROFILE=demo FORCE=1
+task seed-dev N=300 PROFILE=demo FORCE=1
 
 # Wipe without re-seeding:
-make seed-clear PROFILE=demo
+task seed-clear PROFILE=demo
 
 # Fresh shuffle every run (seed = current Unix timestamp):
-make seed-dev N=300 PROFILE=demo FORCE=1 SEED=time
+task seed-dev N=300 PROFILE=demo FORCE=1 SEED=time
 ```
 
 ### Flags + defaults
@@ -198,7 +206,7 @@ make seed-dev N=300 PROFILE=demo FORCE=1 SEED=time
 |---|---|---|---|
 | `N` | `--n` | `500` | Number of matches. Each match writes 1 Summary + 1 Teams, ~60% also write a Personal, ~40% a Rank — mirrors the mixed-coverage shape real parses produce. Default sized so the full canonical pool (51 heroes × 31 maps) gets enough natural appearances on top of coverage-pass cameos to read densely in the dossier. |
 | `PROFILE` | `--profile` | `demo` | Target profile name. Created if missing. Pass the active profile name to seed your in-use profile (think twice). |
-| `SEED` | `--seed` | `1` | Deterministic RNG seed — same `(N, SEED)` → byte-identical rows. Pass `SEED=time` for a different shuffle every run (Makefile substitutes `$(shell date +%s)`). |
+| `SEED` | `--seed` | `1` | Deterministic RNG seed — same `(N, SEED)` → byte-identical rows. Pass `SEED=time` for a different shuffle every run (the Taskfile substitutes the current Unix time). |
 | `FORCE` | `--force` | *(unset)* | Wipes every row in the target profile before seeding. Without it, a non-empty profile is a hard error. |
 | `CHAOS` | `--chaos` | `0` | Fraction of matches (0..1) to receive pathological data shapes. `0` = clean corpus; `0.15` = ~15% of matches carry weirdness. See "Chaos seeding" below. |
 | `seed-clear` target | `--clear` | *(target only)* | Wipe-and-exit, no seeding. Idempotent on already-empty profiles. |
@@ -246,7 +254,7 @@ Switch styles only when you specifically want to test a one-trick or
 one-role read of the UI:
 
 ```sh
-make seed-dev N=300 PROFILE=onetrick FORCE=1 STYLE=one-trick
+task seed-dev N=300 PROFILE=onetrick FORCE=1 STYLE=one-trick
 ```
 
 Use `STYLE=random` + multi-seed sweeps to spread across all three.
@@ -274,15 +282,15 @@ probabilities, and hour weights are package consts at the top of
 
 ## Chaos seeding (edge-case resilience)
 
-`make seed-dev` accepts a `CHAOS=<0..1>` fraction that mixes pathological
+`task seed-dev` accepts a `CHAOS=<0..1>` fraction that mixes pathological
 data shapes into that share of matches. The intent is exploratory: seed
 a corpus with weirdness sprinkled through it, click around the UI, see
 what breaks. `CHAOS=0.15` (~15% of matches) is a good starting point —
 enough to surface bugs without making the whole profile unusable.
 
 ```sh
-make seed-dev N=300 PROFILE=chaos FORCE=1 CHAOS=0.15
-make dev    # switch to "chaos" profile, eyeball the UI
+task seed-dev N=300 PROFILE=chaos FORCE=1 CHAOS=0.15
+task dev    # switch to "chaos" profile, eyeball the UI
 ```
 
 ### What the chaos categories probe

@@ -14,31 +14,17 @@
 
   "name": "Recall",
 
-  // Debian bookworm base. Go and Node land via features (pinned
-  // versions); everything else (Tesseract, golangci-lint, lefthook,
-  // trivy, …) installs in postCreate.sh.
+  // Debian bookworm base. The whole toolchain — go, node, task (go-task),
+  // wails, every linter — is installed by mise in postCreate.sh from
+  // mise.toml; only Tesseract + a few system packages come from apt there.
   "image": "mcr.microsoft.com/devcontainers/base:bookworm",
 
   "features": {
-    // Go toolchain. Project requires 1.26+ per go.mod; pin to a
-    // current minor release so cached image layers are stable.
-    "ghcr.io/devcontainers/features/go:1": {
-      "version": "1.26"
-    },
-
-    // Node provides npm + npx. npx pulls Spectral on demand for the
-    // openapi lint target; npm installs the rest of the frontend
-    // toolchain (vite, vitest, eslint + typescript-eslint, stylelint,
-    // htmlhint, openapi-typescript, typescript, vue-tsc).
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "26"
-    },
-
-    // Docker-in-Docker so `make build-*` targets and `make swagger`
+    // Docker-in-Docker so `task build-*` targets and `task swagger`
     // (which runs swaggerapi/swagger-ui in a container) work without
     // sharing the host daemon socket. The DOCKER env-var override the
-    // Makefile expects defaults to `docker` — set DOCKER=podman in
-    // .envrc only if you swap the daemon out.
+    // Taskfile expects defaults to `docker` — set DOCKER=podman only if
+    // you swap the daemon out.
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest",
       "moby": true
@@ -56,10 +42,10 @@
   // sibling postCreate.sh for the apt/go-install/npm-install chain.
   "postCreateCommand": ".devcontainer/postCreate.sh",
 
-  // Match the make help target's expectation that lint-yaml etc. find
-  // their tools on PATH. The Go feature wires $GOPATH/bin into PATH
-  // automatically; npm globals end up under ~/.npm-global/bin which we
-  // also push onto PATH in postCreate.sh.
+  // mise (activated in the vscode user's .bashrc by postCreate.sh) puts the
+  // toolchain shims on PATH and exports RECALL_DATA_DIR. GOTOOLCHAIN=local
+  // pins Go to the exact mise-installed version (no auto-download of a
+  // different toolchain).
   "containerEnv": {
     "GOTOOLCHAIN": "local"
   },
@@ -89,8 +75,8 @@
         // Containers (docker-in-docker feature exposes a daemon).
         "ms-azuretools.vscode-docker",
 
-        // direnv integration (so .envrc activates per-folder env).
-        "mkhl.direnv",
+        // mise integration (per-folder toolchain + env from mise.toml).
+        "hverlin.mise-vscode",
 
         // Mermaid preview for the architecture diagram in README.md.
         "bierner.markdown-mermaid"
@@ -133,11 +119,7 @@
           "https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/schemas/v3.1/schema.json": [
             "api/openapi.yaml"
           ]
-        },
-
-        // direnv extension auto-allows the repo's .envrc on open so
-        // env-var overrides take effect without an extra step.
-        "direnv.restart.automatic": true
+        }
       }
     }
   },
@@ -149,7 +131,7 @@
   "portsAttributes": {
     "5173":  {"label": "Vite dev server"},
     "7000":  {"label": "Recall server"},
-    "8080":  {"label": "Swagger UI (make swagger)"},
+    "8080":  {"label": "Swagger UI (task swagger)"},
     "9090":  {"label": "Prometheus (stack)"},
     "9091":  {"label": "Recall Prometheus metrics"},
     "34115": {"label": "Wails IPC dev"},

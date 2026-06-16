@@ -30,7 +30,7 @@ type playerProfile struct {
 }
 
 // parsePlayStyle converts the seed-dev --style flag (and the
-// equivalent Makefile STYLE var) into a playStyle. Empty string and
+// equivalent Taskfile STYLE var) into a playStyle. Empty string and
 // "flex" both produce the flex player — flex is the default because
 // it's the only style whose corpus naturally covers every role +
 // most heroes, which is what edge-case eyeballing wants. "random"

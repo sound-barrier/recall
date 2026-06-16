@@ -23,17 +23,16 @@ BASELINE="docs/baselines/complexity-baseline.txt"
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
-# shellcheck disable=SC1091
-. ./tool-versions.env
-
+# gocyclo comes from mise (pinned in mise.toml); fall back to go install on a
+# minimal runner that lacks it.
 GOCYCLO="$(command -v gocyclo || true)"
 if [[ -z "$GOCYCLO" ]]; then
   if ! command -v go >/dev/null; then
     echo "[baseline] go toolchain absent — skipping."
     exit 0
   fi
-  echo "[baseline] bootstrapping gocyclo ${GOCYCLO_VERSION}…"
-  go install "github.com/fzipp/gocyclo/cmd/gocyclo@${GOCYCLO_VERSION}"
+  echo "[baseline] bootstrapping gocyclo…"
+  go install "github.com/fzipp/gocyclo/cmd/gocyclo@latest"
   GOCYCLO="$(go env GOPATH)/bin/gocyclo"
 fi
 

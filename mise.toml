@@ -1,0 +1,86 @@
+# mise — toolchain + environment manager (https://mise.jdx.dev).
+#
+# Single source of truth for the dev/lint/build toolchain AND the project
+# environment. Replaces the old `tool-versions.env` (version pins) and
+# `.envrc` (direnv). `task` (go-task) runs the build recipes; mise provisions
+# the tools they call.
+#
+# After cloning:   mise trust && mise install
+# Update a pin:    edit below, then `mise install` (or `task check-deps`).
+#
+# Tesseract (the OCR runtime the parser shells out to) and the container
+# runtime (podman/docker) are NOT managed here — they're system packages
+# installed via Homebrew / apt (see Brewfile + initialize.sh).
+min_version = "2024.1.0"
+
+[env]
+# Keep settings + the SQLite DB under the repo's data/ dir so it's easy to
+# inspect with GoLand / sqlite3 (was `.envrc`). Released app launches don't
+# load mise, so the platform user-config dir applies — see appDataDir() in
+# pkg/app/settings.go for the fall-through.
+RECALL_DATA_DIR = "{{config_root}}/data"
+
+# Version pins consumed as STRINGS by the Taskfile (task lint-openapi /
+# pages-build / lint-semgrep), the scripts (check-deps, check-api-drift),
+# and CI (was `tool-versions.env`). The matching tool binaries are pinned in
+# [tools] below; these strings drive the on-demand npx/pipx invocations and
+# the `task check-deps` upstream comparison.
+SPECTRAL_VERSION = "6.16.0"
+TYPOS_VERSION = "v1.47.0"
+GOSEC_VERSION = "v2.27.1"
+GOCYCLO_VERSION = "latest"
+SEMGREP_VERSION = "1.164.0"
+HONKIT_VERSION = "6.2.1"
+SCHEMATHESIS_VERSION = "4.21.0"
+TESSERACT_VERSION = "5.3.4"
+RUFF_VERSION = "0.15.17"
+
+# Pin Go to the exact mise-installed toolchain so `go build`/`go test` never
+# auto-download a different one (parity with what actions/setup-go@v6 set in CI).
+GOTOOLCHAIN = "local"
+
+[tools]
+# Language runtimes (match go.mod / CI).
+go = "1.26.4"
+node = "26"
+
+# The task runner itself, so `mise install` bootstraps a complete toolchain
+# on any platform (CI / Linux). Homebrew users can also `brew install
+# go-task/tap/go-task`; whichever is first on PATH wins.
+task = "latest"
+
+# Linters / formatters / scanners — registry-backed prebuilt binaries.
+gofumpt = "latest"
+shellcheck = "latest"
+shfmt = "latest"
+actionlint = "latest"
+hadolint = "latest"
+yamllint = "latest"
+typos = "1.47.0"
+ruff = "0.15.17"
+trivy = "latest"
+lefthook = "latest"
+jq = "latest"
+
+# Go-source tools built from source with the pinned Go → go: backend (same
+# import paths the old `go install` bootstrap used). golangci-lint lives here
+# (not the registry) on purpose: a prebuilt binary compiled with an older Go
+# rejects a project targeting a newer Go directive, so it must be compiled with
+# this toolchain's Go — exactly what `go install …@latest` did in CI before.
+"go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "latest"
+"go:github.com/incu6us/goimports-reviser/v3" = "latest"
+"go:golang.org/x/tools/cmd/deadcode" = "latest"
+"go:golang.org/x/vuln/cmd/govulncheck" = "latest"
+"go:github.com/securego/gosec/v2/cmd/gosec" = "v2.27.1"
+"go:github.com/fzipp/gocyclo/cmd/gocyclo" = "latest"
+"go:github.com/wailsapp/wails/v2/cmd/wails" = "v2.12.0"
+
+# CI-only reporters (JUnit XML for the test job, Cobertura XML for the Go
+# coverage job). Devs get them too via `mise install`; CI installs them
+# selectively via the jobs' install_args.
+"go:github.com/jstemmer/go-junit-report/v2" = "latest"
+"go:github.com/boumenot/gocover-cobertura" = "latest"
+
+# Python tools (isolated venvs) → pipx backend.
+"pipx:semgrep" = "1.164.0"
+"pipx:schemathesis" = "4.21.0"

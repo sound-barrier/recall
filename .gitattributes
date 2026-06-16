@@ -1,6 +1,6 @@
 # Normalize all text files to LF on commit.
-# Mac/Linux developers always check out LF; eol=lf keeps shell scripts and
-# Makefiles executable and avoids CRLF surprises if anyone uses Windows.
+# Mac/Linux developers always check out LF; eol=lf keeps shell scripts
+# executable and avoids CRLF surprises if anyone uses Windows.
 * text=auto eol=lf
 
 # ── Go ───────────────────────────────────────────────────────────────────────
@@ -19,7 +19,7 @@ go.sum  text eol=lf linguist-generated=true
 # ── Config / infra ───────────────────────────────────────────────────────────
 *.yml       text eol=lf
 *.yaml      text eol=lf
-Makefile    text eol=lf
+*.toml      text eol=lf
 Brewfile    text eol=lf
 Dockerfile* text eol=lf
 *.sh        text eol=lf

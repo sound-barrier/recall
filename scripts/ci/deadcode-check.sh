@@ -7,7 +7,7 @@
 # findings, and the project has a small fixed set of intentional
 # unreachables (build-tag stubs, test-only constructors) that must be
 # filtered out. Centralising the allow-list and the gating logic here
-# means Makefile, lefthook, and CI all invoke the same check —
+# means the Taskfile, lefthook, and CI all invoke the same check —
 # previously each carried its own copy of the filter regex and they
 # drifted at least once.
 #

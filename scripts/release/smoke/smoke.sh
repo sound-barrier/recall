@@ -10,7 +10,7 @@
 # Why this exists: release.yml's `push: tags: v*` trigger means the
 # only "real" way to validate an edit to package-linux.sh was a fresh
 # tag — destructive iteration. With these tests, contributors can edit
-# the scripts and `make smoke-release-scripts` to know their changes
+# the scripts and `task smoke-release-scripts` to know their changes
 # survive the most common code paths in ~5s.
 #
 # Coverage strategy:
@@ -264,7 +264,7 @@ smoke_flip_package_public() {
 
   # This one talks to the real GitHub API on the happy path, so the
   # smoke just confirms the script parses + passes shellcheck. The
-  # broader `make lint-shell` covers shellcheck/shfmt globally but
+  # broader `task lint-shell` covers shellcheck/shfmt globally but
   # naming it here makes the coverage gap explicit.
   if bash -n "${RELEASE_DIR}/flip-package-public.sh"; then
     ok "flip-package-public.sh parses (bash -n)"

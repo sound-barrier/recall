@@ -6,7 +6,7 @@
  * so the suite stays hermetic — no collision with a dev server, no
  * touch on the real ~/Library/Application Support/Recall/ data.
  *
- * The binary is built by `make test-e2e` before Playwright runs;
+ * The binary is built by `task test-e2e` before Playwright runs;
  * the config assumes `/tmp/recall-e2e/recall-server` exists. CI's
  * e2e.yml does the same build + run sequence.
  */
@@ -14,7 +14,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 // Port can be overridden via E2E_PORT so a parallel-running tool
 // (e.g. the lefthook schemathesis hook, which also binds 7099) can
-// avoid colliding with this run. Default stays 7099 so make test-e2e
+// avoid colliding with this run. Default stays 7099 so task test-e2e
 // + CI's e2e.yml keep working unchanged.
 const E2E_PORT = Number(process.env.E2E_PORT ?? '7099')
 const E2E_HOME = '/tmp/recall-e2e'
@@ -79,8 +79,8 @@ export default defineConfig({
       HOME: E2E_HOME,
       RECALL_SERVER_ADDR: `127.0.0.1:${E2E_PORT}`,
       // Pin RECALL_DATA_DIR explicitly so the e2e suite stays hermetic
-      // even when direnv has exported `RECALL_DATA_DIR=$PWD/data` in
-      // the shell `make test-e2e` is invoked from. Without this,
+      // even when mise has exported `RECALL_DATA_DIR=<repo>/data` in
+      // the shell `task test-e2e` is invoked from. Without this,
       // appDataDir() falls through to the env var and the server
       // reads/writes the repo's dev SQLite — leaking real records into
       // the tests and breaking the "fresh empty server" assumption

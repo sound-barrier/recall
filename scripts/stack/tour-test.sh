@@ -231,7 +231,7 @@ EOF
     exit 1
   fi
 
-  # Linux needs the webkit2_4_1 build tag — same dance `make dev`
+  # Linux needs the webkit2_4_1 build tag — same dance `task dev`
   # does. macOS doesn't take a tag.
   WAILS_TAGS=()
   case "$(uname -s)" in

@@ -26,23 +26,19 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
 
-      # Load shared tool-version pins (SPECTRAL_VERSION, TYPOS_VERSION,
-      # GOSEC_VERSION, HONKIT_VERSION) into $GITHUB_ENV so every step in
-      # this job — including Spectral — reads from the same source as
-      # Make, lefthook, and the dev-environment install scripts. See
-      # tool-versions.env at the repo root.
-      - name: Load tool versions
-        run: grep -E '^[A-Z_][A-Z0-9_]*=' tool-versions.env >> "$GITHUB_ENV"
-
-      # Go — install golangci-lint from source with Go 1.26 so the binary is
-      # compiled with Go >= 1.25 (matching go.mod). Using a pre-built binary
-      # (golangci-lint-action) would fail because pre-built binaries are
-      # compiled with an older Go and golangci-lint rejects projects
-      # targeting a newer version.
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
+      # mise provisions this job's slice of the toolchain from mise.toml —
+      # go, node, task, golangci-lint (built from source with this Go so it
+      # accepts the project's go directive — a prebuilt binary on an older Go
+      # would reject it), shfmt, shellcheck, ruff, jq, go-junit-report — and
+      # loads mise.toml [env] (SPECTRAL_VERSION, …, GOTOOLCHAIN=local) into
+      # $GITHUB_ENV regardless of install_args. Replaces setup-go + the
+      # tool-versions.env grep + every per-tool `go install`/pipx step.
+      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
         with:
-          go-version: '1.26.4'
-          cache: true
+          install_args: >-
+            go node task ruff shfmt shellcheck jq
+            go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+            go:github.com/jstemmer/go-junit-report/v2
 
       # Frontend — set up Node and build frontend/dist before Go linting so the
       # //go:embed all:frontend/dist directive in assets.go passes type-checking,
@@ -70,9 +66,6 @@ jobs:
       - name: Enforce bundle-size budget
         run: bash scripts/ci/check-bundle-size.sh
 
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-
       - name: Lint Go (default build tags)
         run: golangci-lint run ./...
 
@@ -89,25 +82,15 @@ jobs:
       - name: Lint HTML (HTMLHint)
         run: cd frontend && npm run lint:html
 
-      # Python -- ruff lint + format-check. Version from tool-versions.env
-      # (loaded into $GITHUB_ENV above); installed via pipx like the other
-      # PyPI tools. Mirrors `make lint-py`.
+      # Python — ruff lint + format-check. ruff comes from mise (pinned in
+      # mise.toml [tools]); no pipx install needed.
       - name: Lint Python (ruff)
-        run: |
-          pipx install "ruff==${RUFF_VERSION}"
-          export PATH="$HOME/.local/bin:$PATH"
-          make lint-py
+        run: task lint-py
 
-      # Shell scripts in scripts/ -- shellcheck for correctness, shfmt
-      # for style. Mirrors `make lint-shell` locally. shellcheck is
-      # pre-installed on ubuntu-latest; shfmt is not, so we install it
-      # via go install (cheap since setup-go cached the toolchain).
-      # No untrusted input passed through env or run blocks below.
-      - name: Install shfmt
-        run: go install mvdan.cc/sh/v3/cmd/shfmt@latest
-
+      # Shell scripts in scripts/ — shellcheck for correctness, shfmt for
+      # style. Both come from mise (pinned in mise.toml), so no install step.
       - name: Lint shell scripts (shellcheck + shfmt)
-        run: make lint-shell
+        run: task lint-shell
 
       # Dockerfile
       - name: Lint Dockerfile (Hadolint)
@@ -115,11 +98,11 @@ jobs:
         with:
           dockerfile: Dockerfile.build
 
-      # OpenAPI spec — mirrors `make lint-openapi` (Spectral with the
-      # spectral:oas ruleset + project overrides in .spectral.yaml).
-      # Version comes from tool-versions.env (loaded above).
+      # OpenAPI spec — Spectral with the spectral:oas ruleset + project
+      # overrides in .spectral.yaml. SPECTRAL_VERSION comes from mise.toml
+      # [env] (loaded into $GITHUB_ENV by mise-action).
       - name: Lint OpenAPI (Spectral)
-        run: npx --yes "@stoplight/spectral-cli@${SPECTRAL_VERSION}" lint api/openapi.yaml --fail-severity=warn
+        run: task lint-openapi
 
       # Spell-check code, docs, and identifiers. The action ships the
       # typos binary so the runner doesn't need a separate install
@@ -127,7 +110,7 @@ jobs:
       - name: Spell-check (typos)
         uses: crate-ci/typos@37bb98842b0d8c4ffebdb75301a13db0267cef89  # v1.47.2
 
-      # Markdown lint — mirrors `make lint-md`. Config in
+      # Markdown lint — mirrors `task lint-md`. Config in
       # .markdownlint-cli2.yaml at the repo root; npx pulls the
       # version on demand so no global install is required.
       - name: Lint Markdown (markdownlint-cli2)
@@ -161,9 +144,6 @@ jobs:
       # `test-skips` hook so the gate fires both locally and in CI.
       - name: Inventory test skips
         run: bash scripts/ci/check-test-skips.sh
-
-      - name: Install go-junit-report
-        run: go install github.com/jstemmer/go-junit-report/v2@latest
 
       - name: Run Go unit tests
         # continue-on-error keeps the workflow going so the JUnit XML is
@@ -230,14 +210,14 @@ jobs:
         run: cd frontend && npm run typecheck
 
       # Verify the committed types match the current OpenAPI spec.
-      # Catches "you forgot to run `make gen-types` after editing
+      # Catches "you forgot to run `task gen-types` after editing
       # api/openapi.yaml" before it lands on main.
       - name: Verify generated types are in sync with OpenAPI spec
         run: |
-          cd frontend && npm run gen:types
-          if ! git diff --quiet src/api.gen.d.ts; then
-            echo "::error::frontend/src/api.gen.d.ts is out of sync with api/openapi.yaml — run 'make gen-types' and commit"
-            git diff src/api.gen.d.ts | head -50
+          task gen-types
+          if ! git diff --quiet frontend/src/api.gen.d.ts; then
+            echo "::error::frontend/src/api.gen.d.ts is out of sync with api/openapi.yaml — run 'task gen-types' and commit"
+            git diff frontend/src/api.gen.d.ts | head -50
             exit 1
           fi
 
@@ -249,8 +229,13 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
       - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
+      # Docker does the heavy build; the host only needs task + jq (the
+      # build-* tasks compute BUILD_VERSION via jq), so install just those.
+      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+        with:
+          install_args: task jq
       - name: Build Linux/amd64 Wails app
-        run: make build-linux
+        run: task build-linux
 
   # ── Job 3: Windows/amd64 Wails app ──────────────────────────────────────
   build-windows:
@@ -260,8 +245,11 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
       - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
+      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+        with:
+          install_args: task jq
       - name: Build Windows/amd64 Wails app
-        run: make build-windows
+        run: task build-windows
 
   # ── Job 4: Server binaries + container image ─────────────────────────────
   build-server:
@@ -271,10 +259,13 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
       - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5  # v4
+      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
+        with:
+          install_args: task jq
       - name: Build all server binaries (Linux, Windows, macOS arm64+amd64)
-        run: make build-server-all
+        run: task build-server-all
       - name: Build Linux server container image (with Tesseract)
-        run: make build-server-container
+        run: task build-server-container
 
   # ── Job 5: macOS Wails build (requires Apple SDK / Xcode CLT) ────────────
   build-mac:
@@ -282,22 +273,14 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
 
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
-        with:
-          go-version-file: go.mod
-
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
-        with:
-          node-version: '26'
-
-      - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+      # Go + Node + Wails CLI (+ task, jq) from mise.toml's pins.
+      - uses: ./.github/actions/wails-build-env
 
       - name: Build macOS universal Wails app
-        run: make build-mac
+        run: task build-mac
 
   # ── Job 6: Vulnerability scan ────────────────────────────────────────────
-  # Mirrors `make trivy` but runs in CI and uploads results to the GitHub
+  # Mirrors `task trivy` but runs in CI and uploads results to the GitHub
   # Security tab (Alerts → Code scanning) as well as failing the build.
   trivy:
     runs-on: ubuntu-latest
@@ -332,12 +315,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
+      # go + govulncheck from mise.toml (govulncheck built with this Go).
+      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
         with:
-          go-version-file: go.mod
-          cache: true
-      - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+          install_args: go go:golang.org/x/vuln/cmd/govulncheck
       - name: Scan Go modules (default build tag)
         run: govulncheck ./...
       - name: Scan Go modules (serveronly build tag)
@@ -345,29 +326,19 @@ jobs:
 
   # gosec is a Go-idiom SAST: catches issues CodeQL and govulncheck don't
   # (Slowloris timeouts, file-mode bugs, weak crypto, taint-tracked path/
-  # command/log injection). Mirrors `make lint-gosec`. Both build tags are
+  # command/log injection). Mirrors `task lint-gosec`. Both build tags are
   # swept so the Wails and serveronly code paths both get covered.
   gosec:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
-      - name: Load tool versions
-        run: grep -E '^[A-Z_][A-Z0-9_]*=' tool-versions.env >> "$GITHUB_ENV"
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
+      # go + gosec from mise.toml. mise's go: backend compiles gosec with the
+      # pinned Go 1.26.4 — the same reason the old job avoided securego/gosec's
+      # docker action (it bundles a stale Go that can't load a go 1.26 module
+      # under GOTOOLCHAIN=local). Version pinned in mise.toml (v2.27.1).
+      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
         with:
-          go-version-file: go.mod
-          cache: true
-      # Install gosec as a Go binary against the runner's Go install
-      # rather than via securego/gosec's docker action. The action ships
-      # a docker image with its own bundled Go (older than this repo's
-      # go.mod toolchain requirement) and inherits the runner's
-      # GOTOOLCHAIN=local that setup-go sets — so the container's stale
-      # Go can't be auto-upgraded and module loading fails. Going via
-      # `go install` reuses the runner's Go 1.26 (set by setup-go above)
-      # and matches how `make lint-gosec` runs locally. Version pinned
-      # via tool-versions.env (GOSEC_VERSION).
-      - name: Install gosec
-        run: go install "github.com/securego/gosec/v2/cmd/gosec@${GOSEC_VERSION}"
+          install_args: go go:github.com/securego/gosec/v2/cmd/gosec
       # gosec only needs Go source to compile, not real frontend
       # assets — stub the embed directory rather than running a real
       # Vite build (saves ~30s per CI run).
@@ -382,7 +353,7 @@ jobs:
 
   # JS/TS SAST in CI is handled by CodeQL's javascript-typescript
   # language matrix in .github/workflows/codeql.yml. Semgrep runs
-  # locally only — via `make lint-semgrep` and the pre-push lefthook
+  # locally only — via `task lint-semgrep` and the pre-push lefthook
   # hook — so contributors get fast feedback before push without
   # duplicating coverage with CodeQL.
 
@@ -393,25 +364,21 @@ jobs:
   # trend across PRs to know when to refactor; tightening into a hard
   # gate is its own deliberate decision, not a side-effect of this job.
   # Threshold + tooling pins both live in scripts/ci/check-complexity.sh +
-  # tool-versions.env (GOCYCLO_VERSION).
+  # mise.toml (gocyclo).
   complexity:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
-      - name: Load tool versions
-        run: grep -E '^[A-Z_][A-Z0-9_]*=' tool-versions.env >> "$GITHUB_ENV"
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
+      # go (gocyclo) + node (eslint pass) from mise.toml.
+      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
         with:
-          go-version-file: go.mod
-          cache: true
+          install_args: go node go:github.com/fzipp/gocyclo/cmd/gocyclo
       # gocyclo doesn't need real frontend assets — Go source only.
       - name: Prepare frontend/dist (stub for //go:embed)
         uses: ./.github/actions/prepare-frontend-dist
         with:
           real-assets: "false"
-      - name: Install gocyclo
-        run: go install "github.com/fzipp/gocyclo/cmd/gocyclo@${GOCYCLO_VERSION}"
       - name: Install frontend deps (for the eslint pass)
         run: npm --prefix frontend ci
       - name: Run complexity sweep (Go + frontend, threshold 10)
@@ -434,25 +401,16 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
 
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
+      # go (+ deadcode) and node (+ knip) from mise.toml.
+      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
         with:
-          go-version-file: go.mod
-          cache: true
-
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
-        with:
-          node-version: '26'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          install_args: go node go:golang.org/x/tools/cmd/deadcode
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci
 
       - name: Build frontend (required for Go embed typecheck)
         run: cd frontend && npm run build
-
-      - name: Install deadcode
-        run: go install golang.org/x/tools/cmd/deadcode@latest
 
       - name: Dead Go code (serveronly build tag)
         # Delegates to scripts/ci/deadcode-check.sh; the allow-list of
@@ -473,11 +431,9 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
         with:
-          node-version: '26'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          install_args: node
 
       - name: Install frontend dependencies
         run: cd frontend && npm ci
@@ -501,10 +457,10 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
 
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
+      # go + gocover-cobertura (Cobertura XML converter) from mise.toml.
+      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
         with:
-          go-version-file: go.mod
-          cache: true
+          install_args: go task go:github.com/boumenot/gocover-cobertura
 
       # Frontend build is required because assets.go uses
       # //go:embed all:frontend/dist — compiling the root `recall`
@@ -515,15 +471,12 @@ jobs:
           real-assets: "true"
 
       - name: Generate Go coverage report
-        run: make cover-go
+        run: task cover-go
 
       # gocover-cobertura converts Go's native coverprofile into the
       # Cobertura XML format that irongut/CodeCoverageSummary parses.
       # Bundled into the artifact so the coverage-comment job downloads
       # both formats in a single fetch.
-      - name: Install gocover-cobertura
-        run: go install github.com/boumenot/gocover-cobertura@latest
-
       - name: Convert coverage profile to Cobertura XML
         run: gocover-cobertura < coverage/go/coverage.out > coverage/go/cobertura.xml
 
@@ -545,13 +498,11 @@ jobs:
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
 
-      - name: Load tool versions
-        run: grep -E '^[A-Z_][A-Z0-9_]*=' tool-versions.env >> "$GITHUB_ENV"
-
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
+      # go (build serveronly) + schemathesis (pipx) from mise.toml; also loads
+      # TESSERACT_VERSION + SCHEMATHESIS_VERSION from [env] into $GITHUB_ENV.
+      - uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925  # v4.1.0
         with:
-          go-version-file: go.mod
-          cache: true
+          install_args: go task pipx:schemathesis
 
       - name: Prepare frontend/dist (real Vite build)
         uses: ./.github/actions/prepare-frontend-dist
@@ -559,11 +510,11 @@ jobs:
           real-assets: "true"
 
       - name: Install Tesseract (no-op for API surface but Startup checks for it)
-        # Assert installed major.minor matches TESSERACT_VERSION from
-        # tool-versions.env so OCR drift can't silently land between
-        # what dev baselined the goldens against and what CI runs.
-        # Loud-fail when Ubuntu bumps the package version — that's
-        # the signal to re-baseline goldens + bump the pin.
+        # Assert installed major.minor matches TESSERACT_VERSION from mise.toml
+        # [env] (loaded into $GITHUB_ENV by mise-action) so OCR drift can't
+        # silently land between what dev baselined the goldens against and what
+        # CI runs. Loud-fail when Ubuntu bumps the package version — that's the
+        # signal to re-baseline goldens + bump the pin.
         run: |
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends tesseract-ocr
@@ -571,17 +522,10 @@ jobs:
           expected_mm=$(printf '%s' "$TESSERACT_VERSION" | cut -d. -f1-2)
           installed_mm=$(printf '%s' "$installed" | cut -d. -f1-2)
           if [ "$installed_mm" != "$expected_mm" ]; then
-            echo "::error::Tesseract major.minor mismatch: installed=$installed_mm expected=$expected_mm (TESSERACT_VERSION=$TESSERACT_VERSION in tool-versions.env). Bump the pin + re-baseline testdata/*.golden.json."
+            echo "::error::Tesseract major.minor mismatch: installed=$installed_mm expected=$expected_mm (TESSERACT_VERSION=$TESSERACT_VERSION in mise.toml). Bump the pin + re-baseline testdata/*.golden.json."
             exit 1
           fi
           echo "Tesseract $installed matches pinned major.minor $expected_mm"
-
-      - name: Install schemathesis
-        # Pin lives in tool-versions.env (SCHEMATHESIS_VERSION) and is
-        # exposed via $GITHUB_ENV by the "Load tool versions" step at
-        # the top of this job. The CLI shape (--url, --max-examples,
-        # no --experimental flag) lives in scripts/ci/check-api-drift.sh.
-        run: pipx install "schemathesis==${SCHEMATHESIS_VERSION}"
 
       - name: Build + boot + fuzz + teardown via shared script
         # scripts/ci/check-api-drift.sh handles the build-serveronly →

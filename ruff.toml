@@ -1,9 +1,9 @@
 # Ruff config for the repo's Python (currently scripts/ci/render-pr-report.py).
 # Mirrors the project's house style: lint + format, but line length is NOT
 # enforced (long Markdown/report string literals are intentional — same call
-# we make for YAML in .yamllint). Version pinned in tool-versions.env
-# (RUFF_VERSION); wired into `make lint-py`/`fmt-py`, the ruff lefthook hook,
-# and the CI "Lint Python (ruff)" step.
+# we make for YAML in .yamllint). Version pinned in mise.toml
+# (RUFF_VERSION / ruff); wired into `task lint-py`/`fmt-py`, the ruff lefthook
+# hook, and the CI "Lint Python (ruff)" step.
 
 # Conservative target so pyupgrade (UP) doesn't push 3.10+-only syntax onto a
 # script that runs against whatever Python ubuntu-latest ships.

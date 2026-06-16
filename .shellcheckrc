@@ -12,7 +12,7 @@ source-path=SCRIPTDIR
 
 # external-sources lets ShellCheck actually FOLLOW those `source=`
 # directives to files that aren't themselves in the input set.
-# `make lint-shell` passes every script at once, so the sourced libs are
+# `task lint-shell` passes every script at once, so the sourced libs are
 # always present and SC1091 stays quiet — but lefthook's pre-commit hook
 # runs `shellcheck {staged_files}`, so committing a lib-sourcing script
 # (e.g. scripts/stack/stack-up.sh) WITHOUT staging scripts/lib/ makes the

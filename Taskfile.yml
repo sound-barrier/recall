@@ -1,0 +1,659 @@
+# Recall — task runner (https://taskfile.dev). Replaces the old Makefile.
+#
+# Prerequisites (host):
+#   Docker (or Podman aliased as docker) — for all Linux/Windows targets
+#   Wails CLI + Xcode CLT + Go 1.26+    — for macOS Wails-app target only
+#   Go 1.26+                             — for macOS server target (no Xcode needed)
+#
+# Quick start: task --list   (or just `task`)
+#
+# Most tasks keep their old Makefile name 1:1 — `make test` → `task test`,
+# `make build-linux` → `task build-linux`. Overridable vars are passed the
+# same way: `task seed-dev N=300 PROFILE=demo`.
+version: '3'
+
+# Suppress task's command echo — the per-task `[ recall ] …` lines narrate
+# progress instead (matching the old Makefile's `@`-quiet style). Each
+# command's own stdout/stderr still streams through.
+silent: true
+
+# Version pins (SPECTRAL_VERSION, HONKIT_VERSION, SEMGREP_VERSION, …) and
+# RECALL_DATA_DIR come from mise's [env] — provided by `mise activate` (or
+# `mise exec -- task …`). Tasks read them as shell `$VARS`, so run `task`
+# inside the mise-managed environment (see mise.toml).
+vars:
+  DOCKER: '{{.DOCKER | default "docker"}}'
+  DOCKERFILE: Dockerfile.build
+  DIST_DIR: dist
+  DIST_LINUX: dist/linux
+  DIST_WINDOWS: dist/windows
+  DIST_MAC: dist/mac
+  DIST_SERVER_LINUX: dist/server-linux
+  DIST_SERVER_WINDOWS: dist/server-windows
+  DIST_SERVER_MAC: dist/server-mac
+  # Version stamped into the binary via -ldflags. Falls back to "dev".
+  BUILD_VERSION:
+    sh: jq -r '."."' .release-please-manifest.json 2>/dev/null || echo dev
+  VERSION_LDFLAG: -X recall/pkg/app.Version={{.BUILD_VERSION}}
+  WAILS_FLAGS: -trimpath -ldflags "{{.VERSION_LDFLAG}}"
+  # The exact shell-script set the old Makefile's $(wildcard …) produced
+  # (NOT all of scripts/ — gen-goldens.sh at the scripts/ root is excluded).
+  SHELL_SCRIPTS:
+    sh: ls scripts/lib/*.sh scripts/db/*.sh scripts/ci/*.sh scripts/stack/*.sh scripts/release/*.sh scripts/release/smoke/*.sh initialize.sh .devcontainer/postCreate.sh 2>/dev/null | tr '\n' ' '
+  GO_COVERAGE_MIN: '{{.GO_COVERAGE_MIN | default "67"}}'
+  E2E_HOME: '{{.E2E_HOME | default "/tmp/recall-e2e"}}'
+  # seed-dev knobs.
+  N: '{{.N | default "500"}}'
+  PROFILE: '{{.PROFILE | default "demo"}}'
+  SEED: '{{.SEED | default "1"}}'
+  CHAOS: '{{.CHAOS | default "0"}}'
+  STYLE: '{{.STYLE | default "flex"}}'
+  SWAGGER_PORT: '{{.SWAGGER_PORT | default "8080"}}'
+  SWAGGER_IMAGE: '{{.SWAGGER_IMAGE | default "swaggerapi/swagger-ui:v5.32.6"}}'
+  PAGES_PORT: '{{.PAGES_PORT | default "4000"}}'
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds: [task --list]
+
+  init:
+    desc: One-shot setup for a fresh clone — runs ./initialize.sh (macOS or Debian/Ubuntu)
+    cmds: ['./initialize.sh']
+
+  # ── Wails desktop-app builds ───────────────────────────────────────────
+  build-linux:
+    desc: Linux/amd64 Wails app via Docker → dist/linux/Recall
+    cmds:
+      - echo "[ recall ] Building linux/amd64 Wails app via Docker…"
+      - mkdir -p {{.DIST_LINUX}}
+      - '{{.DOCKER}} build --file {{.DOCKERFILE}} --build-arg VERSION={{.BUILD_VERSION}} --target linux-export --output type=local,dest={{.DIST_LINUX}} .'
+      - echo "[ recall ] ✓  dist/linux/Recall"
+
+  build-windows:
+    desc: Windows/amd64 Wails app + NSIS installer via Docker → dist/windows/
+    cmds:
+      - echo "[ recall ] Building windows/amd64 Wails app + NSIS installer via Docker (mingw-w64 + nsis)…"
+      - mkdir -p {{.DIST_WINDOWS}}
+      - '{{.DOCKER}} build --file {{.DOCKERFILE}} --build-arg VERSION={{.BUILD_VERSION}} --target windows-export --output type=local,dest={{.DIST_WINDOWS}} .'
+      - echo "[ recall ] ✓  dist/windows/Recall.exe + dist/windows/Recall-amd64-installer.exe"
+
+  build-mac:
+    desc: macOS arm64 Wails app → dist/mac/Recall.app (macOS host + Xcode CLT required)
+    cmds:
+      - |
+        if [ "$(uname -s)" != "Darwin" ]; then
+          echo "[ recall ] ✗  build-mac requires macOS (Apple SDK not redistributable)"; exit 1
+        fi
+      - echo "[ recall ] Building macOS Wails app (arm64)…"
+      - wails build {{.WAILS_FLAGS}} -platform darwin/arm64
+      - mkdir -p {{.DIST_MAC}}
+      - rm -rf {{.DIST_MAC}}/Recall.app
+      - cp -R build/bin/Recall.app {{.DIST_MAC}}/Recall.app
+      - echo "[ recall ] ✓  dist/mac/Recall.app"
+
+  build-all-docker:
+    desc: Linux + Windows Wails apps via Docker
+    cmds:
+      - task: build-linux
+      - task: build-windows
+
+  build-all:
+    desc: All three Wails platforms (macOS host required)
+    cmds:
+      - task: build-linux
+      - task: build-windows
+      - task: build-mac
+
+  # ── Server-only builds (pure Go, CGO_ENABLED=0, -tags serveronly) ───────
+  build-server-linux:
+    desc: Linux/amd64 server binary via Docker → dist/server-linux/Recall-server
+    cmds:
+      - echo "[ recall ] Building linux/amd64 server binary via Docker…"
+      - mkdir -p {{.DIST_SERVER_LINUX}}
+      - '{{.DOCKER}} build --file {{.DOCKERFILE}} --build-arg VERSION={{.BUILD_VERSION}} --target server-linux-export --output type=local,dest={{.DIST_SERVER_LINUX}} .'
+      - echo "[ recall ] ✓  dist/server-linux/Recall-server"
+
+  build-server-windows:
+    desc: Windows/amd64 server binary via Docker → dist/server-windows/Recall-server.exe
+    cmds:
+      - echo "[ recall ] Building windows/amd64 server binary via Docker…"
+      - mkdir -p {{.DIST_SERVER_WINDOWS}}
+      - '{{.DOCKER}} build --file {{.DOCKERFILE}} --build-arg VERSION={{.BUILD_VERSION}} --target server-windows-export --output type=local,dest={{.DIST_SERVER_WINDOWS}} .'
+      - echo "[ recall ] ✓  dist/server-windows/Recall-server.exe"
+
+  build-server-mac:
+    desc: macOS arm64 server binary via Docker → dist/server-mac/
+    cmds:
+      - echo "[ recall ] Building macOS server binary (arm64) via Docker…"
+      - mkdir -p {{.DIST_SERVER_MAC}}
+      - '{{.DOCKER}} build --file {{.DOCKERFILE}} --build-arg VERSION={{.BUILD_VERSION}} --target server-mac-export --output type=local,dest={{.DIST_SERVER_MAC}} .'
+      - echo "[ recall ] ✓  dist/server-mac/Recall-server-arm64"
+
+  build-server-all:
+    desc: All three server binaries via Docker
+    cmds:
+      - task: build-server-linux
+      - task: build-server-windows
+      - task: build-server-mac
+
+  build-server-container:
+    desc: Linux server container image with Tesseract → recall-server:local
+    cmds:
+      - echo "[ recall ] Building linux/amd64 server container image…"
+      - '{{.DOCKER}} build --platform linux/amd64 --file {{.DOCKERFILE}} --build-arg VERSION={{.BUILD_VERSION}} --target server-container --tag recall-server:local .'
+      - echo "[ recall ] ✓  recall-server:local"
+
+  # ── Quality ────────────────────────────────────────────────────────────
+  cloc:
+    desc: Count lines of source code, summary table (config in .clocrc)
+    cmds:
+      - command -v cloc >/dev/null || { echo "cloc not installed — brew install cloc (or apt install cloc)"; exit 1; }
+      - cloc --config .clocrc .
+
+  cloc-detail:
+    desc: Count lines of source code, per-file breakdown
+    cmds:
+      - command -v cloc >/dev/null || { echo "cloc not installed — brew install cloc (or apt install cloc)"; exit 1; }
+      - cloc --config .clocrc --by-file-by-lang .
+
+  lint:
+    desc: Run all linters
+    cmds:
+      - task: lint-go
+      - task: lint-js
+      - task: lint-css
+      - task: lint-html
+      - task: lint-py
+      - task: lint-shell
+      - task: lint-docker
+      - task: lint-yaml
+      - task: lint-openapi
+      - task: lint-typos
+      - task: lint-md
+      - task: lint-actions
+      - task: lint-gosec
+      - task: lint-semgrep
+
+  lint-go:
+    desc: Lint Go source (golangci-lint, both build tags)
+    cmds:
+      - echo "[ recall ] Linting Go (golangci-lint)…"
+      - golangci-lint run ./...
+      - golangci-lint run --build-tags serveronly ./...
+      - echo "[ recall ] ✓  Go lint clean"
+
+  lint-js:
+    desc: Lint JavaScript/Vue (eslint)
+    cmds:
+      - echo "[ recall ] Linting JavaScript/Vue (eslint)…"
+      - cd frontend && npm run lint:js
+      - echo "[ recall ] ✓  JS/Vue lint clean"
+
+  lint-css:
+    desc: Lint CSS (stylelint)
+    cmds:
+      - echo "[ recall ] Linting CSS (stylelint)…"
+      - cd frontend && npm run lint:css
+      - echo "[ recall ] ✓  CSS lint clean"
+
+  lint-html:
+    desc: Lint HTML (htmlhint)
+    cmds:
+      - echo "[ recall ] Linting HTML (htmlhint)…"
+      - cd frontend && npm run lint:html
+      - echo "[ recall ] ✓  HTML lint clean"
+
+  lint-py:
+    desc: Lint + format-check Python (ruff)
+    cmds:
+      - echo "[ recall ] Linting Python (ruff)…"
+      - ruff check $(git ls-files '*.py')
+      - ruff format --check $(git ls-files '*.py')
+      - echo "[ recall ] ✓  Python lint clean"
+
+  lint-docker:
+    desc: Lint Dockerfile.build (hadolint)
+    cmds:
+      - echo "[ recall ] Linting Dockerfile (hadolint)…"
+      - hadolint {{.DOCKERFILE}}
+      - echo "[ recall ] ✓  Dockerfile lint clean"
+
+  lint-shell:
+    desc: Lint shell scripts (shellcheck + shfmt diff)
+    cmds:
+      - echo "[ recall ] Linting shell scripts (shellcheck)…"
+      - shellcheck {{.SHELL_SCRIPTS}}
+      - echo "[ recall ] Checking shell formatting (shfmt -d)…"
+      - shfmt -d -i 2 -ci -bn {{.SHELL_SCRIPTS}}
+      - echo "[ recall ] ✓  Shell lint clean"
+
+  lint-yaml:
+    desc: Lint YAML files (yamllint)
+    cmds:
+      - echo "[ recall ] Linting YAML…"
+      - yamllint .
+      - echo "[ recall ] ✓  YAML lint clean"
+
+  lint-typos:
+    desc: Spell-check via typos (config in _typos.toml)
+    cmds:
+      - command -v typos >/dev/null || { echo "[ recall ] ✗  typos not installed — brew install typos-cli (or see initialize.sh for Debian)"; exit 1; }
+      - echo "[ recall ] Spell-checking (typos)…"
+      - typos
+      - echo "[ recall ] ✓  Spelling clean"
+
+  lint-md:
+    desc: Lint Markdown via markdownlint-cli2 (config in .markdownlint-cli2.yaml)
+    cmds:
+      - echo "[ recall ] Linting Markdown (markdownlint-cli2)…"
+      - npx --yes markdownlint-cli2
+      - echo "[ recall ] ✓  Markdown lint clean"
+
+  lint-actions:
+    desc: Lint .github/workflows/*.yml via actionlint + enforce SHA-pinned external actions
+    cmds:
+      - command -v actionlint >/dev/null || { echo "[ recall ] ✗  actionlint not installed — brew install actionlint (or see initialize.sh for Debian)"; exit 1; }
+      - echo "[ recall ] Linting GitHub Actions workflows (actionlint)…"
+      - actionlint .github/workflows/*.yml
+      - echo "[ recall ] Enforcing SHA-pinned external actions…"
+      - bash scripts/ci/check-action-pins.sh
+      - echo "[ recall ] ✓  workflows clean + actions SHA-pinned"
+
+  lint-gosec:
+    desc: Go SAST via gosec (both build tags)
+    cmds:
+      - command -v gosec >/dev/null || { echo "[ recall ] ✗  gosec not installed — brew install gosec (or see initialize.sh for Debian)"; exit 1; }
+      - echo "[ recall ] gosec (default build tags)…"
+      - gosec -exclude-dir=frontend ./...
+      - echo "[ recall ] gosec (serveronly build tag)…"
+      - gosec -exclude-dir=frontend -tags=serveronly ./...
+      - echo "[ recall ] ✓  gosec clean"
+
+  lint-semgrep:
+    desc: JS/TS SAST via Semgrep (frontend/src/, TypeScript only — .vue handled by eslint-plugin-vue)
+    cmds:
+      - command -v semgrep >/dev/null || { echo "[ recall ] ✗  semgrep not installed — run 'mise install' (or pipx install semgrep==$SEMGREP_VERSION)"; exit 1; }
+      - echo "[ recall ] semgrep (JS/TS SAST)…"
+      - semgrep scan --config=p/javascript --config=p/typescript --config=p/owasp-top-ten --error --metrics=off --quiet frontend/src/
+      - echo "[ recall ] ✓  semgrep clean"
+
+  complexity:
+    desc: Report functions with McCabe complexity > 10 across Go + frontend (non-blocking)
+    cmds: [bash scripts/ci/check-complexity.sh]
+
+  bundle-audit:
+    desc: Print the top bundle chunks by size (informs check-bundle-size.sh decisions)
+    cmds: [bash scripts/ci/audit-bundle.sh]
+
+  lint-openapi:
+    desc: Lint api/openapi.yaml (Spectral, spectral:oas ruleset)
+    cmds:
+      - echo "[ recall ] Linting OpenAPI (spectral)…"
+      - 'npx --yes "@stoplight/spectral-cli@$SPECTRAL_VERSION" lint api/openapi.yaml --fail-severity=warn'
+
+  check-api-drift:
+    desc: Fuzz live server against api/openapi.yaml (schemathesis)
+    cmds:
+      - echo "[ recall ] Checking OpenAPI ↔ server drift (schemathesis)…"
+      - bash scripts/ci/check-api-drift.sh
+      - echo "[ recall ] ✓  OpenAPI lint clean"
+
+  gen-types:
+    desc: Regenerate frontend/src/api.gen.d.ts from api/openapi.yaml
+    cmds:
+      - echo "[ recall ] Regenerating frontend TypeScript types from OpenAPI…"
+      - cd frontend && npm run gen:types
+      - echo "[ recall ] ✓  frontend/src/api.gen.d.ts updated"
+
+  typecheck:
+    desc: TypeScript type-check (frontend api.ts + api.gen.d.ts)
+    cmds:
+      - echo "[ recall ] Type-checking frontend (tsc --noEmit)…"
+      - cd frontend && npm run typecheck
+      - echo "[ recall ] ✓  TypeScript clean"
+
+  # ── Dead code analysis ─────────────────────────────────────────────────
+  dead-code:
+    desc: Find unreachable Go functions and unused TypeScript exports
+    cmds:
+      - task: dead-code-go
+      - task: dead-code-ts
+
+  dead-code-go:
+    desc: Unreachable Go functions (deadcode, serveronly build tag)
+    cmds:
+      - echo "[ recall ] Scanning for dead Go code (deadcode -tags serveronly)…"
+      - bash scripts/ci/deadcode-check.sh
+      - echo "[ recall ] ✓  No unexpected dead Go code"
+
+  dead-code-ts:
+    desc: Unused TypeScript exports and stale deps (knip)
+    cmds:
+      - echo "[ recall ] Scanning for dead TypeScript code (knip)…"
+      - cd frontend && npm run dead:ts
+      - echo "[ recall ] ✓  No dead TypeScript code found"
+
+  # ── Format ─────────────────────────────────────────────────────────────
+  fmt:
+    desc: Format all source files (Go + shell + Python)
+    cmds:
+      - task: fmt-go
+      - task: fmt-shell
+      - task: fmt-py
+
+  fmt-go:
+    desc: Format Go source files (goimports-reviser + gofumpt)
+    cmds:
+      - echo "[ recall ] Formatting Go source files…"
+      - goimports-reviser -rm-unused -use-cache -project-name recall -output write ./...
+      - gofumpt -l -w .
+      - echo "[ recall ] ✓  Go source formatted"
+
+  fmt-shell:
+    desc: Format shell scripts in scripts/ (shfmt -w)
+    cmds:
+      - echo "[ recall ] Formatting shell scripts (shfmt)…"
+      - shfmt -w -i 2 -ci -bn {{.SHELL_SCRIPTS}}
+      - echo "[ recall ] ✓  Shell scripts formatted"
+
+  fmt-py:
+    desc: Format Python (ruff format)
+    cmds:
+      - echo "[ recall ] Formatting Python (ruff)…"
+      - ruff format $(git ls-files '*.py')
+      - echo "[ recall ] ✓  Python formatted"
+
+  # ── Maintenance ────────────────────────────────────────────────────────
+  update-deps:
+    desc: Update Go modules and npm packages
+    cmds:
+      - echo "[ recall ] Updating Go module dependencies…"
+      - go get -u ./...
+      - go mod tidy
+      - echo "[ recall ] Updating frontend npm dependencies…"
+      - cd frontend && npm update
+      - echo "[ recall ] ✓  Dependencies updated"
+
+  trivy:
+    desc: Trivy vulnerability scan (fails on HIGH/CRITICAL)
+    cmds:
+      - echo "[ recall ] Running Trivy vulnerability scan…"
+      - trivy fs --scanners vuln --exit-code 1 --severity HIGH,CRITICAL .
+      - echo "[ recall ] ✓  No HIGH/CRITICAL vulnerabilities found"
+
+  check-deps:
+    desc: Check pinned tool versions against latest releases (read-only)
+    cmds: [bash scripts/ci/check-deps.sh]
+
+  # ── Release ────────────────────────────────────────────────────────────
+  release-beta:
+    desc: 'Cut a prerelease (usage: task release-beta VERSION=0.0.13-beta.0)'
+    cmds:
+      - |
+        if [ -z "{{.VERSION}}" ]; then
+          echo "[ recall ] ✗  VERSION is required (e.g. task release-beta VERSION=0.0.13-beta.0)"; exit 2
+        fi
+        case "{{.VERSION}}" in v*)
+          echo "[ recall ] ✗  drop the leading v — VERSION must be the bare semver (got {{.VERSION}})"; exit 2;;
+        esac
+        if [ -z "{{.ALLOW_STABLE}}" ]; then
+          case "{{.VERSION}}" in *-*) ;; *)
+            echo "[ recall ] ✗  {{.VERSION}} has no hyphen — that's a stable version."
+            echo "             Stable cuts happen automatically when release-please sees"
+            echo "             feat:/fix: commits; you should not force them through this"
+            echo "             target. If you really want to (e.g. forcing v1.0.0), rerun"
+            echo "             with ALLOW_STABLE=1."
+            exit 2;;
+          esac
+        fi
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "[ recall ] ✗  working tree is dirty; commit or stash first"; exit 2
+        fi
+        git commit -s --allow-empty -m "chore: cut v{{.VERSION}}" -m "Release-As: {{.VERSION}}"
+        echo
+        echo "[ recall ] ✓  empty commit created. Next steps:"
+        echo "    1.  git push origin main"
+        echo "    2.  merge the release-please PR titled 'chore(main): release v{{.VERSION}}'"
+        echo "    3.  if RELEASE_PLEASE_TOKEN is configured, release.yml fires automatically."
+        echo "        Otherwise:  task release-fire TAG=v{{.VERSION}}"
+
+  release-fire:
+    desc: 'Manually fire release.yml on an existing tag (usage: task release-fire TAG=v0.0.13-beta.0)'
+    cmds:
+      - |
+        if [ -z "{{.TAG}}" ]; then
+          echo "[ recall ] ✗  TAG is required (e.g. task release-fire TAG=v0.0.13-beta.0)"; exit 2
+        fi
+        command -v gh >/dev/null 2>&1 || {
+          echo "[ recall ] ✗  gh CLI not installed (brew install gh, then gh auth login)"; exit 2;
+        }
+        if ! git ls-remote --exit-code --tags origin "{{.TAG}}" >/dev/null 2>&1; then
+          echo "[ recall ] ✗  tag {{.TAG}} not found on origin"; exit 2
+        fi
+        gh workflow run release.yml --ref "{{.TAG}}"
+        echo
+        echo "[ recall ] ✓  release.yml dispatched for {{.TAG}}."
+        echo "    Watch progress:  gh run list --workflow release.yml --limit 1"
+
+  # ── Test ───────────────────────────────────────────────────────────────
+  test:
+    desc: Run all unit tests (Go + frontend)
+    cmds:
+      - task: test-go
+      - task: test-frontend
+
+  test-go:
+    desc: Run Go unit tests with -race
+    cmds:
+      - echo "[ recall ] Running Go unit tests…"
+      - go test -race ./...
+      - echo "[ recall ] ✓  Go tests passed"
+
+  test-frontend:
+    desc: Run frontend unit tests (Vitest)
+    cmds:
+      - echo "[ recall ] Running frontend unit tests (Vitest)…"
+      - cd frontend && npm run test
+      - echo "[ recall ] ✓  Frontend tests passed"
+
+  update-goldens:
+    desc: Regenerate parser golden-file fixtures from current parse output
+    cmds:
+      - echo "[ recall ] Updating parser goldens from {{.RECALL_FIXTURE_DIR | default "testdata/"}}…"
+      - RECALL_FIXTURE_UPDATE=1 {{if .RECALL_FIXTURE_DIR}}RECALL_FIXTURE_DIR={{.RECALL_FIXTURE_DIR}}{{end}} go test -run TestParseScreenshot_GoldenFiles ./pkg/parser/ -v
+      - echo "[ recall ] ✓  Goldens updated — review the diff and commit"
+
+  goldens:
+    desc: 'Generate goldens for any screenshot file/dir to find parser bugs (usage: task goldens SRC=screenshots/foo)'
+    cmds: ['bash scripts/gen-goldens.sh "{{.SRC}}"']
+
+  test-e2e:
+    desc: E2E browser tests via Playwright (boots server in $E2E_HOME on :7099)
+    cmds:
+      - command -v npx >/dev/null || { echo "[ recall ] ✗  npx not installed — install Node 22+"; exit 1; }
+      - echo "[ recall ] Building frontend (required for Go //go:embed)…"
+      - cd frontend && npm run build >/dev/null
+      - echo "[ recall ] Building serveronly binary → {{.E2E_HOME}}/recall-server…"
+      - mkdir -p {{.E2E_HOME}}
+      - go build -tags serveronly -o {{.E2E_HOME}}/recall-server .
+      - echo "[ recall ] Installing Playwright chromium + webkit (skipped if cached)…"
+      - cd frontend && npx playwright install chromium webkit
+      - echo "[ recall ] Running Playwright E2E suite…"
+      - cd frontend && npx playwright test
+      - echo "[ recall ] ✓  E2E tests passed"
+
+  test-all:
+    desc: Run unit tests + E2E (everything)
+    cmds:
+      - task: test
+      - task: test-e2e
+
+  smoke-release-scripts:
+    desc: Smoke-test scripts/release/*.sh in temp dirs (no real tag needed)
+    cmds: [bash scripts/release/smoke/smoke.sh]
+
+  bug-finder:
+    desc: Build recall-bug-finder CLI to build/bin/ (maintainer-only — not released)
+    cmds:
+      - echo "[ recall ] Building recall-bug-finder…"
+      - mkdir -p build/bin
+      - go build -tags serveronly -o build/bin/recall-bug-finder ./cmd/bug-finder
+      - echo "[ recall ] ✓  Built build/bin/recall-bug-finder"
+      - 'echo "[ recall ]    Usage: build/bin/recall-bug-finder <bundle.zip>"'
+
+  smoke-wails:
+    desc: Compile-check the full Wails desktop binary on the host
+    cmds:
+      - echo "[ recall ] Smoke-building Wails desktop binary…"
+      - mkdir -p build/bin
+      - cd frontend && npm run build > /dev/null
+      - go build -o build/bin/.recall-smoke .
+      - rm -f build/bin/.recall-smoke
+      - echo "[ recall ] ✓  Wails binary builds cleanly"
+
+  cover:
+    desc: Generate Go + frontend coverage reports (umbrella)
+    cmds:
+      - task: cover-go
+      - task: cover-frontend
+
+  cover-go:
+    desc: Generate Go coverage report; fail if total < GO_COVERAGE_MIN (67)
+    cmds:
+      - echo "[ recall ] Generating Go coverage report…"
+      - mkdir -p coverage/go
+      - go test -race -short -coverprofile=coverage/go/coverage.out ./...
+      - go tool cover -func=coverage/go/coverage.out | tee coverage/go/coverage.txt
+      - go tool cover -html=coverage/go/coverage.out -o coverage/go/coverage.html
+      - |
+        pct=$(awk '/^total:/ { gsub(/%/, "", $NF); print $NF }' coverage/go/coverage.txt)
+        awk -v p="$pct" -v m="{{.GO_COVERAGE_MIN}}" 'BEGIN {
+          if (p+0 < m+0) { printf "[ recall ] ✗  Go coverage %.1f%% is below threshold %s%%\n", p, m; exit 1 }
+          printf "[ recall ] ✓  Go coverage %.1f%% ≥ threshold %s%%\n", p, m
+        }'
+      - echo "[ recall ] ✓  Coverage report written to coverage/go/"
+
+  cover-frontend:
+    desc: Generate JS/TS coverage report (Vitest + V8; output → frontend/coverage/)
+    cmds:
+      - echo "[ recall ] Generating frontend coverage report…"
+      - cd frontend && npm run test:coverage
+      - echo "[ recall ] ✓  Coverage report written to frontend/coverage/"
+
+  cover-e2e:
+    desc: Generate integration coverage (Go + frontend) from the Playwright suite → coverage/e2e/
+    vars:
+      E2E_GOCOVERDIR:
+        sh: echo "$PWD/coverage/e2e/go-covdata"
+    cmds:
+      - command -v npx >/dev/null || { echo "[ recall ] ✗  npx not installed — install Node 22+"; exit 1; }
+      - echo "[ recall ] Building instrumented frontend (inline maps) + server (-cover)…"
+      - rm -rf coverage/e2e && mkdir -p coverage/e2e/go "{{.E2E_GOCOVERDIR}}" {{.E2E_HOME}}
+      - cd frontend && E2E_COVERAGE=1 npm run build >/dev/null
+      - go build -cover -coverpkg=./... -tags serveronly -o {{.E2E_HOME}}/recall-server .
+      - cd frontend && npx playwright install chromium >/dev/null
+      # Drop any reused (uninstrumented) server so the -cover binary boots fresh.
+      - lsof -ti :7099 2>/dev/null | xargs -r kill 2>/dev/null || true
+      - echo "[ recall ] Running Playwright (chromium) with coverage collection…"
+      - cd frontend && E2E_COVERAGE=1 GOCOVERDIR="{{.E2E_GOCOVERDIR}}" npx playwright test --project=chromium
+      - echo "[ recall ] Converting Go e2e coverage profile…"
+      - go tool covdata textfmt -i="{{.E2E_GOCOVERDIR}}" -o coverage/e2e/go/coverage.out
+      - go tool cover -func=coverage/e2e/go/coverage.out | tee coverage/e2e/go/coverage.txt | tail -1
+      - go tool cover -html=coverage/e2e/go/coverage.out -o coverage/e2e/go/coverage.html
+      - echo "[ recall ] ✓  Integration coverage written to coverage/e2e/ (go/ + frontend/)"
+
+  # ── Maintenance / dev ──────────────────────────────────────────────────
+  icon:
+    desc: Resync build/appicon.png from assets/icon.png (run after updating the icon)
+    cmds:
+      - |
+        if [ ! -f assets/icon.png ]; then
+          echo "[ recall ] ✗  assets/icon.png not found"; exit 1
+        fi
+        if ! command -v sips >/dev/null 2>&1; then
+          echo "[ recall ] ✗  sips not found (macOS only); resize assets/icon.png to 1024x1024 manually and copy to build/appicon.png"; exit 1
+        fi
+        sips -z 1024 1024 assets/icon.png --out build/appicon.png >/dev/null
+        rm -f build/windows/icon.ico
+        echo "[ recall ] ✓  build/appicon.png updated · build/windows/icon.ico cleared (regenerates on next wails build)"
+
+  dev:
+    desc: Start hot-reload Wails dev server (macOS or Debian)
+    cmds:
+      - |
+        case "$(uname -s)" in
+          Darwin) wails dev ;;
+          Linux)  wails dev -tags webkit2_4_1 ;;
+          *) echo "[ recall ] ✗  wails dev needs macOS or a Debian/Ubuntu host (no display surface elsewhere)"; exit 1 ;;
+        esac
+
+  seed-dev:
+    desc: 'Populate a SQLite profile with N synthetic matches (usage: task seed-dev N=300 PROFILE=demo [SEED=time] [FORCE=1] [CHAOS=0.15] [STYLE=one-trick])'
+    vars:
+      SEED_VALUE:
+        sh: if [ "{{.SEED}}" = "time" ]; then date +%s; else echo "{{.SEED}}"; fi
+    cmds:
+      - go run ./cmd/seed-dev --n={{.N}} --profile={{.PROFILE}} --seed={{.SEED_VALUE}} --chaos={{.CHAOS}} --style={{.STYLE}} {{if .FORCE}}--force{{end}}
+
+  seed-clear:
+    desc: 'Wipe a SQLite profile without re-seeding (usage: task seed-clear PROFILE=demo)'
+    cmds: ['go run ./cmd/seed-dev --clear --profile={{.PROFILE}}']
+
+  swagger:
+    desc: Serve api/openapi.yaml via Swagger UI on :$SWAGGER_PORT (Ctrl-C to stop)
+    cmds:
+      - |
+        if [ ! -f api/openapi.yaml ]; then
+          echo "[ recall ] ✗  api/openapi.yaml not found"; exit 1
+        fi
+        echo "[ recall ] Swagger UI on http://localhost:{{.SWAGGER_PORT}}/  (Ctrl-C to stop)"
+        {{.DOCKER}} run --rm -it --name recall-swagger -p {{.SWAGGER_PORT}}:8080 -e SWAGGER_JSON=/spec/openapi.yaml -v "$(pwd)/api/openapi.yaml:/spec/openapi.yaml:ro" {{.SWAGGER_IMAGE}}
+
+  pages-build:
+    desc: Build the docs book + Swagger UI under dist/pages/ (mirrors CI)
+    cmds:
+      - command -v npx >/dev/null || { echo "[ recall ] ✗  npx not installed — install Node 22+"; exit 1; }
+      - echo "[ recall ] Staging book/ + docs/ into dist/pages-stage/…"
+      - rm -rf dist/pages dist/pages-stage
+      - mkdir -p dist/pages-stage
+      - cp -R book/. dist/pages-stage/
+      - cp docs/install-macos.md dist/pages-stage/install-macos.md
+      - cp docs/install-linux.md dist/pages-stage/install-linux.md
+      - cp docs/install-windows.md dist/pages-stage/install-windows.md
+      - cp docs/how-it-works.md dist/pages-stage/how-it-works.md
+      - cp docs/settings-reference.md dist/pages-stage/settings-reference.md
+      - cp docs/filtering.md dist/pages-stage/filtering.md
+      - cp docs/unknown-screenshots.md dist/pages-stage/unknown-screenshots.md
+      - cp docs/server.md dist/pages-stage/server.md
+      - cp docs/docker.md dist/pages-stage/docker.md
+      - cp docs/grafana.md dist/pages-stage/grafana.md
+      - cp docs/feedback.md dist/pages-stage/feedback.md
+      - cp docs/faq.md dist/pages-stage/faq.md
+      - mkdir -p dist/pages-stage/testdata
+      - cp testdata/*.png dist/pages-stage/testdata/
+      - mkdir -p dist/pages-stage/screenshots
+      - cp docs/screenshots/*.png dist/pages-stage/screenshots/
+      - rm -f dist/pages-stage/.gitignore
+      - echo "[ recall ] Running honkit@$HONKIT_VERSION…"
+      - cd dist/pages-stage && npx --yes "honkit@$HONKIT_VERSION" build . _book >/dev/null
+      - mkdir -p dist/pages/api
+      - cp -R dist/pages-stage/_book/. dist/pages/
+      - cp docs/api/index.html dist/pages/api/index.html
+      - cp api/openapi.yaml dist/pages/api/openapi.yaml
+      - echo "[ recall ] ✓  Built dist/pages/  (book root + /api/ Swagger UI)"
+
+  pages-preview:
+    desc: Build then serve dist/pages/ on http://localhost:$PAGES_PORT (Ctrl-C to stop)
+    cmds:
+      - task: pages-build
+      - command -v python3 >/dev/null || { echo "[ recall ] ✗  python3 not installed"; exit 1; }
+      - echo "[ recall ] Docs site on http://localhost:{{.PAGES_PORT}}/  (Ctrl-C to stop)"
+      - cd dist/pages && python3 -m http.server {{.PAGES_PORT}} --bind 127.0.0.1
+
+  clean:
+    desc: Remove dist/, build/bin/, frontend/dist, frontend/node_modules, stray repo-root binaries
+    cmds:
+      - rm -rf {{.DIST_DIR}} build/bin frontend/dist frontend/node_modules
+      - rm -rf Recall Recall.exe Recall.app recall Recall-server Recall-server.exe recall-server
+      - echo "[ recall ] dist/, build/bin/, frontend/dist, frontend/node_modules, stray repo-root binaries removed"

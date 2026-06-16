@@ -23,15 +23,10 @@ indent_style = space
 indent_size = 2
 
 # ── Data / config formats ─────────────────────────────────────────────────────
+# Taskfile.yml (go-task) is plain YAML, so the 2-space rule above covers it.
 [*.{json,json5,yaml,yml,toml}]
 indent_style = space
 indent_size = 2
-
-# ── Make ──────────────────────────────────────────────────────────────────────
-# make requires hard tabs for recipe lines — no exceptions.
-[Makefile]
-indent_style = tab
-tab_width = 4
 
 # ── Shell scripts ─────────────────────────────────────────────────────────────
 # LF is explicit here: CRLF line endings silently break bash shebangs and

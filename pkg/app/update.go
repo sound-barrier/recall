@@ -204,7 +204,7 @@ func updateInfoFor(v string, isDev bool, m releaseMeta) UpdateInfo {
 	// Semver compare instead of raw string equality. Two reasons:
 	//   1. The production binary's `Version` carries a leading `v`
 	//      (release.yml passes `${{ github.ref_name }}` — the tag
-	//      name — to the Dockerfile's ldflags), but local Makefile
+	//      name — to the Dockerfile's ldflags), but local Taskfile
 	//      builds get bare semver from the manifest. semver.NewVersion
 	//      accepts both forms, so the comparison stops caring about
 	//      the prefix-mismatch that pre-fix made every official

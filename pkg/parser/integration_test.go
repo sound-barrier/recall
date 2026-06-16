@@ -40,7 +40,7 @@ import (
 //
 // To regenerate goldens (e.g. after intentionally changing parser output),
 // set RECALL_FIXTURE_UPDATE=1 alongside RECALL_FIXTURE_DIR — easier via
-// the `make update-goldens` Makefile target. The test will rewrite each
+// the `task update-goldens` Taskfile task. The test will rewrite each
 // .golden.json with the current parse result instead of asserting
 // equality. Review the diff before committing.
 //

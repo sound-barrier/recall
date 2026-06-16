@@ -24,8 +24,8 @@
 
 # recall_base_dir resolves the install-wide base directory — the parent
 # of profiles/. Mirrors pkg/app/settings.go::appBaseDir. Resolution:
-#   1. RECALL_DATA_DIR — full override (the repo's .envrc sets this to
-#                        $PWD/data when direnv is active, so `wails dev`
+#   1. RECALL_DATA_DIR — full override (mise.toml [env] sets this to
+#                        <repo>/data when mise is active, so `wails dev`
 #                        and the db-*.sh scripts share the in-repo dev
 #                        data without further config).
 #   2. Platform user-config dir — what the released app uses.

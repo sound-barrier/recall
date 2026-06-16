@@ -2,7 +2,7 @@
 #
 # Recall HTTP API — OpenAPI 3.1.0 description of the routes mounted in
 # pkg/cmd/server.go. Hand-written; keep in sync with that file. View with
-# `make swagger` (runs Swagger UI in a container against this spec).
+# `task swagger` (runs Swagger UI in a container against this spec).
 openapi: 3.1.0
 info:
   title: Recall API
@@ -1620,8 +1620,8 @@ paths:
         Surface the SQLite database path, settings file path, base
         data directory, and the currently-configured screenshots
         folder. Honors the `RECALL_DATA_DIR` env override (set in
-        `.envrc` for `wails dev`), so the response matches what the
-        running app actually reads/writes.
+        mise.toml `[env]` for `wails dev`), so the response matches what
+        the running app actually reads/writes.
       responses:
         "200":
           description: Path inventory.

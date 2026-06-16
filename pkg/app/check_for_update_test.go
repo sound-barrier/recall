@@ -283,7 +283,7 @@ func TestCheckForUpdate_StripsLeadingVFromTag(t *testing.T) {
 // Regression: production binaries built via release.yml have
 // `Version="v0.2.5"` because release.yml passes `${{ github.ref_name }}`
 // (the tag name, WITH the leading `v`) into the Dockerfile's
-// `-ldflags "-X recall/pkg/app.Version=${VERSION}"`. Local Makefile
+// `-ldflags "-X recall/pkg/app.Version=${VERSION}"`. Local Taskfile
 // builds get `"0.2.5"` (no v) from `jq -r '."."'
 // .release-please-manifest.json`. Pre-fix, the up-to-date check
 // stripped only the GitHub tag's `v` and string-compared against
